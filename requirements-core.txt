@@ -1,0 +1,23 @@
+# Core: crypto + quantum primitives (CPU). Installs cleanly without a GPU.
+# Python 3.12. Pinned to >= known-good June 2026 versions.
+numpy>=1.26,<3
+scipy>=1.11
+pyyaml>=6.0
+rich>=13.7
+
+# Quantum (CPU simulation / circuit authoring)
+qiskit>=1.2
+qiskit-aer>=0.15            # CPU build. NOTE: qiskit-aer-gpu cu11/cu12 wheels do NOT
+                           # support Blackwell sm_120 -> use CUDA-Q / lightning.gpu (see requirements-gpu.txt)
+pennylane>=0.38
+
+# Post-quantum cryptography (NIST FIPS 203/204/205)
+liboqs-python>=0.10        # ML-KEM / ML-DSA / SLH-DSA via Open Quantum Safe liboqs
+cryptography>=42.0         # classical X25519 etc. for hybrid KEM
+
+# Classical ML helpers used by QKD optimizer / QML-IDS baselines
+scikit-learn>=1.4
+
+# Test tooling
+pytest>=8.0
+pytest-cov>=5.0

@@ -1,0 +1,7 @@
+# API backend (FastAPI) for the SPA: REST + WebSocket control/log stream + downloads.
+fastapi>=0.115
+uvicorn[standard]>=0.30
+websockets>=12.0
+python-multipart>=0.0.9       # file uploads
+prometheus-client>=0.20       # /metrics endpoint
+pydantic>=2.7

@@ -1,0 +1,18 @@
+# Keep the Docker build context small + never ship private/local artifacts.
+.venv/
+.git/
+.claude/
+web/node_modules/
+web/dist/
+submodules/
+results/
+data/
+logs/
+references/*.pdf
+*.docx
+MONETIZATION*.md
+**/__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/

@@ -1,0 +1,55 @@
+# Full local backend image (crypto + quantum + AI + FHE + API) — federated learning + inference.
+# Base = Debian 13 (trixie): its libstdc++ (GLIBCXX_3.4.32+) matches the OpenFHE wheel and the
+# Ubuntu-24.04 deploy target, so the OpenFHE CKKS backend is LIVE in the container.
+# For GPU (Blackwell/CUDA13) run with the NVIDIA container runtime:
+#   docker run --gpus all ...   (and install nvidia-container-toolkit on the host)
+FROM python:3.12-slim-trixie
+
+ENV PYTHONUNBUFFERED=1 PIP_NO_CACHE_DIR=1 LD_LIBRARY_PATH=/usr/local/lib
+WORKDIR /app
+
+# libgomp1 = OpenMP runtime needed by the OpenFHE wheel and torch.
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential cmake ninja-build git libssl-dev ca-certificates libgomp1 \
+    nodejs npm \
+ && rm -rf /var/lib/apt/lists/*
+# Node/npx are for the real filesystem-MCP interop (the official @modelcontextprotocol/server-filesystem
+# is a Node package launched over stdio by qsh.mcp.fs_interop). Full deployment only; the slim demo image
+# omits this (the demo never calls the server-side MCP — it uses the client-side mirror).
+
+# Build the liboqs C shared library at BUILD time (liboqs-python otherwise tries to
+# build it on first import at RUNTIME, which needs network + libssl-dev). Baking it in
+# makes the container import `oqs` offline.
+RUN git clone --depth 1 https://github.com/open-quantum-safe/liboqs /tmp/liboqs \
+ && cmake -S /tmp/liboqs -B /tmp/liboqs/build -GNinja \
+      -DBUILD_SHARED_LIBS=ON -DCMAKE_INSTALL_PREFIX=/usr/local -DOQS_BUILD_ONLY_LIB=ON \
+ && cmake --build /tmp/liboqs/build --parallel \
+ && cmake --install /tmp/liboqs/build && ldconfig && rm -rf /tmp/liboqs
+
+COPY requirements-core.txt requirements-ai.txt requirements-fhe.txt requirements-api.txt pyproject.toml ./
+RUN pip install --upgrade pip wheel setuptools \
+ && pip install -r requirements-core.txt -r requirements-api.txt -r requirements-fhe.txt
+
+# AI tier (federated learning + private inference): CPU torch keeps the image portable and fits
+# a 6-core/12 GB no-GPU VPS (<vps-provider>). On a GPU host, swap the index for a CUDA build.
+RUN pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu \
+ && pip install -r requirements-ai.txt
+
+# Bake the REAL MedMNIST dataset (PneumoniaMNIST, ~4 MB, CC-BY) into the image at BUILD time so the
+# genuine medical CNN runs on real images at RUNTIME with no network. Per the no-easy-fallback policy
+# the synthetic image generator is for offline CI only — never a silent runtime substitute for real data.
+RUN python -c "from medmnist import PneumoniaMNIST; PneumoniaMNIST(split='train', download=True); print('MedMNIST PneumoniaMNIST baked into image')" \
+ || echo "WARNING: MedMNIST prefetch failed at build (no network?) — runtime will attempt download"
+
+COPY src ./src
+COPY api ./api
+RUN pip install -e .
+
+# Verify oqs finds the prebuilt shared library (fails the build early if not).
+RUN python -c "import oqs; print('liboqs', oqs.oqs_version())"
+# Non-fatal: report whether the live OpenFHE + torch backends are available in the image.
+RUN python -c "import openfhe; print('OpenFHE CKKS backend: LIVE')" || echo "OpenFHE: unavailable (TenSEAL fallback)"
+RUN python -c "import torch; print('torch', torch.__version__, 'CUDA', torch.cuda.is_available())"
+
+EXPOSE 8000
+CMD ["uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "8000"]

@@ -1,0 +1,169 @@
+{
+  "_generated_by": "scripts/export_config.py (do not edit by hand; edit src/qsh/config/defaults.py)",
+  "benchmark": {
+    "cost_per_op": {
+      "demo_ct_pt_ratio": 1483.0,
+      "demo_max_abs_error": 4.6e-07,
+      "fhe_ms_per_dot": 12.0,
+      "mpc_comm_bytes_per_cmp": 256,
+      "mpc_ms_per_cmp": 1.6,
+      "qsmpc_ct_pt_ratio": 1.32,
+      "qsmpc_qubits": 8,
+      "qsmpc_t_gates": 56
+    },
+    "demo_feature_dim": 8,
+    "generic_architecture": {
+      "large": [
+        64,
+        32
+      ],
+      "lightweight": [],
+      "medium": [
+        16
+      ]
+    },
+    "hybrid_samples": 6,
+    "medical_cnn": {
+      "channels": [
+        4
+      ],
+      "hidden": 16,
+      "img_size": 14,
+      "medmnist_name": "pneumoniamnist",
+      "pool": "avg",
+      "subset": 512
+    },
+    "quantum_qubits": 8,
+    "quantum_samples": 20,
+    "tier_architectures": {
+      "finance_aml": {
+        "hidden": {
+          "large": [
+            128,
+            64
+          ],
+          "lightweight": [],
+          "medium": [
+            32,
+            16
+          ]
+        },
+        "label": "tabular fraud MLP"
+      },
+      "genomics": {
+        "hidden": {
+          "large": [
+            256,
+            128
+          ],
+          "lightweight": [],
+          "medium": [
+            64
+          ]
+        },
+        "label": "genomic risk MLP"
+      },
+      "medical_fl": {
+        "hidden": {
+          "large": [
+            256,
+            128
+          ],
+          "lightweight": [],
+          "medium": [
+            64,
+            32
+          ]
+        },
+        "label": "diagnostic net (MedMNIST-scale)"
+      }
+    },
+    "workload_multipliers": {
+      "cnn": [
+        2.0,
+        " (CNN-class)"
+      ],
+      "linear": [
+        1.0,
+        ""
+      ],
+      "transformer": [
+        3.0,
+        " (Transformer-class)"
+      ]
+    }
+  },
+  "data": {
+    "aml_bank_a_accounts": 300,
+    "aml_bank_b_accounts": 280,
+    "aml_shared_accounts": 12,
+    "genomics_allele_max": 400,
+    "genomics_allele_min": 50,
+    "genomics_biobanks": 4
+  },
+  "qkd": {
+    "distance_km": 50.0,
+    "pulses": 200000
+  },
+  "quantum_advantage": {
+    "info_theoretic_multiplier": 1.5,
+    "log_offset": 1.0,
+    "log_scale": 3.2,
+    "tier_dominant": 8.0,
+    "tier_moderate": 2.0,
+    "tier_strong": 5.0,
+    "w_comm": 0.6,
+    "w_latency": 0.2,
+    "w_security": 0.2
+  },
+  "security_scoring": {
+    "computational": 18.0,
+    "eavesdrop_secure_pts": 10.0,
+    "eavesdrop_warn_pts": 5.0,
+    "hndl_pqc_hybrid": 30.0,
+    "info_theoretic": 30.0,
+    "key_strength_by_category": {
+      "1": 10.0,
+      "2": 13.0,
+      "3": 16.0,
+      "4": 18.0,
+      "5": 20.0
+    },
+    "leakage_low": 0.1,
+    "leakage_mid": 0.5,
+    "leakage_pts_default_comp": 4.0,
+    "leakage_pts_default_it": 6.0,
+    "leakage_pts_high": 3.0,
+    "leakage_pts_low": 10.0,
+    "leakage_pts_mid": 7.0,
+    "qber_danger_threshold": 0.2,
+    "qber_secure_threshold": 0.11,
+    "qkd_bonus": 5.0
+  },
+  "web": {
+    "agent_timeout_ms": 120000,
+    "demo_alice_bob_pulses": 40000,
+    "tfjs_max_new_tokens": 96,
+    "tfjs_models": [
+      {
+        "id": "Xenova/distilgpt2",
+        "label": "distilGPT-2 (tiny, ~80 MB)"
+      },
+      {
+        "id": "onnx-community/Qwen2.5-0.5B-Instruct",
+        "label": "Qwen2.5-0.5B-Instruct (ONNX)"
+      }
+    ],
+    "webllm_max_tokens": 160,
+    "webllm_models": [
+      {
+        "id": "Qwen2.5-0.5B-Instruct-q4f16_1-MLC",
+        "label": "Qwen2.5-0.5B-Instruct (~350 MB)"
+      },
+      {
+        "id": "Phi-3-mini-4k-instruct-q4f16_1-MLC",
+        "label": "Phi-3-mini-4k (~2 GB)"
+      }
+    ]
+  }
+}

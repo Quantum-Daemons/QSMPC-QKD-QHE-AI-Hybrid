@@ -1,0 +1,39 @@
+{
+  "name": "qsh-web",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "SPA for the QSMPC-QKD-QHE-AI-Hybrid quantum-safe orchestration layer",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview --host"
+  },
+  "dependencies": {
+    "@huggingface/transformers": "^4.2.0",
+    "@mlc-ai/web-llm": "^0.2.84",
+    "@noble/post-quantum": "^0.2.1",
+    "@types/gif.js": "^0.2.5",
+    "@xyflow/react": "^12.3.5",
+    "emp-wasm-engine": "^0.5.4",
+    "gif.js": "^0.2.0",
+    "html-to-image": "^1.11.13",
+    "mpc-framework": "^0.3.0",
+    "node-seal": "^7.0.0",
+    "onnxruntime-web": "^1.27.0",
+    "papaparse": "^5.4.1",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-router-dom": "^6.27.0",
+    "recharts": "^2.13.3",
+    "summon-ts": "^0.6.2"
+  },
+  "devDependencies": {
+    "@types/papaparse": "^5.3.15",
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "@vitejs/plugin-react": "^4.3.3",
+    "typescript": "^5.6.3",
+    "vite": "^5.4.10"
+  }
+}

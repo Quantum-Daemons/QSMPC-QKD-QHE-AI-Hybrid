@@ -1,0 +1,13 @@
+# AI + federated learning. Torch CUDA build is selected by your local CUDA at install time.
+# For Blackwell (sm_120) + CUDA 13, use a recent torch cu12x/cu13 wheel (see README).
+torch>=2.3
+torchvision>=0.18
+onnx>=1.16
+onnxscript>=0.7            # required by torch>=2.9 onnx exporter (dynamo path)
+onnxruntime>=1.18          # CPU inference + ONNX export validation (web demo uses onnxruntime-web)
+xgboost>=2.0
+medmnist>=3.0             # lightweight medical imaging datasets (CC-BY)
+flwr>=1.11               # Flower federated learning
+mcp>=1.2                 # MCP Python SDK (FastMCP server + stdio client) — real quantum-safe MCP server (full deployment)
+pandas>=2.2
+matplotlib>=3.8           # benchmark/result plots

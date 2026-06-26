@@ -1,0 +1,37 @@
+import { Link } from "react-router-dom";
+import { DEMO_BANNER, isClientDemo } from "../lib/demoMode";
+import { USECASES } from "../lib/useCases";
+
+const DEMO = isClientDemo();
+
+// Use Cases index — each card links to a dedicated per-use-case page (a live two-party
+// simulator + that use case's benchmark + XAI). The Benchmark + per-case run UIs are unified there.
+export default function UseCases() {
+  return (
+    <div>
+      <h1 className="page-title">Industry Use Cases</h1>
+      <p className="page-sub">
+        Each use case has its own page: a live <b>two-party (Alice↔Bob) simulator</b> you Start / Pause /
+        Step / Stop / Restart, with that industry's benchmark (latency · accuracy · security score · quantum
+        advantage) and, where applicable, a signed XAI explanation. Finance / Medical / Genomics are deep
+        (private inference); Telecom and Satellite are QKD/QSDC scaffolds.
+      </p>
+      {DEMO && <div className="note" style={{ marginBottom: 12 }}>🖥️ {DEMO_BANNER}</div>}
+
+      <div className="grid cols-2">
+        {USECASES.map((u) => (
+          <Link key={u.id} to={`/usecase/${u.id}`} className="card" style={{ textDecoration: "none", color: "inherit", display: "block" }}>
+            <h3>{u.title}</h3>
+            <div className="pill-row">
+              <span className={`tag ${u.inference ? "deep" : "scaffold"}`}>{u.inference ? "deep" : "scaffold"}</span>
+              <span className="tag">{u.industry}</span>
+            </div>
+            <p style={{ fontSize: 13 }}>{u.blurb}</p>
+            <p className="muted" style={{ fontSize: 11 }}>{u.market}</p>
+            <span className="btn" style={{ marginTop: 6, display: "inline-block" }}>Open simulator →</span>
+          </Link>
+        ))}
+      </div>
+    </div>
+  );
+}
