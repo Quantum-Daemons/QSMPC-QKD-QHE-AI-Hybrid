@@ -1,0 +1,26 @@
+# Prometheus scrape config (local full deployment).
+# The VPS demo does NOT run Prometheus on-box (12 GB is tight) -- prefer remote_write
+# to Grafana Cloud's free tier, or rely on structured JSON logs.
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: qsh-api
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["api:8000"]
+
+  - job_name: node
+    static_configs:
+      - targets: ["node-exporter:9100"]
+
+  # GPU metrics (local box): run NVIDIA DCGM exporter and add it here:
+  # - job_name: dcgm
+  #   static_configs:
+  #     - targets: ["dcgm-exporter:9400"]
+
+# For the VPS demo, ship metrics off-box instead of scraping locally:
+# remote_write:
+#   - url: https://<grafana-cloud-prometheus-endpoint>/api/prom/push
+#     basic_auth: { username: "<id>", password: "<api-key>" }

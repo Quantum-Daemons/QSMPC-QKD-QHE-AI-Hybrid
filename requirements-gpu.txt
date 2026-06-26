@@ -1,0 +1,17 @@
+# GPU quantum simulation for NVIDIA RTX PRO 6000 Blackwell (sm_120) + CUDA 13.0.
+#
+# IMPORTANT: qiskit-aer-gpu (cu11/cu12 wheels) does NOT target Blackwell sm_120.
+# The supported 2026 path on this hardware is CUDA-Q + cuQuantum (PennyLane lightning.gpu
+# wraps cuStateVec; supports SM 7.0+ including Blackwell).
+#
+# CUDA-Q (NVIDIA) — Apache-2.0. Pick the wheel matching your CUDA major:
+# cudaq                       # latest; or cuda-quantum-cu12 / appropriate cu13 wheel
+#
+# PennyLane Lightning GPU (wraps cuQuantum cuStateVec):
+# pennylane-lightning-gpu>=0.40
+#
+# cuQuantum runtime (pulled in by lightning.gpu, or install explicitly):
+# custatevec-cu12             # or the cu13-tagged build when available
+#
+# These are intentionally left commented: install interactively after confirming the
+# exact CUDA-tagged wheels available for your driver (580) / CUDA 13 toolkit.

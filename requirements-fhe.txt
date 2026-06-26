@@ -1,0 +1,22 @@
+# Classical homomorphic-encryption backends (Python-accessible) — commercial-OK only.
+#
+# tenseal: CPU CKKS/BFV built on Microsoft SEAL (Apache-2.0). Default + CI fallback.
+tenseal>=0.3.15
+#
+# openfhe: CPU CKKS via OpenFHE (BSD-2-Clause, commercial-OK; v1.5.1, Apr 2026), with
+#   approximate bootstrapping. Prebuilt wheels target a recent libstdc++ (Ubuntu 24.04 /
+#   the Docker python:3.12-slim image / the <vps-provider> deploy target). On an older host the
+#   import fails and the FHE layer falls back to TenSEAL (OpenFHEBackend is import-guarded).
+openfhe>=1.5.1
+#
+# mpyc: the NON-LINEAR half of the hybrid (ReLU/argmax under secret-sharing MPC). MIT, pure-Python,
+#   actively maintained (v0.11, 2026). Vendored at submodules/mpyc; the pip wheel is the same code.
+#   The 2026-standard split is linear→FHE (above) + non-linear→MPC (here); see qsh/mpc/secret_inference.py.
+mpyc>=0.11
+#
+# GPU FHE = HEonGPU (Apache-2.0), built from the git submodule (submodules/HEonGPU) and
+# exercised live by the GPU MPC-FHE benchmark glue (scripts/build_gpu_mpc.sh +
+# qsh/benchmark/gpu_mpc_adapter.py). It has no Python binding, so it is not a pip dep.
+#
+# NOTE: DESILO `desilofhe` was REMOVED — its license is non-commercial
+# (https://fhe.desilo.dev/latest/license/), incompatible with this project's commercial intent.
