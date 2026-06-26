@@ -1,0 +1,36 @@
+[submodule "submodules/CQC-QHE"]
+	path = submodules/CQC-QHE
+	url = https://github.com/OrtegaSA/CQC-QHE-repo.git
+[submodule "submodules/AMLSim"]
+	path = submodules/AMLSim
+	url = https://github.com/IBM/AMLSim.git
+[submodule "submodules/shark"]
+	path = submodules/shark
+	url = https://github.com/kanav99/shark.git
+[submodule "submodules/mpyc"]
+	path = submodules/mpyc
+	url = https://github.com/lschoe/mpyc.git
+[submodule "submodules/oqs-provider"]
+	path = submodules/oqs-provider
+	url = https://github.com/open-quantum-safe/oqs-provider.git
+[submodule "submodules/openfhe"]
+	path = submodules/openfhe
+	url = https://github.com/openfheorg/openfhe-development.git
+[submodule "submodules/SEAL"]
+	path = submodules/SEAL
+	url = https://github.com/microsoft/SEAL.git
+[submodule "submodules/liboqs"]
+	path = submodules/liboqs
+	url = https://github.com/open-quantum-safe/liboqs.git
+[submodule "submodules/MP-SPDZ"]
+	path = submodules/MP-SPDZ
+	url = https://github.com/data61/MP-SPDZ.git
+[submodule "submodules/HEonGPU"]
+	path = submodules/HEonGPU
+	url = https://github.com/Alisah-Ozcan/HEonGPU.git
+[submodule "submodules/hpmpc"]
+	path = submodules/hpmpc
+	url = https://github.com/chart21/hpmpc.git
+[submodule "submodules/synthea"]
+	path = submodules/synthea
+	url = https://github.com/synthetichealth/synthea.git
