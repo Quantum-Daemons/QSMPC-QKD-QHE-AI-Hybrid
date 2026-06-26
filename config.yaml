@@ -1,0 +1,78 @@
+# QSH configuration — overrides the dataclass defaults in src/qsh/config/defaults.py.
+# Values shown are the defaults; edit to retune. The WebUI "Advanced parameters" panel
+# sends per-run overrides that take precedence over this file at run time.
+# Point at a different file with the QSH_CONFIG environment variable.
+
+qkd:
+  pulses: 200000
+  distance_km: 50.0
+  fiber_loss_db_per_km: 0.2
+  detector_efficiency: 0.25
+  dark_count_prob: 1.0e-5
+  misalignment: 0.015
+  eve_intercept_fraction: 0.0
+  error_correction_eff: 1.16
+
+qsmpc:
+  prime: 4099
+  n_parties: 7
+  threshold: 3
+  qot_n: 512
+  qot_test_fraction: 0.25
+
+qhe:
+  n_qubits: 8
+  sk_eps: 1.0e-3
+
+fhe:
+  backend: tenseal          # tenseal | openfhe   (commercial-OK; HEonGPU GPU via benchmark glue)
+  poly_modulus_degree: 8192
+  coeff_mod_bit_sizes: [60, 40, 40, 60]
+  global_scale_bits: 40
+  max_level: 12
+  use_gpu: true
+  use_bootstrap: false      # OpenFHE CKKS EvalBootstrap (deeper circuits)
+
+federated:
+  rounds: 8
+  local_epochs: 1
+  lr: 0.05
+  batch_size: 32
+  hospitals: 4
+  test_split: 0.2
+  secure_aggregation: true
+
+train:
+  epochs: 15
+  batch: 64
+  lr: 1.0e-3
+  test_split: 0.2
+
+ids:
+  n_per_class: 300
+  test_fraction: 0.25
+  rf_estimators: 200
+  q_n_qubits: 4
+  q_n_layers: 2
+  q_epochs: 25
+  q_lr: 0.1
+
+data:
+  n_transactions: 4000
+  fraud_rate: 0.05
+  n_genotypes: 1000
+  n_snps: 64
+
+benchmark:
+  n_samples: 30
+  quantum_qubits: 8
+  quantum_samples: 20
+
+crypto:
+  kem: ml-kem-768+x25519
+  qkd: bb84-decoy
+  fhe: tenseal-cpu
+  sig: ml-dsa-65
+
+orchestration:
+  step_delay: 0.4           # seconds between stages so the SPA DAG animates visibly

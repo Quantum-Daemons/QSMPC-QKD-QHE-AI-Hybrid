@@ -1,0 +1,53 @@
+# Local full stack: API (optionally GPU) + SPA (Caddy) + Prometheus + Grafana.
+#   docker compose -f docker/docker-compose.yml up --build
+# For GPU, uncomment the `deploy.resources` block on `api` and install nvidia-container-toolkit.
+services:
+  api:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.api
+    # Override API_PORT if 8000 is taken on the host (the SPA reaches the API via the
+    # internal docker network regardless of this host mapping).
+    ports: ["${API_PORT:-8000}:8000"]
+    volumes:
+      - ../results:/app/results
+    # GPU (Blackwell/CUDA13):
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: all
+    #           capabilities: [gpu]
+
+  web:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.web
+    depends_on: [api]
+    ports: ["${WEB_PORT:-8080}:80"]
+
+  prometheus:
+    image: prom/prometheus:latest
+    volumes:
+      - ../monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    command: ["--config.file=/etc/prometheus/prometheus.yml",
+              "--storage.tsdb.retention.time=7d"]
+    ports: ["${PROMETHEUS_PORT:-9090}:9090"]
+    deploy: { resources: { limits: { memory: 512m } } }
+
+  grafana:
+    image: grafana/grafana:latest
+    environment:
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Viewer
+    volumes:
+      - ../monitoring/grafana:/etc/grafana/provisioning/dashboards:ro
+    ports: ["${GRAFANA_PORT:-3000}:3000"]
+    depends_on: [prometheus]
+    deploy: { resources: { limits: { memory: 256m } } }
+
+  node-exporter:
+    image: prom/node-exporter:latest
+    ports: ["${NODE_EXPORTER_PORT:-9100}:9100"]
+    deploy: { resources: { limits: { memory: 64m } } }

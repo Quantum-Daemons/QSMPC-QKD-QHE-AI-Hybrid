@@ -1,0 +1,93 @@
+# ============================================================================
+#  HARD EXCLUSIONS — these must NEVER be committed (per project requirements)
+# ============================================================================
+# The source research report (confidential, do not publish)
+量子暗号AI調査報告書_*.docx
+*量子暗号AI調査報告書*
+# Commercial / monetization notes (kept local only — both the EN plan and JA workflow)
+MONETIZATION*.md
+
+# ============================================================================
+#  Python
+# ============================================================================
+.venv/
+venv/
+env/.venv/
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.eggs/
+build/
+dist/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.ipynb_checkpoints/
+*.so
+
+# ============================================================================
+#  Data, models, run artifacts (large / regenerable)
+# ============================================================================
+# ignore data/ CONTENTS (not the dir itself, so specific subdirs can be re-included below)
+data/*
+!data/.gitkeep
+results/
+!results/.gitkeep
+logs/
+!logs/.gitkeep
+*.csv
+*.h5
+*.onnx
+*.pt
+*.pth
+*.npz
+*.zip
+# Round 11 — bundled SMALL commercial-OK real-data samples per industry, tracked so the demo + Docker run
+# on real data offline (PaySim CC-BY-SA, openSNP CC0 / PGS-Catalog CC-BY, ESA-ADB CC-BY-3.0-IGO). Placed
+# LAST so these re-includes win over `data/*` and the `*.csv`/`*.npz` rules above (last match wins).
+!data/finance/
+!data/genomics/
+!data/satellite/
+!data/finance/**
+!data/genomics/**
+!data/satellite/**
+# but keep small fixture/sample files explicitly added with `git add -f`
+
+# ============================================================================
+#  C++/CUDA build outputs (submodules build in place)
+# ============================================================================
+*.o
+*.a
+cmake-build-*/
+submodules/**/build/
+
+# ============================================================================
+#  Node / web
+# ============================================================================
+node_modules/
+web/dist/
+web/node_modules/
+web/.vite/
+*.local
+
+# ============================================================================
+#  Editor / OS
+# ============================================================================
+.DS_Store
+.idea/
+.vscode/
+*.swp
+*~
+
+# Local Claude Code session artifacts / notes
+.claude/
+
+# ============================================================================
+#  Secrets / local config
+# ============================================================================
+.env
+.env.*
+!.env.example
+*.key
+*.pem
