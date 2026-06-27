@@ -135,17 +135,17 @@ endpoint is still used by the full-mode SPA, the dense+conv hybrid dispatch is a
 (`normalize_layers`), and config is centralized — so the reorg was an audit + the clean new `mcp/`
 module rather than a churn of working, tested code (the full test suite stays green).
 
-## Two deployment shapes
-- **Local full** (RTX PRO 6000, 128 GB): everything — federated training, GPU FHE
-  (HEonGPU), GPU quantum sim (CUDA-Q / lightning.gpu), Prometheus+Grafana.
-- **Public demo** (ConoHa 6 vCPU / 12 GB, no GPU): Caddy serves the static SPA; **all** heavy compute
-  runs in the browser (WASM/WebGPU PQC via @noble, **real CKKS FHE + garbled-circuit MPC**, ONNX
-  inference, in-browser AI, JS BB84/PSI/SHAP/QFL, the client MCP mirror) — the demo build makes **zero
-  `/api` compute calls** (Validations' PQC/QKD/MCP are client-mirrored). It ships a **slim backend image**
-  (`docker/Dockerfile.api.demo` — core+api only, no FHE/torch; ~2.9 GB smaller than the full image) used
-  only as a `?demo=full` fallback. demo = inference + optional in-browser QFL; **full adds Flower+PennyLane
-  federated learning + server-side FHE inference + the real MCP server** (`docker-compose.yml`, unchanged).
-  AI model weights stream from the HF/MLC CDN (browser-cached) — zero VPS bandwidth/compute.
+## Two compute topologies
+- **Full** (GPU box): everything runs server-side — federated training (Flower + PennyLane QFL), GPU FHE
+  (HEonGPU), GPU quantum sim (CUDA-Q / lightning.gpu), the real MCP server, Prometheus + Grafana.
+- **Client-side build** (no GPU, no server-side ML): the static SPA runs **all** heavy compute in the
+  browser (WASM/WebGPU PQC via @noble, **real CKKS FHE + garbled-circuit MPC**, ONNX inference, in-browser
+  AI, JS BB84/PSI/SHAP/QFL, the client MCP mirror) — it makes **zero `/api` compute calls** (Validations'
+  PQC/QKD/MCP are client-mirrored). It ships a **slim backend image** (`docker/Dockerfile.api.demo` —
+  core+api only, no FHE/torch; ~2.9 GB smaller than the full image), optional and used only as a
+  `?demo=full` fallback. Inference + an optional in-browser QFL toggle; the **full** topology additionally
+  runs server-side federated learning + FHE inference + the MCP server. AI model weights stream from the
+  HF/MLC CDN (browser-cached).
 
 ## Why CUDA-Q / cuQuantum (not qiskit-aer-gpu)
 `qiskit-aer-gpu` cu11/cu12 wheels do not target Blackwell `sm_120`. On this hardware
