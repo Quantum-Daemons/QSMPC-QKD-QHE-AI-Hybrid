@@ -16,6 +16,13 @@ export default function UseCases() {
         advantage) and, where applicable, a signed XAI explanation. Finance / Medical / Genomics are deep
         (private inference); Telecom and Satellite are QKD/QSDC scaffolds.
       </p>
+      <p className="page-sub" style={{ fontSize: 13 }}>
+        <b>Agentic AI · quantum-safe MCP is a cross-cutting layer integrated into every use case below</b> —
+        each page embeds an in-browser agent whose request/response is sealed + signed over a client-side
+        quantum-safe MCP channel (ML-KEM-768 + ML-DSA-65 + AES-256-GCM) as that industry's own MCP tool
+        (<code>score_transaction</code> / <code>query_cohort</code> / <code>pool_allele_counts</code> /
+        <code>inspect_qkd_telemetry</code> / <code>relay_mission_telemetry</code>), fed by that run's live metrics.
+      </p>
       {DEMO && <div className="note" style={{ marginBottom: 12 }}>🖥️ {DEMO_BANNER}</div>}
 
       <div className="grid cols-2">

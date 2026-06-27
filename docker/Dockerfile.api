@@ -45,6 +45,12 @@ COPY src ./src
 COPY api ./api
 RUN pip install -e .
 
+# Bake the small committed real sample datasets (CC-BY/CC-BY-SA/CC0 — see DATA_LICENSES.md) so the
+# genuine industry models run offline at RUNTIME with no network: the genomics PGS-Catalog Polygenic
+# Risk Score weights are required by the genomics use case (the loader has no synthetic substitute —
+# per the no-easy-fallback policy the real PRS path needs the real weights).
+COPY data ./data
+
 # Verify oqs finds the prebuilt shared library (fails the build early if not).
 RUN python -c "import oqs; print('liboqs', oqs.oqs_version())"
 # Non-fatal: report whether the live OpenFHE + torch backends are available in the image.

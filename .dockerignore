@@ -6,7 +6,13 @@ web/node_modules/
 web/dist/
 submodules/
 results/
-data/
+# data/ may hold large/derived artifacts (ignored) EXCEPT the small committed
+# CC-BY / CC-BY-SA / CC0 sample datasets that must ship for genuine offline runtime
+# (e.g. the genomics PGS-Catalog PRS weights — see DATA_LICENSES.md).
+data/*
+!data/genomics
+!data/finance
+!data/satellite
 logs/
 references/*.pdf
 *.docx

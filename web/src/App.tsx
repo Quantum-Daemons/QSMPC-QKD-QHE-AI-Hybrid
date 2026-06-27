@@ -1,8 +1,7 @@
-import { NavLink, Route, Routes } from "react-router-dom";
+import { Navigate, NavLink, Route, Routes } from "react-router-dom";
 import Overview from "./pages/Overview";
 import Value from "./pages/Value";
 import Validations from "./pages/Validations";
-import AgenticAI from "./pages/AgenticAI";
 import Orchestration from "./pages/Orchestration";
 import UseCases from "./pages/UseCases";
 import UseCasePage from "./pages/UseCasePage";
@@ -12,7 +11,6 @@ const NAV = [
   { to: "/", label: "Overview", end: true },
   { to: "/value", label: "Introduction & Value" },
   { to: "/validations", label: "Validations" },
-  { to: "/agentic-ai", label: "Agentic AI · MCP" },
   { to: "/orchestration", label: "E2E Orchestration" },
   { to: "/usecases", label: "Use Cases" },
 ];
@@ -50,7 +48,9 @@ export default function App() {
           <Route path="/" element={<Overview />} />
           <Route path="/value" element={<Value />} />
           <Route path="/validations" element={<Validations />} />
-          <Route path="/agentic-ai" element={<AgenticAI />} />
+          {/* Agentic AI · MCP is now integrated INTO each use-case page (the report frames MCP as a
+              per-use-case cross-cutting layer); redirect the old standalone route to the use-case index. */}
+          <Route path="/agentic-ai" element={<Navigate to="/usecases" replace />} />
           <Route path="/orchestration" element={<Orchestration />} />
           <Route path="/usecases" element={<UseCases />} />
           <Route path="/usecase/:id" element={<UseCasePage />} />

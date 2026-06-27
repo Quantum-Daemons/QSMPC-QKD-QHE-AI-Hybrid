@@ -64,21 +64,21 @@ the encrypted state by QOTP/Rate-1 QFHE (ct/pt ≈ 1.3, no FHE↔MPC boundary). 
 from measured per-op cost.
 
 ## SPA shape
-Overview · Introduction & Value · Validations · **Agentic AI · MCP** · E2E Orchestration (generic
-"run any pipeline") · Use Cases index · and **5 per-use-case simulator pages** (`/usecase/:id`).
+Overview · Introduction & Value · Validations · E2E Orchestration (generic "run any pipeline") · Use Cases
+index · and **5 per-use-case simulator pages** (`/usecase/:id`).
 
-**Agentic AI · MCP** (`web/src/pages/AgenticAI.tsx`, Round 9) runs a small language model **in the
+**Agentic AI · MCP** is a **cross-cutting per-use-case layer** (`web/src/components/AgenticAIPanel.tsx`) — a
+reusable panel **embedded in every use-case page**, not a standalone page (the report frames MCP as the AI
+integration layer under the quantum-safe channel, applied per use case; the standalone `/agentic-ai` page was
+removed in Round 12 and now redirects to the Use Cases index). It runs a small language model **in the
 browser** — Transformers.js (`@huggingface/transformers`, onnxruntime-web WebGPU/WASM) or WebLLM
-(`@mlc-ai/web-llm`, WebGPU), both Apache-2.0 and **dynamically imported** (async chunks, never in the
-entry bundle). The AI request/response is wrapped in a **client-side quantum-safe MCP channel**
+(`@mlc-ai/web-llm`, WebGPU), both Apache-2.0 and **dynamically imported** (async chunks, never in the entry
+bundle). The AI request/response is wrapped in a **client-side quantum-safe MCP channel**
 (`web/src/lib/clientMcp.ts` — a zero-server mirror of `pqc/mcp_bridge.py` + `transport.py` via @noble
-ML-KEM-768/ML-DSA-65 + WebCrypto HKDF/AES-256-GCM), demonstrating "MCP + agentic AI with a quantum-safe
-layer" entirely client-side. Everything fails soft (no WebGPU → Transformers.js WASM; the MCP envelope
-always runs). The agent is extracted into a reusable `AgenticAIPanel` that is **embedded in every
-use-case page** (a per-industry MCP tool — `score_transaction` / `query_cohort` / `pool_allele_counts` /
-`inspect_qkd_telemetry` / `relay_mission_telemetry` — with the live run's metrics composed into the
-prompt) as well as the standalone page, so MCP is the per-use-case cross-cutting integration layer. Each
-use-case page
+ML-KEM-768/ML-DSA-65 + WebCrypto HKDF/AES-256-GCM), with a **per-industry MCP tool** (`score_transaction` /
+`query_cohort` / `pool_allele_counts` / `inspect_qkd_telemetry` / `relay_mission_telemetry`) and the live
+run's metrics composed into the prompt. Everything fails soft (no WebGPU → Transformers.js WASM; the MCP
+envelope always runs). Each use-case page
 unifies a **live two-party (Alice↔Bob) sequence diagram** (driven by the running pipeline's
 stages — Start/Pause/Step/Stop/Restart), that industry's benchmark, and a signed SHAP explanation
 (finance/medical/genomics). **One Run drives both** (Round 7): the live pipeline runs, and the
