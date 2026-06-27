@@ -1,8 +1,10 @@
 # Caddy: serve the SPA static bundle, reverse-proxy /api (+ WebSocket), set the
 # cross-origin isolation headers WASM/WebGPU need, and obtain HTTPS automatically.
 #
-# Local: visit http://localhost:8088  |  Production: replace ":80" with your domain for auto-TLS.
-:80 {
+# The site address is env-configurable: SITE_ADDRESS defaults to ":80" (local HTTP). Set
+# SITE_ADDRESS=your-domain.example (passed to the web container) and Caddy auto-provisions a
+# Let's Encrypt cert + serves HTTPS — no file edit needed. (See the deploy runbook.)
+{$SITE_ADDRESS::80} {
 	encode gzip zstd
 
 	# Cross-origin isolation -> SharedArrayBuffer / WebGPU / threaded WASM

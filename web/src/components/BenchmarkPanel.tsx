@@ -86,8 +86,10 @@ export default function BenchmarkPanel(
         return (
           <p className="muted" style={{ fontSize: 11, margin: "8px 0 0", lineHeight: 1.5 }}>
             <b>How these are produced (this run):</b> the <span style={{ color: "#b072ff" }}>QSMPC-FHE</span> row is
-            a real QOTP + QCNN private inference executed by the <code>quantum_comparison</code> stage
-            {q?.t_gate_count != null ? ` (${q.t_gate_count} T-gates, ${q.qubits} qubits)` : ""} — see the
+            a genuine <b>state-vector simulation</b> of a QOTP + Clifford+T QCNN private inference run by the
+            <code>quantum_comparison</code> stage — its <b>latency is measured</b> and its
+            {q?.t_gate_count != null ? ` ${q.t_gate_count} T-gates / ${q.qubits} qubits are counted from the circuit` : " T-gates are counted"}
+            {" "}(simulated, not quantum hardware; ct/pt = 1 is QOTP's perfect-hiding property). See the
             “QSMPC-FHE comparison” bar in the diagram above. <b>Quantum advantage</b> = a transparent weighted
             geometric mean of three ratios (communication-compactness ≈10³× from ct/pt, latency, and the
             computational→information-theoretic security jump), tiered 0–10. <b>Security score</b> (0–100) is a
