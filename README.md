@@ -116,7 +116,7 @@ src/qsh/           the qsh package — orchestration, pqc, qkd, qml_ids, qsmpc, 
 api/               FastAPI backend (REST + WebSocket + downloads + /metrics)
 web/               React + Vite + TS SPA (Overview, Value, Validations, E2E Orchestration,
                    Use Cases index + 5 per-use-case simulator pages /usecase/:id)
-docker/            Dockerfiles + compose (local full / VPS demo) + Caddyfile
+docker/            Dockerfiles + compose (full + client-only builds) + Caddyfile
 monitoring/        Prometheus config + Grafana notes
 references/        primary-source PDFs + annotated REFERENCES.md
 submodules/        upstream OSS (added by scripts/bootstrap_submodules.sh)
@@ -303,29 +303,13 @@ client-side (`web/src/lib/clientCompute.ts`) so the public demo shows identical 
   (CPU torch + Flower + MedMNIST) and the **live OpenFHE** CKKS backend, so a federated `medical_fl` run works
   out of the box and fits a **6-core / 12 GB / 100 GB** box (CPU; GPU passthrough via host
   `nvidia-container-toolkit` + the `deploy.resources` GPU block is optional and faster).
-- **Public demo — client-side compute** (`?demo=client`, or build with `VITE_CLIENT_ONLY=1`): the
-  SPA runs **all compute in the browser** — **real, measured FHE/MPC** (node-seal CKKS + an emp-wasm
-  garbled-circuit 2PC), ONNX inference via onnxruntime-web (**WebGPU → WebNN → WASM**), BB84/QBER +
-  security-score + quantum-advantage in JS, ML-KEM/ML-DSA via `@noble/post-quantum`, PSI via WebCrypto
-  HMAC — so the server is **not** a per-user compute bottleneck. **Demo = inference + an optional
-  in-browser Quantum Federated Learning toggle; the full local deployment adds server-side Flower +
-  PennyLane federated learning + the real MCP server.** Same pages and buttons in both modes.
-  - **Cheapest**: publish as a **pure static site** (e.g. Cloudflare Pages, $0/mo, scales to any number
-    of concurrent users). Set COOP `same-origin` + COEP `require-corp` (a [`web/public/_headers`](web/public/_headers)
-    file is included for Cloudflare Pages).
-  - **With optional API (<vps-provider> VPS, Ubuntu 24.04, no GPU)**: `docker compose -f docker/docker-compose.demo.yml up -d --build`
-    (the `web` image builds with `CLIENT_ONLY=1`). Caddy serves the static SPA with **COOP/COEP** + auto-HTTPS;
-    the API image is **torch-free / CPU-only**. Fits a small 2–4 GB VPS (the 6 vCPU / 12 GB tier is only
-    needed for server-side federated training).
-    ```bash
-    ssh root@<vps>            # Ubuntu 24.04
-    curl -fsSL https://get.docker.com | sh
-    git clone <repo> qsh && cd qsh
-    docker compose -f docker/docker-compose.demo.yml up -d --build   # http://<vps>  (set a domain in Caddyfile for TLS)
-    ```
-  > Docker note: run as a user in the `docker` group (`sudo usermod -aG docker $USER && newgrp docker`) or with sudo.
-- **Monitoring**: see [`monitoring/README.md`](monitoring/README.md) (Prometheus+Grafana
-  local; ship-to-cloud on the VPS; Zabbix dropped as redundant).
+- **Client-side build (implementation capability)**: the SPA also builds **fully client-side** — every
+  computation runs in the browser (real CKKS FHE + an emp-wasm garbled-circuit 2PC, ONNX inference, BB84 /
+  PSI / SHAP / QFL), with **zero `/api` compute**. In this mode the system needs **neither the backend
+  FHE/MPC compute path nor the frontend FHE/MPC backend-selectors** — the client owns both — so it requires
+  no GPU and no server-side ML. The same pages and buttons work in both modes.
+- **Monitoring**: see [`monitoring/README.md`](monitoring/README.md) (Prometheus + Grafana for the local
+  full deployment; Zabbix dropped as redundant).
 
 ---
 
