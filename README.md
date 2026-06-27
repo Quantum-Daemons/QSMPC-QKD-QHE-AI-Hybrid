@@ -40,10 +40,11 @@ controls, live WebSocket event streaming, config-driven parameters editable in t
 high-DPI PNG / animated-GIF export of the run. An **Agentic AI · MCP** capability runs a small language
 model **entirely in the browser** (WebGPU via Transformers.js + WebLLM, Apache-2.0) whose
 request/response is sealed + signed over a **client-side quantum-safe MCP** channel — agentic AI with a
-quantum-safe layer, zero server compute. It is both a standalone page **and** embedded in **every
-use-case page** as a per-industry panel (its own MCP tool — `score_transaction` / `query_cohort` /
-`pool_allele_counts` / `inspect_qkd_telemetry` / `relay_mission_telemetry` — fed by that run's live
-metrics), so MCP is demonstrated as the per-use-case cross-cutting integration layer. The **full
+quantum-safe layer, zero server compute. It is **integrated into every use-case page** as a per-industry
+panel (its own MCP tool — `score_transaction` / `query_cohort` / `pool_allele_counts` /
+`inspect_qkd_telemetry` / `relay_mission_telemetry` — fed by that run's live metrics), so MCP is the
+per-use-case **cross-cutting integration layer** (no standalone page — it lives inside each industry use
+case). The **full
 deployment** additionally runs a **real FastMCP server** exposing those 5 tools, bound to the
 quantum-safe transport so a `tools/call` returns a **signed real result** (plus interop with the
 official filesystem MCP server); the public demo keeps the zero-server client mirror.
@@ -298,11 +299,23 @@ client-side (`web/src/lib/clientCompute.ts`) so the public demo shows identical 
 
 ## Deployment
 
-- **Local full** (federated learning + inference): `docker compose -f docker/docker-compose.yml up --build`
-  (API + SPA + Prometheus + Grafana). The full `Dockerfile.api` (Debian-trixie base) **bakes in the AI tier**
-  (CPU torch + Flower + MedMNIST) and the **live OpenFHE** CKKS backend, so a federated `medical_fl` run works
-  out of the box and fits a **6-core / 12 GB / 100 GB** box (CPU; GPU passthrough via host
-  `nvidia-container-toolkit` + the `deploy.resources` GPU block is optional and faster).
+- **Full deployment (federated learning + inference)** — Docker image build → server startup:
+  ```bash
+  git clone <repo> qsh && cd qsh
+  docker compose -f docker/docker-compose.yml build              # build the images (full AI tier + OpenFHE + Node/MCP)
+  docker images | grep -E 'docker-(api|web)'                     # the freshly-built images
+  docker compose -f docker/docker-compose.yml up -d              # start: API (+AI tier) · SPA · Prometheus · Grafana
+  docker compose -f docker/docker-compose.yml ps                 # all services healthy
+  #  SPA  http://localhost:8080   ·   API  http://localhost:8000/api/health   ·   Grafana  http://localhost:3000
+  # run a federated use case end-to-end (writes results/):
+  docker compose -f docker/docker-compose.yml exec api \
+    python -m qsh.orchestration.pipeline --usecase medical_fl --out results/
+  ```
+  The full `Dockerfile.api` (Debian-trixie) **bakes in the AI tier** (CPU torch + Flower + PennyLane + MedMNIST),
+  the **live OpenFHE** CKKS backend, and **Node/npx** for the real MCP server, so a federated `medical_fl` run +
+  the MCP server work out of the box. Fits a **6-core / 12 GB / 100 GB** box (CPU; GPU passthrough via host
+  `nvidia-container-toolkit` + the `deploy.resources` GPU block is optional and faster). Ports are env-overridable
+  (`WEB_PORT` / `API_PORT` / `GRAFANA_PORT`).
 - **Client-side build (implementation capability)**: the SPA also builds **fully client-side** — every
   computation runs in the browser (real CKKS FHE + an emp-wasm garbled-circuit 2PC, ONNX inference, BB84 /
   PSI / SHAP / QFL), with **zero `/api` compute**. In this mode the system needs **neither the backend
@@ -357,8 +370,13 @@ See [`docs/pqc-roadmap.md`](docs/pqc-roadmap.md).
 - **GPU/vendor & licensing** — Blackwell+CUDA13 narrows the quantum-GPU stack to CUDA-Q/cuQuantum.
   The FHE stack is deliberately **commercial-OK** (TenSEAL Apache-2.0, OpenFHE BSD-2, HEonGPU Apache-2.0);
   **DESILO was removed** because its license is non-commercial. Multiple swappable backends avoid lock-in.
-- **Scope discipline** — QHE kept to 6–8 qubit QCNN (~1.1M T-gate class) for reproducibility.
-- **In-browser AI (demo)** — the Agentic-AI page runs **small** models client-side (Transformers.js
+- **Scope discipline** — QHE kept to 6–8 qubit QCNN for reproducibility. The demo's **QSMPC-FHE (quantum)
+  comparison row is a genuine in-browser state-vector simulation** (8-qubit, QOTP + Clifford+T QCNN): its
+  latency is **measured** and its T-gate count is **counted from the circuit** — a *simulation*, not quantum
+  hardware (no QPU); under QOTP the ciphertext is the same #qubits as the plaintext (ct/pt = 1). The classical
+  **MPC-FHE row is real measured crypto** (node-seal CKKS + emp-wasm 2PC) — so the demo shows measured, not
+  estimated, numbers.
+- **In-browser AI (demo)** — the per-use-case Agentic-AI panel runs **small** models client-side (Transformers.js
   on onnxruntime-web; WebLLM on WebGPU). The ONNX execution provider prefers **WebGPU → WebNN → WASM**,
   selected by a genuine `navigator.gpu.requestAdapter()` probe (so the reported backend is real, never a
   false "webgpu" that silently ran on WASM). Model weights stream from the HF/MLC **CDN** on first run
@@ -371,8 +389,9 @@ See [`docs/pqc-roadmap.md`](docs/pqc-roadmap.md).
   `pqc/mcp_bridge.secure_agent_call`, `/api/mcp/{tools,call}`); it also **interops with the official
   `@modelcontextprotocol/server-filesystem`** under the same quantum-safe seal (`mcp/fs_interop.py`,
   `/api/mcp/filesystem`). The public demo keeps the zero-server `clientMcp.ts` mirror (**zero per-user VPS
-  load**). The in-browser agent is embedded per use-case (its own MCP tool, fed by the live run) **and**
-  kept as a standalone page.
+  load**). In the WebUI the in-browser agent is **integrated into each use-case page** (its own per-industry
+  MCP tool, fed by the live run) — the standalone Agentic-AI page was **removed**, since the report frames MCP
+  as a per-use-case cross-cutting layer, not a separate feature.
 - **Demo vs full** — the public demo is **client-only** (zero `/api` compute) and ships a slim backend
   image (no FHE/torch). Its FHE/MPC is **genuinely real and measured in the browser**: **node-seal CKKS**
   (a real homomorphic linear layer, ~1e-9 error) + a real **emp-wasm garbled-circuit 2PC** for the
