@@ -10,7 +10,23 @@ attribution. The project's own code is Apache-2.0; bundled data keeps its own li
 | **Medical** | MedMNIST (PneumoniaMNIST), baked into the full Docker image | **CC BY 4.0** | [MedMNIST v2](https://medmnist.com/) (Yang et al.). Real medical images; the genuine FHE CNN (Round 10). |
 | **Finance** | `data/finance/` — PaySim/AMLSim-methodology transactions (the model is the real artefact) | data: simulator-methodology; **PaySim** CSV is **CC BY-SA 4.0** | Real customer transaction data is privacy-impossible to share; **PaySim** (Lopez-Rojas et al.) is the published industry-standard simulator. The **model** is a real **XGBoost** (Apache-2.0) distilled to a CKKS-linear surrogate. |
 | **Telecom/Defense** | QKD-attack telemetry signatures (literature-grounded) | grounded in Al-Kuwari et al. 2026 (arXiv:2509.14282) | The **model** is a real classical RF + a **Quantum SVC** (quantum-kernel SVM, the 2026 QML-IDS standard) + a variational QNN. |
-| **Satellite** | `data/satellite/` — ESA-ADB-style multi-channel telemetry (the model is the real artefact) | real **ESA-ADB** is **CC BY 3.0 IGO** (commercial-OK) and substitutable | [ESA-ADB](https://zenodo.org/records/12528696) (ESA / Airbus / KP Labs) — real ESA satellite telemetry. The **model** is a real linear telemetry-anomaly classifier run under CKKS. |
+| **Satellite** | ESA-ADB-style multi-channel telemetry, **generated** at runtime (no bundled file) | real **ESA-ADB** is **CC BY 3.0 IGO** (commercial-OK) and substitutable | [ESA-ADB](https://zenodo.org/records/12528696) (ESA / Airbus / KP Labs) — real ESA satellite telemetry. The **model** is a real linear telemetry-anomaly classifier run under CKKS. |
+
+> **Finance / satellite note:** these run on **generated** synthetic data at runtime (PaySim/AMLSim methodology;
+> ESA-ADB-style) — there is no bundled CSV; the *model/architecture* is the real artefact. Real PaySim (CC BY-SA)
+> / ESA-ADB (CC BY 3.0 IGO) are commercial-OK and substitutable but not shipped (size).
+
+### Client-side demo (`web/public/data/`, loaded by `web/src/lib/realData.ts`)
+The public **client-side demo** ships the same real datasets where small + commercial-OK, so it runs on **real
+data with zero backend** (for the use cases where the full deployment also has real data — medical + genomics):
+| Demo file | License | Source |
+|---|---|---|
+| `web/public/data/genomics/pgs000001_prs.json` — the real **PGS000001** 77-SNP PRS weights as JSON → a real in-browser Polygenic Risk Score | **CC BY 4.0** | PGS Catalog [PGS000001](https://www.pgscatalog.org/score/PGS000001/) (Mavaddat et al.) — same source as the bundled `.tsv` above. |
+| `web/public/data/medical/breast_cancer_sample.json` — a real **Wisconsin Diagnostic Breast Cancer** sample (12 rows × 8 features) + a real logistic-regression model | **public domain** | UCI ML Repository / scikit-learn bundled dataset (Wolberg, Street & Mangasarian). |
+
+finance / telecom / satellite have no shippable commercial-OK real set → the demo uses representative **synthetic**
+features (logged honestly in the run). The demo sets are public / de-identified, so no real *personal* data is
+shipped to the browser.
 
 ## OSS libraries (commercial-OK)
 - **node-seal** (MIT) — Microsoft SEAL → WASM, real in-browser CKKS. **mpc-framework** + **emp-wasm-engine** + **summon-ts** (all MIT; voltrevo / PSE) — real in-browser **garbled-circuit authenticated-garbling 2PC** for the non-linear (argmax) layer, both parties run loopback in one browser (zero VPS).

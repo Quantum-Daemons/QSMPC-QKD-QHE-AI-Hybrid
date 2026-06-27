@@ -13,6 +13,7 @@ import { encryptedLinear, warmFHE } from "./clientFHE";
 import { secureArgmax, warmMPC } from "./clientMPC";
 import { bb84, FIBER, FREE_SPACE, h2, intrinsicQber, qcnnExpectation, qotpQcnnInfer, rng } from "./quantumSim";
 import { inferLogits, onnxBackend } from "./onnxInference";
+import { realInput, type RealInput } from "./realData";
 
 const r1 = (x: number) => Math.round(x * 10) / 10;
 const r2 = (x: number) => Math.round(x * 100) / 100;
@@ -571,8 +572,16 @@ export function runClientPipeline(
   async function runStage(stage: string) {
     switch (stage) {
       case "data": {
-        if (usecase === "satellite_comms") emit("log", stage, "free-space downlink telemetry prepared");
-        else emit("log", stage, "synthetic dataset prepared (client-side)");
+        // Real commercial-OK data where available (medical, genomics — matching the full deployment);
+        // synthetic where no commercial-OK real set is shippable (finance/telecom/satellite). Detailed
+        // provenance is logged again at the inference step (realData.ts).
+        const realDs: Record<string, string> = {
+          medical_fl: "real Wisconsin breast-cancer (UCI/sklearn, public domain)",
+          genomics: "real PGS-Catalog PGS000001 PRS weights (CC-BY 4.0)",
+        };
+        if (usecase === "satellite_comms") emit("log", stage, "free-space downlink telemetry prepared (synthetic, ESA-ADB-style)");
+        else if (realDs[usecase]) emit("log", stage, `dataset: ${realDs[usecase]}`);
+        else emit("log", stage, "synthetic dataset prepared (client-side; no commercial-OK real set for this use case)");
         break;
       }
       case "pqc_handshake": {
@@ -668,7 +677,15 @@ export function runClientPipeline(
         break;
       }
       case "private_inference": {
-        const feats = Array.from({ length: 8 }, () => u() * 2 - 1);
+        // Use REAL commercial-OK data + a REAL model where one is shipped (medical = Wisconsin breast-cancer
+        // + a real logistic regression; genomics = PGS-Catalog PRS weights) — matching the full deployment.
+        // finance/telecom/satellite have no shippable commercial-OK real dataset → synthetic, logged honestly.
+        const realIn: RealInput | null = await realInput(usecase, u);
+        const feats = realIn ? realIn.values : Array.from({ length: 8 }, () => u() * 2 - 1);
+        emit("log", stage, realIn
+          ? `data: ${realIn.provenance}`
+          : "data: synthetic features (no commercial-OK real dataset shipped for this use case)");
+        if (realIn?.metrics) for (const [k, v] of Object.entries(realIn.metrics)) metric(stage, k, v);
         const t = performance.now();
         const inf = await privateInference(feats);     // real ONNX client compute (WASM/WebGPU)
         const clientMs = r2(performance.now() - t);
@@ -700,8 +717,10 @@ export function runClientPipeline(
             + `representative split ${split.fhe_linear_ms}/${split.mpc_nonlinear_ms} ms, client compute ${clientMs} ms`);
         }
         // XAI: exact linear-SHAP attribution (faithful linear surrogate), signed downstream
-        const names = FEATURE_NAMES[usecase] ?? Array.from({ length: 8 }, (_, i) => `feature_${i}`);
-        artifacts.explanation = linearShap(JS_W, JS_B, feats, names, 5);
+        const names = realIn?.names ?? FEATURE_NAMES[usecase] ?? Array.from({ length: 8 }, (_, i) => `feature_${i}`);
+        // XAI uses the REAL model where one is shipped (real breast-cancer LR / real PGS PRS weights),
+        // else the linear surrogate — so the attribution on real data reflects the real model.
+        artifacts.explanation = linearShap(realIn?.model?.W ?? JS_W, realIn?.model?.b ?? JS_B, feats, names, 5);
         metric(stage, "explanation_top_contribution", artifacts.explanation.top_features[0]?.contribution ?? 0);
         emit("log", stage, `XAI: top driver = ${artifacts.explanation.top_features[0]?.feature}`);
         break;

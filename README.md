@@ -419,6 +419,15 @@ See [`docs/pqc-roadmap.md`](docs/pqc-roadmap.md).
   **encrypted inference is the FHE-feasible part** (linear / PRS / small CNN / distilled surrogate),
   because FHE cannot run SOTA CNNs/LLMs/tree-ensembles under encryption (a fundamental crypto-cost
   limit). Sell it as a high-fidelity PoC, not a trained production system.
+- **Public-demo data (real where commercial-OK, synthetic otherwise)** — the client-side demo loads **real
+  commercial-OK datasets where shippable**, mirroring the full deployment: **medical** uses a real Wisconsin
+  Diagnostic Breast-Cancer sample (UCI/sklearn, public domain) + a real logistic-regression model, and
+  **genomics** uses the real PGS-Catalog PGS000001 PRS weights (77 SNPs, CC-BY 4.0) → a real in-browser
+  **Polygenic Risk Score** with per-SNP signed SHAP — both tiny static JSON under `web/public/data/`, loaded by
+  [`web/src/lib/realData.ts`](web/src/lib/realData.ts) and computed with the real in-browser node-seal CKKS +
+  secret-sharing MPC. finance/telecom/satellite have no shippable commercial-OK real set, so they use
+  representative synthetic features (logged as such in the run). The bundled sets are public / de-identified, so
+  no real *personal* data leaves the browser — the privacy property is demonstrated on real, realistic inputs.
 - **Config single-source** — the benchmark cost model, tier architectures, workload multipliers,
   security/advantage weights and demo data sizes live in one place (`src/qsh/config/defaults.py`),
   served at `/api/config` and baked into `web/src/lib/config.defaults.json` (regenerate via
