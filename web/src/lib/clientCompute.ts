@@ -11,7 +11,7 @@ import {
 } from "./config";
 import { encryptedLinear, warmFHE } from "./clientFHE";
 import { secureArgmax, warmMPC } from "./clientMPC";
-import { bb84, FIBER, FREE_SPACE, h2, intrinsicQber, qcnnExpectation, rng } from "./quantumSim";
+import { bb84, FIBER, FREE_SPACE, h2, intrinsicQber, qcnnExpectation, qotpQcnnInfer, rng } from "./quantumSim";
 import { inferLogits, onnxBackend } from "./onnxInference";
 
 const r1 = (x: number) => Math.round(x * 10) / 10;
@@ -308,23 +308,31 @@ function mpcFheRow(usecase: string | undefined, workload: string, modelSize: str
   };
 }
 
-// QSMPC-FHE row: Clifford(linear)/T-gate(non-linear); Rate-1 QFHE ct/pt ~1.3 (real client QCNN compute).
-function qsmpcFheRow(workload: string, modelSize: string, u: () => number, samples = 6) {
-  const cost = costPerOp();
-  const t0 = performance.now();
-  for (let i = 0; i < samples; i++) qcnnExpectation(Array.from({ length: 8 }, () => u() * 2 - 1));
-  const latency = r2((performance.now() - t0) / samples + 18);
+// QSMPC-FHE row — GENUINE state-vector QOTP + Clifford+T QCNN inference (quantumSim.qotpQcnnInfer):
+// `latency_ms` is the REAL-measured wall-clock of the simulation, `t_gate_count`/`qubits` are COUNTED from
+// the actual circuit, and ct/pt = 1.0 is the QOTP perfect-hiding property (Rate-1 QFHE's ~1.3 is the
+// classical-key-included literature figure). A state-vector SIMULATION, not quantum hardware.
+function qsmpcFheRow(workload: string, modelSize: string, u: () => number, samples = 4) {
+  qotpQcnnInfer(Array.from({ length: 8 }, () => u() * 2 - 1), 0);   // warm-up (drop the JIT spike)
+  let last = qotpQcnnInfer(Array.from({ length: 8 }, () => u() * 2 - 1), 1);
+  let total = 0;
+  for (let i = 0; i < samples; i++) {
+    last = qotpQcnnInfer(Array.from({ length: 8 }, () => u() * 2 - 1), i + 2);
+    total += last.latencyMs;
+  }
+  const latency = r2(total / samples);
   return {
-    path: "QSMPC-FHE", backend: "qotp+qcnn (perfectly-secure QHE)", workload, model_size: modelSize,
-    latency_ms: latency, throughput_ips: r2(1000 / latency),
-    accuracy: 1.0, max_abs_error: null, ciphertext_plaintext_ratio: cost.qsmpc_ct_pt_ratio,
-    t_gate_count: cost.qsmpc_t_gates, qubits: cost.qsmpc_qubits,
+    path: "QSMPC-FHE", backend: "qotp+qcnn (state-vector sim, not quantum HW)", workload, model_size: modelSize,
+    latency_ms: latency, throughput_ips: r2(1000 / Math.max(latency, 0.001)),
+    accuracy: 1.0, max_abs_error: null,
+    ciphertext_plaintext_ratio: 1.0,                  // QOTP: ciphertext = same #qubits as plaintext (genuine)
+    t_gate_count: last.tGates, qubits: last.qubits,   // counted from the actual gate list
     security_model: "information-theoretic (QOTP perfect hiding)",
     security_score: securityScore({
       securityModel: "information-theoretic (QOTP perfect hiding)", kem: "ml-kem-768+x25519",
       qkdKeyBits: 256, qber: 0.0128, leakageBitsPerWeight: 0.1,
     }).total,
-    device: "cpu-sim",
+    device: "cpu-sim", simulated: true,
   };
 }
 
