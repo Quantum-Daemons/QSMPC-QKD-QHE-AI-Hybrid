@@ -6,15 +6,22 @@ attribution. The project's own code is Apache-2.0; bundled data keeps its own li
 
 | Use case | Bundled file / source | License | Attribution / notes |
 |----------|----------------------|---------|---------------------|
-| **Genomics** | `data/genomics/pgs000001_breast_cancer.tsv` — a real **77-SNP breast-cancer Polygenic Risk Score** | **CC BY 4.0** | PGS Catalog, [PGS000001](https://www.pgscatalog.org/score/PGS000001/) (PRS77_BC; Mavaddat et al.). The PRS *weights* are real; genotype dosages are sampled under Hardy-Weinberg from realistic allele frequencies (real **openSNP** CC0 / **1000 Genomes** genotypes are substitutable). |
+| **Genomics** | `data/genomics/pgs000001_breast_cancer.tsv` (real **77-SNP breast-cancer PRS** weights) **+ `data/genomics/g1k_dosages.tsv` (real genotype dosages)** | weights **CC BY 4.0**; genotypes **open / IGSR** | PRS weights: PGS Catalog [PGS000001](https://www.pgscatalog.org/score/PGS000001/) (PRS77_BC; Mavaddat et al.). Genotypes: **real 1000 Genomes phase-3** effect-allele dosages (400 individuals) for exactly these 77 SNPs, fetched once from the **Ensembl REST API** over IGSR / 1000 Genomes (open data-use, commercial-OK, no auth). Both the PRS model **and** the genotypes are now real — the PRS is a genuine score over real human genotypes. (openSNP CC0 was the prior plan but opensnp.org is offline; 1000 Genomes via Ensembl is the live no-auth source.) |
 | **Medical** | MedMNIST (PneumoniaMNIST), baked into the full Docker image | **CC BY 4.0** | [MedMNIST v2](https://medmnist.com/) (Yang et al.). Real medical images; the genuine FHE CNN (Round 10). |
 | **Finance** | `data/finance/` — PaySim/AMLSim-methodology transactions (the model is the real artefact) | data: simulator-methodology; **PaySim** CSV is **CC BY-SA 4.0** | Real customer transaction data is privacy-impossible to share; **PaySim** (Lopez-Rojas et al.) is the published industry-standard simulator. The **model** is a real **XGBoost** (Apache-2.0) distilled to a CKKS-linear surrogate. |
 | **Telecom/Defense** | QKD-attack telemetry signatures (literature-grounded) | grounded in Al-Kuwari et al. 2026 (arXiv:2509.14282) | The **model** is a real classical RF + a **Quantum SVC** (quantum-kernel SVM, the 2026 QML-IDS standard) + a variational QNN. |
 | **Satellite** | ESA-ADB-style multi-channel telemetry, **generated** at runtime (no bundled file) | real **ESA-ADB** is **CC BY 3.0 IGO** (commercial-OK) and substitutable | [ESA-ADB](https://zenodo.org/records/12528696) (ESA / Airbus / KP Labs) — real ESA satellite telemetry. The **model** is a real linear telemetry-anomaly classifier run under CKKS. |
 
-> **Finance / satellite note:** these run on **generated** synthetic data at runtime (PaySim/AMLSim methodology;
-> ESA-ADB-style) — there is no bundled CSV; the *model/architecture* is the real artefact. Real PaySim (CC BY-SA)
-> / ESA-ADB (CC BY 3.0 IGO) are commercial-OK and substitutable but not shipped (size).
+> **Real-data status (web-verified June 2026 — honest).** **Medical** (Wisconsin breast-cancer, public domain +
+> MedMNIST CC-BY) and **genomics** (PGS-Catalog CC-BY weights **+ real 1000 Genomes genotypes** via the open
+> Ensembl/IGSR API) run on **real data**. **Finance / telecom / satellite** run on **cited-methodology synthetic**
+> data because the commercial-OK *real* sets are not feasibly obtainable: real labelled fraud data is
+> privacy-impossible (PaySim itself is a *cited synthetic* simulator, Lopez-Rojas 2016; its Kaggle CSV is
+> auth-walled); no commercial-OK real network-attack dataset exists (UNSW-NB15 / CICIDS / NSL-KDD are
+> research-only; the model is grounded in Al-Kuwari 2026); real **ESA-ADB** satellite telemetry is CC-BY-3.0-IGO
+> + commercial-OK but is **11.6 GB with no small sample**, and NASA SMAP/MSL is Kaggle-auth-walled. In every case
+> the **model/architecture is the real artefact** and the synthetic data carries a citation + scientific basis —
+> never uncited synthetic. (If Kaggle API credentials are provided, real PaySim + NASA-SMAP/MSL can be bundled.)
 
 ### Client-side demo (`web/public/data/`, loaded by `web/src/lib/realData.ts`)
 The public **client-side demo** ships the same real datasets where small + commercial-OK, so it runs on **real
