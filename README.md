@@ -408,8 +408,9 @@ See [`docs/pqc-roadmap.md`](docs/pqc-roadmap.md).
     for the encrypted inference (the tree ensemble runs plaintext; the surrogate runs under FHE);
   - **medical** — a genuine small **CNN on real MedMNIST images** under a real FHE convolution + MPC;
   - **genomics** — a real published **Polygenic Risk Score** (PGS Catalog PGS000001, 77-SNP breast-cancer)
-    computed as an **exact CKKS dot-product** — the rare case that is *both* the clinical standard *and*
-    FHE-native (matching the published HE-PRS work), with per-SNP signed SHAP;
+    over **real 1000 Genomes phase-3 genotypes** (effect-allele dosages for those SNPs, from the open Ensembl/
+    IGSR API — both the model *and* the genotypes are real), computed as an **exact CKKS dot-product** — the rare
+    case that is *both* the clinical standard *and* FHE-native (matching the published HE-PRS work), per-SNP signed SHAP;
   - **telecom/defense** — a real classical RF + a **Quantum SVC** (quantum-kernel SVM, the 2026 QML-IDS
     standard, F1 ≥ 0.93) + a variational QNN, on literature-grounded QKD-attack telemetry;
   - **satellite** — a real linear **telemetry-anomaly classifier** run under CKKS on the encrypted

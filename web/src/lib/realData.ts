@@ -40,19 +40,21 @@ export async function realInput(usecase: string, u: () => number): Promise<RealI
       return { values: row.slice(0, 8), names: ds.names, provenance: ds.provenance, model: ds.model };
     }
     if (usecase === "genomics") {
-      // REAL PGS-Catalog PGS000001 effect weights → a genuine Polygenic Risk Score PRS = Σ wᵢ·dosageᵢ.
-      // The effect WEIGHTS are real (published); genotype dosages ∈ {0,1,2} are sampled under HWE
-      // (genotypes are personal → never shipped). The demo feature vector = the top-8 per-SNP dosages,
-      // and the REAL model for SHAP = those SNPs' real PGS weights, so the attribution is a real PRS readout.
+      // REAL PGS-Catalog PGS000001 effect weights + REAL 1000 Genomes phase-3 genotypes (Ensembl / IGSR,
+      // open data-use, commercial-OK). A real individual's effect-allele dosages are shipped in
+      // `dosage_samples`; the demo PRS = Σ wᵢ·dosageᵢ is computed over genuine human genotypes, and the
+      // REAL model for SHAP = the top-8 SNPs' real PGS weights → a real PRS readout (no synthetic sampling).
       const prs = await fetchJSON("/data/genomics/pgs000001_prs.json");
       const w = prs.weights as number[];
       const rs = prs.rsids as string[];
-      const dosage = w.map(() => (u() < 0.25 ? 2 : u() < 0.5 ? 1 : 0));      // sampled genotype
-      const prsScore = w.reduce((a, wi, i) => a + wi * dosage[i], 0);        // PRS over ALL 77 SNPs (real weights)
-      const top = w.map((_, i) => i).sort((a, b) => Math.abs(w[b]) - Math.abs(w[a])).slice(0, 8);
-      const values = top.map((i) => dosage[i]);                              // top-8 SNP dosages (the features)
+      const samples = prs.dosage_samples as number[][];
+      const dosage = samples[Math.floor(u() * samples.length) % samples.length];   // a REAL 1000G individual
+      const prsScore = w.reduce((a, wi, i) => a + wi * (dosage[i] ?? 0), 0);        // PRS over ALL 77 real SNPs
+      const top = (prs.top8_idx as number[]) ?? w.map((_, i) => i)
+        .sort((a, b) => Math.abs(w[b]) - Math.abs(w[a])).slice(0, 8);
+      const values = top.map((i) => dosage[i] ?? 0);                               // top-8 real SNP dosages (features)
       const names = top.map((i) => rs[i] ?? `snp_${i}`);
-      const wsel = top.map((i) => w[i]);                                     // their REAL effect weights
+      const wsel = top.map((i) => w[i]);                                           // their REAL effect weights
       const model = { W: [wsel.map((x) => -x / 2), wsel.map((x) => x / 2)], b: [0, 0] };  // one-vs-rest margin = PRS
       return {
         values, names, provenance: prs.provenance, model,
