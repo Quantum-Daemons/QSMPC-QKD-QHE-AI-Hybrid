@@ -138,16 +138,37 @@ def load_satellite_telemetry(n_windows: int = 600, n_channels: int = 6, window: 
 
 
 def load_genomic_prs(n_individuals: int = 400, seed: int = 0, name: str = "breast_cancer"):
-    """Real PRS model + a cohort of genotype dosages.
+    """Real PRS model + a cohort of **real 1000 Genomes** genotype dosages.
 
     Returns ``(dosages (N, M) ∈ {0,1,2}, weights (M,), rsids, effect_alleles, freq (M,))``. The PRS
-    **weights are real** (PGS Catalog); genotype dosages are sampled per-SNP under Hardy-Weinberg from
-    realistic common-variant allele frequencies (real openSNP CC0 / 1000 Genomes genotypes are
-    substitutable — the PRS computation under CKKS is identical either way).
+    **weights are real** (PGS Catalog, CC-BY) AND the genotype dosages are **real 1000 Genomes phase-3**
+    effect-allele counts for exactly these SNPs (fetched once from the Ensembl REST API over IGSR / 1000
+    Genomes — open, no-auth, commercial-OK — and bundled as ``data/genomics/g1k_dosages.tsv``). The PRS is
+    therefore a genuine score over real human genotypes. Offline-CI fallback (only if the bundled real file
+    is absent): Hardy-Weinberg sampling, **logged as NOT real** — never a silent substitute.
     """
+    from pathlib import Path
+
     rsids, eff, weights = load_prs(name)
-    rng = np.random.default_rng(seed)
     m = len(weights)
-    freq = rng.uniform(0.1, 0.5, m)                       # per-SNP effect-allele frequency
-    dosages = rng.binomial(2, freq, size=(n_individuals, m)).astype(float)   # 0/1/2 copies (Hardy-Weinberg)
-    return dosages, weights, rsids, eff, freq
+    g1k = Path(__file__).resolve().parents[3] / "data" / "genomics" / "g1k_dosages.tsv"
+    try:
+        rows = [ln for ln in g1k.read_text().splitlines() if ln.strip() and not ln.startswith("#")]
+        header = rows[0].split("\t")[1:]                          # rsIDs present in the real file
+        col = {rs: j for j, rs in enumerate(header)}
+        idx = [col[rs] for rs in rsids]                           # align real columns to the PGS SNP order
+        data = [[int(p) for p in ln.split("\t")[1:]] for ln in rows[1:]]
+        dosages = np.asarray([[r[j] for j in idx] for r in data], dtype=float)
+        if n_individuals and len(dosages) > n_individuals:
+            dosages = dosages[:n_individuals]
+        freq = dosages.mean(axis=0) / 2.0                        # empirical real effect-allele frequency
+        return dosages, weights, rsids, eff, freq
+    except Exception as exc:                                      # pragma: no cover - offline-CI fallback only
+        import logging
+        logging.getLogger("qsh").warning(
+            "Real 1000G dosages unavailable (%s) -> Hardy-Weinberg sampling (offline/CI fallback, NOT real "
+            "genotypes; the bundled data/genomics/g1k_dosages.tsv supplies real data in production).", exc)
+        rng = np.random.default_rng(seed)
+        freq = rng.uniform(0.1, 0.5, m)
+        dosages = rng.binomial(2, freq, size=(n_individuals, m)).astype(float)
+        return dosages, weights, rsids, eff, freq
