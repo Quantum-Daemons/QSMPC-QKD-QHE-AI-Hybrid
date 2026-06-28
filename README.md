@@ -200,10 +200,13 @@ clone or vendor any mixed-authorship aggregate repo.
 
 ## Datasets
 
-Free/public preferred, synthetic fallback (privacy-safe, dependency-free):
-- **Finance/AML**: PaySim, Kaggle credit-card-fraud (CC0), IBM AMLSim, Elliptic — synthetic generator built in.
-- **Medical**: MedMNIST v2 (CC-BY), Synthea (synthetic EHR), Wisconsin breast-cancer (bundled).
-- **Genomics**: 1000 Genomes (CC-BY), OpenSNP (CC0) — synthetic genotypes by default (re-identification caveat).
+Bundled **real, commercial-OK** samples preferred; the synthetic generators are an offline-CI fallback only
+(logged as such, never a silent substitute):
+- **Finance/AML**: **real PaySim** mobile-money transactions (Kaggle `ealaxi/paysim1`, CC-BY-SA-4.0) → the 8 AML features.
+- **Medical**: MedMNIST v2 (CC-BY), Wisconsin breast-cancer (bundled, public domain).
+- **Genomics**: **real 1000 Genomes** phase-3 genotypes (Ensembl/IGSR, open) + **real PGS-Catalog** PGS000001 weights (CC-BY).
+- **Satellite**: **real NASA SMAP/MSL** spacecraft telemetry (Telemanom; NASA JPL; CC0 / US-Gov public domain).
+- **Telecom/defense**: literature-grounded synthetic QKD-attack telemetry (no commercial-OK real attack dataset — UNSW-NB15 / CICIDS are research-only).
 
 Loaders + generators: `qsh.data.loaders` / `qsh.data.synthetic`.
 
@@ -404,8 +407,9 @@ See [`docs/pqc-roadmap.md`](docs/pqc-roadmap.md).
   industries** (PSI/QOT, QSMS secure-sum, BB84/QSDC, MPyC MPC, CKKS FHE, federated secure-aggregation),
   and **each vertical now runs a real industry-standard 2026 model** on commercial-OK data
   ([`DATA_LICENSES.md`](DATA_LICENSES.md)):
-  - **finance** — a real **XGBoost** fraud model (the AML standard) distilled to a CKKS-linear surrogate
-    for the encrypted inference (the tree ensemble runs plaintext; the surrogate runs under FHE);
+  - **finance** — a real **XGBoost** fraud model (the AML standard) on **real PaySim transactions** (Kaggle
+    `ealaxi/paysim1`, CC-BY-SA-4.0; Lopez-Rojas 2016), distilled to a CKKS-linear surrogate for the encrypted
+    inference (the tree ensemble runs plaintext; the surrogate runs under FHE);
   - **medical** — a genuine small **CNN on real MedMNIST images** under a real FHE convolution + MPC;
   - **genomics** — a real published **Polygenic Risk Score** (PGS Catalog PGS000001, 77-SNP breast-cancer)
     over **real 1000 Genomes phase-3 genotypes** (effect-allele dosages for those SNPs, from the open Ensembl/
@@ -413,8 +417,8 @@ See [`docs/pqc-roadmap.md`](docs/pqc-roadmap.md).
     case that is *both* the clinical standard *and* FHE-native (matching the published HE-PRS work), per-SNP signed SHAP;
   - **telecom/defense** — a real classical RF + a **Quantum SVC** (quantum-kernel SVM, the 2026 QML-IDS
     standard, F1 ≥ 0.93) + a variational QNN, on literature-grounded QKD-attack telemetry;
-  - **satellite** — a real linear **telemetry-anomaly classifier** run under CKKS on the encrypted
-    downlinked telemetry (ESA-ADB-style; real ESA-ADB CC-BY-3.0-IGO substitutable).
+  - **satellite** — a real linear **telemetry-anomaly classifier** run under CKKS on **real NASA SMAP/MSL
+    spacecraft telemetry** (Telemanom; Hundman et al. 2018, NASA JPL; CC0 / US-Gov public domain).
 
   Honest crypto-scope: the **full-deployment model is the real industry architecture**; the
   **encrypted inference is the FHE-feasible part** (linear / PRS / small CNN / distilled surrogate),
@@ -422,13 +426,16 @@ See [`docs/pqc-roadmap.md`](docs/pqc-roadmap.md).
   limit). Sell it as a high-fidelity PoC, not a trained production system.
 - **Public-demo data (real where commercial-OK, synthetic otherwise)** — the client-side demo loads **real
   commercial-OK datasets where shippable**, mirroring the full deployment: **medical** uses a real Wisconsin
-  Diagnostic Breast-Cancer sample (UCI/sklearn, public domain) + a real logistic-regression model, and
-  **genomics** uses the real PGS-Catalog PGS000001 PRS weights (77 SNPs, CC-BY 4.0) → a real in-browser
-  **Polygenic Risk Score** with per-SNP signed SHAP — both tiny static JSON under `web/public/data/`, loaded by
-  [`web/src/lib/realData.ts`](web/src/lib/realData.ts) and computed with the real in-browser node-seal CKKS +
-  secret-sharing MPC. finance/telecom/satellite have no shippable commercial-OK real set, so they use
-  representative synthetic features (logged as such in the run). The bundled sets are public / de-identified, so
-  no real *personal* data leaves the browser — the privacy property is demonstrated on real, realistic inputs.
+  Diagnostic Breast-Cancer sample (UCI/sklearn, public domain) + a real logistic-regression model;
+  **genomics** uses the real PGS-Catalog PGS000001 PRS weights (77 SNPs, CC-BY 4.0) over real 1000 Genomes
+  genotypes → a real in-browser **Polygenic Risk Score** with per-SNP signed SHAP; **finance** uses a real
+  **PaySim** transaction sample (CC-BY-SA-4.0) + the distilled CKKS-linear fraud model; and **satellite** scores
+  **real NASA SMAP/MSL telemetry** (CC0 / public domain) with the real linear anomaly model — all tiny static JSON
+  under `web/public/data/`, loaded by [`web/src/lib/realData.ts`](web/src/lib/realData.ts) and computed with the
+  real in-browser node-seal CKKS + secret-sharing MPC. Only **telecom** has no commercial-OK real attack dataset
+  (UNSW-NB15 / CICIDS are research-only), so it uses representative synthetic features (logged as such in the run).
+  The bundled sets are public / de-identified, so no real *personal* data leaves the browser — the privacy property
+  is demonstrated on real, realistic inputs.
 - **Config single-source** — the benchmark cost model, tier architectures, workload multipliers,
   security/advantage weights and demo data sizes live in one place (`src/qsh/config/defaults.py`),
   served at `/api/config` and baked into `web/src/lib/config.defaults.json` (regenerate via

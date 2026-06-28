@@ -58,14 +58,40 @@ def load_medmnist(name: str = "pneumoniamnist", split: str = "train"
 
 def load_finance_fraud(n: int = 4000, fraud_rate: float = 0.05, seed: int = 0
                        ) -> tuple[np.ndarray, np.ndarray]:
-    """Synthetic transaction features + fraud labels (PaySim/AMLSim-style).
+    """**Real PaySim** mobile-money transactions -> the 8 AML features + fraud label.
 
-    See :mod:`~qsh.data.synthetic`. Use real PaySim/credit-card-fraud CSVs in
-    production; the synthetic generator keeps the demo dependency-free + privacy-safe.
+    Reads the bundled real sample ``data/finance/paysim_sample.tsv`` (Kaggle ``ealaxi/paysim1``,
+    **CC-BY-SA-4.0**; Lopez-Rojas et al. 2016). The 8 columns are derived from real PaySim fields
+    (amount / type / step / balances) in the order :mod:`finance_aml` expects; fraud is oversampled to
+    ``fraud_rate`` for training balance (the real base rate is 0.13 %). Returns ``(X (n, 8) float32,
+    y (n,) ∈ {0,1})``. Offline-CI fallback (only if the bundled file is absent): the synthetic generator,
+    **logged as NOT real** — never a silent substitute (no-easy-fallback policy).
     """
-    from .synthetic import synthetic_transactions
+    from pathlib import Path
 
-    return synthetic_transactions(n=n, fraud_rate=fraud_rate, seed=seed)
+    path = Path(__file__).resolve().parents[3] / "data" / "finance" / "paysim_sample.tsv"
+    try:
+        rows = [ln for ln in path.read_text().splitlines() if ln.strip() and not ln.startswith("#")]
+        data = np.asarray([[float(v) for v in ln.split("\t")] for ln in rows[1:]], dtype=np.float32)
+        X, y = data[:, :8], data[:, 8].astype(np.int64)
+        if n and len(X) != n:                                    # stratified subsample to honour n + fraud_rate
+            rng = np.random.default_rng(seed)
+            fr, lg = np.where(y == 1)[0], np.where(y == 0)[0]
+            nf = min(len(fr), int(round(n * fraud_rate)))
+            pick = np.concatenate([rng.choice(fr, nf, replace=False),
+                                   rng.choice(lg, min(len(lg), n - nf), replace=False)])
+            rng.shuffle(pick)
+            X, y = X[pick], y[pick]
+        return X, y
+    except Exception as exc:                                     # pragma: no cover - offline-CI fallback only
+        import logging
+
+        logging.getLogger("qsh").warning(
+            "Real PaySim sample unavailable (%s) -> SYNTHETIC transactions (offline/CI fallback, NOT real "
+            "data; the bundled data/finance/paysim_sample.tsv supplies real PaySim data in production).", exc)
+        from .synthetic import synthetic_transactions
+
+        return synthetic_transactions(n=n, fraud_rate=fraud_rate, seed=seed)
 
 
 def load_genomic(n: int = 1000, n_snps: int = 64, seed: int = 0
@@ -110,31 +136,61 @@ def load_prs(name: str = "breast_cancer") -> tuple[list[str], list[str], np.ndar
 
 def load_satellite_telemetry(n_windows: int = 600, n_channels: int = 6, window: int = 8,
                              anomaly_rate: float = 0.15, seed: int = 0):
-    """ESA-ADB-style multi-channel satellite telemetry windows + anomaly labels.
+    """**Real NASA SMAP/MSL** spacecraft telemetry -> multi-channel windows + real anomaly labels.
 
-    Channels (periodic signal + sensor noise): battery_v, temp_c, payload_w, attitude_err, solar_a,
-    downlink_snr. Anomalies are injected level-shifts/spikes (the dominant real spacecraft-telemetry
-    anomaly modes). Real **ESA-ADB** telemetry (Zenodo, CC BY 3.0 IGO, commercial-OK) is substitutable —
-    the anomaly-detection model + the encrypted-inference path are identical. Returns ``(X (N, C·W) float32,
-    y (N,) ∈ {0,1}, channel_names)``.
+    Reads the bundled real sample ``data/satellite/smap_msl_telemetry.tsv`` — ``n_channels`` real NASA
+    telemetry channels (col 0 of each Telemanom test stream) + the real labeled-anomaly flag per timestep
+    (Telemanom; Hundman et al. 2018, NASA JPL; **CC0 / US-Gov public domain**). Sliding length-``window``
+    windows are stacked **channel-major** to match the synthetic layout + the use case's ``feature_names``.
+    A window is anomalous if any of its real timesteps is. Returns ``(X (N, C·W) float32, y (N,) ∈ {0,1},
+    channel_names)``. Offline-CI fallback (only if the bundled file is absent): an ESA-ADB-style synthetic
+    generator, **logged as NOT real** — never a silent substitute (no-easy-fallback policy).
     """
-    rng = np.random.default_rng(seed)
-    names = ["battery_v", "temp_c", "payload_w", "attitude_err", "solar_a", "downlink_snr"][:n_channels]
-    t = np.arange(window)
-    X = np.zeros((n_windows, n_channels * window), dtype=np.float32)
-    y = np.zeros(n_windows, dtype=np.int64)
-    for i in range(n_windows):
-        anom = rng.random() < anomaly_rate
-        chans = []
-        for c in range(n_channels):
-            base = np.sin(2 * np.pi * (t + rng.random() * window) / window) * (0.5 + 0.4 * c)
-            base = base + rng.normal(0, 0.05, window)
-            if anom and rng.random() < 0.6:                # inject a spike / level-shift
-                base[rng.integers(0, window)] += rng.choice([-1.0, 1.0]) * rng.uniform(1.5, 3.0)
-            chans.append(base)
-        X[i] = np.concatenate(chans)
-        y[i] = int(anom)
-    return X, y, names
+    from pathlib import Path
+
+    path = Path(__file__).resolve().parents[3] / "data" / "satellite" / "smap_msl_telemetry.tsv"
+    try:
+        rows = [ln for ln in path.read_text().splitlines() if ln.strip() and not ln.startswith("#")]
+        header = rows[0].split("\t")                              # C channel names + "anomaly"
+        names = header[:-1][:n_channels]
+        c = len(names)
+        arr = np.asarray([[float(v) for v in ln.split("\t")] for ln in rows[1:]], dtype=np.float32)
+        telem, anom = arr[:, :c], arr[:, -1].astype(int)         # (L, C) real telemetry, (L,) real labels
+        n = max(0, len(telem) - window + 1)
+        if n == 0:
+            raise ValueError("bundled telemetry shorter than the window")
+        X = np.zeros((n, c * window), dtype=np.float32)
+        y = np.zeros(n, dtype=np.int64)
+        for i in range(n):
+            X[i] = np.concatenate([telem[i:i + window, j] for j in range(c)])   # channel-major
+            y[i] = int(anom[i:i + window].max())
+        if n_windows and n > n_windows:
+            X, y = X[:n_windows], y[:n_windows]
+        return X, y, names
+    except Exception as exc:                                     # pragma: no cover - offline-CI fallback only
+        import logging
+
+        logging.getLogger("qsh").warning(
+            "Real NASA SMAP/MSL telemetry unavailable (%s) -> SYNTHETIC ESA-ADB-style generator (offline/CI "
+            "fallback, NOT real data; the bundled data/satellite/smap_msl_telemetry.tsv supplies real NASA "
+            "telemetry in production).", exc)
+        rng = np.random.default_rng(seed)
+        names = ["battery_v", "temp_c", "payload_w", "attitude_err", "solar_a", "downlink_snr"][:n_channels]
+        t = np.arange(window)
+        X = np.zeros((n_windows, n_channels * window), dtype=np.float32)
+        y = np.zeros(n_windows, dtype=np.int64)
+        for i in range(n_windows):
+            is_anom = rng.random() < anomaly_rate
+            chans = []
+            for ci in range(n_channels):
+                base = np.sin(2 * np.pi * (t + rng.random() * window) / window) * (0.5 + 0.4 * ci)
+                base = base + rng.normal(0, 0.05, window)
+                if is_anom and rng.random() < 0.6:               # inject a spike / level-shift
+                    base[rng.integers(0, window)] += rng.choice([-1.0, 1.0]) * rng.uniform(1.5, 3.0)
+                chans.append(base)
+            X[i] = np.concatenate(chans)
+            y[i] = int(is_anom)
+        return X, y, names
 
 
 def load_genomic_prs(n_individuals: int = 400, seed: int = 0, name: str = "breast_cancer"):
