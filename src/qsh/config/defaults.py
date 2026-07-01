@@ -22,6 +22,35 @@ class QKDConfig:
     misalignment: float = 0.015
     eve_intercept_fraction: float = 0.0
     error_correction_eff: float = 1.16
+    # --- decoy-state / efficient-BB84 parameters the AI optimizer (qkd/optimize.py) tunes ---
+    mu_signal: float = 0.5            # signal mean photon number (decoy-state); ~0.5 is the textbook optimum
+    mu_decoy: float = 0.1             # decoy mean photon number
+    basis_prob: float = 0.5           # P(Z basis) — biased-basis (efficient) BB84 raises the sift ratio
+    pp_threshold: float = 0.11        # post-processing QBER abort threshold
+    # --- AI optimizer (OptiQKD, WS1) knobs ---
+    optimize_enabled: bool = False
+    optimize_method: str = "surrogate"        # surrogate | coordinate | gp
+    optimize_n_samples: int = 48
+    optimize_n_pulses: int = 20_000           # pulses per evaluation (smaller than the run default, for speed)
+    opt_mu_signal_min: float = 0.2
+    opt_mu_signal_max: float = 0.9
+    opt_basis_prob_min: float = 0.5
+    opt_basis_prob_max: float = 0.9
+    opt_pp_threshold_min: float = 0.08
+    opt_pp_threshold_max: float = 0.12
+
+
+@dataclass
+class QRNGConfig:
+    """Quantum random-number generator (entropy source). Default = a local state-vector
+    quantum-measurement simulation (honest: simulated, not hardware); optional ANU QRNG API is opt-in."""
+    enabled: bool = False             # off by default -> BB84 entropy unchanged unless opted in
+    bits: int = 4096
+    source: str = "sim"               # "sim" (offline default) | "anu" (opt-in, online hardware)
+    post_processing: str = "von_neumann"   # "von_neumann" | "toeplitz" | "none"
+    anu_opt_in: bool = False          # must be True to allow the online ANU source (subject to ANU terms)
+    health_alpha: float = 0.01        # SP800-22 significance level
+    batch_qubits: int = 16            # qubits measured per batch in the state-vector sim
 
 
 @dataclass
@@ -76,12 +105,14 @@ class TrainConfig:
 @dataclass
 class IDSConfig:
     n_per_class: int = 300
+    q_n_per_class: int = 100        # smaller sample for the (slower) quantum classifier path
     test_fraction: float = 0.25
     rf_estimators: int = 200
     q_n_qubits: int = 4
     q_n_layers: int = 2
     q_epochs: int = 25
     q_lr: float = 0.1
+    demo_n_per_class: int = 120     # in-browser client IDS sample size per class (clientIDS.ts)
 
 
 @dataclass
@@ -208,6 +239,7 @@ class WebConfig:
     tfjs_max_new_tokens: int = 96
     webllm_max_tokens: int = 160
     demo_alice_bob_pulses: int = 40_000
+    demo_sat_pulses: int = 4_000_000    # free-space BB84 channel uses in the demo satellite run
 
 
 @dataclass
@@ -215,6 +247,7 @@ class QSHConfig:
     """Top-level config aggregating every subsystem."""
 
     qkd: QKDConfig = field(default_factory=QKDConfig)
+    qrng: QRNGConfig = field(default_factory=QRNGConfig)
     qsmpc: QSMPCConfig = field(default_factory=QSMPCConfig)
     qhe: QHEConfig = field(default_factory=QHEConfig)
     fhe: FHEConfig = field(default_factory=FHEConfig)

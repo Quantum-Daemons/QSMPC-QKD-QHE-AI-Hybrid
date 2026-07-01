@@ -39,27 +39,66 @@ class QKDResult:
     params: ChannelParams
 
 
+@dataclass
+class QKDParams:
+    """Tunable protocol parameters the AI optimizer (:mod:`~qsh.qkd.optimize`) searches over.
+
+    ``basis_prob`` = P(Z basis): biased-basis (efficient) BB84 raises the sift ratio ``p^2+(1-p)^2``
+    above 0.5 (Lo-Chau-Ardehali 2005). ``mu_signal`` = decoy-state signal mean photon number: higher mu
+    means more detections but more PNS-leakable multi-photon pulses (a QBER penalty) -> a genuine optimum
+    near ~0.5. ``pp_threshold`` = post-processing QBER abort threshold. When ``run_bb84`` is called with
+    ``qkd_params=None`` these have no effect (the legacy uniform-basis path runs unchanged)."""
+
+    mu_signal: float = 0.5
+    mu_decoy: float = 0.1
+    basis_prob: float = 0.5
+    pp_threshold: float = 0.11
+
+
 def run_bb84(
     n_pulses: int = 100_000,
     params: ChannelParams | None = None,
     *,
     error_correction_eff: float = 1.16,   # f_EC, real Cascade/LDPC overhead (>1)
     seed: int | None = None,
+    qkd_params: "QKDParams | None" = None,
+    entropy: str | None = None,           # "qrng" -> seed the basis/bit choices from the quantum RNG
 ) -> QKDResult:
-    """Simulate a decoy-state BB84 session over ``n_pulses`` channel uses."""
+    """Simulate a decoy-state BB84 session over ``n_pulses`` channel uses.
+
+    ``qkd_params`` (a :class:`QKDParams`) turns on the decoy-state + efficient-BB84 model the AI optimizer
+    tunes; ``None`` keeps the original uniform-basis behaviour byte-for-byte. ``entropy="qrng"`` derives the
+    RNG seed from the (simulated) quantum RNG so the basis/bit choices have a genuine quantum entropy root.
+    """
     params = params or ChannelParams()
+    if entropy == "qrng":
+        from ..qrng import quantum_seed
+        seed = quantum_seed(seed=seed)
     rng = np.random.default_rng(seed)
+    eta = params.transmittance()
 
-    alice_bits = rng.integers(0, 2, n_pulses)
-    alice_bases = rng.integers(0, 2, n_pulses)
-    bob_bases = rng.integers(0, 2, n_pulses)
+    if qkd_params is None:
+        # --- legacy path (unchanged: uniform bases, detection == transmittance, no explicit abort) ---
+        alice_bits = rng.integers(0, 2, n_pulses)
+        alice_bases = rng.integers(0, 2, n_pulses)
+        bob_bases = rng.integers(0, 2, n_pulses)
+        detected = rng.random(n_pulses) < eta
+        sift = detected & (alice_bases == bob_bases)
+        qber_phys = intrinsic_qber(params)
+        pp_threshold = 1.0
+    else:
+        # --- decoy-state + efficient (biased-basis) BB84: the AI-optimizable model ---
+        p = float(np.clip(qkd_params.basis_prob, 0.01, 0.99))
+        alice_bits = rng.integers(0, 2, n_pulses)
+        alice_bases = (rng.random(n_pulses) >= p).astype(int)   # P(basis 0) = p
+        bob_bases = (rng.random(n_pulses) >= p).astype(int)
+        mu = max(1e-3, float(qkd_params.mu_signal))
+        detected = rng.random(n_pulses) < (1.0 - np.exp(-mu * eta))   # P(>=1 photon detected), Poisson
+        sift = detected & (alice_bases == bob_bases)
+        mp_frac = 1.0 - (1.0 + mu) * np.exp(-mu)                       # P(>=2 photons): PNS-leakable
+        qber_phys = float(min(0.5, intrinsic_qber(params) + 0.5 * mp_frac))
+        pp_threshold = float(qkd_params.pp_threshold)
 
-    # which pulses are detected at all (loss + detector efficiency)
-    detected = rng.random(n_pulses) < params.transmittance()
-    # sift: keep detected pulses where the bases match
-    sift = detected & (alice_bases == bob_bases)
-
-    qber_phys = intrinsic_qber(params)
     bob_bits = alice_bits.copy()
     flips = rng.random(n_pulses) < qber_phys
     bob_bits = np.where(flips, 1 - bob_bits, bob_bits)
@@ -70,6 +109,9 @@ def run_bb84(
         return QKDResult(0, qber_phys, 0.0, 0, np.array([], dtype=int), params)
 
     measured_qber = float(np.mean(alice_bits[sifted_idx] != bob_bits[sifted_idx]))
+    if measured_qber > pp_threshold:
+        # QBER above the post-processing threshold -> abort, no secure key
+        return QKDResult(n_sift, measured_qber, 0.0, 0, bob_bits[sifted_idx], params)
 
     # GLLP secure fraction: 1 - H2(e) [phase] - f*H2(e) [error correction leakage]
     secure_fraction = max(

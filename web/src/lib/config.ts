@@ -38,4 +38,6 @@ export const securityScoringCfg = () => CONFIG.security_scoring;
 export const quantumAdvantageCfg = () => CONFIG.quantum_advantage;
 export const dataCfg = () => CONFIG.data;
 export const qkdCfg = () => CONFIG.qkd;
+export const qrngCfg = () => CONFIG.qrng;
+export const idsCfg = () => CONFIG.ids;
 export const webCfg = () => CONFIG.web;
