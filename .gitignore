@@ -4,6 +4,11 @@
 # The source research report (confidential, do not publish)
 量子暗号AI調査報告書_*.docx
 *量子暗号AI調査報告書*
+# Private monetization / business-strategy reports (confidential, kept local only)
+量子技術者_*.docx
+*量子技術者_収益化戦略*
+# Copyrighted reference book (do not redistribute)
+references/The Business of Quantum Technologies.pdf
 # Commercial / monetization notes (kept local only — both the EN plan and JA workflow)
 MONETIZATION*.md
 

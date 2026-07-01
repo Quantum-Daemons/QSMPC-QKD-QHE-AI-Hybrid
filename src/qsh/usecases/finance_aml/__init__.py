@@ -20,7 +20,7 @@ from ...orchestration.pipeline import Pipeline, standard_stages
 from ...orchestration.stages import Context
 
 
-def _fraud_model(seed: int = 0) -> tuple[LinearModel, np.ndarray, dict]:
+def _fraud_model(seed: int = 0, n_tx: int | None = None) -> tuple[LinearModel, np.ndarray, dict]:
     """Train the REAL 2026-industry fraud model (XGBoost) and **distil it to a CKKS-friendly linear
     surrogate** for the encrypted inference.
 
@@ -37,7 +37,7 @@ def _fraud_model(seed: int = 0) -> tuple[LinearModel, np.ndarray, dict]:
     from ...config import get_config
     from ...data.loaders import load_finance_fraud
 
-    X, y = load_finance_fraud(n=get_config().data.aml_transactions, seed=seed)
+    X, y = load_finance_fraud(n=n_tx or get_config().data.aml_transactions, seed=seed)
     Xtr, Xte, ytr, yte = train_test_split(X, y, test_size=0.25, random_state=seed, stratify=y)
     gbm = xgb.XGBClassifier(n_estimators=80, max_depth=4, learning_rate=0.2, subsample=0.9,
                             eval_metric="logloss", n_jobs=2, random_state=seed)
@@ -72,7 +72,7 @@ def _bank_blacklists(seed: int = 0) -> tuple[list[str], list[str], set[str]]:
 def build(config: dict | None = None) -> tuple[Pipeline, Context]:
     config = dict(config or {})
     seed = config.get("seed", 0)
-    model, flagged, model_meta = _fraud_model(seed)
+    model, flagged, model_meta = _fraud_model(seed, n_tx=config.get("aml_transactions"))
     bank_a, bank_b, shared = _bank_blacklists(seed)
 
     ctx = Context(
