@@ -97,13 +97,57 @@
     "aml_bank_a_accounts": 300,
     "aml_bank_b_accounts": 280,
     "aml_shared_accounts": 12,
+    "aml_transactions": 4000,
+    "fraud_rate": 0.05,
     "genomics_allele_max": 400,
     "genomics_allele_min": 50,
-    "genomics_biobanks": 4
+    "genomics_biobanks": 4,
+    "genomics_n": 1200,
+    "genomics_n_snps": 16
+  },
+  "ids": {
+    "demo_n_per_class": 120,
+    "n_per_class": 300,
+    "q_epochs": 25,
+    "q_lr": 0.1,
+    "q_n_layers": 2,
+    "q_n_per_class": 100,
+    "q_n_qubits": 4,
+    "rf_estimators": 200,
+    "test_fraction": 0.25
   },
   "qkd": {
+    "basis_prob": 0.5,
+    "dark_count_prob": 1e-05,
+    "detector_efficiency": 0.25,
     "distance_km": 50.0,
+    "error_correction_eff": 1.16,
+    "eve_intercept_fraction": 0.0,
+    "fiber_loss_db_per_km": 0.2,
+    "misalignment": 0.015,
+    "mu_decoy": 0.1,
+    "mu_signal": 0.5,
+    "opt_basis_prob_max": 0.9,
+    "opt_basis_prob_min": 0.5,
+    "opt_mu_signal_max": 0.9,
+    "opt_mu_signal_min": 0.2,
+    "opt_pp_threshold_max": 0.12,
+    "opt_pp_threshold_min": 0.08,
+    "optimize_enabled": false,
+    "optimize_method": "surrogate",
+    "optimize_n_pulses": 20000,
+    "optimize_n_samples": 48,
+    "pp_threshold": 0.11,
     "pulses": 200000
+  },
+  "qrng": {
+    "anu_opt_in": false,
+    "batch_qubits": 16,
+    "bits": 4096,
+    "enabled": false,
+    "health_alpha": 0.01,
+    "post_processing": "von_neumann",
+    "source": "sim"
   },
   "quantum_advantage": {
     "info_theoretic_multiplier": 1.5,
@@ -143,6 +187,7 @@
   "web": {
     "agent_timeout_ms": 120000,
     "demo_alice_bob_pulses": 40000,
+    "demo_sat_pulses": 4000000,
     "tfjs_max_new_tokens": 96,
     "tfjs_models": [
       {
