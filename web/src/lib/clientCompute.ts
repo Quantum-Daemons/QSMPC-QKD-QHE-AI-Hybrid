@@ -6,11 +6,14 @@
 import { ml_dsa65 } from "@noble/post-quantum/ml-dsa";
 import { ml_kem768 } from "@noble/post-quantum/ml-kem";
 import {
-  costPerOp, demoFeatureDim, genericArchitecture, medicalCnn, qkdCfg, quantumAdvantageCfg,
+  costPerOp, demoFeatureDim, genericArchitecture, medicalCnn, qkdCfg, qrngCfg, quantumAdvantageCfg,
   securityScoringCfg, tierArchitectures, webCfg, workloadMultipliers,
 } from "./config";
 import { encryptedLinear, warmFHE } from "./clientFHE";
+import { clientTrainScoreIDS } from "./clientIDS";
 import { secureArgmax, warmMPC } from "./clientMPC";
+import { optimizeQKD } from "./clientOptiQKD";
+import { generateQuantumBits } from "./clientQRNG";
 import { bb84, FIBER, FREE_SPACE, h2, intrinsicQber, qcnnExpectation, qotpQcnnInfer, rng } from "./quantumSim";
 import { inferLogits, onnxBackend } from "./onnxInference";
 import { realInput, realSatelliteAnomaly, type RealInput } from "./realData";
@@ -593,29 +596,50 @@ export function runClientPipeline(
         (config as any)._sessionKey = e.sharedSecret.slice(0, 32);
         metric(stage, "session_key_bits", 256);
         emit("log", stage, `hybrid KEM = ML-KEM-768 (+X25519) — agreement=${ok}`);
+        // Quantum entropy source (simulated state-vector measurement, not hardware) — measured health + throughput.
+        const qr = generateQuantumBits(Number(config.qrng_bits ?? qrngCfg().bits),
+          { source: "sim", postProcessing: String(config.qrng_post ?? qrngCfg().post_processing), seed });
+        metric(stage, "qrng_health_passed", qr.healthPassed ? 1 : 0);
+        metric(stage, "qrng_throughput_kbps", r1(qr.throughputBitsPerSec / 1000));
+        emit("log", stage, `QRNG (simulated quantum measurement): ${qr.nBits} bits, health `
+          + `${qr.healthPassed ? "PASS" : "FAIL"} (monobit p=${qr.monobitP.toFixed(3)}), `
+          + `${r1(qr.throughputBitsPerSec / 1000)} kbit/s`);
         break;
       }
       case "qkd_key_agreement": {
         if (config.qkd === "pqc-only") { emit("log", stage, "QKD disabled (PQC-only profile)"); break; }
-        const res = bb84(Number(config.qkd_pulses ?? qkdCfg().pulses), {
-          ...FIBER, distanceKm: Number(config.qkd_distance_km ?? qkdCfg().distance_km),
-          misalignment: 0.015, eveFraction: Number(config.qkd_eve ?? 0),
-        }, seed);
+        const chan = { ...FIBER, distanceKm: Number(config.qkd_distance_km ?? qkdCfg().distance_km),
+          misalignment: Number(config.qkd_misalignment ?? qkdCfg().misalignment),
+          eveFraction: Number(config.qkd_eve ?? qkdCfg().eve_intercept_fraction) };
+        const res = bb84(Number(config.qkd_pulses ?? qkdCfg().pulses), chan, seed);
         metric(stage, "qber", r2(res.qber));
         metric(stage, "skr", Math.round(res.secretKeyRate * 1e5) / 1e5);
         metric(stage, "secure_key_bits", res.secureKeyBits);
         emit("log", stage, `BB84: QBER=${res.qber.toFixed(4)}, ${res.secureKeyBits} secure bits`);
+        if (config.qkd_optimize) {   // AI-QKD parameter optimization (OptiQKD, WS1) — measured SKR gain
+          const opt = optimizeQKD(chan);
+          metric(stage, "qkd_skr_improvement_pct", r1(opt.improvementPct));
+          metric(stage, "qkd_optimized_skr", Math.round(opt.bestSkr * 1e5) / 1e5);
+          emit("log", stage, `OptiQKD (coordinate ascent): SKR +${r1(opt.improvementPct)}% vs default `
+            + `(basis p=${r2(opt.bestParams.basisProb)}, mu=${r2(opt.bestParams.muSignal)}; ${opt.nEvals} evals — simulated)`);
+        }
         break;
       }
       case "satellite_qkd": {
-        const res = bb84(Number(config.sat_pulses ?? 4000000), {
-          ...FREE_SPACE, eveFraction: Number(config.sat_eve ?? 0),
-        }, seed);
+        const satChan = { ...FREE_SPACE, distanceKm: Number(config.sat_distance_km ?? FREE_SPACE.distanceKm),
+          eveFraction: Number(config.sat_eve ?? FREE_SPACE.eveFraction) };
+        const res = bb84(Number(config.sat_pulses ?? webCfg().demo_sat_pulses), satChan, seed);
         metric(stage, "qber", r2(res.qber));
         metric(stage, "channel_loss_db", res.channelLossDb);
         metric(stage, "secure_key_bits", res.secureKeyBits);
         (config as any)._satQber = res.qber;
         emit("log", stage, `free-space BB84: ${res.channelLossDb}dB loss, QBER=${res.qber.toFixed(4)}, ${res.secureKeyBits} bits`);
+        if (config.qkd_optimize) {   // OptiQKD over the free-space channel — measured SKR gain
+          const opt = optimizeQKD(satChan);
+          metric(stage, "qkd_skr_improvement_pct", r1(opt.improvementPct));
+          emit("log", stage, `OptiQKD (free-space, coordinate ascent): SKR +${r1(opt.improvementPct)}% vs default `
+            + `(basis p=${r2(opt.bestParams.basisProb)}, mu=${r2(opt.bestParams.muSignal)}; ${opt.nEvals} evals — simulated)`);
+        }
         break;
       }
       case "qsdc_telemetry": {
@@ -676,16 +700,22 @@ export function runClientPipeline(
             + `rounds (quantum-classical FedAvg, secure-agg) — accuracy ${q.roundAcc[0].toFixed(3)}`
             + `→${q.finalAcc.toFixed(3)}`);
         } else {
-          // inference-only demo: federated learning runs in the full local deployment (toggle QFL to run it here)
-          metric(stage, "federated_accuracy", 0.965);
-          emit("log", stage, "inference-only demo — toggle “Federated (QFL)” to run quantum federated learning in-browser");
+          // inference-only: a genuine centralized eval (1 client, 1 round) — measured, not a canned constant.
+          const cq = clientQFL(seed, { clients: 1, rounds: 1 });
+          metric(stage, "federated_accuracy", cq.finalAcc);
+          emit("log", stage, `inference-only: centralized eval accuracy ${cq.finalAcc.toFixed(3)} `
+            + `(toggle “Federated (QFL)” to run quantum federated rounds in-browser)`);
         }
         break;
       }
       case "qml_ids": {
-        metric(stage, "ids_binary_f1", 0.987);
-        metric(stage, "ids_accuracy", 0.94);
-        emit("log", stage, "QML-IDS (client): attack-detection F1=0.987");
+        // genuine in-browser IDS: softmax logistic trained + scored on the Al-Kuwari-2026 attack signatures.
+        const ids = clientTrainScoreIDS(seed);
+        metric(stage, "ids_binary_f1", r2(ids.binaryF1));
+        metric(stage, "ids_accuracy", r2(ids.accuracy));
+        metric(stage, "ids_params", ids.nParams);
+        emit("log", stage, `QML-IDS (client, softmax logistic on Al-Kuwari-2026 signatures): `
+          + `attack-F1=${r2(ids.binaryF1)}, acc=${r2(ids.accuracy)} — measured on ${ids.nTest} held-out samples`);
         break;
       }
       case "private_inference": {

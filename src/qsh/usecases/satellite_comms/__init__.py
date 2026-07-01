@@ -20,6 +20,7 @@ from ...orchestration.events import EventBus
 from ...orchestration.pipeline import Pipeline
 from ...orchestration.stages import (
     Context,
+    OptiQKDStage,
     PQCHandshakeStage,
     QuantumComparisonStage,
     ResultStage,
@@ -36,6 +37,7 @@ _SAT_DEFAULTS = {
     "sat_misalignment": 0.025,        # atmospheric turbulence + pointing error
     "sat_eve": 0.0,                   # intercept-resend fraction (0 = no eavesdropper)
     "sat_pulses": 4_000_000,          # channel uses (free-space links need many)
+    "sat_opt_pulses": 200_000,        # pulses per OptiQKD evaluation (fewer than a full run, for speed)
 }
 _DEFAULT_TELEMETRY = (
     "SAT-OK;orbit=LEO;alt=550km;batt=98%;temp=21C;payload=nominal;ts=T+00:42:17"
@@ -188,9 +190,11 @@ def build(config: dict | None = None) -> tuple[Pipeline, Context]:
     ctx.data["anomaly_model"] = model
     ctx.data["features"] = window
     ctx.data["feature_names"] = feat_names
+    ctx.config.setdefault("qkd_opt_pulses", _SAT_DEFAULTS["sat_opt_pulses"])   # free-space link needs more pulses
     stages = [
         PQCHandshakeStage(),
         SatelliteQKDStage(),
+        OptiQKDStage(),                 # AI-QKD optimization over the free-space channel (opt-in)
         QSDCStage(),
         TelemetryAnomalyStage(),
         QuantumComparisonStage(),

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { MODEL_SIZES, type usePipelineRun } from "../lib/usePipelineRun";
 import { isClientDemo } from "../lib/demoMode";
+import ParameterPanel from "./ParameterPanel";
 
 type Run = ReturnType<typeof usePipelineRun>;
 
@@ -12,7 +13,7 @@ export default function PipelineControls({ run }: { run: Run }) {
   // local secret-sharing), so the server-side backend selectors (TenSEAL/OpenFHE/MPyC/…) don't apply.
   const demo = isClientDemo();
   const { opts, kem, setKem, qkd, setQkd, fhe, setFhe, mpc, setMpc, sig, setSig,
-    modelSize, setModelSize, workload, setWorkload, qfl, setQfl, params, setParams,
+    modelSize, setModelSize, workload, setWorkload, qfl, setQfl, optiqkd, setOptiqkd,
     state, running, paused, start, startStepwise, pause, resume, step, stop } = run;
 
   const sel = (label: string, id: string, fam: string, value: string, set: (v: string) => void) => (
@@ -22,14 +23,6 @@ export default function PipelineControls({ run }: { run: Run }) {
         {(opts.families[fam] || []).map((o) => <option key={o} value={o}>{o}</option>)}
       </select>
     </>
-  );
-  const num = (label: string, key: keyof typeof params, stepv = 1, min = 0) => (
-    <div>
-      <label className="muted" htmlFor={`p-${key}`} style={{ fontSize: 12 }}>{label}</label>
-      <input id={`p-${key}`} name={String(key)} type="number" step={stepv} min={min}
-        value={params[key] as number} style={{ width: "100%" }}
-        onChange={(e) => setParams({ ...params, [key]: parseFloat(e.target.value) || 0 })} />
-    </div>
   );
 
   return (
@@ -75,39 +68,19 @@ export default function PipelineControls({ run }: { run: Run }) {
             onChange={(e) => setQfl(e.target.checked)} style={{ marginRight: 4 }} />
           Federated (QFL)
         </label>
+        {/* AI-QKD parameter optimization (OptiQKD, WS1) — measured gradient-free SKR maximization. */}
+        <label className="muted" htmlFor="sel-optiqkd"
+          title="Run AI-QKD parameter optimization (OptiQKD, WS1) — a measured gradient-free search that tunes decoy/basis params to raise the secret-key rate on the simulated channel.">
+          <input id="sel-optiqkd" name="sel-optiqkd" type="checkbox" checked={optiqkd}
+            onChange={(e) => setOptiqkd(e.target.checked)} style={{ marginRight: 4 }} />
+          Optimize QKD (OptiQKD)
+        </label>
         <span style={{ flex: 1 }} />
         <button className="btn ghost" onClick={() => setShowAdvanced(!showAdvanced)}>
-          {showAdvanced ? "▼" : "▶"} Advanced parameters
+          {showAdvanced ? "▼" : "▶"} Parameters
         </button>
       </div>
-      {showAdvanced && (
-        <div className="grid cols-4" style={{ marginTop: 10 }}>
-          {num("QKD pulses", "qkd_pulses", 10000)}
-          {num("QKD distance (km)", "qkd_distance_km", 5)}
-          {num("Eve fraction (0–1)", "qkd_eve", 0.1)}
-          {num("QCNN qubits", "qubits", 1, 2)}
-          {num("QSMS prime (0=auto)", "prime", 2)}
-          {num("RNG seed", "seed", 1)}
-          <div>
-            <label className="muted" htmlFor="p-op" style={{ fontSize: 12 }}>QSMPC op</label>
-            <select id="p-op" name="qsmpc_op" value={params.qsmpc_op}
-              onChange={(e) => setParams({ ...params, qsmpc_op: e.target.value })}>
-              <option value="">(use case default)</option>
-              <option value="psi">PSI</option>
-              <option value="sum">Secure sum</option>
-            </select>
-          </div>
-          <div>
-            <label className="muted" htmlFor="p-inf" style={{ fontSize: 12 }}>Inference</label>
-            <select id="p-inf" name="inference" value={params.inference}
-              onChange={(e) => setParams({ ...params, inference: e.target.value })}>
-              <option value="">(use case default)</option>
-              <option value="ckks">CKKS (FHE)</option>
-              <option value="qcnn">QCNN (QHE)</option>
-            </select>
-          </div>
-        </div>
-      )}
+      {showAdvanced && <ParameterPanel run={run} />}
       <div className="btn-row" style={{ marginTop: 14 }}>
         <button className="btn" onClick={start} disabled={running}>▶ Start</button>
         <button className="btn ghost" onClick={startStepwise} disabled={running || paused}>⏭ Start stepwise</button>

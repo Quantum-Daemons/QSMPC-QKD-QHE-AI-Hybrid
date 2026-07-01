@@ -4,6 +4,11 @@
 # The source research report (confidential, do not publish)
 # private document pattern 4 (withheld)
 # private document pattern 2 (withheld)
+# Private monetization / business-strategy reports (confidential, kept local only)
+# private document pattern 3 (withheld)
+# private document pattern 1 (withheld)
+# Copyrighted reference book (do not redistribute)
+references/The Business of Quantum Technologies.pdf
 # Commercial / monetization notes (kept local only — both the EN plan and JA workflow)
 MONETIZATION*.md
 

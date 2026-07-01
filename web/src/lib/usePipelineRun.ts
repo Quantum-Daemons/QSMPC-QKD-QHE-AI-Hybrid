@@ -4,6 +4,7 @@
 // (WS) transport branch, the live event stream, metrics, signature, and GIF/PNG frame capture.
 import { useEffect, useRef, useState, type RefObject } from "react";
 import { api, type PipelineEvent, streamRun } from "./api";
+import { benchCfg, dataCfg, idsCfg, qkdCfg, qrngCfg } from "./config";
 import { assembleBenchmark, type PipelineControl, runClientPipeline } from "./clientCompute";
 import { isClientDemo } from "./demoMode";
 import { downloadCSV, downloadJSON, downloadNodePNG, FrameRecorder } from "./export";
@@ -29,18 +30,28 @@ export const DEMO_CRYPTO = {
     mpc: "mpyc-shamir", sig: "ml-dsa-65" },
 };
 
-export const DEFAULT_PARAMS = {
-  qkd_pulses: 200000,
-  qkd_distance_km: 50,
-  qkd_eve: 0,
+// Editable run parameters — defaults sourced from config (config.defaults.json / /api/config), so the
+// WebUI Parameters panel starts from the backend defaults and any edit flows into the run config (no
+// hardcoded literals here). Every field is overridable per run from the panel.
+export const makeDefaultParams = () => ({
+  seed: 0,
+  qkd_pulses: qkdCfg().pulses,
+  qkd_distance_km: qkdCfg().distance_km,
+  qkd_eve: qkdCfg().eve_intercept_fraction,
+  qkd_misalignment: qkdCfg().misalignment,
+  qkd_opt_samples: qkdCfg().optimize_n_samples,
+  qrng_bits: qrngCfg().bits,
+  n_per_class: idsCfg().n_per_class,
+  aml_transactions: dataCfg().aml_transactions,
+  qubits: benchCfg().quantum_qubits,
   qsmpc_op: "",          // "" = use the use case's default
   prime: 0,              // 0 = use config default
   inference: "",         // "" = use the use case's default
-  qubits: 8,
-  seed: 0,
-};
+});
 
-export type PipelineParams = typeof DEFAULT_PARAMS;
+export const DEFAULT_PARAMS = makeDefaultParams();
+
+export type PipelineParams = ReturnType<typeof makeDefaultParams>;
 
 // `recordRef` is the DOM node captured for the animated-GIF export (the DAG on the
 // Orchestration page, the two-party diagram on a use-case page).
@@ -56,7 +67,9 @@ export function usePipelineRun(usecase: string, recordRef: RefObject<HTMLElement
   const [modelSize, setModelSize] = useState("medium");
   const [workload, setWorkload] = useState("linear");
   const [qfl, setQfl] = useState(false);                 // "Federated (QFL)" toggle (quantum federated learning)
+  const [optiqkd, setOptiqkd] = useState(false);         // "Optimize QKD (OptiQKD)" toggle (WS1 AI-QKD)
   const [params, setParams] = useState({ ...DEFAULT_PARAMS });
+  const resetParams = () => setParams({ ...makeDefaultParams() });
 
   const [runId, setRunId] = useState<string | null>(null);
   const [state, setState] = useState("idle");
@@ -89,13 +102,15 @@ export function usePipelineRun(usecase: string, recordRef: RefObject<HTMLElement
   useEffect(() => { logRef.current?.scrollTo(0, logRef.current.scrollHeight); }, [events]);
 
   const buildConfig = () => {
-    const c: Record<string, unknown> = { kem, qkd, fhe, mpc, sig, model_size: modelSize, workload,
-      seed: params.seed, qkd_pulses: params.qkd_pulses, qkd_distance_km: params.qkd_distance_km,
-      qkd_eve: params.qkd_eve, qubits: params.qubits };
-    if (params.qsmpc_op) c.qsmpc_op = params.qsmpc_op;
-    if (params.inference) c.inference = params.inference;
-    if (params.prime > 0) c.prime = params.prime;
+    // spread every numeric/editable param into the run config; the backend + demo read the keys they
+    // know (ctx.config.get(key, <config default>)), so a Parameters-panel edit overrides the default.
+    const { qsmpc_op, inference, prime, ...nums } = params;
+    const c: Record<string, unknown> = { kem, qkd, fhe, mpc, sig, model_size: modelSize, workload, ...nums };
+    if (qsmpc_op) c.qsmpc_op = qsmpc_op;
+    if (inference) c.inference = inference;
+    if (prime > 0) c.prime = prime;
     if (qfl) c.qfl = true;                                // run Quantum Federated Learning this run
+    if (optiqkd) c.qkd_optimize = true;                  // run the AI-QKD parameter optimization this run
     return c;
   };
 
@@ -185,8 +200,9 @@ export function usePipelineRun(usecase: string, recordRef: RefObject<HTMLElement
     downloadCSV(Object.entries(metrics).map(([metric, value]) => ({ metric, value })), filename);
 
   return {
-    opts, kem, setKem, qkd, setQkd, fhe, setFhe, mpc, setMpc, sig, setSig,
-    modelSize, setModelSize, workload, setWorkload, qfl, setQfl, params, setParams,
+    usecase, opts, kem, setKem, qkd, setQkd, fhe, setFhe, mpc, setMpc, sig, setSig,
+    modelSize, setModelSize, workload, setWorkload, qfl, setQfl, optiqkd, setOptiqkd,
+    params, setParams, resetParams,
     runId, state, events, active, done, metrics, signature, artifacts, benchmark,
     gifBusy, logRef, captureFrame,
     start, startStepwise, pause, resume, step, stop,

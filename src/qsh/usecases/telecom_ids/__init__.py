@@ -19,6 +19,7 @@ from ...orchestration.events import EventBus
 from ...orchestration.pipeline import Pipeline
 from ...orchestration.stages import (
     Context,
+    OptiQKDStage,
     PQCHandshakeStage,
     QKDKeyAgreementStage,
     QuantumComparisonStage,
@@ -34,16 +35,19 @@ class QMLIDSStage(Stage):
     name = "qml_ids"
 
     def run(self, ctx: Context, bus: EventBus, reg: CryptoRegistry) -> None:
+        from ...config import get_config
+
+        ids_cfg = get_config().ids
         mode = ctx.config.get("ids", "classical")
         if mode == "quantum":
             from ...qml_ids.detector import evaluate_quantum
 
-            rep = evaluate_quantum(n_per_class=ctx.config.get("n_per_class", 100),
+            rep = evaluate_quantum(n_per_class=ctx.config.get("n_per_class", ids_cfg.q_n_per_class),
                                    seed=ctx.config.get("seed", 0))
         else:
             from ...qml_ids.detector import evaluate_classical
 
-            rep = evaluate_classical(n_per_class=ctx.config.get("n_per_class", 300),
+            rep = evaluate_classical(n_per_class=ctx.config.get("n_per_class", ids_cfg.n_per_class),
                                      seed=ctx.config.get("seed", 0))
         ctx.artifacts["ids_detector"] = rep.detector
         ctx.artifacts["ids_binary_f1"] = round(rep.binary_f1, 4)
@@ -72,6 +76,7 @@ def build(config: dict | None = None) -> tuple[Pipeline, Context]:
     stages = [
         PQCHandshakeStage(),
         QKDKeyAgreementStage(),
+        OptiQKDStage(),                 # AI-QKD parameter optimization (WS1); opt-in via qkd_optimize
         QMLIDSStage(),
         QuantumComparisonStage(),
         ResultStage(),
