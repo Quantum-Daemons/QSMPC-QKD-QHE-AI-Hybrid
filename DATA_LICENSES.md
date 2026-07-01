@@ -8,30 +8,34 @@ attribution. The project's own code is Apache-2.0; bundled data keeps its own li
 |----------|----------------------|---------|---------------------|
 | **Genomics** | `data/genomics/pgs000001_breast_cancer.tsv` (real **77-SNP breast-cancer PRS** weights) **+ `data/genomics/g1k_dosages.tsv` (real genotype dosages)** | weights **CC BY 4.0**; genotypes **open / IGSR** | PRS weights: PGS Catalog [PGS000001](https://www.pgscatalog.org/score/PGS000001/) (PRS77_BC; Mavaddat et al.). Genotypes: **real 1000 Genomes phase-3** effect-allele dosages (400 individuals) for exactly these 77 SNPs, fetched once from the **Ensembl REST API** over IGSR / 1000 Genomes (open data-use, commercial-OK, no auth). Both the PRS model **and** the genotypes are now real — the PRS is a genuine score over real human genotypes. (openSNP CC0 was the prior plan but opensnp.org is offline; 1000 Genomes via Ensembl is the live no-auth source.) |
 | **Medical** | MedMNIST (PneumoniaMNIST), baked into the full Docker image | **CC BY 4.0** | [MedMNIST v2](https://medmnist.com/) (Yang et al.). Real medical images; the genuine FHE CNN (Round 10). |
-| **Finance** | `data/finance/` — PaySim/AMLSim-methodology transactions (the model is the real artefact) | data: simulator-methodology; **PaySim** CSV is **CC BY-SA 4.0** | Real customer transaction data is privacy-impossible to share; **PaySim** (Lopez-Rojas et al.) is the published industry-standard simulator. The **model** is a real **XGBoost** (Apache-2.0) distilled to a CKKS-linear surrogate. |
+| **Finance** | `data/finance/paysim_sample.tsv` — a **real PaySim** transaction sample → the 8 AML features | **CC BY-SA 4.0** | Real PaySim mobile-money transactions (Kaggle [ealaxi/paysim1](https://www.kaggle.com/datasets/ealaxi/paysim1); Lopez-Rojas et al. 2016, the published industry-standard simulator). The 8 features are derived from real PaySim fields (amount / type / step / balances); fraud is oversampled for training balance (real base rate 0.13 %). The **model** is a real **XGBoost** (Apache-2.0) distilled to a CKKS-linear surrogate. |
 | **Telecom/Defense** | QKD-attack telemetry signatures (literature-grounded) | grounded in Al-Kuwari et al. 2026 (arXiv:2509.14282) | The **model** is a real classical RF + a **Quantum SVC** (quantum-kernel SVM, the 2026 QML-IDS standard) + a variational QNN. |
-| **Satellite** | ESA-ADB-style multi-channel telemetry, **generated** at runtime (no bundled file) | real **ESA-ADB** is **CC BY 3.0 IGO** (commercial-OK) and substitutable | [ESA-ADB](https://zenodo.org/records/12528696) (ESA / Airbus / KP Labs) — real ESA satellite telemetry. The **model** is a real linear telemetry-anomaly classifier run under CKKS. |
+| **Satellite** | `data/satellite/smap_msl_telemetry.tsv` — **real NASA SMAP/MSL** telemetry (6 channels + real labeled anomalies) | **CC0 / US-Gov public domain** | Real NASA spacecraft telemetry from the **Telemanom** project (Hundman et al. 2018, KDD; NASA JPL). Per NASA's data policy (17 U.S.C. §105; NASA Science Data Portal CC0), mission data without a restrictive notice is public domain → commercial use permitted. The **model** is a real linear telemetry-anomaly classifier run under CKKS. |
 
-> **Real-data status (web-verified June 2026 — honest).** **Medical** (Wisconsin breast-cancer, public domain +
-> MedMNIST CC-BY) and **genomics** (PGS-Catalog CC-BY weights **+ real 1000 Genomes genotypes** via the open
-> Ensembl/IGSR API) run on **real data**. **Finance / telecom / satellite** run on **cited-methodology synthetic**
-> data because the commercial-OK *real* sets are not feasibly obtainable: real labelled fraud data is
-> privacy-impossible (PaySim itself is a *cited synthetic* simulator, Lopez-Rojas 2016; its Kaggle CSV is
-> auth-walled); no commercial-OK real network-attack dataset exists (UNSW-NB15 / CICIDS / NSL-KDD are
-> research-only; the model is grounded in Al-Kuwari 2026); real **ESA-ADB** satellite telemetry is CC-BY-3.0-IGO
-> + commercial-OK but is **11.6 GB with no small sample**, and NASA SMAP/MSL is Kaggle-auth-walled. In every case
-> the **model/architecture is the real artefact** and the synthetic data carries a citation + scientific basis —
-> never uncited synthetic. (If Kaggle API credentials are provided, real PaySim + NASA-SMAP/MSL can be bundled.)
+> **Real-data status (web-verified June 2026 — honest).** **Four of the five verticals run on real, commercial-OK
+> data**: **medical** (Wisconsin breast-cancer, public domain + MedMNIST CC-BY), **genomics** (PGS-Catalog CC-BY
+> weights **+ real 1000 Genomes phase-3 genotypes** via the open Ensembl/IGSR API), **finance** (a real **PaySim**
+> transaction sample, Kaggle CC-BY-SA-4.0; Lopez-Rojas 2016), and **satellite** (real **NASA SMAP/MSL** spacecraft
+> telemetry, Telemanom / NASA JPL — obtained on NASA's CC0 / US-Gov-public-domain basis per NASA's official data
+> policy, *not* relying on the Kaggle wrapper's "© authors" label). Only **telecom/defense** runs on
+> **cited-methodology synthetic** telemetry, because **no commercial-OK real network-attack dataset exists**
+> (UNSW-NB15 / CICIDS / NSL-KDD are research-only; the model is grounded in Al-Kuwari 2026) — labelled honestly in
+> the run, never uncited. In every case the **model/architecture is the real artefact**, and the FHE-encrypted
+> inference is the FHE-feasible part (linear / PRS / small CNN / distilled surrogate), not task-SOTA — a
+> high-fidelity PoC, not a trained production system.
 
 ### Client-side demo (`web/public/data/`, loaded by `web/src/lib/realData.ts`)
 The public **client-side demo** ships the same real datasets where small + commercial-OK, so it runs on **real
-data with zero backend** (for the use cases where the full deployment also has real data — medical + genomics):
+data with zero backend** (for the four verticals where the full deployment also has real data — medical, genomics,
+finance + satellite):
 | Demo file | License | Source |
 |---|---|---|
-| `web/public/data/genomics/pgs000001_prs.json` — the real **PGS000001** 77-SNP PRS weights as JSON → a real in-browser Polygenic Risk Score | **CC BY 4.0** | PGS Catalog [PGS000001](https://www.pgscatalog.org/score/PGS000001/) (Mavaddat et al.) — same source as the bundled `.tsv` above. |
+| `web/public/data/genomics/pgs000001_prs.json` — the real **PGS000001** 77-SNP PRS weights + real **1000 Genomes** genotype dosages → a real in-browser Polygenic Risk Score | **CC BY 4.0** / IGSR | PGS Catalog [PGS000001](https://www.pgscatalog.org/score/PGS000001/) (Mavaddat et al.) + 1000 Genomes phase-3 (Ensembl/IGSR) — same sources as the bundled `.tsv`s above. |
 | `web/public/data/medical/breast_cancer_sample.json` — a real **Wisconsin Diagnostic Breast Cancer** sample (12 rows × 8 features) + a real logistic-regression model | **public domain** | UCI ML Repository / scikit-learn bundled dataset (Wolberg, Street & Mangasarian). |
+| `web/public/data/finance/paysim_sample.json` — real **PaySim** transaction rows (8 AML features) + the distilled CKKS-linear fraud model | **CC BY-SA 4.0** | Kaggle [ealaxi/paysim1](https://www.kaggle.com/datasets/ealaxi/paysim1) (Lopez-Rojas 2016) — same source as the bundled `.tsv`. |
+| `web/public/data/satellite/telemetry.json` — real **NASA SMAP/MSL** telemetry windows + a real linear anomaly model | **CC0 / public domain** | Telemanom (Hundman et al. 2018; NASA JPL) — same source as the bundled `.tsv`. |
 
-finance / telecom / satellite have no shippable commercial-OK real set → the demo uses representative **synthetic**
+Only **telecom** has no shippable commercial-OK real attack dataset → the demo uses representative **synthetic**
 features (logged honestly in the run). The demo sets are public / de-identified, so no real *personal* data is
 shipped to the browser.
 

@@ -1,11 +1,13 @@
 // Real, commercial-OK datasets shipped to the CLIENT-SIDE demo (web/public/data/), so the demo uses
-// REAL data + REAL models where a commercial-OK set is available — matching the FULL deployment, which
-// only has real data for medical (Wisconsin breast-cancer / MedMNIST) + genomics (PGS-Catalog PRS).
-// finance / telecom / satellite have no shippable commercial-OK real dataset (PaySim/ESA-ADB are
-// large + their loaders are simulator-methodology in the full deployment too), so they stay synthetic,
-// logged honestly per the no-easy-fallback policy. Datasets are tiny static JSON, fetched + cached once.
+// REAL data + REAL models where a commercial-OK set is available — matching the FULL deployment. Real
+// data now covers medical (Wisconsin breast-cancer / MedMNIST), genomics (PGS-Catalog PRS + real 1000
+// Genomes genotypes), finance (real PaySim transactions) and satellite (real NASA SMAP/MSL telemetry).
+// Only telecom stays synthetic (no commercial-OK real network-attack dataset exists — UNSW-NB15 / CICIDS
+// are research-only), logged honestly per the no-easy-fallback policy. Datasets are tiny static JSON,
+// fetched + cached once.
 //
-// Licensing (see DATA_LICENSES.md): breast-cancer = UCI/sklearn public domain; PGS000001 = CC-BY 4.0.
+// Licensing (see DATA_LICENSES.md): breast-cancer = UCI/sklearn public domain; PGS000001 = CC-BY 4.0;
+// 1000 Genomes = open/IGSR; PaySim = CC-BY-SA-4.0; NASA SMAP/MSL = CC0 / US-Gov public domain.
 
 export interface RealInput {
   values: number[];                          // the 8 demo features (REAL)
@@ -61,8 +63,37 @@ export async function realInput(usecase: string, u: () => number): Promise<RealI
         metrics: { polygenic_risk_score: Number(prsScore.toFixed(4)) },
       };
     }
+    if (usecase === "finance_aml") {
+      // REAL PaySim mobile-money transactions (Kaggle ealaxi/paysim1, CC-BY-SA-4.0) → the 8 AML features +
+      // a REAL distilled CKKS-linear model (XGBoost → logistic surrogate), matching the full deployment's
+      // encrypted inference. The SHAP attribution then reflects the real distilled fraud model on real data.
+      const ds = await fetchJSON("/data/finance/paysim_sample.json");
+      const rows = ds.samples as number[][];
+      const row = rows[Math.floor(u() * rows.length) % rows.length];   // a REAL PaySim transaction
+      return { values: row.slice(0, 8), names: ds.names, provenance: ds.provenance, model: ds.model };
+    }
   } catch (e) {
     console.warn("[realData] real dataset unavailable → synthetic fallback:", e);
   }
-  return null;   // finance / telecom / satellite (+ any load failure) → synthetic, logged by the caller
+  return null;   // telecom (+ any load failure) → synthetic, logged by the caller
+}
+
+/** A real telemetry-anomaly verdict over a REAL NASA SMAP/MSL window + the real linear model (the
+ *  satellite use case has no `private_inference` stage, so its anomaly score is surfaced at QSDC delivery). */
+export interface SatelliteAnomaly { provenance: string; anomalyScore: number; isAnomaly: boolean; channels: string[]; }
+
+export async function realSatelliteAnomaly(u: () => number): Promise<SatelliteAnomaly | null> {
+  try {
+    const ds = await fetchJSON("/data/satellite/telemetry.json");
+    const windows = ds.windows as number[][];
+    const w = windows[Math.floor(u() * windows.length) % windows.length];   // a REAL NASA telemetry window
+    const W = ds.model.W as number[][]; const b = ds.model.b as number[];
+    const margin = w.reduce((a, v, i) => a + (W[1][i] - W[0][i]) * v, 0) + (b[1] - b[0]);  // real linear model
+    const score = 1 / (1 + Math.exp(-margin));
+    return { provenance: ds.provenance, anomalyScore: Number(score.toFixed(4)),
+             isAnomaly: score > 0.5, channels: ds.channel_names };
+  } catch (e) {
+    console.warn("[realData] satellite real telemetry unavailable → representative:", e);
+    return null;
+  }
 }

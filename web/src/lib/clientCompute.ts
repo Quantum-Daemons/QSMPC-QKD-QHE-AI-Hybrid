@@ -13,7 +13,7 @@ import { encryptedLinear, warmFHE } from "./clientFHE";
 import { secureArgmax, warmMPC } from "./clientMPC";
 import { bb84, FIBER, FREE_SPACE, h2, intrinsicQber, qcnnExpectation, qotpQcnnInfer, rng } from "./quantumSim";
 import { inferLogits, onnxBackend } from "./onnxInference";
-import { realInput, type RealInput } from "./realData";
+import { realInput, realSatelliteAnomaly, type RealInput } from "./realData";
 
 const r1 = (x: number) => Math.round(x * 10) / 10;
 const r2 = (x: number) => Math.round(x * 100) / 100;
@@ -577,10 +577,11 @@ export function runClientPipeline(
         // provenance is logged again at the inference step (realData.ts).
         const realDs: Record<string, string> = {
           medical_fl: "real Wisconsin breast-cancer (UCI/sklearn, public domain)",
-          genomics: "real PGS-Catalog PGS000001 PRS weights (CC-BY 4.0)",
+          genomics: "real PGS-Catalog PGS000001 PRS weights + real 1000 Genomes genotypes (CC-BY 4.0 / IGSR)",
+          finance_aml: "real PaySim mobile-money transactions (Kaggle ealaxi/paysim1, CC-BY-SA-4.0)",
+          satellite_comms: "real NASA SMAP/MSL spacecraft telemetry (Telemanom / NASA JPL, CC0 / public domain)",
         };
-        if (usecase === "satellite_comms") emit("log", stage, "free-space downlink telemetry prepared (synthetic, ESA-ADB-style)");
-        else if (realDs[usecase]) emit("log", stage, `dataset: ${realDs[usecase]}`);
+        if (realDs[usecase]) emit("log", stage, `dataset: ${realDs[usecase]}`);
         else emit("log", stage, "synthetic dataset prepared (client-side; no commercial-OK real set for this use case)");
         break;
       }
@@ -628,6 +629,17 @@ export function runClientPipeline(
         emit("log", stage, eavesdrop
           ? `QSDC ABORTED: error ${e.toFixed(3)} > ${threshold} — telemetry withheld`
           : `QSDC delivered telemetry (secrecy ${(1 - 2 * h2(e)).toFixed(3)} bit/carrier)`);
+        if (!eavesdrop) {
+          // REAL NASA SMAP/MSL telemetry + the real linear anomaly model, scored in-browser (the satellite
+          // flow has no private_inference stage, so the real anomaly verdict is surfaced here at delivery).
+          const anom = await realSatelliteAnomaly(u);
+          if (anom) {
+            artifacts.telemetry_anomaly = anom.isAnomaly;
+            metric(stage, "telemetry_anomaly_score", anom.anomalyScore);
+            emit("log", stage, `private telemetry anomaly detection (${anom.provenance}): `
+              + `${anom.isAnomaly ? "ANOMALY" : "nominal"} (score ${anom.anomalyScore})`);
+          }
+        }
         break;
       }
       case "qsmpc_compute": {
