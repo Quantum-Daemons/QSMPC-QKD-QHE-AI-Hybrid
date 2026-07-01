@@ -13,6 +13,16 @@ This is a **research / proof-of-concept**. Real implementations where tractable,
 simulation/scaffolds where not — every claim is tied to a primary source in
 [`references/`](references/REFERENCES.md).
 
+> **Positioning — quantum-safe, not quantum-advantage.** The value here is **quantum-safe / PQC**, a
+> regulation-driven, fast-growing market (NIST FIPS 203/204/205; NSA CNSA 2.0 procurement mandate 2027;
+> EU roadmap 2026/2030/2035; "harvest-now-decrypt-later"; the PQC market is projected ~$1.6 B (2025) →
+> ~$20 B (2033) at ~38 % CAGR). A general **quantum *advantage*** for these workloads is **not** claimed
+> as a market benefit — it is broadly unproven in 2026 (e.g. classical tensor-network simulation matching
+> annealing results), so the numeric "quantum advantage" stays a **research / education** metric in the
+> benchmark; the **security score** is the production-relevant number. The whole stack is deliberately a
+> **hybrid** (PQC-classical + QKD/QHE quantum-simulated + FHE/MPC-classical + AI) — the pragmatic 2026
+> pioneering-product shape.
+
 ---
 
 ## What it does
@@ -21,7 +31,7 @@ Four workstreams (WS), unified by one pipeline and a crypto-agility registry:
 
 | WS | Theme | What's implemented |
 |----|-------|--------------------|
-| **WS1** | **AI-QKD** parameter optimization | BB84/decoy-state simulation, QBER/SKR telemetry, eavesdropper detection, ML hook |
+| **WS1** | **AI-QKD** parameter optimization | BB84/decoy-state simulation, QBER/SKR telemetry, eavesdropper detection; a **QRNG** entropy source (state-vector quantum-measurement sim + SP 800-22 health checks) that seeds the key material; and **OptiQKD** — a measured AI parameter optimizer (scikit-learn surrogate + gradient-free search) that tunes decoy/basis params to raise the secret-key rate >20 % vs default |
 | **WS2** | **QML-IDS** intrusion detection | 8 QKD attack scenarios; RandomForest baseline + PennyLane variational quantum classifier |
 | **WS3** | **QSMPC × QKD** | Shamir + d-level QFT secure summation (faithful to the paper example), quantum oblivious transfer, quantum-safe PSI |
 | **WS4** | **QHE × AI** | Quantum one-time pad (perfect hiding), Clifford+T QCNN private inference, Rate-1 QFHE; classical hybrid = CKKS **linear** layers (TenSEAL CPU / OpenFHE CPU / HEonGPU GPU — commercial-OK) + **MPyC** secret-sharing **non-linear** layers (ReLU/argmax) — incl. a **genuine FHE convolution** (im2col → CKKS `dot_plain`) so the medical use case runs a real small CNN on **real MedMNIST images** under encryption |
@@ -36,7 +46,9 @@ Federated Learning** option (a Flower + PennyLane hybrid quantum-classical VQC, 
 a per-use-case toggle), **explainable AI**
 (exact linear-SHAP attributions, ML-DSA-signed for a tamper-evident audit record — EU AI Act
 Art. 13), an **E2E orchestration** engine with **Run / Pause / Resume / Step / Stop / Restart**
-controls, live WebSocket event streaming, config-driven parameters editable in the WebUI, and
+controls, live WebSocket event streaming, config-driven parameters editable in the WebUI (a per-page
+**Parameters** panel — every QKD / QRNG / OptiQKD / IDS / data knob defaults from `config/defaults.py`
+and is editable per run, with reset-to-defaults; no hardcoded values), and
 high-DPI PNG / animated-GIF export of the run. An **Agentic AI · MCP** capability runs a small language
 model **entirely in the browser** (WebGPU via Transformers.js + WebLLM, Apache-2.0) whose
 request/response is sealed + signed over a **client-side quantum-safe MCP** channel — agentic AI with a

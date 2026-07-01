@@ -103,13 +103,19 @@ def frontend_config() -> dict:
         "security_scoring": asdict(c.security_scoring),
         "quantum_advantage": asdict(c.quantum_advantage),
         "data": {
+            "aml_transactions": c.data.aml_transactions,
+            "fraud_rate": c.data.fraud_rate,
             "aml_shared_accounts": c.data.aml_shared_accounts,
             "aml_bank_a_accounts": c.data.aml_bank_a_accounts,
             "aml_bank_b_accounts": c.data.aml_bank_b_accounts,
+            "genomics_n": c.data.genomics_n,
+            "genomics_n_snps": c.data.genomics_n_snps,
             "genomics_biobanks": c.data.genomics_biobanks,
             "genomics_allele_min": c.data.genomics_allele_min,
             "genomics_allele_max": c.data.genomics_allele_max,
         },
-        "qkd": {"pulses": c.qkd.pulses, "distance_km": c.qkd.distance_km},
+        "qkd": asdict(c.qkd),          # full QKD + OptiQKD knobs (editable in the WebUI Parameters panel)
+        "qrng": asdict(c.qrng),        # QRNG bits / source / post-processing / health alpha
+        "ids": asdict(c.ids),          # QML-IDS sample sizes (incl. the in-browser demo IDS)
         "web": asdict(c.web),
     }

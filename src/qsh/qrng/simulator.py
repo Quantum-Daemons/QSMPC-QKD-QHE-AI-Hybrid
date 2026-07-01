@@ -1,0 +1,113 @@
+"""Quantum random-number generator — a local state-vector measurement simulation.
+
+Each raw bit is the computational-basis measurement of a freshly prepared ``|+>`` qubit
+(``|+> = H|0> = [1/sqrt2, 1/sqrt2]``); by the Born rule ``P(measure |1>) = |1/sqrt2|^2 = 0.5``,
+so the outcomes are genuine 50/50 quantum-measurement samples (of the simulator). Residual
+bias is removed with a **von Neumann** debiaser or a **Toeplitz-hash** extractor, and the
+output is checked by :mod:`~qsh.qrng.health` (SP 800-22 subset).
+
+Honest label: this is a **simulated** quantum measurement (state-vector), not quantum
+hardware. The optional real-hardware source is :mod:`~qsh.qrng.anu` (opt-in, online).
+"""
+
+from __future__ import annotations
+
+import time
+from dataclasses import dataclass
+
+import numpy as np
+
+from .health import HealthReport, health_suite
+
+# |+> = H|0>: build it from the actual Hadamard so the Born-rule probability is explicit.
+_H = np.array([[1.0, 1.0], [1.0, -1.0]]) / np.sqrt(2.0)
+_PLUS = _H @ np.array([1.0, 0.0])                 # = [1/sqrt2, 1/sqrt2]
+_PROB_ONE = float(np.abs(_PLUS[1]) ** 2)          # Born rule: P(|1>) = 0.5
+
+
+@dataclass
+class QRNGResult:
+    """Output of a QRNG draw."""
+
+    bits: np.ndarray
+    n_bits: int
+    source: str                 # "sim" | "anu"
+    post_processing: str
+    raw_bits_consumed: int
+    health: HealthReport
+    throughput_bits_per_s: float
+    simulated: bool
+
+
+def measure_plus_qubits(n_bits: int, *, seed: int | None = None) -> np.ndarray:
+    """Prepare ``n_bits`` qubits in ``|+>`` and measure each in the Z basis (Born-rule sampling)."""
+    rng = np.random.default_rng(seed)
+    return (rng.random(n_bits) < _PROB_ONE).astype(np.int64)   # P(1) = |amp_1|^2 = 0.5
+
+
+def von_neumann(bits: np.ndarray) -> np.ndarray:
+    """Von Neumann debiaser: pairs 01->0, 10->1, drop 00/11 (removes first-order bias)."""
+    b = np.asarray(bits).astype(np.int64).ravel()
+    n = b.size - (b.size % 2)
+    pairs = b[:n].reshape(-1, 2)
+    keep = pairs[:, 0] != pairs[:, 1]
+    return pairs[keep, 0]
+
+
+def toeplitz_extract(bits: np.ndarray, out_len: int, *, seed: int | None = None) -> np.ndarray:
+    """Toeplitz-hash randomness extractor: out = T @ bits (mod 2), T a random Toeplitz matrix."""
+    b = np.asarray(bits).astype(np.int64).ravel()
+    m = b.size
+    out_len = max(1, min(out_len, m // 2))
+    rng = np.random.default_rng(seed)
+    tvec = rng.integers(0, 2, out_len + m - 1)            # a Toeplitz matrix is fixed by its first row+col
+    out = np.empty(out_len, dtype=np.int64)
+    for i in range(out_len):
+        out[i] = int(np.dot(tvec[i : i + m], b) & 1)
+    return out
+
+
+def _raw_needed(n_bits: int, post_processing: str) -> int:
+    if post_processing == "von_neumann":
+        return 5 * n_bits + 16       # VN keeps ~1/4 of raw bits -> over-provision
+    if post_processing == "toeplitz":
+        return 2 * n_bits + 16
+    return n_bits
+
+
+def generate_quantum_bits(n_bits: int = 4096, *, source: str = "sim",
+                          post_processing: str = "von_neumann", seed: int | None = None,
+                          anu_opt_in: bool = False, health_alpha: float = 0.01) -> QRNGResult:
+    """Generate ``n_bits`` post-processed quantum-random bits + a health report + measured throughput.
+
+    ``source="sim"`` (default, offline) uses the state-vector measurement above; ``source="anu"``
+    fetches real hardware entropy from the ANU QRNG API but **requires ``anu_opt_in=True``** (no silent
+    network fallback — honours the no-easy-fallback policy).
+    """
+    t0 = time.perf_counter()
+    need = _raw_needed(n_bits, post_processing)
+    if source == "anu":
+        if not anu_opt_in:
+            raise ValueError(
+                "ANU QRNG (source='anu') requires anu_opt_in=True — it is an online hardware source "
+                "subject to ANU Quantum Numbers API terms; the offline 'sim' source is the default.")
+        from .anu import fetch_anu_bits
+
+        raw = fetch_anu_bits(need)
+        simulated = False
+    else:
+        raw = measure_plus_qubits(need, seed=seed)
+        simulated = True
+
+    if post_processing == "von_neumann":
+        proc = von_neumann(raw)
+    elif post_processing == "toeplitz":
+        proc = toeplitz_extract(raw, out_len=len(raw) // 2, seed=seed)
+    else:
+        proc = raw
+    bits = proc[:n_bits]
+    dt = max(time.perf_counter() - t0, 1e-9)
+    return QRNGResult(
+        bits=bits, n_bits=int(bits.size), source=source, post_processing=post_processing,
+        raw_bits_consumed=int(raw.size), health=health_suite(bits, alpha=health_alpha),
+        throughput_bits_per_s=float(bits.size) / dt, simulated=simulated)
