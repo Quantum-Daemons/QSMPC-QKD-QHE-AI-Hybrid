@@ -15,6 +15,27 @@ Algorithms resolve through `CryptoRegistry` at runtime — ML-KEM-768 ↔ -1024,
 PQC-only, TenSEAL ↔ OpenFHE. A future PQC algorithm is a registry entry + config change,
 not a code rewrite. Add remote re-key + in-flight algorithm substitution next. ☐
 
+## AI-QKD (WS1) + entropy (done)
+- **OptiQKD** — an AI parameter optimizer (scikit-learn GBM/GP surrogate + gradient-free coordinate
+  ascent over the decoy-state / efficient-BB84 model) tunes `basis_prob` / `mu_signal` / `pp_threshold`
+  to **raise the measured secret-key rate >20 %** vs the default baseline on the same simulated channel
+  (`src/qsh/qkd/optimize.py`; report WS1 "OptiQKD" theme, arXiv:2603.04192). Opt-in per run. ✅
+- **QRNG** — a local **state-vector quantum-measurement** entropy source with an SP 800-22-style health
+  suite + von Neumann / Toeplitz post-processing (`src/qsh/qrng/`); it seeds the BB84 basis/bit choices.
+  Optional real-hardware source = the **ANU QRNG** API (opt-in, online). Honestly labelled: sim, not HW. ✅
+
+## Reference implementations (2026, commercial-OK)
+Grounded, actively-maintained OSS to deepen each workstream (all MIT / Apache-2.0 / BSD; adopt as the
+scaffold hardens). QRNG + OptiQKD above are built from this set; the rest are adoptable next steps:
+
+| WS | Reference implementations |
+|----|---------------------------|
+| WS1 AI-QKD | TNO-Quantum `communication.qkd_key_rate` (Apache) · `sequence-toolbox/SeQUeNCe` (Argonne, BSD) · QKDNetSim · `DLR-RM/stable-baselines3` (RL) |
+| WS2 QML-IDS | `rdisipio/qlstm` (PennyLane QLSTM) · `ACE07-Sev/QSVM` (12-variant QSVM) · `qiskit-community/qiskit-machine-learning` |
+| WS4 QHE×AI / QFL | `elucidator8918/QFL-MLNCP-NeurIPS` (QFed+FHE) · `goldenskygiang/flower-fhe` · `ibarrond/Pyfhel` · OpenFHE · Flower |
+| entropy | `dorahacksglobal/quantum-randomness-generator` · NIST SP 800-22 test suite |
+| cross-cutting PQC/QKD | `open-quantum-safe/oqs-provider` · `rosenpass/rosenpass` · `arnika-project/arnika` · ETSI GS QKD 014 KME (`thomasarmel/qkd_kme_server`) |
+
 ## Recommended future workstreams
 1. **NIST-aligned IDS against HNDL / Q-Day** — extend WS2 (QML-IDS) into a full network
    IDS plane: combine the QKD-attack classifier with classical NIDS (e.g. CICIDS-style

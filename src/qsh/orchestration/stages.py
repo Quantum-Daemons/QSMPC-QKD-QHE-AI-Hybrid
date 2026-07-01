@@ -50,7 +50,19 @@ class PQCHandshakeStage(Stage):
     name = "pqc_handshake"
 
     def run(self, ctx, bus, reg):
+        from ..config import get_config
         from ..pqc.transport import establish_initiator, establish_responder
+        from ..qrng import generate_quantum_bits
+
+        # Quantum entropy source (simulated state-vector measurement, not hardware) — health + throughput.
+        qc = get_config().qrng
+        qr = generate_quantum_bits(int(ctx.config.get("qrng_bits", qc.bits)), source="sim",
+                                   post_processing=ctx.config.get("qrng_post", qc.post_processing),
+                                   seed=ctx.config.get("seed", 0), health_alpha=qc.health_alpha)
+        bus.metric("qrng_health_passed", 1 if qr.health.passed else 0, self.name)
+        bus.metric("qrng_throughput_kbps", round(qr.throughput_bits_per_s / 1000, 1), self.name)
+        bus.log(f"QRNG (simulated quantum measurement): {qr.n_bits} bits, health "
+                f"{'PASS' if qr.health.passed else 'FAIL'} (monobit p={qr.health.monobit_p:.3f})", self.name)
 
         kem_name = ctx.config.get("kem")
         recipient = reg.get("kem", kem_name)()
@@ -90,7 +102,10 @@ class QKDKeyAgreementStage(Stage):
             eve_intercept_fraction=float(ctx.config.get("qkd_eve", cfg.eve_intercept_fraction)),
         )
         n_pulses = int(ctx.config.get("qkd_pulses", cfg.pulses))
-        result = provider(n_pulses=n_pulses, params=params, seed=ctx.config.get("seed", 0))
+        # optionally seed BB84's basis/bit choices from the (simulated) quantum RNG
+        qrng_on = bool(ctx.config.get("qrng_enabled", get_config().qrng.enabled))
+        extra = {"entropy": "qrng"} if qrng_on else {}
+        result = provider(n_pulses=n_pulses, params=params, seed=ctx.config.get("seed", 0), **extra)
         bus.metric("qber", round(result.qber, 5), self.name)
         bus.metric("skr", round(result.secret_key_rate, 5), self.name)
         bus.metric("secure_key_bits", result.secure_key_bits, self.name)
@@ -102,6 +117,49 @@ class QKDKeyAgreementStage(Stage):
             bus.log(f"QKD key derived (QBER={result.qber:.4f}); mixed into session", self.name)
         else:
             bus.log("insufficient secure key; continuing PQC-only", self.name)
+
+
+class OptiQKDStage(Stage):
+    """AI-driven QKD parameter optimization (OptiQKD, WS1): a measured, gradient-free + surrogate
+    search tunes decoy/basis params to raise SKR vs the default baseline on the same simulated channel.
+
+    Gated by ``qkd_optimize`` (default off); opt-in via the WebUI toggle. Simulation, not hardware.
+    """
+
+    name = "qkd_optimize"
+
+    def run(self, ctx, bus, reg):
+        from ..config import get_config
+
+        cfg = get_config().qkd
+        if not ctx.config.get("qkd_optimize", cfg.optimize_enabled):
+            return
+        from ..qkd.channel import ChannelParams
+        from ..qkd.optimize import optimize_qkd
+
+        # optimize the channel the use case actually used (free-space for satellite), else fiber from config
+        channel = ctx.data.get("opt_channel") or ctx.data.get("sat_channel") or ChannelParams(
+            distance_km=float(ctx.config.get("qkd_distance_km", cfg.distance_km)),
+            misalignment=float(ctx.config.get("qkd_misalignment", cfg.misalignment)),
+            eve_intercept_fraction=float(ctx.config.get("qkd_eve", cfg.eve_intercept_fraction)),
+        )
+        res = optimize_qkd(channel,
+                           method=ctx.config.get("qkd_opt_method", cfg.optimize_method),
+                           n_samples=int(ctx.config.get("qkd_opt_samples", cfg.optimize_n_samples)),
+                           n_pulses=int(ctx.config.get("qkd_opt_pulses", cfg.optimize_n_pulses)),
+                           seed=ctx.config.get("seed", 0))
+        bus.metric("qkd_skr_improvement_pct", round(res.improvement_pct, 1), self.name)
+        bus.metric("qkd_optimized_skr", round(res.best_skr, 6), self.name)
+        bus.metric("qkd_baseline_skr", round(res.baseline_skr, 6), self.name)
+        bus.metric("qkd_optimized_qber", round(res.best_qber, 5), self.name)
+        ctx.artifacts["optiqkd"] = {
+            "improvement_pct": round(res.improvement_pct, 1), "method": res.method, "n_evals": res.n_evals,
+            "best_params": {"mu_signal": round(res.best_params.mu_signal, 3),
+                            "basis_prob": round(res.best_params.basis_prob, 3),
+                            "pp_threshold": round(res.best_params.pp_threshold, 3)}}
+        bus.log(f"OptiQKD ({res.method}): SKR {res.baseline_skr:.2e}->{res.best_skr:.2e} "
+                f"(+{res.improvement_pct:.1f}% vs default; basis p={res.best_params.basis_prob:.2f}, "
+                f"mu={res.best_params.mu_signal:.2f}; {res.n_evals} evals — simulated, not hardware)", self.name)
 
 
 class QSMPCComputeStage(Stage):
