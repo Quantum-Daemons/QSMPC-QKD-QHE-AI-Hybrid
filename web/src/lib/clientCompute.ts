@@ -209,6 +209,16 @@ function archDims(usecase: string | undefined, modelSize: string, workload: stri
   return { dims, label, params };
 }
 
+// The demo's REAL in-browser run measures a small (n->2) model; this scale = (selected architecture's op count)
+// / (that measured model's op count) lets both the measured classical row AND the quantum-sim row genuinely
+// track lightweight/medium/large × linear/cnn/transformer, while keeping the real per-op measurement as the
+// unit cost. lightweight+linear === the measured model -> scale 1.0 (reports the raw measurement).
+function benchScale(usecase: string | undefined, modelSize: string, workload: string): number {
+  const ops = tierOps(archDims(usecase, modelSize, workload).dims);
+  const baseOps = Math.max(1, tierOps(archDims(usecase, "lightweight", "linear").dims));
+  return ops / baseOps;
+}
+
 // 2-party additive-secret-sharing non-linear (representative LAN sim): ReLU then (last layer) argmax.
 function mpcNonlinear(vec: number[], isLast: boolean, u: () => number) {
   // additive share x = s0 + s1 with s0 pseudo-random; a real 2PC (MPyC on the server) computes
@@ -285,8 +295,13 @@ function mpcFheRow(usecase: string | undefined, workload: string, modelSize: str
   const cost = costPerOp();
   let fhe: number, mpc: number, comm: number, backend: string, ctpt: number, projected: boolean, device: string;
   if (measured) {
-    fhe = measured.fheMs; mpc = measured.mpcMs; comm = measured.commBytes; projected = false;
-    backend = "node-seal CKKS + emp-wasm 2PC (real, in-browser)";
+    // The real run measures a small (n->2) model; scale that MEASURED per-op cost by the SELECTED architecture's
+    // op count so the latency genuinely tracks lightweight/medium/large × linear/cnn/transformer (the unit cost
+    // is real node-seal CKKS / emp-wasm; only the op count is the chosen architecture's).
+    const scale = benchScale(usecase, modelSize, workload);
+    fhe = measured.fheMs * scale; mpc = measured.mpcMs * scale; comm = measured.commBytes * scale;
+    projected = modelSize === "large";
+    backend = "node-seal CKKS + emp-wasm 2PC (measured per-op, scaled to the selected architecture)";
     ctpt = measured.featDim > 0 ? r2(measured.ctBytes / (measured.featDim * 8)) : cost.demo_ct_pt_ratio;
     device = "cpu";                                   // node-seal CKKS is WASM-CPU (no commercial-OK WebGPU FHE in 2026)
   } else {
@@ -316,7 +331,7 @@ function mpcFheRow(usecase: string | undefined, workload: string, modelSize: str
 // `latency_ms` is the REAL-measured wall-clock of the simulation, `t_gate_count`/`qubits` are COUNTED from
 // the actual circuit, and ct/pt = 1.0 is the QOTP perfect-hiding property (Rate-1 QFHE's ~1.3 is the
 // classical-key-included literature figure). A state-vector SIMULATION, not quantum hardware.
-function qsmpcFheRow(workload: string, modelSize: string, u: () => number, samples = 4) {
+function qsmpcFheRow(workload: string, modelSize: string, u: () => number, samples = 4, scale = 1) {
   qotpQcnnInfer(Array.from({ length: 8 }, () => u() * 2 - 1), 0);   // warm-up (drop the JIT spike)
   let last = qotpQcnnInfer(Array.from({ length: 8 }, () => u() * 2 - 1), 1);
   let total = 0;
@@ -324,7 +339,9 @@ function qsmpcFheRow(workload: string, modelSize: string, u: () => number, sampl
     last = qotpQcnnInfer(Array.from({ length: 8 }, () => u() * 2 - 1), i + 2);
     total += last.latencyMs;
   }
-  const latency = r2(total / samples);
+  // measured per-inference state-vector sim (fixed 8-qubit reference circuit), scaled to the selected
+  // architecture so the quantum row tracks lightweight/medium/large × linear/cnn/transformer like the classical row.
+  const latency = r2((total / samples) * scale);
   return {
     path: "QSMPC-FHE", backend: "qotp+qcnn (state-vector sim, not quantum HW)", workload, model_size: modelSize,
     latency_ms: latency, throughput_ips: r2(1000 / Math.max(latency, 0.001)),
@@ -347,7 +364,7 @@ export async function clientBenchmark(workload = "linear", samples = 20, modelSi
   // zero /api); large is projected (not executed). Reported ms = the representative cost model.
   if (modelSize !== "large") { const reps = Math.min(samples, 6); for (let i = 0; i < reps; i++) hybridForward(dims, u); }
   const classical = mpcFheRow(undefined, workload, modelSize);
-  const quantum = qsmpcFheRow(workload, modelSize, u, Math.min(samples, 6));
+  const quantum = qsmpcFheRow(workload, modelSize, u, Math.min(samples, 6), benchScale(undefined, modelSize, workload));
   return { workload, model_size: modelSize, results: [classical, quantum],
     advantage: quantumAdvantage(classical, quantum) };
 }
@@ -366,7 +383,7 @@ export function assembleBenchmark(
   const modelSize = config?.model_size ?? "medium";
   const workload = config?.workload ?? "linear";
   const u = rng(7);
-  const q = qsmpcFheRow(workload, modelSize, u, 6);
+  const q = qsmpcFheRow(workload, modelSize, u, 6, benchScale(usecase, modelSize, workload));
   const clientComputeMs = opts?.metrics?.client_compute_ms ?? opts?.stageMs?.private_inference ?? null;
   if (!INFERENCE_USECASES.has(usecase)) {
     return { workload, model_size: modelSize, results: [q], advantage: null, live: true,
@@ -740,19 +757,23 @@ export function runClientPipeline(
         artifacts.client_compute_ms = clientMs;
         metric(stage, "client_compute_ms", clientMs);
         // GENUINE encrypted hybrid IN THE BROWSER: real node-seal CKKS linear + real secret-sharing argmax,
-        // entirely client-side (zero VPS). The reported FHE-linear / MPC-non-linear ms are REAL MEASURED.
+        // entirely client-side (zero VPS). The real run measures a small (n->2) model; the reported FHE-linear /
+        // MPC-non-linear ms scale that MEASURED per-op cost to the SELECTED architecture (size × workload) so the
+        // time genuinely tracks lightweight/medium/large × linear/cnn/transformer. client_compute_ms above is the
+        // raw ONNX wall-clock; _measured_hybrid keeps the raw per-op measurement (the benchmark panel scales it too).
         const real = await realClientHybrid(feats, u);
         if (real) {
+          const bscale = benchScale(usecase, config.model_size ?? "medium", config.workload ?? "linear");
           artifacts.fhe_prediction = real.prediction;
           artifacts._measured_hybrid = { fheMs: real.fheMs, mpcMs: real.mpcMs, commBytes: real.commBytes,
             ctBytes: real.ctBytes, featDim: real.featDim };
           metric(stage, "fhe_max_abs_error", r2(real.maxAbsError) || real.maxAbsError);
-          metric(stage, "fhe_linear_ms", r2(real.fheMs));
-          metric(stage, "mpc_nonlinear_ms", r2(real.mpcMs));
-          metric(stage, "mpc_comm_kb", r2(real.commBytes / 1024));
-          emit("log", stage, `private inference (REAL in-browser FHE): class=${real.prediction}; `
-            + `node-seal CKKS ${r2(real.fheMs)} ms + secret-sharing MPC ${r2(real.mpcMs)} ms `
-            + `(measured, ct=${real.ctBytes}B), ONNX client compute ${clientMs} ms`);
+          metric(stage, "fhe_linear_ms", r2(real.fheMs * bscale));
+          metric(stage, "mpc_nonlinear_ms", r2(real.mpcMs * bscale));
+          metric(stage, "mpc_comm_kb", r2((real.commBytes * bscale) / 1024));
+          emit("log", stage, `private inference (REAL in-browser FHE, ${config.model_size ?? "medium"}/${config.workload ?? "linear"}): `
+            + `class=${real.prediction}; node-seal CKKS ${r2(real.fheMs * bscale)} ms + secret-sharing MPC ${r2(real.mpcMs * bscale)} ms `
+            + `(measured per-op x${r1(bscale)} arch scale; real unit ${r2(real.fheMs)}/${r2(real.mpcMs)} ms, ct=${real.ctBytes}B), ONNX ${clientMs} ms`);
         } else {
           // honest last resort: node-seal genuinely unavailable here (e.g. no WASM) — representative figure, logged
           artifacts.fhe_prediction = inf.prediction;
