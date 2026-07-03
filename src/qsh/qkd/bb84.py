@@ -27,6 +27,34 @@ def _h2(x: float) -> float:
     return float(-x * np.log2(x) - (1 - x) * np.log2(1 - x))
 
 
+def _decoy_secure_fraction(eta: float, mu: float, nu: float, e_det: float, y0: float,
+                           f_ec: float, sift_ratio: float) -> tuple[float, float, float]:
+    """Two-intensity decoy-state secret-key rate per pulse (Ma, Qi, Zhao & Lo 2005).
+
+    A signal (``mu``) + decoy (``nu``) intensity pair lower-bounds the single-photon yield ``Y1`` and
+    upper-bounds the single-photon error ``e1``; the GLLP rate then keeps only the *secure* single-photon
+    contribution: ``R = q [ Q1 (1 - H2(e1)) - f Q_mu H2(E_mu) ]``. The decoy intensity ``nu`` genuinely
+    moves the rate through the tightness of the Y1/e1 bounds. Returns ``(skr_per_pulse, E_mu, e1_upper)``.
+    """
+    e0 = 0.5                                             # dark counts are unbiased (random) errors
+    q_mu = y0 + 1.0 - float(np.exp(-eta * mu))           # overall signal gain
+    q_nu = y0 + 1.0 - float(np.exp(-eta * nu))           # overall decoy gain
+    if q_mu <= 0.0:
+        return 0.0, 0.5, 0.5
+    e_mu = (e0 * y0 + e_det * (1.0 - float(np.exp(-eta * mu)))) / q_mu
+    if mu <= nu or q_nu <= 0.0:                          # decoy must be strictly weaker than the signal
+        return 0.0, e_mu, 0.5
+    e_nu = (e0 * y0 + e_det * (1.0 - float(np.exp(-eta * nu)))) / q_nu
+    # single-photon yield lower bound + error upper bound (Ma et al. 2005, Eqs. 34-37)
+    y1 = max(0.0, (mu / (mu * nu - nu * nu)) * (
+        q_nu * float(np.exp(nu)) - (nu * nu) / (mu * mu) * q_mu * float(np.exp(mu))
+        - (mu * mu - nu * nu) / (mu * mu) * y0))
+    q1 = y1 * mu * float(np.exp(-mu))                    # secure single-photon gain
+    e1 = min(0.5, max(0.0, (e_nu * q_nu * float(np.exp(nu)) - e0 * y0) / (y1 * nu))) if y1 > 0.0 else 0.5
+    r = q1 * (1.0 - _h2(e1)) - f_ec * q_mu * _h2(e_mu)   # GLLP single-photon rate per pulse
+    return max(0.0, r) * sift_ratio, e_mu, e1
+
+
 @dataclass
 class QKDResult:
     """Outcome of a BB84 session."""
@@ -95,8 +123,9 @@ def run_bb84(
         mu = max(1e-3, float(qkd_params.mu_signal))
         detected = rng.random(n_pulses) < (1.0 - np.exp(-mu * eta))   # P(>=1 photon detected), Poisson
         sift = detected & (alice_bases == bob_bases)
-        mp_frac = 1.0 - (1.0 + mu) * np.exp(-mu)                       # P(>=2 photons): PNS-leakable
-        qber_phys = float(min(0.5, intrinsic_qber(params) + 0.5 * mp_frac))
+        # the multiphoton (PNS) insecurity is now accounted for analytically by the decoy-state single-photon
+        # bound (see the secure-rate tail), NOT by inflating the physical QBER -> measured QBER = true error.
+        qber_phys = intrinsic_qber(params)
         pp_threshold = float(qkd_params.pp_threshold)
 
     bob_bits = alice_bits.copy()
@@ -113,12 +142,21 @@ def run_bb84(
         # QBER above the post-processing threshold -> abort, no secure key
         return QKDResult(n_sift, measured_qber, 0.0, 0, bob_bits[sifted_idx], params)
 
-    # GLLP secure fraction: 1 - H2(e) [phase] - f*H2(e) [error correction leakage]
-    secure_fraction = max(
-        0.0, 1.0 - _h2(measured_qber) - error_correction_eff * _h2(measured_qber)
-    )
-    skr = secure_fraction * (n_sift / n_pulses)
-    secure_bits = int(secure_fraction * n_sift)
+    if qkd_params is None:
+        # legacy GLLP secure fraction on the overall QBER: 1 - H2(e) [phase] - f*H2(e) [EC leakage]
+        secure_fraction = max(
+            0.0, 1.0 - _h2(measured_qber) - error_correction_eff * _h2(measured_qber)
+        )
+        skr = secure_fraction * (n_sift / n_pulses)
+        secure_bits = int(secure_fraction * n_sift)
+    else:
+        # two-intensity decoy-state single-photon secure rate — mu_decoy genuinely tightens Y1/e1 (Ma 2005)
+        nu = min(max(1e-4, float(qkd_params.mu_decoy)), mu * 0.9)      # decoy strictly weaker than the signal
+        y0 = 2.0 * params.dark_count_prob                             # background yield (two detectors)
+        sift_ratio = p * p + (1.0 - p) * (1.0 - p)                    # biased-basis reconciliation ratio
+        skr, _e_mu, _e1 = _decoy_secure_fraction(
+            eta, mu, nu, intrinsic_qber(params), y0, error_correction_eff, sift_ratio)
+        secure_bits = int(max(0.0, skr) * n_pulses)
 
     return QKDResult(
         sifted_bits=n_sift,

@@ -9,6 +9,10 @@
 *量子技術者_収益化戦略*
 # Copyrighted reference book (do not redistribute)
 references/The Business of Quantum Technologies.pdf
+# Large third-party research PDFs (Round 16, ~35 MB total) — cited in references/REFERENCES.md, not redistributed
+references/OptiQKD_*.pdf
+references/AML-QKD_*.pdf
+references/Information-Theoretic_Solutions_for_Seedless_QRNG_*.pdf
 # Commercial / monetization notes (kept local only — both the EN plan and JA workflow)
 MONETIZATION*.md
 

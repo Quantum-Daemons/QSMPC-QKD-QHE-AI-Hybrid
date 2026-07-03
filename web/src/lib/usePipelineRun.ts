@@ -44,9 +44,12 @@ export const makeDefaultParams = () => ({
   n_per_class: idsCfg().n_per_class,
   aml_transactions: dataCfg().aml_transactions,
   qubits: benchCfg().quantum_qubits,
+  qrng_eps_log2: qrngCfg().security_epsilon_log2,   // LHL extractor security 2^this (toeplitz/seedless)
   qsmpc_op: "",          // "" = use the use case's default
   prime: 0,              // 0 = use config default
   inference: "",         // "" = use the use case's default
+  qrng_post: qrngCfg().post_processing,             // "von_neumann" | "toeplitz" | "seedless"
+  qkd_protocol: qkdCfg().protocol,                  // "bb84" (decoy) | "e91" (CHSH) — OptiQKD model
 });
 
 export const DEFAULT_PARAMS = makeDefaultParams();
