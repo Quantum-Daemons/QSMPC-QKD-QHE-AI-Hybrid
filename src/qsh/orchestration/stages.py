@@ -56,13 +56,20 @@ class PQCHandshakeStage(Stage):
 
         # Quantum entropy source (simulated state-vector measurement, not hardware) — health + throughput.
         qc = get_config().qrng
-        qr = generate_quantum_bits(int(ctx.config.get("qrng_bits", qc.bits)), source="sim",
-                                   post_processing=ctx.config.get("qrng_post", qc.post_processing),
-                                   seed=ctx.config.get("seed", 0), health_alpha=qc.health_alpha)
+        qr = generate_quantum_bits(
+            int(ctx.config.get("qrng_bits", qc.bits)), source="sim",
+            post_processing=ctx.config.get("qrng_post", qc.post_processing),
+            seed=ctx.config.get("seed", 0), health_alpha=qc.health_alpha,
+            health_block_size=int(ctx.config.get("qrng_health_block", qc.health_block_size)),
+            epsilon_log2=int(ctx.config.get("qrng_eps_log2", qc.security_epsilon_log2)),
+            min_entropy_per_raw_bit=float(ctx.config.get("qrng_min_h", qc.min_entropy_per_raw_bit)))
         bus.metric("qrng_health_passed", 1 if qr.health.passed else 0, self.name)
         bus.metric("qrng_throughput_kbps", round(qr.throughput_bits_per_s / 1000, 1), self.name)
+        bus.metric("qrng_min_entropy_per_bit", round(qr.health.min_entropy_per_bit, 4), self.name)
         bus.log(f"QRNG (simulated quantum measurement): {qr.n_bits} bits, health "
-                f"{'PASS' if qr.health.passed else 'FAIL'} (monobit p={qr.health.monobit_p:.3f})", self.name)
+                f"{'PASS' if qr.health.passed else 'FAIL'} (monobit p={qr.health.monobit_p:.3f}, "
+                f"min-entropy {qr.health.min_entropy_per_bit:.3f} bit/bit, "
+                f"extractor={qr.post_processing})", self.name)
 
         kem_name = ctx.config.get("kem")
         recipient = reg.get("kem", kem_name)()
@@ -147,11 +154,13 @@ class OptiQKDStage(Stage):
                            method=ctx.config.get("qkd_opt_method", cfg.optimize_method),
                            n_samples=int(ctx.config.get("qkd_opt_samples", cfg.optimize_n_samples)),
                            n_pulses=int(ctx.config.get("qkd_opt_pulses", cfg.optimize_n_pulses)),
+                           protocol=ctx.config.get("qkd_protocol", cfg.protocol),
                            seed=ctx.config.get("seed", 0))
         bus.metric("qkd_skr_improvement_pct", round(res.improvement_pct, 1), self.name)
         bus.metric("qkd_optimized_skr", round(res.best_skr, 6), self.name)
         bus.metric("qkd_baseline_skr", round(res.baseline_skr, 6), self.name)
         bus.metric("qkd_optimized_qber", round(res.best_qber, 5), self.name)
+        bus.metric("qkd_convergence_evals", res.convergence_evals, self.name)
         ctx.artifacts["optiqkd"] = {
             "improvement_pct": round(res.improvement_pct, 1), "method": res.method, "n_evals": res.n_evals,
             "best_params": {"mu_signal": round(res.best_params.mu_signal, 3),

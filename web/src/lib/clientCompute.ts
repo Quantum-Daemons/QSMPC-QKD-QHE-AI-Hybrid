@@ -598,9 +598,11 @@ export function runClientPipeline(
         emit("log", stage, `hybrid KEM = ML-KEM-768 (+X25519) — agreement=${ok}`);
         // Quantum entropy source (simulated state-vector measurement, not hardware) — measured health + throughput.
         const qr = generateQuantumBits(Number(config.qrng_bits ?? qrngCfg().bits),
-          { source: "sim", postProcessing: String(config.qrng_post ?? qrngCfg().post_processing), seed });
+          { source: "sim", postProcessing: String(config.qrng_post ?? qrngCfg().post_processing),
+            epsilonLog2: Number(config.qrng_eps_log2 ?? qrngCfg().security_epsilon_log2), seed });
         metric(stage, "qrng_health_passed", qr.healthPassed ? 1 : 0);
         metric(stage, "qrng_throughput_kbps", r1(qr.throughputBitsPerSec / 1000));
+        metric(stage, "qrng_min_entropy_per_bit", r2(qr.minEntropyPerBit));
         emit("log", stage, `QRNG (simulated quantum measurement): ${qr.nBits} bits, health `
           + `${qr.healthPassed ? "PASS" : "FAIL"} (monobit p=${qr.monobitP.toFixed(3)}), `
           + `${r1(qr.throughputBitsPerSec / 1000)} kbit/s`);
@@ -617,11 +619,13 @@ export function runClientPipeline(
         metric(stage, "secure_key_bits", res.secureKeyBits);
         emit("log", stage, `BB84: QBER=${res.qber.toFixed(4)}, ${res.secureKeyBits} secure bits`);
         if (config.qkd_optimize) {   // AI-QKD parameter optimization (OptiQKD, WS1) — measured SKR gain
-          const opt = optimizeQKD(chan);
+          const opt = optimizeQKD(chan, String(config.qkd_protocol ?? qkdCfg().protocol));
           metric(stage, "qkd_skr_improvement_pct", r1(opt.improvementPct));
           metric(stage, "qkd_optimized_skr", Math.round(opt.bestSkr * 1e5) / 1e5);
+          metric(stage, "qkd_convergence_evals", opt.convergenceEvals);
           emit("log", stage, `OptiQKD (coordinate ascent): SKR +${r1(opt.improvementPct)}% vs default `
-            + `(basis p=${r2(opt.bestParams.basisProb)}, mu=${r2(opt.bestParams.muSignal)}; ${opt.nEvals} evals — simulated)`);
+            + `(basis p=${r2(opt.bestParams.basisProb)}, mu_signal=${r2(opt.bestParams.muSignal)}, `
+            + `mu_decoy=${r2(opt.bestParams.muDecoy)}; ${opt.nEvals} evals, converged in ${opt.convergenceEvals} — simulated)`);
         }
         break;
       }
@@ -635,10 +639,12 @@ export function runClientPipeline(
         (config as any)._satQber = res.qber;
         emit("log", stage, `free-space BB84: ${res.channelLossDb}dB loss, QBER=${res.qber.toFixed(4)}, ${res.secureKeyBits} bits`);
         if (config.qkd_optimize) {   // OptiQKD over the free-space channel — measured SKR gain
-          const opt = optimizeQKD(satChan);
+          const opt = optimizeQKD(satChan, String(config.qkd_protocol ?? qkdCfg().protocol));
           metric(stage, "qkd_skr_improvement_pct", r1(opt.improvementPct));
+          metric(stage, "qkd_convergence_evals", opt.convergenceEvals);
           emit("log", stage, `OptiQKD (free-space, coordinate ascent): SKR +${r1(opt.improvementPct)}% vs default `
-            + `(basis p=${r2(opt.bestParams.basisProb)}, mu=${r2(opt.bestParams.muSignal)}; ${opt.nEvals} evals — simulated)`);
+            + `(basis p=${r2(opt.bestParams.basisProb)}, mu_signal=${r2(opt.bestParams.muSignal)}, `
+            + `mu_decoy=${r2(opt.bestParams.muDecoy)}; ${opt.nEvals} evals, converged in ${opt.convergenceEvals} — simulated)`);
         }
         break;
       }
