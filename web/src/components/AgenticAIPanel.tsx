@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { type AgentRun, type Engine, hasWebGPU, runAgent, TFJS_MODELS, WEBLLM_MODELS } from "../lib/clientAI";
 import { clientSecureWrap, type McpResult } from "../lib/clientMcp";
+import { cryptoCfg } from "../lib/config";
 import { downloadJSON } from "../lib/export";
 
 // Reusable in-browser agentic-AI + quantum-safe MCP panel. A small LLM runs entirely client-side
@@ -50,6 +51,7 @@ export default function AgenticAIPanel({
   const [run, setRun] = useState<AgentRun | null>(null);
   const [mcp, setMcp] = useState<(McpResult & { echoedPayload: any }) | null>(null);
   const [mcpQkd, setMcpQkd] = useState(true);
+  const [combiner, setCombiner] = useState<string>(cryptoCfg().hybrid_combiner_mode ?? "hkdf");   // PQC+QKD key combiner
   const [gpu, setGpu] = useState(false);                 // genuine WebGPU (adapter obtainable), resolved async
   useEffect(() => { hasWebGPU().then(setGpu); }, []);
   const models = engine === "webllm" ? WEBLLM_MODELS : TFJS_MODELS;
@@ -70,7 +72,7 @@ export default function AgenticAIPanel({
     const m = await clientSecureWrap(
       { prompt: effectivePrompt, answer: r.text || r.note || "", engine: r.engine, model: r.model,
         usecase: usecase ?? null, run_context: ctxLine || null },
-      mcpQkd ? new Uint8Array(32).fill(0x71) : undefined, mcpToolName);
+      mcpQkd ? new Uint8Array(32).fill(0x71) : undefined, mcpToolName, combiner);
     setMcp(m); setBusy(false);
   };
 
@@ -108,6 +110,13 @@ export default function AgenticAIPanel({
           <label className="muted">
             <input type="checkbox" checked={mcpQkd} onChange={(e) => setMcpQkd(e.target.checked)} /> mix QKD key
           </label>
+          <label className="muted" htmlFor={`ai-combiner-${usecase ?? "std"}`}>Combiner</label>
+          <select id={`ai-combiner-${usecase ?? "std"}`} value={combiner} disabled={!mcpQkd}
+            onChange={(e) => setCombiner(e.target.value)}
+            title="PQC+QKD key combiner (crypto.hybrid_combiner_mode): HKDF = dual-PRF, computationally secure-if-either; Toeplitz+LHL = information-theoretic secure-if-either (keeps the min-entropy of whichever input holds). Applies when 'mix QKD key' is on; the derived-key fingerprint below changes with the choice.">
+            <option value="hkdf">HKDF (dual-PRF)</option>
+            <option value="its_toeplitz">Toeplitz+LHL (ITS · secure-if-either)</option>
+          </select>
         </div>
         {ctxLine && <div className="note" style={{ marginTop: 10, fontSize: 12 }}>🔗 {ctxLine}</div>}
         <textarea value={prompt} onChange={(e) => setPrompt(e.target.value)} rows={3}
@@ -148,6 +157,8 @@ export default function AgenticAIPanel({
                   <tr><td>session</td><td className="mono">{mcp.session}</td></tr>
                   <tr><td>tool</td><td className="mono">{mcpToolName}</td></tr>
                   <tr><td>KEM / QKD-mixed</td><td>{mcp.kem} / {String(mcp.qkd_mixed)}</td></tr>
+                  <tr><td>PQC+QKD combiner</td><td className="mono">{mcp.combiner}</td></tr>
+                  <tr><td>derived key fingerprint</td><td className="mono">{mcp.session_key_fp}</td></tr>
                   <tr><td>method</td><td className="mono">{mcp.method}</td></tr>
                   <tr><td>authenticated ({mcp.signature_alg})</td>
                     <td style={{ color: mcp.authenticated ? "var(--accent-2)" : "var(--danger)" }}>{String(mcp.authenticated)}</td></tr>
