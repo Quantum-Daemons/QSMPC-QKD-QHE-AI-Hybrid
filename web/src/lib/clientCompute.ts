@@ -3,11 +3,11 @@
 // QKD/QBER via quantumSim, private inference via onnxruntime-web, PSI via WebCrypto HMAC).
 // The security-score and quantum-advantage formulas mirror src/qsh/benchmark/{security,
 // quantum_advantage}.py so demo numbers track the server.
-import { ml_dsa65 } from "@noble/post-quantum/ml-dsa";
-import { ml_kem768 } from "@noble/post-quantum/ml-kem";
+import { ml_dsa65, ml_dsa87 } from "@noble/post-quantum/ml-dsa";
+import { ml_kem768, ml_kem1024 } from "@noble/post-quantum/ml-kem";
 import {
-  costPerOp, demoFeatureDim, genericArchitecture, medicalCnn, qkdCfg, qrngCfg, quantumAdvantageCfg,
-  securityScoringCfg, tierArchitectures, webCfg, workloadMultipliers,
+  benchCfg, costPerOp, dataCfg, demoFeatureDim, genericArchitecture, idsCfg, medicalCnn, qkdCfg, qrngCfg,
+  quantumAdvantageCfg, securityScoringCfg, tierArchitectures, webCfg, workloadMultipliers,
 } from "./config";
 import { encryptedLinear, warmFHE } from "./clientFHE";
 import { clientTrainScoreIDS } from "./clientIDS";
@@ -22,6 +22,9 @@ const r1 = (x: number) => Math.round(x * 10) / 10;
 const r2 = (x: number) => Math.round(x * 100) / 100;
 const argmax = (a: number[]) => a.reduce((bi, v, i, arr) => (v > arr[bi] ? i : bi), 0);
 const sleep = (ms: number) => new Promise((res) => setTimeout(res, ms));
+// small prime utilities for the QSMS secure-sum field Z_p (config.prime; 0 = auto-select a prime > the total)
+const isPrime = (n: number) => { if (n < 2) return false; for (let i = 2; i * i <= n; i++) if (n % i === 0) return false; return true; };
+const nextPrime = (n: number) => { let p = Math.max(2, Math.floor(n)); while (!isPrime(p)) p++; return p; };
 
 // --------------------------------------------------------------------------- //
 //  Security score (mirror of qsh/benchmark/security.py)
@@ -33,6 +36,29 @@ const KEM_CATEGORY: Record<string, number> = {
 export function kemCategory(kem?: string | null): number {
   return kem ? (KEM_CATEGORY[kem.toLowerCase()] ?? 3) : 3;
 }
+
+// Crypto-agility selectors threaded from the run config (KEM / signature) — so picking ml-kem-1024
+// (NIST cat-5) vs ml-kem-768 (cat-3) genuinely runs the larger KEM AND moves the security score, and
+// ml-dsa-87 vs ml-dsa-65 genuinely signs with the chosen level. Defaults track the config default kem/sig
+// (never a magic string): unknown/undefined → the cat-3 / level-65 default, matching DEMO_CRYPTO.defaults.
+export function kemName(config: any): string {
+  return String(config?.kem ?? "ml-kem-768+x25519");
+}
+export function kemImpl(kem?: string) {
+  return kem && kem.includes("1024") ? ml_kem1024 : ml_kem768;
+}
+export function sigImpl(sig?: string) {
+  return sig && sig.includes("87")
+    ? { fn: ml_dsa87, name: "ML-DSA-87" }
+    : { fn: ml_dsa65, name: "ML-DSA-65" };
+}
+// The benchmark rows' security score reflects the run's chosen KEM (cat-3/cat-5) and whether QKD is mixed
+// in (config.qkd === "pqc-only" drops the ≥256-bit BB84 key ⇒ no defence-in-depth bonus). Both are
+// crypto-agility selections, so swapping them visibly moves the surfaced score.
+function secFromConfig(config: any): { kem?: string; qkdBits?: number | null } {
+  return { kem: kemName(config), qkdBits: config?.qkd === "pqc-only" ? 0 : 256 };
+}
+const qubitsOf = (config: any) => Number(config?.qubits ?? benchCfg().quantum_qubits);
 
 export interface SecOpts {
   securityModel: string;
@@ -290,7 +316,8 @@ export async function realClientHybrid(features: number[], u: () => number): Pro
 
 // MPC-FHE row — uses REAL measured client-side FHE/MPC when ``measured`` is supplied, else a representative
 // cost model (e.g. the standalone clientBenchmark with no live run). Shared by clientBenchmark + assembleBenchmark.
-function mpcFheRow(usecase: string | undefined, workload: string, modelSize: string, measured?: MeasuredHybrid | null) {
+function mpcFheRow(usecase: string | undefined, workload: string, modelSize: string, measured?: MeasuredHybrid | null,
+  sec?: { kem?: string; qkdBits?: number | null }) {
   const { dims, label, params } = archDims(usecase, modelSize, workload);
   const cost = costPerOp();
   let fhe: number, mpc: number, comm: number, backend: string, ctpt: number, projected: boolean, device: string;
@@ -321,7 +348,8 @@ function mpcFheRow(usecase: string | undefined, workload: string, modelSize: str
     t_gate_count: null, qubits: null,
     security_model: "computational (RLWE) + secret-sharing MPC",
     security_score: securityScore({
-      securityModel: "computational (RLWE / FIPS-203 family)", kem: "ml-kem-768+x25519",
+      securityModel: "computational (RLWE / FIPS-203 family)", kem: sec?.kem,
+      qkdKeyBits: sec?.qkdBits,
     }).total,
     device,
   };
@@ -331,12 +359,17 @@ function mpcFheRow(usecase: string | undefined, workload: string, modelSize: str
 // `latency_ms` is the REAL-measured wall-clock of the simulation, `t_gate_count`/`qubits` are COUNTED from
 // the actual circuit, and ct/pt = 1.0 is the QOTP perfect-hiding property (Rate-1 QFHE's ~1.3 is the
 // classical-key-included literature figure). A state-vector SIMULATION, not quantum hardware.
-function qsmpcFheRow(workload: string, modelSize: string, u: () => number, samples = 4, scale = 1) {
-  qotpQcnnInfer(Array.from({ length: 8 }, () => u() * 2 - 1), 0);   // warm-up (drop the JIT spike)
-  let last = qotpQcnnInfer(Array.from({ length: 8 }, () => u() * 2 - 1), 1);
+function qsmpcFheRow(workload: string, modelSize: string, u: () => number, samples = 4, scale = 1,
+  nQubits = benchCfg().quantum_qubits, sec?: { kem?: string; qkdBits?: number | null }) {
+  // qubit count is a run-config knob (config.qubits) — it drives the 2^n state-vector size, the counted
+  // T-gate total (n per conv round) and the measured latency, so the QCNN-qubits control genuinely moves
+  // the quantum row (clamped >=2 for a valid circuit).
+  const nq = Math.max(2, Math.round(nQubits));
+  qotpQcnnInfer(Array.from({ length: nq }, () => u() * 2 - 1), 0, nq);   // warm-up (drop the JIT spike)
+  let last = qotpQcnnInfer(Array.from({ length: nq }, () => u() * 2 - 1), 1, nq);
   let total = 0;
   for (let i = 0; i < samples; i++) {
-    last = qotpQcnnInfer(Array.from({ length: 8 }, () => u() * 2 - 1), i + 2);
+    last = qotpQcnnInfer(Array.from({ length: nq }, () => u() * 2 - 1), i + 2, nq);
     total += last.latencyMs;
   }
   // measured per-inference state-vector sim (fixed 8-qubit reference circuit), scaled to the selected
@@ -350,8 +383,8 @@ function qsmpcFheRow(workload: string, modelSize: string, u: () => number, sampl
     t_gate_count: last.tGates, qubits: last.qubits,   // counted from the actual gate list
     security_model: "information-theoretic (QOTP perfect hiding)",
     security_score: securityScore({
-      securityModel: "information-theoretic (QOTP perfect hiding)", kem: "ml-kem-768+x25519",
-      qkdKeyBits: 256, qber: 0.0128, leakageBitsPerWeight: 0.1,
+      securityModel: "information-theoretic (QOTP perfect hiding)", kem: sec?.kem,
+      qkdKeyBits: sec?.qkdBits === undefined ? 256 : sec.qkdBits, qber: 0.0128, leakageBitsPerWeight: 0.1,
     }).total,
     device: "cpu-sim", simulated: true,
   };
@@ -382,8 +415,9 @@ export function assembleBenchmark(
 ) {
   const modelSize = config?.model_size ?? "medium";
   const workload = config?.workload ?? "linear";
+  const sec = secFromConfig(config);                         // chosen KEM / QKD-on → security score
   const u = rng(7);
-  const q = qsmpcFheRow(workload, modelSize, u, 6, benchScale(usecase, modelSize, workload));
+  const q = qsmpcFheRow(workload, modelSize, u, 6, benchScale(usecase, modelSize, workload), qubitsOf(config), sec);
   const clientComputeMs = opts?.metrics?.client_compute_ms ?? opts?.stageMs?.private_inference ?? null;
   if (!INFERENCE_USECASES.has(usecase)) {
     return { workload, model_size: modelSize, results: [q], advantage: null, live: true,
@@ -391,7 +425,7 @@ export function assembleBenchmark(
   }
   // use the REAL measured client-side FHE/MPC from the run (node-seal CKKS + secret-sharing) when present
   const measured: MeasuredHybrid | null = opts?.artifacts?._measured_hybrid ?? null;
-  const c = mpcFheRow(usecase, workload, modelSize, measured);
+  const c = mpcFheRow(usecase, workload, modelSize, measured, sec);
   return { workload, model_size: modelSize, results: [c, q], advantage: quantumAdvantage(c, q),
     live: true, client_compute_ms: clientComputeMs, measured: !!measured };
 }
@@ -606,13 +640,18 @@ export function runClientPipeline(
         break;
       }
       case "pqc_handshake": {
-        const bob = ml_kem768.keygen();
-        const e = ml_kem768.encapsulate(bob.publicKey);
-        const rec = ml_kem768.decapsulate(e.cipherText, bob.secretKey);
+        // hybrid KEM selected via crypto-agility (config.kem): ml-kem-768 (cat-3) or ml-kem-1024 (cat-5)
+        // genuinely runs the chosen ML-KEM parameter set; the +X25519 half is the classical hedge (label).
+        const kemSel = kemName(config);
+        const kem = kemImpl(kemSel);
+        const bob = kem.keygen();
+        const e = kem.encapsulate(bob.publicKey);
+        const rec = kem.decapsulate(e.cipherText, bob.secretKey);
         const ok = e.sharedSecret.every((b, i) => b === rec[i]);
         (config as any)._sessionKey = e.sharedSecret.slice(0, 32);
         metric(stage, "session_key_bits", 256);
-        emit("log", stage, `hybrid KEM = ML-KEM-768 (+X25519) — agreement=${ok}`);
+        metric(stage, "kem_category", kemCategory(kemSel));
+        emit("log", stage, `hybrid KEM = ${kemSel} (NIST cat-${kemCategory(kemSel)}) — agreement=${ok}`);
         // Quantum entropy source (simulated state-vector measurement, not hardware) — measured health + throughput.
         const qr = generateQuantumBits(Number(config.qrng_bits ?? qrngCfg().bits),
           { source: "sim", postProcessing: String(config.qrng_post ?? qrngCfg().post_processing),
@@ -636,7 +675,8 @@ export function runClientPipeline(
         metric(stage, "secure_key_bits", res.secureKeyBits);
         emit("log", stage, `BB84: QBER=${res.qber.toFixed(4)}, ${res.secureKeyBits} secure bits`);
         if (config.qkd_optimize) {   // AI-QKD parameter optimization (OptiQKD, WS1) — measured SKR gain
-          const opt = optimizeQKD(chan, String(config.qkd_protocol ?? qkdCfg().protocol));
+          const opt = optimizeQKD(chan, String(config.qkd_protocol ?? qkdCfg().protocol),
+            Number(config.qkd_opt_samples ?? qkdCfg().optimize_n_samples));
           metric(stage, "qkd_skr_improvement_pct", r1(opt.improvementPct));
           metric(stage, "qkd_optimized_skr", Math.round(opt.bestSkr * 1e5) / 1e5);
           metric(stage, "qkd_convergence_evals", opt.convergenceEvals);
@@ -656,7 +696,8 @@ export function runClientPipeline(
         (config as any)._satQber = res.qber;
         emit("log", stage, `free-space BB84: ${res.channelLossDb}dB loss, QBER=${res.qber.toFixed(4)}, ${res.secureKeyBits} bits`);
         if (config.qkd_optimize) {   // OptiQKD over the free-space channel — measured SKR gain
-          const opt = optimizeQKD(satChan, String(config.qkd_protocol ?? qkdCfg().protocol));
+          const opt = optimizeQKD(satChan, String(config.qkd_protocol ?? qkdCfg().protocol),
+            Number(config.qkd_opt_samples ?? qkdCfg().optimize_n_samples));
           metric(stage, "qkd_skr_improvement_pct", r1(opt.improvementPct));
           metric(stage, "qkd_convergence_evals", opt.convergenceEvals);
           emit("log", stage, `OptiQKD (free-space, coordinate ascent): SKR +${r1(opt.improvementPct)}% vs default `
@@ -694,18 +735,33 @@ export function runClientPipeline(
         // genomics defaults to QSMS secure summation; others to keyed-hash PSI (matches the backend)
         const op = config.qsmpc_op || (usecase === "genomics" ? "sum" : "psi");
         if (op === "sum") {
+          // QSMS additive secret-sharing over a prime field Z_p (config.prime; 0/auto = smallest prime above
+          // the max possible total, so the true sum is preserved). Each party masks its secret; the masks
+          // cancel mod p on reconstruction — a smaller p genuinely wraps the sum (demonstrates the field).
           const secrets = Array.from({ length: 5 }, () => Math.floor(u() * 100));
-          const total = secrets.reduce((a, b) => a + b, 0);
+          const rawTotal = secrets.reduce((a, b) => a + b, 0);
+          const p = Number(config.prime) > 1 ? Math.floor(Number(config.prime)) : nextPrime(rawTotal + 1);
+          const shares = secrets.map((s) => { const mask = Math.floor(u() * p); return [((s - mask) % p + p) % p, mask % p]; });
+          const total = shares.reduce((acc, [s0, s1]) => (acc + s0 + s1) % p, 0) % p;
           metric(stage, "secure_sum", total);
-          emit("log", stage, `QSMS secure summation = ${total} (5 parties)`);
+          metric(stage, "qsms_prime", p);
+          emit("log", stage, `QSMS secure summation = ${total} over Z_${p} (5 parties, additive shares mod p)`);
         } else {
-          const shared = Array.from({ length: 12 }, () => `acct-${Math.floor(u() * 1e6)}`);
-          const a = [...shared, ...Array.from({ length: 40 }, () => `a-${Math.floor(u() * 1e6)}`)];
-          const b = [...shared, ...Array.from({ length: 40 }, () => `b-${Math.floor(u() * 1e6)}`)];
+          // finance PSI: the counterparty set size scales with the transaction volume (config.aml_transactions)
+          // — more transactions ⇒ larger PSI sets ⇒ more HMAC compute + a larger intersection (bounded for
+          // demo responsiveness; the cap is an honest perf guard, not a silent fallback).
+          const nTx = Number(config.aml_transactions);
+          const txv = Number.isFinite(nTx) && nTx > 0 ? nTx : dataCfg().aml_transactions;
+          const perParty = usecase === "finance_aml" ? Math.max(20, Math.min(2000, Math.round(txv / 20))) : 40;
+          const nShared = Math.max(4, Math.round(perParty * 0.3));
+          const shared = Array.from({ length: nShared }, () => `acct-${Math.floor(u() * 1e6)}`);
+          const a = [...shared, ...Array.from({ length: perParty }, () => `a-${Math.floor(u() * 1e6)}`)];
+          const b = [...shared, ...Array.from({ length: perParty }, () => `b-${Math.floor(u() * 1e6)}`)];
           const psi = await keyedHashPSI(a, b, key);
           artifacts.psi_intersection = psi.intersection;
           metric(stage, "psi_intersection_size", psi.intersection_size);
-          emit("log", stage, `PSI complete: |A∩B|=${psi.intersection_size}`);
+          metric(stage, "psi_set_size", a.length);
+          emit("log", stage, `PSI complete: |A∩B|=${psi.intersection_size} over ${a.length}x${b.length} accounts`);
         }
         break;
       }
@@ -733,12 +789,15 @@ export function runClientPipeline(
       }
       case "qml_ids": {
         // genuine in-browser IDS: softmax logistic trained + scored on the Al-Kuwari-2026 attack signatures.
-        const ids = clientTrainScoreIDS(seed);
+        // Training volume per class = config.n_per_class (Parameters panel), so it genuinely shifts acc/F1.
+        const ids = clientTrainScoreIDS(seed, Number(config.n_per_class ?? idsCfg().n_per_class));
         metric(stage, "ids_binary_f1", r2(ids.binaryF1));
         metric(stage, "ids_accuracy", r2(ids.accuracy));
         metric(stage, "ids_params", ids.nParams);
+        metric(stage, "ids_train_per_class", Number(config.n_per_class ?? idsCfg().n_per_class));
         emit("log", stage, `QML-IDS (client, softmax logistic on Al-Kuwari-2026 signatures): `
-          + `attack-F1=${r2(ids.binaryF1)}, acc=${r2(ids.accuracy)} — measured on ${ids.nTest} held-out samples`);
+          + `attack-F1=${r2(ids.binaryF1)}, acc=${r2(ids.accuracy)} — measured on ${ids.nTest} held-out `
+          + `samples (${config.n_per_class ?? idsCfg().n_per_class}/class)`);
         break;
       }
       case "private_inference": {
@@ -777,13 +836,30 @@ export function runClientPipeline(
         } else {
           // honest last resort: node-seal genuinely unavailable here (e.g. no WASM) — representative figure, logged
           artifacts.fhe_prediction = inf.prediction;
-          const split = mpcFheRow(usecase, config.workload ?? "linear", config.model_size ?? "medium");
+          const split = mpcFheRow(usecase, config.workload ?? "linear", config.model_size ?? "medium", null, secFromConfig(config));
           metric(stage, "fhe_max_abs_error", costPerOp().demo_max_abs_error);
           metric(stage, "fhe_linear_ms", split.fhe_linear_ms);
           metric(stage, "mpc_nonlinear_ms", split.mpc_nonlinear_ms);
           metric(stage, "mpc_comm_kb", split.mpc_comm_kb);
           emit("log", stage, `private inference: class=${inf.prediction}; in-browser CKKS unavailable here — `
             + `representative split ${split.fhe_linear_ms}/${split.mpc_nonlinear_ms} ms, client compute ${clientMs} ms`);
+        }
+        // Inference backend selection (config.inference): "qcnn" routes the reported class through the
+        // quantum QOTP+QCNN readout; "ckks"/default keeps the CKKS(FHE)+MPC path. Both are computed for the
+        // comparison — this selects which one is surfaced as the primary prediction (genuinely changes it).
+        const inferBackend = String(config.inference || "ckks");
+        if (inferBackend === "qcnn") {
+          const nq = qubitsOf(config);
+          const qc = qotpQcnnInfer(feats.slice(0, nq), seed, nq);
+          artifacts.primary_inference = { backend: "qcnn", class: qc.cls, t_gates: qc.tGates, qubits: qc.qubits };
+          metric(stage, "primary_inference_class", qc.cls);
+          emit("log", stage, `inference backend = QCNN (QHE): class=${qc.cls} `
+            + `(${qc.tGates} T-gates on ${qc.qubits} qubits, state-vector sim)`);
+        } else {
+          const cls = artifacts.fhe_prediction ?? inf.prediction;
+          artifacts.primary_inference = { backend: "ckks", class: cls };
+          metric(stage, "primary_inference_class", cls);
+          emit("log", stage, `inference backend = CKKS (FHE): class=${cls}`);
         }
         // XAI: exact linear-SHAP attribution (faithful linear surrogate), signed downstream
         const names = realIn?.names ?? FEATURE_NAMES[usecase] ?? Array.from({ length: 8 }, (_, i) => `feature_${i}`);
@@ -798,9 +874,10 @@ export function runClientPipeline(
         // run the QSMPC-FHE alternative (real client QCNN readout) so the benchmark comparison +
         // quantum advantage are produced by an actual run — mirrors the backend QuantumComparisonStage.
         const ms = config.model_size ?? "medium", wl = config.workload ?? "linear";
+        const sec = secFromConfig(config);
         const isInf = ["finance_aml", "medical_fl", "genomics"].includes(usecase);
-        const qrow = qsmpcFheRow(wl, ms, rng(7), 6);
-        const adv = isInf ? quantumAdvantage(mpcFheRow(usecase, wl, ms), qrow) : null;
+        const qrow = qsmpcFheRow(wl, ms, rng(7), 6, 1, qubitsOf(config), sec);
+        const adv = isInf ? quantumAdvantage(mpcFheRow(usecase, wl, ms, null, sec), qrow) : null;
         if (adv) metric(stage, "quantum_advantage_score", adv.score);
         metric(stage, "qsmpc_t_gates", qrow.t_gate_count);
         emit("log", stage, `QSMPC-FHE comparison (QOTP+QCNN, ${qrow.t_gate_count} T-gates)`
@@ -813,17 +890,21 @@ export function runClientPipeline(
         break;
       }
       case "sign_result": {
-        const sk = ml_dsa65.keygen(crypto.getRandomValues(new Uint8Array(32)));
+        // signature algorithm selected via crypto-agility (config.sig): ML-DSA-65 or the larger ML-DSA-87 —
+        // genuinely signs with the chosen level (ML-DSA-87 produces a visibly larger signature).
+        const dsa = sigImpl(String(config.sig ?? "ml-dsa-65"));
+        const sk = dsa.fn.keygen(crypto.getRandomValues(new Uint8Array(32)));
         const msg = new TextEncoder().encode(JSON.stringify({ usecase }));
-        const sig = ml_dsa65.sign(sk.secretKey, msg);
-        const ok = ml_dsa65.verify(sk.publicKey, msg, sig);
+        const sig = dsa.fn.sign(sk.secretKey, msg);
+        const ok = dsa.fn.verify(sk.publicKey, msg, sig);
         artifacts.result_signature = {
-          algorithm: "ML-DSA-65", signature_bytes: sig.length,
+          algorithm: dsa.name, signature_bytes: sig.length,
           signature_hex_prefix: [...sig.slice(0, 12)].map((b) => b.toString(16).padStart(2, "0")).join(""),
           verified: ok,
         };
         metric(stage, "signature_verified", ok ? 1 : 0);
-        emit("log", stage, `run summary signed with ML-DSA-65 (verified=${ok})`);
+        metric(stage, "signature_bytes", sig.length);
+        emit("log", stage, `run summary signed with ${dsa.name} (${sig.length} B, verified=${ok})`);
         break;
       }
     }
