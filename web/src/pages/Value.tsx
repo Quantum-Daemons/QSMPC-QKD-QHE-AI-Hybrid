@@ -37,7 +37,7 @@ export default function Value() {
         <div className="card"><h3>Regulatory eligibility</h3><p>PQC-first hybrid + crypto-agility + XAI audit trails position bids for CNSA 2.0 / FIPS-aligned procurement that non-compliant vendors can't enter.</p></div>
         <div className="card"><h3>Loss avoidance</h3><p>QML-IDS + QKD reduce the breach probability for long-retention data; the hybrid channel removes HNDL exposure.</p></div>
         <div className="card"><h3>New privacy-preserving services</h3><p>Cross-bank AML PSI, federated medical models, confidential genomics, and free-space <b>satellite QKD/QSDC</b> telemetry — revenue from data and links that previously couldn't be combined or trusted.</p></div>
-        <div className="card"><h3>Operational savings</h3><p>AI-managed QKD/PQC switching automates calibration and failover; one config change migrates algorithms.</p></div>
+        <div className="card"><h3>Operational savings</h3><p><b>OptiQKD</b> (AI-tuned decoy/basis parameters — a measured &gt;20% key-rate gain with a convergence metric) automates QKD calibration and failover; a <b>QRNG</b> entropy source (min-entropy-bounded) plus a config-gated PQC+QKD "secure-if-either" combiner harden the key material; one config change migrates algorithms.</p></div>
       </div>
 
       <div className="note" style={{ marginTop: 24 }}>
