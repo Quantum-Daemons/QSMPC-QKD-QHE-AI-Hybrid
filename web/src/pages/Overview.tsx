@@ -19,8 +19,8 @@ export default function Overview() {
       <h2 style={{ marginTop: 32 }}>The four workstreams</h2>
       <div className="grid cols-2">
         <div className="card">
-          <h3>WS1 · AI-QKD — parameter optimization</h3>
-          <p>BB84/decoy-state simulation with QBER/SKR telemetry; ML (RF/XGBoost, LSTM/TCN, DRL) tunes the control plane. Eavesdropper detection via QBER inflation.</p>
+          <h3>WS1 · AI-QKD — parameter optimization + entropy</h3>
+          <p>BB84 <b>two-intensity decoy-state</b> (+ a selectable <b>E91/CHSH</b> protocol) with QBER/SKR telemetry; <b>OptiQKD</b> (scikit-learn surrogate + gradient-free search) tunes decoy/basis params to raise the secret-key rate &gt;20% with a convergence metric. A <b>QRNG</b> entropy source (state-vector measurement + SP 800-90B min-entropy + Leftover-Hash-Lemma extractor) seeds the key material. Eavesdropper detection via QBER inflation.</p>
         </div>
         <div className="card">
           <h3>WS2 · QML-IDS — intrusion detection</h3>
@@ -40,14 +40,16 @@ export default function Overview() {
       <div className="card">
         <div className="pill-row" style={{ fontSize: 14 }}>
           <span className="tag">data</span> →
+          <span className="tag deep">QRNG entropy</span> →
           <span className="tag deep">PQC handshake (ML-KEM + X25519)</span> →
-          <span className="tag deep">QKD key agreement (BB84)</span> →
+          <span className="tag deep">QKD key agreement (BB84 decoy / E91)</span> →
           <span className="tag deep">QSMPC compute (PSI / secure sum)</span> →
           <span className="tag scaffold">QHE/FHE private inference</span> →
           <span className="tag">result + artifacts</span>
         </div>
         <p>Every algorithm is swappable at runtime (crypto-agility): ML-KEM ↔ hybrid,
-          QKD ↔ PQC-only, TenSEAL ↔ OpenFHE. Open the{" "}
+          QKD ↔ PQC-only (BB84 ↔ E91), TenSEAL ↔ OpenFHE, and the PQC+QKD key combiner
+          (HKDF ↔ information-theoretic "secure-if-either"). Open the{" "}
           <a href="/orchestration">E2E Orchestration</a> page to run it live.</p>
       </div>
 

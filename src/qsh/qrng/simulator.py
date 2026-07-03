@@ -37,6 +37,7 @@ class QRNGResult:
     health: HealthReport
     throughput_bits_per_s: float
     simulated: bool
+    extraction_rate: float = 1.0    # output bits / raw bits consumed (1.0 for "none"; <1 after debias/extract)
 
 
 def measure_plus_qubits(n_bits: int, *, seed: int | None = None) -> np.ndarray:
@@ -54,13 +55,34 @@ def von_neumann(bits: np.ndarray) -> np.ndarray:
     return pairs[keep, 0]
 
 
-def toeplitz_extract(bits: np.ndarray, out_len: int, *, seed: int | None = None) -> np.ndarray:
-    """Toeplitz-hash randomness extractor: out = T @ bits (mod 2), T a random Toeplitz matrix."""
+def lhl_output_length(min_entropy_bits: float, epsilon_log2: int) -> int:
+    """Safe extractor output length by the (Quantum) Leftover-Hash-Lemma (Giestinhas & Spiller 2026):
+
+    ``out <= H_min(input) - 2*log2(1/eps) + 2`` with ``eps = 2**epsilon_log2``. Replaces the old fixed
+    ``m//2`` rate with an information-theoretic, security-parameterised bound (no hardcoded rate).
+    """
+    return max(1, int(np.floor(min_entropy_bits - 2.0 * float(-epsilon_log2) + 2.0)))
+
+
+def toeplitz_extract(bits: np.ndarray, out_len: int, *, seed: int | None = None,
+                     toeplitz_bits: np.ndarray | None = None) -> np.ndarray:
+    """Toeplitz-hash (universal-2) randomness extractor: out = T @ bits (mod 2).
+
+    ``T`` is fixed by its first row+column; those defining bits come from an independent second source
+    (``toeplitz_bits`` -> the seedless two-source construction) or, if None, a PRG seeded with ``seed``.
+    Set ``out_len`` from :func:`lhl_output_length` for an information-theoretic guarantee.
+    """
     b = np.asarray(bits).astype(np.int64).ravel()
     m = b.size
-    out_len = max(1, min(out_len, m // 2))
-    rng = np.random.default_rng(seed)
-    tvec = rng.integers(0, 2, out_len + m - 1)            # a Toeplitz matrix is fixed by its first row+col
+    out_len = max(1, min(int(out_len), m))                # cannot output more bits than the input carries
+    need_tvec = out_len + m - 1                           # a Toeplitz matrix is fixed by its first row+col
+    if toeplitz_bits is not None:
+        tvec = np.asarray(toeplitz_bits).astype(np.int64).ravel()
+        if tvec.size < need_tvec:
+            raise ValueError(f"toeplitz_bits too short: {tvec.size} < {need_tvec}")
+        tvec = tvec[:need_tvec]
+    else:
+        tvec = np.random.default_rng(seed).integers(0, 2, need_tvec)
     out = np.empty(out_len, dtype=np.int64)
     for i in range(out_len):
         out[i] = int(np.dot(tvec[i : i + m], b) & 1)
@@ -70,14 +92,16 @@ def toeplitz_extract(bits: np.ndarray, out_len: int, *, seed: int | None = None)
 def _raw_needed(n_bits: int, post_processing: str) -> int:
     if post_processing == "von_neumann":
         return 5 * n_bits + 16       # VN keeps ~1/4 of raw bits -> over-provision
-    if post_processing == "toeplitz":
-        return 2 * n_bits + 16
+    if post_processing in ("toeplitz", "seedless"):
+        return 2 * n_bits + 16       # over-provision so the LHL-bounded output still reaches n_bits
     return n_bits
 
 
 def generate_quantum_bits(n_bits: int = 4096, *, source: str = "sim",
                           post_processing: str = "von_neumann", seed: int | None = None,
-                          anu_opt_in: bool = False, health_alpha: float = 0.01) -> QRNGResult:
+                          anu_opt_in: bool = False, health_alpha: float = 0.01,
+                          health_block_size: int = 128, epsilon_log2: int = -40,
+                          min_entropy_per_raw_bit: float = 0.9) -> QRNGResult:
     """Generate ``n_bits`` post-processed quantum-random bits + a health report + measured throughput.
 
     ``source="sim"`` (default, offline) uses the state-vector measurement above; ``source="anu"``
@@ -99,15 +123,27 @@ def generate_quantum_bits(n_bits: int = 4096, *, source: str = "sim",
         raw = measure_plus_qubits(need, seed=seed)
         simulated = True
 
+    raw_consumed = int(raw.size)
     if post_processing == "von_neumann":
         proc = von_neumann(raw)
-    elif post_processing == "toeplitz":
-        proc = toeplitz_extract(raw, out_len=len(raw) // 2, seed=seed)
+    elif post_processing in ("toeplitz", "seedless"):
+        # output length from the Leftover-Hash-Lemma bound (no fixed m//2 rate); eps + min-entropy from config
+        out_len = lhl_output_length(min_entropy_per_raw_bit * raw.size, epsilon_log2)
+        if post_processing == "seedless":
+            # a second, independent |+> draw defines the Toeplitz matrix (two-source construction). The seed
+            # source is the simulator even when source='anu', so it stays offline.
+            raw2 = measure_plus_qubits(out_len + raw.size - 1, seed=(None if seed is None else seed + 1))
+            proc = toeplitz_extract(raw, out_len=out_len, toeplitz_bits=raw2)
+            raw_consumed += int(raw2.size)
+        else:
+            proc = toeplitz_extract(raw, out_len=out_len, seed=seed)
     else:
         proc = raw
     bits = proc[:n_bits]
     dt = max(time.perf_counter() - t0, 1e-9)
     return QRNGResult(
         bits=bits, n_bits=int(bits.size), source=source, post_processing=post_processing,
-        raw_bits_consumed=int(raw.size), health=health_suite(bits, alpha=health_alpha),
-        throughput_bits_per_s=float(bits.size) / dt, simulated=simulated)
+        raw_bits_consumed=raw_consumed,
+        health=health_suite(bits, alpha=health_alpha, block_size=health_block_size),
+        throughput_bits_per_s=float(bits.size) / dt, simulated=simulated,
+        extraction_rate=float(bits.size) / max(1, raw_consumed))

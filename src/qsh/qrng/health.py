@@ -23,6 +23,8 @@ class HealthReport:
     block_frequency_p: float
     passed: bool
     alpha: float
+    min_entropy_per_bit: float = 0.0   # SP 800-90B most-common-value estimate: bits of min-entropy per output bit
+    min_entropy_bits: float = 0.0      # = min_entropy_per_bit * n (total estimated min-entropy)
 
 
 def _monobit(bits: np.ndarray) -> float:
@@ -61,11 +63,33 @@ def _block_frequency(bits: np.ndarray, block_size: int) -> float:
     return float(gammaincc(n_blocks / 2.0, chi_sq / 2.0))
 
 
+# 99% one-sided confidence Z for the SP 800-90B most-common-value bound (intentionally fixed spec constant).
+_MCV_Z = 2.5758293035489004
+
+
+def _min_entropy_mcv(bits: np.ndarray) -> float:
+    """SP 800-90B (6.3.1) most-common-value min-entropy estimate: bits of min-entropy per bit.
+
+    Uses the 99% upper confidence bound on the most-common-value probability ``p_max`` (so a perfectly
+    unbiased stream yields ~1.0 and a biased stream less) -> a conservative, honest entropy read that
+    bridges the empirical p-value tests to the information-theoretic extractor bound (:func:`lhl_output_length`).
+    """
+    n = int(bits.size)
+    if n == 0:
+        return 0.0
+    ones = int(np.count_nonzero(bits))
+    p_hat = max(ones, n - ones) / n
+    p_upper = min(1.0, p_hat + _MCV_Z * float(np.sqrt(p_hat * (1.0 - p_hat) / n)))
+    return float(-np.log2(p_upper)) if p_upper > 0 else 0.0
+
+
 def health_suite(bits, *, alpha: float = 0.01, block_size: int = 128) -> HealthReport:
-    """Run the monobit + runs + block-frequency tests; pass iff every p-value >= alpha."""
+    """Run the monobit + runs + block-frequency tests + a min-entropy estimate; pass iff every p-value >= alpha."""
     b = np.asarray(bits).astype(np.int64).ravel()
     mp = _monobit(b)
     rp = _runs(b)
     bp = _block_frequency(b, block_size)
+    h = _min_entropy_mcv(b)
     passed = (mp >= alpha) and (rp >= alpha) and (bp >= alpha)
-    return HealthReport(monobit_p=mp, runs_p=rp, block_frequency_p=bp, passed=passed, alpha=alpha)
+    return HealthReport(monobit_p=mp, runs_p=rp, block_frequency_p=bp, passed=passed, alpha=alpha,
+                        min_entropy_per_bit=h, min_entropy_bits=h * float(b.size))

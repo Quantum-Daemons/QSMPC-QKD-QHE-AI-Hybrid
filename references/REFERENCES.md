@@ -6,6 +6,21 @@ paper to the **workstream (WS)** it informs, the **module** that implements/uses
 
 > Workstreams: **WS1** AI-QKD (parameter optimization) · **WS2** QML-IDS · **WS3** QSMPC×QKD ·
 > **WS4** QHE×AI. Cross-cutting: PQC-first hybrid, crypto-agility, XAI.
+>
+> `[R]` = PDF bundled in this folder. `[arXiv]` = not bundled (large/third-party — fetch from the arXiv id).
+
+---
+
+## WS1 — AI-QKD (real-time parameter optimization) + entropy (QRNG)
+
+- **OptiQKD: A Machine Learning-Optimized Framework for Real-Time Parameter Tuning in QKD** — Mohamed, Kaldari & Al-Kuwari, Qatar Center for Quantum Computing (HBKU), arXiv:2603.04192v1 [quant-ph], 2026 `[arXiv]`
+  → protocol-agnostic **TCN + RL (PPO)** tuning of BB84 / E91 / COW parameters; reports **median SKR +20–30%**, QBER 3.0%→1.5%. Grounds `src/qsh/qkd/optimize.py` — a deterministic, offline-safe **sklearn-surrogate + coordinate-ascent** analogue over the two-intensity decoy-state BB84 model — and the E91/CHSH model `src/qsh/qkd/e91.py`. Our measured improvement (>20%) matches the paper's target; honest scope: a simulation (not deployed QKD), gradient-free (no RL/torch).
+
+- **AML-QKD: Adaptive Machine Learning Framework for Real-time Parameter Tuning in QKD** — Mohamed, Kaldari & Al-Kuwari (HBKU), arXiv:2603.04192v2 [quant-ph], 2026 (extends OptiQKD v1 with a QRL E91 path, +29.2% throughput; median SKR +14–25%) `[arXiv]`
+  → same reuse; the two-intensity decoy `mu_decoy` single-photon bound (Ma-Qi-Zhao-Lo 2005) + the convergence metric in `optimize.py` are the concrete stand-ins for the papers' adaptive-tuning theme.
+
+- **Information-Theoretic Solutions for Seedless QRNG Bootstrapping and Hybrid PQC-QKD Key Combination** — Giestinhas & Spiller, University of York, arXiv:2603.26907v2 [quant-ph], 2026 `[arXiv]`
+  → **Quantum Leftover Hash Lemma** strong (Toeplitz / universal-2) extractors: (1) **seedless QRNG bootstrapping** from two independent entropy sources; (2) a **"secure-if-either"** hybrid PQC-QKD key combiner (better than XOR; PQC modeled as HILL entropy). Grounds the Round-16 QRNG/transport upgrade: `src/qsh/qrng/simulator.py` (LHL-bounded Toeplitz output + seedless two-source extractor), `src/qsh/qrng/health.py` (SP 800-90B min-entropy estimate), and the config-gated ITS combiner in `src/qsh/pqc/transport.py` (`_mix_qkd_its`, `hybrid_combiner_mode="its_toeplitz"`).
 
 ---
 

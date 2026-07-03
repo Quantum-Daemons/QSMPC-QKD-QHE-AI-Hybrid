@@ -3,6 +3,7 @@
 // Honest label: a SIMULATED quantum measurement (state-vector), not quantum hardware. The optional ANU
 // hardware source is opt-in + online (never the default), matching the backend.
 import { rng } from "./quantumSim";
+import { qrngCfg } from "./config";
 
 const SR2 = Math.SQRT1_2;
 // |+> = H|0> = [1/sqrt2, 1/sqrt2]; Born rule => P(measure |1>) = |amp_1|^2 = 0.5.
@@ -19,6 +20,8 @@ export interface QRNGResult {
   blockFreqP: number;
   throughputBitsPerSec: number;
   simulated: boolean;
+  minEntropyPerBit: number;   // SP 800-90B most-common-value estimate (bits of min-entropy per output bit)
+  extractionRate: number;     // output bits / raw bits consumed
 }
 
 // erfc via the Abramowitz-Stegun 7.1.26 rational approximation (pure JS, no dep).
@@ -105,24 +108,91 @@ function lgamma(x: number): number {
   return -tmp + Math.log((2.5066282746310005 * ser) / x);
 }
 
-// Generate nBits post-processed quantum-random bits + a health report + MEASURED throughput.
+// 99% one-sided confidence Z for the SP 800-90B most-common-value bound (intentionally fixed spec constant).
+const MCV_Z = 2.5758293035489004;
+
+// SP 800-90B (6.3.1) most-common-value min-entropy estimate: bits of min-entropy per bit.
+function minEntropyMcv(bits: Uint8Array): number {
+  const n = bits.length;
+  if (n === 0) return 0;
+  let ones = 0;
+  for (const x of bits) ones += x;
+  const pHat = Math.max(ones, n - ones) / n;
+  const pUpper = Math.min(1, pHat + MCV_Z * Math.sqrt((pHat * (1 - pHat)) / n));
+  return pUpper > 0 ? -Math.log2(pUpper) : 0;
+}
+
+// Safe extractor output length by the (Quantum) Leftover-Hash-Lemma: out <= H_min - 2*log2(1/eps) + 2.
+function lhlOutputLength(minEntropyBits: number, epsilonLog2: number): number {
+  return Math.max(1, Math.floor(minEntropyBits - 2 * -epsilonLog2 + 2));
+}
+
+// Toeplitz-hash (universal-2) extractor: out = T @ bits (mod 2). T's defining bits come from an
+// independent second source (toeplitzBits -> the seedless two-source construction) or a PRG (u).
+function toeplitzExtract(bits: Uint8Array, outLen: number, u: () => number, toeplitzBits?: Uint8Array): Uint8Array {
+  const m = bits.length;
+  outLen = Math.max(1, Math.min(outLen, m));
+  const needT = outLen + m - 1;
+  let tvec: Uint8Array;
+  if (toeplitzBits) {
+    if (toeplitzBits.length < needT) throw new Error("toeplitzBits too short");
+    tvec = toeplitzBits;
+  } else {
+    tvec = new Uint8Array(needT);
+    for (let i = 0; i < needT; i++) tvec[i] = u() < 0.5 ? 1 : 0;
+  }
+  const out = new Uint8Array(outLen);
+  for (let i = 0; i < outLen; i++) {
+    let acc = 0;
+    for (let j = 0; j < m; j++) acc ^= tvec[i + j] & bits[j];
+    out[i] = acc & 1;
+  }
+  return out;
+}
+
+// Generate nBits post-processed quantum-random bits + a health report (incl. a min-entropy estimate) +
+// MEASURED throughput + extraction rate. The information-theoretic extractor ("toeplitz"/"seedless") sizes
+// its output by the Leftover-Hash-Lemma bound (no fixed rate); eps + min-entropy come from config.
 export function generateQuantumBits(nBits: number, opts: { source?: string; postProcessing?: string;
-  seed?: number; alpha?: number } = {}): QRNGResult {
+  seed?: number; alpha?: number; epsilonLog2?: number; minEntropyPerRawBit?: number; blockSize?: number } = {}): QRNGResult {
   const source = opts.source ?? "sim";
   if (source === "anu") throw new Error("ANU QRNG is opt-in + online; the offline 'sim' source is the demo default");
-  const post = opts.postProcessing ?? "von_neumann";
-  const alpha = opts.alpha ?? 0.01;
+  const q = qrngCfg();
+  const post = opts.postProcessing ?? q.post_processing ?? "von_neumann";
+  const alpha = opts.alpha ?? q.health_alpha ?? 0.01;
+  const epsLog2 = opts.epsilonLog2 ?? q.security_epsilon_log2 ?? -40;
+  const minH = opts.minEntropyPerRawBit ?? q.min_entropy_per_raw_bit ?? 0.9;
+  const blockSize = opts.blockSize ?? q.health_block_size ?? 128;
   const u = opts.seed === undefined ? Math.random : rng(opts.seed);
   const t0 = performance.now();
-  const need = post === "von_neumann" ? 5 * nBits + 16 : nBits;
+  const isExtract = post === "toeplitz" || post === "seedless";
+  const need = post === "von_neumann" ? 5 * nBits + 16 : isExtract ? 2 * nBits + 16 : nBits;
   const raw = measurePlus(need, u);
-  const bits = (post === "von_neumann" ? vonNeumann(raw) : raw).slice(0, nBits);
+  let proc: Uint8Array;
+  let rawConsumed = raw.length;
+  if (post === "von_neumann") {
+    proc = vonNeumann(raw);
+  } else if (isExtract) {
+    const outLen = lhlOutputLength(minH * raw.length, epsLog2);
+    if (post === "seedless") {
+      const u2 = opts.seed === undefined ? Math.random : rng(opts.seed + 1);
+      const raw2 = measurePlus(outLen + raw.length - 1, u2);   // independent second source defines T
+      proc = toeplitzExtract(raw, outLen, u, raw2);
+      rawConsumed += raw2.length;
+    } else {
+      proc = toeplitzExtract(raw, outLen, u);
+    }
+  } else {
+    proc = raw;
+  }
+  const bits = proc.slice(0, nBits);
   const dt = Math.max(performance.now() - t0, 1e-6);
-  const mp = monobit(bits), rp = runs(bits), bp = blockFrequency(bits);
+  const mp = monobit(bits), rp = runs(bits), bp = blockFrequency(bits, blockSize);
   return {
     bits, nBits: bits.length, source, postProcessing: post,
     healthPassed: mp >= alpha && rp >= alpha && bp >= alpha,
     monobitP: mp, runsP: rp, blockFreqP: bp,
     throughputBitsPerSec: (bits.length / dt) * 1000, simulated: true,
+    minEntropyPerBit: minEntropyMcv(bits), extractionRate: bits.length / Math.max(1, rawConsumed),
   };
 }

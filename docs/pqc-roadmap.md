@@ -16,13 +16,25 @@ PQC-only, TenSEAL ↔ OpenFHE. A future PQC algorithm is a registry entry + conf
 not a code rewrite. Add remote re-key + in-flight algorithm substitution next. ☐
 
 ## AI-QKD (WS1) + entropy (done)
-- **OptiQKD** — an AI parameter optimizer (scikit-learn GBM/GP surrogate + gradient-free coordinate
-  ascent over the decoy-state / efficient-BB84 model) tunes `basis_prob` / `mu_signal` / `pp_threshold`
-  to **raise the measured secret-key rate >20 %** vs the default baseline on the same simulated channel
-  (`src/qsh/qkd/optimize.py`; report WS1 "OptiQKD" theme, arXiv:2603.04192). Opt-in per run. ✅
+- **OptiQKD / AML-QKD** — an AI parameter optimizer (scikit-learn GBM/GP surrogate + gradient-free
+  coordinate ascent) tunes the **two-intensity decoy-state** parameters `basis_prob` / `mu_signal` /
+  **`mu_decoy`** / `pp_threshold` (Ma-Qi-Zhao-Lo 2005 single-photon Y1/e1 bounds — `mu_decoy` genuinely
+  moves the SKR) to **raise the measured secret-key rate >20 %** vs the default baseline on the same
+  simulated channel, and reports a **convergence metric** (evaluations-to-95 %). An **E91 / CHSH**
+  entanglement protocol (`src/qsh/qkd/e91.py`) is selectable via `protocol="e91"`.
+  (`src/qsh/qkd/optimize.py`; grounds the report's WS1 "OptiQKD" theme — OptiQKD arXiv:2603.04192v1 +
+  AML-QKD arXiv:2603.04192v2, Mohamed et al. 2026, which report +20–30 % / +14–25 % SKR via TCN+RL.)
+  Opt-in per run; a simulation, not deployed QKD. ✅
 - **QRNG** — a local **state-vector quantum-measurement** entropy source with an SP 800-22-style health
-  suite + von Neumann / Toeplitz post-processing (`src/qsh/qrng/`); it seeds the BB84 basis/bit choices.
-  Optional real-hardware source = the **ANU QRNG** API (opt-in, online). Honestly labelled: sim, not HW. ✅
+  suite + a **SP 800-90B most-common-value min-entropy estimate**, and post-processing = von Neumann /
+  **Toeplitz (Leftover-Hash-Lemma-bounded output, ε-parameterised)** / **seedless two-source** extractor
+  (`src/qsh/qrng/`); it seeds the BB84 basis/bit choices. Optional real-hardware source = the **ANU QRNG**
+  API (opt-in, online). Honestly labelled: sim, not HW. ✅
+- **Hybrid PQC+QKD key combiner** — `src/qsh/pqc/transport.py` offers a config-gated **"secure-if-either"
+  Toeplitz + Quantum-Leftover-Hash-Lemma combiner** (`hybrid_combiner_mode="its_toeplitz"`) alongside the
+  default dual-PRF HKDF — the session key stays secure if EITHER the PQC or the QKD input holds. (Grounds
+  Giestinhas & Spiller, arXiv:2603.26907, 2026: seedless QRNG bootstrapping + hybrid PQC-QKD key combination
+  via strong extractors.) ✅
 
 ## Reference implementations (2026, commercial-OK)
 Grounded, actively-maintained OSS to deepen each workstream (all MIT / Apache-2.0 / BSD; adopt as the

@@ -121,6 +121,8 @@
     "dark_count_prob": 1e-05,
     "detector_efficiency": 0.25,
     "distance_km": 50.0,
+    "e91_pairs": 100000,
+    "e91_visibility": 0.97,
     "error_correction_eff": 1.16,
     "eve_intercept_fraction": 0.0,
     "fiber_loss_db_per_km": 0.2,
@@ -129,6 +131,8 @@
     "mu_signal": 0.5,
     "opt_basis_prob_max": 0.9,
     "opt_basis_prob_min": 0.5,
+    "opt_mu_decoy_max": 0.2,
+    "opt_mu_decoy_min": 0.05,
     "opt_mu_signal_max": 0.9,
     "opt_mu_signal_min": 0.2,
     "opt_pp_threshold_max": 0.12,
@@ -138,6 +142,7 @@
     "optimize_n_pulses": 20000,
     "optimize_n_samples": 48,
     "pp_threshold": 0.11,
+    "protocol": "bb84",
     "pulses": 200000
   },
   "qrng": {
@@ -146,7 +151,10 @@
     "bits": 4096,
     "enabled": false,
     "health_alpha": 0.01,
+    "health_block_size": 128,
+    "min_entropy_per_raw_bit": 0.9,
     "post_processing": "von_neumann",
+    "security_epsilon_log2": -40,
     "source": "sim"
   },
   "quantum_advantage": {

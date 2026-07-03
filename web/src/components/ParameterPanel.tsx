@@ -29,7 +29,8 @@ export default function ParameterPanel({ run }: { run: Run }) {
     { title: "OptiQKD (AI-QKD)", fields: [
       ["Opt samples", "qkd_opt_samples", 8, 4, "surrogate sample budget — toggle 'Optimize QKD' to run"]] },
     { title: "QRNG", fields: [
-      ["QRNG bits", "qrng_bits", 512, 64, "quantum-random bits generated + health-checked per run"]] },
+      ["QRNG bits", "qrng_bits", 512, 64, "quantum-random bits generated + health-checked per run"],
+      ["Extractor eps (log2)", "qrng_eps_log2", 4, -60, "Leftover-Hash-Lemma security 2^this (toeplitz/seedless extractor)"]] },
     { title: "Quantum / run", fields: [
       ["QCNN qubits", "qubits", 1, 2, "state-vector QCNN qubit count"],
       ["RNG seed", "seed", 1, 0, "run reproducibility seed"]] },
@@ -75,6 +76,20 @@ export default function ParameterPanel({ run }: { run: Run }) {
               <label className="muted" htmlFor="pp-prime" style={{ fontSize: 12 }}>QSMS prime (0=auto)</label>
               <input id="pp-prime" name="prime" type="number" step={2} min={0} value={p.prime as number}
                 style={{ width: "100%" }} onChange={(e) => setNum("prime", e.target.value)} />
+            </div>
+            <div style={{ minWidth: 120, flex: "1 1 120px" }}>
+              <label className="muted" htmlFor="pp-ext" style={{ fontSize: 12 }}>QRNG extractor</label>
+              <select id="pp-ext" name="qrng_post" value={p.qrng_post as string} style={{ width: "100%" }}
+                onChange={(e) => setParams({ ...params, qrng_post: e.target.value })}>
+                <option value="von_neumann">von Neumann</option><option value="toeplitz">Toeplitz (LHL)</option><option value="seedless">seedless (2-source)</option>
+              </select>
+            </div>
+            <div style={{ minWidth: 120, flex: "1 1 120px" }}>
+              <label className="muted" htmlFor="pp-proto" style={{ fontSize: 12 }}>QKD protocol</label>
+              <select id="pp-proto" name="qkd_protocol" value={p.qkd_protocol as string} style={{ width: "100%" }}
+                onChange={(e) => setParams({ ...params, qkd_protocol: e.target.value })}>
+                <option value="bb84">BB84 (decoy)</option><option value="e91">E91 (CHSH)</option>
+              </select>
             </div>
           </>
         ))}

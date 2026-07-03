@@ -21,6 +21,17 @@ the CNSA-2.0 / FIPS-203/204/205 mandate.
 FHE/CKKS (`fhe`), non-linear layers (ReLU/argmax) under secret-sharing MPC (`mpc`). `mpyc-shamir`
 (MIT, vendored) is live; `mp-spdz` / `hpmpc-gpu` are heavyweight production references.
 
+## Config sub-strategies (not registry providers, but runtime-selectable + security-relevant)
+Three knobs in `config/defaults.py` are also runtime-selectable — surfaced in the Parameters panel and the run
+summary — and shift the observed security, so they belong to the crypto-agility story even though they are not
+`CryptoRegistry` families:
+
+| Knob | Options | Effect |
+|------|---------|--------|
+| `qkd.protocol` | `bb84` (two-intensity decoy-state) · `e91` (entanglement / CHSH) | which physical QKD model runs; OptiQKD tunes whichever is chosen |
+| `qrng.post_processing` | `von_neumann` · `toeplitz` (Leftover-Hash-Lemma, ε-parameterised) · `seedless` (two-source) | the entropy extractor + min-entropy floor that seeds BB84/E91 |
+| `crypto.hybrid_combiner_mode` | `hkdf` (default, dual-PRF KDF) · `its_toeplitz` (Toeplitz+QLHL) | the PQC+QKD key combiner — `its_toeplitz` is information-theoretic "secure-if-either" (secure if EITHER input holds) |
+
 Each provider is a factory; `register(family, name, factory, default=…)`, `get(family, name)`,
 `options(family)`, `default(family)`. Adding a new algorithm (e.g. SLH-DSA, FN-DSA/Falcon,
 a new FHE backend) is **one `register(...)` call** — no stage code changes.
