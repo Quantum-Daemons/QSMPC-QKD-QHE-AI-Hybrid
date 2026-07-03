@@ -117,5 +117,6 @@ def frontend_config() -> dict:
         "qkd": asdict(c.qkd),          # full QKD + OptiQKD knobs (editable in the WebUI Parameters panel)
         "qrng": asdict(c.qrng),        # QRNG bits / source / post-processing / health alpha
         "ids": asdict(c.ids),          # QML-IDS sample sizes (incl. the in-browser demo IDS)
+        "crypto": asdict(c.crypto),    # crypto-agility defaults incl. hybrid_combiner_mode (PQC+QKD combiner)
         "web": asdict(c.web),
     }

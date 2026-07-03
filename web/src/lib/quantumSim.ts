@@ -79,6 +79,30 @@ export function bb84(nPulses: number, p: ChannelParams, seed = 0, fEC = 1.16): B
   };
 }
 
+// Entanglement-based E91 / CHSH QKD (mirror of qkd/e91.py) — a genuinely DIFFERENT physical model from
+// BB84: a shared Werner state of visibility V (degraded by the channel error) gives the CHSH parameter
+// S = 2*sqrt(2)*V (Tsirelson bound 2*sqrt(2) at V=1) and QBER = (1-V)/2; a key exists ONLY if the Bell
+// inequality is violated (S > 2). Returns the same shape as bb84() + the measured CHSH S, so selecting
+// "E91" in the Parameters panel visibly moves QBER / secure-key-bits independently of BB84.
+export function e91(nPulses: number, p: ChannelParams, seed = 0, visibility = 0.97, fEC = 1.16): BB84Result & { chshS: number } {
+  const u = rng(seed + 2);
+  const T = transmittance(p);
+  const vEff = Math.max(0, Math.min(1, visibility * (1 - intrinsicQber(p))));  // channel-degraded visibility
+  const s = 2 * Math.SQRT2 * vEff;                                             // CHSH parameter
+  const e0 = (1 - vEff) / 2;                                                   // ideal QBER from the visibility
+  const nPairs = Math.max(0, Math.round(nPulses * T * 0.5));                   // coincidence detections (key basis)
+  const std = nPairs > 0 ? Math.sqrt((e0 * (1 - e0)) / nPairs) : 0;
+  const qber = Math.min(0.5, Math.max(0, e0 + std * gauss(u)));
+  const secureFraction = s <= 2 ? 0 : Math.max(0, 1 - h2(qber) - fEC * h2(qber));  // no key without a Bell violation
+  return {
+    qber, siftedBits: nPairs,
+    secretKeyRate: nPulses > 0 ? (secureFraction * nPairs) / nPulses : 0,
+    secureKeyBits: Math.floor(secureFraction * nPairs),
+    channelLossDb: Math.round(p.distanceKm * p.lossDbPerKm * 10) / 10,
+    chshS: s,
+  };
+}
+
 // Tiny single-qubit-style expectation used to give the QFL quantum feature map a real number:
 // a bounded non-linear readout of the feature vector (decision-consistent, not trained).
 export function qcnnExpectation(features: number[]): { z: number; cls: number } {

@@ -93,6 +93,13 @@
       ]
     }
   },
+  "crypto": {
+    "fhe": "tenseal-cpu",
+    "hybrid_combiner_mode": "hkdf",
+    "kem": "ml-kem-768+x25519",
+    "qkd": "bb84-decoy",
+    "sig": "ml-dsa-65"
+  },
   "data": {
     "aml_bank_a_accounts": 300,
     "aml_bank_b_accounts": 280,

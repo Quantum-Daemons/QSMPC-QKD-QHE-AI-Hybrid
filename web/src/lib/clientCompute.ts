@@ -14,7 +14,7 @@ import { clientTrainScoreIDS } from "./clientIDS";
 import { secureArgmax, warmMPC } from "./clientMPC";
 import { optimizeQKD } from "./clientOptiQKD";
 import { generateQuantumBits } from "./clientQRNG";
-import { bb84, FIBER, FREE_SPACE, h2, intrinsicQber, qcnnExpectation, qotpQcnnInfer, rng } from "./quantumSim";
+import { bb84, e91, FIBER, FREE_SPACE, h2, intrinsicQber, qcnnExpectation, qotpQcnnInfer, rng } from "./quantumSim";
 import { inferLogits, onnxBackend } from "./onnxInference";
 import { realInput, realSatelliteAnomaly, type RealInput } from "./realData";
 
@@ -669,13 +669,21 @@ export function runClientPipeline(
         const chan = { ...FIBER, distanceKm: Number(config.qkd_distance_km ?? qkdCfg().distance_km),
           misalignment: Number(config.qkd_misalignment ?? qkdCfg().misalignment),
           eveFraction: Number(config.qkd_eve ?? qkdCfg().eve_intercept_fraction) };
-        const res = bb84(Number(config.qkd_pulses ?? qkdCfg().pulses), chan, seed);
+        // config.qkd_protocol genuinely selects which physical QKD model runs (BB84 decoy-state vs E91/CHSH),
+        // so switching it visibly moves QBER / SKR / secure-key-bits — independently of the OptiQKD toggle.
+        const protocol = String(config.qkd_protocol ?? qkdCfg().protocol);
+        const pulses = Number(config.qkd_pulses ?? qkdCfg().pulses);
+        const eRes = protocol === "e91" ? e91(pulses, chan, seed, qkdCfg().e91_visibility) : null;   // typed with chshS
+        const res = eRes ?? bb84(pulses, chan, seed);
         metric(stage, "qber", r2(res.qber));
         metric(stage, "skr", Math.round(res.secretKeyRate * 1e5) / 1e5);
         metric(stage, "secure_key_bits", res.secureKeyBits);
-        emit("log", stage, `BB84: QBER=${res.qber.toFixed(4)}, ${res.secureKeyBits} secure bits`);
+        if (eRes) metric(stage, "chsh_s", r2(eRes.chshS));
+        emit("log", stage, eRes
+          ? `E91 (entanglement / CHSH S=${r2(eRes.chshS)}): QBER=${res.qber.toFixed(4)}, ${res.secureKeyBits} secure bits`
+          : `BB84 (decoy-state): QBER=${res.qber.toFixed(4)}, ${res.secureKeyBits} secure bits`);
         if (config.qkd_optimize) {   // AI-QKD parameter optimization (OptiQKD, WS1) — measured SKR gain
-          const opt = optimizeQKD(chan, String(config.qkd_protocol ?? qkdCfg().protocol),
+          const opt = optimizeQKD(chan, protocol,
             Number(config.qkd_opt_samples ?? qkdCfg().optimize_n_samples));
           metric(stage, "qkd_skr_improvement_pct", r1(opt.improvementPct));
           metric(stage, "qkd_optimized_skr", Math.round(opt.bestSkr * 1e5) / 1e5);
@@ -689,14 +697,20 @@ export function runClientPipeline(
       case "satellite_qkd": {
         const satChan = { ...FREE_SPACE, distanceKm: Number(config.sat_distance_km ?? FREE_SPACE.distanceKm),
           eveFraction: Number(config.sat_eve ?? FREE_SPACE.eveFraction) };
-        const res = bb84(Number(config.sat_pulses ?? webCfg().demo_sat_pulses), satChan, seed);
+        const satProtocol = String(config.qkd_protocol ?? qkdCfg().protocol);
+        const satPulses = Number(config.sat_pulses ?? webCfg().demo_sat_pulses);
+        const satERes = satProtocol === "e91" ? e91(satPulses, satChan, seed, qkdCfg().e91_visibility) : null;
+        const res = satERes ?? bb84(satPulses, satChan, seed);
         metric(stage, "qber", r2(res.qber));
         metric(stage, "channel_loss_db", res.channelLossDb);
         metric(stage, "secure_key_bits", res.secureKeyBits);
+        if (satERes) metric(stage, "chsh_s", r2(satERes.chshS));
         (config as any)._satQber = res.qber;
-        emit("log", stage, `free-space BB84: ${res.channelLossDb}dB loss, QBER=${res.qber.toFixed(4)}, ${res.secureKeyBits} bits`);
+        emit("log", stage, satERes
+          ? `free-space E91 (CHSH S=${r2(satERes.chshS)}): ${res.channelLossDb}dB loss, QBER=${res.qber.toFixed(4)}, ${res.secureKeyBits} bits`
+          : `free-space BB84: ${res.channelLossDb}dB loss, QBER=${res.qber.toFixed(4)}, ${res.secureKeyBits} bits`);
         if (config.qkd_optimize) {   // OptiQKD over the free-space channel — measured SKR gain
-          const opt = optimizeQKD(satChan, String(config.qkd_protocol ?? qkdCfg().protocol),
+          const opt = optimizeQKD(satChan, satProtocol,
             Number(config.qkd_opt_samples ?? qkdCfg().optimize_n_samples));
           metric(stage, "qkd_skr_improvement_pct", r1(opt.improvementPct));
           metric(stage, "qkd_convergence_evals", opt.convergenceEvals);
@@ -708,7 +722,7 @@ export function runClientPipeline(
       }
       case "qsdc_telemetry": {
         const e = intrinsicQber({ ...FREE_SPACE, eveFraction: Number(config.sat_eve ?? 0) });
-        const threshold = Number(config.qsdc_threshold ?? 0.11);
+        const threshold = Number(config.qsdc_threshold ?? qkdCfg().pp_threshold);
         const eavesdrop = e > threshold;
         metric(stage, "qsdc_error_rate", r2(e));
         metric(stage, "qsdc_secrecy_capacity", eavesdrop ? 0 : r2(Math.max(0, 1 - 2 * h2(e))));
