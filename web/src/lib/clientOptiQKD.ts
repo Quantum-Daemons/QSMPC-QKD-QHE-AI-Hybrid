@@ -54,10 +54,14 @@ const e91Skr: Model = (p, prm, fEC = 1.16) => {
   return { skr: secureFraction * eta * siftRatio, qber };
 };
 
-export function optimizeQKD(channel: ChannelParams, protocol?: string): OptiQKDResult {
+export function optimizeQKD(channel: ChannelParams, protocol?: string, nSamples?: number): OptiQKDResult {
   const t0 = performance.now();
   const q = qkdCfg();
   const model: Model = (protocol ?? q.protocol) === "e91" ? e91Skr : skrModel;
+  // sample budget (config.qkd_opt_samples) sets the coordinate-ascent depth: ~8 evaluations
+  // (4 params × 2 directions) per round, so a larger budget explores more + tightens convergence.
+  const budget = Math.max(4, Math.round(nSamples ?? q.optimize_n_samples));
+  const rounds = Math.max(1, Math.round(budget / 8));
   const lo: OptiQKDParams = { muSignal: q.opt_mu_signal_min, muDecoy: q.opt_mu_decoy_min, basisProb: q.opt_basis_prob_min, ppThreshold: q.opt_pp_threshold_min };
   const hi: OptiQKDParams = { muSignal: q.opt_mu_signal_max, muDecoy: q.opt_mu_decoy_max, basisProb: q.opt_basis_prob_max, ppThreshold: q.opt_pp_threshold_max };
   const keys: (keyof OptiQKDParams)[] = ["muSignal", "muDecoy", "basisProb", "ppThreshold"];
@@ -69,7 +73,7 @@ export function optimizeQKD(channel: ChannelParams, protocol?: string): OptiQKDR
   let best: OptiQKDParams = { muSignal: (lo.muSignal + hi.muSignal) / 2, muDecoy: (lo.muDecoy + hi.muDecoy) / 2, basisProb: (lo.basisProb + hi.basisProb) / 2, ppThreshold: (lo.ppThreshold + hi.ppThreshold) / 2 };
   let bestVal = model(channel, best).skr; nEvals++; record(bestVal);
   const step: OptiQKDParams = { muSignal: (hi.muSignal - lo.muSignal) / 8, muDecoy: (hi.muDecoy - lo.muDecoy) / 8, basisProb: (hi.basisProb - lo.basisProb) / 8, ppThreshold: (hi.ppThreshold - lo.ppThreshold) / 8 };
-  for (let r = 0; r < 6; r++) {
+  for (let r = 0; r < rounds; r++) {
     let improved = false;
     for (const k of keys) {
       for (const d of [step[k], -step[k]]) {
