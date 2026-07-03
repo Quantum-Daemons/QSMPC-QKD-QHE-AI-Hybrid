@@ -32,6 +32,17 @@
    └───────────────────────────────────────────────────────────────────┘
 ```
 
+**Rounds 15-16 additions (WS1 entropy + QKD protocols).** The `qkd/` module also provides a **QRNG entropy
+backbone** (`qrng/`: state-vector `|+>` measurement, an SP 800-22 health suite + an **SP 800-90B**
+most-common-value **min-entropy** estimate, and a **Leftover-Hash-Lemma-bounded Toeplitz / seedless two-source**
+extractor — Giestinhas & Spiller, arXiv:2603.26907) that seeds the BB84/E91 basis+bit choices, plus a selectable
+**E91/CHSH** entanglement protocol (`qkd/e91.py`, `protocol="e91"`) alongside the two-intensity decoy-state BB84
+(`bb84.py`, where `mu_decoy` genuinely moves the SKR — Ma-Qi-Zhao-Lo 2005; OptiQKD tunes it, arXiv:2603.04192).
+The `pqc/` module adds a config-gated **"secure-if-either"** PQC+QKD key combiner (`transport.py`,
+`hybrid_combiner_mode = hkdf | its_toeplitz` — Toeplitz+QLHL; the session key stays secure if EITHER the PQC or
+the QKD input retains entropy). The QRNG post-processing and the combiner mode are both runtime-selectable — see
+`crypto-agility.md`.
+
 ## The pipeline contract
 A `Pipeline` runs an ordered list of `Stage`s over a shared `Context`, emitting
 structured `Event`s to an `EventBus`. The canonical chain:
