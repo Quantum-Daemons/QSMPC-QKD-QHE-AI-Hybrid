@@ -45,6 +45,8 @@ class OptimizeResult:
     n_evals: int
     method: str
     history: list
+    convergence_evals: int = 0          # evaluations until the running best first reached 95% of the final SKR
+    convergence_curve: list | None = None   # running best-SKR after each evaluation (the adaptation profile)
 
 
 def _lhs(rng: np.random.Generator, n: int, d: int) -> np.ndarray:
@@ -55,28 +57,49 @@ def _lhs(rng: np.random.Generator, n: int, d: int) -> np.ndarray:
     return out
 
 
-def _space_from_config(space: dict | None) -> dict:
+def _space_from_config(space: dict | None, protocol: str = "bb84") -> dict:
     from ..config import get_config
 
     q = get_config().qkd
-    return space or {
+    if space:
+        return space
+    if protocol == "e91":     # E91 tunes only the basis bias + post-processing threshold (no decoy intensities)
+        return {"basis_prob": (q.opt_basis_prob_min, q.opt_basis_prob_max),
+                "pp_threshold": (q.opt_pp_threshold_min, q.opt_pp_threshold_max)}
+    return {
         "mu_signal": (q.opt_mu_signal_min, q.opt_mu_signal_max),
+        "mu_decoy": (q.opt_mu_decoy_min, q.opt_mu_decoy_max),
         "basis_prob": (q.opt_basis_prob_min, q.opt_basis_prob_max),
         "pp_threshold": (q.opt_pp_threshold_min, q.opt_pp_threshold_max),
     }
 
 
 def evaluate_params(qkd_params: QKDParams, channel: ChannelParams, *, n_pulses: int,
-                    seed: int, ecc: float) -> tuple[float, float]:
-    """Measure (SKR, QBER) for a parameter set on the channel (fixed seed => deterministic)."""
-    r = run_bb84(n_pulses, channel, error_correction_eff=ecc, seed=seed, qkd_params=qkd_params)
+                    seed: int, ecc: float, protocol: str = "bb84") -> tuple[float, float]:
+    """Measure (SKR, QBER) for a parameter set on the channel (fixed seed => deterministic).
+
+    ``protocol="e91"`` evaluates the entanglement-based E91/CHSH model (:func:`~qsh.qkd.e91.run_e91`) with the
+    tuned ``basis_prob``/``pp_threshold`` (decoy intensities do not apply); otherwise the decoy-state BB84 model.
+    """
+    if protocol == "e91":
+        from ..config import get_config
+        from .e91 import run_e91
+        r = run_e91(n_pulses, channel, visibility=get_config().qkd.e91_visibility,
+                    basis_prob=qkd_params.basis_prob, error_correction_eff=ecc, seed=seed,
+                    pp_threshold=qkd_params.pp_threshold)
+    else:
+        r = run_bb84(n_pulses, channel, error_correction_eff=ecc, seed=seed, qkd_params=qkd_params)
     return r.secret_key_rate, r.qber
 
 
 def optimize_qkd(channel: ChannelParams | None = None, *, method: str | None = None,
                  n_samples: int | None = None, seed: int = 0, space: dict | None = None,
-                 n_pulses: int | None = None) -> OptimizeResult:
-    """Tune QKD parameters to maximise SKR; return the measured improvement vs the default baseline."""
+                 n_pulses: int | None = None, protocol: str | None = None) -> OptimizeResult:
+    """Tune QKD parameters to maximise SKR; return the measured improvement vs the default baseline.
+
+    ``protocol`` (``None`` -> config) selects the physical model: ``"bb84"`` tunes the decoy-state +
+    biased-basis parameters; ``"e91"`` tunes the entanglement-based (CHSH) basis bias + threshold.
+    """
     from ..config import get_config
 
     q = get_config().qkd
@@ -85,10 +108,11 @@ def optimize_qkd(channel: ChannelParams | None = None, *, method: str | None = N
         detector_efficiency=q.detector_efficiency, dark_count_prob=q.dark_count_prob,
         misalignment=q.misalignment, eve_intercept_fraction=q.eve_intercept_fraction)
     method = method or q.optimize_method
+    protocol = protocol or getattr(q, "protocol", "bb84")
     n_samples = int(n_samples or q.optimize_n_samples)
     n_pulses = int(n_pulses or q.optimize_n_pulses)
     ecc = q.error_correction_eff
-    space = _space_from_config(space)
+    space = _space_from_config(space, protocol)
     keys = list(space.keys())
     lo = np.array([space[k][0] for k in keys], dtype=float)
     hi = np.array([space[k][1] for k in keys], dtype=float)
@@ -97,16 +121,18 @@ def optimize_qkd(channel: ChannelParams | None = None, *, method: str | None = N
     history: list = []
 
     def make_params(vec: np.ndarray) -> QKDParams:
-        d = dict(zip(keys, vec))
-        return QKDParams(mu_signal=float(d["mu_signal"]), basis_prob=float(d["basis_prob"]),
-                         pp_threshold=float(d["pp_threshold"]))
+        # build QKDParams from whatever tunables the search space carries (mu_signal, mu_decoy, basis_prob,
+        # pp_threshold) -> adding a dimension to the space needs no change here
+        d = {k: float(v) for k, v in zip(keys, vec)}
+        return QKDParams(**{k: v for k, v in d.items() if k in QKDParams.__dataclass_fields__})
 
     def score(vec: np.ndarray) -> float:
-        skr, _ = evaluate_params(make_params(vec), channel, n_pulses=n_pulses, seed=ev_seed, ecc=ecc)
+        skr, _ = evaluate_params(make_params(vec), channel, n_pulses=n_pulses, seed=ev_seed, ecc=ecc,
+                                 protocol=protocol)
         return skr
 
     baseline_skr, baseline_qber = evaluate_params(
-        QKDParams(), channel, n_pulses=n_pulses, seed=ev_seed, ecc=ecc)
+        QKDParams(), channel, n_pulses=n_pulses, seed=ev_seed, ecc=ecc, protocol=protocol)
     n_evals = 1
 
     # --- global search: sample + surrogate argmax (surrogate/gp) or midpoint start (coordinate) ---
@@ -151,10 +177,20 @@ def optimize_qkd(channel: ChannelParams | None = None, *, method: str | None = N
             break
 
     best_params = make_params(best_vec)
-    best_skr, best_qber = evaluate_params(best_params, channel, n_pulses=n_pulses, seed=ev_seed, ecc=ecc)
+    best_skr, best_qber = evaluate_params(best_params, channel, n_pulses=n_pulses, seed=ev_seed, ecc=ecc,
+                                          protocol=protocol)
     improvement = (100.0 * (best_skr - baseline_skr) / baseline_skr) if baseline_skr > 1e-12 else (
         100.0 if best_skr > 0 else 0.0)
+    # convergence profile: running-best SKR after each evaluation + evals to reach 95% of the final SKR
+    # (an honest "adaptation speed" proxy — cf. the papers' real-time re-tune-in-N-blocks framing)
+    curve, run_best = [], -1.0
+    for _, s in history:
+        run_best = max(run_best, s)
+        curve.append(run_best)
+    final = curve[-1] if curve else best_skr
+    conv_evals = next((i + 1 for i, v in enumerate(curve) if v >= 0.95 * final), len(curve))
     return OptimizeResult(
         best_params=best_params, best_skr=best_skr, baseline_skr=baseline_skr,
         improvement_pct=improvement, best_qber=best_qber, baseline_qber=baseline_qber,
-        n_evals=n_evals, method=method, history=history)
+        n_evals=n_evals, method=method, history=history,
+        convergence_evals=int(conv_evals), convergence_curve=[float(c) for c in curve])
