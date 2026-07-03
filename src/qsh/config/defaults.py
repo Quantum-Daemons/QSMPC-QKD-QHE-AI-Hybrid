@@ -38,6 +38,12 @@ class QKDConfig:
     opt_basis_prob_max: float = 0.9
     opt_pp_threshold_min: float = 0.08
     opt_pp_threshold_max: float = 0.12
+    opt_mu_decoy_min: float = 0.05            # decoy-intensity search range (kept < mu_signal by the model)
+    opt_mu_decoy_max: float = 0.20
+    # --- protocol selection + E91 (entanglement-based) parameters ---
+    protocol: str = "bb84"                    # "bb84" (prepare-measure, decoy-state) | "e91" (entanglement/CHSH)
+    e91_pairs: int = 100_000                  # entangled pairs distributed (E91)
+    e91_visibility: float = 0.97              # entangled-state visibility -> CHSH S-parameter + QBER (E91)
 
 
 @dataclass
@@ -47,10 +53,14 @@ class QRNGConfig:
     enabled: bool = False             # off by default -> BB84 entropy unchanged unless opted in
     bits: int = 4096
     source: str = "sim"               # "sim" (offline default) | "anu" (opt-in, online hardware)
-    post_processing: str = "von_neumann"   # "von_neumann" | "toeplitz" | "none"
+    post_processing: str = "von_neumann"   # "von_neumann" | "toeplitz" | "seedless" | "none"
     anu_opt_in: bool = False          # must be True to allow the online ANU source (subject to ANU terms)
     health_alpha: float = 0.01        # SP800-22 significance level
+    health_block_size: int = 128      # SP800-22 block-frequency block size
     batch_qubits: int = 16            # qubits measured per batch in the state-vector sim
+    # --- information-theoretic extractor (Toeplitz + (Quantum) Leftover-Hash-Lemma), Giestinhas & Spiller 2026 ---
+    security_epsilon_log2: int = -40      # LHL security parameter: extractor output is 2^this-close to uniform
+    min_entropy_per_raw_bit: float = 0.9  # conservative min-entropy per raw simulated-|+> bit (ideal = 1.0)
 
 
 @dataclass
@@ -218,6 +228,9 @@ class CryptoConfig:
     qkd: str = "bb84-decoy"
     fhe: str = "tenseal-cpu"
     sig: str = "ml-dsa-65"
+    # PQC+QKD key combiner: "hkdf" = dual-PRF KDF (default, byte-compatible) | "its_toeplitz" =
+    # information-theoretic "secure-if-either" Toeplitz + Leftover-Hash-Lemma combiner (Giestinhas & Spiller 2026)
+    hybrid_combiner_mode: str = "hkdf"
 
 
 @dataclass
