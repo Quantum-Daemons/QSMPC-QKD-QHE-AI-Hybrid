@@ -12,7 +12,10 @@
 - **Malicious MPC participant**: injects bad inputs / aborts. Mitigation: identifiable-abort
   pattern (scaffold) and QOT test rounds; PSI reveals only the intersection.
 - **QKD link attacker**: intercept-resend, PNS, Trojan-horse, detector-blinding, RNG
-  manipulation. Mitigation: QBER monitoring + QML-IDS (WS2) classifying 8 attack signatures.
+  manipulation. Mitigation: QBER monitoring + two-intensity decoy-state single-photon bounds; QRNG
+  health + **SP 800-90B min-entropy** checks (arXiv:2603.26907) guard the entropy source; the config-gated
+  **"secure-if-either" PQC+QKD combiner** keeps the session key safe if EITHER the PQC or the QKD input is
+  compromised; + QML-IDS (WS2) classifying 8 attack signatures.
 - **Network MITM / tampering**: Mitigation: AEAD (AES-256-GCM) record layer + ML-DSA
   message authentication over the hybrid session.
 
