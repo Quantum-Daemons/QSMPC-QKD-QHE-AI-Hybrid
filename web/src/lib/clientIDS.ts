@@ -50,9 +50,13 @@ function genData(nPer: number, seed: number): { X: number[][]; y: number[] } {
 
 export interface IDSResult { accuracy: number; binaryF1: number; nParams: number; nTest: number; }
 
-export function clientTrainScoreIDS(seed = 0): IDSResult {
+export function clientTrainScoreIDS(seed = 0, nPerClass?: number): IDSResult {
   const cfg = idsCfg();
-  const { X, y } = genData(cfg.demo_n_per_class ?? 120, seed);
+  // samples-per-attack-class is a run-config knob (config.n_per_class): more training data per class
+  // shifts the measured accuracy / attack-F1 (bounded >=20 for a usable split; robust to NaN/undefined).
+  const nP = Number(nPerClass);
+  const nPer = Number.isFinite(nP) && nP > 0 ? Math.max(20, Math.round(nP)) : (cfg.demo_n_per_class ?? 120);
+  const { X, y } = genData(nPer, seed);
   const nTest = Math.floor(X.length * (cfg.test_fraction ?? 0.25));
   const Xtr = X.slice(nTest), ytr = y.slice(nTest), Xte = X.slice(0, nTest), yte = y.slice(0, nTest);
 

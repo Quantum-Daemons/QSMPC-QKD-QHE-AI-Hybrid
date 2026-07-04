@@ -15,6 +15,51 @@ const fromHex = (h: string) => new Uint8Array((h.match(/.{1,2}/g) ?? []).map((x)
 // copy bytes into a fresh ArrayBuffer-backed buffer so WebCrypto's BufferSource types are satisfied
 // (TS 5.7+ types @noble outputs as Uint8Array<ArrayBufferLike>, which it rejects for SubtleCrypto).
 const ab = (u: Uint8Array): ArrayBuffer => { const b = new ArrayBuffer(u.byteLength); new Uint8Array(b).set(u); return b; };
+const concat = (...arrs: Uint8Array[]): Uint8Array => {
+  const n = arrs.reduce((s, a) => s + a.length, 0);
+  const o = new Uint8Array(n); let off = 0;
+  for (const a of arrs) { o.set(a, off); off += a.length; }
+  return o;
+};
+const bitsOf = (bytes: Uint8Array): Uint8Array => {
+  const out = new Uint8Array(bytes.length * 8);
+  for (let i = 0; i < bytes.length; i++) for (let b = 0; b < 8; b++) out[i * 8 + b] = (bytes[i] >> (7 - b)) & 1;
+  return out;
+};
+const packBits = (bits: Uint8Array): Uint8Array => {
+  const out = new Uint8Array(Math.ceil(bits.length / 8));
+  for (let i = 0; i < bits.length; i++) if (bits[i]) out[i >> 3] |= 1 << (7 - (i & 7));
+  return out;
+};
+async function sha256(bytes: Uint8Array): Promise<Uint8Array> {
+  return new Uint8Array(await crypto.subtle.digest("SHA-256", ab(bytes)));
+}
+// SHA-256 counter-mode PRG for the Toeplitz seed (WebCrypto has no SHAKE-256, so this mirrors
+// transport._mix_qkd_its's SHAKE seed with a SHA-256 chain — the same computationally-seeded strong-extractor model).
+async function expandBytes(seedInput: Uint8Array, nBytes: number): Promise<Uint8Array> {
+  const out = new Uint8Array(nBytes); let off = 0, ctr = 0;
+  while (off < nBytes) {
+    const blk = new Uint8Array(seedInput.length + 4);
+    blk.set(seedInput); new DataView(blk.buffer).setUint32(seedInput.length, ctr++);
+    const h = await sha256(blk);
+    const take = Math.min(h.length, nBytes - off);
+    out.set(h.subarray(0, take), off); off += take;
+  }
+  return out;
+}
+// Information-theoretic "secure-if-either" combiner (mirror of transport._mix_qkd_its; Giestinhas & Spiller
+// 2026): a modified-Toeplitz + Leftover-Hash-Lemma strong extractor over pqc||qkd whose 256-bit output keeps
+// the min-entropy of WHICHEVER input stays uncompromised — unlike HKDF (computational) or a naive XOR/concat.
+async function itsCombine(pqc: Uint8Array, qkd: Uint8Array): Promise<Uint8Array> {
+  const combined = bitsOf(concat(pqc, qkd));                 // info-theoretic input material
+  const outBits = 256;                                       // 32-byte AES-256 session key
+  const needT = outBits + combined.length - 1;
+  const tbytes = await expandBytes(concat(new TextEncoder().encode("qsh/its-combiner/v1\x00"), pqc, qkd), Math.ceil(needT / 8));
+  const tvec = bitsOf(tbytes);
+  const out = new Uint8Array(outBits);
+  for (let i = 0; i < outBits; i++) { let acc = 0; for (let j = 0; j < combined.length; j++) acc ^= tvec[i + j] & combined[j]; out[i] = acc & 1; }
+  return packBits(out);                                      // 32 bytes
+}
 
 // canonical JSON with sorted keys — mirrors Python `json.dumps(msg, sort_keys=True)` so the signed
 // body is deterministic (the signature covers the exact same bytes the server would).
@@ -32,6 +77,8 @@ export interface ClientAgent {
 
 export interface McpResult {
   session: string; kem: string; qkd_mixed: boolean;
+  combiner: string;           // PQC+QKD key combiner used ("hkdf" | "its_toeplitz" | "none" when unmixed)
+  session_key_fp: string;     // 4-byte SHA-256 fingerprint of the derived AEAD key (changes with combiner/QKD-mix)
   method: string | null; authenticated: boolean;
   signature_alg: string; tamper_rejected: boolean;
 }
@@ -44,16 +91,26 @@ export function createAgent(name: string): ClientAgent {
     sigPublicKey: sig.publicKey, sigSecretKey: sig.secretKey };
 }
 
-// mirror transport._mix_qkd + AESGCM(session_key): HKDF-SHA256(salt=qkd, info="qsh/transport/pqc+qkd")
-async function deriveAeadKey(sharedSecret: Uint8Array, qkdKey?: Uint8Array): Promise<CryptoKey> {
+// mirror transport._mix_qkd + AESGCM(session_key). ``combiner`` selects the PQC+QKD key combiner
+// (crypto.hybrid_combiner_mode): "hkdf" = HKDF-SHA256 dual-PRF (computational secure-if-either);
+// "its_toeplitz" = the information-theoretic Toeplitz+LHL secure-if-either combiner (:func:`itsCombine`).
+// Returns the CryptoKey + the raw derived bytes (for a non-secret fingerprint that proves the combiner ran).
+async function deriveAeadKey(
+  sharedSecret: Uint8Array, qkdKey?: Uint8Array, combiner = "hkdf",
+): Promise<{ key: CryptoKey; bytes: Uint8Array }> {
   let keyBytes = sharedSecret;
   if (qkdKey && qkdKey.length) {
-    const base = await crypto.subtle.importKey("raw", ab(sharedSecret), "HKDF", false, ["deriveBits"]);
-    const bits = await crypto.subtle.deriveBits(
-      { name: "HKDF", hash: "SHA-256", salt: ab(qkdKey), info: ab(enc.encode("qsh/transport/pqc+qkd")) }, base, 256);
-    keyBytes = new Uint8Array(bits);
+    if (combiner === "its_toeplitz") {
+      keyBytes = await itsCombine(sharedSecret, qkdKey);      // information-theoretic secure-if-either
+    } else {
+      const base = await crypto.subtle.importKey("raw", ab(sharedSecret), "HKDF", false, ["deriveBits"]);
+      const bits = await crypto.subtle.deriveBits(
+        { name: "HKDF", hash: "SHA-256", salt: ab(qkdKey), info: ab(enc.encode("qsh/transport/pqc+qkd")) }, base, 256);
+      keyBytes = new Uint8Array(bits);
+    }
   }
-  return crypto.subtle.importKey("raw", ab(keyBytes), "AES-GCM", false, ["encrypt", "decrypt"]);
+  const key = await crypto.subtle.importKey("raw", ab(keyBytes), "AES-GCM", false, ["encrypt", "decrypt"]);
+  return { key, bytes: keyBytes };
 }
 
 // mirror _wrap: JSON-RPC tool-call message, ML-DSA-signed, wrapped {body, sig, alg}
@@ -89,35 +146,40 @@ async function openRecord(key: CryptoKey, record: Uint8Array): Promise<Uint8Arra
 
 // mirror secure_agent_call: PQC(+QKD) session -> sign+seal -> open+verify -> tamper test
 export async function clientSecureAgentCall(
-  caller: ClientAgent, callee: ClientAgent, method: string, params: object, qkdKey?: Uint8Array,
+  caller: ClientAgent, callee: ClientAgent, method: string, params: object,
+  qkdKey?: Uint8Array, combiner = "hkdf",
 ): Promise<McpResult & { message: any }> {
   const { cipherText, sharedSecret } = ml_kem768.encapsulate(callee.kemPublicKey);
   const recovered = ml_kem768.decapsulate(cipherText, callee.kemSecretKey);   // responder reconstructs the secret
-  const callerKey = await deriveAeadKey(sharedSecret, qkdKey);
-  const calleeKey = await deriveAeadKey(recovered, qkdKey);
-  const record = await sealRecord(callerKey, wrapAndSign(caller, method, params), 0);
-  const opened = await openRecord(calleeKey, record);
+  const callerKey = await deriveAeadKey(sharedSecret, qkdKey, combiner);
+  const calleeKey = await deriveAeadKey(recovered, qkdKey, combiner);
+  const record = await sealRecord(callerKey.key, wrapAndSign(caller, method, params), 0);
+  const opened = await openRecord(calleeKey.key, record);
   const { message, authenticated } = unwrap(opened, caller.sigPublicKey);
   let tamperRejected = false;
   const bad = record.slice();
   bad[bad.length - 1] ^= 0x01;
-  try { await openRecord(calleeKey, bad); } catch { tamperRejected = true; }
+  try { await openRecord(calleeKey.key, bad); } catch { tamperRejected = true; }
+  const mixed = !!(qkdKey && qkdKey.length);
+  const fp = toHex((await sha256(callerKey.bytes)).slice(0, 4));   // non-secret fingerprint of the derived AEAD key
   return {
     session: `${caller.name}->${callee.name}`,
     kem: "ML-KEM-768+X25519",                          // hybrid handshake (mirror convention in clientCompute)
-    qkd_mixed: !!(qkdKey && qkdKey.length),
+    qkd_mixed: mixed,
+    combiner: mixed ? combiner : "none",               // the combiner only applies when a QKD key is mixed in
+    session_key_fp: fp,
     method: message?.method ?? null, authenticated,
     signature_alg: "ML-DSA-65", tamper_rejected: tamperRejected, message,
   };
 }
 
 // mirror mcp_demo: analyst-agent -> hospital-silo signed quantum-safe tool call (same shape as server)
-export async function clientMcpDemo(qkdMixed = false): Promise<McpResult> {
+export async function clientMcpDemo(qkdMixed = false, combiner = "hkdf"): Promise<McpResult> {
   const a = createAgent("analyst-agent");
   const b = createAgent("hospital-silo");
   const qkd = qkdMixed ? new Uint8Array(32).fill(0x71) : undefined;   // 0x71 = 'q' (server uses b"q"*32)
   const { message, ...rest } = await clientSecureAgentCall(a, b, "tools/call",
-    { name: "query_cohort", arguments: { phenotype: "rare-disease-X" } }, qkd);
+    { name: "query_cohort", arguments: { phenotype: "rare-disease-X" } }, qkd, combiner);
   return rest;
 }
 
@@ -126,11 +188,11 @@ export async function clientMcpDemo(qkdMixed = false): Promise<McpResult> {
 // ``toolName`` is the per-industry MCP tool the agent "calls" (finance → score_transaction, medical →
 // query_cohort, …) so each use-case page shows its own delegate-and-verify tool call.
 export async function clientSecureWrap(
-  payload: object, qkdKey?: Uint8Array, toolName = "ai_inference",
+  payload: object, qkdKey?: Uint8Array, toolName = "ai_inference", combiner = "hkdf",
 ): Promise<McpResult & { echoedPayload: any }> {
   const a = createAgent("browser-agent");
   const b = createAgent("qsh-orchestrator");
   const { message, ...rest } = await clientSecureAgentCall(a, b, "tools/call",
-    { name: toolName, arguments: payload }, qkdKey);
+    { name: toolName, arguments: payload }, qkdKey, combiner);
   return { ...rest, echoedPayload: message?.params?.arguments ?? null };
 }

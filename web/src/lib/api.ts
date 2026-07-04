@@ -4,6 +4,7 @@
 import { mlkemDemo } from "./crypto";
 import { isClientDemo } from "./demoMode";
 import { clientMcpDemo } from "./clientMcp";
+import { securityScoringCfg, webCfg } from "./config";
 import { bb84, FIBER } from "./quantumSim";
 
 export interface UseCase {
@@ -79,9 +80,11 @@ export const api = {
   },
   demoQkd: (km: number, eve: number): Promise<any> => {
     if (!isClientDemo()) return j<any>(`/api/demo/qkd?distance_km=${km}&eve=${eve}`);
-    const r = bb84(40000, { ...FIBER, distanceKm: km, eveFraction: eve }, 1);   // client BB84 mirror
+    // client BB84 mirror; pulse count + eavesdrop threshold come from config so Validations stays consistent
+    // with the pipeline (the same QBER the pipeline treats as secure isn't flagged "eavesdropper" here).
+    const r = bb84(webCfg().demo_alice_bob_pulses, { ...FIBER, distanceKm: km, eveFraction: eve }, 1);
     return Promise.resolve({ qber: Math.round(r.qber * 1e4) / 1e4, skr: Math.round(r.secretKeyRate * 1e5) / 1e5,
-      secure_key_bits: r.secureKeyBits, eavesdropper_likely: r.qber > 0.08 });
+      secure_key_bits: r.secureKeyBits, eavesdropper_likely: r.qber > securityScoringCfg().qber_secure_threshold });
   },
   results: () => j<{ name: string; bytes: number }[]>("/api/results"),
   downloadUrl: (name: string) => `/api/download/${encodeURIComponent(name)}`,

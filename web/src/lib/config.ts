@@ -40,4 +40,5 @@ export const dataCfg = () => CONFIG.data;
 export const qkdCfg = () => CONFIG.qkd;
 export const qrngCfg = () => CONFIG.qrng;
 export const idsCfg = () => CONFIG.ids;
+export const cryptoCfg = () => CONFIG.crypto;   // crypto-agility defaults incl. hybrid_combiner_mode
 export const webCfg = () => CONFIG.web;
