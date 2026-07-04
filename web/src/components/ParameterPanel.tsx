@@ -12,13 +12,19 @@ export default function ParameterPanel({ run }: { run: Run }) {
   const p = params as Record<string, number | string>;
   const setNum = (k: string, v: string) => setParams({ ...params, [k]: parseFloat(v) || 0 });
 
-  const numField = ([label, key, step, min, title]: Field) => (
-    <div key={key} style={{ minWidth: 120, flex: "1 1 120px" }}>
-      <label className="muted" htmlFor={`pp-${key}`} style={{ fontSize: 12 }} title={title}>{label}</label>
-      <input id={`pp-${key}`} name={key} type="number" step={step} min={min}
-        value={p[key] as number} style={{ width: "100%" }} onChange={(e) => setNum(key, e.target.value)} />
-    </div>
-  );
+  const numField = ([label, key, step, min, title]: Field) => {
+    // the LHL eps only affects the Toeplitz/seedless extractor — grey + disable it on the von_neumann
+    // default so editing it isn't a silent no-op (it activates when QRNG extractor is switched below).
+    const dim = key === "qrng_eps_log2" && p.qrng_post === "von_neumann";
+    return (
+      <div key={key} style={{ minWidth: 120, flex: "1 1 120px" }}>
+        <label className="muted" htmlFor={`pp-${key}`} style={{ fontSize: 12, opacity: dim ? 0.45 : 1 }}
+          title={dim ? "No effect on the von Neumann extractor — switch QRNG extractor to Toeplitz/seedless to use the LHL eps." : title}>{label}</label>
+        <input id={`pp-${key}`} name={key} type="number" step={step} min={min} disabled={dim}
+          value={p[key] as number} style={{ width: "100%", opacity: dim ? 0.45 : 1 }} onChange={(e) => setNum(key, e.target.value)} />
+      </div>
+    );
+  };
 
   const groups: { title: string; fields: Field[] }[] = [
     { title: "QKD channel", fields: [
