@@ -22,15 +22,16 @@ FHE/CKKS (`fhe`), non-linear layers (ReLU/argmax) under secret-sharing MPC (`mpc
 (MIT, vendored) is live; `mp-spdz` / `hpmpc-gpu` are heavyweight production references.
 
 ## Config sub-strategies (not registry providers, but runtime-selectable + security-relevant)
-Three knobs in `config/defaults.py` are also runtime-selectable — surfaced in the Parameters panel and the run
-summary — and shift the observed security, so they belong to the crypto-agility story even though they are not
-`CryptoRegistry` families:
+Three knobs in `config/defaults.py` are also runtime-selectable and shift the observed security, so they belong
+to the crypto-agility story even though they are not `CryptoRegistry` families. `qkd.protocol` and
+`qrng.post_processing` are edited in the **Parameters panel**; `crypto.hybrid_combiner_mode` is selected in the
+**Agentic-AI · MCP panel** (it governs that panel's PQC+QKD channel-key derivation). Each visibly changes the run:
 
-| Knob | Options | Effect |
+| Knob | Options | Effect (demo-observable) |
 |------|---------|--------|
-| `qkd.protocol` | `bb84` (two-intensity decoy-state) · `e91` (entanglement / CHSH) | which physical QKD model runs; OptiQKD tunes whichever is chosen |
-| `qrng.post_processing` | `von_neumann` · `toeplitz` (Leftover-Hash-Lemma, ε-parameterised) · `seedless` (two-source) | the entropy extractor + min-entropy floor that seeds BB84/E91 |
-| `crypto.hybrid_combiner_mode` | `hkdf` (default, dual-PRF KDF) · `its_toeplitz` (Toeplitz+QLHL) | the PQC+QKD key combiner — `its_toeplitz` is information-theoretic "secure-if-either" (secure if EITHER input holds) |
+| `qkd.protocol` | `bb84` (two-intensity decoy-state) · `e91` (entanglement / CHSH) | picks the physical QKD model that actually runs — selecting `e91` moves the surfaced QBER / secure-key-bits and adds a CHSH `S`-parameter metric (independent of OptiQKD, which then tunes whichever is chosen) |
+| `qrng.post_processing` | `von_neumann` · `toeplitz` (Leftover-Hash-Lemma, ε-parameterised) · `seedless` (two-source) | the entropy extractor + min-entropy floor that seeds BB84/E91 (the LHL `ε` knob applies only to `toeplitz`/`seedless`, so it is greyed out on the `von_neumann` default) |
+| `crypto.hybrid_combiner_mode` | `hkdf` (default, dual-PRF KDF) · `its_toeplitz` (Toeplitz+QLHL) | the PQC+QKD key combiner — `its_toeplitz` is information-theoretic "secure-if-either" (secure if EITHER input holds); the MCP envelope reports the combiner used + the derived-key fingerprint |
 
 Each provider is a factory; `register(family, name, factory, default=…)`, `get(family, name)`,
 `options(family)`, `default(family)`. Adding a new algorithm (e.g. SLH-DSA, FN-DSA/Falcon,
@@ -43,7 +44,11 @@ a new FHE backend) is **one `register(...)` call** — no stage code changes.
   threaded to the stages via `ctx.config`. In the **public demo** the FHE/MPC *backend* selectors are
   replaced by a "real, in-browser" badge — the demo runs genuine client-side **node-seal CKKS** +
   **emp-wasm garbled-circuit 2PC** rather than the server-side TenSEAL/MPyC backends, so a backend
-  choice would be inert; KEM/QKD/Signature stay selectable (they run client-side via `@noble`).
+  choice would be inert; KEM/QKD/Signature stay selectable (they run client-side via `@noble`). The
+  **Parameters panel** additionally exposes `qkd.protocol` (BB84 ↔ E91), the QRNG extractor + bits + ε, the
+  OptiQKD budget, the QCNN qubit count, and the per-use-case data knobs; the **Agentic-AI · MCP panel**
+  exposes the `hybrid_combiner_mode` combiner (HKDF ↔ Toeplitz+LHL). Every one of these genuinely changes the
+  demo run's metrics/log/result client-side (zero `/api`), so crypto-agility is *observable*, not asserted.
 - **Stages consume the choice**:
   - `PQCHandshakeStage` → `kem` (hybrid ML-KEM + X25519 session).
   - `QKDKeyAgreementStage` → `qkd` (BB84 with QBER, or `pqc-only` to drop QKD).
