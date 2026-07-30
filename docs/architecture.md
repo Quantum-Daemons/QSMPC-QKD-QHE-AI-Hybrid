@@ -53,7 +53,9 @@ PQCHandshake → QKDKeyAgreement → QSMPCCompute → PrivateInference → Resul
 
 Each stage resolves its algorithm from the `CryptoRegistry` (crypto-agility), so the
 same chain runs PQC-only or PQC+QKD, TenSEAL or OpenFHE (linear-FHE), MPyC or MP-SPDZ
-(non-linear-MPC), ML-KEM-768 or -1024 — chosen at runtime. Use cases swap in their own
+(non-linear-MPC), ML-KEM-768 or -1024 — **selected by the operator from configuration and
+pinned into the run config before the run starts, never negotiated in-band between parties**
+(see [`crypto-agility.md`](crypto-agility.md)). Use cases swap in their own
 data and (for medical) extra stages (`FederatedTrainingStage`, `QMLIDSStage`).
 
 ## Faithful hybrid private inference (linear → FHE, non-linear → MPC)

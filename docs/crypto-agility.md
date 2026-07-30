@@ -1,10 +1,38 @@
 # Crypto-Agility (the library strategy)
 
-Crypto-agility is the **headline design goal** of QSH: algorithms are never hard-coded,
-they are selected from a registry at run time, so the system survives a future PQC
-migration (or a broken primitive) as a *config change*, not a rewrite. This matches the
-2026 consensus that crypto-agility is an **architecture problem, not a library swap**, and
-the CNSA-2.0 / FIPS-203/204/205 mandate.
+## Definition we follow
+
+We use the definition from the EU NIS Cooperation Group,
+[*A Coordinated Implementation Roadmap for the Transition to Post-Quantum Cryptography*](https://digital-strategy.ec.europa.eu/en/library/coordinated-implementation-roadmap-transition-post-quantum-cryptography)
+(23 June 2025), section 3.2:
+
+> **cryptographic agility (or crypto-agility)**
+> The design of cryptographic protocols and systems in a modular way that enables replacing
+> the cryptographic components. This concept must not be confused with a requirement to
+> negotiate the cipher suite during protocol execution; the latter often leads to downgrade
+> attacks if not done very carefully.
+
+**QSH implements the first half of that definition and deliberately does not implement the
+second.** Algorithms are never hard-coded; they are resolved from a registry so the system
+survives a future PQC migration — or the withdrawal of a broken primitive — as a
+*configuration change*, not a rewrite. That is the modular-replaceability property. It is
+**not** cipher-suite negotiation.
+
+### What "selectable" means here (and what it does not)
+
+| | QSH |
+|---|---|
+| Who chooses the provider | **The operator, via configuration / `GET /api/crypto-options`, pinned into the run config before the run starts** |
+| In-band cipher-suite negotiation between parties | **None anywhere in the codebase** — so there is no negotiated-downgrade surface |
+| Silent fallback to a weaker provider | **None.** A missing/unavailable provider fails the run loudly (repository *no-easy-fallback* policy) |
+| `qkd: pqc-only` | A **deployment profile, not a fallback.** Both `bb84-decoy` and `pqc-only` leave the PQC layer (hybrid ML-KEM + X25519, ML-DSA) unchanged, so the choice governs whether QKD material is mixed in — it does not weaken the post-quantum guarantee, and a peer cannot induce it |
+
+> **Terminology note.** `qkd_negotiation_ms` in the timing output is a label for the BB84
+> *key-agreement* step. It is unrelated to cipher-suite negotiation.
+
+The EU roadmap also **recommends beginning with hybrid classical-plus-post-quantum
+constructions wherever feasible**, which is what the `kem` family does by default
+(`ml-kem-768+x25519`). Alongside this we track CNSA 2.0 and FIPS 203/204/205.
 
 ## The registry
 `src/qsh/orchestration/crypto_agility.py` defines `CryptoRegistry` with five families:
