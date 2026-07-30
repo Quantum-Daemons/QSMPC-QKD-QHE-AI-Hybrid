@@ -1,11 +1,37 @@
 """Crypto-agility registry.
 
-The report makes crypto-agility a first-class requirement: algorithms must be
-swappable at runtime (remote re-key, in-flight algorithm substitution), never
-hard-coded. This registry maps a *family* (kem, qkd, fhe, mpc, sig) to named providers so
-a pipeline can switch ML-KEM<->hybrid, QKD<->PQC-only, TenSEAL<->OpenFHE (the linear-FHE half
-of the hybrid), or MPyC<->MP-SPDZ (the non-linear-MPC half) without touching stage code -- and
-so a future PQC migration is a config change.
+Definition used here (EU NIS Cooperation Group, *A Coordinated Implementation Roadmap for
+the Transition to Post-Quantum Cryptography*, 23 June 2025, section 3.2):
+
+    "cryptographic agility (or crypto-agility): The design of cryptographic protocols and
+    systems in a modular way that enables replacing the cryptographic components. This
+    concept must not be confused with a requirement to negotiate the cipher suite during
+    protocol execution; the latter often leads to downgrade attacks if not done very
+    carefully."
+
+This registry implements the first half of that definition and deliberately does **not**
+implement the second. It maps a *family* (kem, qkd, fhe, mpc, sig) to named providers so a
+pipeline can be built with ML-KEM<->hybrid, QKD<->PQC-only, TenSEAL<->OpenFHE (the
+linear-FHE half of the hybrid), or MPyC<->MP-SPDZ (the non-linear-MPC half) without touching
+stage code -- so a future PQC migration, or the withdrawal of a broken primitive, is a
+configuration change rather than a rewrite.
+
+Selection is **configuration-time and operator-driven**, never negotiated:
+
+* the provider set is resolved from configuration / the operator-facing API
+  (``GET /api/crypto-options``) and pinned into the run config *before* a run starts;
+* there is **no in-band cipher-suite negotiation** between parties anywhere in this
+  codebase, and therefore no negotiated-downgrade surface;
+* there is **no silent fallback** to a weaker provider: if a selected provider is
+  unavailable the run fails loudly (see the repository's no-easy-fallback policy).
+
+Note on the ``qkd`` family: ``pqc-only`` is a deployment profile, not a fallback. Both
+``bb84-decoy`` and ``pqc-only`` keep the PQC layer (hybrid ML-KEM + X25519, ML-DSA)
+unchanged, so switching between them changes whether QKD material is mixed in -- it does not
+weaken the post-quantum guarantee, and a peer cannot induce the switch.
+
+The word "negotiation" does appear in this project as ``qkd_negotiation_ms``: that is a
+timing label for the BB84 *key-agreement* step and is unrelated to cipher-suite negotiation.
 """
 
 from __future__ import annotations
