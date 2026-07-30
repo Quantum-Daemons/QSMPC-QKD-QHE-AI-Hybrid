@@ -36,12 +36,18 @@ Four workstreams (WS), unified by one pipeline and a crypto-agility registry:
 | **WS3** | **QSMPC × QKD** | Shamir + d-level QFT secure summation (faithful to the paper example), quantum oblivious transfer, quantum-safe PSI |
 | **WS4** | **QHE × AI** | Quantum one-time pad (perfect hiding), Clifford+T QCNN private inference, Rate-1 QFHE; classical hybrid = CKKS **linear** layers (TenSEAL CPU / OpenFHE CPU / HEonGPU GPU — commercial-OK) + **MPyC** secret-sharing **non-linear** layers (ReLU/argmax) — incl. a **genuine FHE convolution** (im2col → CKKS `dot_plain`) so the medical use case runs a real small CNN on **real MedMNIST images** under encryption |
 
-**Crypto-agility is the headline library strategy**: every algorithm (KEM / QKD / FHE / **MPC** /
-signature) is selected from a runtime registry and swappable from the WebUI — a future PQC
-migration is a config change, not a rewrite (see [`docs/crypto-agility.md`](docs/crypto-agility.md)).
+**Crypto-agility is the headline library strategy** — in the EU NIS Cooperation Group sense
+([PQC Roadmap](https://digital-strategy.ec.europa.eu/en/library/coordinated-implementation-roadmap-transition-post-quantum-cryptography),
+23 Jun 2025, §3.2): *modular design that enables replacing the cryptographic components*,
+explicitly **not** cipher-suite negotiation during protocol execution. Every algorithm
+(KEM / QKD / FHE / **MPC** / signature) is resolved from a registry and selected by the
+operator (config / WebUI) **before a run**, so a future PQC migration is a configuration
+change, not a rewrite. There is **no in-band negotiation and no silent fallback**
+(see [`docs/crypto-agility.md`](docs/crypto-agility.md)).
 
-Cross-cutting: **PQC-first hybrid** (ML-KEM-768 + X25519, ML-DSA-65), **crypto-agility**
-(swap algorithms at runtime), **secure-aggregation federated learning** — including a **Quantum
+Cross-cutting: **PQC-first hybrid** (ML-KEM-768 + X25519, ML-DSA-65 — the hybrid-first
+approach the EU roadmap recommends), **crypto-agility**
+(operator-selected, modular provider replacement), **secure-aggregation federated learning** — including a **Quantum
 Federated Learning** option (a Flower + PennyLane hybrid quantum-classical VQC, mirrored in-browser as
 a per-use-case toggle), **explainable AI**
 (exact linear-SHAP attributions, ML-DSA-signed for a tamper-evident audit record — EU AI Act
