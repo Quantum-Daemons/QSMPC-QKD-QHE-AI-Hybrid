@@ -211,13 +211,16 @@ DS_SMAP_MSL = DatasetSpec(
 )
 DS_CICIDS2017_FIXED = DatasetSpec(
     name="CIC-IDS2017, Engelen-corrected redistribution (WTMC 2021)",
-    licence="research use with citation; redistribution terms unverified",
-    url="https://downloads.distrinet-research.be/WTMC2021",
+    licence="no licence stated by either provider",
+    url="https://intrusion-detection.distrinet-research.be/WTMC2021/",
     licence_checked="2026-08-03",
     publishable=False,
     notes=(
-        "Local training and benchmarking only; neither the data nor derived weights are redistributed. "
-        "Engelen et al. found >25% of flows are artefacts and several attack classes were mislabelled."
+        "CIC-IDS2017 states no licence at all — only that it is 'publicly available for researchers' "
+        "plus a citation request — and the Engelen redistribution states no terms either. Absent an "
+        "affirmative grant, neither is safe to bundle or redistribute, so this is local training and "
+        "benchmarking only. Engelen et al. found >25% of flows are artefacts and several attack "
+        "classes were mislabelled."
     ),
 )
 DS_QKD_ATTACK_SYNTH = DatasetSpec(
