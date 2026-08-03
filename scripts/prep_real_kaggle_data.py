@@ -4,7 +4,7 @@
 This is a **one-time provenance script** (run by a maintainer, not at runtime). It turns the large raw
 Kaggle datasets into the small, commercial-OK real samples the repo ships + the demo loads:
 
-  data/finance/paysim_sample.tsv                  real PaySim transactions -> the 8 AML features + label
+  data/finance/paysim_sample.tsv                  PaySim simulator output (synthetic) -> the 8 AML features + label
   data/satellite/smap_msl_telemetry.tsv           real NASA SMAP/MSL telemetry (6 channels) + anomaly label
   web/public/data/finance/paysim_sample.json      demo: real rows + a distilled CKKS-linear model (SHAP)
   web/public/data/satellite/telemetry.json        demo: real telemetry windows + a real anomaly model
@@ -35,7 +35,8 @@ import numpy as np
 FIN_NAMES = ["amount", "velocity_24h", "cross_border", "night_tx",
              "new_payee", "amount_zscore", "device_risk", "geo_mismatch"]
 FIN_PROVENANCE = ("real: PaySim mobile-money transactions (Kaggle ealaxi/paysim1, CC-BY-SA-4.0; "
-                  "Lopez-Rojas et al. 2016). 8 AML features derived from real PaySim fields "
+                  "Lopez-Rojas et al. 2016). PaySim is a SIMULATOR: synthetic transactions from "
+                  "aggregated real mobile-money logs. 8 AML features derived from PaySim fields "
                   "(amount/type/step/balances); fraud oversampled for training (real base rate 0.13%).")
 SAT_PROVENANCE = ("real: NASA SMAP/MSL spacecraft telemetry (Telemanom, Hundman et al. 2018, NASA JPL; "
                   "CC0 / US-Gov public domain). 6 real channels, real labeled anomalies.")
@@ -44,7 +45,7 @@ SAT_PROVENANCE = ("real: NASA SMAP/MSL spacecraft telemetry (Telemanom, Hundman 
 def _paysim_features(df):
     """Map REAL PaySim columns -> the 8 AML features (in FIN_NAMES order). 5 are direct real fields
     (amount, velocity_24h, night_tx, new_payee, amount_zscore); 3 (cross_border, device_risk,
-    geo_mismatch) repurpose real PaySim fraud signatures since PaySim has no geo/device fields."""
+    geo_mismatch) repurpose PaySim fraud signatures since PaySim has no geo/device fields."""
     import numpy as np
     amount = df["amount"].to_numpy(float)
     log_amt = np.log1p(amount)
@@ -98,8 +99,9 @@ def prep_finance(src: Path, repo: Path, n: int = 4000, fraud_rate: float = 0.05,
     out_tsv = repo / "data" / "finance" / "paysim_sample.tsv"
     out_tsv.parent.mkdir(parents=True, exist_ok=True)
     with out_tsv.open("w") as f:
-        f.write("# Real PaySim mobile-money transactions (Kaggle ealaxi/paysim1, CC-BY-SA-4.0; "
-                "Lopez-Rojas et al. 2016). Columns = 8 AML features (real PaySim-derived) + isFraud.\n")
+        f.write("# PaySim simulator output, i.e. SYNTHETIC transactions (Kaggle ealaxi/paysim1, CC-BY-SA-4.0; "
+                "Lopez-Rojas et al. 2016). PaySim is a SIMULATOR (synthetic transactions). "
+                "Columns = 8 AML features + isFraud.\n")
         f.write("\t".join(FIN_NAMES) + "\tisFraud\n")
         for row, label in zip(Xs, ys):
             f.write("\t".join(f"{v:.5f}" for v in row) + f"\t{int(label)}\n")

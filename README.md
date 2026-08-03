@@ -230,7 +230,7 @@ clone or vendor any mixed-authorship aggregate repo.
 
 Bundled **real, commercial-OK** samples preferred; the synthetic generators are an offline-CI fallback only
 (logged as such, never a silent substitute):
-- **Finance/AML**: **real PaySim** mobile-money transactions (Kaggle `ealaxi/paysim1`, CC-BY-SA-4.0) → the 8 AML features.
+- **Finance/AML** (demo sample): **PaySim simulator output** (Kaggle `ealaxi/paysim1`, CC-BY-SA-4.0) → the 8 AML features. PaySim is a *simulator*: these are synthetic transactions from aggregated real mobile-money logs, not real transactions. The **training** corpus is IBM AMLworld HI-Small (CDLA-Sharing-1.0), 5,078,345 real-scale transactions at 1 laundering in 981.
 - **Medical**: MedMNIST v2 (CC-BY), Wisconsin breast-cancer (bundled, public domain).
 - **Genomics**: **real 1000 Genomes** phase-3 genotypes (Ensembl/IGSR, open) + **real PGS-Catalog** PGS000001 weights (CC-BY).
 - **Satellite**: **real NASA SMAP/MSL** spacecraft telemetry (Telemanom; NASA JPL; CC0 / US-Gov public domain).
@@ -456,7 +456,7 @@ See [`docs/pqc-roadmap.md`](docs/pqc-roadmap.md).
   | **medical** | **ResNet-18**, ImageNet-pretrained, transfer-learned onto 1-channel ultrasound | MedMNIST v2 **BreastMNIST** (CC-BY-4.0) | AUC **0.888** | 0.901 (Nature Sci Data 2022) |
   | **genomics** | published **PRS** effect-weight vector — not a neural network | PGS Catalog **PGS000001** over **2,504 real 1000 Genomes samples** | ancestry portability, below | AUROC 0.628 — *external citation, not measurable here* |
   | **satellite** | **Telemanom** 2xLSTM(80), seq 250, non-parametric dynamic threshold + pruning | **ESA-ADB Mission1** lightweight channels 41-46, 14 years of real telemetry (CC-BY-3.0-IGO) | event-wise F0.5 **0.714** | 0.786 (ESA-ADB Table 2) |
-  | **telecom** | RF baseline + quantum-kernel SVC + variational QNN | literature-grounded synthetic QKD-attack telemetry (7 attack types + normal) | architecture comparison only | no trustworthy single number exists — see below |
+  | **telecom** | RF baseline + quantum-kernel SVC + variational QNN | literature-grounded synthetic QKD-attack telemetry (7 attack types + normal) | macro F1 — **RF 0.987**, quantum-kernel SVC **0.832**, variational QNN **0.467** | no trustworthy single number exists — see below |
 
   Three of those deserve their honest caveat stated in the README rather than buried:
 
@@ -478,6 +478,12 @@ See [`docs/pqc-roadmap.md`](docs/pqc-roadmap.md).
     forest runs as a trivial baseline every time (0.0002 here), because a deep model that cannot beat
     it has not earned its complexity. Only labels whose ESA-ADB Category is `Anomaly` count as
     positives; the 690 annotated rare *nominal* events do not.
+
+  - **telecom reproduces the metric trap in-house.** The variational QNN scores **accuracy 0.875 but
+    macro F1 0.467** on the same 8-class problem: the aggregate looks respectable while most classes
+    are not being learned at all. That is the Engelen et al. finding arriving by accident rather than
+    by argument, on this project's own run, and it is why per-class F1 is the headline everywhere here.
+    Neither quantum model beats the classical random forest (0.987).
 
   **Quantum-ML IDS is presented as an architecture showcase, not a performance claim.** Every
   published QML-IDS number we could verify sits below a random forest on the same data, and
