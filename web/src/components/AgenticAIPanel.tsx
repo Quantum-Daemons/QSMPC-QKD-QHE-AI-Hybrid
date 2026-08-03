@@ -113,9 +113,9 @@ export default function AgenticAIPanel({
           <label className="muted" htmlFor={`ai-combiner-${usecase ?? "std"}`}>Combiner</label>
           <select id={`ai-combiner-${usecase ?? "std"}`} value={combiner} disabled={!mcpQkd}
             onChange={(e) => setCombiner(e.target.value)}
-            title="PQC+QKD key combiner (crypto.hybrid_combiner_mode): HKDF = dual-PRF, computationally secure-if-either; Toeplitz+LHL = information-theoretic secure-if-either (keeps the min-entropy of whichever input holds). Applies when 'mix QKD key' is on; the derived-key fingerprint below changes with the choice.">
+            title="PQC+QKD key combiner (crypto.hybrid_combiner_mode). HKDF = dual-PRF: the session key holds if either input does, under computational assumptions. Toeplitz+QLHL = an information-theoretic extractor whose extra property is leakage resilience — if the combined output AND one input key leak, the other retains quantifiable min-entropy — at the cost of longer keys (arXiv:2603.26907). Applies when 'mix QKD key' is on; the derived-key fingerprint below changes with the choice.">
             <option value="hkdf">HKDF (dual-PRF)</option>
-            <option value="its_toeplitz">Toeplitz+LHL (ITS · secure-if-either)</option>
+            <option value="its_toeplitz">Toeplitz+QLHL (ITS · leakage-resilient)</option>
           </select>
         </div>
         {ctxLine && <div className="note" style={{ marginTop: 10, fontSize: 12 }}>🔗 {ctxLine}</div>}

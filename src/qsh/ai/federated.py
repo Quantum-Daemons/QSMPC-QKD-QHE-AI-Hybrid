@@ -6,9 +6,17 @@ pseudo-random mask seeded from a PQC/QKD key; masks cancel in the sum, so the se
 recovers only the aggregate update and never an individual client's gradients
 (defends the gradient-leakage risk noted in the QFL survey and Li-Deng 2024).
 
-This is the local "full implementation" FL path. It is framework-light (robust across
-Flower versions); :func:`as_flower_client` exposes a Flower ``NumPyClient`` for those
-who want to run it under the Flower runtime.
+This is the local "full implementation" FL path, kept framework-light so it stays robust across
+Flower releases.
+
+Scope, stated plainly: secure aggregation hides an *individual client's* update from the
+aggregator. It does not bound what the trained model itself leaks, and FedAvg on its own is not a
+privacy guarantee — gradient inversion against a shared model is an established attack. A claim of
+formal privacy would need a stated DP-SGD budget, which this path does not provide.
+
+An earlier version of this docstring advertised an ``as_flower_client`` adapter exposing a Flower
+``NumPyClient``. No such function was ever implemented, so the reference is removed rather than left
+as a phantom API for a reader to go looking for.
 """
 
 from __future__ import annotations

@@ -119,4 +119,23 @@ def frontend_config() -> dict:
         "ids": asdict(c.ids),          # QML-IDS sample sizes (incl. the in-browser demo IDS)
         "crypto": asdict(c.crypto),    # crypto-agility defaults incl. hybrid_combiner_mode (PQC+QKD combiner)
         "web": asdict(c.web),
+        # Per-use-case model registry: repo ids, pinned revisions, artefact paths, dataset licences,
+        # published baselines and the metrics actually measured. The SPA renders model names, numbers
+        # and download URLs from this, so none of them can be hard-coded in TypeScript and none can
+        # drift from what the training runs produced.
+        "models": _model_registry(),
     }
+
+
+def _model_registry() -> dict:
+    """The model registry, or an empty mapping if the models package is unavailable.
+
+    Kept import-guarded so ``frontend_config()`` still works in the slim demo image, which ships
+    neither torch nor the training stack. An empty registry makes the SPA say "no models registered"
+    rather than inventing one.
+    """
+    try:
+        from ..models.registry import frontend_models
+    except Exception:  # pragma: no cover - slim image only
+        return {}
+    return frontend_models()

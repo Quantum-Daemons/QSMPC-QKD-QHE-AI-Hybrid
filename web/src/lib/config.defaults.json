@@ -123,6 +123,651 @@
     "rf_estimators": 200,
     "test_fraction": 0.25
   },
+  "models": {
+    "finance_aml": [
+      {
+        "achieved": null,
+        "architecture": "PNA with reverse message passing, multigraph port numbering, ego IDs, edge updates",
+        "artifacts": [
+          {
+            "fmt": "onnx",
+            "path": "onnx/model.onnx",
+            "precision": "fp32",
+            "serves": "server"
+          },
+          {
+            "fmt": "onnx",
+            "path": "onnx/model_int8.onnx",
+            "precision": "int8",
+            "serves": "browser"
+          },
+          {
+            "fmt": "safetensors",
+            "path": "model.safetensors",
+            "precision": "fp32",
+            "serves": "server"
+          },
+          {
+            "fmt": "json",
+            "path": "feature_spec.json",
+            "precision": "none",
+            "serves": "both"
+          }
+        ],
+        "dataset": {
+          "licence": "CDLA-Sharing-1.0",
+          "name": "IBM AMLworld HI-Small",
+          "publishable": true,
+          "url": "https://www.kaggle.com/datasets/ealtman2019/ibm-transactions-for-anti-money-laundering-aml"
+        },
+        "hf_repo_id": "Daemons-Q/qsh-finance-aml-gnn",
+        "hf_revision": null,
+        "key": "finance_aml.gnn",
+        "label": "Multi-PNA+EU transaction GNN",
+        "metric": {
+          "baseline": 0.6323,
+          "baseline_source": "GFP+XGBoost, IBM AMLworld HI-Small, NeurIPS 2023 D&B (63.23 +/- 0.17)",
+          "ceiling": 0.6816,
+          "ceiling_source": "Multi-PNA+EU, AAAI-24 vol.38 no.10 pp.11838-11846 (68.16 +/- 2.65)",
+          "companion": "auprc",
+          "display": "minority-class F1 (laundering)",
+          "name": "minority_class_f1"
+        },
+        "notes": "Message-passing needs the graph neighbourhood at inference, so the browser tier ships the stateless gradient-boosting variant instead of this one.",
+        "params": null,
+        "runs_encrypted": false,
+        "tier": "t2_industry"
+      },
+      {
+        "achieved": {
+          "accuracy": 0.9983866140161103,
+          "auprc": 0.07323010834680115,
+          "auprc_baseline": 0.0015234617040716665,
+          "auroc": 0.8980183471873905,
+          "baseline_gap_note": "This reaches minority-class F1 well below the published 0.6323. Two differences account for most of it and both are deliberate. (1) The published baseline uses IBM's Graph Feature Preprocessor, which ships in `snapml` under a Proprietary licence and is therefore excluded by this project's commercial-OK-only rule; what is reimplemented here is the documented typology set (degree, fan-in/out, reciprocity, k-hop cycle closure, burst degree, scatter-gather). (2) The corpus injects CYCLE attempts of up to 10 hops (HI-Small_Patterns.txt), while reachability here is computed to 4 hops because the boolean sparse powers grow quickly beyond that. The evaluation is also strictly inductive: graph aggregates are fitted on the training window only, so no test-time edge informs a training-time feature. Reported as measured; not adjusted to close the gap.",
+          "data_digest": "1e28652402bec78a",
+          "dataset": "IBM AMLworld HI-Small",
+          "decision_threshold": 0.928426,
+          "export": {
+            "fp32_bytes": 4606582,
+            "int8_agreement": 1.0,
+            "int8_bytes": 0,
+            "opset": 0
+          },
+          "git_sha": "e572d98-dirty",
+          "hf_revision": "561b8e0b2008d5132a96e312f999f960c5c449e8",
+          "minority_class_f1": 0.08077786088257292,
+          "n_test": 1523504,
+          "n_train": 3554841,
+          "positive_rate": 0.00101943,
+          "split": "temporal, inductive",
+          "wall_clock_s": 73.7
+        },
+        "architecture": "GFP (graph features) + XGBoost",
+        "artifacts": [
+          {
+            "fmt": "onnx",
+            "path": "onnx/model.onnx",
+            "precision": "fp32",
+            "serves": "server"
+          },
+          {
+            "fmt": "onnx",
+            "path": "onnx/model_int8.onnx",
+            "precision": "int8",
+            "serves": "browser"
+          },
+          {
+            "fmt": "safetensors",
+            "path": "model.safetensors",
+            "precision": "fp32",
+            "serves": "server"
+          },
+          {
+            "fmt": "json",
+            "path": "feature_spec.json",
+            "precision": "none",
+            "serves": "both"
+          }
+        ],
+        "dataset": {
+          "licence": "CDLA-Sharing-1.0",
+          "name": "IBM AMLworld HI-Small",
+          "publishable": true,
+          "url": "https://www.kaggle.com/datasets/ealtman2019/ibm-transactions-for-anti-money-laundering-aml"
+        },
+        "hf_repo_id": "Daemons-Q/qsh-finance-aml-gbm",
+        "hf_revision": "561b8e0b2008d5132a96e312f999f960c5c449e8",
+        "key": "finance_aml.gbm",
+        "label": "Graph-feature-preprocessed gradient boosting",
+        "metric": {
+          "baseline": 0.6323,
+          "baseline_source": "GFP+XGBoost, IBM AMLworld HI-Small, NeurIPS 2023 D&B (63.23 +/- 0.17)",
+          "ceiling": 0.6816,
+          "ceiling_source": "Multi-PNA+EU, AAAI-24 vol.38 no.10 pp.11838-11846 (68.16 +/- 2.65)",
+          "companion": "auprc",
+          "display": "minority-class F1 (laundering)",
+          "name": "minority_class_f1"
+        },
+        "notes": "Stateless at inference, so this is the browser-tier finance model.",
+        "params": null,
+        "runs_encrypted": false,
+        "tier": "t2_industry"
+      },
+      {
+        "achieved": {
+          "agreement": 0.884055,
+          "disagreement_on_positives": 0.643257,
+          "metric_delta": 0.062987,
+          "metric_delta_pp": 6.2987,
+          "metric_name": "minority_class_f1",
+          "n_eval": 1523504,
+          "student_key": "finance_aml.student",
+          "student_metric": 0.017791,
+          "student_params": 33,
+          "teacher_key": "finance_aml.gbm",
+          "teacher_metric": 0.080778,
+          "teacher_params": 138312
+        },
+        "architecture": "logistic regression distilled from the gradient-boosting teacher",
+        "artifacts": [],
+        "dataset": {
+          "licence": "CDLA-Sharing-1.0",
+          "name": "IBM AMLworld HI-Small",
+          "publishable": true,
+          "url": "https://www.kaggle.com/datasets/ealtman2019/ibm-transactions-for-anti-money-laundering-aml"
+        },
+        "hf_repo_id": null,
+        "hf_revision": null,
+        "key": "finance_aml.student",
+        "label": "CKKS-linear fraud student",
+        "metric": {
+          "baseline": 0.6323,
+          "baseline_source": "GFP+XGBoost, IBM AMLworld HI-Small, NeurIPS 2023 D&B (63.23 +/- 0.17)",
+          "ceiling": 0.6816,
+          "ceiling_source": "Multi-PNA+EU, AAAI-24 vol.38 no.10 pp.11838-11846 (68.16 +/- 2.65)",
+          "companion": "auprc",
+          "display": "minority-class F1 (laundering)",
+          "name": "minority_class_f1"
+        },
+        "notes": "Runs under real CKKS. crypto_fidelity is measured against the teacher every run.",
+        "params": null,
+        "runs_encrypted": true,
+        "tier": "t1_crypto"
+      }
+    ],
+    "genomics": [
+      {
+        "achieved": {
+          "dataset": "PGS Catalog scoring files",
+          "git_sha": "e572d98-dirty",
+          "licence_audit": {
+            "checked": "read from the bundled scoring file at run time",
+            "declares_restriction": false,
+            "header": [
+              "# PGS000001 (PRS77_BC) \u2014 real breast-cancer Polygenic Risk Score, 77 SNPs. Source: PGS Catalog (https://www.pgscatalog.org/score/PGS000001/), CC-BY 4.0. Mavaddat et al. Bundled for the genomics use case (real PRS model evaluated under CKKS)."
+            ],
+            "publishable": true
+          },
+          "measured": {
+            "by_super_population": {
+              "AFR": {
+                "frac_above_global_cut": 0.293495,
+                "mean": 1.187253,
+                "n": 661,
+                "p90": 1.724599,
+                "sd": 0.414498
+              },
+              "AMR": {
+                "frac_above_global_cut": 0.037464,
+                "mean": 0.624626,
+                "n": 347,
+                "p90": 1.128644,
+                "sd": 0.412362
+              },
+              "EAS": {
+                "frac_above_global_cut": 0.065476,
+                "mean": 0.856069,
+                "n": 504,
+                "p90": 1.332257,
+                "sd": 0.38604
+              },
+              "EUR": {
+                "frac_above_global_cut": 0.00994,
+                "mean": 0.516796,
+                "n": 503,
+                "p90": 1.062128,
+                "sd": 0.414408
+              },
+              "SAS": {
+                "frac_above_global_cut": 0.01227,
+                "mean": 0.560764,
+                "n": 489,
+                "p90": 1.097803,
+                "sd": 0.404388
+              }
+            },
+            "global_high_risk_cut": 1.429783,
+            "n_samples": 2504,
+            "n_variants": 77,
+            "score_mean": 0.785599,
+            "score_sd": 0.486734
+          },
+          "not_measured": {
+            "auroc": null,
+            "published_auroc_eur": 0.628,
+            "published_source": "PGS000001 (Mavaddat 2015), PGS Catalog performance metric at n=200,195",
+            "reason": "1000 Genomes is a reference panel with no breast-cancer case/control status. AUROC requires a phenotyped cohort; the published 0.628 comes from n=200,195 and is carried as a citation, not as a measurement from this run."
+          },
+          "wall_clock_s": 0.0
+        },
+        "architecture": "per-SNP effect-weight vector; Bayesian shrinkage (PRS-CS / LDpred2 family)",
+        "artifacts": [
+          {
+            "fmt": "json",
+            "path": "weights.json",
+            "precision": "none",
+            "serves": "both"
+          }
+        ],
+        "dataset": {
+          "licence": "per-score; EMBL-EBI Terms of Use by default",
+          "name": "PGS Catalog scoring files",
+          "publishable": false,
+          "url": "https://www.pgscatalog.org/downloads/"
+        },
+        "hf_repo_id": null,
+        "hf_revision": null,
+        "key": "genomics.prs",
+        "label": "Polygenic risk score (published effect weights)",
+        "metric": {
+          "baseline": 0.628,
+          "baseline_source": "PGS000001 (Mavaddat 2015), PGS Catalog performance metric at n=200,195",
+          "ceiling": 0.69,
+          "ceiling_source": "Upper end of the honest published range for germline SNP breast-cancer PRS",
+          "companion": "auroc_afr",
+          "display": "AUROC (European ancestry)",
+          "name": "auroc_eur"
+        },
+        "notes": "Not a neural network, and presenting a genomic foundation model as a PRS method would be the most obvious credibility hole available. Evaluation must be stratified by genetic ancestry: the European-to-African AUROC drop is the finding, not a footnote.",
+        "params": null,
+        "runs_encrypted": true,
+        "tier": "t2_industry"
+      }
+    ],
+    "medical_fl": [
+      {
+        "achieved": null,
+        "architecture": "DenseNet-121, FedAvg with pairwise-mask secure aggregation (qsh.ai.federated)",
+        "artifacts": [
+          {
+            "fmt": "onnx",
+            "path": "onnx/model.onnx",
+            "precision": "fp32",
+            "serves": "server"
+          },
+          {
+            "fmt": "onnx",
+            "path": "onnx/model_int8.onnx",
+            "precision": "int8",
+            "serves": "browser"
+          },
+          {
+            "fmt": "safetensors",
+            "path": "model.safetensors",
+            "precision": "fp32",
+            "serves": "server"
+          },
+          {
+            "fmt": "json",
+            "path": "feature_spec.json",
+            "precision": "none",
+            "serves": "both"
+          }
+        ],
+        "dataset": {
+          "licence": "CC0-1.0",
+          "name": "Camelyon17-WILDS",
+          "publishable": true,
+          "url": "https://wilds.stanford.edu/datasets/"
+        },
+        "hf_repo_id": "Daemons-Q/qsh-medical-fl-densenet121",
+        "hf_revision": null,
+        "key": "medical_fl.densenet",
+        "label": "DenseNet-121, federated across 3 hospitals",
+        "metric": {
+          "baseline": 0.703,
+          "baseline_source": "ERM baseline, official WILDS leaderboard (70.3 +/- 6.4)",
+          "ceiling": 0.946,
+          "ceiling_source": "ContriMix DenseNet-121, official WILDS leaderboard (94.6 +/- 1.2)",
+          "companion": "id_accuracy",
+          "display": "OOD test accuracy (held-out hospitals)",
+          "name": "ood_accuracy"
+        },
+        "notes": "FedAvg alone is not a privacy guarantee \u2014 gradient inversion is possible. The secure aggregation in qsh.ai.federated hides individual updates from the aggregator; it does not bound what the trained model itself leaks.",
+        "params": null,
+        "runs_encrypted": false,
+        "tier": "t2_industry"
+      },
+      {
+        "achieved": {
+          "accuracy": 0.8782051282051282,
+          "auc": 0.8876357560568087,
+          "best_val_auc": 0.915622,
+          "dataset": "MedMNIST v2 BreastMNIST",
+          "export": {
+            "fp32_bytes": 44765598,
+            "int8_agreement": 0.9871794871794872,
+            "int8_bytes": 11257533,
+            "opset": 18
+          },
+          "git_sha": "e572d98-dirty",
+          "hf_revision": "ab4a5fc42b429dbc8fc960d0a17f7fa902e3f5c0",
+          "macro_f1": 0.8389743032541968,
+          "n_parameters": 11171266,
+          "resolution": 28,
+          "transfer_learning": "ImageNet1K_V1 ResNet-18, conv1 summed to 1 channel, fresh fc head",
+          "wall_clock_s": 7.7
+        },
+        "architecture": "ResNet-18 @28px",
+        "artifacts": [
+          {
+            "fmt": "onnx",
+            "path": "onnx/model.onnx",
+            "precision": "fp32",
+            "serves": "server"
+          },
+          {
+            "fmt": "onnx",
+            "path": "onnx/model_int8.onnx",
+            "precision": "int8",
+            "serves": "browser"
+          },
+          {
+            "fmt": "safetensors",
+            "path": "model.safetensors",
+            "precision": "fp32",
+            "serves": "server"
+          },
+          {
+            "fmt": "json",
+            "path": "feature_spec.json",
+            "precision": "none",
+            "serves": "both"
+          }
+        ],
+        "dataset": {
+          "licence": "CC-BY-4.0",
+          "name": "MedMNIST v2 BreastMNIST",
+          "publishable": true,
+          "url": "https://medmnist.com/"
+        },
+        "hf_repo_id": "Daemons-Q/qsh-medical-breastmnist-resnet18",
+        "hf_revision": "ab4a5fc42b429dbc8fc960d0a17f7fa902e3f5c0",
+        "key": "medical_fl.resnet18",
+        "label": "ResNet-18 on BreastMNIST",
+        "metric": {
+          "baseline": 0.901,
+          "baseline_source": "ResNet-18 @28px, MedMNIST v2, Nature Scientific Data 2022 (AUC 0.901 / ACC 0.863)",
+          "ceiling": 0.919,
+          "ceiling_source": "Google AutoML Vision, MedMNIST v2 (AUC 0.919)",
+          "companion": "accuracy",
+          "display": "AUC",
+          "name": "auc"
+        },
+        "notes": "The small tier: fits the browser comfortably and has a clean published baseline.",
+        "params": null,
+        "runs_encrypted": false,
+        "tier": "t2_industry"
+      },
+      {
+        "achieved": {
+          "agreement": 0.762821,
+          "disagreement_on_positives": 0.061404,
+          "metric_delta": 0.147436,
+          "metric_delta_pp": 14.7436,
+          "metric_name": "accuracy",
+          "n_eval": 156,
+          "student_key": "medical_fl.student",
+          "student_metric": 0.730769,
+          "student_params": 3226,
+          "teacher_key": "medical_fl.resnet18",
+          "teacher_metric": 0.878205,
+          "teacher_params": 11171266
+        },
+        "architecture": "1 conv block (1->4ch, 3x3), avg-pool, dense head, 14x14 input",
+        "artifacts": [],
+        "dataset": {
+          "licence": "CC-BY-4.0",
+          "name": "MedMNIST v2 BreastMNIST",
+          "publishable": true,
+          "url": "https://medmnist.com/"
+        },
+        "hf_repo_id": null,
+        "hf_revision": null,
+        "key": "medical_fl.student",
+        "label": "FHE-feasible diagnostic CNN",
+        "metric": {
+          "baseline": 0.901,
+          "baseline_source": "ResNet-18 @28px, MedMNIST v2, Nature Scientific Data 2022 (AUC 0.901 / ACC 0.863)",
+          "ceiling": 0.919,
+          "ceiling_source": "Google AutoML Vision, MedMNIST v2 (AUC 0.919)",
+          "companion": "accuracy",
+          "display": "AUC",
+          "name": "auc"
+        },
+        "notes": "Genuine encrypted convolution: im2col + CKKS dot_plain, ReLU/max-pool under MPC.",
+        "params": null,
+        "runs_encrypted": true,
+        "tier": "t1_crypto"
+      }
+    ],
+    "satellite_comms": [
+      {
+        "achieved": {
+          "anomaly_sample_rate": 0.0075528,
+          "dataset": "ESA Anomaly Dataset (ESA-ADB), Mission1 lightweight channels 41-46",
+          "event_wise_f0_5": 0.714286,
+          "export": {
+            "fp32_bytes": 329179,
+            "int8_bytes": 326884,
+            "opset": 17
+          },
+          "git_sha": "e572d98-dirty",
+          "metric_note": "Event-wise F-beta at beta=0.5 under the overlap rule, which is what ESA-ADB and Telemanom report. Telemanom's widely-quoted 0.71 is F0.5, not F1. point_adjusted_f1 is shown only to expose how much point adjustment inflates: TSB-AD (NeurIPS 2024) found a uniform random score ranks 26th of 32 detectors under it. Only labels whose ESA-ADB Category is 'Anomaly' count as positives; the 690 annotated rare *nominal* events do not.",
+          "n_anomaly_intervals": 320,
+          "n_parameters": 80486,
+          "point_adjusted_f1": 0.994475,
+          "published_full_channel_f0_5": 0.061,
+          "published_lightweight_f0_5": 0.786,
+          "resample": "300s",
+          "wall_clock_s": 60.1,
+          "windowed_iforest_event_wise_f0_5": 0.000248
+        },
+        "architecture": "2 x LSTM(80), sequence length 250, dropout 0.3, non-parametric dynamic threshold with pruning",
+        "artifacts": [
+          {
+            "fmt": "onnx",
+            "path": "onnx/model.onnx",
+            "precision": "fp32",
+            "serves": "server"
+          },
+          {
+            "fmt": "onnx",
+            "path": "onnx/model_int8.onnx",
+            "precision": "int8",
+            "serves": "browser"
+          },
+          {
+            "fmt": "safetensors",
+            "path": "model.safetensors",
+            "precision": "fp32",
+            "serves": "server"
+          },
+          {
+            "fmt": "json",
+            "path": "feature_spec.json",
+            "precision": "none",
+            "serves": "both"
+          }
+        ],
+        "dataset": {
+          "licence": "CC-BY-3.0-IGO",
+          "name": "ESA Anomaly Dataset (ESA-ADB), Mission1 lightweight channels 41-46",
+          "publishable": true,
+          "url": "https://zenodo.org/records/12528696"
+        },
+        "hf_repo_id": "Daemons-Q/qsh-satellite-telemanom-esa",
+        "hf_revision": null,
+        "key": "satellite_comms.telemanom",
+        "label": "Telemanom LSTM forecaster (per channel)",
+        "metric": {
+          "baseline": 0.786,
+          "baseline_source": "ESA-ADB Table 2, Mission1 lightweight (channels 41-46), best event-wise F0.5",
+          "ceiling": null,
+          "ceiling_source": "",
+          "companion": "event_wise_f0_5_full_channels",
+          "display": "event-wise F0.5",
+          "name": "event_wise_f0_5"
+        },
+        "notes": "Report event-wise F0.5, never point-adjusted F1. Always run a trivial baseline alongside: windowed isolation forest wins the ESA-ADB Mission2 lightweight subset outright.",
+        "params": null,
+        "runs_encrypted": false,
+        "tier": "t2_industry"
+      },
+      {
+        "achieved": {
+          "agreement": 0.999987,
+          "disagreement_on_positives": 0.0,
+          "metric_delta": 0.0,
+          "metric_delta_pp": 0.0,
+          "metric_name": "event_wise_f0_5",
+          "n_eval": 307601,
+          "student_key": "satellite_comms.student",
+          "student_metric": 0.0,
+          "student_params": 49,
+          "teacher_key": "satellite_comms.telemanom",
+          "teacher_metric": 0.0,
+          "teacher_params": 80486
+        },
+        "architecture": "logistic regression over channel x timestep windows",
+        "artifacts": [],
+        "dataset": {
+          "licence": "CC-BY-3.0-IGO",
+          "name": "ESA Anomaly Dataset (ESA-ADB), Mission1 lightweight channels 41-46",
+          "publishable": true,
+          "url": "https://zenodo.org/records/12528696"
+        },
+        "hf_repo_id": null,
+        "hf_revision": null,
+        "key": "satellite_comms.student",
+        "label": "CKKS-linear telemetry anomaly student",
+        "metric": {
+          "baseline": 0.786,
+          "baseline_source": "ESA-ADB Table 2, Mission1 lightweight (channels 41-46), best event-wise F0.5",
+          "ceiling": null,
+          "ceiling_source": "",
+          "companion": "event_wise_f0_5_full_channels",
+          "display": "event-wise F0.5",
+          "name": "event_wise_f0_5"
+        },
+        "notes": "",
+        "params": null,
+        "runs_encrypted": true,
+        "tier": "t1_crypto"
+      }
+    ],
+    "telecom_ids": [
+      {
+        "achieved": null,
+        "architecture": "4 layers, 8 heads, d_model 128, FFN 512, GELU, learnable [CLS]",
+        "artifacts": [
+          {
+            "fmt": "onnx",
+            "path": "onnx/model.onnx",
+            "precision": "fp32",
+            "serves": "server"
+          },
+          {
+            "fmt": "onnx",
+            "path": "onnx/model_int8.onnx",
+            "precision": "int8",
+            "serves": "browser"
+          },
+          {
+            "fmt": "safetensors",
+            "path": "model.safetensors",
+            "precision": "fp32",
+            "serves": "server"
+          },
+          {
+            "fmt": "json",
+            "path": "feature_spec.json",
+            "precision": "none",
+            "serves": "both"
+          }
+        ],
+        "dataset": {
+          "licence": "research use with citation; redistribution terms unverified",
+          "name": "CIC-IDS2017, Engelen-corrected redistribution (WTMC 2021)",
+          "publishable": false,
+          "url": "https://downloads.distrinet-research.be/WTMC2021"
+        },
+        "hf_repo_id": null,
+        "hf_revision": null,
+        "key": "telecom_ids.transformer",
+        "label": "Encoder-only Transformer IDS",
+        "metric": {
+          "baseline": null,
+          "baseline_source": "No trustworthy single number: Engelen et al. (WTMC 2021 @ IEEE S&P Workshops) show aggregate accuracy sits at 0.99 both before and after correcting CIC-IDS2017 while Bot F1 moves 0.60 -> 0.99 and Web XSS 0.11 -> 0.79. Per-class F1 is reported instead.",
+          "ceiling": null,
+          "ceiling_source": "",
+          "companion": "aggregate_accuracy",
+          "display": "macro F1 across attack classes",
+          "name": "macro_f1"
+        },
+        "notes": "Trained on the Engelen-corrected corpus locally. Weights are not published because the redistribution terms of the corrected dataset are unverified.",
+        "params": null,
+        "runs_encrypted": false,
+        "tier": "t2_industry"
+      },
+      {
+        "achieved": null,
+        "architecture": "PCA -> angle embedding -> StronglyEntanglingLayers; fidelity quantum kernel",
+        "artifacts": [
+          {
+            "fmt": "json",
+            "path": "weights.json",
+            "precision": "none",
+            "serves": "both"
+          }
+        ],
+        "dataset": {
+          "licence": "generated by this repository",
+          "name": "QKD attack telemetry (synthetic, methodology-grounded)",
+          "publishable": true,
+          "url": "https://arxiv.org/abs/2509.14282"
+        },
+        "hf_repo_id": "Daemons-Q/qsh-telecom-qml-ids",
+        "hf_revision": null,
+        "key": "telecom_ids.qml",
+        "label": "Quantum-kernel SVC + variational QNN",
+        "metric": {
+          "baseline": null,
+          "baseline_source": "Architecture showcase, not a performance claim. Every published QML-IDS number we could verify sits below a random forest on the same data, and arXiv:2512.05069 was withdrawn by its own authors for evaluation that was 'insufficient to fully support the conclusions'.",
+          "ceiling": null,
+          "ceiling_source": "",
+          "companion": "classical_rf_macro_f1",
+          "display": "macro F1 (synthetic QKD-attack telemetry)",
+          "name": "macro_f1"
+        },
+        "notes": "Shown as an architecture comparison against a random forest on identical data.",
+        "params": 25,
+        "runs_encrypted": false,
+        "tier": "t2_industry"
+      }
+    ]
+  },
   "qkd": {
     "basis_prob": 0.5,
     "dark_count_prob": 1e-05,
@@ -217,12 +862,34 @@
     "webllm_max_tokens": 160,
     "webllm_models": [
       {
-        "id": "Qwen2.5-0.5B-Instruct-q4f16_1-MLC",
-        "label": "Qwen2.5-0.5B-Instruct (~350 MB)"
+        "bytes": 204289520,
+        "id": "SmolLM2-360M-Instruct-q4f16_1-MLC",
+        "label": "SmolLM2-360M (204 MB, needs shader-f16)",
+        "requires": "shader-f16"
       },
       {
+        "bytes": 376000000,
+        "id": "SmolLM2-360M-Instruct-q4f32_1-MLC",
+        "label": "SmolLM2-360M f32 (376 MB, no shader-f16)",
+        "requires": ""
+      },
+      {
+        "bytes": 695242752,
+        "id": "Llama-3.2-1B-Instruct-q4f16_1-MLC",
+        "label": "Llama-3.2-1B (695 MB, needs shader-f16)",
+        "requires": "shader-f16"
+      },
+      {
+        "bytes": 0,
+        "id": "Qwen2.5-0.5B-Instruct-q4f16_1-MLC",
+        "label": "Qwen2.5-0.5B (needs shader-f16)",
+        "requires": "shader-f16"
+      },
+      {
+        "bytes": 2000000000,
         "id": "Phi-3-mini-4k-instruct-q4f16_1-MLC",
-        "label": "Phi-3-mini-4k (~2 GB)"
+        "label": "Phi-3-mini-4k (~2 GB, needs shader-f16)",
+        "requires": "shader-f16"
       }
     ]
   }

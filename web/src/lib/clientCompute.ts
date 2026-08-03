@@ -15,7 +15,8 @@ import { secureArgmax, warmMPC } from "./clientMPC";
 import { optimizeQKD } from "./clientOptiQKD";
 import { generateQuantumBits } from "./clientQRNG";
 import { bb84, e91, FIBER, FREE_SPACE, h2, intrinsicQber, qcnnExpectation, qotpQcnnInfer, rng } from "./quantumSim";
-import { inferLogits, onnxBackend } from "./onnxInference";
+import { browserProvenance, type Provenance } from "../components/ProvenanceBadge";
+import { inferLogits, onnxBackend, onnxStatus } from "./onnxInference";
 import { realInput, realSatelliteAnomaly, type RealInput } from "./realData";
 
 const r1 = (x: number) => Math.round(x * 10) / 10;
@@ -142,21 +143,69 @@ export async function keyedHashPSI(setA: string[], setB: string[], key: Uint8Arr
 }
 
 // --------------------------------------------------------------------------- //
-//  Private inference: ONNX (WASM/WebGPU) with a pure-JS linear fallback
+//  Private inference: published ONNX model -> bundled real model -> placeholder
 // --------------------------------------------------------------------------- //
-const JS_W = [
+// A last-resort weight set, used only when neither a published ONNX model nor a bundled real model
+// is available for the use case. It is arbitrary, so it is reported as SIMULATED: a number produced
+// by these weights describes nothing. Before Round 17 this path ran on *every* page load — the ONNX
+// model it was nominally backing up could never exist, because `*.onnx` is git-ignored and
+// `web/public/models/` shipped empty — and the page presented its output as an inference result.
+const PLACEHOLDER_W = [
   [0.12, -0.34, 0.08, 0.21, -0.15, 0.4, -0.05, 0.18],
   [-0.1, 0.27, -0.22, 0.05, 0.33, -0.18, 0.12, -0.07],
 ];
-const JS_B = [0.05, -0.05];
+const PLACEHOLDER_B = [0.05, -0.05];
 
-export async function privateInference(features: number[]) {
+export type InferenceResult = {
+  logits: number[];
+  prediction: number;
+  backend: string;
+  provenance: Provenance;
+  modelKey: string | null;
+  note?: string;
+};
+
+/**
+ * Private inference for one feature vector.
+ *
+ * Three tiers, and which one ran is reported rather than left to be inferred from the output:
+ *   1. the published browser-tier ONNX model for this use case  -> MEASURED (WebGPU or WASM)
+ *   2. the bundled real distilled model shipped with the demo   -> MEASURED (plain JS arithmetic)
+ *   3. placeholder weights                                      -> SIMULATED
+ */
+export async function privateInference(
+  usecase: string, features: number[], realModel?: { W: number[][]; b: number[] } | null,
+): Promise<InferenceResult> {
   const f = features.slice(0, 8);
   while (f.length < 8) f.push(0);
-  const onnx = await inferLogits(f);
-  if (onnx) return { logits: onnx, prediction: argmax(onnx), backend: onnxBackend() };
-  const logits = JS_W.map((row, j) => row.reduce((a, wij, i) => a + wij * f[i], 0) + JS_B[j]);
-  return { logits, prediction: argmax(logits), backend: "js-linear" };
+
+  const onnx = await inferLogits(usecase, f);
+  if (onnx) {
+    return {
+      logits: onnx, prediction: argmax(onnx), backend: onnxBackend(),
+      provenance: browserProvenance(), modelKey: onnxStatus().modelKey,
+    };
+  }
+
+  if (realModel?.W?.length) {
+    const logits = realModel.W.map((row, j) =>
+      row.reduce((a, wij, i) => a + wij * (f[i] ?? 0), 0) + (realModel.b?.[j] ?? 0));
+    return {
+      logits, prediction: argmax(logits), backend: "js-linear (bundled real model)",
+      provenance: "measured-wasm", modelKey: null,
+      note: "bundled distilled linear model, evaluated in plain JS arithmetic",
+    };
+  }
+
+  const logits = PLACEHOLDER_W.map((row, j) =>
+    row.reduce((a, wij, i) => a + wij * f[i], 0) + PLACEHOLDER_B[j]);
+  return {
+    logits, prediction: argmax(logits), backend: "js-placeholder",
+    provenance: "simulated", modelKey: null,
+    note: onnxStatus().error
+      ? `no model available: ${onnxStatus().error}`
+      : "no published model registered for this use case; placeholder weights",
+  };
 }
 
 // Exact linear-SHAP (mirror of qsh/ai/explainability.py): phi_i = w_eff_i * (x_i - baseline_i),
@@ -464,7 +513,7 @@ export async function clientAliceBob(seed = 0, nShared = 8) {
   timing.psi_ms = r2(performance.now() - t);
 
   t = performance.now();
-  const inf = await privateInference(Array.from({ length: 8 }, () => u() * 2 - 1));
+  const inf = await privateInference("demo", Array.from({ length: 8 }, () => u() * 2 - 1));
   timing.private_inference_ms = r2(performance.now() - t);
 
   const sec = securityScore({
@@ -825,7 +874,9 @@ export function runClientPipeline(
           : "data: synthetic features (no commercial-OK real dataset shipped for this use case)");
         if (realIn?.metrics) for (const [k, v] of Object.entries(realIn.metrics)) metric(stage, k, v);
         const t = performance.now();
-        const inf = await privateInference(feats);     // real ONNX client compute (WASM/WebGPU)
+        // Published ONNX model where one exists for this use case, else the bundled real distilled
+        // model, else placeholder weights. inf.provenance records which, and the UI shows it.
+        const inf = await privateInference(usecase, feats, realIn?.model ?? null);
         const clientMs = r2(performance.now() - t);
         artifacts.client_compute_ms = clientMs;
         metric(stage, "client_compute_ms", clientMs);
@@ -834,6 +885,13 @@ export function runClientPipeline(
         // MPC-non-linear ms scale that MEASURED per-op cost to the SELECTED architecture (size × workload) so the
         // time genuinely tracks lightweight/medium/large × linear/cnn/transformer. client_compute_ms above is the
         // raw ONNX wall-clock; _measured_hybrid keeps the raw per-op measurement (the benchmark panel scales it too).
+        // Surface which tier actually produced the inference, so a page that fell back to
+        // placeholder weights cannot look like one that ran the published model.
+        metric(stage, "inference_backend", inf.backend);
+        metric(stage, "inference_provenance", inf.provenance);
+        if (inf.modelKey) metric(stage, "inference_model", inf.modelKey);
+        if (inf.note) emit("log", stage, `inference: ${inf.note}`);
+
         const real = await realClientHybrid(feats, u);
         if (real) {
           const bscale = benchScale(usecase, config.model_size ?? "medium", config.workload ?? "linear");
@@ -879,7 +937,13 @@ export function runClientPipeline(
         const names = realIn?.names ?? FEATURE_NAMES[usecase] ?? Array.from({ length: 8 }, (_, i) => `feature_${i}`);
         // XAI uses the REAL model where one is shipped (real breast-cancer LR / real PGS PRS weights),
         // else the linear surrogate — so the attribution on real data reflects the real model.
-        artifacts.explanation = linearShap(realIn?.model?.W ?? JS_W, realIn?.model?.b ?? JS_B, feats, names, 5);
+        artifacts.explanation = linearShap(
+          realIn?.model?.W ?? PLACEHOLDER_W, realIn?.model?.b ?? PLACEHOLDER_B, feats, names, 5);
+        // SHAP is exact for the model it is given. With placeholder weights the attribution is
+        // exact for weights that mean nothing, so say which case this is rather than let a reader
+        // assume the explanation describes the industry model.
+        artifacts.explanation_provenance = realIn?.model?.W ? "real bundled model" : "placeholder weights";
+        metric(stage, "explanation_model", artifacts.explanation_provenance);
         metric(stage, "explanation_top_contribution", artifacts.explanation.top_features[0]?.contribution ?? 0);
         emit("log", stage, `XAI: top driver = ${artifacts.explanation.top_features[0]?.feature}`);
         break;

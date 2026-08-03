@@ -10,8 +10,8 @@ export default function Value() {
       <h2>The driver: Q-Day is being pulled forward</h2>
       <div className="grid cols-3">
         <div className="card"><h3>HNDL is active</h3><p>"Harvest Now, Decrypt Later": data with 30-year secrecy needs is already at risk. The hybrid (PQC+QKD) channel protects it today.</p></div>
-        <div className="card"><h3>Resource estimates collapsing</h3><p>RSA-2048 break estimated under 1M qubits (Gidney 2025, ~1/20 of prior). Some forecasts put Q-Day at 2028–2030.</p></div>
-        <div className="card"><h3>Regulation mandates migration</h3><p>NIST FIPS 203/204/205 final; NSA CNSA 2.0 mandates PQC for new NSS by 2027; Google/Cloudflare target 2029. <b>EU AI Act Art. 13 transparency</b> (high-risk AI) is in force <b>Aug 2026</b> — explainability is now obligatory, not optional.</p></div>
+        <div className="card"><h3>Resource estimates collapsing</h3><p>RSA-2048 break estimated under 1M noisy qubits (Gidney, arXiv:2505.15917, 2025) &mdash; about 1/20 the qubits of the 2019 estimate, though the runtime rises roughly 20&times; in exchange. Some forecasts put Q-Day at 2028–2030.</p></div>
+        <div className="card"><h3>Regulation mandates migration</h3><p>NIST FIPS 203/204/205 final. NSA CNSA 2.0 requires new NSS acquisitions to be quantum-resistant from 2027 (widely reported; NSA's own pages are not machine-retrievable, so treat the exact wording as unverified). US <b>EO 14412</b> (22 Jun 2026) is the binding instrument: PQC key establishment on high-value assets by 2030 and signatures by 2031, with National Security Systems excluded. Cloudflare commits to full PQ security including authentication by 2029; Google sets 2029 as a migration timeline. <b>EU AI Act Art. 13 transparency</b> (high-risk AI) is in force <b>Aug 2026</b> — explainability is now obligatory, not optional.</p></div>
       </div>
 
       <h2 style={{ marginTop: 28 }}>Market context</h2>
@@ -37,7 +37,7 @@ export default function Value() {
         <div className="card"><h3>Regulatory eligibility</h3><p>PQC-first hybrid + crypto-agility + XAI audit trails position bids for CNSA 2.0 / FIPS-aligned procurement that non-compliant vendors can't enter.</p></div>
         <div className="card"><h3>Loss avoidance</h3><p>QML-IDS + QKD reduce the breach probability for long-retention data; the hybrid channel removes HNDL exposure.</p></div>
         <div className="card"><h3>New privacy-preserving services</h3><p>Cross-bank AML PSI, federated medical models, confidential genomics, and free-space <b>satellite QKD/QSDC</b> telemetry — revenue from data and links that previously couldn't be combined or trusted.</p></div>
-        <div className="card"><h3>Operational savings</h3><p><b>OptiQKD</b> (AI-tuned decoy/basis parameters — a measured &gt;20% key-rate gain with a convergence metric) automates QKD calibration and failover; a <b>QRNG</b> entropy source (min-entropy-bounded) plus a config-gated PQC+QKD "secure-if-either" combiner harden the key material; one config change migrates algorithms.</p></div>
+        <div className="card"><h3>Operational savings</h3><p><b>OptiQKD</b> (AI-tuned decoy/basis parameters, with a convergence metric; the reference framework reports +14&ndash;25% in simulation) automates QKD calibration and failover; a <b>QRNG</b> entropy source (min-entropy-bounded) plus a config-gated leakage-resilient PQC+QKD combiner harden the key material; one config change migrates algorithms.</p></div>
       </div>
 
       <div className="note" style={{ marginTop: 24 }}>

@@ -7,7 +7,25 @@ onnxscript>=0.7            # required by torch>=2.9 onnx exporter (dynamo path)
 onnxruntime>=1.18          # CPU inference + ONNX export validation (web demo uses onnxruntime-web)
 xgboost>=2.0
 medmnist>=3.0             # lightweight medical imaging datasets (CC-BY)
-flwr>=1.11               # Flower federated learning
-mcp>=1.2                 # MCP Python SDK (FastMCP server + stdio client) — real quantum-safe MCP server (full deployment)
+# flwr — REMOVED in Round 17. It was declared since the first commit and never imported by any
+# module: the federated path in qsh/ai/federated.py is this repository's own FedAvg plus pairwise-mask
+# secure aggregation, deliberately framework-light. Shipping ~50 MB of unused dependency into every
+# image while the docs advertised "the real Flower QFL" was the worst of both. If a Flower client is
+# ever actually written, add it back here at that point.
+mcp>=1.2                 # MCP Python SDK. v2.0.0 renamed FastMCP -> mcp.server.MCPServer with the
+                         # decorator API unchanged; qsh/mcp/server.py accepts both spellings and
+                         # reports which is live via mcp_sdk_flavour(), so a skew is visible not silent.
 pandas>=2.2
 matplotlib>=3.8           # benchmark/result plots
+
+# --- Model registry: train -> export -> publish (Round 17) -------------------
+# Artifact persistence + Hugging Face publishing for the per-industry T2 models.
+huggingface_hub>=1.26     # v1.0.0 removed the `huggingface-cli` entry point; the CLI is now `hf`.
+                          # Xet is the default backend; use upload_folder (upload_large_folder is deprecated).
+safetensors>=0.4          # checkpoint format for the trained T2 models
+skl2onnx>=1.16            # sklearn -> ONNX (genomics PRS, the distilled CKKS-linear students)
+onnxmltools>=1.12         # XGBoost -> ONNX (the finance AML gradient-boosting baseline)
+# NOTE: `optimum` is deliberately NOT a dependency. None of the five T2 models is a HF
+# `transformers` architecture, and optimum<=1.17 breaks against transformers>=5
+# (ImportError: cannot import name 'is_tf_available'). torch.onnx.export plus
+# onnxruntime.quantization.quantize_dynamic covers every export/quantisation path we need.

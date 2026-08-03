@@ -2,6 +2,8 @@ import { useRef } from "react";
 import { useParams } from "react-router-dom";
 import AgenticAIPanel from "../components/AgenticAIPanel";
 import BenchmarkPanel from "../components/BenchmarkPanel";
+import { ModelPanel } from "../components/ModelPanel";
+import { ProvenanceBadge, type Provenance } from "../components/ProvenanceBadge";
 import PipelineControls from "../components/PipelineControls";
 import RunMonitor from "../components/RunMonitor";
 import ShapPanel from "../components/ShapPanel";
@@ -49,6 +51,22 @@ export default function UseCasePage() {
       </div>
 
       <RunMonitor events={events} metrics={metrics} signature={signature} logRef={logRef} />
+
+      {/* What produced the inference on this page: the published ONNX model, the bundled real
+          model, or placeholder weights. Read from the run's own metrics, not asserted. */}
+      {metrics?.inference_provenance && (
+        <div className="card" style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+          <strong style={{ fontSize: 13 }}>Inference provenance</strong>
+          <ProvenanceBadge
+            kind={String(metrics.inference_provenance) as Provenance}
+            detail={String(metrics.inference_backend ?? "")}
+            evidence={{ model: metrics.inference_model ?? null }}
+          />
+        </div>
+      )}
+
+      {/* The registry's models and their measured numbers, next to the published baselines. */}
+      <ModelPanel usecase={usecase} />
 
       {/* XAI: signed SHAP attribution for the inference use cases */}
       {meta.inference && <ShapPanel explanation={artifacts?.explanation} />}

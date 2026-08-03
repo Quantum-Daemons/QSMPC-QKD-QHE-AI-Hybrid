@@ -50,7 +50,9 @@ logs/
 *.onnx
 *.pt
 *.pth
+*.safetensors
 *.npz
+*.npy
 *.zip
 # Round 11 — bundled SMALL commercial-OK real-data samples per industry, tracked so the demo + Docker run
 # on real data offline (PaySim CC-BY-SA, openSNP CC0 / PGS-Catalog CC-BY, ESA-ADB CC-BY-3.0-IGO). Placed
@@ -100,3 +102,17 @@ web/.vite/
 !.env.example
 *.key
 *.pem
+
+# TypeScript incremental build caches (regenerable; were tracked by mistake)
+*.tsbuildinfo
+
+# Trained-model artefacts. Weights live on the Hugging Face Hub at a pinned revision (see
+# src/qsh/models/registry.py); only the machine-written metrics file and the generated model
+# cards belong in git. `fixtures.npy` in particular holds dataset-derived feature rows and must
+# not be redistributed under the training data's licence.
+models/**/fixtures.npy
+
+# Full 1000 Genomes dosage matrix (2,504 individuals). Regenerable via
+# scripts/data/fetch_g1k_dosages.py; kept local so the repository does not redistribute more
+# per-sample genotype data than the demo actually needs.
+data/genomics/g1k_dosages_full.tsv

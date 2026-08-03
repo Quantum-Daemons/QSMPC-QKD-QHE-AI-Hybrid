@@ -106,6 +106,34 @@ tr:hover td { background: var(--bg-2); }
 .badge-state.stopped { background: var(--muted); color: #03070f; }
 .badge-state.error { background: var(--danger); color: #fff; }
 .badge-state.idle { background: var(--border); color: var(--text); }
+/* usePipelineRun sets state="paused" on pipeline_pause. Without a rule the badge rendered unstyled,
+   so a paused run looked identical to an idle one. */
+.badge-state.paused { background: var(--accent); color: #03070f; }
+
+/* --- provenance badge -----------------------------------------------------
+   Every result states how it was produced. Colour carries the same information as the text, so the
+   distinction survives a screenshot: green = computed in this tab, blue = computed elsewhere,
+   amber = not computed at all. */
+.prov { display: inline-flex; flex-direction: column; gap: 4px; align-items: flex-start; }
+.prov-inline { display: inline-flex; }
+.prov-chip {
+  font-size: 11px; font-weight: 700; letter-spacing: 0.02em;
+  padding: 3px 9px; border-radius: 99px; cursor: pointer;
+  border: 1px solid transparent; font-family: inherit;
+}
+.prov-measured-webgpu .prov-chip { background: var(--accent-2); color: #03070f; }
+.prov-measured-wasm .prov-chip { background: var(--accent-2); color: #03070f; opacity: 0.82; }
+.prov-remote .prov-chip { background: var(--accent); color: #03070f; }
+.prov-simulated .prov-chip { background: var(--warn); color: #03070f; }
+.prov-detail { font-weight: 500; opacity: 0.85; }
+.prov-caret { margin-left: 6px; opacity: 0.7; }
+.prov-evidence {
+  display: flex; flex-direction: column; gap: 2px;
+  font-size: 11px; color: var(--muted);
+  background: var(--bg-2); border: 1px solid var(--border);
+  border-radius: 8px; padding: 6px 9px; max-width: 460px;
+}
+.prov-kv code { color: var(--text); font-size: 11px; }
 
 .react-flow__node {
   font-size: 12px; border-radius: 8px; border: 1px solid var(--border);
@@ -120,3 +148,17 @@ tr:hover td { background: var(--bg-2); }
 hr { border: none; border-top: 1px solid var(--border); margin: 24px 0; }
 .note { background: rgba(246,183,60,0.08); border: 1px solid var(--warn);
   border-radius: 8px; padding: 12px; font-size: 13px; color: var(--text); }
+
+/* --- model panel ----------------------------------------------------------
+   Renders the model registry: measured metrics beside the published baselines they are aimed at.
+   `metric-headline` is the metric the industry is judged on; `metric-companion` is the flattering
+   aggregate, dimmed but present, because hiding it would be its own kind of dishonesty. */
+.model-block { border-top: 1px solid var(--border); padding-top: 12px; margin-top: 12px; }
+.model-block:first-of-type { border-top: none; padding-top: 0; }
+.model-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 4px; }
+.small { font-size: 12px; }
+.mini-table { width: 100%; border-collapse: collapse; margin: 8px 0; font-size: 12px; }
+.mini-table td { padding: 3px 8px 3px 0; border-bottom: 1px solid var(--border); }
+.mini-table td.num { text-align: right; font-variant-numeric: tabular-nums; width: 120px; }
+.mini-table tr.metric-headline td { font-weight: 700; color: var(--accent-2); }
+.mini-table tr.metric-companion td { opacity: 0.62; }
