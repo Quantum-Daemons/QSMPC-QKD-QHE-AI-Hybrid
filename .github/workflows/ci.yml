@@ -39,15 +39,26 @@ jobs:
           python-version: ${{ matrix.python }}
           cache: pip
 
-      - name: Install core + API + FHE tiers
+      - name: Install core + API + FHE + AI tiers
         run: |
           python -m pip install --upgrade pip
-          # The AI tier (torch, ~2.5 GB) is not needed by the non-slow tests; leaving it out keeps
-          # CI minutes sane. Anything requiring it is marked slow and excluded below.
           pip install -r requirements-core.txt -r requirements-api.txt -r requirements-fhe.txt
+          # The AI tier IS required. An earlier revision of this workflow skipped it on the
+          # assumption that only slow tests needed torch; that was wrong — test_usecases.py and
+          # test_unified_benchmark.py import torch and xgboost through the use-case modules and
+          # fail at collection without them. Skipping the tier would have meant CI silently not
+          # covering the ML paths, which is the exact kind of false confidence this project avoids.
+          # CPU wheels only: no GPU on the runner, and the CUDA build is an order of magnitude larger.
+          pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
+          pip install -r requirements-ai.txt
           pip install -e .
 
       - name: Test suite
+        # Offline by design: no test may reach the network. Where a dataset is unavailable the
+        # loader falls back to synthetic data and logs that loudly (see qsh/data/loaders.py) — a
+        # labelled fallback, never a silent substitution.
+        env:
+          HF_HUB_OFFLINE: "1"
         run: pytest -m "not slow" -q
 
       - name: Config parity (defaults.py -> config.defaults.json)
@@ -99,7 +110,9 @@ jobs:
       - name: No model artifacts committed
         # Weights live on the Hugging Face Hub at a pinned revision, never in git.
         run: |
-          if git ls-files | grep -E '\.(onnx|safetensors|pt|pth|h5)$'; then
+          # .npy included: fixtures.npy holds dataset-derived feature rows, so it carries the
+          # training data's licence and must not be redistributed either.
+          if git ls-files | grep -E '\.(onnx|safetensors|pt|pth|h5|npy)$'; then
             echo "::error::model artifacts must not be committed; publish them to the Hub instead"
             exit 1
           fi
