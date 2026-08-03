@@ -83,7 +83,7 @@ export const USECASE_SPECS: Record<string, Spec> = {
     steps: [
       { stageId: "pqc_handshake", kind: "c-bidir", label: () => "PQC handshake — ML-KEM-768 + X25519" },
       { stageId: "qkd_key_agreement", kind: "q-arrow", label: (m) => `BB84 QKD (w/ eavesdropper) · QBER ${f(m, "qber")}` },
-      { stageId: "qml_ids", kind: "local-a", label: (m) => `QML-IDS attack detection · F1 ${f(m, "ids_binary_f1")}` },
+      { stageId: "qml_ids", kind: "local-a", label: (m) => `QML-IDS attack detection · macro-F1 ${f(m, "ids_macro_f1")}` },
       QSMPC_COMPARE,
       { stageId: "sign_result", kind: "c-bidir", label: () => "ML-DSA-signed audit record" },
     ],
