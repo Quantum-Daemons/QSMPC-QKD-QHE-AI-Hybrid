@@ -1,0 +1,23 @@
+{
+  "features": [
+    "normal",
+    "intercept_resend",
+    "photon_number_splitting",
+    "trojan_horse",
+    "detector_blinding",
+    "wavelength_trojan",
+    "rng_manipulation",
+    "combined"
+  ],
+  "classes": [
+    "normal",
+    "intercept_resend",
+    "photon_number_splitting",
+    "trojan_horse",
+    "detector_blinding",
+    "wavelength_trojan",
+    "rng_manipulation",
+    "combined"
+  ],
+  "note": "8 classes = 7 attack types + normal traffic, not 'eight attack scenarios'."
+}
