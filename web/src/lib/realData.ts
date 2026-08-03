@@ -1,7 +1,8 @@
 // Real, commercial-OK datasets shipped to the CLIENT-SIDE demo (web/public/data/), so the demo uses
 // REAL data + REAL models where a commercial-OK set is available — matching the FULL deployment. Real
 // data now covers medical (Wisconsin breast-cancer / MedMNIST), genomics (PGS-Catalog PRS + real 1000
-// Genomes genotypes), finance (real PaySim transactions) and satellite (real NASA SMAP/MSL telemetry).
+// Genomes genotypes), finance (PaySim SIMULATOR output - synthetic transactions) and satellite
+// (real NASA SMAP/MSL telemetry, which carries no licence statement - see DATA_LICENSES.md).
 // Only telecom stays synthetic (no commercial-OK real network-attack dataset exists — UNSW-NB15 / CICIDS
 // are research-only), logged honestly per the no-easy-fallback policy. Datasets are tiny static JSON,
 // fetched + cached once.
@@ -64,7 +65,7 @@ export async function realInput(usecase: string, u: () => number): Promise<RealI
       };
     }
     if (usecase === "finance_aml") {
-      // REAL PaySim mobile-money transactions (Kaggle ealaxi/paysim1, CC-BY-SA-4.0) → the 8 AML features +
+      // PaySim SIMULATOR output — synthetic transactions (Kaggle ealaxi/paysim1, CC-BY-SA-4.0) → the 8 AML features +
       // a REAL distilled CKKS-linear model (XGBoost → logistic surrogate), matching the full deployment's
       // encrypted inference. The SHAP attribution then reflects the real distilled fraud model on real data.
       const ds = await fetchJSON("/data/finance/paysim_sample.json");
