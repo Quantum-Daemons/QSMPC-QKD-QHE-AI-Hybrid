@@ -4,7 +4,7 @@
 
 We use the definition from the EU NIS Cooperation Group,
 [*A Coordinated Implementation Roadmap for the Transition to Post-Quantum Cryptography*](https://digital-strategy.ec.europa.eu/en/library/coordinated-implementation-roadmap-transition-post-quantum-cryptography)
-(23 June 2025), section 3.2:
+(Part 1, Version 1.1, 11 June 2025; published via the EC digital-strategy library 23 June 2025), section 3.2:
 
 > **cryptographic agility (or crypto-agility)**
 > The design of cryptographic protocols and systems in a modular way that enables replacing
@@ -59,7 +59,7 @@ to the crypto-agility story even though they are not `CryptoRegistry` families. 
 |------|---------|--------|
 | `qkd.protocol` | `bb84` (two-intensity decoy-state) · `e91` (entanglement / CHSH) | picks the physical QKD model that actually runs — selecting `e91` moves the surfaced QBER / secure-key-bits and adds a CHSH `S`-parameter metric (independent of OptiQKD, which then tunes whichever is chosen) |
 | `qrng.post_processing` | `von_neumann` · `toeplitz` (Leftover-Hash-Lemma, ε-parameterised) · `seedless` (two-source) | the entropy extractor + min-entropy floor that seeds BB84/E91 (the LHL `ε` knob applies only to `toeplitz`/`seedless`, so it is greyed out on the `von_neumann` default) |
-| `crypto.hybrid_combiner_mode` | `hkdf` (default, dual-PRF KDF) · `its_toeplitz` (Toeplitz+QLHL) | the PQC+QKD key combiner — `its_toeplitz` is information-theoretic "secure-if-either" (secure if EITHER input holds); the MCP envelope reports the combiner used + the derived-key fingerprint |
+| `crypto.hybrid_combiner_mode` | `hkdf` (default, dual-PRF KDF) · `its_toeplitz` (Toeplitz+QLHL) | the PQC+QKD key combiner. Both keep the session key if either input holds; `its_toeplitz` adds information-theoretic leakage resilience (output + one key compromised leaves the other with quantifiable min-entropy) at the cost of longer keys — arXiv:2603.26907, which explicitly does *not* claim to beat XOR. The MCP envelope reports the combiner used + the derived-key fingerprint |
 
 Each provider is a factory; `register(family, name, factory, default=…)`, `get(family, name)`,
 `options(family)`, `default(family)`. Adding a new algorithm (e.g. SLH-DSA, FN-DSA/Falcon,
@@ -90,7 +90,12 @@ a new FHE backend) is **one `register(...)` call** — no stage code changes.
 
 ## Hybrid + defence-in-depth
 - **KEM is always hybrid** (`ML-KEM` ⊕ `X25519`): secure if *either* primitive holds — the
-  HNDL hedge. QKD key material can be mixed in (`PQC + QKD`) per the NSA hybrid recommendation;
+  HNDL hedge. QKD key material can be mixed in (`PQC + QKD`) per **BSI TR-02102-1 v2026-01 §2.1**,
+  which recommends *"a hybrid key agreement mechanism that combines a quantum-safe and a classical
+  mechanism"* that *"should remain secure as long as one of the methods used is secure"*. This was
+  previously attributed to an "NSA hybrid recommendation" — **NSA publishes no such PQC+QKD hybrid
+  recommendation**; its published position is against QKD for National Security Systems, and the same
+  BSI guideline states QKD *"is currently not ready for use from a security point of view"*;
   QKD is never used standalone.
 - **Transport** (`pqc/transport.py`) wraps the agreed key in AES-256-GCM; the **MCP agent
   bridge** (`pqc/mcp_bridge.py`) adds ML-DSA message signatures.

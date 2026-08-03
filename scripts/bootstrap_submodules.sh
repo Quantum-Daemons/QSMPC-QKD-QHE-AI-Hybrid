@@ -36,21 +36,17 @@ add() {  # add <url> <path> <tier:min|all>
 
 echo "Submodule set: $QSH_SET (depth=$QSH_DEPTH)"
 
-# --- MIN: light, pure-Python/Java, needed in early phases ---------------------
-add https://github.com/OrtegaSA/CQC-QHE-repo.git       submodules/CQC-QHE       min  # QHE + Clifford+T QCNN (WS4), Apache-2.0
-add https://github.com/IBM/AMLSim.git                  submodules/AMLSim        min  # synthetic AML graphs (finance), Apache-2.0
-add https://github.com/kanav99/shark.git               submodules/shark         min  # FSS actively-secure 2PC (reference), MIT
-add https://github.com/lschoe/mpyc.git                 submodules/mpyc          min  # non-linear MPC: Shamir ReLU/argmax (the hybrid's non-linear half), MIT
-
-# --- ALL: heavy C++/CUDA builds + large data generators ----------------------
-add https://github.com/openfheorg/openfhe-development.git submodules/openfhe    all  # classical FHE (CKKS/BGV/BFV), BSD-2
-add https://github.com/microsoft/SEAL.git              submodules/SEAL          all  # classical FHE; node-seal WASM, MIT
-add https://github.com/open-quantum-safe/liboqs.git    submodules/liboqs        all  # PQC C lib (Python via pip), MIT
-add https://github.com/data61/MP-SPDZ.git              submodules/MP-SPDZ       all  # classical CPU MPC baseline
+# Only the submodules that code actually builds against are vendored.
+#
+# Round 17 removed ten others (CQC-QHE, AMLSim, shark, mpyc, oqs-provider, openfhe, SEAL, liboqs,
+# MP-SPDZ, synthea). None was referenced by any import, script or Dockerfile; five were superseded
+# by the pip/npm package of the same project (mpyc, openfhe, liboqs via liboqs-python, SEAL via the
+# node-seal npm build, MP-SPDZ was only ever a registry string); and .dockerignore excludes
+# submodules/ wholesale, so none of them ever reached an image anyway. Cloning ~10 GB of C++ that
+# nothing links against is a cost with no corresponding capability. They remain cited as upstream
+# work in references/REFERENCES.md, which is the accurate relationship.
 add https://github.com/Alisah-Ozcan/HEonGPU.git        submodules/HEonGPU       all  # GPU BFV/CKKS (linear layers), Apache-2.0
 add https://github.com/chart21/hpmpc.git               submodules/hpmpc         all  # GPU secret-sharing MPC (PIGEON), MIT
-add https://github.com/synthetichealth/synthea.git     submodules/synthea       all  # synthetic EHR (medical), Apache-2.0
-add https://github.com/open-quantum-safe/oqs-provider.git submodules/oqs-provider min  # OpenSSL 3 PQC provider (crypto-agility / hybrid TLS), MIT
 # CROSS (HE on AI-ASIC) — confirm public URL + license before enabling:
 # add https://github.com/EfficientHE/CROSS.git         submodules/CROSS         all
 
