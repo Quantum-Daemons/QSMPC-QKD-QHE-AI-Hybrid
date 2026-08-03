@@ -166,5 +166,39 @@
     "resample": "300s",
     "wall_clock_s": 60.1,
     "windowed_iforest_event_wise_f0_5": 0.000248
+  },
+  "telecom_ids.qml": {
+    "aggregate_accuracy": 0.986667,
+    "classical_rf_macro_f1": 0.986629,
+    "classical_rf_per_class_f1": {
+      "combined": 0.986667,
+      "detector_blinding": 1.0,
+      "intercept_resend": 0.993377,
+      "normal": 1.0,
+      "photon_number_splitting": 1.0,
+      "rng_manipulation": 0.993289,
+      "trojan_horse": 0.96732,
+      "wavelength_trojan": 0.952381
+    },
+    "data": "synthetic, class structure per arXiv:2509.14282 (Al-Kuwari et al., 2025)",
+    "dataset": "QKD attack telemetry (synthetic, methodology-grounded)",
+    "export": {
+      "fp32_bytes": 2555013,
+      "int8_skipped_reason": "tree ensemble: parameters live in node attributes, not weight tensors, so dynamic int8 quantisation has nothing to quantise",
+      "opset": 17
+    },
+    "framing": "Architecture comparison, not a performance claim. The data is synthetic because no commercial-OK real attack corpus exists. Every published QML-IDS figure we could verify sits below a random forest on the same data, and arXiv:2512.05069 was withdrawn by its own authors for insufficient evaluation. Per-class F1 is the headline; aggregate accuracy is shown beside it because Engelen et al. (WTMC 2021) demonstrated it stays at 0.99 across a label correction that moved Bot F1 from 0.60 to 0.99.",
+    "git_sha": "733e325",
+    "n_classes": 8,
+    "n_samples": 2400,
+    "quantum_beats_classical": false,
+    "quantum_qnn_accuracy": 0.875,
+    "quantum_qnn_binary_f1": 0.933333,
+    "quantum_qnn_macro_f1": 0.466667,
+    "quantum_qnn_n_params": 25,
+    "quantum_svc_accuracy": 0.908333,
+    "quantum_svc_binary_f1": 0.945274,
+    "quantum_svc_macro_f1": 0.831611,
+    "wall_clock_s": 267.1
   }
 }
