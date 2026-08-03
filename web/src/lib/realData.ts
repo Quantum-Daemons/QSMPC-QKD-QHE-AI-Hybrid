@@ -1,14 +1,20 @@
-// Real, commercial-OK datasets shipped to the CLIENT-SIDE demo (web/public/data/), so the demo uses
-// REAL data + REAL models where a commercial-OK set is available — matching the FULL deployment. Real
-// data now covers medical (Wisconsin breast-cancer / MedMNIST), genomics (PGS-Catalog PRS + real 1000
-// Genomes genotypes), finance (PaySim SIMULATOR output - synthetic transactions) and satellite
-// (real NASA SMAP/MSL telemetry, which carries no licence statement - see DATA_LICENSES.md).
-// Only telecom stays synthetic (no commercial-OK real network-attack dataset exists — UNSW-NB15 / CICIDS
-// are research-only), logged honestly per the no-easy-fallback policy. Datasets are tiny static JSON,
-// fetched + cached once.
+// Datasets shipped to the CLIENT-SIDE demo (web/public/data/), so the demo scores real inputs with
+// real models rather than sampling noise — matching the FULL deployment. Coverage: medical (Wisconsin
+// breast-cancer, real measurements), genomics (published PGS000001 weights over real 1000 Genomes
+// genotypes), finance (PaySim SIMULATOR output, i.e. synthetic rows) and satellite (real NASA
+// SMAP/MSL telemetry). Only telecom stays fully synthetic — no network-attack corpus with an
+// affirmative commercial grant exists (UNSW-NB15 needs the authors' agreement; CIC-IDS2017 states no
+// licence at all) — and the demo logs that rather than quietly substituting. Tiny static JSON,
+// fetched and cached once.
 //
-// Licensing (see DATA_LICENSES.md): breast-cancer = UCI/sklearn public domain; PGS000001 = CC-BY 4.0;
-// 1000 Genomes = open/IGSR; PaySim = CC-BY-SA-4.0; NASA SMAP/MSL = CC0 / US-Gov public domain.
+// These are BUNDLED SAMPLES, not the corpora the published models were trained on, and they are not
+// uniformly commercial-OK: genomics in particular is display-only here and its derived weights are
+// never published. Licensing prose lives in DATA_LICENSES.md and the machine-readable authority is
+// src/qsh/models/registry.py (BUNDLED_DEMO_SAMPLES), which is what the demo actually prints via
+// config.demoSample(). No licence summary is restated here on purpose: the one that used to sit at
+// this line got four of five wrong (WDBC is CC BY 4.0, not public domain; PGS is per-score, not
+// blanket CC-BY; IGSR grants no blanket licence; no provider states one for SMAP/MSL) and shipped
+// that way. A stale copy reads as authoritative, which is worse than a pointer.
 
 export interface RealInput {
   values: number[];                          // the 8 demo features (REAL)
@@ -44,7 +50,8 @@ export async function realInput(usecase: string, u: () => number): Promise<RealI
     }
     if (usecase === "genomics") {
       // REAL PGS-Catalog PGS000001 effect weights + REAL 1000 Genomes phase-3 genotypes (Ensembl / IGSR,
-      // open data-use, commercial-OK). A real individual's effect-allele dosages are shipped in
+      // which grants NO blanket licence; PGS scoring files are licensed per score). A real
+      // individual's effect-allele dosages are shipped in
       // `dosage_samples`; the demo PRS = Σ wᵢ·dosageᵢ is computed over genuine human genotypes, and the
       // REAL model for SHAP = the top-8 SNPs' real PGS weights → a real PRS readout (no synthetic sampling).
       const prs = await fetchJSON("/data/genomics/pgs000001_prs.json");

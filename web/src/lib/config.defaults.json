@@ -112,6 +112,32 @@
     "genomics_n": 1200,
     "genomics_n_snps": 16
   },
+  "demo_samples": {
+    "finance_aml": {
+      "licence": "CC-BY-SA-4.0",
+      "licence_checked": "2026-08-03",
+      "provenance": "PaySim SIMULATOR output \u2014 synthetic transactions from aggregated real mobile-money logs (Kaggle ealaxi/paysim1, CC-BY-SA-4.0). ShareAlike applies to these bundled rows.",
+      "url": "https://www.kaggle.com/datasets/ealaxi/paysim1"
+    },
+    "genomics": {
+      "licence": "per-score; EMBL-EBI Terms of Use by default",
+      "licence_checked": "2026-08-03",
+      "provenance": "real 1000 Genomes phase-3 genotypes + published PGS000001 weights (PGS Catalog: per-score licence, EMBL-EBI terms by default; IGSR grants no blanket licence)",
+      "url": "https://www.pgscatalog.org/downloads/"
+    },
+    "medical_fl": {
+      "licence": "CC-BY-4.0",
+      "licence_checked": "2026-08-03",
+      "provenance": "real Wisconsin breast-cancer diagnostic measurements (UCI / scikit-learn, CC-BY-4.0)",
+      "url": "https://archive.ics.uci.edu/dataset/17/breast+cancer+wisconsin+diagnostic"
+    },
+    "satellite_comms": {
+      "licence": "US Government work (17 U.S.C. 105)",
+      "licence_checked": "2026-08-03",
+      "provenance": "real NASA SMAP/MSL spacecraft telemetry (Telemanom / NASA JPL). No provider states a licence; 17 U.S.C. 105 removes US copyright domestically but is not a grant \u2014 see DATA_LICENSES.md.",
+      "url": "https://github.com/khundman/telemanom"
+    }
+  },
   "ids": {
     "demo_n_per_class": 120,
     "n_per_class": 300,

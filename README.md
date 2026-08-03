@@ -231,7 +231,7 @@ clone or vendor any mixed-authorship aggregate repo.
 Bundled **real, commercial-OK** samples preferred; the synthetic generators are an offline-CI fallback only
 (logged as such, never a silent substitute):
 - **Finance/AML** (demo sample): **PaySim simulator output** (Kaggle `ealaxi/paysim1`, CC-BY-SA-4.0) → the 8 AML features. PaySim is a *simulator*: these are synthetic transactions from aggregated real mobile-money logs, not real transactions. The **training** corpus is IBM AMLworld HI-Small (CDLA-Sharing-1.0), 5,078,345 real-scale transactions at 1 laundering in 981.
-- **Medical**: MedMNIST v2 (CC-BY), Wisconsin breast-cancer (bundled, public domain).
+- **Medical**: MedMNIST v2 (CC-BY-4.0), Wisconsin breast-cancer (bundled demo sample; UCI, CC BY 4.0 — attribution required).
 - **Genomics**: **real 1000 Genomes** phase-3 genotypes (Ensembl/IGSR, open) + **real PGS-Catalog** PGS000001 weights (CC-BY).
 - **Satellite**: **real NASA SMAP/MSL** spacecraft telemetry (Telemanom; NASA JPL; CC0 / US-Gov public domain).
 - **Telecom/defense**: literature-grounded synthetic QKD-attack telemetry (no commercial-OK real attack dataset — UNSW-NB15 / CICIDS are research-only).
@@ -514,7 +514,7 @@ See [`docs/pqc-roadmap.md`](docs/pqc-roadmap.md).
   **genomics** uses the real PGS-Catalog PGS000001 PRS weights (77 SNPs, CC-BY 4.0) over real 1000 Genomes
   genotypes → a real in-browser **Polygenic Risk Score** with per-SNP signed SHAP; **finance** uses a real
   **PaySim** transaction sample (CC-BY-SA-4.0) + the distilled CKKS-linear fraud model; and **satellite** scores
-  **real NASA SMAP/MSL telemetry** (CC0 / public domain) with the real linear anomaly model — all tiny static JSON
+  **real NASA SMAP/MSL telemetry** (no licence stated by any provider — see DATA_LICENSES.md) with the real linear anomaly model — all tiny static JSON
   under `web/public/data/`, loaded by [`web/src/lib/realData.ts`](web/src/lib/realData.ts) and computed with the
   real in-browser node-seal CKKS + secret-sharing MPC. Only **telecom** has no commercial-OK real attack dataset
   (UNSW-NB15 / CICIDS are research-only), so it uses representative synthetic features (logged as such in the run).

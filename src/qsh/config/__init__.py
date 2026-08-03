@@ -124,6 +124,24 @@ def frontend_config() -> dict:
         # and download URLs from this, so none of them can be hard-coded in TypeScript and none can
         # drift from what the training runs produced.
         "models": _model_registry(),
+        # Provenance of the four samples bundled INTO the demo, which is not the same thing as the
+        # corpora the published models were trained on (finance trains on AMLworld, the browser ships
+        # PaySim). The run log prints these verbatim, so they live here rather than in TypeScript:
+        # the same claim previously existed in three places and they drifted.
+        "demo_samples": _demo_samples(),
+    }
+
+
+def _demo_samples() -> dict:
+    """Bundled-sample provenance from the registry, or an empty mapping in the slim demo image."""
+    try:
+        from ..models.registry import BUNDLED_DEMO_SAMPLES
+    except Exception:  # pragma: no cover - slim image only
+        return {}
+    return {
+        usecase: {"provenance": text, "licence": ds.licence, "url": ds.url,
+                  "licence_checked": ds.licence_checked}
+        for usecase, (text, ds) in BUNDLED_DEMO_SAMPLES.items()
     }
 
 

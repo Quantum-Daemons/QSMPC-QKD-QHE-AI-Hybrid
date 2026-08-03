@@ -43,7 +43,16 @@ construction rather than because someone inspected one file once.
 | `data/finance/paysim_sample.tsv`, `web/public/data/finance/paysim_sample.json` | **CC BY-SA 4.0 (ShareAlike)** | Kaggle [ealaxi/paysim1](https://www.kaggle.com/datasets/ealaxi/paysim1), Lopez-Rojas et al. 2016. **PaySim is a simulator: these are synthetic transactions** generated from aggregated real mobile-money logs — the Kaggle title is *"Synthetic Financial Datasets For Fraud Detection"*. Earlier revisions of this file called them "real PaySim transactions", which was wrong. Fraud is **oversampled** for demo balance; the simulator's base rate is 0.13%. **ShareAlike applies to these bundled files**: they are Adapted Material and must be redistributed under CC BY-SA 4.0, not under the project's Apache-2.0. |
 | `data/genomics/pgs000001_breast_cancer.tsv`, `g1k_dosages.tsv`, `g1k_dosages_full.tsv`, `g1k_panel.tsv` | see §4 | PGS Catalog PGS000001 + 1000 Genomes phase 3 (Ensembl / IGSR). |
 | `data/satellite/smap_msl_telemetry.tsv`, `web/public/data/satellite/telemetry.json` | **no licence granted by any provider** `[UNVERIFIED — reasoned inference]` | NASA SMAP/MSL via [Telemanom](https://github.com/khundman/telemanom), Hundman et al. 2018 (KDD), NASA JPL. The Telemanom **code** is Apache-2.0; **the telemetry carries no licence statement anywhere**, and the Kaggle mirror it links to is labelled *"Data files © Original Authors"*. The public-domain reading rests on NASA SPD-41a (*"should be released with a Creative Commons Zero license"* — a *should*, not a grant) plus 17 U.S.C. §105, which removes **US** copyright only and does not clear the work outside the United States. Treated as an inference, not a licence. This is why **ESA-ADB (CC BY 3.0 IGO) is the satellite training corpus** and SMAP/MSL is retained only as a bundled demo sample. |
-| `web/public/data/medical/breast_cancer_sample.json` | **public domain** | Wisconsin Diagnostic Breast Cancer, UCI ML / scikit-learn (Wolberg, Street & Mangasarian). |
+| `web/public/data/medical/breast_cancer_sample.json` | **CC BY 4.0** | Wisconsin Diagnostic Breast Cancer, [UCI ML dataset 17](https://archive.ics.uci.edu/dataset/17/breast+cancer+wisconsin+diagnostic) (Wolberg, Street & Mangasarian), redistributed in scikit-learn. Earlier revisions of this file said "public domain"; the UCI dataset page states *"This dataset is licensed under a Creative Commons Attribution 4.0 International (CC BY 4.0) license"*, so **attribution is required** — being bundled inside scikit-learn does not remove it. Commercial use is permitted. |
+
+> **One authority, checked by a test.** Every string in this section is generated from
+> `BUNDLED_DEMO_SAMPLES` in [`src/qsh/models/registry.py`](src/qsh/models/registry.py) and reaches the
+> browser through `frontend_config()` → `web/src/lib/config.defaults.json`.
+> [`tests/test_demo_provenance.py`](tests/test_demo_provenance.py) asserts the shipped JSON, the baked
+> config and the registry all carry the same text, and fails on any file that restates one of the
+> corrected claims. This exists because the demo went on printing *"real PaySim mobile-money
+> transactions"* through four separate rounds of correction: the string lived in six places and fixing
+> four of them looked like fixing it.
 
 > **Why PaySim is a demo sample and not the finance training corpus.** Whether CC BY-SA's ShareAlike
 > propagates from a training set to model weights is **legally unsettled**. AMLworld's CDLA-Sharing

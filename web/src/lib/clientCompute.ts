@@ -7,7 +7,7 @@ import { ml_dsa65, ml_dsa87 } from "@noble/post-quantum/ml-dsa";
 import { ml_kem768, ml_kem1024 } from "@noble/post-quantum/ml-kem";
 import {
   benchCfg, costPerOp, dataCfg, demoFeatureDim, genericArchitecture, idsCfg, medicalCnn, qkdCfg, qrngCfg,
-  quantumAdvantageCfg, securityScoringCfg, tierArchitectures, webCfg, workloadMultipliers,
+  demoSample, quantumAdvantageCfg, securityScoringCfg, tierArchitectures, webCfg, workloadMultipliers,
 } from "./config";
 import { encryptedLinear, warmFHE } from "./clientFHE";
 import { clientTrainScoreIDS } from "./clientIDS";
@@ -680,18 +680,19 @@ export function runClientPipeline(
         // model is trained on IBM AMLworld. The registry (ModelPanel below) shows the training
         // corpus; this line shows what is being scored in the browser right now.
         //
-        // Three of these strings were wrong until Round 17 and had to be corrected against the
-        // primary sources, because they are what a visitor actually reads: PaySim is a *simulator*
-        // (Kaggle titles it "Synthetic Financial Datasets For Fraud Detection"), PGS Catalog is
-        // per-score under EMBL-EBI terms rather than blanket CC-BY, IGSR grants no licence at all,
-        // and NASA SMAP/MSL carries no licence statement from any provider.
-        const realDs: Record<string, string> = {
-          medical_fl: "real Wisconsin breast-cancer diagnostic sample (UCI/sklearn, public domain)",
-          genomics: "real 1000 Genomes genotypes + published PGS000001 weights (PGS Catalog: per-score licence, EMBL-EBI terms; IGSR grants no blanket licence)",
-          finance_aml: "PaySim SIMULATOR output — synthetic transactions from aggregated real mobile-money logs (Kaggle ealaxi/paysim1, CC-BY-SA-4.0)",
-          satellite_comms: "real NASA SMAP/MSL spacecraft telemetry (Telemanom / NASA JPL; the data carries no licence statement — see DATA_LICENSES.md)",
-        };
-        if (realDs[usecase]) emit("log", stage, `dataset (bundled demo sample): ${realDs[usecase]}`);
+        // Five of these strings were wrong and had to be corrected against the primary sources,
+        // because this is the line a visitor actually reads: PaySim is a *simulator* (Kaggle titles
+        // it "Synthetic Financial Datasets For Fraud Detection"), PGS Catalog is per-score under
+        // EMBL-EBI terms rather than blanket CC-BY, IGSR grants no licence, NASA SMAP/MSL carries no
+        // licence statement from any provider, and UCI relicensed WDBC to CC BY 4.0 — so calling it
+        // "public domain" dropped an attribution requirement.
+        //
+        // The text is NOT stored here. It comes from src/qsh/models/registry.py via config, because
+        // it previously existed as three independent copies: this map, the shipped JSON files, and
+        // the generator script. They drifted, and a claim the project had already published a
+        // correction for went on being printed by the live demo.
+        const ds = demoSample(usecase);
+        if (ds) emit("log", stage, `dataset (bundled demo sample): ${ds.provenance}`);
         else emit("log", stage, "synthetic dataset prepared (client-side; no commercial-OK real set for this use case)");
         break;
       }
