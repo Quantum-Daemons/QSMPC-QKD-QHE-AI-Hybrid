@@ -19,7 +19,7 @@
    │ orchestration/  Pipeline · Stage · EventBus · CryptoRegistry        │
    │   pqc/      ML-KEM+X25519 hybrid KEM · ML-DSA sig · AEAD transport   │
    │   qkd/      BB84/decoy sim · channel/QBER · AI optimizer (WS1)       │
-   │   qml_ids/  8 attack scenarios · RF + variational QNN (WS2)          │
+   │   qml_ids/  7 attack types + normal · RF + variational QNN (WS2)     │
    │   qsmpc/    Shamir+QFT secure sum · QOT · PSI (WS3)                  │
    │   qhe/      QOTP · Clifford+T QCNN · Rate-1 QFHE (WS4)               │
    │   fhe/      CKKS LINEAR layers: TenSEAL · OpenFHE (CPU) · HEonGPU GPU│
