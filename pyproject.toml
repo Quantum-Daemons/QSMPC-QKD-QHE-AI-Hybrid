@@ -40,7 +40,12 @@ where = ["src"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-pythonpath = ["src"]
+# "src" for the qsh package; "." for the root-level `api` namespace package, which
+# tests/test_api_config.py imports. Without the "." the suite only passes under
+# `python -m pytest`, because the -m form prepends the working directory to sys.path while a
+# bare `pytest` does not — so it passed locally and failed in CI, which invokes `pytest`.
+# Declaring both makes the suite independent of how it is invoked.
+pythonpath = ["src", "."]
 addopts = "-ra -q"
 markers = ["slow: slower tests (quantum variational training, large sims)"]
 
