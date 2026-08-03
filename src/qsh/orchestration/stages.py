@@ -66,10 +66,22 @@ class PQCHandshakeStage(Stage):
         bus.metric("qrng_health_passed", 1 if qr.health.passed else 0, self.name)
         bus.metric("qrng_throughput_kbps", round(qr.throughput_bits_per_s / 1000, 1), self.name)
         bus.metric("qrng_min_entropy_per_bit", round(qr.health.min_entropy_per_bit, 4), self.name)
-        bus.log(f"QRNG (simulated quantum measurement): {qr.n_bits} bits, health "
-                f"{'PASS' if qr.health.passed else 'FAIL'} (monobit p={qr.health.monobit_p:.3f}, "
+        # Name which test family the verdict comes from: `passed` is the SP 800-90B continuous
+        # health test (the required one), not the SP 800-22 p-values, which are an output sanity
+        # check and are reported separately.
+        bus.metric("qrng_sp80090b_passed", 1 if qr.health.passed else 0, self.name)
+        bus.metric("qrng_sp80022_passed", 1 if qr.health.sp80022_passed else 0, self.name)
+        bus.log(f"QRNG (simulated quantum measurement): {qr.n_bits} bits, "
+                f"SP 800-90B health {'PASS' if qr.health.passed else 'FAIL'} "
+                f"(repetition-count max run {qr.health.repetition_count_max_run}/"
+                f"{qr.health.repetition_count_cutoff}, adaptive-proportion "
+                f"{qr.health.adaptive_proportion_max_count}/{qr.health.adaptive_proportion_cutoff}), "
+                f"SP 800-22 output check {'pass' if qr.health.sp80022_passed else 'fail'} "
+                f"(monobit p={qr.health.monobit_p:.3f}), "
                 f"min-entropy {qr.health.min_entropy_per_bit:.3f} bit/bit, "
                 f"extractor={qr.post_processing})", self.name)
+        for failure in qr.health.failures:
+            bus.log(f"QRNG health failure: {failure}", self.name)
 
         kem_name = ctx.config.get("kem")
         recipient = reg.get("kem", kem_name)()

@@ -6,22 +6,27 @@
 const KEY = "qsh_demo_client";
 
 export function isClientDemo(): boolean {
-  // build-time flag for the published static bundle
-  if ((import.meta as any).env?.VITE_CLIENT_ONLY === "1") return true;
-  if (typeof window === "undefined") return false;
+  const clientOnlyBuild = (import.meta as any).env?.VITE_CLIENT_ONLY === "1";
+  if (typeof window === "undefined") return clientOnlyBuild;
   try {
+    // An explicit ?demo= is honoured BEFORE the build flag. Testing the flag first meant
+    // ?demo=full could never escape a CLIENT_ONLY bundle, contradicting both the
+    // Dockerfile.api.demo comment and the README's "?demo=full on the VPS" fallback: the slim
+    // backend shipped inside the demo image was unreachable from the UI deployed alongside it.
     const q = new URLSearchParams(window.location.search).get("demo");
     if (q === "client") {
       sessionStorage.setItem(KEY, "1"); // persist across client-side route changes
       return true;
     }
     if (q === "full") {
-      sessionStorage.removeItem(KEY);
+      sessionStorage.setItem(KEY, "0"); // sticky, so the choice survives in-app navigation
       return false;
     }
-    return sessionStorage.getItem(KEY) === "1";
+    const stored = sessionStorage.getItem(KEY);
+    if (stored !== null) return stored === "1";
+    return clientOnlyBuild;
   } catch {
-    return false;
+    return clientOnlyBuild;
   }
 }
 

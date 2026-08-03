@@ -1,0 +1,67 @@
+{
+  "//": "Grafana dashboard for the QSH pipeline. docker-compose.yml has bind-mounted ../monitoring/grafana into the provisioning path since Round 1, but the directory did not exist, so Docker silently created a root-owned empty one and no dashboard was ever provisioned. Panels below read the metrics qsh.monitoring.exporter actually emits.",
+  "title": "QSH — quantum-safe pipeline",
+  "uid": "qsh-pipeline",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "10s",
+  "time": { "from": "now-1h", "to": "now" },
+  "panels": [
+    {
+      "type": "stat",
+      "title": "Pipeline runs by state",
+      "gridPos": { "h": 6, "w": 8, "x": 0, "y": 0 },
+      "targets": [
+        {
+          "expr": "sum by (state) (qsh_pipeline_runs_total)",
+          "legendFormat": "{{state}}"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Stage latency p95 (ms)",
+      "description": "qsh_stage_latency_ms is a histogram; p95 shows which stage dominates a run.",
+      "gridPos": { "h": 6, "w": 16, "x": 8, "y": 0 },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum by (le, stage) (rate(qsh_stage_latency_ms_bucket[5m])))",
+          "legendFormat": "{{stage}}"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "QBER",
+      "description": "Quantum bit error rate from the most recent QKD stage. The BB84 secure threshold is 11%; sustained values above it mean the key must be discarded.",
+      "gridPos": { "h": 6, "w": 12, "x": 0, "y": 6 },
+      "fieldConfig": {
+        "defaults": {
+          "max": 0.3,
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "orange", "value": 0.11 },
+              { "color": "red", "value": 0.2 }
+            ]
+          }
+        }
+      },
+      "targets": [{ "expr": "qsh_qber", "legendFormat": "QBER" }]
+    },
+    {
+      "type": "timeseries",
+      "title": "Benchmark latency by path (ms)",
+      "description": "MPC-FHE (classical CKKS + MPC) against QSMPC-FHE (QOTP + Clifford+T QCNN).",
+      "gridPos": { "h": 6, "w": 12, "x": 12, "y": 6 },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.5, sum by (le, path) (rate(qsh_benchmark_latency_ms_bucket[5m])))",
+          "legendFormat": "{{path}}"
+        }
+      ]
+    }
+  ]
+}
