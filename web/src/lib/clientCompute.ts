@@ -872,13 +872,18 @@ export function runClientPipeline(
         // genuine in-browser IDS: softmax logistic trained + scored on the Al-Kuwari-2026 attack signatures.
         // Training volume per class = config.n_per_class (Parameters panel), so it genuinely shifts acc/F1.
         const ids = clientTrainScoreIDS(seed, Number(config.n_per_class ?? idsCfg().n_per_class));
+        metric(stage, "ids_macro_f1", r2(ids.macroF1));
+        metric(stage, "ids_worst_class_f1", r2(ids.worstClassF1));
         metric(stage, "ids_binary_f1", r2(ids.binaryF1));
         metric(stage, "ids_accuracy", r2(ids.accuracy));
         metric(stage, "ids_params", ids.nParams);
         metric(stage, "ids_train_per_class", Number(config.n_per_class ?? idsCfg().n_per_class));
         emit("log", stage, `QML-IDS (client, softmax logistic on Al-Kuwari-2026 signatures): `
-          + `attack-F1=${r2(ids.binaryF1)}, acc=${r2(ids.accuracy)} — measured on ${ids.nTest} held-out `
-          + `samples (${config.n_per_class ?? idsCfg().n_per_class}/class)`);
+          + `macro-F1=${r2(ids.macroF1)} over 8 classes, worst class ${r2(ids.worstClassF1)} `
+          + `— measured on ${ids.nTest} held-out samples (${config.n_per_class ?? idsCfg().n_per_class}/class)`);
+        emit("log", stage, `companions (NOT the headline): binary attack-vs-normal F1=${r2(ids.binaryF1)}, `
+          + `aggregate accuracy=${r2(ids.accuracy)}. Both collapse the seven attack types together, which is `
+          + `why they read high while a single class can be failing — see scripts/train/telecom_ids.py`);
         break;
       }
       case "private_inference": {
