@@ -58,10 +58,14 @@ def load_medmnist(name: str = "pneumoniamnist", split: str = "train"
 
 def load_finance_fraud(n: int = 4000, fraud_rate: float = 0.05, seed: int = 0
                        ) -> tuple[np.ndarray, np.ndarray]:
-    """**Real PaySim** mobile-money transactions -> the 8 AML features + fraud label.
+    """**PaySim simulator** output -> the 8 AML features + fraud label.
+
+    PaySim is a SIMULATOR: the rows are synthetic transactions generated from aggregated real
+    mobile-money logs, not real transactions. The Kaggle dataset is titled "Synthetic Financial
+    Datasets For Fraud Detection". Earlier revisions of this docstring called them real.
 
     Reads the bundled real sample ``data/finance/paysim_sample.tsv`` (Kaggle ``ealaxi/paysim1``,
-    **CC-BY-SA-4.0**; Lopez-Rojas et al. 2016). The 8 columns are derived from real PaySim fields
+    **CC-BY-SA-4.0**; Lopez-Rojas et al. 2016). The 8 columns are derived from PaySim fields (PaySim is a simulator: synthetic transactions)
     (amount / type / step / balances) in the order :mod:`finance_aml` expects; fraud is oversampled to
     ``fraud_rate`` for training balance (the real base rate is 0.13 %). Returns ``(X (n, 8) float32,
     y (n,) ∈ {0,1})``. Offline-CI fallback (only if the bundled file is absent): the synthetic generator,
@@ -87,8 +91,10 @@ def load_finance_fraud(n: int = 4000, fraud_rate: float = 0.05, seed: int = 0
         import logging
 
         logging.getLogger("qsh").warning(
-            "Real PaySim sample unavailable (%s) -> SYNTHETIC transactions (offline/CI fallback, NOT real "
-            "data; the bundled data/finance/paysim_sample.tsv supplies real PaySim data in production).", exc)
+            "Bundled PaySim sample unavailable (%s) -> locally generated transactions (offline/CI fallback, "
+            "NOT the PaySim simulator output, "
+            "data; the bundled data/finance/paysim_sample.tsv supplies the PaySim simulator sample in "
+            "production).", exc)
         from .synthetic import synthetic_transactions
 
         return synthetic_transactions(n=n, fraud_rate=fraud_rate, seed=seed)
