@@ -9,12 +9,13 @@ Kaggle datasets into the small, commercial-OK real samples the repo ships + the 
   web/public/data/finance/paysim_sample.json      demo: real rows + a distilled CKKS-linear model (SHAP)
   web/public/data/satellite/telemetry.json        demo: real telemetry windows + a real anomaly model
 
-Sources (web-verified June 2026, both commercial-OK -- see DATA_LICENSES.md):
+Sources (licences re-read 2026-08-03 -- see DATA_LICENSES.md for what each actually grants):
   * PaySim  : Kaggle `ealaxi/paysim1`, license **CC-BY-SA-4.0** (Lopez-Rojas et al. 2016 mobile-money simulator).
   * NASA SMAP/MSL : Kaggle `patrickfleith/nasa-anomaly-detection-dataset-smap-msl`; the underlying data is
     NASA JPL spacecraft telemetry (Hundman et al. 2018, KDD; the Telemanom project). Per NASA's official data
     policy (NASA Science Data Portal + STI), US-Government works are not copyrightable (17 U.S.C. s.105) and
-    NASA-mission data not marked with a restrictive notice is **CC0 / public domain -- usable commercially**.
+    NASA-mission data carries NO licence statement from any provider. 17 U.S.C. s.105 removes US
+    copyright domestically but is not an affirmative grant -- see DATA_LICENSES.md.
 
 Obtain the raw data first (needs Kaggle API creds in ~/.kaggle/kaggle.json):
   kaggle datasets download -d ealaxi/paysim1 -p /tmp/kaggle_dl/paysim --unzip
@@ -27,6 +28,7 @@ from __future__ import annotations
 import argparse
 import ast
 import json
+import sys
 from pathlib import Path
 
 import numpy as np
@@ -34,12 +36,15 @@ import numpy as np
 # ----- finance feature layout (must match usecases/finance_aml feature_names order) ----------------
 FIN_NAMES = ["amount", "velocity_24h", "cross_border", "night_tx",
              "new_payee", "amount_zscore", "device_risk", "geo_mismatch"]
-FIN_PROVENANCE = ("real: PaySim mobile-money transactions (Kaggle ealaxi/paysim1, CC-BY-SA-4.0; "
-                  "Lopez-Rojas et al. 2016). PaySim is a SIMULATOR: synthetic transactions from "
-                  "aggregated real mobile-money logs. 8 AML features derived from PaySim fields "
-                  "(amount/type/step/balances); fraud oversampled for training (real base rate 0.13%).")
-SAT_PROVENANCE = ("real: NASA SMAP/MSL spacecraft telemetry (Telemanom, Hundman et al. 2018, NASA JPL; "
-                  "CC0 / US-Gov public domain). 6 real channels, real labeled anomalies.")
+#: Provenance text is NOT written here. It comes from the registry, which is also what the browser
+#: prints and what tests/test_demo_provenance.py asserts these JSON files against. Re-declaring the
+#: strings locally is how this script previously re-introduced a licence claim that had already been
+#: corrected everywhere else.
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
+from qsh.models.registry import BUNDLED_DEMO_SAMPLES  # noqa: E402
+
+FIN_PROVENANCE = BUNDLED_DEMO_SAMPLES["finance_aml"][0]
+SAT_PROVENANCE = BUNDLED_DEMO_SAMPLES["satellite_comms"][0]
 
 
 def _paysim_features(df):
@@ -176,8 +181,8 @@ def prep_satellite(src: Path, repo: Path, n_channels: int = 6, length: int = 900
     out_tsv = repo / "data" / "satellite" / "smap_msl_telemetry.tsv"
     out_tsv.parent.mkdir(parents=True, exist_ok=True)
     with out_tsv.open("w") as f:
-        f.write("# Real NASA SMAP/MSL spacecraft telemetry (Telemanom, Hundman et al. 2018, NASA JPL; CC0 / "
-                "US-Gov public domain). Columns = 6 real telemetry channels + labeled anomaly (1).\n")
+        f.write(f"# {SAT_PROVENANCE}\n"
+                "# Columns = 6 real telemetry channels + labeled anomaly (1).\n")
         f.write("\t".join(names) + "\tanomaly\n")
         for i in range(length):
             f.write("\t".join(f"{telem[i, c]:.5f}" for c in range(len(names))) + f"\t{int(anom[i])}\n")
