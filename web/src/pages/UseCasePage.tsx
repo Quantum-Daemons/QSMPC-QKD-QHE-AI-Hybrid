@@ -1,5 +1,5 @@
 import { useRef } from "react";
-import { useParams } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 import AgenticAIPanel from "../components/AgenticAIPanel";
 import BenchmarkPanel from "../components/BenchmarkPanel";
 import { ModelPanel } from "../components/ModelPanel";
@@ -14,9 +14,20 @@ import { usePipelineRun } from "../lib/usePipelineRun";
 
 const DEMO = isClientDemo();
 
+/** Route entry. Resolves the id and renders nothing else, so the branch below never sits in front
+ *  of a hook: UseCaseView owns every hook and is mounted or unmounted as a whole. Putting the guard
+ *  inside UseCaseView instead would call fewer hooks on the invalid path, and React tears the tree
+ *  down with "rendered fewer hooks than expected" the moment a valid id is edited into a bad one. */
 export default function UseCasePage() {
-  const { id = "finance_aml" } = useParams();
-  const usecase = id in USECASE_SPECS ? id : "finance_aml";
+  const { id } = useParams();
+  // An unrecognised id used to render Finance under Finance's title while the address bar still
+  // said something else, so a stale or mistyped link presented one industry's data as another's.
+  // The route matches, so App's catch-all NotFound never fires; this page has to say so itself.
+  if (!id || !(id in USECASE_SPECS)) return <UnknownUseCase id={id} />;
+  return <UseCaseView usecase={id} />;
+}
+
+function UseCaseView({ usecase }: { usecase: string }) {
   const meta = USECASE_META[usecase];
   const diagramRef = useRef<HTMLDivElement>(null);
   const run = usePipelineRun(usecase, diagramRef);
@@ -93,5 +104,31 @@ export default function UseCasePage() {
         </div>
       </div>
     </div>
+  );
+}
+
+/** Shown when /usecase/<id> names something that does not exist.
+ *
+ *  Deliberately not a redirect to Finance. Substituting a working page for a wrong address hides
+ *  the error at exactly the moment it matters — the visitor reads real numbers and a real dataset
+ *  provenance line belonging to an industry they did not ask for. */
+function UnknownUseCase({ id }: { id?: string }) {
+  return (
+    <section className="page">
+      <h1 className="page-title">No such use case</h1>
+      <p className="page-sub">
+        {id ? <>This app has no use case with the id <code>{id}</code>.</> : <>No use case id was given.</>}
+        {" "}These are the ones it does have:
+      </p>
+      <ul>
+        {Object.keys(USECASE_SPECS).map((key) => (
+          <li key={key} style={{ marginBottom: 4 }}>
+            <Link to={`/usecase/${key}`}><code>{key}</code></Link>
+            {USECASE_META[key] ? <span className="muted"> — {USECASE_META[key].title}</span> : null}
+          </li>
+        ))}
+      </ul>
+      <p><Link to="/usecases">Back to the use-case index</Link></p>
+    </section>
   );
 }
