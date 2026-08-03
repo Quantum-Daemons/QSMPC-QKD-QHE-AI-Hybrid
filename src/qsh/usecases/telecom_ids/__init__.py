@@ -91,7 +91,13 @@ def run_demo(config: dict | None = None) -> dict:
     m = pipe.bus.metrics()
     return {
         "ids_detector": ctx.artifacts.get("ids_detector"),
-        "attack_detection_f1": ctx.artifacts.get("ids_binary_f1"),
+        # Macro F1 leads. "attack_detection_f1" was the binary attack-vs-normal score, which folds
+        # all seven attack types into one label and therefore stays high while an individual class
+        # is failing — the effect Engelen et al. (WTMC 2021) measured on CIC-IDS2017, where fixing
+        # the labels moved Bot F1 0.60 -> 0.99 without moving aggregate accuracy off 0.99. The
+        # collapsed number is still returned, under a name that says what it is.
+        "ids_macro_f1": m.get("ids_macro_f1"),
+        "attack_vs_normal_f1": ctx.artifacts.get("ids_binary_f1"),
         "qber": m.get("qber"),
         "metrics": m,
     }
