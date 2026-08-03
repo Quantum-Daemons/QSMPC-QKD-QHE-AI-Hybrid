@@ -43,6 +43,12 @@ export const idsCfg = () => CONFIG.ids;
 export const cryptoCfg = () => CONFIG.crypto;   // crypto-agility defaults incl. hybrid_combiner_mode
 export const webCfg = () => CONFIG.web;
 
+/** Provenance of the sample bundled INTO the demo (not the corpus the model was trained on).
+ *  Generated from src/qsh/models/registry.py BUNDLED_DEMO_SAMPLES; CI checks the parity. */
+export type DemoSample = { provenance: string; licence: string; url: string; licence_checked: string };
+export const demoSample = (usecase: string): DemoSample | null =>
+  ((CONFIG as any).demo_samples ?? {})[usecase] ?? null;
+
 // --- model registry ---------------------------------------------------------
 // Generated from src/qsh/models/registry.py. Repo ids, pinned revisions, artefact paths, dataset
 // licences, published baselines and measured metrics all come from here so that no model name,
