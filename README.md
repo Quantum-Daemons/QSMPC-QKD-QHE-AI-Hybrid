@@ -484,6 +484,15 @@ See [`docs/pqc-roadmap.md`](docs/pqc-roadmap.md).
   arXiv:2512.05069 was withdrawn by its own authors for evaluation "insufficient to fully support the
   paper's conclusions".
 
+- **The third tier (`spaces/qsh-inference/`)** serves the full-precision models from a Hugging Face
+  ZeroGPU Space, for models too large to run in a browser tab or under encryption. Results from it
+  are labelled `REMOTE` — the reported latency includes network and queue time and is not comparable
+  with the in-browser measurements. Note two hosting facts that shape this: free accounts can create
+  **Static Spaces only** (Gradio and Docker Spaces need a paid plan), with a standing exception of
+  **two ZeroGPU Gradio Spaces** for accounts in good standing — which requires the account to be
+  **older than 30 days**. The demo therefore probes for the Space at runtime and degrades to the
+  browser tier when it is absent, rather than assuming it is there.
+
 - **Model artefacts live on the Hugging Face Hub, never in git** — `src/qsh/models/registry.py` is the
   single source of truth for repo ids, pinned revisions, artefact paths, dataset licences, published
   baselines and measured metrics. It flows through `frontend_config()` into the SPA, so no model id,

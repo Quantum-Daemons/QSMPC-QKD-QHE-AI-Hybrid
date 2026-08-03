@@ -1,0 +1,6 @@
+# ZeroGPU supports PyTorch 2.8.0 through 2.11.0 and Python 3.12.12 / 3.10.13. Pinning inside that
+# window rather than tracking latest, because a torch outside it makes the Space fail to allocate.
+torch==2.11.0
+onnxruntime==1.27.0
+huggingface_hub>=1.26
+numpy<3
