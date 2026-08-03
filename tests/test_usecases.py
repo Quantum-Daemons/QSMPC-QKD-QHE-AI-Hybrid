@@ -58,8 +58,18 @@ def test_genomics_real_prs_under_ckks():
 
 
 def test_telecom_ids_classical_meets_target():
+    """The target is checked on macro F1, not on attack-vs-normal F1.
+
+    The collapsed binary score treats all seven attack types as one label, so it can clear 0.93
+    while an individual class is being missed entirely — the failure Engelen et al. (WTMC 2021)
+    documented on CIC-IDS2017. Asserting the easy number would let exactly that regression through.
+    """
     r = telecom_ids.run_demo({"seed": 1})
-    assert r["attack_detection_f1"] >= 0.93  # report success criterion
+    assert r["ids_macro_f1"] >= 0.93, "per-class detection regressed"
+    assert r["attack_vs_normal_f1"] >= r["ids_macro_f1"], (
+        "the collapsed score should be the more forgiving of the two; if it is not, the class "
+        "structure is not what this assertion assumes"
+    )
 
 
 @pytest.mark.slow
