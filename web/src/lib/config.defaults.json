@@ -708,10 +708,10 @@
           }
         ],
         "dataset": {
-          "licence": "research use with citation; redistribution terms unverified",
+          "licence": "no licence stated by either provider",
           "name": "CIC-IDS2017, Engelen-corrected redistribution (WTMC 2021)",
           "publishable": false,
-          "url": "https://downloads.distrinet-research.be/WTMC2021"
+          "url": "https://intrusion-detection.distrinet-research.be/WTMC2021/"
         },
         "hf_repo_id": null,
         "hf_revision": null,
