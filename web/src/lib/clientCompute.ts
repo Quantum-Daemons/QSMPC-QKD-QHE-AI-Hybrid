@@ -770,6 +770,11 @@ export function runClientPipeline(
         break;
       }
       case "qsdc_telemetry": {
+        // The QSDC and free-space QKD figures come from an analytic channel model. There is no
+        // browser API for quantum communication and there cannot be one, so this is SIMULATED and
+        // the page says so rather than presenting a modelled number as a measurement.
+        metric(stage, "inference_provenance", "simulated");
+        metric(stage, "inference_backend", "analytic free-space channel model (quantumSim)");
         const e = intrinsicQber({ ...FREE_SPACE, eveFraction: Number(config.sat_eve ?? 0) });
         const threshold = Number(config.qsdc_threshold ?? qkdCfg().pp_threshold);
         const eavesdrop = e > threshold;
@@ -851,6 +856,11 @@ export function runClientPipeline(
         break;
       }
       case "qml_ids": {
+        // clientIDS genuinely trains an 8-class softmax in this tab, so the timing and the F1 are
+        // measured. The *data* is synthetic, which the run logs separately — measured computation
+        // over synthetic input is not the same claim as measured performance on real traffic.
+        metric(stage, "inference_provenance", "measured-wasm");
+        metric(stage, "inference_backend", "in-browser softmax training (clientIDS), synthetic telemetry");
         // genuine in-browser IDS: softmax logistic trained + scored on the Al-Kuwari-2026 attack signatures.
         // Training volume per class = config.n_per_class (Parameters panel), so it genuinely shifts acc/F1.
         const ids = clientTrainScoreIDS(seed, Number(config.n_per_class ?? idsCfg().n_per_class));
