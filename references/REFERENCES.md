@@ -13,14 +13,24 @@ paper to the **workstream (WS)** it informs, the **module** that implements/uses
 
 ## WS1 — AI-QKD (real-time parameter optimization) + entropy (QRNG)
 
-- **OptiQKD: A Machine Learning-Optimized Framework for Real-Time Parameter Tuning in QKD** — Mohamed, Kaldari & Al-Kuwari, Qatar Center for Quantum Computing (HBKU), arXiv:2603.04192v1 [quant-ph], 2026 `[arXiv]`
-  → protocol-agnostic **TCN + RL (PPO)** tuning of BB84 / E91 / COW parameters; reports **median SKR +20–30%**, QBER 3.0%→1.5%. Grounds `src/qsh/qkd/optimize.py` — a deterministic, offline-safe **sklearn-surrogate + coordinate-ascent** analogue over the two-intensity decoy-state BB84 model — and the E91/CHSH model `src/qsh/qkd/e91.py`. Our measured improvement (>20%) matches the paper's target; honest scope: a simulation (not deployed QKD), gradient-free (no RL/torch).
-
-- **AML-QKD: Adaptive Machine Learning Framework for Real-time Parameter Tuning in QKD** — Mohamed, Kaldari & Al-Kuwari (HBKU), arXiv:2603.04192v2 [quant-ph], 2026 (extends OptiQKD v1 with a QRL E91 path, +29.2% throughput; median SKR +14–25%) `[arXiv]`
-  → same reuse; the two-intensity decoy `mu_decoy` single-photon bound (Ma-Qi-Zhao-Lo 2005) + the convergence metric in `optimize.py` are the concrete stand-ins for the papers' adaptive-tuning theme.
+- **AML-QKD: Adaptive Machine Learning Framework for Real-time Parameter Tuning in QKD** — Mohamed,
+  Kaldari & Al-Kuwari, Qatar Center for Quantum Computing (HBKU), **arXiv:2603.04192** [quant-ph]
+  `[arXiv]`. **v1** (4 Mar 2026) was titled *OptiQKD: A Machine Learning-Optimized Framework for
+  Real-Time Parameter Tuning in Quantum Key Distribution*; **v2** (1 Jun 2026) retitled it AML-QKD.
+  → **This is one paper in two versions, not two papers.** An earlier revision of this file listed it
+  twice and described v2 as "extending" v1; v2 *supersedes* v1 and **revises the headline number
+  downward**: v1 claimed median SKR **+20–30%**, v2 claims **+14–25%** (QBER 3.0%→1.5% in both). The
+  QRL/E91 result (+29.2% throughput) is labelled *exploratory* by the authors. Simulation only.
+  → Grounds `src/qsh/qkd/optimize.py` — a deterministic, offline-safe **sklearn-surrogate +
+  coordinate-ascent** analogue over the two-intensity decoy-state BB84 model, with the `mu_decoy`
+  single-photon bound (Ma-Qi-Zhao-Lo 2005) and a convergence metric — and the E91/CHSH model
+  `src/qsh/qkd/e91.py`. Honest scope: a simulation (not deployed QKD), gradient-free (no RL/torch),
+  so it is an analogue of the paper's theme rather than a reproduction of its method.
+  → Note: `references/` holds **both** the v1 and v2 PDFs (`OptiQKD_*.pdf`, `AML-QKD_*.pdf`). They are
+  the same arXiv entry at two revisions, kept for provenance; cite v2.
 
 - **Information-Theoretic Solutions for Seedless QRNG Bootstrapping and Hybrid PQC-QKD Key Combination** — Giestinhas & Spiller, University of York, arXiv:2603.26907v2 [quant-ph], 2026 `[arXiv]`
-  → **Quantum Leftover Hash Lemma** strong (Toeplitz / universal-2) extractors: (1) **seedless QRNG bootstrapping** from two independent entropy sources; (2) a **"secure-if-either"** hybrid PQC-QKD key combiner (better than XOR; PQC modeled as HILL entropy). Grounds the Round-16 QRNG/transport upgrade: `src/qsh/qrng/simulator.py` (LHL-bounded Toeplitz output + seedless two-source extractor), `src/qsh/qrng/health.py` (SP 800-90B min-entropy estimate), and the config-gated ITS combiner in `src/qsh/pqc/transport.py` (`_mix_qkd_its`, `hybrid_combiner_mode="its_toeplitz"`).
+  → **Quantum Leftover Hash Lemma** strong (Toeplitz / universal-2) extractors: (1) **seedless QRNG bootstrapping** from two independent entropy sources; (2) a QLHL-extractor **alternative** to XOR key-combining. It is **not** "secure-if-either" and not "better than XOR" — the paper never uses that phrase and explicitly says strong seeded extractors "present different characteristics", noting its own cost as "longer keys and a worse computational complexity". The property it does claim: if the combined output **and one input key** are compromised, the remaining key material retains quantifiable min-entropy. PQC keys are modelled as HILL (computational) min-entropy. Licence CC BY 4.0. Grounds the Round-16 QRNG/transport upgrade: `src/qsh/qrng/simulator.py` (LHL-bounded Toeplitz output + seedless two-source extractor), `src/qsh/qrng/health.py` (SP 800-90B min-entropy estimate), and the config-gated ITS combiner in `src/qsh/pqc/transport.py` (`_mix_qkd_its`, `hybrid_combiner_mode="its_toeplitz"`).
 
 ---
 
@@ -58,8 +68,11 @@ paper to the **workstream (WS)** it informs, the **module** that implements/uses
 - **Reverse Delegated Training and Private Inference via Perfectly-Secure QHE** — Ortega & Martín-Delgado, arXiv:2602.12712, 2026 `[R]`
   `Reverse_Delegated_Training_and_Private_Inference_via_Perfectly-Secure_Quantum_Homomorphic_Encryption.pdf`
   → **QOTP + classical FHE** hybrid, Clifford+T QCNN, **Pauli-gate concealment** (circuit privacy),
-  MNIST 96.7%. **Code reused:** `OrtegaSA/CQC-QHE-repo` → `submodules/CQC-QHE`, wrapped by
-  `src/qsh/qhe/qcnn.py`.
+  MNIST 96.7%. **Relationship to this repo:** `src/qsh/qhe/qcnn.py` is an *independent*
+  implementation of the paper's construction. It does not import, vendor or wrap the authors'
+  reference code at `OrtegaSA/CQC-QHE-repo` — an earlier version of this line claimed code reuse
+  that never existed, and the submodule was removed in Round 17. Cited as the source of the
+  construction, which is the accurate relationship.
 
 - **Rate-1 Quantum Fully Homomorphic Encryption** — Chardouvelis, Döttling, Malavolta, IACR ePrint 2020/1454 (TCC 2021) `[R]`
   `Rate-1_Quantum_Fully_Homomorphic_Encryption.pdf`
@@ -71,10 +84,15 @@ paper to the **workstream (WS)** it informs, the **module** that implements/uses
   → maps FHE NTT/modular ops onto AI accelerators (BAT/MAT). Reference for the GPU benchmark's
   NTT/throughput discussion. Code: `EfficientHE/CROSS` (TPU-oriented; reference-only).
 
-- **EncFormer: Secure & Efficient Transformer Inference over Encrypted Data** — 2024 `[R]`
+- **EncFormer: Secure & Efficient Transformer Inference over Encrypted Data** — Zhu, Jin, Aung & Xiao
+  (NUS / A*STAR), **arXiv:2604.09975 [cs.CR], 11 Apr 2026** `[R]`
   `EncFormer_Secure_and_Efficient_Transformer_Inference_over_Encrypted_Data.pdf`
-  → encrypted Transformer (CKKS/TFHE + quantization, polynomial softmax). Informs the **Transformer**
-  workload in `src/qsh/benchmark/`.
+  → **Manuscript submitted to IEEE TDSC — not accepted, not peer-reviewed.** Hybrid **CKKS + two-party
+  computation**, not FHE-only, and the text contains no TFHE, no quantization and no polynomial-softmax
+  method — an earlier revision of this entry attributed all three to it, and dated it 2024. Reported
+  end-to-end BERT-base latency: **2.1 min LAN, 8.9 min WAN3**; the authors put their secure pipeline at
+  *"roughly 3x10^4 slower"* than the 4.5 ms plaintext baseline. Informs the **Transformer** workload in
+  `src/qsh/benchmark/` as a cost reference, not as a performance target.
 
 ---
 
@@ -84,7 +102,7 @@ paper to the **workstream (WS)** it informs, the **module** that implements/uses
   `Quantum_Delegated_and_Federated_Learning_via_Quantum_Homomorphic_Encryption.pdf`
   → QOTP-encrypted delegated/federated learning; informs `src/qsh/ai/federated.py` privacy layer.
 
-- **Quantum Federated Learning: A Comprehensive Survey** — Nguyen et al., IEEE COMST, 2025 (arXiv:2508.15988) `[R]`
+- **Quantum Federated Learning: A Comprehensive Survey** — Nguyen, Uddin, Shaon, Rahman, Dobre & Niyato, arXiv:2508.15998, 21 Aug 2025 — **preprint, under revision at IEEE COMST; not published** `[R]`
   `Quantum_Federated_Learning_A_Comprehensive_Survey.pdf`
   → taxonomy (fully/hybrid/hierarchical QFL), frameworks (PennyLane, Flower, NVFlare…), datasets.
   Design reference for the federated-learning architecture.
@@ -103,7 +121,7 @@ paper to the **workstream (WS)** it informs, the **module** that implements/uses
 
 | Code | Used by | License |
 |---|---|---|
-| `OrtegaSA/CQC-QHE-repo` | `qsh/qhe/qcnn.py` (WS4) | Apache-2.0 |
+| `OrtegaSA/CQC-QHE-repo` | *cited only* — `qsh/qhe/qcnn.py` is an independent implementation of the paper, not a wrapper | Apache-2.0 |
 | `open-quantum-safe/liboqs` (+ `liboqs-python`) | `qsh/pqc/*` | MIT |
 | `openfheorg/openfhe-development`, `microsoft/SEAL`, `tenseal` | `qsh/fhe/*`, benchmark | BSD-2 / MIT |
 | `Alisah-Ozcan/HEonGPU`, `chart21/hpmpc` (PIGEON), `kanav99/shark` | `qsh/benchmark/*` (our own glue) | Apache-2.0 / MIT |
@@ -114,4 +132,4 @@ paper to the **workstream (WS)** it informs, the **module** that implements/uses
 | **`s0l0ist/node-seal`** (SEAL→WASM CKKS) | `web/src/lib/clientFHE.ts` — real in-browser FHE (demo) | MIT |
 | **`mpc-framework` + `emp-wasm-engine` + `summon-ts`** | `web/src/lib/clientMPC.ts` — real in-browser garbled-circuit 2PC (demo) | MIT |
 | **`mcp`** (MCP Python SDK / FastMCP) + official `@modelcontextprotocol/server-filesystem` | `qsh/mcp/*` — real quantum-safe MCP server + interop (full) | MIT |
-| `Flower` + `PennyLane` | `qsh/ai/federated.py` — Quantum Federated Learning (`kind="qfl"`) | Apache-2.0 |
+| `PennyLane` | `qsh/ai/federated.py` — Quantum Federated Learning (`kind="qfl"`). The FedAvg and secure-aggregation code is this repository's own; Flower is cited as prior art below, not used as a dependency. | Apache-2.0 |

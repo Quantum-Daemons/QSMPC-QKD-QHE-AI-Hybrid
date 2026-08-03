@@ -47,7 +47,7 @@ async function expandBytes(seedInput: Uint8Array, nBytes: number): Promise<Uint8
   }
   return out;
 }
-// Information-theoretic "secure-if-either" combiner (mirror of transport._mix_qkd_its; Giestinhas & Spiller
+// Information-theoretic leakage-resilient combiner (mirror of transport._mix_qkd_its; Giestinhas & Spiller
 // 2026): a modified-Toeplitz + Leftover-Hash-Lemma strong extractor over pqc||qkd whose 256-bit output keeps
 // the min-entropy of WHICHEVER input stays uncompromised — unlike HKDF (computational) or a naive XOR/concat.
 async function itsCombine(pqc: Uint8Array, qkd: Uint8Array): Promise<Uint8Array> {
@@ -92,8 +92,8 @@ export function createAgent(name: string): ClientAgent {
 }
 
 // mirror transport._mix_qkd + AESGCM(session_key). ``combiner`` selects the PQC+QKD key combiner
-// (crypto.hybrid_combiner_mode): "hkdf" = HKDF-SHA256 dual-PRF (computational secure-if-either);
-// "its_toeplitz" = the information-theoretic Toeplitz+LHL secure-if-either combiner (:func:`itsCombine`).
+// (crypto.hybrid_combiner_mode): "hkdf" = HKDF-SHA256 dual-PRF (holds if either input does, computationally);
+// "its_toeplitz" = the information-theoretic Toeplitz+QLHL leakage-resilient combiner (itsCombine).
 // Returns the CryptoKey + the raw derived bytes (for a non-secret fingerprint that proves the combiner ran).
 async function deriveAeadKey(
   sharedSecret: Uint8Array, qkdKey?: Uint8Array, combiner = "hkdf",
@@ -101,7 +101,7 @@ async function deriveAeadKey(
   let keyBytes = sharedSecret;
   if (qkdKey && qkdKey.length) {
     if (combiner === "its_toeplitz") {
-      keyBytes = await itsCombine(sharedSecret, qkdKey);      // information-theoretic secure-if-either
+      keyBytes = await itsCombine(sharedSecret, qkdKey);      // ITS extractor, leakage-resilient
     } else {
       const base = await crypto.subtle.importKey("raw", ab(sharedSecret), "HKDF", false, ["deriveBits"]);
       const bits = await crypto.subtle.deriveBits(

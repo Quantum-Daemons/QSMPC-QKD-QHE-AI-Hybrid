@@ -26,7 +26,13 @@ from .hybrid_kem import (
 
 
 def _mix_qkd_its(pqc_key: bytes, qkd_key: bytes) -> bytes:
-    """Information-theoretic "secure-if-either" hybrid combiner (Giestinhas & Spiller 2026).
+    """Information-theoretic leakage-resilient hybrid combiner (Giestinhas & Spiller, arXiv:2603.26907).
+
+    NOT "secure-if-either": plain XOR already gives that, and the paper never uses the phrase. It
+    explicitly declines to claim superiority over XOR, saying strong seeded extractors "present
+    different characteristics". The property it does claim is narrower — if the combined output AND
+    one input key are compromised, the remaining key material retains quantifiable min-entropy —
+    bought at the cost of longer keys and worse computational complexity.
 
     A modified-Toeplitz + Leftover-Hash-Lemma strong extractor over ``pqc_key || qkd_key``: the 256-bit
     output retains the min-entropy of WHICHEVER input stays uncompromised (the QKD side is information-
@@ -55,7 +61,7 @@ def _mix_qkd(session_key: bytes, qkd_key: bytes | None, *, mode: str | None = No
 
     ``mode`` selects the combiner (``None`` -> from config): ``"hkdf"`` = HKDF-SHA256, a dual-PRF KDF
     (secure if EITHER input is a secret high-entropy value, under the HMAC dual-PRF assumption);
-    ``"its_toeplitz"`` = the information-theoretic secure-if-either Toeplitz+LHL combiner (:func:`_mix_qkd_its`).
+    ``"its_toeplitz"`` = the information-theoretic leakage-resilient Toeplitz+QLHL combiner (:func:`_mix_qkd_its`).
     """
     if not qkd_key:
         return session_key

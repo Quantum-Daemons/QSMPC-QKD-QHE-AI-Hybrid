@@ -9,6 +9,11 @@ import {
 import "@xyflow/react/dist/style.css";
 
 // Stage sequence per use case (keys match backend stage.name values).
+//
+// quantum_comparison and sign_result are emitted by both the client pipeline (clientCompute FLOWS)
+// and the backend, but had no node here, so the last two stages of every run lit nothing on the
+// Orchestration page. The `data` node is client-only: there is no `data` stage server-side, so in
+// full mode it stays dim by design.
 const FLOWS: Record<string, { id: string; label: string }[]> = {
   default: [
     { id: "data", label: "Data" },
@@ -16,7 +21,9 @@ const FLOWS: Record<string, { id: string; label: string }[]> = {
     { id: "qkd_key_agreement", label: "QKD Key\n(BB84)" },
     { id: "qsmpc_compute", label: "QSMPC\n(PSI / secure sum)" },
     { id: "private_inference", label: "QHE/FHE\nPrivate Inference" },
+    { id: "quantum_comparison", label: "QSMPC-FHE\n(quantum comparison)" },
     { id: "result", label: "Result\n+ artifacts" },
+    { id: "sign_result", label: "Sign Result\n(ML-DSA)" },
   ],
   medical_fl: [
     { id: "data", label: "Hospitals' Data" },
@@ -24,21 +31,27 @@ const FLOWS: Record<string, { id: string; label: string }[]> = {
     { id: "qkd_key_agreement", label: "QKD Key" },
     { id: "federated_training", label: "Federated Training\n(secure aggregation)" },
     { id: "private_inference", label: "Private Inference" },
+    { id: "quantum_comparison", label: "QSMPC-FHE\n(quantum comparison)" },
     { id: "result", label: "Result" },
+    { id: "sign_result", label: "Sign Result\n(ML-DSA)" },
   ],
   telecom_ids: [
     { id: "data", label: "QKD Telemetry" },
     { id: "pqc_handshake", label: "PQC Handshake" },
     { id: "qkd_key_agreement", label: "QKD Key (w/ Eve)" },
     { id: "qml_ids", label: "QML-IDS\n(attack detection)" },
+    { id: "quantum_comparison", label: "QSMPC-FHE\n(quantum comparison)" },
     { id: "result", label: "Result" },
+    { id: "sign_result", label: "Sign Result\n(ML-DSA)" },
   ],
   satellite_comms: [
     { id: "data", label: "Mission Telemetry" },
     { id: "pqc_handshake", label: "PQC Handshake" },
     { id: "satellite_qkd", label: "Free-space QKD\n(BB84 downlink)" },
     { id: "qsdc_telemetry", label: "QSDC\n(direct + eavesdrop check)" },
+    { id: "quantum_comparison", label: "QSMPC-FHE\n(quantum comparison)" },
     { id: "result", label: "Result" },
+    { id: "sign_result", label: "Sign Result\n(ML-DSA)" },
   ],
 };
 

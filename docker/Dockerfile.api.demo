@@ -1,4 +1,5 @@
-# Slim PUBLIC-DEMO backend image (crypto + API only — NO FHE, NO torch/AI). ~630 MB smaller than the
+# Slim PUBLIC-DEMO backend image (crypto + API only — NO FHE, NO torch/AI). Measured 1.77 GB vs
+# 5.07 GB for the full image = 3.30 GB smaller (round11 tags; re-measure after a rebuild). The
 # full image (torch CPU + tenseal + openfhe dropped), which fits the ConoHa demo VPS comfortably.
 # The public demo computes everything client-side (onnxruntime-web WASM/WebGPU, @noble, in-browser AI),
 # so this image only needs to serve /api/health and the lightweight /api/demo/* crypto endpoints (for

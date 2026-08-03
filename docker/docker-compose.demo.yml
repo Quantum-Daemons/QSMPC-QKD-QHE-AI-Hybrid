@@ -8,7 +8,7 @@ services:
   api:
     build:
       context: ..
-      dockerfile: docker/Dockerfile.api.demo   # slim: core+api only (no FHE/torch, ~630 MB smaller)
+      dockerfile: docker/Dockerfile.api.demo   # slim: core+api only (no FHE/torch; measured 1.77 GB vs 5.07 GB full)
     expose: ["8000"]
     restart: unless-stopped
     deploy: { resources: { limits: { memory: 2g, cpus: "2" } } }

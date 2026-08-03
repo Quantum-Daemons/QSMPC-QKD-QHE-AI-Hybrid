@@ -229,7 +229,8 @@ class CryptoConfig:
     fhe: str = "tenseal-cpu"
     sig: str = "ml-dsa-65"
     # PQC+QKD key combiner: "hkdf" = dual-PRF KDF (default, byte-compatible) | "its_toeplitz" =
-    # information-theoretic "secure-if-either" Toeplitz + Leftover-Hash-Lemma combiner (Giestinhas & Spiller 2026)
+    # information-theoretic leakage-resilient Toeplitz + Quantum-Leftover-Hash-Lemma combiner
+    # (Giestinhas & Spiller, arXiv:2603.26907). Not "secure-if-either" — XOR already gives that.
     hybrid_combiner_mode: str = "hkdf"
 
 
@@ -245,9 +246,22 @@ class WebConfig:
     tfjs_models: list = field(default_factory=lambda: [
         {"id": "Xenova/distilgpt2", "label": "distilGPT-2 (tiny, ~80 MB)"},
         {"id": "onnx-community/Qwen2.5-0.5B-Instruct", "label": "Qwen2.5-0.5B-Instruct (ONNX)"}])
+    # Download sizes are the MEASURED totals from the MLC model repos' blob listings, not estimates.
+    # Ordered smallest-first so the cheapest option is the default: a drive-by visitor should not be
+    # handed a 2 GB download to see the page work. SmolLM2-360M is the smallest MLC build that still
+    # produces usable text. Every q4f16_1 build needs the WebGPU `shader-f16` feature, which is absent
+    # on essentially all Qualcomm GPUs, so a q4f32_1 build is listed as the fallback.
     webllm_models: list = field(default_factory=lambda: [
-        {"id": "Qwen2.5-0.5B-Instruct-q4f16_1-MLC", "label": "Qwen2.5-0.5B-Instruct (~350 MB)"},
-        {"id": "Phi-3-mini-4k-instruct-q4f16_1-MLC", "label": "Phi-3-mini-4k (~2 GB)"}])
+        {"id": "SmolLM2-360M-Instruct-q4f16_1-MLC", "label": "SmolLM2-360M (204 MB, needs shader-f16)",
+         "bytes": 204_289_520, "requires": "shader-f16"},
+        {"id": "SmolLM2-360M-Instruct-q4f32_1-MLC", "label": "SmolLM2-360M f32 (376 MB, no shader-f16)",
+         "bytes": 376_000_000, "requires": ""},
+        {"id": "Llama-3.2-1B-Instruct-q4f16_1-MLC", "label": "Llama-3.2-1B (695 MB, needs shader-f16)",
+         "bytes": 695_242_752, "requires": "shader-f16"},
+        {"id": "Qwen2.5-0.5B-Instruct-q4f16_1-MLC", "label": "Qwen2.5-0.5B (needs shader-f16)",
+         "bytes": 0, "requires": "shader-f16"},
+        {"id": "Phi-3-mini-4k-instruct-q4f16_1-MLC", "label": "Phi-3-mini-4k (~2 GB, needs shader-f16)",
+         "bytes": 2_000_000_000, "requires": "shader-f16"}])
     agent_timeout_ms: int = 120_000     # bounds a stuck WebGPU/model load (slow first-run ~60-70 s)
     tfjs_max_new_tokens: int = 96
     webllm_max_tokens: int = 160
