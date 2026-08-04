@@ -424,7 +424,10 @@ function qsmpcFheRow(workload: string, modelSize: string, u: () => number, sampl
   // qubit count is a run-config knob (config.qubits) — it drives the 2^n state-vector size, the counted
   // T-gate total (n per conv round) and the measured latency, so the QCNN-qubits control genuinely moves
   // the quantum row (clamped >=2 for a valid circuit).
-  const nq = Math.max(2, Math.round(nQubits));
+  // Clamped at both ends. The state vector is exact, so cost is 2^n and there is no graceful
+  // degradation past ~14 -- the tab simply stops responding. The UI caps the field too; this is the
+  // backstop for a value arriving any other way (URL, restored state, API).
+  const nq = Math.min(14, Math.max(2, Math.round(nQubits)));
   qotpQcnnInfer(Array.from({ length: nq }, () => u() * 2 - 1), 0, nq);   // warm-up (drop the JIT spike)
   let last = qotpQcnnInfer(Array.from({ length: nq }, () => u() * 2 - 1), 1, nq);
   let total = 0;
