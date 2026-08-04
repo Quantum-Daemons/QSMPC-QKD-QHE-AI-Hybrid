@@ -15,7 +15,7 @@
       "opset": 0
     },
     "git_sha": "e572d98-dirty",
-    "hf_revision": "561b8e0b2008d5132a96e312f999f960c5c449e8",
+    "hf_revision": "c98a9a6d327a29aac0e61b823f721053f27ae658",
     "minority_class_f1": 0.08077786088257292,
     "n_test": 1523504,
     "n_train": 3554841,
@@ -158,6 +158,7 @@
       "opset": 17
     },
     "git_sha": "e572d98-dirty",
+    "hf_revision": "0fe33a452e6143031318a6c07d3bef9b92611286",
     "metric_note": "Event-wise F-beta at beta=0.5 under the overlap rule, which is what ESA-ADB and Telemanom report. Telemanom's widely-quoted 0.71 is F0.5, not F1. point_adjusted_f1 is shown only to expose how much point adjustment inflates: TSB-AD (NeurIPS 2024) found a uniform random score ranks 26th of 32 detectors under it. Only labels whose ESA-ADB Category is 'Anomaly' count as positives; the 690 annotated rare *nominal* events do not.",
     "n_anomaly_intervals": 320,
     "n_parameters": 80486,

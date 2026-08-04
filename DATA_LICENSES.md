@@ -28,7 +28,7 @@ non-exclusive"* — a licensing mistake there cannot be undone.
 | **Medical (planned)** | [Camelyon17-WILDS](https://wilds.stanford.edu/datasets/) | **CC0 1.0** | **Yes** | The official split trains on 3 hospitals and holds 2 out as OOD val/test. Federating across all 5 would destroy the OOD test set, so the federation spans the 3 training centres only. **Planned only:** there is no loader, no `wilds` dependency and no DenseNet training script; the registry's `medical_fl.densenet` entry has no artefact directory. |
 | **Genomics** | [PGS Catalog](https://www.pgscatalog.org/downloads/) scoring files + [1000 Genomes phase 3](https://www.internationalgenome.org/) via Ensembl REST | **per-score / see below** | **No** | See §4. |
 | **Medical (runtime default)** | [MedMNIST v2 **PneumoniaMNIST**](https://medmnist.com/) (derived from Kermany et al. chest X-ray) | **CC BY 4.0** | **Yes** | The *runtime* default for the medical use case (`src/qsh/data/loaders.py`, `src/qsh/config/defaults.py`, and downloaded at image build in `docker/Dockerfile.api`) — a different subset from BreastMNIST, which is what the trained model uses. Cite Yang et al. **and** the upstream Kermany et al. source. |
-| **Medical (pretraining)** | **ImageNet-1k** via `torchvision` `ResNet18_Weights.IMAGENET1K_V1` | See below | **Review before relying on it** | `scripts/train/medical_breastmnist.py` initialises from ImageNet-pretrained weights, so the published `qsh-medical-breastmnist-resnet18` weights are ImageNet-derived. ImageNet's own terms are **non-commercial research** for the images; the torchvision weights are BSD-3 but were trained on that corpus. This project has **not** completed a terms analysis for redistributing the derived weights — treat as an open compliance question, not a cleared one. |
+| **Medical (pretraining)** | **ImageNet-1k** via `torchvision` `ResNet18_Weights.IMAGENET1K_V1` | See the analysis below | **NO — publication withheld** | `scripts/train/medical_breastmnist.py` initialises from ImageNet-pretrained weights, so the published `qsh-medical-breastmnist-resnet18` weights are ImageNet-derived. ImageNet's own terms are **non-commercial research** for the images; the torchvision weights are BSD-3 but were trained on that corpus. This project has **not** completed a terms analysis for redistributing the derived weights — treat as an open compliance question, not a cleared one. |
 | **Satellite** | [ESA Anomaly Dataset](https://zenodo.org/records/12528696), Mission1 lightweight channels 41–46 | **CC BY 3.0 IGO** | **Yes** | Missions are anonymised `Mission1/2/3` — they are **not** named Sentinel anything. Multi-year telemetry, ~15.4M samples per channel. (**Unresolved:** this file said 14 years and `src/qsh/models/registry.py` said 17.5 for the same corpus. The ESA-ADB Zenodo record, arXiv:2406.17826 abstract and the kplabs-pl/ESA-ADB README do not state the span, so neither figure was re-verified; the specific number is withheld here rather than asserted.) Only labels whose `anomaly_types.csv` Category is `Anomaly` count as positives; the annotated **rare *nominal* events** are not faults and scoring them as such would inflate the anomaly rate. |
 | **Telecom (declared, NOT implemented)** | [CIC-IDS2017, Engelen-corrected](https://intrusion-detection.distrinet-research.be/WTMC2021/) | **no licence stated by either provider** | **No** | CIC-IDS2017 states no licence — only *"publicly available for researchers"* plus a citation request — and the Engelen redistribution states no terms either. **Absent an affirmative grant, neither is safe to bundle or redistribute.** **No code path loads it:** `cicids2017_fixed_dir()` in `src/qsh/models/datasets.py` is never called and the fetch block is commented out; the shipped telecom model is trained on synthetic telemetry. Listed here because the registry declares it. Cite Engelen, Rimmer & Joosen (WTMC 2021 @ IEEE S&P Workshops) *and* Sharafaldin et al. (2018). |
 
@@ -70,6 +70,29 @@ telemetry whose class structure follows Al-Kuwari et al., arXiv:2509.14282, **16
 this as synthetic; it is never presented as measured on real traffic.
 
 ## 4. Genomics — the strictest case
+
+- **ImageNet-derived weights: analysed 2026-08-04, and NOT cleared.** `scripts/train/medical_breastmnist.py`
+  initialises from `ResNet18_Weights.IMAGENET1K_V1`, so the trained `qsh-medical-breastmnist-resnet18`
+  weights are ImageNet-derived. Two primary sources were read, and between them they leave the
+  question open rather than answering it:
+  - **ImageNet's own terms of access** say *"Researcher shall use the Database only for
+    non-commercial research and educational purposes."* That binds use of **the Database**. The
+    terms say nothing either way about redistributing a *model trained on it*.
+  - **torchvision** is **BSD-3-Clause**, but that licence covers the *software*. The repository
+    makes no separate statement about the licence of the pretrained weights it distributes.
+
+  So there is no affirmative grant covering public redistribution of ImageNet-derived weights, and
+  no authoritative statement that it is prohibited either. The Hugging Face public grant is
+  *"perpetual, irrevocable, worldwide, royalty-free, non-exclusive"*, so an error here cannot be
+  undone. **Round 18 therefore published `finance_aml.gbm` (AMLworld, CDLA-Sharing-1.0 §3.5 puts
+  trained weights outside the sharing obligation as "Results") and `satellite_comms.telemanom`
+  (ESA-ADB, CC BY 3.0 IGO) publicly, and held the medical model back.**
+
+  The clean way to remove the question rather than accept it: retrain BreastMNIST **from scratch**,
+  without ImageNet initialisation. The corpus is small (546 training images) so this is cheap; the
+  metric will be lower than 0.878 and that is the honest trade. `models/metrics.json` records
+  `transfer_learning: "ImageNet1K_V1 ResNet-18, conv1 summed to 1 channel, fresh fc head"`, so the
+  provenance is already in the artefact either way.
 
 - **PGS Catalog is not blanket CC BY 4.0.** Scoring files carry a `#license` header that defaults to
   the EMBL-EBI Terms of Use, and **individual scores can be more restrictive** — the PGS Catalog

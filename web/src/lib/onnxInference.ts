@@ -193,3 +193,126 @@ export async function inferLogits(usecase: string, features: number[]): Promise<
     return null;
   }
 }
+
+// --------------------------------------------------------------------------------------------- //
+//  Model-native evaluation: run the PUBLISHED model on a sample from the corpus it was trained on
+// --------------------------------------------------------------------------------------------- //
+
+export interface ModelInputFile {
+  provenance: string;
+  input: { shape: number[]; dtype: string; preprocessing: string[]; layout: string };
+  samples: number[][];
+  labels: number[];
+  expected: { graph: string; accuracy: number; majority_baseline: number; note: string };
+  classes?: Record<string, string>;
+  feature_names?: string[];
+  channels?: string[];
+}
+
+export interface ModelEvalResult {
+  ran: boolean;
+  n: number;
+  accuracy: number | null;
+  expected: number | null;
+  majorityBaseline: number | null;
+  /** |measured - expected| within tolerance. False means the browser must NOT present the number. */
+  matchesExpected: boolean;
+  backend: string;
+  /** Transferred size, or null when the browser served it from cache. */
+  bytes: number | null;
+  provenance: string;
+  error: string | null;
+}
+
+/** Apply the preprocessing recorded WITH the data, never a locally-guessed equivalent. */
+function applyPreprocessing(v: number, steps: string[]): number {
+  let x = v;
+  for (const step of steps) {
+    if (step === "divide by 255") x = x / 255;
+    else if (step === "subtract 0.5") x = x - 0.5;
+    else if (step === "divide by 0.5") x = x / 0.5;
+    else throw new Error(`unknown preprocessing step "${step}" — refusing to guess`);
+  }
+  return x;
+}
+
+/**
+ * Evaluate the published model on its own held-out sample and CHECK the result.
+ *
+ * The point is the check. `expected.accuracy` was measured offline by
+ * `scripts/prep_model_inputs.py` on exactly these rows with onnxruntime, so if the browser gets a
+ * materially different number then something differs — preprocessing, quantisation, execution
+ * provider — and the honest response is to say so rather than render it. Writing that generator,
+ * a missing normalisation step silently turned 0.8782 into 0.4615 with no error anywhere; this is
+ * the guard against shipping that class of mistake to a visitor.
+ */
+export async function evaluatePublishedModel(
+  usecase: string, tolerance = 0.05,
+): Promise<ModelEvalResult | null> {
+  const dir: Record<string, string> = {
+    medical_fl: "medical", finance_aml: "finance", satellite_comms: "satellite",
+  };
+  const sub = dir[usecase];
+  const base: ModelEvalResult = {
+    ran: false, n: 0, accuracy: null, expected: null, majorityBaseline: null,
+    matchesExpected: false, backend: "none", bytes: 0, provenance: "", error: null,
+  };
+  if (!sub) return null;
+
+  let file: ModelInputFile;
+  try {
+    const res = await fetch(`/data/${sub}/model_input.json`);
+    if (!res.ok) return null;                       // no model-native sample for this page yet
+    file = await res.json();
+  } catch {
+    return null;
+  }
+
+  if (!(await loadModel(usecase)) || !session) {
+    return { ...base, provenance: file.provenance, error: status.error ?? "model unavailable" };
+  }
+
+  try {
+    const [, ...dims] = file.input.shape;           // batch dim comes from the sample count
+    const per = dims.reduce((a, b) => a * b, 1);
+    const n = file.samples.length;
+    const flat = new Float32Array(n * per);
+    for (let i = 0; i < n; i++) {
+      const row = file.samples[i];
+      if (row.length !== per) {
+        throw new Error(`sample ${i} has ${row.length} values, model expects ${per} `
+          + `(${file.input.shape.join("x")}) — refusing to pad or truncate`);
+      }
+      for (let j = 0; j < per; j++) {
+        flat[i * per + j] = applyPreprocessing(row[j], file.input.preprocessing);
+      }
+    }
+    const t = new ort.Tensor("float32", flat, [n, ...dims]);
+    const out = await session.run({ [session.inputNames[0]]: t });
+    const outputs = session.outputNames.map((k) => out[k]);
+    const scores = outputs.find((o) => o && o.type === "float32" && (o.dims?.length ?? 0) >= 2)
+      ?? outputs[0];
+    const data = scores.data as Float32Array;
+    const width = Math.max(1, Math.floor(data.length / n));
+
+    let correct = 0;
+    for (let i = 0; i < n; i++) {
+      let best = 0;
+      for (let c = 1; c < width; c++) if (data[i * width + c] > data[i * width + best]) best = c;
+      const pred = width > 1 ? best : (data[i] > 0.5 ? 1 : 0);
+      if (pred === file.labels[i]) correct++;
+    }
+    const accuracy = correct / n;
+    return {
+      ran: true, n, accuracy, expected: file.expected.accuracy,
+      majorityBaseline: file.expected.majority_baseline,
+      matchesExpected: Math.abs(accuracy - file.expected.accuracy) <= tolerance,
+      backend: status.backend, bytes: status.bytes, provenance: file.provenance, error: null,
+    };
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    status.error = msg;
+    console.warn("[onnx] published-model evaluation failed:", msg);
+    return { ...base, provenance: file.provenance, error: msg };
+  }
+}
