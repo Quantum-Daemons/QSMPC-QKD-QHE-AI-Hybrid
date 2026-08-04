@@ -32,7 +32,7 @@ export const USECASES: UseCaseMeta[] = [
   },
   {
     id: "genomics", title: "Genomics — confidential analysis", nav: "Genomics", industry: "genomics",
-    blurb: "Cohorts pool allele counts via quantum secure summation (d-qudit GHZ), then run a private phenotype inference — no cohort exposes raw genotypes.",
+    blurb: "Cohorts pool allele counts by secure summation over a prime field, then run a private phenotype inference — no cohort exposes raw genotypes. The reference backend runs the Sutradhar (t,n)-threshold quantum secure summation (d-level QFT over a t-qudit GHZ state); the in-browser demo computes the classical equivalent, and the page labels the quantum channel SIMULATED.",
     market: "Genomic data-collaboration rides the healthcare/life-sciences segment (~30%); FHE the largest PET (~35.6% of tech mix); secure MPC ~$1.1B→$2.7B.",
     inference: true,
     agenticTool: "pool_allele_counts",

@@ -907,7 +907,13 @@ export function runClientPipeline(
           // inference-only: a genuine centralized eval (1 client, 1 round) — measured, not a canned constant.
           const cq = clientQFL(seed, { clients: 1, rounds: 1 });
           metric(stage, "federated_accuracy", cq.finalAcc);
+          // Say what this number is. clientQFL generates its own balanced two-cluster toy (not the
+          // Wisconsin sample the data stage announced) and is called with clients:1, rounds:1 -- so
+          // there is no federation and no medical data behind it.
+          metric(stage, "federated_accuracy_source", "synthetic 2-cluster toy, 1 client, 1 round");
           emit("log", stage, `inference-only: centralized eval accuracy ${cq.finalAcc.toFixed(3)} `
+            + `on a SYNTHETIC 2-cluster toy (not the bundled medical sample), 1 client / 1 round — `
+            + `so this is not a federated result `
             + `(toggle “Federated (QFL)” to run quantum federated rounds in-browser)`);
         }
         break;
