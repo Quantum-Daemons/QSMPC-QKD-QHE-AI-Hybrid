@@ -25,7 +25,7 @@ export const USECASES: UseCaseMeta[] = [
   {
     id: "medical_fl", title: "Medical — federated learning + private inference", nav: "Medical — FL", industry: "healthcare",
     blurb: "Hospitals train a shared diagnostic model with secure aggregation (no patient data leaves), then a clinician runs a private, signed-explained diagnosis.",
-    market: "Healthcare/life-sciences the largest + fastest-growing vertical (~30% of a $3.67B→$46B market); FL is the #1 PET (~29%). EU AI Act Art. 13 in force Aug 2026.",
+    market: "Healthcare/life-sciences is a leading privacy-preserving-AI vertical in a $3.67B(2025)→$46B(2035) market (market.us), though that report puts BFSI first at 27.8%; federated learning ~29% of a separately-sized $4.25B→$39.9B market (Precedence Research) — different denominators, not comparable shares. EU AI Act Art. 13 in force Aug 2026.",
     inference: true,
     agenticTool: "query_cohort",
     agenticPrompt: "In one sentence, why does a clinician's agent querying a federated diagnostic model over MCP need a quantum-safe (PQC + QKD) channel under HIPAA?",

@@ -205,7 +205,7 @@ library through its published package does not require vendoring its source tree
 | Dependency | How it is used | How it is obtained | License |
 |---|---|---|---|
 | `liboqs-python` | PQC ML-KEM / ML-DSA / SLH-DSA | pip | MIT |
-| `tenseal` | CKKS (default FHE backend) | pip | MIT (over Microsoft SEAL, MIT) |
+| `tenseal` | CKKS (default FHE backend) | pip | Apache-2.0 (over Microsoft SEAL, MIT) |
 | `openfhe` | CKKS + approximate bootstrapping | pip; on RHEL 9 build with [`env/build_openfhe_el9.sh`](env/build_openfhe_el9.sh) | BSD-2-Clause |
 | `mpyc` | **non-linear MPC** — Shamir ReLU/argmax, the hybrid's non-linear half | pip | MIT |
 | `pennylane` | variational quantum layers (QFL, QML-IDS) | pip | Apache-2.0 |
@@ -228,12 +228,12 @@ clone or vendor any mixed-authorship aggregate repo.
 
 ## Datasets
 
-Bundled **real, commercial-OK** samples preferred; the synthetic generators are an offline-CI fallback only
+Bundled samples are real measurements where a licence permits it, synthetic where none does; the synthetic generators are an offline-CI fallback only
 (logged as such, never a silent substitute):
-- **Finance/AML** (demo sample): **PaySim simulator output** (Kaggle `ealaxi/paysim1`, CC-BY-SA-4.0) → the 8 AML features. PaySim is a *simulator*: these are synthetic transactions from aggregated real mobile-money logs, not real transactions. The **training** corpus is IBM AMLworld HI-Small (CDLA-Sharing-1.0), 5,078,345 real-scale transactions at 1 laundering in 981.
+- **Finance/AML** (demo sample): **PaySim simulator output** (Kaggle `ealaxi/paysim1`, CC-BY-SA-4.0) → the 8 AML features. PaySim is a *simulator*: these are synthetic transactions from aggregated real mobile-money logs, not real transactions. The **training** corpus is IBM AMLworld HI-Small (CDLA-Sharing-1.0), 5,078,345 transactions at 1 laundering in 981. **AMLworld is synthetic too** - IBM generates it with a multi-agent virtual-world model and states "Everything is synthetic"; the NeurIPS 2023 D&B paper is titled *Realistic Synthetic Financial Transactions for Anti-Money Laundering Models*. It is used because it is calibrated to real transaction statistics and its CDLA-Sharing terms permit publishing derived weights - **not** because it is real data. No commercial-OK corpus of real laundering transactions exists.
 - **Medical**: MedMNIST v2 (CC-BY-4.0), Wisconsin breast-cancer (bundled demo sample; UCI, CC BY 4.0 — attribution required).
-- **Genomics**: **real 1000 Genomes** phase-3 genotypes (Ensembl/IGSR, open) + **real PGS-Catalog** PGS000001 weights (CC-BY).
-- **Satellite**: **real NASA SMAP/MSL** spacecraft telemetry (Telemanom; NASA JPL; CC0 / US-Gov public domain).
+- **Genomics**: **real 1000 Genomes** phase-3 genotypes (Ensembl/IGSR - open *access*, but IGSR grants **no blanket licence**: "rights claimed on pieces of data vary") + **real PGS-Catalog** PGS000001 weights (**per-score licence**, EMBL-EBI terms by default). Neither is cleared for redistribution as commercial-OK; see [DATA_LICENSES.md](DATA_LICENSES.md).
+- **Satellite**: **real NASA SMAP/MSL** spacecraft telemetry (Telemanom; Hundman et al. 2018; NASA JPL) — **no licence is granted by any provider** `[UNVERIFIED - reasoned inference]`. Telemanom's `LICENSE.txt` is a Caltech copyright assertion covering the *code*; the Kaggle mirror is labelled "Data files (c) Original Authors". 17 U.S.C. 105 removes US copyright only and is not a grant. Bundled demo sample only - the satellite **training** corpus is ESA-ADB (CC BY 3.0 IGO). See [DATA_LICENSES.md](DATA_LICENSES.md).
 - **Telecom/defense**: literature-grounded synthetic QKD-attack telemetry (no commercial-OK real attack dataset — UNSW-NB15 / CICIDS are research-only).
 
 Loaders + generators: `qsh.data.loaders` / `qsh.data.synthetic`.
@@ -508,10 +508,10 @@ See [`docs/pqc-roadmap.md`](docs/pqc-roadmap.md).
   **private** because the Hub's public-repo grant is "perpetual, irrevocable", and it refuses to
   publish publicly at all when the registry marks the training data non-publishable.
 
-- **Public-demo data (real where commercial-OK, synthetic otherwise)** — the client-side demo loads **real
+- **Public-demo data (real where the licence permits, synthetic otherwise)** — the client-side demo loads **real
   commercial-OK datasets where shippable**, mirroring the full deployment: **medical** uses a real Wisconsin
-  Diagnostic Breast-Cancer sample (UCI/sklearn, public domain) + a real logistic-regression model;
-  **genomics** uses the real PGS-Catalog PGS000001 PRS weights (77 SNPs, CC-BY 4.0) over real 1000 Genomes
+  Diagnostic Breast-Cancer sample (UCI dataset 17 via sklearn, **CC BY 4.0 - attribution required**) + a real logistic-regression model;
+  **genomics** uses the real PGS-Catalog PGS000001 PRS weights (77 SNPs; **licensed per score** - PGS000001 carries the Catalog's default terms, *not* a blanket CC-BY grant) over real 1000 Genomes
   genotypes → a real in-browser **Polygenic Risk Score** with per-SNP signed SHAP; **finance** uses a real
   **PaySim** transaction sample (CC-BY-SA-4.0) + the distilled CKKS-linear fraud model; and **satellite** scores
   **real NASA SMAP/MSL telemetry** (no licence stated by any provider — see DATA_LICENSES.md) with the real linear anomaly model — all tiny static JSON
