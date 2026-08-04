@@ -245,8 +245,12 @@ export default function TwoPartyDiagram({
       <g transform={`translate(70, ${bottomY + 18})`} fontSize={10} fill="#97a3b6">
         <line x1={0} y1={-3} x2={22} y2={-3} stroke="var(--accent)" strokeWidth={2} markerEnd="url(#tp-c)" />
         <text x={27} y={1}>classical / FHE ct</text>
-        <line x1={200} y1={-3} x2={222} y2={-3} stroke="var(--quantum)" strokeWidth={2} strokeDasharray="4 3" markerEnd="url(#tp-q)" />
-        <text x={227} y={1}>quantum (BB84 / QSDC)</text>
+        {/* The legend has to agree with the arrows: under a PQC-only profile no quantum channel is
+            drawn, so advertising one in the key was the same hardcoding one level down. */}
+        {!pqcOnly(config) && (<>
+          <line x1={200} y1={-3} x2={222} y2={-3} stroke="var(--quantum)" strokeWidth={2} strokeDasharray="4 3" markerEnd="url(#tp-q)" />
+          <text x={227} y={1}>quantum ({qkdName(config)})</text>
+        </>)}
         <line x1={430} y1={-3} x2={452} y2={-3} stroke="#f5a623" strokeWidth={2} strokeDasharray="2 2" markerEnd="url(#tp-m)" markerStart="url(#tp-ml)" />
         <text x={457} y={1}>MPC secret-shares</text>
       </g>
