@@ -63,7 +63,8 @@ panel (its own MCP tool — `score_transaction` / `query_cohort` / `pool_allele_
 `inspect_qkd_telemetry` / `relay_mission_telemetry` — fed by that run's live metrics), so MCP is the
 per-use-case **cross-cutting integration layer** (no standalone page — it lives inside each industry use
 case). The **full
-deployment** additionally runs a **real FastMCP server** exposing those 5 tools, bound to the
+deployment** additionally runs a **real MCP server** (MCP Python SDK >=2.0 `MCPServer`; FastMCP is the
+1.x fallback) exposing those 5 tools, bound to the
 quantum-safe transport so a `tools/call` returns a **signed real result** (plus interop with the
 official filesystem MCP server); the public demo keeps the zero-server client mirror.
 
@@ -104,7 +105,11 @@ bash env/setup_venv.sh            # or: make setup
 source .venv/bin/activate
 
 # 2. Run the test suite (crypto correctness, FHE accuracy, E2E smoke)
-make test                          # full suite — 137 passing, 4 deselected (use `-m "not slow"` to skip Node/GPU-gated)
+make test                          # 146 passing, 4 deselected (Node/OpenFHE-gated)
+# NOTE: `make test` runs a bare `pytest`, so nothing is deselected and the OpenFHE bootstrap test
+# SIGSEGVs inside EvalBootstrapSetup on AlmaLinux 9.7 (the import guard does not catch a segfault).
+# Use the deselecting form on that host:
+pytest -m "not slow"                # 146 passed, 4 deselected
 
 # 3. Optional tiers
 pip install -r requirements-ai.txt    # torch (CUDA 13 auto), PennyLane (QFL), XGBoost, MedMNIST, ONNX, MCP SDK
@@ -131,7 +136,7 @@ PennyLane `lightning.gpu`, **not** `qiskit-aer-gpu`.
 
 ```
 src/qsh/           the qsh package — orchestration, pqc, qkd, qml_ids, qsmpc, qhe,
-                   fhe, mpc, ai, mcp (real FastMCP server), usecases, benchmark, data, monitoring
+                   config, models, qrng, fhe, mpc, ai, mcp (real MCP server, SDK >=2.0), usecases, benchmark, data, monitoring
 api/               FastAPI backend (REST + WebSocket + downloads + /metrics)
 web/               React + Vite + TS SPA (Overview, Value, Validations, E2E Orchestration,
                    Use Cases index + 5 per-use-case simulator pages /usecase/:id)
@@ -174,7 +179,7 @@ CUDA 13.0**. Verified: Python 3.12.11, gcc 11.5, cmake 3.31, Node 22, Docker 29,
 > unambiguously commercial-OK, the FHE layer uses TenSEAL + OpenFHE + HEonGPU only.
 
 ### Non-linear MPC backend (the hybrid's other half)
-- **MPyC** (MIT, pure-Python, v0.11 2026, vendored at `submodules/mpyc`) — Shamir secret-sharing with secure
+- **MPyC** (MIT, pure-Python, v0.11 2026, a pip dependency — the submodule was dropped in Round 17) — Shamir secret-sharing with secure
   comparison drives the **non-linear** layers (ReLU/argmax) on shares, the canonical CrypTen `ReLU([x]) =
   [x]·[x>0]` pattern. Wired in `src/qsh/mpc/secret_inference.py`; selectable as the `mpc` crypto-agility family
   (`mpyc-shamir` default; MP-SPDZ / hpmpc-gpu as heavyweight references). The linear layers stay under FHE — see
@@ -191,7 +196,8 @@ Go was evaluated and not needed; Julia is optional and deferred.
 Only the two submodules that code actually builds against are vendored:
 
 ```bash
-bash scripts/bootstrap_submodules.sh    # HEonGPU + hpmpc (the GPU MPC-FHE benchmark path)
+QSH_SET=all bash scripts/bootstrap_submodules.sh   # HEonGPU + hpmpc (the GPU MPC-FHE benchmark path)
+# The bare command defaults to QSH_SET=min and both entries are tagged `all`, so it adds nothing.
 ```
 
 Round 17 removed ten others (CQC-QHE, AMLSim, shark, mpyc, oqs-provider, openfhe, SEAL, liboqs,
@@ -313,7 +319,7 @@ the non-linear secure comparisons + a few KB of communication).
   *Quantum-Secure Multiparty Deep Learning*). Reflects the **crypto-agility** selection.
 - **Quantum advantage (0–10)** — `qsh/benchmark/quantum_advantage.py`: weighted geometric mean of
   communication-compactness (≈10³×), latency, and the security jump → a tiered score
-  (*strong* ≈ 7.5/10 on this box).
+  (*dominant* ≈ 8.2/10 standalone, 9.2 on the finance E2E run — measured on this box).
 - **Per-use-case two-party simulator** — each industry has its own page (`/usecase/:id`) with a
   **live two-party (Alice↔Bob) sequence diagram** (`web/src/components/TwoPartyDiagram.tsx`) whose
   steps light up as that use case's pipeline runs — **Start / Pause / Resume / Step / Stop / Restart
@@ -370,7 +376,7 @@ implementation maps to each, and where gaps remain.
 | Classical SMPC protocol complexity | QSMS = Shamir + d-level QFT (no Beaver triples / garbled circuits) | `qsmpc/secure_summation.py` |
 | HNDL-vulnerable HE / key exchange | PQC-first hybrid **ML-KEM + X25519** (+ optional QKD key material) | `pqc/hybrid_kem.py`, `pqc/transport.py` |
 | TTP assumption | TTP-free: QSMS (entangled state, no dealer), keyed-hash PSI over the quantum-safe channel, pairwise-mask secure aggregation | `qsmpc/`, `ai/federated.py` |
-| **Agentic-AI / MCP quantum-safe + private agent comms** | A **real FastMCP server** (5 per-industry tools, full deployment) bound to a quantum-safe channel: two agents establish a PQC(+QKD) session, the caller sends an **ML-DSA-signed, AES-GCM-sealed** `tools/call`, the callee **dispatches the real tool** and returns the **signed result** (authenticated, confidential, HNDL-resistant, no TTP); also interops with the official filesystem MCP server | `pqc/mcp_bridge.py`, `mcp/server.py`, `/api/mcp/*` |
+| **Agentic-AI / MCP quantum-safe + private agent comms** | A **real MCP server** (SDK >=2.0 `MCPServer`, formerly FastMCP) (5 per-industry tools, full deployment) bound to a quantum-safe channel: two agents establish a PQC(+QKD) session, the caller sends an **ML-DSA-signed, AES-GCM-sealed** `tools/call`, the callee **dispatches the real tool** and returns the **signed result** (authenticated, confidential, HNDL-resistant, no TTP); also interops with the official filesystem MCP server | `pqc/mcp_bridge.py`, `mcp/server.py`, `/api/mcp/*` |
 | **Explainability / audit trail (XAI)** | Exact linear-SHAP feature attributions for each private-inference decision, **ML-DSA-signed** → tamper-evident, regulator-facing explanation (EU AI Act Art. 13 - applicable 2 Dec 2027 for Annex III after the AI Omnibus deferral, not Aug 2026; GDPR Art. 22; SR 11-7); surfaced on the finance/medical use-case cards | `ai/explainability.py`, `ExplainabilityStage` |
 
 **WS4 — QHE×AI** (FHE 10³–10⁶× overhead; bootstrapping bottleneck; no quantum encoding; plus unsolved (a)–(f)):
@@ -392,6 +398,32 @@ See [`docs/pqc-roadmap.md`](docs/pqc-roadmap.md).
 ---
 
 ## Concerns & recommendations
+
+- **`make test` is not the command to run on the documented box.** It invokes a bare `pytest`, so the
+  OpenFHE bootstrap test is not deselected and **SIGSEGVs** inside `EvalBootstrapSetup` on AlmaLinux 9.7 —
+  the import guard in `fhe/backends.py` catches an `ImportError`, not a segfault. Use `pytest -m "not slow"`
+  (146 passed, 4 deselected). `EvalBootstrap` is described elsewhere in this README as the answer to the
+  bootstrapping bottleneck; on this host it is not runnable.
+- **The security score has two paths, and they used to disagree.** The standalone benchmark scored the
+  classical row without QKD key material while the quantum row assumed 256 bits — so once the QKD bonus
+  became functional in Round 17, the headline comparison would have handed the quantum row five points the
+  classical row was never offered. Both rows are now scored under one transport configuration (68 vs 96
+  with QKD mixed, 63 vs 91 without). If you change one call site, change both.
+- **ct/pt is not a constant.** The "~1483x" figure is `ciphertext_bytes / (n_in * 8)` and moves with the
+  feature count — measured ~1392x at 30 features and ~5222x at 8. Read it as a property of a
+  configuration, not of CKKS.
+- **The encrypted medical CNN benchmark and the medical AUC use different datasets.** The AUC 0.888 is
+  BreastMNIST; the encrypted-convolution timing runs PneumoniaMNIST (`benchmark.medical_cnn.medmnist_name`).
+  Both are MedMNIST v2, but they are not the same images.
+- **`results/` has no retention policy.** `docker/docker-compose.yml` bind-mounts it, so a long-lived full
+  deployment grows without bound.
+- **Recommendation — generate the benchmark table instead of maintaining it by hand.** Six of the ten
+  numbers in the benchmark section had drifted from what the documented command produces. `tests/` already
+  asserts demo samples against the registry; the same pattern over the model and benchmark tables would
+  have caught the AUROC-vs-C-index, 2022-vs-2023 and "every published QML-IDS number" errors before a
+  reader did.
+- **Recommendation — `docker/Dockerfile.api.demo` is dead** and contradicts the client-only architecture
+  the compose file and Caddyfile now enforce. Delete it or mark it unused.
 
 - **Simulation vs reality** — QKD distance/QBER gains, photonic inference, decoy-state, full
   qOLE, and the **free-space satellite QKD + QSDC** path are **simulated** (analytic channel +
@@ -426,8 +458,10 @@ See [`docs/pqc-roadmap.md`](docs/pqc-roadmap.md).
   load**). In the WebUI the in-browser agent is **integrated into each use-case page** (its own per-industry
   MCP tool, fed by the live run) — the standalone Agentic-AI page was **removed**, since the report frames MCP
   as a per-use-case cross-cutting layer, not a separate feature.
-- **Demo vs full** — the public demo is **client-only** (zero `/api` compute) and ships a slim backend
-  image (no FHE/torch). Its FHE/MPC is **genuinely real and measured in the browser**: **node-seal CKKS**
+- **Demo vs full** — the public demo is **client-only** (zero `/api` compute) and ships **no backend
+  image at all**: `docker/docker-compose.demo.yml` has no `api` service, and `/api/*` and `/metrics`
+  return 404. (Round 17 removed the slim image this line used to credit — it omits FHE by design, so
+  every server-routed run failed on `tenseal`, while the page still said no computation was sent.) Its FHE/MPC is **genuinely real and measured in the browser**: **node-seal CKKS**
   (a real homomorphic linear layer, ~1e-9 error) + a real **emp-wasm garbled-circuit 2PC** for the
   non-linear argmax, both parties loopback in one tab (zero VPS). Federated learning is offered as an
   in-browser **Quantum Federated Learning** toggle (a real client-side FedAvg of a quantum-classical
@@ -444,7 +478,7 @@ See [`docs/pqc-roadmap.md`](docs/pqc-roadmap.md).
   | tier | what it is | where it runs |
   |---|---|---|
   | **T1 crypto** | the FHE/MPC-feasible student | real CKKS + MPyC server-side; node-seal CKKS + emp-wasm 2PC in-browser |
-  | **T2 industry** | the real literature model, trained here, published to the Hub | browser (int8 ONNX from the HF CDN) and server (fp32 ONNX) |
+  | **T2 industry** | the real literature model, trained here, published to the Hub | browser (**int8 ONNX where a quantised graph exists**; the two tree-ensemble models serve **fp32**, because their parameters live in node attributes and dynamic quantisation has nothing to quantise) and server (fp32 ONNX) |
   | **T3 large** | models too big to encrypt at all | WebGPU in-browser, or a hosted endpoint |
 
   The headline number is **`crypto_fidelity`**: how often the encrypted student reproduces the
@@ -456,9 +490,9 @@ See [`docs/pqc-roadmap.md`](docs/pqc-roadmap.md).
   | vertical | T2 model | data | measured | published baseline |
   |---|---|---|---|---|
   | **finance** | GFP + XGBoost (graph-feature preprocessing over the transaction multigraph) | IBM **AMLworld HI-Small**, 5,078,345 transactions, 1 laundering in 981 (CDLA-Sharing-1.0) | minority-class F1 **0.081**, AUPRC **0.073** vs a 0.0015 prevalence baseline | 0.632 (NeurIPS 2023 D&B) — see the gap note below |
-  | **medical** | **ResNet-18**, ImageNet-pretrained, transfer-learned onto 1-channel ultrasound | MedMNIST v2 **BreastMNIST** (CC-BY-4.0) | AUC **0.888** | 0.901 (Nature Sci Data 2022) |
-  | **genomics** | published **PRS** effect-weight vector — not a neural network | PGS Catalog **PGS000001** over **2,504 real 1000 Genomes samples** | ancestry portability, below | AUROC 0.628 — *external citation, not measurable here* |
-  | **satellite** | **Telemanom** 2xLSTM(80), seq 250, non-parametric dynamic threshold + pruning | **ESA-ADB Mission1** lightweight channels 41-46, 14 years of real telemetry (CC-BY-3.0-IGO) | event-wise F0.5 **0.714** | 0.786 (ESA-ADB Table 2) |
+  | **medical** | **ResNet-18**, ImageNet-pretrained, transfer-learned onto 1-channel ultrasound | MedMNIST v2 **BreastMNIST** (CC-BY-4.0) | AUC **0.888** | 0.901 (Yang et al., Scientific Data 10:41, 2023) |
+  | **genomics** | published **PRS** effect-weight vector — not a neural network | PGS Catalog **PGS000001** over **2,504 real 1000 Genomes samples** | ancestry portability, below | C-index 0.628 — *external citation, not measurable here; the PGS Catalog records it as a Cox-model concordance statistic, not an AUROC, so it is not directly comparable to one* |
+  | **satellite** | **Telemanom** 2xLSTM(80), seq 250, non-parametric dynamic threshold + pruning | **ESA-ADB Mission1** lightweight channels 41-46, multi-year real telemetry (CC-BY-3.0-IGO) | event-wise F0.5 **0.714** | 0.786 (ESA-ADB Table 2) |
   | **telecom** | RF baseline + quantum-kernel SVC + variational QNN | literature-grounded synthetic QKD-attack telemetry (7 attack types + normal) | macro F1 — **RF 0.987**, quantum-kernel SVC **0.832**, variational QNN **0.467** | no trustworthy single number exists — see below |
 
   Three of those deserve their honest caveat stated in the README rather than buried:
@@ -492,10 +526,14 @@ See [`docs/pqc-roadmap.md`](docs/pqc-roadmap.md).
     everywhere here. The classical random forest, which **is** trained on all 8 classes, reaches macro
     F1 0.987; neither quantum model beats it.
 
-  **Quantum-ML IDS is presented as an architecture showcase, not a performance claim.** Every
-  published QML-IDS number we could verify sits below a random forest on the same data, and
-  arXiv:2512.05069 was withdrawn by its own authors for evaluation "insufficient to fully support the
-  paper's conclusions".
+  **Quantum-ML IDS is presented as an architecture showcase, not a performance claim.** On this
+  project's own synthetic telemetry neither quantum model beats the classical random forest. Published
+  results, however, are **mixed rather than uniformly below a random forest** — an earlier revision of
+  this paragraph claimed they were, and the paper cited elsewhere in this README contradicts it:
+  Al-Kuwari et al. (arXiv:2509.14282) Table VIII reports a hybrid QLSTM at 94.7% accuracy / 94.7% F1
+  against their own random-forest baseline on the same generated data. What remains well-founded is
+  caution about evaluation quality, not a universal ranking: arXiv:2512.05069 was withdrawn by its own
+  authors for evaluation "insufficient to fully support the paper's conclusions".
 
 - **The third tier (`spaces/qsh-inference/`)** serves the full-precision models from a Hugging Face
   ZeroGPU Space, for models too large to run in a browser tab or under encryption. Results from it
@@ -509,9 +547,12 @@ See [`docs/pqc-roadmap.md`](docs/pqc-roadmap.md).
 - **Model artefacts live on the Hugging Face Hub, never in git** — `src/qsh/models/registry.py` is the
   single source of truth for repo ids, pinned revisions, artefact paths, dataset licences, published
   baselines and measured metrics. It flows through `frontend_config()` into the SPA, so no model id,
-  URL or number is hard-coded in TypeScript. The browser fetches int8 ONNX from the CDN **at a pinned
-  40-character commit sha**, never `main`, so a visitor cannot silently get a different model from the
-  one whose metrics the page is printing. Publish with `python scripts/publish_hf.py`; it defaults to
+  URL or number is hard-coded in TypeScript. The browser fetches the ONNX graph from the CDN **at a
+  pinned 40-character commit sha**, never `main`, so a visitor cannot silently get a different model
+  from the one whose metrics the page is printing. **Only 2 of 11 registry specs currently carry a
+  pinned `hf_revision`**; `onnxInference.ts` deliberately skips the rest rather than fall back to
+  `main`, so those models are not fetched at all — the pinning guarantee holds, but it is a smaller
+  set than this paragraph used to imply. Publish with `python scripts/publish_hf.py`; it defaults to
   **private** because the Hub's public-repo grant is "perpetual, irrevocable", and it refuses to
   publish publicly at all when the registry marks the training data non-publishable.
 
