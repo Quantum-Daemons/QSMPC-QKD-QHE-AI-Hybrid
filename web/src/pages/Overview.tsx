@@ -38,7 +38,7 @@ export default function Overview() {
           {/* arXiv:2603.04192 v1 (OptiQKD) reported a median SKR gain of +20-30%; v2 (AML-QKD,
               2026-06) revised that down to +14-25%. Quoting ">20%" targets a figure the authors
               themselves superseded. Both versions are simulation-only. */}
-          <p>BB84 <b>two-intensity decoy-state</b> (+ a selectable <b>E91/CHSH</b> protocol) with QBER/SKR telemetry; <b>OptiQKD</b> (scikit-learn surrogate + gradient-free search) tunes decoy/basis params to raise the secret-key rate, with a convergence metric. The reference framework reports a median gain of +14–25% in simulation (arXiv:2603.04192v2). A <b>QRNG</b> entropy source (state-vector measurement + SP 800-90B min-entropy + Leftover-Hash-Lemma extractor) seeds the key material. Eavesdropper detection via QBER inflation.</p>
+          <p>BB84 <b>two-intensity decoy-state</b> (+ a selectable <b>E91/CHSH</b> protocol) with QBER/SKR telemetry; <b>OptiQKD</b> (scikit-learn surrogate + gradient-free search) tunes decoy/basis params to raise the secret-key rate, with a convergence metric. The reference framework reports a median gain of +14–25% in simulation (arXiv:2603.04192v2). A <b>QRNG</b> entropy source (state-vector measurement + SP 800-90B min-entropy and section 4.4 health tests + Leftover-Hash-Lemma extractor) is <b>measured and reported alongside</b> the key material. Eavesdropper detection via QBER inflation.</p>
         </div>
         <div className="card">
           <h3>WS2 · QML-IDS — intrusion detection</h3>

@@ -148,7 +148,7 @@ export default function BenchmarkPanel(
               )}
               <p className="muted" style={{ fontSize: 12, margin: "2px 0 10px" }}>
                 Linear layers (matmul/conv) run under CKKS/FHE{split.device === "gpu" ? " (GPU)" : ""}; non-linear
-                layers (ReLU/argmax) run under secret-sharing MPC (MPyC, CPU). {split.backend}.
+                layers (ReLU/argmax) run under MPC — MPyC secret sharing on the server, and in the browser <code>emp-wasm-engine</code> garbled circuits (MPyC is pure Python and is not in the bundle). {split.backend}.
               </p>
               <div className="grid cols-2">
                 <ResponsiveContainer width="100%" height={180}>

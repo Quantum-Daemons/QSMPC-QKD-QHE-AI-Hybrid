@@ -1,13 +1,12 @@
 {
   "features": [
-    "normal",
-    "intercept_resend",
-    "photon_number_splitting",
-    "trojan_horse",
-    "detector_blinding",
-    "wavelength_trojan",
-    "rng_manipulation",
-    "combined"
+    "qber_mean",
+    "qber_std",
+    "sift_ratio",
+    "multiphoton_rate",
+    "timing_jitter",
+    "dark_count_rate",
+    "click_asymmetry"
   ],
   "classes": [
     "normal",
@@ -19,5 +18,5 @@
     "rng_manipulation",
     "combined"
   ],
-  "note": "8 classes = 7 attack types + normal traffic, not 'eight attack scenarios'."
+  "note": "8 classes = 7 attack types + normal traffic (ATTACKS[0] == 'normal'), not 'eight attack scenarios'. An earlier revision listed the CLASS LABELS under 'features'; the real model inputs are the QKD telemetry statistics in 'features', from FEATURES in src/qsh/qml_ids/attacks.py. Generated from the source, not written by hand."
 }
