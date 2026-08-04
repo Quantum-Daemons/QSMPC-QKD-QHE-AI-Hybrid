@@ -116,3 +116,10 @@ models/**/fixtures.npy
 # scripts/data/fetch_g1k_dosages.py; kept local so the repository does not redistribute more
 # per-sample genotype data than the demo actually needs.
 data/genomics/g1k_dosages_full.tsv
+
+# Raw training corpora. QSH_DATA_ROOT points here; scripts/train and scripts/prep_model_inputs.py
+# read from it. NONE of this may be redistributed -- AMLworld is CDLA-Sharing, ESA-ADB is
+# CC BY 3.0 IGO at 3.6 GB, and NASA SMAP/MSL carries no licence statement at all (see
+# DATA_LICENSES.md). Only the small derived samples under web/public/data/ are committed.
+# Added after `git add -A` swept 3.6 GB of ESA channels into a commit and GitHub rejected the push.
+/data-full/

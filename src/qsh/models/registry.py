@@ -532,7 +532,15 @@ _SPECS: tuple[ModelSpec, ...] = (
         hf_repo="qsh-satellite-telemanom-esa",
         notes=(
             "Report event-wise F0.5, never point-adjusted F1. Always run a trivial baseline alongside: "
-            "windowed isolation forest wins the ESA-ADB Mission2 lightweight subset outright."
+            "windowed isolation forest wins the ESA-ADB Mission2 lightweight subset outright. "
+            "MEASURED ROUND 18, and it matters for how the headline is read: this forecaster's "
+            "next-step MAE on 60s-resampled, z-scored Mission1 channels 41-46 is ~0.90 on the "
+            "evaluation split against ~0.041 for persistence -- i.e. simply repeating the last "
+            "observed value is about 22x more accurate. Consistent across train, test and the whole "
+            "series, so it is not a sampling artefact. Telemanom derives its anomaly signal from "
+            "forecast residuals, so residuals this large are dominated by model error rather than by "
+            "anomalies; the event-wise F0.5 of 0.714 should be read with that in mind. The demo "
+            "shows the persistence comparison on the page rather than only the F0.5."
         ),
     ),
     ModelSpec(

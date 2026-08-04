@@ -26,7 +26,15 @@ export default function PublishedModelPanel({ usecase }: { usecase: string }) {
     setBusy(false);
   };
 
-  const pct = (v: number | null) => (v == null ? "—" : `${(v * 100).toFixed(1)}%`);
+  const isForecast = res?.task === "forecast";
+  // A classifier is read as a percentage and higher is better; a forecaster is an absolute error
+  // and lower is better. Showing both the same way would invite exactly the wrong reading.
+  const fmt = (v: number | null) =>
+    v == null ? "—" : isForecast ? v.toFixed(4) : `${(v * 100).toFixed(1)}%`;
+  const scoreLabel = isForecast ? "forecast MAE measured here" : "accuracy measured here";
+  const baselineLabel = isForecast
+    ? "persistence baseline (predict no change)"
+    : "majority-class baseline";
 
   return (
     <div className="card" style={{ marginTop: 16 }}>
@@ -65,19 +73,22 @@ export default function PublishedModelPanel({ usecase }: { usecase: string }) {
           <table className="mini-table" style={{ marginTop: 12 }}>
             <tbody>
               <tr className={res.matchesExpected ? "metric-headline" : undefined}>
-                <td>accuracy measured here</td>
-                <td className="num">{pct(res.accuracy)}</td>
-                <td className="muted small">{res.n} held-out rows, in this tab</td>
+                <td>{scoreLabel}</td>
+                <td className="num">{fmt(res.score)}</td>
+                <td className="muted small">{res.n} held-out {isForecast ? "windows" : "rows"}, in this tab</td>
               </tr>
               <tr>
-                <td>expected (offline, same rows)</td>
-                <td className="num">{pct(res.expected)}</td>
+                <td>expected (offline, same {isForecast ? "windows" : "rows"})</td>
+                <td className="num">{fmt(res.expected)}</td>
                 <td className="muted small">onnxruntime, measured by scripts/prep_model_inputs.py</td>
               </tr>
               <tr className="metric-companion">
-                <td>majority-class baseline</td>
-                <td className="num">{pct(res.majorityBaseline)}</td>
-                <td className="muted small">what guessing the commonest label would score</td>
+                <td>{baselineLabel}</td>
+                <td className="num">{fmt(res.baseline)}</td>
+                <td className="muted small">
+                  {isForecast ? "error from simply repeating the last observed step"
+                              : "what guessing the commonest label would score"}
+                </td>
               </tr>
               <tr className="metric-companion">
                 <td>execution provider</td>
@@ -89,6 +100,18 @@ export default function PublishedModelPanel({ usecase }: { usecase: string }) {
             </tbody>
           </table>
 
+          {!res.beatsBaseline && (
+            <div className="note" style={{ marginTop: 10, borderColor: "var(--warn)", color: "var(--warn)" }}>
+              ⚠ <b>The model does not beat the trivial baseline</b> on these {isForecast ? "windows" : "rows"}
+              {isForecast && res.score != null && res.baseline != null
+                ? ` — its forecast error (${res.score.toFixed(4)}) is about `
+                  + `${(res.score / res.baseline).toFixed(0)}× that of simply repeating the last `
+                  + "observed value. Telemanom derives its anomaly signal from forecast residuals, so "
+                  + "residuals this large are dominated by model error rather than by anomalies. The "
+                  + "published event-wise F0.5 should be read with that in mind."
+                : "."} Shown because it is measurable here, not because it flatters the model.
+            </div>
+          )}
           {res.matchesExpected ? (
             <div className="note" style={{ marginTop: 10 }}>
               ✓ The browser reproduced the offline figure on the same rows, so this really is the
@@ -96,9 +119,9 @@ export default function PublishedModelPanel({ usecase }: { usecase: string }) {
             </div>
           ) : (
             <div className="note" style={{ marginTop: 10, borderColor: "var(--warn)", color: "var(--warn)" }}>
-              ⚠ The browser got {pct(res.accuracy)} where {pct(res.expected)} was expected on these
-              rows. Something differs — preprocessing, quantisation, or the execution provider — so
-              treat this number as unverified rather than as a result.
+              ⚠ The browser got {fmt(res.score)} where {fmt(res.expected)} was expected on these
+              {isForecast ? " windows" : " rows"}. Something differs — preprocessing, quantisation, or
+              the execution provider — so treat this number as unverified rather than as a result.
             </div>
           )}
 
