@@ -399,6 +399,32 @@ See [`docs/pqc-roadmap.md`](docs/pqc-roadmap.md).
 
 ## Concerns & recommendations
 
+- **The browser model tier does not currently run, and Round 18 replaced a 401 with measured reasons.**
+  Until Round 18 every published model returned **401** to anonymous visitors, because
+  `scripts/publish_hf.py` called `create_repo(private=False, exist_ok=True)` and that does not change
+  the visibility of a repo that already exists — so `--public` uploaded files, reported success, and
+  left the repo private. All three are genuinely public now (anonymous `api/models` returns 200), the
+  demo fetches them from the HF CDN, and the failure moved one layer down where it can be described:
+
+  | model | graph | browser status |
+  |---|---|---|
+  | `finance_aml.gbm` | `ai.onnx.ml` `TreeEnsembleClassifier` | ORT Web does not implement that domain |
+  | `telecom_ids.qml` | `ai.onnx.ml` `TreeEnsembleClassifier` | same |
+  | `satellite_comms.telemanom` | `LSTM`, 0.66 MB fp32 | session creation exceeds the budget at both precisions |
+  | `medical_fl.resnet18` | `Conv`/`Gemm` fp32 45 MB; int8 is `ConvInteger` | int8 operator style unsupported; fp32 exceeded 150 s |
+
+  So a domain check is necessary and not sufficient, size is not the constraint (0.66 MB failed),
+  and "quantised" is not one thing — QDQ-format is fine in ORT Web where the `ConvInteger` /
+  `MatMulInteger` style `quantize_dynamic` emits is not. Runnability is computed per **artefact**
+  from its own operator set, and the page declines with the specific reason instead of hanging.
+
+  **Caveat on that verdict:** it was measured in a headless Chrome with **no WebGPU adapter**, so
+  every attempt fell back to single-threaded-friendly WASM. `crossOriginIsolated` was true and the
+  box has 20 cores, so the timings are valid for that configuration — but a desktop Chrome with a
+  real WebGPU adapter may well execute the medical ResNet. Treat the table as "does not run in WASM
+  on this machine", not as "cannot run in any browser". Confirming it on a GPU-backed browser is the
+  obvious next step.
+
 - **`make test` is not the command to run on the documented box.** It invokes a bare `pytest`, so the
   OpenFHE bootstrap test is not deselected and **SIGSEGVs** inside `EvalBootstrapSetup` on AlmaLinux 9.7 —
   the import guard in `fhe/backends.py` catches an `ImportError`, not a segfault. Use `pytest -m "not slow"`
