@@ -103,7 +103,9 @@ function resolveThreads(): number {
 
 /** Resolve the browser-tier artefact for a use case from the registry. */
 //: A cold WASM session on a few MB is seconds, not minutes. Past this something is wrong.
-const SESSION_CREATE_TIMEOUT_MS = 45_000;
+// A 45 MB fp32 graph over WASM on a cold cache is legitimately slow; 45 s was too tight
+// and turned 'still loading' into 'unsupported'. Still bounded, so a genuine hang ends.
+const SESSION_CREATE_TIMEOUT_MS = 150_000;
 
 function withTimeout<T>(p: Promise<T>, ms: number, message: string): Promise<T> {
   return Promise.race([
@@ -187,8 +189,8 @@ export async function loadModel(usecase: string): Promise<boolean> {
       session = await withTimeout(
         ort.InferenceSession.create(buf, { executionProviders: eps }),
         SESSION_CREATE_TIMEOUT_MS,
-        `ONNX session creation exceeded ${SESSION_CREATE_TIMEOUT_MS / 1000}s — the graph is `
-        + `probably using operators this browser cannot execute`,
+        `ONNX session creation exceeded ${SESSION_CREATE_TIMEOUT_MS / 1000}s — either the graph `
+        + `uses operators this browser cannot execute, or it is too large for this device`,
       );
       status.backend = gpu ? "onnx-webgpu" : webnn ? "onnx-webnn" : "onnx-wasm";
       status.loaded = true;
