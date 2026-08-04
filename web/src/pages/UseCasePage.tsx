@@ -47,7 +47,8 @@ function UseCaseView({ usecase }: { usecase: string }) {
       {/* Live two-party simulator: Start/Stop/Restart/Pause/Step drive the diagram animation */}
       <PipelineControls run={run} />
       <div ref={diagramRef} style={{ marginTop: 16, background: "var(--panel)", borderRadius: 10, padding: 8 }}>
-        <TwoPartyDiagram usecase={usecase} activeStage={active} doneStages={done} metrics={metrics} />
+        <TwoPartyDiagram usecase={usecase} activeStage={active} doneStages={done} metrics={metrics}
+          config={{ kem: run.kem, qkd: run.qkd, sig: run.sig }} />
       </div>
       <div className="btn-row" style={{ marginTop: 10 }}>
         <button className="btn ghost" onClick={() => downloadPng(`${usecase}-two-party.png`)}>⬇ Diagram (PNG)</button>

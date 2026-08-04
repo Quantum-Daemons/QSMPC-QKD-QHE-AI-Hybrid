@@ -63,12 +63,39 @@ export default function OrchestrationGraph({
   usecase,
   activeStage,
   doneStages,
+  config = {},
 }: {
   usecase: string;
   activeStage: string | null;
   doneStages: Set<string>;
+  /** Crypto-agility selections, so the node captions name what actually ran. */
+  config?: { kem?: string; qkd?: string; sig?: string };
 }) {
   const stages = flowFor(usecase);
+  // The FLOWS table above is static, so these three captions used to keep naming ML-KEM-768/BB84/
+  // ML-DSA whatever the page's selectors said. Retitle them from the live config instead.
+  const retitle = (id: string, label: string): string => {
+    const head = label.split("\n")[0];
+    if (id === "pqc_handshake") {
+      const kem = String(config.kem ?? "");
+      const pretty = kem === "ml-kem-1024+x25519" ? "ML-KEM-1024 + X25519"
+        : kem === "ml-kem-768+x25519" ? "ML-KEM-768 + X25519"
+        : kem ? kem.toUpperCase() : "hybrid KEM";
+      return `${head}\n(${pretty})`;
+    }
+    if (id === "qkd_key_agreement") {
+      const q = String(config.qkd ?? "");
+      if (q === "pqc-only") return `${head}\n(skipped — PQC-only)`;
+      const pretty = q.startsWith("e91") ? "E91"
+        : q.includes("decoy") ? "BB84 decoy-state" : q ? "BB84" : "QKD";
+      return `${head}\n(${pretty})`;
+    }
+    if (id === "sign_result") {
+      return `${head}\n(${config.sig ? String(config.sig).toUpperCase() : "ML-DSA"})`;
+    }
+    return label;
+  };
+
   const { nodes, edges } = useMemo(() => {
     const nodes: Node[] = stages.map((s, i) => {
       const cls =
@@ -76,7 +103,7 @@ export default function OrchestrationGraph({
       return {
         id: s.id,
         position: { x: 30 + i * 230, y: 80 },
-        data: { label: s.label },
+        data: { label: retitle(s.id, s.label) },
         className: cls,
         style: {
           whiteSpace: "pre-line", width: 190, textAlign: "center" as const,
@@ -93,7 +120,7 @@ export default function OrchestrationGraph({
       animated: activeStage === s.id || activeStage === stages[i].id,
     }));
     return { nodes, edges };
-  }, [stages, activeStage, doneStages]);
+  }, [stages, activeStage, doneStages, config.kem, config.qkd, config.sig]);
 
   return (
     <div style={{ height: 260, border: "1px solid var(--border)", borderRadius: 10, overflow: "hidden" }}>
