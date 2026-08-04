@@ -11,7 +11,8 @@
 import { ml_kem768 } from "@noble/post-quantum/ml-kem";
 import { ml_dsa65 } from "@noble/post-quantum/ml-dsa";
 import { x25519 } from "@noble/curves/ed25519.js";
-import { sha3_256 } from "@noble/hashes/sha3";
+import { hkdf } from "@noble/hashes/hkdf";
+import { sha256 } from "@noble/hashes/sha2";
 
 const hex = (u: Uint8Array, n = 16) =>
   Array.from(u.slice(0, n)).map((b) => b.toString(16).padStart(2, "0")).join("");
@@ -48,15 +49,22 @@ export function mlkemDemo(): KemDemo {
   const xSecretB = x25519.getSharedSecret(bobX, aliceXPub);
 
   // --- combiner ------------------------------------------------------------------------------
-  // Concatenate-then-hash, which is what makes a hybrid sound: the result is secure as long as
-  // EITHER half is, so a break of X25519 by a quantum computer or a flaw in ML-KEM both leave the
-  // session key intact. Binding the transcript (both ciphertext and both public keys) in as well
-  // is what stops an attacker swapping one half for a value of their choosing.
+  // HKDF-SHA256 over (pq_ss || x25519_ss) with the SAME domain-separation string and transcript
+  // shape as the backend's src/qsh/pqc/hybrid_kem.py::_combine. The demo is supposed to mirror the
+  // full deployment, so inventing a second, different KDF here would just be a new kind of drift.
+  // Concatenate-then-KDF is what makes a hybrid sound: the result holds as long as EITHER half does.
+  // Binding the transcript stops an attacker swapping one half for a value of their choosing.
+  const INFO = new TextEncoder().encode("qsh/hybrid-kem/v1 ML-KEM-768+X25519|");
   const combine = (pq: Uint8Array, cl: Uint8Array) => {
-    const t = new Uint8Array(pq.length + cl.length + cipherText.length + bobXPub.length + aliceXPub.length);
-    let o = 0;
-    for (const part of [pq, cl, cipherText, bobXPub, aliceXPub]) { t.set(part, o); o += part.length; }
-    return sha3_256(t);
+    const transcript = new Uint8Array(bob.publicKey.length + bobXPub.length + aliceXPub.length);
+    transcript.set(bob.publicKey, 0);
+    transcript.set(bobXPub, bob.publicKey.length);
+    transcript.set(aliceXPub, bob.publicKey.length + bobXPub.length);
+    const info = new Uint8Array(INFO.length + transcript.length);
+    info.set(INFO, 0); info.set(transcript, INFO.length);
+    const ikm = new Uint8Array(pq.length + cl.length);
+    ikm.set(pq, 0); ikm.set(cl, pq.length);
+    return hkdf(sha256, ikm, undefined, info, 32);
   };
   const sessionA = combine(pqSecret, xSecretA);
   const sessionB = combine(pqRecovered, xSecretB);
@@ -66,9 +74,9 @@ export function mlkemDemo(): KemDemo {
     sessionA.length === sessionB.length && sessionA.every((b: number, i: number) => b === sessionB[i]);
 
   return {
-    algorithm: "ML-KEM-768 (FIPS 203) + X25519, SHA3-256 concatenation KDF",
+    algorithm: "ML-KEM-768 (FIPS 203) + X25519, HKDF-SHA256 combiner",
     classical: "X25519 (RFC 7748)",
-    combiner: "SHA3-256(pq_ss || x25519_ss || ct || pk_b || pk_a)",
+    combiner: "HKDF-SHA256(pq_ss || x25519_ss), info=qsh/hybrid-kem/v1 — same as the backend",
     publicKeyBytes: bob.publicKey.length + bobXPub.length,
     pqcCipherTextBytes: cipherText.length,
     classicalPublicKeyBytes: aliceXPub.length,
