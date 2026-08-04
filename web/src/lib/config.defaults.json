@@ -496,23 +496,23 @@
       },
       {
         "achieved": {
-          "accuracy": 0.8782051282051282,
-          "auc": 0.8876357560568087,
-          "best_val_auc": 0.915622,
+          "accuracy": 0.8653846153846154,
+          "auc": 0.9146825396825395,
+          "best_val_auc": 0.955723,
           "dataset": "MedMNIST v2 BreastMNIST",
           "export": {
             "fp32_bytes": 44765598,
-            "int8_agreement": 0.9871794871794872,
+            "int8_agreement": 0.9935897435897436,
             "int8_bytes": 11257533,
             "opset": 18
           },
-          "git_sha": "e572d98-dirty",
-          "hf_revision": "ab4a5fc42b429dbc8fc960d0a17f7fa902e3f5c0",
-          "macro_f1": 0.8389743032541968,
+          "git_sha": "2ee3dc4-dirty",
+          "hf_revision": "b06b6eb5faaea12158ee9933a78fc6078d972e24",
+          "macro_f1": 0.8249158249158248,
           "n_parameters": 11171266,
           "resolution": 28,
-          "transfer_learning": "ImageNet1K_V1 ResNet-18, conv1 summed to 1 channel, fresh fc head",
-          "wall_clock_s": 7.7
+          "transfer_learning": "none \u2014 trained from random initialisation, so the weights are not ImageNet-derived and carry no ImageNet terms (see DATA_LICENSES.md)",
+          "wall_clock_s": 9.4
         },
         "architecture": "ResNet-18 @28px",
         "artifacts": [
@@ -553,7 +553,7 @@
           "url": "https://medmnist.com/"
         },
         "hf_repo_id": "Daemons-Q/qsh-medical-breastmnist-resnet18",
-        "hf_revision": "ab4a5fc42b429dbc8fc960d0a17f7fa902e3f5c0",
+        "hf_revision": "b06b6eb5faaea12158ee9933a78fc6078d972e24",
         "key": "medical_fl.resnet18",
         "label": "ResNet-18 on BreastMNIST",
         "metric": {
@@ -575,17 +575,18 @@
       },
       {
         "achieved": {
-          "agreement": 0.762821,
-          "disagreement_on_positives": 0.061404,
-          "metric_delta": 0.147436,
-          "metric_delta_pp": 14.7436,
+          "agreement": 0.75,
+          "both_scored_zero": false,
+          "disagreement_on_positives": 0.078947,
+          "metric_delta": 0.134616,
+          "metric_delta_pp": 13.4616,
           "metric_name": "accuracy",
           "n_eval": 156,
           "student_key": "medical_fl.student",
           "student_metric": 0.730769,
           "student_params": 3226,
           "teacher_key": "medical_fl.resnet18",
-          "teacher_metric": 0.878205,
+          "teacher_metric": 0.865385,
           "teacher_params": 11171266
         },
         "architecture": "1 conv block (1->4ch, 3x3), avg-pool, dense head, 14x14 input",
@@ -643,7 +644,7 @@
         "architecture": "2 x LSTM(80), sequence length 250, dropout 0.3, non-parametric dynamic threshold with pruning",
         "artifacts": [
           {
-            "browser_runnable": true,
+            "browser_runnable": false,
             "fmt": "onnx",
             "path": "onnx/model.onnx",
             "precision": "fp32",
@@ -671,7 +672,7 @@
             "serves": "both"
           }
         ],
-        "browser_runnable": true,
+        "browser_runnable": false,
         "dataset": {
           "licence": "CC-BY-3.0-IGO",
           "name": "ESA Anomaly Dataset (ESA-ADB), Mission1 lightweight channels 41-46",
