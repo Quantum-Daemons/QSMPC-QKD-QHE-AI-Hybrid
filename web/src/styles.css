@@ -49,7 +49,39 @@ code, .mono { font-family: ui-monospace, "SFMono-Regular", Menlo, monospace; }
 .grid.cols-2 { grid-template-columns: repeat(2, 1fr); }
 .grid.cols-3 { grid-template-columns: repeat(3, 1fr); }
 .grid.cols-4 { grid-template-columns: repeat(4, 1fr); }
-@media (max-width: 900px) { .grid.cols-2, .grid.cols-3, .grid.cols-4 { grid-template-columns: 1fr; } }
+/* ---------------------------------------------------------------------------------------------
+ * Responsive. Until Round 18 this was the ONLY media query in the stylesheet and it collapsed
+ * grid columns alone, so `.sidebar` kept its `width: 240px; flex-shrink: 0` at every viewport:
+ * measured on the live site, a 485px viewport rendered a 669px document and <body> itself
+ * overflowed horizontally. The sidebar becomes a normal-flow top bar below the breakpoint.
+ * ------------------------------------------------------------------------------------------- */
+@media (max-width: 900px) {
+  .grid.cols-2, .grid.cols-3, .grid.cols-4 { grid-template-columns: 1fr; }
+
+  .app { flex-direction: column; }
+  .sidebar {
+    width: 100%; height: auto; position: static; border-right: none;
+    border-bottom: 1px solid var(--border); padding: 14px 16px;
+  }
+  /* Horizontal nav that scrolls inside itself rather than widening the page. */
+  .nav { margin-top: 12px; flex-direction: row; flex-wrap: nowrap; gap: 6px; overflow-x: auto; }
+  .nav a { white-space: nowrap; }
+  .main { padding: 20px 16px; max-width: 100%; }
+  /* Wide content scrolls in its own box; the body must never scroll sideways. */
+  .mini-table, table { display: block; overflow-x: auto; max-width: 100%; }
+}
+
+/* WCAG 2.2 SC 2.5.8 Target Size (Minimum) is 24x24 CSS px. The browser default checkbox is 13x13,
+ * and no rule here overrode it, so every toggle on the page failed. Sized rather than merely
+ * padded, so the hit area and the visible control agree. */
+input[type="checkbox"], input[type="radio"] {
+  width: 24px; height: 24px; min-width: 24px; min-height: 24px;
+  accent-color: var(--accent); cursor: pointer; vertical-align: middle;
+}
+label:has(> input[type="checkbox"]) { display: inline-flex; align-items: center; gap: 6px; }
+/* A control that is off because the profile cannot use it should read as unavailable, not broken. */
+label.is-disabled { opacity: 0.55; cursor: not-allowed; }
+label.is-disabled input { cursor: not-allowed; }
 
 .card {
   background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius);

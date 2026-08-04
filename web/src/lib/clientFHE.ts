@@ -36,6 +36,11 @@ interface SealCtx {
 const POLY_MODULUS_DEGREE = 8192;          // CKKS ring degree (NIST-128 security at this coeff-modulus)
 const COEFF_MOD_BITS = [60, 40, 40, 60];   // one multiplication of depth (enough for a linear layer)
 
+//: Power-of-two rotation steps 1 .. 2^(GALOIS_STEP_BITS-1) are pre-generated. 2^10 = 1024 slots is
+//: far above any feature width this demo evaluates (the widest published model takes 32), and a
+//: request beyond it throws in SEAL rather than degrading silently -- which is the intent.
+const GALOIS_STEP_BITS = 11;
+
 async function init(): Promise<SealCtx> {
   const SEAL = (await import("node-seal/throws")).default;
   // Override the default (broken-under-Vite) wasm locator with the real hashed asset URL.
@@ -49,7 +54,16 @@ async function init(): Promise<SealCtx> {
   const keyGen = new seal.KeyGenerator(context);
   const publicKey = keyGen.createPublicKey();
   const secretKey = keyGen.secretKey();
-  const galois = keyGen.createGaloisKeys();   // power-of-two rotations for the dot-product slot sum
+  // Only the steps the rotate-and-add slot sum below actually uses. `createGaloisKeys()` with no
+  // argument generates the full default set for a degree-8192 ring -- key generation is the single
+  // most expensive thing in `warmFHE()`, and it runs synchronously on the main thread at first Run,
+  // which is what made the first click feel like a hang. The loop at the bottom of this file steps
+  // 1, 2, 4, ... < sumWidth, so those powers of two are sufficient and anything else would be a
+  // rotation the code never asks for.
+  const rotationSteps = Int32Array.from(
+    Array.from({ length: GALOIS_STEP_BITS }, (_, i) => 1 << i));
+  // node-seal exposes the step-limited variant under its own name; createGaloisKeys() takes none.
+  const galois = keyGen.createGaloisKeysWithSteps(rotationSteps);
   return {
     seal,
     encoder: new seal.CKKSEncoder(context),
