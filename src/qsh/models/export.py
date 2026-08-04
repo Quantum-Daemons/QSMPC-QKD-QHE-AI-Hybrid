@@ -258,17 +258,23 @@ BROWSER_RUNNABLE_DOMAINS = frozenset({"ai.onnx", ""})
 #: and never finishes session creation in the browser, because MatMulInteger +
 #: DynamicQuantizeLinear alongside LSTM is not viable there. Being in the right *domain* is
 #: necessary and not sufficient.
-#: Established by measurement on the deployed demo, not from documentation.
+#: Established by measurement on the deployed demo, and revised twice by it.
 #:
-#: Recurrent operators are the confirmed case: the Telemanom graph is in the supported ai.onnx
-#: domain and only 0.66 MB at fp32, and ORT Web WASM still exceeds 45 s of session creation on it,
-#: at both fp32 and int8. Dynamic quantisation (MatMulInteger / DynamicQuantizeLinear) was initially
-#: listed too, but that was inferred from the same LSTM graph rather than measured independently --
-#: quantised CONVOLUTIONAL models are routinely fine in ORT Web, so blanket-listing those operators
-#: wrongly excluded the medical ResNet's int8 build, which is 11 MB against 45 MB at fp32.
+#: 1. Recurrent operators. The Telemanom graph is in the supported ai.onnx domain and only 0.66 MB
+#:    at fp32, and ORT Web WASM still exceeds session creation on it at both precisions.
+#: 2. Dynamic-quantisation operators. These were listed, then removed on the reasoning that
+#:    "quantised convolutional models are routinely fine in ORT Web", then restored -- because that
+#:    is true of QDQ-format quantisation and NOT of the operator style `quantize_dynamic` emits.
+#:    The medical ResNet's int8 graph is ConvInteger + MatMulInteger + DynamicQuantizeLinear, and it
+#:    exceeded 150 s of session creation on a 20-core box with crossOriginIsolated true and the
+#:    model already fetched. The distinction is the operator style, not quantisation as such.
 #:
-#: Being in the right domain is necessary and not sufficient; so is being small.
-BROWSER_HOSTILE_OPS = frozenset({"LSTM", "GRU", "RNN"})
+#: Being in the right domain is necessary and not sufficient; so is being small; and so is being
+#: quantised in some format ORT Web supports.
+BROWSER_HOSTILE_OPS = frozenset({
+    "LSTM", "GRU", "RNN",
+    "ConvInteger", "MatMulInteger", "DynamicQuantizeLinear",
+})
 
 
 def graph_ops(path: Path) -> list[str]:
