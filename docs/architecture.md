@@ -161,7 +161,7 @@ module rather than a churn of working, tested code (the full test suite stays gr
   browser (WASM/WebGPU PQC via @noble, **real CKKS FHE + garbled-circuit MPC**, ONNX inference, in-browser
   AI, JS BB84/PSI/SHAP/QFL, the client MCP mirror) — it makes **zero `/api` compute calls** (Validations'
   PQC/QKD/MCP are client-mirrored). It ships **no backend at all**. A slim
-  API image (`docker/Dockerfile.api.demo` — core+api, no FHE/torch) used to run beside it as a
+  API image (`docker/Dockerfile.api.demo`, deleted in Round 18 — core+api, no FHE/torch) used to run beside it as a
   `?demo=full` fallback; that was removed in Round 17 after testing it on the deployed site. The
   image excludes FHE by design, so any run it accepted failed at `No module named 'tenseal'` and
   ended in `State: error`, while the page still told the visitor no computation was sent to a
