@@ -78,8 +78,13 @@ def _write(usecase: str, payload: dict) -> Path:
     out.write_text(json.dumps(payload, indent=1) + "\n")
     size = out.stat().st_size
     print(f"  wrote {out.relative_to(REPO)}  ({size/1024:.0f} KB)")
-    print(f"    expected accuracy on these rows: {payload['expected']['accuracy']:.4f} "
-          f"(majority-class baseline {payload['expected']['majority_baseline']:.4f})")
+    exp = payload["expected"]
+    if "accuracy" in exp:
+        print(f"    expected accuracy on these rows: {exp['accuracy']:.4f} "
+              f"(majority-class baseline {exp['majority_baseline']:.4f})")
+    else:
+        print(f"    expected forecast MAE on these windows: {exp['mae']:.4f} "
+              f"(persistence baseline {exp['persistence_mae']:.4f})")
     return out
 
 
@@ -201,44 +206,61 @@ def build_finance(rng: np.random.Generator) -> dict:
 #  satellite_comms -- ESA-ADB Mission1 channels 41-46, [1,250,6] windows
 # --------------------------------------------------------------------------------------------- #
 def build_satellite(rng: np.random.Generator) -> dict:
+    """ESA-ADB Mission1 channels 41-46, windowed exactly as scripts/train/satellite_telemanom.py does.
+
+    Telemanom is a FORECASTER, not a classifier: [1,250,6] in, [1,6] next-step prediction out. So the
+    self-check here is forecast error against the true next values, not an accuracy. Reproducing the
+    model's headline event-wise F0.5 would mean reimplementing non-parametric dynamic thresholding in
+    the browser, which is a different and much larger claim than "the published graph executes here
+    and predicts what it predicted offline".
+    """
     from qsh.models import datasets as D
 
     seq, chans = 250, list(D.ESA_MISSION1_LIGHTWEIGHT)
-    frame = D.load_esa_mission1(channels=chans)
-    values = frame[chans].to_numpy(dtype=np.float32)
-    truth = frame["anomaly"].to_numpy().astype(int) if "anomaly" in frame else np.zeros(len(frame), int)
+    # Mirror the training pipeline step for step; a different resample or normalisation would make
+    # the browser's numbers incomparable with the recorded ones for reasons nobody could see.
+    raw = D.load_esa_channels()
+    df = raw.resample("60s").mean().ffill().bfill()
+    values = df.to_numpy(dtype=np.float32)
+    mu, sigma = values.mean(0), values.std(0) + 1e-8
+    values = (values - mu) / sigma                       # train script lines 164-166
 
-    starts = np.arange(0, len(values) - seq, seq)
-    win_lab = np.array([int(truth[s:s + seq].any()) for s in starts])
-    pos, neg = np.flatnonzero(win_lab == 1), np.flatnonzero(win_lab == 0)
-    take_pos = min(len(pos), N_SAMPLES // 3)
-    pick = np.concatenate([rng.choice(pos, take_pos, replace=False),
-                           rng.choice(neg, min(len(neg), N_SAMPLES - take_pos), replace=False)])
-    rng.shuffle(pick)
+    # 250x6 per window is 1500 floats, so keep this small -- the comparison against
+    # persistence is stable well below N_SAMPLES and the payload has to ship.
+    n_windows = 16
+    starts = rng.choice(np.arange(0, len(values) - seq - 1), size=n_windows, replace=False)
+    x = np.stack([values[s:s + seq] for s in starts]).astype(np.float32)
+    y_next = np.stack([values[s + seq] for s in starts]).astype(np.float32)
 
-    x = np.stack([values[starts[i]:starts[i] + seq] for i in pick]).astype(np.float32)
-    y = win_lab[pick]
-    sess, graph = _session("satellite_telemanom")
-    out = np.asarray(sess.run(None, {sess.get_inputs()[0].name: x})[0])
-    pred = (out.reshape(len(x), -1).max(1) > 0.5).astype(int)
+    sess, graph = _session("satellite_telemanom", prefer_int8=False)
+    pred = np.asarray(sess.run(None, {sess.get_inputs()[0].name: x})[0], dtype=np.float32)
+    mae = float(np.abs(pred - y_next).mean())
+    # What predicting "no change from the last observed step" would score. A forecaster that cannot
+    # beat persistence is not forecasting, and the browser should be able to see that too.
+    persistence_mae = float(np.abs(x[:, -1, :] - y_next).mean())
 
     return {
+        "task": "forecast",
         "provenance": (
             "real ESA Anomaly Dataset (ESA-ADB) Mission1 lightweight channels 41-46 "
             "(Zenodo 12528696, CC BY 3.0 IGO). Missions are anonymised Mission1/2/3 -- they are not "
-            "named Sentinel anything. These are the windows satellite_comms.telemanom was trained "
-            "on, unlike the NASA SMAP/MSL sample this page uses for the FHE/MPC pipeline."
+            "named Sentinel anything. Resampled to 60s and z-scored exactly as the training script "
+            "does. These are the windows satellite_comms.telemanom was trained on, unlike the NASA "
+            "SMAP/MSL sample this page uses for the FHE/MPC pipeline."
         ),
         "input": {"shape": [1, seq, len(chans)], "dtype": "float32", "preprocessing": [],
-                  "layout": f"samples[i] is {seq} timesteps x {len(chans)} channels, row-major"},
+                  "layout": f"samples[i] is {seq} timesteps x {len(chans)} channels, row-major, "
+                            "already resampled and z-scored"},
         "channels": chans,
-        "samples": x.round(6).tolist(),
-        "labels": y.astype(int).tolist(),
+        "samples": x.reshape(len(x), -1).round(4).tolist(),
+        "targets": y_next.round(4).tolist(),
         "expected": {
             "graph": graph,
-            "accuracy": float((pred == y).mean()),
-            "majority_baseline": float(max(np.bincount(y)) / len(y)),
-            "note": "Window is anomalous if any timestep in it is labelled an anomaly.",
+            "mae": mae,
+            "persistence_mae": persistence_mae,
+            "note": ("Mean absolute error of the next-step forecast, measured here with onnxruntime "
+                     "on exactly these windows. persistence_mae is what predicting no change would "
+                     "score, so a reader can tell whether the model is doing anything."),
         },
     }
 
