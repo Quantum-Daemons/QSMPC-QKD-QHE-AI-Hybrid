@@ -4,7 +4,7 @@
   "fp32_max_abs_error": 1.481175422668457e-05,
   "fp32_path": "onnx/model.onnx",
   "int8_agreement": 0.9935897435897436,
-  "int8_browser_runnable": false,
+  "int8_browser_runnable": true,
   "int8_bytes": 11257533,
   "int8_confident_agreement": 1.0,
   "int8_margin_quantile": 0.05,
