@@ -183,8 +183,12 @@ def main() -> int:
     # ---- artefacts ------------------------------------------------------------
     out = Path(result.manifest and result.checkpoint).parent
     report = export.verify_and_quantize(model, xte.numpy(), out, kind="torch")
-    print(f"\n  ONNX fp32 {report.fp32_bytes/1e6:.2f} MB -> int8 {report.int8_bytes/1e6:.2f} MB "
-          f"({report.compression:.1f}x), int8 agreement {report.int8_agreement:.4f}")
+    if report.int8_skipped_reason:
+        print(f"\n  ONNX fp32 {report.fp32_bytes/1e6:.2f} MB "
+              f"(int8 skipped: {report.int8_skipped_reason})")
+    else:
+        print(f"\n  ONNX fp32 {report.fp32_bytes/1e6:.2f} MB -> int8 {report.int8_bytes/1e6:.2f} MB "
+              f"({report.compression:.1f}x), int8 agreement {report.int8_agreement:.4f}")
 
     (out / "feature_spec.json").write_text(json.dumps({
         "input": {"shape": [1, 1, args.size, args.size], "dtype": "float32",
