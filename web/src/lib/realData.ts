@@ -105,3 +105,31 @@ export async function realSatelliteAnomaly(u: () => number): Promise<SatelliteAn
     return null;
   }
 }
+
+/**
+ * The page's REAL bundled sample as a labelled training set, for in-browser federated learning.
+ *
+ * `clientQFL` used to build its own two-cluster toy unconditionally, so "federated accuracy" was
+ * the same number on every industry page for a given seed and described no dataset the page showed.
+ * Returns null where a use case has no labelled bundled sample, and the caller says so rather than
+ * presenting the toy's accuracy as an industry result.
+ */
+export async function realFederatedSet(
+  usecase: string,
+): Promise<{ X: number[][]; Y: number[] } | null> {
+  const files: Record<string, string> = {
+    medical_fl: "/data/medical/breast_cancer_sample.json",
+    finance_aml: "/data/finance/paysim_sample.json",
+  };
+  const path = files[usecase];
+  if (!path) return null;
+  try {
+    const ds = await fetchJSON(path);
+    const X = (ds.samples as number[][] | undefined)?.map((r) => r.slice(0, 8));
+    const Y = (ds.labels as number[] | undefined)?.map((v) => Number(v) | 0);
+    if (!X?.length || !Y?.length || X.length !== Y.length) return null;
+    return { X, Y };
+  } catch {
+    return null;      // absent or malformed: the caller reports the toy explicitly
+  }
+}
