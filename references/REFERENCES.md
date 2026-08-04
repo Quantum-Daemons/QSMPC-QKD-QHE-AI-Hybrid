@@ -36,7 +36,9 @@ paper to the **workstream (WS)** it informs, the **module** that implements/uses
 
 ## WS3 — QSMPC × QKD (quantum-secure multi-party computation)
 
-- **Quantum Secure Multiparty Computation based on Secure Summation and QKD** — Research Square, 2025 `[R]`
+- **Quantum Secure Multiparty Computation based on Secure Summation and QKD** — Mandeep Kumar & Bhaskar
+  Mondal (NIT Patna), Research Square, 3 Jul 2025, DOI `10.21203/rs.3.rs-6706796/v1`, **CC BY 4.0** `[R]`
+  (CC BY requires attribution; an earlier revision of this entry named no authors)
   `Quantum_Secure_Multiparty_Computation_based_on_Secure_Summation_and_QKD.pdf`
   → core protocol for `src/qsh/qsmpc/secure_summation.py`. QKD-shared keys + secure summation.
 
@@ -125,11 +127,12 @@ paper to the **workstream (WS)** it informs, the **module** that implements/uses
 |---|---|---|
 | `OrtegaSA/CQC-QHE-repo` | *cited only* — `qsh/qhe/qcnn.py` is an independent implementation of the paper, not a wrapper | Apache-2.0 |
 | `open-quantum-safe/liboqs` (+ `liboqs-python`) | `qsh/pqc/*` | MIT |
-| `openfheorg/openfhe-development`, `microsoft/SEAL`, `tenseal` | `qsh/fhe/*`, benchmark | BSD-2 / MIT |
+| `openfheorg/openfhe-development`, `microsoft/SEAL` | `qsh/fhe/*`, benchmark | BSD-2 / MIT |
+| `tenseal` | `qsh/fhe/*`, benchmark | **Apache-2.0** (confirmed from the installed package metadata; an earlier revision of this table listed it under BSD-2/MIT) |
 | `Alisah-Ozcan/HEonGPU`, `chart21/hpmpc` (PIGEON), `kanav99/shark` | `qsh/benchmark/*` (our own glue) | Apache-2.0 / MIT |
 | `data61/MP-SPDZ` | benchmark CPU MPC baseline | CSIRO |
-| `lschoe/mpyc` (vendored) | `qsh/mpc/secret_inference.py` — non-linear MPC (ReLU/argmax on shares) | MIT |
-| `IBM/AMLSim`, `synthetichealth/synthea` | `qsh/data/*` | Apache-2.0 |
+| `lschoe/mpyc` (pip dependency, **not vendored** — `requirements-fhe.txt`; the submodule was dropped in Round 17) | `qsh/mpc/secret_inference.py` — non-linear MPC (ReLU/argmax on shares) | MIT |
+| `IBM/AMLSim`, `synthetichealth/synthea` | **Cited only — not used.** Round 17 removed both submodules as unreferenced; `qsh/data/synthetic.py` mentions them in prose only, no code path calls them. | Apache-2.0 |
 | `EdgarLopezPhD/PaySim` | *cited only - never cloned or vendored* | **GPL-3.0** (the simulator source; the Kaggle output dataset is separately CC-BY-SA-4.0) |
 | `openfhe` (OpenFHE 1.5.1, CKKS + bootstrapping) | `qsh/fhe/backends.py` (`OpenFHEBackend`) | BSD-2-Clause (commercial-OK) |
 | **`s0l0ist/node-seal`** (SEAL→WASM CKKS) | `web/src/lib/clientFHE.ts` — real in-browser FHE (demo) | MIT |

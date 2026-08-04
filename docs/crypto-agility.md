@@ -108,13 +108,23 @@ swapping a primitive visibly moves the score — agility you can measure, not ju
 
 - **KEM category** → key-strength component: `ml-kem-768+x25519` (NIST cat 3) scores 16,
   `ml-kem-1024+x25519` (cat 5) scores 20. Picking the cat-5 KEM in the SPA raises the score.
-- **QKD on/off** → HNDL component: a ≥256-bit BB84 key mixed in (`bb84-decoy`) adds a
-  defence-in-depth bonus; `pqc-only` drops it.
+- **QKD on/off** → HNDL component: a ≥256-bit BB84 key mixed in (`bb84-decoy`) scores the full
+  HNDL weight; `pqc-only` scores that weight minus the QKD bonus (30.0 vs 25.0 by default), so the
+  total moves 68 → 63 computational and 82 → 77 information-theoretic. **This was inert until Round
+  17:** the component was computed as `min(weight, weight + bonus)`, which is just `weight` whenever
+  the KEM is hybrid — i.e. in every normal run — so the selector changed the summary label and
+  nothing else while this section claimed otherwise.
 - **QBER** → eavesdropper-detection component: below the ~11% BB84 threshold scores full marks;
   an active eavesdropper pushes QBER up and the score down (and, past threshold, the key is
   rejected entirely — see the satellite QSDC use case).
 - **Security model** → information-theoretic (QOTP perfect hiding, the QSMPC-FHE path) beats
   computational (RLWE, the classical MPC-FHE path): 96 vs 68 in the default benchmark.
+
+**What does *not* move the score**, so the list above is not read as exhaustive: the signature family
+(`ml-dsa-65` vs `ml-dsa-87`) changes the signature size and the recorded algorithm name but has no score
+component; the FHE backend selection changes measured latency, not the score; and the PQC+QKD combiner
+choice (`hkdf` vs `its_toeplitz`) changes the derived key and its fingerprint but is scored only through
+the `security_model` term, not on its own.
 
 The same formula is mirrored client-side (`web/src/lib/clientCompute.ts`) so the public demo
 shows identical scores with no backend. The `sig` family is likewise runtime-selected and the
