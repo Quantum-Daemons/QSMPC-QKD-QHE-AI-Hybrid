@@ -4,10 +4,14 @@
   "fp32_max_abs_error": 1.33514404296875e-05,
   "fp32_path": "onnx/model.onnx",
   "int8_agreement": 0.9871794871794872,
+  "int8_browser_runnable": false,
   "int8_bytes": 11257533,
   "int8_confident_agreement": 1.0,
   "int8_margin_quantile": 0.05,
   "int8_max_abs_error": 2.814462661743164,
+  "int8_onnx_domains": [
+    "ai.onnx"
+  ],
   "int8_path": "onnx/model_int8.onnx",
   "int8_skipped_reason": "",
   "n_fixtures": 156,
