@@ -3,7 +3,10 @@
 # full image (torch CPU + tenseal + openfhe dropped), which fits the <vps-provider> demo VPS comfortably.
 # The public demo computes everything client-side (onnxruntime-web WASM/WebGPU, @noble, in-browser AI),
 # so this image only needs to serve /api/health and the lightweight /api/demo/* crypto endpoints (for
-# the `?demo=full`-on-VPS fallback). The full backend (federated + inference) lives in Dockerfile.api.
+# NOTE: no longer deployed with the public demo. It was the `?demo=full`-on-VPS fallback until
+# Round 17 found that fallback could not work -- this image omits FHE/torch on purpose, so a run
+# routed to it dies at `No module named 'tenseal'`. Kept for local full-stack use only.
+# The full backend (federated + inference) lives in Dockerfile.api.
 # Safe because stages.py imports the heavy deps lazily (inside functions), so api.main loads with core only.
 FROM python:3.12-slim-trixie
 

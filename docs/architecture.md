@@ -155,11 +155,14 @@ module rather than a churn of working, tested code (the full test suite stays gr
 - **Client-side build** (no GPU, no server-side ML): the static SPA runs **all** heavy compute in the
   browser (WASM/WebGPU PQC via @noble, **real CKKS FHE + garbled-circuit MPC**, ONNX inference, in-browser
   AI, JS BB84/PSI/SHAP/QFL, the client MCP mirror) — it makes **zero `/api` compute calls** (Validations'
-  PQC/QKD/MCP are client-mirrored). It ships a **slim backend image** (`docker/Dockerfile.api.demo` —
-  core+api only, no FHE/torch; **measured 1.77 GB vs 5.07 GB for the full image, a 3.30 GB
-  difference** at the `round11` tags — re-measure after a rebuild, since Round 17 dropped the unused
-  `flwr` dependency and added the model-registry tooling), optional and used only as a
-  `?demo=full` fallback. Inference + an optional in-browser QFL toggle; the **full** topology additionally
+  PQC/QKD/MCP are client-mirrored). It ships **no backend at all**. A slim
+  API image (`docker/Dockerfile.api.demo` — core+api, no FHE/torch) used to run beside it as a
+  `?demo=full` fallback; that was removed in Round 17 after testing it on the deployed site. The
+  image excludes FHE by design, so any run it accepted failed at `No module named 'tenseal'` and
+  ended in `State: error`, while the page still told the visitor no computation was sent to a
+  server. It also left `/api/run/*` writable by anonymous visitors. The client-only image now
+  carries `docker/env/Caddyfile.client-only`, which answers `/api` and `/metrics` with 404, and
+  `VITE_CLIENT_ONLY=1` makes `?demo=` non-overridable — a client-only build is client-only. Inference + an optional in-browser QFL toggle; the **full** topology additionally
   runs server-side federated learning + FHE inference + the MCP server. AI model weights stream from the
   HF/MLC CDN (browser-cached).
 
