@@ -78,8 +78,11 @@ export default function Overview() {
       <div className="note" style={{ marginTop: 24 }}>
         <b>Research PoC.</b> Quantum-channel results (QKD distance/QBER gains, photonic inference,
         full qOLE) are <b>simulated</b>, not hardware-validated. QKD is presented strictly as a
-        PQC-hybrid add-on, never standalone (per NSA CNSA 2.0, and BSI TR-02102-1 v2026-01, which
-        states that QKD "is currently not ready for use from a security point of view").
+        PQC-hybrid add-on, never standalone — per <b>BSI TR-02102-1 v2026-01</b>, which states that QKD
+        "is currently not ready for use from a security point of view" and recommends hybrid key
+        agreement. Not per NSA: NSA answers "No" to using QKD to protect a national security system
+        and does not endorse a hybrid QKD add-on either, so the hybrid framing here is BSI's and this
+        project's, not NSA's.
       </div>
     </div>
   );
