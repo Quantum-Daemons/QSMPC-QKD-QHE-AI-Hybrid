@@ -1,11 +1,11 @@
 {
   "key": "medical_fl.student",
   "metric_name": "agreement",
-  "best_metric": 0.8205128205128205,
+  "best_metric": 0.7435897435897436,
   "best_epoch": 0,
   "epochs_run": 26,
-  "wall_clock_s": 0.4,
-  "git_sha": "e572d98-dirty",
+  "wall_clock_s": 0.5,
+  "git_sha": "2ee3dc4-dirty",
   "seed": 42,
   "hyperparameters": {
     "epochs": 120,
