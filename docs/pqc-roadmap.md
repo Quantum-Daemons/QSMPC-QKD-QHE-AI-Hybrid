@@ -13,7 +13,9 @@ below are the recommended future tracks (PoC milestones M3/M4).
   For a *quotable* source on the QKD point, use **BSI TR-02102-1 v2026-01 §2.1 "Use of Quantum-Safe Mechanisms"** (p.28): QKD
   *"is currently not ready for use from a security point of view … the BSI does not recommend QKD
   protocols at this time"*. The
-  architecture keeps QKD strictly as a PQC-hybrid add-on. ✅
+  architecture keeps QKD strictly as a PQC-hybrid add-on, on BSI's authority. **NSA is not a source
+  for this**: its CNSA 2.0 FAQ answers "No" to protecting an NSS with QKD and does not endorse a
+  hybrid add-on either. ✅
 
 ## Crypto-agility (done)
 Algorithms resolve through `CryptoRegistry` at runtime — ML-KEM-768 ↔ -1024, QKD ↔
