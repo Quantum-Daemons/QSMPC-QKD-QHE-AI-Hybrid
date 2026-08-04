@@ -1,6 +1,7 @@
 import { useRef } from "react";
 import { Link, useParams } from "react-router-dom";
 import AgenticAIPanel from "../components/AgenticAIPanel";
+import PublishedModelPanel from "../components/PublishedModelPanel";
 import SdnControlPlanePanel from "../components/SdnControlPlanePanel";
 import BenchmarkPanel from "../components/BenchmarkPanel";
 import { ModelPanel } from "../components/ModelPanel";
@@ -96,6 +97,8 @@ function UseCaseView({ usecase }: { usecase: string }) {
           out of scope of the control interface). */}
       <AgenticAIPanel inline usecase={usecase} defaultPrompt={meta.agenticPrompt}
         mcpToolName={meta.agenticTool} runContext={{ metrics, benchmark }} />
+
+      <PublishedModelPanel usecase={usecase} />
 
       <SdnControlPlanePanel
         usecase={usecase}
