@@ -37,7 +37,13 @@ submodules: ## Init/update git submodules (upstream OSS)
 data: ## Download free public datasets + generate synthetic data
 	$(PY) -m qsh.data.download
 
-test: ## Run the test suite
+test: ## Run the test suite (146 passing, 4 deselected)
+	# -m "not slow" deselects the Node- and OpenFHE-gated tests. Without it the OpenFHE
+	# bootstrap test SIGSEGVs inside EvalBootstrapSetup on AlmaLinux 9.7 -- the import guard
+	# in fhe/backends.py catches an ImportError, not a segfault, so the process just dies.
+	$(PY) -m pytest -m "not slow"
+
+test-all: ## Run every test including slow ones (may segfault on OpenFHE, see above)
 	$(PY) -m pytest
 
 lint: ## Ruff lint

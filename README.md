@@ -451,8 +451,6 @@ See [`docs/pqc-roadmap.md`](docs/pqc-roadmap.md).
   asserts demo samples against the registry; the same pattern over the model and benchmark tables would
   have caught the AUROC-vs-C-index, 2022-vs-2023 and "every published QML-IDS number" errors before a
   reader did.
-- **Recommendation — `docker/Dockerfile.api.demo` is dead** and contradicts the client-only architecture
-  the compose file and Caddyfile now enforce. Delete it or mark it unused.
 
 - **Simulation vs reality** — QKD distance/QBER gains, photonic inference, decoy-state, full
   qOLE, and the **free-space satellite QKD + QSDC** path are **simulated** (analytic channel +
