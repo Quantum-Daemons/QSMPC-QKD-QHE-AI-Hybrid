@@ -136,7 +136,17 @@ export async function loadModel(usecase: string): Promise<boolean> {
   inflight = (async () => {
     const target = browserModel(usecase);
     if (!target) {
-      status.error = `no published browser-tier ONNX model registered for "${usecase}"`;
+      // Say WHICH of the several reasons applies. "No model registered" is true but unhelpful when
+      // the real answer is "there is one, and its operators cannot run in any browser".
+      const blocked = modelsFor(usecase).find(
+        (m) => m.hf_repo_id && m.hf_revision
+          && (m as { browser_runnable?: boolean }).browser_runnable === false);
+      const domains = (blocked as { onnx_domains?: string[] } | undefined)?.onnx_domains ?? [];
+      status.error = blocked
+        ? `${blocked.key} is published but cannot run in a browser: its graph uses `
+          + `${domains.join(", ") || "unsupported"} operators, and ONNX Runtime Web implements only `
+          + `ai.onnx. Tree ensembles (TreeEnsembleClassifier) are server-tier only.`
+        : `no published, pinned, browser-tier ONNX model registered for "${usecase}"`;
       status.backend = "none";
       return false;
     }
@@ -221,11 +231,19 @@ export async function inferLogits(usecase: string, features: number[]): Promise<
 // --------------------------------------------------------------------------------------------- //
 
 export interface ModelInputFile {
+  /** "classification" (default) or "forecast" — decides what the self-check compares. */
+  task?: "classification" | "forecast";
   provenance: string;
   input: { shape: number[]; dtype: string; preprocessing: string[]; layout: string };
   samples: number[][];
-  labels: number[];
-  expected: { graph: string; accuracy: number; majority_baseline: number; note: string };
+  labels?: number[];
+  /** Next-step ground truth, for forecast models. */
+  targets?: number[][];
+  expected: {
+    graph: string; note: string;
+    accuracy?: number; majority_baseline?: number;
+    mae?: number; persistence_mae?: number;
+  };
   classes?: Record<string, string>;
   feature_names?: string[];
   channels?: string[];
@@ -233,10 +251,15 @@ export interface ModelInputFile {
 
 export interface ModelEvalResult {
   ran: boolean;
+  task: "classification" | "forecast";
   n: number;
-  accuracy: number | null;
+  /** Accuracy for a classifier, mean absolute error for a forecaster. Lower is better for MAE. */
+  score: number | null;
   expected: number | null;
-  majorityBaseline: number | null;
+  /** Majority-class accuracy, or persistence MAE — what a trivial predictor would achieve. */
+  baseline: number | null;
+  /** True when the model is no better than the trivial baseline. Surfaced, not buried. */
+  beatsBaseline: boolean;
   /** |measured - expected| within tolerance. False means the browser must NOT present the number. */
   matchesExpected: boolean;
   backend: string;
@@ -276,8 +299,9 @@ export async function evaluatePublishedModel(
   };
   const sub = dir[usecase];
   const base: ModelEvalResult = {
-    ran: false, n: 0, accuracy: null, expected: null, majorityBaseline: null,
-    matchesExpected: false, backend: "none", bytes: 0, provenance: "", error: null,
+    ran: false, task: "classification", n: 0, score: null, expected: null, baseline: null,
+    beatsBaseline: false, matchesExpected: false, backend: "none", bytes: null,
+    provenance: "", error: null,
   };
   if (!sub) return null;
 
@@ -323,18 +347,48 @@ export async function evaluatePublishedModel(
     const data = scores.data as Float32Array;
     const width = Math.max(1, Math.floor(data.length / n));
 
+    const task = file.task ?? "classification";
+    if (task === "forecast") {
+      // A forecaster is scored by error against the true next step, and against what predicting
+      // "no change" would score. If the model loses to persistence, the page says so.
+      const targets = file.targets ?? [];
+      let err = 0, persist = 0, count = 0;
+      for (let i = 0; i < n; i++) {
+        const truth = targets[i] ?? [];
+        const lastStep = file.samples[i].slice(-truth.length);
+        for (let c = 0; c < truth.length; c++) {
+          err += Math.abs(data[i * width + c] - truth[c]);
+          persist += Math.abs(lastStep[c] - truth[c]);
+          count++;
+        }
+      }
+      const mae = count ? err / count : NaN;
+      const persistenceMae = count ? persist / count : NaN;
+      const exp = file.expected.mae ?? null;
+      return {
+        ran: true, task, n, score: mae, expected: exp,
+        baseline: file.expected.persistence_mae ?? persistenceMae,
+        beatsBaseline: mae < (file.expected.persistence_mae ?? persistenceMae),
+        matchesExpected: exp == null ? false : Math.abs(mae - exp) <= Math.max(tolerance, exp * 0.1),
+        backend: status.backend, bytes: status.bytes, provenance: file.provenance, error: null,
+      };
+    }
+
+    const labels = file.labels ?? [];
     let correct = 0;
     for (let i = 0; i < n; i++) {
       let best = 0;
       for (let c = 1; c < width; c++) if (data[i * width + c] > data[i * width + best]) best = c;
       const pred = width > 1 ? best : (data[i] > 0.5 ? 1 : 0);
-      if (pred === file.labels[i]) correct++;
+      if (pred === labels[i]) correct++;
     }
     const accuracy = correct / n;
+    const exp = file.expected.accuracy ?? null;
+    const majority = file.expected.majority_baseline ?? null;
     return {
-      ran: true, n, accuracy, expected: file.expected.accuracy,
-      majorityBaseline: file.expected.majority_baseline,
-      matchesExpected: Math.abs(accuracy - file.expected.accuracy) <= tolerance,
+      ran: true, task, n, score: accuracy, expected: exp, baseline: majority,
+      beatsBaseline: majority == null ? true : accuracy > majority,
+      matchesExpected: exp == null ? false : Math.abs(accuracy - exp) <= tolerance,
       backend: status.backend, bytes: status.bytes, provenance: file.provenance, error: null,
     };
   } catch (e) {
