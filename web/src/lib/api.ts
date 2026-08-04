@@ -75,7 +75,12 @@ export const api = {
   demoPqc: (): Promise<any> => {
     if (!isClientDemo()) return j<any>("/api/demo/pqc");
     const k = mlkemDemo();   // client-side hybrid-KEM mirror (shapes match the server response)
-    return Promise.resolve({ kem: "ML-KEM-768", classical: "X25519", ciphertext_bytes: k.cipherTextBytes,
+    // `classical` used to be the literal string "X25519" beside a value produced by ML-KEM alone.
+    // Both halves are now really computed, so every field here is read off the run rather than
+    // asserted, and the byte counts are split so the total can be checked against the parts.
+    return Promise.resolve({ kem: "ML-KEM-768", classical: k.classical, combiner: k.combiner,
+      ciphertext_bytes: k.cipherTextBytes, pqc_ciphertext_bytes: k.pqcCipherTextBytes,
+      classical_public_key_bytes: k.classicalPublicKeyBytes,
       shared_secret_prefix: k.sharedSecretPrefix, agreement: k.agreement });
   },
   demoQkd: (km: number, eve: number): Promise<any> => {

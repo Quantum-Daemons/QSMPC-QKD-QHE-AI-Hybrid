@@ -57,6 +57,8 @@ export interface IDSResult {
   accuracy: number;
   binaryF1: number;
   nParams: number; nTest: number;
+  /** Samples/class actually trained on after clamping — not necessarily what was requested. */
+  nPerClassUsed: number;
 }
 
 export function clientTrainScoreIDS(seed = 0, nPerClass?: number): IDSResult {
@@ -133,6 +135,6 @@ export function clientTrainScoreIDS(seed = 0, nPerClass?: number): IDSResult {
     macroF1: present.length ? perClassF1.reduce((a, v) => a + v, 0) / present.length : 0,
     worstClassF1: present.length ? Math.min(...perClassF1) : 0,
     binaryF1: f1(tp, fp, fn),
-    nParams: N_CLASS * N_FEAT + N_CLASS, nTest: Zte.length,
+    nParams: N_CLASS * N_FEAT + N_CLASS, nTest: Zte.length, nPerClassUsed: nPer,
   };
 }

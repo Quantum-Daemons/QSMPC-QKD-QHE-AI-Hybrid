@@ -78,7 +78,10 @@ export default function Validations() {
             <table style={{ marginTop: 12 }}>
               <tbody>
                 <tr><td>KEM</td><td>{pqc.kem} + {pqc.classical}</td></tr>
-                <tr><td>ciphertext</td><td>{pqc.ciphertext_bytes} B</td></tr>
+                <tr><td>combiner</td><td className="mono" style={{ fontSize: 11 }}>{pqc.combiner}</td></tr>
+                {/* Split out so the total is checkable against its parts rather than taken on trust:
+                    an ML-KEM-768-only run would show 1088 B here with no classical contribution. */}
+                <tr><td>ciphertext</td><td>{pqc.ciphertext_bytes} B ({pqc.pqc_ciphertext_bytes} B ML-KEM + {pqc.classical_public_key_bytes} B X25519)</td></tr>
                 <tr><td>shared secret</td><td className="mono">{pqc.shared_secret_prefix}…</td></tr>
                 <tr><td>agreement</td><td style={{ color: pqc.agreement ? "var(--accent-2)" : "var(--danger)" }}>{String(pqc.agreement)}</td></tr>
               </tbody>
