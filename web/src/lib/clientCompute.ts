@@ -741,7 +741,9 @@ export function runClientPipeline(
         metric(stage, "kem_category", kemCategory(kemSel));
         metric(stage, "kem_ciphertext_bytes", e.cipherText.length);
         metric(stage, "classical_public_key_bytes", aliceXPub.length);
-        emit("log", stage, `hybrid KEM = ${kemSel} + X25519 (NIST cat-${kemCategory(kemSel)}) — `
+        // kemSel already carries the "+x25519" suffix from the crypto-agility selector, so naming
+        // X25519 again here read as "ml-kem-768+x25519 + X25519".
+        emit("log", stage, `hybrid KEM = ${kemSel} (NIST cat-${kemCategory(kemSel)}) — `
           + `agreement=${ok}; ${e.cipherText.length} B ML-KEM ciphertext + ${aliceXPub.length} B X25519 `
           + `ephemeral public key, combined with SHA3-256(pq_ss || x25519_ss || transcript)`);
         // Quantum entropy source (simulated state-vector measurement, not hardware) — measured health + throughput.
