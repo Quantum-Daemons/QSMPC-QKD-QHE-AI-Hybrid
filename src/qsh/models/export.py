@@ -253,9 +253,24 @@ def graph_domains(path: Path) -> list[str]:
 #: Domains ONNX Runtime Web can execute. Anything outside this set is server/desktop-only.
 BROWSER_RUNNABLE_DOMAINS = frozenset({"ai.onnx", ""})
 
+#: Operators that are in ai.onnx but that ORT Web's WASM build does not execute usefully. Dynamic
+#: quantisation is the case that bit here: the int8 Telemanom graph loads in 0.03 s under Python ORT
+#: and never finishes session creation in the browser, because MatMulInteger +
+#: DynamicQuantizeLinear alongside LSTM is not viable there. Being in the right *domain* is
+#: necessary and not sufficient.
+BROWSER_HOSTILE_OPS = frozenset({"MatMulInteger", "DynamicQuantizeLinear", "ConvInteger"})
 
-def browser_runnable(domains: list[str]) -> bool:
-    return bool(domains) and all(d in BROWSER_RUNNABLE_DOMAINS for d in domains)
+
+def graph_ops(path: Path) -> list[str]:
+    import onnx
+
+    return sorted({node.op_type for node in onnx.load(str(path)).graph.node})
+
+
+def browser_runnable(domains: list[str], ops: list[str] | None = None) -> bool:
+    if not domains or any(d not in BROWSER_RUNNABLE_DOMAINS for d in domains):
+        return False
+    return not (set(ops or ()) & BROWSER_HOSTILE_OPS)
 
 
 def graph_opset(path: Path) -> int:

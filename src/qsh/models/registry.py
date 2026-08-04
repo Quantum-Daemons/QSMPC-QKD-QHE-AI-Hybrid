@@ -397,7 +397,10 @@ M_QML_IDS = MetricSpec(
 #  The registry
 # --------------------------------------------------------------------------- #
 _ONNX_PAIR = (
-    ArtifactSpec("onnx/model.onnx", "onnx", "fp32", "server"),
+    # fp32 serves BOTH: it is the server tier's graph, and it is also the browser's fallback when
+    # the int8 build uses operators ORT Web cannot execute (dynamic quantisation alongside LSTM).
+    # Marking it server-only left the browser with no runnable artefact and no way to say why.
+    ArtifactSpec("onnx/model.onnx", "onnx", "fp32", "both"),
     ArtifactSpec("onnx/model_int8.onnx", "onnx", "int8", "browser"),
     ArtifactSpec("model.safetensors", "safetensors", "fp32", "server"),
     ArtifactSpec("feature_spec.json", "json", "none", "both"),
@@ -666,12 +669,17 @@ def _onnx_domains(key: str) -> list[str]:
     return list(_export_report(key).get("onnx_domains") or [])
 
 
-def _browser_runnable(key: str) -> bool:
-    """Default False when unknown: claiming a model runs in a browser and hanging is worse."""
+def _browser_runnable(key: str, precision: str = "fp32") -> bool:
+    """Whether ORT Web can execute this model's graph at the given precision.
+
+    Default False when unknown: claiming a model runs in a browser and then hanging is worse than
+    declining. Precision matters independently of the model -- the int8 Telemanom graph loads in
+    0.03 s under Python ORT and never finishes session creation in a browser, because
+    MatMulInteger + DynamicQuantizeLinear alongside LSTM is not viable in ORT Web.
+    """
     report = _export_report(key)
-    if "browser_runnable" not in report:
-        return False
-    return bool(report["browser_runnable"])
+    field = "browser_runnable" if precision != "int8" else "int8_browser_runnable"
+    return bool(report.get(field, False))
 
 
 def frontend_models() -> dict:
@@ -699,7 +707,10 @@ def frontend_models() -> dict:
             "browser_runnable": _browser_runnable(s.key),
             "onnx_domains": _onnx_domains(s.key),
             "artifacts": [
-                {"path": a.path, "fmt": a.fmt, "precision": a.precision, "serves": a.serves}
+                {"path": a.path, "fmt": a.fmt, "precision": a.precision, "serves": a.serves,
+                 # Per-artifact, because a model can be browser-runnable at fp32 and not at int8.
+                 "browser_runnable": (_browser_runnable(s.key, a.precision)
+                                      if a.fmt == "onnx" else False)}
                 for a in s.artifacts
             ],
             "dataset": {

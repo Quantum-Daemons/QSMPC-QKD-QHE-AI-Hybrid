@@ -156,24 +156,28 @@
         "architecture": "PNA with reverse message passing, multigraph port numbering, ego IDs, edge updates",
         "artifacts": [
           {
+            "browser_runnable": false,
             "fmt": "onnx",
             "path": "onnx/model.onnx",
             "precision": "fp32",
-            "serves": "server"
+            "serves": "both"
           },
           {
+            "browser_runnable": false,
             "fmt": "onnx",
             "path": "onnx/model_int8.onnx",
             "precision": "int8",
             "serves": "browser"
           },
           {
+            "browser_runnable": false,
             "fmt": "safetensors",
             "path": "model.safetensors",
             "precision": "fp32",
             "serves": "server"
           },
           {
+            "browser_runnable": false,
             "fmt": "json",
             "path": "feature_spec.json",
             "precision": "none",
@@ -234,18 +238,21 @@
         "architecture": "GFP (graph features) + XGBoost",
         "artifacts": [
           {
+            "browser_runnable": false,
             "fmt": "onnx",
             "path": "onnx/model.onnx",
             "precision": "fp32",
             "serves": "both"
           },
           {
+            "browser_runnable": false,
             "fmt": "safetensors",
             "path": "model.safetensors",
             "precision": "fp32",
             "serves": "server"
           },
           {
+            "browser_runnable": false,
             "fmt": "json",
             "path": "feature_spec.json",
             "precision": "none",
@@ -393,6 +400,7 @@
         "architecture": "per-SNP effect-weight vector; Bayesian shrinkage (PRS-CS / LDpred2 family)",
         "artifacts": [
           {
+            "browser_runnable": false,
             "fmt": "json",
             "path": "weights.json",
             "precision": "none",
@@ -432,24 +440,28 @@
         "architecture": "DenseNet-121, FedAvg with pairwise-mask secure aggregation (qsh.ai.federated)",
         "artifacts": [
           {
+            "browser_runnable": false,
             "fmt": "onnx",
             "path": "onnx/model.onnx",
             "precision": "fp32",
-            "serves": "server"
+            "serves": "both"
           },
           {
+            "browser_runnable": false,
             "fmt": "onnx",
             "path": "onnx/model_int8.onnx",
             "precision": "int8",
             "serves": "browser"
           },
           {
+            "browser_runnable": false,
             "fmt": "safetensors",
             "path": "model.safetensors",
             "precision": "fp32",
             "serves": "server"
           },
           {
+            "browser_runnable": false,
             "fmt": "json",
             "path": "feature_spec.json",
             "precision": "none",
@@ -505,24 +517,28 @@
         "architecture": "ResNet-18 @28px",
         "artifacts": [
           {
+            "browser_runnable": true,
             "fmt": "onnx",
             "path": "onnx/model.onnx",
             "precision": "fp32",
-            "serves": "server"
+            "serves": "both"
           },
           {
+            "browser_runnable": false,
             "fmt": "onnx",
             "path": "onnx/model_int8.onnx",
             "precision": "int8",
             "serves": "browser"
           },
           {
+            "browser_runnable": false,
             "fmt": "safetensors",
             "path": "model.safetensors",
             "precision": "fp32",
             "serves": "server"
           },
           {
+            "browser_runnable": false,
             "fmt": "json",
             "path": "feature_spec.json",
             "precision": "none",
@@ -627,24 +643,28 @@
         "architecture": "2 x LSTM(80), sequence length 250, dropout 0.3, non-parametric dynamic threshold with pruning",
         "artifacts": [
           {
+            "browser_runnable": true,
             "fmt": "onnx",
             "path": "onnx/model.onnx",
             "precision": "fp32",
-            "serves": "server"
+            "serves": "both"
           },
           {
+            "browser_runnable": false,
             "fmt": "onnx",
             "path": "onnx/model_int8.onnx",
             "precision": "int8",
             "serves": "browser"
           },
           {
+            "browser_runnable": false,
             "fmt": "safetensors",
             "path": "model.safetensors",
             "precision": "fp32",
             "serves": "server"
           },
           {
+            "browser_runnable": false,
             "fmt": "json",
             "path": "feature_spec.json",
             "precision": "none",
@@ -729,24 +749,28 @@
         "architecture": "4 layers, 8 heads, d_model 128, FFN 512, GELU, learnable [CLS]",
         "artifacts": [
           {
+            "browser_runnable": false,
             "fmt": "onnx",
             "path": "onnx/model.onnx",
             "precision": "fp32",
-            "serves": "server"
+            "serves": "both"
           },
           {
+            "browser_runnable": false,
             "fmt": "onnx",
             "path": "onnx/model_int8.onnx",
             "precision": "int8",
             "serves": "browser"
           },
           {
+            "browser_runnable": false,
             "fmt": "safetensors",
             "path": "model.safetensors",
             "precision": "fp32",
             "serves": "server"
           },
           {
+            "browser_runnable": false,
             "fmt": "json",
             "path": "feature_spec.json",
             "precision": "none",
@@ -817,6 +841,7 @@
         "architecture": "PCA -> angle embedding -> StronglyEntanglingLayers; fidelity quantum kernel",
         "artifacts": [
           {
+            "browser_runnable": false,
             "fmt": "json",
             "path": "weights.json",
             "precision": "none",
