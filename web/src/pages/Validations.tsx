@@ -2,6 +2,7 @@ import { useState } from "react";
 import { api } from "../lib/api";
 import { mldsaDemo, mlkemDemo } from "../lib/crypto";
 import { DEMO_BANNER, isClientDemo } from "../lib/demoMode";
+import { qkdCfg } from "../lib/config";
 import { downloadJSON } from "../lib/export";
 
 const DEMO = isClientDemo();
@@ -18,7 +19,7 @@ export default function Validations() {
 
   const runQkd = async (e: number) => {
     setBusy("qkd");
-    setQkd(await api.demoQkd(50, e));
+    setQkd(await api.demoQkd(qkdCfg().distance_km, e));
     setBusy("");
   };
 

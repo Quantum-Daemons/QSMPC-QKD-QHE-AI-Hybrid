@@ -157,6 +157,7 @@ class BenchmarkConfig:
     quantum_qubits: int = 8
     quantum_samples: int = 20
     hybrid_samples: int = 6            # MPC ReLU/argmax is per-sample; cap to keep the run responsive
+    mpc_comm_bytes_per_compare: int = 256   # wire bytes per secure comparison (was a literal in mpc/)
     # per-use-case architectures (web-grounded). lightweight === the trained linear model (faithful SHAP);
     # medium/large are representative hidden-layer shapes. The encrypted hybrid preserves the plaintext
     # decision for any weights, so the metric is FHE-linear/MPC-non-linear COST + fidelity, not task SOTA.
