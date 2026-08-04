@@ -84,8 +84,28 @@ export async function webgpuInfo(): Promise<Record<string, unknown>> {
 }
 
 /** WebNN is a W3C browser API (navigator.ml); experimental / flag-gated in 2026 — offered, not assumed. */
-export function hasWebNN(): boolean {
-  return typeof navigator !== "undefined" && !!(navigator as any).ml;
+/**
+ * A WebNN context that can actually be created, not merely a `navigator.ml` that exists.
+ *
+ * This checked `!!navigator.ml` and that is the bug that cost this round a day. In Chrome 149
+ * `navigator.ml` is present with a `createContext` method while having no usable backend, so the
+ * shallow check reported WebNN, ORT was handed a `webnn` execution provider with deviceType "gpu",
+ * and session creation hung forever on a machine with no GPU. Every model then looked unsupported:
+ * tree ensembles, LSTMs and a plain ResNet alike. All of them load in ORT Web's wasm backend in
+ * under a quarter of a second -- measured directly, once the EP list was out of the picture.
+ *
+ * The README already claimed the WebGPU path used "a genuine navigator.gpu.requestAdapter() probe
+ * (so the reported backend is real, never a false 'webgpu')". WebNN was the one that never got it.
+ */
+export async function hasWebNN(): Promise<boolean> {
+  const ml = (navigator as any)?.ml;
+  if (!ml?.createContext) return false;
+  try {
+    const ctx = await ml.createContext({ deviceType: "gpu" });
+    return !!ctx;
+  } catch {
+    return false;                    // present but unusable: exactly the case that hung
+  }
 }
 
 /**
@@ -121,15 +141,13 @@ export function browserModel(usecase: string): { spec: ModelSpec; url: string } 
     // LinearClassifier, ...). A tree ensemble is therefore unrunnable here at any size, and finding
     // that out by downloading 4.6 MB and hanging in session creation is how this was discovered.
     // The registry records the graph's domains, so decline before spending the bandwidth.
-    if ((spec as { browser_runnable?: boolean }).browser_runnable === false) continue;
-    // Prefer the smallest graph ORT Web can actually execute. The int8 build is the natural first
-    // choice on size, but dynamic quantisation (MatMulInteger + DynamicQuantizeLinear) is not
-    // viable in ORT Web alongside LSTM -- it never finishes session creation -- so runnability is
-    // checked per artefact and fp32 is used when int8 is unusable.
+    // NOTE: an earlier revision skipped models here on a `browser_runnable` flag derived from their
+    // operator sets. That flag was built on a misdiagnosis -- the hang was the WebNN execution
+    // provider, not the graphs -- and every model in this registry loads in ORT Web's wasm backend
+    // in under a quarter of a second, tree ensembles included. The flag is still recorded as
+    // provenance because knowing a graph's domains is useful, but it no longer blocks a fetch.
     const onnxArtifacts = spec.artifacts.filter(
-      (a) => a.fmt === "onnx"
-        && (a.serves === "browser" || a.serves === "both")
-        && (a as { browser_runnable?: boolean }).browser_runnable !== false);
+      (a) => a.fmt === "onnx" && (a.serves === "browser" || a.serves === "both"));
     const art = onnxArtifacts.find((a) => a.precision === "int8")
       ?? onnxArtifacts.find((a) => a.precision === "fp32")
       ?? onnxArtifacts[0];
@@ -178,7 +196,7 @@ export async function loadModel(usecase: string): Promise<boolean> {
       status.bytes = buf.byteLength;
 
       const gpu = await hasWebGPU();
-      const webnn = hasWebNN();
+      const webnn = await hasWebNN();
       const eps: any[] = [];
       if (gpu) eps.push("webgpu");
       if (webnn) eps.push({ name: "webnn", deviceType: "gpu", powerPreference: "default" });

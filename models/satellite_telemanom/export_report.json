@@ -1,10 +1,10 @@
 {
-  "browser_runnable": false,
+  "browser_runnable": true,
   "fp32_bytes": 329179,
   "fp32_max_abs_error": 3.129243850708008e-07,
   "fp32_path": "onnx/model.onnx",
   "int8_agreement": 0.984375,
-  "int8_browser_runnable": false,
+  "int8_browser_runnable": true,
   "int8_bytes": 326884,
   "int8_confident_agreement": 1.0,
   "int8_margin_quantile": 0.05,

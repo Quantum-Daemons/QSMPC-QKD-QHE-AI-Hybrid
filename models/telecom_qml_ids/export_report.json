@@ -1,5 +1,5 @@
 {
-  "browser_runnable": false,
+  "browser_runnable": true,
   "fp32_bytes": 2555013,
   "fp32_max_abs_error": 4.5061111453303937e-07,
   "fp32_path": "onnx/model.onnx",

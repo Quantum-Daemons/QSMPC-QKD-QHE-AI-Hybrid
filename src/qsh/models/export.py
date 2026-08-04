@@ -250,31 +250,27 @@ def graph_domains(path: Path) -> list[str]:
     return sorted({node.domain or "ai.onnx" for node in model.graph.node})
 
 
-#: Domains ONNX Runtime Web can execute. Anything outside this set is server/desktop-only.
-BROWSER_RUNNABLE_DOMAINS = frozenset({"ai.onnx", ""})
+#: Domains ONNX Runtime Web can execute. ``ai.onnx.ml`` is included because it was MEASURED to
+#: work: the finance and telecom TreeEnsembleClassifier graphs create an ORT Web wasm session in
+#: 0.23 s and 0.03 s. An earlier revision excluded it, on the same misdiagnosis that produced the
+#: retracted operator list below -- the hangs were the WebNN execution provider, not the graphs.
+BROWSER_RUNNABLE_DOMAINS = frozenset({"ai.onnx", "ai.onnx.ml", ""})
 
 #: Operators that are in ai.onnx but that ORT Web's WASM build does not execute usefully. Dynamic
 #: quantisation is the case that bit here: the int8 Telemanom graph loads in 0.03 s under Python ORT
 #: and never finishes session creation in the browser, because MatMulInteger +
 #: DynamicQuantizeLinear alongside LSTM is not viable there. Being in the right *domain* is
 #: necessary and not sufficient.
-#: Established by measurement on the deployed demo, and revised twice by it.
+#: RETRACTED. This listed LSTM/GRU/RNN and the dynamic-quantisation operators, on the strength of
+#: repeated browser hangs. The hangs were real; the explanation was not. Every model in this
+#: registry -- ai.onnx.ml tree ensembles, the Telemanom LSTM, the int8 ConvInteger ResNet --
+#: creates an ORT Web wasm session in 0.01-0.23 s when measured directly. The actual cause was
+#: `hasWebNN()` reporting a WebNN backend that did not exist, so ORT was handed a `webnn` provider
+#: with no device and never returned.
 #:
-#: 1. Recurrent operators. The Telemanom graph is in the supported ai.onnx domain and only 0.66 MB
-#:    at fp32, and ORT Web WASM still exceeds session creation on it at both precisions.
-#: 2. Dynamic-quantisation operators. These were listed, then removed on the reasoning that
-#:    "quantised convolutional models are routinely fine in ORT Web", then restored -- because that
-#:    is true of QDQ-format quantisation and NOT of the operator style `quantize_dynamic` emits.
-#:    The medical ResNet's int8 graph is ConvInteger + MatMulInteger + DynamicQuantizeLinear, and it
-#:    exceeded 150 s of session creation on a 20-core box with crossOriginIsolated true and the
-#:    model already fetched. The distinction is the operator style, not quantisation as such.
-#:
-#: Being in the right domain is necessary and not sufficient; so is being small; and so is being
-#: quantised in some format ORT Web supports.
-BROWSER_HOSTILE_OPS = frozenset({
-    "LSTM", "GRU", "RNN",
-    "ConvInteger", "MatMulInteger", "DynamicQuantizeLinear",
-})
+#: Kept empty rather than deleted so the retraction is visible at the place the wrong claim lived.
+#: Add an operator here only with a measurement that isolates it from the execution-provider list.
+BROWSER_HOSTILE_OPS: frozenset[str] = frozenset()
 
 
 def graph_ops(path: Path) -> list[str]:
