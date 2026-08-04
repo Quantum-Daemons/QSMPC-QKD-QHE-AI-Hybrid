@@ -17,7 +17,34 @@
 //
 // Model weights come from the Hugging Face CDN at a pinned commit sha, addressed from the model
 // registry in config.defaults.json — no model id, revision or URL is written in TypeScript.
-import * as ort from "onnxruntime-web";
+// Types only. The RUNTIME build is chosen at load time by loadOrt() below, because the two builds
+// are not interchangeable at runtime even though their APIs are identical.
+import type * as OrtTypes from "onnxruntime-web";
+
+/**
+ * Load the ORT build that matches this browser's actual capability.
+ *
+ * `import * as ort from "onnxruntime-web"` resolves to the **JSEP** bundle -- the WebGPU-enabled
+ * one, which pulls `ort-wasm-simd-threaded.jsep.wasm`. On a browser with no WebGPU adapter that
+ * build's `InferenceSession.create` never returns: not for a tree ensemble, not for an LSTM, not
+ * for a 45 MB ResNet, and not for a 0.3 MB graph. The same models create a session in 0.01-0.23 s
+ * against the plain wasm build. That single import is what made the entire browser tier look
+ * broken, and it survived two wrong diagnoses (unsupported operators; then the WebNN provider)
+ * because every symptom it produces looks like a model problem.
+ *
+ * So: `onnxruntime-web/webgpu` only when an adapter genuinely exists, `onnxruntime-web/wasm`
+ * otherwise. Both export the same surface, so nothing downstream changes.
+ */
+let ortPromise: Promise<typeof OrtTypes> | null = null;
+
+function loadOrt(useWebGPU: boolean): Promise<typeof OrtTypes> {
+  if (!ortPromise) {
+    ortPromise = (useWebGPU
+      ? import("onnxruntime-web/webgpu")
+      : import("onnxruntime-web/wasm")) as Promise<typeof OrtTypes>;
+  }
+  return ortPromise;
+}
 
 import { modelsFor, type ModelSpec } from "./config";
 
@@ -39,7 +66,9 @@ const status: OnnxStatus = {
   fromCache: false, threads: 1, crossOriginIsolated: false, loadMs: null, error: null,
 };
 
-let session: ort.InferenceSession | null = null;
+let session: OrtTypes.InferenceSession | null = null;
+//: The build actually loaded, kept so Tensor construction uses the same module.
+let ortRuntime: typeof OrtTypes | null = null;
 let inflight: Promise<boolean> | null = null;
 
 export function onnxBackend(): string {
@@ -181,6 +210,10 @@ export async function loadModel(usecase: string): Promise<boolean> {
     }
     const started = performance.now();
     try {
+      // Probe FIRST: the answer decides which ORT build to import, not just which provider to ask for.
+      const gpuAvailable = await hasWebGPU();
+      const ort = await loadOrt(gpuAvailable);
+      ortRuntime = ort;
       ort.env.wasm.numThreads = resolveThreads();
       ort.env.wasm.proxy = false;
       status.threads = ort.env.wasm.numThreads;
@@ -195,7 +228,7 @@ export async function loadModel(usecase: string): Promise<boolean> {
       const buf = new Uint8Array(await res.arrayBuffer());
       status.bytes = buf.byteLength;
 
-      const gpu = await hasWebGPU();
+      const gpu = gpuAvailable;
       const webnn = await hasWebNN();   // reported in status only; see the EP note below
       const eps: any[] = [];
       if (gpu) eps.push("webgpu");
@@ -251,7 +284,7 @@ export async function inferLogits(usecase: string, features: number[]): Promise<
   if (!session) return null;
   try {
     const name = session.inputNames[0];
-    const t = new ort.Tensor("float32", Float32Array.from(features), [1, features.length]);
+    const t = new ortRuntime!.Tensor("float32", Float32Array.from(features), [1, features.length]);
     const out = await session.run({ [name]: t });
     // Classifier graphs emit a hard label first and scores second; the scores are what a caller wants.
     const outputs = session.outputNames.map((n) => out[n]);
@@ -377,7 +410,7 @@ export async function evaluatePublishedModel(
         flat[i * per + j] = applyPreprocessing(row[j], file.input.preprocessing);
       }
     }
-    const t = new ort.Tensor("float32", flat, [n, ...dims]);
+    const t = new ortRuntime!.Tensor("float32", flat, [n, ...dims]);
     const out = await session.run({ [session.inputNames[0]]: t });
     const outputs = session.outputNames.map((k) => out[k]);
     const scores = outputs.find((o) => o && o.type === "float32" && (o.dims?.length ?? 0) >= 2)
