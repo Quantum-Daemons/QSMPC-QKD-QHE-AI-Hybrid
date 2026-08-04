@@ -22,9 +22,18 @@ export default function Value() {
           <tr><td>Post-Quantum Cryptography</td><td>~$2.2B</td><td>$20–30B by 2033–34</td><td>~38–46%</td></tr>
           <tr><td>Quantum AI</td><td>~$0.6B</td><td>$5.0B by 2033</td><td>~35%</td></tr>
           <tr><td>Secure MPC</td><td>~$1.1B</td><td>$2.7B by 2034</td><td>~12%</td></tr>
-          <tr><td>Quantum cryptography (incl. QKD)</td><td>~$0.8B</td><td>$4.6–18B by 2030–34</td><td>~18–38%</td></tr>
+          <tr><td>Quantum cryptography (incl. QKD)</td><td>~$0.7–1.1B (2025–26)</td>
+            <td>$3.7B by 2035 <span className="muted">(Roots Analysis)</span> · $4.6B by 2030 <span className="muted">(Grand View)</span> · $18.4B by 2034 <span className="muted">(Precedence)</span></td>
+            <td>18.3% · 38.3% · 38.3%</td></tr>
         </tbody>
       </table>
+      <p className="muted" style={{ fontSize: 12 }}>
+        The quantum-cryptography row lists three forecasts side by side rather than blending them, because
+        they do not share a base year, a scope or an endpoint: an earlier version of this table combined
+        Roots Analysis' ~$0.8B base with Grand View's and Precedence's far higher endpoints and quoted the
+        CAGR span "~18–38%", producing a range no single analyst projects. Read each triple as one house's
+        view.
+      </p>
       <p className="muted" style={{ fontSize: 12 }}>
         Within privacy-preserving AI the analysts disagree, and the disagreement does not reconcile: market.us
         sizes the market at $3.67B(2025)→$46.11B(2035) with <b>homomorphic encryption the largest technology

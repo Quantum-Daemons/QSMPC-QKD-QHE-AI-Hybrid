@@ -38,7 +38,14 @@ const NOT_A_METRIC = new Set([
 ]);
 
 function fmt(v: unknown): string {
-  if (typeof v === "number") return Number.isInteger(v) ? v.toLocaleString() : v.toFixed(4);
+  if (typeof v === "number") {
+    if (Number.isInteger(v)) return v.toLocaleString();
+    // Don't let a near-miss print as a clean 1.0000. The satellite student's teacher-agreement is
+    // 0.999987, which toFixed(4) rounded to "1.0000" — read as exact agreement when it is not.
+    const r = v.toFixed(4);
+    if ((r === "1.0000" && v < 1) || (r === "0.0000" && v > 0)) return v.toPrecision(3);
+    return r;
+  }
   if (typeof v === "boolean") return v ? "yes" : "no";
   return String(v);
 }
@@ -53,8 +60,42 @@ function MetricRows({ spec }: { spec: ModelSpec }) {
       </p>
     );
   }
-  const numeric = Object.entries(achieved).filter(
-    ([k, v]) => typeof v === "number" && Number.isFinite(v as number) && !NOT_A_METRIC.has(k));
+  // Flatten one level of nesting before filtering. genomics.prs keeps every measured value under
+  // `measured` (n_samples, global_high_risk_cut, by_super_population...) and its only numeric
+  // top-level key is wall_clock_s, which NOT_A_METRIC excludes — so the filter returned nothing and
+  // the component rendered an empty <table>, hiding the ancestry stratification that the model's own
+  // registry note calls "the finding, not a footnote".
+  const flat: Array<[string, number]> = [];
+  // `not_measured` holds published baselines and nulls for things this build did NOT measure --
+  // walking into it would present someone else's 0.628 as this run's result. `licence_audit` is
+  // provenance, not a metric.
+  const NOT_A_SUBTREE = new Set(["not_measured", "licence_audit"]);
+  const walk = (obj: Record<string, unknown>, prefix: string, depth: number) => {
+    for (const [k, v] of Object.entries(obj)) {
+      if (NOT_A_SUBTREE.has(k)) continue;
+      const key = prefix ? `${prefix}.${k}` : k;
+      if (typeof v === "number" && Number.isFinite(v)) {
+        if (!NOT_A_METRIC.has(k) && !NOT_A_METRIC.has(key)) flat.push([key, v]);
+      } else if (v && typeof v === "object" && !Array.isArray(v) && depth < 3) {
+        walk(v as Record<string, unknown>, key, depth + 1);
+      }
+    }
+  };
+  walk(achieved as Record<string, unknown>, "", 0);
+  // Strip the redundant `measured.` prefix now that nothing unmeasured can reach here.
+  const numeric: Array<[string, number]> = flat.map(
+    ([k, v]) => [k.startsWith("measured.") ? k.slice("measured.".length) : k, v]);
+  // A record that measured nothing numeric must say why rather than render an empty table.
+  const notMeasured = (achieved as Record<string, unknown>).not_measured as
+    | { reason?: string } | undefined;
+  if (numeric.length === 0) {
+    return (
+      <p className="muted small">
+        No numeric metric recorded for this model.
+        {notMeasured?.reason ? ` ${notMeasured.reason}` : ""}
+      </p>
+    );
+  }
   const headline = numeric.filter(([k]) => !isCompanion(k));
   const companion = numeric.filter(([k]) => isCompanion(k));
 

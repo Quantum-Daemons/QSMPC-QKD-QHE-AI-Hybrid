@@ -44,10 +44,20 @@ class FidelityReport:
     disagreement_on_positives: float   # agreement is easy when the positive class is 1-in-981
     student_params: int
     teacher_params: int | None
+    #: Set when teacher and student BOTH score 0 on the fidelity slice. metric_delta is then 0 by
+    #: cancellation, not because encryption was free -- and it is not comparable to the teacher's
+    #: headline metric, which is computed over the whole test window rather than this later slice.
+    #: Without this the satellite card showed metric_delta 0.0 beside a teacher headline of 0.714,
+    #: which reads as "the encrypted student matched a 0.714 teacher exactly".
+    both_scored_zero: bool = False
 
     @property
     def metric_delta(self) -> float:
-        """Teacher metric minus student metric. Positive means encryption cost accuracy."""
+        """Teacher metric minus student metric. Positive means encryption cost accuracy.
+
+        Read together with :attr:`both_scored_zero`: a delta of 0 there means neither model scored
+        on the fidelity slice, which is not the same claim as "the student matched the teacher".
+        """
         return self.teacher_metric - self.student_metric
 
     @property
@@ -108,6 +118,10 @@ def measure_fidelity(*, teacher_key: str, student_key: str, teacher_pred: np.nda
         disagreement_on_positives=round(disagree_pos, 6),
         student_params=int(student_params),
         teacher_params=int(teacher_params) if teacher_params is not None else None,
+        both_scored_zero=bool(
+            float(metric_fn(y_true, teacher_pred)) == 0.0
+            and float(metric_fn(y_true, student_pred)) == 0.0
+        ),
     )
 
 
