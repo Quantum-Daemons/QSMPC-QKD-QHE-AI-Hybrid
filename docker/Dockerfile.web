@@ -11,5 +11,11 @@ COPY web/ ./
 RUN npm run build
 
 FROM caddy:2-alpine
+# Two Caddyfiles: the full deployment proxies /api, the client-only demo has no backend to proxy to
+# and must not advertise one. CLIENT_ONLY selects which survives into the image.
+ARG CLIENT_ONLY=
 COPY docker/env/Caddyfile /etc/caddy/Caddyfile
+COPY docker/env/Caddyfile.client-only /tmp/Caddyfile.client-only
+RUN if [ "$CLIENT_ONLY" = "1" ]; then mv /tmp/Caddyfile.client-only /etc/caddy/Caddyfile; \
+    else rm -f /tmp/Caddyfile.client-only; fi
 COPY --from=build /web/dist /srv

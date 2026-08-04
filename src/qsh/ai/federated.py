@@ -76,7 +76,11 @@ class SecureAggregator:
 
     def __post_init__(self) -> None:
         if not self.keys:
-            # derive demo pairwise keys; in deployment these come from the QKD/PQC layer
+            # DEMO ONLY, and not a privacy guarantee: these pairwise keys are derived from a
+            # public constant, so anyone can recompute every mask and unmask an individual
+            # update. The masks are real and they cancel exactly; what is absent is the secrecy
+            # of the key material. In deployment the keys come from the QKD/PQC layer, which is
+            # what makes the scheme hiding. See docs/threat-model.md.
             for i in range(self.n_clients):
                 for j in range(i + 1, self.n_clients):
                     self.keys[(i, j)] = hashlib.sha256(f"pair-{i}-{j}".encode()).digest()

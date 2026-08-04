@@ -25,7 +25,11 @@ import numpy as np
 logging.getLogger("mpyc").setLevel(logging.ERROR)
 
 # Representative 2-party communication per L-bit secure comparison (OT/edaBits-class): ~256 B.
-_MPC_COMM_BYTES_PER_COMPARE = 256
+#: Bytes on the wire per secure comparison. Lives in config so the demo and the backend cannot
+#: disagree about communication cost; see qsh.config.defaults.BenchmarkConfig.
+def _mpc_comm_bytes_per_compare() -> int:
+    from ..config import get_config
+    return get_config().benchmark.mpc_comm_bytes_per_compare
 
 
 def mpyc_available() -> bool:
@@ -200,7 +204,7 @@ def hybrid_private_inference(layers, x, backend, *, use_mpc: bool = True) -> dic
     pt = plaintext_forward(specs, x)                              # plaintext reference (decision-consistency)
     pt_pred = int(np.argmax(pt))
 
-    comm_kb = round(n_compare * _MPC_COMM_BYTES_PER_COMPARE / 1024, 2) if use_mpc else 0.0
+    comm_kb = round(n_compare * _mpc_comm_bytes_per_compare() / 1024, 2) if use_mpc else 0.0
     return {
         "prediction": int(pred),
         "decision_matches_plaintext": int(pred) == pt_pred,
