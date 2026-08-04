@@ -76,9 +76,12 @@ export interface SecOpts {
 export function securityScore(o: SecOpts) {
   const s = securityScoringCfg();        // weights/thresholds from the central config (single source)
   const c: Record<string, number> = {};
-  c.hndl_pqc_hybrid = o.pqcHybrid === false ? 0 : s.hndl_pqc_hybrid;
-  if (o.qkdKeyBits && o.qkdKeyBits >= 256)
-    c.hndl_pqc_hybrid = Math.min(s.hndl_pqc_hybrid, c.hndl_pqc_hybrid + s.qkd_bonus);
+  // Mirror of security.py: PQC-only hybrid scores the cap minus the bonus, QKD-mixed reaches the
+  // cap. The previous min(cap, cap + bonus) made the QKD selector inert -- see the note there.
+  c.hndl_pqc_hybrid =
+    o.pqcHybrid === false ? 0
+    : (o.qkdKeyBits && o.qkdKeyBits >= 256) ? s.hndl_pqc_hybrid
+    : Math.max(0, s.hndl_pqc_hybrid - s.qkd_bonus);
   const it = (o.securityModel || "").toLowerCase().includes("information-theoretic");
   c.security_model = it ? s.info_theoretic : s.computational;
   const cat = kemCategory(o.kem);
@@ -1053,12 +1056,36 @@ export function runClientPipeline(
         // genuinely signs with the chosen level (ML-DSA-87 produces a visibly larger signature).
         const dsa = sigImpl(String(config.sig ?? "ml-dsa-65"));
         const sk = dsa.fn.keygen(crypto.getRandomValues(new Uint8Array(32)));
-        const msg = new TextEncoder().encode(JSON.stringify({ usecase }));
+        // Sign the RUN, not just its name. This used to be JSON.stringify({ usecase }) -- a
+        // signature over the string {"usecase":"finance_aml"} and nothing else, so every metric,
+        // every algorithm selection and the explanation could be altered without invalidating the
+        // "tamper-evident audit record" the UI advertises. Canonicalised with sorted keys so the
+        // same run produces the same payload.
+        const canon = (v: unknown): unknown =>
+          Array.isArray(v) ? v.map(canon)
+          : v && typeof v === "object"
+            ? Object.fromEntries(Object.entries(v as Record<string, unknown>).sort(
+                ([a], [b]) => a.localeCompare(b)).map(([k, x]) => [k, canon(x)]))
+            : v;
+        const signedPayload = canon({
+          usecase,
+          config: { kem: config.kem ?? null, qkd: config.qkd ?? null, sig: config.sig ?? null,
+                    fhe: config.fhe ?? null, combiner: config.combiner ?? null },
+          metrics: { ...metrics },
+          explanation: artifacts.explanation ?? null,
+        });
+        const msg = new TextEncoder().encode(JSON.stringify(signedPayload));
         const sig = dsa.fn.sign(sk.secretKey, msg);
         const ok = dsa.fn.verify(sk.publicKey, msg, sig);
         artifacts.result_signature = {
           algorithm: dsa.name, signature_bytes: sig.length,
           signature_hex_prefix: [...sig.slice(0, 12)].map((b) => b.toString(16).padStart(2, "0")).join(""),
+          // Without the public key and the exact payload, nobody but this tab can re-check the
+          // signature -- the keypair is generated per run and discarded. Both are recorded now so
+          // "tamper-evident" is a claim a reader can actually test.
+          public_key_hex: [...sk.publicKey].map((b) => b.toString(16).padStart(2, "0")).join(""),
+          signed_payload: signedPayload,
+          signed_fields: ["usecase", "config", "metrics", "explanation"],
           verified: ok,
         };
         metric(stage, "signature_verified", ok ? 1 : 0);
