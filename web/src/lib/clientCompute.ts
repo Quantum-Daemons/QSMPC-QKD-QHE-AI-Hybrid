@@ -20,7 +20,7 @@ import { generateQuantumBits } from "./clientQRNG";
 import { bb84, e91, FIBER, FREE_SPACE, h2, intrinsicQber, qcnnExpectation, qotpQcnnInfer, rng } from "./quantumSim";
 import { browserProvenance, type Provenance } from "../components/ProvenanceBadge";
 import { inferLogits, onnxBackend, onnxStatus } from "./onnxInference";
-import { realInput, realSatelliteAnomaly, type RealInput } from "./realData";
+import { realInput, realSatelliteAnomaly, realFederatedSet, type RealInput } from "./realData";
 
 const r1 = (x: number) => Math.round(x * 10) / 10;
 const r2 = (x: number) => Math.round(x * 100) / 100;
@@ -573,19 +573,31 @@ export interface QFLResult {
   roundAcc: number[]; finalAcc: number; clients: number; rounds: number; secureAgg: boolean;
 }
 
-export function clientQFL(seed = 0, opts?: { clients?: number; rounds?: number }): QFLResult {
+export function clientQFL(
+  seed = 0,
+  opts?: { clients?: number; rounds?: number; data?: { X: number[][]; Y: number[] } | null },
+): QFLResult {
   const u = rng(seed + 11);
   const K = opts?.clients ?? 4;
   const rounds = opts?.rounds ?? 6;
-  const D = 4;
-  const N = 240;
   const X: number[][] = [];
   const Y: number[] = [];
-  for (let i = 0; i < N; i++) {
-    const c = i % 2;                                   // two overlapping clusters (non-trivial -> a real curve)
-    X.push(Array.from({ length: D }, () => (c ? 0.5 : -0.5) + (u() * 2 - 1) * 1.0));
-    Y.push(c);
+  if (opts?.data?.X?.length) {
+    // Federate over the page's REAL bundled sample. Without this the function always built its own
+    // two-cluster toy, so "federated accuracy" was the same number on every industry page for a
+    // given seed -- a metric that described no dataset the page was showing.
+    const src = opts.data;
+    for (let i = 0; i < src.X.length; i++) { X.push(src.X[i].slice()); Y.push(src.Y[i]); }
+  } else {
+    const D = 4;
+    const N = 240;
+    for (let i = 0; i < N; i++) {
+      const c = i % 2;                                 // two overlapping clusters (non-trivial -> a real curve)
+      X.push(Array.from({ length: D }, () => (c ? 0.5 : -0.5) + (u() * 2 - 1) * 1.0));
+      Y.push(c);
+    }
   }
+  const N = X.length;
   // quantum feature map: the QCNN expectation on a few deterministic views of x → 3 quantum features
   const phi = (x: number[]) => [
     qcnnExpectation(x).z,
@@ -794,12 +806,21 @@ export function runClientPipeline(
         if (config.qkd_optimize) {   // AI-QKD parameter optimization (OptiQKD, WS1) — measured SKR gain
           const opt = optimizeQKD(chan, protocol,
             Number(config.qkd_opt_samples ?? qkdCfg().optimize_n_samples));
-          metric(stage, "qkd_skr_improvement_pct", r1(opt.improvementPct));
+          if (opt.improvementPct !== null) metric(stage, "qkd_skr_improvement_pct", r1(opt.improvementPct));
           metric(stage, "qkd_optimized_skr", Math.round(opt.bestSkr * 1e5) / 1e5);
           metric(stage, "qkd_convergence_evals", opt.convergenceEvals);
-          emit("log", stage, `OptiQKD (coordinate ascent): SKR +${r1(opt.improvementPct)}% vs default `
-            + `(basis p=${r2(opt.bestParams.basisProb)}, mu_signal=${r2(opt.bestParams.muSignal)}, `
-            + `mu_decoy=${r2(opt.bestParams.muDecoy)}; ${opt.nEvals} evals, converged in ${opt.convergenceEvals} — simulated)`);
+          // Only quote the decoy intensities for protocols whose model reads them. The E91/CHSH
+          // model ignores muSignal/muDecoy entirely, so printing "tuned" values there described a
+          // search that never happened.
+          const tuned = protocol === "e91"
+            ? `basis p=${r2(opt.bestParams.basisProb)}`
+            : `basis p=${r2(opt.bestParams.basisProb)}, mu_signal=${r2(opt.bestParams.muSignal)}, `
+              + `mu_decoy=${r2(opt.bestParams.muDecoy)}`;
+          emit("log", stage, opt.baselineIsDead
+            ? `OptiQKD (coordinate ascent): baseline SKR is 0 — no secure key to improve, so no `
+              + `percentage is reported (${tuned}; ${opt.nEvals} evals — simulated)`
+            : `OptiQKD (coordinate ascent): SKR +${r1(opt.improvementPct as number)}% vs default `
+              + `(${tuned}; ${opt.nEvals} evals, converged in ${opt.convergenceEvals} — simulated)`);
         }
         break;
       }
@@ -818,14 +839,22 @@ export function runClientPipeline(
         emit("log", stage, satERes
           ? `free-space E91 (CHSH S=${r2(satERes.chshS)}): ${res.channelLossDb}dB loss, QBER=${res.qber.toFixed(4)}, ${res.secureKeyBits} bits`
           : `free-space BB84: ${res.channelLossDb}dB loss, QBER=${res.qber.toFixed(4)}, ${res.secureKeyBits} bits`);
-        if (config.qkd_optimize) {   // OptiQKD over the free-space channel — measured SKR gain
+        // The fibre stage returns before its optimise block under the PQC-only profile; this one
+        // had no such guard, so the same checkbox did work here and nothing there.
+        if (config.qkd_optimize && String(config.qkd ?? "") !== "pqc-only") {
           const opt = optimizeQKD(satChan, satProtocol,
             Number(config.qkd_opt_samples ?? qkdCfg().optimize_n_samples));
-          metric(stage, "qkd_skr_improvement_pct", r1(opt.improvementPct));
+          if (opt.improvementPct !== null) metric(stage, "qkd_skr_improvement_pct", r1(opt.improvementPct));
           metric(stage, "qkd_convergence_evals", opt.convergenceEvals);
-          emit("log", stage, `OptiQKD (free-space, coordinate ascent): SKR +${r1(opt.improvementPct)}% vs default `
-            + `(basis p=${r2(opt.bestParams.basisProb)}, mu_signal=${r2(opt.bestParams.muSignal)}, `
-            + `mu_decoy=${r2(opt.bestParams.muDecoy)}; ${opt.nEvals} evals, converged in ${opt.convergenceEvals} — simulated)`);
+          const tunedSat = satProtocol === "e91"
+            ? `basis p=${r2(opt.bestParams.basisProb)}`
+            : `basis p=${r2(opt.bestParams.basisProb)}, mu_signal=${r2(opt.bestParams.muSignal)}, `
+              + `mu_decoy=${r2(opt.bestParams.muDecoy)}`;
+          emit("log", stage, opt.baselineIsDead
+            ? `OptiQKD (free-space): baseline SKR is 0 — no secure key to improve, so no percentage `
+              + `is reported (${tunedSat}; ${opt.nEvals} evals — simulated)`
+            : `OptiQKD (free-space, coordinate ascent): SKR +${r1(opt.improvementPct as number)}% vs default `
+              + `(${tunedSat}; ${opt.nEvals} evals, converged in ${opt.convergenceEvals} — simulated)`);
         }
         break;
       }
@@ -898,14 +927,21 @@ export function runClientPipeline(
           // REAL client-side Quantum Federated Learning: FedAvg of a quantum-classical model across
           // simulated clients, round accuracy genuinely computed in-browser (mirrors the full
           // Flower+PennyLane HybridQNN under quantum-safe secure aggregation).
-          const q = clientQFL(seed);
+          // Federate over this page's REAL bundled sample where one exists, so the accuracy
+          // describes the data the page is actually showing rather than an internal toy.
+          const qflData = await realFederatedSet(usecase);
+          const q = clientQFL(seed, { data: qflData });
           metric(stage, "federated_accuracy", q.finalAcc);
           metric(stage, "qfl_rounds", q.rounds);
           metric(stage, "qfl_clients", q.clients);
+          metric(stage, "federated_accuracy_source",
+            qflData ? `real bundled ${usecase} sample, ${qflData.X.length} rows`
+                    : "synthetic 2-cluster toy (no bundled sample for this use case)");
           artifacts.qfl = q;
           emit("log", stage, `Quantum Federated Learning (client): ${q.clients} clients × ${q.rounds} `
-            + `rounds (quantum-classical FedAvg, secure-agg) — accuracy ${q.roundAcc[0].toFixed(3)}`
-            + `→${q.finalAcc.toFixed(3)}`);
+            + `rounds (quantum-classical FedAvg, secure-agg) over `
+            + `${qflData ? `the real bundled ${usecase} sample (${qflData.X.length} rows)` : "a synthetic toy"}`
+            + ` — accuracy ${q.roundAcc[0].toFixed(3)}→${q.finalAcc.toFixed(3)}`);
         } else {
           // inference-only: a genuine centralized eval (1 client, 1 round) — measured, not a canned constant.
           const cq = clientQFL(seed, { clients: 1, rounds: 1 });
