@@ -51,7 +51,7 @@ This reaches minority-class F1 well below the published 0.6323. Two differences 
 - **Licence**: CDLA-Sharing-1.0
 - **Source**: https://www.kaggle.com/datasets/ealtman2019/ibm-transactions-for-anti-money-laundering-aml (licence read 2026-08-03)
 
-5M transactions, 515K accounts, ~1 laundering transaction in 981. NeurIPS 2023 D&B.
+5M transactions, 515K accounts, ~1 laundering transaction in 981. NeurIPS 2023 D&B. SYNTHETIC: IBM generates it with a multi-agent virtual-world model and states 'Everything is synthetic'; the paper is titled 'Realistic Synthetic Financial Transactions for AML Models'. Chosen for its calibration to real transaction statistics and its CDLA-Sharing terms, not because it is real data - no commercial-OK corpus of real laundering transactions exists.
 
 ## Notes and limitations
 

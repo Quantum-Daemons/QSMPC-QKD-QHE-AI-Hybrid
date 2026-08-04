@@ -198,6 +198,19 @@ def publish(spec: registry.ModelSpec, *, private: bool, dry_run: bool, api) -> s
         return None
 
     api.create_repo(spec.hf_repo_id, repo_type="model", private=private, exist_ok=True)
+    # create_repo(exist_ok=True) does NOT change the visibility of a repo that already exists, so a
+    # repo first published privately stayed private and --public reported success while changing
+    # nothing. Set it explicitly. (update_repo_visibility was removed from huggingface_hub;
+    # update_repo_settings is the current call.)
+    if not dry_run:
+        try:
+            api.update_repo_settings(repo_id=spec.hf_repo_id, repo_type="model", private=private)
+        except Exception as exc:                       # noqa: BLE001 - surfaced, never swallowed
+            raise SystemExit(
+                f"could not set visibility on {spec.hf_repo_id}: {exc}\n"
+                "The upload may have succeeded while the repo stayed private -- check the Hub "
+                "before assuming this model is reachable by a visitor."
+            ) from exc
     api.upload_folder(
         folder_path=str(local),
         repo_id=spec.hf_repo_id,
