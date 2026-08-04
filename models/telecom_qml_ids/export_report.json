@@ -1,15 +1,15 @@
 {
-  "fp32_path": "onnx/model.onnx",
-  "int8_path": "",
   "fp32_bytes": 2555013,
-  "int8_bytes": 0,
-  "opset": 17,
   "fp32_max_abs_error": 4.5061111453303937e-07,
-  "int8_agreement": 1.0,
-  "int8_max_abs_error": 0.0,
-  "n_fixtures": 256,
-  "passed": true,
-  "int8_skipped_reason": "tree ensemble: parameters live in node attributes, not weight tensors, so dynamic int8 quantisation has nothing to quantise",
+  "fp32_path": "onnx/model.onnx",
+  "int8_agreement": null,
+  "int8_bytes": 0,
   "int8_confident_agreement": 1.0,
-  "int8_margin_quantile": 0.05
+  "int8_margin_quantile": 0.05,
+  "int8_max_abs_error": null,
+  "int8_path": "",
+  "int8_skipped_reason": "tree ensemble: parameters live in node attributes, not weight tensors, so dynamic int8 quantisation has nothing to quantise",
+  "n_fixtures": 256,
+  "opset": 17,
+  "passed": true
 }
