@@ -20,9 +20,16 @@ const TIER_LABEL: Record<string, string> = {
 };
 
 /** Metrics that flatter and must never appear without their honest counterpart beside them. */
+// Exact names were not enough: the set matched only whole keys, so quantum_qnn_accuracy,
+// quantum_svc_accuracy and quantum_*_binary_f1 escaped the companion label and were rendered in the
+// headline block — an aggregate presented as the result, which is the thing this project reports
+// per-class metrics to avoid. Matched by suffix now, so a prefixed aggregate cannot slip through.
 const COMPANION_METRICS = new Set([
   "accuracy", "aggregate_accuracy", "auroc", "point_adjusted_f1", "auprc_baseline",
 ]);
+const COMPANION_SUFFIXES = ["_accuracy", "_binary_f1", "_auroc", "_point_adjusted_f1"];
+const isCompanion = (k: string) =>
+  COMPANION_METRICS.has(k) || COMPANION_SUFFIXES.some((sfx) => k.endsWith(sfx));
 
 /** Run metadata that lives in the same record but is not a model metric. */
 const NOT_A_METRIC = new Set([
@@ -48,8 +55,8 @@ function MetricRows({ spec }: { spec: ModelSpec }) {
   }
   const numeric = Object.entries(achieved).filter(
     ([k, v]) => typeof v === "number" && Number.isFinite(v as number) && !NOT_A_METRIC.has(k));
-  const headline = numeric.filter(([k]) => !COMPANION_METRICS.has(k));
-  const companion = numeric.filter(([k]) => COMPANION_METRICS.has(k));
+  const headline = numeric.filter(([k]) => !isCompanion(k));
+  const companion = numeric.filter(([k]) => isCompanion(k));
 
   return (
     <table className="mini-table">

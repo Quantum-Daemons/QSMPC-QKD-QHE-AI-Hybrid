@@ -10,7 +10,7 @@ below are the recommended future tracks (PoC milestones M3/M4).
 - **NSA CNSA 2.0** — 2027 procurement mandate; QKD non-recommended standalone.
   `[UNVERIFIED — no primary NSA source is retrievable: nsa.gov and media.defense.gov return HTTP 403
   to every automated fetch. Secondary sources also report a 2033 milestone this section omits.]`
-  For a *quotable* source on the QKD point, use **BSI TR-02102-1 v2026-01 §2.2**: QKD
+  For a *quotable* source on the QKD point, use **BSI TR-02102-1 v2026-01 §2.1 "Use of Quantum-Safe Mechanisms"** (p.28): QKD
   *"is currently not ready for use from a security point of view … the BSI does not recommend QKD
   protocols at this time"*. The
   architecture keeps QKD strictly as a PQC-hybrid add-on. ✅

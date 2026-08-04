@@ -325,7 +325,7 @@ M_BREASTMNIST = MetricSpec(
     name="auc",
     display="AUC",
     baseline=0.901,
-    baseline_source="ResNet-18 @28px, MedMNIST v2, Nature Scientific Data 2022 (AUC 0.901 / ACC 0.863)",
+    baseline_source="ResNet-18 @28px, MedMNIST v2, Yang et al., Scientific Data 10:41 (2023) (AUC 0.901 / ACC 0.863)",
     ceiling=0.919,
     ceiling_source="Google AutoML Vision, MedMNIST v2 (AUC 0.919)",
     companion="accuracy",
@@ -344,7 +344,13 @@ M_ESA = MetricSpec(
     name="event_wise_f0_5",
     display="event-wise F0.5",
     baseline=0.786,
-    baseline_source="ESA-ADB Table 2, Mission1 lightweight (channels 41-46), best event-wise F0.5",
+    baseline_source=(
+        "ESA-ADB Table 2, Mission1 lightweight (ch. 41-46), best event-wise F0.5. NOTE the caption: "
+        "Table 2 scores detection of ALL EVENTS excluding communication gaps - anomalies PLUS annotated "
+        "rare nominal events - whereas this project scores anomalies only, and ESA-ADB splits each "
+        "mission into first-half train / second-half test. So 0.786 is an indicative target, not a "
+        "like-for-like number."
+    ),
     ceiling=None,
     ceiling_source="",
     companion="event_wise_f0_5_full_channels",
