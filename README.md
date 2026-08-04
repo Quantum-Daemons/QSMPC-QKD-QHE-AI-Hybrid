@@ -399,28 +399,34 @@ See [`docs/pqc-roadmap.md`](docs/pqc-roadmap.md).
 
 ## Concerns & recommendations
 
-- **The browser model tier: a 401, then a misdiagnosis, then the actual bug.** Worth recording in
-  full because two of the three were mine.
+- **The browser model tier now works, after a 401 and two wrong diagnoses.** Recorded in full
+  because two of the three were mine, and because the shape of the mistake is instructive.
 
-  Until Round 18 every published model returned **401** to anonymous visitors: `publish_hf.py`
-  called `create_repo(private=False, exist_ok=True)`, which does not change the visibility of a repo
-  that already exists, so `--public` uploaded files, reported success, and left them private.
+  Until Round 18 every published model returned **401**: `publish_hf.py` called
+  `create_repo(private=False, exist_ok=True)`, which does not change the visibility of a repo that
+  already exists, so `--public` uploaded files, reported success, and left them private.
 
-  With that fixed the models downloaded and ONNX session creation hung instead. I attributed this to
-  the graphs — `ai.onnx.ml` tree ensembles, then LSTMs, then `ConvInteger` quantisation — and built
-  a per-artefact "browser runnable" gate on that theory, revising it twice as each new model failed.
-  The theory was wrong. Measured directly against ORT Web's wasm backend, **every model in this
-  registry creates a session in 0.01–0.23 s**, tree ensembles included.
+  With that fixed the models downloaded and ONNX session creation hung. I blamed the graphs —
+  `ai.onnx.ml` tree ensembles, then LSTMs, then `ConvInteger` quantisation — and built a per-artefact
+  gate on that theory, revising it twice. Then I blamed the WebNN provider. Both were wrong, and both
+  were written up as settled.
 
-  The real cause was one line: `hasWebNN()` returned `!!navigator.ml`. Chrome 149 exposes
-  `navigator.ml` with a `createContext` method and no usable backend, so ORT was handed a `webnn`
-  execution provider with `deviceType: "gpu"` on a machine with no GPU, and session creation never
-  returned. It now creates a context and checks it — the same genuine probe the WebGPU path already
-  used and this README already boasted about. The operator gate is retracted in place rather than
-  deleted, so the wrong claim is visible where it lived.
+  The cause was a single import. `import * as ort from "onnxruntime-web"` resolves to the **JSEP**
+  bundle — the WebGPU-enabled build — and on a browser with no WebGPU adapter its
+  `InferenceSession.create` never returns, for any graph. The identical models create a session in
+  **0.01–0.23 s** against the plain wasm build, which is what Node used and why Node looked healthy
+  throughout. `loadOrt()` now imports `onnxruntime-web/webgpu` only when a real adapter exists and
+  `onnxruntime-web/wasm` otherwise: the probe decides which **build** to load, not merely which
+  provider to request.
 
-  The lesson is the project's own: a capability check that tests for an API surface rather than a
-  working capability is the same defect class as a label that names a protocol the code does not run.
+  Verified on the live deploy: the medical page downloads the published model from the HF CDN and
+  scores **72.9% on 48 held-out BreastMNIST rows, against 72.9% measured offline on those same
+  rows** — an exact match against an independent figure, in about 5 s.
+
+  Two lessons, both ones this project already had: a capability check that tests for an API surface
+  rather than a working capability is the same defect class as a label naming a protocol the code
+  does not run — and when three different models fail three different ways, suspect the thing they
+  share.
 
 - **`make test` is not the command to run on the documented box.** It invokes a bare `pytest`, so the
   OpenFHE bootstrap test is not deselected and **SIGSEGVs** inside `EvalBootstrapSetup` on AlmaLinux 9.7 —

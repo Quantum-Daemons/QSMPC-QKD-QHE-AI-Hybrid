@@ -56,6 +56,8 @@ export type OnnxStatus = {
   bytes: number | null;     // transferred size, or null when served from cache
   fromCache: boolean;
   threads: number;
+  /** Probed, not used: the WebNN provider is deliberately not requested. */
+  webnnAvailable?: boolean;
   crossOriginIsolated: boolean;
   loadMs: number | null;
   error: string | null;     // non-null => nothing was inferred; the caller must say so
@@ -252,7 +254,12 @@ export async function loadModel(usecase: string): Promise<boolean> {
         `ONNX session creation exceeded ${SESSION_CREATE_TIMEOUT_MS / 1000}s — either the graph `
         + `uses operators this browser cannot execute, or it is too large for this device`,
       );
-      status.backend = gpu ? "onnx-webgpu" : webnn ? "onnx-webnn" : "onnx-wasm";
+      // Report the provider that RAN, not a capability that was probed. This said "onnx-webnn"
+      // while the WebNN provider was not even in the list -- a label describing something the code
+      // does not do, which is the exact defect this project keeps finding. `webnn` is still probed
+      // and recorded separately as an environment fact.
+      status.backend = gpu ? "onnx-webgpu" : "onnx-wasm";
+      status.webnnAvailable = webnn;
       status.loaded = true;
       status.modelKey = target.spec.key;
       status.url = target.url;
