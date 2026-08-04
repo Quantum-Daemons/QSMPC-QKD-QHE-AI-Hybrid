@@ -82,6 +82,11 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--size", type=int, default=28, choices=[28, 64, 128, 224],
                     help="MedMNIST resolution; 28 matches the published baseline")
+    ap.add_argument("--from-scratch", action="store_true",
+                    help="train without ImageNet initialisation. Costs accuracy and removes a "
+                         "licensing question: ImageNet's terms bind the Database to non-commercial "
+                         "research and say nothing about redistributing a model trained on it, so "
+                         "ImageNet-derived weights cannot be published here (DATA_LICENSES.md).")
     ap.add_argument("--epochs", type=int, default=60)
     ap.add_argument("--lr", type=float, default=3e-4)
     ap.add_argument("--seed", type=int, default=42)
@@ -98,7 +103,7 @@ def main() -> int:
     print(f"  train {len(tr_dl.dataset)} | val {len(va_dl.dataset)} | test {len(te_dl.dataset)}")
     print(f"  class balance (train): {np.bincount(ytr.numpy()).tolist()}")
 
-    model = build_resnet18()
+    model = build_resnet18(pretrained=not args.from_scratch)
     n_params = sum(p.numel() for p in model.parameters())
     print(f"  ResNet-18 (ImageNet-pretrained, 1-channel stem): {n_params:,} parameters")
 
@@ -202,7 +207,14 @@ def main() -> int:
         "resolution": args.size,
         "n_parameters": n_params,
         "best_val_auc": round(result.best_metric, 6),
-        "transfer_learning": "ImageNet1K_V1 ResNet-18, conv1 summed to 1 channel, fresh fc head",
+        # Recorded from what actually ran. This was a fixed string, so a --from-scratch run still
+        # claimed ImageNet initialisation -- the exact provenance the licence analysis turns on.
+        "transfer_learning": (
+            "none — trained from random initialisation, so the weights are not ImageNet-derived "
+            "and carry no ImageNet terms (see DATA_LICENSES.md)"
+            if args.from_scratch
+            else "ImageNet1K_V1 ResNet-18, conv1 summed to 1 channel, fresh fc head"
+        ),
         "git_sha": train.git_sha(),
         "export": {"fp32_bytes": report.fp32_bytes, "int8_bytes": report.int8_bytes,
                    "int8_agreement": report.int8_agreement, "opset": report.opset},
