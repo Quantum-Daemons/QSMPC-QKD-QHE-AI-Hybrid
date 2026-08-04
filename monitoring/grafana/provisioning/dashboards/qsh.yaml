@@ -1,0 +1,18 @@
+# Dashboard provider. Without this file Grafana scans nothing: mounting a bare directory of .json
+# dashboards into /etc/grafana/provisioning/dashboards does NOT load them -- Grafana reads provider
+# YAML from that path and follows each provider's `options.path`. The stack came up healthy with an
+# empty dashboard list, which is why the omission went unnoticed.
+apiVersion: 1
+
+providers:
+  - name: qsh
+    orgId: 1
+    folder: ""
+    type: file
+    disableDeletion: false
+    allowUiUpdates: true
+    updateIntervalSeconds: 30
+    options:
+      # The dashboards themselves are mounted here (see docker/docker-compose.yml).
+      path: /var/lib/grafana/dashboards
+      foldersFromFilesStructure: false

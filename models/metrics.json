@@ -10,8 +10,8 @@
     "decision_threshold": 0.928426,
     "export": {
       "fp32_bytes": 4606582,
-      "int8_agreement": 1.0,
       "int8_bytes": 0,
+      "int8_skipped_reason": "tree ensemble: parameters live in node attributes, not weight tensors, so dynamic int8 quantisation has nothing to quantise",
       "opset": 0
     },
     "git_sha": "e572d98-dirty",
@@ -42,11 +42,12 @@
     "git_sha": "e572d98-dirty",
     "licence_audit": {
       "checked": "read from the bundled scoring file at run time",
-      "declares_restriction": false,
+      "declares_restriction": true,
       "header": [
-        "# PGS000001 (PRS77_BC) \u2014 real breast-cancer Polygenic Risk Score, 77 SNPs. Source: PGS Catalog (https://www.pgscatalog.org/score/PGS000001/), CC-BY 4.0. Mavaddat et al. Bundled for the genomics use case (real PRS model evaluated under CKKS)."
+        "# PGS000001 (PRS77_BC) - breast-cancer Polygenic Risk Score, 77 SNPs. Source: PGS Catalog (https://www.pgscatalog.org/score/PGS000001/). LICENCE: per score - PGS000001 carries the Catalog's default terms (EMBL-EBI Terms of Use), NOT CC-BY 4.0; cite Mavaddat et al. and observe any restrictions set by the score authors. See DATA_LICENSES.md."
       ],
-      "publishable": true
+      "publishable": false,
+      "stale_record_note": "Re-read from the bundled file. The previous record quoted an older header asserting CC-BY 4.0 and publishable=true; the file now states the score carries the PGS Catalog's default EMBL-EBI Terms of Use, NOT CC-BY 4.0, and src/qsh/models/registry.py sets publishable=False. Publication is gated by the registry flag, which scripts/publish_hf.py enforces."
     },
     "measured": {
       "by_super_population": {
