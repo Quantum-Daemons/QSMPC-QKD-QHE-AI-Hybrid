@@ -42,7 +42,10 @@ services:
       - GF_AUTH_ANONYMOUS_ENABLED=true
       - GF_AUTH_ANONYMOUS_ORG_ROLE=Viewer
     volumes:
-      - ../monitoring/grafana:/etc/grafana/provisioning/dashboards:ro
+      # Provider YAML goes in provisioning/; the dashboard JSON goes where the provider points.
+      # Mounting the JSON directory straight onto provisioning/dashboards silently loaded nothing.
+      - ../monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ../monitoring/grafana:/var/lib/grafana/dashboards:ro
     ports: ["${GRAFANA_PORT:-3000}:3000"]
     depends_on: [prometheus]
     deploy: { resources: { limits: { memory: 256m } } }

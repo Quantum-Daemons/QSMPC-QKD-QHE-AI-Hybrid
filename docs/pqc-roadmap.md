@@ -42,7 +42,7 @@ not a code rewrite. Add remote re-key + in-flight algorithm substitution next. �
   implemented the 90B tests; before that this line described an "SP 800-22-style health suite", which
   was exactly the conflation section 4.1 warns against. Post-processing = von Neumann /
   **Toeplitz (Leftover-Hash-Lemma-bounded output, ε-parameterised)** / **seedless two-source** extractor
-  (`src/qsh/qrng/`); it seeds the BB84 basis/bit choices. Optional real-hardware source = the **ANU QRNG**
+  (`src/qsh/qrng/`); it **can** seed the BB84 basis/bit choices — **opt-in and off by default** (`qrng.enabled = False`), so the default run uses the original uniform-basis behaviour. Optional real-hardware source = the **ANU QRNG**
   API (opt-in, online). Honestly labelled: sim, not HW. ✅
 - **Hybrid PQC+QKD key combiner** — `src/qsh/pqc/transport.py` offers a config-gated **leakage-resilient**
   Toeplitz + Quantum-Leftover-Hash-Lemma combiner** (`hybrid_combiner_mode="its_toeplitz"`) alongside the
