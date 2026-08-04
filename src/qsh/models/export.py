@@ -26,7 +26,7 @@ buy nothing here and risk operators the WebGPU EP has not implemented.
 from __future__ import annotations
 
 import json
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
 import numpy as np
@@ -76,6 +76,10 @@ class ExportReport:
     int8_skipped_reason: str = ""   # non-empty => no int8 graph exists; serve fp32 to the browser
     int8_confident_agreement: float = 1.0   # agreement excluding the least-confident tail; this is gated
     int8_margin_quantile: float = 0.0       # size of that excluded tail
+    #: Operator domains present in the graph, and whether ORT Web can execute all of them.
+    #: A tree ensemble is ai.onnx.ml and is NOT browser-runnable at any size.
+    onnx_domains: list[str] = field(default_factory=list)
+    browser_runnable: bool = True
 
     @property
     def compression(self) -> float:
@@ -230,6 +234,30 @@ def quantize_int8(fp32_path: Path, int8_path: Path, *, per_channel: bool = True)
     return int8_path
 
 
+def graph_domains(path: Path) -> list[str]:
+    """Operator domains present in the graph.
+
+    This decides whether a model can run in a BROWSER at all, which is not something the file size
+    or the opset tells you. ONNX Runtime Web implements the default ``ai.onnx`` domain; it does not
+    implement ``ai.onnx.ml`` (TreeEnsembleClassifier, LinearClassifier, ...). A tree ensemble is
+    therefore not browser-executable no matter how small it is -- and finding that out by shipping
+    4.6 MB to a visitor and then hanging is the worst possible way to learn it, which is exactly
+    what happened before this was recorded.
+    """
+    import onnx
+
+    model = onnx.load(str(path))
+    return sorted({node.domain or "ai.onnx" for node in model.graph.node})
+
+
+#: Domains ONNX Runtime Web can execute. Anything outside this set is server/desktop-only.
+BROWSER_RUNNABLE_DOMAINS = frozenset({"ai.onnx", ""})
+
+
+def browser_runnable(domains: list[str]) -> bool:
+    return bool(domains) and all(d in BROWSER_RUNNABLE_DOMAINS for d in domains)
+
+
 def graph_opset(path: Path) -> int:
     """The default-domain opset actually present in the file.
 
@@ -311,6 +339,8 @@ def verify_and_quantize(source_model, fixtures: np.ndarray, out_dir: Path, *,
         fp32_bytes=fp32.stat().st_size,
         int8_bytes=int8_bytes,
         opset=graph_opset(fp32),
+        onnx_domains=graph_domains(fp32),
+        browser_runnable=browser_runnable(graph_domains(fp32)),
         fp32_max_abs_error=fp32_err,
         int8_agreement=agreement,
         int8_max_abs_error=int8_err,
