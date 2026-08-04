@@ -50,8 +50,8 @@ approach the EU roadmap recommends), **crypto-agility**
 (operator-selected, modular provider replacement), **secure-aggregation federated learning** — including a **Quantum
 Federated Learning** option (a PennyLane hybrid quantum-classical VQC over this repo's own FedAvg, mirrored in-browser as
 a per-use-case toggle), **explainable AI**
-(exact linear-SHAP attributions, ML-DSA-signed for a tamper-evident audit record — EU AI Act
-Art. 13), an **E2E orchestration** engine with **Run / Pause / Resume / Step / Stop / Restart**
+(exact linear-SHAP attributions, ML-DSA-signed for a tamper-evident audit record — aimed at EU AI Act
+Art. 13, applicable 2 Dec 2027 for Annex III after the AI Omnibus deferral), an **E2E orchestration** engine with **Run / Pause / Resume / Step / Stop / Restart**
 controls, live WebSocket event streaming, config-driven parameters editable in the WebUI (a per-page
 **Parameters** panel — every QKD / QRNG / OptiQKD / IDS / data knob defaults from `config/defaults.py`
 and is editable per run, with reset-to-defaults; no hardcoded values), and
@@ -371,7 +371,7 @@ implementation maps to each, and where gaps remain.
 | HNDL-vulnerable HE / key exchange | PQC-first hybrid **ML-KEM + X25519** (+ optional QKD key material) | `pqc/hybrid_kem.py`, `pqc/transport.py` |
 | TTP assumption | TTP-free: QSMS (entangled state, no dealer), keyed-hash PSI over the quantum-safe channel, pairwise-mask secure aggregation | `qsmpc/`, `ai/federated.py` |
 | **Agentic-AI / MCP quantum-safe + private agent comms** | A **real FastMCP server** (5 per-industry tools, full deployment) bound to a quantum-safe channel: two agents establish a PQC(+QKD) session, the caller sends an **ML-DSA-signed, AES-GCM-sealed** `tools/call`, the callee **dispatches the real tool** and returns the **signed result** (authenticated, confidential, HNDL-resistant, no TTP); also interops with the official filesystem MCP server | `pqc/mcp_bridge.py`, `mcp/server.py`, `/api/mcp/*` |
-| **Explainability / audit trail (XAI)** | Exact linear-SHAP feature attributions for each private-inference decision, **ML-DSA-signed** → tamper-evident, regulator-facing explanation (EU AI Act Art. 13, GDPR Art. 22, SR 11-7); surfaced on the finance/medical use-case cards | `ai/explainability.py`, `ExplainabilityStage` |
+| **Explainability / audit trail (XAI)** | Exact linear-SHAP feature attributions for each private-inference decision, **ML-DSA-signed** → tamper-evident, regulator-facing explanation (EU AI Act Art. 13 - applicable 2 Dec 2027 for Annex III after the AI Omnibus deferral, not Aug 2026; GDPR Art. 22; SR 11-7); surfaced on the finance/medical use-case cards | `ai/explainability.py`, `ExplainabilityStage` |
 
 **WS4 — QHE×AI** (FHE 10³–10⁶× overhead; bootstrapping bottleneck; no quantum encoding; plus unsolved (a)–(f)):
 
@@ -397,7 +397,10 @@ See [`docs/pqc-roadmap.md`](docs/pqc-roadmap.md).
   qOLE, and the **free-space satellite QKD + QSDC** path are **simulated** (analytic channel +
   information-structure models), not hardware-validated. QHE evaluation is exact for Clifford
   circuits; non-Clifford layers are costed as T-gates, not run fault-tolerantly.
-- **NSA stance** — QKD is used strictly as a PQC-hybrid add-on, never standalone (CNSA 2.0).
+- **NSA stance** — NSA does **not** endorse QKD in any form for national security systems. Its CNSA 2.0 /
+  Quantum Computing FAQ answers *"Can I use a QKD system to protect my NSS from a quantum computer?"* with
+  **"No"**, and says it *"does not support the usage of QKD or QC"* for NSS. Presenting QKD as a hybrid
+  add-on is **this project's** design choice, taken from **BSI TR-02102-1 v2026-01 §2.2**, not from NSA.
 - **GPU/vendor & licensing** — Blackwell+CUDA13 narrows the quantum-GPU stack to CUDA-Q/cuQuantum.
   The FHE stack is deliberately **commercial-OK** (TenSEAL Apache-2.0, OpenFHE BSD-2, HEonGPU Apache-2.0);
   **DESILO was removed** because its license is non-commercial. Multiple swappable backends avoid lock-in.
@@ -452,7 +455,7 @@ See [`docs/pqc-roadmap.md`](docs/pqc-roadmap.md).
 
   | vertical | T2 model | data | measured | published baseline |
   |---|---|---|---|---|
-  | **finance** | GFP + XGBoost (graph-feature preprocessing over the transaction multigraph) | IBM **AMLworld HI-Small**, 5,078,345 transactions, 1 laundering in 981 (CDLA-Sharing-1.0) | minority-class F1 **0.081**, AUPRC 0.062 vs a 0.0015 prevalence baseline | 0.632 (NeurIPS 2023 D&B) — see the gap note below |
+  | **finance** | GFP + XGBoost (graph-feature preprocessing over the transaction multigraph) | IBM **AMLworld HI-Small**, 5,078,345 transactions, 1 laundering in 981 (CDLA-Sharing-1.0) | minority-class F1 **0.081**, AUPRC **0.073** vs a 0.0015 prevalence baseline | 0.632 (NeurIPS 2023 D&B) — see the gap note below |
   | **medical** | **ResNet-18**, ImageNet-pretrained, transfer-learned onto 1-channel ultrasound | MedMNIST v2 **BreastMNIST** (CC-BY-4.0) | AUC **0.888** | 0.901 (Nature Sci Data 2022) |
   | **genomics** | published **PRS** effect-weight vector — not a neural network | PGS Catalog **PGS000001** over **2,504 real 1000 Genomes samples** | ancestry portability, below | AUROC 0.628 — *external citation, not measurable here* |
   | **satellite** | **Telemanom** 2xLSTM(80), seq 250, non-parametric dynamic threshold + pruning | **ESA-ADB Mission1** lightweight channels 41-46, 14 years of real telemetry (CC-BY-3.0-IGO) | event-wise F0.5 **0.714** | 0.786 (ESA-ADB Table 2) |
@@ -480,10 +483,14 @@ See [`docs/pqc-roadmap.md`](docs/pqc-roadmap.md).
     positives; the 690 annotated rare *nominal* events do not.
 
   - **telecom reproduces the metric trap in-house.** The variational QNN scores **accuracy 0.875 but
-    macro F1 0.467** on the same 8-class problem: the aggregate looks respectable while most classes
-    are not being learned at all. That is the Engelen et al. finding arriving by accident rather than
-    by argument, on this project's own run, and it is why per-class F1 is the headline everywhere here.
-    Neither quantum model beats the classical random forest (0.987).
+    macro F1 0.467**. Stated precisely, because the earlier wording here said "on the same 8-class
+    problem" and that was wrong: the QNN is a **binary** attack-vs-normal classifier - `qml_ids/detector.py`
+    fits on `binary_labels(y)` and predicts `(preds > 0)` - so scoring its output against the 8-class
+    labels guarantees a floor of zero on six of them by construction. The macro F1 is therefore not a
+    like-for-like comparison, and the honest reading is narrower than the original claim: an aggregate
+    can look respectable while the per-class picture is not, which is why per-class F1 is the headline
+    everywhere here. The classical random forest, which **is** trained on all 8 classes, reaches macro
+    F1 0.987; neither quantum model beats it.
 
   **Quantum-ML IDS is presented as an architecture showcase, not a performance claim.** Every
   published QML-IDS number we could verify sits below a random forest on the same data, and

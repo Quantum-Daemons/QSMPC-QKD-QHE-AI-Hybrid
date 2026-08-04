@@ -59,7 +59,7 @@ export const USECASE_SPECS: Record<string, Spec> = {
     steps: [
       { stageId: "pqc_handshake", kind: "c-bidir", label: () => "PQC handshake — ML-KEM-768 + X25519" },
       { stageId: "qkd_key_agreement", kind: "q-arrow", label: (m) => `BB84 QKD · QBER ${f(m, "qber")}` },
-      { stageId: "federated_training", kind: "c-bidir", label: (m) => `federated train + secure agg · acc ${f(m, "federated_accuracy")}` },
+      { stageId: "federated_training", kind: "c-bidir", label: (m) => `federated train + pairwise masking (demo keys) · acc ${f(m, "federated_accuracy")}` },
       ...HYBRID_INFERENCE,
       QSMPC_COMPARE,
       { stageId: "sign_result", kind: "c-bidir", label: () => "ML-DSA-signed audit record + explanation" },

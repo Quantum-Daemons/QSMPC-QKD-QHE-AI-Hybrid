@@ -90,7 +90,8 @@ a new FHE backend) is **one `register(...)` call** — no stage code changes.
 
 ## Hybrid + defence-in-depth
 - **KEM is always hybrid** (`ML-KEM` ⊕ `X25519`): secure if *either* primitive holds — the
-  HNDL hedge. QKD key material can be mixed in (`PQC + QKD`) per **BSI TR-02102-1 v2026-01 §2.1**,
+  HNDL hedge. QKD key material can be mixed in (`PQC + QKD`) per **BSI TR-02102-1 v2026-01 §2.2 "Key Derivation and
+Hybridisation"** (p.29; §2.1 is "Use of Quantum-Safe Mechanisms"),
   which recommends *"a hybrid key agreement mechanism that combines a quantum-safe and a classical
   mechanism"* that *"should remain secure as long as one of the methods used is secure"*. This was
   previously attributed to an "NSA hybrid recommendation" — **NSA publishes no such PQC+QKD hybrid

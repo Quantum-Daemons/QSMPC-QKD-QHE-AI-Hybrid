@@ -361,7 +361,8 @@ class PrivateInferenceStage(Stage):
 class ExplainabilityStage(Stage):
     """Explainable AI: exact linear-SHAP feature attributions for the private-inference result.
 
-    Satisfies the report's XAI / audit-trail requirement and the EU AI Act Art. 13 transparency
+    Satisfies the report's XAI / audit-trail requirement and prepares for EU AI Act Art. 13 transparency
+    (applicable 2027-12-02 for Annex III after the AI Omnibus deferral, not Aug 2026)
     obligation (high-risk credit/AML + healthcare). Faithful (exact for the linear model) and
     cheap; the attributions are written to ``ctx.artifacts["explanation"]`` so the downstream
     :class:`SignatureStage` ML-DSA-signs them -> a tamper-evident, regulator-facing explanation.

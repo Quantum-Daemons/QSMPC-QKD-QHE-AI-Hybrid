@@ -112,7 +112,9 @@ paper to the **workstream (WS)** it informs, the **module** that implements/uses
 ## External standards & threat context (not in folder; see `docs/pqc-roadmap.md`)
 
 - NIST **FIPS 203/204/205** (ML-KEM / ML-DSA / SLH-DSA), 2024.
-- NSA **CNSA 2.0** — 2027 procurement mandate; QKD non-recommended standalone → PQC-hybrid only.
+- NSA **CNSA 2.0** — 2027 procurement mandate. On QKD, NSA answers **"No"** to using it to protect an NSS
+  and *"does not support the usage of QKD or QC"* — it does **not** recommend a PQC-hybrid QKD add-on either.
+  The hybrid framing in this repository comes from **BSI TR-02102-1 v2026-01 §2.2**.
 - **HNDL** (Harvest-Now-Decrypt-Later) and **Q-Day** acceleration (Gidney arXiv:2505.15917, 2025).
 
 ---

@@ -763,7 +763,10 @@ export function runClientPipeline(
         metric(stage, "qrng_throughput_kbps", r1(qr.throughputBitsPerSec / 1000));
         metric(stage, "qrng_min_entropy_per_bit", r2(qr.minEntropyPerBit));
         emit("log", stage, `QRNG (simulated quantum measurement): ${qr.nBits} bits, health `
-          + `${qr.healthPassed ? "PASS" : "FAIL"} (monobit p=${qr.monobitP.toFixed(3)}), `
+          + `${qr.healthPassed ? "PASS" : "FAIL"} per SP 800-90B 4.4 `
+          + `(repetition-count ${qr.repetitionCountLongest}/${qr.repetitionCountCutoff}, `
+          + `adaptive-proportion ${qr.adaptiveProportionMax}/${qr.adaptiveProportionCutoff}); `
+          + `SP 800-22 reported not gating: ${qr.sp80022Passed ? "pass" : "fail"} (monobit p=${qr.monobitP.toFixed(3)}), `
           + `${r1(qr.throughputBitsPerSec / 1000)} kbit/s`);
         break;
       }
