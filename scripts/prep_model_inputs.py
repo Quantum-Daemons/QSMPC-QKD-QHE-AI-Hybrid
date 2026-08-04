@@ -55,9 +55,23 @@ sys.path.insert(0, str(REPO / "src"))
 sys.path.insert(0, str(REPO / "scripts"))
 
 OUT_ROOT = REPO / "web" / "public" / "data"
-#: Keep the payload small enough to ship. Large enough that the accuracy self-check is meaningful
-#: rather than a coin flip on a handful of rows.
-N_SAMPLES = 48
+
+#: How many rows each use case ships, chosen per model rather than globally, because the right
+#: answer depends entirely on how big one row is.
+#:
+#:  * medical    -- the ENTIRE official BreastMNIST test split. 156 x 28 x 28 uint8 is ~0.4 MB raw
+#:                  and digits compress well, so the browser can reproduce the model's PUBLISHED
+#:                  test metric exactly rather than a subsample of it. That is a much stronger
+#:                  claim and it costs almost nothing.
+#:  * finance    -- 512 rows of 32 floats. Still small, and a 1-in-981 positive rate needs volume
+#:                  before an accuracy figure means anything.
+#:  * satellite  -- 24 windows. One window is 250 x 6 = 1500 floats, so this is the one case where
+#:                  the payload, not the statistics, sets the limit.
+#:
+#: The full training corpora are deliberately NOT shipped: AMLworld is 475 MB, ESA-ADB is 3.6 GB,
+#: and neither may be redistributed (see DATA_LICENSES.md). A browser does not need the training
+#: corpus to verify a model -- it needs a held-out sample large enough to be worth believing.
+N_SAMPLES = {"medical_fl": None, "finance_aml": 512, "satellite_comms": 24}
 
 
 def _session(model_dir: str, prefer_int8: bool = True):
@@ -104,10 +118,14 @@ def build_medical(rng: np.random.Generator) -> dict:
     imgs, labels = ds.imgs, ds.labels.ravel()
 
     # Stratified so the sample cannot be all-majority; the accuracy self-check would be meaningless.
-    idx = np.concatenate([
-        rng.choice(np.flatnonzero(labels == c), size=N_SAMPLES // 2, replace=False)
-        for c in (0, 1)
-    ])
+    # None => the whole official test split, so the figure below IS the published test metric.
+    want = N_SAMPLES["medical_fl"]
+    if want is None:
+        idx = np.arange(len(labels))
+    else:
+        idx = np.concatenate([
+            rng.choice(np.flatnonzero(labels == c), size=want // 2, replace=False) for c in (0, 1)
+        ])
     rng.shuffle(idx)
     x_u8, y = imgs[idx], labels[idx]
 
@@ -168,9 +186,10 @@ def build_finance(rng: np.random.Generator) -> dict:
     neg = np.flatnonzero(y_all == 0)
     # 1-in-981 prevalence: a random draw would almost surely contain zero positives and the
     # self-check would say nothing. Force a visible minority so the number means something.
-    take_pos = min(len(pos), N_SAMPLES // 4)
+    want = N_SAMPLES["finance_aml"]
+    take_pos = min(len(pos), want // 4)
     idx = np.concatenate([rng.choice(pos, take_pos, replace=False),
-                          rng.choice(neg, N_SAMPLES - take_pos, replace=False)])
+                          rng.choice(neg, want - take_pos, replace=False)])
     rng.shuffle(idx)
     x, y = X_all[idx], y_all[idx]
 
@@ -227,7 +246,7 @@ def build_satellite(rng: np.random.Generator) -> dict:
 
     # 250x6 per window is 1500 floats, so keep this small -- the comparison against
     # persistence is stable well below N_SAMPLES and the payload has to ship.
-    n_windows = 16
+    n_windows = N_SAMPLES["satellite_comms"]
     starts = rng.choice(np.arange(0, len(values) - seq - 1), size=n_windows, replace=False)
     x = np.stack([values[s:s + seq] for s in starts]).astype(np.float32)
     y_next = np.stack([values[s + seq] for s in starts]).astype(np.float32)
