@@ -419,9 +419,19 @@ See [`docs/pqc-roadmap.md`](docs/pqc-roadmap.md).
   `onnxruntime-web/wasm` otherwise: the probe decides which **build** to load, not merely which
   provider to request.
 
-  Verified on the live deploy: the medical page downloads the published model from the HF CDN and
-  scores **72.9% on 48 held-out BreastMNIST rows, against 72.9% measured offline on those same
-  rows** — an exact match against an independent figure, in about 5 s.
+  Verified on the live deploy, all three pages, each downloading its published model from the HF CDN
+  and reproducing an independently-measured figure:
+
+  | page | measured in-browser | expected offline | sample |
+  |---|---|---|---|
+  | medical | **85.9%** | 85.9% | the **entire** official BreastMNIST test split, 156 rows |
+  | finance | **90.8%** | 91.0% | 512 stratified AMLworld rows |
+  | satellite | **MAE 0.7943** | 0.7955 | 16 ESA-ADB windows |
+
+  The finance model is the `TreeEnsembleClassifier` I had declared unsupported, which is as clear a
+  refutation of the first diagnosis as one could ask for. The satellite row is the most useful of
+  the three: it confirms the published graph ran correctly **and** reports that its forecast error is
+  ~19× the persistence baseline, so the page verifies the model and criticises it in the same breath.
 
   Two lessons, both ones this project already had: a capability check that tests for an API surface
   rather than a working capability is the same defect class as a label naming a protocol the code
