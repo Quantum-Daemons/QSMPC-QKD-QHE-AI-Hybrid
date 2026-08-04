@@ -41,10 +41,14 @@ function fmt(v: unknown): string {
   if (typeof v === "number") {
     if (Number.isInteger(v)) return v.toLocaleString();
     // Don't let a near-miss print as a clean 1.0000. The satellite student's teacher-agreement is
-    // 0.999987, which toFixed(4) rounded to "1.0000" — read as exact agreement when it is not.
-    const r = v.toFixed(4);
-    if ((r === "1.0000" && v < 1) || (r === "0.0000" && v > 0)) return v.toPrecision(3);
-    return r;
+    // 0.999987, which toFixed(4) rounds to "1.0000" — read as exact agreement when it is not.
+    // toPrecision(3) is no better here ("1.00"), so widen the decimals until the value stops
+    // rendering as an exact 1 or 0.
+    for (let d = 4; d <= 8; d++) {
+      const r = v.toFixed(d);
+      if (Number(r) !== 1 && Number(r) !== 0) return r;
+    }
+    return v.toExponential(2);
   }
   if (typeof v === "boolean") return v ? "yes" : "no";
   return String(v);
@@ -96,6 +100,11 @@ function MetricRows({ spec }: { spec: ModelSpec }) {
       </p>
     );
   }
+  const bothZero = Boolean(
+    (achieved as Record<string, unknown>).both_scored_zero
+    ?? ((achieved as Record<string, number>).teacher_metric === 0
+        && (achieved as Record<string, number>).student_metric === 0
+        && "teacher_metric" in (achieved as object)));
   const headline = numeric.filter(([k]) => !isCompanion(k));
   const companion = numeric.filter(([k]) => isCompanion(k));
 
@@ -114,6 +123,15 @@ function MetricRows({ spec }: { spec: ModelSpec }) {
             </td>
           </tr>
         ))}
+        {bothZero && (
+          <tr className="metric-companion">
+            <td colSpan={3} className="muted small">
+              teacher and student both score 0 on the fidelity slice, so <code>metric_delta</code> is 0 by
+              cancellation — not because encryption was free. That slice is a later window than the one the
+              teacher's headline metric is computed over, so the two are not comparable.
+            </td>
+          </tr>
+        )}
         {companion.map(([k, v]) => (
           <tr key={k} className="metric-companion">
             <td><code>{k}</code></td>
