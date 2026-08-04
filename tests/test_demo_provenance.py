@@ -65,12 +65,26 @@ def test_no_source_restates_a_corrected_claim() -> None:
         "real PaySim": "PaySim is a simulator; its rows are synthetic",
         "US-Gov public domain": "no provider states a licence for SMAP/MSL",
         "open data-use, commercial-OK": "IGSR grants no blanket licence",
+        # Added after an adversarial audit found each of these still live somewhere.
+        "UCI/sklearn, public domain": "UCI relicensed WDBC to CC BY 4.0; attribution is required",
+        "PGS000001 PRS weights (77 SNPs, CC-BY 4.0)": "PGS Catalog is licensed per score, not blanket CC-BY",
+        "real-scale transactions at 1 laundering": "AMLworld is synthetic too; IBM says 'Everything is synthetic'",
     }
-    roots = [ROOT / "web" / "src", ROOT / "web" / "public" / "data", ROOT / "scripts"]
+    # README.md and docs/ are in scope. They were NOT, and that is precisely how
+    # "CC0 / US-Gov public domain" survived in README.md:236 through four rounds of correcting it
+    # everywhere else -- including a manual grep whose own exclusion pattern ("no.*public.domain")
+    # silently swallowed the line, because the word "Telemanom" contains "no".
+    roots = [ROOT / "web" / "src", ROOT / "web" / "public" / "data", ROOT / "scripts",
+             ROOT / "docs", ROOT / "references", ROOT / "src", ROOT / "data"]
     offenders: list[str] = []
+    for single in (ROOT / "README.md",):          # top-level file, not covered by an rglob root
+        text = single.read_text(errors="ignore")
+        for claim, why in forbidden.items():
+            if claim in text:
+                offenders.append(f"{single.name}: '{claim}' — {why}")
     for root in roots:
         for path in root.rglob("*"):
-            if not path.is_file() or path.suffix not in {".ts", ".tsx", ".json", ".py"}:
+            if not path.is_file() or path.suffix not in {".ts", ".tsx", ".json", ".py", ".md", ".tsv"}:
                 continue
             try:
                 text = path.read_text(errors="ignore")

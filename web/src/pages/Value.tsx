@@ -26,10 +26,13 @@ export default function Value() {
         </tbody>
       </table>
       <p className="muted" style={{ fontSize: 12 }}>
-        Within privacy-preserving AI, <b>FHE is the largest technology segment (~35.6%)</b> and <b>federated
-        learning the largest sub-segment (~29%)</b>; <b>healthcare/life-sciences (~30%)</b> and <b>BFSI (~28%)</b>
-        lead the verticals. Figures are indicative ranges aggregated from multiple 2026 market reports (market.us,
-        Precedence Research); they vary by analyst definitions.
+        Within privacy-preserving AI the analysts disagree, and the disagreement does not reconcile: market.us
+        sizes the market at $3.67B(2025)→$46.11B(2035) with <b>homomorphic encryption the largest technology
+        segment (~35.6%)</b> and <b>BFSI the leading vertical (27.8%)</b>, while Precedence Research sizes a
+        different market at $4.25B(2025)→$39.93B(2035) with <b>federated learning largest (~29%)</b>. Those
+        percentages are shares of <i>different denominators</i> and must not be added or ranked against each
+        other. An earlier revision of this page presented them as one consistent picture and asserted
+        &ldquo;healthcare/life-sciences (~30%) lead the verticals&rdquo;, which neither report supports.
       </p>
 
       <h2 style={{ marginTop: 28 }}>Where this architecture creates value</h2>

@@ -130,7 +130,13 @@ DS_AMLWORLD = DatasetSpec(
     url="https://www.kaggle.com/datasets/ealtman2019/ibm-transactions-for-anti-money-laundering-aml",
     licence_checked="2026-08-03",
     publishable=True,
-    notes="5M transactions, 515K accounts, ~1 laundering transaction in 981. NeurIPS 2023 D&B.",
+    notes=(
+        "5M transactions, 515K accounts, ~1 laundering transaction in 981. NeurIPS 2023 D&B. "
+        "SYNTHETIC: IBM generates it with a multi-agent virtual-world model and states 'Everything is "
+        "synthetic'; the paper is titled 'Realistic Synthetic Financial Transactions for AML Models'. "
+        "Chosen for its calibration to real transaction statistics and its CDLA-Sharing terms, not "
+        "because it is real data - no commercial-OK corpus of real laundering transactions exists."
+    ),
 )
 DS_PAYSIM = DatasetSpec(
     name="PaySim (Kaggle ealaxi/paysim1)",
@@ -171,8 +177,10 @@ DS_PGS_CATALOG = DatasetSpec(
     publishable=False,
     notes=(
         "NOT blanket CC-BY-4.0. Every scoring file carries a '#license' header and individual scores "
-        "can be CC BY-NC-ND. The header of each file actually used is re-read by "
-        "qsh.models.licences.audit_pgs_score() before any publish step."
+        "can be CC BY-NC-ND. PGS000001 itself carries the Catalog default terms, not CC-BY. An earlier "
+        "revision of this note claimed the header was re-read by qsh.models.licences.audit_pgs_score() "
+        "before publishing; no such module exists and no such check runs. publishable=False is what "
+        "actually prevents publication, and it is enforced by scripts/publish_hf.py."
     ),
 )
 DS_1000G = DatasetSpec(

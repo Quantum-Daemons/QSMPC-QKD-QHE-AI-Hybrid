@@ -5,6 +5,8 @@
 // quantum_advantage}.py so demo numbers track the server.
 import { ml_dsa65, ml_dsa87 } from "@noble/post-quantum/ml-dsa";
 import { ml_kem768, ml_kem1024 } from "@noble/post-quantum/ml-kem";
+import { x25519 } from "@noble/curves/ed25519.js";
+import { sha3_256 } from "@noble/hashes/sha3";
 import {
   benchCfg, costPerOp, dataCfg, demoFeatureDim, genericArchitecture, idsCfg, medicalCnn, qkdCfg, qrngCfg,
   demoSample, quantumAdvantageCfg, securityScoringCfg, tierArchitectures, webCfg, workloadMultipliers,
@@ -392,7 +394,11 @@ function mpcFheRow(usecase: string | undefined, workload: string, modelSize: str
     path: "MPC-FHE", backend, workload,
     model_size: modelSize, model_arch: label, model_params: params, projected,
     latency_ms: r2(fhe + mpc), throughput_ips: r2(1000 / Math.max(fhe + mpc, 1e-3)),
-    accuracy: 1.0, max_abs_error: cost.demo_max_abs_error, ciphertext_plaintext_ratio: ctpt,
+    // NOT measured in the browser. The backend row this mirrors computes accuracy as
+    // (decisions matching plaintext)/n in classical_mpc_fhe.py; nothing here evaluates a model, so
+    // reporting 1.0 as if it were a result would be the flattering-number pattern this project
+    // rules out. null makes the panel print an em dash instead of a perfect score.
+    accuracy: null, max_abs_error: cost.demo_max_abs_error, ciphertext_plaintext_ratio: ctpt,
     fhe_linear_ms: r2(fhe), mpc_nonlinear_ms: r2(mpc), mpc_comm_kb: r2(comm / 1024),
     t_gate_count: null, qubits: null,
     security_model: "computational (RLWE) + secret-sharing MPC",
@@ -409,7 +415,8 @@ function mpcFheRow(usecase: string | undefined, workload: string, modelSize: str
 // the actual circuit, and ct/pt = 1.0 is the QOTP perfect-hiding property (Rate-1 QFHE's ~1.3 is the
 // classical-key-included literature figure). A state-vector SIMULATION, not quantum hardware.
 function qsmpcFheRow(workload: string, modelSize: string, u: () => number, samples = 4, scale = 1,
-  nQubits = benchCfg().quantum_qubits, sec?: { kem?: string; qkdBits?: number | null }) {
+  nQubits = benchCfg().quantum_qubits,
+  sec?: { kem?: string; qkdBits?: number | null; qber?: number | null }) {
   // qubit count is a run-config knob (config.qubits) — it drives the 2^n state-vector size, the counted
   // T-gate total (n per conv round) and the measured latency, so the QCNN-qubits control genuinely moves
   // the quantum row (clamped >=2 for a valid circuit).
@@ -433,7 +440,12 @@ function qsmpcFheRow(workload: string, modelSize: string, u: () => number, sampl
     security_model: "information-theoretic (QOTP perfect hiding)",
     security_score: securityScore({
       securityModel: "information-theoretic (QOTP perfect hiding)", kem: sec?.kem,
-      qkdKeyBits: sec?.qkdBits === undefined ? 256 : sec.qkdBits, qber: 0.0128, leakageBitsPerWeight: 0.1,
+      // qber was the literal 0.0128 here while the panel described the score as reflecting "QBER
+      // eavesdrop margin" for this run — so moving the Eve slider changed the QKD panel and left this
+      // number untouched. Use the run's measured QBER when the pipeline produced one.
+      qkdKeyBits: sec?.qkdBits === undefined ? 256 : sec.qkdBits,
+      qber: typeof sec?.qber === "number" ? sec.qber : qkdCfg().misalignment,
+      leakageBitsPerWeight: 0.1,
     }).total,
     device: "cpu-sim", simulated: true,
   };
@@ -697,18 +709,41 @@ export function runClientPipeline(
         break;
       }
       case "pqc_handshake": {
-        // hybrid KEM selected via crypto-agility (config.kem): ml-kem-768 (cat-3) or ml-kem-1024 (cat-5)
-        // genuinely runs the chosen ML-KEM parameter set; the +X25519 half is the classical hedge (label).
+        // Hybrid KEM selected via crypto-agility (config.kem): ml-kem-768 (cat-3) or ml-kem-1024 (cat-5).
+        // BOTH halves are computed. This comment previously read "the +X25519 half is the classical
+        // hedge (label)" and that was exactly the problem: every diagram, the Overview and the
+        // Validations page said "ML-KEM-768 + X25519" while only ML-KEM ran, so the session key had
+        // none of the property that makes a hybrid worth having — security if EITHER primitive holds.
         const kemSel = kemName(config);
         const kem = kemImpl(kemSel);
         const bob = kem.keygen();
         const e = kem.encapsulate(bob.publicKey);
         const rec = kem.decapsulate(e.cipherText, bob.secretKey);
-        const ok = e.sharedSecret.every((b, i) => b === rec[i]);
-        (config as any)._sessionKey = e.sharedSecret.slice(0, 32);
-        metric(stage, "session_key_bits", 256);
+        const pqOk = e.sharedSecret.every((b, i) => b === rec[i]);
+
+        // Classical half: X25519 ECDH, then a concatenate-then-hash combiner over both secrets and
+        // the transcript. SHA3-256 rather than a bare XOR so neither half can be cancelled out by an
+        // attacker who controls the other.
+        const bobX = x25519.utils.randomSecretKey(), aliceX = x25519.utils.randomSecretKey();
+        const bobXPub = x25519.getPublicKey(bobX), aliceXPub = x25519.getPublicKey(aliceX);
+        const xA = x25519.getSharedSecret(aliceX, bobXPub), xB = x25519.getSharedSecret(bobX, aliceXPub);
+        const bind = (pq: Uint8Array, cl: Uint8Array) => {
+          const t = new Uint8Array(pq.length + cl.length + e.cipherText.length + bobXPub.length + aliceXPub.length);
+          let o = 0;
+          for (const part of [pq, cl, e.cipherText, bobXPub, aliceXPub]) { t.set(part, o); o += part.length; }
+          return sha3_256(t);
+        };
+        const sessA = bind(e.sharedSecret, xA), sessB = bind(rec, xB);
+        const ok = pqOk && sessA.every((b: number, i: number) => b === sessB[i]);
+
+        (config as any)._sessionKey = sessA.slice(0, 32);
+        metric(stage, "session_key_bits", sessA.length * 8);
         metric(stage, "kem_category", kemCategory(kemSel));
-        emit("log", stage, `hybrid KEM = ${kemSel} (NIST cat-${kemCategory(kemSel)}) — agreement=${ok}`);
+        metric(stage, "kem_ciphertext_bytes", e.cipherText.length);
+        metric(stage, "classical_public_key_bytes", aliceXPub.length);
+        emit("log", stage, `hybrid KEM = ${kemSel} + X25519 (NIST cat-${kemCategory(kemSel)}) — `
+          + `agreement=${ok}; ${e.cipherText.length} B ML-KEM ciphertext + ${aliceXPub.length} B X25519 `
+          + `ephemeral public key, combined with SHA3-256(pq_ss || x25519_ss || transcript)`);
         // Quantum entropy source (simulated state-vector measurement, not hardware) — measured health + throughput.
         const qr = generateQuantumBits(Number(config.qrng_bits ?? qrngCfg().bits),
           { source: "sim", postProcessing: String(config.qrng_post ?? qrngCfg().post_processing),
@@ -877,10 +912,12 @@ export function runClientPipeline(
         metric(stage, "ids_binary_f1", r2(ids.binaryF1));
         metric(stage, "ids_accuracy", r2(ids.accuracy));
         metric(stage, "ids_params", ids.nParams);
-        metric(stage, "ids_train_per_class", Number(config.n_per_class ?? idsCfg().n_per_class));
+        // clientIDS clamps this to >=20 and falls back on a non-finite input, so the requested value
+        // is not always the value used. Report what the run actually trained on.
+        metric(stage, "ids_train_per_class", ids.nPerClassUsed);
         emit("log", stage, `QML-IDS (client, softmax logistic on Al-Kuwari-2026 signatures): `
           + `macro-F1=${r2(ids.macroF1)} over 8 classes, worst class ${r2(ids.worstClassF1)} `
-          + `— measured on ${ids.nTest} held-out samples (${config.n_per_class ?? idsCfg().n_per_class}/class)`);
+          + `— measured on ${ids.nTest} held-out samples (${ids.nPerClassUsed}/class)`);
         emit("log", stage, `companions (NOT the headline): binary attack-vs-normal F1=${r2(ids.binaryF1)}, `
           + `aggregate accuracy=${r2(ids.accuracy)}. Both collapse the seven attack types together, which is `
           + `why they read high while a single class can be failing — see scripts/train/telecom_ids.py`);
@@ -977,7 +1014,8 @@ export function runClientPipeline(
         const ms = config.model_size ?? "medium", wl = config.workload ?? "linear";
         const sec = secFromConfig(config);
         const isInf = ["finance_aml", "medical_fl", "genomics"].includes(usecase);
-        const qrow = qsmpcFheRow(wl, ms, rng(7), 6, 1, qubitsOf(config), sec);
+        const qrow = qsmpcFheRow(wl, ms, rng(7), 6, 1, qubitsOf(config),
+          { ...sec, qber: typeof metrics.qber === "number" ? metrics.qber : null });
         const adv = isInf ? quantumAdvantage(mpcFheRow(usecase, wl, ms, null, sec), qrow) : null;
         if (adv) metric(stage, "quantum_advantage_score", adv.score);
         metric(stage, "qsmpc_t_gates", qrow.t_gate_count);

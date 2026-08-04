@@ -146,7 +146,8 @@ def load_satellite_telemetry(n_windows: int = 600, n_channels: int = 6, window: 
 
     Reads the bundled real sample ``data/satellite/smap_msl_telemetry.tsv`` — ``n_channels`` real NASA
     telemetry channels (col 0 of each Telemanom test stream) + the real labeled-anomaly flag per timestep
-    (Telemanom; Hundman et al. 2018, NASA JPL; **CC0 / US-Gov public domain**). Sliding length-``window``
+    (Telemanom; Hundman et al. 2018, NASA JPL). **No provider states a licence** for this telemetry --
+    17 U.S.C. 105 removes US copyright only and is not a grant; see DATA_LICENSES.md. Sliding length-``window``
     windows are stacked **channel-major** to match the synthetic layout + the use case's ``feature_names``.
     A window is anomalous if any of its real timesteps is. Returns ``(X (N, C·W) float32, y (N,) ∈ {0,1},
     channel_names)``. Offline-CI fallback (only if the bundled file is absent): an ESA-ADB-style synthetic

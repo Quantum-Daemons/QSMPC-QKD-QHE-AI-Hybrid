@@ -127,7 +127,8 @@ paper to the **workstream (WS)** it informs, the **module** that implements/uses
 | `Alisah-Ozcan/HEonGPU`, `chart21/hpmpc` (PIGEON), `kanav99/shark` | `qsh/benchmark/*` (our own glue) | Apache-2.0 / MIT |
 | `data61/MP-SPDZ` | benchmark CPU MPC baseline | CSIRO |
 | `lschoe/mpyc` (vendored) | `qsh/mpc/secret_inference.py` — non-linear MPC (ReLU/argmax on shares) | MIT |
-| `IBM/AMLSim`, PaySim, `synthetichealth/synthea` | `qsh/data/*` | Apache-2.0 |
+| `IBM/AMLSim`, `synthetichealth/synthea` | `qsh/data/*` | Apache-2.0 |
+| `EdgarLopezPhD/PaySim` | *cited only - never cloned or vendored* | **GPL-3.0** (the simulator source; the Kaggle output dataset is separately CC-BY-SA-4.0) |
 | `openfhe` (OpenFHE 1.5.1, CKKS + bootstrapping) | `qsh/fhe/backends.py` (`OpenFHEBackend`) | BSD-2-Clause (commercial-OK) |
 | **`s0l0ist/node-seal`** (SEAL→WASM CKKS) | `web/src/lib/clientFHE.ts` — real in-browser FHE (demo) | MIT |
 | **`mpc-framework` + `emp-wasm-engine` + `summon-ts`** | `web/src/lib/clientMPC.ts` — real in-browser garbled-circuit 2PC (demo) | MIT |
