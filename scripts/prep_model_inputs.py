@@ -142,11 +142,11 @@ def build_medical(rng: np.random.Generator) -> dict:
 #  finance_aml -- AMLworld HI-Small, the 32 engineered features finance_aml.gbm expects
 # --------------------------------------------------------------------------------------------- #
 def build_finance(rng: np.random.Generator) -> dict:
-    from qsh.models import datasets as D
-
     # Reuse the training script's own feature engineering rather than reimplementing 32 columns --
     # a second implementation would drift from the model on the first edit.
-    from train.finance_aml import FEATURES, graph_features   # type: ignore
+    from train.finance_aml import FEATURES, graph_features  # type: ignore
+
+    from qsh.models import datasets as D
 
     # load_amlworld normalises "Is Laundering" -> "label" (datasets.py:84-91); the training script
     # reads that name too, so use it rather than the raw CSV header.
