@@ -120,8 +120,17 @@ export function browserModel(usecase: string): { spec: ModelSpec; url: string } 
     // that out by downloading 4.6 MB and hanging in session creation is how this was discovered.
     // The registry records the graph's domains, so decline before spending the bandwidth.
     if ((spec as { browser_runnable?: boolean }).browser_runnable === false) continue;
-    const art = spec.artifacts.find((a) => a.fmt === "onnx" && a.serves === "browser")
-      ?? spec.artifacts.find((a) => a.fmt === "onnx" && a.serves === "both");
+    // Prefer the smallest graph ORT Web can actually execute. The int8 build is the natural first
+    // choice on size, but dynamic quantisation (MatMulInteger + DynamicQuantizeLinear) is not
+    // viable in ORT Web alongside LSTM -- it never finishes session creation -- so runnability is
+    // checked per artefact and fp32 is used when int8 is unusable.
+    const onnxArtifacts = spec.artifacts.filter(
+      (a) => a.fmt === "onnx"
+        && (a.serves === "browser" || a.serves === "both")
+        && (a as { browser_runnable?: boolean }).browser_runnable !== false);
+    const art = onnxArtifacts.find((a) => a.precision === "int8")
+      ?? onnxArtifacts.find((a) => a.precision === "fp32")
+      ?? onnxArtifacts[0];
     if (!art) continue;
     // Pinned to a 40-char commit sha, never "main": a visitor must not silently get a different
     // model from the one whose metrics this page is printing.
