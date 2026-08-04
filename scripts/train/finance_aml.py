@@ -343,8 +343,12 @@ def main() -> int:
                                                            replace=False)]
     report = export.verify_and_quantize(teacher, fixtures, out, kind="xgboost",
                                         n_features=len(FEATURES))
-    print(f"\n  ONNX fp32 {report.fp32_bytes/1e6:.2f} MB -> int8 {report.int8_bytes/1e6:.2f} MB "
-          f"({report.compression:.1f}x), int8 agreement {report.int8_agreement:.4f}")
+    if report.int8_skipped_reason:
+        print(f"\n  ONNX fp32 {report.fp32_bytes/1e6:.2f} MB "
+              f"(int8 skipped: {report.int8_skipped_reason})")
+    else:
+        print(f"\n  ONNX fp32 {report.fp32_bytes/1e6:.2f} MB -> int8 {report.int8_bytes/1e6:.2f} MB "
+              f"({report.compression:.1f}x), int8 agreement {report.int8_agreement:.4f}")
 
     (out / "feature_spec.json").write_text(json.dumps({
         "features": FEATURES,
@@ -373,8 +377,14 @@ def main() -> int:
         ),
         "git_sha": train.git_sha(),
         "data_digest": train.digest_array(Xtr[:10000], ytr[:10000]),
-        "export": {"fp32_bytes": report.fp32_bytes, "int8_bytes": report.int8_bytes,
-                   "int8_agreement": report.int8_agreement, "opset": report.opset},
+        # Mirror telecom_ids: when int8 is skipped there is no agreement to report, so record the
+        # reason instead of a number. Emitting int8_agreement 1.0 beside int8_bytes 0 read as a
+        # gate that passed rather than a step that never ran.
+        "export": ({"fp32_bytes": report.fp32_bytes, "opset": report.opset,
+                    "int8_skipped_reason": report.int8_skipped_reason}
+                   if report.int8_skipped_reason else
+                   {"fp32_bytes": report.fp32_bytes, "int8_bytes": report.int8_bytes,
+                    "int8_agreement": report.int8_agreement, "opset": report.opset}),
         "wall_clock_s": round(time.time() - started, 1),
     })
     train.record_metrics("finance_aml.student", fidelity.as_metrics())
