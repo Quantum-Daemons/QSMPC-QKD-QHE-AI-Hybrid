@@ -6,7 +6,8 @@
 import { ml_dsa65, ml_dsa87 } from "@noble/post-quantum/ml-dsa";
 import { ml_kem768, ml_kem1024 } from "@noble/post-quantum/ml-kem";
 import { x25519 } from "@noble/curves/ed25519.js";
-import { sha3_256 } from "@noble/hashes/sha3";
+import { hkdf } from "@noble/hashes/hkdf";
+import { sha256 } from "@noble/hashes/sha2";
 import {
   benchCfg, costPerOp, dataCfg, demoFeatureDim, genericArchitecture, idsCfg, medicalCnn, qkdCfg, qrngCfg,
   demoSample, quantumAdvantageCfg, securityScoringCfg, tierArchitectures, webCfg, workloadMultipliers,
@@ -727,11 +728,19 @@ export function runClientPipeline(
         const bobX = x25519.utils.randomSecretKey(), aliceX = x25519.utils.randomSecretKey();
         const bobXPub = x25519.getPublicKey(bobX), aliceXPub = x25519.getPublicKey(aliceX);
         const xA = x25519.getSharedSecret(aliceX, bobXPub), xB = x25519.getSharedSecret(bobX, aliceXPub);
+        // Same HKDF-SHA256 combiner and domain-separation string as src/qsh/pqc/hybrid_kem.py, so a
+        // demo run and a backend run derive the session key the same way.
+        const INFO = new TextEncoder().encode("qsh/hybrid-kem/v1 ML-KEM-768+X25519|");
         const bind = (pq: Uint8Array, cl: Uint8Array) => {
-          const t = new Uint8Array(pq.length + cl.length + e.cipherText.length + bobXPub.length + aliceXPub.length);
-          let o = 0;
-          for (const part of [pq, cl, e.cipherText, bobXPub, aliceXPub]) { t.set(part, o); o += part.length; }
-          return sha3_256(t);
+          const tr = new Uint8Array(bob.publicKey.length + bobXPub.length + aliceXPub.length);
+          tr.set(bob.publicKey, 0);
+          tr.set(bobXPub, bob.publicKey.length);
+          tr.set(aliceXPub, bob.publicKey.length + bobXPub.length);
+          const info = new Uint8Array(INFO.length + tr.length);
+          info.set(INFO, 0); info.set(tr, INFO.length);
+          const ikm = new Uint8Array(pq.length + cl.length);
+          ikm.set(pq, 0); ikm.set(cl, pq.length);
+          return hkdf(sha256, ikm, undefined, info, 32);
         };
         const sessA = bind(e.sharedSecret, xA), sessB = bind(rec, xB);
         const ok = pqOk && sessA.every((b: number, i: number) => b === sessB[i]);
@@ -745,7 +754,7 @@ export function runClientPipeline(
         // X25519 again here read as "ml-kem-768+x25519 + X25519".
         emit("log", stage, `hybrid KEM = ${kemSel} (NIST cat-${kemCategory(kemSel)}) — `
           + `agreement=${ok}; ${e.cipherText.length} B ML-KEM ciphertext + ${aliceXPub.length} B X25519 `
-          + `ephemeral public key, combined with SHA3-256(pq_ss || x25519_ss || transcript)`);
+          + `ephemeral public key, combined with HKDF-SHA256(pq_ss || x25519_ss), info="qsh/hybrid-kem/v1" — the same combiner the backend uses`);
         // Quantum entropy source (simulated state-vector measurement, not hardware) — measured health + throughput.
         const qr = generateQuantumBits(Number(config.qrng_bits ?? qrngCfg().bits),
           { source: "sim", postProcessing: String(config.qrng_post ?? qrngCfg().post_processing),
