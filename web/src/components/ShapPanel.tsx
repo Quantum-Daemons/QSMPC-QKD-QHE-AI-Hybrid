@@ -1,5 +1,6 @@
 // Signed SHAP feature-attribution chart for a use case's private-inference decision.
-// Reads the run's `explanation` artifact (exact linear SHAP, ML-DSA-signed). EU AI Act Art. 13.
+// Reads the run's `explanation` artifact (exact linear SHAP, ML-DSA-signed). Aimed at EU AI Act
+// Art. 13, which applies from 2027-12-02 (Annex III) after the AI Omnibus deferral - not Aug 2026.
 export default function ShapPanel({ explanation }: { explanation: any }) {
   const tops = explanation?.top_features as any[] | undefined;
   if (!tops?.length) return null;
@@ -20,7 +21,7 @@ export default function ShapPanel({ explanation }: { explanation: any }) {
         </div>
       ))}
       <p className="muted" style={{ fontSize: 11, marginTop: 6 }}>
-        red = pushes toward the flagged class · blue = away · exact linear SHAP (EU AI Act Art. 13; ML-DSA-signed)
+        red = pushes toward the flagged class · blue = away · exact linear SHAP (for EU AI Act Art. 13, applicable 2 Dec 2027; ML-DSA-signed)
       </p>
     </div>
   );
