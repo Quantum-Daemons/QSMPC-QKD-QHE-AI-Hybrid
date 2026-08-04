@@ -196,10 +196,19 @@ export async function loadModel(usecase: string): Promise<boolean> {
       status.bytes = buf.byteLength;
 
       const gpu = await hasWebGPU();
-      const webnn = await hasWebNN();
+      const webnn = await hasWebNN();   // reported in status only; see the EP note below
       const eps: any[] = [];
       if (gpu) eps.push("webgpu");
-      if (webnn) eps.push({ name: "webnn", deviceType: "gpu", powerPreference: "default" });
+      // WebNN is deliberately NOT offered, and this is the second time that decision was forced.
+      // `!!navigator.ml` was obviously too weak. Creating a context is not enough either: on this
+      // Chrome 149 `navigator.ml.createContext({deviceType:"gpu"})` RESOLVES with a context object
+      // on a machine with no GPU adapter at all, ORT then selects the WebNN provider, and session
+      // creation never returns -- which is what made every model in the registry look unsupported.
+      //
+      // There is no probe short of running an inference that distinguishes a usable WebNN backend
+      // from a decorative one, and wasm creates a session for the largest model here in ~0.2 s. So
+      // the risk buys nothing measurable and the provider is left out until it can be verified by
+      // executing something rather than by asking whether it exists.
       eps.push("wasm");                                   // always the floor
 
       // Bounded. An unsupported operator can leave session creation pending rather than
