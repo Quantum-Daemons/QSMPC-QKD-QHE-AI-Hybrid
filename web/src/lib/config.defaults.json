@@ -524,7 +524,7 @@
             "serves": "both"
           },
           {
-            "browser_runnable": false,
+            "browser_runnable": true,
             "fmt": "onnx",
             "path": "onnx/model_int8.onnx",
             "precision": "int8",

@@ -258,15 +258,17 @@ BROWSER_RUNNABLE_DOMAINS = frozenset({"ai.onnx", ""})
 #: and never finishes session creation in the browser, because MatMulInteger +
 #: DynamicQuantizeLinear alongside LSTM is not viable there. Being in the right *domain* is
 #: necessary and not sufficient.
-#: All three of these were established by measurement on the deployed demo, not from documentation.
-#: - MatMulInteger / DynamicQuantizeLinear / ConvInteger: dynamic quantisation. The int8 Telemanom
-#:   graph loads in 0.03 s under Python ORT and never finishes session creation in ORT Web.
-#: - LSTM: the fp32 Telemanom graph, in the supported ai.onnx domain and only 0.66 MB, also exceeds
-#:   45 s of session creation in ORT Web WASM. Being in the right domain is necessary, not
-#:   sufficient, and neither is being small.
-BROWSER_HOSTILE_OPS = frozenset({
-    "MatMulInteger", "DynamicQuantizeLinear", "ConvInteger", "LSTM", "GRU", "RNN",
-})
+#: Established by measurement on the deployed demo, not from documentation.
+#:
+#: Recurrent operators are the confirmed case: the Telemanom graph is in the supported ai.onnx
+#: domain and only 0.66 MB at fp32, and ORT Web WASM still exceeds 45 s of session creation on it,
+#: at both fp32 and int8. Dynamic quantisation (MatMulInteger / DynamicQuantizeLinear) was initially
+#: listed too, but that was inferred from the same LSTM graph rather than measured independently --
+#: quantised CONVOLUTIONAL models are routinely fine in ORT Web, so blanket-listing those operators
+#: wrongly excluded the medical ResNet's int8 build, which is 11 MB against 45 MB at fp32.
+#:
+#: Being in the right domain is necessary and not sufficient; so is being small.
+BROWSER_HOSTILE_OPS = frozenset({"LSTM", "GRU", "RNN"})
 
 
 def graph_ops(path: Path) -> list[str]:
