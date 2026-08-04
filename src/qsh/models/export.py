@@ -69,8 +69,8 @@ class ExportReport:
     int8_bytes: int
     opset: int
     fp32_max_abs_error: float          # vs the source model
-    int8_agreement: float              # fraction of fixtures where int8 and fp32 pick the same class
-    int8_max_abs_error: float          # vs fp32 ONNX, reported not gated
+    int8_agreement: float | None       # fraction of fixtures where int8 and fp32 agree; None if skipped
+    int8_max_abs_error: float | None   # vs fp32 ONNX, reported not gated; None if skipped
     n_fixtures: int
     passed: bool
     int8_skipped_reason: str = ""   # non-empty => no int8 graph exists; serve fp32 to the browser
@@ -296,7 +296,11 @@ def verify_and_quantize(source_model, fixtures: np.ndarray, out_dir: Path, *,
     else:
         # Not an error and not a silent skip: the browser tier serves the fp32 graph and the model
         # card says why. Pretending an int8 file exists would break the web loader at runtime.
-        agreement, int8_err, int8_bytes, int8_rel = 1.0, 0.0, 0, ""
+        # None, not 1.0. This used to record perfect agreement for a graph that was never built:
+        # int8_agreement is defined as 'fraction of fixtures where int8 and fp32 pick the same
+        # class', and with no int8 graph there are no such fixtures. metrics.json then carried
+        # int8_agreement 1.0 beside int8_bytes 0, which reads as a passed gate rather than a skip.
+        agreement, int8_err, int8_bytes, int8_rel = None, None, 0, ""
         print(f"  [export] int8 skipped — {skip_reason}")
 
     np.save(out_dir / "fixtures.npy", fixtures)
