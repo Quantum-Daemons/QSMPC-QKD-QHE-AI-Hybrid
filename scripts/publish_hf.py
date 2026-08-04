@@ -33,15 +33,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 from qsh.models import registry  # noqa: E402
 
 #: Local artefact directory per model key. Written by the scripts/train/* scripts.
-ARTIFACT_DIRS = {
-    "finance_aml.gbm": "models/finance_aml_gbm",
-    "finance_aml.gnn": "models/finance_aml_gnn",
-    "medical_fl.resnet18": "models/medical_breastmnist_resnet18",
-    "medical_fl.densenet": "models/medical_camelyon17_densenet121",
-    "genomics.prs": "models/genomics_prs",
-    "satellite_comms.telemanom": "models/satellite_telemanom",
-    "telecom_ids.qml": "models/telecom_qml_ids",
-}
+#: Single source of truth is the registry -- it needs the same mapping to read export reports.
+ARTIFACT_DIRS = registry.ARTIFACT_DIRS
 
 #: Never upload these even if they land in an artefact directory: fixtures are for the local export
 #: gate and the browser audit, and raw training data must not leave the machine.
