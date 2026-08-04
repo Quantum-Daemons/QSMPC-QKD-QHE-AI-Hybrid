@@ -1,6 +1,7 @@
 import { useRef } from "react";
 import { Link, useParams } from "react-router-dom";
 import AgenticAIPanel from "../components/AgenticAIPanel";
+import SdnControlPlanePanel from "../components/SdnControlPlanePanel";
 import BenchmarkPanel from "../components/BenchmarkPanel";
 import { ModelPanel } from "../components/ModelPanel";
 import { ProvenanceBadge, type Provenance } from "../components/ProvenanceBadge";
@@ -89,9 +90,20 @@ function UseCaseView({ usecase }: { usecase: string }) {
         clientComputeMs={benchmark?.client_compute_ms ?? null} />
 
       {/* Agentic AI · quantum-safe MCP — per-industry panel, fed by THIS run's live metrics (Round 10).
-          The report frames MCP as a per-use-case cross-cutting layer; the same panel is kept standalone. */}
+          The report frames MCP as a per-use-case cross-cutting layer; the same panel is kept standalone.
+          It is an application-plane SAE: see the control-plane panel directly below, which is the
+          element that actually manages key associations (ETSI GS QKD 015 puts application interfaces
+          out of scope of the control interface). */}
       <AgenticAIPanel inline usecase={usecase} defaultPrompt={meta.agenticPrompt}
         mcpToolName={meta.agenticTool} runContext={{ metrics, benchmark }} />
+
+      <SdnControlPlanePanel
+        usecase={usecase}
+        distanceKm={Number(run.params.qkd_distance_km ?? 0)}
+        // secure_key_bits is the key material this run actually produced, which is what the
+        // controller's allocation budget is denominated in. metrics.skr is per-pulse and is not.
+        keyBudgetBits={Number(metrics.secure_key_bits ?? 0)}
+        qkdEnabled={run.qkd !== "pqc-only"} />
 
       <div className="note" style={{ marginTop: 16, fontSize: 12 }}>
         State: <b>{state}</b>. The diagram above is a live two-party simulator — each protocol step lights up as the
