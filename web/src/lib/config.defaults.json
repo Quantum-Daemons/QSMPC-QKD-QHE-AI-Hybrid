@@ -180,6 +180,7 @@
             "serves": "both"
           }
         ],
+        "browser_runnable": false,
         "dataset": {
           "licence": "CDLA-Sharing-1.0",
           "name": "IBM AMLworld HI-Small",
@@ -200,6 +201,7 @@
           "name": "minority_class_f1"
         },
         "notes": "Message-passing needs the graph neighbourhood at inference, so the browser tier ships the stateless gradient-boosting variant instead of this one.",
+        "onnx_domains": [],
         "params": null,
         "runs_encrypted": false,
         "tier": "t2_industry"
@@ -250,6 +252,7 @@
             "serves": "both"
           }
         ],
+        "browser_runnable": false,
         "dataset": {
           "licence": "CDLA-Sharing-1.0",
           "name": "IBM AMLworld HI-Small",
@@ -270,6 +273,9 @@
           "name": "minority_class_f1"
         },
         "notes": "Stateless at inference, so this is the browser-tier finance model.",
+        "onnx_domains": [
+          "ai.onnx.ml"
+        ],
         "params": null,
         "runs_encrypted": false,
         "tier": "t2_industry"
@@ -291,6 +297,7 @@
         },
         "architecture": "logistic regression distilled from the gradient-boosting teacher",
         "artifacts": [],
+        "browser_runnable": false,
         "dataset": {
           "licence": "CDLA-Sharing-1.0",
           "name": "IBM AMLworld HI-Small",
@@ -311,6 +318,7 @@
           "name": "minority_class_f1"
         },
         "notes": "Runs under real CKKS. crypto_fidelity is measured against the teacher every run.",
+        "onnx_domains": [],
         "params": null,
         "runs_encrypted": true,
         "tier": "t1_crypto"
@@ -391,6 +399,7 @@
             "serves": "both"
           }
         ],
+        "browser_runnable": false,
         "dataset": {
           "licence": "per-score; EMBL-EBI Terms of Use by default",
           "name": "PGS Catalog scoring files",
@@ -411,6 +420,7 @@
           "name": "c_index_eur"
         },
         "notes": "Not a neural network, and presenting a genomic foundation model as a PRS method would be the most obvious credibility hole available. Evaluation must be stratified by genetic ancestry: the European-to-African AUROC drop is the finding, not a footnote.",
+        "onnx_domains": [],
         "params": null,
         "runs_encrypted": true,
         "tier": "t2_industry"
@@ -446,6 +456,7 @@
             "serves": "both"
           }
         ],
+        "browser_runnable": false,
         "dataset": {
           "licence": "CC0-1.0",
           "name": "Camelyon17-WILDS",
@@ -466,6 +477,7 @@
           "name": "ood_accuracy"
         },
         "notes": "FedAvg alone is not a privacy guarantee \u2014 gradient inversion is possible. The secure aggregation in qsh.ai.federated hides individual updates from the aggregator; it does not bound what the trained model itself leaks.",
+        "onnx_domains": [],
         "params": null,
         "runs_encrypted": false,
         "tier": "t2_industry"
@@ -517,6 +529,7 @@
             "serves": "both"
           }
         ],
+        "browser_runnable": true,
         "dataset": {
           "licence": "CC-BY-4.0",
           "name": "MedMNIST v2 BreastMNIST",
@@ -537,6 +550,9 @@
           "name": "auc"
         },
         "notes": "The small tier: fits the browser comfortably and has a clean published baseline.",
+        "onnx_domains": [
+          "ai.onnx"
+        ],
         "params": null,
         "runs_encrypted": false,
         "tier": "t2_industry"
@@ -558,6 +574,7 @@
         },
         "architecture": "1 conv block (1->4ch, 3x3), avg-pool, dense head, 14x14 input",
         "artifacts": [],
+        "browser_runnable": false,
         "dataset": {
           "licence": "CC-BY-4.0",
           "name": "MedMNIST v2 BreastMNIST",
@@ -578,6 +595,7 @@
           "name": "auc"
         },
         "notes": "Genuine encrypted convolution: im2col + CKKS dot_plain, ReLU/max-pool under MPC.",
+        "onnx_domains": [],
         "params": null,
         "runs_encrypted": true,
         "tier": "t1_crypto"
@@ -633,6 +651,7 @@
             "serves": "both"
           }
         ],
+        "browser_runnable": true,
         "dataset": {
           "licence": "CC-BY-3.0-IGO",
           "name": "ESA Anomaly Dataset (ESA-ADB), Mission1 lightweight channels 41-46",
@@ -653,6 +672,9 @@
           "name": "event_wise_f0_5"
         },
         "notes": "Report event-wise F0.5, never point-adjusted F1. Always run a trivial baseline alongside: windowed isolation forest wins the ESA-ADB Mission2 lightweight subset outright.",
+        "onnx_domains": [
+          "ai.onnx"
+        ],
         "params": null,
         "runs_encrypted": false,
         "tier": "t2_industry"
@@ -674,6 +696,7 @@
         },
         "architecture": "logistic regression over channel x timestep windows",
         "artifacts": [],
+        "browser_runnable": false,
         "dataset": {
           "licence": "CC-BY-3.0-IGO",
           "name": "ESA Anomaly Dataset (ESA-ADB), Mission1 lightweight channels 41-46",
@@ -694,6 +717,7 @@
           "name": "event_wise_f0_5"
         },
         "notes": "",
+        "onnx_domains": [],
         "params": null,
         "runs_encrypted": true,
         "tier": "t1_crypto"
@@ -729,6 +753,7 @@
             "serves": "both"
           }
         ],
+        "browser_runnable": false,
         "dataset": {
           "licence": "no licence stated by either provider",
           "name": "CIC-IDS2017, Engelen-corrected redistribution (WTMC 2021)",
@@ -749,6 +774,7 @@
           "name": "macro_f1"
         },
         "notes": "Trained on the Engelen-corrected corpus locally. Weights are not published because the redistribution terms of the corrected dataset are unverified.",
+        "onnx_domains": [],
         "params": null,
         "runs_encrypted": false,
         "tier": "t2_industry"
@@ -797,6 +823,7 @@
             "serves": "both"
           }
         ],
+        "browser_runnable": false,
         "dataset": {
           "licence": "generated by this repository",
           "name": "QKD attack telemetry (synthetic, methodology-grounded)",
@@ -817,6 +844,9 @@
           "name": "macro_f1"
         },
         "notes": "Shown as an architecture comparison against a random forest on identical data.",
+        "onnx_domains": [
+          "ai.onnx.ml"
+        ],
         "params": 25,
         "runs_encrypted": false,
         "tier": "t2_industry"

@@ -102,9 +102,24 @@ function resolveThreads(): number {
 }
 
 /** Resolve the browser-tier artefact for a use case from the registry. */
+//: A cold WASM session on a few MB is seconds, not minutes. Past this something is wrong.
+const SESSION_CREATE_TIMEOUT_MS = 45_000;
+
+function withTimeout<T>(p: Promise<T>, ms: number, message: string): Promise<T> {
+  return Promise.race([
+    p,
+    new Promise<T>((_, reject) => setTimeout(() => reject(new Error(message)), ms)),
+  ]);
+}
+
 export function browserModel(usecase: string): { spec: ModelSpec; url: string } | null {
   for (const spec of modelsFor(usecase)) {
     if (!spec.hf_repo_id || !spec.hf_revision) continue;   // unpublished or unpinned => not fetchable
+    // ORT Web implements ai.onnx; it does not implement ai.onnx.ml (TreeEnsembleClassifier,
+    // LinearClassifier, ...). A tree ensemble is therefore unrunnable here at any size, and finding
+    // that out by downloading 4.6 MB and hanging in session creation is how this was discovered.
+    // The registry records the graph's domains, so decline before spending the bandwidth.
+    if ((spec as { browser_runnable?: boolean }).browser_runnable === false) continue;
     const art = spec.artifacts.find((a) => a.fmt === "onnx" && a.serves === "browser")
       ?? spec.artifacts.find((a) => a.fmt === "onnx" && a.serves === "both");
     if (!art) continue;
@@ -148,7 +163,14 @@ export async function loadModel(usecase: string): Promise<boolean> {
       if (webnn) eps.push({ name: "webnn", deviceType: "gpu", powerPreference: "default" });
       eps.push("wasm");                                   // always the floor
 
-      session = await ort.InferenceSession.create(buf, { executionProviders: eps });
+      // Bounded. An unsupported operator can leave session creation pending rather than
+      // rejecting, and an unbounded await turns that into a permanently spinning button.
+      session = await withTimeout(
+        ort.InferenceSession.create(buf, { executionProviders: eps }),
+        SESSION_CREATE_TIMEOUT_MS,
+        `ONNX session creation exceeded ${SESSION_CREATE_TIMEOUT_MS / 1000}s — the graph is `
+        + `probably using operators this browser cannot execute`,
+      );
       status.backend = gpu ? "onnx-webgpu" : webnn ? "onnx-webnn" : "onnx-wasm";
       status.loaded = true;
       status.modelKey = target.spec.key;
@@ -269,7 +291,13 @@ export async function evaluatePublishedModel(
   }
 
   if (!(await loadModel(usecase)) || !session) {
-    return { ...base, provenance: file.provenance, error: status.error ?? "model unavailable" };
+    return {
+      ...base, provenance: file.provenance,
+      error: status.error
+        ?? "no browser-runnable published model for this use case — the graph uses operators "
+           + "ONNX Runtime Web does not implement (ai.onnx.ml tree ensembles), so it runs on the "
+           + "server tier only",
+    };
   }
 
   try {

@@ -621,6 +621,51 @@ def achieved(key: str) -> dict | None:
     return _achieved().get(key)
 
 
+#: Where each model's committed artefacts live, relative to the repo root. Defined here rather than
+#: in scripts/publish_hf.py because the registry needs it too -- it reads each export report to learn
+#: whether the graph is browser-runnable -- and two copies would drift on the first new model.
+ARTIFACT_DIRS: dict[str, str] = {
+    "finance_aml.gbm": "models/finance_aml_gbm",
+    "finance_aml.gnn": "models/finance_aml_gnn",
+    "medical_fl.resnet18": "models/medical_breastmnist_resnet18",
+    "medical_fl.densenet": "models/medical_camelyon17_densenet121",
+    "genomics.prs": "models/genomics_prs",
+    "satellite_comms.telemanom": "models/satellite_telemanom",
+    "telecom_ids.qml": "models/telecom_qml_ids",
+}
+
+#: Repo root, so ARTIFACT_DIRS resolves regardless of the caller's working directory.
+_REPO_ROOT = Path(__file__).resolve().parents[3]
+
+
+def _export_report(key: str) -> dict:
+    """The committed export report for a model key, or {} when it was never exported."""
+    import json
+
+    directory = ARTIFACT_DIRS.get(key)
+    if not directory:
+        return {}
+    path = _REPO_ROOT / directory / "export_report.json"
+    if not path.exists():
+        return {}
+    try:
+        return json.loads(path.read_text())
+    except Exception:                                  # noqa: BLE001 - a malformed report is not fatal
+        return {}
+
+
+def _onnx_domains(key: str) -> list[str]:
+    return list(_export_report(key).get("onnx_domains") or [])
+
+
+def _browser_runnable(key: str) -> bool:
+    """Default False when unknown: claiming a model runs in a browser and hanging is worse."""
+    report = _export_report(key)
+    if "browser_runnable" not in report:
+        return False
+    return bool(report["browser_runnable"])
+
+
 def frontend_models() -> dict:
     """The registry subset the SPA needs, so no model id, URL, baseline or metric is hard-coded in TS.
 
@@ -638,6 +683,13 @@ def frontend_models() -> dict:
             "runs_encrypted": s.runs_encrypted,
             "hf_repo_id": s.hf_repo_id,
             "hf_revision": s.hf_revision,
+            # Whether ONNX Runtime Web can execute this graph at all. A tree ensemble is
+            # ai.onnx.ml (TreeEnsembleClassifier), a domain ORT Web does not implement, so it is
+            # not browser-runnable at any size. Exported so the browser can decline BEFORE
+            # downloading megabytes and then hanging in session creation, which is how this was
+            # discovered.
+            "browser_runnable": _browser_runnable(s.key),
+            "onnx_domains": _onnx_domains(s.key),
             "artifacts": [
                 {"path": a.path, "fmt": a.fmt, "precision": a.precision, "serves": a.serves}
                 for a in s.artifacts
