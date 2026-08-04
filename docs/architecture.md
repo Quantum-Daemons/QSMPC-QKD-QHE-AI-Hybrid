@@ -34,7 +34,9 @@
 ```
 
 **Rounds 15-16 additions (WS1 entropy + QKD protocols).** The `qkd/` module also provides a **QRNG entropy
-backbone** (`qrng/`: state-vector `|+>` measurement, an SP 800-22 health suite + an **SP 800-90B**
+backbone** (`qrng/`: state-vector `|+>` measurement, the **SP 800-90B section 4.4** continuous health
+tests (Repetition Count + Adaptive Proportion) which gate the verdict, with SP 800-22 p-values reported
+but NOT gating -- section 4.1 states those tests "are not useful for monitoring the noise source" -- + an **SP 800-90B**
 most-common-value **min-entropy** estimate, and a **Leftover-Hash-Lemma-bounded Toeplitz / seedless two-source**
 extractor — Giestinhas & Spiller, arXiv:2603.26907) that seeds the BB84/E91 basis+bit choices, plus a selectable
 **E91/CHSH** entanglement protocol (`qkd/e91.py`, `protocol="e91"`) alongside the two-intensity decoy-state BB84

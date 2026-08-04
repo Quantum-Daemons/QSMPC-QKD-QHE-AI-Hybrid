@@ -113,7 +113,7 @@ export default function AgenticAIPanel({
           <label className="muted" htmlFor={`ai-combiner-${usecase ?? "std"}`}>Combiner</label>
           <select id={`ai-combiner-${usecase ?? "std"}`} value={combiner} disabled={!mcpQkd}
             onChange={(e) => setCombiner(e.target.value)}
-            title="PQC+QKD key combiner (crypto.hybrid_combiner_mode). HKDF = dual-PRF: the session key holds if either input does, under computational assumptions. Toeplitz+QLHL = an information-theoretic extractor whose extra property is leakage resilience — if the combined output AND one input key leak, the other retains quantifiable min-entropy — at the cost of longer keys (arXiv:2603.26907). Applies when 'mix QKD key' is on; the derived-key fingerprint below changes with the choice.">
+            title="PQC+QKD key combiner (crypto.hybrid_combiner_mode). HKDF = dual-PRF: the session key holds if either input does, under computational assumptions. Toeplitz+QLHL = a modified-Toeplitz strong extractor. Its leakage-resilience property — if the combined output AND one input key leak, the other retains quantifiable min-entropy — holds only under the paper's stated precondition that the input and seed are conditionally independent given any unbounded adversary (Giestinhas & Spiller, arXiv:2603.26907, Lemma 2). That precondition is assumed here, not established, so the guarantee is conditional — at the cost of longer keys (arXiv:2603.26907). Applies when 'mix QKD key' is on; the derived-key fingerprint below changes with the choice.">
             <option value="hkdf">HKDF (dual-PRF)</option>
             <option value="its_toeplitz">Toeplitz+QLHL (ITS · leakage-resilient)</option>
           </select>

@@ -331,14 +331,20 @@ M_BREASTMNIST = MetricSpec(
     companion="accuracy",
 )
 M_PRS = MetricSpec(
-    name="auroc_eur",
-    display="AUROC (European ancestry)",
+    name="c_index_eur",
+    display="C-index (European ancestry)",
     baseline=0.628,
-    baseline_source="PGS000001 (Mavaddat 2015), PGS Catalog performance metric at n=200,195",
+    baseline_source=(
+        "PGS Catalog PPM017270 for PGS000001: Harrell's C-index 0.628 (95% CI 0.618-0.638) from a Cox "
+        "model over censored UK Biobank follow-up, n=200,195. An earlier revision called it an AUROC; "
+        "the Catalog record names it 'Concordance Statistic / C-index'. A C-index is computed over "
+        "time-to-event pairs and an AUROC over a fixed case/control split, so this is not directly "
+        "comparable to an AUROC figure."
+    ),
     ceiling=0.69,
-    ceiling_source="Upper end of the honest published range for germline SNP breast-cancer PRS",
-    companion="auroc_afr",
-    # Any germline-SNP PRS claiming much above ~0.70 AUROC is measuring something else.
+    ceiling_source="Upper end of the published range for germline-SNP breast-cancer PRS discrimination",
+    companion="",
+    # Any germline-SNP PRS claiming much above ~0.70 discrimination is measuring something else.
 )
 M_ESA = MetricSpec(
     name="event_wise_f0_5",
@@ -363,7 +369,9 @@ M_IDS = MetricSpec(
     baseline_source=(
         "No trustworthy single number: Engelen et al. (WTMC 2021 @ IEEE S&P Workshops) show aggregate "
         "accuracy sits at 0.99 both before and after correcting CIC-IDS2017 while Bot F1 moves "
-        "0.60 -> 0.99 and Web XSS 0.11 -> 0.79. Per-class F1 is reported instead."
+        "0.60 -> 0.99 and Web Attack XSS F1 moves 0.18 -> 0.79 (Table II; the 0.11 quoted by an "
+        "earlier revision of this note was XSS's ORIGINAL RECALL, not an F1). Per-class F1 is "
+        "reported instead."
     ),
     companion="aggregate_accuracy",
 )
@@ -372,8 +380,13 @@ M_QML_IDS = MetricSpec(
     display="macro F1 (synthetic QKD-attack telemetry)",
     baseline=None,
     baseline_source=(
-        "Architecture showcase, not a performance claim. Every published QML-IDS number we could "
-        "verify sits below a random forest on the same data, and arXiv:2512.05069 was withdrawn by "
+        "Architecture showcase, not a performance claim. On THIS project's synthetic telemetry neither "
+        "quantum model beats the classical random forest (RF macro F1 0.987 vs variational QNN 0.467). "
+        "Published results are MIXED, not uniformly below a random forest -- an earlier revision of this "
+        "note claimed they were, and the very paper cited here contradicts it: Al-Kuwari et al. "
+        "(arXiv:2509.14282) Table VIII reports a hybrid QLSTM at 94.7% accuracy / 94.7% F1 against their "
+        "own random-forest baseline on the same generated data. What remains well-founded is caution "
+        "about evaluation quality rather than a universal ranking: arXiv:2512.05069 was withdrawn by "
         "its own authors for evaluation that was 'insufficient to fully support the conclusions'."
     ),
     companion="classical_rf_macro_f1",
@@ -386,6 +399,16 @@ M_QML_IDS = MetricSpec(
 _ONNX_PAIR = (
     ArtifactSpec("onnx/model.onnx", "onnx", "fp32", "server"),
     ArtifactSpec("onnx/model_int8.onnx", "onnx", "int8", "browser"),
+    ArtifactSpec("model.safetensors", "safetensors", "fp32", "server"),
+    ArtifactSpec("feature_spec.json", "json", "none", "both"),
+)
+
+#: For models where dynamic int8 quantisation has nothing to quantise. A tree ensemble keeps its
+#: parameters in node attributes rather than weight tensors, so no int8 graph is produced and none is
+#: uploaded -- declaring one anyway pointed the browser tier at a file that does not exist at the
+#: pinned revision, which would 404 rather than degrade.
+_ONNX_FP32_ONLY = (
+    ArtifactSpec("onnx/model.onnx", "onnx", "fp32", "both"),
     ArtifactSpec("model.safetensors", "safetensors", "fp32", "server"),
     ArtifactSpec("feature_spec.json", "json", "none", "both"),
 )
@@ -417,7 +440,7 @@ _SPECS: tuple[ModelSpec, ...] = (
         params=None,
         dataset=DS_AMLWORLD,
         metric=M_AML,
-        artifacts=_ONNX_PAIR,
+        artifacts=_ONNX_FP32_ONLY,   # tree ensemble: no int8 graph exists to serve
         hf_repo="qsh-finance-aml-gbm",
         notes="Stateless at inference, so this is the browser-tier finance model.",
     ),
