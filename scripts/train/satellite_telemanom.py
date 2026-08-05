@@ -223,6 +223,11 @@ def main() -> int:
     split = _split_with_events(truth, target=0.6)
     student = distil.distil_linear(pred[:split], flat_te[:split], seed=args.seed)
     student_pred = student.predict(flat_te[split:])
+    student_export = distil.save_student(
+        student, Path("models/satellite_telemanom_student"), n_features=int(flat_te.shape[1]),
+        teacher_key="satellite_comms.telemanom", student_key="satellite_comms.student")
+    print(f"  student persisted: {student_export['n_parameters']} params, "
+          f"browser_runnable={student_export['browser_runnable']}")
     fidelity = distil.measure_fidelity(
         teacher_key="satellite_comms.telemanom", student_key="satellite_comms.student",
         teacher_pred=pred[split:], student_pred=student_pred, y_true=truth[split:],

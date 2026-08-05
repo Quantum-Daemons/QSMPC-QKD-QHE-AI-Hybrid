@@ -250,12 +250,19 @@ def build_satellite(rng: np.random.Generator) -> dict:
     and predicts what it predicted offline".
     """
     from qsh.models import datasets as D
+    from qsh.models import registry
 
     seq, chans = 250, list(D.ESA_MISSION1_LIGHTWEIGHT)
     # Mirror the training pipeline step for step; a different resample or normalisation would make
     # the browser's numbers incomparable with the recorded ones for reasons nobody could see.
+    # Read the cadence the model was TRAINED at rather than hardcoding one. Hardcoding 60s here
+    # while the published model was trained at 300s is precisely how Round 18 came to report the
+    # forecaster as 19-22x worse than persistence: it was being fed data at the wrong sampling
+    # rate. At the correct cadence the same model is about 2.9x BETTER than persistence. The
+    # preprocessing has to come from the artefact, not from a constant in a second file.
+    resample = str(registry.achieved("satellite_comms.telemanom").get("resample") or "300s")
     raw = D.load_esa_channels()
-    df = raw.resample("60s").mean().ffill().bfill()
+    df = raw.resample(resample).mean().ffill().bfill()
     values = df.to_numpy(dtype=np.float32)
     mu, sigma = values.mean(0), values.std(0) + 1e-8
     values = (values - mu) / sigma                       # train script lines 164-166
@@ -284,8 +291,8 @@ def build_satellite(rng: np.random.Generator) -> dict:
             "SMAP/MSL sample this page uses for the FHE/MPC pipeline."
         ),
         "input": {"shape": [1, seq, len(chans)], "dtype": "float32", "preprocessing": [],
-                  "layout": f"samples[i] is {seq} timesteps x {len(chans)} channels, row-major, "
-                            "already resampled and z-scored"},
+                  "layout": f"samples[i] is {seq} timesteps x {len(chans)} channels at {resample} "
+                            "cadence, row-major, already resampled and z-scored"},
         "channels": chans,
         "samples": x.reshape(len(x), -1).round(4).tolist(),
         "targets": y_next.round(4).tolist(),

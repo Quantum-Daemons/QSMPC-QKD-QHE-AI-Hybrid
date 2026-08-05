@@ -323,6 +323,14 @@ def main() -> int:
     student = distil.distil_linear(teacher.predict(Xtr), scaler.transform(Xtr), seed=args.seed)
     student_pred = student.predict(scaler.transform(Xte))
 
+    # Persist it. Until Round 19 the student was fit, measured and discarded -- so the one model
+    # that actually runs under CKKS was the one model nobody could obtain or check.
+    student_export = distil.save_student(
+        student, Path("models/finance_aml_student"), n_features=len(FEATURES),
+        teacher_key="finance_aml.gbm", student_key="finance_aml.student")
+    print(f"  student persisted: {student_export['n_parameters']} params, "
+          f"browser_runnable={student_export['browser_runnable']}")
+
     fidelity = distil.measure_fidelity(
         teacher_key="finance_aml.gbm", student_key="finance_aml.student",
         teacher_pred=pred, student_pred=student_pred, y_true=yte,

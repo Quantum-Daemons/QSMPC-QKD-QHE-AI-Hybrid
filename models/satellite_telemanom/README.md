@@ -24,13 +24,13 @@ a quantum-safe orchestration demo. This is the **plaintext** model for the
 | metric | value |
 |---|---|
 | `anomaly_sample_rate` | 0.0075528 |
-| `event_wise_f0_5` | 0.714286 |
+| `event_wise_f0_5` | 0.454545 |
 | `n_anomaly_intervals` | 320 |
 | `n_parameters` | 80486 |
-| `point_adjusted_f1` | 0.994475 |
+| `point_adjusted_f1` | 0.993691 |
 | `published_full_channel_f0_5` | 0.061 |
 | `published_lightweight_f0_5` | 0.786 |
-| `wall_clock_s` | 60.1 |
+| `wall_clock_s` | 43.4 |
 | `windowed_iforest_event_wise_f0_5` | 0.000248 |
 
 ## Published baselines this is measured against

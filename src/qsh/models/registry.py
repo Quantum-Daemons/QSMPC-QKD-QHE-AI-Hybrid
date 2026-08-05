@@ -406,6 +406,22 @@ _ONNX_PAIR = (
     ArtifactSpec("feature_spec.json", "json", "none", "both"),
 )
 
+#: The distilled students. A linear model of tens of parameters gains nothing from int8 and the
+#: plain weights are worth shipping: at this size they are readable by eye, which is part of the
+#: point of an encrypted tier you are asked to trust.
+_STUDENT_ARTIFACTS = (
+    ArtifactSpec("onnx/model.onnx", "onnx", "fp32", "both"),
+    ArtifactSpec("weights.json", "json", "fp32", "both"),
+)
+
+#: medical_fl.student is a small convolutional net rather than a linear model, so it carries a
+#: safetensors checkpoint instead of readable weights.
+_STUDENT_ARTIFACTS_TORCH = (
+    ArtifactSpec("onnx/model.onnx", "onnx", "fp32", "both"),
+    ArtifactSpec("model.safetensors", "safetensors", "fp32", "server"),
+)
+
+
 #: For models where dynamic int8 quantisation has nothing to quantise. A tree ensemble keeps its
 #: parameters in node attributes rather than weight tensors, so no int8 graph is produced and none is
 #: uploaded -- declaring one anyway pointed the browser tier at a file that does not exist at the
@@ -457,6 +473,8 @@ _SPECS: tuple[ModelSpec, ...] = (
         dataset=DS_AMLWORLD,
         metric=M_AML,
         runs_encrypted=True,
+        artifacts=_STUDENT_ARTIFACTS,
+        hf_repo="qsh-finance-aml-ckks-student",
         notes="Runs under real CKKS. crypto_fidelity is measured against the teacher every run.",
     ),
     # ---------------- medical / federated ----------------
@@ -500,6 +518,8 @@ _SPECS: tuple[ModelSpec, ...] = (
         dataset=DS_BREASTMNIST,
         metric=M_BREASTMNIST,
         runs_encrypted=True,
+        artifacts=_STUDENT_ARTIFACTS_TORCH,
+        hf_repo="qsh-medical-breastmnist-ckks-student",
         notes="Genuine encrypted convolution: im2col + CKKS dot_plain, ReLU/max-pool under MPC.",
     ),
     # ---------------- genomics ----------------
@@ -555,6 +575,8 @@ _SPECS: tuple[ModelSpec, ...] = (
         params=None,
         dataset=DS_ESA_ADB,
         metric=M_ESA,
+        artifacts=_STUDENT_ARTIFACTS,
+        hf_repo="qsh-satellite-telemanom-ckks-student",
         runs_encrypted=True,
     ),
     # ---------------- telecom / defence ----------------
@@ -643,6 +665,9 @@ ARTIFACT_DIRS: dict[str, str] = {
     "genomics.prs": "models/genomics_prs",
     "satellite_comms.telemanom": "models/satellite_telemanom",
     "telecom_ids.qml": "models/telecom_qml_ids",
+    "finance_aml.student": "models/finance_aml_student",
+    "medical_fl.student": "models/medical_breastmnist_student",   # already on disk from training
+    "satellite_comms.student": "models/satellite_telemanom_student",
 }
 
 #: Repo root, so ARTIFACT_DIRS resolves regardless of the caller's working directory.
