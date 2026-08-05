@@ -1,7 +1,7 @@
 // Crypto-agility selectors + advanced params + Run/Pause/Resume/Step/Stop/Restart controls.
 // Shared by the generic Orchestration page and every per-use-case page (driven by usePipelineRun).
 import { useState } from "react";
-import { MODEL_SIZES, type usePipelineRun } from "../lib/usePipelineRun";
+import { type usePipelineRun } from "../lib/usePipelineRun";
 import { isClientDemo } from "../lib/demoMode";
 import ParameterPanel from "./ParameterPanel";
 
@@ -13,7 +13,7 @@ export default function PipelineControls({ run }: { run: Run }) {
   // local secret-sharing), so the server-side backend selectors (TenSEAL/OpenFHE/MPyC/…) don't apply.
   const demo = isClientDemo();
   const { usecase, opts, kem, setKem, qkd, setQkd, fhe, setFhe, mpc, setMpc, sig, setSig,
-    modelSize, setModelSize, workload, setWorkload, qfl, setQfl, optiqkd, setOptiqkd,
+    workload, setWorkload, optiqkd, setOptiqkd,
     state, running, paused, start, startStepwise, pause, resume, step, stop } = run;
 
   // Round 18: three controls were rendered on pages where they could not change anything a visitor
@@ -29,9 +29,16 @@ export default function PipelineControls({ run }: { run: Run }) {
   //    complete no-op at Model size = Lightweight, where hidden is [] and [].map(x2) is still [].
   //  * Federated (QFL) injects a stage that runs and logs, but no diagram outside medical_fl has a
   //    federated_training node to render it.
-  const showModelSize = usecase !== "telecom_ids" && usecase !== "satellite_comms";
+  // Model size is gone. It selected between invented architectures -- a "tabular fraud MLP" at
+  // 18/850/9,538 parameters and so on -- while the models that actually exist are an XGBoost
+  // teacher and a 33-parameter distilled student. The medical tier advertised 35,458 parameters
+  // for a model whose real counterpart is 11,171,266, and genomics got an MLP for a method that is
+  // a 77-weight linear score with no network in it at all. The benchmark now costs the real
+  // student, which is trained, published and pinned.
+  //
+  // Federated learning is always on rather than opt-in: it does real client-side FedAvg over the
+  // page's real bundled sample, so there is no reason to make a visitor find a checkbox for it.
   const showWorkload = usecase === "medical_fl";
-  const showQfl = usecase === "medical_fl";
   // OptiQKD is kept everywhere -- it does real work -- but it cannot run without a quantum channel:
   // qkd_key_agreement returns before the optimise block when the PQC-only profile is selected.
   const optiqkdDisabled = qkd === "pqc-only";
@@ -70,13 +77,6 @@ export default function PipelineControls({ run }: { run: Run }) {
       <div className="btn-row" style={{ marginTop: 8 }}>
         {/* model size + workload are run config: they parameterise the single Run that drives both
             the live pipeline AND the benchmark assembled from it (unified, Round 7). */}
-        {showModelSize && (<>
-          <label className="muted" htmlFor="sel-size">Model size</label>
-          <select id="sel-size" name="sel-size" aria-label="Model size" value={modelSize}
-            onChange={(e) => setModelSize(e.target.value)}>
-            {MODEL_SIZES.map((m) => <option key={m.id} value={m.id}>{m.label}</option>)}
-          </select>
-        </>)}
         {showWorkload && (<>
           <label className="muted" htmlFor="sel-workload">Workload</label>
           <select id="sel-workload" name="sel-workload" aria-label="Workload" value={workload}
@@ -86,14 +86,6 @@ export default function PipelineControls({ run }: { run: Run }) {
         </>)}
         {/* Quantum Federated Learning toggle — runs a real client-side FedAvg of a quantum-classical
             model (full deployment = Flower + PennyLane HybridQNN under quantum-safe secure aggregation). */}
-        {showQfl && (
-          <label className="muted" htmlFor="sel-qfl"
-            title="Run Quantum Federated Learning this run — a hybrid quantum-classical FedAvg across simulated clients (demo: in-browser; full: Flower + PennyLane).">
-            <input id="sel-qfl" name="sel-qfl" type="checkbox" checked={qfl}
-              onChange={(e) => setQfl(e.target.checked)} style={{ marginRight: 4 }} />
-            Federated (QFL)
-          </label>
-        )}
         {/* AI-QKD parameter optimization (OptiQKD, WS1) — measured gradient-free SKR maximization. */}
         <label className={`muted${optiqkdDisabled ? " is-disabled" : ""}`} htmlFor="sel-optiqkd"
           title={optiqkdDisabled
