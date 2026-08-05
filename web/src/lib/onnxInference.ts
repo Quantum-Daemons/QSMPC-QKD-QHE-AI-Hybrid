@@ -248,12 +248,16 @@ export async function loadModel(usecase: string): Promise<boolean> {
       const webnn = await hasWebNN();   // reported in status only; see the EP note below
       const eps: any[] = [];
       if (gpu) eps.push("webgpu");
-      // WebNN is offered only when hasWebNN() has actually built and executed a graph above. It
-      // was dropped entirely for a while, on evidence from a browser without
-      // --enable-features=WebMachineLearningNeuralNetwork, where a context creates but nothing runs
-      // and ORT hangs on it. With the flag, a matmul dispatches and reads back correctly, so the
-      // provider is real and worth having -- gated on the one check that distinguishes the two.
-      if (webnn) eps.push({ name: "webnn", deviceType: "gpu", powerPreference: "default" });
+      // WebNN is probed but NOT offered to ORT, and this time the reason is measured rather than
+      // assumed. With --enable-features=WebMachineLearningNeuralNetwork the WebNN API genuinely
+      // works: hasWebNN() below builds a 2x2 matmul, dispatches it and reads back the right answer.
+      // ORT's WebNN *execution provider* is a different question, and the answer is no: with the
+      // provider in the list the medical ResNet takes 162.7 s and hits the session-creation timeout,
+      // against 5.1 s on wasm in the same browser. A working WebNN backend is not sufficient for
+      // ORT's WebNN EP to run this graph, and it hangs rather than declining.
+      //
+      // So the capability is reported honestly and the provider is left out until ORT can complete
+      // a session with it. Re-test by adding it here; the numbers above are the bar to beat.
       eps.push("wasm");                                   // always the floor
 
       // Bounded. An unsupported operator can leave session creation pending rather than
@@ -268,8 +272,9 @@ export async function loadModel(usecase: string): Promise<boolean> {
       // while the WebNN provider was not even in the list -- a label describing something the code
       // does not do, which is the exact defect this project keeps finding. `webnn` is still probed
       // and recorded separately as an environment fact.
-      status.backend = gpu ? "onnx-webgpu" : webnn ? "onnx-webnn" : "onnx-wasm";
-      status.webnnAvailable = webnn;   // proven by execution, not by feature detection
+      // The provider that RAN. webnn is reported separately because it is available and unused.
+      status.backend = gpu ? "onnx-webgpu" : "onnx-wasm";
+      status.webnnAvailable = webnn;   // proven by execution, but deliberately not used
       status.loaded = true;
       status.modelKey = target.spec.key;
       status.url = target.url;
