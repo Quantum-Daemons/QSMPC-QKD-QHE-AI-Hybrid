@@ -10,6 +10,7 @@ import PipelineControls from "../components/PipelineControls";
 import RunMonitor from "../components/RunMonitor";
 import ShapPanel from "../components/ShapPanel";
 import TwoPartyDiagram, { USECASE_SPECS } from "../components/TwoPartyDiagram";
+import { FIBER, FREE_SPACE } from "../lib/quantumSim";
 import { DEMO_BANNER, isClientDemo } from "../lib/demoMode";
 import { USECASE_META } from "../lib/useCases";
 import { usePipelineRun } from "../lib/usePipelineRun";
@@ -117,7 +118,16 @@ function UseCaseView({ usecase }: { usecase: string }) {
 
       <SdnControlPlanePanel
         usecase={usecase}
-        distanceKm={Number(run.params.qkd_distance_km ?? 0)}
+        // The satellite pipeline runs its QKD stage over FREE_SPACE, not the fibre channel the
+        // qkd_distance_km parameter drives, so feeding that parameter here drew a 50 km terrestrial
+        // fibre span underneath an 800 km free-space downlink. Take the distance from whichever
+        // channel this use case actually models.
+        distanceKm={usecase === "satellite_comms"
+          ? FREE_SPACE.distanceKm
+          : Number(run.params.qkd_distance_km ?? FIBER.distanceKm)}
+        // A downlink is one line of sight: there is no mid-span trusted relay to insert, however
+        // long it is. Terrestrial fibre is the opposite, which is why the relay caveat exists.
+        maxSpanKm={usecase === "satellite_comms" ? Infinity : undefined}
         // secure_key_bits is the key material this run actually produced, which is what the
         // controller's allocation budget is denominated in. metrics.skr is per-pulse and is not.
         keyBudgetBits={Number(metrics.secure_key_bits ?? 0)}
@@ -126,8 +136,8 @@ function UseCaseView({ usecase }: { usecase: string }) {
       <div className="note" style={{ marginTop: 16, fontSize: 12 }}>
         State: <b>{state}</b>. The diagram above is a live two-party simulator — each protocol step lights up as the
         pipeline runs, and the benchmark below fills in from that same run (one Run, one result). Demo mode computes
-        entirely in the browser (no server compute); the full deployment adds federated learning. PoC runs LAN/local;
-        the diagram illustrates the WAN two-party deployment.
+        entirely in the browser (no server compute); the full deployment adds the server-side backends and the real
+        MCP server. PoC runs LAN/local; the diagram illustrates the WAN two-party deployment.
         <div className="muted" style={{ marginTop: 6, fontSize: 11 }}>
           Hybrid split grounded in <i>EncFormer</i> (linear→FHE, non-linear→MPC) · system-level cost per
           <i> "Beyond Latency: MPC &amp; FHE for PPML"</i> (arXiv 2604.00169, 2026) · two-party QOT per
