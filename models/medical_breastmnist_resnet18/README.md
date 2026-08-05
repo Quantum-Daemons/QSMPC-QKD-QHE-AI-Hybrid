@@ -29,14 +29,14 @@ a quantum-safe orchestration demo. This is the **plaintext** model for the
 | `macro_f1` | 0.8249158249158248 |
 | `n_parameters` | 11171266 |
 | `resolution` | 28 |
-| `wall_clock_s` | 9.4 |
+| `wall_clock_s` | 9.1 |
 
 ## Published baselines this is measured against
 
 - **Target metric**: AUC
-- **Baseline to beat**: 0.901 — ResNet-18 @28px, MedMNIST v2, Yang et al., Scientific Data 10:41 (2023) (AUC 0.901 / ACC 0.863)
-- **Published ceiling**: 0.919 — Google AutoML Vision, MedMNIST v2 (AUC 0.919)
-- **Companion metric shown alongside**: `accuracy` — reported together because the aggregate figure can look healthy while the class that matters is not.
+- **Baseline to beat**: 0.901 - ResNet-18 @28px, MedMNIST v2, Yang et al., Scientific Data 10:41 (2023) (AUC 0.901 / ACC 0.863)
+- **Published ceiling**: 0.919 - Google AutoML Vision, MedMNIST v2 (AUC 0.919)
+- **Companion metric shown alongside**: `accuracy` - reported together because the aggregate figure can look healthy while the class that matters is not.
 
 ## Training data
 

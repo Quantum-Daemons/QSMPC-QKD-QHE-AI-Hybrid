@@ -69,7 +69,10 @@ export function usePipelineRun(usecase: string, recordRef: RefObject<HTMLElement
   const [sig, setSig] = useState("");
   const [modelSize, setModelSize] = useState("medium");
   const [workload, setWorkload] = useState("linear");
-  const [qfl, setQfl] = useState(false);                 // "Federated (QFL)" toggle (quantum federated learning)
+  // Always on. It runs a real client-side FedAvg over the page's real bundled sample, so it is
+  // part of what the demo does rather than something to opt into. The state is kept so the flag can
+  // still be turned off programmatically for a test or a comparison.
+  const [qfl, setQfl] = useState(true);
   const [optiqkd, setOptiqkd] = useState(false);         // "Optimize QKD (OptiQKD)" toggle (WS1 AI-QKD)
   const [params, setParams] = useState({ ...DEFAULT_PARAMS });
   const resetParams = () => setParams({ ...makeDefaultParams() });
