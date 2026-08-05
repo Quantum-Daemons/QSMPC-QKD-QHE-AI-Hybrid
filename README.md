@@ -399,6 +399,21 @@ See [`docs/pqc-roadmap.md`](docs/pqc-roadmap.md).
 
 ## Concerns & recommendations
 
+- **Retracted: the satellite forecaster is not worse than persistence.** Round 18 reported it as
+  roughly 19-22x worse on next-step MAE. That was our measurement error: the probe resampled the
+  telemetry at 60s while the published model is trained at 300s, and feeding a 300s model 60s data
+  is the whole of the explanation. Re-measured at the trained cadence the model is about **2.9x
+  better** than persistence - MAE 0.0314 against 0.0897 on the evaluation split, and 0.40x / 0.35x
+  / 0.38x on train / test / whole series. The evaluation-sample generator hardcoded the same 60s;
+  it now reads the cadence from the model record, because preprocessing has to come from the
+  artefact rather than a constant in a second file.
+- **Still open: the event-wise headline does not reproduce.** Retraining at the same configuration
+  gives event-wise F0.5 of 0.4545 where the recorded figure is 0.7143, while point-adjusted F1
+  reproduces (0.9937 against 0.9945) and the isolation-forest baseline reproduces exactly
+  (0.000248). So the instability is specific to the overlap-based metric, which is the failure mode
+  arXiv:2607.11969 (2026-07) describes. Read the event-wise number as one draw from a wide
+  distribution, not as a point estimate.
+
 - **The browser model tier now works, after a 401 and two wrong diagnoses.** Recorded in full
   because two of the three were mine, and because the shape of the mistake is instructive.
 
@@ -433,7 +448,7 @@ See [`docs/pqc-roadmap.md`](docs/pqc-roadmap.md).
   |---|---|---|---|---|
   | medical | **85.9%** | 85.9% | the entire official BreastMNIST test split, 156 rows | `onnx-webgpu` |
   | finance | **99.3%** | 99.3% | 8192 AMLworld rows at near-real 1-in-981 prevalence | `onnx-wasm` |
-  | satellite | **MAE 0.7753** | 0.7763 | 128 ESA-ADB windows | `onnx-webgpu` |
+  | satellite | **MAE 0.0736** | 0.0736 | 128 ESA-ADB windows at the trained 300s cadence | `onnx-webgpu` |
 
   WebNN is probed by **building and executing a 2×2 matmul** — three cheaper checks all lied — and
   then deliberately left unused: with the flag the API works, but ORT's WebNN provider still cannot
