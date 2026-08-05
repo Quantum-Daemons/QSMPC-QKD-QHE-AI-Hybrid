@@ -419,19 +419,25 @@ See [`docs/pqc-roadmap.md`](docs/pqc-roadmap.md).
   `onnxruntime-web/wasm` otherwise: the probe decides which **build** to load, not merely which
   provider to request.
 
-  Verified on the live deploy, all three pages, each downloading its published model from the HF CDN
-  and reproducing an independently-measured figure:
+  There was a grain of truth in the retracted diagnosis, found by re-testing with WebGPU actually
+  enabled: the **webgpu build does not register the `ai.onnx.ml` operators**, so a
+  `TreeEnsembleClassifier` fails there — cleanly, with `No Op registered` — while running fine on
+  wasm. `ai.onnx.ml` really was unavailable, in one build, which happened to be the one being loaded
+  unconditionally. A model in that domain now takes wasm even where an adapter exists.
 
-  | page | measured in-browser | expected offline | sample |
-  |---|---|---|---|
-  | medical | **85.9%** | 85.9% | the **entire** official BreastMNIST test split, 156 rows |
-  | finance | **90.8%** | 91.0% | 512 stratified AMLworld rows |
-  | satellite | **MAE 0.7943** | 0.7955 | 16 ESA-ADB windows |
+  Verified on the live deploy, all three pages, in a Chrome launched with
+  `--enable-unsafe-webgpu --enable-features=Vulkan,WebMachineLearningNeuralNetwork` (on Linux these
+  cannot be set permanently through `chrome://flags`; the browser must be launched with them):
 
-  The finance model is the `TreeEnsembleClassifier` I had declared unsupported, which is as clear a
-  refutation of the first diagnosis as one could ask for. The satellite row is the most useful of
-  the three: it confirms the published graph ran correctly **and** reports that its forecast error is
-  ~19× the persistence baseline, so the page verifies the model and criticises it in the same breath.
+  | page | in-browser | expected | sample | provider |
+  |---|---|---|---|---|
+  | medical | **85.9%** | 85.9% | the entire official BreastMNIST test split, 156 rows | `onnx-webgpu` |
+  | finance | **99.3%** | 99.3% | 8192 AMLworld rows at near-real 1-in-981 prevalence | `onnx-wasm` |
+  | satellite | **MAE 0.7753** | 0.7763 | 128 ESA-ADB windows | `onnx-webgpu` |
+
+  WebNN is probed by **building and executing a 2×2 matmul** — three cheaper checks all lied — and
+  then deliberately left unused: with the flag the API works, but ORT's WebNN provider still cannot
+  complete a session for the medical ResNet (162.7 s and a timeout, against 5.1 s on wasm).
 
   Two lessons, both ones this project already had: a capability check that tests for an API surface
   rather than a working capability is the same defect class as a label naming a protocol the code
