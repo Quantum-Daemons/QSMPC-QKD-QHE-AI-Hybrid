@@ -15,7 +15,7 @@
       "opset": 0
     },
     "git_sha": "e572d98-dirty",
-    "hf_revision": "cd81e948e8e02ce835a26c48c6c0ca0d3628e2c2",
+    "hf_revision": "50c16e5fcde1da59455eea133e2096c2f72d772d",
     "minority_class_f1": 0.08077786088257292,
     "n_test": 1523504,
     "n_train": 3554841,
@@ -26,6 +26,7 @@
   "finance_aml.student": {
     "agreement": 0.884055,
     "disagreement_on_positives": 0.643257,
+    "hf_revision": "40753b075b0bcefcc9da4f15438bcc00d7fde547",
     "metric_delta": 0.062987,
     "metric_delta_pp": 6.2987,
     "metric_name": "minority_class_f1",
@@ -112,18 +113,19 @@
       "int8_bytes": 11257533,
       "opset": 18
     },
-    "git_sha": "2ee3dc4-dirty",
-    "hf_revision": "13ae24e3e18030ab80cc3a9e69ffd18d98e883e2",
+    "git_sha": "8317cb2-dirty",
+    "hf_revision": "c660dc564078353f54aeb976c25bdd8f3396f1cd",
     "macro_f1": 0.8249158249158248,
     "n_parameters": 11171266,
     "resolution": 28,
     "transfer_learning": "none \u2014 trained from random initialisation, so the weights are not ImageNet-derived and carry no ImageNet terms (see DATA_LICENSES.md)",
-    "wall_clock_s": 9.4
+    "wall_clock_s": 9.1
   },
   "medical_fl.student": {
     "agreement": 0.75,
     "both_scored_zero": false,
     "disagreement_on_positives": 0.078947,
+    "hf_revision": "877b82e3fa348c8e04fa266d426159e0b3728c22",
     "metric_delta": 0.134616,
     "metric_delta_pp": 13.4616,
     "metric_name": "accuracy",
@@ -136,14 +138,16 @@
     "teacher_params": 11171266
   },
   "satellite_comms.student": {
-    "agreement": 0.999987,
-    "disagreement_on_positives": 0.0,
-    "metric_delta": 0.0,
-    "metric_delta_pp": 0.0,
+    "agreement": 0.998677,
+    "both_scored_zero": false,
+    "disagreement_on_positives": 0.142857,
+    "hf_revision": "18814a2496661459cd25912c3e251473e5fab821",
+    "metric_delta": -0.003234,
+    "metric_delta_pp": -0.3234,
     "metric_name": "event_wise_f0_5",
     "n_eval": 307601,
     "student_key": "satellite_comms.student",
-    "student_metric": 0.0,
+    "student_metric": 0.003234,
     "student_params": 49,
     "teacher_key": "satellite_comms.telemanom",
     "teacher_metric": 0.0,
@@ -152,22 +156,22 @@
   "satellite_comms.telemanom": {
     "anomaly_sample_rate": 0.0075528,
     "dataset": "ESA Anomaly Dataset (ESA-ADB), Mission1 lightweight channels 41-46",
-    "event_wise_f0_5": 0.714286,
+    "event_wise_f0_5": 0.454545,
     "export": {
       "fp32_bytes": 329179,
       "int8_bytes": 326884,
       "opset": 17
     },
-    "git_sha": "e572d98-dirty",
-    "hf_revision": "2eda5aec6f4de9ebbec0d4b78f66ac5f5755a6ce",
+    "git_sha": "8317cb2-dirty",
+    "hf_revision": "4507c187d0f9998199f6fa0e8064cb23315bbb9a",
     "metric_note": "Event-wise F-beta at beta=0.5 under the overlap rule, which is what ESA-ADB and Telemanom report. Telemanom's widely-quoted 0.71 is F0.5, not F1. point_adjusted_f1 is shown only to expose how much point adjustment inflates: TSB-AD (NeurIPS 2024) found a uniform random score ranks 26th of 32 detectors under it. Only labels whose ESA-ADB Category is 'Anomaly' count as positives; the 690 annotated rare *nominal* events do not.",
     "n_anomaly_intervals": 320,
     "n_parameters": 80486,
-    "point_adjusted_f1": 0.994475,
+    "point_adjusted_f1": 0.993691,
     "published_full_channel_f0_5": 0.061,
     "published_lightweight_f0_5": 0.786,
     "resample": "300s",
-    "wall_clock_s": 60.1,
+    "wall_clock_s": 43.4,
     "windowed_iforest_event_wise_f0_5": 0.000248
   },
   "telecom_ids.qml": {
@@ -192,6 +196,7 @@
     },
     "framing": "Architecture comparison, not a performance claim. The data is synthetic because no commercial-OK real attack corpus exists. Every published QML-IDS figure we could verify sits below a random forest on the same data, and arXiv:2512.05069 was withdrawn by its own authors for insufficient evaluation. Per-class F1 is the headline; aggregate accuracy is shown beside it because Engelen et al. (WTMC 2021) demonstrated it stays at 0.99 across a label correction that moved Bot F1 from 0.60 to 0.99.",
     "git_sha": "733e325",
+    "hf_revision": "2070c0246d017e38c78919bc9071e4f7cab6468b",
     "n_classes": 8,
     "n_samples": 2400,
     "quantum_beats_classical": false,

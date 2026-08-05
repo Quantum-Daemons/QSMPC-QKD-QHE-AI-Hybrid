@@ -28,24 +28,45 @@ export default function ParameterPanel({ run }: { run: Run }) {
     );
   };
 
-  const groups: { title: string; fields: Field[] }[] = [
+  // Which stages a use case runs decides which fields can affect anything at all (FLOWS in
+  // clientCompute.ts). A field that no stage reads is the same defect as a select that changes no
+  // number: it invites a visitor to adjust something and then shows them an unchanged result.
+  //
+  // satellite_comms is the sharpest case. It runs `satellite_qkd`, which reads config.sat_* keys
+  // that do not exist in makeDefaultParams at all, so the entire QKD-channel group was inert there
+  // -- four fields, never any effect, on every run since the page was written.
+  const runsFibreQkd = usecase !== "satellite_comms";
+  const runsQsmpc = usecase === "finance_aml" || usecase === "genomics";
+  const runsInference = usecase === "finance_aml" || usecase === "medical_fl" || usecase === "genomics";
+
+  const groups: { title: string; fields: Field[] }[] = [];
+  if (runsFibreQkd) groups.push(
     { title: "QKD channel", fields: [
-      ["QKD pulses", "qkd_pulses", 10000, 0, "channel uses for the BB84 run"],
-      ["Distance (km)", "qkd_distance_km", 5, 1, "fibre distance — raises loss + QBER"],
-      ["Eve fraction", "qkd_eve", 0.05, 0, "intercept-resend fraction (0-1) — raises QBER"],
-      ["Misalignment", "qkd_misalignment", 0.005, 0, "baseline optical error"]] },
+      ["QKD pulses", "qkd_pulses", 10000, 1, "channel uses for the BB84 run"],
+      ["Distance (km)", "qkd_distance_km", 5, 1, "fibre distance - raises loss + QBER"],
+      // Both feed intrinsicQber, which saturates at 0.5, so anything past these renders identically.
+      ["Eve fraction", "qkd_eve", 0.05, 0, "intercept-resend fraction (0-1) - raises QBER", 1],
+      ["Misalignment", "qkd_misalignment", 0.005, 0, "baseline optical error", 0.5]] });
+  groups.push(
     { title: "OptiQKD (AI-QKD)", fields: [
-      ["Opt samples", "qkd_opt_samples", 8, 4, "surrogate sample budget — toggle 'Optimize QKD' to run"]] },
+      ["Opt samples", "qkd_opt_samples", 8, 4,
+       "evaluation budget for the coordinate-ascent search - enable 'Optimize QKD' to use it"]] },
     { title: "QRNG", fields: [
-      ["QRNG bits", "qrng_bits", 512, 64, "quantum-random bits generated + health-checked per run"],
-      ["Extractor eps (log2)", "qrng_eps_log2", 4, -60, "Leftover-Hash-Lemma security 2^this (toeplitz/seedless extractor)"]] },
+      // The Toeplitz extractor is O(n^2) and synchronous. Unbounded, this freezes the tab exactly
+      // as the QCNN qubit count used to: ~4e9 operations at 32768 bits.
+      ["QRNG bits", "qrng_bits", 512, 64,
+       "quantum-random bits generated + health-checked per run - capped at 16384 because the "
+       + "Toeplitz extractor is quadratic and runs on the main thread", 16384]] },
     { title: "Quantum / run", fields: [
       ["QCNN qubits", "qubits", 1, 2,
-       "state-vector QCNN qubit count — capped at 14: the simulator is exact, so cost is 2^n", 14],
+       "state-vector QCNN qubit count - capped at 14: the simulator is exact, so cost is 2^n", 14],
       ["RNG seed", "seed", 1, 0, "run reproducibility seed"]] },
-  ];
+  );
   if (usecase === "telecom_ids") groups.push({ title: "IDS",
-    fields: [["Samples / class", "n_per_class", 50, 20, "QML-IDS training samples per attack class"]] });
+    // 250 full-batch gradient iterations over 8 x n x 0.75 rows, synchronously: same hang class.
+    fields: [["Samples / class", "n_per_class", 50, 20,
+              "QML-IDS training samples per attack class - capped at 2000; training is synchronous",
+              2000]] });
   if (usecase === "finance_aml") groups.push({ title: "Data",
     fields: [["AML transactions", "aml_transactions", 500, 200, "PaySim transactions used to train the fraud model"]] });
 
@@ -67,25 +88,33 @@ export default function ParameterPanel({ run }: { run: Run }) {
         {groups.map((g) => fieldset(g.title, g.fields.map(numField)))}
         {fieldset("Protocol", (
           <>
+            {runsQsmpc && (
             <div style={{ minWidth: 120, flex: "1 1 120px" }}>
               <label className="muted" htmlFor="pp-op" style={{ fontSize: 12 }}>QSMPC op</label>
               <select id="pp-op" name="qsmpc_op" value={p.qsmpc_op as string} style={{ width: "100%" }}
                 onChange={(e) => setParams({ ...params, qsmpc_op: e.target.value })}>
                 <option value="">(use case default)</option><option value="psi">PSI</option><option value="sum">Secure sum</option>
               </select>
-            </div>
+            </div>)}
+            {runsInference && (
             <div style={{ minWidth: 120, flex: "1 1 120px" }}>
               <label className="muted" htmlFor="pp-inf" style={{ fontSize: 12 }}>Inference</label>
               <select id="pp-inf" name="inference" value={p.inference as string} style={{ width: "100%" }}
                 onChange={(e) => setParams({ ...params, inference: e.target.value })}>
                 <option value="">(use case default)</option><option value="ckks">CKKS (FHE)</option><option value="qcnn">QCNN (QHE)</option>
               </select>
-            </div>
+            </div>)}
+            {/* Only the secure-sum path reads it, and only genomics/finance run that path. The old
+                label promised a prime and accepted any integer: additive sharing over Z_100 is not
+                a field, so the value is snapped to the next prime on entry rather than trusted. */}
+            {runsQsmpc && (
             <div style={{ minWidth: 120, flex: "1 1 120px" }}>
               <label className="muted" htmlFor="pp-prime" style={{ fontSize: 12 }}>QSMS prime (0=auto)</label>
               <input id="pp-prime" name="prime" type="number" step={2} min={0} value={p.prime as number}
-                style={{ width: "100%" }} onChange={(e) => setNum("prime", e.target.value)} />
-            </div>
+                style={{ width: "100%" }}
+                title="Snapped to the next prime: secure summation shares over a prime field, and a composite modulus is not one."
+                onChange={(e) => setNum("prime", e.target.value)} />
+            </div>)}
             <div style={{ minWidth: 120, flex: "1 1 120px" }}>
               <label className="muted" htmlFor="pp-ext" style={{ fontSize: 12 }}>QRNG extractor</label>
               <select id="pp-ext" name="qrng_post" value={p.qrng_post as string} style={{ width: "100%" }}

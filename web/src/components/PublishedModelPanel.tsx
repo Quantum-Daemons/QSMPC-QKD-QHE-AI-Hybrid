@@ -10,12 +10,18 @@
 // network or compute activity is the most serious defect class in this project". A number the page
 // can verify against an independently-measured expectation is the opposite of that.
 import { useEffect, useState } from "react";
-import { evaluatePublishedModel, type ModelEvalResult } from "../lib/onnxInference";
+import { browserModel, evaluatePublishedModel, type ModelEvalResult } from "../lib/onnxInference";
 
 export default function PublishedModelPanel({ usecase }: { usecase: string }) {
   const [res, setRes] = useState<ModelEvalResult | null>(null);
   const [busy, setBusy] = useState(false);
   const [attempted, setAttempted] = useState(false);
+
+  // Whether anything is fetchable is known from the registry before any click, so say it up front
+  // rather than offering a button whose only possible outcome is "there was nothing to verify".
+  // Genomics is the standing case: `genomics.prs` is deliberately unpublished pending the per-score
+  // licence audit, so its button could never do anything.
+  const target = browserModel(usecase);
 
   useEffect(() => { setRes(null); setAttempted(false); }, [usecase]);
 
@@ -46,16 +52,26 @@ export default function PublishedModelPanel({ usecase }: { usecase: string }) {
         panel says so instead of showing the number.
       </p>
 
-      <div className="btn-row" style={{ marginTop: 10 }}>
-        <button className="btn" onClick={run} disabled={busy}>
-          {busy ? "Running…" : "▶ Run published model"}
-        </button>
-      </div>
+      {target ? (
+        <div className="btn-row" style={{ marginTop: 10 }}>
+          <button className="btn" onClick={run} disabled={busy}>
+            {busy ? "Running…" : "▶ Run published model"}
+          </button>
+        </div>
+      ) : (
+        <p className="muted small" style={{ marginTop: 10 }}>
+          <b>Nothing to verify on this page.</b> No model for this use case is published at a pinned
+          revision, so there is no artefact to fetch and no offline figure to check it against. That
+          is a deliberate state, not a gap waiting to be filled: publication is withheld where the
+          source data's licence does not clearly permit redistributing derived weights. The pipeline
+          above still runs its own bundled model, and its metrics come from that.
+        </p>
+      )}
 
       {attempted && res === null && (
         <p className="muted small" style={{ marginTop: 10 }}>
-          No model-native sample is published for this use case yet, so there is nothing to verify
-          here. The pipeline above still runs its own bundled distilled model.
+          The model is published, but it ships no <code>eval_sample.json</code> at that revision, so
+          there is no held-out sample to score it on. Reported rather than passed off as a success.
         </p>
       )}
 
