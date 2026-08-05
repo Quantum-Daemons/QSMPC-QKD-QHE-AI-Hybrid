@@ -36,8 +36,12 @@ a quantum-safe orchestration demo. This is the **plaintext** model for the
 ## Published baselines this is measured against
 
 - **Target metric**: event-wise F0.5
-- **Baseline to beat**: 0.786 — ESA-ADB Table 2, Mission1 lightweight (ch. 41-46), best event-wise F0.5. NOTE the caption: Table 2 scores detection of ALL EVENTS excluding communication gaps - anomalies PLUS annotated rare nominal events - whereas this project scores anomalies only, and ESA-ADB splits each mission into first-half train / second-half test. So 0.786 is an indicative target, not a like-for-like number.
-- **Companion metric shown alongside**: `event_wise_f0_5_full_channels` — reported together because the aggregate figure can look healthy while the class that matters is not.
+- **Baseline to beat**: 0.786 - ESA-ADB Table 2, Mission1 lightweight (ch. 41-46), best event-wise F0.5. NOTE the caption: Table 2 scores detection of ALL EVENTS excluding communication gaps - anomalies PLUS annotated rare nominal events - whereas this project scores anomalies only, and ESA-ADB splits each mission into first-half train / second-half test. So 0.786 is an indicative target, not a like-for-like number.
+- **Companion metrics actually recorded** in `models/metrics.json`: `point_adjusted_f1` (0.9937) and
+  `windowed_iforest_event_wise_f0_5` (0.000248). The first is carried to expose how much point
+  adjustment inflates a score - it reads 0.99 against an event-wise 0.4545 on the same run - and the
+  second is the classical baseline on the same split. `published_full_channel_f0_5` (0.061) and
+  `published_lightweight_f0_5` (0.786) are ESA-ADB's figures, not ours.
 
 ## Training data
 
@@ -45,7 +49,7 @@ a quantum-safe orchestration demo. This is the **plaintext** model for the
 - **Licence**: CC-BY-3.0-IGO
 - **Source**: https://zenodo.org/records/12528696 (licence read 2026-08-03)
 
-Missions are anonymised Mission1/2/3 — they are not named Sentinel anything. 17.5 years, 1.19% annotated. Mission3 is excluded upstream for triviality.
+Missions are anonymised Mission1/2/3 - they are not named Sentinel anything. 17.5 years, 1.19% annotated. Mission3 is excluded upstream for triviality.
 
 ## Notes and limitations
 

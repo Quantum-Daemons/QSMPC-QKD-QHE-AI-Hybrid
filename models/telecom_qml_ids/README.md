@@ -38,7 +38,7 @@ a quantum-safe orchestration demo. This is the **plaintext** model for the
 
 - **Target metric**: macro F1 (synthetic QKD-attack telemetry)
 - **Baseline**: Architecture showcase, not a performance claim. On THIS project's synthetic telemetry neither quantum model beats the classical random forest (RF macro F1 0.987 vs variational QNN 0.467). Published results are MIXED, not uniformly below a random forest -- an earlier revision of this note claimed they were, and the very paper cited here contradicts it: Al-Kuwari et al. (arXiv:2509.14282) Table VIII reports a hybrid QLSTM at 94.7% accuracy / 94.7% F1 against their own random-forest baseline on the same generated data. What remains well-founded is caution about evaluation quality rather than a universal ranking: arXiv:2512.05069 was withdrawn by its own authors for evaluation that was 'insufficient to fully support the conclusions'.
-- **Companion metric shown alongside**: `classical_rf_macro_f1` — reported together because the aggregate figure can look healthy while the class that matters is not.
+- **Companion metric shown alongside**: `classical_rf_macro_f1` - reported together because the aggregate figure can look healthy while the class that matters is not.
 
 ## Training data
 
