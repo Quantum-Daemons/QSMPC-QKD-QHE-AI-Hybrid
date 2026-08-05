@@ -63,15 +63,15 @@ OUT_ROOT = REPO / "web" / "public" / "data"
 #:                  and digits compress well, so the browser can reproduce the model's PUBLISHED
 #:                  test metric exactly rather than a subsample of it. That is a much stronger
 #:                  claim and it costs almost nothing.
-#:  * finance    -- 512 rows of 32 floats. Still small, and a 1-in-981 positive rate needs volume
-#:                  before an accuracy figure means anything.
-#:  * satellite  -- 24 windows. One window is 250 x 6 = 1500 floats, so this is the one case where
-#:                  the payload, not the statistics, sets the limit.
+#:  * finance    -- 8192 rows of 32 floats. A 1-in-981 positive rate needs volume before an
+#:                  accuracy figure means anything, and this narrows the 95% interval to ~+/-0.6pp
+#:                  against ~+/-2.6pp at 512.
+#:  * satellite  -- 128 windows. One window is 250 x 6 = 1500 floats, still the heaviest row here.
 #:
 #: The full training corpora are deliberately NOT shipped: AMLworld is 475 MB, ESA-ADB is 3.6 GB,
 #: and neither may be redistributed (see DATA_LICENSES.md). A browser does not need the training
 #: corpus to verify a model -- it needs a held-out sample large enough to be worth believing.
-N_SAMPLES = {"medical_fl": None, "finance_aml": 512, "satellite_comms": 24}
+N_SAMPLES = {"medical_fl": None, "finance_aml": 8192, "satellite_comms": 128}
 
 
 def _session(model_dir: str, prefer_int8: bool = True):
@@ -87,7 +87,18 @@ def _session(model_dir: str, prefer_int8: bool = True):
 
 
 def _write(usecase: str, payload: dict) -> Path:
-    out = OUT_ROOT / _DIR[usecase] / "model_input.json"
+    """Write beside the model, not into the web bundle.
+
+    The evaluation sample belongs in the model's own HF repo at the same pinned commit: the sample
+    and the weights it evaluates then travel together and cannot drift apart, the demo image stops
+    carrying 1.6 MB it does not need, and HF's CDN serves the bytes instead of a 12 GB VPS. That
+    last point is what makes a larger sample affordable -- 8192 AMLworld rows narrow the 95%
+    interval on accuracy from about +/-2.6pp to +/-0.6pp, and none of it touches this repository.
+    """
+    from qsh.models import registry
+
+    key = _MODEL_KEY[usecase]
+    out = REPO / registry.ARTIFACT_DIRS[key] / "eval_sample.json"
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(payload, indent=1) + "\n")
     size = out.stat().st_size
@@ -102,7 +113,12 @@ def _write(usecase: str, payload: dict) -> Path:
     return out
 
 
-_DIR = {"medical_fl": "medical", "finance_aml": "finance", "satellite_comms": "satellite"}
+#: Which model each use case's evaluation sample belongs to.
+_MODEL_KEY = {
+    "medical_fl": "medical_fl.resnet18",
+    "finance_aml": "finance_aml.gbm",
+    "satellite_comms": "satellite_comms.telemanom",
+}
 
 
 # --------------------------------------------------------------------------------------------- #
