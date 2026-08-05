@@ -35,15 +35,21 @@ import type * as OrtTypes from "onnxruntime-web";
  * So: `onnxruntime-web/webgpu` only when an adapter genuinely exists, `onnxruntime-web/wasm`
  * otherwise. Both export the same surface, so nothing downstream changes.
  */
-let ortPromise: Promise<typeof OrtTypes> | null = null;
+// One cached promise per build, not one for the page: a page can legitimately need both -- a
+// convolutional model on webgpu and a tree ensemble on wasm, whose operators the webgpu build
+// does not register.
+const ortBuilds: Record<"webgpu" | "wasm", Promise<typeof OrtTypes> | null> = {
+  webgpu: null, wasm: null,
+};
 
 function loadOrt(useWebGPU: boolean): Promise<typeof OrtTypes> {
-  if (!ortPromise) {
-    ortPromise = (useWebGPU
+  const kind = useWebGPU ? "webgpu" : "wasm";
+  if (!ortBuilds[kind]) {
+    ortBuilds[kind] = (useWebGPU
       ? import("onnxruntime-web/webgpu")
       : import("onnxruntime-web/wasm")) as Promise<typeof OrtTypes>;
   }
-  return ortPromise;
+  return ortBuilds[kind]!;
 }
 
 import { modelsFor, type ModelSpec } from "./config";
@@ -227,7 +233,16 @@ export async function loadModel(usecase: string): Promise<boolean> {
     const started = performance.now();
     try {
       // Probe FIRST: the answer decides which ORT build to import, not just which provider to ask for.
-      const gpuAvailable = await hasWebGPU();
+      //
+      // Second input to that decision, learned by running it: the webgpu build does NOT register
+      // the ai.onnx.ml operators. A TreeEnsembleClassifier fails there with
+      // "No Op registered for TreeEnsembleClassifier" while running fine in the wasm build, so a
+      // model in that domain takes wasm even on a machine with a working adapter. This is the grain
+      // of truth in the diagnosis I retracted earlier: ai.onnx.ml really is unavailable -- in one
+      // build, which happened to be the one being loaded unconditionally.
+      const needsMlDomain = (target.spec as { onnx_domains?: string[] }).onnx_domains
+        ?.includes("ai.onnx.ml") ?? false;
+      const gpuAvailable = !needsMlDomain && await hasWebGPU();
       const ort = await loadOrt(gpuAvailable);
       ortRuntime = ort;
       ort.env.wasm.numThreads = resolveThreads();
