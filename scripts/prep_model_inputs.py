@@ -274,7 +274,10 @@ def build_satellite(rng: np.random.Generator) -> dict:
     x = np.stack([values[s:s + seq] for s in starts]).astype(np.float32)
     y_next = np.stack([values[s + seq] for s in starts]).astype(np.float32)
 
-    sess, graph = _session("satellite_telemanom", prefer_int8=False)
+    # Measure the graph the BROWSER will fetch. browserModel() prefers int8 where one exists
+    # and is runnable, so measuring fp32 here published an expectation for a graph no visitor
+    # would ever run -- and nothing checked, until the graph assertion was added.
+    sess, graph = _session("satellite_telemanom", prefer_int8=True)
     pred = np.asarray(sess.run(None, {sess.get_inputs()[0].name: x})[0], dtype=np.float32)
     mae = float(np.abs(pred - y_next).mean())
     # What predicting "no change from the last observed step" would score. A forecaster that cannot

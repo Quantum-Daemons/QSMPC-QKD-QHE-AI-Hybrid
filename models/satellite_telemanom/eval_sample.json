@@ -193304,8 +193304,8 @@
   ]
  ],
  "expected": {
-  "graph": "model.onnx",
-  "mae": 0.07362085580825806,
+  "graph": "model_int8.onnx",
+  "mae": 0.07414960116147995,
   "persistence_mae": 0.09650170803070068,
   "note": "Mean absolute error of the next-step forecast, measured here with onnxruntime on exactly these windows. persistence_mae is what predicting no change would score, so a reader can tell whether the model is doing anything."
  }

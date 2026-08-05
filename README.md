@@ -448,7 +448,7 @@ See [`docs/pqc-roadmap.md`](docs/pqc-roadmap.md).
   |---|---|---|---|---|
   | medical | **85.9%** | 85.9% | the entire official BreastMNIST test split, 156 rows | `onnx-webgpu` |
   | finance | **99.3%** | 99.3% | 8192 AMLworld rows at near-real 1-in-981 prevalence | `onnx-wasm` |
-  | satellite | **MAE 0.0736** | 0.0736 | 128 ESA-ADB windows at the trained 300s cadence | `onnx-webgpu` |
+  | satellite | **MAE 0.0741** | 0.0741 | 128 ESA-ADB windows at the trained 300s cadence | `onnx-webgpu` |
 
   WebNN is probed by **building and executing a 2×2 matmul** — three cheaper checks all lied — and
   then deliberately left unused: with the flag the API works, but ORT's WebNN provider still cannot

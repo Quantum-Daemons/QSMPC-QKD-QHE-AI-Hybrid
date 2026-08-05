@@ -664,7 +664,7 @@
             "opset": 17
           },
           "git_sha": "8317cb2-dirty",
-          "hf_revision": "8afd8a43487d952c2d4eed358eab9241d93be09d",
+          "hf_revision": "4507c187d0f9998199f6fa0e8064cb23315bbb9a",
           "metric_note": "Event-wise F-beta at beta=0.5 under the overlap rule, which is what ESA-ADB and Telemanom report. Telemanom's widely-quoted 0.71 is F0.5, not F1. point_adjusted_f1 is shown only to expose how much point adjustment inflates: TSB-AD (NeurIPS 2024) found a uniform random score ranks 26th of 32 detectors under it. Only labels whose ESA-ADB Category is 'Anomaly' count as positives; the 690 annotated rare *nominal* events do not.",
           "n_anomaly_intervals": 320,
           "n_parameters": 80486,
@@ -714,7 +714,7 @@
           "url": "https://zenodo.org/records/12528696"
         },
         "hf_repo_id": "Daemons-Q/qsh-satellite-telemanom-esa",
-        "hf_revision": "8afd8a43487d952c2d4eed358eab9241d93be09d",
+        "hf_revision": "4507c187d0f9998199f6fa0e8064cb23315bbb9a",
         "key": "satellite_comms.telemanom",
         "label": "Telemanom LSTM forecaster (per channel)",
         "metric": {

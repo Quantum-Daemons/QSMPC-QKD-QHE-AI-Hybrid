@@ -33,6 +33,10 @@ function UseCaseView({ usecase }: { usecase: string }) {
   const meta = USECASE_META[usecase];
   const diagramRef = useRef<HTMLDivElement>(null);
   const run = usePipelineRun(usecase, diagramRef);
+  // Before a run there is nothing to export: GIF silently did nothing (the recorder is only
+  // built by launch()) and Metrics wrote an empty CSV. BenchmarkPanel already gates on
+  // rows.length; these now match it.
+  const hasRun = run.events.length > 0;
   const { events, active, done, metrics, signature, artifacts, state, logRef, gifBusy, benchmark,
     downloadGif, downloadPng, downloadEvents, downloadMetricsCsv } = run;
 
@@ -54,11 +58,14 @@ function UseCaseView({ usecase }: { usecase: string }) {
       </div>
       <div className="btn-row" style={{ marginTop: 10 }}>
         <button className="btn ghost" onClick={() => downloadPng(`${usecase}-two-party.png`)}>⬇ Diagram (PNG)</button>
-        <button className="btn ghost" onClick={() => downloadGif(`${usecase}-simulator.gif`)} disabled={gifBusy}>
+        <button className="btn ghost" onClick={() => downloadGif(`${usecase}-simulator.gif`)}
+          disabled={gifBusy || !hasRun} title={hasRun ? undefined : "Run the simulator first"}>
           {gifBusy ? "Encoding…" : "⬇ Animation (GIF)"}
         </button>
-        <button className="btn ghost" onClick={() => downloadEvents(`${usecase}-events.json`)}>⬇ Events (JSON)</button>
-        <button className="btn ghost" onClick={() => downloadMetricsCsv(`${usecase}-metrics.csv`)}>⬇ Metrics (CSV)</button>
+        <button className="btn ghost" onClick={() => downloadEvents(`${usecase}-events.json`)}
+          disabled={!hasRun} title={hasRun ? undefined : "Run the simulator first"}>⬇ Events (JSON)</button>
+        <button className="btn ghost" onClick={() => downloadMetricsCsv(`${usecase}-metrics.csv`)}
+          disabled={!hasRun} title={hasRun ? undefined : "Run the simulator first"}>⬇ Metrics (CSV)</button>
         <span className="muted" style={{ fontSize: 12, alignSelf: "center" }}>
           ▶ Start plays the protocol · Pause/Step advance it · ↻ Restart replays
         </span>
