@@ -39,7 +39,11 @@ export function isClientDemo(): boolean {
   }
 }
 
+// "Demo = inference only" stopped being true when Round 18 made federated learning run client-side
+// on every medical run, and Round 19 removed the toggle that used to gate it. The banner said the
+// demo could not do the thing the page below it was doing.
 export const DEMO_BANNER =
   "Client-side compute — this page runs in your browser (WASM / WebGPU + @noble PQC). " +
-  "No computation is sent to a server. Demo = inference only; the full local deployment " +
-  "adds federated learning.";
+  "No computation is sent to a server. Inference, CKKS, garbled-circuit MPC and — on the medical " +
+  "page — federated training all run here; the full local deployment adds the server-side backends " +
+  "and the real MCP server.";

@@ -4,8 +4,8 @@
   "best_metric": 0.9557226399331662,
   "best_epoch": 23,
   "epochs_run": 39,
-  "wall_clock_s": 4.4,
-  "git_sha": "2ee3dc4-dirty",
+  "wall_clock_s": 3.8,
+  "git_sha": "8317cb2-dirty",
   "seed": 42,
   "hyperparameters": {
     "epochs": 60,

@@ -25,6 +25,7 @@ measures it per model, on real data, and publishes the number even when it is ba
 
 from __future__ import annotations
 
+import pathlib
 from dataclasses import asdict, dataclass
 
 import numpy as np
@@ -88,6 +89,52 @@ def distil_linear(teacher_scores: np.ndarray, X: np.ndarray, *,
     student = LogisticRegression(max_iter=max_iter, class_weight=class_weight, random_state=seed)
     student.fit(np.asarray(X, dtype=float), labels.astype(int))
     return student
+
+
+def save_student(student, out_dir, *, n_features: int, teacher_key: str,
+                 student_key: str, classes: list | None = None) -> dict:
+    """Persist the distilled student so it can be published and independently verified.
+
+    The student is the model that actually runs under CKKS -- it is the whole point of the
+    encrypted tier -- and until Round 19 it existed only as a fidelity number in metrics.json. It
+    was fit in memory, measured, and discarded, which meant the one model a visitor most needs to
+    check was the one model they could not obtain. Teachers were published from Round 18; this
+    closes the asymmetry.
+
+    Writes plain weights (a linear model is small enough to read by eye, which is a feature here)
+    plus an ONNX graph via the same export path the teachers use, so the browser can load it
+    exactly as it loads any other published model.
+    """
+    import json
+
+    from . import export
+
+    out = pathlib.Path(out_dir)
+    out.mkdir(parents=True, exist_ok=True)
+
+    coef = np.asarray(student.coef_, dtype=float)
+    intercept = np.asarray(student.intercept_, dtype=float)
+    (out / "weights.json").write_text(json.dumps({
+        "kind": "logistic-linear",
+        "note": ("The CKKS-linear student: this is what is evaluated under homomorphic encryption. "
+                 "Small by necessity -- encrypted evaluation is cost-bounded -- and distilled "
+                 "against the teacher's own decisions, so `agreement` measures substitution rather "
+                 "than two independent fits that happen to correlate."),
+        "teacher_key": teacher_key, "student_key": student_key,
+        "n_features": int(n_features),
+        "W": coef.tolist(), "b": intercept.tolist(),
+        "n_parameters": int(coef.size + intercept.size),
+        "classes": classes if classes is not None else list(range(max(2, coef.shape[0] + 1))),
+    }, indent=2) + "\n")
+
+    # Same fixtures-and-verify path the teachers take, so the artefact set matches.
+    rng = np.random.default_rng(0)
+    fixtures = rng.normal(size=(64, n_features)).astype(np.float32)
+    report = export.verify_and_quantize(student, fixtures, out, kind="sklearn",
+                                        n_features=int(n_features))
+    return {"n_parameters": int(coef.size + intercept.size),
+            "onnx_domains": report.onnx_domains,
+            "browser_runnable": report.browser_runnable}
 
 
 def measure_fidelity(*, teacher_key: str, student_key: str, teacher_pred: np.ndarray,

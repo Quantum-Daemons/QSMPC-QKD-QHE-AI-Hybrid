@@ -10,21 +10,24 @@ import {
 } from "../lib/clientSdnController";
 
 export default function SdnControlPlanePanel({
-  usecase, distanceKm, keyBudgetBits, qkdEnabled,
+  usecase, distanceKm, keyBudgetBits, qkdEnabled, maxSpanKm,
 }: {
   usecase: string;
   distanceKm: number;
+  /** Longest single quantum span before a trusted relay is required. Infinity for a downlink,
+   *  which is one line of sight however long it is; undefined keeps the terrestrial default. */
+  maxSpanKm?: number;
   /** Key material this run produced (metrics.secure_key_bits) — the allocation budget. */
   keyBudgetBits: number;
   /** False under the PQC-only profile — there is then no key association to manage. */
   qkdEnabled: boolean;
 }) {
   const topo: SdnTopology = useMemo(() => {
-    const t = buildTopology({ usecase, distanceKm, skrBitsPerSec: keyBudgetBits, qkdEnabled });
+    const t = buildTopology({ usecase, distanceKm, skrBitsPerSec: keyBudgetBits, qkdEnabled, maxSpanKm });
     // Draw down a realistic slice so eskr differs from skr and the budget is visibly finite.
     if (t.apps.length) allocate(t, t.apps[0].app_id, Math.round(keyBudgetBits * 0.25));
     return t;
-  }, [usecase, distanceKm, keyBudgetBits, qkdEnabled]);
+  }, [usecase, distanceKm, keyBudgetBits, qkdEnabled, maxSpanKm]);
 
   const kme = kmeStatus(topo);
   const ext = (kme.status_extension ?? {}) as Record<string, string>;

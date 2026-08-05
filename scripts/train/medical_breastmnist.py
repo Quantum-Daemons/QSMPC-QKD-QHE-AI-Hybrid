@@ -173,6 +173,14 @@ def main() -> int:
     student_pred = train.predict_loader(
         student, DataLoader(TensorDataset(to14(xte), torch.tensor(y_true)), batch_size=256))[1].argmax(1)
 
+    # Export the student to ONNX so it can be published and verified in a browser like the teacher.
+    # It already had a safetensors checkpoint; what it lacked was a graph anyone could actually run.
+    student_dir = Path.cwd() / "models" / "medical_breastmnist_student"
+    student_report = export.verify_and_quantize(
+        student, to14(xte).numpy(), student_dir, kind="torch")
+    print(f"  student ONNX: {student_report.fp32_bytes/1e6:.2f} MB, "
+          f"domains={student_report.onnx_domains}, browser_runnable={student_report.browser_runnable}")
+
     fidelity = distil.measure_fidelity(
         teacher_key="medical_fl.resnet18", student_key="medical_fl.student",
         teacher_pred=y_pred, student_pred=student_pred, y_true=y_true,

@@ -406,6 +406,22 @@ _ONNX_PAIR = (
     ArtifactSpec("feature_spec.json", "json", "none", "both"),
 )
 
+#: The distilled students. A linear model of tens of parameters gains nothing from int8 and the
+#: plain weights are worth shipping: at this size they are readable by eye, which is part of the
+#: point of an encrypted tier you are asked to trust.
+_STUDENT_ARTIFACTS = (
+    ArtifactSpec("onnx/model.onnx", "onnx", "fp32", "both"),
+    ArtifactSpec("weights.json", "json", "fp32", "both"),
+)
+
+#: medical_fl.student is a small convolutional net rather than a linear model, so it carries a
+#: safetensors checkpoint instead of readable weights.
+_STUDENT_ARTIFACTS_TORCH = (
+    ArtifactSpec("onnx/model.onnx", "onnx", "fp32", "both"),
+    ArtifactSpec("model.safetensors", "safetensors", "fp32", "server"),
+)
+
+
 #: For models where dynamic int8 quantisation has nothing to quantise. A tree ensemble keeps its
 #: parameters in node attributes rather than weight tensors, so no int8 graph is produced and none is
 #: uploaded -- declaring one anyway pointed the browser tier at a file that does not exist at the
@@ -457,6 +473,8 @@ _SPECS: tuple[ModelSpec, ...] = (
         dataset=DS_AMLWORLD,
         metric=M_AML,
         runs_encrypted=True,
+        artifacts=_STUDENT_ARTIFACTS,
+        hf_repo="qsh-finance-aml-ckks-student",
         notes="Runs under real CKKS. crypto_fidelity is measured against the teacher every run.",
     ),
     # ---------------- medical / federated ----------------
@@ -500,6 +518,8 @@ _SPECS: tuple[ModelSpec, ...] = (
         dataset=DS_BREASTMNIST,
         metric=M_BREASTMNIST,
         runs_encrypted=True,
+        artifacts=_STUDENT_ARTIFACTS_TORCH,
+        hf_repo="qsh-medical-breastmnist-ckks-student",
         notes="Genuine encrypted convolution: im2col + CKKS dot_plain, ReLU/max-pool under MPC.",
     ),
     # ---------------- genomics ----------------
@@ -518,7 +538,16 @@ _SPECS: tuple[ModelSpec, ...] = (
         notes=(
             "Not a neural network, and presenting a genomic foundation model as a PRS method would be "
             "the most obvious credibility hole available. Evaluation must be stratified by genetic "
-            "ancestry: the European-to-African AUROC drop is the finding, not a footnote."
+            "ancestry, and what is measured here is a distribution shift, NOT an AUROC drop: an "
+            "earlier revision of this note called it an AUROC drop, but 1000 Genomes is a reference "
+            "panel carrying no breast-cancer case/control status, so no AUROC is computable from it "
+            "and genomics_prs.py records auroc=null rather than inventing one. The finding is the "
+            "by_super_population.*.frac_above_global_cut rows listed above: one globally-set "
+            "high-risk cut flags a far larger share of AFR than of EUR, a gap driven by "
+            "allele-frequency differences rather than by risk. Read those rows, not this sentence - "
+            "they are recomputed on every training run, so no figure quoted in prose here can drift "
+            "away from them. The published European AUROC baseline comes from a phenotyped cohort "
+            "that is access-controlled, which is why it cannot be reproduced on this page."
         ),
     ),
     # ---------------- satellite ----------------
@@ -536,14 +565,19 @@ _SPECS: tuple[ModelSpec, ...] = (
         notes=(
             "Report event-wise F0.5, never point-adjusted F1. Always run a trivial baseline alongside: "
             "windowed isolation forest wins the ESA-ADB Mission2 lightweight subset outright. "
-            "MEASURED ROUND 18, and it matters for how the headline is read: this forecaster's "
-            "next-step MAE on 60s-resampled, z-scored Mission1 channels 41-46 is ~0.90 on the "
-            "evaluation split against ~0.041 for persistence -- i.e. simply repeating the last "
-            "observed value is about 22x more accurate. Consistent across train, test and the whole "
-            "series, so it is not a sampling artefact. Telemanom derives its anomaly signal from "
-            "forecast residuals, so residuals this large are dominated by model error rather than by "
-            "anomalies; the event-wise F0.5 of 0.714 should be read with that in mind. The demo "
-            "shows the persistence comparison on the page rather than only the F0.5."
+            "RETRACTION, Round 19: a Round 18 note here claimed this forecaster was about 22x WORSE "
+            "than persistence. That was a measurement error of ours, not a property of the model -- "
+            "the probe resampled at 60s while the model is trained at 300s (see `resample` in the "
+            "achieved record). Re-measured at the trained cadence, next-step MAE is 0.0314 on the "
+            "evaluation split against 0.0897 for persistence, i.e. the model is about 2.9x BETTER; "
+            "0.40x / 0.35x / 0.38x on train / test / whole series. Preprocessing for any evaluation "
+            "must be read from this record rather than hardcoded, which is now what "
+            "scripts/prep_model_inputs.py does. "
+            "SEPARATE AND STILL OPEN: event-wise F0.5 does not reproduce across identical-config "
+            "retrains -- 0.4545 here against the 0.714286 recorded -- while point-adjusted F1 does "
+            "(0.9937 vs 0.9945) and the isolation-forest baseline reproduces exactly (0.000248). "
+            "Treat the event-wise figure as a single draw from a wide distribution, which is the "
+            "instability arXiv:2607.11969 (2026-07) describes for overlap-based metrics."
         ),
     ),
     ModelSpec(
@@ -555,6 +589,8 @@ _SPECS: tuple[ModelSpec, ...] = (
         params=None,
         dataset=DS_ESA_ADB,
         metric=M_ESA,
+        artifacts=_STUDENT_ARTIFACTS,
+        hf_repo="qsh-satellite-telemanom-ckks-student",
         runs_encrypted=True,
     ),
     # ---------------- telecom / defence ----------------
@@ -643,6 +679,9 @@ ARTIFACT_DIRS: dict[str, str] = {
     "genomics.prs": "models/genomics_prs",
     "satellite_comms.telemanom": "models/satellite_telemanom",
     "telecom_ids.qml": "models/telecom_qml_ids",
+    "finance_aml.student": "models/finance_aml_student",
+    "medical_fl.student": "models/medical_breastmnist_student",   # already on disk from training
+    "satellite_comms.student": "models/satellite_telemanom_student",
 }
 
 #: Repo root, so ARTIFACT_DIRS resolves regardless of the caller's working directory.

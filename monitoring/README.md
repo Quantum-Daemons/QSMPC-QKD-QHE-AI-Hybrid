@@ -13,7 +13,7 @@ Run Prometheus + Grafana via `docker compose -f docker/docker-compose.yml up`:
 - **Prometheus** scrapes the API `/metrics` endpoint (`qsh.monitoring.exporter`) and `node-exporter`.
 - **Grafana** (anonymous viewer enabled) at `http://localhost:3000`. The dashboard charting
   `qsh_pipeline_runs_total`, `qsh_stage_latency_ms`, `qsh_qber` and `qsh_benchmark_latency_ms` is
-  **already shipped** at `monitoring/grafana/qsh-pipeline.json` and is auto-provisioned — you do not
+  **already shipped** at `monitoring/grafana/qsh-pipeline.json` and is auto-provisioned - you do not
   need to add a datasource or import anything by hand.
 - **GPU metrics**: run the NVIDIA **DCGM exporter** and add it to `prometheus.yml`
   (commented stub provided) to chart GPU utilization / memory / power for FHE & training.
@@ -27,7 +27,7 @@ dashboards here, and Zabbix's agent/server footprint is unjustified at this scal
 
 - **The four pipeline metrics are declared but never recorded.** `src/qsh/monitoring/exporter.py`
   defines `qsh_pipeline_runs_total`, `qsh_stage_latency_ms` and `qsh_qber`, and the API serves
-  `/metrics` — but a repo-wide search finds no call site that records any of them, and
+  `/metrics` - but a repo-wide search finds no call site that records any of them, and
   `qsh_benchmark_latency_ms` has no recorder helper at all. `/metrics` therefore returns a valid,
   permanently empty response and every dashboard panel charts nothing. **Instrumenting the pipeline
   stages is the prerequisite for this directory being useful**; until then, treat the dashboard as

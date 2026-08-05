@@ -900,7 +900,12 @@ export function runClientPipeline(
           // cancel mod p on reconstruction — a smaller p genuinely wraps the sum (demonstrates the field).
           const secrets = Array.from({ length: 5 }, () => Math.floor(u() * 100));
           const rawTotal = secrets.reduce((a, b) => a + b, 0);
-          const p = Number(config.prime) > 1 ? Math.floor(Number(config.prime)) : nextPrime(rawTotal + 1);
+          // Snapped, not trusted. The field is labelled "QSMS prime" and used to accept any
+          // integer, so entering 100 shared additively over Z_100 -- which is not a field, while
+          // the log still printed "over Z_100" as though it were.
+          const p = Number(config.prime) > 1
+            ? nextPrime(Math.floor(Number(config.prime)))
+            : nextPrime(rawTotal + 1);
           const shares = secrets.map((s) => { const mask = Math.floor(u() * p); return [((s - mask) % p + p) % p, mask % p]; });
           const total = shares.reduce((acc, [s0, s1]) => (acc + s0 + s1) % p, 0) % p;
           metric(stage, "secure_sum", total);
