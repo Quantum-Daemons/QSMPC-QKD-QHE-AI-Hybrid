@@ -387,21 +387,25 @@ function applyPreprocessing(v: number, steps: string[]): number {
 export async function evaluatePublishedModel(
   usecase: string, tolerance = 0.05,
 ): Promise<ModelEvalResult | null> {
-  const dir: Record<string, string> = {
-    medical_fl: "medical", finance_aml: "finance", satellite_comms: "satellite",
-  };
-  const sub = dir[usecase];
   const base: ModelEvalResult = {
     ran: false, task: "classification", n: 0, score: null, expected: null, baseline: null,
     beatsBaseline: false, matchesExpected: false, backend: "none", bytes: null,
     provenance: "", error: null,
   };
-  if (!sub) return null;
+  // The evaluation sample lives in the MODEL's own HF repo at the same pinned commit, not in this
+  // bundle. Two reasons, both practical: the sample and the weights it evaluates cannot drift apart
+  // when they share a revision, and HF's CDN serves the bytes instead of a 12 GB VPS -- which is
+  // what makes 8192 AMLworld rows affordable (95% interval ~+/-0.6pp against ~+/-2.6pp at 512)
+  // without putting a megabyte into the demo image.
+  const target = browserModel(usecase);
+  if (!target) return null;
+  const sampleUrl = target.url.replace(/\/[^/]+\/[^/]+$/, "/eval_sample.json")
+    .replace(/\/onnx\/[^/]+$/, "/eval_sample.json");
 
   let file: ModelInputFile;
   try {
-    const res = await fetch(`/data/${sub}/model_input.json`);
-    if (!res.ok) return null;                       // no model-native sample for this page yet
+    const res = await fetch(sampleUrl, { mode: "cors" });
+    if (!res.ok) return null;                       // no evaluation sample published for this model
     file = await res.json();
   } catch {
     return null;
