@@ -291,6 +291,7 @@
         "achieved": {
           "agreement": 0.884055,
           "disagreement_on_positives": 0.643257,
+          "hf_revision": "40753b075b0bcefcc9da4f15438bcc00d7fde547",
           "metric_delta": 0.062987,
           "metric_delta_pp": 6.2987,
           "metric_name": "minority_class_f1",
@@ -303,7 +304,22 @@
           "teacher_params": 138312
         },
         "architecture": "logistic regression distilled from the gradient-boosting teacher",
-        "artifacts": [],
+        "artifacts": [
+          {
+            "browser_runnable": false,
+            "fmt": "onnx",
+            "path": "onnx/model.onnx",
+            "precision": "fp32",
+            "serves": "both"
+          },
+          {
+            "browser_runnable": false,
+            "fmt": "json",
+            "path": "weights.json",
+            "precision": "fp32",
+            "serves": "both"
+          }
+        ],
         "browser_runnable": false,
         "dataset": {
           "licence": "CDLA-Sharing-1.0",
@@ -311,8 +327,8 @@
           "publishable": true,
           "url": "https://www.kaggle.com/datasets/ealtman2019/ibm-transactions-for-anti-money-laundering-aml"
         },
-        "hf_repo_id": null,
-        "hf_revision": null,
+        "hf_repo_id": "Daemons-Q/qsh-finance-aml-ckks-student",
+        "hf_revision": "40753b075b0bcefcc9da4f15438bcc00d7fde547",
         "key": "finance_aml.student",
         "label": "CKKS-linear fraud student",
         "metric": {
@@ -506,13 +522,13 @@
             "int8_bytes": 11257533,
             "opset": 18
           },
-          "git_sha": "2ee3dc4-dirty",
-          "hf_revision": "13ae24e3e18030ab80cc3a9e69ffd18d98e883e2",
+          "git_sha": "8317cb2-dirty",
+          "hf_revision": "c660dc564078353f54aeb976c25bdd8f3396f1cd",
           "macro_f1": 0.8249158249158248,
           "n_parameters": 11171266,
           "resolution": 28,
           "transfer_learning": "none \u2014 trained from random initialisation, so the weights are not ImageNet-derived and carry no ImageNet terms (see DATA_LICENSES.md)",
-          "wall_clock_s": 9.4
+          "wall_clock_s": 9.1
         },
         "architecture": "ResNet-18 @28px",
         "artifacts": [
@@ -524,7 +540,7 @@
             "serves": "both"
           },
           {
-            "browser_runnable": true,
+            "browser_runnable": false,
             "fmt": "onnx",
             "path": "onnx/model_int8.onnx",
             "precision": "int8",
@@ -553,7 +569,7 @@
           "url": "https://medmnist.com/"
         },
         "hf_repo_id": "Daemons-Q/qsh-medical-breastmnist-resnet18",
-        "hf_revision": "13ae24e3e18030ab80cc3a9e69ffd18d98e883e2",
+        "hf_revision": "c660dc564078353f54aeb976c25bdd8f3396f1cd",
         "key": "medical_fl.resnet18",
         "label": "ResNet-18 on BreastMNIST",
         "metric": {
@@ -578,6 +594,7 @@
           "agreement": 0.75,
           "both_scored_zero": false,
           "disagreement_on_positives": 0.078947,
+          "hf_revision": "877b82e3fa348c8e04fa266d426159e0b3728c22",
           "metric_delta": 0.134616,
           "metric_delta_pp": 13.4616,
           "metric_name": "accuracy",
@@ -590,16 +607,31 @@
           "teacher_params": 11171266
         },
         "architecture": "1 conv block (1->4ch, 3x3), avg-pool, dense head, 14x14 input",
-        "artifacts": [],
-        "browser_runnable": false,
+        "artifacts": [
+          {
+            "browser_runnable": true,
+            "fmt": "onnx",
+            "path": "onnx/model.onnx",
+            "precision": "fp32",
+            "serves": "both"
+          },
+          {
+            "browser_runnable": false,
+            "fmt": "safetensors",
+            "path": "model.safetensors",
+            "precision": "fp32",
+            "serves": "server"
+          }
+        ],
+        "browser_runnable": true,
         "dataset": {
           "licence": "CC-BY-4.0",
           "name": "MedMNIST v2 BreastMNIST",
           "publishable": true,
           "url": "https://medmnist.com/"
         },
-        "hf_repo_id": null,
-        "hf_revision": null,
+        "hf_repo_id": "Daemons-Q/qsh-medical-breastmnist-ckks-student",
+        "hf_revision": "877b82e3fa348c8e04fa266d426159e0b3728c22",
         "key": "medical_fl.student",
         "label": "FHE-feasible diagnostic CNN",
         "metric": {
@@ -612,7 +644,9 @@
           "name": "auc"
         },
         "notes": "Genuine encrypted convolution: im2col + CKKS dot_plain, ReLU/max-pool under MPC.",
-        "onnx_domains": [],
+        "onnx_domains": [
+          "ai.onnx"
+        ],
         "params": null,
         "runs_encrypted": true,
         "tier": "t1_crypto"
@@ -623,22 +657,22 @@
         "achieved": {
           "anomaly_sample_rate": 0.0075528,
           "dataset": "ESA Anomaly Dataset (ESA-ADB), Mission1 lightweight channels 41-46",
-          "event_wise_f0_5": 0.714286,
+          "event_wise_f0_5": 0.454545,
           "export": {
             "fp32_bytes": 329179,
             "int8_bytes": 326884,
             "opset": 17
           },
-          "git_sha": "e572d98-dirty",
-          "hf_revision": "2eda5aec6f4de9ebbec0d4b78f66ac5f5755a6ce",
+          "git_sha": "8317cb2-dirty",
+          "hf_revision": "8afd8a43487d952c2d4eed358eab9241d93be09d",
           "metric_note": "Event-wise F-beta at beta=0.5 under the overlap rule, which is what ESA-ADB and Telemanom report. Telemanom's widely-quoted 0.71 is F0.5, not F1. point_adjusted_f1 is shown only to expose how much point adjustment inflates: TSB-AD (NeurIPS 2024) found a uniform random score ranks 26th of 32 detectors under it. Only labels whose ESA-ADB Category is 'Anomaly' count as positives; the 690 annotated rare *nominal* events do not.",
           "n_anomaly_intervals": 320,
           "n_parameters": 80486,
-          "point_adjusted_f1": 0.994475,
+          "point_adjusted_f1": 0.993691,
           "published_full_channel_f0_5": 0.061,
           "published_lightweight_f0_5": 0.786,
           "resample": "300s",
-          "wall_clock_s": 60.1,
+          "wall_clock_s": 43.4,
           "windowed_iforest_event_wise_f0_5": 0.000248
         },
         "architecture": "2 x LSTM(80), sequence length 250, dropout 0.3, non-parametric dynamic threshold with pruning",
@@ -651,7 +685,7 @@
             "serves": "both"
           },
           {
-            "browser_runnable": true,
+            "browser_runnable": false,
             "fmt": "onnx",
             "path": "onnx/model_int8.onnx",
             "precision": "int8",
@@ -680,7 +714,7 @@
           "url": "https://zenodo.org/records/12528696"
         },
         "hf_repo_id": "Daemons-Q/qsh-satellite-telemanom-esa",
-        "hf_revision": "2eda5aec6f4de9ebbec0d4b78f66ac5f5755a6ce",
+        "hf_revision": "8afd8a43487d952c2d4eed358eab9241d93be09d",
         "key": "satellite_comms.telemanom",
         "label": "Telemanom LSTM forecaster (per channel)",
         "metric": {
@@ -702,30 +736,47 @@
       },
       {
         "achieved": {
-          "agreement": 0.999987,
-          "disagreement_on_positives": 0.0,
-          "metric_delta": 0.0,
-          "metric_delta_pp": 0.0,
+          "agreement": 0.998677,
+          "both_scored_zero": false,
+          "disagreement_on_positives": 0.142857,
+          "hf_revision": "18814a2496661459cd25912c3e251473e5fab821",
+          "metric_delta": -0.003234,
+          "metric_delta_pp": -0.3234,
           "metric_name": "event_wise_f0_5",
           "n_eval": 307601,
           "student_key": "satellite_comms.student",
-          "student_metric": 0.0,
+          "student_metric": 0.003234,
           "student_params": 49,
           "teacher_key": "satellite_comms.telemanom",
           "teacher_metric": 0.0,
           "teacher_params": 80486
         },
         "architecture": "logistic regression over channel x timestep windows",
-        "artifacts": [],
-        "browser_runnable": false,
+        "artifacts": [
+          {
+            "browser_runnable": true,
+            "fmt": "onnx",
+            "path": "onnx/model.onnx",
+            "precision": "fp32",
+            "serves": "both"
+          },
+          {
+            "browser_runnable": false,
+            "fmt": "json",
+            "path": "weights.json",
+            "precision": "fp32",
+            "serves": "both"
+          }
+        ],
+        "browser_runnable": true,
         "dataset": {
           "licence": "CC-BY-3.0-IGO",
           "name": "ESA Anomaly Dataset (ESA-ADB), Mission1 lightweight channels 41-46",
           "publishable": true,
           "url": "https://zenodo.org/records/12528696"
         },
-        "hf_repo_id": null,
-        "hf_revision": null,
+        "hf_repo_id": "Daemons-Q/qsh-satellite-telemanom-ckks-student",
+        "hf_revision": "18814a2496661459cd25912c3e251473e5fab821",
         "key": "satellite_comms.student",
         "label": "CKKS-linear telemetry anomaly student",
         "metric": {
@@ -738,7 +789,9 @@
           "name": "event_wise_f0_5"
         },
         "notes": "",
-        "onnx_domains": [],
+        "onnx_domains": [
+          "ai.onnx.ml"
+        ],
         "params": null,
         "runs_encrypted": true,
         "tier": "t1_crypto"
@@ -827,6 +880,7 @@
           },
           "framing": "Architecture comparison, not a performance claim. The data is synthetic because no commercial-OK real attack corpus exists. Every published QML-IDS figure we could verify sits below a random forest on the same data, and arXiv:2512.05069 was withdrawn by its own authors for insufficient evaluation. Per-class F1 is the headline; aggregate accuracy is shown beside it because Engelen et al. (WTMC 2021) demonstrated it stays at 0.99 across a label correction that moved Bot F1 from 0.60 to 0.99.",
           "git_sha": "733e325",
+          "hf_revision": "2070c0246d017e38c78919bc9071e4f7cab6468b",
           "n_classes": 8,
           "n_samples": 2400,
           "quantum_beats_classical": false,
@@ -857,7 +911,7 @@
           "url": "https://arxiv.org/abs/2509.14282"
         },
         "hf_repo_id": "Daemons-Q/qsh-telecom-qml-ids",
-        "hf_revision": null,
+        "hf_revision": "2070c0246d017e38c78919bc9071e4f7cab6468b",
         "key": "telecom_ids.qml",
         "label": "Quantum-kernel SVC + variational QNN",
         "metric": {
