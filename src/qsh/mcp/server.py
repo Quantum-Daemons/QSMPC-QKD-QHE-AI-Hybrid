@@ -1,26 +1,38 @@
-"""A real FastMCP server exposing the 5 per-industry QSH tools (full deployment).
+"""A real MCP server exposing the 5 per-industry QSH tools (full deployment).
 
 Each tool is a bounded, genuine computation backed by the project's primitives (not a full pipeline
 re-run). The same functions are exposed three ways:
-  * as a real **FastMCP** server (``build_server`` -> serve over stdio / Streamable-HTTP for any MCP
+  * as a real **MCP** server (``build_server`` -> serve over stdio / Streamable-HTTP for any MCP
     client) — the "real MCP server" the report asks for;
   * via :func:`list_tools` / :func:`dispatch_tool` for the **quantum-safe** in-process binding, where
     :func:`qsh.pqc.mcp_bridge.secure_agent_call` runs a ``tools/call`` end-to-end under PQC+QKD+ML-DSA+AEAD
     and returns the REAL tool result.
 
 The public demo does NOT use this — it keeps the client-side ``clientMcp.ts`` mirror (zero VPS).
+
+SDK compatibility: the MCP Python SDK renamed ``FastMCP`` to ``MCPServer`` in v2.0.0 while keeping the
+decorator API unchanged. Both spellings are accepted here and :func:`mcp_sdk_flavour` reports which one
+is live, so a version skew is visible in ``/api/mcp/tools`` rather than silently degrading.
 """
 
 from __future__ import annotations
 
 import math
 
-try:  # the MCP SDK is a full-deployment dependency (requirements-ai.txt); guard so core stays importable
-    from mcp.server.fastmcp import FastMCP
-    _HAVE_MCP = True
-except Exception:  # pragma: no cover - exercised only in the slim demo image
-    FastMCP = None  # type: ignore
-    _HAVE_MCP = False
+_MCP_SERVER_CLS = None
+_MCP_FLAVOUR = "none"
+try:  # MCP SDK >= 2.0: FastMCP was renamed MCPServer (decorator API unchanged)
+    from mcp.server import MCPServer as _MCP_SERVER_CLS  # type: ignore[assignment]
+    _MCP_FLAVOUR = "mcpserver"
+except Exception:  # pragma: no cover - older SDKs, and the slim demo image
+    try:  # MCP SDK 1.x
+        from mcp.server.fastmcp import FastMCP as _MCP_SERVER_CLS  # type: ignore[assignment]
+        _MCP_FLAVOUR = "fastmcp"
+    except Exception:
+        _MCP_SERVER_CLS = None
+        _MCP_FLAVOUR = "none"
+
+_HAVE_MCP = _MCP_SERVER_CLS is not None
 
 
 # --------------------------------------------------------------------------- #
@@ -86,13 +98,22 @@ TOOL_DOCS = {name: (fn.__doc__ or "").strip().splitlines()[0] for name, fn in TO
 
 
 # --------------------------------------------------------------------------- #
-#  Real FastMCP server + in-process dispatch
+#  Real MCP server + in-process dispatch
 # --------------------------------------------------------------------------- #
-def build_server():  # -> FastMCP
-    """Build the real FastMCP server with the 5 per-industry tools registered (full deployment only)."""
+def mcp_sdk_flavour() -> str:
+    """Which MCP SDK class backs :func:`build_server`: ``mcpserver`` (>=2.0), ``fastmcp`` (1.x) or ``none``."""
+    return _MCP_FLAVOUR
+
+
+def build_server():  # -> MCPServer | FastMCP
+    """Build the real MCP server with the 5 per-industry tools registered (full deployment only)."""
     if not _HAVE_MCP:
-        raise RuntimeError("mcp SDK not installed — the MCP server is a full-deployment feature")
-    server = FastMCP("qsh-quantum-safe")
+        raise RuntimeError(
+            "mcp SDK not installed or its server class moved again — the MCP server is a "
+            "full-deployment feature. Tried mcp.server.MCPServer (SDK >=2.0) and "
+            "mcp.server.fastmcp.FastMCP (SDK 1.x)."
+        )
+    server = _MCP_SERVER_CLS("qsh-quantum-safe")
     for name, fn in TOOL_FUNCS.items():
         server.tool(name=name, description=TOOL_DOCS[name])(fn)
     return server

@@ -11,8 +11,33 @@
 
 type Kind = "local-a" | "local-b" | "q-arrow" | "c-arrow" | "c-bidir" | "fhe-arrow" | "mpc-bidir" | "compare";
 type M = Record<string, any>;
-interface Step { stageId: string; kind: Kind; label: (m: M) => string }
+/** The crypto-agility selections for the run being drawn. */
+export interface DiagramConfig { kem?: string; qkd?: string; sig?: string }
+interface Step {
+  stageId: string; kind: Kind;
+  label: (m: M, c: DiagramConfig) => string;
+  /** Drawn only when this returns false. Used to drop the quantum arrow under a PQC-only profile. */
+  hidden?: (c: DiagramConfig) => boolean;
+}
 interface Spec { a: { name: string; sub: string }; b: { name: string; sub: string }; steps: Step[] }
+
+// The protocol names used to be hardcoded here, so selecting ml-kem-1024 still drew "ML-KEM-768",
+// selecting e91 still drew "BB84", and selecting pqc-only still drew a quantum arrow with an
+// em-dash QBER. The diagram is the most-looked-at part of the page; it must show what actually ran.
+const KEM_LABEL: Record<string, string> = {
+  "ml-kem-768+x25519": "ML-KEM-768 + X25519",
+  "ml-kem-1024+x25519": "ML-KEM-1024 + X25519",
+};
+const kemName = (c: DiagramConfig) =>
+  KEM_LABEL[String(c.kem ?? "")] ?? (c.kem ? String(c.kem).toUpperCase() : "hybrid KEM");
+const sigName = (c: DiagramConfig) => (c.sig ? String(c.sig).toUpperCase() : "ML-DSA");
+const qkdName = (c: DiagramConfig) => {
+  const q = String(c.qkd ?? "");
+  if (q.startsWith("e91")) return "E91 (entanglement)";
+  if (q.startsWith("bb84")) return q.includes("decoy") ? "BB84 decoy-state" : "BB84";
+  return q || "QKD";
+};
+const pqcOnly = (c: DiagramConfig) => String(c.qkd ?? "") === "pqc-only";
 
 const f = (m: M, k: string, d = "—") => {
   const v = m[k];
@@ -45,58 +70,59 @@ export const USECASE_SPECS: Record<string, Spec> = {
     a: { name: "Bank A", sub: "blacklist + fraud model · LAN" },
     b: { name: "Bank B", sub: "candidate accounts · LAN" },
     steps: [
-      { stageId: "pqc_handshake", kind: "c-bidir", label: () => "PQC handshake — ML-KEM-768 + X25519" },
-      { stageId: "qkd_key_agreement", kind: "q-arrow", label: (m) => `BB84 QKD · QBER ${f(m, "qber")}` },
+      { stageId: "pqc_handshake", kind: "c-bidir", label: (_m, c) => `PQC handshake — ${kemName(c)}` },
+      { stageId: "qkd_key_agreement", kind: "q-arrow", label: (m, c) => `${qkdName(c)} · QBER ${f(m, "qber")}`, hidden: pqcOnly },
       { stageId: "qsmpc_compute", kind: "c-bidir", label: (m) => `keyed-hash PSI · shared flagged = ${f(m, "psi_intersection_size")}` },
       ...HYBRID_INFERENCE,
       QSMPC_COMPARE,
-      { stageId: "sign_result", kind: "c-bidir", label: () => "ML-DSA-signed audit record + explanation" },
+      { stageId: "sign_result", kind: "c-bidir", label: (_m, c) => `${sigName(c)}-signed audit record + explanation` },
     ],
   },
   medical_fl: {
     a: { name: "Hospital", sub: "patient data (never leaves) · LAN" },
     b: { name: "Aggregator", sub: "global model · LAN" },
     steps: [
-      { stageId: "pqc_handshake", kind: "c-bidir", label: () => "PQC handshake — ML-KEM-768 + X25519" },
-      { stageId: "qkd_key_agreement", kind: "q-arrow", label: (m) => `BB84 QKD · QBER ${f(m, "qber")}` },
-      { stageId: "federated_training", kind: "c-bidir", label: (m) => `federated train + secure agg · acc ${f(m, "federated_accuracy")}` },
+      { stageId: "pqc_handshake", kind: "c-bidir", label: (_m, c) => `PQC handshake — ${kemName(c)}` },
+      { stageId: "qkd_key_agreement", kind: "q-arrow", label: (m, c) => `${qkdName(c)} · QBER ${f(m, "qber")}`, hidden: pqcOnly },
+      { stageId: "federated_training", kind: "c-bidir", label: (m) => `federated train + pairwise masking (demo keys) · acc ${f(m, "federated_accuracy")}` },
       ...HYBRID_INFERENCE,
       QSMPC_COMPARE,
-      { stageId: "sign_result", kind: "c-bidir", label: () => "ML-DSA-signed audit record + explanation" },
+      { stageId: "sign_result", kind: "c-bidir", label: (_m, c) => `${sigName(c)}-signed audit record + explanation` },
     ],
   },
   genomics: {
     a: { name: "Cohort 1", sub: "allele counts · LAN" },
     b: { name: "Cohort 2", sub: "allele counts · LAN" },
     steps: [
-      { stageId: "pqc_handshake", kind: "c-bidir", label: () => "PQC handshake — ML-KEM-768 + X25519" },
-      { stageId: "qkd_key_agreement", kind: "q-arrow", label: (m) => `BB84 QKD · QBER ${f(m, "qber")}` },
+      { stageId: "pqc_handshake", kind: "c-bidir", label: (_m, c) => `PQC handshake — ${kemName(c)}` },
+      { stageId: "qkd_key_agreement", kind: "q-arrow", label: (m, c) => `${qkdName(c)} · QBER ${f(m, "qber")}`, hidden: pqcOnly },
       { stageId: "qsmpc_compute", kind: "q-arrow", label: (m) => `QSMS secure sum (d-qudit GHZ) · pooled = ${f(m, "secure_sum")}` },
       ...HYBRID_INFERENCE,
       QSMPC_COMPARE,
-      { stageId: "sign_result", kind: "c-bidir", label: () => "ML-DSA-signed audit record" },
+      { stageId: "sign_result", kind: "c-bidir", label: (_m, c) => `${sigName(c)}-signed audit record` },
     ],
   },
   telecom_ids: {
     a: { name: "Carrier", sub: "QKD Tx + IDS plane · LAN" },
     b: { name: "Remote site / Eve", sub: "QKD Rx (eavesdropper)" },
     steps: [
-      { stageId: "pqc_handshake", kind: "c-bidir", label: () => "PQC handshake — ML-KEM-768 + X25519" },
-      { stageId: "qkd_key_agreement", kind: "q-arrow", label: (m) => `BB84 QKD (w/ eavesdropper) · QBER ${f(m, "qber")}` },
-      { stageId: "qml_ids", kind: "local-a", label: (m) => `QML-IDS attack detection · F1 ${f(m, "ids_binary_f1")}` },
+      { stageId: "pqc_handshake", kind: "c-bidir", label: (_m, c) => `PQC handshake — ${kemName(c)}` },
+      { stageId: "qkd_key_agreement", kind: "q-arrow", label: (m, c) => `${qkdName(c)} (w/ eavesdropper) · QBER ${f(m, "qber")}`, hidden: pqcOnly },
+      { stageId: "qml_ids", kind: "local-a", label: (m) => `QML-IDS attack detection · macro-F1 ${f(m, "ids_macro_f1")}` },
       QSMPC_COMPARE,
-      { stageId: "sign_result", kind: "c-bidir", label: () => "ML-DSA-signed audit record" },
+      { stageId: "sign_result", kind: "c-bidir", label: (_m, c) => `${sigName(c)}-signed audit record` },
     ],
   },
   satellite_comms: {
     a: { name: "Ground station", sub: "telemetry uplink · LAN" },
     b: { name: "LEO satellite", sub: "free-space downlink" },
     steps: [
-      { stageId: "pqc_handshake", kind: "c-bidir", label: () => "PQC handshake — ML-KEM-768 + X25519" },
-      { stageId: "satellite_qkd", kind: "q-arrow", label: (m) => `free-space BB84 (${f(m, "channel_loss_db")} dB) · QBER ${f(m, "qber")}` },
+      { stageId: "pqc_handshake", kind: "c-bidir", label: (_m, c) => `PQC handshake — ${kemName(c)}` },
+      { stageId: "satellite_qkd", kind: "q-arrow", label: (m, c) => `free-space ${qkdName(c)} (${f(m, "channel_loss_db")} dB) · QBER ${f(m, "qber")}`,
+        hidden: pqcOnly },
       { stageId: "qsdc_telemetry", kind: "q-arrow", label: (m) => `QSDC direct telemetry · secrecy ${f(m, "qsdc_secrecy_capacity")} bit/carrier` },
       QSMPC_COMPARE,
-      { stageId: "sign_result", kind: "c-bidir", label: () => "ML-DSA-signed audit record" },
+      { stageId: "sign_result", kind: "c-bidir", label: (_m, c) => `${sigName(c)}-signed audit record` },
     ],
   },
 };
@@ -112,16 +138,19 @@ const ROW0 = 100;
 const ROW_H = 58;
 
 export default function TwoPartyDiagram({
-  usecase, activeStage, doneStages, metrics,
+  usecase, activeStage, doneStages, metrics, config = {},
 }: {
   usecase: string;
   activeStage: string | null;
   doneStages: Set<string>;
   metrics: Record<string, any>;
+  /** Crypto-agility selections, so the arrows name what actually ran. */
+  config?: DiagramConfig;
 }) {
   const spec = USECASE_SPECS[usecase];
   if (!spec) return null;
-  const steps = spec.steps;
+  // Drop steps the selected profile does not run, rather than drawing them with an em-dash value.
+  const steps = spec.steps.filter((st) => !st.hidden?.(config));
   const idle = activeStage == null && doneStages.size === 0;
   const opacity = (s: Step) =>
     idle ? 1 : s.stageId === activeStage ? 1 : doneStages.has(s.stageId) ? 0.95 : 0.26;
@@ -168,7 +197,7 @@ export default function TwoPartyDiagram({
         const y = rowY(i);
         const op = opacity(s);
         const mark = isDone(s) ? " ✓" : isActive(s) ? " ▶" : "";
-        const label = s.label(metrics) + mark;
+        const label = s.label(metrics, config) + mark;
 
         // full-width QSMPC-FHE comparison bar (the quantum-secure alternative the benchmark scores)
         if (s.kind === "compare") {
@@ -216,8 +245,12 @@ export default function TwoPartyDiagram({
       <g transform={`translate(70, ${bottomY + 18})`} fontSize={10} fill="#97a3b6">
         <line x1={0} y1={-3} x2={22} y2={-3} stroke="var(--accent)" strokeWidth={2} markerEnd="url(#tp-c)" />
         <text x={27} y={1}>classical / FHE ct</text>
-        <line x1={200} y1={-3} x2={222} y2={-3} stroke="var(--quantum)" strokeWidth={2} strokeDasharray="4 3" markerEnd="url(#tp-q)" />
-        <text x={227} y={1}>quantum (BB84 / QSDC)</text>
+        {/* The legend has to agree with the arrows: under a PQC-only profile no quantum channel is
+            drawn, so advertising one in the key was the same hardcoding one level down. */}
+        {!pqcOnly(config) && (<>
+          <line x1={200} y1={-3} x2={222} y2={-3} stroke="var(--quantum)" strokeWidth={2} strokeDasharray="4 3" markerEnd="url(#tp-q)" />
+          <text x={227} y={1}>quantum ({qkdName(config)})</text>
+        </>)}
         <line x1={430} y1={-3} x2={452} y2={-3} stroke="#f5a623" strokeWidth={2} strokeDasharray="2 2" markerEnd="url(#tp-m)" markerStart="url(#tp-ml)" />
         <text x={457} y={1}>MPC secret-shares</text>
       </g>

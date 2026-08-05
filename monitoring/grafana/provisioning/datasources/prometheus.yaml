@@ -1,0 +1,12 @@
+# Datasource provider. The shipped dashboard's panels reference a Prometheus datasource by type; with
+# no datasource provisioned, every panel renders "Datasource not found" even once the dashboard loads.
+apiVersion: 1
+
+datasources:
+  - name: Prometheus
+    type: prometheus
+    access: proxy
+    # Service name from docker/docker-compose.yml; the two share a network.
+    url: http://prometheus:9090
+    isDefault: true
+    editable: false

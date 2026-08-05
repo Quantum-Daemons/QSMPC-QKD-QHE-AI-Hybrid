@@ -53,11 +53,53 @@ async function runTransformersJs(prompt: string, model: string): Promise<AgentRu
   };
 }
 
+/** Adapter feature probe. Every q4f16_1 MLC build needs `shader-f16`, which no Qualcomm GPU exposes. */
+export async function hasShaderF16(): Promise<boolean> {
+  try {
+    const a = await (navigator as any)?.gpu?.requestAdapter?.();
+    return !!a?.features?.has?.("shader-f16");
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Ask the browser to make this origin's storage persistent before a large model download.
+ *
+ * Without it Safari evicts non-persisted origin storage after 7 days, which silently turns a
+ * one-time 204 MB download into a recurring one for a returning visitor. Returns whether the grant
+ * was given so the UI can say so rather than assume it.
+ */
+export async function requestPersistentStorage(): Promise<{ persisted: boolean; quotaMB: number | null }> {
+  try {
+    const persisted = (await navigator.storage?.persisted?.()) || (await navigator.storage?.persist?.()) || false;
+    const est = await navigator.storage?.estimate?.();
+    return { persisted, quotaMB: est?.quota ? Math.round(est.quota / 1e6) : null };
+  } catch {
+    return { persisted: false, quotaMB: null };
+  }
+}
+
 async function runWebLLM(prompt: string, model: string, onProgress?: (t: string) => void): Promise<AgentRun> {
   const t0 = performance.now();
   if (!(await hasWebGPU())) {
     return { engine: "webllm", text: "", elapsedMs: 0, backend: "unavailable", model, webgpu: false,
       note: "WebLLM requires WebGPU (unavailable in this browser) — switch to Transformers.js (WASM)." };
+  }
+  // A q4f16_1 build on an adapter without shader-f16 fails deep inside the runtime with an opaque
+  // shader-compilation error. Checking the feature first turns that into a sentence a reader can act on.
+  const spec = (WEBLLM_MODELS as any[]).find((m) => m.id === model);
+  if (spec?.requires === "shader-f16" && !(await hasShaderF16())) {
+    return { engine: "webllm", text: "", elapsedMs: 0, backend: "unavailable", model, webgpu: true,
+      note: `${model} is a q4f16_1 build and this GPU adapter does not expose the WebGPU shader-f16 `
+        + `feature (absent on essentially all Qualcomm GPUs). Pick the q4f32_1 model instead.` };
+  }
+  {
+    const { persisted, quotaMB } = await requestPersistentStorage();
+    if (!persisted) {
+      onProgress?.(`storage not persisted${quotaMB ? ` (quota ~${quotaMB} MB)` : ""} — `
+        + "the browser may evict these weights, so a later visit re-downloads them");
+    }
   }
   const webllm: any = await import("@mlc-ai/web-llm");
   const engine = await webllm.CreateMLCEngine(model, { initProgressCallback: (p: any) => onProgress?.(p?.text ?? "") });

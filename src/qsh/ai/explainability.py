@@ -1,6 +1,9 @@
 """Explainable AI (XAI) — exact, faithful feature attributions for the private-inference models.
 
-The report flags XAI; 2026 makes it a hard requirement: **EU AI Act Article 13 transparency**
+The report flags XAI. **EU AI Act Article 13 transparency** is the instrument usually cited for it, but
+it is NOT yet in application: the AI Omnibus (Regulation (EU) 2026/1744, in force 2026-07-27) deferred
+Chapter III Sections 1-3 to 2027-12-02 (Annex III) and 2028-08-02 (Annex I). Treat this as preparation
+for a 2027/2028 obligation
 (in force August 2026) obliges high-risk AI (credit/AML, healthcare) to be interpretable, and
 finance/healthcare supervisors expect **SHAP-style feature attributions** (+ counterfactuals;
 US SR 11-7 model risk, GDPR Art. 22 right-to-explanation).

@@ -1,0 +1,23 @@
+{
+  "browser_runnable": true,
+  "fp32_bytes": 329179,
+  "fp32_max_abs_error": 3.129243850708008e-07,
+  "fp32_path": "onnx/model.onnx",
+  "int8_agreement": 0.984375,
+  "int8_browser_runnable": true,
+  "int8_bytes": 326884,
+  "int8_confident_agreement": 1.0,
+  "int8_margin_quantile": 0.05,
+  "int8_max_abs_error": 0.010476768016815186,
+  "int8_onnx_domains": [
+    "ai.onnx"
+  ],
+  "int8_path": "onnx/model_int8.onnx",
+  "int8_skipped_reason": "",
+  "n_fixtures": 256,
+  "onnx_domains": [
+    "ai.onnx"
+  ],
+  "opset": 17,
+  "passed": true
+}

@@ -3,14 +3,16 @@ import OrchestrationGraph from "../components/OrchestrationGraph";
 import PipelineControls from "../components/PipelineControls";
 import RunMonitor from "../components/RunMonitor";
 import { DEMO_BANNER, isClientDemo } from "../lib/demoMode";
+import { USECASES as USE_CASE_META } from "../lib/useCases";
 import { usePipelineRun } from "../lib/usePipelineRun";
 
-const USECASES = [
-  ["finance_aml", "Finance — AML / PSI"],
-  ["medical_fl", "Medical — Federated learning"],
-  ["genomics", "Genomics — Secure summation"],
-  ["telecom_ids", "Telecom — QKD + QML-IDS"],
-  ["satellite_comms", "Satellite — free-space QKD + QSDC"],
+// Derived from lib/useCases.ts, not re-typed. This list used to be its own literal array whose
+// labels had drifted from the canonical ones ("Genomics — Secure summation" here versus
+// "Genomics — confidential analysis" there), so the same use case was named two different things
+// depending on which page you were on. "demo" is appended because it is a real pipeline flow
+// (clientCompute FLOWS) with no marketing page of its own.
+const USECASES: [string, string][] = [
+  ...USE_CASE_META.map((u) => [u.id, u.title] as [string, string]),
   ["demo", "Generic demo"],
 ];
 
@@ -50,7 +52,8 @@ export default function Orchestration() {
       <PipelineControls run={run} />
 
       <div style={{ marginTop: 16 }} ref={graphRef}>
-        <OrchestrationGraph usecase={usecase} activeStage={active} doneStages={done} />
+        <OrchestrationGraph usecase={usecase} activeStage={active} doneStages={done}
+          config={{ kem: run.kem, qkd: run.qkd, sig: run.sig }} />
       </div>
 
       <RunMonitor events={events} metrics={metrics} signature={signature} logRef={logRef} />

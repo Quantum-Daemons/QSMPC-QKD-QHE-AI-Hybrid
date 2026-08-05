@@ -1,4 +1,4 @@
-import { Navigate, NavLink, Route, Routes } from "react-router-dom";
+import { Link, Navigate, NavLink, Route, Routes } from "react-router-dom";
 import Overview from "./pages/Overview";
 import Value from "./pages/Value";
 import Validations from "./pages/Validations";
@@ -54,8 +54,24 @@ export default function App() {
           <Route path="/orchestration" element={<Orchestration />} />
           <Route path="/usecases" element={<UseCases />} />
           <Route path="/usecase/:id" element={<UseCasePage />} />
+          {/* Without this, an unknown path rendered the sidebar next to an empty <main>, which reads
+              as a broken page rather than a wrong address. */}
+          <Route path="*" element={<NotFound />} />
         </Routes>
       </main>
     </div>
+  );
+}
+
+function NotFound() {
+  return (
+    <section className="page">
+      <h1>Page not found</h1>
+      <p className="muted">
+        That address does not match any page in this app. The use-case simulators live under
+        <code> /usecase/&lt;id&gt;</code>.
+      </p>
+      <p><Link to="/">Back to the overview</Link></p>
+    </section>
   );
 }
