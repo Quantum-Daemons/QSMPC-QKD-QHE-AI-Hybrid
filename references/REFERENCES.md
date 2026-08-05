@@ -76,9 +76,16 @@ docstring.
   arXiv:2509.14282 [cs.CR], 16 Sep 2025 `[link]`
   URL: https://arxiv.org/abs/2509.14282
   Added: no PDF bundled; claim re-verified 2026-08-04
-  Supplies the **class structure only**: 8 classes = 7 attack types plus normal. That taxonomy is
-  what `src/qsh/qml_ids/attacks.py` generates and what `scripts/train/telecom_ids.py` trains
-  against. No number from this paper is reproduced or claimed here.
+  Supplies the **class structure**: 8 classes = 7 attack types plus normal. That taxonomy is what
+  `src/qsh/qml_ids/attacks.py` generates and what `scripts/train/telecom_ids.py` trains against.
+  No number from this paper is reproduced or claimed here.
+  It also **refutes a claim this project used to make**. An earlier revision of the training script
+  and of this section asserted that every published QML-IDS number sits below a random forest on the
+  same data. Table VIII of this paper reports a hybrid QLSTM at 94.7 percent accuracy and 94.7
+  percent F1 against the authors' own random-forest baseline on their generated data. The
+  defensible statement is narrower: published quantum results here are usually obtained on heavily
+  subsampled and dimension-reduced inputs, which makes them hard to compare against a forest given
+  the full feature set - not that quantum always loses.
 
 - **Troubleshooting an Intrusion Detection Dataset: the CICIDS2017 Case Study** - Engelen, Rimmer
   and Joosen, IEEE Security and Privacy Workshops (WTMC), 2021 `[link]`

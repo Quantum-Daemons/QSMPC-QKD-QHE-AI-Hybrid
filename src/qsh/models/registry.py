@@ -538,7 +538,16 @@ _SPECS: tuple[ModelSpec, ...] = (
         notes=(
             "Not a neural network, and presenting a genomic foundation model as a PRS method would be "
             "the most obvious credibility hole available. Evaluation must be stratified by genetic "
-            "ancestry: the European-to-African AUROC drop is the finding, not a footnote."
+            "ancestry, and what is measured here is a distribution shift, NOT an AUROC drop: an "
+            "earlier revision of this note called it an AUROC drop, but 1000 Genomes is a reference "
+            "panel carrying no breast-cancer case/control status, so no AUROC is computable from it "
+            "and genomics_prs.py records auroc=null rather than inventing one. The finding is the "
+            "by_super_population.*.frac_above_global_cut rows listed above: one globally-set "
+            "high-risk cut flags a far larger share of AFR than of EUR, a gap driven by "
+            "allele-frequency differences rather than by risk. Read those rows, not this sentence - "
+            "they are recomputed on every training run, so no figure quoted in prose here can drift "
+            "away from them. The published European AUROC baseline comes from a phenotyped cohort "
+            "that is access-controlled, which is why it cannot be reproduced on this page."
         ),
     ),
     # ---------------- satellite ----------------

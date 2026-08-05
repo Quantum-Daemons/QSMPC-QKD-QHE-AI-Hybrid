@@ -12,8 +12,13 @@ WHAT THIS IS AND IS NOT
         needs the authors' agreement for commercial use, and neither CIC-IDS2017 nor the
         Engelen-corrected redistribution states a licence at all. The class structure follows
         Al-Kuwari et al. (arXiv:2509.14282, 16 Sep 2025) — 8 classes = 7 attack types + normal.
-      * Every published QML-IDS number we could verify sits **below a random forest on the same
-        data**, obtained on heavily subsampled and dimension-reduced inputs.
+      * Published QML-IDS results are **mixed, not uniformly below a random forest**. An earlier
+        revision of this docstring claimed they were, and the very paper cited above refutes it:
+        Al-Kuwari et al. Table VIII reports a hybrid QLSTM at 94.7% accuracy / 94.7% F1 against
+        their own random-forest baseline on the same generated data. What survives is the narrower
+        point: quantum results in this area are usually obtained on heavily subsampled and
+        dimension-reduced inputs, so they are hard to compare with a forest given the full feature
+        set. `registry.py` carries the corrected note and the use-case page prints it.
       * arXiv:2512.05069, a hybrid quantum-classical autoencoder IDS, was **withdrawn by its own
         authors** (v2, 2026-04-02) for evaluation "insufficient to fully support the paper's
         conclusions". That is the honest state of the field and it is printed here.
