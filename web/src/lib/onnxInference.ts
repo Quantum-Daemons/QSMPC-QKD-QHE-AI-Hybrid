@@ -116,26 +116,44 @@ export async function webgpuInfo(): Promise<Record<string, unknown>> {
 
 /** WebNN is a W3C browser API (navigator.ml); experimental / flag-gated in 2026 — offered, not assumed. */
 /**
- * A WebNN context that can actually be created, not merely a `navigator.ml` that exists.
+ * WebNN, established by **building and executing a graph** — not by checking for an API surface.
  *
- * This checked `!!navigator.ml` and that is the bug that cost this round a day. In Chrome 149
- * `navigator.ml` is present with a `createContext` method while having no usable backend, so the
- * shallow check reported WebNN, ORT was handed a `webnn` execution provider with deviceType "gpu",
- * and session creation hung forever on a machine with no GPU. Every model then looked unsupported:
- * tree ensembles, LSTMs and a plain ResNet alike. All of them load in ORT Web's wasm backend in
- * under a quarter of a second -- measured directly, once the EP list was out of the picture.
+ * Three attempts to answer "is WebNN available" got this wrong in Round 18, each one weaker than
+ * it looked:
+ *   1. `!!navigator.ml` — Chrome 149 exposes it with no backend at all.
+ *   2. `await navigator.ml.createContext({deviceType:"gpu"})` — this RESOLVES with a context on a
+ *      machine with no GPU adapter, so it proves nothing either.
+ *   3. Checking for `ctx.compute` — that method was removed from the spec in favour of
+ *      `dispatch()` + MLTensor, so its absence says nothing about whether WebNN works.
  *
- * The README already claimed the WebGPU path used "a genuine navigator.gpu.requestAdapter() probe
- * (so the reported backend is real, never a false 'webgpu')". WebNN was the one that never got it.
+ * Measured with `--enable-features=WebMachineLearningNeuralNetwork`, a 2x2 matmul against the
+ * identity builds, dispatches and reads back correctly. Without the flag the context still creates
+ * and the graph still builds — execution is where it actually stops. So the probe runs one, and a
+ * capability is claimed only when a known input produces the known output.
+ *
+ * The cost is a few milliseconds once per page. The alternative cost was every model on every page
+ * appearing unsupported, which is what a cheaper check bought last time.
  */
 export async function hasWebNN(): Promise<boolean> {
   const ml = (navigator as any)?.ml;
-  if (!ml?.createContext) return false;
+  if (!ml?.createContext || typeof (globalThis as any).MLGraphBuilder !== "function") return false;
   try {
-    const ctx = await ml.createContext({ deviceType: "gpu" });
-    return !!ctx;
+    const ctx: any = await ml.createContext({ deviceType: "gpu" });
+    if (!ctx?.dispatch || !ctx?.createTensor || !ctx?.readTensor) return false;
+    const builder = new (globalThis as any).MLGraphBuilder(ctx);
+    const a = builder.input("a", { dataType: "float32", shape: [2, 2] });
+    const identity = builder.constant(
+      { dataType: "float32", shape: [2, 2] }, new Float32Array([1, 0, 0, 1]));
+    const graph = await builder.build({ c: builder.matmul(a, identity) });
+    const tA = await ctx.createTensor({ dataType: "float32", shape: [2, 2], writable: true });
+    const tC = await ctx.createTensor({ dataType: "float32", shape: [2, 2], readable: true });
+    ctx.writeTensor(tA, new Float32Array([1, 2, 3, 4]));
+    ctx.dispatch(graph, { a: tA }, { c: tC });
+    const out = new Float32Array(await ctx.readTensor(tC));
+    // x * I === x, or the backend is not doing what it says.
+    return out.length === 4 && [1, 2, 3, 4].every((v, i) => Math.abs(out[i] - v) < 1e-4);
   } catch {
-    return false;                    // present but unusable: exactly the case that hung
+    return false;
   }
 }
 
@@ -145,17 +163,13 @@ export async function hasWebNN(): Promise<boolean> {
  * displays would be a wish rather than a measurement.
  */
 function resolveThreads(): number {
-  const isolated = typeof globalThis !== "undefined" && (globalThis as any).crossOriginIsolated === true;
-  status.crossOriginIsolated = isolated;
-  if (!isolated) return 1;
+  if (typeof self !== "undefined" && !self.crossOriginIsolated) return 1;
   const cores = (typeof navigator !== "undefined" && navigator.hardwareConcurrency) || 4;
   return Math.max(1, Math.min(4, Math.floor(cores / 2)));
 }
 
-/** Resolve the browser-tier artefact for a use case from the registry. */
-//: A cold WASM session on a few MB is seconds, not minutes. Past this something is wrong.
-// A 45 MB fp32 graph over WASM on a cold cache is legitimately slow; 45 s was too tight
-// and turned 'still loading' into 'unsupported'. Still bounded, so a genuine hang ends.
+//: A cold session on a few MB is seconds, not minutes. Bounded so a genuine hang ends rather than
+//: leaving a button spinning forever -- which it did, before the JSEP-build bug was found.
 const SESSION_CREATE_TIMEOUT_MS = 150_000;
 
 function withTimeout<T>(p: Promise<T>, ms: number, message: string): Promise<T> {
@@ -234,16 +248,12 @@ export async function loadModel(usecase: string): Promise<boolean> {
       const webnn = await hasWebNN();   // reported in status only; see the EP note below
       const eps: any[] = [];
       if (gpu) eps.push("webgpu");
-      // WebNN is deliberately NOT offered, and this is the second time that decision was forced.
-      // `!!navigator.ml` was obviously too weak. Creating a context is not enough either: on this
-      // Chrome 149 `navigator.ml.createContext({deviceType:"gpu"})` RESOLVES with a context object
-      // on a machine with no GPU adapter at all, ORT then selects the WebNN provider, and session
-      // creation never returns -- which is what made every model in the registry look unsupported.
-      //
-      // There is no probe short of running an inference that distinguishes a usable WebNN backend
-      // from a decorative one, and wasm creates a session for the largest model here in ~0.2 s. So
-      // the risk buys nothing measurable and the provider is left out until it can be verified by
-      // executing something rather than by asking whether it exists.
+      // WebNN is offered only when hasWebNN() has actually built and executed a graph above. It
+      // was dropped entirely for a while, on evidence from a browser without
+      // --enable-features=WebMachineLearningNeuralNetwork, where a context creates but nothing runs
+      // and ORT hangs on it. With the flag, a matmul dispatches and reads back correctly, so the
+      // provider is real and worth having -- gated on the one check that distinguishes the two.
+      if (webnn) eps.push({ name: "webnn", deviceType: "gpu", powerPreference: "default" });
       eps.push("wasm");                                   // always the floor
 
       // Bounded. An unsupported operator can leave session creation pending rather than
@@ -258,8 +268,8 @@ export async function loadModel(usecase: string): Promise<boolean> {
       // while the WebNN provider was not even in the list -- a label describing something the code
       // does not do, which is the exact defect this project keeps finding. `webnn` is still probed
       // and recorded separately as an environment fact.
-      status.backend = gpu ? "onnx-webgpu" : "onnx-wasm";
-      status.webnnAvailable = webnn;
+      status.backend = gpu ? "onnx-webgpu" : webnn ? "onnx-webnn" : "onnx-wasm";
+      status.webnnAvailable = webnn;   // proven by execution, not by feature detection
       status.loaded = true;
       status.modelKey = target.spec.key;
       status.url = target.url;
