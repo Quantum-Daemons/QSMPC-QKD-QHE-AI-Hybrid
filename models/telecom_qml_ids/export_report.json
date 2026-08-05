@@ -1,0 +1,19 @@
+{
+  "browser_runnable": true,
+  "fp32_bytes": 2555013,
+  "fp32_max_abs_error": 4.5061111453303937e-07,
+  "fp32_path": "onnx/model.onnx",
+  "int8_agreement": null,
+  "int8_bytes": 0,
+  "int8_confident_agreement": 1.0,
+  "int8_margin_quantile": 0.05,
+  "int8_max_abs_error": null,
+  "int8_path": "",
+  "int8_skipped_reason": "tree ensemble: parameters live in node attributes, not weight tensors, so dynamic int8 quantisation has nothing to quantise",
+  "n_fixtures": 256,
+  "onnx_domains": [
+    "ai.onnx.ml"
+  ],
+  "opset": 17,
+  "passed": true
+}

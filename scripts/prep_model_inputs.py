@@ -1,0 +1,325 @@
+#!/usr/bin/env python3
+"""Build **model-native** demo inputs so the browser can actually run the published HF models.
+
+Why this exists
+---------------
+Until Round 18 the browser tier could never have worked, and a 401 on the private HF repos was
+masking it. Each use-case page bundles a small sample for the *crypto* pipeline -- 8 features, so a
+CKKS linear layer and a garbled-circuit argmax stay tractable in a tab -- but the model published
+for that page was trained on a different corpus with a different input entirely:
+
+    page        bundled pipeline sample              published model expects
+    finance     PaySim, 8 engineered features        AMLworld, 32 graph/temporal features
+    medical     Wisconsin WDBC, 8 tabular features   BreastMNIST, [1,1,28,28] images
+    satellite   NASA SMAP/MSL, 6ch x 8 steps         ESA-ADB ch 41-46, [1,250,6] windows
+
+So the fix is not a tensor reshape. Each published model needs a real sample drawn from the
+distribution it was actually trained on. This script writes those, next to -- not instead of -- the
+pipeline samples, which keep doing their own job.
+
+Preprocessing travels WITH the data, deliberately
+-------------------------------------------------
+Writing this script, the first attempt scored the medical ResNet-18 at 0.4615 on the real test
+split against a recorded 0.8782 -- below the 0.7308 majority-class baseline. The model was fine.
+The mistake was applying `/255` and omitting the `(x-0.5)/0.5` step on line 65 of
+`scripts/train/medical_breastmnist.py`. A browser reimplementing normalisation by hand would make
+exactly that mistake and show a confidently wrong number with no error anywhere.
+
+So every file this writes carries an explicit ``input.preprocessing`` list that the browser applies
+verbatim, plus ``expected.accuracy`` measured here on these very rows. The browser re-checks its own
+result against that figure and reports a mismatch instead of rendering it. That converts "MEASURED"
+from an assertion into something the page proves each time it runs.
+
+Usage (maintainer, one-time; not part of any runtime path)::
+
+    export QSH_DATA_ROOT=$PWD/data-full
+    python scripts/prep_model_inputs.py --usecase medical_fl
+    python scripts/prep_model_inputs.py --usecase finance_aml
+    python scripts/prep_model_inputs.py --usecase satellite_comms
+
+Corpora are fetched by the commands in ``src/qsh/models/datasets.py`` (AMLWORLD_FETCH, ESA_FETCH);
+BreastMNIST is fetched by ``medmnist`` itself. None of them are redistributed by this repository --
+only the small derived samples below, whose licences are recorded in DATA_LICENSES.md.
+"""
+from __future__ import annotations
+
+import argparse
+import json
+import sys
+from pathlib import Path
+
+import numpy as np
+
+REPO = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(REPO / "src"))
+sys.path.insert(0, str(REPO / "scripts"))
+
+OUT_ROOT = REPO / "web" / "public" / "data"
+
+#: How many rows each use case ships, chosen per model rather than globally, because the right
+#: answer depends entirely on how big one row is.
+#:
+#:  * medical    -- the ENTIRE official BreastMNIST test split. 156 x 28 x 28 uint8 is ~0.4 MB raw
+#:                  and digits compress well, so the browser can reproduce the model's PUBLISHED
+#:                  test metric exactly rather than a subsample of it. That is a much stronger
+#:                  claim and it costs almost nothing.
+#:  * finance    -- 8192 rows of 32 floats. A 1-in-981 positive rate needs volume before an
+#:                  accuracy figure means anything, and this narrows the 95% interval to ~+/-0.6pp
+#:                  against ~+/-2.6pp at 512.
+#:  * satellite  -- 128 windows. One window is 250 x 6 = 1500 floats, still the heaviest row here.
+#:
+#: The full training corpora are deliberately NOT shipped: AMLworld is 475 MB, ESA-ADB is 3.6 GB,
+#: and neither may be redistributed (see DATA_LICENSES.md). A browser does not need the training
+#: corpus to verify a model -- it needs a held-out sample large enough to be worth believing.
+N_SAMPLES = {"medical_fl": None, "finance_aml": 8192, "satellite_comms": 128}
+
+
+def _session(model_dir: str, prefer_int8: bool = True):
+    """The published graph, preferring the int8 the browser tier actually downloads."""
+    import onnxruntime as ort
+
+    base = REPO / "models" / model_dir / "onnx"
+    for name in (["model_int8.onnx", "model.onnx"] if prefer_int8 else ["model.onnx"]):
+        p = base / name
+        if p.exists():
+            return ort.InferenceSession(str(p), providers=["CPUExecutionProvider"]), name
+    raise FileNotFoundError(f"no ONNX graph under {base}")
+
+
+def _write(usecase: str, payload: dict) -> Path:
+    """Write beside the model, not into the web bundle.
+
+    The evaluation sample belongs in the model's own HF repo at the same pinned commit: the sample
+    and the weights it evaluates then travel together and cannot drift apart, the demo image stops
+    carrying 1.6 MB it does not need, and HF's CDN serves the bytes instead of a 12 GB VPS. That
+    last point is what makes a larger sample affordable -- 8192 AMLworld rows narrow the 95%
+    interval on accuracy from about +/-2.6pp to +/-0.6pp, and none of it touches this repository.
+    """
+    from qsh.models import registry
+
+    key = _MODEL_KEY[usecase]
+    out = REPO / registry.ARTIFACT_DIRS[key] / "eval_sample.json"
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(json.dumps(payload, indent=1) + "\n")
+    size = out.stat().st_size
+    print(f"  wrote {out.relative_to(REPO)}  ({size/1024:.0f} KB)")
+    exp = payload["expected"]
+    if "accuracy" in exp:
+        print(f"    expected accuracy on these rows: {exp['accuracy']:.4f} "
+              f"(majority-class baseline {exp['majority_baseline']:.4f})")
+    else:
+        print(f"    expected forecast MAE on these windows: {exp['mae']:.4f} "
+              f"(persistence baseline {exp['persistence_mae']:.4f})")
+    return out
+
+
+#: Which model each use case's evaluation sample belongs to.
+_MODEL_KEY = {
+    "medical_fl": "medical_fl.resnet18",
+    "finance_aml": "finance_aml.gbm",
+    "satellite_comms": "satellite_comms.telemanom",
+}
+
+
+# --------------------------------------------------------------------------------------------- #
+#  medical_fl -- BreastMNIST 28x28, the corpus medical_fl.resnet18 was actually trained on
+# --------------------------------------------------------------------------------------------- #
+def build_medical(rng: np.random.Generator) -> dict:
+    import os
+
+    from medmnist import INFO, BreastMNIST
+
+    root = os.path.join(os.environ["QSH_DATA_ROOT"], "raw", "medmnist")
+    ds = BreastMNIST(split="test", download=True, root=root)
+    imgs, labels = ds.imgs, ds.labels.ravel()
+
+    # Stratified so the sample cannot be all-majority; the accuracy self-check would be meaningless.
+    # None => the whole official test split, so the figure below IS the published test metric.
+    want = N_SAMPLES["medical_fl"]
+    if want is None:
+        idx = np.arange(len(labels))
+    else:
+        idx = np.concatenate([
+            rng.choice(np.flatnonzero(labels == c), size=want // 2, replace=False) for c in (0, 1)
+        ])
+    rng.shuffle(idx)
+    x_u8, y = imgs[idx], labels[idx]
+
+    x = x_u8.astype(np.float32)[:, None, :, :] / 255.0
+    x = (x - 0.5) / 0.5                               # train/medical_breastmnist.py:64-65
+    sess, graph = _session("medical_breastmnist_resnet18")
+    pred = sess.run(None, {sess.get_inputs()[0].name: x})[0].argmax(1)
+
+    return {
+        "provenance": (
+            "real MedMNIST v2 BreastMNIST test-split images (Yang et al., Scientific Data 10:41, "
+            "2023; CC BY 4.0), derived from the Al-Dhabyani et al. BUSI ultrasound dataset. These "
+            "are the images medical_fl.resnet18 was trained and evaluated on -- unlike the Wisconsin "
+            "WDBC sample this page uses for the FHE/MPC pipeline, which is a different corpus."
+        ),
+        "input": {
+            "shape": [1, 1, 28, 28], "dtype": "float32",
+            # Applied by the browser verbatim. Omitting the second step scores 0.4615 instead of
+            # 0.8782 -- silently, with no error. See the module docstring.
+            "preprocessing": ["divide by 255", "subtract 0.5", "divide by 0.5"],
+            "layout": "samples[i] is a flat row-major 28*28 uint8 image, values 0-255",
+        },
+        "classes": INFO["breastmnist"]["label"],
+        "samples": x_u8.reshape(len(idx), -1).astype(int).tolist(),
+        "labels": y.astype(int).tolist(),
+        "expected": {
+            "graph": graph,
+            "accuracy": float((pred == y).mean()),
+            "majority_baseline": float(max(np.bincount(y)) / len(y)),
+            "note": ("Measured here with onnxruntime on exactly these rows. The browser must "
+                     "reproduce it to within tolerance or report a mismatch rather than render it."),
+        },
+    }
+
+
+# --------------------------------------------------------------------------------------------- #
+#  finance_aml -- AMLworld HI-Small, the 32 engineered features finance_aml.gbm expects
+# --------------------------------------------------------------------------------------------- #
+def build_finance(rng: np.random.Generator) -> dict:
+    # Reuse the training script's own feature engineering rather than reimplementing 32 columns --
+    # a second implementation would drift from the model on the first edit.
+    from train.finance_aml import FEATURES, graph_features  # type: ignore
+
+    from qsh.models import datasets as D
+
+    # load_amlworld normalises "Is Laundering" -> "label" (datasets.py:84-91); the training script
+    # reads that name too, so use it rather than the raw CSV header.
+    df = D.load_amlworld(nrows=400_000)
+    if "label" not in df:
+        raise SystemExit(f"AMLworld frame has no 'label' column; got {list(df.columns)[:12]}")
+    y_all = df["label"].to_numpy().astype(int)
+
+    feats = graph_features(df)
+    X_all = np.asarray(feats[list(FEATURES)].to_numpy(dtype=np.float32)
+                       if hasattr(feats, "columns") else feats, dtype=np.float32)
+
+    pos = np.flatnonzero(y_all == 1)
+    neg = np.flatnonzero(y_all == 0)
+    # 1-in-981 prevalence: a random draw would almost surely contain zero positives and the
+    # self-check would say nothing. Force a visible minority so the number means something.
+    want = N_SAMPLES["finance_aml"]
+    take_pos = min(len(pos), want // 4)
+    idx = np.concatenate([rng.choice(pos, take_pos, replace=False),
+                          rng.choice(neg, want - take_pos, replace=False)])
+    rng.shuffle(idx)
+    x, y = X_all[idx], y_all[idx]
+
+    sess, graph = _session("finance_aml_gbm")
+    out = sess.run(None, {sess.get_inputs()[0].name: x})
+    scores = next((o for o in out if getattr(o, "ndim", 0) == 2 and o.shape[1] > 1), out[0])
+    pred = np.asarray(scores).argmax(1)
+
+    return {
+        "provenance": (
+            "real IBM AMLworld HI-Small transactions (Altman et al., Kaggle "
+            "ealtman2019/ibm-transactions-for-anti-money-laundering-aml, CDLA-Sharing-1.0). IBM "
+            "states the corpus is entirely SYNTHETIC -- generated by a multi-agent virtual world, "
+            "not real customer data. These are the engineered features finance_aml.gbm was trained "
+            "on, unlike the 8-feature PaySim sample this page uses for the FHE/MPC pipeline."
+        ),
+        "input": {"shape": [1, len(FEATURES)], "dtype": "float32",
+                  "preprocessing": [], "layout": "samples[i] is one row of the 32 features below"},
+        "feature_names": list(FEATURES),
+        "samples": np.asarray(x, dtype=float).round(6).tolist(),
+        "labels": y.astype(int).tolist(),
+        "expected": {
+            "graph": graph,
+            "accuracy": float((pred == y).mean()),
+            "majority_baseline": float(max(np.bincount(y)) / len(y)),
+            "note": ("Stratified to contain positives -- AMLworld's real prevalence is ~1 in 981, "
+                     "so an unstratified draw would be all-negative and accuracy would be vacuous."),
+        },
+    }
+
+
+# --------------------------------------------------------------------------------------------- #
+#  satellite_comms -- ESA-ADB Mission1 channels 41-46, [1,250,6] windows
+# --------------------------------------------------------------------------------------------- #
+def build_satellite(rng: np.random.Generator) -> dict:
+    """ESA-ADB Mission1 channels 41-46, windowed exactly as scripts/train/satellite_telemanom.py does.
+
+    Telemanom is a FORECASTER, not a classifier: [1,250,6] in, [1,6] next-step prediction out. So the
+    self-check here is forecast error against the true next values, not an accuracy. Reproducing the
+    model's headline event-wise F0.5 would mean reimplementing non-parametric dynamic thresholding in
+    the browser, which is a different and much larger claim than "the published graph executes here
+    and predicts what it predicted offline".
+    """
+    from qsh.models import datasets as D
+
+    seq, chans = 250, list(D.ESA_MISSION1_LIGHTWEIGHT)
+    # Mirror the training pipeline step for step; a different resample or normalisation would make
+    # the browser's numbers incomparable with the recorded ones for reasons nobody could see.
+    raw = D.load_esa_channels()
+    df = raw.resample("60s").mean().ffill().bfill()
+    values = df.to_numpy(dtype=np.float32)
+    mu, sigma = values.mean(0), values.std(0) + 1e-8
+    values = (values - mu) / sigma                       # train script lines 164-166
+
+    # 250x6 per window is 1500 floats, so keep this small -- the comparison against
+    # persistence is stable well below N_SAMPLES and the payload has to ship.
+    n_windows = N_SAMPLES["satellite_comms"]
+    starts = rng.choice(np.arange(0, len(values) - seq - 1), size=n_windows, replace=False)
+    x = np.stack([values[s:s + seq] for s in starts]).astype(np.float32)
+    y_next = np.stack([values[s + seq] for s in starts]).astype(np.float32)
+
+    sess, graph = _session("satellite_telemanom", prefer_int8=False)
+    pred = np.asarray(sess.run(None, {sess.get_inputs()[0].name: x})[0], dtype=np.float32)
+    mae = float(np.abs(pred - y_next).mean())
+    # What predicting "no change from the last observed step" would score. A forecaster that cannot
+    # beat persistence is not forecasting, and the browser should be able to see that too.
+    persistence_mae = float(np.abs(x[:, -1, :] - y_next).mean())
+
+    return {
+        "task": "forecast",
+        "provenance": (
+            "real ESA Anomaly Dataset (ESA-ADB) Mission1 lightweight channels 41-46 "
+            "(Zenodo 12528696, CC BY 3.0 IGO). Missions are anonymised Mission1/2/3 -- they are not "
+            "named Sentinel anything. Resampled to 60s and z-scored exactly as the training script "
+            "does. These are the windows satellite_comms.telemanom was trained on, unlike the NASA "
+            "SMAP/MSL sample this page uses for the FHE/MPC pipeline."
+        ),
+        "input": {"shape": [1, seq, len(chans)], "dtype": "float32", "preprocessing": [],
+                  "layout": f"samples[i] is {seq} timesteps x {len(chans)} channels, row-major, "
+                            "already resampled and z-scored"},
+        "channels": chans,
+        "samples": x.reshape(len(x), -1).round(4).tolist(),
+        "targets": y_next.round(4).tolist(),
+        "expected": {
+            "graph": graph,
+            "mae": mae,
+            "persistence_mae": persistence_mae,
+            "note": ("Mean absolute error of the next-step forecast, measured here with onnxruntime "
+                     "on exactly these windows. persistence_mae is what predicting no change would "
+                     "score, so a reader can tell whether the model is doing anything."),
+        },
+    }
+
+
+BUILDERS = {"medical_fl": build_medical, "finance_aml": build_finance,
+            "satellite_comms": build_satellite}
+
+
+def main() -> int:
+    ap = argparse.ArgumentParser(description=__doc__,
+                                 formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("--usecase", choices=sorted(BUILDERS), required=True)
+    ap.add_argument("--seed", type=int, default=17)
+    args = ap.parse_args()
+
+    import os
+    if not os.environ.get("QSH_DATA_ROOT"):
+        raise SystemExit("set QSH_DATA_ROOT to the raw-corpus root (see src/qsh/models/datasets.py)")
+
+    print(f"building model-native demo input for {args.usecase} ...")
+    payload = BUILDERS[args.usecase](np.random.default_rng(args.seed))
+    _write(args.usecase, payload)
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

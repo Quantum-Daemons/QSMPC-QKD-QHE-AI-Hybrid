@@ -4,7 +4,8 @@ Houses the *non-linear* half of the hybrid private-inference split: linear layer
 FHE (CKKS, GPU-capable), non-linear layers (ReLU, argmax, comparison) run under secret-sharing
 MPC — the standard 2026 architecture (EncFormer; Gazelle→Delphi→BOLT→Bumblebee→BLB;
 RhombusEnd2End/HEonGPU). The MPC engine is **MPyC** (MIT, pure-Python, Shamir secret sharing
-with secure comparison), vendored at ``submodules/mpyc``. MP-SPDZ + hpmpc/PIGEON remain as
+with secure comparison), installed from PyPI (the wheel is the same code as upstream lschoe/mpyc;
+the submodule was dropped in Round 17 as redundant). MP-SPDZ + hpmpc/PIGEON remain as
 heavyweight production references.
 """
 

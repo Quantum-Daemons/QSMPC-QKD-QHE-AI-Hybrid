@@ -1,4 +1,4 @@
-# PGS000001 (PRS77_BC) — real breast-cancer Polygenic Risk Score, 77 SNPs. Source: PGS Catalog (https://www.pgscatalog.org/score/PGS000001/), CC-BY 4.0. Mavaddat et al. Bundled for the genomics use case (real PRS model evaluated under CKKS).
+# PGS000001 (PRS77_BC) - breast-cancer Polygenic Risk Score, 77 SNPs. Source: PGS Catalog (https://www.pgscatalog.org/score/PGS000001/). LICENCE: per score - PGS000001 carries the Catalog's default terms (EMBL-EBI Terms of Use), NOT CC-BY 4.0; cite Mavaddat et al. and observe any restrictions set by the score authors. See DATA_LICENSES.md.
 rsID	effect_allele	other_allele	effect_weight
 rs78540526	T	C	0.16220387987485377
 rs75915166	A	C	0.023618865598634027

@@ -1,4 +1,6 @@
-# Real PaySim mobile-money transactions (Kaggle ealaxi/paysim1, CC-BY-SA-4.0; Lopez-Rojas et al. 2016). Columns = 8 AML features (real PaySim-derived) + isFraud.
+# PaySim simulator output (Kaggle ealaxi/paysim1, CC-BY-SA-4.0; Lopez-Rojas et al. 2016). PaySim is a
+# SIMULATOR - these are synthetic transactions from aggregated real mobile-money logs, not real
+# transactions. Columns = 8 AML features (PaySim-derived) + isFraud.
 amount	velocity_24h	cross_border	night_tx	new_payee	amount_zscore	device_risk	geo_mismatch	isFraud
 9.52002	0.00000	0.00000	0.00000	1.00000	-0.72794	1.00000	0.99993	0
 7.97454	0.00000	0.00000	0.00000	1.00000	-1.57968	0.00000	0.99966	0

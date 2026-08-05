@@ -48,7 +48,18 @@ function genData(nPer: number, seed: number): { X: number[][]; y: number[] } {
   return { X, y };
 }
 
-export interface IDSResult { accuracy: number; binaryF1: number; nParams: number; nTest: number; }
+export interface IDSResult {
+  /** Headline: mean per-class F1 over the 8 classes present in the held-out split. */
+  macroF1: number;
+  /** The weakest single class — what macro F1 averages over and what an operator actually feels. */
+  worstClassF1: number;
+  /** Companions, kept because they are the numbers this field usually quotes, not because they lead. */
+  accuracy: number;
+  binaryF1: number;
+  nParams: number; nTest: number;
+  /** Samples/class actually trained on after clamping — not necessarily what was requested. */
+  nPerClassUsed: number;
+}
 
 export function clientTrainScoreIDS(seed = 0, nPerClass?: number): IDSResult {
   const cfg = idsCfg();
@@ -97,17 +108,33 @@ export function clientTrainScoreIDS(seed = 0, nPerClass?: number): IDSResult {
     for (let c = 1; c < N_CLASS; c++) if (logits[c] > logits[best]) best = c;
     return best;
   };
+  // Per-class confusion counts. Macro F1 is computed from these because it is the only one of the
+  // three numbers here that degrades when a single attack class collapses: binary F1 folds all seven
+  // attack types into "attack" and aggregate accuracy averages the failure away. Engelen et al.
+  // (WTMC 2021) is the standing example — correcting CIC-IDS2017's labels moved Bot F1 from 0.60 to
+  // 0.99 while aggregate accuracy sat at 0.99 throughout. scripts/train/telecom_ids.py has reported
+  // macro F1 as the headline since Round 17; this is the browser catching up to it.
+  const tpC = new Array(N_CLASS).fill(0), fpC = new Array(N_CLASS).fill(0), fnC = new Array(N_CLASS).fill(0);
   let correct = 0, tp = 0, fp = 0, fn = 0;
   for (let n = 0; n < Zte.length; n++) {
     const pred = predict(Zte[n]);
-    if (pred === yte[n]) correct++;
+    if (pred === yte[n]) { correct++; tpC[pred]++; } else { fpC[pred]++; fnC[yte[n]]++; }
     const pa = pred !== 0, ta = yte[n] !== 0;
     if (pa && ta) tp++; else if (pa && !ta) fp++; else if (!pa && ta) fn++;
   }
-  const prec = tp + fp > 0 ? tp / (tp + fp) : 0, rec = tp + fn > 0 ? tp / (tp + fn) : 0;
+  const f1 = (t: number, f: number, m: number) => {
+    const pr = t + f > 0 ? t / (t + f) : 0, rc = t + m > 0 ? t / (t + m) : 0;
+    return pr + rc > 0 ? (2 * pr * rc) / (pr + rc) : 0;
+  };
+  // Averaged over classes actually present in the held-out split, so a class the split happens to
+  // omit cannot be scored 0 and drag the mean down as if the model had missed it.
+  const present = [...Array(N_CLASS).keys()].filter((c) => tpC[c] + fnC[c] > 0);
+  const perClassF1 = present.map((c) => f1(tpC[c], fpC[c], fnC[c]));
   return {
     accuracy: Zte.length ? correct / Zte.length : 0,
-    binaryF1: prec + rec > 0 ? (2 * prec * rec) / (prec + rec) : 0,
-    nParams: N_CLASS * N_FEAT + N_CLASS, nTest: Zte.length,
+    macroF1: present.length ? perClassF1.reduce((a, v) => a + v, 0) / present.length : 0,
+    worstClassF1: present.length ? Math.min(...perClassF1) : 0,
+    binaryF1: f1(tp, fp, fn),
+    nParams: N_CLASS * N_FEAT + N_CLASS, nTest: Zte.length, nPerClassUsed: nPer,
   };
 }

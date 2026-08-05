@@ -1,0 +1,143 @@
+name: CI
+
+# Every guarantee in this project's review protocol was previously enforced by hand, once per round,
+# by a person remembering to run it. This workflow makes the ones that can be machine-checked
+# actually machine-checked: config parity, no Japanese in public files, no secrets staged, the test
+# suite, and the web typecheck/build.
+#
+# Deliberately offline: no test may reach the network, so CI stays reproducible and a dataset host
+# being down cannot turn into a red build.
+
+on:
+  push:
+    branches: ["main", "round*"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  python:
+    name: python ${{ matrix.python }}
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.12"]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: false        # nothing in the test path builds against a submodule
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+          cache: pip
+
+      - name: Install core + API + FHE + AI tiers
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-core.txt -r requirements-api.txt -r requirements-fhe.txt
+          # The AI tier IS required. An earlier revision of this workflow skipped it on the
+          # assumption that only slow tests needed torch; that was wrong — test_usecases.py and
+          # test_unified_benchmark.py import torch and xgboost through the use-case modules and
+          # fail at collection without them. Skipping the tier would have meant CI silently not
+          # covering the ML paths, which is the exact kind of false confidence this project avoids.
+          # CPU wheels only: no GPU on the runner, and the CUDA build is an order of magnitude larger.
+          pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
+          pip install -r requirements-ai.txt
+          pip install -e .
+
+      - name: Test suite
+        # Offline by design: no test may reach the network. Where a dataset is unavailable the
+        # loader falls back to synthetic data and logs that loudly (see qsh/data/loaders.py) — a
+        # labelled fallback, never a silent substitution.
+        env:
+          HF_HUB_OFFLINE: "1"
+        run: pytest -m "not slow" -q
+
+      - name: Config parity (defaults.py -> config.defaults.json)
+        # The committed JSON is what the zero-backend demo reads. If it drifts from the Python
+        # dataclasses, the demo silently shows different numbers than the API does.
+        run: |
+          python scripts/export_config.py
+          git diff --exit-code -- web/src/lib/config.defaults.json \
+            || { echo "::error::config.defaults.json is stale — run: python scripts/export_config.py"; exit 1; }
+
+      - name: Lint (blocking, Round-17 modules)
+        # The repository carries 51 pre-existing ruff findings that predate this workflow. Turning
+        # them into a red build on day one would mean the first thing anyone learns about CI is to
+        # ignore it. So the gate is blocking for the code added in Round 17 and advisory for the
+        # rest, and the advisory count is printed so it can be driven down deliberately rather than
+        # discovered by accident.
+        run: |
+          pip install ruff
+          ruff check src/qsh/models scripts/train scripts/publish_hf.py scripts/data
+
+      - name: Lint (advisory, whole tree)
+        continue-on-error: true
+        run: ruff check src tests api scripts --output-format=concise
+
+  guards:
+    name: repository guards
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: No confidential files tracked
+        # The research reports and monetization notes are git-ignored by design; a `git add -f`
+        # would defeat that silently.
+        run: make check-secrets
+
+      - name: No Japanese in public files
+        # Public-facing source and docs are English-only. The .ja monetization workflow is
+        # git-ignored, so anything matched here is a genuine leak.
+        run: |
+          if grep -rIlP '[\x{3040}-\x{309F}\x{30A0}-\x{30FF}\x{4E00}-\x{9FFF}]' \
+               --include='*.py' --include='*.ts' --include='*.tsx' --include='*.md' \
+               --include='*.yml' --include='*.sh' \
+               src api web/src tests scripts docs README.md 2>/dev/null; then
+            echo "::error::Japanese characters found in public files (listed above)"
+            exit 1
+          fi
+          echo "clean"
+
+      - name: No model artifacts committed
+        # Weights live on the Hugging Face Hub at a pinned revision, never in git.
+        run: |
+          # .npy included: fixtures.npy holds dataset-derived feature rows, so it carries the
+          # training data's licence and must not be redistributed either.
+          if git ls-files | grep -E '\.(onnx|safetensors|pt|pth|h5|npy)$'; then
+            echo "::error::model artifacts must not be committed; publish them to the Hub instead"
+            exit 1
+          fi
+          echo "clean"
+
+  web:
+    name: web typecheck + build
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Install
+        working-directory: web
+        run: npm ci
+
+      - name: Typecheck
+        working-directory: web
+        run: npx tsc --noEmit
+
+      - name: Build
+        working-directory: web
+        run: npm run build

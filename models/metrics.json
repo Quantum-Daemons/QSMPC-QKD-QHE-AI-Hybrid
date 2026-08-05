@@ -1,0 +1,207 @@
+{
+  "finance_aml.gbm": {
+    "accuracy": 0.9983866140161103,
+    "auprc": 0.07323010834680115,
+    "auprc_baseline": 0.0015234617040716665,
+    "auroc": 0.8980183471873905,
+    "baseline_gap_note": "This reaches minority-class F1 well below the published 0.6323. Two differences account for most of it and both are deliberate. (1) The published baseline uses IBM's Graph Feature Preprocessor, which ships in `snapml` under a Proprietary licence and is therefore excluded by this project's commercial-OK-only rule; what is reimplemented here is the documented typology set (degree, fan-in/out, reciprocity, k-hop cycle closure, burst degree, scatter-gather). (2) The corpus injects CYCLE attempts of up to 10 hops (HI-Small_Patterns.txt), while reachability here is computed to 4 hops because the boolean sparse powers grow quickly beyond that. The evaluation is also strictly inductive: graph aggregates are fitted on the training window only, so no test-time edge informs a training-time feature. Reported as measured; not adjusted to close the gap.",
+    "data_digest": "1e28652402bec78a",
+    "dataset": "IBM AMLworld HI-Small",
+    "decision_threshold": 0.928426,
+    "export": {
+      "fp32_bytes": 4606582,
+      "int8_bytes": 0,
+      "int8_skipped_reason": "tree ensemble: parameters live in node attributes, not weight tensors, so dynamic int8 quantisation has nothing to quantise",
+      "opset": 0
+    },
+    "git_sha": "e572d98-dirty",
+    "hf_revision": "cd81e948e8e02ce835a26c48c6c0ca0d3628e2c2",
+    "minority_class_f1": 0.08077786088257292,
+    "n_test": 1523504,
+    "n_train": 3554841,
+    "positive_rate": 0.00101943,
+    "split": "temporal, inductive",
+    "wall_clock_s": 73.7
+  },
+  "finance_aml.student": {
+    "agreement": 0.884055,
+    "disagreement_on_positives": 0.643257,
+    "metric_delta": 0.062987,
+    "metric_delta_pp": 6.2987,
+    "metric_name": "minority_class_f1",
+    "n_eval": 1523504,
+    "student_key": "finance_aml.student",
+    "student_metric": 0.017791,
+    "student_params": 33,
+    "teacher_key": "finance_aml.gbm",
+    "teacher_metric": 0.080778,
+    "teacher_params": 138312
+  },
+  "genomics.prs": {
+    "dataset": "PGS Catalog scoring files",
+    "git_sha": "e572d98-dirty",
+    "licence_audit": {
+      "checked": "read from the bundled scoring file at run time",
+      "declares_restriction": true,
+      "header": [
+        "# PGS000001 (PRS77_BC) - breast-cancer Polygenic Risk Score, 77 SNPs. Source: PGS Catalog (https://www.pgscatalog.org/score/PGS000001/). LICENCE: per score - PGS000001 carries the Catalog's default terms (EMBL-EBI Terms of Use), NOT CC-BY 4.0; cite Mavaddat et al. and observe any restrictions set by the score authors. See DATA_LICENSES.md."
+      ],
+      "publishable": false,
+      "stale_record_note": "Re-read from the bundled file. The previous record quoted an older header asserting CC-BY 4.0 and publishable=true; the file now states the score carries the PGS Catalog's default EMBL-EBI Terms of Use, NOT CC-BY 4.0, and src/qsh/models/registry.py sets publishable=False. Publication is gated by the registry flag, which scripts/publish_hf.py enforces."
+    },
+    "measured": {
+      "by_super_population": {
+        "AFR": {
+          "frac_above_global_cut": 0.293495,
+          "mean": 1.187253,
+          "n": 661,
+          "p90": 1.724599,
+          "sd": 0.414498
+        },
+        "AMR": {
+          "frac_above_global_cut": 0.037464,
+          "mean": 0.624626,
+          "n": 347,
+          "p90": 1.128644,
+          "sd": 0.412362
+        },
+        "EAS": {
+          "frac_above_global_cut": 0.065476,
+          "mean": 0.856069,
+          "n": 504,
+          "p90": 1.332257,
+          "sd": 0.38604
+        },
+        "EUR": {
+          "frac_above_global_cut": 0.00994,
+          "mean": 0.516796,
+          "n": 503,
+          "p90": 1.062128,
+          "sd": 0.414408
+        },
+        "SAS": {
+          "frac_above_global_cut": 0.01227,
+          "mean": 0.560764,
+          "n": 489,
+          "p90": 1.097803,
+          "sd": 0.404388
+        }
+      },
+      "global_high_risk_cut": 1.429783,
+      "n_samples": 2504,
+      "n_variants": 77,
+      "score_mean": 0.785599,
+      "score_sd": 0.486734
+    },
+    "not_measured": {
+      "auroc": null,
+      "published_auroc_eur": 0.628,
+      "published_source": "PGS000001 (Mavaddat 2015), PGS Catalog performance metric at n=200,195",
+      "reason": "1000 Genomes is a reference panel with no breast-cancer case/control status. AUROC requires a phenotyped cohort; the published 0.628 comes from n=200,195 and is carried as a citation, not as a measurement from this run."
+    },
+    "wall_clock_s": 0.0
+  },
+  "medical_fl.resnet18": {
+    "accuracy": 0.8653846153846154,
+    "auc": 0.9146825396825395,
+    "best_val_auc": 0.955723,
+    "dataset": "MedMNIST v2 BreastMNIST",
+    "export": {
+      "fp32_bytes": 44765598,
+      "int8_agreement": 0.9935897435897436,
+      "int8_bytes": 11257533,
+      "opset": 18
+    },
+    "git_sha": "2ee3dc4-dirty",
+    "hf_revision": "13ae24e3e18030ab80cc3a9e69ffd18d98e883e2",
+    "macro_f1": 0.8249158249158248,
+    "n_parameters": 11171266,
+    "resolution": 28,
+    "transfer_learning": "none \u2014 trained from random initialisation, so the weights are not ImageNet-derived and carry no ImageNet terms (see DATA_LICENSES.md)",
+    "wall_clock_s": 9.4
+  },
+  "medical_fl.student": {
+    "agreement": 0.75,
+    "both_scored_zero": false,
+    "disagreement_on_positives": 0.078947,
+    "metric_delta": 0.134616,
+    "metric_delta_pp": 13.4616,
+    "metric_name": "accuracy",
+    "n_eval": 156,
+    "student_key": "medical_fl.student",
+    "student_metric": 0.730769,
+    "student_params": 3226,
+    "teacher_key": "medical_fl.resnet18",
+    "teacher_metric": 0.865385,
+    "teacher_params": 11171266
+  },
+  "satellite_comms.student": {
+    "agreement": 0.999987,
+    "disagreement_on_positives": 0.0,
+    "metric_delta": 0.0,
+    "metric_delta_pp": 0.0,
+    "metric_name": "event_wise_f0_5",
+    "n_eval": 307601,
+    "student_key": "satellite_comms.student",
+    "student_metric": 0.0,
+    "student_params": 49,
+    "teacher_key": "satellite_comms.telemanom",
+    "teacher_metric": 0.0,
+    "teacher_params": 80486
+  },
+  "satellite_comms.telemanom": {
+    "anomaly_sample_rate": 0.0075528,
+    "dataset": "ESA Anomaly Dataset (ESA-ADB), Mission1 lightweight channels 41-46",
+    "event_wise_f0_5": 0.714286,
+    "export": {
+      "fp32_bytes": 329179,
+      "int8_bytes": 326884,
+      "opset": 17
+    },
+    "git_sha": "e572d98-dirty",
+    "hf_revision": "2eda5aec6f4de9ebbec0d4b78f66ac5f5755a6ce",
+    "metric_note": "Event-wise F-beta at beta=0.5 under the overlap rule, which is what ESA-ADB and Telemanom report. Telemanom's widely-quoted 0.71 is F0.5, not F1. point_adjusted_f1 is shown only to expose how much point adjustment inflates: TSB-AD (NeurIPS 2024) found a uniform random score ranks 26th of 32 detectors under it. Only labels whose ESA-ADB Category is 'Anomaly' count as positives; the 690 annotated rare *nominal* events do not.",
+    "n_anomaly_intervals": 320,
+    "n_parameters": 80486,
+    "point_adjusted_f1": 0.994475,
+    "published_full_channel_f0_5": 0.061,
+    "published_lightweight_f0_5": 0.786,
+    "resample": "300s",
+    "wall_clock_s": 60.1,
+    "windowed_iforest_event_wise_f0_5": 0.000248
+  },
+  "telecom_ids.qml": {
+    "aggregate_accuracy": 0.986667,
+    "classical_rf_macro_f1": 0.986629,
+    "classical_rf_per_class_f1": {
+      "combined": 0.986667,
+      "detector_blinding": 1.0,
+      "intercept_resend": 0.993377,
+      "normal": 1.0,
+      "photon_number_splitting": 1.0,
+      "rng_manipulation": 0.993289,
+      "trojan_horse": 0.96732,
+      "wavelength_trojan": 0.952381
+    },
+    "data": "synthetic, class structure per arXiv:2509.14282 (Al-Kuwari et al., 2025)",
+    "dataset": "QKD attack telemetry (synthetic, methodology-grounded)",
+    "export": {
+      "fp32_bytes": 2555013,
+      "int8_skipped_reason": "tree ensemble: parameters live in node attributes, not weight tensors, so dynamic int8 quantisation has nothing to quantise",
+      "opset": 17
+    },
+    "framing": "Architecture comparison, not a performance claim. The data is synthetic because no commercial-OK real attack corpus exists. Every published QML-IDS figure we could verify sits below a random forest on the same data, and arXiv:2512.05069 was withdrawn by its own authors for insufficient evaluation. Per-class F1 is the headline; aggregate accuracy is shown beside it because Engelen et al. (WTMC 2021) demonstrated it stays at 0.99 across a label correction that moved Bot F1 from 0.60 to 0.99.",
+    "git_sha": "733e325",
+    "n_classes": 8,
+    "n_samples": 2400,
+    "quantum_beats_classical": false,
+    "quantum_qnn_accuracy": 0.875,
+    "quantum_qnn_binary_f1": 0.933333,
+    "quantum_qnn_macro_f1": 0.466667,
+    "quantum_qnn_n_params": 25,
+    "quantum_svc_accuracy": 0.908333,
+    "quantum_svc_binary_f1": 0.945274,
+    "quantum_svc_macro_f1": 0.831611,
+    "wall_clock_s": 267.1
+  }
+}

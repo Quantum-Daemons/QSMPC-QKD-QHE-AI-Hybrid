@@ -1,8 +1,13 @@
 """QKD attack-scenario telemetry generator (WS2: QML-IDS).
 
-Synthesizes labelled feature vectors for the eight attack scenarios studied in
-Al-Kuwari et al., *Resisting QKD Attacks Using QML*, arXiv:2509.14282 (IET Quantum
-Comm. 2026): each attack leaves a characteristic signature in the QKD telemetry
+Synthesizes labelled feature vectors for the eight classes studied in Al-Kuwari et al.,
+*Resisting QKD Attacks Using QML*, arXiv:2509.14282 (IET Quantum Comm. 2026).
+
+Eight CLASSES means **seven attack types plus normal traffic** -- ``ATTACKS[0]`` is ``'normal'``.
+Calling them "eight attack scenarios" counts the benign class as an attack and overstates the task;
+that phrasing had leaked into the README and two docs before being caught again in Round 17.
+
+Each attack leaves a characteristic signature in the QKD telemetry
 (QBER level/variance, sift ratio, detector-click statistics, timing jitter,
 multi-photon rate). These features train the intrusion detector.
 

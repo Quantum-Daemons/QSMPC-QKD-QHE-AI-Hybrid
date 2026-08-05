@@ -12,9 +12,29 @@ export default function PipelineControls({ run }: { run: Run }) {
   // In the public demo the FHE/MPC compute is REAL and runs entirely in the browser (node-seal CKKS +
   // local secret-sharing), so the server-side backend selectors (TenSEAL/OpenFHE/MPyC/…) don't apply.
   const demo = isClientDemo();
-  const { opts, kem, setKem, qkd, setQkd, fhe, setFhe, mpc, setMpc, sig, setSig,
+  const { usecase, opts, kem, setKem, qkd, setQkd, fhe, setFhe, mpc, setMpc, sig, setSig,
     modelSize, setModelSize, workload, setWorkload, qfl, setQfl, optiqkd, setOptiqkd,
     state, running, paused, start, startStepwise, pause, resume, step, stop } = run;
+
+  // Round 18: three controls were rendered on pages where they could not change anything a visitor
+  // could see. plan18's own audit rule is that "a control that renders but changes nothing is a
+  // defect", so they are shown only where they are load-bearing. The state and the pipeline code
+  // behind them are untouched -- only the UI is gated.
+  //
+  //  * Model size scales already-measured FHE/MPC numbers, but telecom_ids and satellite_comms are
+  //    not in INFERENCE_USECASES, so BenchmarkPanel renders `compact` and hides every element it
+  //    affects. Its only trace there was the download filename.
+  //  * Workload's cnn/transformer values are x2/x3 multipliers on MLP hidden widths. Only
+  //    medical_fl + cnn selects a genuinely different (convolutional) architecture. It is also a
+  //    complete no-op at Model size = Lightweight, where hidden is [] and [].map(x2) is still [].
+  //  * Federated (QFL) injects a stage that runs and logs, but no diagram outside medical_fl has a
+  //    federated_training node to render it.
+  const showModelSize = usecase !== "telecom_ids" && usecase !== "satellite_comms";
+  const showWorkload = usecase === "medical_fl";
+  const showQfl = usecase === "medical_fl";
+  // OptiQKD is kept everywhere -- it does real work -- but it cannot run without a quantum channel:
+  // qkd_key_agreement returns before the optimise block when the PQC-only profile is selected.
+  const optiqkdDisabled = qkd === "pqc-only";
 
   const sel = (label: string, id: string, fam: string, value: string, set: (v: string) => void) => (
     <>
@@ -50,30 +70,39 @@ export default function PipelineControls({ run }: { run: Run }) {
       <div className="btn-row" style={{ marginTop: 8 }}>
         {/* model size + workload are run config: they parameterise the single Run that drives both
             the live pipeline AND the benchmark assembled from it (unified, Round 7). */}
-        <label className="muted" htmlFor="sel-size">Model size</label>
-        <select id="sel-size" name="sel-size" aria-label="Model size" value={modelSize}
-          onChange={(e) => setModelSize(e.target.value)}>
-          {MODEL_SIZES.map((m) => <option key={m.id} value={m.id}>{m.label}</option>)}
-        </select>
-        <label className="muted" htmlFor="sel-workload">Workload</label>
-        <select id="sel-workload" name="sel-workload" aria-label="Workload" value={workload}
-          onChange={(e) => setWorkload(e.target.value)}>
-          <option value="linear">Linear</option><option value="cnn">CNN</option><option value="transformer">Transformer</option>
-        </select>
+        {showModelSize && (<>
+          <label className="muted" htmlFor="sel-size">Model size</label>
+          <select id="sel-size" name="sel-size" aria-label="Model size" value={modelSize}
+            onChange={(e) => setModelSize(e.target.value)}>
+            {MODEL_SIZES.map((m) => <option key={m.id} value={m.id}>{m.label}</option>)}
+          </select>
+        </>)}
+        {showWorkload && (<>
+          <label className="muted" htmlFor="sel-workload">Workload</label>
+          <select id="sel-workload" name="sel-workload" aria-label="Workload" value={workload}
+            onChange={(e) => setWorkload(e.target.value)}>
+            <option value="linear">Linear</option><option value="cnn">CNN (convolutional)</option>
+          </select>
+        </>)}
         {/* Quantum Federated Learning toggle — runs a real client-side FedAvg of a quantum-classical
             model (full deployment = Flower + PennyLane HybridQNN under quantum-safe secure aggregation). */}
-        <label className="muted" htmlFor="sel-qfl"
-          title="Run Quantum Federated Learning this run — a hybrid quantum-classical FedAvg across simulated clients (demo: in-browser; full: Flower + PennyLane).">
-          <input id="sel-qfl" name="sel-qfl" type="checkbox" checked={qfl}
-            onChange={(e) => setQfl(e.target.checked)} style={{ marginRight: 4 }} />
-          Federated (QFL)
-        </label>
+        {showQfl && (
+          <label className="muted" htmlFor="sel-qfl"
+            title="Run Quantum Federated Learning this run — a hybrid quantum-classical FedAvg across simulated clients (demo: in-browser; full: Flower + PennyLane).">
+            <input id="sel-qfl" name="sel-qfl" type="checkbox" checked={qfl}
+              onChange={(e) => setQfl(e.target.checked)} style={{ marginRight: 4 }} />
+            Federated (QFL)
+          </label>
+        )}
         {/* AI-QKD parameter optimization (OptiQKD, WS1) — measured gradient-free SKR maximization. */}
-        <label className="muted" htmlFor="sel-optiqkd"
-          title="Run AI-QKD parameter optimization (OptiQKD, WS1) — a measured gradient-free search that tunes decoy/basis params to raise the secret-key rate on the simulated channel.">
-          <input id="sel-optiqkd" name="sel-optiqkd" type="checkbox" checked={optiqkd}
+        <label className={`muted${optiqkdDisabled ? " is-disabled" : ""}`} htmlFor="sel-optiqkd"
+          title={optiqkdDisabled
+            ? "Unavailable with the PQC-only profile: there is no quantum channel to optimise. Select a QKD protocol to enable it."
+            : "Run AI-QKD parameter optimization (OptiQKD, WS1) — a measured gradient-free search that tunes decoy/basis params to raise the secret-key rate on the simulated channel."}>
+          <input id="sel-optiqkd" name="sel-optiqkd" type="checkbox" checked={optiqkd && !optiqkdDisabled}
+            disabled={optiqkdDisabled}
             onChange={(e) => setOptiqkd(e.target.checked)} style={{ marginRight: 4 }} />
-          Optimize QKD (OptiQKD)
+          Optimize QKD (OptiQKD){optiqkdDisabled ? " — needs a QKD protocol" : ""}
         </label>
         <span style={{ flex: 1 }} />
         <button className="btn ghost" onClick={() => setShowAdvanced(!showAdvanced)}>

@@ -1,4 +1,4 @@
-# Real NASA SMAP/MSL spacecraft telemetry (Telemanom, Hundman et al. 2018, NASA JPL; CC0 / US-Gov public domain). Columns = 6 real telemetry channels + labeled anomaly (1).
+# Real NASA SMAP/MSL spacecraft telemetry (Telemanom, Hundman et al. 2018, NASA JPL). NO PROVIDER STATES A LICENCE: 17 U.S.C. 105 removes US copyright only and is not a grant -- see DATA_LICENSES.md. Columns = 6 real telemetry channels + labeled anomaly (1).
 E-1	E-6	E-10	E-11	E-13	A-1	anomaly
 -1.00000	0.99197	-1.00000	-1.00000	-0.86996	1.00000	0
 -1.00000	0.99197	-1.00000	-1.00000	-0.88562	1.00000	0

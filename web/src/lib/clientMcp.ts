@@ -7,6 +7,7 @@
 // Validations mirror so the public demo runs the MCP demo with zero server compute.
 import { ml_dsa65 } from "@noble/post-quantum/ml-dsa";
 import { ml_kem768 } from "@noble/post-quantum/ml-kem";
+import { x25519 } from "@noble/curves/ed25519.js";
 
 const enc = new TextEncoder();
 const dec = new TextDecoder();
@@ -47,7 +48,7 @@ async function expandBytes(seedInput: Uint8Array, nBytes: number): Promise<Uint8
   }
   return out;
 }
-// Information-theoretic "secure-if-either" combiner (mirror of transport._mix_qkd_its; Giestinhas & Spiller
+// Information-theoretic leakage-resilient combiner (mirror of transport._mix_qkd_its; Giestinhas & Spiller
 // 2026): a modified-Toeplitz + Leftover-Hash-Lemma strong extractor over pqc||qkd whose 256-bit output keeps
 // the min-entropy of WHICHEVER input stays uncompromised — unlike HKDF (computational) or a naive XOR/concat.
 async function itsCombine(pqc: Uint8Array, qkd: Uint8Array): Promise<Uint8Array> {
@@ -72,6 +73,7 @@ function stableStringify(v: any): string {
 export interface ClientAgent {
   name: string;
   kemPublicKey: Uint8Array; kemSecretKey: Uint8Array;
+  xPublicKey: Uint8Array; xSecretKey: Uint8Array;
   sigPublicKey: Uint8Array; sigSecretKey: Uint8Array;
 }
 
@@ -83,17 +85,37 @@ export interface McpResult {
   signature_alg: string; tamper_rejected: boolean;
 }
 
-// mirror Agent.create: a hybrid-KEM endpoint (ML-KEM-768) + a PQC signing key (ML-DSA-65)
+// mirror Agent.create: a hybrid-KEM endpoint (ML-KEM-768 + X25519) + a PQC signing key (ML-DSA-65).
+//
+// The X25519 half is real. It was not: this file reported kem "ML-KEM-768+X25519" in every envelope
+// while encapsulating with ml_kem768 alone, and the comment beside it said it was mirroring the
+// convention in clientCompute -- which was itself only a label at the time. The same wrong claim
+// therefore appeared on every use-case page's Agentic AI panel.
 export function createAgent(name: string): ClientAgent {
   const kem = ml_kem768.keygen();
+  const xSecret = x25519.utils.randomSecretKey();
   const sig = ml_dsa65.keygen(crypto.getRandomValues(new Uint8Array(32)));
   return { name, kemPublicKey: kem.publicKey, kemSecretKey: kem.secretKey,
+    xPublicKey: x25519.getPublicKey(xSecret), xSecretKey: xSecret,
     sigPublicKey: sig.publicKey, sigSecretKey: sig.secretKey };
 }
 
+// Concatenate-then-KDF hybrid combiner, matching src/qsh/pqc/hybrid_kem.py and clientCompute's
+// pqc_handshake: HKDF-SHA256 over (pq_ss || x25519_ss) under the project's domain-separation string.
+// Secure as long as EITHER primitive holds, which is the entire reason for running both.
+async function hybridSecret(pq: Uint8Array, classical: Uint8Array): Promise<Uint8Array> {
+  const ikm = new Uint8Array(pq.length + classical.length);
+  ikm.set(pq, 0); ikm.set(classical, pq.length);
+  const base = await crypto.subtle.importKey("raw", ab(ikm), "HKDF", false, ["deriveBits"]);
+  const bits = await crypto.subtle.deriveBits(
+    { name: "HKDF", hash: "SHA-256", salt: new ArrayBuffer(0),
+      info: ab(enc.encode("qsh/hybrid-kem/v1 ML-KEM-768+X25519|")) }, base, 256);
+  return new Uint8Array(bits);
+}
+
 // mirror transport._mix_qkd + AESGCM(session_key). ``combiner`` selects the PQC+QKD key combiner
-// (crypto.hybrid_combiner_mode): "hkdf" = HKDF-SHA256 dual-PRF (computational secure-if-either);
-// "its_toeplitz" = the information-theoretic Toeplitz+LHL secure-if-either combiner (:func:`itsCombine`).
+// (crypto.hybrid_combiner_mode): "hkdf" = HKDF-SHA256 dual-PRF (holds if either input does, computationally);
+// "its_toeplitz" = the information-theoretic Toeplitz+QLHL leakage-resilient combiner (itsCombine).
 // Returns the CryptoKey + the raw derived bytes (for a non-secret fingerprint that proves the combiner ran).
 async function deriveAeadKey(
   sharedSecret: Uint8Array, qkdKey?: Uint8Array, combiner = "hkdf",
@@ -101,7 +123,7 @@ async function deriveAeadKey(
   let keyBytes = sharedSecret;
   if (qkdKey && qkdKey.length) {
     if (combiner === "its_toeplitz") {
-      keyBytes = await itsCombine(sharedSecret, qkdKey);      // information-theoretic secure-if-either
+      keyBytes = await itsCombine(sharedSecret, qkdKey);      // ITS extractor, leakage-resilient
     } else {
       const base = await crypto.subtle.importKey("raw", ab(sharedSecret), "HKDF", false, ["deriveBits"]);
       const bits = await crypto.subtle.deriveBits(
@@ -151,8 +173,13 @@ export async function clientSecureAgentCall(
 ): Promise<McpResult & { message: any }> {
   const { cipherText, sharedSecret } = ml_kem768.encapsulate(callee.kemPublicKey);
   const recovered = ml_kem768.decapsulate(cipherText, callee.kemSecretKey);   // responder reconstructs the secret
-  const callerKey = await deriveAeadKey(sharedSecret, qkdKey, combiner);
-  const calleeKey = await deriveAeadKey(recovered, qkdKey, combiner);
+  // Classical half of the hybrid: X25519 between the two agents' static keys. Each side computes it
+  // from its own secret and the peer's public key, so caller and callee derive it independently --
+  // if they disagreed, the AEAD open below would fail rather than silently pass.
+  const xCaller = x25519.getSharedSecret(caller.xSecretKey, callee.xPublicKey);
+  const xCallee = x25519.getSharedSecret(callee.xSecretKey, caller.xPublicKey);
+  const callerKey = await deriveAeadKey(await hybridSecret(sharedSecret, xCaller), qkdKey, combiner);
+  const calleeKey = await deriveAeadKey(await hybridSecret(recovered, xCallee), qkdKey, combiner);
   const record = await sealRecord(callerKey.key, wrapAndSign(caller, method, params), 0);
   const opened = await openRecord(calleeKey.key, record);
   const { message, authenticated } = unwrap(opened, caller.sigPublicKey);
@@ -164,7 +191,7 @@ export async function clientSecureAgentCall(
   const fp = toHex((await sha256(callerKey.bytes)).slice(0, 4));   // non-secret fingerprint of the derived AEAD key
   return {
     session: `${caller.name}->${callee.name}`,
-    kem: "ML-KEM-768+X25519",                          // hybrid handshake (mirror convention in clientCompute)
+    kem: "ML-KEM-768+X25519",                          // both halves genuinely computed above
     qkd_mixed: mixed,
     combiner: mixed ? combiner : "none",               // the combiner only applies when a QKD key is mixed in
     session_key_fp: fp,

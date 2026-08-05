@@ -22,6 +22,15 @@ export interface QRNGResult {
   simulated: boolean;
   minEntropyPerBit: number;   // SP 800-90B most-common-value estimate (bits of min-entropy per output bit)
   extractionRate: number;     // output bits / raw bits consumed
+  /** SP 800-90B section 4.4 continuous health tests — these gate `healthPassed`. */
+  repetitionCountPassed: boolean;
+  repetitionCountCutoff: number;
+  repetitionCountLongest: number;
+  adaptiveProportionPassed: boolean;
+  adaptiveProportionCutoff: number;
+  adaptiveProportionMax: number;
+  /** SP 800-22 output-stream p-values verdict: reported, deliberately NOT gating (see section 4.1). */
+  sp80022Passed: boolean;
 }
 
 // erfc via the Abramowitz-Stegun 7.1.26 rational approximation (pure JS, no dep).
@@ -153,6 +162,69 @@ function toeplitzExtract(bits: Uint8Array, outLen: number, u: () => number, toep
 // Generate nBits post-processed quantum-random bits + a health report (incl. a min-entropy estimate) +
 // MEASURED throughput + extraction rate. The information-theoretic extractor ("toeplitz"/"seedless") sizes
 // its output by the Leftover-Hash-Lemma bound (no fixed rate); eps + min-entropy come from config.
+
+// ---------------------------------------------------------------------------------------------
+// SP 800-90B section 4.4 continuous health tests.
+//
+// These GATE the health verdict; the SP 800-22 p-values below are reported beside them but do not.
+// That ordering is the standard's, not a preference: SP 800-90B section 4.1 says in terms that
+// "the randomness tests described in NIST SP 800-22 ... are not useful for monitoring the noise
+// source". The browser previously computed healthPassed from monobit/runs/block-frequency alone,
+// i.e. exactly the tests the standard disqualifies for this purpose, while src/qsh/qrng/health.py
+// had already been corrected. This is the browser catching up to the backend.
+const HEALTH_ALPHA = Math.pow(2, -20);
+const ADAPTIVE_PROPORTION_W = 1024;
+
+/** section 4.4.1: C = 1 + ceil(-log2(alpha) / H). The standard's worked example, H = 2.0 at
+ *  alpha = 2^-20, gives C = 11 — asserted in tests/test_qrng.py against this same formula. */
+export function repetitionCountCutoff(h: number, alpha = HEALTH_ALPHA): number {
+  const hh = h > 0 ? h : 1e-9;
+  return 1 + Math.ceil(-Math.log2(alpha) / hh);
+}
+
+/** Fail if any value repeats C or more times consecutively — a stuck noise source. */
+function repetitionCountTest(bits: Uint8Array, h: number) {
+  const cutoff = repetitionCountCutoff(h);
+  if (bits.length === 0) return { passed: true, cutoff, longest: 0 };
+  let longest = 1, run = 1;
+  for (let i = 1; i < bits.length; i++) {
+    run = bits[i] === bits[i - 1] ? run + 1 : 1;
+    if (run > longest) longest = run;
+  }
+  return { passed: longest < cutoff, cutoff, longest };
+}
+
+/** section 4.4.2 cutoff: smallest C whose Binom(W-1, 2^-H) upper tail is <= alpha. Computed with an
+ *  exact binomial survival function — the normal approximation is unusable this far into the tail. */
+export function adaptiveProportionCutoff(h: number, w = ADAPTIVE_PROPORTION_W, alpha = HEALTH_ALPHA): number {
+  const p = Math.pow(2, -Math.max(h, 1e-9));
+  const n = w - 1;
+  // survival: P[X >= c] computed by summing the pmf downward from c.
+  let logPmf = n * Math.log1p(-Math.min(p, 1)); // pmf(0)
+  let tail = 1.0, c = 0;
+  const lp = Math.log(Math.min(p, 1)), lq = Math.log1p(-Math.min(p, 1));
+  for (c = 0; c <= n; c++) {
+    if (tail <= alpha) break;
+    tail -= Math.exp(logPmf);
+    logPmf += Math.log((n - c) / (c + 1)) + lp - lq;
+  }
+  return Math.min(w, 1 + c);
+}
+
+/** Fail if one value dominates any non-overlapping window of W samples — a collapsed source. */
+function adaptiveProportionTest(bits: Uint8Array, h: number, w = ADAPTIVE_PROPORTION_W) {
+  const cutoff = adaptiveProportionCutoff(h, w);
+  if (bits.length < w) return { passed: true, cutoff, worst: 0 };
+  let worst = 0;
+  for (let start = 0; start + w <= bits.length; start += w) {
+    const ref = bits[start];
+    let count = 0;
+    for (let i = start; i < start + w; i++) if (bits[i] === ref) count++;
+    if (count > worst) worst = count;
+  }
+  return { passed: worst < cutoff, cutoff, worst };
+}
+
 export function generateQuantumBits(nBits: number, opts: { source?: string; postProcessing?: string;
   seed?: number; alpha?: number; epsilonLog2?: number; minEntropyPerRawBit?: number; blockSize?: number } = {}): QRNGResult {
   const source = opts.source ?? "sim";
@@ -188,9 +260,17 @@ export function generateQuantumBits(nBits: number, opts: { source?: string; post
   const bits = proc.slice(0, nBits);
   const dt = Math.max(performance.now() - t0, 1e-6);
   const mp = monobit(bits), rp = runs(bits), bp = blockFrequency(bits, blockSize);
+  // 90B gates; 22 is reported alongside. See the note on the health helpers above.
+  const hMin = minEntropyMcv(bits);
+  const rct = repetitionCountTest(bits, hMin);
+  const apt = adaptiveProportionTest(bits, hMin);
+  const sp80022Passed = mp >= alpha && rp >= alpha && bp >= alpha;
   return {
     bits, nBits: bits.length, source, postProcessing: post,
-    healthPassed: mp >= alpha && rp >= alpha && bp >= alpha,
+    healthPassed: rct.passed && apt.passed,
+    repetitionCountPassed: rct.passed, repetitionCountCutoff: rct.cutoff, repetitionCountLongest: rct.longest,
+    adaptiveProportionPassed: apt.passed, adaptiveProportionCutoff: apt.cutoff, adaptiveProportionMax: apt.worst,
+    sp80022Passed,
     monobitP: mp, runsP: rp, blockFreqP: bp,
     throughputBitsPerSec: (bits.length / dt) * 1000, simulated: true,
     minEntropyPerBit: minEntropyMcv(bits), extractionRate: bits.length / Math.max(1, rawConsumed),

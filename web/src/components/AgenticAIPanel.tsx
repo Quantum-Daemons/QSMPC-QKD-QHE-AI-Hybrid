@@ -51,6 +51,11 @@ export default function AgenticAIPanel({
   const [run, setRun] = useState<AgentRun | null>(null);
   const [mcp, setMcp] = useState<(McpResult & { echoedPayload: any }) | null>(null);
   const [mcpQkd, setMcpQkd] = useState(true);
+  // The context line the currently-displayed result was actually produced from. `go()` snapshots
+  // runContext at click time, so pressing the pipeline's Run afterwards used to leave a rendered --
+  // and downloadable -- MCP envelope describing a superseded run, sitting under the new run's
+  // numbers with nothing to indicate it. Kept so the two can be compared on every render.
+  const [ranWithCtx, setRanWithCtx] = useState<string | null>(null);
   const [combiner, setCombiner] = useState<string>(cryptoCfg().hybrid_combiner_mode ?? "hkdf");   // PQC+QKD key combiner
   const [gpu, setGpu] = useState(false);                 // genuine WebGPU (adapter obtainable), resolved async
   useEffect(() => { hasWebGPU().then(setGpu); }, []);
@@ -64,6 +69,8 @@ export default function AgenticAIPanel({
   const go = async () => {
     setBusy(true); setProgress(""); setRun(null); setMcp(null);
     const ctxLine = runContextLine(usecase, runContext);
+  // A result is stale once the pipeline has produced different numbers than it was generated from.
+  const stale = run !== null && ranWithCtx !== null && ranWithCtx !== ctxLine;
     const effectivePrompt = ctxLine ? `${ctxLine}\n\n${prompt}` : prompt;
     const r = await runAgent(engine, effectivePrompt, { model, onProgress: setProgress });
     setRun(r);
@@ -73,10 +80,12 @@ export default function AgenticAIPanel({
       { prompt: effectivePrompt, answer: r.text || r.note || "", engine: r.engine, model: r.model,
         usecase: usecase ?? null, run_context: ctxLine || null },
       mcpQkd ? new Uint8Array(32).fill(0x71) : undefined, mcpToolName, combiner);
-    setMcp(m); setBusy(false);
+    setMcp(m); setRanWithCtx(ctxLine); setBusy(false);
   };
 
   const ctxLine = runContextLine(usecase, runContext);
+  // A result is stale once the pipeline has produced different numbers than it was generated from.
+  const stale = run !== null && ranWithCtx !== null && ranWithCtx !== ctxLine;
 
   return (
     <div className={inline ? "card" : undefined} style={inline ? { marginTop: 16 } : undefined}>
@@ -113,9 +122,9 @@ export default function AgenticAIPanel({
           <label className="muted" htmlFor={`ai-combiner-${usecase ?? "std"}`}>Combiner</label>
           <select id={`ai-combiner-${usecase ?? "std"}`} value={combiner} disabled={!mcpQkd}
             onChange={(e) => setCombiner(e.target.value)}
-            title="PQC+QKD key combiner (crypto.hybrid_combiner_mode): HKDF = dual-PRF, computationally secure-if-either; Toeplitz+LHL = information-theoretic secure-if-either (keeps the min-entropy of whichever input holds). Applies when 'mix QKD key' is on; the derived-key fingerprint below changes with the choice.">
+            title="PQC+QKD key combiner (crypto.hybrid_combiner_mode). HKDF = dual-PRF: the session key holds if either input does, under computational assumptions. Toeplitz+QLHL = a modified-Toeplitz strong extractor. Its leakage-resilience property — if the combined output AND one input key leak, the other retains quantifiable min-entropy — holds only under the paper's stated precondition that the input and seed are conditionally independent given any unbounded adversary (Giestinhas & Spiller, arXiv:2603.26907, Lemma 2). That precondition is assumed here, not established, so the guarantee is conditional — at the cost of longer keys (arXiv:2603.26907). Applies when 'mix QKD key' is on; the derived-key fingerprint below changes with the choice.">
             <option value="hkdf">HKDF (dual-PRF)</option>
-            <option value="its_toeplitz">Toeplitz+LHL (ITS · secure-if-either)</option>
+            <option value="its_toeplitz">Toeplitz+QLHL (ITS · leakage-resilient)</option>
           </select>
         </div>
         {ctxLine && <div className="note" style={{ marginTop: 10, fontSize: 12 }}>🔗 {ctxLine}</div>}
@@ -129,8 +138,15 @@ export default function AgenticAIPanel({
         </div>
       </div>
 
+      {stale && (
+        <div className="note" style={{ marginTop: 12, borderColor: "var(--warn)", color: "var(--warn)" }}>
+          ⚠ The pipeline has run again since this answer was produced, so the response and the signed
+          MCP envelope below describe an earlier run. Press <b>Run in-browser agent</b> to regenerate
+          them against the current numbers.
+        </div>
+      )}
       {(run || mcp) && (
-        <div className="grid cols-2" style={{ marginTop: 16 }}>
+        <div className="grid cols-2" style={{ marginTop: 16, opacity: stale ? 0.6 : 1 }}>
           <div className="card">
             <h3>In-browser AI response</h3>
             {run?.note && <div className="note" style={{ marginBottom: 8 }}>{run.note}</div>}
@@ -173,7 +189,13 @@ export default function AgenticAIPanel({
 
       <div className="btn-row" style={{ marginTop: 16 }}>
         <button className="btn ghost" disabled={!run}
-          onClick={() => downloadJSON({ usecase, tool: mcpToolName, run, mcp }, `qsh-agentic-${usecase ?? "ai"}.json`)}>
+          onClick={() => downloadJSON({
+            usecase, tool: mcpToolName, run, mcp,
+            // The download outlives the page, so it has to carry its own provenance: which run's
+            // numbers produced it, and whether the page had moved on by the time it was saved.
+            run_context: ranWithCtx,
+            stale_at_download: stale,
+          }, `qsh-agentic-${usecase ?? "ai"}.json`)}>
           ⬇ Download results (JSON)
         </button>
       </div>
