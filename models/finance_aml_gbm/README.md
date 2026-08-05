@@ -37,9 +37,9 @@ a quantum-safe orchestration demo. This is the **plaintext** model for the
 ## Published baselines this is measured against
 
 - **Target metric**: minority-class F1 (laundering)
-- **Baseline to beat**: 0.6323 - GFP+XGBoost, IBM AMLworld HI-Small, NeurIPS 2023 D&B (63.23 +/- 0.17)
-- **Published ceiling**: 0.6816 - Multi-PNA+EU, AAAI-24 vol.38 no.10 pp.11838-11846 (68.16 +/- 2.65)
-- **Companion metric shown alongside**: `auprc` - reported together because the aggregate figure can look healthy while the class that matters is not.
+- **Baseline to beat**: 0.6323 — GFP+XGBoost, IBM AMLworld HI-Small, NeurIPS 2023 D&B (63.23 +/- 0.17)
+- **Published ceiling**: 0.6816 — Multi-PNA+EU, AAAI-24 vol.38 no.10 pp.11838-11846 (68.16 +/- 2.65)
+- **Companion metric shown alongside**: `auprc` — reported together because the aggregate figure can look healthy while the class that matters is not.
 
 ### Gap to the published baseline
 

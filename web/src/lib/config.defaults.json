@@ -227,7 +227,7 @@
             "opset": 0
           },
           "git_sha": "e572d98-dirty",
-          "hf_revision": "cd81e948e8e02ce835a26c48c6c0ca0d3628e2c2",
+          "hf_revision": "50c16e5fcde1da59455eea133e2096c2f72d772d",
           "minority_class_f1": 0.08077786088257292,
           "n_test": 1523504,
           "n_train": 3554841,
@@ -267,7 +267,7 @@
           "url": "https://www.kaggle.com/datasets/ealtman2019/ibm-transactions-for-anti-money-laundering-aml"
         },
         "hf_repo_id": "Daemons-Q/qsh-finance-aml-gbm",
-        "hf_revision": "cd81e948e8e02ce835a26c48c6c0ca0d3628e2c2",
+        "hf_revision": "50c16e5fcde1da59455eea133e2096c2f72d772d",
         "key": "finance_aml.gbm",
         "label": "Graph-feature-preprocessed gradient boosting",
         "metric": {
