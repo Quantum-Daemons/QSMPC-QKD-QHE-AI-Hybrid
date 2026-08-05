@@ -4,22 +4,20 @@
 # Philosophy: the SPA does the heavy compute in the browser (WASM PQC, ONNX inference);
 # the server only serves static assets + lightweight crypto-demo endpoints. No GPU,
 # no torch, no Prometheus on the box (ship metrics to Grafana Cloud if desired).
+#
+# There is deliberately NO api service. One used to be here so that `?demo=full` could reach a slim
+# backend, but that backend is built without FHE/torch on purpose, so any run it accepted failed at
+# "No module named 'tenseal'" — while the page still told the visitor no computation was sent to a
+# server. It cost 1.77 GB of image and a 2 GB memory reservation on a 12 GB box to serve guaranteed
+# errors from a publicly writable endpoint. The demo is client-only; the full stack is
+# docker-compose.yml.
 services:
-  api:
-    build:
-      context: ..
-      dockerfile: docker/Dockerfile.api.demo   # slim: core+api only (no FHE/torch, ~630 MB smaller)
-    expose: ["8000"]
-    restart: unless-stopped
-    deploy: { resources: { limits: { memory: 2g, cpus: "2" } } }
-
   web:
     build:
       context: ..
       dockerfile: docker/Dockerfile.web
       args:
         CLIENT_ONLY: "1"        # public demo: all compute client-side (inference-only)
-    depends_on: [api]
     # SITE_ADDRESS configures Caddy's site address (Caddyfile {$SITE_ADDRESS::80}): unset → ":80" (local
     # HTTP); a domain → auto-HTTPS via Let's Encrypt. WEB_HTTP_PORT/WEB_HTTPS_PORT remap the host ports.
     environment:

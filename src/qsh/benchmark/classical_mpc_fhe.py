@@ -44,6 +44,9 @@ def run_classical(
     backend_name: str = "tenseal",
     workload: str = "linear",
     n_samples: int = 30,
+    #: Bits of QKD key mixed into the session. Defaults to the same 256 quantum_qsmpc_fhe.py assumes,
+    #: so the two rows of one benchmark are scored under the same transport. Pass 0 for a PQC-only run.
+    qkd_key_bits: int = 256,
 ) -> BenchResult:
     """Benchmark encrypted linear inference over ``n_samples`` of (X, y)."""
     backend = get_backend(backend_name)
@@ -61,9 +64,14 @@ def run_classical(
     device = "gpu" if getattr(backend, "on_gpu", False) else "cpu"
     from .security import compute_security_score
 
+    # Both benchmark rows run under ONE transport configuration, so both must be scored under it.
+    # This call omitted qkd_key_bits while quantum_qsmpc_fhe.py passes 256. That was harmless only
+    # while the QKD bonus was inert (min(w, w+bonus) == w); once the bonus became real the omission
+    # would have handed the quantum row +5 that the classical row was never offered, widening the
+    # headline "96 vs 68" gap by exactly the amount of an unfair comparison.
     sec = compute_security_score(
         security_model="computational (RLWE / FIPS-203 family)",
-        pqc_hybrid=True, kem="ml-kem-768+x25519", qber=None,
+        pqc_hybrid=True, kem="ml-kem-768+x25519", qkd_key_bits=qkd_key_bits, qber=None,
     )
     return BenchResult(
         path="MPC-FHE",
@@ -94,7 +102,8 @@ def _first_feature_count(specs) -> int:
 
 
 def run_hybrid(layers, X, y, *, backend_name: str = "tenseal", workload: str = "linear",
-               model_size: str = "medium", n_samples: int = 8) -> BenchResult:
+               model_size: str = "medium", n_samples: int = 8,
+               qkd_key_bits: int = 256) -> BenchResult:
     """The faithful MPC-FHE hybrid: linear layers under CKKS (FHE), non-linear (ReLU/argmax/maxpool)
     under MPyC secret-sharing (MPC). Reports the per-stage split + estimated MPC communication.
 
@@ -119,9 +128,14 @@ def run_hybrid(layers, X, y, *, backend_name: str = "tenseal", workload: str = "
         arch_class = r.get("arch_class", arch_class)
     dt = (time.perf_counter() - t0) * 1000
     device = "gpu" if getattr(backend, "on_gpu", False) else "cpu"
+    # Both benchmark rows run under ONE transport configuration, so both must be scored under it.
+    # This call omitted qkd_key_bits while quantum_qsmpc_fhe.py passes 256. That was harmless only
+    # while the QKD bonus was inert (min(w, w+bonus) == w); once the bonus became real the omission
+    # would have handed the quantum row +5 that the classical row was never offered, widening the
+    # headline "96 vs 68" gap by exactly the amount of an unfair comparison.
     sec = compute_security_score(
         security_model="computational (RLWE) + secret-sharing MPC",
-        pqc_hybrid=True, kem="ml-kem-768+x25519", qber=None)
+        pqc_hybrid=True, kem="ml-kem-768+x25519", qkd_key_bits=qkd_key_bits, qber=None)
     return BenchResult(
         path="MPC-FHE",
         backend=f"{backend.name} + mpyc-shamir",

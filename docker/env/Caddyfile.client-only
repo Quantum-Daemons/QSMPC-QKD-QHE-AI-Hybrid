@@ -1,0 +1,39 @@
+# Caddy for the CLIENT-ONLY public demo: static SPA + cross-origin isolation, and NO /api.
+#
+# This file exists because the shared Caddyfile reverse-proxies /api to a backend container, and the
+# public demo has no backend that can serve a run. The slim demo image is built without FHE/torch by
+# design, so a request that reached it died at "No module named 'tenseal'". Proxying /api anyway left
+# an endpoint on the public internet that any anonymous visitor could POST to in order to start
+# server-side compute and write result files into the container, in exchange for a guaranteed error.
+#
+# /api and /metrics therefore return 404 here rather than being routed anywhere. The full deployment
+# keeps docker/env/Caddyfile, which does proxy them.
+{$SITE_ADDRESS::80} {
+	encode gzip zstd
+
+	# Cross-origin isolation -> SharedArrayBuffer / WebGPU / threaded WASM.
+	# `>` sets rather than appends: the shared edge proxy in front of this one also emits COOP/COEP,
+	# and two appended values produce "same-origin, same-origin", which is not a valid header value
+	# and silently drops crossOriginIsolated back to false.
+	header {
+		>Cross-Origin-Opener-Policy "same-origin"
+		>Cross-Origin-Embedder-Policy "require-corp"
+		>Cross-Origin-Resource-Policy "cross-origin"
+	}
+	@wasm path *.wasm
+	header @wasm Content-Type application/wasm
+
+	# No backend in this image. Answer honestly instead of proxying into a void.
+	handle /api/* {
+		respond "This is the client-side demo: all compute runs in the browser and there is no API." 404
+	}
+	handle /metrics {
+		respond 404
+	}
+
+	handle {
+		root * /srv
+		try_files {path} /index.html
+		file_server
+	}
+}
