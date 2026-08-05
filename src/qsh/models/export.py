@@ -191,6 +191,12 @@ def is_quantizable(fp32_path: Path) -> tuple[bool, str]:
     if ops & {"TreeEnsembleClassifier", "TreeEnsembleRegressor"}:
         return False, ("tree ensemble: parameters live in node attributes, not weight tensors, so "
                        "dynamic int8 quantisation has nothing to quantise")
+    if ops & {"LinearClassifier", "LinearRegressor"}:
+        # The same shape of problem, found the same way: skl2onnx puts the coefficients in node
+        # attributes, so there is no weight tensor to act on and onnxruntime raises rather than
+        # no-opping. A 33-parameter distilled student has nothing to gain from int8 regardless.
+        return False, ("ai.onnx.ml linear model: coefficients live in node attributes, not weight "
+                       "tensors, so dynamic int8 quantisation has nothing to quantise")
     if "" not in domains and "ai.onnx" not in domains:
         return False, f"no default ai.onnx domain in the graph (domains: {sorted(domains)})"
     return True, ""
@@ -339,7 +345,16 @@ def verify_and_quantize(source_model, fixtures: np.ndarray, out_dir: Path, *,
     quantizable, skip_reason = is_quantizable(fp32)
     confident_agreement = 1.0
     if quantizable:
-        quantize_int8(fp32, int8)
+        try:
+            quantize_int8(fp32, int8)
+        except Exception as exc:                      # noqa: BLE001 - recorded, never swallowed
+            # The predicate above catches what we know about; anything else is turned into an
+            # explicit skip carrying its reason, because a run that dies here loses the model it
+            # just finished fitting.
+            quantizable = False
+            skip_reason = f"int8 quantisation failed: {exc}"
+            int8.unlink(missing_ok=True)
+    if quantizable:
         got8 = _run(int8, fixtures)
         same = _labels(got32) == _labels(got8)
         agreement = float(np.mean(same))

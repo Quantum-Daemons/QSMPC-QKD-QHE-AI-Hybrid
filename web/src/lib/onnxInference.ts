@@ -426,6 +426,21 @@ export async function evaluatePublishedModel(
     return null;
   }
 
+  // Check we are about to score the graph the expectation was measured on. expected.graph has been
+  // published since Round 18 and never once compared against the artefact actually fetched -- and
+  // they did diverge: the satellite generator measured model.onnx while browserModel() prefers
+  // int8. A reproduction claim that does not check graph identity is not a reproduction claim.
+  const fetchedGraph = target.url.split("/").pop() ?? "";
+  const expectedGraph = file.expected?.graph ?? "";
+  if (expectedGraph && fetchedGraph && expectedGraph !== fetchedGraph) {
+    return {
+      ...base, provenance: file.provenance,
+      error: `graph mismatch: the expected figure was measured on ${expectedGraph} but this browser `
+        + `fetched ${fetchedGraph}. Reporting the comparison would credit one graph with another's `
+        + `result.`,
+    };
+  }
+
   if (!(await loadModel(usecase)) || !session) {
     return {
       ...base, provenance: file.provenance,
