@@ -3,7 +3,7 @@
 
 Defaults to PRIVATE repositories, and that default is not timidity. A public Hub repo grants every
 user "a perpetual, irrevocable, worldwide, royalty-free, non-exclusive license" over its contents,
-so a licence mistake cannot be walked back — you cannot unpublish your way out of it. The free tier
+so a licence mistake cannot be walked back - you cannot unpublish your way out of it. The free tier
 includes 100 GB of private storage precisely so artefacts can be staged, audited and only then
 flipped. ``--public`` requires the registry to mark the training dataset publishable AND the
 per-score licence audit to have passed, and it refuses otherwise.
@@ -101,13 +101,13 @@ def model_card(spec: registry.ModelSpec, achieved: dict | None) -> str:
         f"- **Target metric**: {m.display}",
     ]
     if m.baseline is not None:
-        body.append(f"- **Baseline to beat**: {m.baseline} — {m.baseline_source}")
+        body.append(f"- **Baseline to beat**: {m.baseline} - {m.baseline_source}")
     else:
         body.append(f"- **Baseline**: {m.baseline_source}")
     if m.ceiling is not None:
-        body.append(f"- **Published ceiling**: {m.ceiling} — {m.ceiling_source}")
+        body.append(f"- **Published ceiling**: {m.ceiling} - {m.ceiling_source}")
     if m.companion:
-        body.append(f"- **Companion metric shown alongside**: `{m.companion}` — reported together "
+        body.append(f"- **Companion metric shown alongside**: `{m.companion}` - reported together "
                     "because the aggregate figure can look healthy while the class that matters is not.")
     body.append("")
 
@@ -151,12 +151,12 @@ def _pipeline_tag(spec: registry.ModelSpec) -> str:
 
 def publish(spec: registry.ModelSpec, *, private: bool, dry_run: bool, api) -> str | None:
     if not spec.hf_repo:
-        print(f"  {spec.key}: no hf_repo in the registry — skipping (publication intentionally withheld)")
+        print(f"  {spec.key}: no hf_repo in the registry - skipping (publication intentionally withheld)")
         return None
 
     local = Path(ARTIFACT_DIRS.get(spec.key, ""))
     if not local or not local.exists():
-        print(f"  {spec.key}: no artefacts at {local} — train it first")
+        print(f"  {spec.key}: no artefacts at {local} - train it first")
         return None
 
     if not private and not spec.dataset.publishable:
@@ -172,7 +172,7 @@ def publish(spec: registry.ModelSpec, *, private: bool, dry_run: bool, api) -> s
 
     # List exactly what upload_folder will send. Printing the whole directory and relying on
     # ignore_patterns to filter it later would make a dry run that shows training rows being
-    # published look identical to one that does not — the wrong thing to be vague about.
+    # published look identical to one that does not - the wrong thing to be vague about.
     from fnmatch import fnmatch
 
     all_files = sorted(p for p in local.rglob("*") if p.is_file())
