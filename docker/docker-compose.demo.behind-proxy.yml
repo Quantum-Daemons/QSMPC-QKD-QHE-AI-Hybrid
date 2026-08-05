@@ -1,0 +1,30 @@
+# Override for a box that already runs a front reverse proxy on :80/:443.
+#
+# Why this file exists. `docker-compose.demo.yml` publishes host 80 and 443, which is right when the
+# demo is the only thing on the box. The public demo VPS is not that box: a shared `caddy` container
+# already owns both ports and routes qsmpc-qkd-qhe-ai-hybrid.daemons.jp to this service **by
+# container name** over an existing network. Bringing the demo up without this override fails with
+# "Bind for 0.0.0.0:80 failed: port is already allocated", and a container that loses the race ends
+# up running with no network at all - reachable by nobody, while `docker ps` still says "Up". That
+# failure took the public demo down for several minutes on 2026-08-05, because the working topology
+# lived only in a remembered command line and not in the repository.
+#
+# Usage on the VPS:
+#   docker compose -p qsh-demo \
+#     -f docker/docker-compose.demo.yml \
+#     -f docker/docker-compose.demo.behind-proxy.yml up -d --build
+#
+# The front proxy must already exist and own the network named below; nothing here creates it.
+services:
+  web:
+    # No host ports. The front proxy reaches this service by container name on the shared network,
+    # so publishing anything here can only collide with the proxy.
+    ports: !override []
+    networks: [default, proxy]
+
+networks:
+  proxy:
+    # `external` means: fail loudly if the proxy network is absent, rather than quietly creating an
+    # empty one and leaving the site 502 with every container apparently healthy.
+    external: true
+    name: ${PROXY_NETWORK:-pqcqkd_mgmt-net}

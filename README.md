@@ -532,6 +532,23 @@ See [`docs/pqc-roadmap.md`](docs/pqc-roadmap.md).
   load**). In the WebUI the in-browser agent is **integrated into each use-case page** (its own per-industry
   MCP tool, fed by the live run) - the standalone Agentic-AI page was **removed**, since the report frames MCP
   as a per-use-case cross-cutting layer, not a separate feature.
+- **Deploying behind an existing reverse proxy.** `docker/docker-compose.demo.yml` publishes host 80
+  and 443, which is correct when the demo is the only service on the box. When something else
+  already owns those ports - as on the public demo VPS, where a shared Caddy routes the hostname to
+  this container by name - add the committed override:
+
+  ```
+  docker compose -p qsh-demo -f docker/docker-compose.demo.yml \
+      -f docker/docker-compose.demo.behind-proxy.yml up -d --build
+  ```
+
+  It drops the host port publishing and joins the proxy's network (`PROXY_NETWORK`, default
+  `pqcqkd_mgmt-net`), declared `external` so a missing network fails loudly instead of silently
+  creating an empty one. Without it the bring-up loses the port race and leaves a container that
+  `docker ps` reports as **Up** while it sits on **no network at all** and every request 502s. That
+  happened on 2026-08-05 and took the public demo down for several minutes; the working topology
+  existed only as a remembered command line, which is why it is a file now.
+
 - **Demo vs full** - the public demo is **client-only** (zero `/api` compute) and ships **no backend
   image at all**: `docker/docker-compose.demo.yml` has no `api` service, and `/api/*` and `/metrics`
   return 404. (Round 17 removed the slim image this line used to credit - it omits FHE by design, so
