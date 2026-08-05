@@ -98,6 +98,14 @@ function UseCaseView({ usecase }: { usecase: string }) {
       <AgenticAIPanel inline usecase={usecase} defaultPrompt={meta.agenticPrompt}
         mcpToolName={meta.agenticTool} runContext={{ metrics, benchmark }} />
 
+      {usecase === "medical_fl" && (
+        <div className="note" style={{ marginTop: 12, fontSize: 12 }}>
+          Federated learning runs on every run here - there is no toggle. A real client-side FedAvg
+          over the page's own bundled Wisconsin sample, not a synthetic stand-in, so the accuracy it
+          reports describes the data shown above it.
+        </div>
+      )}
+
       <PublishedModelPanel usecase={usecase} />
 
       <SdnControlPlanePanel
