@@ -4,17 +4,18 @@
 This is a **one-time provenance script** (run by a maintainer, not at runtime). It turns the large raw
 Kaggle datasets into the small, commercial-OK real samples the repo ships + the demo loads:
 
-  data/finance/paysim_sample.tsv                  real PaySim transactions -> the 8 AML features + label
+  data/finance/paysim_sample.tsv                  PaySim simulator output (synthetic) -> the 8 AML features + label
   data/satellite/smap_msl_telemetry.tsv           real NASA SMAP/MSL telemetry (6 channels) + anomaly label
   web/public/data/finance/paysim_sample.json      demo: real rows + a distilled CKKS-linear model (SHAP)
   web/public/data/satellite/telemetry.json        demo: real telemetry windows + a real anomaly model
 
-Sources (web-verified June 2026, both commercial-OK -- see DATA_LICENSES.md):
+Sources (licences re-read 2026-08-03 -- see DATA_LICENSES.md for what each actually grants):
   * PaySim  : Kaggle `ealaxi/paysim1`, license **CC-BY-SA-4.0** (Lopez-Rojas et al. 2016 mobile-money simulator).
   * NASA SMAP/MSL : Kaggle `patrickfleith/nasa-anomaly-detection-dataset-smap-msl`; the underlying data is
     NASA JPL spacecraft telemetry (Hundman et al. 2018, KDD; the Telemanom project). Per NASA's official data
     policy (NASA Science Data Portal + STI), US-Government works are not copyrightable (17 U.S.C. s.105) and
-    NASA-mission data not marked with a restrictive notice is **CC0 / public domain -- usable commercially**.
+    NASA-mission data carries NO licence statement from any provider. 17 U.S.C. s.105 removes US
+    copyright domestically but is not an affirmative grant -- see DATA_LICENSES.md.
 
 Obtain the raw data first (needs Kaggle API creds in ~/.kaggle/kaggle.json):
   kaggle datasets download -d ealaxi/paysim1 -p /tmp/kaggle_dl/paysim --unzip
@@ -27,6 +28,7 @@ from __future__ import annotations
 import argparse
 import ast
 import json
+import sys
 from pathlib import Path
 
 import numpy as np
@@ -34,17 +36,21 @@ import numpy as np
 # ----- finance feature layout (must match usecases/finance_aml feature_names order) ----------------
 FIN_NAMES = ["amount", "velocity_24h", "cross_border", "night_tx",
              "new_payee", "amount_zscore", "device_risk", "geo_mismatch"]
-FIN_PROVENANCE = ("real: PaySim mobile-money transactions (Kaggle ealaxi/paysim1, CC-BY-SA-4.0; "
-                  "Lopez-Rojas et al. 2016). 8 AML features derived from real PaySim fields "
-                  "(amount/type/step/balances); fraud oversampled for training (real base rate 0.13%).")
-SAT_PROVENANCE = ("real: NASA SMAP/MSL spacecraft telemetry (Telemanom, Hundman et al. 2018, NASA JPL; "
-                  "CC0 / US-Gov public domain). 6 real channels, real labeled anomalies.")
+#: Provenance text is NOT written here. It comes from the registry, which is also what the browser
+#: prints and what tests/test_demo_provenance.py asserts these JSON files against. Re-declaring the
+#: strings locally is how this script previously re-introduced a licence claim that had already been
+#: corrected everywhere else.
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
+from qsh.models.registry import BUNDLED_DEMO_SAMPLES  # noqa: E402
+
+FIN_PROVENANCE = BUNDLED_DEMO_SAMPLES["finance_aml"][0]
+SAT_PROVENANCE = BUNDLED_DEMO_SAMPLES["satellite_comms"][0]
 
 
 def _paysim_features(df):
     """Map REAL PaySim columns -> the 8 AML features (in FIN_NAMES order). 5 are direct real fields
     (amount, velocity_24h, night_tx, new_payee, amount_zscore); 3 (cross_border, device_risk,
-    geo_mismatch) repurpose real PaySim fraud signatures since PaySim has no geo/device fields."""
+    geo_mismatch) repurpose PaySim fraud signatures since PaySim has no geo/device fields."""
     import numpy as np
     amount = df["amount"].to_numpy(float)
     log_amt = np.log1p(amount)
@@ -98,8 +104,9 @@ def prep_finance(src: Path, repo: Path, n: int = 4000, fraud_rate: float = 0.05,
     out_tsv = repo / "data" / "finance" / "paysim_sample.tsv"
     out_tsv.parent.mkdir(parents=True, exist_ok=True)
     with out_tsv.open("w") as f:
-        f.write("# Real PaySim mobile-money transactions (Kaggle ealaxi/paysim1, CC-BY-SA-4.0; "
-                "Lopez-Rojas et al. 2016). Columns = 8 AML features (real PaySim-derived) + isFraud.\n")
+        f.write("# PaySim simulator output, i.e. SYNTHETIC transactions (Kaggle ealaxi/paysim1, CC-BY-SA-4.0; "
+                "Lopez-Rojas et al. 2016). PaySim is a SIMULATOR (synthetic transactions). "
+                "Columns = 8 AML features + isFraud.\n")
         f.write("\t".join(FIN_NAMES) + "\tisFraud\n")
         for row, label in zip(Xs, ys):
             f.write("\t".join(f"{v:.5f}" for v in row) + f"\t{int(label)}\n")
@@ -174,8 +181,8 @@ def prep_satellite(src: Path, repo: Path, n_channels: int = 6, length: int = 900
     out_tsv = repo / "data" / "satellite" / "smap_msl_telemetry.tsv"
     out_tsv.parent.mkdir(parents=True, exist_ok=True)
     with out_tsv.open("w") as f:
-        f.write("# Real NASA SMAP/MSL spacecraft telemetry (Telemanom, Hundman et al. 2018, NASA JPL; CC0 / "
-                "US-Gov public domain). Columns = 6 real telemetry channels + labeled anomaly (1).\n")
+        f.write(f"# {SAT_PROVENANCE}\n"
+                "# Columns = 6 real telemetry channels + labeled anomaly (1).\n")
         f.write("\t".join(names) + "\tanomaly\n")
         for i in range(length):
             f.write("\t".join(f"{telem[i, c]:.5f}" for c in range(len(names))) + f"\t{int(anom[i])}\n")

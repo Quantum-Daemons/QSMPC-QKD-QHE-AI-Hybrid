@@ -5,9 +5,12 @@
 // quantum_advantage}.py so demo numbers track the server.
 import { ml_dsa65, ml_dsa87 } from "@noble/post-quantum/ml-dsa";
 import { ml_kem768, ml_kem1024 } from "@noble/post-quantum/ml-kem";
+import { x25519 } from "@noble/curves/ed25519.js";
+import { hkdf } from "@noble/hashes/hkdf";
+import { sha256 } from "@noble/hashes/sha2";
 import {
   benchCfg, costPerOp, dataCfg, demoFeatureDim, genericArchitecture, idsCfg, medicalCnn, qkdCfg, qrngCfg,
-  quantumAdvantageCfg, securityScoringCfg, tierArchitectures, webCfg, workloadMultipliers,
+  demoSample, quantumAdvantageCfg, securityScoringCfg, tierArchitectures, webCfg, workloadMultipliers,
 } from "./config";
 import { encryptedLinear, warmFHE } from "./clientFHE";
 import { clientTrainScoreIDS } from "./clientIDS";
@@ -15,8 +18,9 @@ import { secureArgmax, warmMPC } from "./clientMPC";
 import { optimizeQKD } from "./clientOptiQKD";
 import { generateQuantumBits } from "./clientQRNG";
 import { bb84, e91, FIBER, FREE_SPACE, h2, intrinsicQber, qcnnExpectation, qotpQcnnInfer, rng } from "./quantumSim";
-import { inferLogits, onnxBackend } from "./onnxInference";
-import { realInput, realSatelliteAnomaly, type RealInput } from "./realData";
+import { browserProvenance, type Provenance } from "../components/ProvenanceBadge";
+import { inferLogits, onnxBackend, onnxStatus } from "./onnxInference";
+import { realInput, realSatelliteAnomaly, realFederatedSet, type RealInput } from "./realData";
 
 const r1 = (x: number) => Math.round(x * 10) / 10;
 const r2 = (x: number) => Math.round(x * 100) / 100;
@@ -72,9 +76,12 @@ export interface SecOpts {
 export function securityScore(o: SecOpts) {
   const s = securityScoringCfg();        // weights/thresholds from the central config (single source)
   const c: Record<string, number> = {};
-  c.hndl_pqc_hybrid = o.pqcHybrid === false ? 0 : s.hndl_pqc_hybrid;
-  if (o.qkdKeyBits && o.qkdKeyBits >= 256)
-    c.hndl_pqc_hybrid = Math.min(s.hndl_pqc_hybrid, c.hndl_pqc_hybrid + s.qkd_bonus);
+  // Mirror of security.py: PQC-only hybrid scores the cap minus the bonus, QKD-mixed reaches the
+  // cap. The previous min(cap, cap + bonus) made the QKD selector inert -- see the note there.
+  c.hndl_pqc_hybrid =
+    o.pqcHybrid === false ? 0
+    : (o.qkdKeyBits && o.qkdKeyBits >= 256) ? s.hndl_pqc_hybrid
+    : Math.max(0, s.hndl_pqc_hybrid - s.qkd_bonus);
   const it = (o.securityModel || "").toLowerCase().includes("information-theoretic");
   c.security_model = it ? s.info_theoretic : s.computational;
   const cat = kemCategory(o.kem);
@@ -142,21 +149,69 @@ export async function keyedHashPSI(setA: string[], setB: string[], key: Uint8Arr
 }
 
 // --------------------------------------------------------------------------- //
-//  Private inference: ONNX (WASM/WebGPU) with a pure-JS linear fallback
+//  Private inference: published ONNX model -> bundled real model -> placeholder
 // --------------------------------------------------------------------------- //
-const JS_W = [
+// A last-resort weight set, used only when neither a published ONNX model nor a bundled real model
+// is available for the use case. It is arbitrary, so it is reported as SIMULATED: a number produced
+// by these weights describes nothing. Before Round 17 this path ran on *every* page load — the ONNX
+// model it was nominally backing up could never exist, because `*.onnx` is git-ignored and
+// `web/public/models/` shipped empty — and the page presented its output as an inference result.
+const PLACEHOLDER_W = [
   [0.12, -0.34, 0.08, 0.21, -0.15, 0.4, -0.05, 0.18],
   [-0.1, 0.27, -0.22, 0.05, 0.33, -0.18, 0.12, -0.07],
 ];
-const JS_B = [0.05, -0.05];
+const PLACEHOLDER_B = [0.05, -0.05];
 
-export async function privateInference(features: number[]) {
+export type InferenceResult = {
+  logits: number[];
+  prediction: number;
+  backend: string;
+  provenance: Provenance;
+  modelKey: string | null;
+  note?: string;
+};
+
+/**
+ * Private inference for one feature vector.
+ *
+ * Three tiers, and which one ran is reported rather than left to be inferred from the output:
+ *   1. the published browser-tier ONNX model for this use case  -> MEASURED (WebGPU or WASM)
+ *   2. the bundled real distilled model shipped with the demo   -> MEASURED (plain JS arithmetic)
+ *   3. placeholder weights                                      -> SIMULATED
+ */
+export async function privateInference(
+  usecase: string, features: number[], realModel?: { W: number[][]; b: number[] } | null,
+): Promise<InferenceResult> {
   const f = features.slice(0, 8);
   while (f.length < 8) f.push(0);
-  const onnx = await inferLogits(f);
-  if (onnx) return { logits: onnx, prediction: argmax(onnx), backend: onnxBackend() };
-  const logits = JS_W.map((row, j) => row.reduce((a, wij, i) => a + wij * f[i], 0) + JS_B[j]);
-  return { logits, prediction: argmax(logits), backend: "js-linear" };
+
+  const onnx = await inferLogits(usecase, f);
+  if (onnx) {
+    return {
+      logits: onnx, prediction: argmax(onnx), backend: onnxBackend(),
+      provenance: browserProvenance(), modelKey: onnxStatus().modelKey,
+    };
+  }
+
+  if (realModel?.W?.length) {
+    const logits = realModel.W.map((row, j) =>
+      row.reduce((a, wij, i) => a + wij * (f[i] ?? 0), 0) + (realModel.b?.[j] ?? 0));
+    return {
+      logits, prediction: argmax(logits), backend: "js-linear (bundled real model)",
+      provenance: "measured-wasm", modelKey: null,
+      note: "bundled distilled linear model, evaluated in plain JS arithmetic",
+    };
+  }
+
+  const logits = PLACEHOLDER_W.map((row, j) =>
+    row.reduce((a, wij, i) => a + wij * f[i], 0) + PLACEHOLDER_B[j]);
+  return {
+    logits, prediction: argmax(logits), backend: "js-placeholder",
+    provenance: "simulated", modelKey: null,
+    note: onnxStatus().error
+      ? `no model available: ${onnxStatus().error}`
+      : "no published model registered for this use case; placeholder weights",
+  };
 }
 
 // Exact linear-SHAP (mirror of qsh/ai/explainability.py): phi_i = w_eff_i * (x_i - baseline_i),
@@ -343,7 +398,11 @@ function mpcFheRow(usecase: string | undefined, workload: string, modelSize: str
     path: "MPC-FHE", backend, workload,
     model_size: modelSize, model_arch: label, model_params: params, projected,
     latency_ms: r2(fhe + mpc), throughput_ips: r2(1000 / Math.max(fhe + mpc, 1e-3)),
-    accuracy: 1.0, max_abs_error: cost.demo_max_abs_error, ciphertext_plaintext_ratio: ctpt,
+    // NOT measured in the browser. The backend row this mirrors computes accuracy as
+    // (decisions matching plaintext)/n in classical_mpc_fhe.py; nothing here evaluates a model, so
+    // reporting 1.0 as if it were a result would be the flattering-number pattern this project
+    // rules out. null makes the panel print an em dash instead of a perfect score.
+    accuracy: null, max_abs_error: cost.demo_max_abs_error, ciphertext_plaintext_ratio: ctpt,
     fhe_linear_ms: r2(fhe), mpc_nonlinear_ms: r2(mpc), mpc_comm_kb: r2(comm / 1024),
     t_gate_count: null, qubits: null,
     security_model: "computational (RLWE) + secret-sharing MPC",
@@ -360,11 +419,15 @@ function mpcFheRow(usecase: string | undefined, workload: string, modelSize: str
 // the actual circuit, and ct/pt = 1.0 is the QOTP perfect-hiding property (Rate-1 QFHE's ~1.3 is the
 // classical-key-included literature figure). A state-vector SIMULATION, not quantum hardware.
 function qsmpcFheRow(workload: string, modelSize: string, u: () => number, samples = 4, scale = 1,
-  nQubits = benchCfg().quantum_qubits, sec?: { kem?: string; qkdBits?: number | null }) {
+  nQubits = benchCfg().quantum_qubits,
+  sec?: { kem?: string; qkdBits?: number | null; qber?: number | null }) {
   // qubit count is a run-config knob (config.qubits) — it drives the 2^n state-vector size, the counted
   // T-gate total (n per conv round) and the measured latency, so the QCNN-qubits control genuinely moves
   // the quantum row (clamped >=2 for a valid circuit).
-  const nq = Math.max(2, Math.round(nQubits));
+  // Clamped at both ends. The state vector is exact, so cost is 2^n and there is no graceful
+  // degradation past ~14 -- the tab simply stops responding. The UI caps the field too; this is the
+  // backstop for a value arriving any other way (URL, restored state, API).
+  const nq = Math.min(14, Math.max(2, Math.round(nQubits)));
   qotpQcnnInfer(Array.from({ length: nq }, () => u() * 2 - 1), 0, nq);   // warm-up (drop the JIT spike)
   let last = qotpQcnnInfer(Array.from({ length: nq }, () => u() * 2 - 1), 1, nq);
   let total = 0;
@@ -384,7 +447,12 @@ function qsmpcFheRow(workload: string, modelSize: string, u: () => number, sampl
     security_model: "information-theoretic (QOTP perfect hiding)",
     security_score: securityScore({
       securityModel: "information-theoretic (QOTP perfect hiding)", kem: sec?.kem,
-      qkdKeyBits: sec?.qkdBits === undefined ? 256 : sec.qkdBits, qber: 0.0128, leakageBitsPerWeight: 0.1,
+      // qber was the literal 0.0128 here while the panel described the score as reflecting "QBER
+      // eavesdrop margin" for this run — so moving the Eve slider changed the QKD panel and left this
+      // number untouched. Use the run's measured QBER when the pipeline produced one.
+      qkdKeyBits: sec?.qkdBits === undefined ? 256 : sec.qkdBits,
+      qber: typeof sec?.qber === "number" ? sec.qber : qkdCfg().misalignment,
+      leakageBitsPerWeight: 0.1,
     }).total,
     device: "cpu-sim", simulated: true,
   };
@@ -464,7 +532,7 @@ export async function clientAliceBob(seed = 0, nShared = 8) {
   timing.psi_ms = r2(performance.now() - t);
 
   t = performance.now();
-  const inf = await privateInference(Array.from({ length: 8 }, () => u() * 2 - 1));
+  const inf = await privateInference("demo", Array.from({ length: 8 }, () => u() * 2 - 1));
   timing.private_inference_ms = r2(performance.now() - t);
 
   const sec = securityScore({
@@ -508,19 +576,31 @@ export interface QFLResult {
   roundAcc: number[]; finalAcc: number; clients: number; rounds: number; secureAgg: boolean;
 }
 
-export function clientQFL(seed = 0, opts?: { clients?: number; rounds?: number }): QFLResult {
+export function clientQFL(
+  seed = 0,
+  opts?: { clients?: number; rounds?: number; data?: { X: number[][]; Y: number[] } | null },
+): QFLResult {
   const u = rng(seed + 11);
   const K = opts?.clients ?? 4;
   const rounds = opts?.rounds ?? 6;
-  const D = 4;
-  const N = 240;
   const X: number[][] = [];
   const Y: number[] = [];
-  for (let i = 0; i < N; i++) {
-    const c = i % 2;                                   // two overlapping clusters (non-trivial -> a real curve)
-    X.push(Array.from({ length: D }, () => (c ? 0.5 : -0.5) + (u() * 2 - 1) * 1.0));
-    Y.push(c);
+  if (opts?.data?.X?.length) {
+    // Federate over the page's REAL bundled sample. Without this the function always built its own
+    // two-cluster toy, so "federated accuracy" was the same number on every industry page for a
+    // given seed -- a metric that described no dataset the page was showing.
+    const src = opts.data;
+    for (let i = 0; i < src.X.length; i++) { X.push(src.X[i].slice()); Y.push(src.Y[i]); }
+  } else {
+    const D = 4;
+    const N = 240;
+    for (let i = 0; i < N; i++) {
+      const c = i % 2;                                 // two overlapping clusters (non-trivial -> a real curve)
+      X.push(Array.from({ length: D }, () => (c ? 0.5 : -0.5) + (u() * 2 - 1) * 1.0));
+      Y.push(c);
+    }
   }
+  const N = X.length;
   // quantum feature map: the QCNN expectation on a few deterministic views of x → 3 quantum features
   const phi = (x: number[]) => [
     qcnnExpectation(x).z,
@@ -626,32 +706,73 @@ export function runClientPipeline(
   async function runStage(stage: string) {
     switch (stage) {
       case "data": {
-        // Real commercial-OK data where available (medical, genomics — matching the full deployment);
-        // synthetic where no commercial-OK real set is shippable (finance/telecom/satellite). Detailed
-        // provenance is logged again at the inference step (realData.ts).
-        const realDs: Record<string, string> = {
-          medical_fl: "real Wisconsin breast-cancer (UCI/sklearn, public domain)",
-          genomics: "real PGS-Catalog PGS000001 PRS weights + real 1000 Genomes genotypes (CC-BY 4.0 / IGSR)",
-          finance_aml: "real PaySim mobile-money transactions (Kaggle ealaxi/paysim1, CC-BY-SA-4.0)",
-          satellite_comms: "real NASA SMAP/MSL spacecraft telemetry (Telemanom / NASA JPL, CC0 / public domain)",
-        };
-        if (realDs[usecase]) emit("log", stage, `dataset: ${realDs[usecase]}`);
+        // These describe the BUNDLED DEMO SAMPLE, which is not always the corpus the published model
+        // was trained on — finance is the clearest case: the demo ships PaySim while the published
+        // model is trained on IBM AMLworld. The registry (ModelPanel below) shows the training
+        // corpus; this line shows what is being scored in the browser right now.
+        //
+        // Five of these strings were wrong and had to be corrected against the primary sources,
+        // because this is the line a visitor actually reads: PaySim is a *simulator* (Kaggle titles
+        // it "Synthetic Financial Datasets For Fraud Detection"), PGS Catalog is per-score under
+        // EMBL-EBI terms rather than blanket CC-BY, IGSR grants no licence, NASA SMAP/MSL carries no
+        // licence statement from any provider, and UCI relicensed WDBC to CC BY 4.0 — so calling it
+        // "public domain" dropped an attribution requirement.
+        //
+        // The text is NOT stored here. It comes from src/qsh/models/registry.py via config, because
+        // it previously existed as three independent copies: this map, the shipped JSON files, and
+        // the generator script. They drifted, and a claim the project had already published a
+        // correction for went on being printed by the live demo.
+        const ds = demoSample(usecase);
+        if (ds) emit("log", stage, `dataset (bundled demo sample): ${ds.provenance}`);
         else emit("log", stage, "synthetic dataset prepared (client-side; no commercial-OK real set for this use case)");
         break;
       }
       case "pqc_handshake": {
-        // hybrid KEM selected via crypto-agility (config.kem): ml-kem-768 (cat-3) or ml-kem-1024 (cat-5)
-        // genuinely runs the chosen ML-KEM parameter set; the +X25519 half is the classical hedge (label).
+        // Hybrid KEM selected via crypto-agility (config.kem): ml-kem-768 (cat-3) or ml-kem-1024 (cat-5).
+        // BOTH halves are computed. This comment previously read "the +X25519 half is the classical
+        // hedge (label)" and that was exactly the problem: every diagram, the Overview and the
+        // Validations page said "ML-KEM-768 + X25519" while only ML-KEM ran, so the session key had
+        // none of the property that makes a hybrid worth having — security if EITHER primitive holds.
         const kemSel = kemName(config);
         const kem = kemImpl(kemSel);
         const bob = kem.keygen();
         const e = kem.encapsulate(bob.publicKey);
         const rec = kem.decapsulate(e.cipherText, bob.secretKey);
-        const ok = e.sharedSecret.every((b, i) => b === rec[i]);
-        (config as any)._sessionKey = e.sharedSecret.slice(0, 32);
-        metric(stage, "session_key_bits", 256);
+        const pqOk = e.sharedSecret.every((b, i) => b === rec[i]);
+
+        // Classical half: X25519 ECDH, then a concatenate-then-hash combiner over both secrets and
+        // the transcript. SHA3-256 rather than a bare XOR so neither half can be cancelled out by an
+        // attacker who controls the other.
+        const bobX = x25519.utils.randomSecretKey(), aliceX = x25519.utils.randomSecretKey();
+        const bobXPub = x25519.getPublicKey(bobX), aliceXPub = x25519.getPublicKey(aliceX);
+        const xA = x25519.getSharedSecret(aliceX, bobXPub), xB = x25519.getSharedSecret(bobX, aliceXPub);
+        // Same HKDF-SHA256 combiner and domain-separation string as src/qsh/pqc/hybrid_kem.py, so a
+        // demo run and a backend run derive the session key the same way.
+        const INFO = new TextEncoder().encode("qsh/hybrid-kem/v1 ML-KEM-768+X25519|");
+        const bind = (pq: Uint8Array, cl: Uint8Array) => {
+          const tr = new Uint8Array(bob.publicKey.length + bobXPub.length + aliceXPub.length);
+          tr.set(bob.publicKey, 0);
+          tr.set(bobXPub, bob.publicKey.length);
+          tr.set(aliceXPub, bob.publicKey.length + bobXPub.length);
+          const info = new Uint8Array(INFO.length + tr.length);
+          info.set(INFO, 0); info.set(tr, INFO.length);
+          const ikm = new Uint8Array(pq.length + cl.length);
+          ikm.set(pq, 0); ikm.set(cl, pq.length);
+          return hkdf(sha256, ikm, undefined, info, 32);
+        };
+        const sessA = bind(e.sharedSecret, xA), sessB = bind(rec, xB);
+        const ok = pqOk && sessA.every((b: number, i: number) => b === sessB[i]);
+
+        (config as any)._sessionKey = sessA.slice(0, 32);
+        metric(stage, "session_key_bits", sessA.length * 8);
         metric(stage, "kem_category", kemCategory(kemSel));
-        emit("log", stage, `hybrid KEM = ${kemSel} (NIST cat-${kemCategory(kemSel)}) — agreement=${ok}`);
+        metric(stage, "kem_ciphertext_bytes", e.cipherText.length);
+        metric(stage, "classical_public_key_bytes", aliceXPub.length);
+        // kemSel already carries the "+x25519" suffix from the crypto-agility selector, so naming
+        // X25519 again here read as "ml-kem-768+x25519 + X25519".
+        emit("log", stage, `hybrid KEM = ${kemSel} (NIST cat-${kemCategory(kemSel)}) — `
+          + `agreement=${ok}; ${e.cipherText.length} B ML-KEM ciphertext + ${aliceXPub.length} B X25519 `
+          + `ephemeral public key, combined with HKDF-SHA256(pq_ss || x25519_ss), info="qsh/hybrid-kem/v1" — the same combiner the backend uses`);
         // Quantum entropy source (simulated state-vector measurement, not hardware) — measured health + throughput.
         const qr = generateQuantumBits(Number(config.qrng_bits ?? qrngCfg().bits),
           { source: "sim", postProcessing: String(config.qrng_post ?? qrngCfg().post_processing),
@@ -660,7 +781,10 @@ export function runClientPipeline(
         metric(stage, "qrng_throughput_kbps", r1(qr.throughputBitsPerSec / 1000));
         metric(stage, "qrng_min_entropy_per_bit", r2(qr.minEntropyPerBit));
         emit("log", stage, `QRNG (simulated quantum measurement): ${qr.nBits} bits, health `
-          + `${qr.healthPassed ? "PASS" : "FAIL"} (monobit p=${qr.monobitP.toFixed(3)}), `
+          + `${qr.healthPassed ? "PASS" : "FAIL"} per SP 800-90B 4.4 `
+          + `(repetition-count ${qr.repetitionCountLongest}/${qr.repetitionCountCutoff}, `
+          + `adaptive-proportion ${qr.adaptiveProportionMax}/${qr.adaptiveProportionCutoff}); `
+          + `SP 800-22 reported not gating: ${qr.sp80022Passed ? "pass" : "fail"} (monobit p=${qr.monobitP.toFixed(3)}), `
           + `${r1(qr.throughputBitsPerSec / 1000)} kbit/s`);
         break;
       }
@@ -685,12 +809,21 @@ export function runClientPipeline(
         if (config.qkd_optimize) {   // AI-QKD parameter optimization (OptiQKD, WS1) — measured SKR gain
           const opt = optimizeQKD(chan, protocol,
             Number(config.qkd_opt_samples ?? qkdCfg().optimize_n_samples));
-          metric(stage, "qkd_skr_improvement_pct", r1(opt.improvementPct));
+          if (opt.improvementPct !== null) metric(stage, "qkd_skr_improvement_pct", r1(opt.improvementPct));
           metric(stage, "qkd_optimized_skr", Math.round(opt.bestSkr * 1e5) / 1e5);
           metric(stage, "qkd_convergence_evals", opt.convergenceEvals);
-          emit("log", stage, `OptiQKD (coordinate ascent): SKR +${r1(opt.improvementPct)}% vs default `
-            + `(basis p=${r2(opt.bestParams.basisProb)}, mu_signal=${r2(opt.bestParams.muSignal)}, `
-            + `mu_decoy=${r2(opt.bestParams.muDecoy)}; ${opt.nEvals} evals, converged in ${opt.convergenceEvals} — simulated)`);
+          // Only quote the decoy intensities for protocols whose model reads them. The E91/CHSH
+          // model ignores muSignal/muDecoy entirely, so printing "tuned" values there described a
+          // search that never happened.
+          const tuned = protocol === "e91"
+            ? `basis p=${r2(opt.bestParams.basisProb)}`
+            : `basis p=${r2(opt.bestParams.basisProb)}, mu_signal=${r2(opt.bestParams.muSignal)}, `
+              + `mu_decoy=${r2(opt.bestParams.muDecoy)}`;
+          emit("log", stage, opt.baselineIsDead
+            ? `OptiQKD (coordinate ascent): baseline SKR is 0 — no secure key to improve, so no `
+              + `percentage is reported (${tuned}; ${opt.nEvals} evals — simulated)`
+            : `OptiQKD (coordinate ascent): SKR +${r1(opt.improvementPct as number)}% vs default `
+              + `(${tuned}; ${opt.nEvals} evals, converged in ${opt.convergenceEvals} — simulated)`);
         }
         break;
       }
@@ -709,18 +842,31 @@ export function runClientPipeline(
         emit("log", stage, satERes
           ? `free-space E91 (CHSH S=${r2(satERes.chshS)}): ${res.channelLossDb}dB loss, QBER=${res.qber.toFixed(4)}, ${res.secureKeyBits} bits`
           : `free-space BB84: ${res.channelLossDb}dB loss, QBER=${res.qber.toFixed(4)}, ${res.secureKeyBits} bits`);
-        if (config.qkd_optimize) {   // OptiQKD over the free-space channel — measured SKR gain
+        // The fibre stage returns before its optimise block under the PQC-only profile; this one
+        // had no such guard, so the same checkbox did work here and nothing there.
+        if (config.qkd_optimize && String(config.qkd ?? "") !== "pqc-only") {
           const opt = optimizeQKD(satChan, satProtocol,
             Number(config.qkd_opt_samples ?? qkdCfg().optimize_n_samples));
-          metric(stage, "qkd_skr_improvement_pct", r1(opt.improvementPct));
+          if (opt.improvementPct !== null) metric(stage, "qkd_skr_improvement_pct", r1(opt.improvementPct));
           metric(stage, "qkd_convergence_evals", opt.convergenceEvals);
-          emit("log", stage, `OptiQKD (free-space, coordinate ascent): SKR +${r1(opt.improvementPct)}% vs default `
-            + `(basis p=${r2(opt.bestParams.basisProb)}, mu_signal=${r2(opt.bestParams.muSignal)}, `
-            + `mu_decoy=${r2(opt.bestParams.muDecoy)}; ${opt.nEvals} evals, converged in ${opt.convergenceEvals} — simulated)`);
+          const tunedSat = satProtocol === "e91"
+            ? `basis p=${r2(opt.bestParams.basisProb)}`
+            : `basis p=${r2(opt.bestParams.basisProb)}, mu_signal=${r2(opt.bestParams.muSignal)}, `
+              + `mu_decoy=${r2(opt.bestParams.muDecoy)}`;
+          emit("log", stage, opt.baselineIsDead
+            ? `OptiQKD (free-space): baseline SKR is 0 — no secure key to improve, so no percentage `
+              + `is reported (${tunedSat}; ${opt.nEvals} evals — simulated)`
+            : `OptiQKD (free-space, coordinate ascent): SKR +${r1(opt.improvementPct as number)}% vs default `
+              + `(${tunedSat}; ${opt.nEvals} evals, converged in ${opt.convergenceEvals} — simulated)`);
         }
         break;
       }
       case "qsdc_telemetry": {
+        // The QSDC and free-space QKD figures come from an analytic channel model. There is no
+        // browser API for quantum communication and there cannot be one, so this is SIMULATED and
+        // the page says so rather than presenting a modelled number as a measurement.
+        metric(stage, "inference_provenance", "simulated");
+        metric(stage, "inference_backend", "analytic free-space channel model (quantumSim)");
         const e = intrinsicQber({ ...FREE_SPACE, eveFraction: Number(config.sat_eve ?? 0) });
         const threshold = Number(config.qsdc_threshold ?? qkdCfg().pp_threshold);
         const eavesdrop = e > threshold;
@@ -784,34 +930,59 @@ export function runClientPipeline(
           // REAL client-side Quantum Federated Learning: FedAvg of a quantum-classical model across
           // simulated clients, round accuracy genuinely computed in-browser (mirrors the full
           // Flower+PennyLane HybridQNN under quantum-safe secure aggregation).
-          const q = clientQFL(seed);
+          // Federate over this page's REAL bundled sample where one exists, so the accuracy
+          // describes the data the page is actually showing rather than an internal toy.
+          const qflData = await realFederatedSet(usecase);
+          const q = clientQFL(seed, { data: qflData });
           metric(stage, "federated_accuracy", q.finalAcc);
           metric(stage, "qfl_rounds", q.rounds);
           metric(stage, "qfl_clients", q.clients);
+          metric(stage, "federated_accuracy_source",
+            qflData ? `real bundled ${usecase} sample, ${qflData.X.length} rows`
+                    : "synthetic 2-cluster toy (no bundled sample for this use case)");
           artifacts.qfl = q;
           emit("log", stage, `Quantum Federated Learning (client): ${q.clients} clients × ${q.rounds} `
-            + `rounds (quantum-classical FedAvg, secure-agg) — accuracy ${q.roundAcc[0].toFixed(3)}`
-            + `→${q.finalAcc.toFixed(3)}`);
+            + `rounds (quantum-classical FedAvg, secure-agg) over `
+            + `${qflData ? `the real bundled ${usecase} sample (${qflData.X.length} rows)` : "a synthetic toy"}`
+            + ` — accuracy ${q.roundAcc[0].toFixed(3)}→${q.finalAcc.toFixed(3)}`);
         } else {
           // inference-only: a genuine centralized eval (1 client, 1 round) — measured, not a canned constant.
           const cq = clientQFL(seed, { clients: 1, rounds: 1 });
           metric(stage, "federated_accuracy", cq.finalAcc);
+          // Say what this number is. clientQFL generates its own balanced two-cluster toy (not the
+          // Wisconsin sample the data stage announced) and is called with clients:1, rounds:1 -- so
+          // there is no federation and no medical data behind it.
+          metric(stage, "federated_accuracy_source", "synthetic 2-cluster toy, 1 client, 1 round");
           emit("log", stage, `inference-only: centralized eval accuracy ${cq.finalAcc.toFixed(3)} `
+            + `on a SYNTHETIC 2-cluster toy (not the bundled medical sample), 1 client / 1 round — `
+            + `so this is not a federated result `
             + `(toggle “Federated (QFL)” to run quantum federated rounds in-browser)`);
         }
         break;
       }
       case "qml_ids": {
+        // clientIDS genuinely trains an 8-class softmax in this tab, so the timing and the F1 are
+        // measured. The *data* is synthetic, which the run logs separately — measured computation
+        // over synthetic input is not the same claim as measured performance on real traffic.
+        metric(stage, "inference_provenance", "measured-wasm");
+        metric(stage, "inference_backend", "in-browser softmax training (clientIDS), synthetic telemetry");
         // genuine in-browser IDS: softmax logistic trained + scored on the Al-Kuwari-2026 attack signatures.
         // Training volume per class = config.n_per_class (Parameters panel), so it genuinely shifts acc/F1.
         const ids = clientTrainScoreIDS(seed, Number(config.n_per_class ?? idsCfg().n_per_class));
+        metric(stage, "ids_macro_f1", r2(ids.macroF1));
+        metric(stage, "ids_worst_class_f1", r2(ids.worstClassF1));
         metric(stage, "ids_binary_f1", r2(ids.binaryF1));
         metric(stage, "ids_accuracy", r2(ids.accuracy));
         metric(stage, "ids_params", ids.nParams);
-        metric(stage, "ids_train_per_class", Number(config.n_per_class ?? idsCfg().n_per_class));
+        // clientIDS clamps this to >=20 and falls back on a non-finite input, so the requested value
+        // is not always the value used. Report what the run actually trained on.
+        metric(stage, "ids_train_per_class", ids.nPerClassUsed);
         emit("log", stage, `QML-IDS (client, softmax logistic on Al-Kuwari-2026 signatures): `
-          + `attack-F1=${r2(ids.binaryF1)}, acc=${r2(ids.accuracy)} — measured on ${ids.nTest} held-out `
-          + `samples (${config.n_per_class ?? idsCfg().n_per_class}/class)`);
+          + `macro-F1=${r2(ids.macroF1)} over 8 classes, worst class ${r2(ids.worstClassF1)} `
+          + `— measured on ${ids.nTest} held-out samples (${ids.nPerClassUsed}/class)`);
+        emit("log", stage, `companions (NOT the headline): binary attack-vs-normal F1=${r2(ids.binaryF1)}, `
+          + `aggregate accuracy=${r2(ids.accuracy)}. Both collapse the seven attack types together, which is `
+          + `why they read high while a single class can be failing — see scripts/train/telecom_ids.py`);
         break;
       }
       case "private_inference": {
@@ -825,7 +996,9 @@ export function runClientPipeline(
           : "data: synthetic features (no commercial-OK real dataset shipped for this use case)");
         if (realIn?.metrics) for (const [k, v] of Object.entries(realIn.metrics)) metric(stage, k, v);
         const t = performance.now();
-        const inf = await privateInference(feats);     // real ONNX client compute (WASM/WebGPU)
+        // Published ONNX model where one exists for this use case, else the bundled real distilled
+        // model, else placeholder weights. inf.provenance records which, and the UI shows it.
+        const inf = await privateInference(usecase, feats, realIn?.model ?? null);
         const clientMs = r2(performance.now() - t);
         artifacts.client_compute_ms = clientMs;
         metric(stage, "client_compute_ms", clientMs);
@@ -834,6 +1007,13 @@ export function runClientPipeline(
         // MPC-non-linear ms scale that MEASURED per-op cost to the SELECTED architecture (size × workload) so the
         // time genuinely tracks lightweight/medium/large × linear/cnn/transformer. client_compute_ms above is the
         // raw ONNX wall-clock; _measured_hybrid keeps the raw per-op measurement (the benchmark panel scales it too).
+        // Surface which tier actually produced the inference, so a page that fell back to
+        // placeholder weights cannot look like one that ran the published model.
+        metric(stage, "inference_backend", inf.backend);
+        metric(stage, "inference_provenance", inf.provenance);
+        if (inf.modelKey) metric(stage, "inference_model", inf.modelKey);
+        if (inf.note) emit("log", stage, `inference: ${inf.note}`);
+
         const real = await realClientHybrid(feats, u);
         if (real) {
           const bscale = benchScale(usecase, config.model_size ?? "medium", config.workload ?? "linear");
@@ -879,7 +1059,13 @@ export function runClientPipeline(
         const names = realIn?.names ?? FEATURE_NAMES[usecase] ?? Array.from({ length: 8 }, (_, i) => `feature_${i}`);
         // XAI uses the REAL model where one is shipped (real breast-cancer LR / real PGS PRS weights),
         // else the linear surrogate — so the attribution on real data reflects the real model.
-        artifacts.explanation = linearShap(realIn?.model?.W ?? JS_W, realIn?.model?.b ?? JS_B, feats, names, 5);
+        artifacts.explanation = linearShap(
+          realIn?.model?.W ?? PLACEHOLDER_W, realIn?.model?.b ?? PLACEHOLDER_B, feats, names, 5);
+        // SHAP is exact for the model it is given. With placeholder weights the attribution is
+        // exact for weights that mean nothing, so say which case this is rather than let a reader
+        // assume the explanation describes the industry model.
+        artifacts.explanation_provenance = realIn?.model?.W ? "real bundled model" : "placeholder weights";
+        metric(stage, "explanation_model", artifacts.explanation_provenance);
         metric(stage, "explanation_top_contribution", artifacts.explanation.top_features[0]?.contribution ?? 0);
         emit("log", stage, `XAI: top driver = ${artifacts.explanation.top_features[0]?.feature}`);
         break;
@@ -890,7 +1076,8 @@ export function runClientPipeline(
         const ms = config.model_size ?? "medium", wl = config.workload ?? "linear";
         const sec = secFromConfig(config);
         const isInf = ["finance_aml", "medical_fl", "genomics"].includes(usecase);
-        const qrow = qsmpcFheRow(wl, ms, rng(7), 6, 1, qubitsOf(config), sec);
+        const qrow = qsmpcFheRow(wl, ms, rng(7), 6, 1, qubitsOf(config),
+          { ...sec, qber: typeof metrics.qber === "number" ? metrics.qber : null });
         const adv = isInf ? quantumAdvantage(mpcFheRow(usecase, wl, ms, null, sec), qrow) : null;
         if (adv) metric(stage, "quantum_advantage_score", adv.score);
         metric(stage, "qsmpc_t_gates", qrow.t_gate_count);
@@ -908,12 +1095,36 @@ export function runClientPipeline(
         // genuinely signs with the chosen level (ML-DSA-87 produces a visibly larger signature).
         const dsa = sigImpl(String(config.sig ?? "ml-dsa-65"));
         const sk = dsa.fn.keygen(crypto.getRandomValues(new Uint8Array(32)));
-        const msg = new TextEncoder().encode(JSON.stringify({ usecase }));
+        // Sign the RUN, not just its name. This used to be JSON.stringify({ usecase }) -- a
+        // signature over the string {"usecase":"finance_aml"} and nothing else, so every metric,
+        // every algorithm selection and the explanation could be altered without invalidating the
+        // "tamper-evident audit record" the UI advertises. Canonicalised with sorted keys so the
+        // same run produces the same payload.
+        const canon = (v: unknown): unknown =>
+          Array.isArray(v) ? v.map(canon)
+          : v && typeof v === "object"
+            ? Object.fromEntries(Object.entries(v as Record<string, unknown>).sort(
+                ([a], [b]) => a.localeCompare(b)).map(([k, x]) => [k, canon(x)]))
+            : v;
+        const signedPayload = canon({
+          usecase,
+          config: { kem: config.kem ?? null, qkd: config.qkd ?? null, sig: config.sig ?? null,
+                    fhe: config.fhe ?? null, combiner: config.combiner ?? null },
+          metrics: { ...metrics },
+          explanation: artifacts.explanation ?? null,
+        });
+        const msg = new TextEncoder().encode(JSON.stringify(signedPayload));
         const sig = dsa.fn.sign(sk.secretKey, msg);
         const ok = dsa.fn.verify(sk.publicKey, msg, sig);
         artifacts.result_signature = {
           algorithm: dsa.name, signature_bytes: sig.length,
           signature_hex_prefix: [...sig.slice(0, 12)].map((b) => b.toString(16).padStart(2, "0")).join(""),
+          // Without the public key and the exact payload, nobody but this tab can re-check the
+          // signature -- the keypair is generated per run and discarded. Both are recorded now so
+          // "tamper-evident" is a claim a reader can actually test.
+          public_key_hex: [...sk.publicKey].map((b) => b.toString(16).padStart(2, "0")).join(""),
+          signed_payload: signedPayload,
+          signed_fields: ["usecase", "config", "metrics", "explanation"],
           verified: ok,
         };
         metric(stage, "signature_verified", ok ? 1 : 0);

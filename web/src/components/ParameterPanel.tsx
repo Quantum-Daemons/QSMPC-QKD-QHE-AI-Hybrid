@@ -5,14 +5,16 @@
 import { type usePipelineRun } from "../lib/usePipelineRun";
 
 type Run = ReturnType<typeof usePipelineRun>;
-type Field = [label: string, key: string, step: number, min: number, title?: string];
+// `max` exists because QCNN qubits drives a 2^n state vector evaluated several times per run and
+// had no upper bound at all: typing ~24 allocates ~16.7M complex amplitudes and hangs the tab.
+type Field = [label: string, key: string, step: number, min: number, title?: string, max?: number];
 
 export default function ParameterPanel({ run }: { run: Run }) {
   const { params, setParams, resetParams, usecase } = run;
   const p = params as Record<string, number | string>;
   const setNum = (k: string, v: string) => setParams({ ...params, [k]: parseFloat(v) || 0 });
 
-  const numField = ([label, key, step, min, title]: Field) => {
+  const numField = ([label, key, step, min, title, max]: Field) => {
     // the LHL eps only affects the Toeplitz/seedless extractor — grey + disable it on the von_neumann
     // default so editing it isn't a silent no-op (it activates when QRNG extractor is switched below).
     const dim = key === "qrng_eps_log2" && p.qrng_post === "von_neumann";
@@ -20,7 +22,7 @@ export default function ParameterPanel({ run }: { run: Run }) {
       <div key={key} style={{ minWidth: 120, flex: "1 1 120px" }}>
         <label className="muted" htmlFor={`pp-${key}`} style={{ fontSize: 12, opacity: dim ? 0.45 : 1 }}
           title={dim ? "No effect on the von Neumann extractor — switch QRNG extractor to Toeplitz/seedless to use the LHL eps." : title}>{label}</label>
-        <input id={`pp-${key}`} name={key} type="number" step={step} min={min} disabled={dim}
+        <input id={`pp-${key}`} name={key} type="number" step={step} min={min} max={max} disabled={dim}
           value={p[key] as number} style={{ width: "100%", opacity: dim ? 0.45 : 1 }} onChange={(e) => setNum(key, e.target.value)} />
       </div>
     );
@@ -38,7 +40,8 @@ export default function ParameterPanel({ run }: { run: Run }) {
       ["QRNG bits", "qrng_bits", 512, 64, "quantum-random bits generated + health-checked per run"],
       ["Extractor eps (log2)", "qrng_eps_log2", 4, -60, "Leftover-Hash-Lemma security 2^this (toeplitz/seedless extractor)"]] },
     { title: "Quantum / run", fields: [
-      ["QCNN qubits", "qubits", 1, 2, "state-vector QCNN qubit count"],
+      ["QCNN qubits", "qubits", 1, 2,
+       "state-vector QCNN qubit count — capped at 14: the simulator is exact, so cost is 2^n", 14],
       ["RNG seed", "seed", 1, 0, "run reproducibility seed"]] },
   ];
   if (usecase === "telecom_ids") groups.push({ title: "IDS",

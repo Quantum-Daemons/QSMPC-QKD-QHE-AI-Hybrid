@@ -19,26 +19,29 @@
    │ orchestration/  Pipeline · Stage · EventBus · CryptoRegistry        │
    │   pqc/      ML-KEM+X25519 hybrid KEM · ML-DSA sig · AEAD transport   │
    │   qkd/      BB84/decoy sim · channel/QBER · AI optimizer (WS1)       │
-   │   qml_ids/  8 attack scenarios · RF + variational QNN (WS2)          │
+   │   qml_ids/  7 attack types + normal · RF + variational QNN (WS2)     │
    │   qsmpc/    Shamir+QFT secure sum · QOT · PSI (WS3)                  │
    │   qhe/      QOTP · Clifford+T QCNN · Rate-1 QFHE (WS4)               │
    │   fhe/      CKKS LINEAR layers: TenSEAL · OpenFHE (CPU) · HEonGPU GPU│
    │             + genuine FHE CONVOLUTION (conv.py: im2col → dot_plain)  │
    │   mpc/      NON-LINEAR (ReLU/argmax/maxpool): MPyC Shamir shares;     │
    │             layer specs (Conv/Dense/Pool/Flatten) + hybrid dispatch   │
-   │   ai/       small CNN/Transformer · Flower-style FL + secure-agg     │
+   │   ai/       models · own FedAvg + pairwise-mask secure aggregation   │
    │   benchmark/ hybrid MPC-FHE (linear→FHE+non-linear→MPC) vs QSMPC-FHE │
-   │   usecases/ finance_aml · medical_fl · genomics · telecom_ids        │
+   │   usecases/ finance_aml · medical_fl · genomics · telecom_ids ·      │
+   │             satellite_comms                                          │
    └───────────────────────────────────────────────────────────────────┘
 ```
 
 **Rounds 15-16 additions (WS1 entropy + QKD protocols).** The `qkd/` module also provides a **QRNG entropy
-backbone** (`qrng/`: state-vector `|+>` measurement, an SP 800-22 health suite + an **SP 800-90B**
+backbone** (`qrng/`: state-vector `|+>` measurement, the **SP 800-90B section 4.4** continuous health
+tests (Repetition Count + Adaptive Proportion) which gate the verdict, with SP 800-22 p-values reported
+but NOT gating -- section 4.1 states those tests "are not useful for monitoring the noise source" -- + an **SP 800-90B**
 most-common-value **min-entropy** estimate, and a **Leftover-Hash-Lemma-bounded Toeplitz / seedless two-source**
-extractor — Giestinhas & Spiller, arXiv:2603.26907) that seeds the BB84/E91 basis+bit choices, plus a selectable
+extractor — Giestinhas & Spiller, arXiv:2603.26907) that **can** seed the BB84/E91 basis+bit choices (**opt-in, off by default**: `qrng.enabled = False` in `src/qsh/config/defaults.py`, so BB84 entropy is byte-for-byte unchanged unless enabled), plus a selectable
 **E91/CHSH** entanglement protocol (`qkd/e91.py`, `protocol="e91"`) alongside the two-intensity decoy-state BB84
 (`bb84.py`, where `mu_decoy` genuinely moves the SKR — Ma-Qi-Zhao-Lo 2005; OptiQKD tunes it, arXiv:2603.04192).
-The `pqc/` module adds a config-gated **"secure-if-either"** PQC+QKD key combiner (`transport.py`,
+The `pqc/` module adds a config-gated **leakage-resilient** PQC+QKD key combiner (`transport.py`,
 `hybrid_combiner_mode = hkdf | its_toeplitz` — Toeplitz+QLHL; the session key stays secure if EITHER the PQC or
 the QKD input retains entropy). The QRNG post-processing and the combiner mode are both runtime-selectable — see
 `crypto-agility.md`.
@@ -72,7 +75,7 @@ specs (`mpc/layers.py`: `ConvSpec`/`DenseSpec`/`PoolSpec`/`FlattenSpec`), so the
 runs a real MedMNIST-scale CNN under FHE-linear conv + MPC `secure_relu`/`secure_maxpool` (the dense
 MLP path is byte-identical via `normalize_layers`). FHE-feasible by design — MedMNIST-scale, not ResNet. The
 **QSMPC-FHE** quantum analogue is Clifford gates (linear) vs T-gates (non-linear), both evaluated on
-the encrypted state by QOTP/Rate-1 QFHE (ct/pt ≈ 1.3, no FHE↔MPC boundary). A **lightweight / medium
+the encrypted state by QOTP/Rate-1 QFHE (no FHE↔MPC boundary). **On ct/pt:** the benchmark row the demo renders reports **1.0** — under QOTP the ciphertext is the same number of qubits as the plaintext (`clientCompute.ts`). The config's `cost_per_op.qsmpc_ct_pt_ratio = 1.32` is the *literature* figure for Rate-1 QFHE with the classical key included, and it feeds only the static blurb on the Overview page, never the benchmark. A **lightweight / medium
 / large** model-size selector scales the workload — light + medium run for real, large is projected
 from measured per-op cost.
 
@@ -143,21 +146,30 @@ server, no cost-model estimate):
 MCP bridge), `qkd/` (BB84, channel, QSDC), `qsmpc/` (QOT, Shamir, secure summation), `fhe/` (CKKS
 inference, conv, backends), `mpc/` (secret inference, layers), `ai/` (models incl. `HybridQNN`, federated,
 explainability), `qml_ids/`, `benchmark/`, `usecases/`, `orchestration/`, `mcp/` (new), `config/`
-(single source). The demo going fully client-side did **not** orphan backend code: every `/api/*`
-endpoint is still used by the full-mode SPA, the dense+conv hybrid dispatch is already unified
+(single source). The demo going fully client-side did **not** orphan most backend code — with three
+exceptions: `/api/mcp/tools`, `/api/mcp/call` and `/api/mcp/filesystem` have **no** reference anywhere in
+`web/src`. The SPA's MCP path is `/api/demo/mcp` or the in-browser `clientMcp.ts` mirror, so those three
+are reachable only by an external MCP client. Otherwise every `/api/*` endpoint is still used by the
+full-mode SPA, the dense+conv hybrid dispatch is already unified
 (`normalize_layers`), and config is centralized — so the reorg was an audit + the clean new `mcp/`
 module rather than a churn of working, tested code (the full test suite stays green).
 
 ## Two compute topologies
-- **Full** (GPU box): everything runs server-side — federated training (Flower + PennyLane QFL), GPU FHE
+- **Full** (GPU box): everything runs server-side — federated training (own FedAvg + PennyLane QFL), GPU FHE
   (HEonGPU), GPU quantum sim (CUDA-Q / lightning.gpu), the real MCP server, Prometheus + Grafana.
 - **Client-side build** (no GPU, no server-side ML): the static SPA runs **all** heavy compute in the
   browser (WASM/WebGPU PQC via @noble, **real CKKS FHE + garbled-circuit MPC**, ONNX inference, in-browser
   AI, JS BB84/PSI/SHAP/QFL, the client MCP mirror) — it makes **zero `/api` compute calls** (Validations'
-  PQC/QKD/MCP are client-mirrored). It ships a **slim backend image** (`docker/Dockerfile.api.demo` —
-  core+api only, no FHE/torch; ~2.9 GB smaller than the full image), optional and used only as a
-  `?demo=full` fallback. Inference + an optional in-browser QFL toggle; the **full** topology additionally
-  runs server-side federated learning + FHE inference + the MCP server. AI model weights stream from the
+  PQC/QKD/MCP are client-mirrored). It ships **no backend at all**. A slim
+  API image (`docker/Dockerfile.api.demo`, deleted in Round 18 — core+api, no FHE/torch) used to run beside it as a
+  `?demo=full` fallback; that was removed in Round 17 after testing it on the deployed site. The
+  image excludes FHE by design, so any run it accepted failed at `No module named 'tenseal'` and
+  ended in `State: error`, while the page still told the visitor no computation was sent to a
+  server. It also left `/api/run/*` writable by anonymous visitors. The client-only image now
+  carries `docker/env/Caddyfile.client-only`, which answers `/api` and `/metrics` with 404, and
+  `VITE_CLIENT_ONLY=1` makes `?demo=` non-overridable — a client-only build is client-only.
+  The **demo** topology therefore offers inference plus an optional in-browser QFL toggle; the **full**
+  topology additionally runs server-side federated learning + FHE inference + the MCP server. AI model weights stream from the
   HF/MLC CDN (browser-cached).
 
 ## Why CUDA-Q / cuQuantum (not qiskit-aer-gpu)

@@ -12,6 +12,7 @@
   "dependencies": {
     "@huggingface/transformers": "^4.2.0",
     "@mlc-ai/web-llm": "^0.2.84",
+    "@noble/curves": "^2.2.0",
     "@noble/post-quantum": "^0.2.1",
     "@types/gif.js": "^0.2.5",
     "@xyflow/react": "^12.3.5",

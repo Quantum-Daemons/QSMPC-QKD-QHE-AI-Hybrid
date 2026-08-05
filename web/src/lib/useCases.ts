@@ -25,14 +25,14 @@ export const USECASES: UseCaseMeta[] = [
   {
     id: "medical_fl", title: "Medical — federated learning + private inference", nav: "Medical — FL", industry: "healthcare",
     blurb: "Hospitals train a shared diagnostic model with secure aggregation (no patient data leaves), then a clinician runs a private, signed-explained diagnosis.",
-    market: "Healthcare/life-sciences the largest + fastest-growing vertical (~30% of a $3.67B→$46B market); FL is the #1 PET (~29%). EU AI Act Art. 13 in force Aug 2026.",
+    market: "Healthcare/life-sciences is a leading privacy-preserving-AI vertical in a $3.67B(2025)→$46B(2035) market (market.us), though that report puts BFSI first at 27.8%; federated learning ~29% of a separately-sized $4.25B→$39.9B market (Precedence Research) — different denominators, not comparable shares. EU AI Act Art. 13 applies from 2 Dec 2027 (Annex III), deferred by the AI Omnibus - not Aug 2026.",
     inference: true,
     agenticTool: "query_cohort",
     agenticPrompt: "In one sentence, why does a clinician's agent querying a federated diagnostic model over MCP need a quantum-safe (PQC + QKD) channel under HIPAA?",
   },
   {
     id: "genomics", title: "Genomics — confidential analysis", nav: "Genomics", industry: "genomics",
-    blurb: "Cohorts pool allele counts via quantum secure summation (d-qudit GHZ), then run a private phenotype inference — no cohort exposes raw genotypes.",
+    blurb: "Cohorts pool allele counts by secure summation over a prime field, then run a private phenotype inference — no cohort exposes raw genotypes. The reference backend runs the Sutradhar (t,n)-threshold quantum secure summation (d-level QFT over a t-qudit GHZ state); the in-browser demo computes the classical equivalent, and the page labels the quantum channel SIMULATED.",
     market: "Genomic data-collaboration rides the healthcare/life-sciences segment (~30%); FHE the largest PET (~35.6% of tech mix); secure MPC ~$1.1B→$2.7B.",
     inference: true,
     agenticTool: "pool_allele_counts",

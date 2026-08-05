@@ -8,7 +8,12 @@ import { ChannelParams, h2, intrinsicQber, transmittance } from "./quantumSim";
 
 export interface OptiQKDParams { muSignal: number; muDecoy: number; basisProb: number; ppThreshold: number; }
 export interface OptiQKDResult {
-  bestParams: OptiQKDParams; bestSkr: number; baselineSkr: number; improvementPct: number;
+  bestParams: OptiQKDParams; bestSkr: number; baselineSkr: number;
+  /** Percentage gain over the default parameters, or **null** when the baseline SKR is 0 -- a dead
+   *  link has no meaningful denominator, and reporting +100% there contradicted secure_key_bits. */
+  improvementPct: number | null;
+  /** True when the un-optimised channel already yields no secure key (e.g. a high Eve fraction). */
+  baselineIsDead: boolean;
   bestQber: number; baselineQber: number; nEvals: number; method: string; latencyMs: number;
   convergenceEvals: number; convergenceCurve: number[];
 }
@@ -87,11 +92,17 @@ export function optimizeQKD(channel: ChannelParams, protocol?: string, nSamples?
     if (!improved) break;
   }
   const bestRes = model(channel, best);
-  const improvement = b0.skr > 1e-12 ? (100 * (bestRes.skr - b0.skr)) / b0.skr : (bestRes.skr > 0 ? 100 : 0);
+  // A dead link has no percentage improvement to report. This used to fall to `bestRes.skr > 0 ? 100 : 0`,
+  // so a high Eve fraction -- baseline SKR 0 -- printed a triumphant "SKR +100%" beside the same run's
+  // secure_key_bits of 0. When the baseline is zero the honest answer is "undefined", and callers must
+  // say that rather than render a number.
+  const baselineIsDead = !(b0.skr > 1e-12);
+  const improvement = baselineIsDead ? null : (100 * (bestRes.skr - b0.skr)) / b0.skr;
   const final = curve.length ? curve[curve.length - 1] : bestRes.skr;
   const convergenceEvals = Math.max(1, curve.findIndex((v) => v >= 0.95 * final) + 1);   // evals to 95% of final
   return {
     bestParams: best, bestSkr: bestRes.skr, baselineSkr: b0.skr, improvementPct: improvement,
+    baselineIsDead,
     bestQber: bestRes.qber, baselineQber: b0.qber, nEvals, method: "coordinate",
     latencyMs: performance.now() - t0, convergenceEvals, convergenceCurve: curve,
   };

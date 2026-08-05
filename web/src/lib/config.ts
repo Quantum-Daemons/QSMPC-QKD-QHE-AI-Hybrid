@@ -42,3 +42,57 @@ export const qrngCfg = () => CONFIG.qrng;
 export const idsCfg = () => CONFIG.ids;
 export const cryptoCfg = () => CONFIG.crypto;   // crypto-agility defaults incl. hybrid_combiner_mode
 export const webCfg = () => CONFIG.web;
+
+/** Provenance of the sample bundled INTO the demo (not the corpus the model was trained on).
+ *  Generated from src/qsh/models/registry.py BUNDLED_DEMO_SAMPLES; CI checks the parity. */
+export type DemoSample = { provenance: string; licence: string; url: string; licence_checked: string };
+export const demoSample = (usecase: string): DemoSample | null =>
+  ((CONFIG as any).demo_samples ?? {})[usecase] ?? null;
+
+// --- model registry ---------------------------------------------------------
+// Generated from src/qsh/models/registry.py. Repo ids, pinned revisions, artefact paths, dataset
+// licences, published baselines and measured metrics all come from here so that no model name,
+// URL or number is written into a component.
+
+export type ModelArtifact = {
+  path: string;
+  fmt: "onnx" | "safetensors" | "json";
+  precision: "fp32" | "int8" | "none";
+  serves: "browser" | "server" | "both";
+};
+
+export type ModelSpec = {
+  key: string;
+  tier: "t1_crypto" | "t2_industry" | "t3_large";
+  label: string;
+  architecture: string;
+  params: number | null;
+  runs_encrypted: boolean;
+  hf_repo_id: string | null;
+  hf_revision: string | null;
+  artifacts: ModelArtifact[];
+  dataset: { name: string; licence: string; url: string; publishable: boolean };
+  metric: {
+    name: string; display: string;
+    baseline: number | null; baseline_source: string;
+    ceiling: number | null; ceiling_source: string;
+    companion: string;
+  };
+  /** Measured by a training run, or null when the model has never been trained. Never a placeholder. */
+  achieved: Record<string, unknown> | null;
+  notes: string;
+};
+
+export const modelsFor = (usecase: string): ModelSpec[] =>
+  (((CONFIG as any).models ?? {})[usecase] ?? []) as ModelSpec[];
+
+export const allModels = (): Record<string, ModelSpec[]> => ((CONFIG as any).models ?? {});
+
+/** The industry (plaintext) model for a use case — what the headline metric describes. */
+export const teacherModel = (usecase: string): ModelSpec | null =>
+  modelsFor(usecase).find((m) => m.tier === "t2_industry" && m.achieved) ??
+  modelsFor(usecase).find((m) => m.tier === "t2_industry") ?? null;
+
+/** The encrypted (FHE/MPC-feasible) model for a use case. */
+export const studentModel = (usecase: string): ModelSpec | null =>
+  modelsFor(usecase).find((m) => m.tier === "t1_crypto") ?? null;

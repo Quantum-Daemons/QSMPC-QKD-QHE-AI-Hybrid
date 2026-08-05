@@ -48,10 +48,20 @@ def compute_security_score(
     it = "information-theoretic" in (security_model or "").lower()
     c: dict[str, float] = {}
 
-    # HNDL resistance: PQC-first hybrid (+ QKD key material bonus).
-    c["hndl_pqc_hybrid"] = s.hndl_pqc_hybrid if pqc_hybrid else 0.0
-    if qkd_key_bits and qkd_key_bits >= 256:
-        c["hndl_pqc_hybrid"] = min(s.hndl_pqc_hybrid, c["hndl_pqc_hybrid"] + s.qkd_bonus)
+    # HNDL resistance: PQC-first hybrid, with a real bonus for mixed-in QKD key material.
+    #
+    # This used to read `min(hndl_pqc_hybrid, hndl_pqc_hybrid + qkd_bonus)`, which is just
+    # `hndl_pqc_hybrid` -- the bonus could never apply whenever pqc_hybrid was true, i.e. in every
+    # normal run. Selecting bb84-decoy versus pqc-only changed the summary label and nothing else,
+    # while docs/crypto-agility.md claimed every selector "genuinely changes the demo run's
+    # metrics". A PQC-only hybrid now scores the cap minus the bonus and QKD-mixed reaches the cap,
+    # so the ceiling is unchanged and the control is no longer inert.
+    if not pqc_hybrid:
+        c["hndl_pqc_hybrid"] = 0.0
+    elif qkd_key_bits and qkd_key_bits >= 256:
+        c["hndl_pqc_hybrid"] = s.hndl_pqc_hybrid
+    else:
+        c["hndl_pqc_hybrid"] = max(0.0, s.hndl_pqc_hybrid - s.qkd_bonus)
 
     # Security model: information-theoretic beats computational.
     c["security_model"] = s.info_theoretic if it else s.computational

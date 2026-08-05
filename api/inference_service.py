@@ -9,6 +9,8 @@ from __future__ import annotations
 
 from functools import lru_cache
 
+from qsh.config import get_config
+
 import numpy as np
 
 
@@ -62,5 +64,8 @@ def qkd_demo(distance_km: float = 50.0, eve: float = 0.0) -> dict:
         "distance_km": distance_km, "eve_fraction": eve,
         "qber": round(r.qber, 4), "skr": round(r.secret_key_rate, 5),
         "secure_key_bits": r.secure_key_bits,
-        "eavesdropper_likely": r.qber > 0.08,
+        # Config, not a literal. This was 0.08 while the browser used
+        # security_scoring.qber_secure_threshold (0.11), so full mode and demo mode returned
+        # OPPOSITE eavesdropper verdicts for any QBER in the 0.08-0.11 band.
+        "eavesdropper_likely": r.qber > get_config().security_scoring.qber_secure_threshold,
     }
