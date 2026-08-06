@@ -79,6 +79,13 @@ scaffold hardens). QRNG + OptiQKD above are built from this set; the rest are ad
    crypto (a "crypto bill of materials") to drive migration priority.
 
 ## Timeline anchors
+- **2026-09-21** - **FIPS 140-2 certificates move to the CMVP Historical List.** NIST's own wording:
+  *"FIPS 140-2 active modules can be used until this date for new systems. After this date, FIPS
+  140-2 validation certificates will be moved to the Historical List."* Federal agencies may then use
+  those modules only in EXISTING systems, not for new procurement. Verified at csrc.nist.gov 2026-08-06.
+  This is the nearest hard date in the whole table and it was missing from it. It does not bind this
+  repository - nothing here is FIPS-validated and nothing claims to be - but it binds anyone
+  procuring a module to run this kind of workload, so it belongs in a migration roadmap.
 - **2027** CNSA 2.0 new-procurement mandate -> be compliant before bids.
 - **2029** - Cloudflare commits its product suite to full PQ security *including PQ authentication*; Google sets 2029 as its PQC **migration** timeline (the weaker of the two commitments) -> supply-chain expectations.
 - **2030** deprecation of **112-bit-strength** RSA/ECC and **2035** disallowance of all quantum-vulnerable public-key algorithms, per **NIST IR 8547 ipd** (Nov 2024 - *Initial Public Draft*, not final, not binding). RSA-3072 / P-256 and above carry no 2030 milestone; plan field validation by 2027 Q1.
@@ -88,6 +95,15 @@ scaffold hardens). QRNG + OptiQKD above are built from this set; the rest are ad
   Systems are excluded** and stay on CNSA 2.0. This is the binding US instrument; IR 8547 is still a draft.
 - **2035** - Japan's Cabinet Secretariat interim report (Nov 2025) sets PQC migration at **2035**, with the
   detailed roadmap to be drafted during FY2026.
+
+## Algorithm backups worth tracking
+
+- **HQC** was selected in **March 2025** as the code-based KEM backup to ML-KEM, with standardisation
+  expected 2026-2027. It matters to this project specifically because the whole architecture is a
+  crypto-agility registry: a second KEM family resting on a different hardness assumption is exactly
+  what that registry exists to make swappable. It is **not implemented** - liboqs carries HQC, this
+  repository's `CryptoRegistry` does not register it - and that is a deliberate gap rather than an
+  oversight, because a backup KEM is only worth wiring once its parameter sets are final.
 
 ## Standards added since the last revision (verified 2026-08-03)
 
