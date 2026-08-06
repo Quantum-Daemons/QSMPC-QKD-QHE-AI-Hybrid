@@ -983,10 +983,10 @@
         ],
         "browser_runnable": false,
         "dataset": {
-          "licence": "no licence stated by either provider",
+          "licence": "provider's own pages state conflicting terms",
           "name": "CIC-IDS2017, Engelen-corrected redistribution (WTMC 2021)",
           "publishable": false,
-          "url": "https://intrusion-detection.distrinet-research.be/WTMC2021/"
+          "url": "https://www.unb.ca/cic/datasets/ids-2017.html"
         },
         "hf_repo_id": null,
         "hf_revision": null,
@@ -1046,9 +1046,16 @@
         "architecture": "PCA -> angle embedding -> StronglyEntanglingLayers; fidelity quantum kernel",
         "artifacts": [
           {
+            "browser_runnable": true,
+            "fmt": "onnx",
+            "path": "onnx/model.onnx",
+            "precision": "fp32",
+            "serves": "both"
+          },
+          {
             "browser_runnable": false,
             "fmt": "json",
-            "path": "weights.json",
+            "path": "feature_spec.json",
             "precision": "none",
             "serves": "both"
           }
