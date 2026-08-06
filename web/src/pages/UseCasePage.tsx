@@ -54,8 +54,12 @@ function UseCaseView({ usecase }: { usecase: string }) {
       {/* Live two-party simulator: Start/Stop/Restart/Pause/Step drive the diagram animation */}
       <PipelineControls run={run} />
       <div ref={diagramRef} style={{ marginTop: 16, background: "var(--panel)", borderRadius: 10, padding: 8 }}>
+        {/* The protocol and the QSMPC op live in params, not in the crypto-agility family selects.
+            Passing only the family is what let an E91 run draw a BB84 arrow. */}
         <TwoPartyDiagram usecase={usecase} activeStage={active} doneStages={done} metrics={metrics}
-          config={{ kem: run.kem, qkd: run.qkd, sig: run.sig }} />
+          config={{ kem: run.kem, qkd: run.qkd, sig: run.sig,
+                    qkdProtocol: String(run.params.qkd_protocol ?? ""),
+                    qsmpcOp: String(run.params.qsmpc_op ?? "") }} />
       </div>
       <div className="btn-row" style={{ marginTop: 10 }}>
         <button className="btn ghost" onClick={() => downloadPng(`${usecase}-two-party.png`)}>⬇ Diagram (PNG)</button>

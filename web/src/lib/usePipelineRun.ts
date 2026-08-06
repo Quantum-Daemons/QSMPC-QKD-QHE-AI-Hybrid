@@ -4,7 +4,8 @@
 // (WS) transport branch, the live event stream, metrics, signature, and GIF/PNG frame capture.
 import { useEffect, useRef, useState, type RefObject } from "react";
 import { api, type PipelineEvent, streamRun } from "./api";
-import { benchCfg, dataCfg, idsCfg, qkdCfg, qrngCfg } from "./config";
+import { benchCfg, dataCfg, idsCfg, qkdCfg, qrngCfg, webCfg } from "./config";
+import { FREE_SPACE } from "./quantumSim";
 import { assembleBenchmark, type PipelineControl, runClientPipeline } from "./clientCompute";
 import { isClientDemo } from "./demoMode";
 import { downloadCSV, downloadJSON, downloadNodePNG, FrameRecorder } from "./export";
@@ -50,6 +51,14 @@ export const makeDefaultParams = () => ({
   inference: "",         // "" = use the use case's default
   qrng_post: qrngCfg().post_processing,             // "von_neumann" | "toeplitz" | "seedless"
   qkd_protocol: qkdCfg().protocol,                  // "bb84" (decoy) | "e91" (CHSH) — OptiQKD model
+  // The satellite channel. `satellite_qkd` and `qsdc_telemetry` have read these four keys since the
+  // page was written, and no default or control ever supplied them -- so Eve sat at 0, free-space
+  // QBER never moved off ~0.033, and the inline eavesdrop check the page advertises could not fire
+  // from any user action. Defaults come from the free-space channel model and config, not literals.
+  sat_distance_km: FREE_SPACE.distanceKm,
+  sat_eve: FREE_SPACE.eveFraction,
+  sat_pulses: webCfg().demo_sat_pulses,
+  qsdc_threshold: qkdCfg().pp_threshold,
 });
 
 export const DEFAULT_PARAMS = makeDefaultParams();
