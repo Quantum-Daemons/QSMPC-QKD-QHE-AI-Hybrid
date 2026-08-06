@@ -72,6 +72,11 @@ class QSMSResult:
     broadcasts: list[int]  # per-party measured (a_u + m_u) mod d
     masks: list[int]  # the a_u masks (sum to 0 mod d); empty unless honest sim
     honest_statevector: bool  # True if the full GHZ statevector was simulated
+    #: Whether d sits in the paper's admissible field, n <= d <= 2n. False is not an error, but it
+    #: is why ``honest_statevector`` is False: a larger field is sometimes REQUIRED for correctness
+    #: (the sum must not wrap mod d), and it then pushes d**t past the statevector bound. The two
+    #: requirements genuinely conflict and this records which way a given run resolved it.
+    field_within_paper_bound: bool = True
 
 
 @dataclass
@@ -93,11 +98,21 @@ class QSMS:
         if not (1 < self.t <= self.n):
             raise ValueError("require 1 < t <= n")
         if self.prime is None:
+            # Bertrand's postulate guarantees a prime in (n, 2n) for n > 1, so this always lands
+            # inside the paper's admissible field. For n=7 it gives d=11, which is the value the
+            # paper's own worked example uses.
             self.prime = next_prime(self.n + 1)
         if not is_probable_prime(self.prime):
             raise ValueError("prime must be prime")
         if self.prime <= self.n:
             raise ValueError("prime must exceed n")
+        # The paper's field bound, now RECORDED rather than merely documented -- and deliberately
+        # not fatal. Sutradhar defines QSMS over GF(d) with n <= d <= 2n (arXiv:2501.10083), and
+        # staying inside it is what keeps d**t within the statevector bound. But the sum must also
+        # not wrap mod d, and an application whose secrets exceed 2n therefore CANNOT satisfy both:
+        # the MCP allele-pooling tool picks 2^31-1 for exactly that reason. Raising here would force
+        # such callers to either wrap silently or abandon the protocol. Recording it instead lets a
+        # run say which trade it made, which is the information a reader actually needs.
         # computing parties use evaluation points 1..t (a qualified subset)
         self._xs = list(range(1, self.n + 1))
 
@@ -168,6 +183,7 @@ class QSMS:
             broadcasts=broadcasts,
             masks=masks,
             honest_statevector=honest,
+            field_within_paper_bound=bool(self.n <= self.prime <= 2 * self.n),
         )
 
 
