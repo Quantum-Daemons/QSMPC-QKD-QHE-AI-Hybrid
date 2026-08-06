@@ -1,0 +1,38 @@
+{
+  "kind": "logistic-linear",
+  "note": "The CKKS-linear student: this is what is evaluated under homomorphic encryption. Small by necessity -- encrypted evaluation is cost-bounded -- and distilled against the teacher's own decisions, so `agreement` measures substitution rather than two independent fits that happen to correlate.",
+  "teacher_key": "satellite_comms.opssat",
+  "student_key": "satellite_comms.opssat_student",
+  "n_features": 19,
+  "W": [
+    [
+      -1.8861517604633393,
+      -0.6735002321726631,
+      1.3076639392619016,
+      -0.5299205197734341,
+      -1.3974587995557235,
+      1.7996627925107007,
+      1.0354425444585271,
+      -0.4253279454239619,
+      0.136280435582765,
+      1.4219103130458854,
+      -0.23409860674181018,
+      -1.4796027666717073,
+      -1.4493769423771545,
+      2.3306421443091883,
+      3.1305246220593967,
+      2.3176490722382432,
+      0.10381374540436501,
+      -2.8427861585566565,
+      0.7123871954788966
+    ]
+  ],
+  "b": [
+    -0.5381900859133844
+  ],
+  "n_parameters": 20,
+  "classes": [
+    0,
+    1
+  ]
+}
