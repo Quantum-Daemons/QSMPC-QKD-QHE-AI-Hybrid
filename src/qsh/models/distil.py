@@ -92,7 +92,7 @@ def distil_linear(teacher_scores: np.ndarray, X: np.ndarray, *,
 
 
 def save_student(student, out_dir, *, n_features: int, teacher_key: str,
-                 student_key: str, classes: list | None = None) -> dict:
+                 student_key: str, classes: list | None = None, scaler=None) -> dict:
     """Persist the distilled student so it can be published and independently verified.
 
     The student is the model that actually runs under CKKS -- it is the whole point of the
@@ -122,6 +122,15 @@ def save_student(student, out_dir, *, n_features: int, teacher_key: str,
                  "than two independent fits that happen to correlate."),
         "teacher_key": teacher_key, "student_key": student_key,
         "n_features": int(n_features),
+        # The standardisation the student was FIT on. Without it the published weights cannot be
+        # evaluated correctly from raw features: the graph accepts them and returns a confident
+        # wrong answer, which is the same failure the teachers avoid by shipping
+        # `input.preprocessing` beside their samples. None means the student consumes raw features.
+        "input": {
+            "preprocessing": ([] if scaler is None else ["subtract mean", "divide by scale"]),
+            "mean": (None if scaler is None else [float(v) for v in scaler.mean_]),
+            "scale": (None if scaler is None else [float(v) for v in scaler.scale_]),
+        },
         "W": coef.tolist(), "b": intercept.tolist(),
         "n_parameters": int(coef.size + intercept.size),
         "classes": classes if classes is not None else list(range(max(2, coef.shape[0] + 1))),
