@@ -183,7 +183,9 @@ class BenchmarkConfig:
     # the tiny FHE-feasible medical CNN (genuine convolution under FHE+MPC)
     medical_cnn: dict = field(default_factory=lambda: {
         "img_size": 14, "channels": [4], "hidden": 16, "pool": "avg",
-        "medmnist_name": "pneumoniamnist", "subset": 512})
+        # BreastMNIST, not pneumoniamnist: this block describes the shape of the trained
+        # medical_fl.student, and that student is distilled from the BreastMNIST teacher.
+        "medmnist_name": "breastmnist", "subset": 512})
     demo_feature_dim: int = 8         # client-demo input feature width (N_IN)
 
 
