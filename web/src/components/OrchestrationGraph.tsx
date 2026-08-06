@@ -126,7 +126,10 @@ export default function OrchestrationGraph({
       animated: activeStage === s.id || activeStage === stages[i].id,
     }));
     return { nodes, edges };
-  }, [stages, activeStage, doneStages, config.kem, config.qkd, config.sig]);
+    // Every config field retitle() reads must be listed, or the graph keeps a stale label. This is
+    // how the protocol stayed frozen: qkdProtocol was threaded in and used, but omitted here, so
+    // React never rebuilt the nodes when it changed and the QKD node kept whatever it first drew.
+  }, [stages, activeStage, doneStages, config.kem, config.qkd, config.sig, config.qkdProtocol]);
 
   return (
     <div style={{ height: 260, border: "1px solid var(--border)", borderRadius: 10, overflow: "hidden" }}>
