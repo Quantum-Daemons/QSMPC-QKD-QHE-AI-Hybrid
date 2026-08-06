@@ -223,16 +223,22 @@ DS_SMAP_MSL = DatasetSpec(
 )
 DS_CICIDS2017_FIXED = DatasetSpec(
     name="CIC-IDS2017, Engelen-corrected redistribution (WTMC 2021)",
-    licence="no licence stated by either provider",
-    url="https://intrusion-detection.distrinet-research.be/WTMC2021/",
-    licence_checked="2026-08-03",
+    licence="provider's own pages state conflicting terms",
+    url="https://www.unb.ca/cic/datasets/ids-2017.html",
+    licence_checked="2026-08-05",
     publishable=False,
     notes=(
-        "CIC-IDS2017 states no licence at all — only that it is 'publicly available for researchers' "
-        "plus a citation request — and the Engelen redistribution states no terms either. Absent an "
-        "affirmative grant, neither is safe to bundle or redistribute, so this is local training and "
-        "benchmarking only. Engelen et al. found >25% of flows are artefacts and several attack "
-        "classes were mislabelled."
+        "Re-checked 2026-08-05, and the earlier wording here was too strong. Terms ARE stated, they "
+        "just disagree: the Canadian Institute for Cybersecurity's institute-level FAQ says 'You may "
+        "redistribute, republish, and mirror our datasets in any form; however, any use or "
+        "redistribution of the data must include a citation', and places that under commercial use, "
+        "while the CICIDS2017 dataset page itself says only 'publicly available for researchers' and "
+        "names no licence. That is an unresolved ambiguity rather than a permission - the same class "
+        "of question Round 19 settled by dropping the ImageNet dependency instead of guessing. The "
+        "Engelen redistribution is separately hosted and states nothing. 5G-NIDD was evaluated as an "
+        "alternative and rejected: IEEE DataPort marks it subscription-required and neither that "
+        "record nor the authors' NetsLab page carries a licence string. So the shipped telecom model "
+        "trains on synthetic telemetry, and no code path loads this corpus."
     ),
 )
 DS_WDBC = DatasetSpec(
@@ -680,7 +686,12 @@ _SPECS: tuple[ModelSpec, ...] = (
         params=25,
         dataset=DS_QKD_ATTACK_SYNTH,
         metric=M_QML_IDS,
-        artifacts=(ArtifactSpec("weights.json", "json", "none", "both"),),
+        # The published repo carries onnx/model.onnx (an ai.onnx.ml graph, so int8 is skipped:
+        # a tree/kernel model keeps its parameters in node attributes). Declaring only
+        # weights.json meant browserModels() found nothing runnable and the page reported
+        # "nothing to verify" for a model that is published, pinned and browser-runnable.
+        artifacts=(ArtifactSpec("onnx/model.onnx", "onnx", "fp32", "both"),
+                   ArtifactSpec("feature_spec.json", "json", "none", "both")),
         hf_repo="qsh-telecom-qml-ids",
         notes="Shown as an architecture comparison against a random forest on identical data.",
     ),
