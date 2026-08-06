@@ -12,7 +12,7 @@ import {
   benchCfg, costPerOp, dataCfg, demoFeatureDim, genericArchitecture, idsCfg, medicalCnn, qkdCfg, qrngCfg,
   demoSample, quantumAdvantageCfg, securityScoringCfg, tierArchitectures, webCfg, workloadMultipliers,
 } from "./config";
-import { encryptedLinear, warmFHE } from "./clientFHE";
+import { encryptedConv2d, encryptedLinear, warmFHE } from "./clientFHE";
 import { clientTrainScoreIDS } from "./clientIDS";
 import { secureArgmax, warmMPC } from "./clientMPC";
 import { optimizeQKD } from "./clientOptiQKD";
@@ -334,7 +334,13 @@ function hybridForward(dims: number[], u: () => number) {
 
 // Measured real client-side FHE/MPC (node-seal CKKS + secret-sharing) — when present, mpcFheRow reports
 // these REAL wall-clock numbers instead of the representative cost model.
-export interface MeasuredHybrid { fheMs: number; mpcMs: number; commBytes: number; ctBytes: number; featDim: number; }
+export interface MeasuredHybrid {
+  fheMs: number; mpcMs: number; commBytes: number; ctBytes: number; featDim: number;
+  /** Set when the run performed a real encrypted CONVOLUTION rather than a dot product. Counted,
+   *  not estimated: rotations and the key-switch each triggers are what dominate CKKS cost. */
+  conv?: { rotations: number; multiplies: number; patchesPerCiphertext: number;
+           outH: number; outW: number; channels: number; convMs: number };
+}
 
 export interface RealHybridRun extends MeasuredHybrid { prediction: number; maxAbsError: number; }
 
@@ -346,7 +352,8 @@ let _mpcWarmed = false;
 // (clientMPC) for the non-linear argmax, all measured. Returns null only if the real crypto is genuinely
 // unavailable here (e.g. a browser without WASM) — the caller then reports a clearly-labelled
 // representative figure as an honest last resort (logged with the cause, not silently masked).
-export async function realClientHybrid(features: number[], u: () => number): Promise<RealHybridRun | null> {
+export async function realClientHybrid(features: number[], u: () => number,
+                                      convolve = false): Promise<RealHybridRun | null> {
   try {
     if (!_fheWarmed) { await warmFHE(); _fheWarmed = true; }     // one-time CKKS keygen
     if (!_mpcWarmed) { await warmMPC(); _mpcWarmed = true; }     // one-time summon compile + emp-wasm init
@@ -358,9 +365,31 @@ export async function realClientHybrid(features: number[], u: () => number): Pro
     const b = [0, -0.05];
     const fhe = await encryptedLinear(W, b, features);           // REAL CKKS, measured
     const mpc = await secureArgmax(fhe.logits, u);              // REAL garbled-circuit 2PC argmax, measured
+
+    // The CNN workload now runs a REAL encrypted convolution instead of multiplying this dot
+    // product's latency by a cost model. Shape comes from the trained student (`medical_cnn`),
+    // not from `tier_architectures`: 14x14 in, 3x3 kernels, the student's own channel count.
+    let conv: MeasuredHybrid["conv"];
+    if (convolve) {
+      const mc = medicalCnn();
+      const size = Number(mc.img_size);
+      const chans = Number((mc.channels as number[])[0] ?? 4);
+      // A deterministic separable-ish pattern rather than random draws, so repeat runs are
+      // comparable; the ENCRYPTION and the arithmetic are what is being measured.
+      const img = Array.from({ length: size }, (_, y) =>
+        Array.from({ length: size }, (_, x) => features[(y * size + x) % features.length] ?? 0));
+      const kernels = Array.from({ length: chans }, (_, k) =>
+        Array.from({ length: 3 }, (_, ky) =>
+          Array.from({ length: 3 }, (_, kx) => ((ky * 3 + kx + k) % 5 - 2) * 0.1)));
+      const cres = await encryptedConv2d(img, kernels, Array(chans).fill(0));
+      conv = { rotations: cres.rotations, multiplies: cres.multiplies,
+               patchesPerCiphertext: cres.patchesPerCiphertext, outH: cres.outH, outW: cres.outW,
+               channels: chans, convMs: cres.fheMs };
+    }
     return {
-      prediction: mpc.out[0], fheMs: fhe.fheMs, mpcMs: mpc.mpcMs, commBytes: mpc.commBytes,
-      ctBytes: fhe.ctBytes, featDim: n, maxAbsError: fhe.maxAbsError,
+      prediction: mpc.out[0], fheMs: fhe.fheMs + (conv?.convMs ?? 0), mpcMs: mpc.mpcMs,
+      commBytes: mpc.commBytes, ctBytes: fhe.ctBytes, featDim: n,
+      maxAbsError: fhe.maxAbsError, conv,
     };
   } catch (e) {
     // Surface the cause (no-fallback policy: a fixable defect must not hide behind the representative path).
@@ -380,10 +409,18 @@ function mpcFheRow(usecase: string | undefined, workload: string, modelSize: str
     // The real run measures a small (n->2) model; scale that MEASURED per-op cost by the SELECTED architecture's
     // op count so the latency genuinely tracks lightweight/medium/large × linear/cnn/transformer (the unit cost
     // is real node-seal CKKS / emp-wasm; only the op count is the chosen architecture's).
-    const scale = benchScale(usecase, modelSize, workload);
+    // When a real encrypted convolution ran, its latency is MEASURED and nothing is scaled: the
+    // whole point of running one is to stop multiplying a dot product by a cost model. The scaling
+    // path below survives only for the linear workload, where the measured model really is an
+    // (n -> 2) layer standing in for a wider one.
+    const scale = measured.conv ? 1 : benchScale(usecase, modelSize, workload);
     fhe = measured.fheMs * scale; mpc = measured.mpcMs * scale; comm = measured.commBytes * scale;
-    projected = modelSize === "large";
-    backend = "node-seal CKKS + emp-wasm 2PC (measured per-op, scaled to the selected architecture)";
+    projected = !measured.conv && modelSize === "large";
+    backend = measured.conv
+      ? `node-seal CKKS + emp-wasm 2PC (measured: real ${measured.conv.channels}-channel encrypted `
+        + `convolution, ${measured.conv.rotations} rotations over `
+        + `${measured.conv.patchesPerCiphertext} packed patches)`
+      : "node-seal CKKS + emp-wasm 2PC (measured per-op, scaled to the selected architecture)";
     ctpt = measured.featDim > 0 ? r2(measured.ctBytes / (measured.featDim * 8)) : cost.demo_ct_pt_ratio;
     device = "cpu";                                   // node-seal CKKS is WASM-CPU (no commercial-OK WebGPU FHE in 2026)
   } else {
@@ -1028,19 +1065,42 @@ export function runClientPipeline(
         if (inf.modelKey) metric(stage, "inference_model", inf.modelKey);
         if (inf.note) emit("log", stage, `inference: ${inf.note}`);
 
-        const real = await realClientHybrid(feats, u);
+        // The medical CNN workload runs a genuine encrypted convolution.
+        const real = await realClientHybrid(feats, u,
+          usecase === "medical_fl" && String(config.workload ?? "linear") === "cnn");
         if (real) {
-          const bscale = benchScale(usecase, config.model_size ?? "medium", config.workload ?? "linear");
+          // A real encrypted convolution is not scaled by anything: its latency IS the measurement.
+          const bscale = real.conv
+            ? 1
+            : benchScale(usecase, config.model_size ?? "medium", config.workload ?? "linear");
           artifacts.fhe_prediction = real.prediction;
           artifacts._measured_hybrid = { fheMs: real.fheMs, mpcMs: real.mpcMs, commBytes: real.commBytes,
-            ctBytes: real.ctBytes, featDim: real.featDim };
+            ctBytes: real.ctBytes, featDim: real.featDim, conv: real.conv };
           metric(stage, "fhe_max_abs_error", r2(real.maxAbsError) || real.maxAbsError);
           metric(stage, "fhe_linear_ms", r2(real.fheMs * bscale));
           metric(stage, "mpc_nonlinear_ms", r2(real.mpcMs * bscale));
           metric(stage, "mpc_comm_kb", r2((real.commBytes * bscale) / 1024));
-          emit("log", stage, `private inference (REAL in-browser FHE, ${config.model_size ?? "medium"}/${config.workload ?? "linear"}): `
-            + `class=${real.prediction}; node-seal CKKS ${r2(real.fheMs * bscale)} ms + secret-sharing MPC ${r2(real.mpcMs * bscale)} ms `
-            + `(measured per-op x${r1(bscale)} arch scale; real unit ${r2(real.fheMs)}/${r2(real.mpcMs)} ms, ct=${real.ctBytes}B), ONNX ${clientMs} ms`);
+          if (real.conv) {
+            // Counted during the run. Rotations and the key-switch each one triggers are what
+            // dominate CKKS inference cost, so this is the quantity worth surfacing - not a
+            // latency multiplier that stands in for it.
+            metric(stage, "fhe_conv_rotations", real.conv.rotations);
+            metric(stage, "fhe_conv_multiplies", real.conv.multiplies);
+            metric(stage, "fhe_conv_patches_packed", real.conv.patchesPerCiphertext);
+            metric(stage, "fhe_conv_output_shape", `${real.conv.channels}x${real.conv.outH}x${real.conv.outW}`);
+            metric(stage, "fhe_conv_ms", r2(real.conv.convMs));
+            emit("log", stage, `private inference (REAL in-browser FHE, encrypted CONVOLUTION): `
+              + `class=${real.prediction}; ${real.conv.channels}x3x3 kernels over a `
+              + `${real.conv.outH}x${real.conv.outW} output, ${real.conv.patchesPerCiphertext} im2col `
+              + `patches packed into one ciphertext, ${real.conv.rotations} rotations and `
+              + `${real.conv.multiplies} multiply-plain in ${r2(real.conv.convMs)} ms `
+              + `(+ ${r2(real.fheMs - real.conv.convMs)} ms dense layer, MPC ${r2(real.mpcMs)} ms). `
+              + `Nothing here is scaled by a cost model.`);
+          } else {
+            emit("log", stage, `private inference (REAL in-browser FHE, ${config.model_size ?? "medium"}/${config.workload ?? "linear"}): `
+              + `class=${real.prediction}; node-seal CKKS ${r2(real.fheMs * bscale)} ms + secret-sharing MPC ${r2(real.mpcMs * bscale)} ms `
+              + `(measured per-op x${r1(bscale)} arch scale; real unit ${r2(real.fheMs)}/${r2(real.mpcMs)} ms, ct=${real.ctBytes}B), ONNX ${clientMs} ms`);
+          }
         } else {
           // honest last resort: node-seal genuinely unavailable here (e.g. no WASM) — representative figure, logged
           artifacts.fhe_prediction = inf.prediction;
