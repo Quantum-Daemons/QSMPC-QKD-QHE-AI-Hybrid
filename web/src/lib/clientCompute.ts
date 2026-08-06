@@ -10,7 +10,7 @@ import { hkdf } from "@noble/hashes/hkdf";
 import { sha256 } from "@noble/hashes/sha2";
 import {
   benchCfg, costPerOp, dataCfg, demoFeatureDim, genericArchitecture, idsCfg, medicalCnn, qkdCfg, qrngCfg,
-  demoSample, quantumAdvantageCfg, securityScoringCfg, studentModel, tierArchitectures, webCfg,
+  demoSample, qsmpcCfg, quantumAdvantageCfg, securityScoringCfg, studentModel, tierArchitectures, webCfg,
   workloadMultipliers,
 } from "./config";
 import { encryptedConv2d, encryptedLinear, warmFHE } from "./clientFHE";
@@ -966,7 +966,10 @@ export function runClientPipeline(
           // QSMS additive secret-sharing over a prime field Z_p (config.prime; 0/auto = smallest prime above
           // the max possible total, so the true sum is preserved). Each party masks its secret; the masks
           // cancel mod p on reconstruction — a smaller p genuinely wraps the sum (demonstrates the field).
-          const secrets = Array.from({ length: 5 }, () => Math.floor(u() * 100));
+          // Party count from config, so the browser and the backend describe the same computation
+          // instead of the browser inventing 5 while the backend ran n_parties.
+          const nParties = Math.max(2, Number(qsmpcCfg().n_parties ?? 5));
+          const secrets = Array.from({ length: nParties }, () => Math.floor(u() * 100));
           const rawTotal = secrets.reduce((a, b) => a + b, 0);
           // Snapped, not trusted. The field is labelled "QSMS prime" and used to accept any
           // integer, so entering 100 shared additively over Z_100 -- which is not a field, while
@@ -978,7 +981,15 @@ export function runClientPipeline(
           const total = shares.reduce((acc, [s0, s1]) => (acc + s0 + s1) % p, 0) % p;
           metric(stage, "secure_sum", total);
           metric(stage, "qsms_prime", p);
-          emit("log", stage, `QSMS secure summation = ${total} over Z_${p} (5 parties, additive shares mod p)`);
+          metric(stage, "qsms_parties", nParties);
+          // Named for what the BROWSER does. The Shamir + d-level QFT + GHZ construction runs in
+          // the Python backend (qsh/qsmpc/secure_summation.py); this mirror is its classical
+          // equivalent - additive shares over the same prime field - because there is no browser
+          // API for qudit state preparation and there will not be one. Saying "GHZ" here would
+          // describe a computation this tab did not perform.
+          emit("log", stage, `secure summation = ${total} over Z_${p} (${nParties} parties, additive `
+            + `shares mod p - the classical equivalent of the backend's Shamir + d-level QFT over a `
+            + `GHZ state, which needs qudits no browser can prepare)`);
         } else {
           // finance PSI: the counterparty set size scales with the transaction volume (config.aml_transactions)
           // — more transactions ⇒ larger PSI sets ⇒ more HMAC compute + a larger intersection (bounded for

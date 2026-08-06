@@ -1124,6 +1124,11 @@
     "security_epsilon_log2": -40,
     "source": "sim"
   },
+  "qsmpc": {
+    "n_parties": 7,
+    "prime": null,
+    "threshold": 3
+  },
   "quantum_advantage": {
     "info_theoretic_multiplier": 1.5,
     "log_offset": 1.0,

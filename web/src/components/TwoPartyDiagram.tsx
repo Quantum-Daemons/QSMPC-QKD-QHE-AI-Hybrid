@@ -69,7 +69,7 @@ const qsmpcKind = (dflt: "psi" | "sum") => (c: DiagramConfig): Kind =>
   qsmpcOpOf(c, dflt) === "sum" ? "q-arrow" : "c-bidir";
 const qsmpcLabel = (dflt: "psi" | "sum") => (m: M, c: DiagramConfig) =>
   qsmpcOpOf(c, dflt) === "sum"
-    ? `QSMS secure sum (d-qudit GHZ) · pooled = ${f(m, "secure_sum")}`
+    ? `secure sum over GF(${f(m, "qsms_prime")}) · pooled = ${f(m, "secure_sum")}`
     : `keyed-hash PSI · shared flagged = ${f(m, "psi_intersection_size")}`;
 
 const f = (m: M, k: string, d = "—") => {
