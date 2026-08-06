@@ -869,7 +869,14 @@ export function runClientPipeline(
           const opt = optimizeQKD(chan, protocol,
             Number(config.qkd_opt_samples ?? qkdCfg().optimize_n_samples));
           if (opt.improvementPct !== null) metric(stage, "qkd_skr_improvement_pct", r1(opt.improvementPct));
-          metric(stage, "qkd_optimized_skr", Math.round(opt.bestSkr * 1e5) / 1e5);
+          // BOTH ends of the ratio, and named for the model they come from. The optimiser scores a
+          // SURROGATE (clientOptiQKD's analytic skrModel); the `skr` metric above comes from the
+          // decoy-state bb84() simulation. They are different models, so a lone "optimized SKR"
+          // printed beside `skr` read as the optimiser making things worse -- 0.0035 against
+          // 0.00906 -- while the same panel claimed +48.8%. Emitting the surrogate's own baseline
+          // makes the percentage checkable in place, and the names stop the two being compared.
+          metric(stage, "qkd_surrogate_skr_default", Math.round(opt.baselineSkr * 1e6) / 1e6);
+          metric(stage, "qkd_surrogate_skr_tuned", Math.round(opt.bestSkr * 1e6) / 1e6);
           metric(stage, "qkd_convergence_evals", opt.convergenceEvals);
           // Only quote the decoy intensities for protocols whose model reads them. The E91/CHSH
           // model ignores muSignal/muDecoy entirely, so printing "tuned" values there described a
@@ -881,8 +888,11 @@ export function runClientPipeline(
           emit("log", stage, opt.baselineIsDead
             ? `OptiQKD (coordinate ascent): baseline SKR is 0 — no secure key to improve, so no `
               + `percentage is reported (${tuned}; ${opt.nEvals} evals — simulated)`
-            : `OptiQKD (coordinate ascent): SKR +${r1(opt.improvementPct as number)}% vs default `
-              + `(${tuned}; ${opt.nEvals} evals, converged in ${opt.convergenceEvals} — simulated)`);
+            : `OptiQKD (coordinate ascent): surrogate SKR ${opt.baselineSkr.toExponential(2)} -> `
+              + `${opt.bestSkr.toExponential(2)}, +${r1(opt.improvementPct as number)}% `
+              + `(${tuned}; ${opt.nEvals} evals, converged in ${opt.convergenceEvals}). This is the `
+              + `optimiser's own analytic model, NOT the decoy-state run above - do not compare it `
+              + `with that run's skr, which a different model produced.`);
         }
         break;
       }
@@ -911,6 +921,8 @@ export function runClientPipeline(
           const opt = optimizeQKD(satChan, satProtocol,
             Number(config.qkd_opt_samples ?? qkdCfg().optimize_n_samples));
           if (opt.improvementPct !== null) metric(stage, "qkd_skr_improvement_pct", r1(opt.improvementPct));
+          metric(stage, "qkd_surrogate_skr_default", Math.round(opt.baselineSkr * 1e6) / 1e6);
+          metric(stage, "qkd_surrogate_skr_tuned", Math.round(opt.bestSkr * 1e6) / 1e6);
           metric(stage, "qkd_convergence_evals", opt.convergenceEvals);
           const tunedSat = satProtocol === "e91"
             ? `basis p=${r2(opt.bestParams.basisProb)}`
@@ -919,7 +931,9 @@ export function runClientPipeline(
           emit("log", stage, opt.baselineIsDead
             ? `OptiQKD (free-space): baseline SKR is 0 — no secure key to improve, so no percentage `
               + `is reported (${tunedSat}; ${opt.nEvals} evals — simulated)`
-            : `OptiQKD (free-space, coordinate ascent): SKR +${r1(opt.improvementPct as number)}% vs default `
+            : `OptiQKD (free-space, coordinate ascent): surrogate SKR `
+              + `${opt.baselineSkr.toExponential(2)} -> ${opt.bestSkr.toExponential(2)}, `
+              + `+${r1(opt.improvementPct as number)}% vs default `
               + `(${tunedSat}; ${opt.nEvals} evals, converged in ${opt.convergenceEvals} — simulated)`);
         }
         break;

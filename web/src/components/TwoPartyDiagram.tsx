@@ -24,6 +24,10 @@ export interface DiagramConfig {
   qkdProtocol?: string;
   /** `psi` | `sum`, or absent for the use case's default. The QSMPC step reads this. */
   qsmpcOp?: string;
+  /** Whether the run tuned the channel with OptiQKD. The checkbox genuinely changes the run -
+   *  it emits a measured SKR improvement and a convergence count - and the diagram used to show
+   *  nothing at all, so ticking it appeared to do nothing to the architecture it describes. */
+  optiqkd?: boolean;
 }
 interface Step {
   stageId: string;
@@ -56,6 +60,18 @@ const qkdName = (c: DiagramConfig) => {
   return q || "QKD";
 };
 const pqcOnly = (c: DiagramConfig) => String(c.qkd ?? "") === "pqc-only";
+
+/** The OptiQKD suffix for a QKD arrow: the measured improvement once a run has produced one,
+ *  otherwise just that tuning is enabled. Reads the run's metrics rather than restating the
+ *  checkbox, so the arrow cannot claim an optimisation that has not happened yet. */
+const optiTag = (m: M, c: DiagramConfig) => {
+  if (!c.optiqkd) return "";
+  const pct = m["qkd_skr_improvement_pct"];
+  const evals = m["qkd_convergence_evals"];
+  if (pct == null) return " · OptiQKD on";
+  return ` · OptiQKD ${Number(pct) >= 0 ? "+" : ""}${pct}% surrogate SKR`
+    + (evals == null ? "" : ` in ${evals} evals`);
+};
 
 // The QSMPC step. `clientCompute:896` resolves `config.qsmpc_op || (genomics ? "sum" : "psi")`, so
 // the diagram has to resolve it the same way or it describes a computation that did not happen.
@@ -104,7 +120,7 @@ export const USECASE_SPECS: Record<string, Spec> = {
     b: { name: "Bank B", sub: "candidate accounts · LAN" },
     steps: [
       { stageId: "pqc_handshake", kind: "c-bidir", label: (_m, c) => `PQC handshake — ${kemName(c)}` },
-      { stageId: "qkd_key_agreement", kind: "q-arrow", label: (m, c) => `${qkdName(c)} · QBER ${f(m, "qber")}`, hidden: pqcOnly },
+      { stageId: "qkd_key_agreement", kind: "q-arrow", label: (m, c) => `${qkdName(c)} · QBER ${f(m, "qber")}${optiTag(m, c)}`, hidden: pqcOnly },
       { stageId: "qsmpc_compute", kind: qsmpcKind("psi"), label: qsmpcLabel("psi") },
       ...HYBRID_INFERENCE,
       QSMPC_COMPARE,
@@ -116,7 +132,7 @@ export const USECASE_SPECS: Record<string, Spec> = {
     b: { name: "Aggregator", sub: "global model · LAN" },
     steps: [
       { stageId: "pqc_handshake", kind: "c-bidir", label: (_m, c) => `PQC handshake — ${kemName(c)}` },
-      { stageId: "qkd_key_agreement", kind: "q-arrow", label: (m, c) => `${qkdName(c)} · QBER ${f(m, "qber")}`, hidden: pqcOnly },
+      { stageId: "qkd_key_agreement", kind: "q-arrow", label: (m, c) => `${qkdName(c)} · QBER ${f(m, "qber")}${optiTag(m, c)}`, hidden: pqcOnly },
       { stageId: "federated_training", kind: "c-bidir", label: (m) => `federated train + pairwise masking (demo keys) · acc ${f(m, "federated_accuracy")}` },
       ...HYBRID_INFERENCE,
       QSMPC_COMPARE,
@@ -128,7 +144,7 @@ export const USECASE_SPECS: Record<string, Spec> = {
     b: { name: "Cohort 2", sub: "allele counts · LAN" },
     steps: [
       { stageId: "pqc_handshake", kind: "c-bidir", label: (_m, c) => `PQC handshake — ${kemName(c)}` },
-      { stageId: "qkd_key_agreement", kind: "q-arrow", label: (m, c) => `${qkdName(c)} · QBER ${f(m, "qber")}`, hidden: pqcOnly },
+      { stageId: "qkd_key_agreement", kind: "q-arrow", label: (m, c) => `${qkdName(c)} · QBER ${f(m, "qber")}${optiTag(m, c)}`, hidden: pqcOnly },
       { stageId: "qsmpc_compute", kind: qsmpcKind("sum"), label: qsmpcLabel("sum") },
       ...HYBRID_INFERENCE,
       QSMPC_COMPARE,
@@ -140,7 +156,7 @@ export const USECASE_SPECS: Record<string, Spec> = {
     b: { name: "Remote site / Eve", sub: "QKD Rx (eavesdropper)" },
     steps: [
       { stageId: "pqc_handshake", kind: "c-bidir", label: (_m, c) => `PQC handshake — ${kemName(c)}` },
-      { stageId: "qkd_key_agreement", kind: "q-arrow", label: (m, c) => `${qkdName(c)} (w/ eavesdropper) · QBER ${f(m, "qber")}`, hidden: pqcOnly },
+      { stageId: "qkd_key_agreement", kind: "q-arrow", label: (m, c) => `${qkdName(c)} (w/ eavesdropper) · QBER ${f(m, "qber")}${optiTag(m, c)}`, hidden: pqcOnly },
       { stageId: "qml_ids", kind: "local-a", label: (m) => `QML-IDS attack detection · macro-F1 ${f(m, "ids_macro_f1")}` },
       QSMPC_COMPARE,
       { stageId: "sign_result", kind: "c-bidir", label: (_m, c) => `${sigName(c)}-signed audit record` },
@@ -151,7 +167,7 @@ export const USECASE_SPECS: Record<string, Spec> = {
     b: { name: "LEO satellite", sub: "free-space downlink" },
     steps: [
       { stageId: "pqc_handshake", kind: "c-bidir", label: (_m, c) => `PQC handshake — ${kemName(c)}` },
-      { stageId: "satellite_qkd", kind: "q-arrow", label: (m, c) => `free-space ${qkdName(c)} (${f(m, "channel_loss_db")} dB) · QBER ${f(m, "qber")}`,
+      { stageId: "satellite_qkd", kind: "q-arrow", label: (m, c) => `free-space ${qkdName(c)} (${f(m, "channel_loss_db")} dB) · QBER ${f(m, "qber")}${optiTag(m, c)}`,
         hidden: pqcOnly },
       { stageId: "qsdc_telemetry", kind: "q-arrow", label: (m) => `QSDC direct telemetry · secrecy ${f(m, "qsdc_secrecy_capacity")} bit/carrier` },
       QSMPC_COMPARE,
