@@ -112,9 +112,22 @@ attempt. Even granting the binary figures, neither earns its qubits against a ra
 takes a fraction of the 267 s the quantum pair needs. `quantum_beats_classical` is recorded as
 `False` in `models/metrics.json`, which is the field this project would have to falsify to
 claim otherwise.
-The data is synthetic because **no commercial-OK real corpus exists**: UNSW-NB15 requires the
-authors' agreement for commercial use, and neither CIC-IDS2017 nor the Engelen-corrected
-redistribution states a licence at all. See `DATA_LICENSES.md`.
+The data is synthetic, and the reason was overstated in earlier revisions. The accurate version,
+re-checked 2026-08-05:
+
+- **UNSW-NB15** requires the authors' agreement for commercial use.
+- **CIC-IDS2017 does not "state no licence at all".** The Canadian Institute for Cybersecurity's
+  institute-level FAQ says *you may redistribute, republish, and mirror our datasets in any form*
+  with citation, and places that under commercial use - while the CICIDS2017 dataset page itself
+  frames the data as *publicly available for researchers* and names no licence. The two pages
+  disagree. That is an unresolved ambiguity, not a permission, and it is the same class of question
+  as the ImageNet one that Round 19 resolved by dropping the dependency rather than guessing.
+- **The Engelen-corrected redistribution** is hosted separately and states nothing.
+- **5G-NIDD was evaluated this round and rejected.** Secondary sources report CC BY 4.0, but IEEE
+  DataPort marks it subscription-required and neither that record nor the authors' own NetsLab page
+  carries any licence string. Not usable under a commercial-OK policy on secondary evidence.
+
+See `DATA_LICENSES.md`.
 
 ---
 
