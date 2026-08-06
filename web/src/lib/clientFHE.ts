@@ -149,3 +149,128 @@ export async function encryptedLinear(W: number[][], b: number[], x: number[]): 
 export function argmax(a: number[]): number {
   return a.reduce((bi, v, i, arr) => (v > arr[bi] ? i : bi), 0);
 }
+
+export interface ConvResult {
+  /** Decrypted feature map, (out_ch, Hout, Wout) flattened per channel. */
+  maps: number[][];
+  outH: number;
+  outW: number;
+  fheMs: number;
+  ctBytes: number;
+  maxAbsError: number;
+  /** Homomorphic rotations performed. Each one triggers a key-switch, which is what dominates. */
+  rotations: number;
+  /** Ciphertext-plaintext multiplications performed. */
+  multiplies: number;
+  /** How many im2col patches shared one ciphertext. 1 would mean no packing at all. */
+  patchesPerCiphertext: number;
+}
+
+/**
+ * A genuine encrypted 2-D convolution, mirroring ``src/qsh/fhe/conv.py``.
+ *
+ * Until this existed the browser's "CNN workload" ran the same 8-feature dot product as the linear
+ * one and multiplied the measured latency by a cost model. The page reported a convolution that
+ * never happened. This performs one.
+ *
+ * PACKING IS THE POINT, and it is why the cost model was misleading in both directions. The naive
+ * form encrypts one patch at a time: 12x12 output positions x 4 channels is 576 dot products, each
+ * needing its own rotate-and-add, so ~2,300 rotations and several seconds in a tab. Instead every
+ * im2col patch goes into ONE ciphertext, each padded to a power-of-two block, so a single
+ * multiply-plain against the tiled kernel plus log2(block) rotations produces every output position
+ * for that channel at once. That is the technique the 2026 CKKS-inference literature is largely
+ * about, and it turns the rotation count from a function of the output size into a function of the
+ * kernel size.
+ *
+ * The returned ``rotations`` and ``multiplies`` are counted, not estimated, because rotations and
+ * the key-switch each one triggers are what actually drive CKKS cost - so the page can report the
+ * quantity the literature identifies instead of a latency multiplier.
+ */
+export async function encryptedConv2d(
+  image: number[][], kernels: number[][][], biases: number[],
+): Promise<ConvResult> {
+  const c = await getCtx();
+  const { seal, encoder, encryptor, decryptor, evaluator, galois, slots, scale } = c;
+
+  const H = image.length, W = image[0].length;
+  const kH = kernels[0].length, kW = kernels[0][0].length;
+  const outH = H - kH + 1, outW = W - kW + 1;
+  const patchLen = kH * kW;
+  // Power-of-two block per patch so the rotate-and-add reduction lands the sum in the block's
+  // first slot without bleeding into its neighbour.
+  const block = 1 << Math.ceil(Math.log2(Math.max(patchLen, 2)));
+  const nPatches = outH * outW;
+  if (nPatches * block > slots) {
+    throw new Error(`conv needs ${nPatches * block} slots, ring provides ${slots} - `
+      + "reduce the input or the kernel rather than silently tiling, which would change the result");
+  }
+
+  const t0 = performance.now();
+
+  // im2col, packed: patch p occupies slots [p*block, p*block + patchLen).
+  const packed = new Float64Array(slots);
+  for (let oy = 0; oy < outH; oy++) {
+    for (let ox = 0; ox < outW; ox++) {
+      const base = (oy * outW + ox) * block;
+      for (let ky = 0; ky < kH; ky++) {
+        for (let kx = 0; kx < kW; kx++) packed[base + ky * kW + kx] = image[oy + ky][ox + kx];
+      }
+    }
+  }
+  const ptX = new seal.Plaintext();
+  encoder.encode(packed, scale, ptX);
+  const ctX = new seal.Ciphertext();
+  encryptor.encrypt(ptX, ctX);
+  let ctBytes = 0;
+  try { ctBytes = ctX.saveToArray(seal.ComprModeType.none).length; } catch { ctBytes = 0; }
+
+  let rotations = 0, multiplies = 0;
+  const maps: number[][] = [];
+  for (let oc = 0; oc < kernels.length; oc++) {
+    // The same kernel tiled into every patch block, so one multiply-plain covers all positions.
+    const tiled = new Float64Array(slots);
+    for (let p = 0; p < nPatches; p++) {
+      for (let ky = 0; ky < kH; ky++) {
+        for (let kx = 0; kx < kW; kx++) tiled[p * block + ky * kW + kx] = kernels[oc][ky][kx];
+      }
+    }
+    const ptW = new seal.Plaintext();
+    encoder.encode(tiled, scale, ptW);
+    let acc = new seal.Ciphertext();
+    evaluator.multiplyPlain(ctX, ptW, acc);
+    multiplies++;
+    // Reduce WITHIN each block. Only log2(block) rotations, independent of how many patches ride
+    // along - which is exactly what the packing buys.
+    for (let s = 1; s < block; s <<= 1) {
+      const rot = new seal.Ciphertext();
+      evaluator.rotateVector(acc, s, galois, rot);
+      const nxt = new seal.Ciphertext();
+      evaluator.add(acc, rot, nxt);
+      acc = nxt;
+      rotations++;
+    }
+    const out = new seal.Plaintext();
+    decryptor.decrypt(acc, out);
+    const dec = encoder.decodeFloat64(out);
+    const map = new Array<number>(nPatches);
+    for (let p = 0; p < nPatches; p++) map[p] = dec[p * block] + (biases[oc] ?? 0);
+    maps.push(map);
+  }
+  const fheMs = performance.now() - t0;
+
+  // Plaintext reference, so the approximation error is measured rather than assumed.
+  let maxAbsError = 0;
+  for (let oc = 0; oc < kernels.length; oc++) {
+    for (let oy = 0; oy < outH; oy++) {
+      for (let ox = 0; ox < outW; ox++) {
+        let s = 0;
+        for (let ky = 0; ky < kH; ky++) {
+          for (let kx = 0; kx < kW; kx++) s += image[oy + ky][ox + kx] * kernels[oc][ky][kx];
+        }
+        maxAbsError = Math.max(maxAbsError, Math.abs(maps[oc][oy * outW + ox] - (s + (biases[oc] ?? 0))));
+      }
+    }
+  }
+  return { maps, outH, outW, fheMs, ctBytes, maxAbsError,
+           rotations, multiplies, patchesPerCiphertext: nPatches };
+}

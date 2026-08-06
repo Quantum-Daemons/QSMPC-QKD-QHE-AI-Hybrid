@@ -29,7 +29,7 @@
       ],
       "hidden": 16,
       "img_size": 14,
-      "medmnist_name": "pneumoniamnist",
+      "medmnist_name": "breastmnist",
       "pool": "avg",
       "subset": 512
     },
