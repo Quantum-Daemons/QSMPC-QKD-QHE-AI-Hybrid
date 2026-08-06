@@ -340,6 +340,8 @@ export interface MeasuredHybrid {
    *  not estimated: rotations and the key-switch each triggers are what dominate CKKS cost. */
   conv?: { rotations: number; multiplies: number; patchesPerCiphertext: number;
            outH: number; outW: number; channels: number; convMs: number; maxAbsError: number };
+  /** Rotations and multiply-plain for the DENSE layer, so the two workloads compare like for like. */
+  dense?: { rotations: number; multiplies: number };
 }
 
 export interface RealHybridRun extends MeasuredHybrid { prediction: number; maxAbsError: number; }
@@ -390,6 +392,7 @@ export async function realClientHybrid(features: number[], u: () => number,
       prediction: mpc.out[0], fheMs: fhe.fheMs + (conv?.convMs ?? 0), mpcMs: mpc.mpcMs,
       commBytes: mpc.commBytes, ctBytes: fhe.ctBytes, featDim: n,
       maxAbsError: fhe.maxAbsError, conv,
+      dense: { rotations: fhe.rotations, multiplies: fhe.multiplies },
     };
   } catch (e) {
     // Surface the cause (no-fallback policy: a fixable defect must not hide behind the representative path).
@@ -1075,8 +1078,15 @@ export function runClientPipeline(
             : benchScale(usecase, config.model_size ?? "medium", config.workload ?? "linear");
           artifacts.fhe_prediction = real.prediction;
           artifacts._measured_hybrid = { fheMs: real.fheMs, mpcMs: real.mpcMs, commBytes: real.commBytes,
-            ctBytes: real.ctBytes, featDim: real.featDim, conv: real.conv };
+            ctBytes: real.ctBytes, featDim: real.featDim, conv: real.conv, dense: real.dense };
           metric(stage, "fhe_max_abs_error", r2(real.maxAbsError) || real.maxAbsError);
+          // Counted on BOTH paths, so Linear vs CNN is a measured comparison of key-switch cost -
+          // the quantity the 2026 CKKS-inference literature identifies as dominant - rather than a
+          // wall-clock difference that could be anything.
+          if (real.dense) {
+            metric(stage, "fhe_dense_rotations", real.dense.rotations);
+            metric(stage, "fhe_dense_multiplies", real.dense.multiplies);
+          }
           metric(stage, "fhe_linear_ms", r2(real.fheMs * bscale));
           metric(stage, "mpc_nonlinear_ms", r2(real.mpcMs * bscale));
           metric(stage, "mpc_comm_kb", r2((real.commBytes * bscale) / 1024));
