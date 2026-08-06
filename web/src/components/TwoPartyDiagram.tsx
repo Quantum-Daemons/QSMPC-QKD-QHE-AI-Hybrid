@@ -28,6 +28,12 @@ export interface DiagramConfig {
    *  it emits a measured SKR improvement and a convergence count - and the diagram used to show
    *  nothing at all, so ticking it appeared to do nothing to the architecture it describes. */
   optiqkd?: boolean;
+  /** `linear` | `cnn`. On medical this selects a real encrypted CONVOLUTION over a packed
+   *  ciphertext instead of a dot product, which is a different computation crossing the same
+   *  arrow - so the arrow has to say which one it carried. */
+  workload?: string;
+  /** `` | `ckks` | `qcnn`. Which inference backend the run surfaces as primary. */
+  inference?: string;
 }
 interface Step {
   stageId: string;
@@ -99,9 +105,21 @@ const f = (m: M, k: string, d = "—") => {
 // The MPC-FHE private inference, drawn as its two halves (the 2026 hybrid: linear→FHE, non-linear→MPC).
 // Both map to the backend `private_inference` stage, so they light up together when it runs and the
 // labels fill from the live `fhe_linear_ms` / `mpc_nonlinear_ms` / `mpc_comm_kb` metrics.
+// The FHE arrow names the computation it carried, not just "CKKS ct". Workload=cnn packs im2col
+// patches into one ciphertext and reduces them by rotate-and-add; workload=linear is a packed dot
+// product. Those are different operations over the same wire, and the run counts the rotations for
+// each, so the arrow reports the count rather than leaving the selector invisible here.
 const HYBRID_INFERENCE: Step[] = [
   { stageId: "private_inference", kind: "fhe-arrow",
-    label: (m) => `FHE-linear · CKKS ct · ${f(m, "fhe_linear_ms")} ms` },
+    label: (m, c) => {
+      const rot = m["fhe_conv_rotations"] ?? m["fhe_dense_rotations"];
+      const shape = m["fhe_conv_output_shape"];
+      const kindTxt = String(c.workload ?? "") === "cnn" && shape
+        ? `encrypted convolution ${shape}`
+        : String(c.workload ?? "") === "cnn" ? "encrypted convolution" : "CKKS dot product";
+      return `FHE-linear · ${kindTxt} · ${f(m, "fhe_linear_ms")} ms`
+        + (rot == null ? "" : ` · ${rot} rotations`);
+    } },
   { stageId: "private_inference", kind: "mpc-bidir",
     label: (m) => `MPC-non-linear · shares · ${f(m, "mpc_nonlinear_ms")} ms · ${f(m, "mpc_comm_kb")} KB` },
 ];
@@ -109,9 +127,20 @@ const HYBRID_INFERENCE: Step[] = [
 // The quantum-secure ALTERNATIVE the benchmark scores against (the `quantum_comparison` stage runs a
 // real QOTP+QCNN private inference). Rendered as a full-width bar so it's clear QSMPC-FHE is executed
 // and the quantum-advantage / security-score are produced by an actual run, not asserted.
+// `inference` picks which backend the run SURFACES as primary (clientCompute reads it at the
+// private_inference stage). Both are computed either way, so this bar says which one was surfaced
+// rather than implying the selector did nothing.
 const QSMPC_COMPARE: Step = {
   stageId: "quantum_comparison", kind: "compare",
-  label: (m) => `QSMPC-FHE comparison · QOTP + QCNN (T-gates) · advantage ${f(m, "quantum_advantage_score")}/10`,
+  label: (m, c) => {
+    const primary = String(c.inference ?? "") === "qcnn" ? "QCNN surfaced as primary"
+      : String(c.inference ?? "") === "ckks" ? "CKKS surfaced as primary"
+      : "use-case default";
+    const cls = m["primary_inference_class"];
+    return `QSMPC-FHE comparison · QOTP + QCNN (T-gates) · ${primary}`
+      + (cls == null ? "" : ` · class ${cls}`)
+      + ` · advantage ${f(m, "quantum_advantage_score")}/10`;
+  },
 };
 
 export const USECASE_SPECS: Record<string, Spec> = {
