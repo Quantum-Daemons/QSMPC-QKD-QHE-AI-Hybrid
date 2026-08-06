@@ -54,6 +54,7 @@ def build(config: dict | None = None) -> tuple[Pipeline, Context]:
     ctx = Context(
         usecase="genomics",
         config={"qsmpc_op": "sum", "inference": "ckks", "seed": seed,
+                # None => QSMS derives a prime in [n, 2n] as the construction requires.
                 "prime": config.get("prime", cfg.qsmpc.prime), **config},
     )
     ctx.data["secrets"] = per_cohort
@@ -72,7 +73,10 @@ def run_demo(config: dict | None = None) -> dict:
     m = pipe.bus.metrics()
     return {
         "pooled_allele_count": ctx.artifacts.get("secure_sum"),
-        "ground_truth_total": ctx.data["_ground_truth_total"] % ctx.config["prime"],
+        # Reduce into the field the sum actually used, which QSMS derives from the party count.
+        # Reading ctx.config["prime"] assumed a pinned modulus and returned None once the config
+        # stopped pinning one -- and a pinned 4099 was outside the paper's admissible field anyway.
+        "ground_truth_total": ctx.data["_ground_truth_total"] % ctx.artifacts["qsms_prime"],
         "prs": ctx.data.get("_prs"),
         "private_risk_class": ctx.artifacts.get("fhe_prediction"),   # 1 = high genetic risk (PRS > threshold)
         "explanation": ctx.artifacts.get("explanation"),

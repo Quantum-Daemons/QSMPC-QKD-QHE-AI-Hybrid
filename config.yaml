@@ -14,7 +14,11 @@ qkd:
   error_correction_eff: 1.16
 
 qsmpc:
-  prime: 4099
+  # Omit `prime` to derive it from n_parties as Sutradhar's construction requires: d prime with
+  # n <= d <= 2n. Pinning 4099 here satisfied "is prime" and "> n" and nothing else - it sits ~300x
+  # outside the admissible field for n=7, and d**t then exceeds the statevector bound so every run
+  # silently used the analytic sampler instead of the GHZ state the UI describes.
+  # prime: 11
   n_parties: 7
   threshold: 3
   qot_n: 512
