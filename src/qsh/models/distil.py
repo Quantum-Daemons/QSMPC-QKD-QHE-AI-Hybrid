@@ -177,3 +177,87 @@ def _labels(a: np.ndarray) -> np.ndarray:
     if a.ndim > 1 and a.shape[1] > 1:
         return a.argmax(1).astype(int)
     return (a.ravel() > 0.5).astype(int) if a.dtype.kind == "f" else a.ravel().astype(int)
+
+
+def save_cnn_student_weights(model, out_dir, *, teacher_key: str, student_key: str,
+                             img_size: int, classes: list | None = None) -> dict:
+    """Write a torch CNN student's weights in a form a browser can evaluate under CKKS.
+
+    ``save_student`` above handles the sklearn-linear students, whose coefficients drop straight
+    into a ``weights.json``. The medical student is a small torch CNN, so it shipped ONNX and
+    safetensors and no readable weights -- and the browser cannot get conv kernels out of either
+    without an ONNX parser. The consequence was that the encrypted convolution ran on the trained
+    student's SHAPE with a synthetic kernel pattern: a real homomorphic convolution, but not the
+    published model's inference, so ``crypto_fidelity`` stayed an offline number.
+
+    The layout below is the network, not a generic dump: one conv block, an average pool, then two
+    dense layers with a ReLU between them. Emitting it structurally means the browser reconstructs
+    the same computation rather than guessing from tensor shapes.
+    """
+    import json
+    import pathlib
+
+    import torch.nn as nn
+
+    out = pathlib.Path(out_dir)
+    out.mkdir(parents=True, exist_ok=True)
+
+    # Walk the modules IN ORDER and tag each weight layer with the activation that follows it.
+    # Inferring activations from layer types instead would have silently dropped the ReLU that sits
+    # between the conv and the pool: a re-implementation without it still agreed with the model on
+    # every argmax in the test split while its logits were off by 1.5e-01, which is exactly the
+    # failure mode that looks correct until it is not.
+    conv, conv_act, denses = None, "none", []
+    pending: list = []                       # weight layers awaiting their activation tag
+    acts: dict[int, str] = {}
+    for m in list(model.features) + list(model.classifier):
+        if isinstance(m, (nn.Conv2d, nn.Linear)):
+            pending.append(m)
+            acts[id(m)] = "none"
+            if isinstance(m, nn.Conv2d):
+                conv = m
+            else:
+                denses.append(m)
+        elif isinstance(m, nn.ReLU) and pending:
+            acts[id(pending[-1])] = "relu"
+    conv_act = acts.get(id(conv), "none") if conv is not None else "none"
+    if conv is None or len(denses) < 2:
+        raise ValueError(
+            f"expected one Conv2d and at least two Linear layers, found conv={conv is not None} "
+            f"linear={len(denses)}. This writer encodes the student's actual topology; a different "
+            f"architecture needs its own encoding rather than a reinterpretation of this one."
+        )
+
+    def arr(t):
+        return t.detach().cpu().numpy().tolist()
+
+    pad = int(conv.padding[0] if isinstance(conv.padding, tuple) else conv.padding)
+    payload = {
+        "kind": "cnn-1conv-2dense",
+        "note": ("The FHE-feasible medical student, layer by layer. Evaluate strictly in this "
+                 "order: conv (valid convolution over the input zero-padded by `conv.padding`), "
+                 "conv.activation, average pool by `pool.stride`, flatten channel-major, then each "
+                 "dense with its own `activation`. Every activation is recorded from the trained "
+                 "module order rather than assumed - the conv is followed by a ReLU, and omitting "
+                 "it still reproduces every argmax on the test split while shifting the logits, "
+                 "which is why it is stated here explicitly. The browser runs conv and both dense "
+                 "layers under CKKS and the ReLU/argmax under MPC, the hybrid this project "
+                 "describes."),
+        "teacher_key": teacher_key, "student_key": student_key,
+        "input": {"shape": [1, int(conv.in_channels), img_size, img_size],
+                  "preprocessing": ["divide by 255", "subtract 0.5", "divide by 0.5",
+                                    f"resize to {img_size}x{img_size}"]},
+        "conv": {"in_ch": int(conv.in_channels), "out_ch": int(conv.out_channels),
+                 "kernel": int(conv.kernel_size[0]), "padding": pad,
+                 "activation": conv_act,
+                 "weight": arr(conv.weight), "bias": arr(conv.bias) if conv.bias is not None else None},
+        "pool": {"type": "avg", "stride": 2},
+        "dense": [{"in": int(d.in_features), "out": int(d.out_features),
+                   "weight": arr(d.weight), "bias": arr(d.bias) if d.bias is not None else None,
+                   "activation": acts.get(id(d), "none")}
+                  for d in denses[:2]],
+        "classes": classes if classes is not None else [0, 1],
+        "n_parameters": int(sum(p.numel() for p in model.parameters())),
+    }
+    (out / "weights.json").write_text(json.dumps(payload, indent=1) + "\n")
+    return {"n_parameters": payload["n_parameters"], "path": str(out / "weights.json")}
