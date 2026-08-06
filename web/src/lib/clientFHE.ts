@@ -193,6 +193,16 @@ export interface ConvResult {
  * The returned ``rotations`` and ``multiplies`` are counted, not estimated, because rotations and
  * the key-switch each one triggers are what actually drive CKKS cost - so the page can report the
  * quantity the literature identifies instead of a latency multiplier.
+ *
+ * CHOICE OF PACKING, and its known cost. im2col lowering is one of two standard families; the other
+ * packs the whole image into a single ciphertext and moves a rotating kernel over it. Published
+ * comparisons favour the rotation family on both peak memory and speed, because lowering's memory
+ * grows with kernel size while the rotation form stays roughly constant. im2col is used here anyway
+ * and deliberately: it is the construction ``src/qsh/fhe/conv.py`` implements, and a browser mirror
+ * that computed a different convolution than the backend would make the two incomparable, which is
+ * the whole point of having both. At 14x14 with a 3x3 kernel the memory difference is immaterial -
+ * 2,304 of 4,096 slots - so the fidelity is worth more than the saving. Rotation-free formulations
+ * also exist (arXiv:2409.05205) and are not used.
  */
 export async function encryptedConv2d(
   image: number[][], kernels: number[][][], biases: number[],

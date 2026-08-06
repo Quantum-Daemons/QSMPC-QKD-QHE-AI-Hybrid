@@ -25,10 +25,18 @@ Two corollaries, both of which have caught real defects:
   Inference selector with no visible effect anywhere.
 
   The method that found them is worth keeping: **set each control to each value and diff the
-  rendered diagram text**, rather than reading the code and reasoning about it. Four of the five had
+  rendered output**, rather than reading the code and reasoning about it. Four of the five had
   correct-looking code paths. The QKD one even carried a comment claiming the fix had been made -
   the `e91` branch existed and was unreachable, because the diagram was handed the crypto-agility
   family rather than the protocol.
+
+  A sixth was found only by repeating the sweep on a **second view of the same state**. The
+  Orchestration page's graph is memoised, and its `useMemo` dependency array listed `kem`, `qkd` and
+  `sig` but not `qkdProtocol` - so the wiring was correct, the label function was correct, and the
+  node still never changed. Code review cannot catch that: both halves read right. Two lessons
+  carried forward: **audit every view that renders the same state**, not one per page, and **read
+  the rendered node text, not the DOM you expect** - the first sweep queried `svg text` and returned
+  nothing at all, because that graph renders React Flow HTML nodes rather than SVG.
 - **A number must be either traceable to config or produced by a measurement in this session.**
   Anything else is a literal, and gets moved into `defaults.py` or deleted.
 
