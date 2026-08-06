@@ -222,11 +222,18 @@ export function browserModel(usecase: string): { spec: ModelSpec; url: string } 
   return browserModels(usecase)[0] ?? null;
 }
 
-export async function loadModel(usecase: string): Promise<boolean> {
-  if (session && status.modelKey?.startsWith(usecase)) return true;
+export async function loadModel(usecase: string, modelKey?: string): Promise<boolean> {
+  // Keyed on the MODEL, not the use case. The cache used to match on a use-case prefix, so once a
+  // satellite model was loaded every later satellite request got that same session back - which
+  // meant selecting the OPS-SAT classifier ran the Telemanom forecaster's graph and failed on
+  // input rank, since one takes [n,19] and the other [n,250,6].
+  const want = modelKey ?? browserModel(usecase)?.spec.key;
+  if (session && want && status.modelKey === want) return true;
   if (inflight) return inflight;
   inflight = (async () => {
-    const target = browserModel(usecase);
+    const target = modelKey
+      ? browserModels(usecase).find((m) => m.spec.key === modelKey) ?? null
+      : browserModel(usecase);
     if (!target) {
       // Say WHICH of the several reasons applies. "No model registered" is true but unhelpful when
       // the real answer is "there is one, and its operators cannot run in any browser".
@@ -456,7 +463,7 @@ export async function evaluatePublishedModel(
     };
   }
 
-  if (!(await loadModel(usecase)) || !session) {
+  if (!(await loadModel(usecase, target.spec.key)) || !session) {
     return {
       ...base, provenance: file.provenance,
       error: status.error
