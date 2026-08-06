@@ -222,18 +222,16 @@
           "decision_threshold": 0.928426,
           "export": {
             "fp32_bytes": 4606582,
-            "int8_bytes": 0,
             "int8_skipped_reason": "tree ensemble: parameters live in node attributes, not weight tensors, so dynamic int8 quantisation has nothing to quantise",
             "opset": 0
           },
-          "git_sha": "e572d98-dirty",
-          "hf_revision": "ba0f351ea5dfff476f6da85f6b67fe260083c30b",
+          "git_sha": "c3f4c1b-dirty",
           "minority_class_f1": 0.08077786088257292,
           "n_test": 1523504,
           "n_train": 3554841,
           "positive_rate": 0.00101943,
           "split": "temporal, inductive",
-          "wall_clock_s": 73.7
+          "wall_clock_s": 77.5
         },
         "architecture": "GFP (graph features) + XGBoost",
         "artifacts": [
@@ -267,7 +265,7 @@
           "url": "https://www.kaggle.com/datasets/ealtman2019/ibm-transactions-for-anti-money-laundering-aml"
         },
         "hf_repo_id": "Daemons-Q/qsh-finance-aml-gbm",
-        "hf_revision": "ba0f351ea5dfff476f6da85f6b67fe260083c30b",
+        "hf_revision": null,
         "key": "finance_aml.gbm",
         "label": "Graph-feature-preprocessed gradient boosting",
         "metric": {
@@ -290,8 +288,9 @@
       {
         "achieved": {
           "agreement": 0.884055,
+          "both_scored_zero": false,
           "disagreement_on_positives": 0.643257,
-          "hf_revision": "40753b075b0bcefcc9da4f15438bcc00d7fde547",
+          "hf_revision": "ea78585e61e25384c939941943c3df953531b8a9",
           "metric_delta": 0.062987,
           "metric_delta_pp": 6.2987,
           "metric_name": "minority_class_f1",
@@ -306,7 +305,7 @@
         "architecture": "logistic regression distilled from the gradient-boosting teacher",
         "artifacts": [
           {
-            "browser_runnable": false,
+            "browser_runnable": true,
             "fmt": "onnx",
             "path": "onnx/model.onnx",
             "precision": "fp32",
@@ -320,7 +319,7 @@
             "serves": "both"
           }
         ],
-        "browser_runnable": false,
+        "browser_runnable": true,
         "dataset": {
           "licence": "CDLA-Sharing-1.0",
           "name": "IBM AMLworld HI-Small",
@@ -328,7 +327,7 @@
           "url": "https://www.kaggle.com/datasets/ealtman2019/ibm-transactions-for-anti-money-laundering-aml"
         },
         "hf_repo_id": "Daemons-Q/qsh-finance-aml-ckks-student",
-        "hf_revision": "40753b075b0bcefcc9da4f15438bcc00d7fde547",
+        "hf_revision": "ea78585e61e25384c939941943c3df953531b8a9",
         "key": "finance_aml.student",
         "label": "CKKS-linear fraud student",
         "metric": {
@@ -341,7 +340,9 @@
           "name": "minority_class_f1"
         },
         "notes": "Runs under real CKKS. crypto_fidelity is measured against the teacher every run.",
-        "onnx_domains": [],
+        "onnx_domains": [
+          "ai.onnx.ml"
+        ],
         "params": null,
         "runs_encrypted": true,
         "tier": "t1_crypto"
@@ -831,13 +832,12 @@
             "opset": 17
           },
           "f1": 0.918918918918919,
-          "git_sha": "984bcee-dirty",
-          "hf_revision": "59ff202ec6e7e1fa54e9321f41dc3b5e3789ce20",
+          "git_sha": "c3f4c1b-dirty",
           "n_features": 19,
           "n_test_segments": 529,
           "n_train_segments": 1594,
           "task": "segment classification - NOT comparable with satellite_comms.telemanom, which forecasts continuous ESA-ADB series against a persistence baseline",
-          "wall_clock_s": 1.7
+          "wall_clock_s": 1.8
         },
         "architecture": "gradient-boosted trees over 19 per-segment telemetry features",
         "artifacts": [
@@ -871,7 +871,7 @@
           "url": "https://zenodo.org/records/12588359"
         },
         "hf_repo_id": "Daemons-Q/qsh-satellite-opssat-ad",
-        "hf_revision": "59ff202ec6e7e1fa54e9321f41dc3b5e3789ce20",
+        "hf_revision": null,
         "key": "satellite_comms.opssat",
         "label": "OPS-SAT segment anomaly detector",
         "metric": {
@@ -896,7 +896,7 @@
           "agreement": 0.943289,
           "both_scored_zero": false,
           "disagreement_on_positives": 0.141593,
-          "hf_revision": "80e4c20a9ce8846c5dfb6dfbba536a2f40a5e47a",
+          "hf_revision": "f6555b863688786057f87310eced2216d498ba68",
           "metric_delta": 0.054054,
           "metric_delta_pp": 5.4054,
           "metric_name": "minority_class_f1",
@@ -933,7 +933,7 @@
           "url": "https://zenodo.org/records/12588359"
         },
         "hf_repo_id": "Daemons-Q/qsh-satellite-opssat-ckks-student",
-        "hf_revision": "80e4c20a9ce8846c5dfb6dfbba536a2f40a5e47a",
+        "hf_revision": "f6555b863688786057f87310eced2216d498ba68",
         "key": "satellite_comms.opssat_student",
         "label": "CKKS-linear OPS-SAT segment student",
         "metric": {
