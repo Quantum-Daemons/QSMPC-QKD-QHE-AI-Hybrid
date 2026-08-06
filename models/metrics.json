@@ -15,7 +15,7 @@
       "opset": 0
     },
     "git_sha": "e572d98-dirty",
-    "hf_revision": "50c16e5fcde1da59455eea133e2096c2f72d772d",
+    "hf_revision": "ba0f351ea5dfff476f6da85f6b67fe260083c30b",
     "minority_class_f1": 0.08077786088257292,
     "n_test": 1523504,
     "n_train": 3554841,
@@ -121,6 +121,25 @@
     "transfer_learning": "none \u2014 trained from random initialisation, so the weights are not ImageNet-derived and carry no ImageNet terms (see DATA_LICENSES.md)",
     "wall_clock_s": 9.1
   },
+  "medical_fl.resnet50": {
+    "accuracy": 0.782051282051282,
+    "auc": 0.7987677527151211,
+    "best_val_auc": 0.935673,
+    "dataset": "MedMNIST v2 BreastMNIST",
+    "export": {
+      "fp32_bytes": 94171000,
+      "int8_agreement": 0.9615384615384616,
+      "int8_bytes": 0,
+      "opset": 18
+    },
+    "git_sha": "d582944-dirty",
+    "hf_revision": "78cc561c1491c079ed8721f033617639ea0ee898",
+    "macro_f1": 0.6492063492063492,
+    "n_parameters": 23505858,
+    "resolution": 28,
+    "transfer_learning": "none \u2014 trained from random initialisation, so the weights are not ImageNet-derived and carry no ImageNet terms (see DATA_LICENSES.md)",
+    "wall_clock_s": 11.2
+  },
   "medical_fl.student": {
     "agreement": 0.75,
     "both_scored_zero": false,
@@ -136,6 +155,44 @@
     "teacher_key": "medical_fl.resnet18",
     "teacher_metric": 0.865385,
     "teacher_params": 11171266
+  },
+  "satellite_comms.opssat": {
+    "accuracy": 0.9659735349716446,
+    "anomaly_rate_test": 0.213611,
+    "auc_pr": 0.968107105684616,
+    "auc_pr_baseline": 0.21361058601134217,
+    "auroc": 0.9881509530292716,
+    "dataset": "OPS-SAT-AD",
+    "export": {
+      "fp32_bytes": 197789,
+      "int8_agreement": null,
+      "int8_bytes": 0,
+      "opset": 17
+    },
+    "f1": 0.918918918918919,
+    "git_sha": "984bcee-dirty",
+    "hf_revision": "59ff202ec6e7e1fa54e9321f41dc3b5e3789ce20",
+    "n_features": 19,
+    "n_test_segments": 529,
+    "n_train_segments": 1594,
+    "task": "segment classification - NOT comparable with satellite_comms.telemanom, which forecasts continuous ESA-ADB series against a persistence baseline",
+    "wall_clock_s": 1.7
+  },
+  "satellite_comms.opssat_student": {
+    "agreement": 0.943289,
+    "both_scored_zero": false,
+    "disagreement_on_positives": 0.141593,
+    "hf_revision": "80e4c20a9ce8846c5dfb6dfbba536a2f40a5e47a",
+    "metric_delta": 0.054054,
+    "metric_delta_pp": 5.4054,
+    "metric_name": "minority_class_f1",
+    "n_eval": 529,
+    "student_key": "satellite_comms.opssat_student",
+    "student_metric": 0.864865,
+    "student_params": 20,
+    "teacher_key": "satellite_comms.opssat",
+    "teacher_metric": 0.918919,
+    "teacher_params": 117
   },
   "satellite_comms.student": {
     "agreement": 0.998677,
@@ -196,7 +253,7 @@
     },
     "framing": "Architecture comparison, not a performance claim. The data is synthetic because no commercial-OK real attack corpus exists. Every published QML-IDS figure we could verify sits below a random forest on the same data, and arXiv:2512.05069 was withdrawn by its own authors for insufficient evaluation. Per-class F1 is the headline; aggregate accuracy is shown beside it because Engelen et al. (WTMC 2021) demonstrated it stays at 0.99 across a label correction that moved Bot F1 from 0.60 to 0.99.",
     "git_sha": "733e325",
-    "hf_revision": "2070c0246d017e38c78919bc9071e4f7cab6468b",
+    "hf_revision": "f0d7543132105491c21c5cabc086151eeeab47cc",
     "n_classes": 8,
     "n_samples": 2400,
     "quantum_beats_classical": false,

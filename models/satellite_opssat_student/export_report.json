@@ -1,0 +1,19 @@
+{
+  "fp32_path": "onnx/model.onnx",
+  "int8_path": "",
+  "fp32_bytes": 558,
+  "int8_bytes": 0,
+  "opset": 17,
+  "fp32_max_abs_error": 9.970403813674977e-08,
+  "int8_agreement": null,
+  "int8_max_abs_error": null,
+  "n_fixtures": 64,
+  "passed": true,
+  "int8_skipped_reason": "ai.onnx.ml linear model: coefficients live in node attributes, not weight tensors, so dynamic int8 quantisation has nothing to quantise",
+  "int8_confident_agreement": 1.0,
+  "int8_margin_quantile": 0.05,
+  "onnx_domains": [
+    "ai.onnx.ml"
+  ],
+  "browser_runnable": true
+}
