@@ -104,11 +104,18 @@ export default function PipelineControls({ run }: { run: Run }) {
           Optimize QKD (OptiQKD){optiqkdDisabled ? " — needs a QKD protocol" : ""}
         </label>
         <span style={{ flex: 1 }} />
-        <button className="btn ghost" onClick={() => setShowAdvanced(!showAdvanced)}>
+        {/* A disclosure control, so it has to announce itself as one. The caret alone is visual:
+            aria-expanded is what tells a screen reader the panel exists and whether it is open,
+            and aria-controls points at the region it governs (WAI-ARIA disclosure pattern). */}
+        <button className="btn ghost" onClick={() => setShowAdvanced(!showAdvanced)}
+          aria-expanded={showAdvanced} aria-controls="pipeline-parameters"
+          title={showAdvanced ? "Hide the run parameters" : "Show the run parameters"}>
           {showAdvanced ? "▼" : "▶"} Parameters
         </button>
       </div>
-      {showAdvanced && <ParameterPanel run={run} />}
+      <div id="pipeline-parameters" hidden={!showAdvanced}>
+        {showAdvanced && <ParameterPanel run={run} />}
+      </div>
       <div className="btn-row" style={{ marginTop: 14 }}>
         <button className="btn" onClick={start} disabled={running}>▶ Start</button>
         <button className="btn ghost" onClick={startStepwise} disabled={running || paused}>⏭ Start stepwise</button>
