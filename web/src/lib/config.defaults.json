@@ -561,13 +561,6 @@
           },
           {
             "browser_runnable": false,
-            "fmt": "onnx",
-            "path": "onnx/model_int8.onnx",
-            "precision": "int8",
-            "serves": "browser"
-          },
-          {
-            "browser_runnable": false,
             "fmt": "safetensors",
             "path": "model.safetensors",
             "precision": "fp32",
@@ -847,13 +840,6 @@
             "path": "onnx/model.onnx",
             "precision": "fp32",
             "serves": "both"
-          },
-          {
-            "browser_runnable": false,
-            "fmt": "onnx",
-            "path": "onnx/model_int8.onnx",
-            "precision": "int8",
-            "serves": "browser"
           },
           {
             "browser_runnable": false,

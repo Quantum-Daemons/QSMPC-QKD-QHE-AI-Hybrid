@@ -771,6 +771,23 @@ def _onnx_domains(key: str) -> list[str]:
     return list(_export_report(key).get("onnx_domains") or [])
 
 
+def _artifact_exists(key: str, path: str) -> bool:
+    """Whether the export actually produced this artefact.
+
+    ``_ONNX_PAIR`` declares an int8 graph for every model, but int8 is genuinely absent for two
+    classes: tree ensembles and ai.onnx.ml linear models keep their parameters in node attributes,
+    so there is nothing to quantise, and a graph can be built, measured and then withheld for
+    missing the numeric gate. Advertising a file that was never written sends the browser to a
+    404 -- or worse, past the graph assertion with the wrong name.
+    """
+    report = _export_report(key)
+    if not report:
+        return True          # unexported: nothing measured either way, so do not over-claim absence
+    if path.endswith("model_int8.onnx"):
+        return bool(report.get("int8_path"))
+    return True
+
+
 def _browser_runnable(key: str, precision: str = "fp32") -> bool:
     """Whether ORT Web can execute this model's graph at the given precision.
 
@@ -808,12 +825,15 @@ def frontend_models() -> dict:
             # discovered.
             "browser_runnable": _browser_runnable(s.key),
             "onnx_domains": _onnx_domains(s.key),
+            # Only artefacts the export actually wrote. A declared-but-absent int8 graph used to
+            # reach the browser, which prefers int8, and the fetch then named a file that does not
+            # exist in the repo.
             "artifacts": [
                 {"path": a.path, "fmt": a.fmt, "precision": a.precision, "serves": a.serves,
                  # Per-artifact, because a model can be browser-runnable at fp32 and not at int8.
                  "browser_runnable": (_browser_runnable(s.key, a.precision)
                                       if a.fmt == "onnx" else False)}
-                for a in s.artifacts
+                for a in s.artifacts if _artifact_exists(s.key, a.path)
             ],
             "dataset": {
                 "name": s.dataset.name,
