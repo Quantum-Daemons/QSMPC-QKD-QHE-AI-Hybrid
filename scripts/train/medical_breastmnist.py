@@ -33,14 +33,30 @@ from qsh.models import datasets, distil, export, metrics, train  # noqa: E402
 from qsh.models.registry import get as get_spec  # noqa: E402
 
 
-def build_resnet18(n_classes: int = 2, *, pretrained: bool = True):
-    """ResNet-18 with a 1-channel stem and a fresh head, keeping the pretrained body."""
+#: Architectures this script can train, and the registry key each one records into.
+#: Both are MedMNIST v2 baselines at 28px, which is the whole point of offering the second one:
+#: the published table gives ResNet-18 AUC 0.901 and ResNet-50 AUC 0.857 under the same 100-epoch
+#: Adam regime with no ImageNet initialisation, so the pair is comparable to each other AND to the
+#: baseline. Architectures without a published from-scratch number on this corpus are deliberately
+#: absent -- MedMNIST+ benchmarks AlexNet, VGG16, DenseNet-121 and EfficientNet-B4 on BreastMNIST but
+#: only ImageNet1k-pretrained, which is the dependency this project dropped for licence reasons.
+ARCHS = {"resnet18": "medical_fl.resnet18", "resnet50": "medical_fl.resnet50"}
+
+
+def build_resnet(arch: str, n_classes: int = 2, *, pretrained: bool = True):
+    """A torchvision ResNet with a 1-channel stem and a fresh head.
+
+    The stem rewrite is the only architecture-specific step and it is identical for both depths:
+    torchvision names the first convolution ``conv1`` and the classifier ``fc`` in every ResNet.
+    """
     import torch
     import torch.nn as nn
-    from torchvision.models import ResNet18_Weights, resnet18
+    from torchvision.models import (ResNet18_Weights, ResNet50_Weights,
+                                    resnet18, resnet50)
 
-    weights = ResNet18_Weights.IMAGENET1K_V1 if pretrained else None
-    model = resnet18(weights=weights)
+    ctor, wts = {"resnet18": (resnet18, ResNet18_Weights),
+                 "resnet50": (resnet50, ResNet50_Weights)}[arch]
+    model = ctor(weights=wts.IMAGENET1K_V1 if pretrained else None)
 
     # 3->1 channel stem. Summing across the input-channel axis preserves the pretrained filter's
     # response to a greyscale image; re-initialising here would discard the transfer entirely.
@@ -90,8 +106,15 @@ def main() -> int:
     ap.add_argument("--epochs", type=int, default=60)
     ap.add_argument("--lr", type=float, default=3e-4)
     ap.add_argument("--seed", type=int, default=42)
+    ap.add_argument("--arch", choices=sorted(ARCHS), default="resnet18",
+                    help="MedMNIST v2 publishes a 28px baseline for both: ResNet-18 AUC 0.901, "
+                         "ResNet-50 AUC 0.857. Training the deeper one is expected to score LOWER "
+                         "on this 780-image corpus, which is the published finding, not a failure.")
     ap.add_argument("--out", type=Path, default=None)
     args = ap.parse_args()
+
+    key = ARCHS[args.arch]
+    artifact_dir = args.out or (Path.cwd() / "models" / f"medical_breastmnist_{args.arch}")
 
     import torch
 
@@ -103,9 +126,10 @@ def main() -> int:
     print(f"  train {len(tr_dl.dataset)} | val {len(va_dl.dataset)} | test {len(te_dl.dataset)}")
     print(f"  class balance (train): {np.bincount(ytr.numpy()).tolist()}")
 
-    model = build_resnet18(pretrained=not args.from_scratch)
+    model = build_resnet(args.arch, pretrained=not args.from_scratch)
     n_params = sum(p.numel() for p in model.parameters())
-    print(f"  ResNet-18 (ImageNet-pretrained, 1-channel stem): {n_params:,} parameters")
+    init = "random init" if args.from_scratch else "ImageNet1K_V1"
+    print(f"  {args.arch} ({init}, 1-channel stem): {n_params:,} parameters")
 
     # Class weighting: BreastMNIST is roughly 3:1 malignant:benign, and AUC is the reported metric,
     # so the loss should not be allowed to solve the task by predicting the majority class.
@@ -116,12 +140,14 @@ def main() -> int:
     cfg = train.TrainConfig(epochs=args.epochs, batch_size=32, lr=args.lr,
                             weight_decay=1e-4, patience=15, seed=args.seed)
     result = train.train_torch(
-        "medical_fl.resnet18", model, tr_dl, va_dl,
+        key, model, tr_dl, va_dl,
         metric_fn=lambda y, p: metrics.auroc(y, p), metric_name="auc",
         cfg=cfg, loss_fn=loss_fn,
-        out_dir=args.out or (Path.cwd() / "models" / "medical_breastmnist_resnet18"),
+        out_dir=artifact_dir,
         extra_manifest={"dataset": "MedMNIST v2 BreastMNIST", "resolution": args.size,
-                        "pretrained": "ImageNet1K_V1", "adaptation": "conv1 RGB kernels summed to 1 channel"},
+                        "architecture": args.arch,
+                        "pretrained": "none" if args.from_scratch else "ImageNet1K_V1",
+                        "adaptation": "conv1 RGB kernels summed to 1 channel"},
     )
     print(f"  best val AUC {result.best_metric:.4f} at epoch {result.best_epoch} "
           f"({result.epochs_run} epochs run)")
@@ -134,17 +160,73 @@ def main() -> int:
     y_pred = y_score.argmax(1)
     test_metrics = metrics.with_companion(y_true, y_pred, y_score, headline="auc")
 
-    spec = get_spec("medical_fl.resnet18")
-    print("\n  teacher (ResNet-18, test split)")
+    spec = get_spec(key)
+    print(f"\n  teacher ({args.arch}, test split)")
     for k, v in test_metrics.items():
         print(f"    {k:22s} {v:.6f}")
     print(f"    published baseline     {spec.metric.baseline}  ({spec.metric.baseline_source})")
+
+    # Only the browser-tier teacher owns a student. `medical_fl.student` is published and pinned and
+    # its recorded fidelity names resnet18 as its teacher, so distilling a second architecture into
+    # the same key would replace a published artefact with a different lineage while the metrics
+    # still described the old one.
+    distils_student = key == "medical_fl.resnet18"
+
+    # ---- artefacts ------------------------------------------------------------
+    out = Path(result.manifest and result.checkpoint).parent
+    # int8 is required for the browser-tier teacher and optional for a comparison teacher. The
+    # gate itself is unchanged in both cases: int8 is built and measured either way, and a graph
+    # that misses the bar is withheld rather than published.
+    report = export.verify_and_quantize(model, xte.numpy(), out, kind="torch",
+                                        int8_required=distils_student)
+    if report.int8_skipped_reason:
+        print(f"\n  ONNX fp32 {report.fp32_bytes/1e6:.2f} MB "
+              f"(int8 skipped: {report.int8_skipped_reason})")
+    else:
+        print(f"\n  ONNX fp32 {report.fp32_bytes/1e6:.2f} MB -> int8 {report.int8_bytes/1e6:.2f} MB "
+              f"({report.compression:.1f}x), int8 agreement {report.int8_agreement:.4f}")
+
+    (out / "feature_spec.json").write_text(json.dumps({
+        "input": {"shape": [1, 1, args.size, args.size], "dtype": "float32",
+                  "preprocessing": "pixel/255 then (x-0.5)/0.5"},
+        "classes": ["benign/normal", "malignant"],
+    }, indent=2) + "\n")
+
+    train.record_metrics(key, {
+        **test_metrics,
+        "dataset": spec.dataset.name,
+        "resolution": args.size,
+        "n_parameters": n_params,
+        "best_val_auc": round(result.best_metric, 6),
+        # Recorded from what actually ran. This was a fixed string, so a --from-scratch run still
+        # claimed ImageNet initialisation -- the exact provenance the licence analysis turns on.
+        "transfer_learning": (
+            "none — trained from random initialisation, so the weights are not ImageNet-derived "
+            "and carry no ImageNet terms (see DATA_LICENSES.md)"
+            if args.from_scratch
+            else "ImageNet1K_V1 ResNet-18, conv1 summed to 1 channel, fresh fc head"
+        ),
+        "git_sha": train.git_sha(),
+        "export": {"fp32_bytes": report.fp32_bytes, "int8_bytes": report.int8_bytes,
+                   "int8_agreement": report.int8_agreement, "opset": report.opset},
+        "wall_clock_s": round(time.time() - started, 1),
+    })
+    if not distils_student:
+        print(f"\n  no student distilled: medical_fl.student belongs to medical_fl.resnet18, and "
+              f"{key} is a published-comparison teacher. Nothing overwrites the student.")
+        print(f"\n  wrote {out} and models/metrics.json in {time.time()-started:.0f}s")
+        return 0
 
     # ---- T1 student: the FHE-feasible model -----------------------------------
     # The student has to be the network the encrypted path actually evaluates — one conv block at
     # 14x14, run as a genuine CKKS convolution by qsh.fhe.conv. A flattened-pixel logistic would be
     # a different model, and its fidelity number would not describe the encrypted run.
-    print("\n  distilling to the FHE-feasible student (14x14, 1 conv block) ...")
+    #
+    # Only the browser-tier teacher gets a student. `medical_fl.student` is published, pinned, and
+    # its recorded fidelity names resnet18 as its teacher; distilling from a second architecture
+    # into the same key would overwrite a published artefact with a different lineage while the
+    # metrics still claimed the old one.
+
     from torch.utils.data import DataLoader, TensorDataset
 
     from qsh.ai.cnn_layers import downsample, small_medmnist_cnn
@@ -165,7 +247,7 @@ def main() -> int:
         metric_fn=lambda y, p: metrics.accuracy(y, p.argmax(1)), metric_name="agreement",
         cfg=train.TrainConfig(epochs=120, batch_size=32, lr=2e-3, patience=25, seed=args.seed),
         out_dir=Path.cwd() / "models" / "medical_breastmnist_student",
-        extra_manifest={"role": "FHE-feasible student distilled from medical_fl.resnet18"},
+        extra_manifest={"role": f"FHE-feasible student distilled from {key}"},
     )
     from safetensors.torch import load_file as _load
 
@@ -182,7 +264,7 @@ def main() -> int:
           f"domains={student_report.onnx_domains}, browser_runnable={student_report.browser_runnable}")
 
     fidelity = distil.measure_fidelity(
-        teacher_key="medical_fl.resnet18", student_key="medical_fl.student",
+        teacher_key=key, student_key="medical_fl.student",
         teacher_pred=y_pred, student_pred=student_pred, y_true=y_true,
         metric_fn=metrics.accuracy, metric_name="accuracy",
         student_params=student_params, teacher_params=n_params,
@@ -193,41 +275,6 @@ def main() -> int:
     print(f"    parameters                  {n_params:,} -> {fidelity.student_params}"
           f"   ({n_params/max(fidelity.student_params,1):,.0f}x smaller)")
 
-    # ---- artefacts ------------------------------------------------------------
-    out = Path(result.manifest and result.checkpoint).parent
-    report = export.verify_and_quantize(model, xte.numpy(), out, kind="torch")
-    if report.int8_skipped_reason:
-        print(f"\n  ONNX fp32 {report.fp32_bytes/1e6:.2f} MB "
-              f"(int8 skipped: {report.int8_skipped_reason})")
-    else:
-        print(f"\n  ONNX fp32 {report.fp32_bytes/1e6:.2f} MB -> int8 {report.int8_bytes/1e6:.2f} MB "
-              f"({report.compression:.1f}x), int8 agreement {report.int8_agreement:.4f}")
-
-    (out / "feature_spec.json").write_text(json.dumps({
-        "input": {"shape": [1, 1, args.size, args.size], "dtype": "float32",
-                  "preprocessing": "pixel/255 then (x-0.5)/0.5"},
-        "classes": ["benign/normal", "malignant"],
-    }, indent=2) + "\n")
-
-    train.record_metrics("medical_fl.resnet18", {
-        **test_metrics,
-        "dataset": spec.dataset.name,
-        "resolution": args.size,
-        "n_parameters": n_params,
-        "best_val_auc": round(result.best_metric, 6),
-        # Recorded from what actually ran. This was a fixed string, so a --from-scratch run still
-        # claimed ImageNet initialisation -- the exact provenance the licence analysis turns on.
-        "transfer_learning": (
-            "none — trained from random initialisation, so the weights are not ImageNet-derived "
-            "and carry no ImageNet terms (see DATA_LICENSES.md)"
-            if args.from_scratch
-            else "ImageNet1K_V1 ResNet-18, conv1 summed to 1 channel, fresh fc head"
-        ),
-        "git_sha": train.git_sha(),
-        "export": {"fp32_bytes": report.fp32_bytes, "int8_bytes": report.int8_bytes,
-                   "int8_agreement": report.int8_agreement, "opset": report.opset},
-        "wall_clock_s": round(time.time() - started, 1),
-    })
     train.record_metrics("medical_fl.student", fidelity.as_metrics())
     print(f"\n  wrote {out} and models/metrics.json in {time.time()-started:.0f}s")
     return 0
