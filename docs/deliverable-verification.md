@@ -16,10 +16,19 @@ figure quoted to a funder, or a published model someone else might build on.
 
 Two corollaries, both of which have caught real defects:
 
-- **A control that renders but changes nothing is a defect.** Round 20 found a QKD protocol selector
-  that genuinely switched the simulation while the diagram above it kept saying BB84, and a
-  satellite page whose four channel parameters had never been rendered at all, so the eavesdrop
-  check it advertised could not fire.
+- **A control that renders but changes nothing is a defect** - and so is one that changes the run
+  while the architecture diagram above it stays still. Round 20 found five: a QKD protocol selector
+  that switched the simulation while the diagram kept saying BB84; a satellite page whose four
+  channel parameters had never been rendered at all, so the eavesdrop check it advertised could not
+  fire; an OptiQKD checkbox that measured a 48.8% surrogate SKR gain and showed nothing; a Workload
+  selector that ran a real encrypted convolution and drew the same arrow as a dot product; and an
+  Inference selector with no visible effect anywhere.
+
+  The method that found them is worth keeping: **set each control to each value and diff the
+  rendered diagram text**, rather than reading the code and reasoning about it. Four of the five had
+  correct-looking code paths. The QKD one even carried a comment claiming the fix had been made -
+  the `e91` branch existed and was unreachable, because the diagram was handed the crypto-agility
+  family rather than the protocol.
 - **A number must be either traceable to config or produced by a measurement in this session.**
   Anything else is a literal, and gets moved into `defaults.py` or deleted.
 
@@ -70,6 +79,17 @@ The claim is "this model scores X on Y". Verified when:
 
 **A negative result is a deliverable.** ResNet-50 scoring 0.7988 against ResNet-18's 0.9147 is a
 reproduction of a published finding, not a failure. So is `quantum_beats_classical: false`.
+
+### A label on a diagram
+
+A diagram is the most-looked-at part of a page and the least likely to be tested. Verified when
+every control that alters the run alters what the diagram says, checked by diffing rendered text
+across each control's values - and when a figure it shows names the model that produced it. Round 20
+found `qkd_optimized_skr` printed beside `skr` where the two came from *different models*: the
+optimiser's analytic surrogate against the decoy-state simulation. The pair read as the optimiser
+making things worse, 0.0035 against 0.00906, while the same panel claimed +48.8%. Both ends of the
+ratio are now emitted under names that say which model produced them, so the percentage is checkable
+in place.
 
 ### A benchmark figure quoted to a third party
 
