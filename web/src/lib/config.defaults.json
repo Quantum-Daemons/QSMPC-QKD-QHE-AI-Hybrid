@@ -815,6 +815,150 @@
         "params": null,
         "runs_encrypted": true,
         "tier": "t1_crypto"
+      },
+      {
+        "achieved": {
+          "accuracy": 0.9659735349716446,
+          "anomaly_rate_test": 0.213611,
+          "auc_pr": 0.968107105684616,
+          "auc_pr_baseline": 0.21361058601134217,
+          "auroc": 0.9881509530292716,
+          "dataset": "OPS-SAT-AD",
+          "export": {
+            "fp32_bytes": 197789,
+            "int8_agreement": null,
+            "int8_bytes": 0,
+            "opset": 17
+          },
+          "f1": 0.918918918918919,
+          "git_sha": "984bcee-dirty",
+          "hf_revision": "3cb83b46f1d6e44d0c0e42f6d52c7f54107a7326",
+          "n_features": 19,
+          "n_test_segments": 529,
+          "n_train_segments": 1594,
+          "task": "segment classification - NOT comparable with satellite_comms.telemanom, which forecasts continuous ESA-ADB series against a persistence baseline",
+          "wall_clock_s": 1.7
+        },
+        "architecture": "gradient-boosted trees over 19 per-segment telemetry features",
+        "artifacts": [
+          {
+            "browser_runnable": true,
+            "fmt": "onnx",
+            "path": "onnx/model.onnx",
+            "precision": "fp32",
+            "serves": "both"
+          },
+          {
+            "browser_runnable": false,
+            "fmt": "onnx",
+            "path": "onnx/model_int8.onnx",
+            "precision": "int8",
+            "serves": "browser"
+          },
+          {
+            "browser_runnable": false,
+            "fmt": "safetensors",
+            "path": "model.safetensors",
+            "precision": "fp32",
+            "serves": "server"
+          },
+          {
+            "browser_runnable": false,
+            "fmt": "json",
+            "path": "feature_spec.json",
+            "precision": "none",
+            "serves": "both"
+          }
+        ],
+        "browser_runnable": true,
+        "dataset": {
+          "licence": "CC-BY-4.0",
+          "name": "OPS-SAT-AD",
+          "publishable": true,
+          "url": "https://zenodo.org/records/12588359"
+        },
+        "hf_repo_id": "Daemons-Q/qsh-satellite-opssat-ad",
+        "hf_revision": "3cb83b46f1d6e44d0c0e42f6d52c7f54107a7326",
+        "key": "satellite_comms.opssat",
+        "label": "OPS-SAT segment anomaly detector",
+        "metric": {
+          "baseline": 0.979,
+          "baseline_source": "FCNN, best of the 30 algorithms benchmarked in Kotowski et al., Scientific Data 12 (2025), on this dataset's own test split (AUC PR 0.979, F1 0.946, MCC 0.932). XGBOD reaches 0.975 and RF+ICCS 0.963.",
+          "ceiling": 0.979,
+          "ceiling_source": "FCNN, the best of the 30 published baselines - there is no higher number to cite.",
+          "companion": "f1",
+          "display": "AUC PR",
+          "name": "auc_pr"
+        },
+        "notes": "Segment CLASSIFICATION on real OPS-SAT telemetry, which is a different task from the Telemanom forecaster above: this one is scored against the 30 algorithms published with the dataset, not against persistence, and the two numbers must not be read as a comparison. Chosen because its corpus is CC BY 4.0 and 507 KB - the one case in this project where the data itself can be redistributed alongside the weights.",
+        "onnx_domains": [
+          "ai.onnx.ml"
+        ],
+        "params": null,
+        "runs_encrypted": false,
+        "tier": "t2_industry"
+      },
+      {
+        "achieved": {
+          "agreement": 0.943289,
+          "both_scored_zero": false,
+          "disagreement_on_positives": 0.141593,
+          "hf_revision": "80e4c20a9ce8846c5dfb6dfbba536a2f40a5e47a",
+          "metric_delta": 0.054054,
+          "metric_delta_pp": 5.4054,
+          "metric_name": "minority_class_f1",
+          "n_eval": 529,
+          "student_key": "satellite_comms.opssat_student",
+          "student_metric": 0.864865,
+          "student_params": 20,
+          "teacher_key": "satellite_comms.opssat",
+          "teacher_metric": 0.918919,
+          "teacher_params": 117
+        },
+        "architecture": "logistic regression over the 19 published per-segment features",
+        "artifacts": [
+          {
+            "browser_runnable": true,
+            "fmt": "onnx",
+            "path": "onnx/model.onnx",
+            "precision": "fp32",
+            "serves": "both"
+          },
+          {
+            "browser_runnable": false,
+            "fmt": "json",
+            "path": "weights.json",
+            "precision": "fp32",
+            "serves": "both"
+          }
+        ],
+        "browser_runnable": true,
+        "dataset": {
+          "licence": "CC-BY-4.0",
+          "name": "OPS-SAT-AD",
+          "publishable": true,
+          "url": "https://zenodo.org/records/12588359"
+        },
+        "hf_repo_id": "Daemons-Q/qsh-satellite-opssat-ckks-student",
+        "hf_revision": "80e4c20a9ce8846c5dfb6dfbba536a2f40a5e47a",
+        "key": "satellite_comms.opssat_student",
+        "label": "CKKS-linear OPS-SAT segment student",
+        "metric": {
+          "baseline": 0.979,
+          "baseline_source": "FCNN, best of the 30 algorithms benchmarked in Kotowski et al., Scientific Data 12 (2025), on this dataset's own test split (AUC PR 0.979, F1 0.946, MCC 0.932). XGBOD reaches 0.975 and RF+ICCS 0.963.",
+          "ceiling": 0.979,
+          "ceiling_source": "FCNN, the best of the 30 published baselines - there is no higher number to cite.",
+          "companion": "f1",
+          "display": "AUC PR",
+          "name": "auc_pr"
+        },
+        "notes": "19 features is small enough to evaluate under CKKS as a single packed dot product, so the encrypted tier here runs on the published feature set rather than on a reduction of it.",
+        "onnx_domains": [
+          "ai.onnx.ml"
+        ],
+        "params": null,
+        "runs_encrypted": true,
+        "tier": "t1_crypto"
       }
     ],
     "telecom_ids": [

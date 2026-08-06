@@ -71,7 +71,11 @@ OUT_ROOT = REPO / "web" / "public" / "data"
 #: The full training corpora are deliberately NOT shipped: AMLworld is 475 MB, ESA-ADB is 3.6 GB,
 #: and neither may be redistributed (see DATA_LICENSES.md). A browser does not need the training
 #: corpus to verify a model -- it needs a held-out sample large enough to be worth believing.
-N_SAMPLES = {"medical_fl": None, "finance_aml": 8192, "satellite_comms": 128}
+N_SAMPLES = {"medical_fl": None, "finance_aml": 8192, "satellite_comms": 128,
+             # The whole OPS-SAT test split: 529 rows of 19 floats is ~200 KB, so
+             # the browser can reproduce the published-split number exactly rather
+             # than a subsample of it.
+             "satellite_opssat": None}
 
 
 def _session(model_dir: str, prefer_int8: bool = True):
@@ -118,6 +122,7 @@ _MODEL_KEY = {
     "medical_fl": "medical_fl.resnet18",
     "finance_aml": "finance_aml.gbm",
     "satellite_comms": "satellite_comms.telemanom",
+    "satellite_opssat": "satellite_comms.opssat",
 }
 
 
@@ -313,7 +318,55 @@ def build_satellite(rng: np.random.Generator) -> dict:
     }
 
 
+
+# --------------------------------------------------------------------------------------------- #
+#  satellite_opssat -- OPS-SAT-AD, the whole published test split
+# --------------------------------------------------------------------------------------------- #
+def build_satellite_opssat(rng: np.random.Generator) -> dict:
+    """The benchmark's own test partition, unmodified and unsampled.
+
+    No stratification and no draw: OPS-SAT-AD ships a train/test split and the published scores are
+    reported on it, so taking anything other than the whole partition would produce a number that
+    is not the one the 30 baselines are quoted against.
+    """
+    from qsh.models import datasets
+
+    x, y = datasets.opssat_ad("test")
+    x = np.asarray(x, dtype=np.float32)
+
+    sess, graph = _session("satellite_opssat")
+    out = sess.run(None, {sess.get_inputs()[0].name: x})
+    scores = next((o for o in out if getattr(o, "ndim", 0) == 2 and o.shape[1] > 1), out[0])
+    pred = np.asarray(scores).argmax(1)
+
+    return {
+        "provenance": (
+            "OPS-SAT-AD (Kotowski et al., 'The OPS-SAT benchmark for detecting anomalies in "
+            "satellite telemetry', Scientific Data 12, 2025; Zenodo 10.5281/zenodo.12588359, "
+            "CC BY 4.0). Real telemetry from ESA's OPS-SAT CubeSat, which reentered in May 2024. "
+            "These are the 19 precomputed per-segment features of the benchmark's own TEST "
+            "partition, entire and unsampled, so the figure below is the one the dataset's 30 "
+            "published baselines are quoted against. Not comparable with the Telemanom model on "
+            "this same page: that one forecasts continuous ESA-ADB series, this one classifies "
+            "pre-segmented fragments."
+        ),
+        "input": {"shape": [1, x.shape[1]], "dtype": "float32", "preprocessing": [],
+                  "layout": "samples[i] is one segment's 19 features, in the order below"},
+        "feature_names": list(datasets.OPSSAT_FEATURES),
+        "samples": np.asarray(x, dtype=float).round(6).tolist(),
+        "labels": y.astype(int).tolist(),
+        "expected": {
+            "graph": graph,
+            "accuracy": float((pred == y).mean()),
+            "majority_baseline": float(max(np.bincount(y)) / len(y)),
+            "note": ("The whole published test split, so this reproduces the benchmark's own "
+                     "partition rather than a resample of it."),
+        },
+    }
+
+
 BUILDERS = {"medical_fl": build_medical, "finance_aml": build_finance,
+            "satellite_opssat": build_satellite_opssat,
             "satellite_comms": build_satellite}
 
 

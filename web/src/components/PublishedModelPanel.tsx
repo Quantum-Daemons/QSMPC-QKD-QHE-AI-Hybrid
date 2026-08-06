@@ -10,7 +10,7 @@
 // network or compute activity is the most serious defect class in this project". A number the page
 // can verify against an independently-measured expectation is the opposite of that.
 import { useEffect, useState } from "react";
-import { browserModel, evaluatePublishedModel, type ModelEvalResult } from "../lib/onnxInference";
+import { browserModels, evaluatePublishedModel, type ModelEvalResult } from "../lib/onnxInference";
 
 export default function PublishedModelPanel({ usecase }: { usecase: string }) {
   const [res, setRes] = useState<ModelEvalResult | null>(null);
@@ -21,13 +21,15 @@ export default function PublishedModelPanel({ usecase }: { usecase: string }) {
   // rather than offering a button whose only possible outcome is "there was nothing to verify".
   // Genomics is the standing case: `genomics.prs` is deliberately unpublished pending the per-score
   // licence audit, so its button could never do anything.
-  const target = browserModel(usecase);
+  const candidates = browserModels(usecase);
+  const [chosen, setChosen] = useState<string>("");
+  const target = candidates.find((c) => c.spec.key === chosen) ?? candidates[0] ?? null;
 
-  useEffect(() => { setRes(null); setAttempted(false); }, [usecase]);
+  useEffect(() => { setRes(null); setAttempted(false); setChosen(""); }, [usecase]);
 
   const run = async () => {
     setBusy(true);
-    setRes(await evaluatePublishedModel(usecase));
+    setRes(await evaluatePublishedModel(usecase, undefined, target?.spec.key));
     setAttempted(true);
     setBusy(false);
   };
@@ -53,7 +55,22 @@ export default function PublishedModelPanel({ usecase }: { usecase: string }) {
       </p>
 
       {target ? (
-        <div className="btn-row" style={{ marginTop: 10 }}>
+        <div className="btn-row" style={{ marginTop: 10, alignItems: "center" }}>
+          {/* Only when there is a genuine choice. Satellite has two published models that score
+              DIFFERENT tasks against different baselines - a forecaster and a segment classifier -
+              so the visitor picks which claim to check rather than getting whichever the registry
+              happens to list first. */}
+          {candidates.length > 1 && (
+            <label className="muted" style={{ fontSize: 12, display: "flex", gap: 6, alignItems: "center" }}>
+              Model
+              <select value={target.spec.key} disabled={busy}
+                onChange={(e) => { setChosen(e.target.value); setRes(null); setAttempted(false); }}>
+                {candidates.map((c) => (
+                  <option key={c.spec.key} value={c.spec.key}>{c.spec.label}</option>
+                ))}
+              </select>
+            </label>
+          )}
           <button className="btn" onClick={run} disabled={busy}>
             {busy ? "Running…" : "▶ Run published model"}
           </button>

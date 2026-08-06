@@ -183,6 +183,21 @@ DS_1000G = DatasetSpec(
         "data vary'. Allele dosages are used locally; no per-sample genotype is ever published."
     ),
 )
+DS_OPSSAT_AD = DatasetSpec(
+    name="OPS-SAT-AD",
+    licence="CC-BY-4.0",
+    url="https://zenodo.org/records/12588359",
+    licence_checked="2026-08-05",
+    publishable=True,
+    notes=(
+        "2,123 annotated telemetry segments across 9 channels from ESA's OPS-SAT CubeSat, 20.4% "
+        "anomalous, with 19 precomputed per-segment features and the benchmark's own train/test "
+        "split. Kotowski et al., Scientific Data 12 (2025). CC BY 4.0 and 507 KB, so unlike every "
+        "other corpus here the DATA can be redistributed as well as the weights. A different task "
+        "from ESA-ADB: segment classification, not forecasting, so its score is not comparable "
+        "with the Telemanom model's and neither is the other's baseline."
+    ),
+)
 DS_ESA_ADB = DatasetSpec(
     name="ESA Anomaly Dataset (ESA-ADB), Mission1 lightweight channels 41-46",
     licence="CC-BY-3.0-IGO",
@@ -338,6 +353,19 @@ M_PRS = MetricSpec(
     ceiling_source="Upper end of the published range for germline-SNP breast-cancer PRS discrimination",
     companion="",
     # Any germline-SNP PRS claiming much above ~0.70 discrimination is measuring something else.
+)
+M_OPSSAT = MetricSpec(
+    name="auc_pr",
+    display="AUC PR",
+    baseline=0.979,
+    baseline_source=("FCNN, best of the 30 algorithms benchmarked in Kotowski et al., Scientific "
+                     "Data 12 (2025), on this dataset's own test split (AUC PR 0.979, F1 0.946, "
+                     "MCC 0.932). XGBOD reaches 0.975 and RF+ICCS 0.963."),
+    ceiling=0.979,
+    ceiling_source="FCNN, the best of the 30 published baselines - there is no higher number to cite.",
+    # Area under the precision-recall curve is the headline because the positive class is 20.4% of
+    # the data: accuracy would read ~0.80 for a detector that never fires at all.
+    companion="f1",
 )
 M_ESA = MetricSpec(
     name="event_wise_f0_5",
@@ -591,6 +619,41 @@ _SPECS: tuple[ModelSpec, ...] = (
         hf_repo="qsh-satellite-telemanom-ckks-student",
         runs_encrypted=True,
     ),
+    ModelSpec(
+        usecase="satellite_comms",
+        tier="t2_industry",
+        key="satellite_comms.opssat",
+        label="OPS-SAT segment anomaly detector",
+        architecture="gradient-boosted trees over 19 per-segment telemetry features",
+        params=None,
+        dataset=DS_OPSSAT_AD,
+        metric=M_OPSSAT,
+        artifacts=_ONNX_PAIR,
+        hf_repo="qsh-satellite-opssat-ad",
+        notes=(
+            "Segment CLASSIFICATION on real OPS-SAT telemetry, which is a different task from the "
+            "Telemanom forecaster above: this one is scored against the 30 algorithms published "
+            "with the dataset, not against persistence, and the two numbers must not be read as a "
+            "comparison. Chosen because its corpus is CC BY 4.0 and 507 KB - the one case in this "
+            "project where the data itself can be redistributed alongside the weights."
+        ),
+    ),
+    ModelSpec(
+        usecase="satellite_comms",
+        tier="t1_crypto",
+        key="satellite_comms.opssat_student",
+        label="CKKS-linear OPS-SAT segment student",
+        architecture="logistic regression over the 19 published per-segment features",
+        params=None,
+        dataset=DS_OPSSAT_AD,
+        metric=M_OPSSAT,
+        artifacts=_STUDENT_ARTIFACTS,
+        hf_repo="qsh-satellite-opssat-ckks-student",
+        runs_encrypted=True,
+        notes=("19 features is small enough to evaluate under CKKS as a single packed dot product, "
+               "so the encrypted tier here runs on the published feature set rather than on a "
+               "reduction of it."),
+    ),
     # ---------------- telecom / defence ----------------
     ModelSpec(
         usecase="telecom_ids",
@@ -676,6 +739,8 @@ ARTIFACT_DIRS: dict[str, str] = {
     "medical_fl.resnet50": "models/medical_breastmnist_resnet50",
     "genomics.prs": "models/genomics_prs",
     "satellite_comms.telemanom": "models/satellite_telemanom",
+    "satellite_comms.opssat": "models/satellite_opssat",
+    "satellite_comms.opssat_student": "models/satellite_opssat_student",
     "telecom_ids.qml": "models/telecom_qml_ids",
     "finance_aml.student": "models/finance_aml_student",
     "medical_fl.student": "models/medical_breastmnist_student",   # already on disk from training

@@ -156,6 +156,44 @@
     "teacher_metric": 0.865385,
     "teacher_params": 11171266
   },
+  "satellite_comms.opssat": {
+    "accuracy": 0.9659735349716446,
+    "anomaly_rate_test": 0.213611,
+    "auc_pr": 0.968107105684616,
+    "auc_pr_baseline": 0.21361058601134217,
+    "auroc": 0.9881509530292716,
+    "dataset": "OPS-SAT-AD",
+    "export": {
+      "fp32_bytes": 197789,
+      "int8_agreement": null,
+      "int8_bytes": 0,
+      "opset": 17
+    },
+    "f1": 0.918918918918919,
+    "git_sha": "984bcee-dirty",
+    "hf_revision": "3cb83b46f1d6e44d0c0e42f6d52c7f54107a7326",
+    "n_features": 19,
+    "n_test_segments": 529,
+    "n_train_segments": 1594,
+    "task": "segment classification - NOT comparable with satellite_comms.telemanom, which forecasts continuous ESA-ADB series against a persistence baseline",
+    "wall_clock_s": 1.7
+  },
+  "satellite_comms.opssat_student": {
+    "agreement": 0.943289,
+    "both_scored_zero": false,
+    "disagreement_on_positives": 0.141593,
+    "hf_revision": "80e4c20a9ce8846c5dfb6dfbba536a2f40a5e47a",
+    "metric_delta": 0.054054,
+    "metric_delta_pp": 5.4054,
+    "metric_name": "minority_class_f1",
+    "n_eval": 529,
+    "student_key": "satellite_comms.opssat_student",
+    "student_metric": 0.864865,
+    "student_params": 20,
+    "teacher_key": "satellite_comms.opssat",
+    "teacher_metric": 0.918919,
+    "teacher_params": 117
+  },
   "satellite_comms.student": {
     "agreement": 0.998677,
     "both_scored_zero": false,
