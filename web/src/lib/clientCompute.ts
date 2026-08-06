@@ -10,7 +10,8 @@ import { hkdf } from "@noble/hashes/hkdf";
 import { sha256 } from "@noble/hashes/sha2";
 import {
   benchCfg, costPerOp, dataCfg, demoFeatureDim, genericArchitecture, idsCfg, medicalCnn, qkdCfg, qrngCfg,
-  demoSample, quantumAdvantageCfg, securityScoringCfg, tierArchitectures, webCfg, workloadMultipliers,
+  demoSample, quantumAdvantageCfg, securityScoringCfg, studentModel, tierArchitectures, webCfg,
+  workloadMultipliers,
 } from "./config";
 import { encryptedConv2d, encryptedLinear, warmFHE } from "./clientFHE";
 import { clientTrainScoreIDS } from "./clientIDS";
@@ -281,11 +282,29 @@ function archDims(usecase: string | undefined, modelSize: string, workload: stri
     const params = convParams + poolOut * mc.hidden + mc.hidden + mc.hidden * 2 + 2;
     return { dims, label, params };
   }
+  // The REAL encrypted model, when this use case has one. `tier_architectures` describes MLPs that
+  // nothing ever trained -- 2,722 parameters for medical against a student that genuinely has
+  // 3,226 and a teacher with 11.17 million -- and Round 19 deleted the selector that chose between
+  // them without removing what it selected, leaving the benchmark silently costing a fiction at
+  // "medium". Prefer the t1_crypto student's measured parameter count: it is the model CKKS
+  // actually evaluates, so it is the right thing for an encrypted-cost row to describe.
+  const student = usecase ? studentModel(usecase) : null;
+  const studentParams = Number((student?.achieved as { student_params?: number } | undefined)?.student_params ?? 0);
+  if (studentParams > 0) {
+    const inDim = demoFeatureDim();
+    // Two layers whose parameter count matches the student's, so tierOps tracks a real model's
+    // width instead of an invented one. The student is linear for three of the four use cases and
+    // one small conv block for medical; either way its parameter count is what was measured.
+    const width = Math.max(2, Math.round((studentParams - 2) / Math.max(1, inDim + 1)));
+    const dims = [inDim, width, 2];
+    const params = studentParams;
+    return { dims, label: `${student?.label ?? "encrypted student"} (${params} params, measured)`, params };
+  }
   const a = usecase ? tierArchitectures()[usecase] : undefined;
   const base = a ? (a.hidden[modelSize] ?? [16]) : (genericArchitecture()[modelSize] ?? [16]);
   const hidden = base.map((h) => Math.max(2, Math.round(h * mult)));
   const dims = [demoFeatureDim(), ...hidden, 2];
-  const label = (a ? a.label : "MLP") + ` · ${modelSize}${wtag}`;
+  const label = (a ? a.label : "MLP") + ` · ${modelSize}${wtag} (cost model, not a trained model)`;
   const params = dims.slice(0, -1).reduce((s, inp, i) => s + inp * dims[i + 1] + dims[i + 1], 0);
   return { dims, label, params };
 }

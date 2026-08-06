@@ -76,7 +76,6 @@ export function usePipelineRun(usecase: string, recordRef: RefObject<HTMLElement
   const [fhe, setFhe] = useState("");
   const [mpc, setMpc] = useState("");
   const [sig, setSig] = useState("");
-  const [modelSize, setModelSize] = useState("medium");
   const [workload, setWorkload] = useState("linear");
   // Always on. It runs a real client-side FedAvg over the page's real bundled sample, so it is
   // part of what the demo does rather than something to opt into. The state is kept so the flag can
@@ -120,7 +119,7 @@ export function usePipelineRun(usecase: string, recordRef: RefObject<HTMLElement
     // spread every numeric/editable param into the run config; the backend + demo read the keys they
     // know (ctx.config.get(key, <config default>)), so a Parameters-panel edit overrides the default.
     const { qsmpc_op, inference, prime, ...nums } = params;
-    const c: Record<string, unknown> = { kem, qkd, fhe, mpc, sig, model_size: modelSize, workload, ...nums };
+    const c: Record<string, unknown> = { kem, qkd, fhe, mpc, sig, workload, ...nums };
     if (qsmpc_op) c.qsmpc_op = qsmpc_op;
     if (inference) c.inference = inference;
     if (prime > 0) c.prime = prime;
@@ -216,7 +215,7 @@ export function usePipelineRun(usecase: string, recordRef: RefObject<HTMLElement
 
   return {
     usecase, opts, kem, setKem, qkd, setQkd, fhe, setFhe, mpc, setMpc, sig, setSig,
-    modelSize, setModelSize, workload, setWorkload, qfl, setQfl, optiqkd, setOptiqkd,
+    workload, setWorkload, qfl, setQfl, optiqkd, setOptiqkd,
     params, setParams, resetParams,
     runId, state, events, active, done, metrics, signature, artifacts, benchmark,
     gifBusy, logRef, captureFrame,
