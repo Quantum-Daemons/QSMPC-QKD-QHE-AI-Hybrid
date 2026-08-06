@@ -185,7 +185,15 @@ function withTimeout<T>(p: Promise<T>, ms: number, message: string): Promise<T> 
   ]);
 }
 
-export function browserModel(usecase: string): { spec: ModelSpec; url: string } | null {
+/** Every published, pinned, fetchable model for a use case, in registry order.
+ *
+ *  There can be more than one now: satellite carries both the ESA-ADB Telemanom forecaster and the
+ *  OPS-SAT segment classifier, which are different tasks against different published baselines.
+ *  `browserModel` keeps returning the first so existing callers are unchanged; the verification
+ *  panel offers the whole list so a visitor can check either one rather than whichever happens to
+ *  be declared first. */
+export function browserModels(usecase: string): { spec: ModelSpec; url: string }[] {
+  const out: { spec: ModelSpec; url: string }[] = [];
   for (const spec of modelsFor(usecase)) {
     if (!spec.hf_repo_id || !spec.hf_revision) continue;   // unpublished or unpinned => not fetchable
     // ORT Web implements ai.onnx; it does not implement ai.onnx.ml (TreeEnsembleClassifier,
@@ -205,9 +213,13 @@ export function browserModel(usecase: string): { spec: ModelSpec; url: string } 
     if (!art) continue;
     // Pinned to a 40-char commit sha, never "main": a visitor must not silently get a different
     // model from the one whose metrics this page is printing.
-    return { spec, url: `https://huggingface.co/${spec.hf_repo_id}/resolve/${spec.hf_revision}/${art.path}` };
+    out.push({ spec, url: `https://huggingface.co/${spec.hf_repo_id}/resolve/${spec.hf_revision}/${art.path}` });
   }
-  return null;
+  return out;
+}
+
+export function browserModel(usecase: string): { spec: ModelSpec; url: string } | null {
+  return browserModels(usecase)[0] ?? null;
 }
 
 export async function loadModel(usecase: string): Promise<boolean> {
@@ -400,7 +412,7 @@ function applyPreprocessing(v: number, steps: string[]): number {
  * the guard against shipping that class of mistake to a visitor.
  */
 export async function evaluatePublishedModel(
-  usecase: string, tolerance = 0.05,
+  usecase: string, tolerance = 0.05, modelKey?: string,
 ): Promise<ModelEvalResult | null> {
   const base: ModelEvalResult = {
     ran: false, task: "classification", n: 0, score: null, expected: null, baseline: null,
@@ -412,7 +424,10 @@ export async function evaluatePublishedModel(
   // when they share a revision, and HF's CDN serves the bytes instead of a 12 GB VPS -- which is
   // what makes 8192 AMLworld rows affordable (95% interval ~+/-0.6pp against ~+/-2.6pp at 512)
   // without putting a megabyte into the demo image.
-  const target = browserModel(usecase);
+  // A named model when the caller offers a choice, else the use case's first.
+  const target = modelKey
+    ? browserModels(usecase).find((m) => m.spec.key === modelKey) ?? null
+    : browserModel(usecase);
   if (!target) return null;
   const sampleUrl = target.url.replace(/\/[^/]+\/[^/]+$/, "/eval_sample.json")
     .replace(/\/onnx\/[^/]+$/, "/eval_sample.json");
