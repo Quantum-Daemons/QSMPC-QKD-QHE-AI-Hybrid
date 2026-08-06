@@ -4,7 +4,8 @@
 // (WS) transport branch, the live event stream, metrics, signature, and GIF/PNG frame capture.
 import { useEffect, useRef, useState, type RefObject } from "react";
 import { api, type PipelineEvent, streamRun } from "./api";
-import { benchCfg, dataCfg, idsCfg, qkdCfg, qrngCfg } from "./config";
+import { benchCfg, dataCfg, idsCfg, qkdCfg, qrngCfg, webCfg } from "./config";
+import { FREE_SPACE } from "./quantumSim";
 import { assembleBenchmark, type PipelineControl, runClientPipeline } from "./clientCompute";
 import { isClientDemo } from "./demoMode";
 import { downloadCSV, downloadJSON, downloadNodePNG, FrameRecorder } from "./export";
@@ -50,6 +51,14 @@ export const makeDefaultParams = () => ({
   inference: "",         // "" = use the use case's default
   qrng_post: qrngCfg().post_processing,             // "von_neumann" | "toeplitz" | "seedless"
   qkd_protocol: qkdCfg().protocol,                  // "bb84" (decoy) | "e91" (CHSH) — OptiQKD model
+  // The satellite channel. `satellite_qkd` and `qsdc_telemetry` have read these four keys since the
+  // page was written, and no default or control ever supplied them -- so Eve sat at 0, free-space
+  // QBER never moved off ~0.033, and the inline eavesdrop check the page advertises could not fire
+  // from any user action. Defaults come from the free-space channel model and config, not literals.
+  sat_distance_km: FREE_SPACE.distanceKm,
+  sat_eve: FREE_SPACE.eveFraction,
+  sat_pulses: webCfg().demo_sat_pulses,
+  qsdc_threshold: qkdCfg().pp_threshold,
 });
 
 export const DEFAULT_PARAMS = makeDefaultParams();
@@ -67,7 +76,6 @@ export function usePipelineRun(usecase: string, recordRef: RefObject<HTMLElement
   const [fhe, setFhe] = useState("");
   const [mpc, setMpc] = useState("");
   const [sig, setSig] = useState("");
-  const [modelSize, setModelSize] = useState("medium");
   const [workload, setWorkload] = useState("linear");
   // Always on. It runs a real client-side FedAvg over the page's real bundled sample, so it is
   // part of what the demo does rather than something to opt into. The state is kept so the flag can
@@ -111,7 +119,7 @@ export function usePipelineRun(usecase: string, recordRef: RefObject<HTMLElement
     // spread every numeric/editable param into the run config; the backend + demo read the keys they
     // know (ctx.config.get(key, <config default>)), so a Parameters-panel edit overrides the default.
     const { qsmpc_op, inference, prime, ...nums } = params;
-    const c: Record<string, unknown> = { kem, qkd, fhe, mpc, sig, model_size: modelSize, workload, ...nums };
+    const c: Record<string, unknown> = { kem, qkd, fhe, mpc, sig, workload, ...nums };
     if (qsmpc_op) c.qsmpc_op = qsmpc_op;
     if (inference) c.inference = inference;
     if (prime > 0) c.prime = prime;
@@ -207,7 +215,7 @@ export function usePipelineRun(usecase: string, recordRef: RefObject<HTMLElement
 
   return {
     usecase, opts, kem, setKem, qkd, setQkd, fhe, setFhe, mpc, setMpc, sig, setSig,
-    modelSize, setModelSize, workload, setWorkload, qfl, setQfl, optiqkd, setOptiqkd,
+    workload, setWorkload, qfl, setQfl, optiqkd, setOptiqkd,
     params, setParams, resetParams,
     runId, state, events, active, done, metrics, signature, artifacts, benchmark,
     gifBusy, logRef, captureFrame,

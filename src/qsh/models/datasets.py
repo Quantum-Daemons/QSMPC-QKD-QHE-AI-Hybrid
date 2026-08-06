@@ -241,3 +241,51 @@ CICIDS_FETCH = (
 
 def cicids2017_fixed_dir() -> Path:
     return require(raw("cicids2017-fixed"), CICIDS_FETCH)
+
+
+# --------------------------------------------------------------------------- #
+#  Satellite — OPS-SAT-AD (CC-BY-4.0)
+# --------------------------------------------------------------------------- #
+# The companion to ESA-ADB and the cleaner licence of the two: CC BY 4.0 against ESA-ADB's
+# CC BY 3.0 IGO, and 507 KB against 3.6 GB. It is also a different TASK -- 2,123 pre-segmented
+# telemetry fragments with per-segment statistical features and a binary anomaly label, against
+# ESA-ADB's continuous multichannel series -- so its result is not comparable with the Telemanom
+# forecaster's, and neither number should be presented as the other's baseline.
+#
+# Kotowski et al., "The OPS-SAT benchmark for detecting anomalies in satellite telemetry",
+# Scientific Data 12 (2025), s41597-025-05035-3. Code MIT at kplabs-pl/OPS-SAT-AD.
+OPSSAT_FETCH = (
+    "curl -L -o \"$QSH_DATA_ROOT/raw/opssat/dataset.csv\" "
+    "'https://zenodo.org/records/12588359/files/dataset.csv?download=1'"
+)
+
+#: The 19 per-segment features the published benchmark computes. Order is fixed here because it is
+#: the ONNX input contract: the browser feeds a row in this order and a silent reordering would
+#: produce a confident wrong answer rather than an error.
+OPSSAT_FEATURES = (
+    "sampling", "duration", "len", "mean", "var", "std", "kurtosis", "skew",
+    "n_peaks", "smooth10_n_peaks", "smooth20_n_peaks", "diff_peaks", "diff2_peaks",
+    "diff_var", "diff2_var", "gaps_squared", "len_weighted", "var_div_duration", "var_div_len",
+)
+
+
+def opssat_csv() -> Path:
+    return require(raw("opssat", "dataset.csv"), OPSSAT_FETCH)
+
+
+def opssat_ad(split: str = "train"):
+    """Return ``(X, y)`` for the benchmark's own train/test split.
+
+    The split is the dataset's ``train`` column, not a fresh random one: the published scores are
+    reported on that partition, so re-splitting would make the comparison meaningless while still
+    looking like a comparison.
+    """
+    import numpy as np
+    import pandas as pd
+
+    df = pd.read_csv(opssat_csv())
+    want = 1 if split == "train" else 0
+    part = df[df["train"] == want]
+    x = part[list(OPSSAT_FEATURES)].to_numpy(dtype=np.float64)
+    y = part["anomaly"].to_numpy(dtype=np.int64)
+    return x, y

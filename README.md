@@ -399,6 +399,32 @@ See [`docs/pqc-roadmap.md`](docs/pqc-roadmap.md).
 
 ## Concerns & recommendations
 
+- **Two new trained models, and one of them is a negative result.** `medical_fl.resnet50` exists to
+  test a published claim rather than to win one: MedMNIST v2 reports ResNet-50 at AUC 0.857 against
+  ResNet-18's 0.901 on this 780-image corpus, so the deeper network is expected to lose. It does,
+  and by more than the published gap - 0.7988 against our ResNet-18's 0.9147. A third consequence of
+  the same over-parameterisation appears in the export: its int8 graph agrees with its own fp32 on
+  0.9865 of the confident set against a 0.99 gate, so the int8 artefact was built, measured and
+  **withheld** rather than shipped with the gate relaxed. It replaces a DenseNet-121 card that named
+  a dataset with no loader and linked a Hugging Face repo that did not exist.
+- **`satellite_comms.opssat` is the first corpus here whose DATA can be republished.** OPS-SAT-AD is
+  CC BY 4.0 and 507 KB, so the whole published test partition ships in the model's own HF repo and
+  the browser reproduces the exact figure the dataset's 30 published baselines are quoted against
+  (AUC PR 0.9681 measured, against FCNN 0.979, XGBOD 0.975, RF+ICCS 0.963). It is a **different
+  task** from the Telemanom forecaster on the same page - segment classification, not forecasting -
+  and neither number is the other's baseline.
+- **The CNN workload performs a real encrypted convolution.** It used to run the same 8-feature dot
+  product as Linear and multiply the latency by about 401. It now packs 144 im2col patches into one
+  CKKS ciphertext and reduces them with 16 rotations for a 4x12x12 output, and the run reports the
+  rotations and multiply-plain operations it actually executed - the quantity the 2026 literature
+  identifies as the cost driver - instead of a multiplier standing in for it.
+- **`finance_aml.gnn` is a decision, not a backlog item.** The AMLworld authors report that XGBoost
+  with the Graph Feature Preprocessor outperforms their GNNs, so the model already shipped is the
+  stronger one. More decisively, arXiv:2411.02926v2 ran this exact comparison under FHE and the
+  **GNN pipeline never compiled** - it failed on ONNX operator support in Concrete ML - while the
+  XGBoost pipeline completed at 88,000-165,000x overhead. Training it would mean building the weaker
+  model to run a path the literature records as not working.
+
 - **The model that runs under encryption is now published too.** Each use case has a teacher and a
   distilled student, and the student is what CKKS actually evaluates: 33 parameters for finance
   against a 138,312-parameter teacher, 3,226 against 11,171,266 for medical, 49 against 80,486 for satellite.
@@ -640,7 +666,7 @@ See [`docs/pqc-roadmap.md`](docs/pqc-roadmap.md).
   baselines and measured metrics. It flows through `frontend_config()` into the SPA, so no model id,
   URL or number is hard-coded in TypeScript. The browser fetches the ONNX graph from the CDN **at a
   pinned 40-character commit sha**, never `main`, so a visitor cannot silently get a different model
-  from the one whose metrics the page is printing. **7 of 11 registry specs carry a
+  from the one whose metrics the page is printing. **10 of 13 registry specs carry a
   pinned `hf_revision`**; `onnxInference.ts` deliberately skips the rest rather than fall back to
   `main`, so those models are not fetched at all - the pinning guarantee holds, but it is a smaller
   set than this paragraph used to imply. Publish with `python scripts/publish_hf.py`; it defaults to

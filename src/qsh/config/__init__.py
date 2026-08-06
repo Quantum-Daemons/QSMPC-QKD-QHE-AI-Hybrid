@@ -89,6 +89,12 @@ def frontend_config() -> dict:
     c = get_config()
     b = c.benchmark
     return {
+        # The QSMPC field parameters. Absent until Round 20, so the browser had no idea what the
+        # backend's party count or threshold were and its own secure-sum used an unrelated modulus
+        # while the diagram above it said "d-qudit GHZ". `prime: null` means "derive from n as the
+        # construction requires" (d prime, n <= d <= 2n), which is the honest default.
+        "qsmpc": {"prime": c.qsmpc.prime, "n_parties": c.qsmpc.n_parties,
+                  "threshold": c.qsmpc.threshold},
         "benchmark": {
             "tier_architectures": b.tier_architectures,
             "generic_architecture": b.generic_architecture,

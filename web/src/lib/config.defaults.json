@@ -29,7 +29,7 @@
       ],
       "hidden": 16,
       "img_size": 14,
-      "medmnist_name": "pneumoniamnist",
+      "medmnist_name": "breastmnist",
       "pool": "avg",
       "subset": 512
     },
@@ -227,7 +227,7 @@
             "opset": 0
           },
           "git_sha": "e572d98-dirty",
-          "hf_revision": "50c16e5fcde1da59455eea133e2096c2f72d772d",
+          "hf_revision": "ba0f351ea5dfff476f6da85f6b67fe260083c30b",
           "minority_class_f1": 0.08077786088257292,
           "n_test": 1523504,
           "n_train": 3554841,
@@ -267,7 +267,7 @@
           "url": "https://www.kaggle.com/datasets/ealtman2019/ibm-transactions-for-anti-money-laundering-aml"
         },
         "hf_repo_id": "Daemons-Q/qsh-finance-aml-gbm",
-        "hf_revision": "50c16e5fcde1da59455eea133e2096c2f72d772d",
+        "hf_revision": "ba0f351ea5dfff476f6da85f6b67fe260083c30b",
         "key": "finance_aml.gbm",
         "label": "Graph-feature-preprocessed gradient boosting",
         "metric": {
@@ -452,65 +452,6 @@
     ],
     "medical_fl": [
       {
-        "achieved": null,
-        "architecture": "DenseNet-121, FedAvg with pairwise-mask secure aggregation (qsh.ai.federated)",
-        "artifacts": [
-          {
-            "browser_runnable": false,
-            "fmt": "onnx",
-            "path": "onnx/model.onnx",
-            "precision": "fp32",
-            "serves": "both"
-          },
-          {
-            "browser_runnable": false,
-            "fmt": "onnx",
-            "path": "onnx/model_int8.onnx",
-            "precision": "int8",
-            "serves": "browser"
-          },
-          {
-            "browser_runnable": false,
-            "fmt": "safetensors",
-            "path": "model.safetensors",
-            "precision": "fp32",
-            "serves": "server"
-          },
-          {
-            "browser_runnable": false,
-            "fmt": "json",
-            "path": "feature_spec.json",
-            "precision": "none",
-            "serves": "both"
-          }
-        ],
-        "browser_runnable": false,
-        "dataset": {
-          "licence": "CC0-1.0",
-          "name": "Camelyon17-WILDS",
-          "publishable": true,
-          "url": "https://wilds.stanford.edu/datasets/"
-        },
-        "hf_repo_id": "Daemons-Q/qsh-medical-fl-densenet121",
-        "hf_revision": null,
-        "key": "medical_fl.densenet",
-        "label": "DenseNet-121, federated across 3 hospitals",
-        "metric": {
-          "baseline": 0.703,
-          "baseline_source": "ERM baseline, official WILDS leaderboard (70.3 +/- 6.4)",
-          "ceiling": 0.946,
-          "ceiling_source": "ContriMix DenseNet-121, official WILDS leaderboard (94.6 +/- 1.2)",
-          "companion": "id_accuracy",
-          "display": "OOD test accuracy (held-out hospitals)",
-          "name": "ood_accuracy"
-        },
-        "notes": "FedAvg alone is not a privacy guarantee \u2014 gradient inversion is possible. The secure aggregation in qsh.ai.federated hides individual updates from the aggregator; it does not bound what the trained model itself leaks.",
-        "onnx_domains": [],
-        "params": null,
-        "runs_encrypted": false,
-        "tier": "t2_industry"
-      },
-      {
         "achieved": {
           "accuracy": 0.8653846153846154,
           "auc": 0.9146825396825395,
@@ -582,6 +523,78 @@
           "name": "auc"
         },
         "notes": "The small tier: fits the browser comfortably and has a clean published baseline.",
+        "onnx_domains": [
+          "ai.onnx"
+        ],
+        "params": null,
+        "runs_encrypted": false,
+        "tier": "t2_industry"
+      },
+      {
+        "achieved": {
+          "accuracy": 0.782051282051282,
+          "auc": 0.7987677527151211,
+          "best_val_auc": 0.935673,
+          "dataset": "MedMNIST v2 BreastMNIST",
+          "export": {
+            "fp32_bytes": 94171000,
+            "int8_agreement": 0.9615384615384616,
+            "int8_bytes": 0,
+            "opset": 18
+          },
+          "git_sha": "d582944-dirty",
+          "hf_revision": "78cc561c1491c079ed8721f033617639ea0ee898",
+          "macro_f1": 0.6492063492063492,
+          "n_parameters": 23505858,
+          "resolution": 28,
+          "transfer_learning": "none \u2014 trained from random initialisation, so the weights are not ImageNet-derived and carry no ImageNet terms (see DATA_LICENSES.md)",
+          "wall_clock_s": 11.2
+        },
+        "architecture": "ResNet-50 @28px, 1-channel stem, trained from random initialisation",
+        "artifacts": [
+          {
+            "browser_runnable": true,
+            "fmt": "onnx",
+            "path": "onnx/model.onnx",
+            "precision": "fp32",
+            "serves": "both"
+          },
+          {
+            "browser_runnable": false,
+            "fmt": "safetensors",
+            "path": "model.safetensors",
+            "precision": "fp32",
+            "serves": "server"
+          },
+          {
+            "browser_runnable": false,
+            "fmt": "json",
+            "path": "feature_spec.json",
+            "precision": "none",
+            "serves": "both"
+          }
+        ],
+        "browser_runnable": true,
+        "dataset": {
+          "licence": "CC-BY-4.0",
+          "name": "MedMNIST v2 BreastMNIST",
+          "publishable": true,
+          "url": "https://medmnist.com/"
+        },
+        "hf_repo_id": "Daemons-Q/qsh-medical-breastmnist-resnet50",
+        "hf_revision": "78cc561c1491c079ed8721f033617639ea0ee898",
+        "key": "medical_fl.resnet50",
+        "label": "ResNet-50 on BreastMNIST (published comparison)",
+        "metric": {
+          "baseline": 0.857,
+          "baseline_source": "ResNet-50 @28px, MedMNIST v2, Yang et al., Scientific Data 10:41 (2023) (AUC 0.857 / ACC 0.812). Note this is BELOW the ResNet-18 baseline of 0.901 on the same corpus and the same 100-epoch Adam regime: on 780 images the deeper network loses. That is the published finding, and it is why this model exists here - to reproduce it rather than to win.",
+          "ceiling": 0.919,
+          "ceiling_source": "Google AutoML Vision, MedMNIST v2 (AUC 0.919)",
+          "companion": "accuracy",
+          "display": "AUC",
+          "name": "auc"
+        },
+        "notes": "Trained to test a published claim rather than to win one. MedMNIST v2 reports ResNet-50 at AUC 0.857 against ResNet-18's 0.901 on this corpus, so the expected outcome is that the larger model scores LOWER, and it is reported either way. It replaces a DenseNet-121 entry that named a dataset with no loader, no fetch command and no artefact directory, and linked a Hugging Face repo that did not exist. Architectures benchmarked only ImageNet-pretrained (AlexNet, VGG16, DenseNet-121, EfficientNet-B4 in MedMNIST+) are deliberately absent: this project dropped ImageNet weights over redistribution terms, so their published numbers are not comparable to a from-scratch run.",
         "onnx_domains": [
           "ai.onnx"
         ],
@@ -795,6 +808,143 @@
         "params": null,
         "runs_encrypted": true,
         "tier": "t1_crypto"
+      },
+      {
+        "achieved": {
+          "accuracy": 0.9659735349716446,
+          "anomaly_rate_test": 0.213611,
+          "auc_pr": 0.968107105684616,
+          "auc_pr_baseline": 0.21361058601134217,
+          "auroc": 0.9881509530292716,
+          "dataset": "OPS-SAT-AD",
+          "export": {
+            "fp32_bytes": 197789,
+            "int8_agreement": null,
+            "int8_bytes": 0,
+            "opset": 17
+          },
+          "f1": 0.918918918918919,
+          "git_sha": "984bcee-dirty",
+          "hf_revision": "59ff202ec6e7e1fa54e9321f41dc3b5e3789ce20",
+          "n_features": 19,
+          "n_test_segments": 529,
+          "n_train_segments": 1594,
+          "task": "segment classification - NOT comparable with satellite_comms.telemanom, which forecasts continuous ESA-ADB series against a persistence baseline",
+          "wall_clock_s": 1.7
+        },
+        "architecture": "gradient-boosted trees over 19 per-segment telemetry features",
+        "artifacts": [
+          {
+            "browser_runnable": true,
+            "fmt": "onnx",
+            "path": "onnx/model.onnx",
+            "precision": "fp32",
+            "serves": "both"
+          },
+          {
+            "browser_runnable": false,
+            "fmt": "safetensors",
+            "path": "model.safetensors",
+            "precision": "fp32",
+            "serves": "server"
+          },
+          {
+            "browser_runnable": false,
+            "fmt": "json",
+            "path": "feature_spec.json",
+            "precision": "none",
+            "serves": "both"
+          }
+        ],
+        "browser_runnable": true,
+        "dataset": {
+          "licence": "CC-BY-4.0",
+          "name": "OPS-SAT-AD",
+          "publishable": true,
+          "url": "https://zenodo.org/records/12588359"
+        },
+        "hf_repo_id": "Daemons-Q/qsh-satellite-opssat-ad",
+        "hf_revision": "59ff202ec6e7e1fa54e9321f41dc3b5e3789ce20",
+        "key": "satellite_comms.opssat",
+        "label": "OPS-SAT segment anomaly detector",
+        "metric": {
+          "baseline": 0.979,
+          "baseline_source": "FCNN, best of the 30 algorithms benchmarked in Kotowski et al., Scientific Data 12 (2025), on this dataset's own test split (AUC PR 0.979, F1 0.946, MCC 0.932). XGBOD reaches 0.975 and RF+ICCS 0.963.",
+          "ceiling": 0.979,
+          "ceiling_source": "FCNN, the best of the 30 published baselines - there is no higher number to cite.",
+          "companion": "f1",
+          "display": "AUC PR",
+          "name": "auc_pr"
+        },
+        "notes": "Segment CLASSIFICATION on real OPS-SAT telemetry, which is a different task from the Telemanom forecaster above: this one is scored against the 30 algorithms published with the dataset, not against persistence, and the two numbers must not be read as a comparison. Chosen because its corpus is CC BY 4.0 and 507 KB - the one case in this project where the data itself can be redistributed alongside the weights.",
+        "onnx_domains": [
+          "ai.onnx.ml"
+        ],
+        "params": null,
+        "runs_encrypted": false,
+        "tier": "t2_industry"
+      },
+      {
+        "achieved": {
+          "agreement": 0.943289,
+          "both_scored_zero": false,
+          "disagreement_on_positives": 0.141593,
+          "hf_revision": "80e4c20a9ce8846c5dfb6dfbba536a2f40a5e47a",
+          "metric_delta": 0.054054,
+          "metric_delta_pp": 5.4054,
+          "metric_name": "minority_class_f1",
+          "n_eval": 529,
+          "student_key": "satellite_comms.opssat_student",
+          "student_metric": 0.864865,
+          "student_params": 20,
+          "teacher_key": "satellite_comms.opssat",
+          "teacher_metric": 0.918919,
+          "teacher_params": 117
+        },
+        "architecture": "logistic regression over the 19 published per-segment features",
+        "artifacts": [
+          {
+            "browser_runnable": true,
+            "fmt": "onnx",
+            "path": "onnx/model.onnx",
+            "precision": "fp32",
+            "serves": "both"
+          },
+          {
+            "browser_runnable": false,
+            "fmt": "json",
+            "path": "weights.json",
+            "precision": "fp32",
+            "serves": "both"
+          }
+        ],
+        "browser_runnable": true,
+        "dataset": {
+          "licence": "CC-BY-4.0",
+          "name": "OPS-SAT-AD",
+          "publishable": true,
+          "url": "https://zenodo.org/records/12588359"
+        },
+        "hf_repo_id": "Daemons-Q/qsh-satellite-opssat-ckks-student",
+        "hf_revision": "80e4c20a9ce8846c5dfb6dfbba536a2f40a5e47a",
+        "key": "satellite_comms.opssat_student",
+        "label": "CKKS-linear OPS-SAT segment student",
+        "metric": {
+          "baseline": 0.979,
+          "baseline_source": "FCNN, best of the 30 algorithms benchmarked in Kotowski et al., Scientific Data 12 (2025), on this dataset's own test split (AUC PR 0.979, F1 0.946, MCC 0.932). XGBOD reaches 0.975 and RF+ICCS 0.963.",
+          "ceiling": 0.979,
+          "ceiling_source": "FCNN, the best of the 30 published baselines - there is no higher number to cite.",
+          "companion": "f1",
+          "display": "AUC PR",
+          "name": "auc_pr"
+        },
+        "notes": "19 features is small enough to evaluate under CKKS as a single packed dot product, so the encrypted tier here runs on the published feature set rather than on a reduction of it.",
+        "onnx_domains": [
+          "ai.onnx.ml"
+        ],
+        "params": null,
+        "runs_encrypted": true,
+        "tier": "t1_crypto"
       }
     ],
     "telecom_ids": [
@@ -833,10 +983,10 @@
         ],
         "browser_runnable": false,
         "dataset": {
-          "licence": "no licence stated by either provider",
+          "licence": "provider's own pages state conflicting terms",
           "name": "CIC-IDS2017, Engelen-corrected redistribution (WTMC 2021)",
           "publishable": false,
-          "url": "https://intrusion-detection.distrinet-research.be/WTMC2021/"
+          "url": "https://www.unb.ca/cic/datasets/ids-2017.html"
         },
         "hf_repo_id": null,
         "hf_revision": null,
@@ -880,7 +1030,7 @@
           },
           "framing": "Architecture comparison, not a performance claim. The data is synthetic because no commercial-OK real attack corpus exists. Every published QML-IDS figure we could verify sits below a random forest on the same data, and arXiv:2512.05069 was withdrawn by its own authors for insufficient evaluation. Per-class F1 is the headline; aggregate accuracy is shown beside it because Engelen et al. (WTMC 2021) demonstrated it stays at 0.99 across a label correction that moved Bot F1 from 0.60 to 0.99.",
           "git_sha": "733e325",
-          "hf_revision": "2070c0246d017e38c78919bc9071e4f7cab6468b",
+          "hf_revision": "f0d7543132105491c21c5cabc086151eeeab47cc",
           "n_classes": 8,
           "n_samples": 2400,
           "quantum_beats_classical": false,
@@ -896,9 +1046,16 @@
         "architecture": "PCA -> angle embedding -> StronglyEntanglingLayers; fidelity quantum kernel",
         "artifacts": [
           {
+            "browser_runnable": true,
+            "fmt": "onnx",
+            "path": "onnx/model.onnx",
+            "precision": "fp32",
+            "serves": "both"
+          },
+          {
             "browser_runnable": false,
             "fmt": "json",
-            "path": "weights.json",
+            "path": "feature_spec.json",
             "precision": "none",
             "serves": "both"
           }
@@ -911,7 +1068,7 @@
           "url": "https://arxiv.org/abs/2509.14282"
         },
         "hf_repo_id": "Daemons-Q/qsh-telecom-qml-ids",
-        "hf_revision": "2070c0246d017e38c78919bc9071e4f7cab6468b",
+        "hf_revision": "f0d7543132105491c21c5cabc086151eeeab47cc",
         "key": "telecom_ids.qml",
         "label": "Quantum-kernel SVC + variational QNN",
         "metric": {
@@ -973,6 +1130,11 @@
     "post_processing": "von_neumann",
     "security_epsilon_log2": -40,
     "source": "sim"
+  },
+  "qsmpc": {
+    "n_parties": 7,
+    "prime": null,
+    "threshold": 3
   },
   "quantum_advantage": {
     "info_theoretic_multiplier": 1.5,

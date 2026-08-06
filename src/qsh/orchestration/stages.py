@@ -210,12 +210,29 @@ class QSMPCComputeStage(Stage):
 
             from ..config import get_config
 
+            from ..qsmpc.secure_summation import QSMS
+
             secrets = ctx.data.get("secrets", [])
+            # `prime` may legitimately be absent now: the config no longer pins one, because the
+            # admissible field depends on the party count (d prime, n <= d <= 2n). QSMS derives it.
             prime = ctx.config.get("prime") or get_config().qsmpc.prime
-            total = quantum_secure_sum(secrets, prime=prime)
+            n = max(len(secrets), 3)
+            res = QSMS(n=n, t=min(3, n), prime=prime).run(secrets, seed=ctx.config.get("seed"))
+            total = res.total
             ctx.artifacts["secure_sum"] = total
+            # The modulus the sum ACTUALLY used, so a caller can reduce a ground truth into the same
+            # field instead of guessing from config -- which broke the moment the config stopped
+            # pinning one. Whether the honest GHZ statevector ran is recorded for the same reason:
+            # it is a property of this run, not of the code.
+            ctx.artifacts["qsms_prime"] = res.modulus
+            ctx.artifacts["qsms_honest_statevector"] = res.honest_statevector
             bus.metric("secure_sum", total, self.name)
-            bus.log(f"QSMS secure summation = {total} ({len(secrets)} parties)", self.name)
+            bus.metric("qsms_prime", res.modulus, self.name)
+            bus.metric("qsms_honest_statevector", int(res.honest_statevector), self.name)
+            bus.log(f"QSMS secure summation = {total} over GF({res.modulus}) with {len(secrets)} "
+                    f"parties, t={min(3, n)}"
+                    + (" (exact d-qudit GHZ statevector)" if res.honest_statevector
+                       else " (analytic sampler: d**t exceeds the statevector bound)"), self.name)
 
 
 def _hybrid_bench_row(ctx, reg, x, base_model):
