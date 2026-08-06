@@ -144,7 +144,7 @@
     "agreement": 0.75,
     "both_scored_zero": false,
     "disagreement_on_positives": 0.078947,
-    "hf_revision": "877b82e3fa348c8e04fa266d426159e0b3728c22",
+    "hf_revision": "a05c72eb09c2efc5e6f2bfc5fd2833bfcc7ed33c",
     "metric_delta": 0.134616,
     "metric_delta_pp": 13.4616,
     "metric_name": "accuracy",
