@@ -32,7 +32,6 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "src"))
 from qsh.models import datasets, distil, export, metrics, train  # noqa: E402
 from qsh.models.registry import get as get_spec  # noqa: E402
 
-
 #: Architectures this script can train, and the registry key each one records into.
 #: Both are MedMNIST v2 baselines at 28px, which is the whole point of offering the second one:
 #: the published table gives ResNet-18 AUC 0.901 and ResNet-50 AUC 0.857 under the same 100-epoch
@@ -51,8 +50,7 @@ def build_resnet(arch: str, n_classes: int = 2, *, pretrained: bool = True):
     """
     import torch
     import torch.nn as nn
-    from torchvision.models import (ResNet18_Weights, ResNet50_Weights,
-                                    resnet18, resnet50)
+    from torchvision.models import ResNet18_Weights, ResNet50_Weights, resnet18, resnet50
 
     ctor, wts = {"resnet18": (resnet18, ResNet18_Weights),
                  "resnet50": (resnet50, ResNet50_Weights)}[arch]
