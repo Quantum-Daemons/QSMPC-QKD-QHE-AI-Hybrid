@@ -88,7 +88,7 @@ def main() -> int:
 
     student_export = distil.save_student(
         student, Path("models/satellite_opssat_student"),
-        n_features=xtr.shape[1], teacher_key=TEACHER, student_key=STUDENT)
+        n_features=xtr.shape[1], teacher_key=TEACHER, student_key=STUDENT, scaler=scaler)
     print(f"  student persisted: {student_export['n_parameters']} params, "
           f"browser_runnable={student_export['browser_runnable']}")
 
