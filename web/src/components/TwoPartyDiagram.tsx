@@ -112,11 +112,13 @@ const f = (m: M, k: string, d = "—") => {
 const HYBRID_INFERENCE: Step[] = [
   { stageId: "private_inference", kind: "fhe-arrow",
     label: (m, c) => {
-      const rot = m["fhe_conv_rotations"] ?? m["fhe_dense_rotations"];
+      // Total across every CKKS layer once the full student runs encrypted, not just
+      // the conv block: 152 for this student against 3 for a lone dot product.
+      const rot = m["fhe_total_rotations"] ?? m["fhe_conv_rotations"] ?? m["fhe_dense_rotations"];
       const shape = m["fhe_conv_output_shape"];
-      const kindTxt = String(c.workload ?? "") === "cnn" && shape
-        ? `encrypted convolution ${shape}`
-        : String(c.workload ?? "") === "cnn" ? "encrypted convolution" : "CKKS dot product";
+      // The medical page evaluates the published student end to end under CKKS; every other use
+      // case runs its linear student as a packed dot product. Name whichever actually happened.
+      const kindTxt = shape ? `encrypted CNN ${shape}` : "CKKS dot product";
       return `FHE-linear · ${kindTxt} · ${f(m, "fhe_linear_ms")} ms`
         + (rot == null ? "" : ` · ${rot} rotations`);
     } },
