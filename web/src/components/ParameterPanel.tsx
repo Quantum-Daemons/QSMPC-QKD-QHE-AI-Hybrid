@@ -15,13 +15,21 @@ export default function ParameterPanel({ run }: { run: Run }) {
   const setNum = (k: string, v: string) => setParams({ ...params, [k]: parseFloat(v) || 0 });
 
   const numField = ([label, key, step, min, title, max]: Field) => {
-    // the LHL eps only affects the Toeplitz/seedless extractor — grey + disable it on the von_neumann
-    // default so editing it isn't a silent no-op (it activates when QRNG extractor is switched below).
-    const dim = key === "qrng_eps_log2" && p.qrng_post === "von_neumann";
+    // A field whose value the current selection makes unreadable is greyed out with the reason,
+    // rather than left editable and silently ignored. Both cases below are real: the LHL eps is
+    // only consumed by the Toeplitz/seedless extractors, and aml_transactions is only read on the
+    // PSI branch of the QSMPC stage.
+    const inertBecause =
+      key === "qrng_eps_log2" && p.qrng_post === "von_neumann"
+        ? "No effect on the von Neumann extractor - switch QRNG extractor to Toeplitz or seedless to use the LHL eps."
+      : key === "aml_transactions" && p.qsmpc_op === "sum"
+        ? "No effect while QSMPC op is Secure sum - only the PSI branch sizes its sets from this."
+      : null;
+    const dim = inertBecause !== null;
     return (
       <div key={key} style={{ minWidth: 120, flex: "1 1 120px" }}>
         <label className="muted" htmlFor={`pp-${key}`} style={{ fontSize: 12, opacity: dim ? 0.45 : 1 }}
-          title={dim ? "No effect on the von Neumann extractor — switch QRNG extractor to Toeplitz/seedless to use the LHL eps." : title}>{label}</label>
+          title={inertBecause ?? title}>{label}</label>
         <input id={`pp-${key}`} name={key} type="number" step={step} min={min} max={max} disabled={dim}
           value={p[key] as number} style={{ width: "100%", opacity: dim ? 0.45 : 1 }} onChange={(e) => setNum(key, e.target.value)} />
       </div>
@@ -47,6 +55,18 @@ export default function ParameterPanel({ run }: { run: Run }) {
       // Both feed intrinsicQber, which saturates at 0.5, so anything past these renders identically.
       ["Eve fraction", "qkd_eve", 0.05, 0, "intercept-resend fraction (0-1) - raises QBER", 1],
       ["Misalignment", "qkd_misalignment", 0.005, 0, "baseline optical error", 0.5]] });
+  // The satellite channel, which `satellite_qkd` and `qsdc_telemetry` have always read and nothing
+  // ever rendered. Without these the QSDC abort threshold could not be reached from the UI: Eve was
+  // pinned at 0, so free-space QBER stayed near 0.033 against a 0.11 abort threshold.
+  if (!runsFibreQkd) groups.push(
+    { title: "Free-space channel", fields: [
+      ["Downlink (km)", "sat_distance_km", 50, 1, "ground-to-LEO slant range - raises loss + QBER"],
+      ["Eve fraction", "sat_eve", 0.05, 0,
+       "intercept-resend fraction (0-1). Raise it until QBER crosses the QSDC threshold and the "
+       + "transmission aborts - that abort is the inline eavesdrop check this page describes", 1],
+      ["Pulses", "sat_pulses", 500000, 1, "channel uses for the free-space downlink"],
+      ["QSDC abort at QBER", "qsdc_threshold", 0.01, 0,
+       "QSDC refuses to send when the measured QBER exceeds this", 0.5]] });
   groups.push(
     { title: "OptiQKD (AI-QKD)", fields: [
       ["Opt samples", "qkd_opt_samples", 8, 4,
@@ -56,7 +76,13 @@ export default function ParameterPanel({ run }: { run: Run }) {
       // as the QCNN qubit count used to: ~4e9 operations at 32768 bits.
       ["QRNG bits", "qrng_bits", 512, 64,
        "quantum-random bits generated + health-checked per run - capped at 16384 because the "
-       + "Toeplitz extractor is quadratic and runs on the main thread", 16384]] },
+       + "Toeplitz extractor is quadratic and runs on the main thread", 16384],
+      // Restored, because the dim/disable guard below has been testing for this field since the
+      // round that deleted it. It is the LHL security parameter the extractor genuinely consumes:
+      // the output length is min-entropy + 2*eps_log2 + 2, so it moves the extracted bit count.
+      ["LHL eps (log2)", "qrng_eps_log2", 1, -128,
+       "extractor security 2^eps. Shortens the extracted output as it tightens; only the "
+       + "Toeplitz and seedless extractors consume it", -1]] },
     { title: "Quantum / run", fields: [
       ["QCNN qubits", "qubits", 1, 2,
        "state-vector QCNN qubit count - capped at 14: the simulator is exact, so cost is 2^n", 14],
@@ -67,8 +93,13 @@ export default function ParameterPanel({ run }: { run: Run }) {
     fields: [["Samples / class", "n_per_class", 50, 20,
               "QML-IDS training samples per attack class - capped at 2000; training is synchronous",
               2000]] });
+  // Nothing is trained here, and the earlier tooltip said this figure trained the fraud model. Its
+  // only reader sizes the PSI sets (clientCompute's `perParty`), and that reader lives in the `psi`
+  // branch -- so under QSMPC op = "Secure sum" the field is inert. Say both things.
   if (usecase === "finance_aml") groups.push({ title: "Data",
-    fields: [["AML transactions", "aml_transactions", 500, 200, "PaySim transactions used to train the fraud model"]] });
+    fields: [["AML transactions", "aml_transactions", 500, 200,
+              "sizes the per-party PSI sets (about n/20 each, 20-2000). It does not train anything: "
+              + "the fraud model is the published GBM. Only read when QSMPC op is PSI"]] });
 
   const fieldset = (title: string, children: React.ReactNode) => (
     <fieldset key={title} style={{ flex: "1 1 210px", minWidth: 190, border: "1px solid var(--border, #33384a)",

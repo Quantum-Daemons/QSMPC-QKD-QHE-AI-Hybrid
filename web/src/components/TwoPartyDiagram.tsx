@@ -11,10 +11,24 @@
 
 type Kind = "local-a" | "local-b" | "q-arrow" | "c-arrow" | "c-bidir" | "fhe-arrow" | "mpc-bidir" | "compare";
 type M = Record<string, any>;
-/** The crypto-agility selections for the run being drawn. */
-export interface DiagramConfig { kem?: string; qkd?: string; sig?: string }
+/** The crypto-agility selections for the run being drawn.
+ *
+ *  `qkd` and `qkdProtocol` are different things, and conflating them is what kept the E91 selection
+ *  invisible. `qkd` is the crypto-agility FAMILY and only ever holds `bb84-decoy` or `pqc-only` - it
+ *  answers "is there a quantum channel at all". `qkdProtocol` is the Parameters-panel choice
+ *  (`bb84` | `e91`) and is what `clientCompute` actually branches on. The diagram was handed only the
+ *  family, so `qkdName()`'s `e91` branch below was unreachable: the run emitted `chsh_s`, which only
+ *  E91 produces, while the arrow above it still read "BB84 decoy-state". */
+export interface DiagramConfig {
+  kem?: string; qkd?: string; sig?: string;
+  qkdProtocol?: string;
+  /** `psi` | `sum`, or absent for the use case's default. The QSMPC step reads this. */
+  qsmpcOp?: string;
+}
 interface Step {
-  stageId: string; kind: Kind;
+  stageId: string;
+  /** Fixed, or derived from the config when the operation itself changes the channel's nature. */
+  kind: Kind | ((c: DiagramConfig) => Kind);
   label: (m: M, c: DiagramConfig) => string;
   /** Drawn only when this returns false. Used to drop the quantum arrow under a PQC-only profile. */
   hidden?: (c: DiagramConfig) => boolean;
@@ -31,13 +45,32 @@ const KEM_LABEL: Record<string, string> = {
 const kemName = (c: DiagramConfig) =>
   KEM_LABEL[String(c.kem ?? "")] ?? (c.kem ? String(c.kem).toUpperCase() : "hybrid KEM");
 const sigName = (c: DiagramConfig) => (c.sig ? String(c.sig).toUpperCase() : "ML-DSA");
+// The protocol wins over the family. `clientCompute` branches on `qkd_protocol`, so that is what the
+// visitor actually ran; the family only decides whether a quantum channel exists at all.
 const qkdName = (c: DiagramConfig) => {
+  const p = String(c.qkdProtocol ?? "");
+  if (p === "e91") return "E91 (entanglement / CHSH)";
+  if (p === "bb84") return "BB84 decoy-state";
   const q = String(c.qkd ?? "");
-  if (q.startsWith("e91")) return "E91 (entanglement)";
   if (q.startsWith("bb84")) return q.includes("decoy") ? "BB84 decoy-state" : "BB84";
   return q || "QKD";
 };
 const pqcOnly = (c: DiagramConfig) => String(c.qkd ?? "") === "pqc-only";
+
+// The QSMPC step. `clientCompute:896` resolves `config.qsmpc_op || (genomics ? "sum" : "psi")`, so
+// the diagram has to resolve it the same way or it describes a computation that did not happen.
+// The KIND changes too: a secure sum runs over a d-qudit GHZ state, while PSI is a WebCrypto
+// keyed hash. Drawing HMAC as a quantum arrow overstates what the browser did.
+const qsmpcOpOf = (c: DiagramConfig, usecaseDefault: "psi" | "sum") =>
+  (String(c.qsmpcOp ?? "") === "psi" || String(c.qsmpcOp ?? "") === "sum")
+    ? (String(c.qsmpcOp) as "psi" | "sum")
+    : usecaseDefault;
+const qsmpcKind = (dflt: "psi" | "sum") => (c: DiagramConfig): Kind =>
+  qsmpcOpOf(c, dflt) === "sum" ? "q-arrow" : "c-bidir";
+const qsmpcLabel = (dflt: "psi" | "sum") => (m: M, c: DiagramConfig) =>
+  qsmpcOpOf(c, dflt) === "sum"
+    ? `QSMS secure sum (d-qudit GHZ) · pooled = ${f(m, "secure_sum")}`
+    : `keyed-hash PSI · shared flagged = ${f(m, "psi_intersection_size")}`;
 
 const f = (m: M, k: string, d = "—") => {
   const v = m[k];
@@ -72,7 +105,7 @@ export const USECASE_SPECS: Record<string, Spec> = {
     steps: [
       { stageId: "pqc_handshake", kind: "c-bidir", label: (_m, c) => `PQC handshake — ${kemName(c)}` },
       { stageId: "qkd_key_agreement", kind: "q-arrow", label: (m, c) => `${qkdName(c)} · QBER ${f(m, "qber")}`, hidden: pqcOnly },
-      { stageId: "qsmpc_compute", kind: "c-bidir", label: (m) => `keyed-hash PSI · shared flagged = ${f(m, "psi_intersection_size")}` },
+      { stageId: "qsmpc_compute", kind: qsmpcKind("psi"), label: qsmpcLabel("psi") },
       ...HYBRID_INFERENCE,
       QSMPC_COMPARE,
       { stageId: "sign_result", kind: "c-bidir", label: (_m, c) => `${sigName(c)}-signed audit record + explanation` },
@@ -96,7 +129,7 @@ export const USECASE_SPECS: Record<string, Spec> = {
     steps: [
       { stageId: "pqc_handshake", kind: "c-bidir", label: (_m, c) => `PQC handshake — ${kemName(c)}` },
       { stageId: "qkd_key_agreement", kind: "q-arrow", label: (m, c) => `${qkdName(c)} · QBER ${f(m, "qber")}`, hidden: pqcOnly },
-      { stageId: "qsmpc_compute", kind: "q-arrow", label: (m) => `QSMS secure sum (d-qudit GHZ) · pooled = ${f(m, "secure_sum")}` },
+      { stageId: "qsmpc_compute", kind: qsmpcKind("sum"), label: qsmpcLabel("sum") },
       ...HYBRID_INFERENCE,
       QSMPC_COMPARE,
       { stageId: "sign_result", kind: "c-bidir", label: (_m, c) => `${sigName(c)}-signed audit record` },
@@ -198,9 +231,12 @@ export default function TwoPartyDiagram({
         const op = opacity(s);
         const mark = isDone(s) ? " ✓" : isActive(s) ? " ▶" : "";
         const label = s.label(metrics, config) + mark;
+        // A step whose channel depends on the run resolves its kind here, so the arrow style and the
+        // legend cannot disagree with the operation the label names.
+        const kind: Kind = typeof s.kind === "function" ? s.kind(config) : s.kind;
 
         // full-width QSMPC-FHE comparison bar (the quantum-secure alternative the benchmark scores)
-        if (s.kind === "compare") {
+        if (kind === "compare") {
           return (
             <g key={i} opacity={op}>
               <rect x={64} y={y - 17} width={652} height={34} rx={8}
@@ -211,9 +247,9 @@ export default function TwoPartyDiagram({
           );
         }
         // local computation box at one party
-        if (s.kind === "local-a" || s.kind === "local-b") {
-          const cx = s.kind === "local-a" ? ALICE_X : BOB_X;
-          const col = s.kind === "local-a" ? "var(--accent)" : "var(--quantum)";
+        if (kind === "local-a" || kind === "local-b") {
+          const cx = kind === "local-a" ? ALICE_X : BOB_X;
+          const col = kind === "local-a" ? "var(--accent)" : "var(--quantum)";
           return (
             <g key={i} opacity={op}>
               <rect x={cx - 150} y={y - 16} width={300} height={32} rx={7}
@@ -223,9 +259,9 @@ export default function TwoPartyDiagram({
           );
         }
         // message arrow between the two parties (classical / quantum / FHE ciphertext / MPC shares)
-        const quantum = s.kind === "q-arrow";
-        const mpc = s.kind === "mpc-bidir";
-        const bidir = s.kind === "c-bidir" || s.kind === "mpc-bidir";
+        const quantum = kind === "q-arrow";
+        const mpc = kind === "mpc-bidir";
+        const bidir = kind === "c-bidir" || kind === "mpc-bidir";
         const col = quantum ? "var(--quantum)" : mpc ? "#f5a623" : "var(--accent)";  // fhe-arrow = accent
         const dash = quantum ? "5 3" : mpc ? "2 2" : undefined;
         const mEnd = quantum ? "url(#tp-q)" : mpc ? "url(#tp-m)" : "url(#tp-c)";

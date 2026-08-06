@@ -828,6 +828,10 @@ export function runClientPipeline(
         break;
       }
       case "satellite_qkd": {
+        // Same guard the fibre stage carries. Without it, selecting pqc-only on satellite hid the
+        // quantum arrow in the diagram while the run went on emitting qber, channel_loss_db and
+        // secure_key_bits for a channel the page had just said was not there.
+        if (config.qkd === "pqc-only") { emit("log", stage, "free-space QKD disabled (PQC-only profile)"); break; }
         const satChan = { ...FREE_SPACE, distanceKm: Number(config.sat_distance_km ?? FREE_SPACE.distanceKm),
           eveFraction: Number(config.sat_eve ?? FREE_SPACE.eveFraction) };
         const satProtocol = String(config.qkd_protocol ?? qkdCfg().protocol);
@@ -867,7 +871,12 @@ export function runClientPipeline(
         // the page says so rather than presenting a modelled number as a measurement.
         metric(stage, "inference_provenance", "simulated");
         metric(stage, "inference_backend", "analytic free-space channel model (quantumSim)");
-        const e = intrinsicQber({ ...FREE_SPACE, eveFraction: Number(config.sat_eve ?? 0) });
+        // Same channel the satellite_qkd stage above built, distance included. Reading only sat_eve
+        // here meant the downlink range moved the QKD QBER but not the QSDC error rate, so one
+        // control produced two inconsistent pictures of the same link.
+        const e = intrinsicQber({ ...FREE_SPACE,
+          distanceKm: Number(config.sat_distance_km ?? FREE_SPACE.distanceKm),
+          eveFraction: Number(config.sat_eve ?? FREE_SPACE.eveFraction) });
         const threshold = Number(config.qsdc_threshold ?? qkdCfg().pp_threshold);
         const eavesdrop = e > threshold;
         metric(stage, "qsdc_error_rate", r2(e));
@@ -1113,8 +1122,14 @@ export function runClientPipeline(
             : v;
         const signedPayload = canon({
           usecase,
+          // Every crypto-agility selection that shaped the run. `mpc` and `qkd_protocol` were both
+          // missing: the payload recorded which FHE backend was chosen but not which MPC one, and
+          // recorded the QKD family but not the protocol that actually ran - so an E91 run and a
+          // BB84 run signed byte-identical config records.
           config: { kem: config.kem ?? null, qkd: config.qkd ?? null, sig: config.sig ?? null,
-                    fhe: config.fhe ?? null, combiner: config.combiner ?? null },
+                    fhe: config.fhe ?? null, mpc: config.mpc ?? null,
+                    qkd_protocol: config.qkd_protocol ?? null,
+                    combiner: config.combiner ?? null },
           metrics: { ...metrics },
           explanation: artifacts.explanation ?? null,
         });
