@@ -54,8 +54,12 @@ function UseCaseView({ usecase }: { usecase: string }) {
       {/* Live two-party simulator: Start/Stop/Restart/Pause/Step drive the diagram animation */}
       <PipelineControls run={run} />
       <div ref={diagramRef} style={{ marginTop: 16, background: "var(--panel)", borderRadius: 10, padding: 8 }}>
+        {/* The protocol and the QSMPC op live in params, not in the crypto-agility family selects.
+            Passing only the family is what let an E91 run draw a BB84 arrow. */}
         <TwoPartyDiagram usecase={usecase} activeStage={active} doneStages={done} metrics={metrics}
-          config={{ kem: run.kem, qkd: run.qkd, sig: run.sig }} />
+          config={{ kem: run.kem, qkd: run.qkd, sig: run.sig,
+                    qkdProtocol: String(run.params.qkd_protocol ?? ""),
+                    qsmpcOp: String(run.params.qsmpc_op ?? "") }} />
       </div>
       <div className="btn-row" style={{ marginTop: 10 }}>
         <button className="btn ghost" onClick={() => downloadPng(`${usecase}-two-party.png`)}>⬇ Diagram (PNG)</button>
@@ -111,6 +115,14 @@ function UseCaseView({ usecase }: { usecase: string }) {
           Federated learning runs on every run here - there is no toggle. A real client-side FedAvg
           over the page's own bundled Wisconsin sample, not a synthetic stand-in, so the accuracy it
           reports describes the data shown above it.
+          <div style={{ marginTop: 6 }}>
+            <b>Workload = CNN runs a genuine encrypted convolution</b>, not a scaled dot product:
+            im2col patches are packed into a single CKKS ciphertext and reduced by rotate-and-add,
+            over the trained student's own 14x14 input and 3x3 kernels. The run reports the
+            rotations and multiply-plain operations it performed for both workloads, because
+            key-switching - one per rotation - is what dominates CKKS inference cost. Nothing on
+            this path is multiplied by a cost model.
+          </div>
         </div>
       )}
 
