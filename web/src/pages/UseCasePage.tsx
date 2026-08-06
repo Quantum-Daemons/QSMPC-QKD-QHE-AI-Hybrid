@@ -115,6 +115,14 @@ function UseCaseView({ usecase }: { usecase: string }) {
           Federated learning runs on every run here - there is no toggle. A real client-side FedAvg
           over the page's own bundled Wisconsin sample, not a synthetic stand-in, so the accuracy it
           reports describes the data shown above it.
+          <div style={{ marginTop: 6 }}>
+            <b>Workload = CNN runs a genuine encrypted convolution</b>, not a scaled dot product:
+            im2col patches are packed into a single CKKS ciphertext and reduced by rotate-and-add,
+            over the trained student's own 14x14 input and 3x3 kernels. The run reports the
+            rotations and multiply-plain operations it performed for both workloads, because
+            key-switching - one per rotation - is what dominates CKKS inference cost. Nothing on
+            this path is multiplied by a cost model.
+          </div>
         </div>
       )}
 
