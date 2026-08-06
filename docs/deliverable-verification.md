@@ -99,6 +99,24 @@ making things worse, 0.0035 against 0.00906, while the same panel claimed +48.8%
 ratio are now emitted under names that say which model produced them, so the percentage is checkable
 in place.
 
+### A model that runs under encryption
+
+Verified when the encrypted path evaluates the **published weights**, not an architecture of the
+same shape, and when the run says which of the two it did. Round 20 closed this for medical: the
+convolution ran on the student's shape with a stated kernel pattern until the student began
+publishing a structural `weights.json` its ONNX could not supply.
+
+Two preprocessing traps surfaced doing it, both of the same family - a missing step that produces
+plausible output rather than an error:
+
+- The exporter's first version inferred activations from layer types and dropped the ReLU between
+  the conv and the pool. The result reproduced **every argmax** on the 156-image test split while
+  its logits were off by 1.5e-01. Activations are now read from the trained module order, and an
+  independent re-implementation built from the JSON alone agrees with torch to 4.4e-08.
+- The linear students published coefficients but not the `StandardScaler` they were fit on, so
+  their graphs accept raw features and answer confidently wrong. That is why they had no evaluation
+  sample: generating one naively would have shipped the wrong number instead of an error.
+
 ### A benchmark figure quoted to a third party
 
 Verified when the number is reproducible from a stated command on stated data, its baseline is
