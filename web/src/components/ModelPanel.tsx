@@ -12,6 +12,8 @@
 //     aggregate number looks excellent while the class that matters is broken, so showing only the
 //     aggregate would be true and misleading at the same time.
 import { modelsFor, type ModelSpec } from "../lib/config";
+import { useState } from "react";
+import { browserModels, evaluatePublishedModel, type ModelEvalResult } from "../lib/onnxInference";
 
 const TIER_LABEL: Record<string, string> = {
   t1_crypto: "encrypted (FHE/MPC-feasible)",
@@ -144,6 +146,68 @@ function MetricRows({ spec }: { spec: ModelSpec }) {
   );
 }
 
+
+/** Run one published model in the browser, or say precisely why it cannot be run.
+ *
+ * Every reason below is a different fact about the model and they must not be collapsed into a
+ * single "unavailable": a model nobody trained, a model whose weights are licence-blocked, and a
+ * model that is published but ships no held-out sample are three separate states, and flattening
+ * them would hide which one applies.
+ */
+function ModelRunner({ usecase, spec }: { usecase: string; spec: ModelSpec }) {
+  const [res, setRes] = useState<ModelEvalResult | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [ran, setRan] = useState(false);
+
+  const fetchable = browserModels(usecase).some((m) => m.spec.key === spec.key);
+  const blocked =
+    !spec.achieved ? "never trained in this build, so there is nothing to run - the baseline above is the target, not a result"
+    : !spec.hf_repo_id ? "deliberately unpublished: the source data's licence does not clearly permit redistributing derived weights"
+    : !spec.hf_revision ? "published but not pinned to a commit, and the browser will not fetch an unpinned model"
+    : !fetchable ? "published, but it ships no browser-runnable ONNX graph at that revision"
+    : null;
+
+  const run = async () => {
+    setBusy(true);
+    setRes(await evaluatePublishedModel(usecase, undefined, spec.key));
+    setRan(true);
+    setBusy(false);
+  };
+
+  if (blocked) return <p className="muted small"><em>Cannot be run here: {blocked}.</em></p>;
+
+  const isForecast = res?.task === "forecast";
+  const fmt = (v: number | null) =>
+    v == null ? "\u2014" : isForecast ? v.toFixed(4) : `${(v * 100).toFixed(1)}%`;
+
+  return (
+    <div style={{ marginTop: 6 }}>
+      <button className="btn ghost" onClick={run} disabled={busy} style={{ fontSize: 12 }}>
+        {busy ? "Running\u2026" : "\u25b6 Run this model in your browser"}
+      </button>
+      {ran && res === null && (
+        <p className="muted small">
+          Published and pinned, but it ships no <code>eval_sample.json</code> at that revision, so
+          there is no held-out sample to score it on. Reported rather than passed off as a success.
+        </p>
+      )}
+      {res?.error && (
+        <p className="small" style={{ color: "var(--warn)" }}>{res.error}</p>
+      )}
+      {res?.ran && (
+        <p className="muted small">
+          {isForecast ? "forecast MAE" : "accuracy"} measured here <b>{fmt(res.score)}</b> vs expected{" "}
+          <b>{fmt(res.expected)}</b> on {res.n} held-out rows ({res.backend}
+          {res.bytes == null ? ", cached" : `, ${(res.bytes / 1e6).toFixed(1)} MB`}).{" "}
+          {res.matchesExpected
+            ? "Reproduced - this is the published model running here."
+            : "MISMATCH - the figure is withheld rather than shown."}
+        </p>
+      )}
+    </div>
+  );
+}
+
 export function ModelPanel({ usecase }: { usecase: string }) {
   const specs = modelsFor(usecase);
   if (specs.length === 0) return null;
@@ -179,6 +243,7 @@ export function ModelPanel({ usecase }: { usecase: string }) {
             <p className="muted small"><strong>Gap to baseline:</strong> {spec.achieved.baseline_gap_note}</p>
           )}
           {spec.notes && <p className="muted small">{spec.notes}</p>}
+          <ModelRunner usecase={usecase} spec={spec} />
           {spec.hf_repo_id && (
             <p className="muted small">
               <strong>Weights:</strong>{" "}
