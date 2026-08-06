@@ -13,7 +13,7 @@ export default function PipelineControls({ run }: { run: Run }) {
   // local secret-sharing), so the server-side backend selectors (TenSEAL/OpenFHE/MPyC/…) don't apply.
   const demo = isClientDemo();
   const { usecase, opts, kem, setKem, qkd, setQkd, fhe, setFhe, mpc, setMpc, sig, setSig,
-    workload, setWorkload, optiqkd, setOptiqkd,
+    optiqkd, setOptiqkd,
     state, running, paused, start, startStepwise, pause, resume, step, stop } = run;
 
   // Round 18: three controls were rendered on pages where they could not change anything a visitor
@@ -38,7 +38,6 @@ export default function PipelineControls({ run }: { run: Run }) {
   //
   // Federated learning is always on rather than opt-in: it does real client-side FedAvg over the
   // page's real bundled sample, so there is no reason to make a visitor find a checkbox for it.
-  const showWorkload = usecase === "medical_fl";
   // OptiQKD is kept everywhere -- it does real work -- but it cannot run without a quantum channel:
   // qkd_key_agreement returns before the optimise block when the PQC-only profile is selected.
   const optiqkdDisabled = qkd === "pqc-only";
@@ -75,22 +74,12 @@ export default function PipelineControls({ run }: { run: Run }) {
         <span className={`badge-state ${state}`}>{state}</span>
       </div>
       <div className="btn-row" style={{ marginTop: 8 }}>
-        {/* Workload is run config: it parameterises the single Run that drives both the live
-            pipeline AND the benchmark assembled from it (unified, Round 7). Both options now run
-            REAL CKKS - a packed dot product and a genuine im2col convolution - so the run reports
-            each one's rotation count, which is the cost driver the comparison is about. Until
-            Round 20 the CNN option ran the dot product and multiplied its latency by a model. */}
-        {showWorkload && (<>
-          <label className="muted" htmlFor="sel-workload"
-            title="Both run real node-seal CKKS. Linear is a packed dot product; CNN is a genuine encrypted convolution over the trained student's 14x14 input with its own 3x3 kernels. The run reports rotations for each, because key-switching dominates CKKS cost.">
-            Workload
-          </label>
-          <select id="sel-workload" name="sel-workload" aria-label="Workload" value={workload}
-            onChange={(e) => setWorkload(e.target.value)}>
-            <option value="linear">Linear (encrypted dot product)</option>
-            <option value="cnn">CNN (encrypted convolution)</option>
-          </select>
-        </>)}
+        {/* The Workload selector is gone. It offered Linear against CNN, and once the CNN path
+            began evaluating the PUBLISHED student's own weights end to end under CKKS, Linear was
+            the only fabricated option left: an 8-feature dot product with a hand-written weight
+            pattern that matched no trained model. Medical now always runs its real student. The
+            internal `workload` value is retained because the benchmark cost model still reads it
+            for the use cases whose students genuinely ARE linear. */}
         {/* Quantum Federated Learning toggle — runs a real client-side FedAvg of a quantum-classical
             model (full deployment = Flower + PennyLane HybridQNN under quantum-safe secure aggregation). */}
         {/* AI-QKD parameter optimization (OptiQKD, WS1) — measured gradient-free SKR maximization. */}

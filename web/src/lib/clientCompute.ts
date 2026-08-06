@@ -1164,8 +1164,9 @@ export function runClientPipeline(
         if (inf.note) emit("log", stage, `inference: ${inf.note}`);
 
         // The medical CNN workload runs a genuine encrypted convolution.
-        const real = await realClientHybrid(feats, u,
-          usecase === "medical_fl" && String(config.workload ?? "linear") === "cnn", usecase);
+        // Medical always evaluates its published student's convolution; the other use cases have
+        // linear students, for which the packed dot product IS the real model.
+        const real = await realClientHybrid(feats, u, usecase === "medical_fl", usecase);
         if (real) {
           // A real encrypted convolution is not scaled by anything: its latency IS the measurement.
           const bscale = real.conv
