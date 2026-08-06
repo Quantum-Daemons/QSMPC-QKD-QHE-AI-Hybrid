@@ -339,7 +339,7 @@ export interface MeasuredHybrid {
   /** Set when the run performed a real encrypted CONVOLUTION rather than a dot product. Counted,
    *  not estimated: rotations and the key-switch each triggers are what dominate CKKS cost. */
   conv?: { rotations: number; multiplies: number; patchesPerCiphertext: number;
-           outH: number; outW: number; channels: number; convMs: number };
+           outH: number; outW: number; channels: number; convMs: number; maxAbsError: number };
 }
 
 export interface RealHybridRun extends MeasuredHybrid { prediction: number; maxAbsError: number; }
@@ -384,7 +384,7 @@ export async function realClientHybrid(features: number[], u: () => number,
       const cres = await encryptedConv2d(img, kernels, Array(chans).fill(0));
       conv = { rotations: cres.rotations, multiplies: cres.multiplies,
                patchesPerCiphertext: cres.patchesPerCiphertext, outH: cres.outH, outW: cres.outW,
-               channels: chans, convMs: cres.fheMs };
+               channels: chans, convMs: cres.fheMs, maxAbsError: cres.maxAbsError };
     }
     return {
       prediction: mpc.out[0], fheMs: fhe.fheMs + (conv?.convMs ?? 0), mpcMs: mpc.mpcMs,
@@ -1089,6 +1089,10 @@ export function runClientPipeline(
             metric(stage, "fhe_conv_patches_packed", real.conv.patchesPerCiphertext);
             metric(stage, "fhe_conv_output_shape", `${real.conv.channels}x${real.conv.outH}x${real.conv.outW}`);
             metric(stage, "fhe_conv_ms", r2(real.conv.convMs));
+            // The convolution's own approximation error against a plaintext reference computed on
+            // the same inputs. Reported separately from the dense layer's so a regression in one
+            // cannot hide behind the other.
+            metric(stage, "fhe_conv_max_abs_error", real.conv.maxAbsError);
             emit("log", stage, `private inference (REAL in-browser FHE, encrypted CONVOLUTION): `
               + `class=${real.prediction}; ${real.conv.channels}x3x3 kernels over a `
               + `${real.conv.outH}x${real.conv.outW} output, ${real.conv.patchesPerCiphertext} im2col `
