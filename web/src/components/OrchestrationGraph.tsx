@@ -18,7 +18,7 @@ const FLOWS: Record<string, { id: string; label: string }[]> = {
   default: [
     { id: "data", label: "Data" },
     { id: "pqc_handshake", label: "PQC Handshake\n(ML-KEM + X25519)" },
-    { id: "qkd_key_agreement", label: "QKD Key\n(BB84)" },
+    { id: "qkd_key_agreement", label: "QKD Key" },
     { id: "qsmpc_compute", label: "QSMPC\n(PSI / secure sum)" },
     { id: "private_inference", label: "QHE/FHE\nPrivate Inference" },
     { id: "quantum_comparison", label: "QSMPC-FHE\n(quantum comparison)" },
@@ -47,7 +47,7 @@ const FLOWS: Record<string, { id: string; label: string }[]> = {
   satellite_comms: [
     { id: "data", label: "Mission Telemetry" },
     { id: "pqc_handshake", label: "PQC Handshake" },
-    { id: "satellite_qkd", label: "Free-space QKD\n(BB84 downlink)" },
+    { id: "satellite_qkd", label: "Free-space QKD" },
     { id: "qsdc_telemetry", label: "QSDC\n(direct + eavesdrop check)" },
     { id: "quantum_comparison", label: "QSMPC-FHE\n(quantum comparison)" },
     { id: "result", label: "Result" },
@@ -68,12 +68,13 @@ export default function OrchestrationGraph({
   usecase: string;
   activeStage: string | null;
   doneStages: Set<string>;
-  /** Crypto-agility selections, so the node captions name what actually ran. */
-  config?: { kem?: string; qkd?: string; sig?: string };
+  /** Crypto-agility selections plus the Parameters-panel protocol, so the node captions name what
+   *  actually ran. `qkd` is the family (is there a channel); `qkdProtocol` is the protocol. */
+  config?: { kem?: string; qkd?: string; sig?: string; qkdProtocol?: string };
 }) {
   const stages = flowFor(usecase);
-  // The FLOWS table above is static, so these three captions used to keep naming ML-KEM-768/BB84/
-  // ML-DSA whatever the page's selectors said. Retitle them from the live config instead.
+  // The FLOWS table above is static, so these captions used to keep naming ML-KEM-768/BB84/ML-DSA
+  // whatever the page's selectors said. Retitle them from the live config instead.
   const retitle = (id: string, label: string): string => {
     const head = label.split("\n")[0];
     if (id === "pqc_handshake") {
@@ -83,12 +84,17 @@ export default function OrchestrationGraph({
         : kem ? kem.toUpperCase() : "hybrid KEM";
       return `${head}\n(${pretty})`;
     }
-    if (id === "qkd_key_agreement") {
+    // Both quantum-channel nodes. The protocol comes from the Parameters panel and the family only
+    // says whether a channel exists, so reading `config.qkd` alone made the E91 branch unreachable
+    // and left the satellite node captioned "BB84 downlink" whatever the visitor selected.
+    if (id === "qkd_key_agreement" || id === "satellite_qkd") {
       const q = String(config.qkd ?? "");
       if (q === "pqc-only") return `${head}\n(skipped — PQC-only)`;
-      const pretty = q.startsWith("e91") ? "E91"
+      const proto = String(config.qkdProtocol ?? "");
+      const pretty = proto === "e91" ? "E91 / CHSH"
+        : proto === "bb84" ? "BB84 decoy-state"
         : q.includes("decoy") ? "BB84 decoy-state" : q ? "BB84" : "QKD";
-      return `${head}\n(${pretty})`;
+      return `${head}\n(${pretty}${id === "satellite_qkd" ? " downlink" : ""})`;
     }
     if (id === "sign_result") {
       return `${head}\n(${config.sig ? String(config.sig).toUpperCase() : "ML-DSA"})`;

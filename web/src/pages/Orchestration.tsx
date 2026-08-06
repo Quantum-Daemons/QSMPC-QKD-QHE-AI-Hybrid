@@ -53,7 +53,8 @@ export default function Orchestration() {
 
       <div style={{ marginTop: 16 }} ref={graphRef}>
         <OrchestrationGraph usecase={usecase} activeStage={active} doneStages={done}
-          config={{ kem: run.kem, qkd: run.qkd, sig: run.sig }} />
+          config={{ kem: run.kem, qkd: run.qkd, sig: run.sig,
+                    qkdProtocol: String(run.params.qkd_protocol ?? "") }} />
       </div>
 
       <RunMonitor events={events} metrics={metrics} signature={signature} logRef={logRef} />
