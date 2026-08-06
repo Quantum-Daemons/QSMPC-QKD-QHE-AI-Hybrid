@@ -413,11 +413,20 @@ See [`docs/pqc-roadmap.md`](docs/pqc-roadmap.md).
   (AUC PR 0.9681 measured, against FCNN 0.979, XGBOD 0.975, RF+ICCS 0.963). It is a **different
   task** from the Telemanom forecaster on the same page - segment classification, not forecasting -
   and neither number is the other's baseline.
-- **The CNN workload performs a real encrypted convolution.** It used to run the same 8-feature dot
-  product as Linear and multiply the latency by about 401. It now packs 144 im2col patches into one
-  CKKS ciphertext and reduces them with 16 rotations for a 4x12x12 output, and the run reports the
-  rotations and multiply-plain operations it actually executed - the quantity the 2026 literature
-  identifies as the cost driver - instead of a multiplier standing in for it.
+- **The encrypted path evaluates the published medical student itself.** All 3,226 parameters of it,
+  fetched from its own pinned Hugging Face revision and run end to end under CKKS: convolution,
+  average pool and both dense layers, with im2col patches packed into a single ciphertext. The run
+  reports **152 counted rotations** - the quantity the 2026 literature identifies as the cost driver
+  - rather than a latency multiplier standing in for it, and states whether the published weights
+  drove the computation or only their shape did. If the fetch fails, no weights are invented.
+  The **Workload selector is gone**: it offered Linear against CNN, and once CNN ran the real
+  student, Linear was the only fabricated option left - an 8-feature dot product with a hand-written
+  weight pattern matching no trained model. For finance, satellite and OPS-SAT the students genuinely
+  ARE linear, which is why the selector only ever appeared on the medical page.
+- **Every model in the Models panel carries a Run button, or a specific reason it has none.** Six can
+  be verified in place; the rest are in three genuinely different states that are never collapsed
+  into one message - never trained (the finance GNN, the telecom Transformer), deliberately
+  unpublished on licence grounds (the PRS), or published without a held-out sample.
 - **`finance_aml.gnn` is a decision, not a backlog item.** The AMLworld authors report that XGBoost
   with the Graph Feature Preprocessor outperforms their GNNs, so the model already shipped is the
   stronger one. More decisively, arXiv:2411.02926v2 ran this exact comparison under FHE and the
