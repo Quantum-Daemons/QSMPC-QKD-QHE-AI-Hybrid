@@ -15,7 +15,7 @@
       "opset": 0
     },
     "git_sha": "e572d98-dirty",
-    "hf_revision": "50c16e5fcde1da59455eea133e2096c2f72d772d",
+    "hf_revision": "ba0f351ea5dfff476f6da85f6b67fe260083c30b",
     "minority_class_f1": 0.08077786088257292,
     "n_test": 1523504,
     "n_train": 3554841,
@@ -171,7 +171,7 @@
     },
     "f1": 0.918918918918919,
     "git_sha": "984bcee-dirty",
-    "hf_revision": "3cb83b46f1d6e44d0c0e42f6d52c7f54107a7326",
+    "hf_revision": "59ff202ec6e7e1fa54e9321f41dc3b5e3789ce20",
     "n_features": 19,
     "n_test_segments": 529,
     "n_train_segments": 1594,

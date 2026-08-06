@@ -214,8 +214,13 @@ def build_finance(rng: np.random.Generator) -> dict:
     rng.shuffle(idx)
     x, y = X_all[idx], y_all[idx]
 
+    # Round BEFORE predicting. The payload ships 6-decimal values, so an expectation computed on
+    # the unrounded array is an expectation for numbers the browser never sees. On a tree ensemble
+    # that shows up as split-boundary flips: the OPS-SAT model read 95.1% in-browser against a
+    # 96.6% expectation computed this way, inside tolerance but not a reproduction.
+    x = np.asarray(x, dtype=float).round(6)
     sess, graph = _session("finance_aml_gbm")
-    out = sess.run(None, {sess.get_inputs()[0].name: x})
+    out = sess.run(None, {sess.get_inputs()[0].name: x.astype(np.float32)})
     scores = next((o for o in out if getattr(o, "ndim", 0) == 2 and o.shape[1] > 1), out[0])
     pred = np.asarray(scores).argmax(1)
 
@@ -233,7 +238,7 @@ def build_finance(rng: np.random.Generator) -> dict:
         "input": {"shape": [1, len(FEATURES)], "dtype": "float32",
                   "preprocessing": [], "layout": "samples[i] is one row of the 32 features below"},
         "feature_names": list(FEATURES),
-        "samples": np.asarray(x, dtype=float).round(6).tolist(),
+        "samples": np.asarray(x, dtype=float).tolist(),  # already rounded above
         "labels": y.astype(int).tolist(),
         "expected": {
             "graph": graph,
@@ -334,8 +339,10 @@ def build_satellite_opssat(rng: np.random.Generator) -> dict:
     x, y = datasets.opssat_ad("test")
     x = np.asarray(x, dtype=np.float32)
 
+    # Round before predicting, so `expected` describes the values the payload actually ships.
+    x = np.asarray(x, dtype=float).round(6)
     sess, graph = _session("satellite_opssat")
-    out = sess.run(None, {sess.get_inputs()[0].name: x})
+    out = sess.run(None, {sess.get_inputs()[0].name: x.astype(np.float32)})
     scores = next((o for o in out if getattr(o, "ndim", 0) == 2 and o.shape[1] > 1), out[0])
     pred = np.asarray(scores).argmax(1)
 
@@ -353,7 +360,7 @@ def build_satellite_opssat(rng: np.random.Generator) -> dict:
         "input": {"shape": [1, x.shape[1]], "dtype": "float32", "preprocessing": [],
                   "layout": "samples[i] is one segment's 19 features, in the order below"},
         "feature_names": list(datasets.OPSSAT_FEATURES),
-        "samples": np.asarray(x, dtype=float).round(6).tolist(),
+        "samples": np.asarray(x, dtype=float).tolist(),  # already rounded above
         "labels": y.astype(int).tolist(),
         "expected": {
             "graph": graph,

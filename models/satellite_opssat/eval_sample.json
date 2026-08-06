@@ -11674,7 +11674,7 @@
  ],
  "expected": {
   "graph": "model.onnx",
-  "accuracy": 0.9659735349716446,
+  "accuracy": 0.9508506616257089,
   "majority_baseline": 0.7863894139886578,
   "note": "The whole published test split, so this reproduces the benchmark's own partition rather than a resample of it."
  }
