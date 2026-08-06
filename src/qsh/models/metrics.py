@@ -168,6 +168,18 @@ def with_companion(y_true, y_pred, y_score, *, headline: str) -> dict:
             "per_class_f1": per_class_f1(y_true, y_pred),
             "aggregate_accuracy": accuracy(y_true, y_pred),           # companion: 0.99 either way
         }
+    if headline == "auc_pr":
+        # OPS-SAT-AD's own headline. The positive class is about a fifth of the data, so accuracy
+        # reads ~0.80 for a detector that never fires; AUC PR cannot be satisfied by abstaining.
+        # auprc_baseline is the positive rate, i.e. what a coin-flip detector scores - printed so
+        # the headline is read against the floor rather than against zero.
+        return {
+            "auc_pr": auprc(y_true, y_score),
+            "auc_pr_baseline": auprc_baseline(y_true),
+            "f1": minority_class_f1(y_true, y_pred),
+            "auroc": auroc(y_true, y_score),
+            "accuracy": accuracy(y_true, y_pred),        # companion: flattered by the class balance
+        }
     if headline in ("auc", "auroc", "ood_accuracy"):
         return {
             "auc": auroc(y_true, y_score),

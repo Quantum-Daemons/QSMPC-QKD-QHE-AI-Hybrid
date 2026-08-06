@@ -1,0 +1,33 @@
+{
+  "key": "medical_fl.resnet50",
+  "metric_name": "auc",
+  "best_metric": 0.935672514619883,
+  "best_epoch": 11,
+  "epochs_run": 27,
+  "wall_clock_s": 5.3,
+  "git_sha": "d582944-dirty",
+  "seed": 42,
+  "hyperparameters": {
+    "epochs": 60,
+    "batch_size": 32,
+    "lr": 0.0003,
+    "weight_decay": 0.0001,
+    "warmup_frac": 0.05,
+    "grad_clip": 1.0,
+    "patience": 15,
+    "seed": 42,
+    "amp": true,
+    "num_workers": 4,
+    "min_delta": 0.0001
+  },
+  "n_parameters": 23505858,
+  "device": "cuda",
+  "torch": "2.13.0+cu130",
+  "python": "3.12.11",
+  "checkpoint": "model.safetensors",
+  "dataset": "MedMNIST v2 BreastMNIST",
+  "resolution": 28,
+  "architecture": "resnet50",
+  "pretrained": "none",
+  "adaptation": "conv1 RGB kernels summed to 1 channel"
+}

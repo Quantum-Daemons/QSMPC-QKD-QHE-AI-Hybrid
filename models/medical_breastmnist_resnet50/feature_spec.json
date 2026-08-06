@@ -1,0 +1,16 @@
+{
+  "input": {
+    "shape": [
+      1,
+      1,
+      28,
+      28
+    ],
+    "dtype": "float32",
+    "preprocessing": "pixel/255 then (x-0.5)/0.5"
+  },
+  "classes": [
+    "benign/normal",
+    "malignant"
+  ]
+}

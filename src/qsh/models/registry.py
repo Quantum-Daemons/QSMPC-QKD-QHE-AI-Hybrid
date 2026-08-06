@@ -150,17 +150,6 @@ DS_PAYSIM = DatasetSpec(
         "published; AMLworld (CDLA) is the publishable finance model."
     ),
 )
-DS_CAMELYON17 = DatasetSpec(
-    name="Camelyon17-WILDS",
-    licence="CC0-1.0",
-    url="https://wilds.stanford.edu/datasets/",
-    licence_checked="2026-08-03",
-    publishable=True,
-    notes=(
-        "5 hospitals. The official split trains on 3 and holds 2 out as OOD val/test — federating "
-        "across all 5 would destroy the OOD test set, so the federation spans the 3 training centres."
-    ),
-)
 DS_BREASTMNIST = DatasetSpec(
     name="MedMNIST v2 BreastMNIST",
     licence="CC-BY-4.0",
@@ -183,6 +172,10 @@ DS_PGS_CATALOG = DatasetSpec(
         "actually prevents publication, and it is enforced by scripts/publish_hf.py."
     ),
 )
+#: Referenced by no ModelSpec and that is correct rather than dead: the genomics bundled sample
+#: carries BOTH published PGS weights and 1000 Genomes genotypes, and a sample maps to one
+#: DatasetSpec, so BUNDLED_DEMO_SAMPLES names the PGS Catalog entry. This record exists so the
+#: genotype half's licence caveat stays checked and dated rather than living only in prose.
 DS_1000G = DatasetSpec(
     name="1000 Genomes phase 3 (IGSR)",
     licence="open access, but not public domain",
@@ -192,6 +185,21 @@ DS_1000G = DatasetSpec(
     notes=(
         "IGSR: 'restrictions on different pieces of data within IGSR and rights claimed on pieces of "
         "data vary'. Allele dosages are used locally; no per-sample genotype is ever published."
+    ),
+)
+DS_OPSSAT_AD = DatasetSpec(
+    name="OPS-SAT-AD",
+    licence="CC-BY-4.0",
+    url="https://zenodo.org/records/12588359",
+    licence_checked="2026-08-05",
+    publishable=True,
+    notes=(
+        "2,123 annotated telemetry segments across 9 channels from ESA's OPS-SAT CubeSat, 20.4% "
+        "anomalous, with 19 precomputed per-segment features and the benchmark's own train/test "
+        "split. Kotowski et al., Scientific Data 12 (2025). CC BY 4.0 and 507 KB, so unlike every "
+        "other corpus here the DATA can be redistributed as well as the weights. A different task "
+        "from ESA-ADB: segment classification, not forecasting, so its score is not comparable "
+        "with the Telemanom model's and neither is the other's baseline."
     ),
 )
 DS_ESA_ADB = DatasetSpec(
@@ -219,16 +227,22 @@ DS_SMAP_MSL = DatasetSpec(
 )
 DS_CICIDS2017_FIXED = DatasetSpec(
     name="CIC-IDS2017, Engelen-corrected redistribution (WTMC 2021)",
-    licence="no licence stated by either provider",
-    url="https://intrusion-detection.distrinet-research.be/WTMC2021/",
-    licence_checked="2026-08-03",
+    licence="provider's own pages state conflicting terms",
+    url="https://www.unb.ca/cic/datasets/ids-2017.html",
+    licence_checked="2026-08-05",
     publishable=False,
     notes=(
-        "CIC-IDS2017 states no licence at all — only that it is 'publicly available for researchers' "
-        "plus a citation request — and the Engelen redistribution states no terms either. Absent an "
-        "affirmative grant, neither is safe to bundle or redistribute, so this is local training and "
-        "benchmarking only. Engelen et al. found >25% of flows are artefacts and several attack "
-        "classes were mislabelled."
+        "Re-checked 2026-08-05, and the earlier wording here was too strong. Terms ARE stated, they "
+        "just disagree: the Canadian Institute for Cybersecurity's institute-level FAQ says 'You may "
+        "redistribute, republish, and mirror our datasets in any form; however, any use or "
+        "redistribution of the data must include a citation', and places that under commercial use, "
+        "while the CICIDS2017 dataset page itself says only 'publicly available for researchers' and "
+        "names no licence. That is an unresolved ambiguity rather than a permission - the same class "
+        "of question Round 19 settled by dropping the ImageNet dependency instead of guessing. The "
+        "Engelen redistribution is separately hosted and states nothing. 5G-NIDD was evaluated as an "
+        "alternative and rejected: IEEE DataPort marks it subscription-required and neither that "
+        "record nor the authors' NetsLab page carries a licence string. So the shipped telecom model "
+        "trains on synthetic telemetry, and no code path loads this corpus."
     ),
 )
 DS_WDBC = DatasetSpec(
@@ -312,14 +326,18 @@ M_AML = MetricSpec(
     ceiling_source="Multi-PNA+EU, AAAI-24 vol.38 no.10 pp.11838-11846 (68.16 +/- 2.65)",
     companion="auprc",
 )
-M_CAMELYON = MetricSpec(
-    name="ood_accuracy",
-    display="OOD test accuracy (held-out hospitals)",
-    baseline=0.703,
-    baseline_source="ERM baseline, official WILDS leaderboard (70.3 +/- 6.4)",
-    ceiling=0.946,
-    ceiling_source="ContriMix DenseNet-121, official WILDS leaderboard (94.6 +/- 1.2)",
-    companion="id_accuracy",
+M_BREASTMNIST_R50 = MetricSpec(
+    name="auc",
+    display="AUC",
+    baseline=0.857,
+    baseline_source=("ResNet-50 @28px, MedMNIST v2, Yang et al., Scientific Data 10:41 (2023) "
+                     "(AUC 0.857 / ACC 0.812). Note this is BELOW the ResNet-18 baseline of 0.901 "
+                     "on the same corpus and the same 100-epoch Adam regime: on 780 images the "
+                     "deeper network loses. That is the published finding, and it is why this model "
+                     "exists here - to reproduce it rather than to win."),
+    ceiling=0.919,
+    ceiling_source="Google AutoML Vision, MedMNIST v2 (AUC 0.919)",
+    companion="accuracy",
 )
 M_BREASTMNIST = MetricSpec(
     name="auc",
@@ -345,6 +363,19 @@ M_PRS = MetricSpec(
     ceiling_source="Upper end of the published range for germline-SNP breast-cancer PRS discrimination",
     companion="",
     # Any germline-SNP PRS claiming much above ~0.70 discrimination is measuring something else.
+)
+M_OPSSAT = MetricSpec(
+    name="auc_pr",
+    display="AUC PR",
+    baseline=0.979,
+    baseline_source=("FCNN, best of the 30 algorithms benchmarked in Kotowski et al., Scientific "
+                     "Data 12 (2025), on this dataset's own test split (AUC PR 0.979, F1 0.946, "
+                     "MCC 0.932). XGBOD reaches 0.975 and RF+ICCS 0.963."),
+    ceiling=0.979,
+    ceiling_source="FCNN, the best of the 30 published baselines - there is no higher number to cite.",
+    # Area under the precision-recall curve is the headline because the positive class is 20.4% of
+    # the data: accuracy would read ~0.80 for a detector that never fires at all.
+    companion="f1",
 )
 M_ESA = MetricSpec(
     name="event_wise_f0_5",
@@ -481,23 +512,6 @@ _SPECS: tuple[ModelSpec, ...] = (
     ModelSpec(
         usecase="medical_fl",
         tier="t2_industry",
-        key="medical_fl.densenet",
-        label="DenseNet-121, federated across 3 hospitals",
-        architecture="DenseNet-121, FedAvg with pairwise-mask secure aggregation (qsh.ai.federated)",
-        params=None,
-        dataset=DS_CAMELYON17,
-        metric=M_CAMELYON,
-        artifacts=_ONNX_PAIR,
-        hf_repo="qsh-medical-fl-densenet121",
-        notes=(
-            "FedAvg alone is not a privacy guarantee — gradient inversion is possible. The secure "
-            "aggregation in qsh.ai.federated hides individual updates from the aggregator; it does "
-            "not bound what the trained model itself leaks."
-        ),
-    ),
-    ModelSpec(
-        usecase="medical_fl",
-        tier="t2_industry",
         key="medical_fl.resnet18",
         label="ResNet-18 on BreastMNIST",
         architecture="ResNet-18 @28px",
@@ -507,6 +521,28 @@ _SPECS: tuple[ModelSpec, ...] = (
         artifacts=_ONNX_PAIR,
         hf_repo="qsh-medical-breastmnist-resnet18",
         notes="The small tier: fits the browser comfortably and has a clean published baseline.",
+    ),
+    ModelSpec(
+        usecase="medical_fl",
+        tier="t2_industry",
+        key="medical_fl.resnet50",
+        label="ResNet-50 on BreastMNIST (published comparison)",
+        architecture="ResNet-50 @28px, 1-channel stem, trained from random initialisation",
+        params=None,
+        dataset=DS_BREASTMNIST,
+        metric=M_BREASTMNIST_R50,
+        artifacts=_ONNX_PAIR,
+        hf_repo="qsh-medical-breastmnist-resnet50",
+        notes=(
+            "Trained to test a published claim rather than to win one. MedMNIST v2 reports ResNet-50 "
+            "at AUC 0.857 against ResNet-18's 0.901 on this corpus, so the expected outcome is that "
+            "the larger model scores LOWER, and it is reported either way. It replaces a DenseNet-121 "
+            "entry that named a dataset with no loader, no fetch command and no artefact directory, "
+            "and linked a Hugging Face repo that did not exist. Architectures benchmarked only "
+            "ImageNet-pretrained (AlexNet, VGG16, DenseNet-121, EfficientNet-B4 in MedMNIST+) are "
+            "deliberately absent: this project dropped ImageNet weights over redistribution terms, "
+            "so their published numbers are not comparable to a from-scratch run."
+        ),
     ),
     ModelSpec(
         usecase="medical_fl",
@@ -593,6 +629,41 @@ _SPECS: tuple[ModelSpec, ...] = (
         hf_repo="qsh-satellite-telemanom-ckks-student",
         runs_encrypted=True,
     ),
+    ModelSpec(
+        usecase="satellite_comms",
+        tier="t2_industry",
+        key="satellite_comms.opssat",
+        label="OPS-SAT segment anomaly detector",
+        architecture="gradient-boosted trees over 19 per-segment telemetry features",
+        params=None,
+        dataset=DS_OPSSAT_AD,
+        metric=M_OPSSAT,
+        artifacts=_ONNX_PAIR,
+        hf_repo="qsh-satellite-opssat-ad",
+        notes=(
+            "Segment CLASSIFICATION on real OPS-SAT telemetry, which is a different task from the "
+            "Telemanom forecaster above: this one is scored against the 30 algorithms published "
+            "with the dataset, not against persistence, and the two numbers must not be read as a "
+            "comparison. Chosen because its corpus is CC BY 4.0 and 507 KB - the one case in this "
+            "project where the data itself can be redistributed alongside the weights."
+        ),
+    ),
+    ModelSpec(
+        usecase="satellite_comms",
+        tier="t1_crypto",
+        key="satellite_comms.opssat_student",
+        label="CKKS-linear OPS-SAT segment student",
+        architecture="logistic regression over the 19 published per-segment features",
+        params=None,
+        dataset=DS_OPSSAT_AD,
+        metric=M_OPSSAT,
+        artifacts=_STUDENT_ARTIFACTS,
+        hf_repo="qsh-satellite-opssat-ckks-student",
+        runs_encrypted=True,
+        notes=("19 features is small enough to evaluate under CKKS as a single packed dot product, "
+               "so the encrypted tier here runs on the published feature set rather than on a "
+               "reduction of it."),
+    ),
     # ---------------- telecom / defence ----------------
     ModelSpec(
         usecase="telecom_ids",
@@ -619,7 +690,12 @@ _SPECS: tuple[ModelSpec, ...] = (
         params=25,
         dataset=DS_QKD_ATTACK_SYNTH,
         metric=M_QML_IDS,
-        artifacts=(ArtifactSpec("weights.json", "json", "none", "both"),),
+        # The published repo carries onnx/model.onnx (an ai.onnx.ml graph, so int8 is skipped:
+        # a tree/kernel model keeps its parameters in node attributes). Declaring only
+        # weights.json meant browserModels() found nothing runnable and the page reported
+        # "nothing to verify" for a model that is published, pinned and browser-runnable.
+        artifacts=(ArtifactSpec("onnx/model.onnx", "onnx", "fp32", "both"),
+                   ArtifactSpec("feature_spec.json", "json", "none", "both")),
         hf_repo="qsh-telecom-qml-ids",
         notes="Shown as an architecture comparison against a random forest on identical data.",
     ),
@@ -675,9 +751,11 @@ ARTIFACT_DIRS: dict[str, str] = {
     "finance_aml.gbm": "models/finance_aml_gbm",
     "finance_aml.gnn": "models/finance_aml_gnn",
     "medical_fl.resnet18": "models/medical_breastmnist_resnet18",
-    "medical_fl.densenet": "models/medical_camelyon17_densenet121",
+    "medical_fl.resnet50": "models/medical_breastmnist_resnet50",
     "genomics.prs": "models/genomics_prs",
     "satellite_comms.telemanom": "models/satellite_telemanom",
+    "satellite_comms.opssat": "models/satellite_opssat",
+    "satellite_comms.opssat_student": "models/satellite_opssat_student",
     "telecom_ids.qml": "models/telecom_qml_ids",
     "finance_aml.student": "models/finance_aml_student",
     "medical_fl.student": "models/medical_breastmnist_student",   # already on disk from training
@@ -706,6 +784,23 @@ def _export_report(key: str) -> dict:
 
 def _onnx_domains(key: str) -> list[str]:
     return list(_export_report(key).get("onnx_domains") or [])
+
+
+def _artifact_exists(key: str, path: str) -> bool:
+    """Whether the export actually produced this artefact.
+
+    ``_ONNX_PAIR`` declares an int8 graph for every model, but int8 is genuinely absent for two
+    classes: tree ensembles and ai.onnx.ml linear models keep their parameters in node attributes,
+    so there is nothing to quantise, and a graph can be built, measured and then withheld for
+    missing the numeric gate. Advertising a file that was never written sends the browser to a
+    404 -- or worse, past the graph assertion with the wrong name.
+    """
+    report = _export_report(key)
+    if not report:
+        return True          # unexported: nothing measured either way, so do not over-claim absence
+    if path.endswith("model_int8.onnx"):
+        return bool(report.get("int8_path"))
+    return True
 
 
 def _browser_runnable(key: str, precision: str = "fp32") -> bool:
@@ -745,12 +840,15 @@ def frontend_models() -> dict:
             # discovered.
             "browser_runnable": _browser_runnable(s.key),
             "onnx_domains": _onnx_domains(s.key),
+            # Only artefacts the export actually wrote. A declared-but-absent int8 graph used to
+            # reach the browser, which prefers int8, and the fetch then named a file that does not
+            # exist in the repo.
             "artifacts": [
                 {"path": a.path, "fmt": a.fmt, "precision": a.precision, "serves": a.serves,
                  # Per-artifact, because a model can be browser-runnable at fp32 and not at int8.
                  "browser_runnable": (_browser_runnable(s.key, a.precision)
                                       if a.fmt == "onnx" else False)}
-                for a in s.artifacts
+                for a in s.artifacts if _artifact_exists(s.key, a.path)
             ],
             "dataset": {
                 "name": s.dataset.name,

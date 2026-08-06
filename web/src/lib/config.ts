@@ -83,6 +83,11 @@ export type ModelSpec = {
   notes: string;
 };
 
+/** QSMPC field parameters. `prime: null` means the backend derives it from n as Sutradhar's
+ *  construction requires (d prime, n <= d <= 2n). */
+export const qsmpcCfg = () => ((CONFIG as any).qsmpc ?? {}) as
+  { prime: number | null; n_parties: number; threshold: number };
+
 export const modelsFor = (usecase: string): ModelSpec[] =>
   (((CONFIG as any).models ?? {})[usecase] ?? []) as ModelSpec[];
 

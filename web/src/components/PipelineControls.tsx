@@ -75,13 +75,20 @@ export default function PipelineControls({ run }: { run: Run }) {
         <span className={`badge-state ${state}`}>{state}</span>
       </div>
       <div className="btn-row" style={{ marginTop: 8 }}>
-        {/* model size + workload are run config: they parameterise the single Run that drives both
-            the live pipeline AND the benchmark assembled from it (unified, Round 7). */}
+        {/* Workload is run config: it parameterises the single Run that drives both the live
+            pipeline AND the benchmark assembled from it (unified, Round 7). Both options now run
+            REAL CKKS - a packed dot product and a genuine im2col convolution - so the run reports
+            each one's rotation count, which is the cost driver the comparison is about. Until
+            Round 20 the CNN option ran the dot product and multiplied its latency by a model. */}
         {showWorkload && (<>
-          <label className="muted" htmlFor="sel-workload">Workload</label>
+          <label className="muted" htmlFor="sel-workload"
+            title="Both run real node-seal CKKS. Linear is a packed dot product; CNN is a genuine encrypted convolution over the trained student's 14x14 input with its own 3x3 kernels. The run reports rotations for each, because key-switching dominates CKKS cost.">
+            Workload
+          </label>
           <select id="sel-workload" name="sel-workload" aria-label="Workload" value={workload}
             onChange={(e) => setWorkload(e.target.value)}>
-            <option value="linear">Linear</option><option value="cnn">CNN (convolutional)</option>
+            <option value="linear">Linear (encrypted dot product)</option>
+            <option value="cnn">CNN (encrypted convolution)</option>
           </select>
         </>)}
         {/* Quantum Federated Learning toggle — runs a real client-side FedAvg of a quantum-classical
@@ -97,11 +104,18 @@ export default function PipelineControls({ run }: { run: Run }) {
           Optimize QKD (OptiQKD){optiqkdDisabled ? " — needs a QKD protocol" : ""}
         </label>
         <span style={{ flex: 1 }} />
-        <button className="btn ghost" onClick={() => setShowAdvanced(!showAdvanced)}>
+        {/* A disclosure control, so it has to announce itself as one. The caret alone is visual:
+            aria-expanded is what tells a screen reader the panel exists and whether it is open,
+            and aria-controls points at the region it governs (WAI-ARIA disclosure pattern). */}
+        <button className="btn ghost" onClick={() => setShowAdvanced(!showAdvanced)}
+          aria-expanded={showAdvanced} aria-controls="pipeline-parameters"
+          title={showAdvanced ? "Hide the run parameters" : "Show the run parameters"}>
           {showAdvanced ? "▼" : "▶"} Parameters
         </button>
       </div>
-      {showAdvanced && <ParameterPanel run={run} />}
+      <div id="pipeline-parameters" hidden={!showAdvanced}>
+        {showAdvanced && <ParameterPanel run={run} />}
+      </div>
       <div className="btn-row" style={{ marginTop: 14 }}>
         <button className="btn" onClick={start} disabled={running}>▶ Start</button>
         <button className="btn ghost" onClick={startStepwise} disabled={running || paused}>⏭ Start stepwise</button>

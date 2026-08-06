@@ -65,7 +65,16 @@ class QRNGConfig:
 
 @dataclass
 class QSMPCConfig:
-    prime: int = 4099          # default field modulus for secure summation
+    # Sutradhar's construction works over GF(d) with **d prime and n <= d <= 2n** (arXiv:2501.10083,
+    # and the same bound in secure_summation.py's docstring). 4099 satisfied "prime" and "> n" and
+    # nothing else: with n=7 the paper wants d in [7, 14], and 4099 is nearly 300x outside it.
+    #
+    # It was not a harmless overshoot. The honest GHZ statevector is only built when d**t fits the
+    # simulator's state bound, and 4099**3 is 68.9 billion against a 4.19 million ceiling - so the
+    # shipped default ALWAYS fell through to the analytic sampler and reported
+    # honest_statevector=False, while the page above it advertised a d-qudit GHZ state. None means
+    # "derive it from n", which lands on the paper's own worked example d=11 for n=7.
+    prime: int | None = None
     n_parties: int = 7
     threshold: int = 3
     qot_n: int = 512
@@ -183,7 +192,9 @@ class BenchmarkConfig:
     # the tiny FHE-feasible medical CNN (genuine convolution under FHE+MPC)
     medical_cnn: dict = field(default_factory=lambda: {
         "img_size": 14, "channels": [4], "hidden": 16, "pool": "avg",
-        "medmnist_name": "pneumoniamnist", "subset": 512})
+        # BreastMNIST, not pneumoniamnist: this block describes the shape of the trained
+        # medical_fl.student, and that student is distilled from the BreastMNIST teacher.
+        "medmnist_name": "breastmnist", "subset": 512})
     demo_feature_dim: int = 8         # client-demo input feature width (N_IN)
 
 
