@@ -59,7 +59,8 @@ function UseCaseView({ usecase }: { usecase: string }) {
         <TwoPartyDiagram usecase={usecase} activeStage={active} doneStages={done} metrics={metrics}
           config={{ kem: run.kem, qkd: run.qkd, sig: run.sig,
                     qkdProtocol: String(run.params.qkd_protocol ?? ""),
-                    qsmpcOp: String(run.params.qsmpc_op ?? "") }} />
+                    qsmpcOp: String(run.params.qsmpc_op ?? ""),
+                    optiqkd: run.optiqkd }} />
       </div>
       <div className="btn-row" style={{ marginTop: 10 }}>
         <button className="btn ghost" onClick={() => downloadPng(`${usecase}-two-party.png`)}>⬇ Diagram (PNG)</button>
