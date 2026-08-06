@@ -172,6 +172,10 @@ DS_PGS_CATALOG = DatasetSpec(
         "actually prevents publication, and it is enforced by scripts/publish_hf.py."
     ),
 )
+#: Referenced by no ModelSpec and that is correct rather than dead: the genomics bundled sample
+#: carries BOTH published PGS weights and 1000 Genomes genotypes, and a sample maps to one
+#: DatasetSpec, so BUNDLED_DEMO_SAMPLES names the PGS Catalog entry. This record exists so the
+#: genotype half's licence caveat stays checked and dated rather than living only in prose.
 DS_1000G = DatasetSpec(
     name="1000 Genomes phase 3 (IGSR)",
     licence="open access, but not public domain",
