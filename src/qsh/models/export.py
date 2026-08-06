@@ -26,7 +26,7 @@ buy nothing here and risk operators the WebGPU EP has not implemented.
 from __future__ import annotations
 
 import json
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass, field, replace
 from pathlib import Path
 
 import numpy as np
@@ -309,12 +309,20 @@ def graph_opset(path: Path) -> int:
 
 
 def verify_and_quantize(source_model, fixtures: np.ndarray, out_dir: Path, *,
-                        kind: str = "torch", n_features: int | None = None) -> ExportReport:
+                        kind: str = "torch", n_features: int | None = None,
+                        int8_required: bool = True) -> ExportReport:
     """Export -> verify fp32 -> quantise -> verify int8, and refuse to emit a graph that fails.
 
     ``fixtures`` is a held-out batch. The same array is written next to the artefacts as
     ``fixtures.npy`` and re-used by the browser audit, so the in-browser check compares against
     exactly the inputs this gate used rather than a fresh random draw.
+
+    ``int8_required=False`` does NOT relax the gate. The int8 graph is still built and still
+    measured against fp32; if it misses the bar it is **deleted rather than published**, the
+    measured agreement and the reason are recorded, and the model ships fp32-only. That is for
+    models that exist as a published-baseline comparison rather than as a browser-tier artefact,
+    where losing int8 costs download size and nothing else. An fp32 failure is still fatal in
+    either mode, because that one means the exported graph does not match the source model.
     """
     out_dir.mkdir(parents=True, exist_ok=True)
     fp32 = out_dir / "onnx" / "model.onnx"
@@ -393,6 +401,20 @@ def verify_and_quantize(source_model, fixtures: np.ndarray, out_dir: Path, *,
         int8_margin_quantile=INT8_MARGIN_QUANTILE,
     )
     (out_dir / "export_report.json").write_text(json.dumps(asdict(report), indent=2) + "\n")
+
+    # int8 measured, missed the bar, and this model does not need it: drop the artefact instead of
+    # shipping a graph that disagrees, and keep the number that says so.
+    if not report.passed and not int8_required and fp32_err <= FP32_ATOL and quantizable:
+        int8.unlink(missing_ok=True)
+        report = replace(
+            report, passed=True, int8_path="", int8_bytes=0,
+            int8_skipped_reason=(
+                f"int8 built and measured, then withheld: confident agreement "
+                f"{confident_agreement:.4f} is below the {INT8_MIN_AGREEMENT} gate "
+                f"({agreement:.4f} over all fixtures). Serving fp32 only."),
+        )
+        (out_dir / "export_report.json").write_text(json.dumps(asdict(report), indent=2) + "\n")
+        print(f"  [export] int8 withheld — {report.int8_skipped_reason}")
 
     if not report.passed:
         raise RuntimeError(

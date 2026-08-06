@@ -150,17 +150,6 @@ DS_PAYSIM = DatasetSpec(
         "published; AMLworld (CDLA) is the publishable finance model."
     ),
 )
-DS_CAMELYON17 = DatasetSpec(
-    name="Camelyon17-WILDS",
-    licence="CC0-1.0",
-    url="https://wilds.stanford.edu/datasets/",
-    licence_checked="2026-08-03",
-    publishable=True,
-    notes=(
-        "5 hospitals. The official split trains on 3 and holds 2 out as OOD val/test — federating "
-        "across all 5 would destroy the OOD test set, so the federation spans the 3 training centres."
-    ),
-)
 DS_BREASTMNIST = DatasetSpec(
     name="MedMNIST v2 BreastMNIST",
     licence="CC-BY-4.0",
@@ -312,14 +301,18 @@ M_AML = MetricSpec(
     ceiling_source="Multi-PNA+EU, AAAI-24 vol.38 no.10 pp.11838-11846 (68.16 +/- 2.65)",
     companion="auprc",
 )
-M_CAMELYON = MetricSpec(
-    name="ood_accuracy",
-    display="OOD test accuracy (held-out hospitals)",
-    baseline=0.703,
-    baseline_source="ERM baseline, official WILDS leaderboard (70.3 +/- 6.4)",
-    ceiling=0.946,
-    ceiling_source="ContriMix DenseNet-121, official WILDS leaderboard (94.6 +/- 1.2)",
-    companion="id_accuracy",
+M_BREASTMNIST_R50 = MetricSpec(
+    name="auc",
+    display="AUC",
+    baseline=0.857,
+    baseline_source=("ResNet-50 @28px, MedMNIST v2, Yang et al., Scientific Data 10:41 (2023) "
+                     "(AUC 0.857 / ACC 0.812). Note this is BELOW the ResNet-18 baseline of 0.901 "
+                     "on the same corpus and the same 100-epoch Adam regime: on 780 images the "
+                     "deeper network loses. That is the published finding, and it is why this model "
+                     "exists here - to reproduce it rather than to win."),
+    ceiling=0.919,
+    ceiling_source="Google AutoML Vision, MedMNIST v2 (AUC 0.919)",
+    companion="accuracy",
 )
 M_BREASTMNIST = MetricSpec(
     name="auc",
@@ -481,23 +474,6 @@ _SPECS: tuple[ModelSpec, ...] = (
     ModelSpec(
         usecase="medical_fl",
         tier="t2_industry",
-        key="medical_fl.densenet",
-        label="DenseNet-121, federated across 3 hospitals",
-        architecture="DenseNet-121, FedAvg with pairwise-mask secure aggregation (qsh.ai.federated)",
-        params=None,
-        dataset=DS_CAMELYON17,
-        metric=M_CAMELYON,
-        artifacts=_ONNX_PAIR,
-        hf_repo="qsh-medical-fl-densenet121",
-        notes=(
-            "FedAvg alone is not a privacy guarantee — gradient inversion is possible. The secure "
-            "aggregation in qsh.ai.federated hides individual updates from the aggregator; it does "
-            "not bound what the trained model itself leaks."
-        ),
-    ),
-    ModelSpec(
-        usecase="medical_fl",
-        tier="t2_industry",
         key="medical_fl.resnet18",
         label="ResNet-18 on BreastMNIST",
         architecture="ResNet-18 @28px",
@@ -507,6 +483,28 @@ _SPECS: tuple[ModelSpec, ...] = (
         artifacts=_ONNX_PAIR,
         hf_repo="qsh-medical-breastmnist-resnet18",
         notes="The small tier: fits the browser comfortably and has a clean published baseline.",
+    ),
+    ModelSpec(
+        usecase="medical_fl",
+        tier="t2_industry",
+        key="medical_fl.resnet50",
+        label="ResNet-50 on BreastMNIST (published comparison)",
+        architecture="ResNet-50 @28px, 1-channel stem, trained from random initialisation",
+        params=None,
+        dataset=DS_BREASTMNIST,
+        metric=M_BREASTMNIST_R50,
+        artifacts=_ONNX_PAIR,
+        hf_repo="qsh-medical-breastmnist-resnet50",
+        notes=(
+            "Trained to test a published claim rather than to win one. MedMNIST v2 reports ResNet-50 "
+            "at AUC 0.857 against ResNet-18's 0.901 on this corpus, so the expected outcome is that "
+            "the larger model scores LOWER, and it is reported either way. It replaces a DenseNet-121 "
+            "entry that named a dataset with no loader, no fetch command and no artefact directory, "
+            "and linked a Hugging Face repo that did not exist. Architectures benchmarked only "
+            "ImageNet-pretrained (AlexNet, VGG16, DenseNet-121, EfficientNet-B4 in MedMNIST+) are "
+            "deliberately absent: this project dropped ImageNet weights over redistribution terms, "
+            "so their published numbers are not comparable to a from-scratch run."
+        ),
     ),
     ModelSpec(
         usecase="medical_fl",
@@ -675,7 +673,7 @@ ARTIFACT_DIRS: dict[str, str] = {
     "finance_aml.gbm": "models/finance_aml_gbm",
     "finance_aml.gnn": "models/finance_aml_gnn",
     "medical_fl.resnet18": "models/medical_breastmnist_resnet18",
-    "medical_fl.densenet": "models/medical_camelyon17_densenet121",
+    "medical_fl.resnet50": "models/medical_breastmnist_resnet50",
     "genomics.prs": "models/genomics_prs",
     "satellite_comms.telemanom": "models/satellite_telemanom",
     "telecom_ids.qml": "models/telecom_qml_ids",
