@@ -90,6 +90,11 @@ export interface FHEResult {
   fheMs: number;           // REAL measured wall-clock of the encrypted computation
   ctBytes: number;         // serialized ciphertext size (for a genuine ciphertext/plaintext ratio)
   maxAbsError: number;     // CKKS approximation error vs the plaintext reference
+  /** Homomorphic rotations performed, counted. Each triggers a key-switch, and key-switching is
+   *  what dominates CKKS cost - so this is the number that makes a dense layer and a convolution
+   *  comparable on the axis that actually matters, rather than on wall-clock alone. */
+  rotations: number;
+  multiplies: number;
 }
 
 /**
@@ -115,6 +120,7 @@ export async function encryptedLinear(W: number[][], b: number[], x: number[]): 
   try { ctBytes = ctX.saveToArray(seal.ComprModeType.none).length; } catch { ctBytes = 0; }
 
   const logits: number[] = [];
+  let rotations = 0, multiplies = 0;
   for (let j = 0; j < W.length; j++) {
     // an all-zero weight row (our 2-class "class 0" convention) → logit is just the bias; skip the
     // homomorphic eval (CKKS would yield a "transparent" ciphertext, which the safe build rejects).
@@ -127,12 +133,14 @@ export async function encryptedLinear(W: number[][], b: number[], x: number[]): 
     encoder.encode(wPad, scale, ptW);
     let acc = new seal.Ciphertext();
     evaluator.multiplyPlain(ctX, ptW, acc);                     // encrypted element-wise W_j ⊙ x
+    multiplies++;
     for (let s = 1; s < sumWidth; s <<= 1) {                    // rotate-and-add → Σ slots in slot 0
       const rot = new seal.Ciphertext();
       evaluator.rotateVector(acc, s, galois, rot);
       const nxt = new seal.Ciphertext();
       evaluator.add(acc, rot, nxt);
       acc = nxt;
+      rotations++;
     }
     const out = new seal.Plaintext();
     decryptor.decrypt(acc, out);
@@ -143,7 +151,7 @@ export async function encryptedLinear(W: number[][], b: number[], x: number[]): 
   // approximation error vs the plaintext reference (CKKS is approximate)
   const plain = W.map((row, j) => row.reduce((a, w, i) => a + w * (x[i] ?? 0), 0) + (b[j] ?? 0));
   const maxAbsError = Math.max(...logits.map((v, j) => Math.abs(v - plain[j])), 0);
-  return { logits, fheMs, ctBytes, maxAbsError };
+  return { logits, fheMs, ctBytes, maxAbsError, rotations, multiplies };
 }
 
 export function argmax(a: number[]): number {
