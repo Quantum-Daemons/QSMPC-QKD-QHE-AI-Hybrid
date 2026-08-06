@@ -204,7 +204,12 @@ export async function clientSecureAgentCall(
 export async function clientMcpDemo(qkdMixed = false, combiner = "hkdf"): Promise<McpResult> {
   const a = createAgent("analyst-agent");
   const b = createAgent("hospital-silo");
-  const qkd = qkdMixed ? new Uint8Array(32).fill(0x71) : undefined;   // 0x71 = 'q' (server uses b"q"*32)
+  // A fixed QKD-DOMAIN constant, not this run's key, and the UI says so. The BB84/E91 models here
+  // are analytic: they return a secret-key RATE and a secure-bit count, never key bytes, so there is
+  // nothing run-derived to mix. 0x71 = 'q', matching the backend's b"q"*32 so the two sides' derived
+  // fingerprints stay comparable. Synthesising a key and calling it QKD-derived would be worse than
+  // a constant that is labelled as one.
+  const qkd = qkdMixed ? new Uint8Array(32).fill(0x71) : undefined;
   const { message, ...rest } = await clientSecureAgentCall(a, b, "tools/call",
     { name: "query_cohort", arguments: { phenotype: "rare-disease-X" } }, qkd, combiner);
   return rest;
