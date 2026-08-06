@@ -121,6 +121,25 @@
     "transfer_learning": "none \u2014 trained from random initialisation, so the weights are not ImageNet-derived and carry no ImageNet terms (see DATA_LICENSES.md)",
     "wall_clock_s": 9.1
   },
+  "medical_fl.resnet50": {
+    "accuracy": 0.782051282051282,
+    "auc": 0.7987677527151211,
+    "best_val_auc": 0.935673,
+    "dataset": "MedMNIST v2 BreastMNIST",
+    "export": {
+      "fp32_bytes": 94171000,
+      "int8_agreement": 0.9615384615384616,
+      "int8_bytes": 0,
+      "opset": 18
+    },
+    "git_sha": "d582944-dirty",
+    "hf_revision": "e3730e635224afb01792379736508cfa48fcdc4c",
+    "macro_f1": 0.6492063492063492,
+    "n_parameters": 23505858,
+    "resolution": 28,
+    "transfer_learning": "none \u2014 trained from random initialisation, so the weights are not ImageNet-derived and carry no ImageNet terms (see DATA_LICENSES.md)",
+    "wall_clock_s": 11.2
+  },
   "medical_fl.student": {
     "agreement": 0.75,
     "both_scored_zero": false,
