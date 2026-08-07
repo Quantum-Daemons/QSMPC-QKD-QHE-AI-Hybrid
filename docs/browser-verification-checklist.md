@@ -20,6 +20,17 @@ Before trusting any result, grep the served bundle for a string literal from the
 parity proves the container matches the public URL, not that either matches source, and function
 names are minified so only string literals survive.
 
+**Then cache-bust the browser, and do it in that order.** The grep tells you what the server sends;
+it says nothing about what the tab is running. Navigating to the same URL after a deploy can re-serve
+the previous bundle from cache, and the page then shows the OLD text while the server has the new -
+which reads exactly like a fix that did not work. That happened here: the served bundle contained the
+corrected label and zero occurrences of the old one, and the tab still showed the old one. Append a
+throwaway query (`?cb=` plus a timestamp) and re-read `document.querySelectorAll('script[src]')` to
+confirm which bundle the tab actually loaded.
+
+The failure is asymmetric and that is why it matters: a stale tab makes a working fix look broken,
+you "fix" it again, and the second change is the one that ships unverified.
+
 ## The eight axes
 
 | Axis | What passes |
