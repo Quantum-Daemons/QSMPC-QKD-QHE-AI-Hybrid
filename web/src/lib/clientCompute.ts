@@ -589,6 +589,39 @@ const INFERENCE_USECASES = new Set(["finance_aml", "medical_fl", "genomics"]);
 // Assemble the unified benchmark from a finished CLIENT run (demo, zero /api). The MPC-FHE split is
 // the representative cost model tied to the run's model_size/workload; client_compute_ms is the real
 // in-browser wall-clock of the private-inference stage (the "client compute" figure shown in the UI).
+/**
+ * The published model's own plaintext latency, as a benchmark row.
+ *
+ * Every other row in this table is either a cost model or the bundled 8-feature student, so the
+ * table had no plaintext reference measured on a model anyone can download - the thing an FHE
+ * overhead is actually a multiple OF. This row is that reference: one real forward pass of the
+ * pinned Hugging Face model, on its own corpus, on the execution provider that ran it.
+ *
+ * Deliberately null for everything it did not measure. It is plaintext, so there is no FHE time, no
+ * MPC time, no communication and no ciphertext ratio; it is one row, so there is no accuracy. The
+ * panel prints em dashes for those, which is the correct reading.
+ */
+function publishedModelRow(m: any) {
+  if (m?.published_inference_ms == null || m?.published_model_status === "failed") return null;
+  return {
+    path: "plaintext (published model)",
+    backend: m.published_model_backend ?? "onnx",
+    workload: "published",
+    model_size: null, model_arch: m.published_model ?? null, model_params: null, projected: false,
+    latency_ms: r2(m.published_inference_ms),
+    throughput_ips: r2(1000 / Math.max(Number(m.published_inference_ms), 1e-3)),
+    accuracy: null, max_abs_error: null, ciphertext_plaintext_ratio: null,
+    fhe_linear_ms: null, mpc_nonlinear_ms: null, mpc_comm_kb: null,
+    t_gate_count: null, qubits: null,
+    security_model: "none (plaintext reference)",
+    // No security score: this row carries no cryptography, and scoring it would put a number in a
+    // column that invites comparison with rows where the number means something.
+    security_score: null,
+    input_shape: m.published_input_shape ?? null,
+    revision: m.published_model_revision ?? null,
+  };
+}
+
 export function assembleBenchmark(
   usecase: string, config: any,
   opts: { metrics?: any; artifacts?: any; stageMs?: Record<string, number> },
@@ -599,14 +632,18 @@ export function assembleBenchmark(
   const u = rng(7);
   const q = qsmpcFheRow(workload, modelSize, u, 6, benchScale(usecase, modelSize, workload), qubitsOf(config), sec);
   const clientComputeMs = opts?.metrics?.client_compute_ms ?? opts?.stageMs?.private_inference ?? null;
+  // Present on every use case that ran one, including telecom and satellite, whose flows have no
+  // private_inference stage and so never reach the MPC-FHE row below.
+  const pub = publishedModelRow(opts?.metrics);
   if (!INFERENCE_USECASES.has(usecase)) {
-    return { workload, model_size: modelSize, results: [q], advantage: null, live: true,
-      client_compute_ms: clientComputeMs };
+    return { workload, model_size: modelSize, results: pub ? [q, pub] : [q], advantage: null,
+      live: true, client_compute_ms: clientComputeMs };
   }
   // use the REAL measured client-side FHE/MPC from the run (node-seal CKKS + secret-sharing) when present
   const measured: MeasuredHybrid | null = opts?.artifacts?._measured_hybrid ?? null;
   const c = mpcFheRow(usecase, workload, modelSize, measured, sec);
-  return { workload, model_size: modelSize, results: [c, q], advantage: quantumAdvantage(c, q),
+  return { workload, model_size: modelSize, results: pub ? [c, q, pub] : [c, q],
+    advantage: quantumAdvantage(c, q),
     live: true, client_compute_ms: clientComputeMs, measured: !!measured };
 }
 
