@@ -145,6 +145,39 @@ const QSMPC_COMPARE: Step = {
   },
 };
 
+/**
+ * The published model, run in this browser, drawn on whichever stage carries it.
+ *
+ * Local to party A because it is not a protocol exchange: nothing crosses the wire for it. It is
+ * here because the diagram is the most-looked-at part of the page and it was the one place a visitor
+ * could not tell that the pinned model on Hugging Face had anything to do with the run. The Models
+ * panel further down would execute it; the animation above never mentioned it.
+ *
+ * Four states, and they must not collapse into each other: not reached yet, ran, failed, and none
+ * registered. The last two are the ones worth distinguishing - a use case with no published model is
+ * a documented decision, while a published model that failed to run is a defect.
+ */
+const publishedStep = (stageId: string): Step => ({
+  stageId,
+  kind: "local-a",
+  label: (m) => {
+    const status = m["published_model_status"];
+    if (status === "unavailable") return "published model · none registered for this use case";
+    const key = m["published_model"];
+    if (status === "failed") return `published model ${key} · DID NOT RUN (no substitute shown)`;
+    if (key == null) return "published model · —";
+    // Forecasters report absolute error against the target their sample ships; classifiers a class.
+    const mae = m["published_row_mae"];
+    const cls = m["published_predicted_class"];
+    const outcome = mae != null ? `abs err ${f(m, "published_row_mae")}`
+      : cls != null ? `class ${cls}`
+      : "";
+    return `published ${key} @ ${f(m, "published_model_revision")} · ${f(m, "published_model_backend")}`
+      + ` · ${f(m, "published_input_shape")} · ${f(m, "published_inference_ms")} ms`
+      + (outcome ? ` · ${outcome}` : "");
+  },
+});
+
 export const USECASE_SPECS: Record<string, Spec> = {
   finance_aml: {
     a: { name: "Bank A", sub: "blacklist + fraud model · LAN" },
@@ -154,6 +187,7 @@ export const USECASE_SPECS: Record<string, Spec> = {
       { stageId: "qkd_key_agreement", kind: "q-arrow", label: (m, c) => `${qkdName(c)} · QBER ${f(m, "qber")}${optiTag(m, c)}`, hidden: pqcOnly },
       { stageId: "qsmpc_compute", kind: qsmpcKind("psi"), label: qsmpcLabel("psi") },
       ...HYBRID_INFERENCE,
+      publishedStep("private_inference"),
       QSMPC_COMPARE,
       { stageId: "sign_result", kind: "c-bidir", label: (_m, c) => `${sigName(c)}-signed audit record + explanation` },
     ],
@@ -166,6 +200,7 @@ export const USECASE_SPECS: Record<string, Spec> = {
       { stageId: "qkd_key_agreement", kind: "q-arrow", label: (m, c) => `${qkdName(c)} · QBER ${f(m, "qber")}${optiTag(m, c)}`, hidden: pqcOnly },
       { stageId: "federated_training", kind: "c-bidir", label: (m) => `federated train + pairwise masking (demo keys) · acc ${f(m, "federated_accuracy")}` },
       ...HYBRID_INFERENCE,
+      publishedStep("private_inference"),
       QSMPC_COMPARE,
       { stageId: "sign_result", kind: "c-bidir", label: (_m, c) => `${sigName(c)}-signed audit record + explanation` },
     ],
@@ -178,6 +213,7 @@ export const USECASE_SPECS: Record<string, Spec> = {
       { stageId: "qkd_key_agreement", kind: "q-arrow", label: (m, c) => `${qkdName(c)} · QBER ${f(m, "qber")}${optiTag(m, c)}`, hidden: pqcOnly },
       { stageId: "qsmpc_compute", kind: qsmpcKind("sum"), label: qsmpcLabel("sum") },
       ...HYBRID_INFERENCE,
+      publishedStep("private_inference"),
       QSMPC_COMPARE,
       { stageId: "sign_result", kind: "c-bidir", label: (_m, c) => `${sigName(c)}-signed audit record` },
     ],
@@ -189,6 +225,7 @@ export const USECASE_SPECS: Record<string, Spec> = {
       { stageId: "pqc_handshake", kind: "c-bidir", label: (_m, c) => `PQC handshake — ${kemName(c)}` },
       { stageId: "qkd_key_agreement", kind: "q-arrow", label: (m, c) => `${qkdName(c)} (w/ eavesdropper) · QBER ${f(m, "qber")}${optiTag(m, c)}`, hidden: pqcOnly },
       { stageId: "qml_ids", kind: "local-a", label: (m) => `QML-IDS attack detection · macro-F1 ${f(m, "ids_macro_f1")}` },
+      publishedStep("qml_ids"),
       QSMPC_COMPARE,
       { stageId: "sign_result", kind: "c-bidir", label: (_m, c) => `${sigName(c)}-signed audit record` },
     ],
@@ -201,6 +238,7 @@ export const USECASE_SPECS: Record<string, Spec> = {
       { stageId: "satellite_qkd", kind: "q-arrow", label: (m, c) => `free-space ${qkdName(c)} (${f(m, "channel_loss_db")} dB) · QBER ${f(m, "qber")}${optiTag(m, c)}`,
         hidden: pqcOnly },
       { stageId: "qsdc_telemetry", kind: "q-arrow", label: (m) => `QSDC direct telemetry · secrecy ${f(m, "qsdc_secrecy_capacity")} bit/carrier` },
+      publishedStep("qsdc_telemetry"),
       QSMPC_COMPARE,
       { stageId: "sign_result", kind: "c-bidir", label: (_m, c) => `${sigName(c)}-signed audit record` },
     ],
