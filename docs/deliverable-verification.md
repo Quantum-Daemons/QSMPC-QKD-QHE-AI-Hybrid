@@ -30,6 +30,19 @@ Two corollaries, both of which have caught real defects:
   the `e91` branch existed and was unreachable, because the diagram was handed the crypto-agility
   family rather than the protocol.
 
+  A **seventh** was found in Round 21, and it is the one this rule was written for: `qrng_eps_log2`
+  had been *restored* by Round 20 on the stated grounds that it "moves the extracted bit count". It
+  does not, at any value the spinner can reach. It moves the leftover-hash-lemma ceiling, and the
+  delivered output is min(ceiling, requested) with requested almost always the smaller - so at 1024
+  bits every eps from -1 to -128 returns byte-identical output. A comment asserting the control works
+  is not evidence that it does, and this one had survived a round that specifically re-examined it.
+  The ceiling is now reported, which is the observable the parameter actually moves.
+
+  Fixing it surfaced a worse defect of the same family: at 64 bits and eps -128 the run delivers ONE
+  bit and reported health PASS with min-entropy 0, because both SP 800-90B continuous tests return
+  "passed" when handed too little data. A check that passes because there is nothing left to test is
+  the MEASURED-with-no-work rule in its purest form. INCONCLUSIVE is now a third outcome.
+
   A sixth was found only by repeating the sweep on a **second view of the same state**. The
   Orchestration page's graph is memoised, and its `useMemo` dependency array listed `kem`, `qkd` and
   `sig` but not `qkdProtocol` - so the wiring was correct, the label function was correct, and the
@@ -52,7 +65,11 @@ Eight gates. Steps 1-3 and 5-8 are pass/fail; step 4 is a loop that runs until c
 3. **Environment** - `self.crossOriginIsolated === true` on the deployed page, or every timing the
    demo prints is coarsened and invalid. Zero `/api` calls in demo mode, verified in the network
    panel rather than by reading code.
-4. **Content, in Chrome, every page** - four axes, iterated until clean:
+4. **Content, in Chrome, every page** - four axes, iterated until clean. The executable form of this
+   gate is `browser-verification-checklist.md`: seven routes including two negative paths, fourteen
+   regions per use-case page, eight axes, and the numeric edges to type into every field. It is a
+   file rather than a habit because what gets reconstructed from memory each round is whatever
+   someone remembers to look at.
    - *Wording* matches the primary source. Never "experiment" for a simulation, never
      "information-theoretic" where it does not hold.
    - *Numbers* are config-traceable or session-measured.
@@ -155,6 +172,24 @@ So a round is not complete when its new work passes. It is complete when:
   FHE path is published as non-compiling, and the telecom corpus has unresolved redistribution
   terms;
 - the count of deferred items did not increase.
+
+**Round 21 records two failures against this gate rather than carrying them silently.**
+
+`results/` has now gone 953 to 1133 to 1400 files across three rounds with no retention mechanism
+anywhere in the tree. It is gitignored, so this is local and VPS disk rather than repository bloat -
+which is exactly why it kept being easy to defer. Three rounds is the threshold this gate names.
+
+Prometheus has zero call sites in its third consecutive round. `monitoring/exporter.py` defines four
+metrics and three recorder helpers, and grep finds no caller outside that file; `BENCH_LATENCY` has
+no reader at all, not even inside it. The `/metrics` endpoint serves a valid, permanently empty
+scrape, and the Grafana dashboard charts it. The gate's own escalation was "add a dashboard" to
+"charts nothing" to "zero call sites", and this is the round where that has to resolve to either
+wiring the recorders or deleting the exporter and the dashboard together.
+
+Closed in Round 21 rather than deferred a fourth time: the EU AI Act Art. 50 disclosure, which had
+become a live obligation five days before the work started, and the liboqs version mismatch, which
+turned out to be worse than recorded - the Dockerfile cloned the default branch, so two builds of the
+same commit of this repo could ship different cryptography with nothing recording which.
 
 ## What this project cannot verify, and says so
 
