@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { type AgentRun, type Engine, hasWebGPU, runAgent, TFJS_MODELS, WEBLLM_MODELS } from "../lib/clientAI";
 import { clientSecureWrap, type McpResult } from "../lib/clientMcp";
+import { isSoftwareAdapter, webgpuInfo } from "../lib/onnxInference";
 import { cryptoCfg } from "../lib/config";
 import { downloadJSON } from "../lib/export";
 
@@ -58,7 +59,18 @@ export default function AgenticAIPanel({
   const [ranWithCtx, setRanWithCtx] = useState<string | null>(null);
   const [combiner, setCombiner] = useState<string>(cryptoCfg().hybrid_combiner_mode ?? "hkdf");   // PQC+QKD key combiner
   const [gpu, setGpu] = useState(false);                 // genuine WebGPU (adapter obtainable), resolved async
-  useEffect(() => { hasWebGPU().then(setGpu); }, []);
+  // "absent" and "software" are different facts and the note below used to call both of them
+  // "not detected". Since hasWebGPU() began declining software rasterisers - they run this class of
+  // model about 300x slower than the wasm build - that wording would have been actively wrong on a
+  // machine where an adapter exists and was refused on purpose.
+  const [gpuKind, setGpuKind] = useState<"usable" | "software" | "absent">("absent");
+  useEffect(() => {
+    hasWebGPU().then(setGpu);
+    webgpuInfo().then((i: Record<string, unknown>) => {
+      const info = i.info as Record<string, unknown> | undefined;
+      setGpuKind(!info ? "absent" : isSoftwareAdapter(info) ? "software" : "usable");
+    });
+  }, []);
   const models = engine === "webllm" ? WEBLLM_MODELS : TFJS_MODELS;
 
   const onEngine = (e: Engine) => {
@@ -118,7 +130,19 @@ export default function AgenticAIPanel({
       </div>
       {!gpu && (
         <div className="note" style={{ marginBottom: 12 }}>
-          ⚠ WebGPU not detected — WebLLM is disabled; Transformers.js will run on the slower WASM backend.
+          {gpuKind === "software" ? (
+            <>
+              ⚠ The WebGPU adapter here is a software rasteriser, so it is declined on purpose —
+              measured about 300x slower than WebAssembly on this class of model, because every
+              shader dispatch is emulated on the CPU. WebLLM is disabled and Transformers.js runs on
+              the WASM backend, which is the faster of the two CPU paths.
+            </>
+          ) : (
+            <>
+              ⚠ WebGPU not detected — WebLLM is disabled; Transformers.js will run on the slower WASM
+              backend.
+            </>
+          )}
         </div>
       )}
 
