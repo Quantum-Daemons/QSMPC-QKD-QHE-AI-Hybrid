@@ -64,6 +64,7 @@ export default function OrchestrationGraph({
   activeStage,
   doneStages,
   config = {},
+  metrics = {},
 }: {
   usecase: string;
   activeStage: string | null;
@@ -71,10 +72,18 @@ export default function OrchestrationGraph({
   /** Crypto-agility selections plus the Parameters-panel protocol, so the node captions name what
    *  actually ran. `qkd` is the family (is there a channel); `qkdProtocol` is the protocol. */
   config?: { kem?: string; qkd?: string; sig?: string; qkdProtocol?: string };
+  /** The live run's metrics, so the inference node can name the published model that ran.
+   *
+   *  This graph is the SECOND view of the same run, and the checklist's own rule is to audit every
+   *  view rather than one per page - which is how the frozen QKD label was found. The two-party
+   *  diagram has named the published model since Round 21; this one did not, so the same run
+   *  described itself two different ways depending on which page you were on. */
+  metrics?: Record<string, any>;
 }) {
   const stages = flowFor(usecase);
   // The FLOWS table above is static, so these captions used to keep naming ML-KEM-768/BB84/ML-DSA
   // whatever the page's selectors said. Retitle them from the live config instead.
+  const m = metrics ?? {};
   const retitle = (id: string, label: string): string => {
     const head = label.split("\n")[0];
     if (id === "pqc_handshake") {
@@ -98,6 +107,15 @@ export default function OrchestrationGraph({
     }
     if (id === "sign_result") {
       return `${head}\n(${config.sig ? String(config.sig).toUpperCase() : "ML-DSA"})`;
+    }
+    // Whichever stage carries this use case's inference: private_inference for finance, medical and
+    // genomics, qml_ids for telecom, qsdc_telemetry for satellite. Same mapping the pipeline uses.
+    if (id === "private_inference" || id === "qml_ids" || id === "qsdc_telemetry") {
+      const model = m.published_model;
+      if (!model) return label;
+      if (m.published_model_status === "failed") return `${head}\n(${model}: did not run)`;
+      const be = m.published_model_backend ? String(m.published_model_backend).replace("onnx-", "") : "";
+      return `${head}\n(${model}${be ? ` on ${be}` : ""})`;
     }
     return label;
   };
@@ -129,7 +147,10 @@ export default function OrchestrationGraph({
     // Every config field retitle() reads must be listed, or the graph keeps a stale label. This is
     // how the protocol stayed frozen: qkdProtocol was threaded in and used, but omitted here, so
     // React never rebuilt the nodes when it changed and the QKD node kept whatever it first drew.
-  }, [stages, activeStage, doneStages, config.kem, config.qkd, config.sig, config.qkdProtocol]);
+    // Every field retitle() reads must be listed, metrics included - omitting one is precisely how
+    // the protocol label stayed frozen while the wiring and the label function were both correct.
+  }, [stages, activeStage, doneStages, config.kem, config.qkd, config.sig, config.qkdProtocol,
+      m.published_model, m.published_model_backend, m.published_model_status]);
 
   return (
     <div style={{ height: 260, border: "1px solid var(--border)", borderRadius: 10, overflow: "hidden" }}>
