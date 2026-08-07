@@ -2,7 +2,9 @@
 // (config.defaults.json / /api/config) and whose edits flow into the run config via usePipelineRun's
 // buildConfig(). Editing a value + re-running demonstrably changes the run (browser-verifiable). "Reset to
 // defaults" restores the config values. No hardcoded parameter values live here — only labels + UI step/min.
-import { type usePipelineRun } from "../lib/usePipelineRun";
+import {
+  runsFibreQkd, runsInference, runsQsmpc, type usePipelineRun,
+} from "../lib/usePipelineRun";
 
 type Run = ReturnType<typeof usePipelineRun>;
 // `max` exists because QCNN qubits drives a 2^n state vector evaluated several times per run and
@@ -43,12 +45,17 @@ export default function ParameterPanel({ run }: { run: Run }) {
   // satellite_comms is the sharpest case. It runs `satellite_qkd`, which reads config.sat_* keys
   // that do not exist in makeDefaultParams at all, so the entire QKD-channel group was inert there
   // -- four fields, never any effect, on every run since the page was written.
-  const runsFibreQkd = usecase !== "satellite_comms";
-  const runsQsmpc = usecase === "finance_aml" || usecase === "genomics";
-  const runsInference = usecase === "finance_aml" || usecase === "medical_fl" || usecase === "genomics";
+  //
+  // These now ASK the flow rather than restating it as three use-case lists. The lists had already
+  // drifted: FLOWS.demo runs both qsmpc_compute and private_inference and appeared in neither, so
+  // the Generic demo hid three controls its own pipeline went on to read. `buildConfig` gates on the
+  // same predicates, so what is shown and what is sent cannot disagree.
+  const fibreQkd = runsFibreQkd(usecase);
+  const qsmpc = runsQsmpc(usecase);
+  const inference = runsInference(usecase);
 
   const groups: { title: string; fields: Field[] }[] = [];
-  if (runsFibreQkd) groups.push(
+  if (fibreQkd) groups.push(
     { title: "QKD channel", fields: [
       ["QKD pulses", "qkd_pulses", 10000, 1, "channel uses for the BB84 run"],
       ["Distance (km)", "qkd_distance_km", 5, 1, "fibre distance - raises loss + QBER"],
@@ -58,7 +65,7 @@ export default function ParameterPanel({ run }: { run: Run }) {
   // The satellite channel, which `satellite_qkd` and `qsdc_telemetry` have always read and nothing
   // ever rendered. Without these the QSDC abort threshold could not be reached from the UI: Eve was
   // pinned at 0, so free-space QBER stayed near 0.033 against a 0.11 abort threshold.
-  if (!runsFibreQkd) groups.push(
+  if (!fibreQkd) groups.push(
     { title: "Free-space channel", fields: [
       ["Downlink (km)", "sat_distance_km", 50, 1, "ground-to-LEO slant range - raises loss + QBER"],
       ["Eve fraction", "sat_eve", 0.05, 0,
@@ -77,16 +84,27 @@ export default function ParameterPanel({ run }: { run: Run }) {
       ["QRNG bits", "qrng_bits", 512, 64,
        "quantum-random bits generated + health-checked per run - capped at 16384 because the "
        + "Toeplitz extractor is quadratic and runs on the main thread", 16384],
-      // Restored, because the dim/disable guard below has been testing for this field since the
-      // round that deleted it. It is the LHL security parameter the extractor genuinely consumes:
-      // the output length is min-entropy + 2*eps_log2 + 2, so it moves the extracted bit count.
+      // The comment here used to say this "moves the extracted bit count", and Round 20 restored the
+      // field on that basis. It does not, at any setting this spinner can reach. It moves the LHL
+      // BOUND (min-entropy + 2*eps_log2 + 2); delivered output is min(bound, requested), and
+      // requested is the smaller one until qrng_bits drops below about 80 - which, with min 64 and
+      // step 512, means 64 is the only reachable value where the delivered count changes at all.
+      // Measured: at 1024 bits every eps from -1 to -128 returns byte-identical output.
+      //
+      // So the run now reports the bound itself as qrng_lhl_max_bits. The parameter is real - it is
+      // the extractor's security level - and this is the observable it actually moves.
       ["LHL eps (log2)", "qrng_eps_log2", 1, -128,
-       "extractor security 2^eps. Shortens the extracted output as it tightens; only the "
-       + "Toeplitz and seedless extractors consume it", -1]] },
+       "extractor security 2^eps, consumed only by the Toeplitz and seedless extractors. Moves the "
+       + "leftover-hash-lemma ceiling reported as qrng_lhl_max_bits; it shortens the delivered "
+       + "output only when that ceiling falls below the bits you asked for", -1]] },
     { title: "Quantum / run", fields: [
       ["QCNN qubits", "qubits", 1, 2,
        "state-vector QCNN qubit count - capped at 14: the simulator is exact, so cost is 2^n", 14],
-      ["RNG seed", "seed", 1, 0, "run reproducibility seed"]] },
+      // min 1, not 0. quantumSim's rng() does `(seed >>> 0) || 1`, so seed 0 and seed 1 produced
+      // byte-identical runs everywhere: the field's own minimum was a duplicate of the value one
+      // step above it, and anyone comparing "seed 0" with "seed 1" was comparing a run with itself.
+      ["RNG seed", "seed", 1, 1,
+       "run reproducibility seed (starts at 1: the generator maps 0 to 1, so they are not distinct)"]] },
   );
   if (usecase === "telecom_ids") groups.push({ title: "IDS",
     // 250 full-batch gradient iterations over 8 x n x 0.75 rows, synchronously: same hang class.
@@ -119,7 +137,7 @@ export default function ParameterPanel({ run }: { run: Run }) {
         {groups.map((g) => fieldset(g.title, g.fields.map(numField)))}
         {fieldset("Protocol", (
           <>
-            {runsQsmpc && (
+            {qsmpc && (
             <div style={{ minWidth: 120, flex: "1 1 120px" }}>
               <label className="muted" htmlFor="pp-op" style={{ fontSize: 12 }}>QSMPC op</label>
               <select id="pp-op" name="qsmpc_op" value={p.qsmpc_op as string} style={{ width: "100%" }}
@@ -127,7 +145,7 @@ export default function ParameterPanel({ run }: { run: Run }) {
                 <option value="">(use case default)</option><option value="psi">PSI</option><option value="sum">Secure sum</option>
               </select>
             </div>)}
-            {runsInference && (
+            {inference && (
             <div style={{ minWidth: 120, flex: "1 1 120px" }}>
               <label className="muted" htmlFor="pp-inf" style={{ fontSize: 12 }}>Inference</label>
               <select id="pp-inf" name="inference" value={p.inference as string} style={{ width: "100%" }}
@@ -138,7 +156,7 @@ export default function ParameterPanel({ run }: { run: Run }) {
             {/* Only the secure-sum path reads it, and only genomics/finance run that path. The old
                 label promised a prime and accepted any integer: additive sharing over Z_100 is not
                 a field, so the value is snapped to the next prime on entry rather than trusted. */}
-            {runsQsmpc && (
+            {qsmpc && (
             <div style={{ minWidth: 120, flex: "1 1 120px" }}>
               <label className="muted" htmlFor="pp-prime" style={{ fontSize: 12 }}>QSMS prime (0=auto)</label>
               <input id="pp-prime" name="prime" type="number" step={2} min={0} value={p.prime as number}

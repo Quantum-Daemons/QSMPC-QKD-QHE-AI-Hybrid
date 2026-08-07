@@ -6,8 +6,24 @@ import { useEffect, useRef, useState, type RefObject } from "react";
 import { api, type PipelineEvent, streamRun } from "./api";
 import { benchCfg, dataCfg, idsCfg, qkdCfg, qrngCfg, webCfg } from "./config";
 import { FREE_SPACE } from "./quantumSim";
-import { assembleBenchmark, type PipelineControl, runClientPipeline } from "./clientCompute";
+import { assembleBenchmark, clientFlow, type PipelineControl, runClientPipeline } from "./clientCompute";
 import { isClientDemo } from "./demoMode";
+
+/**
+ * Whether a use case runs the stage that reads a given control.
+ *
+ * Derived from the FLOW, not from a hand-kept list of use-case ids, because the two disagreed. The
+ * lists said QSMPC and inference belong to finance, medical and genomics; `FLOWS.demo` contains
+ * `qsmpc_compute` AND `private_inference` and was in neither list. So the Generic demo hid three
+ * controls that its own pipeline then read - and since `params` survives a use-case change on the
+ * Orchestration page, whatever the previous use case had set is what the demo silently ran with.
+ *
+ * Asking the flow makes the panel and the run agree by construction: a control is shown exactly when
+ * a stage exists to read it, and `buildConfig` ships it exactly when it is shown.
+ */
+export const runsQsmpc = (usecase: string) => clientFlow(usecase).includes("qsmpc_compute");
+export const runsInference = (usecase: string) => clientFlow(usecase).includes("private_inference");
+export const runsFibreQkd = (usecase: string) => clientFlow(usecase).includes("qkd_key_agreement");
 import { downloadCSV, downloadJSON, downloadNodePNG, FrameRecorder } from "./export";
 
 export const MODEL_SIZES = [
@@ -120,9 +136,15 @@ export function usePipelineRun(usecase: string, recordRef: RefObject<HTMLElement
     // know (ctx.config.get(key, <config default>)), so a Parameters-panel edit overrides the default.
     const { qsmpc_op, inference, prime, ...nums } = params;
     const c: Record<string, unknown> = { kem, qkd, fhe, mpc, sig, workload, ...nums };
-    if (qsmpc_op) c.qsmpc_op = qsmpc_op;
-    if (inference) c.inference = inference;
-    if (prime > 0) c.prime = prime;
+    // Gated on the SAME predicates that decide whether the control is rendered, because `params`
+    // survives a use-case change and the Orchestration page changes it without remounting. Set QSMPC
+    // op = sum, Inference = qcnn and prime = 97 on Finance, then switch to Generic demo: the three
+    // selects disappear and, before this gate, all three still reached the run. The demo flow reads
+    // every one of them, so it performed a secure summation over Z97 with a QCNN readout, driven by
+    // controls that were no longer on screen.
+    if (runsQsmpc(usecase) && qsmpc_op) c.qsmpc_op = qsmpc_op;
+    if (runsInference(usecase) && inference) c.inference = inference;
+    if (runsQsmpc(usecase) && prime > 0) c.prime = prime;
     if (qfl) c.qfl = true;                                // run Quantum Federated Learning this run
     if (optiqkd) c.qkd_optimize = true;                  // run the AI-QKD parameter optimization this run
     return c;
