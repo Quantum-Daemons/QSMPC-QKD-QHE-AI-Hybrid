@@ -22,6 +22,21 @@ class QKDConfig:
     misalignment: float = 0.015
     eve_intercept_fraction: float = 0.0
     error_correction_eff: float = 1.16
+    # --- free-space (satellite downlink) channel ---
+    #
+    # These existed only as TypeScript literals in quantumSim.ts's FREE_SPACE, which every satellite
+    # call site then spread while overriding just distance and Eve. So four of the six physical
+    # constants behind the satellite page could not be changed without editing the source, and the
+    # exact same shape had already produced a real bug on the fibre side: config and literal agreed
+    # numerically, so editing config.yaml moved the Python model and left the browser on the constant
+    # with nothing to indicate it. Fibre lives in config; free space now does too.
+    #
+    # Values are the ones the TS literals carried, so this is a move rather than a retune.
+    free_space_distance_km: float = 800.0      # ground-to-LEO slant range
+    free_space_loss_db_per_km: float = 0.035   # atmospheric + geometric, far lower per-km than fibre
+    free_space_detector_efficiency: float = 0.4
+    free_space_dark_count_prob: float = 1e-5
+    free_space_misalignment: float = 0.025     # pointing error dominates over optical misalignment
     # --- decoy-state / efficient-BB84 parameters the AI optimizer (qkd/optimize.py) tunes ---
     mu_signal: float = 0.5            # signal mean photon number (decoy-state); ~0.5 is the textbook optimum
     mu_decoy: float = 0.1             # decoy mean photon number
