@@ -137,6 +137,19 @@ export function usePipelineRun(usecase: string, recordRef: RefObject<HTMLElement
 
   useEffect(() => { logRef.current?.scrollTo(0, logRef.current.scrollHeight); }, [events]);
 
+  // Clear the model choice when the use case changes.
+  //
+  // `/usecase/:id` matches the same route for every use case, so React Router does not remount this
+  // hook - and the Orchestration page changes `usecase` without navigating at all. The chosen key
+  // therefore survived into a use case that does not publish it, `browserModels(next).find(...)`
+  // returned nothing, and the run reported "no published model registered for this use case" on a
+  // page that has one. Observed: select the finance GBM, move to telecom, and telecom_ids.qml -
+  // published, pinned and perfectly runnable - vanished.
+  //
+  // This is the same leak the Parameters controls had, one selector later. Anything keyed to the use
+  // case has to be reset when the use case changes, or gated at the point of use; this does both.
+  useEffect(() => { setPublishedModel(""); }, [usecase]);
+
   const buildConfig = () => {
     // spread every numeric/editable param into the run config; the backend + demo read the keys they
     // know (ctx.config.get(key, <config default>)), so a Parameters-panel edit overrides the default.
