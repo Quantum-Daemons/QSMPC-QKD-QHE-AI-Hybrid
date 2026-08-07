@@ -110,8 +110,19 @@ swapping a primitive visibly moves the score - agility you can measure, not just
   `ml-kem-1024+x25519` (cat 5) scores 20. Picking the cat-5 KEM in the SPA raises the score.
 - **QKD on/off** -> HNDL component: a >=256-bit BB84 key mixed in (`bb84-decoy`) scores the full
   HNDL weight; `pqc-only` scores that weight minus the QKD bonus (30.0 vs 25.0 by default), so the
-  total moves 68 -> 63 computational and 82 -> 77 information-theoretic. **This was inert until Round
-  17:** the component was computed as `min(weight, weight + bonus)`, which is just `weight` whenever
+  total moves 68 -> 63 computational and 96 -> 91 information-theoretic. That second pair read
+  "82 -> 77" for three rounds, matching neither the formula nor the "96 vs 68" figure eight lines
+  below it.
+
+  One asymmetry to know before quoting the pair: the two rows do not answer the selector the same way
+  in both deployments. The browser mirror derives both rows' key bits from the run - `secFromConfig`
+  in `clientCompute.ts` returns 0 under `pqc-only` - so 96 -> 91 is reachable there. The Python
+  quantum row pins `qkd_key_bits=256` (`benchmark/quantum_qsmpc_fhe.py:59`) and never moves, while
+  the Python classical row does take the run's value. So 96 -> 91 is the formula's answer and the
+  demo's behaviour, not the full deployment's: the same full-versus-demo divergence species as the
+  `qber` 0.08 / 0.11 split Round 20 closed. Recorded here rather than papered over.
+
+  **This was inert until Round 17:** the component was computed as `min(weight, weight + bonus)`, which is just `weight` whenever
   the KEM is hybrid - i.e. in every normal run - so the selector changed the summary label and
   nothing else while this section claimed otherwise.
 - **QBER** -> eavesdropper-detection component: below the ~11% BB84 threshold scores full marks;

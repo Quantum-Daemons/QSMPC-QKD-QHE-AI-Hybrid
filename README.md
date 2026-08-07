@@ -105,7 +105,7 @@ bash env/setup_venv.sh      # or: make setup
 source .venv/bin/activate
 
 # 2. Run the test suite (crypto correctness, FHE accuracy, E2E smoke)
-make test             # 169 collected, 165 passed, 4 deselected (Node/OpenFHE-gated)
+make test             # 174 collected, 170 passed, 4 deselected (Node/OpenFHE-gated)
 # `make test` already passes -m "not slow", which is what deselects those four.
 # `make test-all` runs every test, and on AlmaLinux 9.7 the OpenFHE bootstrap test SIGSEGVs inside
 # EvalBootstrapSetup: fhe/backends.py guards against an ImportError, and a segfault is not one.
@@ -302,7 +302,7 @@ the Blackwell box (TenSEAL CPU + MPyC, `linear` workload):
 | MPC-FHE | TenSEAL CKKS + MPyC (CPU) | medium | ~243 ms | ~215 ms | ~28 ms | ~4.5 KB | 1.0 | ~1483x | **68 / 100** |
 | MPC-FHE | TenSEAL CKKS + MPyC (CPU) | large \* | ~1885 ms | ~1719 ms | ~165 ms | ~24.5 KB | 1.0 | - | **68 / 100** |
 | MPC-FHE | HEonGPU CKKS (GPU sm_120) + MPyC | medium | batched | GPU | CPU | - | - | - | **68 / 100** |
-| QSMPC-FHE | QOTP + QCNN (Clifford+T) | - | ~4 ms | Clifford | T-gates x56 | n/a | 1.0 | **~1.32x** | **96 / 100** |
+| QSMPC-FHE | QOTP + QCNN (Clifford+T), no trained weights | - | ~4 ms | Clifford | T-gates x56 | n/a | n/a | **~1.32x** | **96 / 100** |
 
 \* **projected** from measured medium per-op cost, not run end-to-end. GPU FHE wins on **batched**
 workloads; for a tiny single-vector input the per-call kernel overhead can exceed CPU (raw encrypt
@@ -450,7 +450,7 @@ See [`docs/pqc-roadmap.md`](docs/pqc-roadmap.md).
   it now reads the cadence from the model record, because preprocessing has to come from the
   artefact rather than a constant in a second file.
 - **Still open: the event-wise headline does not reproduce.** Retraining at the same configuration
-  gives event-wise F0.5 of 0.4545 where the recorded figure is 0.7143, while point-adjusted F1
+  gave event-wise F0.5 of 0.4545 where the then-recorded figure was 0.7143, and the record now holds 0.4545 - the reproduction won and the stale value was the one retired, while point-adjusted F1
   reproduces (0.9937 against 0.9945) and the isolation-forest baseline reproduces exactly
   (0.000248). So the instability is specific to the overlap-based metric, which is the failure mode
   arXiv:2607.11969 (2026-07) describes. Read the event-wise number as one draw from a wide
@@ -505,7 +505,7 @@ See [`docs/pqc-roadmap.md`](docs/pqc-roadmap.md).
   bottleneck, and on the documented box it is not runnable.** The OpenFHE bootstrap test **SIGSEGVs**
   inside `EvalBootstrapSetup` on AlmaLinux 9.7 - the import guard in `fhe/backends.py` catches an
   `ImportError`, and a segfault is not one. `make test` deselects it with `-m "not slow"`
-  (169 collected, 165 passed, 4 deselected); `make test-all` still dies. Round 18 fixed the Makefile
+  (174 collected, 170 passed, 4 deselected); `make test-all` still dies. Round 18 fixed the Makefile
   and this paragraph kept telling readers `make test` runs a bare `pytest` for three more rounds,
   which is the doc-versus-code divergence this list exists to catch.
 - **The security score has two paths, and they used to disagree.** The standalone benchmark scored the
@@ -519,8 +519,10 @@ See [`docs/pqc-roadmap.md`](docs/pqc-roadmap.md).
 - **The encrypted medical CNN benchmark and the medical AUC use different datasets.** The AUC 0.9147 is
   BreastMNIST; the encrypted-convolution timing runs PneumoniaMNIST (`benchmark.medical_cnn.medmnist_name`).
   Both are MedMNIST v2, but they are not the same images.
-- **`results/` has no retention policy.** `docker/docker-compose.yml` bind-mounts it, so a long-lived full
-  deployment grows without bound.
+- **`results/` retention.** It had none for three rounds and grew 953 -> 1133 -> 1421 files;
+  `docker/docker-compose.yml` bind-mounts it, so a long-lived deployment grew without bound.
+  `orchestration.keep_runs` (default 200, 0 disables) now prunes on persist, grouped by run stem
+  so a run is kept or removed whole. Measured after the change: 600 files, 200 runs.
 - **Recommendation - generate the benchmark table instead of maintaining it by hand.** Six of the ten
   numbers in the benchmark section had drifted from what the documented command produces. `tests/` already
   asserts demo samples against the registry; the same pattern over the model and benchmark tables would
@@ -619,7 +621,7 @@ See [`docs/pqc-roadmap.md`](docs/pqc-roadmap.md).
   | **finance** | GFP + XGBoost (graph-feature preprocessing over the transaction multigraph) | IBM **AMLworld HI-Small**, 5,078,345 transactions, 1 laundering in 981 (CDLA-Sharing-1.0) | minority-class F1 **0.081**, AUPRC **0.073** vs a 0.0015 prevalence baseline | 0.632 (NeurIPS 2023 D&B) - see the gap note below |
   | **medical** | **ResNet-18** trained from random initialisation (no ImageNet weights, so no ImageNet terms attach) | MedMNIST v2 **BreastMNIST** (CC-BY-4.0) | AUC **0.9147** | 0.901 (Yang et al., Scientific Data 10:41, 2023) |
   | **genomics** | published **PRS** effect-weight vector - not a neural network | PGS Catalog **PGS000001** over **2,504 real 1000 Genomes samples** | ancestry portability, below | C-index 0.628 - *external citation, not measurable here; the PGS Catalog records it as a Cox-model concordance statistic, not an AUROC, so it is not directly comparable to one* |
-  | **satellite** | **Telemanom** 2xLSTM(80), seq 250, non-parametric dynamic threshold + pruning | **ESA-ADB Mission1** lightweight channels 41-46, multi-year real telemetry (CC-BY-3.0-IGO) | event-wise F0.5 **0.714** | 0.786 (ESA-ADB Table 2) |
+  | **satellite** | **Telemanom** 2xLSTM(80), seq 250, non-parametric dynamic threshold + pruning | **ESA-ADB Mission1** lightweight channels 41-46, multi-year real telemetry (CC-BY-3.0-IGO) | event-wise F0.5 **0.4545** | 0.786 (ESA-ADB Table 2) |
   | **telecom** | RF baseline + quantum-kernel SVC + variational QNN | literature-grounded synthetic QKD-attack telemetry (7 attack types + normal) | macro F1 - **RF 0.987**, quantum-kernel SVC **0.832**, variational QNN **0.467** | no trustworthy single number exists - see below |
 
   Three of those deserve their honest caveat stated in the README rather than buried:
@@ -637,7 +639,7 @@ See [`docs/pqc-roadmap.md`](docs/pqc-roadmap.md).
     and 1.0% of European - a 29.5x difference driven entirely by ancestry, with no phenotype
     involved.** That is the clinically important finding, not a footnote.
   - **satellite reports event-wise F-beta at beta=0.5, never point-adjusted F1.** On the same run the
-    point-adjusted figure is **0.994** against an honest **0.714** - TSB-AD (NeurIPS 2024 D&B) showed
+    point-adjusted figure is **0.994** against an honest **0.4545** - TSB-AD (NeurIPS 2024 D&B) showed
     a uniform random score ranks 26th of 32 detectors under point adjustment. A windowed isolation
     forest runs as a trivial baseline every time (0.0002 here), because a deep model that cannot beat
     it has not earned its complexity. Only labels whose ESA-ADB Category is `Anomaly` count as

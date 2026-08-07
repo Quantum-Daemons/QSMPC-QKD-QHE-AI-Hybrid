@@ -173,23 +173,29 @@ So a round is not complete when its new work passes. It is complete when:
   terms;
 - the count of deferred items did not increase.
 
-**Round 21 records two failures against this gate rather than carrying them silently.**
+**Round 21 recorded two failures against this gate and then closed both, rather than carrying them
+into a fourth round.** They are kept here as the evidence for why the gate exists, in the past tense
+they now belong in.
 
-`results/` has now gone 953 to 1133 to 1400 files across three rounds with no retention mechanism
-anywhere in the tree. It is gitignored, so this is local and VPS disk rather than repository bloat -
-which is exactly why it kept being easy to defer. Three rounds is the threshold this gate names.
+`results/` had gone 953 to 1133 to 1421 files across three rounds with no retention mechanism
+anywhere in the tree. It is gitignored, so this was local and VPS disk rather than repository bloat -
+which is exactly why it stayed easy to defer rather than easy to notice. Closed:
+`orchestration.keep_runs` (default 200, 0 disables) prunes on persist, grouped by run stem so a run
+is kept or removed whole. Measured after: 600 files, 200 runs.
 
-Prometheus has zero call sites in its third consecutive round. `monitoring/exporter.py` defines four
-metrics and three recorder helpers, and grep finds no caller outside that file; `BENCH_LATENCY` has
-no reader at all, not even inside it. The `/metrics` endpoint serves a valid, permanently empty
-scrape, and the Grafana dashboard charts it. The gate's own escalation was "add a dashboard" to
-"charts nothing" to "zero call sites", and this is the round where that has to resolve to either
-wiring the recorders or deleting the exporter and the dashboard together.
+Prometheus had zero call sites in its third consecutive round. `monitoring/exporter.py` defined four
+metrics and three recorder helpers with no caller outside that file, and `BENCH_LATENCY` had no
+reader at all, not even inside it - so `/metrics` served a valid, permanently empty scrape and the
+Grafana dashboard charted it. The gate's own escalation had run "add a dashboard" to "charts nothing"
+to "zero call sites". Closed: the recorders are called from `orchestration/pipeline.py` per stage and
+per run, and from `benchmark/runner.py` for the path label `BENCH_LATENCY` was always going to need.
+Measured: the scrape goes from 1 series to 39 after one run, and `tests/test_monitoring_wired.py`
+asserts that production code calls them rather than that the helpers exist.
 
-Closed in Round 21 rather than deferred a fourth time: the EU AI Act Art. 50 disclosure, which had
-become a live obligation five days before the work started, and the liboqs version mismatch, which
-turned out to be worse than recorded - the Dockerfile cloned the default branch, so two builds of the
-same commit of this repo could ship different cryptography with nothing recording which.
+Also closed in Round 21: the EU AI Act Art. 50 disclosure, which had become a live obligation five
+days before the work started, and the liboqs version mismatch, which turned out to be worse than
+recorded - the Dockerfile cloned the default branch, so two builds of the same commit of this repo
+could ship different cryptography with nothing recording which. Pinned to 0.16.0.
 
 ## What this project cannot verify, and says so
 
