@@ -248,6 +248,49 @@ Cross-check them against each other and against the run log, not only against ex
 - A row whose metric does not apply shows an em dash, and the em dash is correct rather than missing
   data - check which by finding what produced the row.
 
+## The Agentic AI panel, control by control
+
+Its own section because it is the one panel that performs work the pipeline does not, and its claims
+are checkable rather than descriptive.
+
+| Control | What to verify |
+|---|---|
+| Engine | Two options. WebLLM is disabled without a usable adapter, and the note above says WHICH case applies - absent, or present-and-declined. Those are different facts. |
+| Model | Options change with the engine: Transformers.js lists ONNX models, WebLLM lists MLC builds. Selecting one and running reports that model id back in the result. |
+| mix QKD-domain key | On and off must both reach the envelope: `KEM / QKD-mixed` flips, and the derived-key fingerprint changes with it. |
+| Combiner | HKDF against Toeplitz+QLHL. Its tooltip claims "the derived-key fingerprint below changes with the choice" - so check that it does. Measured: `hkdf` gave `0b28dc66`, `its_toeplitz` gave `07224b14` on otherwise identical runs. |
+| Run in-browser agent | Disabled while busy, progress text advances, and the result names the backend it used (`transformers-wasm`) and an elapsed time. |
+| Download results (JSON) | Disabled BEFORE any run with a reason, enabled after, and the file contains the envelope shown on screen rather than a previous run's. |
+| MCP envelope | `authenticated (ML-DSA-65) true` and `tampered message rejected true` are assertions the panel makes about work it did; both must be present after every run. |
+| Staleness | Run the agent, then run the pipeline. The panel must mark its result stale rather than leaving an envelope describing superseded numbers under the new ones. |
+
+## Simulator controls, and where each one has to show up
+
+Every control below changes the run, so every one of them has to change something a visitor can see.
+The rule from the inert-control findings applies: check the RENDERED output in all three places, not
+the code. A control passes only when the diagram text, the run log and the metrics table agree with
+each other and with what was selected.
+
+| Control | Diagram | Log | Metrics / table |
+|---|---|---|---|
+| KEM | handshake arrow names ML-KEM-768 or 1024 | handshake line | `kem_category` 3 or 5, `kem_ciphertext_bytes` 1088 or 1568, security score moves |
+| QKD (family) | quantum arrow present, or gone under pqc-only | "QKD disabled (PQC-only profile)" | `secure_key_bits`, QKD bonus in the security score |
+| Protocol (bb84 / e91) | arrow reads BB84 decoy-state or E91 (entanglement / CHSH) | protocol line | `chsh_s` appears only for E91 |
+| Signature | audit-record arrow names ML-DSA-65 or 87 | signing line | `signature_bytes` 3309 or 4627 |
+| Published model | full-width step names model, revision, EP, input shape, latency, outcome | "published model X ran here on Y" | `published_*` metrics, plaintext benchmark row |
+| Optimize QKD (OptiQKD) | OptiQKD suffix on the QKD arrow with the measured percentage | improvement and convergence lines | `qkd_skr_improvement_pct`, `qkd_convergence_evals` |
+| OptiQKD samples | (via the suffix) | budget line | collapses in 8-wide buckets; saturates near 400 |
+| QKD channel (pulses, distance, eve, misalignment) | QBER on the arrow | channel line | `qber`, `skr`, `secure_key_bits` |
+| QRNG (bits, extractor, eps) | not drawn | delivered-bits line, shortfall explained | `qrng_bits_delivered`, `qrng_lhl_max_bits`, `qrng_extraction_rate`, `qrng_health_conclusive` |
+| Quantum / run (qubits, seed) | QSMPC comparison bar | T-gate line | `t_gate_count`, `qubits`; seed changes every downstream value |
+| IDS (samples per class) | QML-IDS step macro-F1 | training line naming the value actually used | `ids_macro_f1`, `ids_train_per_class` |
+| QSMPC op / prime | arrow kind changes: q-arrow for secure sum, c-bidir for PSI | field line, clamp line when clamped | `qsms_prime`, `secure_sum` or `psi_intersection_size` |
+| Inference | QSMPC comparison bar names the surfaced backend | inference line | `primary_inference_class` |
+
+Two traps this table exists to catch. A control can move the metrics and not the diagram - that was
+five of the six inert controls. And a control can move both while a SECOND view of the same state
+stays frozen, which was the sixth.
+
 ## Navigate the way a visitor does, not the way a test does
 
 Load each route fresh and this whole class of defect is invisible. `/usecase/:id` matches the same
