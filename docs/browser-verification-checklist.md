@@ -212,6 +212,42 @@ misses it. For each use case, sample mid-flight as well as at the end:
 - Controls that must be inert during a run are disabled and say why, and the published-model select
   is one of them - changing the model mid-run would describe the run with the wrong model's name.
 
+## Every panel must describe the run that just happened
+
+The page performs one run and then eight panels describe it. Each was written at a different time,
+and a panel that was correct when written goes quietly stale as the run grows. So after a run, read
+every panel and ask the same question of each: **does this describe what the pipeline actually did,
+all of it, and nothing it did not?**
+
+Four failure shapes, all of them found on this page rather than reasoned about:
+
+- **Describes only part of it.** "Inference provenance" read "MEASURED (plain JS) - js-linear
+  (bundled real model)" on a run that had also fetched and executed a pinned ResNet-18. Both true;
+  the panel named the lesser one, and the published model appeared nowhere until the Models panel far
+  below. Now both, each labelled with the corpus it ran on.
+- **Asserts something with nothing behind it.** The QSMPC-FHE benchmark row reported
+  `accuracy: 1.0`. `qotpQcnnInfer` has no trained parameters at all - RY angles from the input, then
+  seven FIXED rounds of H, CNOT and T - and the benchmark feeds it `u() * 2 - 1`, uniform noise.
+  There was nothing for it to be accurate about, and the MPC-FHE row eight lines above carries a
+  comment forbidding exactly that pattern. The two rows contradicted each other and the invented
+  number was the flattering one.
+- **A column that renders a different column.** The detailed-results table was headed `model` and
+  rendered `security_model`, so it had no model column while appearing to have one.
+- **Says the same thing twice, differently.** Two panels offering the same ResNet-18 run with
+  different chrome; two quantum-advantage scores on one page.
+
+Panels to read, per use case, after a run: Inference provenance · Models (including each "Run this
+model in your browser" result) · Why - top features (SHAP) · Benchmark - MPC-FHE vs QSMPC-FHE ·
+Detailed results · Security score and quantum advantage · Agentic AI · QKD control plane.
+
+Cross-check them against each other and against the run log, not only against expectations:
+
+- A model named in one panel is named the same way in all of them.
+- A number appearing twice is the same number, or the two are labelled as different things.
+- A panel that shows nothing after a run says why, rather than rendering empty.
+- A row whose metric does not apply shows an em dash, and the em dash is correct rather than missing
+  data - check which by finding what produced the row.
+
 ## Navigate the way a visitor does, not the way a test does
 
 Load each route fresh and this whole class of defect is invisible. `/usecase/:id` matches the same
@@ -292,6 +328,23 @@ Reproduction check: ResNet-18 scored 85.9 percent in the browser against 85.9 pe
 offline on the same 156 rows, majority baseline 73.1 percent, 11.3 MB transferred. The medical
 student scores 0.7308 against a majority baseline of 0.7308 - it reproduces its published figure and
 does not beat guessing, and the page says both.
+
+Benchmark rows after the Round 21 sweep, medical page, all three naming what they are:
+
+| path | model | accuracy | security |
+|---|---|---|---|
+| MPC-FHE | FHE-feasible diagnostic CNN (3226 params, measured) | em dash | 68 |
+| QSMPC-FHE | QOTP + 8-qubit QCNN circuit (no trained weights) | em dash | 96 |
+| plaintext | medical_fl.resnet18 | em dash | em dash |
+
+Every accuracy is an em dash and every one is correct: MPC-FHE evaluates no labelled set, QSMPC-FHE
+has no trained weights, and the plaintext row is a single inference. Before this sweep the middle row
+read 1.0.
+
+Inference provenance, same run, both inferences named:
+
+    Pipeline model, on this page's own data    MEASURED (plain JS) - js-linear (bundled real model)
+    Published model, on its own corpus         MEASURED (local WASM) - onnx-wasm
 
 ## What this checklist cannot cover
 
