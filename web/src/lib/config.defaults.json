@@ -293,7 +293,7 @@
           "agreement": 0.884055,
           "both_scored_zero": false,
           "disagreement_on_positives": 0.643257,
-          "hf_revision": "ea78585e61e25384c939941943c3df953531b8a9",
+          "hf_revision": "f939eeafd376f454acb66d57e8ecb88db2c62475",
           "metric_delta": 0.062987,
           "metric_delta_pp": 6.2987,
           "metric_name": "minority_class_f1",
@@ -330,7 +330,7 @@
           "url": "https://www.kaggle.com/datasets/ealtman2019/ibm-transactions-for-anti-money-laundering-aml"
         },
         "hf_repo_id": "Daemons-Q/qsh-finance-aml-ckks-student",
-        "hf_revision": "ea78585e61e25384c939941943c3df953531b8a9",
+        "hf_revision": "f939eeafd376f454acb66d57e8ecb88db2c62475",
         "hf_revision_stale": null,
         "key": "finance_aml.student",
         "label": "CKKS-linear fraud student",
@@ -615,7 +615,7 @@
           "agreement": 0.75,
           "both_scored_zero": false,
           "disagreement_on_positives": 0.078947,
-          "hf_revision": "a05c72eb09c2efc5e6f2bfc5fd2833bfcc7ed33c",
+          "hf_revision": "77435e88ca27519f562ddcabf3301b69faf6c761",
           "metric_delta": 0.134616,
           "metric_delta_pp": 13.4616,
           "metric_name": "accuracy",
@@ -659,7 +659,7 @@
           "url": "https://medmnist.com/"
         },
         "hf_repo_id": "Daemons-Q/qsh-medical-breastmnist-ckks-student",
-        "hf_revision": "a05c72eb09c2efc5e6f2bfc5fd2833bfcc7ed33c",
+        "hf_revision": "77435e88ca27519f562ddcabf3301b69faf6c761",
         "hf_revision_stale": null,
         "key": "medical_fl.student",
         "label": "FHE-feasible diagnostic CNN",
@@ -819,7 +819,7 @@
           "display": "event-wise F0.5",
           "name": "event_wise_f0_5"
         },
-        "notes": "",
+        "notes": "The one published model with no browser evaluation sample, and the reason is the metric rather than the weights. Round 21 gave the other three students samples; this one is scored on event-wise F0.5, which is defined over contiguous runs of a timeline and cannot be computed from a shuffled set of independent rows -- which is exactly what the browser evaluator scores. Shipping a per-row metric instead would verify a number nobody published for it. It needs no scaler, unlike the other three: scripts/train/satellite_telemanom.py fits it on raw `flat_te` (the last 8 timesteps x 6 channels), so the absent `input` block in its weights.json is correct rather than the omission it looks like. Worth reading alongside its numbers: the teacher scores 0.0 event-wise F0.5 on this split and the student 0.0032, so agreement of 0.9987 is agreement about finding almost nothing.",
         "onnx_domains": [
           "ai.onnx.ml"
         ],
@@ -908,7 +908,7 @@
           "agreement": 0.943289,
           "both_scored_zero": false,
           "disagreement_on_positives": 0.141593,
-          "hf_revision": "f6555b863688786057f87310eced2216d498ba68",
+          "hf_revision": "82cb93255efbb315f9120b14bc546244376d73f5",
           "metric_delta": 0.054054,
           "metric_delta_pp": 5.4054,
           "metric_name": "minority_class_f1",
@@ -945,7 +945,7 @@
           "url": "https://zenodo.org/records/12588359"
         },
         "hf_repo_id": "Daemons-Q/qsh-satellite-opssat-ckks-student",
-        "hf_revision": "f6555b863688786057f87310eced2216d498ba68",
+        "hf_revision": "82cb93255efbb315f9120b14bc546244376d73f5",
         "hf_revision_stale": null,
         "key": "satellite_comms.opssat_student",
         "label": "CKKS-linear OPS-SAT segment student",
