@@ -33,10 +33,27 @@ class QKDConfig:
     #
     # Values are the ones the TS literals carried, so this is a move rather than a retune.
     free_space_distance_km: float = 800.0      # ground-to-LEO slant range
-    free_space_loss_db_per_km: float = 0.035   # atmospheric + geometric, far lower per-km than fibre
     free_space_detector_efficiency: float = 0.4
     free_space_dark_count_prob: float = 1e-5
     free_space_misalignment: float = 0.025     # pointing error dominates over optical misalignment
+    #
+    # A satellite downlink is NOT attenuated per kilometre. It was modelled that way here -
+    # `distance_km * 0.035`, a fibre law - which happened to give 28 dB at 800 km, close to the 27 dB
+    # Micius reports, and then diverged: 42 dB at 1200 km against a physical ~28, 70 against ~32 at
+    # 2000, 175 against ~40 at 5000. The Downlink control has no maximum, so anyone dragging it past
+    # about 1000 km was reading numbers with no physical meaning.
+    #
+    # The dominant term is DIFFRACTION, which scales as 1/r^2: the transmitted beam spreads to
+    # theta*r and the ground telescope captures (D_rx / (theta*r))^2 of it. Atmosphere contributes a
+    # fixed few dB rather than a per-km rate, because a downlink crosses it once near the ground -
+    # 3 to 8 dB at 1200 km in the literature, with pointing under 3 dB.
+    #
+    # Defaults are Micius's published configuration (Liao et al., Nature 549, 43 (2017);
+    # arXiv:1707.00542): ~10 urad far-field divergence, 1.2 m ground aperture.
+    free_space_beam_divergence_urad: float = 10.0   # far-field, near-diffraction-limited
+    free_space_rx_aperture_m: float = 1.2           # optical ground station telescope diameter
+    free_space_atmospheric_db: float = 5.0          # absorption + turbulence, whole path, not per km
+    free_space_pointing_db: float = 3.0             # acquisition/tracking residual
     # --- decoy-state / efficient-BB84 parameters the AI optimizer (qkd/optimize.py) tunes ---
     mu_signal: float = 0.5            # signal mean photon number (decoy-state); ~0.5 is the textbook optimum
     mu_decoy: float = 0.1             # decoy mean photon number
