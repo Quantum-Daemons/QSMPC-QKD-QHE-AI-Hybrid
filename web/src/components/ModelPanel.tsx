@@ -297,6 +297,14 @@ function ModelEvalReport({ res }: { res: ModelEvalResult | null }) {
         </div>
       )}
 
+      {/* The sample's own note on why this figure is what it is. Unrendered, the finance student
+          showed 0.3337 here beside the registry's 0.0178 for the same metric with nothing to
+          reconcile them. */}
+      {res.note && (
+        <p className="muted" style={{ fontSize: 11, marginTop: 10 }}>
+          <b>About this figure.</b> {res.note}
+        </p>
+      )}
       <p className="muted" style={{ fontSize: 11, marginTop: 10 }}>{res.provenance}</p>
     </>
   );
