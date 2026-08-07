@@ -18,11 +18,18 @@ import { useEffect, useState } from "react";
 
 import { onnxStatus, webgpuInfo } from "../lib/onnxInference";
 
-export type Provenance = "measured-webgpu" | "measured-wasm" | "remote" | "simulated";
+// `measured-js` exists because the other three were being asked to cover a case none of them fit.
+// The bundled distilled model is real and it is measured, but it is a hand-written loop over plain
+// JS numbers -- no ORT, no wasm module, no GPU. It was reporting `measured-wasm`, so a pipeline run
+// that never touched WebAssembly rendered as "MEASURED (local WASM)". The claim was wrong in the
+// direction that flatters, which is the direction this project cares about.
+export type Provenance =
+  "measured-webgpu" | "measured-wasm" | "measured-js" | "remote" | "simulated";
 
 const LABEL: Record<Provenance, string> = {
   "measured-webgpu": "MEASURED (local WebGPU)",
   "measured-wasm": "MEASURED (local WASM)",
+  "measured-js": "MEASURED (plain JS)",
   remote: "REMOTE (server)",
   simulated: "SIMULATED",
 };
@@ -30,6 +37,9 @@ const LABEL: Record<Provenance, string> = {
 const TITLE: Record<Provenance, string> = {
   "measured-webgpu": "Computed in this browser tab on a real GPU adapter. Timings are wall-clock.",
   "measured-wasm": "Computed in this browser tab on the WebAssembly runtime. Timings are wall-clock.",
+  "measured-js":
+    "Computed in this browser tab in plain JavaScript arithmetic - a real model, really evaluated, " +
+    "but with no WebAssembly or GPU involved. Timings are wall-clock.",
   remote: "Computed off this machine. The reported time includes network latency.",
   simulated:
     "No computation of the advertised kind was performed. The value comes from an analytic model " +
