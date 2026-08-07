@@ -30,7 +30,7 @@ names are minified so only string literals survive.
 | Buttons | Each does something observable. A disabled button carries a reason. |
 | Open and close | Both states of every disclosure control, not only the open one. See below. |
 | Selects and checkboxes | Each value produces a distinct, visible change. |
-| Layout | No horizontal overflow at 1280 or at mobile width. No overlap. |
+| Layout | No horizontal overflow at 1280 or at mobile width. No overlap. Measured against the viewport - see below, this line went three rounds unmeasured. |
 | Data tables | Column headers match what the column renders. Baselines named. No placeholder rows. |
 
 The data-table axis earns its place: the detailed-results table had a column headed `model` that
@@ -122,6 +122,54 @@ numeric field is therefore typed at its edges, not stepped to them.
 | qkd_eve, qkd_misalignment | 0, 0.1, 0.35, 1 | key dies well before the field maximum; the saturation is visible in the metrics |
 | sat_distance_km | 1, 800, 1200, 5000 | saturates; QSDC aborts |
 | seed | 1, 2 | different runs. 0 is no longer reachable: the generator maps it to 1 |
+
+## The layout axis, in full
+
+Added in Round 21 after a reader reported the published-model selector running off its card. The
+axis had said "no horizontal overflow at mobile width" for three rounds and nothing had measured it.
+
+**Measure against the VIEWPORT, not the parent.** This is the part that makes the check work at all.
+Comparing an element's right edge against its containing card finds nothing, because the card grows
+with the child: the 12-column benchmark table rendered 930px wide inside a 390px container and
+registered as zero overflow. The first sweep written for this axis reported "0 overflowing" on a page
+that had 936px of horizontal scroll.
+
+    const vw = document.documentElement.clientWidth;
+    [...document.querySelectorAll('table,svg,pre,code,select,input')]
+      .filter(e => e.getBoundingClientRect().width > vw + 1)
+
+**Check `document.documentElement.scrollWidth` against `clientWidth`** as the top-level assertion.
+If they differ, something is pushing the page and the sweep above says what.
+
+**A control that cannot shrink is the common cause.** A `<select>` sizes to its longest option and a
+flex item defaults to `min-width: auto`, so neither can give way. Force the container narrow and
+confirm the control follows rather than escaping:
+
+    for (const w of [485, 430, 390, 360, 300]) { card.style.width = w + 'px'; /* measure */ }
+
+**Check one level up after fixing.** Containing overflow in a card can create it in an ancestor:
+giving `.card` a scroller pushed `.main` to 1086px against a 1265px viewport, adding 61px of page
+scroll on a desktop that had none, because `.main` is a flex item that had no `min-width: 0`. Re-run
+the top-level assertion after any overflow fix, at the WIDE viewport as well as the narrow one.
+
+**Narrowest directly testable width in this environment is 485px** - the browser window will not go
+below it. Behaviour below 485 is verified by forcing the container width, as above, not by emulation.
+Record which method was used; they are not the same evidence.
+
+## During a run, not only after it
+
+The simulator's own text changes while it runs, and a sweep that only looks at the finished state
+misses it. For each use case, sample mid-flight as well as at the end:
+
+- Metric values appear progressively. A field that renders an em dash before its stage and a number
+  after is correct; one that renders `NaN`, `undefined`, `Infinity` or `null` at any point is not.
+- Terminology is consistent between the diagram label, the run log and the metrics table for the
+  same quantity. The same number must not be called three things.
+- The published-model line names a model, a revision, an execution provider and an input shape, and
+  reports either a class or an absolute error - never both, and never a class for a forecaster.
+- Layout does not shift as content arrives: the log grows, the cards below it must not jump.
+- Controls that must be inert during a run are disabled and say why, and the published-model select
+  is one of them - changing the model mid-run would describe the run with the wrong model's name.
 
 ## Selects, every value
 
