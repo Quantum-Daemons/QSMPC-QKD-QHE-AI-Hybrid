@@ -863,6 +863,10 @@ export function runClientPipeline(
       emit("log", stage, `published model ${pub.modelKey} did NOT run here: ${pub.error}. `
         + `No substitute figure is shown for it.`);
     } else {
+      // Recorded as a metric, not only logged: the diagram has to tell "this use case has no
+      // published model" apart from "the run has not reached this stage yet", and both otherwise
+      // render as an empty field.
+      metric(stage, "published_model_status", "unavailable");
       emit("log", stage, `no published model for this use case: ${pub.reason}`);
     }
   }
