@@ -224,7 +224,7 @@ export default function BenchmarkPanel(
                   * large tier is projected from measured medium-tier per-op cost (MACs / comparison counts), not run end-to-end.
                 </p>
               )}
-              {rows.some((r) => r.path === "plaintext (published model)") && (
+              {rows.some((r) => r.path === "plaintext") && (
                 <p className="muted" style={{ fontSize: 11, margin: "6px 0 0" }}>
                   The plaintext row is a reference point, not a denominator. It is a different model
                   from the encrypted rows — the published Hugging Face model on its own corpus, against
