@@ -396,6 +396,47 @@ export interface ModelEvalResult {
   error: string | null;
 }
 
+/** The evaluation sample for one model, memoised per URL.
+ *
+ *  Two callers now want it -- the Models panel's Run button and the orchestration's inference stage
+ *  -- and before this cache existed the panel refetched several megabytes on every click. `null` is
+ *  cached too: "this model publishes no sample" is a stable answer, not a transient failure, and
+ *  re-asking costs a round trip to be told the same thing. */
+const _sampleCache = new Map<string, Promise<ModelInputFile | null>>();
+
+/** The sample lives beside the weights at the SAME pinned commit, so the two cannot drift apart. */
+function sampleUrlFor(modelUrl: string): string {
+  // Every artefact path in the registry is `onnx/model*.onnx`. The previous form of this stripped the
+  // last two path segments generically, which is only correct BECAUSE of that convention: a
+  // root-level `model.onnx` would have eaten the revision segment and fetched
+  // `.../resolve/eval_sample.json` -- a 404 that reads exactly like "publishes no sample". Anchor on
+  // the convention instead, and say so when it does not hold.
+  if (!/\/onnx\/[^/]+$/.test(modelUrl)) {
+    throw new Error(`cannot derive an eval_sample.json URL from "${modelUrl}": expected the artefact `
+      + `path to be onnx/<file>. Deriving it by stripping segments would silently fetch the wrong `
+      + `URL and report the model as unevaluated.`);
+  }
+  return modelUrl.replace(/\/onnx\/[^/]+$/, "/eval_sample.json");
+}
+
+function evalSample(modelUrl: string): Promise<ModelInputFile | null> {
+  const url = sampleUrlFor(modelUrl);
+  let hit = _sampleCache.get(url);
+  if (!hit) {
+    hit = (async () => {
+      try {
+        const res = await fetch(url, { mode: "cors" });
+        if (!res.ok) return null;              // no evaluation sample published for this model
+        return (await res.json()) as ModelInputFile;
+      } catch {
+        return null;
+      }
+    })();
+    _sampleCache.set(url, hit);
+  }
+  return hit;
+}
+
 /** Apply the preprocessing recorded WITH the data, never a locally-guessed equivalent. */
 function applyPreprocessing(v: number, steps: string[]): number {
   let x = v;
@@ -436,17 +477,8 @@ export async function evaluatePublishedModel(
     ? browserModels(usecase).find((m) => m.spec.key === modelKey) ?? null
     : browserModel(usecase);
   if (!target) return null;
-  const sampleUrl = target.url.replace(/\/[^/]+\/[^/]+$/, "/eval_sample.json")
-    .replace(/\/onnx\/[^/]+$/, "/eval_sample.json");
-
-  let file: ModelInputFile;
-  try {
-    const res = await fetch(sampleUrl, { mode: "cors" });
-    if (!res.ok) return null;                       // no evaluation sample published for this model
-    file = await res.json();
-  } catch {
-    return null;
-  }
+  const file = await evalSample(target.url);
+  if (!file) return null;                           // no evaluation sample published for this model
 
   // Check we are about to score the graph the expectation was measured on. expected.graph has been
   // published since Round 18 and never once compared against the artefact actually fetched -- and
@@ -545,5 +577,183 @@ export async function evaluatePublishedModel(
     status.error = msg;
     console.warn("[onnx] published-model evaluation failed:", msg);
     return { ...base, provenance: file.provenance, error: msg };
+  }
+}
+
+// --------------------------------------------------------------------------------------------- //
+//  One published-model inference, for the orchestration pipeline
+// --------------------------------------------------------------------------------------------- //
+
+/**
+ * A single row through the published model, with everything needed to say what just happened.
+ *
+ * `evaluatePublishedModel` above scores the whole held-out sample and answers "does this browser
+ * reproduce the published figure". This answers a different question -- "what does the published
+ * model output for one input, and how long did that take here" -- which is what an orchestration
+ * stage needs. They share the fetch, the graph check, the preprocessing and the session.
+ */
+export interface PublishedModelRun {
+  modelKey: string;
+  repoId: string;
+  /** The 40-char commit the weights were fetched from. Printed, so the claim is checkable. */
+  revision: string;
+  graph: string;
+  /** "onnx-webgpu" or "onnx-wasm": the execution provider that actually ran, not the one requested. */
+  backend: string;
+  inputShape: number[];
+  rowIndex: number;
+  task: "classification" | "forecast";
+  /** Raw model output: class scores for a classifier, the forecast vector for a forecaster. */
+  logits: number[];
+  /** Classifiers only. A forecaster has no class, and argmax over its output means nothing. */
+  predictedClass: number | null;
+  className: string | null;
+  /** The row's true label where the sample ships one, so the single inference is checkable too. */
+  trueClass: number | null;
+  trueClassName: string | null;
+  /** Forecasters only: mean absolute error of this one row against its shipped next-step target. */
+  rowMae: number | null;
+  /** Wall-clock for session.run alone, excluding fetch and session creation. */
+  latencyMs: number;
+  /** Total including the fetch and session creation on a cold cache. */
+  totalMs: number;
+  provenance: string;
+}
+
+export type PublishedRunOutcome =
+  /** The published model ran. */
+  | { kind: "ran"; run: PublishedModelRun }
+  /** No published, pinned, browser-tier model exists for this use case. A legitimate state. */
+  | { kind: "unavailable"; reason: string }
+  /** One exists and did not run. Never silently substituted -- the caller must surface this. */
+  | { kind: "failed"; modelKey: string; error: string };
+
+/**
+ * Run the published model for `usecase` on one row of its OWN held-out sample.
+ *
+ * The row comes from the model's corpus, not from the caller, and that is deliberate. The pipeline's
+ * own features are a different dataset -- medical runs Wisconsin's 8 tabular features while the
+ * published model is a BreastMNIST CNN over 28x28 images -- so feeding one to the other would be the
+ * same category error this project already refuses elsewhere. The two run side by side and each says
+ * what it is.
+ *
+ * `rowIndex` is taken from the caller (the pipeline derives it from the run seed) so the same seed
+ * selects the same row and the stage is reproducible.
+ */
+export async function runPublishedModel(
+  usecase: string, opts: { modelKey?: string; rowIndex?: number } = {},
+): Promise<PublishedRunOutcome> {
+  const started = performance.now();
+  const target = opts.modelKey
+    ? browserModels(usecase).find((m) => m.spec.key === opts.modelKey) ?? null
+    : browserModel(usecase);
+  if (!target) {
+    return { kind: "unavailable", reason: status.error
+      ?? `no published, pinned, browser-tier ONNX model is registered for "${usecase}"` };
+  }
+
+  const key = target.spec.key;
+  let file: ModelInputFile | null;
+  try {
+    file = await evalSample(target.url);
+  } catch (e) {
+    return { kind: "failed", modelKey: key, error: e instanceof Error ? e.message : String(e) };
+  }
+  if (!file) {
+    return { kind: "failed", modelKey: key,
+      error: `${key} is published and pinned but ships no eval_sample.json at that revision, so there `
+        + `is no input from its own corpus to run it on` };
+  }
+
+  // Same identity check the evaluation path makes: score the graph the sample was measured on.
+  const fetchedGraph = target.url.split("/").pop() ?? "";
+  const expectedGraph = file.expected?.graph ?? "";
+  if (expectedGraph && fetchedGraph && expectedGraph !== fetchedGraph) {
+    return { kind: "failed", modelKey: key,
+      error: `graph mismatch: the sample was built against ${expectedGraph}, this browser fetched `
+        + `${fetchedGraph}` };
+  }
+
+  if (!(await loadModel(usecase, key)) || !session) {
+    return { kind: "failed", modelKey: key, error: status.error ?? "session creation failed" };
+  }
+
+  try {
+    const [, ...dims] = file.input.shape;
+    const per = dims.reduce((a, b) => a * b, 1);
+    const n = file.samples.length;
+    if (!n) throw new Error("eval_sample.json ships zero rows");
+    const rowIndex = ((opts.rowIndex ?? 0) % n + n) % n;
+    const row = file.samples[rowIndex];
+    if (row.length !== per) {
+      throw new Error(`row ${rowIndex} has ${row.length} values, model expects ${per} `
+        + `(${file.input.shape.join("x")}) - refusing to pad or truncate`);
+    }
+    const flat = new Float32Array(per);
+    for (let j = 0; j < per; j++) flat[j] = applyPreprocessing(row[j], file.input.preprocessing);
+
+    const t = new ortRuntime!.Tensor("float32", flat, [1, ...dims]);
+    const ran = performance.now();
+    const out = await session.run({ [session.inputNames[0]]: t });
+    const latencyMs = performance.now() - ran;
+
+    const outputs = session.outputNames.map((k) => out[k]);
+    const scores = outputs.find((o) => o && o.type === "float32" && (o.dims?.length ?? 0) >= 2)
+      ?? outputs[0];
+    const logits = Array.from(scores.data as Float32Array);
+    const task = file.task ?? "classification";
+
+    // A forecaster's output is the next-step prediction, not class scores. Taking an argmax over it
+    // yields a channel index and prints it as a class, which is meaningless -- Telemanom's output is
+    // 6 continuous channel values. Score it the way its own sample is scored instead: absolute error
+    // against the target row shipped beside it.
+    let predictedClass: number | null = null;
+    let rowMae: number | null = null;
+    if (task === "forecast") {
+      const target = file.targets?.[rowIndex];
+      if (target && target.length) {
+        const k = Math.min(target.length, logits.length);
+        let sum = 0;
+        for (let i = 0; i < k; i++) sum += Math.abs(logits[i] - target[i]);
+        rowMae = Number((sum / k).toFixed(6));
+      }
+    } else {
+      predictedClass = 0;
+      for (let c = 1; c < logits.length; c++) {
+        if (logits[c] > logits[predictedClass]) predictedClass = c;
+      }
+      if (logits.length === 1) predictedClass = logits[0] > 0.5 ? 1 : 0;
+    }
+
+    return {
+      kind: "ran",
+      run: {
+        modelKey: key,
+        repoId: target.spec.hf_repo_id ?? "",
+        revision: target.spec.hf_revision ?? "",
+        graph: fetchedGraph,
+        backend: status.backend,
+        inputShape: [1, ...dims],
+        rowIndex,
+        task,
+        logits,
+        predictedClass,
+        rowMae,
+        className: predictedClass == null
+          ? null
+          : file.classes?.[String(predictedClass)] ?? null,
+        trueClass: task === "forecast" ? null : file.labels?.[rowIndex] ?? null,
+        trueClassName: task === "forecast" || file.labels?.[rowIndex] == null
+          ? null
+          : file.classes?.[String(file.labels[rowIndex])] ?? null,
+        latencyMs: Number(latencyMs.toFixed(2)),
+        totalMs: Number((performance.now() - started).toFixed(2)),
+        provenance: file.provenance,
+      },
+    };
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    console.warn("[onnx] published-model run failed:", msg);
+    return { kind: "failed", modelKey: key, error: msg };
   }
 }
