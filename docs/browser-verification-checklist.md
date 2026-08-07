@@ -455,6 +455,21 @@ the satellite label lost its first 17 characters off the left edge.
 The published-model select is disabled while `state === "running"` and re-enabled at `done`, sampled
 at 200 ms intervals from the click.
 
+Dynamic parameter reaching all three surfaces, medical page, `qkd_distance_km` at two values:
+
+| Distance | Diagram | qber | skr | secure_key_bits |
+|---|---|---|---|---|
+| 50 km | BB84 decoy-state · QBER 0.02 | 0.02 | 0.00906 | 1811 |
+| 250 km | BB84 decoy-state · QBER 0.5 | 0.5 | 0 | 0 |
+
+Diagram and metrics move together, and the key dies where the channel model says it should. Note that
+QBER is already pinned at its 0.5 ceiling by 250 km, earlier than the "around 400 km" this file
+records under numeric edges - that figure was approximate and the saturation point is nearer 250 at
+the default 0.2 dB/km.
+
+The config-to-bundle half of the same check, run against the override layer: `config.yaml` at 0.2
+gives a bundle carrying `fiber_loss_db_per_km:.2`, at 0.9 gives `.9`, and restoring returns `.2`.
+
 Three CKKS students now run and reproduce: medical accuracy 0.730769, OPS-SAT rare-class F1 0.864865,
 finance rare-class F1 0.333709 on its shipped rows. `satellite_comms.student` still reports
 `DID NOT RUN` with its reason - it is scored on event-wise F0.5, a sequence metric the per-row
