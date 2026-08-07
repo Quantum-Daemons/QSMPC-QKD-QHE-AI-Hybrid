@@ -1,7 +1,6 @@
 import { useRef } from "react";
 import { Link, useParams } from "react-router-dom";
 import AgenticAIPanel from "../components/AgenticAIPanel";
-import PublishedModelPanel from "../components/PublishedModelPanel";
 import SdnControlPlanePanel from "../components/SdnControlPlanePanel";
 import BenchmarkPanel from "../components/BenchmarkPanel";
 import { ModelPanel } from "../components/ModelPanel";
@@ -93,7 +92,9 @@ function UseCaseView({ usecase }: { usecase: string }) {
         </div>
       )}
 
-      {/* The registry's models and their measured numbers, next to the published baselines. */}
+      {/* The registry's models and their measured numbers, next to the published baselines - and a
+          Run button per model, or the reason it has none. This absorbed PublishedModelPanel, which
+          used to sit forty lines below and offer the same run again with different chrome. */}
       <ModelPanel usecase={usecase} />
 
       {/* XAI: signed SHAP attribution for the inference use cases */}
@@ -133,8 +134,6 @@ function UseCaseView({ usecase }: { usecase: string }) {
           </div>
         </div>
       )}
-
-      <PublishedModelPanel usecase={usecase} />
 
       <SdnControlPlanePanel
         usecase={usecase}
