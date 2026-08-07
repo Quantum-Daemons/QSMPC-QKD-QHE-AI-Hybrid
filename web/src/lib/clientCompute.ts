@@ -20,10 +20,8 @@ import { secureArgmax, warmMPC } from "./clientMPC";
 import { optimizeQKD } from "./clientOptiQKD";
 import { generateQuantumBits } from "./clientQRNG";
 import { bb84, e91, FIBER, FREE_SPACE, h2, intrinsicQber, qcnnExpectation, qotpQcnnInfer, rng } from "./quantumSim";
-import { browserProvenance, type Provenance } from "../components/ProvenanceBadge";
-import {
-  browserModels, inferLogits, onnxBackend, onnxStatus, runPublishedModel,
-} from "./onnxInference";
+import { type Provenance } from "../components/ProvenanceBadge";
+import { browserModels, onnxStatus, runPublishedModel } from "./onnxInference";
 import { realInput, realSatelliteAnomaly, realFederatedSet, type RealInput } from "./realData";
 
 const r1 = (x: number) => Math.round(x * 10) / 10;
@@ -226,10 +224,12 @@ export type InferenceResult = {
 /**
  * Private inference for one feature vector.
  *
- * Three tiers, and which one ran is reported rather than left to be inferred from the output:
- *   1. the published browser-tier ONNX model for this use case  -> MEASURED (WebGPU or WASM)
- *   2. the bundled real distilled model shipped with the demo   -> MEASURED (plain JS arithmetic)
- *   3. placeholder weights                                      -> SIMULATED
+ * Two tiers, and which one ran is reported rather than left to be inferred from the output:
+ *   1. the bundled real distilled model shipped with the demo   -> MEASURED (plain JS arithmetic)
+ *   2. placeholder weights                                      -> SIMULATED
+ *
+ * There used to be a third above these - the published ONNX model - and it was unreachable. See the
+ * note in the body: it ran on an 8-element vector no published model accepts.
  */
 export async function privateInference(
   usecase: string, features: number[], realModel?: { W: number[][]; b: number[] } | null,
@@ -237,14 +237,16 @@ export async function privateInference(
   const f = features.slice(0, 8);
   while (f.length < 8) f.push(0);
 
-  const onnx = await inferLogits(usecase, f);
-  if (onnx) {
-    return {
-      logits: onnx, prediction: argmax(onnx), backend: onnxBackend(),
-      provenance: browserProvenance(), modelKey: onnxStatus().modelKey,
-    };
-  }
-
+  // The published-ONNX tier used to be attempted HERE, on this 8-element vector, and it could never
+  // succeed: no published model takes [1,8]. It takes [1,32], [1,1,28,28], [1,250,6], [1,19] or
+  // [1,7]. So every run fetched a model - 11 MB and 1975 ms of the 2966 ms this function reported as
+  // `client_compute_ms` - created a session, failed on input rank, and fell through to the line
+  // below. A measured number that is two thirds download for an inference that cannot happen.
+  //
+  // The published model now runs in `runPublishedForStage`, on a row of its own corpus at its own
+  // input shape, and reports its own latency. This function is what it always actually was: the
+  // page's explainable path over its 8 real features, which is what the SHAP attribution and the
+  // CKKS evaluation both consume.
   if (realModel?.W?.length) {
     const logits = realModel.W.map((row, j) =>
       row.reduce((a, wij, i) => a + wij * (f[i] ?? 0), 0) + (realModel.b?.[j] ?? 0));
@@ -549,12 +551,15 @@ function mpcFheRow(usecase: string | undefined, workload: string, modelSize: str
     ctpt = measured.featDim > 0 ? r2(measured.ctBytes / (measured.featDim * 8)) : cost.demo_ct_pt_ratio;
     device = "cpu";                                   // node-seal CKKS is WASM-CPU (no commercial-OK WebGPU FHE in 2026)
   } else {
-    const classBackend = onnxBackend() === "none" ? "js-linear" : onnxBackend();
+    // The COST-MODEL branch: nothing here was measured. It used to name whatever execution provider
+    // `onnxBackend()` happened to report, which was never this row's - and is now flatly wrong,
+    // because the only session on the page belongs to the published model running on a different
+    // corpus. A modelled row does not get to borrow a measured row's backend.
     const ops = tierOps(dims);
     fhe = ops * cost.fhe_ms_per_dot; mpc = ops * cost.mpc_ms_per_cmp; comm = ops * cost.mpc_comm_bytes_per_cmp;
-    backend = `ckks (${classBackend}) + mpyc-shamir (js-sim, representative)`;
+    backend = "ckks + mpyc-shamir (cost model, not measured)";
     ctpt = cost.demo_ct_pt_ratio; projected = modelSize === "large";
-    device = classBackend.includes("webgpu") ? "gpu" : "cpu";
+    device = "cpu";
   }
   return {
     path: "MPC-FHE", backend, workload,
@@ -1495,7 +1500,18 @@ export function runClientPipeline(
         const isInf = ["finance_aml", "medical_fl", "genomics"].includes(usecase);
         const qrow = qsmpcFheRow(wl, ms, rng(7), 6, 1, qubitsOf(config),
           { ...sec, qber: typeof metrics.qber === "number" ? metrics.qber : null });
-        const adv = isInf ? quantumAdvantage(mpcFheRow(usecase, wl, ms, null, sec), qrow) : null;
+        // Costed against the MEASURED hybrid, the same input assembleBenchmark uses.
+        //
+        // This passed `null` and therefore scored the quantum path against a COST MODEL of the
+        // classical one, while the benchmark panel above scored it against the encrypted convolution
+        // the run had actually just performed. Same quantity, two denominators, both on screen: the
+        // badge read 10/10 while the metrics table two panels down read 9.6 and the log line agreed
+        // with the table. `private_inference` runs before this stage, so the measurement is already
+        // in hand - there was never a reason to model it.
+        const measuredHybrid: MeasuredHybrid | null = artifacts._measured_hybrid ?? null;
+        const adv = isInf
+          ? quantumAdvantage(mpcFheRow(usecase, wl, ms, measuredHybrid, sec), qrow)
+          : null;
         if (adv) metric(stage, "quantum_advantage_score", adv.score);
         metric(stage, "qsmpc_t_gates", qrow.t_gate_count);
         emit("log", stage, `QSMPC-FHE comparison (QOTP+QCNN, ${qrow.t_gate_count} T-gates)`
