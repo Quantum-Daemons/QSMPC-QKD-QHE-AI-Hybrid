@@ -80,8 +80,16 @@ Two disclosure controls exist: the Parameters button (`PipelineControls`, with `
 `aria-controls="pipeline-parameters"`) and the provenance detail toggle (`ProvenanceBadge`), which
 appears more than once per page. Each is checked in six states, not one.
 
-1. Before opening: button label, `aria-expanded="false"`, and the panel genuinely absent from the DOM
-   rather than merely hidden.
+1. Before opening: button label, `aria-expanded="false"`, and the panel's CONTENTS not rendered -
+   `hidden` set, `display: none`, `offsetParent === null`, and zero focusable fields inside it.
+
+   This row previously demanded that the panel be "genuinely absent from the DOM rather than merely
+   hidden", and that was wrong. `aria-controls` has to reference an element that exists, so the
+   container must stay in the tree for the disclosure relationship to be valid at all; what must not
+   exist is its content. Measured on the Orchestration page: the container is present with `hidden`,
+   `display: none` and **zero** fields inside while collapsed, which is correct. The row as first
+   written would have sent someone to "fix" working code and break the ARIA wiring doing it - so
+   assert on the contents and the computed style, never on the container's existence.
 2. The transition: no layout shift below it, no overlap with the diagram.
 3. After opening: `aria-expanded="true"`, `aria-controls` resolves to the panel that appeared, and
    every field shows the value the current run would use.
