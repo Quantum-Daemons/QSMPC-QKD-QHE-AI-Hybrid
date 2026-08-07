@@ -81,14 +81,51 @@ function UseCaseView({ usecase }: { usecase: string }) {
 
       {/* What produced the inference on this page: the published ONNX model, the bundled real
           model, or placeholder weights. Read from the run's own metrics, not asserted. */}
-      {metrics?.inference_provenance && (
-        <div className="card" style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+      {/* BOTH inferences, because the run performs two and this panel used to name only one - the
+          smaller one. It read "MEASURED (plain JS) - js-linear (bundled real model)" on a run that
+          had also just executed a pinned ResNet-18, so the panel headed "Inference provenance"
+          described the least of what the page had done and the published model appeared nowhere
+          above the Models panel. They are different corpora and neither substitutes for the other,
+          so both are labelled rather than merged into one badge. */}
+      {(metrics?.inference_provenance || metrics?.published_model) && (
+        <div className="card" style={{ display: "grid", gap: 8 }}>
           <strong style={{ fontSize: 13 }}>Inference provenance</strong>
-          <ProvenanceBadge
-            kind={String(metrics.inference_provenance) as Provenance}
-            detail={String(metrics.inference_backend ?? "")}
-            evidence={{ model: metrics.inference_model ?? null }}
-          />
+          {metrics?.inference_provenance && (
+            <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+              <span className="muted" style={{ fontSize: 12, minWidth: 190 }}>
+                Pipeline model, on this page's own data
+              </span>
+              <ProvenanceBadge
+                kind={String(metrics.inference_provenance) as Provenance}
+                detail={String(metrics.inference_backend ?? "")}
+                evidence={{ model: metrics.inference_model ?? null }}
+              />
+            </div>
+          )}
+          {metrics?.published_model && (
+            <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+              <span className="muted" style={{ fontSize: 12, minWidth: 190 }}>
+                Published model, on its own corpus
+              </span>
+              {metrics.published_model_status === "failed" ? (
+                <span className="small" style={{ color: "var(--warn)" }}>
+                  {String(metrics.published_model)} did not run — no substitute is shown
+                </span>
+              ) : (
+                <ProvenanceBadge
+                  kind={(metrics.published_model_backend === "onnx-webgpu"
+                    ? "measured-webgpu" : "measured-wasm") as Provenance}
+                  detail={String(metrics.published_model_backend ?? "")}
+                  evidence={{
+                    model: String(metrics.published_model),
+                    revision: metrics.published_model_revision ?? null,
+                    input: metrics.published_input_shape ?? null,
+                    latency_ms: metrics.published_inference_ms ?? null,
+                  }}
+                />
+              )}
+            </div>
+          )}
         </div>
       )}
 
