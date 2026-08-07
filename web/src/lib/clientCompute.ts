@@ -607,8 +607,22 @@ function qsmpcFheRow(workload: string, modelSize: string, u: () => number, sampl
   const latency = r2((total / samples) * scale);
   return {
     path: "QSMPC-FHE", backend: "qotp+qcnn (state-vector sim, not quantum HW)", workload, model_size: modelSize,
+    // Names what this row IS, because the model column read "—" beside two rows that name real
+    // models, which invites the reader to assume the blank is an oversight rather than the point.
+    // There are no learned parameters here: qotpQcnnInfer applies a fixed H/X/Z/T/RY structure whose
+    // angles come from its input, and the input is random.
+    model_arch: `QOTP + ${nq}-qubit QCNN circuit (no trained weights)`,
     latency_ms: latency, throughput_ips: r2(1000 / Math.max(latency, 0.001)),
-    accuracy: 1.0, max_abs_error: null,
+    // NOT 1.0, which is what this reported for three rounds while the MPC-FHE row eight lines above
+    // carries a comment forbidding exactly that: "reporting 1.0 as if it were a result would be the
+    // flattering-number pattern this project rules out". The two rows contradicted each other, and
+    // the fabricated one was the flattering side of the contradiction - a reader saw the quantum
+    // path as perfectly accurate, fastest and most secure, and one of those three was invented.
+    //
+    // There is nothing here to be accurate ABOUT. The circuit carries no trained weights and its
+    // input is `u() * 2 - 1`, uniform noise. What this row legitimately measures is the state-vector
+    // simulation's latency, its counted T-gate total, its qubit count and its security model.
+    accuracy: null, max_abs_error: null,
     ciphertext_plaintext_ratio: 1.0,                  // QOTP: ciphertext = same #qubits as plaintext (genuine)
     t_gate_count: last.tGates, qubits: last.qubits,   // counted from the actual gate list
     security_model: "information-theoretic (QOTP perfect hiding)",
