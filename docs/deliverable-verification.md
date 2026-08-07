@@ -84,17 +84,21 @@ Eight gates. Steps 1-3 and 5-8 are pass/fail; step 4 is a loop that runs until c
 7. **Git-only deployment** - commit, push, then pull and build on the server. Never rsync.
 8. **Final greps** - no new literals, no Japanese in public files, CI green on the head commit.
 
-   Three files are exceptions, and the third is the interesting one. A private workflow note
-   and the private business-strategy reports are Japanese by design and untracked. `.gitignore` is
-   tracked and contains Japanese because its patterns name those confidential `.docx` files exactly -
-   and that is a confidentiality control, not prose. Rewriting them in ASCII to satisfy this
-   convention would weaken the one rule whose job is to stop a leak, which is the wrong trade; a
-   plain `*.docx` line sits beside them so the control holds by extension alone even if a filename
-   changes.
+   As of Round 21 there is **no** Japanese in any tracked text file - the rule holds with no
+   exceptions. A private workflow note and the private business-strategy reports are Japanese
+   by design and untracked; the reports live one directory above the repository and have never been
+   inside it.
 
-   Run the grep over TEXT files only. Every research PDF under `references/` matches the CJK byte
-   ranges, because arbitrary binary does; a scan that includes them reports twelve violations and
-   none of them are real.
+   `.gitignore` used to be the exception, carrying five Japanese-named `.docx` patterns. They were
+   guarding a path that does not exist, so they are gone and `*.[dD][oO][cC][xX]` replaced them:
+   strictly stronger, since it catches those files plus any future report whatever it is called.
+   Case-folded by hand because gitignore matching is case-SENSITIVE on Linux - a plain `*.docx` lets
+   `Report.DOCX` straight through, which `git check-ignore` confirms. Verified against all five real
+   filenames and four casings.
+
+   Run the grep over TEXT files only (`grep -I`). Every research PDF under `references/` matches the
+   CJK byte ranges, the way arbitrary binary does; a scan that includes them reports twelve
+   violations and not one is real. A check that cries wolf twelve times is a check nobody runs twice.
 
 ## Mapping the ladder onto deliverables
 
