@@ -21,7 +21,9 @@ import { optimizeQKD } from "./clientOptiQKD";
 import { generateQuantumBits } from "./clientQRNG";
 import { bb84, e91, FIBER, FREE_SPACE, h2, intrinsicQber, qcnnExpectation, qotpQcnnInfer, rng } from "./quantumSim";
 import { browserProvenance, type Provenance } from "../components/ProvenanceBadge";
-import { inferLogits, onnxBackend, onnxStatus, runPublishedModel } from "./onnxInference";
+import {
+  browserModels, inferLogits, onnxBackend, onnxStatus, runPublishedModel,
+} from "./onnxInference";
 import { realInput, realSatelliteAnomaly, realFederatedSet, type RealInput } from "./realData";
 
 const r1 = (x: number) => Math.round(x * 10) / 10;
@@ -918,7 +920,16 @@ export function runClientPipeline(
     // cases publish more than one and could previously only ever exercise the first: medical ships
     // ResNet-18, ResNet-50 and the CKKS student, and satellite ships four across two tasks that are
     // not comparable with each other.
-    const chosen = String(config.published_model ?? "") || undefined;
+    let chosen = String(config.published_model ?? "") || undefined;
+    // Ignore a selection that belongs to a different use case. The UI resets on a use-case change,
+    // so this is the belt to that braces: a stale key reaching here would otherwise resolve to no
+    // target at all and be reported as "this use case has no published model", which is a much
+    // stronger and quite wrong claim.
+    if (chosen && !browserModels(usecase).some((m) => m.spec.key === chosen)) {
+      emit("log", stage, `ignoring published-model selection "${chosen}": it belongs to another use `
+        + `case. Running this one's default instead.`);
+      chosen = undefined;
+    }
     const pub = await runPublishedModel(usecase, {
       rowIndex: Math.floor(u() * 4096), modelKey: chosen,
     });
