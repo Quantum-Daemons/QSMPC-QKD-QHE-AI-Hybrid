@@ -444,6 +444,39 @@ still holding 2000 from an earlier aborted call. Read `el.value` back and throw 
 set, before clicking Start. The arithmetic is what exonerated the code: 70 is 2000 x 0.035, so the
 config value was being read correctly all along.
 
+## Check the MODEL, not only the number
+
+A figure can match the literature at one operating point and come from the wrong physics. That is
+harder to see than a wrong number, because the one point you check agrees.
+
+Round 21's case: the satellite downlink reported 28 dB at 800 km, comfortably beside the 27 dB
+Micius publishes - and it was computed as `distance_km * 0.035`, a FIBRE attenuation law. A satellite
+link is not attenuated per kilometre. Its dominant term is diffraction, which scales as 1/r^2, and
+the atmosphere contributes a few fixed dB because a downlink crosses it once near the ground rather
+than along the whole path. So the model was right where it had been calibrated and wrong everywhere
+else:
+
+    km      linear law    diffraction
+    800        28 dB         24.5 dB
+    1200       42 dB         28.0 dB
+    2000       70 dB         32.4 dB
+    5000      175 dB         40.4 dB
+
+The Downlink control has no maximum and steps by 50, so a visitor reached meaningless numbers a short
+drag past the default - and the QBER saturating at 0.5 looked like a channel result rather than an
+artefact of the wrong law.
+
+So for any physical quantity the page reports:
+
+- **Evaluate it at two or three points, not one**, and check the SHAPE against the literature -
+  linear, inverse-square, exponential. A single agreeing point proves calibration, not correctness.
+- **Ask what the dominant loss term actually is** for the regime being modelled. Fibre attenuation and
+  free-space diffraction are different physics wearing the same units.
+- **Check the reported metric and the computed one are the same quantity.** Fixing this nearly
+  shipped a second defect: `bb84()` and `e91()` recomputed the loss for their result object with the
+  old linear product, so with the new model selected the page would have REPORTED 0 dB while the
+  transmittance used the real figure.
+
 ## Capture every control's value against its OWN constraints
 
 Distinct from the numeric-edges pass, which types values in. This one types nothing: it dumps every
