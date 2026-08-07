@@ -637,6 +637,19 @@ _SPECS: tuple[ModelSpec, ...] = (
         artifacts=_STUDENT_ARTIFACTS,
         hf_repo="qsh-satellite-telemanom-ckks-student",
         runs_encrypted=True,
+        notes=(
+            "The one published model with no browser evaluation sample, and the reason is the "
+            "metric rather than the weights. Round 21 gave the other three students samples; this "
+            "one is scored on event-wise F0.5, which is defined over contiguous runs of a timeline "
+            "and cannot be computed from a shuffled set of independent rows -- which is exactly "
+            "what the browser evaluator scores. Shipping a per-row metric instead would verify a "
+            "number nobody published for it. "
+            "It needs no scaler, unlike the other three: scripts/train/satellite_telemanom.py fits "
+            "it on raw `flat_te` (the last 8 timesteps x 6 channels), so the absent `input` block "
+            "in its weights.json is correct rather than the omission it looks like. "
+            "Worth reading alongside its numbers: the teacher scores 0.0 event-wise F0.5 on this "
+            "split and the student 0.0032, so agreement of 0.9987 is agreement about finding almost "
+            "nothing."),
     ),
     ModelSpec(
         usecase="satellite_comms",
