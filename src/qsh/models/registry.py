@@ -821,10 +821,21 @@ def _artifact_exists(key: str, path: str) -> bool:
 def _browser_runnable(key: str, precision: str = "fp32") -> bool:
     """Whether ORT Web can execute this model's graph at the given precision.
 
-    Default False when unknown: claiming a model runs in a browser and then hanging is worse than
-    declining. Precision matters independently of the model -- the int8 Telemanom graph loads in
-    0.03 s under Python ORT and never finishes session creation in a browser, because
-    MatMulInteger + DynamicQuantizeLinear alongside LSTM is not viable in ORT Web.
+    RECORDED AS PROVENANCE, NOT AS A GATE. `browserModels()` in the frontend deliberately does not
+    consult this: the flag was built on a diagnosis that was retracted, in which unsupported
+    operators were blamed for what turned out to be the JSEP build being imported unconditionally on
+    a machine with no GPU adapter.
+
+    This docstring used to claim that "the int8 Telemanom graph loads in 0.03 s under Python ORT and
+    never finishes session creation in a browser, because MatMulInteger + DynamicQuantizeLinear
+    alongside LSTM is not viable in ORT Web". That is false, and it is the same retracted diagnosis
+    wearing a specific number. Round 21 measured it: `satellite_comms.telemanom` serves exactly that
+    int8 graph to the browser, and it creates a session and runs a 1x250x6 forecast on the WebGPU
+    execution provider in 153 ms. Deleting the claim rather than softening it, because a confident
+    measurement that was never re-measured is how it survived three rounds.
+
+    `int8_browser_runnable` is written by no exporter, so this returns False for every int8 artefact.
+    That is honest for an unmeasured property and harmless while nothing gates on it.
     """
     report = _export_report(key)
     field = "browser_runnable" if precision != "int8" else "int8_browser_runnable"

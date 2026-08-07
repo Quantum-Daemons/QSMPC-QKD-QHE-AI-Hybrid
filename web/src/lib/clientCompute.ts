@@ -21,7 +21,7 @@ import { optimizeQKD } from "./clientOptiQKD";
 import { generateQuantumBits } from "./clientQRNG";
 import { bb84, e91, FIBER, FREE_SPACE, h2, intrinsicQber, qcnnExpectation, qotpQcnnInfer, rng } from "./quantumSim";
 import { browserProvenance, type Provenance } from "../components/ProvenanceBadge";
-import { inferLogits, onnxBackend, onnxStatus } from "./onnxInference";
+import { inferLogits, onnxBackend, onnxStatus, runPublishedModel } from "./onnxInference";
 import { realInput, realSatelliteAnomaly, realFederatedSet, type RealInput } from "./realData";
 
 const r1 = (x: number) => Math.round(x * 10) / 10;
@@ -200,7 +200,9 @@ export async function privateInference(
       row.reduce((a, wij, i) => a + wij * (f[i] ?? 0), 0) + (realModel.b?.[j] ?? 0));
     return {
       logits, prediction: argmax(logits), backend: "js-linear (bundled real model)",
-      provenance: "measured-wasm", modelKey: null,
+      // Not measured-wasm: this loop is plain JS numbers. Claiming WASM here made every pipeline run
+      // on every page render "MEASURED (local WASM)" without a wasm module ever being instantiated.
+      provenance: "measured-js", modelKey: null,
       note: "bundled distilled linear model, evaluated in plain JS arithmetic",
     };
   }
@@ -805,6 +807,66 @@ export function runClientPipeline(
     emit("metric", stage, "", { name, value });
   };
 
+  /**
+   * Run this use case's PUBLISHED model here, on a row of its own corpus, and report what happened.
+   *
+   * Called from whichever stage carries this use case's inference -- `private_inference` for finance,
+   * medical and genomics, `qml_ids` for telecom, `qsdc_telemetry` for satellite. It is a helper
+   * rather than a stage of its own because every use case already has an inference stage, and adding
+   * a seventh box to five diagrams to say "and also the real model" would describe the plumbing
+   * rather than the protocol.
+   *
+   * This is a SECOND inference, not a replacement for the stage's own. The stage runs the page's
+   * explainable path over real Wisconsin / PGS / PaySim / CIC-IDS features, which is what the SHAP
+   * attribution and the CKKS evaluation both depend on. The published model is trained on a
+   * different corpus (BreastMNIST 28x28, AMLworld 32-feature, ESA 250x6), so feeding it the stage's
+   * features would be the category error this project refuses elsewhere. Both are real, both are
+   * measured, and each says which corpus it is on.
+   *
+   * Until this existed the Models panel's Run buttons were the only thing in the product that ever
+   * executed a pinned model: the pipeline truncated its features to 8, every published input rank
+   * disagreed, the ONNX tier failed on all five use cases, and the run reported the bundled linear
+   * model under a MEASURED badge.
+   */
+  async function runPublishedForStage(stage: string) {
+    const pub = await runPublishedModel(usecase, { rowIndex: Math.floor(u() * 4096) });
+    if (pub.kind === "ran") {
+      const p = pub.run;
+      metric(stage, "published_model", p.modelKey);
+      metric(stage, "published_model_revision", p.revision.slice(0, 12));
+      metric(stage, "published_model_backend", p.backend);
+      metric(stage, "published_inference_ms", r2(p.latencyMs));
+      metric(stage, "published_input_shape", p.inputShape.join("x"));
+      // A forecaster has no class. Reporting an argmax over its 6 continuous channel outputs as a
+      // "predicted class" printed a channel index dressed up as a verdict.
+      let outcome: string;
+      if (p.task === "forecast") {
+        if (p.rowMae != null) metric(stage, "published_row_mae", p.rowMae);
+        outcome = p.rowMae == null
+          ? `Forecast ${p.logits.length} channels (the sample ships no target for this row)`
+          : `Forecast absolute error ${p.rowMae} on this row, over ${p.logits.length} channels`;
+      } else {
+        metric(stage, "published_predicted_class", p.predictedClass);
+        if (p.trueClass != null) metric(stage, "published_true_class", p.trueClass);
+        outcome = `Predicted ${p.className ?? p.predictedClass}`
+          + (p.trueClass != null ? ` (true ${p.trueClassName ?? p.trueClass})` : "");
+      }
+      emit("log", stage,
+        `published model ${p.modelKey} ran here on ${p.backend}: row ${p.rowIndex} of its own `
+        + `held-out sample, input ${p.inputShape.join("x")}, ${r2(p.latencyMs)} ms. ${outcome}`
+        + `. Weights from ${p.repoId} at ${p.revision.slice(0, 12)}, ${p.provenance}`);
+    } else if (pub.kind === "failed") {
+      // Deliberately NOT substituted. A published model that exists and did not run is a reportable
+      // failure, not an occasion to quietly show a different model's number in its place.
+      metric(stage, "published_model", pub.modelKey);
+      metric(stage, "published_model_status", "failed");
+      emit("log", stage, `published model ${pub.modelKey} did NOT run here: ${pub.error}. `
+        + `No substitute figure is shown for it.`);
+    } else {
+      emit("log", stage, `no published model for this use case: ${pub.reason}`);
+    }
+  }
+
   async function gate() {
     while (!state.stopped) {
       if (!state.paused) return;
@@ -1020,6 +1082,10 @@ export function runClientPipeline(
             emit("log", stage, `private telemetry anomaly detection (${anom.provenance}): `
               + `${anom.isAnomaly ? "ANOMALY" : "nominal"} (score ${anom.anomalyScore})`);
           }
+          // Satellite's flow has no private_inference stage either. Inside the delivery branch on
+          // purpose: if the QSDC check aborted there is no delivered telemetry to analyse, and
+          // running an inference anyway would contradict the abort logged two lines above.
+          await runPublishedForStage(stage);
         }
         break;
       }
@@ -1132,6 +1198,8 @@ export function runClientPipeline(
         emit("log", stage, `companions (NOT the headline): binary attack-vs-normal F1=${r2(ids.binaryF1)}, `
           + `aggregate accuracy=${r2(ids.accuracy)}. Both collapse the seven attack types together, which is `
           + `why they read high while a single class can be failing — see scripts/train/telecom_ids.py`);
+        // Telecom's flow has no private_inference stage, so its published model runs here.
+        await runPublishedForStage(stage);
         break;
       }
       case "private_inference": {
@@ -1162,6 +1230,8 @@ export function runClientPipeline(
         metric(stage, "inference_provenance", inf.provenance);
         if (inf.modelKey) metric(stage, "inference_model", inf.modelKey);
         if (inf.note) emit("log", stage, `inference: ${inf.note}`);
+
+        await runPublishedForStage(stage);
 
         // The medical CNN workload runs a genuine encrypted convolution.
         // Medical always evaluates its published student's convolution; the other use cases have
