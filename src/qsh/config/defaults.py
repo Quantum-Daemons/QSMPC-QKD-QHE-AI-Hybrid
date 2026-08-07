@@ -249,6 +249,14 @@ class CryptoConfig:
 @dataclass
 class OrchestrationConfig:
     step_delay: float = 0.4    # seconds between stages (so the SPA DAG animates visibly)
+    # How many runs to keep in results/. Every run writes three files there - events.jsonl,
+    # summary.json and metrics.csv - and nothing ever removed them: the directory went 953 files to
+    # 1133 to 1421 across three rounds, on the VPS as well as locally. It is gitignored, which is
+    # precisely why it stayed easy to defer for three rounds running.
+    #
+    # 0 disables pruning. The default keeps enough history to compare a change against the runs
+    # around it without keeping every run this project has ever made.
+    keep_runs: int = 200
 
 
 @dataclass

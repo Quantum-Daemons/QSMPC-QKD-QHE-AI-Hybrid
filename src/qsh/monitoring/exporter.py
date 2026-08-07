@@ -37,6 +37,9 @@ if _HAVE:
     def record_qber(value: float) -> None:
         QBER.set(value)
 
+    def record_benchmark(path: str, ms: float) -> None:
+        BENCH_LATENCY.labels(path).observe(ms)
+
     def render() -> tuple[bytes, str]:
         return generate_latest(), CONTENT_TYPE_LATEST
 
@@ -44,5 +47,6 @@ else:  # graceful no-ops
     def record_run(*_a, **_k) -> None: ...
     def record_stage(*_a, **_k) -> None: ...
     def record_qber(*_a, **_k) -> None: ...
+    def record_benchmark(*_a, **_k) -> None: ...
     def render() -> tuple[bytes, str]:
         return b"# prometheus-client not installed\n", "text/plain"
