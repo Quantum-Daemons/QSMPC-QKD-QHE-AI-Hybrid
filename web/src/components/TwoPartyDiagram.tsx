@@ -9,7 +9,8 @@
 // clearly produced by an actual run. Grounded in references/ (Zhang QOT npj 2026, Li&Deng QHE-FL,
 // Sutradhar QSMS, EncFormer linear-FHE/non-linear-MPC split). PoC runs LAN/local.
 
-type Kind = "local-a" | "local-b" | "q-arrow" | "c-arrow" | "c-bidir" | "fhe-arrow" | "mpc-bidir" | "compare";
+type Kind = "local-a" | "local-b" | "local-wide" | "q-arrow" | "c-arrow" | "c-bidir"
+  | "fhe-arrow" | "mpc-bidir" | "compare";
 type M = Record<string, any>;
 /** The crypto-agility selections for the run being drawn.
  *
@@ -159,7 +160,9 @@ const QSMPC_COMPARE: Step = {
  */
 const publishedStep = (stageId: string): Step => ({
   stageId,
-  kind: "local-a",
+  // Full width, not a party-sized box: this label is about 460 units long and a `local-a` box is
+  // 300, so it used to spill past both edges and lose its first 17 characters off the viewBox.
+  kind: "local-wide",
   label: (m) => {
     const status = m["published_model_status"];
     if (status === "unavailable") return "published model · none registered for this use case";
@@ -328,6 +331,25 @@ export default function TwoPartyDiagram({
                 fill={isActive(s) ? "#231a3a" : "var(--panel)"} stroke="var(--quantum)"
                 strokeWidth={isActive(s) ? 2.4 : 1.4} strokeDasharray="6 3" />
               <text x={MID} y={y + 4} textAnchor="middle" fontSize={11} fill="var(--quantum)" fontWeight={600}>{label}</text>
+            </g>
+          );
+        }
+        // A local computation whose label is too long for a party-sized box.
+        //
+        // `local-a` is a fixed 300-unit box centred on a party. The published-model step names a
+        // model, a 12-char revision, an execution provider, an input shape, a latency and an
+        // outcome - about 460 units at this font - so it spilled ~80 units past each edge of its
+        // box, and the left end ran off the viewBox entirely: the label rendered as
+        // "te_comms.opssat_student @ ..." with "published satelli" clipped away. Same width and
+        // position as the comparison bar, which is why that one has always fitted; the styling
+        // stays local (solid stroke, accent colour) because nothing here crosses the wire.
+        if (kind === "local-wide") {
+          return (
+            <g key={i} opacity={op}>
+              <rect x={64} y={y - 16} width={652} height={32} rx={7}
+                fill={isActive(s) ? "#1c2740" : "var(--panel)"} stroke="var(--accent)"
+                strokeWidth={isActive(s) ? 2.4 : 1.3} />
+              <text x={MID} y={y + 4} textAnchor="middle" fontSize={11} fill="#dfe7f3">{label}</text>
             </g>
           );
         }
