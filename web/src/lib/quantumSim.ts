@@ -1,6 +1,7 @@
 // Pure-TypeScript quantum-channel + small-circuit simulator for the client-side demo.
 // Mirrors the Python qkd/channel.py + qkd/bb84.py analytic models (no WASM build needed)
 // so the in-browser BB84 / QBER / secure-key-rate numbers track the backend.
+import { qkdCfg } from "./config";
 
 // Deterministic seeded RNG (mulberry32) so demo runs are reproducible per seed.
 export function rng(seed: number): () => number {
@@ -33,14 +34,34 @@ export interface ChannelParams {
   eveFraction: number;
 }
 
+// Both channels come from config, not from literals here.
+//
+// They used to be plain objects, and every call site spread them while overriding one or two fields -
+// so the remaining constants could not be changed without editing this file. That shape had already
+// produced a real bug on the fibre side: config and literal agreed numerically, so editing
+// `config.yaml` moved the Python channel model and left the browser on the constant, with nothing
+// anywhere to indicate the two had diverged. The free-space channel had it worse - it had no config
+// counterpart at all, so four of its six physical constants were unreachable from configuration.
+//
+// Read at module load from the statically-imported defaults, so there is no async gap and no second
+// source of truth. `eveFraction` stays 0 here because it is a per-run control, not channel physics:
+// the panel supplies it.
 export const FIBER: ChannelParams = {
-  distanceKm: 50, lossDbPerKm: 0.2, detectorEff: 0.25,
-  darkCount: 1e-5, misalignment: 0.015, eveFraction: 0,
+  distanceKm: qkdCfg().distance_km,
+  lossDbPerKm: qkdCfg().fiber_loss_db_per_km,
+  detectorEff: qkdCfg().detector_efficiency,
+  darkCount: qkdCfg().dark_count_prob,
+  misalignment: qkdCfg().misalignment,
+  eveFraction: 0,
 };
 
 export const FREE_SPACE: ChannelParams = {
-  distanceKm: 800, lossDbPerKm: 0.035, detectorEff: 0.4,
-  darkCount: 1e-5, misalignment: 0.025, eveFraction: 0,
+  distanceKm: qkdCfg().free_space_distance_km,
+  lossDbPerKm: qkdCfg().free_space_loss_db_per_km,
+  detectorEff: qkdCfg().free_space_detector_efficiency,
+  darkCount: qkdCfg().free_space_dark_count_prob,
+  misalignment: qkdCfg().free_space_misalignment,
+  eveFraction: 0,
 };
 
 export function transmittance(p: ChannelParams): number {
