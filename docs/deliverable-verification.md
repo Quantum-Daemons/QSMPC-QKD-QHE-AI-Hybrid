@@ -85,11 +85,16 @@ Eight gates. Steps 1-3 and 5-8 are pass/fail; step 4 is a loop that runs until c
 8. **Final greps** - no new literals, no Japanese in public files, CI green on the head commit.
 
    Three files are exceptions, and the third is the interesting one. `MONETIZATION_WORKFLOW.ja.md`
-   and the `量子技術者_*` reports are Japanese by design and untracked. `.gitignore` is tracked and
-   contains Japanese because its patterns name the confidential `.docx` files exactly - and that is a
-   confidentiality control, not prose. Rewriting those patterns in ASCII to satisfy this convention
-   would weaken the one rule whose job is to stop a leak, which is the wrong trade; a plain `*.docx`
-   line sits beside them so the control holds by extension alone even if a filename changes.
+   and the private business-strategy reports are Japanese by design and untracked. `.gitignore` is
+   tracked and contains Japanese because its patterns name those confidential `.docx` files exactly -
+   and that is a confidentiality control, not prose. Rewriting them in ASCII to satisfy this
+   convention would weaken the one rule whose job is to stop a leak, which is the wrong trade; a
+   plain `*.docx` line sits beside them so the control holds by extension alone even if a filename
+   changes.
+
+   Run the grep over TEXT files only. Every research PDF under `references/` matches the CJK byte
+   ranges, because arbitrary binary does; a scan that includes them reports twelve violations and
+   none of them are real.
 
 ## Mapping the ladder onto deliverables
 
