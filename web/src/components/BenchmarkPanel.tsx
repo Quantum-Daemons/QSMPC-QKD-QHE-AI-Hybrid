@@ -190,11 +190,16 @@ export default function BenchmarkPanel(
             <div className="card" style={{ marginTop: 14 }}>
               <h3>Detailed results</h3>
               <table>
-                <thead><tr><th>path</th><th>backend</th><th>size</th><th>latency ms</th><th>FHE-lin ms</th><th>MPC-nl ms</th><th>comm KB</th><th>accuracy</th><th>ct/pt</th><th>security</th><th>model</th></tr></thead>
+                {/* The last column was headed "model" and rendered `security_model`, so the table
+                    had no model column at all while appearing to have one. Both are shown now, and
+                    the model one matters here: these rows are not all the same model. */}
+                <thead><tr><th>path</th><th>model</th><th>backend</th><th>size</th><th>latency ms</th><th>FHE-lin ms</th><th>MPC-nl ms</th><th>comm KB</th><th>accuracy</th><th>ct/pt</th><th>security</th><th>security model</th></tr></thead>
                 <tbody>
                   {rows.map((r, i) => (
                     <tr key={i}>
-                      <td style={{ color: colorFor(r.path) }}>{r.path}</td><td>{r.backend}</td>
+                      <td style={{ color: colorFor(r.path) }}>{r.path}</td>
+                      <td style={{ fontSize: 11 }}>{r.model_arch ?? "—"}</td>
+                      <td>{r.backend}</td>
                       <td>{r.model_size ?? "—"}{r.projected ? "*" : ""}</td>
                       <td>{r.latency_ms}</td>
                       <td style={{ color: FHE_COLOR }}>{r.fhe_linear_ms ?? "—"}</td>
@@ -209,6 +214,14 @@ export default function BenchmarkPanel(
               {rows.some((r) => r.projected) && (
                 <p className="muted" style={{ fontSize: 11, margin: "6px 0 0" }}>
                   * large tier is projected from measured medium-tier per-op cost (MACs / comparison counts), not run end-to-end.
+                </p>
+              )}
+              {rows.some((r) => r.path === "plaintext (published model)") && (
+                <p className="muted" style={{ fontSize: 11, margin: "6px 0 0" }}>
+                  The plaintext row is a reference point, not a denominator. It is a different model
+                  from the encrypted rows — the published Hugging Face model on its own corpus, against
+                  the distilled student the FHE path evaluates — so dividing one latency by the other
+                  does not give an FHE overhead. Compare the model column before comparing the times.
                 </p>
               )}
             </div>
