@@ -466,6 +466,14 @@ The Downlink control has no maximum and steps by 50, so a visitor reached meanin
 drag past the default - and the QBER saturating at 0.5 looked like a channel result rather than an
 artefact of the wrong law.
 
+Verified on the deployed page after the fix, two points, each predicted before it was run:
+
+    800 km    24.5 dB   QBER 0.03    (Micius publishes 27 dB total)
+    2000 km   32.4 dB   QBER 0.04    (was 70 dB, QBER 0.5 saturated)
+
+Both match the diffraction calculation exactly, and the QBER no longer pins at 0.5 for a link a real
+mission would close.
+
 So for any physical quantity the page reports:
 
 - **Evaluate it at two or three points, not one**, and check the SHAPE against the literature -
