@@ -914,7 +914,14 @@ export function runClientPipeline(
    * model under a MEASURED badge.
    */
   async function runPublishedForStage(stage: string) {
-    const pub = await runPublishedModel(usecase, { rowIndex: Math.floor(u() * 4096) });
+    // The visitor's choice where they made one, else the registry's first fetchable model. Three use
+    // cases publish more than one and could previously only ever exercise the first: medical ships
+    // ResNet-18, ResNet-50 and the CKKS student, and satellite ships four across two tasks that are
+    // not comparable with each other.
+    const chosen = String(config.published_model ?? "") || undefined;
+    const pub = await runPublishedModel(usecase, {
+      rowIndex: Math.floor(u() * 4096), modelKey: chosen,
+    });
     if (pub.kind === "ran") {
       const p = pub.run;
       metric(stage, "published_model", p.modelKey);
