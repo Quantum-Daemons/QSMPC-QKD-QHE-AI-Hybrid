@@ -240,7 +240,16 @@ export const USECASE_SPECS: Record<string, Spec> = {
       { stageId: "pqc_handshake", kind: "c-bidir", label: (_m, c) => `PQC handshake — ${kemName(c)}` },
       { stageId: "satellite_qkd", kind: "q-arrow", label: (m, c) => `free-space ${qkdName(c)} (${f(m, "channel_loss_db")} dB) · QBER ${f(m, "qber")}${optiTag(m, c)}`,
         hidden: pqcOnly },
-      { stageId: "qsdc_telemetry", kind: "q-arrow", label: (m) => `QSDC direct telemetry · secrecy ${f(m, "qsdc_secrecy_capacity")} bit/carrier` },
+      // The abort has to reach the arrow. With Eve at 0.5 the log said "QSDC ABORTED: error 0.158 >
+      // 0.11 - telemetry withheld" while this label read "QSDC direct telemetry · secrecy 0
+      // bit/carrier" with a done tick beside it - which reads as delivered-but-not-secret, the
+      // opposite of what happened. The inline eavesdrop check is this page's headline feature and
+      // the diagram was the one surface that did not show it firing.
+      { stageId: "qsdc_telemetry",
+        kind: "q-arrow",
+        label: (m) => (Number(m["qsdc_eavesdrop_detected"]) === 1
+          ? `QSDC ABORTED · error ${f(m, "qsdc_error_rate")} over threshold · telemetry withheld`
+          : `QSDC direct telemetry · secrecy ${f(m, "qsdc_secrecy_capacity")} bit/carrier`) },
       publishedStep("qsdc_telemetry"),
       QSMPC_COMPARE,
       { stageId: "sign_result", kind: "c-bidir", label: (_m, c) => `${sigName(c)}-signed audit record` },
