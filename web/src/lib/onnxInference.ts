@@ -94,13 +94,41 @@ export function onnxStatus(): OnnxStatus {
  * stops the demo from reporting "webgpu" in a browser that has the API but no working adapter
  * (headless, flags off, blocklisted driver), where ORT silently drops to WASM.
  */
+/** Software rasterisers that expose a WebGPU adapter without any GPU behind it. */
+const SOFTWARE_ADAPTERS = ["swiftshader", "lavapipe", "llvmpipe", "software", "warp"];
+
+/** Whether this adapter is a CPU rasteriser pretending to be a GPU. */
+export function isSoftwareAdapter(info: Record<string, unknown> | null | undefined): boolean {
+  if (!info) return false;
+  const hay = `${info.architecture ?? ""} ${info.vendor ?? ""} ${info.description ?? ""}`
+    .toLowerCase();
+  return SOFTWARE_ADAPTERS.some((s) => hay.includes(s));
+}
+
 export async function hasWebGPU(): Promise<boolean> {
   try {
     if (typeof window !== "undefined" && !window.isSecureContext) return false; // WebGPU is secure-context only
     const gpu = (navigator as any)?.gpu;
     if (!gpu?.requestAdapter) return false;
     const adapter = await gpu.requestAdapter();   // resolves to null, does not throw, when unavailable
-    return !!adapter;
+    if (!adapter) return false;
+    // A SOFTWARE adapter is worse than no adapter, which is the opposite of what "is WebGPU
+    // available" suggests. Measured on the same model, same single row, in two browsers:
+    //
+    //   SwiftShader adapter -> onnx-webgpu -> ResNet-50 in 12842 ms
+    //   no adapter          -> onnx-wasm   -> ResNet-50 in    42 ms
+    //
+    // 300x. The adapter is real and the API works; there is simply no GPU under it, so every shader
+    // dispatch is emulated on the CPU while ORT's wasm build runs SIMD kernels natively. Declining
+    // it is not a downgrade - it is choosing the faster of two CPU paths, and it stops the page
+    // reporting "MEASURED (local WebGPU)" for arithmetic no GPU performed.
+    if (isSoftwareAdapter(adapter.info)) {
+      console.info("[onnx] WebGPU adapter is a software rasteriser "
+        + `(${adapter.info?.architecture ?? "unknown"}); using the wasm build, which measured ~300x `
+        + "faster on this class of adapter");
+      return false;
+    }
+    return true;
   } catch {
     return false;
   }
