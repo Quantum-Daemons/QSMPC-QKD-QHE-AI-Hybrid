@@ -131,9 +131,20 @@ def _write(usecase: str, payload: dict) -> Path:
     size = out.stat().st_size
     print(f"  wrote {out.relative_to(REPO)}  ({size/1024:.0f} KB)")
     exp = payload["expected"]
-    if "accuracy" in exp:
-        print(f"    expected accuracy on these rows: {exp['accuracy']:.4f} "
-              f"(majority-class baseline {exp['majority_baseline']:.4f})")
+    if "minority_class_f1" in exp:
+        # Checked first: three of the four students are published with THIS metric, and a payload
+        # carrying both would otherwise be summarised by the more flattering one.
+        f1, base = exp["minority_class_f1"], exp.get("all_positive_f1") or 0.0
+        ratio = f" ({f1 / base:.1f}x)" if base else ""
+        print(f"    expected rare-class F1 on these rows: {f1:.4f} "
+              f"(all-positive baseline {base:.4f}{ratio})")
+    elif "accuracy" in exp:
+        acc, base = exp["accuracy"], exp["majority_baseline"]
+        print(f"    expected accuracy on these rows: {acc:.4f} "
+              f"(majority-class baseline {base:.4f})")
+        if acc <= base:
+            print("    NOTE: at or below the majority baseline. This model does not beat guessing "
+                  "the commonest label on these rows, and the page will say so rather than not.")
     else:
         print(f"    expected forecast MAE on these windows: {exp['mae']:.4f} "
               f"(persistence baseline {exp['persistence_mae']:.4f})")
@@ -148,6 +159,9 @@ _MODEL_KEY = {
     "satellite_opssat": "satellite_comms.opssat",
     "telecom_ids": "telecom_ids.qml",
     "medical_resnet50": "medical_fl.resnet50",
+    "medical_student": "medical_fl.student",
+    "opssat_student": "satellite_comms.opssat_student",
+    "finance_student": "finance_aml.student",
 }
 
 
@@ -491,7 +505,208 @@ def build_medical_resnet50(rng: np.random.Generator) -> dict:
     return payload
 
 
+
+
+# --------------------------------------------------------------------------------------------- #
+#  The four CKKS-linear students
+# --------------------------------------------------------------------------------------------- #
+#  These are the models that actually run under homomorphic encryption, and until now none of them
+#  shipped a held-out sample -- so the E2E simulator could select one and could only report
+#  "DID NOT RUN".
+#
+#  Two decisions apply to all of them.
+#
+#  ROWS ARE MODEL-READY. The browser's applyPreprocessing() is per-scalar and understands three
+#  instructions; it cannot apply a 32-length mean/scale vector or an area resize, and it throws
+#  rather than guess. So the transform is applied HERE and the sample ships `preprocessing: []`,
+#  which is what the finance teacher's sample already does. The alternative -- teaching the browser
+#  vector arithmetic -- would put the students' preprocessing in two places that must agree.
+#
+#  THE SCALER COMES FROM weights.json, never re-fitted. A StandardScaler fitted here on the test
+#  split would be a different transform from the one the student was trained under, and would
+#  produce a plausible, wrong number rather than an error. That is the exact trap Round 20 recorded
+#  when these students published coefficients without their scaler.
+
+
+def _student_scaler(model_dir: str) -> tuple[np.ndarray, np.ndarray]:
+    """The PUBLISHED mean/scale, or a loud failure. Never re-fitted from data seen here."""
+    w = json.loads((REPO / "models" / model_dir / "weights.json").read_text())
+    inp = w.get("input") or {}
+    if "mean" not in inp or "scale" not in inp:
+        raise SystemExit(
+            f"{model_dir}/weights.json publishes no scaler, so its ONNX cannot be fed correctly "
+            f"from here. Re-run its training script with distil.save_student(..., scaler=...) and "
+            f"republish before generating a sample -- do not guess one.")
+    return np.asarray(inp["mean"], dtype=float), np.asarray(inp["scale"], dtype=float)
+
+
+def _predict(model_dir: str, x: np.ndarray) -> np.ndarray:
+    """Argmax of the published student graph. fp32: these students ship no int8 artefact."""
+    sess, _ = _session(model_dir, prefer_int8=False)
+    out = sess.run(None, {sess.get_inputs()[0].name: x.astype(np.float32)})
+    scores = next((o for o in out if getattr(o, "ndim", 0) == 2 and o.shape[1] > 1), out[0])
+    return np.asarray(scores).argmax(1)
+
+
+def _f1_over_baseline(y: np.ndarray, pred: np.ndarray) -> tuple[float, float, float]:
+    """Rare-class F1, the F1 of flagging everything, and the ratio between them.
+
+    The ratio is the part that survives a change of prevalence. Rare-class F1 does not: the finance
+    student scores 0.3337 on the enriched sample below and 0.0178 on the full corpus, a 19x gap that
+    is entirely an artefact of how many positives each contains. Against its own all-positive
+    baseline it is 9.3x on one and 8.7x on the other, which is the same model described twice.
+    """
+    from qsh.models import metrics
+
+    f1 = float(metrics.minority_class_f1(y, pred))
+    prevalence = float(np.mean(y == 1))
+    all_pos = (2 * prevalence) / (1 + prevalence) if prevalence else 0.0
+    return f1, all_pos, (f1 / all_pos if all_pos else float("nan"))
+
+
+def build_medical_student(rng: np.random.Generator) -> dict:
+    """BreastMNIST test split at 14x14, the resolution the student was distilled at.
+
+    Reproduces the recorded fidelity exactly: accuracy 0.730769 on all 156 rows.
+    """
+    import os
+
+    from medmnist import BreastMNIST
+
+    from qsh.ai.cnn_layers import downsample
+
+    root = os.path.join(os.environ["QSH_DATA_ROOT"], "raw", "medmnist")
+    ds = BreastMNIST(split="test", download=False, root=root)
+    imgs, y = ds.imgs, ds.labels.ravel().astype(int)
+
+    x = imgs.astype(np.float32)[:, None, :, :] / 255.0
+    x = (x - 0.5) / 0.5                                  # train/medical_breastmnist.py
+    x14 = np.asarray(downsample(x, 14), dtype=float)     # F.interpolate(mode="area"), as distilled
+    x14 = x14.round(6)                                   # round BEFORE predicting
+    pred = _predict("medical_breastmnist_student", x14)
+
+    return {
+        "task": "classification",
+        "provenance": (
+            "MedMNIST v2 BreastMNIST test split (Yang et al., Scientific Data 10:41, 2023; "
+            "CC BY 4.0), derived from the Al-Dhabyani et al. BUSI ultrasound dataset. Normalised "
+            "and area-resized to 14x14 here, which is the resolution this student was distilled at "
+            "and the one its encrypted convolution runs on -- the ResNet-18 teacher on this same "
+            "page runs at 28x28, so the two are not interchangeable inputs."),
+        "input": {"shape": [1, 1, 14, 14], "dtype": "float32", "preprocessing": [],
+                  "layout": "samples[i] is one 14x14 image, row-major, already normalised"},
+        "classes": {"0": "benign/normal", "1": "malignant"},
+        "samples": x14.reshape(len(y), -1).tolist(),
+        "labels": y.tolist(),
+        "expected": {
+            "graph": "model.onnx",
+            "accuracy": float((pred == y).mean()),
+            "majority_baseline": float(max(np.bincount(y)) / len(y)),
+            "note": ("The whole official test split, and the same rows the registry's recorded "
+                     "student accuracy was measured on, so this reproduces that figure rather than "
+                     "resampling it."),
+        },
+    }
+
+
+def build_opssat_student(rng: np.random.Generator) -> dict:
+    """OPS-SAT-AD test partition, z-scored by the published scaler.
+
+    Reproduces the recorded fidelity exactly: minority-class F1 0.864865 on all 529 segments.
+    """
+    from qsh.models import datasets
+
+    x, y = datasets.opssat_ad("test")
+    y = np.asarray(y, dtype=int)
+    mean, scale = _student_scaler("satellite_opssat_student")
+    z = ((np.asarray(x, dtype=float) - mean) / scale).round(6)   # round BEFORE predicting
+    pred = _predict("satellite_opssat_student", z)
+    f1, all_pos, ratio = _f1_over_baseline(y, pred)
+
+    return {
+        "task": "classification",
+        "provenance": (
+            "OPS-SAT-AD (Kotowski et al., Scientific Data 12, 2025; Zenodo "
+            "10.5281/zenodo.12588359, CC BY 4.0). Real telemetry from ESA's OPS-SAT CubeSat. The "
+            "benchmark's own test partition entire and unsampled, z-scored by the StandardScaler "
+            "published in this student's weights.json -- the same transform it was distilled "
+            "under, not one re-fitted here."),
+        "input": {"shape": [1, len(mean)], "dtype": "float32", "preprocessing": [],
+                  "layout": "samples[i] is one segment's 19 features, z-scored, in the order below"},
+        "feature_names": list(datasets.OPSSAT_FEATURES),
+        "classes": {"0": "nominal", "1": "anomalous"},
+        "samples": z.tolist(),
+        "labels": y.tolist(),
+        "expected": {
+            "graph": "model.onnx",
+            "minority_class_f1": f1,
+            "all_positive_f1": all_pos,
+            "note": (f"Scored on rare-class F1, which is the metric this student is published with; "
+                     f"accuracy would read about {float((pred == y).mean()):.2f} on a partition "
+                     f"that is {float(np.mean(y == 1)) * 100:.0f} percent anomalous and would say "
+                     f"very little. {f1:.4f} against an all-positive baseline of {all_pos:.4f} is "
+                     f"{ratio:.1f}x. The whole published test partition, so this reproduces the "
+                     f"registry's recorded student figure rather than resampling it."),
+        },
+    }
+
+
+def build_finance_student(rng: np.random.Generator) -> dict:
+    """The finance teacher's own 8192 rows, z-scored by the published scaler.
+
+    Deliberately the SAME rows the gradient-boosting teacher's sample ships, so the two figures on
+    the page describe one row set and are comparable with each other.
+
+    This one does NOT reproduce the registry's recorded 0.0178, and the note says so. That figure is
+    measured on the full 1,523,504-row test split at AMLworld's real prevalence of about 1 in 981.
+    These 8192 rows are stratified to contain positives -- an unstratified draw would be all-negative
+    and every metric on it vacuous -- which lifts prevalence to 1.8 percent and rare-class F1 with
+    it. Shipping 0.3337 as though it were the corpus figure would overstate the model 19-fold.
+    """
+    teacher = json.loads((REPO / "models" / "finance_aml_gbm" / "eval_sample.json").read_text())
+    x = np.asarray(teacher["samples"], dtype=float)
+    y = np.asarray(teacher["labels"], dtype=int)
+    mean, scale = _student_scaler("finance_aml_student")
+    z = ((x - mean) / scale).round(6)                     # round BEFORE predicting
+    pred = _predict("finance_aml_student", z)
+    f1, all_pos, ratio = _f1_over_baseline(y, pred)
+
+    from qsh.models import registry
+
+    corpus = (registry.achieved("finance_aml.student") or {}).get("student_metric")
+    corpus_n = (registry.achieved("finance_aml.student") or {}).get("n_eval")
+
+    return {
+        "task": "classification",
+        "provenance": teacher["provenance"] + (
+            " Z-scored here by the StandardScaler published in the student's weights.json -- the "
+            "same transform it was distilled under. These are the identical rows the gradient-"
+            "boosting teacher's sample ships, so the two numbers on this page describe one row set."),
+        "input": {"shape": [1, len(mean)], "dtype": "float32", "preprocessing": [],
+                  "layout": "samples[i] is one transaction's 32 engineered features, z-scored"},
+        "samples": z.tolist(),
+        "labels": y.tolist(),
+        "expected": {
+            "graph": "model.onnx",
+            "minority_class_f1": f1,
+            "all_positive_f1": all_pos,
+            "note": (
+                f"{f1:.4f} on THESE rows, which is not the {corpus:.4f} the registry records for "
+                f"this student. That figure is measured on the full {corpus_n:,}-row test split at "
+                f"AMLworld's real prevalence of about 1 in 981; these 8192 rows are stratified to "
+                f"contain positives, because an unstratified draw of that corpus is all-negative "
+                f"and every metric on it is vacuous. Rare-class F1 rises with prevalence, so the "
+                f"two differ by about 19x and neither is wrong. What survives the change is the "
+                f"ratio to the all-positive baseline: {ratio:.1f}x here against roughly 8.7x on the "
+                f"full corpus. Read this number against the {all_pos:.4f} baseline beside it, not "
+                f"against the registry's."),
+        },
+    }
+
 BUILDERS = {"medical_fl": build_medical, "finance_aml": build_finance,
+            "medical_student": build_medical_student,
+            "opssat_student": build_opssat_student,
+            "finance_student": build_finance_student,
             "satellite_opssat": build_satellite_opssat,
             "telecom_ids": build_telecom,
             "medical_resnet50": build_medical_resnet50,

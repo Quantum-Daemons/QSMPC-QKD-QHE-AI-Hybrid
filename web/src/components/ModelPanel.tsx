@@ -223,18 +223,30 @@ function ModelEvalReport({ res }: { res: ModelEvalResult | null }) {
   if (!res.ran) return null;
 
   const isForecast = res.task === "forecast";
-  // A classifier is read as a percentage and higher is better; a forecaster is an absolute error and
-  // lower is better. Showing both the same way would invite exactly the wrong reading.
+  const isF1 = res.metricName === "minority_class_f1";
+  // Three readings, three formats. Accuracy is a percentage and higher is better; a forecast error
+  // is absolute and lower is better; a rare-class F1 is a small decimal that reads as nonsense as a
+  // percentage - the finance student's 0.0178 rendered "1.8%" invites comparison with an accuracy,
+  // which is the number this metric exists to avoid reporting.
   const fmt = (v: number | null) =>
-    v == null ? "\u2014" : isForecast ? v.toFixed(4) : `${(v * 100).toFixed(1)}%`;
+    v == null ? "\u2014" : isForecast || isF1 ? v.toFixed(4) : `${(v * 100).toFixed(1)}%`;
   const unit = isForecast ? "windows" : "rows";
+  const scoreLabel = isForecast ? "forecast MAE measured here"
+    : isF1 ? "rare-class F1 measured here"
+    : "accuracy measured here";
+  const baselineLabel = isForecast ? "persistence baseline (predict no change)"
+    : isF1 ? "all-positive baseline (flag everything)"
+    : "majority-class baseline";
+  const baselineNote = isForecast ? "error from simply repeating the last observed step"
+    : isF1 ? "F1 from flagging every row: precision is the prevalence, recall is 1"
+    : "what guessing the commonest label would score";
 
   return (
     <>
       <table className="mini-table" style={{ marginTop: 12 }}>
         <tbody>
           <tr className={res.matchesExpected ? "metric-headline" : undefined}>
-            <td>{isForecast ? "forecast MAE measured here" : "accuracy measured here"}</td>
+            <td>{scoreLabel}</td>
             <td className="num">{fmt(res.score)}</td>
             <td className="muted small">{res.n} held-out {unit}, in this tab</td>
           </tr>
@@ -244,11 +256,10 @@ function ModelEvalReport({ res }: { res: ModelEvalResult | null }) {
             <td className="muted small">onnxruntime, measured by scripts/prep_model_inputs.py</td>
           </tr>
           <tr className="metric-companion">
-            <td>{isForecast ? "persistence baseline (predict no change)" : "majority-class baseline"}</td>
+            <td>{baselineLabel}</td>
             <td className="num">{fmt(res.baseline)}</td>
             <td className="muted small">
-              {isForecast ? "error from simply repeating the last observed step"
-                          : "what guessing the commonest label would score"}
+              {baselineNote}
             </td>
           </tr>
           <tr className="metric-companion">

@@ -380,6 +380,18 @@ export interface ModelInputFile {
     graph: string; note: string;
     accuracy?: number; majority_baseline?: number;
     mae?: number; persistence_mae?: number;
+    /** F1 of the rare class alone, the AMLworld / Elliptic++ convention. Present when THAT is the
+     *  metric the model was scored on, which for three of the four distilled students it is.
+     *
+     *  Scoring them on accuracy instead would have been the flattering-aggregate pattern this
+     *  project rules out everywhere else: the finance student reads about 99 percent accurate on a
+     *  0.1-percent-positive corpus while its minority-class F1 is 0.0178. A browser that "verified"
+     *  the 99 would be confirming the wrong number. */
+    minority_class_f1?: number;
+    /** F1 of predicting EVERYTHING positive: precision = prevalence, recall = 1. The floor a rare-
+     *  class F1 has to clear, and the reason 0.0178 needs a companion rather than a bare comparison
+     *  against zero. */
+    all_positive_f1?: number;
   };
   classes?: Record<string, string>;
   feature_names?: string[];
@@ -390,8 +402,11 @@ export interface ModelEvalResult {
   ran: boolean;
   task: "classification" | "forecast";
   n: number;
-  /** Accuracy for a classifier, mean absolute error for a forecaster. Lower is better for MAE. */
+  /** Accuracy, rare-class F1, or mean absolute error, depending on `metricName`. */
   score: number | null;
+  /** Which metric `score` and `expected` are. The model is scored on the metric it was PUBLISHED
+   *  with, not on whichever one the browser found easiest to compute. */
+  metricName: "accuracy" | "minority_class_f1" | "mae";
   expected: number | null;
   /** Majority-class accuracy, or persistence MAE — what a trivial predictor would achieve. */
   baseline: number | null;
@@ -473,7 +488,8 @@ export async function evaluatePublishedModel(
   usecase: string, tolerance = 0.05, modelKey?: string,
 ): Promise<ModelEvalResult | null> {
   const base: ModelEvalResult = {
-    ran: false, task: "classification", n: 0, score: null, expected: null, baseline: null,
+    ran: false, task: "classification", metricName: "accuracy", n: 0, score: null, expected: null,
+    baseline: null,
     beatsBaseline: false, matchesExpected: false, backend: "none", bytes: null,
     provenance: "", error: null,
   };
@@ -557,7 +573,7 @@ export async function evaluatePublishedModel(
       const persistenceMae = count ? persist / count : NaN;
       const exp = file.expected.mae ?? null;
       return {
-        ran: true, task, n, score: mae, expected: exp,
+        ran: true, task, metricName: "mae", n, score: mae, expected: exp,
         baseline: file.expected.persistence_mae ?? persistenceMae,
         beatsBaseline: mae < (file.expected.persistence_mae ?? persistenceMae),
         matchesExpected: exp == null ? false : Math.abs(mae - exp) <= Math.max(tolerance, exp * 0.1),
@@ -566,18 +582,43 @@ export async function evaluatePublishedModel(
     }
 
     const labels = file.labels ?? [];
-    let correct = 0;
+    let correct = 0, tp = 0, fp = 0, fn = 0, positives = 0;
     for (let i = 0; i < n; i++) {
       let best = 0;
       for (let c = 1; c < width; c++) if (data[i * width + c] > data[i * width + best]) best = c;
       const pred = width > 1 ? best : (data[i] > 0.5 ? 1 : 0);
       if (pred === labels[i]) correct++;
+      if (labels[i] === 1) positives++;
+      if (pred === 1 && labels[i] === 1) tp++;
+      else if (pred === 1) fp++;
+      else if (labels[i] === 1) fn++;
     }
+
+    // Score on the metric the model was PUBLISHED with. Three of the four distilled students record
+    // minority-class F1, and reporting accuracy for them would confirm a number nobody claimed:
+    // the finance student is about 99 percent accurate on a corpus that is 0.1 percent positive.
+    if (file.expected.minority_class_f1 != null) {
+      // sklearn f1_score(pos_label=1, zero_division=0): 0 when the model predicts no positives.
+      const f1 = tp === 0 ? 0 : (2 * tp) / (2 * tp + fp + fn);
+      const exp = file.expected.minority_class_f1;
+      // Predicting everything positive: precision = prevalence, recall = 1.
+      const prevalence = n ? positives / n : 0;
+      const allPositive = file.expected.all_positive_f1
+        ?? (prevalence ? (2 * prevalence) / (1 + prevalence) : 0);
+      return {
+        ran: true, task, metricName: "minority_class_f1", n, score: f1, expected: exp,
+        baseline: allPositive,
+        beatsBaseline: f1 > allPositive,
+        matchesExpected: Math.abs(f1 - exp) <= tolerance,
+        backend: status.backend, bytes: status.bytes, provenance: file.provenance, error: null,
+      };
+    }
+
     const accuracy = correct / n;
     const exp = file.expected.accuracy ?? null;
     const majority = file.expected.majority_baseline ?? null;
     return {
-      ran: true, task, n, score: accuracy, expected: exp, baseline: majority,
+      ran: true, task, metricName: "accuracy", n, score: accuracy, expected: exp, baseline: majority,
       beatsBaseline: majority == null ? true : accuracy > majority,
       matchesExpected: exp == null ? false : Math.abs(accuracy - exp) <= tolerance,
       backend: status.backend, bytes: status.bytes, provenance: file.provenance, error: null,
