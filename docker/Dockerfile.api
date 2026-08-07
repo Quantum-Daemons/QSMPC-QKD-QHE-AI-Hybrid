@@ -20,7 +20,15 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Build the liboqs C shared library at BUILD time (liboqs-python otherwise tries to
 # build it on first import at RUNTIME, which needs network + libssl-dev). Baking it in
 # makes the container import `oqs` offline.
-RUN git clone --depth 1 https://github.com/open-quantum-safe/liboqs /tmp/liboqs \
+#
+# PINNED. This cloned the default branch, so the C library baked into the image was whatever `main`
+# happened to be at build time: two builds of the same commit of THIS repo could ship different
+# cryptography, with nothing recording which. 0.16.0 is the current release and matches the
+# liboqs-python binding, which also closes the C 0.14.0 / binding 0.16.0 mismatch carried since
+# Round 19. The build prints oqs.oqs_version() below; if that stops matching this tag, the mismatch
+# is back.
+ARG LIBOQS_TAG=0.16.0
+RUN git clone --depth 1 --branch ${LIBOQS_TAG} https://github.com/open-quantum-safe/liboqs /tmp/liboqs \
  && cmake -S /tmp/liboqs -B /tmp/liboqs/build -GNinja \
       -DBUILD_SHARED_LIBS=ON -DCMAKE_INSTALL_PREFIX=/usr/local -DOQS_BUILD_ONLY_LIB=ON \
  && cmake --build /tmp/liboqs/build --parallel \
