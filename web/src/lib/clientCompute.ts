@@ -29,8 +29,42 @@ const r2 = (x: number) => Math.round(x * 100) / 100;
 const argmax = (a: number[]) => a.reduce((bi, v, i, arr) => (v > arr[bi] ? i : bi), 0);
 const sleep = (ms: number) => new Promise((res) => setTimeout(res, ms));
 // small prime utilities for the QSMS secure-sum field Z_p (config.prime; 0 = auto-select a prime > the total)
-const isPrime = (n: number) => { if (n < 2) return false; for (let i = 2; i * i <= n; i++) if (n % i === 0) return false; return true; };
-const nextPrime = (n: number) => { let p = Math.max(2, Math.floor(n)); while (!isPrime(p)) p++; return p; };
+/**
+ * The largest field modulus this browser mirror will accept.
+ *
+ * Two independent limits meet just above it, so it is the honest ceiling rather than a round number:
+ *
+ *   - Arithmetic. `(acc + s0 + s1) % p` accumulates in a double. Past 2^53 the intermediate sum
+ *     stops being exact and the "secure sum" is silently wrong -- no exception, just a wrong number
+ *     under a correct-looking label.
+ *   - Time. `isPrime` is trial division, so cost grows as sqrt(p). At 2^31 that is ~46k iterations
+ *     per candidate and imperceptible; at 1e16 it is 1e8 per candidate and the tab stops responding.
+ *
+ * 2^31-1 is also exactly the modulus the MCP allele-pooling path needs, which is why the paper's
+ * n <= d <= 2n bound is recorded rather than enforced (see qsmpc/secure_summation.py).
+ */
+const MAX_FIELD_PRIME = 2147483647;          // 2^31 - 1, itself prime
+
+const isPrime = (n: number) => {
+  if (!Number.isFinite(n) || n < 2) return false;
+  for (let i = 2; i * i <= n; i++) if (n % i === 0) return false;
+  return true;
+};
+
+/**
+ * The next prime at or above `n`, bounded.
+ *
+ * The bound is the point. Typing 1e400 into the Parameters field produced `Infinity`, and
+ * `isPrime(Infinity)` never terminates: `i * i <= Infinity` is always true and `Infinity % i` is
+ * NaN, so it is an infinite loop rather than an exception. Nothing could catch it -- not the
+ * try/catch around the stage, and not the Stop button, which never gets a turn on the event loop.
+ */
+const nextPrime = (n: number) => {
+  if (!Number.isFinite(n)) return MAX_FIELD_PRIME;
+  let p = Math.min(MAX_FIELD_PRIME, Math.max(2, Math.floor(n)));
+  while (p <= MAX_FIELD_PRIME && !isPrime(p)) p++;
+  return p > MAX_FIELD_PRIME ? MAX_FIELD_PRIME : p;
+};
 
 // --------------------------------------------------------------------------- //
 //  Security score (mirror of qsh/benchmark/security.py)
@@ -64,7 +98,21 @@ export function sigImpl(sig?: string) {
 function secFromConfig(config: any): { kem?: string; qkdBits?: number | null } {
   return { kem: kemName(config), qkdBits: config?.qkd === "pqc-only" ? 0 : 256 };
 }
-const qubitsOf = (config: any) => Number(config?.qubits ?? benchCfg().quantum_qubits);
+/**
+ * Simulated qubit count, clamped to the range the Parameters field advertises.
+ *
+ * The state vector is 2^n doubles, so this is the difference between a run and a dead tab. The
+ * benchmark row clamped it and the QCNN inference path did not, which is the wrong way round: the
+ * benchmark is a cost model, the inference actually allocates. Measured before the clamp: 22 qubits
+ * took 4.4 s, 24 allocated 268 MB, and a negative value threw RangeError inside
+ * `new Float64Array(1 << -1)`, aborting the stage and leaving `explanation: null` in the signed
+ * payload. `min`/`max` on a number input do not constrain a typed value, so the clamp has to be here.
+ */
+const qubitsOf = (config: any) => {
+  const n = Number(config?.qubits ?? benchCfg().quantum_qubits);
+  if (!Number.isFinite(n)) return Number(benchCfg().quantum_qubits);
+  return Math.min(14, Math.max(2, Math.round(n)));
+};
 
 export interface SecOpts {
   securityModel: string;
@@ -993,8 +1041,32 @@ export function runClientPipeline(
         metric(stage, "qrng_health_passed", qr.healthPassed ? 1 : 0);
         metric(stage, "qrng_throughput_kbps", r1(qr.throughputBitsPerSec / 1000));
         metric(stage, "qrng_min_entropy_per_bit", r2(qr.minEntropyPerBit));
+        metric(stage, "qrng_bits_delivered", qr.nBits);
+        metric(stage, "qrng_extraction_rate", r2(qr.extractionRate));
+        // The leftover-hash-lemma ceiling. Reported on every run because it is the only observable
+        // the LHL eps parameter moves: delivered output is min(bound, requested), and requested is
+        // normally the smaller, so eps -1 against eps -128 produced byte-identical bits and the
+        // control read as inert. It was never inert - the bound was simply never shown.
+        if (qr.lhlMaxBits != null) {
+          metric(stage, "qrng_lhl_max_bits", qr.lhlMaxBits);
+          if (qr.nBits < qr.requestedBits) {
+            emit("log", stage, `QRNG delivered ${qr.nBits} bits, not the ${qr.requestedBits} requested: `
+              + `at eps 2^${Number(config.qrng_eps_log2 ?? qrngCfg().security_epsilon_log2)} the leftover `
+              + `hash lemma permits only ${qr.lhlMaxBits} from this much raw min-entropy. Truncated to `
+              + `the bound rather than padded past it.`);
+          }
+        }
+        // INCONCLUSIVE is a third outcome, not a shade of FAIL. Below the adaptive-proportion
+        // window both continuous tests return "passed" by short-circuit, so a 1-bit output used to
+        // report health PASS beside a min-entropy of 0.
+        metric(stage, "qrng_health_conclusive", qr.healthConclusive ? 1 : 0);
+        if (!qr.healthConclusive) {
+          emit("log", stage, `QRNG health tests INCONCLUSIVE on ${qr.nBits} bits: SP 800-90B 4.4 needs `
+            + `at least 1024 for the adaptive-proportion window. Both tests short-circuit to "passed" `
+            + `below it, so this is reported as inconclusive rather than as a pass.`);
+        }
         emit("log", stage, `QRNG (simulated quantum measurement): ${qr.nBits} bits, health `
-          + `${qr.healthPassed ? "PASS" : "FAIL"} per SP 800-90B 4.4 `
+          + `${qr.healthConclusive ? (qr.healthPassed ? "PASS" : "FAIL") : "INCONCLUSIVE"} per SP 800-90B 4.4 `
           + `(repetition-count ${qr.repetitionCountLongest}/${qr.repetitionCountCutoff}, `
           + `adaptive-proportion ${qr.adaptiveProportionMax}/${qr.adaptiveProportionCutoff}); `
           + `SP 800-22 reported not gating: ${qr.sp80022Passed ? "pass" : "fail"} (monobit p=${qr.monobitP.toFixed(3)}), `
@@ -1096,6 +1168,17 @@ export function runClientPipeline(
         // The QSDC and free-space QKD figures come from an analytic channel model. There is no
         // browser API for quantum communication and there cannot be one, so this is SIMULATED and
         // the page says so rather than presenting a modelled number as a measurement.
+        // The same guard the free-space QKD stage above carries. Without it, selecting pqc-only on
+        // satellite logged "free-space QKD disabled (PQC-only profile)" and then, one stage later,
+        // emitted qsdc_error_rate, qsdc_secrecy_capacity and qsdc_eavesdrop_detected - delivering
+        // telemetry over the quantum channel the run had just said did not exist. QSDC is a quantum
+        // direct-communication protocol; there is no PQC-only version of it to fall back to.
+        if (config.qkd === "pqc-only") {
+          emit("log", stage, "QSDC direct telemetry skipped (PQC-only profile): QSDC carries the "
+            + "message on the quantum channel itself, so with no quantum channel there is nothing "
+            + "to send it over. The payload travels under the PQC session key instead.");
+          break;
+        }
         metric(stage, "inference_provenance", "simulated");
         metric(stage, "inference_backend", "analytic free-space channel model (quantumSim)");
         // Same channel the satellite_qkd stage above built, distance included. Reading only sat_eve
@@ -1146,9 +1229,17 @@ export function runClientPipeline(
           // Snapped, not trusted. The field is labelled "QSMS prime" and used to accept any
           // integer, so entering 100 shared additively over Z_100 -- which is not a field, while
           // the log still printed "over Z_100" as though it were.
-          const p = Number(config.prime) > 1
-            ? nextPrime(Math.floor(Number(config.prime)))
+          const askedPrime = Number(config.prime);
+          const p = askedPrime > 1
+            ? nextPrime(Math.floor(askedPrime))
             : nextPrime(rawTotal + 1);
+          // Say so when the request was not honoured. A clamp that reports nothing is how a run ends
+          // up computing over a different field than the panel above it displays.
+          if (askedPrime > MAX_FIELD_PRIME || (askedPrime > 1 && !Number.isFinite(askedPrime))) {
+            emit("log", stage, `requested field modulus ${Number.isFinite(askedPrime) ? askedPrime : "infinite"} `
+              + `exceeds the ${MAX_FIELD_PRIME} ceiling and was clamped: past 2^53 the modular sum `
+              + `stops being exact, and trial division at that size does not return`);
+          }
           const shares = secrets.map((s) => { const mask = Math.floor(u() * p); return [((s - mask) % p + p) % p, mask % p]; });
           const total = shares.reduce((acc, [s0, s1]) => (acc + s0 + s1) % p, 0) % p;
           metric(stage, "secure_sum", total);
