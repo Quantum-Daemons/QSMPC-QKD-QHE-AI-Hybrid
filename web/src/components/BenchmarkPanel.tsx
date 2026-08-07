@@ -22,11 +22,19 @@ export default function BenchmarkPanel(
   const advantage = result?.advantage ?? null;
   const workload = result?.workload ?? "linear";
 
+  // Bars are labelled by PATH, not by backend.
+  //
+  // `backend` is a descriptive sentence - "node-seal CKKS + emp-wasm 2PC (measured: real 4-channel
+  // encrypted convolution, 16 rotations over 196 packed patches)" - and as a category label it is
+  // unusable: the latency chart rendered three bars and exactly one readable axis label, the short
+  // one, so two of the three bars could not be identified at all. `path` is short, distinct, and is
+  // already the first column of the Detailed results table below, so the chart and the table now
+  // name the same rows the same way. The backend still reaches the reader through that table.
   const ratioData = rows.filter((r) => r.ciphertext_plaintext_ratio != null)
-    .map((r) => ({ name: r.backend, ratio: r.ciphertext_plaintext_ratio, path: r.path }));
-  const latData = rows.map((r) => ({ name: r.backend, latency: r.latency_ms, path: r.path }));
+    .map((r) => ({ name: r.path, ratio: r.ciphertext_plaintext_ratio, path: r.path }));
+  const latData = rows.map((r) => ({ name: r.path, latency: r.latency_ms, path: r.path }));
   const secData = rows.filter((r) => r.security_score != null)
-    .map((r) => ({ name: r.backend, score: r.security_score, path: r.path }));
+    .map((r) => ({ name: r.path, score: r.security_score, path: r.path }));
   // hybrid split — the MPC-FHE row carries the linear-FHE vs non-linear-MPC breakdown
   const split = rows.find((r) => r.fhe_linear_ms != null && r.mpc_nonlinear_ms != null);
   const splitData = split
