@@ -86,7 +86,12 @@ export default function PipelineControls({ run }: { run: Run }) {
             <label className="muted" htmlFor="sel-published-model">Published model</label>
             <select id="sel-published-model" name="published_model" aria-label="Published model"
               value={publishedModel} disabled={running || paused}
-              title="Which published Hugging Face model the orchestration's inference stage runs, on a row of that model's own corpus"
+              // Names the CURRENT selection, because the closed control clips its own text on a
+              // narrow viewport - the labels run to about 45 characters and the box is capped at the
+              // card width. Hovering has to recover what was clipped, not repeat the generic help.
+              title={`Runs on a row of this model's own corpus. Selected: ${
+                publishedCandidates.find((c) => c.spec.key === publishedModel)?.spec.label
+                ?? `auto (${publishedCandidates[0].spec.label})`}`}
               onChange={(e) => setPublishedModel(e.target.value)}>
               {/* Named, not blank. "" is the registry's first entry, and a bare empty option reads
                   as "none" next to a list of models. */}
