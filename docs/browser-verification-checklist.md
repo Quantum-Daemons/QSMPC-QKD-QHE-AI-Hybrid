@@ -156,6 +156,47 @@ the top-level assertion after any overflow fix, at the WIDE viewport as well as 
 below it. Behaviour below 485 is verified by forcing the container width, as above, not by emulation.
 Record which method was used; they are not the same evidence.
 
+### SVG text: neither DOM measurement works, so look at it
+
+The diagram is SVG, and both of the measurements above are blind to it. This cost a full sweep.
+
+`clientWidth` and `scrollWidth` are not meaningful on an SVG `<text>`. Running the element-overflow
+pass over the diagram returned nine "overflowing" labels, every one of them a false positive - the
+numbers describe a layout box SVG text does not use.
+
+`getBBox()` is meaningful but measures the glyphs in USER space, against the `viewBox`. A label
+centred on a party and running off the left edge still reports a bounding box that sits comfortably
+inside the viewBox, because the box is measured from where the text starts, not from where the
+element that should contain it starts.
+
+What found it was a **screenshot**. The published-model step rendered as
+`te_comms.opssat_student @ 82cb93255efb ...` - its first seventeen characters clipped away - because
+`local-a` draws a fixed 300-unit box while that label is about 460 units wide. So:
+
+- Take a screenshot of every diagram, in the state that produces its LONGEST label, and read it.
+- Then assert in code: `bbox.x >= 0 && bbox.x + bbox.width <= viewBoxWidth` for every `<text>`.
+  Both margins positive means it fits; either negative means it is clipped by the viewBox edge.
+- The longest label is the one to test. For the published-model step that is a use case publishing
+  several models, with the longest-named one selected - medical with ResNet-50 is the current worst
+  case at 91 characters.
+
+### A software WebGPU adapter is slower than no adapter
+
+Not layout, but found by the same two-browser comparison and worth the same discipline: **record
+which browser produced a latency, because the execution provider is not a property of the code.**
+
+Same model, same single row, same deployed bundle:
+
+| Adapter | Execution provider | ResNet-50 |
+|---|---|---|
+| SwiftShader (software rasteriser) | onnx-webgpu | 12842 ms |
+| none obtainable | onnx-wasm | 42 ms |
+
+`requestAdapter()` succeeds on SwiftShader, so "is WebGPU available" answered yes and the code took
+the WebGPU build - 300x slower than the fallback it had just declined, because every shader dispatch
+is emulated on the CPU while the wasm build runs SIMD kernels natively. `hasWebGPU()` now declines
+software adapters by name. When recording any latency in this file, record the adapter beside it.
+
 ## During a run, not only after it
 
 The simulator's own text changes while it runs, and a sweep that only looks at the finished state
