@@ -409,7 +409,11 @@ function hybridForward(dims: number[], u: () => number) {
 // Measured real client-side FHE/MPC (node-seal CKKS + secret-sharing) — when present, mpcFheRow reports
 // these REAL wall-clock numbers instead of the representative cost model.
 export interface MeasuredHybrid {
-  fheMs: number; mpcMs: number; commBytes: number; ctBytes: number; featDim: number;
+  fheMs: number; mpcMs: number; commBytes: number; featDim: number;
+  /** null when the serialized size could not be read. Not 0: a ciphertext is always larger than
+   *  its plaintext, so a ct/pt ratio of 0 is impossible rather than small, and it was reaching
+   *  the benchmark as a measured value. */
+  ctBytes: number | null;
   /** Set when the run performed a real encrypted CONVOLUTION rather than a dot product. Counted,
    *  not estimated: rotations and the key-switch each triggers are what dominate CKKS cost. */
   conv?: { rotations: number; multiplies: number; patchesPerCiphertext: number;
@@ -531,7 +535,11 @@ function mpcFheRow(usecase: string | undefined, workload: string, modelSize: str
   sec?: { kem?: string; qkdBits?: number | null }) {
   const { dims, label, params } = archDims(usecase, modelSize, workload);
   const cost = costPerOp();
-  let fhe: number, mpc: number, comm: number, backend: string, ctpt: number, projected: boolean, device: string;
+  // ctpt is nullable: the measured branch withholds it when the serialized ciphertext size could
+  // not be read, rather than reporting an impossible 0 or borrowing the cost model's literature
+  // figure into a row labelled measured.
+  let fhe: number, mpc: number, comm: number, backend: string, ctpt: number | null,
+    projected: boolean, device: string;
   if (measured) {
     // The real run measures a small (n->2) model; scale that MEASURED per-op cost by the SELECTED architecture's
     // op count so the latency genuinely tracks lightweight/medium/large × linear/cnn/transformer (the unit cost
@@ -548,7 +556,13 @@ function mpcFheRow(usecase: string | undefined, workload: string, modelSize: str
         + `convolution, ${measured.conv.rotations} rotations over `
         + `${measured.conv.patchesPerCiphertext} packed patches)`
       : "node-seal CKKS + emp-wasm 2PC (measured per-op, scaled to the selected architecture)";
-    ctpt = measured.featDim > 0 ? r2(measured.ctBytes / (measured.featDim * 8)) : cost.demo_ct_pt_ratio;
+    // null propagates. Previously a failed size read became 0 and this printed "ct/pt 0" beside
+    // rows carrying real ratios - an impossible value in a MEASURED column. The cost-model
+    // default is NOT substituted here either: this branch is the measured one, and quietly
+    // borrowing a literature figure would relabel an estimate as a measurement.
+    ctpt = measured.ctBytes == null || measured.featDim <= 0
+      ? null
+      : r2(measured.ctBytes / (measured.featDim * 8));
     device = "cpu";                                   // node-seal CKKS is WASM-CPU (no commercial-OK WebGPU FHE in 2026)
   } else {
     // The COST-MODEL branch: nothing here was measured. It used to name whatever execution provider
