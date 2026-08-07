@@ -77,7 +77,8 @@ const status: OnnxStatus = {
 let session: OrtTypes.InferenceSession | null = null;
 //: The build actually loaded, kept so Tensor construction uses the same module.
 let ortRuntime: typeof OrtTypes | null = null;
-let inflight: Promise<boolean> | null = null;
+/** Per-model, not per-page: see loadModel for the swap this prevents. */
+const inflight = new Map<string, Promise<boolean>>();
 
 export function onnxBackend(): string {
   return status.backend;
@@ -229,8 +230,16 @@ export async function loadModel(usecase: string, modelKey?: string): Promise<boo
   // input rank, since one takes [n,19] and the other [n,250,6].
   const want = modelKey ?? browserModel(usecase)?.spec.key;
   if (session && want && status.modelKey === want) return true;
-  if (inflight) return inflight;
-  inflight = (async () => {
+  // Keyed by model, because `inflight` was a single global promise: a caller asking for model B
+  // while model A was still loading got A's promise back, and then read the module-level `session`
+  // believing it held B. The graph-name assertion in runPublishedModel/evaluatePublishedModel runs
+  // BEFORE loadModel, so it cannot catch that swap. Two callers now genuinely exist at once - the
+  // pipeline's inference stage and the Models panel's Run buttons - so this stopped being
+  // theoretical.
+  const slot = want ?? `__usecase__:${usecase}`;
+  const pending = inflight.get(slot);
+  if (pending) return pending;
+  const load = (async () => {
     const target = modelKey
       ? browserModels(usecase).find((m) => m.spec.key === modelKey) ?? null
       : browserModel(usecase);
@@ -328,10 +337,11 @@ export async function loadModel(usecase: string, modelKey?: string): Promise<boo
       console.warn("[onnx] model load failed:", status.error);
       return false;
     } finally {
-      inflight = null;
+      inflight.delete(slot);
     }
   })();
-  return inflight;
+  inflight.set(slot, load);
+  return load;
 }
 
 /** Logits from the registered browser model, or null if it is unavailable (status.error says why). */
