@@ -444,6 +444,36 @@ still holding 2000 from an earlier aborted call. Read `el.value` back and throw 
 set, before clicking Start. The arithmetic is what exonerated the code: 70 is 2000 x 0.035, so the
 config value was being read correctly all along.
 
+## Capture every control's value against its OWN constraints
+
+Distinct from the numeric-edges pass, which types values in. This one types nothing: it dumps every
+control on the page with its current value and its own `min` / `max` / `step`, and asks whether the
+two are consistent. One script per page, and read the output rather than skimming it.
+
+    const tog = [...document.querySelectorAll('button')].find(b => /Parameters/.test(b.innerText));
+    if (tog?.getAttribute('aria-expanded') === 'false') tog.click();
+    // then dump:
+    //   selects     -> id, value, and EVERY option as `value = text`
+    //   numbers     -> id, value, min, max, step
+    //   checkboxes  -> id, checked, and the label text they sit inside
+
+What it catches that nothing else does:
+
+- **A default outside its own field's range.** `pp-seed` shipped `value = 0` with `min = 1`. Round 21
+  raised the minimum, because the generator does `(seed >>> 0) || 1` and maps 0 and 1 to one stream,
+  and left `makeDefaultParams` on 0. So every page rendered a field below its own minimum and "Reset
+  to defaults" restored an out-of-range value. Reading either the min or the default alone shows
+  nothing; only the pair does.
+- **An option whose `value` and `text` disagree about what it means** - the `pp-inf` empty option
+  read "(use case default)" while resolving to `ckks`, naming a mechanism that does not exist.
+- **A control with no `id`**, which cannot be targeted by `label[for]` or by a checklist script. The
+  Agentic panel's "mix QKD-domain key" checkbox is the one remaining case; it is wrapped in its label,
+  so it is correct for assistive technology, but it is the only control the sweep cannot address by
+  name.
+
+Run it on every use-case page, not one: the control set differs per page, and the pages that hide a
+group are exactly where a stale default survives unnoticed.
+
 ## Navigate the way a visitor does, not the way a test does
 
 Load each route fresh and this whole class of defect is invisible. `/usecase/:id` matches the same
