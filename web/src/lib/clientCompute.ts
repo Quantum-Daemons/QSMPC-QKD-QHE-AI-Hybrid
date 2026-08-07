@@ -1116,7 +1116,17 @@ export function runClientPipeline(
       }
       case "qkd_key_agreement": {
         if (config.qkd === "pqc-only") { emit("log", stage, "QKD disabled (PQC-only profile)"); break; }
-        const chan = { ...FIBER, distanceKm: Number(config.qkd_distance_km ?? qkdCfg().distance_km),
+        // Every field from config, not three of five. `fiber_loss_db_per_km` and
+        // `detector_efficiency` are exported to the browser and were sitting unread in the same
+        // qkdCfg() object this line already calls, while the values actually used came from the
+        // FIBER literal in quantumSim.ts. They happen to agree today (0.2 and 0.25), which is
+        // exactly why nobody noticed: editing defaults.py would have moved the Python channel model
+        // and left the browser on the old constant, silently, with no error anywhere.
+        const chan = { ...FIBER,
+          distanceKm: Number(config.qkd_distance_km ?? qkdCfg().distance_km),
+          lossDbPerKm: Number(qkdCfg().fiber_loss_db_per_km ?? FIBER.lossDbPerKm),
+          detectorEff: Number(qkdCfg().detector_efficiency ?? FIBER.detectorEff),
+          darkCount: Number(qkdCfg().dark_count_prob ?? FIBER.darkCount),
           misalignment: Number(config.qkd_misalignment ?? qkdCfg().misalignment),
           eveFraction: Number(config.qkd_eve ?? qkdCfg().eve_intercept_fraction) };
         // config.qkd_protocol genuinely selects which physical QKD model runs (BB84 decoy-state vs E91/CHSH),
