@@ -9,6 +9,8 @@ import { FREE_SPACE } from "./quantumSim";
 import { assembleBenchmark, clientFlow, type PipelineControl, runClientPipeline } from "./clientCompute";
 import { isClientDemo } from "./demoMode";
 
+import { downloadCSV, downloadJSON, downloadNodePNG, FrameRecorder } from "./export";
+
 /**
  * Whether a use case runs the stage that reads a given control.
  *
@@ -24,7 +26,6 @@ import { isClientDemo } from "./demoMode";
 export const runsQsmpc = (usecase: string) => clientFlow(usecase).includes("qsmpc_compute");
 export const runsInference = (usecase: string) => clientFlow(usecase).includes("private_inference");
 export const runsFibreQkd = (usecase: string) => clientFlow(usecase).includes("qkd_key_agreement");
-import { downloadCSV, downloadJSON, downloadNodePNG, FrameRecorder } from "./export";
 
 export const MODEL_SIZES = [
   { id: "lightweight", label: "Lightweight" },
@@ -98,6 +99,11 @@ export function usePipelineRun(usecase: string, recordRef: RefObject<HTMLElement
   // still be turned off programmatically for a test or a comparison.
   const [qfl, setQfl] = useState(true);
   const [optiqkd, setOptiqkd] = useState(false);         // "Optimize QKD (OptiQKD)" toggle (WS1 AI-QKD)
+  // Which published model the orchestration's inference stage runs. "" = the registry's first
+  // fetchable one for this use case, which is what every run used before this existed. Three use
+  // cases publish more than one and could only ever exercise the first: medical has ResNet-18,
+  // ResNet-50 and the CKKS student; satellite has four across two incomparable tasks.
+  const [publishedModel, setPublishedModel] = useState("");
   const [params, setParams] = useState({ ...DEFAULT_PARAMS });
   const resetParams = () => setParams({ ...makeDefaultParams() });
 
@@ -145,6 +151,9 @@ export function usePipelineRun(usecase: string, recordRef: RefObject<HTMLElement
     if (runsQsmpc(usecase) && qsmpc_op) c.qsmpc_op = qsmpc_op;
     if (runsInference(usecase) && inference) c.inference = inference;
     if (runsQsmpc(usecase) && prime > 0) c.prime = prime;
+    // Only when a choice was made. Absent, runPublishedModel falls to browserModel(usecase), so the
+    // key never appears in a signed payload claiming a selection the visitor did not make.
+    if (publishedModel) c.published_model = publishedModel;
     if (qfl) c.qfl = true;                                // run Quantum Federated Learning this run
     if (optiqkd) c.qkd_optimize = true;                  // run the AI-QKD parameter optimization this run
     return c;
@@ -238,6 +247,7 @@ export function usePipelineRun(usecase: string, recordRef: RefObject<HTMLElement
   return {
     usecase, opts, kem, setKem, qkd, setQkd, fhe, setFhe, mpc, setMpc, sig, setSig,
     workload, setWorkload, qfl, setQfl, optiqkd, setOptiqkd,
+    publishedModel, setPublishedModel,
     params, setParams, resetParams,
     runId, state, events, active, done, metrics, signature, artifacts, benchmark,
     gifBusy, logRef, captureFrame,
