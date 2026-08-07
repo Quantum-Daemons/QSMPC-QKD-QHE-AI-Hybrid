@@ -136,9 +136,13 @@ const HYBRID_INFERENCE: Step[] = [
 const QSMPC_COMPARE: Step = {
   stageId: "quantum_comparison", kind: "compare",
   label: (m, c) => {
+    // "" and "ckks" are the SAME run. clientCompute does `config.inference || "ckks"`, so there is
+    // no per-use-case default to fall back to - the old label said "use-case default" and named a
+    // mechanism that does not exist, which is the same defect class as a control that changes
+    // nothing. Say which backend was surfaced, and say when that came from the default.
     const primary = String(c.inference ?? "") === "qcnn" ? "QCNN surfaced as primary"
       : String(c.inference ?? "") === "ckks" ? "CKKS surfaced as primary"
-      : "use-case default";
+      : "CKKS surfaced as primary (default)";
     const cls = m["primary_inference_class"];
     return `QSMPC-FHE comparison · QOTP + QCNN (T-gates) · ${primary}`
       + (cls == null ? "" : ` · class ${cls}`)

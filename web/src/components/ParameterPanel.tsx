@@ -150,7 +150,11 @@ export default function ParameterPanel({ run }: { run: Run }) {
               <label className="muted" htmlFor="pp-inf" style={{ fontSize: 12 }}>Inference</label>
               <select id="pp-inf" name="inference" value={p.inference as string} style={{ width: "100%" }}
                 onChange={(e) => setParams({ ...params, inference: e.target.value })}>
-                <option value="">(use case default)</option><option value="ckks">CKKS (FHE)</option><option value="qcnn">QCNN (QHE)</option>
+                {/* "" resolves to ckks in clientCompute - there is no per-use-case table behind it - so the
+                    option says which backend it means rather than implying one. */}
+                <option value="">CKKS (FHE) - default</option>
+                <option value="ckks">CKKS (FHE)</option>
+                <option value="qcnn">QCNN (QHE)</option>
               </select>
             </div>)}
             {/* Only the secure-sum path reads it, and only genomics/finance run that path. The old
