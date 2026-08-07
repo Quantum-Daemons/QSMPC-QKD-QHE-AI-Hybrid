@@ -212,6 +212,26 @@ misses it. For each use case, sample mid-flight as well as at the end:
 - Controls that must be inert during a run are disabled and say why, and the published-model select
   is one of them - changing the model mid-run would describe the run with the wrong model's name.
 
+## Navigate the way a visitor does, not the way a test does
+
+Load each route fresh and this whole class of defect is invisible. `/usecase/:id` matches the same
+route for every use case, so React Router does not remount the hook, and the Orchestration page
+changes the use case without navigating at all. Anything held in that hook's state therefore crosses
+a use-case boundary.
+
+So sweep the routes through the SPA router - `history.pushState` plus a `popstate` - and only then
+fall back to a fresh load to confirm what you found. Both defects of this shape were found this way
+and neither was reachable from a cold load:
+
+- Parameters (`qsmpc_op`, `prime`, `inference`) reached a run whose panel no longer showed them.
+- The published-model selection survived into a use case that does not publish it, so
+  `browserModels(next).find(...)` returned nothing and the page reported "no published model
+  registered for this use case" - on telecom, which publishes one that runs in 6 ms. That claim is
+  far stronger than the truth, because "none registered" is how a deliberate licence decision reads.
+
+The general rule: anything keyed to the use case must be reset when the use case changes, or gated
+at the point of use. Check both, because the two failures look identical from outside.
+
 ## Selects, every value
 
 For each, set every option in turn and diff the rendered diagram, the run metrics and the log. Not
@@ -228,31 +248,50 @@ nodes, and a sweep querying `svg text` returned nothing at all.
 
 Observed on `https://qsmpc-qkd-qhe-ai-hybrid.daemons.jp`, recorded rather than ticked.
 
-Environment: `crossOriginIsolated` true, zero `/api` requests in the network panel, WebGPU adapter
-present but software (SwiftShader) with `shader-f16` absent, WebNN API present and deliberately not
-offered to ONNX Runtime.
+Environment, browser A: `crossOriginIsolated` true, zero `/api` requests, WebGPU adapter present but
+software (SwiftShader, no `shader-f16`), WebNN API present and deliberately not offered to ORT.
+Browser B: same page, `requestAdapter()` returns null, so the wasm build is used. **The adapter is
+recorded with every latency below, because it changes them by two orders of magnitude.**
 
 Published model running inside the orchestration, per use case:
 
-| Use case | Model | Execution provider | Latency | Input |
-|---|---|---|---|---|
-| finance_aml | finance_aml.gbm | onnx-wasm | 3 ms | 1x32 |
-| medical_fl | medical_fl.resnet18 | onnx-webgpu | 288 ms | 1x1x28x28 |
-| medical_fl | medical_fl.resnet50 | onnx-webgpu | 12842 ms | 1x1x28x28 |
-| genomics | none registered, and the run says so | | | |
-| telecom_ids | telecom_ids.qml | onnx-wasm | 0.44 ms | 1x7 |
-| satellite_comms | satellite_comms.telemanom | onnx-webgpu | 151 ms | 1x250x6 |
-| satellite_comms | satellite_comms.opssat | onnx-wasm | 4.44 ms | 1x19 |
+| Use case | Model | Adapter | Execution provider | Latency | Input |
+|---|---|---|---|---|---|
+| finance_aml | finance_aml.gbm | B | onnx-wasm | 1.42 ms | 1x32 |
+| medical_fl | medical_fl.resnet18 | A software | onnx-webgpu | 288 ms | 1x1x28x28 |
+| medical_fl | medical_fl.resnet50 | A software | onnx-webgpu | 12842 ms | 1x1x28x28 |
+| medical_fl | medical_fl.resnet50 | B none | onnx-wasm | **42 ms** | 1x1x28x28 |
+| genomics | none registered, and the run says so | | | | |
+| telecom_ids | telecom_ids.qml | B | onnx-wasm | 5.94 ms | 1x7 |
+| satellite_comms | satellite_comms.telemanom | A software | onnx-webgpu | 151 ms | 1x250x6 |
+| satellite_comms | satellite_comms.opssat | B | onnx-wasm | 4.36 ms | 1x19 |
+| satellite_comms | satellite_comms.opssat_student | B | onnx-wasm | 5.98 ms | 1x19 |
 
-ResNet-50 at 12.8 s against ResNet-18's 288 ms is a measurement, not a defect: it is far more work on
-a software adapter. Recorded because a reader comparing the two should see why.
+The two ResNet-50 rows are the finding: 12842 ms on a software WebGPU adapter against 42 ms on wasm,
+same model and same row. `hasWebGPU()` now declines software adapters, so the 12842 row is no longer
+reachable - it is kept here as the evidence for why.
 
-Selecting a CKKS student reports `DID NOT RUN (no substitute shown)` with the reason, records no
-latency, and produces no plaintext benchmark row. Those four ship no evaluation sample, so there is
-no input from their own corpus to run them on. The gap is visible rather than papered over.
+Routes swept through the SPA router: all ten clean - zero page overflow, zero elements wider than the
+viewport, zero SVG labels outside their viewBox, zero `NaN`/`undefined`/`Infinity`/`[object Object]`.
+`/agentic-ai` redirects to `/usecases`; `/usecase/<bad-id>` renders "No such use case".
+
+Diagram labels, measured as `bbox.x >= 0 && bbox.x + bbox.width <= viewBoxWidth` after a run, in the
+state producing each one's longest label: finance 81 chars (172/167 px margins), medical ResNet-50 91
+chars (147/143), satellite OPS-SAT student 95 chars (133/129). All fit. Before the `local-wide` fix
+the satellite label lost its first 17 characters off the left edge.
+
+The published-model select is disabled while `state === "running"` and re-enabled at `done`, sampled
+at 200 ms intervals from the click.
+
+Three CKKS students now run and reproduce: medical accuracy 0.730769, OPS-SAT rare-class F1 0.864865,
+finance rare-class F1 0.333709 on its shipped rows. `satellite_comms.student` still reports
+`DID NOT RUN` with its reason - it is scored on event-wise F0.5, a sequence metric the per-row
+evaluator cannot compute.
 
 Reproduction check: ResNet-18 scored 85.9 percent in the browser against 85.9 percent measured
-offline on the same 156 rows, majority baseline 73.1 percent, 11.3 MB transferred.
+offline on the same 156 rows, majority baseline 73.1 percent, 11.3 MB transferred. The medical
+student scores 0.7308 against a majority baseline of 0.7308 - it reproduces its published figure and
+does not beat guessing, and the page says both.
 
 ## What this checklist cannot cover
 
