@@ -289,6 +289,7 @@ each other and with what was selected.
 | Optimize QKD (OptiQKD) | OptiQKD suffix on the QKD arrow with the measured percentage | improvement and convergence lines | `qkd_skr_improvement_pct`, `qkd_convergence_evals` |
 | OptiQKD samples | (via the suffix) | budget line | collapses in 8-wide buckets; saturates near 400 |
 | QKD channel (pulses, distance, eve, misalignment) | QBER on the arrow | channel line | `qber`, `skr`, `secure_key_bits` |
+| Free-space channel (downlink km, sat eve, sat pulses, QSDC abort threshold) | free-space arrow QBER, and the QSDC arrow must show the ABORT when it fires | "QSDC ABORTED: error X > threshold - telemetry withheld" | `qsdc_error_rate`, `qsdc_secrecy_capacity`, `qsdc_eavesdrop_detected` |
 | QRNG (bits, extractor, eps) | not drawn | delivered-bits line, shortfall explained | `qrng_bits_delivered`, `qrng_lhl_max_bits`, `qrng_extraction_rate`, `qrng_health_conclusive` |
 | Quantum / run (qubits, seed) | QSMPC comparison bar | T-gate line | `t_gate_count`, `qubits`; seed changes every downstream value |
 | IDS (samples per class) | QML-IDS step macro-F1 | training line naming the value actually used | `ids_macro_f1`, `ids_train_per_class` |
@@ -298,6 +299,28 @@ each other and with what was selected.
 Two traps this table exists to catch. A control can move the metrics and not the diagram - that was
 five of the six inert controls. And a control can move both while a SECOND view of the same state
 stays frozen, which was the sixth.
+
+**Free-space channel is the row to work first**, because it is the only group whose whole purpose is
+a threshold that has to be crossed to see anything, and it was the last group added to the panel.
+Satellite only; the fibre QKD-channel group is correctly hidden there and vice versa. Set Eve to 0.5
+against the default 0.11 threshold - well past the crossing near 0.32 - and check all three surfaces
+agree that the transmission was refused.
+
+That test is how the diagram-versus-log contradiction was found: the log said
+`QSDC ABORTED: error 0.158 > 0.11 - telemetry withheld`, the metrics agreed, and the arrow read
+`QSDC direct telemetry · secrecy 0 bit/carrier` with a done tick - delivered-but-not-secret, the
+opposite of what happened, on the feature the page leads with. Observed after the fix:
+
+    diagram   QSDC ABORTED · error 0.16 over threshold · telemetry withheld
+    log       QSDC ABORTED: error 0.158 > 0.11 - telemetry withheld
+    metrics   qsdc_eavesdrop_detected 1 · qsdc_secrecy_capacity 0
+
+The same run also showed why a step must not be gated on something it does not depend on. The
+published-model step sat inside the delivery branch, so an abort left it reading
+`published model · —` with a done tick and no reason - even though that step runs the pinned model on
+a row of the model's OWN corpus and has nothing to do with this run's channel. It now runs either
+way: `published satellite_comms.telemanom @ 4507c187d0f9 · onnx-wasm · 1x250x6 · 9.59 ms ·
+abs err 0.01615`.
 
 ## Navigate the way a visitor does, not the way a test does
 
