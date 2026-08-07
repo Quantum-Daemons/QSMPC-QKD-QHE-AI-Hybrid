@@ -659,7 +659,11 @@ const INFERENCE_USECASES = new Set(["finance_aml", "medical_fl", "genomics"]);
 function publishedModelRow(m: any) {
   if (m?.published_inference_ms == null || m?.published_model_status === "failed") return null;
   return {
-    path: "plaintext (published model)",
+    // Short on purpose: this is a chart category as well as a table cell, and recharts drops a tick
+    // whose neighbours it would overlap - "plaintext (published model)" was long enough to push the
+    // QSMPC-FHE label off the latency chart entirely, leaving three bars with two labels. The model
+    // column beside it names the model, so the extra words were never carrying anything.
+    path: "plaintext",
     backend: m.published_model_backend ?? "onnx",
     workload: "published",
     model_size: null, model_arch: m.published_model ?? null, model_params: null, projected: false,
