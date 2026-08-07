@@ -1247,11 +1247,17 @@ export function runClientPipeline(
             emit("log", stage, `private telemetry anomaly detection (${anom.provenance}): `
               + `${anom.isAnomaly ? "ANOMALY" : "nominal"} (score ${anom.anomalyScore})`);
           }
-          // Satellite's flow has no private_inference stage either. Inside the delivery branch on
-          // purpose: if the QSDC check aborted there is no delivered telemetry to analyse, and
-          // running an inference anyway would contradict the abort logged two lines above.
-          await runPublishedForStage(stage);
         }
+        // Satellite's flow has no private_inference stage either, so its published model runs here.
+        //
+        // OUTSIDE the delivery branch, which is a correction. It was inside, on the reasoning that an
+        // aborted channel leaves no telemetry to analyse - but this step never analyses the delivered
+        // telemetry. It runs the pinned model on a row of the model's OWN held-out corpus, which has
+        // nothing to do with whether this run's channel aborted. Gating it implied a dependency that
+        // does not exist, made the model benchmark unavailable exactly when a visitor is exploring
+        // the eavesdrop behaviour, and left the diagram reading "published model · —" with a done
+        // tick and no reason.
+        await runPublishedForStage(stage);
         break;
       }
       case "qsmpc_compute": {
