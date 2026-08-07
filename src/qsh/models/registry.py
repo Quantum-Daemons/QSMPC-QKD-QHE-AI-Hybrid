@@ -105,6 +105,10 @@ class ModelSpec:
     artifacts: tuple[ArtifactSpec, ...] = ()
     hf_repo: str | None = None    # None => not published (T1 students are computed, not downloaded)
     hf_revision: str | None = None  # pin a 40-char commit sha before any browser fetch
+    # Set when a retrain superseded a published artefact: the sha that WAS pinned, kept so the UI can
+    # say "retrained since publication, needs republishing" instead of the identical-looking "never
+    # pinned". See train.record_metrics for why a retrain must not carry its old pin forward.
+    hf_revision_stale: str | None = None
     runs_encrypted: bool = False
     notes: str = ""
 
@@ -729,7 +733,13 @@ def specs() -> tuple[ModelSpec, ...]:
     for s in _SPECS:
         entry = recorded.get(s.key, {})
         rev = entry.get("hf_revision")
-        out.append(replace(s, hf_revision=rev) if rev else s)
+        stale = entry.get("hf_revision_invalidated_by_retrain")
+        if rev:
+            out.append(replace(s, hf_revision=rev))
+        elif stale:
+            out.append(replace(s, hf_revision_stale=stale))
+        else:
+            out.append(s)
     return tuple(out)
 
 
@@ -838,6 +848,7 @@ def frontend_models() -> dict:
             "runs_encrypted": s.runs_encrypted,
             "hf_repo_id": s.hf_repo_id,
             "hf_revision": s.hf_revision,
+            "hf_revision_stale": s.hf_revision_stale,
             # Whether ONNX Runtime Web can execute this graph at all. A tree ensemble is
             # ai.onnx.ml (TreeEnsembleClassifier), a domain ORT Web does not implement, so it is
             # not browser-runnable at any size. Exported so the browser can decline BEFORE

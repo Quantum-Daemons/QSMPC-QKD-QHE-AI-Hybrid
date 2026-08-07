@@ -14,6 +14,7 @@
       "opset": 0
     },
     "git_sha": "c3f4c1b-dirty",
+    "hf_revision": "c46157c27e649413ef589d1edbc3404b40a17d76",
     "minority_class_f1": 0.08077786088257292,
     "n_test": 1523504,
     "n_train": 3554841,
@@ -170,6 +171,7 @@
     },
     "f1": 0.918918918918919,
     "git_sha": "c3f4c1b-dirty",
+    "hf_revision": "5874c1d8fa3da9d92c6f1a1fa578dd6c2b4fd3c0",
     "n_features": 19,
     "n_test_segments": 529,
     "n_train_segments": 1594,
