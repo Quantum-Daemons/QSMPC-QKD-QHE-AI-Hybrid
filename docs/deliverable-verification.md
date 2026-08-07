@@ -84,6 +84,13 @@ Eight gates. Steps 1-3 and 5-8 are pass/fail; step 4 is a loop that runs until c
 7. **Git-only deployment** - commit, push, then pull and build on the server. Never rsync.
 8. **Final greps** - no new literals, no Japanese in public files, CI green on the head commit.
 
+   Three files are exceptions, and the third is the interesting one. A private workflow note
+   and the private business reports are Japanese by design and untracked. `.gitignore` is tracked and
+   contains Japanese because its patterns name the confidential `.docx` files exactly - and that is a
+   confidentiality control, not prose. Rewriting those patterns in ASCII to satisfy this convention
+   would weaken the one rule whose job is to stop a leak, which is the wrong trade; a plain `*.docx`
+   line sits beside them so the control holds by extension alone even if a filename changes.
+
 ## Mapping the ladder onto deliverables
 
 ### A published model

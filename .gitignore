@@ -1,10 +1,17 @@
 # ============================================================================
 #  HARD EXCLUSIONS — these must NEVER be committed (per project requirements)
 # ============================================================================
-# The source research report (confidential, do not publish)
+# The source research report and the private business-strategy reports (confidential, never publish).
+#
+# The Japanese patterns below are kept because they are exact, and this is a confidentiality control
+# rather than a style question - weakening a rule whose whole job is to stop a leak, in order to
+# satisfy the repo's no-Japanese-in-tracked-files convention, would be the wrong trade. The ASCII
+# `*.docx` line is a belt to those braces: it catches the same files by extension alone, so the
+# control survives even if a filename is transliterated or renamed. `docs/deliverable-verification.md`
+# lists .gitignore as an explicit exception to the convention for this reason.
+*.docx
 # private document pattern 4 (withheld)
 # private document pattern 2 (withheld)
-# Private monetization / business-strategy reports (confidential, kept local only)
 # private document pattern 3 (withheld)
 # private document pattern 1 (withheld)
 # Copyrighted reference book (do not redistribute)
