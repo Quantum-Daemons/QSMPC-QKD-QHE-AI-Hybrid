@@ -105,11 +105,10 @@ bash env/setup_venv.sh      # or: make setup
 source .venv/bin/activate
 
 # 2. Run the test suite (crypto correctness, FHE accuracy, E2E smoke)
-make test             # 163 collected, 159 passed, 4 deselected (Node/OpenFHE-gated)
-# NOTE: `make test` runs a bare `pytest`, so nothing is deselected and the OpenFHE bootstrap test
-# SIGSEGVs inside EvalBootstrapSetup on AlmaLinux 9.7 (the import guard does not catch a segfault).
-# Use the deselecting form on that host:
-pytest -m "not slow"        # 159 passed, 4 deselected
+make test             # 169 collected, 165 passed, 4 deselected (Node/OpenFHE-gated)
+# `make test` already passes -m "not slow", which is what deselects those four.
+# `make test-all` runs every test, and on AlmaLinux 9.7 the OpenFHE bootstrap test SIGSEGVs inside
+# EvalBootstrapSetup: fhe/backends.py guards against an ImportError, and a segfault is not one.
 
 # 3. Optional tiers
 pip install -r requirements-ai.txt  # torch (CUDA 13 auto), PennyLane (QFL), XGBoost, MedMNIST, ONNX, MCP SDK
@@ -502,11 +501,13 @@ See [`docs/pqc-roadmap.md`](docs/pqc-roadmap.md).
   does not run - and when three different models fail three different ways, suspect the thing they
   share.
 
-- **`make test` is not the command to run on the documented box.** It invokes a bare `pytest`, so the
-  OpenFHE bootstrap test is not deselected and **SIGSEGVs** inside `EvalBootstrapSetup` on AlmaLinux 9.7 -
-  the import guard in `fhe/backends.py` catches an `ImportError`, not a segfault. Use `pytest -m "not slow"`
-  (163 collected, 4 deselected). `EvalBootstrap` is described elsewhere in this README as the answer to the
-  bootstrapping bottleneck; on this host it is not runnable.
+- **`EvalBootstrap` is described elsewhere in this README as the answer to the bootstrapping
+  bottleneck, and on the documented box it is not runnable.** The OpenFHE bootstrap test **SIGSEGVs**
+  inside `EvalBootstrapSetup` on AlmaLinux 9.7 - the import guard in `fhe/backends.py` catches an
+  `ImportError`, and a segfault is not one. `make test` deselects it with `-m "not slow"`
+  (169 collected, 165 passed, 4 deselected); `make test-all` still dies. Round 18 fixed the Makefile
+  and this paragraph kept telling readers `make test` runs a bare `pytest` for three more rounds,
+  which is the doc-versus-code divergence this list exists to catch.
 - **The security score has two paths, and they used to disagree.** The standalone benchmark scored the
   classical row without QKD key material while the quantum row assumed 256 bits - so once the QKD bonus
   became functional in Round 17, the headline comparison would have handed the quantum row five points the
