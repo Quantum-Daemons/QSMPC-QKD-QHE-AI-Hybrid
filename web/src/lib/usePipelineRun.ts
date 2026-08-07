@@ -52,7 +52,12 @@ export const DEMO_CRYPTO = {
 // WebUI Parameters panel starts from the backend defaults and any edit flows into the run config (no
 // hardcoded literals here). Every field is overridable per run from the panel.
 export const makeDefaultParams = () => ({
-  seed: 0,
+  // 1, not 0. Round 21 raised this field's `min` to 1 because quantumSim's rng() does
+  // `(seed >>> 0) || 1` and maps both to the same stream - and left the DEFAULT at 0, so every
+  // page shipped a field whose value sat below its own minimum, and "Reset to defaults"
+  // restored an out-of-range value. Caught by capturing every input's value against its own
+  // min/max rather than by reading either one alone.
+  seed: 1,
   qkd_pulses: qkdCfg().pulses,
   qkd_distance_km: qkdCfg().distance_km,
   qkd_eve: qkdCfg().eve_intercept_fraction,
