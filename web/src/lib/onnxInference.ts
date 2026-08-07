@@ -418,6 +418,13 @@ export interface ModelEvalResult {
   /** Transferred size, or null when the browser served it from cache. */
   bytes: number | null;
   provenance: string;
+  /** `expected.note` from the sample: why this figure is what it is.
+   *
+   *  Rendered, not just carried. The finance student measures 0.3337 here and the registry table
+   *  eight lines above it prints 0.0178 for the same metric - a 19x gap that is entirely an artefact
+   *  of the sample being stratified to contain positives. Two numbers for one metric with no visible
+   *  explanation is worse than either alone. */
+  note: string | null;
   error: string | null;
 }
 
@@ -491,7 +498,7 @@ export async function evaluatePublishedModel(
     ran: false, task: "classification", metricName: "accuracy", n: 0, score: null, expected: null,
     baseline: null,
     beatsBaseline: false, matchesExpected: false, backend: "none", bytes: null,
-    provenance: "", error: null,
+    provenance: "", note: null, error: null,
   };
   // The evaluation sample lives in the MODEL's own HF repo at the same pinned commit, not in this
   // bundle. Two reasons, both practical: the sample and the weights it evaluates cannot drift apart
@@ -577,7 +584,8 @@ export async function evaluatePublishedModel(
         baseline: file.expected.persistence_mae ?? persistenceMae,
         beatsBaseline: mae < (file.expected.persistence_mae ?? persistenceMae),
         matchesExpected: exp == null ? false : Math.abs(mae - exp) <= Math.max(tolerance, exp * 0.1),
-        backend: status.backend, bytes: status.bytes, provenance: file.provenance, error: null,
+        backend: status.backend, bytes: status.bytes, provenance: file.provenance,
+        note: file.expected.note ?? null, error: null,
       };
     }
 
@@ -610,7 +618,8 @@ export async function evaluatePublishedModel(
         baseline: allPositive,
         beatsBaseline: f1 > allPositive,
         matchesExpected: Math.abs(f1 - exp) <= tolerance,
-        backend: status.backend, bytes: status.bytes, provenance: file.provenance, error: null,
+        backend: status.backend, bytes: status.bytes, provenance: file.provenance,
+        note: file.expected.note ?? null, error: null,
       };
     }
 
@@ -621,7 +630,8 @@ export async function evaluatePublishedModel(
       ran: true, task, metricName: "accuracy", n, score: accuracy, expected: exp, baseline: majority,
       beatsBaseline: majority == null ? true : accuracy > majority,
       matchesExpected: exp == null ? false : Math.abs(accuracy - exp) <= tolerance,
-      backend: status.backend, bytes: status.bytes, provenance: file.provenance, error: null,
+      backend: status.backend, bytes: status.bytes, provenance: file.provenance,
+      note: file.expected.note ?? null, error: null,
     };
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
