@@ -19,6 +19,7 @@ import numpy as np
 from .classical_mpc_fhe import run_classical, run_hybrid
 from .metrics import BenchResult
 from .quantum_qsmpc_fhe import run_quantum
+from ..monitoring.exporter import record_benchmark
 
 MODEL_SIZES = ("lightweight", "medium", "large")
 
@@ -220,6 +221,11 @@ def run_benchmark(workload: str = "linear", *, out_dir: str | Path = "results",
                     n_samples=min(n_samples, bcfg.quantum_samples), seed=seed)
     q.model_size = model_size
     results.append(q)
+
+    # BENCH_LATENCY was declared with a "path" label and had no reader anywhere - not even inside
+    # the exporter that defined it. These are its rows.
+    for r in results:
+        record_benchmark(r.path, float(r.latency_ms))
 
     _persist(results, out_dir, workload)
     return results
