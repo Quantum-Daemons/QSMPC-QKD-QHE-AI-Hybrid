@@ -231,6 +231,24 @@ misses it. For each use case, sample mid-flight as well as at the end:
 - Controls that must be inert during a run are disabled and say why, and the published-model select
   is one of them - changing the model mid-run would describe the run with the wrong model's name.
 
+## Fact-check the numbers against current sources
+
+A number can be internally consistent and still describe a world that has moved. So each round,
+re-verify the load-bearing external claims and record the date:
+
+- Every baseline the pages print beside a measured figure has an entry in `references/` with a
+  resolvable identifier. An audit in Round 21 found two entries with none, and ten citations used as
+  authority in registry docstrings or the SPA's baked config with no entry at all.
+- Regulatory dates are the ones most likely to move and the most costly to get wrong, because the
+  product asserts compliance against them. EU AI Act Art. 50 became applicable during Round 21 while
+  the panel it governs carried no disclosure.
+- Standards versions and publication dates: ETSI GS QKD 014 / 015 / 020, NIST FIPS 203/204/205, and
+  whichever instrument is currently binding. Round 21 confirmed GS QKD 020 at V1.1.1, 2026-06-29, and
+  found `pqc-roadmap.md` more precise than the secondary sources - it also records that
+  `pqc/transport.py` targets 014 only.
+- When a doc turns out to be ahead of the sources you find, say so in the commit rather than
+  "correcting" it downward to match a summary.
+
 ## Every panel must describe the run that just happened
 
 The page performs one run and then eight panels describe it. Each was written at a different time,
@@ -369,6 +387,25 @@ for, and the question to ask of each:
 | `catch {}` / `except Exception: pass` | If this fires, does the caller learn anything? |
 | `x ?? default` / `x \|\| default` on a measured value | Is the default distinguishable from a real measurement? |
 | A tier that silently degrades | Does the page say WHICH tier produced the number? |
+
+The grep that finds the first shape:
+
+    grep -rn "catch" web/src/lib/*.ts | grep -vE "status\.error|console|throw|emit|return \{|note:|error:"
+
+Round 21 found one that way, and it had been shipping. Both encrypted paths did
+`try { ctBytes = saveToArray(...).length } catch { ctBytes = 0 }`, and `clientCompute` divides that by
+`featDim * 8` to produce the ciphertext/plaintext ratio - so a failed size read printed **ct/pt 0**
+beside rows carrying real ratios. Zero is not a small ratio, it is an impossible one, since a
+ciphertext is always larger than its plaintext. It appeared under a MEASURED label with nothing
+thrown and nothing warned. `ctBytes` is nullable now, the ratio is withheld rather than zeroed, and
+the cost model's literature figure is deliberately NOT substituted in its place - borrowing an
+estimate into a measured row is the same error in better clothes.
+
+**Not every substitution is a defect, and the checklist should not imply it.** A default that comes
+from config is a default. `demoMode`'s query-parameter handling, `config.ts` returning early from
+`refreshConfigFromApi` in demo mode, and `clientMcp`'s `catch { tamperRejected = true }` - which is
+the EXPECTED outcome of a deliberate tamper test - are all correct. The question is only ever whether
+the substituted value is later reported as though it had been obtained honestly.
 
 The distinction that matters is between a fallback and a *report*. Declining a software WebGPU adapter
 and using wasm is a fallback and correct - the run says which provider it used. Substituting the
