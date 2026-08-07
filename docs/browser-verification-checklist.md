@@ -430,6 +430,20 @@ which is precisely the bug above. Capture each use-case page, change the paramet
 and diff the diagram text, the log and the metrics table. A value that reaches the bundle and moves
 nothing on screen is the same defect as a control that renders and changes nothing.
 
+Two points, not one, and predict the second before running it. The free-space fix was confirmed by
+`800 km -> 28 dB` and `2000 km -> 70 dB`, both exactly `distance x 0.035`, with the diagram arrow
+reading `free-space BB84 decoy-state (28 dB) · QBER 0.04`. One point cannot distinguish "reads the
+config" from "happens to agree with the literal it replaced" - which is the failure mode this whole
+axis exists for.
+
+**Assert the field took before reading the result.** These are React-controlled inputs: setting
+`.value` and dispatching `input` is not synchronous with the state the next run will read, and a
+prior script that errored mid-flight can leave a value behind. This produced a false alarm here - a
+run reported 70 dB where 28 was expected, which looks exactly like a broken fix, and the field was
+still holding 2000 from an earlier aborted call. Read `el.value` back and throw if it is not what you
+set, before clicking Start. The arithmetic is what exonerated the code: 70 is 2000 x 0.035, so the
+config value was being read correctly all along.
+
 ## Navigate the way a visitor does, not the way a test does
 
 Load each route fresh and this whole class of defect is invisible. `/usecase/:id` matches the same
