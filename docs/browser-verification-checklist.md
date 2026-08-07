@@ -375,9 +375,18 @@ survived: editing `config.yaml` would have moved the Python channel model and le
 old constant, with no error anywhere. Verified after the fix: config 0.2 gives bundle `.2`, config 0.9
 gives `.9`.
 
-Still outstanding and recorded rather than fixed: `FREE_SPACE` in `quantumSim.ts` has **no** config
-counterpart at all - its `lossDbPerKm` 0.035, `detectorEff` 0.4 and `misalignment` 0.025 exist only as
-TS literals, so the satellite channel cannot be reconfigured without editing the source.
+**Closed in the same round it was recorded.** `FREE_SPACE` in `quantumSim.ts` had no config
+counterpart at all - `lossDbPerKm` 0.035, `detectorEff` 0.4, `misalignment` 0.025 and `darkCount`
+existed only as TS literals, so four of the satellite channel's six physical constants were
+unreachable from configuration while every call site spread the object and overrode just distance and
+Eve. `QKDConfig` now carries a `free_space_*` block and BOTH channels are built from `qkdCfg()` at
+module load, so neither has a literal left. Values were moved, not retuned.
+
+Verified by the config-to-bundle test above rather than by reading the diff: config `0.035` emits
+`free_space_loss_db_per_km:.035`, config `0.9` emits `.9`, and restoring returns `.035`. Note the
+minification - the bundle writes `.035`, never `0.035`, which is why the test matches on
+`key:([^,}]+)` and not on the literal you typed. The config also lands in its OWN chunk, not the main
+`index-*.js`, so grep every asset rather than the one you expect.
 
 **A fallback must not be able to substitute a plausible answer for a failure.** Three shapes to grep
 for, and the question to ask of each:
