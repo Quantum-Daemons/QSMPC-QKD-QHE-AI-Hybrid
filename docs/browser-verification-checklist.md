@@ -333,6 +333,57 @@ a row of the model's OWN corpus and has nothing to do with this run's channel. I
 way: `published satellite_comms.telemanom @ 4507c187d0f9 · onnx-wasm · 1x250x6 · 9.59 ms ·
 abs err 0.01615`.
 
+## The source-code pass: hardcoding and fallbacks the browser cannot show you
+
+Everything above is checked by looking at the page. This axis is not, because its failures are
+invisible there: a hardcoded constant renders identically to a config-sourced one, and a swallowed
+error renders as a plausible number. Run it against the diff, then confirm the fix in the browser.
+
+**A number is config-traceable, session-measured, or a cited literature value.** Anything else is a
+literal. The test that finds the real ones is not a grep for digits - it is: *change the config and
+see whether the page moves.*
+
+    # 1. edit config.yaml (the override layer - editing defaults.py alone proves nothing,
+    #    because config.yaml pins the value back)
+    # 2. python scripts/export_config.py && npm run build
+    # 3. grep the built bundle for the key. Minified output writes 0.2 as `.2`, so match
+    #    /key:([^,}]+)/ rather than the literal you typed.
+
+Worked example, found this way in Round 21. `config.defaults.json` shipped
+`qkd.fiber_loss_db_per_km` and `qkd.detector_efficiency` to the browser, and `clientCompute` spread
+the `FIBER` literal from `quantumSim.ts` instead, overriding only three of five fields from the
+`qkdCfg()` object it was already calling. The two agreed at 0.2 and 0.25, which is exactly why it
+survived: editing `config.yaml` would have moved the Python channel model and left the browser on the
+old constant, with no error anywhere. Verified after the fix: config 0.2 gives bundle `.2`, config 0.9
+gives `.9`.
+
+Still outstanding and recorded rather than fixed: `FREE_SPACE` in `quantumSim.ts` has **no** config
+counterpart at all - its `lossDbPerKm` 0.035, `detectorEff` 0.4 and `misalignment` 0.025 exist only as
+TS literals, so the satellite channel cannot be reconfigured without editing the source.
+
+**A fallback must not be able to substitute a plausible answer for a failure.** Three shapes to grep
+for, and the question to ask of each:
+
+| Pattern | Ask |
+|---|---|
+| `catch {}` / `except Exception: pass` | If this fires, does the caller learn anything? |
+| `x ?? default` / `x \|\| default` on a measured value | Is the default distinguishable from a real measurement? |
+| A tier that silently degrades | Does the page say WHICH tier produced the number? |
+
+The distinction that matters is between a fallback and a *report*. Declining a software WebGPU adapter
+and using wasm is a fallback and correct - the run says which provider it used. Substituting the
+bundled linear model when a published model fails to load is the same shape and is NOT correct,
+because the page then shows a number for a model it never ran; that path now reports the failure and
+shows nothing in its place. Two live `except Exception: pass` sites remain, both narrow and both
+recorded: `usecases/medical_fl/__init__.py:168` (cosmetic SHAP feature names) and
+`benchmark/gpu_mpc_adapter.py:57` (an optional GPU subprocess whose absence is handled two lines
+later).
+
+**Then confirm in the browser**, because a config value can reach the bundle and still not be read -
+which is precisely the bug above. Capture each use-case page, change the parameter, capture again,
+and diff the diagram text, the log and the metrics table. A value that reaches the bundle and moves
+nothing on screen is the same defect as a control that renders and changes nothing.
+
 ## Navigate the way a visitor does, not the way a test does
 
 Load each route fresh and this whole class of defect is invisible. `/usecase/:id` matches the same
