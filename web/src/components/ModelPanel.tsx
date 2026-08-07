@@ -163,6 +163,7 @@ function ModelRunner({ usecase, spec }: { usecase: string; spec: ModelSpec }) {
   const blocked =
     !spec.achieved ? "never trained in this build, so there is nothing to run - the baseline above is the target, not a result"
     : !spec.hf_repo_id ? "deliberately unpublished: the source data's licence does not clearly permit redistributing derived weights"
+    : spec.hf_revision_stale ? "retrained since it was last published, so the pinned artefact no longer matches the metrics above and the pin was retired rather than pointed at stale weights"
     : !spec.hf_revision ? "published but not pinned to a commit, and the browser will not fetch an unpinned model"
     : !fetchable ? "published, but it ships no browser-runnable ONNX graph at that revision"
     : null;

@@ -70,6 +70,10 @@ export type ModelSpec = {
   runs_encrypted: boolean;
   hf_repo_id: string | null;
   hf_revision: string | null;
+  /** The sha that WAS pinned before a retrain superseded the published artefact. Distinguishes
+   *  "retrained since publication, needs republishing" from "never pinned", which look identical
+   *  from `hf_revision` alone and are fixed by completely different actions. */
+  hf_revision_stale: string | null;
   artifacts: ModelArtifact[];
   dataset: { name: string; licence: string; url: string; publishable: boolean };
   metric: {
