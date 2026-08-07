@@ -123,11 +123,12 @@ re-checked 2026-08-05:
   disagree. That is an unresolved ambiguity, not a permission, and it is the same class of question
   as the ImageNet one that Round 19 resolved by dropping the dependency rather than guessing.
 - **The Engelen-corrected redistribution** is hosted separately and states nothing.
-- **5G-NIDD was evaluated this round and rejected.** Secondary sources report CC BY 4.0, but IEEE
-  DataPort marks it subscription-required and neither that record nor the authors' own NetsLab page
-  carries any licence string. Not usable under a commercial-OK policy on secondary evidence.
+- **5G-NIDD was evaluated and rejected.** The adjudication lives in
+  [`DATA_LICENSES.md`](../DATA_LICENSES.md) - it was written out in full in both files, and a licence
+  finding with two homes is a licence finding that will be corrected in one of them.
 
-See `DATA_LICENSES.md`.
+Licence adjudications belong in [`DATA_LICENSES.md`](../DATA_LICENSES.md); this file cites the
+papers. Where the two used to overlap, that file is the owner.
 
 ---
 
@@ -277,8 +278,11 @@ Added in Round 18 and previously recorded only in source docstrings.
   than left for a reader to notice.
 
 - **ETSI GS QKD 020** - interoperable KMS API `[link]`
-  URL: https://www.etsi.org/committee/qkd
-  Added: publication date re-verified 2026-08-04
+  URL: https://forge.etsi.org/rep/qkd/gs020-interop-kms
+  Also: https://www.etsi.org/committee/qkd - the committee landing page, which is what this entry
+  used to point at. It is not the spec, and an audit of this file flagged it as one of two entries
+  with no resolvable identifier. The forge repository carries the API definition itself.
+  Added: publication date re-verified 2026-08-04; URL corrected 2026-08-07
   Published **2026-06-29**, not 2024 as is widely repeated, and it covers the KMS-to-KMS interface
   *within a trusted node* rather than general inter-domain transport. Not implemented here; recorded
   so the roadmap cites the right scope.
