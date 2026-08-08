@@ -31,7 +31,7 @@ confirm which bundle the tab actually loaded.
 The failure is asymmetric and that is why it matters: a stale tab makes a working fix look broken,
 you "fix" it again, and the second change is the one that ships unverified.
 
-## The eight axes
+## The nine axes
 
 | Axis | What passes |
 |---|---|
@@ -43,6 +43,7 @@ you "fix" it again, and the second change is the one that ships unverified.
 | Selects and checkboxes | Each value produces a distinct, visible change. |
 | Layout | No horizontal overflow at 1280 or at mobile width. No overlap. Measured against the viewport - see below, this line went three rounds unmeasured. |
 | Data tables | Column headers match what the column renders. Baselines named. No placeholder rows. |
+| UX and accessibility | A first-time reader can find the control, understand the output, and complete the task. Contrast, focus, keyboard, labels. See below. |
 
 The data-table axis earns its place: the detailed-results table had a column headed `model` that
 rendered `security_model`, so the table had no model column while appearing to have one. That
@@ -625,6 +626,103 @@ What it catches that nothing else does:
 
 Run it on every use-case page, not one: the control set differs per page, and the pages that hide a
 group are exactly where a stale default survives unnoticed.
+
+## The UX axis, and the accessibility half nobody was checking
+
+The layout axis asks whether anything overflows or overlaps. It never asked whether a visitor can
+use the page. Those are different questions and only the first was being answered: a grep for `WCAG`
+across this repository returned **zero hits** before Round 22, despite an earlier round having
+scheduled a WCAG 2.2 phase.
+
+Work this against the public demo, not a local build, and against **a reader who has not seen the
+project** - that is the whole difficulty of the axis.
+
+**Comprehensibility.** For each panel headline, can a reader say what the number means and what would
+move it, from the page alone? The two failures this project has shipped are both of this kind: a
+composite score with no printed inputs, and an attribution panel that did not name which of two
+models it explained. State the unit, the reference point, and the source.
+
+**Information hierarchy.** The most important number on a panel should be the largest thing on it. If
+a legacy metric is retained for comparison, it must be visibly demoted rather than sitting at equal
+weight beside the current one.
+
+**Task flow.** Run each use case as a visitor would - land, run, read - and note every point where
+you had to know something the page did not tell you. Disabled controls must carry their reason at
+the point of disablement, not in a paragraph further down.
+
+**Accessibility, measured rather than assumed** (WCAG 2.2 AA, the four that this UI can actually
+fail):
+
+- **1.4.3 contrast 4.5:1** for body text, 3:1 for large text and UI-component boundaries. The muted
+  greys and the coloured card borders are the risk. Measure, do not eyeball:
+
+      getComputedStyle(el).color, getComputedStyle(el).backgroundColor  // then compute the ratio
+
+- **2.1.1 keyboard**: tab through every route. Every control reachable, every disclosure operable
+  with Enter/Space, no trap in the parameter panel.
+- **2.4.7 focus visible** and **2.4.11 focus not obscured**: the ring must survive the dark theme and
+  not be hidden behind a sticky header.
+- **4.1.2 name, role, value**: every control has an accessible name. Audit with
+
+      [...document.querySelectorAll('button,select,input')]
+        .filter(e => !(e.getAttribute('aria-label') || e.labels?.length || e.textContent?.trim()))
+
+  and expect that list to be empty. The `aria-expanded` / `aria-controls` pairing on the Parameters
+  disclosure is already correct and is the pattern to match.
+
+Record the measured ratio or the failing selector, never a tick. An accessibility row that says
+"pass" without a number is the same unverified claim this checklist exists to prevent.
+
+## Enabling WebGPU and WebNN, and what to expect when you do
+
+The checklist mandates a two-browser comparison and never said how to reach one, so `chrome://`
+appeared nowhere in it and the flags lived only in the README. A reader working this document could
+not get to the state it requires.
+
+    chrome://flags/#enable-unsafe-webgpu              WebGPU
+    chrome://flags/#enable-vulkan                     also required on Linux
+    chrome://flags/#web-machine-learning-neural-network   WebNN
+    # or, as launch flags:
+    --enable-unsafe-webgpu --enable-features=Vulkan,WebMachineLearningNeuralNetwork
+
+Then confirm what you actually got, because enabling the flag is not the same as having the hardware:
+
+    const a = await navigator.gpu?.requestAdapter();
+    ({ adapter: !!a, info: a?.info, shaderF16: a?.features?.has?.("shader-f16"), webnn: !!navigator.ml })
+
+**Expect the honest outcome on a host with no GPU.** The flag succeeds, an adapter is returned, and
+it is SwiftShader - a CPU rasteriser. `hasWebGPU()` declines it by name, because it measured about
+300x slower than the wasm build it would displace (ResNet-50: 12842 ms against 42 ms). So "WebGPU
+enabled" and "WebGPU used" are different facts and the run reports the second. WebNN is enabled and
+deliberately not offered to ORT on this project's own measurement of 162.7 s against 5.1 s.
+
+Record which of the three states you are in - no adapter, software adapter, hardware adapter - beside
+every latency, because it moves them by two orders of magnitude.
+
+## Submodules: check they are still maintained, and that the licence is written down
+
+A submodule is a dependency whose licence and maintenance status travel with the repository, and
+nothing was checking either. Round 22 found both of this project's submodules absent from
+`DATA_LICENSES.md` entirely.
+
+Per round, per submodule, against the GitHub API rather than by assumption:
+
+    git submodule status                     # what we pin
+    curl -s https://api.github.com/repos/<owner>/<repo> \
+      | python3 -c "import sys,json;d=json.load(sys.stdin);\
+        print(d['pushed_at'], (d.get('license') or {}).get('spdx_id'), d['archived'])"
+    curl -s https://api.github.com/repos/<owner>/<repo>/commits?per_page=1   # upstream HEAD
+
+Four questions, and the third is the one that gets skipped:
+
+- Is the licence permissive, and is it recorded in `DATA_LICENSES.md`?
+- Is the upstream archived?
+- **Is the pin the current head of the branch we track, or have we drifted?**
+- Is "actively maintained" true of the branch we track, or only of the repository? These differ:
+  hpmpc's last push is 2026-07-25 while its default branch has not moved since 2026-03-02, so the
+  activity is on other branches. Record the distinction rather than the flattering half.
+
+Act when an upstream is archived, a licence changes, or the tracked branch has not moved in a year.
 
 ## Navigate the way a visitor does, not the way a test does
 

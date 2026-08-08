@@ -281,11 +281,16 @@ export function quantumAdvantage(classical: any, quantum: any, w?: { comm: numbe
   const lat = classical.latency_ms && quantum.latency_ms > 0 ? classical.latency_ms / quantum.latency_ms : 1;
   const sec = (quantum.security_model || "").toLowerCase().includes("information-theoretic") ? qa.info_theoretic_multiplier : 1;
   const composite = comm ** ww.comm * Math.max(lat, 1e-6) ** ww.latency * sec ** ww.security;
-  const score = Math.max(0, Math.min(10, Math.log10(composite + 1) * qa.log_scale + qa.log_offset));
+  const raw = Math.log10(composite + 1) * qa.log_scale + qa.log_offset;
+  const score = Math.max(0, Math.min(10, raw));
   const tier = score >= qa.tier_dominant ? "dominant" : score >= qa.tier_strong ? "strong"
     : score >= qa.tier_moderate ? "moderate" : "marginal";
   return {
-    score: r2(score), tier, communication_ratio: r1(comm), latency_ratio: r2(lat),
+    score: r2(score),
+    // Uncapped composite, reported beside the clamped one so a 10/10 is distinguishable from a run
+    // well past the ceiling. Never feeds the tier.
+    score_raw: r2(raw), clamped: raw > 10 || raw < 0,
+    tier, communication_ratio: r1(comm), latency_ratio: r2(lat),
     security_multiplier: sec,
     interpretation:
       `Quantum path is ~${Math.round(comm)}x more communication-compact` +

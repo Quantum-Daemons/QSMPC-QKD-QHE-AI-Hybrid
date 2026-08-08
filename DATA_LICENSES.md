@@ -154,6 +154,27 @@ published baseline they are measured against - including where the model falls s
   source."* The entropy source is a local state-vector measurement simulation. The optional
   **ANU QRNG** API is opt-in, online-only, never used in CI, and subject to the ANU service terms.
 
+### 6a. Git submodules
+
+Two upstream projects are vendored as submodules rather than installed from a package index, and
+neither appeared in this document until Round 22 audited them. A submodule is a dependency whose
+licence and maintenance status travel with the repository, so it belongs here with the rest.
+
+| Submodule | Upstream | Licence | Pinned commit | Upstream default branch | Last push |
+|---|---|---|---|---|---|
+| `submodules/HEonGPU` | Alisah-Ozcan/HEonGPU | Apache-2.0 | `1928a14bb002` | same commit - at HEAD | 2026-05-11 |
+| `submodules/hpmpc` | chart21/hpmpc | MIT | `155c93572d74` | same commit - at HEAD | 2026-07-25 |
+
+Both are permissive and commercial-OK, neither is archived, and **both pins are the current head of
+their upstream default branch** - checked against the GitHub API rather than assumed, since a
+submodule silently falling years behind is the failure mode this table exists to catch.
+
+One nuance worth recording rather than smoothing: hpmpc's default branch has not moved since
+2026-03-02, while the repository's last push is 2026-07-25. The activity is on other branches or
+tags, so "actively maintained" and "the branch we track is moving" are different statements and only
+the first is true here. Re-check both on each round; the condition to act on is an archived upstream,
+a licence change, or a default branch that has not moved in a year.
+
 ## 7. Rejected as NOT commercial-OK
 
 - **DESILO** `desilofhe` - non-commercial licence (removed Round 4).
