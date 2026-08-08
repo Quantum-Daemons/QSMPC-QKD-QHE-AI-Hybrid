@@ -115,6 +115,30 @@ export function intrinsicQber(p: ChannelParams): number {
   return Math.min(0.5, base + 0.25 * p.eveFraction);
 }
 
+/**
+ * GLLP tagged fraction, Delta = P(n >= 2) / Q_mu.
+ *
+ * The fraction of detections that CANNOT be certified single-photon if decoy states are not used.
+ * Eve splits a photon from every multi-photon pulse and keeps it, so in the worst case every such
+ * detection is hers. Delta >= 1 means no key at any distance or error rate.
+ *
+ * This is reported rather than used: the runtime model is the asymptotic decoy-state one, which
+ * already assumes the decoy method has bounded the single-photon contribution. That assumption is
+ * invisible until you compute what the same link would do without it, which is what this shows.
+ *
+ * Ma, Qi, Zhao, Lo, Phys. Rev. A 72, 012326 (2005) for the gain; GLLP, QIC 4, 325 (2004) for the
+ * tagged-fraction bound. Mirrors `src/qsh/qkd/decoy_reference.py`, whose test suite asserts the
+ * published reference values - including the sharp one: with the GYS parameter set and mu = 0.1,
+ * Delta exceeds 1 at ZERO distance.
+ */
+export function taggedFraction(mu: number, p: ChannelParams): number {
+  const eta = transmittance(p);
+  const qMu = p.darkCount + 1 - Math.exp(-eta * mu);
+  if (qMu <= 0) return 1;
+  const pMulti = 1 - Math.exp(-mu) * (1 + mu);      // P(n >= 2), Poissonian source
+  return pMulti / qMu;
+}
+
 export interface BB84Result {
   qber: number;
   siftedBits: number;

@@ -19,7 +19,8 @@ import { clientTrainScoreIDS } from "./clientIDS";
 import { secureArgmax, warmMPC } from "./clientMPC";
 import { optimizeQKD } from "./clientOptiQKD";
 import { generateQuantumBits } from "./clientQRNG";
-import { bb84, e91, FIBER, FREE_SPACE, h2, intrinsicQber, qcnnExpectation, qotpQcnnInfer, rng } from "./quantumSim";
+import { bb84, e91, FIBER, FREE_SPACE, h2, intrinsicQber, qcnnExpectation, qotpQcnnInfer, rng,
+  taggedFraction } from "./quantumSim";
 import { type Provenance } from "../components/ProvenanceBadge";
 import { browserModels, onnxStatus, runPublishedModel } from "./onnxInference";
 import { realInput, realSatelliteAnomaly, realFederatedSet, type RealInput } from "./realData";
@@ -217,6 +218,26 @@ export function securityFacts(config: any, metrics: Record<string, any>): Securi
       facts.push({ label: "Secret-key rate", value: `${skr} per pulse`, kind: "measured",
         source: "GLLP bound over the decoy-state estimate" });
     }
+    // What the decoy states are actually buying on THIS channel. The runtime model is asymptotic
+    // decoy-state, which already assumes the single-photon contribution has been bounded - so the
+    // assumption is invisible unless the counterfactual is computed. Delta >= 1 means no detection
+    // could be certified single-photon and the same hardware would yield nothing without decoys.
+    const mu = qkdCfg().mu_signal;
+    const chan = config?.usecase === "satellite_comms" ? FREE_SPACE : FIBER;
+    const delta = taggedFraction(mu, { ...chan,
+      distanceKm: Number(config?.qkd_distance_km ?? chan.distanceKm),
+      misalignment: Number(config?.qkd_misalignment ?? chan.misalignment),
+      eveFraction: Number(config?.qkd_eve ?? 0) });
+    facts.push({
+      label: "Decoy-state necessity",
+      value: `tagged fraction ${delta >= 1 ? ">= 1" : delta.toFixed(3)} at mu ${mu}`,
+      kind: "measured",
+      source: "GLLP tagged fraction over this channel; Ma PRA 72 012326, GLLP QIC 4 325",
+      warn: delta >= 1
+        ? "without decoy states this link would yield NO key at any distance: no detection can be "
+          + "certified single-photon"
+        : undefined,
+    });
   }
 
   if (qber != null) {
