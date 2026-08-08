@@ -444,6 +444,46 @@ still holding 2000 from an earlier aborted call. Read `el.value` back and throw 
 set, before clicking Start. The arithmetic is what exonerated the code: 70 is 2000 x 0.035, so the
 config value was being read correctly all along.
 
+## Reproduce the formulas against the papers they cite
+
+The axes above ask whether a number is measured, config-traceable and consistently displayed. None of
+them asks whether it is **right** - whether the closed form in the code is the closed form in the
+cited source. A correctly-plumbed, config-driven, consistently-rendered wrong formula passes every
+other check in this file.
+
+Three levels, cheapest first, and all three are needed:
+
+**1. Re-derive the closed form independently.** Write the textbook expression in Python, not in
+TypeScript, and compare. Writing it in the same language invites copying the implementation.
+
+**2. Check the limits and the bounds the theory imposes.** These are the assertions a paper makes
+that an implementation can violate silently - a maximum that can be exceeded, a threshold in the
+wrong place, a quantity that should be monotone and is not.
+
+**3. Cross-check two independently-reported metrics that the formula relates.** If the run reports
+both `skr` and `secure_key_bits`, their definitions constrain each other; if they disagree, one of
+them is not being computed the way it is described.
+
+Verified in Round 21, all against `references/`:
+
+| Quantity | Source form | Implementation | Check |
+|---|---|---|---|
+| Binary entropy `h2` | Shannon | `-x log2 x - (1-x) log2(1-x)` | `h2(0.5) = 1.000000` at the maximum |
+| Key fraction | GLLP / Shor-Preskill `R = 1 - h2(e_ph) - f h2(e_bit)` | `1 - h2(q) - 1.16 h2(q)`, so `e_ph = e_bit = q` | zero-key QBER **0.098106**; closed form `h2(q) = 1/(1+1.16) = 0.462963` gives the same, and the Parameters sweep independently measured the key dying near 0.097-0.098 |
+| CHSH | Werner state, `S = 2 sqrt(2) V` | same | Tsirelson bound `2.828427` reached only at `V = 1` and never exceeded, since `V <= 1`; violation threshold `V = 1/sqrt(2) = 0.707107` |
+| Leftover hash lemma | `l <= H_inf(X) - 2 log2(1/eps) + 2` | `minH - 2(-eps_log2) + 2` | identical once `log2(1/eps) = -eps_log2`; monotone decreasing in `|eps|`, as the lemma requires |
+| Free-space link budget | `loss_dB = distance x loss_per_km` | config-sourced 0.035 dB/km | 800 km gives 28 dB, 2000 km gives 70 dB, both exact |
+
+Level-3 cross-check, measured live on telecom at QBER 0.01: `skr` 0.00958 and `secure_key_bits` 1915
+against 200000 pulses. `skr x pulses = 1916`, which agrees with the reported bit count to within the
+floor the implementation applies - so the two metrics are computed from one quantity rather than two.
+The GLLP fraction at that QBER is 0.825487, implying 2320 sifted bits and a sift ratio of 0.0116.
+
+**What this axis cannot do.** It checks the formula, never the physics: every QBER and SKR here comes
+from an analytic channel model, and no amount of internal consistency makes a simulated number a
+measured one. It also cannot check a formula the code does not implement in closed form - the
+decoy-state bound the optimiser searches over is verified by its behaviour, not by re-derivation.
+
 ## Check the MODEL, not only the number
 
 A figure can match the literature at one operating point and come from the wrong physics. That is
