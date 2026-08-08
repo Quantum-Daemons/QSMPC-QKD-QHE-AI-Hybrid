@@ -154,6 +154,15 @@ published baseline they are measured against - including where the model falls s
   source."* The entropy source is a local state-vector measurement simulation. The optional
   **ANU QRNG** API is opt-in, online-only, never used in CI, and subject to the ANU service terms.
 
+### 6b. Conformance test vectors (fetched at check time, not vendored)
+
+| Source | Used for | Licence | Note |
+|---|---|---|---|
+| C2SP/CCTV ML-KEM `modulus/` | FIPS 203 section 7.2 negative vectors, `web/scripts/check_mlkem_modulus_vectors.mjs` | CC0-1.0 | Fetched at run time from the published set, not redistributed here. CC0 waives copyright but expressly does NOT grant patent rights. |
+| NIST ACVP-Server | FIPS 203 section 7.3 key-check vectors | US Government work, public domain | Not currently vendored. |
+
+Both are test data rather than code, and neither ships in the built bundle.
+
 ### 6a. Git submodules
 
 Two upstream projects are vendored as submodules rather than installed from a package index, and

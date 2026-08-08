@@ -5,8 +5,8 @@
 // realises the report's "MCP + quantum-safe layer for agentic AI" entirely in the browser. Reuses
 // @noble/post-quantum (same as crypto.ts) + WebCrypto; used by the Agentic-AI page and the demo-mode
 // Validations mirror so the public demo runs the MCP demo with zero server compute.
-import { ml_dsa65 } from "@noble/post-quantum/ml-dsa";
-import { ml_kem768 } from "@noble/post-quantum/ml-kem";
+import { ml_dsa65 } from "@noble/post-quantum/ml-dsa.js";
+import { ml_kem768 } from "@noble/post-quantum/ml-kem.js";
 import { x25519 } from "@noble/curves/ed25519.js";
 
 const enc = new TextEncoder();
