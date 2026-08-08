@@ -116,8 +116,17 @@ export default function AgenticAIPanel({
           <select id={`ai-model-${usecase ?? "std"}`} value={model} onChange={(e) => setModel(e.target.value)}>
             {models.map((m) => <option key={m.id} value={m.id}>{m.label}</option>)}
           </select>
-          <label className="muted">
-            <input type="checkbox" checked={mcpQkd} onChange={(e) => setMcpQkd(e.target.checked)} /> mix QKD key
+          {/* Labelled for what it mixes. The analytic BB84/E91 models return bit COUNTS - a secret
+              key RATE and a secure-bit total - not key material, so there is no run-derived key to
+              feed here and manufacturing one would be worse than a stated constant. This mixes the
+              same fixed QKD-domain vector the backend uses (b"q"*32), which exercises the combiner
+              path and keeps the two implementations' fingerprints comparable. */}
+          <label className="muted"
+            title={"Mixes a FIXED QKD-domain constant (0x71 repeated 32 times, matching the backend's "
+              + "b'q'*32), not this run's key: the BB84/E91 simulation is analytic and yields secure-bit "
+              + "COUNTS rather than key bytes. What it demonstrates is the PQC+QKD combiner path and "
+              + "that the derived-key fingerprint below changes when a second input is mixed in."}>
+            <input type="checkbox" checked={mcpQkd} onChange={(e) => setMcpQkd(e.target.checked)} /> mix QKD-domain key
           </label>
           <label className="muted" htmlFor={`ai-combiner-${usecase ?? "std"}`}>Combiner</label>
           <select id={`ai-combiner-${usecase ?? "std"}`} value={combiner} disabled={!mcpQkd}

@@ -193,14 +193,33 @@ export interface ConvResult {
  * The returned ``rotations`` and ``multiplies`` are counted, not estimated, because rotations and
  * the key-switch each one triggers are what actually drive CKKS cost - so the page can report the
  * quantity the literature identifies instead of a latency multiplier.
+ *
+ * CHOICE OF PACKING, and its known cost. im2col lowering is one of two standard families; the other
+ * packs the whole image into a single ciphertext and moves a rotating kernel over it. Published
+ * comparisons favour the rotation family on both peak memory and speed, because lowering's memory
+ * grows with kernel size while the rotation form stays roughly constant. im2col is used here anyway
+ * and deliberately: it is the construction ``src/qsh/fhe/conv.py`` implements, and a browser mirror
+ * that computed a different convolution than the backend would make the two incomparable, which is
+ * the whole point of having both. At 14x14 with a 3x3 kernel the memory difference is immaterial -
+ * 2,304 of 4,096 slots - so the fidelity is worth more than the saving. Rotation-free formulations
+ * also exist (arXiv:2409.05205) and are not used.
  */
 export async function encryptedConv2d(
-  image: number[][], kernels: number[][][], biases: number[],
+  image: number[][], kernels: number[][][], biases: number[], padding = 0,
 ): Promise<ConvResult> {
   const c = await getCtx();
   const { seal, encoder, encryptor, decryptor, evaluator, galois, slots, scale } = c;
 
-  const H = image.length, W = image[0].length;
+  // Zero-pad first, so a trained model's `padding` is honoured rather than silently ignored. The
+  // student uses pad 1, which keeps 14x14 through the conv; running it as a valid convolution
+  // would give 12x12 and a flatten of the wrong length for its dense layer.
+  const src = padding > 0
+    ? Array.from({ length: image.length + 2 * padding }, (_, y) =>
+        Array.from({ length: image[0].length + 2 * padding }, (_, x) =>
+          (y >= padding && y < image.length + padding && x >= padding && x < image[0].length + padding)
+            ? image[y - padding][x - padding] : 0))
+    : image;
+  const H = src.length, W = src[0].length;
   const kH = kernels[0].length, kW = kernels[0][0].length;
   const outH = H - kH + 1, outW = W - kW + 1;
   const patchLen = kH * kW;
@@ -221,7 +240,7 @@ export async function encryptedConv2d(
     for (let ox = 0; ox < outW; ox++) {
       const base = (oy * outW + ox) * block;
       for (let ky = 0; ky < kH; ky++) {
-        for (let kx = 0; kx < kW; kx++) packed[base + ky * kW + kx] = image[oy + ky][ox + kx];
+        for (let kx = 0; kx < kW; kx++) packed[base + ky * kW + kx] = src[oy + ky][ox + kx];
       }
     }
   }
@@ -273,7 +292,7 @@ export async function encryptedConv2d(
       for (let ox = 0; ox < outW; ox++) {
         let s = 0;
         for (let ky = 0; ky < kH; ky++) {
-          for (let kx = 0; kx < kW; kx++) s += image[oy + ky][ox + kx] * kernels[oc][ky][kx];
+          for (let kx = 0; kx < kW; kx++) s += src[oy + ky][ox + kx] * kernels[oc][ky][kx];
         }
         maxAbsError = Math.max(maxAbsError, Math.abs(maps[oc][oy * outW + ox] - (s + (biases[oc] ?? 0))));
       }
@@ -281,4 +300,121 @@ export async function encryptedConv2d(
   }
   return { maps, outH, outW, fheMs, ctBytes, maxAbsError,
            rotations, multiplies, patchesPerCiphertext: nPatches };
+}
+
+/** The published student's structure, as written by `distil.save_cnn_student_weights`. */
+export interface CnnStudentWeights {
+  kind: string;
+  conv: { in_ch: number; out_ch: number; kernel: number; padding: number;
+          activation: string; weight: number[][][][]; bias: number[] | null };
+  pool: { type: string; stride: number };
+  dense: { in: number; out: number; weight: number[][]; bias: number[] | null; activation: string }[];
+  input: { shape: number[]; preprocessing: string[] };
+  n_parameters: number;
+}
+
+export interface EncryptedStudentResult extends ConvResult {
+  /** Decrypted logits of the FULL student, not just the conv block. */
+  logits: number[];
+  prediction: number;
+  /** Rotations across every CKKS layer, conv and dense. */
+  totalRotations: number;
+  totalMultiplies: number;
+  /** Max |encrypted - plaintext| over the logits, so the approximation cost is measured. */
+  logitMaxAbsError: number;
+}
+
+/**
+ * Evaluate the PUBLISHED medical student end to end under CKKS.
+ *
+ * Until this existed the encrypted convolution ran on the student's SHAPE with a synthetic kernel
+ * pattern. It was a genuine homomorphic convolution and an honest cost model, but it was not this
+ * model's inference - so `crypto_fidelity`, the project's headline metric, stayed a number measured
+ * offline that a visitor could not check. Feeding the real weights makes the encrypted path compute
+ * the published prediction.
+ *
+ * The layer order comes from the weights file rather than from an assumption here: conv, the conv's
+ * own activation, average pool, flatten, then each dense with its recorded activation. Omitting the
+ * conv's ReLU still reproduces every argmax on the test split while shifting the logits by ~0.15,
+ * which is exactly why the file states each activation instead of leaving it to be inferred.
+ *
+ * ReLU is applied in the clear here. That is the project's stated hybrid - linear layers under FHE,
+ * non-linear under MPC - and the argmax genuinely runs under garbled circuits in `clientMPC`; the
+ * intermediate ReLU is not yet routed through it, and that gap is reported rather than papered over.
+ */
+export async function encryptedStudentInference(
+  w: CnnStudentWeights, image: number[][],
+): Promise<EncryptedStudentResult> {
+  const kernels = w.conv.weight.map((oc) => oc[0]);          // in_ch is 1 for this student
+  const biases = w.conv.bias ?? new Array(w.conv.out_ch).fill(0);
+  const conv = await encryptedConv2d(image, kernels, biases, w.conv.padding);
+
+  const relu = (v: number) => (v > 0 ? v : 0);
+  const act = (v: number, kind: string) => (kind === "relu" ? relu(v) : v);
+
+  // conv activation, then average pool, then flatten channel-major - the order the file states.
+  const s = w.pool.stride;
+  const ph = Math.floor(conv.outH / s), pw = Math.floor(conv.outW / s);
+  const flat: number[] = [];
+  for (let c = 0; c < kernels.length; c++) {
+    for (let y = 0; y < ph; y++) {
+      for (let x = 0; x < pw; x++) {
+        let acc = 0;
+        for (let dy = 0; dy < s; dy++) {
+          for (let dx = 0; dx < s; dx++) {
+            acc += act(conv.maps[c][(y * s + dy) * conv.outW + (x * s + dx)], w.conv.activation);
+          }
+        }
+        flat.push(acc / (s * s));
+      }
+    }
+  }
+
+  let v = flat;
+  let rotations = conv.rotations, multiplies = conv.multiplies, fheMs = conv.fheMs, ctBytes = conv.ctBytes;
+  for (const d of w.dense) {
+    if (v.length !== d.in) {
+      throw new Error(`dense layer expects ${d.in} inputs, got ${v.length} - the published weights `
+        + "and this evaluation disagree about the network, which must not be silently reshaped");
+    }
+    const r = await encryptedLinear(d.weight, d.bias ?? new Array(d.out).fill(0), v);
+    rotations += r.rotations; multiplies += r.multiplies; fheMs += r.fheMs;
+    ctBytes = Math.max(ctBytes, r.ctBytes);
+    v = r.logits.map((x) => act(x, d.activation));
+  }
+
+  // Plaintext reference over the same weights, so the CKKS error is measured rather than assumed.
+  const ref = (() => {
+    const p = w.conv.padding, k = w.conv.kernel;
+    const H = image.length + 2 * p;
+    const pad = Array.from({ length: H }, (_, y) =>
+      Array.from({ length: H }, (_, x) =>
+        (y >= p && y < image.length + p && x >= p && x < image[0].length + p) ? image[y - p][x - p] : 0));
+    const oh = H - k + 1;
+    const fm: number[][][] = kernels.map((kern, oc) =>
+      Array.from({ length: oh }, (_, y) => Array.from({ length: oh }, (_, x) => {
+        let a = biases[oc];
+        for (let ky = 0; ky < k; ky++) for (let kx = 0; kx < k; kx++) a += pad[y + ky][x + kx] * kern[ky][kx];
+        return act(a, w.conv.activation);
+      })));
+    const fl: number[] = [];
+    for (let c = 0; c < fm.length; c++)
+      for (let y = 0; y < ph; y++) for (let x = 0; x < pw; x++) {
+        let a = 0;
+        for (let dy = 0; dy < s; dy++) for (let dx = 0; dx < s; dx++) a += fm[c][y * s + dy][x * s + dx];
+        fl.push(a / (s * s));
+      }
+    let u = fl;
+    for (const d of w.dense) {
+      u = d.weight.map((row, j) => act(row.reduce((a, wt, i) => a + wt * u[i], 0) + (d.bias?.[j] ?? 0), d.activation));
+    }
+    return u;
+  })();
+
+  return {
+    ...conv, fheMs, ctBytes,
+    logits: v, prediction: argmax(v),
+    totalRotations: rotations, totalMultiplies: multiplies,
+    logitMaxAbsError: Math.max(...v.map((x, i) => Math.abs(x - ref[i])), 0),
+  };
 }

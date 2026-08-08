@@ -327,7 +327,7 @@ def main() -> int:
     # that actually runs under CKKS was the one model nobody could obtain or check.
     student_export = distil.save_student(
         student, Path("models/finance_aml_student"), n_features=len(FEATURES),
-        teacher_key="finance_aml.gbm", student_key="finance_aml.student")
+        teacher_key="finance_aml.gbm", student_key="finance_aml.student", scaler=scaler)
     print(f"  student persisted: {student_export['n_parameters']} params, "
           f"browser_runnable={student_export['browser_runnable']}")
 
