@@ -20,7 +20,7 @@ from ...orchestration.pipeline import Pipeline, standard_stages
 from ...orchestration.stages import Context
 
 
-def _fraud_model(seed: int = 0, n_tx: int | None = None) -> tuple[LinearModel, np.ndarray, dict]:
+def _fraud_model(seed: int = 0, n_tx: int | None = None) -> tuple[LinearModel, np.ndarray, dict, np.ndarray]:
     """Train the REAL 2026-industry fraud model (XGBoost) and **distil it to a CKKS-friendly linear
     surrogate** for the encrypted inference.
 
@@ -54,7 +54,10 @@ def _fraud_model(seed: int = 0, n_tx: int | None = None) -> tuple[LinearModel, n
     flagged_tx = X[flag_mask][0] if flag_mask.any() else X[y == 1][0]
     meta = {"real_model": "XGBoost (n_estimators=80, depth=4)", "xgb_test_accuracy": round(xgb_acc, 4),
             "encrypted_surrogate": "logistic distillation", "distillation_fidelity": round(fidelity, 4)}
-    return LinearModel(weight=w.astype(float), bias=b), flagged_tx.astype(float), meta
+    # E[x] over the training matrix - the SHAP reference point. Returned rather than stuffed into
+    # `meta`, which is surfaced as a JSON artifact and would not survive a numpy array.
+    return (LinearModel(weight=w.astype(float), bias=b), flagged_tx.astype(float), meta,
+            X.mean(axis=0).astype(float))
 
 
 def _bank_blacklists(seed: int = 0) -> tuple[list[str], list[str], set[str]]:
@@ -72,7 +75,7 @@ def _bank_blacklists(seed: int = 0) -> tuple[list[str], list[str], set[str]]:
 def build(config: dict | None = None) -> tuple[Pipeline, Context]:
     config = dict(config or {})
     seed = config.get("seed", 0)
-    model, flagged, model_meta = _fraud_model(seed, n_tx=config.get("aml_transactions"))
+    model, flagged, model_meta, baseline = _fraud_model(seed, n_tx=config.get("aml_transactions"))
     bank_a, bank_b, shared = _bank_blacklists(seed)
 
     ctx = Context(
@@ -83,6 +86,13 @@ def build(config: dict | None = None) -> tuple[Pipeline, Context]:
     ctx.data["set_b"] = bank_b
     ctx.data["linear_model"] = model
     ctx.data["features"] = flagged
+    # SHAP reference point E[x], NOT the zero vector. `explain_baseline` was READ by stages.py and
+    # written by nothing, so every Python-side attribution was measured against a transaction that
+    # does not occur: PaySim's log-scale `amount` has mean ~11.5, so its bar was inflated against a
+    # reference of log-amount zero and the true top driver reported a contribution of exactly zero.
+    # Completeness cannot catch this - it holds for ANY baseline - so the fix is to supply the right
+    # one, not to add another self-check.
+    ctx.data["explain_baseline"] = baseline
     ctx.data["_finance_model"] = model_meta        # real XGBoost + distillation fidelity (for surfacing)
     # human-readable AML feature names for the XAI / SHAP attribution chart (8 features)
     ctx.data["feature_names"] = [
