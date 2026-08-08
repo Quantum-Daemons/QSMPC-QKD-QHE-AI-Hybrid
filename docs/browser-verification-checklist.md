@@ -958,6 +958,50 @@ deliberately not offered to ORT on this project's own measurement of 162.7 s aga
 Record which of the three states you are in - no adapter, software adapter, hardware adapter - beside
 every latency, because it moves them by two orders of magnitude.
 
+## PQC library conformance: run NIST's negative vectors, not just the happy path
+
+Every run on every page exercises ML-KEM and ML-DSA, and every one of them takes the happy path.
+Nothing in a normal run tells you whether the library REJECTS what the standard says it must.
+
+FIPS 203 section 7.2 is normative on this: "ML-KEM.Encaps shall not be run with an encapsulation key
+that has not been checked as above." A library that skips the check encapsulates to a malformed key
+and returns a shared secret, silently.
+
+    cd web && npm run check:pqc
+
+Round 22 found this was not hypothetical. The pinned `@noble/post-quantum` **0.2.1 accepted all 2,595
+malformed keys** in the C2SP/CCTV modulus set - 775 / 780 / 1040 across the three parameter sets,
+zero rejected. Its polynomial coder used the compression path for d=12 where FIPS 203 specifies
+plain ByteEncode12/ByteDecode12, so the round-trip that detects an out-of-range coefficient was a
+no-op. **0.6.1 rejects all 2,595.**
+
+**Validate the checker against a known-bad build before trusting it.** A conformance script that
+always passes is worse than none, and this one is one `try/catch` away from being exactly that.
+Install the old version in a scratch directory, point the script at it, and confirm it exits
+non-zero. Done for this script: 3 FAILs and exit 1 on 0.2.1, all-OK and exit 0 on 0.6.1.
+
+Where the vectors come from, and why more than one source is needed - they do not overlap:
+
+| Source | Covers | Licence |
+|---|---|---|
+| C2SP/CCTV `modulus/` | every value in [q, 2^12-1] at every key position - the deep section 7.2 set | CC0-1.0 |
+| NIST ACVP `ML-KEM-encapDecap-FIPS203-tr1` | the section 7.3 decapsulation-key hash check | US Gov public domain |
+| C2SP/wycheproof | type and length checks only | Apache-2.0 |
+
+Two traps found while wiring this up, both of which produce a falsely reassuring result:
+
+- **The ACVP `encapsulationKeyCheck` negatives are wrong-LENGTH keys**, not modulus violations - the
+  invalid ML-KEM-512 entries are 1216 bytes against the correct 800. Any library with a length check
+  scores 10/10 there while failing every modulus vector. Passing ACVP's key-check group is not
+  evidence the section 7.2 check exists.
+- **That ACVP file's `decapsulationKeyCheck` group carries no key material at all** - the tests
+  contain only a `tcId`. A harness that reads a `dk` field gets `undefined`, throws, and records a
+  "rejection", which scores as a pass. Assert that the vector field you are reading actually exists.
+
+Scope this honestly when reporting it: it tests one normative input check in one library. noble is
+self-audited with no side-channel protection, and liboqs's own README still says in capitals that it
+should not be relied on in production.
+
 ## Submodules: check they are still maintained, and that the licence is written down
 
 A submodule is a dependency whose licence and maintenance status travel with the repository, and

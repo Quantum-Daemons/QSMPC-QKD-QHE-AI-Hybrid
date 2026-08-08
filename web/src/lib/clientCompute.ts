@@ -3,11 +3,11 @@
 // QKD/QBER via quantumSim, private inference via onnxruntime-web, PSI via WebCrypto HMAC).
 // The security-score and quantum-advantage formulas mirror src/qsh/benchmark/{security,
 // quantum_advantage}.py so demo numbers track the server.
-import { ml_dsa65, ml_dsa87 } from "@noble/post-quantum/ml-dsa";
-import { ml_kem768, ml_kem1024 } from "@noble/post-quantum/ml-kem";
+import { ml_dsa65, ml_dsa87 } from "@noble/post-quantum/ml-dsa.js";
+import { ml_kem768, ml_kem1024 } from "@noble/post-quantum/ml-kem.js";
 import { x25519 } from "@noble/curves/ed25519.js";
-import { hkdf } from "@noble/hashes/hkdf";
-import { sha256 } from "@noble/hashes/sha2";
+import { hkdf } from "@noble/hashes/hkdf.js";
+import { sha256 } from "@noble/hashes/sha2.js";
 import {
   benchCfg, costPerOp, dataCfg, demoFeatureDim, genericArchitecture, idsCfg, medicalCnn, qkdCfg, qrngCfg,
   demoSample, qsmpcCfg, quantumAdvantageCfg, securityScoringCfg, studentModel, tierArchitectures, webCfg,
