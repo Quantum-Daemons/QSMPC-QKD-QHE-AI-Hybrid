@@ -157,14 +157,31 @@ export function allocate(topo: SdnTopology, appId: string, bits: number): number
   return granted;
 }
 
+/**
+ * GS QKD 014 V1.1.1 Status data format value, quoted from the specification's own example block:
+ * "key_size": 352, described there as "Default size of key the KME can deliver to the SAE (in bit)".
+ * It was previously written twice as a bare literal, once for the field and once as the divisor for
+ * `stored_key_count`, so editing one and not the other would have made the two silently disagree.
+ */
+const QKD014_KEY_SIZE_BITS = 352;
+
+/**
+ * How many keys this SIMULATOR will hand out per request. The specification's example advertises 128;
+ * this is deliberately lower because the demo derives key material in the browser rather than from a
+ * QKD device. It is a property each KME advertises for itself, not a normative constant - but the
+ * divergence from the published example is stated rather than left as an unexplained literal.
+ */
+const SIM_MAX_KEY_PER_REQUEST = 8;
+
 /** GS QKD 014 V1.1.1 Status data format — the only published edition; ed2 is still a draft. */
 export function kmeStatus(topo: SdnTopology, slaveSaeId = "sae-party-b"): Record<string, unknown> {
   const link = topo.links[topo.links.length - 1];
   return {
     source_KME_ID: "kme-a", target_KME_ID: "kme-b",
     master_SAE_ID: topo.apps[0]?.app_id ?? "sae-mcp-agent", slave_SAE_ID: slaveSaeId,
-    key_size: 352, stored_key_count: Math.floor((link?.eskr ?? 0) / 352),
-    max_key_per_request: 8,
+    key_size: QKD014_KEY_SIZE_BITS,
+    stored_key_count: Math.floor((link?.eskr ?? 0) / QKD014_KEY_SIZE_BITS),
+    max_key_per_request: SIM_MAX_KEY_PER_REQUEST,
     status_extension: {
       spec: "ETSI GS QKD 014 V1.1.1 (2019-02)",
       simulated: true,

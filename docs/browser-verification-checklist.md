@@ -627,6 +627,175 @@ What it catches that nothing else does:
 Run it on every use-case page, not one: the control set differs per page, and the pages that hide a
 group are exactly where a stale default survives unnoticed.
 
+## Every control, against a published reference value
+
+The simulator-controls table says which controls exist and where each must show up. It does not say
+what the resulting NUMBER should be, so a control could move the display and still be wrong. This
+section gives each control a **reference value or a formula from outside this project**, so the check
+is falsifiable rather than "the number changed".
+
+Set the control, run, read the result, and compare against the right-hand column. Record the observed
+value, not a tick.
+
+### KEM (`sel-kem`)
+
+| Selection | Fact | Reference |
+|---|---|---|
+| ml-kem-768+x25519 | NIST Category 3, ciphertext **1088 bytes** | FIPS 203 |
+| ml-kem-1024+x25519 | NIST Category 5, ciphertext **1568 bytes** | FIPS 203 |
+
+Both sizes are specified by FIPS 203, so a reader verifies them without trusting this project. The
+facts are pinned to the completed run: changing the selector without re-running must NOT change them.
+
+### Signature (`sel-sig`)
+
+| Selection | Fact | Reference |
+|---|---|---|
+| ml-dsa-65 | NIST Category 3, signature **3309 bytes** | FIPS 204 |
+| ml-dsa-87 | NIST Category 5, signature **4627 bytes** | FIPS 204 |
+
+### QKD protocol (`pp-proto`)
+
+**BB84 (decoy)** - the secure fraction comes from the GLLP bound over the decoy-state estimate. The
+verdict must be taken from `secure_key_bits > 0`, NOT from a QBER threshold: this repository's
+measured zero-key point is **0.098106**, below the textbook 0.11, so a QBER in [0.098, 0.11) passes
+the textbook test on a channel that yields nothing.
+
+**E91 (CHSH)** - three independent checks, all of which must hold together:
+
+    2 < S <= 2*sqrt(2)             classical bound < S <= Tsirelson bound (2.8284)
+    S = 2*sqrt(2) * (1 - 2*QBER)   Werner-state relation between the two displayed numbers
+
+The second is the strong one, because it ties two separately-rendered metrics together. Measured
+2026-08-08: QBER 0.0247 predicts S = 2.6887; the page reported **S = 2.7**, and the diagram read
+"E91 (entanglement / CHSH)". An S above 2.8284 is unphysical and is a bug, not a good result.
+
+### QRNG extractor (`pp-ext`) and LHL epsilon (`pp-qrng_eps_log2`)
+
+| Selection | Expected behaviour | Reference |
+|---|---|---|
+| von Neumann | extraction rate **<= 0.25**; no LHL bound reported | von Neumann debiasing yields at most p(1-p) per pair, max 1/4 at p = 1/2 |
+| Toeplitz (LHL) | higher extraction rate, far lower throughput, and `qrng_lhl_max_bits` appears | Toeplitz hashing approaches the min-entropy rate but costs a matrix product |
+| seedless (2-source) | distinct from both | two-source extractor |
+
+Measured: von Neumann 0.2 with 3500.9 kbps; Toeplitz 0.5 with 28.2 kbps. The rate rises and the
+throughput collapses, which is the correct trade and the wrong-way-round would be the bug.
+
+**The LHL bound is exactly reproducible**, and this is the best single check in this section:
+
+    m <= H_min - 2*log2(1/eps)
+
+At `pp-qrng_eps_log2` = -40 the term is 80 bits; at -80 it is 160. So halving epsilon's exponent must
+drop `qrng_lhl_max_bits` by **exactly 80**. Measured: 7309 -> 7229, delta exactly 80. Any other delta
+means the extractor is not applying the Leftover Hash Lemma it claims.
+
+### QKD channel (`pp-qkd_eve`, `pp-qkd_misalignment`, `pp-qkd_distance_km`, `pp-qkd_pulses`)
+
+Eavesdropper 0 -> QBER 0.01, 1915 secure bits, SKR 0.00958/pulse, step ticked normally. Eavesdropper
+0.35 -> QBER 0.1, **0 secure bits**, SKR 0, and BOTH the posture table and the diagram report the
+failure. Both directions are required; testing only the failing one cannot catch a predicate that
+always fails.
+
+### Free-space channel (satellite: `pp-sat_distance_km`, `pp-sat_eve`, `pp-sat_pulses`, `pp-qsdc_threshold`)
+
+Loss must rise with distance and the reported dB must appear in the diagram label. Measured at Eve
+0.4: 24.5 dB, QBER 0.13, 0 secure bits, step marked failed; QSDC then aborted with "error 0.13 over
+threshold - telemetry withheld". The abort keeps its tick, correctly - aborting IS the protocol
+working, and the label says ABORTED unambiguously.
+
+Open question recorded rather than silently changed: `pp-qsdc_threshold` defaults to **0.11**, the
+textbook BB84 figure, which sits above the GLLP zero-key point. QSDC is a different protocol with its
+own security analysis, so 0.11 is not automatically wrong there - but it has not been traced to a
+QSDC source, and it should be.
+
+### Published model (`sel-published-model`)
+
+Each option must produce a run whose diagram names the model AND its commit hash, so the artefact is
+identifiable. Measured: "published finance_aml.gbm @ c46157c27e64 - onnx-wasm - 1x32 - 0.34 ms -
+class 0". Check the hash against the registry, and check that selecting a different option changes
+it. Note that telecom and genomics ship no selector because they publish a single model; confirm
+that is still true rather than assuming it.
+
+### OptiQKD (`sel-optiqkd`) and the key-mixing checkbox
+
+Ticking OptiQKD must emit `qkd_skr_improvement_pct` and a convergence count, and the diagram arrow
+must carry the measured improvement rather than merely "OptiQKD on". Unticked, neither appears.
+The "mix QKD-domain key" checkbox controls whether QKD material enters the session key at all;
+unticking it must drive the posture table's QKD row to zero the same way `pqc-only` does.
+
+## Every panel, against its cited standard
+
+Four of these panels had ZERO mentions in this checklist before Round 22 while being the panels a
+technical reader looks at hardest. Each row below is a fact checkable against a specification or
+recomputable from numbers the panel itself prints.
+
+### Security posture & quantum advantage / Benchmark - MPC-FHE vs QSMPC-FHE
+
+The same component under two headings: the compact form (telecom, satellite - no private inference)
+and the full form. **The compact heading read "Security score & quantum advantage" until Round 22
+and was stale the moment the composite was retired** - it advertised a number the panel no longer
+showed. Whenever a metric is retired, grep for its name in headings, legends and index pages, not
+only at the computation site.
+
+- Posture rows: see the per-control section above (FIPS 203/204 sizes, NIST categories, GLLP).
+- Quantum advantage: a weighted geometric mean, tiered 0-10, with the **uncapped raw value printed
+  beside it when the run is past the ceiling**. Recompute from the panel's own printed ratios:
+
+      raw = log10(comm^0.6 * lat^0.2 * sec^0.2 + 1) * 3.2 + 1.0
+
+  Measured 2026-08-08: comm 6145.8, latency 3396.03, security 1.5 -> raw 10.65, and the page printed
+  `raw 10.65 (clamped to 0-10)`. Exact.
+- The legacy 0-100 composite is retained below, and must be visibly demoted and labelled retired.
+
+### QKD control plane - ETSI GS QKD 015
+
+A display panel with no controls, so its verification is terminology and internal consistency.
+
+- Three planes must stay separated, and the Agentic-AI panel must be described as a **SAE**, out of
+  scope of the control interface per GS QKD 015 clause 1. If the agent panel ever appears to drive
+  the quantum layer, that is a modelling error, not a feature.
+- Key association link (clause 4.5): `qkdl_type` PHYS for a direct channel, and the trust note must
+  say no intermediate node handles the key. `eskr <= skr`.
+- **`skr` must equal the run's `secure_key_bits`.** Measured: both 1915.
+- Key delivery (GS QKD 014): `key_size` **352**, quoted from the specification's own Status example
+  where it is defined as "Default size of key the KME can deliver to the SAE (in bit)". And
+  `stored_key_count` must equal `floor(eskr / key_size)` - measured floor(1436/352) = 4, displayed 4.
+- `max_key_per_request` is **8** here against the specification example's 128. That is legitimate -
+  a KME advertises its own limit - but it must be labelled as this simulator's choice. Round 22 found
+  it, and `key_size`, as bare uncited literals; `key_size` was written twice, so editing one copy
+  would have made the field and the divisor silently disagree.
+- The panel must name the edition it targets: **GS QKD 014 V1.1.1 (2019-02)**, still the only
+  published edition.
+
+### Inference provenance
+
+Names which model produced the reported class, from a five-state enum. With two inferences running
+(bundled student + published model) the badge must name BOTH and say which one the reported class
+came from. The SHAP panel below it must name the model it explains and the reference point it
+explains against - see the XAI section.
+
+### Why - top features (SHAP)
+
+- Exact linear SHAP: `phi_i = w_eff_i * (x_i - baseline_i)` with `w_eff = W[1] - W[0]`.
+- **Completeness holds for ANY baseline**, so `efficiency_gap` cannot detect a wrong reference point.
+  Check the baseline separately: it must be E[x] over the dataset, not the zero vector. The panel
+  must state which reference point it used.
+- The published model has no attribution, and the panel must say so and why: exact linear SHAP
+  applies to the linear student, not to a tree ensemble, a ResNet or a fixed circuit.
+- With Inference set to QCNN the panel must gate or relabel rather than silently explaining the CKKS
+  model for a class the page no longer reports.
+
+### Agentic AI - quantum-safe MCP
+
+Three selects (Engine, Model, Combiner), each of whose options must produce an observably different
+run - see the per-control section. The Combiner choice (`hkdf` vs `its_toeplitz`) must change the
+derived key fingerprint. The panel is a SAE and must not appear to control the quantum layer.
+
+### Quantum-kernel SVC + variational QNN
+
+Report the kernel, the qubit count and the T-gate count from the actual circuit, not from a
+description. Qubit count must track `pp-qubits`. Accuracy must be reported against a named baseline.
+
 ## A completion marker is not a verdict
 
 The diagram ticks a step when its stage finishes. That tick renders immediately after a measured

@@ -47,7 +47,7 @@ export default function BenchmarkPanel(
     <div className="card" style={{ marginTop: 16 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", flexWrap: "wrap", gap: 8 }}>
         <h3 style={{ marginTop: 0 }}>
-          {compact ? "Security score & quantum advantage" : "Benchmark — MPC-FHE vs QSMPC-FHE (from this run)"}
+          {compact ? "Security posture & quantum advantage" : "Benchmark — MPC-FHE vs QSMPC-FHE (from this run)"}
         </h3>
         <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
           {result?.live && <span className="tag" style={{ borderColor: "#b072ff", color: "#b072ff" }}>live run</span>}
@@ -64,8 +64,8 @@ export default function BenchmarkPanel(
       {rows.length === 0 && (
         <p className="muted" style={{ margin: "8px 0 0" }}>
           Press <b>▶ Run</b> above — the benchmark fills in from that live run (computation time, accuracy,
-          security score{compact ? "" : ", FHE-linear / MPC-non-linear split"} and quantum advantage). One run,
-          one result.
+          the security posture facts{compact ? "" : ", the FHE-linear / MPC-non-linear split"} and the quantum
+          advantage). One run, one result.
         </p>
       )}
 
@@ -107,9 +107,11 @@ export default function BenchmarkPanel(
             {" "}(simulated, not quantum hardware; ct/pt = 1 is QOTP's perfect-hiding property). See the
             “QSMPC-FHE comparison” bar in the diagram above. <b>Quantum advantage</b> = a transparent weighted
             geometric mean of three ratios (communication-compactness ≈10³× from ct/pt, latency, and the
-            computational→information-theoretic security jump), tiered 0–10. <b>Security score</b> (0–100) is a
-            weighted sum over PQC-hybrid/HNDL, security model (information-theoretic {">"} computational), NIST
-            KEM category, QBER eavesdrop-detection, and the ~0.1 bit/weight leakage bound (PRX 2025).
+            computational→information-theoretic security jump), tiered 0–10; the uncapped value is printed
+            beside it when the run is past the ceiling. The <b>legacy security score</b> (0–100) below is
+            <b>retired</b> and kept only for comparison: 14 of its 17 weights were unexplained and it scored a
+            zero-secure-key run 100/100. The <b>Security posture</b> table above replaces it with per-row facts,
+            each traceable to FIPS 203/204 or to this run.
           </p>
         );
       })()}
