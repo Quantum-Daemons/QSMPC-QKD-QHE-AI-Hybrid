@@ -657,7 +657,11 @@ export async function realClientHybrid(features: number[], u: () => number,
 // MPC-FHE row — uses REAL measured client-side FHE/MPC when ``measured`` is supplied, else a representative
 // cost model (e.g. the standalone clientBenchmark with no live run). Shared by clientBenchmark + assembleBenchmark.
 function mpcFheRow(usecase: string | undefined, workload: string, modelSize: string, measured?: MeasuredHybrid | null,
-  sec?: { kem?: string; qkdBits?: number | null }) {
+  // `qber` belongs here even though this row is the CLASSICAL path. Both rows run under ONE transport
+  // configuration, so both must be scored under it. This parameter used to omit it, so this row's
+  // eavesdropper term was structurally zero while its counterpart threaded the value through - and
+  // the 68-vs-96 gap on screen was that asymmetry, not a property of the cryptography.
+  sec?: { kem?: string; qkdBits?: number | null; qber?: number | null }) {
   const { dims, label, params } = archDims(usecase, modelSize, workload);
   const cost = costPerOp();
   // ctpt is nullable: the measured branch withholds it when the serialized ciphertext size could
@@ -715,6 +719,7 @@ function mpcFheRow(usecase: string | undefined, workload: string, modelSize: str
     security_score: securityScore({
       securityModel: "computational (RLWE / FIPS-203 family)", kem: sec?.kem,
       qkdKeyBits: sec?.qkdBits,
+      qber: typeof sec?.qber === "number" ? sec.qber : null,
     }).total,
     device,
   };
@@ -776,7 +781,11 @@ function qsmpcFheRow(workload: string, modelSize: string, u: () => number, sampl
       // scoring the full eavesdropper-detection points on every run including ones with no key.
       // compute_security_score already treats null as "not measured" and awards zero.
       qber: typeof sec?.qber === "number" ? sec.qber : null,
-      leakageBitsPerWeight: 0.1,
+      // Was a hardcoded 0.1 - the PRX leakage bound - which is a LITERATURE figure, not a property
+      // of this run. Nothing in the browser measures leakage, so asserting it bought this row the
+      // most generous bucket (10 pts) over its counterpart's default (4). That was +6 of the gap.
+      // null scores as unmeasured, which is what it is.
+      leakageBitsPerWeight: null,
     }).total,
     device: "cpu-sim", simulated: true,
   };
@@ -1633,7 +1642,7 @@ export function runClientPipeline(
         } else {
           // honest last resort: node-seal genuinely unavailable here (e.g. no WASM) — representative figure, logged
           artifacts.fhe_prediction = inf.prediction;
-          const split = mpcFheRow(usecase, config.workload ?? "linear", config.model_size ?? "medium", null, secFromConfig(config));
+          const split = mpcFheRow(usecase, config.workload ?? "linear", config.model_size ?? "medium", null, secFromConfig(config, metrics));
           metric(stage, "fhe_max_abs_error", costPerOp().demo_max_abs_error);
           metric(stage, "fhe_linear_ms", split.fhe_linear_ms);
           metric(stage, "mpc_nonlinear_ms", split.mpc_nonlinear_ms);
@@ -1686,10 +1695,13 @@ export function runClientPipeline(
         // run the QSMPC-FHE alternative (real client QCNN readout) so the benchmark comparison +
         // quantum advantage are produced by an actual run — mirrors the backend QuantumComparisonStage.
         const ms = config.model_size ?? "medium", wl = config.workload ?? "linear";
-        const sec = secFromConfig(config);
+        // `metrics` goes in here. This used to call secFromConfig(config) with no metrics and then
+        // re-thread `qber` by hand on the next line - so `secure_key_bits` fell to the ?? 256
+        // fallback, and the row claimed QKD-mixed key material on runs that produced none. One field
+        // wired, its neighbour left to a constant, from the same object already in scope.
+        const sec = secFromConfig(config, metrics);
         const isInf = ["finance_aml", "medical_fl", "genomics"].includes(usecase);
-        const qrow = qsmpcFheRow(wl, ms, rng(7), 6, 1, qubitsOf(config),
-          { ...sec, qber: typeof metrics.qber === "number" ? metrics.qber : null });
+        const qrow = qsmpcFheRow(wl, ms, rng(7), 6, 1, qubitsOf(config), sec);
         // Costed against the MEASURED hybrid, the same input assembleBenchmark uses.
         //
         // This passed `null` and therefore scored the quantum path against a COST MODEL of the

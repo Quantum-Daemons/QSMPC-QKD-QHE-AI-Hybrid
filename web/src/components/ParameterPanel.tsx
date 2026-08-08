@@ -14,7 +14,26 @@ type Field = [label: string, key: string, step: number, min: number, title?: str
 export default function ParameterPanel({ run }: { run: Run }) {
   const { params, setParams, resetParams, usecase } = run;
   const p = params as Record<string, number | string>;
-  const setNum = (k: string, v: string) => setParams({ ...params, [k]: parseFloat(v) || 0 });
+  /**
+   * Commit a numeric edit, CLAMPED to that field's own min/max.
+   *
+   * This was `parseFloat(v) || 0`, which substituted 0 for an empty field regardless of the bounds
+   * the field itself declares - and 0 is out of range for nearly all of them. The worst case was
+   * `qrng_eps_log2` (min -128, max -1): clearing the box wrote 0, i.e. **eps = 2^0 = 1**, a
+   * vacuous Leftover-Hash-Lemma bound. Measured on the live demo before this fix: the run then
+   * reported `qrng_lhl_max_bits` 7389 against 7309 at eps 2^-40 - clearing the field GAINED 80 bits
+   * of extractable key by deleting the security parameter. That is the dangerous direction, because
+   * the failure makes the output look better rather than worse.
+   *
+   * An unparseable value falls back to `min`, which for every field here is the conservative end.
+   */
+  const setNum = (k: string, v: string, min: number, max?: number) => {
+    const n = parseFloat(v);
+    const safe = Number.isFinite(n)
+      ? Math.min(max ?? Infinity, Math.max(min, n))
+      : min;
+    setParams({ ...params, [k]: safe });
+  };
 
   const numField = ([label, key, step, min, title, max]: Field) => {
     // A field whose value the current selection makes unreadable is greyed out with the reason,
@@ -33,7 +52,7 @@ export default function ParameterPanel({ run }: { run: Run }) {
         <label className="muted" htmlFor={`pp-${key}`} style={{ fontSize: 12, opacity: dim ? 0.45 : 1 }}
           title={inertBecause ?? title}>{label}</label>
         <input id={`pp-${key}`} name={key} type="number" step={step} min={min} max={max} disabled={dim}
-          value={p[key] as number} style={{ width: "100%", opacity: dim ? 0.45 : 1 }} onChange={(e) => setNum(key, e.target.value)} />
+          value={p[key] as number} style={{ width: "100%", opacity: dim ? 0.45 : 1 }} onChange={(e) => setNum(key, e.target.value, min, max)} />
       </div>
     );
   };
@@ -166,7 +185,7 @@ export default function ParameterPanel({ run }: { run: Run }) {
               <input id="pp-prime" name="prime" type="number" step={2} min={0} value={p.prime as number}
                 style={{ width: "100%" }}
                 title="Snapped to the next prime: secure summation shares over a prime field, and a composite modulus is not one."
-                onChange={(e) => setNum("prime", e.target.value)} />
+                onChange={(e) => setNum("prime", e.target.value, 0)} />
             </div>)}
             <div style={{ minWidth: 120, flex: "1 1 120px" }}>
               <label className="muted" htmlFor="pp-ext" style={{ fontSize: 12 }}>QRNG extractor</label>

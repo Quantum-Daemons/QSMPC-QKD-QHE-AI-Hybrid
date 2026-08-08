@@ -411,6 +411,11 @@ class ExplainabilityStage(Stage):
             "top_features": [{"feature": t["feature"], "value": _r(t["value"]),
                               "contribution": _r(t["contribution"])} for t in exp.top],
             "efficiency_gap": round(exp.efficiency_gap(), 9),  # ~0 => exact (SHAP local accuracy)
+            # WHICH reference point produced these attributions. efficiency_gap cannot answer it:
+            # completeness holds for ANY baseline, so a zero-vector reference on non-zero-mean data
+            # passes the self-check while every contribution is measured against a case that does
+            # not occur. Recording it is the only way the defect stays visible.
+            "baseline": "E[x] (dataset mean)" if baseline is not None else "zero vector (no E[x] supplied)",
         }
         if exp.top:
             bus.metric("explanation_top_contribution", _r(exp.top[0]["contribution"]), self.name)
@@ -451,7 +456,13 @@ class QuantumComparisonStage(Stage):
         if y is None:
             y = np.zeros(len(X), dtype=int)
 
-        q = run_quantum(X, y, n_qubits=qubits, n_samples=min(8, len(X)), seed=seed)
+        # Score this row under the transport the run ACTUALLY used, from the same metrics the
+        # classical row is scored against - so the two rows differ by cryptography, not by which
+        # arguments each call site happened to supply.
+        q = run_quantum(X, y, n_qubits=qubits, n_samples=min(8, len(X)), seed=seed,
+                        kem=ctx.config.get("kem"),
+                        qkd_key_bits=ctx.metrics.get("secure_key_bits"),
+                        qber=ctx.metrics.get("qber"))
         q.model_size = model_size
         q_row = q.to_row()
 

@@ -34,8 +34,6 @@ export default function BenchmarkPanel(
   const ratioData = rows.filter((r) => r.ciphertext_plaintext_ratio != null)
     .map((r) => ({ name: r.path, ratio: r.ciphertext_plaintext_ratio, path: r.path }));
   const latData = rows.map((r) => ({ name: r.path, latency: r.latency_ms, path: r.path }));
-  const secData = rows.filter((r) => r.security_score != null)
-    .map((r) => ({ name: r.path, score: r.security_score, path: r.path }));
   // hybrid split — the MPC-FHE row carries the linear-FHE vs non-linear-MPC breakdown
   const split = rows.find((r) => r.fhe_linear_ms != null && r.mpc_nonlinear_ms != null);
   const splitData = split
@@ -108,10 +106,11 @@ export default function BenchmarkPanel(
             “QSMPC-FHE comparison” bar in the diagram above. <b>Quantum advantage</b> = a transparent weighted
             geometric mean of three ratios (communication-compactness ≈10³× from ct/pt, latency, and the
             computational→information-theoretic security jump), tiered 0–10; the uncapped value is printed
-            beside it when the run is past the ceiling. The <b>legacy security score</b> (0–100) below is
-            <b>retired</b> and kept only for comparison: 14 of its 17 weights were unexplained and it scored a
-            zero-secure-key run 100/100. The <b>Security posture</b> table above replaces it with per-row facts,
-            each traceable to FIPS 203/204 or to this run.
+            beside it when the run is past the ceiling. The 0–100 composite that used to sit here is <b>retired and no longer
+            rendered</b>: 14 of its 17 weights carried no stated rationale, it scored a zero-secure-key run
+            100/100, and the 68-vs-96 gap it displayed was mostly an artefact of which arguments two functions
+            happened to pass. The <b>Security posture</b> table above replaces it with per-row facts, each
+            traceable to FIPS 203/204 or to this run.
           </p>
         );
       })()}
@@ -218,26 +217,6 @@ export default function BenchmarkPanel(
               ))}
             </div>
           )}
-          {secData.length > 0 && !compact && (
-            <div className="card" style={{ marginTop: 14 }}>
-              <h3>Legacy composite score (0–100) — retained for comparison only</h3>
-              <p className="muted small" style={{ marginTop: 0 }}>
-                Kept visible during the transition so the two can be compared. Its five component
-                maxima sum to exactly 100 by construction, fourteen of its seventeen config fields
-                carry no stated rationale, and only two of the five crypto-agility selectors reach it.
-                Read the table above instead.
-              </p>
-              <ResponsiveContainer width="100%" height={180}>
-                <BarChart data={secData} layout="vertical" margin={{ left: 40 }}>
-                  <CartesianGrid stroke="#243049" />
-                  <XAxis type="number" domain={[0, 100]} tick={{ fontSize: 11, fill: "#97a3b6" }} />
-                  <YAxis type="category" dataKey="name" width={150} tick={{ fontSize: 11, fill: "#97a3b6" }} />
-                  <Tooltip contentStyle={{ background: "#151c2c", border: "1px solid #243049" }} />
-                  <Bar dataKey="score">{secData.map((d, i) => <Cell key={i} fill={colorFor(d.path)} />)}</Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          )}
           {!compact && (
             <div className="card" style={{ marginTop: 14 }}>
               <h3>Detailed results</h3>
@@ -245,7 +224,7 @@ export default function BenchmarkPanel(
                 {/* The last column was headed "model" and rendered `security_model`, so the table
                     had no model column at all while appearing to have one. Both are shown now, and
                     the model one matters here: these rows are not all the same model. */}
-                <thead><tr><th>path</th><th>model</th><th>backend</th><th>size</th><th>latency ms</th><th>FHE-lin ms</th><th>MPC-nl ms</th><th>comm KB</th><th>accuracy</th><th>ct/pt</th><th>security</th><th>security model</th></tr></thead>
+                <thead><tr><th>path</th><th>model</th><th>backend</th><th>size</th><th>latency ms</th><th>FHE-lin ms</th><th>MPC-nl ms</th><th>comm KB</th><th>accuracy</th><th>ct/pt</th><th>security model</th></tr></thead>
                 <tbody>
                   {rows.map((r, i) => (
                     <tr key={i}>
@@ -258,7 +237,7 @@ export default function BenchmarkPanel(
                       <td style={{ color: MPC_COLOR }}>{r.mpc_nonlinear_ms ?? "—"}</td>
                       <td>{r.mpc_comm_kb ?? "—"}</td>
                       <td>{r.accuracy ?? "—"}</td><td>{r.ciphertext_plaintext_ratio ?? "—"}</td>
-                      <td><b>{r.security_score ?? "—"}</b></td><td style={{ fontSize: 11 }}>{r.security_model}</td>
+                      <td style={{ fontSize: 11 }}>{r.security_model}</td>
                     </tr>
                   ))}
                 </tbody>

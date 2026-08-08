@@ -26,8 +26,17 @@ def run_quantum(
     workload: str = "qcnn",
     n_samples: int = 20,
     seed: int = 0,
+    kem: str | None = None,
+    qkd_key_bits: int | None = None,
+    qber: float | None = None,
 ) -> BenchResult:
-    """Benchmark QHE private inference of a QCNN over ``n_samples``."""
+    """Benchmark QHE private inference of a QCNN over ``n_samples``.
+
+    ``kem`` / ``qkd_key_bits`` / ``qber`` describe the TRANSPORT the caller ran under. They are
+    parameters rather than literals because this function has no QKD channel in it - nothing here
+    produces a QBER - and hardcoding one made an unmeasured term look measured. ``None`` means
+    "not measured", which ``compute_security_score`` already scores as zero rather than as good.
+    """
     qc = QCNN(n_qubits=n_qubits, seed=seed)
     n = min(n_samples, len(X))
     correct = 0
@@ -53,10 +62,16 @@ def run_quantum(
 
     from .security import compute_security_score
 
+    # `qber=0.0128` and `qkd_key_bits=256` were literals here. 0.0128 is the same fabricated value
+    # that was removed from the browser mirror in Round 22: it bought the full eavesdropper-detection
+    # points on every run, including runs whose channel produced no key, and the classical row it is
+    # compared against passed `qber=None`. That asymmetry - not the cryptography - was most of the
+    # 68-vs-96 gap the benchmark reported. The leakage bound is a LITERATURE figure (PRX 15 041056),
+    # not a property of this run, so it is no longer asserted as one.
     sec = compute_security_score(
         security_model="information-theoretic (QOTP perfect hiding)",
-        pqc_hybrid=True, kem="ml-kem-768+x25519",
-        qkd_key_bits=256, qber=0.0128, leakage_bits_per_weight=0.1,  # PRX leakage bound
+        pqc_hybrid=True, kem=kem or "ml-kem-768+x25519",
+        qkd_key_bits=qkd_key_bits, qber=qber, leakage_bits_per_weight=None,
     )
     return BenchResult(
         path="QSMPC-FHE",
