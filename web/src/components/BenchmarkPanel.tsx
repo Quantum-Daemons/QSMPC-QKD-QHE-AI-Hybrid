@@ -19,6 +19,7 @@ export default function BenchmarkPanel(
 ) {
   const chartRef = useRef<HTMLDivElement>(null);
   const rows: any[] = result?.results ?? [];
+  const facts: any[] = result?.security_facts ?? [];
   const advantage = result?.advantage ?? null;
   const workload = result?.workload ?? "linear";
 
@@ -180,9 +181,44 @@ export default function BenchmarkPanel(
               </div>
             </div>
           )}
-          {secData.length > 0 && (
+          {facts.length > 0 && (
             <div className="card" style={{ marginTop: 14 }}>
-              <h3>Security score (0–100)</h3>
+              <h3>Security posture — what this run measured</h3>
+              <p className="muted small" style={{ marginTop: 0 }}>
+                Reported, not scored. Each row is either checkable against a published standard or
+                produced by this run, and says which. There is no composite: the 0–100 score this
+                replaced summed five weights that were chosen rather than derived, and it awarded a
+                perfect 100 to a run whose quantum channel produced zero secure key bits.
+              </p>
+              <table className="mini-table">
+                <tbody>
+                  {facts.map((f) => (
+                    <tr key={f.label} className={f.warn ? undefined : "metric-companion"}>
+                      <td>{f.label}</td>
+                      <td className="num">{f.value}</td>
+                      <td className="muted small">
+                        {f.kind === "standard" ? "standard · " : "measured · "}{f.source}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {facts.filter((f) => f.warn).map((f) => (
+                <div key={f.label} className="note" style={{ marginTop: 10, borderColor: "var(--warn)", color: "var(--warn)" }}>
+                  ⚠ <b>{f.label}:</b> {f.warn}
+                </div>
+              ))}
+            </div>
+          )}
+          {secData.length > 0 && !compact && (
+            <div className="card" style={{ marginTop: 14 }}>
+              <h3>Legacy composite score (0–100) — retained for comparison only</h3>
+              <p className="muted small" style={{ marginTop: 0 }}>
+                Kept visible during the transition so the two can be compared. Its five component
+                maxima sum to exactly 100 by construction, fourteen of its seventeen config fields
+                carry no stated rationale, and only two of the five crypto-agility selectors reach it.
+                Read the table above instead.
+              </p>
               <ResponsiveContainer width="100%" height={180}>
                 <BarChart data={secData} layout="vertical" margin={{ left: 40 }}>
                   <CartesianGrid stroke="#243049" />
