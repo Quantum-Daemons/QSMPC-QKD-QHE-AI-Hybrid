@@ -627,6 +627,33 @@ What it catches that nothing else does:
 Run it on every use-case page, not one: the control set differs per page, and the pages that hide a
 group are exactly where a stale default survives unnoticed.
 
+## A completion marker is not a verdict
+
+The diagram ticks a step when its stage finishes. That tick renders immediately after a measured
+value, and a reader cannot tell "this stage ran" from "this value is fine".
+
+Round 22 caught the live case. With the eavesdropper parameter at 0.35 the diagram drew
+
+    BB84 decoy-state · QBER 0.1 ✓
+
+while the posture table on the same page, for the same run, reported **0 secure bits**, an SKR of
+**0 per pulse**, and "no secure key at this error rate". One run, two panels, opposite conclusions -
+and the reassuring one was the bigger and more looked-at.
+
+So the check is: **after every run, read the diagram labels and the tables against each other**, not
+each on its own.
+
+    [...document.querySelectorAll('svg text')].map(t => t.textContent.trim()).filter(t => /✓|✗/.test(t))
+
+For each ticked step, find the number it sits beside and find where else the page reports the same
+quantity. If the two disagree, the tick is the bug. Steps now declare an outcome (`ok`) separately
+from completion, and a failed one is drawn with `✗` in a warning colour - but the axis outlives this
+particular fix, because any status glyph next to any measured value invites the same misreading.
+
+Note the trap that made this hard to see: `body.innerText` flattens SVG into the surrounding text, so
+the diagram's tick appears to belong to the table row above it. Read `svg text` nodes separately from
+table cells, or you will attribute a finding to the wrong panel - as happened here first.
+
 ## The UX axis, and the accessibility half nobody was checking
 
 The layout axis asks whether anything overflows or overlaps. It never asked whether a visitor can
@@ -654,9 +681,21 @@ the point of disablement, not in a paragraph further down.
 fail):
 
 - **1.4.3 contrast 4.5:1** for body text, 3:1 for large text and UI-component boundaries. The muted
-  greys and the coloured card borders are the risk. Measure, do not eyeball:
+  greys and the coloured card borders are the risk. Measure, do not eyeball - but measure correctly:
 
-      getComputedStyle(el).color, getComputedStyle(el).backgroundColor  // then compute the ratio
+  **Composite the alpha, or you will invent failures.** This UI tints its notes with `rgba(246, 183,
+  60, 0.08)` - an 8 percent amber over a dark card. Read that as an opaque background and near-white
+  text scores 1.51:1, which is a loud failure on the EU AI Act Art. 50 disclosure. It is not real.
+  Composite the whole ancestor stack onto the page base and the same text measures **12.42:1**.
+
+  So walk every ancestor, keep each `backgroundColor` whose alpha is above zero, and blend them
+  back-to-front onto the page background before computing luminance:
+
+      over = (fg, bg) => fg.rgb.map((v, i) => v * fg.a + bg[i] * (1 - fg.a))
+
+  Skip elements with children (you would measure a container, not a text run) and anything whose
+  `offsetParent` is null. Round 22 measured **zero** genuine 1.4.3 failures on the use-case page this
+  way, after the naive version reported two.
 
 - **2.1.1 keyboard**: tab through every route. Every control reachable, every disclosure operable
   with Enter/Space, no trap in the parameter panel.
