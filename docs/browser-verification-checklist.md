@@ -473,6 +473,20 @@ Verified in Round 21, all against `references/`:
 | CHSH | Werner state, `S = 2 sqrt(2) V` | same | Tsirelson bound `2.828427` reached only at `V = 1` and never exceeded, since `V <= 1`; violation threshold `V = 1/sqrt(2) = 0.707107` |
 | Leftover hash lemma | `l <= H_inf(X) - 2 log2(1/eps) + 2` | `minH - 2(-eps_log2) + 2` | identical once `log2(1/eps) = -eps_log2`; monotone decreasing in `|eps|`, as the lemma requires |
 | Free-space link budget | `loss_dB = distance x loss_per_km` | config-sourced 0.035 dB/km | 800 km gives 28 dB, 2000 km gives 70 dB, both exact |
+| Linear SHAP | `phi_i = w_eff_i (x_i - base_i)`, `w_eff = W1 - W0` | same | completeness, dummy and linearity all hold over 2000 random linear models, re-derived in Python |
+| Security score | `benchmark/security.py` | `securityScore` in `clientCompute.ts` | two independent implementations agree: MPC-FHE **68**, QSMPC-FHE **96** on the same configuration |
+
+The security-score row is the strongest kind of check available here, because the browser mirror and
+the Python original were written separately and can be run against each other. Do that rather than
+reading either one: `compute_security_score` with the call sites' own arguments gives 68 and 96, and
+the deployed benchmark table prints 68 and 96.
+
+**An axiom that holds by construction still has to be computed.** `linearShap` returned
+`efficiency_gap: 0` as a literal. It is algebraically correct - the attributions telescope to the
+margin exactly - but a field named after a measurement and set to a constant cannot fail, so if the
+attribution rule ever stopped satisfying completeness the payload would go on asserting that it did.
+It is the residual now. This is the same defect class as a control that renders and changes nothing,
+moved into a signed artefact: the value was right, and it was not evidence of anything.
 
 Level-3 cross-check, measured live on telecom at QBER 0.01: `skr` 0.00958 and `secure_key_bits` 1915
 against 200000 pulses. `skr x pulses = 1916`, which agrees with the reported bit count to within the
