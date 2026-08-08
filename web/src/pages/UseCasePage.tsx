@@ -59,7 +59,9 @@ function UseCaseView({ usecase }: { usecase: string }) {
         <TwoPartyDiagram usecase={usecase} activeStage={active} doneStages={done} metrics={metrics}
           config={{ kem: run.kem, qkd: run.qkd, sig: run.sig,
                     qkdProtocol: String(run.params.qkd_protocol ?? ""),
-                    qsmpcOp: String(run.params.qsmpc_op ?? "") }} />
+                    qsmpcOp: String(run.params.qsmpc_op ?? ""),
+                    optiqkd: run.optiqkd, workload: run.workload,
+                    inference: String(run.params.inference ?? "") }} />
       </div>
       <div className="btn-row" style={{ marginTop: 10 }}>
         <button className="btn ghost" onClick={() => downloadPng(`${usecase}-two-party.png`)}>⬇ Diagram (PNG)</button>
@@ -116,12 +118,18 @@ function UseCaseView({ usecase }: { usecase: string }) {
           over the page's own bundled Wisconsin sample, not a synthetic stand-in, so the accuracy it
           reports describes the data shown above it.
           <div style={{ marginTop: 6 }}>
-            <b>Workload = CNN runs a genuine encrypted convolution</b>, not a scaled dot product:
-            im2col patches are packed into a single CKKS ciphertext and reduced by rotate-and-add,
-            over the trained student's own 14x14 input and 3x3 kernels. The run reports the
-            rotations and multiply-plain operations it performed for both workloads, because
-            key-switching - one per rotation - is what dominates CKKS inference cost. Nothing on
-            this path is multiplied by a cost model.
+            <b>The encrypted path evaluates the published student itself</b> - all 3,226 parameters
+            of it, fetched from its own pinned Hugging Face revision and run end to end under CKKS:
+            conv, average pool, and both dense layers, with im2col patches packed into a single
+            ciphertext and reduced by rotate-and-add. The run reports the total rotations it
+            performed, because key-switching - one per rotation - is what dominates CKKS inference
+            cost. Nothing here is multiplied by a cost model, and if the weights cannot be fetched
+            the run says so rather than substituting invented ones.
+          </div>
+          <div style={{ marginTop: 6 }}>
+            There is no Workload selector any more. It offered Linear against CNN, and once CNN
+            began running the real student, Linear was the only fabricated option left - an
+            8-feature dot product with a hand-written weight pattern matching no trained model.
           </div>
         </div>
       )}

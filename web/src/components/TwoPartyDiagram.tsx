@@ -24,6 +24,16 @@ export interface DiagramConfig {
   qkdProtocol?: string;
   /** `psi` | `sum`, or absent for the use case's default. The QSMPC step reads this. */
   qsmpcOp?: string;
+  /** Whether the run tuned the channel with OptiQKD. The checkbox genuinely changes the run -
+   *  it emits a measured SKR improvement and a convergence count - and the diagram used to show
+   *  nothing at all, so ticking it appeared to do nothing to the architecture it describes. */
+  optiqkd?: boolean;
+  /** `linear` | `cnn`. On medical this selects a real encrypted CONVOLUTION over a packed
+   *  ciphertext instead of a dot product, which is a different computation crossing the same
+   *  arrow - so the arrow has to say which one it carried. */
+  workload?: string;
+  /** `` | `ckks` | `qcnn`. Which inference backend the run surfaces as primary. */
+  inference?: string;
 }
 interface Step {
   stageId: string;
@@ -57,6 +67,18 @@ const qkdName = (c: DiagramConfig) => {
 };
 const pqcOnly = (c: DiagramConfig) => String(c.qkd ?? "") === "pqc-only";
 
+/** The OptiQKD suffix for a QKD arrow: the measured improvement once a run has produced one,
+ *  otherwise just that tuning is enabled. Reads the run's metrics rather than restating the
+ *  checkbox, so the arrow cannot claim an optimisation that has not happened yet. */
+const optiTag = (m: M, c: DiagramConfig) => {
+  if (!c.optiqkd) return "";
+  const pct = m["qkd_skr_improvement_pct"];
+  const evals = m["qkd_convergence_evals"];
+  if (pct == null) return " · OptiQKD on";
+  return ` · OptiQKD ${Number(pct) >= 0 ? "+" : ""}${pct}% surrogate SKR`
+    + (evals == null ? "" : ` in ${evals} evals`);
+};
+
 // The QSMPC step. `clientCompute:896` resolves `config.qsmpc_op || (genomics ? "sum" : "psi")`, so
 // the diagram has to resolve it the same way or it describes a computation that did not happen.
 // The KIND changes too: a secure sum runs over a d-qudit GHZ state, while PSI is a WebCrypto
@@ -83,9 +105,23 @@ const f = (m: M, k: string, d = "—") => {
 // The MPC-FHE private inference, drawn as its two halves (the 2026 hybrid: linear→FHE, non-linear→MPC).
 // Both map to the backend `private_inference` stage, so they light up together when it runs and the
 // labels fill from the live `fhe_linear_ms` / `mpc_nonlinear_ms` / `mpc_comm_kb` metrics.
+// The FHE arrow names the computation it carried, not just "CKKS ct". Workload=cnn packs im2col
+// patches into one ciphertext and reduces them by rotate-and-add; workload=linear is a packed dot
+// product. Those are different operations over the same wire, and the run counts the rotations for
+// each, so the arrow reports the count rather than leaving the selector invisible here.
 const HYBRID_INFERENCE: Step[] = [
   { stageId: "private_inference", kind: "fhe-arrow",
-    label: (m) => `FHE-linear · CKKS ct · ${f(m, "fhe_linear_ms")} ms` },
+    label: (m, c) => {
+      // Total across every CKKS layer once the full student runs encrypted, not just
+      // the conv block: 152 for this student against 3 for a lone dot product.
+      const rot = m["fhe_total_rotations"] ?? m["fhe_conv_rotations"] ?? m["fhe_dense_rotations"];
+      const shape = m["fhe_conv_output_shape"];
+      // The medical page evaluates the published student end to end under CKKS; every other use
+      // case runs its linear student as a packed dot product. Name whichever actually happened.
+      const kindTxt = shape ? `encrypted CNN ${shape}` : "CKKS dot product";
+      return `FHE-linear · ${kindTxt} · ${f(m, "fhe_linear_ms")} ms`
+        + (rot == null ? "" : ` · ${rot} rotations`);
+    } },
   { stageId: "private_inference", kind: "mpc-bidir",
     label: (m) => `MPC-non-linear · shares · ${f(m, "mpc_nonlinear_ms")} ms · ${f(m, "mpc_comm_kb")} KB` },
 ];
@@ -93,9 +129,20 @@ const HYBRID_INFERENCE: Step[] = [
 // The quantum-secure ALTERNATIVE the benchmark scores against (the `quantum_comparison` stage runs a
 // real QOTP+QCNN private inference). Rendered as a full-width bar so it's clear QSMPC-FHE is executed
 // and the quantum-advantage / security-score are produced by an actual run, not asserted.
+// `inference` picks which backend the run SURFACES as primary (clientCompute reads it at the
+// private_inference stage). Both are computed either way, so this bar says which one was surfaced
+// rather than implying the selector did nothing.
 const QSMPC_COMPARE: Step = {
   stageId: "quantum_comparison", kind: "compare",
-  label: (m) => `QSMPC-FHE comparison · QOTP + QCNN (T-gates) · advantage ${f(m, "quantum_advantage_score")}/10`,
+  label: (m, c) => {
+    const primary = String(c.inference ?? "") === "qcnn" ? "QCNN surfaced as primary"
+      : String(c.inference ?? "") === "ckks" ? "CKKS surfaced as primary"
+      : "use-case default";
+    const cls = m["primary_inference_class"];
+    return `QSMPC-FHE comparison · QOTP + QCNN (T-gates) · ${primary}`
+      + (cls == null ? "" : ` · class ${cls}`)
+      + ` · advantage ${f(m, "quantum_advantage_score")}/10`;
+  },
 };
 
 export const USECASE_SPECS: Record<string, Spec> = {
@@ -104,7 +151,7 @@ export const USECASE_SPECS: Record<string, Spec> = {
     b: { name: "Bank B", sub: "candidate accounts · LAN" },
     steps: [
       { stageId: "pqc_handshake", kind: "c-bidir", label: (_m, c) => `PQC handshake — ${kemName(c)}` },
-      { stageId: "qkd_key_agreement", kind: "q-arrow", label: (m, c) => `${qkdName(c)} · QBER ${f(m, "qber")}`, hidden: pqcOnly },
+      { stageId: "qkd_key_agreement", kind: "q-arrow", label: (m, c) => `${qkdName(c)} · QBER ${f(m, "qber")}${optiTag(m, c)}`, hidden: pqcOnly },
       { stageId: "qsmpc_compute", kind: qsmpcKind("psi"), label: qsmpcLabel("psi") },
       ...HYBRID_INFERENCE,
       QSMPC_COMPARE,
@@ -116,7 +163,7 @@ export const USECASE_SPECS: Record<string, Spec> = {
     b: { name: "Aggregator", sub: "global model · LAN" },
     steps: [
       { stageId: "pqc_handshake", kind: "c-bidir", label: (_m, c) => `PQC handshake — ${kemName(c)}` },
-      { stageId: "qkd_key_agreement", kind: "q-arrow", label: (m, c) => `${qkdName(c)} · QBER ${f(m, "qber")}`, hidden: pqcOnly },
+      { stageId: "qkd_key_agreement", kind: "q-arrow", label: (m, c) => `${qkdName(c)} · QBER ${f(m, "qber")}${optiTag(m, c)}`, hidden: pqcOnly },
       { stageId: "federated_training", kind: "c-bidir", label: (m) => `federated train + pairwise masking (demo keys) · acc ${f(m, "federated_accuracy")}` },
       ...HYBRID_INFERENCE,
       QSMPC_COMPARE,
@@ -128,7 +175,7 @@ export const USECASE_SPECS: Record<string, Spec> = {
     b: { name: "Cohort 2", sub: "allele counts · LAN" },
     steps: [
       { stageId: "pqc_handshake", kind: "c-bidir", label: (_m, c) => `PQC handshake — ${kemName(c)}` },
-      { stageId: "qkd_key_agreement", kind: "q-arrow", label: (m, c) => `${qkdName(c)} · QBER ${f(m, "qber")}`, hidden: pqcOnly },
+      { stageId: "qkd_key_agreement", kind: "q-arrow", label: (m, c) => `${qkdName(c)} · QBER ${f(m, "qber")}${optiTag(m, c)}`, hidden: pqcOnly },
       { stageId: "qsmpc_compute", kind: qsmpcKind("sum"), label: qsmpcLabel("sum") },
       ...HYBRID_INFERENCE,
       QSMPC_COMPARE,
@@ -140,7 +187,7 @@ export const USECASE_SPECS: Record<string, Spec> = {
     b: { name: "Remote site / Eve", sub: "QKD Rx (eavesdropper)" },
     steps: [
       { stageId: "pqc_handshake", kind: "c-bidir", label: (_m, c) => `PQC handshake — ${kemName(c)}` },
-      { stageId: "qkd_key_agreement", kind: "q-arrow", label: (m, c) => `${qkdName(c)} (w/ eavesdropper) · QBER ${f(m, "qber")}`, hidden: pqcOnly },
+      { stageId: "qkd_key_agreement", kind: "q-arrow", label: (m, c) => `${qkdName(c)} (w/ eavesdropper) · QBER ${f(m, "qber")}${optiTag(m, c)}`, hidden: pqcOnly },
       { stageId: "qml_ids", kind: "local-a", label: (m) => `QML-IDS attack detection · macro-F1 ${f(m, "ids_macro_f1")}` },
       QSMPC_COMPARE,
       { stageId: "sign_result", kind: "c-bidir", label: (_m, c) => `${sigName(c)}-signed audit record` },
@@ -151,7 +198,7 @@ export const USECASE_SPECS: Record<string, Spec> = {
     b: { name: "LEO satellite", sub: "free-space downlink" },
     steps: [
       { stageId: "pqc_handshake", kind: "c-bidir", label: (_m, c) => `PQC handshake — ${kemName(c)}` },
-      { stageId: "satellite_qkd", kind: "q-arrow", label: (m, c) => `free-space ${qkdName(c)} (${f(m, "channel_loss_db")} dB) · QBER ${f(m, "qber")}`,
+      { stageId: "satellite_qkd", kind: "q-arrow", label: (m, c) => `free-space ${qkdName(c)} (${f(m, "channel_loss_db")} dB) · QBER ${f(m, "qber")}${optiTag(m, c)}`,
         hidden: pqcOnly },
       { stageId: "qsdc_telemetry", kind: "q-arrow", label: (m) => `QSDC direct telemetry · secrecy ${f(m, "qsdc_secrecy_capacity")} bit/carrier` },
       QSMPC_COMPARE,
