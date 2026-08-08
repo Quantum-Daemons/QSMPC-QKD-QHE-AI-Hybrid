@@ -707,6 +707,46 @@ Eavesdropper 0 -> QBER 0.01, 1915 secure bits, SKR 0.00958/pulse, step ticked no
 failure. Both directions are required; testing only the failing one cannot catch a predicate that
 always fails.
 
+### Decoy-state necessity - what the decoy states are actually buying
+
+The runtime QKD model is the ASYMPTOTIC decoy-state one, which already assumes the single-photon
+contribution has been bounded. That assumption is invisible on screen until the counterfactual is
+computed, so the posture table reports the GLLP tagged fraction over the run's own channel:
+
+    Delta = P(n >= 2) / Q_mu,   Q_mu = Y_0 + 1 - exp(-eta*mu),   P(n >= 2) = 1 - exp(-mu)(1 + mu)
+
+`Delta >= 1` means the worst-case bound on Eve-known detections exceeds the total detection
+probability, so not one detection could be certified single-photon and a non-decoy link yields
+nothing. Measured on the default fibre link (eta 0.025 at 50 km, mu 0.5): **Delta = 7.26** - the
+decoy states are carrying the entire link, not merely improving it.
+
+Recompute it from the config to check the row:
+
+    eta   = detector_efficiency * 10^(-fiber_loss_db_per_km * distance_km / 10)
+    Delta = (1 - exp(-mu)(1 + mu)) / (dark_count_prob + 1 - exp(-eta*mu))
+
+Raising Distance must raise Delta; raising mu must raise it too. Both are one-line checks.
+
+**The reference model is asserted against the papers in `tests/test_decoy_reference.py`** - 13
+tests, none of whose numbers originate in this repository. The anchors, from Ma et al. PRA 72,
+012326 (2005) with the GYS parameter set, and GLLP QIC 4, 325 (2004):
+
+| Assertion | Published | Measured |
+|---|---|---|
+| tagged fraction at mu = 0.1, zero distance | > 1 | 1.0417 |
+| decoy max distance | over 140 km | 142.2 km |
+| non-decoy max distance | about 42 km | 39.8 km |
+| decoy R/eta (flat, linear in eta) | 0.11 | 0.1136 |
+| non-decoy R/eta^2 (flat, quadratic) | 0.15 | 0.1510 |
+| decoy optimal mu | about 0.5 | 0.3 - 0.8 |
+
+**The trap in reproducing those figures, and it is a quiet one.** The published curves are plotted
+for the efficient BB84 of Lo-Chau-Ardehali, where the sifting factor q tends to 1. This project runs
+standard BB84 with q = 1/2. Reproduce the paper with q = 1/2 and every value comes out at exactly
+half the published one - 0.0568 against 0.11, 0.0755 against 0.15. That is close enough to look like
+a fitting or units discrepancy and wrong enough to make the comparison meaningless. `q_sift` is an
+explicit field for this reason, and a test asserts the factor of two so it cannot drift.
+
 ### Free-space channel (satellite: `pp-sat_distance_km`, `pp-sat_eve`, `pp-sat_pulses`, `pp-qsdc_threshold`)
 
 Loss must rise with distance and the reported dB must appear in the diagram label. Measured at Eve
