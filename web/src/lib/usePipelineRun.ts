@@ -6,9 +6,26 @@ import { useEffect, useRef, useState, type RefObject } from "react";
 import { api, type PipelineEvent, streamRun } from "./api";
 import { benchCfg, dataCfg, idsCfg, qkdCfg, qrngCfg, webCfg } from "./config";
 import { FREE_SPACE } from "./quantumSim";
-import { assembleBenchmark, type PipelineControl, runClientPipeline } from "./clientCompute";
+import { assembleBenchmark, clientFlow, type PipelineControl, runClientPipeline } from "./clientCompute";
 import { isClientDemo } from "./demoMode";
+
 import { downloadCSV, downloadJSON, downloadNodePNG, FrameRecorder } from "./export";
+
+/**
+ * Whether a use case runs the stage that reads a given control.
+ *
+ * Derived from the FLOW, not from a hand-kept list of use-case ids, because the two disagreed. The
+ * lists said QSMPC and inference belong to finance, medical and genomics; `FLOWS.demo` contains
+ * `qsmpc_compute` AND `private_inference` and was in neither list. So the Generic demo hid three
+ * controls that its own pipeline then read - and since `params` survives a use-case change on the
+ * Orchestration page, whatever the previous use case had set is what the demo silently ran with.
+ *
+ * Asking the flow makes the panel and the run agree by construction: a control is shown exactly when
+ * a stage exists to read it, and `buildConfig` ships it exactly when it is shown.
+ */
+export const runsQsmpc = (usecase: string) => clientFlow(usecase).includes("qsmpc_compute");
+export const runsInference = (usecase: string) => clientFlow(usecase).includes("private_inference");
+export const runsFibreQkd = (usecase: string) => clientFlow(usecase).includes("qkd_key_agreement");
 
 export const MODEL_SIZES = [
   { id: "lightweight", label: "Lightweight" },
@@ -35,7 +52,12 @@ export const DEMO_CRYPTO = {
 // WebUI Parameters panel starts from the backend defaults and any edit flows into the run config (no
 // hardcoded literals here). Every field is overridable per run from the panel.
 export const makeDefaultParams = () => ({
-  seed: 0,
+  // 1, not 0. Round 21 raised this field's `min` to 1 because quantumSim's rng() does
+  // `(seed >>> 0) || 1` and maps both to the same stream - and left the DEFAULT at 0, so every
+  // page shipped a field whose value sat below its own minimum, and "Reset to defaults"
+  // restored an out-of-range value. Caught by capturing every input's value against its own
+  // min/max rather than by reading either one alone.
+  seed: 1,
   qkd_pulses: qkdCfg().pulses,
   qkd_distance_km: qkdCfg().distance_km,
   qkd_eve: qkdCfg().eve_intercept_fraction,
@@ -82,6 +104,11 @@ export function usePipelineRun(usecase: string, recordRef: RefObject<HTMLElement
   // still be turned off programmatically for a test or a comparison.
   const [qfl, setQfl] = useState(true);
   const [optiqkd, setOptiqkd] = useState(false);         // "Optimize QKD (OptiQKD)" toggle (WS1 AI-QKD)
+  // Which published model the orchestration's inference stage runs. "" = the registry's first
+  // fetchable one for this use case, which is what every run used before this existed. Three use
+  // cases publish more than one and could only ever exercise the first: medical has ResNet-18,
+  // ResNet-50 and the CKKS student; satellite has four across two incomparable tasks.
+  const [publishedModel, setPublishedModel] = useState("");
   const [params, setParams] = useState({ ...DEFAULT_PARAMS });
   const resetParams = () => setParams({ ...makeDefaultParams() });
 
@@ -115,14 +142,36 @@ export function usePipelineRun(usecase: string, recordRef: RefObject<HTMLElement
 
   useEffect(() => { logRef.current?.scrollTo(0, logRef.current.scrollHeight); }, [events]);
 
+  // Clear the model choice when the use case changes.
+  //
+  // `/usecase/:id` matches the same route for every use case, so React Router does not remount this
+  // hook - and the Orchestration page changes `usecase` without navigating at all. The chosen key
+  // therefore survived into a use case that does not publish it, `browserModels(next).find(...)`
+  // returned nothing, and the run reported "no published model registered for this use case" on a
+  // page that has one. Observed: select the finance GBM, move to telecom, and telecom_ids.qml -
+  // published, pinned and perfectly runnable - vanished.
+  //
+  // This is the same leak the Parameters controls had, one selector later. Anything keyed to the use
+  // case has to be reset when the use case changes, or gated at the point of use; this does both.
+  useEffect(() => { setPublishedModel(""); }, [usecase]);
+
   const buildConfig = () => {
     // spread every numeric/editable param into the run config; the backend + demo read the keys they
     // know (ctx.config.get(key, <config default>)), so a Parameters-panel edit overrides the default.
     const { qsmpc_op, inference, prime, ...nums } = params;
     const c: Record<string, unknown> = { kem, qkd, fhe, mpc, sig, workload, ...nums };
-    if (qsmpc_op) c.qsmpc_op = qsmpc_op;
-    if (inference) c.inference = inference;
-    if (prime > 0) c.prime = prime;
+    // Gated on the SAME predicates that decide whether the control is rendered, because `params`
+    // survives a use-case change and the Orchestration page changes it without remounting. Set QSMPC
+    // op = sum, Inference = qcnn and prime = 97 on Finance, then switch to Generic demo: the three
+    // selects disappear and, before this gate, all three still reached the run. The demo flow reads
+    // every one of them, so it performed a secure summation over Z97 with a QCNN readout, driven by
+    // controls that were no longer on screen.
+    if (runsQsmpc(usecase) && qsmpc_op) c.qsmpc_op = qsmpc_op;
+    if (runsInference(usecase) && inference) c.inference = inference;
+    if (runsQsmpc(usecase) && prime > 0) c.prime = prime;
+    // Only when a choice was made. Absent, runPublishedModel falls to browserModel(usecase), so the
+    // key never appears in a signed payload claiming a selection the visitor did not make.
+    if (publishedModel) c.published_model = publishedModel;
     if (qfl) c.qfl = true;                                // run Quantum Federated Learning this run
     if (optiqkd) c.qkd_optimize = true;                  // run the AI-QKD parameter optimization this run
     return c;
@@ -216,6 +265,7 @@ export function usePipelineRun(usecase: string, recordRef: RefObject<HTMLElement
   return {
     usecase, opts, kem, setKem, qkd, setQkd, fhe, setFhe, mpc, setMpc, sig, setSig,
     workload, setWorkload, qfl, setQfl, optiqkd, setOptiqkd,
+    publishedModel, setPublishedModel,
     params, setParams, resetParams,
     runId, state, events, active, done, metrics, signature, artifacts, benchmark,
     gifBusy, logRef, captureFrame,

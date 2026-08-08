@@ -1,12 +1,17 @@
 # ============================================================================
 #  HARD EXCLUSIONS — these must NEVER be committed (per project requirements)
 # ============================================================================
-# The source research report (confidential, do not publish)
-# private document pattern 4 (withheld)
-# private document pattern 2 (withheld)
-# Private monetization / business-strategy reports (confidential, kept local only)
-# private document pattern 3 (withheld)
-# private document pattern 1 (withheld)
+# The source research report and the private business-strategy reports (confidential, never publish).
+#
+# By extension, not by name. Those documents live one directory ABOVE this repository and have never
+# been inside it, so the five Japanese-named patterns that used to sit here were guarding a path that
+# does not exist - while being the only Japanese left in any tracked text file. A bare `*.docx` is
+# strictly stronger: it catches every one of them, plus any future report whatever it is called or
+# whether it is transliterated. No `.docx` is tracked, so nothing legitimate is shadowed.
+#
+# Case-folded by hand: gitignore matching is case-SENSITIVE on Linux, so a plain `*.docx` lets
+# `Report.DOCX` straight through - verified with `git check-ignore`. Word will happily write either.
+*.[dD][oO][cC][xX]
 # Copyrighted reference book (do not redistribute)
 references/The Business of Quantum Technologies.pdf
 # Large third-party research PDFs (Round 16, ~35 MB total) — cited in references/REFERENCES.md, not redistributed

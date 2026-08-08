@@ -247,16 +247,34 @@ def _save_safetensors(model, path: Path) -> None:
 
 
 def record_metrics(key: str, payload: dict) -> None:
-    """Merge one model's achieved metrics into ``models/metrics.json``.
+    """Replace one model's achieved metrics in ``models/metrics.json``.
 
     This file is machine-written and read back by the registry. Nothing else may write it: a
     hand-edited metric is indistinguishable from a measured one once it is in the UI.
+
+    The entry is REPLACED, not merged, because a metric absent from a fresh training run must not
+    survive from the previous one. ``hf_revision`` is the single field that needs more care, and
+    the answer is not to preserve it: a retrain genuinely invalidates the pin, because the artefact
+    published at that sha is no longer the model these metrics describe. Carrying it forward would
+    point the browser at weights that did not produce the numbers printed beside them.
+
+    Dropping it silently is what this did before, and that is wrong in the other direction -- the
+    model disappears from the browser tier looking identical to one that was never published. Round
+    20 retrained finance and OPS-SAT to capture their scalers, unpublished both without saying so,
+    and left the finance page with nothing verifiable on it. So the sha is demoted to
+    ``hf_revision_invalidated_by_retrain``, which the registry surfaces as its own distinct reason.
     """
     METRICS_PATH.parent.mkdir(parents=True, exist_ok=True)
     try:
         current = json.loads(METRICS_PATH.read_text())
     except FileNotFoundError:
         current = {}
+
+    payload = dict(payload)
+    if "hf_revision" not in payload:
+        stale = (current.get(key) or {}).get("hf_revision")
+        if stale:
+            payload["hf_revision_invalidated_by_retrain"] = stale
     current[key] = payload
     METRICS_PATH.write_text(json.dumps(current, indent=2, sort_keys=True) + "\n")
 

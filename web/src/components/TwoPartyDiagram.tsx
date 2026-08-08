@@ -9,7 +9,8 @@
 // clearly produced by an actual run. Grounded in references/ (Zhang QOT npj 2026, Li&Deng QHE-FL,
 // Sutradhar QSMS, EncFormer linear-FHE/non-linear-MPC split). PoC runs LAN/local.
 
-type Kind = "local-a" | "local-b" | "q-arrow" | "c-arrow" | "c-bidir" | "fhe-arrow" | "mpc-bidir" | "compare";
+type Kind = "local-a" | "local-b" | "local-wide" | "q-arrow" | "c-arrow" | "c-bidir"
+  | "fhe-arrow" | "mpc-bidir" | "compare";
 type M = Record<string, any>;
 /** The crypto-agility selections for the run being drawn.
  *
@@ -135,15 +136,54 @@ const HYBRID_INFERENCE: Step[] = [
 const QSMPC_COMPARE: Step = {
   stageId: "quantum_comparison", kind: "compare",
   label: (m, c) => {
+    // "" and "ckks" are the SAME run. clientCompute does `config.inference || "ckks"`, so there is
+    // no per-use-case default to fall back to - the old label said "use-case default" and named a
+    // mechanism that does not exist, which is the same defect class as a control that changes
+    // nothing. Say which backend was surfaced, and say when that came from the default.
     const primary = String(c.inference ?? "") === "qcnn" ? "QCNN surfaced as primary"
       : String(c.inference ?? "") === "ckks" ? "CKKS surfaced as primary"
-      : "use-case default";
+      : "CKKS surfaced as primary (default)";
     const cls = m["primary_inference_class"];
     return `QSMPC-FHE comparison · QOTP + QCNN (T-gates) · ${primary}`
       + (cls == null ? "" : ` · class ${cls}`)
       + ` · advantage ${f(m, "quantum_advantage_score")}/10`;
   },
 };
+
+/**
+ * The published model, run in this browser, drawn on whichever stage carries it.
+ *
+ * Local to party A because it is not a protocol exchange: nothing crosses the wire for it. It is
+ * here because the diagram is the most-looked-at part of the page and it was the one place a visitor
+ * could not tell that the pinned model on Hugging Face had anything to do with the run. The Models
+ * panel further down would execute it; the animation above never mentioned it.
+ *
+ * Four states, and they must not collapse into each other: not reached yet, ran, failed, and none
+ * registered. The last two are the ones worth distinguishing - a use case with no published model is
+ * a documented decision, while a published model that failed to run is a defect.
+ */
+const publishedStep = (stageId: string): Step => ({
+  stageId,
+  // Full width, not a party-sized box: this label is about 460 units long and a `local-a` box is
+  // 300, so it used to spill past both edges and lose its first 17 characters off the viewBox.
+  kind: "local-wide",
+  label: (m) => {
+    const status = m["published_model_status"];
+    if (status === "unavailable") return "published model · none registered for this use case";
+    const key = m["published_model"];
+    if (status === "failed") return `published model ${key} · DID NOT RUN (no substitute shown)`;
+    if (key == null) return "published model · —";
+    // Forecasters report absolute error against the target their sample ships; classifiers a class.
+    const mae = m["published_row_mae"];
+    const cls = m["published_predicted_class"];
+    const outcome = mae != null ? `abs err ${f(m, "published_row_mae")}`
+      : cls != null ? `class ${cls}`
+      : "";
+    return `published ${key} @ ${f(m, "published_model_revision")} · ${f(m, "published_model_backend")}`
+      + ` · ${f(m, "published_input_shape")} · ${f(m, "published_inference_ms")} ms`
+      + (outcome ? ` · ${outcome}` : "");
+  },
+});
 
 export const USECASE_SPECS: Record<string, Spec> = {
   finance_aml: {
@@ -154,6 +194,7 @@ export const USECASE_SPECS: Record<string, Spec> = {
       { stageId: "qkd_key_agreement", kind: "q-arrow", label: (m, c) => `${qkdName(c)} · QBER ${f(m, "qber")}${optiTag(m, c)}`, hidden: pqcOnly },
       { stageId: "qsmpc_compute", kind: qsmpcKind("psi"), label: qsmpcLabel("psi") },
       ...HYBRID_INFERENCE,
+      publishedStep("private_inference"),
       QSMPC_COMPARE,
       { stageId: "sign_result", kind: "c-bidir", label: (_m, c) => `${sigName(c)}-signed audit record + explanation` },
     ],
@@ -166,6 +207,7 @@ export const USECASE_SPECS: Record<string, Spec> = {
       { stageId: "qkd_key_agreement", kind: "q-arrow", label: (m, c) => `${qkdName(c)} · QBER ${f(m, "qber")}${optiTag(m, c)}`, hidden: pqcOnly },
       { stageId: "federated_training", kind: "c-bidir", label: (m) => `federated train + pairwise masking (demo keys) · acc ${f(m, "federated_accuracy")}` },
       ...HYBRID_INFERENCE,
+      publishedStep("private_inference"),
       QSMPC_COMPARE,
       { stageId: "sign_result", kind: "c-bidir", label: (_m, c) => `${sigName(c)}-signed audit record + explanation` },
     ],
@@ -178,6 +220,7 @@ export const USECASE_SPECS: Record<string, Spec> = {
       { stageId: "qkd_key_agreement", kind: "q-arrow", label: (m, c) => `${qkdName(c)} · QBER ${f(m, "qber")}${optiTag(m, c)}`, hidden: pqcOnly },
       { stageId: "qsmpc_compute", kind: qsmpcKind("sum"), label: qsmpcLabel("sum") },
       ...HYBRID_INFERENCE,
+      publishedStep("private_inference"),
       QSMPC_COMPARE,
       { stageId: "sign_result", kind: "c-bidir", label: (_m, c) => `${sigName(c)}-signed audit record` },
     ],
@@ -189,6 +232,7 @@ export const USECASE_SPECS: Record<string, Spec> = {
       { stageId: "pqc_handshake", kind: "c-bidir", label: (_m, c) => `PQC handshake — ${kemName(c)}` },
       { stageId: "qkd_key_agreement", kind: "q-arrow", label: (m, c) => `${qkdName(c)} (w/ eavesdropper) · QBER ${f(m, "qber")}${optiTag(m, c)}`, hidden: pqcOnly },
       { stageId: "qml_ids", kind: "local-a", label: (m) => `QML-IDS attack detection · macro-F1 ${f(m, "ids_macro_f1")}` },
+      publishedStep("qml_ids"),
       QSMPC_COMPARE,
       { stageId: "sign_result", kind: "c-bidir", label: (_m, c) => `${sigName(c)}-signed audit record` },
     ],
@@ -200,7 +244,17 @@ export const USECASE_SPECS: Record<string, Spec> = {
       { stageId: "pqc_handshake", kind: "c-bidir", label: (_m, c) => `PQC handshake — ${kemName(c)}` },
       { stageId: "satellite_qkd", kind: "q-arrow", label: (m, c) => `free-space ${qkdName(c)} (${f(m, "channel_loss_db")} dB) · QBER ${f(m, "qber")}${optiTag(m, c)}`,
         hidden: pqcOnly },
-      { stageId: "qsdc_telemetry", kind: "q-arrow", label: (m) => `QSDC direct telemetry · secrecy ${f(m, "qsdc_secrecy_capacity")} bit/carrier` },
+      // The abort has to reach the arrow. With Eve at 0.5 the log said "QSDC ABORTED: error 0.158 >
+      // 0.11 - telemetry withheld" while this label read "QSDC direct telemetry · secrecy 0
+      // bit/carrier" with a done tick beside it - which reads as delivered-but-not-secret, the
+      // opposite of what happened. The inline eavesdrop check is this page's headline feature and
+      // the diagram was the one surface that did not show it firing.
+      { stageId: "qsdc_telemetry",
+        kind: "q-arrow",
+        label: (m) => (Number(m["qsdc_eavesdrop_detected"]) === 1
+          ? `QSDC ABORTED · error ${f(m, "qsdc_error_rate")} over threshold · telemetry withheld`
+          : `QSDC direct telemetry · secrecy ${f(m, "qsdc_secrecy_capacity")} bit/carrier`) },
+      publishedStep("qsdc_telemetry"),
       QSMPC_COMPARE,
       { stageId: "sign_result", kind: "c-bidir", label: (_m, c) => `${sigName(c)}-signed audit record` },
     ],
@@ -290,6 +344,25 @@ export default function TwoPartyDiagram({
                 fill={isActive(s) ? "#231a3a" : "var(--panel)"} stroke="var(--quantum)"
                 strokeWidth={isActive(s) ? 2.4 : 1.4} strokeDasharray="6 3" />
               <text x={MID} y={y + 4} textAnchor="middle" fontSize={11} fill="var(--quantum)" fontWeight={600}>{label}</text>
+            </g>
+          );
+        }
+        // A local computation whose label is too long for a party-sized box.
+        //
+        // `local-a` is a fixed 300-unit box centred on a party. The published-model step names a
+        // model, a 12-char revision, an execution provider, an input shape, a latency and an
+        // outcome - about 460 units at this font - so it spilled ~80 units past each edge of its
+        // box, and the left end ran off the viewBox entirely: the label rendered as
+        // "te_comms.opssat_student @ ..." with "published satelli" clipped away. Same width and
+        // position as the comparison bar, which is why that one has always fitted; the styling
+        // stays local (solid stroke, accent colour) because nothing here crosses the wire.
+        if (kind === "local-wide") {
+          return (
+            <g key={i} opacity={op}>
+              <rect x={64} y={y - 16} width={652} height={32} rx={7}
+                fill={isActive(s) ? "#1c2740" : "var(--panel)"} stroke="var(--accent)"
+                strokeWidth={isActive(s) ? 2.4 : 1.3} />
+              <text x={MID} y={y + 4} textAnchor="middle" fontSize={11} fill="#dfe7f3">{label}</text>
             </g>
           );
         }

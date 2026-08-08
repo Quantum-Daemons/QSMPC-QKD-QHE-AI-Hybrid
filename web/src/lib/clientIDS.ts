@@ -65,8 +65,15 @@ export function clientTrainScoreIDS(seed = 0, nPerClass?: number): IDSResult {
   const cfg = idsCfg();
   // samples-per-attack-class is a run-config knob (config.n_per_class): more training data per class
   // shifts the measured accuracy / attack-F1 (bounded >=20 for a usable split; robust to NaN/undefined).
+  //
+  // Clamped at BOTH ends. Only the lower bound was here, while the Parameters field advertised
+  // max=2000 - and `max` on a number input does not constrain a typed value, it only styles the
+  // spinner. Typing 100000 asked for 800k rows and 250 full-batch passes over them on the main
+  // thread, which does not return.
   const nP = Number(nPerClass);
-  const nPer = Number.isFinite(nP) && nP > 0 ? Math.max(20, Math.round(nP)) : (cfg.demo_n_per_class ?? 120);
+  const nPer = Number.isFinite(nP) && nP > 0
+    ? Math.min(2000, Math.max(20, Math.round(nP)))
+    : (cfg.demo_n_per_class ?? 120);
   const { X, y } = genData(nPer, seed);
   const nTest = Math.floor(X.length * (cfg.test_fraction ?? 0.25));
   const Xtr = X.slice(nTest), ytr = y.slice(nTest), Xte = X.slice(0, nTest), yte = y.slice(0, nTest);
