@@ -77,6 +77,12 @@ export default function BenchmarkPanel(
                 {advantage.score}<span style={{ fontSize: 16, color: "#97a3b6" }}>/10</span>
               </div>
               <div className="tag" style={{ marginTop: 6 }}>{advantage.tier} advantage</div>
+              {/* A clamped 10/10 and a run far past the ceiling render identically; say which. */}
+              {advantage.clamped && typeof advantage.score_raw === "number" && (
+                <div className="muted" style={{ fontSize: 11, marginTop: 4 }}>
+                  raw {advantage.score_raw} (clamped to 0-10)
+                </div>
+              )}
             </div>
             <div style={{ flex: 1, minWidth: 240 }}>
               <h3 style={{ marginTop: 0 }}>Quantum advantage</h3>
