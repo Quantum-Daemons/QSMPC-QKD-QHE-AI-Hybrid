@@ -105,6 +105,10 @@ class ModelSpec:
     artifacts: tuple[ArtifactSpec, ...] = ()
     hf_repo: str | None = None    # None => not published (T1 students are computed, not downloaded)
     hf_revision: str | None = None  # pin a 40-char commit sha before any browser fetch
+    # Set when a retrain superseded a published artefact: the sha that WAS pinned, kept so the UI can
+    # say "retrained since publication, needs republishing" instead of the identical-looking "never
+    # pinned". See train.record_metrics for why a retrain must not carry its old pin forward.
+    hf_revision_stale: str | None = None
     runs_encrypted: bool = False
     notes: str = ""
 
@@ -633,6 +637,19 @@ _SPECS: tuple[ModelSpec, ...] = (
         artifacts=_STUDENT_ARTIFACTS,
         hf_repo="qsh-satellite-telemanom-ckks-student",
         runs_encrypted=True,
+        notes=(
+            "The one published model with no browser evaluation sample, and the reason is the "
+            "metric rather than the weights. Round 21 gave the other three students samples; this "
+            "one is scored on event-wise F0.5, which is defined over contiguous runs of a timeline "
+            "and cannot be computed from a shuffled set of independent rows -- which is exactly "
+            "what the browser evaluator scores. Shipping a per-row metric instead would verify a "
+            "number nobody published for it. "
+            "It needs no scaler, unlike the other three: scripts/train/satellite_telemanom.py fits "
+            "it on raw `flat_te` (the last 8 timesteps x 6 channels), so the absent `input` block "
+            "in its weights.json is correct rather than the omission it looks like. "
+            "Worth reading alongside its numbers: the teacher scores 0.0 event-wise F0.5 on this "
+            "split and the student 0.0032, so agreement of 0.9987 is agreement about finding almost "
+            "nothing."),
     ),
     ModelSpec(
         usecase="satellite_comms",
@@ -729,7 +746,13 @@ def specs() -> tuple[ModelSpec, ...]:
     for s in _SPECS:
         entry = recorded.get(s.key, {})
         rev = entry.get("hf_revision")
-        out.append(replace(s, hf_revision=rev) if rev else s)
+        stale = entry.get("hf_revision_invalidated_by_retrain")
+        if rev:
+            out.append(replace(s, hf_revision=rev))
+        elif stale:
+            out.append(replace(s, hf_revision_stale=stale))
+        else:
+            out.append(s)
     return tuple(out)
 
 
@@ -811,10 +834,21 @@ def _artifact_exists(key: str, path: str) -> bool:
 def _browser_runnable(key: str, precision: str = "fp32") -> bool:
     """Whether ORT Web can execute this model's graph at the given precision.
 
-    Default False when unknown: claiming a model runs in a browser and then hanging is worse than
-    declining. Precision matters independently of the model -- the int8 Telemanom graph loads in
-    0.03 s under Python ORT and never finishes session creation in a browser, because
-    MatMulInteger + DynamicQuantizeLinear alongside LSTM is not viable in ORT Web.
+    RECORDED AS PROVENANCE, NOT AS A GATE. `browserModels()` in the frontend deliberately does not
+    consult this: the flag was built on a diagnosis that was retracted, in which unsupported
+    operators were blamed for what turned out to be the JSEP build being imported unconditionally on
+    a machine with no GPU adapter.
+
+    This docstring used to claim that "the int8 Telemanom graph loads in 0.03 s under Python ORT and
+    never finishes session creation in a browser, because MatMulInteger + DynamicQuantizeLinear
+    alongside LSTM is not viable in ORT Web". That is false, and it is the same retracted diagnosis
+    wearing a specific number. Round 21 measured it: `satellite_comms.telemanom` serves exactly that
+    int8 graph to the browser, and it creates a session and runs a 1x250x6 forecast on the WebGPU
+    execution provider in 153 ms. Deleting the claim rather than softening it, because a confident
+    measurement that was never re-measured is how it survived three rounds.
+
+    `int8_browser_runnable` is written by no exporter, so this returns False for every int8 artefact.
+    That is honest for an unmeasured property and harmless while nothing gates on it.
     """
     report = _export_report(key)
     field = "browser_runnable" if precision != "int8" else "int8_browser_runnable"
@@ -838,6 +872,7 @@ def frontend_models() -> dict:
             "runs_encrypted": s.runs_encrypted,
             "hf_repo_id": s.hf_repo_id,
             "hf_revision": s.hf_revision,
+            "hf_revision_stale": s.hf_revision_stale,
             # Whether ONNX Runtime Web can execute this graph at all. A tree ensemble is
             # ai.onnx.ml (TreeEnsembleClassifier), a domain ORT Web does not implement, so it is
             # not browser-runnable at any size. Exported so the browser can decline BEFORE

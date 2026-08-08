@@ -30,6 +30,19 @@ Two corollaries, both of which have caught real defects:
   the `e91` branch existed and was unreachable, because the diagram was handed the crypto-agility
   family rather than the protocol.
 
+  A **seventh** was found in Round 21, and it is the one this rule was written for: `qrng_eps_log2`
+  had been *restored* by Round 20 on the stated grounds that it "moves the extracted bit count". It
+  does not, at any value the spinner can reach. It moves the leftover-hash-lemma ceiling, and the
+  delivered output is min(ceiling, requested) with requested almost always the smaller - so at 1024
+  bits every eps from -1 to -128 returns byte-identical output. A comment asserting the control works
+  is not evidence that it does, and this one had survived a round that specifically re-examined it.
+  The ceiling is now reported, which is the observable the parameter actually moves.
+
+  Fixing it surfaced a worse defect of the same family: at 64 bits and eps -128 the run delivers ONE
+  bit and reported health PASS with min-entropy 0, because both SP 800-90B continuous tests return
+  "passed" when handed too little data. A check that passes because there is nothing left to test is
+  the MEASURED-with-no-work rule in its purest form. INCONCLUSIVE is now a third outcome.
+
   A sixth was found only by repeating the sweep on a **second view of the same state**. The
   Orchestration page's graph is memoised, and its `useMemo` dependency array listed `kem`, `qkd` and
   `sig` but not `qkdProtocol` - so the wiring was correct, the label function was correct, and the
@@ -52,7 +65,11 @@ Eight gates. Steps 1-3 and 5-8 are pass/fail; step 4 is a loop that runs until c
 3. **Environment** - `self.crossOriginIsolated === true` on the deployed page, or every timing the
    demo prints is coarsened and invalid. Zero `/api` calls in demo mode, verified in the network
    panel rather than by reading code.
-4. **Content, in Chrome, every page** - four axes, iterated until clean:
+4. **Content, in Chrome, every page** - four axes, iterated until clean. The executable form of this
+   gate is `browser-verification-checklist.md`: seven routes including two negative paths, fourteen
+   regions per use-case page, eight axes, and the numeric edges to type into every field. It is a
+   file rather than a habit because what gets reconstructed from memory each round is whatever
+   someone remembers to look at.
    - *Wording* matches the primary source. Never "experiment" for a simulation, never
      "information-theoretic" where it does not hold.
    - *Numbers* are config-traceable or session-measured.
@@ -66,6 +83,22 @@ Eight gates. Steps 1-3 and 5-8 are pass/fail; step 4 is a loop that runs until c
    public URL and `document.querySelectorAll('script[src]')` before trusting any browser result.
 7. **Git-only deployment** - commit, push, then pull and build on the server. Never rsync.
 8. **Final greps** - no new literals, no Japanese in public files, CI green on the head commit.
+
+   As of Round 21 there is **no** Japanese in any tracked text file - the rule holds with no
+   exceptions. `MONETIZATION_WORKFLOW.ja.md` and the private business-strategy reports are Japanese
+   by design and untracked; the reports live one directory above the repository and have never been
+   inside it.
+
+   `.gitignore` used to be the exception, carrying five Japanese-named `.docx` patterns. They were
+   guarding a path that does not exist, so they are gone and `*.[dD][oO][cC][xX]` replaced them:
+   strictly stronger, since it catches those files plus any future report whatever it is called.
+   Case-folded by hand because gitignore matching is case-SENSITIVE on Linux - a plain `*.docx` lets
+   `Report.DOCX` straight through, which `git check-ignore` confirms. Verified against all five real
+   filenames and four casings.
+
+   Run the grep over TEXT files only (`grep -I`). Every research PDF under `references/` matches the
+   CJK byte ranges, the way arbitrary binary does; a scan that includes them reports twelve
+   violations and not one is real. A check that cries wolf twelve times is a check nobody runs twice.
 
 ## Mapping the ladder onto deliverables
 
@@ -155,6 +188,30 @@ So a round is not complete when its new work passes. It is complete when:
   FHE path is published as non-compiling, and the telecom corpus has unresolved redistribution
   terms;
 - the count of deferred items did not increase.
+
+**Round 21 recorded two failures against this gate and then closed both, rather than carrying them
+into a fourth round.** They are kept here as the evidence for why the gate exists, in the past tense
+they now belong in.
+
+`results/` had gone 953 to 1133 to 1421 files across three rounds with no retention mechanism
+anywhere in the tree. It is gitignored, so this was local and VPS disk rather than repository bloat -
+which is exactly why it stayed easy to defer rather than easy to notice. Closed:
+`orchestration.keep_runs` (default 200, 0 disables) prunes on persist, grouped by run stem so a run
+is kept or removed whole. Measured after: 600 files, 200 runs.
+
+Prometheus had zero call sites in its third consecutive round. `monitoring/exporter.py` defined four
+metrics and three recorder helpers with no caller outside that file, and `BENCH_LATENCY` had no
+reader at all, not even inside it - so `/metrics` served a valid, permanently empty scrape and the
+Grafana dashboard charted it. The gate's own escalation had run "add a dashboard" to "charts nothing"
+to "zero call sites". Closed: the recorders are called from `orchestration/pipeline.py` per stage and
+per run, and from `benchmark/runner.py` for the path label `BENCH_LATENCY` was always going to need.
+Measured: the scrape goes from 1 series to 39 after one run, and `tests/test_monitoring_wired.py`
+asserts that production code calls them rather than that the helpers exist.
+
+Also closed in Round 21: the EU AI Act Art. 50 disclosure, which had become a live obligation five
+days before the work started, and the liboqs version mismatch, which turned out to be worse than
+recorded - the Dockerfile cloned the default branch, so two builds of the same commit of this repo
+could ship different cryptography with nothing recording which. Pinned to 0.16.0.
 
 ## What this project cannot verify, and says so
 

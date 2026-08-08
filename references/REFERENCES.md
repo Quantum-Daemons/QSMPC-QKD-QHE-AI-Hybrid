@@ -123,11 +123,12 @@ re-checked 2026-08-05:
   disagree. That is an unresolved ambiguity, not a permission, and it is the same class of question
   as the ImageNet one that Round 19 resolved by dropping the dependency rather than guessing.
 - **The Engelen-corrected redistribution** is hosted separately and states nothing.
-- **5G-NIDD was evaluated this round and rejected.** Secondary sources report CC BY 4.0, but IEEE
-  DataPort marks it subscription-required and neither that record nor the authors' own NetsLab page
-  carries any licence string. Not usable under a commercial-OK policy on secondary evidence.
+- **5G-NIDD was evaluated and rejected.** The adjudication lives in
+  [`DATA_LICENSES.md`](../DATA_LICENSES.md) - it was written out in full in both files, and a licence
+  finding with two homes is a licence finding that will be corrected in one of them.
 
-See `DATA_LICENSES.md`.
+Licence adjudications belong in [`DATA_LICENSES.md`](../DATA_LICENSES.md); this file cites the
+papers. Where the two used to overlap, that file is the owner.
 
 ---
 
@@ -277,8 +278,11 @@ Added in Round 18 and previously recorded only in source docstrings.
   than left for a reader to notice.
 
 - **ETSI GS QKD 020** - interoperable KMS API `[link]`
-  URL: https://www.etsi.org/committee/qkd
-  Added: publication date re-verified 2026-08-04
+  URL: https://forge.etsi.org/rep/qkd/gs020-interop-kms
+  Also: https://www.etsi.org/committee/qkd - the committee landing page, which is what this entry
+  used to point at. It is not the spec, and an audit of this file flagged it as one of two entries
+  with no resolvable identifier. The forge repository carries the API definition itself.
+  Added: publication date re-verified 2026-08-04; URL corrected 2026-08-07
   Published **2026-06-29**, not 2024 as is widely repeated, and it covers the KMS-to-KMS interface
   *within a trusted node* rather than general inter-domain transport. Not implemented here; recorded
   so the roadmap cites the right scope.
@@ -339,3 +343,54 @@ in Round 17 are marked below.
 | **`mcp`** (MCP Python SDK; the class is `MCPServer`, named `FastMCP` before v2.0.0) and the official `@modelcontextprotocol/server-filesystem` | `qsh/mcp/*` - real quantum-safe MCP server and interop | MIT |
 | **`onnxruntime-web`** | `web/src/lib/onnxInference.ts` - browser inference. The `webgpu` and `wasm` builds are separate bundles and the demo picks one by probing for a real adapter | MIT |
 | `PennyLane` | `qsh/ai/federated.py` - quantum federated learning (`kind="qfl"`), and `qsh/qml_ids/detector.py`. The FedAvg and secure-aggregation code is this repository's own; Flower is cited as prior art, not used as a dependency | Apache-2.0 |
+
+## Baselines and corpora cited in code but previously absent here
+
+Round 21 audit: these are quoted as authority in registry docstrings, model cards or the SPA's baked
+config, and had no entry. A baseline a page prints beside a measured number is a citation, so it
+belongs in this file rather than only in a comment.
+
+- **Kotowski et al., "The OPS-SAT benchmark for detecting anomalies in satellite telemetry",
+  *Scientific Data* 12 (2025).** DOI 10.1038/s41597-025-05035-3. Data: Zenodo
+  10.5281/zenodo.12588359, CC BY 4.0. Source of the 30 published baselines `satellite_comms.opssat`
+  is quoted against. Added: 2026-08-07.
+- **Yang et al., "MedMNIST v2", *Scientific Data* 10:41 (2023).** DOI 10.1038/s41597-022-01721-8.
+  Source of the BreastMNIST ResNet-18 AUC 0.901 / ResNet-50 AUC 0.857 baselines. Added: 2026-08-07.
+- **Altman et al., "Realistic Synthetic Financial Transactions for Anti-Money Laundering Models",
+  NeurIPS 2023 Datasets and Benchmarks.** arXiv:2306.16424. AMLworld; source of the 0.6323 finance
+  baseline and of the corpus's own synthetic-by-construction statement. Added: 2026-08-07.
+- **Egressy et al., "Provably Powerful Graph Neural Networks for Directed Multigraphs" (Multi-PNA+EU),
+  AAAI-24, vol. 38 no. 10, pp. 11838-11846.** DOI 10.1609/aaai.v38i10.29073. Source of the 0.6816
+  finance ceiling. Added: 2026-08-07.
+- **Liu et al., "The Elephant in the Room: Towards A Reliable Time-Series Anomaly Detection Benchmark"
+  (TSB-AD), NeurIPS 2024 Datasets and Benchmarks.** arXiv:2412.20512. Source of the point-adjustment
+  argument: a uniform random score ranks 26th of 32 detectors under point adjustment, which is why
+  this project reports event-wise F-beta and never point-adjusted F1 as a headline. Added: 2026-08-07.
+- **Hundman et al., "Detecting Spacecraft Anomalies Using LSTMs and Nonparametric Dynamic
+  Thresholding", KDD 2018.** arXiv:1802.04431. Telemanom. Added: 2026-08-07.
+- **Ma, Qi, Zhao & Lo, "Practical decoy state for quantum key distribution", *Phys. Rev. A* 72,
+  012326 (2005).** DOI 10.1103/PhysRevA.72.012326. The single-photon bound OptiQKD tunes. Added:
+  2026-08-07.
+- **Lopez-Rojas, Elmir & Axelsson, "PaySim: A financial mobile money simulator for fraud detection",
+  EMSS 2016.** The bundled finance demo sample; a SIMULATOR, not real transactions. Added: 2026-08-07.
+- **Sharafaldin, Habibi Lashkari & Ghorbani, "Toward Generating a New Intrusion Detection Dataset and
+  Intrusion Traffic Characterization", ICISSP 2018.** CIC-IDS2017. Added: 2026-08-07.
+- **Wolberg, Street & Mangasarian, "Breast Cancer Wisconsin (Diagnostic)", UCI ML Repository (1995).**
+  DOI 10.24432/C5DW2B. Relicensed by UCI to CC BY 4.0, so attribution is due. Added: 2026-08-07.
+- **Kermany et al., "Identifying Medical Diagnoses and Treatable Diseases by Image-Based Deep
+  Learning", *Cell* 172(5) (2018).** DOI 10.1016/j.cell.2018.02.010. The chest X-ray source behind
+  PneumoniaMNIST. Added: 2026-08-07.
+- **Mavaddat et al., "Polygenic Risk Scores for Prediction of Breast Cancer", *AJHG* 104(1) (2019).**
+  DOI 10.1016/j.ajhg.2018.11.002. PGS Catalog PGS000001 / PPM017270; source of the C-index 0.628 the
+  genomics card cites as external and explicitly does not measure. Added: 2026-08-07.
+- **"SoK: Private LLM Inference", IACR ePrint 2026/935.** Quoted in `models/registry.py` and
+  `models/distil.py` on why distillation is the practical route to FHE-feasible inference. Added:
+  2026-08-07.
+- **arXiv:2607.11969** - instability of overlap-based anomaly metrics. Quoted in the satellite model
+  card and baked into `config.defaults.json`; the reason the event-wise F0.5 non-reproduction is
+  reported as metric instability rather than as a training failure. Added: 2026-08-07.
+- **EO 14412, "Securing the Nation Against Advanced Cryptographic Attacks"**, signed 2026-06-22,
+  91 FR 38483. PQC key establishment on high-value assets by 2030-12-31, digital signatures by
+  2031-12-31, FAR rule putting contractors on the 2030 date; National Security Systems excluded and
+  remaining on CNSA 2.0. The binding US instrument, against NIST IR 8547 which is still a draft.
+  Added: 2026-08-07.
