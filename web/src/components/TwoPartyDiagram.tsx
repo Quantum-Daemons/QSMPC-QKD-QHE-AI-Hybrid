@@ -43,6 +43,14 @@ interface Step {
   label: (m: M, c: DiagramConfig) => string;
   /** Drawn only when this returns false. Used to drop the quantum arrow under a PQC-only profile. */
   hidden?: (c: DiagramConfig) => boolean;
+  /**
+   * Did the step SUCCEED, as distinct from having finished? The completion tick means only that the
+   * stage ran without throwing, but it renders immediately after a measured value, so a reader reads
+   * it as a verdict on that value. With an eavesdropper at 0.35 the BB84 row drew
+   * "QBER 0.1 ✓" while the same page's posture table reported 0 secure bits - the diagram and the
+   * table disagreed about one run. Return false and the step is marked as completed-but-failed.
+   */
+  ok?: (m: M, c: DiagramConfig) => boolean;
 }
 interface Spec { a: { name: string; sub: string }; b: { name: string; sub: string }; steps: Step[] }
 
@@ -101,6 +109,17 @@ const f = (m: M, k: string, d = "—") => {
   if (typeof v === "number")
     return Math.abs(v) >= 1e-3 || v === 0 ? String(Number(v.toFixed(5))) : v.toExponential(2);
   return String(v);
+};
+
+/**
+ * A key-agreement step succeeded only if it yielded key material. The QBER alone cannot say so: the
+ * GLLP zero-key point measured in this repository is 0.098106, BELOW the textbook BB84 bound of
+ * 0.11, so a QBER inside [0.098, 0.11) looks acceptable against the textbook figure while the
+ * decoy-state estimate returns nothing. Ask the run what it produced instead of re-deriving it.
+ */
+const qkdOk = (m: M) => {
+  const bits = m["secure_key_bits"];
+  return typeof bits === "number" ? bits > 0 : true;   // no measurement yet -> do not claim failure
 };
 
 // The MPC-FHE private inference, drawn as its two halves (the 2026 hybrid: linear→FHE, non-linear→MPC).
@@ -191,7 +210,7 @@ export const USECASE_SPECS: Record<string, Spec> = {
     b: { name: "Bank B", sub: "candidate accounts · LAN" },
     steps: [
       { stageId: "pqc_handshake", kind: "c-bidir", label: (_m, c) => `PQC handshake — ${kemName(c)}` },
-      { stageId: "qkd_key_agreement", kind: "q-arrow", label: (m, c) => `${qkdName(c)} · QBER ${f(m, "qber")}${optiTag(m, c)}`, hidden: pqcOnly },
+      { stageId: "qkd_key_agreement", kind: "q-arrow", label: (m, c) => `${qkdName(c)} · QBER ${f(m, "qber")}${optiTag(m, c)}`, hidden: pqcOnly, ok: qkdOk },
       { stageId: "qsmpc_compute", kind: qsmpcKind("psi"), label: qsmpcLabel("psi") },
       ...HYBRID_INFERENCE,
       publishedStep("private_inference"),
@@ -204,7 +223,7 @@ export const USECASE_SPECS: Record<string, Spec> = {
     b: { name: "Aggregator", sub: "global model · LAN" },
     steps: [
       { stageId: "pqc_handshake", kind: "c-bidir", label: (_m, c) => `PQC handshake — ${kemName(c)}` },
-      { stageId: "qkd_key_agreement", kind: "q-arrow", label: (m, c) => `${qkdName(c)} · QBER ${f(m, "qber")}${optiTag(m, c)}`, hidden: pqcOnly },
+      { stageId: "qkd_key_agreement", kind: "q-arrow", label: (m, c) => `${qkdName(c)} · QBER ${f(m, "qber")}${optiTag(m, c)}`, hidden: pqcOnly, ok: qkdOk },
       { stageId: "federated_training", kind: "c-bidir", label: (m) => `federated train + pairwise masking (demo keys) · acc ${f(m, "federated_accuracy")}` },
       ...HYBRID_INFERENCE,
       publishedStep("private_inference"),
@@ -217,7 +236,7 @@ export const USECASE_SPECS: Record<string, Spec> = {
     b: { name: "Cohort 2", sub: "allele counts · LAN" },
     steps: [
       { stageId: "pqc_handshake", kind: "c-bidir", label: (_m, c) => `PQC handshake — ${kemName(c)}` },
-      { stageId: "qkd_key_agreement", kind: "q-arrow", label: (m, c) => `${qkdName(c)} · QBER ${f(m, "qber")}${optiTag(m, c)}`, hidden: pqcOnly },
+      { stageId: "qkd_key_agreement", kind: "q-arrow", label: (m, c) => `${qkdName(c)} · QBER ${f(m, "qber")}${optiTag(m, c)}`, hidden: pqcOnly, ok: qkdOk },
       { stageId: "qsmpc_compute", kind: qsmpcKind("sum"), label: qsmpcLabel("sum") },
       ...HYBRID_INFERENCE,
       publishedStep("private_inference"),
@@ -230,7 +249,7 @@ export const USECASE_SPECS: Record<string, Spec> = {
     b: { name: "Remote site / Eve", sub: "QKD Rx (eavesdropper)" },
     steps: [
       { stageId: "pqc_handshake", kind: "c-bidir", label: (_m, c) => `PQC handshake — ${kemName(c)}` },
-      { stageId: "qkd_key_agreement", kind: "q-arrow", label: (m, c) => `${qkdName(c)} (w/ eavesdropper) · QBER ${f(m, "qber")}${optiTag(m, c)}`, hidden: pqcOnly },
+      { stageId: "qkd_key_agreement", kind: "q-arrow", label: (m, c) => `${qkdName(c)} (w/ eavesdropper) · QBER ${f(m, "qber")}${optiTag(m, c)}`, hidden: pqcOnly, ok: qkdOk },
       { stageId: "qml_ids", kind: "local-a", label: (m) => `QML-IDS attack detection · macro-F1 ${f(m, "ids_macro_f1")}` },
       publishedStep("qml_ids"),
       QSMPC_COMPARE,
@@ -243,6 +262,7 @@ export const USECASE_SPECS: Record<string, Spec> = {
     steps: [
       { stageId: "pqc_handshake", kind: "c-bidir", label: (_m, c) => `PQC handshake — ${kemName(c)}` },
       { stageId: "satellite_qkd", kind: "q-arrow", label: (m, c) => `free-space ${qkdName(c)} (${f(m, "channel_loss_db")} dB) · QBER ${f(m, "qber")}${optiTag(m, c)}`,
+        ok: qkdOk,
         hidden: pqcOnly },
       // The abort has to reach the arrow. With Eve at 0.5 the log said "QSDC ABORTED: error 0.158 >
       // 0.11 - telemetry withheld" while this label read "QSDC direct telemetry · secrecy 0
@@ -330,7 +350,9 @@ export default function TwoPartyDiagram({
       {steps.map((s, i) => {
         const y = rowY(i);
         const op = opacity(s);
-        const mark = isDone(s) ? " ✓" : isActive(s) ? " ▶" : "";
+        // A finished step whose own `ok` says it failed must not carry the success tick.
+        const failed = isDone(s) && s.ok ? !s.ok(metrics, config) : false;
+        const mark = isDone(s) ? (failed ? " ✗" : " ✓") : isActive(s) ? " ▶" : "";
         const label = s.label(metrics, config) + mark;
         // A step whose channel depends on the run resolves its kind here, so the arrow style and the
         // legend cannot disagree with the operation the label names.
@@ -389,7 +411,7 @@ export default function TwoPartyDiagram({
         return (
           <g key={i} opacity={op}>
             <text x={MID} y={y - 9} textAnchor="middle" fontSize={11}
-              fill={isActive(s) ? "#ffffff" : "#c4cee0"}>{label}</text>
+              fill={failed ? "#ff8f6b" : isActive(s) ? "#ffffff" : "#c4cee0"}>{label}</text>
             <line x1={ALICE_X + 6} y1={y} x2={BOB_X - 6} y2={y} stroke={col}
               strokeWidth={isActive(s) ? 2.6 : 1.8} strokeDasharray={dash}
               markerEnd={mEnd} markerStart={mStart} />
