@@ -60,6 +60,10 @@ def build(config: dict | None = None) -> tuple[Pipeline, Context]:
     ctx.data["secrets"] = per_cohort
     ctx.data["linear_model"] = LinearModel(w2.astype(float), b2)
     ctx.data["features"] = subject
+    # Population mean dosage as the SHAP reference. Attributions then read as "this subject against
+    # the cohort", which is the clinically meaningful comparison; against a zero vector they read as
+    # "against a person homozygous reference at every locus", which is not a person.
+    ctx.data["explain_baseline"] = dosages.mean(axis=0).astype(float)
     ctx.data["feature_names"] = list(rsids)                         # per-SNP SHAP (which loci drive risk)
     ctx.data["_prs"] = {"name": prs_name, "n_snps": len(weights), "threshold": round(threshold, 4),
                         "subject_score": round(float(subject @ weights), 4)}
