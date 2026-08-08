@@ -135,7 +135,15 @@ function UseCaseView({ usecase }: { usecase: string }) {
       <ModelPanel usecase={usecase} />
 
       {/* XAI: signed SHAP attribution for the inference use cases */}
-      {meta.inference && <ShapPanel explanation={artifacts?.explanation} />}
+      {meta.inference && (
+        <ShapPanel
+          explanation={artifacts?.explanation}
+          provenance={artifacts?.explanation_provenance ?? null}
+          baseline={artifacts?.explanation_baseline ?? null}
+          publishedModel={metrics?.published_model ? String(metrics.published_model) : null}
+          surfaced={String(run.params.inference ?? "")}
+        />
+      )}
 
       {/* Unified benchmark: auto-filled from the single Run above (no separate "Run benchmark" button).
           The MPC-FHE row is the live run's measured FHE-linear/MPC-non-linear split. */}

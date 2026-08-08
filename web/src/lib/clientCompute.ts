@@ -1657,8 +1657,17 @@ export function runClientPipeline(
         const names = realIn?.names ?? FEATURE_NAMES[usecase] ?? Array.from({ length: 8 }, (_, i) => `feature_${i}`);
         // XAI uses the REAL model where one is shipped (real breast-cancer LR / real PGS PRS weights),
         // else the linear surrogate — so the attribution on real data reflects the real model.
+        // The baseline is passed now. Defaulting it to the zero vector measured every attribution
+        // against a reference case that does not occur - PaySim's `amount` column has a log-scale
+        // mean of 11.5, so its bar was read against "a transaction of log-amount zero" and inflated
+        // against every other feature. `efficiency_gap` cannot detect this: completeness holds for
+        // any baseline, which is exactly why it went unnoticed.
         artifacts.explanation = linearShap(
-          realIn?.model?.W ?? PLACEHOLDER_W, realIn?.model?.b ?? PLACEHOLDER_B, feats, names, 5);
+          realIn?.model?.W ?? PLACEHOLDER_W, realIn?.model?.b ?? PLACEHOLDER_B, feats, names, 5,
+          realIn?.baseline);
+        artifacts.explanation_baseline = realIn?.baseline
+          ? "sample mean E[x] over the shipped rows"
+          : "zero vector (no sample mean available for this use case)";
         // SHAP is exact for the model it is given. With placeholder weights the attribution is
         // exact for weights that mean nothing, so say which case this is rather than let a reader
         // assume the explanation describes the industry model.
