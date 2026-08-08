@@ -13,7 +13,8 @@ import {
   demoSample, qsmpcCfg, quantumAdvantageCfg, securityScoringCfg, studentModel, tierArchitectures, webCfg,
   workloadMultipliers,
 } from "./config";
-import { encryptedConv2d, encryptedLinear, warmFHE } from "./clientFHE";
+import { encryptedConv2d, encryptedLinear, encryptedStudentInference, warmFHE,
+  type CnnStudentWeights } from "./clientFHE";
 import { clientTrainScoreIDS } from "./clientIDS";
 import { secureArgmax, warmMPC } from "./clientMPC";
 import { optimizeQKD } from "./clientOptiQKD";
@@ -358,7 +359,11 @@ export interface MeasuredHybrid {
   /** Set when the run performed a real encrypted CONVOLUTION rather than a dot product. Counted,
    *  not estimated: rotations and the key-switch each triggers are what dominate CKKS cost. */
   conv?: { rotations: number; multiplies: number; patchesPerCiphertext: number;
-           outH: number; outW: number; channels: number; convMs: number; maxAbsError: number };
+           outH: number; outW: number; channels: number; convMs: number; maxAbsError: number;
+           /** True when the PUBLISHED student's weights drove the computation, false when only its
+            *  shape did. The two must never be reported as the same thing. */
+           publishedWeights: boolean; totalRotations: number;
+           studentParams?: number; studentPrediction?: number };
   /** Rotations and multiply-plain for the DENSE layer, so the two workloads compare like for like. */
   dense?: { rotations: number; multiplies: number };
 }
@@ -373,8 +378,40 @@ let _mpcWarmed = false;
 // (clientMPC) for the non-linear argmax, all measured. Returns null only if the real crypto is genuinely
 // unavailable here (e.g. a browser without WASM) — the caller then reports a clearly-labelled
 // representative figure as an honest last resort (logged with the cause, not silently masked).
+/** Fetch a published student's readable weights from its own pinned HF revision.
+ *
+ *  Returns null rather than throwing when the model publishes none: three of the four students are
+ *  sklearn-linear and ship a different JSON shape, and a null here selects the shape-only path with
+ *  the run saying so. No fallback weights are invented.
+ */
+const _studentWeightCache = new Map<string, CnnStudentWeights | null>();
+async function publishedStudentWeights(usecase: string | undefined): Promise<CnnStudentWeights | null> {
+  if (!usecase) return null;
+  if (_studentWeightCache.has(usecase)) return _studentWeightCache.get(usecase) ?? null;
+  let out: CnnStudentWeights | null = null;
+  try {
+    const spec = studentModel(usecase);
+    const art = spec?.artifacts?.find((a) => a.path.endsWith("weights.json"));
+    if (spec?.hf_repo_id && spec.hf_revision && art) {
+      const url = `https://huggingface.co/${spec.hf_repo_id}/resolve/${spec.hf_revision}/${art.path}`;
+      const res = await fetch(url, { mode: "cors" });
+      if (res.ok) {
+        const j = await res.json();
+        // Only the structural CNN encoding is evaluable here; a linear student's JSON is a
+        // different shape and must not be coerced into this one.
+        if (j && j.kind === "cnn-1conv-2dense") out = j as CnnStudentWeights;
+      }
+    }
+  } catch {
+    out = null;                       // offline or blocked: the shape-only path reports itself
+  }
+  _studentWeightCache.set(usecase, out);
+  return out;
+}
+
 export async function realClientHybrid(features: number[], u: () => number,
-                                      convolve = false): Promise<RealHybridRun | null> {
+                                      convolve = false,
+                                      usecase?: string): Promise<RealHybridRun | null> {
   try {
     if (!_fheWarmed) { await warmFHE(); _fheWarmed = true; }     // one-time CKKS keygen
     if (!_mpcWarmed) { await warmMPC(); _mpcWarmed = true; }     // one-time summon compile + emp-wasm init
@@ -394,18 +431,32 @@ export async function realClientHybrid(features: number[], u: () => number,
     if (convolve) {
       const mc = medicalCnn();
       const size = Number(mc.img_size);
-      const chans = Number((mc.channels as number[])[0] ?? 4);
-      // A deterministic separable-ish pattern rather than random draws, so repeat runs are
-      // comparable; the ENCRYPTION and the arithmetic are what is being measured.
       const img = Array.from({ length: size }, (_, y) =>
         Array.from({ length: size }, (_, x) => features[(y * size + x) % features.length] ?? 0));
-      const kernels = Array.from({ length: chans }, (_, k) =>
-        Array.from({ length: 3 }, (_, ky) =>
-          Array.from({ length: 3 }, (_, kx) => ((ky * 3 + kx + k) % 5 - 2) * 0.1)));
-      const cres = await encryptedConv2d(img, kernels, Array(chans).fill(0));
-      conv = { rotations: cres.rotations, multiplies: cres.multiplies,
-               patchesPerCiphertext: cres.patchesPerCiphertext, outH: cres.outH, outW: cres.outW,
-               channels: chans, convMs: cres.fheMs, maxAbsError: cres.maxAbsError };
+      // The PUBLISHED student's own weights when they can be fetched. Running the real network is
+      // what turns this from a cost model of the right shape into the model's actual encrypted
+      // inference, which is what makes crypto_fidelity checkable in a browser.
+      const wts = await publishedStudentWeights(usecase);
+      if (wts) {
+        const r = await encryptedStudentInference(wts, img);
+        conv = { rotations: r.rotations, multiplies: r.multiplies,
+                 patchesPerCiphertext: r.patchesPerCiphertext, outH: r.outH, outW: r.outW,
+                 channels: wts.conv.out_ch, convMs: r.fheMs, maxAbsError: r.logitMaxAbsError,
+                 publishedWeights: true, totalRotations: r.totalRotations,
+                 studentParams: wts.n_parameters, studentPrediction: r.prediction };
+      } else {
+        // No fetch, no invented weights: the shape is real but the kernels are a stated pattern,
+        // and the run says which of the two it did rather than letting them look alike.
+        const chans = Number((mc.channels as number[])[0] ?? 4);
+        const kernels = Array.from({ length: chans }, (_, k) =>
+          Array.from({ length: 3 }, (_, ky) =>
+            Array.from({ length: 3 }, (_, kx) => ((ky * 3 + kx + k) % 5 - 2) * 0.1)));
+        const cres = await encryptedConv2d(img, kernels, Array(chans).fill(0));
+        conv = { rotations: cres.rotations, multiplies: cres.multiplies,
+                 patchesPerCiphertext: cres.patchesPerCiphertext, outH: cres.outH, outW: cres.outW,
+                 channels: chans, convMs: cres.fheMs, maxAbsError: cres.maxAbsError,
+                 publishedWeights: false, totalRotations: cres.rotations };
+      }
     }
     return {
       prediction: mpc.out[0], fheMs: fhe.fheMs + (conv?.convMs ?? 0), mpcMs: mpc.mpcMs,
@@ -869,7 +920,14 @@ export function runClientPipeline(
           const opt = optimizeQKD(chan, protocol,
             Number(config.qkd_opt_samples ?? qkdCfg().optimize_n_samples));
           if (opt.improvementPct !== null) metric(stage, "qkd_skr_improvement_pct", r1(opt.improvementPct));
-          metric(stage, "qkd_optimized_skr", Math.round(opt.bestSkr * 1e5) / 1e5);
+          // BOTH ends of the ratio, and named for the model they come from. The optimiser scores a
+          // SURROGATE (clientOptiQKD's analytic skrModel); the `skr` metric above comes from the
+          // decoy-state bb84() simulation. They are different models, so a lone "optimized SKR"
+          // printed beside `skr` read as the optimiser making things worse -- 0.0035 against
+          // 0.00906 -- while the same panel claimed +48.8%. Emitting the surrogate's own baseline
+          // makes the percentage checkable in place, and the names stop the two being compared.
+          metric(stage, "qkd_surrogate_skr_default", Math.round(opt.baselineSkr * 1e6) / 1e6);
+          metric(stage, "qkd_surrogate_skr_tuned", Math.round(opt.bestSkr * 1e6) / 1e6);
           metric(stage, "qkd_convergence_evals", opt.convergenceEvals);
           // Only quote the decoy intensities for protocols whose model reads them. The E91/CHSH
           // model ignores muSignal/muDecoy entirely, so printing "tuned" values there described a
@@ -881,8 +939,11 @@ export function runClientPipeline(
           emit("log", stage, opt.baselineIsDead
             ? `OptiQKD (coordinate ascent): baseline SKR is 0 — no secure key to improve, so no `
               + `percentage is reported (${tuned}; ${opt.nEvals} evals — simulated)`
-            : `OptiQKD (coordinate ascent): SKR +${r1(opt.improvementPct as number)}% vs default `
-              + `(${tuned}; ${opt.nEvals} evals, converged in ${opt.convergenceEvals} — simulated)`);
+            : `OptiQKD (coordinate ascent): surrogate SKR ${opt.baselineSkr.toExponential(2)} -> `
+              + `${opt.bestSkr.toExponential(2)}, +${r1(opt.improvementPct as number)}% `
+              + `(${tuned}; ${opt.nEvals} evals, converged in ${opt.convergenceEvals}). This is the `
+              + `optimiser's own analytic model, NOT the decoy-state run above - do not compare it `
+              + `with that run's skr, which a different model produced.`);
         }
         break;
       }
@@ -911,6 +972,8 @@ export function runClientPipeline(
           const opt = optimizeQKD(satChan, satProtocol,
             Number(config.qkd_opt_samples ?? qkdCfg().optimize_n_samples));
           if (opt.improvementPct !== null) metric(stage, "qkd_skr_improvement_pct", r1(opt.improvementPct));
+          metric(stage, "qkd_surrogate_skr_default", Math.round(opt.baselineSkr * 1e6) / 1e6);
+          metric(stage, "qkd_surrogate_skr_tuned", Math.round(opt.bestSkr * 1e6) / 1e6);
           metric(stage, "qkd_convergence_evals", opt.convergenceEvals);
           const tunedSat = satProtocol === "e91"
             ? `basis p=${r2(opt.bestParams.basisProb)}`
@@ -919,7 +982,9 @@ export function runClientPipeline(
           emit("log", stage, opt.baselineIsDead
             ? `OptiQKD (free-space): baseline SKR is 0 — no secure key to improve, so no percentage `
               + `is reported (${tunedSat}; ${opt.nEvals} evals — simulated)`
-            : `OptiQKD (free-space, coordinate ascent): SKR +${r1(opt.improvementPct as number)}% vs default `
+            : `OptiQKD (free-space, coordinate ascent): surrogate SKR `
+              + `${opt.baselineSkr.toExponential(2)} -> ${opt.bestSkr.toExponential(2)}, `
+              + `+${r1(opt.improvementPct as number)}% vs default `
               + `(${tunedSat}; ${opt.nEvals} evals, converged in ${opt.convergenceEvals} — simulated)`);
         }
         break;
@@ -1099,8 +1164,9 @@ export function runClientPipeline(
         if (inf.note) emit("log", stage, `inference: ${inf.note}`);
 
         // The medical CNN workload runs a genuine encrypted convolution.
-        const real = await realClientHybrid(feats, u,
-          usecase === "medical_fl" && String(config.workload ?? "linear") === "cnn");
+        // Medical always evaluates its published student's convolution; the other use cases have
+        // linear students, for which the packed dot product IS the real model.
+        const real = await realClientHybrid(feats, u, usecase === "medical_fl", usecase);
         if (real) {
           // A real encrypted convolution is not scaled by anything: its latency IS the measurement.
           const bscale = real.conv
@@ -1133,7 +1199,20 @@ export function runClientPipeline(
             // the same inputs. Reported separately from the dense layer's so a regression in one
             // cannot hide behind the other.
             metric(stage, "fhe_conv_max_abs_error", real.conv.maxAbsError);
-            emit("log", stage, `private inference (REAL in-browser FHE, encrypted CONVOLUTION): `
+            // Whether the PUBLISHED student's weights drove this, or only its shape did. These are
+            // different claims and the run must never let them look alike.
+            metric(stage, "fhe_weights", real.conv.publishedWeights
+              ? "published student (HF, pinned revision)" : "student shape, stated kernel pattern");
+            metric(stage, "fhe_total_rotations", real.conv.totalRotations);
+            if (real.conv.studentParams != null) metric(stage, "fhe_student_params", real.conv.studentParams);
+            if (real.conv.studentPrediction != null) metric(stage, "fhe_student_class", real.conv.studentPrediction);
+            emit("log", stage, (real.conv.publishedWeights
+              ? `private inference (REAL in-browser FHE, encrypted CONVOLUTION over the PUBLISHED `
+                + `student's own weights fetched from its pinned HF revision, `
+                + `${real.conv.studentParams} params): `
+              : `private inference (REAL in-browser FHE, encrypted CONVOLUTION on the student's `
+                + `SHAPE with a stated kernel pattern - the published weights could not be `
+                + `fetched, and none were invented): `)
               + `class=${real.prediction}; ${real.conv.channels}x3x3 kernels over a `
               + `${real.conv.outH}x${real.conv.outW} output, ${real.conv.patchesPerCiphertext} im2col `
               + `patches packed into one ciphertext, ${real.conv.rotations} rotations and `

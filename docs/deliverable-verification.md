@@ -16,10 +16,27 @@ figure quoted to a funder, or a published model someone else might build on.
 
 Two corollaries, both of which have caught real defects:
 
-- **A control that renders but changes nothing is a defect.** Round 20 found a QKD protocol selector
-  that genuinely switched the simulation while the diagram above it kept saying BB84, and a
-  satellite page whose four channel parameters had never been rendered at all, so the eavesdrop
-  check it advertised could not fire.
+- **A control that renders but changes nothing is a defect** - and so is one that changes the run
+  while the architecture diagram above it stays still. Round 20 found five: a QKD protocol selector
+  that switched the simulation while the diagram kept saying BB84; a satellite page whose four
+  channel parameters had never been rendered at all, so the eavesdrop check it advertised could not
+  fire; an OptiQKD checkbox that measured a 48.8% surrogate SKR gain and showed nothing; a Workload
+  selector that ran a real encrypted convolution and drew the same arrow as a dot product; and an
+  Inference selector with no visible effect anywhere.
+
+  The method that found them is worth keeping: **set each control to each value and diff the
+  rendered output**, rather than reading the code and reasoning about it. Four of the five had
+  correct-looking code paths. The QKD one even carried a comment claiming the fix had been made -
+  the `e91` branch existed and was unreachable, because the diagram was handed the crypto-agility
+  family rather than the protocol.
+
+  A sixth was found only by repeating the sweep on a **second view of the same state**. The
+  Orchestration page's graph is memoised, and its `useMemo` dependency array listed `kem`, `qkd` and
+  `sig` but not `qkdProtocol` - so the wiring was correct, the label function was correct, and the
+  node still never changed. Code review cannot catch that: both halves read right. Two lessons
+  carried forward: **audit every view that renders the same state**, not one per page, and **read
+  the rendered node text, not the DOM you expect** - the first sweep queried `svg text` and returned
+  nothing at all, because that graph renders React Flow HTML nodes rather than SVG.
 - **A number must be either traceable to config or produced by a measurement in this session.**
   Anything else is a literal, and gets moved into `defaults.py` or deleted.
 
@@ -70,6 +87,35 @@ The claim is "this model scores X on Y". Verified when:
 
 **A negative result is a deliverable.** ResNet-50 scoring 0.7988 against ResNet-18's 0.9147 is a
 reproduction of a published finding, not a failure. So is `quantum_beats_classical: false`.
+
+### A label on a diagram
+
+A diagram is the most-looked-at part of a page and the least likely to be tested. Verified when
+every control that alters the run alters what the diagram says, checked by diffing rendered text
+across each control's values - and when a figure it shows names the model that produced it. Round 20
+found `qkd_optimized_skr` printed beside `skr` where the two came from *different models*: the
+optimiser's analytic surrogate against the decoy-state simulation. The pair read as the optimiser
+making things worse, 0.0035 against 0.00906, while the same panel claimed +48.8%. Both ends of the
+ratio are now emitted under names that say which model produced them, so the percentage is checkable
+in place.
+
+### A model that runs under encryption
+
+Verified when the encrypted path evaluates the **published weights**, not an architecture of the
+same shape, and when the run says which of the two it did. Round 20 closed this for medical: the
+convolution ran on the student's shape with a stated kernel pattern until the student began
+publishing a structural `weights.json` its ONNX could not supply.
+
+Two preprocessing traps surfaced doing it, both of the same family - a missing step that produces
+plausible output rather than an error:
+
+- The exporter's first version inferred activations from layer types and dropped the ReLU between
+  the conv and the pool. The result reproduced **every argmax** on the 156-image test split while
+  its logits were off by 1.5e-01. Activations are now read from the trained module order, and an
+  independent re-implementation built from the JSON alone agrees with torch to 4.4e-08.
+- The linear students published coefficients but not the `StandardScaler` they were fit on, so
+  their graphs accept raw features and answer confidently wrong. That is why they had no evaluation
+  sample: generating one naively would have shipped the wrong number instead of an error.
 
 ### A benchmark figure quoted to a third party
 
