@@ -288,6 +288,24 @@ worse, because it looks checkable. When a recomputation disagrees, suspect the r
 attempt here missed the inputs entirely because it grepped for the metrics-table format while the
 card renders them as prose, and nearly reported a working panel as unverifiable.
 
+**A third, quieter one: check whether the headline is SATURATED.** Re-running the advantage
+recomputation later in Round 21 reproduced again - 10.0000 against a shown 10 - but on different
+inputs (`latency x1265.67` where the earlier run had `x3608.79`, because this round's work changed the
+latencies). It reproduced both times because the raw score is 10.37 and 10.66 respectively, and the
+formula clamps to 10.
+
+So the panel has been sitting ABOVE its ceiling. It reproduces, and it is correct, and it carries
+almost no information: the score only becomes discriminating once the communication ratio drops
+below about 6000 or the latency advantage disappears.
+
+    comm 6145.8  lat 1265.67  -> raw 10.37  shown 10
+    comm 6145.8  lat    1.00  -> raw  8.39  shown 8.39
+    comm    100  lat    1.00  -> raw  5.03  shown 5.03
+
+A number pinned at its clamp is the numeric cousin of a control that renders and changes nothing: it
+passes every check and tells the reader nothing. Record the RAW value alongside the clamped one when
+recomputing, so the saturation is visible rather than hidden by the ceiling.
+
 ## Every panel must describe the run that just happened
 
 The page performs one run and then eight panels describe it. Each was written at a different time,
