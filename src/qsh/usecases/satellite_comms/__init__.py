@@ -150,7 +150,8 @@ class TelemetryAnomalyStage(Stage):
         ctx.artifacts["telemetry_anomaly"] = int(out["prediction"])
         bus.metric("telemetry_anomaly_detected", int(out["prediction"]), self.name)
         names = ctx.data.get("feature_names")
-        exp = explain_linear_model(model, np.asarray(x), feature_names=names, top_k=3)
+        exp = explain_linear_model(model, np.asarray(x), baseline=ctx.data.get("explain_baseline"),
+                                   feature_names=names, top_k=3)
         ctx.artifacts["explanation"] = {
             "method": exp.method, "prediction": exp.prediction,
             "top_features": [{"feature": t["feature"], "contribution": round(float(t["contribution"]), 6)}
@@ -177,7 +178,11 @@ def _anomaly_model(seed: int = 0):
     window = (anom[0] if len(anom) else X[y == 1][0]).astype(float)
     win, ch = 8, len(names)
     feat_names = [f"{names[c]}[t{tt}]" for c in range(ch) for tt in range(win)]
-    return LinearModel(w.astype(float), b), window, feat_names
+    # E[x] over the telemetry windows. Real NASA SMAP/MSL channels are NOT zero-mean, so a zero
+    # baseline made ranks 2 and 3 of the reported top-3 spurious - the attribution was measured
+    # against a spacecraft state that never occurs.
+    baseline = X.mean(axis=0).astype(float)
+    return LinearModel(w.astype(float), b), window, feat_names, baseline
 
 
 def build(config: dict | None = None) -> tuple[Pipeline, Context]:
@@ -186,10 +191,11 @@ def build(config: dict | None = None) -> tuple[Pipeline, Context]:
         usecase="satellite_comms",
         config={"qkd": config.get("qkd", "bb84-decoy"), "inference": "ckks", **config},
     )
-    model, window, feat_names = _anomaly_model(config.get("seed", 0))
+    model, window, feat_names, baseline = _anomaly_model(config.get("seed", 0))
     ctx.data["anomaly_model"] = model
     ctx.data["features"] = window
     ctx.data["feature_names"] = feat_names
+    ctx.data["explain_baseline"] = baseline
     ctx.config.setdefault("qkd_opt_pulses", _SAT_DEFAULTS["sat_opt_pulses"])   # free-space link needs more pulses
     stages = [
         PQCHandshakeStage(),

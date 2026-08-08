@@ -31,7 +31,7 @@ confirm which bundle the tab actually loaded.
 The failure is asymmetric and that is why it matters: a stale tab makes a working fix look broken,
 you "fix" it again, and the second change is the one that ships unverified.
 
-## The eight axes
+## The nine axes
 
 | Axis | What passes |
 |---|---|
@@ -43,6 +43,7 @@ you "fix" it again, and the second change is the one that ships unverified.
 | Selects and checkboxes | Each value produces a distinct, visible change. |
 | Layout | No horizontal overflow at 1280 or at mobile width. No overlap. Measured against the viewport - see below, this line went three rounds unmeasured. |
 | Data tables | Column headers match what the column renders. Baselines named. No placeholder rows. |
+| UX and accessibility | A first-time reader can find the control, understand the output, and complete the task. Contrast, focus, keyboard, labels. See below. |
 
 The data-table axis earns its place: the detailed-results table had a column headed `model` that
 rendered `security_model`, so the table had no model column while appearing to have one. That
@@ -626,6 +627,411 @@ What it catches that nothing else does:
 Run it on every use-case page, not one: the control set differs per page, and the pages that hide a
 group are exactly where a stale default survives unnoticed.
 
+## Every control, against a published reference value
+
+The simulator-controls table says which controls exist and where each must show up. It does not say
+what the resulting NUMBER should be, so a control could move the display and still be wrong. This
+section gives each control a **reference value or a formula from outside this project**, so the check
+is falsifiable rather than "the number changed".
+
+Set the control, run, read the result, and compare against the right-hand column. Record the observed
+value, not a tick.
+
+### KEM (`sel-kem`)
+
+| Selection | Fact | Reference |
+|---|---|---|
+| ml-kem-768+x25519 | NIST Category 3, ciphertext **1088 bytes** | FIPS 203 |
+| ml-kem-1024+x25519 | NIST Category 5, ciphertext **1568 bytes** | FIPS 203 |
+
+Both sizes are specified by FIPS 203, so a reader verifies them without trusting this project. The
+facts are pinned to the completed run: changing the selector without re-running must NOT change them.
+
+### Signature (`sel-sig`)
+
+| Selection | Fact | Reference |
+|---|---|---|
+| ml-dsa-65 | NIST Category 3, signature **3309 bytes** | FIPS 204 |
+| ml-dsa-87 | NIST Category 5, signature **4627 bytes** | FIPS 204 |
+
+### QKD protocol (`pp-proto`)
+
+**BB84 (decoy)** - the secure fraction comes from the GLLP bound over the decoy-state estimate. The
+verdict must be taken from `secure_key_bits > 0`, NOT from a QBER threshold: this repository's
+measured zero-key point is **0.098106**, below the textbook 0.11, so a QBER in [0.098, 0.11) passes
+the textbook test on a channel that yields nothing.
+
+**E91 (CHSH)** - three independent checks, all of which must hold together:
+
+    2 < S <= 2*sqrt(2)             classical bound < S <= Tsirelson bound (2.8284)
+    S = 2*sqrt(2) * (1 - 2*QBER)   Werner-state relation between the two displayed numbers
+
+The second is the strong one, because it ties two separately-rendered metrics together. Measured
+2026-08-08: QBER 0.0247 predicts S = 2.6887; the page reported **S = 2.7**, and the diagram read
+"E91 (entanglement / CHSH)". An S above 2.8284 is unphysical and is a bug, not a good result.
+
+### QRNG extractor (`pp-ext`) and LHL epsilon (`pp-qrng_eps_log2`)
+
+| Selection | Expected behaviour | Reference |
+|---|---|---|
+| von Neumann | extraction rate **<= 0.25**; no LHL bound reported | von Neumann debiasing yields at most p(1-p) per pair, max 1/4 at p = 1/2 |
+| Toeplitz (LHL) | higher extraction rate, far lower throughput, and `qrng_lhl_max_bits` appears | Toeplitz hashing approaches the min-entropy rate but costs a matrix product |
+| seedless (2-source) | distinct from both | two-source extractor |
+
+Measured: von Neumann 0.2 with 3500.9 kbps; Toeplitz 0.5 with 28.2 kbps. The rate rises and the
+throughput collapses, which is the correct trade and the wrong-way-round would be the bug.
+
+**The LHL bound is exactly reproducible**, and this is the best single check in this section:
+
+    m <= H_min - 2*log2(1/eps)
+
+At `pp-qrng_eps_log2` = -40 the term is 80 bits; at -80 it is 160. So halving epsilon's exponent must
+drop `qrng_lhl_max_bits` by **exactly 80**. Measured: 7309 -> 7229, delta exactly 80. Any other delta
+means the extractor is not applying the Leftover Hash Lemma it claims.
+
+### QKD channel (`pp-qkd_eve`, `pp-qkd_misalignment`, `pp-qkd_distance_km`, `pp-qkd_pulses`)
+
+**The textbook anchor, and it costs one run.** Set `pp-qkd_eve` to 1.0 and `pp-qkd_misalignment` to
+0. Full intercept-resend on BB84 gives **exactly 25%** - Gottesman and Lo, IEEE Trans. Inf. Theory
+49, 457 (2003), verbatim: "For BB84, the intercept and resend strategy gives an error rate of 25%."
+Measured 2026-08-08: QBER **0.25**, 0 secure key bits, step marked failed. Any other value means the
+channel model is wrong, and this check is cheaper than every other one in this document.
+
+Get the thresholds right when quoting them. From Gottesman-Lo Table 1: BB84 is proven secure below
+**11.0%** one-way (Shor-Preskill) and 18.9% two-way. **14.6% is an INSECURITY bound**, not a security
+threshold, and is widely misquoted as one. 12.6% and 12.9% are not canonical figures at all.
+
+
+Eavesdropper 0 -> QBER 0.01, 1915 secure bits, SKR 0.00958/pulse, step ticked normally. Eavesdropper
+0.35 -> QBER 0.1, **0 secure bits**, SKR 0, and BOTH the posture table and the diagram report the
+failure. Both directions are required; testing only the failing one cannot catch a predicate that
+always fails.
+
+### Decoy-state necessity - what the decoy states are actually buying
+
+The runtime QKD model is the ASYMPTOTIC decoy-state one, which already assumes the single-photon
+contribution has been bounded. That assumption is invisible on screen until the counterfactual is
+computed, so the posture table reports the GLLP tagged fraction over the run's own channel:
+
+    Delta = P(n >= 2) / Q_mu,   Q_mu = Y_0 + 1 - exp(-eta*mu),   P(n >= 2) = 1 - exp(-mu)(1 + mu)
+
+`Delta >= 1` means the worst-case bound on Eve-known detections exceeds the total detection
+probability, so not one detection could be certified single-photon and a non-decoy link yields
+nothing. Measured on the default fibre link (eta 0.025 at 50 km, mu 0.5): **Delta = 7.26** - the
+decoy states are carrying the entire link, not merely improving it.
+
+Recompute it from the config to check the row:
+
+    eta   = detector_efficiency * 10^(-fiber_loss_db_per_km * distance_km / 10)
+    Delta = (1 - exp(-mu)(1 + mu)) / (dark_count_prob + 1 - exp(-eta*mu))
+
+Raising Distance must raise Delta; raising mu must raise it too. Both are one-line checks.
+
+**The reference model is asserted against the papers in `tests/test_decoy_reference.py`** - 13
+tests, none of whose numbers originate in this repository. The anchors, from Ma et al. PRA 72,
+012326 (2005) with the GYS parameter set, and GLLP QIC 4, 325 (2004):
+
+| Assertion | Published | Measured |
+|---|---|---|
+| tagged fraction at mu = 0.1, zero distance | > 1 | 1.0417 |
+| decoy max distance | over 140 km | 142.2 km |
+| non-decoy max distance | about 42 km | 39.8 km |
+| decoy R/eta (flat, linear in eta) | 0.11 | 0.1136 |
+| non-decoy R/eta^2 (flat, quadratic) | 0.15 | 0.1510 |
+| decoy optimal mu | about 0.5 | 0.3 - 0.8 |
+
+**The trap in reproducing those figures, and it is a quiet one.** The published curves are plotted
+for the efficient BB84 of Lo-Chau-Ardehali, where the sifting factor q tends to 1. This project runs
+standard BB84 with q = 1/2. Reproduce the paper with q = 1/2 and every value comes out at exactly
+half the published one - 0.0568 against 0.11, 0.0755 against 0.15. That is close enough to look like
+a fitting or units discrepancy and wrong enough to make the comparison meaningless. `q_sift` is an
+explicit field for this reason, and a test asserts the factor of two so it cannot drift.
+
+### Free-space channel (satellite: `pp-sat_distance_km`, `pp-sat_eve`, `pp-sat_pulses`, `pp-qsdc_threshold`)
+
+Loss must rise with distance and the reported dB must appear in the diagram label. Measured at Eve
+0.4: 24.5 dB, QBER 0.13, 0 secure bits, step marked failed; QSDC then aborted with "error 0.13 over
+threshold - telemetry withheld". The abort keeps its tick, correctly - aborting IS the protocol
+working, and the label says ABORTED unambiguously.
+
+Open question recorded rather than silently changed: `pp-qsdc_threshold` defaults to **0.11**, the
+textbook BB84 figure, which sits above the GLLP zero-key point. QSDC is a different protocol with its
+own security analysis, so 0.11 is not automatically wrong there - but it has not been traced to a
+QSDC source, and it should be.
+
+### Published model (`sel-published-model`)
+
+Each option must produce a run whose diagram names the model AND its commit hash, so the artefact is
+identifiable. Measured: "published finance_aml.gbm @ c46157c27e64 - onnx-wasm - 1x32 - 0.34 ms -
+class 0". Check the hash against the registry, and check that selecting a different option changes
+it. Note that telecom and genomics ship no selector because they publish a single model; confirm
+that is still true rather than assuming it.
+
+### OptiQKD (`sel-optiqkd`) and the key-mixing checkbox
+
+Ticking OptiQKD must emit `qkd_skr_improvement_pct` and a convergence count, and the diagram arrow
+must carry the measured improvement rather than merely "OptiQKD on". Unticked, neither appears.
+The "mix QKD-domain key" checkbox controls whether QKD material enters the session key at all;
+unticking it must drive the posture table's QKD row to zero the same way `pqc-only` does.
+
+## Every panel, against its cited standard
+
+Four of these panels had ZERO mentions in this checklist before Round 22 while being the panels a
+technical reader looks at hardest. Each row below is a fact checkable against a specification or
+recomputable from numbers the panel itself prints.
+
+### Security posture & quantum advantage / Benchmark - MPC-FHE vs QSMPC-FHE
+
+The same component under two headings: the compact form (telecom, satellite - no private inference)
+and the full form. **The compact heading read "Security score & quantum advantage" until Round 22
+and was stale the moment the composite was retired** - it advertised a number the panel no longer
+showed. Whenever a metric is retired, grep for its name in headings, legends and index pages, not
+only at the computation site.
+
+- Posture rows: see the per-control section above (FIPS 203/204 sizes, NIST categories, GLLP).
+- Quantum advantage: a weighted geometric mean, tiered 0-10, with the **uncapped raw value printed
+  beside it when the run is past the ceiling**. Recompute from the panel's own printed ratios:
+
+      raw = log10(comm^0.6 * lat^0.2 * sec^0.2 + 1) * 3.2 + 1.0
+
+  Measured 2026-08-08: comm 6145.8, latency 3396.03, security 1.5 -> raw 10.65, and the page printed
+  `raw 10.65 (clamped to 0-10)`. Exact.
+- The legacy 0-100 composite is retained below, and must be visibly demoted and labelled retired.
+
+### QKD control plane - ETSI GS QKD 015
+
+A display panel with no controls, so its verification is terminology and internal consistency.
+
+- Three planes must stay separated, and the Agentic-AI panel must be described as a **SAE**, out of
+  scope of the control interface per GS QKD 015 clause 1. If the agent panel ever appears to drive
+  the quantum layer, that is a modelling error, not a feature.
+- Key association link (clause 4.5): `qkdl_type` PHYS for a direct channel, and the trust note must
+  say no intermediate node handles the key. `eskr <= skr`.
+- **`skr` must equal the run's `secure_key_bits`.** Measured: both 1915.
+- Key delivery (GS QKD 014): `key_size` **352**, quoted from the specification's own Status example
+  where it is defined as "Default size of key the KME can deliver to the SAE (in bit)". And
+  `stored_key_count` must equal `floor(eskr / key_size)` - measured floor(1436/352) = 4, displayed 4.
+- `max_key_per_request` is **8** here against the specification example's 128. That is legitimate -
+  a KME advertises its own limit - but it must be labelled as this simulator's choice. Round 22 found
+  it, and `key_size`, as bare uncited literals; `key_size` was written twice, so editing one copy
+  would have made the field and the divisor silently disagree.
+- The panel must name the edition it targets: **GS QKD 014 V1.1.1 (2019-02)**, still the only
+  published edition.
+
+### Inference provenance
+
+Names which model produced the reported class, from a five-state enum. With two inferences running
+(bundled student + published model) the badge must name BOTH and say which one the reported class
+came from. The SHAP panel below it must name the model it explains and the reference point it
+explains against - see the XAI section.
+
+### Why - top features (SHAP)
+
+- Exact linear SHAP: `phi_i = w_eff_i * (x_i - baseline_i)` with `w_eff = W[1] - W[0]`.
+- **Completeness holds for ANY baseline**, so `efficiency_gap` cannot detect a wrong reference point.
+  Check the baseline separately: it must be E[x] over the dataset, not the zero vector. The panel
+  must state which reference point it used.
+- The published model has no attribution, and the panel must say so and why: exact linear SHAP
+  applies to the linear student, not to a tree ensemble, a ResNet or a fixed circuit.
+- With Inference set to QCNN the panel must gate or relabel rather than silently explaining the CKKS
+  model for a class the page no longer reports.
+
+### Agentic AI - quantum-safe MCP
+
+Three selects (Engine, Model, Combiner), each of whose options must produce an observably different
+run - see the per-control section. The Combiner choice (`hkdf` vs `its_toeplitz`) must change the
+derived key fingerprint. The panel is a SAE and must not appear to control the quantum layer.
+
+### Quantum-kernel SVC + variational QNN
+
+Report the kernel, the qubit count and the T-gate count from the actual circuit, not from a
+description. Qubit count must track `pp-qubits`. Accuracy must be reported against a named baseline.
+
+## A completion marker is not a verdict
+
+The diagram ticks a step when its stage finishes. That tick renders immediately after a measured
+value, and a reader cannot tell "this stage ran" from "this value is fine".
+
+Round 22 caught the live case. With the eavesdropper parameter at 0.35 the diagram drew
+
+    BB84 decoy-state · QBER 0.1 ✓
+
+while the posture table on the same page, for the same run, reported **0 secure bits**, an SKR of
+**0 per pulse**, and "no secure key at this error rate". One run, two panels, opposite conclusions -
+and the reassuring one was the bigger and more looked-at.
+
+So the check is: **after every run, read the diagram labels and the tables against each other**, not
+each on its own.
+
+    [...document.querySelectorAll('svg text')].map(t => t.textContent.trim()).filter(t => /✓|✗/.test(t))
+
+For each ticked step, find the number it sits beside and find where else the page reports the same
+quantity. If the two disagree, the tick is the bug. Steps now declare an outcome (`ok`) separately
+from completion, and a failed one is drawn with `✗` in a warning colour - but the axis outlives this
+particular fix, because any status glyph next to any measured value invites the same misreading.
+
+Note the trap that made this hard to see: `body.innerText` flattens SVG into the surrounding text, so
+the diagram's tick appears to belong to the table row above it. Read `svg text` nodes separately from
+table cells, or you will attribute a finding to the wrong panel - as happened here first.
+
+## The UX axis, and the accessibility half nobody was checking
+
+The layout axis asks whether anything overflows or overlaps. It never asked whether a visitor can
+use the page. Those are different questions and only the first was being answered: a grep for `WCAG`
+across this repository returned **zero hits** before Round 22, despite an earlier round having
+scheduled a WCAG 2.2 phase.
+
+Work this against the public demo, not a local build, and against **a reader who has not seen the
+project** - that is the whole difficulty of the axis.
+
+**Comprehensibility.** For each panel headline, can a reader say what the number means and what would
+move it, from the page alone? The two failures this project has shipped are both of this kind: a
+composite score with no printed inputs, and an attribution panel that did not name which of two
+models it explained. State the unit, the reference point, and the source.
+
+**Information hierarchy.** The most important number on a panel should be the largest thing on it. If
+a legacy metric is retained for comparison, it must be visibly demoted rather than sitting at equal
+weight beside the current one.
+
+**Task flow.** Run each use case as a visitor would - land, run, read - and note every point where
+you had to know something the page did not tell you. Disabled controls must carry their reason at
+the point of disablement, not in a paragraph further down.
+
+**Accessibility, measured rather than assumed** (WCAG 2.2 AA, the four that this UI can actually
+fail):
+
+- **1.4.3 contrast 4.5:1** for body text, 3:1 for large text and UI-component boundaries. The muted
+  greys and the coloured card borders are the risk. Measure, do not eyeball - but measure correctly:
+
+  **Composite the alpha, or you will invent failures.** This UI tints its notes with `rgba(246, 183,
+  60, 0.08)` - an 8 percent amber over a dark card. Read that as an opaque background and near-white
+  text scores 1.51:1, which is a loud failure on the EU AI Act Art. 50 disclosure. It is not real.
+  Composite the whole ancestor stack onto the page base and the same text measures **12.42:1**.
+
+  So walk every ancestor, keep each `backgroundColor` whose alpha is above zero, and blend them
+  back-to-front onto the page background before computing luminance:
+
+      over = (fg, bg) => fg.rgb.map((v, i) => v * fg.a + bg[i] * (1 - fg.a))
+
+  Skip elements with children (you would measure a container, not a text run) and anything whose
+  `offsetParent` is null. Round 22 measured **zero** genuine 1.4.3 failures on the use-case page this
+  way, after the naive version reported two.
+
+- **2.1.1 keyboard**: tab through every route. Every control reachable, every disclosure operable
+  with Enter/Space, no trap in the parameter panel.
+- **2.4.7 focus visible** and **2.4.11 focus not obscured**: the ring must survive the dark theme and
+  not be hidden behind a sticky header.
+- **4.1.2 name, role, value**: every control has an accessible name. Audit with
+
+      [...document.querySelectorAll('button,select,input')]
+        .filter(e => !(e.getAttribute('aria-label') || e.labels?.length || e.textContent?.trim()))
+
+  and expect that list to be empty. The `aria-expanded` / `aria-controls` pairing on the Parameters
+  disclosure is already correct and is the pattern to match.
+
+Record the measured ratio or the failing selector, never a tick. An accessibility row that says
+"pass" without a number is the same unverified claim this checklist exists to prevent.
+
+## Enabling WebGPU and WebNN, and what to expect when you do
+
+The checklist mandates a two-browser comparison and never said how to reach one, so `chrome://`
+appeared nowhere in it and the flags lived only in the README. A reader working this document could
+not get to the state it requires.
+
+    chrome://flags/#enable-unsafe-webgpu              WebGPU
+    chrome://flags/#enable-vulkan                     also required on Linux
+    chrome://flags/#web-machine-learning-neural-network   WebNN
+    # or, as launch flags:
+    --enable-unsafe-webgpu --enable-features=Vulkan,WebMachineLearningNeuralNetwork
+
+Then confirm what you actually got, because enabling the flag is not the same as having the hardware:
+
+    const a = await navigator.gpu?.requestAdapter();
+    ({ adapter: !!a, info: a?.info, shaderF16: a?.features?.has?.("shader-f16"), webnn: !!navigator.ml })
+
+**Expect the honest outcome on a host with no GPU.** The flag succeeds, an adapter is returned, and
+it is SwiftShader - a CPU rasteriser. `hasWebGPU()` declines it by name, because it measured about
+300x slower than the wasm build it would displace (ResNet-50: 12842 ms against 42 ms). So "WebGPU
+enabled" and "WebGPU used" are different facts and the run reports the second. WebNN is enabled and
+deliberately not offered to ORT on this project's own measurement of 162.7 s against 5.1 s.
+
+Record which of the three states you are in - no adapter, software adapter, hardware adapter - beside
+every latency, because it moves them by two orders of magnitude.
+
+## PQC library conformance: run NIST's negative vectors, not just the happy path
+
+Every run on every page exercises ML-KEM and ML-DSA, and every one of them takes the happy path.
+Nothing in a normal run tells you whether the library REJECTS what the standard says it must.
+
+FIPS 203 section 7.2 is normative on this: "ML-KEM.Encaps shall not be run with an encapsulation key
+that has not been checked as above." A library that skips the check encapsulates to a malformed key
+and returns a shared secret, silently.
+
+    cd web && npm run check:pqc
+
+Round 22 found this was not hypothetical. The pinned `@noble/post-quantum` **0.2.1 accepted all 2,595
+malformed keys** in the C2SP/CCTV modulus set - 775 / 780 / 1040 across the three parameter sets,
+zero rejected. Its polynomial coder used the compression path for d=12 where FIPS 203 specifies
+plain ByteEncode12/ByteDecode12, so the round-trip that detects an out-of-range coefficient was a
+no-op. **0.6.1 rejects all 2,595.**
+
+**Validate the checker against a known-bad build before trusting it.** A conformance script that
+always passes is worse than none, and this one is one `try/catch` away from being exactly that.
+Install the old version in a scratch directory, point the script at it, and confirm it exits
+non-zero. Done for this script: 3 FAILs and exit 1 on 0.2.1, all-OK and exit 0 on 0.6.1.
+
+Where the vectors come from, and why more than one source is needed - they do not overlap:
+
+| Source | Covers | Licence |
+|---|---|---|
+| C2SP/CCTV `modulus/` | every value in [q, 2^12-1] at every key position - the deep section 7.2 set | CC0-1.0 |
+| NIST ACVP `ML-KEM-encapDecap-FIPS203-tr1` | the section 7.3 decapsulation-key hash check | US Gov public domain |
+| C2SP/wycheproof | type and length checks only | Apache-2.0 |
+
+Two traps found while wiring this up, both of which produce a falsely reassuring result:
+
+- **The ACVP `encapsulationKeyCheck` negatives are wrong-LENGTH keys**, not modulus violations - the
+  invalid ML-KEM-512 entries are 1216 bytes against the correct 800. Any library with a length check
+  scores 10/10 there while failing every modulus vector. Passing ACVP's key-check group is not
+  evidence the section 7.2 check exists.
+- **That ACVP file's `decapsulationKeyCheck` group carries no key material at all** - the tests
+  contain only a `tcId`. A harness that reads a `dk` field gets `undefined`, throws, and records a
+  "rejection", which scores as a pass. Assert that the vector field you are reading actually exists.
+
+Scope this honestly when reporting it: it tests one normative input check in one library. noble is
+self-audited with no side-channel protection, and liboqs's own README still says in capitals that it
+should not be relied on in production.
+
+## Submodules: check they are still maintained, and that the licence is written down
+
+A submodule is a dependency whose licence and maintenance status travel with the repository, and
+nothing was checking either. Round 22 found both of this project's submodules absent from
+`DATA_LICENSES.md` entirely.
+
+Per round, per submodule, against the GitHub API rather than by assumption:
+
+    git submodule status                     # what we pin
+    gh api repos/<owner>/<repo> \
+      --jq '"\(.pushed_at) \(.license.spdx_id) archived=\(.archived)"'
+    gh api repos/<owner>/<repo>/commits?per_page=1 \
+      --jq '"\(.[0].sha[0:12]) \(.[0].commit.committer.date)"'   # upstream HEAD
+
+Use `gh api`, not bare `curl`. The unauthenticated API allows 60 requests an hour per IP, and it
+does not fail loudly - it returns HTTP 200 with a JSON body containing `message: API rate limit
+exceeded`, so a script that indexes straight into the response dies on a `KeyError` for a field
+that looks missing. That reads as "the repository has no licence" rather than "you were throttled".
+
+Four questions, and the third is the one that gets skipped:
+
+- Is the licence permissive, and is it recorded in `DATA_LICENSES.md`?
+- Is the upstream archived?
+- **Is the pin the current head of the branch we track, or have we drifted?**
+- Is "actively maintained" true of the branch we track, or only of the repository? These differ:
+  hpmpc's last push is 2026-07-25 while its default branch has not moved since 2026-03-02, so the
+  activity is on other branches. Record the distinction rather than the flattering half.
+
+Act when an upstream is archived, a licence changes, or the tracked branch has not moved in a year.
+
 ## Navigate the way a visitor does, not the way a test does
 
 Load each route fresh and this whole class of defect is invisible. `/usecase/:id` matches the same
@@ -738,6 +1144,48 @@ Inference provenance, same run, both inferences named:
 
     Pipeline model, on this page's own data    MEASURED (plain JS) - js-linear (bundled real model)
     Published model, on its own corpus         MEASURED (local WASM) - onnx-wasm
+
+## Verified in Round 22 (2026-08-08, public URL, bundle index-Bjfk0ThY.js)
+
+Worked against `https://qsmpc-qkd-qhe-ai-hybrid.daemons.jp/usecase/finance_aml`, cache-busted, with
+the served bundle grepped first. `crossOriginIsolated` true, `SharedArrayBuffer` a function.
+
+**The test the retired score failed, now passing.** Swapping the KEM and re-running moves the
+reported facts, and the movement checks against the standard:
+
+| Control | Before | After | Checks against |
+|---|---|---|---|
+| KEM select | ml-kem-768+x25519, NIST Category 3 | ml-kem-1024+x25519, NIST Category 5 | FIPS 203 |
+| KEM ciphertext | 1088 bytes | 1568 bytes | FIPS 203 |
+| Signature (unchanged control) | ML-DSA-65, 3309 bytes | ML-DSA-65, 3309 bytes | FIPS 204 |
+
+The facts do NOT move when the selector changes without a re-run, which is correct - they are pinned
+to the run that produced them.
+
+**Eavesdropper, both directions.** `pp-qkd_eve` 0 -> QBER 0.01, 1915 secure bits, SKR 0.00958/pulse,
+step ticked in the normal colour. `pp-qkd_eve` 0.35 -> QBER 0.1, **0 secure bits**, SKR 0, and both
+the table and the diagram report the failure. The old score gave this run 100/100.
+
+**Advantage raw value.** Page printed `raw 10.65 (clamped to 0-10)`; recomputing from the page's own
+printed ratios (comm 6145.8, latency 3396.03, security 1.5) against the config weights
+(0.6/0.2/0.2, log_scale 3.2, log_offset 1.0) gives 10.65. Reproduced exactly.
+
+**Accessibility.** 41 controls on the use-case page, **zero** without an accessible name (4.1.2).
+Zero genuine contrast failures (1.4.3) once alpha is composited; the Art. 50 disclosure measures
+12.42:1. Parameters disclosure: `aria-expanded` false -> true, `aria-controls="pipeline-parameters"`
+resolves, 15 fields appear.
+
+**Every parameter field against its own constraints.** No violations. `pp-seed` now satisfies its own
+`min` - the Round 21 half-fix is closed. Two selects hold `""`, and both are legitimate sentinels
+("(use case default)" and "CKKS (FHE) - default"); `config.inference || "ckks"` confirms the second
+label is honest for every use case.
+
+**Found and fixed this round:** the diagram ticked a zero-key BB84 step. See the panel-consistency
+section above.
+
+One caution for the next round, learned twice here: a synthetic `.click()` on a React control does
+not update `aria-expanded` within the same tick, and reading it immediately makes a working button
+look inert. Read after a frame.
 
 ## What this checklist cannot cover
 
