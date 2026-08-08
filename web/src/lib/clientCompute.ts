@@ -1781,8 +1781,9 @@ export function runClientPipeline(
           explanation: artifacts.explanation ?? null,
         });
         const msg = new TextEncoder().encode(JSON.stringify(signedPayload));
-        const sig = dsa.fn.sign(sk.secretKey, msg);
-        const ok = dsa.fn.verify(sk.publicKey, msg, sig);
+        // noble 0.6.x: sign(message, secretKey), verify(signature, message, publicKey).
+        const sig = dsa.fn.sign(msg, sk.secretKey);
+        const ok = dsa.fn.verify(sig, msg, sk.publicKey);
         artifacts.result_signature = {
           algorithm: dsa.name, signature_bytes: sig.length,
           signature_hex_prefix: [...sig.slice(0, 12)].map((b) => b.toString(16).padStart(2, "0")).join(""),

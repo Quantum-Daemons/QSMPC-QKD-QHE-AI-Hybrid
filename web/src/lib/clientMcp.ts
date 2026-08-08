@@ -138,14 +138,16 @@ async function deriveAeadKey(
 // mirror _wrap: JSON-RPC tool-call message, ML-DSA-signed, wrapped {body, sig, alg}
 function wrapAndSign(agent: ClientAgent, method: string, params: object): Uint8Array {
   const body = stableStringify({ jsonrpc: "2.0", method, params });
-  const sig = ml_dsa65.sign(agent.sigSecretKey, enc.encode(body));
+  // noble 0.6.x: sign(message, secretKey).
+  const sig = ml_dsa65.sign(enc.encode(body), agent.sigSecretKey);
   return enc.encode(stableStringify({ body, sig: toHex(sig), alg: "ML-DSA-65" }));
 }
 
 // mirror _unwrap: verify the signature, return (message, authenticated)
 function unwrap(raw: Uint8Array, senderSigPublic: Uint8Array): { message: any; authenticated: boolean } {
   const envelope = JSON.parse(dec.decode(raw));
-  const ok = ml_dsa65.verify(senderSigPublic, enc.encode(envelope.body), fromHex(envelope.sig));
+  // noble 0.6.x: verify(signature, message, publicKey).
+  const ok = ml_dsa65.verify(fromHex(envelope.sig), enc.encode(envelope.body), senderSigPublic);
   return { message: JSON.parse(envelope.body), authenticated: !!ok };
 }
 
