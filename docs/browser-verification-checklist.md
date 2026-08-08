@@ -876,6 +876,48 @@ Inference provenance, same run, both inferences named:
     Pipeline model, on this page's own data    MEASURED (plain JS) - js-linear (bundled real model)
     Published model, on its own corpus         MEASURED (local WASM) - onnx-wasm
 
+## Verified in Round 22 (2026-08-08, public URL, bundle index-Bjfk0ThY.js)
+
+Worked against `https://qsmpc-qkd-qhe-ai-hybrid.daemons.jp/usecase/finance_aml`, cache-busted, with
+the served bundle grepped first. `crossOriginIsolated` true, `SharedArrayBuffer` a function.
+
+**The test the retired score failed, now passing.** Swapping the KEM and re-running moves the
+reported facts, and the movement checks against the standard:
+
+| Control | Before | After | Checks against |
+|---|---|---|---|
+| KEM select | ml-kem-768+x25519, NIST Category 3 | ml-kem-1024+x25519, NIST Category 5 | FIPS 203 |
+| KEM ciphertext | 1088 bytes | 1568 bytes | FIPS 203 |
+| Signature (unchanged control) | ML-DSA-65, 3309 bytes | ML-DSA-65, 3309 bytes | FIPS 204 |
+
+The facts do NOT move when the selector changes without a re-run, which is correct - they are pinned
+to the run that produced them.
+
+**Eavesdropper, both directions.** `pp-qkd_eve` 0 -> QBER 0.01, 1915 secure bits, SKR 0.00958/pulse,
+step ticked in the normal colour. `pp-qkd_eve` 0.35 -> QBER 0.1, **0 secure bits**, SKR 0, and both
+the table and the diagram report the failure. The old score gave this run 100/100.
+
+**Advantage raw value.** Page printed `raw 10.65 (clamped to 0-10)`; recomputing from the page's own
+printed ratios (comm 6145.8, latency 3396.03, security 1.5) against the config weights
+(0.6/0.2/0.2, log_scale 3.2, log_offset 1.0) gives 10.65. Reproduced exactly.
+
+**Accessibility.** 41 controls on the use-case page, **zero** without an accessible name (4.1.2).
+Zero genuine contrast failures (1.4.3) once alpha is composited; the Art. 50 disclosure measures
+12.42:1. Parameters disclosure: `aria-expanded` false -> true, `aria-controls="pipeline-parameters"`
+resolves, 15 fields appear.
+
+**Every parameter field against its own constraints.** No violations. `pp-seed` now satisfies its own
+`min` - the Round 21 half-fix is closed. Two selects hold `""`, and both are legitimate sentinels
+("(use case default)" and "CKKS (FHE) - default"); `config.inference || "ckks"` confirms the second
+label is honest for every use case.
+
+**Found and fixed this round:** the diagram ticked a zero-key BB84 step. See the panel-consistency
+section above.
+
+One caution for the next round, learned twice here: a synthetic `.click()` on a React control does
+not update `aria-expanded` within the same tick, and reading it immediately makes a working button
+look inert. Read after a frame.
+
 ## What this checklist cannot cover
 
 - One browser, one adapter. Every latency here is from a software WebGPU adapter; a machine with a
