@@ -249,6 +249,45 @@ re-verify the load-bearing external claims and record the date:
 - When a doc turns out to be ahead of the sources you find, say so in the commit rather than
   "correcting" it downward to match a summary.
 
+## Reproduce each panel's headline from what the page itself shows
+
+The fact-check above asks whether an external claim is still true. This asks something stricter and
+entirely local: **can a reader recompute the number from the inputs printed beside it and the formula
+in `references/`?** A figure that cannot be recomputed from the page is an assertion, however well
+sourced.
+
+Two things have to hold. The panel prints its own inputs, and the formula is traceable to a citation
+or to config rather than to a literal in the component.
+
+| Panel | Headline | Recompute from | Where the formula lives |
+|---|---|---|---|
+| Security score and quantum advantage | advantage `n/10` | the ratios the card prints | `quantum_advantage` weights in config; mirror of `benchmark/quantum_advantage.py` |
+| Security score | `68` / `96` | KEM category, QKD key bits, QBER | `security_scoring` weights in config; `benchmark/security.py` |
+| Why - top features (SHAP) | per-feature phi | `W`, `b`, `x`, baseline | exact linear SHAP, `phi_i = w_eff_i (x_i - baseline_i)`, `w_eff = W[1]-W[0]`; mirror of `ai/explainability.py` |
+| Benchmark - MPC-FHE vs QSMPC-FHE | latency split | FHE-linear + MPC-non-linear ms | measured, so check the parts sum to the whole |
+| QKD control plane, GS QKD 015 | key budget, span | `secure_key_bits`, distance | field names must match the spec's own (`qkdn_id`, `qkdl_id`, `skr`, `eskr`) |
+| Quantum-kernel SVC + variational QNN | macro F1 | published per-class scores | `registry.py` metric spec + its baseline citation |
+| Inference provenance | badge state | the backend the run reported | the five-state enum in `ProvenanceBadge` |
+| Agentic AI, MCP | derived-key fingerprint | combiner choice | changes with the combiner - verified, not assumed |
+
+Worked example, run in Round 21. The advantage card printed
+`communication ×6145.8 · latency ×3608.79 · security ×1.5` beside a score of `10/10`. Taking the
+`quantum_advantage` weights from config rather than retyping them - `w_comm 0.6`, `w_latency 0.2`,
+`w_security 0.2`, `log_scale 3.2`, `log_offset 1.0` - gives
+`6145.8^0.6 x 3608.79^0.2 x 1.5^0.2`, then `log10(composite + 1) x 3.2 + 1.0`, which lands on 10 and
+matches. The score is checkable in place by anyone reading the page.
+
+The security score reproduces the same way, and doing so found something: `68 -> 63` and `96 -> 91`
+are correct, but the second pair only in the BROWSER. `secFromConfig` derives both rows' key bits
+from the run, while the Python quantum row pins `qkd_key_bits=256` and never moves. Reproducing a
+number is how you discover which deployment it describes.
+
+**Two failure modes to look for, and they are opposite.** A headline whose inputs are not printed
+cannot be checked at all. And a headline whose inputs ARE printed but which does not recompute is
+worse, because it looks checkable. When a recomputation disagrees, suspect the reader first - a first
+attempt here missed the inputs entirely because it grepped for the metrics-table format while the
+card renders them as prose, and nearly reported a working panel as unverifiable.
+
 ## Every panel must describe the run that just happened
 
 The page performs one run and then eight panels describe it. Each was written at a different time,
