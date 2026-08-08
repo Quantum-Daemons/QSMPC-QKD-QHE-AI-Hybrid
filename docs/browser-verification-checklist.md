@@ -691,6 +691,17 @@ means the extractor is not applying the Leftover Hash Lemma it claims.
 
 ### QKD channel (`pp-qkd_eve`, `pp-qkd_misalignment`, `pp-qkd_distance_km`, `pp-qkd_pulses`)
 
+**The textbook anchor, and it costs one run.** Set `pp-qkd_eve` to 1.0 and `pp-qkd_misalignment` to
+0. Full intercept-resend on BB84 gives **exactly 25%** - Gottesman and Lo, IEEE Trans. Inf. Theory
+49, 457 (2003), verbatim: "For BB84, the intercept and resend strategy gives an error rate of 25%."
+Measured 2026-08-08: QBER **0.25**, 0 secure key bits, step marked failed. Any other value means the
+channel model is wrong, and this check is cheaper than every other one in this document.
+
+Get the thresholds right when quoting them. From Gottesman-Lo Table 1: BB84 is proven secure below
+**11.0%** one-way (Shor-Preskill) and 18.9% two-way. **14.6% is an INSECURITY bound**, not a security
+threshold, and is widely misquoted as one. 12.6% and 12.9% are not canonical figures at all.
+
+
 Eavesdropper 0 -> QBER 0.01, 1915 secure bits, SKR 0.00958/pulse, step ticked normally. Eavesdropper
 0.35 -> QBER 0.1, **0 secure bits**, SKR 0, and BOTH the posture table and the diagram report the
 failure. Both directions are required; testing only the failing one cannot catch a predicate that
