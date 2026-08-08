@@ -148,7 +148,7 @@ scripts/      bootstrap_submodules.sh . run_benchmark.sh . build_gpu_mpc.sh . ru
   train/      per-vertical training: finance_aml . medical_breastmnist . genomics_prs . satellite_telemanom
   data/      fetch_g1k_dosages.py (1000 Genomes provenance)
 docs/       architecture . crypto-agility . threat-model . pqc-roadmap
-            deliverable-verification . browser-verification-checklist
+            deliverable-verification . browser-verification-checklist . deployment
 tests/       pytest suite
 ```
 
