@@ -32,7 +32,7 @@ a quantum-safe orchestration demo. This is the **plaintext** model for the
 | `n_features` | 19 |
 | `n_test_segments` | 529 |
 | `n_train_segments` | 1594 |
-| `wall_clock_s` | 1.7 |
+| `wall_clock_s` | 1.8 |
 
 ## Published baselines this is measured against
 

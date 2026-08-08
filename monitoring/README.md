@@ -25,13 +25,19 @@ dashboards here, and Zabbix's agent/server footprint is unjustified at this scal
 
 ## Concerns
 
-- **The four pipeline metrics are declared but never recorded.** `src/qsh/monitoring/exporter.py`
-  defines `qsh_pipeline_runs_total`, `qsh_stage_latency_ms` and `qsh_qber`, and the API serves
-  `/metrics` - but a repo-wide search finds no call site that records any of them, and
-  `qsh_benchmark_latency_ms` has no recorder helper at all. `/metrics` therefore returns a valid,
-  permanently empty response and every dashboard panel charts nothing. **Instrumenting the pipeline
-  stages is the prerequisite for this directory being useful**; until then, treat the dashboard as
-  scaffolding, not as working observability.
+- **The four pipeline metrics are recorded, as of Round 21.** For the three rounds before that they
+  were declared and never called: `src/qsh/monitoring/exporter.py` defined `qsh_pipeline_runs_total`,
+  `qsh_stage_latency_ms` and `qsh_qber` with no caller outside that file, `qsh_benchmark_latency_ms`
+  had no recorder helper at all, and `/metrics` therefore returned a valid, permanently empty
+  response while every dashboard panel charted nothing. Nothing about that was visible from outside:
+  the endpoint worked, the scrape parsed, the dashboard rendered.
+
+  The call sites are `src/qsh/orchestration/pipeline.py` - `record_stage` per stage, `record_run` and
+  `record_qber` per run in a `finally`, so a run that raised is counted in the state it ended in -
+  and `src/qsh/benchmark/runner.py`, `record_benchmark` per row, which is where the `path` label was
+  always going to come from. Measured: the scrape goes from 1 series to 39 after one run.
+  `tests/test_monitoring_wired.py` asserts that production code CALLS them, rather than that the
+  helpers exist; the helpers always existed.
 - **Grafana provisioning was silently broken until it was fixed here.** `docker-compose.yml` mounted
   the bare dashboard directory onto `/etc/grafana/provisioning/dashboards`. Grafana reads *provider
   YAML* from that path and follows each provider's own `options.path`, so a directory containing only

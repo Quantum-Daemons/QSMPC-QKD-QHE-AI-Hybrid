@@ -40,7 +40,13 @@ code, .mono { font-family: ui-monospace, "SFMono-Regular", Menlo, monospace; }
 }
 .nav a.sub { padding-left: 22px; font-size: 13px; }
 .nav a.sub.active { background: var(--quantum); }
-.main { flex: 1; padding: 32px 40px; max-width: 1200px; }
+/* `min-width: 0` is load-bearing, not tidying. `.app` is a flex row, and a flex item defaults to
+   min-width:auto, which means it cannot shrink below its content's min-content width - so any wide
+   descendant pushes `.main` wider than the viewport and the whole page scrolls sideways instead of
+   the wide element scrolling inside its own card. Measured: without this, giving `.card` an
+   overflow-x scroller made `.main` 1086px against a 1265px viewport with the sidebar taking 240,
+   i.e. 61px of page scroll on a desktop that previously had none. */
+.main { flex: 1; min-width: 0; padding: 32px 40px; max-width: 1200px; }
 
 .page-title { font-size: 28px; margin: 0 0 6px; }
 .page-sub { color: var(--muted); margin: 0 0 24px; max-width: 760px; }
@@ -86,6 +92,13 @@ label.is-disabled input { cursor: not-allowed; }
 .card {
   background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius);
   padding: 18px;
+  /* Wide content scrolls inside its own card; the page body never scrolls sideways.
+     Measured at 390px before this: the document was 1326px wide, i.e. 936px of horizontal page
+     scroll, from two diagram SVGs (990px, 930px), five mini-tables (968px), the 12-column benchmark
+     table (930px) and a <code> block (916px). None of them had a scroll container, and none of them
+     registered as "overflow" against their parent, because the parent card grew with the child --
+     which is why an audit has to measure against the VIEWPORT, not the containing element. */
+  overflow-x: auto;
 }
 .card h3 { margin: 0 0 8px; font-size: 15px; }
 .card p { color: var(--muted); font-size: 13.5px; margin: 6px 0; line-height: 1.5; }
@@ -113,6 +126,15 @@ label.is-disabled input { cursor: not-allowed; }
 select, input {
   background: var(--bg); color: var(--text); border: 1px solid var(--border);
   border-radius: 8px; padding: 8px 10px; font-size: 14px;
+  /* A <select> auto-sizes to its LONGEST option, and a flex item defaults to min-width:auto, so it
+     cannot shrink below that. The published-model selector carries labels like "auto
+     (Graph-feature-preprocessed gradient boosting)" and took 371px, which fits a desktop card and
+     overflows a phone one by 49px at 390px wide - the control ran off the edge of the panel.
+     Capping the width clips the closed-state text instead; the full label is still in the option
+     list when it is open, and in the control's title. */
+  max-width: 100%;
+  min-width: 0;
+  text-overflow: ellipsis;
 }
 
 table { width: 100%; border-collapse: collapse; font-size: 13px; }
@@ -155,6 +177,9 @@ tr:hover td { background: var(--bg-2); }
 }
 .prov-measured-webgpu .prov-chip { background: var(--accent-2); color: #03070f; }
 .prov-measured-wasm .prov-chip { background: var(--accent-2); color: #03070f; opacity: 0.82; }
+/* Still a measured tier, so it keeps the measured colour; dimmest of the three because it is the
+   slowest runtime, not because the measurement is weaker. */
+.prov-measured-js .prov-chip { background: var(--accent-2); color: #03070f; opacity: 0.68; }
 .prov-remote .prov-chip { background: var(--accent); color: #03070f; }
 .prov-simulated .prov-chip { background: var(--warn); color: #03070f; }
 .prov-detail { font-weight: 500; opacity: 0.85; }

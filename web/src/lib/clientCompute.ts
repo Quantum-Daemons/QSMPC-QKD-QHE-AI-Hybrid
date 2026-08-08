@@ -20,8 +20,8 @@ import { secureArgmax, warmMPC } from "./clientMPC";
 import { optimizeQKD } from "./clientOptiQKD";
 import { generateQuantumBits } from "./clientQRNG";
 import { bb84, e91, FIBER, FREE_SPACE, h2, intrinsicQber, qcnnExpectation, qotpQcnnInfer, rng } from "./quantumSim";
-import { browserProvenance, type Provenance } from "../components/ProvenanceBadge";
-import { inferLogits, onnxBackend, onnxStatus } from "./onnxInference";
+import { type Provenance } from "../components/ProvenanceBadge";
+import { browserModels, onnxStatus, runPublishedModel } from "./onnxInference";
 import { realInput, realSatelliteAnomaly, realFederatedSet, type RealInput } from "./realData";
 
 const r1 = (x: number) => Math.round(x * 10) / 10;
@@ -29,8 +29,42 @@ const r2 = (x: number) => Math.round(x * 100) / 100;
 const argmax = (a: number[]) => a.reduce((bi, v, i, arr) => (v > arr[bi] ? i : bi), 0);
 const sleep = (ms: number) => new Promise((res) => setTimeout(res, ms));
 // small prime utilities for the QSMS secure-sum field Z_p (config.prime; 0 = auto-select a prime > the total)
-const isPrime = (n: number) => { if (n < 2) return false; for (let i = 2; i * i <= n; i++) if (n % i === 0) return false; return true; };
-const nextPrime = (n: number) => { let p = Math.max(2, Math.floor(n)); while (!isPrime(p)) p++; return p; };
+/**
+ * The largest field modulus this browser mirror will accept.
+ *
+ * Two independent limits meet just above it, so it is the honest ceiling rather than a round number:
+ *
+ *   - Arithmetic. `(acc + s0 + s1) % p` accumulates in a double. Past 2^53 the intermediate sum
+ *     stops being exact and the "secure sum" is silently wrong -- no exception, just a wrong number
+ *     under a correct-looking label.
+ *   - Time. `isPrime` is trial division, so cost grows as sqrt(p). At 2^31 that is ~46k iterations
+ *     per candidate and imperceptible; at 1e16 it is 1e8 per candidate and the tab stops responding.
+ *
+ * 2^31-1 is also exactly the modulus the MCP allele-pooling path needs, which is why the paper's
+ * n <= d <= 2n bound is recorded rather than enforced (see qsmpc/secure_summation.py).
+ */
+const MAX_FIELD_PRIME = 2147483647;          // 2^31 - 1, itself prime
+
+const isPrime = (n: number) => {
+  if (!Number.isFinite(n) || n < 2) return false;
+  for (let i = 2; i * i <= n; i++) if (n % i === 0) return false;
+  return true;
+};
+
+/**
+ * The next prime at or above `n`, bounded.
+ *
+ * The bound is the point. Typing 1e400 into the Parameters field produced `Infinity`, and
+ * `isPrime(Infinity)` never terminates: `i * i <= Infinity` is always true and `Infinity % i` is
+ * NaN, so it is an infinite loop rather than an exception. Nothing could catch it -- not the
+ * try/catch around the stage, and not the Stop button, which never gets a turn on the event loop.
+ */
+const nextPrime = (n: number) => {
+  if (!Number.isFinite(n)) return MAX_FIELD_PRIME;
+  let p = Math.min(MAX_FIELD_PRIME, Math.max(2, Math.floor(n)));
+  while (p <= MAX_FIELD_PRIME && !isPrime(p)) p++;
+  return p > MAX_FIELD_PRIME ? MAX_FIELD_PRIME : p;
+};
 
 // --------------------------------------------------------------------------- //
 //  Security score (mirror of qsh/benchmark/security.py)
@@ -64,7 +98,21 @@ export function sigImpl(sig?: string) {
 function secFromConfig(config: any): { kem?: string; qkdBits?: number | null } {
   return { kem: kemName(config), qkdBits: config?.qkd === "pqc-only" ? 0 : 256 };
 }
-const qubitsOf = (config: any) => Number(config?.qubits ?? benchCfg().quantum_qubits);
+/**
+ * Simulated qubit count, clamped to the range the Parameters field advertises.
+ *
+ * The state vector is 2^n doubles, so this is the difference between a run and a dead tab. The
+ * benchmark row clamped it and the QCNN inference path did not, which is the wrong way round: the
+ * benchmark is a cost model, the inference actually allocates. Measured before the clamp: 22 qubits
+ * took 4.4 s, 24 allocated 268 MB, and a negative value threw RangeError inside
+ * `new Float64Array(1 << -1)`, aborting the stage and leaving `explanation: null` in the signed
+ * payload. `min`/`max` on a number input do not constrain a typed value, so the clamp has to be here.
+ */
+const qubitsOf = (config: any) => {
+  const n = Number(config?.qubits ?? benchCfg().quantum_qubits);
+  if (!Number.isFinite(n)) return Number(benchCfg().quantum_qubits);
+  return Math.min(14, Math.max(2, Math.round(n)));
+};
 
 export interface SecOpts {
   securityModel: string;
@@ -176,10 +224,12 @@ export type InferenceResult = {
 /**
  * Private inference for one feature vector.
  *
- * Three tiers, and which one ran is reported rather than left to be inferred from the output:
- *   1. the published browser-tier ONNX model for this use case  -> MEASURED (WebGPU or WASM)
- *   2. the bundled real distilled model shipped with the demo   -> MEASURED (plain JS arithmetic)
- *   3. placeholder weights                                      -> SIMULATED
+ * Two tiers, and which one ran is reported rather than left to be inferred from the output:
+ *   1. the bundled real distilled model shipped with the demo   -> MEASURED (plain JS arithmetic)
+ *   2. placeholder weights                                      -> SIMULATED
+ *
+ * There used to be a third above these - the published ONNX model - and it was unreachable. See the
+ * note in the body: it ran on an 8-element vector no published model accepts.
  */
 export async function privateInference(
   usecase: string, features: number[], realModel?: { W: number[][]; b: number[] } | null,
@@ -187,20 +237,24 @@ export async function privateInference(
   const f = features.slice(0, 8);
   while (f.length < 8) f.push(0);
 
-  const onnx = await inferLogits(usecase, f);
-  if (onnx) {
-    return {
-      logits: onnx, prediction: argmax(onnx), backend: onnxBackend(),
-      provenance: browserProvenance(), modelKey: onnxStatus().modelKey,
-    };
-  }
-
+  // The published-ONNX tier used to be attempted HERE, on this 8-element vector, and it could never
+  // succeed: no published model takes [1,8]. It takes [1,32], [1,1,28,28], [1,250,6], [1,19] or
+  // [1,7]. So every run fetched a model - 11 MB and 1975 ms of the 2966 ms this function reported as
+  // `client_compute_ms` - created a session, failed on input rank, and fell through to the line
+  // below. A measured number that is two thirds download for an inference that cannot happen.
+  //
+  // The published model now runs in `runPublishedForStage`, on a row of its own corpus at its own
+  // input shape, and reports its own latency. This function is what it always actually was: the
+  // page's explainable path over its 8 real features, which is what the SHAP attribution and the
+  // CKKS evaluation both consume.
   if (realModel?.W?.length) {
     const logits = realModel.W.map((row, j) =>
       row.reduce((a, wij, i) => a + wij * (f[i] ?? 0), 0) + (realModel.b?.[j] ?? 0));
     return {
       logits, prediction: argmax(logits), backend: "js-linear (bundled real model)",
-      provenance: "measured-wasm", modelKey: null,
+      // Not measured-wasm: this loop is plain JS numbers. Claiming WASM here made every pipeline run
+      // on every page render "MEASURED (local WASM)" without a wasm module ever being instantiated.
+      provenance: "measured-js", modelKey: null,
       note: "bundled distilled linear model, evaluated in plain JS arithmetic",
     };
   }
@@ -237,7 +291,13 @@ export function linearShap(
   return {
     method: "exact-linear-shap", prediction: margin >= 0 ? 1 : 0,
     base_value: Math.round(baseValue * 1e6) / 1e6, margin: Math.round(margin * 1e6) / 1e6,
-    top_features: top, efficiency_gap: 0,
+    top_features: top,
+    // COMPUTED, not asserted. This was the literal `0`, which is algebraically right for this closed
+    // form - sum_i w_eff_i (x_i - base_i) + (w_eff . base + db) collapses to w_eff . x + db, exactly
+    // the margin - but a field named after a measurement and set to a constant cannot fail. If the
+    // attribution rule ever changes and stops satisfying completeness, a hardcoded 0 goes on
+    // claiming the axiom holds. Now it is the residual, so the claim is checkable at runtime.
+    efficiency_gap: Math.abs(phi.reduce((a, c) => a + c, 0) + baseValue - margin),
   };
 }
 
@@ -355,7 +415,11 @@ function hybridForward(dims: number[], u: () => number) {
 // Measured real client-side FHE/MPC (node-seal CKKS + secret-sharing) — when present, mpcFheRow reports
 // these REAL wall-clock numbers instead of the representative cost model.
 export interface MeasuredHybrid {
-  fheMs: number; mpcMs: number; commBytes: number; ctBytes: number; featDim: number;
+  fheMs: number; mpcMs: number; commBytes: number; featDim: number;
+  /** null when the serialized size could not be read. Not 0: a ciphertext is always larger than
+   *  its plaintext, so a ct/pt ratio of 0 is impossible rather than small, and it was reaching
+   *  the benchmark as a measured value. */
+  ctBytes: number | null;
   /** Set when the run performed a real encrypted CONVOLUTION rather than a dot product. Counted,
    *  not estimated: rotations and the key-switch each triggers are what dominate CKKS cost. */
   conv?: { rotations: number; multiplies: number; patchesPerCiphertext: number;
@@ -477,7 +541,11 @@ function mpcFheRow(usecase: string | undefined, workload: string, modelSize: str
   sec?: { kem?: string; qkdBits?: number | null }) {
   const { dims, label, params } = archDims(usecase, modelSize, workload);
   const cost = costPerOp();
-  let fhe: number, mpc: number, comm: number, backend: string, ctpt: number, projected: boolean, device: string;
+  // ctpt is nullable: the measured branch withholds it when the serialized ciphertext size could
+  // not be read, rather than reporting an impossible 0 or borrowing the cost model's literature
+  // figure into a row labelled measured.
+  let fhe: number, mpc: number, comm: number, backend: string, ctpt: number | null,
+    projected: boolean, device: string;
   if (measured) {
     // The real run measures a small (n->2) model; scale that MEASURED per-op cost by the SELECTED architecture's
     // op count so the latency genuinely tracks lightweight/medium/large × linear/cnn/transformer (the unit cost
@@ -494,15 +562,24 @@ function mpcFheRow(usecase: string | undefined, workload: string, modelSize: str
         + `convolution, ${measured.conv.rotations} rotations over `
         + `${measured.conv.patchesPerCiphertext} packed patches)`
       : "node-seal CKKS + emp-wasm 2PC (measured per-op, scaled to the selected architecture)";
-    ctpt = measured.featDim > 0 ? r2(measured.ctBytes / (measured.featDim * 8)) : cost.demo_ct_pt_ratio;
+    // null propagates. Previously a failed size read became 0 and this printed "ct/pt 0" beside
+    // rows carrying real ratios - an impossible value in a MEASURED column. The cost-model
+    // default is NOT substituted here either: this branch is the measured one, and quietly
+    // borrowing a literature figure would relabel an estimate as a measurement.
+    ctpt = measured.ctBytes == null || measured.featDim <= 0
+      ? null
+      : r2(measured.ctBytes / (measured.featDim * 8));
     device = "cpu";                                   // node-seal CKKS is WASM-CPU (no commercial-OK WebGPU FHE in 2026)
   } else {
-    const classBackend = onnxBackend() === "none" ? "js-linear" : onnxBackend();
+    // The COST-MODEL branch: nothing here was measured. It used to name whatever execution provider
+    // `onnxBackend()` happened to report, which was never this row's - and is now flatly wrong,
+    // because the only session on the page belongs to the published model running on a different
+    // corpus. A modelled row does not get to borrow a measured row's backend.
     const ops = tierOps(dims);
     fhe = ops * cost.fhe_ms_per_dot; mpc = ops * cost.mpc_ms_per_cmp; comm = ops * cost.mpc_comm_bytes_per_cmp;
-    backend = `ckks (${classBackend}) + mpyc-shamir (js-sim, representative)`;
+    backend = "ckks + mpyc-shamir (cost model, not measured)";
     ctpt = cost.demo_ct_pt_ratio; projected = modelSize === "large";
-    device = classBackend.includes("webgpu") ? "gpu" : "cpu";
+    device = "cpu";
   }
   return {
     path: "MPC-FHE", backend, workload,
@@ -550,8 +627,22 @@ function qsmpcFheRow(workload: string, modelSize: string, u: () => number, sampl
   const latency = r2((total / samples) * scale);
   return {
     path: "QSMPC-FHE", backend: "qotp+qcnn (state-vector sim, not quantum HW)", workload, model_size: modelSize,
+    // Names what this row IS, because the model column read "—" beside two rows that name real
+    // models, which invites the reader to assume the blank is an oversight rather than the point.
+    // There are no learned parameters here: qotpQcnnInfer applies a fixed H/X/Z/T/RY structure whose
+    // angles come from its input, and the input is random.
+    model_arch: `QOTP + ${nq}-qubit QCNN circuit (no trained weights)`,
     latency_ms: latency, throughput_ips: r2(1000 / Math.max(latency, 0.001)),
-    accuracy: 1.0, max_abs_error: null,
+    // NOT 1.0, which is what this reported for three rounds while the MPC-FHE row eight lines above
+    // carries a comment forbidding exactly that: "reporting 1.0 as if it were a result would be the
+    // flattering-number pattern this project rules out". The two rows contradicted each other, and
+    // the fabricated one was the flattering side of the contradiction - a reader saw the quantum
+    // path as perfectly accurate, fastest and most secure, and one of those three was invented.
+    //
+    // There is nothing here to be accurate ABOUT. The circuit carries no trained weights and its
+    // input is `u() * 2 - 1`, uniform noise. What this row legitimately measures is the state-vector
+    // simulation's latency, its counted T-gate total, its qubit count and its security model.
+    accuracy: null, max_abs_error: null,
     ciphertext_plaintext_ratio: 1.0,                  // QOTP: ciphertext = same #qubits as plaintext (genuine)
     t_gate_count: last.tGates, qubits: last.qubits,   // counted from the actual gate list
     security_model: "information-theoretic (QOTP perfect hiding)",
@@ -587,6 +678,43 @@ const INFERENCE_USECASES = new Set(["finance_aml", "medical_fl", "genomics"]);
 // Assemble the unified benchmark from a finished CLIENT run (demo, zero /api). The MPC-FHE split is
 // the representative cost model tied to the run's model_size/workload; client_compute_ms is the real
 // in-browser wall-clock of the private-inference stage (the "client compute" figure shown in the UI).
+/**
+ * The published model's own plaintext latency, as a benchmark row.
+ *
+ * Every other row in this table is either a cost model or the bundled 8-feature student, so the
+ * table had no plaintext reference measured on a model anyone can download - the thing an FHE
+ * overhead is actually a multiple OF. This row is that reference: one real forward pass of the
+ * pinned Hugging Face model, on its own corpus, on the execution provider that ran it.
+ *
+ * Deliberately null for everything it did not measure. It is plaintext, so there is no FHE time, no
+ * MPC time, no communication and no ciphertext ratio; it is one row, so there is no accuracy. The
+ * panel prints em dashes for those, which is the correct reading.
+ */
+function publishedModelRow(m: any) {
+  if (m?.published_inference_ms == null || m?.published_model_status === "failed") return null;
+  return {
+    // Short on purpose: this is a chart category as well as a table cell, and recharts drops a tick
+    // whose neighbours it would overlap - "plaintext (published model)" was long enough to push the
+    // QSMPC-FHE label off the latency chart entirely, leaving three bars with two labels. The model
+    // column beside it names the model, so the extra words were never carrying anything.
+    path: "plaintext",
+    backend: m.published_model_backend ?? "onnx",
+    workload: "published",
+    model_size: null, model_arch: m.published_model ?? null, model_params: null, projected: false,
+    latency_ms: r2(m.published_inference_ms),
+    throughput_ips: r2(1000 / Math.max(Number(m.published_inference_ms), 1e-3)),
+    accuracy: null, max_abs_error: null, ciphertext_plaintext_ratio: null,
+    fhe_linear_ms: null, mpc_nonlinear_ms: null, mpc_comm_kb: null,
+    t_gate_count: null, qubits: null,
+    security_model: "none (plaintext reference)",
+    // No security score: this row carries no cryptography, and scoring it would put a number in a
+    // column that invites comparison with rows where the number means something.
+    security_score: null,
+    input_shape: m.published_input_shape ?? null,
+    revision: m.published_model_revision ?? null,
+  };
+}
+
 export function assembleBenchmark(
   usecase: string, config: any,
   opts: { metrics?: any; artifacts?: any; stageMs?: Record<string, number> },
@@ -597,14 +725,18 @@ export function assembleBenchmark(
   const u = rng(7);
   const q = qsmpcFheRow(workload, modelSize, u, 6, benchScale(usecase, modelSize, workload), qubitsOf(config), sec);
   const clientComputeMs = opts?.metrics?.client_compute_ms ?? opts?.stageMs?.private_inference ?? null;
+  // Present on every use case that ran one, including telecom and satellite, whose flows have no
+  // private_inference stage and so never reach the MPC-FHE row below.
+  const pub = publishedModelRow(opts?.metrics);
   if (!INFERENCE_USECASES.has(usecase)) {
-    return { workload, model_size: modelSize, results: [q], advantage: null, live: true,
-      client_compute_ms: clientComputeMs };
+    return { workload, model_size: modelSize, results: pub ? [q, pub] : [q], advantage: null,
+      live: true, client_compute_ms: clientComputeMs };
   }
   // use the REAL measured client-side FHE/MPC from the run (node-seal CKKS + secret-sharing) when present
   const measured: MeasuredHybrid | null = opts?.artifacts?._measured_hybrid ?? null;
   const c = mpcFheRow(usecase, workload, modelSize, measured, sec);
-  return { workload, model_size: modelSize, results: [c, q], advantage: quantumAdvantage(c, q),
+  return { workload, model_size: modelSize, results: pub ? [c, q, pub] : [c, q],
+    advantage: quantumAdvantage(c, q),
     live: true, client_compute_ms: clientComputeMs, measured: !!measured };
 }
 
@@ -805,6 +937,86 @@ export function runClientPipeline(
     emit("metric", stage, "", { name, value });
   };
 
+  /**
+   * Run this use case's PUBLISHED model here, on a row of its own corpus, and report what happened.
+   *
+   * Called from whichever stage carries this use case's inference -- `private_inference` for finance,
+   * medical and genomics, `qml_ids` for telecom, `qsdc_telemetry` for satellite. It is a helper
+   * rather than a stage of its own because every use case already has an inference stage, and adding
+   * a seventh box to five diagrams to say "and also the real model" would describe the plumbing
+   * rather than the protocol.
+   *
+   * This is a SECOND inference, not a replacement for the stage's own. The stage runs the page's
+   * explainable path over real Wisconsin / PGS / PaySim / CIC-IDS features, which is what the SHAP
+   * attribution and the CKKS evaluation both depend on. The published model is trained on a
+   * different corpus (BreastMNIST 28x28, AMLworld 32-feature, ESA 250x6), so feeding it the stage's
+   * features would be the category error this project refuses elsewhere. Both are real, both are
+   * measured, and each says which corpus it is on.
+   *
+   * Until this existed the Models panel's Run buttons were the only thing in the product that ever
+   * executed a pinned model: the pipeline truncated its features to 8, every published input rank
+   * disagreed, the ONNX tier failed on all five use cases, and the run reported the bundled linear
+   * model under a MEASURED badge.
+   */
+  async function runPublishedForStage(stage: string) {
+    // The visitor's choice where they made one, else the registry's first fetchable model. Three use
+    // cases publish more than one and could previously only ever exercise the first: medical ships
+    // ResNet-18, ResNet-50 and the CKKS student, and satellite ships four across two tasks that are
+    // not comparable with each other.
+    let chosen = String(config.published_model ?? "") || undefined;
+    // Ignore a selection that belongs to a different use case. The UI resets on a use-case change,
+    // so this is the belt to that braces: a stale key reaching here would otherwise resolve to no
+    // target at all and be reported as "this use case has no published model", which is a much
+    // stronger and quite wrong claim.
+    if (chosen && !browserModels(usecase).some((m) => m.spec.key === chosen)) {
+      emit("log", stage, `ignoring published-model selection "${chosen}": it belongs to another use `
+        + `case. Running this one's default instead.`);
+      chosen = undefined;
+    }
+    const pub = await runPublishedModel(usecase, {
+      rowIndex: Math.floor(u() * 4096), modelKey: chosen,
+    });
+    if (pub.kind === "ran") {
+      const p = pub.run;
+      metric(stage, "published_model", p.modelKey);
+      metric(stage, "published_model_revision", p.revision.slice(0, 12));
+      metric(stage, "published_model_backend", p.backend);
+      metric(stage, "published_inference_ms", r2(p.latencyMs));
+      metric(stage, "published_input_shape", p.inputShape.join("x"));
+      // A forecaster has no class. Reporting an argmax over its 6 continuous channel outputs as a
+      // "predicted class" printed a channel index dressed up as a verdict.
+      let outcome: string;
+      if (p.task === "forecast") {
+        if (p.rowMae != null) metric(stage, "published_row_mae", p.rowMae);
+        outcome = p.rowMae == null
+          ? `Forecast ${p.logits.length} channels (the sample ships no target for this row)`
+          : `Forecast absolute error ${p.rowMae} on this row, over ${p.logits.length} channels`;
+      } else {
+        metric(stage, "published_predicted_class", p.predictedClass);
+        if (p.trueClass != null) metric(stage, "published_true_class", p.trueClass);
+        outcome = `Predicted ${p.className ?? p.predictedClass}`
+          + (p.trueClass != null ? ` (true ${p.trueClassName ?? p.trueClass})` : "");
+      }
+      emit("log", stage,
+        `published model ${p.modelKey} ran here on ${p.backend}: row ${p.rowIndex} of its own `
+        + `held-out sample, input ${p.inputShape.join("x")}, ${r2(p.latencyMs)} ms. ${outcome}`
+        + `. Weights from ${p.repoId} at ${p.revision.slice(0, 12)}, ${p.provenance}`);
+    } else if (pub.kind === "failed") {
+      // Deliberately NOT substituted. A published model that exists and did not run is a reportable
+      // failure, not an occasion to quietly show a different model's number in its place.
+      metric(stage, "published_model", pub.modelKey);
+      metric(stage, "published_model_status", "failed");
+      emit("log", stage, `published model ${pub.modelKey} did NOT run here: ${pub.error}. `
+        + `No substitute figure is shown for it.`);
+    } else {
+      // Recorded as a metric, not only logged: the diagram has to tell "this use case has no
+      // published model" apart from "the run has not reached this stage yet", and both otherwise
+      // render as an empty field.
+      metric(stage, "published_model_status", "unavailable");
+      emit("log", stage, `no published model for this use case: ${pub.reason}`);
+    }
+  }
+
   async function gate() {
     while (!state.stopped) {
       if (!state.paused) return;
@@ -890,8 +1102,32 @@ export function runClientPipeline(
         metric(stage, "qrng_health_passed", qr.healthPassed ? 1 : 0);
         metric(stage, "qrng_throughput_kbps", r1(qr.throughputBitsPerSec / 1000));
         metric(stage, "qrng_min_entropy_per_bit", r2(qr.minEntropyPerBit));
+        metric(stage, "qrng_bits_delivered", qr.nBits);
+        metric(stage, "qrng_extraction_rate", r2(qr.extractionRate));
+        // The leftover-hash-lemma ceiling. Reported on every run because it is the only observable
+        // the LHL eps parameter moves: delivered output is min(bound, requested), and requested is
+        // normally the smaller, so eps -1 against eps -128 produced byte-identical bits and the
+        // control read as inert. It was never inert - the bound was simply never shown.
+        if (qr.lhlMaxBits != null) {
+          metric(stage, "qrng_lhl_max_bits", qr.lhlMaxBits);
+          if (qr.nBits < qr.requestedBits) {
+            emit("log", stage, `QRNG delivered ${qr.nBits} bits, not the ${qr.requestedBits} requested: `
+              + `at eps 2^${Number(config.qrng_eps_log2 ?? qrngCfg().security_epsilon_log2)} the leftover `
+              + `hash lemma permits only ${qr.lhlMaxBits} from this much raw min-entropy. Truncated to `
+              + `the bound rather than padded past it.`);
+          }
+        }
+        // INCONCLUSIVE is a third outcome, not a shade of FAIL. Below the adaptive-proportion
+        // window both continuous tests return "passed" by short-circuit, so a 1-bit output used to
+        // report health PASS beside a min-entropy of 0.
+        metric(stage, "qrng_health_conclusive", qr.healthConclusive ? 1 : 0);
+        if (!qr.healthConclusive) {
+          emit("log", stage, `QRNG health tests INCONCLUSIVE on ${qr.nBits} bits: SP 800-90B 4.4 needs `
+            + `at least 1024 for the adaptive-proportion window. Both tests short-circuit to "passed" `
+            + `below it, so this is reported as inconclusive rather than as a pass.`);
+        }
         emit("log", stage, `QRNG (simulated quantum measurement): ${qr.nBits} bits, health `
-          + `${qr.healthPassed ? "PASS" : "FAIL"} per SP 800-90B 4.4 `
+          + `${qr.healthConclusive ? (qr.healthPassed ? "PASS" : "FAIL") : "INCONCLUSIVE"} per SP 800-90B 4.4 `
           + `(repetition-count ${qr.repetitionCountLongest}/${qr.repetitionCountCutoff}, `
           + `adaptive-proportion ${qr.adaptiveProportionMax}/${qr.adaptiveProportionCutoff}); `
           + `SP 800-22 reported not gating: ${qr.sp80022Passed ? "pass" : "fail"} (monobit p=${qr.monobitP.toFixed(3)}), `
@@ -900,7 +1136,17 @@ export function runClientPipeline(
       }
       case "qkd_key_agreement": {
         if (config.qkd === "pqc-only") { emit("log", stage, "QKD disabled (PQC-only profile)"); break; }
-        const chan = { ...FIBER, distanceKm: Number(config.qkd_distance_km ?? qkdCfg().distance_km),
+        // Every field from config, not three of five. `fiber_loss_db_per_km` and
+        // `detector_efficiency` are exported to the browser and were sitting unread in the same
+        // qkdCfg() object this line already calls, while the values actually used came from the
+        // FIBER literal in quantumSim.ts. They happen to agree today (0.2 and 0.25), which is
+        // exactly why nobody noticed: editing defaults.py would have moved the Python channel model
+        // and left the browser on the old constant, silently, with no error anywhere.
+        const chan = { ...FIBER,
+          distanceKm: Number(config.qkd_distance_km ?? qkdCfg().distance_km),
+          lossDbPerKm: Number(qkdCfg().fiber_loss_db_per_km ?? FIBER.lossDbPerKm),
+          detectorEff: Number(qkdCfg().detector_efficiency ?? FIBER.detectorEff),
+          darkCount: Number(qkdCfg().dark_count_prob ?? FIBER.darkCount),
           misalignment: Number(config.qkd_misalignment ?? qkdCfg().misalignment),
           eveFraction: Number(config.qkd_eve ?? qkdCfg().eve_intercept_fraction) };
         // config.qkd_protocol genuinely selects which physical QKD model runs (BB84 decoy-state vs E91/CHSH),
@@ -993,6 +1239,17 @@ export function runClientPipeline(
         // The QSDC and free-space QKD figures come from an analytic channel model. There is no
         // browser API for quantum communication and there cannot be one, so this is SIMULATED and
         // the page says so rather than presenting a modelled number as a measurement.
+        // The same guard the free-space QKD stage above carries. Without it, selecting pqc-only on
+        // satellite logged "free-space QKD disabled (PQC-only profile)" and then, one stage later,
+        // emitted qsdc_error_rate, qsdc_secrecy_capacity and qsdc_eavesdrop_detected - delivering
+        // telemetry over the quantum channel the run had just said did not exist. QSDC is a quantum
+        // direct-communication protocol; there is no PQC-only version of it to fall back to.
+        if (config.qkd === "pqc-only") {
+          emit("log", stage, "QSDC direct telemetry skipped (PQC-only profile): QSDC carries the "
+            + "message on the quantum channel itself, so with no quantum channel there is nothing "
+            + "to send it over. The payload travels under the PQC session key instead.");
+          break;
+        }
         metric(stage, "inference_provenance", "simulated");
         metric(stage, "inference_backend", "analytic free-space channel model (quantumSim)");
         // Same channel the satellite_qkd stage above built, distance included. Reading only sat_eve
@@ -1021,6 +1278,16 @@ export function runClientPipeline(
               + `${anom.isAnomaly ? "ANOMALY" : "nominal"} (score ${anom.anomalyScore})`);
           }
         }
+        // Satellite's flow has no private_inference stage either, so its published model runs here.
+        //
+        // OUTSIDE the delivery branch, which is a correction. It was inside, on the reasoning that an
+        // aborted channel leaves no telemetry to analyse - but this step never analyses the delivered
+        // telemetry. It runs the pinned model on a row of the model's OWN held-out corpus, which has
+        // nothing to do with whether this run's channel aborted. Gating it implied a dependency that
+        // does not exist, made the model benchmark unavailable exactly when a visitor is exploring
+        // the eavesdrop behaviour, and left the diagram reading "published model · —" with a done
+        // tick and no reason.
+        await runPublishedForStage(stage);
         break;
       }
       case "qsmpc_compute": {
@@ -1039,9 +1306,17 @@ export function runClientPipeline(
           // Snapped, not trusted. The field is labelled "QSMS prime" and used to accept any
           // integer, so entering 100 shared additively over Z_100 -- which is not a field, while
           // the log still printed "over Z_100" as though it were.
-          const p = Number(config.prime) > 1
-            ? nextPrime(Math.floor(Number(config.prime)))
+          const askedPrime = Number(config.prime);
+          const p = askedPrime > 1
+            ? nextPrime(Math.floor(askedPrime))
             : nextPrime(rawTotal + 1);
+          // Say so when the request was not honoured. A clamp that reports nothing is how a run ends
+          // up computing over a different field than the panel above it displays.
+          if (askedPrime > MAX_FIELD_PRIME || (askedPrime > 1 && !Number.isFinite(askedPrime))) {
+            emit("log", stage, `requested field modulus ${Number.isFinite(askedPrime) ? askedPrime : "infinite"} `
+              + `exceeds the ${MAX_FIELD_PRIME} ceiling and was clamped: past 2^53 the modular sum `
+              + `stops being exact, and trial division at that size does not return`);
+          }
           const shares = secrets.map((s) => { const mask = Math.floor(u() * p); return [((s - mask) % p + p) % p, mask % p]; });
           const total = shares.reduce((acc, [s0, s1]) => (acc + s0 + s1) % p, 0) % p;
           metric(stage, "secure_sum", total);
@@ -1132,6 +1407,8 @@ export function runClientPipeline(
         emit("log", stage, `companions (NOT the headline): binary attack-vs-normal F1=${r2(ids.binaryF1)}, `
           + `aggregate accuracy=${r2(ids.accuracy)}. Both collapse the seven attack types together, which is `
           + `why they read high while a single class can be failing — see scripts/train/telecom_ids.py`);
+        // Telecom's flow has no private_inference stage, so its published model runs here.
+        await runPublishedForStage(stage);
         break;
       }
       case "private_inference": {
@@ -1162,6 +1439,8 @@ export function runClientPipeline(
         metric(stage, "inference_provenance", inf.provenance);
         if (inf.modelKey) metric(stage, "inference_model", inf.modelKey);
         if (inf.note) emit("log", stage, `inference: ${inf.note}`);
+
+        await runPublishedForStage(stage);
 
         // The medical CNN workload runs a genuine encrypted convolution.
         // Medical always evaluates its published student's convolution; the other use cases have
@@ -1275,7 +1554,18 @@ export function runClientPipeline(
         const isInf = ["finance_aml", "medical_fl", "genomics"].includes(usecase);
         const qrow = qsmpcFheRow(wl, ms, rng(7), 6, 1, qubitsOf(config),
           { ...sec, qber: typeof metrics.qber === "number" ? metrics.qber : null });
-        const adv = isInf ? quantumAdvantage(mpcFheRow(usecase, wl, ms, null, sec), qrow) : null;
+        // Costed against the MEASURED hybrid, the same input assembleBenchmark uses.
+        //
+        // This passed `null` and therefore scored the quantum path against a COST MODEL of the
+        // classical one, while the benchmark panel above scored it against the encrypted convolution
+        // the run had actually just performed. Same quantity, two denominators, both on screen: the
+        // badge read 10/10 while the metrics table two panels down read 9.6 and the log line agreed
+        // with the table. `private_inference` runs before this stage, so the measurement is already
+        // in hand - there was never a reason to model it.
+        const measuredHybrid: MeasuredHybrid | null = artifacts._measured_hybrid ?? null;
+        const adv = isInf
+          ? quantumAdvantage(mpcFheRow(usecase, wl, ms, measuredHybrid, sec), qrow)
+          : null;
         if (adv) metric(stage, "quantum_advantage_score", adv.score);
         metric(stage, "qsmpc_t_gates", qrow.t_gate_count);
         emit("log", stage, `QSMPC-FHE comparison (QOTP+QCNN, ${qrow.t_gate_count} T-gates)`

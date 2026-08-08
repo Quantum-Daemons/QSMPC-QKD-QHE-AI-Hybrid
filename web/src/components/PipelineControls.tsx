@@ -2,6 +2,7 @@
 // Shared by the generic Orchestration page and every per-use-case page (driven by usePipelineRun).
 import { useState } from "react";
 import { type usePipelineRun } from "../lib/usePipelineRun";
+import { browserModels } from "../lib/onnxInference";
 import { isClientDemo } from "../lib/demoMode";
 import ParameterPanel from "./ParameterPanel";
 
@@ -13,8 +14,18 @@ export default function PipelineControls({ run }: { run: Run }) {
   // local secret-sharing), so the server-side backend selectors (TenSEAL/OpenFHE/MPyC/…) don't apply.
   const demo = isClientDemo();
   const { usecase, opts, kem, setKem, qkd, setQkd, fhe, setFhe, mpc, setMpc, sig, setSig,
-    optiqkd, setOptiqkd,
+    optiqkd, setOptiqkd, publishedModel, setPublishedModel,
     state, running, paused, start, startStepwise, pause, resume, step, stop } = run;
+
+  // The published models this use case can actually fetch and run, in registry order. Rendered only
+  // when there is a genuine choice: telecom publishes one, genomics none, and offering a select with
+  // a single option is a control that cannot change anything - the defect class this file already
+  // gates three other controls on.
+  //
+  // The reason this exists: the orchestration ran browserModels(usecase)[0] and nothing else, so
+  // medical's ResNet-50 and CKKS student, and three of satellite's four models, were reachable only
+  // from the Models panel's own buttons and never through the E2E simulator.
+  const publishedCandidates = browserModels(usecase);
 
   // Round 18: three controls were rendered on pages where they could not change anything a visitor
   // could see. plan18's own audit rule is that "a control that renders but changes nothing is a
@@ -70,6 +81,27 @@ export default function PipelineControls({ run }: { run: Run }) {
           </>
         )}
         {sel("Signature", "sel-sig", "sig", sig, setSig)}
+        {publishedCandidates.length > 1 && (
+          <>
+            <label className="muted" htmlFor="sel-published-model">Published model</label>
+            <select id="sel-published-model" name="published_model" aria-label="Published model"
+              value={publishedModel} disabled={running || paused}
+              // Names the CURRENT selection, because the closed control clips its own text on a
+              // narrow viewport - the labels run to about 45 characters and the box is capped at the
+              // card width. Hovering has to recover what was clipped, not repeat the generic help.
+              title={`Runs on a row of this model's own corpus. Selected: ${
+                publishedCandidates.find((c) => c.spec.key === publishedModel)?.spec.label
+                ?? `auto (${publishedCandidates[0].spec.label})`}`}
+              onChange={(e) => setPublishedModel(e.target.value)}>
+              {/* Named, not blank. "" is the registry's first entry, and a bare empty option reads
+                  as "none" next to a list of models. */}
+              <option value="">{`auto (${publishedCandidates[0].spec.label})`}</option>
+              {publishedCandidates.map((c) => (
+                <option key={c.spec.key} value={c.spec.key}>{c.spec.label}</option>
+              ))}
+            </select>
+          </>
+        )}
         <span style={{ flex: 1 }} />
         <span className={`badge-state ${state}`}>{state}</span>
       </div>

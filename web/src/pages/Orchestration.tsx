@@ -52,7 +52,10 @@ export default function Orchestration() {
       <PipelineControls run={run} />
 
       <div style={{ marginTop: 16 }} ref={graphRef}>
+        {/* metrics, so the inference node names the published model that ran. Without it this graph
+            described the same run differently from the two-party diagram on the use-case pages. */}
         <OrchestrationGraph usecase={usecase} activeStage={active} doneStages={done}
+          metrics={metrics}
           config={{ kem: run.kem, qkd: run.qkd, sig: run.sig,
                     qkdProtocol: String(run.params.qkd_protocol ?? "") }} />
       </div>

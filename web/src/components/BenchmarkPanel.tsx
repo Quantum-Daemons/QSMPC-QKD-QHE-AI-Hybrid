@@ -22,11 +22,19 @@ export default function BenchmarkPanel(
   const advantage = result?.advantage ?? null;
   const workload = result?.workload ?? "linear";
 
+  // Bars are labelled by PATH, not by backend.
+  //
+  // `backend` is a descriptive sentence - "node-seal CKKS + emp-wasm 2PC (measured: real 4-channel
+  // encrypted convolution, 16 rotations over 196 packed patches)" - and as a category label it is
+  // unusable: the latency chart rendered three bars and exactly one readable axis label, the short
+  // one, so two of the three bars could not be identified at all. `path` is short, distinct, and is
+  // already the first column of the Detailed results table below, so the chart and the table now
+  // name the same rows the same way. The backend still reaches the reader through that table.
   const ratioData = rows.filter((r) => r.ciphertext_plaintext_ratio != null)
-    .map((r) => ({ name: r.backend, ratio: r.ciphertext_plaintext_ratio, path: r.path }));
-  const latData = rows.map((r) => ({ name: r.backend, latency: r.latency_ms, path: r.path }));
+    .map((r) => ({ name: r.path, ratio: r.ciphertext_plaintext_ratio, path: r.path }));
+  const latData = rows.map((r) => ({ name: r.path, latency: r.latency_ms, path: r.path }));
   const secData = rows.filter((r) => r.security_score != null)
-    .map((r) => ({ name: r.backend, score: r.security_score, path: r.path }));
+    .map((r) => ({ name: r.path, score: r.security_score, path: r.path }));
   // hybrid split — the MPC-FHE row carries the linear-FHE vs non-linear-MPC breakdown
   const split = rows.find((r) => r.fhe_linear_ms != null && r.mpc_nonlinear_ms != null);
   const splitData = split
@@ -190,11 +198,16 @@ export default function BenchmarkPanel(
             <div className="card" style={{ marginTop: 14 }}>
               <h3>Detailed results</h3>
               <table>
-                <thead><tr><th>path</th><th>backend</th><th>size</th><th>latency ms</th><th>FHE-lin ms</th><th>MPC-nl ms</th><th>comm KB</th><th>accuracy</th><th>ct/pt</th><th>security</th><th>model</th></tr></thead>
+                {/* The last column was headed "model" and rendered `security_model`, so the table
+                    had no model column at all while appearing to have one. Both are shown now, and
+                    the model one matters here: these rows are not all the same model. */}
+                <thead><tr><th>path</th><th>model</th><th>backend</th><th>size</th><th>latency ms</th><th>FHE-lin ms</th><th>MPC-nl ms</th><th>comm KB</th><th>accuracy</th><th>ct/pt</th><th>security</th><th>security model</th></tr></thead>
                 <tbody>
                   {rows.map((r, i) => (
                     <tr key={i}>
-                      <td style={{ color: colorFor(r.path) }}>{r.path}</td><td>{r.backend}</td>
+                      <td style={{ color: colorFor(r.path) }}>{r.path}</td>
+                      <td style={{ fontSize: 11 }}>{r.model_arch ?? "—"}</td>
+                      <td>{r.backend}</td>
                       <td>{r.model_size ?? "—"}{r.projected ? "*" : ""}</td>
                       <td>{r.latency_ms}</td>
                       <td style={{ color: FHE_COLOR }}>{r.fhe_linear_ms ?? "—"}</td>
@@ -209,6 +222,14 @@ export default function BenchmarkPanel(
               {rows.some((r) => r.projected) && (
                 <p className="muted" style={{ fontSize: 11, margin: "6px 0 0" }}>
                   * large tier is projected from measured medium-tier per-op cost (MACs / comparison counts), not run end-to-end.
+                </p>
+              )}
+              {rows.some((r) => r.path === "plaintext") && (
+                <p className="muted" style={{ fontSize: 11, margin: "6px 0 0" }}>
+                  The plaintext row is a reference point, not a denominator. It is a different model
+                  from the encrypted rows — the published Hugging Face model on its own corpus, against
+                  the distilled student the FHE path evaluates — so dividing one latency by the other
+                  does not give an FHE overhead. Compare the model column before comparing the times.
                 </p>
               )}
             </div>

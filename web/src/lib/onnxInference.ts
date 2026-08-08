@@ -77,7 +77,8 @@ const status: OnnxStatus = {
 let session: OrtTypes.InferenceSession | null = null;
 //: The build actually loaded, kept so Tensor construction uses the same module.
 let ortRuntime: typeof OrtTypes | null = null;
-let inflight: Promise<boolean> | null = null;
+/** Per-model, not per-page: see loadModel for the swap this prevents. */
+const inflight = new Map<string, Promise<boolean>>();
 
 export function onnxBackend(): string {
   return status.backend;
@@ -93,13 +94,41 @@ export function onnxStatus(): OnnxStatus {
  * stops the demo from reporting "webgpu" in a browser that has the API but no working adapter
  * (headless, flags off, blocklisted driver), where ORT silently drops to WASM.
  */
+/** Software rasterisers that expose a WebGPU adapter without any GPU behind it. */
+const SOFTWARE_ADAPTERS = ["swiftshader", "lavapipe", "llvmpipe", "software", "warp"];
+
+/** Whether this adapter is a CPU rasteriser pretending to be a GPU. */
+export function isSoftwareAdapter(info: Record<string, unknown> | null | undefined): boolean {
+  if (!info) return false;
+  const hay = `${info.architecture ?? ""} ${info.vendor ?? ""} ${info.description ?? ""}`
+    .toLowerCase();
+  return SOFTWARE_ADAPTERS.some((s) => hay.includes(s));
+}
+
 export async function hasWebGPU(): Promise<boolean> {
   try {
     if (typeof window !== "undefined" && !window.isSecureContext) return false; // WebGPU is secure-context only
     const gpu = (navigator as any)?.gpu;
     if (!gpu?.requestAdapter) return false;
     const adapter = await gpu.requestAdapter();   // resolves to null, does not throw, when unavailable
-    return !!adapter;
+    if (!adapter) return false;
+    // A SOFTWARE adapter is worse than no adapter, which is the opposite of what "is WebGPU
+    // available" suggests. Measured on the same model, same single row, in two browsers:
+    //
+    //   SwiftShader adapter -> onnx-webgpu -> ResNet-50 in 12842 ms
+    //   no adapter          -> onnx-wasm   -> ResNet-50 in    42 ms
+    //
+    // 300x. The adapter is real and the API works; there is simply no GPU under it, so every shader
+    // dispatch is emulated on the CPU while ORT's wasm build runs SIMD kernels natively. Declining
+    // it is not a downgrade - it is choosing the faster of two CPU paths, and it stops the page
+    // reporting "MEASURED (local WebGPU)" for arithmetic no GPU performed.
+    if (isSoftwareAdapter(adapter.info)) {
+      console.info("[onnx] WebGPU adapter is a software rasteriser "
+        + `(${adapter.info?.architecture ?? "unknown"}); using the wasm build, which measured ~300x `
+        + "faster on this class of adapter");
+      return false;
+    }
+    return true;
   } catch {
     return false;
   }
@@ -229,8 +258,16 @@ export async function loadModel(usecase: string, modelKey?: string): Promise<boo
   // input rank, since one takes [n,19] and the other [n,250,6].
   const want = modelKey ?? browserModel(usecase)?.spec.key;
   if (session && want && status.modelKey === want) return true;
-  if (inflight) return inflight;
-  inflight = (async () => {
+  // Keyed by model, because `inflight` was a single global promise: a caller asking for model B
+  // while model A was still loading got A's promise back, and then read the module-level `session`
+  // believing it held B. The graph-name assertion in runPublishedModel/evaluatePublishedModel runs
+  // BEFORE loadModel, so it cannot catch that swap. Two callers now genuinely exist at once - the
+  // pipeline's inference stage and the Models panel's Run buttons - so this stopped being
+  // theoretical.
+  const slot = want ?? `__usecase__:${usecase}`;
+  const pending = inflight.get(slot);
+  if (pending) return pending;
+  const load = (async () => {
     const target = modelKey
       ? browserModels(usecase).find((m) => m.spec.key === modelKey) ?? null
       : browserModel(usecase);
@@ -328,10 +365,11 @@ export async function loadModel(usecase: string, modelKey?: string): Promise<boo
       console.warn("[onnx] model load failed:", status.error);
       return false;
     } finally {
-      inflight = null;
+      inflight.delete(slot);
     }
   })();
-  return inflight;
+  inflight.set(slot, load);
+  return load;
 }
 
 /** Logits from the registered browser model, or null if it is unavailable (status.error says why). */
@@ -370,6 +408,18 @@ export interface ModelInputFile {
     graph: string; note: string;
     accuracy?: number; majority_baseline?: number;
     mae?: number; persistence_mae?: number;
+    /** F1 of the rare class alone, the AMLworld / Elliptic++ convention. Present when THAT is the
+     *  metric the model was scored on, which for three of the four distilled students it is.
+     *
+     *  Scoring them on accuracy instead would have been the flattering-aggregate pattern this
+     *  project rules out everywhere else: the finance student reads about 99 percent accurate on a
+     *  0.1-percent-positive corpus while its minority-class F1 is 0.0178. A browser that "verified"
+     *  the 99 would be confirming the wrong number. */
+    minority_class_f1?: number;
+    /** F1 of predicting EVERYTHING positive: precision = prevalence, recall = 1. The floor a rare-
+     *  class F1 has to clear, and the reason 0.0178 needs a companion rather than a bare comparison
+     *  against zero. */
+    all_positive_f1?: number;
   };
   classes?: Record<string, string>;
   feature_names?: string[];
@@ -380,8 +430,11 @@ export interface ModelEvalResult {
   ran: boolean;
   task: "classification" | "forecast";
   n: number;
-  /** Accuracy for a classifier, mean absolute error for a forecaster. Lower is better for MAE. */
+  /** Accuracy, rare-class F1, or mean absolute error, depending on `metricName`. */
   score: number | null;
+  /** Which metric `score` and `expected` are. The model is scored on the metric it was PUBLISHED
+   *  with, not on whichever one the browser found easiest to compute. */
+  metricName: "accuracy" | "minority_class_f1" | "mae";
   expected: number | null;
   /** Majority-class accuracy, or persistence MAE — what a trivial predictor would achieve. */
   baseline: number | null;
@@ -393,7 +446,55 @@ export interface ModelEvalResult {
   /** Transferred size, or null when the browser served it from cache. */
   bytes: number | null;
   provenance: string;
+  /** `expected.note` from the sample: why this figure is what it is.
+   *
+   *  Rendered, not just carried. The finance student measures 0.3337 here and the registry table
+   *  eight lines above it prints 0.0178 for the same metric - a 19x gap that is entirely an artefact
+   *  of the sample being stratified to contain positives. Two numbers for one metric with no visible
+   *  explanation is worse than either alone. */
+  note: string | null;
   error: string | null;
+}
+
+/** The evaluation sample for one model, memoised per URL.
+ *
+ *  Two callers now want it -- the Models panel's Run button and the orchestration's inference stage
+ *  -- and before this cache existed the panel refetched several megabytes on every click. `null` is
+ *  cached too: "this model publishes no sample" is a stable answer, not a transient failure, and
+ *  re-asking costs a round trip to be told the same thing. */
+const _sampleCache = new Map<string, Promise<ModelInputFile | null>>();
+
+/** The sample lives beside the weights at the SAME pinned commit, so the two cannot drift apart. */
+function sampleUrlFor(modelUrl: string): string {
+  // Every artefact path in the registry is `onnx/model*.onnx`. The previous form of this stripped the
+  // last two path segments generically, which is only correct BECAUSE of that convention: a
+  // root-level `model.onnx` would have eaten the revision segment and fetched
+  // `.../resolve/eval_sample.json` -- a 404 that reads exactly like "publishes no sample". Anchor on
+  // the convention instead, and say so when it does not hold.
+  if (!/\/onnx\/[^/]+$/.test(modelUrl)) {
+    throw new Error(`cannot derive an eval_sample.json URL from "${modelUrl}": expected the artefact `
+      + `path to be onnx/<file>. Deriving it by stripping segments would silently fetch the wrong `
+      + `URL and report the model as unevaluated.`);
+  }
+  return modelUrl.replace(/\/onnx\/[^/]+$/, "/eval_sample.json");
+}
+
+function evalSample(modelUrl: string): Promise<ModelInputFile | null> {
+  const url = sampleUrlFor(modelUrl);
+  let hit = _sampleCache.get(url);
+  if (!hit) {
+    hit = (async () => {
+      try {
+        const res = await fetch(url, { mode: "cors" });
+        if (!res.ok) return null;              // no evaluation sample published for this model
+        return (await res.json()) as ModelInputFile;
+      } catch {
+        return null;
+      }
+    })();
+    _sampleCache.set(url, hit);
+  }
+  return hit;
 }
 
 /** Apply the preprocessing recorded WITH the data, never a locally-guessed equivalent. */
@@ -422,9 +523,10 @@ export async function evaluatePublishedModel(
   usecase: string, tolerance = 0.05, modelKey?: string,
 ): Promise<ModelEvalResult | null> {
   const base: ModelEvalResult = {
-    ran: false, task: "classification", n: 0, score: null, expected: null, baseline: null,
+    ran: false, task: "classification", metricName: "accuracy", n: 0, score: null, expected: null,
+    baseline: null,
     beatsBaseline: false, matchesExpected: false, backend: "none", bytes: null,
-    provenance: "", error: null,
+    provenance: "", note: null, error: null,
   };
   // The evaluation sample lives in the MODEL's own HF repo at the same pinned commit, not in this
   // bundle. Two reasons, both practical: the sample and the weights it evaluates cannot drift apart
@@ -436,17 +538,8 @@ export async function evaluatePublishedModel(
     ? browserModels(usecase).find((m) => m.spec.key === modelKey) ?? null
     : browserModel(usecase);
   if (!target) return null;
-  const sampleUrl = target.url.replace(/\/[^/]+\/[^/]+$/, "/eval_sample.json")
-    .replace(/\/onnx\/[^/]+$/, "/eval_sample.json");
-
-  let file: ModelInputFile;
-  try {
-    const res = await fetch(sampleUrl, { mode: "cors" });
-    if (!res.ok) return null;                       // no evaluation sample published for this model
-    file = await res.json();
-  } catch {
-    return null;
-  }
+  const file = await evalSample(target.url);
+  if (!file) return null;                           // no evaluation sample published for this model
 
   // Check we are about to score the graph the expectation was measured on. expected.graph has been
   // published since Round 18 and never once compared against the artefact actually fetched -- and
@@ -515,35 +608,241 @@ export async function evaluatePublishedModel(
       const persistenceMae = count ? persist / count : NaN;
       const exp = file.expected.mae ?? null;
       return {
-        ran: true, task, n, score: mae, expected: exp,
+        ran: true, task, metricName: "mae", n, score: mae, expected: exp,
         baseline: file.expected.persistence_mae ?? persistenceMae,
         beatsBaseline: mae < (file.expected.persistence_mae ?? persistenceMae),
         matchesExpected: exp == null ? false : Math.abs(mae - exp) <= Math.max(tolerance, exp * 0.1),
-        backend: status.backend, bytes: status.bytes, provenance: file.provenance, error: null,
+        backend: status.backend, bytes: status.bytes, provenance: file.provenance,
+        note: file.expected.note ?? null, error: null,
       };
     }
 
     const labels = file.labels ?? [];
-    let correct = 0;
+    let correct = 0, tp = 0, fp = 0, fn = 0, positives = 0;
     for (let i = 0; i < n; i++) {
       let best = 0;
       for (let c = 1; c < width; c++) if (data[i * width + c] > data[i * width + best]) best = c;
       const pred = width > 1 ? best : (data[i] > 0.5 ? 1 : 0);
       if (pred === labels[i]) correct++;
+      if (labels[i] === 1) positives++;
+      if (pred === 1 && labels[i] === 1) tp++;
+      else if (pred === 1) fp++;
+      else if (labels[i] === 1) fn++;
     }
+
+    // Score on the metric the model was PUBLISHED with. Three of the four distilled students record
+    // minority-class F1, and reporting accuracy for them would confirm a number nobody claimed:
+    // the finance student is about 99 percent accurate on a corpus that is 0.1 percent positive.
+    if (file.expected.minority_class_f1 != null) {
+      // sklearn f1_score(pos_label=1, zero_division=0): 0 when the model predicts no positives.
+      const f1 = tp === 0 ? 0 : (2 * tp) / (2 * tp + fp + fn);
+      const exp = file.expected.minority_class_f1;
+      // Predicting everything positive: precision = prevalence, recall = 1.
+      const prevalence = n ? positives / n : 0;
+      const allPositive = file.expected.all_positive_f1
+        ?? (prevalence ? (2 * prevalence) / (1 + prevalence) : 0);
+      return {
+        ran: true, task, metricName: "minority_class_f1", n, score: f1, expected: exp,
+        baseline: allPositive,
+        beatsBaseline: f1 > allPositive,
+        matchesExpected: Math.abs(f1 - exp) <= tolerance,
+        backend: status.backend, bytes: status.bytes, provenance: file.provenance,
+        note: file.expected.note ?? null, error: null,
+      };
+    }
+
     const accuracy = correct / n;
     const exp = file.expected.accuracy ?? null;
     const majority = file.expected.majority_baseline ?? null;
     return {
-      ran: true, task, n, score: accuracy, expected: exp, baseline: majority,
+      ran: true, task, metricName: "accuracy", n, score: accuracy, expected: exp, baseline: majority,
       beatsBaseline: majority == null ? true : accuracy > majority,
       matchesExpected: exp == null ? false : Math.abs(accuracy - exp) <= tolerance,
-      backend: status.backend, bytes: status.bytes, provenance: file.provenance, error: null,
+      backend: status.backend, bytes: status.bytes, provenance: file.provenance,
+      note: file.expected.note ?? null, error: null,
     };
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     status.error = msg;
     console.warn("[onnx] published-model evaluation failed:", msg);
     return { ...base, provenance: file.provenance, error: msg };
+  }
+}
+
+// --------------------------------------------------------------------------------------------- //
+//  One published-model inference, for the orchestration pipeline
+// --------------------------------------------------------------------------------------------- //
+
+/**
+ * A single row through the published model, with everything needed to say what just happened.
+ *
+ * `evaluatePublishedModel` above scores the whole held-out sample and answers "does this browser
+ * reproduce the published figure". This answers a different question -- "what does the published
+ * model output for one input, and how long did that take here" -- which is what an orchestration
+ * stage needs. They share the fetch, the graph check, the preprocessing and the session.
+ */
+export interface PublishedModelRun {
+  modelKey: string;
+  repoId: string;
+  /** The 40-char commit the weights were fetched from. Printed, so the claim is checkable. */
+  revision: string;
+  graph: string;
+  /** "onnx-webgpu" or "onnx-wasm": the execution provider that actually ran, not the one requested. */
+  backend: string;
+  inputShape: number[];
+  rowIndex: number;
+  task: "classification" | "forecast";
+  /** Raw model output: class scores for a classifier, the forecast vector for a forecaster. */
+  logits: number[];
+  /** Classifiers only. A forecaster has no class, and argmax over its output means nothing. */
+  predictedClass: number | null;
+  className: string | null;
+  /** The row's true label where the sample ships one, so the single inference is checkable too. */
+  trueClass: number | null;
+  trueClassName: string | null;
+  /** Forecasters only: mean absolute error of this one row against its shipped next-step target. */
+  rowMae: number | null;
+  /** Wall-clock for session.run alone, excluding fetch and session creation. */
+  latencyMs: number;
+  /** Total including the fetch and session creation on a cold cache. */
+  totalMs: number;
+  provenance: string;
+}
+
+export type PublishedRunOutcome =
+  /** The published model ran. */
+  | { kind: "ran"; run: PublishedModelRun }
+  /** No published, pinned, browser-tier model exists for this use case. A legitimate state. */
+  | { kind: "unavailable"; reason: string }
+  /** One exists and did not run. Never silently substituted -- the caller must surface this. */
+  | { kind: "failed"; modelKey: string; error: string };
+
+/**
+ * Run the published model for `usecase` on one row of its OWN held-out sample.
+ *
+ * The row comes from the model's corpus, not from the caller, and that is deliberate. The pipeline's
+ * own features are a different dataset -- medical runs Wisconsin's 8 tabular features while the
+ * published model is a BreastMNIST CNN over 28x28 images -- so feeding one to the other would be the
+ * same category error this project already refuses elsewhere. The two run side by side and each says
+ * what it is.
+ *
+ * `rowIndex` is taken from the caller (the pipeline derives it from the run seed) so the same seed
+ * selects the same row and the stage is reproducible.
+ */
+export async function runPublishedModel(
+  usecase: string, opts: { modelKey?: string; rowIndex?: number } = {},
+): Promise<PublishedRunOutcome> {
+  const started = performance.now();
+  const target = opts.modelKey
+    ? browserModels(usecase).find((m) => m.spec.key === opts.modelKey) ?? null
+    : browserModel(usecase);
+  if (!target) {
+    return { kind: "unavailable", reason: status.error
+      ?? `no published, pinned, browser-tier ONNX model is registered for "${usecase}"` };
+  }
+
+  const key = target.spec.key;
+  let file: ModelInputFile | null;
+  try {
+    file = await evalSample(target.url);
+  } catch (e) {
+    return { kind: "failed", modelKey: key, error: e instanceof Error ? e.message : String(e) };
+  }
+  if (!file) {
+    return { kind: "failed", modelKey: key,
+      error: `${key} is published and pinned but ships no eval_sample.json at that revision, so there `
+        + `is no input from its own corpus to run it on` };
+  }
+
+  // Same identity check the evaluation path makes: score the graph the sample was measured on.
+  const fetchedGraph = target.url.split("/").pop() ?? "";
+  const expectedGraph = file.expected?.graph ?? "";
+  if (expectedGraph && fetchedGraph && expectedGraph !== fetchedGraph) {
+    return { kind: "failed", modelKey: key,
+      error: `graph mismatch: the sample was built against ${expectedGraph}, this browser fetched `
+        + `${fetchedGraph}` };
+  }
+
+  if (!(await loadModel(usecase, key)) || !session) {
+    return { kind: "failed", modelKey: key, error: status.error ?? "session creation failed" };
+  }
+
+  try {
+    const [, ...dims] = file.input.shape;
+    const per = dims.reduce((a, b) => a * b, 1);
+    const n = file.samples.length;
+    if (!n) throw new Error("eval_sample.json ships zero rows");
+    const rowIndex = ((opts.rowIndex ?? 0) % n + n) % n;
+    const row = file.samples[rowIndex];
+    if (row.length !== per) {
+      throw new Error(`row ${rowIndex} has ${row.length} values, model expects ${per} `
+        + `(${file.input.shape.join("x")}) - refusing to pad or truncate`);
+    }
+    const flat = new Float32Array(per);
+    for (let j = 0; j < per; j++) flat[j] = applyPreprocessing(row[j], file.input.preprocessing);
+
+    const t = new ortRuntime!.Tensor("float32", flat, [1, ...dims]);
+    const ran = performance.now();
+    const out = await session.run({ [session.inputNames[0]]: t });
+    const latencyMs = performance.now() - ran;
+
+    const outputs = session.outputNames.map((k) => out[k]);
+    const scores = outputs.find((o) => o && o.type === "float32" && (o.dims?.length ?? 0) >= 2)
+      ?? outputs[0];
+    const logits = Array.from(scores.data as Float32Array);
+    const task = file.task ?? "classification";
+
+    // A forecaster's output is the next-step prediction, not class scores. Taking an argmax over it
+    // yields a channel index and prints it as a class, which is meaningless -- Telemanom's output is
+    // 6 continuous channel values. Score it the way its own sample is scored instead: absolute error
+    // against the target row shipped beside it.
+    let predictedClass: number | null = null;
+    let rowMae: number | null = null;
+    if (task === "forecast") {
+      const target = file.targets?.[rowIndex];
+      if (target && target.length) {
+        const k = Math.min(target.length, logits.length);
+        let sum = 0;
+        for (let i = 0; i < k; i++) sum += Math.abs(logits[i] - target[i]);
+        rowMae = Number((sum / k).toFixed(6));
+      }
+    } else {
+      predictedClass = 0;
+      for (let c = 1; c < logits.length; c++) {
+        if (logits[c] > logits[predictedClass]) predictedClass = c;
+      }
+      if (logits.length === 1) predictedClass = logits[0] > 0.5 ? 1 : 0;
+    }
+
+    return {
+      kind: "ran",
+      run: {
+        modelKey: key,
+        repoId: target.spec.hf_repo_id ?? "",
+        revision: target.spec.hf_revision ?? "",
+        graph: fetchedGraph,
+        backend: status.backend,
+        inputShape: [1, ...dims],
+        rowIndex,
+        task,
+        logits,
+        predictedClass,
+        rowMae,
+        className: predictedClass == null
+          ? null
+          : file.classes?.[String(predictedClass)] ?? null,
+        trueClass: task === "forecast" ? null : file.labels?.[rowIndex] ?? null,
+        trueClassName: task === "forecast" || file.labels?.[rowIndex] == null
+          ? null
+          : file.classes?.[String(file.labels[rowIndex])] ?? null,
+        latencyMs: Number(latencyMs.toFixed(2)),
+        totalMs: Number((performance.now() - started).toFixed(2)),
+        provenance: file.provenance,
+      },
+    };
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    console.warn("[onnx] published-model run failed:", msg);
+    return { kind: "failed", modelKey: key, error: msg };
   }
 }

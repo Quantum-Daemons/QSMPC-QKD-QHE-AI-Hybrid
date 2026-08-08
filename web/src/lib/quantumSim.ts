@@ -1,6 +1,7 @@
 // Pure-TypeScript quantum-channel + small-circuit simulator for the client-side demo.
 // Mirrors the Python qkd/channel.py + qkd/bb84.py analytic models (no WASM build needed)
 // so the in-browser BB84 / QBER / secure-key-rate numbers track the backend.
+import { qkdCfg } from "./config";
 
 // Deterministic seeded RNG (mulberry32) so demo runs are reproducible per seed.
 export function rng(seed: number): () => number {
@@ -26,25 +27,87 @@ export function h2(x: number): number {
 
 export interface ChannelParams {
   distanceKm: number;
+  /** Fibre only. A free-space link is not attenuated per kilometre - see `freeSpace` below. */
   lossDbPerKm: number;
   detectorEff: number;
   darkCount: number;
   misalignment: number;
   eveFraction: number;
+  /** Present on the satellite downlink, absent on fibre. Its presence selects the loss model. */
+  freeSpace?: {
+    beamDivergenceUrad: number;
+    rxApertureM: number;
+    atmosphericDb: number;
+    pointingDb: number;
+  };
 }
 
+// Both channels come from config, not from literals here.
+//
+// They used to be plain objects, and every call site spread them while overriding one or two fields -
+// so the remaining constants could not be changed without editing this file. That shape had already
+// produced a real bug on the fibre side: config and literal agreed numerically, so editing
+// `config.yaml` moved the Python channel model and left the browser on the constant, with nothing
+// anywhere to indicate the two had diverged. The free-space channel had it worse - it had no config
+// counterpart at all, so four of its six physical constants were unreachable from configuration.
+//
+// Read at module load from the statically-imported defaults, so there is no async gap and no second
+// source of truth. `eveFraction` stays 0 here because it is a per-run control, not channel physics:
+// the panel supplies it.
 export const FIBER: ChannelParams = {
-  distanceKm: 50, lossDbPerKm: 0.2, detectorEff: 0.25,
-  darkCount: 1e-5, misalignment: 0.015, eveFraction: 0,
+  distanceKm: qkdCfg().distance_km,
+  lossDbPerKm: qkdCfg().fiber_loss_db_per_km,
+  detectorEff: qkdCfg().detector_efficiency,
+  darkCount: qkdCfg().dark_count_prob,
+  misalignment: qkdCfg().misalignment,
+  eveFraction: 0,
 };
 
 export const FREE_SPACE: ChannelParams = {
-  distanceKm: 800, lossDbPerKm: 0.035, detectorEff: 0.4,
-  darkCount: 1e-5, misalignment: 0.025, eveFraction: 0,
+  distanceKm: qkdCfg().free_space_distance_km,
+  lossDbPerKm: 0,                       // unused: `freeSpace` below selects the diffraction model
+  detectorEff: qkdCfg().free_space_detector_efficiency,
+  darkCount: qkdCfg().free_space_dark_count_prob,
+  misalignment: qkdCfg().free_space_misalignment,
+  eveFraction: 0,
+  freeSpace: {
+    beamDivergenceUrad: qkdCfg().free_space_beam_divergence_urad,
+    rxApertureM: qkdCfg().free_space_rx_aperture_m,
+    atmosphericDb: qkdCfg().free_space_atmospheric_db,
+    pointingDb: qkdCfg().free_space_pointing_db,
+  },
 };
 
+/**
+ * Channel loss in dB. Two different physical regimes, and using one law for both was a real error.
+ *
+ * FIBRE is attenuated per kilometre, so loss is linear in distance. That is correct and unchanged.
+ *
+ * A SATELLITE DOWNLINK is not. Its dominant term is diffraction: the beam leaves the spacecraft with
+ * a far-field divergence `theta` and has spread to roughly `theta * r` across by the time it arrives,
+ * of which the ground telescope captures `(D_rx / (theta * r))^2` - an inverse-SQUARE law, not a
+ * linear one. The atmosphere adds a few fixed dB because a downlink crosses it once, near the ground,
+ * rather than along the whole path.
+ *
+ * Modelling it as `distance * 0.035 dB/km` gave 28 dB at 800 km, which looked right next to the 27 dB
+ * Micius reports, and then diverged badly: 42 dB at 1200 km where physics gives about 28, 70 against
+ * 32 at 2000 km, 175 against 40 at 5000. The Downlink control has no maximum, so the numbers stopped
+ * meaning anything a short drag past the default.
+ *
+ * Liao et al., Nature 549, 43 (2017) / arXiv:1707.00542.
+ */
+export function channelLossDb(p: ChannelParams): number {
+  if (!p.freeSpace) return p.distanceKm * p.lossDbPerKm;
+  const fs = p.freeSpace;
+  const beamDiameterM = (fs.beamDivergenceUrad * 1e-6) * (p.distanceKm * 1e3);
+  // Capped at 1: inside the near field the receiver cannot capture more than the whole beam.
+  const captured = Math.min(1, fs.rxApertureM / Math.max(beamDiameterM, 1e-9));
+  const geometricDb = -20 * Math.log10(captured);
+  return geometricDb + fs.atmosphericDb + fs.pointingDb;
+}
+
 export function transmittance(p: ChannelParams): number {
-  return p.detectorEff * 10 ** (-(p.distanceKm * p.lossDbPerKm) / 10);
+  return p.detectorEff * 10 ** (-channelLossDb(p) / 10);
 }
 
 export function intrinsicQber(p: ChannelParams): number {
@@ -75,7 +138,10 @@ export function bb84(nPulses: number, p: ChannelParams, seed = 0, fEC = 1.16): B
     siftedBits: nSift,
     secretKeyRate: nPulses > 0 ? (secureFraction * nSift) / nPulses : 0,
     secureKeyBits: Math.floor(secureFraction * nSift),
-    channelLossDb: Math.round(p.distanceKm * p.lossDbPerKm * 10) / 10,
+    // channelLossDb(), not the linear product: with the free-space model selected `lossDbPerKm`
+    // is 0, so recomputing it here would have REPORTED 0 dB on the satellite page while the
+    // transmittance above used the real diffraction figure.
+    channelLossDb: Math.round(channelLossDb(p) * 10) / 10,
   };
 }
 
@@ -98,7 +164,10 @@ export function e91(nPulses: number, p: ChannelParams, seed = 0, visibility = 0.
     qber, siftedBits: nPairs,
     secretKeyRate: nPulses > 0 ? (secureFraction * nPairs) / nPulses : 0,
     secureKeyBits: Math.floor(secureFraction * nPairs),
-    channelLossDb: Math.round(p.distanceKm * p.lossDbPerKm * 10) / 10,
+    // channelLossDb(), not the linear product: with the free-space model selected `lossDbPerKm`
+    // is 0, so recomputing it here would have REPORTED 0 dB on the satellite page while the
+    // transmittance above used the real diffraction figure.
+    channelLossDb: Math.round(channelLossDb(p) * 10) / 10,
     chshS: s,
   };
 }

@@ -48,8 +48,8 @@ change, not a rewrite. There is **no in-band negotiation and no silent fallback*
 Cross-cutting: **PQC-first hybrid** (ML-KEM-768 + X25519, ML-DSA-65 - the hybrid-first
 approach the EU roadmap recommends), **crypto-agility**
 (operator-selected, modular provider replacement), **secure-aggregation federated learning** - including a **Quantum
-Federated Learning** option (a PennyLane hybrid quantum-classical VQC over this repo's own FedAvg, mirrored in-browser as
-a per-use-case toggle), **explainable AI**
+Federated Learning** option (a PennyLane hybrid quantum-classical VQC over this repo's own FedAvg; in the
+browser it runs on every run rather than behind a toggle, over the page's own bundled sample), **explainable AI**
 (exact linear-SHAP attributions, ML-DSA-signed for a tamper-evident audit record - aimed at EU AI Act
 Art. 13, applicable 2 Dec 2027 for Annex III after the AI Omnibus deferral), an **E2E orchestration** engine with **Run / Pause / Resume / Step / Stop / Restart**
 controls, live WebSocket event streaming, config-driven parameters editable in the WebUI (a per-page
@@ -105,11 +105,10 @@ bash env/setup_venv.sh      # or: make setup
 source .venv/bin/activate
 
 # 2. Run the test suite (crypto correctness, FHE accuracy, E2E smoke)
-make test             # 163 collected, 159 passed, 4 deselected (Node/OpenFHE-gated)
-# NOTE: `make test` runs a bare `pytest`, so nothing is deselected and the OpenFHE bootstrap test
-# SIGSEGVs inside EvalBootstrapSetup on AlmaLinux 9.7 (the import guard does not catch a segfault).
-# Use the deselecting form on that host:
-pytest -m "not slow"        # 159 passed, 4 deselected
+make test             # 174 collected, 170 passed, 4 deselected (Node/OpenFHE-gated)
+# `make test` already passes -m "not slow", which is what deselects those four.
+# `make test-all` runs every test, and on AlmaLinux 9.7 the OpenFHE bootstrap test SIGSEGVs inside
+# EvalBootstrapSetup: fhe/backends.py guards against an ImportError, and a segfault is not one.
 
 # 3. Optional tiers
 pip install -r requirements-ai.txt  # torch (CUDA 13 auto), PennyLane (QFL), XGBoost, MedMNIST, ONNX, MCP SDK
@@ -149,6 +148,7 @@ scripts/      bootstrap_submodules.sh . run_benchmark.sh . build_gpu_mpc.sh . ru
   train/      per-vertical training: finance_aml . medical_breastmnist . genomics_prs . satellite_telemanom
   data/      fetch_g1k_dosages.py (1000 Genomes provenance)
 docs/       architecture . crypto-agility . threat-model . pqc-roadmap
+            deliverable-verification . browser-verification-checklist
 tests/       pytest suite
 ```
 
@@ -276,8 +276,9 @@ quantum-MPC path.
 The model is **per use case**, not a single generic shape (`qsh.benchmark.runner.usecase_arch_layers` /
 `usecase_arch_specs`, mirrored client-side): web-grounded 2026 parameter budgets - **finance** = tabular
 fraud MLP, **medical** = a **genuine small CNN on real MedMNIST images**, **genomics** = SNP/variant risk
-MLP. The **workload** selector changes the architecture *class* - `linear` (shallow) vs `cnn` vs
-`transformer`.
+MLP. There is **no workload selector** any more - see the removal note further down. It offered
+`linear` against `cnn`, and once the CNN path began evaluating the published student's own weights
+end to end under CKKS, `linear` was the only fabricated option left.
 
 **Medical + `cnn` is a real encrypted convolution, not a cost proxy.** When the medical use case loads
 MedMNIST (`config['dataset']='medmnist'` / the CNN workload), the pipeline federated-trains a tiny CNN
@@ -292,7 +293,10 @@ For the other industries the encrypted hybrid preserves the plaintext decision r
 the metric is FHE/MPC **cost + fidelity**, not task SOTA; lightweight === the trained linear model, so SHAP
 stays exact. The benchmark shows the architecture label + parameter count.
 
-A **lightweight / medium / large** selector then scales it. **Lightweight + medium run end-to-end for real**
+There is **no lightweight / medium / large** selector any more either. It scaled invented
+architectures - a "tabular fraud MLP" at 18/850/9,538 parameters against a real distilled student of
+33 - so the sizes described models nothing had trained. What survives of the idea: **the measured
+path runs end to end for real**
 (CKKS-FHE linear + MPyC-MPC non-linear); **large is clearly labelled *projected*** - extrapolated from the
 measured medium per-op cost (MAC / comparison counts) so the page stays responsive. Representative results on
 the Blackwell box (TenSEAL CPU + MPyC, `linear` workload):
@@ -303,7 +307,7 @@ the Blackwell box (TenSEAL CPU + MPyC, `linear` workload):
 | MPC-FHE | TenSEAL CKKS + MPyC (CPU) | medium | ~243 ms | ~215 ms | ~28 ms | ~4.5 KB | 1.0 | ~1483x | **68 / 100** |
 | MPC-FHE | TenSEAL CKKS + MPyC (CPU) | large \* | ~1885 ms | ~1719 ms | ~165 ms | ~24.5 KB | 1.0 | - | **68 / 100** |
 | MPC-FHE | HEonGPU CKKS (GPU sm_120) + MPyC | medium | batched | GPU | CPU | - | - | - | **68 / 100** |
-| QSMPC-FHE | QOTP + QCNN (Clifford+T) | - | ~4 ms | Clifford | T-gates x56 | n/a | 1.0 | **~1.32x** | **96 / 100** |
+| QSMPC-FHE | QOTP + QCNN (Clifford+T), no trained weights | - | ~4 ms | Clifford | T-gates x56 | n/a | n/a | **~1.32x** | **96 / 100** |
 
 \* **projected** from measured medium per-op cost, not run end-to-end. GPU FHE wins on **batched**
 workloads; for a tiny single-vector input the per-call kernel overhead can exceed CPU (raw encrypt
@@ -399,6 +403,50 @@ See [`docs/pqc-roadmap.md`](docs/pqc-roadmap.md).
 
 ## Concerns & recommendations
 
+- **The orchestration now runs the published models; before Round 21 it never had.** The pipeline
+  truncated its features to 8 and called `inferLogits`, which builds a `[1,8]` tensor. No published
+  model takes `[1,8]` - they take `[1,32]`, `[1,1,28,28]`, `[1,250,6]`, `[1,19]`, `[1,7]` - so the
+  ONNX tier failed on every use case, every run silently dropped to the bundled 8-feature linear
+  model, and the badge above it read MEASURED. The Models panel forty lines below advertised a
+  ResNet-18 the page never ran. `runPublishedModel()` is now shared by the panel and the pipeline,
+  and a **Published model** selector picks which one on the three use cases that publish several.
+  Measured in-browser: `finance_aml.gbm` 1.4 ms `1x32`, `medical_fl.resnet18` 4.7 ms `1x1x28x28`,
+  `telecom_ids.qml` 5.9 ms `1x7`, `satellite_comms.telemanom` 9.6 ms `1x250x6`.
+
+  It is a **second** inference, not a replacement. The published models are trained on different
+  corpora from the pipeline's own features - BreastMNIST images against Wisconsin tabular rows - so
+  feeding one to the other would be the category error this project refuses elsewhere. Both run,
+  both are measured, and each says which corpus it is on. A published model that exists and fails to
+  run is reported as a failure with no substitute figure.
+
+- **A retrain had silently unpublished two models.** `record_metrics` replaced the whole entry under
+  a docstring that said "Merge", and `hf_revision` lives in that entry, so retraining finance and
+  OPS-SAT to capture their `StandardScaler` dropped both pins. Nothing failed - the damage was three
+  layers away in a browser, where `browserModels()` skips any spec without a revision, and the
+  finance page had gone from one verifiable model to none while still printing that model's metrics.
+  Republished; a retrain now demotes the sha to `hf_revision_invalidated_by_retrain` and the UI says
+  "retrained since publication" rather than the identical-looking "never pinned".
+
+- **A software WebGPU adapter is slower than no adapter.** Same model, same row, two browsers:
+  SwiftShader gave `onnx-webgpu` at 12842 ms, no adapter gave `onnx-wasm` at 42 ms. `requestAdapter()`
+  succeeds on a software rasteriser, so "is WebGPU available" answered yes and the code took the
+  build that was 300x slower than the one it had just declined. Now declined by name.
+
+- **Three of the four CKKS students can be verified in a browser.** They shipped no held-out sample,
+  so selecting one reported DID NOT RUN. Samples ship model-ready with `preprocessing: []`, because
+  the browser's `applyPreprocessing` is per-scalar and cannot apply a 32-length mean/scale vector or
+  an area resize. Reproduced before publishing: medical accuracy 0.730769, OPS-SAT rare-class F1
+  0.864865, finance rare-class F1 0.333709 on its shipped rows. `satellite_comms.student` still has
+  none, and the blocker is its METRIC, not a missing scaler: it is scored on event-wise F0.5, which
+  is defined over contiguous runs of a timeline and cannot be computed from independent rows.
+
+- **The browser scores each student on the metric it was published with.** Three of the four record
+  rare-class F1, and reporting accuracy for them would have confirmed a number nobody claimed - the
+  finance student is about 99 percent accurate on a corpus that is 0.1 percent positive. Its F1 is
+  also 19x higher on the shipped rows than on the full corpus, because the sample is stratified to
+  contain positives; what survives the change of prevalence is the ratio to the all-positive
+  baseline, 9.3x here against about 8.7x on the corpus, and the page says so beside the figure.
+
 - **Two new trained models, and one of them is a negative result.** `medical_fl.resnet50` exists to
   test a published claim rather than to win one: MedMNIST v2 reports ResNet-50 at AUC 0.857 against
   ResNet-18's 0.901 on this 780-image corpus, so the deeper network is expected to lose. It does,
@@ -451,7 +499,7 @@ See [`docs/pqc-roadmap.md`](docs/pqc-roadmap.md).
   it now reads the cadence from the model record, because preprocessing has to come from the
   artefact rather than a constant in a second file.
 - **Still open: the event-wise headline does not reproduce.** Retraining at the same configuration
-  gives event-wise F0.5 of 0.4545 where the recorded figure is 0.7143, while point-adjusted F1
+  gave event-wise F0.5 of 0.4545 where the then-recorded figure was 0.7143, and the record now holds 0.4545 - the reproduction won and the stale value was the one retired, while point-adjusted F1
   reproduces (0.9937 against 0.9945) and the isolation-forest baseline reproduces exactly
   (0.000248). So the instability is specific to the overlap-based metric, which is the failure mode
   arXiv:2607.11969 (2026-07) describes. Read the event-wise number as one draw from a wide
@@ -502,11 +550,13 @@ See [`docs/pqc-roadmap.md`](docs/pqc-roadmap.md).
   does not run - and when three different models fail three different ways, suspect the thing they
   share.
 
-- **`make test` is not the command to run on the documented box.** It invokes a bare `pytest`, so the
-  OpenFHE bootstrap test is not deselected and **SIGSEGVs** inside `EvalBootstrapSetup` on AlmaLinux 9.7 -
-  the import guard in `fhe/backends.py` catches an `ImportError`, not a segfault. Use `pytest -m "not slow"`
-  (163 collected, 4 deselected). `EvalBootstrap` is described elsewhere in this README as the answer to the
-  bootstrapping bottleneck; on this host it is not runnable.
+- **`EvalBootstrap` is described elsewhere in this README as the answer to the bootstrapping
+  bottleneck, and on the documented box it is not runnable.** The OpenFHE bootstrap test **SIGSEGVs**
+  inside `EvalBootstrapSetup` on AlmaLinux 9.7 - the import guard in `fhe/backends.py` catches an
+  `ImportError`, and a segfault is not one. `make test` deselects it with `-m "not slow"`
+  (174 collected, 170 passed, 4 deselected); `make test-all` still dies. Round 18 fixed the Makefile
+  and this paragraph kept telling readers `make test` runs a bare `pytest` for three more rounds,
+  which is the doc-versus-code divergence this list exists to catch.
 - **The security score has two paths, and they used to disagree.** The standalone benchmark scored the
   classical row without QKD key material while the quantum row assumed 256 bits - so once the QKD bonus
   became functional in Round 17, the headline comparison would have handed the quantum row five points the
@@ -518,8 +568,10 @@ See [`docs/pqc-roadmap.md`](docs/pqc-roadmap.md).
 - **The encrypted medical CNN benchmark and the medical AUC use different datasets.** The AUC 0.9147 is
   BreastMNIST; the encrypted-convolution timing runs PneumoniaMNIST (`benchmark.medical_cnn.medmnist_name`).
   Both are MedMNIST v2, but they are not the same images.
-- **`results/` has no retention policy.** `docker/docker-compose.yml` bind-mounts it, so a long-lived full
-  deployment grows without bound.
+- **`results/` retention.** It had none for three rounds and grew 953 -> 1133 -> 1421 files;
+  `docker/docker-compose.yml` bind-mounts it, so a long-lived deployment grew without bound.
+  `orchestration.keep_runs` (default 200, 0 disables) now prunes on persist, grouped by run stem
+  so a run is kept or removed whole. Measured after the change: 600 files, 200 runs.
 - **Recommendation - generate the benchmark table instead of maintaining it by hand.** Six of the ten
   numbers in the benchmark section had drifted from what the documented command produces. `tests/` already
   asserts demo samples against the registry; the same pattern over the model and benchmark tables would
@@ -544,8 +596,12 @@ See [`docs/pqc-roadmap.md`](docs/pqc-roadmap.md).
   **MPC-FHE row is real measured crypto** (node-seal CKKS + emp-wasm 2PC) - so the demo shows measured, not
   estimated, numbers.
 - **In-browser AI (demo)** - the per-use-case Agentic-AI panel runs **small** models client-side (Transformers.js
-  on onnxruntime-web; WebLLM on WebGPU). The ONNX path uses **the WebGPU build where a real
-  `requestAdapter()` returns an adapter, and the WASM build otherwise**. The probe chooses the
+  on onnxruntime-web; WebLLM on WebGPU). The ONNX path uses **the WebGPU build only where a real `requestAdapter()` returns a HARDWARE
+  adapter**, and the WASM build otherwise. A returned adapter is no longer sufficient: a software
+  rasteriser (SwiftShader, lavapipe, llvmpipe, WARP) is declined by name, because it measured about
+  300x slower than the wasm build it displaces - ResNet-50 at 12842 ms against 42 ms on the same
+  model and row. Every shader dispatch is emulated on the CPU while wasm runs SIMD kernels natively,
+  so declining it picks the faster of two CPU paths. The probe chooses the
   *build* (`onnxruntime-web/webgpu` vs `onnxruntime-web/wasm`), not merely the execution provider,
   because the JSEP bundle never completes session creation without an adapter - that, and not
   `ai.onnx.ml` or WebNN, was the cause of the Round 18 browser-tier hang. WebNN is probed by
@@ -618,7 +674,7 @@ See [`docs/pqc-roadmap.md`](docs/pqc-roadmap.md).
   | **finance** | GFP + XGBoost (graph-feature preprocessing over the transaction multigraph) | IBM **AMLworld HI-Small**, 5,078,345 transactions, 1 laundering in 981 (CDLA-Sharing-1.0) | minority-class F1 **0.081**, AUPRC **0.073** vs a 0.0015 prevalence baseline | 0.632 (NeurIPS 2023 D&B) - see the gap note below |
   | **medical** | **ResNet-18** trained from random initialisation (no ImageNet weights, so no ImageNet terms attach) | MedMNIST v2 **BreastMNIST** (CC-BY-4.0) | AUC **0.9147** | 0.901 (Yang et al., Scientific Data 10:41, 2023) |
   | **genomics** | published **PRS** effect-weight vector - not a neural network | PGS Catalog **PGS000001** over **2,504 real 1000 Genomes samples** | ancestry portability, below | C-index 0.628 - *external citation, not measurable here; the PGS Catalog records it as a Cox-model concordance statistic, not an AUROC, so it is not directly comparable to one* |
-  | **satellite** | **Telemanom** 2xLSTM(80), seq 250, non-parametric dynamic threshold + pruning | **ESA-ADB Mission1** lightweight channels 41-46, multi-year real telemetry (CC-BY-3.0-IGO) | event-wise F0.5 **0.714** | 0.786 (ESA-ADB Table 2) |
+  | **satellite** | **Telemanom** 2xLSTM(80), seq 250, non-parametric dynamic threshold + pruning | **ESA-ADB Mission1** lightweight channels 41-46, multi-year real telemetry (CC-BY-3.0-IGO) | event-wise F0.5 **0.4545** | 0.786 (ESA-ADB Table 2) |
   | **telecom** | RF baseline + quantum-kernel SVC + variational QNN | literature-grounded synthetic QKD-attack telemetry (7 attack types + normal) | macro F1 - **RF 0.987**, quantum-kernel SVC **0.832**, variational QNN **0.467** | no trustworthy single number exists - see below |
 
   Three of those deserve their honest caveat stated in the README rather than buried:
@@ -636,7 +692,7 @@ See [`docs/pqc-roadmap.md`](docs/pqc-roadmap.md).
     and 1.0% of European - a 29.5x difference driven entirely by ancestry, with no phenotype
     involved.** That is the clinically important finding, not a footnote.
   - **satellite reports event-wise F-beta at beta=0.5, never point-adjusted F1.** On the same run the
-    point-adjusted figure is **0.994** against an honest **0.714** - TSB-AD (NeurIPS 2024 D&B) showed
+    point-adjusted figure is **0.994** against an honest **0.4545** - TSB-AD (NeurIPS 2024 D&B) showed
     a uniform random score ranks 26th of 32 detectors under point adjustment. A windowed isolation
     forest runs as a trivial baseline every time (0.0002 here), because a deep model that cannot beat
     it has not earned its complexity. Only labels whose ESA-ADB Category is `Anomaly` count as

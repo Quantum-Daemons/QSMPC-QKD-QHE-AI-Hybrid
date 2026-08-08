@@ -27,7 +27,12 @@ dependencies = [
 [project.optional-dependencies]
 quantum = ["qiskit>=1.2", "qiskit-aer>=0.15", "pennylane>=0.38"]
 pqc = ["liboqs-python>=0.10", "cryptography>=42.0"]
-ai = ["torch>=2.3", "onnx>=1.16", "onnxruntime>=1.18", "scikit-learn>=1.4", "xgboost>=2.0", "medmnist>=3.0", "flwr>=1.11"]
+# flwr is deliberately absent. Round 17 removed it from requirements-ai.txt and missed this line,
+# so `pip install -e .[ai]` still pulled ~50 MB that no module imports while
+# `pip install -r requirements-ai.txt` did not - two install paths, two different environments.
+# The federated path in qsh/ai/federated.py is this repository's own FedAvg plus pairwise-mask
+# secure aggregation; Flower is cited as prior art in references/, not used as a dependency.
+ai = ["torch>=2.3", "onnx>=1.16", "onnxruntime>=1.18", "scikit-learn>=1.4", "xgboost>=2.0", "medmnist>=3.0"]
 fhe = ["tenseal>=0.3.15"]
 api = ["fastapi>=0.115", "uvicorn[standard]>=0.30", "websockets>=12.0", "prometheus-client>=0.20", "python-multipart>=0.0.9"]
 dev = ["pytest>=8.0", "pytest-cov>=5.0", "ruff>=0.6", "mypy>=1.11"]

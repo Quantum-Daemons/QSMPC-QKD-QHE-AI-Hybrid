@@ -193,6 +193,7 @@
         },
         "hf_repo_id": "Daemons-Q/qsh-finance-aml-gnn",
         "hf_revision": null,
+        "hf_revision_stale": null,
         "key": "finance_aml.gnn",
         "label": "Multi-PNA+EU transaction GNN",
         "metric": {
@@ -226,6 +227,7 @@
             "opset": 0
           },
           "git_sha": "c3f4c1b-dirty",
+          "hf_revision": "c46157c27e649413ef589d1edbc3404b40a17d76",
           "minority_class_f1": 0.08077786088257292,
           "n_test": 1523504,
           "n_train": 3554841,
@@ -265,7 +267,8 @@
           "url": "https://www.kaggle.com/datasets/ealtman2019/ibm-transactions-for-anti-money-laundering-aml"
         },
         "hf_repo_id": "Daemons-Q/qsh-finance-aml-gbm",
-        "hf_revision": null,
+        "hf_revision": "c46157c27e649413ef589d1edbc3404b40a17d76",
+        "hf_revision_stale": null,
         "key": "finance_aml.gbm",
         "label": "Graph-feature-preprocessed gradient boosting",
         "metric": {
@@ -290,7 +293,7 @@
           "agreement": 0.884055,
           "both_scored_zero": false,
           "disagreement_on_positives": 0.643257,
-          "hf_revision": "ea78585e61e25384c939941943c3df953531b8a9",
+          "hf_revision": "f939eeafd376f454acb66d57e8ecb88db2c62475",
           "metric_delta": 0.062987,
           "metric_delta_pp": 6.2987,
           "metric_name": "minority_class_f1",
@@ -327,7 +330,8 @@
           "url": "https://www.kaggle.com/datasets/ealtman2019/ibm-transactions-for-anti-money-laundering-aml"
         },
         "hf_repo_id": "Daemons-Q/qsh-finance-aml-ckks-student",
-        "hf_revision": "ea78585e61e25384c939941943c3df953531b8a9",
+        "hf_revision": "f939eeafd376f454acb66d57e8ecb88db2c62475",
+        "hf_revision_stale": null,
         "key": "finance_aml.student",
         "label": "CKKS-linear fraud student",
         "metric": {
@@ -433,6 +437,7 @@
         },
         "hf_repo_id": null,
         "hf_revision": null,
+        "hf_revision_stale": null,
         "key": "genomics.prs",
         "label": "Polygenic risk score (published effect weights)",
         "metric": {
@@ -512,6 +517,7 @@
         },
         "hf_repo_id": "Daemons-Q/qsh-medical-breastmnist-resnet18",
         "hf_revision": "c660dc564078353f54aeb976c25bdd8f3396f1cd",
+        "hf_revision_stale": null,
         "key": "medical_fl.resnet18",
         "label": "ResNet-18 on BreastMNIST",
         "metric": {
@@ -584,6 +590,7 @@
         },
         "hf_repo_id": "Daemons-Q/qsh-medical-breastmnist-resnet50",
         "hf_revision": "78cc561c1491c079ed8721f033617639ea0ee898",
+        "hf_revision_stale": null,
         "key": "medical_fl.resnet50",
         "label": "ResNet-50 on BreastMNIST (published comparison)",
         "metric": {
@@ -608,7 +615,7 @@
           "agreement": 0.75,
           "both_scored_zero": false,
           "disagreement_on_positives": 0.078947,
-          "hf_revision": "a05c72eb09c2efc5e6f2bfc5fd2833bfcc7ed33c",
+          "hf_revision": "77435e88ca27519f562ddcabf3301b69faf6c761",
           "metric_delta": 0.134616,
           "metric_delta_pp": 13.4616,
           "metric_name": "accuracy",
@@ -652,7 +659,8 @@
           "url": "https://medmnist.com/"
         },
         "hf_repo_id": "Daemons-Q/qsh-medical-breastmnist-ckks-student",
-        "hf_revision": "a05c72eb09c2efc5e6f2bfc5fd2833bfcc7ed33c",
+        "hf_revision": "77435e88ca27519f562ddcabf3301b69faf6c761",
+        "hf_revision_stale": null,
         "key": "medical_fl.student",
         "label": "FHE-feasible diagnostic CNN",
         "metric": {
@@ -736,6 +744,7 @@
         },
         "hf_repo_id": "Daemons-Q/qsh-satellite-telemanom-esa",
         "hf_revision": "4507c187d0f9998199f6fa0e8064cb23315bbb9a",
+        "hf_revision_stale": null,
         "key": "satellite_comms.telemanom",
         "label": "Telemanom LSTM forecaster (per channel)",
         "metric": {
@@ -798,6 +807,7 @@
         },
         "hf_repo_id": "Daemons-Q/qsh-satellite-telemanom-ckks-student",
         "hf_revision": "18814a2496661459cd25912c3e251473e5fab821",
+        "hf_revision_stale": null,
         "key": "satellite_comms.student",
         "label": "CKKS-linear telemetry anomaly student",
         "metric": {
@@ -809,7 +819,7 @@
           "display": "event-wise F0.5",
           "name": "event_wise_f0_5"
         },
-        "notes": "",
+        "notes": "The one published model with no browser evaluation sample, and the reason is the metric rather than the weights. Round 21 gave the other three students samples; this one is scored on event-wise F0.5, which is defined over contiguous runs of a timeline and cannot be computed from a shuffled set of independent rows -- which is exactly what the browser evaluator scores. Shipping a per-row metric instead would verify a number nobody published for it. It needs no scaler, unlike the other three: scripts/train/satellite_telemanom.py fits it on raw `flat_te` (the last 8 timesteps x 6 channels), so the absent `input` block in its weights.json is correct rather than the omission it looks like. Worth reading alongside its numbers: the teacher scores 0.0 event-wise F0.5 on this split and the student 0.0032, so agreement of 0.9987 is agreement about finding almost nothing.",
         "onnx_domains": [
           "ai.onnx.ml"
         ],
@@ -833,6 +843,7 @@
           },
           "f1": 0.918918918918919,
           "git_sha": "c3f4c1b-dirty",
+          "hf_revision": "5874c1d8fa3da9d92c6f1a1fa578dd6c2b4fd3c0",
           "n_features": 19,
           "n_test_segments": 529,
           "n_train_segments": 1594,
@@ -871,7 +882,8 @@
           "url": "https://zenodo.org/records/12588359"
         },
         "hf_repo_id": "Daemons-Q/qsh-satellite-opssat-ad",
-        "hf_revision": null,
+        "hf_revision": "5874c1d8fa3da9d92c6f1a1fa578dd6c2b4fd3c0",
+        "hf_revision_stale": null,
         "key": "satellite_comms.opssat",
         "label": "OPS-SAT segment anomaly detector",
         "metric": {
@@ -896,7 +908,7 @@
           "agreement": 0.943289,
           "both_scored_zero": false,
           "disagreement_on_positives": 0.141593,
-          "hf_revision": "f6555b863688786057f87310eced2216d498ba68",
+          "hf_revision": "82cb93255efbb315f9120b14bc546244376d73f5",
           "metric_delta": 0.054054,
           "metric_delta_pp": 5.4054,
           "metric_name": "minority_class_f1",
@@ -933,7 +945,8 @@
           "url": "https://zenodo.org/records/12588359"
         },
         "hf_repo_id": "Daemons-Q/qsh-satellite-opssat-ckks-student",
-        "hf_revision": "f6555b863688786057f87310eced2216d498ba68",
+        "hf_revision": "82cb93255efbb315f9120b14bc546244376d73f5",
+        "hf_revision_stale": null,
         "key": "satellite_comms.opssat_student",
         "label": "CKKS-linear OPS-SAT segment student",
         "metric": {
@@ -997,6 +1010,7 @@
         },
         "hf_repo_id": null,
         "hf_revision": null,
+        "hf_revision_stale": null,
         "key": "telecom_ids.transformer",
         "label": "Encoder-only Transformer IDS",
         "metric": {
@@ -1076,6 +1090,7 @@
         },
         "hf_repo_id": "Daemons-Q/qsh-telecom-qml-ids",
         "hf_revision": "f0d7543132105491c21c5cabc086151eeeab47cc",
+        "hf_revision_stale": null,
         "key": "telecom_ids.qml",
         "label": "Quantum-kernel SVC + variational QNN",
         "metric": {
@@ -1107,6 +1122,14 @@
     "error_correction_eff": 1.16,
     "eve_intercept_fraction": 0.0,
     "fiber_loss_db_per_km": 0.2,
+    "free_space_atmospheric_db": 5.0,
+    "free_space_beam_divergence_urad": 10.0,
+    "free_space_dark_count_prob": 1e-05,
+    "free_space_detector_efficiency": 0.4,
+    "free_space_distance_km": 800.0,
+    "free_space_misalignment": 0.025,
+    "free_space_pointing_db": 3.0,
+    "free_space_rx_aperture_m": 1.2,
     "misalignment": 0.015,
     "mu_decoy": 0.1,
     "mu_signal": 0.5,

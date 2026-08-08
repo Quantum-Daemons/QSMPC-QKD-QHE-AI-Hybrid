@@ -18,6 +18,7 @@ from pathlib import Path
 
 from .crypto_agility import CryptoRegistry, default_registry
 from .events import Event, EventBus, EventType
+from ..monitoring.exporter import record_qber, record_run, record_stage
 from .stages import (
     Context,
     ExplainabilityStage,
@@ -124,6 +125,7 @@ class Pipeline:
                                         {"error": type(exc).__name__}))
                     raise
                 dt = round((time.monotonic() - t0) * 1000, 2)
+                record_stage(stage.name, dt)
                 self.bus.metric(f"{stage.name}_ms", dt, stage.name)
                 self.bus.emit(Event(EventType.STAGE_END, stage.name, f"{stage.name} done",
                                     {"ms": dt}))
@@ -138,6 +140,14 @@ class Pipeline:
                 self.bus.emit(Event(EventType.PIPELINE_END, self.name, "complete",
                                     {"metrics": self.bus.metrics()}))
         finally:
+            # The exporter defined four metrics and three recorders and had ZERO call sites for
+            # three rounds, so /metrics served a valid, permanently empty scrape and the Grafana
+            # dashboard charted it. These are the call sites. `finally`, so a run that raised is
+            # counted in the state it ended in rather than vanishing from the counter.
+            record_run(ctx.usecase, self.state.value if hasattr(self.state, "value") else str(self.state))
+            qber = self.bus.metrics().get("qber")
+            if isinstance(qber, (int, float)):
+                record_qber(float(qber))
             if out_dir:
                 self._persist(ctx, out_dir)
         return ctx
@@ -159,6 +169,7 @@ class Pipeline:
                 w.writerow([k, v])
         for p, kind in (("events.jsonl", "log"), ("summary.json", "json"), ("metrics.csv", "csv")):
             self.bus.artifact(str(out / f"{stem}.{p}"), kind, "result")
+        _prune_runs(out)
         return {"dir": str(out), "stem": stem}
 
 
@@ -234,3 +245,50 @@ def main(argv: list[str] | None = None) -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
+
+
+def _prune_runs(out: Path) -> int:
+    """Keep the newest ``orchestration.keep_runs`` runs in ``out``, delete the rest.
+
+    Every run writes three files here and nothing ever removed them, so the directory grew for three
+    consecutive rounds - 953 files, then 1133, then 1421 - on the VPS as well as locally. It is
+    gitignored, which is exactly why it kept being easy to defer rather than easy to notice.
+
+    Grouped by run stem rather than by file, so a run is retained or removed whole: half a run on
+    disk is worse than none, because its metrics.csv would still parse.
+
+    Returns the number of files removed. Never raises: a demo run must not fail because a stale
+    artefact could not be unlinked.
+    """
+    from ..config import get_config
+
+    try:
+        keep = int(get_config().orchestration.keep_runs)
+    except Exception:
+        return 0
+    if keep <= 0:
+        return 0
+
+    runs: dict[str, list[Path]] = {}
+    for f in out.glob("*.*"):
+        stem = f.name.split(".")[0]
+        if stem:
+            runs.setdefault(stem, []).append(f)
+    if len(runs) <= keep:
+        return 0
+
+    def newest(files: list[Path]) -> float:
+        try:
+            return max(x.stat().st_mtime for x in files)
+        except OSError:
+            return 0.0
+
+    removed = 0
+    for _, files in sorted(runs.items(), key=lambda kv: newest(kv[1]))[:len(runs) - keep]:
+        for f in files:
+            try:
+                f.unlink()
+                removed += 1
+            except OSError:
+                pass
+    return removed
