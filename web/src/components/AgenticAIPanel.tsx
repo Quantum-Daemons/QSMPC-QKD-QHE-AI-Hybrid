@@ -238,7 +238,10 @@ export default function AgenticAIPanel({
       )}
 
       <div className="btn-row" style={{ marginTop: 16 }}>
+        {/* A disabled control has to say WHY, at the point of disablement - the four simulator
+            exports above already do this. Without it the button just reads as broken. */}
         <button className="btn ghost" disabled={!run}
+          title={!run ? "Run the in-browser agent first - there is no result to download yet" : undefined}
           onClick={() => downloadJSON({
             usecase, tool: mcpToolName, run, mcp,
             // The download outlives the page, so it has to carry its own provenance: which run's
