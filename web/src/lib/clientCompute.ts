@@ -291,7 +291,13 @@ export function linearShap(
   return {
     method: "exact-linear-shap", prediction: margin >= 0 ? 1 : 0,
     base_value: Math.round(baseValue * 1e6) / 1e6, margin: Math.round(margin * 1e6) / 1e6,
-    top_features: top, efficiency_gap: 0,
+    top_features: top,
+    // COMPUTED, not asserted. This was the literal `0`, which is algebraically right for this closed
+    // form - sum_i w_eff_i (x_i - base_i) + (w_eff . base + db) collapses to w_eff . x + db, exactly
+    // the margin - but a field named after a measurement and set to a constant cannot fail. If the
+    // attribution rule ever changes and stops satisfying completeness, a hardcoded 0 goes on
+    // claiming the axiom holds. Now it is the residual, so the claim is checkable at runtime.
+    efficiency_gap: Math.abs(phi.reduce((a, c) => a + c, 0) + baseValue - margin),
   };
 }
 
