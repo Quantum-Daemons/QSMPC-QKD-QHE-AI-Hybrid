@@ -101,9 +101,9 @@ specs (`mpc/layers.py`: `ConvSpec`/`DenseSpec`/`PoolSpec`/`FlattenSpec`), so the
 runs a real MedMNIST-scale CNN under FHE-linear conv + MPC `secure_relu`/`secure_maxpool` (the dense
 MLP path is byte-identical via `normalize_layers`). FHE-feasible by design - MedMNIST-scale, not ResNet. The
 **QSMPC-FHE** quantum analogue is Clifford gates (linear) vs T-gates (non-linear), both evaluated on
-the encrypted state by QOTP/Rate-1 QFHE (no FHE <-> MPC boundary). **On ct/pt:** the benchmark row the demo renders reports **1.0** - under QOTP the ciphertext is the same number of qubits as the plaintext (`clientCompute.ts`). The config's `cost_per_op.qsmpc_ct_pt_ratio = 1.32` is the *literature* figure for Rate-1 QFHE with the classical key included, and it feeds only the static blurb on the Overview page, never the benchmark. A **lightweight / medium
-/ large** model-size selector scales the workload - light + medium run for real, large is projected
-from measured per-op cost.
+the encrypted state by QOTP/Rate-1 QFHE (no FHE <-> MPC boundary). **On ct/pt:** the benchmark row the demo renders reports **1.0** - under QOTP the ciphertext is the same number of qubits as the plaintext (`clientCompute.ts`). The config's `cost_per_op.qsmpc_ct_pt_ratio = 1.32` is the *literature* figure for Rate-1 QFHE with the classical key included, and it feeds only the static blurb on the Overview page, never the benchmark. The **lightweight / medium / large** model-size selector was removed in Round 20 along with
+`tier_architectures`: it scaled invented MLPs rather than the models that exist. The benchmark now
+costs the student that actually runs.
 
 ## SPA shape
 Overview, Introduction & Value, Validations, E2E Orchestration (generic "run any pipeline"), Use Cases
@@ -151,7 +151,9 @@ server, no cost-model estimate):
   (`mpc-framework` + `emp-wasm-engine` + `summon-ts`, all MIT): the logits are additively secret-shared,
   a summon-compiled argmax circuit privately reconstructs + compares them, and **both parties run loopback
   in one tab** (zero VPS) - the reported MPC ms + real garbled-circuit communication bytes are measured.
-- **QFL** - Quantum Federated Learning is a per-use-case WebUI toggle. Full deployment:
+- **QFL** - Quantum Federated Learning runs on every run; it is not a toggle. It performs a real
+  client-side FedAvg over the page's own bundled sample, so it is part of what the demo does rather
+  than something to opt into. Full deployment:
   `ai.federated.federated_train(kind="qfl")` trains a hybrid **PennyLane VQC (`HybridQNN`) + classical**
   model with FedAvg under quantum-safe secure aggregation (CPU, since `default.qubit` simulates the VQC).
   Demo: `clientCompute.clientQFL` is an in-browser FedAvg of a logistic head over the `quantumSim` QCNN

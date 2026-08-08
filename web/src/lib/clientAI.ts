@@ -27,15 +27,15 @@ export const WEBLLM_MODELS = webCfg().webllm_models;
 // GENUINE WebGPU check: a GPU adapter must actually be obtainable (matches chrome://gpu /
 // webgpureport.org) — not merely navigator.gpu being defined — so the demo never claims WebGPU when it
 // would silently run on WASM (no-easy-fallback: report the real backend).
-export async function hasWebGPU(): Promise<boolean> {
-  try {
-    const gpu = (navigator as any)?.gpu;
-    if (!gpu?.requestAdapter) return false;
-    return !!(await gpu.requestAdapter());
-  } catch {
-    return false;
-  }
-}
+//
+// Re-exported, not reimplemented. This was a second copy, and a weaker one: it omitted the
+// secure-context guard, and once onnxInference learned to decline software rasterisers it would have
+// gone on answering "yes" to the question the ONNX tier now answers "no" to. The two tiers would
+// then disagree about whether this machine has a GPU — the pipeline running on wasm while this panel
+// offered WebLLM, whose shaders are exactly what a SwiftShader adapter is 300x too slow for.
+import { hasWebGPU } from "./onnxInference";
+
+export { hasWebGPU };
 
 const SYSTEM = "You are a concise assistant for a quantum-safe AI orchestration demo.";
 

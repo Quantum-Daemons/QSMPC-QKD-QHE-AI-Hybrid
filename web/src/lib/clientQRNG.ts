@@ -22,6 +22,24 @@ export interface QRNGResult {
   simulated: boolean;
   minEntropyPerBit: number;   // SP 800-90B most-common-value estimate (bits of min-entropy per output bit)
   extractionRate: number;     // output bits / raw bits consumed
+  /** Bits the leftover hash lemma permits at this eps and this much raw min-entropy, or null for
+   *  the von Neumann extractor, which does not consume eps at all.
+   *
+   *  Surfaced because it is the ONLY place the LHL eps parameter is observable. Delivered output is
+   *  min(this, requested), and requested is normally the smaller of the two - so at every setting the
+   *  spinner can reach, changing eps from -1 to -128 produced byte-identical output and the control
+   *  looked inert. It is not inert; it moves this bound, and the bound was never shown. */
+  lhlMaxBits: number | null;
+  /** What the caller asked for, so a shortfall against `nBits` is visible rather than inferred. */
+  requestedBits: number;
+  /** Whether there were enough bits for the health tests to mean anything.
+   *
+   *  Both SP 800-90B continuous tests return `passed: true` when handed too little data - the
+   *  adaptive-proportion test short-circuits below its 1024-bit window, and the repetition-count
+   *  cutoff derived from a zero min-entropy estimate is ~2e10, which no run can exceed. So a 1-bit
+   *  output reported health PASS with min-entropy 0: a check that passed because there was nothing
+   *  left to test. `healthPassed` now requires this to be true, and the run says which it was. */
+  healthConclusive: boolean;
   /** SP 800-90B section 4.4 continuous health tests — these gate `healthPassed`. */
   repetitionCountPassed: boolean;
   repetitionCountCutoff: number;
@@ -238,6 +256,7 @@ export function generateQuantumBits(nBits: number, opts: { source?: string; post
   const u = opts.seed === undefined ? Math.random : rng(opts.seed);
   const t0 = performance.now();
   const isExtract = post === "toeplitz" || post === "seedless";
+  let lhlMaxBits: number | null = null;
   const need = post === "von_neumann" ? 5 * nBits + 16 : isExtract ? 2 * nBits + 16 : nBits;
   const raw = measurePlus(need, u);
   let proc: Uint8Array;
@@ -246,6 +265,7 @@ export function generateQuantumBits(nBits: number, opts: { source?: string; post
     proc = vonNeumann(raw);
   } else if (isExtract) {
     const outLen = lhlOutputLength(minH * raw.length, epsLog2);
+    lhlMaxBits = outLen;
     if (post === "seedless") {
       const u2 = opts.seed === undefined ? Math.random : rng(opts.seed + 1);
       const raw2 = measurePlus(outLen + raw.length - 1, u2);   // independent second source defines T
@@ -265,14 +285,18 @@ export function generateQuantumBits(nBits: number, opts: { source?: string; post
   const rct = repetitionCountTest(bits, hMin);
   const apt = adaptiveProportionTest(bits, hMin);
   const sp80022Passed = mp >= alpha && rp >= alpha && bp >= alpha;
+  // The adaptive-proportion window is the binding requirement: below it that test cannot run at all.
+  const healthConclusive = bits.length >= ADAPTIVE_PROPORTION_W;
   return {
     bits, nBits: bits.length, source, postProcessing: post,
-    healthPassed: rct.passed && apt.passed,
+    healthPassed: healthConclusive && rct.passed && apt.passed,
+    healthConclusive,
     repetitionCountPassed: rct.passed, repetitionCountCutoff: rct.cutoff, repetitionCountLongest: rct.longest,
     adaptiveProportionPassed: apt.passed, adaptiveProportionCutoff: apt.cutoff, adaptiveProportionMax: apt.worst,
     sp80022Passed,
     monobitP: mp, runsP: rp, blockFreqP: bp,
     throughputBitsPerSec: (bits.length / dt) * 1000, simulated: true,
     minEntropyPerBit: minEntropyMcv(bits), extractionRate: bits.length / Math.max(1, rawConsumed),
+    lhlMaxBits, requestedBits: nBits,
   };
 }

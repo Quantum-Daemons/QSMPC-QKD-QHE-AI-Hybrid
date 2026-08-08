@@ -163,6 +163,7 @@ function ModelRunner({ usecase, spec }: { usecase: string; spec: ModelSpec }) {
   const blocked =
     !spec.achieved ? "never trained in this build, so there is nothing to run - the baseline above is the target, not a result"
     : !spec.hf_repo_id ? "deliberately unpublished: the source data's licence does not clearly permit redistributing derived weights"
+    : spec.hf_revision_stale ? "retrained since it was last published, so the pinned artefact no longer matches the metrics above and the pin was retired rather than pointed at stale weights"
     : !spec.hf_revision ? "published but not pinned to a commit, and the browser will not fetch an unpinned model"
     : !fetchable ? "published, but it ships no browser-runnable ONNX graph at that revision"
     : null;
@@ -176,10 +177,6 @@ function ModelRunner({ usecase, spec }: { usecase: string; spec: ModelSpec }) {
 
   if (blocked) return <p className="muted small"><em>Cannot be run here: {blocked}.</em></p>;
 
-  const isForecast = res?.task === "forecast";
-  const fmt = (v: number | null) =>
-    v == null ? "\u2014" : isForecast ? v.toFixed(4) : `${(v * 100).toFixed(1)}%`;
-
   return (
     <div style={{ marginTop: 6 }}>
       <button className="btn ghost" onClick={run} disabled={busy} style={{ fontSize: 12 }}>
@@ -191,20 +188,125 @@ function ModelRunner({ usecase, spec }: { usecase: string; spec: ModelSpec }) {
           there is no held-out sample to score it on. Reported rather than passed off as a success.
         </p>
       )}
-      {res?.error && (
-        <p className="small" style={{ color: "var(--warn)" }}>{res.error}</p>
+      <ModelEvalReport res={res} />
+    </div>
+  );
+}
+
+/**
+ * The full result of running one published model, checked against its offline expectation.
+ *
+ * This was `PublishedModelPanel`, a second panel mounted about forty lines below this one on every
+ * use-case page. The two offered the same ResNet-18 run twice with different chrome and word-for-word
+ * duplicated copy, and only one of them explained the models it could NOT run. Merged into the panel
+ * that lists every model: the reason ladder above says why a model has no button, and this says what
+ * happened when one did.
+ *
+ * The comparison is the point. `expected` was measured offline by `scripts/prep_model_inputs.py` with
+ * onnxruntime on exactly these rows, so a disagreement means something differs - preprocessing,
+ * quantisation, execution provider - and the honest response is to withhold the number rather than
+ * render it.
+ */
+function ModelEvalReport({ res }: { res: ModelEvalResult | null }) {
+  if (!res) return null;
+
+  if (res.error) {
+    return (
+      <div className="note" style={{ marginTop: 10, borderColor: "var(--warn)", color: "var(--warn)" }}>
+        \u26a0 The published model did not run: <code>{res.error}</code>
+        <div style={{ marginTop: 6 }}>
+          Reported rather than silently replaced. The pipeline's own bundled model is unaffected.
+        </div>
+      </div>
+    );
+  }
+  if (!res.ran) return null;
+
+  const isForecast = res.task === "forecast";
+  const isF1 = res.metricName === "minority_class_f1";
+  // Three readings, three formats. Accuracy is a percentage and higher is better; a forecast error
+  // is absolute and lower is better; a rare-class F1 is a small decimal that reads as nonsense as a
+  // percentage - the finance student's 0.0178 rendered "1.8%" invites comparison with an accuracy,
+  // which is the number this metric exists to avoid reporting.
+  const fmt = (v: number | null) =>
+    v == null ? "\u2014" : isForecast || isF1 ? v.toFixed(4) : `${(v * 100).toFixed(1)}%`;
+  const unit = isForecast ? "windows" : "rows";
+  const scoreLabel = isForecast ? "forecast MAE measured here"
+    : isF1 ? "rare-class F1 measured here"
+    : "accuracy measured here";
+  const baselineLabel = isForecast ? "persistence baseline (predict no change)"
+    : isF1 ? "all-positive baseline (flag everything)"
+    : "majority-class baseline";
+  const baselineNote = isForecast ? "error from simply repeating the last observed step"
+    : isF1 ? "F1 from flagging every row: precision is the prevalence, recall is 1"
+    : "what guessing the commonest label would score";
+
+  return (
+    <>
+      <table className="mini-table" style={{ marginTop: 12 }}>
+        <tbody>
+          <tr className={res.matchesExpected ? "metric-headline" : undefined}>
+            <td>{scoreLabel}</td>
+            <td className="num">{fmt(res.score)}</td>
+            <td className="muted small">{res.n} held-out {unit}, in this tab</td>
+          </tr>
+          <tr>
+            <td>expected (offline, same {unit})</td>
+            <td className="num">{fmt(res.expected)}</td>
+            <td className="muted small">onnxruntime, measured by scripts/prep_model_inputs.py</td>
+          </tr>
+          <tr className="metric-companion">
+            <td>{baselineLabel}</td>
+            <td className="num">{fmt(res.baseline)}</td>
+            <td className="muted small">
+              {baselineNote}
+            </td>
+          </tr>
+          <tr className="metric-companion">
+            <td>execution provider</td>
+            <td className="num">{res.backend}</td>
+            <td className="muted small">
+              {res.bytes == null ? "served from cache" : `${(res.bytes / 1e6).toFixed(1)} MB transferred`}
+            </td>
+          </tr>
+        </tbody>
+      </table>
+
+      {!res.beatsBaseline && (
+        <div className="note" style={{ marginTop: 10, borderColor: "var(--warn)", color: "var(--warn)" }}>
+          \u26a0 <b>The model does not beat the trivial baseline</b> on these {unit}
+          {isForecast && res.score != null && res.baseline != null
+            ? ` \u2014 its forecast error (${res.score.toFixed(4)}) is about `
+              + `${(res.score / res.baseline).toFixed(0)}\u00d7 that of simply repeating the last `
+              + "observed value. Telemanom derives its anomaly signal from forecast residuals, so "
+              + "residuals this large are dominated by model error rather than by anomalies. The "
+              + "published event-wise F0.5 should be read with that in mind."
+            : "."} Shown because it is measurable here, not because it flatters the model.
+        </div>
       )}
-      {res?.ran && (
-        <p className="muted small">
-          {isForecast ? "forecast MAE" : "accuracy"} measured here <b>{fmt(res.score)}</b> vs expected{" "}
-          <b>{fmt(res.expected)}</b> on {res.n} held-out rows ({res.backend}
-          {res.bytes == null ? ", cached" : `, ${(res.bytes / 1e6).toFixed(1)} MB`}).{" "}
-          {res.matchesExpected
-            ? "Reproduced - this is the published model running here."
-            : "MISMATCH - the figure is withheld rather than shown."}
+      {res.matchesExpected ? (
+        <div className="note" style={{ marginTop: 10 }}>
+          \u2713 The browser reproduced the offline figure on the same {unit}, so this really is the
+          published model running here \u2014 not a bundled stand-in.
+        </div>
+      ) : (
+        <div className="note" style={{ marginTop: 10, borderColor: "var(--warn)", color: "var(--warn)" }}>
+          \u26a0 The browser got {fmt(res.score)} where {fmt(res.expected)} was expected on these {unit}.
+          Something differs \u2014 preprocessing, quantisation, or the execution provider \u2014 so treat this
+          number as unverified rather than as a result.
+        </div>
+      )}
+
+      {/* The sample's own note on why this figure is what it is. Unrendered, the finance student
+          showed 0.3337 here beside the registry's 0.0178 for the same metric with nothing to
+          reconcile them. */}
+      {res.note && (
+        <p className="muted" style={{ fontSize: 11, marginTop: 10 }}>
+          <b>About this figure.</b> {res.note}
         </p>
       )}
-    </div>
+      <p className="muted" style={{ fontSize: 11, marginTop: 10 }}>{res.provenance}</p>
+    </>
   );
 }
 

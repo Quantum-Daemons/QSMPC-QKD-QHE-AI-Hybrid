@@ -88,7 +88,7 @@ export async function warmFHE(): Promise<void> {
 export interface FHEResult {
   logits: number[];        // decrypted W·x + b
   fheMs: number;           // REAL measured wall-clock of the encrypted computation
-  ctBytes: number;         // serialized ciphertext size (for a genuine ciphertext/plaintext ratio)
+  ctBytes: number | null;   // null = the size could not be read; NEVER 0, which is impossible
   maxAbsError: number;     // CKKS approximation error vs the plaintext reference
   /** Homomorphic rotations performed, counted. Each triggers a key-switch, and key-switching is
    *  what dominates CKKS cost - so this is the number that makes a dense layer and a convolution
@@ -115,9 +115,14 @@ export async function encryptedLinear(W: number[][], b: number[], x: number[]): 
   encoder.encode(xPad, scale, ptX);
   const ctX = new seal.Ciphertext();
   encryptor.encrypt(ptX, ctX);
-  // serialized ciphertext size (node-seal v7: saveToArray(ComprModeType)) → genuine ct/pt ratio
-  let ctBytes = 0;
-  try { ctBytes = ctX.saveToArray(seal.ComprModeType.none).length; } catch { ctBytes = 0; }
+  // serialized ciphertext size (node-seal v7: saveToArray(ComprModeType)) → genuine ct/pt ratio.
+  //
+  // null on failure, NOT 0. A ciphertext is always larger than its plaintext, so a ct/pt ratio of 0
+  // is not a small number - it is an impossible one, and it was reaching the benchmark as a MEASURED
+  // value: clientCompute divides ctBytes by featDim*8, so a swallowed exception here printed
+  // "ct/pt 0" in a column whose other rows are real measurements.
+  let ctBytes: number | null = null;
+  try { ctBytes = ctX.saveToArray(seal.ComprModeType.none).length; } catch { ctBytes = null; }
 
   const logits: number[] = [];
   let rotations = 0, multiplies = 0;
@@ -164,7 +169,7 @@ export interface ConvResult {
   outH: number;
   outW: number;
   fheMs: number;
-  ctBytes: number;
+  ctBytes: number | null;   // null = the size could not be read; NEVER 0, which is impossible
   maxAbsError: number;
   /** Homomorphic rotations performed. Each one triggers a key-switch, which is what dominates. */
   rotations: number;
@@ -248,8 +253,10 @@ export async function encryptedConv2d(
   encoder.encode(packed, scale, ptX);
   const ctX = new seal.Ciphertext();
   encryptor.encrypt(ptX, ctX);
-  let ctBytes = 0;
-  try { ctBytes = ctX.saveToArray(seal.ComprModeType.none).length; } catch { ctBytes = 0; }
+  // null, not 0 - see the note on the linear path above: a ct/pt ratio of 0 is impossible, and it
+  // was being reported as measured.
+  let ctBytes: number | null = null;
+  try { ctBytes = ctX.saveToArray(seal.ComprModeType.none).length; } catch { ctBytes = null; }
 
   let rotations = 0, multiplies = 0;
   const maps: number[][] = [];
@@ -379,7 +386,10 @@ export async function encryptedStudentInference(
     }
     const r = await encryptedLinear(d.weight, d.bias ?? new Array(d.out).fill(0), v);
     rotations += r.rotations; multiplies += r.multiplies; fheMs += r.fheMs;
-    ctBytes = Math.max(ctBytes, r.ctBytes);
+    // Null-safe: the largest size actually read across layers, or null if none could be read.
+    ctBytes = r.ctBytes == null ? ctBytes
+      : ctBytes == null ? r.ctBytes
+      : Math.max(ctBytes, r.ctBytes);
     v = r.logits.map((x) => act(x, d.activation));
   }
 
