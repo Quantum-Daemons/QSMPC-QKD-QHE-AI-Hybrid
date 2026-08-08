@@ -411,3 +411,29 @@ standard prescribes adversarial stress testing of an integrated PQC+QKD+FHE+MPC 
 23837-2 endorses discretized parameter sweeping as the METHOD but explicitly supplies no thresholds.
 Four axes are defensible with published reference values; detector blinding as a QBER anomaly, the
 optical evaluation activities, and any aggregate stress score are declined with reasons.
+
+## CKKS / FHE security under decryption queries (IND-CPA-D / CPAD)
+
+Added Round 23, because the product returns decrypted inference results and the threat model was
+silent on the notion that governs exactly that. Full discussion in `../docs/threat-model.md`.
+
+- Li, Micciancio, "On the Security of Homomorphic Encryption on Approximate Numbers", EUROCRYPT
+  2021, ePrint 2020/1533. Approximate FHE fails IND-CPA-D; the attack needs one decryption query.
+- Li, Micciancio, Schultz, Sorrell, CRYPTO 2022, ePrint 2022/816. Noise flooding and its precision
+  cost.
+- Cheon, Choe, Passelegue, Stehle, Suvanto, ACM CCS 2024, ePrint 2024/127. Extends the attack class
+  to exact FHE. (Distinct from ePrint 2024/116, Checri et al., CRYPTO 2024, filed three days apart
+  by a different team at a different venue - easy to conflate, so both are listed.)
+- Checri, Clet, Renard, Sirdey, "Impossibility of CPAD security for a class of FHE schemes",
+  ePrint 2026/203. No HELLHO scheme - covering basic BFV, BGV, CKKS and TFHE - can be CPAD secure.
+  Practical key recovery on DE-CKKS, supported in OpenFHE, in hours on a laptop.
+- Santato, Zanotto, "How (not) to Switch FHE Schemes", ePrint 2026/285. Breaks PEGASUS-style
+  CKKS-to-FHEW switching in OpenFHE. Not applicable here - this project does no scheme switching -
+  and recorded so that stays a checked fact rather than an assumption.
+- Ogilvie, ASIACRYPT 2025, ePrint 2025/1618. The constructive counterpoint: about two bits of extra
+  precision loss can restore security against passive key recovery for standard parameters.
+- Bossuat, Costache, Mouchet, Nurnberger, Troncoso-Pastoriza, ePrint 2024/853, IACR CiC 2025, DOI
+  10.62056/a3n5tx4e-. NOTE the retitle at the 2025-08-11 revision: originally "Practical
+  q-IND-CPA-D-Secure Approximate Homomorphic Encryption", now "Accurate and Composable Noise
+  Estimates for CKKS with Application to Exact HE Computation". Citing the old title points at a
+  paper that no longer exists under that name.
