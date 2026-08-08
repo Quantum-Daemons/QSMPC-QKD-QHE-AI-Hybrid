@@ -1180,6 +1180,17 @@ resolves, 15 fields appear.
 ("(use case default)" and "CKKS (FHE) - default"); `config.inference || "ckks"` confirms the second
 label is honest for every use case.
 
+**Agentic AI panel, exercised end to end** (genomics, distilGPT-2 via transformers-wasm, 2430 ms):
+tool `pool_allele_counts` - the per-use-case tool, not a generic one - `authenticated (ML-DSA-65)`
+true and `tampered message rejected` true. The Combiner select genuinely changes the derived key:
+**hkdf -> d9c4f1c2, its_toeplitz -> 3152292a**. A combiner that left the fingerprint unchanged would
+mean the selection never reached the key derivation.
+
+**Export buttons** are all enabled after a run and carry a reason before one. Round 22 found the
+Agentic AI panel's "Download results (JSON)" was the exception - disabled with no `title`, so it read
+as broken rather than as not-yet-applicable. Fixed. When auditing this, read `disabled` AND `title`
+together; `disabled` alone tells you nothing about whether the user can understand why.
+
 **Found and fixed this round:** the diagram ticked a zero-key BB84 step. See the panel-consistency
 section above.
 
