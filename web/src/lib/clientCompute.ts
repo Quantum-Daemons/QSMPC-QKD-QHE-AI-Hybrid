@@ -3,11 +3,11 @@
 // QKD/QBER via quantumSim, private inference via onnxruntime-web, PSI via WebCrypto HMAC).
 // The security-score and quantum-advantage formulas mirror src/qsh/benchmark/{security,
 // quantum_advantage}.py so demo numbers track the server.
-import { ml_dsa65, ml_dsa87 } from "@noble/post-quantum/ml-dsa";
-import { ml_kem768, ml_kem1024 } from "@noble/post-quantum/ml-kem";
+import { ml_dsa65, ml_dsa87 } from "@noble/post-quantum/ml-dsa.js";
+import { ml_kem768, ml_kem1024 } from "@noble/post-quantum/ml-kem.js";
 import { x25519 } from "@noble/curves/ed25519.js";
-import { hkdf } from "@noble/hashes/hkdf";
-import { sha256 } from "@noble/hashes/sha2";
+import { hkdf } from "@noble/hashes/hkdf.js";
+import { sha256 } from "@noble/hashes/sha2.js";
 import {
   benchCfg, costPerOp, dataCfg, demoFeatureDim, genericArchitecture, idsCfg, medicalCnn, qkdCfg, qrngCfg,
   demoSample, qsmpcCfg, quantumAdvantageCfg, securityScoringCfg, studentModel, tierArchitectures, webCfg,
@@ -19,7 +19,8 @@ import { clientTrainScoreIDS } from "./clientIDS";
 import { secureArgmax, warmMPC } from "./clientMPC";
 import { optimizeQKD } from "./clientOptiQKD";
 import { generateQuantumBits } from "./clientQRNG";
-import { bb84, e91, FIBER, FREE_SPACE, h2, intrinsicQber, qcnnExpectation, qotpQcnnInfer, rng } from "./quantumSim";
+import { bb84, e91, FIBER, FREE_SPACE, h2, intrinsicQber, qcnnExpectation, qotpQcnnInfer, rng,
+  taggedFraction } from "./quantumSim";
 import { type Provenance } from "../components/ProvenanceBadge";
 import { browserModels, onnxStatus, runPublishedModel } from "./onnxInference";
 import { realInput, realSatelliteAnomaly, realFederatedSet, type RealInput } from "./realData";
@@ -95,8 +96,27 @@ export function sigImpl(sig?: string) {
 // The benchmark rows' security score reflects the run's chosen KEM (cat-3/cat-5) and whether QKD is mixed
 // in (config.qkd === "pqc-only" drops the ≥256-bit BB84 key ⇒ no defence-in-depth bonus). Both are
 // crypto-agility selections, so swapping them visibly moves the surfaced score.
-function secFromConfig(config: any): { kem?: string; qkdBits?: number | null } {
-  return { kem: kemName(config), qkdBits: config?.qkd === "pqc-only" ? 0 : 256 };
+function secFromConfig(
+  config: any, metrics?: Record<string, any> | null,
+): { kem?: string; qkdBits?: number | null; qber?: number | null } {
+  // `qber` is carried now, and its absence was not a small omission. The consumer at the QSMPC row
+  // guards on `typeof sec?.qber === "number"` under a comment claiming the Eve slider had been wired
+  // through - but this function returned only `{kem, qkdBits}`, so the guard was ALWAYS false and the
+  // fallback `qkdCfg().misalignment` (0.015) was used unconditionally. One literal replaced another.
+  //
+  // Measured on the deployed demo before this fix: Eve 0.6 drove QBER to 0.16, past the 0.11 abort
+  // threshold, and drove `secure_key_bits` to ZERO - and the security score went UP, 96 to 100. The
+  // row scored full marks on a run whose quantum channel produced no key at all.
+  //
+  // `secure_key_bits` is the honest source for the key-bits term too: the run either produced key
+  // material or it did not, and a pqc-only profile is not the only way to end up with none.
+  const measuredQber = typeof metrics?.qber === "number" ? metrics.qber : null;
+  const measuredBits = typeof metrics?.secure_key_bits === "number" ? metrics.secure_key_bits : null;
+  return {
+    kem: kemName(config),
+    qkdBits: config?.qkd === "pqc-only" ? 0 : (measuredBits ?? 256),
+    qber: measuredQber,
+  };
 }
 /**
  * Simulated qubit count, clamped to the range the Parameters field advertises.
@@ -121,6 +141,126 @@ export interface SecOpts {
   qkdKeyBits?: number | null;
   qber?: number | null;
   leakageBitsPerWeight?: number | null;
+}
+
+/** One reported security fact: a label, what the run measured, and where the claim comes from. */
+export interface SecurityFact {
+  label: string;
+  value: string;
+  /** The standard, specification or measurement this rests on. Empty is not allowed. */
+  source: string;
+  /** "standard" = checkable against a published document; "measured" = produced by this run. */
+  kind: "standard" | "measured";
+  /** Set when the run contradicts the claim, e.g. a QKD profile that produced no key. */
+  warn?: string;
+}
+
+/**
+ * What this run's security posture actually is, reported rather than synthesised.
+ *
+ * This replaces the 0-100 composite as the headline. The composite's weights summed to exactly 100
+ * by construction, fourteen of seventeen carried no rationale, and the 68-to-96 gap it produced was
+ * mostly an artefact of which arguments two functions chose to supply - +10 of it because one call
+ * passed `qber=None` while the other passed a literal, and +6 the same way for leakage. It also
+ * moved the wrong way: measured on the deployed demo, Eve at 0.6 with QBER 0.16 and ZERO secure key
+ * bits scored 100 out of 100.
+ *
+ * Every entry below is either checkable against a published standard or produced by this run, and
+ * each says which. No entry is a weight. The NIST category leads because it is the one figure here
+ * that is comparable with another system: FIPS 203 anchors ML-KEM-768 at Category 3 and ML-KEM-1024
+ * at Category 5 against AES/SHA reference problems.
+ *
+ * Deliberately NOT adopted: QERS (arXiv:2601.13399) normalises against an ESP32/Wi-Fi testbed and
+ * needs RSSI, packet loss and energy that a browser has none of, with author-chosen weights and no
+ * calibration; CARS (ePrint 2026/1467) publishes no formula, derives weights from a 12-engineer
+ * Delphi round, and scores a codebase's migration readiness rather than a run. Importing either
+ * would swap invented weights for different invented weights and add a citation implying a rigour
+ * that does not transfer.
+ */
+export function securityFacts(config: any, metrics: Record<string, any>): SecurityFact[] {
+  const s = securityScoringCfg();
+  const kem = kemName(config);
+  const cat = kemCategory(kem);
+  const sig = String(config?.sig ?? "ml-dsa-65");
+  const sigLevel = sig.includes("87") ? 5 : 3;
+  const pqcOnly = config?.qkd === "pqc-only";
+  const keyBits = typeof metrics.secure_key_bits === "number" ? metrics.secure_key_bits : null;
+  const qber = typeof metrics.qber === "number" ? metrics.qber : null;
+  const skr = typeof metrics.skr === "number" ? metrics.skr : null;
+
+  const facts: SecurityFact[] = [
+    { label: "KEM", value: `${kem} - NIST Category ${cat}`, kind: "standard",
+      source: "FIPS 203; categories anchored to AES/SHA reference problems" },
+    { label: "Signature", value: `${sig.toUpperCase()} - NIST Category ${sigLevel}`, kind: "standard",
+      source: "FIPS 204" },
+    { label: "KEM ciphertext", value: `${metrics.kem_ciphertext_bytes ?? "-"} bytes`, kind: "measured",
+      source: "this run" },
+    { label: "Signature size", value: `${metrics.signature_bytes ?? "-"} bytes`, kind: "measured",
+      source: "this run" },
+  ];
+
+  if (pqcOnly) {
+    facts.push({ label: "QKD key material", value: "none - PQC-only profile", kind: "measured",
+      source: "operator selection; no quantum channel in this run" });
+  } else {
+    // The warning is the point. A QKD profile that produced no key is the case the composite scored
+    // 100 on, because nothing checked whether the channel actually delivered.
+    facts.push({
+      label: "QKD key material",
+      value: keyBits == null ? "not reported" : `${keyBits} secure bits`,
+      kind: "measured", source: "BB84 decoy-state run, GLLP secure fraction",
+      warn: keyBits === 0
+        ? "the QKD profile is selected but this channel produced NO secure key: the session rests on "
+          + "the PQC hybrid alone"
+        : undefined,
+    });
+    if (skr != null) {
+      facts.push({ label: "Secret-key rate", value: `${skr} per pulse`, kind: "measured",
+        source: "GLLP bound over the decoy-state estimate" });
+    }
+    // What the decoy states are actually buying on THIS channel. The runtime model is asymptotic
+    // decoy-state, which already assumes the single-photon contribution has been bounded - so the
+    // assumption is invisible unless the counterfactual is computed. Delta >= 1 means no detection
+    // could be certified single-photon and the same hardware would yield nothing without decoys.
+    const mu = qkdCfg().mu_signal;
+    const chan = config?.usecase === "satellite_comms" ? FREE_SPACE : FIBER;
+    const delta = taggedFraction(mu, { ...chan,
+      distanceKm: Number(config?.qkd_distance_km ?? chan.distanceKm),
+      misalignment: Number(config?.qkd_misalignment ?? chan.misalignment),
+      eveFraction: Number(config?.qkd_eve ?? 0) });
+    facts.push({
+      label: "Decoy-state necessity",
+      // Always print the number. ">= 1" was a needless loss of information: on the default fibre
+      // link Delta is 7.26, and "7.26" says the decoy states are carrying the entire link, where
+      // ">= 1" only says they are carrying some of it.
+      value: `tagged fraction ${delta.toFixed(2)} at mu ${mu}`,
+      kind: "measured",
+      source: "GLLP tagged fraction over this channel; Ma PRA 72 012326, GLLP QIC 4 325",
+      warn: delta >= 1
+        ? "without decoy states this link yields NO key. The worst-case bound on Eve-known "
+          + "(multi-photon) detections exceeds the total detection probability, so not one "
+          + "detection could be certified single-photon and the whole sifted block is discarded. "
+          + "The decoy states are what make this link work at all."
+        : undefined,
+    });
+  }
+
+  if (qber != null) {
+    // Two thresholds, and they disagree with each other. 0.11 is the textbook BB84 figure; this
+    // repository's own GLLP model puts the zero-key point at 0.098106, BELOW it - so a QBER in
+    // [0.098, 0.11) used to score full eavesdropper-detection marks on a channel already dead.
+    // Report against the model that actually ran, and name the textbook figure beside it.
+    const dead = skr != null ? skr <= 0 : qber >= 0.098106;
+    facts.push({
+      label: "QBER",
+      value: `${qber}${dead ? " - no secure key at this error rate" : ""}`,
+      kind: "measured",
+      source: "this run's channel model; GLLP zero-key point 0.098106, textbook BB84 bound "
+        + `${s.qber_secure_threshold}`,
+      warn: dead ? "above this channel model's zero-key point" : undefined,
+    });
+  }
+  return facts;
 }
 
 export function securityScore(o: SecOpts) {
@@ -167,11 +307,16 @@ export function quantumAdvantage(classical: any, quantum: any, w?: { comm: numbe
   const lat = classical.latency_ms && quantum.latency_ms > 0 ? classical.latency_ms / quantum.latency_ms : 1;
   const sec = (quantum.security_model || "").toLowerCase().includes("information-theoretic") ? qa.info_theoretic_multiplier : 1;
   const composite = comm ** ww.comm * Math.max(lat, 1e-6) ** ww.latency * sec ** ww.security;
-  const score = Math.max(0, Math.min(10, Math.log10(composite + 1) * qa.log_scale + qa.log_offset));
+  const raw = Math.log10(composite + 1) * qa.log_scale + qa.log_offset;
+  const score = Math.max(0, Math.min(10, raw));
   const tier = score >= qa.tier_dominant ? "dominant" : score >= qa.tier_strong ? "strong"
     : score >= qa.tier_moderate ? "moderate" : "marginal";
   return {
-    score: r2(score), tier, communication_ratio: r1(comm), latency_ratio: r2(lat),
+    score: r2(score),
+    // Uncapped composite, reported beside the clamped one so a 10/10 is distinguishable from a run
+    // well past the ceiling. Never feeds the tier.
+    score_raw: r2(raw), clamped: raw > 10 || raw < 0,
+    tier, communication_ratio: r1(comm), latency_ratio: r2(lat),
     security_multiplier: sec,
     interpretation:
       `Quantum path is ~${Math.round(comm)}x more communication-compact` +
@@ -538,7 +683,11 @@ export async function realClientHybrid(features: number[], u: () => number,
 // MPC-FHE row — uses REAL measured client-side FHE/MPC when ``measured`` is supplied, else a representative
 // cost model (e.g. the standalone clientBenchmark with no live run). Shared by clientBenchmark + assembleBenchmark.
 function mpcFheRow(usecase: string | undefined, workload: string, modelSize: string, measured?: MeasuredHybrid | null,
-  sec?: { kem?: string; qkdBits?: number | null }) {
+  // `qber` belongs here even though this row is the CLASSICAL path. Both rows run under ONE transport
+  // configuration, so both must be scored under it. This parameter used to omit it, so this row's
+  // eavesdropper term was structurally zero while its counterpart threaded the value through - and
+  // the 68-vs-96 gap on screen was that asymmetry, not a property of the cryptography.
+  sec?: { kem?: string; qkdBits?: number | null; qber?: number | null }) {
   const { dims, label, params } = archDims(usecase, modelSize, workload);
   const cost = costPerOp();
   // ctpt is nullable: the measured branch withholds it when the serialized ciphertext size could
@@ -596,6 +745,7 @@ function mpcFheRow(usecase: string | undefined, workload: string, modelSize: str
     security_score: securityScore({
       securityModel: "computational (RLWE / FIPS-203 family)", kem: sec?.kem,
       qkdKeyBits: sec?.qkdBits,
+      qber: typeof sec?.qber === "number" ? sec.qber : null,
     }).total,
     device,
   };
@@ -652,8 +802,16 @@ function qsmpcFheRow(workload: string, modelSize: string, u: () => number, sampl
       // eavesdrop margin" for this run — so moving the Eve slider changed the QKD panel and left this
       // number untouched. Use the run's measured QBER when the pipeline produced one.
       qkdKeyBits: sec?.qkdBits === undefined ? 256 : sec.qkdBits,
-      qber: typeof sec?.qber === "number" ? sec.qber : qkdCfg().misalignment,
-      leakageBitsPerWeight: 0.1,
+      // null, not a config constant. `qkdCfg().misalignment` is the channel's baseline optical
+      // error, not this run's QBER, and substituting it made an unmeasured term look measured -
+      // scoring the full eavesdropper-detection points on every run including ones with no key.
+      // compute_security_score already treats null as "not measured" and awards zero.
+      qber: typeof sec?.qber === "number" ? sec.qber : null,
+      // Was a hardcoded 0.1 - the PRX leakage bound - which is a LITERATURE figure, not a property
+      // of this run. Nothing in the browser measures leakage, so asserting it bought this row the
+      // most generous bucket (10 pts) over its counterpart's default (4). That was +6 of the gap.
+      // null scores as unmeasured, which is what it is.
+      leakageBitsPerWeight: null,
     }).total,
     device: "cpu-sim", simulated: true,
   };
@@ -721,7 +879,9 @@ export function assembleBenchmark(
 ) {
   const modelSize = config?.model_size ?? "medium";
   const workload = config?.workload ?? "linear";
-  const sec = secFromConfig(config);                         // chosen KEM / QKD-on → security score
+  // Pass the run's metrics: this is the call site whose score the benchmark panel renders, and
+  // without them the QBER and secure-key-bits terms fall back to constants.
+  const sec = secFromConfig(config, opts?.metrics);
   const u = rng(7);
   const q = qsmpcFheRow(workload, modelSize, u, 6, benchScale(usecase, modelSize, workload), qubitsOf(config), sec);
   const clientComputeMs = opts?.metrics?.client_compute_ms ?? opts?.stageMs?.private_inference ?? null;
@@ -730,14 +890,16 @@ export function assembleBenchmark(
   const pub = publishedModelRow(opts?.metrics);
   if (!INFERENCE_USECASES.has(usecase)) {
     return { workload, model_size: modelSize, results: pub ? [q, pub] : [q], advantage: null,
-      live: true, client_compute_ms: clientComputeMs };
+      live: true, client_compute_ms: clientComputeMs,
+      security_facts: securityFacts(config, opts?.metrics ?? {}) };
   }
   // use the REAL measured client-side FHE/MPC from the run (node-seal CKKS + secret-sharing) when present
   const measured: MeasuredHybrid | null = opts?.artifacts?._measured_hybrid ?? null;
   const c = mpcFheRow(usecase, workload, modelSize, measured, sec);
   return { workload, model_size: modelSize, results: pub ? [c, q, pub] : [c, q],
     advantage: quantumAdvantage(c, q),
-    live: true, client_compute_ms: clientComputeMs, measured: !!measured };
+    live: true, client_compute_ms: clientComputeMs, measured: !!measured,
+    security_facts: securityFacts(config, opts?.metrics ?? {}) };
 }
 
 // --------------------------------------------------------------------------- //
@@ -1506,7 +1668,7 @@ export function runClientPipeline(
         } else {
           // honest last resort: node-seal genuinely unavailable here (e.g. no WASM) — representative figure, logged
           artifacts.fhe_prediction = inf.prediction;
-          const split = mpcFheRow(usecase, config.workload ?? "linear", config.model_size ?? "medium", null, secFromConfig(config));
+          const split = mpcFheRow(usecase, config.workload ?? "linear", config.model_size ?? "medium", null, secFromConfig(config, metrics));
           metric(stage, "fhe_max_abs_error", costPerOp().demo_max_abs_error);
           metric(stage, "fhe_linear_ms", split.fhe_linear_ms);
           metric(stage, "mpc_nonlinear_ms", split.mpc_nonlinear_ms);
@@ -1535,8 +1697,17 @@ export function runClientPipeline(
         const names = realIn?.names ?? FEATURE_NAMES[usecase] ?? Array.from({ length: 8 }, (_, i) => `feature_${i}`);
         // XAI uses the REAL model where one is shipped (real breast-cancer LR / real PGS PRS weights),
         // else the linear surrogate — so the attribution on real data reflects the real model.
+        // The baseline is passed now. Defaulting it to the zero vector measured every attribution
+        // against a reference case that does not occur - PaySim's `amount` column has a log-scale
+        // mean of 11.5, so its bar was read against "a transaction of log-amount zero" and inflated
+        // against every other feature. `efficiency_gap` cannot detect this: completeness holds for
+        // any baseline, which is exactly why it went unnoticed.
         artifacts.explanation = linearShap(
-          realIn?.model?.W ?? PLACEHOLDER_W, realIn?.model?.b ?? PLACEHOLDER_B, feats, names, 5);
+          realIn?.model?.W ?? PLACEHOLDER_W, realIn?.model?.b ?? PLACEHOLDER_B, feats, names, 5,
+          realIn?.baseline);
+        artifacts.explanation_baseline = realIn?.baseline
+          ? "sample mean E[x] over the shipped rows"
+          : "zero vector (no sample mean available for this use case)";
         // SHAP is exact for the model it is given. With placeholder weights the attribution is
         // exact for weights that mean nothing, so say which case this is rather than let a reader
         // assume the explanation describes the industry model.
@@ -1550,10 +1721,13 @@ export function runClientPipeline(
         // run the QSMPC-FHE alternative (real client QCNN readout) so the benchmark comparison +
         // quantum advantage are produced by an actual run — mirrors the backend QuantumComparisonStage.
         const ms = config.model_size ?? "medium", wl = config.workload ?? "linear";
-        const sec = secFromConfig(config);
+        // `metrics` goes in here. This used to call secFromConfig(config) with no metrics and then
+        // re-thread `qber` by hand on the next line - so `secure_key_bits` fell to the ?? 256
+        // fallback, and the row claimed QKD-mixed key material on runs that produced none. One field
+        // wired, its neighbour left to a constant, from the same object already in scope.
+        const sec = secFromConfig(config, metrics);
         const isInf = ["finance_aml", "medical_fl", "genomics"].includes(usecase);
-        const qrow = qsmpcFheRow(wl, ms, rng(7), 6, 1, qubitsOf(config),
-          { ...sec, qber: typeof metrics.qber === "number" ? metrics.qber : null });
+        const qrow = qsmpcFheRow(wl, ms, rng(7), 6, 1, qubitsOf(config), sec);
         // Costed against the MEASURED hybrid, the same input assembleBenchmark uses.
         //
         // This passed `null` and therefore scored the quantum path against a COST MODEL of the
@@ -1607,8 +1781,9 @@ export function runClientPipeline(
           explanation: artifacts.explanation ?? null,
         });
         const msg = new TextEncoder().encode(JSON.stringify(signedPayload));
-        const sig = dsa.fn.sign(sk.secretKey, msg);
-        const ok = dsa.fn.verify(sk.publicKey, msg, sig);
+        // noble 0.6.x: sign(message, secretKey), verify(signature, message, publicKey).
+        const sig = dsa.fn.sign(msg, sk.secretKey);
+        const ok = dsa.fn.verify(sig, msg, sk.publicKey);
         artifacts.result_signature = {
           algorithm: dsa.name, signature_bytes: sig.length,
           signature_hex_prefix: [...sig.slice(0, 12)].map((b) => b.toString(16).padStart(2, "0")).join(""),

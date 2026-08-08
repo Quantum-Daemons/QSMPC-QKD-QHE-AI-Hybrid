@@ -43,12 +43,17 @@ def quantum_advantage(classical: BenchResult, quantum: BenchResult,
 
     # weighted geometric mean -> log-scaled to 0-10 (≈10^3 comm gain ⇒ high score)
     composite = (comm_ratio ** w_comm) * (max(lat_ratio, 1e-6) ** w_latency) * (sec_mult ** w_security)
-    score = max(0.0, min(10.0, math.log10(composite + 1.0) * qa.log_scale + qa.log_offset))
+    raw = math.log10(composite + 1.0) * qa.log_scale + qa.log_offset
+    score = max(0.0, min(10.0, raw))
 
     tier = ("dominant" if score >= qa.tier_dominant else "strong" if score >= qa.tier_strong
             else "moderate" if score >= qa.tier_moderate else "marginal")
     return {
         "score": round(score, 2),
+        # Uncapped composite. A reader seeing 10.0 cannot tell a run that just reached the ceiling
+        # from one far past it; this says which. Reported, never used for the tier.
+        "score_raw": round(raw, 2),
+        "clamped": raw > 10.0 or raw < 0.0,
         "tier": tier,
         "communication_ratio": round(comm_ratio, 1),
         "latency_ratio": round(lat_ratio, 2),
