@@ -219,7 +219,10 @@ library through its published package does not require vendoring its source tree
 | **Alisah-Ozcan/HEonGPU** | GPU CKKS for the MPC-FHE benchmark | **submodule** | Apache-2.0 |
 | **chart21/hpmpc** (PIGEON) | GPU secret-sharing MPC for the same benchmark | **submodule** | MIT |
 
-**Client-side / AI OSS (npm, all commercial-OK):** `node-seal` (SEAL -> WASM CKKS, MIT) +
+**Client-side / AI OSS (npm, all commercial-OK):** `node-seal` 7.0.0, which bundles **Microsoft
+SEAL 4.1.2** - upstream's newest release still carries 4.1.2, so the gap is theirs rather than a
+stale pin here; SEAL 4.4.0's "major security update" has no CVE, no GHSA and no affected-version
+range, so the version is recorded as a fact and no vulnerability is claimed (SEAL -> WASM CKKS, MIT) +
 `mpc-framework`/`emp-wasm-engine`/`summon-ts` (garbled-circuit 2PC, MIT) for the demo's real in-browser
 FHE/MPC; `onnxruntime-web` (MIT) for the published industry models; `@huggingface/transformers` +
 `@mlc-ai/web-llm` (Apache-2.0) for in-browser AI; `mcp` Python SDK (MIT) + the official
