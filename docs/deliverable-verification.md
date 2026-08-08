@@ -213,6 +213,42 @@ days before the work started, and the liboqs version mismatch, which turned out 
 recorded - the Dockerfile cloned the default branch, so two builds of the same commit of this repo
 could ship different cryptography with nothing recording which. Pinned to 0.16.0.
 
+## Decisions, so they stop being backlog
+
+The gate says an item deferred three rounds must be done **or reclassified**. Round 22 audited the
+ledger and found three that had been carried without either, plus one that silently left the list.
+Reclassifying is not a way of avoiding work - it is the honest label when the answer is "no", and
+these four had answers.
+
+**WebGL: declined, and it will not be implemented.** Six ORDER files asked for the demo to compute
+client-side "using JavaScript, WebAssembly, WebGL/WebGPU", and Round 21 explicitly scheduled this
+written decline and then did not write it - so it survived six requests and one plan that named it.
+The reason it was never built is that it cannot be: **ONNX Runtime Web ships WASM and WebGPU
+execution providers, not a WebGL one**, and Transformers.js is the same. The instruction listed WebGL
+and WebGPU as alternatives, and this project took the one that exists. WebGPU is implemented, probed
+for a genuine hardware adapter, and declined when the adapter is a software rasteriser. Nothing is
+missing; the list simply named a technology the runtime does not offer.
+
+**ZeroGPU Space: blocked on a date, not on work.** Four consecutive rounds, the longest-carried item
+here. `spaces/qsh-inference/` exists, and `ProvenanceBadge` declares a `remote` tier no code path
+sets. The blocker is a Hugging Face account-age unlock around 2026-09-01. That is a condition, not a
+task, so it is recorded as one: **when the account unlocks, wire it or delete the Space and the
+`remote` tier together.** It must not appear in a fifth deferred list unqualified.
+
+**OpenFHE `EvalBootstrapSetup` SIGSEGV: permanently worked around, on purpose.** Three rounds. The
+segfault is inside OpenFHE on AlmaLinux 9.7, and `fhe/backends.py` guards an `ImportError`, which a
+segfault is not. `make test` deselects it with `-m "not slow"`; `make test-all` still dies. Fixing an
+upstream crash on one host distribution is not this project's work, and the workaround is the
+outcome rather than a placeholder for one. Recorded as a decision.
+
+**node-seal is on SEAL 4.1.2, and that is upstream's newest.** Promised in Round 19, tasked again in
+Round 21, never written, and then it dropped off the list without resolution. The answer, checked
+this round: `web/package.json` pins `node-seal ^7.0.0`, 7.0.0 is installed, and **node-seal 7.0.0's
+own package metadata states SEAL 4.1.2**. So the gap is upstream's, not a stale pin here - node-seal
+has not taken a newer SEAL. Round 19's instruction was to document the gap rather than claim a
+vulnerability, and that remains right: SEAL 4.4.0's "major security update" carries no CVE, no GHSA
+and no affected-version range, so there is nothing to claim beyond the version fact.
+
 ## What this project cannot verify, and says so
 
 - **No QKD hardware exists here.** Every SKR and QBER comes from an analytic channel model. There is
