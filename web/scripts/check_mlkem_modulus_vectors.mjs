@@ -20,6 +20,7 @@
 // NOTE ON SCOPE, so this is not over-read: it tests one normative input check in one library. It
 // is not a proof of correctness, and noble is self-audited with no side-channel protection.
 import { ml_kem512, ml_kem768, ml_kem1024 } from "@noble/post-quantum/ml-kem.js";
+import { ml_dsa65, ml_dsa87 } from "@noble/post-quantum/ml-dsa.js";
 import { gunzipSync } from "node:zlib";
 
 const SETS = [
@@ -57,8 +58,33 @@ for (const [name, kem] of SETS) {
     `${lines.length - accepted} rejected, ${accepted} accepted  ${ok ? "OK" : "FAIL"}`);
 }
 
+// ---------------------------------------------------------------------------
+// ML-DSA round trip, because a library upgrade silently broke signing once.
+//
+// noble 0.6.x takes sign(message, secretKey) and verify(signature, message, publicKey); 0.2.x took
+// (secretKey, message) and (publicKey, message, signature). BOTH arguments are Uint8Array, so
+// TypeScript and the production build stayed green while every signature threw at runtime. Only
+// clicking the button in a browser surfaced it. This asserts the round trip AND that a tampered
+// message is rejected - the second half matters, because a verify() that always returns true would
+// pass the first.
+for (const [name, dsa, skLen, pkLen, sigLen] of [
+  ["ML-DSA-65", ml_dsa65, 4032, 1952, 3309],
+  ["ML-DSA-87", ml_dsa87, 4896, 2592, 4627],
+]) {
+  const { secretKey, publicKey } = dsa.keygen(new Uint8Array(32).fill(7));
+  const msg = new TextEncoder().encode("qsh conformance probe");
+  const sig = dsa.sign(msg, secretKey);
+  const good = dsa.verify(sig, msg, publicKey);
+  const bad = dsa.verify(sig, new TextEncoder().encode("qsh conformance probe!"), publicKey);
+  const sizesOk = secretKey.length === skLen && publicKey.length === pkLen && sig.length === sigLen;
+  const ok = good && !bad && sizesOk;
+  if (!ok) failures++;
+  console.log(`  ${name.padEnd(12)} sk ${secretKey.length} pk ${publicKey.length} sig ${sig.length}, ` +
+    `verify ${good}, tampered-rejected ${!bad}  ${ok ? "OK" : "FAIL"}`);
+}
+
 if (failures > 0) {
-  console.error(`\nFIPS 203 section 7.2: ${failures} parameter set(s) accepted malformed keys.`);
+  console.error(`\nPQC conformance: ${failures} check(s) FAILED.`);
   process.exit(1);
 }
-console.log("\nFIPS 203 section 7.2: all malformed encapsulation keys rejected.");
+console.log("\nPQC conformance OK: FIPS 203 section 7.2 rejections and FIPS 204 sizes/round-trip.");

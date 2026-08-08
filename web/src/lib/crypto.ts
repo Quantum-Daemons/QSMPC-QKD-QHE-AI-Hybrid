@@ -103,9 +103,13 @@ export function mldsaDemo(message = "QSH orchestration message"): SigDemo {
   const seed = crypto.getRandomValues(new Uint8Array(32));
   const { publicKey, secretKey } = ml_dsa65.keygen(seed);
   const msg = enc.encode(message);
-  const sig = ml_dsa65.sign(secretKey, msg);
-  const valid = ml_dsa65.verify(publicKey, msg, sig);
-  const tampered = ml_dsa65.verify(publicKey, enc.encode(message + "!"), sig);
+  // @noble/post-quantum 0.6.x argument order: sign(message, secretKey) and
+  // verify(signature, message, publicKey). 0.2.x took (secretKey, message) and
+  // (publicKey, message, signature). Both arguments are Uint8Array, so tsc and the build stayed
+  // green and the only symptom was a RangeError at runtime naming the expected key length.
+  const sig = ml_dsa65.sign(msg, secretKey);
+  const valid = ml_dsa65.verify(sig, msg, publicKey);
+  const tampered = ml_dsa65.verify(sig, enc.encode(message + "!"), publicKey);
   return {
     algorithm: "ML-DSA-65 (FIPS 204)",
     publicKeyBytes: publicKey.length,
