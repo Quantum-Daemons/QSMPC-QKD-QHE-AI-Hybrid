@@ -258,6 +258,13 @@ def main() -> int:
     student_dir = Path.cwd() / "models" / "medical_breastmnist_student"
     student_report = export.verify_and_quantize(
         student, to14(xte).numpy(), student_dir, kind="torch")
+    # Readable weights, so the browser can evaluate the PUBLISHED student under CKKS rather than a
+    # synthetic kernel pattern of the same shape. ONNX alone is not enough: extracting conv kernels
+    # from it in a browser needs a parser this project does not ship.
+    w = distil.save_cnn_student_weights(
+        student, student_dir, teacher_key=key, student_key="medical_fl.student",
+        img_size=14, classes=["benign/normal", "malignant"])
+    print(f"  student weights.json: {w['n_parameters']} params")
     print(f"  student ONNX: {student_report.fp32_bytes/1e6:.2f} MB, "
           f"domains={student_report.onnx_domains}, browser_runnable={student_report.browser_runnable}")
 

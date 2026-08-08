@@ -445,10 +445,15 @@ _STUDENT_ARTIFACTS = (
     ArtifactSpec("weights.json", "json", "fp32", "both"),
 )
 
-#: medical_fl.student is a small convolutional net rather than a linear model, so it carries a
-#: safetensors checkpoint instead of readable weights.
+#: medical_fl.student is a small convolutional net rather than a linear model. It carries a
+#: safetensors checkpoint AND a structural weights.json: the browser evaluates this student under
+#: CKKS, and it can extract neither conv kernels from safetensors nor from ONNX without a parser
+#: this project does not ship. Without the JSON the encrypted convolution ran on the student's
+#: shape with a synthetic kernel pattern -- a real homomorphic convolution, but not this model's
+#: inference, so crypto_fidelity stayed a number measured offline and unverifiable in a browser.
 _STUDENT_ARTIFACTS_TORCH = (
     ArtifactSpec("onnx/model.onnx", "onnx", "fp32", "both"),
+    ArtifactSpec("weights.json", "json", "none", "browser"),
     ArtifactSpec("model.safetensors", "safetensors", "fp32", "server"),
 )
 
