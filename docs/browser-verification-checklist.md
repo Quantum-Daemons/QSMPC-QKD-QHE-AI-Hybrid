@@ -967,10 +967,15 @@ nothing was checking either. Round 22 found both of this project's submodules ab
 Per round, per submodule, against the GitHub API rather than by assumption:
 
     git submodule status                     # what we pin
-    curl -s https://api.github.com/repos/<owner>/<repo> \
-      | python3 -c "import sys,json;d=json.load(sys.stdin);\
-        print(d['pushed_at'], (d.get('license') or {}).get('spdx_id'), d['archived'])"
-    curl -s https://api.github.com/repos/<owner>/<repo>/commits?per_page=1   # upstream HEAD
+    gh api repos/<owner>/<repo> \
+      --jq '"\(.pushed_at) \(.license.spdx_id) archived=\(.archived)"'
+    gh api repos/<owner>/<repo>/commits?per_page=1 \
+      --jq '"\(.[0].sha[0:12]) \(.[0].commit.committer.date)"'   # upstream HEAD
+
+Use `gh api`, not bare `curl`. The unauthenticated API allows 60 requests an hour per IP, and it
+does not fail loudly - it returns HTTP 200 with a JSON body containing `message: API rate limit
+exceeded`, so a script that indexes straight into the response dies on a `KeyError` for a field
+that looks missing. That reads as "the repository has no licence" rather than "you were throttled".
 
 Four questions, and the third is the one that gets skipped:
 
