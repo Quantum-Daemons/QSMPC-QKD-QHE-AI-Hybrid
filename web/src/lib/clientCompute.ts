@@ -230,12 +230,17 @@ export function securityFacts(config: any, metrics: Record<string, any>): Securi
       eveFraction: Number(config?.qkd_eve ?? 0) });
     facts.push({
       label: "Decoy-state necessity",
-      value: `tagged fraction ${delta >= 1 ? ">= 1" : delta.toFixed(3)} at mu ${mu}`,
+      // Always print the number. ">= 1" was a needless loss of information: on the default fibre
+      // link Delta is 7.26, and "7.26" says the decoy states are carrying the entire link, where
+      // ">= 1" only says they are carrying some of it.
+      value: `tagged fraction ${delta.toFixed(2)} at mu ${mu}`,
       kind: "measured",
       source: "GLLP tagged fraction over this channel; Ma PRA 72 012326, GLLP QIC 4 325",
       warn: delta >= 1
-        ? "without decoy states this link would yield NO key at any distance: no detection can be "
-          + "certified single-photon"
+        ? "without decoy states this link yields NO key. The worst-case bound on Eve-known "
+          + "(multi-photon) detections exceeds the total detection probability, so not one "
+          + "detection could be certified single-photon and the whole sifted block is discarded. "
+          + "The decoy states are what make this link work at all."
         : undefined,
     });
   }
