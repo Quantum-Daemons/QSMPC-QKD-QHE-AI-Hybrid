@@ -394,3 +394,11 @@ belongs in this file rather than only in a comment.
   2031-12-31, FAR rule putting contractors on the 2030 date; National Security Systems excluded and
   remaining on CNSA 2.0. The binding US instrument, against NIST IR 8547 which is still a draft.
   Added: 2026-08-07.
+
+## Security scoring: sources evaluated and DECLINED (Round 22)
+
+Five candidate replacements for this project's security score were read in full and all five were
+declined, with reasons. Recorded in `security-scoring-fact-check.md` so the evaluation is not
+repeated: QERS (arXiv:2601.13399), CARS (IACR ePrint 2026/1467), the quantum-safe library assessment
+(arXiv:2605.17061), and two vendor sources. The composite was replaced by per-dimension facts led by
+the NIST security category (FIPS 203/204), not by another weighted score.
