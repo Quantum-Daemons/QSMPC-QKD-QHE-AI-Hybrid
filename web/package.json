@@ -7,13 +7,14 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
-    "preview": "vite preview --host"
+    "preview": "vite preview --host",
+    "check:pqc": "node scripts/check_mlkem_modulus_vectors.mjs"
   },
   "dependencies": {
     "@huggingface/transformers": "^4.2.0",
     "@mlc-ai/web-llm": "^0.2.84",
     "@noble/curves": "^2.2.0",
-    "@noble/post-quantum": "^0.2.1",
+    "@noble/post-quantum": "^0.6.1",
     "@types/gif.js": "^0.2.5",
     "@xyflow/react": "^12.3.5",
     "emp-wasm-engine": "^0.5.4",

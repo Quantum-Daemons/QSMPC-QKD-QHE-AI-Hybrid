@@ -3,7 +3,7 @@
 > An end-to-end orchestration **security layer** that chains **QKD -> QSMPC -> QHE/FHE ->
 > privacy-preserving AI** on a **PQC-first hybrid** foundation, with industry use cases
 > (finance / healthcare / genomics / telecom-defence / **satellite**), a **classical-vs-quantum
-> benchmark** (latency, accuracy, numeric **security score**, **quantum advantage**, and an
+> benchmark** (latency, accuracy, a **security posture table**, **quantum advantage**, and an
 > **Alice <-> Bob** two-party E2E), and a researcher/business-facing **SPA** that runs **entirely
 > client-side** in public-demo mode.
 
@@ -19,7 +19,11 @@ simulation/scaffolds where not - every claim is tied to a primary source in
 > ~$20 B (2033) at ~38 % CAGR). A general **quantum *advantage*** for these workloads is **not** claimed
 > as a market benefit - it is broadly unproven in 2026 (e.g. classical tensor-network simulation matching
 > annealing results), so the numeric "quantum advantage" stays a **research / education** metric in the
-> benchmark; the **security score** is the production-relevant number. The whole stack is deliberately a
+> benchmark. The production-relevant output is the **security posture table** - per-row facts, each
+> traceable to FIPS 203/204 or to the run that produced it. The 0-100 composite that used to hold that
+> role was **retired in Round 22**: 14 of its 17 weights carried no stated rationale and it scored a
+> run with zero secure key bits 100/100 (see
+> [`references/security-scoring-fact-check.md`](references/security-scoring-fact-check.md)). The whole stack is deliberately a
 > **hybrid** (PQC-classical + QKD/QHE quantum-simulated + FHE/MPC-classical + AI) - the pragmatic 2026
 > pioneering-product shape.
 
@@ -86,7 +90,7 @@ Each use case has its **own page** (`/usecase/:id`) - a **live two-party simulat
 Pause / Step / Stop / Restart. A **single Run** drives both the animated E2E protocol **and** the
 benchmark: the benchmark is **assembled from that very run** (no separate "Run benchmark" button) -
 the MPC-FHE row is the run's **real measured FHE-linear + MPC-non-linear latency**, shown next to the
-QSMPC-FHE comparison, quantum advantage, security score, and (for finance/medical/genomics) a signed
+QSMPC-FHE comparison, quantum advantage, security posture, and (for finance/medical/genomics) a signed
 SHAP explanation. The two-party diagram makes the **MPC-FHE secret-sharing over a LAN <-> WAN <-> LAN** link
 explicit - linear layers cross as a **CKKS ciphertext**, non-linear layers as **secret-shares**. In
 the **public demo** (`?demo=client`) every use case runs **entirely in the browser** with **real,
@@ -219,7 +223,13 @@ library through its published package does not require vendoring its source tree
 | **Alisah-Ozcan/HEonGPU** | GPU CKKS for the MPC-FHE benchmark | **submodule** | Apache-2.0 |
 | **chart21/hpmpc** (PIGEON) | GPU secret-sharing MPC for the same benchmark | **submodule** | MIT |
 
-**Client-side / AI OSS (npm, all commercial-OK):** `node-seal` 7.0.0, which bundles **Microsoft
+**Client-side / AI OSS (npm, all commercial-OK):** `@noble/post-quantum` **0.6.1** (MIT) for
+in-browser ML-KEM and ML-DSA. The pin matters: **0.2.1 accepted all 2,595 malformed encapsulation
+keys** in the C2SP/CCTV modulus set, because its polynomial coder took the compression path for
+d=12 where FIPS 203 specifies plain ByteEncode12/ByteDecode12, making the section 7.2 modulus check
+a no-op. 0.6.1 rejects all 2,595, and `npm run check:pqc` asserts it. Note the honest scope: noble
+is self-audited and carries no side-channel protection, so this is conformance evidence, not
+production assurance. Also `node-seal` 7.0.0, which bundles **Microsoft
 SEAL 4.1.2** - upstream's newest release still carries 4.1.2, so the gap is theirs rather than a
 stale pin here; SEAL 4.4.0's "major security update" has no CVE, no GHSA and no affected-version
 range, so the version is recorded as a fact and no vulnerability is claimed (SEAL -> WASM CKKS, MIT) +
@@ -336,7 +346,7 @@ the non-linear secure comparisons + a few KB of communication).
   exports a high-DPI PNG + a multi-second GIF. A standalone per-party-timing micro-benchmark also
   exists at `qsh/benchmark/alice_bob_e2e.py` (`POST /api/alice-bob`).
 
-The benchmark, security score, and quantum advantage are computed server-side **and** mirrored
+The benchmark, security posture and quantum advantage are computed server-side **and** mirrored
 client-side (`web/src/lib/clientCompute.ts`) so the public demo shows identical numbers with no backend.
 
 ---
@@ -560,11 +570,13 @@ See [`docs/pqc-roadmap.md`](docs/pqc-roadmap.md).
   (174 collected, 170 passed, 4 deselected); `make test-all` still dies. Round 18 fixed the Makefile
   and this paragraph kept telling readers `make test` runs a bare `pytest` for three more rounds,
   which is the doc-versus-code divergence this list exists to catch.
-- **The security score has two paths, and they used to disagree.** The standalone benchmark scored the
-  classical row without QKD key material while the quantum row assumed 256 bits - so once the QKD bonus
-  became functional in Round 17, the headline comparison would have handed the quantum row five points the
-  classical row was never offered. Both rows are now scored under one transport configuration (68 vs 96
-  with QKD mixed, 63 vs 91 without). If you change one call site, change both.
+- **The retired security score had two paths, and they disagreed for a long time.** The classical row
+  was scored without QKD key material while the quantum row assumed 256 bits, and separately the
+  classical row passed no QBER while the quantum row passed a literal `0.0128` and a literal leakage
+  bound. **Sixteen of the 28 points in the headline 68-vs-96 gap were that asymmetry, not
+  cryptography.** Round 22 closed both halves in both languages and then retired the composite
+  entirely rather than keep rendering it. The lesson generalises past this metric: when two rows are
+  compared, verify they were scored under ONE transport configuration before believing the gap.
 - **ct/pt is not a constant.** The "~1483x" figure is `ciphertext_bytes / (n_in * 8)` and moves with the
   feature count - measured ~1392x at 30 features and ~5222x at 8. Read it as a property of a
   configuration, not of CKKS.
