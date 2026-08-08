@@ -101,46 +101,53 @@ Hybridisation"** (p.29; section 2.1 is "Use of Quantum-Safe Mechanisms"),
 - **Transport** (`pqc/transport.py`) wraps the agreed key in AES-256-GCM; the **MCP agent
   bridge** (`pqc/mcp_bridge.py`) adds ML-DSA message signatures.
 
-## Security score reflects the chosen primitives
-The benchmark's numeric **security score** (`src/qsh/benchmark/security.py`,
-`compute_security_score(...) -> 0-100`) is *derived from the crypto-agility selection*, so
-swapping a primitive visibly moves the score - agility you can measure, not just assert:
+## Agility you can measure: the posture facts move with the selection
 
-- **KEM category** -> key-strength component: `ml-kem-768+x25519` (NIST cat 3) scores 16,
-  `ml-kem-1024+x25519` (cat 5) scores 20. Picking the cat-5 KEM in the SPA raises the score.
-- **QKD on/off** -> HNDL component: a >=256-bit BB84 key mixed in (`bb84-decoy`) scores the full
-  HNDL weight; `pqc-only` scores that weight minus the QKD bonus (30.0 vs 25.0 by default), so the
-  total moves 68 -> 63 computational and 96 -> 91 information-theoretic. That second pair read
-  "82 -> 77" for three rounds, matching neither the formula nor the "96 vs 68" figure eight lines
-  below it.
+Round 22 retired the 0-100 security score this section used to document. It was not a defensible
+measure: of 17 fields in its config exactly one was traceable to a citation, its maxima summed to
+exactly 100, and it awarded a perfect score to a run whose quantum channel produced ZERO secure key
+bits. Five candidate published replacements were read in full and all five declined; see
+`../references/security-scoring-fact-check.md`.
 
-  One asymmetry to know before quoting the pair: the two rows do not answer the selector the same way
-  in both deployments. The browser mirror derives both rows' key bits from the run - `secFromConfig`
-  in `clientCompute.ts` returns 0 under `pqc-only` - so 96 -> 91 is reachable there. The Python
-  quantum row pins `qkd_key_bits=256` (`benchmark/quantum_qsmpc_fhe.py:59`) and never moves, while
-  the Python classical row does take the run's value. So 96 -> 91 is the formula's answer and the
-  demo's behaviour, not the full deployment's: the same full-versus-demo divergence species as the
-  `qber` 0.08 / 0.11 split Round 20 closed. Recorded here rather than papered over.
+What replaced it is stronger for this purpose, because agility is now demonstrated against a
+published standard rather than against a weighted sum this project invented. Each row is either
+checkable against a specification or produced by the run, and says which.
 
-  **This was inert until Round 17:** the component was computed as `min(weight, weight + bonus)`, which is just `weight` whenever
-  the KEM is hybrid - i.e. in every normal run - so the selector changed the summary label and
-  nothing else while this section claimed otherwise.
-- **QBER** -> eavesdropper-detection component: below the ~11% BB84 threshold scores full marks;
-  an active eavesdropper pushes QBER up and the score down (and, past threshold, the key is
-  rejected entirely - see the satellite QSDC use case).
-- **Security model** -> information-theoretic (QOTP perfect hiding, the QSMPC-FHE path) beats
-  computational (RLWE, the classical MPC-FHE path): 96 vs 68 in the default benchmark.
+**Swapping the KEM moves standard-checkable facts.** Measured in Chrome on the public demo,
+2026-08-08, one run before and one after:
 
-**What does *not* move the score**, so the list above is not read as exhaustive: the signature family
-(`ml-dsa-65` vs `ml-dsa-87`) changes the signature size and the recorded algorithm name but has no score
-component; the FHE backend selection changes measured latency, not the score; and the PQC+QKD combiner
-choice (`hkdf` vs `its_toeplitz`) changes the derived key and its fingerprint but is scored only through
-the `security_model` term, not on its own.
+| Fact | ml-kem-768+x25519 | ml-kem-1024+x25519 | Checkable against |
+|---|---|---|---|
+| NIST security category | 3 | 5 | FIPS 203 |
+| KEM ciphertext | 1088 bytes | 1568 bytes | FIPS 203 |
 
-The same formula is mirrored client-side (`web/src/lib/clientCompute.ts`) so the public demo
-shows identical scores with no backend. The `sig` family is likewise runtime-selected and the
-chosen ML-DSA level signs the run summary (`signature_verified`), so the audit record names the
-exact algorithms used.
+Both ciphertext sizes are the values FIPS 203 specifies, so a reader can verify the claim without
+trusting this project's arithmetic. That is the difference from the retired score, whose "16 vs 20"
+could only be checked against itself.
+
+**Swapping the QKD profile** changes whether QKD key material is mixed at all: `pqc-only` reports 0
+secure bits and the posture table says so, where `bb84-decoy` reports the run's measured
+`secure_key_bits` and secret-key rate.
+
+**Driving the channel** changes the QBER row and its verdict. The verdict is taken from what the run
+produced (`secure_key_bits > 0`), not from a threshold comparison, because the threshold cannot
+answer it: this repository's measured GLLP zero-key point is 0.098106, BELOW the textbook BB84 bound
+of 0.11, so a QBER in [0.098, 0.11) passes the textbook test while the decoy-state estimate returns
+nothing. Verified both directions in the browser: eavesdropper 0 gives QBER 0.01 and 1915 secure
+bits; eavesdropper 0.35 gives QBER 0.1 and 0 secure bits, and both the posture table and the
+sequence diagram report the failure.
+
+**The signature family** changes the recorded algorithm name and the signature size (ML-DSA-65 =
+3309 bytes, FIPS 204), and the chosen level signs the run summary (`signature_verified`), so the
+audit record names the exact algorithms used.
+
+**What is reported but not scored**, so the list is not read as a ranking: the FHE backend selection
+changes measured latency; the PQC+QKD combiner (`hkdf` vs `its_toeplitz`) changes the derived key and
+its fingerprint. These are shown as measurements, and nothing sums them into a single number.
+
+The same facts are produced client-side (`web/src/lib/clientCompute.ts`) so the public demo shows
+them with no backend. `src/qsh/benchmark/security.py` still computes the old composite for the
+legacy comparison chart, which is retained, visibly demoted, and labelled as such.
 
 ## Reference: hybrid TLS
 For protocol-level agility beyond this PoC, `oqs-provider` (OpenSSL 3 PQC provider, Apache-2.0)

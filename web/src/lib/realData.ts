@@ -22,6 +22,22 @@ export interface RealInput {
   provenance: string;                        // human label for the event log + UI badge
   model?: { W: number[][]; b: number[] };    // a REAL model (trained LR / PRS weights) for faithful SHAP
   metrics?: Record<string, number>;          // extra real metrics, e.g. polygenic_risk_score
+  /** Column means E[x] over the shipped sample, for the SHAP reference point.
+   *
+   *  Without this `linearShap` defaults its baseline to the ZERO vector, and the attributions are
+   *  then measured against a reference case that does not occur. The finance `amount` column has a
+   *  mean of 11.5 on a log scale, so a zero reference means every bar for it reads against "a
+   *  transaction of log-amount zero" rather than against a typical one, inflating it relative to
+   *  every other feature. The completeness self-check cannot catch this: it holds for ANY baseline. */
+  baseline?: number[];
+}
+
+/** Column means over the sample rows - the reference point SHAP attributions are measured from. */
+function columnMeans(rows: number[][], n: number): number[] {
+  const out = new Array(n).fill(0);
+  if (!rows.length) return out;
+  for (const r of rows) for (let i = 0; i < n; i++) out[i] += (r[i] ?? 0) / rows.length;
+  return out;
 }
 
 const cache = new Map<string, unknown>();
@@ -46,7 +62,8 @@ export async function realInput(usecase: string, u: () => number): Promise<RealI
       const ds = await fetchJSON("/data/medical/breast_cancer_sample.json");
       const rows = ds.samples as number[][];
       const row = rows[Math.floor(u() * rows.length) % rows.length];
-      return { values: row.slice(0, 8), names: ds.names, provenance: ds.provenance, model: ds.model };
+      return { values: row.slice(0, 8), names: ds.names, provenance: ds.provenance, model: ds.model,
+               baseline: columnMeans(rows, 8) };
     }
     if (usecase === "genomics") {
       // REAL PGS-Catalog PGS000001 effect weights + REAL 1000 Genomes phase-3 genotypes (Ensembl / IGSR,
@@ -69,6 +86,10 @@ export async function realInput(usecase: string, u: () => number): Promise<RealI
       return {
         values, names, provenance: prs.provenance, model,
         metrics: { polygenic_risk_score: Number(prsScore.toFixed(4)) },
+        // Population mean dosage at the same SNPs, over the shipped 1000 Genomes individuals. The
+        // zero vector would mean "an individual carrying no effect allele anywhere", which is not a
+        // typical genome and is not even present in the sample at several of these loci.
+        baseline: top.map((i) => samples.reduce((a, d) => a + (d[i] ?? 0), 0) / Math.max(1, samples.length)),
       };
     }
     if (usecase === "finance_aml") {
@@ -78,7 +99,8 @@ export async function realInput(usecase: string, u: () => number): Promise<RealI
       const ds = await fetchJSON("/data/finance/paysim_sample.json");
       const rows = ds.samples as number[][];
       const row = rows[Math.floor(u() * rows.length) % rows.length];   // a REAL PaySim transaction
-      return { values: row.slice(0, 8), names: ds.names, provenance: ds.provenance, model: ds.model };
+      return { values: row.slice(0, 8), names: ds.names, provenance: ds.provenance, model: ds.model,
+               baseline: columnMeans(rows, 8) };
     }
   } catch (e) {
     console.warn("[realData] real dataset unavailable → synthetic fallback:", e);
