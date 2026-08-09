@@ -340,11 +340,30 @@ it is not written down.
 
 ## Dated and dropped items, checked in Round 24
 
-**ZeroGPU, measured rather than assumed.** Round 22 set the condition: when the account unlocks,
-wire it or delete the Space and the `remote` tier together. Checked 2026-08-09 - the org page returns
-**HTTP 404** and the Space returns **HTTP 401**, so the account-age unlock (~2026-09-01) has not
-happened and wiring is not possible yet. Nothing in `web/src` references the Space, and `remote`
-remains a `ProvenanceBadge` type member no code path sets. The condition stands unchanged and is now
+**ZeroGPU: DECIDED 2026-08-10, and the decision is not to wire it.** Round 22 set the condition as
+"when the account unlocks, wire it or delete the Space and the `remote` tier together", and it must
+not appear in a fifth deferred list unqualified. It appeared in five. The unlock is still pending -
+the Space returns **HTTP 401** and the org space listing is empty - so waiting would produce a sixth.
+
+The condition was framed around availability and the real question is architectural. **This demo's
+stated property is that it computes privacy-preserving inference in the browser with zero VPS
+compute.** A remote GPU inference tier does not extend that; it contradicts it. The number a REMOTE
+badge would carry - "computed off this machine, timing includes network latency" - is the one claim
+the public demo exists to avoid making. So the unlock date was never the blocker, and treating it as
+one is what let this ride for five rounds.
+
+Executed: the `remote` member is deleted from `ProvenanceBadge` (nothing set it, so no behaviour
+changes), and `t3_large` is retained but documented as an intentionally empty taxonomy slot, because
+the in-browser LLM genuinely is T3-shaped and simply is not a registry entry.
+`spaces/qsh-inference/` is KEPT as reference source and is explicitly not on any roadmap - it is not
+deleted because it is real work that predates this analysis and costs nothing to retain.
+
+**Reopening condition, stated so this is a decision and not an omission:** wire it only if the demo
+acquires a workload that genuinely cannot run client-side, and re-add the `remote` badge in the same
+commit that first sets it.
+
+The previous entry, kept for the record: the org page returned HTTP 404 and the Space HTTP 401 on
+2026-08-09, the account-age unlock (~2026-09-01) had not happened, and the condition was recorded as
 one command to re-check:
 
     curl -s -o /dev/null -w "%{http_code}\n" https://huggingface.co/api/spaces/Daemons-Q/qsh-inference
@@ -353,11 +372,21 @@ one command to re-check:
 together with the `remote` tier - a type member nothing sets is the same defect as a metric with no
 reader, which this project treats as serious.
 
-**EU AI Act Art. 50(2) - CLOSED, and this entry was stale in two ways.** It named 2026-12-02 as "the
-nearest unmet compliance date" and framed the C2PA-versus-in-band-marker choice as open. Both are
-wrong as of Round 24c. Article 50 became applicable **2 August 2026**, not December, and it is not
-deferred - Regulation (EU) 2026/1744 defers Annex III standalone high-risk duties to 2027-12-02 and
-does not touch Article 50. And the obligation was analysed and found **not to apply**: the panel
+**EU AI Act Art. 50(2) - CLOSED as not-applicable. The date was right; my correction to it was
+wrong, and that correction is retracted here.**
+
+Round 24c rewrote this entry to say the recorded 2026-12-02 was "wrong" because Article 50 became
+applicable 2 August 2026. Checked against the Official Journal text of Regulation (EU) 2026/1744:
+**2026-12-02 is correct for this system.** The recital is explicit - "it is appropriate to introduce
+a transitional period of four months for providers who have already placed their systems on the
+market before the 2 August 2026" - and that transition applies specifically to the Article 50(2)
+MARKING obligations. This demo predates 2 August 2026, so four months from that date is its
+applicable deadline. Article 50 generally applies from 2026-08-02; 50(2) marking, for pre-existing
+systems, from 2026-12-02. Both statements are true and the earlier entry had the right one.
+
+What IS correct in the Round 24c rewrite: the Annex III deferral to 2027-12-02 does not touch
+Article 50, and the C2PA-versus-in-band choice is not open because neither is needed. The obligation
+was analysed and found **not to apply** regardless of date: the panel
 emits 96 tokens (Transformers.js) or 160 (WebLLM), both under the Code of Practice's 200-token "very
 short text" exception, so no marking layer is required and therefore no detection duty is triggered.
 The full quoted chain is in [`ai-act-art50-gap-analysis.md`](ai-act-art50-gap-analysis.md), along

@@ -1489,17 +1489,71 @@ distribution the shuffled labels describe. A plausible number reaches the model 
 | # | Check | Pass condition |
 |---|---|---|
 | S1 | Every `predict_loader` / `model.predict` whose OUTPUT is paired with a dataset by position | the loader is sequential |
-| S2 | Harvested teacher labels vs ground truth on the TRAINING split | near 1.0 - a fitted teacher should nearly memorise its own training data |
+| S2 | Harvested teacher labels vs ground truth on the TRAINING split, **as minority-class F1, not accuracy** | far above the permutation null - see below |
+| S2b | Compare that figure against `p^2 + (1-p)^2` for the ACTUAL positive rate | the measured value must clear it by a wide margin, not merely be high |
 | S3 | A student that is much worse than the same architecture trained on ground truth | suspect the targets, not the capacity |
 | S4 | The guard is machine-enforced, not remembered | `predict_loader` raises on a `RandomSampler` |
 
-**S2 is the cheap decisive one.** A teacher that fits its training set scores ~1.0 against its own
-training labels. Anything near the base rate means the pairing is broken, and it costs one line.
+**S2 is the cheap decisive one, but "near 1.0" is the wrong pass condition and would have missed
+this bug on the most imbalanced use case here.** Under a random permutation of binary labels with
+positive rate p, expected agreement is `p^2 + (1-p)^2`. That is a property of the class balance, not
+of the model:
+
+| use case | positive rate | agreement a FULLY SHUFFLED harvest scores |
+|---|---|---|
+| medical BreastMNIST | 0.2692 | 0.6065 |
+| OPS-SAT segments | 0.2136 | 0.6640 |
+| finance AMLworld | 0.0010 | **0.9980** |
+
+So at 1-in-981 a completely broken pairing scores 0.9980 and sails past "near 1.0". The medical bug
+was caught because 0.6227 looked obviously wrong at a 73/27 split - the same defect in finance would
+have looked perfect. **Use minority-class F1 of teacher-vs-truth instead, and state the permutation
+null beside it.** Confirmed on the medical case: 4,000 simulated permutations give a 99% interval of
+[0.5641, 0.6484], and the observed 0.6227 falls inside it, so that harvest was statistically
+indistinguishable from random - which is exactly what it was.
+
+This is the same failure shape as `both_scored_zero`: a guard written for a real incident, with a
+condition narrow enough that the next instance walks around it.
+
+**Run on finance, which is the case S2-as-written could not have protected:**
+
+```
+  positive rate 0.000723   (n = 2,843,872 training rows)
+  accuracy    teacher-vs-truth  0.9984   permutation chance 0.9986   <- BELOW chance, and passes "near 1.0"
+  minority-F1 teacher-vs-truth  0.4746   permutation      0.0012     <- separates by ~400x
+```
+
+The accuracy figure is *below* its own permutation null and still looks like a pass. The
+minority-class F1 is the statistic that discriminates. Finance is confirmed correctly aligned, which
+is the point: the check has to be able to return "clean" for a reason, not by accident.
 
 S3 is the diagnostic habit worth keeping. I first read this student's weakness as a CKKS capacity
 limit and wrote that into three documents. A probe of the identical architecture on aligned labels
 scoring 0.23 AUC higher is what disproved it - **before concluding "the encrypted tier is small, so
 it is weak", train the same small model properly once and see what it can actually do.**
+
+## Bootstrap a claimed improvement before shipping it
+
+The OPS-SAT student's AUC-PR moved 0.9225 to 0.9681 when its feature map changed. On a 529-row test
+set at a 21 percent positive rate, a delta of that size is exactly the magnitude that turns out to
+be resampling noise, and nothing in the pipeline would have said so.
+
+| # | Check | Pass condition |
+|---|---|---|
+| R1 | Any shipped improvement has a paired bootstrap CI on the delta | interval excludes zero |
+| R2 | Paired, not independent - both models scored on the SAME resampled rows | shared row-difficulty variance is removed |
+| R3 | Quote the interval, not just the point estimate | "at least +0.009", not "+0.046" |
+| R4 | Degenerate resamples dropped, not silently scored | draws with one class present are skipped |
+
+Measured here: 4,000 resamples give AUC-PR delta 95% CI **[+0.0089, +0.0853]** and minority-F1
+**[+0.0154, +0.0929]**, so the change survives. Note how wide that is - the lower bound is a fifth of
+the point estimate, so the defensible claim is "a real improvement of at least about one AUC-PR
+point", and quoting +0.046 alone would overstate what 529 rows can support.
+
+R1 pairs with the small-sample rule above. The satellite event-wise metric is computed over 3
+events, which is the case where a bootstrap does not rescue you - there is nothing to resample.
+Reporting the count and reporting an interval are the same discipline applied at two different
+sample sizes.
 
 ## A default that contradicts a licence commitment will eventually be taken
 

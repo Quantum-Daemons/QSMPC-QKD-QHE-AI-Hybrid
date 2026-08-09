@@ -63,6 +63,11 @@ export type ModelArtifact = {
 
 export type ModelSpec = {
   key: string;
+  // t3_large is part of the documented tier taxonomy and no ModelSpec uses it. Kept rather
+  // than deleted because the in-browser LLM (Transformers.js / WebLLM) IS a T3-shaped model -
+  // too big for encrypted evaluation, run locally instead - it simply is not a registry entry,
+  // since the registry describes models this project trains and publishes. If that ever
+  // changes the slot is here; until then it is documented-empty rather than silently empty.
   tier: "t1_crypto" | "t2_industry" | "t3_large";
   label: string;
   architecture: string;
