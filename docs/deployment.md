@@ -2,7 +2,7 @@
 
 The canonical deploy procedure for the public demo. Before Round 22 this existed only inside two
 gitignored documents, restated in two languages, so the commands drifted between them and none of it
-would have survived losing those files. This is the single source; the local documents point here.
+would have survived losing them. This file is now the single source.
 
 Three things below are not obvious, were each learned by breaking a live deploy, and are the reason
 this file exists rather than a README paragraph: `!reset` on the ports list, the shared-Caddy
