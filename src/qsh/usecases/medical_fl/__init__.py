@@ -133,9 +133,45 @@ def _medmnist_data(config: dict):
     clf = LogisticRegression(max_iter=300).fit(flat, y)
     w = np.vstack([np.zeros_like(clf.coef_[0]), clf.coef_[0]])
     b = np.array([0.0, float(clf.intercept_[0])])
-    pos = np.where(y == 1)[0]
+    # WHICH index is the abnormal class is per-dataset, and the two MedMNIST corpora this project
+    # uses disagree: PneumoniaMNIST is {0: normal, 1: pneumonia} while BreastMNIST is
+    # {0: malignant, 1: "normal, benign"} - opposite conventions. Hardcoding 1 happens to be right
+    # for the default and would silently pick a HEALTHY patient to "score privately" on breastmnist.
+    # Read it from MedMNIST's own metadata instead. The same inversion, hardcoded in four other
+    # places, had the demo reporting the opposite diagnosis to what the model meant (Round 24).
+    pos = np.where(y == _abnormal_class(name))[0]
     idx = int(pos[0]) if len(pos) else 0
     return Xs, y, LinearModel(w.astype(float), b), flat[idx].astype(float), Xs[idx]
+
+
+#: Words MedMNIST uses on the healthy side of a binary label map.
+_HEALTHY_WORDS = ("normal", "benign")
+
+
+def _abnormal_class(dataset: str) -> int:
+    """The label index MedMNIST assigns to the abnormal class, read from its own metadata.
+
+    Returns 1 only when there is no binary MedMNIST metadata to read - the convention used by the
+    synthetic offline-CI generator. It deliberately does NOT guess when metadata is present but
+    ambiguous: raising there is the point, because a wrong guess is invisible and picks the wrong
+    patient, which is the failure mode this function exists to remove.
+    """
+    try:
+        from medmnist import INFO
+
+        labels = INFO[dataset]["label"]
+    except Exception:
+        return 1                                   # synthetic fallback corpus; no metadata exists
+    if len(labels) != 2:
+        return 1
+    healthy = [int(k) for k, v in labels.items()
+               if any(word in v.lower() for word in _HEALTHY_WORDS)]
+    if len(healthy) != 1:
+        raise ValueError(
+            f"cannot tell which class of {dataset} is abnormal from its labels {labels}; "
+            f"name it explicitly rather than assuming 1"
+        )
+    return 1 - healthy[0]
 
 
 def build(config: dict | None = None) -> tuple[Pipeline, Context]:
