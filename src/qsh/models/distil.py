@@ -154,7 +154,8 @@ def fold_threshold_into_intercept(student, threshold: float):
     if inter.size == 1:                      # sklearn binary form: one logit, positive class
         student.intercept_ = inter - shift
     else:                                    # multinomial form: shift the positive class only
-        inter = inter.copy(); inter[1] -= shift
+        inter = inter.copy()
+        inter[1] -= shift
         student.intercept_ = inter
     return student
 

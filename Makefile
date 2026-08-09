@@ -8,7 +8,8 @@ PY     := $(VENV)/bin/python
 
 .DEFAULT_GOAL := help
 .PHONY: help venv setup setup-ai setup-fhe setup-api submodules data test lint \
-        run-finance run-medical benchmark api web docker-up docker-demo clean check-secrets
+        run-finance run-medical benchmark api web docker-up docker-demo clean check-secrets \
+        ci-local
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
@@ -77,3 +78,6 @@ check-secrets: ## Assert the report .docx and monetization notes are NOT tracked
 clean: ## Remove caches and build artifacts
 	rm -rf build dist *.egg-info src/*.egg-info .pytest_cache .ruff_cache .mypy_cache
 	find . -type d -name __pycache__ -prune -exec rm -rf {} +
+
+ci-local: ## Run every BLOCKING gate .github/workflows/ci.yml runs, in CI's own order
+	@bash scripts/ci_local.sh
