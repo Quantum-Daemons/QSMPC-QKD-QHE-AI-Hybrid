@@ -250,6 +250,62 @@ re-verify the load-bearing external claims and record the date:
 - When a doc turns out to be ahead of the sources you find, say so in the commit rather than
   "correcting" it downward to match a summary.
 
+## Search outward, not just inward - and fetch the source, never the summary
+
+Every other section here asks whether what the project already says is still true. This one asks the
+opposite question: **what changed outside that the project has not noticed?** It is the axis that
+produced most of Rounds 22-23's real findings, and none of them would have surfaced from reading this
+repository.
+
+| Found by searching outward | What it was |
+|---|---|
+| `@noble/post-quantum` 0.2.1 | accepted **all 2,595** malformed ML-KEM keys; FIPS 203 section 7.2 check was a no-op |
+| ePrint 2026/203 | CPAD **impossibility** for the class covering CKKS; the threat model said nothing about the notion |
+| EU AI Act Art. 50(2) | an unmet obligation with a **2 December 2026** deadline |
+| Microsoft SEAL 4.4.3 | six releases past the bundled 4.1.2, one self-described "major security update" |
+| QERS, CARS, and three vendor sources | candidate metrics that would have been adopted on the strength of a search summary |
+
+### The discipline, in the order that matters
+
+1. **Fetch the primary source. Do not act on a search summary.** This is the whole rule. A summary
+   of QERS reads as a calibrated framework; the paper says the weights are author-selected across
+   three scenarios with no calibration methodology, and normalises against an ESP32 Wi-Fi testbed.
+   A summary of the ACVP vectors implies they test the modulus check; the ML-KEM-512 negatives are
+   1216-byte keys against a correct 800, i.e. length checks, and a library can score 10/10 there
+   while failing every modulus vector.
+2. **Ask what the source actually prescribes, then whether it is implementable here.** ISO/IEC
+   23837-2 endorses discretised parameter sweeps and then states it "does not specify values for the
+   thresholds"; 21 of its 24 activities need an optical bench. Endorsing a method is not supplying
+   one.
+3. **Prefer a reference value you can assert in a test.** A source is most useful when it yields a
+   number this repository can be checked against - Ma et al.'s decoy curves became 13 assertions,
+   NIST and C2SP vectors became `npm run check:pqc`. A source that yields only prose yields only
+   prose.
+4. **Decline in writing, with the reason.** Adopting a framework with invented weights because it
+   has a citation is worse than having no framework, because the citation implies a rigour that did
+   not transfer. `references/security-scoring-fact-check.md` and
+   `references/stress-testing-fact-check.md` exist so the same five sources are not re-evaluated
+   every round.
+5. **Label vendor material as vendor material.** Sponsored articles, product pages and project blogs
+   surface high in searches and carry no methodology. Recorded separately in both fact-check files.
+
+### What to sweep each round
+
+- The standards the product cites by number - editions change, and an edition that has NOT changed is
+  itself a finding worth recording (ETSI GS QKD 014 is still V1.1.1, 2019-02).
+- Regulatory dates the UI asserts, and any obligation the product has not yet met.
+- Every pinned crypto/FHE dependency, plus its upstream - see the dependency section below.
+- Attacks against the primitives in use. CKKS, ML-KEM and QKD all have active attack literature, and
+  an impossibility result against a class the project belongs to is the kind of thing that never
+  appears in a release note.
+
+### One caution
+
+A claim being new is not a reason to adopt it. A 2026 preprint is a preprint. Weigh venue, whether
+the numbers are reproducible, and whether the paper's setting is this project's setting - QERS was
+scoped to "resource-constrained IoT/IIoT" and said applicability beyond that "remains unaddressed",
+which is disqualifying regardless of how recent it is.
+
 ## Reproduce each panel's headline from what the page itself shows
 
 The fact-check above asks whether an external claim is still true. This asks something stricter and
@@ -262,8 +318,8 @@ or to config rather than to a literal in the component.
 
 | Panel | Headline | Recompute from | Where the formula lives |
 |---|---|---|---|
-| Security score and quantum advantage | advantage `n/10` | the ratios the card prints | `quantum_advantage` weights in config; mirror of `benchmark/quantum_advantage.py` |
-| Security score | `68` / `96` | KEM category, QKD key bits, QBER | `security_scoring` weights in config; `benchmark/security.py` |
+| Security posture and quantum advantage | advantage `n/10`, plus `raw` when clamped | the ratios the card prints | `quantum_advantage` weights in config; mirror of `benchmark/quantum_advantage.py` |
+| Security posture table | per-row facts, no composite | FIPS 203/204 sizes; the run's `secure_key_bits`, `skr`, `qber` | `securityFacts` in `clientCompute.ts`; each row names its own source |
 | Why - top features (SHAP) | per-feature phi | `W`, `b`, `x`, baseline | exact linear SHAP, `phi_i = w_eff_i (x_i - baseline_i)`, `w_eff = W[1]-W[0]`; mirror of `ai/explainability.py` |
 | Benchmark - MPC-FHE vs QSMPC-FHE | latency split | FHE-linear + MPC-non-linear ms | measured, so check the parts sum to the whole |
 | QKD control plane, GS QKD 015 | key budget, span | `secure_key_bits`, distance | field names must match the spec's own (`qkdn_id`, `qkdl_id`, `skr`, `eskr`) |
@@ -278,10 +334,12 @@ Worked example, run in Round 21. The advantage card printed
 `6145.8^0.6 x 3608.79^0.2 x 1.5^0.2`, then `log10(composite + 1) x 3.2 + 1.0`, which lands on 10 and
 matches. The score is checkable in place by anyone reading the page.
 
-The security score reproduces the same way, and doing so found something: `68 -> 63` and `96 -> 91`
-are correct, but the second pair only in the BROWSER. `secFromConfig` derives both rows' key bits
-from the run, while the Python quantum row pins `qkd_key_bits=256` and never moves. Reproducing a
-number is how you discover which deployment it describes.
+That method - reproduce the number from its printed inputs - is what retired the 0-100 security
+score. Recomputing it showed `68 -> 63` and `96 -> 91` held only in the BROWSER, because the Python
+quantum row pinned `qkd_key_bits=256` and never moved; then the same method showed that 16 of the 28
+points separating 68 from 96 came from which arguments two call sites happened to supply. The score
+is gone, but keep the habit: **reproducing a number is how you discover which deployment it
+describes, and sometimes that it describes nothing.**
 
 **Two failure modes to look for, and they are opposite.** A headline whose inputs are not printed
 cannot be checked at all. And a headline whose inputs ARE printed but which does not recompute is
@@ -333,7 +391,7 @@ Four failure shapes, all of them found on this page rather than reasoned about:
 
 Panels to read, per use case, after a run: Inference provenance · Models (including each "Run this
 model in your browser" result) · Why - top features (SHAP) · Benchmark - MPC-FHE vs QSMPC-FHE ·
-Detailed results · Security score and quantum advantage · Agentic AI · QKD control plane.
+Detailed results · Security posture and quantum advantage · Agentic AI · QKD control plane.
 
 Cross-check them against each other and against the run log, not only against expectations:
 
@@ -368,8 +426,8 @@ each other and with what was selected.
 
 | Control | Diagram | Log | Metrics / table |
 |---|---|---|---|
-| KEM | handshake arrow names ML-KEM-768 or 1024 | handshake line | `kem_category` 3 or 5, `kem_ciphertext_bytes` 1088 or 1568, security score moves |
-| QKD (family) | quantum arrow present, or gone under pqc-only | "QKD disabled (PQC-only profile)" | `secure_key_bits`, QKD bonus in the security score |
+| KEM | handshake arrow names ML-KEM-768 or 1024 | handshake line | `kem_category` 3 or 5, `kem_ciphertext_bytes` 1088 or 1568; the posture table's NIST category row moves |
+| QKD (family) | quantum arrow present, or gone under pqc-only | "QKD disabled (PQC-only profile)" | `secure_key_bits`; the posture table's QKD row reports none under pqc-only |
 | Protocol (bb84 / e91) | arrow reads BB84 decoy-state or E91 (entanglement / CHSH) | protocol line | `chsh_s` appears only for E91 |
 | Signature | audit-record arrow names ML-DSA-65 or 87 | signing line | `signature_bytes` 3309 or 4627 |
 | Published model | full-width step names model, revision, EP, input shape, latency, outcome | "published model X ran here on Y" | `published_*` metrics, plaintext benchmark row |
@@ -532,12 +590,16 @@ Verified in Round 21, all against `references/`:
 | Leftover hash lemma | `l <= H_inf(X) - 2 log2(1/eps) + 2` | `minH - 2(-eps_log2) + 2` | identical once `log2(1/eps) = -eps_log2`; monotone decreasing in `|eps|`, as the lemma requires |
 | Free-space link budget | `loss_dB = distance x loss_per_km` | config-sourced 0.035 dB/km | 800 km gives 28 dB, 2000 km gives 70 dB, both exact |
 | Linear SHAP | `phi_i = w_eff_i (x_i - base_i)`, `w_eff = W1 - W0` | same | completeness, dummy and linearity all hold over 2000 random linear models, re-derived in Python |
-| Security score | `benchmark/security.py` | `securityScore` in `clientCompute.ts` | two independent implementations agree: MPC-FHE **68**, QSMPC-FHE **96** on the same configuration |
+| Decoy-state reference model | `qkd/decoy_reference.py` | `taggedFraction` in `quantumSim.ts` | same GLLP definition; the Python side additionally asserts published values from Ma et al. PRA 72, 012326 |
 
-The security-score row is the strongest kind of check available here, because the browser mirror and
-the Python original were written separately and can be run against each other. Do that rather than
-reading either one: `compute_security_score` with the call sites' own arguments gives 68 and 96, and
-the deployed benchmark table prints 68 and 96.
+**The parity check is the strongest kind available here**, because the browser mirror and the Python
+original were written separately and can be run against each other. This table used to carry a
+security-score row as its headline example, on the grounds that two independent implementations both
+produced 68 and 96. They did - and the number was still meaningless, because both implementations
+faithfully reproduced the same argument-passing artefact. **Agreement between two mirrors proves they
+match each other, not that either is right.** Pair every parity check with at least one assertion
+against a source outside this repository; `tests/test_decoy_reference.py` and `npm run check:pqc` are
+the two that do.
 
 **An axiom that holds by construction still has to be computed.** `linearShap` returned
 `efficiency_gap: 0` as a literal. It is algebraically correct - the attributions telescope to the
@@ -728,17 +790,13 @@ Recompute it from the config to check the row:
 Raising Distance must raise Delta; raising mu must raise it too. Both are one-line checks.
 
 **The reference model is asserted against the papers in `tests/test_decoy_reference.py`** - 13
-tests, none of whose numbers originate in this repository. The anchors, from Ma et al. PRA 72,
-012326 (2005) with the GYS parameter set, and GLLP QIC 4, 325 (2004):
+tests, none of whose numbers originate in this repository, drawn from Ma et al. PRA 72, 012326
+(2005) with the GYS parameter set and GLLP QIC 4, 325 (2004). Those anchors are NOT restated here.
+They are executable assertions in that test file and a table in `deliverable-verification.md`; a
+third handwritten copy in this document would be the copy that silently goes stale, and none of them
+is browser-checkable anyway - `npm run` cannot reach them, `pytest` can.
 
-| Assertion | Published | Measured |
-|---|---|---|
-| tagged fraction at mu = 0.1, zero distance | > 1 | 1.0417 |
-| decoy max distance | over 140 km | 142.2 km |
-| non-decoy max distance | about 42 km | 39.8 km |
-| decoy R/eta (flat, linear in eta) | 0.11 | 0.1136 |
-| non-decoy R/eta^2 (flat, quadratic) | 0.15 | 0.1510 |
-| decoy optimal mu | about 0.5 | 0.3 - 0.8 |
+What IS browser-checkable is the tagged fraction the posture table prints, above.
 
 **The trap in reproducing those figures, and it is a quiet one.** The published curves are plotted
 for the efficient BB84 of Lo-Chau-Ardehali, where the sifting factor q tends to 1. This project runs
@@ -979,6 +1037,133 @@ deliberately not offered to ORT on this project's own measurement of 162.7 s aga
 Record which of the three states you are in - no adapter, software adapter, hardware adapter - beside
 every latency, because it moves them by two orders of magnitude.
 
+## Retiring a metric is not done until the checklist stops asking for it
+
+When a metric is removed, three kinds of place still refer to it, and they fail differently:
+
+1. **The UI** - headings, legends, index pages. Caught in Round 22 by grepping the metric's NAME.
+2. **Published result tables in the docs.** README carried the retired 0-100 score as a live
+   **Security** column - `68 / 100` and `96 / 100` - for a full round after the metric was removed
+   from the product. A reader takes a README table as current results.
+3. **This checklist.** Six rows still told a verifier to recompute the score. That is the worst of
+   the three, because a checklist is executed by a person: the row either wastes their time or
+   produces a false failure against a panel that is behaving correctly.
+
+So the retirement procedure is:
+
+    git ls-files '*.md' | xargs grep -n "<metric name>"        # prose and tables
+    git ls-files '*.md' | xargs grep -n "<a characteristic value>"   # e.g. 68 / 100
+    grep -rn "<metric name>" web/src/ src/                     # headings, legends, computation
+
+and every hit must end up in one of three states: **removed**, **rewritten to the replacement**, or
+**explicitly marked historical**. A hit with none of those is a claim the project no longer stands
+behind.
+
+**Recompute the replacement's own numbers at the same time.** Retiring the score left the
+quantum-advantage figures unexamined next to it, and one of them - "9.2 on the finance E2E run" -
+was stale; the run reports 10/10, and 10 is a CLAMP over a raw 10.65, not a maximum.
+
+### The parity trap this uncovered
+
+The cross-implementation parity section used the security score as its strongest example: two
+independently written implementations, Python and TypeScript, both produced 68 and 96. They did.
+The number was still meaningless, because both faithfully reproduced the same argument-passing
+artefact.
+
+**Agreement between two mirrors proves they match each other, not that either is right.** Pair every
+parity check with at least one assertion against a source OUTSIDE this repository. Two now qualify:
+`tests/test_decoy_reference.py` asserts published values from Ma et al. PRA 72, 012326, and
+`npm run check:pqc` asserts against NIST and C2SP vectors.
+
+## Anything outside web/ and src/ still ships, and nothing was checking it
+
+The browser checks cover `web/`. The verification gate covers `src/`. Three directories publish
+artefacts and were audited for the first time in Round 23b: `models/`, `monitoring/`, `spaces/`.
+
+**Assert model cards against `models/metrics.json`, not against memory.** All ten cards agreed when
+checked properly - but note the trap in checking: a naive comparison that rounds
+(`str(round(v, 4))`) reports false mismatches, because the cards carry full precision
+(`0.08077786088257292`). Compare the repr and a range of fixed-point forms, and treat booleans as
+flags rather than metrics, or `isinstance(v, (int, float))` will flag every `False` as missing.
+
+**A hosted Space duplicates numbers and shapes that live in the registry, and it drifts.** Two real
+divergences in `spaces/qsh-inference/app.py`:
+
+- `"shape": [1, 26]` for the finance model, where the exported graph's input is `[N, 32]`. Verified
+  with `onnx.load` against `models/finance_aml_gbm/onnx/model.onnx`. A 26-length vector is rejected
+  by the session, so the Space's finance model would have failed on its first real request. **This
+  is a runtime bug, not a documentation defect** - it survived because the Space is not yet hosted.
+- `"metric": "AUC 0.888"` where `metrics.json` records **0.9147**.
+
+So per round, for anything that restates a registry value outside the registry:
+
+    python -c "import onnx,pathlib; m=onnx.load('models/<name>/onnx/model.onnx'); \
+      print([[d.dim_value or d.dim_param for d in i.type.tensor_type.shape.dim] for i in m.graph.input])"
+
+and diff every hardcoded metric string against `models/metrics.json`. **A directory that is not
+deployed yet is exactly where this rots**, because nothing exercises it.
+
+## The model registry claims things about the outside world - check them
+
+`hf_repo` is not a label, it is an assertion that a repository exists and is reachable. The registry
+documents its own convention on the field: **`None` means not published.** So a non-None value that
+does not resolve is the registry stating a falsehood, and it is surfaced through `hf_repo_id` to both
+the CLI and `frontend_config`.
+
+Per round:
+
+    # every declared repo must resolve
+    python -c "from qsh.models.registry import _SPECS; \
+      print('\n'.join(s.hf_repo_id for s in _SPECS if s.hf_repo))" \
+      | while read r; do echo "$r $(curl -s -o /dev/null -w '%{http_code}' \
+          https://huggingface.co/api/models/$r)"; done
+
+    # every artifact dir must exist
+    python -c "from qsh.models.registry import ARTIFACT_DIRS; import pathlib; \
+      print([(k,d) for k,d in ARTIFACT_DIRS.items() if not pathlib.Path(d).is_dir()])"
+
+    # every published spec should have a model card
+    ls models/*/README.md
+
+Round 23b found `finance_aml.gnn` declaring `hf_repo="qsh-finance-aml-gnn"` while
+`Daemons-Q/qsh-finance-aml-gnn` returned **HTTP 401** and its ten siblings returned 200. There was no
+`models/finance_aml_gnn` directory, no entry in `models/metrics.json`, and no model card. The spec
+described a model that had never been trained. Its `notes` explained why the browser ships the GBM
+instead, which read as an explanation and hid the fact that nothing existed at all.
+
+**The 401-versus-200 contrast is what makes this checkable.** A single 401 could be a private repo or
+a token problem; ten 200s beside one 401 cannot be.
+
+After editing the registry, regenerate the baked frontend config - `python scripts/export_config.py`
+- or `tests/test_api_config.py::test_baked_json_matches_backend_config` fails. That test is doing its
+job; do not silence it.
+
+## Dependency claims decay, so re-measure them and watch the wording
+
+A version claim is only true on the day it is written, and the dangerous ones are the claims that
+are true of one thing and read as true of another.
+
+Per round, for each pinned crypto or FHE dependency:
+
+    gh api repos/<owner>/<repo>/releases/latest --jq '"\(.tag_name) \(.published_at)"'
+    gh api repos/<owner>/<repo>/releases --jq '.[] | "\(.tag_name) \(.published_at[0:10]) \(.name)"'
+    npm view <package> version
+    gh api graphql -f query='{securityVulnerabilities(first:10, ecosystem:NPM, package:"<pkg>"){nodes{advisory{ghsaId summary}}}}'
+
+**Ask which "upstream" a sentence means.** This repository carried "node-seal is on SEAL 4.1.2, and
+that is upstream's newest" for several rounds. True of node-seal, false of SEAL, and the sentence
+does not say which. Measured 2026-08-09: node-seal 7.0.0 is indeed still newest, while Microsoft
+SEAL had shipped **six releases** since 4.1.2 and reached 4.4.3 four days earlier. The claim was not
+a lie and was not stale in the way a version number goes stale - it was ambiguous in the flattering
+direction, which is harder to catch and is why this row exists.
+
+**Distinguish "no advisory" from "no problem."** SEAL 4.4.0's release note is the single line "Major
+security update", with no CVE, no GHSA and no affected-version range. The honest report is the
+version history plus the absence of an advisory, not an inference in either direction. Where a fix
+is described (4.4.3: null-output-pointer dereferences and C++ exceptions crossing the **C API**
+boundary), record whether it can even reach this project's build - a WASM/Emscripten build may not
+use the C API at all, and "unverified" is a legitimate answer to write down.
+
 ## PQC library conformance: run NIST's negative vectors, not just the happy path
 
 Every run on every page exercises ML-KEM and ML-DSA, and every one of them takes the happy path.
@@ -1165,6 +1350,29 @@ Inference provenance, same run, both inferences named:
 
     Pipeline model, on this page's own data    MEASURED (plain JS) - js-linear (bundled real model)
     Published model, on its own corpus         MEASURED (local WASM) - onnx-wasm
+
+## Verified in Round 23b (2026-08-09, public URL)
+
+Public-page claims re-checked against primary sources this round, all **confirmed**:
+
+| Page claim | Source fetched | Verdict |
+|---|---|---|
+| AI Omnibus = Regulation (EU) 2026/1744, in force 27 Jul 2026 | EUR-Lex | correct, and so are both deferral dates it cites |
+| Annex III to 2 Dec 2027, Annex I embedded to 2 Aug 2028 | EUR-Lex / Commission | correct |
+| Art. 50 transparency applicable 2 Aug 2026 | Commission guidelines | correct |
+| EO 14412, 22 Jun 2026, 91 FR 38483, PQC by 2030, signatures by 2031 | Federal Register | correct on all four details |
+| RSA-2048 factoring: ~1/20 the qubits of the 2019 estimate, runtime ~20x higher | arXiv:2505.15917 (Gidney 2025) | correct: 20M -> under 1M qubits, 8 hours -> under a week |
+| ETSI GS QKD 014 V1.1.1 (2019-02) still the only published edition | ETSI | correct - and an edition that has NOT moved is itself worth recording |
+| liboqs 0.16.0 current | GitHub releases | correct (2026-07-09) |
+
+Registry and artefact checks, all clean after the fixes in this round: 10 model cards agree with
+`models/metrics.json`; 10 declared HF repos return 200; every `ARTIFACT_DIRS` entry resolves; all 10
+ONNX input shapes match what the run reports in the browser.
+
+Per-page: no retired composite on any of the five use-case pages or the index; compact heading reads
+"Security posture & quantum advantage" on telecom and satellite, full heading elsewhere; telecom run
+end to end gives QBER 0.01, macro-F1 0.96, `published telecom_ids.qml @ f0d754313210 - onnx-wasm -
+1x7`, matching that model's ONNX input of `[?, 7]`.
 
 ## Verified in Round 22 (2026-08-08, public URL, bundle index-Bjfk0ThY.js)
 

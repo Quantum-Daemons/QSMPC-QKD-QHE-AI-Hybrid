@@ -85,9 +85,10 @@ Eight gates. Steps 1-3 and 5-8 are pass/fail; step 4 is a loop that runs until c
 8. **Final greps** - no new literals, no Japanese in public files, CI green on the head commit.
 
    As of Round 21 there is **no** Japanese in any tracked text file - the rule holds with no
-   exceptions. `MONETIZATION_WORKFLOW.ja.md` and the private business-strategy reports are Japanese
-   by design and untracked; the reports live one directory above the repository and have never been
-   inside it.
+   exceptions. The private business notes are Japanese by design and untracked; several live one
+   directory above the repository and have never been inside it. They are deliberately not named
+   here - a public file that lists the filenames of confidential ones has leaked something, even
+   when the files themselves are absent.
 
    `.gitignore` used to be the exception, carrying five Japanese-named `.docx` patterns. They were
    guarding a path that does not exist, so they are gone and `*.[dD][oO][cC][xX]` replaced them:
@@ -241,13 +242,58 @@ segfault is not. `make test` deselects it with `-m "not slow"`; `make test-all` 
 upstream crash on one host distribution is not this project's work, and the workaround is the
 outcome rather than a placeholder for one. Recorded as a decision.
 
-**node-seal is on SEAL 4.1.2, and that is upstream's newest.** Promised in Round 19, tasked again in
-Round 21, never written, and then it dropped off the list without resolution. The answer, checked
-this round: `web/package.json` pins `node-seal ^7.0.0`, 7.0.0 is installed, and **node-seal 7.0.0's
-own package metadata states SEAL 4.1.2**. So the gap is upstream's, not a stale pin here - node-seal
-has not taken a newer SEAL. Round 19's instruction was to document the gap rather than claim a
-vulnerability, and that remains right: SEAL 4.4.0's "major security update" carries no CVE, no GHSA
-and no affected-version range, so there is nothing to claim beyond the version fact.
+**node-seal is on SEAL 4.1.2, and node-seal is the constraint, not us.** Promised in Round 19,
+tasked again in Round 21, never written, and then it dropped off the list without resolution. The
+answer: `web/package.json` pins `node-seal ^7.0.0`, 7.0.0 is installed, and node-seal 7.0.0's own
+package metadata states SEAL 4.1.2. **Re-checked 2026-08-09** - node-seal 7.0.0 (2025-11-08) is
+still the newest node-seal on npm, so this is not a stale pin here.
+
+The wording this file carried until Round 23 - "and that is upstream's newest" - was ambiguous in a
+way that flattered the position. It is true of node-seal and false of SEAL. Measured: Microsoft SEAL
+has shipped **six releases since 4.1.2** and reached **4.4.3 on 2026-08-04**. 4.4.0 (2026-07-25) is
+described only as "Major security update", with no further detail; 4.4.1 fixes a MinGW build; 4.4.3
+fixes null-output-pointer dereferences and C++ exceptions leaking across the **C API** boundary
+(issues #753-#755). Whether C API fixes reach an Emscripten/WASM build at all is **unverified** and
+should not be assumed either way.
+
+Round 19's instruction was to document the gap rather than claim a vulnerability, and that still
+holds: a GitHub Security Advisory query for SEAL returns **no advisories**, and no CVE exists. So
+the version and the release history are recorded as facts, the gap is recorded as widening, and no
+vulnerability is claimed. Re-check this on any round that touches the FHE path; the release cadence
+since April 2026 is roughly monthly.
+
+## Verification assets added in Rounds 22-23
+
+Two checks now exist that assert against sources OUTSIDE this repository. That is the point of both:
+every other test in this suite asserts that the code does what the code was written to do, which
+cannot catch a shared misunderstanding.
+
+**`tests/test_decoy_reference.py` (13 tests) against `src/qsh/qkd/decoy_reference.py`.** Reproduces
+Ma, Qi, Zhao and Lo, Phys. Rev. A 72, 012326 (2005) with the GYS parameter set, and the GLLP
+tagged-fraction bound (QIC 4, 325). None of the asserted numbers originated here:
+
+| Assertion | Published | Measured |
+|---|---|---|
+| tagged fraction at mu = 0.1, zero distance | > 1 | 1.0417 |
+| decoy max distance | over 140 km | 142.2 km |
+| non-decoy max distance | about 42 km | 39.8 km |
+| decoy R/eta, flat, linear in eta | 0.11 | 0.1136 |
+| non-decoy R/eta^2, flat, quadratic | 0.15 | 0.1510 |
+
+The trap this closed is worth keeping: the published curves are plotted for efficient BB84 where the
+sifting factor q tends to 1, while this project runs standard BB84 at q = 1/2. Reproducing them with
+q = 1/2 gives values at exactly HALF the published ones - close enough to read as a fitting
+discrepancy, wrong enough to void the comparison. `q_sift` is explicit and a test pins the factor.
+
+**`npm run check:pqc` (`web/scripts/check_mlkem_modulus_vectors.mjs`).** FIPS 203 section 7.2
+negative vectors from C2SP/CCTV, plus a FIPS 204 size and round-trip check. It found the pinned
+`@noble/post-quantum` 0.2.1 accepting **all 2,595** malformed encapsulation keys; 0.6.1 rejects all
+of them. The checker was itself validated against the known-bad build - 3 FAILs and exit 1 on 0.2.1,
+all-OK on 0.6.1 - because a conformance script that always passes is worse than none.
+
+Both are cheap and neither is wired into `make test` yet, which is a gap rather than a decision:
+`check:pqc` fetches its vectors over the network, so it needs an offline-tolerant mode before it can
+gate CI.
 
 ## What this project cannot verify, and says so
 
@@ -261,3 +307,33 @@ and no affected-version range, so there is nothing to claim beyond the version f
   authenticated fact.
 - **Trusted relays are an assumption**, not a mechanism: a relay holds the key in plaintext and no
   cryptography here changes that.
+
+## Open, with numbers, so they do not roll forward silently (Round 23b)
+
+Two items are known, verified and NOT fixed. Recorded here rather than left implicit, which is this
+project's standing rule for anything deferred.
+
+**1. The browser's federated hyperparameters differ from `config.federated`, and cannot read it.**
+
+| | Python config | Browser |
+|---|---|---|
+| rounds | 8 | 6 |
+| learning rate | 0.05 | 0.15 |
+| clients | (config) | 4 |
+
+`FederatedConfig` is **not exported to the baked frontend config at all** - `federated` is absent
+from `web/src/lib/config.defaults.json` - so the browser could not read these even if it wanted to.
+The divergence is defensible (a federated round has to finish inside a page interaction) and is now
+stated at the call site in `clientCompute.ts`, but it is a divergence. Fixing it means exporting the
+dataclass first; changing the browser numbers alone would move every reported federated accuracy
+without changing what the server does.
+
+**2. `qsdc_threshold` defaults to 0.11 and is still not traced to a QSDC source.**
+
+0.11 is the textbook BB84 one-way security threshold (Shor-Preskill). QSDC is a different protocol
+with its own security analysis, so the value is not automatically wrong - but nothing in
+`references/` justifies it for QSDC, and it sits above this repository's own measured GLLP zero-key
+point of 0.098106. Either find the QSDC source or replace the default with one that has one.
+
+Neither is user-visible today. Both are the kind of item that becomes a finding two rounds later if
+it is not written down.
