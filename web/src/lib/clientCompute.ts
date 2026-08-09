@@ -985,6 +985,12 @@ export function clientQFL(
   opts?: { clients?: number; rounds?: number; data?: { X: number[][]; Y: number[] } | null },
 ): QFLResult {
   const u = rng(seed + 11);
+  // DELIBERATE divergence from `config.federated` (rounds 8, lr 0.05), not an oversight, and stated
+  // here because the two were silently different. The browser runs a lighter schedule so a federated
+  // round completes inside a page interaction; `FederatedConfig` is not exported to the browser at
+  // all, so these cannot be read from config today even if that were wanted. If the two are ever to
+  // agree, export the dataclass first - changing these numbers alone would move every reported
+  // federated accuracy without changing what the server does.
   const K = opts?.clients ?? 4;
   const rounds = opts?.rounds ?? 6;
   const X: number[][] = [];
