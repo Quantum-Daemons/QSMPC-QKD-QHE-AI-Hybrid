@@ -43,7 +43,35 @@ a quantum-safe orchestration demo. This is the **plaintext** model for the
 
 ### Gap to the published baseline
 
-This reaches minority-class F1 well below the published 0.6323. Two differences account for most of it and both are deliberate. (1) The published baseline uses IBM's Graph Feature Preprocessor, which ships in `snapml` under a Proprietary licence and is therefore excluded by this project's commercial-OK-only rule; what is reimplemented here is the documented typology set (degree, fan-in/out, reciprocity, k-hop cycle closure, burst degree, scatter-gather). (2) The corpus injects CYCLE attempts of up to 10 hops (HI-Small_Patterns.txt), while reachability here is computed to 4 hops because the boolean sparse powers grow quickly beyond that. The evaluation is also strictly inductive: graph aggregates are fitted on the training window only, so no test-time edge informs a training-time feature. Reported as measured; not adjusted to close the gap.
+This reaches minority-class F1 well below the published 0.6323. Round 24 measured the causes rather
+than assuming them; the full workings are in
+[`references/finance-gap-investigation.md`](../../references/finance-gap-investigation.md).
+
+**Ruled out by measurement.** The decision threshold: reaching F1 0.6323 requires precision around
+0.63 held to recall around 0.63, so AUPRC of at least ~0.40, and the measured AUPRC is 0.0732 - the
+figure is unreachable at *any* threshold, which makes this a ranking gap rather than a tuning gap.
+Accounts unseen in the training window: only 0.39% of test rows have either side unseen, too rare to
+matter.
+
+**Also ruled out as a main cause: the hop limit.** The corpus injects CYCLE attempts of up to 10 hops
+while reachability here is computed to 4. An earlier version of this section gave that as one of two
+main causes. It cannot be: the Graph Feature Preprocessor paper (arXiv:2402.08593) attributes "more
+than 30%" of its minority-F1 improvement to fan-in/fan-out features - which this project already
+implements - and only "up to 4%" to the multi-hop cycle and scatter-gather features.
+
+**What remains.** IBM's Graph Feature Preprocessor ships in `snapml` under a Proprietary licence and
+is excluded by this project's commercial-OK-only rule. The mechanism that matters is architectural
+rather than legal: GFP computes per-transaction subgraph patterns over a graph updated as each
+transaction arrives, while this pipeline computes per-account scalar aggregates. That is
+implementable without `snapml`; it is simply larger than renaming aggregates.
+
+**One defect found in passing, worth fixing on its own merits.** Aggregates are fitted over the whole
+training window, so a training row's feature includes its own future - the median transaction has
+only 46.4% of its out-degree accrued by its own timestamp - while test rows receive the same table as
+a stale past. A causal, prior-at-time computation removes the asymmetry and measured **1.45x AUPRC**
+over the shipped approach at matched feature count.
+
+Reported as measured; not adjusted to close the gap.
 
 ## Training data
 
