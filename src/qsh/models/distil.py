@@ -159,6 +159,28 @@ def fold_threshold_into_intercept(student, threshold: float):
     return student
 
 
+def fold_threshold_into_torch_head(model, threshold: float, *, positive_class: int = 1):
+    """Same idea as :func:`fold_threshold_into_intercept`, for a 2-logit torch head, in place.
+
+    Argmax over two logits IS a 0.5 threshold, and the encrypted path has nowhere downstream to
+    apply a tuned cut - so a screening model that should trade precision for recall cannot express
+    that unless the cut is baked into the weights. Predicting ``positive_class`` when
+    ``sigmoid(z_pos - z_other) >= q`` means shifting that class's bias by ``-log(q/(1-q))``.
+
+    Needed for the medical student because its positive class is MALIGNANT and it is the minority
+    (2.71:1). At argmax it caught 1 of 42 malignant cases while scoring a respectable-looking
+    accuracy, because on an imbalanced screening task accuracy is maximised by not screening.
+    """
+    import torch
+
+    q = float(min(max(threshold, 1e-9), 1 - 1e-9))
+    shift = float(np.log(q / (1.0 - q)))
+    last = [m for m in model.modules() if isinstance(m, torch.nn.Linear)][-1]
+    with torch.no_grad():
+        last.bias[positive_class] -= shift
+    return model
+
+
 def save_student(student, out_dir, *, n_features: int, teacher_key: str,
                  student_key: str, classes: list | None = None, scaler=None) -> dict:
     """Persist the distilled student so it can be published and independently verified.
