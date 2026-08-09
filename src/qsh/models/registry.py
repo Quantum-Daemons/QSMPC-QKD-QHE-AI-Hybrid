@@ -483,11 +483,19 @@ _SPECS: tuple[ModelSpec, ...] = (
         params=None,          # filled from the trained checkpoint; AAAI-24 reports no count
         dataset=DS_AMLWORLD,
         metric=M_AML,
-        artifacts=_ONNX_PAIR,
-        hf_repo="qsh-finance-aml-gnn",
+        artifacts=(),
+        # NOT published, and this field says so - `hf_repo=None` is this file's own documented
+        # convention for that (see the field comment on ModelSpec). It previously read
+        # "qsh-finance-aml-gnn", which asserted a published repo: Daemons-Q/qsh-finance-aml-gnn
+        # returns HTTP 401 while its siblings return 200, there is no models/finance_aml_gnn
+        # directory, and models/metrics.json has no entry for it. So the spec described a model that
+        # was never trained, and `hf_repo_id` is surfaced by the CLI and by frontend_config.
+        hf_repo=None,
         notes=(
-            "Message-passing needs the graph neighbourhood at inference, so the browser tier ships the "
-            "stateless gradient-boosting variant instead of this one."
+            "Reference architecture only - never trained or published here. Message-passing needs the "
+            "graph neighbourhood at inference, so every tier ships the stateless gradient-boosting "
+            "variant instead. Kept as a spec because it is the published state of the art this "
+            "project's GBM is measured against, not because an artifact exists."
         ),
     ),
     ModelSpec(
@@ -777,7 +785,6 @@ def achieved(key: str) -> dict | None:
 #: whether the graph is browser-runnable -- and two copies would drift on the first new model.
 ARTIFACT_DIRS: dict[str, str] = {
     "finance_aml.gbm": "models/finance_aml_gbm",
-    "finance_aml.gnn": "models/finance_aml_gnn",
     "medical_fl.resnet18": "models/medical_breastmnist_resnet18",
     "medical_fl.resnet50": "models/medical_breastmnist_resnet50",
     "genomics.prs": "models/genomics_prs",
