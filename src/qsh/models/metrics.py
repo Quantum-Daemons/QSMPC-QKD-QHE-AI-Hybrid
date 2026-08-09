@@ -116,6 +116,40 @@ def event_wise_counts(y_true, y_pred) -> dict:
     }
 
 
+def corrected_event_wise_fbeta(y_true, y_pred, *, beta: float = ESA_BETA) -> float:
+    """ESA-ADB's *corrected* event-wise F-beta - the quantity its published table actually reports.
+
+    ESA-ADB multiplies event-wise precision by the TIME-LEVEL true-negative rate:
+
+        Prec_corr = TP_e / (TP_e + FP_e) * TNR_t,     TNR_t = TN_t / (TN_t + FP_t)
+
+    and that correction is the whole reason most of its baselines read < 0.001 while an uncorrected
+    score on the same predictions looks respectable. Reporting an UNCORRECTED event-wise F0.5 beside
+    ESA-ADB's 0.786 compares two different quantities, and the uncorrected one is the flattering
+    direction, so the corrected value is computed here and recorded next to it.
+
+    Source: arXiv:2406.17826 (ESA-ADB), Supplementary Table 13 caption, which names it "the
+    corrected event-wise F0.5-score".
+    """
+    c = event_wise_counts(y_true, y_pred)
+    if c["n_true_events"] == 0:
+        return float("nan")
+
+    y = np.asarray(y_true).ravel().astype(bool)
+    p = _labels(y_pred).astype(bool)
+    tn_t = int(np.sum(~y & ~p))
+    fp_t = int(np.sum(~y & p))
+    tnr_t = tn_t / (tn_t + fp_t) if (tn_t + fp_t) else 0.0
+
+    tp, fn, fp = c["tp"], c["fn"], c["fp"]
+    precision = (tp / (tp + fp) if (tp + fp) else 0.0) * tnr_t
+    recall = tp / (tp + fn) if (tp + fn) else 0.0
+    if precision == 0.0 and recall == 0.0:
+        return 0.0
+    b2 = beta * beta
+    return float((1 + b2) * precision * recall / (b2 * precision + recall))
+
+
 def event_wise_fbeta(y_true, y_pred, *, beta: float = ESA_BETA) -> float:
     """Event-wise F-beta under the overlap rule used by Telemanom and ESA-ADB.
 

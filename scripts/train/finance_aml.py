@@ -361,6 +361,15 @@ def main() -> int:
     ap.add_argument("--no-causal", dest="causal", action="store_false",
                     help="restore whole-window per-account aggregates (A/B only, worse and leaky "
                          "in the train/test-asymmetry sense; see causal_account_features)")
+    ap.add_argument("--student-degree", type=int, default=1,
+                    help="polynomial degree for the CKKS student's feature map. "
+                         "The expansion is computed on plaintext before encryption, so "
+                         "degree 2 costs no extra multiplicative depth -- only slots, and 560 of "
+                         "4096 is affordable. MEASURED HERE AND REJECTED: degree 2 raised fidelity "
+                         "(agreement 0.9471 -> 0.9651, disagreement on positives 0.3262 -> 0.1956) "
+                         "and LOWERED the headline, minority-class F1 0.0185 -> 0.0115. It pays on "
+                         "OPS-SAT and does not pay here, which is why this is a flag and not a "
+                         "default -- check it per model rather than assuming it generalises.")
     ap.set_defaults(causal=True)
     args = ap.parse_args()
 
@@ -434,9 +443,25 @@ def main() -> int:
     scaler = StandardScaler().fit(Xtr)
     # SOFT targets: the teacher's probabilities, not its argmax. Hard labels discard precisely the
     # information distillation exists to transfer, and at 1-in-981 that is most of the signal.
+    #
+    # QUADRATIC expansion, computed on the plaintext input before encryption, so the encrypted step
+    # stays one packed dot product at unchanged multiplicative depth. 32 features become 560, well
+    # inside the 4096 slots a degree-8192 ring gives. Round 24 measured this student's ceiling over
+    # ANY threshold at 0.0262 minority-class F1 against the teacher's 0.1519, and concluded the
+    # binding constraint was capacity - so this tests whether the capacity that was missing is the
+    # cipher's or the feature map's.
+    # At degree 1 the student is a bare estimator and the CALLER owns the scaling, exactly as every
+    # other student in this project does; at degree > 1 the returned Pipeline owns its own scaler and
+    # must be fed raw features or it would z-score twice. Getting this backwards silently fits a
+    # logistic model on unscaled 32-dimensional features - it converges to something, reports a
+    # number, and that number was minority-class F1 0.0068 against 0.0185.
+    Xtr_student = Xtr if args.student_degree > 1 else scaler.transform(Xtr)
     student = distil.distil_linear(
-        teacher.predict_proba(scaler.inverse_transform(scaler.transform(Xtr))),
-        scaler.transform(Xtr), seed=args.seed, soft=True)
+        teacher.predict_proba(Xtr), Xtr_student, seed=args.seed, soft=True,
+        degree=args.student_degree)
+
+    def _student_features(X):
+        return X if args.student_degree > 1 else scaler.transform(X)
 
     # Tune the student's OWN threshold on validation, then fold it into the bias. Until Round 24
     # the student was scored at sklearn's default 0.5 while the teacher got a tuned cut - so the
@@ -444,18 +469,20 @@ def main() -> int:
     # Folding matters because the encrypted path decides by argmax over two logits, which IS a 0.5
     # threshold: there is nowhere downstream to apply a tuned cut, so it has to live in the weights.
     # Measured: 0.0186 at 0.5, 0.0503 tuned, on identical weights.
-    s_val = student.predict_proba(scaler.transform(Xval))[:, 1]
+    s_val = student.predict_proba(_student_features(Xval))[:, 1]
     s_thr = _best_threshold(yval, s_val)
-    distil.fold_threshold_into_intercept(student, s_thr)
+    distil.fold_threshold_into_intercept(student[-1] if args.student_degree > 1 else student, s_thr)
     print(f"    student threshold {s_thr:.4f} folded into the bias "
           f"(the CKKS argmax has no other place to apply it)")
-    student_pred = student.predict(scaler.transform(Xte))
+    student_pred = student.predict(_student_features(Xte))
 
     # Persist it. Until Round 19 the student was fit, measured and discarded -- so the one model
     # that actually runs under CKKS was the one model nobody could obtain or check.
     student_export = distil.save_student(
         student, Path("models/finance_aml_student"), n_features=len(FEATURES),
-        teacher_key="finance_aml.gbm", student_key="finance_aml.student", scaler=scaler)
+        teacher_key="finance_aml.gbm", student_key="finance_aml.student",
+        scaler=(None if args.student_degree > 1 else scaler),
+        fixtures=(Xte[:64] if args.student_degree > 1 else None))
     print(f"  student persisted: {student_export['n_parameters']} params, "
           f"browser_runnable={student_export['browser_runnable']}")
 
@@ -463,7 +490,7 @@ def main() -> int:
         teacher_key="finance_aml.gbm", student_key="finance_aml.student",
         teacher_pred=pred, student_pred=student_pred, y_true=yte,
         metric_fn=metrics.minority_class_f1, metric_name="minority_class_f1",
-        student_params=int(student.coef_.size + student.intercept_.size),
+        student_params=int(_est(student).coef_.size + _est(student).intercept_.size),
         teacher_params=int(teacher.get_booster().trees_to_dataframe().shape[0]),
     )
     print(f"    agreement with teacher      {fidelity.agreement:.4f}")
@@ -535,6 +562,11 @@ def main() -> int:
     train.record_metrics("finance_aml.student", fidelity.as_metrics())
     print(f"\n  wrote {out} and models/metrics.json in {time.time()-started:.0f}s")
     return 0
+
+
+def _est(student):
+    """The estimator carrying the coefficients: a pipeline student keeps them on its last step."""
+    return student[-1] if hasattr(student, "steps") else student
 
 
 def _best_threshold(y, score) -> float:

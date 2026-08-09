@@ -23,12 +23,12 @@ a quantum-safe orchestration demo. This is the **plaintext** model for the
 
 | metric | value |
 |---|---|
-| `agreement` | 0.947119 |
-| `disagreement_on_positives` | 0.326153 |
-| `metric_delta` | 0.133454 |
-| `metric_delta_pp` | 13.3454 |
+| `agreement` | 0.982943 |
+| `disagreement_on_positives` | 0.361913 |
+| `metric_delta` | 0.090554 |
+| `metric_delta_pp` | 9.0554 |
 | `n_eval` | 1523504 |
-| `student_metric` | 0.018494 |
+| `student_metric` | 0.061394 |
 | `student_params` | 33 |
 | `teacher_metric` | 0.151948 |
 | `teacher_params` | 141154 |

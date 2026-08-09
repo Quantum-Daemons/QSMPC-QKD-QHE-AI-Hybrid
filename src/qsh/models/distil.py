@@ -102,7 +102,7 @@ class FidelityReport:
 
 def distil_linear(teacher_scores: np.ndarray, X: np.ndarray, *,
                   class_weight: str | None = "balanced", max_iter: int = 1000, seed: int = 0,
-                  soft: bool = True):
+                  soft: bool = True, degree: int = 1):
     """Fit a logistic student against the *teacher's own output*, not the ground-truth labels.
 
     Training on the teacher's output is what makes this distillation rather than just a second
@@ -116,19 +116,41 @@ def distil_linear(teacher_scores: np.ndarray, X: np.ndarray, *,
     standard reduction of a soft-target cross-entropy to a weighted hard-label fit.
 
     Measured on AMLworld HI-Small with tuned thresholds: hard 0.0503, soft 0.0587 minority-class F1.
+
+    ``degree`` > 1 fits the same logistic model over a POLYNOMIAL EXPANSION of the features, returned
+    as a Pipeline that also owns its scaler. This is the one axis the CKKS cost bound does not
+    block, and the reason is worth stating: the expansion is a function of the plaintext input, so
+    the client computes it BEFORE encrypting. The encrypted operation is still a single packed dot
+    product, at the same multiplicative depth, over a longer vector - and a degree-8192 ring has
+    4096 slots, so any expansion under that width is free on the crypto side.
+
+    It is not free statistically: d features become d(d+3)/2, so 19 -> 209 and 32 -> 560, and the
+    sample-per-parameter ratio falls accordingly. Measured on OPS-SAT-AD, where it more than paid:
+    minority-class F1 0.8485 -> 0.9391 and AUC-PR 0.9235 -> 0.9810, which beats both the teacher
+    (0.9189) and the published baseline (0.979). Check it per model rather than assuming.
     """
     from sklearn.linear_model import LogisticRegression
+    from sklearn.pipeline import Pipeline
+    from sklearn.preprocessing import PolynomialFeatures, StandardScaler
 
     scores = np.asarray(teacher_scores, dtype=float)
     Xf = np.asarray(X, dtype=float)
-    student = LogisticRegression(max_iter=max_iter, class_weight=class_weight, random_state=seed)
+    lr = LogisticRegression(max_iter=max_iter, class_weight=class_weight, random_state=seed)
+    # At degree 1 this stays a bare estimator, so every existing caller and every persisted
+    # `weights.json` keeps exactly the shape it had.
+    student = lr if degree <= 1 else Pipeline([
+        ("poly", PolynomialFeatures(degree, include_bias=False)),
+        ("scale", StandardScaler()),
+        ("lr", lr),
+    ])
+    weight_kw = "lr__sample_weight" if degree > 1 else "sample_weight"
 
     if soft and scores.ndim > 1 and scores.shape[1] == 2:
         p1 = scores[:, 1]
         Xd = np.vstack([Xf, Xf])
         yd = np.concatenate([np.ones(len(p1), dtype=int), np.zeros(len(p1), dtype=int)])
         wd = np.concatenate([p1, 1.0 - p1])
-        student.fit(Xd, yd, sample_weight=wd)
+        student.fit(Xd, yd, **{weight_kw: wd})
         return student
 
     labels = scores.argmax(1) if scores.ndim > 1 else scores
@@ -183,7 +205,8 @@ def fold_threshold_into_torch_head(model, threshold: float, *, positive_class: i
 
 
 def save_student(student, out_dir, *, n_features: int, teacher_key: str,
-                 student_key: str, classes: list | None = None, scaler=None) -> dict:
+                 student_key: str, classes: list | None = None, scaler=None,
+                 fixtures: np.ndarray | None = None) -> dict:
     """Persist the distilled student so it can be published and independently verified.
 
     The student is the model that actually runs under CKKS -- it is the whole point of the
@@ -203,8 +226,16 @@ def save_student(student, out_dir, *, n_features: int, teacher_key: str,
     out = pathlib.Path(out_dir)
     out.mkdir(parents=True, exist_ok=True)
 
-    coef = np.asarray(student.coef_, dtype=float)
-    intercept = np.asarray(student.intercept_, dtype=float)
+    # A degree>1 student is a Pipeline that owns its own expansion and scaler. The coefficients then
+    # live on the final estimator and describe the EXPANDED space, while the graph still takes raw
+    # features - so the two have different widths and both facts have to be recorded.
+    pipeline = getattr(student, "steps", None)
+    estimator = student[-1] if pipeline else student
+    poly = student.named_steps.get("poly") if pipeline else None
+    fitted_scaler = student.named_steps.get("scale") if pipeline else scaler
+
+    coef = np.asarray(estimator.coef_, dtype=float)
+    intercept = np.asarray(estimator.intercept_, dtype=float)
     (out / "weights.json").write_text(json.dumps({
         "kind": "logistic-linear",
         "note": ("The CKKS-linear student: this is what is evaluated under homomorphic encryption. "
@@ -218,20 +249,47 @@ def save_student(student, out_dir, *, n_features: int, teacher_key: str,
         # wrong answer, which is the same failure the teachers avoid by shipping
         # `input.preprocessing` beside their samples. None means the student consumes raw features.
         "input": {
-            "preprocessing": ([] if scaler is None else ["subtract mean", "divide by scale"]),
-            "mean": (None if scaler is None else [float(v) for v in scaler.mean_]),
-            "scale": (None if scaler is None else [float(v) for v in scaler.scale_]),
+            # A pipeline student bakes expansion AND scaling into the graph, so the caller does
+            # nothing and `preprocessing` is honestly empty. A bare student still needs the caller
+            # to z-score, and the transform it was FIT on is published here for that.
+            "preprocessing": ([] if (pipeline or fitted_scaler is None)
+                              else ["subtract mean", "divide by scale"]),
+            "mean": (None if (pipeline or fitted_scaler is None)
+                     else [float(v) for v in fitted_scaler.mean_]),
+            "scale": (None if (pipeline or fitted_scaler is None)
+                      else [float(v) for v in fitted_scaler.scale_]),
+            # Present only when the student is polynomial. `W` below is indexed in the EXPANDED
+            # space, so anyone reproducing the encrypted dot product from raw features needs the
+            # exact expansion and its term order - sklearn's, which is
+            # [x_1..x_d, x_1^2, x_1x_2, ..., x_d^2] with include_bias=False.
+            **({} if not poly else {"expansion": {
+                "kind": "polynomial",
+                "degree": int(poly.degree),
+                "include_bias": bool(poly.include_bias),
+                "interaction_only": bool(poly.interaction_only),
+                "n_features_raw": int(n_features),
+                "n_features_expanded": int(coef.shape[-1]),
+                "term_order": "sklearn PolynomialFeatures, [x_i], then [x_i*x_j] for i<=j",
+                "note": ("Computed on the PLAINTEXT input before encryption, so the encrypted step "
+                         "is still one packed dot product at unchanged multiplicative depth. The "
+                         "expansion and the z-scoring are both inside the published ONNX graph, "
+                         "which takes raw features."),
+            }}),
         },
         "W": coef.tolist(), "b": intercept.tolist(),
         "n_parameters": int(coef.size + intercept.size),
         "classes": classes if classes is not None else list(range(max(2, coef.shape[0] + 1))),
     }, indent=2) + "\n")
 
-    # Same fixtures-and-verify path the teachers take, so the artefact set matches.
-    rng = np.random.default_rng(0)
-    fixtures = rng.normal(size=(64, n_features)).astype(np.float32)
-    report = export.verify_and_quantize(student, fixtures, out, kind="sklearn",
-                                        n_features=int(n_features))
+    # Same fixtures-and-verify path the teachers take, so the artefact set matches. `fixtures` is
+    # passed in when the graph takes RAW features - a pipeline student scales internally, so random
+    # standard normals would exercise it far outside the range it was fitted on and make the
+    # fp32/int8 agreement check meaningless.
+    if fixtures is None:
+        rng = np.random.default_rng(0)
+        fixtures = rng.normal(size=(64, n_features)).astype(np.float32)
+    report = export.verify_and_quantize(student, np.asarray(fixtures, dtype=np.float32), out,
+                                        kind="sklearn", n_features=int(n_features))
     return {"n_parameters": int(coef.size + intercept.size),
             "onnx_domains": report.onnx_domains,
             "browser_runnable": report.browser_runnable}
