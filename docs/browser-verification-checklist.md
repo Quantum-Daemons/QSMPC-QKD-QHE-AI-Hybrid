@@ -1439,6 +1439,51 @@ protocol: the wiring was correct, the label function was correct, and the node s
 Read the rendered node text rather than the DOM you expect - that graph renders React Flow HTML
 nodes, and a sweep querying `svg text` returned nothing at all.
 
+## A model can score respectably and have learned nothing - check that it predicts more than one class
+
+`medical_fl.student`, the CNN the encrypted medical path runs, emitted the SAME class for all 156
+test images. Its accuracy of 0.730769 is exactly 114/156 - the majority-class rate - and its AUC was
+0.354, below random. It shipped like that for several rounds, and the demo displayed its output as a
+diagnosis.
+
+Nothing looked wrong. Accuracy 0.7308 against a published 0.901 reads as "behind but plausible".
+Agreement with the teacher was 0.75. The registry declared `auc` while the record stored `accuracy`,
+which was on the plan as a cosmetic tidy-up item and was in fact the thing hiding the failure - AUC
+would have shown 0.354 and been unmissable.
+
+| # | Check | Pass condition |
+|---|---|---|
+| C1 | Count distinct classes the model predicts on the test set | more than one |
+| C2 | Compare accuracy against the majority-class rate | strictly better, or the model is the majority class |
+| C3 | Check the record contains the metric the REGISTRY declares, measured as that metric | present, or a note saying why it cannot be |
+| C4 | For an imbalanced task, read recall on the minority class, not accuracy | reported explicitly |
+| C5 | Verify class-label ORDER against the dataset's own metadata | matches; the browser renders `classes[argmax]` |
+
+C2 is the cheapest and would have caught this instantly: accuracy equal to the majority-class rate,
+to six decimal places, is not a coincidence. `n_classes_predicted` and `majority_class_rate` are now
+recorded and rendered so the check is visible rather than remembered.
+
+C5 caught a separate defect in the same pass. MedMNIST's own metadata says
+`{0: malignant, 1: "normal, benign"}`; four places in this repo asserted the opposite, so the demo
+showed the OPPOSITE diagnosis to what the model meant. The repo even contradicted itself - two
+`eval_sample.json` files written by different code paths made opposite claims about which class is
+cancer. **Never hardcode which index is the positive class.** The two MedMNIST corpora used here
+disagree with each other (PneumoniaMNIST is `{0: normal, 1: pneumonia}`), so a constant that is
+correct for one is silently wrong for the other; read it from the dataset's metadata.
+
+**Accuracy going DOWN can be the fix.** After correction the student scored 0.6859, below the
+majority rate, because it stopped answering with the majority class. On an imbalanced screening task
+accuracy is maximised by not screening, so a drop there alongside a rise in minority-class recall
+(1/42 to 8/42) and AUC (0.354 to 0.609) is the improvement, not a regression.
+
+**Threshold tuning can degenerate the same way.** Tuning the cut on minority-class F1 picked the
+extreme grid point and predicted the positive class for everything, because F1 is maximised by
+calling everything positive when discrimination is weak. Use a criterion that cannot be gamed like
+that - Youden's J gives all-positive a score of 0 - and reject any threshold that collapses to a
+single class whatever it scored.
+
+Workings: [`references/medical-student-collapse-investigation.md`](../references/medical-student-collapse-investigation.md).
+
 ## Ask what the metric was divided by, not just how many samples there were
 
 The satellite card showed event-wise F0.5 0.4545 beside a published baseline of 0.786 for several
