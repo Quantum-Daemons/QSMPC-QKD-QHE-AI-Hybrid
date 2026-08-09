@@ -29,7 +29,7 @@ a quantum-safe orchestration demo. This is the **plaintext** model for the
 | `macro_f1` | 0.6492063492063492 |
 | `n_parameters` | 23505858 |
 | `resolution` | 28 |
-| `wall_clock_s` | 12.9 |
+| `wall_clock_s` | 12.2 |
 
 ## Published baselines this is measured against
 
