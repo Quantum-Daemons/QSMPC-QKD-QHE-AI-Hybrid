@@ -1468,6 +1468,39 @@ local venv and absent from the requirements files still passes locally and fails
 deploy path, not a bug: the VPS does `git reset --hard origin/<branch>`, which knows nothing about
 CI. So the check has to be a habit at CI2, because no machine will stop you.
 
+## A shuffled DataLoader is correct for training and silently wrong for harvesting
+
+The medical CKKS student was distilled on teacher labels attached to the WRONG IMAGES, for two
+rounds, and every signal said it was fine.
+
+`predict_loader(model, tr_dl)[1].argmax(1)` returns scores in the SAMPLER's order. `tr_dl` is built
+with `shuffle=True`, correctly, because it is also the training loader. The result was paired with
+`to14(xtr)` in the dataset's original order, so each teacher label landed on a different image.
+
+Measured: labels harvested that way matched ground truth on **0.6227** of training rows, where a
+sequential pass matched on **1.0000**. The student scored **AUC 0.5984**; the same architecture on
+aligned labels scores **0.8250**. Fixing the alignment moved the shipped model 0.5984 -> **0.7882**
+and its validation Youden's J from 0.1028 -> 0.5388.
+
+**Nothing downstream can detect this.** Shapes match. The loss decreases. Early stopping runs to
+completion. Agreement-with-teacher is *high*, because the student faithfully learns the marginal
+distribution the shuffled labels describe. A plausible number reaches the model card.
+
+| # | Check | Pass condition |
+|---|---|---|
+| S1 | Every `predict_loader` / `model.predict` whose OUTPUT is paired with a dataset by position | the loader is sequential |
+| S2 | Harvested teacher labels vs ground truth on the TRAINING split | near 1.0 - a fitted teacher should nearly memorise its own training data |
+| S3 | A student that is much worse than the same architecture trained on ground truth | suspect the targets, not the capacity |
+| S4 | The guard is machine-enforced, not remembered | `predict_loader` raises on a `RandomSampler` |
+
+**S2 is the cheap decisive one.** A teacher that fits its training set scores ~1.0 against its own
+training labels. Anything near the base rate means the pairing is broken, and it costs one line.
+
+S3 is the diagnostic habit worth keeping. I first read this student's weakness as a CKKS capacity
+limit and wrote that into three documents. A probe of the identical architecture on aligned labels
+scoring 0.23 AUC higher is what disproved it - **before concluding "the encrypted tier is small, so
+it is weak", train the same small model properly once and see what it can actually do.**
+
 ## A default that contradicts a licence commitment will eventually be taken
 
 DATA_LICENSES.md and the README both stated that `medical_fl.resnet18` is trained from random
