@@ -262,8 +262,8 @@ or to config rather than to a literal in the component.
 
 | Panel | Headline | Recompute from | Where the formula lives |
 |---|---|---|---|
-| Security score and quantum advantage | advantage `n/10` | the ratios the card prints | `quantum_advantage` weights in config; mirror of `benchmark/quantum_advantage.py` |
-| Security score | `68` / `96` | KEM category, QKD key bits, QBER | `security_scoring` weights in config; `benchmark/security.py` |
+| Security posture and quantum advantage | advantage `n/10`, plus `raw` when clamped | the ratios the card prints | `quantum_advantage` weights in config; mirror of `benchmark/quantum_advantage.py` |
+| Security posture table | per-row facts, no composite | FIPS 203/204 sizes; the run's `secure_key_bits`, `skr`, `qber` | `securityFacts` in `clientCompute.ts`; each row names its own source |
 | Why - top features (SHAP) | per-feature phi | `W`, `b`, `x`, baseline | exact linear SHAP, `phi_i = w_eff_i (x_i - baseline_i)`, `w_eff = W[1]-W[0]`; mirror of `ai/explainability.py` |
 | Benchmark - MPC-FHE vs QSMPC-FHE | latency split | FHE-linear + MPC-non-linear ms | measured, so check the parts sum to the whole |
 | QKD control plane, GS QKD 015 | key budget, span | `secure_key_bits`, distance | field names must match the spec's own (`qkdn_id`, `qkdl_id`, `skr`, `eskr`) |
@@ -278,10 +278,12 @@ Worked example, run in Round 21. The advantage card printed
 `6145.8^0.6 x 3608.79^0.2 x 1.5^0.2`, then `log10(composite + 1) x 3.2 + 1.0`, which lands on 10 and
 matches. The score is checkable in place by anyone reading the page.
 
-The security score reproduces the same way, and doing so found something: `68 -> 63` and `96 -> 91`
-are correct, but the second pair only in the BROWSER. `secFromConfig` derives both rows' key bits
-from the run, while the Python quantum row pins `qkd_key_bits=256` and never moves. Reproducing a
-number is how you discover which deployment it describes.
+That method - reproduce the number from its printed inputs - is what retired the 0-100 security
+score. Recomputing it showed `68 -> 63` and `96 -> 91` held only in the BROWSER, because the Python
+quantum row pinned `qkd_key_bits=256` and never moved; then the same method showed that 16 of the 28
+points separating 68 from 96 came from which arguments two call sites happened to supply. The score
+is gone, but keep the habit: **reproducing a number is how you discover which deployment it
+describes, and sometimes that it describes nothing.**
 
 **Two failure modes to look for, and they are opposite.** A headline whose inputs are not printed
 cannot be checked at all. And a headline whose inputs ARE printed but which does not recompute is
@@ -333,7 +335,7 @@ Four failure shapes, all of them found on this page rather than reasoned about:
 
 Panels to read, per use case, after a run: Inference provenance · Models (including each "Run this
 model in your browser" result) · Why - top features (SHAP) · Benchmark - MPC-FHE vs QSMPC-FHE ·
-Detailed results · Security score and quantum advantage · Agentic AI · QKD control plane.
+Detailed results · Security posture and quantum advantage · Agentic AI · QKD control plane.
 
 Cross-check them against each other and against the run log, not only against expectations:
 
@@ -368,8 +370,8 @@ each other and with what was selected.
 
 | Control | Diagram | Log | Metrics / table |
 |---|---|---|---|
-| KEM | handshake arrow names ML-KEM-768 or 1024 | handshake line | `kem_category` 3 or 5, `kem_ciphertext_bytes` 1088 or 1568, security score moves |
-| QKD (family) | quantum arrow present, or gone under pqc-only | "QKD disabled (PQC-only profile)" | `secure_key_bits`, QKD bonus in the security score |
+| KEM | handshake arrow names ML-KEM-768 or 1024 | handshake line | `kem_category` 3 or 5, `kem_ciphertext_bytes` 1088 or 1568; the posture table's NIST category row moves |
+| QKD (family) | quantum arrow present, or gone under pqc-only | "QKD disabled (PQC-only profile)" | `secure_key_bits`; the posture table's QKD row reports none under pqc-only |
 | Protocol (bb84 / e91) | arrow reads BB84 decoy-state or E91 (entanglement / CHSH) | protocol line | `chsh_s` appears only for E91 |
 | Signature | audit-record arrow names ML-DSA-65 or 87 | signing line | `signature_bytes` 3309 or 4627 |
 | Published model | full-width step names model, revision, EP, input shape, latency, outcome | "published model X ran here on Y" | `published_*` metrics, plaintext benchmark row |
@@ -532,12 +534,16 @@ Verified in Round 21, all against `references/`:
 | Leftover hash lemma | `l <= H_inf(X) - 2 log2(1/eps) + 2` | `minH - 2(-eps_log2) + 2` | identical once `log2(1/eps) = -eps_log2`; monotone decreasing in `|eps|`, as the lemma requires |
 | Free-space link budget | `loss_dB = distance x loss_per_km` | config-sourced 0.035 dB/km | 800 km gives 28 dB, 2000 km gives 70 dB, both exact |
 | Linear SHAP | `phi_i = w_eff_i (x_i - base_i)`, `w_eff = W1 - W0` | same | completeness, dummy and linearity all hold over 2000 random linear models, re-derived in Python |
-| Security score | `benchmark/security.py` | `securityScore` in `clientCompute.ts` | two independent implementations agree: MPC-FHE **68**, QSMPC-FHE **96** on the same configuration |
+| Decoy-state reference model | `qkd/decoy_reference.py` | `taggedFraction` in `quantumSim.ts` | same GLLP definition; the Python side additionally asserts published values from Ma et al. PRA 72, 012326 |
 
-The security-score row is the strongest kind of check available here, because the browser mirror and
-the Python original were written separately and can be run against each other. Do that rather than
-reading either one: `compute_security_score` with the call sites' own arguments gives 68 and 96, and
-the deployed benchmark table prints 68 and 96.
+**The parity check is the strongest kind available here**, because the browser mirror and the Python
+original were written separately and can be run against each other. This table used to carry a
+security-score row as its headline example, on the grounds that two independent implementations both
+produced 68 and 96. They did - and the number was still meaningless, because both implementations
+faithfully reproduced the same argument-passing artefact. **Agreement between two mirrors proves they
+match each other, not that either is right.** Pair every parity check with at least one assertion
+against a source outside this repository; `tests/test_decoy_reference.py` and `npm run check:pqc` are
+the two that do.
 
 **An axiom that holds by construction still has to be computed.** `linearShap` returned
 `efficiency_gap: 0` as a literal. It is algebraically correct - the attributions telescope to the
