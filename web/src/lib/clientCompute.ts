@@ -10,7 +10,7 @@ import { hkdf } from "@noble/hashes/hkdf.js";
 import { sha256 } from "@noble/hashes/sha2.js";
 import {
   benchCfg, costPerOp, dataCfg, demoFeatureDim, genericArchitecture, idsCfg, medicalCnn, qkdCfg, qrngCfg,
-  demoSample, qsmpcCfg, quantumAdvantageCfg, securityScoringCfg, studentModel, tierArchitectures, webCfg,
+  demoSample, federatedCfg, qsmpcCfg, quantumAdvantageCfg, securityScoringCfg, studentModel, tierArchitectures, webCfg,
   workloadMultipliers,
 } from "./config";
 import { encryptedConv2d, encryptedLinear, encryptedStudentInference, warmFHE,
@@ -985,14 +985,14 @@ export function clientQFL(
   opts?: { clients?: number; rounds?: number; data?: { X: number[][]; Y: number[] } | null },
 ): QFLResult {
   const u = rng(seed + 11);
-  // DELIBERATE divergence from `config.federated` (rounds 8, lr 0.05), not an oversight, and stated
-  // here because the two were silently different. The browser runs a lighter schedule so a federated
-  // round completes inside a page interaction; `FederatedConfig` is not exported to the browser at
-  // all, so these cannot be read from config today even if that were wanted. If the two are ever to
-  // agree, export the dataclass first - changing these numbers alone would move every reported
-  // federated accuracy without changing what the server does.
-  const K = opts?.clients ?? 4;
-  const rounds = opts?.rounds ?? 6;
+  // A DELIBERATE lighter schedule than the server's, now read from config rather than hardcoded.
+  // Round 23b found the browser running 6 rounds at lr 0.15 while `config.federated` said 8 at 0.05,
+  // with no way to reconcile them because FederatedConfig was not exported to the frontend at all.
+  // Round 24 exports it, including the browser overrides and the reason for them, so the override is
+  // a visible decision instead of two unrelated literals that happen to differ.
+  const fed = federatedCfg();
+  const K = opts?.clients ?? fed.hospitals;
+  const rounds = opts?.rounds ?? fed.browser_rounds;
   const X: number[][] = [];
   const Y: number[] = [];
   if (opts?.data?.X?.length) {
@@ -1028,7 +1028,8 @@ export function clientQFL(
 
   const sigmoid = (z: number) => 1 / (1 + Math.exp(-z));
   const dot = (a: number[], b: number[]) => a.reduce((s, v, i) => s + v * b[i], 0);
-  const localTrain = (ids: number[], w0: number[], epochs = 1, lr = 0.15) => {
+  const localTrain = (ids: number[], w0: number[], epochs = fed.local_epochs,
+                      lr = fed.browser_lr) => {
     const w = [...w0];
     for (let e = 0; e < epochs; e++) for (const id of ids) {       // local SGD on this client's shard
       const p = phi(X[id]); const g = sigmoid(dot(w, p)) - Y[id];

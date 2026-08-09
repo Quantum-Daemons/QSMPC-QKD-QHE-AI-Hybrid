@@ -138,6 +138,17 @@
       "url": "https://github.com/khundman/telemanom"
     }
   },
+  "federated": {
+    "browser_lr": 0.15,
+    "browser_override_reason": "the browser runs a lighter schedule so a federated round completes inside a page interaction; the server-side values above are what the full deployment trains with",
+    "browser_rounds": 6,
+    "hospitals": 4,
+    "local_epochs": 1,
+    "lr": 0.05,
+    "rounds": 8,
+    "secure_aggregation": true,
+    "test_split": 0.2
+  },
   "ids": {
     "demo_n_per_class": 120,
     "n_per_class": 300,
