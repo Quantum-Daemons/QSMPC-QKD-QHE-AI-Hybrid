@@ -23,16 +23,16 @@ a quantum-safe orchestration demo. This is the **plaintext** model for the
 
 | metric | value |
 |---|---|
-| `accuracy` | 0.9983866140161103 |
-| `auprc` | 0.07323010834680115 |
+| `accuracy` | 0.9982855312490154 |
+| `auprc` | 0.12334101789973353 |
 | `auprc_baseline` | 0.0015234617040716665 |
-| `auroc` | 0.8980183471873905 |
-| `decision_threshold` | 0.928426 |
-| `minority_class_f1` | 0.08077786088257292 |
+| `auroc` | 0.9525582593503528 |
+| `decision_threshold` | 0.386869 |
+| `minority_class_f1` | 0.15194805194805194 |
 | `n_test` | 1523504 |
 | `n_train` | 3554841 |
 | `positive_rate` | 0.00101943 |
-| `wall_clock_s` | 77.5 |
+| `wall_clock_s` | 84.7 |
 
 ## Published baselines this is measured against
 
@@ -43,43 +43,7 @@ a quantum-safe orchestration demo. This is the **plaintext** model for the
 
 ### Gap to the published baseline
 
-Minority-class F1 **0.1519** against the published 0.6323. Round 24 measured the causes rather than
-assuming them, then closed the one that was actionable. Full workings:
-[`references/finance-gap-investigation.md`](../../references/finance-gap-investigation.md).
-
-**Fixed: a train/test feature asymmetry.** Per-account aggregates were fitted with a `groupby` over
-the whole training window, so a training row's feature included its own future - the median
-transaction had only 46.4% of its out-degree accrued by its own timestamp - while test rows received
-that same table as a stale past. The booster was fitted on one distribution and scored on another.
-Prior-at-time aggregates removed it:
-
-| | before | after | change |
-|---|---|---|---|
-| minority-class F1 | 0.0808 | **0.1519** | +88% |
-| AUPRC | 0.0732 | **0.1233** | +68% |
-| AUROC | 0.8980 | **0.9526** | +6.1 pp |
-
-**No leakage, and this was proved rather than argued.** Every causal feature is bit-identical whether
-or not later rows exist - a feature reading the future could not survive truncation. The one
-inclusive quantity, the running max, includes only the current transaction's own amount, which is
-knowable at scoring time and is already a feature in its own right.
-
-**Ruled out by measurement.** The decision threshold: 0.6323 needs AUPRC of at least ~0.40 and the
-measured figure is far below, so it is unreachable at *any* threshold - a ranking gap, not a tuning
-gap. Unseen accounts: only 0.39% of test rows have either side unseen.
-
-**Also ruled out as a main cause: the hop limit.** An earlier version of this section gave the 4-hop
-reachability limit as one of two main causes. It cannot be - the Graph Feature Preprocessor paper
-(arXiv:2402.08593) attributes "more than 30%" of its improvement to fan-in/fan-out, which this
-project implements, and only "up to 4%" to multi-hop cycle and scatter-gather features.
-
-**What remains.** IBM's Graph Feature Preprocessor ships in `snapml` under a Proprietary licence and
-is excluded by this project's commercial-OK-only rule. The mechanism that matters is architectural
-rather than legal: GFP computes per-transaction subgraph patterns over a graph updated as each
-transaction arrives, while this pipeline computes per-account scalars plus training-window structural
-features. That is implementable without `snapml`; it is simply larger than this round.
-
-Reported as measured; not adjusted to close the gap.
+Minority-class F1 0.1519 against the published 0.6323. Round 24 measured the causes rather than assuming them, and then closed the one that was actionable. RULED OUT: the decision threshold (0.6323 needs AUPRC >= ~0.40, so it is unreachable at any threshold - a ranking gap, not a tuning gap) and accounts unseen in the training window (0.39% of test rows). RULED OUT as a main cause: the 4-hop reachability limit against the corpus's 10-hop CYCLE attempts - the Graph Feature Preprocessor paper (arXiv:2402.08593) caps the multi-hop cycle and scatter-gather contribution at 'up to 4%' relative while attributing 'more than 30%' to fan-in/fan-out, which this project already implements. FIXED: the per-account aggregates were fitted with a groupby over the whole training window, so a training row's feature included its own future (median transaction had only 46.4% of its out-degree accrued by its own timestamp) while test rows got the same table as a stale past - the booster was fitted on one distribution and scored on another. Prior-at-time aggregates removed the asymmetry and lifted minority-class F1 from 0.0808 to 0.1519 (+88%), AUPRC 0.0732 to 0.1233 (+68%), AUROC 0.8980 to 0.9526, with NO leakage - verified by truncation, every causal feature being bit-identical whether or not later rows exist. WHAT REMAINS: IBM's Graph Feature Preprocessor ships in snapml under a Proprietary licence and is excluded by this project's commercial-OK-only rule; the mechanism that matters is architectural rather than legal - GFP computes per-transaction subgraph patterns over a graph updated as each transaction arrives, whereas this pipeline computes per-account scalars plus training-window structural features. Full workings: references/finance-gap-investigation.md. Reported as measured; not adjusted to close the gap.
 
 ## Training data
 

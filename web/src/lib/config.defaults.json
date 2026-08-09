@@ -209,6 +209,7 @@
             "opset": 0
           },
           "git_sha": "5aefc6b-dirty",
+          "hf_revision": "cf950f8c1e8d0908ae378005b315de27252a4c59",
           "hf_revision_invalidated_by_retrain": "c46157c27e649413ef589d1edbc3404b40a17d76",
           "minority_class_f1": 0.15194805194805194,
           "n_test": 1523504,
@@ -249,8 +250,8 @@
           "url": "https://www.kaggle.com/datasets/ealtman2019/ibm-transactions-for-anti-money-laundering-aml"
         },
         "hf_repo_id": "Daemons-Q/qsh-finance-aml-gbm",
-        "hf_revision": null,
-        "hf_revision_stale": "c46157c27e649413ef589d1edbc3404b40a17d76",
+        "hf_revision": "cf950f8c1e8d0908ae378005b315de27252a4c59",
+        "hf_revision_stale": null,
         "key": "finance_aml.gbm",
         "label": "Graph-feature-preprocessed gradient boosting",
         "metric": {
@@ -275,6 +276,7 @@
           "agreement": 0.842369,
           "both_scored_zero": false,
           "disagreement_on_positives": 0.850065,
+          "hf_revision": "60686ed0139e87911bf48fff6f0b394ec5c183eb",
           "hf_revision_invalidated_by_retrain": "f939eeafd376f454acb66d57e8ecb88db2c62475",
           "metric_delta": 0.133849,
           "metric_delta_pp": 13.3849,
@@ -312,8 +314,8 @@
           "url": "https://www.kaggle.com/datasets/ealtman2019/ibm-transactions-for-anti-money-laundering-aml"
         },
         "hf_repo_id": "Daemons-Q/qsh-finance-aml-ckks-student",
-        "hf_revision": null,
-        "hf_revision_stale": "f939eeafd376f454acb66d57e8ecb88db2c62475",
+        "hf_revision": "60686ed0139e87911bf48fff6f0b394ec5c183eb",
+        "hf_revision_stale": null,
         "key": "finance_aml.student",
         "label": "CKKS-linear fraud student",
         "metric": {
