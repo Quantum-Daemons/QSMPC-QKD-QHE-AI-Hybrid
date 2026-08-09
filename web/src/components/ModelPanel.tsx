@@ -158,8 +158,8 @@ function MetricRows({ spec }: { spec: ModelSpec }) {
         {metricMismatch && (
           <tr className="metric-companion">
             <td colSpan={3} className="muted small">
-              Fidelity here is measured as <code>{recordedMetric}</code>, while the baseline quoted below is
-              a <code>{spec.metric.name}</code>. Those are different quantities and must not be read against
+              Fidelity here is measured as <code>{recordedMetric}</code>, while the baseline quoted below
+              belongs to <code>{spec.metric.name}</code>. Those are different quantities and must not be read against
               each other: fidelity compares the student's <em>decisions</em> to the teacher's, and a decision
               carries no score to rank. Where the declared metric is computable it is recorded as its own row
               above — compare the baseline to that.
