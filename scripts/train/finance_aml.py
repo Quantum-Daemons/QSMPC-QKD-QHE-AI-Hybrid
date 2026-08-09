@@ -425,7 +425,23 @@ def main() -> int:
     from sklearn.preprocessing import StandardScaler
 
     scaler = StandardScaler().fit(Xtr)
-    student = distil.distil_linear(teacher.predict(Xtr), scaler.transform(Xtr), seed=args.seed)
+    # SOFT targets: the teacher's probabilities, not its argmax. Hard labels discard precisely the
+    # information distillation exists to transfer, and at 1-in-981 that is most of the signal.
+    student = distil.distil_linear(
+        teacher.predict_proba(scaler.inverse_transform(scaler.transform(Xtr))),
+        scaler.transform(Xtr), seed=args.seed, soft=True)
+
+    # Tune the student's OWN threshold on validation, then fold it into the bias. Until Round 24
+    # the student was scored at sklearn's default 0.5 while the teacher got a tuned cut - so the
+    # reported student number was not the student's best operating point, it was an arbitrary one.
+    # Folding matters because the encrypted path decides by argmax over two logits, which IS a 0.5
+    # threshold: there is nowhere downstream to apply a tuned cut, so it has to live in the weights.
+    # Measured: 0.0186 at 0.5, 0.0503 tuned, on identical weights.
+    s_val = student.predict_proba(scaler.transform(Xval))[:, 1]
+    s_thr = _best_threshold(yval, s_val)
+    distil.fold_threshold_into_intercept(student, s_thr)
+    print(f"    student threshold {s_thr:.4f} folded into the bias "
+          f"(the CKKS argmax has no other place to apply it)")
     student_pred = student.predict(scaler.transform(Xte))
 
     # Persist it. Until Round 19 the student was fit, measured and discarded -- so the one model

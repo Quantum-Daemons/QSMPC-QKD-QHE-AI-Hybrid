@@ -132,3 +132,50 @@ Worth stating plainly rather than reporting the teacher's improvement alone - th
 not get better, and the honest summary is that the gap between what the server can do and what the
 browser can do under encryption grew.
 
+---
+
+## The student: fidelity improved, discrimination did not, and a probe of mine over-promised
+
+The student is the model that runs under CKKS, so it is the only one whose improvement reaches the
+encrypted path. Two defects were found in how it was distilled:
+
+1. **Hard labels.** `distil_linear` was fed `teacher.predict(...)` - the teacher's argmax - so the
+   confidence information distillation exists to transfer was discarded before fitting.
+2. **An untuned decision threshold.** The teacher's cut was tuned on validation; the student was
+   scored at sklearn's default 0.5. At a 1-in-981 positive rate 0.5 is nowhere near optimal, and the
+   encrypted path cannot apply a tuned cut downstream because it decides by argmax over two logits -
+   which IS a 0.5 threshold. The fix is to fold the tuned threshold into the bias, since
+   `p >= q` is `w.x + b - logit(q) >= 0`; verified exact against `log(q/(1-q))`.
+
+Both were fixed. The result is honest but mixed, and the mixed half needs stating first.
+
+| | before Round 24 | after |
+|---|---|---|
+| agreement with teacher | 0.8841 | **0.9471** |
+| disagreement on positives | 0.6433 | **0.3262** |
+| minority-class F1 | 0.0178 | 0.0185 |
+
+**Fidelity improved substantially - disagreement on positives halved - and discrimination did not
+move.** Those measure different things, and only the first is what a distilled substitute is for: it
+says the encrypted model now reproduces the plaintext model's decisions on the rare class twice as
+often. The F1 is unchanged because the student's *ranking* is the binding constraint, not its
+operating point.
+
+**Measured ceiling.** Sweeping every threshold on the test set against the shipped weights gives a
+best achievable minority-class F1 of **0.0262**. The shipped operating point reaches 0.0177 of that,
+which is an ordinary generalisation gap. So no threshold choice gets a 32-feature linear model near
+the teacher's 0.1519 - the capacity is the limit.
+
+**A probe of mine over-promised and is recorded rather than quietly dropped.** A standalone
+experiment predicted tuned-threshold student F1 of 0.0503 (hard targets) and 0.0587 (soft), i.e. a
+3x gain. The shipped pipeline reproduced neither; the persisted student's ceiling is 0.0262 across
+all thresholds. The probe and the trainer differ somewhere I did not isolate - a scaler or split
+difference is the likely candidate - and the trainer's number is the one that counts because it is
+the one that ships. Reported because a prediction that fails to reproduce is exactly the kind of
+result that quietly disappears.
+
+**What would actually move the student**, in cost order: more capacity than 32 linear features
+(a small MLP is not CKKS-feasible at this budget, which is the real constraint); or teacher features
+the student can use, since the student inherits the same 32 columns and cannot exceed what a linear
+function of them supports.
+
