@@ -1,4 +1,4 @@
-# The finance AML gap: what actually causes it (Round 24, 2026-08-09)
+# The finance AML gap: what actually causes it, and what got fixed (Round 24, 2026-08-09)
 
 `finance_aml.gbm` scores minority-class F1 **0.0808** against the published **0.6323**
 (GFP+XGBoost, AMLworld HI-Small, NeurIPS 2023 D&B). The repository has carried an explanation for
@@ -96,3 +96,39 @@ it is implementable without `snapml` - it is simply a larger piece of work than 
    what it scores.
 3. Do **not** retrain `finance_aml.student` to chase the baseline. Its teacher is limited by the
    feature architecture above, and distillation cannot exceed it.
+
+---
+
+## Outcome: the asymmetry was fixed, and the gain held at full scale
+
+The matched-harness experiment above used 9-10 features and predicted a 1.45x AUPRC gain. Applied to
+the real 32-feature trainer and retrained end to end on the full 5,078,345-row corpus, the gain was
+larger:
+
+| | whole-window (shipped before) | causal prior-at-time | change |
+|---|---|---|---|
+| minority-class F1 | 0.0808 | **0.1519** | **+88%** |
+| AUPRC | 0.0732 | **0.1233** | **+68%** |
+| AUROC | 0.8980 | **0.9526** | +6.1 pp |
+| decision threshold | 0.928426 | 0.386869 | - |
+
+**Leakage was disproved, not argued.** `causal_account_features` was run over the full frame and again
+over a truncated copy; all 11 features are bit-identical on the overlapping rows. A feature that read
+the future could not survive that test. The single inclusive quantity - the running maximum - includes
+only the current transaction's own amount, which is knowable at scoring time and is already a feature.
+
+**Scope of the change, stated so it is not over-read.** Eleven per-account SCALAR aggregates became
+causal. The structural features - cycle closures, scatter-gather, bank diversity, burst degree, format
+risk - remain fitted on the training window, because recomputing a sparse-matrix reachability power at
+every timestep is not tractable here. So the train/test asymmetry is removed for the aggregates the
+experiment isolated and remains for the structural block. That is a smaller claim than "the pipeline
+is now causal", and it is the accurate one.
+
+**The distilled student did not follow.** Teacher minority-F1 rose 0.0808 -> 0.1519 while the student
+moved 0.0178 -> 0.0181, so the teacher-student delta widened from +6.30 pp to +13.38 pp and
+disagreement on positives rose from 0.643 to 0.850. That is the expected shape: a 33-parameter linear
+model distilled for CKKS feasibility cannot represent what the booster gained from better features.
+Worth stating plainly rather than reporting the teacher's improvement alone - the encrypted path did
+not get better, and the honest summary is that the gap between what the server can do and what the
+browser can do under encryption grew.
+

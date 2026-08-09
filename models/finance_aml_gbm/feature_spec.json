@@ -33,6 +33,6 @@
     "src_burst_fanout",
     "dst_burst_fanin"
   ],
-  "decision_threshold": 0.9284261465072632,
+  "decision_threshold": 0.38686859607696533,
   "notes": "Graph aggregates are fitted on the training window only; unseen accounts score 0."
 }
