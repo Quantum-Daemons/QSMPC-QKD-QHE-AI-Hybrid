@@ -55,6 +55,7 @@ a row fails or you do not recognise it.
 | 22 | Search OUTWARD - what changed outside that the project has not noticed | [Search outward, not just inward](#search-outward-not-just-inward---and-fetch-the-source-never-the-summary) |
 | 23 | Retired a metric? Grep its name AND a characteristic value across every doc | [Retiring a metric is not done until the checklist stops asking](#retiring-a-metric-is-not-done-until-the-checklist-stops-asking-for-it) |
 | 24 | Re-check the dated items - they expire whether or not anyone looks | see below |
+| 25 | Any threshold constant: is it the LOSS-FREE idealisation of a loss-dependent bound? | see below |
 
 **Dated checks, because a deadline does not wait for a convenient round:**
 
@@ -1205,6 +1206,34 @@ So per round, for anything that restates a registry value outside the registry:
 
 and diff every hardcoded metric string against `models/metrics.json`. **A directory that is not
 deployed yet is exactly where this rots**, because nothing exercises it.
+
+## A constant that reproduces a familiar number is not thereby right
+
+Round 24 defended `qsdc_threshold = 0.11` by deriving it: the wiretap secrecy capacity
+`Cs = 1 - 2h(e)` has its root at 0.110028, identical to Shor-Preskill, so the two coincided by
+identity rather than by transcription. The derivation was correct and the conclusion was wrong,
+because `Cs = 1 - 2h(e)` is the **loss-free** case. The published criterion carries a loss term:
+
+    Cs = Q_Bob [ 1 - h(e) - g h(e_chk) ],   g = Q_Eve / Q_Bob = 10^(loss_dB / 10)
+
+| back-channel loss | g | threshold |
+|---|---|---|
+| 0 dB | 1.00 | 0.1100 |
+| 4.1 dB (Qi et al. 2019, measured on fibre) | 2.57 | 0.0485 |
+| 24.5 dB (this project's own free-space downlink) | 281.8 | **0.0003** |
+
+Wrong by three orders of magnitude on the page that uses it, and wrong in the **permissive**
+direction - it delivered over channels whose secrecy capacity was already zero.
+
+**The check, for any threshold constant in this repository:** ask whether the published bound has a
+parameter the constant silently fixes. Loss, block size, basis bias and detector efficiency are the
+usual ones. A constant is safe only where that parameter is genuinely pinned; otherwise compute the
+bound from the run's own measurements, and report the parameter alongside it so the number is
+checkable rather than asserted.
+
+**And the meta-lesson, which is why this section exists rather than a one-line fix:** I stopped
+checking when the arithmetic reproduced the number already in the file. Agreement with the status
+quo is the weakest possible evidence, because it is exactly what a wrong constant also produces.
 
 ## The model registry claims things about the outside world - check them
 
