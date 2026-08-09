@@ -32,7 +32,7 @@ a quantum-safe orchestration demo. This is the **plaintext** model for the
 | `n_test` | 1523504 |
 | `n_train` | 3554841 |
 | `positive_rate` | 0.00101943 |
-| `wall_clock_s` | 104.5 |
+| `wall_clock_s` | 96.8 |
 
 ## Published baselines this is measured against
 

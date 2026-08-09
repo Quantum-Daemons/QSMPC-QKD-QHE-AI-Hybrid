@@ -483,8 +483,9 @@ See [`docs/pqc-roadmap.md`](docs/pqc-roadmap.md).
 - **Two new trained models, and one of them is a negative result.** `medical_fl.resnet50` exists to
   test a published claim rather than to win one: MedMNIST v2 reports ResNet-50 at AUC 0.857 against
   ResNet-18's 0.901 on this 780-image corpus, so the deeper network is expected to lose. It does,
-  and by more than the published gap - 0.7988 against our ResNet-18's 0.9147. A third consequence of
-  the same over-parameterisation appears in the export: its int8 graph agrees with its own fp32 on
+  and by more than the published gap - 0.7988 against our ResNet-18's 0.9147, both trained from
+  random initialisation. A third consequence of the same over-parameterisation appears in the
+  export: its int8 graph agrees with its own fp32 on
   0.9865 of the confident set against a 0.99 gate, so the int8 artefact was built, measured and
   **withheld** rather than shipped with the gate relaxed. It replaces a DenseNet-121 card that named
   a dataset with no loader and linked a Hugging Face repo that did not exist.
@@ -709,7 +710,7 @@ See [`docs/pqc-roadmap.md`](docs/pqc-roadmap.md).
   | **finance** | GFP + XGBoost (graph-feature preprocessing over the transaction multigraph) | IBM **AMLworld HI-Small**, 5,078,345 transactions, 1 laundering in 981 (CDLA-Sharing-1.0) | minority-class F1 **0.081**, AUPRC **0.073** vs a 0.0015 prevalence baseline | 0.632 (NeurIPS 2023 D&B) - see the gap note below |
   | **medical** | **ResNet-18** trained from random initialisation (no ImageNet weights, so no ImageNet terms attach) | MedMNIST v2 **BreastMNIST** (CC-BY-4.0) | AUC **0.9147** | 0.901 (Yang et al., Scientific Data 10:41, 2023) |
   | **genomics** | published **PRS** effect-weight vector - not a neural network | PGS Catalog **PGS000001** over **2,504 real 1000 Genomes samples** | ancestry portability, below | C-index 0.628 - *external citation, not measurable here; the PGS Catalog records it as a Cox-model concordance statistic, not an AUROC, so it is not directly comparable to one* |
-  | **satellite** | **Telemanom** 2xLSTM(80), seq 250, non-parametric dynamic threshold + pruning | **ESA-ADB Mission1** lightweight channels 41-46, multi-year real telemetry (CC-BY-3.0-IGO) | event-wise F0.5 **0.4545** | 0.786 (ESA-ADB Table 2) |
+  | **satellite** | **Telemanom** 2xLSTM(80), seq 250, non-parametric dynamic threshold + pruning | **ESA-ADB Mission1** lightweight channels 41-46, multi-year real telemetry (CC-BY-3.0-IGO) | event-wise F0.5 **0.4545** over just **3 events** | 0.968 (ESA-ADB Supp. Table 9, anomalies only) |
   | **telecom** | RF baseline + quantum-kernel SVC + variational QNN | literature-grounded synthetic QKD-attack telemetry (7 attack types + normal) | macro F1 - **RF 0.987**, quantum-kernel SVC **0.832**, variational QNN **0.467** | no trustworthy single number exists - see below |
 
   Three of those deserve their honest caveat stated in the README rather than buried:

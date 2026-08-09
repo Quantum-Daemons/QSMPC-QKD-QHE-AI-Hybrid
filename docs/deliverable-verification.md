@@ -353,9 +353,18 @@ one command to re-check:
 together with the `remote` tier - a type member nothing sets is the same defect as a metric with no
 reader, which this project treats as serious.
 
-**EU AI Act Art. 50(2), 2026-12-02.** Still the nearest unmet compliance date; see `pqc-roadmap.md`.
-The design choice - C2PA Content Credentials versus a documented in-band marker - is open and should
-be decided before it becomes urgent rather than during the last week.
+**EU AI Act Art. 50(2) - CLOSED, and this entry was stale in two ways.** It named 2026-12-02 as "the
+nearest unmet compliance date" and framed the C2PA-versus-in-band-marker choice as open. Both are
+wrong as of Round 24c. Article 50 became applicable **2 August 2026**, not December, and it is not
+deferred - Regulation (EU) 2026/1744 defers Annex III standalone high-risk duties to 2027-12-02 and
+does not touch Article 50. And the obligation was analysed and found **not to apply**: the panel
+emits 96 tokens (Transformers.js) or 160 (WebLLM), both under the Code of Practice's 200-token "very
+short text" exception, so no marking layer is required and therefore no detection duty is triggered.
+The full quoted chain is in [`ai-act-art50-gap-analysis.md`](ai-act-art50-gap-analysis.md), along
+with the three standing constraints that would reopen it - exceeding 200 tokens, shipping generated
+text inside a file container, or C2PA text bindings becoming implementable. C2PA is not a viable
+route today: spec 2.4 defines text bindings but all 157 entries on the Conforming Products List are
+still 2.2.
 
 **Two items that fell off the backlog without a decision**, found by reading every plan file. Both
 appeared in five consecutive plans and then simply vanished, which is the failure mode Round 22's

@@ -384,13 +384,22 @@ M_OPSSAT = MetricSpec(
 M_ESA = MetricSpec(
     name="event_wise_f0_5",
     display="event-wise F0.5",
-    baseline=0.786,
+    baseline=0.968,
     baseline_source=(
-        "ESA-ADB Table 2, Mission1 lightweight (ch. 41-46), best event-wise F0.5. NOTE the caption: "
-        "Table 2 scores detection of ALL EVENTS excluding communication gaps - anomalies PLUS annotated "
-        "rare nominal events - whereas this project scores anomalies only, and ESA-ADB splits each "
-        "mission into first-half train / second-half test. So 0.786 is an indicative target, not a "
-        "like-for-like number."
+        "ESA-ADB Supplementary Table 9, Mission1 lightweight (ch. 41-46), Telemanom-ESA-Pruned: "
+        "corrected event-wise F0.5 0.968 (precision 0.999, recall 0.862) for detection of ANOMALIES "
+        "ALONE - which is what this project scores, so this is the like-for-like row. Earlier rounds "
+        "cited Table 2's 0.786 instead. That number is real and correctly attributed, but Table 2 "
+        "scores ALL EVENTS excluding communication gaps, i.e. anomalies PLUS annotated rare nominal "
+        "events, so it was the wrong comparator and the lenient one. Verified against the paper "
+        "(arXiv:2406.17826 v2) in Round 24. THREE protocol differences remain and none of them are "
+        "closed by changing the number: (1) ESA-ADB's metric multiplies event precision by the "
+        "TIME-LEVEL true-negative rate, which is why most of its baselines read <0.001 - this "
+        "project records that corrected value as `corrected_event_wise_f0_5` beside the uncorrected "
+        "one; (2) ESA-ADB splits each mission in half, this project tests on the last 30 percent; "
+        "(3) ESA-ADB's Mission1 lightweight test partition holds 65 annotated events of which 29 are "
+        "anomalies, against 3 in the window scored here. So this remains an indicative target, and "
+        "the sample-size gap is roughly tenfold."
     ),
     ceiling=None,
     ceiling_source="",
@@ -692,7 +701,13 @@ _SPECS: tuple[ModelSpec, ...] = (
         runs_encrypted=True,
         notes=("19 features is small enough to evaluate under CKKS as a single packed dot product, "
                "so the encrypted tier here runs on the published feature set rather than on a "
-               "reduction of it."),
+               "reduction of it - and it had room to spare. The student now fits over the QUADRATIC "
+               "expansion of those features, 209 terms, still one packed dot product at unchanged "
+               "multiplicative depth, because the expansion is a function of the plaintext input "
+               "and is computed before encryption. A degree-8192 ring has 4096 slots, so the cipher "
+               "was never the binding constraint here - the feature map was. Measured: "
+               "minority-class F1 0.8649 -> 0.9043, AUC-PR 0.9275 -> 0.9681, the latter matching "
+               "the teacher exactly."),
     ),
     # ---------------- telecom / defence ----------------
     ModelSpec(

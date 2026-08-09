@@ -16,9 +16,17 @@ WHAT TO REPORT
     frequently-quoted 0.71 is F0.5 under an event-overlap rule, not F1, and the two are routinely
     conflated. Point-adjusted F1 is computed too, purely so the page can show how much it inflates.
 
-    ESA-ADB Table 2: Mission1 *lightweight* (channels 41-46) best event-wise F0.5 = 0.786, while the
-    same method on the *full* Mission1 channel set scores 0.061. That collapse is the honest headline
-    and is printed alongside.
+    The comparator is ESA-ADB **Supplementary Table 9** (anomalies alone), Mission1 lightweight
+    channels 41-46, Telemanom-ESA-Pruned: corrected event-wise F0.5 = 0.968. Earlier rounds cited
+    Table 2's 0.786, which is a real number correctly attributed but scores ALL events - anomalies
+    PLUS annotated rare nominal events - and this project scores anomalies only. So 0.786 was the
+    wrong row, and the lenient one. On the *full* Mission1 channel set the same method scores 0.061;
+    that collapse is the honest headline and is printed alongside.
+
+    Two protocol gaps remain open and are recorded rather than closed: ESA-ADB's precision is
+    multiplied by the time-level TNR (both values are computed here), and it splits each mission in
+    half where this script tests on the last 30 percent - 65 annotated events in its lightweight
+    test partition against 3 in the window scored here.
 
     A trivial baseline runs every time. On ESA-ADB Mission2 lightweight, a windowed isolation forest
     beats the deep detectors outright; a deep model that cannot beat it has not earned its complexity.
@@ -201,12 +209,18 @@ def main() -> int:
     print(f"  dynamic threshold {thr:.4f} -> {pred.sum():,} flagged of {len(pred):,}")
 
     ev_f05 = metrics.event_wise_fbeta(truth, pred)
+    # ESA-ADB's published table reports the CORRECTED score - event precision multiplied by the
+    # time-level TNR - so an uncorrected number set beside its baseline compares two different
+    # quantities, in the flattering direction. Both are recorded; the corrected one is the one that
+    # is comparable to the citation.
+    ev_f05_corr = metrics.corrected_event_wise_fbeta(truth, pred)
     ev_counts = metrics.event_wise_counts(truth, pred)
     pa_f1 = metrics.point_adjusted_f1(truth, pred)
     spec = get_spec("satellite_comms.telemanom")
 
     print("\n  teacher (Telemanom LSTM)")
-    print(f"    event-wise F0.5         {ev_f05:.4f}   <- the metric ESA-ADB reports")
+    print(f"    event-wise F0.5         {ev_f05:.4f}   <- uncorrected")
+    print(f"    corrected event-wise    {ev_f05_corr:.4f}   <- what ESA-ADB's table actually reports")
     # The denominator of that F0.5 is EVENTS, and this window holds a handful. Printed next to the
     # score because 320 anomaly intervals over the timeline reduces to 3 inside the scored window,
     # and the score alone gives no hint of which number it was divided by.
@@ -271,6 +285,7 @@ def main() -> int:
 
     train.record_metrics("satellite_comms.telemanom", {
         "event_wise_f0_5": round(float(ev_f05), 6),
+        "corrected_event_wise_f0_5": round(float(ev_f05_corr), 6),
         "point_adjusted_f1": round(float(pa_f1), 6),
         "windowed_iforest_event_wise_f0_5": round(float(iso_f05), 6),
         "published_lightweight_f0_5": spec.metric.baseline,
@@ -292,6 +307,19 @@ def main() -> int:
             "shown only to expose how much point adjustment inflates: TSB-AD (NeurIPS 2024) found a "
             "uniform random score ranks 26th of 32 detectors under it. Only labels whose ESA-ADB "
             "Category is 'Anomaly' count as positives; the 690 annotated rare *nominal* events do not."
+        ),
+        "baseline_gap_note": (
+            "Read n_events_scored before comparing this to the baseline. The scored test window "
+            "holds THREE labelled anomaly events, not the 320 that n_anomaly_intervals counts over "
+            "the whole timeline - the annotated anomalies sit earlier in the mission, so a temporal "
+            "split leaves almost nothing to score. Both recorded values decompose uniquely on three "
+            "events: 0.714286 is tp=1 fp=0 fn=2 and 0.454545 is tp=1 fp=1 fn=2, so the 0.26 swing "
+            "between two identical-config runs is ONE extra false-alarm run. The detector flags 2 "
+            "points out of 441,600. Three protocol gaps to the citation remain open and are stated "
+            "rather than closed: ESA-ADB multiplies event precision by the time-level TNR (recorded "
+            "here as corrected_event_wise_f0_5), it splits each mission in half where this tests on "
+            "the last 30 percent, and its lightweight test partition holds 65 events against 3 "
+            "here. Workings: references/satellite-event-count-investigation.md."
         ),
         "sample_size_note": (
             "Read n_events_scored before comparing this to published_lightweight_f0_5. The "

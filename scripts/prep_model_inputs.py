@@ -528,15 +528,24 @@ def build_medical_resnet50(rng: np.random.Generator) -> dict:
 #  when these students published coefficients without their scaler.
 
 
-def _student_scaler(model_dir: str) -> tuple[np.ndarray, np.ndarray]:
-    """The PUBLISHED mean/scale, or a loud failure. Never re-fitted from data seen here."""
+def _student_scaler(model_dir: str) -> tuple[np.ndarray, np.ndarray] | tuple[None, None]:
+    """The PUBLISHED mean/scale, ``(None, None)`` if the graph scales itself, else a loud failure.
+
+    Three states, and they must not be collapsed. A student that publishes a scaler needs the caller
+    to apply it. A PIPELINE student publishes `mean: null` deliberately, because its ONNX graph owns
+    the expansion and the scaler and takes raw features - there is nothing for the caller to do, and
+    applying a scaler anyway would z-score twice. A student that publishes neither is a packaging
+    bug: the graph would silently accept wrong-scale input and answer confidently.
+    """
     w = json.loads((REPO / "models" / model_dir / "weights.json").read_text())
     inp = w.get("input") or {}
-    if "mean" not in inp or "scale" not in inp:
+    if inp.get("expansion") or (inp.get("mean") is None and inp.get("preprocessing") == []):
+        return None, None                       # graph is self-contained; feed it raw
+    if inp.get("mean") is None or inp.get("scale") is None:
         raise SystemExit(
-            f"{model_dir}/weights.json publishes no scaler, so its ONNX cannot be fed correctly "
-            f"from here. Re-run its training script with distil.save_student(..., scaler=...) and "
-            f"republish before generating a sample -- do not guess one.")
+            f"{model_dir}/weights.json publishes no scaler and declares no in-graph preprocessing, "
+            f"so its ONNX cannot be fed correctly from here. Re-run its training script with "
+            f"distil.save_student(..., scaler=...) and republish -- do not guess one.")
     return np.asarray(inp["mean"], dtype=float), np.asarray(inp["scale"], dtype=float)
 
 
@@ -620,8 +629,22 @@ def build_opssat_student(rng: np.random.Generator) -> dict:
 
     x, y = datasets.opssat_ad("test")
     y = np.asarray(y, dtype=int)
-    mean, scale = _student_scaler("satellite_opssat_student")
-    z = ((np.asarray(x, dtype=float) - mean) / scale).round(6)   # round BEFORE predicting
+    # The student is now a Pipeline whose ONNX graph owns its quadratic expansion AND its scaler,
+    # so it takes RAW features and there is nothing for the caller to pre-apply. Reading
+    # `input.mean` here would fail: a pipeline student publishes it as null precisely because
+    # scaling is no longer the consumer's job. Fall back to the published scaler only for a bare
+    # student, which is still the shape every other use case ships.
+    mean, _scale = _student_scaler("satellite_opssat_student")
+    if mean is None:
+        z = np.asarray(x, dtype=float).round(6)
+        layout = "samples[i] is one segment's 19 RAW features, in the order below"
+        prep_note = ("the published ONNX graph applies the quadratic expansion and the z-scoring "
+                     "itself, so these are raw feature values and the caller applies nothing")
+    else:
+        z = ((np.asarray(x, dtype=float) - mean) / _scale).round(6)   # round BEFORE predicting
+        layout = "samples[i] is one segment's 19 features, z-scored, in the order below"
+        prep_note = ("z-scored by the StandardScaler published in this student's weights.json -- "
+                     "the same transform it was distilled under, not one re-fitted here")
     pred = _predict("satellite_opssat_student", z)
     f1, all_pos, ratio = _f1_over_baseline(y, pred)
 
@@ -630,11 +653,9 @@ def build_opssat_student(rng: np.random.Generator) -> dict:
         "provenance": (
             "OPS-SAT-AD (Kotowski et al., Scientific Data 12, 2025; Zenodo "
             "10.5281/zenodo.12588359, CC BY 4.0). Real telemetry from ESA's OPS-SAT CubeSat. The "
-            "benchmark's own test partition entire and unsampled, z-scored by the StandardScaler "
-            "published in this student's weights.json -- the same transform it was distilled "
-            "under, not one re-fitted here."),
-        "input": {"shape": [1, len(mean)], "dtype": "float32", "preprocessing": [],
-                  "layout": "samples[i] is one segment's 19 features, z-scored, in the order below"},
+            "benchmark's own test partition entire and unsampled, " + prep_note + "."),
+        "input": {"shape": [1, int(z.shape[1])], "dtype": "float32", "preprocessing": [],
+                  "layout": layout},
         "feature_names": list(datasets.OPSSAT_FEATURES),
         "classes": {"0": "nominal", "1": "anomalous"},
         "samples": z.tolist(),

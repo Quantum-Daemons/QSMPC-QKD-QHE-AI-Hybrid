@@ -5,7 +5,7 @@
       19
     ],
     "dtype": "float32",
-    "preprocessing": "none for the teacher; the student consumes StandardScaler z-scores"
+    "preprocessing": "none for either: the teacher takes raw features, and the\n                   student's ONNX graph now bakes in its own quadratic expansion and scaler"
   },
   "feature_names": [
     "sampling",

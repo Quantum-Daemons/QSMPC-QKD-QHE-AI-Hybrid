@@ -23,13 +23,13 @@ a quantum-safe orchestration demo. This is the **plaintext** model for the
 
 | metric | value |
 |---|---|
-| `accuracy` | 0.8525641025641025 |
-| `auc` | 0.8779239766081871 |
-| `best_val_auc` | 0.945698 |
-| `macro_f1` | 0.790310326690433 |
+| `accuracy` | 0.8653846153846154 |
+| `auc` | 0.9146825396825395 |
+| `best_val_auc` | 0.955723 |
+| `macro_f1` | 0.8249158249158248 |
 | `n_parameters` | 11171266 |
 | `resolution` | 28 |
-| `wall_clock_s` | 7.6 |
+| `wall_clock_s` | 8.8 |
 
 ## Published baselines this is measured against
 

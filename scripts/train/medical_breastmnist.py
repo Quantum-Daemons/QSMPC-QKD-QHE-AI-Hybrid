@@ -1,17 +1,30 @@
 #!/usr/bin/env python
 """Fine-tune a ResNet-18 on MedMNIST v2 BreastMNIST, then distil it to the FHE-feasible student.
 
-    T2 teacher   ImageNet-pretrained ResNet-18, transfer-learned onto 1-channel ultrasound
+    T2 teacher   ResNet-18 from RANDOM INITIALISATION, 1-channel ultrasound stem
     T1 student   1 conv block (1->4ch), avg-pool, dense head at 14x14 — what runs under real CKKS
 
-Published baseline (MedMNIST v2, Nature Scientific Data 2022): ResNet-18 @28px, AUC 0.901 / ACC 0.863.
-Google AutoML Vision reaches AUC 0.919 on the same split.
+Published baseline (MedMNIST v2, Nature Scientific Data 2022): ResNet-18 @28px, AUC 0.901 / ACC 0.863,
+and ResNet-50 at 0.857. Both are from-scratch numbers under the same 100-epoch Adam regime, so this
+script's default is the comparable one.
 
-BreastMNIST is 780 breast-ultrasound images, which is small enough that training from scratch is
-the wrong move and transfer learning is the right one. The first convolution is adapted from 3
-channels to 1 by summing the pretrained RGB kernels rather than reinitialising: the summed kernel
-has the same response to a grey image that the original had to the same image in colour, so the
-pretrained edge and texture filters survive the adaptation.
+WHY NOT TRANSFER LEARNING, when 780 images would obviously benefit from it
+    Because the weights are PUBLISHED. ImageNet's terms bind the Database to non-commercial research
+    and say nothing about redistributing a model trained on it, so ImageNet-derived weights cannot
+    be published here (DATA_LICENSES.md). Accuracy is not the binding constraint; redistribution is.
+
+    The default was the other way round until Round 24c, and this docstring argued for it - "training
+    from scratch is the wrong move and transfer learning is the right one". So anyone running the
+    script without a flag trained ImageNet-derived weights, and the artefact on the Hub recorded
+    `pretrained: ImageNet1K_V1` for several rounds while the README and DATA_LICENSES.md both stated
+    random initialisation. Nothing checked, and the two only disagreed in a file nobody read.
+
+    `--pretrained` remains for local experiments. `publish_hf.py` now refuses to upload any model
+    whose manifest records a pretrained source, so they cannot diverge silently again.
+
+Under `--pretrained` the first convolution is adapted from 3 channels to 1 by summing the RGB kernels
+rather than reinitialising: the summed kernel has the same response to a grey image that the original
+had to the same image in colour, so the pretrained filters survive the adaptation.
 
 Usage:
     python scripts/train/medical_breastmnist.py [--size 28] [--epochs 60]
@@ -103,11 +116,12 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--size", type=int, default=28, choices=[28, 64, 128, 224],
                     help="MedMNIST resolution; 28 matches the published baseline")
-    ap.add_argument("--from-scratch", action="store_true",
-                    help="train without ImageNet initialisation. Costs accuracy and removes a "
-                         "licensing question: ImageNet's terms bind the Database to non-commercial "
-                         "research and say nothing about redistributing a model trained on it, so "
-                         "ImageNet-derived weights cannot be published here (DATA_LICENSES.md).")
+    ap.add_argument("--pretrained", action="store_true",
+                    help="initialise from ImageNet1K_V1 instead of randomly. LOCAL EXPERIMENTS ONLY: "
+                         "the resulting weights cannot be published (DATA_LICENSES.md) and "
+                         "publish_hf.py refuses them. Random init is the default precisely because "
+                         "the opposite default shipped ImageNet-derived weights to a public repo "
+                         "for several rounds while the docs said otherwise.")
     ap.add_argument("--epochs", type=int, default=60)
     ap.add_argument("--lr", type=float, default=3e-4)
     ap.add_argument("--seed", type=int, default=42)
@@ -131,9 +145,9 @@ def main() -> int:
     print(f"  train {len(tr_dl.dataset)} | val {len(va_dl.dataset)} | test {len(te_dl.dataset)}")
     print(f"  class balance (train): {np.bincount(ytr.numpy()).tolist()}")
 
-    model = build_resnet(args.arch, pretrained=not args.from_scratch)
+    model = build_resnet(args.arch, pretrained=args.pretrained)
     n_params = sum(p.numel() for p in model.parameters())
-    init = "random init" if args.from_scratch else "ImageNet1K_V1"
+    init = "ImageNet1K_V1" if args.pretrained else "random init"
     print(f"  {args.arch} ({init}, 1-channel stem): {n_params:,} parameters")
 
     # Class weighting: BreastMNIST is roughly 2.71:1 normal/benign:malignant (MedMNIST labels the
@@ -152,7 +166,7 @@ def main() -> int:
         out_dir=artifact_dir,
         extra_manifest={"dataset": "MedMNIST v2 BreastMNIST", "resolution": args.size,
                         "architecture": args.arch,
-                        "pretrained": "none" if args.from_scratch else "ImageNet1K_V1",
+                        "pretrained": "ImageNet1K_V1" if args.pretrained else "none",
                         "adaptation": "conv1 RGB kernels summed to 1 channel"},
     )
     print(f"  best val AUC {result.best_metric:.4f} at epoch {result.best_epoch} "
@@ -206,12 +220,12 @@ def main() -> int:
         "resolution": args.size,
         "n_parameters": n_params,
         "best_val_auc": round(result.best_metric, 6),
-        # Recorded from what actually ran. This was a fixed string, so a --from-scratch run still
+        # Recorded from what actually ran. This was a fixed string, so a random-init run still
         # claimed ImageNet initialisation -- the exact provenance the licence analysis turns on.
         "transfer_learning": (
             "none — trained from random initialisation, so the weights are not ImageNet-derived "
             "and carry no ImageNet terms (see DATA_LICENSES.md)"
-            if args.from_scratch
+            if not args.pretrained
             else "ImageNet1K_V1 ResNet-18, conv1 summed to 1 channel, fresh fc head"
         ),
         "git_sha": train.git_sha(),
@@ -359,6 +373,18 @@ def main() -> int:
         **fidelity.as_metrics(),
         "auc": round(float(student_auc), 6),
         "n_classes_predicted": n_classes_predicted,
+        "baseline_gap_note": (
+            "This scores far below the 0.901 ResNet-18 baseline, and the reason is capacity: 3,226 "
+            "parameters over a 14x14 input is a CKKS-feasibility budget, not a diagnostic one. "
+            "Round 24 found it had been WORSE than that - a constant predictor, emitting one class "
+            "for all 156 test images, with accuracy 0.730769 exactly equal to the majority-class "
+            "rate and AUC 0.354, below random. It was invisible because the registry declared `auc` "
+            "while the record stored `accuracy`, and because this student had neither protection "
+            "its teacher already had: class-weighted loss and AUC-based model selection. Both were "
+            "added. Read `n_classes_predicted` and `majority_class_rate` beside the score - an "
+            "accuracy equal to the majority rate is the signature of a model that learned nothing. "
+            "Workings: references/medical-student-collapse-investigation.md."
+        ),
         "majority_class_rate": round(float(max(np.mean(y_true == 0), np.mean(y_true == 1))), 6),
         "metric_note": (
             "Two metrics are recorded and they answer different questions. `auc` is the registry's "

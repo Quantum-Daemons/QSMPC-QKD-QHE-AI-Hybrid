@@ -161,18 +161,33 @@ says the encrypted model now reproduces the plaintext model's decisions on the r
 often. The F1 is unchanged because the student's *ranking* is the binding constraint, not its
 operating point.
 
-**Measured ceiling.** Sweeping every threshold on the test set against the shipped weights gives a
-best achievable minority-class F1 of **0.0262**. The shipped operating point reaches 0.0177 of that,
-which is an ordinary generalisation gap. So no threshold choice gets a 32-feature linear model near
-the teacher's 0.1519 - the capacity is the limit.
+**RETRACTED, later the same round: the ceiling was measured on a badly-fitted student.** This
+section previously reported a measured ceiling of 0.0262 over any threshold and concluded that
+capacity was the binding constraint. It also recorded that a probe of mine had "over-promised" by
+predicting 0.0503 (hard targets) / 0.0587 (soft) and failing to reproduce. Both conclusions were
+wrong, and the probe was right.
 
-**A probe of mine over-promised and is recorded rather than quietly dropped.** A standalone
-experiment predicted tuned-threshold student F1 of 0.0503 (hard targets) and 0.0587 (soft), i.e. a
-3x gain. The shipped pipeline reproduced neither; the persisted student's ceiling is 0.0262 across
-all thresholds. The probe and the trainer differ somewhere I did not isolate - a scaler or split
-difference is the likely candidate - and the trainer's number is the one that counts because it is
-the one that ships. Reported because a prediction that fails to reproduce is exactly the kind of
-result that quietly disappears.
+The trainer was passing the teacher `scaler.inverse_transform(scaler.transform(Xtr))` - a
+mathematical no-op that is not a numerical one - while the student saw `scaler.transform(Xtr)`. When
+degree-2 expansion was added the feeding was reorganised, and fixing it moved the shipped student
+from 0.0185 to **0.0614** minority-class F1, above the 0.0262 "ceiling" this section had asserted.
+
+| | before | after |
+|---|---|---|
+| minority-class F1 | 0.0185 | **0.0614** |
+| agreement with teacher | 0.9471 | **0.9829** |
+| disagreement on positives | 0.3262 | 0.3619 |
+
+0.0614 lands next to the probe's 0.0587 prediction, so the probe reproduced and the trainer was the
+outlier. **The lesson inverts the one recorded before.** I had written that "the trainer's number is
+the one that counts because it is the one that ships" - true as far as it goes, and it stopped me
+looking for the defect that made the two disagree. A probe and a pipeline that disagree by 3x is
+evidence of a bug in one of them, and "the shipped one is authoritative" is a reason to investigate,
+not to close.
+
+The capacity claim is not fully retracted: 0.0614 against the teacher's 0.1519 is still a large gap,
+and a 32-feature linear model under CKKS remains the constraint. What is retracted is the specific
+number, the conclusion that tuning was exhausted, and the characterisation of the probe.
 
 **What would actually move the student**, in cost order: more capacity than 32 linear features
 (a small MLP is not CKKS-feasible at this budget, which is the real constraint); or teacher features
