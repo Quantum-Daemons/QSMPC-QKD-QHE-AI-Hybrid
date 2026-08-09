@@ -59,7 +59,27 @@ export interface IDSResult {
   nParams: number; nTest: number;
   /** Samples/class actually trained on after clamping — not necessarily what was requested. */
   nPerClassUsed: number;
+  /**
+   * One scored held-out sample and the linear model that classified it, so the run can attribute
+   * the decision. This classifier IS linear - softmax over `b[c] + W[c].z` - so exact linear SHAP
+   * applies to it directly, and it is the model that produces the class the page reports. No
+   * surrogate and no invented method for a quantum circuit is involved.
+   *
+   * `W` is returned as a one-vs-rest PAIR for the predicted class: row 1 is W[pred], row 0 is the
+   * mean of the other classes. `w_eff = W[1] - W[0]` is then exactly the one-vs-rest contrast
+   * `explainability.py` computes for the multiclass case.
+   */
+  explain: {
+    W: number[][]; b: number[]; x: number[]; predicted: number;
+    className: string; featureNames: string[];
+  } | null;
 }
+
+/** Feature order must match `genData` below, and mirrors `qml_ids/attacks.py:FEATURES`. */
+export const IDS_FEATURE_NAMES = [
+  "qber_mean", "qber_std", "sift_ratio", "multiphoton_rate", "timing_jitter",
+  "dark_count_rate", "click_asymmetry",
+];
 
 export function clientTrainScoreIDS(seed = 0, nPerClass?: number): IDSResult {
   const cfg = idsCfg();
@@ -129,6 +149,24 @@ export function clientTrainScoreIDS(seed = 0, nPerClass?: number): IDSResult {
     const pa = pred !== 0, ta = yte[n] !== 0;
     if (pa && ta) tp++; else if (pa && !ta) fp++; else if (!pa && ta) fn++;
   }
+  /** One-vs-rest contrast for a representative held-out sample: an ATTACK if the split has one,
+   *  since attributing a normal-traffic verdict says little. Returns null on an empty split. */
+  const explainSample = () => {
+    if (!Zte.length) return null;
+    let idx = Zte.findIndex((_, n) => yte[n] !== 0);
+    if (idx < 0) idx = 0;
+    const z = Zte[idx];
+    const pred = predict(z);
+    const rest = [...Array(N_CLASS).keys()].filter((c) => c !== pred);
+    const restW = new Array(N_FEAT).fill(0).map(
+      (_, f) => rest.reduce((a2, c) => a2 + W[c][f], 0) / rest.length);
+    const restB = rest.reduce((a2, c) => a2 + b[c], 0) / rest.length;
+    return {
+      W: [restW, W[pred].slice()], b: [restB, b[pred]], x: z.slice(), predicted: pred,
+      className: ATTACKS[pred] ?? `class_${pred}`, featureNames: IDS_FEATURE_NAMES,
+    };
+  };
+
   const f1 = (t: number, f: number, m: number) => {
     const pr = t + f > 0 ? t / (t + f) : 0, rc = t + m > 0 ? t / (t + m) : 0;
     return pr + rc > 0 ? (2 * pr * rc) / (pr + rc) : 0;
@@ -143,5 +181,6 @@ export function clientTrainScoreIDS(seed = 0, nPerClass?: number): IDSResult {
     worstClassF1: present.length ? Math.min(...perClassF1) : 0,
     binaryF1: f1(tp, fp, fn),
     nParams: N_CLASS * N_FEAT + N_CLASS, nTest: Zte.length, nPerClassUsed: nPer,
+    explain: explainSample(),
   };
 }

@@ -1578,6 +1578,20 @@ export function runClientPipeline(
         // clientIDS clamps this to >=20 and falls back on a non-finite input, so the requested value
         // is not always the value used. Report what the run actually trained on.
         metric(stage, "ids_train_per_class", ids.nPerClassUsed);
+        // Telecom had NO attribution anywhere - browser or Python - despite being the one use case
+        // whose whole point is classifying an attack. The classifier trained above is linear
+        // (softmax over b[c] + W[c].z), so exact linear SHAP applies to it directly. clientIDS
+        // returns W as a one-vs-rest PAIR for the predicted class, so `W[1] - W[0]` here is the
+        // same contrast explainability.py computes for the multiclass case - the method is shared,
+        // not reinvented. Baseline is the zero vector because the features are z-scored inside
+        // clientIDS, so E[x] is 0 by construction; that is stated rather than left implied.
+        if (ids.explain) {
+          artifacts.explanation = linearShap(
+            ids.explain.W, ids.explain.b, ids.explain.x, ids.explain.featureNames, 5);
+          artifacts.explanation_provenance =
+            `in-browser IDS classifier, one-vs-rest for ${ids.explain.className}`;
+          artifacts.explanation_baseline = "zero vector (features are z-scored, so E[x] = 0)";
+        }
         emit("log", stage, `QML-IDS (client, softmax logistic on Al-Kuwari-2026 signatures): `
           + `macro-F1=${r2(ids.macroF1)} over 8 classes, worst class ${r2(ids.worstClassF1)} `
           + `— measured on ${ids.nTest} held-out samples (${ids.nPerClassUsed}/class)`);
