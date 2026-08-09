@@ -714,12 +714,21 @@ See [`docs/pqc-roadmap.md`](docs/pqc-roadmap.md).
 
   Three of those deserve their honest caveat stated in the README rather than buried:
 
-  - **finance falls well short of 0.632.** The published baseline uses IBM's Graph Feature
-    Preprocessor, which ships in `snapml` under a **Proprietary** licence and is therefore excluded
-    by this project's commercial-OK-only rule. What is reimplemented is the documented typology set
-    (degree, fan-in/out, reciprocity, k-hop cycle closure, burst degree, scatter-gather), and the
-    corpus injects CYCLE patterns of up to 10 hops while reachability here is computed to 4. The
-    evaluation is also strictly inductive and temporally split. The number is reported as measured.
+  - **finance falls well short of 0.632, and the reason recorded here for several rounds was wrong.**
+    The note used to give two causes: the Proprietary `snapml` licence on IBM's Graph Feature
+    Preprocessor, and 10-hop injected CYCLE patterns against 4-hop reachability here. The second does
+    not survive arithmetic - the GFP paper (arXiv:2402.08593) decomposes its own contribution and caps
+    multi-hop cycle and scatter-gather features at about **4% relative**, while fan-in/fan-out, which
+    this project already reimplements, carries **more than 30%**. Four percent cannot explain a
+    multiple-fold gap. The real cause is architectural: **GFP computes per-transaction subgraph
+    patterns over a dynamically updated graph, while this project computes per-account scalar
+    aggregates.** That is implementable without `snapml`; it is simply a larger piece of work. The
+    licence exclusion is real but was never the mechanism. Investigating this also found and fixed a
+    genuine defect - per-account aggregates spanned the whole training window, so a training row's
+    feature included its own future while test rows got a stale table. Making them causal
+    (prior-at-time) lifted minority-class F1 **0.0808 to 0.1519, +88%**, with leakage disproved by a
+    truncation test rather than argued. Workings:
+    [`references/finance-gap-investigation.md`](references/finance-gap-investigation.md).
   - **genomics cannot produce an AUROC here, so it does not print one.** 1000 Genomes is a reference
     panel with no case/control status; the published 0.628 comes from a phenotyped cohort of
     n=200,195. What *is* computable from real genotypes is the portability failure, and it is stark:
