@@ -728,17 +728,13 @@ Recompute it from the config to check the row:
 Raising Distance must raise Delta; raising mu must raise it too. Both are one-line checks.
 
 **The reference model is asserted against the papers in `tests/test_decoy_reference.py`** - 13
-tests, none of whose numbers originate in this repository. The anchors, from Ma et al. PRA 72,
-012326 (2005) with the GYS parameter set, and GLLP QIC 4, 325 (2004):
+tests, none of whose numbers originate in this repository, drawn from Ma et al. PRA 72, 012326
+(2005) with the GYS parameter set and GLLP QIC 4, 325 (2004). Those anchors are NOT restated here.
+They are executable assertions in that test file and a table in `deliverable-verification.md`; a
+third handwritten copy in this document would be the copy that silently goes stale, and none of them
+is browser-checkable anyway - `npm run` cannot reach them, `pytest` can.
 
-| Assertion | Published | Measured |
-|---|---|---|
-| tagged fraction at mu = 0.1, zero distance | > 1 | 1.0417 |
-| decoy max distance | over 140 km | 142.2 km |
-| non-decoy max distance | about 42 km | 39.8 km |
-| decoy R/eta (flat, linear in eta) | 0.11 | 0.1136 |
-| non-decoy R/eta^2 (flat, quadratic) | 0.15 | 0.1510 |
-| decoy optimal mu | about 0.5 | 0.3 - 0.8 |
+What IS browser-checkable is the tagged fraction the posture table prints, above.
 
 **The trap in reproducing those figures, and it is a quiet one.** The published curves are plotted
 for the efficient BB84 of Lo-Chau-Ardehali, where the sifting factor q tends to 1. This project runs

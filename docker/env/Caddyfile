@@ -3,7 +3,7 @@
 #
 # The site address is env-configurable: SITE_ADDRESS defaults to ":80" (local HTTP). Set
 # SITE_ADDRESS=your-domain.example (passed to the web container) and Caddy auto-provisions a
-# Let's Encrypt cert + serves HTTPS — no file edit needed. (See the MONETIZATION deploy runbook.)
+# Let's Encrypt cert + serves HTTPS — no file edit needed. (See docs/deployment.md.)
 {$SITE_ADDRESS::80} {
 	encode gzip zstd
 

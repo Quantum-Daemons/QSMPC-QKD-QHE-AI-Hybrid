@@ -35,7 +35,7 @@ Four workstreams (WS), unified by one pipeline and a crypto-agility registry:
 
 | WS | Theme | What's implemented |
 |----|-------|--------------------|
-| **WS1** | **AI-QKD** parameter optimization | BB84 **two-intensity decoy-state** simulation (+ a selectable **E91/CHSH** protocol), QBER/SKR telemetry, eavesdropper detection; a **QRNG** entropy source (state-vector quantum-measurement sim + SP 800-90B section 4.4 continuous health tests, an **SP 800-90B min-entropy estimate**, and a **Leftover-Hash-Lemma / seedless** Toeplitz extractor) that seeds the key material; a config-gated **leakage-resilient PQC+QKD key combiner**; and **OptiQKD** - a measured AI optimizer (scikit-learn surrogate + gradient-free search) tuning decoy (`mu_signal` / `mu_decoy`) + basis params to raise the secret-key rate vs default (with a convergence metric); the reference framework reports +14-25 % in simulation |
+| **WS1** | **AI-QKD** parameter optimization | BB84 **two-intensity decoy-state** simulation (+ a selectable **E91/CHSH** protocol), QBER/SKR telemetry, eavesdropper detection; a **published-reference decoy model** (`qkd/decoy_reference.py`) whose 13 tests assert Ma et al. PRA 72, 012326 (2005) values rather than this project's own - decoy reaches past 140 km where non-decoy dies near 40, and at the customary mu = 0.1 a non-decoy link's tagged fraction exceeds 1 at **zero** distance, so it yields no key even back-to-back; a **QRNG** entropy source (state-vector quantum-measurement sim + SP 800-90B section 4.4 continuous health tests, an **SP 800-90B min-entropy estimate**, and a **Leftover-Hash-Lemma / seedless** Toeplitz extractor) that seeds the key material; a config-gated **leakage-resilient PQC+QKD key combiner**; and **OptiQKD** - a measured AI optimizer (scikit-learn surrogate + gradient-free search) tuning decoy (`mu_signal` / `mu_decoy`) + basis params to raise the secret-key rate vs default (with a convergence metric); the reference framework reports +14-25 % in simulation |
 | **WS2** | **QML-IDS** intrusion detection | 8 classes = **7 QKD attack types + normal traffic**; RandomForest baseline + PennyLane variational quantum classifier. Scored on macro F1, not attack-vs-normal F1 |
 | **WS3** | **QSMPC x QKD** | Shamir + d-level QFT secure summation (faithful to the paper example), quantum oblivious transfer, quantum-safe PSI |
 | **WS4** | **QHE x AI** | Quantum one-time pad (perfect hiding), Clifford+T QCNN private inference, Rate-1 QFHE; classical hybrid = CKKS **linear** layers (TenSEAL CPU / OpenFHE CPU / HEonGPU GPU - commercial-OK) + **MPyC** secret-sharing **non-linear** layers (ReLU/argmax) - incl. a **genuine FHE convolution** (im2col -> CKKS `dot_plain`) so the medical use case runs a real small CNN on **real MedMNIST images** under encryption |
@@ -109,7 +109,7 @@ bash env/setup_venv.sh      # or: make setup
 source .venv/bin/activate
 
 # 2. Run the test suite (crypto correctness, FHE accuracy, E2E smoke)
-make test             # 174 collected, 170 passed, 4 deselected (Node/OpenFHE-gated)
+make test             # 187 collected, 183 passed, 4 deselected (Node/OpenFHE-gated)
 # `make test` already passes -m "not slow", which is what deselects those four.
 # `make test-all` runs every test, and on AlmaLinux 9.7 the OpenFHE bootstrap test SIGSEGVs inside
 # EvalBootstrapSetup: fhe/backends.py guards against an ImportError, and a segfault is not one.
@@ -149,6 +149,8 @@ references/    primary-source PDFs + annotated REFERENCES.md
 submodules/    upstream OSS (added by scripts/bootstrap_submodules.sh)
 scripts/      bootstrap_submodules.sh . run_benchmark.sh . build_gpu_mpc.sh . run_gpu_mpc.sh
           export_config.py . prep_real_kaggle_data.py . publish_hf.py
+web/scripts/  check_mlkem_modulus_vectors.mjs - `npm run check:pqc`, FIPS 203 section 7.2
+          negative vectors + FIPS 204 round-trip against the browser PQC library
   train/      per-vertical training: finance_aml . medical_breastmnist . genomics_prs . satellite_telemanom
   data/      fetch_g1k_dosages.py (1000 Genomes provenance)
 docs/       architecture . crypto-agility . threat-model . pqc-roadmap
@@ -781,4 +783,4 @@ See [`docs/pqc-roadmap.md`](docs/pqc-roadmap.md).
 - Standards/threat context: [`docs/pqc-roadmap.md`](docs/pqc-roadmap.md).
 - Code license: **Apache-2.0** ([`LICENSE`](LICENSE)). Upstream OSS retains its own licenses (table above).
 
-> Not included in this public repository: private monetization notes (`MONETIZATION*.md`) - git-ignored by design.
+> Private business notes are kept outside this repository by design and are not published here.
