@@ -54,6 +54,17 @@ a row fails or you do not recognise it.
 | 21 | Submodules: pin vs upstream HEAD, licence, archived, branch drift. Use `gh api` | [Submodules](#submodules-check-they-are-still-maintained-and-that-the-licence-is-written-down) |
 | 22 | Search OUTWARD - what changed outside that the project has not noticed | [Search outward, not just inward](#search-outward-not-just-inward---and-fetch-the-source-never-the-summary) |
 | 23 | Retired a metric? Grep its name AND a characteristic value across every doc | [Retiring a metric is not done until the checklist stops asking](#retiring-a-metric-is-not-done-until-the-checklist-stops-asking-for-it) |
+| 24 | Re-check the dated items - they expire whether or not anyone looks | see below |
+
+**Dated checks, because a deadline does not wait for a convenient round:**
+
+    curl -s -o /dev/null -w "%{http_code}\n" https://huggingface.co/api/spaces/Daemons-Q/qsh-inference
+    # 401 -> still blocked, condition stands.  200 -> decide NOW: wire it, or delete the Space
+    #        and the `remote` ProvenanceBadge tier together (unlock was due ~2026-09-01).
+
+EU AI Act Art. 50(2), machine-readable marking of synthetic text: **2026-12-02**. The Agentic AI
+panel generates text with an in-browser LLM, so it is in scope, and nothing implements marking.
+Decide between C2PA Content Credentials and a documented in-band marker before it is urgent.
 
 Record what you observed in [`verification-log.md`](verification-log.md), with the date and the
 bundle hash. A tick is not a result.
