@@ -853,6 +853,47 @@ must carry the measured improvement rather than merely "OptiQKD on". Unticked, n
 The "mix QKD-domain key" checkbox controls whether QKD material enters the session key at all;
 unticking it must drive the posture table's QKD row to zero the same way `pqc-only` does.
 
+## XAI now covers all five use cases - check each against its own physics
+
+Until Round 24 only finance, medical and genomics had an attribution. Satellite computed one in
+Python that nothing rendered; telecom had none anywhere. All five now render one, and the method is
+the same everywhere - exact linear SHAP over a genuinely linear model - because in every case a
+linear model was already there. **No new attribution method was invented for any of them**, which is
+the bar to hold if this is extended again.
+
+| Use case | Model explained | Reference point | Check the top feature against |
+|---|---|---|---|
+| finance_aml | bundled PaySim-derived LR | E[x] over the shipped rows | plausibility only |
+| medical_fl | bundled Wisconsin LR | E[x] - note the features are z-scored, so E[x] IS 0 here | plausibility only |
+| genomics | real PGS000001 effect weights | population mean dosage | the SNP should be a known locus for the trait |
+| satellite_comms | bundled NASA telemetry LR (2xN margin) | mean of the bundled windows | the driving channel and timestep |
+| telecom_ids | the in-browser 8-class softmax, one-vs-rest | zero vector, because clientIDS z-scores | **the attack physics** |
+
+**Telecom is the one that can be checked hardest, so check it.** The classifier names an attack, and
+the attribution says which telemetry drove that name. Measured 2026-08-09: predicted
+`intercept_resend`, top contribution `qber_mean` **+4.692**, about 8.5x the next feature. That is
+correct - intercept-resend is the attack that raises QBER, and this repository separately verifies
+the textbook 25% figure against Gottesman-Lo. An attribution that named `sift_ratio` or
+`dark_count_rate` as the dominant driver of an intercept-resend verdict would be wrong even if every
+axiom held.
+
+**Satellite is checkable the same way.** Measured: top contributions `E-6[t7]` -0.427, `E-6[t6]`,
+`E-6[t5]` - clustered on one channel at the LATEST timesteps, which is what a windowed anomaly
+detector should key on. Contributions negative, anomaly score 0.4656, verdict nominal: internally
+coherent. Attributions spread evenly across all six channels and all eight timesteps would suggest
+the model is keying on nothing.
+
+**Do not let the panel conflate two models.** The bars explain the bundled linear model. The class
+the page reports comes from the encrypted CKKS+MPC stage, which evaluates a *different* model - a
+fixed demo pattern on finance and genomics, the published student on medical's convolution branch.
+The panel said the bars described "the CKKS-linear model" until Round 24, which merged the two. When
+reading the panel, confirm it still distinguishes them.
+
+**The gate matters too.** `ShapPanel` was gated on `meta.inference`, a flag meaning "has a
+classical-vs-quantum private-inference path" - a different question from "is there an attribution to
+show". Satellite answered no to the first and yes to the second, so its explanation was computed and
+discarded for six rounds. Gate on the artifact existing.
+
 ## Every panel, against its cited standard
 
 Four of these panels had ZERO mentions in this checklist before Round 22 while being the panels a
