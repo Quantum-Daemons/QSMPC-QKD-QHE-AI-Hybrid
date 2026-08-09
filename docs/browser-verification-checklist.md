@@ -1468,6 +1468,109 @@ local venv and absent from the requirements files still passes locally and fails
 deploy path, not a bug: the VPS does `git reset --hard origin/<branch>`, which knows nothing about
 CI. So the check has to be a habit at CI2, because no machine will stop you.
 
+## A default that contradicts a licence commitment will eventually be taken
+
+DATA_LICENSES.md and the README both stated that `medical_fl.resnet18` is trained from random
+initialisation, *because* ImageNet's terms are uncleared for redistribution here. The trainer
+implemented that as `--from-scratch`. It was not the default. The artefact published on the Hub
+recorded `pretrained: ImageNet1K_V1`, and so did the revision before this round - so the project had
+been publishing ImageNet-derived weights while documenting that it does not, across several rounds,
+with nothing checking.
+
+The trainer's own docstring argued for the wrong default: *"training from scratch is the wrong move
+and transfer learning is the right one"*. That is true about accuracy and irrelevant to the actual
+constraint, which is redistribution.
+
+| # | Check | Pass condition |
+|---|---|---|
+| L1 | Every licence claim in prose names the artefact field that proves it | e.g. "random init" -> `manifest.pretrained` |
+| L2 | Read that field from the PUBLISHED artefact, not the local one | `curl .../resolve/main/manifest.json` |
+| L3 | The licence-safe option is the DEFAULT, not a flag | opt IN to the restricted path, never out |
+| L4 | A machine refuses the unsafe publish | verified to fire, not just present |
+| L5 | Docstrings that argue for a default are checked when the default changes | they are the reason the wrong one was chosen |
+
+L3 and L4 are the durable pair. `publish_hf.py` now refuses to upload any publishable-dataset model
+whose manifest records a pretrained source, and random initialisation is the default - tested both
+ways, so the refusal is known to fire rather than assumed to.
+
+**How this was found, which is the transferable part.** Not by auditing licences. I retrained the
+model without the flag, saw two AUCs move, and wrote it up as seed variance - measuring a six-seed
+spread to support the claim. Re-running WITH the flag reproduced the documented figures to four
+decimal places, which is what exposed both my wrong explanation and the underlying divergence. **An
+unexplained number that moves is worth chasing to the actual cause**, because "it is just variance"
+is available for any change and explains nothing.
+
+## Check the baseline is the right ROW, not just the right paper
+
+The satellite baseline was recorded as 0.786 with a precise citation: ESA-ADB Table 2, Mission1
+lightweight channels 41-46, best event-wise F0.5. Round 24c fetched the paper. **The number is real
+and correctly attributed** - Telemanom-ESA-Pruned, and it is the maximum of that row. The citation
+was not wrong.
+
+It was the wrong row. Table 2 scores **all events excluding communication gaps**, which is anomalies
+PLUS annotated rare nominal events. This project scores anomalies only, and ESA-ADB publishes that
+separately in **Supplementary Table 9**, where the same method scores **0.968**. So the project had
+been comparing itself against the lenient row of the correct paper for several rounds.
+
+Verifying a citation resolves is not verifying it is the right comparator.
+
+| # | Check | Pass condition |
+|---|---|---|
+| B1 | The cited number exists in the cited table | fetch the paper, find the row |
+| B2 | The cited row scores the SAME TARGET the project scores | anomalies-only vs all-events, per-class vs macro, etc. |
+| B3 | The cited metric is computed the SAME WAY | see below - this one was also wrong |
+| B4 | The cited split matches | ESA-ADB halves each mission; this project tests on the last 30 percent |
+| B5 | The cited sample size is recorded next to the project's | 65 events there against 3 here |
+
+**B3 caught a second mismatch in the same check.** ESA-ADB's published figure is the *corrected*
+event-wise F0.5: event precision multiplied by the TIME-LEVEL true-negative rate,
+`Prec_corr = TP_e/(TP_e+FP_e) * TNR_t`. That correction is why most of its baselines read < 0.001.
+This project computed the UNCORRECTED value and set it beside a corrected baseline - two different
+quantities, and the uncorrected one is the flattering direction. Both are now computed and recorded.
+
+A near-miss worth knowing about: a July 2026 study on the same corpus (arXiv:2607.07335, Table III)
+reports **0.7809** for GAT on the FULL channel set with UNCORRECTED precision. That is numerically
+almost identical to ESA-ADB's 0.786 and is an unrelated number from a different paper, protocol and
+channel subset. Two plausible-looking 0.78s that mean different things is exactly the shape of error
+B1-B5 exists to catch.
+
+## The deploy step itself needs verifying, and a failed build looks like a successful one
+
+The section above covers CI on the PUSH side. This one covers what happens after, on the box, and it
+is a different failure surface: CI can be green and the deploy still not land.
+
+The deploy this project uses is `git reset --hard origin/<branch>` then `docker compose build` then
+`up -d`. Three things can go wrong quietly:
+
+**A failed build leaves the previous image serving.** If `build` is chained with `&&` and its output
+is redirected - which is exactly how this was being run, `build web >/dev/null 2>&1 && ... up -d` -
+then on failure the `&&` short-circuits, `up -d` never runs, nothing is printed, and the OLD
+container keeps answering 200 with the OLD bundle. Every external signal says healthy. Capture the
+build's exit status and print PASS/FAIL explicitly instead of hiding it.
+
+**`docker ps` saying Up is not evidence of anything.** It reports the container, not the code in it,
+not the network it joined, and not the commit it was built from. This project has already had a
+container report `Up` while sitting on no network and 502-ing behind the shared proxy.
+
+**The VPS silently drifts from origin.** A docs-only commit gets deployed with `git reset` and no
+rebuild - reasonable at the time - and then the next web change is pushed while the box is two
+commits back. Checked 2026-08-09: the VPS was at `3f44e89` while origin was at `89d2fca`.
+
+| # | Check | Pass condition |
+|---|---|---|
+| D1 | `git rev-parse --short HEAD` on the VPS vs `origin/<branch>` locally | identical strings |
+| D2 | The build's exit status is captured and printed, not redirected to `/dev/null` | an explicit OK/FAILED line |
+| D3 | Container age after deploy | seconds, not hours - a stale age means `up -d` reused the old container |
+| D4 | If web sources changed, the served bundle FILENAME changed | new `index-<hash>.js`; unchanged hash after a web change means the old image is serving |
+| D5 | If web sources did NOT change, the bundle hash SHOULD be identical | an unexpectedly new hash means something non-deterministic is in the build |
+| D6 | Site returns 200 AND the page renders, not just a proxy 200 | fetch a use-case route, not only `/` |
+
+D4 and D5 are the same check read in both directions, and the second one is the one people skip. A
+changed hash where nothing changed is as informative as an unchanged hash where something did.
+
+Deploying from a red CI commit is not blocked by anything - see CI2 above - so D1 only proves the box
+matches origin, never that origin is good.
+
 ## Retired and orphaned Hugging Face repos
 
 Weights live on the Hub at a pinned revision, so the Hub accumulates state the repository does not.
@@ -1480,6 +1583,7 @@ Two directions to check, and they fail differently:
 | HF3 | Every published repo is PUBLIC | `private: false` - a private repo 401s for visitors while working for you |
 | HF4 | Every model has a non-empty `hf_revision` | training clears it; see the retrain cycle above |
 | HF5 | Retired models are DELETED from the Hub, not left dangling | an unreferenced public repo is a claim nobody maintains |
+| HF6 | No file exists on the Hub that is absent from the local model dir | zero - a stale weights file from an earlier round still downloads for anyone browsing `main`, even though the demo pins a revision |
 
 One command for HF2, which is the direction nothing else checks:
 

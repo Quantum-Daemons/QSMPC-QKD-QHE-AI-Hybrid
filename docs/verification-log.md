@@ -247,6 +247,37 @@ Numbers that moved:
 | medical student accuracy | 0.7308 | 0.6859 | FELL, and that is the fix |
 | finance student agreement | 0.8841 | 0.9471 | fidelity, not discrimination |
 | finance student disagreement on positives | 0.6433 | 0.3262 | |
-| resnet50 AUC | 0.7988 | 0.8876 | **variance on rerun, not an improvement** |
-| resnet18 AUC | 0.9147 | 0.8779 | same - one draw, sd 0.0198 over 6 seeds |
+| resnet50 AUC | 0.7988 | 0.7988 | unchanged - see the retraction below |
+| resnet18 AUC | 0.9147 | 0.9147 | unchanged - see the retraction below |
+
+### Retraction within the same round: those two AUCs did not move, and I moved them
+
+Mid-round I reported resnet18 falling 0.9147 -> 0.8779 and resnet50 rising 0.7988 -> 0.8876 on
+reruns "with no functional change", concluded it was seed variance, measured a 6-seed spread
+(sd 0.0198) and wrote that spread into the README, the model card and this log.
+
+**The initialisation changed, not the seed.** `scripts/train/medical_breastmnist.py` defaults to
+ImageNet1K_V1 and takes `--from-scratch` to disable it. I reran without the flag. Re-running WITH it
+reproduces the documented figures to four decimal places - 0.914683 and 0.798768 against 0.9147 and
+0.7988 - so the documented numbers were right the whole time and the "variance" was my own change of
+experiment.
+
+Three things this invalidated, all now reverted: the README's claim that the ResNet-50/ResNet-18
+ordering is unresolvable (from-scratch reproduces the published ordering cleanly), the same claim in
+`deliverable-verification.md`, and the seed-spread figure quoted as if it described the shipped
+model. The 6-seed measurement was real but was taken on the ImageNet-pretrained variant, which is
+not what ships.
+
+**It also exposed a live licence divergence that predates this round.** DATA_LICENSES.md and the
+README both state `medical_fl.resnet18` is trained from random initialisation, *because* ImageNet's
+terms are uncleared for redistribution here. The artefact published on the Hub recorded
+`pretrained: ImageNet1K_V1` - and so did the previous revision, `c660dc564078`, from before this
+session. So the project had been publishing ImageNet-derived weights while documenting that it does
+not, and nothing checked. Both teachers are now retrained from random initialisation and
+republished, and `scripts/publish_hf.py` refuses to upload any publishable-dataset model whose
+manifest records a pretrained source - verified to fire on an ImageNet manifest and pass on a
+from-scratch one.
+
+The lesson is narrower than "check your flags". A default that contradicts a licence commitment will
+eventually be taken, and the only durable fix is a machine check at the point of publication.
 
