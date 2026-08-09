@@ -1235,6 +1235,43 @@ checkable rather than asserted.
 checking when the arithmetic reproduced the number already in the file. Agreement with the status
 quo is the weakest possible evidence, because it is exactly what a wrong constant also produces.
 
+## Retraining a published model is a five-step cycle, and two of the steps bite
+
+Round 24 retrained `finance_aml.gbm` and nearly broke the demo twice. Both failures are silent, so
+they belong here rather than in anyone's memory.
+
+    1. train            .venv/bin/python scripts/train/finance_aml.py
+    2. check the pin    metrics.json hf_revision is now null  <- THE FIRST TRAP
+    3. publish          scripts/publish_hf.py --key <k> --public   <- THE SECOND TRAP
+    4. re-export        .venv/bin/python scripts/export_config.py
+    5. verify in browser: the dropdown still lists it, and the run names the NEW revision
+
+**Trap 1: training clears `hf_revision`.** `browserModels()` requires BOTH `hf_repo_id` and
+`hf_revision`; with the revision null the model silently drops out of the published-model dropdown
+and stops running. Nothing errors - the control just disappears. Publishing writes the pin back.
+
+**Trap 2: publishing without `--public` makes an already-public repo PRIVATE.** `publish_hf.py`
+calls `update_repo_settings` explicitly, so the default (private) is applied to existing repos too.
+The browser fetches over public URLs, so this takes the demo down while every local check still
+passes. Confirm visibility before and after:
+
+    curl -s https://huggingface.co/api/models/<org>/<repo> \
+      | python3 -c "import sys,json;d=json.load(sys.stdin);print('private' if d.get('private') else 'PUBLIC', d.get('sha','')[:12])"
+
+**Then verify the URL the browser will actually use**, not just that the repo exists - the resolve
+endpoint 302s, so follow it:
+
+    curl -sL -o /dev/null -w "%{http_code} %{size_download}\n" \
+      "https://huggingface.co/<org>/<repo>/resolve/<revision>/onnx/model.onnx"
+
+**And confirm the run names the new revision.** Measured 2026-08-09: `published finance_aml.gbm @
+cf950f8c1e8d - onnx-wasm - 1x32 - 5.13 ms`. A stale revision here means the browser is running the
+old weights while every local number describes the new ones.
+
+**One licence check that must not be skipped**: `publish_hf.py` refuses a public push when the
+dataset is not marked publishable, and excludes `fixtures.npy` by deny list. Read the excluded list
+in the output rather than assuming - it is what keeps corpus rows off the Hub.
+
 ## The model registry claims things about the outside world - check them
 
 `hf_repo` is not a label, it is an assertion that a repository exists and is reachable. The registry
