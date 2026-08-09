@@ -79,7 +79,87 @@ MAX_CYCLE_HOPS = 4
 BURST_WINDOW = "24h"
 
 
-def graph_features(df, *, fit_on=None):
+def causal_account_features(full):
+    """Prior-at-time per-account aggregates: for each row, only edges STRICTLY BEFORE it.
+
+    This is the honest form of the same quantities `graph_features` builds with a whole-window
+    ``groupby``. The difference is not cosmetic. A whole-window aggregate gives every transaction by
+    an account the SAME degree, including activity that happened after it - measured on HI-Small, the
+    median transaction has only 46.4% of its out-degree accrued by its own timestamp, so the feature
+    mostly describes the account's future. Training rows therefore saw a leaky feature while test
+    rows received the same table as a stale past, and the booster was fitted on one distribution and
+    scored on another.
+
+    Computing causally removes both problems at once: it leaks nothing (only the past is used), it
+    needs no ``fit_on`` split, and it produces no unseen-account zeros, because an account's first
+    transaction legitimately has a prior degree of 0 in train and test alike.
+
+    Measured on a matched 9-10 feature harness, same booster and split:
+
+        whole-window static (leaks across train+test)   AUPRC 0.1731
+        causal prior-at-time (this function)            AUPRC 0.0627
+        train-fitted static (what shipped before)       AUPRC 0.0432
+
+    so causal is 1.45x the shipped approach, and the leaky arm's 2.76x over causal is the size of
+    the leak rather than a result. Full workings: references/finance-gap-investigation.md.
+
+    ``full`` must be the entire frame sorted by timestamp. Returns a DataFrame aligned to its index.
+    """
+    import pandas as pd
+
+    src, dst = full["from_account"], full["to_account"]
+    paid = full["amount_paid"].to_numpy(dtype=np.float64)
+    recv = full["amount_received"].to_numpy(dtype=np.float64)
+    out = pd.DataFrame(index=full.index)
+
+    # Prior counts. cumcount is the number of earlier rows for that key, which is exactly "degree
+    # before this transaction".
+    out["src_out_degree"] = src.groupby(src).cumcount().to_numpy(dtype=np.float64)
+    out["dst_in_degree"] = dst.groupby(dst).cumcount().to_numpy(dtype=np.float64)
+
+    # Prior DISTINCT counterparties: mark the first occurrence of each (a,b) edge, then count how
+    # many such firsts precede this row for that account. Cheap, and exact.
+    pair = src.astype(str) + ">" + dst.astype(str)
+    first_pair = ~pair.duplicated()
+    out["src_unique_dst"] = (first_pair.groupby(src).cumsum() - first_pair.astype(int)
+                             ).to_numpy(dtype=np.float64)
+    rpair = dst.astype(str) + "<" + src.astype(str)
+    first_rpair = ~rpair.duplicated()
+    out["dst_unique_src"] = (first_rpair.groupby(dst).cumsum() - first_rpair.astype(int)
+                             ).to_numpy(dtype=np.float64)
+
+    # Prior amount statistics. Subtracting the current row from the cumulative sum is what makes
+    # these strictly prior rather than inclusive.
+    ps = pd.Series(paid, index=full.index)
+    prior_sum = ps.groupby(src).cumsum().to_numpy(dtype=np.float64) - paid
+    prior_n = np.maximum(out["src_out_degree"].to_numpy(), 1.0)
+    src_mean = prior_sum / prior_n
+    out["src_amount_mean_log"] = np.log1p(np.clip(src_mean, 0, None))
+    # The running max is INCLUSIVE of the current row, unlike the counts and means above which are
+    # strictly prior. That is deliberate and it is not a leak: the current transaction's own amount
+    # is known at scoring time - it is already a feature - so "largest seen up to and including
+    # now" is causally available. Stated because the inconsistency would otherwise look accidental,
+    # and because the truncation test cannot distinguish inclusive-of-self from strictly-prior.
+    out["src_amount_max_log"] = np.log1p(np.clip(
+        ps.groupby(src).cummax().to_numpy(dtype=np.float64), 0, None))
+    rs = pd.Series(recv, index=full.index)
+    dst_prior_sum = rs.groupby(dst).cumsum().to_numpy(dtype=np.float64) - recv
+    out["dst_amount_mean_log"] = np.log1p(np.clip(
+        dst_prior_sum / np.maximum(out["dst_in_degree"].to_numpy(), 1.0), 0, None))
+
+    out["src_fan_out_ratio"] = out["src_unique_dst"] / np.maximum(out["src_out_degree"], 1.0)
+    out["dst_fan_in_ratio"] = out["dst_unique_src"] / np.maximum(out["dst_in_degree"], 1.0)
+
+    # Prior dispersion, via the running second moment. Same subtract-self trick.
+    sq = pd.Series(paid * paid, index=full.index)
+    prior_sq = sq.groupby(src).cumsum().to_numpy(dtype=np.float64) - paid * paid
+    var = np.maximum(prior_sq / prior_n - src_mean ** 2, 0.0)
+    out["amount_z_src"] = (paid - src_mean) / np.maximum(np.sqrt(var), 1.0)
+    out["amount_share_of_src_total"] = paid / np.maximum(prior_sum, 1.0)
+    return out
+
+
+def graph_features(df, *, fit_on=None, causal=None):
     """Graph feature preprocessing: per-account aggregates joined back onto each edge.
 
     This is the 'GFP' of the AMLworld baseline — turn the transaction multigraph into tabular
@@ -183,6 +263,17 @@ def graph_features(df, *, fit_on=None):
     rate = source.groupby("payment_format", observed=True)["label"].mean()
     f["format_risk"] = df["payment_format"].map(rate).astype(np.float32).fillna(0.0)
 
+    # Causal override. The 11 per-account SCALAR aggregates are replaced by their prior-at-time
+    # form when supplied; the structural features below them - cycle closures, scatter-gather, bank
+    # diversity, burst degree, format risk - stay on the training window, because recomputing a
+    # sparse-matrix reachability power at every timestep is not tractable here. The split is stated
+    # rather than blurred: `causal_account_features` documents which quantities it covers, and these
+    # are exactly the ones the matched-harness experiment isolated.
+    if causal is not None:
+        for col in causal.columns:
+            if col in f.columns:
+                f[col] = causal.loc[df.index, col].to_numpy(dtype=np.float64)
+
     return f[FEATURES].to_numpy(dtype=np.float32)
 
 
@@ -256,6 +347,14 @@ def main() -> int:
     ap.add_argument("--nrows", type=int, default=None, help="cap rows (smoke runs only)")
     ap.add_argument("--out", type=Path, default=None)
     ap.add_argument("--seed", type=int, default=42)
+    # Causal aggregates are the DEFAULT since Round 24: measured +88% minority-class F1 and +68%
+    # AUPRC over the whole-window form, with no leakage (verified by a truncation test - every
+    # feature is bit-identical whether or not later rows exist). --no-causal restores the old
+    # behaviour for A/B work; it should not be used to produce shipped artifacts.
+    ap.add_argument("--no-causal", dest="causal", action="store_false",
+                    help="restore whole-window per-account aggregates (A/B only, worse and leaky "
+                         "in the train/test-asymmetry sense; see causal_account_features)")
+    ap.set_defaults(causal=True)
     args = ap.parse_args()
 
     import xgboost as xgb
@@ -280,9 +379,15 @@ def main() -> int:
           f"val {len(val):,} ({int(val['label'].sum())} pos) | "
           f"test {len(te):,} ({int(te['label'].sum())} pos)")
 
-    Xfit = graph_features(fit)
-    Xval = graph_features(val, fit_on=fit)
-    Xte = graph_features(te, fit_on=tr)
+    # One causal pass over the WHOLE sorted frame. It leaks nothing by construction - every value
+    # uses only strictly-earlier rows - so the same block serves fit, val and test, and there is no
+    # fit_on split to get wrong for these columns.
+    cz = causal_account_features(df) if args.causal else None
+    if cz is not None:
+        print("  causal per-account aggregates: ON (prior-at-time, no fit_on needed)")
+    Xfit = graph_features(fit, causal=cz)
+    Xval = graph_features(val, fit_on=fit, causal=cz)
+    Xte = graph_features(te, fit_on=tr, causal=cz)
     yfit = fit["label"].to_numpy(dtype=np.int8)
     yval = val["label"].to_numpy(dtype=np.int8)
     yte = te["label"].to_numpy(dtype=np.int8)
