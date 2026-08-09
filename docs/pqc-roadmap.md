@@ -177,7 +177,8 @@ is a claim that should say **which one**, and a buyer's technical due diligence 
 
 ## The finance AML feature architecture, if that gap is ever closed
 
-Round 24 measured why `finance_aml.gbm` sits at 0.0808 against a published 0.6323 and ruled out the
+Round 24 measured why `finance_aml.gbm` sat at 0.0808 against a published 0.6323 - it has since
+risen to 0.1519 by making the per-account aggregates causal - and ruled out the
 threshold, unseen accounts, and the 4-hop reachability limit - see
 `../references/finance-gap-investigation.md`. The residual is architectural: IBM's Graph Feature
 Preprocessor computes **per-transaction subgraph patterns over a graph updated as each transaction

@@ -1,11 +1,11 @@
 {
   "key": "medical_fl.resnet50",
   "metric_name": "auc",
-  "best_metric": 0.9799498746867168,
-  "best_epoch": 8,
-  "epochs_run": 24,
-  "wall_clock_s": 5.5,
-  "git_sha": "528d852-dirty",
+  "best_metric": 0.935672514619883,
+  "best_epoch": 11,
+  "epochs_run": 27,
+  "wall_clock_s": 6.5,
+  "git_sha": "89d2fca-dirty",
   "seed": 42,
   "hyperparameters": {
     "epochs": 60,
@@ -28,6 +28,6 @@
   "dataset": "MedMNIST v2 BreastMNIST",
   "resolution": 28,
   "architecture": "resnet50",
-  "pretrained": "ImageNet1K_V1",
+  "pretrained": "none",
   "adaptation": "conv1 RGB kernels summed to 1 channel"
 }
