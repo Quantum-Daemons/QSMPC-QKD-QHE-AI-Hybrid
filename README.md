@@ -321,13 +321,19 @@ path runs end to end for real**
 measured medium per-op cost (MAC / comparison counts) so the page stays responsive. Representative results on
 the Blackwell box (TenSEAL CPU + MPyC, `linear` workload):
 
-| Path | Backend | Size | Latency/inf | FHE-linear | MPC-non-linear | MPC comm | Acc | ct/pt | Security |
-|------|---------|------|-------------|-----------|----------------|----------|-----|-------|----------|
-| MPC-FHE | TenSEAL CKKS + MPyC (CPU) | lightweight | ~43 ms | ~39 ms | ~4 ms | ~0.5 KB | 1.0 | ~1483x | **68 / 100** |
-| MPC-FHE | TenSEAL CKKS + MPyC (CPU) | medium | ~243 ms | ~215 ms | ~28 ms | ~4.5 KB | 1.0 | ~1483x | **68 / 100** |
-| MPC-FHE | TenSEAL CKKS + MPyC (CPU) | large \* | ~1885 ms | ~1719 ms | ~165 ms | ~24.5 KB | 1.0 | - | **68 / 100** |
-| MPC-FHE | HEonGPU CKKS (GPU sm_120) + MPyC | medium | batched | GPU | CPU | - | - | - | **68 / 100** |
-| QSMPC-FHE | QOTP + QCNN (Clifford+T), no trained weights | - | ~4 ms | Clifford | T-gates x56 | n/a | n/a | **~1.32x** | **96 / 100** |
+| Path | Backend | Size | Latency/inf | FHE-linear | MPC-non-linear | MPC comm | Acc | ct/pt | Security model |
+|------|---------|------|-------------|-----------|----------------|----------|-----|-------|----------------|
+| MPC-FHE | TenSEAL CKKS + MPyC (CPU) | lightweight | ~43 ms | ~39 ms | ~4 ms | ~0.5 KB | 1.0 | ~1483x | computational (RLWE) |
+| MPC-FHE | TenSEAL CKKS + MPyC (CPU) | medium | ~243 ms | ~215 ms | ~28 ms | ~4.5 KB | 1.0 | ~1483x | computational (RLWE) |
+| MPC-FHE | TenSEAL CKKS + MPyC (CPU) | large \* | ~1885 ms | ~1719 ms | ~165 ms | ~24.5 KB | 1.0 | - | computational (RLWE) |
+| MPC-FHE | HEonGPU CKKS (GPU sm_120) + MPyC | medium | batched | GPU | CPU | - | - | - | computational (RLWE) |
+| QSMPC-FHE | QOTP + QCNN (Clifford+T), no trained weights | - | ~4 ms | Clifford | T-gates x56 | n/a | n/a | **~1.32x** | information-theoretic (QOTP) |
+
+The **Security** column used to publish `68 / 100` and `96 / 100`. Those are the retired composite,
+and that particular pair is the worst thing it produced: **16 of the 28 points separating them were
+an artefact of which arguments two functions happened to supply** - one call passed no QBER while the
+other passed a literal, and the same again for a leakage bound nothing measured. The column now
+reports the security *model*, which is the part that was ever a property of the cryptography.
 
 \* **projected** from measured medium per-op cost, not run end-to-end. GPU FHE wins on **batched**
 workloads; for a tiny single-vector input the per-call kernel overhead can exceed CPU (raw encrypt
@@ -337,13 +343,20 @@ and the hybrid now shows *where* the classical cost goes (FHE dominates the line
 the non-linear secure comparisons + a few KB of communication).
 
 **Three enriched dimensions** (Round 3):
-- **Security score (0-100)** - `qsh/benchmark/security.py`: a transparent weighted sum over
-  HNDL/PQC-hybrid + QKD, security model (information-theoretic >> computational), NIST KEM
-  category, eavesdropper detection (QBER), and the ~0.1 bit/weight leakage bound (PRX
-  *Quantum-Secure Multiparty Deep Learning*). Reflects the **crypto-agility** selection.
+- **Security posture table** (replaced the 0-100 score in Round 22) - per-row facts, each either
+  checkable against a published standard or produced by the run, and labelled which: NIST category
+  and ciphertext/signature sizes from FIPS 203/204, QKD secure key bits, SKR, the QBER verdict taken
+  from `secure_key_bits > 0` rather than a threshold, and the GLLP tagged fraction showing what the
+  decoy states are buying. `qsh/benchmark/security.py` still computes the old composite for
+  backwards compatibility but nothing renders it. Why it was retired:
+  `references/security-scoring-fact-check.md`.
 - **Quantum advantage (0-10)** - `qsh/benchmark/quantum_advantage.py`: weighted geometric mean of
   communication-compactness (approx. 10^3x), latency, and the security jump -> a tiered score
-  (*dominant* approx. 8.2/10 standalone, 9.2 on the finance E2E run - measured on this box).
+  (*dominant*). Recomputed 2026-08-09 from this table's own rows: **8.12 standalone**, uncapped. The
+  finance E2E run reports **10/10**, and that is a CLAMP, not a maximum - the raw composite measured
+  10.65, so the panel prints `raw 10.65 (clamped to 0-10)` beside the tier. A reader who sees 10 and
+  concludes the run sits exactly at the ceiling is being misled by the clamp, which is why the raw
+  value is printed. The earlier "9.2 on the finance E2E run" in this line was stale.
 - **Per-use-case two-party simulator** - each industry has its own page (`/usecase/:id`) with a
   **live two-party (Alice <-> Bob) sequence diagram** (`web/src/components/TwoPartyDiagram.tsx`) whose
   steps light up as that use case's pipeline runs - **Start / Pause / Resume / Step / Stop / Restart
