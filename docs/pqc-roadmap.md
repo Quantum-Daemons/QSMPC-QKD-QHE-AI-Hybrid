@@ -145,3 +145,43 @@ declines were, rather than the item quietly rolling forward.
 Penalty exposure for Art. 50 non-compliance is up to EUR 15 million or 3 percent of worldwide annual
 turnover, whichever is higher - worth stating because it is the reason this is a dated item and not
 a nice-to-have.
+
+## What a 2026 production deployment needs that this project does not implement
+
+Verified 2026-08-09 against arXiv:2604.12985, "Quantum-safe IPsec in the banking industry"
+(Vicente, Brito, Martin et al., 14 Apr 2026) - a real five-node deployment across a Madrid campus
+plus private-cloud nodes in northern Spain and Mexico, mixing **DV-QKD and CV-QKD** from multiple
+vendors.
+
+The finding that matters here is the interface layer. That deployment had to integrate **three
+mutually incompatible key-delivery interfaces: ETSI GS QKD 004, ETSI GS QKD 014, and Cisco SKIP**,
+because a real multi-vendor network has all three. It concludes that quantum-safe communication in
+financial networks is "not only technically feasible but also scalable, interoperable, and
+resilient", and notes the standards gap it had to work around: PQC algorithms are not yet in
+finalised IPsec standards.
+
+**This project implements GS QKD 014 (`qkd/kme.py`) and GS QKD 015 (`qkd/sdn_controller.py`). It
+does not implement GS QKD 004.** That is worth stating plainly because `sdn_controller.py:19` lists
+"GS QKD 004, 014, 020" as the specs governing the quantum plane - which is correct as taxonomy and
+which a reader may reasonably take as a claim of implementation.
+
+The two are not interchangeable. **014 is a REST key-delivery API**: a stateless request for key
+material by identifier. **004 is a stateful application interface**: an application opens a keyed
+session and streams key material against it, with negotiated QoS. An application written against one
+does not work against the other, which is exactly why the banking testbed needed both plus a
+vendor-specific third.
+
+Recorded as a gap rather than a task. Implementing 004 would be a real piece of work and this project
+has no application that needs a key stream today - but "we implement the ETSI key-delivery interface"
+is a claim that should say **which one**, and a buyer's technical due diligence will ask.
+
+## The finance AML feature architecture, if that gap is ever closed
+
+Round 24 measured why `finance_aml.gbm` sits at 0.0808 against a published 0.6323 and ruled out the
+threshold, unseen accounts, and the 4-hop reachability limit - see
+`../references/finance-gap-investigation.md`. The residual is architectural: IBM's Graph Feature
+Preprocessor computes **per-transaction subgraph patterns over a graph updated as each transaction
+arrives**, while this pipeline computes **per-account scalar aggregates**. That difference is
+implementable without `snapml` and is a bounded, well-specified workstream. A measured intermediate
+step already exists: causal prior-at-time aggregation beat the shipped approach by 1.45x AUPRC at
+matched feature count, with no leakage.
