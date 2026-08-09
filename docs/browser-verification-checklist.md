@@ -975,6 +975,32 @@ deliberately not offered to ORT on this project's own measurement of 162.7 s aga
 Record which of the three states you are in - no adapter, software adapter, hardware adapter - beside
 every latency, because it moves them by two orders of magnitude.
 
+## Dependency claims decay, so re-measure them and watch the wording
+
+A version claim is only true on the day it is written, and the dangerous ones are the claims that
+are true of one thing and read as true of another.
+
+Per round, for each pinned crypto or FHE dependency:
+
+    gh api repos/<owner>/<repo>/releases/latest --jq '"\(.tag_name) \(.published_at)"'
+    gh api repos/<owner>/<repo>/releases --jq '.[] | "\(.tag_name) \(.published_at[0:10]) \(.name)"'
+    npm view <package> version
+    gh api graphql -f query='{securityVulnerabilities(first:10, ecosystem:NPM, package:"<pkg>"){nodes{advisory{ghsaId summary}}}}'
+
+**Ask which "upstream" a sentence means.** This repository carried "node-seal is on SEAL 4.1.2, and
+that is upstream's newest" for several rounds. True of node-seal, false of SEAL, and the sentence
+does not say which. Measured 2026-08-09: node-seal 7.0.0 is indeed still newest, while Microsoft
+SEAL had shipped **six releases** since 4.1.2 and reached 4.4.3 four days earlier. The claim was not
+a lie and was not stale in the way a version number goes stale - it was ambiguous in the flattering
+direction, which is harder to catch and is why this row exists.
+
+**Distinguish "no advisory" from "no problem."** SEAL 4.4.0's release note is the single line "Major
+security update", with no CVE, no GHSA and no affected-version range. The honest report is the
+version history plus the absence of an advisory, not an inference in either direction. Where a fix
+is described (4.4.3: null-output-pointer dereferences and C++ exceptions crossing the **C API**
+boundary), record whether it can even reach this project's build - a WASM/Emscripten build may not
+use the C API at all, and "unverified" is a legitimate answer to write down.
+
 ## PQC library conformance: run NIST's negative vectors, not just the happy path
 
 Every run on every page exercises ML-KEM and ML-DSA, and every one of them takes the happy path.

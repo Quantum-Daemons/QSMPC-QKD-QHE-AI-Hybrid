@@ -232,9 +232,14 @@ d=12 where FIPS 203 specifies plain ByteEncode12/ByteDecode12, making the sectio
 a no-op. 0.6.1 rejects all 2,595, and `npm run check:pqc` asserts it. Note the honest scope: noble
 is self-audited and carries no side-channel protection, so this is conformance evidence, not
 production assurance. Also `node-seal` 7.0.0, which bundles **Microsoft
-SEAL 4.1.2** - upstream's newest release still carries 4.1.2, so the gap is theirs rather than a
-stale pin here; SEAL 4.4.0's "major security update" has no CVE, no GHSA and no affected-version
-range, so the version is recorded as a fact and no vulnerability is claimed (SEAL -> WASM CKKS, MIT) +
+SEAL 4.1.2**. Verified 2026-08-09: node-seal 7.0.0 (2025-11-08) is still the newest node-seal, so
+this is not a stale pin here - but the gap to upstream SEAL is wider than it looks and is widening.
+Microsoft SEAL has shipped **six releases since 4.1.2**, reaching **4.4.3 on 2026-08-04**: 4.4.0 is
+described only as "Major security update" with no further detail, and 4.4.3 fixes null-output-pointer
+dereferences and C++ exceptions leaking across the **C API** boundary (issues #753-#755). Whether
+those C API fixes even reach an Emscripten/WASM build is unverified. **No CVE and no GHSA advisory
+exists for SEAL**, so the version is recorded as a fact and no vulnerability is claimed
+(SEAL -> WASM CKKS, MIT) +
 `mpc-framework`/`emp-wasm-engine`/`summon-ts` (garbled-circuit 2PC, MIT) for the demo's real in-browser
 FHE/MPC; `onnxruntime-web` (MIT) for the published industry models; `@huggingface/transformers` +
 `@mlc-ai/web-llm` (Apache-2.0) for in-browser AI; `mcp` Python SDK (MIT) + the official
