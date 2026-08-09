@@ -256,8 +256,24 @@ def main() -> int:
     def to14(x):
         return torch.tensor(downsample(x.numpy(), 14), dtype=torch.float32)
 
-    teacher_train = torch.tensor(train.predict_loader(model, tr_dl)[1].argmax(1), dtype=torch.long)
-    teacher_val = torch.tensor(train.predict_loader(model, va_dl)[1].argmax(1), dtype=torch.long)
+    # SEQUENTIAL loaders, and this is not a style preference. `tr_dl` is built with shuffle=True,
+    # so predict_loader returns scores in the sampler's random order. Taking [1] and pairing it with
+    # `to14(xtr)`, which is in the ORIGINAL order, attaches each teacher label to a different image.
+    # Measured: labels harvested that way match ground truth on 0.6227 of training rows where a
+    # sequential pass matches on 1.0000, so the student was distilled on mostly-wrong targets. It
+    # scored AUC 0.5984 against 0.8250 for the identical architecture trained on aligned labels.
+    #
+    # Nothing failed. The shapes match, the loss decreases, the run completes, and the model card
+    # reports a number. A shuffled DataLoader is correct for TRAINING and silently wrong for
+    # HARVESTING, and the two calls look identical at the call site.
+    def seq(ds):
+        """A sequential view of the same rows, so output order matches dataset order."""
+        return DataLoader(ds, batch_size=256, shuffle=False)
+
+    teacher_train = torch.tensor(
+        train.predict_loader(model, seq(tr_dl.dataset))[1].argmax(1), dtype=torch.long)
+    teacher_val = torch.tensor(
+        train.predict_loader(model, seq(va_dl.dataset))[1].argmax(1), dtype=torch.long)
     xva14 = to14(va_dl.dataset.tensors[0])
 
     student = small_medmnist_cnn(in_ch=1, n_classes=2, img_size=14, channels=(4,), hidden=16)
