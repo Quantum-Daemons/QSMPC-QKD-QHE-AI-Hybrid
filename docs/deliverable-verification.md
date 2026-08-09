@@ -242,13 +242,25 @@ segfault is not. `make test` deselects it with `-m "not slow"`; `make test-all` 
 upstream crash on one host distribution is not this project's work, and the workaround is the
 outcome rather than a placeholder for one. Recorded as a decision.
 
-**node-seal is on SEAL 4.1.2, and that is upstream's newest.** Promised in Round 19, tasked again in
-Round 21, never written, and then it dropped off the list without resolution. The answer, checked
-this round: `web/package.json` pins `node-seal ^7.0.0`, 7.0.0 is installed, and **node-seal 7.0.0's
-own package metadata states SEAL 4.1.2**. So the gap is upstream's, not a stale pin here - node-seal
-has not taken a newer SEAL. Round 19's instruction was to document the gap rather than claim a
-vulnerability, and that remains right: SEAL 4.4.0's "major security update" carries no CVE, no GHSA
-and no affected-version range, so there is nothing to claim beyond the version fact.
+**node-seal is on SEAL 4.1.2, and node-seal is the constraint, not us.** Promised in Round 19,
+tasked again in Round 21, never written, and then it dropped off the list without resolution. The
+answer: `web/package.json` pins `node-seal ^7.0.0`, 7.0.0 is installed, and node-seal 7.0.0's own
+package metadata states SEAL 4.1.2. **Re-checked 2026-08-09** - node-seal 7.0.0 (2025-11-08) is
+still the newest node-seal on npm, so this is not a stale pin here.
+
+The wording this file carried until Round 23 - "and that is upstream's newest" - was ambiguous in a
+way that flattered the position. It is true of node-seal and false of SEAL. Measured: Microsoft SEAL
+has shipped **six releases since 4.1.2** and reached **4.4.3 on 2026-08-04**. 4.4.0 (2026-07-25) is
+described only as "Major security update", with no further detail; 4.4.1 fixes a MinGW build; 4.4.3
+fixes null-output-pointer dereferences and C++ exceptions leaking across the **C API** boundary
+(issues #753-#755). Whether C API fixes reach an Emscripten/WASM build at all is **unverified** and
+should not be assumed either way.
+
+Round 19's instruction was to document the gap rather than claim a vulnerability, and that still
+holds: a GitHub Security Advisory query for SEAL returns **no advisories**, and no CVE exists. So
+the version and the release history are recorded as facts, the gap is recorded as widening, and no
+vulnerability is claimed. Re-check this on any round that touches the FHE path; the release cadence
+since April 2026 is roughly monthly.
 
 ## Verification assets added in Rounds 22-23
 
