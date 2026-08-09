@@ -119,3 +119,29 @@ scaffold hardens). QRNG + OptiQKD above are built from this set; the rest are ad
 | **IACR ePrint 2026/935** - SoK: Private LLM Inference using Approximate HE | rev. 2026-06-03 | The citable ceiling: ~20 CKKS frameworks surveyed, largest demonstrated end-to-end model **8B parameters**, ~4 orders of magnitude slower than plaintext. Confirms nothing larger exists. |
 | **IACR ePrint 2026/1231** - Hybrid AKE for QKD networks without signatures | 2026-06-10 | The closest published construction to `hybrid_combiner_mode="its_toeplitz"`: KEM-only hybrid AKE with a conditional information-theoretic guarantee when the QKD leg is uncompromised. |
 | **arXiv:2601.18511v2** - Scaling up FHE-based PPML | v2 2026-06-17 | Best published absolute: **Llama-3-8B under CKKS at 20 s prefill / 18 s per output token on 8x RTX PRO 6000**. Quote this rather than hand-waving FHE cost. |
+
+## Dated obligation not yet met: EU AI Act Art. 50(2) machine-readable marking
+
+Verified 2026-08-09. **Deadline 2 December 2026**, which is the nearest unmet compliance date this
+project has.
+
+Art. 50(1) - telling the person they are interacting with an AI - has been implemented since
+Round 21 and is applicable. **Art. 50(2) is a different obligation and is NOT implemented.** It
+requires providers of AI systems generating synthetic audio, image, video or **text** to mark the
+outputs in a **machine-readable** format, detectable as artificially generated. The Agentic AI panel
+generates text with an in-browser LLM, so it is in scope.
+
+Why there is still time, and exactly how much: the AI Omnibus grants generative systems already on
+the market before 2 August 2026 until **2 December 2026** to meet the marking requirement. This demo
+was live before that date, so the grace period applies - but it expires, and nothing in the codebase
+implements marking today. A grep for `C2PA`, `watermark` or `machine-readable` over the web sources
+returns nothing relevant.
+
+What would satisfy it is a design question, not a code question yet: the plausible options are C2PA
+Content Credentials on the generated text, or a documented in-band marker. Both need a decision
+before implementation, and the decision should be recorded here the way the WebGL and ZeroGPU
+declines were, rather than the item quietly rolling forward.
+
+Penalty exposure for Art. 50 non-compliance is up to EUR 15 million or 3 percent of worldwide annual
+turnover, whichever is higher - worth stating because it is the reason this is a dated item and not
+a nice-to-have.
