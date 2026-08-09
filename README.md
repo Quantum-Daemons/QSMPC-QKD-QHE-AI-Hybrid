@@ -35,7 +35,7 @@ Four workstreams (WS), unified by one pipeline and a crypto-agility registry:
 
 | WS | Theme | What's implemented |
 |----|-------|--------------------|
-| **WS1** | **AI-QKD** parameter optimization | BB84 **two-intensity decoy-state** simulation (+ a selectable **E91/CHSH** protocol), QBER/SKR telemetry, eavesdropper detection; a **QRNG** entropy source (state-vector quantum-measurement sim + SP 800-90B section 4.4 continuous health tests, an **SP 800-90B min-entropy estimate**, and a **Leftover-Hash-Lemma / seedless** Toeplitz extractor) that seeds the key material; a config-gated **leakage-resilient PQC+QKD key combiner**; and **OptiQKD** - a measured AI optimizer (scikit-learn surrogate + gradient-free search) tuning decoy (`mu_signal` / `mu_decoy`) + basis params to raise the secret-key rate vs default (with a convergence metric); the reference framework reports +14-25 % in simulation |
+| **WS1** | **AI-QKD** parameter optimization | BB84 **two-intensity decoy-state** simulation (+ a selectable **E91/CHSH** protocol), QBER/SKR telemetry, eavesdropper detection; a **published-reference decoy model** (`qkd/decoy_reference.py`) whose 13 tests assert Ma et al. PRA 72, 012326 (2005) values rather than this project's own - decoy reaches past 140 km where non-decoy dies near 40, and at the customary mu = 0.1 a non-decoy link's tagged fraction exceeds 1 at **zero** distance, so it yields no key even back-to-back; a **QRNG** entropy source (state-vector quantum-measurement sim + SP 800-90B section 4.4 continuous health tests, an **SP 800-90B min-entropy estimate**, and a **Leftover-Hash-Lemma / seedless** Toeplitz extractor) that seeds the key material; a config-gated **leakage-resilient PQC+QKD key combiner**; and **OptiQKD** - a measured AI optimizer (scikit-learn surrogate + gradient-free search) tuning decoy (`mu_signal` / `mu_decoy`) + basis params to raise the secret-key rate vs default (with a convergence metric); the reference framework reports +14-25 % in simulation |
 | **WS2** | **QML-IDS** intrusion detection | 8 classes = **7 QKD attack types + normal traffic**; RandomForest baseline + PennyLane variational quantum classifier. Scored on macro F1, not attack-vs-normal F1 |
 | **WS3** | **QSMPC x QKD** | Shamir + d-level QFT secure summation (faithful to the paper example), quantum oblivious transfer, quantum-safe PSI |
 | **WS4** | **QHE x AI** | Quantum one-time pad (perfect hiding), Clifford+T QCNN private inference, Rate-1 QFHE; classical hybrid = CKKS **linear** layers (TenSEAL CPU / OpenFHE CPU / HEonGPU GPU - commercial-OK) + **MPyC** secret-sharing **non-linear** layers (ReLU/argmax) - incl. a **genuine FHE convolution** (im2col -> CKKS `dot_plain`) so the medical use case runs a real small CNN on **real MedMNIST images** under encryption |
@@ -109,7 +109,7 @@ bash env/setup_venv.sh      # or: make setup
 source .venv/bin/activate
 
 # 2. Run the test suite (crypto correctness, FHE accuracy, E2E smoke)
-make test             # 174 collected, 170 passed, 4 deselected (Node/OpenFHE-gated)
+make test             # 187 collected, 183 passed, 4 deselected (Node/OpenFHE-gated)
 # `make test` already passes -m "not slow", which is what deselects those four.
 # `make test-all` runs every test, and on AlmaLinux 9.7 the OpenFHE bootstrap test SIGSEGVs inside
 # EvalBootstrapSetup: fhe/backends.py guards against an ImportError, and a segfault is not one.
@@ -149,6 +149,8 @@ references/    primary-source PDFs + annotated REFERENCES.md
 submodules/    upstream OSS (added by scripts/bootstrap_submodules.sh)
 scripts/      bootstrap_submodules.sh . run_benchmark.sh . build_gpu_mpc.sh . run_gpu_mpc.sh
           export_config.py . prep_real_kaggle_data.py . publish_hf.py
+web/scripts/  check_mlkem_modulus_vectors.mjs - `npm run check:pqc`, FIPS 203 section 7.2
+          negative vectors + FIPS 204 round-trip against the browser PQC library
   train/      per-vertical training: finance_aml . medical_breastmnist . genomics_prs . satellite_telemanom
   data/      fetch_g1k_dosages.py (1000 Genomes provenance)
 docs/       architecture . crypto-agility . threat-model . pqc-roadmap
@@ -230,9 +232,14 @@ d=12 where FIPS 203 specifies plain ByteEncode12/ByteDecode12, making the sectio
 a no-op. 0.6.1 rejects all 2,595, and `npm run check:pqc` asserts it. Note the honest scope: noble
 is self-audited and carries no side-channel protection, so this is conformance evidence, not
 production assurance. Also `node-seal` 7.0.0, which bundles **Microsoft
-SEAL 4.1.2** - upstream's newest release still carries 4.1.2, so the gap is theirs rather than a
-stale pin here; SEAL 4.4.0's "major security update" has no CVE, no GHSA and no affected-version
-range, so the version is recorded as a fact and no vulnerability is claimed (SEAL -> WASM CKKS, MIT) +
+SEAL 4.1.2**. Verified 2026-08-09: node-seal 7.0.0 (2025-11-08) is still the newest node-seal, so
+this is not a stale pin here - but the gap to upstream SEAL is wider than it looks and is widening.
+Microsoft SEAL has shipped **six releases since 4.1.2**, reaching **4.4.3 on 2026-08-04**: 4.4.0 is
+described only as "Major security update" with no further detail, and 4.4.3 fixes null-output-pointer
+dereferences and C++ exceptions leaking across the **C API** boundary (issues #753-#755). Whether
+those C API fixes even reach an Emscripten/WASM build is unverified. **No CVE and no GHSA advisory
+exists for SEAL**, so the version is recorded as a fact and no vulnerability is claimed
+(SEAL -> WASM CKKS, MIT) +
 `mpc-framework`/`emp-wasm-engine`/`summon-ts` (garbled-circuit 2PC, MIT) for the demo's real in-browser
 FHE/MPC; `onnxruntime-web` (MIT) for the published industry models; `@huggingface/transformers` +
 `@mlc-ai/web-llm` (Apache-2.0) for in-browser AI; `mcp` Python SDK (MIT) + the official
@@ -314,13 +321,19 @@ path runs end to end for real**
 measured medium per-op cost (MAC / comparison counts) so the page stays responsive. Representative results on
 the Blackwell box (TenSEAL CPU + MPyC, `linear` workload):
 
-| Path | Backend | Size | Latency/inf | FHE-linear | MPC-non-linear | MPC comm | Acc | ct/pt | Security |
-|------|---------|------|-------------|-----------|----------------|----------|-----|-------|----------|
-| MPC-FHE | TenSEAL CKKS + MPyC (CPU) | lightweight | ~43 ms | ~39 ms | ~4 ms | ~0.5 KB | 1.0 | ~1483x | **68 / 100** |
-| MPC-FHE | TenSEAL CKKS + MPyC (CPU) | medium | ~243 ms | ~215 ms | ~28 ms | ~4.5 KB | 1.0 | ~1483x | **68 / 100** |
-| MPC-FHE | TenSEAL CKKS + MPyC (CPU) | large \* | ~1885 ms | ~1719 ms | ~165 ms | ~24.5 KB | 1.0 | - | **68 / 100** |
-| MPC-FHE | HEonGPU CKKS (GPU sm_120) + MPyC | medium | batched | GPU | CPU | - | - | - | **68 / 100** |
-| QSMPC-FHE | QOTP + QCNN (Clifford+T), no trained weights | - | ~4 ms | Clifford | T-gates x56 | n/a | n/a | **~1.32x** | **96 / 100** |
+| Path | Backend | Size | Latency/inf | FHE-linear | MPC-non-linear | MPC comm | Acc | ct/pt | Security model |
+|------|---------|------|-------------|-----------|----------------|----------|-----|-------|----------------|
+| MPC-FHE | TenSEAL CKKS + MPyC (CPU) | lightweight | ~43 ms | ~39 ms | ~4 ms | ~0.5 KB | 1.0 | ~1483x | computational (RLWE) |
+| MPC-FHE | TenSEAL CKKS + MPyC (CPU) | medium | ~243 ms | ~215 ms | ~28 ms | ~4.5 KB | 1.0 | ~1483x | computational (RLWE) |
+| MPC-FHE | TenSEAL CKKS + MPyC (CPU) | large \* | ~1885 ms | ~1719 ms | ~165 ms | ~24.5 KB | 1.0 | - | computational (RLWE) |
+| MPC-FHE | HEonGPU CKKS (GPU sm_120) + MPyC | medium | batched | GPU | CPU | - | - | - | computational (RLWE) |
+| QSMPC-FHE | QOTP + QCNN (Clifford+T), no trained weights | - | ~4 ms | Clifford | T-gates x56 | n/a | n/a | **~1.32x** | information-theoretic (QOTP) |
+
+The **Security** column used to publish `68 / 100` and `96 / 100`. Those are the retired composite,
+and that particular pair is the worst thing it produced: **16 of the 28 points separating them were
+an artefact of which arguments two functions happened to supply** - one call passed no QBER while the
+other passed a literal, and the same again for a leakage bound nothing measured. The column now
+reports the security *model*, which is the part that was ever a property of the cryptography.
 
 \* **projected** from measured medium per-op cost, not run end-to-end. GPU FHE wins on **batched**
 workloads; for a tiny single-vector input the per-call kernel overhead can exceed CPU (raw encrypt
@@ -330,13 +343,20 @@ and the hybrid now shows *where* the classical cost goes (FHE dominates the line
 the non-linear secure comparisons + a few KB of communication).
 
 **Three enriched dimensions** (Round 3):
-- **Security score (0-100)** - `qsh/benchmark/security.py`: a transparent weighted sum over
-  HNDL/PQC-hybrid + QKD, security model (information-theoretic >> computational), NIST KEM
-  category, eavesdropper detection (QBER), and the ~0.1 bit/weight leakage bound (PRX
-  *Quantum-Secure Multiparty Deep Learning*). Reflects the **crypto-agility** selection.
+- **Security posture table** (replaced the 0-100 score in Round 22) - per-row facts, each either
+  checkable against a published standard or produced by the run, and labelled which: NIST category
+  and ciphertext/signature sizes from FIPS 203/204, QKD secure key bits, SKR, the QBER verdict taken
+  from `secure_key_bits > 0` rather than a threshold, and the GLLP tagged fraction showing what the
+  decoy states are buying. `qsh/benchmark/security.py` still computes the old composite for
+  backwards compatibility but nothing renders it. Why it was retired:
+  `references/security-scoring-fact-check.md`.
 - **Quantum advantage (0-10)** - `qsh/benchmark/quantum_advantage.py`: weighted geometric mean of
   communication-compactness (approx. 10^3x), latency, and the security jump -> a tiered score
-  (*dominant* approx. 8.2/10 standalone, 9.2 on the finance E2E run - measured on this box).
+  (*dominant*). Recomputed 2026-08-09 from this table's own rows: **8.12 standalone**, uncapped. The
+  finance E2E run reports **10/10**, and that is a CLAMP, not a maximum - the raw composite measured
+  10.65, so the panel prints `raw 10.65 (clamped to 0-10)` beside the tier. A reader who sees 10 and
+  concludes the run sits exactly at the ceiling is being misled by the clamp, which is why the raw
+  value is printed. The earlier "9.2 on the finance E2E run" in this line was stale.
 - **Per-use-case two-party simulator** - each industry has its own page (`/usecase/:id`) with a
   **live two-party (Alice <-> Bob) sequence diagram** (`web/src/components/TwoPartyDiagram.tsx`) whose
   steps light up as that use case's pipeline runs - **Start / Pause / Resume / Step / Stop / Restart
@@ -781,4 +801,4 @@ See [`docs/pqc-roadmap.md`](docs/pqc-roadmap.md).
 - Standards/threat context: [`docs/pqc-roadmap.md`](docs/pqc-roadmap.md).
 - Code license: **Apache-2.0** ([`LICENSE`](LICENSE)). Upstream OSS retains its own licenses (table above).
 
-> Not included in this public repository: private business notes, git-ignored by design.
+> Private business notes are kept outside this repository by design and are not published here.
