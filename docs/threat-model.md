@@ -72,6 +72,49 @@ which no cryptography in this repository provides. The controller is built to su
 than smooth it over: `trust_note()` names every intermediate node, and the browser panel prints it.
 ANSSI and BSI both press on exactly this point, and it is the honest limit of trusted-node QKD.
 
+## What CKKS does and does not promise here
+
+The product's headline is privacy-preserving inference under CKKS, so the security notion CKKS
+actually satisfies belongs in this document. It was absent until Round 23.
+
+**CKKS is IND-CPA, not IND-CPA-D.** The distinction is not academic for a system that returns
+decrypted results:
+
+- Li and Micciancio (EUROCRYPT 2021, ePrint 2020/1533) showed approximate FHE fails IND-CPA-D -
+  security when the adversary sees DECRYPTION RESULTS - and their attack needs **one** decryption
+  query, recovering the secret as `s = a^-1 (m'' - b)`. Demonstrated against HEAAN, SEAL, HElib and
+  PALISADE, "within several seconds".
+- Li, Micciancio, Schultz and Sorrell (CRYPTO 2022, ePrint 2022/816) give the noise-flooding
+  countermeasure and its precision cost.
+- Cheon, Choe, Passelegue, Stehle and Suvanto (ACM CCS 2024, ePrint 2024/127) extended the attack
+  class to EXACT FHE schemes.
+- Checri, Clet, Renard and Sirdey (ePrint 2026/203) prove an **impossibility**: no "HELLHO" scheme -
+  one whose homomorphic addition is linear over the ciphertext domain, which covers the basic
+  variants of BFV, BGV, **CKKS** and TFHE - can achieve CPAD security at all. They also demonstrate
+  a practical key-recovery attack on DE-CKKS, a scheme OpenFHE supports, achieving full key recovery
+  "in a matter of hours on an average laptop PC".
+- Ogilvie (ASIACRYPT 2025, ePrint 2025/1618) is the constructive counterpoint: in regimes where
+  rescaling noise dominates, "an additional precision loss of as little as two bits is sufficient to
+  restore a high level of security against passive key-recovery attacks for standard parameters".
+
+**How much of this reaches this project.** The public demo is the benign case and should be stated
+as such rather than claimed as a defence: the CKKS keys are generated in the browser tab, used in
+that tab, and the decrypted class is shown to the same person who holds the secret key. There is no
+decryption oracle exposed to anyone else, so an IND-CPA-D adversary would have to be the key holder
+attacking themselves.
+
+**The server-side deployment is the case that would need work.** If a model owner ran CKKS on a
+server and returned decrypted results to a client, that is precisely the CPAD setting, and the
+countermeasure - noise flooding, with its documented precision cost - would be required before any
+production claim. This project does not implement it, does not use DE-CKKS, and does not perform
+CKKS-to-FHEW scheme switching (ePrint 2026/285 breaks PEGASUS-style switching in OpenFHE, so this is
+worth stating explicitly rather than leaving to inference).
+
+**No standard requires testing for this.** The HomomorphicEncryption.org standard contains no
+testing or conformance clause and states that CKKS "is not described in this standard"; ISO/IEC
+28033 Parts 1-4 are at DIS and Part 5 at WD, and Part 1 scopes correctness out. So this section is a
+statement of known limitations, not a conformance gap against any published requirement.
+
 ## Explicitly out of scope (PoC)
 - Side-channel / fault attacks on the host.
 - Formal verification of the protocols (referenced papers carry the proofs).
@@ -129,7 +172,8 @@ ANSSI and BSI both press on exactly this point, and it is the honest limit of tr
   `SIMULATED`. `measured-js` was added in Round 21: the bundled distilled model is a hand-written
   loop over plain JS numbers with no wasm module and no GPU, and it had been reporting
   `measured-wasm` - a claim wrong in the flattering direction.
-- **The headline comparison row is simulated.** The QSMPC-FHE row that produces the 96-vs-68 figure and the
-  quantum-advantage score is an 8-qubit state-vector simulation, and its *security score* is assigned from a
-  config table rather than measured. The simulated-vs-hardware caveat above covers QKD, photonic inference
-  and qOLE, but not this row - it should.
+- **The headline comparison row is simulated.** The QSMPC-FHE row that drives the quantum-advantage
+  score is an 8-qubit state-vector simulation. The simulated-vs-hardware caveat above covers QKD,
+  photonic inference and qOLE, but not this row - it should. (The 0-100 security score this bullet
+  used to cite was retired in Round 22 and is no longer computed for display; see
+  `../references/security-scoring-fact-check.md`.)

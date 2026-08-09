@@ -759,6 +759,27 @@ textbook BB84 figure, which sits above the GLLP zero-key point. QSDC is a differ
 own security analysis, so 0.11 is not automatically wrong there - but it has not been traced to a
 QSDC source, and it should be.
 
+### Every panel that restates a run parameter must restate the RUN's value
+
+A parameter can be wired into the pipeline and still be wrong on screen, because a second panel may
+be reading the CONFIG DEFAULT for the same quantity. Both of this project's instances of that were
+found by setting a parameter away from its default and then searching the whole page for the old
+number.
+
+Measured on satellite, Downlink 800 -> 2000 km: the QKD stage, the channel loss and the diagram all
+moved, while the SDN control-plane panel kept printing "a single 800 km span". Two panels, one run,
+two geometries. Now 2000 km in both.
+
+So after changing any parameter, grep the rendered page for the DEFAULT value, not just for the new
+one:
+
+    document.body.innerText.match(/\d+(\.\d+)?\s*km span[^\n]{0,60}/g)
+
+Note the sequencing that makes this class hard to see: a previous fix had already corrected this
+panel from reading the FIBRE distance to reading the free-space one, which was right and which is
+why the line looked reviewed. Wrong-channel and wrong-value are separate defects, and fixing the
+first does not fix the second.
+
 ### Published model (`sel-published-model`)
 
 Each option must produce a run whose diagram names the model AND its commit hash, so the artefact is
@@ -1179,6 +1200,17 @@ resolves, 15 fields appear.
 `min` - the Round 21 half-fix is closed. Two selects hold `""`, and both are legitimate sentinels
 ("(use case default)" and "CKKS (FHE) - default"); `config.inference || "ckks"` confirms the second
 label is honest for every use case.
+
+**Agentic AI panel, exercised end to end** (genomics, distilGPT-2 via transformers-wasm, 2430 ms):
+tool `pool_allele_counts` - the per-use-case tool, not a generic one - `authenticated (ML-DSA-65)`
+true and `tampered message rejected` true. The Combiner select genuinely changes the derived key:
+**hkdf -> d9c4f1c2, its_toeplitz -> 3152292a**. A combiner that left the fingerprint unchanged would
+mean the selection never reached the key derivation.
+
+**Export buttons** are all enabled after a run and carry a reason before one. Round 22 found the
+Agentic AI panel's "Download results (JSON)" was the exception - disabled with no `title`, so it read
+as broken rather than as not-yet-applicable. Fixed. When auditing this, read `disabled` AND `title`
+together; `disabled` alone tells you nothing about whether the user can understand why.
 
 **Found and fixed this round:** the diagram ticked a zero-key BB84 step. See the panel-consistency
 section above.
