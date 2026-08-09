@@ -9,12 +9,27 @@ Two distilled students declare their TEACHER's metric while recording their own:
     medical_fl.student              declares auc     records metric_name = accuracy
     satellite_comms.opssat_student  declares auc_pr  records metric_name = minority_class_f1
 
-Today neither renders a false comparison, because the declared name does not appear among their
-recorded numeric keys, so nothing matches and no baseline is drawn. That is luck rather than design:
-adding an `auc` key to the medical student's metrics would immediately put a BreastMNIST AUC baseline
-of 0.901 beside a number that is not an AUC.
+When this was written neither rendered a false comparison, because the declared name did not appear
+among their recorded numeric keys, so nothing matched and no baseline was drawn. That was luck
+rather than design, and this docstring said so: "adding an `auc` key to the medical student's
+metrics would immediately put a BreastMNIST AUC baseline of 0.901 beside a number that is not
+an AUC."
 
-These tests pin the invariant rather than the accident.
+ROUND 24 resolved it the other way, and this test now pins that. Both trainers were changed to
+MEASURE the declared metric and record it under its own name: the medical student's scores were
+being thrown away by an `.argmax(1)` before AUC could be computed, and the OPS-SAT student is a
+logistic model whose `predict_proba` was simply never called. `auc` and `auc_pr` are therefore now
+present AND genuine, so the panel's comparison is honest rather than merely absent.
+
+The silence had been expensive. Recording `accuracy` where the registry declared `auc` is what hid
+the medical student being a CONSTANT PREDICTOR - it emitted one class for all 156 test images,
+scoring accuracy 0.7308, which is exactly the majority-class rate, while its AUC was 0.354, below
+random. The missing metric was not an untidy label; it was the reason nobody could see that the
+model had learned nothing.
+
+So the invariant is no longer "the declared key must be absent". It is: whatever is rendered beside
+a baseline must BE that metric, and a record that measures two different things must say which is
+which. A record carrying both therefore has to carry a `metric_note` distinguishing them.
 """
 from __future__ import annotations
 
@@ -45,12 +60,24 @@ def test_baseline_is_never_shown_against_a_different_metric(spec):
     declared = spec.metric.name if spec.metric else None
     if not recorded_name or not declared or recorded_name == declared:
         return                                   # no mismatch: the comparison is honest
-    assert declared not in _numeric_keys(record), (
-        f"{spec.key} declares metric '{declared}' (baseline {spec.metric.baseline}) but records "
-        f"metric_name '{recorded_name}', AND has a numeric '{declared}' key. ModelPanel will print "
-        f"the '{declared}' baseline beside it, comparing two different quantities. Either drop that "
-        f"key, or give the spec a metric that matches what was measured."
+    if declared not in _numeric_keys(record):
+        return          # nothing matches the declared name, so no baseline is drawn at all
+
+    # The declared metric IS recorded alongside a differently-named fidelity metric. That is the
+    # good case - the panel compares like with like - but only if the record distinguishes them,
+    # because two numbers in one record with no statement of which is which is how the medical
+    # student shipped an accuracy under an AUC's baseline for several rounds.
+    assert record.get("metric_note"), (
+        f"{spec.key} records both '{declared}' (the declared metric, baseline {spec.metric.baseline}) "
+        f"and a fidelity metric named '{recorded_name}', but has no `metric_note` saying which is "
+        f"which. ModelPanel renders the baseline beside '{declared}', so that key must genuinely be "
+        f"a '{declared}' and the record must say so."
     )
+    for name in (declared, recorded_name):
+        assert name in record["metric_note"], (
+            f"{spec.key}'s metric_note does not mention '{name}'. It carries two different "
+            f"quantities and the note has to name both, or it does not do its job."
+        )
 
 
 @pytest.mark.parametrize("spec", [s for s in _SPECS if s.key in METRICS], ids=lambda s: s.key)

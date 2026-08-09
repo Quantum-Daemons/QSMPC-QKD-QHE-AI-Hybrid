@@ -121,6 +121,12 @@ function MetricRows({ spec }: { spec: ModelSpec }) {
   const scoredOver = (rec.n_events_scored as number | undefined)
     ?? (rec.n_scoring_units as number | undefined) ?? null;
   const scoredUnit = (rec.scoring_unit as string | undefined) ?? "labelled events";
+  // A distillation record measures a DECISION metric, because agreement compares decisions. The
+  // registry's headline for the same model is often score-based (auc, auc_pr), and the panel prints
+  // that baseline underneath. Naming the recorded metric is what stops a 0.7308 accuracy being read
+  // against a 0.901 AUC.
+  const recordedMetric = rec.metric_name as string | undefined;
+  const metricMismatch = recordedMetric != null && recordedMetric !== spec.metric.name;
   const headline = numeric.filter(([k]) => !isCompanion(k));
   const companion = numeric.filter(([k]) => isCompanion(k));
 
@@ -129,7 +135,10 @@ function MetricRows({ spec }: { spec: ModelSpec }) {
       <tbody>
         {headline.map(([k, v]) => (
           <tr key={k} className={k === spec.metric.name ? "metric-headline" : undefined}>
-            <td><code>{k}</code></td>
+            {/* `student_metric` / `teacher_metric` are opaque names: they say which model, never
+                which quantity. The record knows, so print it. */}
+            <td><code>{k === "student_metric" || k === "teacher_metric"
+              ? `${k.split("_")[0]} ${recordedMetric ?? "metric"}` : k}</code></td>
             <td className="num">{fmt(v)}</td>
             <td className="muted small">
               {k === spec.metric.name && spec.metric.baseline != null
@@ -146,6 +155,17 @@ function MetricRows({ spec }: { spec: ModelSpec }) {
             </td>
           </tr>
         ))}
+        {metricMismatch && (
+          <tr className="metric-companion">
+            <td colSpan={3} className="muted small">
+              Fidelity here is measured as <code>{recordedMetric}</code>, while the baseline quoted below is
+              a <code>{spec.metric.name}</code>. Those are different quantities and must not be read against
+              each other: fidelity compares the student's <em>decisions</em> to the teacher's, and a decision
+              carries no score to rank. Where the declared metric is computable it is recorded as its own row
+              above — compare the baseline to that.
+            </td>
+          </tr>
+        )}
         {teacherZero && (
           <tr className="metric-companion">
             <td colSpan={3} className="muted small">

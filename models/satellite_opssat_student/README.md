@@ -24,6 +24,7 @@ a quantum-safe orchestration demo. This is the **plaintext** model for the
 | metric | value |
 |---|---|
 | `agreement` | 0.943289 |
+| `auc_pr` | 0.927522 |
 | `disagreement_on_positives` | 0.141593 |
 | `metric_delta` | 0.054054 |
 | `metric_delta_pp` | 5.4054 |
