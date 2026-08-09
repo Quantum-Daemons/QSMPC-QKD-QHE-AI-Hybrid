@@ -1019,6 +1019,34 @@ parity check with at least one assertion against a source OUTSIDE this repositor
 `tests/test_decoy_reference.py` asserts published values from Ma et al. PRA 72, 012326, and
 `npm run check:pqc` asserts against NIST and C2SP vectors.
 
+## Anything outside web/ and src/ still ships, and nothing was checking it
+
+The browser checks cover `web/`. The verification gate covers `src/`. Three directories publish
+artefacts and were audited for the first time in Round 23b: `models/`, `monitoring/`, `spaces/`.
+
+**Assert model cards against `models/metrics.json`, not against memory.** All ten cards agreed when
+checked properly - but note the trap in checking: a naive comparison that rounds
+(`str(round(v, 4))`) reports false mismatches, because the cards carry full precision
+(`0.08077786088257292`). Compare the repr and a range of fixed-point forms, and treat booleans as
+flags rather than metrics, or `isinstance(v, (int, float))` will flag every `False` as missing.
+
+**A hosted Space duplicates numbers and shapes that live in the registry, and it drifts.** Two real
+divergences in `spaces/qsh-inference/app.py`:
+
+- `"shape": [1, 26]` for the finance model, where the exported graph's input is `[N, 32]`. Verified
+  with `onnx.load` against `models/finance_aml_gbm/onnx/model.onnx`. A 26-length vector is rejected
+  by the session, so the Space's finance model would have failed on its first real request. **This
+  is a runtime bug, not a documentation defect** - it survived because the Space is not yet hosted.
+- `"metric": "AUC 0.888"` where `metrics.json` records **0.9147**.
+
+So per round, for anything that restates a registry value outside the registry:
+
+    python -c "import onnx,pathlib; m=onnx.load('models/<name>/onnx/model.onnx'); \
+      print([[d.dim_value or d.dim_param for d in i.type.tensor_type.shape.dim] for i in m.graph.input])"
+
+and diff every hardcoded metric string against `models/metrics.json`. **A directory that is not
+deployed yet is exactly where this rots**, because nothing exercises it.
+
 ## The model registry claims things about the outside world - check them
 
 `hf_repo` is not a label, it is an assertion that a repository exists and is reachable. The registry

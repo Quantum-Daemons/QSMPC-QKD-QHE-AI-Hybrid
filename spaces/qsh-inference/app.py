@@ -60,12 +60,17 @@ MODELS = {
         "file": "onnx/model.onnx",
         "shape": [1, 1, 28, 28],
         "classes": ["benign/normal", "malignant"],
-        "metric": "AUC 0.888 measured; 0.901 published baseline (MedMNIST v2)",
+        # Kept in step with models/metrics.json by hand; this string said 0.888 while the recorded
+        # measurement was 0.9147. If it drifts again, metrics.json is the source of truth.
+        "metric": "AUC 0.9147 measured; 0.901 published baseline (MedMNIST v2)",
     },
     "finance (AMLworld, GFP + XGBoost)": {
         "repo": f"{HF_NAMESPACE}/qsh-finance-aml-gbm",
         "file": "onnx/model.onnx",
-        "shape": [1, 26],
+        # 32, not 26. The exported graph's input is [N, 32] (checked with onnx.load against
+        # models/finance_aml_gbm/onnx/model.onnx). A 26-length vector is rejected by the session, so
+        # this Space's finance model would have failed on its first real request.
+        "shape": [1, 32],
         "classes": ["not laundering", "laundering"],
         "metric": "minority-class F1 0.081 measured; 0.632 published (see the model card for why)",
     },
