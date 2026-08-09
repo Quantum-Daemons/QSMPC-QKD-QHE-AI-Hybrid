@@ -1444,6 +1444,15 @@ export function runClientPipeline(
             metric(stage, "telemetry_anomaly_score", anom.anomalyScore);
             emit("log", stage, `private telemetry anomaly detection (${anom.provenance}): `
               + `${anom.isAnomaly ? "ANOMALY" : "nominal"} (score ${anom.anomalyScore})`);
+            // Satellite had NO attribution in the browser, while the Python pipeline has computed
+            // one since Round 18 that nothing rendered. The model here is genuinely linear - a 2xN
+            // margin over a NASA telemetry window - so exact linear SHAP applies unchanged and no
+            // new method is introduced. Reference point is E[x] over the bundled windows, the same
+            // choice the three inference use cases make.
+            artifacts.explanation = linearShap(
+              anom.model.W, anom.model.b, anom.window, anom.featureNames, 5, anom.baseline);
+            artifacts.explanation_provenance = "real bundled telemetry model";
+            artifacts.explanation_baseline = "mean of the bundled NASA telemetry windows";
           }
         }
         // Satellite's flow has no private_inference stage either, so its published model runs here.

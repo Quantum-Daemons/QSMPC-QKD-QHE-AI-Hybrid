@@ -134,8 +134,12 @@ function UseCaseView({ usecase }: { usecase: string }) {
           used to sit forty lines below and offer the same run again with different chrome. */}
       <ModelPanel usecase={usecase} />
 
-      {/* XAI: signed SHAP attribution for the inference use cases */}
-      {meta.inference && (
+      {/* XAI: signed SHAP attribution.
+          Gated on an explanation EXISTING, not on `meta.inference`. The flag meant "has a
+          classical-vs-quantum private-inference path", which is a different question: satellite runs
+          a genuinely linear anomaly model and its attribution was computed and then dropped on the
+          floor because the flag said no. Ask whether there is something to show. */}
+      {artifacts?.explanation?.top_features?.length ? (
         <ShapPanel
           explanation={artifacts?.explanation}
           provenance={artifacts?.explanation_provenance ?? null}
@@ -143,7 +147,7 @@ function UseCaseView({ usecase }: { usecase: string }) {
           publishedModel={metrics?.published_model ? String(metrics.published_model) : null}
           surfaced={String(run.params.inference ?? "")}
         />
-      )}
+      ) : null}
 
       {/* Unified benchmark: auto-filled from the single Run above (no separate "Run benchmark" button).
           The MPC-FHE row is the live run's measured FHE-linear/MPC-non-linear split. */}

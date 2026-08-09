@@ -157,6 +157,14 @@ def build(config: dict | None = None) -> tuple[Pipeline, Context]:
                 "hospitals": 4, "rounds": 6, **config},
     )
     ctx.data.update(X=X, y=y, linear_model=model, features=patient)
+    # SHAP reference point E[x], not the zero vector. Round 22 supplied this for finance,
+    # genomics and satellite and MISSED medical, so the Python attribution here was measured
+    # against a patient whose every feature is zero - not a patient - while the browser path
+    # (realData.ts) already used E[x]. The two disagreed on the reference point for the same
+    # use case, which is worse than either choice alone: the signed artifact and the rendered
+    # chart described different comparisons. `stages.py` records which reference point was
+    # used, so this is checkable from the artifact rather than from this comment.
+    ctx.data["explain_baseline"] = X.mean(axis=0)
     if image is not None:
         ctx.data["image"] = image
         ctx.data["feature_names"] = feature_names
