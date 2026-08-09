@@ -96,7 +96,8 @@ def _data(config: dict) -> tuple[np.ndarray, np.ndarray, object, np.ndarray]:
     clf = LogisticRegression(max_iter=1000).fit(X, y)
     w = np.vstack([np.zeros_like(clf.coef_[0]), clf.coef_[0]])
     b = np.array([0.0, float(clf.intercept_[0])])
-    patient = X[y == 1][0].astype(float)            # a malignant case to score privately
+    patient = X[y == 0][0].astype(float)            # a malignant case to score privately
+    #                ^ MedMNIST BreastMNIST labels malignant as 0, not 1
     return X, y.astype(np.int64), LinearModel(w.astype(float), b), patient
 
 

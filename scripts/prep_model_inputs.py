@@ -595,7 +595,9 @@ def build_medical_student(rng: np.random.Generator) -> dict:
             "page runs at 28x28, so the two are not interchangeable inputs."),
         "input": {"shape": [1, 1, 14, 14], "dtype": "float32", "preprocessing": [],
                   "layout": "samples[i] is one 14x14 image, row-major, already normalised"},
-        "classes": {"0": "benign/normal", "1": "malignant"},
+        # MedMNIST BreastMNIST: {0: malignant, 1: "normal, benign"}. onnxInference.ts renders
+        # classes[predictedClass], so inverting this list reports the OPPOSITE diagnosis.
+        "classes": {"0": "malignant", "1": "normal/benign"},
         "samples": x14.reshape(len(y), -1).tolist(),
         "labels": y.tolist(),
         "expected": {
