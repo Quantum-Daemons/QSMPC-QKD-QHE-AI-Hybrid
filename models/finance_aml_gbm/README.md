@@ -43,33 +43,41 @@ a quantum-safe orchestration demo. This is the **plaintext** model for the
 
 ### Gap to the published baseline
 
-This reaches minority-class F1 well below the published 0.6323. Round 24 measured the causes rather
-than assuming them; the full workings are in
+Minority-class F1 **0.1519** against the published 0.6323. Round 24 measured the causes rather than
+assuming them, then closed the one that was actionable. Full workings:
 [`references/finance-gap-investigation.md`](../../references/finance-gap-investigation.md).
 
-**Ruled out by measurement.** The decision threshold: reaching F1 0.6323 requires precision around
-0.63 held to recall around 0.63, so AUPRC of at least ~0.40, and the measured AUPRC is 0.0732 - the
-figure is unreachable at *any* threshold, which makes this a ranking gap rather than a tuning gap.
-Accounts unseen in the training window: only 0.39% of test rows have either side unseen, too rare to
-matter.
+**Fixed: a train/test feature asymmetry.** Per-account aggregates were fitted with a `groupby` over
+the whole training window, so a training row's feature included its own future - the median
+transaction had only 46.4% of its out-degree accrued by its own timestamp - while test rows received
+that same table as a stale past. The booster was fitted on one distribution and scored on another.
+Prior-at-time aggregates removed it:
 
-**Also ruled out as a main cause: the hop limit.** The corpus injects CYCLE attempts of up to 10 hops
-while reachability here is computed to 4. An earlier version of this section gave that as one of two
-main causes. It cannot be: the Graph Feature Preprocessor paper (arXiv:2402.08593) attributes "more
-than 30%" of its minority-F1 improvement to fan-in/fan-out features - which this project already
-implements - and only "up to 4%" to the multi-hop cycle and scatter-gather features.
+| | before | after | change |
+|---|---|---|---|
+| minority-class F1 | 0.0808 | **0.1519** | +88% |
+| AUPRC | 0.0732 | **0.1233** | +68% |
+| AUROC | 0.8980 | **0.9526** | +6.1 pp |
+
+**No leakage, and this was proved rather than argued.** Every causal feature is bit-identical whether
+or not later rows exist - a feature reading the future could not survive truncation. The one
+inclusive quantity, the running max, includes only the current transaction's own amount, which is
+knowable at scoring time and is already a feature in its own right.
+
+**Ruled out by measurement.** The decision threshold: 0.6323 needs AUPRC of at least ~0.40 and the
+measured figure is far below, so it is unreachable at *any* threshold - a ranking gap, not a tuning
+gap. Unseen accounts: only 0.39% of test rows have either side unseen.
+
+**Also ruled out as a main cause: the hop limit.** An earlier version of this section gave the 4-hop
+reachability limit as one of two main causes. It cannot be - the Graph Feature Preprocessor paper
+(arXiv:2402.08593) attributes "more than 30%" of its improvement to fan-in/fan-out, which this
+project implements, and only "up to 4%" to multi-hop cycle and scatter-gather features.
 
 **What remains.** IBM's Graph Feature Preprocessor ships in `snapml` under a Proprietary licence and
 is excluded by this project's commercial-OK-only rule. The mechanism that matters is architectural
 rather than legal: GFP computes per-transaction subgraph patterns over a graph updated as each
-transaction arrives, while this pipeline computes per-account scalar aggregates. That is
-implementable without `snapml`; it is simply larger than renaming aggregates.
-
-**One defect found in passing, worth fixing on its own merits.** Aggregates are fitted over the whole
-training window, so a training row's feature includes its own future - the median transaction has
-only 46.4% of its out-degree accrued by its own timestamp - while test rows receive the same table as
-a stale past. A causal, prior-at-time computation removes the asymmetry and measured **1.45x AUPRC**
-over the shipped approach at matched feature count.
+transaction arrives, while this pipeline computes per-account scalars plus training-window structural
+features. That is implementable without `snapml`; it is simply larger than this round.
 
 Reported as measured; not adjusted to close the gap.
 
