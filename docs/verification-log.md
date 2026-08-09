@@ -165,3 +165,33 @@ Per-page: no retired composite on any of the five use-case pages or the index; c
 "Security posture & quantum advantage" on telecom and satellite, full heading elsewhere; telecom run
 end to end gives QBER 0.01, macro-F1 0.96, `published telecom_ids.qml @ f0d754313210 - onnx-wasm -
 1x7`, matching that model's ONNX input of `[?, 7]`.
+
+## Verified in Round 24 (2026-08-09, public URL, bundle index-CHGs2rHz.js)
+
+**XAI on all five use cases**, each attribution checked against something outside itself:
+
+| Use case | Top attribution | External check |
+|---|---|---|
+| telecom_ids | `qber_mean` **+4.692**, 8.5x the next feature, for a predicted `intercept_resend` | correct - intercept-resend is the attack that raises QBER, verified here at exactly 25% against Gottesman-Lo |
+| satellite_comms | `E-6[t7]` -0.427, then `E-6[t6]`, `E-6[t5]` | correct shape - one channel, latest timesteps, which is what a windowed detector should key on |
+| genomics | `rs3803662` | a real TOX3-locus breast-cancer PRS SNP |
+| finance_aml / medical_fl | reference point reported as `sample mean E[x] over the shipped rows` | the artifact records WHICH reference point, so the claim is checkable |
+
+**Run status indicator**: rendered `position: fixed`, in viewport at 3655 px scrolled, `role="status"`
+with `aria-live="polite"`, text "running". Absent on idle and after a completed run has been read.
+
+**Served bundle contained every new literal** before the browser was trusted: `role:"status"`,
+`aria-live`, `is_ai_generated`, `browser_override_reason`, `Article 50(2)`.
+
+**One false negative worth recording.** The status indicator first appeared not to render. It was
+rendering correctly - the run had simply finished before the check ran, and the indicator hides on
+`done` by design. The lesson is the one this document already carries in another form: when a control
+is conditional on a transient state, sample it DURING that state, not after.
+
+**Facts re-derived rather than trusted:**
+
+- QSDC abort threshold: `Cs = 1 - 2h(e)` reaches zero at **0.110028**, identical to Shor-Preskill
+  because it is the same expression. At the GLLP zero-key point 0.098106 QSDC still has Cs = +0.074.
+- Finance gap: AUPRC 0.0732 makes F1 0.6323 unreachable at any threshold; unseen accounts affect
+  0.39% of test rows; causal aggregation measures 1.45x the shipped approach, leakage 2.76x causal.
+
