@@ -981,6 +981,44 @@ deliberately not offered to ORT on this project's own measurement of 162.7 s aga
 Record which of the three states you are in - no adapter, software adapter, hardware adapter - beside
 every latency, because it moves them by two orders of magnitude.
 
+## Retiring a metric is not done until the checklist stops asking for it
+
+When a metric is removed, three kinds of place still refer to it, and they fail differently:
+
+1. **The UI** - headings, legends, index pages. Caught in Round 22 by grepping the metric's NAME.
+2. **Published result tables in the docs.** README carried the retired 0-100 score as a live
+   **Security** column - `68 / 100` and `96 / 100` - for a full round after the metric was removed
+   from the product. A reader takes a README table as current results.
+3. **This checklist.** Six rows still told a verifier to recompute the score. That is the worst of
+   the three, because a checklist is executed by a person: the row either wastes their time or
+   produces a false failure against a panel that is behaving correctly.
+
+So the retirement procedure is:
+
+    git ls-files '*.md' | xargs grep -n "<metric name>"        # prose and tables
+    git ls-files '*.md' | xargs grep -n "<a characteristic value>"   # e.g. 68 / 100
+    grep -rn "<metric name>" web/src/ src/                     # headings, legends, computation
+
+and every hit must end up in one of three states: **removed**, **rewritten to the replacement**, or
+**explicitly marked historical**. A hit with none of those is a claim the project no longer stands
+behind.
+
+**Recompute the replacement's own numbers at the same time.** Retiring the score left the
+quantum-advantage figures unexamined next to it, and one of them - "9.2 on the finance E2E run" -
+was stale; the run reports 10/10, and 10 is a CLAMP over a raw 10.65, not a maximum.
+
+### The parity trap this uncovered
+
+The cross-implementation parity section used the security score as its strongest example: two
+independently written implementations, Python and TypeScript, both produced 68 and 96. They did.
+The number was still meaningless, because both faithfully reproduced the same argument-passing
+artefact.
+
+**Agreement between two mirrors proves they match each other, not that either is right.** Pair every
+parity check with at least one assertion against a source OUTSIDE this repository. Two now qualify:
+`tests/test_decoy_reference.py` asserts published values from Ma et al. PRA 72, 012326, and
+`npm run check:pqc` asserts against NIST and C2SP vectors.
+
 ## Dependency claims decay, so re-measure them and watch the wording
 
 A version claim is only true on the day it is written, and the dangerous ones are the claims that
