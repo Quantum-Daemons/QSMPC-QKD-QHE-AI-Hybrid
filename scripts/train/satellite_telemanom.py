@@ -201,11 +201,20 @@ def main() -> int:
     print(f"  dynamic threshold {thr:.4f} -> {pred.sum():,} flagged of {len(pred):,}")
 
     ev_f05 = metrics.event_wise_fbeta(truth, pred)
+    ev_counts = metrics.event_wise_counts(truth, pred)
     pa_f1 = metrics.point_adjusted_f1(truth, pred)
     spec = get_spec("satellite_comms.telemanom")
 
     print("\n  teacher (Telemanom LSTM)")
     print(f"    event-wise F0.5         {ev_f05:.4f}   <- the metric ESA-ADB reports")
+    # The denominator of that F0.5 is EVENTS, and this window holds a handful. Printed next to the
+    # score because 320 anomaly intervals over the timeline reduces to 3 inside the scored window,
+    # and the score alone gives no hint of which number it was divided by.
+    print(f"    computed over           {ev_counts['n_true_events']} labelled event(s): "
+          f"tp={ev_counts['tp']} fp={ev_counts['fp']} fn={ev_counts['fn']}")
+    if ev_counts["n_true_events"] < 10:
+        print(f"      ^ too few events to compare against the published "
+              f"{spec.metric.baseline}: one event moves this score by tenths")
     print(f"    point-adjusted F1       {pa_f1:.4f}   <- companion; inflated by construction")
     print(f"    published lightweight   {spec.metric.baseline}  ({spec.metric.baseline_source})")
     print("    published full-channel  0.061  <- the same method on all Mission1 channels")
@@ -233,11 +242,18 @@ def main() -> int:
         teacher_pred=pred[split:], student_pred=student_pred, y_true=truth[split:],
         metric_fn=lambda y, p: metrics.event_wise_fbeta(y, p), metric_name="event_wise_f0_5",
         student_params=int(student.coef_.size + student.intercept_.size), teacher_params=n_params,
+        # n_eval counts samples; this metric's denominator is events. On this slice those differ by
+        # five orders of magnitude (307,601 samples, 2 events), so record both.
+        n_scoring_units=int(metrics.event_wise_counts(truth[split:], pred[split:])["n_true_events"]),
+        scoring_unit="labelled anomaly events",
     )
-    n_events_eval = int(np.diff(np.concatenate([[0], truth[split:], [0]])).clip(min=0).sum())
     print(f"    agreement with teacher  {fidelity.agreement:.4f}")
-    print(f"    eval half holds {n_events_eval} labelled anomaly event(s)")
+    print(f"    eval half holds {fidelity.n_scoring_units} labelled anomaly event(s) "
+          f"in {fidelity.n_eval:,} samples")
     print(f"    event-wise F0.5 t/s     {fidelity.teacher_metric:.4f} / {fidelity.student_metric:.4f}")
+    if fidelity.teacher_scored_zero:
+        print("      ^ the teacher scored 0 here, so there is no fidelity claim to make: the delta "
+              "compares the student against a model that caught nothing on this slice")
 
     # ---- artefacts ------------------------------------------------------------
     out = Path(result.checkpoint).parent
@@ -261,6 +277,12 @@ def main() -> int:
         "published_full_channel_f0_5": 0.061,
         "n_parameters": n_params,
         "n_anomaly_intervals": int(len(labels)),
+        # The one that actually divides the score. n_anomaly_intervals above counts the WHOLE
+        # timeline and is not the evaluation's sample size; these are.
+        "n_events_scored": int(ev_counts["n_true_events"]),
+        "event_wise_tp": int(ev_counts["tp"]),
+        "event_wise_fp": int(ev_counts["fp"]),
+        "event_wise_fn": int(ev_counts["fn"]),
         "anomaly_sample_rate": round(float(mask.mean()), 8),
         "resample": args.resample,
         "dataset": spec.dataset.name,
@@ -270,6 +292,17 @@ def main() -> int:
             "shown only to expose how much point adjustment inflates: TSB-AD (NeurIPS 2024) found a "
             "uniform random score ranks 26th of 32 detectors under it. Only labels whose ESA-ADB "
             "Category is 'Anomaly' count as positives; the 690 annotated rare *nominal* events do not."
+        ),
+        "sample_size_note": (
+            "Read n_events_scored before comparing this to published_lightweight_f0_5. The "
+            "denominator of an event-wise metric is EVENTS, and a temporal split of this corpus "
+            "leaves very few of them in the scored window: 320 labelled intervals over the whole "
+            "timeline reduce to a handful inside the test window, because the annotated anomalies "
+            "are concentrated earlier in the mission. The recorded score is therefore a small-sample "
+            "figure and one event either way moves it by tenths - it is NOT comparable to a "
+            "published benchmark computed over the full annotated set, however similar the two "
+            "decimals look. The number is reported as measured rather than reweighted, and the "
+            "sample size is reported beside it so the comparison is not made silently."
         ),
         "git_sha": train.git_sha(),
         "export": {"fp32_bytes": report.fp32_bytes, "int8_bytes": report.int8_bytes,

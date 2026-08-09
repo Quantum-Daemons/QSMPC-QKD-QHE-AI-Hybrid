@@ -37,6 +37,9 @@ const isCompanion = (k: string) =>
 const NOT_A_METRIC = new Set([
   "wall_clock_s", "resolution", "n_eval", "n_train", "n_test", "positive_rate",
   "decision_threshold", "best_val_auc",
+  // Sample sizes, not scores. These render inline on the headline row instead, next to the
+  // baseline, because that is where the comparison gets made and where the count has to be read.
+  "n_events_scored", "n_scoring_units", "n_anomaly_intervals",
 ]);
 
 function fmt(v: unknown): string {
@@ -102,11 +105,22 @@ function MetricRows({ spec }: { spec: ModelSpec }) {
       </p>
     );
   }
-  const bothZero = Boolean(
-    (achieved as Record<string, unknown>).both_scored_zero
-    ?? ((achieved as Record<string, number>).teacher_metric === 0
-        && (achieved as Record<string, number>).student_metric === 0
-        && "teacher_metric" in (achieved as object)));
+  // The teacher scoring 0 on the fidelity slice voids the comparison whatever the student scored:
+  // at student 0 the delta cancels to 0, and at student > 0 it goes NEGATIVE and reads as the
+  // encrypted student beating its own teacher. Records from earlier rounds carry only the narrower
+  // `both_scored_zero`, so fall back to reading `teacher_metric` directly rather than trusting a
+  // flag written under the old condition.
+  const rec = achieved as Record<string, unknown>;
+  const teacherZero = "teacher_metric" in rec
+    ? (rec.teacher_scored_zero as boolean | undefined) ?? (rec.teacher_metric as number) === 0
+    : false;
+  const studentScored = ((rec.student_metric as number) ?? 0) > 0;
+  // How many things the headline was divided by. `n_events_scored` is the teacher's own count;
+  // `n_scoring_units` is the distillation slice's. Neither is `n_eval`, which counts samples — for
+  // an event-wise metric those differ by five orders of magnitude (307,601 samples, 2 events).
+  const scoredOver = (rec.n_events_scored as number | undefined)
+    ?? (rec.n_scoring_units as number | undefined) ?? null;
+  const scoredUnit = (rec.scoring_unit as string | undefined) ?? "labelled events";
   const headline = numeric.filter(([k]) => !isCompanion(k));
   const companion = numeric.filter(([k]) => isCompanion(k));
 
@@ -122,15 +136,28 @@ function MetricRows({ spec }: { spec: ModelSpec }) {
                 ? `baseline ${spec.metric.baseline}${spec.metric.ceiling != null
                     ? ` · ceiling ${spec.metric.ceiling}` : ""}`
                 : ""}
+              {/* The sample size belongs on the row that shows the baseline, because that row is
+                  where the comparison actually gets made. An event-wise score over 3 events and a
+                  benchmark over hundreds render as the same kind of decimal. */}
+              {k === spec.metric.name && scoredOver != null && (
+                <> · <strong>over {scoredOver} {scoredUnit}</strong>
+                  {scoredOver < 10 && " — too few to compare with the baseline"}</>
+              )}
             </td>
           </tr>
         ))}
-        {bothZero && (
+        {teacherZero && (
           <tr className="metric-companion">
             <td colSpan={3} className="muted small">
-              teacher and student both score 0 on the fidelity slice, so <code>metric_delta</code> is 0 by
-              cancellation — not because encryption was free. That slice is a later window than the one the
-              teacher's headline metric is computed over, so the two are not comparable.
+              <strong>The teacher scores 0 on the fidelity slice, so there is no fidelity claim here.</strong>{" "}
+              {studentScored
+                ? <>Because the student scored above 0, <code>metric_delta</code> comes out negative. That does
+                   not mean the encrypted student outperformed its teacher — it means the teacher caught nothing
+                   on this slice, and a near-zero score is being compared against zero.</>
+                : <>Neither model scored, so <code>metric_delta</code> is 0 by cancellation, not because
+                   encryption was free.</>}{" "}
+              The slice is a later window than the one the teacher's headline metric is computed over, so
+              neither number is comparable to that headline.
             </td>
           </tr>
         )}
