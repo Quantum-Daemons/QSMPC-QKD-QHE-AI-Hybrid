@@ -250,6 +250,62 @@ re-verify the load-bearing external claims and record the date:
 - When a doc turns out to be ahead of the sources you find, say so in the commit rather than
   "correcting" it downward to match a summary.
 
+## Search outward, not just inward - and fetch the source, never the summary
+
+Every other section here asks whether what the project already says is still true. This one asks the
+opposite question: **what changed outside that the project has not noticed?** It is the axis that
+produced most of Rounds 22-23's real findings, and none of them would have surfaced from reading this
+repository.
+
+| Found by searching outward | What it was |
+|---|---|
+| `@noble/post-quantum` 0.2.1 | accepted **all 2,595** malformed ML-KEM keys; FIPS 203 section 7.2 check was a no-op |
+| ePrint 2026/203 | CPAD **impossibility** for the class covering CKKS; the threat model said nothing about the notion |
+| EU AI Act Art. 50(2) | an unmet obligation with a **2 December 2026** deadline |
+| Microsoft SEAL 4.4.3 | six releases past the bundled 4.1.2, one self-described "major security update" |
+| QERS, CARS, and three vendor sources | candidate metrics that would have been adopted on the strength of a search summary |
+
+### The discipline, in the order that matters
+
+1. **Fetch the primary source. Do not act on a search summary.** This is the whole rule. A summary
+   of QERS reads as a calibrated framework; the paper says the weights are author-selected across
+   three scenarios with no calibration methodology, and normalises against an ESP32 Wi-Fi testbed.
+   A summary of the ACVP vectors implies they test the modulus check; the ML-KEM-512 negatives are
+   1216-byte keys against a correct 800, i.e. length checks, and a library can score 10/10 there
+   while failing every modulus vector.
+2. **Ask what the source actually prescribes, then whether it is implementable here.** ISO/IEC
+   23837-2 endorses discretised parameter sweeps and then states it "does not specify values for the
+   thresholds"; 21 of its 24 activities need an optical bench. Endorsing a method is not supplying
+   one.
+3. **Prefer a reference value you can assert in a test.** A source is most useful when it yields a
+   number this repository can be checked against - Ma et al.'s decoy curves became 13 assertions,
+   NIST and C2SP vectors became `npm run check:pqc`. A source that yields only prose yields only
+   prose.
+4. **Decline in writing, with the reason.** Adopting a framework with invented weights because it
+   has a citation is worse than having no framework, because the citation implies a rigour that did
+   not transfer. `references/security-scoring-fact-check.md` and
+   `references/stress-testing-fact-check.md` exist so the same five sources are not re-evaluated
+   every round.
+5. **Label vendor material as vendor material.** Sponsored articles, product pages and project blogs
+   surface high in searches and carry no methodology. Recorded separately in both fact-check files.
+
+### What to sweep each round
+
+- The standards the product cites by number - editions change, and an edition that has NOT changed is
+  itself a finding worth recording (ETSI GS QKD 014 is still V1.1.1, 2019-02).
+- Regulatory dates the UI asserts, and any obligation the product has not yet met.
+- Every pinned crypto/FHE dependency, plus its upstream - see the dependency section below.
+- Attacks against the primitives in use. CKKS, ML-KEM and QKD all have active attack literature, and
+  an impossibility result against a class the project belongs to is the kind of thing that never
+  appears in a release note.
+
+### One caution
+
+A claim being new is not a reason to adopt it. A 2026 preprint is a preprint. Weigh venue, whether
+the numbers are reproducible, and whether the paper's setting is this project's setting - QERS was
+scoped to "resource-constrained IoT/IIoT" and said applicability beyond that "remains unaddressed",
+which is disqualifying regardless of how recent it is.
+
 ## Reproduce each panel's headline from what the page itself shows
 
 The fact-check above asks whether an external claim is still true. This asks something stricter and
@@ -1294,6 +1350,29 @@ Inference provenance, same run, both inferences named:
 
     Pipeline model, on this page's own data    MEASURED (plain JS) - js-linear (bundled real model)
     Published model, on its own corpus         MEASURED (local WASM) - onnx-wasm
+
+## Verified in Round 23b (2026-08-09, public URL)
+
+Public-page claims re-checked against primary sources this round, all **confirmed**:
+
+| Page claim | Source fetched | Verdict |
+|---|---|---|
+| AI Omnibus = Regulation (EU) 2026/1744, in force 27 Jul 2026 | EUR-Lex | correct, and so are both deferral dates it cites |
+| Annex III to 2 Dec 2027, Annex I embedded to 2 Aug 2028 | EUR-Lex / Commission | correct |
+| Art. 50 transparency applicable 2 Aug 2026 | Commission guidelines | correct |
+| EO 14412, 22 Jun 2026, 91 FR 38483, PQC by 2030, signatures by 2031 | Federal Register | correct on all four details |
+| RSA-2048 factoring: ~1/20 the qubits of the 2019 estimate, runtime ~20x higher | arXiv:2505.15917 (Gidney 2025) | correct: 20M -> under 1M qubits, 8 hours -> under a week |
+| ETSI GS QKD 014 V1.1.1 (2019-02) still the only published edition | ETSI | correct - and an edition that has NOT moved is itself worth recording |
+| liboqs 0.16.0 current | GitHub releases | correct (2026-07-09) |
+
+Registry and artefact checks, all clean after the fixes in this round: 10 model cards agree with
+`models/metrics.json`; 10 declared HF repos return 200; every `ARTIFACT_DIRS` entry resolves; all 10
+ONNX input shapes match what the run reports in the browser.
+
+Per-page: no retired composite on any of the five use-case pages or the index; compact heading reads
+"Security posture & quantum advantage" on telecom and satellite, full heading elsewhere; telecom run
+end to end gives QBER 0.01, macro-F1 0.96, `published telecom_ids.qml @ f0d754313210 - onnx-wasm -
+1x7`, matching that model's ONNX input of `[?, 7]`.
 
 ## Verified in Round 22 (2026-08-08, public URL, bundle index-Bjfk0ThY.js)
 
