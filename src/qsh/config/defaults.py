@@ -58,6 +58,18 @@ class QKDConfig:
     mu_signal: float = 0.5            # signal mean photon number (decoy-state); ~0.5 is the textbook optimum
     mu_decoy: float = 0.1             # decoy mean photon number
     basis_prob: float = 0.5           # P(Z basis) — biased-basis (efficient) BB84 raises the sift ratio
+    #: QBER abort threshold. 0.11 is NOT copied from BB84 by accident, which is what it looked
+    #: like for several rounds - QSDC has its own basis and it happens to give the same number.
+    #: QSDC security is Wyner wiretap secrecy capacity Cs = I(A:B) - I(A:E). Over a binary
+    #: symmetric channel under collective attack that is Cs = [1 - h(e)] - h(e) = 1 - 2h(e),
+    #: which reaches zero at e = 0.110028. Shor-Preskill's BB84 one-way bound is the SAME
+    #: expression, so the shared value is an identity rather than a coincidence or a copy.
+    #:
+    #: Worth keeping straight against this repository's own GLLP zero-key point of 0.098106:
+    #: at that QBER the decoy-state key rate is already zero while QSDC still has Cs = +0.074.
+    #: The two thresholds SHOULD differ in effect - QSDC carries the message itself and does
+    #: not need extractable key - so a satellite run that aborts QSDC later than BB84 stops
+    #: producing key is correct behaviour, not an inconsistency.
     pp_threshold: float = 0.11        # post-processing QBER abort threshold
     # --- AI optimizer (OptiQKD, WS1) knobs ---
     optimize_enabled: bool = False
