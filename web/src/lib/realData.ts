@@ -110,7 +110,17 @@ export async function realInput(usecase: string, u: () => number): Promise<RealI
 
 /** A real telemetry-anomaly verdict over a REAL NASA SMAP/MSL window + the real linear model (the
  *  satellite use case has no `private_inference` stage, so its anomaly score is surfaced at QSDC delivery). */
-export interface SatelliteAnomaly { provenance: string; anomalyScore: number; isAnomaly: boolean; channels: string[]; }
+export interface SatelliteAnomaly {
+  provenance: string; anomalyScore: number; isAnomaly: boolean; channels: string[];
+  /** The real linear model, the scored window and E[x] over the bundled windows.
+   *  Returned so the run can compute exact linear SHAP for satellite the same way the three
+   *  inference use cases do. The model here IS linear (a 2xN margin over a NASA telemetry window),
+   *  so the method applies unchanged - no new or invented attribution is involved. */
+  model: { W: number[][]; b: number[] };
+  window: number[];
+  baseline: number[];
+  featureNames: string[];
+}
 
 export async function realSatelliteAnomaly(u: () => number): Promise<SatelliteAnomaly | null> {
   try {
@@ -120,8 +130,12 @@ export async function realSatelliteAnomaly(u: () => number): Promise<SatelliteAn
     const W = ds.model.W as number[][]; const b = ds.model.b as number[];
     const margin = w.reduce((a, v, i) => a + (W[1][i] - W[0][i]) * v, 0) + (b[1] - b[0]);  // real linear model
     const score = 1 / (1 + Math.exp(-margin));
+    const names = (ds.names as string[] | undefined) ?? w.map((_, i) => `f${i}`);
     return { provenance: ds.provenance, anomalyScore: Number(score.toFixed(4)),
-             isAnomaly: score > 0.5, channels: ds.channel_names };
+             isAnomaly: score > 0.5, channels: ds.channel_names,
+             model: { W, b }, window: w,
+             // E[x] over the bundled windows, matching the reference point the other use cases use.
+             baseline: columnMeans(windows, w.length), featureNames: names };
   } catch (e) {
     console.warn("[realData] satellite real telemetry unavailable → representative:", e);
     return null;
