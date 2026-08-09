@@ -195,3 +195,23 @@ is conditional on a transient state, sample it DURING that state, not after.
 - Finance gap: AUPRC 0.0732 makes F1 0.6323 unreachable at any threshold; unseen accounts affect
   0.39% of test rows; causal aggregation measures 1.45x the shipped approach, leakage 2.76x causal.
 
+## Round 24, part 2 (2026-08-09) - causal aggregates shipped
+
+Retrained `finance_aml.gbm` on the full 5,078,345-row corpus with prior-at-time aggregates:
+
+| | before | after |
+|---|---|---|
+| minority-class F1 | 0.0808 | **0.1519** |
+| AUPRC | 0.0732 | **0.1233** |
+| AUROC | 0.8980 | **0.9526** |
+| decision threshold | 0.928426 | 0.386869 |
+
+Leakage disproved by truncation: all 11 causal features bit-identical whether or not later rows
+exist. Published as `cf950f8c1e8d` (gbm) and `60686ed0139e` (student), both repos PUBLIC before and
+after. Verified live: dropdown lists both models, and the run reports `published finance_aml.gbm @
+cf950f8c1e8d - onnx-wasm - 1x32 - 5.13 ms`.
+
+The distilled student did not follow the teacher: 0.0178 -> 0.0181 while the teacher nearly doubled,
+so the delta widened to +13.38 pp and disagreement on positives rose to 0.850. The encrypted path did
+not improve.
+
