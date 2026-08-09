@@ -307,3 +307,33 @@ gate CI.
   authenticated fact.
 - **Trusted relays are an assumption**, not a mechanism: a relay holds the key in plaintext and no
   cryptography here changes that.
+
+## Open, with numbers, so they do not roll forward silently (Round 23b)
+
+Two items are known, verified and NOT fixed. Recorded here rather than left implicit, which is this
+project's standing rule for anything deferred.
+
+**1. The browser's federated hyperparameters differ from `config.federated`, and cannot read it.**
+
+| | Python config | Browser |
+|---|---|---|
+| rounds | 8 | 6 |
+| learning rate | 0.05 | 0.15 |
+| clients | (config) | 4 |
+
+`FederatedConfig` is **not exported to the baked frontend config at all** - `federated` is absent
+from `web/src/lib/config.defaults.json` - so the browser could not read these even if it wanted to.
+The divergence is defensible (a federated round has to finish inside a page interaction) and is now
+stated at the call site in `clientCompute.ts`, but it is a divergence. Fixing it means exporting the
+dataclass first; changing the browser numbers alone would move every reported federated accuracy
+without changing what the server does.
+
+**2. `qsdc_threshold` defaults to 0.11 and is still not traced to a QSDC source.**
+
+0.11 is the textbook BB84 one-way security threshold (Shor-Preskill). QSDC is a different protocol
+with its own security analysis, so the value is not automatically wrong - but nothing in
+`references/` justifies it for QSDC, and it sits above this repository's own measured GLLP zero-key
+point of 0.098106. Either find the QSDC source or replace the default with one that has one.
+
+Neither is user-visible today. Both are the kind of item that becomes a finding two rounds later if
+it is not written down.
