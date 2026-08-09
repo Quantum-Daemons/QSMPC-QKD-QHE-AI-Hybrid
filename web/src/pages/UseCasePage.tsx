@@ -186,8 +186,13 @@ function UseCaseView({ usecase }: { usecase: string }) {
         // qkd_distance_km parameter drives, so feeding that parameter here drew a 50 km terrestrial
         // fibre span underneath an 800 km free-space downlink. Take the distance from whichever
         // channel this use case actually models.
+        //
+        // And take it from the RUN, not from the config default. Reading FREE_SPACE.distanceKm here
+        // fixed the wrong-CHANNEL bug and left a wrong-VALUE one: setting Downlink to 2000 km moved
+        // the QKD stage and the diagram while this panel kept printing a single 800 km span, so two
+        // panels described different geometries for the same run.
         distanceKm={usecase === "satellite_comms"
-          ? FREE_SPACE.distanceKm
+          ? Number(run.params.sat_distance_km ?? FREE_SPACE.distanceKm)
           : Number(run.params.qkd_distance_km ?? FIBER.distanceKm)}
         // A downlink is one line of sight: there is no mid-span trusted relay to insert, however
         // long it is. Terrestrial fibre is the opposite, which is why the relay caveat exists.
