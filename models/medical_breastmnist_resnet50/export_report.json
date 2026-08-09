@@ -1,16 +1,16 @@
 {
   "fp32_path": "onnx/model.onnx",
-  "int8_path": "",
+  "int8_path": "onnx/model_int8.onnx",
   "fp32_bytes": 94171000,
-  "int8_bytes": 0,
+  "int8_bytes": 23753995,
   "opset": 18,
-  "fp32_max_abs_error": 3.814697265625e-05,
-  "int8_agreement": 0.9615384615384616,
-  "int8_max_abs_error": 3.162809371948242,
+  "fp32_max_abs_error": 1.1444091796875e-05,
+  "int8_agreement": 0.967948717948718,
+  "int8_max_abs_error": 2.009164810180664,
   "n_fixtures": 156,
   "passed": true,
-  "int8_skipped_reason": "int8 built and measured, then withheld: confident agreement 0.9865 is below the 0.99 gate (0.9615 over all fixtures). Serving fp32 only.",
-  "int8_confident_agreement": 0.9864864864864865,
+  "int8_skipped_reason": "",
+  "int8_confident_agreement": 0.9932432432432432,
   "int8_margin_quantile": 0.05,
   "onnx_domains": [
     "ai.onnx"

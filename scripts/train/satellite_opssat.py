@@ -95,8 +95,10 @@ def main() -> int:
     fidelity = distil.measure_fidelity(
         teacher_key=TEACHER, student_key=STUDENT,
         teacher_pred=pred.astype(int), student_pred=student_pred, y_true=yte,
-        # Fidelity is measured on hard labels, so it uses F1 on the positive class rather than
-        # AUC PR, which needs scores the student's decision does not provide.
+        # Fidelity is measured on hard labels, so it uses F1 on the positive class: the student's
+        # DECISION is what the encrypted path produces and what agreement compares. AUC PR is
+        # recorded separately below from predict_proba - the student is a logistic model, so the
+        # scores do exist, and the registry declares auc_pr as this model's headline.
         metric_fn=metrics.minority_class_f1, metric_name="minority_class_f1",
         student_params=int(student.coef_.size + student.intercept_.size),
         teacher_params=int(sum(len(p) for p in teacher._predictors)),
@@ -135,7 +137,24 @@ def main() -> int:
                    "int8_agreement": report.int8_agreement, "opset": report.opset},
         "wall_clock_s": round(time.time() - started, 1),
     })
-    train.record_metrics(STUDENT, fidelity.as_metrics())
+    # Record the metric the REGISTRY declares, beside the decision metric fidelity measures.
+    # Without this the panel printed an auc_pr baseline of 0.979 under a 0.8649 minority-class F1 -
+    # two different quantities, rendered as if one could be read against the other.
+    student_auprc = metrics.auprc(yte, student.predict_proba(scaler.transform(xte)))
+    print(f"    auc_pr student              {student_auprc:.4f}"
+          f"   <- the metric the registry declares, so this is the one the baseline compares to")
+    train.record_metrics(STUDENT, {
+        **fidelity.as_metrics(),
+        "auc_pr": round(float(student_auprc), 6),
+        "metric_note": (
+            "Two metrics are recorded and they answer different questions. `auc_pr` is the "
+            "registry's declared headline and is what the published baseline compares against. "
+            "`student_metric`/`teacher_metric` are `minority_class_f1`, because fidelity compares "
+            "DECISIONS and a decision has no score to rank - so agreement and metric_delta are "
+            "necessarily computed on a decision metric. Do not read the F1 against the auc_pr "
+            "baseline."
+        ),
+    })
     print(f"\n  wrote {out} and models/metrics.json in {time.time()-started:.0f}s")
     return 0
 
