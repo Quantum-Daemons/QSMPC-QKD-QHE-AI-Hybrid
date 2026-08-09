@@ -337,3 +337,39 @@ point of 0.098106. Either find the QSDC source or replace the default with one t
 
 Neither is user-visible today. Both are the kind of item that becomes a finding two rounds later if
 it is not written down.
+
+## Dated and dropped items, checked in Round 24
+
+**ZeroGPU, measured rather than assumed.** Round 22 set the condition: when the account unlocks,
+wire it or delete the Space and the `remote` tier together. Checked 2026-08-09 - the org page returns
+**HTTP 404** and the Space returns **HTTP 401**, so the account-age unlock (~2026-09-01) has not
+happened and wiring is not possible yet. Nothing in `web/src` references the Space, and `remote`
+remains a `ProvenanceBadge` type member no code path sets. The condition stands unchanged and is now
+one command to re-check:
+
+    curl -s -o /dev/null -w "%{http_code}\n" https://huggingface.co/api/spaces/Daemons-Q/qsh-inference
+
+**A 401 is the blocker; a 200 is the decision point.** On 200, either wire the Space or delete it
+together with the `remote` tier - a type member nothing sets is the same defect as a metric with no
+reader, which this project treats as serious.
+
+**EU AI Act Art. 50(2), 2026-12-02.** Still the nearest unmet compliance date; see `pqc-roadmap.md`.
+The design choice - C2PA Content Credentials versus a documented in-band marker - is open and should
+be decided before it becomes urgent rather than during the last week.
+
+**Two items that fell off the backlog without a decision**, found by reading every plan file. Both
+appeared in five consecutive plans and then simply vanished, which is the failure mode Round 22's
+backlog gate was written to catch and did not:
+
+- *The Zhang et al. QOT optics figure.* Deferred from Round 4 to Round 16, absent thereafter. What
+  was built instead is `TwoPartyDiagram.tsx`, a data-driven sequence diagram that fills from live
+  metrics. **Declined**: a static reproduction of a paper's optical bench would be a picture, while
+  the diagram that exists shows the run that actually happened. The right citation lives in
+  `references/`, not in a redrawn figure.
+- *GitHub / Google Drive MCP interop.* Deferred with the reason "needs OAuth creds and outward-facing
+  accounts that cannot be provisioned in an automated build", which is still true. **Declined**:
+  filesystem MCP interop already demonstrates that the quantum-safe channel carries a real third-party
+  MCP server, and a second connector would demonstrate the same property at the cost of credentials
+  this project should not hold.
+
+Recorded as decisions so neither reappears as a silent omission.
