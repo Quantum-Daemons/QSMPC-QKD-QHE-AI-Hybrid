@@ -1019,6 +1019,41 @@ parity check with at least one assertion against a source OUTSIDE this repositor
 `tests/test_decoy_reference.py` asserts published values from Ma et al. PRA 72, 012326, and
 `npm run check:pqc` asserts against NIST and C2SP vectors.
 
+## The model registry claims things about the outside world - check them
+
+`hf_repo` is not a label, it is an assertion that a repository exists and is reachable. The registry
+documents its own convention on the field: **`None` means not published.** So a non-None value that
+does not resolve is the registry stating a falsehood, and it is surfaced through `hf_repo_id` to both
+the CLI and `frontend_config`.
+
+Per round:
+
+    # every declared repo must resolve
+    python -c "from qsh.models.registry import _SPECS; \
+      print('\n'.join(s.hf_repo_id for s in _SPECS if s.hf_repo))" \
+      | while read r; do echo "$r $(curl -s -o /dev/null -w '%{http_code}' \
+          https://huggingface.co/api/models/$r)"; done
+
+    # every artifact dir must exist
+    python -c "from qsh.models.registry import ARTIFACT_DIRS; import pathlib; \
+      print([(k,d) for k,d in ARTIFACT_DIRS.items() if not pathlib.Path(d).is_dir()])"
+
+    # every published spec should have a model card
+    ls models/*/README.md
+
+Round 23b found `finance_aml.gnn` declaring `hf_repo="qsh-finance-aml-gnn"` while
+`Daemons-Q/qsh-finance-aml-gnn` returned **HTTP 401** and its ten siblings returned 200. There was no
+`models/finance_aml_gnn` directory, no entry in `models/metrics.json`, and no model card. The spec
+described a model that had never been trained. Its `notes` explained why the browser ships the GBM
+instead, which read as an explanation and hid the fact that nothing existed at all.
+
+**The 401-versus-200 contrast is what makes this checkable.** A single 401 could be a private repo or
+a token problem; ten 200s beside one 401 cannot be.
+
+After editing the registry, regenerate the baked frontend config - `python scripts/export_config.py`
+- or `tests/test_api_config.py::test_baked_json_matches_backend_config` fails. That test is doing its
+job; do not silence it.
+
 ## Dependency claims decay, so re-measure them and watch the wording
 
 A version claim is only true on the day it is written, and the dangerous ones are the claims that
