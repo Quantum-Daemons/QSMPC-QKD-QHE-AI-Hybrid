@@ -225,8 +225,32 @@ def train_torch(
 
 
 def predict_loader(model, loader, dev=None):
-    """Run ``model`` over ``loader`` and return ``(y_true, y_score)`` as numpy arrays."""
+    """Run ``model`` over ``loader`` and return ``(y_true, y_score)`` as numpy arrays.
+
+    **Refuses a shuffled loader.** The returned arrays are in the order the sampler yielded, so under
+    ``shuffle=True`` row *i* of the output is not row *i* of the dataset. Aggregate metrics survive
+    that, because ``y_true`` is permuted identically. Anything that pairs the OUTPUT with the dataset
+    by position does not.
+
+    Not hypothetical. ``medical_breastmnist.py`` harvested distillation targets as
+    ``predict_loader(model, tr_dl)[1].argmax(1)`` and paired them with the dataset's original row
+    order, attaching each teacher label to a different image. Measured: those labels matched ground
+    truth on 0.6227 of training rows where a sequential pass matched on 1.0000, and the student
+    scored AUC 0.5984 against 0.8250 for the same architecture on aligned labels. It shipped twice.
+
+    Nothing catches it downstream - shapes match, the loss falls, the run completes, and a plausible
+    number reaches the model card. So the check belongs here, at the one place that knows the row
+    order is about to be thrown away.
+    """
     import torch
+    from torch.utils.data import RandomSampler
+
+    if isinstance(getattr(loader, "sampler", None), RandomSampler):
+        raise ValueError(
+            "predict_loader was given a SHUFFLED loader. Its output is in sampler order, so pairing "
+            "it with the dataset by position misaligns every row. Pass a sequential loader over the "
+            "same data: DataLoader(loader.dataset, batch_size=256, shuffle=False)."
+        )
 
     dev = dev or _device()
     model.eval().to(dev)
