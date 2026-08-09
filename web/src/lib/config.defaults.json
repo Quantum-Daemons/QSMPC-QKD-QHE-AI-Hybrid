@@ -154,36 +154,7 @@
       {
         "achieved": null,
         "architecture": "PNA with reverse message passing, multigraph port numbering, ego IDs, edge updates",
-        "artifacts": [
-          {
-            "browser_runnable": false,
-            "fmt": "onnx",
-            "path": "onnx/model.onnx",
-            "precision": "fp32",
-            "serves": "both"
-          },
-          {
-            "browser_runnable": false,
-            "fmt": "onnx",
-            "path": "onnx/model_int8.onnx",
-            "precision": "int8",
-            "serves": "browser"
-          },
-          {
-            "browser_runnable": false,
-            "fmt": "safetensors",
-            "path": "model.safetensors",
-            "precision": "fp32",
-            "serves": "server"
-          },
-          {
-            "browser_runnable": false,
-            "fmt": "json",
-            "path": "feature_spec.json",
-            "precision": "none",
-            "serves": "both"
-          }
-        ],
+        "artifacts": [],
         "browser_runnable": false,
         "dataset": {
           "licence": "CDLA-Sharing-1.0",
@@ -191,7 +162,7 @@
           "publishable": true,
           "url": "https://www.kaggle.com/datasets/ealtman2019/ibm-transactions-for-anti-money-laundering-aml"
         },
-        "hf_repo_id": "Daemons-Q/qsh-finance-aml-gnn",
+        "hf_repo_id": null,
         "hf_revision": null,
         "hf_revision_stale": null,
         "key": "finance_aml.gnn",
@@ -205,7 +176,7 @@
           "display": "minority-class F1 (laundering)",
           "name": "minority_class_f1"
         },
-        "notes": "Message-passing needs the graph neighbourhood at inference, so the browser tier ships the stateless gradient-boosting variant instead of this one.",
+        "notes": "Reference architecture only - never trained or published here. Message-passing needs the graph neighbourhood at inference, so every tier ships the stateless gradient-boosting variant instead. Kept as a spec because it is the published state of the art this project's GBM is measured against, not because an artifact exists.",
         "onnx_domains": [],
         "params": null,
         "runs_encrypted": false,
