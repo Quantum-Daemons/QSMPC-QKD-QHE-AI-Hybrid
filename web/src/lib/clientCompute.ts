@@ -19,8 +19,8 @@ import { clientTrainScoreIDS } from "./clientIDS";
 import { secureArgmax, warmMPC } from "./clientMPC";
 import { optimizeQKD } from "./clientOptiQKD";
 import { generateQuantumBits } from "./clientQRNG";
-import { bb84, e91, FIBER, FREE_SPACE, h2, intrinsicQber, qcnnExpectation, qotpQcnnInfer, rng,
-  taggedFraction } from "./quantumSim";
+import { bb84, channelLossDb, e91, FIBER, FREE_SPACE, h2, intrinsicQber, qcnnExpectation,
+  qotpQcnnInfer, rng, taggedFraction } from "./quantumSim";
 import { type Provenance } from "../components/ProvenanceBadge";
 import { browserModels, onnxStatus, runPublishedModel } from "./onnxInference";
 import { realInput, realSatelliteAnomaly, realFederatedSet, type RealInput } from "./realData";
@@ -1427,15 +1427,37 @@ export function runClientPipeline(
         const e = intrinsicQber({ ...FREE_SPACE,
           distanceKm: Number(config.sat_distance_km ?? FREE_SPACE.distanceKm),
           eveFraction: Number(config.sat_eve ?? FREE_SPACE.eveFraction) });
-        const threshold = Number(config.qsdc_threshold ?? qkdCfg().pp_threshold);
-        const eavesdrop = e > threshold;
+        // QSDC aborts on SECRECY CAPACITY, not on a fixed QBER. Qi et al., Light Sci. Appl. 8, 22
+        // (2019), protocol step 2: "If the secrecy capacity C_s is zero, they conclude the channel
+        // is insecure and terminate the process."
+        //
+        //     C_s = 1 - h(e) - g*h(e_chk),   g = Q_Eve / Q_Bob = 10^(loss_dB / 10)
+        //
+        // The scalar 0.11 used here before is the g = 1 (LOSS-FREE) root of that expression, which
+        // is why it coincided exactly with the Shor-Preskill BB84 bound. Real links are lossy and g
+        // grows with loss, so the true threshold falls fast: Qi 2019 measured g = 2.57 at 4.1 dB,
+        // giving ~0.048. This page's own free-space downlink measures around 24.5 dB, where the
+        // threshold is ~0.0003 - so 0.11 was wrong here by three orders of magnitude, and wrong in
+        // the PERMISSIVE direction: it delivered telemetry over channels whose secrecy capacity was
+        // already zero.
+        //
+        // The founding QSDC papers (Long-Liu 2002, Deng-Long-Liu 2003, DL04 2004) give no numeric
+        // threshold at all - only "if the error rate is high, halt" - and no standards body has ever
+        // specified one: ETSI, ITU-T, ISO/IEC and IEEE quantum series are all key distribution.
+        const lossDb = channelLossDb({ ...FREE_SPACE,
+          distanceKm: Number(config.sat_distance_km ?? FREE_SPACE.distanceKm) });
+        const g = 10 ** (lossDb / 10);
+        const secrecy = 1 - h2(e) - g * h2(e);
+        const eavesdrop = secrecy <= 0;
         metric(stage, "qsdc_error_rate", r2(e));
-        metric(stage, "qsdc_secrecy_capacity", eavesdrop ? 0 : r2(Math.max(0, 1 - 2 * h2(e))));
+        metric(stage, "qsdc_secrecy_capacity", r2(Math.max(0, secrecy)));
+        metric(stage, "qsdc_eve_gain_g", r2(g));
         metric(stage, "qsdc_eavesdrop_detected", eavesdrop ? 1 : 0);
         artifacts.telemetry_delivered = !eavesdrop;
         emit("log", stage, eavesdrop
-          ? `QSDC ABORTED: error ${e.toFixed(3)} > ${threshold} — telemetry withheld`
-          : `QSDC delivered telemetry (secrecy ${(1 - 2 * h2(e)).toFixed(3)} bit/carrier)`);
+          ? `QSDC ABORTED: secrecy capacity ${secrecy.toFixed(4)} <= 0 at error ${e.toFixed(4)} `
+            + `with g=${g.toFixed(1)} (${lossDb.toFixed(1)} dB) — telemetry withheld`
+          : `QSDC delivered telemetry (secrecy ${secrecy.toFixed(4)} bit/carrier, g=${g.toFixed(1)})`);
         if (!eavesdrop) {
           // REAL NASA SMAP/MSL telemetry + the real linear anomaly model, scored in-browser (the satellite
           // flow has no private_inference stage, so the real anomaly verdict is surfaced here at delivery).

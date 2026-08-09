@@ -438,24 +438,42 @@ silent on the notion that governs exactly that. Full discussion in `../docs/thre
   Estimates for CKKS with Application to Exact HE Computation". Citing the old title points at a
   paper that no longer exists under that name.
 
-## QSDC security basis, and why its threshold equals BB84's (Round 24)
+## QSDC security basis: secrecy capacity, not a fixed QBER (Round 24)
 
-`qkd.pp_threshold = 0.11` looked for several rounds like the Shor-Preskill BB84 bound copied into a
-protocol it does not govern. It is not. QSDC security is expressed as Wyner wiretap **secrecy
-capacity** Cs = I(A:B) - I(A:E); over a binary symmetric channel under collective attack that is
-Cs = [1 - h(e)] - h(e) = 1 - 2h(e), which reaches zero at **e = 0.110028**. Shor-Preskill's one-way
-BB84 bound is the same expression, so the two thresholds coincide by identity rather than by
-transcription.
+**This entry corrects an earlier version of itself.** That version said `qkd.pp_threshold = 0.11`
+was correct for QSDC because the wiretap secrecy capacity `Cs = 1 - 2h(e)` has its root at 0.110028,
+the same as Shor-Preskill, so the two coincided by identity. The identity is real but the conclusion
+was wrong, because `Cs = 1 - 2h(e)` is the **loss-free** case.
 
-The distinction still matters in this project, because the two are not interchangeable in effect: at
-the repository's measured GLLP zero-key point of 0.098106 the decoy-state key rate is already zero
-while QSDC retains Cs = +0.074. A satellite run that keeps sending under QSDC after BB84 has stopped
-producing key is behaving correctly - QSDC carries the message on the channel itself and needs no
-extractable key.
+The published criterion is `Cs > 0`, and `Cs` depends on channel loss:
 
-- Long and Liu, Phys. Rev. A 65, 032302 (2002) - the two-step QSDC protocol.
-- Deng and Long, Phys. Rev. A 69, 052319 (2004) - DL04 one-time-pad QSDC.
-- Wyner wiretap-based QSDC security analyses (Qi, Long et al.) - the secrecy-capacity formulation.
-- Pan, Lin, Wu, Sun, Ruan, Yin, Long, "Experimental free-space quantum secure direct communication
-  and its security analysis", arXiv:2005.05102 - free-space QSDC at 500 bps over 10 m with a mean
-  QBER of 0.49% +/- 0.27%, the closest published analogue to this project's satellite use case.
+    Cs = Q_Bob [ 1 - h(e) - g h(e_chk) ],    g = Q_Eve / Q_Bob = 10^(loss_dB / 10)
+
+So the tolerable error rate falls fast as the link gets lossier: 0.110 at 0 dB, **0.048 at the 4.1 dB
+Qi et al. measured on a real 1.5 km fibre link (g = 2.57)**, and ~0.0003 at the ~24.5 dB this
+project's own free-space downlink reports. Applying 0.11 to a lossy channel is wrong in the
+**permissive** direction - it delivers over a channel whose secrecy capacity is already zero. The
+satellite path now computes `Cs` directly.
+
+Three further facts that stop any single number being quoted safely:
+
+- **The founding protocols specify no threshold at all.** Long and Liu (PRA 65, 032302, 2002) say
+  "below certain threshod" (sic); Deng, Long and Liu (PRA 68, 042317, 2003) say "reasonably low";
+  DL04 (Deng and Long, PRA 69, 052319, 2004) says "if the error rate is high ... the communication is
+  halted". The numbers all come from later security analysis.
+- **11% appears in the QSDC literature only where the protocol reduces to BB84.** Zhao et al.
+  (Front. Phys. 19, 51201, 2024) give 0.11 for entanglement-distillation QSDC against 0.073 for their
+  hybrid-entanglement scheme; Pan et al. (Sci. Adv. 11, eadt4627, 2025) state 11% and say plainly
+  that their expression "is exactly the key rate of the BB84 QKD protocol". DL04 - the family every
+  fibre experiment implements - is put at ~5.7% (Wu, Lin, Yin and Long, Quantum Eng. 1, e26, 2019).
+- **There are two error rates and two aborts.** The forward-leg check error governs SECURITY; the
+  return-leg QBER governs RELIABILITY and is bounded by the error-correcting capability, not by a
+  security threshold. Collapsing them into one comparison is a modelling error in its own right.
+
+**No standards body has specified QSDC.** ETSI GS QKD, ITU-T Y.3800-Y.3813, ISO/IEC 23837 and the
+IEEE quantum projects are all key distribution. Treat any claim of QSDC "compliance" accordingly.
+
+Primary sources: Qi, Sun, Lin, Yin, Long, Light Sci. Appl. 8, 22 (2019), doi:10.1038/s41377-019-0132-3
+- the `Cs > 0` abort rule and the measured g = 2.57. Pan, Lin, Wu, Sun, Ruan, Yin, Long,
+arXiv:2005.05102 - free-space QSDC, 500 bps over 10 m, QBER 0.49% +/- 0.27%, and the DBER/QBER
+distinction. Long and Liu (2002), Deng, Long and Liu (2003), Deng and Long (2004) - the protocols.
