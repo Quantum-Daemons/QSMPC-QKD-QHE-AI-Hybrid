@@ -92,6 +92,16 @@ export type ModelSpec = {
 export const qsmpcCfg = () => ((CONFIG as any).qsmpc ?? {}) as
   { prime: number | null; n_parties: number; threshold: number };
 
+/** Federated hyperparameters. `browser_*` are the deliberate lighter overrides the in-tab FedAvg
+ *  uses so a round finishes inside a page interaction; the un-prefixed values are what the full
+ *  server-side deployment trains with. Both are exported so the difference is visible rather than
+ *  being two unrelated literals in two languages. */
+export const federatedCfg = () => ((CONFIG as any).federated ?? {}) as {
+  rounds: number; local_epochs: number; lr: number; hospitals: number; test_split: number;
+  secure_aggregation: boolean; browser_rounds: number; browser_lr: number;
+  browser_override_reason: string;
+};
+
 export const modelsFor = (usecase: string): ModelSpec[] =>
   (((CONFIG as any).models ?? {})[usecase] ?? []) as ModelSpec[];
 
