@@ -215,3 +215,38 @@ The distilled student did not follow the teacher: 0.0178 -> 0.0181 while the tea
 so the delta widened to +13.38 pp and disagreement on positives rose to 0.850. The encrypted path did
 not improve.
 
+## Round 24b - 2026-08-09 - four defects found by following a "cosmetic" registry mismatch
+
+Verified on https://qsmpc-qkd-qhe-ai-hybrid.daemons.jp after each deploy, not locally.
+
+| # | Finding | Where it was visible | Status |
+|---|---|---|---|
+| 1 | Finance gap note still blamed 4-hop truncation, which the source paper caps at ~4% | live on the public demo | corrected at the trainer and propagated |
+| 2 | Satellite headline F0.5 computed over **3** labelled events, shown beside a published 0.786 | model card + panel | event count recorded and rendered |
+| 3 | `both_scored_zero` guard too narrow; negative delta read as the encrypted student beating its teacher | satellite student panel | condition generalised to `teacher_scored_zero` |
+| 4 | Medical CKKS student was a **constant predictor** (AUC 0.354, below random) | hidden by accuracy 0.7308 | class weighting + AUC selection + folded cut |
+| 5 | BreastMNIST class labels **inverted** in 4 places; demo showed the opposite diagnosis | published weights + browser | read from MedMNIST metadata |
+
+Browser-verified after deploy:
+
+- finance: gap note renders the corrected architecture explanation, no 4-hop claim
+- satellite: `event_wise_f0_5 0.4545 baseline 0.786 · over 3 labelled events - too few to compare`
+- satellite student: the teacher-scored-zero caveat renders and says a negative delta does NOT mean
+  the student outperformed its teacher
+- medical student: `auc 0.6092 baseline 0.901`, `n_classes_predicted 2`, `majority_class_rate 0.7308`,
+  and the metric-mismatch caveat
+- medical run: "Predicted normal, benign (true normal, benign)" - correct label, matching truth
+- all 5 use-case routes 200; all 9 published models pinned and PUBLIC before and after
+
+Numbers that moved:
+
+| model | before | after | note |
+|---|---|---|---|
+| medical student AUC | 0.3544 | 0.6092 | was below random |
+| medical student malignant recall | 1/42 | 8/42 | |
+| medical student accuracy | 0.7308 | 0.6859 | FELL, and that is the fix |
+| finance student agreement | 0.8841 | 0.9471 | fidelity, not discrimination |
+| finance student disagreement on positives | 0.6433 | 0.3262 | |
+| resnet50 AUC | 0.7988 | 0.8876 | **variance on rerun, not an improvement** |
+| resnet18 AUC | 0.9147 | 0.8779 | same - one draw, sd 0.0198 over 6 seeds |
+
