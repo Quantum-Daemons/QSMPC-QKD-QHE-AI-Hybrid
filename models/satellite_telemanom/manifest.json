@@ -3,7 +3,7 @@
   "best_metric": -0.5161120295524597,
   "best_epoch": 16,
   "epochs_run": 23,
-  "git_sha": "8317cb2-dirty",
+  "git_sha": "d19e285-dirty",
   "seed": 42,
   "n_parameters": 80486
 }

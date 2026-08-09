@@ -45,19 +45,44 @@ class FidelityReport:
     disagreement_on_positives: float   # agreement is easy when the positive class is 1-in-981
     student_params: int
     teacher_params: int | None
-    #: Set when teacher and student BOTH score 0 on the fidelity slice. metric_delta is then 0 by
-    #: cancellation, not because encryption was free -- and it is not comparable to the teacher's
-    #: headline metric, which is computed over the whole test window rather than this later slice.
-    #: Without this the satellite card showed metric_delta 0.0 beside a teacher headline of 0.714,
-    #: which reads as "the encrypted student matched a 0.714 teacher exactly".
-    both_scored_zero: bool = False
+    #: Set when the TEACHER scores 0 on the fidelity slice, whatever the student scores. There is
+    #: then no fidelity claim to make: the slice contains nothing the teacher got right, so the
+    #: delta measures the student against a model that failed, not against the teacher's ability.
+    #:
+    #: The condition is deliberately the teacher alone, and the earlier version of this flag fired
+    #: only when BOTH scored 0. That version was written for a real incident -- the satellite card
+    #: showed metric_delta 0.0 beside a teacher headline of 0.714, reading as "the encrypted student
+    #: matched a 0.714 teacher exactly". But requiring both to be zero left the worse shape live:
+    #: teacher 0.0 against student 0.0032 gives a NEGATIVE delta, which renders as the 49-parameter
+    #: encrypted student outperforming an 80,486-parameter LSTM. It is the same defect one step to
+    #: the side, and it shipped to the public demo. A guard whose condition is narrower than the
+    #: thing it guards against will eventually be walked around.
+    #:
+    #: Neither number is comparable to the teacher's headline metric either way, because the headline
+    #: is computed over the whole test window and this is a later slice of it.
+    teacher_scored_zero: bool = False
+    #: How many things the metric was actually computed over, and what one of them is. ``n_eval``
+    #: counts SAMPLES, which for an event-wise metric is the wrong denominator by orders of
+    #: magnitude: the satellite fidelity slice is 307,601 samples and 2 labelled anomaly events.
+    #: A score over 2 events looks identical to a score over 2,000 and means almost nothing, so the
+    #: count is recorded beside it rather than left to be inferred from ``n_eval``.
+    n_scoring_units: int | None = None
+    scoring_unit: str = "samples"
+
+    @property
+    def both_scored_zero(self) -> bool:
+        """The stricter, older condition. Kept because ``metrics.json`` records written by earlier
+        rounds carry this key and the UI still reads it as a fallback."""
+        return self.teacher_metric == 0.0 and self.student_metric == 0.0
 
     @property
     def metric_delta(self) -> float:
         """Teacher metric minus student metric. Positive means encryption cost accuracy.
 
-        Read together with :attr:`both_scored_zero`: a delta of 0 there means neither model scored
-        on the fidelity slice, which is not the same claim as "the student matched the teacher".
+        Read together with :attr:`teacher_scored_zero`. When that is set this delta is not a cost of
+        encryption at all: at teacher 0 it is 0 by cancellation if the student also scored nothing,
+        and negative if the student scored anything, neither of which is the claim "the student
+        matched (or beat) the teacher".
         """
         return self.teacher_metric - self.student_metric
 
@@ -70,6 +95,8 @@ class FidelityReport:
         d = asdict(self)
         d["metric_delta"] = round(self.metric_delta, 6)
         d["metric_delta_pp"] = round(self.metric_delta_pp, 4)
+        # Properties are not fields, so asdict() drops them. The UI reads both keys.
+        d["both_scored_zero"] = self.both_scored_zero
         return d
 
 
@@ -189,7 +216,9 @@ def save_student(student, out_dir, *, n_features: int, teacher_key: str,
 
 def measure_fidelity(*, teacher_key: str, student_key: str, teacher_pred: np.ndarray,
                      student_pred: np.ndarray, y_true: np.ndarray, metric_fn, metric_name: str,
-                     student_params: int, teacher_params: int | None = None) -> FidelityReport:
+                     student_params: int, teacher_params: int | None = None,
+                     n_scoring_units: int | None = None,
+                     scoring_unit: str = "samples") -> FidelityReport:
     """Compare a student against its teacher on held-out data.
 
     ``disagreement_on_positives`` is reported separately and deliberately. With a 1-in-981 positive
@@ -215,10 +244,9 @@ def measure_fidelity(*, teacher_key: str, student_key: str, teacher_pred: np.nda
         disagreement_on_positives=round(disagree_pos, 6),
         student_params=int(student_params),
         teacher_params=int(teacher_params) if teacher_params is not None else None,
-        both_scored_zero=bool(
-            float(metric_fn(y_true, teacher_pred)) == 0.0
-            and float(metric_fn(y_true, student_pred)) == 0.0
-        ),
+        teacher_scored_zero=bool(float(metric_fn(y_true, teacher_pred)) == 0.0),
+        n_scoring_units=(int(n_scoring_units) if n_scoring_units is not None else None),
+        scoring_unit=scoring_unit,
     )
 
 

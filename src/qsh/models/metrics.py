@@ -88,6 +88,34 @@ def per_class_f1(y_true, y_pred, class_names: list[str] | None = None) -> dict:
     return {names[i] if i < len(names) else str(classes[i]): float(s) for i, s in enumerate(scores)}
 
 
+def event_wise_counts(y_true, y_pred) -> dict:
+    """The tp/fp/fn behind :func:`event_wise_fbeta`, and how many EVENTS it was computed over.
+
+    The event count is the point of this function. Event-wise F-beta divides by a number of labelled
+    events, not samples, and there are far fewer of those than a sample count suggests: this
+    project's ESA-ADB test window is 441,600 points and holds exactly **3** labelled events. The
+    recorded headline 0.4545 is precisely ``tp=1, fp=1, fn=2`` on those three. One event either way
+    moves it by more than 0.2.
+
+    A score over three events renders as the same kind of decimal as a benchmark computed over
+    hundreds, so the count has to travel with the score or the comparison misleads silently. Note
+    also that ``n_anomaly_intervals`` recorded beside it counts the WHOLE timeline (320), not the
+    handful inside the scored window - reading that as the evaluation's sample size is the specific
+    mistake this function exists to prevent.
+    """
+    true_events = _runs(np.asarray(y_true).ravel().astype(bool))
+    pred_events = _runs(_labels(y_pred).astype(bool))
+    detected = sum(1 for (s, e) in true_events if any(ps < e and pe > s for ps, pe in pred_events))
+    matched = sum(1 for (ps, pe) in pred_events if any(ps < e and pe > s for s, e in true_events))
+    return {
+        "n_true_events": len(true_events),
+        "n_pred_runs": len(pred_events),
+        "tp": detected,
+        "fn": len(true_events) - detected,
+        "fp": len(pred_events) - matched,
+    }
+
+
 def event_wise_fbeta(y_true, y_pred, *, beta: float = ESA_BETA) -> float:
     """Event-wise F-beta under the overlap rule used by Telemanom and ESA-ADB.
 
@@ -98,18 +126,15 @@ def event_wise_fbeta(y_true, y_pred, *, beta: float = ESA_BETA) -> float:
     This is the metric those papers actually report. It is neither point-wise F1 nor the
     point-adjusted F1 that TSB-AD showed a random score can beat, and conflating the three is how
     "Telemanom F1 = 0.71" ends up in a table.
+
+    Report :func:`event_wise_counts` beside it. The denominator is events, and the sample count
+    does not tell you how many there are.
     """
-    true_events = _runs(np.asarray(y_true).ravel().astype(bool))
-    pred_events = _runs(_labels(y_pred).astype(bool))
-    if not true_events:
+    c = event_wise_counts(y_true, y_pred)
+    if c["n_true_events"] == 0:
         return float("nan")
 
-    detected = sum(1 for (s, e) in true_events if any(ps < e and pe > s for ps, pe in pred_events))
-    matched_pred = sum(1 for (ps, pe) in pred_events if any(ps < e and pe > s for s, e in true_events))
-
-    tp = detected
-    fn = len(true_events) - detected
-    fp = len(pred_events) - matched_pred
+    tp, fn, fp = c["tp"], c["fn"], c["fp"]
     precision = tp / (tp + fp) if (tp + fp) else 0.0
     recall = tp / (tp + fn) if (tp + fn) else 0.0
     if precision == 0.0 and recall == 0.0:
