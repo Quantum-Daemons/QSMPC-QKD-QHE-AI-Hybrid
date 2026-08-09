@@ -437,3 +437,25 @@ silent on the notion that governs exactly that. Full discussion in `../docs/thre
   q-IND-CPA-D-Secure Approximate Homomorphic Encryption", now "Accurate and Composable Noise
   Estimates for CKKS with Application to Exact HE Computation". Citing the old title points at a
   paper that no longer exists under that name.
+
+## QSDC security basis, and why its threshold equals BB84's (Round 24)
+
+`qkd.pp_threshold = 0.11` looked for several rounds like the Shor-Preskill BB84 bound copied into a
+protocol it does not govern. It is not. QSDC security is expressed as Wyner wiretap **secrecy
+capacity** Cs = I(A:B) - I(A:E); over a binary symmetric channel under collective attack that is
+Cs = [1 - h(e)] - h(e) = 1 - 2h(e), which reaches zero at **e = 0.110028**. Shor-Preskill's one-way
+BB84 bound is the same expression, so the two thresholds coincide by identity rather than by
+transcription.
+
+The distinction still matters in this project, because the two are not interchangeable in effect: at
+the repository's measured GLLP zero-key point of 0.098106 the decoy-state key rate is already zero
+while QSDC retains Cs = +0.074. A satellite run that keeps sending under QSDC after BB84 has stopped
+producing key is behaving correctly - QSDC carries the message on the channel itself and needs no
+extractable key.
+
+- Long and Liu, Phys. Rev. A 65, 032302 (2002) - the two-step QSDC protocol.
+- Deng and Long, Phys. Rev. A 69, 052319 (2004) - DL04 one-time-pad QSDC.
+- Wyner wiretap-based QSDC security analyses (Qi, Long et al.) - the secrecy-capacity formulation.
+- Pan, Lin, Wu, Sun, Ruan, Yin, Long, "Experimental free-space quantum secure direct communication
+  and its security analysis", arXiv:2005.05102 - free-space QSDC at 500 bps over 10 m with a mean
+  QBER of 0.49% +/- 0.27%, the closest published analogue to this project's satellite use case.

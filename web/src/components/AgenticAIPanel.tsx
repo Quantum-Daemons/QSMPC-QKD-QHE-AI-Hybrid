@@ -248,6 +248,31 @@ export default function AgenticAIPanel({
             // numbers produced it, and whether the page had moved on by the time it was saved.
             run_context: ranWithCtx,
             stale_at_download: stale,
+            // EU AI Act Art. 50(2): outputs of a system generating synthetic TEXT must be marked in
+            // a machine-readable format, detectable as AI-generated. Art. 50(1) - telling the person
+            // - has shipped since Round 21 and is a DIFFERENT obligation. This is the 50(2) half,
+            // and it is deliberately scoped as partial rather than claimed as compliance:
+            //
+            //   * It marks the ARTIFACT that leaves the page. The text rendered in the tab is not
+            //     watermarked, because the token-level schemes that would do that (SynthID-Text and
+            //     successors) bias the sampling loop, which Transformers.js does not expose here.
+            //   * The recognised route to demonstrating 50(2) compliance is adherence to the
+            //     Commission's Code of Practice on marking and labelling AI-generated content -
+            //     final 10 June 2026, assessed adequate by the Commission and the AI Board on
+            //     8-9 July 2026. This project has not been assessed against it.
+            //
+            // Grace for systems on the market before 2 Aug 2026 runs to 2 December 2026.
+            ai_generated: {
+              is_ai_generated: true,
+              marked_under: "EU AI Act Article 50(2)",
+              generator: { engine: run?.engine ?? null, model: run?.model ?? null,
+                           runtime: "in-browser" },
+              scope: "This marks the downloaded artifact. The on-screen text is not watermarked - "
+                   + "token-level watermarking needs control of the sampling loop, which the "
+                   + "in-browser runtime does not expose.",
+              compliance_status: "partial - not assessed against the Commission Code of Practice "
+                   + "on marking and labelling AI-generated content (final 2026-06-10)",
+            },
           }, `qsh-agentic-${usecase ?? "ai"}.json`)}>
           ⬇ Download results (JSON)
         </button>
