@@ -85,9 +85,10 @@ Eight gates. Steps 1-3 and 5-8 are pass/fail; step 4 is a loop that runs until c
 8. **Final greps** - no new literals, no Japanese in public files, CI green on the head commit.
 
    As of Round 21 there is **no** Japanese in any tracked text file - the rule holds with no
-   exceptions. A private workflow note and the private business-strategy reports are Japanese
-   by design and untracked; the reports live one directory above the repository and have never been
-   inside it.
+   exceptions. The private business notes are Japanese by design and untracked; several live one
+   directory above the repository and have never been inside it. They are deliberately not named
+   here - a public file that lists the filenames of confidential ones has leaked something, even
+   when the files themselves are absent.
 
    `.gitignore` used to be the exception, carrying five Japanese-named `.docx` patterns. They were
    guarding a path that does not exist, so they are gone and `*.[dD][oO][cC][xX]` replaced them:
@@ -248,6 +249,39 @@ own package metadata states SEAL 4.1.2**. So the gap is upstream's, not a stale 
 has not taken a newer SEAL. Round 19's instruction was to document the gap rather than claim a
 vulnerability, and that remains right: SEAL 4.4.0's "major security update" carries no CVE, no GHSA
 and no affected-version range, so there is nothing to claim beyond the version fact.
+
+## Verification assets added in Rounds 22-23
+
+Two checks now exist that assert against sources OUTSIDE this repository. That is the point of both:
+every other test in this suite asserts that the code does what the code was written to do, which
+cannot catch a shared misunderstanding.
+
+**`tests/test_decoy_reference.py` (13 tests) against `src/qsh/qkd/decoy_reference.py`.** Reproduces
+Ma, Qi, Zhao and Lo, Phys. Rev. A 72, 012326 (2005) with the GYS parameter set, and the GLLP
+tagged-fraction bound (QIC 4, 325). None of the asserted numbers originated here:
+
+| Assertion | Published | Measured |
+|---|---|---|
+| tagged fraction at mu = 0.1, zero distance | > 1 | 1.0417 |
+| decoy max distance | over 140 km | 142.2 km |
+| non-decoy max distance | about 42 km | 39.8 km |
+| decoy R/eta, flat, linear in eta | 0.11 | 0.1136 |
+| non-decoy R/eta^2, flat, quadratic | 0.15 | 0.1510 |
+
+The trap this closed is worth keeping: the published curves are plotted for efficient BB84 where the
+sifting factor q tends to 1, while this project runs standard BB84 at q = 1/2. Reproducing them with
+q = 1/2 gives values at exactly HALF the published ones - close enough to read as a fitting
+discrepancy, wrong enough to void the comparison. `q_sift` is explicit and a test pins the factor.
+
+**`npm run check:pqc` (`web/scripts/check_mlkem_modulus_vectors.mjs`).** FIPS 203 section 7.2
+negative vectors from C2SP/CCTV, plus a FIPS 204 size and round-trip check. It found the pinned
+`@noble/post-quantum` 0.2.1 accepting **all 2,595** malformed encapsulation keys; 0.6.1 rejects all
+of them. The checker was itself validated against the known-bad build - 3 FAILs and exit 1 on 0.2.1,
+all-OK on 0.6.1 - because a conformance script that always passes is worse than none.
+
+Both are cheap and neither is wired into `make test` yet, which is a gap rather than a decision:
+`check:pqc` fetches its vectors over the network, so it needs an offline-tolerant mode before it can
+gate CI.
 
 ## What this project cannot verify, and says so
 
