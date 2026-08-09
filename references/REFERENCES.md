@@ -470,8 +470,30 @@ Three further facts that stop any single number being quoted safely:
   return-leg QBER governs RELIABILITY and is bounded by the error-correcting capability, not by a
   security threshold. Collapsing them into one comparison is a modelling error in its own right.
 
-**No standards body has specified QSDC.** ETSI GS QKD, ITU-T Y.3800-Y.3813, ISO/IEC 23837 and the
-IEEE quantum projects are all key distribution. Treat any claim of QSDC "compliance" accordingly.
+**No standards body has specified QSDC**, and this was checked exhaustively rather than assumed.
+All 14 published ETSI QKD deliverables were searched full-text (2.0 M characters): zero hits for
+QSDC or "secure direct communication", against a control of 7 documents matching "BB84". ITU-T's
+complete X.1700-X.1749 and Y.3800-Y.3835 sets are QKD or QRNG throughout, and the work programme
+across every study period 2001-2028 and every status returns zero QSDC items against a control of
+186 quantum-titled items. ISO/IEC JTC 1/SC 27's entire catalogue contains exactly two
+quantum-titled standards, both parts of 23837, both QKD. IEEE has no QSDC standard - and no QKD one
+either. China's national platform returns no data for the Chinese term, and the national quantum
+terminology project scopes itself to QKD. QSDC is absent even from CEN/CENELEC's
+pre-standardization roadmap, which mentions QKD 319 times and QSDC zero.
+
+One terminology trap that produces false positives, and it is easy to fall into. In Chinese sources
+**"quantum secure communication" is the QKD umbrella term, not QSDC** - they are different words and
+different technologies. GB/T 42829-2023 and YD/T 4301-2023 are both QKD. A source claiming "China has
+a quantum secure communication standard" is almost certainly pointing at one of those. Only the
+distinct Chinese term for quantum secure DIRECT communication means QSDC, and no standards document
+at any level contains it. Korea's TTA has the term in a terminology dictionary with no standard
+number attached, which is the closest any body has come.
+
+The correct phrasing is therefore **"no published standard; research-stage technology"** - not
+"standardization in progress", because no work item exists at any body. Two citation traps worth
+knowing: **"IEEE 1913-2019" is not a real published standard** (the PAR was withdrawn on 11 December
+2024 and the scope was QKD anyway), and the 2024 IEEE COMST QSDC survey mentions standardization
+exactly once, about QKD.
 
 Primary sources: Qi, Sun, Lin, Yin, Long, Light Sci. Appl. 8, 22 (2019), doi:10.1038/s41377-019-0132-3
 - the `Cs > 0` abort rule and the measured g = 2.57. Pan, Lin, Wu, Sun, Ruan, Yin, Long,
