@@ -195,27 +195,27 @@
       },
       {
         "achieved": {
-          "accuracy": 0.9983866140161103,
-          "auprc": 0.07323010834680115,
+          "accuracy": 0.9982855312490154,
+          "auprc": 0.12334101789973353,
           "auprc_baseline": 0.0015234617040716665,
-          "auroc": 0.8980183471873905,
-          "baseline_gap_note": "This reaches minority-class F1 well below the published 0.6323, and Round 24 measured why rather than assuming. RULED OUT: the decision threshold (F1 0.6323 needs AUPRC >= ~0.40; measured is 0.0732, so it is unreachable at any threshold - a ranking gap, not a tuning gap), and accounts unseen in the training window (0.39% of test rows). ALSO RULED OUT as a main cause: the 4-hop reachability limit against the corpus's 10-hop CYCLE attempts - the Graph Feature Preprocessor paper (arXiv:2402.08593) caps the multi-hop cycle and scatter-gather contribution at 'up to 4%' relative while attributing 'more than 30%' to fan-in/fan-out, which this project already implements. An earlier version of this note gave that truncation as a main cause; it cannot carry that weight. WHAT REMAINS: IBM's Graph Feature Preprocessor ships in snapml under a Proprietary licence and is excluded by this project's commercial-OK-only rule, and the mechanism that matters is architectural rather than legal - GFP computes per-transaction subgraph patterns over a graph updated as each transaction arrives, whereas this pipeline computes per-account scalar aggregates. Separately, Round 24 found a train/test asymmetry worth fixing on its own merits: aggregates fitted over the whole training window mean a training row's feature includes its own future (median 46.4% of an account's out-degree accrues after the transaction), while test rows get the same table as a stale past. A causal prior-at-time computation measured 1.45x AUPRC over the shipped approach at matched feature count. Full workings: references/finance-gap-investigation.md. The evaluation is strictly inductive; reported as measured, not adjusted to close the gap.",
-          "data_digest": "1e28652402bec78a",
+          "auroc": 0.9525582593503528,
+          "baseline_gap_note": "Minority-class F1 0.1519 against the published 0.6323. Round 24 measured the causes rather than assuming them, and then closed the one that was actionable. RULED OUT: the decision threshold (0.6323 needs AUPRC >= ~0.40, so it is unreachable at any threshold - a ranking gap, not a tuning gap) and accounts unseen in the training window (0.39% of test rows). RULED OUT as a main cause: the 4-hop reachability limit against the corpus's 10-hop CYCLE attempts - the Graph Feature Preprocessor paper (arXiv:2402.08593) caps the multi-hop cycle and scatter-gather contribution at 'up to 4%' relative while attributing 'more than 30%' to fan-in/fan-out, which this project already implements. FIXED: the per-account aggregates were fitted with a groupby over the whole training window, so a training row's feature included its own future (median transaction had only 46.4% of its out-degree accrued by its own timestamp) while test rows got the same table as a stale past - the booster was fitted on one distribution and scored on another. Prior-at-time aggregates removed the asymmetry and lifted minority-class F1 from 0.0808 to 0.1519 (+88%), AUPRC 0.0732 to 0.1233 (+68%), AUROC 0.8980 to 0.9526, with NO leakage - verified by truncation, every causal feature being bit-identical whether or not later rows exist. WHAT REMAINS: IBM's Graph Feature Preprocessor ships in snapml under a Proprietary licence and is excluded by this project's commercial-OK-only rule; the mechanism that matters is architectural rather than legal - GFP computes per-transaction subgraph patterns over a graph updated as each transaction arrives, whereas this pipeline computes per-account scalars plus training-window structural features. Full workings: references/finance-gap-investigation.md. Reported as measured; not adjusted to close the gap.",
+          "data_digest": "0dfc7207d92b892c",
           "dataset": "IBM AMLworld HI-Small",
-          "decision_threshold": 0.928426,
+          "decision_threshold": 0.386869,
           "export": {
-            "fp32_bytes": 4606582,
+            "fp32_bytes": 4706288,
             "int8_skipped_reason": "tree ensemble: parameters live in node attributes, not weight tensors, so dynamic int8 quantisation has nothing to quantise",
             "opset": 0
           },
-          "git_sha": "c3f4c1b-dirty",
-          "hf_revision": "c46157c27e649413ef589d1edbc3404b40a17d76",
-          "minority_class_f1": 0.08077786088257292,
+          "git_sha": "5aefc6b-dirty",
+          "hf_revision_invalidated_by_retrain": "c46157c27e649413ef589d1edbc3404b40a17d76",
+          "minority_class_f1": 0.15194805194805194,
           "n_test": 1523504,
           "n_train": 3554841,
           "positive_rate": 0.00101943,
           "split": "temporal, inductive",
-          "wall_clock_s": 77.5
+          "wall_clock_s": 84.7
         },
         "architecture": "GFP (graph features) + XGBoost",
         "artifacts": [
@@ -249,8 +249,8 @@
           "url": "https://www.kaggle.com/datasets/ealtman2019/ibm-transactions-for-anti-money-laundering-aml"
         },
         "hf_repo_id": "Daemons-Q/qsh-finance-aml-gbm",
-        "hf_revision": "c46157c27e649413ef589d1edbc3404b40a17d76",
-        "hf_revision_stale": null,
+        "hf_revision": null,
+        "hf_revision_stale": "c46157c27e649413ef589d1edbc3404b40a17d76",
         "key": "finance_aml.gbm",
         "label": "Graph-feature-preprocessed gradient boosting",
         "metric": {
@@ -272,20 +272,20 @@
       },
       {
         "achieved": {
-          "agreement": 0.884055,
+          "agreement": 0.842369,
           "both_scored_zero": false,
-          "disagreement_on_positives": 0.643257,
-          "hf_revision": "f939eeafd376f454acb66d57e8ecb88db2c62475",
-          "metric_delta": 0.062987,
-          "metric_delta_pp": 6.2987,
+          "disagreement_on_positives": 0.850065,
+          "hf_revision_invalidated_by_retrain": "f939eeafd376f454acb66d57e8ecb88db2c62475",
+          "metric_delta": 0.133849,
+          "metric_delta_pp": 13.3849,
           "metric_name": "minority_class_f1",
           "n_eval": 1523504,
           "student_key": "finance_aml.student",
-          "student_metric": 0.017791,
+          "student_metric": 0.018099,
           "student_params": 33,
           "teacher_key": "finance_aml.gbm",
-          "teacher_metric": 0.080778,
-          "teacher_params": 138312
+          "teacher_metric": 0.151948,
+          "teacher_params": 141154
         },
         "architecture": "logistic regression distilled from the gradient-boosting teacher",
         "artifacts": [
@@ -312,8 +312,8 @@
           "url": "https://www.kaggle.com/datasets/ealtman2019/ibm-transactions-for-anti-money-laundering-aml"
         },
         "hf_repo_id": "Daemons-Q/qsh-finance-aml-ckks-student",
-        "hf_revision": "f939eeafd376f454acb66d57e8ecb88db2c62475",
-        "hf_revision_stale": null,
+        "hf_revision": null,
+        "hf_revision_stale": "f939eeafd376f454acb66d57e8ecb88db2c62475",
         "key": "finance_aml.student",
         "label": "CKKS-linear fraud student",
         "metric": {
