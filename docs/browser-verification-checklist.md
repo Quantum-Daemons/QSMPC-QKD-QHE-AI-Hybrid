@@ -1439,6 +1439,60 @@ protocol: the wiring was correct, the label function was correct, and the node s
 Read the rendered node text rather than the DOM you expect - that graph renders React Flow HTML
 nodes, and a sweep querying `svg text` returned nothing at all.
 
+## Local-green is not CI-green, and the deploy will not tell you
+
+For an entire round the local gate was `pytest -m "not slow"` + `tsc --noEmit` + `npm run build`,
+all three green, and **CI was RED on every single push**. The failure was one `ruff E702` in a file
+the blocking lint scope covers. Nine commits went out and the demo deployed correctly from every one
+of them, because the VPS pulls the git branch - not a CI artifact - so a red build deploys exactly
+as smoothly as a green one. Nothing anywhere says otherwise unless you look.
+
+The trap is that the local gate is a SUBSET of CI and the subset is invisible. CI also runs config
+parity, two lint scopes, a secrets check, a Japanese-character check, and a committed-artifact check.
+None of those is in `pytest`.
+
+| # | Check | Pass condition |
+|---|---|---|
+| CI1 | `make ci-local` before every push | exits 0; it runs all seven blocking gates in CI's own order |
+| CI2 | After pushing: `gh run list --limit 3 --branch <branch>` | conclusion is `success`, not `failure` |
+| CI3 | If red: `gh run view <id> --log-failed` | read it before deploying, not after |
+| CI4 | When adding a CI step, add it to `scripts/ci_local.sh` too | the two lists match |
+| CI5 | Never report a round "green" on local gates alone | the claim names which gates ran |
+
+**CI2 is the one that was missing.** A local gate can only ever prove what it covers; only CI proves
+CI. `make ci-local` narrows the gap but does not close it - the runner installs from
+`requirements-*.txt` on a clean ubuntu-24.04 with `HF_HUB_OFFLINE=1`, so a dependency present in the
+local venv and absent from the requirements files still passes locally and fails there.
+
+**Deploying from a red commit is not blocked by anything.** That is a deliberate property of the
+deploy path, not a bug: the VPS does `git reset --hard origin/<branch>`, which knows nothing about
+CI. So the check has to be a habit at CI2, because no machine will stop you.
+
+## Retired and orphaned Hugging Face repos
+
+Weights live on the Hub at a pinned revision, so the Hub accumulates state the repository does not.
+Two directions to check, and they fail differently:
+
+| # | Check | Pass condition |
+|---|---|---|
+| HF1 | Every registry `hf_repo` exists on the Hub | no 404 - a missing repo breaks the model dropdown |
+| HF2 | Every Hub repo under the account is referenced by the registry | no orphans, or the orphan is deleted |
+| HF3 | Every published repo is PUBLIC | `private: false` - a private repo 401s for visitors while working for you |
+| HF4 | Every model has a non-empty `hf_revision` | training clears it; see the retrain cycle above |
+| HF5 | Retired models are DELETED from the Hub, not left dangling | an unreferenced public repo is a claim nobody maintains |
+
+One command for HF2, which is the direction nothing else checks:
+
+    curl -s "https://huggingface.co/api/models?author=<account>" \
+      | python3 -c "import sys,json;[print(m['id']) for m in json.load(sys.stdin)]"
+
+then diff against the registry's `hf_repo` values. **Checked 2026-08-09: 10 Hub repos, 10 registry
+references, zero orphans, all public** - so nothing needed deleting this round. The check is recorded
+anyway, because "nothing to delete" is a result and an unchecked Hub is not the same thing.
+
+HF5 matters because a stale public model is worse than a missing one. Someone can download it, and
+it carries this project's name while reflecting a version of the code that no longer exists.
+
 ## A model can score respectably and have learned nothing - check that it predicts more than one class
 
 `medical_fl.student`, the CNN the encrypted medical path runs, emitted the SAME class for all 156
