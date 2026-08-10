@@ -42,7 +42,7 @@ a row fails or you do not recognise it.
 
 **Off the browser first** - these are commands, and they either pass or they do not:
 
-    .venv/bin/python -m pytest -q -m "not slow"        # 183 expected
+    .venv/bin/python -m pytest -q -m "not slow"        # 208 expected (measured 2026-08-10)
     cd web && npx tsc --noEmit && npm run build
     cd web && npm run check:pqc                        # FIPS 203 s7.2 + FIPS 204 sizes/round-trip
     .venv/bin/python scripts/export_config.py          # if the registry or config changed
@@ -86,8 +86,11 @@ a row fails or you do not recognise it.
 **Dated checks, because a deadline does not wait for a convenient round:**
 
     curl -s -o /dev/null -w "%{http_code}\n" https://huggingface.co/api/spaces/Daemons-Q/qsh-inference
-    # 401 -> still blocked, condition stands.  200 -> decide NOW: wire it, or delete the Space
-    #        and the `remote` ProvenanceBadge tier together (unlock was due ~2026-09-01).
+    # 401 -> still blocked, condition stands.  200 -> decide NOW: wire the Space, or delete it.
+    #        (unlock was due ~2026-09-01). The `remote` ProvenanceBadge tier this used to say to
+    #        delete alongside it was ALREADY removed in Round 24d - ProvenanceBadge.tsx now exports
+    #        only measured-webgpu | measured-wasm | measured-js | simulated. Half of this
+    #        instruction had already been carried out and the note had not noticed.
 
 EU AI Act Art. 50(2), machine-readable marking of synthetic text: **CLOSED as not-applicable**,
 not as done. The Agentic AI panel emits 96 tokens (Transformers.js) or 160 (WebLLM), both under the
@@ -527,7 +530,7 @@ each other and with what was selected.
 | Optimize QKD (OptiQKD) | OptiQKD suffix on the QKD arrow with the measured percentage | improvement and convergence lines | `qkd_skr_improvement_pct`, `qkd_convergence_evals` |
 | OptiQKD samples | (via the suffix) | budget line | collapses in 8-wide buckets; saturates near 400 |
 | QKD channel (pulses, distance, eve, misalignment) | QBER on the arrow | channel line | `qber`, `skr`, `secure_key_bits` |
-| Free-space channel (downlink km, sat eve, sat pulses, QSDC abort threshold) | free-space arrow QBER, and the QSDC arrow must show the ABORT when it fires | "QSDC ABORTED: error X > threshold - telemetry withheld" | `qsdc_error_rate`, `qsdc_secrecy_capacity`, `qsdc_eavesdrop_detected` |
+| Free-space channel (downlink km, sat eve, sat pulses) | free-space arrow QBER, and the QSDC arrow must show the ABORT when it fires | "QSDC NOT AVAILABLE on this link - secrecy capacity ... The limit is the link budget, not an attack" (loss-limited, which is the default state) or "QSDC ABORTED: secrecy capacity ... the loss is attributable" (Eve-limited) | `qsdc_error_rate`, `qsdc_secrecy_capacity`, `qsdc_eve_gain_g`, `qsdc_link_budget_limited`, `qsdc_eavesdrop_detected` |
 | QRNG (bits, extractor, eps) | not drawn | delivered-bits line, shortfall explained | `qrng_bits_delivered`, `qrng_lhl_max_bits`, `qrng_extraction_rate`, `qrng_health_conclusive` |
 | Quantum / run (qubits, seed) | QSMPC comparison bar | T-gate line | `t_gate_count`, `qubits`; seed changes every downstream value |
 | IDS (samples per class) | QML-IDS step macro-F1 | training line naming the value actually used | `ids_macro_f1`, `ids_train_per_class` |
@@ -629,10 +632,14 @@ The distinction that matters is between a fallback and a *report*. Declining a s
 and using wasm is a fallback and correct - the run says which provider it used. Substituting the
 bundled linear model when a published model fails to load is the same shape and is NOT correct,
 because the page then shows a number for a model it never ran; that path now reports the failure and
-shows nothing in its place. Two live `except Exception: pass` sites remain, both narrow and both
-recorded: `usecases/medical_fl/__init__.py:168` (cosmetic SHAP feature names) and
-`benchmark/gpu_mpc_adapter.py:57` (an optional GPU subprocess whose absence is handled two lines
-later).
+shows nothing in its place. **Three** live `except Exception: pass` sites remain, not two, and the third is not cosmetic:
+`usecases/medical_fl/__init__.py:213` (cosmetic SHAP feature names - this was recorded as :168, which
+is a different `except` returning 1), `benchmark/gpu_mpc_adapter.py:57` (an optional GPU subprocess
+whose absence is handled two lines later), and the one that was never recorded,
+`config/__init__.py:66` - `pass  # malformed config => fall back to defaults`. That last one
+swallows a malformed `config.yaml` and silently returns defaults, which would make the
+config-to-bundle procedure prescribed in this same section report "the page did not move" when the
+real cause is that the config never parsed.
 
 **Then confirm in the browser**, because a config value can reach the bundle and still not be read -
 which is precisely the bug above. Capture each use-case page, change the parameter, capture again,
@@ -898,17 +905,27 @@ half the published one - 0.0568 against 0.11, 0.0755 against 0.15. That is close
 a fitting or units discrepancy and wrong enough to make the comparison meaningless. `q_sift` is an
 explicit field for this reason, and a test asserts the factor of two so it cannot drift.
 
-### Free-space channel (satellite: `pp-sat_distance_km`, `pp-sat_eve`, `pp-sat_pulses`, `pp-qsdc_threshold`)
+### Free-space channel (satellite: `pp-sat_distance_km`, `pp-sat_eve`, `pp-sat_pulses`)
 
-Loss must rise with distance and the reported dB must appear in the diagram label. Measured at Eve
-0.4: 24.5 dB, QBER 0.13, 0 secure bits, step marked failed; QSDC then aborted with "error 0.13 over
-threshold - telemetry withheld". The abort keeps its tick, correctly - aborting IS the protocol
-working, and the label says ABORTED unambiguously.
+Loss must rise with distance and the reported dB must appear in the diagram label. The abort keeps
+its tick, correctly - aborting IS the protocol working, and the label says so unambiguously.
 
-Open question recorded rather than silently changed: `pp-qsdc_threshold` defaults to **0.11**, the
-textbook BB84 figure, which sits above the GLLP zero-key point. QSDC is a different protocol with its
-own security analysis, so 0.11 is not automatically wrong there - but it has not been traced to a
-QSDC source, and it should be.
+**`pp-qsdc_threshold` is gone, and the open question about it is closed.** It defaulted to 0.11, the
+loss-free root of the secrecy-capacity expression, which is why it coincided exactly with
+Shor-Preskill and looked derived. The browser was corrected to abort on `Cs = 1 - h(e) - g h(e)`
+with `g = 10^(loss_dB/10)`, at which point **nothing read `config.qsdc_threshold` any more and the
+control became inert** - it sat in ParameterPanel moving no surface for several rounds. It has been
+removed; under the corrected criterion there is no QBER threshold to set. Round 24m also finished
+the other half: `src/qsh/qkd/qsdc.py` had kept the old fixed-QBER criterion the whole time, so the
+Python and browser paths disagreed about whether the same link delivers.
+
+**What to expect now, and it is not a bug:** this downlink is loss-limited at EVERY setting.
+Measured on the deployed page, secrecy capacity -51.58 at 24.5 dB with g=280.4 and no eavesdropper.
+The fixed 5 dB atmospheric + 3 dB pointing budget alone gives g = 6.31, where `Cs > 0` needs QBER
+below ~0.019 against a 0.025 misalignment floor - so `sat_distance_km` cannot produce a delivery at
+any position. Check that the log says NOT AVAILABLE / link budget, and that
+`qsdc_eavesdrop_detected` is **0** while `qsdc_link_budget_limited` is 1. The old behaviour reported
+an eavesdropper on a clean channel on every single run.
 
 ### Every panel that restates a run parameter must restate the RUN's value
 
@@ -936,8 +953,14 @@ first does not fix the second.
 Each option must produce a run whose diagram names the model AND its commit hash, so the artefact is
 identifiable. Measured: "published finance_aml.gbm @ c46157c27e64 - onnx-wasm - 1x32 - 0.34 ms -
 class 0". Check the hash against the registry, and check that selecting a different option changes
-it. Note that telecom and genomics ship no selector because they publish a single model; confirm
-that is still true rather than assuming it.
+it. Note that telecom and genomics ship no selector, but for DIFFERENT reasons, and the reason matters:
+telecom publishes exactly one model, while **genomics publishes none at all**. `genomics.prs` carries
+`hf_repo=None` (registry.py, "publication blocked pending the per-score licence audit"), and
+`onnxInference.ts` drops any spec without an `hf_repo_id`, so `browserModels("genomics")` returns an
+empty list - which is also why the in-run verification chart never fires there and the ancestry
+strata chart exists instead. A verifier told the reason is "publishes a single model" will confirm
+the wrong fact about genomics. `PipelineControls.tsx` states it correctly in a comment: "telecom
+publishes one, genomics none".
 
 ### OptiQKD (`sel-optiqkd`) and the key-mixing checkbox
 
@@ -1009,7 +1032,13 @@ only at the computation site.
 
   Measured 2026-08-08: comm 6145.8, latency 3396.03, security 1.5 -> raw 10.65, and the page printed
   `raw 10.65 (clamped to 0-10)`. Exact.
-- The legacy 0-100 composite is retained below, and must be visibly demoted and labelled retired.
+- The legacy 0-100 composite is **not rendered at all** - do not go looking for something to
+  confirm is demoted. `BenchmarkPanel.tsx` prints "The 0-100 composite that used to sit here is
+  retired and no longer rendered" and "There is no composite", and the detailed-results table renders
+  a fixed column list that excludes it. `securityScore()` survives in `clientCompute.ts` only to
+  build benchmark rows; no component reads it. What to check is that the composite is still ABSENT,
+  which is the opposite of what this line used to ask for. It also contradicted this document's own
+  "The score is gone" a few hundred lines earlier.
 
 ### QKD control plane - ETSI GS QKD 015
 
