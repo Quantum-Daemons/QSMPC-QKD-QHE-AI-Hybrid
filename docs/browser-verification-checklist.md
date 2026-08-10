@@ -1641,6 +1641,57 @@ clean.
 T2 is the one an automated check gets wrong. `license: null` from the GitHub API means all rights
 reserved, and a naive check that only fails on a deny-list of SPDX identifiers passes it.
 
+## A reproducible number measured on contaminated rows is still contaminated
+
+The finance evaluation sample carried a near-perfect label leak, and every gate this project has was
+green the whole time. The payload was well-formed. The browser re-scored it and matched the recorded
+expectation. `make ci-local` passed. None of that is evidence about the ROWS.
+
+What was wrong: the sample was built from `nrows=400_000` of AMLworld HI-Small. That corpus is
+time-sorted for background traffic, but IBM's injected laundering rows carry timestamps spanning the
+whole period while sitting early in the file. So the first 400k rows are 99.97% hours 0-2
+(344,209 / 33,144 / 22,472) with roughly 175 rows across hours 3-23, a large share of them
+laundering. Sampling negatives uniformly from that head reproduces its shape exactly - predicted
+6,924 / 667 / 452 against observed 6,912 / 661 / 470 - so in the shipped sample **negatives held 3
+distinct hour values and positives held 22**, and `hour_of_day >= 3` implied laundering at 100%
+precision.
+
+Measured, not asserted. `hour_of_day` alone scored AUC-PR 0.7104 against a 0.0192 base rate, a 37x
+lift. On the shipped ONNX the in-browser figure was 0.5100, falling to 0.4398 permuted and 0.4479
+zeroed - so **13.8% of the verification number came from the truncation**.
+
+**The source corpus is innocent, and checking that mattered.** Across all 5,078,345 rows both classes
+span all 24 hours and the laundering rate moves only 0.00028 to 0.00174. Had the leak been in
+AMLworld it would be a dataset caveat; being in the sampling made it this project's defect.
+
+**Scope, stated precisely because it is easy to overstate.** This contaminated the BROWSER
+VERIFICATION figure, not the headline result. `models/metrics.json` records minority-class F1 0.1519
+on the real temporal test split of 1,523,504 rows at a 0.00102 positive rate, and that number never
+touched the leaked sample.
+
+| # | Check | Pass condition |
+|---|---|---|
+| LK1 | No single feature separates an evaluation sample on its own | per-column ROC AUC < 0.90; the generator warns |
+| LK2 | A sample is never drawn from the HEAD of a sorted corpus | read the whole file, or sample across it |
+| LK3 | A leak found in a sample is checked against the SOURCE before blaming the dataset | here the source was clean and the generator was not |
+| LK4 | Stratified prevalence is a stated target, not a side effect of an expression | `want // 4` silently became 25% once the truncation was lifted |
+| LK5 | Fixing the generator is not fixing the demo | the browser fetches `eval_sample.json` from HF at a pinned revision |
+
+**LK4 is the trap inside the fix.** Removing the truncation made 5,177 positives reachable, so
+`take_pos = want // 4` jumped from 149 (1.82%, capped by scarcity) to 2048 - a 25%-laundering
+sample. The expression had produced a defensible balance by accident and stopped doing so the moment
+its input changed. It is now an explicit 2% target.
+
+**LK1's first implementation was wrong and is worth recording.** It tested whether positives occupied
+values no negative took. That is sound for a low-cardinality index like an hour and nonsense for a
+continuous float - it flagged `amount_paid_log` at 99.7% purely because distinct doubles rarely
+collide. Rewritten as per-column ROC AUC, which does not care about cardinality.
+
+**LK5 is why this round did not close the issue.** `onnxInference.ts` derives the sample URL from the
+model URL, so the browser reads it from Hugging Face at the pinned revision. The generator is fixed
+and the local artefact is regenerated, but the deployed demo keeps serving the leaked sample until
+the model repos are re-uploaded and re-pinned.
+
 ## Real data next to the model's own numbers, and the licence that decides whether it can ship
 
 A score plotted alone cannot distinguish a good model on easy data from a mediocre model on hard
