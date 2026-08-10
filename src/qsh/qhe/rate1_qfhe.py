@@ -12,6 +12,23 @@ ratio approaches 1* ("rate-1") -- decisive for transferring large encrypted stat
 (e.g. medical images). This module wires QOTP (:mod:`~qsh.qhe.qotp`) to a classical
 key-encapsulation stand-in and reports the achieved rate, the metric the benchmark
 tracks (target <= 1.2).
+
+WHAT THIS MODULE IS NOT, stated because the name promises more than the code delivers.
+There is **no ``Eval``**. The public surface is ``encrypt_state``,
+``ciphertext_to_plaintext_ratio`` and ``decrypt_state`` - encrypt, ship, decrypt. Homomorphic
+evaluation is the entire point of the Chardouvelis-Doettling-Malavolta construction, and it
+requires homomorphically UPDATING the encrypted Pauli keys as the circuit is applied; none of that
+is here. What is implemented is **rate-1 quantum transport**: a QOTP-encrypted state whose keys
+travel under a hybrid KEM, at a measured ct/pt ratio.
+
+The FHE half is a self-declared stand-in, not an FHE scheme - the QOTP key is masked with a pad
+derived from a hybrid-KEM shared secret. That is stated in ``encrypt_state`` and repeated here
+because a reader who only skims the module header would otherwise take "Rate-1 QFHE" at face value.
+
+The measured ratio is size-dependent and approaches 1 from above, because the encapsulated key is a
+fixed ~1135 bytes while the state grows: **1.2769 at 8 qubits, 1.0693 at 10, 1.0173 at 12**. The
+1.32 figure in ``config/defaults.py`` is the LITERATURE value feeding a static Overview KPI, not a
+measurement of this code.
 """
 
 from __future__ import annotations
