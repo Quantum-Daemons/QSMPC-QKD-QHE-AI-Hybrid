@@ -1,0 +1,21 @@
+{\scriptsize
+\begin{longtable}{p{2.5cm}p{5.2cm}p{6.2cm}}
+\caption{Eight classes of silent defect, all found in a working system with green tests}\\
+\toprule
+\textbf{Class} & \textbf{What it was} & \textbf{Why nothing caught it} \\
+\midrule
+\endfirsthead
+\toprule
+\textbf{Class} & \textbf{What it was} & \textbf{Why nothing caught it} \\
+\midrule
+\endhead
+\textbf{Constant predictor} & medical CKKS student emitted one class for all 156 test images & accuracy 0.7308 equalled the majority rate exactly; AUC 0.354, below random \\
+\textbf{Inverted class labels} & four sites asserted the opposite of MedMNIST's own metadata & the demo displayed the opposite diagnosis to the model's output \\
+\textbf{Sampler misalignment} & shuffled DataLoader output paired positionally with dataset order & teacher/ground-truth agreement 0.6227, inside the permutation null \\
+\textbf{Wrong baseline row} & cited ESA-ADB Table 2 (all events) for an anomalies-only task & like-for-like row is Supplementary Table 9 at 0.968, not 0.786 \\
+\textbf{Uncorrected metric} & reported uncorrected event-wise F0.5 against a corrected baseline & ESA-ADB multiplies event precision by the time-level TNR \\
+\textbf{Licence divergence} & published artefact recorded ImageNet weights; two docs said random & publish now refuses any model whose manifest records a pretrained source \\
+\textbf{Guard too narrow} & both\_scored\_zero required BOTH models at zero & teacher 0 vs student 0.0032 rendered as the encrypted model beating its teacher \\
+\textbf{Manufactured margin} & treat-all evaluated at a different threshold from the model & a zero margin reported as +0.2308; caught by the degeneracy guard \\
+\bottomrule
+\end{longtable}}
