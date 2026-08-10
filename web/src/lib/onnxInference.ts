@@ -625,6 +625,12 @@ export async function evaluatePublishedModel(
       const mae = count ? err / count : NaN;
       const persistenceMae = count ? persist / count : NaN;
       const exp = file.expected.mae ?? null;
+      // Channel 0 predicted against actual across the scored windows. A forecaster's MAE says how
+      // far off it is on average; this says WHERE - whether the error is uniform drift or a few
+      // large misses, which is the difference between a miscalibrated model and a missed event.
+      const series = Array.from({ length: Math.min(n, 240) }, (_, i) => ({
+        i, actual: (file.targets?.[i] ?? [])[0] ?? 0, predicted: data[i * width] ?? 0,
+      }));
       return {
         ran: true, task, metricName: "mae", n, score: mae, expected: exp,
         baseline: file.expected.persistence_mae ?? persistenceMae,
@@ -632,6 +638,7 @@ export async function evaluatePublishedModel(
         matchesExpected: exp == null ? false : Math.abs(mae - exp) <= Math.max(tolerance, exp * 0.1),
         backend: status.backend, bytes: status.bytes, provenance: file.provenance,
         note: file.expected.note ?? null, error: null,
+        plot: { kind: "forecast", series },
       };
     }
 
@@ -714,7 +721,7 @@ export async function evaluatePublishedModel(
         beatsBaseline: f1 > allPositive,
         matchesExpected: Math.abs(f1 - exp) <= tolerance,
         backend: status.backend, bytes: status.bytes, provenance: file.provenance,
-        note: file.expected.note ?? null, error: null,
+        note: file.expected.note ?? null, error: null, plot,
       };
     }
 
@@ -757,7 +764,7 @@ export async function evaluatePublishedModel(
       beatsBaseline: majority == null ? true : accuracy > majority,
       matchesExpected: exp == null ? false : Math.abs(accuracy - exp) <= tolerance,
       backend: status.backend, bytes: status.bytes, provenance: file.provenance,
-      note: file.expected.note ?? null, error: null,
+      note: file.expected.note ?? null, error: null, plot,
     };
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);

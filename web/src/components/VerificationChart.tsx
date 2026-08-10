@@ -108,5 +108,32 @@ export function VerificationChart({ res, modelKey }: { res: ModelEvalResult; mod
     );
   }
 
+  if (plot.kind === "forecast" && plot.series?.length) {
+    return (
+      <figure className="chart-figure">
+        <figcaption className="muted small">
+          Channel 0, predicted against actual over {plot.series.length} scored windows for{" "}
+          <code>{modelKey}</code>. MAE {res.score?.toFixed(4)} against a persistence baseline of{" "}
+          {res.baseline?.toFixed(4)}. The error's SHAPE matters: uniform drift is a miscalibrated
+          model, a few large misses are missed events.
+        </figcaption>
+        <ResponsiveContainer width="100%" height={190}>
+          <LineChart data={plot.series} margin={{ top: 4, right: 8, bottom: 4, left: -18 }}>
+            <CartesianGrid stroke={GRID} strokeDasharray="2 4" />
+            <XAxis dataKey="i" tick={AXIS} />
+            <YAxis tick={AXIS} />
+            <Tooltip contentStyle={{ background: "#161b26", border: `1px solid ${GRID}`, fontSize: 11 }}
+                     formatter={(v: number) => v.toFixed(4)} />
+            <Legend wrapperStyle={{ fontSize: 10 }} />
+            <Line type="monotone" dataKey="actual" stroke="#8a94a6" dot={false} strokeWidth={1.4}
+                  isAnimationActive={false} name="actual" />
+            <Line type="monotone" dataKey="predicted" stroke="#4f9dff" dot={false} strokeWidth={1.6}
+                  isAnimationActive={false} name="predicted" />
+          </LineChart>
+        </ResponsiveContainer>
+      </figure>
+    );
+  }
+
   return null;
 }
