@@ -89,9 +89,13 @@ a row fails or you do not recognise it.
     # 401 -> still blocked, condition stands.  200 -> decide NOW: wire it, or delete the Space
     #        and the `remote` ProvenanceBadge tier together (unlock was due ~2026-09-01).
 
-EU AI Act Art. 50(2), machine-readable marking of synthetic text: **2026-12-02**. The Agentic AI
-panel generates text with an in-browser LLM, so it is in scope, and nothing implements marking.
-Decide between C2PA Content Credentials and a documented in-band marker before it is urgent.
+EU AI Act Art. 50(2), machine-readable marking of synthetic text: **CLOSED as not-applicable**,
+not as done. The Agentic AI panel emits 96 tokens (Transformers.js) or 160 (WebLLM), both under the
+Code of Practice's 200-token "very short text" exception, so no marking layer is owed and the
+C2PA-versus-in-band choice never opens. What stays live is the trip-wire, not the deadline - re-check
+if the panel exceeds **200 tokens**, if generated text ships inside a file container, or if C2PA text
+bindings become implementable (spec 2.4 defines them; no conforming product implements them yet).
+Workings in [`ai-act-art50-gap-analysis.md`](ai-act-art50-gap-analysis.md).
 
 Record what you observed in [`verification-log.md`](verification-log.md), with the date and the
 bundle hash. A tick is not a result.
@@ -1626,6 +1630,15 @@ value of checking was in learning not to.
 | M2 | The motivation cites a primary source that says it in its own words | an operator, regulator or benchmark author, quoted |
 | M3 | The most obvious-sounding justification is checked against the regulation TEXT | not against what everyone says it says |
 | M4 | Any novelty claim survives an adversarial search for prior art | search for the thing, then search for who already did it |
+
+| M5 | A cited dollar figure comes from the contract system of record, not a press release | USASpending obligated value, not a vendor ceiling |
+
+M5 came out of checking defence-space programs this project does not cite and now knows not to: the
+widely repeated "$640M Digital Bloodhound contract" is a contractor-stated ceiling against
+**$128.6M actually obligated** (USASpending PIID 47QFMA24F0023), and a Space Systems Command article
+citing its own "$17 million" zero-trust award sits against **$5.15M obligated** (PIID FA880223C0002).
+Both figures are real numbers about real contracts and both are roughly 5x and 3x the money that
+exists. An agency's own press office is not a primary source for its own spending.
 
 M4 separated two claims that felt equally safe. Encrypted inference on housekeeping telemetry for
 anomaly detection: zero verified prior work, a real gap. Encrypted **conjunction assessment**: a
