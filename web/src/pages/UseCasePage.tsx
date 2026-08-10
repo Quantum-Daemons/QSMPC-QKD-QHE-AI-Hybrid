@@ -1,3 +1,4 @@
+import { VerificationChart } from "../components/VerificationChart";
 import { useRef } from "react";
 import { Link, useParams } from "react-router-dom";
 import AgenticAIPanel from "../components/AgenticAIPanel";
@@ -134,8 +135,29 @@ function UseCaseView({ usecase }: { usecase: string }) {
           used to sit forty lines below and offer the same run again with different chrome. */}
       <ModelPanel usecase={usecase} />
 
-      {/* XAI: signed SHAP attribution for the inference use cases */}
-      {meta.inference && (
+      {/* XAI: signed SHAP attribution.
+          Gated on an explanation EXISTING, not on `meta.inference`. The flag meant "has a
+          classical-vs-quantum private-inference path", which is a different question: satellite runs
+          a genuinely linear anomaly model and its attribution was computed and then dropped on the
+          floor because the flag said no. Ask whether there is something to show. */}
+      {/* What the in-run verification measured, drawn. Gated on a plot EXISTING rather than on the
+          task type: a model whose sample ships no labels produces no plot and should render nothing
+          rather than an empty axis. */}
+      {artifacts?.verification?.plot ? (
+        <div className="card">
+          <h3 style={{ marginTop: 0 }}>Verification, this run</h3>
+          <p className="muted small" style={{ marginTop: -4 }}>
+            Re-scored in this tab on the model's own published held-out sample. Charts are drawn from
+            the same arrays the metric was computed on.
+          </p>
+          <VerificationChart
+            res={artifacts.verification as never}
+            modelKey={String(artifacts.verification.modelKey ?? "")}
+          />
+        </div>
+      ) : null}
+
+      {artifacts?.explanation?.top_features?.length ? (
         <ShapPanel
           explanation={artifacts?.explanation}
           provenance={artifacts?.explanation_provenance ?? null}
@@ -143,7 +165,7 @@ function UseCaseView({ usecase }: { usecase: string }) {
           publishedModel={metrics?.published_model ? String(metrics.published_model) : null}
           surfaced={String(run.params.inference ?? "")}
         />
-      )}
+      ) : null}
 
       {/* Unified benchmark: auto-filled from the single Run above (no separate "Run benchmark" button).
           The MPC-FHE row is the live run's measured FHE-linear/MPC-non-linear split. */}
@@ -213,6 +235,29 @@ function UseCaseView({ usecase }: { usecase: string }) {
           <i> Zhang et al.</i> (npj Quantum Information 2026). See <code>references/</code>.
         </div>
       </div>
+
+      {/* Run status, visible from anywhere on the page.
+          This page is about 7.3 viewport-heights tall and its whole point is watching a live run,
+          but the status badge lives in the controls card at the top and scrolls out of view almost
+          immediately. A visitor reading the benchmark or the posture table - which is where the
+          interesting output is - had no way to tell whether the run was still going, had finished,
+          or had stopped. Only the sidebar was sticky.
+
+          Rendered only while it carries information: during a run, and while paused. It disappears
+          on idle and once a completed run has been read, so it adds no permanent chrome to a page
+          that is already long. */}
+      {(run.running || run.paused) && (
+        <div role="status" aria-live="polite"
+          style={{
+            position: "fixed", right: 16, bottom: 16, zIndex: 50,
+            background: "var(--panel)", border: "1px solid var(--accent)", borderRadius: 10,
+            padding: "8px 14px", boxShadow: "0 4px 18px rgba(0,0,0,.45)",
+            display: "flex", alignItems: "center", gap: 10, fontSize: 12,
+          }}>
+          <span className={`badge-state ${run.state}`}>{run.state}</span>
+          {run.active ? <span className="muted"><code>{run.active}</code></span> : null}
+        </div>
+      )}
     </div>
   );
 }

@@ -18,6 +18,14 @@ capabilities, computes paths and allocates key-generation resources per link. Th
     control      SDN controller + KME/KMS   -- GS QKD 015, 018; ITU-T Y.3804, Y.3805
     quantum      QKD modules + SDN agent    -- GS QKD 004, 014, 020
 
+Those three name the specs that GOVERN the quantum plane, not the ones implemented here. This
+project implements **014** (`kme.py`) and **015** (this file). It does not implement **004**,
+which is a different thing rather than a subset: 014 is a stateless REST request for key material
+by identifier, while 004 is a stateful application interface where an application opens a keyed
+session and streams against it. An application written for one does not work against the other -
+which is why the 2026 banking deployment in arXiv:2604.12985 had to integrate 004, 014 and a
+vendor-specific third interface to cover one network. See `docs/pqc-roadmap.md`.
+
 Identifier spellings below are taken verbatim from the published YANG modules at
 https://forge.etsi.org/rep/qkd/gs015-ctrl-int-sdn (``etsi-qkd-sdn-node.yang`` and
 ``etsi-qkd-node-types.yang``, revision 2022-01-30, BSD-3-Clause) -- ``qkdn_id``, ``qkdl_id``,

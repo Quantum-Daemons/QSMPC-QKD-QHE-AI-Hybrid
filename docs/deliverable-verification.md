@@ -66,7 +66,7 @@ Eight gates. Steps 1-3 and 5-8 are pass/fail; step 4 is a loop that runs until c
    demo prints is coarsened and invalid. Zero `/api` calls in demo mode, verified in the network
    panel rather than by reading code.
 4. **Content, in Chrome, every page** - four axes, iterated until clean. The executable form of this
-   gate is `browser-verification-checklist.md`: seven routes including two negative paths, fourteen
+   gate is `browser-verification-checklist.md` (results recorded in `verification-log.md`): seven routes including two negative paths, fourteen
    regions per use-case page, eight axes, and the numeric edges to type into every field. It is a
    file rather than a habit because what gets reconstructed from memory each round is whatever
    someone remembers to look at.
@@ -337,3 +337,77 @@ point of 0.098106. Either find the QSDC source or replace the default with one t
 
 Neither is user-visible today. Both are the kind of item that becomes a finding two rounds later if
 it is not written down.
+
+## Dated and dropped items, checked in Round 24
+
+**ZeroGPU: DECIDED 2026-08-10, and the decision is not to wire it.** Round 22 set the condition as
+"when the account unlocks, wire it or delete the Space and the `remote` tier together", and it must
+not appear in a fifth deferred list unqualified. It appeared in five. The unlock is still pending -
+the Space returns **HTTP 401** and the org space listing is empty - so waiting would produce a sixth.
+
+The condition was framed around availability and the real question is architectural. **This demo's
+stated property is that it computes privacy-preserving inference in the browser with zero VPS
+compute.** A remote GPU inference tier does not extend that; it contradicts it. The number a REMOTE
+badge would carry - "computed off this machine, timing includes network latency" - is the one claim
+the public demo exists to avoid making. So the unlock date was never the blocker, and treating it as
+one is what let this ride for five rounds.
+
+Executed: the `remote` member is deleted from `ProvenanceBadge` (nothing set it, so no behaviour
+changes), and `t3_large` is retained but documented as an intentionally empty taxonomy slot, because
+the in-browser LLM genuinely is T3-shaped and simply is not a registry entry.
+`spaces/qsh-inference/` is KEPT as reference source and is explicitly not on any roadmap - it is not
+deleted because it is real work that predates this analysis and costs nothing to retain.
+
+**Reopening condition, stated so this is a decision and not an omission:** wire it only if the demo
+acquires a workload that genuinely cannot run client-side, and re-add the `remote` badge in the same
+commit that first sets it.
+
+The previous entry, kept for the record: the org page returned HTTP 404 and the Space HTTP 401 on
+2026-08-09, the account-age unlock (~2026-09-01) had not happened, and the condition was recorded as
+one command to re-check:
+
+    curl -s -o /dev/null -w "%{http_code}\n" https://huggingface.co/api/spaces/Daemons-Q/qsh-inference
+
+**A 401 is the blocker; a 200 is the decision point.** On 200, either wire the Space or delete it
+together with the `remote` tier - a type member nothing sets is the same defect as a metric with no
+reader, which this project treats as serious.
+
+**EU AI Act Art. 50(2) - CLOSED as not-applicable. The date was right; my correction to it was
+wrong, and that correction is retracted here.**
+
+Round 24c rewrote this entry to say the recorded 2026-12-02 was "wrong" because Article 50 became
+applicable 2 August 2026. Checked against the Official Journal text of Regulation (EU) 2026/1744:
+**2026-12-02 is correct for this system.** The recital is explicit - "it is appropriate to introduce
+a transitional period of four months for providers who have already placed their systems on the
+market before the 2 August 2026" - and that transition applies specifically to the Article 50(2)
+MARKING obligations. This demo predates 2 August 2026, so four months from that date is its
+applicable deadline. Article 50 generally applies from 2026-08-02; 50(2) marking, for pre-existing
+systems, from 2026-12-02. Both statements are true and the earlier entry had the right one.
+
+What IS correct in the Round 24c rewrite: the Annex III deferral to 2027-12-02 does not touch
+Article 50, and the C2PA-versus-in-band choice is not open because neither is needed. The obligation
+was analysed and found **not to apply** regardless of date: the panel
+emits 96 tokens (Transformers.js) or 160 (WebLLM), both under the Code of Practice's 200-token "very
+short text" exception, so no marking layer is required and therefore no detection duty is triggered.
+The full quoted chain is in [`ai-act-art50-gap-analysis.md`](ai-act-art50-gap-analysis.md), along
+with the three standing constraints that would reopen it - exceeding 200 tokens, shipping generated
+text inside a file container, or C2PA text bindings becoming implementable. C2PA is not a viable
+route today: spec 2.4 defines text bindings but all 157 entries on the Conforming Products List are
+still 2.2.
+
+**Two items that fell off the backlog without a decision**, found by reading every plan file. Both
+appeared in five consecutive plans and then simply vanished, which is the failure mode Round 22's
+backlog gate was written to catch and did not:
+
+- *The Zhang et al. QOT optics figure.* Deferred from Round 4 to Round 16, absent thereafter. What
+  was built instead is `TwoPartyDiagram.tsx`, a data-driven sequence diagram that fills from live
+  metrics. **Declined**: a static reproduction of a paper's optical bench would be a picture, while
+  the diagram that exists shows the run that actually happened. The right citation lives in
+  `references/`, not in a redrawn figure.
+- *GitHub / Google Drive MCP interop.* Deferred with the reason "needs OAuth creds and outward-facing
+  accounts that cannot be provisioned in an automated build", which is still true. **Declined**:
+  filesystem MCP interop already demonstrates that the quantum-safe channel carries a real third-party
+  MCP server, and a second connector would demonstrate the same property at the cost of credentials
+  this project should not hold.
+
+Recorded as decisions so neither reappears as a silent omission.

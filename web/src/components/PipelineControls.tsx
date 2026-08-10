@@ -53,11 +53,29 @@ export default function PipelineControls({ run }: { run: Run }) {
   // qkd_key_agreement returns before the optimise block when the PQC-only profile is selected.
   const optiqkdDisabled = qkd === "pqc-only";
 
-  const sel = (label: string, id: string, fam: string, value: string, set: (v: string) => void) => (
+  // Display names, kept separate from the registry VALUES the backend resolves. The QKD control
+  // named a protocol it does not select: its options read "bb84-decoy" and "pqc-only" while the
+  // thing that actually chooses BB84 versus E91 is `qkd_protocol` in the Parameters panel. So a
+  // visitor could leave this on "bb84-decoy", set the parameter to E91, and watch E91 run under a
+  // label saying BB84 - two controls that look like duplicates, one of which is lying.
+  //
+  // This control is a PROFILE switch: whether a quantum channel contributes key material at all.
+  // Naming it that removes both the apparent duplication and the real inconsistency, and needs no
+  // change to the registry, the config schema or the backend.
+  const DISPLAY: Record<string, string> = {
+    "bb84-decoy": "QKD + PQC hybrid",
+    "pqc-only": "PQC only (no quantum channel)",
+  };
+
+  const sel = (label: string, id: string, fam: string, value: string, set: (v: string) => void,
+               hint?: string) => (
     <>
-      <label className="muted" htmlFor={id}>{label}</label>
-      <select id={id} name={id} aria-label={label} value={value} onChange={(e) => set(e.target.value)}>
-        {(opts.families[fam] || []).map((o) => <option key={o} value={o}>{o}</option>)}
+      <label className="muted" htmlFor={id} title={hint}>{label}</label>
+      <select id={id} name={id} aria-label={label} title={hint} value={value}
+              onChange={(e) => set(e.target.value)}>
+        {(opts.families[fam] || []).map((o) => (
+          <option key={o} value={o}>{DISPLAY[o] ?? o}</option>
+        ))}
       </select>
     </>
   );
@@ -66,7 +84,10 @@ export default function PipelineControls({ run }: { run: Run }) {
     <div className="card">
       <div className="btn-row">
         {sel("KEM", "sel-kem", "kem", kem, setKem)}
-        {sel("QKD", "sel-qkd", "qkd", qkd, setQkd)}
+        {sel("Key source", "sel-qkd", "qkd", qkd, setQkd,
+          "Whether a quantum channel contributes key material at all. WHICH protocol is "
+          + "simulated - BB84 decoy-state or E91/CHSH - is a separate setting, "
+          + "`qkd.protocol` in the Parameters panel below.")}
         {/* Demo: FHE/MPC run for real in the browser → a static badge, not inert backend dropdowns.
             Full: the server-side TenSEAL/OpenFHE/MPyC selectors stay (real crypto-agility). */}
         {demo ? (

@@ -1,5 +1,38 @@
 """Satellite-communications use case: free-space QKD + QSDC over a LEO downlink.
 
+WHY THIS USE CASE EXISTS, since the line above describes a mechanism and not a problem.
+    Operators treat housekeeping telemetry as confidential, and it demonstrably blocks ML. DLR's
+    German Space Operations Centre built a synthetic-telemetry pipeline saying so outright - "since
+    satellite telemetry data are often strictly confidential, we can share these synthetic data
+    easily with our research partners" (CEAS Space Journal, 2025). ESA anonymised missions,
+    channels, telecommands and units and scaled the timeline by an undisclosed factor purely to
+    publish the benchmark this file consumes. And in 2015 a Space Data Association chairman asked
+    for secure computation in plain English: "we still protect our assets without having to know
+    what their assets are doing."
+
+    The architectural seam is specific. CCSDS 355.0-B-2 gives confidentiality "over a space link"
+    and terminates at the ground station, so telemetry is plaintext for the whole ground segment -
+    which is where processing and ML happen. That seam is where encrypted inference sits.
+
+    NOT the reason, and worth stating because it is the first thing anyone reaches for: export
+    control does NOT block this. 22 CFR 121.1 USML XV Note 3 explicitly decontrols housekeeping
+    telemetry and says encrypting it "does not, in and of itself, cause the telemetry data to become
+    subject to the ITAR". The genuine legal hook runs the other way - 22 CFR 120.54(c) states that
+    "the ability to access technical data in encrypted form does not constitute the release or
+    export", with end-to-end encryption defined as the means of decryption not being provided to any
+    third party. Export law already blesses this architecture.
+
+    AND THE HONEST REGISTER, from the same body of evidence. CISA's Space Systems Critical
+    Infrastructure Working Group (April 2024) assessed both halves of this stack: homomorphic
+    encryption schemes "have yet to be applied to space systems, and their technology readiness level
+    remains low", and QKD "has been tested in the space environment, but its technology readiness
+    level remains low". That is a US government body describing this as low-TRL in writing. It
+    corroborates the gap and it sets the expectation - this is a research demonstrator, not something
+    an operator could fly.
+
+    Full workings, including the five motivations to avoid: references/satellite-motivation-fact-check.md
+
+
 A ground station and a LEO satellite establish a PQC-first hybrid session, distribute a
 key over a **free-space BB84** downlink (high loss, atmospheric turbulence, background
 counts), then transmit mission telemetry by **Quantum Secure Direct Communication** (QSDC,
@@ -97,19 +130,27 @@ class QSDCStage(Stage):
 
         params = ctx.data.get("sat_channel")
         telemetry = str(ctx.config.get("telemetry", _DEFAULT_TELEMETRY)).encode()
-        threshold = float(ctx.config.get("qsdc_threshold", 0.11))
         res = quantum_secure_direct_comm(
-            telemetry, params, threshold=threshold, seed=ctx.config.get("seed", 0))
+            telemetry, params, seed=ctx.config.get("seed", 0))
 
         bus.metric("qsdc_error_rate", res.error_rate, self.name)
         bus.metric("qsdc_secrecy_capacity", res.secrecy_capacity, self.name)
+        bus.metric("qsdc_eve_gain_g", res.eve_gain_g, self.name)
+        bus.metric("qsdc_link_budget_limited", int(res.link_budget_limited), self.name)
         bus.metric("qsdc_eavesdrop_detected", int(res.eavesdrop_detected), self.name)
         bus.metric("qsdc_message_bits", res.message_bits, self.name)
 
-        if res.eavesdrop_detected or res.delivered is None:
+        if res.delivered is None:
             ctx.artifacts["telemetry_delivered"] = False
-            bus.log(f"QSDC ABORTED: error rate {res.error_rate:.3f} > {threshold:.2f} "
-                    f"— eavesdropper detected, telemetry withheld", self.name)
+            if res.link_budget_limited:
+                bus.log(f"QSDC NOT AVAILABLE on this link — secrecy capacity is not positive at "
+                        f"{res.loss_db:.1f} dB (g={res.eve_gain_g:.1f}) even with no eavesdropper. "
+                        f"The limit is the link budget, not an attack; error {res.error_rate:.4f}. "
+                        f"Telemetry falls back to the PQC session key.", self.name)
+            else:
+                bus.log(f"QSDC ABORTED: secrecy capacity exhausted at error {res.error_rate:.4f} "
+                        f"(g={res.eve_gain_g:.1f}, {res.loss_db:.1f} dB) — this link closes without "
+                        f"Eve, so the loss is attributable — telemetry withheld", self.name)
             return
 
         # also seal the delivered telemetry in the AEAD session for an audit record

@@ -215,6 +215,7 @@ def build_medical(rng: np.random.Generator) -> dict:
             "graph": graph,
             "accuracy": float((pred == y).mean()),
             "majority_baseline": float(max(np.bincount(y)) / len(y)),
+            **declared_metric_expectation("medical_fl.resnet18", y, pred),
             "note": ("Measured here with onnxruntime on exactly these rows. The browser must "
                      "reproduce it to within tolerance or report a mismatch rather than render it."),
         },
@@ -283,6 +284,7 @@ def build_finance(rng: np.random.Generator) -> dict:
             "graph": graph,
             "accuracy": float((pred == y).mean()),
             "majority_baseline": float(max(np.bincount(y)) / len(y)),
+            **declared_metric_expectation("finance_aml.gbm", y, pred),
             "note": ("Stratified to contain positives -- AMLworld's real prevalence is ~1 in 981, "
                      "so an unstratified draw would be all-negative and accuracy would be vacuous."),
         },
@@ -405,6 +407,7 @@ def build_satellite_opssat(rng: np.random.Generator) -> dict:
             "graph": graph,
             "accuracy": float((pred == y).mean()),
             "majority_baseline": float(max(np.bincount(y)) / len(y)),
+            **declared_metric_expectation("satellite_comms.opssat", y, pred),
             "note": ("The whole published test split, so this reproduces the benchmark's own "
                      "partition rather than a resample of it."),
         },
@@ -456,9 +459,12 @@ def build_telecom(rng: np.random.Generator) -> dict:
             "graph": graph,
             "accuracy": float((pred == np.asarray(y)).mean()),
             "majority_baseline": float(max(np.bincount(np.asarray(y, dtype=int))) / len(y)),
+            **declared_metric_expectation("telecom_ids.qml", y, pred),
             "note": ("Eight balanced classes, so the majority baseline is 1/8. The published "
-                     "comparison is per-class F1: aggregate accuracy is the metric that makes a "
-                     "broken detector look fine (Engelen et al., WTMC 2021)."),
+                     "comparison is macro F1, and that is what the in-run verification checks: "
+                     "aggregate accuracy is the metric that makes a broken detector look fine "
+                     "(Engelen et al., WTMC 2021), and it was what this sample published until "
+                     "Round 24i."),
         },
         "class_names": list(ATTACKS),
     }
@@ -499,6 +505,7 @@ def build_medical_resnet50(rng: np.random.Generator) -> dict:
         "graph": graph,
         "accuracy": float((pred == y).mean()),
         "majority_baseline": float(max(np.bincount(y)) / len(y)),
+        **declared_metric_expectation("medical_fl.resnet50", y, pred),
         "note": ("Same rows as the ResNet-18 sample. A lower number here is the reproduction, not "
                  "a failure."),
     }
@@ -528,15 +535,24 @@ def build_medical_resnet50(rng: np.random.Generator) -> dict:
 #  when these students published coefficients without their scaler.
 
 
-def _student_scaler(model_dir: str) -> tuple[np.ndarray, np.ndarray]:
-    """The PUBLISHED mean/scale, or a loud failure. Never re-fitted from data seen here."""
+def _student_scaler(model_dir: str) -> tuple[np.ndarray, np.ndarray] | tuple[None, None]:
+    """The PUBLISHED mean/scale, ``(None, None)`` if the graph scales itself, else a loud failure.
+
+    Three states, and they must not be collapsed. A student that publishes a scaler needs the caller
+    to apply it. A PIPELINE student publishes `mean: null` deliberately, because its ONNX graph owns
+    the expansion and the scaler and takes raw features - there is nothing for the caller to do, and
+    applying a scaler anyway would z-score twice. A student that publishes neither is a packaging
+    bug: the graph would silently accept wrong-scale input and answer confidently.
+    """
     w = json.loads((REPO / "models" / model_dir / "weights.json").read_text())
     inp = w.get("input") or {}
-    if "mean" not in inp or "scale" not in inp:
+    if inp.get("expansion") or (inp.get("mean") is None and inp.get("preprocessing") == []):
+        return None, None                       # graph is self-contained; feed it raw
+    if inp.get("mean") is None or inp.get("scale") is None:
         raise SystemExit(
-            f"{model_dir}/weights.json publishes no scaler, so its ONNX cannot be fed correctly "
-            f"from here. Re-run its training script with distil.save_student(..., scaler=...) and "
-            f"republish before generating a sample -- do not guess one.")
+            f"{model_dir}/weights.json publishes no scaler and declares no in-graph preprocessing, "
+            f"so its ONNX cannot be fed correctly from here. Re-run its training script with "
+            f"distil.save_student(..., scaler=...) and republish -- do not guess one.")
     return np.asarray(inp["mean"], dtype=float), np.asarray(inp["scale"], dtype=float)
 
 
@@ -546,6 +562,42 @@ def _predict(model_dir: str, x: np.ndarray) -> np.ndarray:
     out = sess.run(None, {sess.get_inputs()[0].name: x.astype(np.float32)})
     scores = next((o for o in out if getattr(o, "ndim", 0) == 2 and o.shape[1] > 1), out[0])
     return np.asarray(scores).argmax(1)
+
+
+def declared_metric_expectation(key: str, y, pred) -> dict:
+    """The metric the model is PUBLISHED with, added to `expected` so the browser verifies on it.
+
+    The in-run verification re-scores the whole sample and compares against `expected`. It picks the
+    strongest metric the sample publishes, so whatever is written here decides what "verification
+    PASS" actually asserts.
+
+    Auditing that after the verification step shipped: SIX of nine models published only `accuracy`
+    while their declared headline was minority-class F1, AUC, AUC-PR or macro F1. On finance that
+    means verifying at a 1.8% positive rate where the majority baseline is 0.9818 and the model
+    scores 0.9932 - a model predicting "clean" unconditionally passes with a 1.1pp shortfall. The
+    check was weakest exactly where this project's whole metric discipline says it matters most.
+
+    Only metrics computable from hard predictions are emitted here. AUC and AUC-PR need scores; the
+    browser HAS them (it runs the graph) but the comparison value is not written yet, and that gap
+    is recorded rather than papered over with an accuracy figure standing in for an AUC.
+    """
+    from qsh.models import metrics
+    from qsh.models.registry import get as _get
+
+    y = np.asarray(y).ravel()
+    pred = np.asarray(pred).ravel()
+    try:
+        declared = _get(key).metric.name
+    except Exception:
+        return {}
+    if declared == "minority_class_f1":
+        return {"minority_class_f1": float(metrics.minority_class_f1(y, pred))}
+    if declared == "macro_f1":
+        return {"macro_f1": float(metrics.macro_f1(y, pred))}
+    if declared == "accuracy":
+        return {}                                   # already written by every caller
+    # auc / auc_pr / event_wise_f0_5 / c_index_eur: not derivable from argmax alone.
+    return {"declared_metric_not_verifiable": declared}
 
 
 def _f1_over_baseline(y: np.ndarray, pred: np.ndarray) -> tuple[float, float, float]:
@@ -595,13 +647,16 @@ def build_medical_student(rng: np.random.Generator) -> dict:
             "page runs at 28x28, so the two are not interchangeable inputs."),
         "input": {"shape": [1, 1, 14, 14], "dtype": "float32", "preprocessing": [],
                   "layout": "samples[i] is one 14x14 image, row-major, already normalised"},
-        "classes": {"0": "benign/normal", "1": "malignant"},
+        # MedMNIST BreastMNIST: {0: malignant, 1: "normal, benign"}. onnxInference.ts renders
+        # classes[predictedClass], so inverting this list reports the OPPOSITE diagnosis.
+        "classes": {"0": "malignant", "1": "normal/benign"},
         "samples": x14.reshape(len(y), -1).tolist(),
         "labels": y.tolist(),
         "expected": {
             "graph": "model.onnx",
             "accuracy": float((pred == y).mean()),
             "majority_baseline": float(max(np.bincount(y)) / len(y)),
+            **declared_metric_expectation("medical_fl.student", y, pred),
             "note": ("The whole official test split, and the same rows the registry's recorded "
                      "student accuracy was measured on, so this reproduces that figure rather than "
                      "resampling it."),
@@ -618,8 +673,22 @@ def build_opssat_student(rng: np.random.Generator) -> dict:
 
     x, y = datasets.opssat_ad("test")
     y = np.asarray(y, dtype=int)
-    mean, scale = _student_scaler("satellite_opssat_student")
-    z = ((np.asarray(x, dtype=float) - mean) / scale).round(6)   # round BEFORE predicting
+    # The student is now a Pipeline whose ONNX graph owns its quadratic expansion AND its scaler,
+    # so it takes RAW features and there is nothing for the caller to pre-apply. Reading
+    # `input.mean` here would fail: a pipeline student publishes it as null precisely because
+    # scaling is no longer the consumer's job. Fall back to the published scaler only for a bare
+    # student, which is still the shape every other use case ships.
+    mean, _scale = _student_scaler("satellite_opssat_student")
+    if mean is None:
+        z = np.asarray(x, dtype=float).round(6)
+        layout = "samples[i] is one segment's 19 RAW features, in the order below"
+        prep_note = ("the published ONNX graph applies the quadratic expansion and the z-scoring "
+                     "itself, so these are raw feature values and the caller applies nothing")
+    else:
+        z = ((np.asarray(x, dtype=float) - mean) / _scale).round(6)   # round BEFORE predicting
+        layout = "samples[i] is one segment's 19 features, z-scored, in the order below"
+        prep_note = ("z-scored by the StandardScaler published in this student's weights.json -- "
+                     "the same transform it was distilled under, not one re-fitted here")
     pred = _predict("satellite_opssat_student", z)
     f1, all_pos, ratio = _f1_over_baseline(y, pred)
 
@@ -628,11 +697,9 @@ def build_opssat_student(rng: np.random.Generator) -> dict:
         "provenance": (
             "OPS-SAT-AD (Kotowski et al., Scientific Data 12, 2025; Zenodo "
             "10.5281/zenodo.12588359, CC BY 4.0). Real telemetry from ESA's OPS-SAT CubeSat. The "
-            "benchmark's own test partition entire and unsampled, z-scored by the StandardScaler "
-            "published in this student's weights.json -- the same transform it was distilled "
-            "under, not one re-fitted here."),
-        "input": {"shape": [1, len(mean)], "dtype": "float32", "preprocessing": [],
-                  "layout": "samples[i] is one segment's 19 features, z-scored, in the order below"},
+            "benchmark's own test partition entire and unsampled, " + prep_note + "."),
+        "input": {"shape": [1, int(z.shape[1])], "dtype": "float32", "preprocessing": [],
+                  "layout": layout},
         "feature_names": list(datasets.OPSSAT_FEATURES),
         "classes": {"0": "nominal", "1": "anomalous"},
         "samples": z.tolist(),

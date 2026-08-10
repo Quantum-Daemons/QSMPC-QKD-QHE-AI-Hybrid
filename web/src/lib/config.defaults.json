@@ -138,6 +138,17 @@
       "url": "https://github.com/khundman/telemanom"
     }
   },
+  "federated": {
+    "browser_lr": 0.15,
+    "browser_override_reason": "the browser runs a lighter schedule so a federated round completes inside a page interaction; the server-side values above are what the full deployment trains with",
+    "browser_rounds": 6,
+    "hospitals": 4,
+    "local_epochs": 1,
+    "lr": 0.05,
+    "rounds": 8,
+    "secure_aggregation": true,
+    "test_split": 0.2
+  },
   "ids": {
     "demo_n_per_class": 120,
     "n_per_class": 300,
@@ -184,27 +195,27 @@
       },
       {
         "achieved": {
-          "accuracy": 0.9983866140161103,
-          "auprc": 0.07323010834680115,
+          "accuracy": 0.9982855312490154,
+          "auprc": 0.12334101789973353,
           "auprc_baseline": 0.0015234617040716665,
-          "auroc": 0.8980183471873905,
-          "baseline_gap_note": "This reaches minority-class F1 well below the published 0.6323. Two differences account for most of it and both are deliberate. (1) The published baseline uses IBM's Graph Feature Preprocessor, which ships in `snapml` under a Proprietary licence and is therefore excluded by this project's commercial-OK-only rule; what is reimplemented here is the documented typology set (degree, fan-in/out, reciprocity, k-hop cycle closure, burst degree, scatter-gather). (2) The corpus injects CYCLE attempts of up to 10 hops (HI-Small_Patterns.txt), while reachability here is computed to 4 hops because the boolean sparse powers grow quickly beyond that. The evaluation is also strictly inductive: graph aggregates are fitted on the training window only, so no test-time edge informs a training-time feature. Reported as measured; not adjusted to close the gap.",
-          "data_digest": "1e28652402bec78a",
+          "auroc": 0.9525582593503528,
+          "baseline_gap_note": "This reaches minority-class F1 well below the published 0.6323 (GFP+XGBoost, AMLworld HI-Small, NeurIPS 2023 D&B). The cause is a feature ARCHITECTURE difference, not a tuning one: the gap is unreachable at any threshold, because measured AUPRC is far below what that F1 requires. IBM's Graph Feature Preprocessor computes per-transaction subgraph patterns over a dynamically updated graph; this project computes per-account scalar aggregates. A degree is one number per account, whereas a GFP feature is a pattern match in that transaction's own neighbourhood at the moment it arrives. GFP ships in `snapml` under a Proprietary licence and is excluded by this project's commercial-OK-only rule, but the licence is not itself the cause - the architecture is, and it is reimplementable without `snapml`, simply at more cost than renaming aggregates. Reachability is computed to 4 hops against injected CYCLE attempts of up to 10; that was previously recorded as a main cause and is NOT one - the GFP paper (arXiv:2402.08593) decomposes its own contribution and caps multi-hop cycle and scatter-gather features at about 4% relative, while fan-in/fan-out, which is reimplemented here, carries more than 30%. The evaluation is strictly inductive and temporally split. Per-account aggregates are causal (each row sees only edges strictly before it); the structural block - cycle closure, scatter-gather, bank diversity, burst degree - is still fitted on the training window, because recomputing sparse reachability at every timestep is not tractable here. Reported as measured; not adjusted to close the gap. Full workings: references/finance-gap-investigation.md.",
+          "data_digest": "0dfc7207d92b892c",
           "dataset": "IBM AMLworld HI-Small",
-          "decision_threshold": 0.928426,
+          "decision_threshold": 0.386869,
           "export": {
-            "fp32_bytes": 4606582,
+            "fp32_bytes": 4706288,
             "int8_skipped_reason": "tree ensemble: parameters live in node attributes, not weight tensors, so dynamic int8 quantisation has nothing to quantise",
             "opset": 0
           },
-          "git_sha": "c3f4c1b-dirty",
-          "hf_revision": "c46157c27e649413ef589d1edbc3404b40a17d76",
-          "minority_class_f1": 0.08077786088257292,
+          "git_sha": "89d2fca-dirty",
+          "hf_revision": "bbbe6e1c1f4bdc5c076dbfa254c372385cb17d1f",
+          "minority_class_f1": 0.15194805194805194,
           "n_test": 1523504,
           "n_train": 3554841,
           "positive_rate": 0.00101943,
           "split": "temporal, inductive",
-          "wall_clock_s": 77.5
+          "wall_clock_s": 96.8
         },
         "architecture": "GFP (graph features) + XGBoost",
         "artifacts": [
@@ -238,7 +249,7 @@
           "url": "https://www.kaggle.com/datasets/ealtman2019/ibm-transactions-for-anti-money-laundering-aml"
         },
         "hf_repo_id": "Daemons-Q/qsh-finance-aml-gbm",
-        "hf_revision": "c46157c27e649413ef589d1edbc3404b40a17d76",
+        "hf_revision": "bbbe6e1c1f4bdc5c076dbfa254c372385cb17d1f",
         "hf_revision_stale": null,
         "key": "finance_aml.gbm",
         "label": "Graph-feature-preprocessed gradient boosting",
@@ -261,20 +272,23 @@
       },
       {
         "achieved": {
-          "agreement": 0.884055,
+          "agreement": 0.982943,
           "both_scored_zero": false,
-          "disagreement_on_positives": 0.643257,
-          "hf_revision": "f939eeafd376f454acb66d57e8ecb88db2c62475",
-          "metric_delta": 0.062987,
-          "metric_delta_pp": 6.2987,
+          "disagreement_on_positives": 0.361913,
+          "hf_revision": "5f67af2cff4053137a6eb4b067e9b31530a3d8fb",
+          "metric_delta": 0.090554,
+          "metric_delta_pp": 9.0554,
           "metric_name": "minority_class_f1",
           "n_eval": 1523504,
+          "n_scoring_units": null,
+          "scoring_unit": "samples",
           "student_key": "finance_aml.student",
-          "student_metric": 0.017791,
+          "student_metric": 0.061394,
           "student_params": 33,
           "teacher_key": "finance_aml.gbm",
-          "teacher_metric": 0.080778,
-          "teacher_params": 138312
+          "teacher_metric": 0.151948,
+          "teacher_params": 141154,
+          "teacher_scored_zero": false
         },
         "architecture": "logistic regression distilled from the gradient-boosting teacher",
         "artifacts": [
@@ -301,7 +315,7 @@
           "url": "https://www.kaggle.com/datasets/ealtman2019/ibm-transactions-for-anti-money-laundering-aml"
         },
         "hf_repo_id": "Daemons-Q/qsh-finance-aml-ckks-student",
-        "hf_revision": "f939eeafd376f454acb66d57e8ecb88db2c62475",
+        "hf_revision": "5f67af2cff4053137a6eb4b067e9b31530a3d8fb",
         "hf_revision_stale": null,
         "key": "finance_aml.student",
         "label": "CKKS-linear fraud student",
@@ -389,7 +403,7 @@
           },
           "wall_clock_s": 0.0
         },
-        "architecture": "per-SNP effect-weight vector; Bayesian shrinkage (PRS-CS / LDpred2 family)",
+        "architecture": "per-SNP effect-weight vector; genome-wide-significance thresholding (P<5e-8)",
         "artifacts": [
           {
             "browser_runnable": false,
@@ -420,7 +434,7 @@
           "display": "C-index (European ancestry)",
           "name": "c_index_eur"
         },
-        "notes": "Not a neural network, and presenting a genomic foundation model as a PRS method would be the most obvious credibility hole available. Evaluation must be stratified by genetic ancestry, and what is measured here is a distribution shift, NOT an AUROC drop: an earlier revision of this note called it an AUROC drop, but 1000 Genomes is a reference panel carrying no breast-cancer case/control status, so no AUROC is computable from it and genomics_prs.py records auroc=null rather than inventing one. The finding is the by_super_population.*.frac_above_global_cut rows listed above: one globally-set high-risk cut flags a far larger share of AFR than of EUR, a gap driven by allele-frequency differences rather than by risk. Read those rows, not this sentence - they are recomputed on every training run, so no figure quoted in prose here can drift away from them. The published European AUROC baseline comes from a phenotyped cohort that is access-controlled, which is why it cannot be reproduced on this page.",
+        "notes": "Not a neural network, and presenting a genomic foundation model as a PRS method would be the most obvious credibility hole available. Evaluation must be stratified by genetic ancestry, and what is measured here is a distribution shift, NOT an AUROC drop: an earlier revision of this note called it an AUROC drop, but 1000 Genomes is a reference panel carrying no breast-cancer case/control status, so no AUROC is computable from it and genomics_prs.py records auroc=null rather than inventing one. PGS000001 is Mavaddat et al. (JNCI 2015), 77 variants selected by GENOME-WIDE SIGNIFICANCE (P<5e-8) - not PRS-CS or LDpred2, which postdate it by four to five years. An earlier architecture string named that Bayesian-shrinkage family and contradicted this project's own training script, which says 77 variants from Mavaddat. The finding is the by_super_population.*.frac_above_global_cut rows listed above: one globally-set high-risk cut flags a far larger share of AFR than of EUR, a gap driven by allele-frequency differences rather than by risk. Read those rows, not this sentence - they are recomputed on every training run, so no figure quoted in prose here can drift away from them. The published European AUROC baseline comes from a phenotyped cohort that is access-controlled, which is why it cannot be reproduced on this page.",
         "onnx_domains": [],
         "params": null,
         "runs_encrypted": true,
@@ -440,13 +454,13 @@
             "int8_bytes": 11257533,
             "opset": 18
           },
-          "git_sha": "8317cb2-dirty",
-          "hf_revision": "c660dc564078353f54aeb976c25bdd8f3396f1cd",
+          "git_sha": "61b855e-dirty",
+          "hf_revision": "6c7498cda5077b20b713e9d98c46277e477fb11a",
           "macro_f1": 0.8249158249158248,
           "n_parameters": 11171266,
           "resolution": 28,
           "transfer_learning": "none \u2014 trained from random initialisation, so the weights are not ImageNet-derived and carry no ImageNet terms (see DATA_LICENSES.md)",
-          "wall_clock_s": 9.1
+          "wall_clock_s": 8.4
         },
         "architecture": "ResNet-18 @28px",
         "artifacts": [
@@ -481,13 +495,13 @@
         ],
         "browser_runnable": true,
         "dataset": {
-          "licence": "CC-BY-4.0",
+          "licence": "CC-BY-4.0 asserted by MedMNIST; the upstream BUSI grant is NOT verifiable",
           "name": "MedMNIST v2 BreastMNIST",
           "publishable": true,
           "url": "https://medmnist.com/"
         },
         "hf_repo_id": "Daemons-Q/qsh-medical-breastmnist-resnet18",
-        "hf_revision": "c660dc564078353f54aeb976c25bdd8f3396f1cd",
+        "hf_revision": "6c7498cda5077b20b713e9d98c46277e477fb11a",
         "hf_revision_stale": null,
         "key": "medical_fl.resnet18",
         "label": "ResNet-18 on BreastMNIST",
@@ -520,13 +534,14 @@
             "int8_bytes": 0,
             "opset": 18
           },
-          "git_sha": "d582944-dirty",
-          "hf_revision": "78cc561c1491c079ed8721f033617639ea0ee898",
+          "git_sha": "85209a9-dirty",
+          "hf_revision": "55a314abfa35c87136c71775653f147dc05b9535",
+          "hf_revision_invalidated_by_retrain": "cefc83e340fef2289b43e5ba616ca7c5c6b599b4",
           "macro_f1": 0.6492063492063492,
           "n_parameters": 23505858,
           "resolution": 28,
           "transfer_learning": "none \u2014 trained from random initialisation, so the weights are not ImageNet-derived and carry no ImageNet terms (see DATA_LICENSES.md)",
-          "wall_clock_s": 11.2
+          "wall_clock_s": 12.2
         },
         "architecture": "ResNet-50 @28px, 1-channel stem, trained from random initialisation",
         "artifacts": [
@@ -554,13 +569,13 @@
         ],
         "browser_runnable": true,
         "dataset": {
-          "licence": "CC-BY-4.0",
+          "licence": "CC-BY-4.0 asserted by MedMNIST; the upstream BUSI grant is NOT verifiable",
           "name": "MedMNIST v2 BreastMNIST",
           "publishable": true,
           "url": "https://medmnist.com/"
         },
         "hf_repo_id": "Daemons-Q/qsh-medical-breastmnist-resnet50",
-        "hf_revision": "78cc561c1491c079ed8721f033617639ea0ee898",
+        "hf_revision": "55a314abfa35c87136c71775653f147dc05b9535",
         "hf_revision_stale": null,
         "key": "medical_fl.resnet50",
         "label": "ResNet-50 on BreastMNIST (published comparison)",
@@ -583,20 +598,28 @@
       },
       {
         "achieved": {
-          "agreement": 0.75,
+          "agreement": 0.826923,
+          "auc": 0.788221,
+          "baseline_gap_note": "This scores far below the 0.901 ResNet-18 baseline, and the reason is capacity: 3,226 parameters over a 14x14 input is a CKKS-feasibility budget, not a diagnostic one. Round 24 found it had been WORSE than that - a constant predictor, emitting one class for all 156 test images, with accuracy 0.730769 exactly equal to the majority-class rate and AUC 0.354, below random. It was invisible because the registry declared `auc` while the record stored `accuracy`, and because this student had neither protection its teacher already had: class-weighted loss and AUC-based model selection. Both were added. Read `n_classes_predicted` and `majority_class_rate` beside the score - an accuracy equal to the majority rate is the signature of a model that learned nothing. Workings: references/medical-student-collapse-investigation.md.",
           "both_scored_zero": false,
-          "disagreement_on_positives": 0.078947,
-          "hf_revision": "77435e88ca27519f562ddcabf3301b69faf6c761",
-          "metric_delta": 0.134616,
-          "metric_delta_pp": 13.4616,
+          "disagreement_on_positives": 0.149123,
+          "hf_revision": "aa89f5130d5a11c5de02561d1d316bf8e2c8c852",
+          "majority_class_rate": 0.730769,
+          "metric_delta": 0.096154,
+          "metric_delta_pp": 9.6154,
           "metric_name": "accuracy",
+          "metric_note": "Two metrics are recorded and they answer different questions. `auc` is the registry's declared headline and is what the published baseline compares against. `student_metric`/`teacher_metric` are accuracy, because fidelity compares DECISIONS and a decision has no score to rank - so agreement and metric_delta are necessarily computed on a decision metric. Do not read the accuracy against the AUC baseline.",
+          "n_classes_predicted": 2,
           "n_eval": 156,
+          "n_scoring_units": null,
+          "scoring_unit": "samples",
           "student_key": "medical_fl.student",
-          "student_metric": 0.730769,
+          "student_metric": 0.769231,
           "student_params": 3226,
           "teacher_key": "medical_fl.resnet18",
           "teacher_metric": 0.865385,
-          "teacher_params": 11171266
+          "teacher_params": 11171266,
+          "teacher_scored_zero": false
         },
         "architecture": "1 conv block (1->4ch, 3x3), avg-pool, dense head, 14x14 input",
         "artifacts": [
@@ -624,13 +647,13 @@
         ],
         "browser_runnable": true,
         "dataset": {
-          "licence": "CC-BY-4.0",
+          "licence": "CC-BY-4.0 asserted by MedMNIST; the upstream BUSI grant is NOT verifiable",
           "name": "MedMNIST v2 BreastMNIST",
           "publishable": true,
           "url": "https://medmnist.com/"
         },
         "hf_repo_id": "Daemons-Q/qsh-medical-breastmnist-ckks-student",
-        "hf_revision": "77435e88ca27519f562ddcabf3301b69faf6c761",
+        "hf_revision": "aa89f5130d5a11c5de02561d1d316bf8e2c8c852",
         "hf_revision_stale": null,
         "key": "medical_fl.student",
         "label": "FHE-feasible diagnostic CNN",
@@ -658,21 +681,27 @@
           "anomaly_sample_rate": 0.0075528,
           "dataset": "ESA Anomaly Dataset (ESA-ADB), Mission1 lightweight channels 41-46",
           "event_wise_f0_5": 0.454545,
+          "event_wise_fn": 2,
+          "event_wise_fp": 1,
+          "event_wise_tp": 1,
           "export": {
             "fp32_bytes": 329179,
             "int8_bytes": 326884,
             "opset": 17
           },
-          "git_sha": "8317cb2-dirty",
-          "hf_revision": "4507c187d0f9998199f6fa0e8064cb23315bbb9a",
+          "git_sha": "d19e285-dirty",
+          "hf_revision": "4408329bcbd9ee453cb7c73c8533bc89da6b7b05",
+          "hf_revision_invalidated_by_retrain": "4507c187d0f9998199f6fa0e8064cb23315bbb9a",
           "metric_note": "Event-wise F-beta at beta=0.5 under the overlap rule, which is what ESA-ADB and Telemanom report. Telemanom's widely-quoted 0.71 is F0.5, not F1. point_adjusted_f1 is shown only to expose how much point adjustment inflates: TSB-AD (NeurIPS 2024) found a uniform random score ranks 26th of 32 detectors under it. Only labels whose ESA-ADB Category is 'Anomaly' count as positives; the 690 annotated rare *nominal* events do not.",
           "n_anomaly_intervals": 320,
+          "n_events_scored": 3,
           "n_parameters": 80486,
           "point_adjusted_f1": 0.993691,
           "published_full_channel_f0_5": 0.061,
           "published_lightweight_f0_5": 0.786,
           "resample": "300s",
-          "wall_clock_s": 43.4,
+          "sample_size_note": "Read n_events_scored before comparing this to published_lightweight_f0_5. The denominator of an event-wise metric is EVENTS, and a temporal split of this corpus leaves very few of them in the scored window: 320 labelled intervals over the whole timeline reduce to a handful inside the test window, because the annotated anomalies are concentrated earlier in the mission. The recorded score is therefore a small-sample figure and one event either way moves it by tenths - it is NOT comparable to a published benchmark computed over the full annotated set, however similar the two decimals look. The number is reported as measured rather than reweighted, and the sample size is reported beside it so the comparison is not made silently.",
+          "wall_clock_s": 43.2,
           "windowed_iforest_event_wise_f0_5": 0.000248
         },
         "architecture": "2 x LSTM(80), sequence length 250, dropout 0.3, non-parametric dynamic threshold with pruning",
@@ -714,13 +743,13 @@
           "url": "https://zenodo.org/records/12528696"
         },
         "hf_repo_id": "Daemons-Q/qsh-satellite-telemanom-esa",
-        "hf_revision": "4507c187d0f9998199f6fa0e8064cb23315bbb9a",
+        "hf_revision": "4408329bcbd9ee453cb7c73c8533bc89da6b7b05",
         "hf_revision_stale": null,
         "key": "satellite_comms.telemanom",
         "label": "Telemanom LSTM forecaster (per channel)",
         "metric": {
-          "baseline": 0.786,
-          "baseline_source": "ESA-ADB Table 2, Mission1 lightweight (ch. 41-46), best event-wise F0.5. NOTE the caption: Table 2 scores detection of ALL EVENTS excluding communication gaps - anomalies PLUS annotated rare nominal events - whereas this project scores anomalies only, and ESA-ADB splits each mission into first-half train / second-half test. So 0.786 is an indicative target, not a like-for-like number.",
+          "baseline": 0.968,
+          "baseline_source": "ESA-ADB Supplementary Table 9, Mission1 lightweight (ch. 41-46), Telemanom-ESA-Pruned: corrected event-wise F0.5 0.968 (precision 0.999, recall 0.862) for detection of ANOMALIES ALONE - which is what this project scores, so this is the like-for-like row. Earlier rounds cited Table 2's 0.786 instead. That number is real and correctly attributed, but Table 2 scores ALL EVENTS excluding communication gaps, i.e. anomalies PLUS annotated rare nominal events, so it was the wrong comparator and the lenient one. Verified against the paper (arXiv:2406.17826 v2) in Round 24. THREE protocol differences remain and none of them are closed by changing the number: (1) ESA-ADB's metric multiplies event precision by the TIME-LEVEL true-negative rate, which is why most of its baselines read <0.001 - this project records that corrected value as `corrected_event_wise_f0_5` beside the uncorrected one; (2) ESA-ADB splits each mission in half, this project tests on the last 30 percent; (3) ESA-ADB's Mission1 lightweight test partition holds 65 annotated events of which 29 are anomalies, against 3 in the window scored here. So this remains an indicative target, and the sample-size gap is roughly tenfold.",
           "ceiling": null,
           "ceiling_source": "",
           "companion": "event_wise_f0_5_full_channels",
@@ -740,17 +769,21 @@
           "agreement": 0.998677,
           "both_scored_zero": false,
           "disagreement_on_positives": 0.142857,
-          "hf_revision": "18814a2496661459cd25912c3e251473e5fab821",
+          "hf_revision": "3795381f8b53a953d0dcd0e3b6fb81aee5337bd1",
+          "hf_revision_invalidated_by_retrain": "18814a2496661459cd25912c3e251473e5fab821",
           "metric_delta": -0.003234,
           "metric_delta_pp": -0.3234,
           "metric_name": "event_wise_f0_5",
           "n_eval": 307601,
+          "n_scoring_units": 2,
+          "scoring_unit": "labelled anomaly events",
           "student_key": "satellite_comms.student",
           "student_metric": 0.003234,
           "student_params": 49,
           "teacher_key": "satellite_comms.telemanom",
           "teacher_metric": 0.0,
-          "teacher_params": 80486
+          "teacher_params": 80486,
+          "teacher_scored_zero": true
         },
         "architecture": "logistic regression over channel x timestep windows",
         "artifacts": [
@@ -777,13 +810,13 @@
           "url": "https://zenodo.org/records/12528696"
         },
         "hf_repo_id": "Daemons-Q/qsh-satellite-telemanom-ckks-student",
-        "hf_revision": "18814a2496661459cd25912c3e251473e5fab821",
+        "hf_revision": "3795381f8b53a953d0dcd0e3b6fb81aee5337bd1",
         "hf_revision_stale": null,
         "key": "satellite_comms.student",
         "label": "CKKS-linear telemetry anomaly student",
         "metric": {
-          "baseline": 0.786,
-          "baseline_source": "ESA-ADB Table 2, Mission1 lightweight (ch. 41-46), best event-wise F0.5. NOTE the caption: Table 2 scores detection of ALL EVENTS excluding communication gaps - anomalies PLUS annotated rare nominal events - whereas this project scores anomalies only, and ESA-ADB splits each mission into first-half train / second-half test. So 0.786 is an indicative target, not a like-for-like number.",
+          "baseline": 0.968,
+          "baseline_source": "ESA-ADB Supplementary Table 9, Mission1 lightweight (ch. 41-46), Telemanom-ESA-Pruned: corrected event-wise F0.5 0.968 (precision 0.999, recall 0.862) for detection of ANOMALIES ALONE - which is what this project scores, so this is the like-for-like row. Earlier rounds cited Table 2's 0.786 instead. That number is real and correctly attributed, but Table 2 scores ALL EVENTS excluding communication gaps, i.e. anomalies PLUS annotated rare nominal events, so it was the wrong comparator and the lenient one. Verified against the paper (arXiv:2406.17826 v2) in Round 24. THREE protocol differences remain and none of them are closed by changing the number: (1) ESA-ADB's metric multiplies event precision by the TIME-LEVEL true-negative rate, which is why most of its baselines read <0.001 - this project records that corrected value as `corrected_event_wise_f0_5` beside the uncorrected one; (2) ESA-ADB splits each mission in half, this project tests on the last 30 percent; (3) ESA-ADB's Mission1 lightweight test partition holds 65 annotated events of which 29 are anomalies, against 3 in the window scored here. So this remains an indicative target, and the sample-size gap is roughly tenfold.",
           "ceiling": null,
           "ceiling_source": "",
           "companion": "event_wise_f0_5_full_channels",
@@ -813,15 +846,16 @@
             "opset": 17
           },
           "f1": 0.918918918918919,
-          "git_sha": "c3f4c1b-dirty",
-          "hf_revision": "5874c1d8fa3da9d92c6f1a1fa578dd6c2b4fd3c0",
+          "git_sha": "89d2fca-dirty",
+          "hf_revision": "a87db4e64dc9b032e468548304e596dbf0e30954",
+          "hf_revision_invalidated_by_retrain": "6039a4fb2d2db7ccb2a638e94cf9c06d8799a6e3",
           "n_features": 19,
           "n_test_segments": 529,
           "n_train_segments": 1594,
           "task": "segment classification - NOT comparable with satellite_comms.telemanom, which forecasts continuous ESA-ADB series against a persistence baseline",
-          "wall_clock_s": 1.8
+          "wall_clock_s": 7.5
         },
-        "architecture": "gradient-boosted trees over 19 per-segment telemetry features",
+        "architecture": "gradient-boosted trees over 18 published per-segment features + `sampling`",
         "artifacts": [
           {
             "browser_runnable": true,
@@ -853,7 +887,7 @@
           "url": "https://zenodo.org/records/12588359"
         },
         "hf_repo_id": "Daemons-Q/qsh-satellite-opssat-ad",
-        "hf_revision": "5874c1d8fa3da9d92c6f1a1fa578dd6c2b4fd3c0",
+        "hf_revision": "a87db4e64dc9b032e468548304e596dbf0e30954",
         "hf_revision_stale": null,
         "key": "satellite_comms.opssat",
         "label": "OPS-SAT segment anomaly detector",
@@ -876,22 +910,28 @@
       },
       {
         "achieved": {
-          "agreement": 0.943289,
+          "agreement": 0.958412,
+          "auc_pr": 0.968055,
           "both_scored_zero": false,
-          "disagreement_on_positives": 0.141593,
-          "hf_revision": "82cb93255efbb315f9120b14bc546244376d73f5",
-          "metric_delta": 0.054054,
-          "metric_delta_pp": 5.4054,
+          "disagreement_on_positives": 0.070796,
+          "hf_revision": "235a7d2e3c6ce42d7090af41dd42fb4e390c9f79",
+          "hf_revision_invalidated_by_retrain": "1dd6ca4236018f2635bb5d7b04c830d2e58773d5",
+          "metric_delta": 0.014571,
+          "metric_delta_pp": 1.4571,
           "metric_name": "minority_class_f1",
+          "metric_note": "Two metrics are recorded and they answer different questions. `auc_pr` is the registry's declared headline and is what the published baseline compares against. `student_metric`/`teacher_metric` are `minority_class_f1`, because fidelity compares DECISIONS and a decision has no score to rank - so agreement and metric_delta are necessarily computed on a decision metric. Do not read the F1 against the auc_pr baseline.",
           "n_eval": 529,
+          "n_scoring_units": null,
+          "scoring_unit": "samples",
           "student_key": "satellite_comms.opssat_student",
-          "student_metric": 0.864865,
-          "student_params": 20,
+          "student_metric": 0.904348,
+          "student_params": 210,
           "teacher_key": "satellite_comms.opssat",
           "teacher_metric": 0.918919,
-          "teacher_params": 117
+          "teacher_params": 117,
+          "teacher_scored_zero": false
         },
-        "architecture": "logistic regression over the 19 published per-segment features",
+        "architecture": "logistic regression over 18 published per-segment features + `sampling`",
         "artifacts": [
           {
             "browser_runnable": true,
@@ -916,7 +956,7 @@
           "url": "https://zenodo.org/records/12588359"
         },
         "hf_repo_id": "Daemons-Q/qsh-satellite-opssat-ckks-student",
-        "hf_revision": "82cb93255efbb315f9120b14bc546244376d73f5",
+        "hf_revision": "235a7d2e3c6ce42d7090af41dd42fb4e390c9f79",
         "hf_revision_stale": null,
         "key": "satellite_comms.opssat_student",
         "label": "CKKS-linear OPS-SAT segment student",
@@ -929,8 +969,9 @@
           "display": "AUC PR",
           "name": "auc_pr"
         },
-        "notes": "19 features is small enough to evaluate under CKKS as a single packed dot product, so the encrypted tier here runs on the published feature set rather than on a reduction of it.",
+        "notes": "19 columns is small enough to evaluate under CKKS as a single packed dot product, so the encrypted tier here runs on the published feature set rather than on a reduction of it - and it had room to spare. The student now fits over the QUADRATIC expansion of those features, 209 terms, still one packed dot product at unchanged multiplicative depth, because the expansion is a function of the plaintext input and is computed before encryption. A degree-8192 ring has 4096 slots, so the cipher was never the binding constraint here - the feature map was. Measured: minority-class F1 0.8649 -> 0.9043, AUC-PR 0.9275 -> 0.9681, the latter matching the teacher exactly.",
         "onnx_domains": [
+          "ai.onnx",
           "ai.onnx.ml"
         ],
         "params": null,
@@ -1022,7 +1063,7 @@
           },
           "framing": "Architecture comparison, not a performance claim. The data is synthetic because no commercial-OK real attack corpus exists. Every published QML-IDS figure we could verify sits below a random forest on the same data, and arXiv:2512.05069 was withdrawn by its own authors for insufficient evaluation. Per-class F1 is the headline; aggregate accuracy is shown beside it because Engelen et al. (WTMC 2021) demonstrated it stays at 0.99 across a label correction that moved Bot F1 from 0.60 to 0.99.",
           "git_sha": "733e325",
-          "hf_revision": "f0d7543132105491c21c5cabc086151eeeab47cc",
+          "hf_revision": "7cf29851e2d7890deedcf98f46d459f95ff25df7",
           "n_classes": 8,
           "n_samples": 2400,
           "quantum_beats_classical": false,
@@ -1060,7 +1101,7 @@
           "url": "https://arxiv.org/abs/2509.14282"
         },
         "hf_repo_id": "Daemons-Q/qsh-telecom-qml-ids",
-        "hf_revision": "f0d7543132105491c21c5cabc086151eeeab47cc",
+        "hf_revision": "7cf29851e2d7890deedcf98f46d459f95ff25df7",
         "hf_revision_stale": null,
         "key": "telecom_ids.qml",
         "label": "Quantum-kernel SVC + variational QNN",

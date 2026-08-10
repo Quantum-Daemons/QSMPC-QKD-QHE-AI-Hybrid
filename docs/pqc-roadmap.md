@@ -120,7 +120,7 @@ scaffold hardens). QRNG + OptiQKD above are built from this set; the rest are ad
 | **IACR ePrint 2026/1231** - Hybrid AKE for QKD networks without signatures | 2026-06-10 | The closest published construction to `hybrid_combiner_mode="its_toeplitz"`: KEM-only hybrid AKE with a conditional information-theoretic guarantee when the QKD leg is uncompromised. |
 | **arXiv:2601.18511v2** - Scaling up FHE-based PPML | v2 2026-06-17 | Best published absolute: **Llama-3-8B under CKKS at 20 s prefill / 18 s per output token on 8x RTX PRO 6000**. Quote this rather than hand-waving FHE cost. |
 
-## Dated obligation not yet met: EU AI Act Art. 50(2) machine-readable marking
+## EU AI Act Art. 50(2): partially met, and what the recognised route actually is
 
 Verified 2026-08-09. **Deadline 2 December 2026**, which is the nearest unmet compliance date this
 project has.
@@ -145,3 +145,73 @@ declines were, rather than the item quietly rolling forward.
 Penalty exposure for Art. 50 non-compliance is up to EUR 15 million or 3 percent of worldwide annual
 turnover, whichever is higher - worth stating because it is the reason this is a dated item and not
 a nice-to-have.
+
+## What a 2026 production deployment needs that this project does not implement
+
+Verified 2026-08-09 against arXiv:2604.12985, "Quantum-safe IPsec in the banking industry"
+(Vicente, Brito, Martin et al., 14 Apr 2026) - a real five-node deployment across a Madrid campus
+plus private-cloud nodes in northern Spain and Mexico, mixing **DV-QKD and CV-QKD** from multiple
+vendors.
+
+The finding that matters here is the interface layer. That deployment had to integrate **three
+mutually incompatible key-delivery interfaces: ETSI GS QKD 004, ETSI GS QKD 014, and Cisco SKIP**,
+because a real multi-vendor network has all three. It concludes that quantum-safe communication in
+financial networks is "not only technically feasible but also scalable, interoperable, and
+resilient", and notes the standards gap it had to work around: PQC algorithms are not yet in
+finalised IPsec standards.
+
+**This project implements GS QKD 014 (`qkd/kme.py`) and GS QKD 015 (`qkd/sdn_controller.py`). It
+does not implement GS QKD 004.** That is worth stating plainly because `sdn_controller.py:19` lists
+"GS QKD 004, 014, 020" as the specs governing the quantum plane - which is correct as taxonomy and
+which a reader may reasonably take as a claim of implementation.
+
+The two are not interchangeable. **014 is a REST key-delivery API**: a stateless request for key
+material by identifier. **004 is a stateful application interface**: an application opens a keyed
+session and streams key material against it, with negotiated QoS. An application written against one
+does not work against the other, which is exactly why the banking testbed needed both plus a
+vendor-specific third.
+
+Recorded as a gap rather than a task. Implementing 004 would be a real piece of work and this project
+has no application that needs a key stream today - but "we implement the ETSI key-delivery interface"
+is a claim that should say **which one**, and a buyer's technical due diligence will ask.
+
+## The finance AML feature architecture, if that gap is ever closed
+
+Round 24 measured why `finance_aml.gbm` sat at 0.0808 against a published 0.6323 - it has since
+risen to 0.1519 by making the per-account aggregates causal - and ruled out the
+threshold, unseen accounts, and the 4-hop reachability limit - see
+`../references/finance-gap-investigation.md`. The residual is architectural: IBM's Graph Feature
+Preprocessor computes **per-transaction subgraph patterns over a graph updated as each transaction
+arrives**, while this pipeline computes **per-account scalar aggregates**. That difference is
+implementable without `snapml` and is a bounded, well-specified workstream. A measured intermediate
+step already exists: causal prior-at-time aggregation beat the shipped approach by 1.45x AUPRC at
+matched feature count, with no leakage.
+
+### Round 24 update, researched 2026-08-09
+
+**The recognised compliance route is now defined, and it is not "write a watermark".** The Commission
+published its Article 50 guidelines on **20 July 2026**, alongside a **Code of Practice on marking and
+labelling of AI-generated content** - final **10 June 2026**, assessed as adequate by the Commission
+and the AI Board on **8-9 July 2026**. Adherence to that Code is the recognised way to demonstrate
+compliance with Art. 50(2), (4) and (5). The requirement itself is that marks be "effective, reliable,
+robust and interoperable" and machine-readable.
+
+**What now ships**: the Agentic AI panel's downloadable artifact carries an `ai_generated` block -
+`is_ai_generated`, the generating engine and model, the runtime, and an explicit scope and
+compliance-status field. That is machine-readable and it travels with the artifact that leaves the
+page.
+
+**What it deliberately does not claim.** It marks the artifact, not the on-screen text. Token-level
+schemes such as SynthID-Text mark the text itself by biasing the sampling loop, and the in-browser
+Transformers.js path does not expose that loop, so implementing one here would mean forking the
+inference runtime. And this project has **not** been assessed against the Code of Practice, so
+`compliance_status` says `partial` rather than asserting compliance. Claiming more than was done is
+the failure mode this repository has spent several rounds removing.
+
+**C2PA is not the answer for text, at least not yet.** C2PA 2.2 (2025-05-01) is built around image,
+video and audio assets; its text story is not established, and the searches that suggest otherwise
+lead to vendor material rather than the specification.
+
+Remaining decision, before **2 December 2026**: whether to seek assessment against the Code of
+Practice, or to state publicly that this is a research demonstrator marking its artifacts on a
+best-effort basis. Either is defensible; silence is not.

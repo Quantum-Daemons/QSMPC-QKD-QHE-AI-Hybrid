@@ -63,6 +63,11 @@ export type ModelArtifact = {
 
 export type ModelSpec = {
   key: string;
+  // t3_large is part of the documented tier taxonomy and no ModelSpec uses it. Kept rather
+  // than deleted because the in-browser LLM (Transformers.js / WebLLM) IS a T3-shaped model -
+  // too big for encrypted evaluation, run locally instead - it simply is not a registry entry,
+  // since the registry describes models this project trains and publishes. If that ever
+  // changes the slot is here; until then it is documented-empty rather than silently empty.
   tier: "t1_crypto" | "t2_industry" | "t3_large";
   label: string;
   architecture: string;
@@ -91,6 +96,16 @@ export type ModelSpec = {
  *  construction requires (d prime, n <= d <= 2n). */
 export const qsmpcCfg = () => ((CONFIG as any).qsmpc ?? {}) as
   { prime: number | null; n_parties: number; threshold: number };
+
+/** Federated hyperparameters. `browser_*` are the deliberate lighter overrides the in-tab FedAvg
+ *  uses so a round finishes inside a page interaction; the un-prefixed values are what the full
+ *  server-side deployment trains with. Both are exported so the difference is visible rather than
+ *  being two unrelated literals in two languages. */
+export const federatedCfg = () => ((CONFIG as any).federated ?? {}) as {
+  rounds: number; local_epochs: number; lr: number; hospitals: number; test_split: number;
+  secure_aggregation: boolean; browser_rounds: number; browser_lr: number;
+  browser_override_reason: string;
+};
 
 export const modelsFor = (usecase: string): ModelSpec[] =>
   (((CONFIG as any).models ?? {})[usecase] ?? []) as ModelSpec[];

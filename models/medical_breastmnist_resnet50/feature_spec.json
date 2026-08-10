@@ -10,7 +10,7 @@
     "preprocessing": "pixel/255 then (x-0.5)/0.5"
   },
   "classes": [
-    "benign/normal",
-    "malignant"
+    "malignant",
+    "normal/benign"
   ]
 }
