@@ -166,6 +166,83 @@ def causal_account_features(full):
     return out
 
 
+#: Sliding window for the burst features, in hours. The cumulative aggregates above answer "how
+#: active has this account ever been"; these answer "how active is it RIGHT NOW", and the pair
+#: separates a steadily-busy account from one that woke up. 24h is one settlement day.
+BURST_WINDOW_H = 24.0
+
+
+def windowed_causal_features(full, *, window_h: float = BURST_WINDOW_H):
+    """Per-transaction RECENT-history features, strictly prior, over a sliding time window.
+
+    MEASURED AND NOT SHIPPED. Adding these six columns to the 32 shipped features moved
+    minority-class F1 from 0.1519 to 0.1308 and AUPRC from 0.1233 to 0.1152, while AUROC ROSE from
+    0.9526 to 0.9606 - the signature of a change that helps the majority class at a 1-in-981
+    positive rate. Kept because it is a negative result worth keeping executable: the recency
+    reading of the baseline gap is the obvious next idea, and re-running this costs 15 seconds
+    against a day to re-derive it. See references/finance-gap-investigation.md.
+
+    This is the architectural difference the baseline gap note names. The published reference
+    computes per-transaction subgraph patterns over a dynamically updated graph; this project
+    computed per-account scalar aggregates over all prior time. A cumulative degree cannot separate
+    an account that has been busy for a year from one that sent nothing for a year and then sent
+    forty transactions this morning - and the second is what a mule looks like.
+
+    Each feature here is the same quantity as its cumulative twin, restricted to
+    ``(t - window_h, t)``. Computed by binary search over per-account sorted timestamps, so it is
+    O(n log n) and needs no graph library: for each row, find how many of that account's prior rows
+    fall inside the window, and difference the account's prefix sums at those two positions.
+
+    Strictly prior by construction - the searchsorted upper bound is the row's own position within
+    its account, so its own edge is never counted. That is the same discipline as
+    :func:`causal_account_features` and it is what makes the truncation test pass.
+    """
+    import pandas as pd
+
+    out = pd.DataFrame(index=full.index)
+    ts = full["timestamp"].to_numpy(dtype="datetime64[s]").astype("int64").astype(np.float64)
+    window_s = window_h * 3600.0
+    paid = full["amount_paid"].to_numpy(dtype=np.float64)
+
+    for side, col, amt in (("src", "from_account", paid), ("dst", "to_account", paid)):
+        keys = full[col].to_numpy()
+        order = np.lexsort((ts, keys))            # group by account, ascending time within account
+        k_sorted, t_sorted, a_sorted = keys[order], ts[order], amt[order]
+        # Group boundaries: start index of each account's block in the sorted arrays.
+        starts = np.flatnonzero(np.r_[True, k_sorted[1:] != k_sorted[:-1]])
+        group_id = np.repeat(np.arange(starts.size), np.diff(np.r_[starts, k_sorted.size]))
+        pos_in_group = np.arange(k_sorted.size) - starts[group_id]
+        # Prefix sums per account, so a window sum is one subtraction.
+        csum = np.r_[0.0, np.cumsum(a_sorted)]
+        base = csum[starts[group_id]]             # prefix at the account's first row
+
+        # Left edge of the window, searched WITHIN the account's own block only.
+        lo = np.empty(k_sorted.size, dtype=np.int64)
+        for g, st in enumerate(starts):
+            end = starts[g + 1] if g + 1 < starts.size else k_sorted.size
+            blk = t_sorted[st:end]
+            lo[st:end] = np.searchsorted(blk, blk - window_s, side="left")
+        n_prior_window = pos_in_group - lo                      # excludes self
+        sum_window = (csum[starts[group_id] + pos_in_group] - base) - \
+                     (csum[starts[group_id] + lo] - base)
+
+        cnt = np.empty(k_sorted.size)
+        cnt[order] = n_prior_window
+        smw = np.empty(k_sorted.size)
+        smw[order] = sum_window
+        out[f"{side}_burst_count_{int(window_h)}h"] = cnt
+        out[f"{side}_burst_amount_log_{int(window_h)}h"] = np.log1p(np.clip(smw, 0, None))
+
+    # Burstiness: recent activity relative to lifetime activity. 1.0 means everything this account
+    # has ever done happened inside the window; near 0 means a long-established account.
+    for side in ("src", "dst"):
+        life = out.get(f"{side}_burst_count_{int(window_h)}h")
+        deg = (full["from_account"] if side == "src" else full["to_account"])
+        total_prior = deg.groupby(deg).cumcount().to_numpy(dtype=np.float64)
+        out[f"{side}_burst_share"] = life / np.maximum(total_prior, 1.0)
+    return out
+
+
 def graph_features(df, *, fit_on=None, causal=None):
     """Graph feature preprocessing: per-account aggregates joined back onto each edge.
 
