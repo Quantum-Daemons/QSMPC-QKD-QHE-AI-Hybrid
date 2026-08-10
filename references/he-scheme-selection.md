@@ -81,3 +81,50 @@ If `openfhe-wasm` ever binds `binfhe`, CKKS-to-FHEW switching becomes browser-re
 re-examining - for large-precision sign evaluation and small-precision lookup tables, which is what
 the OpenFHE maintainers say the capability is actually for. That is a different use case from this
 one and would not be a CKKS/BFV hybrid.
+
+---
+
+## The scorecard was built, fitted on real data, and does NOT beat the CKKS student
+
+Round 24h. Implemented on `finance_aml`: 32 features binned to deciles on the training window only,
+integer coefficients in {-8..8}, at most 12 non-zero, fitted by maximising net benefit across five
+thresholds (0.002 to 0.05) over 2,843,872 rows in 212 s.
+
+All three models judged on **net benefit at p=0.01**, cut chosen on validation, reported on the same
+1,523,504 test rows:
+
+| model | net benefit | minority-F1 |
+|---|---|---|
+| XGBoost teacher (plaintext) | +0.000499 | 0.1125 |
+| **CKKS linear student** | **+0.000520** | 0.0439 |
+| BFV integer scorecard | +0.000308 | 0.0372 |
+| treat-all | -0.008562 | - |
+| treat-none | 0 | - |
+
+**The scorecard loses to the existing CKKS student on net benefit - the objective it was fitted to
+maximise - by about 40%.** It beats treat-all and treat-none, so it has clinical-equivalent utility,
+but it is not an accuracy improvement and must not be presented as one.
+
+Why it loses is not mysterious and was foreseeable: binning 32 continuous features to deciles
+discards information, and coefficients constrained to {-8..8} are coarse. Both are the price of the
+two properties it does have.
+
+**What it actually buys, stated as a trade rather than a win:**
+
+1. **Exactness.** The encrypted score equals the plaintext score bit for bit under BFV. The CKKS
+   student can only promise agreement to a precision bound - measured on a matched row, CKKS returns
+   -1.999998397974359 where the exact answer is -2.
+2. **Readability.** Twelve integer coefficients on named features. A model-risk function or a
+   regulator can read the whole model; nobody reads a 600-tree booster.
+
+So the honest framing for the demo is a *comparison*, not an upgrade: approximate-and-stronger
+against exact-and-weaker, on the same task and the same rows. That is more informative than either
+alone, and it is the reason to show both rather than replace one with the other.
+
+**A methodological note, because I made the error twice in one session.** The first evaluation of
+this scorecard reported minority-F1 0.0518 and a net-benefit margin of +0.000009 - computed at
+p=0.5, while the fit had integrated 0.002 to 0.05. At a 1-in-656 base rate, p=0.5 prices one false
+positive at one true positive, an exchange rate no model can win and one this scorecard was never
+fitted for. The same matched-threshold discipline had already been established earlier in the
+session, for the medical decision curve, and it did not transfer. Evaluating a model at a threshold
+its objective never saw is the metric equivalent of comparing against the wrong table.

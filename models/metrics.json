@@ -22,6 +22,24 @@
     "split": "temporal, inductive",
     "wall_clock_s": 96.8
   },
+  "finance_aml.scorecard": {
+    "aunbc_fit": 0.00018612,
+    "auprc": 0.036529,
+    "coefficient_range": 8,
+    "decision_cut": -1,
+    "exact_under_bfv": true,
+    "fit_method": "coordinate-search",
+    "git_sha": "0ca86ce-dirty",
+    "metric_note": "Fitted by maximising net benefit across five decision thresholds rather than a surrogate loss. `fit_method` is 'coordinate-search': the objective it maximises is the exact AUNBC, but optimality is NOT claimed - the exact integer program over all (sample x threshold) indicators is not tractable at this row count, and reporting a heuristic's result as an optimum would be a different claim. `exact_under_bfv` records that the encrypted score equals the plaintext score bit for bit, which is the property a CKKS student cannot offer; verified in tests/test_scorecard_bfv_exact.py.",
+    "minority_class_f1": 0.037211,
+    "n_features_available": 32,
+    "n_nonzero_coefficients": 12,
+    "n_test": 1523504,
+    "net_benefit": 0.00030763,
+    "net_benefit_threshold": 0.01,
+    "net_benefit_treat_all": -0.00856216,
+    "wall_clock_s": 270.8
+  },
   "finance_aml.student": {
     "agreement": 0.982943,
     "both_scored_zero": false,
