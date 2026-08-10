@@ -31,11 +31,28 @@ transaction benchmark.
 1. **Accuracy.** GBDTs still win on tabular data. IEEE S&P 2026 (arXiv:2605.26903) states it
    plainly: *"High speed and interpretability make GBDTs popular in finance and healthcare, where
    neural networks may fall short."*
-2. **Cost.** arXiv:2211.06675 converted both XGBoost and a feedforward classifier to HE inference on
-   the same task: **6 ms encrypted for the tree ensemble against 296 ms for the neural network**,
-   about 50x. A 2026 head-to-head (arXiv:2605.04858) finds FHE's benchmarked strength is regressions
+2. **Cost.** A 2026 head-to-head (arXiv:2605.04858) finds FHE's benchmarked strength is regressions
    while MPC wins for CNNs - which is why this project runs CKKS for the linear tier and garbled
    circuits for the non-linearities rather than the other way round.
+
+   **A correction to an earlier draft of this file.** It cited arXiv:2211.06675 as "6 ms encrypted
+   for the tree ensemble against 296 ms for the neural network". Reading the PDF rather than the
+   abstract, **the 6 ms path is not FHE at all**: it is PPXGBoost, order-preserving encryption plus
+   Paillier, and OPE leaks the total order of feature values to the server. Only the 296 ms neural
+   path is real FHE (CKKS via TenSEAL). Including transaction encryption the totals are 180 ms and
+   306 ms, not 6 ms. The widely-repeated "6 ms encrypted fraud inference" is therefore a comparison
+   between two different security models, and this project should not repeat it.
+
+   The defensible cost anchors, all on stated hardware:
+
+   | system | configuration | latency |
+   |---|---|---|
+   | Zama Concrete ML / TFHE (MSPN 2023) | 50 trees, depth 5, 6-bit | **0.95 - 81.9 s** per inference (477x - 40,969x slowdown) |
+   | SilentWood (arXiv:2411.15494 v2) | 100 trees, depth 7, BFV via SEAL | **4.37 s** CPU / **1.97 s** GPU |
+   | Kangaroo (NDSS 2026) | 969 trees, 411,825 nodes | **~60 ms per tree**, amortised |
+
+   Note the Zama paper states no CPU model at all - "8 CPU cores" is the whole hardware disclosure
+   for the baseline everyone benchmarks against.
 3. **Regulation.** *Scientific Reports*, 2 Jan 2026 (DOI 10.1038/s41598-025-34536-9) picks logistic
    regression explicitly *"to align with widely adopted interpretable credit-risk modelling
    practices"*, and uses CKKS via TenSEAL at **poly_modulus_degree 8192** with coefficient chain
@@ -60,11 +77,18 @@ gradient-boosted forests under **BFV via SEAL**, reporting 42.5x over RCC-PDTE a
 Concrete ML XGBoost. Kangaroo (arXiv:2509.03123, NDSS 2026) also uses packed BFV. The scheme choice
 recorded in `he-scheme-selection.md` matches practice.
 
-**The AML graph-feature gap has a measured size in the literature.** arXiv:2411.02926 (SPACE 2024)
-runs XGBoost plus IBM's Graph Feature Preprocessor under TFHE and reports **+8% F1 from the graph
-features** on the imbalanced set. That is the same order as the GFP paper's own decomposition and
-consistent with this project's finding that the multi-hop truncation could not explain a
-multiple-fold gap - the graph features are worth single-digit percentage points, not a factor.
+**The AML graph-feature gap has a measured size, and the headline it is usually quoted with is on a
+rigged base rate.** arXiv:2411.02926 (SPACE 2024) runs XGBoost plus IBM's Graph Feature Preprocessor
+under TFHE on AMLworld HI-Small - the same corpus this project uses - and its widely-cited ">99%
+accuracy and F1" holds only on a **50%-illicit balanced subset**. On its own imbalanced subset at
+5.72% illicit the same pipeline gets **F1 0.31-0.39 with recall 0.19-0.25**, and the advertised
+"+8% F1" is eight percentage points off a 0.31 base. This project's corpus is 1-in-981, i.e. 0.1%,
+which is more adverse again - so that paper is evidence about the size of the graph-feature
+contribution (single-digit points, not a factor) and **not** a target to be measured against.
+
+Two further details worth carrying: its FHE latency is **~10.5 s per transaction at a 119,926x
+slowdown**, and **its GNN pipeline failed to compile to FHE entirely** - only the XGBoost path
+worked. Both are useful when anyone proposes an encrypted graph model for this use case.
 
 ## What is genuinely absent, stated as a non-goal rather than a gap
 
