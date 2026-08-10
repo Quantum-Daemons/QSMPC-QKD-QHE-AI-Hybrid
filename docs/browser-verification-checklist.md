@@ -1608,6 +1608,50 @@ clean.
 T2 is the one an automated check gets wrong. `license: null` from the GitHub API means all rights
 reserved, and a naive check that only fails on a deny-list of SPDX identifiers passes it.
 
+## Check the binary, not the version string, before trusting GPU support
+
+Before training anything destined for the Hub, confirm the local stack actually targets this
+machine. The trap is that version numbers and release notes are a proxy for what shipped, and the
+proxy is sometimes wrong in the direction that costs a rebuild.
+
+Measured here 2026-08-10 on an RTX PRO 6000 Blackwell (compute capability **sm_120**), CUDA **13.0**,
+PyTorch 2.13.0+cu130, 20 cores, 125 GB RAM, Python 3.12:
+
+| # | Check | Pass condition |
+|---|---|---|
+| G1 | List the SASS architectures actually compiled into the shared library | `cuobjdump --list-elf <lib>.so` includes this GPU's capability |
+| G2 | If absent, check for PTX at a lower arch | `--list-ptx` - PTX JITs forward, at a startup cost, and is not the same as native SASS |
+| G3 | Confirm the licence permits commercial use AND the project is maintained | Apache-2.0/MIT/BSD, with a release inside the last year |
+| G4 | Check whether the accelerator addresses the MEASURED bottleneck | profile first; do not install a GPU library for a stage that is 5% of runtime |
+| G5 | Check for arch-specific correctness bugs, not only support | see below - "supported" and "correct" are different claims |
+
+**G1 caught a false recommendation.** Research advised upgrading XGBoost to 3.4.0 "for native sm_120".
+Inspecting the installed 3.3.0 binary:
+
+```
+cuobjdump --list-elf libxgboost.so   ->  SASS archs 75, 80, 90, 100, 120
+cuobjdump --list-ptx libxgboost.so   ->  PTX 120
+```
+
+sm_120 was already there. The upgrade was unnecessary, and no release note would have told us -
+only the binary did.
+
+**G4 is what stops a plausible optimisation from being a waste.** Profiling the finance pipeline gave
+graph feature construction 52.7s of 69.1s (76.4%) and the XGBoost GPU fit 3.9s (5.6%). Installing a
+GPU dataframe stack to accelerate a 69-second pipeline optimises something that is not a problem.
+
+**G5 is the one with teeth.** cuDF PR #23229 (merged 2026-07-21, released in 26.08) fixes
+*"incorrect DECIMAL128 groupby sums on Blackwell with CUDA 13.0"* - nvcc miscompiles a 128-bit
+`atomicCAS` on sm_100 and newer. **That is exactly this machine's configuration**, and the failure
+mode is wrong numbers with no error. A library can support an architecture and still compute
+incorrectly on it. Pin RAPIDS >= 26.08 if it is ever introduced, or avoid DECIMAL128.
+
+Verified commercial-OK and Blackwell-capable at this revision: XGBoost 3.3.0+ (Apache-2.0, sm_120
+native), LightGBM 4.7.0 (MIT, sm_120 in its arch list, but **pip wheels are CPU-only** - CUDA needs
+a source build). **CatBoost has no sm_120 in its build configuration** and its default arch list
+includes architectures CUDA 13 no longer accepts. Neither vendored submodule accelerates *training*:
+HEonGPU (Apache-2.0) and hpmpc (MIT) accelerate homomorphic and MPC *evaluation*.
+
 ## A vendored crypto library has no CVE to find, so nothing will tell you it is old
 
 `node-seal` bundles Microsoft SEAL as a WASM build. The pinned dependency resolves to node-seal
