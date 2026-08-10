@@ -52,8 +52,8 @@ type Real2D = {
   provenance: string;
   licence: string;
   attribution: string;
-  x: { key: string; label: string };
-  y: { key: string; label: string };
+  x: { key: string; label: string; scale?: "log" };
+  y: { key: string; label: string; scale?: "log" };
   class_names: [string, string];
   separability_auc_pr?: number;
   base_rate: number;
@@ -64,6 +64,7 @@ type Real2D = {
 const REAL_2D_PATH: Record<string, string> = {
   satellite_comms: "data/satellite/real_2d.json",
   medical_fl: "data/medical/real_2d.json",
+  finance_aml: "data/finance/real_2d.json",
 };
 
 export function RealDataScatter({ usecase }: { usecase: string }) {
@@ -114,8 +115,16 @@ export function RealDataScatter({ usecase }: { usecase: string }) {
           <XAxis type="number" dataKey="x" name={data.x.label} tick={AXIS}
                  label={{ value: data.x.label, position: "insideBottom", offset: -20,
                           fill: "#8a94a6", fontSize: 10 }} />
+          {/* Log scale is carried in the payload, not inferred here. A heavy-tailed axis - finance's
+              burst fan-out runs to 12,540 with a 95th percentile of 7,801 - renders every point on
+              the baseline unless it is compressed, and whether that is warranted is a property of
+              the DATA, so the generator that measured it is the thing that should decide. */}
           <YAxis type="number" dataKey="y" name={data.y.label} tick={AXIS}
-                 label={{ value: data.y.label, angle: -90, position: "insideLeft",
+                 scale={data.y.scale === "log" ? "log" : "auto"}
+                 domain={data.y.scale === "log" ? [0.9, "auto"] : undefined}
+                 allowDataOverflow={data.y.scale === "log"}
+                 label={{ value: data.y.label + (data.y.scale === "log" ? " (log)" : ""),
+                          angle: -90, position: "insideLeft",
                           offset: 22, fill: "#8a94a6", fontSize: 10 }} />
           <Tooltip cursor={{ strokeDasharray: "3 3" }}
                    contentStyle={{ background: "#161b26", border: `1px solid ${GRID}`, fontSize: 11 }}
