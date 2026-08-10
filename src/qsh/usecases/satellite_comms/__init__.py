@@ -130,19 +130,27 @@ class QSDCStage(Stage):
 
         params = ctx.data.get("sat_channel")
         telemetry = str(ctx.config.get("telemetry", _DEFAULT_TELEMETRY)).encode()
-        threshold = float(ctx.config.get("qsdc_threshold", 0.11))
         res = quantum_secure_direct_comm(
-            telemetry, params, threshold=threshold, seed=ctx.config.get("seed", 0))
+            telemetry, params, seed=ctx.config.get("seed", 0))
 
         bus.metric("qsdc_error_rate", res.error_rate, self.name)
         bus.metric("qsdc_secrecy_capacity", res.secrecy_capacity, self.name)
+        bus.metric("qsdc_eve_gain_g", res.eve_gain_g, self.name)
+        bus.metric("qsdc_link_budget_limited", int(res.link_budget_limited), self.name)
         bus.metric("qsdc_eavesdrop_detected", int(res.eavesdrop_detected), self.name)
         bus.metric("qsdc_message_bits", res.message_bits, self.name)
 
-        if res.eavesdrop_detected or res.delivered is None:
+        if res.delivered is None:
             ctx.artifacts["telemetry_delivered"] = False
-            bus.log(f"QSDC ABORTED: error rate {res.error_rate:.3f} > {threshold:.2f} "
-                    f"— eavesdropper detected, telemetry withheld", self.name)
+            if res.link_budget_limited:
+                bus.log(f"QSDC NOT AVAILABLE on this link — secrecy capacity is not positive at "
+                        f"{res.loss_db:.1f} dB (g={res.eve_gain_g:.1f}) even with no eavesdropper. "
+                        f"The limit is the link budget, not an attack; error {res.error_rate:.4f}. "
+                        f"Telemetry falls back to the PQC session key.", self.name)
+            else:
+                bus.log(f"QSDC ABORTED: secrecy capacity exhausted at error {res.error_rate:.4f} "
+                        f"(g={res.eve_gain_g:.1f}, {res.loss_db:.1f} dB) — this link closes without "
+                        f"Eve, so the loss is attributable — telemetry withheld", self.name)
             return
 
         # also seal the delivered telemetry in the AEAD session for an audit record
