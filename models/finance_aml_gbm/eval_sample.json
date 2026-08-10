@@ -286769,8 +286769,9 @@
  ],
  "expected": {
   "graph": "model.onnx",
-  "accuracy": 0.9931640625,
+  "accuracy": 0.988037109375,
   "majority_baseline": 0.9818115234375,
+  "minority_class_f1": 0.51,
   "note": "Stratified to contain positives -- AMLworld's real prevalence is ~1 in 981, so an unstratified draw would be all-negative and accuracy would be vacuous."
  }
 }

@@ -209,7 +209,7 @@
             "opset": 0
           },
           "git_sha": "89d2fca-dirty",
-          "hf_revision": "bff9873df114aca672d14f77b0328a0141bab84d",
+          "hf_revision": "bbbe6e1c1f4bdc5c076dbfa254c372385cb17d1f",
           "minority_class_f1": 0.15194805194805194,
           "n_test": 1523504,
           "n_train": 3554841,
@@ -249,7 +249,7 @@
           "url": "https://www.kaggle.com/datasets/ealtman2019/ibm-transactions-for-anti-money-laundering-aml"
         },
         "hf_repo_id": "Daemons-Q/qsh-finance-aml-gbm",
-        "hf_revision": "bff9873df114aca672d14f77b0328a0141bab84d",
+        "hf_revision": "bbbe6e1c1f4bdc5c076dbfa254c372385cb17d1f",
         "hf_revision_stale": null,
         "key": "finance_aml.gbm",
         "label": "Graph-feature-preprocessed gradient boosting",
@@ -1062,7 +1062,7 @@
           },
           "framing": "Architecture comparison, not a performance claim. The data is synthetic because no commercial-OK real attack corpus exists. Every published QML-IDS figure we could verify sits below a random forest on the same data, and arXiv:2512.05069 was withdrawn by its own authors for insufficient evaluation. Per-class F1 is the headline; aggregate accuracy is shown beside it because Engelen et al. (WTMC 2021) demonstrated it stays at 0.99 across a label correction that moved Bot F1 from 0.60 to 0.99.",
           "git_sha": "733e325",
-          "hf_revision": "f0d7543132105491c21c5cabc086151eeeab47cc",
+          "hf_revision": "7cf29851e2d7890deedcf98f46d459f95ff25df7",
           "n_classes": 8,
           "n_samples": 2400,
           "quantum_beats_classical": false,
@@ -1100,7 +1100,7 @@
           "url": "https://arxiv.org/abs/2509.14282"
         },
         "hf_repo_id": "Daemons-Q/qsh-telecom-qml-ids",
-        "hf_revision": "f0d7543132105491c21c5cabc086151eeeab47cc",
+        "hf_revision": "7cf29851e2d7890deedcf98f46d459f95ff25df7",
         "hf_revision_stale": null,
         "key": "telecom_ids.qml",
         "label": "Quantum-kernel SVC + variational QNN",

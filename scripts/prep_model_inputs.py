@@ -215,6 +215,7 @@ def build_medical(rng: np.random.Generator) -> dict:
             "graph": graph,
             "accuracy": float((pred == y).mean()),
             "majority_baseline": float(max(np.bincount(y)) / len(y)),
+            **declared_metric_expectation("medical_fl.resnet18", y, pred),
             "note": ("Measured here with onnxruntime on exactly these rows. The browser must "
                      "reproduce it to within tolerance or report a mismatch rather than render it."),
         },
@@ -283,6 +284,7 @@ def build_finance(rng: np.random.Generator) -> dict:
             "graph": graph,
             "accuracy": float((pred == y).mean()),
             "majority_baseline": float(max(np.bincount(y)) / len(y)),
+            **declared_metric_expectation("finance_aml.gbm", y, pred),
             "note": ("Stratified to contain positives -- AMLworld's real prevalence is ~1 in 981, "
                      "so an unstratified draw would be all-negative and accuracy would be vacuous."),
         },
@@ -405,6 +407,7 @@ def build_satellite_opssat(rng: np.random.Generator) -> dict:
             "graph": graph,
             "accuracy": float((pred == y).mean()),
             "majority_baseline": float(max(np.bincount(y)) / len(y)),
+            **declared_metric_expectation("satellite_comms.opssat", y, pred),
             "note": ("The whole published test split, so this reproduces the benchmark's own "
                      "partition rather than a resample of it."),
         },
@@ -456,9 +459,12 @@ def build_telecom(rng: np.random.Generator) -> dict:
             "graph": graph,
             "accuracy": float((pred == np.asarray(y)).mean()),
             "majority_baseline": float(max(np.bincount(np.asarray(y, dtype=int))) / len(y)),
+            **declared_metric_expectation("telecom_ids.qml", y, pred),
             "note": ("Eight balanced classes, so the majority baseline is 1/8. The published "
-                     "comparison is per-class F1: aggregate accuracy is the metric that makes a "
-                     "broken detector look fine (Engelen et al., WTMC 2021)."),
+                     "comparison is macro F1, and that is what the in-run verification checks: "
+                     "aggregate accuracy is the metric that makes a broken detector look fine "
+                     "(Engelen et al., WTMC 2021), and it was what this sample published until "
+                     "Round 24i."),
         },
         "class_names": list(ATTACKS),
     }
@@ -499,6 +505,7 @@ def build_medical_resnet50(rng: np.random.Generator) -> dict:
         "graph": graph,
         "accuracy": float((pred == y).mean()),
         "majority_baseline": float(max(np.bincount(y)) / len(y)),
+        **declared_metric_expectation("medical_fl.resnet50", y, pred),
         "note": ("Same rows as the ResNet-18 sample. A lower number here is the reproduction, not "
                  "a failure."),
     }
@@ -557,6 +564,42 @@ def _predict(model_dir: str, x: np.ndarray) -> np.ndarray:
     return np.asarray(scores).argmax(1)
 
 
+def declared_metric_expectation(key: str, y, pred) -> dict:
+    """The metric the model is PUBLISHED with, added to `expected` so the browser verifies on it.
+
+    The in-run verification re-scores the whole sample and compares against `expected`. It picks the
+    strongest metric the sample publishes, so whatever is written here decides what "verification
+    PASS" actually asserts.
+
+    Auditing that after the verification step shipped: SIX of nine models published only `accuracy`
+    while their declared headline was minority-class F1, AUC, AUC-PR or macro F1. On finance that
+    means verifying at a 1.8% positive rate where the majority baseline is 0.9818 and the model
+    scores 0.9932 - a model predicting "clean" unconditionally passes with a 1.1pp shortfall. The
+    check was weakest exactly where this project's whole metric discipline says it matters most.
+
+    Only metrics computable from hard predictions are emitted here. AUC and AUC-PR need scores; the
+    browser HAS them (it runs the graph) but the comparison value is not written yet, and that gap
+    is recorded rather than papered over with an accuracy figure standing in for an AUC.
+    """
+    from qsh.models import metrics
+    from qsh.models.registry import get as _get
+
+    y = np.asarray(y).ravel()
+    pred = np.asarray(pred).ravel()
+    try:
+        declared = _get(key).metric.name
+    except Exception:
+        return {}
+    if declared == "minority_class_f1":
+        return {"minority_class_f1": float(metrics.minority_class_f1(y, pred))}
+    if declared == "macro_f1":
+        return {"macro_f1": float(metrics.macro_f1(y, pred))}
+    if declared == "accuracy":
+        return {}                                   # already written by every caller
+    # auc / auc_pr / event_wise_f0_5 / c_index_eur: not derivable from argmax alone.
+    return {"declared_metric_not_verifiable": declared}
+
+
 def _f1_over_baseline(y: np.ndarray, pred: np.ndarray) -> tuple[float, float, float]:
     """Rare-class F1, the F1 of flagging everything, and the ratio between them.
 
@@ -613,6 +656,7 @@ def build_medical_student(rng: np.random.Generator) -> dict:
             "graph": "model.onnx",
             "accuracy": float((pred == y).mean()),
             "majority_baseline": float(max(np.bincount(y)) / len(y)),
+            **declared_metric_expectation("medical_fl.student", y, pred),
             "note": ("The whole official test split, and the same rows the registry's recorded "
                      "student accuracy was measured on, so this reproduces that figure rather than "
                      "resampling it."),

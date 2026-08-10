@@ -416,6 +416,7 @@ export interface ModelInputFile {
      *  0.1-percent-positive corpus while its minority-class F1 is 0.0178. A browser that "verified"
      *  the 99 would be confirming the wrong number. */
     minority_class_f1?: number;
+    macro_f1?: number;
     /** F1 of predicting EVERYTHING positive: precision = prevalence, recall = 1. The floor a rare-
      *  class F1 has to clear, and the reason 0.0178 needs a companion rather than a bare comparison
      *  against zero. */
@@ -434,7 +435,7 @@ export interface ModelEvalResult {
   score: number | null;
   /** Which metric `score` and `expected` are. The model is scored on the metric it was PUBLISHED
    *  with, not on whichever one the browser found easiest to compute. */
-  metricName: "accuracy" | "minority_class_f1" | "mae";
+  metricName: "accuracy" | "minority_class_f1" | "macro_f1" | "mae";
   expected: number | null;
   /** Majority-class accuracy, or persistence MAE — what a trivial predictor would achieve. */
   baseline: number | null;
@@ -618,11 +619,15 @@ export async function evaluatePublishedModel(
     }
 
     const labels = file.labels ?? [];
+    // Retained rather than consumed in place: macro F1 needs a second pass over the predictions,
+    // and recomputing the argmax there would be a second chance to compute it differently.
+    const preds = new Int32Array(n);
     let correct = 0, tp = 0, fp = 0, fn = 0, positives = 0;
     for (let i = 0; i < n; i++) {
       let best = 0;
       for (let c = 1; c < width; c++) if (data[i * width + c] > data[i * width + best]) best = c;
       const pred = width > 1 ? best : (data[i] > 0.5 ? 1 : 0);
+      preds[i] = pred;
       if (pred === labels[i]) correct++;
       if (labels[i] === 1) positives++;
       if (pred === 1 && labels[i] === 1) tp++;
@@ -646,6 +651,37 @@ export async function evaluatePublishedModel(
         baseline: allPositive,
         beatsBaseline: f1 > allPositive,
         matchesExpected: Math.abs(f1 - exp) <= tolerance,
+        backend: status.backend, bytes: status.bytes, provenance: file.provenance,
+        note: file.expected.note ?? null, error: null,
+      };
+    }
+
+    // Macro F1 for the multi-class detector. Aggregate accuracy is precisely the metric Engelen
+    // et al. (WTMC 2021) showed stays at 0.99 while a per-class F1 moves 0.60 -> 0.99, so verifying
+    // an eight-class intrusion detector on accuracy checks almost nothing about the classes that
+    // matter. Until Round 24i that sample published only accuracy and this branch did not exist.
+    if (file.expected.macro_f1 != null) {
+      const classes = new Set<number>();
+      for (let i = 0; i < n; i++) { classes.add(preds[i]); classes.add(labels[i]); }
+      let sum = 0;
+      for (const c of classes) {
+        let ctp = 0, cfp = 0, cfn = 0;
+        for (let i = 0; i < n; i++) {
+          if (preds[i] === c && labels[i] === c) ctp++;
+          else if (preds[i] === c) cfp++;
+          else if (labels[i] === c) cfn++;
+        }
+        sum += ctp === 0 ? 0 : (2 * ctp) / (2 * ctp + cfp + cfn);
+      }
+      const macro = classes.size ? sum / classes.size : 0;
+      const exp = file.expected.macro_f1;
+      // A balanced n-class problem: guessing one class always gives macro F1 of about 2/(n+1)/n.
+      const chance = classes.size ? (2 / (classes.size + 1)) / classes.size : 0;
+      return {
+        ran: true, task, metricName: "macro_f1", n, score: macro, expected: exp,
+        baseline: chance,
+        beatsBaseline: macro > chance,
+        matchesExpected: Math.abs(macro - exp) <= tolerance,
         backend: status.backend, bytes: status.bytes, provenance: file.provenance,
         note: file.expected.note ?? null, error: null,
       };
