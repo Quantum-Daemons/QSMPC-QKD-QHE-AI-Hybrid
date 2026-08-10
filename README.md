@@ -483,8 +483,9 @@ See [`docs/pqc-roadmap.md`](docs/pqc-roadmap.md).
 - **Two new trained models, and one of them is a negative result.** `medical_fl.resnet50` exists to
   test a published claim rather than to win one: MedMNIST v2 reports ResNet-50 at AUC 0.857 against
   ResNet-18's 0.901 on this 780-image corpus, so the deeper network is expected to lose. It does,
-  and by more than the published gap - 0.7988 against our ResNet-18's 0.9147. A third consequence of
-  the same over-parameterisation appears in the export: its int8 graph agrees with its own fp32 on
+  and by more than the published gap - 0.7988 against our ResNet-18's 0.9147, both trained from
+  random initialisation. A third consequence of the same over-parameterisation appears in the
+  export: its int8 graph agrees with its own fp32 on
   0.9865 of the confident set against a 0.99 gate, so the int8 artefact was built, measured and
   **withheld** rather than shipped with the gate relaxed. It replaces a DenseNet-121 card that named
   a dataset with no loader and linked a Hugging Face repo that did not exist.
@@ -709,17 +710,26 @@ See [`docs/pqc-roadmap.md`](docs/pqc-roadmap.md).
   | **finance** | GFP + XGBoost (graph-feature preprocessing over the transaction multigraph) | IBM **AMLworld HI-Small**, 5,078,345 transactions, 1 laundering in 981 (CDLA-Sharing-1.0) | minority-class F1 **0.081**, AUPRC **0.073** vs a 0.0015 prevalence baseline | 0.632 (NeurIPS 2023 D&B) - see the gap note below |
   | **medical** | **ResNet-18** trained from random initialisation (no ImageNet weights, so no ImageNet terms attach) | MedMNIST v2 **BreastMNIST** (CC-BY-4.0) | AUC **0.9147** | 0.901 (Yang et al., Scientific Data 10:41, 2023) |
   | **genomics** | published **PRS** effect-weight vector - not a neural network | PGS Catalog **PGS000001** over **2,504 real 1000 Genomes samples** | ancestry portability, below | C-index 0.628 - *external citation, not measurable here; the PGS Catalog records it as a Cox-model concordance statistic, not an AUROC, so it is not directly comparable to one* |
-  | **satellite** | **Telemanom** 2xLSTM(80), seq 250, non-parametric dynamic threshold + pruning | **ESA-ADB Mission1** lightweight channels 41-46, multi-year real telemetry (CC-BY-3.0-IGO) | event-wise F0.5 **0.4545** | 0.786 (ESA-ADB Table 2) |
+  | **satellite** | **Telemanom** 2xLSTM(80), seq 250, non-parametric dynamic threshold + pruning | **ESA-ADB Mission1** lightweight channels 41-46, multi-year real telemetry (CC-BY-3.0-IGO) | event-wise F0.5 **0.4545** over just **3 events** | 0.968 (ESA-ADB Supp. Table 9, anomalies only) |
   | **telecom** | RF baseline + quantum-kernel SVC + variational QNN | literature-grounded synthetic QKD-attack telemetry (7 attack types + normal) | macro F1 - **RF 0.987**, quantum-kernel SVC **0.832**, variational QNN **0.467** | no trustworthy single number exists - see below |
 
   Three of those deserve their honest caveat stated in the README rather than buried:
 
-  - **finance falls well short of 0.632.** The published baseline uses IBM's Graph Feature
-    Preprocessor, which ships in `snapml` under a **Proprietary** licence and is therefore excluded
-    by this project's commercial-OK-only rule. What is reimplemented is the documented typology set
-    (degree, fan-in/out, reciprocity, k-hop cycle closure, burst degree, scatter-gather), and the
-    corpus injects CYCLE patterns of up to 10 hops while reachability here is computed to 4. The
-    evaluation is also strictly inductive and temporally split. The number is reported as measured.
+  - **finance falls well short of 0.632, and the reason recorded here for several rounds was wrong.**
+    The note used to give two causes: the Proprietary `snapml` licence on IBM's Graph Feature
+    Preprocessor, and 10-hop injected CYCLE patterns against 4-hop reachability here. The second does
+    not survive arithmetic - the GFP paper (arXiv:2402.08593) decomposes its own contribution and caps
+    multi-hop cycle and scatter-gather features at about **4% relative**, while fan-in/fan-out, which
+    this project already reimplements, carries **more than 30%**. Four percent cannot explain a
+    multiple-fold gap. The real cause is architectural: **GFP computes per-transaction subgraph
+    patterns over a dynamically updated graph, while this project computes per-account scalar
+    aggregates.** That is implementable without `snapml`; it is simply a larger piece of work. The
+    licence exclusion is real but was never the mechanism. Investigating this also found and fixed a
+    genuine defect - per-account aggregates spanned the whole training window, so a training row's
+    feature included its own future while test rows got a stale table. Making them causal
+    (prior-at-time) lifted minority-class F1 **0.0808 to 0.1519, +88%**, with leakage disproved by a
+    truncation test rather than argued. Workings:
+    [`references/finance-gap-investigation.md`](references/finance-gap-investigation.md).
   - **genomics cannot produce an AUROC here, so it does not print one.** 1000 Genomes is a reference
     panel with no case/control status; the published 0.628 comes from a phenotyped cohort of
     n=200,195. What *is* computable from real genotypes is the portability failure, and it is stark:

@@ -437,3 +437,65 @@ silent on the notion that governs exactly that. Full discussion in `../docs/thre
   q-IND-CPA-D-Secure Approximate Homomorphic Encryption", now "Accurate and Composable Noise
   Estimates for CKKS with Application to Exact HE Computation". Citing the old title points at a
   paper that no longer exists under that name.
+
+## QSDC security basis: secrecy capacity, not a fixed QBER (Round 24)
+
+**This entry corrects an earlier version of itself.** That version said `qkd.pp_threshold = 0.11`
+was correct for QSDC because the wiretap secrecy capacity `Cs = 1 - 2h(e)` has its root at 0.110028,
+the same as Shor-Preskill, so the two coincided by identity. The identity is real but the conclusion
+was wrong, because `Cs = 1 - 2h(e)` is the **loss-free** case.
+
+The published criterion is `Cs > 0`, and `Cs` depends on channel loss:
+
+    Cs = Q_Bob [ 1 - h(e) - g h(e_chk) ],    g = Q_Eve / Q_Bob = 10^(loss_dB / 10)
+
+So the tolerable error rate falls fast as the link gets lossier: 0.110 at 0 dB, **0.048 at the 4.1 dB
+Qi et al. measured on a real 1.5 km fibre link (g = 2.57)**, and ~0.0003 at the ~24.5 dB this
+project's own free-space downlink reports. Applying 0.11 to a lossy channel is wrong in the
+**permissive** direction - it delivers over a channel whose secrecy capacity is already zero. The
+satellite path now computes `Cs` directly.
+
+Three further facts that stop any single number being quoted safely:
+
+- **The founding protocols specify no threshold at all.** Long and Liu (PRA 65, 032302, 2002) say
+  "below certain threshod" (sic); Deng, Long and Liu (PRA 68, 042317, 2003) say "reasonably low";
+  DL04 (Deng and Long, PRA 69, 052319, 2004) says "if the error rate is high ... the communication is
+  halted". The numbers all come from later security analysis.
+- **11% appears in the QSDC literature only where the protocol reduces to BB84.** Zhao et al.
+  (Front. Phys. 19, 51201, 2024) give 0.11 for entanglement-distillation QSDC against 0.073 for their
+  hybrid-entanglement scheme; Pan et al. (Sci. Adv. 11, eadt4627, 2025) state 11% and say plainly
+  that their expression "is exactly the key rate of the BB84 QKD protocol". DL04 - the family every
+  fibre experiment implements - is put at ~5.7% (Wu, Lin, Yin and Long, Quantum Eng. 1, e26, 2019).
+- **There are two error rates and two aborts.** The forward-leg check error governs SECURITY; the
+  return-leg QBER governs RELIABILITY and is bounded by the error-correcting capability, not by a
+  security threshold. Collapsing them into one comparison is a modelling error in its own right.
+
+**No standards body has specified QSDC**, and this was checked exhaustively rather than assumed.
+All 14 published ETSI QKD deliverables were searched full-text (2.0 M characters): zero hits for
+QSDC or "secure direct communication", against a control of 7 documents matching "BB84". ITU-T's
+complete X.1700-X.1749 and Y.3800-Y.3835 sets are QKD or QRNG throughout, and the work programme
+across every study period 2001-2028 and every status returns zero QSDC items against a control of
+186 quantum-titled items. ISO/IEC JTC 1/SC 27's entire catalogue contains exactly two
+quantum-titled standards, both parts of 23837, both QKD. IEEE has no QSDC standard - and no QKD one
+either. China's national platform returns no data for the Chinese term, and the national quantum
+terminology project scopes itself to QKD. QSDC is absent even from CEN/CENELEC's
+pre-standardization roadmap, which mentions QKD 319 times and QSDC zero.
+
+One terminology trap that produces false positives, and it is easy to fall into. In Chinese sources
+**"quantum secure communication" is the QKD umbrella term, not QSDC** - they are different words and
+different technologies. GB/T 42829-2023 and YD/T 4301-2023 are both QKD. A source claiming "China has
+a quantum secure communication standard" is almost certainly pointing at one of those. Only the
+distinct Chinese term for quantum secure DIRECT communication means QSDC, and no standards document
+at any level contains it. Korea's TTA has the term in a terminology dictionary with no standard
+number attached, which is the closest any body has come.
+
+The correct phrasing is therefore **"no published standard; research-stage technology"** - not
+"standardization in progress", because no work item exists at any body. Two citation traps worth
+knowing: **"IEEE 1913-2019" is not a real published standard** (the PAR was withdrawn on 11 December
+2024 and the scope was QKD anyway), and the 2024 IEEE COMST QSDC survey mentions standardization
+exactly once, about QKD.
+
+Primary sources: Qi, Sun, Lin, Yin, Long, Light Sci. Appl. 8, 22 (2019), doi:10.1038/s41377-019-0132-3
+- the `Cs > 0` abort rule and the measured g = 2.57. Pan, Lin, Wu, Sun, Ruan, Yin, Long,
+arXiv:2005.05102 - free-space QSDC, 500 bps over 10 m, QBER 0.49% +/- 0.27%, and the DBER/QBER
+distinction. Long and Liu (2002), Deng, Long and Liu (2003), Deng and Long (2004) - the protocols.

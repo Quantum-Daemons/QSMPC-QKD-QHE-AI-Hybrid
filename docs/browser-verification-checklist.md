@@ -7,6 +7,102 @@ It exists because gate 4 was being reconstructed from memory every round, and wh
 is what someone remembers to look at. Round 20 audited controls on use-case pages and found five
 inert ones; the pages it did not sweep kept theirs. This file is the sweep, written down.
 
+## Topic index - the same concern, in more than one place
+
+This file has no duplicated text: there are zero repeated check-rows and zero repeated sentences.
+What it does have is **scattering** - one concern addressed in several sections, each written when a
+different incident exposed a different face of it. That is deliberate, because each section carries
+the incident that produced its rows and that context is what stops a row being deleted later as
+noise. It is also the thing that makes the file hard to work top-to-bottom.
+
+So the fix is an index rather than a merge. If you are chasing one concern, start here; if you are
+running a round, use the Run sheet below instead.
+
+| Concern | Sections | Where |
+|---|---|---|
+| **Deploy, CI, and what the browser is actually served** | 10 | [Run sheet](#run-sheet---the-whole-round-in-one-page) · [How to work it](#how-to-work-it) · [The layout axis](#the-layout-axis-in-full) · [Reproduce each panel's headline from...](#reproduce-each-panels-headline-from-what-the-page-itself-shows) · [Check the MODEL](#check-the-model-not-only-the-number) · [Anything outside web/ and src/ still...](#anything-outside-web-and-src-still-ships-and-nothing-was-checking-it) · [Local-green is not CI-green](#local-green-is-not-ci-green-and-the-deploy-will-not-tell-you) · [Bootstrap a claimed improvement before...](#bootstrap-a-claimed-improvement-before-shipping-it) · [The deploy step itself needs verifying](#the-deploy-step-itself-needs-verifying-and-a-failed-build-looks-like-a-successful-one) · [An investigation is not landed until...](#an-investigation-is-not-landed-until-the-string-the-ui-renders-says-so) |
+| **Is the number measuring what it claims to** | 4 | [A shuffled DataLoader is correct for...](#a-shuffled-dataloader-is-correct-for-training-and-silently-wrong-for-harvesting) · [Bootstrap a claimed improvement before...](#bootstrap-a-claimed-improvement-before-shipping-it) · [A model can score respectably and have...](#a-model-can-score-respectably-and-have-learned-nothing---check-that-it-predicts-more-than-one-class) · [Ask what the metric was divided by](#ask-what-the-metric-was-divided-by-not-just-how-many-samples-there-were) |
+| **Publication, the Hub, and what may be redistributed** | 8 | [Run sheet](#run-sheet---the-whole-round-in-one-page) · [Routes](#routes) · [Retraining a published model is a...](#retraining-a-published-model-is-a-five-step-cycle-and-two-of-the-steps-bite) · [PQC library conformance](#pqc-library-conformance-run-nists-negative-vectors-not-just-the-happy-path) · [Submodules](#submodules-check-they-are-still-maintained-and-that-the-licence-is-written-down) · [Navigate the way a visitor does](#navigate-the-way-a-visitor-does-not-the-way-a-test-does) · [A default that contradicts a licence...](#a-default-that-contradicts-a-licence-commitment-will-eventually-be-taken) · [Retired and orphaned Hugging Face repos](#retired-and-orphaned-hugging-face-repos) |
+| **Claims about the outside world** | 4 | [The nine axes](#the-nine-axes) · [Search outward](#search-outward-not-just-inward---and-fetch-the-source-never-the-summary) · [Reproduce each panel's headline from...](#reproduce-each-panels-headline-from-what-the-page-itself-shows) · [Every control](#every-control-against-a-published-reference-value) |
+| **Coverage of the page itself** | 7 | [Run sheet](#run-sheet---the-whole-round-in-one-page) · [Routes](#routes) · [Regions on a use-case page](#regions-on-a-use-case-page) · [Every panel must describe the run that...](#every-panel-must-describe-the-run-that-just-happened) · [Simulator controls](#simulator-controls-and-where-each-one-has-to-show-up) · [Every control](#every-control-against-a-published-reference-value) · [The UX axis](#the-ux-axis-and-the-accessibility-half-nobody-was-checking) |
+
+**Every check row has a unique ID.** The prefix says which section it belongs to: `RS` run sheet,
+`RG` page region, `CI` continuous integration, `DP` deploy, `DN` denominator/sample size, `HF`
+Hugging Face, `B` baseline row, `C` constant predictor, `L` licence default, `N` landed-in-the-UI,
+`R` bootstrap, `S` sampler alignment. Two collisions were fixed in Round 24e: `DP` and `DN` were both
+`D`, and the run sheet and the region table both used bare integers, so "step 3" and "region 3" and
+"check D3" were three different things sharing two names.
+
+## Run sheet - the whole round in one page
+
+This document is 1300 lines because each row carries the incident that produced it, and that context
+is what stops a row being deleted later as noise. But a checklist you cannot execute in one sitting
+has stopped being a checklist, so this is the executable index. Work down it; follow a link only when
+a row fails or you do not recognise it.
+
+**Off the browser first** - these are commands, and they either pass or they do not:
+
+    .venv/bin/python -m pytest -q -m "not slow"        # 208 expected (measured 2026-08-10)
+    cd web && npx tsc --noEmit && npm run build
+    cd web && npm run check:pqc                        # FIPS 203 s7.2 + FIPS 204 sizes/round-trip
+    .venv/bin/python scripts/export_config.py          # if the registry or config changed
+    git ls-files '*.md' '*.ts' '*.tsx' '*.py' | xargs grep -lP '[\x{3040}-\x{9faf}]'   # expect empty
+
+**Then the sweep, in order.** Each line names what to do and where the detail lives.
+
+| # | Do this | Detail |
+|---|---|---|
+| RS1 | Deploy from git, grep the served bundle for a new string literal, **then** cache-bust the tab | [How to work it](#how-to-work-it) |
+| RS2 | Walk all 7 routes plus the two negative paths | [Routes](#routes) |
+| RS3 | On each use-case page, walk the 14 regions in DOM order | [Regions on a use-case page](#regions-on-a-use-case-page) |
+| RS4 | Open AND close every disclosure; check all six states | [The open and close axis](#the-open-and-close-axis) |
+| RS5 | Run the transport sequence: Start, Pause, Step, Resume, Restart, Stop | [Buttons, by group](#buttons-by-group) |
+| RS6 | Every select, every option; every checkbox, both states | [Selects, every value](#selects-every-value) |
+| RS7 | Capture every control's value against its OWN min/max | [Capture every control's value](#capture-every-controls-value-against-its-own-constraints) |
+| RS8 | Set each control, re-run, confirm the result MOVES and matches its reference value | [Every control, against a published reference value](#every-control-against-a-published-reference-value) |
+| RS9 | After a parameter change, grep the page for the OLD value, not just the new one | [Every panel must describe the run that just happened](#every-panel-must-describe-the-run-that-just-happened) |
+| RS10 | Recompute each panel headline from the inputs printed beside it | [Reproduce each panel's headline](#reproduce-each-panels-headline-from-what-the-page-itself-shows) |
+| RS11 | Check each panel against its cited standard | [Every panel, against its cited standard](#every-panel-against-its-cited-standard) |
+| RS12 | Check every XAI attribution against its own physics, not only its axioms | [XAI covers all five use cases](#xai-now-covers-all-five-use-cases---check-each-against-its-own-physics) |
+| RS13 | Read diagram labels and tables against each other - a tick is not a verdict | [A completion marker is not a verdict](#a-completion-marker-is-not-a-verdict) |
+| RS14 | Layout at 1280 and mobile; no horizontal overflow, no overlap | [The layout axis, in full](#the-layout-axis-in-full) |
+| RS15 | UX and WCAG 2.2 AA - composite the alpha before judging contrast | [The UX axis](#the-ux-axis-and-the-accessibility-half-nobody-was-checking) |
+| RS16 | Console clean on the CURRENT bundle - old errors persist in history | [During a run, not only after it](#during-a-run-not-only-after-it) |
+
+**Then the checks that reach outside the browser:**
+
+| # | Do this | Detail |
+|---|---|---|
+| RS17 | Source-code pass: hardcoding, dead guards, fallbacks the browser cannot show | [The source-code pass](#the-source-code-pass-hardcoding-and-fallbacks-the-browser-cannot-show-you) |
+| RS18 | Every declared HF repo resolves; every artifact dir exists; every card matches metrics.json | [The model registry claims things about the outside world](#the-model-registry-claims-things-about-the-outside-world---check-them) |
+| RS19 | `models/`, `monitoring/`, `spaces/` - they ship too, and nothing else checks them | [Anything outside web/ and src/](#anything-outside-web-and-src-still-ships-and-nothing-was-checking-it) |
+| RS20 | Re-measure every pinned dependency, and watch which "upstream" a sentence means | [Dependency claims decay](#dependency-claims-decay-so-re-measure-them-and-watch-the-wording) |
+| RS21 | Submodules: pin vs upstream HEAD, licence, archived, branch drift. Use `gh api` | [Submodules](#submodules-check-they-are-still-maintained-and-that-the-licence-is-written-down) |
+| RS22 | Search OUTWARD - what changed outside that the project has not noticed | [Search outward, not just inward](#search-outward-not-just-inward---and-fetch-the-source-never-the-summary) |
+| RS23 | Retired a metric? Grep its name AND a characteristic value across every doc | [Retiring a metric is not done until the checklist stops asking](#retiring-a-metric-is-not-done-until-the-checklist-stops-asking-for-it) |
+| RS24 | Re-check the dated items - they expire whether or not anyone looks | see below |
+| RS25 | Any threshold constant: is it the LOSS-FREE idealisation of a loss-dependent bound? | see below |
+
+**Dated checks, because a deadline does not wait for a convenient round:**
+
+    curl -s -o /dev/null -w "%{http_code}\n" https://huggingface.co/api/spaces/Daemons-Q/qsh-inference
+    # 401 -> still blocked, condition stands.  200 -> decide NOW: wire the Space, or delete it.
+    #        (unlock was due ~2026-09-01). The `remote` ProvenanceBadge tier this used to say to
+    #        delete alongside it was ALREADY removed in Round 24d - ProvenanceBadge.tsx now exports
+    #        only measured-webgpu | measured-wasm | measured-js | simulated. Half of this
+    #        instruction had already been carried out and the note had not noticed.
+
+EU AI Act Art. 50(2), machine-readable marking of synthetic text: **CLOSED as not-applicable**,
+not as done. The Agentic AI panel emits 96 tokens (Transformers.js) or 160 (WebLLM), both under the
+Code of Practice's 200-token "very short text" exception, so no marking layer is owed and the
+C2PA-versus-in-band choice never opens. What stays live is the trip-wire, not the deadline - re-check
+if the panel exceeds **200 tokens**, if generated text ships inside a file container, or if C2PA text
+bindings become implementable (spec 2.4 defines them; no conforming product implements them yet).
+Workings in [`ai-act-art50-gap-analysis.md`](ai-act-art50-gap-analysis.md).
+
+Record what you observed in [`verification-log.md`](verification-log.md), with the date and the
+bundle hash. A tick is not a result.
+
 ## How to work it
 
 A row passes when the observed value is written into it. A tick is not a result: the whole point of
@@ -71,20 +167,20 @@ blank.
 
 | # | Region | Component |
 |---|---|---|
-| 1 | Title, blurb, industry and market pills | UseCasePage |
-| 2 | Demo banner | demoMode |
-| 3 | Crypto selects, published-model select, OptiQKD and MCP checkboxes, Parameters button | PipelineControls |
-| 4 | Parameter fields, Reset to defaults | ParameterPanel |
-| 5 | Two-party simulator diagram | TwoPartyDiagram |
-| 6 | Four export buttons | UseCasePage |
-| 7 | Event log, metrics table, signature | RunMonitor |
-| 8 | Inference provenance badge and its disclosure | ProvenanceBadge |
-| 9 | Per-model rows, Run buttons, result table | ModelPanel |
-| 10 | SHAP attribution | ShapPanel |
-| 11 | Benchmark rows and cost split | BenchmarkPanel |
-| 12 | Engine, model and combiner selects, Run | AgenticAIPanel |
-| 13 | Key budget, span, relay caveat | SdnControlPlanePanel |
-| 14 | Footer state note | UseCasePage |
+| RG1 | Title, blurb, industry and market pills | UseCasePage |
+| RG2 | Demo banner | demoMode |
+| RG3 | Crypto selects, published-model select, OptiQKD and MCP checkboxes, Parameters button | PipelineControls |
+| RG4 | Parameter fields, Reset to defaults | ParameterPanel |
+| RG5 | Two-party simulator diagram | TwoPartyDiagram |
+| RG6 | Four export buttons | UseCasePage |
+| RG7 | Event log, metrics table, signature | RunMonitor |
+| RG8 | Inference provenance badge and its disclosure | ProvenanceBadge |
+| RG9 | Per-model rows, Run buttons, result table | ModelPanel |
+| RG10 | SHAP attribution | ShapPanel |
+| RG11 | Benchmark rows and cost split | BenchmarkPanel |
+| RG12 | Engine, model and combiner selects, Run | AgenticAIPanel |
+| RG13 | Key budget, span, relay caveat | SdnControlPlanePanel |
+| RG14 | Footer state note | UseCasePage |
 
 ## The open and close axis
 
@@ -434,7 +530,7 @@ each other and with what was selected.
 | Optimize QKD (OptiQKD) | OptiQKD suffix on the QKD arrow with the measured percentage | improvement and convergence lines | `qkd_skr_improvement_pct`, `qkd_convergence_evals` |
 | OptiQKD samples | (via the suffix) | budget line | collapses in 8-wide buckets; saturates near 400 |
 | QKD channel (pulses, distance, eve, misalignment) | QBER on the arrow | channel line | `qber`, `skr`, `secure_key_bits` |
-| Free-space channel (downlink km, sat eve, sat pulses, QSDC abort threshold) | free-space arrow QBER, and the QSDC arrow must show the ABORT when it fires | "QSDC ABORTED: error X > threshold - telemetry withheld" | `qsdc_error_rate`, `qsdc_secrecy_capacity`, `qsdc_eavesdrop_detected` |
+| Free-space channel (downlink km, sat eve, sat pulses) | free-space arrow QBER, and the QSDC arrow must show the ABORT when it fires | "QSDC NOT AVAILABLE on this link - secrecy capacity ... The limit is the link budget, not an attack" (loss-limited, which is the default state) or "QSDC ABORTED: secrecy capacity ... the loss is attributable" (Eve-limited) | `qsdc_error_rate`, `qsdc_secrecy_capacity`, `qsdc_eve_gain_g`, `qsdc_link_budget_limited`, `qsdc_eavesdrop_detected` |
 | QRNG (bits, extractor, eps) | not drawn | delivered-bits line, shortfall explained | `qrng_bits_delivered`, `qrng_lhl_max_bits`, `qrng_extraction_rate`, `qrng_health_conclusive` |
 | Quantum / run (qubits, seed) | QSMPC comparison bar | T-gate line | `t_gate_count`, `qubits`; seed changes every downstream value |
 | IDS (samples per class) | QML-IDS step macro-F1 | training line naming the value actually used | `ids_macro_f1`, `ids_train_per_class` |
@@ -536,10 +632,14 @@ The distinction that matters is between a fallback and a *report*. Declining a s
 and using wasm is a fallback and correct - the run says which provider it used. Substituting the
 bundled linear model when a published model fails to load is the same shape and is NOT correct,
 because the page then shows a number for a model it never ran; that path now reports the failure and
-shows nothing in its place. Two live `except Exception: pass` sites remain, both narrow and both
-recorded: `usecases/medical_fl/__init__.py:168` (cosmetic SHAP feature names) and
-`benchmark/gpu_mpc_adapter.py:57` (an optional GPU subprocess whose absence is handled two lines
-later).
+shows nothing in its place. **Three** live `except Exception: pass` sites remain, not two, and the third is not cosmetic:
+`usecases/medical_fl/__init__.py:213` (cosmetic SHAP feature names - this was recorded as :168, which
+is a different `except` returning 1), `benchmark/gpu_mpc_adapter.py:57` (an optional GPU subprocess
+whose absence is handled two lines later), and the one that was never recorded,
+`config/__init__.py:66` - `pass  # malformed config => fall back to defaults`. That last one
+swallows a malformed `config.yaml` and silently returns defaults, which would make the
+config-to-bundle procedure prescribed in this same section report "the page did not move" when the
+real cause is that the config never parsed.
 
 **Then confirm in the browser**, because a config value can reach the bundle and still not be read -
 which is precisely the bug above. Capture each use-case page, change the parameter, capture again,
@@ -805,17 +905,27 @@ half the published one - 0.0568 against 0.11, 0.0755 against 0.15. That is close
 a fitting or units discrepancy and wrong enough to make the comparison meaningless. `q_sift` is an
 explicit field for this reason, and a test asserts the factor of two so it cannot drift.
 
-### Free-space channel (satellite: `pp-sat_distance_km`, `pp-sat_eve`, `pp-sat_pulses`, `pp-qsdc_threshold`)
+### Free-space channel (satellite: `pp-sat_distance_km`, `pp-sat_eve`, `pp-sat_pulses`)
 
-Loss must rise with distance and the reported dB must appear in the diagram label. Measured at Eve
-0.4: 24.5 dB, QBER 0.13, 0 secure bits, step marked failed; QSDC then aborted with "error 0.13 over
-threshold - telemetry withheld". The abort keeps its tick, correctly - aborting IS the protocol
-working, and the label says ABORTED unambiguously.
+Loss must rise with distance and the reported dB must appear in the diagram label. The abort keeps
+its tick, correctly - aborting IS the protocol working, and the label says so unambiguously.
 
-Open question recorded rather than silently changed: `pp-qsdc_threshold` defaults to **0.11**, the
-textbook BB84 figure, which sits above the GLLP zero-key point. QSDC is a different protocol with its
-own security analysis, so 0.11 is not automatically wrong there - but it has not been traced to a
-QSDC source, and it should be.
+**`pp-qsdc_threshold` is gone, and the open question about it is closed.** It defaulted to 0.11, the
+loss-free root of the secrecy-capacity expression, which is why it coincided exactly with
+Shor-Preskill and looked derived. The browser was corrected to abort on `Cs = 1 - h(e) - g h(e)`
+with `g = 10^(loss_dB/10)`, at which point **nothing read `config.qsdc_threshold` any more and the
+control became inert** - it sat in ParameterPanel moving no surface for several rounds. It has been
+removed; under the corrected criterion there is no QBER threshold to set. Round 24m also finished
+the other half: `src/qsh/qkd/qsdc.py` had kept the old fixed-QBER criterion the whole time, so the
+Python and browser paths disagreed about whether the same link delivers.
+
+**What to expect now, and it is not a bug:** this downlink is loss-limited at EVERY setting.
+Measured on the deployed page, secrecy capacity -51.58 at 24.5 dB with g=280.4 and no eavesdropper.
+The fixed 5 dB atmospheric + 3 dB pointing budget alone gives g = 6.31, where `Cs > 0` needs QBER
+below ~0.019 against a 0.025 misalignment floor - so `sat_distance_km` cannot produce a delivery at
+any position. Check that the log says NOT AVAILABLE / link budget, and that
+`qsdc_eavesdrop_detected` is **0** while `qsdc_link_budget_limited` is 1. The old behaviour reported
+an eavesdropper on a clean channel on every single run.
 
 ### Every panel that restates a run parameter must restate the RUN's value
 
@@ -843,8 +953,14 @@ first does not fix the second.
 Each option must produce a run whose diagram names the model AND its commit hash, so the artefact is
 identifiable. Measured: "published finance_aml.gbm @ c46157c27e64 - onnx-wasm - 1x32 - 0.34 ms -
 class 0". Check the hash against the registry, and check that selecting a different option changes
-it. Note that telecom and genomics ship no selector because they publish a single model; confirm
-that is still true rather than assuming it.
+it. Note that telecom and genomics ship no selector, but for DIFFERENT reasons, and the reason matters:
+telecom publishes exactly one model, while **genomics publishes none at all**. `genomics.prs` carries
+`hf_repo=None` (registry.py, "publication blocked pending the per-score licence audit"), and
+`onnxInference.ts` drops any spec without an `hf_repo_id`, so `browserModels("genomics")` returns an
+empty list - which is also why the in-run verification chart never fires there and the ancestry
+strata chart exists instead. A verifier told the reason is "publishes a single model" will confirm
+the wrong fact about genomics. `PipelineControls.tsx` states it correctly in a comment: "telecom
+publishes one, genomics none".
 
 ### OptiQKD (`sel-optiqkd`) and the key-mixing checkbox
 
@@ -852,6 +968,47 @@ Ticking OptiQKD must emit `qkd_skr_improvement_pct` and a convergence count, and
 must carry the measured improvement rather than merely "OptiQKD on". Unticked, neither appears.
 The "mix QKD-domain key" checkbox controls whether QKD material enters the session key at all;
 unticking it must drive the posture table's QKD row to zero the same way `pqc-only` does.
+
+## XAI now covers all five use cases - check each against its own physics
+
+Until Round 24 only finance, medical and genomics had an attribution. Satellite computed one in
+Python that nothing rendered; telecom had none anywhere. All five now render one, and the method is
+the same everywhere - exact linear SHAP over a genuinely linear model - because in every case a
+linear model was already there. **No new attribution method was invented for any of them**, which is
+the bar to hold if this is extended again.
+
+| Use case | Model explained | Reference point | Check the top feature against |
+|---|---|---|---|
+| finance_aml | bundled PaySim-derived LR | E[x] over the shipped rows | plausibility only |
+| medical_fl | bundled Wisconsin LR | E[x] - note the features are z-scored, so E[x] IS 0 here | plausibility only |
+| genomics | real PGS000001 effect weights | population mean dosage | the SNP should be a known locus for the trait |
+| satellite_comms | bundled NASA telemetry LR (2xN margin) | mean of the bundled windows | the driving channel and timestep |
+| telecom_ids | the in-browser 8-class softmax, one-vs-rest | zero vector, because clientIDS z-scores | **the attack physics** |
+
+**Telecom is the one that can be checked hardest, so check it.** The classifier names an attack, and
+the attribution says which telemetry drove that name. Measured 2026-08-09: predicted
+`intercept_resend`, top contribution `qber_mean` **+4.692**, about 8.5x the next feature. That is
+correct - intercept-resend is the attack that raises QBER, and this repository separately verifies
+the textbook 25% figure against Gottesman-Lo. An attribution that named `sift_ratio` or
+`dark_count_rate` as the dominant driver of an intercept-resend verdict would be wrong even if every
+axiom held.
+
+**Satellite is checkable the same way.** Measured: top contributions `E-6[t7]` -0.427, `E-6[t6]`,
+`E-6[t5]` - clustered on one channel at the LATEST timesteps, which is what a windowed anomaly
+detector should key on. Contributions negative, anomaly score 0.4656, verdict nominal: internally
+coherent. Attributions spread evenly across all six channels and all eight timesteps would suggest
+the model is keying on nothing.
+
+**Do not let the panel conflate two models.** The bars explain the bundled linear model. The class
+the page reports comes from the encrypted CKKS+MPC stage, which evaluates a *different* model - a
+fixed demo pattern on finance and genomics, the published student on medical's convolution branch.
+The panel said the bars described "the CKKS-linear model" until Round 24, which merged the two. When
+reading the panel, confirm it still distinguishes them.
+
+**The gate matters too.** `ShapPanel` was gated on `meta.inference`, a flag meaning "has a
+classical-vs-quantum private-inference path" - a different question from "is there an attribution to
+show". Satellite answered no to the first and yes to the second, so its explanation was computed and
+discarded for six rounds. Gate on the artifact existing.
 
 ## Every panel, against its cited standard
 
@@ -875,7 +1032,13 @@ only at the computation site.
 
   Measured 2026-08-08: comm 6145.8, latency 3396.03, security 1.5 -> raw 10.65, and the page printed
   `raw 10.65 (clamped to 0-10)`. Exact.
-- The legacy 0-100 composite is retained below, and must be visibly demoted and labelled retired.
+- The legacy 0-100 composite is **not rendered at all** - do not go looking for something to
+  confirm is demoted. `BenchmarkPanel.tsx` prints "The 0-100 composite that used to sit here is
+  retired and no longer rendered" and "There is no composite", and the detailed-results table renders
+  a fixed column list that excludes it. `securityScore()` survives in `clientCompute.ts` only to
+  build benchmark rows; no component reads it. What to check is that the composite is still ABSENT,
+  which is the opposite of what this line used to ask for. It also contradicted this document's own
+  "The score is gone" a few hundred lines earlier.
 
 ### QKD control plane - ETSI GS QKD 015
 
@@ -1103,6 +1266,71 @@ So per round, for anything that restates a registry value outside the registry:
 and diff every hardcoded metric string against `models/metrics.json`. **A directory that is not
 deployed yet is exactly where this rots**, because nothing exercises it.
 
+## A constant that reproduces a familiar number is not thereby right
+
+Round 24 defended `qsdc_threshold = 0.11` by deriving it: the wiretap secrecy capacity
+`Cs = 1 - 2h(e)` has its root at 0.110028, identical to Shor-Preskill, so the two coincided by
+identity rather than by transcription. The derivation was correct and the conclusion was wrong,
+because `Cs = 1 - 2h(e)` is the **loss-free** case. The published criterion carries a loss term:
+
+    Cs = Q_Bob [ 1 - h(e) - g h(e_chk) ],   g = Q_Eve / Q_Bob = 10^(loss_dB / 10)
+
+| back-channel loss | g | threshold |
+|---|---|---|
+| 0 dB | 1.00 | 0.1100 |
+| 4.1 dB (Qi et al. 2019, measured on fibre) | 2.57 | 0.0485 |
+| 24.5 dB (this project's own free-space downlink) | 281.8 | **0.0003** |
+
+Wrong by three orders of magnitude on the page that uses it, and wrong in the **permissive**
+direction - it delivered over channels whose secrecy capacity was already zero.
+
+**The check, for any threshold constant in this repository:** ask whether the published bound has a
+parameter the constant silently fixes. Loss, block size, basis bias and detector efficiency are the
+usual ones. A constant is safe only where that parameter is genuinely pinned; otherwise compute the
+bound from the run's own measurements, and report the parameter alongside it so the number is
+checkable rather than asserted.
+
+**And the meta-lesson, which is why this section exists rather than a one-line fix:** I stopped
+checking when the arithmetic reproduced the number already in the file. Agreement with the status
+quo is the weakest possible evidence, because it is exactly what a wrong constant also produces.
+
+## Retraining a published model is a five-step cycle, and two of the steps bite
+
+Round 24 retrained `finance_aml.gbm` and nearly broke the demo twice. Both failures are silent, so
+they belong here rather than in anyone's memory.
+
+    1. train            .venv/bin/python scripts/train/finance_aml.py
+    2. check the pin    metrics.json hf_revision is now null  <- THE FIRST TRAP
+    3. publish          scripts/publish_hf.py --key <k> --public   <- THE SECOND TRAP
+    4. re-export        .venv/bin/python scripts/export_config.py
+    5. verify in browser: the dropdown still lists it, and the run names the NEW revision
+
+**Trap 1: training clears `hf_revision`.** `browserModels()` requires BOTH `hf_repo_id` and
+`hf_revision`; with the revision null the model silently drops out of the published-model dropdown
+and stops running. Nothing errors - the control just disappears. Publishing writes the pin back.
+
+**Trap 2: publishing without `--public` makes an already-public repo PRIVATE.** `publish_hf.py`
+calls `update_repo_settings` explicitly, so the default (private) is applied to existing repos too.
+The browser fetches over public URLs, so this takes the demo down while every local check still
+passes. Confirm visibility before and after:
+
+    curl -s https://huggingface.co/api/models/<org>/<repo> \
+      | python3 -c "import sys,json;d=json.load(sys.stdin);print('private' if d.get('private') else 'PUBLIC', d.get('sha','')[:12])"
+
+**Then verify the URL the browser will actually use**, not just that the repo exists - the resolve
+endpoint 302s, so follow it:
+
+    curl -sL -o /dev/null -w "%{http_code} %{size_download}\n" \
+      "https://huggingface.co/<org>/<repo>/resolve/<revision>/onnx/model.onnx"
+
+**And confirm the run names the new revision.** Measured 2026-08-09: `published finance_aml.gbm @
+cf950f8c1e8d - onnx-wasm - 1x32 - 5.13 ms`. A stale revision here means the browser is running the
+old weights while every local number describes the new ones.
+
+**One licence check that must not be skipped**: `publish_hf.py` refuses a public push when the
+dataset is not marked publishable, and excludes `fixtures.npy` by deny list. Read the excluded list
+in the output rather than assuming - it is what keeps corpus rows off the Hub.
+
 ## The model registry claims things about the outside world - check them
 
 `hf_repo` is not a label, it is an assertion that a repository exists and is reachable. The registry
@@ -1270,162 +1498,653 @@ protocol: the wiring was correct, the label function was correct, and the node s
 Read the rendered node text rather than the DOM you expect - that graph renders React Flow HTML
 nodes, and a sweep querying `svg text` returned nothing at all.
 
-## Verified in Round 21
+## Local-green is not CI-green, and the deploy will not tell you
 
-Observed on `https://qsmpc-qkd-qhe-ai-hybrid.daemons.jp`, recorded rather than ticked.
+For an entire round the local gate was `pytest -m "not slow"` + `tsc --noEmit` + `npm run build`,
+all three green, and **CI was RED on every single push**. The failure was one `ruff E702` in a file
+the blocking lint scope covers. Nine commits went out and the demo deployed correctly from every one
+of them, because the VPS pulls the git branch - not a CI artifact - so a red build deploys exactly
+as smoothly as a green one. Nothing anywhere says otherwise unless you look.
 
-Environment, browser A: `crossOriginIsolated` true, zero `/api` requests, WebGPU adapter present but
-software (SwiftShader, no `shader-f16`), WebNN API present and deliberately not offered to ORT.
-Browser B: same page, `requestAdapter()` returns null, so the wasm build is used. **The adapter is
-recorded with every latency below, because it changes them by two orders of magnitude.**
+The trap is that the local gate is a SUBSET of CI and the subset is invisible. CI also runs config
+parity, two lint scopes, a secrets check, a Japanese-character check, and a committed-artifact check.
+None of those is in `pytest`.
 
-Published model running inside the orchestration, per use case:
-
-| Use case | Model | Adapter | Execution provider | Latency | Input |
-|---|---|---|---|---|---|
-| finance_aml | finance_aml.gbm | B | onnx-wasm | 1.42 ms | 1x32 |
-| medical_fl | medical_fl.resnet18 | A software | onnx-webgpu | 288 ms | 1x1x28x28 |
-| medical_fl | medical_fl.resnet50 | A software | onnx-webgpu | 12842 ms | 1x1x28x28 |
-| medical_fl | medical_fl.resnet50 | B none | onnx-wasm | **42 ms** | 1x1x28x28 |
-| genomics | none registered, and the run says so | | | | |
-| telecom_ids | telecom_ids.qml | B | onnx-wasm | 5.94 ms | 1x7 |
-| satellite_comms | satellite_comms.telemanom | A software | onnx-webgpu | 151 ms | 1x250x6 |
-| satellite_comms | satellite_comms.opssat | B | onnx-wasm | 4.36 ms | 1x19 |
-| satellite_comms | satellite_comms.opssat_student | B | onnx-wasm | 5.98 ms | 1x19 |
-
-The two ResNet-50 rows are the finding: 12842 ms on a software WebGPU adapter against 42 ms on wasm,
-same model and same row. `hasWebGPU()` now declines software adapters, so the 12842 row is no longer
-reachable - it is kept here as the evidence for why.
-
-Routes swept through the SPA router: all ten clean - zero page overflow, zero elements wider than the
-viewport, zero SVG labels outside their viewBox, zero `NaN`/`undefined`/`Infinity`/`[object Object]`.
-`/agentic-ai` redirects to `/usecases`; `/usecase/<bad-id>` renders "No such use case".
-
-Diagram labels, measured as `bbox.x >= 0 && bbox.x + bbox.width <= viewBoxWidth` after a run, in the
-state producing each one's longest label: finance 81 chars (172/167 px margins), medical ResNet-50 91
-chars (147/143), satellite OPS-SAT student 95 chars (133/129). All fit. Before the `local-wide` fix
-the satellite label lost its first 17 characters off the left edge.
-
-The published-model select is disabled while `state === "running"` and re-enabled at `done`, sampled
-at 200 ms intervals from the click.
-
-Dynamic parameter reaching all three surfaces, medical page, `qkd_distance_km` at two values:
-
-| Distance | Diagram | qber | skr | secure_key_bits |
-|---|---|---|---|---|
-| 50 km | BB84 decoy-state · QBER 0.02 | 0.02 | 0.00906 | 1811 |
-| 250 km | BB84 decoy-state · QBER 0.5 | 0.5 | 0 | 0 |
-
-Diagram and metrics move together, and the key dies where the channel model says it should. Note that
-QBER is already pinned at its 0.5 ceiling by 250 km, earlier than the "around 400 km" this file
-records under numeric edges - that figure was approximate and the saturation point is nearer 250 at
-the default 0.2 dB/km.
-
-The config-to-bundle half of the same check, run against the override layer: `config.yaml` at 0.2
-gives a bundle carrying `fiber_loss_db_per_km:.2`, at 0.9 gives `.9`, and restoring returns `.2`.
-
-Three CKKS students now run and reproduce: medical accuracy 0.730769, OPS-SAT rare-class F1 0.864865,
-finance rare-class F1 0.333709 on its shipped rows. `satellite_comms.student` still reports
-`DID NOT RUN` with its reason - it is scored on event-wise F0.5, a sequence metric the per-row
-evaluator cannot compute.
-
-Reproduction check: ResNet-18 scored 85.9 percent in the browser against 85.9 percent measured
-offline on the same 156 rows, majority baseline 73.1 percent, 11.3 MB transferred. The medical
-student scores 0.7308 against a majority baseline of 0.7308 - it reproduces its published figure and
-does not beat guessing, and the page says both.
-
-Benchmark rows after the Round 21 sweep, medical page, all three naming what they are:
-
-| path | model | accuracy | security |
-|---|---|---|---|
-| MPC-FHE | FHE-feasible diagnostic CNN (3226 params, measured) | em dash | 68 |
-| QSMPC-FHE | QOTP + 8-qubit QCNN circuit (no trained weights) | em dash | 96 |
-| plaintext | medical_fl.resnet18 | em dash | em dash |
-
-Every accuracy is an em dash and every one is correct: MPC-FHE evaluates no labelled set, QSMPC-FHE
-has no trained weights, and the plaintext row is a single inference. Before this sweep the middle row
-read 1.0.
-
-Inference provenance, same run, both inferences named:
-
-    Pipeline model, on this page's own data    MEASURED (plain JS) - js-linear (bundled real model)
-    Published model, on its own corpus         MEASURED (local WASM) - onnx-wasm
-
-## Verified in Round 23b (2026-08-09, public URL)
-
-Public-page claims re-checked against primary sources this round, all **confirmed**:
-
-| Page claim | Source fetched | Verdict |
+| # | Check | Pass condition |
 |---|---|---|
-| AI Omnibus = Regulation (EU) 2026/1744, in force 27 Jul 2026 | EUR-Lex | correct, and so are both deferral dates it cites |
-| Annex III to 2 Dec 2027, Annex I embedded to 2 Aug 2028 | EUR-Lex / Commission | correct |
-| Art. 50 transparency applicable 2 Aug 2026 | Commission guidelines | correct |
-| EO 14412, 22 Jun 2026, 91 FR 38483, PQC by 2030, signatures by 2031 | Federal Register | correct on all four details |
-| RSA-2048 factoring: ~1/20 the qubits of the 2019 estimate, runtime ~20x higher | arXiv:2505.15917 (Gidney 2025) | correct: 20M -> under 1M qubits, 8 hours -> under a week |
-| ETSI GS QKD 014 V1.1.1 (2019-02) still the only published edition | ETSI | correct - and an edition that has NOT moved is itself worth recording |
-| liboqs 0.16.0 current | GitHub releases | correct (2026-07-09) |
+| CI1 | `make ci-local` before every push | exits 0; it runs all seven blocking gates in CI's own order |
+| CI2 | After pushing: `gh run list --limit 3 --branch <branch>` | conclusion is `success`, not `failure` |
+| CI3 | If red: `gh run view <id> --log-failed` | read it before deploying, not after |
+| CI4 | When adding a CI step, add it to `scripts/ci_local.sh` too | the two lists match |
+| CI5 | Never report a round "green" on local gates alone | the claim names which gates ran |
 
-Registry and artefact checks, all clean after the fixes in this round: 10 model cards agree with
-`models/metrics.json`; 10 declared HF repos return 200; every `ARTIFACT_DIRS` entry resolves; all 10
-ONNX input shapes match what the run reports in the browser.
+**CI2 is the one that was missing.** A local gate can only ever prove what it covers; only CI proves
+CI. `make ci-local` narrows the gap but does not close it - the runner installs from
+`requirements-*.txt` on a clean ubuntu-24.04 with `HF_HUB_OFFLINE=1`, so a dependency present in the
+local venv and absent from the requirements files still passes locally and fails there.
 
-Per-page: no retired composite on any of the five use-case pages or the index; compact heading reads
-"Security posture & quantum advantage" on telecom and satellite, full heading elsewhere; telecom run
-end to end gives QBER 0.01, macro-F1 0.96, `published telecom_ids.qml @ f0d754313210 - onnx-wasm -
-1x7`, matching that model's ONNX input of `[?, 7]`.
+**Deploying from a red commit is not blocked by anything.** That is a deliberate property of the
+deploy path, not a bug: the VPS does `git reset --hard origin/<branch>`, which knows nothing about
+CI. So the check has to be a habit at CI2, because no machine will stop you.
 
-## Verified in Round 22 (2026-08-08, public URL, bundle index-Bjfk0ThY.js)
+## A shuffled DataLoader is correct for training and silently wrong for harvesting
 
-Worked against `https://qsmpc-qkd-qhe-ai-hybrid.daemons.jp/usecase/finance_aml`, cache-busted, with
-the served bundle grepped first. `crossOriginIsolated` true, `SharedArrayBuffer` a function.
+The medical CKKS student was distilled on teacher labels attached to the WRONG IMAGES, for two
+rounds, and every signal said it was fine.
 
-**The test the retired score failed, now passing.** Swapping the KEM and re-running moves the
-reported facts, and the movement checks against the standard:
+`predict_loader(model, tr_dl)[1].argmax(1)` returns scores in the SAMPLER's order. `tr_dl` is built
+with `shuffle=True`, correctly, because it is also the training loader. The result was paired with
+`to14(xtr)` in the dataset's original order, so each teacher label landed on a different image.
 
-| Control | Before | After | Checks against |
+Measured: labels harvested that way matched ground truth on **0.6227** of training rows, where a
+sequential pass matched on **1.0000**. The student scored **AUC 0.5984**; the same architecture on
+aligned labels scores **0.8250**. Fixing the alignment moved the shipped model 0.5984 -> **0.7882**
+and its validation Youden's J from 0.1028 -> 0.5388.
+
+**Nothing downstream can detect this.** Shapes match. The loss decreases. Early stopping runs to
+completion. Agreement-with-teacher is *high*, because the student faithfully learns the marginal
+distribution the shuffled labels describe. A plausible number reaches the model card.
+
+| # | Check | Pass condition |
+|---|---|---|
+| S1 | Every `predict_loader` / `model.predict` whose OUTPUT is paired with a dataset by position | the loader is sequential |
+| S2 | Harvested teacher labels vs ground truth on the TRAINING split, **as minority-class F1, not accuracy** | far above the permutation null - see below |
+| S2b | Compare that figure against `p^2 + (1-p)^2` for the ACTUAL positive rate | the measured value must clear it by a wide margin, not merely be high |
+| S3 | A student that is much worse than the same architecture trained on ground truth | suspect the targets, not the capacity |
+| S4 | The guard is machine-enforced, not remembered | `predict_loader` raises on a `RandomSampler` |
+
+**S2 is the cheap decisive one, but "near 1.0" is the wrong pass condition and would have missed
+this bug on the most imbalanced use case here.** Under a random permutation of binary labels with
+positive rate p, expected agreement is `p^2 + (1-p)^2`. That is a property of the class balance, not
+of the model:
+
+| use case | positive rate | agreement a FULLY SHUFFLED harvest scores |
+|---|---|---|
+| medical BreastMNIST | 0.2692 | 0.6065 |
+| OPS-SAT segments | 0.2136 | 0.6640 |
+| finance AMLworld | 0.0010 | **0.9980** |
+
+So at 1-in-981 a completely broken pairing scores 0.9980 and sails past "near 1.0". The medical bug
+was caught because 0.6227 looked obviously wrong at a 73/27 split - the same defect in finance would
+have looked perfect. **Use minority-class F1 of teacher-vs-truth instead, and state the permutation
+null beside it.** Confirmed on the medical case: 4,000 simulated permutations give a 99% interval of
+[0.5641, 0.6484], and the observed 0.6227 falls inside it, so that harvest was statistically
+indistinguishable from random - which is exactly what it was.
+
+This is the same failure shape as `both_scored_zero`: a guard written for a real incident, with a
+condition narrow enough that the next instance walks around it.
+
+**Run on finance, which is the case S2-as-written could not have protected:**
+
+```
+  positive rate 0.000723   (n = 2,843,872 training rows)
+  accuracy    teacher-vs-truth  0.9984   permutation chance 0.9986   <- BELOW chance, and passes "near 1.0"
+  minority-F1 teacher-vs-truth  0.4746   permutation      0.0012     <- separates by ~400x
+```
+
+The accuracy figure is *below* its own permutation null and still looks like a pass. The
+minority-class F1 is the statistic that discriminates. Finance is confirmed correctly aligned, which
+is the point: the check has to be able to return "clean" for a reason, not by accident.
+
+S3 is the diagnostic habit worth keeping. I first read this student's weakness as a CKKS capacity
+limit and wrote that into three documents. A probe of the identical architecture on aligned labels
+scoring 0.23 AUC higher is what disproved it - **before concluding "the encrypted tier is small, so
+it is weak", train the same small model properly once and see what it can actually do.**
+
+## Two HE contexts is not a hybrid, and the hybrid is not available
+
+Asked whether to adopt a CKKS + BFV hybrid. The answer is no, and the reason is stronger than "not
+implemented": Eldefrawy, Genise and Manohar (PQCrypto 2023, ePrint 2023/988) give strong evidence
+that switching between BGV/BFV and CKKS is **as hard as bootstrapping**. CHIMERA specified BFV
+bridges and never implemented them. Everything that works - PEGASUS, OpenFHE's `EvalCKKStoFHEW` -
+switches CKKS to FHEW/TFHE, not BFV; searching OpenFHE for `CKKStoBFV` returns zero hits. And none
+of it is browser-reachable: SEAL has no scheme switching, and `openfhe-wasm` binds `pke` and `core`
+but not `binfhe`.
+
+**The goal did not need switching.** An integer scorecard runs in its own BFV context beside the
+CKKS models, and no ciphertext is ever converted.
+
+| # | Check | Pass condition |
+|---|---|---|
+| H1 | Before adopting a "hybrid", confirm whether it needs CONVERSION or just two contexts | two contexts is nearly always the answer, and it is free |
+| H2 | For any HE capability, verify it exists in the library the BROWSER can load | SEAL != OpenFHE; `openfhe-wasm` != OpenFHE |
+| H3 | Check the specific scheme PAIR, not the feature name | "scheme switching" exists; CKKS-to-BFV does not |
+| H4 | An integer model under BFV must reproduce plaintext EXACTLY | assert equality, not a tolerance |
+
+H4 is the property worth testing rather than assuming, and it is what distinguishes the two schemes
+in this project. Measured: a fitted scorecard evaluated over BFV matched its plaintext score on
+60/60 rows exactly, while CKKS returned -1.999998397974359 for an exact -2. Both are correct
+behaviour for their scheme; only one supports the claim "the encrypted result IS the plaintext
+result". `tests/test_scorecard_bfv_exact.py` asserts equality for BFV and asserts *in*equality for
+CKKS, so a future change that silently makes CKKS look exact would fail.
+
+Workings: [`references/he-scheme-selection.md`](../references/he-scheme-selection.md).
+
+## An ABSENT licence is more restrictive than a bad one, and no scanner reports it
+
+`submodules/hpmpc` is MIT and declares two submodules of its own. One of them,
+`chart21/pygeon`, has **no licence file at all**, which by default reserves all rights - a stronger
+restriction than GPL, not a weaker one. It is not populated in this checkout, so nothing unlicensed
+is present; the exposure is that `git submodule update --init --recursive` would fetch it silently,
+into a project whose rule is commercial-OK-only.
+
+Licence scanners look for a restrictive SPDX identifier. Absence returns nothing, which reads as
+clean.
+
+| # | Check | Pass condition |
+|---|---|---|
+| T1 | For each submodule, read ITS `.gitmodules` too | transitive dependencies are enumerated, not assumed absent |
+| T2 | For every transitive repo, query the licence via the API, not the file listing | `license: null` is a finding, not a pass |
+| T3 | Confirm whether the nested module is actually populated | present-and-unlicensed is a live problem; declared-but-absent is a latent one |
+| T4 | Initialise submodules with `--init`, never `--init --recursive` | the recursive form is what pulls the unlicensed tree |
+
+T2 is the one an automated check gets wrong. `license: null` from the GitHub API means all rights
+reserved, and a naive check that only fails on a deny-list of SPDX identifiers passes it.
+
+## The training environment, measured rather than assumed
+
+Every number here was measured on this host on 2026-08-10, not read off a spec sheet. The reason to
+measure is in the first row: **`torch.cuda.is_available()` returned `True` on an interpreter that
+could not launch a single kernel.**
+
+| what | measured value |
+|---|---|
+| GPU | NVIDIA RTX PRO 6000 Blackwell Workstation Edition, **sm_120**, 102 GB (100.6 GB free) |
+| CPU / RAM | 13th Gen Intel Core i5-13600K, 20 threads / 125 GB |
+| CUDA toolkit | **13.0** (`nvcc` V13.0.88) |
+| project interpreter | `.venv/bin/python` = **Python 3.12.11** |
+| torch | **2.13.0+cu130**, arch list includes `sm_120` |
+| fp32 matmul | **33.0 TFLOP/s** (4096^3, 20 iters) |
+| autograd + bf16 autocast | OK |
+
+**The footgun, and why the 3.12 venv rule exists.** The system interpreter is Python 3.9.23 carrying a
+stale `torch 2.1.2+cu121` built for `sm_50`-`sm_90` only. On that interpreter:
+
+    torch.cuda.is_available()  ->  True          # <-- false green
+    a @ a                      ->  RuntimeError: no kernel image is available for execution on the device
+
+`~/.local/lib/python3.9/site-packages` also holds a corrupted `-orch` distribution from a failed
+install, which makes pip print warnings that look like the real problem and are not. Any script run
+with bare `python3` instead of `.venv/bin/python` inherits all of this. I asserted "the 96 GB card is
+unusable" from exactly this mistake before checking which interpreter I was on.
+
+| # | Check | Pass condition |
+|---|---|---|
+| TR1 | GPU probes run under `.venv/bin/python`, never bare `python3` | `python3 -c "import torch"` on this host is the WRONG environment |
+| TR2 | Capability is proven by a real kernel launch, not `is_available()` | `(a @ a).sum()` must return a number; `is_available()` lies here |
+| TR3 | `torch.cuda.get_arch_list()` contains the device's `sm_XX` | `sm_120` for this card; a missing arch is the silent failure mode |
+| TR4 | GPU is used because it was measured faster, not because it exists | see the reversal below |
+| TR5 | Every training dependency is commercial-use and actively maintained | licence checked from installed metadata, not from memory |
+| TR6 | ONNX export path stays CPU-reproducible | `onnxruntime` here has no CUDA provider, and the browser runs WASM anyway |
+
+**TR4 is the one that bites.** The card is not automatically a win at this project's model sizes:
+
+| workload | GPU | CPU | verdict |
 |---|---|---|---|
-| KEM select | ml-kem-768+x25519, NIST Category 3 | ml-kem-1024+x25519, NIST Category 5 | FIPS 203 |
-| KEM ciphertext | 1088 bytes | 1568 bytes | FIPS 203 |
-| Signature (unchanged control) | ML-DSA-65, 3309 bytes | ML-DSA-65, 3309 bytes | FIPS 204 |
+| XGBoost 200k x 32, 200 trees | **0.68 s** | 28.58 s | **42x - use the GPU** |
+| torch 50x gram matrix, 200k x 32 | 0.064 s | **0.048 s** | **GPU slower** - launch + transfer dominates |
 
-The facts do NOT move when the selector changes without a re-run, which is correct - they are pinned
-to the run that produced them.
+So the honest guidance is: **GPU for the tabular gradient-boosted teachers (finance AML, telecom IDS),
+where it is a 42x difference; CPU is fine and sometimes faster for the small linear and MLP students
+this project actually publishes.** Reaching for `.cuda()` on a 4-layer student is cargo cult.
 
-**Eavesdropper, both directions.** `pp-qkd_eve` 0 -> QBER 0.01, 1915 secure bits, SKR 0.00958/pulse,
-step ticked in the normal colour. `pp-qkd_eve` 0.35 -> QBER 0.1, **0 secure bits**, SKR 0, and both
-the table and the diagram report the failure. The old score gave this run 100/100.
+**Dependency licences, read from installed metadata on this host:**
 
-**Advantage raw value.** Page printed `raw 10.65 (clamped to 0-10)`; recomputing from the page's own
-printed ratios (comm 6145.8, latency 3396.03, security 1.5) against the config weights
-(0.6/0.2/0.2, log_scale 3.2, log_offset 1.0) gives 10.65. Reproduced exactly.
+| package | version | licence | commercial |
+|---|---|---|---|
+| torch | 2.13.0+cu130 | Apache-2.0 (with LLVM exception) | yes |
+| torchvision | 0.28.0+cu130 | BSD | yes |
+| scikit-learn | 1.9.0 | BSD-3-Clause | yes |
+| xgboost | 3.3.0 | Apache-2.0 | yes |
+| onnx / onnxruntime | 1.22.0 / 1.28.0 | Apache-2.0 / MIT | yes |
+| skl2onnx | 1.20.0 | Apache-2.0 | yes |
+| transformers | 5.14.1 | Apache-2.0 | yes |
+| datasets | 5.0.1 | Apache-2.0 | yes |
+| numpy / scipy / pandas | 2.5.1 / 1.18.0 / 3.0.5 | BSD-3-Clause / BSD / BSD | yes |
 
-**Accessibility.** 41 controls on the use-case page, **zero** without an accessible name (4.1.2).
-Zero genuine contrast failures (1.4.3) once alpha is composited; the Art. 50 disclosure measures
-12.42:1. Parameters disclosure: `aria-expanded` false -> true, `aria-controls="pipeline-parameters"`
-resolves, 15 fields appear.
+No copyleft and no non-commercial terms in the training path. Note this covers the **tools**; dataset
+licences are a separate and stricter question tracked in `DATA_LICENSES.md`.
 
-**Every parameter field against its own constraints.** No violations. `pp-seed` now satisfies its own
-`min` - the Round 21 half-fix is closed. Two selects hold `""`, and both are legitimate sentinels
-("(use case default)" and "CKKS (FHE) - default"); `config.inference || "ckks"` confirms the second
-label is honest for every use case.
+Not installed, and deliberately so until something needs them: `lightgbm`, `catboost`, `optuna`,
+`imbalanced-learn`, `peft`, `trl`, `accelerate`, `onnxruntime-gpu`, RAPIDS `cuml-cu13`. Adding a
+dependency to this list requires a measured reason, which is what TR4 is for.
 
-**Agentic AI panel, exercised end to end** (genomics, distilGPT-2 via transformers-wasm, 2430 ms):
-tool `pool_allele_counts` - the per-use-case tool, not a generic one - `authenticated (ML-DSA-65)`
-true and `tampered message rejected` true. The Combiner select genuinely changes the derived key:
-**hkdf -> d9c4f1c2, its_toeplitz -> 3152292a**. A combiner that left the fingerprint unchanged would
-mean the selection never reached the key derivation.
+## The most tempting motivation for a use case is the one most likely to be false
 
-**Export buttons** are all enabled after a run and carry a reason before one. Round 22 found the
-Agentic AI panel's "Download results (JSON)" was the exception - disabled with no `title`, so it read
-as broken rather than as not-yet-applicable. Fixed. When auditing this, read `disabled` AND `title`
-together; `disabled` alone tells you nothing about whether the user can understand why.
+The satellite use case had no stated problem, only a stated mechanism. Checking what the real
+motivation is turned up the reverse of the obvious one: **export control does not block moving
+satellite telemetry, it explicitly decontrols it.** 22 CFR 121.1 USML XV Note 3 names housekeeping
+data - temperatures, pressures, currents, battery charges - and says encrypting it "does not, in and
+of itself, cause the telemetry data to become subject to the ITAR".
 
-**Found and fixed this round:** the diagram ticked a zero-key BB84 step. See the panel-consistency
-section above.
+"ITAR blocks telemetry" is what a reasonable person assumes, it is quotable, it sounds authoritative,
+and a reader who knows Category XV stops reading at it. This project had never made the claim; the
+value of checking was in learning not to.
 
-One caution for the next round, learned twice here: a synthetic `.click()` on a React control does
-not update `aria-expanded` within the same tick, and reading it immediately makes a working button
-look inert. Read after a frame.
+| # | Check | Pass condition |
+|---|---|---|
+| M1 | Every use case states a PROBLEM, not only a mechanism | "QKD over a LEO downlink" is a mechanism |
+| M2 | The motivation cites a primary source that says it in its own words | an operator, regulator or benchmark author, quoted |
+| M3 | The most obvious-sounding justification is checked against the regulation TEXT | not against what everyone says it says |
+| M4 | Any novelty claim survives an adversarial search for prior art | search for the thing, then search for who already did it |
+
+| M5 | A cited dollar figure comes from the contract system of record, not a press release | USASpending obligated value, not a vendor ceiling |
+
+M5 came out of checking defence-space programs this project does not cite and now knows not to: the
+widely repeated "$640M Digital Bloodhound contract" is a contractor-stated ceiling against
+**$128.6M actually obligated** (USASpending PIID 47QFMA24F0023), and a Space Systems Command article
+citing its own "$17 million" zero-trust award sits against **$5.15M obligated** (PIID FA880223C0002).
+Both figures are real numbers about real contracts and both are roughly 5x and 3x the money that
+exists. An agency's own press office is not a primary source for its own spending.
+
+M4 separated two claims that felt equally safe. Encrypted inference on housekeeping telemetry for
+anomaly detection: zero verified prior work, a real gap. Encrypted **conjunction assessment**: a
+decade-deep field with an active ESA contract (ShareSat, Cybernetica, Sharemind MPC, TRL 4) - a
+novelty claim there would have collided with prior art immediately. Neither intuition would have
+told them apart.
+
+Workings: [`references/satellite-motivation-fact-check.md`](../references/satellite-motivation-fact-check.md).
+
+## Check whether the model protects the thing that actually leaks
+
+Five verticals were checked against 2026 privacy-preserving-inference literature. Four came back
+defensible. The fifth returned a finding no accuracy metric could have surfaced: **genomics protects
+the computation, and the computation is not where the leak is.**
+
+Pooled allele counts are the canonical genomic privacy failure - Homer et al. (2008) is the paper
+that caused NIH to withdraw public aggregate GWAS data - and encrypting their computation is
+orthogonal to that. Released allele frequencies support genome reconstruction at 70% F1 against
+53.4% for binary responses, so publishing the counts raises risk over publishing mere presence.
+
+| # | Check | Pass condition |
+|---|---|---|
+| P1 | Name the adversary each crypto layer defeats | written down per use case, not implied by "encrypted" |
+| P2 | Ask what is RELEASED, not only what is computed | an encrypted computation with a plaintext output protects the input, not the output |
+| P3 | Check the literature for attacks on that released artefact | membership inference, reconstruction, linkage |
+| P4 | If output perturbation is absent, say so | "no DP on the released aggregate" is a statement, silence is not |
+| P5 | Check quantum components against their own published operating regime | a parameter below the threshold its literature states is a reason, not a mystery |
+
+P5 came out of the telecom check. The quantum-kernel SVC here scores macro F1 0.8316 against
+RandomForest's 0.9866, and the reason is quantified: fidelity quantum kernels exponentially
+concentrate and beat that regime only at **15 qubits or more** (arXiv:2605.31449, May 2026), while
+this project runs 4 and 8. The number was already reported honestly with
+`quantum_beats_classical: false`; what was missing was that it underperforms for a published reason
+at a qubit count that IS the explanation. A measured shortfall with a citation is a finding; the
+same shortfall without one invites the reader to assume a bug.
+
+P2 is the general form. This project spent several rounds checking that metrics measure what they
+claim, and this is the same question one level up: does the CRYPTOGRAPHY defend what the threat model
+says is at risk. Full treatment in [`docs/threat-model.md`](threat-model.md) and
+[`references/model-choice-vs-2026-practice.md`](../references/model-choice-vs-2026-practice.md).
+
+## A published sample can go stale against the weights it scores, and only a run will say so
+
+Verifying every published model during the run - rather than only the selected one - found a real
+divergence on its first execution: `medical_fl.student` scored **accuracy 0.77** on its own published
+held-out sample while that sample recorded **0.69**. The weights had been retrained and republished;
+the `eval_sample.json` beside them had not been regenerated, so the artefact and its expectation
+described two different models at the same pinned revision.
+
+Auditing all nine by modification time, **six samples were older than the weights they score.**
+Older does not always mean wrong - a retrain that reproduces its weights leaves the sample valid -
+but it is the only cheap signal available before running them, and one of the six was confirmed
+wrong by the run.
+
+| # | Check | Pass condition |
+|---|---|---|
+| E1 | After ANY retrain, regenerate `eval_sample.json` before publishing | sample mtime newer than the weights it scores |
+| E2 | Run the pipeline once per use case and read every verification line | all PASS, and the count matches the number of published models |
+| E3 | A FAIL is a divergence, not a lower score | investigate before republishing anything |
+| E4 | Verify EVERY published model, not only the selected one | medical publishes three, satellite four |
+
+E4 is what turned this from invisible into a log line. The retrain-and-publish cycle documented
+above already warned that training clears `hf_revision` and that publishing without `--public` flips
+a repo private; this is the third trap in the same cycle - **republishing weights without
+regenerating the sample beside them** - and it is the one that produces a confidently wrong number
+rather than a broken link.
+
+## Check the binary, not the version string, before trusting GPU support
+
+Before training anything destined for the Hub, confirm the local stack actually targets this
+machine. The trap is that version numbers and release notes are a proxy for what shipped, and the
+proxy is sometimes wrong in the direction that costs a rebuild.
+
+Measured here 2026-08-10 on an RTX PRO 6000 Blackwell (compute capability **sm_120**), CUDA **13.0**,
+PyTorch 2.13.0+cu130, 20 cores, 125 GB RAM, Python 3.12:
+
+| # | Check | Pass condition |
+|---|---|---|
+| G1 | List the SASS architectures actually compiled into the shared library | `cuobjdump --list-elf <lib>.so` includes this GPU's capability |
+| G2 | If absent, check for PTX at a lower arch | `--list-ptx` - PTX JITs forward, at a startup cost, and is not the same as native SASS |
+| G3 | Confirm the licence permits commercial use AND the project is maintained | Apache-2.0/MIT/BSD, with a release inside the last year |
+| G4 | Check whether the accelerator addresses the MEASURED bottleneck | profile first; do not install a GPU library for a stage that is 5% of runtime |
+| G5 | Check for arch-specific correctness bugs, not only support | see below - "supported" and "correct" are different claims |
+
+**G1 caught a false recommendation.** Research advised upgrading XGBoost to 3.4.0 "for native sm_120".
+Inspecting the installed 3.3.0 binary:
+
+```
+cuobjdump --list-elf libxgboost.so   ->  SASS archs 75, 80, 90, 100, 120
+cuobjdump --list-ptx libxgboost.so   ->  PTX 120
+```
+
+sm_120 was already there. The upgrade was unnecessary, and no release note would have told us -
+only the binary did.
+
+**G4 is what stops a plausible optimisation from being a waste.** Profiling the finance pipeline gave
+graph feature construction 52.7s of 69.1s (76.4%) and the XGBoost GPU fit 3.9s (5.6%). Installing a
+GPU dataframe stack to accelerate a 69-second pipeline optimises something that is not a problem.
+
+**G5 is the one with teeth.** cuDF PR #23229 (merged 2026-07-21, released in 26.08) fixes
+*"incorrect DECIMAL128 groupby sums on Blackwell with CUDA 13.0"* - nvcc miscompiles a 128-bit
+`atomicCAS` on sm_100 and newer. **That is exactly this machine's configuration**, and the failure
+mode is wrong numbers with no error. A library can support an architecture and still compute
+incorrectly on it. Pin RAPIDS >= 26.08 if it is ever introduced, or avoid DECIMAL128.
+
+Verified commercial-OK and Blackwell-capable at this revision: XGBoost 3.3.0+ (Apache-2.0, sm_120
+native), LightGBM 4.7.0 (MIT, sm_120 in its arch list, but **pip wheels are CPU-only** - CUDA needs
+a source build). **CatBoost has no sm_120 in its build configuration** and its default arch list
+includes architectures CUDA 13 no longer accepts. Neither vendored submodule accelerates *training*:
+HEonGPU (Apache-2.0) and hpmpc (MIT) accelerate homomorphic and MPC *evaluation*.
+
+## A vendored crypto library has no CVE to find, so nothing will tell you it is old
+
+`node-seal` bundles Microsoft SEAL as a WASM build. The pinned dependency resolves to node-seal
+7.0.0, whose vendored `CMakeLists.txt` declares **SEAL 4.1.2, released 2024-07-11**. Upstream SEAL
+shipped **4.4.0 on 2026-07-25** carrying the vendor's own words: *"Critical security update: all
+users should upgrade to Microsoft SEAL 4.4.0 as soon as possible"*, hardening untrusted
+deserialization, followed by 4.4.1 and 4.4.3 in the first week of August 2026.
+
+**No CVE or GHSA exists for either package**, so `npm audit` reports nothing, Dependabot opens no
+pull request, and the lockfile is perfectly current against its own registry. The gap is invisible
+to every automated signal and is only findable by reading the upstream release notes.
+
+| # | Check | Pass condition |
+|---|---|---|
+| V1 | For every vendored/transitive crypto library, find the UPSTREAM version it embeds | recorded, with its release date |
+| V2 | Compare against upstream's latest release notes, not against the registry | any security-labelled release since is named |
+| V3 | If the wrapper cannot be upgraded, state whether the fixed surface EXISTS in this deployment | a reasoned yes/no, not silence |
+| V4 | Re-check per round | the version is dated, and the date is recent |
+
+**V3 is what turns this from alarm into engineering.** Checked here: the 4.4.0 fix hardens
+deserialization of untrusted input. This demo generates its keys, encrypts, evaluates and decrypts
+**entirely in the visitor's own tab** with zero server compute, and deserialises no externally
+supplied ciphertext - so the hardened surface is not reachable in this deployment. That is a real
+mitigation, not a dismissal, and it stops being true the moment any server-side component accepts a
+ciphertext from a client.
+
+The same reasoning applies to a second upstream statement. SEAL's `SECURITY.md` was rewritten in
+July 2026 to say in writing that its CKKS targets IND-CPA and **not** IND-CPA-D, and that noise
+flooding "must be implemented by the application before a decrypted CKKS value crosses a trust
+boundary". Here the secret key and the decryption live in the same tab as the plaintext result, so
+no such boundary is crossed. Record the reasoning, because the architecture is what makes it safe -
+not the cipher.
+
+## Bootstrap a claimed improvement before shipping it
+
+The OPS-SAT student's AUC-PR moved 0.9225 to 0.9681 when its feature map changed. On a 529-row test
+set at a 21 percent positive rate, a delta of that size is exactly the magnitude that turns out to
+be resampling noise, and nothing in the pipeline would have said so.
+
+| # | Check | Pass condition |
+|---|---|---|
+| R1 | Any shipped improvement has a paired bootstrap CI on the delta | interval excludes zero |
+| R2 | Paired, not independent - both models scored on the SAME resampled rows | shared row-difficulty variance is removed |
+| R3 | Quote the interval, not just the point estimate | "at least +0.009", not "+0.046" |
+| R4 | Degenerate resamples dropped, not silently scored | draws with one class present are skipped |
+
+Measured here: 4,000 resamples give AUC-PR delta 95% CI **[+0.0089, +0.0853]** and minority-F1
+**[+0.0154, +0.0929]**, so the change survives. Note how wide that is - the lower bound is a fifth of
+the point estimate, so the defensible claim is "a real improvement of at least about one AUC-PR
+point", and quoting +0.046 alone would overstate what 529 rows can support.
+
+R1 pairs with the small-sample rule above. The satellite event-wise metric is computed over 3
+events, which is the case where a bootstrap does not rescue you - there is nothing to resample.
+Reporting the count and reporting an interval are the same discipline applied at two different
+sample sizes.
+
+## A default that contradicts a licence commitment will eventually be taken
+
+DATA_LICENSES.md and the README both stated that `medical_fl.resnet18` is trained from random
+initialisation, *because* ImageNet's terms are uncleared for redistribution here. The trainer
+implemented that as `--from-scratch`. It was not the default. The artefact published on the Hub
+recorded `pretrained: ImageNet1K_V1`, and so did the revision before this round - so the project had
+been publishing ImageNet-derived weights while documenting that it does not, across several rounds,
+with nothing checking.
+
+The trainer's own docstring argued for the wrong default: *"training from scratch is the wrong move
+and transfer learning is the right one"*. That is true about accuracy and irrelevant to the actual
+constraint, which is redistribution.
+
+| # | Check | Pass condition |
+|---|---|---|
+| L1 | Every licence claim in prose names the artefact field that proves it | e.g. "random init" -> `manifest.pretrained` |
+| L2 | Read that field from the PUBLISHED artefact, not the local one | `curl .../resolve/main/manifest.json` |
+| L3 | The licence-safe option is the DEFAULT, not a flag | opt IN to the restricted path, never out |
+| L4 | A machine refuses the unsafe publish | verified to fire, not just present |
+| L5 | Docstrings that argue for a default are checked when the default changes | they are the reason the wrong one was chosen |
+
+L3 and L4 are the durable pair. `publish_hf.py` now refuses to upload any publishable-dataset model
+whose manifest records a pretrained source, and random initialisation is the default - tested both
+ways, so the refusal is known to fire rather than assumed to.
+
+**How this was found, which is the transferable part.** Not by auditing licences. I retrained the
+model without the flag, saw two AUCs move, and wrote it up as seed variance - measuring a six-seed
+spread to support the claim. Re-running WITH the flag reproduced the documented figures to four
+decimal places, which is what exposed both my wrong explanation and the underlying divergence. **An
+unexplained number that moves is worth chasing to the actual cause**, because "it is just variance"
+is available for any change and explains nothing.
+
+## Check the baseline is the right ROW, not just the right paper
+
+The satellite baseline was recorded as 0.786 with a precise citation: ESA-ADB Table 2, Mission1
+lightweight channels 41-46, best event-wise F0.5. Round 24c fetched the paper. **The number is real
+and correctly attributed** - Telemanom-ESA-Pruned, and it is the maximum of that row. The citation
+was not wrong.
+
+It was the wrong row. Table 2 scores **all events excluding communication gaps**, which is anomalies
+PLUS annotated rare nominal events. This project scores anomalies only, and ESA-ADB publishes that
+separately in **Supplementary Table 9**, where the same method scores **0.968**. So the project had
+been comparing itself against the lenient row of the correct paper for several rounds.
+
+Verifying a citation resolves is not verifying it is the right comparator.
+
+| # | Check | Pass condition |
+|---|---|---|
+| B1 | The cited number exists in the cited table | fetch the paper, find the row |
+| B2 | The cited row scores the SAME TARGET the project scores | anomalies-only vs all-events, per-class vs macro, etc. |
+| B3 | The cited metric is computed the SAME WAY | see below - this one was also wrong |
+| B4 | The cited split matches | ESA-ADB halves each mission; this project tests on the last 30 percent |
+| B5 | The cited sample size is recorded next to the project's | 65 events there against 3 here |
+
+**B3 caught a second mismatch in the same check.** ESA-ADB's published figure is the *corrected*
+event-wise F0.5: event precision multiplied by the TIME-LEVEL true-negative rate,
+`Prec_corr = TP_e/(TP_e+FP_e) * TNR_t`. That correction is why most of its baselines read < 0.001.
+This project computed the UNCORRECTED value and set it beside a corrected baseline - two different
+quantities, and the uncorrected one is the flattering direction. Both are now computed and recorded.
+
+A near-miss worth knowing about: a July 2026 study on the same corpus (arXiv:2607.07335, Table III)
+reports **0.7809** for GAT on the FULL channel set with UNCORRECTED precision. That is numerically
+almost identical to ESA-ADB's 0.786 and is an unrelated number from a different paper, protocol and
+channel subset. Two plausible-looking 0.78s that mean different things is exactly the shape of error
+B1-B5 exists to catch.
+
+## The deploy step itself needs verifying, and a failed build looks like a successful one
+
+The section above covers CI on the PUSH side. This one covers what happens after, on the box, and it
+is a different failure surface: CI can be green and the deploy still not land.
+
+The deploy this project uses is `git reset --hard origin/<branch>` then `docker compose build` then
+`up -d`. Three things can go wrong quietly:
+
+**A failed build leaves the previous image serving.** If `build` is chained with `&&` and its output
+is redirected - which is exactly how this was being run, `build web >/dev/null 2>&1 && ... up -d` -
+then on failure the `&&` short-circuits, `up -d` never runs, nothing is printed, and the OLD
+container keeps answering 200 with the OLD bundle. Every external signal says healthy. Capture the
+build's exit status and print PASS/FAIL explicitly instead of hiding it.
+
+**`docker ps` saying Up is not evidence of anything.** It reports the container, not the code in it,
+not the network it joined, and not the commit it was built from. This project has already had a
+container report `Up` while sitting on no network and 502-ing behind the shared proxy.
+
+**The VPS silently drifts from origin.** A docs-only commit gets deployed with `git reset` and no
+rebuild - reasonable at the time - and then the next web change is pushed while the box is two
+commits back. Checked 2026-08-09: the VPS was at `3f44e89` while origin was at `89d2fca`.
+
+| # | Check | Pass condition |
+|---|---|---|
+| DP1 | `git rev-parse --short HEAD` on the VPS vs `origin/<branch>` locally | identical strings |
+| DP2 | The build's exit status is captured and printed, not redirected to `/dev/null` | an explicit OK/FAILED line |
+| DP3 | Container age after deploy | seconds, not hours - a stale age means `up -d` reused the old container |
+| DP4 | If web sources changed, the served bundle FILENAME changed | new `index-<hash>.js`; unchanged hash after a web change means the old image is serving |
+| DP5 | If web sources did NOT change, the bundle hash SHOULD be identical | an unexpectedly new hash means something non-deterministic is in the build |
+| DP6 | Site returns 200 AND the page renders, not just a proxy 200 | fetch a use-case route, not only `/` |
+
+DP4 and DP5 are the same check read in both directions, and the second one is the one people skip. A
+changed hash where nothing changed is as informative as an unchanged hash where something did.
+
+Deploying from a red CI commit is not blocked by anything - see CI2 above - so DP1 only proves the box
+matches origin, never that origin is good.
+
+## Retired and orphaned Hugging Face repos
+
+Weights live on the Hub at a pinned revision, so the Hub accumulates state the repository does not.
+Two directions to check, and they fail differently:
+
+| # | Check | Pass condition |
+|---|---|---|
+| HF1 | Every registry `hf_repo` exists on the Hub | no 404 - a missing repo breaks the model dropdown |
+| HF2 | Every Hub repo under the account is referenced by the registry | no orphans, or the orphan is deleted |
+| HF3 | Every published repo is PUBLIC | `private: false` - a private repo 401s for visitors while working for you |
+| HF4 | Every model has a non-empty `hf_revision` | training clears it; see the retrain cycle above |
+| HF5 | Retired models are DELETED from the Hub, not left dangling | an unreferenced public repo is a claim nobody maintains |
+| HF6 | No file exists on the Hub that is absent from the local model dir | zero - a stale weights file from an earlier round still downloads for anyone browsing `main`, even though the demo pins a revision |
+
+One command for HF2, which is the direction nothing else checks:
+
+    curl -s "https://huggingface.co/api/models?author=<account>" \
+      | python3 -c "import sys,json;[print(m['id']) for m in json.load(sys.stdin)]"
+
+then diff against the registry's `hf_repo` values. **Checked 2026-08-09: 10 Hub repos, 10 registry
+references, zero orphans, all public** - so nothing needed deleting this round. The check is recorded
+anyway, because "nothing to delete" is a result and an unchecked Hub is not the same thing.
+
+HF5 matters because a stale public model is worse than a missing one. Someone can download it, and
+it carries this project's name while reflecting a version of the code that no longer exists.
+
+## A model can score respectably and have learned nothing - check that it predicts more than one class
+
+`medical_fl.student`, the CNN the encrypted medical path runs, emitted the SAME class for all 156
+test images. Its accuracy of 0.730769 is exactly 114/156 - the majority-class rate - and its AUC was
+0.354, below random. It shipped like that for several rounds, and the demo displayed its output as a
+diagnosis.
+
+Nothing looked wrong. Accuracy 0.7308 against a published 0.901 reads as "behind but plausible".
+Agreement with the teacher was 0.75. The registry declared `auc` while the record stored `accuracy`,
+which was on the plan as a cosmetic tidy-up item and was in fact the thing hiding the failure - AUC
+would have shown 0.354 and been unmissable.
+
+| # | Check | Pass condition |
+|---|---|---|
+| C1 | Count distinct classes the model predicts on the test set | more than one |
+| C2 | Compare accuracy against the majority-class rate | strictly better, or the model is the majority class |
+| C3 | Check the record contains the metric the REGISTRY declares, measured as that metric | present, or a note saying why it cannot be |
+| C4 | For an imbalanced task, read recall on the minority class, not accuracy | reported explicitly |
+| C5 | Verify class-label ORDER against the dataset's own metadata | matches; the browser renders `classes[argmax]` |
+
+C2 is the cheapest and would have caught this instantly: accuracy equal to the majority-class rate,
+to six decimal places, is not a coincidence. `n_classes_predicted` and `majority_class_rate` are now
+recorded and rendered so the check is visible rather than remembered.
+
+C5 caught a separate defect in the same pass. MedMNIST's own metadata says
+`{0: malignant, 1: "normal, benign"}`; four places in this repo asserted the opposite, so the demo
+showed the OPPOSITE diagnosis to what the model meant. The repo even contradicted itself - two
+`eval_sample.json` files written by different code paths made opposite claims about which class is
+cancer. **Never hardcode which index is the positive class.** The two MedMNIST corpora used here
+disagree with each other (PneumoniaMNIST is `{0: normal, 1: pneumonia}`), so a constant that is
+correct for one is silently wrong for the other; read it from the dataset's metadata.
+
+**Accuracy going DOWN can be the fix.** After correction the student scored 0.6859, below the
+majority rate, because it stopped answering with the majority class. On an imbalanced screening task
+accuracy is maximised by not screening, so a drop there alongside a rise in minority-class recall
+(1/42 to 8/42) and AUC (0.354 to 0.609) is the improvement, not a regression.
+
+**Threshold tuning can degenerate the same way.** Tuning the cut on minority-class F1 picked the
+extreme grid point and predicted the positive class for everything, because F1 is maximised by
+calling everything positive when discrimination is weak. Use a criterion that cannot be gamed like
+that - Youden's J gives all-positive a score of 0 - and reject any threshold that collapses to a
+single class whatever it scored.
+
+Workings: [`references/medical-student-collapse-investigation.md`](../references/medical-student-collapse-investigation.md).
+
+## Ask what the metric was divided by, not just how many samples there were
+
+The satellite card showed event-wise F0.5 0.4545 beside a published baseline of 0.786 for several
+rounds. The scored window holds **3 labelled anomaly events**. The record beside it says
+`n_anomaly_intervals: 320`, which counts the whole timeline, and `n_eval: 307601`, which counts
+samples - so both numbers on the card invited reading the evaluation as large when its denominator
+was three. One extra false-alarm run moves that score from 0.714 to 0.455.
+
+Sample count is not sample size. For an event-wise, group-wise, or session-wise metric the
+denominator is events, groups or sessions, and it can be smaller than the sample count by orders of
+magnitude.
+
+| # | Check | Pass condition |
+|---|---|---|
+| DN1 | For every headline metric, find what its denominator counts - samples, events, groups, patients | written down, not inferred |
+| DN2 | Read that count from the record, not from `n_eval` / `n_train` / an interval count | the count is recorded explicitly |
+| DN3 | If it is under ~10, the score is NOT comparable to a published benchmark | the UI says so on the row that shows the baseline |
+| DN4 | Perturb by one unit and recompute | if one event moves it by tenths, the caveat is mandatory |
+| DN5 | A metric that reproduces across retrains while the headline does not | suspect the stable one is stable because it is inflated |
+
+DN5 is the one that pays. Point-adjusted F1 reproduced across retrains (0.9937 vs 0.9945) while
+event-wise F0.5 swung 0.714 to 0.455. That is not evidence the point-adjusted figure is better - it
+is the same fact from the other side, since it is computed over 441,600 points rather than 3 events,
+and it is the metric TSB-AD showed a random score beats. Reaching for the reproducible companion
+because it is stable trades a noisy honest number for a stable dishonest one.
+
+**Guards: check the condition, not the existence.** `both_scored_zero` was written for exactly this
+family of bug in an earlier round, and it did not fire here because it required BOTH teacher and
+student to score zero, while the student scored 0.003234. The delta then went negative and rendered
+as the 49-parameter encrypted student beating an 80,486-parameter LSTM. When a guard exists, verify
+the condition covers every shape of the thing it guards against - a narrower condition will be
+walked around eventually, and it fails silently because a guard that does not fire looks identical
+to a guard that had nothing to catch.
+
+Workings: [`references/satellite-event-count-investigation.md`](../references/satellite-event-count-investigation.md).
+
+## An investigation is not landed until the string the UI renders says so
+
+Round 24 disproved the recorded cause of the finance baseline gap, wrote the workings into
+`references/finance-gap-investigation.md`, and left the note the browser actually renders unchanged.
+It stayed live on the public demo for the rest of the round. The investigation was right and
+invisible, which is the same as wrong for anyone reading the site.
+
+The mechanism is worth naming because it generalises: **explanatory prose is generated by the
+trainer, baked into `models/metrics.json` at training time, copied into the model card, exported
+into `web/src/lib/config.defaults.json` and rendered from there.** Correcting the analysis document
+touches none of those. Nothing fails; every test stays green; the demo keeps explaining itself with
+the retracted reason.
+
+| # | Check | Pass condition |
+|---|---|---|
+| N1 | For every claim retired or corrected this round, grep the SERVED bundle for a distinctive phrase from the OLD wording | zero hits |
+| N2 | Grep the served bundle for a distinctive phrase from the NEW wording | at least one hit |
+| N3 | Read the claim in the browser, on the page that renders it, after a cache-bust | the rendered text is the corrected one |
+| N4 | If the prose is generated by a trainer, correct it THERE and propagate | trainer, `metrics.json`, model card, baked config and README all agree |
+
+N1 is the one that catches this. A correction verified by reading the file you just edited proves
+only that you edited it.
+
+**Propagating into `models/metrics.json` is a surgical string replacement, never a JSON re-dump.**
+A `json.dump(..., sort_keys=True)` once reordered 508 lines to change one sentence, which buries the
+actual edit and makes the diff unreviewable. Replace `json.dumps(old_string)` with
+`json.dumps(new_string)` in the raw text and assert the file still parses.
+
+**Changing a model card means republishing.** The card is a file in the HF repo, so a corrected card
+that is never pushed leaves the published artifact contradicting the demo. Republishing then moves
+the revision, which means re-export, rebuild and redeploy - see the five-step retrain cycle above,
+including its two traps.
 
 ## What this checklist cannot cover
 
@@ -1435,3 +2154,11 @@ look inert. Read after a frame.
   that the corpus behind it is representative.
 - Anything the page does not render. A metric with no reader passes every axis here, which is why
   the audit that finds those reads the code instead.
+
+## Results from previous rounds
+
+Moved to [`verification-log.md`](verification-log.md) in Round 24. Those sections were records of
+what past rounds measured, not instructions for the next one, and they were 157 lines of a document
+whose whole purpose is being executable in one sitting.
+
+Read them when a number looks wrong and you want to know what it was last time.

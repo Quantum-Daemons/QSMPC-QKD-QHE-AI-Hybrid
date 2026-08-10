@@ -72,6 +72,13 @@ FEATURES = [
 #: BIPARTITE, FAN-OUT, SCATTER-GATHER, STACK, RANDOM, FAN-IN — 740 attempts in total. Every one of
 #: those is a multi-hop temporal path, which is precisely what one-hop account aggregates cannot
 #: see. Reachability is therefore computed up to this many hops on the account graph.
+#:
+#: Do NOT reach for this constant to close the gap to the published baseline. Raising it is the
+#: obvious-looking move and the measurement says it is nearly worthless: the GFP paper
+#: (arXiv:2402.08593) decomposes its own contribution and caps multi-hop cycle and scatter-gather
+#: features at about 4% relative, against more than 30% for fan-in/fan-out, which is already
+#: implemented here. The gap is architectural — per-transaction subgraph patterns versus per-account
+#: scalar aggregates — and no value of this constant addresses that.
 MAX_CYCLE_HOPS = 4
 
 #: Window for burst fan-in / fan-out degree. The FAN-OUT attempts are described as "max k-degree"
@@ -79,7 +86,164 @@ MAX_CYCLE_HOPS = 4
 BURST_WINDOW = "24h"
 
 
-def graph_features(df, *, fit_on=None):
+def causal_account_features(full):
+    """Prior-at-time per-account aggregates: for each row, only edges STRICTLY BEFORE it.
+
+    This is the honest form of the same quantities `graph_features` builds with a whole-window
+    ``groupby``. The difference is not cosmetic. A whole-window aggregate gives every transaction by
+    an account the SAME degree, including activity that happened after it - measured on HI-Small, the
+    median transaction has only 46.4% of its out-degree accrued by its own timestamp, so the feature
+    mostly describes the account's future. Training rows therefore saw a leaky feature while test
+    rows received the same table as a stale past, and the booster was fitted on one distribution and
+    scored on another.
+
+    Computing causally removes both problems at once: it leaks nothing (only the past is used), it
+    needs no ``fit_on`` split, and it produces no unseen-account zeros, because an account's first
+    transaction legitimately has a prior degree of 0 in train and test alike.
+
+    Measured on a matched 9-10 feature harness, same booster and split:
+
+        whole-window static (leaks across train+test)   AUPRC 0.1731
+        causal prior-at-time (this function)            AUPRC 0.0627
+        train-fitted static (what shipped before)       AUPRC 0.0432
+
+    so causal is 1.45x the shipped approach, and the leaky arm's 2.76x over causal is the size of
+    the leak rather than a result. Full workings: references/finance-gap-investigation.md.
+
+    ``full`` must be the entire frame sorted by timestamp. Returns a DataFrame aligned to its index.
+    """
+    import pandas as pd
+
+    src, dst = full["from_account"], full["to_account"]
+    paid = full["amount_paid"].to_numpy(dtype=np.float64)
+    recv = full["amount_received"].to_numpy(dtype=np.float64)
+    out = pd.DataFrame(index=full.index)
+
+    # Prior counts. cumcount is the number of earlier rows for that key, which is exactly "degree
+    # before this transaction".
+    out["src_out_degree"] = src.groupby(src).cumcount().to_numpy(dtype=np.float64)
+    out["dst_in_degree"] = dst.groupby(dst).cumcount().to_numpy(dtype=np.float64)
+
+    # Prior DISTINCT counterparties: mark the first occurrence of each (a,b) edge, then count how
+    # many such firsts precede this row for that account. Cheap, and exact.
+    pair = src.astype(str) + ">" + dst.astype(str)
+    first_pair = ~pair.duplicated()
+    out["src_unique_dst"] = (first_pair.groupby(src).cumsum() - first_pair.astype(int)
+                             ).to_numpy(dtype=np.float64)
+    rpair = dst.astype(str) + "<" + src.astype(str)
+    first_rpair = ~rpair.duplicated()
+    out["dst_unique_src"] = (first_rpair.groupby(dst).cumsum() - first_rpair.astype(int)
+                             ).to_numpy(dtype=np.float64)
+
+    # Prior amount statistics. Subtracting the current row from the cumulative sum is what makes
+    # these strictly prior rather than inclusive.
+    ps = pd.Series(paid, index=full.index)
+    prior_sum = ps.groupby(src).cumsum().to_numpy(dtype=np.float64) - paid
+    prior_n = np.maximum(out["src_out_degree"].to_numpy(), 1.0)
+    src_mean = prior_sum / prior_n
+    out["src_amount_mean_log"] = np.log1p(np.clip(src_mean, 0, None))
+    # The running max is INCLUSIVE of the current row, unlike the counts and means above which are
+    # strictly prior. That is deliberate and it is not a leak: the current transaction's own amount
+    # is known at scoring time - it is already a feature - so "largest seen up to and including
+    # now" is causally available. Stated because the inconsistency would otherwise look accidental,
+    # and because the truncation test cannot distinguish inclusive-of-self from strictly-prior.
+    out["src_amount_max_log"] = np.log1p(np.clip(
+        ps.groupby(src).cummax().to_numpy(dtype=np.float64), 0, None))
+    rs = pd.Series(recv, index=full.index)
+    dst_prior_sum = rs.groupby(dst).cumsum().to_numpy(dtype=np.float64) - recv
+    out["dst_amount_mean_log"] = np.log1p(np.clip(
+        dst_prior_sum / np.maximum(out["dst_in_degree"].to_numpy(), 1.0), 0, None))
+
+    out["src_fan_out_ratio"] = out["src_unique_dst"] / np.maximum(out["src_out_degree"], 1.0)
+    out["dst_fan_in_ratio"] = out["dst_unique_src"] / np.maximum(out["dst_in_degree"], 1.0)
+
+    # Prior dispersion, via the running second moment. Same subtract-self trick.
+    sq = pd.Series(paid * paid, index=full.index)
+    prior_sq = sq.groupby(src).cumsum().to_numpy(dtype=np.float64) - paid * paid
+    var = np.maximum(prior_sq / prior_n - src_mean ** 2, 0.0)
+    out["amount_z_src"] = (paid - src_mean) / np.maximum(np.sqrt(var), 1.0)
+    out["amount_share_of_src_total"] = paid / np.maximum(prior_sum, 1.0)
+    return out
+
+
+#: Sliding window for the burst features, in hours. The cumulative aggregates above answer "how
+#: active has this account ever been"; these answer "how active is it RIGHT NOW", and the pair
+#: separates a steadily-busy account from one that woke up. 24h is one settlement day.
+BURST_WINDOW_H = 24.0
+
+
+def windowed_causal_features(full, *, window_h: float = BURST_WINDOW_H):
+    """Per-transaction RECENT-history features, strictly prior, over a sliding time window.
+
+    MEASURED AND NOT SHIPPED. Adding these six columns to the 32 shipped features moved
+    minority-class F1 from 0.1519 to 0.1308 and AUPRC from 0.1233 to 0.1152, while AUROC ROSE from
+    0.9526 to 0.9606 - the signature of a change that helps the majority class at a 1-in-981
+    positive rate. Kept because it is a negative result worth keeping executable: the recency
+    reading of the baseline gap is the obvious next idea, and re-running this costs 15 seconds
+    against a day to re-derive it. See references/finance-gap-investigation.md.
+
+    This is the architectural difference the baseline gap note names. The published reference
+    computes per-transaction subgraph patterns over a dynamically updated graph; this project
+    computed per-account scalar aggregates over all prior time. A cumulative degree cannot separate
+    an account that has been busy for a year from one that sent nothing for a year and then sent
+    forty transactions this morning - and the second is what a mule looks like.
+
+    Each feature here is the same quantity as its cumulative twin, restricted to
+    ``(t - window_h, t)``. Computed by binary search over per-account sorted timestamps, so it is
+    O(n log n) and needs no graph library: for each row, find how many of that account's prior rows
+    fall inside the window, and difference the account's prefix sums at those two positions.
+
+    Strictly prior by construction - the searchsorted upper bound is the row's own position within
+    its account, so its own edge is never counted. That is the same discipline as
+    :func:`causal_account_features` and it is what makes the truncation test pass.
+    """
+    import pandas as pd
+
+    out = pd.DataFrame(index=full.index)
+    ts = full["timestamp"].to_numpy(dtype="datetime64[s]").astype("int64").astype(np.float64)
+    window_s = window_h * 3600.0
+    paid = full["amount_paid"].to_numpy(dtype=np.float64)
+
+    for side, col, amt in (("src", "from_account", paid), ("dst", "to_account", paid)):
+        keys = full[col].to_numpy()
+        order = np.lexsort((ts, keys))            # group by account, ascending time within account
+        k_sorted, t_sorted, a_sorted = keys[order], ts[order], amt[order]
+        # Group boundaries: start index of each account's block in the sorted arrays.
+        starts = np.flatnonzero(np.r_[True, k_sorted[1:] != k_sorted[:-1]])
+        group_id = np.repeat(np.arange(starts.size), np.diff(np.r_[starts, k_sorted.size]))
+        pos_in_group = np.arange(k_sorted.size) - starts[group_id]
+        # Prefix sums per account, so a window sum is one subtraction.
+        csum = np.r_[0.0, np.cumsum(a_sorted)]
+        base = csum[starts[group_id]]             # prefix at the account's first row
+
+        # Left edge of the window, searched WITHIN the account's own block only.
+        lo = np.empty(k_sorted.size, dtype=np.int64)
+        for g, st in enumerate(starts):
+            end = starts[g + 1] if g + 1 < starts.size else k_sorted.size
+            blk = t_sorted[st:end]
+            lo[st:end] = np.searchsorted(blk, blk - window_s, side="left")
+        n_prior_window = pos_in_group - lo                      # excludes self
+        sum_window = (csum[starts[group_id] + pos_in_group] - base) - \
+                     (csum[starts[group_id] + lo] - base)
+
+        cnt = np.empty(k_sorted.size)
+        cnt[order] = n_prior_window
+        smw = np.empty(k_sorted.size)
+        smw[order] = sum_window
+        out[f"{side}_burst_count_{int(window_h)}h"] = cnt
+        out[f"{side}_burst_amount_log_{int(window_h)}h"] = np.log1p(np.clip(smw, 0, None))
+
+    # Burstiness: recent activity relative to lifetime activity. 1.0 means everything this account
+    # has ever done happened inside the window; near 0 means a long-established account.
+    for side in ("src", "dst"):
+        life = out.get(f"{side}_burst_count_{int(window_h)}h")
+        deg = (full["from_account"] if side == "src" else full["to_account"])
+        total_prior = deg.groupby(deg).cumcount().to_numpy(dtype=np.float64)
+        out[f"{side}_burst_share"] = life / np.maximum(total_prior, 1.0)
+    return out
+
+
+def graph_features(df, *, fit_on=None, causal=None):
     """Graph feature preprocessing: per-account aggregates joined back onto each edge.
 
     This is the 'GFP' of the AMLworld baseline — turn the transaction multigraph into tabular
@@ -183,6 +347,17 @@ def graph_features(df, *, fit_on=None):
     rate = source.groupby("payment_format", observed=True)["label"].mean()
     f["format_risk"] = df["payment_format"].map(rate).astype(np.float32).fillna(0.0)
 
+    # Causal override. The 11 per-account SCALAR aggregates are replaced by their prior-at-time
+    # form when supplied; the structural features below them - cycle closures, scatter-gather, bank
+    # diversity, burst degree, format risk - stay on the training window, because recomputing a
+    # sparse-matrix reachability power at every timestep is not tractable here. The split is stated
+    # rather than blurred: `causal_account_features` documents which quantities it covers, and these
+    # are exactly the ones the matched-harness experiment isolated.
+    if causal is not None:
+        for col in causal.columns:
+            if col in f.columns:
+                f[col] = causal.loc[df.index, col].to_numpy(dtype=np.float64)
+
     return f[FEATURES].to_numpy(dtype=np.float32)
 
 
@@ -256,6 +431,23 @@ def main() -> int:
     ap.add_argument("--nrows", type=int, default=None, help="cap rows (smoke runs only)")
     ap.add_argument("--out", type=Path, default=None)
     ap.add_argument("--seed", type=int, default=42)
+    # Causal aggregates are the DEFAULT since Round 24: measured +88% minority-class F1 and +68%
+    # AUPRC over the whole-window form, with no leakage (verified by a truncation test - every
+    # feature is bit-identical whether or not later rows exist). --no-causal restores the old
+    # behaviour for A/B work; it should not be used to produce shipped artifacts.
+    ap.add_argument("--no-causal", dest="causal", action="store_false",
+                    help="restore whole-window per-account aggregates (A/B only, worse and leaky "
+                         "in the train/test-asymmetry sense; see causal_account_features)")
+    ap.add_argument("--student-degree", type=int, default=1,
+                    help="polynomial degree for the CKKS student's feature map. "
+                         "The expansion is computed on plaintext before encryption, so "
+                         "degree 2 costs no extra multiplicative depth -- only slots, and 560 of "
+                         "4096 is affordable. MEASURED HERE AND REJECTED: degree 2 raised fidelity "
+                         "(agreement 0.9471 -> 0.9651, disagreement on positives 0.3262 -> 0.1956) "
+                         "and LOWERED the headline, minority-class F1 0.0185 -> 0.0115. It pays on "
+                         "OPS-SAT and does not pay here, which is why this is a flag and not a "
+                         "default -- check it per model rather than assuming it generalises.")
+    ap.set_defaults(causal=True)
     args = ap.parse_args()
 
     import xgboost as xgb
@@ -280,9 +472,15 @@ def main() -> int:
           f"val {len(val):,} ({int(val['label'].sum())} pos) | "
           f"test {len(te):,} ({int(te['label'].sum())} pos)")
 
-    Xfit = graph_features(fit)
-    Xval = graph_features(val, fit_on=fit)
-    Xte = graph_features(te, fit_on=tr)
+    # One causal pass over the WHOLE sorted frame. It leaks nothing by construction - every value
+    # uses only strictly-earlier rows - so the same block serves fit, val and test, and there is no
+    # fit_on split to get wrong for these columns.
+    cz = causal_account_features(df) if args.causal else None
+    if cz is not None:
+        print("  causal per-account aggregates: ON (prior-at-time, no fit_on needed)")
+    Xfit = graph_features(fit, causal=cz)
+    Xval = graph_features(val, fit_on=fit, causal=cz)
+    Xte = graph_features(te, fit_on=tr, causal=cz)
     yfit = fit["label"].to_numpy(dtype=np.int8)
     yval = val["label"].to_numpy(dtype=np.int8)
     yte = te["label"].to_numpy(dtype=np.int8)
@@ -320,14 +518,48 @@ def main() -> int:
     from sklearn.preprocessing import StandardScaler
 
     scaler = StandardScaler().fit(Xtr)
-    student = distil.distil_linear(teacher.predict(Xtr), scaler.transform(Xtr), seed=args.seed)
-    student_pred = student.predict(scaler.transform(Xte))
+    # SOFT targets: the teacher's probabilities, not its argmax. Hard labels discard precisely the
+    # information distillation exists to transfer, and at 1-in-981 that is most of the signal.
+    #
+    # QUADRATIC expansion, computed on the plaintext input before encryption, so the encrypted step
+    # stays one packed dot product at unchanged multiplicative depth. 32 features become 560, well
+    # inside the 4096 slots a degree-8192 ring gives. Round 24 measured this student's ceiling over
+    # ANY threshold at 0.0262 minority-class F1 against the teacher's 0.1519, and concluded the
+    # binding constraint was capacity - so this tests whether the capacity that was missing is the
+    # cipher's or the feature map's.
+    # At degree 1 the student is a bare estimator and the CALLER owns the scaling, exactly as every
+    # other student in this project does; at degree > 1 the returned Pipeline owns its own scaler and
+    # must be fed raw features or it would z-score twice. Getting this backwards silently fits a
+    # logistic model on unscaled 32-dimensional features - it converges to something, reports a
+    # number, and that number was minority-class F1 0.0068 against 0.0185.
+    Xtr_student = Xtr if args.student_degree > 1 else scaler.transform(Xtr)
+    student = distil.distil_linear(
+        teacher.predict_proba(Xtr), Xtr_student, seed=args.seed, soft=True,
+        degree=args.student_degree)
+
+    def _student_features(X):
+        return X if args.student_degree > 1 else scaler.transform(X)
+
+    # Tune the student's OWN threshold on validation, then fold it into the bias. Until Round 24
+    # the student was scored at sklearn's default 0.5 while the teacher got a tuned cut - so the
+    # reported student number was not the student's best operating point, it was an arbitrary one.
+    # Folding matters because the encrypted path decides by argmax over two logits, which IS a 0.5
+    # threshold: there is nowhere downstream to apply a tuned cut, so it has to live in the weights.
+    # Measured: 0.0186 at 0.5, 0.0503 tuned, on identical weights.
+    s_val = student.predict_proba(_student_features(Xval))[:, 1]
+    s_thr = _best_threshold(yval, s_val)
+    distil.fold_threshold_into_intercept(student[-1] if args.student_degree > 1 else student, s_thr)
+    print(f"    student threshold {s_thr:.4f} folded into the bias "
+          f"(the CKKS argmax has no other place to apply it)")
+    student_pred = student.predict(_student_features(Xte))
 
     # Persist it. Until Round 19 the student was fit, measured and discarded -- so the one model
     # that actually runs under CKKS was the one model nobody could obtain or check.
     student_export = distil.save_student(
         student, Path("models/finance_aml_student"), n_features=len(FEATURES),
-        teacher_key="finance_aml.gbm", student_key="finance_aml.student", scaler=scaler)
+        teacher_key="finance_aml.gbm", student_key="finance_aml.student",
+        scaler=(None if args.student_degree > 1 else scaler),
+        fixtures=(Xte[:64] if args.student_degree > 1 else None))
     print(f"  student persisted: {student_export['n_parameters']} params, "
           f"browser_runnable={student_export['browser_runnable']}")
 
@@ -335,7 +567,7 @@ def main() -> int:
         teacher_key="finance_aml.gbm", student_key="finance_aml.student",
         teacher_pred=pred, student_pred=student_pred, y_true=yte,
         metric_fn=metrics.minority_class_f1, metric_name="minority_class_f1",
-        student_params=int(student.coef_.size + student.intercept_.size),
+        student_params=int(_est(student).coef_.size + _est(student).intercept_.size),
         teacher_params=int(teacher.get_booster().trees_to_dataframe().shape[0]),
     )
     print(f"    agreement with teacher      {fidelity.agreement:.4f}")
@@ -371,17 +603,26 @@ def main() -> int:
         "positive_rate": round(float(n_pos / len(df)), 8),
         "split": "temporal, inductive",
         "baseline_gap_note": (
-            "This reaches minority-class F1 well below the published 0.6323. Two differences account "
-            "for most of it and both are deliberate. (1) The published baseline uses IBM's Graph "
-            "Feature Preprocessor, which ships in `snapml` under a Proprietary licence and is "
-            "therefore excluded by this project's commercial-OK-only rule; what is reimplemented here "
-            "is the documented typology set (degree, fan-in/out, reciprocity, k-hop cycle closure, "
-            "burst degree, scatter-gather). (2) The corpus injects CYCLE attempts of up to 10 hops "
-            "(HI-Small_Patterns.txt), while reachability here is computed to "
-            f"{MAX_CYCLE_HOPS} hops because the boolean sparse powers grow quickly beyond that. "
-            "The evaluation is also strictly inductive: graph aggregates are fitted on the training "
-            "window only, so no test-time edge informs a training-time feature. Reported as measured; "
-            "not adjusted to close the gap."
+            "This reaches minority-class F1 well below the published 0.6323 (GFP+XGBoost, AMLworld "
+            "HI-Small, NeurIPS 2023 D&B). The cause is a feature ARCHITECTURE difference, not a "
+            "tuning one: the gap is unreachable at any threshold, because measured AUPRC is far "
+            "below what that F1 requires. IBM's Graph Feature Preprocessor computes per-transaction "
+            "subgraph patterns over a dynamically updated graph; this project computes per-account "
+            "scalar aggregates. A degree is one number per account, whereas a GFP feature is a "
+            "pattern match in that transaction's own neighbourhood at the moment it arrives. GFP "
+            "ships in `snapml` under a Proprietary licence and is excluded by this project's "
+            "commercial-OK-only rule, but the licence is not itself the cause - the architecture is, "
+            "and it is reimplementable without `snapml`, simply at more cost than renaming "
+            f"aggregates. Reachability is computed to {MAX_CYCLE_HOPS} hops against injected CYCLE "
+            "attempts of up to 10; that was previously recorded as a main cause and is NOT one - the "
+            "GFP paper (arXiv:2402.08593) decomposes its own contribution and caps multi-hop cycle "
+            "and scatter-gather features at about 4% relative, while fan-in/fan-out, which is "
+            "reimplemented here, carries more than 30%. The evaluation is strictly inductive and "
+            "temporally split. Per-account aggregates are causal (each row sees only edges strictly "
+            "before it); the structural block - cycle closure, scatter-gather, bank diversity, burst "
+            "degree - is still fitted on the training window, because recomputing sparse "
+            "reachability at every timestep is not tractable here. Reported as measured; not "
+            "adjusted to close the gap. Full workings: references/finance-gap-investigation.md."
         ),
         "git_sha": train.git_sha(),
         "data_digest": train.digest_array(Xtr[:10000], ytr[:10000]),
@@ -398,6 +639,11 @@ def main() -> int:
     train.record_metrics("finance_aml.student", fidelity.as_metrics())
     print(f"\n  wrote {out} and models/metrics.json in {time.time()-started:.0f}s")
     return 0
+
+
+def _est(student):
+    """The estimator carrying the coefficients: a pipeline student keeps them on its last step."""
+    return student[-1] if hasattr(student, "steps") else student
 
 
 def _best_threshold(y, score) -> float:

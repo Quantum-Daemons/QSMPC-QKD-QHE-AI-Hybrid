@@ -4,8 +4,8 @@
   "best_metric": 0.9557226399331662,
   "best_epoch": 23,
   "epochs_run": 39,
-  "wall_clock_s": 3.8,
-  "git_sha": "8317cb2-dirty",
+  "wall_clock_s": 4.1,
+  "git_sha": "61b855e-dirty",
   "seed": 42,
   "hyperparameters": {
     "epochs": 60,
@@ -27,6 +27,7 @@
   "checkpoint": "model.safetensors",
   "dataset": "MedMNIST v2 BreastMNIST",
   "resolution": 28,
-  "pretrained": "ImageNet1K_V1",
+  "architecture": "resnet18",
+  "pretrained": "none",
   "adaptation": "conv1 RGB kernels summed to 1 channel"
 }

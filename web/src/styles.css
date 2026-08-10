@@ -219,3 +219,10 @@ hr { border: none; border-top: 1px solid var(--border); margin: 24px 0; }
 .mini-table td.num { text-align: right; font-variant-numeric: tabular-nums; width: 120px; }
 .mini-table tr.metric-headline td { font-weight: 700; color: var(--accent-2); }
 .mini-table tr.metric-companion td { opacity: 0.62; }
+
+/* Verification charts. Two side by side on a wide screen, stacked on a phone: a precision-recall
+   curve and its score histogram are a pair and lose most of their meaning apart. */
+.chart-pair { display: grid; gap: 12px; grid-template-columns: 1fr; }
+@media (min-width: 900px) { .chart-pair { grid-template-columns: 1fr 1fr; } }
+.chart-figure { margin: 8px 0 0; }
+.chart-figure figcaption { margin-bottom: 6px; line-height: 1.45; }

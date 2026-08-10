@@ -1,0 +1,6 @@
+# LaTeX build intermediates. The PDF itself IS committed: it is the deliverable, and a report
+# nobody can open without a TeX installation is not one.
+*.aux
+*.log
+*.out
+*.toc
