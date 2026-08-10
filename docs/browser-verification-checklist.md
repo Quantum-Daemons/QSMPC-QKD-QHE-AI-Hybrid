@@ -33,13 +33,17 @@ running a round, use the Run sheet below instead.
 **Every check row has a unique ID.** The prefix says which section it belongs to: `RS` run sheet,
 `RG` page region, `CI` continuous integration, `DP` deploy, `DN` denominator/sample size, `HF`
 Hugging Face, `B` baseline row, `C` constant predictor, `L` licence default, `N` landed-in-the-UI,
-`R` bootstrap, `S` sampler alignment, `E` eval-sample staleness, `G` GPU/accelerator claims, `H` HE context, `LK` label leak, `M` use-case motivation, `P` published-model parity, `QC` QCNN inference, `RD` real-data overlay, `T` training corpus, `TR` training environment, `V` vendored crypto. Two collisions were fixed in Round 24e: `DP` and `DN` were both
+`R` bootstrap, `S` sampler alignment, `E` eval-sample staleness, `G` GPU/accelerator claims, `H`
+HE context, `LK` label leak, `M` use-case motivation, `P` published-model parity, `QC` QCNN
+inference, `RD` real-data overlay, `T` training corpus, `TR` training environment, `V` vendored
+crypto. Two collisions were fixed in Round 24e: `DP` and `DN` were both
 `D`, and the run sheet and the region table both used bare integers, so "step 3" and "region 3" and
 "check D3" were three different things sharing two names.
 
 ## Run sheet - the whole round in one page
 
-This document is about 2400 lines because each row carries the incident that produced it, and that context
+This document is about 2400 lines because each row carries the incident that produced it, and that
+context
 is what stops a row being deleted later as noise. But a checklist you cannot execute in one sitting
 has stopped being a checklist, so this is the executable index. Work down it; follow a link only when
 a row fails or you do not recognise it.
@@ -711,7 +715,8 @@ Verified in Round 21, all against `references/`:
 original were written separately and can be run against each other. This table used to carry a
 security-score row as its headline example, on the grounds that two independent implementations both
 produced 68 and 96. (Told in full, with both external assertions named, under "Retiring a metric is
-not done until the checklist stops asking" below - this is the short version.) They did - and the number was still meaningless, because both implementations
+not done until the checklist stops asking" below - this is the short version.) They did - and the
+number was still meaningless, because both implementations
 faithfully reproduced the same argument-passing artefact. **Agreement between two mirrors proves they
 match each other, not that either is right.** Pair every parity check with at least one assertion
 against a source outside this repository; `tests/test_decoy_reference.py` and `npm run check:pqc` are
@@ -1081,7 +1086,8 @@ A display panel with no controls, so its verification is terminology and interna
 
 ### Inference provenance
 
-Names which model produced the reported class, from a FOUR-state enum (`remote` was removed in Round 24d). With two inferences running
+Names which model produced the reported class, from a FOUR-state enum (`remote` was removed in
+Round 24d). With two inferences running
 (bundled student + published model) the badge must name BOTH and say which one the reported class
 came from. The SHAP panel below it must name the model it explains and the reference point it
 explains against - see the XAI section.
