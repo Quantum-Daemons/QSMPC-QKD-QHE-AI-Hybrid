@@ -1641,6 +1641,248 @@ clean.
 T2 is the one an automated check gets wrong. `license: null` from the GitHub API means all rights
 reserved, and a naive check that only fails on a deny-list of SPDX identifiers passes it.
 
+## The QCNN inference backend returned a coin flip and the page called it a prediction
+
+Selecting **Inference = QCNN (QHE)** routed the surfaced class through `qotpQcnnInfer` and reported it
+as `primary_inference_class`, beside the CKKS prediction. It carried no information about the input.
+
+Measured over 24 random feature vectors x 8 run seeds each:
+
+| quantity | value |
+|---|---|
+| vectors whose class FLIPS with the seed | **24 / 24 = 100%** |
+| mean \|<Z0>\| with the QOTP mask | 0.0761 |
+| mean \|<Z0>\| with the mask DISABLED | 0.0748 |
+| correlation, unmasked class vs mean(feature) | **-0.070** |
+
+The QOTP mask is applied and never undone, so an X on qubit 0 flips the sign - but that is the
+smaller cause. Disabling the mask barely moves the numbers, because seven FIXED rounds of H, a CNOT
+ring and T on every qubit drive the state toward uniform. The sign of <Z0> was numerical noise.
+
+**Why nothing caught it.** The project already knew the neighbouring benchmark row was empty -
+`clientCompute.ts` labels it "no trained weights", states "There is nothing here to be accurate
+ABOUT", and this document records that an invented `accuracy: 1.0` was removed from it. That
+scrutiny stopped at the benchmark row. The selector inherited the code and not the caveat, and every
+word of its log line was true: the T-gates are counted, the simulation is a real state-vector
+simulation, the class is genuinely computed. It just was not a prediction.
+
+| # | Check | Pass condition |
+|---|---|---|
+| QC1 | A surfaced class comes from something with trained parameters | a fixed circuit cannot classify |
+| QC2 | Class is STABLE across run seeds for a fixed input | flipping with the seed means it is noise |
+| QC3 | \|<Z0>\| is not pinned near zero across all inputs | ~0.07 for every input is a scrambled state |
+| QC4 | The model is trained in the space the browser actually SUPPLIES | z-scores in, z-scores trained |
+| QC5 | Circuit parity is checked against an independent reimplementation | before any weights are shipped |
+| QC6 | The classical baseline is reported beside the quantum number | every time, including when it loses |
+
+**QC4 and QC5 each caught a fault that would have made the fix worthless.**
+
+QC5: the training circuit and an independent numpy reimplementation disagreed by up to **0.73** on a
+value bounded in [-1, 1]. The trainer applied CNOTs with two chained `movedim` calls and used the
+ORIGINAL axis index for the second, so control and target were crossed on every gate. It trained
+perfectly well - the circuit was self-consistent, just not the circuit documented - and only a parity
+check exposed it. After rewriting with flat index arithmetic the two agree to **2.4e-07**.
+
+QC4: the first trained model min-max scaled its inputs against RAW WDBC ranges (area 143..2501). The
+bundled sample the browser feeds is **StandardScaler output** - verified at L1 distance 0.0002 - so
+seven of eight features pinned to -1 and <Z0> came out at **0.0098**, a degenerate state that made
+the TRAINED path exactly as meaningless as the untrained one it replaced. Retrained in z-space with
+a bounded `RY(tanh(z)*pi)` encoding, since z-scores span [-3.11, 6.05] and would otherwise wrap the
+Bloch sphere: <Z0> moved to **0.1669**.
+
+**What the result is, stated without varnish.** Held-out accuracy **0.8947** against a majority
+baseline of 0.6082 and logistic regression at **0.9649** on the identical split. The QCNN learns and
+the classical model beats it, and the log line on the page says so in those words rather than
+implying an advantage. That is consistent with this project's other quantum results - the telecom
+QNN loses to a random forest - and with the concentration literature.
+
+**QOTP hiding and QCNN prediction are now separate.** Undoing a Pauli frame through Clifford+T is
+not a detail that can be waved through: `T X T-dagger` is not Pauli, which is the difficulty Ortega &
+Martin-Delgado's scheme exists to solve, and this repository does not implement it. So
+`qotpQcnnInfer` remains the hiding and T-count demonstration - both of which it genuinely supports -
+and the prediction path is a separate unmasked trained circuit. A use case with no trained weights
+falls back to CKKS and says why, rather than passing off a coin flip.
+
+Workings: [`references/qcnn-inference-investigation.md`](../references/qcnn-inference-investigation.md).
+
+## A reproducible number measured on contaminated rows is still contaminated
+
+The finance evaluation sample carried a near-perfect label leak, and every gate this project has was
+green the whole time. The payload was well-formed. The browser re-scored it and matched the recorded
+expectation. `make ci-local` passed. None of that is evidence about the ROWS.
+
+What was wrong: the sample was built from `nrows=400_000` of AMLworld HI-Small. That corpus is
+time-sorted for background traffic, but IBM's injected laundering rows carry timestamps spanning the
+whole period while sitting early in the file. So the first 400k rows are 99.97% hours 0-2
+(344,209 / 33,144 / 22,472) with roughly 175 rows across hours 3-23, a large share of them
+laundering. Sampling negatives uniformly from that head reproduces its shape exactly - predicted
+6,924 / 667 / 452 against observed 6,912 / 661 / 470 - so in the shipped sample **negatives held 3
+distinct hour values and positives held 22**, and `hour_of_day >= 3` implied laundering at 100%
+precision.
+
+Measured, not asserted. `hour_of_day` alone scored AUC-PR 0.7104 against a 0.0192 base rate, a 37x
+lift. On the shipped ONNX the in-browser figure was 0.5100, falling to 0.4398 permuted and 0.4479
+zeroed - so **13.8% of the verification number came from the truncation**.
+
+**The source corpus is innocent, and checking that mattered.** Across all 5,078,345 rows both classes
+span all 24 hours and the laundering rate moves only 0.00028 to 0.00174. Had the leak been in
+AMLworld it would be a dataset caveat; being in the sampling made it this project's defect.
+
+**Scope, stated precisely because it is easy to overstate.** This contaminated the BROWSER
+VERIFICATION figure, not the headline result. `models/metrics.json` records minority-class F1 0.1519
+on the real temporal test split of 1,523,504 rows at a 0.00102 positive rate, and that number never
+touched the leaked sample.
+
+| # | Check | Pass condition |
+|---|---|---|
+| LK1 | No single feature separates an evaluation sample on its own | per-column ROC AUC < 0.90; the generator warns |
+| LK2 | A sample is never drawn from the HEAD of a sorted corpus | read the whole file, or sample across it |
+| LK3 | A leak found in a sample is checked against the SOURCE before blaming the dataset | here the source was clean and the generator was not |
+| LK4 | Stratified prevalence is a stated target, not a side effect of an expression | `want // 4` silently became 25% once the truncation was lifted |
+| LK5 | Fixing the generator is not fixing the demo | the browser fetches `eval_sample.json` from HF at a pinned revision |
+| LK6 | The guard's own arithmetic is self-tested before its output is believed | plant a leak, plant pure noise, check both |
+| LK7 | `feature_names` length equals the sample's column count | a mismatch makes the guard skip the payload SILENTLY |
+
+**LK6 exists because this guard was wrong twice**, and both versions produced confident output.
+Version one asked whether positives sat on values no negative took - sound for an hour index,
+meaningless for a continuous float, and it flagged `amount_paid_log` at 99.7% because distinct
+doubles rarely collide. Version two used a binary rank-AUC formula on multi-class labels, where
+`y == 1` picks one class of eight while the ranks span every row; it printed **AUC 5.1292**. An
+impossible number is at least loud. A plausible wrong one would have been believed. It now runs
+one-vs-rest and is self-tested against a planted leak and against pure noise.
+
+**LK7 is how telecom escaped checking entirely.** Its payload wrote the 8 CLASS names under
+`feature_names` for a 7-column matrix - `generate()` returns `(X, y, label_names)` and the caller
+unpacked the third value into a variable named `feature_names`. Nothing rendered it so nothing
+complained, but the guard skips any payload whose column count disagrees with its name count, so the
+one flat-feature use case that most needed checking was never checked.
+
+**And what checking it found is a caveat, not a bug: telecom is SEPARABLE BY CONSTRUCTION.**
+`sift_ratio` and `click_asymmetry` each separate `detector_blinding` from the other seven classes at
+**one-vs-rest AUC 1.0000**; `qber_mean` reaches 0.9785 on `intercept_resend` and `multiphoton_rate`
+0.9703 on `photon_number_splitting`. That is the generator's `_SIGNATURES` table doing its job - each
+attack is given a distinctive value on purpose. The corpus was already labelled synthetic everywhere
+it is reported; what was missing is that its 0.9867 accuracy is close to tautological. It measures
+the simulator, not the world, and the payload's provenance now says so in those words.
+
+
+**LK4 is the trap inside the fix.** Removing the truncation made 5,177 positives reachable, so
+`take_pos = want // 4` jumped from 149 (1.82%, capped by scarcity) to 2048 - a 25%-laundering
+sample. The expression had produced a defensible balance by accident and stopped doing so the moment
+its input changed. It is now an explicit 2% target.
+
+**LK1's first implementation was wrong and is worth recording.** It tested whether positives occupied
+values no negative took. That is sound for a low-cardinality index like an hour and nonsense for a
+continuous float - it flagged `amount_paid_log` at 99.7% purely because distinct doubles rarely
+collide. Rewritten as per-column ROC AUC, which does not care about cardinality.
+
+**LK5 is why this round did not close the issue.** `onnxInference.ts` derives the sample URL from the
+model URL, so the browser reads it from Hugging Face at the pinned revision. The generator is fixed
+and the local artefact is regenerated, but the deployed demo keeps serving the leaked sample until
+the model repos are re-uploaded and re-pinned.
+
+## Real data next to the model's own numbers, and the licence that decides whether it can ship
+
+A score plotted alone cannot distinguish a good model on easy data from a mediocre model on hard
+data - the reader has no way to see how separable the classes were to begin with. `RealDataScatter`
+draws the actual corpus so that question is answerable by looking. What decides whether a use case
+gets one is **redistribution licence**, which is a stricter test than "publicly downloadable" and
+knocks out most obvious candidates.
+
+Checked 2026-08-10, per use case:
+
+| use case | training corpus | licence | ships as real 2D? |
+|---|---|---|---|
+| satellite | OPS-SAT-AD | CC-BY-4.0 | **yes, and it IS the training corpus** |
+| finance | AMLworld | CDLA-Sharing-1.0 | yes, but share-alike propagates to the slice |
+| telecom | generated here | n/a | yes, but it is synthetic, not real |
+| medical | BreastMNIST / BUSI | CC BY on the ARTICLE, not the data | **no** - WDBC substitutes |
+| genomics | 1000 Genomes | IGSR grants no blanket licence | **no** |
+
+| # | Check | Pass condition |
+|---|---|---|
+| RD1 | A bundled corpus has a licence that survives REDISTRIBUTION in a public bundle | "publicly downloadable" is not the test |
+| RD2 | `is_training_corpus` is true only when it is literally the corpus the model trained on | satellite yes; medical/genomics substitutes must say so |
+| RD3 | A substitute corpus is never drawn on the model's own axes | no shared feature space = no shared axes |
+| RD4 | The axis pair is chosen by measurement, not by eye | satellite: all 171 pairs scored, `n_peaks` x `diff2_peaks` won at AUC-PR 0.8492 vs 0.2136 base rate |
+| RD5 | Licence + attribution travel INSIDE the data file | so they cannot drift from the points they describe |
+| RD6 | The chart is confirmed to RENDER, not merely to typecheck | count `.recharts-scatter-symbol` nodes in the browser |
+| RD7 | The axis pair is chosen for separability AND readability, which are different criteria | look at it; a metric cannot tell you a chart is a blob |
+| RD8 | A heavy-tailed axis is log-scaled, and the scale is decided by the GENERATOR | whether compression is warranted is a property of the data |
+| RD9 | Local browser checks run in the SAME mode production runs | `?demo=client`, or a stale local service will answer for it |
+| RD10 | A payload field that carries the finding is actually RENDERED | `note` was written, computed, shipped, and displayed nowhere |
+
+**RD9 nearly produced a false bug report, which is the point of writing it down.** Verifying the
+genomics overlay locally, the page showed "the European-to-African AUROC drop is the finding" - a
+sentence the registry had explicitly corrected to "a distribution shift, NOT an AUROC drop ... no
+AUROC is computable". It looked like a stale duplicate contradicting its own correction on a live
+page.
+
+It was not in the source. Not in `config.defaults.json`. Not in the built bundle - `grep` over
+`web/dist/assets/*.js` returned zero. Not anywhere in the repository. It survived a hard reload with
+the cache cleared.
+
+The cause was a **uvicorn left running on :8000 from a previous session**, days old.
+`refreshConfigFromApi()` does `CONFIG = { ...defaults, ...(await r.json()) }`, so a stale API's
+`notes` silently overwrite the correct baked ones. The bundle was right and the page was wrong, and
+nothing in the repository could have told me that.
+
+Production is unaffected and that was checked rather than assumed: the public demo returns **404 on
+`/api/config`**, so the fetch fails and the baked defaults stand. Re-verified with `?demo=client`,
+which takes the same path production takes - corrected text present, stale text absent.
+
+The transferable rule: a local browser check is only as trustworthy as the services answering it.
+Pin the mode, or confirm what is actually serving each response.
+
+**RD10** is smaller and duller: the `note` field carrying each chart's actual finding - "8 of the 32
+larger-effect variants differ by at least 0.20 in allele frequency" - was computed by the generator,
+shipped in the payload, and rendered by nothing. Writing a finding is not publishing it.
+
+
+
+**RD7 cost a full iteration and is the most transferable lesson here.** Ranking finance's 496 feature
+pairs by AUC-PR put `format_risk` x `src_bank_diversity` first at 0.3195, so that shipped - and
+rendered as a few vertical bands hard against the origin plus one lone outlier. `format_risk` has
+**six distinct values**, five bunched near zero and one at 0.0075. A gradient-boosted tree does not
+care how values are spaced along an axis; an eye does. Every gate passed and the chart was useless.
+
+The measured alternatives, which is what made the choice defensible rather than aesthetic:
+
+| pair | AUC-PR | readable? |
+|---|---|---|
+| `format_risk` x `src_bank_diversity` | 0.3195 | no - 6 values, uneven |
+| `src_fan_out_ratio` x `src_burst_fanout` | **0.2302** | **yes, with a log y-axis** |
+| `src_fan_out_ratio` x `dst_fan_in_ratio` | 0.0764 | yes, but barely separates |
+
+Shipping the middle one trades 0.09 of AUC-PR for a chart that shows something, and 0.2302 against a
+0.0173 base rate is still a 13.3x lift. The log axis then earned its place immediately: at linear
+scale the high-burst-fan-out laundering cluster sat flat on the baseline, and compressing the axis is
+what made it visible as a distinct group - which is the structuring signature the feature exists to
+capture.
+
+
+
+**RD6 exists because of a specific incident.** Round 24j shipped a chart that typechecked, built, and
+rendered nothing - the payload was attached at 1 of 4 return sites. `tsc --noEmit` and `npm run build`
+both pass on a component that never mounts. The only evidence that a chart works is a node count from
+a real page:
+
+    document.querySelectorAll('.recharts-scatter-symbol').length     // expect 529 on satellite
+    document.querySelectorAll('figure.chart-figure').length          // expect >= 1
+
+**RD3 is the one with an ethical edge.** WDBC is breast-cancer data and so is BreastMNIST, which makes
+overlaying them feel natural. They share a disease and nothing else - WDBC is cell-nucleus morphometry
+from fine-needle aspirates, BreastMNIST is 28x28 ultrasound. Putting them on one axis pair would
+assert a correspondence that does not exist, in a clinical context. They are drawn separately and the
+caption leads with "A DIFFERENT cohort and modality".
+
+**And a finding that fell out of RD1:** the satellite page bundles SMAP/MSL for its anomaly demo,
+which is NOT redistributable - 17 U.S.C. 105 removes US copyright domestically, which is not a grant
+and is territorial - while the corpus it actually trains on, OPS-SAT-AD, IS CC-BY-4.0. The
+redistributable one was not the one being shipped. Swapping it is not a one-line change because
+`telemetry.json` also feeds the SHAP explanation baseline and the in-browser linear anomaly model, so
+it is recorded here rather than done in passing.
+
 ## The training environment, measured rather than assumed
 
 Every number here was measured on this host on 2026-08-10, not read off a spec sheet. The reason to

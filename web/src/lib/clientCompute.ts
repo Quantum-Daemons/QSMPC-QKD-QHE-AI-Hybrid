@@ -20,7 +20,8 @@ import { secureArgmax, warmMPC } from "./clientMPC";
 import { optimizeQKD } from "./clientOptiQKD";
 import { generateQuantumBits } from "./clientQRNG";
 import { bb84, channelLossDb, e91, FIBER, FREE_SPACE, h2, intrinsicQber, qcnnExpectation,
-  qotpQcnnInfer, rng, taggedFraction } from "./quantumSim";
+  qcnnInferTrained, qotpQcnnInfer, rng, taggedFraction,
+  type QcnnWeights } from "./quantumSim";
 import { type Provenance } from "../components/ProvenanceBadge";
 import { browserModels, evaluatePublishedModel, onnxStatus, runPublishedModel } from "./onnxInference";
 import { realInput, realSatelliteAnomaly, realFederatedSet, type RealInput } from "./realData";
@@ -1825,17 +1826,53 @@ export function runClientPipeline(
           emit("log", stage, `private inference: class=${inf.prediction}; in-browser CKKS unavailable here — `
             + `representative split ${split.fhe_linear_ms}/${split.mpc_nonlinear_ms} ms, client compute ${clientMs} ms`);
         }
+// Trained QCNN weights, fetched once per use case. Absent file is the normal case for a use case
+// that has no trained circuit yet, and the caller degrades to CKKS rather than inventing a class.
+const _qcnnCache: Record<string, QcnnWeights | null> = {};
+async function loadQcnnWeights(usecase: string): Promise<QcnnWeights | null> {
+  if (usecase in _qcnnCache) return _qcnnCache[usecase];
+  const dir = usecase === "medical_fl" ? "medical" : usecase.split("_")[0];
+  try {
+    const r = await fetch(`${import.meta.env.BASE_URL}data/${dir}/qcnn_weights.json`);
+    _qcnnCache[usecase] = r.ok ? ((await r.json()) as QcnnWeights) : null;
+  } catch { _qcnnCache[usecase] = null; }
+  return _qcnnCache[usecase];
+}
+
         // Inference backend selection (config.inference): "qcnn" routes the reported class through the
         // quantum QOTP+QCNN readout; "ckks"/default keeps the CKKS(FHE)+MPC path. Both are computed for the
         // comparison — this selects which one is surfaced as the primary prediction (genuinely changes it).
         const inferBackend = String(config.inference || "ckks");
         if (inferBackend === "qcnn") {
           const nq = qubitsOf(config);
-          const qc = qotpQcnnInfer(feats.slice(0, nq), seed, nq);
-          artifacts.primary_inference = { backend: "qcnn", class: qc.cls, t_gates: qc.tGates, qubits: qc.qubits };
-          metric(stage, "primary_inference_class", qc.cls);
-          emit("log", stage, `inference backend = QCNN (QHE): class=${qc.cls} `
-            + `(${qc.tGates} T-gates on ${qc.qubits} qubits, state-vector sim)`);
+          // TRAINED variational circuit where weights exist for this use case; the untrained
+          // Clifford+T path is not a predictor. Measured: over 24 vectors x 8 seeds its class flipped
+          // for 100% of inputs, mean |<Z0>| 0.076, correlation with mean(feature) -0.070. It stays as
+          // the QOTP hiding + T-count demonstration, which is what it can honestly support.
+          const w = await loadQcnnWeights(usecase);
+          if (w) {
+            const qc = qcnnInferTrained(feats.slice(0, w.n_qubits), w);
+            artifacts.primary_inference = { backend: "qcnn-trained", class: qc.cls,
+                                            qubits: qc.qubits, expectation: r2(qc.expectation) };
+            metric(stage, "primary_inference_class", qc.cls);
+            metric(stage, "qcnn_expectation_z0", r2(qc.expectation));
+            emit("log", stage, `inference backend = QCNN (QHE, TRAINED): class=${qc.cls} `
+              + `(<Z0>=${qc.expectation.toFixed(4)}, ${w.layers}x${w.n_qubits} trained angles, `
+              + `state-vector sim). Held-out accuracy ${w.test_accuracy.toFixed(4)} vs logistic `
+              + `regression ${w.classical_lr_accuracy.toFixed(4)} on the same split - the classical `
+              + `model is ahead, and this reports that rather than implying quantum advantage.`);
+          } else {
+            // No trained weights for this use case: refuse to surface a class rather than pass off
+            // the untrained circuit's coin flip as a prediction.
+            const qc = qotpQcnnInfer(feats.slice(0, nq), seed, nq);
+            artifacts.primary_inference = { backend: "ckks", class: artifacts.fhe_prediction ?? inf.prediction };
+            metric(stage, "primary_inference_class", artifacts.fhe_prediction ?? inf.prediction);
+            emit("log", stage, `QCNN selected but no trained weights ship for ${usecase}: the `
+              + `untrained Clifford+T circuit is a hiding and T-count demonstration `
+              + `(${qc.tGates} T-gates on ${qc.qubits} qubits), NOT a classifier - its class flips `
+              + `with the run seed for every input measured. Falling back to CKKS for the reported `
+              + `class.`);
+          }
         } else {
           const cls = artifacts.fhe_prediction ?? inf.prediction;
           artifacts.primary_inference = { backend: "ckks", class: cls };
