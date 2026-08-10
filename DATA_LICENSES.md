@@ -199,3 +199,34 @@ a licence change, or a default branch that has not moved in a year.
 - **Zama tfhe-rs / Concrete** - BSD-3-Clear, research only; commercial use needs a paid patent licence.
 - **QKDNetSim** - **GPL-2.0** (strong copyleft), so it is not listed as a commercial-OK reference
   implementation.
+
+## Vendored submodules, and a transitive licence that is absent rather than restrictive
+
+Checked 2026-08-10. Both direct submodules are commercially permissive and both are at their
+upstream tip:
+
+| Submodule | Licence | Upstream tip | Commercial use |
+|---|---|---|---|
+| `submodules/HEonGPU` | Apache-2.0 | 2026-05-11 | yes |
+| `submodules/hpmpc` | MIT | 2026-03-02 | yes |
+
+**The hazard is one level down, and it is an ABSENT licence rather than a restrictive one.** `hpmpc`
+declares two submodules of its own:
+
+| Path | Upstream | Licence |
+|---|---|---|
+| `nn/PIGEON` | `chart21/flexNN` | MIT |
+| `nn/Pygeon` | `chart21/pygeon` | **none - all rights reserved by default** |
+
+A repository with no licence file grants no permissions at all, which is a stronger restriction than
+GPL, not a weaker one. `chart21/pygeon` holds PyTorch export and training scripts and is not needed
+by anything here.
+
+**Neither nested submodule is populated in this checkout**, so nothing unlicensed is present today.
+The exposure is a future `git submodule update --init --recursive`, which would fetch it silently -
+and this project's rule is commercial-OK-only. Recorded because the failure mode is a routine command
+rather than a decision, and because absent licences do not appear in any scanner: an automated
+licence check looks for a restrictive SPDX identifier and finds nothing, which reads as clean.
+
+**Do not initialise submodules recursively in this repository.** `--init` without `--recursive` is
+sufficient for both direct submodules, and neither builds anything that needs the nested pair.
