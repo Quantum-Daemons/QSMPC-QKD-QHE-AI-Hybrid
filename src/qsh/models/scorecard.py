@@ -70,7 +70,9 @@ def _aunbc_from_scores(y: np.ndarray, s: np.ndarray, thr: np.ndarray, wts: np.nd
     """
     n = y.size
     total = 0.0
-    for p, w, c in zip(thr, wts, cuts):
+    # strict=True: these three must be the same length by construction, and a silent
+    # truncation here would drop thresholds from the objective without changing its shape.
+    for p, w, c in zip(thr, wts, cuts, strict=True):
         pred = s >= c
         tp = float(np.sum(pred & (y == 1)))
         fp = float(np.sum(pred & (y == 0)))
