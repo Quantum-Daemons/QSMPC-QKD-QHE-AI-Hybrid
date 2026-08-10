@@ -9,7 +9,11 @@ inert ones; the pages it did not sweep kept theirs. This file is the sweep, writ
 
 ## Topic index - the same concern, in more than one place
 
-This file has no duplicated text: there are zero repeated check-rows and zero repeated sentences.
+This file DOES contain duplicated text, and an earlier version of this line claimed it did not -
+"zero repeated check-rows and zero repeated sentences". That was false and load-bearing, because
+it was the stated reason for indexing rather than merging. An audit found nine duplicated
+passages, eleven ID pairs stating the same check twice, and seven incidents narrated three or four
+times. Check-row IDs are unique (149 of 149); sentences are not.
 What it does have is **scattering** - one concern addressed in several sections, each written when a
 different incident exposed a different face of it. That is deliberate, because each section carries
 the incident that produced its rows and that context is what stops a row being deleted later as
@@ -29,13 +33,13 @@ running a round, use the Run sheet below instead.
 **Every check row has a unique ID.** The prefix says which section it belongs to: `RS` run sheet,
 `RG` page region, `CI` continuous integration, `DP` deploy, `DN` denominator/sample size, `HF`
 Hugging Face, `B` baseline row, `C` constant predictor, `L` licence default, `N` landed-in-the-UI,
-`R` bootstrap, `S` sampler alignment. Two collisions were fixed in Round 24e: `DP` and `DN` were both
+`R` bootstrap, `S` sampler alignment, `E` eval-sample staleness, `G` GPU/accelerator claims, `H` HE context, `LK` label leak, `M` use-case motivation, `P` published-model parity, `QC` QCNN inference, `RD` real-data overlay, `T` training corpus, `TR` training environment, `V` vendored crypto. Two collisions were fixed in Round 24e: `DP` and `DN` were both
 `D`, and the run sheet and the region table both used bare integers, so "step 3" and "region 3" and
 "check D3" were three different things sharing two names.
 
 ## Run sheet - the whole round in one page
 
-This document is 1300 lines because each row carries the incident that produced it, and that context
+This document is about 2400 lines because each row carries the incident that produced it, and that context
 is what stops a row being deleted later as noise. But a checklist you cannot execute in one sitting
 has stopped being a checklist, so this is the executable index. Work down it; follow a link only when
 a row fails or you do not recognise it.
@@ -101,7 +105,7 @@ bindings become implementable (spec 2.4 defines them; no conforming product impl
 Workings in [`ai-act-art50-gap-analysis.md`](ai-act-art50-gap-analysis.md).
 
 Record what you observed in [`verification-log.md`](verification-log.md), with the date and the
-bundle hash. A tick is not a result.
+bundle hash.
 
 ## How to work it
 
@@ -162,7 +166,9 @@ Seven, plus two negative paths that must be checked rather than assumed.
 
 ## Regions on a use-case page
 
-In DOM order. Region 10 is absent on non-inference use cases; record that rather than leaving it
+In DOM order. Region 10 (SHAP attribution) used to be absent on non-inference use cases and this
+line said to record that; since Round 24 **all five render one**, so an absence is now a defect
+rather than an expected not-applicable. Record the value rather than leaving it
 blank.
 
 | # | Region | Component |
@@ -357,7 +363,7 @@ repository.
 |---|---|
 | `@noble/post-quantum` 0.2.1 | accepted **all 2,595** malformed ML-KEM keys; FIPS 203 section 7.2 check was a no-op |
 | ePrint 2026/203 | CPAD **impossibility** for the class covering CKKS; the threat model said nothing about the notion |
-| EU AI Act Art. 50(2) | an unmet obligation with a **2 December 2026** deadline |
+| EU AI Act Art. 50(2) | **found** as an apparently unmet obligation with a 2 December 2026 deadline - later **CLOSED as not-applicable** (the panel emits 96-160 tokens, under the Code of Practice's 200-token "very short text" exception). Kept in this table because the *search* is what the row illustrates; the obligation itself is not open |
 | Microsoft SEAL 4.4.3 | six releases past the bundled 4.1.2, one self-described "major security update" |
 | QERS, CARS, and three vendor sources | candidate metrics that would have been adopted on the strength of a search summary |
 
@@ -420,7 +426,7 @@ or to config rather than to a literal in the component.
 | Benchmark - MPC-FHE vs QSMPC-FHE | latency split | FHE-linear + MPC-non-linear ms | measured, so check the parts sum to the whole |
 | QKD control plane, GS QKD 015 | key budget, span | `secure_key_bits`, distance | field names must match the spec's own (`qkdn_id`, `qkdl_id`, `skr`, `eskr`) |
 | Quantum-kernel SVC + variational QNN | macro F1 | published per-class scores | `registry.py` metric spec + its baseline citation |
-| Inference provenance | badge state | the backend the run reported | the five-state enum in `ProvenanceBadge` |
+| Inference provenance | badge state | the backend the run reported | the FOUR-state enum in `ProvenanceBadge` - `measured-webgpu \| measured-wasm \| measured-js \| simulated`. The `remote` tier was removed in Round 24d; two rows here said five for several rounds afterwards |
 | Agentic AI, MCP | derived-key fingerprint | combiner choice | changes with the combiner - verified, not assumed |
 
 Worked example, run in Round 21. The advantage card printed
@@ -480,7 +486,8 @@ Four failure shapes, all of them found on this page rather than reasoned about:
   There was nothing for it to be accurate about, and the MPC-FHE row eight lines above carries a
   comment forbidding exactly that pattern. The two rows contradicted each other and the invented
   number was the flattering one.
-- **A column that renders a different column.** The detailed-results table was headed `model` and
+- **A column that renders a different column** (told in full under "The nine axes" above, with
+  the consequence). The detailed-results table was headed `model` and
   rendered `security_model`, so it had no model column while appearing to have one.
 - **Says the same thing twice, differently.** Two panels offering the same ResNet-18 run with
   different chrome; two quantum-advantage scores on one page.
@@ -554,7 +561,11 @@ opposite of what happened, on the feature the page leads with. Observed after th
 
     diagram   QSDC ABORTED · error 0.16 over threshold · telemetry withheld
     log       QSDC ABORTED: error 0.158 > 0.11 - telemetry withheld
-    metrics   qsdc_eavesdrop_detected 1 · qsdc_secrecy_capacity 0
+    metrics   qsdc_link_budget_limited 1 · qsdc_eavesdrop_detected 0 · qsdc_secrecy_capacity 0
+    #         NOT `qsdc_eavesdrop_detected 1`. This block previously said 1, which is the
+    #         behaviour Round 24m identified as the DEFECT: the page reported an eavesdropper on
+    #         a clean channel on every run. See the free-space section below - this link is
+    #         loss-limited at every setting, so the abort is never attributable to Eve.
 
 The same run also showed why a step must not be gated on something it does not depend on. The
 published-model step sat inside the delivery branch, so an abort left it reading
@@ -657,7 +668,11 @@ axis exists for.
 prior script that errored mid-flight can leave a value behind. This produced a false alarm here - a
 run reported 70 dB where 28 was expected, which looks exactly like a broken fix, and the field was
 still holding 2000 from an earlier aborted call. Read `el.value` back and throw if it is not what you
-set, before clicking Start. The arithmetic is what exonerated the code: 70 is 2000 x 0.035, so the
+set, before clicking Start. The arithmetic exonerated the code of MISREADING the config: 70 is
+2000 x 0.035, so the value was being read correctly. It did NOT establish that the formula was
+right, and it was not - `distance x 0.035` is a FIBRE attenuation law and was replaced by the
+diffraction model. See "Check the MODEL, not only the number" below; the numbers in this
+paragraph are superseded (2000 km is 32.4 dB, not 70). The
 config value was being read correctly all along.
 
 ## Reproduce the formulas against the papers they cite
@@ -688,14 +703,15 @@ Verified in Round 21, all against `references/`:
 | Key fraction | GLLP / Shor-Preskill `R = 1 - h2(e_ph) - f h2(e_bit)` | `1 - h2(q) - 1.16 h2(q)`, so `e_ph = e_bit = q` | zero-key QBER **0.098106**; closed form `h2(q) = 1/(1+1.16) = 0.462963` gives the same, and the Parameters sweep independently measured the key dying near 0.097-0.098 |
 | CHSH | Werner state, `S = 2 sqrt(2) V` | same | Tsirelson bound `2.828427` reached only at `V = 1` and never exceeded, since `V <= 1`; violation threshold `V = 1/sqrt(2) = 0.707107` |
 | Leftover hash lemma | `l <= H_inf(X) - 2 log2(1/eps) + 2` | `minH - 2(-eps_log2) + 2` | identical once `log2(1/eps) = -eps_log2`; monotone decreasing in `|eps|`, as the lemma requires |
-| Free-space link budget | `loss_dB = distance x loss_per_km` | config-sourced 0.035 dB/km | 800 km gives 28 dB, 2000 km gives 70 dB, both exact |
+| Free-space link budget | **SUPERSEDED** - was `loss_dB = distance x loss_per_km`, a fibre law. Now diffraction: geometric + atmospheric + pointing | config-sourced beam divergence / aperture / atmospheric / pointing | 800 km gives **24.5 dB** (was 28), 2000 km gives **32.4 dB** (was 70). The old row's "both exact" was exact arithmetic on the wrong formula |
 | Linear SHAP | `phi_i = w_eff_i (x_i - base_i)`, `w_eff = W1 - W0` | same | completeness, dummy and linearity all hold over 2000 random linear models, re-derived in Python |
 | Decoy-state reference model | `qkd/decoy_reference.py` | `taggedFraction` in `quantumSim.ts` | same GLLP definition; the Python side additionally asserts published values from Ma et al. PRA 72, 012326 |
 
 **The parity check is the strongest kind available here**, because the browser mirror and the Python
 original were written separately and can be run against each other. This table used to carry a
 security-score row as its headline example, on the grounds that two independent implementations both
-produced 68 and 96. They did - and the number was still meaningless, because both implementations
+produced 68 and 96. (Told in full, with both external assertions named, under "Retiring a metric is
+not done until the checklist stops asking" below - this is the short version.) They did - and the number was still meaningless, because both implementations
 faithfully reproduced the same argument-passing artefact. **Agreement between two mirrors proves they
 match each other, not that either is right.** Pair every parity check with at least one assertion
 against a source outside this repository; `tests/test_decoy_reference.py` and `npm run check:pqc` are
@@ -921,6 +937,9 @@ Python and browser paths disagreed about whether the same link delivers.
 
 **What to expect now, and it is not a bug:** this downlink is loss-limited at EVERY setting.
 Measured on the deployed page, secrecy capacity -51.58 at 24.5 dB with g=280.4 and no eavesdropper.
+(The loss table below gives g=281.8 at "24.5 dB". Both are right: 280.43 is g at the ACTUAL
+24.4782 dB the run computes, 281.84 is g at the DISPLAYED, rounded 24.5. A rounded input carried
+into an exponential is worth labelling rather than reconciling.)
 The fixed 5 dB atmospheric + 3 dB pointing budget alone gives g = 6.31, where `Cs > 0` needs QBER
 below ~0.019 against a 0.025 misalignment floor - so `sat_distance_km` cannot produce a delivery at
 any position. Check that the log says NOT AVAILABLE / link budget, and that
@@ -1062,7 +1081,7 @@ A display panel with no controls, so its verification is terminology and interna
 
 ### Inference provenance
 
-Names which model produced the reported class, from a five-state enum. With two inferences running
+Names which model produced the reported class, from a FOUR-state enum (`remote` was removed in Round 24d). With two inferences running
 (bundled student + published model) the badge must name BOTH and say which one the reported class
 came from. The SHAP panel below it must name the model it explains and the reference point it
 explains against - see the XAI section.
@@ -1489,7 +1508,7 @@ at the point of use. Check both, because the two failures look identical from ou
 ## Selects, every value
 
 For each, set every option in turn and diff the rendered diagram, the run metrics and the log. Not
-the code - the rendered output. Four of the five inert controls Round 20 found had correct-looking
+the code - the rendered output. Four of the SIX inert controls Round 20 found had correct-looking
 code paths, and one carried a comment claiming the fix had already been made.
 
 Audit every view that renders the same state, not one per page. The sixth inert control was found
@@ -1549,9 +1568,9 @@ distribution the shuffled labels describe. A plausible number reaches the model 
 |---|---|---|
 | S1 | Every `predict_loader` / `model.predict` whose OUTPUT is paired with a dataset by position | the loader is sequential |
 | S2 | Harvested teacher labels vs ground truth on the TRAINING split, **as minority-class F1, not accuracy** | far above the permutation null - see below |
-| S2b | Compare that figure against `p^2 + (1-p)^2` for the ACTUAL positive rate | the measured value must clear it by a wide margin, not merely be high |
-| S3 | A student that is much worse than the same architecture trained on ground truth | suspect the targets, not the capacity |
-| S4 | The guard is machine-enforced, not remembered | `predict_loader` raises on a `RandomSampler` |
+| S3 | Compare that figure against `p^2 + (1-p)^2` for the ACTUAL positive rate | the measured value must clear it by a wide margin, not merely be high |
+| S4 | A student that is much worse than the same architecture trained on ground truth | suspect the targets, not the capacity |
+| S5 | The guard is machine-enforced, not remembered | `predict_loader` raises on a `RandomSampler` |
 
 **S2 is the cheap decisive one, but "near 1.0" is the wrong pass condition and would have missed
 this bug on the most imbalanced use case here.** Under a random permutation of binary labels with
@@ -1795,7 +1814,7 @@ Checked 2026-08-10, per use case:
 |---|---|---|---|
 | satellite | OPS-SAT-AD | CC-BY-4.0 | **yes, and it IS the training corpus** |
 | finance | AMLworld | CDLA-Sharing-1.0 | yes, but share-alike propagates to the slice |
-| telecom | generated here | n/a | yes, but it is synthetic, not real |
+| telecom | generated here | n/a | **NO - not implemented.** `VerificationChart.tsx` registers four use cases and telecom is not among them. This row said "yes" while no `web/public/data/telecom/real_2d.json` exists. The corpus is also separable by construction, so a plot of it would measure the simulator |
 | medical | BreastMNIST / BUSI | CC BY on the ARTICLE, not the data | **no** - WDBC substitutes |
 | genomics | 1000 Genomes | IGSR grants no blanket licence | **no** |
 
@@ -1915,8 +1934,8 @@ unusable" from exactly this mistake before checking which interpreter I was on.
 | TR1 | GPU probes run under `.venv/bin/python`, never bare `python3` | `python3 -c "import torch"` on this host is the WRONG environment |
 | TR2 | Capability is proven by a real kernel launch, not `is_available()` | `(a @ a).sum()` must return a number; `is_available()` lies here |
 | TR3 | `torch.cuda.get_arch_list()` contains the device's `sm_XX` | `sm_120` for this card; a missing arch is the silent failure mode |
-| TR4 | GPU is used because it was measured faster, not because it exists | see the reversal below |
-| TR5 | Every training dependency is commercial-use and actively maintained | licence checked from installed metadata, not from memory |
+| TR4 | GPU is used because it was measured faster, not because it exists | see the reversal below. Same rule as **G4** below |
+| TR5 | Every training dependency is commercial-use and actively maintained | licence checked from installed metadata, not from memory. Same check as **G3** below, stated for the training environment rather than the accelerator |
 | TR6 | ONNX export path stays CPU-reproducible | `onnxruntime` here has no CUDA provider, and the browser runs WASM anyway |
 
 **TR4 is the one that bites.** The card is not automatically a win at this project's model sizes:
@@ -1969,7 +1988,6 @@ value of checking was in learning not to.
 | M2 | The motivation cites a primary source that says it in its own words | an operator, regulator or benchmark author, quoted |
 | M3 | The most obvious-sounding justification is checked against the regulation TEXT | not against what everyone says it says |
 | M4 | Any novelty claim survives an adversarial search for prior art | search for the thing, then search for who already did it |
-
 | M5 | A cited dollar figure comes from the contract system of record, not a press release | USASpending obligated value, not a vendor ceiling |
 
 M5 came out of checking defence-space programs this project does not cite and now knows not to: the
