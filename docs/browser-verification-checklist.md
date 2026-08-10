@@ -1612,6 +1612,74 @@ clean.
 T2 is the one an automated check gets wrong. `license: null` from the GitHub API means all rights
 reserved, and a naive check that only fails on a deny-list of SPDX identifiers passes it.
 
+## The training environment, measured rather than assumed
+
+Every number here was measured on this host on 2026-08-10, not read off a spec sheet. The reason to
+measure is in the first row: **`torch.cuda.is_available()` returned `True` on an interpreter that
+could not launch a single kernel.**
+
+| what | measured value |
+|---|---|
+| GPU | NVIDIA RTX PRO 6000 Blackwell Workstation Edition, **sm_120**, 102 GB (100.6 GB free) |
+| CPU / RAM | 13th Gen Intel Core i5-13600K, 20 threads / 125 GB |
+| CUDA toolkit | **13.0** (`nvcc` V13.0.88) |
+| project interpreter | `.venv/bin/python` = **Python 3.12.11** |
+| torch | **2.13.0+cu130**, arch list includes `sm_120` |
+| fp32 matmul | **33.0 TFLOP/s** (4096^3, 20 iters) |
+| autograd + bf16 autocast | OK |
+
+**The footgun, and why the 3.12 venv rule exists.** The system interpreter is Python 3.9.23 carrying a
+stale `torch 2.1.2+cu121` built for `sm_50`-`sm_90` only. On that interpreter:
+
+    torch.cuda.is_available()  ->  True          # <-- false green
+    a @ a                      ->  RuntimeError: no kernel image is available for execution on the device
+
+`~/.local/lib/python3.9/site-packages` also holds a corrupted `-orch` distribution from a failed
+install, which makes pip print warnings that look like the real problem and are not. Any script run
+with bare `python3` instead of `.venv/bin/python` inherits all of this. I asserted "the 96 GB card is
+unusable" from exactly this mistake before checking which interpreter I was on.
+
+| # | Check | Pass condition |
+|---|---|---|
+| TR1 | GPU probes run under `.venv/bin/python`, never bare `python3` | `python3 -c "import torch"` on this host is the WRONG environment |
+| TR2 | Capability is proven by a real kernel launch, not `is_available()` | `(a @ a).sum()` must return a number; `is_available()` lies here |
+| TR3 | `torch.cuda.get_arch_list()` contains the device's `sm_XX` | `sm_120` for this card; a missing arch is the silent failure mode |
+| TR4 | GPU is used because it was measured faster, not because it exists | see the reversal below |
+| TR5 | Every training dependency is commercial-use and actively maintained | licence checked from installed metadata, not from memory |
+| TR6 | ONNX export path stays CPU-reproducible | `onnxruntime` here has no CUDA provider, and the browser runs WASM anyway |
+
+**TR4 is the one that bites.** The card is not automatically a win at this project's model sizes:
+
+| workload | GPU | CPU | verdict |
+|---|---|---|---|
+| XGBoost 200k x 32, 200 trees | **0.68 s** | 28.58 s | **42x - use the GPU** |
+| torch 50x gram matrix, 200k x 32 | 0.064 s | **0.048 s** | **GPU slower** - launch + transfer dominates |
+
+So the honest guidance is: **GPU for the tabular gradient-boosted teachers (finance AML, telecom IDS),
+where it is a 42x difference; CPU is fine and sometimes faster for the small linear and MLP students
+this project actually publishes.** Reaching for `.cuda()` on a 4-layer student is cargo cult.
+
+**Dependency licences, read from installed metadata on this host:**
+
+| package | version | licence | commercial |
+|---|---|---|---|
+| torch | 2.13.0+cu130 | Apache-2.0 (with LLVM exception) | yes |
+| torchvision | 0.28.0+cu130 | BSD | yes |
+| scikit-learn | 1.9.0 | BSD-3-Clause | yes |
+| xgboost | 3.3.0 | Apache-2.0 | yes |
+| onnx / onnxruntime | 1.22.0 / 1.28.0 | Apache-2.0 / MIT | yes |
+| skl2onnx | 1.20.0 | Apache-2.0 | yes |
+| transformers | 5.14.1 | Apache-2.0 | yes |
+| datasets | 5.0.1 | Apache-2.0 | yes |
+| numpy / scipy / pandas | 2.5.1 / 1.18.0 / 3.0.5 | BSD-3-Clause / BSD / BSD | yes |
+
+No copyleft and no non-commercial terms in the training path. Note this covers the **tools**; dataset
+licences are a separate and stricter question tracked in `DATA_LICENSES.md`.
+
+Not installed, and deliberately so until something needs them: `lightgbm`, `catboost`, `optuna`,
+`imbalanced-learn`, `peft`, `trl`, `accelerate`, `onnxruntime-gpu`, RAPIDS `cuml-cu13`. Adding a
+dependency to this list requires a measured reason, which is what TR4 is for.
+
 ## The most tempting motivation for a use case is the one most likely to be false
 
 The satellite use case had no stated problem, only a stated mechanism. Checking what the real
