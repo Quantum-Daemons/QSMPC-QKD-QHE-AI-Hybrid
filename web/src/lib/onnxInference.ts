@@ -402,6 +402,9 @@ export interface ModelInputFile {
   input: { shape: number[]; dtype: string; preprocessing: string[]; layout: string };
   samples: number[][];
   labels?: number[];
+  /** Human-readable class names, when the sample ships them. Telecom's eight attack types are the
+   *  reason a per-class chart is worth drawing at all - "class 5" says nothing. */
+  class_names?: string[];
   /** Next-step ground truth, for forecast models. */
   targets?: number[][];
   expected: {
@@ -455,6 +458,20 @@ export interface ModelEvalResult {
    *  explanation is worse than either alone. */
   note: string | null;
   error: string | null;
+  /** Compact plot data, reduced HERE rather than by shipping thousands of raw scores into React
+   *  state. Everything needed to draw it already exists at this point in the function; recomputing
+   *  it in a component would be a second chance to compute it differently. */
+  plot?: {
+    kind: "pr-curve" | "per-class-f1" | "forecast";
+    /** Precision-recall pairs for a binary task, thinned to a drawable number of points. */
+    pr?: Array<{ recall: number; precision: number }>;
+    /** Score histogram split by true class - what separability actually looks like. */
+    hist?: Array<{ bin: number; positive: number; negative: number }>;
+    /** Per-class F1 for a multi-class task. The aggregate hides exactly this. */
+    perClass?: Array<{ label: string; f1: number }>;
+    /** Predicted against actual for a forecast window. */
+    series?: Array<{ i: number; actual: number; predicted: number }>;
+  };
 }
 
 /** The evaluation sample for one model, memoised per URL.
@@ -635,6 +652,51 @@ export async function evaluatePublishedModel(
       else if (labels[i] === 1) fn++;
     }
 
+    // ---- plot data, computed once, from the arrays already here --------------------------------
+    const positiveScore = (i: number) =>
+      width > 1 ? data[i * width + 1] - data[i * width + 0] : data[i];
+    const nClasses = width > 1 ? width : 2;
+    let plot: ModelEvalResult["plot"];
+    if (nClasses === 2) {
+      // Rank by score, sweep the threshold down, and read precision/recall off the running counts.
+      const order = Array.from({ length: n }, (_, i) => i)
+        .sort((a, b) => positiveScore(b) - positiveScore(a));
+      const totalPos = labels.reduce((acc: number, l: number) => acc + (l === 1 ? 1 : 0), 0);
+      const pr: Array<{ recall: number; precision: number }> = [];
+      let seenTp = 0;
+      const stride = Math.max(1, Math.floor(n / 200));   // <=200 points is plenty for a curve
+      for (let k = 0; k < n; k++) {
+        if (labels[order[k]] === 1) seenTp++;
+        if (k % stride === 0 || k === n - 1) {
+          pr.push({ recall: totalPos ? seenTp / totalPos : 0, precision: seenTp / (k + 1) });
+        }
+      }
+      // Score histogram, split by TRUE class. A PR curve says how good; this says why.
+      const lo = Math.min(...Array.from({ length: n }, (_, i) => positiveScore(i)));
+      const hi = Math.max(...Array.from({ length: n }, (_, i) => positiveScore(i)));
+      const bins = 24;
+      const hist = Array.from({ length: bins }, (_, b) => ({ bin: b, positive: 0, negative: 0 }));
+      for (let i = 0; i < n; i++) {
+        const t = hi > lo ? (positiveScore(i) - lo) / (hi - lo) : 0;
+        const b = Math.min(bins - 1, Math.max(0, Math.floor(t * bins)));
+        if (labels[i] === 1) hist[b].positive++; else hist[b].negative++;
+      }
+      plot = { kind: "pr-curve", pr, hist };
+    } else {
+      const perClass: Array<{ label: string; f1: number }> = [];
+      for (let c = 0; c < nClasses; c++) {
+        let ctp = 0, cfp = 0, cfn = 0;
+        for (let i = 0; i < n; i++) {
+          if (preds[i] === c && labels[i] === c) ctp++;
+          else if (preds[i] === c) cfp++;
+          else if (labels[i] === c) cfn++;
+        }
+        perClass.push({ label: file.class_names?.[c] ?? String(c),
+                        f1: ctp === 0 ? 0 : (2 * ctp) / (2 * ctp + cfp + cfn) });
+      }
+      plot = { kind: "per-class-f1", perClass };
+    }
+
     // Score on the metric the model was PUBLISHED with. Three of the four distilled students record
     // minority-class F1, and reporting accuracy for them would confirm a number nobody claimed:
     // the finance student is about 99 percent accurate on a corpus that is 0.1 percent positive.
@@ -683,7 +745,7 @@ export async function evaluatePublishedModel(
         beatsBaseline: macro > chance,
         matchesExpected: Math.abs(macro - exp) <= tolerance,
         backend: status.backend, bytes: status.bytes, provenance: file.provenance,
-        note: file.expected.note ?? null, error: null,
+        note: file.expected.note ?? null, error: null, plot,
       };
     }
 
