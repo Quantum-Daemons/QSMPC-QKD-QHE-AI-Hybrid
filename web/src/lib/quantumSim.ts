@@ -218,6 +218,76 @@ export interface QcnnResult {
   expectation: number; cls: number; tGates: number; qubits: number; latencyMs: number;
 }
 
+// ---- TRAINED variational QCNN (the prediction path) --------------------------------------------
+// `qotpQcnnInfer` below is a genuine Clifford+T state-vector simulation whose class output carries
+// no information about its input: measured over 24 vectors x 8 seeds, 100% flip class with the seed,
+// mean |<Z0>| is 0.076, and the correlation between the unmasked class and mean(feature) is -0.070.
+// Seven FIXED rounds of H, a CNOT ring and T on every qubit drive the state toward uniform, so the
+// sign of <Z0> is numerical noise. It was nonetheless surfaced as `primary_inference_class`.
+// Workings: references/qcnn-inference-investigation.md.
+//
+// This is the predictor: the same state-vector machinery with TRAINABLE RY angles, weights fitted
+// offline by scripts/train/qcnn_variational.py and shipped as JSON. Two deliberate differences:
+//
+//   * No QOTP mask on this path. Undoing a Pauli frame through Clifford+T is not implemented here -
+//     `T X T†` is not Pauli, which is the difficulty Ortega & Martin-Delgado's scheme addresses - so
+//     hiding and prediction are kept separate rather than claiming a correction that does not exist.
+//     `qotpQcnnInfer` remains the hiding + T-count demonstration and still reports both honestly.
+//   * Features are min-max scaled with the TRAINING ranges, shipped in the weights. RY(x*pi) needs a
+//     bounded angle; an unscaled WDBC "mean area" of 2500 wraps the Bloch sphere many times.
+export interface QcnnWeights {
+  n_qubits: number; layers: number; theta: number[][]; scale: number; bias: number;
+  input_space: string; encoding: string;
+  test_accuracy: number; classical_lr_accuracy: number; majority_baseline: number;
+}
+
+export function qcnnInferTrained(features: number[], w: QcnnWeights):
+    { expectation: number; cls: number; logit: number; qubits: number; latencyMs: number } {
+  const t0 = performance.now();
+  const nq = w.n_qubits, N = 1 << nq;
+  const re = new Float64Array(N), im = new Float64Array(N);
+  re[0] = 1;
+  const g1 = (q: number, a: number, b: number, c: number, d: number) => {
+    const bit = 1 << q;
+    for (let i = 0; i < N; i++) {
+      if (i & bit) continue;
+      const j = i | bit;
+      const r0 = re[i], i0 = im[i], r1 = re[j], i1 = im[j];
+      re[i] = a * r0 + b * r1; im[i] = a * i0 + b * i1;
+      re[j] = c * r0 + d * r1; im[j] = c * i0 + d * i1;
+    }
+  };
+  const RY = (q: number, th: number) => {
+    const c = Math.cos(th / 2), s = Math.sin(th / 2);
+    g1(q, c, -s, s, c);
+  };
+  const CNOT = (ctl: number, tgt: number) => {
+    const cb = 1 << ctl, tb = 1 << tgt;
+    for (let i = 0; i < N; i++) {
+      if ((i & cb) && !(i & tb)) {
+        const j = i | tb;
+        const tr = re[i], ti = im[i];
+        re[i] = re[j]; im[i] = im[j]; re[j] = tr; im[j] = ti;
+      }
+    }
+  };
+  // The values arriving here are ALREADY z-scores - the bundled sample is StandardScaler over the
+  // full corpus - so no rescaling is applied, only the bounded encoding the model was trained with.
+  // A first version min-max scaled them against raw-unit ranges, which pinned seven of eight
+  // features to -1 and produced <Z0> = 0.0098: a degenerate state that made the trained path exactly
+  // as meaningless as the untrained one. tanh bounds an unbounded z-score without reordering it.
+  for (let q = 0; q < nq; q++) RY(q, Math.tanh(features[q] ?? 0) * Math.PI);
+  for (let l = 0; l < w.layers; l++) {
+    for (let q = 0; q < nq; q++) RY(q, w.theta[l][q]);
+    for (let q = 0; q < nq; q++) CNOT(q, (q + 1) % nq);
+  }
+  let exp = 0;
+  for (let i = 0; i < N; i++) { const p = re[i] * re[i] + im[i] * im[i]; exp += (i & 1) ? -p : p; }
+  const logit = exp * w.scale + w.bias;
+  return { expectation: exp, cls: logit > 0 ? 1 : 0, logit, qubits: nq,
+           latencyMs: performance.now() - t0 };
+}
+
 export function qotpQcnnInfer(features: number[], seed = 0, nQubits = 8): QcnnResult {
   const t0 = performance.now();
   const N = 1 << nQubits;
