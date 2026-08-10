@@ -1745,6 +1745,36 @@ Checked 2026-08-10, per use case:
 | RD6 | The chart is confirmed to RENDER, not merely to typecheck | count `.recharts-scatter-symbol` nodes in the browser |
 | RD7 | The axis pair is chosen for separability AND readability, which are different criteria | look at it; a metric cannot tell you a chart is a blob |
 | RD8 | A heavy-tailed axis is log-scaled, and the scale is decided by the GENERATOR | whether compression is warranted is a property of the data |
+| RD9 | Local browser checks run in the SAME mode production runs | `?demo=client`, or a stale local service will answer for it |
+| RD10 | A payload field that carries the finding is actually RENDERED | `note` was written, computed, shipped, and displayed nowhere |
+
+**RD9 nearly produced a false bug report, which is the point of writing it down.** Verifying the
+genomics overlay locally, the page showed "the European-to-African AUROC drop is the finding" - a
+sentence the registry had explicitly corrected to "a distribution shift, NOT an AUROC drop ... no
+AUROC is computable". It looked like a stale duplicate contradicting its own correction on a live
+page.
+
+It was not in the source. Not in `config.defaults.json`. Not in the built bundle - `grep` over
+`web/dist/assets/*.js` returned zero. Not anywhere in the repository. It survived a hard reload with
+the cache cleared.
+
+The cause was a **uvicorn left running on :8000 from a previous session**, days old.
+`refreshConfigFromApi()` does `CONFIG = { ...defaults, ...(await r.json()) }`, so a stale API's
+`notes` silently overwrite the correct baked ones. The bundle was right and the page was wrong, and
+nothing in the repository could have told me that.
+
+Production is unaffected and that was checked rather than assumed: the public demo returns **404 on
+`/api/config`**, so the fetch fails and the baked defaults stand. Re-verified with `?demo=client`,
+which takes the same path production takes - corrected text present, stale text absent.
+
+The transferable rule: a local browser check is only as trustworthy as the services answering it.
+Pin the mode, or confirm what is actually serving each response.
+
+**RD10** is smaller and duller: the `note` field carrying each chart's actual finding - "8 of the 32
+larger-effect variants differ by at least 0.20 in allele frequency" - was computed by the generator,
+shipped in the payload, and rendered by nothing. Writing a finding is not publishing it.
+
+
 
 **RD7 cost a full iteration and is the most transferable lesson here.** Ranking finance's 496 feature
 pairs by AUC-PR put `format_risk` x `src_bank_diversity` first at 0.3195, so that shipped - and
