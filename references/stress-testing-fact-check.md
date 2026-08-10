@@ -47,7 +47,7 @@ three activities and §8.11 double-click handling are protocol logic a browser c
 | ISO/IEC 4922-1/-2 | Taxonomy and secret-sharing mechanisms. **No testing, evaluation or conformance clause exists.** | No |
 | NIST IR 8214C (2026-01) | The only authority that mentions stress testing: §7.6.3 says a test case "should consider at least one corrupted party" and may "stress-test ... adverse conditions". Table 5 requires statistical security >= 40 bits, >= 64 suggested - with the honest caveat that this parameter "does not appear in NIST standards". | Yes |
 | HomomorphicEncryption.org standard | Zero occurrences of "test", "validation" or "conformance". States CKKS "is not described in this standard" - citing it for CKKS would be a misuse. | No |
-| ISO/IEC 28033 | Parts 1-4 at DIS, Part 5 at WD - not published. Part 1 scopes out correctness: "Verification that the function itself is computed correctly is outside of the scope." | Not yet |
+| ISO/IEC 28033 | **Not published.** Part 3 is the CKKS part (arithmetic on approximate numbers) and is at **FDIS 50.00, 2026-06-11** - one ballot from publication, so this row has a shelf life of months. Part 1 general DIS 40.60 (2025-12-11), Part 4 FDIS 50.00, Part 5 WD 20.60. Part 1 scopes out correctness: "Verification that the function itself is computed correctly is outside of the scope." Stages checked 2026-08-10. | Not yet |
 
 ## The four defensible axes, with their reference values
 

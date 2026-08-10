@@ -242,9 +242,9 @@ Numbers that moved:
 
 | model | before | after | note |
 |---|---|---|---|
-| medical student AUC | 0.3544 | 0.6092 | was below random |
-| medical student malignant recall | 1/42 | 8/42 | |
-| medical student accuracy | 0.7308 | 0.6859 | FELL, and that is the fix |
+| medical student AUC | 0.3544 | **0.7882** | was below random; 0.6092 was an intermediate value, superseded twice since |
+| medical student malignant recall | 1/42 | **24/42** | |
+| medical student accuracy | 0.7308 | **0.7692** | now ABOVE the 0.7308 majority rate |
 | finance student agreement | 0.8841 | 0.9471 | fidelity, not discrimination |
 | finance student disagreement on positives | 0.6433 | 0.3262 | |
 | resnet50 AUC | 0.7988 | 0.7988 | unchanged - see the retraction below |
