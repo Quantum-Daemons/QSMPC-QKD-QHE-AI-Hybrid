@@ -403,7 +403,7 @@
           },
           "wall_clock_s": 0.0
         },
-        "architecture": "per-SNP effect-weight vector; Bayesian shrinkage (PRS-CS / LDpred2 family)",
+        "architecture": "per-SNP effect-weight vector; genome-wide-significance thresholding (P<5e-8)",
         "artifacts": [
           {
             "browser_runnable": false,
@@ -434,7 +434,7 @@
           "display": "C-index (European ancestry)",
           "name": "c_index_eur"
         },
-        "notes": "Not a neural network, and presenting a genomic foundation model as a PRS method would be the most obvious credibility hole available. Evaluation must be stratified by genetic ancestry, and what is measured here is a distribution shift, NOT an AUROC drop: an earlier revision of this note called it an AUROC drop, but 1000 Genomes is a reference panel carrying no breast-cancer case/control status, so no AUROC is computable from it and genomics_prs.py records auroc=null rather than inventing one. The finding is the by_super_population.*.frac_above_global_cut rows listed above: one globally-set high-risk cut flags a far larger share of AFR than of EUR, a gap driven by allele-frequency differences rather than by risk. Read those rows, not this sentence - they are recomputed on every training run, so no figure quoted in prose here can drift away from them. The published European AUROC baseline comes from a phenotyped cohort that is access-controlled, which is why it cannot be reproduced on this page.",
+        "notes": "Not a neural network, and presenting a genomic foundation model as a PRS method would be the most obvious credibility hole available. Evaluation must be stratified by genetic ancestry, and what is measured here is a distribution shift, NOT an AUROC drop: an earlier revision of this note called it an AUROC drop, but 1000 Genomes is a reference panel carrying no breast-cancer case/control status, so no AUROC is computable from it and genomics_prs.py records auroc=null rather than inventing one. PGS000001 is Mavaddat et al. (JNCI 2015), 77 variants selected by GENOME-WIDE SIGNIFICANCE (P<5e-8) - not PRS-CS or LDpred2, which postdate it by four to five years. An earlier architecture string named that Bayesian-shrinkage family and contradicted this project's own training script, which says 77 variants from Mavaddat. The finding is the by_super_population.*.frac_above_global_cut rows listed above: one globally-set high-risk cut flags a far larger share of AFR than of EUR, a gap driven by allele-frequency differences rather than by risk. Read those rows, not this sentence - they are recomputed on every training run, so no figure quoted in prose here can drift away from them. The published European AUROC baseline comes from a phenotyped cohort that is access-controlled, which is why it cannot be reproduced on this page.",
         "onnx_domains": [],
         "params": null,
         "runs_encrypted": true,
@@ -495,7 +495,7 @@
         ],
         "browser_runnable": true,
         "dataset": {
-          "licence": "CC-BY-4.0",
+          "licence": "CC-BY-4.0 asserted by MedMNIST; the upstream BUSI grant is NOT verifiable",
           "name": "MedMNIST v2 BreastMNIST",
           "publishable": true,
           "url": "https://medmnist.com/"
@@ -569,7 +569,7 @@
         ],
         "browser_runnable": true,
         "dataset": {
-          "licence": "CC-BY-4.0",
+          "licence": "CC-BY-4.0 asserted by MedMNIST; the upstream BUSI grant is NOT verifiable",
           "name": "MedMNIST v2 BreastMNIST",
           "publishable": true,
           "url": "https://medmnist.com/"
@@ -647,7 +647,7 @@
         ],
         "browser_runnable": true,
         "dataset": {
-          "licence": "CC-BY-4.0",
+          "licence": "CC-BY-4.0 asserted by MedMNIST; the upstream BUSI grant is NOT verifiable",
           "name": "MedMNIST v2 BreastMNIST",
           "publishable": true,
           "url": "https://medmnist.com/"
@@ -855,7 +855,7 @@
           "task": "segment classification - NOT comparable with satellite_comms.telemanom, which forecasts continuous ESA-ADB series against a persistence baseline",
           "wall_clock_s": 7.5
         },
-        "architecture": "gradient-boosted trees over 19 per-segment telemetry features",
+        "architecture": "gradient-boosted trees over 18 published per-segment features + `sampling`",
         "artifacts": [
           {
             "browser_runnable": true,
@@ -931,7 +931,7 @@
           "teacher_params": 117,
           "teacher_scored_zero": false
         },
-        "architecture": "logistic regression over the 19 published per-segment features",
+        "architecture": "logistic regression over 18 published per-segment features + `sampling`",
         "artifacts": [
           {
             "browser_runnable": true,
@@ -969,7 +969,7 @@
           "display": "AUC PR",
           "name": "auc_pr"
         },
-        "notes": "19 features is small enough to evaluate under CKKS as a single packed dot product, so the encrypted tier here runs on the published feature set rather than on a reduction of it - and it had room to spare. The student now fits over the QUADRATIC expansion of those features, 209 terms, still one packed dot product at unchanged multiplicative depth, because the expansion is a function of the plaintext input and is computed before encryption. A degree-8192 ring has 4096 slots, so the cipher was never the binding constraint here - the feature map was. Measured: minority-class F1 0.8649 -> 0.9043, AUC-PR 0.9275 -> 0.9681, the latter matching the teacher exactly.",
+        "notes": "19 columns is small enough to evaluate under CKKS as a single packed dot product, so the encrypted tier here runs on the published feature set rather than on a reduction of it - and it had room to spare. The student now fits over the QUADRATIC expansion of those features, 209 terms, still one packed dot product at unchanged multiplicative depth, because the expansion is a function of the plaintext input and is computed before encryption. A degree-8192 ring has 4096 slots, so the cipher was never the binding constraint here - the feature map was. Measured: minority-class F1 0.8649 -> 0.9043, AUC-PR 0.9275 -> 0.9681, the latter matching the teacher exactly.",
         "onnx_domains": [
           "ai.onnx",
           "ai.onnx.ml"

@@ -156,11 +156,33 @@ DS_PAYSIM = DatasetSpec(
 )
 DS_BREASTMNIST = DatasetSpec(
     name="MedMNIST v2 BreastMNIST",
-    licence="CC-BY-4.0",
+    licence="CC-BY-4.0 asserted by MedMNIST; the upstream BUSI grant is NOT verifiable",
     url="https://medmnist.com/",
-    licence_checked="2026-08-03",
+    licence_checked="2026-08-10",
     publishable=True,
-    notes="780 images at 28x28. The tiny tier; also the source of the FHE-feasible T1 student.",
+    notes=(
+        "780 images at 28x28. The tiny tier; also the source of the FHE-feasible T1 student. "
+        "TWO problems, both upstream of MedMNIST, both checked 2026-08-10. "
+        "LICENCE: MedMNIST licenses ITSELF CC BY 4.0, but BreastMNIST is a resize of BUSI "
+        "(Al-Dhabyani et al., Data in Brief 28:104863, 2020) and the CC BY there attaches to the "
+        "ARTICLE - PMC carries 'This is an open access article under the CC BY license' and states "
+        "no separate licence for the data, while the dataset host (scholar.cu.edu.eg) asks only "
+        "'If you use this dataset, please cite'. A citation request is not a grant. This is the "
+        "same ambiguity class that got CIC-IDS2017 declined and ImageNet dropped, and it is "
+        "unresolved rather than proven bad - recorded here because publishable=True currently "
+        "ships three HF repos on it. "
+        "CONTAMINATION: Pawlowska, Karwat & Zolek (Letter to the Editor, Data in Brief 48:109247, "
+        "2023-05-19) found 235 duplicates (~19% of 780), >=8 images in BOTH benign and malignant, "
+        "70 axilla images that are not breast tissue, and warn of train/test leakage. MEASURED HERE "
+        "on the actual npz rather than assumed: at 28x28 exactly ONE pair survives as a pixel-exact "
+        "duplicate - train[115] label=0 (MALIGNANT) and test[76] label=1 (BENIGN). The same image, "
+        "trained as malignant and scored as benign. That is 1 of 156 test images, 0.64%, which the "
+        "model cannot get right and which no amount of training fixes. Loosening to RMSE<=0.05 "
+        "finds 216 near-duplicate pairs, 120 crossing a split boundary and 6 both crossing AND "
+        "contradicting - but those are threshold-dependent and the exact pair is the only hard "
+        "number. So the letter's 19% does NOT wholesale survive downsampling; a real floor on this "
+        "benchmark does."
+    ),
 )
 DS_PGS_CATALOG = DatasetSpec(
     name="PGS Catalog scoring files",
@@ -199,7 +221,7 @@ DS_OPSSAT_AD = DatasetSpec(
     publishable=True,
     notes=(
         "2,123 annotated telemetry segments across 9 channels from ESA's OPS-SAT CubeSat, 20.4% "
-        "anomalous, with 19 precomputed per-segment features and the benchmark's own train/test "
+        "anomalous, with 18 published per-segment features plus a `sampling` metadata column, and the benchmark's own train/test "
         "split. Kotowski et al., Scientific Data 12 (2025). CC BY 4.0 and 507 KB, so unlike every "
         "other corpus here the DATA can be redistributed as well as the weights. A different task "
         "from ESA-ADB: segment classification, not forecasting, so its score is not comparable "
@@ -590,7 +612,7 @@ _SPECS: tuple[ModelSpec, ...] = (
         tier="t2_industry",
         key="genomics.prs",
         label="Polygenic risk score (published effect weights)",
-        architecture="per-SNP effect-weight vector; Bayesian shrinkage (PRS-CS / LDpred2 family)",
+        architecture="per-SNP effect-weight vector; genome-wide-significance thresholding (P<5e-8)",
         params=None,
         dataset=DS_PGS_CATALOG,
         metric=M_PRS,
@@ -603,7 +625,10 @@ _SPECS: tuple[ModelSpec, ...] = (
             "ancestry, and what is measured here is a distribution shift, NOT an AUROC drop: an "
             "earlier revision of this note called it an AUROC drop, but 1000 Genomes is a reference "
             "panel carrying no breast-cancer case/control status, so no AUROC is computable from it "
-            "and genomics_prs.py records auroc=null rather than inventing one. The finding is the "
+            "and genomics_prs.py records auroc=null rather than inventing one. PGS000001 is Mavaddat et al. (JNCI 2015), 77 variants selected by GENOME-WIDE SIGNIFICANCE "
+            "(P<5e-8) - not PRS-CS or LDpred2, which postdate it by four to five years. An earlier architecture "
+            "string named that Bayesian-shrinkage family and contradicted this project's own training script, "
+            "which says 77 variants from Mavaddat. The finding is the "
             "by_super_population.*.frac_above_global_cut rows listed above: one globally-set "
             "high-risk cut flags a far larger share of AFR than of EUR, a gap driven by "
             "allele-frequency differences rather than by risk. Read those rows, not this sentence - "
@@ -673,7 +698,7 @@ _SPECS: tuple[ModelSpec, ...] = (
         tier="t2_industry",
         key="satellite_comms.opssat",
         label="OPS-SAT segment anomaly detector",
-        architecture="gradient-boosted trees over 19 per-segment telemetry features",
+        architecture="gradient-boosted trees over 18 published per-segment features + `sampling`",
         params=None,
         dataset=DS_OPSSAT_AD,
         metric=M_OPSSAT,
@@ -692,14 +717,14 @@ _SPECS: tuple[ModelSpec, ...] = (
         tier="t1_crypto",
         key="satellite_comms.opssat_student",
         label="CKKS-linear OPS-SAT segment student",
-        architecture="logistic regression over the 19 published per-segment features",
+        architecture="logistic regression over 18 published per-segment features + `sampling`",
         params=None,
         dataset=DS_OPSSAT_AD,
         metric=M_OPSSAT,
         artifacts=_STUDENT_ARTIFACTS,
         hf_repo="qsh-satellite-opssat-ckks-student",
         runs_encrypted=True,
-        notes=("19 features is small enough to evaluate under CKKS as a single packed dot product, "
+        notes=("19 columns is small enough to evaluate under CKKS as a single packed dot product, "
                "so the encrypted tier here runs on the published feature set rather than on a "
                "reduction of it - and it had room to spare. The student now fits over the QUADRATIC "
                "expansion of those features, 209 terms, still one packed dot product at unchanged "

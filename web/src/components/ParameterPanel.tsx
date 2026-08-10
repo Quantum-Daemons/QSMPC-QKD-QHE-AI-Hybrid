@@ -88,11 +88,15 @@ export default function ParameterPanel({ run }: { run: Run }) {
     { title: "Free-space channel", fields: [
       ["Downlink (km)", "sat_distance_km", 50, 1, "ground-to-LEO slant range - raises loss + QBER"],
       ["Eve fraction", "sat_eve", 0.05, 0,
-       "intercept-resend fraction (0-1). Raise it until QBER crosses the QSDC threshold and the "
-       + "transmission aborts - that abort is the inline eavesdrop check this page describes", 1],
-      ["Pulses", "sat_pulses", 500000, 1, "channel uses for the free-space downlink"],
-      ["QSDC abort at QBER", "qsdc_threshold", 0.01, 0,
-       "QSDC refuses to send when the measured QBER exceeds this", 0.5]] });
+       "intercept-resend fraction (0-1). Note this link is ALREADY loss-limited at Eve=0 - its "
+       + "secrecy capacity is negative before she arrives - so raising this cannot flip the abort "
+       + "from link-limited to attributable. BB84 above still detects her", 1],
+      ["Pulses", "sat_pulses", 500000, 1, "channel uses for the free-space downlink"]] });
+  // "QSDC abort at QBER" (qsdc_threshold) was REMOVED here. Once the abort criterion became
+  // secrecy capacity - Cs = 1 - h(e) - g*h(e), Qi et al. 2019 - nothing read config.qsdc_threshold,
+  // so the control sat in this panel moving no surface on the page. There is no QBER threshold to
+  // set under the corrected criterion; the tolerance is derived from the link's own loss. An inert
+  // control is worse than a missing one because it reads as a knob that works.
   groups.push(
     { title: "OptiQKD (AI-QKD)", fields: [
       ["Opt samples", "qkd_opt_samples", 8, 4,
