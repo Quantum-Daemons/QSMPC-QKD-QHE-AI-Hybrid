@@ -80,25 +80,31 @@ def _aunbc_from_scores(y: np.ndarray, s: np.ndarray, thr: np.ndarray, wts: np.nd
     return float(total)
 
 
+def _cut_curves(y: np.ndarray, s: np.ndarray):
+    """TP and FP counts at every distinct integer cut, computed ONCE.
+
+    The coordinate search evaluates the objective thousands of times, so this is the hot path. The
+    naive form re-sorts inside the threshold loop, which multiplies an O(n log n) sort by the number
+    of thresholds for no reason: the counts do not depend on the threshold at all, only the net
+    benefit weighting does.
+    """
+    cand, inv = np.unique(s, return_inverse=True)
+    pos = np.bincount(inv, weights=(y == 1), minlength=cand.size)
+    tot = np.bincount(inv, minlength=cand.size)
+    # Suffix sums: a cut at cand[k] predicts positive for everything at index >= k.
+    tp = np.cumsum(pos[::-1])[::-1]
+    n_pred = np.cumsum(tot[::-1])[::-1]
+    return cand, tp, n_pred - tp
+
+
 def _best_cuts(y: np.ndarray, s: np.ndarray, thr: np.ndarray) -> np.ndarray:
     """Per-threshold integer cut maximising that threshold's net benefit. Exact by enumeration."""
-    cand = np.unique(s)
-    cand = np.r_[cand, cand.max() + 1] if cand.size else np.array([0])
-    n = y.size
-    cuts = np.empty(thr.size, dtype=np.int64)
-    order = np.argsort(s)
-    y_sorted = y[order]
-    # Suffix counts: for a cut at candidate c, everything >= c is predicted positive.
-    for i, p in enumerate(thr):
-        ratio = p / (1.0 - p)
-        idx = np.searchsorted(s[order], cand, side="left")
-        tp = np.cumsum(y_sorted[::-1])[::-1]
-        tp = np.r_[tp, 0][idx]
-        tot = (n - idx)
-        fp = tot - tp
-        nb = tp / n - (fp / n) * ratio
-        cuts[i] = int(cand[int(np.argmax(nb))])
-    return cuts
+    cand, tp, fp = _cut_curves(y, s)
+    n = float(y.size)
+    ratios = thr / (1.0 - thr)
+    # (thresholds x cuts) net benefit in one broadcast.
+    nb = tp[None, :] / n - (fp[None, :] / n) * ratios[:, None]
+    return cand[np.argmax(nb, axis=1)].astype(np.int64)
 
 
 def fit_scorecard(X, y, *, thresholds=None, weights=None, coef_range: int = 10,
@@ -127,9 +133,15 @@ def fit_scorecard(X, y, *, thresholds=None, weights=None, coef_range: int = 10,
     best = -np.inf
 
     def objective(cand_w: np.ndarray) -> float:
+        # Fuse scoring, cut selection and AUNBC: the cut that maximises a threshold's net benefit
+        # IS the value of that threshold's term, so the max is the objective and there is no need
+        # to re-evaluate at the chosen cut.
         s = X @ cand_w
-        cuts = _best_cuts(y, s, thr)
-        val = _aunbc_from_scores(y, s, thr, wts, cuts)
+        cand, tp, fp = _cut_curves(y, s)
+        n = float(y.size)
+        ratios = thr / (1.0 - thr)
+        nb = tp[None, :] / n - (fp[None, :] / n) * ratios[:, None]
+        val = float(np.sum(wts * nb.max(axis=1)))
         return val - l0_penalty * int(np.count_nonzero(cand_w))
 
     order = np.arange(n_features)
