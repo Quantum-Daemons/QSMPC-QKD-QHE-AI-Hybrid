@@ -46,7 +46,7 @@ a quantum-safe orchestration demo. This is the **plaintext** model for the
 - **Licence**: CC-BY-3.0-IGO
 - **Source**: https://zenodo.org/records/12528696 (licence read 2026-08-03)
 
-Missions are anonymised Mission1/2/3 — they are not named Sentinel anything. 17.5 years, 1.19% annotated. Mission3 is excluded upstream for triviality.
+Missions are anonymised Mission1/2/3 - they are not named Sentinel anything. 17.5 years, 1.19% annotated. Mission3 is excluded upstream for triviality.
 
 ## Notes and limitations
 
