@@ -61,12 +61,18 @@ by different code paths. Two files, same repo, opposite claims about which class
 Class-weighted loss + AUC selection + a tuned malignant cut folded into the dense head (argmax over
 two logits IS a 0.5 threshold, and the CKKS path has nowhere downstream to apply a cut):
 
-| | before | after |
-|---|---|---|
-| distinct classes predicted | **1** | 2 |
-| AUC | 0.3544 (below random) | **0.6092** |
-| malignant recall | 1 of 42 | **8 of 42** |
-| accuracy | 0.7308 | 0.6859 |
+| | Round 24b, as found | + class weighting & AUC selection | + aligned labels (24d) | + net benefit (24e) |
+|---|---|---|---|---|
+| distinct classes predicted | **1** | 2 | 2 | 2 |
+| AUC | 0.3544 (below random) | 0.6092 | 0.7882 | **0.7882** |
+| malignant recall | 1 of 42 | 8 of 42 | - | **24 of 42** |
+| accuracy | 0.7308 (= majority rate) | 0.6859 | 0.7564 | **0.7692** |
+
+Read that as three separate defects found in sequence, not one fix iterated. The middle column is
+class-weighted loss plus AUC-based selection; the third is the shuffled-DataLoader label
+misalignment, which was the largest single contributor and was hiding behind a "capacity" story
+recorded in three documents; the fourth is replacing Youden's J with net benefit at a matched
+threshold. Accuracy is now above the 0.7308 majority rate, which the first two columns never were.
 
 Accuracy FELL, and that is the improvement: it fell because the model stopped answering with the
 majority class. On an imbalanced screening task accuracy is maximised by not screening.

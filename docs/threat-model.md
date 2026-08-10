@@ -111,8 +111,7 @@ CKKS-to-FHEW scheme switching (ePrint 2026/285 breaks PEGASUS-style switching in
 worth stating explicitly rather than leaving to inference).
 
 **No standard requires testing for this.** The HomomorphicEncryption.org standard contains no
-testing or conformance clause and states that CKKS "is not described in this standard"; ISO/IEC
-28033 Parts 1-4 are at DIS and Part 5 at WD, and Part 1 scopes correctness out. So this section is a
+testing or conformance clause and states that CKKS "is not described in this standard"; ISO/IEC 28033 is not published, and the part that matters here is **Part 3** - mechanisms for arithmetic on approximate numbers, i.e. CKKS - which reached **FDIS stage 50.00 on 2026-06-11** (Part 1 general: DIS 40.60, 2025-12-11; Part 4: FDIS 50.00; Part 5: WD 20.60). Part 1 scopes correctness out. Naming "Parts 1-4 at DIS" was imprecise in both directions: Part 3 is further along than DIS and is the CKKS part, so this claim has a shelf life of months and carries a date for that reason. Checked 2026-08-10. So this section is a
 statement of known limitations, not a conformance gap against any published requirement.
 
 ## Explicitly out of scope (PoC)
