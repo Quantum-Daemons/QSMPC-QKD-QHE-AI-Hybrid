@@ -238,6 +238,9 @@ export interface QcnnResult {
 export interface QcnnWeights {
   n_qubits: number; layers: number; theta: number[][]; scale: number; bias: number;
   input_space: string; encoding: string;
+  feature_mean?: number[]; feature_std?: number[];
+  test_minority_f1?: number; classical_lr_minority_f1?: number;
+  all_positive_f1?: number; headline_metric?: string;
   test_accuracy: number; classical_lr_accuracy: number; majority_baseline: number;
 }
 
@@ -276,7 +279,17 @@ export function qcnnInferTrained(features: number[], w: QcnnWeights):
   // A first version min-max scaled them against raw-unit ranges, which pinned seven of eight
   // features to -1 and produced <Z0> = 0.0098: a degenerate state that made the trained path exactly
   // as meaningless as the untrained one. tanh bounds an unbounded z-score without reordering it.
-  for (let q = 0; q < nq; q++) RY(q, Math.tanh(features[q] ?? 0) * Math.PI);
+  // Units differ per use case: medical arrives already StandardScaler-ed, finance arrives RAW and
+  // mixed-scale, so `input_space` decides whether to standardise with the shipped moments first.
+  const raw = w.input_space === "raw";
+  for (let q = 0; q < nq; q++) {
+    let v = features[q] ?? 0;
+    if (raw && w.feature_mean && w.feature_std) {
+      const sd = w.feature_std[q] || 1;
+      v = (v - (w.feature_mean[q] ?? 0)) / sd;
+    }
+    RY(q, Math.tanh(v) * Math.PI);
+  }
   for (let l = 0; l < w.layers; l++) {
     for (let q = 0; q < nq; q++) RY(q, w.theta[l][q]);
     for (let q = 0; q < nq; q++) CNOT(q, (q + 1) % nq);

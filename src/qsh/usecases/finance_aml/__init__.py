@@ -111,7 +111,11 @@ def run_demo(config: dict | None = None) -> dict:
     return {
         "shared_fraud_accounts_found": m.get("psi_intersection_size"),
         "ground_truth_shared": ctx.data["_ground_truth_shared"],
-        "private_fraud_prediction": ctx.artifacts.get("fhe_prediction"),
+        # Canonical key, not one backend's - see stages.py. Reading `fhe_prediction`
+        # alone meant a QCNN run computed a class and this surfaced None.
+        "private_fraud_prediction": ctx.artifacts.get("private_prediction",
+                 ctx.artifacts.get("fhe_prediction")),
+        "private_fraud_prediction_backend": ctx.artifacts.get("private_prediction_backend"),
         "model": ctx.data.get("_finance_model"),     # real XGBoost + distillation fidelity
         "explanation": ctx.artifacts.get("explanation"),
         "qber": m.get("qber"),

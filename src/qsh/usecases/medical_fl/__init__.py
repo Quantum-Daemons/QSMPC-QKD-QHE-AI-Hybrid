@@ -231,7 +231,11 @@ def run_demo(config: dict | None = None) -> dict:
     m = pipe.bus.metrics()
     return {
         "federated_accuracy": ctx.artifacts.get("federated_accuracy"),
-        "private_diagnosis": ctx.artifacts.get("fhe_prediction"),
+        # Read the canonical key, not one backend's. This used to be `fhe_prediction` only,
+        # so a QCNN run produced a class and reported None here.
+        "private_diagnosis": ctx.artifacts.get("private_prediction",
+                                              ctx.artifacts.get("fhe_prediction")),
+        "private_diagnosis_backend": ctx.artifacts.get("private_prediction_backend"),
         "explanation": ctx.artifacts.get("explanation"),
         "hospitals": m.get("hospitals"),
         "metrics": m,
