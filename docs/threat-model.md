@@ -176,3 +176,56 @@ statement of known limitations, not a conformance gap against any published requ
   photonic inference and qOLE, but not this row - it should. (The 0-100 security score this bullet
   used to cite was retired in Round 22 and is no longer computed for display; see
   `../references/security-scoring-fact-check.md`.)
+
+## Genomics: this system protects the computation, and the computation is not where the leak is
+
+Recorded 2026-08-10 after a literature check, because it is the sharpest gap in the project's threat
+model and it is a gap of FRAMING rather than of implementation.
+
+The genomics use case computes pooled allele counts under secure summation, so no party sees another
+site's genotypes. That is a real input-confidentiality property and it is implemented. It is also
+not the threat the genomics-privacy literature is concerned with.
+
+**Pooled allele counts are the canonical genomic privacy failure.** Homer et al., PLoS Genetics
+4(8):e1000167 (2008) - the paper that caused NIH to withdraw public aggregate GWAS data - states
+that composite statistics across cohorts, such as allele frequency or genotype counts, do not mask
+identity within genome-wide association studies. It detects an individual contributing under 0.1% of
+a mixture from roughly 50,000 SNPs.
+
+**Releasing frequencies is worse than releasing booleans.** A 2025 beacon-reconstruction result
+(DOI 10.1093/bioinformatics/btaf273) reports genome reconstruction at **70% F1 using allele
+frequencies against 53.4% using binary yes/no responses** - so publishing the counts this pipeline
+computes raises reconstruction risk by about 17 points over publishing mere presence.
+
+**A single released score can be enough.** A Feb 2026 preprint (DOI 10.64898/2026.02.16.706191)
+reconstructs genotypes from polygenic risk scores by solving a subset-sum problem: of 4,723 PGS
+Catalog models, at least 447 would be vulnerable if patient-level scores were shared, and a typical
+27-locus PRS uniquely identifies 95% of individuals in a 450,000-participant cohort. Recovery then
+re-identifies the individual *or a genetic relative* in a genealogy database at near 100% accuracy.
+Non-European ancestries are at greater risk, because GWAS panels are less diverse.
+
+### What this means here, stated precisely
+
+Encryption of the computation is **orthogonal** to this threat. The secure summation is not
+weakened by any of the above; it simply addresses a different adversary. The exposure is the
+released aggregate, and the mitigation for that is **output perturbation** - differential privacy on
+the published counts - which this project does **not** implement.
+
+Nor does anyone else in deployed crypto-genomics: SF-GWAS (Nature Genetics, Feb 2025), PP-GWAS,
+SECRET-GWAS, privateQTL and the CKKS polygenic-score system HEPRS (Cell Reports Methods, Jan 2026)
+all decrypt and release plaintext statistics with no output noise. SF-GWAS argues explicitly that DP
+is impractical at GWAS scale because releasing statistics for many variants would require
+substantial noise. So this is a field-wide gap rather than an oversight peculiar to this project -
+which is a reason to state it, not a reason to be quiet about it.
+
+### The honest claim, and the one to avoid
+
+**Defensible:** "no party learns another site's genotypes during the computation."
+
+**Not defensible:** any implication that pooling under encryption makes the *released* counts safe to
+publish. It does not, and the literature is unambiguous.
+
+Closing this properly means adding calibrated noise to the released aggregate with a stated epsilon,
+and reporting the utility cost - a UK Biobank study (DOI 10.1093/jamia/ocaf090, Jun 2025) found odds
+ratios destabilising below epsilon about ln(2), with some reversing sign. That is a design decision
+with a real accuracy price, and it is recorded here as open rather than silently absent.

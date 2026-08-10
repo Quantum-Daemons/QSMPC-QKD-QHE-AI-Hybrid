@@ -3,7 +3,7 @@
 
 The question was whether this project's published models are credible representatives of
 privacy-preserving inference practice, or whether the field has moved on and the demo is showing
-something dated. Answered per vertical. Finance is done; the rest follow as their checks complete.
+something dated. Answered per vertical. All five are now checked.
 
 ## Finance: the choices are validated, and more strongly than expected
 
@@ -106,3 +106,108 @@ amortising over very large forests (Kangaroo, 969 trees at ~60 ms/tree over WAN)
 non-interactive rather than inference (PoPETs 2026, 360x speedup for XGBoost training over FHE),
 proving training occurred (ZKBoost, IACR 2026/202, from JPMorgan AI Research), and securing the
 preprocessing (ALIOTH). The model class is held fixed across all of them.
+
+---
+
+# The other four verticals
+
+| vertical | model | verdict |
+|---|---|---|
+| healthcare | ResNet teacher -> 3,226-param CNN student, CKKS | **defensible, and ahead of its direct baselines** |
+| genomics | linear per-SNP PRS + secure summation | **model correct, privacy framing wrong** |
+| satellite | Telemanom LSTM + CKKS-linear student | **defensible as stated; the danger is misstating it** |
+| telecom | 8-class QKD IDS, RF + quantum-kernel SVC + QNN | **weakest, and the quantum half is in a regime documented not to work** |
+
+## Healthcare: ahead of the two papers that do the same thing
+
+This was expected to be the weakest defence and is the strongest. There are exactly two published
+BreastMNIST-under-encryption baselines, and **both are simpler than what this project runs**:
+
+| baseline | architecture | result | latency | ring |
+|---|---|---|---|---|
+| Al Badawi & Bin Yusof, *BioData Mining* 17:33 (Sep 2024) | RBF-kernel **SVM**, CKKS/OpenFHE | F1 0.80 | 2.09 s | **N=65536** |
+| Selvakumar & Senthilkumar, *Sci Rep* (Jul 2025) | 2-layer quantized **FCNN**, TFHE | 81.82% -> 81.81% encrypted | **137.68 s/sample** | - |
+
+Neither performs a genuine homomorphic convolution. This project does, at **N=8192**, one eighth the
+ring degree the SVM baseline needed. That is a legitimate efficiency position, and it means the
+medical use case should be presented against *these* papers rather than against crypto-systems work
+like Orion or BootNet - the latter needs N=32768 for ImageNet and is a different claim entirely.
+
+Worth knowing: an arXiv query for `MedMNIST AND homomorphic` returns **zero** results. MedMNIST is
+used in medical-informatics venues and never in the security conferences, which is why the two
+baselines above are easy to miss.
+
+## Genomics: the model is right and the threat model was pointed at the wrong thing
+
+The linear per-SNP weighted sum is unambiguously current - *Nature Communications*, Jun 2025, finds
+neural models **outperformed by linear regression** across 28 UK Biobank traits. The nearest
+comparator is HEPRS (*Cell Reports Methods*, Jan 2026): CKKS via Lattigo, a 110,258-SNP schizophrenia
+score, r > 0.999 against plaintext at ~4.9 s and 3.3 GB per individual.
+
+The problem is not the model. **Pooled allele counts are the canonical genomic privacy failure**, and
+encrypting their computation does nothing about their release. Full treatment now in
+`docs/threat-model.md`; the short version is that released allele frequencies support genome
+reconstruction at 70% F1 against 53.4% for binary responses, and a single 27-locus polygenic score
+uniquely identifies 95% of individuals in a 450k cohort.
+
+One further correction: **no verified paper applies quantum-enabled MPC to allele counts, GWAS or
+PRS.** The mature secure-genomics systems are classical and much larger in scope - SF-GWAS runs
+409,548 UK Biobank individuals in 6 days; SECRET-GWAS does 1M patients by 4M SNPs in 4.5 minutes -
+and secure summation is a cheap sub-step of those rather than the headline.
+
+## Satellite: defensible, and the failure mode is describing it wrongly
+
+The paradigm is alive: on ESA-ADB's own corrected event-wise F0.5, Telemanom-ESA-Pruned is the best
+algorithm on Mission1 while unsupervised baselines score below 0.001. Two traps, both already
+avoided here and both worth keeping avoided:
+
+- **Never quote Telemanom's SMAP/MSL F1.** A uniform random score reaches F1 0.931 on MSL and 0.961
+  on SMAP under point adjustment (AAAI-22). Checked: this project mentions SMAP/MSL only in
+  `registry.py` as a warning about exactly that inflation, and never as a result.
+- **This project does not run an encrypted LSTM, and must not imply it.** Depth accumulates per
+  timestep, and 2026 work either abandons CKKS for TFHE programmable bootstrapping (ePrint 2026/1091,
+  5.2 s per 128-token sequence) or bounds hidden states architecturally (ePrint 2026/1502). The
+  encrypted tier here is a CKKS-**linear** student and the accuracy claim rests on that. Checked: the
+  existing text distinguishes the encrypted student from the plaintext LSTM teacher correctly.
+
+Encouraging for the linear student specifically: arXiv:2602.00672 (Jan 2026) finds closed-form linear
+autoregression matches or beats state-of-the-art deep time-series anomaly detectors, so a linear
+encrypted tier is defensible on the merits rather than only on cost.
+
+## Telecom: the weakest vertical, and the quantum half is below its own threshold
+
+Two findings, both of which this project should absorb rather than argue with.
+
+**There is no public 8-class QKD-attack dataset.** Two papers use eight classes with *incompatible*
+taxonomies - only three of seven attacks overlap - both on private simulated data. This project
+generates its own and labels it `synthetic, methodology-grounded`, citing arXiv:2509.14282, which is
+the honest framing. But the eight-class shape should not be described as a standard, because it is
+not one.
+
+**The quantum kernel is configured below the regime the literature says works.** arXiv:2605.31449
+(May 2026) documents fidelity quantum kernels **exponentially concentrating**, beating that regime
+only at **15 qubits or more**. This project's configuration is `q_n_qubits = 4` and
+`quantum_qubits = 8`. The measured result is exactly what concentration predicts: quantum-kernel SVC
+macro F1 **0.8316** and variational QNN **0.4667** against RandomForest **0.9866**, with
+`quantum_beats_classical: false` already recorded.
+
+So the quantum components are not underperforming through a bug - they are underperforming for a
+published, quantified reason, at a qubit count that is itself the explanation. That is a better
+finding than "quantum lost" and it belongs beside the number.
+
+The defensible framing for ML here is narrow and real: a conventional 11% QBER threshold catches only
+**25.82%** of attacks in one 2026 study, with ML dropping the false-negative rate from 0.8477 to
+0.0198. ML as an overlay for sub-threshold stealthy attacks, never as a replacement for decoy-state
+accounting.
+
+## The one architectural suggestion worth taking
+
+For healthcare, a **frozen pretrained backbone with a CKKS-encrypted linear head** fits this
+project's exact budget: a ViT CLS token is 768-D, which sits comfortably inside 4096 slots, and one
+ciphertext-plaintext dot product per class is precisely depth 1. The 2025 medical instantiation
+exists and is measured - arXiv:2511.20983 reports **96.12% plaintext against 90.02% encrypted** at
+326 KB per aggregation round. That would let this project say "ViT-class backbone" honestly while
+keeping the encrypted step exactly as cheap as it is today.
+
+Not adopted this round, and recorded as a recommendation rather than a plan, because the backbone's
+licence and redistribution terms would need the same scrutiny the ImageNet question already got.
