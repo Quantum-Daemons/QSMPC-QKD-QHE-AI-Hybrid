@@ -14,7 +14,7 @@
 import { modelsFor, type ModelSpec } from "../lib/config";
 import { useState } from "react";
 import { browserModels, evaluatePublishedModel, type ModelEvalResult } from "../lib/onnxInference";
-import { AncestryStrataChart } from "./VerificationChart";
+import { AncestryStrataChart, RealDataScatter } from "./VerificationChart";
 
 const TIER_LABEL: Record<string, string> = {
   t1_crypto: "encrypted (FHE/MPC-feasible)",
@@ -398,6 +398,10 @@ export function ModelPanel({ usecase }: { usecase: string }) {
           )}
         </div>
       ))}
+
+      {/* Once per use case, not once per model: this is the corpus, not any model's output. It
+          answers the question a lone score cannot - whether the classes were separable at all. */}
+      <RealDataScatter usecase={usecase} />
     </section>
   );
 }
