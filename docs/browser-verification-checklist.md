@@ -7,6 +7,32 @@ It exists because gate 4 was being reconstructed from memory every round, and wh
 is what someone remembers to look at. Round 20 audited controls on use-case pages and found five
 inert ones; the pages it did not sweep kept theirs. This file is the sweep, written down.
 
+## Topic index - the same concern, in more than one place
+
+This file has no duplicated text: there are zero repeated check-rows and zero repeated sentences.
+What it does have is **scattering** - one concern addressed in several sections, each written when a
+different incident exposed a different face of it. That is deliberate, because each section carries
+the incident that produced its rows and that context is what stops a row being deleted later as
+noise. It is also the thing that makes the file hard to work top-to-bottom.
+
+So the fix is an index rather than a merge. If you are chasing one concern, start here; if you are
+running a round, use the Run sheet below instead.
+
+| Concern | Sections | Where |
+|---|---|---|
+| **Deploy, CI, and what the browser is actually served** | 10 | [Run sheet](#run-sheet---the-whole-round-in-one-page) · [How to work it](#how-to-work-it) · [The layout axis](#the-layout-axis-in-full) · [Reproduce each panel's headline from...](#reproduce-each-panels-headline-from-what-the-page-itself-shows) · [Check the MODEL](#check-the-model-not-only-the-number) · [Anything outside web/ and src/ still...](#anything-outside-web-and-src-still-ships-and-nothing-was-checking-it) · [Local-green is not CI-green](#local-green-is-not-ci-green-and-the-deploy-will-not-tell-you) · [Bootstrap a claimed improvement before...](#bootstrap-a-claimed-improvement-before-shipping-it) · [The deploy step itself needs verifying](#the-deploy-step-itself-needs-verifying-and-a-failed-build-looks-like-a-successful-one) · [An investigation is not landed until...](#an-investigation-is-not-landed-until-the-string-the-ui-renders-says-so) |
+| **Is the number measuring what it claims to** | 4 | [A shuffled DataLoader is correct for...](#a-shuffled-dataloader-is-correct-for-training-and-silently-wrong-for-harvesting) · [Bootstrap a claimed improvement before...](#bootstrap-a-claimed-improvement-before-shipping-it) · [A model can score respectably and have...](#a-model-can-score-respectably-and-have-learned-nothing---check-that-it-predicts-more-than-one-class) · [Ask what the metric was divided by](#ask-what-the-metric-was-divided-by-not-just-how-many-samples-there-were) |
+| **Publication, the Hub, and what may be redistributed** | 8 | [Run sheet](#run-sheet---the-whole-round-in-one-page) · [Routes](#routes) · [Retraining a published model is a...](#retraining-a-published-model-is-a-five-step-cycle-and-two-of-the-steps-bite) · [PQC library conformance](#pqc-library-conformance-run-nists-negative-vectors-not-just-the-happy-path) · [Submodules](#submodules-check-they-are-still-maintained-and-that-the-licence-is-written-down) · [Navigate the way a visitor does](#navigate-the-way-a-visitor-does-not-the-way-a-test-does) · [A default that contradicts a licence...](#a-default-that-contradicts-a-licence-commitment-will-eventually-be-taken) · [Retired and orphaned Hugging Face repos](#retired-and-orphaned-hugging-face-repos) |
+| **Claims about the outside world** | 4 | [The nine axes](#the-nine-axes) · [Search outward](#search-outward-not-just-inward---and-fetch-the-source-never-the-summary) · [Reproduce each panel's headline from...](#reproduce-each-panels-headline-from-what-the-page-itself-shows) · [Every control](#every-control-against-a-published-reference-value) |
+| **Coverage of the page itself** | 7 | [Run sheet](#run-sheet---the-whole-round-in-one-page) · [Routes](#routes) · [Regions on a use-case page](#regions-on-a-use-case-page) · [Every panel must describe the run that...](#every-panel-must-describe-the-run-that-just-happened) · [Simulator controls](#simulator-controls-and-where-each-one-has-to-show-up) · [Every control](#every-control-against-a-published-reference-value) · [The UX axis](#the-ux-axis-and-the-accessibility-half-nobody-was-checking) |
+
+**Every check row has a unique ID.** The prefix says which section it belongs to: `RS` run sheet,
+`RG` page region, `CI` continuous integration, `DP` deploy, `DN` denominator/sample size, `HF`
+Hugging Face, `B` baseline row, `C` constant predictor, `L` licence default, `N` landed-in-the-UI,
+`R` bootstrap, `S` sampler alignment. Two collisions were fixed in Round 24e: `DP` and `DN` were both
+`D`, and the run sheet and the region table both used bare integers, so "step 3" and "region 3" and
+"check D3" were three different things sharing two names.
+
 ## Run sheet - the whole round in one page
 
 This document is 1300 lines because each row carries the incident that produced it, and that context
@@ -26,36 +52,36 @@ a row fails or you do not recognise it.
 
 | # | Do this | Detail |
 |---|---|---|
-| 1 | Deploy from git, grep the served bundle for a new string literal, **then** cache-bust the tab | [How to work it](#how-to-work-it) |
-| 2 | Walk all 7 routes plus the two negative paths | [Routes](#routes) |
-| 3 | On each use-case page, walk the 14 regions in DOM order | [Regions on a use-case page](#regions-on-a-use-case-page) |
-| 4 | Open AND close every disclosure; check all six states | [The open and close axis](#the-open-and-close-axis) |
-| 5 | Run the transport sequence: Start, Pause, Step, Resume, Restart, Stop | [Buttons, by group](#buttons-by-group) |
-| 6 | Every select, every option; every checkbox, both states | [Selects, every value](#selects-every-value) |
-| 7 | Capture every control's value against its OWN min/max | [Capture every control's value](#capture-every-controls-value-against-its-own-constraints) |
-| 8 | Set each control, re-run, confirm the result MOVES and matches its reference value | [Every control, against a published reference value](#every-control-against-a-published-reference-value) |
-| 9 | After a parameter change, grep the page for the OLD value, not just the new one | [Every panel must describe the run that just happened](#every-panel-must-describe-the-run-that-just-happened) |
-| 10 | Recompute each panel headline from the inputs printed beside it | [Reproduce each panel's headline](#reproduce-each-panels-headline-from-what-the-page-itself-shows) |
-| 11 | Check each panel against its cited standard | [Every panel, against its cited standard](#every-panel-against-its-cited-standard) |
-| 12 | Check every XAI attribution against its own physics, not only its axioms | [XAI covers all five use cases](#xai-now-covers-all-five-use-cases---check-each-against-its-own-physics) |
-| 13 | Read diagram labels and tables against each other - a tick is not a verdict | [A completion marker is not a verdict](#a-completion-marker-is-not-a-verdict) |
-| 14 | Layout at 1280 and mobile; no horizontal overflow, no overlap | [The layout axis, in full](#the-layout-axis-in-full) |
-| 15 | UX and WCAG 2.2 AA - composite the alpha before judging contrast | [The UX axis](#the-ux-axis-and-the-accessibility-half-nobody-was-checking) |
-| 16 | Console clean on the CURRENT bundle - old errors persist in history | [During a run, not only after it](#during-a-run-not-only-after-it) |
+| RS1 | Deploy from git, grep the served bundle for a new string literal, **then** cache-bust the tab | [How to work it](#how-to-work-it) |
+| RS2 | Walk all 7 routes plus the two negative paths | [Routes](#routes) |
+| RS3 | On each use-case page, walk the 14 regions in DOM order | [Regions on a use-case page](#regions-on-a-use-case-page) |
+| RS4 | Open AND close every disclosure; check all six states | [The open and close axis](#the-open-and-close-axis) |
+| RS5 | Run the transport sequence: Start, Pause, Step, Resume, Restart, Stop | [Buttons, by group](#buttons-by-group) |
+| RS6 | Every select, every option; every checkbox, both states | [Selects, every value](#selects-every-value) |
+| RS7 | Capture every control's value against its OWN min/max | [Capture every control's value](#capture-every-controls-value-against-its-own-constraints) |
+| RS8 | Set each control, re-run, confirm the result MOVES and matches its reference value | [Every control, against a published reference value](#every-control-against-a-published-reference-value) |
+| RS9 | After a parameter change, grep the page for the OLD value, not just the new one | [Every panel must describe the run that just happened](#every-panel-must-describe-the-run-that-just-happened) |
+| RS10 | Recompute each panel headline from the inputs printed beside it | [Reproduce each panel's headline](#reproduce-each-panels-headline-from-what-the-page-itself-shows) |
+| RS11 | Check each panel against its cited standard | [Every panel, against its cited standard](#every-panel-against-its-cited-standard) |
+| RS12 | Check every XAI attribution against its own physics, not only its axioms | [XAI covers all five use cases](#xai-now-covers-all-five-use-cases---check-each-against-its-own-physics) |
+| RS13 | Read diagram labels and tables against each other - a tick is not a verdict | [A completion marker is not a verdict](#a-completion-marker-is-not-a-verdict) |
+| RS14 | Layout at 1280 and mobile; no horizontal overflow, no overlap | [The layout axis, in full](#the-layout-axis-in-full) |
+| RS15 | UX and WCAG 2.2 AA - composite the alpha before judging contrast | [The UX axis](#the-ux-axis-and-the-accessibility-half-nobody-was-checking) |
+| RS16 | Console clean on the CURRENT bundle - old errors persist in history | [During a run, not only after it](#during-a-run-not-only-after-it) |
 
 **Then the checks that reach outside the browser:**
 
 | # | Do this | Detail |
 |---|---|---|
-| 17 | Source-code pass: hardcoding, dead guards, fallbacks the browser cannot show | [The source-code pass](#the-source-code-pass-hardcoding-and-fallbacks-the-browser-cannot-show-you) |
-| 18 | Every declared HF repo resolves; every artifact dir exists; every card matches metrics.json | [The model registry claims things about the outside world](#the-model-registry-claims-things-about-the-outside-world---check-them) |
-| 19 | `models/`, `monitoring/`, `spaces/` - they ship too, and nothing else checks them | [Anything outside web/ and src/](#anything-outside-web-and-src-still-ships-and-nothing-was-checking-it) |
-| 20 | Re-measure every pinned dependency, and watch which "upstream" a sentence means | [Dependency claims decay](#dependency-claims-decay-so-re-measure-them-and-watch-the-wording) |
-| 21 | Submodules: pin vs upstream HEAD, licence, archived, branch drift. Use `gh api` | [Submodules](#submodules-check-they-are-still-maintained-and-that-the-licence-is-written-down) |
-| 22 | Search OUTWARD - what changed outside that the project has not noticed | [Search outward, not just inward](#search-outward-not-just-inward---and-fetch-the-source-never-the-summary) |
-| 23 | Retired a metric? Grep its name AND a characteristic value across every doc | [Retiring a metric is not done until the checklist stops asking](#retiring-a-metric-is-not-done-until-the-checklist-stops-asking-for-it) |
-| 24 | Re-check the dated items - they expire whether or not anyone looks | see below |
-| 25 | Any threshold constant: is it the LOSS-FREE idealisation of a loss-dependent bound? | see below |
+| RS17 | Source-code pass: hardcoding, dead guards, fallbacks the browser cannot show | [The source-code pass](#the-source-code-pass-hardcoding-and-fallbacks-the-browser-cannot-show-you) |
+| RS18 | Every declared HF repo resolves; every artifact dir exists; every card matches metrics.json | [The model registry claims things about the outside world](#the-model-registry-claims-things-about-the-outside-world---check-them) |
+| RS19 | `models/`, `monitoring/`, `spaces/` - they ship too, and nothing else checks them | [Anything outside web/ and src/](#anything-outside-web-and-src-still-ships-and-nothing-was-checking-it) |
+| RS20 | Re-measure every pinned dependency, and watch which "upstream" a sentence means | [Dependency claims decay](#dependency-claims-decay-so-re-measure-them-and-watch-the-wording) |
+| RS21 | Submodules: pin vs upstream HEAD, licence, archived, branch drift. Use `gh api` | [Submodules](#submodules-check-they-are-still-maintained-and-that-the-licence-is-written-down) |
+| RS22 | Search OUTWARD - what changed outside that the project has not noticed | [Search outward, not just inward](#search-outward-not-just-inward---and-fetch-the-source-never-the-summary) |
+| RS23 | Retired a metric? Grep its name AND a characteristic value across every doc | [Retiring a metric is not done until the checklist stops asking](#retiring-a-metric-is-not-done-until-the-checklist-stops-asking-for-it) |
+| RS24 | Re-check the dated items - they expire whether or not anyone looks | see below |
+| RS25 | Any threshold constant: is it the LOSS-FREE idealisation of a loss-dependent bound? | see below |
 
 **Dated checks, because a deadline does not wait for a convenient round:**
 
@@ -134,20 +160,20 @@ blank.
 
 | # | Region | Component |
 |---|---|---|
-| 1 | Title, blurb, industry and market pills | UseCasePage |
-| 2 | Demo banner | demoMode |
-| 3 | Crypto selects, published-model select, OptiQKD and MCP checkboxes, Parameters button | PipelineControls |
-| 4 | Parameter fields, Reset to defaults | ParameterPanel |
-| 5 | Two-party simulator diagram | TwoPartyDiagram |
-| 6 | Four export buttons | UseCasePage |
-| 7 | Event log, metrics table, signature | RunMonitor |
-| 8 | Inference provenance badge and its disclosure | ProvenanceBadge |
-| 9 | Per-model rows, Run buttons, result table | ModelPanel |
-| 10 | SHAP attribution | ShapPanel |
-| 11 | Benchmark rows and cost split | BenchmarkPanel |
-| 12 | Engine, model and combiner selects, Run | AgenticAIPanel |
-| 13 | Key budget, span, relay caveat | SdnControlPlanePanel |
-| 14 | Footer state note | UseCasePage |
+| RG1 | Title, blurb, industry and market pills | UseCasePage |
+| RG2 | Demo banner | demoMode |
+| RG3 | Crypto selects, published-model select, OptiQKD and MCP checkboxes, Parameters button | PipelineControls |
+| RG4 | Parameter fields, Reset to defaults | ParameterPanel |
+| RG5 | Two-party simulator diagram | TwoPartyDiagram |
+| RG6 | Four export buttons | UseCasePage |
+| RG7 | Event log, metrics table, signature | RunMonitor |
+| RG8 | Inference provenance badge and its disclosure | ProvenanceBadge |
+| RG9 | Per-model rows, Run buttons, result table | ModelPanel |
+| RG10 | SHAP attribution | ShapPanel |
+| RG11 | Benchmark rows and cost split | BenchmarkPanel |
+| RG12 | Engine, model and combiner selects, Run | AgenticAIPanel |
+| RG13 | Key budget, span, relay caveat | SdnControlPlanePanel |
+| RG14 | Footer state note | UseCasePage |
 
 ## The open and close axis
 
@@ -1645,17 +1671,17 @@ commits back. Checked 2026-08-09: the VPS was at `3f44e89` while origin was at `
 
 | # | Check | Pass condition |
 |---|---|---|
-| D1 | `git rev-parse --short HEAD` on the VPS vs `origin/<branch>` locally | identical strings |
-| D2 | The build's exit status is captured and printed, not redirected to `/dev/null` | an explicit OK/FAILED line |
-| D3 | Container age after deploy | seconds, not hours - a stale age means `up -d` reused the old container |
-| D4 | If web sources changed, the served bundle FILENAME changed | new `index-<hash>.js`; unchanged hash after a web change means the old image is serving |
-| D5 | If web sources did NOT change, the bundle hash SHOULD be identical | an unexpectedly new hash means something non-deterministic is in the build |
-| D6 | Site returns 200 AND the page renders, not just a proxy 200 | fetch a use-case route, not only `/` |
+| DP1 | `git rev-parse --short HEAD` on the VPS vs `origin/<branch>` locally | identical strings |
+| DP2 | The build's exit status is captured and printed, not redirected to `/dev/null` | an explicit OK/FAILED line |
+| DP3 | Container age after deploy | seconds, not hours - a stale age means `up -d` reused the old container |
+| DP4 | If web sources changed, the served bundle FILENAME changed | new `index-<hash>.js`; unchanged hash after a web change means the old image is serving |
+| DP5 | If web sources did NOT change, the bundle hash SHOULD be identical | an unexpectedly new hash means something non-deterministic is in the build |
+| DP6 | Site returns 200 AND the page renders, not just a proxy 200 | fetch a use-case route, not only `/` |
 
-D4 and D5 are the same check read in both directions, and the second one is the one people skip. A
+DP4 and DP5 are the same check read in both directions, and the second one is the one people skip. A
 changed hash where nothing changed is as informative as an unchanged hash where something did.
 
-Deploying from a red CI commit is not blocked by anything - see CI2 above - so D1 only proves the box
+Deploying from a red CI commit is not blocked by anything - see CI2 above - so DP1 only proves the box
 matches origin, never that origin is good.
 
 ## Retired and orphaned Hugging Face repos
@@ -1743,13 +1769,13 @@ magnitude.
 
 | # | Check | Pass condition |
 |---|---|---|
-| D1 | For every headline metric, find what its denominator counts - samples, events, groups, patients | written down, not inferred |
-| D2 | Read that count from the record, not from `n_eval` / `n_train` / an interval count | the count is recorded explicitly |
-| D3 | If it is under ~10, the score is NOT comparable to a published benchmark | the UI says so on the row that shows the baseline |
-| D4 | Perturb by one unit and recompute | if one event moves it by tenths, the caveat is mandatory |
-| D5 | A metric that reproduces across retrains while the headline does not | suspect the stable one is stable because it is inflated |
+| DN1 | For every headline metric, find what its denominator counts - samples, events, groups, patients | written down, not inferred |
+| DN2 | Read that count from the record, not from `n_eval` / `n_train` / an interval count | the count is recorded explicitly |
+| DN3 | If it is under ~10, the score is NOT comparable to a published benchmark | the UI says so on the row that shows the baseline |
+| DN4 | Perturb by one unit and recompute | if one event moves it by tenths, the caveat is mandatory |
+| DN5 | A metric that reproduces across retrains while the headline does not | suspect the stable one is stable because it is inflated |
 
-D5 is the one that pays. Point-adjusted F1 reproduced across retrains (0.9937 vs 0.9945) while
+DN5 is the one that pays. Point-adjusted F1 reproduced across retrains (0.9937 vs 0.9945) while
 event-wise F0.5 swung 0.714 to 0.455. That is not evidence the point-adjusted figure is better - it
 is the same fact from the other side, since it is computed over 441,600 points rather than 3 events,
 and it is the metric TSB-AD showed a random score beats. Reaching for the reproducible companion
