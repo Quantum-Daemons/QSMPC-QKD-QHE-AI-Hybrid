@@ -194,3 +194,39 @@ number, the conclusion that tuning was exhausted, and the characterisation of th
 the student can use, since the student inherits the same 32 columns and cannot exceed what a linear
 function of them supports.
 
+---
+
+## Windowing the aggregates does not close the gap (Round 24f, 2026-08-10)
+
+The gap note says the reference computes per-transaction subgraph patterns over a dynamically
+updated graph while this project computes per-account scalar aggregates over all prior time. One
+reading of that difference is **recency**: a cumulative degree cannot separate an account that has
+been busy for a year from one that was silent for a year and then sent forty transactions this
+morning, and the second is what a mule looks like.
+
+That reading was implemented and measured. `windowed_causal_features` adds six columns - prior count
+and prior amount inside a 24-hour sliding window, per side, plus the share of lifetime activity
+falling inside it - computed by binary search within each account's own sorted block, so they are
+strictly prior by construction and cost 14.9s over 5.08M rows.
+
+| arm | features | minority-F1 | AUPRC | AUROC |
+|---|---|---|---|---|
+| A cumulative causal (shipped) | 32 | **0.1519** | **0.1233** | 0.9526 |
+| B + windowed recent-history | 38 | 0.1308 | 0.1152 | **0.9606** |
+| delta | +6 | **-0.0211** | **-0.0081** | +0.0080 |
+
+**It made the model worse on both metrics that matter, and better on the one that does not.** AUROC
+rose while AUPRC and minority-class F1 fell, which is the textbook signature of a change that helps
+the majority class at a 1-in-981 positive rate - exactly the reason this project reports AUPRC and
+minority-F1 as the headline and keeps AUROC as a companion. Had AUROC been the headline this would
+have shipped as an improvement.
+
+**So recency is not the missing piece, and the windowed features are not shipped.** The function is
+retained because the negative result is worth keeping executable - anyone re-reading the gap note
+will have the same idea, and it costs 15 seconds to re-run rather than a day to re-derive.
+
+What remains untested is the other reading of the same sentence: genuine per-transaction MOTIF
+membership - does this specific transaction participate in a detected scatter-gather or cycle
+pattern within its own neighbourhood - rather than an account-level statistic evaluated over any
+window. That is a materially larger piece of work than re-aggregating existing quantities, and this
+result is evidence that the cheaper interpretation has been exhausted.
