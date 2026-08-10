@@ -14,6 +14,7 @@
 import { modelsFor, type ModelSpec } from "../lib/config";
 import { useState } from "react";
 import { browserModels, evaluatePublishedModel, type ModelEvalResult } from "../lib/onnxInference";
+import { AncestryStrataChart } from "./VerificationChart";
 
 const TIER_LABEL: Record<string, string> = {
   t1_crypto: "encrypted (FHE/MPC-feasible)",
@@ -365,6 +366,11 @@ export function ModelPanel({ usecase }: { usecase: string }) {
           <p className="muted small">{spec.architecture}</p>
 
           <MetricRows spec={spec} />
+
+          {/* The one published model with no browser-runnable graph, so the in-run verification
+              chart never fires for it. Its finding lives in the metric rows above and twenty rows
+              hide it; this draws the same numbers. */}
+          <AncestryStrataChart achieved={spec.achieved} />
 
           <p className="muted small">
             <strong>Data:</strong> {spec.dataset.name} — {spec.dataset.licence}{" "}
