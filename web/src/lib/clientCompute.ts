@@ -1517,17 +1517,45 @@ export function runClientPipeline(
           distanceKm: Number(config.sat_distance_km ?? FREE_SPACE.distanceKm) });
         const g = 10 ** (lossDb / 10);
         const secrecy = 1 - h2(e) - g * h2(e);
-        const eavesdrop = secrecy <= 0;
+        const abort = secrecy <= 0;
+        // WHY the abort fired matters more than THAT it fired, and reporting both as
+        // `qsdc_eavesdrop_detected` was wrong. Re-evaluate the same link with Eve removed: if it
+        // still cannot close, the limit is the LINK BUDGET, and the page was accusing a clean
+        // channel of carrying an eavesdropper on every single run.
+        //
+        // It always does still cannot close, at every setting this demo offers. The fixed 5 dB
+        // atmospheric + 3 dB pointing budget alone gives g = 6.31, and C_s > 0 there needs
+        // QBER < ~0.019 while the misalignment floor is 0.025 - so even at zero range, with a
+        // perfect pointing solution and no eavesdropper, secrecy capacity is negative. Moving
+        // `sat_distance_km` cannot produce a delivery. That is not a bug in this code, it is the
+        // finding: QSDC does not close over a LEO free-space downlink under the published
+        // criterion. Qi et al. demonstrated it at 4.1 dB on FIBRE; this link is 24.5 dB.
+        const secrecyNoEve = (() => {
+          const e0 = intrinsicQber({ ...FREE_SPACE,
+            distanceKm: Number(config.sat_distance_km ?? FREE_SPACE.distanceKm), eveFraction: 0 });
+          return 1 - h2(e0) - g * h2(e0);
+        })();
+        const lossLimited = secrecyNoEve <= 0;
         metric(stage, "qsdc_error_rate", r2(e));
         metric(stage, "qsdc_secrecy_capacity", r2(Math.max(0, secrecy)));
         metric(stage, "qsdc_eve_gain_g", r2(g));
-        metric(stage, "qsdc_eavesdrop_detected", eavesdrop ? 1 : 0);
-        artifacts.telemetry_delivered = !eavesdrop;
-        emit("log", stage, eavesdrop
-          ? `QSDC ABORTED: secrecy capacity ${secrecy.toFixed(4)} <= 0 at error ${e.toFixed(4)} `
-            + `with g=${g.toFixed(1)} (${lossDb.toFixed(1)} dB) — telemetry withheld`
-          : `QSDC delivered telemetry (secrecy ${secrecy.toFixed(4)} bit/carrier, g=${g.toFixed(1)})`);
-        if (!eavesdrop) {
+        metric(stage, "qsdc_link_budget_limited", lossLimited ? 1 : 0);
+        // Reserved for what the name says: an abort this link would NOT have suffered on its own.
+        metric(stage, "qsdc_eavesdrop_detected", abort && !lossLimited ? 1 : 0);
+        artifacts.telemetry_delivered = !abort;
+        emit("log", stage, !abort
+          ? `QSDC delivered telemetry (secrecy ${secrecy.toFixed(4)} bit/carrier, g=${g.toFixed(1)})`
+          : lossLimited
+            ? `QSDC NOT AVAILABLE on this link — secrecy capacity ${secrecy.toFixed(4)} bit/carrier `
+              + `at ${lossDb.toFixed(1)} dB (g=${g.toFixed(1)}), and it is still `
+              + `${secrecyNoEve.toFixed(4)} with NO eavesdropper. The limit is the link budget, not `
+              + `an attack: C_s > 0 requires h(QBER) < 1/(1+g) = ${(1 / (1 + g)).toExponential(2)}, `
+              + `and h(${e.toFixed(4)}) = ${h2(e).toFixed(4)} here. `
+              + `Telemetry falls back to the PQC session key.`
+            : `QSDC ABORTED: secrecy capacity ${secrecy.toFixed(4)} <= 0 at error ${e.toFixed(4)} `
+              + `with g=${g.toFixed(1)} (${lossDb.toFixed(1)} dB) — this link closes at `
+              + `${secrecyNoEve.toFixed(4)} without Eve, so the loss is attributable — telemetry withheld`);
+        if (!abort) {
           // REAL NASA SMAP/MSL telemetry + the real linear anomaly model, scored in-browser (the satellite
           // flow has no private_inference stage, so the real anomaly verdict is surfaced here at delivery).
           const anom = await realSatelliteAnomaly(u);
