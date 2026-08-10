@@ -26,6 +26,69 @@ import type { ModelEvalResult } from "../lib/onnxInference";
 const AXIS = { fontSize: 10, stroke: "#8a94a6" };
 const GRID = "#2a3040";
 
+// The genomics model is the one published model with no browser-runnable ONNX graph - it is a dot
+// product against published effect weights, so nothing above fires for it and the page rendered its
+// result as a flat table of ~20 `by_super_population.*` rows. The registry note for that model says
+// "Read those rows, not this sentence", and twenty rows is exactly where a finding goes to hide.
+//
+// What the rows say: ONE globally-set high-risk cut (the cohort P90, so it is built to flag 10%)
+// flags a wildly different share of each genetic ancestry group. That is the PRS portability
+// problem - Martin et al., Nat Genet 51:584 (2019) - and it is a distribution shift, NOT an accuracy
+// drop: 1000 Genomes is a reference panel with no case/control status, so no AUROC exists here and
+// the trainer records auroc=null rather than inventing one.
+//
+// The reference line is the POOLED rate recomputed from the group counts, not a literal 0.10. The
+// cut is defined as a percentile, so the pooled share is what it actually flagged on this cohort;
+// hardcoding the nominal figure would let the line drift away from the bars it is drawn against.
+type Strata = { n: number; mean: number; sd: number; p90: number; frac_above_global_cut: number };
+
+export function AncestryStrataChart({ achieved }: { achieved: Record<string, unknown> | null }) {
+  if (!achieved) return null;
+  const measured = (achieved.measured ?? achieved) as Record<string, unknown>;
+  const groups = measured.by_super_population as Record<string, Strata> | undefined;
+  if (!groups || Object.keys(groups).length < 2) return null;
+
+  const rows = Object.entries(groups)
+    .map(([label, v]) => ({ label, frac: v.frac_above_global_cut, mean: v.mean, n: v.n }))
+    .sort((a, b) => b.frac - a.frac);
+  const totalN = rows.reduce((a, r) => a + r.n, 0);
+  if (!totalN) return null;
+  const pooled = rows.reduce((a, r) => a + r.n * r.frac, 0) / totalN;
+  const hi = rows[0], lo = rows[rows.length - 1];
+  const ratio = lo.frac > 0 ? hi.frac / lo.frac : null;
+  const cut = typeof measured.global_high_risk_cut === "number" ? measured.global_high_risk_cut : null;
+
+  return (
+    <figure className="chart-figure">
+      <figcaption className="muted small">
+        Share of each genetic-ancestry group flagged high-risk by <strong>one global cut</strong>
+        {cut != null ? <> (PRS &ge; {cut.toFixed(3)})</> : null}, over {totalN} samples. The dashed
+        line is what that cut flagged pooled ({(pooled * 100).toFixed(1)}%) - every bar above it is a
+        group over-flagged relative to the threshold's own intent.{" "}
+        {ratio ? <><strong>{hi.label}</strong> is flagged at {(hi.frac * 100).toFixed(1)}% against{" "}
+          <strong>{lo.label}</strong> at {(lo.frac * 100).toFixed(1)}%, a {ratio.toFixed(1)}x gap</> : null}
+        {" "}driven by allele-frequency differences rather than by risk. This is a distribution shift,
+        not an accuracy drop - the panel carries no case/control status, so no AUROC is computable.
+      </figcaption>
+      <ResponsiveContainer width="100%" height={190}>
+        <BarChart data={rows} margin={{ top: 4, right: 8, bottom: 4, left: -18 }}>
+          <CartesianGrid stroke={GRID} strokeDasharray="2 4" />
+          <XAxis dataKey="label" tick={AXIS} interval={0} />
+          <YAxis tick={AXIS} tickFormatter={(v: number) => `${(v * 100).toFixed(0)}%`} />
+          <Tooltip contentStyle={{ background: "#161b26", border: `1px solid ${GRID}`, fontSize: 11 }}
+                   formatter={(v: number, name: string) =>
+                     name === "flagged" ? `${(v * 100).toFixed(2)}%` : v.toFixed(4)}
+                   labelFormatter={(l: string) =>
+                     `${l} — n=${rows.find((r) => r.label === l)?.n ?? 0}, `
+                     + `mean PRS ${rows.find((r) => r.label === l)?.mean.toFixed(4) ?? ""}`} />
+          <ReferenceLine y={pooled} stroke="#c05621" strokeDasharray="4 4" />
+          <Bar dataKey="frac" fill="#4f9dff" name="flagged" />
+        </BarChart>
+      </ResponsiveContainer>
+    </figure>
+  );
+}
+
 export function VerificationChart({ res, modelKey }: { res: ModelEvalResult; modelKey: string }) {
   const plot = res.plot;
   if (!plot) return null;
