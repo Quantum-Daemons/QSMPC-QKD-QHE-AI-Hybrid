@@ -1608,6 +1608,38 @@ clean.
 T2 is the one an automated check gets wrong. `license: null` from the GitHub API means all rights
 reserved, and a naive check that only fails on a deny-list of SPDX identifiers passes it.
 
+## Check whether the model protects the thing that actually leaks
+
+Five verticals were checked against 2026 privacy-preserving-inference literature. Four came back
+defensible. The fifth returned a finding no accuracy metric could have surfaced: **genomics protects
+the computation, and the computation is not where the leak is.**
+
+Pooled allele counts are the canonical genomic privacy failure - Homer et al. (2008) is the paper
+that caused NIH to withdraw public aggregate GWAS data - and encrypting their computation is
+orthogonal to that. Released allele frequencies support genome reconstruction at 70% F1 against
+53.4% for binary responses, so publishing the counts raises risk over publishing mere presence.
+
+| # | Check | Pass condition |
+|---|---|---|
+| P1 | Name the adversary each crypto layer defeats | written down per use case, not implied by "encrypted" |
+| P2 | Ask what is RELEASED, not only what is computed | an encrypted computation with a plaintext output protects the input, not the output |
+| P3 | Check the literature for attacks on that released artefact | membership inference, reconstruction, linkage |
+| P4 | If output perturbation is absent, say so | "no DP on the released aggregate" is a statement, silence is not |
+| P5 | Check quantum components against their own published operating regime | a parameter below the threshold its literature states is a reason, not a mystery |
+
+P5 came out of the telecom check. The quantum-kernel SVC here scores macro F1 0.8316 against
+RandomForest's 0.9866, and the reason is quantified: fidelity quantum kernels exponentially
+concentrate and beat that regime only at **15 qubits or more** (arXiv:2605.31449, May 2026), while
+this project runs 4 and 8. The number was already reported honestly with
+`quantum_beats_classical: false`; what was missing was that it underperforms for a published reason
+at a qubit count that IS the explanation. A measured shortfall with a citation is a finding; the
+same shortfall without one invites the reader to assume a bug.
+
+P2 is the general form. This project spent several rounds checking that metrics measure what they
+claim, and this is the same question one level up: does the CRYPTOGRAPHY defend what the threat model
+says is at risk. Full treatment in [`docs/threat-model.md`](threat-model.md) and
+[`references/model-choice-vs-2026-practice.md`](../references/model-choice-vs-2026-practice.md).
+
 ## A published sample can go stale against the weights it scores, and only a run will say so
 
 Verifying every published model during the run - rather than only the selected one - found a real
