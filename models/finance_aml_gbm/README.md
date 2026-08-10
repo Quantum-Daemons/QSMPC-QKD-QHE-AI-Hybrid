@@ -23,16 +23,16 @@ a quantum-safe orchestration demo. This is the **plaintext** model for the
 
 | metric | value |
 |---|---|
-| `accuracy` | 0.9983866140161103 |
-| `auprc` | 0.07323010834680115 |
+| `accuracy` | 0.9982855312490154 |
+| `auprc` | 0.12334101789973353 |
 | `auprc_baseline` | 0.0015234617040716665 |
-| `auroc` | 0.8980183471873905 |
-| `decision_threshold` | 0.928426 |
-| `minority_class_f1` | 0.08077786088257292 |
+| `auroc` | 0.9525582593503528 |
+| `decision_threshold` | 0.386869 |
+| `minority_class_f1` | 0.15194805194805194 |
 | `n_test` | 1523504 |
 | `n_train` | 3554841 |
 | `positive_rate` | 0.00101943 |
-| `wall_clock_s` | 77.5 |
+| `wall_clock_s` | 96.8 |
 
 ## Published baselines this is measured against
 
@@ -43,7 +43,7 @@ a quantum-safe orchestration demo. This is the **plaintext** model for the
 
 ### Gap to the published baseline
 
-This reaches minority-class F1 well below the published 0.6323. Two differences account for most of it and both are deliberate. (1) The published baseline uses IBM's Graph Feature Preprocessor, which ships in `snapml` under a Proprietary licence and is therefore excluded by this project's commercial-OK-only rule; what is reimplemented here is the documented typology set (degree, fan-in/out, reciprocity, k-hop cycle closure, burst degree, scatter-gather). (2) The corpus injects CYCLE attempts of up to 10 hops (HI-Small_Patterns.txt), while reachability here is computed to 4 hops because the boolean sparse powers grow quickly beyond that. The evaluation is also strictly inductive: graph aggregates are fitted on the training window only, so no test-time edge informs a training-time feature. Reported as measured; not adjusted to close the gap.
+This reaches minority-class F1 well below the published 0.6323 (GFP+XGBoost, AMLworld HI-Small, NeurIPS 2023 D&B). The cause is a feature ARCHITECTURE difference, not a tuning one: the gap is unreachable at any threshold, because measured AUPRC is far below what that F1 requires. IBM's Graph Feature Preprocessor computes per-transaction subgraph patterns over a dynamically updated graph; this project computes per-account scalar aggregates. A degree is one number per account, whereas a GFP feature is a pattern match in that transaction's own neighbourhood at the moment it arrives. GFP ships in `snapml` under a Proprietary licence and is excluded by this project's commercial-OK-only rule, but the licence is not itself the cause - the architecture is, and it is reimplementable without `snapml`, simply at more cost than renaming aggregates. Reachability is computed to 4 hops against injected CYCLE attempts of up to 10; that was previously recorded as a main cause and is NOT one - the GFP paper (arXiv:2402.08593) decomposes its own contribution and caps multi-hop cycle and scatter-gather features at about 4% relative, while fan-in/fan-out, which is reimplemented here, carries more than 30%. The evaluation is strictly inductive and temporally split. Per-account aggregates are causal (each row sees only edges strictly before it); the structural block - cycle closure, scatter-gather, bank diversity, burst degree - is still fitted on the training window, because recomputing sparse reachability at every timestep is not tractable here. Reported as measured; not adjusted to close the gap. Full workings: references/finance-gap-investigation.md.
 
 ## Training data
 

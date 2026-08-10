@@ -27,10 +27,19 @@ export default function ShapPanel({ explanation, provenance, baseline, published
           ensemble or a fixed quantum circuit.</>
         ) : null}
       </p>
+      {/* The bars explain the BUNDLED linear model. The encrypted stage computes a different model -
+          a small fixed demo pattern on finance and genomics, the published student on medical's
+          convolution branch - and it is that computation which produces the class the page reports.
+          The panel used to call the bars "the CKKS-linear model", which conflated the two. */}
+      <p className="muted small" style={{ marginTop: -2 }}>
+        These bars explain the <b>bundled linear model</b>. The <b>class this page reports</b> comes
+        from the encrypted CKKS + MPC stage, which evaluates a different model - so read the bars as
+        "what drives this model on this input", not as an attribution of the reported class.
+      </p>
       {surfaced === "qcnn" && (
         <div className="note" style={{ marginBottom: 8, borderColor: "var(--warn)", color: "var(--warn)" }}>
           ⚠ Inference is set to <b>QCNN</b>, so the class this page surfaces comes from the quantum
-          circuit. These bars still describe the CKKS-linear model, which is a different decision.
+          circuit. These bars describe the bundled linear model, which is a different decision.
         </div>
       )}
       {tops.map((t, i) => (

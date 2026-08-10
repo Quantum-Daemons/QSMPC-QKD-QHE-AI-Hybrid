@@ -95,6 +95,26 @@ def frontend_config() -> dict:
         # construction requires" (d prime, n <= d <= 2n), which is the honest default.
         "qsmpc": {"prime": c.qsmpc.prime, "n_parties": c.qsmpc.n_parties,
                   "threshold": c.qsmpc.threshold},
+        # The federated hyperparameters. Absent until Round 24, which meant the browser COULD NOT
+        # read them even in principle: it ran 6 rounds at lr 0.15 while this config said 8 at 0.05,
+        # and nothing could reconcile the two because the dataclass never reached the frontend. The
+        # divergence is defensible - a federated round has to finish inside a page interaction - but
+        # it has to be a deliberate override of a value the browser can see, not two unrelated
+        # numbers. `browser_rounds` states the override explicitly rather than hiding it in a
+        # literal.
+        "federated": {
+            "rounds": c.federated.rounds,
+            "local_epochs": c.federated.local_epochs,
+            "lr": c.federated.lr,
+            "hospitals": c.federated.hospitals,
+            "test_split": c.federated.test_split,
+            "secure_aggregation": c.federated.secure_aggregation,
+            "browser_rounds": 6,
+            "browser_lr": 0.15,
+            "browser_override_reason":
+                "the browser runs a lighter schedule so a federated round completes inside a page "
+                "interaction; the server-side values above are what the full deployment trains with",
+        },
         "benchmark": {
             "tier_architectures": b.tier_architectures,
             "generic_architecture": b.generic_architecture,

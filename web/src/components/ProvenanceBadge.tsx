@@ -23,14 +23,19 @@ import { onnxStatus, webgpuInfo } from "../lib/onnxInference";
 // JS numbers -- no ORT, no wasm module, no GPU. It was reporting `measured-wasm`, so a pipeline run
 // that never touched WebAssembly rendered as "MEASURED (local WASM)". The claim was wrong in the
 // direction that flatters, which is the direction this project cares about.
+// `remote` was REMOVED in Round 24d. It described a Hugging Face ZeroGPU Space that was never
+// wired, and nothing in this app ever set it - a type member no code path can produce is the same
+// defect as a metric with no reader, which this project treats as serious. The decision behind
+// the removal is in docs/deliverable-verification.md: the public demo is zero-server by design,
+// so a REMOTE provenance contradicts the architecture rather than extending it. Re-add it in the
+// same commit that first sets it, never before.
 export type Provenance =
-  "measured-webgpu" | "measured-wasm" | "measured-js" | "remote" | "simulated";
+  "measured-webgpu" | "measured-wasm" | "measured-js" | "simulated";
 
 const LABEL: Record<Provenance, string> = {
   "measured-webgpu": "MEASURED (local WebGPU)",
   "measured-wasm": "MEASURED (local WASM)",
   "measured-js": "MEASURED (plain JS)",
-  remote: "REMOTE (server)",
   simulated: "SIMULATED",
 };
 
@@ -40,7 +45,6 @@ const TITLE: Record<Provenance, string> = {
   "measured-js":
     "Computed in this browser tab in plain JavaScript arithmetic - a real model, really evaluated, " +
     "but with no WebAssembly or GPU involved. Timings are wall-clock.",
-  remote: "Computed off this machine. The reported time includes network latency.",
   simulated:
     "No computation of the advertised kind was performed. The value comes from an analytic model " +
     "or a cost model, not from running the primitive.",

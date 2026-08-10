@@ -10,7 +10,7 @@ import { hkdf } from "@noble/hashes/hkdf.js";
 import { sha256 } from "@noble/hashes/sha2.js";
 import {
   benchCfg, costPerOp, dataCfg, demoFeatureDim, genericArchitecture, idsCfg, medicalCnn, qkdCfg, qrngCfg,
-  demoSample, qsmpcCfg, quantumAdvantageCfg, securityScoringCfg, studentModel, tierArchitectures, webCfg,
+  demoSample, federatedCfg, qsmpcCfg, quantumAdvantageCfg, securityScoringCfg, studentModel, tierArchitectures, webCfg,
   workloadMultipliers,
 } from "./config";
 import { encryptedConv2d, encryptedLinear, encryptedStudentInference, warmFHE,
@@ -19,10 +19,10 @@ import { clientTrainScoreIDS } from "./clientIDS";
 import { secureArgmax, warmMPC } from "./clientMPC";
 import { optimizeQKD } from "./clientOptiQKD";
 import { generateQuantumBits } from "./clientQRNG";
-import { bb84, e91, FIBER, FREE_SPACE, h2, intrinsicQber, qcnnExpectation, qotpQcnnInfer, rng,
-  taggedFraction } from "./quantumSim";
+import { bb84, channelLossDb, e91, FIBER, FREE_SPACE, h2, intrinsicQber, qcnnExpectation,
+  qotpQcnnInfer, rng, taggedFraction } from "./quantumSim";
 import { type Provenance } from "../components/ProvenanceBadge";
-import { browserModels, onnxStatus, runPublishedModel } from "./onnxInference";
+import { browserModels, evaluatePublishedModel, onnxStatus, runPublishedModel } from "./onnxInference";
 import { realInput, realSatelliteAnomaly, realFederatedSet, type RealInput } from "./realData";
 
 const r1 = (x: number) => Math.round(x * 10) / 10;
@@ -985,14 +985,14 @@ export function clientQFL(
   opts?: { clients?: number; rounds?: number; data?: { X: number[][]; Y: number[] } | null },
 ): QFLResult {
   const u = rng(seed + 11);
-  // DELIBERATE divergence from `config.federated` (rounds 8, lr 0.05), not an oversight, and stated
-  // here because the two were silently different. The browser runs a lighter schedule so a federated
-  // round completes inside a page interaction; `FederatedConfig` is not exported to the browser at
-  // all, so these cannot be read from config today even if that were wanted. If the two are ever to
-  // agree, export the dataclass first - changing these numbers alone would move every reported
-  // federated accuracy without changing what the server does.
-  const K = opts?.clients ?? 4;
-  const rounds = opts?.rounds ?? 6;
+  // A DELIBERATE lighter schedule than the server's, now read from config rather than hardcoded.
+  // Round 23b found the browser running 6 rounds at lr 0.15 while `config.federated` said 8 at 0.05,
+  // with no way to reconcile them because FederatedConfig was not exported to the frontend at all.
+  // Round 24 exports it, including the browser overrides and the reason for them, so the override is
+  // a visible decision instead of two unrelated literals that happen to differ.
+  const fed = federatedCfg();
+  const K = opts?.clients ?? fed.hospitals;
+  const rounds = opts?.rounds ?? fed.browser_rounds;
   const X: number[][] = [];
   const Y: number[] = [];
   if (opts?.data?.X?.length) {
@@ -1028,7 +1028,8 @@ export function clientQFL(
 
   const sigmoid = (z: number) => 1 / (1 + Math.exp(-z));
   const dot = (a: number[], b: number[]) => a.reduce((s, v, i) => s + v * b[i], 0);
-  const localTrain = (ids: number[], w0: number[], epochs = 1, lr = 0.15) => {
+  const localTrain = (ids: number[], w0: number[], epochs = fed.local_epochs,
+                      lr = fed.browser_lr) => {
     const w = [...w0];
     for (let e = 0; e < epochs; e++) for (const id of ids) {       // local SGD on this client's shard
       const p = phi(X[id]); const g = sigmoid(dot(w, p)) - Y[id];
@@ -1182,6 +1183,75 @@ export function runClientPipeline(
       // render as an empty field.
       metric(stage, "published_model_status", "unavailable");
       emit("log", stage, `no published model for this use case: ${pub.reason}`);
+    }
+
+    // ---- Verification, DURING the run rather than beside it ---------------------------------
+    // The block above infers ONE row and reports its prediction. That demonstrates the model
+    // executes; it does not demonstrate the model is the one whose numbers this page prints. Those
+    // are different claims, and until now only the first was made at run time while the metric
+    // panel asserted the second statically.
+    //
+    // So re-score the whole published held-out sample here and compare against the figure recorded
+    // when it was trained. A mismatch is surfaced as a FAILED verification rather than a smaller
+    // number, because a model that does not reproduce its own published metric is not a weaker
+    // result - it is a different model, a different sample, or a broken pipeline, and none of those
+    // should be presented as a measurement.
+    // EVERY published model for this use case, not only the one the run selected. medical publishes
+    // three and satellite four; verifying just the selected one left the others asserted-but-never-
+    // checked, and the standalone "run this model" button that used to cover them was removed in
+    // favour of this. A visitor should not have to know which control re-checks which model.
+    for (const target of browserModels(usecase)) {
+      const key = target.spec.key;
+      const isSelected = pub.kind === "ran" && pub.run.modelKey === key;
+      try {
+        const v = await evaluatePublishedModel(usecase, 0.05, key);
+        if (v && v.ran && v.score != null && v.expected != null) {
+          // Only the selected model's numbers become run metrics; the rest are logged. Otherwise
+          // four models would overwrite each other's `verified_score` and the panel would show
+          // whichever finished last.
+          if (isSelected) {
+            metric(stage, "verified_metric", v.metricName);
+            metric(stage, "verified_score", r2(v.score));
+            metric(stage, "verified_expected", r2(v.expected));
+            metric(stage, "verified_n", v.n);
+            metric(stage, "verification", v.matchesExpected ? "PASS" : "FAIL");
+            // Carried as an artifact so the page can DRAW what was measured. A single number is the
+            // right thing to gate on and the wrong thing to reason from: "minority-class F1 0.51"
+            // does not say whether the classes separate or the threshold sat somewhere lucky.
+            artifacts.verification = { modelKey: key, ...v };
+          }
+          const delta = Math.abs(v.score - v.expected);
+          const tag = isSelected ? "" : " (not the selected model)";
+          emit("log", stage, v.matchesExpected
+            ? `verification PASS ${key}${tag}: re-scored all ${v.n} published held-out rows in this `
+              + `tab and got ${v.metricName} ${r2(v.score)} against the recorded ${r2(v.expected)} `
+              + `(|delta| ${delta.toExponential(2)}). The number this page prints was reproduced `
+              + `here, not asserted.`
+            : `verification FAIL ${key}${tag}: re-scoring ${v.n} rows gave ${v.metricName} `
+              + `${r2(v.score)} but the recorded figure is ${r2(v.expected)} (|delta| `
+              + `${delta.toExponential(2)}, tolerance 0.05). Treat every number on this page for `
+              + `${key} as unverified until this is explained.`);
+          // A model that cannot beat a trivial predictor is worth saying out loud even when it
+          // reproduces its own figure exactly - reproducing a bad number is still reproducing it.
+          if (!v.beatsBaseline && v.baseline != null) {
+            emit("log", stage, `note: this model does not beat the trivial baseline on that sample `
+              + `(${r2(v.score)} against ${r2(v.baseline)}). Reproducing a figure and being useful `
+              + `are separate questions.`);
+          }
+        } else if (v && v.error) {
+          if (isSelected) metric(stage, "verification", "ERROR");
+          emit("log", stage, `verification could not run for ${key}: ${v.error}`);
+        } else {
+          // Distinct from a failure: some models publish no evaluation sample, and saying nothing
+          // would let "not checked" read as "checked and fine".
+          if (isSelected) metric(stage, "verification", "no-sample");
+          emit("log", stage, `no published evaluation sample for ${key}, so its recorded metric `
+            + `is NOT reproduced in this tab.`);
+        }
+      } catch (e) {
+        if (isSelected) metric(stage, "verification", "ERROR");
+        emit("log", stage, `verification threw for ${key}: ${(e as Error).message}`);
+      }
     }
   }
 
@@ -1426,16 +1496,66 @@ export function runClientPipeline(
         const e = intrinsicQber({ ...FREE_SPACE,
           distanceKm: Number(config.sat_distance_km ?? FREE_SPACE.distanceKm),
           eveFraction: Number(config.sat_eve ?? FREE_SPACE.eveFraction) });
-        const threshold = Number(config.qsdc_threshold ?? qkdCfg().pp_threshold);
-        const eavesdrop = e > threshold;
+        // QSDC aborts on SECRECY CAPACITY, not on a fixed QBER. Qi et al., Light Sci. Appl. 8, 22
+        // (2019), protocol step 2: "If the secrecy capacity C_s is zero, they conclude the channel
+        // is insecure and terminate the process."
+        //
+        //     C_s = 1 - h(e) - g*h(e_chk),   g = Q_Eve / Q_Bob = 10^(loss_dB / 10)
+        //
+        // The scalar 0.11 used here before is the g = 1 (LOSS-FREE) root of that expression, which
+        // is why it coincided exactly with the Shor-Preskill BB84 bound. Real links are lossy and g
+        // grows with loss, so the true threshold falls fast: Qi 2019 measured g = 2.57 at 4.1 dB,
+        // giving ~0.048. This page's own free-space downlink measures around 24.5 dB, where the
+        // threshold is ~0.0003 - so 0.11 was wrong here by three orders of magnitude, and wrong in
+        // the PERMISSIVE direction: it delivered telemetry over channels whose secrecy capacity was
+        // already zero.
+        //
+        // The founding QSDC papers (Long-Liu 2002, Deng-Long-Liu 2003, DL04 2004) give no numeric
+        // threshold at all - only "if the error rate is high, halt" - and no standards body has ever
+        // specified one: ETSI, ITU-T, ISO/IEC and IEEE quantum series are all key distribution.
+        const lossDb = channelLossDb({ ...FREE_SPACE,
+          distanceKm: Number(config.sat_distance_km ?? FREE_SPACE.distanceKm) });
+        const g = 10 ** (lossDb / 10);
+        const secrecy = 1 - h2(e) - g * h2(e);
+        const abort = secrecy <= 0;
+        // WHY the abort fired matters more than THAT it fired, and reporting both as
+        // `qsdc_eavesdrop_detected` was wrong. Re-evaluate the same link with Eve removed: if it
+        // still cannot close, the limit is the LINK BUDGET, and the page was accusing a clean
+        // channel of carrying an eavesdropper on every single run.
+        //
+        // It always does still cannot close, at every setting this demo offers. The fixed 5 dB
+        // atmospheric + 3 dB pointing budget alone gives g = 6.31, and C_s > 0 there needs
+        // QBER < ~0.019 while the misalignment floor is 0.025 - so even at zero range, with a
+        // perfect pointing solution and no eavesdropper, secrecy capacity is negative. Moving
+        // `sat_distance_km` cannot produce a delivery. That is not a bug in this code, it is the
+        // finding: QSDC does not close over a LEO free-space downlink under the published
+        // criterion. Qi et al. demonstrated it at 4.1 dB on FIBRE; this link is 24.5 dB.
+        const secrecyNoEve = (() => {
+          const e0 = intrinsicQber({ ...FREE_SPACE,
+            distanceKm: Number(config.sat_distance_km ?? FREE_SPACE.distanceKm), eveFraction: 0 });
+          return 1 - h2(e0) - g * h2(e0);
+        })();
+        const lossLimited = secrecyNoEve <= 0;
         metric(stage, "qsdc_error_rate", r2(e));
-        metric(stage, "qsdc_secrecy_capacity", eavesdrop ? 0 : r2(Math.max(0, 1 - 2 * h2(e))));
-        metric(stage, "qsdc_eavesdrop_detected", eavesdrop ? 1 : 0);
-        artifacts.telemetry_delivered = !eavesdrop;
-        emit("log", stage, eavesdrop
-          ? `QSDC ABORTED: error ${e.toFixed(3)} > ${threshold} — telemetry withheld`
-          : `QSDC delivered telemetry (secrecy ${(1 - 2 * h2(e)).toFixed(3)} bit/carrier)`);
-        if (!eavesdrop) {
+        metric(stage, "qsdc_secrecy_capacity", r2(Math.max(0, secrecy)));
+        metric(stage, "qsdc_eve_gain_g", r2(g));
+        metric(stage, "qsdc_link_budget_limited", lossLimited ? 1 : 0);
+        // Reserved for what the name says: an abort this link would NOT have suffered on its own.
+        metric(stage, "qsdc_eavesdrop_detected", abort && !lossLimited ? 1 : 0);
+        artifacts.telemetry_delivered = !abort;
+        emit("log", stage, !abort
+          ? `QSDC delivered telemetry (secrecy ${secrecy.toFixed(4)} bit/carrier, g=${g.toFixed(1)})`
+          : lossLimited
+            ? `QSDC NOT AVAILABLE on this link — secrecy capacity ${secrecy.toFixed(4)} bit/carrier `
+              + `at ${lossDb.toFixed(1)} dB (g=${g.toFixed(1)}), and it is still `
+              + `${secrecyNoEve.toFixed(4)} with NO eavesdropper. The limit is the link budget, not `
+              + `an attack: C_s > 0 requires h(QBER) < 1/(1+g) = ${(1 / (1 + g)).toExponential(2)}, `
+              + `and h(${e.toFixed(4)}) = ${h2(e).toFixed(4)} here. `
+              + `Telemetry falls back to the PQC session key.`
+            : `QSDC ABORTED: secrecy capacity ${secrecy.toFixed(4)} <= 0 at error ${e.toFixed(4)} `
+              + `with g=${g.toFixed(1)} (${lossDb.toFixed(1)} dB) — this link closes at `
+              + `${secrecyNoEve.toFixed(4)} without Eve, so the loss is attributable — telemetry withheld`);
+        if (!abort) {
           // REAL NASA SMAP/MSL telemetry + the real linear anomaly model, scored in-browser (the satellite
           // flow has no private_inference stage, so the real anomaly verdict is surfaced here at delivery).
           const anom = await realSatelliteAnomaly(u);
@@ -1444,6 +1564,15 @@ export function runClientPipeline(
             metric(stage, "telemetry_anomaly_score", anom.anomalyScore);
             emit("log", stage, `private telemetry anomaly detection (${anom.provenance}): `
               + `${anom.isAnomaly ? "ANOMALY" : "nominal"} (score ${anom.anomalyScore})`);
+            // Satellite had NO attribution in the browser, while the Python pipeline has computed
+            // one since Round 18 that nothing rendered. The model here is genuinely linear - a 2xN
+            // margin over a NASA telemetry window - so exact linear SHAP applies unchanged and no
+            // new method is introduced. Reference point is E[x] over the bundled windows, the same
+            // choice the three inference use cases make.
+            artifacts.explanation = linearShap(
+              anom.model.W, anom.model.b, anom.window, anom.featureNames, 5, anom.baseline);
+            artifacts.explanation_provenance = "real bundled telemetry model";
+            artifacts.explanation_baseline = "mean of the bundled NASA telemetry windows";
           }
         }
         // Satellite's flow has no private_inference stage either, so its published model runs here.
@@ -1569,6 +1698,20 @@ export function runClientPipeline(
         // clientIDS clamps this to >=20 and falls back on a non-finite input, so the requested value
         // is not always the value used. Report what the run actually trained on.
         metric(stage, "ids_train_per_class", ids.nPerClassUsed);
+        // Telecom had NO attribution anywhere - browser or Python - despite being the one use case
+        // whose whole point is classifying an attack. The classifier trained above is linear
+        // (softmax over b[c] + W[c].z), so exact linear SHAP applies to it directly. clientIDS
+        // returns W as a one-vs-rest PAIR for the predicted class, so `W[1] - W[0]` here is the
+        // same contrast explainability.py computes for the multiclass case - the method is shared,
+        // not reinvented. Baseline is the zero vector because the features are z-scored inside
+        // clientIDS, so E[x] is 0 by construction; that is stated rather than left implied.
+        if (ids.explain) {
+          artifacts.explanation = linearShap(
+            ids.explain.W, ids.explain.b, ids.explain.x, ids.explain.featureNames, 5);
+          artifacts.explanation_provenance =
+            `in-browser IDS classifier, one-vs-rest for ${ids.explain.className}`;
+          artifacts.explanation_baseline = "zero vector (features are z-scored, so E[x] = 0)";
+        }
         emit("log", stage, `QML-IDS (client, softmax logistic on Al-Kuwari-2026 signatures): `
           + `macro-F1=${r2(ids.macroF1)} over 8 classes, worst class ${r2(ids.worstClassF1)} `
           + `— measured on ${ids.nTest} held-out samples (${ids.nPerClassUsed}/class)`);

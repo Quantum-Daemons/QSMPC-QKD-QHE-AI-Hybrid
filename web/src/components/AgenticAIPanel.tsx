@@ -248,6 +248,37 @@ export default function AgenticAIPanel({
             // numbers produced it, and whether the page had moved on by the time it was saved.
             run_context: ranWithCtx,
             stale_at_download: stale,
+            // Provenance metadata on the downloaded artifact. Deliberately NOT labelled as an
+            // Article 50(2) marking layer, because researching the actual instruments showed this
+            // system does not need one - and because a marking layer without a detector is worse
+            // than none.
+            //
+            // The Commission's Code of Practice on Transparency of AI-generated Content (final
+            // 2026-06-10, assessed adequate 8-9 July 2026) is the recognised route to 50(2). Its
+            // chain for this exact case: FREE-FORM TEXT - "the text that is shown on a website or
+            // within a chat" - cannot transport metadata, so watermarking is the only layer; and
+            // Sub-measure 1.1.2 excepts "very short text", which the glossary defines as text
+            // SHORTER THAN 200 TOKENS. This panel generates 96 tokens (Transformers.js) or 160
+            // (WebLLM), both under that threshold.
+            //
+            // And the Guidelines (point 70) are explicit that marking without the means to detect
+            // it "will not suffice". Shipping a marking layer we could not detect would create an
+            // obligation rather than discharge one. So this block is voluntary provenance, useful
+            // for anyone auditing a saved artifact, and it says so.
+            //
+            // The obligation that DOES bite is Art. 50(1), which has shipped since Round 21 and has
+            // no grace period. Gap analysis: docs/ai-act-art50-gap-analysis.md
+            provenance_note: {
+              ai_generated: true,
+              generator: { engine: run?.engine ?? null, model: run?.model ?? null,
+                           runtime: "in-browser" },
+              basis: "voluntary provenance metadata, not an Article 50(2) marking layer",
+              why_no_marking_layer:
+                "free-form text under 200 tokens is 'very short text' under the Commission Code of "
+                + "Practice (Sub-measure 1.1.2 and glossary), which excepts it from watermarking; "
+                + "free-form text cannot carry metadata, so no marking layer applies",
+              art_50_1_disclosure: "shown unconditionally on this panel",
+            },
           }, `qsh-agentic-${usecase ?? "ai"}.json`)}>
           ⬇ Download results (JSON)
         </button>

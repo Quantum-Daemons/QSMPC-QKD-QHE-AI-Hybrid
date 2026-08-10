@@ -402,6 +402,9 @@ export interface ModelInputFile {
   input: { shape: number[]; dtype: string; preprocessing: string[]; layout: string };
   samples: number[][];
   labels?: number[];
+  /** Human-readable class names, when the sample ships them. Telecom's eight attack types are the
+   *  reason a per-class chart is worth drawing at all - "class 5" says nothing. */
+  class_names?: string[];
   /** Next-step ground truth, for forecast models. */
   targets?: number[][];
   expected: {
@@ -416,6 +419,7 @@ export interface ModelInputFile {
      *  0.1-percent-positive corpus while its minority-class F1 is 0.0178. A browser that "verified"
      *  the 99 would be confirming the wrong number. */
     minority_class_f1?: number;
+    macro_f1?: number;
     /** F1 of predicting EVERYTHING positive: precision = prevalence, recall = 1. The floor a rare-
      *  class F1 has to clear, and the reason 0.0178 needs a companion rather than a bare comparison
      *  against zero. */
@@ -434,7 +438,7 @@ export interface ModelEvalResult {
   score: number | null;
   /** Which metric `score` and `expected` are. The model is scored on the metric it was PUBLISHED
    *  with, not on whichever one the browser found easiest to compute. */
-  metricName: "accuracy" | "minority_class_f1" | "mae";
+  metricName: "accuracy" | "minority_class_f1" | "macro_f1" | "mae";
   expected: number | null;
   /** Majority-class accuracy, or persistence MAE — what a trivial predictor would achieve. */
   baseline: number | null;
@@ -454,6 +458,20 @@ export interface ModelEvalResult {
    *  explanation is worse than either alone. */
   note: string | null;
   error: string | null;
+  /** Compact plot data, reduced HERE rather than by shipping thousands of raw scores into React
+   *  state. Everything needed to draw it already exists at this point in the function; recomputing
+   *  it in a component would be a second chance to compute it differently. */
+  plot?: {
+    kind: "pr-curve" | "per-class-f1" | "forecast";
+    /** Precision-recall pairs for a binary task, thinned to a drawable number of points. */
+    pr?: Array<{ recall: number; precision: number }>;
+    /** Score histogram split by true class - what separability actually looks like. */
+    hist?: Array<{ bin: number; positive: number; negative: number }>;
+    /** Per-class F1 for a multi-class task. The aggregate hides exactly this. */
+    perClass?: Array<{ label: string; f1: number }>;
+    /** Predicted against actual for a forecast window. */
+    series?: Array<{ i: number; actual: number; predicted: number }>;
+  };
 }
 
 /** The evaluation sample for one model, memoised per URL.
@@ -607,6 +625,12 @@ export async function evaluatePublishedModel(
       const mae = count ? err / count : NaN;
       const persistenceMae = count ? persist / count : NaN;
       const exp = file.expected.mae ?? null;
+      // Channel 0 predicted against actual across the scored windows. A forecaster's MAE says how
+      // far off it is on average; this says WHERE - whether the error is uniform drift or a few
+      // large misses, which is the difference between a miscalibrated model and a missed event.
+      const series = Array.from({ length: Math.min(n, 240) }, (_, i) => ({
+        i, actual: (file.targets?.[i] ?? [])[0] ?? 0, predicted: data[i * width] ?? 0,
+      }));
       return {
         ran: true, task, metricName: "mae", n, score: mae, expected: exp,
         baseline: file.expected.persistence_mae ?? persistenceMae,
@@ -614,20 +638,70 @@ export async function evaluatePublishedModel(
         matchesExpected: exp == null ? false : Math.abs(mae - exp) <= Math.max(tolerance, exp * 0.1),
         backend: status.backend, bytes: status.bytes, provenance: file.provenance,
         note: file.expected.note ?? null, error: null,
+        plot: { kind: "forecast", series },
       };
     }
 
     const labels = file.labels ?? [];
+    // Retained rather than consumed in place: macro F1 needs a second pass over the predictions,
+    // and recomputing the argmax there would be a second chance to compute it differently.
+    const preds = new Int32Array(n);
     let correct = 0, tp = 0, fp = 0, fn = 0, positives = 0;
     for (let i = 0; i < n; i++) {
       let best = 0;
       for (let c = 1; c < width; c++) if (data[i * width + c] > data[i * width + best]) best = c;
       const pred = width > 1 ? best : (data[i] > 0.5 ? 1 : 0);
+      preds[i] = pred;
       if (pred === labels[i]) correct++;
       if (labels[i] === 1) positives++;
       if (pred === 1 && labels[i] === 1) tp++;
       else if (pred === 1) fp++;
       else if (labels[i] === 1) fn++;
+    }
+
+    // ---- plot data, computed once, from the arrays already here --------------------------------
+    const positiveScore = (i: number) =>
+      width > 1 ? data[i * width + 1] - data[i * width + 0] : data[i];
+    const nClasses = width > 1 ? width : 2;
+    let plot: ModelEvalResult["plot"];
+    if (nClasses === 2) {
+      // Rank by score, sweep the threshold down, and read precision/recall off the running counts.
+      const order = Array.from({ length: n }, (_, i) => i)
+        .sort((a, b) => positiveScore(b) - positiveScore(a));
+      const totalPos = labels.reduce((acc: number, l: number) => acc + (l === 1 ? 1 : 0), 0);
+      const pr: Array<{ recall: number; precision: number }> = [];
+      let seenTp = 0;
+      const stride = Math.max(1, Math.floor(n / 200));   // <=200 points is plenty for a curve
+      for (let k = 0; k < n; k++) {
+        if (labels[order[k]] === 1) seenTp++;
+        if (k % stride === 0 || k === n - 1) {
+          pr.push({ recall: totalPos ? seenTp / totalPos : 0, precision: seenTp / (k + 1) });
+        }
+      }
+      // Score histogram, split by TRUE class. A PR curve says how good; this says why.
+      const lo = Math.min(...Array.from({ length: n }, (_, i) => positiveScore(i)));
+      const hi = Math.max(...Array.from({ length: n }, (_, i) => positiveScore(i)));
+      const bins = 24;
+      const hist = Array.from({ length: bins }, (_, b) => ({ bin: b, positive: 0, negative: 0 }));
+      for (let i = 0; i < n; i++) {
+        const t = hi > lo ? (positiveScore(i) - lo) / (hi - lo) : 0;
+        const b = Math.min(bins - 1, Math.max(0, Math.floor(t * bins)));
+        if (labels[i] === 1) hist[b].positive++; else hist[b].negative++;
+      }
+      plot = { kind: "pr-curve", pr, hist };
+    } else {
+      const perClass: Array<{ label: string; f1: number }> = [];
+      for (let c = 0; c < nClasses; c++) {
+        let ctp = 0, cfp = 0, cfn = 0;
+        for (let i = 0; i < n; i++) {
+          if (preds[i] === c && labels[i] === c) ctp++;
+          else if (preds[i] === c) cfp++;
+          else if (labels[i] === c) cfn++;
+        }
+        perClass.push({ label: file.class_names?.[c] ?? String(c),
+                        f1: ctp === 0 ? 0 : (2 * ctp) / (2 * ctp + cfp + cfn) });
+      }
+      plot = { kind: "per-class-f1", perClass };
     }
 
     // Score on the metric the model was PUBLISHED with. Three of the four distilled students record
@@ -647,7 +721,38 @@ export async function evaluatePublishedModel(
         beatsBaseline: f1 > allPositive,
         matchesExpected: Math.abs(f1 - exp) <= tolerance,
         backend: status.backend, bytes: status.bytes, provenance: file.provenance,
-        note: file.expected.note ?? null, error: null,
+        note: file.expected.note ?? null, error: null, plot,
+      };
+    }
+
+    // Macro F1 for the multi-class detector. Aggregate accuracy is precisely the metric Engelen
+    // et al. (WTMC 2021) showed stays at 0.99 while a per-class F1 moves 0.60 -> 0.99, so verifying
+    // an eight-class intrusion detector on accuracy checks almost nothing about the classes that
+    // matter. Until Round 24i that sample published only accuracy and this branch did not exist.
+    if (file.expected.macro_f1 != null) {
+      const classes = new Set<number>();
+      for (let i = 0; i < n; i++) { classes.add(preds[i]); classes.add(labels[i]); }
+      let sum = 0;
+      for (const c of classes) {
+        let ctp = 0, cfp = 0, cfn = 0;
+        for (let i = 0; i < n; i++) {
+          if (preds[i] === c && labels[i] === c) ctp++;
+          else if (preds[i] === c) cfp++;
+          else if (labels[i] === c) cfn++;
+        }
+        sum += ctp === 0 ? 0 : (2 * ctp) / (2 * ctp + cfp + cfn);
+      }
+      const macro = classes.size ? sum / classes.size : 0;
+      const exp = file.expected.macro_f1;
+      // A balanced n-class problem: guessing one class always gives macro F1 of about 2/(n+1)/n.
+      const chance = classes.size ? (2 / (classes.size + 1)) / classes.size : 0;
+      return {
+        ran: true, task, metricName: "macro_f1", n, score: macro, expected: exp,
+        baseline: chance,
+        beatsBaseline: macro > chance,
+        matchesExpected: Math.abs(macro - exp) <= tolerance,
+        backend: status.backend, bytes: status.bytes, provenance: file.provenance,
+        note: file.expected.note ?? null, error: null, plot,
       };
     }
 
@@ -659,7 +764,7 @@ export async function evaluatePublishedModel(
       beatsBaseline: majority == null ? true : accuracy > majority,
       matchesExpected: exp == null ? false : Math.abs(accuracy - exp) <= tolerance,
       backend: status.backend, bytes: status.bytes, provenance: file.provenance,
-      note: file.expected.note ?? null, error: null,
+      note: file.expected.note ?? null, error: null, plot,
     };
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);

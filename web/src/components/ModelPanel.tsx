@@ -14,6 +14,7 @@
 import { modelsFor, type ModelSpec } from "../lib/config";
 import { useState } from "react";
 import { browserModels, evaluatePublishedModel, type ModelEvalResult } from "../lib/onnxInference";
+import { AncestryStrataChart } from "./VerificationChart";
 
 const TIER_LABEL: Record<string, string> = {
   t1_crypto: "encrypted (FHE/MPC-feasible)",
@@ -37,6 +38,9 @@ const isCompanion = (k: string) =>
 const NOT_A_METRIC = new Set([
   "wall_clock_s", "resolution", "n_eval", "n_train", "n_test", "positive_rate",
   "decision_threshold", "best_val_auc",
+  // Sample sizes, not scores. These render inline on the headline row instead, next to the
+  // baseline, because that is where the comparison gets made and where the count has to be read.
+  "n_events_scored", "n_scoring_units", "n_anomaly_intervals",
 ]);
 
 function fmt(v: unknown): string {
@@ -102,11 +106,28 @@ function MetricRows({ spec }: { spec: ModelSpec }) {
       </p>
     );
   }
-  const bothZero = Boolean(
-    (achieved as Record<string, unknown>).both_scored_zero
-    ?? ((achieved as Record<string, number>).teacher_metric === 0
-        && (achieved as Record<string, number>).student_metric === 0
-        && "teacher_metric" in (achieved as object)));
+  // The teacher scoring 0 on the fidelity slice voids the comparison whatever the student scored:
+  // at student 0 the delta cancels to 0, and at student > 0 it goes NEGATIVE and reads as the
+  // encrypted student beating its own teacher. Records from earlier rounds carry only the narrower
+  // `both_scored_zero`, so fall back to reading `teacher_metric` directly rather than trusting a
+  // flag written under the old condition.
+  const rec = achieved as Record<string, unknown>;
+  const teacherZero = "teacher_metric" in rec
+    ? (rec.teacher_scored_zero as boolean | undefined) ?? (rec.teacher_metric as number) === 0
+    : false;
+  const studentScored = ((rec.student_metric as number) ?? 0) > 0;
+  // How many things the headline was divided by. `n_events_scored` is the teacher's own count;
+  // `n_scoring_units` is the distillation slice's. Neither is `n_eval`, which counts samples — for
+  // an event-wise metric those differ by five orders of magnitude (307,601 samples, 2 events).
+  const scoredOver = (rec.n_events_scored as number | undefined)
+    ?? (rec.n_scoring_units as number | undefined) ?? null;
+  const scoredUnit = (rec.scoring_unit as string | undefined) ?? "labelled events";
+  // A distillation record measures a DECISION metric, because agreement compares decisions. The
+  // registry's headline for the same model is often score-based (auc, auc_pr), and the panel prints
+  // that baseline underneath. Naming the recorded metric is what stops a 0.7308 accuracy being read
+  // against a 0.901 AUC.
+  const recordedMetric = rec.metric_name as string | undefined;
+  const metricMismatch = recordedMetric != null && recordedMetric !== spec.metric.name;
   const headline = numeric.filter(([k]) => !isCompanion(k));
   const companion = numeric.filter(([k]) => isCompanion(k));
 
@@ -115,22 +136,49 @@ function MetricRows({ spec }: { spec: ModelSpec }) {
       <tbody>
         {headline.map(([k, v]) => (
           <tr key={k} className={k === spec.metric.name ? "metric-headline" : undefined}>
-            <td><code>{k}</code></td>
+            {/* `student_metric` / `teacher_metric` are opaque names: they say which model, never
+                which quantity. The record knows, so print it. */}
+            <td><code>{k === "student_metric" || k === "teacher_metric"
+              ? `${k.split("_")[0]} ${recordedMetric ?? "metric"}` : k}</code></td>
             <td className="num">{fmt(v)}</td>
             <td className="muted small">
               {k === spec.metric.name && spec.metric.baseline != null
                 ? `baseline ${spec.metric.baseline}${spec.metric.ceiling != null
                     ? ` · ceiling ${spec.metric.ceiling}` : ""}`
                 : ""}
+              {/* The sample size belongs on the row that shows the baseline, because that row is
+                  where the comparison actually gets made. An event-wise score over 3 events and a
+                  benchmark over hundreds render as the same kind of decimal. */}
+              {k === spec.metric.name && scoredOver != null && (
+                <> · <strong>over {scoredOver} {scoredUnit}</strong>
+                  {scoredOver < 10 && " — too few to compare with the baseline"}</>
+              )}
             </td>
           </tr>
         ))}
-        {bothZero && (
+        {metricMismatch && (
           <tr className="metric-companion">
             <td colSpan={3} className="muted small">
-              teacher and student both score 0 on the fidelity slice, so <code>metric_delta</code> is 0 by
-              cancellation — not because encryption was free. That slice is a later window than the one the
-              teacher's headline metric is computed over, so the two are not comparable.
+              Fidelity here is measured as <code>{recordedMetric}</code>, while the baseline quoted below
+              belongs to <code>{spec.metric.name}</code>. Those are different quantities and must not be read against
+              each other: fidelity compares the student's <em>decisions</em> to the teacher's, and a decision
+              carries no score to rank. Where the declared metric is computable it is recorded as its own row
+              above — compare the baseline to that.
+            </td>
+          </tr>
+        )}
+        {teacherZero && (
+          <tr className="metric-companion">
+            <td colSpan={3} className="muted small">
+              <strong>The teacher scores 0 on the fidelity slice, so there is no fidelity claim here.</strong>{" "}
+              {studentScored
+                ? <>Because the student scored above 0, <code>metric_delta</code> comes out negative. That does
+                   not mean the encrypted student outperformed its teacher — it means the teacher caught nothing
+                   on this slice, and a near-zero score is being compared against zero.</>
+                : <>Neither model scored, so <code>metric_delta</code> is 0 by cancellation, not because
+                   encryption was free.</>}{" "}
+              The slice is a later window than the one the teacher's headline metric is computed over, so
+              neither number is comparable to that headline.
             </td>
           </tr>
         )}
@@ -155,9 +203,6 @@ function MetricRows({ spec }: { spec: ModelSpec }) {
  * them would hide which one applies.
  */
 function ModelRunner({ usecase, spec }: { usecase: string; spec: ModelSpec }) {
-  const [res, setRes] = useState<ModelEvalResult | null>(null);
-  const [busy, setBusy] = useState(false);
-  const [ran, setRan] = useState(false);
 
   const fetchable = browserModels(usecase).some((m) => m.spec.key === spec.key);
   const blocked =
@@ -168,29 +213,18 @@ function ModelRunner({ usecase, spec }: { usecase: string; spec: ModelSpec }) {
     : !fetchable ? "published, but it ships no browser-runnable ONNX graph at that revision"
     : null;
 
-  const run = async () => {
-    setBusy(true);
-    setRes(await evaluatePublishedModel(usecase, undefined, spec.key));
-    setRan(true);
-    setBusy(false);
-  };
-
   if (blocked) return <p className="muted small"><em>Cannot be run here: {blocked}.</em></p>;
 
-  return (
-    <div style={{ marginTop: 6 }}>
-      <button className="btn ghost" onClick={run} disabled={busy} style={{ fontSize: 12 }}>
-        {busy ? "Running\u2026" : "\u25b6 Run this model in your browser"}
-      </button>
-      {ran && res === null && (
-        <p className="muted small">
-          Published and pinned, but it ships no <code>eval_sample.json</code> at that revision, so
-          there is no held-out sample to score it on. Reported rather than passed off as a success.
-        </p>
-      )}
-      <ModelEvalReport res={res} />
-    </div>
-  );
+  // The standalone "run this model" button was REMOVED in Round 24j. It called exactly what the
+  // E2E orchestration now calls on every run - evaluatePublishedModel on the whole held-out sample
+  // - so it had become a second, manual path to the same check, with its own state and its own
+  // chance to disagree. The run verifies every published model for this use case, not only the
+  // selected one, so nothing is lost by deleting it: start the pipeline and the verification is
+  // part of the result rather than a button somebody has to know to press.
+  return <p className="muted small">
+    Verified during the pipeline run: press <strong>Start</strong> and this model is re-scored on its
+    published held-out sample in this tab, with the result reported in the run log.
+  </p>;
 }
 
 /**
@@ -332,6 +366,11 @@ export function ModelPanel({ usecase }: { usecase: string }) {
           <p className="muted small">{spec.architecture}</p>
 
           <MetricRows spec={spec} />
+
+          {/* The one published model with no browser-runnable graph, so the in-run verification
+              chart never fires for it. Its finding lives in the metric rows above and twenty rows
+              hide it; this draws the same numbers. */}
+          <AncestryStrataChart achieved={spec.achieved} />
 
           <p className="muted small">
             <strong>Data:</strong> {spec.dataset.name} — {spec.dataset.licence}{" "}

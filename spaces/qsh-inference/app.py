@@ -59,7 +59,8 @@ MODELS = {
         "repo": f"{HF_NAMESPACE}/qsh-medical-breastmnist-resnet18",
         "file": "onnx/model.onnx",
         "shape": [1, 1, 28, 28],
-        "classes": ["benign/normal", "malignant"],
+        # MedMNIST BreastMNIST: {0: malignant, 1: "normal, benign"} - not the other way round.
+        "classes": ["malignant", "normal/benign"],
         # Kept in step with models/metrics.json by hand; this string said 0.888 while the recorded
         # measurement was 0.9147. If it drifts again, metrics.json is the source of truth.
         "metric": "AUC 0.9147 measured; 0.901 published baseline (MedMNIST v2)",

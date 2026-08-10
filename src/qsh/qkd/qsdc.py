@@ -4,7 +4,7 @@ QSDC (the report §6: QSDC / QT-QSS) transmits a *message* over the quantum chan
 directly, without first distributing a key. Security comes from a two-step / DL04-style
 block transmission with an interspersed **eavesdrop check**: a random subset of carriers
 is sampled and their error rate estimated *before* the sensitive block is released. If the
-error rate exceeds the secure threshold the transmission is aborted, so an eavesdropper
+SECRECY CAPACITY of the link is not positive the transmission is aborted, so an eavesdropper
 learns nothing about the message (it was never sent on a compromised channel).
 
 This is the natural primitive for **satellite communications**: a free-space downlink where
@@ -16,7 +16,7 @@ correction (LDPC) and privacy amplification.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 import numpy as np
 
@@ -35,12 +35,14 @@ class QSDCResult:
     """Outcome of a QSDC block transmission."""
 
     delivered: bytes | None        # the message if the channel passed the eavesdrop check, else None
-    eavesdrop_detected: bool
+    eavesdrop_detected: bool       # abort ATTRIBUTABLE to Eve: this link would have closed without her
     error_rate: float              # measured error on the sampled check carriers
-    secrecy_capacity: float        # Wyner secure bits per carrier, max(0, 1 - 2 H2(e))
+    secrecy_capacity: float        # Cs = 1 - h(e) - g h(e), clamped at 0 for reporting
     message_bits: int
     check_bits: int
-    threshold: float
+    loss_db: float                 # one-way channel loss backing g
+    eve_gain_g: float              # g = Q_Eve / Q_Bob = 10^(loss_dB/10)
+    link_budget_limited: bool      # Cs <= 0 even with Eve removed -- the link, not an attack
 
 
 def quantum_secure_direct_comm(
@@ -48,14 +50,22 @@ def quantum_secure_direct_comm(
     params: ChannelParams | None = None,
     *,
     check_fraction: float = 0.25,
-    threshold: float = 0.11,
     seed: int | None = None,
 ) -> QSDCResult:
     """Send ``message`` directly over the quantum channel with an inline eavesdrop check.
 
-    The channel error rate (intrinsic + any eavesdropper) is estimated on a random
-    ``check_fraction`` of carriers. Below ``threshold`` the message block is released and
-    recovered (frame error correction modelled as exact); above it the transfer aborts.
+    The abort criterion is **secrecy capacity**, not a fixed QBER. Qi et al., Light Sci. Appl. 8,
+    22 (2019), protocol step 2: if ``Cs`` is zero the channel is insecure and the transfer stops.
+
+        Cs = 1 - h(e) - g h(e_chk),    g = Q_Eve / Q_Bob = 10^(loss_dB / 10)
+
+    This replaces a ``threshold=0.11`` parameter that was the g = 1 (LOSS-FREE) root of the same
+    expression -- which is why it coincided exactly with the Shor-Preskill BB84 bound and looked
+    right. Real links are lossy and ``g`` grows with loss, so the true tolerance collapses: at the
+    24.5 dB of this project's own free-space downlink it is ~3e-4, three orders of magnitude below
+    0.11 and wrong in the PERMISSIVE direction. The browser path was corrected first; this is the
+    reference implementation catching up, and until now the two disagreed about whether the same
+    nominal link delivers.
     """
     params = params or ChannelParams()
     rng = np.random.default_rng(seed)
@@ -69,11 +79,21 @@ def quantum_secure_direct_comm(
     check_errors = rng.random(n_check) < e
     error_rate = float(check_errors.mean()) if n_check else float(e)
 
-    eavesdrop = error_rate > threshold
-    if eavesdrop:
-        return QSDCResult(None, True, round(error_rate, 5), 0.0, n_msg, n_check, threshold)
+    loss_db = params.distance_km * params.fiber_loss_db_per_km
+    g = 10.0 ** (loss_db / 10.0)
+    secrecy = 1.0 - _h2(error_rate) - g * _h2(error_rate)
 
-    secrecy = max(0.0, 1.0 - 2.0 * _h2(error_rate))  # Wyner wiretap secure fraction
-    # below threshold: LDPC frame correction recovers the block exactly
+    # Attribute the abort. Re-evaluate the identical link with Eve removed: if it still cannot
+    # close, the limit is the link budget and calling it "eavesdrop detected" accuses a clean
+    # channel. Only an abort the link would NOT have suffered on its own is Eve's.
+    clean = replace(params, eve_intercept_fraction=0.0)
+    secrecy_clean = 1.0 - (1.0 + g) * _h2(intrinsic_qber(clean))
+    link_limited = secrecy_clean <= 0.0
+
+    if secrecy <= 0.0:
+        return QSDCResult(None, not link_limited, round(error_rate, 5), 0.0,
+                          n_msg, n_check, round(loss_db, 3), round(g, 3), link_limited)
+
+    # above zero secrecy capacity: LDPC frame correction recovers the block exactly
     return QSDCResult(message, False, round(error_rate, 5), round(secrecy, 5),
-                      n_msg, n_check, threshold)
+                      n_msg, n_check, round(loss_db, 3), round(g, 3), link_limited)

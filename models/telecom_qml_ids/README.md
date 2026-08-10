@@ -1,12 +1,14 @@
 ---
 license: other
 license_name: generated-by-this-repository
-library_name: transformers
+library_name: onnx
 pipeline_tag: tabular-classification
 tags:
   - quantum-safe
   - privacy-preserving
   - telecom-ids
+  - onnx
+  - onnxruntime-web
 ---
 
 # Quantum-kernel SVC + variational QNN

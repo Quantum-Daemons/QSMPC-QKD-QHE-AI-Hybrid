@@ -23,13 +23,14 @@ a quantum-safe orchestration demo. This is the **plaintext** model for the
 
 | metric | value |
 |---|---|
-| `agreement` | 0.943289 |
-| `disagreement_on_positives` | 0.141593 |
-| `metric_delta` | 0.054054 |
-| `metric_delta_pp` | 5.4054 |
+| `agreement` | 0.958412 |
+| `auc_pr` | 0.968055 |
+| `disagreement_on_positives` | 0.070796 |
+| `metric_delta` | 0.014571 |
+| `metric_delta_pp` | 1.4571 |
 | `n_eval` | 529 |
-| `student_metric` | 0.864865 |
-| `student_params` | 20 |
+| `student_metric` | 0.904348 |
+| `student_params` | 210 |
 | `teacher_metric` | 0.918919 |
 | `teacher_params` | 117 |
 
@@ -50,7 +51,7 @@ a quantum-safe orchestration demo. This is the **plaintext** model for the
 
 ## Notes and limitations
 
-19 features is small enough to evaluate under CKKS as a single packed dot product, so the encrypted tier here runs on the published feature set rather than on a reduction of it.
+19 features is small enough to evaluate under CKKS as a single packed dot product, so the encrypted tier here runs on the published feature set rather than on a reduction of it - and it had room to spare. The student now fits over the QUADRATIC expansion of those features, 209 terms, still one packed dot product at unchanged multiplicative depth, because the expansion is a function of the plaintext input and is computed before encryption. A degree-8192 ring has 4096 slots, so the cipher was never the binding constraint here - the feature map was. Measured: minority-class F1 0.8649 -> 0.9043, AUC-PR 0.9275 -> 0.9681, the latter matching the teacher exactly.
 
 ## Honest scope
 

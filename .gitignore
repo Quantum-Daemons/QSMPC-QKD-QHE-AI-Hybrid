@@ -128,3 +128,8 @@ data/genomics/g1k_dosages_full.tsv
 # DATA_LICENSES.md). Only the small derived samples under web/public/data/ are committed.
 # Added after `git add -A` swept 3.6 GB of ESA channels into a commit and GitHub rejected the push.
 /data-full/
+
+# Throwaway probe artefacts. Three of these were committed in Round 24d - a manifest each for
+# `probe`, `probe_s`, `probe_t` - because train_torch writes a manifest wherever it is pointed and
+# a diagnostic run points it somewhere temporary. They describe models nothing references.
+models/probe*/

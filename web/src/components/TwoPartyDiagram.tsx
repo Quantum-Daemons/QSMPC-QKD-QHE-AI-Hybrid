@@ -272,7 +272,11 @@ export const USECASE_SPECS: Record<string, Spec> = {
       { stageId: "qsdc_telemetry",
         kind: "q-arrow",
         label: (m) => (Number(m["qsdc_eavesdrop_detected"]) === 1
-          ? `QSDC ABORTED · error ${f(m, "qsdc_error_rate")} over threshold · telemetry withheld`
+          // "over threshold" was accurate while the abort compared a scalar QBER. It no longer
+          // does: the criterion is secrecy capacity Cs <= 0, and Cs depends on channel loss via
+          // g = Q_Eve/Q_Bob, so an error rate WELL under the old 0.11 can still abort. Naming
+          // the real quantity keeps the diagram and the metrics table telling one story.
+          ? `QSDC ABORTED · secrecy capacity 0 at error ${f(m, "qsdc_error_rate")} (g=${f(m, "qsdc_eve_gain_g")}) · telemetry withheld`
           : `QSDC direct telemetry · secrecy ${f(m, "qsdc_secrecy_capacity")} bit/carrier`) },
       publishedStep("qsdc_telemetry"),
       QSMPC_COMPARE,

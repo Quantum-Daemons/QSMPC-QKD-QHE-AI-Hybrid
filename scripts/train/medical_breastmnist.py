@@ -1,17 +1,30 @@
 #!/usr/bin/env python
 """Fine-tune a ResNet-18 on MedMNIST v2 BreastMNIST, then distil it to the FHE-feasible student.
 
-    T2 teacher   ImageNet-pretrained ResNet-18, transfer-learned onto 1-channel ultrasound
+    T2 teacher   ResNet-18 from RANDOM INITIALISATION, 1-channel ultrasound stem
     T1 student   1 conv block (1->4ch), avg-pool, dense head at 14x14 — what runs under real CKKS
 
-Published baseline (MedMNIST v2, Nature Scientific Data 2022): ResNet-18 @28px, AUC 0.901 / ACC 0.863.
-Google AutoML Vision reaches AUC 0.919 on the same split.
+Published baseline (MedMNIST v2, Nature Scientific Data 2022): ResNet-18 @28px, AUC 0.901 / ACC 0.863,
+and ResNet-50 at 0.857. Both are from-scratch numbers under the same 100-epoch Adam regime, so this
+script's default is the comparable one.
 
-BreastMNIST is 780 breast-ultrasound images, which is small enough that training from scratch is
-the wrong move and transfer learning is the right one. The first convolution is adapted from 3
-channels to 1 by summing the pretrained RGB kernels rather than reinitialising: the summed kernel
-has the same response to a grey image that the original had to the same image in colour, so the
-pretrained edge and texture filters survive the adaptation.
+WHY NOT TRANSFER LEARNING, when 780 images would obviously benefit from it
+    Because the weights are PUBLISHED. ImageNet's terms bind the Database to non-commercial research
+    and say nothing about redistributing a model trained on it, so ImageNet-derived weights cannot
+    be published here (DATA_LICENSES.md). Accuracy is not the binding constraint; redistribution is.
+
+    The default was the other way round until Round 24c, and this docstring argued for it - "training
+    from scratch is the wrong move and transfer learning is the right one". So anyone running the
+    script without a flag trained ImageNet-derived weights, and the artefact on the Hub recorded
+    `pretrained: ImageNet1K_V1` for several rounds while the README and DATA_LICENSES.md both stated
+    random initialisation. Nothing checked, and the two only disagreed in a file nobody read.
+
+    `--pretrained` remains for local experiments. `publish_hf.py` now refuses to upload any model
+    whose manifest records a pretrained source, so they cannot diverge silently again.
+
+Under `--pretrained` the first convolution is adapted from 3 channels to 1 by summing the RGB kernels
+rather than reinitialising: the summed kernel has the same response to a grey image that the original
+had to the same image in colour, so the pretrained filters survive the adaptation.
 
 Usage:
     python scripts/train/medical_breastmnist.py [--size 28] [--epochs 60]
@@ -92,15 +105,23 @@ def loaders(size: int, batch_size: int, seed: int):
     )
 
 
+#: MedMNIST BreastMNIST label order, from the package's own INFO: {0: malignant, 1: "normal,
+#: benign"}. Named because this project had them inverted in four places at once - the published
+#: weights.json, the browser fixture, the Space, and the use-case sample selection - so the demo
+#: rendered the OPPOSITE diagnosis to what the model meant.
+MALIGNANT, BENIGN = 0, 1
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--size", type=int, default=28, choices=[28, 64, 128, 224],
                     help="MedMNIST resolution; 28 matches the published baseline")
-    ap.add_argument("--from-scratch", action="store_true",
-                    help="train without ImageNet initialisation. Costs accuracy and removes a "
-                         "licensing question: ImageNet's terms bind the Database to non-commercial "
-                         "research and say nothing about redistributing a model trained on it, so "
-                         "ImageNet-derived weights cannot be published here (DATA_LICENSES.md).")
+    ap.add_argument("--pretrained", action="store_true",
+                    help="initialise from ImageNet1K_V1 instead of randomly. LOCAL EXPERIMENTS ONLY: "
+                         "the resulting weights cannot be published (DATA_LICENSES.md) and "
+                         "publish_hf.py refuses them. Random init is the default precisely because "
+                         "the opposite default shipped ImageNet-derived weights to a public repo "
+                         "for several rounds while the docs said otherwise.")
     ap.add_argument("--epochs", type=int, default=60)
     ap.add_argument("--lr", type=float, default=3e-4)
     ap.add_argument("--seed", type=int, default=42)
@@ -124,12 +145,13 @@ def main() -> int:
     print(f"  train {len(tr_dl.dataset)} | val {len(va_dl.dataset)} | test {len(te_dl.dataset)}")
     print(f"  class balance (train): {np.bincount(ytr.numpy()).tolist()}")
 
-    model = build_resnet(args.arch, pretrained=not args.from_scratch)
+    model = build_resnet(args.arch, pretrained=args.pretrained)
     n_params = sum(p.numel() for p in model.parameters())
-    init = "random init" if args.from_scratch else "ImageNet1K_V1"
+    init = "ImageNet1K_V1" if args.pretrained else "random init"
     print(f"  {args.arch} ({init}, 1-channel stem): {n_params:,} parameters")
 
-    # Class weighting: BreastMNIST is roughly 3:1 malignant:benign, and AUC is the reported metric,
+    # Class weighting: BreastMNIST is roughly 2.71:1 normal/benign:malignant (MedMNIST labels the
+    # classes {0: malignant, 1: "normal, benign"}), and AUC is the reported metric,
     # so the loss should not be allowed to solve the task by predicting the majority class.
     counts = np.bincount(ytr.numpy(), minlength=2).astype(np.float64)
     weight = torch.tensor((counts.sum() / (2.0 * np.maximum(counts, 1))), dtype=torch.float32)
@@ -144,7 +166,7 @@ def main() -> int:
         out_dir=artifact_dir,
         extra_manifest={"dataset": "MedMNIST v2 BreastMNIST", "resolution": args.size,
                         "architecture": args.arch,
-                        "pretrained": "none" if args.from_scratch else "ImageNet1K_V1",
+                        "pretrained": "ImageNet1K_V1" if args.pretrained else "none",
                         "adaptation": "conv1 RGB kernels summed to 1 channel"},
     )
     print(f"  best val AUC {result.best_metric:.4f} at epoch {result.best_epoch} "
@@ -187,7 +209,9 @@ def main() -> int:
     (out / "feature_spec.json").write_text(json.dumps({
         "input": {"shape": [1, 1, args.size, args.size], "dtype": "float32",
                   "preprocessing": "pixel/255 then (x-0.5)/0.5"},
-        "classes": ["benign/normal", "malignant"],
+        # MedMNIST BreastMNIST: {0: malignant, 1: "normal, benign"}. Index order matters - the
+        # browser renders classes[argmax], so an inverted list reports the OPPOSITE diagnosis.
+        "classes": ["malignant", "normal/benign"],
     }, indent=2) + "\n")
 
     train.record_metrics(key, {
@@ -196,12 +220,12 @@ def main() -> int:
         "resolution": args.size,
         "n_parameters": n_params,
         "best_val_auc": round(result.best_metric, 6),
-        # Recorded from what actually ran. This was a fixed string, so a --from-scratch run still
+        # Recorded from what actually ran. This was a fixed string, so a random-init run still
         # claimed ImageNet initialisation -- the exact provenance the licence analysis turns on.
         "transfer_learning": (
             "none — trained from random initialisation, so the weights are not ImageNet-derived "
             "and carry no ImageNet terms (see DATA_LICENSES.md)"
-            if args.from_scratch
+            if not args.pretrained
             else "ImageNet1K_V1 ResNet-18, conv1 summed to 1 channel, fresh fc head"
         ),
         "git_sha": train.git_sha(),
@@ -232,17 +256,47 @@ def main() -> int:
     def to14(x):
         return torch.tensor(downsample(x.numpy(), 14), dtype=torch.float32)
 
-    teacher_train = torch.tensor(train.predict_loader(model, tr_dl)[1].argmax(1), dtype=torch.long)
-    teacher_val = torch.tensor(train.predict_loader(model, va_dl)[1].argmax(1), dtype=torch.long)
+    # SEQUENTIAL loaders, and this is not a style preference. `tr_dl` is built with shuffle=True,
+    # so predict_loader returns scores in the sampler's random order. Taking [1] and pairing it with
+    # `to14(xtr)`, which is in the ORIGINAL order, attaches each teacher label to a different image.
+    # Measured: labels harvested that way match ground truth on 0.6227 of training rows where a
+    # sequential pass matches on 1.0000, so the student was distilled on mostly-wrong targets. It
+    # scored AUC 0.5984 against 0.8250 for the identical architecture trained on aligned labels.
+    #
+    # Nothing failed. The shapes match, the loss decreases, the run completes, and the model card
+    # reports a number. A shuffled DataLoader is correct for TRAINING and silently wrong for
+    # HARVESTING, and the two calls look identical at the call site.
+    def seq(ds):
+        """A sequential view of the same rows, so output order matches dataset order."""
+        return DataLoader(ds, batch_size=256, shuffle=False)
+
+    teacher_train = torch.tensor(
+        train.predict_loader(model, seq(tr_dl.dataset))[1].argmax(1), dtype=torch.long)
+    teacher_val = torch.tensor(
+        train.predict_loader(model, seq(va_dl.dataset))[1].argmax(1), dtype=torch.long)
     xva14 = to14(va_dl.dataset.tensors[0])
 
     student = small_medmnist_cnn(in_ch=1, n_classes=2, img_size=14, channels=(4,), hidden=16)
     student_params = sum(p.numel() for p in student.parameters())
+    # The student gets the SAME two protections the teacher above already has, and had neither.
+    # Without them it collapsed to a constant predictor: it emitted class 1 for all 156 test images,
+    # scoring accuracy 0.730769, which is exactly the 114/156 majority-class rate, and AUC 0.354 -
+    # below random. That is a model which has learned nothing, and it is the model the CKKS path
+    # runs, so the encrypted medical demo was evaluating a constant.
+    #
+    # (1) Class-weighted loss. A 2.71:1 split lets plain cross-entropy solve the task by answering
+    #     with the majority class, and that is the optimum it found.
+    # (2) Selection on AUC, not accuracy. train_torch's own docstring warns that selecting on
+    #     accuracy hides "the class that matters is not being learned at all" - a constant predictor
+    #     scores 0.73 on accuracy here and 0.5 on AUC, so only one of the two can reject it.
+    tcounts = np.bincount(teacher_train.numpy(), minlength=2).astype(np.float64)
+    tweight = torch.tensor(tcounts.sum() / (2.0 * np.maximum(tcounts, 1)), dtype=torch.float32)
     student_res = train.train_torch(
         "medical_fl.student", student,
         DataLoader(TensorDataset(to14(xtr), teacher_train), batch_size=32, shuffle=True),
         DataLoader(TensorDataset(xva14, teacher_val), batch_size=256),
-        metric_fn=lambda y, p: metrics.accuracy(y, p.argmax(1)), metric_name="agreement",
+        metric_fn=lambda y, p: metrics.auroc(y, p), metric_name="auc",
+        loss_fn=torch.nn.CrossEntropyLoss(weight=tweight.to(train._device())),
         cfg=train.TrainConfig(epochs=120, batch_size=32, lr=2e-3, patience=25, seed=args.seed),
         out_dir=Path.cwd() / "models" / "medical_breastmnist_student",
         extra_manifest={"role": f"FHE-feasible student distilled from {key}"},
@@ -250,8 +304,61 @@ def main() -> int:
     from safetensors.torch import load_file as _load
 
     student.load_state_dict(_load(student_res.checkpoint))
-    student_pred = train.predict_loader(
-        student, DataLoader(TensorDataset(to14(xte), torch.tensor(y_true)), batch_size=256))[1].argmax(1)
+
+    # Tune the malignant cut on VALIDATION and fold it into the head, before anything is exported.
+    # Argmax over two logits is a 0.5 threshold and the CKKS path has nowhere else to apply a cut,
+    # so without this the model cannot express the precision/recall trade a screening task needs -
+    # and with a 2.71:1 split, accuracy is maximised by never calling anything malignant.
+    y_val_true = np.asarray(va_dl.dataset.tensors[1]).ravel().astype(int)
+    val_scores = train.predict_loader(student, DataLoader(
+        TensorDataset(xva14, torch.tensor(y_val_true)), batch_size=256))[1]
+    val_p_mal = torch.softmax(torch.tensor(val_scores), 1).numpy()[:, MALIGNANT]
+    # Criterion: Youden's J (TPR - FPR), NOT minority-class F1. F1 was tried first and degenerated -
+    # it picked the lowest grid point, because when a model discriminates weakly, F1 on the minority
+    # class is maximised by calling EVERYTHING positive: recall goes to 1 and precision falls only to
+    # the base rate. On validation that scored 0.4242, which is exactly the all-positive value
+    # 2*0.269/1.269, and the folded student then predicted malignant for all 156 test images. J
+    # cannot be gamed that way: all-positive gives TPR=1, FPR=1, J=0.
+    # NET BENEFIT, not Youden's J. J is not improper, but it is the SYMMETRIC special case: it
+    # prices a missed cancer and a false alarm equally, which no screening programme does, and this
+    # project never stated that exchange rate anywhere. Net benefit makes the rate explicit - a
+    # threshold p declares that one false positive costs p/(1-p) of a true positive - and puts the
+    # model on the same axis as treat-all and treat-none, so "worse than not screening" is visible
+    # rather than inferred. Van Calster et al., Lancet Digital Health 2025;7(12):100916, assess 32
+    # measures and find every classification measure improper away from 0.5 or the prevalence;
+    # arXiv:2605.07829 shows a cost-weighted extension of J cutting misclassification risk by up to
+    # 63% over the symmetric form.
+    #
+    # The range 0.05-0.5 is a decision-context choice, not a data-driven one, and is stated with the
+    # number wherever it is reported: act on a 1-in-20 suspicion at one end, act at even odds at the
+    # other. Chi and Birbil (arXiv:2604.04241) optimise the integral of this curve directly; here it
+    # only selects the operating point of an already-fitted model.
+    q_star, nb_star, nb_all, nb_none = metrics.best_threshold_by_net_benefit(
+        y_val_true == MALIGNANT, val_p_mal, lo=0.05, hi=0.5)
+    # The margin over treat-all AT THE SAME THRESHOLD is the decision, not the raw net benefit.
+    margin = nb_star - max(nb_all, nb_none)
+    print(f"  net benefit on validation: {nb_star:+.4f} at q={q_star:.3f}  vs treat-all "
+          f"{nb_all:+.4f} / treat-none {nb_none:+.4f}  ->  margin {margin:+.4f}")
+    if margin <= 1e-9:
+        print("      ^ no threshold in 0.05-0.5 beats both defaults, so no operating point here has "
+              "clinical utility; folding one in would imply otherwise")
+    folded_val = np.where(val_p_mal >= q_star, MALIGNANT, BENIGN)
+    if margin <= 1e-9 or len(np.unique(folded_val)) < 2:
+        # Belt and braces: any criterion that collapses to one class is rejected outright rather
+        # than shipped, whatever it scored.
+        print(f"  malignant cut q={q_star:.3f} collapses to a single class on validation - "
+              f"NOT folding; the student keeps its argmax operating point")
+    else:
+        print(f"  malignant cut tuned on validation: q={q_star:.3f} "
+              f"(net-benefit margin {margin:+.4f} over treat-all); folding it into the dense head")
+        distil.fold_threshold_into_torch_head(student, q_star, positive_class=MALIGNANT)
+
+    # Keep the score matrix, not just the argmax. The registry declares AUC as this model's headline
+    # and AUC needs scores; discarding them here is why the student recorded `accuracy` while the
+    # panel showed an AUC baseline of 0.901 beside it.
+    student_scores = train.predict_loader(
+        student, DataLoader(TensorDataset(to14(xte), torch.tensor(y_true)), batch_size=256))[1]
+    student_pred = student_scores.argmax(1)
 
     # Export the student to ONNX so it can be published and verified in a browser like the teacher.
     # It already had a safetensors checkpoint; what it lacked was a graph anyone could actually run.
@@ -263,7 +370,7 @@ def main() -> int:
     # from it in a browser needs a parser this project does not ship.
     w = distil.save_cnn_student_weights(
         student, student_dir, teacher_key=key, student_key="medical_fl.student",
-        img_size=14, classes=["benign/normal", "malignant"])
+        img_size=14, classes=["malignant", "normal/benign"])
     print(f"  student weights.json: {w['n_parameters']} params")
     print(f"  student ONNX: {student_report.fp32_bytes/1e6:.2f} MB, "
           f"domains={student_report.onnx_domains}, browser_runnable={student_report.browser_runnable}")
@@ -280,7 +387,48 @@ def main() -> int:
     print(f"    parameters                  {n_params:,} -> {fidelity.student_params}"
           f"   ({n_params/max(fidelity.student_params,1):,.0f}x smaller)")
 
-    train.record_metrics("medical_fl.student", fidelity.as_metrics())
+    # Record the metric the REGISTRY declares, beside the decision metric fidelity measures.
+    # measure_fidelity compares decisions, so its metric must be decision-based (accuracy); the
+    # registry headline is AUC. Recording only the first left the panel printing a 0.901 AUC
+    # baseline under a 0.7308 accuracy - two different quantities, rendered as if comparable.
+    student_auc = metrics.auroc(y_true, student_scores)
+    teacher_auc = float(test_metrics["auc"])
+    # A constant predictor is the failure this model actually had, and it is invisible in accuracy
+    # (0.7308 = the majority-class rate) and in agreement. Name it in the record so it cannot ship
+    # as a respectable-looking number again.
+    student_labels = np.asarray(student_pred).ravel()
+    n_classes_predicted = int(len(np.unique(student_labels)))
+    if n_classes_predicted < 2:
+        print(f"  !! student predicts a SINGLE class ({student_labels[0]}) for every test input - "
+              f"it has not learned the task; accuracy {fidelity.student_metric:.4f} is just the "
+              f"majority-class rate")
+    print(f"    auc teacher/student         {teacher_auc:.4f} / {student_auc:.4f}"
+          f"   <- the metric the registry declares, so this is the one the baseline compares to")
+    train.record_metrics("medical_fl.student", {
+        **fidelity.as_metrics(),
+        "auc": round(float(student_auc), 6),
+        "n_classes_predicted": n_classes_predicted,
+        "baseline_gap_note": (
+            "This scores far below the 0.901 ResNet-18 baseline, and the reason is capacity: 3,226 "
+            "parameters over a 14x14 input is a CKKS-feasibility budget, not a diagnostic one. "
+            "Round 24 found it had been WORSE than that - a constant predictor, emitting one class "
+            "for all 156 test images, with accuracy 0.730769 exactly equal to the majority-class "
+            "rate and AUC 0.354, below random. It was invisible because the registry declared `auc` "
+            "while the record stored `accuracy`, and because this student had neither protection "
+            "its teacher already had: class-weighted loss and AUC-based model selection. Both were "
+            "added. Read `n_classes_predicted` and `majority_class_rate` beside the score - an "
+            "accuracy equal to the majority rate is the signature of a model that learned nothing. "
+            "Workings: references/medical-student-collapse-investigation.md."
+        ),
+        "majority_class_rate": round(float(max(np.mean(y_true == 0), np.mean(y_true == 1))), 6),
+        "metric_note": (
+            "Two metrics are recorded and they answer different questions. `auc` is the registry's "
+            "declared headline and is what the published baseline compares against. "
+            "`student_metric`/`teacher_metric` are accuracy, because fidelity compares DECISIONS "
+            "and a decision has no score to rank - so agreement and metric_delta are necessarily "
+            "computed on a decision metric. Do not read the accuracy against the AUC baseline."
+        ),
+    })
     print(f"\n  wrote {out} and models/metrics.json in {time.time()-started:.0f}s")
     return 0
 
