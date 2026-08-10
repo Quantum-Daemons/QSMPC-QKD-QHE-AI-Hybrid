@@ -1641,6 +1641,70 @@ clean.
 T2 is the one an automated check gets wrong. `license: null` from the GitHub API means all rights
 reserved, and a naive check that only fails on a deny-list of SPDX identifiers passes it.
 
+## The QCNN inference backend returned a coin flip and the page called it a prediction
+
+Selecting **Inference = QCNN (QHE)** routed the surfaced class through `qotpQcnnInfer` and reported it
+as `primary_inference_class`, beside the CKKS prediction. It carried no information about the input.
+
+Measured over 24 random feature vectors x 8 run seeds each:
+
+| quantity | value |
+|---|---|
+| vectors whose class FLIPS with the seed | **24 / 24 = 100%** |
+| mean \|<Z0>\| with the QOTP mask | 0.0761 |
+| mean \|<Z0>\| with the mask DISABLED | 0.0748 |
+| correlation, unmasked class vs mean(feature) | **-0.070** |
+
+The QOTP mask is applied and never undone, so an X on qubit 0 flips the sign - but that is the
+smaller cause. Disabling the mask barely moves the numbers, because seven FIXED rounds of H, a CNOT
+ring and T on every qubit drive the state toward uniform. The sign of <Z0> was numerical noise.
+
+**Why nothing caught it.** The project already knew the neighbouring benchmark row was empty -
+`clientCompute.ts` labels it "no trained weights", states "There is nothing here to be accurate
+ABOUT", and this document records that an invented `accuracy: 1.0` was removed from it. That
+scrutiny stopped at the benchmark row. The selector inherited the code and not the caveat, and every
+word of its log line was true: the T-gates are counted, the simulation is a real state-vector
+simulation, the class is genuinely computed. It just was not a prediction.
+
+| # | Check | Pass condition |
+|---|---|---|
+| QC1 | A surfaced class comes from something with trained parameters | a fixed circuit cannot classify |
+| QC2 | Class is STABLE across run seeds for a fixed input | flipping with the seed means it is noise |
+| QC3 | \|<Z0>\| is not pinned near zero across all inputs | ~0.07 for every input is a scrambled state |
+| QC4 | The model is trained in the space the browser actually SUPPLIES | z-scores in, z-scores trained |
+| QC5 | Circuit parity is checked against an independent reimplementation | before any weights are shipped |
+| QC6 | The classical baseline is reported beside the quantum number | every time, including when it loses |
+
+**QC4 and QC5 each caught a fault that would have made the fix worthless.**
+
+QC5: the training circuit and an independent numpy reimplementation disagreed by up to **0.73** on a
+value bounded in [-1, 1]. The trainer applied CNOTs with two chained `movedim` calls and used the
+ORIGINAL axis index for the second, so control and target were crossed on every gate. It trained
+perfectly well - the circuit was self-consistent, just not the circuit documented - and only a parity
+check exposed it. After rewriting with flat index arithmetic the two agree to **2.4e-07**.
+
+QC4: the first trained model min-max scaled its inputs against RAW WDBC ranges (area 143..2501). The
+bundled sample the browser feeds is **StandardScaler output** - verified at L1 distance 0.0002 - so
+seven of eight features pinned to -1 and <Z0> came out at **0.0098**, a degenerate state that made
+the TRAINED path exactly as meaningless as the untrained one it replaced. Retrained in z-space with
+a bounded `RY(tanh(z)*pi)` encoding, since z-scores span [-3.11, 6.05] and would otherwise wrap the
+Bloch sphere: <Z0> moved to **0.1669**.
+
+**What the result is, stated without varnish.** Held-out accuracy **0.8947** against a majority
+baseline of 0.6082 and logistic regression at **0.9649** on the identical split. The QCNN learns and
+the classical model beats it, and the log line on the page says so in those words rather than
+implying an advantage. That is consistent with this project's other quantum results - the telecom
+QNN loses to a random forest - and with the concentration literature.
+
+**QOTP hiding and QCNN prediction are now separate.** Undoing a Pauli frame through Clifford+T is
+not a detail that can be waved through: `T X T-dagger` is not Pauli, which is the difficulty Ortega &
+Martin-Delgado's scheme exists to solve, and this repository does not implement it. So
+`qotpQcnnInfer` remains the hiding and T-count demonstration - both of which it genuinely supports -
+and the prediction path is a separate unmasked trained circuit. A use case with no trained weights
+falls back to CKKS and says why, rather than passing off a coin flip.
+
+Workings: [`references/qcnn-inference-investigation.md`](../references/qcnn-inference-investigation.md).
+
 ## A reproducible number measured on contaminated rows is still contaminated
 
 The finance evaluation sample carried a near-perfect label leak, and every gate this project has was
