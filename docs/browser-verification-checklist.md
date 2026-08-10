@@ -1641,6 +1641,54 @@ clean.
 T2 is the one an automated check gets wrong. `license: null` from the GitHub API means all rights
 reserved, and a naive check that only fails on a deny-list of SPDX identifiers passes it.
 
+## Real data next to the model's own numbers, and the licence that decides whether it can ship
+
+A score plotted alone cannot distinguish a good model on easy data from a mediocre model on hard
+data - the reader has no way to see how separable the classes were to begin with. `RealDataScatter`
+draws the actual corpus so that question is answerable by looking. What decides whether a use case
+gets one is **redistribution licence**, which is a stricter test than "publicly downloadable" and
+knocks out most obvious candidates.
+
+Checked 2026-08-10, per use case:
+
+| use case | training corpus | licence | ships as real 2D? |
+|---|---|---|---|
+| satellite | OPS-SAT-AD | CC-BY-4.0 | **yes, and it IS the training corpus** |
+| finance | AMLworld | CDLA-Sharing-1.0 | yes, but share-alike propagates to the slice |
+| telecom | generated here | n/a | yes, but it is synthetic, not real |
+| medical | BreastMNIST / BUSI | CC BY on the ARTICLE, not the data | **no** - WDBC substitutes |
+| genomics | 1000 Genomes | IGSR grants no blanket licence | **no** |
+
+| # | Check | Pass condition |
+|---|---|---|
+| RD1 | A bundled corpus has a licence that survives REDISTRIBUTION in a public bundle | "publicly downloadable" is not the test |
+| RD2 | `is_training_corpus` is true only when it is literally the corpus the model trained on | satellite yes; medical/genomics substitutes must say so |
+| RD3 | A substitute corpus is never drawn on the model's own axes | no shared feature space = no shared axes |
+| RD4 | The axis pair is chosen by measurement, not by eye | satellite: all 171 pairs scored, `n_peaks` x `diff2_peaks` won at AUC-PR 0.8492 vs 0.2136 base rate |
+| RD5 | Licence + attribution travel INSIDE the data file | so they cannot drift from the points they describe |
+| RD6 | The chart is confirmed to RENDER, not merely to typecheck | count `.recharts-scatter-symbol` nodes in the browser |
+
+**RD6 exists because of a specific incident.** Round 24j shipped a chart that typechecked, built, and
+rendered nothing - the payload was attached at 1 of 4 return sites. `tsc --noEmit` and `npm run build`
+both pass on a component that never mounts. The only evidence that a chart works is a node count from
+a real page:
+
+    document.querySelectorAll('.recharts-scatter-symbol').length     // expect 529 on satellite
+    document.querySelectorAll('figure.chart-figure').length          // expect >= 1
+
+**RD3 is the one with an ethical edge.** WDBC is breast-cancer data and so is BreastMNIST, which makes
+overlaying them feel natural. They share a disease and nothing else - WDBC is cell-nucleus morphometry
+from fine-needle aspirates, BreastMNIST is 28x28 ultrasound. Putting them on one axis pair would
+assert a correspondence that does not exist, in a clinical context. They are drawn separately and the
+caption leads with "A DIFFERENT cohort and modality".
+
+**And a finding that fell out of RD1:** the satellite page bundles SMAP/MSL for its anomaly demo,
+which is NOT redistributable - 17 U.S.C. 105 removes US copyright domestically, which is not a grant
+and is territorial - while the corpus it actually trains on, OPS-SAT-AD, IS CC-BY-4.0. The
+redistributable one was not the one being shipped. Swapping it is not a one-line change because
+`telemetry.json` also feeds the SHAP explanation baseline and the in-browser linear anomaly model, so
+it is recorded here rather than done in passing.
+
 ## The training environment, measured rather than assumed
 
 Every number here was measured on this host on 2026-08-10, not read off a spec sheet. The reason to
