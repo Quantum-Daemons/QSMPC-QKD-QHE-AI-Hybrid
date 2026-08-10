@@ -1743,6 +1743,30 @@ Checked 2026-08-10, per use case:
 | RD4 | The axis pair is chosen by measurement, not by eye | satellite: all 171 pairs scored, `n_peaks` x `diff2_peaks` won at AUC-PR 0.8492 vs 0.2136 base rate |
 | RD5 | Licence + attribution travel INSIDE the data file | so they cannot drift from the points they describe |
 | RD6 | The chart is confirmed to RENDER, not merely to typecheck | count `.recharts-scatter-symbol` nodes in the browser |
+| RD7 | The axis pair is chosen for separability AND readability, which are different criteria | look at it; a metric cannot tell you a chart is a blob |
+| RD8 | A heavy-tailed axis is log-scaled, and the scale is decided by the GENERATOR | whether compression is warranted is a property of the data |
+
+**RD7 cost a full iteration and is the most transferable lesson here.** Ranking finance's 496 feature
+pairs by AUC-PR put `format_risk` x `src_bank_diversity` first at 0.3195, so that shipped - and
+rendered as a few vertical bands hard against the origin plus one lone outlier. `format_risk` has
+**six distinct values**, five bunched near zero and one at 0.0075. A gradient-boosted tree does not
+care how values are spaced along an axis; an eye does. Every gate passed and the chart was useless.
+
+The measured alternatives, which is what made the choice defensible rather than aesthetic:
+
+| pair | AUC-PR | readable? |
+|---|---|---|
+| `format_risk` x `src_bank_diversity` | 0.3195 | no - 6 values, uneven |
+| `src_fan_out_ratio` x `src_burst_fanout` | **0.2302** | **yes, with a log y-axis** |
+| `src_fan_out_ratio` x `dst_fan_in_ratio` | 0.0764 | yes, but barely separates |
+
+Shipping the middle one trades 0.09 of AUC-PR for a chart that shows something, and 0.2302 against a
+0.0173 base rate is still a 13.3x lift. The log axis then earned its place immediately: at linear
+scale the high-burst-fan-out laundering cluster sat flat on the baseline, and compressing the axis is
+what made it visible as a distinct group - which is the structuring signature the feature exists to
+capture.
+
+
 
 **RD6 exists because of a specific incident.** Round 24j shipped a chart that typechecked, built, and
 rendered nothing - the payload was attached at 1 of 4 return sites. `tsc --noEmit` and `npm run build`
