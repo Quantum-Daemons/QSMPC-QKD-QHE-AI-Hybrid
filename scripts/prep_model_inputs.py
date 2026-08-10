@@ -118,42 +118,61 @@ def _warn_single_feature_leak(usecase: str, payload: dict) -> None:
 
     This exists because one did. The finance sample was built from `nrows=400_000` of a time-sorted
     corpus, which left `hour_of_day >= 3` implying laundering at 100% precision - a leak created by
-    the sampling, absent from the source, and worth 13.8% of the metric the page reported. Nothing
-    caught it: the payload was well-formed, the expectation reproduced in-browser, and every gate was
-    green. A reproducible number measured on contaminated rows is still contaminated.
+    the sampling, absent from the source, and worth 13.8% of the figure the browser verified against.
+    Nothing caught it: the payload was well-formed, the browser re-scored it and matched, and every
+    gate was green. A reproducible number measured on contaminated rows is still contaminated.
 
-    The test is single-feature ROC AUC, measured per column. An earlier version of this guard tested
-    whether positives occupied values no negative took, which is sound for a low-cardinality index
-    like an hour and complete nonsense for a continuous float - it flagged `amount_paid_log` at
-    99.7% purely because distinct doubles rarely collide. AUC does not care about cardinality.
+    Two bugs of my own are recorded here because both produced confident nonsense:
 
-    A WARNING, not a hard failure: a legitimately dominant feature exists in some corpora, and a
-    build that refuses to run is worse than one that reports what it found and lets a human judge.
+      1. The first version asked whether positives occupied values no negative took. Sound for a
+         low-cardinality index like an hour, meaningless for a continuous float - it flagged
+         `amount_paid_log` at 99.7% purely because distinct doubles rarely collide.
+      2. The second used a binary rank-AUC formula on multi-class labels. `y == 1` picked one class
+         out of eight while the ranks spanned every row, so the normaliser was wrong and it printed
+         AUC 5.1292 for telecom. An impossible number is at least loud; a plausible wrong one would
+         not have been.
+
+    Now ONE-VS-REST: for each column and each class, rank-AUC of that class against all others.
+    Binary data is the two-class case of the same computation, so there is one code path.
+
+    A WARNING, not a hard failure. A legitimately dominant feature exists in some corpora - a QKD
+    attack simulator is built so that its signatures ARE separable - and a build that refuses to run
+    is worse than one that reports what it found and lets a human judge.
     """
     samples, labels = payload.get("samples"), payload.get("labels")
     names = payload.get("feature_names") or []
-    if not samples or not labels or len(set(labels)) < 2:
+    if not samples or not labels:
+        return
+    y = np.asarray(labels, dtype=int)
+    classes = np.unique(y)
+    if classes.size < 2:
         return
     x = np.asarray(samples, dtype=float)
     if x.ndim != 2 or x.shape[1] != len(names):
         return                                    # image/sequence payloads: not a flat feature space
-    y = np.asarray(labels, dtype=int)
-    n_pos, n_neg = int((y == 1).sum()), int((y == 0).sum())
-    if not n_pos or not n_neg:
-        return
-    flagged: list[tuple[float, str]] = []
+
+    flagged: list[tuple[float, str, int]] = []
     for j, nm in enumerate(names):
         col = x[:, j]
-        # ROC AUC via rank statistic; symmetric, so a perfectly INVERTED feature scores the same.
         r = np.argsort(np.argsort(col, kind="mergesort"), kind="mergesort").astype(float) + 1.0
-        auc = (r[y == 1].sum() - n_pos * (n_pos + 1) / 2.0) / (n_pos * n_neg)
-        auc = max(auc, 1.0 - auc)
-        if auc >= 0.90:
-            flagged.append((auc, nm))
-    for auc, nm in sorted(flagged, reverse=True):
-        print(f"    LEAK WARNING [{usecase}]: '{nm}' alone separates the classes at AUC {auc:.4f}. "
-              f"A sample whose label is recoverable from one feature measures the sampling, not the "
-              f"model - check how the rows were drawn before publishing this.")
+        best_auc, best_cls = 0.0, int(classes[0])
+        for c in classes:
+            m = y == c
+            n_pos, n_neg = int(m.sum()), int((~m).sum())
+            if not n_pos or not n_neg:
+                continue
+            auc = (r[m].sum() - n_pos * (n_pos + 1) / 2.0) / (n_pos * n_neg)
+            auc = max(auc, 1.0 - auc)             # symmetric: a perfectly inverted feature is as telling
+            if auc > best_auc:
+                best_auc, best_cls = auc, int(c)
+        if best_auc >= 0.90:
+            flagged.append((best_auc, nm, best_cls))
+    for auc, nm, c in sorted(flagged, reverse=True):
+        label = (payload.get("class_names") or [])
+        cname = label[c] if c < len(label) else str(c)
+        print(f"    LEAK WARNING [{usecase}]: '{nm}' alone separates class '{cname}' from the rest "
+              f"at AUC {auc:.4f}. A label recoverable from one feature measures the sampling, not "
+              f"the model - check how the rows were drawn before publishing this.")
 
 def _write(usecase: str, payload: dict) -> Path:
     """Write beside the model, not into the web bundle.
@@ -496,10 +515,15 @@ def build_telecom(rng: np.random.Generator) -> dict:
     """
     from sklearn.model_selection import train_test_split
 
-    from qsh.qml_ids.attacks import ATTACKS, generate
+    from qsh.qml_ids.attacks import ATTACKS, FEATURES as QML_FEATURES, generate
 
     # Mirrors scripts/train/telecom_ids.py: n_per_class=300, seed=42, stratified 25% test split.
-    x_all, y_all, feature_names = generate(n_per_class=300, seed=42)
+    # generate() returns (X, y, LABEL names) - its own docstring says so. Unpacking the third value
+    # into `feature_names` and writing it under that key shipped the 8 CLASS names as the 7-column
+    # feature list. Nothing rendered it, so nothing complained, but it also silently disabled the
+    # single-feature leak guard: that guard skips any payload whose column count does not match its
+    # name count, and 7 != 8 made telecom the one flat-feature use case never actually checked.
+    x_all, y_all, label_names = generate(n_per_class=300, seed=42)
     _, x, _, y = train_test_split(x_all, y_all, test_size=0.25, random_state=42, stratify=y_all)
     x = np.asarray(x, dtype=float).round(6)
 
@@ -510,6 +534,7 @@ def build_telecom(rng: np.random.Generator) -> dict:
 
     return {
         "provenance": (
+            "SEPARABLE BY CONSTRUCTION, and the accuracy on these rows should be read that way: single features reach one-vs-rest AUC 1.0000 for detector_blinding (sift_ratio, click_asymmetry), 0.9785 for intercept_resend (qber_mean) and 0.9703 for photon_number_splitting (multiphoton_rate), because the generator's _SIGNATURES table assigns each attack a distinctive value. This measures the simulator, not the world. "
             "SYNTHETIC QKD-attack telemetry generated by src/qsh/qml_ids/attacks.py. The eight "
             "classes are seven attack types plus normal traffic, a structure taken from Al-Kuwari "
             "et al. (arXiv:2509.14282); no number from that paper is reproduced here. It is "
@@ -521,7 +546,7 @@ def build_telecom(rng: np.random.Generator) -> dict:
         ),
         "input": {"shape": [1, x.shape[1]], "dtype": "float32", "preprocessing": [],
                   "layout": "samples[i] is one QKD session's features, in the order below"},
-        "feature_names": list(feature_names),
+        "feature_names": list(QML_FEATURES),
         "samples": np.asarray(x, dtype=float).tolist(),
         "labels": np.asarray(y, dtype=int).tolist(),
         "expected": {
