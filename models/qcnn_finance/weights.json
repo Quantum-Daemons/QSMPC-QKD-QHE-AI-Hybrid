@@ -1,0 +1,83 @@
+{
+ "usecase": "finance",
+ "n_qubits": 8,
+ "layers": 3,
+ "theta": [
+  [
+   0.3969113528728485,
+   -0.8133516311645508,
+   -0.6449251770973206,
+   -0.7549689412117004,
+   0.024373721331357956,
+   -0.036121055483818054,
+   -0.8410555720329285,
+   -1.0095919370651245
+  ],
+  [
+   -0.17412839829921722,
+   0.7137047052383423,
+   1.8136866092681885,
+   0.0760156437754631,
+   0.08153650909662247,
+   -0.06625174731016159,
+   0.011723091825842857,
+   0.2804597020149231
+  ],
+  [
+   -0.020140288397669792,
+   -0.23579807579517365,
+   0.08771194517612457,
+   1.7945691347122192,
+   -0.03508254513144493,
+   -1.2865804433822632,
+   -0.04496237263083458,
+   -0.9668592214584351
+  ]
+ ],
+ "scale": 5.255457401275635,
+ "bias": -2.4906179904937744,
+ "feature_names": [
+  "amount",
+  "velocity_24h",
+  "cross_border",
+  "night_tx",
+  "new_payee",
+  "amount_zscore",
+  "device_risk",
+  "geo_mismatch"
+ ],
+ "input_space": "raw",
+ "encoding": "tanh",
+ "feature_mean": [
+  10.922980907142842,
+  0.00035714285714285714,
+  0.4592857142857143,
+  0.030357142857142857,
+  0.4375,
+  0.04525036071428573,
+  0.7639285714285714,
+  0.5806947035714286
+ ],
+ "feature_std": [
+  1.9037880244344714,
+  0.01889484866630189,
+  0.49833958997732736,
+  0.17156802363696524,
+  0.49607837082461076,
+  1.04920264936133,
+  0.42466658590435474,
+  0.48881131352983914
+ ],
+ "provenance": "PaySim simulator output (Kaggle ealaxi/paysim1, CC-BY-SA-4.0; Lopez-Rojas et al. 2016) - SYNTHETIC transactions from aggregated real mobile-money logs, 8 AML features, the same 8 the browser pipeline feeds",
+ "test_accuracy": 0.973333,
+ "classical_lr_accuracy": 0.985,
+ "majority_baseline": 0.948333,
+ "test_minority_f1": 0.714286,
+ "classical_lr_minority_f1": 0.865672,
+ "all_positive_f1": 0.098257,
+ "test_prevalence": 0.051667,
+ "headline_metric": "minority_class_f1",
+ "n_train": 2800,
+ "n_test": 1200,
+ "note": "Variational QCNN trained by backpropagation through a dense state vector. The prediction path applies NO QOTP mask: undoing a Pauli frame through Clifford+T is not implemented here (T X T-dagger is not Pauli), so hiding and prediction are kept separate rather than claiming a correction that does not exist. Simulated, not hardware; the classical baseline above is reported so no quantum advantage is implied."
+}
