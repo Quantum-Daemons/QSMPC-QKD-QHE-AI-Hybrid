@@ -275,7 +275,7 @@
           "agreement": 0.982943,
           "both_scored_zero": false,
           "disagreement_on_positives": 0.361913,
-          "hf_revision": "0cf2c533fd862bf49da347472a28e3b84dafc169",
+          "hf_revision": "5f67af2cff4053137a6eb4b067e9b31530a3d8fb",
           "metric_delta": 0.090554,
           "metric_delta_pp": 9.0554,
           "metric_name": "minority_class_f1",
@@ -315,7 +315,7 @@
           "url": "https://www.kaggle.com/datasets/ealtman2019/ibm-transactions-for-anti-money-laundering-aml"
         },
         "hf_repo_id": "Daemons-Q/qsh-finance-aml-ckks-student",
-        "hf_revision": "0cf2c533fd862bf49da347472a28e3b84dafc169",
+        "hf_revision": "5f67af2cff4053137a6eb4b067e9b31530a3d8fb",
         "hf_revision_stale": null,
         "key": "finance_aml.student",
         "label": "CKKS-linear fraud student",
@@ -455,6 +455,7 @@
             "opset": 18
           },
           "git_sha": "61b855e-dirty",
+          "hf_revision": "6c7498cda5077b20b713e9d98c46277e477fb11a",
           "macro_f1": 0.8249158249158248,
           "n_parameters": 11171266,
           "resolution": 28,
@@ -500,7 +501,7 @@
           "url": "https://medmnist.com/"
         },
         "hf_repo_id": "Daemons-Q/qsh-medical-breastmnist-resnet18",
-        "hf_revision": null,
+        "hf_revision": "6c7498cda5077b20b713e9d98c46277e477fb11a",
         "hf_revision_stale": null,
         "key": "medical_fl.resnet18",
         "label": "ResNet-18 on BreastMNIST",
@@ -534,7 +535,7 @@
             "opset": 18
           },
           "git_sha": "85209a9-dirty",
-          "hf_revision": "38decf1a8afba370e96289fe14e0ce300adbb782",
+          "hf_revision": "55a314abfa35c87136c71775653f147dc05b9535",
           "hf_revision_invalidated_by_retrain": "cefc83e340fef2289b43e5ba616ca7c5c6b599b4",
           "macro_f1": 0.6492063492063492,
           "n_parameters": 23505858,
@@ -574,7 +575,7 @@
           "url": "https://medmnist.com/"
         },
         "hf_repo_id": "Daemons-Q/qsh-medical-breastmnist-resnet50",
-        "hf_revision": "38decf1a8afba370e96289fe14e0ce300adbb782",
+        "hf_revision": "55a314abfa35c87136c71775653f147dc05b9535",
         "hf_revision_stale": null,
         "key": "medical_fl.resnet50",
         "label": "ResNet-50 on BreastMNIST (published comparison)",
@@ -602,7 +603,7 @@
           "baseline_gap_note": "This scores far below the 0.901 ResNet-18 baseline, and the reason is capacity: 3,226 parameters over a 14x14 input is a CKKS-feasibility budget, not a diagnostic one. Round 24 found it had been WORSE than that - a constant predictor, emitting one class for all 156 test images, with accuracy 0.730769 exactly equal to the majority-class rate and AUC 0.354, below random. It was invisible because the registry declared `auc` while the record stored `accuracy`, and because this student had neither protection its teacher already had: class-weighted loss and AUC-based model selection. Both were added. Read `n_classes_predicted` and `majority_class_rate` beside the score - an accuracy equal to the majority rate is the signature of a model that learned nothing. Workings: references/medical-student-collapse-investigation.md.",
           "both_scored_zero": false,
           "disagreement_on_positives": 0.149123,
-          "hf_revision": "4c33f488f8a584bde7db034643731954fdaaee96",
+          "hf_revision": "aa89f5130d5a11c5de02561d1d316bf8e2c8c852",
           "majority_class_rate": 0.730769,
           "metric_delta": 0.096154,
           "metric_delta_pp": 9.6154,
@@ -652,7 +653,7 @@
           "url": "https://medmnist.com/"
         },
         "hf_repo_id": "Daemons-Q/qsh-medical-breastmnist-ckks-student",
-        "hf_revision": "4c33f488f8a584bde7db034643731954fdaaee96",
+        "hf_revision": "aa89f5130d5a11c5de02561d1d316bf8e2c8c852",
         "hf_revision_stale": null,
         "key": "medical_fl.student",
         "label": "FHE-feasible diagnostic CNN",
@@ -689,7 +690,7 @@
             "opset": 17
           },
           "git_sha": "d19e285-dirty",
-          "hf_revision": "bdfe740d9ed31112026427b2219fe4cbe5f24033",
+          "hf_revision": "4408329bcbd9ee453cb7c73c8533bc89da6b7b05",
           "hf_revision_invalidated_by_retrain": "4507c187d0f9998199f6fa0e8064cb23315bbb9a",
           "metric_note": "Event-wise F-beta at beta=0.5 under the overlap rule, which is what ESA-ADB and Telemanom report. Telemanom's widely-quoted 0.71 is F0.5, not F1. point_adjusted_f1 is shown only to expose how much point adjustment inflates: TSB-AD (NeurIPS 2024) found a uniform random score ranks 26th of 32 detectors under it. Only labels whose ESA-ADB Category is 'Anomaly' count as positives; the 690 annotated rare *nominal* events do not.",
           "n_anomaly_intervals": 320,
@@ -742,7 +743,7 @@
           "url": "https://zenodo.org/records/12528696"
         },
         "hf_repo_id": "Daemons-Q/qsh-satellite-telemanom-esa",
-        "hf_revision": "bdfe740d9ed31112026427b2219fe4cbe5f24033",
+        "hf_revision": "4408329bcbd9ee453cb7c73c8533bc89da6b7b05",
         "hf_revision_stale": null,
         "key": "satellite_comms.telemanom",
         "label": "Telemanom LSTM forecaster (per channel)",
@@ -846,7 +847,7 @@
           },
           "f1": 0.918918918918919,
           "git_sha": "89d2fca-dirty",
-          "hf_revision": "334623189f89fc546616e591004e742a52daea99",
+          "hf_revision": "a87db4e64dc9b032e468548304e596dbf0e30954",
           "hf_revision_invalidated_by_retrain": "6039a4fb2d2db7ccb2a638e94cf9c06d8799a6e3",
           "n_features": 19,
           "n_test_segments": 529,
@@ -886,7 +887,7 @@
           "url": "https://zenodo.org/records/12588359"
         },
         "hf_repo_id": "Daemons-Q/qsh-satellite-opssat-ad",
-        "hf_revision": "334623189f89fc546616e591004e742a52daea99",
+        "hf_revision": "a87db4e64dc9b032e468548304e596dbf0e30954",
         "hf_revision_stale": null,
         "key": "satellite_comms.opssat",
         "label": "OPS-SAT segment anomaly detector",

@@ -31066,8 +31066,9 @@
  ],
  "expected": {
   "graph": "model.onnx",
-  "accuracy": 0.6858974358974359,
+  "accuracy": 0.7692307692307693,
   "majority_baseline": 0.7307692307692307,
+  "declared_metric_not_verifiable": "auc",
   "note": "The whole official test split, and the same rows the registry's recorded student accuracy was measured on, so this reproduces that figure rather than resampling it."
  }
 }

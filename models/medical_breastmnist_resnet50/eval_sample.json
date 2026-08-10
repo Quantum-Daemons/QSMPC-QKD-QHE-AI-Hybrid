@@ -122799,6 +122799,7 @@
   "graph": "model.onnx",
   "accuracy": 0.782051282051282,
   "majority_baseline": 0.7307692307692307,
+  "declared_metric_not_verifiable": "auc",
   "note": "Same rows as the ResNet-18 sample. A lower number here is the reproduction, not a failure."
  }
 }

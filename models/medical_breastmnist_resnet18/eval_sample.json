@@ -122797,8 +122797,9 @@
  ],
  "expected": {
   "graph": "model_int8.onnx",
-  "accuracy": 0.8397435897435898,
+  "accuracy": 0.8589743589743589,
   "majority_baseline": 0.7307692307692307,
+  "declared_metric_not_verifiable": "auc",
   "note": "Measured here with onnxruntime on exactly these rows. The browser must reproduce it to within tolerance or report a mismatch rather than render it."
  }
 }
