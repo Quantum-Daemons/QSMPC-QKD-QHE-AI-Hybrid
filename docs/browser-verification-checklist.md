@@ -1676,6 +1676,31 @@ touched the leaked sample.
 | LK3 | A leak found in a sample is checked against the SOURCE before blaming the dataset | here the source was clean and the generator was not |
 | LK4 | Stratified prevalence is a stated target, not a side effect of an expression | `want // 4` silently became 25% once the truncation was lifted |
 | LK5 | Fixing the generator is not fixing the demo | the browser fetches `eval_sample.json` from HF at a pinned revision |
+| LK6 | The guard's own arithmetic is self-tested before its output is believed | plant a leak, plant pure noise, check both |
+| LK7 | `feature_names` length equals the sample's column count | a mismatch makes the guard skip the payload SILENTLY |
+
+**LK6 exists because this guard was wrong twice**, and both versions produced confident output.
+Version one asked whether positives sat on values no negative took - sound for an hour index,
+meaningless for a continuous float, and it flagged `amount_paid_log` at 99.7% because distinct
+doubles rarely collide. Version two used a binary rank-AUC formula on multi-class labels, where
+`y == 1` picks one class of eight while the ranks span every row; it printed **AUC 5.1292**. An
+impossible number is at least loud. A plausible wrong one would have been believed. It now runs
+one-vs-rest and is self-tested against a planted leak and against pure noise.
+
+**LK7 is how telecom escaped checking entirely.** Its payload wrote the 8 CLASS names under
+`feature_names` for a 7-column matrix - `generate()` returns `(X, y, label_names)` and the caller
+unpacked the third value into a variable named `feature_names`. Nothing rendered it so nothing
+complained, but the guard skips any payload whose column count disagrees with its name count, so the
+one flat-feature use case that most needed checking was never checked.
+
+**And what checking it found is a caveat, not a bug: telecom is SEPARABLE BY CONSTRUCTION.**
+`sift_ratio` and `click_asymmetry` each separate `detector_blinding` from the other seven classes at
+**one-vs-rest AUC 1.0000**; `qber_mean` reaches 0.9785 on `intercept_resend` and `multiphoton_rate`
+0.9703 on `photon_number_splitting`. That is the generator's `_SIGNATURES` table doing its job - each
+attack is given a distinctive value on purpose. The corpus was already labelled synthetic everywhere
+it is reported; what was missing is that its 0.9867 accuracy is close to tautological. It measures
+the simulator, not the world, and the payload's provenance now says so in those words.
+
 
 **LK4 is the trap inside the fix.** Removing the truncation made 5,177 positives reachable, so
 `take_pos = want // 4` jumped from 149 (1.82%, capped by scarcity) to 2048 - a 25%-laundering
