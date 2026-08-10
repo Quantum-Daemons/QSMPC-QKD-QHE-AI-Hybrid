@@ -116,13 +116,12 @@
       "int8_bytes": 11257533,
       "opset": 18
     },
-    "git_sha": "85209a9-dirty",
-    "hf_revision": "2528d9a0a3c88dab660f1e983490e44c13fd003d",
+    "git_sha": "61b855e-dirty",
     "macro_f1": 0.8249158249158248,
     "n_parameters": 11171266,
     "resolution": 28,
     "transfer_learning": "none \u2014 trained from random initialisation, so the weights are not ImageNet-derived and carry no ImageNet terms (see DATA_LICENSES.md)",
-    "wall_clock_s": 8.0
+    "wall_clock_s": 8.4
   },
   "medical_fl.resnet50": {
     "accuracy": 0.782051282051282,
@@ -145,15 +144,15 @@
     "wall_clock_s": 12.2
   },
   "medical_fl.student": {
-    "agreement": 0.814103,
+    "agreement": 0.826923,
     "auc": 0.788221,
     "baseline_gap_note": "This scores far below the 0.901 ResNet-18 baseline, and the reason is capacity: 3,226 parameters over a 14x14 input is a CKKS-feasibility budget, not a diagnostic one. Round 24 found it had been WORSE than that - a constant predictor, emitting one class for all 156 test images, with accuracy 0.730769 exactly equal to the majority-class rate and AUC 0.354, below random. It was invisible because the registry declared `auc` while the record stored `accuracy`, and because this student had neither protection its teacher already had: class-weighted loss and AUC-based model selection. Both were added. Read `n_classes_predicted` and `majority_class_rate` beside the score - an accuracy equal to the majority rate is the signature of a model that learned nothing. Workings: references/medical-student-collapse-investigation.md.",
     "both_scored_zero": false,
-    "disagreement_on_positives": 0.166667,
-    "hf_revision": "9cc75aa5871f5a679198ae20d8b79c79d4cf6907",
+    "disagreement_on_positives": 0.149123,
+    "hf_revision": "4c33f488f8a584bde7db034643731954fdaaee96",
     "majority_class_rate": 0.730769,
-    "metric_delta": 0.108975,
-    "metric_delta_pp": 10.8975,
+    "metric_delta": 0.096154,
+    "metric_delta_pp": 9.6154,
     "metric_name": "accuracy",
     "metric_note": "Two metrics are recorded and they answer different questions. `auc` is the registry's declared headline and is what the published baseline compares against. `student_metric`/`teacher_metric` are accuracy, because fidelity compares DECISIONS and a decision has no score to rank - so agreement and metric_delta are necessarily computed on a decision metric. Do not read the accuracy against the AUC baseline.",
     "n_classes_predicted": 2,
@@ -161,7 +160,7 @@
     "n_scoring_units": null,
     "scoring_unit": "samples",
     "student_key": "medical_fl.student",
-    "student_metric": 0.75641,
+    "student_metric": 0.769231,
     "student_params": 3226,
     "teacher_key": "medical_fl.resnet18",
     "teacher_metric": 0.865385,
