@@ -319,19 +319,38 @@ def main() -> int:
     # the base rate. On validation that scored 0.4242, which is exactly the all-positive value
     # 2*0.269/1.269, and the folded student then predicted malignant for all 156 test images. J
     # cannot be gamed that way: all-positive gives TPR=1, FPR=1, J=0.
-    grid = np.unique(np.round(np.linspace(0.05, 0.95, 91), 4))
-    pos, neg = y_val_true == MALIGNANT, y_val_true == BENIGN
-    j_at = [float((val_p_mal[pos] >= q).mean() - (val_p_mal[neg] >= q).mean()) for q in grid]
-    q_star = float(grid[int(np.argmax(j_at))])
+    # NET BENEFIT, not Youden's J. J is not improper, but it is the SYMMETRIC special case: it
+    # prices a missed cancer and a false alarm equally, which no screening programme does, and this
+    # project never stated that exchange rate anywhere. Net benefit makes the rate explicit - a
+    # threshold p declares that one false positive costs p/(1-p) of a true positive - and puts the
+    # model on the same axis as treat-all and treat-none, so "worse than not screening" is visible
+    # rather than inferred. Van Calster et al., Lancet Digital Health 2025;7(12):100916, assess 32
+    # measures and find every classification measure improper away from 0.5 or the prevalence;
+    # arXiv:2605.07829 shows a cost-weighted extension of J cutting misclassification risk by up to
+    # 63% over the symmetric form.
+    #
+    # The range 0.05-0.5 is a decision-context choice, not a data-driven one, and is stated with the
+    # number wherever it is reported: act on a 1-in-20 suspicion at one end, act at even odds at the
+    # other. Chi and Birbil (arXiv:2604.04241) optimise the integral of this curve directly; here it
+    # only selects the operating point of an already-fitted model.
+    q_star, nb_star, nb_all, nb_none = metrics.best_threshold_by_net_benefit(
+        y_val_true == MALIGNANT, val_p_mal, lo=0.05, hi=0.5)
+    # The margin over treat-all AT THE SAME THRESHOLD is the decision, not the raw net benefit.
+    margin = nb_star - max(nb_all, nb_none)
+    print(f"  net benefit on validation: {nb_star:+.4f} at q={q_star:.3f}  vs treat-all "
+          f"{nb_all:+.4f} / treat-none {nb_none:+.4f}  ->  margin {margin:+.4f}")
+    if margin <= 1e-9:
+        print("      ^ no threshold in 0.05-0.5 beats both defaults, so no operating point here has "
+              "clinical utility; folding one in would imply otherwise")
     folded_val = np.where(val_p_mal >= q_star, MALIGNANT, BENIGN)
-    if len(np.unique(folded_val)) < 2:
+    if margin <= 1e-9 or len(np.unique(folded_val)) < 2:
         # Belt and braces: any criterion that collapses to one class is rejected outright rather
         # than shipped, whatever it scored.
         print(f"  malignant cut q={q_star:.3f} collapses to a single class on validation - "
               f"NOT folding; the student keeps its argmax operating point")
     else:
         print(f"  malignant cut tuned on validation: q={q_star:.3f} "
-              f"(Youden's J {max(j_at):.4f}); folding it into the dense head")
+              f"(net-benefit margin {margin:+.4f} over treat-all); folding it into the dense head")
         distil.fold_threshold_into_torch_head(student, q_star, positive_class=MALIGNANT)
 
     # Keep the score matrix, not just the argmax. The registry declares AUC as this model's headline

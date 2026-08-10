@@ -88,6 +88,82 @@ def per_class_f1(y_true, y_pred, class_names: list[str] | None = None) -> dict:
     return {names[i] if i < len(names) else str(classes[i]): float(s) for i, s in enumerate(scores)}
 
 
+def net_benefit(y_true, y_score, threshold: float) -> float:
+    """Vickers-Elkin net benefit at one decision threshold.
+
+        NB(p) = TP/N - (FP/N) * p/(1-p)
+
+    The subtracted term is the exchange rate the threshold itself declares: a clinician willing to
+    act at probability p is, by that choice, saying one false positive costs p/(1-p) of a true
+    positive. So net benefit is on the scale of "true positives per patient, net of the false
+    positives they cost", and treat-all / treat-none are directly comparable on the same axis.
+
+    This is why it is preferred over accuracy, F1 and Youden's J for a screening operating point.
+    Van Calster et al. (Lancet Digital Health 2025;7(12):100916) assess 32 measures and find all
+    classification measures IMPROPER for clinically relevant thresholds other than 0.5 or the
+    prevalence, with F1 the only one of the 32 possessing neither required characteristic. Youden's J
+    is not improper but is the symmetric special case - it implicitly prices a missed cancer and a
+    false alarm the same, which no screening programme does (arXiv:2605.07829).
+    """
+    y = np.asarray(y_true).ravel().astype(int)
+    s_ = _positive_score(y_score)
+    n = y.size
+    if n == 0:
+        return float("nan")
+    pred = s_ >= threshold
+    tp = int(np.sum(pred & (y == 1)))
+    fp = int(np.sum(pred & (y == 0)))
+    q = float(min(max(threshold, 1e-9), 1 - 1e-9))
+    return float(tp / n - (fp / n) * (q / (1.0 - q)))
+
+
+def area_under_net_benefit(y_true, y_score, *, lo: float = 0.05, hi: float = 0.5,
+                           steps: int = 46) -> float:
+    """AUNBC - net benefit integrated over a RANGE of thresholds, not evaluated at one.
+
+        AUNBC = (1/N) * sum_i (p_{i+1} - p_i) * (TP_i - FP_i * p_i/(1-p_i))
+
+    Chi and Birbil (arXiv:2604.04241) optimise exactly this, and the reason to integrate is that a
+    single threshold is a guess about a clinical preference nobody stated. A range says "somewhere
+    between these two exchange rates", which is the honest form of the same claim.
+
+    ``lo``/``hi`` bound the plausible threshold range and MUST be chosen from the decision context,
+    not from the data. The default 0.05-0.5 spans "act on a 1-in-20 suspicion" to "act at even
+    odds", which brackets breast-screening recall practice; state it wherever a number is reported.
+    """
+    grid = np.linspace(lo, hi, steps)
+    return float(np.sum([(grid[i + 1] - grid[i]) * net_benefit(y_true, y_score, grid[i])
+                         for i in range(len(grid) - 1)]))
+
+
+def best_threshold_by_net_benefit(y_true, y_score, *, lo: float = 0.05, hi: float = 0.5,
+                                  steps: int = 46) -> tuple:
+    """The threshold maximising net benefit, and its margin over treat-all and treat-none.
+
+    Returns ``(threshold, nb, nb_treat_all, nb_treat_none)`` with **treat-all evaluated at the SAME
+    threshold**, which is the whole point of a decision curve: all three lines are functions of p and
+    only matched-p comparisons mean anything. Selection maximises the MARGIN over treat-all, not the
+    raw net benefit.
+
+    Getting this wrong is easy and quiet. A first version here scored the model on the grid and
+    treat-all once at the grid midpoint, then reported "best +0.2308 at q=0.050 (treat-all -0.0150)"
+    - a decisive-looking win. At q=0.050 the model flagged every validation case, so it WAS treat-all,
+    and treat-all at that same threshold also scores +0.2308. The margin was zero and the comparison
+    manufactured it by moving the goalposts to a different p.
+
+    Treat-none is 0 at every threshold by construction (it never acts, so no TP and no FP), which is
+    why any negative net benefit means the model is worse than not screening at all.
+    """
+    y = np.asarray(y_true).ravel().astype(int)
+    grid = np.linspace(lo, hi, steps)
+    all_pos = np.ones_like(y, dtype=float)
+    nbs = np.array([net_benefit(y, y_score, q) for q in grid])
+    ref = np.array([net_benefit(y, all_pos, q) for q in grid])
+    margin = nbs - np.maximum(ref, 0.0)          # 0.0 is treat-none, flat across p
+    k = int(np.argmax(margin))
+    return float(grid[k]), float(nbs[k]), float(ref[k]), 0.0
+
+
 def event_wise_counts(y_true, y_pred) -> dict:
     """The tp/fp/fn behind :func:`event_wise_fbeta`, and how many EVENTS it was computed over.
 
