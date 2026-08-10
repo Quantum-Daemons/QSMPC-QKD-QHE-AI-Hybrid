@@ -1,3 +1,4 @@
+import { VerificationChart } from "../components/VerificationChart";
 import { useRef } from "react";
 import { Link, useParams } from "react-router-dom";
 import AgenticAIPanel from "../components/AgenticAIPanel";
@@ -139,6 +140,23 @@ function UseCaseView({ usecase }: { usecase: string }) {
           classical-vs-quantum private-inference path", which is a different question: satellite runs
           a genuinely linear anomaly model and its attribution was computed and then dropped on the
           floor because the flag said no. Ask whether there is something to show. */}
+      {/* What the in-run verification measured, drawn. Gated on a plot EXISTING rather than on the
+          task type: a model whose sample ships no labels produces no plot and should render nothing
+          rather than an empty axis. */}
+      {artifacts?.verification?.plot ? (
+        <div className="card">
+          <h3 style={{ marginTop: 0 }}>Verification, this run</h3>
+          <p className="muted small" style={{ marginTop: -4 }}>
+            Re-scored in this tab on the model's own published held-out sample. Charts are drawn from
+            the same arrays the metric was computed on.
+          </p>
+          <VerificationChart
+            res={artifacts.verification as never}
+            modelKey={String(artifacts.verification.modelKey ?? "")}
+          />
+        </div>
+      ) : null}
+
       {artifacts?.explanation?.top_features?.length ? (
         <ShapPanel
           explanation={artifacts?.explanation}
