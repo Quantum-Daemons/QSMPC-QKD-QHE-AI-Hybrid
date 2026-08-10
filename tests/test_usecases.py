@@ -82,34 +82,63 @@ def test_telecom_quantum_svc_meets_target():
     assert r.detector == "quantum-svc" and r.binary_f1 >= 0.90 and r.n_params > 0
 
 
-def test_satellite_clean_downlink_delivers_telemetry():
+def test_satellite_clean_downlink_yields_key_but_qsdc_cannot_close():
+    """BB84 closes over this downlink; QSDC does not, and the two are not the same question.
+
+    These previously asserted `telemetry_delivered is True`, which was asserting the permissive
+    bug: the abort was a fixed QBER of 0.11, the LOSS-FREE root of the secrecy-capacity
+    expression. With the loss term restored (g = 10^(loss_dB/10), Qi et al. 2019) a 24.5 dB
+    downlink needs QBER below ~3e-4 and the misalignment floor alone is 0.025, so Cs is negative
+    by ~51 bit/carrier. The delivery those assertions protected was never physical.
+    """
     r = satellite_comms.run_demo({"seed": 1})
-    assert r["secure_key_bits"] >= 256          # free-space BB84 yields a usable key
-    assert r["eavesdrop_detected"] is False
-    assert r["telemetry_delivered"] is True
-    assert r["qsdc_secrecy_capacity"] > 0.0
-    assert r["qber"] < 0.11
+    assert r["secure_key_bits"] >= 256          # free-space BB84 still yields a usable key
+    assert r["qber"] < 0.11                     # and BB84's own bound is comfortably met
+    assert r["telemetry_delivered"] is False    # QSDC is not available at this link budget
+    assert r["qsdc_secrecy_capacity"] == 0.0    # reported clamped at 0; the raw value is negative
+    assert r["eavesdrop_detected"] is False     # nothing is attacking it -- do not say otherwise
 
 
-def test_satellite_eavesdropper_is_detected_and_telemetry_withheld():
+def test_satellite_eavesdropper_is_not_attributable_on_a_link_that_was_already_dead():
+    """The honest consequence, and the reason `link_budget_limited` exists as a separate flag.
+
+    You cannot detect an eavesdropper by loss of secrecy capacity on a channel that had none to
+    begin with. Reporting `eavesdrop_detected` here would accuse Eve of an abort that happens
+    identically without her -- which is exactly what this demo did on every run, including clean
+    ones.
+    """
     r = satellite_comms.run_demo({"seed": 1, "sat_eve": 0.5})
-    assert r["eavesdrop_detected"] is True       # intercept-resend pushes QBER over threshold
-    assert r["telemetry_delivered"] is False     # QSDC aborts -> no message leaks
-    assert r["secure_key_bits"] == 0
+    assert r["telemetry_delivered"] is False     # still withheld, so no message leaks
+    assert r["secure_key_bits"] == 0             # BB84 DOES detect her -- that channel still works
+    assert r["eavesdrop_detected"] is False      # but QSDC cannot attribute it, and must not claim to
 
 
-def test_qsdc_primitive_aborts_above_threshold():
+def test_qsdc_aborts_on_secrecy_capacity_and_attributes_the_cause():
     from qsh.qkd.channel import ChannelParams
     from qsh.qkd.qsdc import quantum_secure_direct_comm
 
     msg = b"SAT-OK;payload=nominal"
-    clean = quantum_secure_direct_comm(msg, ChannelParams(distance_km=800,
-                                       fiber_loss_db_per_km=0.035), seed=0)
-    assert clean.delivered == msg and not clean.eavesdrop_detected
-    attacked = quantum_secure_direct_comm(msg, ChannelParams(distance_km=800,
-                                          fiber_loss_db_per_km=0.035,
-                                          eve_intercept_fraction=0.6), seed=0)
-    assert attacked.delivered is None and attacked.eavesdrop_detected
+    leo = ChannelParams(distance_km=800, fiber_loss_db_per_km=0.035)      # 28 dB, g ~ 631
+    clean = quantum_secure_direct_comm(msg, leo, seed=0)
+    assert clean.delivered is None                      # not physical at this loss
+    assert clean.link_budget_limited is True
+    assert clean.eavesdrop_detected is False            # blaming Eve for the link budget is the bug
+    assert clean.eve_gain_g > 1.0                       # the loss term is actually applied
+
+    # A link where QSDC genuinely closes: g near 1 is the regime the published demonstrations use
+    # (Qi et al. 2019 measured 4.1 dB on fibre). Only here is an abort attributable to an attacker.
+    short = ChannelParams(distance_km=2, fiber_loss_db_per_km=0.2, misalignment=0.001,
+                          dark_count_prob=1e-9)
+    ok = quantum_secure_direct_comm(msg, short, seed=0)
+    assert ok.delivered == msg and ok.secrecy_capacity > 0.0
+    assert ok.link_budget_limited is False
+
+    attacked = quantum_secure_direct_comm(
+        msg, ChannelParams(distance_km=2, fiber_loss_db_per_km=0.2, misalignment=0.001,
+                           dark_count_prob=1e-9, eve_intercept_fraction=0.6), seed=0)
+    assert attacked.delivered is None
+    assert attacked.eavesdrop_detected is True          # THIS one is genuinely Eve
+    assert attacked.link_budget_limited is False
 
 
 def test_attack_generator_shape():
