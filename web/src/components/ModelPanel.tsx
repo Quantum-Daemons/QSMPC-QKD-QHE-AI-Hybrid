@@ -202,9 +202,6 @@ function MetricRows({ spec }: { spec: ModelSpec }) {
  * them would hide which one applies.
  */
 function ModelRunner({ usecase, spec }: { usecase: string; spec: ModelSpec }) {
-  const [res, setRes] = useState<ModelEvalResult | null>(null);
-  const [busy, setBusy] = useState(false);
-  const [ran, setRan] = useState(false);
 
   const fetchable = browserModels(usecase).some((m) => m.spec.key === spec.key);
   const blocked =
@@ -215,29 +212,18 @@ function ModelRunner({ usecase, spec }: { usecase: string; spec: ModelSpec }) {
     : !fetchable ? "published, but it ships no browser-runnable ONNX graph at that revision"
     : null;
 
-  const run = async () => {
-    setBusy(true);
-    setRes(await evaluatePublishedModel(usecase, undefined, spec.key));
-    setRan(true);
-    setBusy(false);
-  };
-
   if (blocked) return <p className="muted small"><em>Cannot be run here: {blocked}.</em></p>;
 
-  return (
-    <div style={{ marginTop: 6 }}>
-      <button className="btn ghost" onClick={run} disabled={busy} style={{ fontSize: 12 }}>
-        {busy ? "Running\u2026" : "\u25b6 Run this model in your browser"}
-      </button>
-      {ran && res === null && (
-        <p className="muted small">
-          Published and pinned, but it ships no <code>eval_sample.json</code> at that revision, so
-          there is no held-out sample to score it on. Reported rather than passed off as a success.
-        </p>
-      )}
-      <ModelEvalReport res={res} />
-    </div>
-  );
+  // The standalone "run this model" button was REMOVED in Round 24j. It called exactly what the
+  // E2E orchestration now calls on every run - evaluatePublishedModel on the whole held-out sample
+  // - so it had become a second, manual path to the same check, with its own state and its own
+  // chance to disagree. The run verifies every published model for this use case, not only the
+  // selected one, so nothing is lost by deleting it: start the pipeline and the verification is
+  // part of the result rather than a button somebody has to know to press.
+  return <p className="muted small">
+    Verified during the pipeline run: press <strong>Start</strong> and this model is re-scored on its
+    published held-out sample in this tab, with the result reported in the run log.
+  </p>;
 }
 
 /**
