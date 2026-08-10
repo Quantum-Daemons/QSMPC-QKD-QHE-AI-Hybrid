@@ -1196,25 +1196,37 @@ export function runClientPipeline(
     // number, because a model that does not reproduce its own published metric is not a weaker
     // result - it is a different model, a different sample, or a broken pipeline, and none of those
     // should be presented as a measurement.
-    if (pub.kind === "ran") {
+    // EVERY published model for this use case, not only the one the run selected. medical publishes
+    // three and satellite four; verifying just the selected one left the others asserted-but-never-
+    // checked, and the standalone "run this model" button that used to cover them was removed in
+    // favour of this. A visitor should not have to know which control re-checks which model.
+    for (const target of browserModels(usecase)) {
+      const key = target.spec.key;
+      const isSelected = pub.kind === "ran" && pub.run.modelKey === key;
       try {
-        const v = await evaluatePublishedModel(usecase, 0.05, pub.run.modelKey);
+        const v = await evaluatePublishedModel(usecase, 0.05, key);
         if (v && v.ran && v.score != null && v.expected != null) {
-          metric(stage, "verified_metric", v.metricName);
-          metric(stage, "verified_score", r2(v.score));
-          metric(stage, "verified_expected", r2(v.expected));
-          metric(stage, "verified_n", v.n);
-          metric(stage, "verification", v.matchesExpected ? "PASS" : "FAIL");
+          // Only the selected model's numbers become run metrics; the rest are logged. Otherwise
+          // four models would overwrite each other's `verified_score` and the panel would show
+          // whichever finished last.
+          if (isSelected) {
+            metric(stage, "verified_metric", v.metricName);
+            metric(stage, "verified_score", r2(v.score));
+            metric(stage, "verified_expected", r2(v.expected));
+            metric(stage, "verified_n", v.n);
+            metric(stage, "verification", v.matchesExpected ? "PASS" : "FAIL");
+          }
           const delta = Math.abs(v.score - v.expected);
+          const tag = isSelected ? "" : " (not the selected model)";
           emit("log", stage, v.matchesExpected
-            ? `verification PASS: re-scored all ${v.n} published held-out rows in this tab and got `
-              + `${v.metricName} ${r2(v.score)} against the recorded ${r2(v.expected)} `
+            ? `verification PASS ${key}${tag}: re-scored all ${v.n} published held-out rows in this `
+              + `tab and got ${v.metricName} ${r2(v.score)} against the recorded ${r2(v.expected)} `
               + `(|delta| ${delta.toExponential(2)}). The number this page prints was reproduced `
               + `here, not asserted.`
-            : `verification FAIL: re-scoring ${v.n} rows gave ${v.metricName} ${r2(v.score)} but the `
-              + `recorded figure is ${r2(v.expected)} (|delta| ${delta.toExponential(2)}, tolerance `
-              + `0.05). Treat every number on this page for ${pub.run.modelKey} as unverified until `
-              + `this is explained.`);
+            : `verification FAIL ${key}${tag}: re-scoring ${v.n} rows gave ${v.metricName} `
+              + `${r2(v.score)} but the recorded figure is ${r2(v.expected)} (|delta| `
+              + `${delta.toExponential(2)}, tolerance 0.05). Treat every number on this page for `
+              + `${key} as unverified until this is explained.`);
           // A model that cannot beat a trivial predictor is worth saying out loud even when it
           // reproduces its own figure exactly - reproducing a bad number is still reproducing it.
           if (!v.beatsBaseline && v.baseline != null) {
@@ -1223,18 +1235,18 @@ export function runClientPipeline(
               + `are separate questions.`);
           }
         } else if (v && v.error) {
-          metric(stage, "verification", "ERROR");
-          emit("log", stage, `verification could not run: ${v.error}`);
+          if (isSelected) metric(stage, "verification", "ERROR");
+          emit("log", stage, `verification could not run for ${key}: ${v.error}`);
         } else {
           // Distinct from a failure: some models publish no evaluation sample, and saying nothing
           // would let "not checked" read as "checked and fine".
-          metric(stage, "verification", "no-sample");
-          emit("log", stage, `no published evaluation sample for ${pub.run.modelKey}, so its `
-            + `recorded metric is NOT reproduced in this tab.`);
+          if (isSelected) metric(stage, "verification", "no-sample");
+          emit("log", stage, `no published evaluation sample for ${key}, so its recorded metric `
+            + `is NOT reproduced in this tab.`);
         }
       } catch (e) {
-        metric(stage, "verification", "ERROR");
-        emit("log", stage, `verification threw: ${(e as Error).message}`);
+        if (isSelected) metric(stage, "verification", "ERROR");
+        emit("log", stage, `verification threw for ${key}: ${(e as Error).message}`);
       }
     }
   }
