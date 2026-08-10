@@ -1608,6 +1608,32 @@ clean.
 T2 is the one an automated check gets wrong. `license: null` from the GitHub API means all rights
 reserved, and a naive check that only fails on a deny-list of SPDX identifiers passes it.
 
+## A published sample can go stale against the weights it scores, and only a run will say so
+
+Verifying every published model during the run - rather than only the selected one - found a real
+divergence on its first execution: `medical_fl.student` scored **accuracy 0.77** on its own published
+held-out sample while that sample recorded **0.69**. The weights had been retrained and republished;
+the `eval_sample.json` beside them had not been regenerated, so the artefact and its expectation
+described two different models at the same pinned revision.
+
+Auditing all nine by modification time, **six samples were older than the weights they score.**
+Older does not always mean wrong - a retrain that reproduces its weights leaves the sample valid -
+but it is the only cheap signal available before running them, and one of the six was confirmed
+wrong by the run.
+
+| # | Check | Pass condition |
+|---|---|---|
+| E1 | After ANY retrain, regenerate `eval_sample.json` before publishing | sample mtime newer than the weights it scores |
+| E2 | Run the pipeline once per use case and read every verification line | all PASS, and the count matches the number of published models |
+| E3 | A FAIL is a divergence, not a lower score | investigate before republishing anything |
+| E4 | Verify EVERY published model, not only the selected one | medical publishes three, satellite four |
+
+E4 is what turned this from invisible into a log line. The retrain-and-publish cycle documented
+above already warned that training clears `hf_revision` and that publishing without `--public` flips
+a repo private; this is the third trap in the same cycle - **republishing weights without
+regenerating the sample beside them** - and it is the one that produces a confidently wrong number
+rather than a broken link.
+
 ## Check the binary, not the version string, before trusting GPU support
 
 Before training anything destined for the Hub, confirm the local stack actually targets this
