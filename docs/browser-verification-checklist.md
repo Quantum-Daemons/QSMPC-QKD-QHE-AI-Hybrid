@@ -1558,6 +1558,39 @@ limit and wrote that into three documents. A probe of the identical architecture
 scoring 0.23 AUC higher is what disproved it - **before concluding "the encrypted tier is small, so
 it is weak", train the same small model properly once and see what it can actually do.**
 
+## A vendored crypto library has no CVE to find, so nothing will tell you it is old
+
+`node-seal` bundles Microsoft SEAL as a WASM build. The pinned dependency resolves to node-seal
+7.0.0, whose vendored `CMakeLists.txt` declares **SEAL 4.1.2, released 2024-07-11**. Upstream SEAL
+shipped **4.4.0 on 2026-07-25** carrying the vendor's own words: *"Critical security update: all
+users should upgrade to Microsoft SEAL 4.4.0 as soon as possible"*, hardening untrusted
+deserialization, followed by 4.4.1 and 4.4.3 in the first week of August 2026.
+
+**No CVE or GHSA exists for either package**, so `npm audit` reports nothing, Dependabot opens no
+pull request, and the lockfile is perfectly current against its own registry. The gap is invisible
+to every automated signal and is only findable by reading the upstream release notes.
+
+| # | Check | Pass condition |
+|---|---|---|
+| V1 | For every vendored/transitive crypto library, find the UPSTREAM version it embeds | recorded, with its release date |
+| V2 | Compare against upstream's latest release notes, not against the registry | any security-labelled release since is named |
+| V3 | If the wrapper cannot be upgraded, state whether the fixed surface EXISTS in this deployment | a reasoned yes/no, not silence |
+| V4 | Re-check per round | the version is dated, and the date is recent |
+
+**V3 is what turns this from alarm into engineering.** Checked here: the 4.4.0 fix hardens
+deserialization of untrusted input. This demo generates its keys, encrypts, evaluates and decrypts
+**entirely in the visitor's own tab** with zero server compute, and deserialises no externally
+supplied ciphertext - so the hardened surface is not reachable in this deployment. That is a real
+mitigation, not a dismissal, and it stops being true the moment any server-side component accepts a
+ciphertext from a client.
+
+The same reasoning applies to a second upstream statement. SEAL's `SECURITY.md` was rewritten in
+July 2026 to say in writing that its CKKS targets IND-CPA and **not** IND-CPA-D, and that noise
+flooding "must be implemented by the application before a decrypted CKKS value crosses a trust
+boundary". Here the secret key and the decryption live in the same tab as the plaintext result, so
+no such boundary is crossed. Record the reasoning, because the architecture is what makes it safe -
+not the cipher.
+
 ## Bootstrap a claimed improvement before shipping it
 
 The OPS-SAT student's AUC-PR moved 0.9225 to 0.9681 when its feature map changed. On a 529-row test
