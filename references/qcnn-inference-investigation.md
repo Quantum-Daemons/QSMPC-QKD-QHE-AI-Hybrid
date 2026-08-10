@@ -9,36 +9,36 @@ about the input.
 
 Same eight-feature vector, twelve different run seeds:
 
-| seed | ⟨Z₀⟩ | class |
+| seed | <Z0> | class |
 |---|---|---|
 | 0 | +0.0928 | 1 |
-| 1 | −0.0024 | 0 |
+| 1 | -0.0024 | 0 |
 | 2 | +0.0129 | 1 |
 | 3 | +0.0016 | 1 |
-| 4 | −0.0854 | 0 |
-| 5 | −0.0618 | 0 |
+| 4 | -0.0854 | 0 |
+| 5 | -0.0618 | 0 |
 
 Over 24 random feature vectors x 8 seeds each:
 
 | quantity | value |
 |---|---|
 | vectors whose class FLIPS across seeds | **24 / 24 = 100%** |
-| mean \|⟨Z₀⟩\| with the QOTP mask | 0.0761 (max 0.2013) |
-| mean \|⟨Z₀⟩\| with the mask DISABLED | 0.0748 (max 0.2096) |
+| mean \|<Z0>\| with the QOTP mask | 0.0761 (max 0.2013) |
+| mean \|<Z0>\| with the mask DISABLED | 0.0748 (max 0.2096) |
 | unmasked class balance | 0.50 |
-| correlation, unmasked class vs mean(feature) | **−0.070** |
+| correlation, unmasked class vs mean(feature) | **-0.070** |
 
 ## Two causes, and the obvious one is the smaller
 
 **The QOTP mask is applied and never undone.** `qotpQcnnInfer` applies a random Pauli X/Z per qubit,
-then runs the circuit, then reads ⟨Z₀⟩ off the *masked* state. An X on qubit 0 flips the sign of
-⟨Z₀⟩, so the class inherits a coin flip from the seed. That is the intuitive explanation and it is
+then runs the circuit, then reads <Z0> off the *masked* state. An X on qubit 0 flips the sign of
+<Z0>, so the class inherits a coin flip from the seed. That is the intuitive explanation and it is
 not the main one.
 
 **The circuit has no trained parameters, and scrambles.** Disabling the mask entirely barely moves
 the numbers - 0.0748 against 0.0761 - because seven fixed rounds of H, a CNOT ring and T on every
-qubit drive the state toward uniform regardless of the input. ⟨Z₀⟩ lands within ±0.21 of zero for
-every vector tested, and its sign is numerical noise. A correlation of −0.070 against the simplest
+qubit drive the state toward uniform regardless of the input. <Z0> lands within +/-0.21 of zero for
+every vector tested, and its sign is numerical noise. A correlation of -0.070 against the simplest
 possible summary of the input is the whole story: **the readout is independent of the data.**
 
 ## Why nothing caught it
@@ -68,7 +68,7 @@ QOTP hiding and QCNN prediction are two different demonstrations and were fused 
 - **Prediction** needs trainable parameters and an unmasked readout.
 
 Undoing a QOTP mask *through* the circuit is not a detail that can be waved away: Pauli frames
-propagate through Clifford gates but `T X T†` is not Pauli, which is precisely the difficulty
+propagate through Clifford gates but `T X T-dagger` is not Pauli, which is precisely the difficulty
 Ortega & Martin-Delgado's scheme exists to handle. So the honest split is to keep the masked circuit
 as the hiding demonstration and to give the prediction path its own unmasked, parameterised circuit,
 rather than to claim a correction this repository does not implement.

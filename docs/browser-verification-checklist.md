@@ -24,11 +24,11 @@ running a round, use the Run sheet below instead.
 
 | Concern | Sections | Where |
 |---|---|---|
-| **Deploy, CI, and what the browser is actually served** | 10 | [Run sheet](#run-sheet---the-whole-round-in-one-page) · [How to work it](#how-to-work-it) · [The layout axis](#the-layout-axis-in-full) · [Reproduce each panel's headline from...](#reproduce-each-panels-headline-from-what-the-page-itself-shows) · [Check the MODEL](#check-the-model-not-only-the-number) · [Anything outside web/ and src/ still...](#anything-outside-web-and-src-still-ships-and-nothing-was-checking-it) · [Local-green is not CI-green](#local-green-is-not-ci-green-and-the-deploy-will-not-tell-you) · [Bootstrap a claimed improvement before...](#bootstrap-a-claimed-improvement-before-shipping-it) · [The deploy step itself needs verifying](#the-deploy-step-itself-needs-verifying-and-a-failed-build-looks-like-a-successful-one) · [An investigation is not landed until...](#an-investigation-is-not-landed-until-the-string-the-ui-renders-says-so) |
-| **Is the number measuring what it claims to** | 4 | [A shuffled DataLoader is correct for...](#a-shuffled-dataloader-is-correct-for-training-and-silently-wrong-for-harvesting) · [Bootstrap a claimed improvement before...](#bootstrap-a-claimed-improvement-before-shipping-it) · [A model can score respectably and have...](#a-model-can-score-respectably-and-have-learned-nothing---check-that-it-predicts-more-than-one-class) · [Ask what the metric was divided by](#ask-what-the-metric-was-divided-by-not-just-how-many-samples-there-were) |
-| **Publication, the Hub, and what may be redistributed** | 8 | [Run sheet](#run-sheet---the-whole-round-in-one-page) · [Routes](#routes) · [Retraining a published model is a...](#retraining-a-published-model-is-a-five-step-cycle-and-two-of-the-steps-bite) · [PQC library conformance](#pqc-library-conformance-run-nists-negative-vectors-not-just-the-happy-path) · [Submodules](#submodules-check-they-are-still-maintained-and-that-the-licence-is-written-down) · [Navigate the way a visitor does](#navigate-the-way-a-visitor-does-not-the-way-a-test-does) · [A default that contradicts a licence...](#a-default-that-contradicts-a-licence-commitment-will-eventually-be-taken) · [Retired and orphaned Hugging Face repos](#retired-and-orphaned-hugging-face-repos) |
-| **Claims about the outside world** | 4 | [The nine axes](#the-nine-axes) · [Search outward](#search-outward-not-just-inward---and-fetch-the-source-never-the-summary) · [Reproduce each panel's headline from...](#reproduce-each-panels-headline-from-what-the-page-itself-shows) · [Every control](#every-control-against-a-published-reference-value) |
-| **Coverage of the page itself** | 7 | [Run sheet](#run-sheet---the-whole-round-in-one-page) · [Routes](#routes) · [Regions on a use-case page](#regions-on-a-use-case-page) · [Every panel must describe the run that...](#every-panel-must-describe-the-run-that-just-happened) · [Simulator controls](#simulator-controls-and-where-each-one-has-to-show-up) · [Every control](#every-control-against-a-published-reference-value) · [The UX axis](#the-ux-axis-and-the-accessibility-half-nobody-was-checking) |
+| **Deploy, CI, and what the browser is actually served** | 10 | [Run sheet](#run-sheet---the-whole-round-in-one-page) . [How to work it](#how-to-work-it) . [The layout axis](#the-layout-axis-in-full) . [Reproduce each panel's headline from...](#reproduce-each-panels-headline-from-what-the-page-itself-shows) . [Check the MODEL](#check-the-model-not-only-the-number) . [Anything outside web/ and src/ still...](#anything-outside-web-and-src-still-ships-and-nothing-was-checking-it) . [Local-green is not CI-green](#local-green-is-not-ci-green-and-the-deploy-will-not-tell-you) . [Bootstrap a claimed improvement before...](#bootstrap-a-claimed-improvement-before-shipping-it) . [The deploy step itself needs verifying](#the-deploy-step-itself-needs-verifying-and-a-failed-build-looks-like-a-successful-one) . [An investigation is not landed until...](#an-investigation-is-not-landed-until-the-string-the-ui-renders-says-so) |
+| **Is the number measuring what it claims to** | 4 | [A shuffled DataLoader is correct for...](#a-shuffled-dataloader-is-correct-for-training-and-silently-wrong-for-harvesting) . [Bootstrap a claimed improvement before...](#bootstrap-a-claimed-improvement-before-shipping-it) . [A model can score respectably and have...](#a-model-can-score-respectably-and-have-learned-nothing---check-that-it-predicts-more-than-one-class) . [Ask what the metric was divided by](#ask-what-the-metric-was-divided-by-not-just-how-many-samples-there-were) |
+| **Publication, the Hub, and what may be redistributed** | 8 | [Run sheet](#run-sheet---the-whole-round-in-one-page) . [Routes](#routes) . [Retraining a published model is a...](#retraining-a-published-model-is-a-five-step-cycle-and-two-of-the-steps-bite) . [PQC library conformance](#pqc-library-conformance-run-nists-negative-vectors-not-just-the-happy-path) . [Submodules](#submodules-check-they-are-still-maintained-and-that-the-licence-is-written-down) . [Navigate the way a visitor does](#navigate-the-way-a-visitor-does-not-the-way-a-test-does) . [A default that contradicts a licence...](#a-default-that-contradicts-a-licence-commitment-will-eventually-be-taken) . [Retired and orphaned Hugging Face repos](#retired-and-orphaned-hugging-face-repos) |
+| **Claims about the outside world** | 4 | [The nine axes](#the-nine-axes) . [Search outward](#search-outward-not-just-inward---and-fetch-the-source-never-the-summary) . [Reproduce each panel's headline from...](#reproduce-each-panels-headline-from-what-the-page-itself-shows) . [Every control](#every-control-against-a-published-reference-value) |
+| **Coverage of the page itself** | 7 | [Run sheet](#run-sheet---the-whole-round-in-one-page) . [Routes](#routes) . [Regions on a use-case page](#regions-on-a-use-case-page) . [Every panel must describe the run that...](#every-panel-must-describe-the-run-that-just-happened) . [Simulator controls](#simulator-controls-and-where-each-one-has-to-show-up) . [Every control](#every-control-against-a-published-reference-value) . [The UX axis](#the-ux-axis-and-the-accessibility-half-nobody-was-checking) |
 
 **Every check row has a unique ID.** The prefix says which section it belongs to: `RS` run sheet,
 `RG` page region, `CI` continuous integration, `DP` deploy, `DN` denominator/sample size, `HF`
@@ -434,7 +434,7 @@ or to config rather than to a literal in the component.
 | Agentic AI, MCP | derived-key fingerprint | combiner choice | changes with the combiner - verified, not assumed |
 
 Worked example, run in Round 21. The advantage card printed
-`communication ×6145.8 · latency ×3608.79 · security ×1.5` beside a score of `10/10`. Taking the
+`communication x6145.8 . latency x3608.79 . security x1.5` beside a score of `10/10`. Taking the
 `quantum_advantage` weights from config rather than retyping them - `w_comm 0.6`, `w_latency 0.2`,
 `w_security 0.2`, `log_scale 3.2`, `log_offset 1.0` - gives
 `6145.8^0.6 x 3608.79^0.2 x 1.5^0.2`, then `log10(composite + 1) x 3.2 + 1.0`, which lands on 10 and
@@ -496,9 +496,9 @@ Four failure shapes, all of them found on this page rather than reasoned about:
 - **Says the same thing twice, differently.** Two panels offering the same ResNet-18 run with
   different chrome; two quantum-advantage scores on one page.
 
-Panels to read, per use case, after a run: Inference provenance · Models (including each "Run this
-model in your browser" result) · Why - top features (SHAP) · Benchmark - MPC-FHE vs QSMPC-FHE ·
-Detailed results · Security posture and quantum advantage · Agentic AI · QKD control plane.
+Panels to read, per use case, after a run: Inference provenance . Models (including each "Run this
+model in your browser" result) . Why - top features (SHAP) . Benchmark - MPC-FHE vs QSMPC-FHE .
+Detailed results . Security posture and quantum advantage . Agentic AI . QKD control plane.
 
 Cross-check them against each other and against the run log, not only against expectations:
 
@@ -560,12 +560,12 @@ agree that the transmission was refused.
 
 That test is how the diagram-versus-log contradiction was found: the log said
 `QSDC ABORTED: error 0.158 > 0.11 - telemetry withheld`, the metrics agreed, and the arrow read
-`QSDC direct telemetry · secrecy 0 bit/carrier` with a done tick - delivered-but-not-secret, the
+`QSDC direct telemetry . secrecy 0 bit/carrier` with a done tick - delivered-but-not-secret, the
 opposite of what happened, on the feature the page leads with. Observed after the fix:
 
-    diagram   QSDC ABORTED · error 0.16 over threshold · telemetry withheld
+    diagram   QSDC ABORTED . error 0.16 over threshold . telemetry withheld
     log       QSDC ABORTED: error 0.158 > 0.11 - telemetry withheld
-    metrics   qsdc_link_budget_limited 1 · qsdc_eavesdrop_detected 0 · qsdc_secrecy_capacity 0
+    metrics   qsdc_link_budget_limited 1 . qsdc_eavesdrop_detected 0 . qsdc_secrecy_capacity 0
     #         NOT `qsdc_eavesdrop_detected 1`. This block previously said 1, which is the
     #         behaviour Round 24m identified as the DEFECT: the page reported an eavesdropper on
     #         a clean channel on every run. See the free-space section below - this link is
@@ -573,9 +573,9 @@ opposite of what happened, on the feature the page leads with. Observed after th
 
 The same run also showed why a step must not be gated on something it does not depend on. The
 published-model step sat inside the delivery branch, so an abort left it reading
-`published model · —` with a done tick and no reason - even though that step runs the pinned model on
+`published model . -` with a done tick and no reason - even though that step runs the pinned model on
 a row of the model's OWN corpus and has nothing to do with this run's channel. It now runs either
-way: `published satellite_comms.telemanom @ 4507c187d0f9 · onnx-wasm · 1x250x6 · 9.59 ms ·
+way: `published satellite_comms.telemanom @ 4507c187d0f9 . onnx-wasm . 1x250x6 . 9.59 ms .
 abs err 0.01615`.
 
 ## The source-code pass: hardcoding and fallbacks the browser cannot show you
@@ -663,7 +663,7 @@ nothing on screen is the same defect as a control that renders and changes nothi
 
 Two points, not one, and predict the second before running it. The free-space fix was confirmed by
 `800 km -> 28 dB` and `2000 km -> 70 dB`, both exactly `distance x 0.035`, with the diagram arrow
-reading `free-space BB84 decoy-state (28 dB) · QBER 0.04`. One point cannot distinguish "reads the
+reading `free-space BB84 decoy-state (28 dB) . QBER 0.04`. One point cannot distinguish "reads the
 config" from "happens to agree with the literal it replaced" - which is the failure mode this whole
 axis exists for.
 
@@ -1121,7 +1121,7 @@ value, and a reader cannot tell "this stage ran" from "this value is fine".
 
 Round 22 caught the live case. With the eavesdropper parameter at 0.35 the diagram drew
 
-    BB84 decoy-state · QBER 0.1 ✓
+    BB84 decoy-state . QBER 0.1 yes
 
 while the posture table on the same page, for the same run, reported **0 secure bits**, an SKR of
 **0 per pulse**, and "no secure key at this error rate". One run, two panels, opposite conclusions -
@@ -1130,11 +1130,11 @@ and the reassuring one was the bigger and more looked-at.
 So the check is: **after every run, read the diagram labels and the tables against each other**, not
 each on its own.
 
-    [...document.querySelectorAll('svg text')].map(t => t.textContent.trim()).filter(t => /✓|✗/.test(t))
+    [...document.querySelectorAll('svg text')].map(t => t.textContent.trim()).filter(t => /yes|no/.test(t))
 
 For each ticked step, find the number it sits beside and find where else the page reports the same
 quantity. If the two disagree, the tick is the bug. Steps now declare an outcome (`ok`) separately
-from completion, and a failed one is drawn with `✗` in a warning colour - but the axis outlives this
+from completion, and a failed one is drawn with `no` in a warning colour - but the axis outlives this
 particular fix, because any status glyph next to any measured value invites the same misreading.
 
 Note the trap that made this hard to see: `body.innerText` flattens SVG into the surrounding text, so
