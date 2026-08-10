@@ -22,7 +22,15 @@ WHY THIS USE CASE EXISTS, since the line above describes a mechanism and not a p
     export", with end-to-end encryption defined as the means of decryption not being provided to any
     third party. Export law already blesses this architecture.
 
-    Full workings, including the four motivations to avoid: references/satellite-motivation-fact-check.md
+    AND THE HONEST REGISTER, from the same body of evidence. CISA's Space Systems Critical
+    Infrastructure Working Group (April 2024) assessed both halves of this stack: homomorphic
+    encryption schemes "have yet to be applied to space systems, and their technology readiness level
+    remains low", and QKD "has been tested in the space environment, but its technology readiness
+    level remains low". That is a US government body describing this as low-TRL in writing. It
+    corroborates the gap and it sets the expectation - this is a research demonstrator, not something
+    an operator could fly.
+
+    Full workings, including the five motivations to avoid: references/satellite-motivation-fact-check.md
 
 
 A ground station and a LEO satellite establish a PQC-first hybrid session, distribute a

@@ -92,17 +92,64 @@ to apply NIST-approved encryption with **at least a 256-bit key** to TT&C commun
 
 ## The architectural gap this fills, stated precisely
 
-**CCSDS 355.0-B-2**, *Space Data Link Security Protocol* (Blue Book, July 2022), provides
-"authentication and/or **data confidentiality** at the Data Link Layer" - but only "to the contents
-of Transfer Frames used by Space Data Link Protocols **over a space link**."
+**CCSDS 355.0-B-2**, *Space Data Link Security Protocol* (Blue Book, July 2022), does provide
+telemetry confidentiality, and it is worth stating that plainly rather than strawmanning it. Section
+2.2.3: the protocol "provides all its functions (authentication, encryption, and authenticated
+encryption) for the data in the Transfer Frame Data Field of a **TM** Transfer Frame." The crypto is
+specified and current - CCSDS 352.0-B-2 mandates AES-256, GCM, HMAC-SHA-256 - and NASA ships a
+working open-source implementation (CryptoLib, GSFC).
 
-**SDLS terminates at the ground station.** Telemetry is plaintext from that point on, throughout the
-ground segment, which is where processing and ML actually happen. NIST IR 8401 addresses the same
-seam from the other side, telling operators that "third-party suppliers or services such as
-cloud-based infrastructures" need data flows "encrypted (with independent key management)".
+Three limits are what leave a gap, and only the third is the one this project addresses:
 
-That seam - after SDLS, inside the ground segment - is exactly where this project's encrypted
-inference sits.
+1. **Scope inside the frame.** Only the Transfer Frame Data Field is encrypted. SDLS "provides
+   authentication for some fields in the Transfer Frame Primary Header ... **It does not provide
+   encryption for these fields**", and offers nothing at all for the VC_OCF, MC_FSH or MC_OCF
+   services.
+2. **What operators actually turn on.** The asymmetry is uplink-first. NIST IR 8401 states that
+   "**command uplinks** are typically encrypted and authenticated" and makes **no equivalent claim
+   for the telemetry downlink**. CCSDS 350.0-G-3 Annex A bears this out from the other direction -
+   ISS used 3DES on the uplink only.
+3. **Where it stops.** SDLS applies "over a space link" and **terminates at the ground station.**
+   Telemetry is plaintext from that point on, throughout the ground segment, which is where
+   processing and ML actually happen.
+
+Limit 3 is the seam. NIST IR 8401 approaches it from the other side, telling operators to "respond
+to confidentiality breaches of Telemetry, Tracking, and Command (TT&C)" and that data flows to
+"third-party suppliers or services such as cloud-based infrastructures" need to be "encrypted (with
+independent key management)". That seam - after SDLS, inside the ground segment - is exactly where
+this project's encrypted inference sits.
+
+Two citation cautions if this section is ever expanded. The CCSDS security *architecture* document is
+**351.0-M-1, a Magenta Book** (Recommended Practice), not a Green Book. And IR 8401 is keyed to
+**CSF 1.1**, superseded by CSF 2.0 (NIST CSWP 29, Feb 2024), so its PR.DS-2 style subcategory
+identifiers no longer map 1:1 - cite the prose, not the identifiers.
+
+## The honest limitation, from the government, in the same breath as the novelty claim
+
+CISA's Space Systems Critical Infrastructure Working Group assessed this exact stack - *Space Systems
+Security and Resilience Landscape: Zero Trust in the Space Environment*, April 2024:
+
+> homomorphic encryption schemes "**have yet to be applied to space systems, and their technology
+> readiness level remains low**"
+>
+> QKD "has been tested in the space environment, but its **technology readiness level remains low**
+> ... quantum systems operate on specialized equipment that is costly"
+
+Both halves of this project's satellite story, called low-TRL by a US government body, in writing.
+That is the correct citation to carry, and it should sit next to the novelty claim rather than
+somewhere quieter, because it does two things at once: it independently corroborates the gap ("yet
+to be applied to space systems" is CISA saying the same thing the prior-art search found), and it
+sets the register - this is a research demonstrator, not something an operator could fly.
+
+CISA attributes the QKD caution to NSA's published position. nsa.gov was not machine-retrievable
+during verification, so **NSA's own wording is unverified here**; cite CISA for the assessment, not
+NSA.
+
+The two threat catalogues worth pointing at, both real and both current: ESA **SPACE-SHIELD**
+(spaceshield.esa.int), an ATT&CK-style knowledge base that names "Telemetry Protocol Interception"
+and "Exfiltration Over TM Channel", and Aerospace Corporation **SPARTA** v4.0 (6 August 2026, 9
+tactics / 87 techniques, covers the ground segment). SPARTA is a TTP matrix, not a zero-trust
+framework - do not describe it as one.
 
 ## A novelty claim that survives an adversarial search, and one that does not
 
@@ -123,6 +170,7 @@ collide with prior art immediately.
 | tempting claim | why not |
 |---|---|
 | "ITAR blocks moving telemetry" | Affirmatively false; Note 3 decontrols housekeeping data explicitly |
+| "SPD-5 mandates telemetry encryption" | It does not. Sec. 4(b)(i) says "authentication **or** encryption" - disjunctive - and every principle is a "should", framed as what operators "should consider, based on risk assessment and tolerance". Sec. 5 disclaims any change to existing authority. SPD-5 is real, is still in effect (EO 14369 of 18 Dec 2025 amends SPD-3, not SPD-5), and is **hortatory** |
 | ESA's AI-assurance project (PINEBERRY) as precedent | Real, but about explainability, robustness and poisoning - not confidentiality |
 | ESA's PPML activity as telemetry precedent | Scoped to Earth-observation imagery, not telemetry or ground segment |
 | Federated learning in LEO constellations | The eight verified papers are motivated by **downlink bandwidth**, not inter-operator confidentiality |
