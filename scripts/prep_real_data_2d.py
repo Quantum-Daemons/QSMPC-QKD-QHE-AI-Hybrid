@@ -199,13 +199,78 @@ def finance() -> dict:
     }
 
 
+def genomics() -> dict:
+    """gnomAD allele frequency, AFR against European, for the 77 variants the score is built from.
+
+    NOT the training corpus, and the panel says so. The page scores real 1000 Genomes genotypes, but
+    IGSR grants no blanket redistribution licence - it states that itself - so the training data
+    cannot ship. gnomAD v4 is CC0, the strongest available position: no attribution obligation, no
+    share-alike, no field-of-use limit.
+
+    WHY THIS PROJECTION. The page already shows one globally-set high-risk cut flagging 29.35% of AFR
+    against 3.75% of AMR. That chart STATES the disparity. This one EXPLAINS it: each point is one of
+    the score's own variants, positioned by how common it is in African-ancestry against
+    European-ancestry samples. On-diagonal means ancestry-invariant; off-diagonal means the allele
+    frequency itself depends on ancestry. PGS000001 was fitted on a 100% European cohort (22,627
+    individuals, Mavaddat et al., JNCI 2015), so weights learned where frequencies differ are exactly
+    how a distribution shift arises without any single weight being wrong.
+
+    The class split is effect size, not disease: variants at or above the median |weight| carry more
+    of the score, so an off-diagonal point in that class moves the distribution more than an
+    off-diagonal point in the other.
+    """
+    src = REPO / "web" / "public" / "data" / "genomics" / "pgs000001_prs.json"
+    af_path = REPO / "data" / "genomics" / "gnomad_af.json"
+    if not src.exists() or not af_path.exists():
+        print("  genomics: SKIP, run scripts/fetch_gnomad_af.py first")
+        return {}
+    prs = json.loads(src.read_text())
+    af = json.loads(af_path.read_text())
+    w = {rs: abs(float(x)) for rs, x in zip(prs["rsids"], prs["weights"])}
+    med = float(np.median([v for v in w.values()]))
+    pts, diverged_big = [], 0
+    for rs, rec in af.items():
+        if not rec or rec.get("afr") is None or rec.get("nfe") is None:
+            continue
+        big = 1 if w.get(rs, 0.0) >= med else 0
+        pts.append([_round(rec["afr"]), _round(rec["nfe"]), big])
+        if big and abs(rec["afr"] - rec["nfe"]) >= 0.20:
+            diverged_big += 1
+    if not pts:
+        return {}
+    n_big = sum(p[2] for p in pts)
+    return {
+        "usecase": "genomics",
+        "is_training_corpus": False,
+        "provenance": "gnomAD v4 allele frequencies for the 77 variants of PGS000001 - the page "
+                      "scores 1000 Genomes genotypes, which carry no blanket redistribution "
+                      "licence, so a CC0 reference population stands in. Each point is one variant "
+                      "of the score itself, so this is the same modality from a different cohort, "
+                      "not a different measurement.",
+        "licence": "CC0-1.0",
+        "attribution": "Genome Aggregation Database (gnomAD) v4, Broad Institute. CC0 - no "
+                       "attribution is required; it is given because the data is worth crediting.",
+        "x": {"key": "af_afr", "label": "allele frequency, African ancestry"},
+        "y": {"key": "af_nfe", "label": "allele frequency, European ancestry"},
+        "class_names": ["smaller effect weight", "larger effect weight"],
+        "base_rate": _round(n_big / len(pts)),
+        "note": (f"{len(pts)} of 77 variants resolved in gnomAD v4. The diagonal is "
+                 f"ancestry-invariant; distance from it is the portability problem in its raw form. "
+                 f"{diverged_big} of the {n_big} larger-effect variants differ by at least 0.20 in "
+                 f"allele frequency between the two groups - and PGS000001's development cohort was "
+                 f"100% European, so those are the weights doing the damage. This is the mechanism "
+                 f"behind the ancestry-strata chart above, not a second finding."),
+        "points": pts,
+    }
+
+
 def main() -> int:
-    for fn in (satellite, medical, finance):
+    for fn in (satellite, medical, finance, genomics):
         payload = fn()
         if not payload:
             continue
         out = WEB / {"satellite_comms": "satellite", "medical_fl": "medical",
-                     "finance_aml": "finance"}[payload["usecase"]]
+                     "finance_aml": "finance", "genomics": "genomics"}[payload["usecase"]]
         out.mkdir(parents=True, exist_ok=True)
         path = out / "real_2d.json"
         path.write_text(json.dumps(payload, separators=(",", ":")) + "\n")

@@ -65,6 +65,7 @@ const REAL_2D_PATH: Record<string, string> = {
   satellite_comms: "data/satellite/real_2d.json",
   medical_fl: "data/medical/real_2d.json",
   finance_aml: "data/finance/real_2d.json",
+  genomics: "data/genomics/real_2d.json",
 };
 
 export function RealDataScatter({ usecase }: { usecase: string }) {
@@ -96,7 +97,11 @@ export function RealDataScatter({ usecase }: { usecase: string }) {
           </>
         ) : (
           <>
-            <strong>A DIFFERENT cohort and modality</strong>, {data.points.length} real points - shown beside the
+            {/* The specific reason a substitute was needed differs per use case and lives in the
+                payload. Medical's substitute is a different MODALITY (morphometry vs ultrasound);
+                genomics' is the same modality from a different COHORT. Hardcoding one phrase here
+                made the genomics caption claim a modality difference that does not exist. */}
+            <strong>NOT this model's training corpus</strong>, {data.points.length} real points - shown beside the
             model's scores, deliberately not on the same axes. {data.provenance}
           </>
         )}{" "}
@@ -105,6 +110,10 @@ export function RealDataScatter({ usecase }: { usecase: string }) {
           base rate of {data.base_rate.toFixed(4)}, so the model's decisions are being drawn on data that is
           genuinely separable - chosen by scoring every feature pair, not by eye. </>
         )}
+        {/* `note` carries the finding - what the chart actually shows, computed by the generator
+            from the same points. It was written and then not rendered, which is the quietest way to
+            lose the most useful sentence in the payload. */}
+        {data.note && <><br /><strong>What it shows:</strong> {data.note}<br /></>}
         <em>{data.licence}</em> - {data.attribution}
       </figcaption>
       {/* Axis labels sit INSIDE the plot margin and the legend is given its own reserved height -
