@@ -22,7 +22,7 @@ import { generateQuantumBits } from "./clientQRNG";
 import { bb84, channelLossDb, e91, FIBER, FREE_SPACE, h2, intrinsicQber, qcnnExpectation,
   qotpQcnnInfer, rng, taggedFraction } from "./quantumSim";
 import { type Provenance } from "../components/ProvenanceBadge";
-import { browserModels, onnxStatus, runPublishedModel } from "./onnxInference";
+import { browserModels, evaluatePublishedModel, onnxStatus, runPublishedModel } from "./onnxInference";
 import { realInput, realSatelliteAnomaly, realFederatedSet, type RealInput } from "./realData";
 
 const r1 = (x: number) => Math.round(x * 10) / 10;
@@ -1183,6 +1183,59 @@ export function runClientPipeline(
       // render as an empty field.
       metric(stage, "published_model_status", "unavailable");
       emit("log", stage, `no published model for this use case: ${pub.reason}`);
+    }
+
+    // ---- Verification, DURING the run rather than beside it ---------------------------------
+    // The block above infers ONE row and reports its prediction. That demonstrates the model
+    // executes; it does not demonstrate the model is the one whose numbers this page prints. Those
+    // are different claims, and until now only the first was made at run time while the metric
+    // panel asserted the second statically.
+    //
+    // So re-score the whole published held-out sample here and compare against the figure recorded
+    // when it was trained. A mismatch is surfaced as a FAILED verification rather than a smaller
+    // number, because a model that does not reproduce its own published metric is not a weaker
+    // result - it is a different model, a different sample, or a broken pipeline, and none of those
+    // should be presented as a measurement.
+    if (pub.kind === "ran") {
+      try {
+        const v = await evaluatePublishedModel(usecase, 0.05, pub.run.modelKey);
+        if (v && v.ran && v.score != null && v.expected != null) {
+          metric(stage, "verified_metric", v.metricName);
+          metric(stage, "verified_score", r2(v.score));
+          metric(stage, "verified_expected", r2(v.expected));
+          metric(stage, "verified_n", v.n);
+          metric(stage, "verification", v.matchesExpected ? "PASS" : "FAIL");
+          const delta = Math.abs(v.score - v.expected);
+          emit("log", stage, v.matchesExpected
+            ? `verification PASS: re-scored all ${v.n} published held-out rows in this tab and got `
+              + `${v.metricName} ${r2(v.score)} against the recorded ${r2(v.expected)} `
+              + `(|delta| ${delta.toExponential(2)}). The number this page prints was reproduced `
+              + `here, not asserted.`
+            : `verification FAIL: re-scoring ${v.n} rows gave ${v.metricName} ${r2(v.score)} but the `
+              + `recorded figure is ${r2(v.expected)} (|delta| ${delta.toExponential(2)}, tolerance `
+              + `0.05). Treat every number on this page for ${pub.run.modelKey} as unverified until `
+              + `this is explained.`);
+          // A model that cannot beat a trivial predictor is worth saying out loud even when it
+          // reproduces its own figure exactly - reproducing a bad number is still reproducing it.
+          if (!v.beatsBaseline && v.baseline != null) {
+            emit("log", stage, `note: this model does not beat the trivial baseline on that sample `
+              + `(${r2(v.score)} against ${r2(v.baseline)}). Reproducing a figure and being useful `
+              + `are separate questions.`);
+          }
+        } else if (v && v.error) {
+          metric(stage, "verification", "ERROR");
+          emit("log", stage, `verification could not run: ${v.error}`);
+        } else {
+          // Distinct from a failure: some models publish no evaluation sample, and saying nothing
+          // would let "not checked" read as "checked and fine".
+          metric(stage, "verification", "no-sample");
+          emit("log", stage, `no published evaluation sample for ${pub.run.modelKey}, so its `
+            + `recorded metric is NOT reproduced in this tab.`);
+        }
+      } catch (e) {
+        metric(stage, "verification", "ERROR");
+        emit("log", stage, `verification threw: ${(e as Error).message}`);
+      }
     }
   }
 
