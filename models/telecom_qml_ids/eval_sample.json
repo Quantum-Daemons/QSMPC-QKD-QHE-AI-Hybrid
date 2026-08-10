@@ -6027,7 +6027,8 @@
   "graph": "model.onnx",
   "accuracy": 0.9866666666666667,
   "majority_baseline": 0.125,
-  "note": "Eight balanced classes, so the majority baseline is 1/8. The published comparison is per-class F1: aggregate accuracy is the metric that makes a broken detector look fine (Engelen et al., WTMC 2021)."
+  "macro_f1": 0.9866292443166579,
+  "note": "Eight balanced classes, so the majority baseline is 1/8. The published comparison is macro F1, and that is what the in-run verification checks: aggregate accuracy is the metric that makes a broken detector look fine (Engelen et al., WTMC 2021), and it was what this sample published until Round 24i."
  },
  "class_names": [
   "normal",
