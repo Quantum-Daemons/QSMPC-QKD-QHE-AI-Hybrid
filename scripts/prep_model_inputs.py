@@ -113,6 +113,67 @@ def _apply_preprocessing_step(x: np.ndarray, step: str) -> np.ndarray:
     raise ValueError(f"unknown preprocessing step {step!r} - add it here and in onnxInference.ts")
 
 
+def _warn_single_feature_leak(usecase: str, payload: dict) -> None:
+    """Warn when ONE feature separates the classes well enough to be doing the model's job.
+
+    This exists because one did. The finance sample was built from `nrows=400_000` of a time-sorted
+    corpus, which left `hour_of_day >= 3` implying laundering at 100% precision - a leak created by
+    the sampling, absent from the source, and worth 13.8% of the figure the browser verified against.
+    Nothing caught it: the payload was well-formed, the browser re-scored it and matched, and every
+    gate was green. A reproducible number measured on contaminated rows is still contaminated.
+
+    Two bugs of my own are recorded here because both produced confident nonsense:
+
+      1. The first version asked whether positives occupied values no negative took. Sound for a
+         low-cardinality index like an hour, meaningless for a continuous float - it flagged
+         `amount_paid_log` at 99.7% purely because distinct doubles rarely collide.
+      2. The second used a binary rank-AUC formula on multi-class labels. `y == 1` picked one class
+         out of eight while the ranks spanned every row, so the normaliser was wrong and it printed
+         AUC 5.1292 for telecom. An impossible number is at least loud; a plausible wrong one would
+         not have been.
+
+    Now ONE-VS-REST: for each column and each class, rank-AUC of that class against all others.
+    Binary data is the two-class case of the same computation, so there is one code path.
+
+    A WARNING, not a hard failure. A legitimately dominant feature exists in some corpora - a QKD
+    attack simulator is built so that its signatures ARE separable - and a build that refuses to run
+    is worse than one that reports what it found and lets a human judge.
+    """
+    samples, labels = payload.get("samples"), payload.get("labels")
+    names = payload.get("feature_names") or []
+    if not samples or not labels:
+        return
+    y = np.asarray(labels, dtype=int)
+    classes = np.unique(y)
+    if classes.size < 2:
+        return
+    x = np.asarray(samples, dtype=float)
+    if x.ndim != 2 or x.shape[1] != len(names):
+        return                                    # image/sequence payloads: not a flat feature space
+
+    flagged: list[tuple[float, str, int]] = []
+    for j, nm in enumerate(names):
+        col = x[:, j]
+        r = np.argsort(np.argsort(col, kind="mergesort"), kind="mergesort").astype(float) + 1.0
+        best_auc, best_cls = 0.0, int(classes[0])
+        for c in classes:
+            m = y == c
+            n_pos, n_neg = int(m.sum()), int((~m).sum())
+            if not n_pos or not n_neg:
+                continue
+            auc = (r[m].sum() - n_pos * (n_pos + 1) / 2.0) / (n_pos * n_neg)
+            auc = max(auc, 1.0 - auc)             # symmetric: a perfectly inverted feature is as telling
+            if auc > best_auc:
+                best_auc, best_cls = auc, int(c)
+        if best_auc >= 0.90:
+            flagged.append((best_auc, nm, best_cls))
+    for auc, nm, c in sorted(flagged, reverse=True):
+        label = (payload.get("class_names") or [])
+        cname = label[c] if c < len(label) else str(c)
+        print(f"    LEAK WARNING [{usecase}]: '{nm}' alone separates class '{cname}' from the rest "
+              f"at AUC {auc:.4f}. A label recoverable from one feature measures the sampling, not "
+              f"the model - check how the rows were drawn before publishing this.")
+
 def _write(usecase: str, payload: dict) -> Path:
     """Write beside the model, not into the web bundle.
 
@@ -127,6 +188,7 @@ def _write(usecase: str, payload: dict) -> Path:
     key = _MODEL_KEY[usecase]
     out = REPO / registry.ARTIFACT_DIRS[key] / "eval_sample.json"
     out.parent.mkdir(parents=True, exist_ok=True)
+    _warn_single_feature_leak(usecase, payload)
     out.write_text(json.dumps(payload, indent=1) + "\n")
     size = out.stat().st_size
     print(f"  wrote {out.relative_to(REPO)}  ({size/1024:.0f} KB)")
@@ -234,7 +296,25 @@ def build_finance(rng: np.random.Generator) -> dict:
 
     # load_amlworld normalises "Is Laundering" -> "label" (datasets.py:84-91); the training script
     # reads that name too, so use it rather than the raw CSV header.
-    df = D.load_amlworld(nrows=400_000)
+    #
+    # READ THE WHOLE FILE. This used to be `nrows=400_000`, and that truncation put a near-perfect
+    # LABEL LEAK into the published evaluation sample. HI-Small is time-sorted for background
+    # traffic but IBM's injected laundering rows carry timestamps spanning the full period while
+    # sitting early in the file, so the first 400k rows are 99.97% hours 0-2 (344,209 / 33,144 /
+    # 22,472) with only ~175 rows across hours 3-23 - a large share of which are laundering.
+    # Sampling negatives uniformly from that head reproduces its shape exactly, so in the shipped
+    # sample negatives held only 3 distinct hour values (0,1,2) while positives spanned 22, and
+    # `hour_of_day >= 3` implied laundering at 100% precision.
+    #
+    # Measured on the shipped ONNX before this fix: minority F1 0.5100, falling to 0.4398 with
+    # `hour_of_day` permuted and 0.4479 with it zeroed - so 13.8% of the reported number came from
+    # an artefact of the truncation rather than from the model. Alone the feature scored AUC-PR
+    # 0.7104 against a 0.0192 base rate, a 37x lift.
+    #
+    # The source corpus is innocent: across all 5,078,345 rows both classes span all 24 hours and
+    # the laundering rate moves only 0.00028 -> 0.00174. The leak was created here, by reading the
+    # head of a sorted file, and it is fixed here by not doing that.
+    df = D.load_amlworld()
     if "label" not in df:
         raise SystemExit(f"AMLworld frame has no 'label' column; got {list(df.columns)[:12]}")
     y_all = df["label"].to_numpy().astype(int)
@@ -248,7 +328,15 @@ def build_finance(rng: np.random.Generator) -> dict:
     # 1-in-981 prevalence: a random draw would almost surely contain zero positives and the
     # self-check would say nothing. Force a visible minority so the number means something.
     want = N_SAMPLES["finance_aml"]
-    take_pos = min(len(pos), want // 4)
+    # 2% rather than `want // 4`. The quarter-share was written when the truncated read left only
+    # 149 positives to find, so it silently capped at 1.82% and produced a defensible balance by
+    # accident. Reading the whole corpus makes 5,177 positives reachable, at which point the same
+    # expression takes 2048 and ships a 25%-laundering sample - not a minority in any sense that
+    # matches AML, and an F1 at 25% prevalence is not comparable to one at 1.8%. The real rate is
+    # ~1 in 981; 2% keeps enough positives (164) for a stable interval while staying recognisably
+    # imbalanced, and keeps this metric comparable to the figure already published.
+    POSITIVE_SHARE = 0.02
+    take_pos = min(len(pos), max(1, round(want * POSITIVE_SHARE)))
     idx = np.concatenate([rng.choice(pos, take_pos, replace=False),
                           rng.choice(neg, want - take_pos, replace=False)])
     rng.shuffle(idx)
@@ -427,10 +515,15 @@ def build_telecom(rng: np.random.Generator) -> dict:
     """
     from sklearn.model_selection import train_test_split
 
-    from qsh.qml_ids.attacks import ATTACKS, generate
+    from qsh.qml_ids.attacks import ATTACKS, FEATURES as QML_FEATURES, generate
 
     # Mirrors scripts/train/telecom_ids.py: n_per_class=300, seed=42, stratified 25% test split.
-    x_all, y_all, feature_names = generate(n_per_class=300, seed=42)
+    # generate() returns (X, y, LABEL names) - its own docstring says so. Unpacking the third value
+    # into `feature_names` and writing it under that key shipped the 8 CLASS names as the 7-column
+    # feature list. Nothing rendered it, so nothing complained, but it also silently disabled the
+    # single-feature leak guard: that guard skips any payload whose column count does not match its
+    # name count, and 7 != 8 made telecom the one flat-feature use case never actually checked.
+    x_all, y_all, label_names = generate(n_per_class=300, seed=42)
     _, x, _, y = train_test_split(x_all, y_all, test_size=0.25, random_state=42, stratify=y_all)
     x = np.asarray(x, dtype=float).round(6)
 
@@ -441,6 +534,7 @@ def build_telecom(rng: np.random.Generator) -> dict:
 
     return {
         "provenance": (
+            "SEPARABLE BY CONSTRUCTION, and the accuracy on these rows should be read that way: single features reach one-vs-rest AUC 1.0000 for detector_blinding (sift_ratio, click_asymmetry), 0.9785 for intercept_resend (qber_mean) and 0.9703 for photon_number_splitting (multiphoton_rate), because the generator's _SIGNATURES table assigns each attack a distinctive value. This measures the simulator, not the world. "
             "SYNTHETIC QKD-attack telemetry generated by src/qsh/qml_ids/attacks.py. The eight "
             "classes are seven attack types plus normal traffic, a structure taken from Al-Kuwari "
             "et al. (arXiv:2509.14282); no number from that paper is reproduced here. It is "
@@ -452,7 +546,7 @@ def build_telecom(rng: np.random.Generator) -> dict:
         ),
         "input": {"shape": [1, x.shape[1]], "dtype": "float32", "preprocessing": [],
                   "layout": "samples[i] is one QKD session's features, in the order below"},
-        "feature_names": list(feature_names),
+        "feature_names": list(QML_FEATURES),
         "samples": np.asarray(x, dtype=float).tolist(),
         "labels": np.asarray(y, dtype=int).tolist(),
         "expected": {
