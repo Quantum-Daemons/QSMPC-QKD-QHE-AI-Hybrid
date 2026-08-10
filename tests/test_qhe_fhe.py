@@ -45,7 +45,27 @@ def test_qhe_private_inference_hides_input():
     qc = QCNN(n_qubits=2, seed=0)  # small so hiding is brute-force-verified
     rep = private_inference(qc, np.array([0.1, 0.2]))
     assert rep.input_hidden
-    assert rep.probability == pytest.approx(rep.plain_probability)
+    # NOT asserted: `probability == plain_probability`. They are the same computation, so that
+    # comparison is a tautology that cannot fail while reading as proof of correctness-preservation.
+    # What IS worth pinning is that the untrained circuit is not a classifier, so nothing downstream
+    # mistakes its output for a prediction: its probability never reaches the 0.5 boundary.
+    probs = [QCNN(n_qubits=4, seed=0).predict_proba(x)
+             for x in np.random.default_rng(0).uniform(-1, 1, (64, 4))]
+    assert max(probs) < 0.5, "untrained QCNN crossed the decision boundary; it is used as a "\
+                             "hiding demo, and qhe.qcnn_trained is the predictor"
+
+
+def test_trained_qcnn_is_not_a_constant_predictor():
+    """The regression the browser fix closed in Round 25, pinned for the Python path too."""
+    from qsh.qhe.qcnn_trained import infer, load_weights
+
+    w = load_weights("medical_fl")
+    if w is None:                     # weights are a build artefact; skip rather than fail CI
+        pytest.skip("no trained QCNN weights for medical_fl")
+    rng = np.random.default_rng(0)
+    cls = {infer(rng.normal(0, 1, w["n_qubits"]), w)[1] for _ in range(64)}
+    assert cls == {0, 1}, f"trained QCNN returned only {cls} - constant predictor"
+
 
 
 def test_rate1_qfhe_roundtrip_and_rate():
