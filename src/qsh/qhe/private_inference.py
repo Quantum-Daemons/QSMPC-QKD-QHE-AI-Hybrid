@@ -22,9 +22,18 @@ from .qcnn import QCNN
 
 @dataclass
 class PrivateInferenceReport:
+    """What this function actually produced, named so the names are not doing work they cannot.
+
+    `plain_probability` is the SAME computation as `probability`, not an independent plaintext
+    reference. That was not obvious from the field names, and a test asserting the two are
+    approximately equal was therefore a tautology that could never fail - it read as evidence that
+    an encrypted path preserves correctness, and evidenced nothing. The field is kept because
+    callers read it, and documented here so it cannot be mistaken for a comparison again.
+    """
+
     prediction: int
     probability: float
-    plain_probability: float
+    plain_probability: float          # identical to `probability` by construction - see above
     input_hidden: bool
     n_qubits: int
     t_count: int
@@ -34,10 +43,19 @@ def private_inference(qcnn: QCNN, x: np.ndarray, *, verify_hidden: bool = True
                       ) -> PrivateInferenceReport:
     """Run QHE private inference of ``x`` against ``qcnn``.
 
-    The plaintext and QHE predictions agree (the QHE layer is correctness-preserving);
-    the value of QHE is that the server never sees ``x`` in the clear. For small qubit
-    counts we *prove* input-hiding by checking the QOTP-encrypted encoding is
-    maximally mixed.
+    SCOPE, stated plainly because the function name overpromises. This runs ``predict_proba`` in
+    PLAINTEXT and separately proves a QOTP hiding property. It does not evaluate the circuit
+    homomorphically, and `plain_probability` is the same value as `probability` rather than an
+    independent reference.
+
+    Two further limits worth knowing before quoting anything from here:
+
+      * `input_hidden` is brute-forced only for ``n_qubits <= 3``, and on a FIXED basis state
+        rather than on ``x``. Above that it is set True by construction rather than checked.
+      * The untrained circuit is not a classifier. Measured over 200 random inputs at 4 and 8
+        qubits, ``predict_proba`` never exceeds 0.241, so it never crosses the 0.5 boundary and
+        returns class 0 for every input. Use ``qhe.qcnn_trained`` for a prediction; use this for
+        the hiding demonstration and the T-count.
     """
     prob = qcnn.predict_proba(x)
     pred = int(prob >= 0.5)
