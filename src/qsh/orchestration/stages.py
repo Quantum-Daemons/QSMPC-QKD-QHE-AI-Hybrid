@@ -325,15 +325,46 @@ class PrivateInferenceStage(Stage):
             from ..qhe.private_inference import private_inference
             from ..qhe.qcnn import QCNN
 
+            from ..qhe.qcnn_trained import infer as qcnn_infer
+            from ..qhe.qcnn_trained import load_weights
+
             qubits = int(ctx.config.get("qubits", get_config().qhe.n_qubits))
-            qc = QCNN(n_qubits=qubits, seed=ctx.config.get("seed", 0))
-            x = ctx.data.get("features", np.zeros(qc.n_qubits))
-            rep = private_inference(qc, x)
-            ctx.artifacts["qhe_prediction"] = rep.prediction
-            bus.metric("qhe_probability", round(rep.probability, 4), self.name)
-            bus.metric("qhe_t_count", rep.t_count, self.name)
-            bus.log(f"QHE private inference: class={rep.prediction} "
-                    f"(input_hidden={rep.input_hidden})", self.name)
+            x = ctx.data.get("features", np.zeros(qubits))
+
+            # TRAINED circuit where weights exist. The untrained QCNN is not a classifier: measured
+            # over 200 random inputs at 4 and 8 qubits, `predict_proba` never exceeds 0.241, so it
+            # never crosses the 0.5 boundary and returns class 0 for EVERY input at every seed, with
+            # correlation -0.05 against the input. That is a CONSTANT PREDICTOR - harder to notice
+            # than the browser's coin-flip form of the same defect, because it looks stable and
+            # reproducible. Round 25 fixed the browser and left this path untouched.
+            weights = load_weights(ctx.usecase)
+            if weights is not None:
+                expectation, cls, _logit = qcnn_infer(x, weights)
+                ctx.artifacts["qhe_prediction"] = cls
+                ctx.artifacts["qhe_backend"] = "qcnn-trained"
+                bus.metric("qhe_expectation_z0", round(expectation, 4), self.name)
+                bus.metric("qhe_test_accuracy", weights["test_accuracy"], self.name)
+                bus.log(
+                    f"QHE private inference (TRAINED QCNN): class={cls} "
+                    f"(<Z0>={expectation:.4f}, {weights['layers']}x{weights['n_qubits']} trained "
+                    f"angles). Held-out accuracy {weights['test_accuracy']:.4f} against logistic "
+                    f"regression {weights['classical_lr_accuracy']:.4f} on the same split - the "
+                    f"classical model is ahead, and this reports it rather than implying advantage.",
+                    self.name)
+            else:
+                # No trained circuit here: report the QOTP hiding demonstration, which this module
+                # genuinely proves, and decline to surface a class rather than passing off a
+                # constant one as a prediction.
+                qc = QCNN(n_qubits=qubits, seed=ctx.config.get("seed", 0))
+                rep = private_inference(qc, x, verify_hidden=True)
+                ctx.artifacts["qhe_backend"] = "untrained-not-a-classifier"
+                bus.metric("qhe_t_count", rep.t_count, self.name)
+                bus.log(
+                    f"QCNN selected but no trained weights ship for {ctx.usecase}: the untrained "
+                    f"circuit is a QOTP hiding and T-count demonstration (t_count={rep.t_count}, "
+                    f"input_hidden={rep.input_hidden}), NOT a classifier - its probability never "
+                    f"crosses 0.5, so it returns the same class for every input. No class is "
+                    f"reported from it.", self.name)
         else:
             import numpy as np
 
