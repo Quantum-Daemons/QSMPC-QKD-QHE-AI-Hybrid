@@ -1215,6 +1215,10 @@ export function runClientPipeline(
             metric(stage, "verified_expected", r2(v.expected));
             metric(stage, "verified_n", v.n);
             metric(stage, "verification", v.matchesExpected ? "PASS" : "FAIL");
+            // Carried as an artifact so the page can DRAW what was measured. A single number is the
+            // right thing to gate on and the wrong thing to reason from: "minority-class F1 0.51"
+            // does not say whether the classes separate or the threshold sat somewhere lucky.
+            artifacts.verification = { modelKey: key, ...v };
           }
           const delta = Math.abs(v.score - v.expected);
           const tag = isSelected ? "" : " (not the selected model)";
