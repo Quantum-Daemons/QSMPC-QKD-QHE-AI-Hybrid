@@ -1558,6 +1558,56 @@ limit and wrote that into three documents. A probe of the identical architecture
 scoring 0.23 AUC higher is what disproved it - **before concluding "the encrypted tier is small, so
 it is weak", train the same small model properly once and see what it can actually do.**
 
+## Two HE contexts is not a hybrid, and the hybrid is not available
+
+Asked whether to adopt a CKKS + BFV hybrid. The answer is no, and the reason is stronger than "not
+implemented": Eldefrawy, Genise and Manohar (PQCrypto 2023, ePrint 2023/988) give strong evidence
+that switching between BGV/BFV and CKKS is **as hard as bootstrapping**. CHIMERA specified BFV
+bridges and never implemented them. Everything that works - PEGASUS, OpenFHE's `EvalCKKStoFHEW` -
+switches CKKS to FHEW/TFHE, not BFV; searching OpenFHE for `CKKStoBFV` returns zero hits. And none
+of it is browser-reachable: SEAL has no scheme switching, and `openfhe-wasm` binds `pke` and `core`
+but not `binfhe`.
+
+**The goal did not need switching.** An integer scorecard runs in its own BFV context beside the
+CKKS models, and no ciphertext is ever converted.
+
+| # | Check | Pass condition |
+|---|---|---|
+| H1 | Before adopting a "hybrid", confirm whether it needs CONVERSION or just two contexts | two contexts is nearly always the answer, and it is free |
+| H2 | For any HE capability, verify it exists in the library the BROWSER can load | SEAL != OpenFHE; `openfhe-wasm` != OpenFHE |
+| H3 | Check the specific scheme PAIR, not the feature name | "scheme switching" exists; CKKS-to-BFV does not |
+| H4 | An integer model under BFV must reproduce plaintext EXACTLY | assert equality, not a tolerance |
+
+H4 is the property worth testing rather than assuming, and it is what distinguishes the two schemes
+in this project. Measured: a fitted scorecard evaluated over BFV matched its plaintext score on
+60/60 rows exactly, while CKKS returned -1.999998397974359 for an exact -2. Both are correct
+behaviour for their scheme; only one supports the claim "the encrypted result IS the plaintext
+result". `tests/test_scorecard_bfv_exact.py` asserts equality for BFV and asserts *in*equality for
+CKKS, so a future change that silently makes CKKS look exact would fail.
+
+Workings: [`references/he-scheme-selection.md`](../references/he-scheme-selection.md).
+
+## An ABSENT licence is more restrictive than a bad one, and no scanner reports it
+
+`submodules/hpmpc` is MIT and declares two submodules of its own. One of them,
+`chart21/pygeon`, has **no licence file at all**, which by default reserves all rights - a stronger
+restriction than GPL, not a weaker one. It is not populated in this checkout, so nothing unlicensed
+is present; the exposure is that `git submodule update --init --recursive` would fetch it silently,
+into a project whose rule is commercial-OK-only.
+
+Licence scanners look for a restrictive SPDX identifier. Absence returns nothing, which reads as
+clean.
+
+| # | Check | Pass condition |
+|---|---|---|
+| T1 | For each submodule, read ITS `.gitmodules` too | transitive dependencies are enumerated, not assumed absent |
+| T2 | For every transitive repo, query the licence via the API, not the file listing | `license: null` is a finding, not a pass |
+| T3 | Confirm whether the nested module is actually populated | present-and-unlicensed is a live problem; declared-but-absent is a latent one |
+| T4 | Initialise submodules with `--init`, never `--init --recursive` | the recursive form is what pulls the unlicensed tree |
+
+T2 is the one an automated check gets wrong. `license: null` from the GitHub API means all rights
+reserved, and a naive check that only fails on a deny-list of SPDX identifiers passes it.
+
 ## A vendored crypto library has no CVE to find, so nothing will tell you it is old
 
 `node-seal` bundles Microsoft SEAL as a WASM build. The pinned dependency resolves to node-seal
