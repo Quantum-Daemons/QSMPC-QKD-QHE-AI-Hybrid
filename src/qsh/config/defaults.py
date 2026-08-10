@@ -58,6 +58,26 @@ class QKDConfig:
     mu_signal: float = 0.5            # signal mean photon number (decoy-state); ~0.5 is the textbook optimum
     mu_decoy: float = 0.1             # decoy mean photon number
     basis_prob: float = 0.5           # P(Z basis) — biased-basis (efficient) BB84 raises the sift ratio
+    #: QBER abort threshold, and it is a FIBRE-QKD post-processing figure - not a QSDC one.
+    #:
+    #: An earlier revision of this comment claimed 0.11 was correct for QSDC because the wiretap
+    #: secrecy capacity Cs = 1 - 2h(e) has its root at 0.110028, identical to Shor-Preskill. That is
+    #: true only for the LOSS-FREE case. The published QSDC criterion (Qi et al., Light Sci. Appl.
+    #: 8, 22 (2019), step 2) is Cs > 0 with
+    #:
+    #:     Cs = Q_Bob[1 - h(e) - g h(e_chk)],   g = Q_Eve/Q_Bob = 10^(loss_dB/10)
+    #:
+    #: so the threshold FALLS with channel loss: 0.11 at 0 dB, ~0.048 at the 4.1 dB Qi et al.
+    #: actually measured, and ~0.0003 at the ~24.5 dB this project's own free-space downlink
+    #: reports. Using 0.11 on a lossy link is wrong in the PERMISSIVE direction - it passes a
+    #: channel whose secrecy capacity is already zero. The satellite path therefore computes Cs
+    #: directly (clientCompute qsdc_telemetry) rather than comparing against this constant.
+    #:
+    #: Also worth knowing before quoting any single number: the founding QSDC papers (Long-Liu 2002,
+    #: Deng-Long-Liu 2003, DL04 2004) give NO numeric threshold, only "if the error rate is high,
+    #: halt"; DL04 - the family every fibre experiment implements - is put at ~5.7% (Wu et al.,
+    #: Quantum Eng. 1, e26, 2019); and no standards body has ever specified one, because ETSI,
+    #: ITU-T, ISO/IEC and IEEE quantum series are all key DISTRIBUTION.
     pp_threshold: float = 0.11        # post-processing QBER abort threshold
     # --- AI optimizer (OptiQKD, WS1) knobs ---
     optimize_enabled: bool = False

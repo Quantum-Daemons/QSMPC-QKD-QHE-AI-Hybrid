@@ -24,7 +24,7 @@ non-exclusive"* - a licensing mistake there cannot be undone.
 | Vertical | Corpus | Licence | Weights publishable? | Notes |
 |---|---|---|---|---|
 | **Finance** | [IBM AMLworld HI-Small](https://www.kaggle.com/datasets/ealtman2019/ibm-transactions-for-anti-money-laundering-aml) - 5,078,345 transactions, 5,177 laundering (1 in 981); **synthetic** | **CDLA-Sharing-1.0** | **Yes** | **AMLworld is synthetic, like PaySim.** IBM's own README: *"The data is generated using a multi-agent virtual world model... Everything is synthetic"*, and the NeurIPS 2023 D&B paper is *Realistic Synthetic Financial Transactions for Anti-Money Laundering Models*. It is the training corpus because it is calibrated to real transaction statistics **and** its licence permits publishing derived weights - not because it is real. There is no commercial-OK corpus of real laundering transactions. CDLA-Sharing section 1.11 defines *Results* as the outputs of Computational Use, and section 3.5 states *"This Agreement imposes no obligations or restrictions on Your Use or Publication of Results."* Trained weights are Results; the ShareAlike reciprocity attaches to redistributing the **Data**, which we do not do. Test-fixture feature rows (`fixtures.npy`) are git-ignored and excluded from every upload for the same reason. |
-| **Medical** | [MedMNIST v2 BreastMNIST](https://medmnist.com/) - 780 breast-ultrasound images | **CC BY 4.0** | **Yes** | Attribution: Yang et al., *Nature Scientific Data* 2022. |
+| **Medical** | [MedMNIST v2 BreastMNIST](https://medmnist.com/) - 780 breast-ultrasound images | **CC BY 4.0 asserted by MedMNIST; upstream grant unverifiable** | **Unresolved** | Attribution: Yang et al., *Nature Scientific Data* 2022. **Checked 2026-08-10 and downgraded.** MedMNIST licenses itself CC BY 4.0, but BreastMNIST is a resize of BUSI (Al-Dhabyani et al., *Data in Brief* 28:104863, 2020), where the CC BY attaches to the ARTICLE - PMC states no separate data licence, and the dataset host asks only "If you use this dataset, please cite". A citation request is not a grant. Same ambiguity class as CIC-IDS2017 (declined) and ImageNet (dropped); unresolved rather than disproven, and recorded because three HF repos ship on it. Separately, BUSI is contaminated - see `registry.py` `DS_BREASTMNIST` for the measured train/test duplicate with contradictory labels. |
 | **Medical (second model)** | [MedMNIST v2 BreastMNIST](https://medmnist.com/) | **CC BY 4.0** | **Yes** | The same corpus as the ResNet-18 row above, deliberately: `medical_fl.resnet50` exists to reproduce a published comparison, and a comparison on different data is not one. Both are scored on the identical 156-image official test split, which ships whole in each model's own HF repo. **Camelyon17-WILDS was removed in Round 20**, along with the `medical_fl.densenet` spec that named it: there was no loader, no `wilds` dependency, no training script and no artefact directory, and the card advertised a Hugging Face repo that did not exist. A planned dataset with no code path is a claim, not a plan. |
 | **Genomics** | [PGS Catalog](https://www.pgscatalog.org/downloads/) scoring file [PGS000001](https://www.pgscatalog.org/score/PGS000001/) (alias `PRS77_BC`, 77 SNPs, Mavaddat et al.) + [1000 Genomes phase 3](https://www.internationalgenome.org/) via Ensembl REST | **per-score / see below** | **No** | See section 4. PGS Catalog terms require citing the **original publication**, not only the Catalog, so Mavaddat et al. is named here rather than left to a link. |
 | **Medical (runtime default)** | [MedMNIST v2 **PneumoniaMNIST**](https://medmnist.com/) (derived from Kermany et al. chest X-ray) | **CC BY 4.0** | **Yes** | The *runtime* default for the medical use case (`src/qsh/data/loaders.py`, `src/qsh/config/defaults.py`, and downloaded at image build in `docker/Dockerfile.api`) - a different subset from BreastMNIST, which is what the trained model uses. Cite Yang et al. **and** the upstream Kermany et al. source. |
@@ -199,3 +199,34 @@ a licence change, or a default branch that has not moved in a year.
 - **Zama tfhe-rs / Concrete** - BSD-3-Clear, research only; commercial use needs a paid patent licence.
 - **QKDNetSim** - **GPL-2.0** (strong copyleft), so it is not listed as a commercial-OK reference
   implementation.
+
+## Vendored submodules, and a transitive licence that is absent rather than restrictive
+
+Checked 2026-08-10. Both direct submodules are commercially permissive and both are at their
+upstream tip:
+
+| Submodule | Licence | Upstream tip | Commercial use |
+|---|---|---|---|
+| `submodules/HEonGPU` | Apache-2.0 | 2026-05-11 | yes |
+| `submodules/hpmpc` | MIT | 2026-03-02 | yes |
+
+**The hazard is one level down, and it is an ABSENT licence rather than a restrictive one.** `hpmpc`
+declares two submodules of its own:
+
+| Path | Upstream | Licence |
+|---|---|---|
+| `nn/PIGEON` | `chart21/flexNN` | MIT |
+| `nn/Pygeon` | `chart21/pygeon` | **none - all rights reserved by default** |
+
+A repository with no licence file grants no permissions at all, which is a stronger restriction than
+GPL, not a weaker one. `chart21/pygeon` holds PyTorch export and training scripts and is not needed
+by anything here.
+
+**Neither nested submodule is populated in this checkout**, so nothing unlicensed is present today.
+The exposure is a future `git submodule update --init --recursive`, which would fetch it silently -
+and this project's rule is commercial-OK-only. Recorded because the failure mode is a routine command
+rather than a decision, and because absent licences do not appear in any scanner: an automated
+licence check looks for a restrictive SPDX identifier and finds nothing, which reads as clean.
+
+**Do not initialise submodules recursively in this repository.** `--init` without `--recursive` is
+sufficient for both direct submodules, and neither builds anything that needs the nested pair.

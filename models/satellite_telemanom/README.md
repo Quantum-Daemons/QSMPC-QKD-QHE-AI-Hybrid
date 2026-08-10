@@ -25,23 +25,23 @@ a quantum-safe orchestration demo. This is the **plaintext** model for the
 |---|---|
 | `anomaly_sample_rate` | 0.0075528 |
 | `event_wise_f0_5` | 0.454545 |
+| `event_wise_fn` | 2 |
+| `event_wise_fp` | 1 |
+| `event_wise_tp` | 1 |
 | `n_anomaly_intervals` | 320 |
+| `n_events_scored` | 3 |
 | `n_parameters` | 80486 |
 | `point_adjusted_f1` | 0.993691 |
 | `published_full_channel_f0_5` | 0.061 |
 | `published_lightweight_f0_5` | 0.786 |
-| `wall_clock_s` | 43.4 |
+| `wall_clock_s` | 43.2 |
 | `windowed_iforest_event_wise_f0_5` | 0.000248 |
 
 ## Published baselines this is measured against
 
 - **Target metric**: event-wise F0.5
-- **Baseline to beat**: 0.786 - ESA-ADB Table 2, Mission1 lightweight (ch. 41-46), best event-wise F0.5. NOTE the caption: Table 2 scores detection of ALL EVENTS excluding communication gaps - anomalies PLUS annotated rare nominal events - whereas this project scores anomalies only, and ESA-ADB splits each mission into first-half train / second-half test. So 0.786 is an indicative target, not a like-for-like number.
-- **Companion metrics actually recorded** in `models/metrics.json`: `point_adjusted_f1` (0.9937) and
-  `windowed_iforest_event_wise_f0_5` (0.000248). The first is carried to expose how much point
-  adjustment inflates a score - it reads 0.99 against an event-wise 0.4545 on the same run - and the
-  second is the classical baseline on the same split. `published_full_channel_f0_5` (0.061) and
-  `published_lightweight_f0_5` (0.786) are ESA-ADB's figures, not ours.
+- **Baseline to beat**: 0.968 - ESA-ADB Supplementary Table 9, Mission1 lightweight (ch. 41-46), Telemanom-ESA-Pruned: corrected event-wise F0.5 0.968 (precision 0.999, recall 0.862) for detection of ANOMALIES ALONE - which is what this project scores, so this is the like-for-like row. Earlier rounds cited Table 2's 0.786 instead. That number is real and correctly attributed, but Table 2 scores ALL EVENTS excluding communication gaps, i.e. anomalies PLUS annotated rare nominal events, so it was the wrong comparator and the lenient one. Verified against the paper (arXiv:2406.17826 v2) in Round 24. THREE protocol differences remain and none of them are closed by changing the number: (1) ESA-ADB's metric multiplies event precision by the TIME-LEVEL true-negative rate, which is why most of its baselines read <0.001 - this project records that corrected value as `corrected_event_wise_f0_5` beside the uncorrected one; (2) ESA-ADB splits each mission in half, this project tests on the last 30 percent; (3) ESA-ADB's Mission1 lightweight test partition holds 65 annotated events of which 29 are anomalies, against 3 in the window scored here. So this remains an indicative target, and the sample-size gap is roughly tenfold.
+- **Companion metric shown alongside**: `event_wise_f0_5_full_channels` - reported together because the aggregate figure can look healthy while the class that matters is not.
 
 ## Training data
 
@@ -49,7 +49,7 @@ a quantum-safe orchestration demo. This is the **plaintext** model for the
 - **Licence**: CC-BY-3.0-IGO
 - **Source**: https://zenodo.org/records/12528696 (licence read 2026-08-03)
 
-Missions are anonymised Mission1/2/3 - they are not named Sentinel anything. 17.5 years, 1.19% annotated. Mission3 is excluded upstream for triviality.
+Missions are anonymised Mission1/2/3 — they are not named Sentinel anything. 17.5 years, 1.19% annotated. Mission3 is excluded upstream for triviality.
 
 ## Notes and limitations
 

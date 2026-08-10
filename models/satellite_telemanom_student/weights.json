@@ -4,6 +4,11 @@
   "teacher_key": "satellite_comms.telemanom",
   "student_key": "satellite_comms.student",
   "n_features": 48,
+  "input": {
+    "preprocessing": [],
+    "mean": null,
+    "scale": null
+  },
   "W": [
     [
       5.134143921314815,

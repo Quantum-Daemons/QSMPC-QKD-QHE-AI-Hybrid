@@ -23,12 +23,15 @@ a quantum-safe orchestration demo. This is the **plaintext** model for the
 
 | metric | value |
 |---|---|
-| `agreement` | 0.75 |
-| `disagreement_on_positives` | 0.078947 |
-| `metric_delta` | 0.134616 |
-| `metric_delta_pp` | 13.4616 |
+| `agreement` | 0.826923 |
+| `auc` | 0.788221 |
+| `disagreement_on_positives` | 0.149123 |
+| `majority_class_rate` | 0.730769 |
+| `metric_delta` | 0.096154 |
+| `metric_delta_pp` | 9.6154 |
+| `n_classes_predicted` | 2 |
 | `n_eval` | 156 |
-| `student_metric` | 0.730769 |
+| `student_metric` | 0.769231 |
 | `student_params` | 3226 |
 | `teacher_metric` | 0.865385 |
 | `teacher_params` | 11171266 |
@@ -39,6 +42,10 @@ a quantum-safe orchestration demo. This is the **plaintext** model for the
 - **Baseline to beat**: 0.901 - ResNet-18 @28px, MedMNIST v2, Yang et al., Scientific Data 10:41 (2023) (AUC 0.901 / ACC 0.863)
 - **Published ceiling**: 0.919 - Google AutoML Vision, MedMNIST v2 (AUC 0.919)
 - **Companion metric shown alongside**: `accuracy` - reported together because the aggregate figure can look healthy while the class that matters is not.
+
+### Gap to the published baseline
+
+This scores far below the 0.901 ResNet-18 baseline, and the reason is capacity: 3,226 parameters over a 14x14 input is a CKKS-feasibility budget, not a diagnostic one. Round 24 found it had been WORSE than that - a constant predictor, emitting one class for all 156 test images, with accuracy 0.730769 exactly equal to the majority-class rate and AUC 0.354, below random. It was invisible because the registry declared `auc` while the record stored `accuracy`, and because this student had neither protection its teacher already had: class-weighted loss and AUC-based model selection. Both were added. Read `n_classes_predicted` and `majority_class_rate` beside the score - an accuracy equal to the majority rate is the signature of a model that learned nothing. Workings: references/medical-student-collapse-investigation.md.
 
 ## Training data
 

@@ -1,0 +1,202 @@
+// What the in-run verification actually measured, drawn rather than summarised.
+//
+// The run already re-scores every published model on its held-out sample and reports a single
+// number. A single number is the right thing to gate on and the wrong thing to reason from: at a
+// 1-in-981 positive rate, "minority-class F1 0.51" does not tell you whether the model separates the
+// classes or whether the threshold happens to sit somewhere lucky. These charts answer that, from
+// the same arrays the metric was computed on - nothing here is recomputed or re-fetched.
+//
+// Chosen per task rather than one chart for everything:
+//
+//   binary        precision-recall curve + score histogram split by TRUE class. PR rather than ROC
+//                 because the PR baseline moves with prevalence and ROC does not, which is the whole
+//                 reason this project reports AUPRC (Saito & Rehmsmeier, PLOS ONE 2015).
+//   multi-class   per-class F1 bars. The aggregate is precisely what hides a broken class - Engelen
+//                 et al. (WTMC 2021) measured accuracy flat at 0.99 while a per-class F1 moved
+//                 0.60 -> 0.99.
+//
+// recharts is already a dependency (BenchmarkPanel), so this costs no bundle growth.
+import {
+  Bar, BarChart, CartesianGrid, Legend, Line, LineChart, ReferenceLine,
+  ResponsiveContainer, Tooltip, XAxis, YAxis,
+} from "recharts";
+
+import type { ModelEvalResult } from "../lib/onnxInference";
+
+const AXIS = { fontSize: 10, stroke: "#8a94a6" };
+const GRID = "#2a3040";
+
+// The genomics model is the one published model with no browser-runnable ONNX graph - it is a dot
+// product against published effect weights, so nothing above fires for it and the page rendered its
+// result as a flat table of ~20 `by_super_population.*` rows. The registry note for that model says
+// "Read those rows, not this sentence", and twenty rows is exactly where a finding goes to hide.
+//
+// What the rows say: ONE globally-set high-risk cut (the cohort P90, so it is built to flag 10%)
+// flags a wildly different share of each genetic ancestry group. That is the PRS portability
+// problem - Martin et al., Nat Genet 51:584 (2019) - and it is a distribution shift, NOT an accuracy
+// drop: 1000 Genomes is a reference panel with no case/control status, so no AUROC exists here and
+// the trainer records auroc=null rather than inventing one.
+//
+// The reference line is the POOLED rate recomputed from the group counts, not a literal 0.10. The
+// cut is defined as a percentile, so the pooled share is what it actually flagged on this cohort;
+// hardcoding the nominal figure would let the line drift away from the bars it is drawn against.
+type Strata = { n: number; mean: number; sd: number; p90: number; frac_above_global_cut: number };
+
+export function AncestryStrataChart({ achieved }: { achieved: Record<string, unknown> | null }) {
+  if (!achieved) return null;
+  const measured = (achieved.measured ?? achieved) as Record<string, unknown>;
+  const groups = measured.by_super_population as Record<string, Strata> | undefined;
+  if (!groups || Object.keys(groups).length < 2) return null;
+
+  const rows = Object.entries(groups)
+    .map(([label, v]) => ({ label, frac: v.frac_above_global_cut, mean: v.mean, n: v.n }))
+    .sort((a, b) => b.frac - a.frac);
+  const totalN = rows.reduce((a, r) => a + r.n, 0);
+  if (!totalN) return null;
+  const pooled = rows.reduce((a, r) => a + r.n * r.frac, 0) / totalN;
+  const hi = rows[0], lo = rows[rows.length - 1];
+  const ratio = lo.frac > 0 ? hi.frac / lo.frac : null;
+  const cut = typeof measured.global_high_risk_cut === "number" ? measured.global_high_risk_cut : null;
+
+  return (
+    <figure className="chart-figure">
+      <figcaption className="muted small">
+        Share of each genetic-ancestry group flagged high-risk by <strong>one global cut</strong>
+        {cut != null ? <> (PRS &ge; {cut.toFixed(3)})</> : null}, over {totalN} samples. The dashed
+        line is what that cut flagged pooled ({(pooled * 100).toFixed(1)}%) - every bar above it is a
+        group over-flagged relative to the threshold's own intent.{" "}
+        {ratio ? <><strong>{hi.label}</strong> is flagged at {(hi.frac * 100).toFixed(1)}% against{" "}
+          <strong>{lo.label}</strong> at {(lo.frac * 100).toFixed(1)}%, a {ratio.toFixed(1)}x gap</> : null}
+        {" "}driven by allele-frequency differences rather than by risk. This is a distribution shift,
+        not an accuracy drop - the panel carries no case/control status, so no AUROC is computable.
+      </figcaption>
+      <ResponsiveContainer width="100%" height={190}>
+        <BarChart data={rows} margin={{ top: 4, right: 8, bottom: 4, left: -18 }}>
+          <CartesianGrid stroke={GRID} strokeDasharray="2 4" />
+          <XAxis dataKey="label" tick={AXIS} interval={0} />
+          <YAxis tick={AXIS} tickFormatter={(v: number) => `${(v * 100).toFixed(0)}%`} />
+          <Tooltip contentStyle={{ background: "#161b26", border: `1px solid ${GRID}`, fontSize: 11 }}
+                   formatter={(v: number, name: string) =>
+                     name === "flagged" ? `${(v * 100).toFixed(2)}%` : v.toFixed(4)}
+                   labelFormatter={(l: string) =>
+                     `${l} — n=${rows.find((r) => r.label === l)?.n ?? 0}, `
+                     + `mean PRS ${rows.find((r) => r.label === l)?.mean.toFixed(4) ?? ""}`} />
+          <ReferenceLine y={pooled} stroke="#c05621" strokeDasharray="4 4" />
+          <Bar dataKey="frac" fill="#4f9dff" name="flagged" />
+        </BarChart>
+      </ResponsiveContainer>
+    </figure>
+  );
+}
+
+export function VerificationChart({ res, modelKey }: { res: ModelEvalResult; modelKey: string }) {
+  const plot = res.plot;
+  if (!plot) return null;
+
+  if (plot.kind === "per-class-f1" && plot.perClass?.length) {
+    const worst = plot.perClass.reduce((a, b) => (b.f1 < a.f1 ? b : a));
+    return (
+      <figure className="chart-figure">
+        <figcaption className="muted small">
+          Per-class F1 for <code>{modelKey}</code>, {res.n} held-out rows scored in this tab.
+          Weakest class: <strong>{worst.label}</strong> at {worst.f1.toFixed(3)} against an aggregate
+          of {res.score?.toFixed(3)}. The aggregate is what would hide it.
+        </figcaption>
+        <ResponsiveContainer width="100%" height={180}>
+          <BarChart data={plot.perClass} margin={{ top: 4, right: 8, bottom: 4, left: -18 }}>
+            <CartesianGrid stroke={GRID} strokeDasharray="2 4" />
+            <XAxis dataKey="label" tick={AXIS} interval={0} angle={-25} textAnchor="end" height={54} />
+            <YAxis domain={[0, 1]} tick={AXIS} />
+            <Tooltip contentStyle={{ background: "#161b26", border: `1px solid ${GRID}`, fontSize: 11 }}
+                     formatter={(v: number) => v.toFixed(4)} />
+            <Bar dataKey="f1" fill="#4f9dff" name="F1" />
+          </BarChart>
+        </ResponsiveContainer>
+      </figure>
+    );
+  }
+
+  if (plot.kind === "pr-curve" && plot.pr?.length) {
+    // The precision a coin-flip achieves is the prevalence, and at 1-in-981 that is 0.001. Drawing
+    // it is what makes a PR curve legible - without the line, 0.5 precision looks unimpressive.
+    const prevalence = plot.hist
+      ? plot.hist.reduce((a, b) => a + b.positive, 0) /
+        Math.max(1, plot.hist.reduce((a, b) => a + b.positive + b.negative, 0))
+      : 0;
+    return (
+      <div className="chart-pair">
+        <figure className="chart-figure">
+          <figcaption className="muted small">
+            Precision-recall for <code>{modelKey}</code> over {res.n} rows. The dashed line is what a
+            random ranker achieves ({prevalence.toFixed(4)}) - PR rather than ROC because this
+            baseline moves with prevalence and ROC's does not.
+          </figcaption>
+          <ResponsiveContainer width="100%" height={180}>
+            <LineChart data={plot.pr} margin={{ top: 4, right: 8, bottom: 4, left: -18 }}>
+              <CartesianGrid stroke={GRID} strokeDasharray="2 4" />
+              <XAxis dataKey="recall" type="number" domain={[0, 1]} tick={AXIS}
+                     tickFormatter={(v: number) => v.toFixed(1)} />
+              <YAxis domain={[0, 1]} tick={AXIS} />
+              <Tooltip contentStyle={{ background: "#161b26", border: `1px solid ${GRID}`, fontSize: 11 }}
+                       formatter={(v: number) => v.toFixed(4)}
+                       labelFormatter={(v: number) => `recall ${Number(v).toFixed(3)}`} />
+              <ReferenceLine y={prevalence} stroke="#c05621" strokeDasharray="4 4" />
+              <Line type="monotone" dataKey="precision" stroke="#4f9dff" dot={false} strokeWidth={1.8}
+                    isAnimationActive={false} name="precision" />
+            </LineChart>
+          </ResponsiveContainer>
+        </figure>
+
+        {plot.hist?.length ? (
+          <figure className="chart-figure">
+            <figcaption className="muted small">
+              Score distribution by TRUE class. Overlap here is the reason the curve above looks the
+              way it does - a metric says how well, this says why.
+            </figcaption>
+            <ResponsiveContainer width="100%" height={180}>
+              <BarChart data={plot.hist} margin={{ top: 4, right: 8, bottom: 4, left: -18 }}>
+                <CartesianGrid stroke={GRID} strokeDasharray="2 4" />
+                <XAxis dataKey="bin" tick={AXIS} label={{ value: "score bin", position: "insideBottom",
+                       offset: -2, fill: "#8a94a6", fontSize: 10 }} />
+                <YAxis scale="log" domain={[0.7, "auto"]} allowDataOverflow tick={AXIS} />
+                <Tooltip contentStyle={{ background: "#161b26", border: `1px solid ${GRID}`, fontSize: 11 }} />
+                <Legend wrapperStyle={{ fontSize: 10 }} />
+                <Bar dataKey="negative" stackId="a" fill="#4a5568" name="true negative" />
+                <Bar dataKey="positive" stackId="a" fill="#c05621" name="true positive" />
+              </BarChart>
+            </ResponsiveContainer>
+          </figure>
+        ) : null}
+      </div>
+    );
+  }
+
+  if (plot.kind === "forecast" && plot.series?.length) {
+    return (
+      <figure className="chart-figure">
+        <figcaption className="muted small">
+          Channel 0, predicted against actual over {plot.series.length} scored windows for{" "}
+          <code>{modelKey}</code>. MAE {res.score?.toFixed(4)} against a persistence baseline of{" "}
+          {res.baseline?.toFixed(4)}. The error's SHAPE matters: uniform drift is a miscalibrated
+          model, a few large misses are missed events.
+        </figcaption>
+        <ResponsiveContainer width="100%" height={190}>
+          <LineChart data={plot.series} margin={{ top: 4, right: 8, bottom: 4, left: -18 }}>
+            <CartesianGrid stroke={GRID} strokeDasharray="2 4" />
+            <XAxis dataKey="i" tick={AXIS} />
+            <YAxis tick={AXIS} />
+            <Tooltip contentStyle={{ background: "#161b26", border: `1px solid ${GRID}`, fontSize: 11 }}
+                     formatter={(v: number) => v.toFixed(4)} />
+            <Legend wrapperStyle={{ fontSize: 10 }} />
+            <Line type="monotone" dataKey="actual" stroke="#8a94a6" dot={false} strokeWidth={1.4}
+                  isAnimationActive={false} name="actual" />
+            <Line type="monotone" dataKey="predicted" stroke="#4f9dff" dot={false} strokeWidth={1.6}
+                  isAnimationActive={false} name="predicted" />
+          </LineChart>
+        </ResponsiveContainer>
+      </figure>
+    );
+  }
+
+  return null;
+}

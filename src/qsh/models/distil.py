@@ -45,19 +45,44 @@ class FidelityReport:
     disagreement_on_positives: float   # agreement is easy when the positive class is 1-in-981
     student_params: int
     teacher_params: int | None
-    #: Set when teacher and student BOTH score 0 on the fidelity slice. metric_delta is then 0 by
-    #: cancellation, not because encryption was free -- and it is not comparable to the teacher's
-    #: headline metric, which is computed over the whole test window rather than this later slice.
-    #: Without this the satellite card showed metric_delta 0.0 beside a teacher headline of 0.714,
-    #: which reads as "the encrypted student matched a 0.714 teacher exactly".
-    both_scored_zero: bool = False
+    #: Set when the TEACHER scores 0 on the fidelity slice, whatever the student scores. There is
+    #: then no fidelity claim to make: the slice contains nothing the teacher got right, so the
+    #: delta measures the student against a model that failed, not against the teacher's ability.
+    #:
+    #: The condition is deliberately the teacher alone, and the earlier version of this flag fired
+    #: only when BOTH scored 0. That version was written for a real incident -- the satellite card
+    #: showed metric_delta 0.0 beside a teacher headline of 0.714, reading as "the encrypted student
+    #: matched a 0.714 teacher exactly". But requiring both to be zero left the worse shape live:
+    #: teacher 0.0 against student 0.0032 gives a NEGATIVE delta, which renders as the 49-parameter
+    #: encrypted student outperforming an 80,486-parameter LSTM. It is the same defect one step to
+    #: the side, and it shipped to the public demo. A guard whose condition is narrower than the
+    #: thing it guards against will eventually be walked around.
+    #:
+    #: Neither number is comparable to the teacher's headline metric either way, because the headline
+    #: is computed over the whole test window and this is a later slice of it.
+    teacher_scored_zero: bool = False
+    #: How many things the metric was actually computed over, and what one of them is. ``n_eval``
+    #: counts SAMPLES, which for an event-wise metric is the wrong denominator by orders of
+    #: magnitude: the satellite fidelity slice is 307,601 samples and 2 labelled anomaly events.
+    #: A score over 2 events looks identical to a score over 2,000 and means almost nothing, so the
+    #: count is recorded beside it rather than left to be inferred from ``n_eval``.
+    n_scoring_units: int | None = None
+    scoring_unit: str = "samples"
+
+    @property
+    def both_scored_zero(self) -> bool:
+        """The stricter, older condition. Kept because ``metrics.json`` records written by earlier
+        rounds carry this key and the UI still reads it as a fallback."""
+        return self.teacher_metric == 0.0 and self.student_metric == 0.0
 
     @property
     def metric_delta(self) -> float:
         """Teacher metric minus student metric. Positive means encryption cost accuracy.
 
-        Read together with :attr:`both_scored_zero`: a delta of 0 there means neither model scored
-        on the fidelity slice, which is not the same claim as "the student matched the teacher".
+        Read together with :attr:`teacher_scored_zero`. When that is set this delta is not a cost of
+        encryption at all: at teacher 0 it is 0 by cancellation if the student also scored nothing,
+        and negative if the student scored anything, neither of which is the claim "the student
+        matched (or beat) the teacher".
         """
         return self.teacher_metric - self.student_metric
 
@@ -70,29 +95,118 @@ class FidelityReport:
         d = asdict(self)
         d["metric_delta"] = round(self.metric_delta, 6)
         d["metric_delta_pp"] = round(self.metric_delta_pp, 4)
+        # Properties are not fields, so asdict() drops them. The UI reads both keys.
+        d["both_scored_zero"] = self.both_scored_zero
         return d
 
 
 def distil_linear(teacher_scores: np.ndarray, X: np.ndarray, *,
-                  class_weight: str | None = "balanced", max_iter: int = 1000, seed: int = 0):
-    """Fit a logistic student against the *teacher's own decisions*, not the ground-truth labels.
+                  class_weight: str | None = "balanced", max_iter: int = 1000, seed: int = 0,
+                  soft: bool = True, degree: int = 1):
+    """Fit a logistic student against the *teacher's own output*, not the ground-truth labels.
 
     Training on the teacher's output is what makes this distillation rather than just a second
     model: the student is trying to be the teacher, so ``agreement`` measures the substitution and
     not two independent fits that happen to correlate.
+
+    ``soft`` distils from the teacher's PROBABILITIES rather than its hard argmax. Hard labels throw
+    away exactly the information distillation exists to transfer - how confident the teacher was -
+    and at a 1-in-981 positive rate that is most of the signal. Implemented by presenting each row
+    twice, once per class, weighted by the teacher's probability for that class, which is the
+    standard reduction of a soft-target cross-entropy to a weighted hard-label fit.
+
+    Measured on AMLworld HI-Small with tuned thresholds: hard 0.0503, soft 0.0587 minority-class F1.
+
+    ``degree`` > 1 fits the same logistic model over a POLYNOMIAL EXPANSION of the features, returned
+    as a Pipeline that also owns its scaler. This is the one axis the CKKS cost bound does not
+    block, and the reason is worth stating: the expansion is a function of the plaintext input, so
+    the client computes it BEFORE encrypting. The encrypted operation is still a single packed dot
+    product, at the same multiplicative depth, over a longer vector - and a degree-8192 ring has
+    4096 slots, so any expansion under that width is free on the crypto side.
+
+    It is not free statistically: d features become d(d+3)/2, so 19 -> 209 and 32 -> 560, and the
+    sample-per-parameter ratio falls accordingly. Measured on OPS-SAT-AD, where it more than paid:
+    minority-class F1 0.8485 -> 0.9391 and AUC-PR 0.9235 -> 0.9810, which beats both the teacher
+    (0.9189) and the published baseline (0.979). Check it per model rather than assuming.
     """
     from sklearn.linear_model import LogisticRegression
+    from sklearn.pipeline import Pipeline
+    from sklearn.preprocessing import PolynomialFeatures, StandardScaler
 
-    labels = np.asarray(teacher_scores)
-    if labels.ndim > 1:
-        labels = labels.argmax(1)
-    student = LogisticRegression(max_iter=max_iter, class_weight=class_weight, random_state=seed)
-    student.fit(np.asarray(X, dtype=float), labels.astype(int))
+    scores = np.asarray(teacher_scores, dtype=float)
+    Xf = np.asarray(X, dtype=float)
+    lr = LogisticRegression(max_iter=max_iter, class_weight=class_weight, random_state=seed)
+    # At degree 1 this stays a bare estimator, so every existing caller and every persisted
+    # `weights.json` keeps exactly the shape it had.
+    student = lr if degree <= 1 else Pipeline([
+        ("poly", PolynomialFeatures(degree, include_bias=False)),
+        ("scale", StandardScaler()),
+        ("lr", lr),
+    ])
+    weight_kw = "lr__sample_weight" if degree > 1 else "sample_weight"
+
+    if soft and scores.ndim > 1 and scores.shape[1] == 2:
+        p1 = scores[:, 1]
+        Xd = np.vstack([Xf, Xf])
+        yd = np.concatenate([np.ones(len(p1), dtype=int), np.zeros(len(p1), dtype=int)])
+        wd = np.concatenate([p1, 1.0 - p1])
+        student.fit(Xd, yd, **{weight_kw: wd})
+        return student
+
+    labels = scores.argmax(1) if scores.ndim > 1 else scores
+    student.fit(Xf, labels.astype(int))
     return student
 
 
+def fold_threshold_into_intercept(student, threshold: float):
+    """Bake a tuned decision threshold into the student's bias, in place.
+
+    The encrypted path decides by argmax over the two logits, which is a 0.5 threshold and nothing
+    else - there is no place downstream to apply a tuned cut. Folding it in is what lets the CKKS
+    result use the same operating point the metrics report.
+
+    For a binary logistic, thresholding p at q is thresholding the logit at log(q/(1-q)), so
+    subtracting that constant from the positive class's intercept moves the argmax boundary to the
+    tuned point. Measured effect on AMLworld: minority-class F1 0.0186 -> 0.0503 at the same
+    weights, because a 0.5 cut on a 1-in-981 problem is nowhere near the optimum.
+    """
+    q = float(min(max(threshold, 1e-9), 1 - 1e-9))
+    shift = float(np.log(q / (1.0 - q)))
+    inter = np.asarray(student.intercept_, dtype=float)
+    if inter.size == 1:                      # sklearn binary form: one logit, positive class
+        student.intercept_ = inter - shift
+    else:                                    # multinomial form: shift the positive class only
+        inter = inter.copy()
+        inter[1] -= shift
+        student.intercept_ = inter
+    return student
+
+
+def fold_threshold_into_torch_head(model, threshold: float, *, positive_class: int = 1):
+    """Same idea as :func:`fold_threshold_into_intercept`, for a 2-logit torch head, in place.
+
+    Argmax over two logits IS a 0.5 threshold, and the encrypted path has nowhere downstream to
+    apply a tuned cut - so a screening model that should trade precision for recall cannot express
+    that unless the cut is baked into the weights. Predicting ``positive_class`` when
+    ``sigmoid(z_pos - z_other) >= q`` means shifting that class's bias by ``-log(q/(1-q))``.
+
+    Needed for the medical student because its positive class is MALIGNANT and it is the minority
+    (2.71:1). At argmax it caught 1 of 42 malignant cases while scoring a respectable-looking
+    accuracy, because on an imbalanced screening task accuracy is maximised by not screening.
+    """
+    import torch
+
+    q = float(min(max(threshold, 1e-9), 1 - 1e-9))
+    shift = float(np.log(q / (1.0 - q)))
+    last = [m for m in model.modules() if isinstance(m, torch.nn.Linear)][-1]
+    with torch.no_grad():
+        last.bias[positive_class] -= shift
+    return model
+
+
 def save_student(student, out_dir, *, n_features: int, teacher_key: str,
-                 student_key: str, classes: list | None = None, scaler=None) -> dict:
+                 student_key: str, classes: list | None = None, scaler=None,
+                 fixtures: np.ndarray | None = None) -> dict:
     """Persist the distilled student so it can be published and independently verified.
 
     The student is the model that actually runs under CKKS -- it is the whole point of the
@@ -112,8 +226,16 @@ def save_student(student, out_dir, *, n_features: int, teacher_key: str,
     out = pathlib.Path(out_dir)
     out.mkdir(parents=True, exist_ok=True)
 
-    coef = np.asarray(student.coef_, dtype=float)
-    intercept = np.asarray(student.intercept_, dtype=float)
+    # A degree>1 student is a Pipeline that owns its own expansion and scaler. The coefficients then
+    # live on the final estimator and describe the EXPANDED space, while the graph still takes raw
+    # features - so the two have different widths and both facts have to be recorded.
+    pipeline = getattr(student, "steps", None)
+    estimator = student[-1] if pipeline else student
+    poly = student.named_steps.get("poly") if pipeline else None
+    fitted_scaler = student.named_steps.get("scale") if pipeline else scaler
+
+    coef = np.asarray(estimator.coef_, dtype=float)
+    intercept = np.asarray(estimator.intercept_, dtype=float)
     (out / "weights.json").write_text(json.dumps({
         "kind": "logistic-linear",
         "note": ("The CKKS-linear student: this is what is evaluated under homomorphic encryption. "
@@ -127,20 +249,47 @@ def save_student(student, out_dir, *, n_features: int, teacher_key: str,
         # wrong answer, which is the same failure the teachers avoid by shipping
         # `input.preprocessing` beside their samples. None means the student consumes raw features.
         "input": {
-            "preprocessing": ([] if scaler is None else ["subtract mean", "divide by scale"]),
-            "mean": (None if scaler is None else [float(v) for v in scaler.mean_]),
-            "scale": (None if scaler is None else [float(v) for v in scaler.scale_]),
+            # A pipeline student bakes expansion AND scaling into the graph, so the caller does
+            # nothing and `preprocessing` is honestly empty. A bare student still needs the caller
+            # to z-score, and the transform it was FIT on is published here for that.
+            "preprocessing": ([] if (pipeline or fitted_scaler is None)
+                              else ["subtract mean", "divide by scale"]),
+            "mean": (None if (pipeline or fitted_scaler is None)
+                     else [float(v) for v in fitted_scaler.mean_]),
+            "scale": (None if (pipeline or fitted_scaler is None)
+                      else [float(v) for v in fitted_scaler.scale_]),
+            # Present only when the student is polynomial. `W` below is indexed in the EXPANDED
+            # space, so anyone reproducing the encrypted dot product from raw features needs the
+            # exact expansion and its term order - sklearn's, which is
+            # [x_1..x_d, x_1^2, x_1x_2, ..., x_d^2] with include_bias=False.
+            **({} if not poly else {"expansion": {
+                "kind": "polynomial",
+                "degree": int(poly.degree),
+                "include_bias": bool(poly.include_bias),
+                "interaction_only": bool(poly.interaction_only),
+                "n_features_raw": int(n_features),
+                "n_features_expanded": int(coef.shape[-1]),
+                "term_order": "sklearn PolynomialFeatures, [x_i], then [x_i*x_j] for i<=j",
+                "note": ("Computed on the PLAINTEXT input before encryption, so the encrypted step "
+                         "is still one packed dot product at unchanged multiplicative depth. The "
+                         "expansion and the z-scoring are both inside the published ONNX graph, "
+                         "which takes raw features."),
+            }}),
         },
         "W": coef.tolist(), "b": intercept.tolist(),
         "n_parameters": int(coef.size + intercept.size),
         "classes": classes if classes is not None else list(range(max(2, coef.shape[0] + 1))),
     }, indent=2) + "\n")
 
-    # Same fixtures-and-verify path the teachers take, so the artefact set matches.
-    rng = np.random.default_rng(0)
-    fixtures = rng.normal(size=(64, n_features)).astype(np.float32)
-    report = export.verify_and_quantize(student, fixtures, out, kind="sklearn",
-                                        n_features=int(n_features))
+    # Same fixtures-and-verify path the teachers take, so the artefact set matches. `fixtures` is
+    # passed in when the graph takes RAW features - a pipeline student scales internally, so random
+    # standard normals would exercise it far outside the range it was fitted on and make the
+    # fp32/int8 agreement check meaningless.
+    if fixtures is None:
+        rng = np.random.default_rng(0)
+        fixtures = rng.normal(size=(64, n_features)).astype(np.float32)
+    report = export.verify_and_quantize(student, np.asarray(fixtures, dtype=np.float32), out,
+                                        kind="sklearn", n_features=int(n_features))
     return {"n_parameters": int(coef.size + intercept.size),
             "onnx_domains": report.onnx_domains,
             "browser_runnable": report.browser_runnable}
@@ -148,7 +297,9 @@ def save_student(student, out_dir, *, n_features: int, teacher_key: str,
 
 def measure_fidelity(*, teacher_key: str, student_key: str, teacher_pred: np.ndarray,
                      student_pred: np.ndarray, y_true: np.ndarray, metric_fn, metric_name: str,
-                     student_params: int, teacher_params: int | None = None) -> FidelityReport:
+                     student_params: int, teacher_params: int | None = None,
+                     n_scoring_units: int | None = None,
+                     scoring_unit: str = "samples") -> FidelityReport:
     """Compare a student against its teacher on held-out data.
 
     ``disagreement_on_positives`` is reported separately and deliberately. With a 1-in-981 positive
@@ -174,10 +325,9 @@ def measure_fidelity(*, teacher_key: str, student_key: str, teacher_pred: np.nda
         disagreement_on_positives=round(disagree_pos, 6),
         student_params=int(student_params),
         teacher_params=int(teacher_params) if teacher_params is not None else None,
-        both_scored_zero=bool(
-            float(metric_fn(y_true, teacher_pred)) == 0.0
-            and float(metric_fn(y_true, student_pred)) == 0.0
-        ),
+        teacher_scored_zero=bool(float(metric_fn(y_true, teacher_pred)) == 0.0),
+        n_scoring_units=(int(n_scoring_units) if n_scoring_units is not None else None),
+        scoring_unit=scoring_unit,
     )
 
 

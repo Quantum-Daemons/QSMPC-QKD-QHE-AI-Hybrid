@@ -216,6 +216,38 @@ def publish(spec: registry.ModelSpec, *, private: bool, dry_run: bool, api) -> s
     return info.sha
 
 
+def _refuse_transfer_learned_weights(key: str) -> None:
+    """Refuse to publish weights derived from a corpus this project may not redistribute.
+
+    DATA_LICENSES.md and the README both state that `medical_fl.resnet18` is trained from random
+    initialisation, because ImageNet's terms bind the Database to non-commercial research and say
+    nothing about redistributing a model trained on it - so ImageNet-derived weights cannot be
+    published here. `scripts/train/medical_breastmnist.py` implements that as `--from-scratch`.
+
+    It is not the default. So training without the flag and publishing produced exactly the state
+    Round 24c found: two documents promising random initialisation while the artefact on the Hub
+    recorded `pretrained: ImageNet1K_V1`. Nothing checked, and the divergence survived several
+    rounds. A licence claim that only a human remembers to honour is not a control.
+
+    The manifest already records the answer, so this reads it and stops.
+    """
+    spec = registry.get(key)
+    if not spec.hf_repo or not spec.dataset.publishable:
+        return
+    manifest = Path(ARTIFACT_DIRS.get(key, "")) / "manifest.json"
+    if not manifest.exists():
+        return
+    pretrained = (json.loads(manifest.read_text()) or {}).get("pretrained")
+    if pretrained and str(pretrained).lower() not in {"none", "false", ""}:
+        raise SystemExit(
+            f"REFUSING to publish {key}: its manifest records pretrained={pretrained!r}, so these "
+            f"weights are derived from a corpus whose terms this project has not cleared for "
+            f"redistribution (see DATA_LICENSES.md). Retrain with --from-scratch and republish. "
+            f"If the policy has genuinely changed, change DATA_LICENSES.md and the README in the "
+            f"same commit -- do not let the artefact and the licence note disagree again."
+        )
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--key", action="append", help="model key(s); default = everything trained")
@@ -234,6 +266,10 @@ def main() -> int:
 
     keys = args.key or [s.key for s in registry.specs() if s.hf_repo]
     print(f"\npublishing {len(keys)} model(s), private={not args.public}\n")
+
+    # Licence gate BEFORE any upload, so a mixed batch cannot push half of itself and then stop.
+    for key in keys:
+        _refuse_transfer_learned_weights(key)
 
     revisions = {}
     for key in keys:

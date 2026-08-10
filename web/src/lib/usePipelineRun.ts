@@ -80,7 +80,6 @@ export const makeDefaultParams = () => ({
   sat_distance_km: FREE_SPACE.distanceKm,
   sat_eve: FREE_SPACE.eveFraction,
   sat_pulses: webCfg().demo_sat_pulses,
-  qsdc_threshold: qkdCfg().pp_threshold,
 });
 
 export const DEFAULT_PARAMS = makeDefaultParams();
