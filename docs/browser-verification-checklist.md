@@ -1608,6 +1608,33 @@ clean.
 T2 is the one an automated check gets wrong. `license: null` from the GitHub API means all rights
 reserved, and a naive check that only fails on a deny-list of SPDX identifiers passes it.
 
+## The most tempting motivation for a use case is the one most likely to be false
+
+The satellite use case had no stated problem, only a stated mechanism. Checking what the real
+motivation is turned up the reverse of the obvious one: **export control does not block moving
+satellite telemetry, it explicitly decontrols it.** 22 CFR 121.1 USML XV Note 3 names housekeeping
+data - temperatures, pressures, currents, battery charges - and says encrypting it "does not, in and
+of itself, cause the telemetry data to become subject to the ITAR".
+
+"ITAR blocks telemetry" is what a reasonable person assumes, it is quotable, it sounds authoritative,
+and a reader who knows Category XV stops reading at it. This project had never made the claim; the
+value of checking was in learning not to.
+
+| # | Check | Pass condition |
+|---|---|---|
+| M1 | Every use case states a PROBLEM, not only a mechanism | "QKD over a LEO downlink" is a mechanism |
+| M2 | The motivation cites a primary source that says it in its own words | an operator, regulator or benchmark author, quoted |
+| M3 | The most obvious-sounding justification is checked against the regulation TEXT | not against what everyone says it says |
+| M4 | Any novelty claim survives an adversarial search for prior art | search for the thing, then search for who already did it |
+
+M4 separated two claims that felt equally safe. Encrypted inference on housekeeping telemetry for
+anomaly detection: zero verified prior work, a real gap. Encrypted **conjunction assessment**: a
+decade-deep field with an active ESA contract (ShareSat, Cybernetica, Sharemind MPC, TRL 4) - a
+novelty claim there would have collided with prior art immediately. Neither intuition would have
+told them apart.
+
+Workings: [`references/satellite-motivation-fact-check.md`](../references/satellite-motivation-fact-check.md).
+
 ## Check whether the model protects the thing that actually leaks
 
 Five verticals were checked against 2026 privacy-preserving-inference literature. Four came back

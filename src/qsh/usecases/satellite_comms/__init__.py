@@ -1,5 +1,30 @@
 """Satellite-communications use case: free-space QKD + QSDC over a LEO downlink.
 
+WHY THIS USE CASE EXISTS, since the line above describes a mechanism and not a problem.
+    Operators treat housekeeping telemetry as confidential, and it demonstrably blocks ML. DLR's
+    German Space Operations Centre built a synthetic-telemetry pipeline saying so outright - "since
+    satellite telemetry data are often strictly confidential, we can share these synthetic data
+    easily with our research partners" (CEAS Space Journal, 2025). ESA anonymised missions,
+    channels, telecommands and units and scaled the timeline by an undisclosed factor purely to
+    publish the benchmark this file consumes. And in 2015 a Space Data Association chairman asked
+    for secure computation in plain English: "we still protect our assets without having to know
+    what their assets are doing."
+
+    The architectural seam is specific. CCSDS 355.0-B-2 gives confidentiality "over a space link"
+    and terminates at the ground station, so telemetry is plaintext for the whole ground segment -
+    which is where processing and ML happen. That seam is where encrypted inference sits.
+
+    NOT the reason, and worth stating because it is the first thing anyone reaches for: export
+    control does NOT block this. 22 CFR 121.1 USML XV Note 3 explicitly decontrols housekeeping
+    telemetry and says encrypting it "does not, in and of itself, cause the telemetry data to become
+    subject to the ITAR". The genuine legal hook runs the other way - 22 CFR 120.54(c) states that
+    "the ability to access technical data in encrypted form does not constitute the release or
+    export", with end-to-end encryption defined as the means of decryption not being provided to any
+    third party. Export law already blesses this architecture.
+
+    Full workings, including the four motivations to avoid: references/satellite-motivation-fact-check.md
+
+
 A ground station and a LEO satellite establish a PQC-first hybrid session, distribute a
 key over a **free-space BB84** downlink (high loss, atmospheric turbulence, background
 counts), then transmit mission telemetry by **Quantum Secure Direct Communication** (QSDC,
