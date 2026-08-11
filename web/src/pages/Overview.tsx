@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 
 import { costPerOp } from "../lib/config";
+import { DEMO_BANNER, isClientDemo } from "../lib/demoMode";
 
 export default function Overview() {
   // Ciphertext expansion is a measured property of the two crypto paths, so it is read from the
@@ -12,6 +13,10 @@ export default function Overview() {
 
   return (
     <div>
+      {/* The banner states the two facts that make this project unusual - real CKKS and real
+          garbled-circuit MPC execute in the visitor's own tab, and no computation reaches a server -
+          and it rendered on every page EXCEPT the one visitors land on. */}
+      {isClientDemo() && <div className="note" style={{ marginBottom: 14 }}>{DEMO_BANNER}</div>}
       <h1 className="page-title">Quantum-Safe Hybrid Orchestration</h1>
       <p className="page-sub">
         An end-to-end security layer that chains <b className="hl-c">QKD</b> →{" "}
@@ -29,6 +34,12 @@ export default function Overview() {
             full-PQC commitment. Attributing the stronger claim to both overstated Google. */}
         <div className="card"><div className="kpi c">2029</div><p>Cloudflare target for full PQC including authentication; Google targets PQC migration by the same year. CNSA 2.0 requires new NSS acquisitions to be quantum-resistant from 2027</p></div>
         <div className="card"><div className="kpi q">~{qRatio}</div><p>Rate-1 QFHE ciphertext/plaintext ratio vs ~{Math.round(cRatio)}× for classical CKKS</p></div>
+        {/* The novelty, stated where a first-time visitor reads it. Everything else on this page is
+            context that other projects share; this is the part that is unusual, and it was legible
+            only from the banner - which did not render here. */}
+        <div className="card"><div className="kpi c">0</div><p><b>server-side compute</b> in this
+        demo: CKKS, garbled-circuit MPC and the model inference all run in your tab. See{" "}
+        <Link to="/value">what is and is not new</Link>.</p></div>
       </div>
 
       <h2 style={{ marginTop: 32 }}>The four workstreams</h2>

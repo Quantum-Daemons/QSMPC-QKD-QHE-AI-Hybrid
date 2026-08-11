@@ -118,6 +118,33 @@ tiers: a T2 \emph{teacher} --- the real architecture, plaintext --- and a T1 \em
 enough to evaluate under CKKS, distilled from the teacher's own output. The gap between them is
 reported as a first-class metric rather than elided.
 
+\subsection{What is new here, and what is not}
+This project's own verification rule is that a novelty claim must survive an adversarial search for
+prior art. Applied to its headline claim the answer is asymmetric, and reporting only the flattering
+half would be the kind of omission the rest of this document exists to avoid.
+
+\textbf{MPC in a browser is not new.} webSPDZ (IACR ePrint 2025/487) compiles MP-SPDZ to WebAssembly
+and communicates over WebRTC or WebSockets, and it names JIFF and MPyC-Web as earlier browser MPC
+engines. The garbled-circuit half of this system re-implements a known idea.
+
+\textbf{Homomorphic \emph{evaluation} in a browser is where the search returned nothing.} Every
+artefact located encrypts client-side and evaluates server-side. IACR ePrint 2026/515 defines
+``client-side operations'' as encryption and decryption while \emph{users offload large computations to
+servers}; Zama's TFHE-rs WebAssembly API documents support for key generation, encryption and
+decryption but \emph{not} FHE computation, citing WASM threading and a 2\,GB memory ceiling. This
+system evaluates a real CKKS dot product and a real CKKS convolution in the tab.
+
+\textbf{The claim is therefore the composition rather than either half}: PQC key establishment, then
+QKD-derived key material, then secure multiparty computation, then homomorphic evaluation, then model
+inference --- chained end to end in one browser tab with no server-side compute. A search for an
+integrated browser system performing that whole chain returned nothing. Two caveats travel with the
+claim and are stated wherever it appears: the two MPC parties are notional, running over an in-memory
+transport within a single tab, so the protocol, the bytes and the wall-clock are real while the party
+separation is not; and the quantum channel is simulated, because no browser API for quantum
+communication exists. Client-side execution is also not automatically private --- WWW 2026's WAMO
+paper argues that browser deployment moves a model into a hostile environment, which is among the
+reasons the models here are published openly rather than treated as secrets.
+
 \subsection{What this system is not}
 It does not claim quantum \emph{advantage}. The measured quantum-kernel and variational classifiers
 lose to a RandomForest baseline on the same data, and the registry records
