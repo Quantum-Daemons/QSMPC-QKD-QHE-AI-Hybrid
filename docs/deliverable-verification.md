@@ -457,6 +457,55 @@ anything runs client-side - every check verified what was displayed, never where
 five falsifiable triggers rather than inertia. Telecom's overlay moves from "not implemented" to
 CLOSED as impossible.
 
+## Round 31: four deferred items closed, and two lessons about how they hid
+
+**The backlog gate was being violated and the ledger said so.** Telecom's RandomForest attribution had
+been deferred for FOUR rounds against a gate that allows three. `check:pqc` was recorded here as "a gap
+rather than a decision" for the same span. Both are done. Genomics QCNN and WS4(f) are reclassified as
+decisions with their real reasons. That is the deferred list shrinking by four rather than growing,
+which is what the gate exists to force.
+
+**Lesson one: a check row can ratify the thing it should catch.** The row covering telecom's
+attribution read "the published model has no attribution, and the panel must say so and why". A
+verifier working it confirmed the absence and PASSED. Four rounds of conscientious verification could
+not have surfaced this, because the instrument had been written to agree with the defect. The same
+shape appeared twice more this round: the checklist's XAI paragraph asserted for five use cases what is
+true of three, so it could not catch the panel making the identical error; and the index paragraph
+claimed a consolidation that had not happened, which is the hardest kind of duplicate to find because
+it tells the next reader the work is done.
+
+Worth generalising: **when an item survives several rounds of a working process, suspect the process
+before the effort.** The question to ask of a long-deferred item is not "why has nobody done this" but
+"what is telling everybody it is fine".
+
+**Lesson two: the deferral's stated condition may not be the binding one.** Genomics QCNN was recorded
+as blocked on a per-score licence audit. Checking what would happen if that audit came back clean:
+nothing. `qcnn_variational.py` is supervised end to end and 1000 Genomes is a reference panel with no
+phenotype, so there is no `y`. A licence to redistribute a reference panel still would not put a label
+in it. `QC16` now asks this of every deferral - if satisfying the stated condition tomorrow would leave
+the item blocked, the condition is decoration.
+
+**Three defects found by walking the deployed site rather than reading the code**, which is the reason
+that step is in the round trip:
+
+- The genomics baseline had nowhere to render. The `MetricSpec` rename to `auroc_eur` was correct, and
+  no achieved record emits that key because no AUROC is computable from a reference panel - so the
+  published 0.633 appeared only inside a provenance paragraph. The number a visitor is most likely to
+  quote was the hardest one on the page to find.
+- Satellite's anomaly verdict and its whole attribution panel were unreachable. Both sat inside
+  `if (!abort)`, and QSDC essentially never delivers: measured secrecy capacity is -51.58 bit/carrier at
+  the default 800 km and still -2.15 at 200 km, the shortest downlink the panel offers. The page
+  advertised a published model whose output no user action could produce.
+- The genomics 2D overlay still described "the 77 variants of PGS000001, 64 resolved" after the page had
+  moved to PGS000004. A stale overlay renders perfectly.
+
+**And one found by retraining.** `generate()` returns label names and says so; the telecom trainer
+unpacked them as `feature_names` and wrote them into `feature_spec.json` as `"features"`, so the
+published spec advertised eight features named after the eight attack classes for a seven-feature model.
+The committed JSON had been corrected BY HAND while the generator kept emitting the wrong value, under a
+note reading "Generated from the source, not written by hand" - so the first retrain reintroduced it.
+A hand-patched generated artifact is a defect with a timer on it.
+
 ## Verification assets added in Rounds 22-23
 
 Two checks now exist that assert against sources OUTSIDE this repository. That is the point of both:
