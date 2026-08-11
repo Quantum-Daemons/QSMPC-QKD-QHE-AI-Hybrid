@@ -70,9 +70,23 @@ def compute_security_score(
     cat = kem_category(kem)
     c["key_strength"] = s.key_strength_by_category.get(cat, 16.0)
 
-    # Eavesdropper detection: QBER below the BB84 secure threshold (~11%).
+    # Eavesdropper detection.
+    #
+    # 0.11 is the Shor-Preskill one-way BB84 bound, and it is NOT where this project's own channel
+    # model stops yielding key: the GLLP secure fraction reaches zero at 0.098106. So every QBER in
+    # [0.098106, 0.11) used to score FULL eavesdropper-detection marks on a channel that produces no
+    # secure key at all - the score rewarding a link the same code elsewhere reports as dead. The
+    # browser's fact display was guarded against exactly this and the score was not, and
+    # `references/security-scoring-fact-check.md` already lists it under defects fixed.
+    #
+    # `qkd_key_bits` was always in this signature, so the fix needs no new argument: a run that
+    # produced no key cannot have demonstrated eavesdropper detection, whatever its QBER.
+    dead_key = qkd_key_bits is not None and qkd_key_bits <= 0
     if qber is None:
         c["eavesdropper_detection"] = 0.0
+    elif dead_key:
+        # Detected, in the only sense that matters: the protocol refused to emit a key.
+        c["eavesdropper_detection"] = s.eavesdrop_warn_pts
     elif qber < s.qber_secure_threshold:
         c["eavesdropper_detection"] = s.eavesdrop_secure_pts
     elif qber < s.qber_danger_threshold:
