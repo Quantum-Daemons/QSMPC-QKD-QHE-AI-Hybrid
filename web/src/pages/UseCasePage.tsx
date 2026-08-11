@@ -205,6 +205,7 @@ function UseCaseView({ usecase }: { usecase: string }) {
           baseline={artifacts?.explanation_baseline ?? null}
           publishedModel={metrics?.published_model ? String(metrics.published_model) : null}
           surfacedBackend={artifacts?.primary_inference?.backend ?? null}
+          isOfReportedClass={artifacts?.explanation_is_of_reported_class ?? null}
         />
       ) : null}
 

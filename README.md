@@ -139,7 +139,7 @@ Each use case has its **own page** (`/usecase/:id`) - a **live two-party simulat
 Pause / Step / Stop / Restart. A **single Run** drives both the animated E2E protocol **and** the
 benchmark: the benchmark is **assembled from that very run** (no separate "Run benchmark" button) -
 the MPC-FHE row is the run's **real measured FHE-linear + MPC-non-linear latency**, shown next to the
-QSMPC-FHE comparison, quantum advantage, security posture, and (for finance/medical/genomics) a signed
+QSMPC-FHE comparison, quantum advantage, security posture, and (on all five use-case pages) a signed
 SHAP explanation. The two-party diagram makes the **MPC-FHE secret-sharing over a LAN <-> WAN <-> LAN** link
 explicit - linear layers cross as a **CKKS ciphertext**, non-linear layers as **secret-shares**. In
 the **public demo** (`?demo=client`) every use case runs **entirely in the browser** with **real,
@@ -473,7 +473,7 @@ implementation maps to each, and where gaps remain.
 | HNDL-vulnerable HE / key exchange | PQC-first hybrid **ML-KEM + X25519** (+ optional QKD key material) | `pqc/hybrid_kem.py`, `pqc/transport.py` |
 | TTP assumption | TTP-free: QSMS (entangled state, no dealer), keyed-hash PSI over the quantum-safe channel, pairwise-mask secure aggregation | `qsmpc/`, `ai/federated.py` |
 | **Agentic-AI / MCP quantum-safe + private agent comms** | A **real MCP server** (SDK >=2.0 `MCPServer`, formerly FastMCP) (5 per-industry tools, full deployment) bound to a quantum-safe channel: two agents establish a PQC(+QKD) session, the caller sends an **ML-DSA-signed, AES-GCM-sealed** `tools/call`, the callee **dispatches the real tool** and returns the **signed result** (authenticated, confidential, HNDL-resistant, no TTP); also interops with the official filesystem MCP server | `pqc/mcp_bridge.py`, `mcp/server.py`, `/api/mcp/*` |
-| **Explainability / audit trail (XAI)** | Exact linear-SHAP feature attributions for each private-inference decision, **ML-DSA-signed** -> tamper-evident, regulator-facing explanation (EU AI Act Art. 13 - applicable 2 Dec 2027 for Annex III after the AI Omnibus deferral, not Aug 2026; GDPR Art. 22; SR 11-7); surfaced on the finance/medical use-case cards | `ai/explainability.py`, `ExplainabilityStage` |
+| **Explainability / audit trail (XAI)** | Exact linear-SHAP feature attributions for each run's classification, **ML-DSA-signed** -> tamper-evident, regulator-facing explanation (EU AI Act Art. 13 - applicable 2 Dec 2027 for Annex III after the AI Omnibus deferral, not Aug 2026; GDPR Art. 22; SR 11-7); surfaced on all five use-case pages. On telecom and satellite, whose flows have no `private_inference` stage, the attribution is of the model that produced the reported class; on the other three it explains the bundled model beside the encrypted one, and the panel says which case applies | `ai/explainability.py`, `ExplainabilityStage` |
 
 **WS4 - QHExAI** (FHE 10^3-10^6x overhead; bootstrapping bottleneck; no quantum encoding; plus unsolved (a)-(f)):
 
@@ -774,7 +774,7 @@ See [`docs/pqc-roadmap.md`](docs/pqc-roadmap.md).
   |---|---|---|---|---|
   | **finance** | GFP + XGBoost (graph-feature preprocessing over the transaction multigraph) | IBM **AMLworld HI-Small**, 5,078,345 transactions, 1 laundering in 981 (CDLA-Sharing-1.0) | minority-class F1 **0.081**, AUPRC **0.073** vs a 0.0015 prevalence baseline | 0.632 (NeurIPS 2023 D&B) - see the gap note below |
   | **medical** | **ResNet-18** trained from random initialisation (no ImageNet weights, so no ImageNet terms attach) | MedMNIST v2 **BreastMNIST** (CC-BY-4.0) | AUC **0.9147** | 0.901 (Yang et al., Scientific Data 10:41, 2023) |
-  | **genomics** | published **PRS** effect-weight vector - not a neural network | PGS Catalog **PGS000001** over **2,504 real 1000 Genomes samples** | ancestry portability, below | C-index 0.628 - *external citation, not measurable here; the PGS Catalog records it as a Cox-model concordance statistic, not an AUROC, so it is not directly comparable to one* |
+  | **genomics** | published **PRS** effect-weight vector - not a neural network | PGS Catalog **PGS000004 (PRS313)** over **2,504 real 1000 Genomes samples** | ancestry portability, below | AUROC 0.633 [0.624, 0.641] - *external citation, not measurable here: a reference panel carries no phenotype. Fitted WITH covariates a dot product does not have, and 8% of variants were missing in that cohort, so it is a citation and not a target* |
   | **satellite** | **Telemanom** 2xLSTM(80), seq 250, non-parametric dynamic threshold + pruning | **ESA-ADB Mission1** lightweight channels 41-46, multi-year real telemetry (CC-BY-3.0-IGO) | event-wise F0.5 **0.4545** over just **3 events** | 0.968 (ESA-ADB Supp. Table 9, anomalies only) |
   | **telecom** | RF baseline + quantum-kernel SVC + variational QNN | literature-grounded synthetic QKD-attack telemetry (7 attack types + normal) | macro F1 - **RF 0.987**, quantum-kernel SVC **0.832**, variational QNN **0.467** | no trustworthy single number exists - see below |
 
@@ -796,11 +796,15 @@ See [`docs/pqc-roadmap.md`](docs/pqc-roadmap.md).
     truncation test rather than argued. Workings:
     [`references/finance-gap-investigation.md`](references/finance-gap-investigation.md).
   - **genomics cannot produce an AUROC here, so it does not print one.** 1000 Genomes is a reference
-    panel with no case/control status; the published 0.628 comes from a phenotyped cohort of
-    n=200,195. What *is* computable from real genotypes is the portability failure, and it is stark:
-    **a single global 90th-percentile "high risk" threshold flags 29.3% of African-ancestry samples
-    and 1.0% of European - a 29.5x difference driven entirely by ancestry, with no phenotype
-    involved.** That is the clinically important finding, not a footnote.
+    panel with no case/control status; the published AUROC comes from an access-controlled phenotyped
+    cohort (PPM001647, n=400,812). What *is* computable from real genotypes is the portability failure,
+    and it is stark:
+    **a single global 90th-percentile "high risk" threshold flags 16.2% of African-ancestry samples
+    and 2.8% of European - a 5.8x difference driven entirely by ancestry, with no phenotype
+    involved.** That is the clinically important finding, not a footnote. (The figures moved with the
+    switch from PRS77 to PRS313 - 29.3%/1.0% and 29.5x were the 77-variant score's - and they are
+    recomputed on every training run, so read `by_super_population.*.frac_above_global_cut` in
+    `models/metrics.json` rather than this sentence.)
   - **satellite reports event-wise F-beta at beta=0.5, never point-adjusted F1.** On the same run the
     point-adjusted figure is **0.994** against an honest **0.4545** - TSB-AD (NeurIPS 2024 D&B) showed
     a uniform random score ranks 26th of 32 detectors under point adjustment. A windowed isolation

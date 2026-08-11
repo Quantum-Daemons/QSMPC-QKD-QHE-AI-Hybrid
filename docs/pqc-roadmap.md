@@ -92,7 +92,29 @@ scaffold hardens). QRNG + OptiQKD above are built from this set; the rest are ad
 - **2030-12-31 / 2031-12-31** - **EO 14412**, *Securing the Nation Against Advanced Cryptographic Attacks*
   (signed 2026-06-22, 91 FR 38483): PQC key establishment on high-value assets by 2030-12-31 and digital
   signatures by 2031-12-31, with a FAR rule putting contractors on the 2030 date. **National Security
-  Systems are excluded** and stay on CNSA 2.0. This is the binding US instrument; IR 8547 is still a draft.
+  Systems are excluded** and stay on CNSA 2.0. This is the binding US instrument.
+
+  Note on the EO number, because secondary sources get it wrong: several write-ups call this **14409**.
+  The Federal Register API returns **14412**, published 2026-06-25 at 91 FR 38483. The number above is
+  correct.
+- **2026-10-22 / phased to 2035** - **OMB Memorandum M-26-15**, *Execution of the Migration to
+  Post-Quantum Cryptography* (2026-06-24), which is how EO 14412 is actually executed and is newer than
+  everything else in this list. Agency PQC Migration Plans are due to OMB and ONCD **within 120 days**
+  of issuance, so about **2026-10-22**, and Action One is to mitigate as much quantum risk as feasible
+  by **2030-12-31**. Five phases: **1** 2026-2027 strategy and discovery, **2** 2027-2028 pilots, **3**
+  2028-2030 prioritised migration and key establishment, **4** 2031 signature migration, **5** 2035
+  full migration. Not applicable to national security systems.
+
+  Two consequences for this repository specifically:
+
+  - Phases 3 and 4 each close with *"Ensure all systems are cryptographically agile."* That is a
+    directive naming the exact property [`crypto-agility.md`](crypto-agility.md) is about, so that
+    document is no longer only good practice.
+  - The memorandum directs agencies to **align their plans with NIST IR 8547 "or successor
+    document"**. So the sentence this list used to carry - "IR 8547 is still a draft" - was true and
+    incomplete: **the draft is now normatively referenced by a binding memorandum.** State both, since
+    either alone misleads. IR 8547 is confirmed still at Initial Public Draft as of 2026-08-11 (no
+    second draft, no final), which is why the 2030 and 2035 dates above still cite it as `ipd`.
 - **2035** - Japan's Cabinet Secretariat interim report (Nov 2025) sets PQC migration at **2035**, with the
   detailed roadmap to be drafted during FY2026.
 
@@ -118,7 +140,7 @@ scaffold hardens). QRNG + OptiQKD above are built from this set; the rest are ad
 | **BSI TR-02102-1 v2026-01** | 2026-01-23 | The quotable basis for both "QKD never standalone" and the hybrid key-agreement recommendation - and it is fetchable, unlike NSA's pages. |
 | **IACR ePrint 2026/935** - SoK: Private LLM Inference using Approximate HE | rev. 2026-06-03 | The citable ceiling: ~20 CKKS frameworks surveyed, largest demonstrated end-to-end model **8B parameters**, ~4 orders of magnitude slower than plaintext. Confirms nothing larger exists. |
 | **IACR ePrint 2026/1231** - Hybrid AKE for QKD networks without signatures | 2026-06-10 | The closest published construction to `hybrid_combiner_mode="its_toeplitz"`: KEM-only hybrid AKE with a conditional information-theoretic guarantee when the QKD leg is uncompromised. |
-| **arXiv:2601.18511v2** - Scaling up FHE-based PPML | v2 2026-06-17 | Best published absolute: **Llama-3-8B under CKKS at 20 s prefill / 18 s per output token on 8x RTX PRO 6000**. Quote this rather than hand-waving FHE cost. |
+| **arXiv:2601.18511v2** - Scaling up FHE-based PPML | v2 2026-06-17 | Best published absolute: **Llama-3-8B under CKKS at 20 s prefill / 18 s per output token on 8x RTX PRO 6000**. Quote this rather than hand-waving FHE cost - and quote the PAPER, not the SoK that summarises it: `references/REFERENCES.md` now carries the primary entry with the abstract verbatim. Note the eight GPUs; this project has one and its FHE default is CPU. |
 
 ## EU AI Act Art. 50(2): CLOSED as not-applicable, and what the route would be if it reopened
 

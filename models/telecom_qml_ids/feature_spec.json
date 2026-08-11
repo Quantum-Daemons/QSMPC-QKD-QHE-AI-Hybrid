@@ -18,5 +18,5 @@
     "rng_manipulation",
     "combined"
   ],
-  "note": "8 classes = 7 attack types + normal traffic (ATTACKS[0] == 'normal'), not 'eight attack scenarios'. An earlier revision listed the CLASS LABELS under 'features'; the real model inputs are the QKD telemetry statistics in 'features', from FEATURES in src/qsh/qml_ids/attacks.py. Generated from the source, not written by hand."
+  "note": "8 classes = 7 attack types + normal traffic (ATTACKS[0] == 'normal'), not 'eight attack scenarios'. 'features' are the QKD telemetry statistics the model takes as input, from FEATURES in src/qsh/qml_ids/attacks.py; they are NOT the class labels. An earlier revision of this generator wrote the class labels here, because it unpacked generate()'s third return value - documented as label_names - into a variable called feature_names. Generated from the source, and now true: the JSON was once corrected by hand while this generator kept writing the wrong value, so the next retrain reintroduced it."
 }

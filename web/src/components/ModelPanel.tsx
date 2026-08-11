@@ -79,7 +79,17 @@ function MetricRows({ spec }: { spec: ModelSpec }) {
   // `not_measured` holds published baselines and nulls for things this build did NOT measure --
   // walking into it would present someone else's 0.628 as this run's result. `licence_audit` is
   // provenance, not a metric.
-  const NOT_A_SUBTREE = new Set(["not_measured", "licence_audit"]);
+  // Feature attribution is per-FEATURE, not per-model, so it does not belong in a table of model
+  // metrics: flattened it would add 21 rows named `classical_rf_impurity_importance.qber_mean` to
+  // the headline block, and the string that says which of the two measures to trust would be
+  // dropped entirely (`walk` keeps numbers only). Rendered as its own block below instead, with
+  // both measures on one row per feature so the disagreement is the thing you see.
+  const ATTRIBUTION_SUBTREES = new Set([
+    "classical_rf_impurity_importance",
+    "classical_rf_permutation_importance",
+    "classical_rf_permutation_importance_std",
+  ]);
+  const NOT_A_SUBTREE = new Set(["not_measured", "licence_audit", ...ATTRIBUTION_SUBTREES]);
   const walk = (obj: Record<string, unknown>, prefix: string, depth: number) => {
     for (const [k, v] of Object.entries(obj)) {
       if (NOT_A_SUBTREE.has(k)) continue;
@@ -130,10 +140,31 @@ function MetricRows({ spec }: { spec: ModelSpec }) {
   const metricMismatch = recordedMetric != null && recordedMetric !== spec.metric.name;
   const headline = numeric.filter(([k]) => !isCompanion(k));
   const companion = numeric.filter(([k]) => isCompanion(k));
+  // The declared metric is not among the measured ones, so no row carries the baseline.
+  //
+  // This is genuinely the right state for genomics - 1000 Genomes has no phenotype, so no AUROC is
+  // computable and `genomics_prs.py` records `auroc=null` rather than inventing one - but the effect
+  // on the page was that the published figure appeared NOWHERE except inside a long provenance
+  // paragraph. The number a visitor would quote was the hardest one on the page to find, which is
+  // exactly backwards. Rendered as its own row, labelled as external, so it is visible AND cannot be
+  // mistaken for something this run produced.
+  const baselineOrphaned =
+    spec.metric.baseline != null && !numeric.some(([k]) => k === spec.metric.name);
 
   return (
     <table className="mini-table">
       <tbody>
+        {baselineOrphaned && (
+          <tr className="metric-companion">
+            <td><code>{spec.metric.name}</code></td>
+            <td className="num">{fmt(spec.metric.baseline as number)}</td>
+            <td className="muted small">
+              <strong>published baseline, NOT measured here</strong>
+              {spec.metric.ceiling != null ? ` · ceiling ${spec.metric.ceiling}` : ""}
+              {notMeasured?.reason ? ` — ${notMeasured.reason}` : ""}
+            </td>
+          </tr>
+        )}
         {headline.map(([k, v]) => (
           <tr key={k} className={k === spec.metric.name ? "metric-headline" : undefined}>
             {/* `student_metric` / `teacher_metric` are opaque names: they say which model, never
@@ -191,6 +222,67 @@ function MetricRows({ spec }: { spec: ModelSpec }) {
         ))}
       </tbody>
     </table>
+  );
+}
+
+
+/** Feature attribution for a tree-ensemble baseline: impurity and permutation, side by side.
+ *
+ * Why this is not the SHAP panel. Exact linear SHAP has a closed form only for a linear model; a
+ * random forest has no such form, so the two standard tree measures are computed at training time
+ * instead. They are shown TOGETHER because they disagree, and the disagreement carries the finding:
+ * a feature the forest splits on often can still cost nothing to remove when another feature
+ * separates the same class. Showing impurity alone would report such a feature as important.
+ */
+function AttributionRows({ achieved }: { achieved: Record<string, unknown> }) {
+  const num = (k: string) => (achieved[k] ?? null) as Record<string, number> | null;
+  const perm = num("classical_rf_permutation_importance");
+  const imp = num("classical_rf_impurity_importance");
+  const std = num("classical_rf_permutation_importance_std");
+  const note = achieved.classical_rf_attribution_note as string | undefined;
+  if (!perm || !imp) return null;
+
+  // Ranked by permutation importance, because that is the measure to read where they differ.
+  const rows = Object.keys(perm).sort((a, b) => perm[b] - perm[a]);
+  const max = Math.max(...rows.map((f) => Math.abs(perm[f])), 1e-9);
+
+  return (
+    <div style={{ marginTop: 10 }}>
+      <div className="muted small" style={{ marginBottom: 4 }}>
+        <strong>Which features this baseline needs</strong> — permutation importance on macro F1
+        (held-out split), with impurity importance beside it
+      </div>
+      <table className="mini-table">
+        <tbody>
+          {rows.map((f) => {
+            // Within one std of zero is not a small effect, it is no measured effect, and it has to
+            // read differently from one. dark_count_rate is +0.0001 against a std of 0.0010.
+            const indistinct = std ? Math.abs(perm[f]) <= std[f] : false;
+            return (
+              <tr key={f}>
+                <td><code>{f}</code></td>
+                <td className="num">
+                  {perm[f] >= 0 ? "+" : ""}{perm[f].toFixed(4)}
+                  {std ? <span className="muted"> ± {std[f].toFixed(4)}</span> : null}
+                </td>
+                <td style={{ width: 90 }}>
+                  <div style={{ background: "#1a2233", borderRadius: 4, height: 10 }}>
+                    <div style={{ width: `${Math.max(2, (Math.abs(perm[f]) / max) * 100)}%`,
+                      height: "100%", borderRadius: 4,
+                      background: indistinct ? "#5a6478" : "#4f9dff" }} />
+                  </div>
+                </td>
+                <td className="muted small">
+                  impurity {imp[f]?.toFixed(4) ?? "n/a"}
+                  {indistinct && " · within one std of zero — no measured effect"}
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+      {note ? <p className="muted small" style={{ marginTop: 4 }}>{note}</p> : null}
+    </div>
   );
 }
 
@@ -270,6 +362,13 @@ export function ModelPanel({ usecase }: { usecase: string }) {
           <p className="muted small">{spec.architecture}</p>
 
           <MetricRows spec={spec} />
+
+          {/* The published RandomForest had no attribution at all for four rounds while this page
+              showed exact linear SHAP over a different model trained in the tab. Renders only where
+              the record carries the two tree measures, so no other model grows an empty block. */}
+          {spec.achieved
+            ? <AttributionRows achieved={spec.achieved as Record<string, unknown>} />
+            : null}
 
           {/* The one published model with no browser-runnable graph, so the in-run verification
               chart never fires for it. Its finding lives in the metric rows above and twenty rows

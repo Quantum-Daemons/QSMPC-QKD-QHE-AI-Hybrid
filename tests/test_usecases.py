@@ -33,7 +33,7 @@ def test_genomics_secure_sum_exact():
 
 
 def test_genomics_real_prs_under_ckks():
-    """The genomics use case runs a REAL published Polygenic Risk Score (PGS Catalog PGS000001, 77-SNP
+    """The genomics use case runs a REAL published Polygenic Risk Score (PGS Catalog PGS000004, 313-SNP
     breast-cancer) under CKKS — a genuine industry-standard model that is FHE-native (linear)."""
     import numpy as np
 

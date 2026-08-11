@@ -77,3 +77,56 @@ def test_shipped_weights_are_loadable_and_carry_a_headline_metric(usecase: str) 
         # scales and pins its features, which is how the first trained model became meaningless.
         assert len(w["feature_mean"]) == w["n_qubits"]
         assert len(w["feature_std"]) == w["n_qubits"]
+
+
+#: The training artifact for a use case, whose directory is named for the data dir rather than the
+#: use case: ``scripts/train/qcnn_variational.py --usecase medical`` writes ``models/qcnn_medical/``.
+def _trained_weights(usecase: str) -> Path:
+    return REPO / "models" / f"qcnn_{_data_dir(usecase)}" / "weights.json"
+
+
+@pytest.mark.parametrize("usecase", sorted(_on_disk()))
+def test_the_shipped_copy_agrees_with_the_trained_artifact(usecase: str) -> None:
+    """The browser's copy of the weights must not drift from the model that was trained.
+
+    WHY. ``qcnn_variational.py`` writes only ``models/qcnn_<uc>/weights.json``. **Nothing copies it
+    to** ``web/public/data/<dir>/qcnn_weights.json`` - not the Makefile, not a script, not a
+    documented step. The shipped copies were made by hand as trimmed subsets, dropping
+    ``feature_names``, ``n_test``, ``n_train`` and ``usecase``.
+
+    So a retrain updates one file and leaves the other, and the browser goes on serving the previous
+    circuit's angles while every local check passes and the metrics table shows the NEW numbers - the
+    displayed accuracy would belong to weights the page is not running. This project has already shipped
+    that shape once, when a retrain silently unpublished two models because the pinned revision no
+    longer matched the metrics beside it.
+
+    Asserts agreement on the SHARED keys only, because the subsetting is deliberate. A key present in
+    both and different in each is the drift; a key present in one is the trim.
+    """
+    import json
+
+    trained_path = _trained_weights(usecase)
+    shipped_path = PUBLIC / _data_dir(usecase) / "qcnn_weights.json"
+    assert trained_path.exists(), (
+        f"{shipped_path.relative_to(REPO)} ships weights for {usecase} but "
+        f"{trained_path.relative_to(REPO)} does not exist. The browser is serving a circuit with no "
+        "training artifact behind it, so nothing can reproduce or re-derive it."
+    )
+    trained = json.loads(trained_path.read_text())
+    shipped = json.loads(shipped_path.read_text())
+
+    missing = sorted(set(shipped) - set(trained))
+    assert not missing, (
+        f"the shipped copy has keys the trained artifact does not: {missing}. The shipped file is "
+        "meant to be a SUBSET of the trained one; an extra key was invented by hand."
+    )
+    drifted = sorted(k for k in set(shipped) & set(trained) if shipped[k] != trained[k])
+    assert not drifted, (
+        f"{usecase}: these keys differ between the trained artifact and the copy the browser "
+        f"serves: {drifted}.\n"
+        f"  trained: {trained_path.relative_to(REPO)}\n"
+        f"  shipped: {shipped_path.relative_to(REPO)}\n"
+        "Nothing copies one to the other, so a retrain updates only the first. Re-copy the shared "
+        "keys. If a difference is deliberate, it needs a reason here rather than a silent divergence "
+        "between the numbers shown and the circuit run."
+    )

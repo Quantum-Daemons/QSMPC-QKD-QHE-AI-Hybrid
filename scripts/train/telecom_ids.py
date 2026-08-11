@@ -50,7 +50,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "src"))
 
 from qsh.models import export, metrics, train  # noqa: E402
 from qsh.models.registry import get as get_spec  # noqa: E402
-from qsh.qml_ids.attacks import ATTACKS, generate  # noqa: E402
+from qsh.qml_ids.attacks import ATTACKS, FEATURES, generate  # noqa: E402
 
 
 def main() -> int:
@@ -65,6 +65,7 @@ def main() -> int:
     args = ap.parse_args()
 
     from sklearn.ensemble import RandomForestClassifier
+    from sklearn.inspection import permutation_importance
     from sklearn.model_selection import train_test_split
 
     started = time.time()
@@ -73,8 +74,23 @@ def main() -> int:
 
     print(f"generating QKD-attack telemetry: {len(ATTACKS)} classes x {args.n_per_class} "
           "(SYNTHETIC — see the module docstring)")
-    X, y, feature_names = generate(n_per_class=args.n_per_class, seed=args.seed)
-    print(f"  {X.shape[0]} samples x {X.shape[1]} features; classes: {', '.join(ATTACKS)}")
+    # `generate` returns (X, y, LABEL names) - its docstring says so. An earlier revision here
+    # unpacked the third value as `feature_names` and wrote it into feature_spec.json as
+    # "features", so the published spec advertised eight features named after the eight ATTACK
+    # CLASSES for a model that takes seven. Nothing failed: the shapes are never compared, and
+    # `zip(names, values)` truncates to the shorter side instead of raising, so the attribution
+    # added in this round silently labelled qber_mean as "normal" and dropped click_asymmetry.
+    # The real feature axis is `FEATURES`. Two guards, deliberately: the assert below names the
+    # problem in one line, and `strict=True` on each zip makes any future length divergence raise
+    # at the point of use rather than truncate. Truncation is what made the original wrong and
+    # plausible at the same time.
+    X, y, class_names = generate(n_per_class=args.n_per_class, seed=args.seed)
+    assert list(class_names) == list(ATTACKS), "generate() no longer returns the class names"
+    assert X.shape[1] == len(FEATURES), (
+        f"FEATURES has {len(FEATURES)} names for {X.shape[1]} columns - a silent mislabel of "
+        "every per-feature number downstream")
+    print(f"  {X.shape[0]} samples x {X.shape[1]} features ({', '.join(FEATURES)}); "
+          f"classes: {', '.join(ATTACKS)}")
 
     Xtr, Xte, ytr, yte = train_test_split(X, y, test_size=0.25, random_state=args.seed, stratify=y)
 
@@ -103,6 +119,64 @@ def main() -> int:
         "n_samples": int(X.shape[0]),
         "data": "synthetic, class structure per arXiv:2509.14282 (Al-Kuwari et al., 2025)",
     }
+
+    # ---- attribution for the classical baseline --------------------------------
+    # The published RandomForest carries this use case's headline number and had NO attribution of
+    # any kind, for four rounds, while the browser showed exact linear SHAP over a DIFFERENT model
+    # it trains in the tab. Exact SHAP does not apply to a tree ensemble, so the two standard tree
+    # attributions are computed here instead, at training time, on the estimator that produced the
+    # number.
+    #
+    # Both, not one, because they disagree in a way that is informative. Impurity importance is
+    # computed on the TRAINING split and is biased toward high-cardinality features; permutation
+    # importance is measured on the HELD-OUT split and answers "how much worse does the model get
+    # without this feature". Where they disagree, the second is the one to trust.
+    #
+    # `scoring="f1_macro"` and not the default accuracy. This module's own WHAT IS MEASURED section
+    # is an argument against aggregate accuracy on this corpus: it sits at 0.99 across a label
+    # correction that moves a per-class F1 from 0.60 to 0.99. Permuting one feature of an 8-class
+    # problem scoring 0.9867 would barely move the aggregate, so the default would have reported
+    # every feature as unimportant.
+    perm = permutation_importance(rf, Xte, yte, n_repeats=20, random_state=args.seed,
+                                  scoring="f1_macro", n_jobs=8)
+    record["classical_rf_impurity_importance"] = {
+        name: round(float(v), 6) for name, v in zip(FEATURES, rf.feature_importances_, strict=True)}
+    record["classical_rf_permutation_importance"] = {
+        name: round(float(v), 6) for name, v in zip(FEATURES, perm.importances_mean, strict=True)}
+    record["classical_rf_permutation_importance_std"] = {
+        name: round(float(v), 6) for name, v in zip(FEATURES, perm.importances_std, strict=True)}
+    # WHAT THESE NUMBERS ARE AN ATTRIBUTION OF, stated because it is easy to over-read. The corpus
+    # is synthetic, so this is a statement about `qsh.qml_ids.attacks` and about which planted
+    # features the forest actually NEEDS - not about which signal matters on a real QKD link.
+    #
+    # It earns its place by being more than a restatement of the generator. Measured: the two
+    # rankings disagree, and where they do the permutation figure is the informative one.
+    # `sift_ratio` is 5th by impurity (0.1318) but 6th by permutation (+0.0054, i.e. removing it
+    # costs almost nothing) - because `click_asymmetry` separates the same class equally well, so
+    # either alone suffices and neither is individually necessary. `dark_count_rate` is +0.0001
+    # against a std of 0.0010: **not distinguishable from zero**, even though the generator does
+    # vary it 3x for detector_blinding. Two of seven planted features are redundant to this model.
+    #
+    # It also corroborates a falsifiable prediction this project wrote down before measuring:
+    # a correct attribution must NOT name `sift_ratio` or `dark_count_rate` as a dominant driver.
+    # They rank last of seven. That is the check working, not a coincidence.
+    record["classical_rf_attribution_note"] = (
+        "Impurity importance (training split, biased toward high-cardinality features) and "
+        "permutation importance (held-out split, scored on macro F1, 20 repeats, std reported). "
+        "Read the permutation figure where they disagree. These rank which features of a SYNTHETIC "
+        "corpus this forest needs, not signals from a real QKD link. Two planted features are "
+        "nearly redundant: sift_ratio separates detector_blinding perfectly on its own yet costs "
+        "almost nothing to remove, because click_asymmetry separates the same class; and "
+        "dark_count_rate is within one std of zero. Exact linear SHAP does not apply to a tree "
+        "ensemble, which is why these two measures are used instead."
+    )
+
+    print("\n  attribution (top 4 by permutation importance on macro F1)")
+    for name, v in sorted(record["classical_rf_permutation_importance"].items(),
+                          key=lambda kv: -kv[1])[:4]:
+        sd = record["classical_rf_permutation_importance_std"][name]
+        imp = record["classical_rf_impurity_importance"][name]
+        print(f"    {name:24s} perm {v:+.4f} +/- {sd:.4f}   impurity {imp:.4f}")
 
     # ---- quantum models, opt-in ----------------------------------------------
     if args.quantum:
@@ -158,9 +232,17 @@ def main() -> int:
                         "int8_skipped_reason": report.int8_skipped_reason}
 
     (args.out / "feature_spec.json").write_text(json.dumps({
-        "features": list(feature_names),
+        "features": list(FEATURES),
         "classes": list(ATTACKS),
-        "note": "8 classes = 7 attack types + normal traffic, not 'eight attack scenarios'.",
+        "note": (
+            "8 classes = 7 attack types + normal traffic (ATTACKS[0] == 'normal'), not 'eight "
+            "attack scenarios'. 'features' are the QKD telemetry statistics the model takes as "
+            "input, from FEATURES in src/qsh/qml_ids/attacks.py; they are NOT the class labels. "
+            "An earlier revision of this generator wrote the class labels here, because it "
+            "unpacked generate()'s third return value - documented as label_names - into a "
+            "variable called feature_names. Generated from the source, and now true: the JSON was "
+            "once corrected by hand while this generator kept writing the wrong value, so the "
+            "next retrain reintroduced it."),
     }, indent=2) + "\n")
 
     train.record_metrics("telecom_ids.qml", record)

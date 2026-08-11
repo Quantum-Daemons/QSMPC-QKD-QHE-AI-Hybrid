@@ -38,7 +38,12 @@ submodules: ## Init/update git submodules (upstream OSS)
 data: ## Download free public datasets + generate synthetic data
 	$(PY) -m qsh.data.download
 
-test: ## Run the test suite (174 collected, 170 passed, 4 deselected)
+test: ## Run the test suite (pytest prints the count; -m "not slow" deselects the gated tests)
+	# The help text above used to quote "174 collected, 170 passed". It was 236 by the time
+	# anyone noticed, and `make help` prints it, so a newcomer's first number was wrong by a
+	# third. A count that has to be hand-maintained in a comment will drift; pytest reports it
+	# on every run, which is the version that cannot go stale.
+	#
 	# -m "not slow" deselects the Node- and OpenFHE-gated tests. Without it the OpenFHE
 	# bootstrap test SIGSEGVs inside EvalBootstrapSetup on AlmaLinux 9.7 -- the import guard
 	# in fhe/backends.py catches an ImportError, not a segfault, so the process just dies.
@@ -46,6 +51,11 @@ test: ## Run the test suite (174 collected, 170 passed, 4 deselected)
 
 test-all: ## Run every test including slow ones (may segfault on OpenFHE, see above)
 	$(PY) -m pytest
+
+check-pqc: ## FIPS 203 s7.2 negative vectors + FIPS 204 sizes, vs the vendored CC0 snapshot
+	# Offline: reads web/scripts/vectors. ARGS=--live checks the current published set instead.
+	# Also runs as gate 8 of ci-local and in CI; this target is for running it on its own.
+	cd web && npm run --silent check:pqc -- $(ARGS)
 
 lint: ## Ruff lint
 	$(VENV)/bin/ruff check src tests
