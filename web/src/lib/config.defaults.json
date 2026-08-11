@@ -893,7 +893,7 @@
         "label": "OPS-SAT segment anomaly detector",
         "metric": {
           "baseline": 0.979,
-          "baseline_source": "FCNN, best of the 30 algorithms benchmarked in Kotowski et al., Scientific Data 12 (2025), on this dataset's own test split (AUC PR 0.979, F1 0.946, MCC 0.932). XGBOD reaches 0.975 and RF+ICCS 0.963.",
+          "baseline_source": "FCNN, best of the 30 algorithms benchmarked in Ruszczak et al., Scientific Data 12 (2025), on this dataset's own test split (AUC PR 0.979, F1 0.946, MCC 0.932). XGBOD reaches 0.975 and RF+ICCS 0.963.",
           "ceiling": 0.979,
           "ceiling_source": "FCNN, the best of the 30 published baselines - there is no higher number to cite.",
           "companion": "f1",
@@ -962,7 +962,7 @@
         "label": "CKKS-linear OPS-SAT segment student",
         "metric": {
           "baseline": 0.979,
-          "baseline_source": "FCNN, best of the 30 algorithms benchmarked in Kotowski et al., Scientific Data 12 (2025), on this dataset's own test split (AUC PR 0.979, F1 0.946, MCC 0.932). XGBOD reaches 0.975 and RF+ICCS 0.963.",
+          "baseline_source": "FCNN, best of the 30 algorithms benchmarked in Ruszczak et al., Scientific Data 12 (2025), on this dataset's own test split (AUC PR 0.979, F1 0.946, MCC 0.932). XGBOD reaches 0.975 and RF+ICCS 0.963.",
           "ceiling": 0.979,
           "ceiling_source": "FCNN, the best of the 30 published baselines - there is no higher number to cite.",
           "companion": "f1",
