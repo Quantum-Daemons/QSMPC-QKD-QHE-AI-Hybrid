@@ -15,7 +15,7 @@ export default function PipelineControls({ run }: { run: Run }) {
   const demo = isClientDemo();
   const { usecase, opts, kem, setKem, qkd, setQkd, fhe, setFhe, mpc, setMpc, sig, setSig,
     optiqkd, setOptiqkd, publishedModel, setPublishedModel,
-    state, running, paused, start, startStepwise, pause, resume, step, stop } = run;
+    state, running, paused, inFlight, start, startStepwise, pause, resume, step, stop } = run;
 
   // The published models this use case can actually fetch and run, in registry order. Rendered only
   // when there is a genuine choice: telecom publishes one, genomics none, and offering a select with
@@ -106,7 +106,7 @@ export default function PipelineControls({ run }: { run: Run }) {
           <>
             <label className="muted" htmlFor="sel-published-model">Published model</label>
             <select id="sel-published-model" name="published_model" aria-label="Published model"
-              value={publishedModel} disabled={running || paused}
+              value={publishedModel} disabled={inFlight}
               // Names the CURRENT selection, because the closed control clips its own text on a
               // narrow viewport - the labels run to about 45 characters and the box is capped at the
               // card width. Hovering has to recover what was clipped, not repeat the generic help.
@@ -159,13 +159,21 @@ export default function PipelineControls({ run }: { run: Run }) {
         {showAdvanced && <ParameterPanel run={run} />}
       </div>
       <div className="btn-row" style={{ marginTop: 14 }}>
-        <button className="btn" onClick={start} disabled={running}>▶ Start</button>
-        <button className="btn ghost" onClick={startStepwise} disabled={running || paused}>⏭ Start stepwise</button>
+        <button className="btn" onClick={start} disabled={inFlight}>▶ Start</button>
+        <button className="btn ghost" onClick={startStepwise} disabled={inFlight}>⏭ Start stepwise</button>
         <button className="btn warn" onClick={pause} disabled={!running}>⏸ Pause</button>
         <button className="btn" onClick={resume} disabled={!paused}>▶ Resume</button>
         <button className="btn ghost" onClick={step} disabled={!paused}>↓ Step</button>
-        <button className="btn danger" onClick={stop} disabled={state === "idle" || state === "done"}>■ Stop</button>
-        <button className="btn ghost" onClick={start}>↻ Restart</button>
+        <button className="btn danger" onClick={stop} disabled={!inFlight}>■ Stop</button>
+        {/* Deliberately NOT disabled while running - superseding a run in progress is the point, and
+            `Start` is disabled precisely so this is the button that does it. It is only safe because
+            `launch` now takes a run token and ignores anything a superseded run emits: before that,
+            the old run finished its in-flight stage and wrote its own metrics, artifacts, signature
+            and benchmark over the new run's. The superseded run does keep using CPU until its current
+            stage ends, because the pipeline only checks the stop flag between stages. */}
+        <button className="btn ghost" onClick={start}
+          title={running || paused ? "Supersedes the run in progress; its results are discarded"
+                                   : "Run again from the beginning"}>↻ Restart</button>
       </div>
     </div>
   );

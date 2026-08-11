@@ -163,6 +163,13 @@ tr:hover td { background: var(--bg-2); }
 /* usePipelineRun sets state="paused" on pipeline_pause. Without a rule the badge rendered unstyled,
    so a paused run looked identical to an idle one. */
 .badge-state.paused { background: var(--accent); color: #03070f; }
+/* Transitional: the button was pressed and the flag is set, but the stage in flight runs to its end
+   before the pipeline reads it. Striped so it reads as "in transition" without a new colour, since a
+   badge that looks terminal while the run continues is the thing these two states exist to stop. */
+.badge-state.pausing, .badge-state.stopping {
+  background: repeating-linear-gradient(135deg, var(--accent) 0 6px, var(--border) 6px 12px);
+  color: var(--text);
+}
 
 /* --- provenance badge -----------------------------------------------------
    Every result states how it was produced. Colour carries the same information as the text, so the
