@@ -112,6 +112,17 @@ export const modelsFor = (usecase: string): ModelSpec[] =>
 
 export const allModels = (): Record<string, ModelSpec[]> => ((CONFIG as any).models ?? {});
 
+/** Does any model on this page carry tree-ensemble feature attribution? Telecom only, today.
+ *
+ * ONE predicate, shared by the component that RENDERS the block (`ModelPanel.AttributionRows`) and the
+ * one that POINTS AT it (`ShapPanel`). Round 31 added the block on telecom and a sentence promising it
+ * on every page, so four pages directed a reader to something that is not there. Two components
+ * agreeing by coincidence is what produced that; agreeing by construction is this.
+ */
+export const hasTreeAttribution = (usecase: string): boolean =>
+  modelsFor(usecase).some((m) =>
+    !!(m.achieved as Record<string, unknown> | undefined)?.classical_rf_permutation_importance);
+
 /** The industry (plaintext) model for a use case — what the headline metric describes. */
 export const teacherModel = (usecase: string): ModelSpec | null =>
   modelsFor(usecase).find((m) => m.tier === "t2_industry" && m.achieved) ??
