@@ -86,6 +86,18 @@ argmax - so its FHE/MPC figures are **genuinely measured client-side, zero VPS c
 | `telecom_ids` | PQC -> QKD (w/ eavesdropper) -> **QML-IDS** attack detection | telecom / defence |
 | `satellite_comms` | PQC -> **free-space QKD** (BB84 downlink) -> **QSDC** direct telemetry (inline eavesdrop check) | satellite |
 
+**Maturity, stated in the same breath as the novelty.** CISA's Space Systems Critical Infrastructure
+Working Group (*Space Systems Security and Resilience Landscape: Zero Trust in the Space
+Environment*, April 2024) assessed both halves of that satellite row. Homomorphic encryption schemes
+"have yet to be applied to space systems, and their technology readiness level remains low"; QKD
+"has been tested in the space environment, but its technology readiness level remains low ...
+quantum systems operate on specialized equipment that is costly". This is carried here rather than
+somewhere quieter because it does two things at once: it independently corroborates the gap the
+prior-art search found, and it sets the register - a research demonstrator, not something an operator
+could fly. CISA attributes the QKD caution to NSA's published position; nsa.gov was not
+machine-retrievable during verification, so cite CISA for the assessment and not NSA. Details and the
+five motivations to avoid: [`references/satellite-motivation-fact-check.md`](references/satellite-motivation-fact-check.md).
+
 Each use case has its **own page** (`/usecase/:id`) - a **live two-party simulator** you Start /
 Pause / Step / Stop / Restart. A **single Run** drives both the animated E2E protocol **and** the
 benchmark: the benchmark is **assembled from that very run** (no separate "Run benchmark" button) -
@@ -532,12 +544,17 @@ See [`docs/pqc-roadmap.md`](docs/pqc-roadmap.md).
   / 0.38x on train / test / whole series. The evaluation-sample generator hardcoded the same 60s;
   it now reads the cadence from the model record, because preprocessing has to come from the
   artefact rather than a constant in a second file.
-- **Still open: the event-wise headline does not reproduce.** Retraining at the same configuration
-  gave event-wise F0.5 of 0.4545 where the then-recorded figure was 0.7143, and the record now holds 0.4545 - the reproduction won and the stale value was the one retired, while point-adjusted F1
-  reproduces (0.9937 against 0.9945) and the isolation-forest baseline reproduces exactly
-  (0.000248). So the instability is specific to the overlap-based metric, which is the failure mode
-  arXiv:2607.11969 (2026-07) describes. Read the event-wise number as one draw from a wide
-  distribution, not as a point estimate.
+- **CLOSED, and the explanation is the denominator.** This was carried as "the event-wise headline
+  does not reproduce": retraining at the same configuration gave event-wise F0.5 of 0.4545 where the
+  recorded figure was 0.7143. `references/satellite-event-count-investigation.md` closes it - the
+  test split contains **3 scored events**, and the teacher flags 2 points out of 441,600, so the
+  score is 1 hit against 2 flags. One extra false alarm walks the metric down a fixed ladder:
+  0.714 / 0.455 / 0.333 / 0.263 / 0.217 / 0.185 for 0 to 5 false-alarm runs. It reproduces exactly as
+  well as a 3-event denominator permits, which is not very well, but it is not mysterious.
+  Point-adjusted F1 reproduces (0.9937 against 0.9945) for the same reason it is inflated: 441,600
+  points rather than 3 events. Still read the event-wise number as one draw from a wide distribution -
+  the general instability of overlap-based metrics is real (arXiv:2607.11969, 2026-07) - but the
+  operative fact here is local and arithmetic.
 
 - **The browser model tier now works, after a 401 and two wrong diagnoses.** Recorded in full
   because two of the three were mine, and because the shape of the mistake is instructive.
