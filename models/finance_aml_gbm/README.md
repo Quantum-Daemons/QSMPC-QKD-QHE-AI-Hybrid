@@ -16,8 +16,9 @@ tags:
 GFP (graph features) + XGBoost
 
 Part of [QSMPC-QKD-QHE-AI-Hybrid](https://github.com/thedaemon-wizard/QSMPC-QKD-QHE-AI-Hybrid),
-a quantum-safe orchestration demo. This is the **plaintext** model for the
-`finance_aml` use case; the encrypted path runs a distilled student, not this model.
+a quantum-safe orchestration demo.
+This is the **plaintext** model for the `finance_aml` use case; the encrypted
+path runs a distilled student, not this model.
 
 ## Measured performance
 

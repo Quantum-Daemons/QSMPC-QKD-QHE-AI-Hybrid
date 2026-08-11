@@ -76,10 +76,16 @@ def model_card(spec: registry.ModelSpec, achieved: dict | None) -> str:
         f"{spec.architecture}",
         "",
         "Part of [QSMPC-QKD-QHE-AI-Hybrid](https://github.com/thedaemon-wizard/QSMPC-QKD-QHE-AI-Hybrid),",
-        "a quantum-safe orchestration demo. This is the **plaintext** model for the",
-        f"`{spec.usecase}` use case"
-        + (" and it runs under real CKKS encryption." if spec.runs_encrypted
-           else "; the encrypted path runs a distilled student, not this model."),
+        "a quantum-safe orchestration demo."]
+    if spec.runs_encrypted:
+        body += [f"This is the **encrypted-tier** model for the `{spec.usecase}` use case: it is a",
+                 "distilled student small enough to evaluate under real CKKS, and the demo runs it",
+                 "that way. It is not the plaintext teacher, and its numbers should be read against",
+                 "that teacher rather than against the published literature."]
+    else:
+        body += [f"This is the **plaintext** model for the `{spec.usecase}` use case; the encrypted",
+                 "path runs a distilled student, not this model."]
+    body += [
         "",
         "## Measured performance",
         "",
@@ -145,8 +151,21 @@ def _licence_slug(licence: str) -> str:
 
 
 def _pipeline_tag(spec: registry.ModelSpec) -> str:
-    return {"medical_fl": "image-classification",
-            "satellite_comms": "time-series-forecasting"}.get(spec.usecase, "tabular-classification")
+    """The Hub task tag, decided by what the model DOES rather than by which industry it serves.
+
+    Keying this off the use case alone published `time-series-forecasting` for the two OPS-SAT
+    models, which are segment CLASSIFIERS - and the registry says so twice over, in
+    `architecture` and in the fact that they are scored on AUC-PR. That tag is what the Hub
+    filters and what the widget offers, so it is a claim about the model, not decoration. The
+    registry's own metric name is the discriminator: an event-wise F0.5 score belongs to a
+    forecaster, AUC-PR to a classifier.
+    """
+    if spec.usecase == "medical_fl":
+        return "image-classification"
+    if spec.usecase == "satellite_comms":
+        return ("time-series-forecasting" if spec.metric.name == "event_wise_f0_5"
+                else "tabular-classification")
+    return "tabular-classification"
 
 
 def publish(spec: registry.ModelSpec, *, private: bool, dry_run: bool, api) -> str | None:

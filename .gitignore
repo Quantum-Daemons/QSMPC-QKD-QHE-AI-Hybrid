@@ -20,6 +20,17 @@ references/AML-QKD_*.pdf
 references/Information-Theoretic_Solutions_for_Seedless_QRNG_*.pdf
 # Commercial / monetization notes (kept local only — both the EN plan and JA workflow)
 MONETIZATION*.md
+# The browser verification checklist: still maintained, no longer published (Round 28).
+#
+# It is the round-by-round verification run sheet, and it accumulated the deploy procedure, the
+# internal failure history and the reasoning behind every check. That is the right shape for a working
+# document and the wrong shape for a public one, so it stays on disk and out of the repository.
+#
+# Two honest limits on what this achieves. It was tracked across 69 commits, so the history still
+# contains it; removing that would need a rewrite and a force-push, which this project does not do.
+# And `report/build_data.py` measures its row count — that now falls back to the committed value in
+# `report/generated/macros.tex`, so a fresh clone still builds the report.
+docs/browser-verification-checklist.md
 
 # ============================================================================
 #  Python
