@@ -1043,6 +1043,16 @@
       {
         "achieved": {
           "aggregate_accuracy": 0.986667,
+          "classical_rf_attribution_note": "Impurity importance (training split, biased toward high-cardinality features) and permutation importance (held-out split, scored on macro F1, 20 repeats, std reported). Read the permutation figure where they disagree. These rank which features of a SYNTHETIC corpus this forest needs, not signals from a real QKD link. Two planted features are nearly redundant: sift_ratio separates detector_blinding perfectly on its own yet costs almost nothing to remove, because click_asymmetry separates the same class; and dark_count_rate is within one std of zero. Exact linear SHAP does not apply to a tree ensemble, which is why these two measures are used instead.",
+          "classical_rf_impurity_importance": {
+            "click_asymmetry": 0.071146,
+            "dark_count_rate": 0.02875,
+            "multiphoton_rate": 0.144826,
+            "qber_mean": 0.189545,
+            "qber_std": 0.217636,
+            "sift_ratio": 0.131839,
+            "timing_jitter": 0.216258
+          },
           "classical_rf_macro_f1": 0.986629,
           "classical_rf_per_class_f1": {
             "combined": 0.986667,
@@ -1054,6 +1064,24 @@
             "trojan_horse": 0.96732,
             "wavelength_trojan": 0.952381
           },
+          "classical_rf_permutation_importance": {
+            "click_asymmetry": 0.019281,
+            "dark_count_rate": 8.3e-05,
+            "multiphoton_rate": 0.090434,
+            "qber_mean": 0.17271,
+            "qber_std": 0.226096,
+            "sift_ratio": 0.00542,
+            "timing_jitter": 0.427388
+          },
+          "classical_rf_permutation_importance_std": {
+            "click_asymmetry": 0.003871,
+            "dark_count_rate": 0.00099,
+            "multiphoton_rate": 0.010919,
+            "qber_mean": 0.009454,
+            "qber_std": 0.01429,
+            "sift_ratio": 0.002224,
+            "timing_jitter": 0.018812
+          },
           "data": "synthetic, class structure per arXiv:2509.14282 (Al-Kuwari et al., 2025)",
           "dataset": "QKD attack telemetry (synthetic, methodology-grounded)",
           "export": {
@@ -1062,19 +1090,10 @@
             "opset": 17
           },
           "framing": "Architecture comparison, not a performance claim. The data is synthetic because no commercial-OK real attack corpus exists. Every published QML-IDS figure we could verify sits below a random forest on the same data, and arXiv:2512.05069 was withdrawn by its own authors for insufficient evaluation. Per-class F1 is the headline; aggregate accuracy is shown beside it because Engelen et al. (WTMC 2021) demonstrated it stays at 0.99 across a label correction that moved Bot F1 from 0.60 to 0.99.",
-          "git_sha": "733e325",
-          "hf_revision": "9f0bd47c6aabea342195cb591fbf0094104119dc",
+          "git_sha": "69314f4-dirty",
           "n_classes": 8,
           "n_samples": 2400,
-          "quantum_beats_classical": false,
-          "quantum_qnn_accuracy": 0.875,
-          "quantum_qnn_binary_f1": 0.933333,
-          "quantum_qnn_macro_f1": 0.466667,
-          "quantum_qnn_n_params": 25,
-          "quantum_svc_accuracy": 0.908333,
-          "quantum_svc_binary_f1": 0.945274,
-          "quantum_svc_macro_f1": 0.831611,
-          "wall_clock_s": 267.1
+          "wall_clock_s": 4.0
         },
         "architecture": "PCA -> angle embedding -> StronglyEntanglingLayers; fidelity quantum kernel",
         "artifacts": [
@@ -1101,7 +1120,7 @@
           "url": "https://arxiv.org/abs/2509.14282"
         },
         "hf_repo_id": "Daemons-Q/qsh-telecom-qml-ids",
-        "hf_revision": "9f0bd47c6aabea342195cb591fbf0094104119dc",
+        "hf_revision": null,
         "hf_revision_stale": null,
         "key": "telecom_ids.qml",
         "label": "Quantum-kernel SVC + variational QNN",
