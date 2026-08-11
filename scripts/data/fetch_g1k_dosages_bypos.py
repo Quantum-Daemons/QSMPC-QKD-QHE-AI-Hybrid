@@ -19,9 +19,16 @@ AUROC.
 Keying on position removes the question rather than answering it. The scoring file gives
 ``chr_name``, ``chr_position``, ``effect_allele`` and ``other_allele``; a tabix slice of the phase-3
 VCF at that coordinate gives ``REF`` and ``ALT``; requiring ``{effect, other} <= {ref, *alts}`` is an
-exact match against the genotypes actually being read, not a lookup through a third identifier. It
-matched 8 of 8 on a first sample including an indel (``CAAA``/``C``), where the rsID route was
-ambiguous at three of those same six positions.
+exact match against the genotypes actually being read, not a lookup through a third identifier.
+
+Measured, in two stages, because the earlier revision of this paragraph quoted the pilot's numbers as
+if they were the result and disagreed with itself inside one sentence ("8 of 8 ... three of those same
+six positions"):
+
+* pilot, 8 positions chosen to include an indel (``CAAA``/``C``): **8 of 8** matched, and the rsID
+  route was ambiguous at 3 of those 8.
+* full run, all 313 positions: **313 of 313** matched, with a 40-position sample audited by hand
+  against the scoring file. That is the figure to quote.
 
 The cost is a dependency: ``pysam`` (MIT, actively maintained, htslib) for tabix over HTTP range
 requests. It is a maintainer-only provenance dependency - nothing at runtime imports it, exactly as

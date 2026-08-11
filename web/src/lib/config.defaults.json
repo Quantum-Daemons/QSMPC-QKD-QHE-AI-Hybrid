@@ -122,7 +122,7 @@
     "genomics": {
       "licence": "per-score; EMBL-EBI Terms of Use by default",
       "licence_checked": "2026-08-03",
-      "provenance": "real 1000 Genomes phase-3 genotypes + published PGS000001 weights (PGS Catalog: per-score licence, EMBL-EBI terms by default; IGSR grants no blanket licence)",
+      "provenance": "real 1000 Genomes phase-3 genotypes + published PGS000004 (PRS313) weights (PGS Catalog: per-score licence, EMBL-EBI terms by default; IGSR grants no blanket licence). 30 of 2,504 individuals ship in the browser payload - DATA_LICENSES section 4 justifies a slice of that size, not the full matrix. Variants keyed by chr:pos:effect_allele because PGS000004 publishes no rsIDs.",
       "url": "https://www.pgscatalog.org/downloads/"
     },
     "medical_fl": {
@@ -341,67 +341,70 @@
       {
         "achieved": {
           "dataset": "PGS Catalog scoring files",
-          "git_sha": "e572d98-dirty",
+          "git_sha": "636ea08-dirty",
           "licence_audit": {
             "checked": "read from the bundled scoring file at run time",
-            "declares_restriction": true,
+            "declares_restriction": false,
+            "declares_terms": true,
             "header": [
-              "# PGS000001 (PRS77_BC) - breast-cancer Polygenic Risk Score, 77 SNPs. Source: PGS Catalog (https://www.pgscatalog.org/score/PGS000001/). LICENCE: per score - PGS000001 carries the Catalog's default terms (EMBL-EBI Terms of Use), NOT CC-BY 4.0; cite Mavaddat et al. and observe any restrictions set by the score authors. See DATA_LICENSES.md."
+              "# PGS000004 (PRS313_BC) - breast-cancer Polygenic Risk Score, 313 variants, GRCh37. Source: PGS Catalog (https://www.pgscatalog.org/score/PGS000004/), harmonised hmPOS file. LICENCE: per score - PGS000004 carries the Catalog's default terms (EMBL-EBI Terms of Use), NOT CC-BY 4.0; cite Mavaddat et al. Am J Hum Genet 2018 (doi:10.1016/j.ajhg.2018.11.002) and observe any restrictions set by the score authors. Same posture as PGS000001. NO rsID COLUMN: the Catalog publishes none for this score (hm_rsID empty for all 313, hm_source=Author-reported), so downstream tooling keys on chr:pos plus allele match. See DATA_LICENSES.md.",
+              "###PGS CATALOG SCORING FILE - see https://www.pgscatalog.org/downloads/#dl_ftp_scoring for additional information",
+              "#format_version=2.0"
             ],
-            "publishable": false,
-            "stale_record_note": "Re-read from the bundled file. The previous record quoted an older header asserting CC-BY 4.0 and publishable=true; the file now states the score carries the PGS Catalog's default EMBL-EBI Terms of Use, NOT CC-BY 4.0, and src/qsh/models/registry.py sets publishable=False. Publication is gated by the registry flag, which scripts/publish_hf.py enforces."
+            "no_restriction_found_but_terms_absent": false,
+            "publishable": true
           },
           "measured": {
             "by_super_population": {
               "AFR": {
-                "frac_above_global_cut": 0.293495,
-                "mean": 1.187253,
+                "frac_above_global_cut": 0.161876,
+                "mean": 0.207404,
                 "n": 661,
-                "p90": 1.724599,
-                "sd": 0.414498
+                "p90": 0.8989,
+                "sd": 0.554294
               },
               "AMR": {
-                "frac_above_global_cut": 0.037464,
-                "mean": 0.624626,
+                "frac_above_global_cut": 0.083573,
+                "mean": -0.072606,
                 "n": 347,
-                "p90": 1.128644,
-                "sd": 0.412362
+                "p90": 0.71352,
+                "sd": 0.65686
               },
               "EAS": {
-                "frac_above_global_cut": 0.065476,
-                "mean": 0.856069,
+                "frac_above_global_cut": 0.14881,
+                "mean": 0.163061,
                 "n": 504,
-                "p90": 1.332257,
-                "sd": 0.38604
+                "p90": 0.8645,
+                "sd": 0.567598
               },
               "EUR": {
-                "frac_above_global_cut": 0.00994,
-                "mean": 0.516796,
+                "frac_above_global_cut": 0.027833,
+                "mean": -0.368675,
                 "n": 503,
-                "p90": 1.062128,
-                "sd": 0.414408
+                "p90": 0.41544,
+                "sd": 0.592581
               },
               "SAS": {
-                "frac_above_global_cut": 0.01227,
-                "mean": 0.560764,
+                "frac_above_global_cut": 0.05317,
+                "mean": -0.259791,
                 "n": 489,
-                "p90": 1.097803,
-                "sd": 0.404388
+                "p90": 0.5101,
+                "sd": 0.599757
               }
             },
-            "global_high_risk_cut": 1.429783,
+            "global_high_risk_cut": 0.75367,
             "n_samples": 2504,
-            "n_variants": 77,
-            "score_mean": 0.785599,
-            "score_sd": 0.486734
+            "n_variants": 313,
+            "score_mean": -0.047284,
+            "score_sd": 0.634203
           },
           "not_measured": {
             "auroc": null,
-            "published_auroc_eur": 0.628,
-            "published_source": "PGS000001 (Mavaddat 2015), PGS Catalog performance metric at n=200,195",
-            "reason": "1000 Genomes is a reference panel with no breast-cancer case/control status. AUROC requires a phenotyped cohort; the published 0.628 comes from n=200,195 and is carried as a citation, not as a measurement from this run."
+            "published_auroc_eur": 0.633,
+            "published_source": "PGS Catalog PPM001647 for PGS000004 (PRS313): AUROC 0.633 (95% CI 0.624-0.641), n=400,812 Europeans - 4,340 cases and 396,472 controls - from Jia et al., JNCI Cancer Spectrum 2020 (doi:10.1093/jncics/pkaa021). Verified at the Catalog REST record 2026-08-11. TWO CAVEATS THAT MAKE THIS A CITATION AND NOT A TARGET, both from the record itself: the model is fitted WITH COVARIATES - 'family history of cancer (in first-degree relatives), genotyping array' - which a bare weighted dot product does not have; and the cohort was 'missing 25 variants (8%) based on availability of variants in the cohort', so the published figure is for 288 of the 313 variants, not all of them. This replaced PGS000001's C-index 0.628 (PPM017270) when the score changed. That figure was a Harrell's C-index over censored follow-up, not an AUROC, and the two are not directly comparable - a C-index is computed over time-to-event pairs and an AUROC over a fixed case/control split. PGS000004 publishes a genuine AUROC, so the switch also removes that comparability problem rather than only changing the number.",
+            "reason": "1000 Genomes is a reference panel with no breast-cancer case/control status. AUROC requires a phenotyped cohort, so the published figure is carried as a citation, not as a measurement from this run: 0.633 (AUROC (European ancestry))."
           },
-          "wall_clock_s": 0.0
+          "wall_clock_s": 1.5
         },
         "architecture": "per-SNP effect-weight vector; genome-wide-significance thresholding (P<5e-8)",
         "artifacts": [
@@ -426,13 +429,13 @@
         "key": "genomics.prs",
         "label": "Polygenic risk score (published effect weights)",
         "metric": {
-          "baseline": 0.628,
-          "baseline_source": "PGS Catalog PPM017270 for PGS000001: Harrell's C-index 0.628 (95% CI 0.618-0.638) from a Cox model over censored UK Biobank follow-up, n=200,195. An earlier revision called it an AUROC; the Catalog record names it 'Concordance Statistic / C-index'. A C-index is computed over time-to-event pairs and an AUROC over a fixed case/control split, so this is not directly comparable to an AUROC figure.",
-          "ceiling": 0.69,
-          "ceiling_source": "Upper end of the published range for germline-SNP breast-cancer PRS discrimination",
+          "baseline": 0.633,
+          "baseline_source": "PGS Catalog PPM001647 for PGS000004 (PRS313): AUROC 0.633 (95% CI 0.624-0.641), n=400,812 Europeans - 4,340 cases and 396,472 controls - from Jia et al., JNCI Cancer Spectrum 2020 (doi:10.1093/jncics/pkaa021). Verified at the Catalog REST record 2026-08-11. TWO CAVEATS THAT MAKE THIS A CITATION AND NOT A TARGET, both from the record itself: the model is fitted WITH COVARIATES - 'family history of cancer (in first-degree relatives), genotyping array' - which a bare weighted dot product does not have; and the cohort was 'missing 25 variants (8%) based on availability of variants in the cohort', so the published figure is for 288 of the 313 variants, not all of them. This replaced PGS000001's C-index 0.628 (PPM017270) when the score changed. That figure was a Harrell's C-index over censored follow-up, not an AUROC, and the two are not directly comparable - a C-index is computed over time-to-event pairs and an AUROC over a fixed case/control split. PGS000004 publishes a genuine AUROC, so the switch also removes that comparability problem rather than only changing the number.",
+          "ceiling": 0.668,
+          "ceiling_source": "Highest AUROC among PGS000004's OWN Catalog performance records: 0.668 (PPM012913, n=302,425, European). Measured across all 28 AUROC records for this score on 2026-08-11, not taken from a range quoted elsewhere - a first attempt at this line read the first page of results only and put the ceiling at 0.6573, which is a real record but not the maximum. European records span 0.5877-0.668 over 22 entries; the largest cohort is PPM012918 at n=5,328,392 with 0.665. The previous ceiling of 0.69 was chosen against a C-index scale, so it was never a bound on an AUROC for this score even though it happens to sit close to one. WORTH READING BESIDE THIS USE CASE'S FINDING: the lowest of the 28 is 0.55 (PPM005171, n=3,801, 'African unspecified'), against 0.5877-0.668 for European samples. The published record set shows the same ancestry gap this page demonstrates by a different route.",
           "companion": "",
-          "display": "C-index (European ancestry)",
-          "name": "c_index_eur"
+          "display": "AUROC (European ancestry)",
+          "name": "auroc_eur"
         },
         "notes": "Not a neural network, and presenting a genomic foundation model as a PRS method would be the most obvious credibility hole available. Evaluation must be stratified by genetic ancestry, and what is measured here is a distribution shift, NOT an AUROC drop: an earlier revision of this note called it an AUROC drop, but 1000 Genomes is a reference panel carrying no breast-cancer case/control status, so no AUROC is computable from it and genomics_prs.py records auroc=null rather than inventing one. PGS000001 is Mavaddat et al. (JNCI 2015), 77 variants selected by GENOME-WIDE SIGNIFICANCE (P<5e-8) - not PRS-CS or LDpred2, which postdate it by four to five years. An earlier architecture string named that Bayesian-shrinkage family and contradicted this project's own training script, which says 77 variants from Mavaddat. The finding is the by_super_population.*.frac_above_global_cut rows listed above: one globally-set high-risk cut flags a far larger share of AFR than of EUR, a gap driven by allele-frequency differences rather than by risk. Read those rows, not this sentence - they are recomputed on every training run, so no figure quoted in prose here can drift away from them. The published European AUROC baseline comes from a phenotyped cohort that is access-controlled, which is why it cannot be reproduced on this page.",
         "onnx_domains": [],
