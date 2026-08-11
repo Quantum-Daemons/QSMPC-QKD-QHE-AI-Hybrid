@@ -70,8 +70,9 @@ def satellite() -> dict:
         "provenance": "OPS-SAT-AD, the corpus this page's published model is trained on - held-out "
                       "test split only, the benchmark's own split.",
         "licence": "CC-BY-4.0",
-        "attribution": "Ruszczak et al., 'Machine learning detects terminal singularities', "
-                       "OPS-SAT-AD benchmark, Scientific Data 2025, DOI 10.1038/s41597-025-05035-3. "
+        "attribution": "Ruszczak, Kotowski, Evans & Nalepa, \'The OPS-SAT benchmark for "
+                       "detecting anomalies in satellite telemetry\', Scientific Data 12, 710 "
+                       "(2025), DOI 10.1038/s41597-025-05035-3. "
                        "ESA OPS-SAT mission data.",
         "x": {"key": "n_peaks", "label": "peaks in segment"},
         "y": {"key": "diff2_peaks", "label": "peaks in 2nd difference"},
