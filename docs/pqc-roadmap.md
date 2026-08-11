@@ -22,7 +22,7 @@ Algorithms resolve through `CryptoRegistry` at runtime - ML-KEM-768 <-> -1024, Q
 PQC-only, TenSEAL <-> OpenFHE. A future PQC algorithm is a registry entry + config change,
 not a code rewrite. Add remote re-key + in-flight algorithm substitution next. []
 
-## AI-QKD (WS1) + entropy (done)
+## AI-QKD (WS1) + entropy: the optimizer is built and measured; the reference architecture's real-time loop is not
 - **OptiQKD / AML-QKD** - an AI parameter optimizer (scikit-learn GBM/GP surrogate + gradient-free
   coordinate ascent) tunes the **two-intensity decoy-state** parameters `basis_prob` / `mu_signal` /
   **`mu_decoy`** / `pp_threshold` (Ma-Qi-Zhao-Lo 2005 single-photon Y1/e1 bounds - `mu_decoy` genuinely

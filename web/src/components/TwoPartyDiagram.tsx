@@ -90,14 +90,24 @@ const optiTag = (m: M, c: DiagramConfig) => {
 
 // The QSMPC step. `clientCompute:896` resolves `config.qsmpc_op || (genomics ? "sum" : "psi")`, so
 // the diagram has to resolve it the same way or it describes a computation that did not happen.
-// The KIND changes too: a secure sum runs over a d-qudit GHZ state, while PSI is a WebCrypto
-// keyed hash. Drawing HMAC as a quantum arrow overstates what the browser did.
+//
+// The KIND was `q-arrow` for a secure sum, on the grounds that "a secure sum runs over a d-qudit GHZ
+// state". That is true of the BACKEND and false of the browser, which is the only thing this diagram
+// draws: `clientCompute` computes additive shares mod p and its own log line calls that "the classical
+// equivalent of the backend's Shamir + d-level QFT over a GHZ state, which needs qudits no browser can
+// prepare". `q-arrow` is styled in `--quantum` with the same dash and arrowhead as the QKD rows, and
+// the legend labels that exact style "quantum (BB84 decoy-state)" - so the genomics page drew a
+// classical modular sum as a quantum channel, and so did finance whenever Secure sum was selected.
+// One line wide, two pages deep.
+//
+// `mpc-bidir` is the honest style: additive secret-sharing IS secret-share traffic, and the legend
+// already names it. PSI stays classical-bidirectional - it is a WebCrypto keyed hash.
 const qsmpcOpOf = (c: DiagramConfig, usecaseDefault: "psi" | "sum") =>
   (String(c.qsmpcOp ?? "") === "psi" || String(c.qsmpcOp ?? "") === "sum")
     ? (String(c.qsmpcOp) as "psi" | "sum")
     : usecaseDefault;
 const qsmpcKind = (dflt: "psi" | "sum") => (c: DiagramConfig): Kind =>
-  qsmpcOpOf(c, dflt) === "sum" ? "q-arrow" : "c-bidir";
+  qsmpcOpOf(c, dflt) === "sum" ? "mpc-bidir" : "c-bidir";
 const qsmpcLabel = (dflt: "psi" | "sum") => (m: M, c: DiagramConfig) =>
   qsmpcOpOf(c, dflt) === "sum"
     ? `secure sum over GF(${f(m, "qsms_prime")}) · pooled = ${f(m, "secure_sum")}`
