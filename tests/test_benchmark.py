@@ -63,6 +63,39 @@ def test_security_score_orders_quantum_above_classical():
     assert kem_category("ml-kem-768") == 3 and kem_category(None) == 3
 
 
+def test_a_dead_quantum_channel_cannot_score_full_eavesdropper_marks():
+    """QBER below 0.11 but above this project's own zero-key point must not score full marks.
+
+    0.11 is the Shor-Preskill one-way BB84 bound. This repository's GLLP model stops yielding secure
+    key at 0.098106, so the band [0.098106, 0.11) used to award the maximum eavesdropper-detection
+    score on a channel producing nothing - the score rewarding a link the same codebase reports as
+    dead. The browser's fact display was guarded against exactly this and the score was not.
+    """
+    from qsh.config import get_config
+
+    s = get_config().security_scoring
+    full, warn = s.eavesdrop_secure_pts, s.eavesdrop_warn_pts
+    assert warn < full, "the warn tier must be worth less than the secure tier for this to mean anything"
+
+    args = dict(security_model="computational (RLWE / FIPS-203 family)", pqc_hybrid=True,
+                kem="ml-kem-768+x25519")
+    # In the dangerous band, with the key measured dead.
+    dead = compute_security_score(**args, qkd_key_bits=0, qber=0.105)
+    assert dead["components"]["eavesdropper_detection"] == warn, (
+        "a run that produced no secure key must not score full eavesdropper-detection marks, "
+        "whatever its QBER sits below"
+    )
+    # The same QBER with a live key still scores full marks: the guard is about the KEY, not the QBER.
+    live = compute_security_score(**args, qkd_key_bits=256, qber=0.105)
+    assert live["components"]["eavesdropper_detection"] == full
+    assert dead["total"] < live["total"]
+
+    # And the guard must not fire when key bits were never reported, which is a different situation
+    # from a measured zero - a pqc-only profile has no quantum channel to judge.
+    unknown = compute_security_score(**args, qkd_key_bits=None, qber=0.105)
+    assert unknown["components"]["eavesdropper_detection"] == full
+
+
 def test_quantum_advantage_rewards_communication_compactness():
     classical = run_classical(*_linear_model_and_data(), backend_name="tenseal", n_samples=6)
     rng = np.random.default_rng(0)
