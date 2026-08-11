@@ -11,7 +11,7 @@ from qsh.orchestration.crypto_agility import default_registry
 from qsh.orchestration.events import EventType
 from qsh.orchestration.pipeline import PipelineState, build_pipeline
 from qsh.pqc.mcp_bridge import mcp_demo
-from qsh.qhe.qotp import pauli_concealment_demo
+from qsh.qhe.qotp import pauli_output_concealment_demo
 
 
 # --- config ---------------------------------------------------------------
@@ -59,12 +59,31 @@ def test_mcp_demo_with_qkd_mix():
     assert r["qkd_mixed"] is True
 
 
-# --- Pauli-gate concealment (circuit privacy) -----------------------------
-def test_pauli_concealment_hides_result():
-    rep = pauli_concealment_demo(n=3, seed=1)
-    assert rep["fidelity_correct_key"] == pytest.approx(1.0, abs=1e-6)
+# --- Pauli OUTPUT concealment (NOT circuit privacy) -----------------------
+# This test used to assert `fidelity_correct_key == 1.0` and then `circuit_private`, which read as
+# evidence for a claim it never tested: the demo applies no circuit, and the correct-key fidelity is
+# 1.0 by construction because decrypt(encrypt(x)) == x. A test whose assertions cannot fail is worse
+# than a missing test, because it is counted as coverage. Assert the falsifiable property, and pin the
+# tautological one as the self-check it is.
+def test_pauli_mask_conceals_the_state_from_a_wrong_key():
+    rep = pauli_output_concealment_demo(n=3, seed=1)
     assert rep["fidelity_wrong_key"] < 0.9
-    assert rep["circuit_private"]
+    assert rep["output_concealed"]
+    # Stated in the payload so no caller can mistake this for circuit privacy.
+    assert rep["applies_a_circuit"] is False
+
+
+def test_roundtrip_selfcheck_is_a_tautology_and_labelled_as_one():
+    """encrypt/decrypt are inverses, so this is 1.0 for every input and every key.
+
+    Kept as a regression guard on `encrypt`/`decrypt`, and asserted separately from the concealment
+    claim so that the two are never conflated again.
+    """
+    for seed in (1, 2, 3):
+        rep = pauli_output_concealment_demo(n=3, seed=seed)
+        assert rep["roundtrip_fidelity_selfcheck"] == pytest.approx(1.0, abs=1e-6)
+        # The verdict must not depend on the tautology: a wrong key is the only thing tested.
+        assert "circuit_private" not in rep
 
 
 # --- pause / resume / step ------------------------------------------------

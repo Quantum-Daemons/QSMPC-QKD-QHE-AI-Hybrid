@@ -3,7 +3,7 @@
 // buildConfig(). Editing a value + re-running demonstrably changes the run (browser-verifiable). "Reset to
 // defaults" restores the config values. No hardcoded parameter values live here — only labels + UI step/min.
 import {
-  runsFibreQkd, runsInference, runsQsmpc, type usePipelineRun,
+  hasTrainedQcnn, runsFibreQkd, runsInference, runsQsmpc, type usePipelineRun,
 } from "../lib/usePipelineRun";
 
 type Run = ReturnType<typeof usePipelineRun>;
@@ -177,7 +177,11 @@ export default function ParameterPanel({ run }: { run: Run }) {
                     option says which backend it means rather than implying one. */}
                 <option value="">CKKS (FHE) - default</option>
                 <option value="ckks">CKKS (FHE)</option>
-                <option value="qcnn">QCNN (QHE)</option>
+                {/* Offered ONLY where trained weights actually ship. Genomics reaches the
+                    private-inference stage but has no `qcnn_weights.json`, so selecting QCNN there
+                    fell back to CKKS while two panels announced a quantum circuit had decided - a
+                    control that changes nothing, which this project removes rather than explains. */}
+                {hasTrainedQcnn(usecase) && <option value="qcnn">QCNN (QHE)</option>}
               </select>
             </div>)}
             {/* Only the secure-sum path reads it, and only genomics/finance run that path. The old

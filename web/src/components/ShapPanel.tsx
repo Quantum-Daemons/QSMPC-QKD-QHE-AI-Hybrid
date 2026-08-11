@@ -1,9 +1,13 @@
 // Signed SHAP feature-attribution chart for a use case's private-inference decision.
 // Reads the run's `explanation` artifact (exact linear SHAP, ML-DSA-signed). Aimed at EU AI Act
 // Art. 13, which applies from 2027-12-02 (Annex III) after the AI Omnibus deferral - not Aug 2026.
-export default function ShapPanel({ explanation, provenance, baseline, publishedModel, surfaced }: {
+// `surfacedBackend` is the backend the run actually used - `artifacts.primary_inference.backend`,
+// one of "qcnn-trained" or "ckks". It is deliberately NOT the `inference` control's value: selecting
+// QCNN on a use case that ships no trained weights falls back to CKKS, and gating this panel on the
+// control made it assert that a quantum circuit produced a class that CKKS produced.
+export default function ShapPanel({ explanation, provenance, baseline, publishedModel, surfacedBackend }: {
   explanation: any; provenance?: string | null; baseline?: string | null;
-  publishedModel?: string | null; surfaced?: string | null;
+  publishedModel?: string | null; surfacedBackend?: string | null;
 }) {
   const tops = explanation?.top_features as any[] | undefined;
   if (!tops?.length) return null;
@@ -36,10 +40,10 @@ export default function ShapPanel({ explanation, provenance, baseline, published
         from the encrypted CKKS + MPC stage, which evaluates a different model - so read the bars as
         "what drives this model on this input", not as an attribution of the reported class.
       </p>
-      {surfaced === "qcnn" && (
+      {surfacedBackend === "qcnn-trained" && (
         <div className="note" style={{ marginBottom: 8, borderColor: "var(--warn)", color: "var(--warn)" }}>
-          ⚠ Inference is set to <b>QCNN</b>, so the class this page surfaces comes from the quantum
-          circuit. These bars describe the bundled linear model, which is a different decision.
+          ⚠ The class this page surfaces came from the <b>trained QCNN</b> circuit. These bars
+          describe the bundled linear model, which is a different decision.
         </div>
       )}
       {tops.map((t, i) => (

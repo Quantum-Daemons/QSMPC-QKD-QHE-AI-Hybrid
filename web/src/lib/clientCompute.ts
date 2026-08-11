@@ -1829,12 +1829,28 @@ export function runClientPipeline(
 // Trained QCNN weights, fetched once per use case. Absent file is the normal case for a use case
 // that has no trained circuit yet, and the caller degrades to CKKS rather than inventing a class.
 const _qcnnCache: Record<string, QcnnWeights | null> = {};
+
+/** Directory under `public/data` for a use case's bundled artefacts.
+ *
+ *  `ParameterPanel` decides whether to OFFER the QCNN option, and it must agree with whether the
+ *  weights actually load or the control goes inert again. The two live in different modules, so
+ *  `tests/test_qcnn_usecases.py` compares `QCNN_USECASES` against the files on disk using this same
+ *  mapping rather than relying on the two staying in step by inspection. */
+function dataDirFor(usecase: string): string {
+  return usecase === "medical_fl" ? "medical" : usecase.split("_")[0];        // finance_aml -> finance
+}
+
 async function loadQcnnWeights(usecase: string): Promise<QcnnWeights | null> {
   if (usecase in _qcnnCache) return _qcnnCache[usecase];
-  const dir = usecase === "medical_fl" ? "medical" : usecase.split("_")[0];   // finance_aml -> finance
   try {
-    const r = await fetch(`${import.meta.env.BASE_URL}data/${dir}/qcnn_weights.json`);
-    _qcnnCache[usecase] = r.ok ? ((await r.json()) as QcnnWeights) : null;
+    const r = await fetch(`${import.meta.env.BASE_URL}data/${dataDirFor(usecase)}/qcnn_weights.json`);
+    // `r.ok` is NOT the test. This is an SPA: the host serves index.html with HTTP 200 for any path
+    // that does not exist, so `r.ok` is true for a file that was never deployed. The old guard only
+    // appeared to work because `r.json()` then threw on HTML and the catch swallowed it - a check
+    // that reads as handling the case while the catch does the work. Content-type is the
+    // discriminator, which is the same rule the verification checklist applies to `curl`.
+    const json = (r.headers.get("content-type") ?? "").includes("application/json");
+    _qcnnCache[usecase] = r.ok && json ? ((await r.json()) as QcnnWeights) : null;
   } catch { _qcnnCache[usecase] = null; }
   return _qcnnCache[usecase];
 }
@@ -1855,6 +1871,7 @@ async function loadQcnnWeights(usecase: string): Promise<QcnnWeights | null> {
             artifacts.primary_inference = { backend: "qcnn-trained", class: qc.cls,
                                             qubits: qc.qubits, expectation: r2(qc.expectation) };
             metric(stage, "primary_inference_class", qc.cls);
+            metric(stage, "primary_inference_backend", "qcnn-trained");
             metric(stage, "qcnn_expectation_z0", r2(qc.expectation));
             // Report the metric the CORPUS warrants, not always accuracy. At finance's 6% fraud
             // rate accuracy reads 0.97 against a 0.95 majority baseline and says almost nothing,
@@ -1877,6 +1894,7 @@ async function loadQcnnWeights(usecase: string): Promise<QcnnWeights | null> {
             const qc = qotpQcnnInfer(feats.slice(0, nq), seed, nq);
             artifacts.primary_inference = { backend: "ckks", class: artifacts.fhe_prediction ?? inf.prediction };
             metric(stage, "primary_inference_class", artifacts.fhe_prediction ?? inf.prediction);
+            metric(stage, "primary_inference_backend", "ckks");
             emit("log", stage, `QCNN selected but no trained weights ship for ${usecase}: the `
               + `untrained Clifford+T circuit is a hiding and T-count demonstration `
               + `(${qc.tGates} T-gates on ${qc.qubits} qubits), NOT a classifier - its class flips `
@@ -1887,6 +1905,7 @@ async function loadQcnnWeights(usecase: string): Promise<QcnnWeights | null> {
           const cls = artifacts.fhe_prediction ?? inf.prediction;
           artifacts.primary_inference = { backend: "ckks", class: cls };
           metric(stage, "primary_inference_class", cls);
+          metric(stage, "primary_inference_backend", "ckks");
           emit("log", stage, `inference backend = CKKS (FHE): class=${cls}`);
         }
         // XAI: exact linear-SHAP attribution (faithful linear surrogate), signed downstream

@@ -2,7 +2,7 @@
 license: other
 license_name: cc-by-4.0
 library_name: onnx
-pipeline_tag: time-series-forecasting
+pipeline_tag: tabular-classification
 tags:
   - quantum-safe
   - privacy-preserving
@@ -13,11 +13,14 @@ tags:
 
 # CKKS-linear OPS-SAT segment student
 
-logistic regression over the 19 published per-segment features
+logistic regression over 18 published per-segment features + `sampling`
 
 Part of [QSMPC-QKD-QHE-AI-Hybrid](https://github.com/thedaemon-wizard/QSMPC-QKD-QHE-AI-Hybrid),
-a quantum-safe orchestration demo. This is the **plaintext** model for the
-`satellite_comms` use case and it runs under real CKKS encryption.
+a quantum-safe orchestration demo.
+This is the **encrypted-tier** model for the `satellite_comms` use case: it is a
+distilled student small enough to evaluate under real CKKS, and the demo runs it
+that way. It is not the plaintext teacher, and its numbers should be read against
+that teacher rather than against the published literature.
 
 ## Measured performance
 
@@ -47,11 +50,11 @@ a quantum-safe orchestration demo. This is the **plaintext** model for the
 - **Licence**: CC-BY-4.0
 - **Source**: https://zenodo.org/records/12588359 (licence read 2026-08-05)
 
-2,123 annotated telemetry segments across 9 channels from ESA's OPS-SAT CubeSat, 20.4% anomalous, with 19 precomputed per-segment features and the benchmark's own train/test split. Ruszczak et al., Scientific Data 12 (2025). CC BY 4.0 and 507 KB, so unlike every other corpus here the DATA can be redistributed as well as the weights. A different task from ESA-ADB: segment classification, not forecasting, so its score is not comparable with the Telemanom model's and neither is the other's baseline.
+2,123 annotated telemetry segments across 9 channels from ESA's OPS-SAT CubeSat, 20.4% anomalous, with 18 published per-segment features plus a `sampling` metadata column, and the benchmark's own train/test split. Ruszczak et al., Scientific Data 12 (2025). CC BY 4.0 and 507 KB, so unlike every other corpus here the DATA can be redistributed as well as the weights. A different task from ESA-ADB: segment classification, not forecasting, so its score is not comparable with the Telemanom model's and neither is the other's baseline.
 
 ## Notes and limitations
 
-19 features is small enough to evaluate under CKKS as a single packed dot product, so the encrypted tier here runs on the published feature set rather than on a reduction of it - and it had room to spare. The student now fits over the QUADRATIC expansion of those features, 209 terms, still one packed dot product at unchanged multiplicative depth, because the expansion is a function of the plaintext input and is computed before encryption. A degree-8192 ring has 4096 slots, so the cipher was never the binding constraint here - the feature map was. Measured: minority-class F1 0.8649 -> 0.9043, AUC-PR 0.9275 -> 0.9681, the latter matching the teacher exactly.
+19 columns is small enough to evaluate under CKKS as a single packed dot product, so the encrypted tier here runs on the published feature set rather than on a reduction of it - and it had room to spare. The student now fits over the QUADRATIC expansion of those features, 209 terms, still one packed dot product at unchanged multiplicative depth, because the expansion is a function of the plaintext input and is computed before encryption. A degree-8192 ring has 4096 slots, so the cipher was never the binding constraint here - the feature map was. Measured: minority-class F1 0.8649 -> 0.9043, AUC-PR 0.9275 -> 0.9681, the latter matching the teacher exactly.
 
 ## Honest scope
 

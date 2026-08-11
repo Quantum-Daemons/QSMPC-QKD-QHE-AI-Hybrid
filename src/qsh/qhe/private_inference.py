@@ -1,14 +1,26 @@
 """QHE private inference protocol (client-private input, server-private model).
 
-Ties the QCNN (:mod:`~qsh.qhe.qcnn`) to the QOTP / Rate-1 QFHE encryption layer to
-realise the report's WS4 deliverable: a data owner obtains a prediction from a
-server-held model without revealing its input, and the server's model weights
-(intellectual property) are protected by Pauli-gate concealment.
+Ties the QCNN (:mod:`~qsh.qhe.qcnn`) to the QOTP encryption layer to sketch the report's WS4
+deliverable: a data owner obtains a prediction from a server-held model without revealing its input.
 
-Security properties reported:
-  * input privacy   -- the encrypted state the server sees is maximally mixed (QOTP);
-  * model privacy   -- the trained rotations are concealed by random Pauli framing;
-  * correctness      -- the decrypted prediction matches plaintext inference.
+READ THE SCOPE BELOW BEFORE QUOTING THIS MODULE. An earlier version of this header listed three
+"security properties reported", two of which the code does not establish, and the corrections were
+written into the function bodies while the header kept asserting the original claims. A reader who
+stops at line 12 got exactly the retracted version, contradicted twenty lines later - which is how a
+stale header outranks an accurate body.
+
+What holds:
+  * input privacy -- the state the server sees under a random Pauli frame is maximally mixed (QOTP),
+    and that is a real, standard property.
+
+What does NOT hold, stated here rather than only at the point of use:
+  * model privacy is NOT established. It rested on "Pauli-gate concealment" via
+    :func:`~qsh.qhe.qotp.pauli_output_concealment_demo`, which applies no circuit and therefore
+    conceals a state rather than a computation. Concealing the trained rotations from a client would
+    need the Pauli frame propagated through the circuit, which is unimplemented here.
+  * correctness against plaintext inference is NOT tested. ``plain_probability`` is the SAME
+    computation as ``probability``, not an independent reference, so comparing them is a tautology.
+    Nothing is decrypted and nothing is compared.
 """
 
 from __future__ import annotations

@@ -39,7 +39,7 @@ RUN pip install --upgrade pip wheel setuptools \
  && pip install -r requirements-core.txt -r requirements-api.txt -r requirements-fhe.txt
 
 # AI tier (federated learning + private inference): CPU torch keeps the image portable and fits
-# a 6-core/12 GB no-GPU VPS (<vps-provider>). On a GPU host, swap the index for a CUDA build.
+# a 6-core/12 GB no-GPU VPS. On a GPU host, swap the index for a CUDA build.
 RUN pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu \
  && pip install -r requirements-ai.txt
 
