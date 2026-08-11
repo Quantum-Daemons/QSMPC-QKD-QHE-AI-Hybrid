@@ -174,6 +174,24 @@ def main() -> int:
             full = Path("data/genomics/g1k_dosages_full.tsv")
             if full.exists():
                 dosage_path = full
+        # The committed slice, when the full matrix is not there. `qsh.data.loaders` gained exactly this
+        # fallback in Round 31 and this script did not, so it raised FileNotFoundError at its own
+        # default on any fresh clone or CI checkout - PRS313's full 2,504-row matrix is gitignored
+        # because of the redistribution budget in DATA_LICENSES section 4.
+        #
+        # That mattered more than a missing convenience: this is the script that writes
+        # models/metrics.json, and README points readers at its `by_super_population` rows rather than
+        # at any figure quoted in prose. The generator of the numbers the documentation defers to could
+        # not be run by anyone who had just cloned the repository.
+        #
+        # The lesson worth keeping: a fallback added to one of two readers of the same file is half a
+        # fix, and the half that is missing is invisible until someone starts from a clean tree.
+        if not dosage_path.exists():
+            slice_path = dosage_path.with_name(f"{dosage_path.stem}_slice.tsv")
+            if slice_path.exists():
+                print(f"  {dosage_path.name} absent (gitignored); using the committed slice "
+                      f"{slice_path.name} - REAL genotypes, fewer individuals")
+                dosage_path = slice_path
     print(f"score:   {args.score} ({prs_path})")
     print(f"dosages: {dosage_path}")
 
@@ -228,9 +246,23 @@ def main() -> int:
     if len(per_group) >= 2:
         fr = {g: v["frac_above_global_cut"] for g, v in per_group.items()}
         hi, lo = max(fr, key=fr.get), min(fr, key=fr.get)
-        print(f"\n  A single global threshold flags {fr[hi]*100:.1f}% of {hi} and {fr[lo]*100:.1f}% of {lo}"
-              f" — a {fr[hi]/max(fr[lo], 1e-9):.1f}x difference driven entirely by ancestry,"
-              " with no phenotype involved.")
+        head = (f"\n  A single global threshold flags {fr[hi]*100:.1f}% of {hi} and "
+                f"{fr[lo]*100:.1f}% of {lo}")
+        # A RATIO NEEDS A NON-ZERO DENOMINATOR, and `max(fr[lo], 1e-9)` is not a guard - it is a
+        # division by 1e-9 wearing one. On the committed CI slice no EUR individual exceeded the cut, so
+        # this line printed "a 208333000.0x difference" as though it were a measurement. The absolute
+        # percentages either side of it were correct and the number between them was arithmetic on a
+        # floor constant.
+        #
+        # The honest report when a group has nobody above the cut is that the ratio is undefined and the
+        # gap is total, which is a stronger statement than any figure - so say that instead of dividing.
+        if fr[lo] <= 0:
+            print(head + " — no " + lo + " individual exceeded the cut at all, so the ratio is"
+                  " undefined and the separation is complete. Driven entirely by ancestry, with no"
+                  " phenotype involved.")
+        else:
+            print(head + f" — a {fr[hi]/fr[lo]:.1f}x difference driven entirely by ancestry,"
+                  " with no phenotype involved.")
 
     spec = get_spec("genomics.prs")
     print(f"\n  published AUROC (NOT measured here): {spec.metric.baseline} — {spec.metric.baseline_source}")

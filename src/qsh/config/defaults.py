@@ -210,6 +210,20 @@ class DataConfig:
     genomics_biobanks: int = 4
     genomics_allele_min: int = 50
     genomics_allele_max: int = 400
+    #: Which bundled PGS-Catalog score the genomics use case evaluates. A FIELD, not a literal, and
+    #: the reason is the defect this replaces: the pipeline read `config.get("prs", "breast_cancer")`
+    #: while nothing anywhere set that key, so when Round 31 moved the browser, the trainer, the
+    #: registry and the payload to PGS000004 it left the E2E pipeline scoring PGS000001. Two surfaces
+    #: then reported different scores for the same use case - exactly what `qsh.data.loaders` warns
+    #: "would be worse than either alone".
+    #:
+    #: A literal default inside a `config.get()` call is invisible to every mechanism this project
+    #: uses to keep values honest: it does not appear in the config dump, cannot be overridden per
+    #: run, and cannot be compared against what the browser fetched. A value that selects a model
+    #: belongs here beside the KEM and the FHE backend. Valid names are the keys of
+    #: `qsh.data.loaders._PRS_FILES`; `tests/test_prs_pipeline_parity.py` pins this against the
+    #: browser payload the registry points at.
+    genomics_prs_score: str = "breast_cancer_prs313"
 
 
 @dataclass

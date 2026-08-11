@@ -32,13 +32,29 @@ import { ml_kem512, ml_kem768, ml_kem1024 } from "@noble/post-quantum/ml-kem.js"
 import { ml_dsa65, ml_dsa87 } from "@noble/post-quantum/ml-dsa.js";
 import { gunzipSync } from "node:zlib";
 import { readFileSync } from "node:fs";
+import { createHash } from "node:crypto";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
+// Expected vector count per set, and the SHA-256 of the vendored gzip. BOTH are asserted, and the
+// reason is a hole this script shipped with for a round.
+//
+// The loop below asserts `accepted === 0` and, until Round 32, asserted nothing about how many keys it
+// had tested. An empty or truncated gzip therefore gave `0 malformed keys, 0 rejected, 0 accepted OK`
+// and **exit 0** - measured, not hypothetical. Vendoring the vectors is what introduced that: a fetch
+// either returns the file or fails, but a file on disk can be present and empty.
+//
+// This is the project's own SP 800-90B lesson - a health test that reports PASS because it was handed
+// too little data to fail - reappearing inside the check that had just been promoted to a CI gate. The
+// three re-validations recorded when it was gated (clean, missing file, smuggled well-formed key) did
+// not include it, because they were the failure modes of the OLD design.
+//
+// The counts are the same 775 / 780 / 1040 that every document quotes, and the hashes are the ones
+// already written in vectors/PROVENANCE.txt - recorded there and, until now, never checked.
 const SETS = [
-  ["ML-KEM-512", ml_kem512],
-  ["ML-KEM-768", ml_kem768],
-  ["ML-KEM-1024", ml_kem1024],
+  ["ML-KEM-512", ml_kem512, 775, "4292314fd44bb211a27ef38273dcac32f602601c2f65b15a69773221227bf298"],
+  ["ML-KEM-768", ml_kem768, 780, "22308df988866e2731c9b79bfa0ce754ea962a77b198436d56bde6481a526af7"],
+  ["ML-KEM-1024", ml_kem1024, 1040, "5792e788280ecdf5be7bfd2d8b66e18a0f9b9c80f4beb1d801fd27d20e882bf7"],
 ];
 const BASE = "https://raw.githubusercontent.com/C2SP/CCTV/main/ML-KEM/modulus";
 const VECTORS = join(dirname(fileURLToPath(import.meta.url)), "vectors");
@@ -50,11 +66,12 @@ const LIVE = process.argv.includes("--live");
  * check cannot run, which is a different thing from the check passing, and the message has to say
  * which - this is read from a CI log by someone who did not write it.
  */
-async function loadVectors(name) {
+async function loadVectors(name, expectedSha) {
   if (!LIVE) {
     const path = join(VECTORS, `${name}.txt.gz`);
+    let buf;
     try {
-      return readFileSync(path);
+      buf = readFileSync(path);
     } catch (err) {
       console.error(`\n  ${name}: cannot read the vendored vectors at ${path} (${err.code ?? err.message}).`);
       console.error("  This is NOT a pass. The conformance check did not run. Either restore the");
@@ -62,6 +79,19 @@ async function loadVectors(name) {
       console.error("  or re-fetch the current published set with --live.");
       process.exit(1);
     }
+    // The hashes were written into PROVENANCE.txt when the snapshot was vendored and never checked.
+    // A recorded hash that nothing verifies documents an intention, not a property.
+    const actual = createHash("sha256").update(buf).digest("hex");
+    if (actual !== expectedSha) {
+      console.error(`\n  ${name}: vendored snapshot does not match its recorded SHA-256.`);
+      console.error(`    expected ${expectedSha}`);
+      console.error(`    actual   ${actual}`);
+      console.error("  This is NOT a pass. The file on disk is not the file that was vetted, so the");
+      console.error("  result of testing against it means nothing. Restore it from the pinned upstream");
+      console.error("  commit in scripts/vectors/PROVENANCE.txt, or re-vendor and update both.");
+      process.exit(1);
+    }
+    return buf;
   }
   const res = await fetch(`${BASE}/${name}.txt.gz`);
   if (!res.ok) {
@@ -77,9 +107,32 @@ console.log(LIVE
   : `  vectors: vendored snapshot in scripts/vectors (see PROVENANCE.txt; --live to re-fetch)`);
 
 let failures = 0;
-for (const [name, kem] of SETS) {
-  const text = gunzipSync(await loadVectors(name)).toString("utf8");
+for (const [name, kem, expectedCount, expectedSha] of SETS) {
+  const text = gunzipSync(await loadVectors(name, expectedSha)).toString("utf8");
   const lines = text.trim().split("\n").filter(Boolean);
+
+  // ASSERT WHAT WAS TESTED, not only the outcome. Without this, zero vectors is indistinguishable
+  // from zero acceptances, and the second is a pass while the first is a check that did not run.
+  //
+  // On the vendored path the SHA-256 above fires first and catches empty, truncated and tampered
+  // files alike - measured, so this count check is the second line rather than the first. It still
+  // earns its place in two cases the hash cannot cover: a re-vendor that updates the hash to match a
+  // file that is genuinely short, and `--live`, where there is no hash to check at all.
+  //
+  // `--live` is exempt from failing because upstream is allowed to add vectors; a count CHANGE there
+  // is information, and the message says so rather than turning a CI-green run red for it.
+  if (lines.length !== expectedCount) {
+    if (LIVE) {
+      console.log(`  ${name.padEnd(12)} upstream now has ${lines.length} vectors, snapshot expects `
+        + `${expectedCount} - upstream changed; re-vendor and update SETS + PROVENANCE.txt`);
+    } else {
+      console.error(`\n  ${name}: expected ${expectedCount} vectors, read ${lines.length}.`);
+      console.error("  This is NOT a pass. A truncated or empty snapshot tests nothing, and testing");
+      console.error("  nothing reports zero acceptances - which is what a clean run also reports.");
+      failures++;
+      continue;
+    }
+  }
 
   let accepted = 0;
   for (const line of lines) {

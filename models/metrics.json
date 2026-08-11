@@ -43,7 +43,7 @@
   },
   "genomics.prs": {
     "dataset": "PGS Catalog scoring files",
-    "git_sha": "636ea08-dirty",
+    "git_sha": "cc4a151-dirty",
     "licence_audit": {
       "checked": "read from the bundled scoring file at run time",
       "declares_restriction": false,
