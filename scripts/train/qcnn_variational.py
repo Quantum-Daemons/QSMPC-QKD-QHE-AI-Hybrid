@@ -121,6 +121,14 @@ def load(usecase: str):
         idx = [list(d.feature_names).index(c) for c in cols]
         X, y = d.data[:, idx], (d.target == 0).astype(int)     # 1 = malignant
         return X, y, cols, "Wisconsin Diagnostic Breast Cancer (UCI, CC-BY-4.0), 8 of 30 features"
+    if usecase == "finance":
+        import pandas as pd
+        df = pd.read_csv(REPO / "data" / "finance" / "paysim_sample.tsv", sep="\t", comment="#")
+        cols = [c for c in df.columns if c != "isFraud"]
+        X, y = df[cols].to_numpy(float), df["isFraud"].to_numpy(int)
+        return X, y, cols, ("PaySim simulator output (Kaggle ealaxi/paysim1, CC-BY-SA-4.0; "
+                            "Lopez-Rojas et al. 2016) - SYNTHETIC transactions from aggregated real "
+                            "mobile-money logs, 8 AML features, the same 8 the browser pipeline feeds")
     raise SystemExit(f"no loader for {usecase!r}")
 
 
@@ -133,10 +141,20 @@ def main() -> int:
     a = ap.parse_args()
 
     X, y, names, prov = load(a.usecase)
+    # SEED TORCH TOO. `--seed` drove only the numpy split permutation, while the parameter init came
+    # from an unseeded `torch.randn`, so the same command produced different weights every run -
+    # medical moved across 0.9181 / 0.9064 / 0.8947 / 0.8480 accuracy on identical inputs. Published
+    # weights that cannot be regenerated are exactly what this project refuses to ship, and the swing
+    # was large enough to be mistaken for a real effect of the changes being made alongside it.
+    torch.manual_seed(a.seed)
     rng = np.random.default_rng(a.seed)
     perm = rng.permutation(len(y))
     X, y = X[perm], y[perm]
-    cut = int(0.7 * len(y))
+    # THREE-WAY SPLIT. An earlier version selected the best epoch on the same rows it then reported,
+    # which is test-set leakage and makes every published figure optimistic by construction. Epoch
+    # selection now happens on a validation split the reported number never sees.
+    n = len(y)
+    cut, vcut = int(0.7 * n), int(0.85 * n)
     # TRAIN IN THE SPACE THE BROWSER ACTUALLY SUPPLIES. The bundled medical sample is
     # StandardScaler over the full corpus - verified, L1 distance 0.0002 against a recomputed
     # z-score - so it is z-scores that arrive at inference time, not raw units. A first version of
@@ -147,14 +165,29 @@ def main() -> int:
     #
     # z-scores are unbounded - WDBC spans [-3.11, 6.05] - and RY(z*pi) would wrap the Bloch sphere
     # several times, so the encoding is RY(tanh(z)*pi): bounded, smooth, and order-preserving.
-    mu, sd = X.mean(0), X.std(0)
+    # WHICH SPACE DOES THE BROWSER SUPPLY? It differs per use case, and getting it wrong is how the
+    # first trained model became as meaningless as the untrained one it replaced.
+    #
+    #   medical  the bundled sample is StandardScaler output (verified, L1 0.0002), so z-scores
+    #            arrive at inference time and the browser must NOT rescale.
+    #   finance  the bundled sample is RAW and mixed-scale - `amount` is log 0..17.7, `amount_zscore`
+    #            is already a z-score, five columns are binary 0/1 - and all 16 bundled rows are found
+    #            in this tsv within 1e-3, so the browser supplies exactly these units. It therefore
+    #            MUST standardise, with the moments fitted here and shipped alongside.
+    #
+    # Either way the encoding is RY(tanh(z)*pi): bounded, smooth, order-preserving. tanh on a raw
+    # log-amount of 14 would saturate at 1.0 and throw the column away, which is why standardising
+    # first is not optional for finance.
+    INPUT_SPACE = {"medical": "zscore", "finance": "raw"}[a.usecase]
+    mu, sd = X[:cut].mean(0), X[:cut].std(0)
     sd = np.where(sd == 0, 1.0, sd)
     Xs = np.tanh((X - mu) / sd)
     dev = "cuda" if torch.cuda.is_available() and torch.cuda.get_device_capability(0)[0] >= 7 else "cpu"
     xt = torch.tensor(Xs, dtype=torch.float32, device=dev)
     yt = torch.tensor(y, dtype=torch.float32, device=dev)
-    tr, te = slice(0, cut), slice(cut, len(y))
-    print(f"{a.usecase}: {len(y)} rows, {int(y.sum())} positive; train {cut} / test {len(y)-cut}; device {dev}")
+    tr, va, te = slice(0, cut), slice(cut, vcut), slice(vcut, n)
+    print(f"{a.usecase}: {n} rows, {int(y.sum())} positive; train {cut} / val {vcut-cut} / "
+          f"test {n-vcut}; device {dev}")
 
     theta = torch.nn.Parameter(0.1 * torch.randn(a.layers, N_QUBITS, device=dev))
     scale = torch.nn.Parameter(torch.tensor(4.0, device=dev))
@@ -170,24 +203,64 @@ def main() -> int:
         opt.step()
         if ep % 10 == 0 or ep == a.epochs - 1:
             with torch.no_grad():
-                zt = circuit(xt[te], theta)
-                acc = (((zt * scale + bias) > 0).float() == yt[te]).float().mean().item()
-                if acc > best:
-                    best = acc
+                zt = circuit(xt[va], theta)
+                pred = ((zt * scale + bias) > 0).float()
+                acc = (pred == yt[va]).float().mean().item()
+                # SELECT ON THE METRIC THAT WILL BE REPORTED. Selecting the best epoch by accuracy on
+                # an imbalanced problem picks a checkpoint that can afford to ignore the minority
+                # class: on finance it cost 0.14 of minority-class F1 (0.6992 at the F1-best epoch
+                # against 0.5641 at the accuracy-best one) while accuracy moved by 0.01. The
+                # selection criterion has to match the headline or it optimises the wrong thing.
+                tp = float((pred * yt[va]).sum())
+                fp = float((pred * (1 - yt[va])).sum())
+                fn = float(((1 - pred) * yt[va]).sum())
+                f1 = 0.0 if tp == 0 else 2 * tp / (2 * tp + fp + fn)
+                prev = float(yt[va].mean())
+                score = f1 if min(prev, 1 - prev) < 0.25 else acc
+                if score > best:
+                    best = score
                     best_state = (theta.detach().cpu().numpy().copy(),
                                   float(scale), float(bias))
-            print(f"  epoch {ep:3d} loss {loss.item():.4f} test-acc {acc:.4f}")
+            print(f"  epoch {ep:3d} loss {loss.item():.4f} VAL acc {acc:.4f} VAL minority-F1 {f1:.4f}")
 
     # Classical baselines on the identical split - the number that decides whether this ships.
+    #
+    # AND THE RIGHT METRIC, which is not always accuracy. This project treats accuracy on an
+    # imbalanced problem as a defect: at finance's 6.33% fraud rate the QCNN scores 0.9692 accuracy
+    # against a 0.9367 majority baseline, which reads as a good model and says almost nothing. Its
+    # minority-class F1 is 0.6992 against an all-positive baseline of 0.1191 - still a real 5.9x
+    # lift, but a very different sentence. Both are recorded; the imbalanced case leads with F1.
     from sklearn.linear_model import LogisticRegression
+    from sklearn.metrics import f1_score
     lr = LogisticRegression(max_iter=2000).fit(Xs[tr], y[tr])
     lr_acc = lr.score(Xs[te], y[te])
     major = max(y[te].mean(), 1 - y[te].mean())
-    print(f"\n  QCNN (variational, {a.layers}x{N_QUBITS} angles) test accuracy : {best:.4f}")
-    print(f"  logistic regression, same split, same features        : {lr_acc:.4f}")
-    print(f"  majority-class baseline                               : {major:.4f}")
-    verdict = ("BEATS the majority baseline" if best > major else "DOES NOT beat the majority baseline")
-    print(f"  verdict: QCNN {verdict}; classical LR is {'ahead' if lr_acc > best else 'behind'}")
+    prevalence = float(y[te].mean())
+    imbalanced = min(prevalence, 1 - prevalence) < 0.25
+
+    with torch.no_grad():
+        th_t = torch.tensor(best_state[0], dtype=torch.float32, device=dev)
+        z_all = circuit(xt[te], th_t)
+        qcnn_pred = ((z_all * best_state[1] + best_state[2]) > 0).int().cpu().numpy()
+    qcnn_f1 = float(f1_score(y[te], qcnn_pred, zero_division=0))
+    # `best` is the SELECTION score (F1 when imbalanced), not accuracy. Recompute accuracy from the
+    # selected checkpoint's own predictions - an earlier version printed `best` under an "accuracy"
+    # label, so finance reported accuracy 0.8027 when that was its F1.
+    qcnn_acc = float((qcnn_pred == y[te]).mean())
+    lr_f1 = float(f1_score(y[te], lr.predict(Xs[te]), zero_division=0))
+    all_pos_f1 = float(2 * prevalence / (1 + prevalence)) if prevalence else 0.0
+    print(f"\n  test prevalence {prevalence:.4f} -> {'IMBALANCED, F1 leads' if imbalanced else 'balanced, accuracy leads'}")
+    print(f"  QCNN  minority-class F1 {qcnn_f1:.4f}   accuracy {qcnn_acc:.4f}")
+    print(f"  LR    minority-class F1 {lr_f1:.4f}   accuracy {lr_acc:.4f}")
+    print(f"  baselines: all-positive F1 {all_pos_f1:.4f}   majority-class accuracy {major:.4f}")
+    if imbalanced:
+        print(f"  headline: F1 {qcnn_f1:.4f} vs all-positive {all_pos_f1:.4f} "
+              f"({qcnn_f1/max(all_pos_f1,1e-9):.1f}x). Accuracy {qcnn_acc:.4f} against a {major:.4f} "
+              f"majority baseline would flatter it and is NOT the headline.")
+    verdict = ("BEATS" if (qcnn_f1 if imbalanced else qcnn_acc) > (all_pos_f1 if imbalanced else major)
+               else "DOES NOT beat")
+    print(f"  verdict: QCNN {verdict} its baseline; classical LR is "
+          f"{'ahead' if (lr_f1 if imbalanced else lr_acc) > (qcnn_f1 if imbalanced else qcnn_acc) else 'behind'}")
 
     th, sc, bi = best_state
     out = REPO / "models" / f"qcnn_{a.usecase}"
@@ -195,12 +268,17 @@ def main() -> int:
     (out / "weights.json").write_text(json.dumps({
         "usecase": a.usecase, "n_qubits": N_QUBITS, "layers": a.layers,
         "theta": th.tolist(), "scale": sc, "bias": bi,
-        "feature_names": names, "input_space": "zscore", "encoding": "tanh",
+        "feature_names": names, "input_space": INPUT_SPACE, "encoding": "tanh",
         "feature_mean": mu.tolist(), "feature_std": sd.tolist(),
         "provenance": prov,
-        "test_accuracy": round(best, 6),
+        "test_accuracy": round(qcnn_acc, 6),
         "classical_lr_accuracy": round(float(lr_acc), 6),
         "majority_baseline": round(float(major), 6),
+        "test_minority_f1": round(qcnn_f1, 6),
+        "classical_lr_minority_f1": round(lr_f1, 6),
+        "all_positive_f1": round(all_pos_f1, 6),
+        "test_prevalence": round(prevalence, 6),
+        "headline_metric": "minority_class_f1" if imbalanced else "accuracy",
         "n_train": int(cut), "n_test": int(len(y) - cut),
         "note": ("Variational QCNN trained by backpropagation through a dense state vector. The "
                  "prediction path applies NO QOTP mask: undoing a Pauli frame through Clifford+T is "

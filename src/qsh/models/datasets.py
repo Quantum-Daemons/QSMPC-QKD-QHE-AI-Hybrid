@@ -252,7 +252,7 @@ def cicids2017_fixed_dir() -> Path:
 # ESA-ADB's continuous multichannel series -- so its result is not comparable with the Telemanom
 # forecaster's, and neither number should be presented as the other's baseline.
 #
-# Kotowski et al., "The OPS-SAT benchmark for detecting anomalies in satellite telemetry",
+# Ruszczak et al., "The OPS-SAT benchmark for detecting anomalies in satellite telemetry",
 # Scientific Data 12 (2025), s41597-025-05035-3. Code MIT at kplabs-pl/OPS-SAT-AD.
 OPSSAT_FETCH = (
     "curl -L -o \"$QSH_DATA_ROOT/raw/opssat/dataset.csv\" "

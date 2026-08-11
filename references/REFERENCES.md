@@ -350,10 +350,34 @@ Round 21 audit: these are quoted as authority in registry docstrings, model card
 config, and had no entry. A baseline a page prints beside a measured number is a citation, so it
 belongs in this file rather than only in a comment.
 
-- **Kotowski et al., "The OPS-SAT benchmark for detecting anomalies in satellite telemetry",
-  *Scientific Data* 12 (2025).** DOI 10.1038/s41597-025-05035-3. Data: Zenodo
-  10.5281/zenodo.12588359, CC BY 4.0. Source of the 30 published baselines `satellite_comms.opssat`
-  is quoted against. Added: 2026-08-07.
+- **Ruszczak, Kotowski, Evans & Nalepa, "The OPS-SAT benchmark for detecting anomalies in
+  satellite telemetry", *Scientific Data* 12, 710 (2025).** DOI 10.1038/s41597-025-05035-3. Data:
+  Zenodo 10.5281/zenodo.12588359, CC BY 4.0. Source of the 30 published baselines
+  `satellite_comms.opssat` is quoted against. Added: 2026-08-07.
+- **Kotowski, Haskamp, Andrzejewski, Ruszczak, Nalepa et al., "European Space Agency Benchmark for
+  Anomaly Detection in Satellite Telemetry".** arXiv:2406.17826. Data: Zenodo
+  10.5281/zenodo.12528696, CC BY 3.0 IGO. Source of the 0.968 event-wise F0.5 baseline
+  `satellite_comms.telemanom` is quoted against - Supplementary Table 9 (anomalies alone), NOT
+  Table 2 (all events), which is a different comparator and was once cited by mistake.
+  Added: 2026-08-11.
+
+> **These are two different papers by an overlapping group, and conflating them is an easy mistake to
+> make - one that was made here.** OPS-SAT-AD is **Ruszczak** first (Scientific Data, Zenodo
+> ...12588359, CC BY 4.0, the corpus `satellite_comms.opssat` trains on). ESA-ADB is **Kotowski**
+> first (arXiv:2406.17826, Zenodo ...12528696, CC BY 3.0 IGO, the corpus `satellite_comms.telemanom`
+> is scored against). Thirteen places in this repository credited OPS-SAT-AD to "Kotowski et al.",
+> and the 2D overlay credited Ruszczak with the title of an unrelated algebraic-geometry paper. Both
+> were fixed by checking Crossref and Zenodo, not by checking another file here. Before bulk-editing
+> either name, confirm WHICH benchmark the line is about: the DOI and the Zenodo id are the reliable
+> discriminators, and the author surname is not.
+>
+> A third variant to expect: the ESA-ADB **Zenodo record** lists **De Canio** first (contact person),
+> then Kotowski and Haskamp as researchers, while the **paper** is Kotowski first. Citing the paper
+> for the benchmark and the Zenodo DOI for the data - as the two entries above do - is correct and is
+> not an inconsistency. Verified 2026-08-11 against Crossref, the arXiv listing and both Zenodo
+> records. Note that the CC BY 3.0 IGO term appears on the Zenodo landing page but NOT in its REST
+> metadata, which returns no licence at all - so an API-only check will wrongly read as unlicensed.
+
 - **Yang et al., "MedMNIST v2", *Scientific Data* 10:41 (2023).** DOI 10.1038/s41597-022-01721-8.
   Source of the BreastMNIST ResNet-18 AUC 0.901 / ResNet-50 AUC 0.857 baselines. Added: 2026-08-07.
 - **Altman et al., "Realistic Synthetic Financial Transactions for Anti-Money Laundering Models",

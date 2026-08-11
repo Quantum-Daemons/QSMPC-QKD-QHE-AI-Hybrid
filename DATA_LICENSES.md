@@ -30,7 +30,7 @@ non-exclusive"* - a licensing mistake there cannot be undone.
 | **Medical (runtime default)** | [MedMNIST v2 **PneumoniaMNIST**](https://medmnist.com/) (derived from Kermany et al. chest X-ray) | **CC BY 4.0** | **Yes** | The *runtime* default for the medical use case (`src/qsh/data/loaders.py`, `src/qsh/config/defaults.py`, and downloaded at image build in `docker/Dockerfile.api`) - a different subset from BreastMNIST, which is what the trained model uses. Cite Yang et al. **and** the upstream Kermany et al. source. |
 | **Medical (pretraining)** | **none** - the published weights are trained from random initialisation | n/a | **Yes** | `scripts/train/medical_breastmnist.py --from-scratch`. `models/metrics.json` records `transfer_learning: none`, so no ImageNet term attaches to the published artefact. Note the script's *default* is still `IMAGENET1K_V1`: re-running without the flag would reintroduce the unresolved redistribution question. |
 | **Satellite** | [ESA Anomaly Dataset](https://zenodo.org/records/12528696), Mission1 lightweight channels 41-46 | **CC BY 3.0 IGO** | **Yes** | Missions are anonymised `Mission1/2/3` - they are **not** named Sentinel anything. Multi-year telemetry, ~15.4M samples per channel. (**Unresolved:** this file said 14 years and `src/qsh/models/registry.py` said 17.5 for the same corpus. The ESA-ADB Zenodo record, arXiv:2406.17826 abstract and the kplabs-pl/ESA-ADB README do not state the span, so neither figure was re-verified; the specific number is withheld here rather than asserted.) Only labels whose `anomaly_types.csv` Category is `Anomaly` count as positives; the annotated **rare *nominal* events** are not faults and scoring them as such would inflate the anomaly rate. |
-| **Satellite (second model)** | [OPS-SAT-AD](https://zenodo.org/records/12588359) | **CC BY 4.0** | **Yes - including the data itself** | Kotowski et al., *The OPS-SAT benchmark for detecting anomalies in satellite telemetry*, Scientific Data 12 (2025), `s41597-025-05035-3`; code MIT at `kplabs-pl/OPS-SAT-AD`. 2,123 annotated segments across 9 channels from ESA's OPS-SAT CubeSat, 20.4% anomalous, with 19 precomputed per-segment features and the benchmark's own train/test split. **The only corpus in this project whose DATA may be redistributed, not just derived weights** - CC BY 4.0 and 507 KB, against ESA-ADB's CC BY 3.0 IGO and 3.6 GB. The published test partition ships entire inside the model's own HF repo as `eval_sample.json`, so the browser reproduces the figure the dataset's 30 published baselines are quoted against. A **different task** from ESA-ADB above: segment classification, not forecasting, so the two scores are not comparable and neither is the other's baseline. |
+| **Satellite (second model)** | [OPS-SAT-AD](https://zenodo.org/records/12588359) | **CC BY 4.0** | **Yes - including the data itself** | Ruszczak et al., *The OPS-SAT benchmark for detecting anomalies in satellite telemetry*, Scientific Data 12 (2025), `s41597-025-05035-3`; code MIT at `kplabs-pl/OPS-SAT-AD`. 2,123 annotated segments across 9 channels from ESA's OPS-SAT CubeSat, 20.4% anomalous, with 19 precomputed per-segment features and the benchmark's own train/test split. **The only corpus in this project whose DATA may be redistributed, not just derived weights** - CC BY 4.0 and 507 KB, against ESA-ADB's CC BY 3.0 IGO and 3.6 GB. The published test partition ships entire inside the model's own HF repo as `eval_sample.json`, so the browser reproduces the figure the dataset's 30 published baselines are quoted against. A **different task** from ESA-ADB above: segment classification, not forecasting, so the two scores are not comparable and neither is the other's baseline. |
 | **Telecom (declared, NOT implemented)** | [CIC-IDS2017](https://www.unb.ca/cic/datasets/ids-2017.html), [Engelen-corrected](https://intrusion-detection.distrinet-research.be/WTMC2021/) | **the provider's two pages disagree** | **No** | Re-checked 2026-08-05, and the earlier wording here was too strong. The CIC's institute-level FAQ states *"You may redistribute, republish, and mirror our datasets in any form; however, any use or redistribution of the data must include a citation"*, and places it under commercial use. The CICIDS2017 dataset page itself says only *"publicly available for researchers"* and names no licence. So terms ARE stated, they just conflict - which is an unresolved ambiguity, not a permission, and the same class of question Round 19 settled by removing the ImageNet dependency rather than guessing. The Engelen redistribution is separately hosted and states nothing. **Absent a consistent affirmative grant, neither is bundled or redistributed.** **No code path loads it:** `cicids2017_fixed_dir()` is never called; the shipped telecom model trains on synthetic telemetry. Cite Engelen, Rimmer & Joosen (WTMC 2021) *and* Sharafaldin et al. (2018). |
 
 **ESA-ADB channels are distributed as Python pickles.** Unpickling arbitrary downloaded bytes
@@ -62,6 +62,41 @@ construction rather than because someone inspected one file once.
 > answers that question explicitly in its own text (section 3.5), so it is the corpus the published finance
 > model is trained on. PaySim stays as a bundled demo sample, which is plain redistribution under
 > CC BY-SA with attribution - a case the licence does cover.
+
+## 2b. Derived artefacts: 2D overlay slices and trained QCNN weights
+
+These are committed and served by the demo, so they are redistribution and belong in this register.
+They were added after section 2 was written and are a different category from a demo sample: an
+overlay slice is a projection of a corpus, and QCNN weights are a model fitted on one.
+
+| File | Licence | Source and reasoning |
+|---|---|---|
+| `web/public/data/satellite/real_2d.json` | **CC BY 4.0** | OPS-SAT-AD held-out split, two of its published per-segment features. Ruszczak, Kotowski, Evans & Nalepa, *The OPS-SAT benchmark for detecting anomalies in satellite telemetry*, Scientific Data 12, 710 (2025), DOI 10.1038/s41597-025-05035-3; data Zenodo 10.5281/zenodo.12588359. Redistributable, and it is the corpus the shipped model trains on. |
+| `web/public/data/medical/real_2d.json` | **CC BY 4.0** | Wisconsin Diagnostic Breast Cancer (UCI dataset 17), attribution required - same corpus and terms as `breast_cancer_sample.json` in section 2. Flagged `is_training_corpus: false` in the payload because the published medical model trains on BreastMNIST: this is a **different cohort**, drawn to give the page a redistributable overlay, and the page says so. |
+| `web/public/data/finance/real_2d.json` | **CDLA-Sharing-1.0 (SHARE-ALIKE)** | IBM AMLworld HI-Small held-out rows. Unlike trained weights, this slice **is** Data under CDLA-Sharing, so the reciprocity in section 3 of that licence does attach and the payload states the terms in its own `licence` field. |
+| `web/public/data/genomics/real_2d.json`, `data/genomics/gnomad_af.json` | **CC0 1.0** | gnomAD v4 allele frequencies for the 77 PGS000001 variants (Broad Institute). CC0 waives attribution; the payload credits gnomAD anyway because a citation request is a norm even where it is not a condition. Chosen over redistributing 1000 Genomes genotypes, which section 4 does not permit. |
+| `models/qcnn_medical/weights.json`, `web/public/data/medical/qcnn_weights.json` | **CC BY 4.0** | Variational QCNN angles fitted on 8 of the 30 WDBC features. Attribution-only, so publishing weights raises no reciprocity question. |
+| `models/qcnn_finance/weights.json`, `web/public/data/finance/qcnn_weights.json` | **CC BY-SA 4.0 (ShareAlike), and this is a deliberate exception** | Fitted on `data/finance/paysim_sample.tsv`, which is CC BY-SA. See the note below. |
+
+> **The finance QCNN is trained on PaySim, which section 2 says the published models are not - and
+> that is a real tension, recorded rather than smoothed over.** The rule above exists because
+> ShareAlike propagation from a training set to model weights is legally unsettled, so AMLworld,
+> whose licence answers the question in its own text, is the corpus every **published** finance model
+> uses. The QCNN cannot follow that rule without breaking a different one. Its eight inputs are the
+> demo pipeline's feature schema - `amount`, `velocity_24h`, `cross_border`, `night_tx`, `new_payee`,
+> `amount_zscore`, `device_risk`, `geo_mismatch` - which is what the browser actually feeds it.
+> AMLworld reaches the browser as 32 z-scored graph features, a different space entirely. Training on
+> AMLworld and serving PaySim-shaped inputs would reintroduce precisely the feature-space mismatch
+> that made the first trained QCNN meaningless, where seven of eight features pinned to -1 (checklist
+> QC4). Between shipping a model that cannot work and accepting a ShareAlike obligation, the second
+> is the smaller problem.
+>
+> So the obligation is accepted rather than argued away. These weights are offered under **CC BY-SA
+> 4.0**, not the project's Apache-2.0, exactly as the bundled PaySim rows in section 2 are. They are
+> **deliberately absent from the Hugging Face publication path** - `models/metrics.json` has no
+> `qcnn` entry and no publish script references one - so the boundary being held is that PaySim
+> derivatives stay inside this repository and its demo, under the source licence, and are never
+> published as standalone model artefacts.
 
 ## 3. Telecom has no real dataset in the demo, and says so
 

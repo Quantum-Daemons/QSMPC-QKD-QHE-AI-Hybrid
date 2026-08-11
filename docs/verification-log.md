@@ -52,8 +52,8 @@ Dynamic parameter reaching all three surfaces, medical page, `qkd_distance_km` a
 
 | Distance | Diagram | qber | skr | secure_key_bits |
 |---|---|---|---|---|
-| 50 km | BB84 decoy-state · QBER 0.02 | 0.02 | 0.00906 | 1811 |
-| 250 km | BB84 decoy-state · QBER 0.5 | 0.5 | 0 | 0 |
+| 50 km | BB84 decoy-state . QBER 0.02 | 0.02 | 0.00906 | 1811 |
+| 250 km | BB84 decoy-state . QBER 0.5 | 0.5 | 0 | 0 |
 
 Diagram and metrics move together, and the key dies where the channel model says it should. Note that
 QBER is already pinned at its 0.5 ceiling by 250 km, earlier than the "around 400 km" this file
@@ -230,7 +230,7 @@ Verified on https://<demo-host> after each deploy, not locally.
 Browser-verified after deploy:
 
 - finance: gap note renders the corrected architecture explanation, no 4-hop claim
-- satellite: `event_wise_f0_5 0.4545 baseline 0.786 · over 3 labelled events - too few to compare`
+- satellite: `event_wise_f0_5 0.4545 baseline 0.786 . over 3 labelled events - too few to compare`
 - satellite student: the teacher-scored-zero caveat renders and says a negative delta does NOT mean
   the student outperformed its teacher
 - medical student: `auc 0.6092 baseline 0.901`, `n_classes_predicted 2`, `majority_class_rate 0.7308`,

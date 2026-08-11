@@ -82,7 +82,11 @@ def run_demo(config: dict | None = None) -> dict:
         # stopped pinning one -- and a pinned 4099 was outside the paper's admissible field anyway.
         "ground_truth_total": ctx.data["_ground_truth_total"] % ctx.artifacts["qsms_prime"],
         "prs": ctx.data.get("_prs"),
-        "private_risk_class": ctx.artifacts.get("fhe_prediction"),   # 1 = high genetic risk (PRS > threshold)
+        # Canonical key, not one backend's - see stages.py. Reading `fhe_prediction`
+        # alone meant a QCNN run computed a class and this surfaced None.
+        "private_risk_class": ctx.artifacts.get("private_prediction",
+                 ctx.artifacts.get("fhe_prediction")),
+        "private_risk_class_backend": ctx.artifacts.get("private_prediction_backend"),
         "explanation": ctx.artifacts.get("explanation"),
         "metrics": m,
     }

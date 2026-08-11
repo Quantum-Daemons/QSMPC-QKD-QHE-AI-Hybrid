@@ -1,6 +1,6 @@
 {
  "task": "classification",
- "provenance": "OPS-SAT-AD (Kotowski et al., Scientific Data 12, 2025; Zenodo 10.5281/zenodo.12588359, CC BY 4.0). Real telemetry from ESA's OPS-SAT CubeSat. The benchmark's own test partition entire and unsampled, the published ONNX graph applies the quadratic expansion and the z-scoring itself, so these are raw feature values and the caller applies nothing.",
+ "provenance": "OPS-SAT-AD (Ruszczak et al., Scientific Data 12, 2025; Zenodo 10.5281/zenodo.12588359, CC BY 4.0). Real telemetry from ESA's OPS-SAT CubeSat. The benchmark's own test partition entire and unsampled, the published ONNX graph applies the quadratic expansion and the z-scoring itself, so these are raw feature values and the caller applies nothing.",
  "input": {
   "shape": [
    1,
