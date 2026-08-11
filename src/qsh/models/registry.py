@@ -222,7 +222,7 @@ DS_OPSSAT_AD = DatasetSpec(
     notes=(
         "2,123 annotated telemetry segments across 9 channels from ESA's OPS-SAT CubeSat, 20.4% "
         "anomalous, with 18 published per-segment features plus a `sampling` metadata column, and the benchmark's own train/test "
-        "split. Kotowski et al., Scientific Data 12 (2025). CC BY 4.0 and 507 KB, so unlike every "
+        "split. Ruszczak et al., Scientific Data 12 (2025). CC BY 4.0 and 507 KB, so unlike every "
         "other corpus here the DATA can be redistributed as well as the weights. A different task "
         "from ESA-ADB: segment classification, not forecasting, so its score is not comparable "
         "with the Telemanom model's and neither is the other's baseline."
@@ -394,7 +394,7 @@ M_OPSSAT = MetricSpec(
     name="auc_pr",
     display="AUC PR",
     baseline=0.979,
-    baseline_source=("FCNN, best of the 30 algorithms benchmarked in Kotowski et al., Scientific "
+    baseline_source=("FCNN, best of the 30 algorithms benchmarked in Ruszczak et al., Scientific "
                      "Data 12 (2025), on this dataset's own test split (AUC PR 0.979, F1 0.946, "
                      "MCC 0.932). XGBOD reaches 0.975 and RF+ICCS 0.963."),
     ceiling=0.979,

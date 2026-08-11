@@ -37,7 +37,7 @@ a quantum-safe orchestration demo. This is the **plaintext** model for the
 ## Published baselines this is measured against
 
 - **Target metric**: AUC PR
-- **Baseline to beat**: 0.979 - FCNN, best of the 30 algorithms benchmarked in Kotowski et al., Scientific Data 12 (2025), on this dataset's own test split (AUC PR 0.979, F1 0.946, MCC 0.932). XGBOD reaches 0.975 and RF+ICCS 0.963.
+- **Baseline to beat**: 0.979 - FCNN, best of the 30 algorithms benchmarked in Ruszczak et al., Scientific Data 12 (2025), on this dataset's own test split (AUC PR 0.979, F1 0.946, MCC 0.932). XGBOD reaches 0.975 and RF+ICCS 0.963.
 - **Published ceiling**: 0.979 - FCNN, the best of the 30 published baselines - there is no higher number to cite.
 - **Companion metric shown alongside**: `f1` - reported together because the aggregate figure can look healthy while the class that matters is not.
 
@@ -47,7 +47,7 @@ a quantum-safe orchestration demo. This is the **plaintext** model for the
 - **Licence**: CC-BY-4.0
 - **Source**: https://zenodo.org/records/12588359 (licence read 2026-08-05)
 
-2,123 annotated telemetry segments across 9 channels from ESA's OPS-SAT CubeSat, 20.4% anomalous, with 19 precomputed per-segment features and the benchmark's own train/test split. Kotowski et al., Scientific Data 12 (2025). CC BY 4.0 and 507 KB, so unlike every other corpus here the DATA can be redistributed as well as the weights. A different task from ESA-ADB: segment classification, not forecasting, so its score is not comparable with the Telemanom model's and neither is the other's baseline.
+2,123 annotated telemetry segments across 9 channels from ESA's OPS-SAT CubeSat, 20.4% anomalous, with 19 precomputed per-segment features and the benchmark's own train/test split. Ruszczak et al., Scientific Data 12 (2025). CC BY 4.0 and 507 KB, so unlike every other corpus here the DATA can be redistributed as well as the weights. A different task from ESA-ADB: segment classification, not forecasting, so its score is not comparable with the Telemanom model's and neither is the other's baseline.
 
 ## Notes and limitations
 

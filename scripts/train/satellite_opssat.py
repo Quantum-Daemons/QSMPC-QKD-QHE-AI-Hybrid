@@ -2,8 +2,8 @@
 """Detect anomalous OPS-SAT telemetry segments, and distil the detector to run under CKKS.
 
 WHAT THIS IS
-    A second, independent satellite model, trained on the OPS-SAT anomaly benchmark (Kotowski et
-    al., Scientific Data 12, 2025; CC BY 4.0). It exists because that benchmark ships **30
+    A second, independent satellite model, trained on the OPS-SAT anomaly benchmark (Ruszczak et
+    al., Scientific Data 12, 710, 2025; CC BY 4.0). It exists because that benchmark ships **30
     published baselines** on its own train/test split, so a result here has thirty comparators
     instead of one.
 

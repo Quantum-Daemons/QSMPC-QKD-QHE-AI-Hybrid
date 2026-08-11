@@ -516,7 +516,7 @@ def build_satellite_opssat(rng: np.random.Generator) -> dict:
 
     return {
         "provenance": (
-            "OPS-SAT-AD (Kotowski et al., 'The OPS-SAT benchmark for detecting anomalies in "
+            "OPS-SAT-AD (Ruszczak et al., 'The OPS-SAT benchmark for detecting anomalies in "
             "satellite telemetry', Scientific Data 12, 2025; Zenodo 10.5281/zenodo.12588359, "
             "CC BY 4.0). Real telemetry from ESA's OPS-SAT CubeSat, which reentered in May 2024. "
             "These are the 19 precomputed per-segment features of the benchmark's own TEST "
@@ -828,7 +828,7 @@ def build_opssat_student(rng: np.random.Generator) -> dict:
     return {
         "task": "classification",
         "provenance": (
-            "OPS-SAT-AD (Kotowski et al., Scientific Data 12, 2025; Zenodo "
+            "OPS-SAT-AD (Ruszczak et al., Scientific Data 12, 2025; Zenodo "
             "10.5281/zenodo.12588359, CC BY 4.0). Real telemetry from ESA's OPS-SAT CubeSat. The "
             "benchmark's own test partition entire and unsampled, " + prep_note + "."),
         "input": {"shape": [1, int(z.shape[1])], "dtype": "float32", "preprocessing": [],
