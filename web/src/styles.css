@@ -225,7 +225,12 @@ hr { border: none; border-top: 1px solid var(--border); margin: 24px 0; }
 .mini-table td { padding: 3px 8px 3px 0; border-bottom: 1px solid var(--border); }
 .mini-table td.num { text-align: right; font-variant-numeric: tabular-nums; width: 120px; }
 .mini-table tr.metric-headline td { font-weight: 700; color: var(--accent-2); }
-.mini-table tr.metric-companion td { opacity: 0.62; }
+/* 0.85, not 0.62. Measured: `--muted` on `--panel` is 6.67:1 at full opacity, 3.41:1 at 0.62 - below
+   the 4.5:1 AA floor at this 12px size - and 5.20:1 at 0.85. Every non-warning row of the security
+   posture table carries this class, so only the FAILURES were legible in the table this project
+   offers as the replacement for its retired 0-100 composite. Still dimmer than the headline metric,
+   which is the whole intent. */
+.mini-table tr.metric-companion td { opacity: 0.85; }
 
 /* Verification charts. Two side by side on a wide screen, stacked on a phone: a precision-recall
    curve and its score histogram are a pair and lose most of their meaning apart. */
@@ -233,3 +238,20 @@ hr { border: none; border-top: 1px solid var(--border); margin: 24px 0; }
 @media (min-width: 900px) { .chart-pair { grid-template-columns: 1fr 1fr; } }
 .chart-figure { margin: 8px 0 0; }
 .chart-figure figcaption { margin-bottom: 6px; line-height: 1.45; }
+
+/* Keyboard focus. There was no `focus`, `focus-visible` or `outline` rule anywhere in this file, so
+   keyboard users got the UA default ring over `.btn { background: var(--accent) }` and
+   `.nav a.active { background: var(--accent) }` - a blue ring on blue. */
+:where(a, button, select, input, textarea, [tabindex]):focus-visible {
+  outline: 2px solid var(--text);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Text equivalent for content carried only by a graphic. `TwoPartyDiagram` is one `role="img"` with a
+   short label, which collapses its whole subtree for assistive tech - including the QBER, the
+   secure-key verdict, the QSDC abort reason and the advantage score. Announced, not drawn. */
+.sr-only {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
+}
