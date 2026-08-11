@@ -166,7 +166,7 @@ web/scripts/  check_mlkem_modulus_vectors.mjs - `npm run check:pqc`, FIPS 203 se
   train/      per-vertical training: finance_aml . medical_breastmnist . genomics_prs . satellite_telemanom
   data/      fetch_g1k_dosages.py (1000 Genomes provenance)
 docs/       architecture . crypto-agility . threat-model . pqc-roadmap
-            deliverable-verification . browser-verification-checklist . deployment
+            deliverable-verification . verification-log . deployment
 tests/       pytest suite
 ```
 
