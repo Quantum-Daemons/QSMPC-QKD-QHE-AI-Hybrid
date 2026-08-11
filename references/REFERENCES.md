@@ -858,3 +858,142 @@ project is a browser tab.
 - **Lee, Kim & Chung, "BPBO: Blindness-Preserving Brickwork Optimization by Certified Region
   Resynthesis."** arXiv:2606.29962, 2026-06-29. Grover-3 pattern reduced from 3x725 to 3x98 while
   preserving blindness.
+
+## Round 32 additions, verified at primary source 2026-08-11
+
+Same rule as the Round 31 section: every entry below was loaded at its arXiv abstract page, IACR eprint
+listing, PubMed record or agency PDF before being written here. Nothing came from a secondary write-up.
+Where a source could not be loaded it is marked and no number is taken from it.
+
+### Homomorphic inference: the cost driver, and a design that contests this repository's split
+
+- **Xie, Tan, Boddeti and Lu, "ATLAS: Automated Approximation of Transformers for Efficient Homomorphic
+  Inference in One Hour."** arXiv:2607.23478, 2026-07-26 `[link]`
+  URL: https://arxiv.org/abs/2607.23478
+  Names **multiplicative depth as the dominant cost** of homomorphic transformer inference, with a
+  per-layer configuration space reaching ~10^84 for a 12-layer BERT/ViT and 10^225 for 32-layer LLaMA3,
+  and 35-50% of candidate configurations numerically invalid. This is a **primary source for the
+  constraint `models/registry.py` asserts** in its T1 docstring, which until now rested on a secondary
+  systematisation (IACR 2026/935) plus Park et al.
+- **Lin and Wu (NTU), "Fine-Grained and Runtime-Configurable Precision for Exact FHE Inference"
+  (Tailor).** IACR ePrint 2026/1551, received 2026-07-29, approved 2026-08-03 `[link]`
+  URL: https://eprint.iacr.org/2026/1551
+  Per-layer precision becomes a runtime parameter under a single keygen; **ReLU and comparisons are
+  evaluated exactly, not approximated**; TFHE and FINAL backends; MNIST at 2-bit output / 4-bit elsewhere
+  reaches 96.44% in 222 s against uniform 4-bit's 96.17% in 236.1 s.
+  **This is the most architecturally consequential item in the batch and it is carried as a named
+  alternative, not a refinement.** This repository splits linear layers to FHE and non-linear layers to
+  MPC *because* non-linearities are expensive under CKKS. Tailor evaluates them exactly under FHE with no
+  MPC round at all. That does not refute the split - the demo's constraint is a browser tab, and Tailor's
+  222 s is a server measurement on TFHE rather than CKKS - but "CKKS cannot do non-linearities cheaply"
+  is no longer the whole story, and `docs/architecture.md` should name the alternative rather than imply
+  none exists.
+- **Gong, Tian, Zhang and Liu, "Verifiable and Collusion-Resistant Multi-Party Quantum Private Set
+  Operations."** IACR ePrint 2026/1436, received 2026-07-14 `[link]`
+  URL: https://eprint.iacr.org/2026/1436
+  Combines **verifiable quantum FHE as the outsourced-evaluation layer with threshold FHE as the
+  key-management mechanism**, instantiated on IBM Quantum Platform, extended to private set union, and
+  resilient to collusion between the third party and participants. This is the QSMPC x QHE composition
+  this repository is named after, in one protocol: `qhe/rate1_qfhe.py` had a quantum anchor
+  (Chardouvelis-Doettling-Malavolta) and Round 31 added a classical ThFHE anchor (2026/1559) separately.
+  Note Fengxia Liu is also first author of arXiv:2604.23490, already cited.
+
+### QKD security proofs and hardware, receiver side
+
+- **Navarrete, Pereira, Curras-Lorenzo, Mizutani, Curty and Tamaki, "Phase-error estimation for quantum
+  key distribution with leaky receivers."** arXiv:2608.09674, 2026-08-10 `[link]`
+  URL: https://arxiv.org/abs/2608.09674
+  Finite-key phase-error framework carrying leakage about **both basis choice and measurement outcome**,
+  requiring only a bound on side-channel state distinguishability, composable with existing
+  hardware-imperfection proofs, motivated by detector backflashes and back-reflected Trojan-horse light.
+  **The receiver-side counterpart to Round 31's transmitter-side arXiv:2606.29943**, published the same
+  day as the already-cited 2608.09793 by an overlapping author set. Directly relevant to the
+  `trojan_horse` and `wavelength_trojan` classes in `models/metrics.json`, which simulate receiver
+  leakage and cite no security proof for it.
+- **Konteli, Makris, Anastasiou, Tsimvrakidis and Kanellos, "Quantum-Level Crosstalk Characterization of
+  a 16x16 MEMS Optical Switch for Dynamic Quantum Communications."** arXiv:2607.24299, 2026-07-27 `[link]`
+  URL: https://arxiv.org/abs/2607.24299
+  All-to-all quantum-level crosstalk measured with SNSPDs on a **commercial** 16x16 MEMS switch, with the
+  theoretical impact expressed directly in **decoy-state BB84** terms. `qkd/sdn_controller.py` models
+  ETSI GS QKD 015 `PHYS`/`VIRT` links and resource allocation with **no crosstalk term**; this is the
+  measured physical-layer penalty a switched multi-user QKD network pays.
+
+### Browser-side inference cost
+
+- **Maczan, "Measuring and Reducing WebGPU Dispatch Overhead for LLM Inference."** arXiv:2608.08730,
+  2026-08-09; accepted to the Fourth UK AI Conference 2026, to appear in PMLR `[link]`
+  URL: https://arxiv.org/abs/2608.08730
+  Sequential-dispatch measurement method; per-dispatch cost is independent of dtype; **at batch size 1
+  the limit is dispatch overhead, not kernel quality**. A citable reason why in-tab inference is
+  latency-bound in a way no smaller model or better graph fixes, for `web/src/lib/onnxInference.ts` and
+  the T3 tier.
+
+### Homomorphic encryption applied to polygenic risk scores - a gap, not an addition
+
+`references/REFERENCES.md` had **no HE-genomics entry at all**, while the genomics use case is the one
+whose model is FHE-native by construction. Both entries below also **falsify a claim this repository
+makes**, in the direction of understating what is possible.
+
+- **Knight, Li, Jensen, Yolou, Kockan and Gerstein, "Homomorphic encryption enables privacy preserving
+  polygenic risk scores."** *Cell Reports Methods* 6(1):101271, published 2026-01-26 (epub 2026-01-08),
+  DOI 10.1016/j.crmeth.2025.101271, PMID 41512862 `[link]`
+  URL: https://doi.org/10.1016/j.crmeth.2025.101271
+  Open-source HEPRS; three-party model (clinician / model developer / evaluator); tested on a
+  schizophrenia model with **110,000 SNPs**; encrypted and plaintext PRSs "agree closely"; **"practical
+  to use on a single CPU"**.
+  **This is the citation that scopes the registry's T1 argument.** `genomics.prs` is 313 variants, and
+  `registry.py` explains T1 smallness by homomorphic cost. For this use case that is the wrong reason:
+  HEPRS runs roughly 350x more variants on one CPU, so the score is small because **PGS000004 has 313
+  variants** - a property of Mavaddat et al. 2018, not of CKKS. The cost argument still holds for
+  finance, medical and satellite, where the model is not a bare dot product.
+- **Provatas, Galanopoulos and Georgakopoulos-Soares, "bioETH-PRS: Confidential Polygenic Risk Scoring
+  without a Trusted Evaluator via Fully Homomorphic Encryption on a Programmable Blockchain."**
+  arXiv:2605.21634 [q-bio.GN], 2026-05-20 `[link]`
+  URL: https://arxiv.org/abs/2605.21634
+  Integer-exact **TFHE** on an fhEVM, with a three-step fixed-point quantisation for representing signed
+  GWAS weights as unsigned 64-bit integers at machine-epsilon reconstruction accuracy. A 2026 primary
+  source for the signed-weight encoding problem `models/genomics_prs/weights.json` already solves, and an
+  argument for why the evaluator role is worth separating.
+
+### Medical: latent-space encoding, and a note this repository overstates
+
+- **Kim, Jo, Ra and Park, "Privacy-Preserving Chest X-ray Classification in Latent Space with
+  Homomorphically Encrypted Neural Inference."** arXiv:2506.15258, v1 2025-06-18, v2 2025-06-20 `[link]`
+  URL: https://arxiv.org/abs/2506.15258
+  VQGAN compresses images to latents at an optimum **downsampling factor of eight**; activations replaced
+  with lower-degree polynomials; squeeze-and-excitation adapted to HE; two chest X-ray datasets.
+  `models/metrics.json` calls `medical_fl.student`'s 3,226 parameters over a 14x14 input "a
+  CKKS-feasibility budget". After this paper that is **a choice of input representation**, not a
+  feasibility limit - and this repository is unusually well placed for the alternative, because the
+  client is a browser tab already running `onnxruntime-web`, so an encoder could run locally in plaintext
+  with no privacy loss at all. Recorded as a falsifiable trigger in the additional-model decision rather
+  than acted on this round.
+
+### Standards: nothing newer, and one uncited instrument
+
+- **No PQC migration instrument newer than OMB M-26-15** (2026-06-24). The Federal Register API, term
+  "post-quantum cryptography", publication date >= 2026-06-25, returns three documents; the only one
+  after M-26-15 is **FCC 2026-15600**, 91 FR 48320, published 2026-07-31, whose full text mentions
+  post-quantum cryptography **once**, as a question for comment: "should we account for that risk
+  through post-quantum cryptography?" No date, no timeline - not a migration instrument.
+- **NIST IR 8547 re-verified still at Initial Public Draft** (published 2024-11-12, comments closed
+  2025-01-10, no second draft, no final). `docs/pqc-roadmap.md` holds. FIPS 206 IPD and an HQC draft:
+  **NOT FOUND** - no June/July/August 2026 item for either on csrc.nist.gov/News.
+- **A second quantum executive order was published the same day as EO 14412 and is cited nowhere here.**
+  "Ushering in the Next Frontier of Quantum Innovation", Federal Register document 2026-12910,
+  **91 FR 38487**, published 2026-06-25. EO 14412 is 2026-12909 at 91 FR 38483. Recorded because a
+  roadmap that cites one of two same-day quantum EOs looks like it missed one.
+
+### Negative results, re-verified 2026-08-11
+
+- **No in-browser FHE or MPC has been published, third consecutive round.** An IACR full-text search for
+  "WebAssembly browser" returns 3 results across all years, the newest crypto-relevant one still
+  **2025/487 webSPDZ**. An arXiv sweep of (WebAssembly OR "in the browser" OR browser-based) against
+  (homomorphic OR "secure multiparty" OR garbled OR "private inference"), newest first, returns nothing
+  in-browser; a separate (WebGPU OR WebAssembly) sweep across cs.CR/cs.LG/cs.DC finds nothing evaluating
+  ciphertext in a tab. The composition novelty claim rests on this and it continues to hold.
+- **No encrypted-inference work specific to AML or to satellite telemetry.** Searches for (homomorphic OR
+  secure inference OR privacy-preserving) against (money laundering OR fraud detection) surface only
+  federated work in 2026; the same against (satellite OR telemetry OR spacecraft) surfaces no encrypted
+  telemetry anomaly detection at all. So the encrypted tiers on those two pages are demonstrations rather
+  than reproductions of anyone's deployment, which is what they should be described as.

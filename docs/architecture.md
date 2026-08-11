@@ -122,6 +122,20 @@ client offload for the latency win, eprint 2026/1527 becomes directly applicable
 confidentiality claim must be withdrawn at the same time. Anyone making that change should read it
 first.
 
+**A third option exists as of 2026, and it is named here rather than left implied away.** The split
+above rests on non-linearities being expensive under CKKS. Lin and Wu's **Tailor** (IACR ePrint
+2026/1551, approved 2026-08-03) evaluates **ReLU and comparisons exactly under FHE** - not
+polynomial-approximated - with per-layer precision as a runtime parameter under a single keygen,
+reporting MNIST at 96.44% in 222 s. So there is a design that needs **no MPC round at all**.
+
+That does not refute this repository's choice, and the reasons are specific rather than defensive.
+Tailor's backends are TFHE and FINAL, not CKKS, so adopting it means changing scheme and not just
+layer assignment; 222 s is a server measurement, against a demo whose budget is a page interaction in a
+single-threaded WASM tab; and the exactness that makes it attractive is what makes it slow. But the
+sentence "non-linearities go to MPC because CKKS cannot do them cheaply" is now only half the story,
+and the half it omits is the one a reviewer will raise. Recorded as an alternative design with its
+trade-off, not as a refinement of this one.
+
 ### The split itself
 The 2026-standard private-inference split (Gazelle -> Delphi -> BOLT -> Bumblebee -> BLB; EncFormer)
 is **linear layers under FHE** (matmul/conv as CKKS; GPU-accelerable via HEonGPU) and **non-linear
