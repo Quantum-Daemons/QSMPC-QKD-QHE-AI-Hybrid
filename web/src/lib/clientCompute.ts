@@ -605,6 +605,8 @@ export interface MeasuredHybrid {
 export interface RealHybridRun extends MeasuredHybrid { prediction: number; maxAbsError: number; }
 
 let _fheWarmed = false;
+/** Whether the one-time CKKS/MPC warm-up has already run in this tab. */
+const fheReady = () => _fheWarmed && _mpcWarmed;
 let _mpcWarmed = false;
 
 // Run a GENUINE encrypted hybrid inference entirely in the browser: a small linear model evaluated under
@@ -628,7 +630,8 @@ async function publishedStudentWeights(usecase: string | undefined): Promise<Cnn
     const art = spec?.artifacts?.find((a) => a.path.endsWith("weights.json"));
     if (spec?.hf_repo_id && spec.hf_revision && art) {
       const url = `https://huggingface.co/${spec.hf_repo_id}/resolve/${spec.hf_revision}/${art.path}`;
-      const res = await fetch(url, { mode: "cors" });
+      // Bounded for the same reason as the two in `onnxInference` - see HF_FETCH_TIMEOUT_MS there.
+      const res = await fetch(url, { mode: "cors", signal: AbortSignal.timeout(30_000) });
       if (res.ok) {
         const j = await res.json();
         // Only the structural CNN encoding is evaluable here; a linear student's JSON is a
@@ -1788,6 +1791,18 @@ export function runClientPipeline(
         // The medical CNN workload runs a genuine encrypted convolution.
         // Medical always evaluates its published student's convolution; the other use cases have
         // linear students, for which the packed dot product IS the real model.
+        // Announce the one-time warm-up BEFORE it blocks. SEAL key generation (public + Galois keys at
+        // N=8192) runs synchronously inside WASM on the main thread, and `clientFHE` records that this
+        // "made the first click feel like a hang"; summon compile and emp-wasm init follow. The tab
+        // cannot repaint through any of it, so a visitor's first Run looked frozen with the badge on
+        // `running`. The fix that was applied then was to make keygen cheaper; saying it is happening
+        // costs one line and is what a visitor actually needs.
+        if (!fheReady()) {
+          emit("log", stage, "first run in this tab: generating CKKS keys and compiling the "
+            + "garbled-circuit backend locally. This happens once and blocks briefly - no key "
+            + "material leaves the browser.");
+          await sleep(0);        // yield once so the log line paints before WASM takes the thread
+        }
         const real = await realClientHybrid(feats, u, usecase === "medical_fl", usecase);
         if (real) {
           // A real encrypted convolution is not scaled by anything: its latency IS the measurement.

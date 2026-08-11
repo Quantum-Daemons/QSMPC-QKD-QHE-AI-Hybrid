@@ -8,7 +8,21 @@
     <meta name="description" content="E2E quantum-safe orchestration: QKD + QSMPC + QHE/FHE + privacy-preserving AI on a PQC-first hybrid foundation." />
   </head>
   <body>
-    <div id="root"></div>
+    <!-- Inlined so it paints before the 1.6 MB entry chunk arrives. A bare #root left a first-time
+         visitor looking at an empty dark rectangle for as long as the download took, with no
+         indication that anything was happening or that the wait is a one-off. -->
+    <div id="root"><div style="max-width:640px;margin:14vh auto;padding:0 24px;font-family:ui-sans-serif,system-ui,sans-serif;color:#e6edf6">
+      <div style="font-weight:700;font-size:20px;letter-spacing:.2px">QSH &mdash; Quantum-Safe Hybrid Orchestration</div>
+      <p style="color:#97a3b6;font-size:14px;line-height:1.6;margin-top:10px">
+        Loading the in-browser cryptography demo. The post-quantum, homomorphic-encryption and
+        secure-multiparty-computation code all run in this tab, so the first load fetches them once.
+      </p>
+      <noscript><p style="color:#f5a623;font-size:14px;line-height:1.6">
+        This demo computes entirely in your browser &mdash; post-quantum key exchange, CKKS homomorphic
+        encryption and garbled-circuit MPC &mdash; so it needs JavaScript and WebAssembly. There is no
+        server-side fallback, because there is no server-side compute.
+      </p></noscript>
+    </div></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
