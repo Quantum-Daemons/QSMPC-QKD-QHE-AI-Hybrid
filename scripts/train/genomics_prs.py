@@ -2,25 +2,31 @@
 """Evaluate the breast-cancer polygenic risk score across genetic ancestries.
 
 There is nothing to train here, and that is the point. A PRS is a published per-SNP effect-weight
-vector — PGS000001 is 77 variants from Mavaddat et al. — applied as a dot product. It is the rare
+vector — PGS000004 (PRS313) is 313 variants from Mavaddat et al. 2018 — applied as a dot product.
+It is the rare
 model that is simultaneously the clinical standard and FHE-native, because a dot product is exactly
 what CKKS evaluates well. Presenting a genomic foundation model as a PRS method would be the most
 obvious credibility hole available, so this script does not.
 
 WHAT CANNOT BE MEASURED HERE, AND WHY IT IS STILL REPORTED
     1000 Genomes is a reference panel. It has no breast-cancer case/control status, so no AUROC can
-    be computed from it. The published AUROC of 0.628 comes from a case-control cohort of n=200,195,
-    which is access-controlled. Any AUROC this repository printed from 1000 Genomes would be
-    fabricated. The published figure is therefore carried as a citation and labelled as external,
-    never as something this run measured.
+    be computed from it, and no supervised model can be trained from it either - which is why this use
+    case has no QCNN and will not have one until a labelled cohort with usable terms exists. The
+    published AUROC comes from an access-controlled case-control cohort (PPM001647, n=400,812). Any
+    AUROC this repository printed from 1000 Genomes would be fabricated, so the published figure is
+    carried as a citation from `MetricSpec.baseline` - not restated here, so the two cannot drift -
+    and is labelled external, never as something this run measured.
 
 WHAT IS MEASURED
     The score distribution per super-population. Effect weights estimated in one ancestry do not
     transport to another: allele frequencies differ, linkage disequilibrium differs, and the same
     absolute score means a different percentile in a different group. A single global "high risk"
     threshold therefore selects wildly different fractions of each population, and that is directly
-    computable from real genotypes without any phenotype. Published context: PGS313 AUROC drops from
-    0.64 (European) to 0.58 (South Asian) and 0.57 (African) in UK Biobank (EJHG, 2026-01-13).
+    computable from real genotypes without any phenotype. Published context, now about the very score
+    in use: PRS313's AUROC drops from 0.64 (European) to 0.58 (South Asian) and 0.57 (African) in UK
+    Biobank (EJHG, 2026-01-13), and PGS000004's own 28 Catalog AUROC records span 0.55 for an
+    African-ancestry sample against 0.5877-0.668 for European ones. The stratification measured below
+    reaches the same conclusion from allele frequencies alone.
 
 Usage:
     python scripts/train/genomics_prs.py
@@ -38,6 +44,7 @@ import numpy as np
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "src"))
 
+from qsh.data.loaders import _PRS_FILES, load_prs  # noqa: E402
 from qsh.models import datasets, train  # noqa: E402
 from qsh.models.registry import get as get_spec  # noqa: E402
 
@@ -46,22 +53,49 @@ from qsh.models.registry import get as get_spec  # noqa: E402
 HIGH_RISK_PERCENTILE = 90.0
 
 
-def load_dosages(path: Path) -> tuple[list[str], list[str], np.ndarray]:
+def load_dosages(path: Path, keys: list[str]) -> tuple[list[str], list[str], np.ndarray]:
+    """Sample ids and the dosage matrix, selecting the score's variant columns BY NAME.
+
+    This used to slice positionally - `r.split("\t")[1:]` - on the assumption that exactly one
+    metadata column precedes the variants. The PRS313 dosage file also carries `population` and
+    `super_population`, so the slice reached them and `int("GBR")` raised. That is the identical bug
+    `qsh.data.loaders.load_genomic_prs` was fixed for in Round 29, reproduced here because this script
+    parses the file itself instead of using the loader; the loader at least fails loudly, whereas its
+    own `except Exception` fallback would have substituted Hardy-Weinberg samples.
+
+    Selecting by name also fixes the quieter half: a positional slice silently accepts a column ORDER
+    that disagrees with the scoring file, which would score each individual on the wrong variants.
+    """
     rows = [ln for ln in path.read_text().splitlines() if ln.strip() and not ln.startswith("#")]
-    rsids = rows[0].split("\t")[1:]
+    header = rows[0].split("\t")
+    col = {name: j for j, name in enumerate(header)}
+    missing = [k for k in keys if k not in col]
+    if missing:
+        raise SystemExit(
+            f"{path.name} has no column for {len(missing)} of {len(keys)} score variants, e.g. "
+            f"{missing[:3]}. The dosage file and the scoring file belong to different scores, or are "
+            "keyed differently (rsID vs chr:pos:effect_allele).")
+    idx = [col[k] for k in keys]
     samples = [r.split("\t")[0] for r in rows[1:]]
-    dosages = np.asarray([[int(v) for v in r.split("\t")[1:]] for r in rows[1:]], dtype=np.float64)
-    return samples, rsids, dosages
+    dosages = np.asarray([[int(r.split("\t")[j]) for j in idx] for r in rows[1:]], dtype=np.float64)
+    return samples, list(keys), dosages
 
 
-def load_weights(path: Path) -> dict[str, float]:
-    out = {}
-    for line in path.read_text().splitlines():
-        if not line.strip() or line.startswith("#") or line.startswith("rsID"):
-            continue
-        p = line.split("\t")
-        out[p[0]] = float(p[3])
-    return out
+def load_weights(score: str) -> dict[str, float]:
+    """Variant key -> effect weight, using the SAME keying as the browser and the loader.
+
+    This used to parse the scoring file here, taking column 0 as the key and column 3 as the weight.
+    That is correct for the PGS000001 layout, where column 0 is `rsID`, and silently wrong for
+    PGS000004, where column 0 is `chr_name` and column 3 is `other_allele`: every variant on a
+    chromosome would collapse onto the key "1", and the weight lookup would try `float("A")`.
+
+    `qsh.data.loaders.load_prs` already resolves both layouts and is tested against both, so the join
+    key is built in exactly one place. Two implementations of the same keying is how the Python score
+    and the browser score come to disagree, which is the failure `loaders.py` says the staged approach
+    exists to avoid.
+    """
+    keys, _eff, weights = load_prs(score)
+    return dict(zip(keys, (float(x) for x in weights), strict=True))
 
 
 def load_panel(path: Path) -> dict[str, str]:
@@ -114,26 +148,46 @@ def audit_licence(prs_path: Path) -> dict:
 
 def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--prs", type=Path, default=Path("data/genomics/pgs000001_breast_cancer.tsv"))
+    # A SCORE NAME, not a path, so the scoring file and the dosage file cannot be mismatched. They
+    # are paired in `_PRS_FILES`, and pointing --prs at one score while the dosages default to the
+    # other is a KeyError at best and a silent wrong-variant join at worst.
+    ap.add_argument("--score", choices=sorted(_PRS_FILES), default="breast_cancer_prs313",
+                    help="which bundled PGS-Catalog score to use (PRS313 since Round 31)")
     ap.add_argument("--dosages", type=Path, default=None,
-                    help="defaults to the full panel if present, else the bundled 400-sample file")
+                    help="defaults to the full panel if present, else the score's bundled dosage file")
     ap.add_argument("--panel", type=Path, default=Path("data/genomics/g1k_panel.tsv"))
     ap.add_argument("--out", type=Path, default=Path("models/genomics_prs"))
     args = ap.parse_args()
 
     started = time.time()
+    score_file, dosage_file = _PRS_FILES[args.score]
+    prs_path = Path("data/genomics") / score_file
     dosage_path = args.dosages
     if dosage_path is None:
-        full = Path("data/genomics/g1k_dosages_full.tsv")
-        dosage_path = full if full.exists() else Path("data/genomics/g1k_dosages.tsv")
+        dosage_path = Path("data/genomics") / dosage_file
+        # `g1k_dosages_full.tsv` is the 2,504-sample panel for PRS77 ONLY, and it is keyed by rsID.
+        # An unconditional preference for it - which is what this used to be - hands PRS313 a file
+        # whose 77 column names match none of its 313 position keys. The guard below caught that, but
+        # the fallback should not have needed catching: it is score-specific, so it is scoped to the
+        # score it belongs to. PRS313's own dosage file already carries all 2,504 individuals.
+        if args.score == "breast_cancer":
+            full = Path("data/genomics/g1k_dosages_full.tsv")
+            if full.exists():
+                dosage_path = full
+    print(f"score:   {args.score} ({prs_path})")
     print(f"dosages: {dosage_path}")
 
-    samples, rsids, dosages = load_dosages(dosage_path)
-    weights_by_rsid = load_weights(args.prs)
-    w = np.array([weights_by_rsid[r] for r in rsids], dtype=np.float64)
+    # Weights FIRST, so the dosage columns are selected in the scoring file's own variant order
+    # rather than whatever order the dosage file happens to use. The alignment is then a name lookup,
+    # not an assumption, and `w` below indexes the same variant as column i of `dosages` by
+    # construction instead of by coincidence.
+    weights_by_key = load_weights(args.score)
+    keys = list(weights_by_key)
+    samples, rsids, dosages = load_dosages(dosage_path, keys)
+    w = np.array([weights_by_key[r] for r in rsids], dtype=np.float64)
     print(f"  {len(samples)} samples x {len(rsids)} SNPs")
 
-    licence = audit_licence(args.prs)
+    licence = audit_licence(prs_path)
     print(f"  licence audit: publishable={licence['publishable']}")
 
     scores = dosages @ w
@@ -184,7 +238,7 @@ def main() -> int:
     # ---- artefacts: the weight vector is the model ----------------------------
     args.out.mkdir(parents=True, exist_ok=True)
     (args.out / "weights.json").write_text(json.dumps({
-        "score_id": "PGS000001",
+        "score_id": "PGS000004",
         "trait": "breast cancer",
         "n_variants": len(rsids),
         "rsids": rsids,
@@ -206,9 +260,16 @@ def main() -> int:
         },
         "not_measured": {
             "auroc": None,
+            # No figure is written into this sentence. It used to say "the published 0.628 comes from
+            # n=200,195", and 0.628 was PGS000001's Harrell C-index -- so a field named
+            # `published_auroc_eur` held a value that was not an AUROC, which is exactly the mislabel
+            # `MetricSpec.baseline_source` was corrected for. Interpolating from the spec means the two
+            # cannot disagree again. PGS000004 does publish a genuine AUROC, so the field name is now
+            # accurate as well as consistent.
             "reason": ("1000 Genomes is a reference panel with no breast-cancer case/control status. "
-                       "AUROC requires a phenotyped cohort; the published 0.628 comes from n=200,195 "
-                       "and is carried as a citation, not as a measurement from this run."),
+                       "AUROC requires a phenotyped cohort, so the published figure is carried as a "
+                       f"citation, not as a measurement from this run: {spec.metric.baseline} "
+                       f"({spec.metric.display})."),
             "published_auroc_eur": spec.metric.baseline,
             "published_source": spec.metric.baseline_source,
         },

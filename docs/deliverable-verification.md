@@ -262,6 +262,41 @@ the version and the release history are recorded as facts, the gap is recorded a
 vulnerability is claimed. Re-check this on any round that touches the FHE path; the release cadence
 since April 2026 is roughly monthly.
 
+**Genomics has no label, so it has no QCNN: declined, and not for the reason recorded for two
+rounds.** The deferral condition on file was the per-score licence audit. Round 31 checked what would
+actually happen if that audit came back clean, and the answer is nothing: `scripts/train/qcnn_variational.py`
+is supervised end to end - `BCEWithLogitsLoss`, best epoch chosen on a validation split, and a report
+block comparing against `all_positive_f1` and `majority_baseline` - and **1000 Genomes is a reference
+panel with no breast-cancer case/control status**. `registry.py` already says so, and
+`genomics_prs.py` records `auroc=null` rather than inventing one. There is no `y` to train against.
+
+Two ways to manufacture one, both rejected on their merits rather than on effort:
+
+- **Regress the PRS itself.** The target would be a weighted dot product of the input dosages, which
+  is precisely what the CKKS path already computes exactly. The classical logistic-regression
+  baseline in the same script would win by construction, and would be right to. Fitting a
+  variational circuit to reproduce a linear function of its own inputs measures nothing.
+- **Dichotomise at the high-risk cut.** That derives the label from the model's own output, so the
+  circuit would be scored on agreeing with the thing it was given. It also inherits the finding this
+  use case exists to show - that one globally-set cut flags a far larger share of AFR than EUR - and
+  would relabel a known ancestry artefact as ground truth.
+
+So the honest scope is: finance and medical have trained QCNN weights because they have labelled
+corpora; genomics does not and will not until a labelled cohort with usable terms exists, which is a
+data-access question and not a modelling one. That is a stronger trigger than the licence audit,
+because a licence to redistribute a reference panel still would not put a phenotype in it.
+`tests/test_qcnn_usecases.py` continues to compare the availability set against the files on disk in
+both directions, so if weights ever do appear the claim cannot go unnoticed.
+
+**WS4(f), hiding the circuit from the client: not claimable on this machinery.** Moved here from the
+deferred list, because it is not a backlog item - it is in tension with the mechanism. Under plain
+QOTP the client decrypts by applying the circuit's action to its own Pauli frame, so "the client
+updates its frame" and "the client does not learn the circuit" are close to mutually exclusive.
+`qcnn.py` emits `hides_circuit_from_client: False` and `tests/test_qhe_fhe.py` asserts it is False, so
+claim, artifact and test agree. Earning it would mean implementing the Ortega and Martin-Delgado
+construction, which this repository does not. WS4(c) is met for Clifford circuits and is claimed
+separately, so (f) no longer rides along with it. See also "What this project cannot verify".
+
 ## Round 28: a claim retracted, and the work it would take to earn it back
 
 **Circuit privacy (WS4 items c and f) is NOT demonstrated, and the function that was cited for it
@@ -309,10 +344,14 @@ the genomics page rendered "the class this page surfaces comes from the quantum 
 trained weights ship for genomics, so CKKS had produced it. Two panels read the control value
 instead of `artifacts.primary_inference.backend`. Fixed, and the option is now hidden where no
 weights exist, since this project's rule is that such a control is removed or made real.
-**Genomics QCNN training is deferred with a condition**: revisit alongside the per-score licence
+**Genomics QCNN training was deferred with a condition**: revisit alongside the per-score licence
 audit that already blocks `genomics.prs` publication, because both turn on the same corpus
 questions. `tests/test_qcnn_usecases.py` compares the availability set against the files on disk
 in both directions, so the deferral cannot quietly become a stale list.
+
+**Round 31 reclassified it, because that condition was not the binding one.** See "Genomics has no
+label, so it has no QCNN" below: the licence audit could be satisfied in full and the item still
+could not proceed.
 
 ## Round 29: an ignored file is not a protected file, and a staged score
 
@@ -471,6 +510,14 @@ key is smuggled into the malformed set.
   authenticated fact.
 - **Trusted relays are an assumption**, not a mechanism: a relay holds the key in plaintext and no
   cryptography here changes that.
+- **Circuit privacy against the client (WS4(f)) is not achievable with the QOTP scheme implemented
+  here**, and this is a property of the mechanism rather than a missing feature: the client can only
+  decrypt by applying the circuit's action to its Pauli frame. Circuit privacy against the *server*
+  (WS4(c)) is met for Clifford circuits and demonstrated; the two were split so one could be earned
+  without the other being implied.
+- **No phenotype exists in the genomics corpus.** 1000 Genomes is a reference panel, so nothing on
+  that page can report a discrimination metric, and no supervised model can be trained from it. The
+  page reports a distribution shift instead, which is what the data supports.
 
 ## CLOSED in Round 29, and this section was itself the thing that rolled forward (Round 23b)
 

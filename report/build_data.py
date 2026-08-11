@@ -144,11 +144,31 @@ def _checklist_scalar(macro: str, measure) -> int:
     )
 
 
+#: A check row's first cell is its ID: one to three capitals then digits - ``RS26``, ``QC14``, ``CS9``,
+#: ``M4``. Nothing else in the checklist matches that shape as an entire cell.
+_CHECK_ID = re.compile(r"^[A-Z]{1,3}[0-9]{1,3}$")
+
+
 def _count_rows(text: str) -> int:
-    return sum(1 for line in text.splitlines()
-               if line.strip().startswith("|") and len(line.split("|")) > 3
-               and line.split("|")[1].strip()[:1].isalnum()
-               and any(ch.isdigit() for ch in line.split("|")[1]))
+    """Count CHECK rows, which is what the report calls them.
+
+    The earlier predicate was "first cell starts alphanumeric and contains a digit". That also matched
+    25 reference-value rows - the ``800``/``1200``/``2000``/``5000`` km distance table, the
+    loss-versus-``g`` table, and other measured-value tables carrying no check ID - so the published
+    PDF stated 225 checklist rows where there were 200 checks. The surrounding sentence calls them
+    verification items, so the number read as a count of checks and was wrong by an eighth.
+
+    Matching the ID shape ties the count to the thing named. A table row with no ID is not a check: it
+    cannot be assigned, referenced from the run sheet, or reported as passed.
+    """
+    n = 0
+    for line in text.splitlines():
+        if not line.strip().startswith("|"):
+            continue
+        cells = line.split("|")
+        if len(cells) > 3 and _CHECK_ID.match(cells[1].strip()):
+            n += 1
+    return n
 
 
 def macros() -> str:

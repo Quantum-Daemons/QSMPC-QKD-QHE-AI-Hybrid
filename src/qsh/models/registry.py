@@ -2,9 +2,21 @@
 
 Every use case has up to three model tiers, and the *relationship between them* is the point:
 
-  T1 ``crypto``    the FHE/MPC-feasible student. Small because homomorphic evaluation is, and
-                   will remain, cost-bounded: the largest model ever demonstrated end-to-end
-                   under CKKS is 8B parameters at a ~10^4x runtime gap (IACR ePrint 2026/935).
+  T1 ``crypto``    the FHE/MPC-feasible student. Small because homomorphic evaluation is
+                   cost-bounded **at the operating point this demo targets**: a single device, in a
+                   browser tab, evaluating CKKS through node-seal - SEAL compiled to WASM,
+                   single-threaded, under the 2 GB WASM memory ceiling.
+
+                   The scoping matters and an earlier revision of this line lacked it, claiming
+                   homomorphic evaluation "is, and will remain, cost-bounded". That does not survive
+                   2026: Park et al. (arXiv:2601.18511v2, 2026-06-17) run Llama-3-8B end to end under
+                   CKKS, 128 encrypted tokens in 20 s for summarisation and 18 s/token generation - on
+                   **eight** NVIDIA RTX PRO 6000 GPUs. This project owns one of that GPU model and its
+                   FHE default is TenSEAL on CPU, so the result is ten orders of magnitude outside the
+                   artifact that has to run. A 33-parameter logistic regression is not a compromise
+                   here; it is the class of model that closes at this operating point. State the
+                   operating point, not a prediction about the field - the scoped claim is falsifiable
+                   and the unscoped one was already false.
   T2 ``industry``  the real literature model for that industry, trained locally and published to
                    the Hugging Face Hub as safetensors + ONNX (fp32 server / int8 browser).
   T3 ``large``     models too big to run under encryption at all — served remotely or in-browser
@@ -306,8 +318,11 @@ BUNDLED_DEMO_SAMPLES: dict[str, tuple[str, DatasetSpec]] = {
         DS_WDBC,
     ),
     "genomics": (
-        "real 1000 Genomes phase-3 genotypes + published PGS000001 weights (PGS Catalog: per-score "
-        "licence, EMBL-EBI terms by default; IGSR grants no blanket licence)",
+        "real 1000 Genomes phase-3 genotypes + published PGS000004 (PRS313) weights (PGS Catalog: "
+        "per-score licence, EMBL-EBI terms by default; IGSR grants no blanket licence). 30 of 2,504 "
+        "individuals ship in the browser payload - DATA_LICENSES section 4 justifies a slice of that "
+        "size, not the full matrix. Variants keyed by chr:pos:effect_allele because PGS000004 "
+        "publishes no rsIDs.",
         DS_PGS_CATALOG,
     ),
     "satellite_comms": (
@@ -322,7 +337,7 @@ BUNDLED_DEMO_SAMPLES: dict[str, tuple[str, DatasetSpec]] = {
 DEMO_SAMPLE_FILES: dict[str, str] = {
     "finance_aml": "web/public/data/finance/paysim_sample.json",
     "medical_fl": "web/public/data/medical/breast_cancer_sample.json",
-    "genomics": "web/public/data/genomics/pgs000001_prs.json",
+    "genomics": "web/public/data/genomics/pgs000004_prs313.json",
     "satellite_comms": "web/public/data/satellite/telemetry.json",
 }
 
@@ -380,18 +395,37 @@ M_BREASTMNIST = MetricSpec(
     companion="accuracy",
 )
 M_PRS = MetricSpec(
-    name="c_index_eur",
-    display="C-index (European ancestry)",
-    baseline=0.628,
+    name="auroc_eur",
+    display="AUROC (European ancestry)",
+    baseline=0.633,
     baseline_source=(
-        "PGS Catalog PPM017270 for PGS000001: Harrell's C-index 0.628 (95% CI 0.618-0.638) from a Cox "
-        "model over censored UK Biobank follow-up, n=200,195. An earlier revision called it an AUROC; "
-        "the Catalog record names it 'Concordance Statistic / C-index'. A C-index is computed over "
-        "time-to-event pairs and an AUROC over a fixed case/control split, so this is not directly "
-        "comparable to an AUROC figure."
+        "PGS Catalog PPM001647 for PGS000004 (PRS313): AUROC 0.633 (95% CI 0.624-0.641), n=400,812 "
+        "Europeans - 4,340 cases and 396,472 controls - from Jia et al., JNCI Cancer Spectrum 2020 "
+        "(doi:10.1093/jncics/pkaa021). Verified at the Catalog REST record 2026-08-11. "
+        "TWO CAVEATS THAT MAKE THIS A CITATION AND NOT A TARGET, both from the record itself: the "
+        "model is fitted WITH COVARIATES - 'family history of cancer (in first-degree relatives), "
+        "genotyping array' - which a bare weighted dot product does not have; and the cohort was "
+        "'missing 25 variants (8%) based on availability of variants in the cohort', so the published "
+        "figure is for 288 of the 313 variants, not all of them. "
+        "This replaced PGS000001's C-index 0.628 (PPM017270) when the score changed. That figure was a "
+        "Harrell's C-index over censored follow-up, not an AUROC, and the two are not directly "
+        "comparable - a C-index is computed over time-to-event pairs and an AUROC over a fixed "
+        "case/control split. PGS000004 publishes a genuine AUROC, so the switch also removes that "
+        "comparability problem rather than only changing the number."
     ),
-    ceiling=0.69,
-    ceiling_source="Upper end of the published range for germline-SNP breast-cancer PRS discrimination",
+    ceiling=0.668,
+    ceiling_source=(
+        "Highest AUROC among PGS000004's OWN Catalog performance records: 0.668 (PPM012913, n=302,425, "
+        "European). Measured across all 28 AUROC records for this score on 2026-08-11, not taken from a "
+        "range quoted elsewhere - a first attempt at this line read the first page of results only and "
+        "put the ceiling at 0.6573, which is a real record but not the maximum. European records span "
+        "0.5877-0.668 over 22 entries; the largest cohort is PPM012918 at n=5,328,392 with 0.665. "
+        "The previous ceiling of 0.69 was chosen against a C-index scale, so it was never a bound on an "
+        "AUROC for this score even though it happens to sit close to one. "
+        "WORTH READING BESIDE THIS USE CASE'S FINDING: the lowest of the 28 is 0.55 (PPM005171, "
+        "n=3,801, 'African unspecified'), against 0.5877-0.668 for European samples. The published "
+        "record set shows the same ancestry gap this page demonstrates by a different route."
+    ),
     companion="",
     # Any germline-SNP PRS claiming much above ~0.70 discrimination is measuring something else.
 )
