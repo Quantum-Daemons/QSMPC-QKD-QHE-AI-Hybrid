@@ -87,9 +87,9 @@ are published at pinned revisions.
 
 Headline results: the encrypted tier reproduces its plaintext teacher exactly on one use case
 (AUC-PR 0.9681 for both) and falls well short on another (AUC 0.7882 against 0.9147), so no single
-``encryption costs $X$'' figure would be honest. Eight classes of silent defect were found in a
-system with green tests, and three previously published conclusions were retracted after further
-measurement. Structure follows ANSI/NISO Z39.18-2005 (R2010) --- Summary, Introduction; Methods,
+``encryption costs $X$'' figure would be honest. \ndefectclasses{} classes of silent defect were
+found in a system with green tests, and four previously published conclusions were retracted after
+further measurement. Structure follows ANSI/NISO Z39.18-2005 (R2010) --- Summary, Introduction; Methods,
 Assumptions and Procedures; Results and Discussion; Conclusions --- with one deliberate departure:
 the defects and retractions are given their own section rather than being folded into Limitations.
 No standard blesses a ``negative results'' heading, and Limitations is the conventional home for
@@ -422,7 +422,7 @@ is now a numbered row in the verification checklist (\nchecklistrows{} rows at t
 
 \input{generated/findings}
 
-\subsection{Three findings worth stating in full}
+\subsection{Four findings worth stating in full}
 
 \paragraph{W1 --- A model that had learned nothing, with a respectable number.}
 The medical CKKS student emitted a single class for all 156 test images. Its accuracy of 0.730769 is
@@ -454,8 +454,29 @@ produced a win by moving the goalposts to a different $p$. It was caught because
 --- added earlier to reject any threshold collapsing to a single class --- refused to fold the
 result.
 
+\paragraph{W9 --- A label leak inside a published artefact, behind a pin that looked valid.}
+The evaluation sample published alongside the finance model contained a single feature that
+reproduced its label: every row with \texttt{hour\_of\_day} $\ge 3$ was laundering, at 100\%
+precision. Anyone who downloaded the sample to reproduce the reported figure would have scored a
+trivial threshold rule and read it as the model working. Three things had to fail together. The
+sample was regenerated after the pin was recorded, and nothing invalidated the pin, so
+\texttt{hf\_revision} still resolved and still looked current. The guard written to catch exactly
+this was wrong twice --- first testing disjointness of unique values, which is meaningless on
+continuous floats, then computing a binary rank AUC over multi-class labels and printing 5.1292, a
+number outside $[0,1]$ that was not questioned. And the neighbouring use case escaped the guard
+altogether because its \texttt{feature\_names} field held class names, so the guard iterated over
+nothing and reported success.
+
+The repository's own headline figure was never affected: it is computed over 1{,}523{,}504 rows that
+the leaked sample never touched. An earlier draft of this section said the leak accounted for 13.8\%
+of the model's headline number; that was wrong, and the 13.8\% belonged to the verification figure.
+The correction matters more than the original claim, because a defect report that overstates its
+blast radius is the same category of error as the defect. What the episode establishes is narrower
+and worse: a guard that reports success without examining anything is indistinguishable, in a log,
+from a guard that passed.
+
 \subsection{Retracted conclusions}
-Three published conclusions were withdrawn after further measurement:
+Four published conclusions were withdrawn after further measurement:
 \begin{enumerate}[label=(\alph*)]
   \item \textbf{``Seed variance.''} Two teacher AUCs were reported as moving on reruns ``with no
         functional change'', supported by a six-seed spread. The initialisation had changed, not the
@@ -466,6 +487,14 @@ Three published conclusions were withdrawn after further measurement:
         recorded as having over-promised. The probe was right; the trainer was passing the teacher a
         scaler round-trip that is a mathematical no-op and not a numerical one. Fixing it moved the
         shipped student to 0.0614, above the asserted ceiling.
+  \item \textbf{``The GPU is unusable for this work.''} Reported after
+        \texttt{torch.cuda} raised ``no kernel image available'' on the training host, with the
+        conclusion that the card's compute capability was unsupported. The measurement had been taken
+        with the system interpreter, which carries a CUDA 12.1 build; the project's own virtual
+        environment carries a CUDA 13.0 build that drives the same card correctly. The retraction
+        keeps one real finding: the system interpreter reports
+        \texttt{is\_available() == True} and then raises at the first kernel launch, so
+        availability is not a capability check.
   \item \textbf{A regulatory date ``correction'' that was itself wrong.} A recorded compliance date
         was rewritten as stale. Checking the Official Journal text showed the original date was
         correct for this system, because a four-month transitional provision applies to systems
@@ -538,7 +567,8 @@ The engineering claim of this project is narrow and, we think, defensible: it is
 genuine post-quantum key establishment, genuine homomorphic linear algebra and genuine garbled-circuit
 non-linearities in a browser tab, and to report honestly what that costs in model quality.
 
-The methodological claim is broader. Eight classes of silent defect were found in a system whose
+The methodological claim is broader. \ndefectclasses{} classes of silent defect were found in a
+system whose
 tests were green, whose types checked and whose aggregate metrics looked reasonable. Every one was
 found by measuring a specific quantity that nothing had previously measured --- the number of
 distinct classes a model predicts, the agreement between harvested labels and ground truth under a
