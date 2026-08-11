@@ -216,7 +216,7 @@ DS_1000G = DatasetSpec(
 DS_OPSSAT_AD = DatasetSpec(
     name="OPS-SAT-AD",
     licence="CC-BY-4.0",
-    url="https://zenodo.org/records/12588359",
+    url="https://doi.org/10.5281/zenodo.12588358",
     licence_checked="2026-08-05",
     publishable=True,
     notes=(
@@ -348,8 +348,13 @@ M_AML = MetricSpec(
     display="minority-class F1 (laundering)",
     baseline=0.6323,
     baseline_source="GFP+XGBoost, IBM AMLworld HI-Small, NeurIPS 2023 D&B (63.23 +/- 0.17)",
-    ceiling=0.6816,
-    ceiling_source="Multi-PNA+EU, AAAI-24 vol.38 no.10 pp.11838-11846 (68.16 +/- 2.65)",
+    ceiling=0.7401,
+    ceiling_source=(
+        "MEGA-PNA, arXiv:2412.00241v2 Table 2 'Minority-class F1 scores (%) on AML edge "
+        "classification task', AML Small HI (74.01 +/- 1.55). PREPRINT - no venue confirmed, which is "
+        "why it is named as such. It replaces Multi-PNA+EU (AAAI-24, 68.16 +/- 2.65): that row is in "
+        "the SAME table with two better ones above it (MEGA-GIN 70.83, MEGA-PNA 74.01) and has not "
+        "been the ceiling since December 2024. Verified by reading the table, not the abstract."),
     companion="auprc",
 )
 M_BREASTMNIST_R50 = MetricSpec(
@@ -453,7 +458,17 @@ M_QML_IDS = MetricSpec(
         "(arXiv:2509.14282) Table VIII reports a hybrid QLSTM at 94.7% accuracy / 94.7% F1 against their "
         "own random-forest baseline on the same generated data. What remains well-founded is caution "
         "about evaluation quality rather than a universal ranking: arXiv:2512.05069 was withdrawn by "
-        "its own authors for evaluation that was 'insufficient to fully support the conclusions'."
+        "its own authors for evaluation that was 'insufficient to fully support the conclusions'. That "
+        "single withdrawal is thin support for a field-wide claim, so the anchor is now a survey: "
+        "Kaissar, Bou Nassif & Bouridane, Future Internet 18(5):234 (2026-04-27, CC BY 4.0, DOI "
+        "10.3390/fi18050234), systematic to January 2026, finds that 'most current approaches rely on "
+        "simulated quantum environments and legacy datasets, while evaluation practices remain "
+        "inconsistent across studies' - active but methodologically early, which is a different and "
+        "better-founded statement than 'worse than a random forest'. The Al-Kuwari paper is now "
+        "peer-reviewed: IET Quantum Communication 7(1), DOI 10.1049/qtc2.70028 (2026-02-23). And the "
+        "strongest 2026 result on this exact problem is CLASSICAL, which corroborates the framing "
+        "here: IACR ePrint 2026/1282 reaches 96.9% recall / 97.6% precision with physics-aware "
+        "temporal features plus XGBoost, against 17.3% recall for static QBER thresholding."
     ),
     companion="classical_rf_macro_f1",
 )
@@ -747,8 +762,14 @@ _SPECS: tuple[ModelSpec, ...] = (
         artifacts=_ONNX_PAIR,
         hf_repo=None,          # trained on a research-only corpus; weights stay local
         notes=(
-            "Trained on the Engelen-corrected corpus locally. Weights are not published because the "
-            "redistribution terms of the corrected dataset are unverified."
+            "NOT TRAINED IN THIS REPOSITORY, and an earlier revision of this note said otherwise. It "
+            "read 'Trained on the Engelen-corrected corpus locally', which nothing here corroborates: "
+            "there is no `telecom_ids.transformer` key in `models/metrics.json`, no entry in "
+            "`ARTIFACT_DIRS`, no directory under `models/`, and no test asserting any of it. The "
+            "`ModelPanel` printed that sentence directly beside its own 'Not trained in this build - no "
+            "measured metrics', so the same panel asserted both. A local run nobody can point at is not "
+            "a training claim. Weights would in any case not be published: the redistribution terms of "
+            "the corrected dataset are unverified, which is why `hf_repo` is None."
         ),
     ),
     ModelSpec(

@@ -115,7 +115,28 @@ def load_genomic(n: int = 1000, n_snps: int = 64, seed: int = 0
 # Bundled real Polygenic Risk Scores (PGS Catalog, CC-BY 4.0). Each is a real published per-SNP
 # effect-weight table → the model is a genuine linear PRS = Σ weight_i · dosage_i, which runs as an
 # exact CKKS dot-product (the published "HE-applied-to-PRS" pattern; FHE-native, no surrogate).
-_PRS_FILES = {"breast_cancer": "pgs000001_breast_cancer.tsv"}
+#: name -> (scoring file, dosage file). Two scores are bundled and they are keyed DIFFERENTLY, which is
+#: the whole reason this is a mapping rather than a filename.
+#:
+#: `breast_cancer` is PGS000001 / PRS77_BC, keyed by rsID, and is what both the Python pipeline and the
+#: browser payload currently score.
+#:
+#: `breast_cancer_prs313` is PGS000004 / PRS313_BC, the current clinical instrument (Mavaddat 2018, 313
+#: variants against PRS77's 77). It is STAGED, NOT ACTIVE: the data and the loader path are here and
+#: tested, and the switch is deliberately one documented step rather than done halfway, because the
+#: browser payload and the gnomAD ancestry overlay are generated separately and a use case scoring
+#: PRS313 in Python while showing PRS77 in the browser would be worse than either alone.
+#:
+#: PGS000004 publishes NO rsIDs - all 313 harmonised rows have an empty `hm_rsID` with
+#: `hm_source=Author-reported` - so it is keyed by `chr:pos:effect_allele` and joined to genotypes by
+#: allele match against the phase-3 VCF. Reverse-mapping to rsIDs was measured and rejected: 70% of its
+#: positions carry one rsID, 28% carry several, allele matching resolves about half of those, and the
+#: remaining ~15% would have had to be guessed - which would score a DIFFERENT variant's genotypes
+#: while every number on the page still looked reasonable.
+_PRS_FILES = {
+    "breast_cancer": ("pgs000001_breast_cancer.tsv", "g1k_dosages.tsv"),
+    "breast_cancer_prs313": ("pgs000004_breast_cancer.tsv", "g1k_dosages_prs313.tsv"),
+}
 
 
 def load_prs(name: str = "breast_cancer") -> tuple[list[str], list[str], np.ndarray]:
@@ -126,18 +147,38 @@ def load_prs(name: str = "breast_cancer") -> tuple[list[str], list[str], np.ndar
     """
     from pathlib import Path
 
-    path = Path(__file__).resolve().parents[3] / "data" / "genomics" / _PRS_FILES[name]
-    rsids: list[str] = []
+    score_file, _ = _PRS_FILES[name]
+    path = Path(__file__).resolve().parents[3] / "data" / "genomics" / score_file
+    keys: list[str] = []
     eff: list[str] = []
     weights: list[float] = []
+    header: list[str] | None = None
     for line in path.read_text().splitlines():
-        if line.startswith("#") or line.startswith("rsID") or not line.strip():
+        if line.startswith("#") or not line.strip():
             continue
         parts = line.split("\t")
-        if len(parts) < 4:
+        if header is None:
+            header = parts
             continue
-        rsids.append(parts[0]); eff.append(parts[1]); weights.append(float(parts[3]))
-    return rsids, eff, np.asarray(weights, dtype=float)
+        row = dict(zip(header, parts, strict=False))
+        # Two layouts, one join. Whatever key is built here must match the dosage file's column
+        # headers, which is what makes the alignment in `load_real_genotypes` a dict lookup rather
+        # than a positional assumption.
+        if "rsID" in row:
+            keys.append(row["rsID"])
+            eff.append(row["effect_allele"])
+            weights.append(float(row["effect_weight"]))
+        elif "chr_name" in row and "chr_position" in row:
+            ea = row["effect_allele"]
+            keys.append(f"{row['chr_name']}:{row['chr_position']}:{ea}")
+            eff.append(ea)
+            weights.append(float(row["effect_weight"]))
+        else:
+            raise ValueError(
+                f"{path.name}: row has neither an rsID nor chr_name/chr_position, so it cannot be "
+                f"joined to a dosage column: {parts[:4]}")
+    assert keys, f"no variant rows parsed from {path.name}"
+    return keys, eff, np.asarray(weights, dtype=float)
 
 
 def load_satellite_telemetry(n_windows: int = 600, n_channels: int = 6, window: int = 8,
@@ -214,14 +255,19 @@ def load_genomic_prs(n_individuals: int = 400, seed: int = 0, name: str = "breas
 
     rsids, eff, weights = load_prs(name)
     m = len(weights)
-    g1k = Path(__file__).resolve().parents[3] / "data" / "genomics" / "g1k_dosages.tsv"
+    _, dosage_file = _PRS_FILES[name]
+    g1k = Path(__file__).resolve().parents[3] / "data" / "genomics" / dosage_file
     try:
         rows = [ln for ln in g1k.read_text().splitlines() if ln.strip() and not ln.startswith("#")]
-        header = rows[0].split("\t")[1:]                          # rsIDs present in the real file
-        col = {rs: j for j, rs in enumerate(header)}
-        idx = [col[rs] for rs in rsids]                           # align real columns to the PGS SNP order
-        data = [[int(p) for p in ln.split("\t")[1:]] for ln in rows[1:]]
-        dosages = np.asarray([[r[j] for j in idx] for r in data], dtype=float)
+        header = rows[0].split("\t")
+        col = {name: j for j, name in enumerate(header)}
+        missing = [k for k in rsids if k not in col]
+        if missing:
+            raise KeyError(f"{g1k.name} has no column for {len(missing)} of {len(rsids)} score "
+                           f"variants, e.g. {missing[:3]}")
+        idx = [col[k] for k in rsids]        # align real columns to the score's variant order, by NAME
+        dosages = np.asarray(
+            [[int(ln.split("\t")[j]) for j in idx] for ln in rows[1:]], dtype=float)
         if n_individuals and len(dosages) > n_individuals:
             dosages = dosages[:n_individuals]
         freq = dosages.mean(axis=0) / 2.0                        # empirical real effect-allele frequency
