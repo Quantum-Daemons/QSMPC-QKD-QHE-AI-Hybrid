@@ -314,6 +314,56 @@ audit that already blocks `genomics.prs` publication, because both turn on the s
 questions. `tests/test_qcnn_usecases.py` compares the availability set against the files on disk
 in both directions, so the deferral cannot quietly become a stale list.
 
+## Round 29: an ignored file is not a protected file, and a staged score
+
+**A round's worth of edits to the verification checklist was lost, and the commit message
+describing them was already in the repository.** Round 28 untracked
+`docs/browser-verification-checklist.md` and gitignored it, then continued editing it: a
+round-trip section, four run-sheet index rows, four QCNN rows, nine consolidated duplicates and
+two legend fixes. Because the file was already untracked, none of that was committed - while the
+commit message for that work describes it as done. The generated report macros are the only
+surviving evidence it existed (191 rows, 2,522 lines, against the 175 and 2,443 of the last
+tracked copy).
+
+The mechanism, reproduced rather than guessed: `main` at `2f0d550` still TRACKED the file, so `git
+checkout main` restored the tracked copy over the ignored working one, and `git pull` past
+`9d35501` - the merge that untracked it - then deleted the result. **Ignoring a file protects it
+from being committed, not from being overwritten.** Any branch switch through a commit where it
+was still tracked will clobber it.
+
+Recovered to the last tracked state and the structural edits redone. A copy now lives outside the
+repository and `.gitignore` carries the hazard beside the rule that caused it. The nine duplicate
+consolidations are the part not yet redone, and are recorded here rather than assumed.
+
+**Two commit messages have now described checklist work that was not in the commit.** That is the
+same class as a stale document asserting a fixed item is open: the artefact and the description of
+the artefact drift apart, and the description is the thing people read.
+
+**PGS000004 / PRS313 is staged, not switched.** The 313-variant clinical instrument, its
+position-keyed dosage fetcher and the loader path are in place and tested; both the Python
+pipeline and the browser still score PGS000001 / PRS77. The switch is deliberately one step rather
+than done halfway, because the browser payload and the gnomAD ancestry overlay are generated
+separately and a use case scoring PRS313 in Python while displaying PRS77 in the browser would be
+worse than either alone.
+
+What the migration required, because it is the interesting part: PGS000004 publishes **no rsIDs at
+all** - every one of its 313 harmonised rows has an empty `hm_rsID` with
+`hm_source=Author-reported`. Reverse-mapping was measured on 40 positions against Ensembl GRCh37
+before any code was written: 70% carry exactly one rsID, 28% carry several, allele matching
+resolves about half of those, and roughly 15% would have had to be guessed - which scores a
+different variant's genotypes while every number still looks plausible. Keying on `chr:pos` with
+an allele match against the phase-3 VCF matched **313 of 313, none unmatched**, indels included.
+The remaining steps, so they are not rediscovered: a gnomAD allele-frequency fetch by coordinate
+for the ancestry overlay, a regenerated browser payload, and a `MetricSpec` change from C-index
+0.628 (PPM017270) to **AUROC 0.633 [0.624, 0.641]** (PPM001647) - the latter measured on 400,812
+Europeans **with covariates** (family history, genotyping array) that this repository's bare dot
+product does not have, and with **8% of variants missing** in that cohort. It is a citation, not a
+like-for-like target, and must be recorded as one.
+
+The licence posture does not change: PGS000004 carries the same EMBL-EBI default terms as
+PGS000001, so the migration neither unblocks nor further blocks publication, and `hf_repo` stays
+None.
+
 ## Verification assets added in Rounds 22-23
 
 Two checks now exist that assert against sources OUTSIDE this repository. That is the point of both:
