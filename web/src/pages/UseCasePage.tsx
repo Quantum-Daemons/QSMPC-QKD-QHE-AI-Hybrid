@@ -157,13 +157,17 @@ function UseCaseView({ usecase }: { usecase: string }) {
         </div>
       ) : null}
 
+      {/* `surfacedBackend` is the backend that RAN, not the control that was set. Passing
+          `run.params.inference` here made the panel assert "the class comes from the quantum circuit"
+          on a page where no trained weights ship, so the class had actually come from CKKS. The
+          selector states an intention; only the artifact states what happened. */}
       {artifacts?.explanation?.top_features?.length ? (
         <ShapPanel
           explanation={artifacts?.explanation}
           provenance={artifacts?.explanation_provenance ?? null}
           baseline={artifacts?.explanation_baseline ?? null}
           publishedModel={metrics?.published_model ? String(metrics.published_model) : null}
-          surfaced={String(run.params.inference ?? "")}
+          surfacedBackend={artifacts?.primary_inference?.backend ?? null}
         />
       ) : null}
 
