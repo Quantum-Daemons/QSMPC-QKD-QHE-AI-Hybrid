@@ -157,3 +157,8 @@ data/genomics/g1k_dosages_prs313.tsv
 # `probe`, `probe_s`, `probe_t` - because train_torch writes a manifest wherever it is pointed and
 # a diagnostic run points it somewhere temporary. They describe models nothing references.
 models/probe*/
+
+# latexmk build byproducts. The PDF is committed deliberately (it is a deliverable); its
+# dependency database and file list are per-machine build state and change on every run.
+report/*.fdb_latexmk
+report/*.fls
