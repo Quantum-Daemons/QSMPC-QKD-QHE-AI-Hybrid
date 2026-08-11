@@ -613,6 +613,62 @@ The committed JSON had been corrected BY HAND while the generator kept emitting 
 note reading "Generated from the source, not written by hand" - so the first retrain reintroduced it.
 A hand-patched generated artifact is a defect with a timer on it.
 
+## Round 32: a switch that reached four of five surfaces, and a gate that passed on nothing
+
+**Three of the four most serious findings were defects the previous round introduced or left**, which is
+the useful thing about this round rather than an embarrassment to bury. Round 31 closed four long-deferred
+items and, in doing so, created two new ones and left a third unfinished. The lesson is not "be more
+careful"; it is that **the work of closing an item is where the next defect gets made**, so a round's own
+changes deserve the audit it gives everything else.
+
+**1. The PRS313 switch reached four surfaces and missed the fifth.** The E2E pipeline read
+`config.get("prs", "breast_cancer")` with nothing anywhere setting that key, so Python scored 77
+rsID-keyed variants while the browser, trainer, registry and payload scored 313 position-keyed ones. And
+`data/loaders.py` carried a sentence arguing that this exact split "would be worse than either alone" -
+by then describing the shipped state rather than warning against it. `config.get(key, literal)` cannot
+fail: an absent key silently yields the default and the result is complete and plausible. **Third
+occurrence of that shape** here, after `config.usecase` read but never emitted and the free-space channel
+reading the fibre page's distance keys. The common factor every time is a default no mechanism compares
+against anything, so the score is now a config FIELD and `tests/test_prs_pipeline_parity.py` runs the use
+case and compares its output to the payload the registry points at.
+
+**2. The newly-gated `check:pqc` exited 0 on an empty vector file.** It asserted `accepted === 0` and
+never asserted how many keys it had tested, so testing nothing reported exactly what testing 2,595 and
+finding no acceptances reports. **Vendoring introduced this**: a fetch either returns the file or fails,
+but a file on disk can be present and empty. It is the project's own SP 800-90B lesson - a health test
+reporting PASS because it was handed too little data to fail - inside the check promoted to a gate one
+round earlier. The three re-validations recorded at the time were the failure modes of the design being
+replaced. Generalised as `RI9`: **after promoting any check to a gate, break it on purpose.**
+
+**3. A citation to an authority that did not contain it.** Three source files cited "DATA_LICENSES
+section 4 justifies about 30,800 genotype cells"; section 4 stated a shape and made no cell-budget
+argument at all. The code invented the authority it appealed to, and the appeal reads exactly like a
+checked one. Section 4 now contains the argument, tabulates all four tracked genotype files, and separates
+tracked-in-git from served-to-the-public - which turned out to matter, because a retired payload was still
+being served for no demo benefit. `RI11` makes "grep the cited section for the cited figure" a row.
+
+**Two measurements that changed a claim rather than confirming one.**
+
+`node-seal` had been recorded as "the constraint" for several rounds without anyone trying it. It pins a
+FORK of SEAL whose divergence from v4.1.2 is **purely additive** - 1,005 lines of Emscripten embind and
+CMake glue, no crypto source touched. Taking `microsoft/SEAL` v4.4.3, adding that binding layer and
+building to WASM: **zero errors**, `libseal-4.4.a` produced. The blocker that stopped the first attempts
+was not SEAL's - `defines.h` tests the bare `EMSCRIPTEN` macro, byte-identical in both versions, and emcc
+6.0.6 defines only `__EMSCRIPTEN__`. So a bump is a build flag plus a submodule re-point, and node-seal's
+own build would fail the same way at 4.1.2 on a current emsdk. Not verified and so not claimed: a CKKS
+round trip through the linked module.
+
+And the HE-genomics literature falsifies this project's own framing in the direction of understating it.
+`registry.py` explained T1 smallness by homomorphic cost; Knight et al. run polygenic scoring under HE
+over **110,000 SNPs on a single CPU**. So `genomics.prs` is small because PGS000004 has 313 variants -
+Mavaddat 2018's property, not CKKS's. The cost argument survives where the model has depth and was
+over-generalised to a linear score, which read as rigour.
+
+**What Round 31 got right and is worth keeping:** every one of these was found by running or deploying,
+not by reading. The pipeline split needed the loader run to see it; the empty-snapshot hole needed the
+file emptied; the tree-attribution sentence needed the page loaded twice, because the first fix rendered
+it nowhere and a diff review would have passed it.
+
 ## Verification assets added in Rounds 22-23
 
 Two checks now exist that assert against sources OUTSIDE this repository. That is the point of both:
