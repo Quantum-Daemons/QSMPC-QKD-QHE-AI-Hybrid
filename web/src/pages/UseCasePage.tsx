@@ -143,17 +143,54 @@ function UseCaseView({ usecase }: { usecase: string }) {
       {/* What the in-run verification measured, drawn. Gated on a plot EXISTING rather than on the
           task type: a model whose sample ships no labels produces no plot and should render nothing
           rather than an empty axis. */}
+      {/* The VERDICT belongs here, next to the chart. `artifacts.verification` is written whether or
+          not the model matched its recorded figure, and the only component that rendered
+          `matchesExpected` was `ModelEvalReport` - defined, never referenced, and tree-shaken out of
+          the bundle. So a verification FAIL drew this card identically to a PASS, captioned
+          "Re-scored in this tab", with the failing verdict reachable only as a raw `verification |
+          FAIL` row in the metrics table. A card that looks the same whether the check passed or
+          failed is worse than no card. */}
       {artifacts?.verification?.plot ? (
         <div className="card">
-          <h3 style={{ marginTop: 0 }}>Verification, this run</h3>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+            <h3 style={{ margin: 0 }}>Verification, this run</h3>
+            {artifacts.verification.matchesExpected != null && (
+              <span className={`badge-state ${artifacts.verification.matchesExpected ? "done" : "error"}`}>
+                {artifacts.verification.matchesExpected ? "PASS" : "FAIL"}
+              </span>
+            )}
+          </div>
           <p className="muted small" style={{ marginTop: -4 }}>
             Re-scored in this tab on the model's own published held-out sample. Charts are drawn from
             the same arrays the metric was computed on.
           </p>
+          {artifacts.verification.matchesExpected === false && (
+            <div className="note" style={{ marginBottom: 10, borderColor: "var(--danger)", color: "var(--danger)" }}>
+              ⚠ This tab measured <b>{Number(artifacts.verification.score).toFixed(4)}</b> where{" "}
+              <b>{Number(artifacts.verification.expected).toFixed(4)}</b> was recorded, over{" "}
+              {String(artifacts.verification.n)} published rows. Something differs - preprocessing,
+              quantisation, or the execution provider - so treat the number on this page as
+              <b> unverified rather than as a result</b>, and read the chart below as what was actually
+              computed here rather than as a reproduction of the published figure.
+            </div>
+          )}
           <VerificationChart
             res={artifacts.verification as never}
             modelKey={String(artifacts.verification.modelKey ?? "")}
           />
+          {/* The sample's own note on why the figure is what it is. Unrendered, the finance student
+              once showed 0.3337 here beside a recorded 0.0178 for the same metric, with nothing on
+              screen to reconcile them. */}
+          {artifacts.verification.note ? (
+            <p className="muted" style={{ fontSize: 11, marginTop: 10 }}>
+              <b>About this figure.</b> {String(artifacts.verification.note)}
+            </p>
+          ) : null}
+          {artifacts.verification.provenance ? (
+            <p className="muted" style={{ fontSize: 11, marginTop: 6 }}>
+              {String(artifacts.verification.provenance)}
+            </p>
+          ) : null}
         </div>
       ) : null}
 
