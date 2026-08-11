@@ -447,9 +447,17 @@ negative vectors from C2SP/CCTV, plus a FIPS 204 size and round-trip check. It f
 of them. The checker was itself validated against the known-bad build - 3 FAILs and exit 1 on 0.2.1,
 all-OK on 0.6.1 - because a conformance script that always passes is worse than none.
 
-Both are cheap and neither is wired into `make test` yet, which is a gap rather than a decision:
-`check:pqc` fetches its vectors over the network, so it needs an offline-tolerant mode before it can
-gate CI.
+**`check:pqc` now gates, as of Round 31.** It is step **8/8** of `scripts/ci_local.sh` and a step in
+CI's `web` job, and `make check-pqc` runs it alone. The blocker recorded here for four rounds was
+that it fetched its vectors; the resolution was not an offline-*tolerant* mode, because tolerance was
+the trap. The vectors are CC0-1.0, so a 56 KB snapshot is vendored at `web/scripts/vectors/`, pinned
+to an upstream commit with per-file SHA-256 in `PROVENANCE.txt`, and `--live` still checks the current
+published set. There is deliberately no fallback in either direction: a missing snapshot exits 1
+saying the check did not run, and `--live` exits 1 if the network fails. A skip-on-error version of
+this particular check would have reported the known-bad 0.2.1 build as clean, which is the single
+outcome it exists to prevent. Re-validated at the point of gating: exit 0 with 2,595 rejected on a
+clean tree; exit 1 on a missing vector file; exit 1 and "779 rejected, 1 accepted" when a well-formed
+key is smuggled into the malformed set.
 
 ## What this project cannot verify, and says so
 
