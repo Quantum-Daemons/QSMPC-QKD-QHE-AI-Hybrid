@@ -352,7 +352,12 @@ export default function TwoPartyDiagram({
       ))}
     </ol>
     <svg viewBox={`0 0 780 ${bottomY + 78}`} width="100%" xmlns="http://www.w3.org/2000/svg"
-      style={{ fontFamily: "inherit" }} role="img"
+      // minWidth so it SCROLLS inside its card rather than shrinking, which is what `.card
+      // { overflow-x: auto }` already provides for every table. With `width: 100%` and no minimum the
+      // SVG never overflows: at a 360 px content width the 780-unit viewBox scales to ~0.44 and the
+      // 11-unit step labels render at about 4.5 px. Illegible is worse than off-screen, because
+      // off-screen can be scrolled to.
+      style={{ fontFamily: "inherit", minWidth: 680 }} role="img"
       aria-label={`${usecase} two-party diagram; the same content is listed in text immediately before this figure`}>
       <defs>
         <marker id="tp-c" markerWidth="9" markerHeight="9" refX="7" refY="3.2" orient="auto">
