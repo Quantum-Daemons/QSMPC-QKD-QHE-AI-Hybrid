@@ -1608,6 +1608,13 @@ export function runClientPipeline(
               anom.model.W, anom.model.b, anom.window, anom.featureNames, 5, anom.baseline);
             artifacts.explanation_provenance = "real bundled telemetry model";
             artifacts.explanation_baseline = "mean of the bundled NASA telemetry windows";
+            // This page has NO private_inference stage, so the model explained here is the model
+            // that produced the verdict the page reports - the bars ARE an attribution of it.
+            // Declared as a flag rather than inferred from `primary_inference` being absent: that
+            // inference would hold only by coincidence of which stage writes which artifact, and
+            // this project has twice shipped a wrong number that came from exactly that coupling.
+            // `tests/test_explanation_scope.py` ties this flag to FLOWS membership.
+            artifacts.explanation_is_of_reported_class = true;
           }
         }
         // Satellite's flow has no private_inference stage either, so its published model runs here.
@@ -1746,6 +1753,10 @@ export function runClientPipeline(
           artifacts.explanation_provenance =
             `in-browser IDS classifier, one-vs-rest for ${ids.explain.className}`;
           artifacts.explanation_baseline = "zero vector (features are z-scored, so E[x] = 0)";
+          // Telecom has NO private_inference stage: the class this page reports comes from this
+          // very softmax, so the bars ARE an attribution of the reported class. See the satellite
+          // site above for why this is a declared flag and not inferred from an absent artifact.
+          artifacts.explanation_is_of_reported_class = true;
         }
         emit("log", stage, `QML-IDS (client, softmax logistic on Al-Kuwari-2026 signatures): `
           + `macro-F1=${r2(ids.macroF1)} over 8 classes, worst class ${r2(ids.worstClassF1)} `
@@ -1973,6 +1984,10 @@ async function loadQcnnWeights(usecase: string): Promise<QcnnWeights | null> {
         // exact for weights that mean nothing, so say which case this is rather than let a reader
         // assume the explanation describes the industry model.
         artifacts.explanation_provenance = realIn?.model?.W ? "real bundled model" : "placeholder weights";
+        // These pages DO have an encrypted stage, and it evaluates a different model from the one
+        // explained here - so the bars are not an attribution of the class the page reports. This is
+        // the case the panel's caveat was written for; the two above are the case it was wrong about.
+        artifacts.explanation_is_of_reported_class = false;
         metric(stage, "explanation_model", artifacts.explanation_provenance);
         metric(stage, "explanation_top_contribution", artifacts.explanation.top_features[0]?.contribution ?? 0);
         emit("log", stage, `XAI: top driver = ${artifacts.explanation.top_features[0]?.feature}`);

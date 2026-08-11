@@ -1,0 +1,30 @@
+C2SP/CCTV ML-KEM modulus test vectors - vendored snapshot
+=========================================================
+
+Source     https://github.com/C2SP/CCTV/tree/6ec11f7d0ef5ebab45ff21ca7e06e643e5182728/ML-KEM/modulus
+Commit     6ec11f7d0ef5ebab45ff21ca7e06e643e5182728
+Fetched    2026-08-11
+Licence    CC0 1.0 Universal. C2SP/CCTV/ML-KEM/README.md: "All test vectors are made
+           available under the terms of the CC0 1.0." CC0 waives copyright; it does NOT
+           grant patent rights. See DATA_LICENSES.md section on C2SP/CCTV.
+
+Files      ML-KEM-512.txt.gz  11869 bytes  sha256 4292314fd44bb211a27ef38273dcac32f602601c2f65b15a69773221227bf298
+           ML-KEM-768.txt.gz  17623 bytes  sha256 22308df988866e2731c9b79bfa0ce754ea962a77b198436d56bde6481a526af7
+           ML-KEM-1024.txt.gz  28172 bytes  sha256 5792e788280ecdf5be7bfd2d8b66e18a0f9b9c80f4beb1d801fd27d20e882bf7
+           
+
+WHY VENDORED, WHEN THE SCRIPT USED TO FETCH
+    check_mlkem_modulus_vectors.mjs fetched these at run time so it would always test the
+    CURRENT published set. That is a real benefit and it is preserved: pass --live to fetch
+    instead of reading these files. But it also meant the check could not gate CI - CI is
+    offline by design, and the alternative would have been a network-failure fallback. This
+    check is one skip-on-error away from being a conformance script that always passes, which
+    is worse than having none: it found @noble/post-quantum 0.2.1 accepting all 2,595
+    malformed encapsulation keys, and a version of it that quietly skips would have reported
+    that build clean. So the snapshot is the default and the network is the option, not the
+    reverse.
+
+WHAT TO DO IF --live DISAGREES WITH THIS SNAPSHOT
+    Upstream added or corrected vectors. That is information, not a failure: re-fetch at the
+    new sha, update this file, and re-run. The sha above is what makes "disagrees" a question
+    with an answer rather than a mystery.

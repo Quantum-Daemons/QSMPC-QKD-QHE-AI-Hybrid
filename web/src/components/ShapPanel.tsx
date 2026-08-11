@@ -5,9 +5,17 @@
 // one of "qcnn-trained" or "ckks". It is deliberately NOT the `inference` control's value: selecting
 // QCNN on a use case that ships no trained weights falls back to CKKS, and gating this panel on the
 // control made it assert that a quantum circuit produced a class that CKKS produced.
-export default function ShapPanel({ explanation, provenance, baseline, publishedModel, surfacedBackend }: {
+// `isOfReportedClass` says whether the explained model is the one that produced the class this page
+// reports. It is TRUE on telecom and satellite, whose flows have no `private_inference` stage, and
+// false on finance/genomics/medical, which do. The paragraph below used to assert the false case
+// unconditionally - so on the two pages where the attribution is of the reported decision, the panel
+// told the reader not to read it that way. It survived because the error points toward caution and so
+// reads as rigour. `clientCompute` sets the flag explicitly at each explanation site.
+export default function ShapPanel({ explanation, provenance, baseline, publishedModel, surfacedBackend,
+  isOfReportedClass }: {
   explanation: any; provenance?: string | null; baseline?: string | null;
   publishedModel?: string | null; surfacedBackend?: string | null;
+  isOfReportedClass?: boolean | null;
 }) {
   const tops = explanation?.top_features as any[] | undefined;
   if (!tops?.length) return null;
@@ -26,20 +34,32 @@ export default function ShapPanel({ explanation, provenance, baseline, published
         Explains the <b>{provenance ?? "pipeline"}</b> on this page's own data
         {baseline ? <> · reference point: {baseline}</> : null}
         {publishedModel ? (
-          <> · <b>{publishedModel}</b> also ran this page, on its own corpus, and has <b>no</b>{" "}
-          attribution here: exact linear SHAP applies to the linear student, not to a ResNet, a tree
-          ensemble or a fixed quantum circuit.</>
+          <> · <b>{publishedModel}</b> also ran this page, on its own corpus. Exact linear SHAP
+          applies to the linear student, not to a ResNet or a fixed quantum circuit, so no SHAP is
+          shown for it here. The one published <i>tree ensemble</i> (telecom&apos;s random forest)
+          does now carry attribution — impurity and permutation importance, in the model panel
+          below, computed at training time because a forest has no closed-form Shapley value.</>
         ) : null}
       </p>
-      {/* The bars explain the BUNDLED linear model. The encrypted stage computes a different model -
-          a small fixed demo pattern on finance and genomics, the published student on medical's
-          convolution branch - and it is that computation which produces the class the page reports.
-          The panel used to call the bars "the CKKS-linear model", which conflated the two. */}
-      <p className="muted small" style={{ marginTop: -2 }}>
-        These bars explain the <b>bundled linear model</b>. The <b>class this page reports</b> comes
-        from the encrypted CKKS + MPC stage, which evaluates a different model - so read the bars as
-        "what drives this model on this input", not as an attribution of the reported class.
-      </p>
+      {/* Which of these two paragraphs applies is a property of the page's FLOW, not of this panel.
+          Where an encrypted stage exists it computes a different model - a small fixed demo pattern
+          on finance and genomics, the published student on medical's convolution branch - and it is
+          that computation which produces the reported class, so the bars must not be read as an
+          attribution of it. Where no encrypted stage exists, the explained model is the deciding
+          model and the bars are exactly that attribution. Asserting the first case on both was a
+          four-page-spanning error: it made the panel disclaim a correct attribution. */}
+      {isOfReportedClass ? (
+        <p className="muted small" style={{ marginTop: -2 }}>
+          This page has <b>no encrypted inference stage</b>, so these bars explain the same model that
+          produced the <b>class reported above</b> — read them as an attribution of that decision.
+        </p>
+      ) : (
+        <p className="muted small" style={{ marginTop: -2 }}>
+          These bars explain the <b>bundled linear model</b>. The <b>class this page reports</b> comes
+          from the encrypted CKKS + MPC stage, which evaluates a different model - so read the bars as
+          "what drives this model on this input", not as an attribution of the reported class.
+        </p>
+      )}
       {surfacedBackend === "qcnn-trained" && (
         <div className="note" style={{ marginBottom: 8, borderColor: "var(--warn)", color: "var(--warn)" }}>
           ⚠ The class this page surfaces came from the <b>trained QCNN</b> circuit. These bars

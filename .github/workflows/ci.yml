@@ -141,3 +141,15 @@ jobs:
       - name: Build
         working-directory: web
         run: npm run build
+
+      # FIPS 203 section 7.2 negative vectors (2,595 malformed encapsulation keys) plus FIPS 204
+      # sizes and a sign/verify round trip. Reads the vendored CC0 snapshot in web/scripts/vectors,
+      # so it needs no network -- which is the only reason it can gate. It was defined in
+      # package.json but wired into NO gate for several rounds precisely because it used to fetch.
+      #
+      # If this ever goes red, do not add a network or skip fallback. This check exists to catch a
+      # library that silently accepts malformed keys: @noble/post-quantum 0.2.1 accepted all 2,595,
+      # and a version of this script that skipped on error would have called that build clean.
+      - name: PQC conformance
+        working-directory: web
+        run: npm run check:pqc
