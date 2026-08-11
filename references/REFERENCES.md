@@ -377,7 +377,11 @@ project refuses to quote aggregate accuracy for AML at all - at that prevalence 
 minority-class F1 against an all-positive baseline instead.
 
 **One practical note on reuse.** That paper's FHE layer is Zama Concrete ML, which this project
-evaluated and declined: the commercial terms for the tfhe-rs family require a paid licence, and
+evaluated and declined. The licence objection stated more precisely, re-read at the primary source
+2026-08-11: tfhe-rs is **BSD 3-Clause Clear**, whose distinguishing clause is "NO EXPRESS OR IMPLIED
+LICENSES TO ANY PARTY'S PATENT RIGHTS ARE GRANTED BY THIS LICENSE" - the copyright grant is permissive
+and the **patent grant is expressly withheld**, which is a sharper and checkable objection than the
+"require a paid licence" this file previously asserted about the vendor's terms. And separately,
 Concrete ML's own release cadence had stalled at the time of the audit. So the nearest published
 approach to this use case is built on a stack this repository cannot adopt commercially, which is
 part of why the CKKS path here is TenSEAL and OpenFHE.
