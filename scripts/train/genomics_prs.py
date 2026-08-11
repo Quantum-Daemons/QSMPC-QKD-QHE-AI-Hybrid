@@ -86,10 +86,28 @@ def audit_licence(prs_path: Path) -> dict:
     text = " ".join(header)
     lowered = text.lower()
     restricted = any(tok in lowered for tok in ("nc-nd", "noncommercial", "non-commercial", "nd 4.0"))
+    # SILENCE IS NOT PERMISSION, and this function used to conflate them.
+    #
+    # PGS Catalog scoring files carry no `#license` line at all - I checked a raw download of
+    # PGS000004 and there is none - so on an unmodified Catalog file this returned
+    # `publishable: True` purely because no restrictive token was present. The only reason it ever
+    # appeared to read a licence is that the bundled PGS000001 file has a licence sentence THIS
+    # PROJECT wrote into its first line. A future reader taking `publishable: True` from a fresh
+    # download as a green light would be reading the absence of evidence as evidence.
+    #
+    # So report the two facts separately. Publication is gated by `publishable=False` on the dataset
+    # spec and enforced in `scripts/publish_hf.py`; this audit informs that decision and does not
+    # make it.
+    declares_terms = any(tok in lowered for tok in ("licence", "license", "terms of use", "cc-by",
+                                                    "cc by", "creative commons"))
     return {
         "header": header[:3],
         "declares_restriction": restricted,
+        "declares_terms": declares_terms,
+        # Kept for compatibility, and now meaning exactly "no restrictive token was found" - which is
+        # a weaker statement than the name suggests when `declares_terms` is False.
         "publishable": not restricted,
+        "no_restriction_found_but_terms_absent": (not restricted) and (not declares_terms),
         "checked": "read from the bundled scoring file at run time",
     }
 
