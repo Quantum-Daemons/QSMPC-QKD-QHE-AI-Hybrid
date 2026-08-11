@@ -250,17 +250,43 @@ still the newest node-seal on npm, so this is not a stale pin here.
 
 The wording this file carried until Round 23 - "and that is upstream's newest" - was ambiguous in a
 way that flattered the position. It is true of node-seal and false of SEAL. Measured: Microsoft SEAL
-has shipped **six releases since 4.1.2** and reached **4.4.3 on 2026-08-04**. 4.4.0 (2026-07-25) is
-described only as "Major security update", with no further detail; 4.4.1 fixes a MinGW build; 4.4.3
-fixes null-output-pointer dereferences and C++ exceptions leaking across the **C API** boundary
-(issues #753-#755). Whether C API fixes reach an Emscripten/WASM build at all is **unverified** and
-should not be assumed either way.
+has shipped **six releases since 4.1.2** and reached **4.4.3 on 2026-08-04**.
 
-Round 19's instruction was to document the gap rather than claim a vulnerability, and that still
-holds: a GitHub Security Advisory query for SEAL returns **no advisories**, and no CVE exists. So
-the version and the release history are recorded as facts, the gap is recorded as widening, and no
-vulnerability is claimed. Re-check this on any round that touches the FHE path; the release cadence
-since April 2026 is roughly monthly.
+**Round 32 correction, and it was wrong in the direction that matters.** Until now this paragraph said
+4.4.0 was "described only as 'Major security update', with no further detail". That is true of the
+GitHub *release body* and false of the changelog. `CHANGES.md` on `main`, read at the primary source
+2026-08-11, gives six bullets and the first is stronger than "Major":
+
+> **Critical security update:** all users should upgrade to Microsoft SEAL 4.4.0 as soon as possible.
+> Hardened untrusted deserialization. Restored loading of objects serialized by earlier Microsoft SEAL
+> 4.x minor releases; the wire format is unchanged. Fixed native memory-safety and concurrency defects
+> across ciphertext evaluation and memory management. Hardened the C ABI and .NET wrapper against
+> various failures. Strengthened cryptographic input validation and release-build/dependency security
+> controls.
+
+So this register **under-stated a critical advisory in a dependency the browser demo ships**, which is
+the worse direction to be wrong in, and it did so while `report/technical-report.tex` described it
+correctly - the one place that had it right was the one an audit flagged as overclaiming. The lesson is
+narrow and practical: **a GitHub release body is not a changelog.** Read `CHANGES.md`.
+
+The correction also sharpens the WASM question rather than leaving it open. 4.4.1 fixes a MinGW build
+and 4.4.3 fixes null-output-pointer dereferences and C++ exceptions leaking across the **C API**
+boundary (issues #753-#755) - and the hedge "whether C API fixes reach an Emscripten/WASM build is
+unverified" is correct for those. But **untrusted deserialization and ciphertext-evaluation memory
+safety are core C++**, not the C API, so 4.4.0's two most serious items **do** reach a WASM build. The
+hedge applies to 4.4.3, not to 4.4.0, and applying it to both was how the more serious release came to
+read as the less consequential one.
+
+What this does and does not mean for the demo is in `docs/threat-model.md`: `clientFHE.ts` deserialises
+only ciphertexts it produced in the same tab, so the hostile-input precondition for the deserialization
+hardening is absent here. Round 19's instruction was to document the gap rather than claim a
+vulnerability, and that still holds - a GitHub Security Advisory query for SEAL returns **no
+advisories** and no CVE exists. The version and release history are recorded as facts, the gap is
+recorded as widening, and no vulnerability is claimed.
+
+**Re-check this on any round that touches the FHE path.** Round 31 touched `requirements-fhe.txt` and
+did not honour that trigger, which is how a three-week-old critical advisory went unread; the cadence
+since April 2026 is roughly monthly. Whether a bump is even available is answered below.
 
 **Genomics has no label, so it has no QCNN: declined, and not for the reason recorded for two
 rounds.** The deferral condition on file was the per-score licence audit. Round 31 checked what would
