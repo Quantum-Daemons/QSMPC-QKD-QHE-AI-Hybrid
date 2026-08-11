@@ -89,32 +89,56 @@ def update_key_cnot(a_c: int, b_c: int, a_t: int, b_t: int) -> tuple[int, int, i
     return a_c, b_c ^ b_t, a_c ^ a_t, b_t
 
 
-def pauli_concealment_demo(n: int = 3, seed: int | None = None) -> dict:
-    """Demonstrate Pauli-gate concealment = circuit/output privacy (report WS4(c)/(f)).
+def pauli_output_concealment_demo(n: int = 3, seed: int | None = None) -> dict:
+    """Show that a state under a random Pauli frame is unreadable without the key.
 
-    The server returns its computation result under a random Pauli frame. A client that
-    knows the frame decrypts it exactly; a malicious client guessing the wrong key
-    recovers essentially random data. Returns fidelities proving the result (and hence
-    the server's circuit effect) is hidden without the correct key.
+    SCOPE, and a retraction. This function was called ``pauli_concealment_demo`` and its docstring
+    claimed to demonstrate "circuit/output privacy" for report items WS4(c) and WS4(f) - circuit
+    privacy against a malicious server, and hiding the server's circuit from a malicious client.
+    **It does not, because it applies no circuit.** ``server_out`` below is ``encrypt(psi, ...)``:
+    the input state under a mask. There is no gate, no unitary, and therefore no "circuit effect"
+    to conceal. What is actually demonstrated is that QOTP hides a STATE, which is real, standard,
+    and strictly weaker than circuit privacy.
+
+    A second defect made the overclaim hard to see. ``fidelity_correct_key`` is
+    ``decrypt(encrypt(psi, a, b), a, b)`` compared against ``psi``, which is 1.0 by construction for
+    any input - and it used to be half of the ``circuit_private`` verdict, so the verdict was carried
+    by a term that could not fail. ``tests/test_round2.py`` asserted both the 1.0 and the verdict, so
+    a green test read as confirmation of a claim nothing had tested. That is the same tautology this
+    project found and fixed in ``qhe/private_inference.py``; this was the last instance.
+
+    The correct-key round trip is still returned, because it is a useful *self-check* that
+    ``encrypt``/``decrypt`` are inverses - but it is named for what it is and excluded from the
+    verdict, which now rests only on the falsifiable half: a wrong key must destroy the state.
+
+    WHAT A REAL CIRCUIT-PRIVACY DEMONSTRATION WOULD NEED. Apply an actual circuit on the server and
+    propagate the Pauli frame through it. That is well defined for Clifford circuits, where a Pauli
+    conjugated by a Clifford is again a Pauli, so the client can update its frame and decrypt. It
+    breaks at T, since ``T X T-dagger`` is not Pauli - the difficulty Ortega and Martin-Delgado's
+    scheme exists to address and which this repository does not implement. Until that exists, no
+    document here may cite this function as evidence of circuit privacy.
     """
     rng = np.random.default_rng(seed)
     psi = rng.normal(size=2 ** n) + 1j * rng.normal(size=2 ** n)
     psi /= np.linalg.norm(psi)
 
     a, b = pauli_key(n, rng)                       # the true frame (known only to the client)
-    server_out = encrypt(psi, a, b)               # server result under the random Pauli frame
+    masked = encrypt(psi, a, b)                    # the STATE under a random Pauli frame, not a result
 
-    recovered = decrypt(server_out, a, b)          # legitimate client
+    roundtrip = decrypt(masked, a, b)              # legitimate client
     wa, wb = pauli_key(n, rng)                      # malicious client's wrong guess
     while np.array_equal(wa, a) and np.array_equal(wb, b):
         wa, wb = pauli_key(n, rng)
-    wrong = decrypt(server_out, wa, wb)
+    wrong = decrypt(masked, wa, wb)
 
-    fid_correct = float(abs(np.vdot(psi, recovered)) ** 2)
+    fid_roundtrip = float(abs(np.vdot(psi, roundtrip)) ** 2)
     fid_wrong = float(abs(np.vdot(psi, wrong)) ** 2)
     return {
         "n_qubits": n,
-        "fidelity_correct_key": round(fid_correct, 6),
+        # Named for what it is: an encrypt/decrypt inverse check, 1.0 by construction. NOT evidence.
+        "roundtrip_fidelity_selfcheck": round(fid_roundtrip, 6),
         "fidelity_wrong_key": round(fid_wrong, 6),
-        "circuit_private": fid_correct > 0.99 and fid_wrong < 0.9,
+        # The only falsifiable claim here, and deliberately not called `circuit_private`.
+        "output_concealed": fid_wrong < 0.9,
+        "applies_a_circuit": False,
     }

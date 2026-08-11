@@ -1,4 +1,4 @@
-# Lightweight public-demo stack for a small VPS (e.g. <vps-provider> 6 vCPU / 12 GB / no GPU).
+# Lightweight public-demo stack for a small VPS (6 vCPU / 12 GB / no GPU).
 #   docker compose -f docker/docker-compose.demo.yml up --build -d
 #
 # Philosophy: the SPA does the heavy compute in the browser (WASM PQC, ONNX inference);

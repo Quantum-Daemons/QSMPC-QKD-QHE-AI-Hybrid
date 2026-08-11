@@ -556,9 +556,14 @@ the other. A licence commitment that only a human remembers to honour is not a c
         integrated net-benefit curve \emph{directly}, and the resulting integer-coefficient scoring
         system is a single encrypted dot product by construction --- which fits this architecture
         better than any of the alternatives evaluated.
-  \item \textbf{The verification checklist is 1{,}800 lines.} It is indexed and every row has a
-        unique identifier, but its size is itself a finding about how much of this work is
-        institutional memory rather than automation.
+  \item \textbf{The verification checklist is \nchecklistlines{} lines, and it is not published.} It
+        is indexed and every one of its \nchecklistrows{} rows has a unique identifier, but its size
+        is itself a finding about how much of this work is institutional memory rather than
+        automation. It is maintained outside the repository because it accumulated the deploy
+        procedure and the internal failure history alongside the checks; the observable outcomes it
+        gates are published in \texttt{docs/verification-log.md}. An earlier revision of this line
+        said 1{,}800 lines, which was stale by six hundred --- the count is now generated, like every
+        other number here.
 \end{itemize}
 
 \section{Conclusion}
