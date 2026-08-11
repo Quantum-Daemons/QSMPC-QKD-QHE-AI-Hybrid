@@ -158,7 +158,7 @@ run's metrics composed into the prompt. Everything fails soft (no WebGPU -> Tran
 envelope always runs). Each use-case page
 unifies a **live two-party (Alice <-> Bob) sequence diagram** (driven by the running pipeline's
 stages - Start/Pause/Step/Stop/Restart), that industry's benchmark, and a signed SHAP explanation
-(finance/medical/genomics). **One Run drives both** (Round 7): the live pipeline runs, and the
+(all five use-case pages). **One Run drives both** (Round 7): the live pipeline runs, and the
 `QuantumComparisonStage` assembles the benchmark **from that run** into `ctx.artifacts["benchmark_result"]`
 (rides on `/api/runs/{id}`, no extra endpoint) - the MPC-FHE row is the run's real measured FHE-linear +
 MPC-non-linear latency, next to the QSMPC-FHE comparison + advantage. There is **no separate "Run

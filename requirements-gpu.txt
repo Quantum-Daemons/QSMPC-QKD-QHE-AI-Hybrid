@@ -1,17 +1,67 @@
 # GPU quantum simulation for NVIDIA RTX PRO 6000 Blackwell (sm_120) + CUDA 13.0.
 #
-# IMPORTANT: qiskit-aer-gpu (cu11/cu12 wheels) does NOT target Blackwell sm_120.
-# The supported 2026 path on this hardware is CUDA-Q + cuQuantum (PennyLane lightning.gpu
-# wraps cuStateVec; supports SM 7.0+ including Blackwell).
+# Re-surveyed 2026-08-11 against PyPI and each project's own repository. Two entries below used to
+# say "when available"; both are now available and the versions are written down. One is still not,
+# and that is stated rather than left as an open question.
 #
-# CUDA-Q (NVIDIA) — Apache-2.0. Pick the wheel matching your CUDA major:
-# cudaq                       # latest; or cuda-quantum-cu12 / appropriate cu13 wheel
+# LICENCE WARNING, because this file used to imply otherwise. CUDA-Q itself is Apache-2.0, but the
+# cuQuantum LIBRARIES it pulls in - custatevec-cu13, cutensornet-cu13, cudensitymat-cu13 - are
+# "NVIDIA Proprietary Software" on PyPI. The Python BINDINGS (cuquantum-python) are BSD-3-Clause.
+# Redistributable under NVIDIA's terms, not OSS. This whole tier is therefore NOT part of the
+# commercial-OK permissive set that references/REFERENCES.md tracks; it is an optional local
+# accelerator, and nothing in the published demo depends on it.
 #
-# PennyLane Lightning GPU (wraps cuQuantum cuStateVec):
-# pennylane-lightning-gpu>=0.40
+# CUDA-Q (NVIDIA) — Apache-2.0. cu13 wheel exists as of 2026-08-03:
+# cuda-quantum-cu13>=0.15.1     # requires custatevec-cu13~=1.13.1, nvidia-cublas~=13.0
 #
-# cuQuantum runtime (pulled in by lightning.gpu, or install explicitly):
-# custatevec-cu12             # or the cu13-tagged build when available
+# cuQuantum runtime — NVIDIA Proprietary (see warning above). cu13 build shipped 2026-06-29:
+# custatevec-cu13>=1.14.0
+# cuquantum-python-cu13>=26.6.0 # BSD-3-Clause bindings; requires cupy-cuda13x, cuda-bindings>=13.0.3
+#
+# PennyLane Lightning GPU (wraps cuQuantum cuStateVec) — Apache-2.0:
+# pennylane-lightning-gpu>=0.45.0
+#   NOT a CUDA 13 stack. 0.45.0 (2026-05-12) still declares custatevec-cu12,
+#   nvidia-cuda-runtime-cu12, nvidia-cublas-cu12, nvidia-cusparse-cu12, nvidia-nvjitlink-cu12.
+#   It runs on a CUDA 13 DRIVER via its bundled cu12 runtime, which is a different claim. The
+#   "supports SM 7.0+ including Blackwell" note is about the ARCHITECTURE and holds; the toolkit
+#   version is what does not. This is the only item in this tier with no cu13 path today.
 #
 # These are intentionally left commented: install interactively after confirming the
 # exact CUDA-tagged wheels available for your driver (580) / CUDA 13 toolkit.
+#
+# NOT ADOPTED, recorded with dates so the survey is not repeated (checked 2026-08-11):
+#   Phantom / phantom-fhe   GPL-3.0 (copyleft, fails the commercial-OK rule), zero releases ever,
+#                           last push 2025-01-01. Unmaintained as well as unusable here.
+#   CrypTen                 MIT but the repository is ARCHIVED; last push 2024-11-23, PyPI 0.4.1
+#                           from 2022-12-08. Has no CUDA path of its own; it inherits PyTorch's.
+#   TensorFHE               No OSS repository exists. A GitHub name search returns zero results;
+#                           it is a paper, so there is nothing to pin.
+#   qiskit-aer-gpu          No release since 2024-09-13. That is a stronger reason to avoid it than
+#                           the sm_120 gap noted in requirements-core.txt, and it is the one to give.
+#   Zama concrete-python    2.11.0 (2025-07-03) and concrete-ml 1.9.0 (2025-04-05) both fail the
+#     / concrete-ml         nine-month activity test, and the GPU wheel is CUDA 11.8 from a private
+#                           index with no CUDA 13 statement. Nothing here pins Zama, correctly.
+#   FIDESlib                MIT, server-side CKKS on GPU, README states "NVIDIA CUDA version 12 or
+#                           13". NOT ADOPTED, and the reason is stronger than the one first written
+#                           here. Built locally 2026-08-11 at commit 786c760 with
+#                           -D CMAKE_CUDA_ARCHITECTURES=120 on CUDA 13.0.88, sm_120. Result:
+#
+#                           1. It does NOT build against stock OpenFHE 1.5.1. Compilation fails in
+#                              src/CKKS/openfhe-interface/RawCiphertext.cu, which reads
+#                              PolyImpl::m_values and DCRTPolyImpl::m_params - both private.
+#                           2. Its own README says why: "FIDESlib needs a patched version of OpenFHE
+#                              in order to be able to access some internals needed for
+#                              interoperability." deps/openfhe-1.5.1.patch inserts `public:` into
+#                              OpenFHE's headers in six places.
+#
+#                           So "fully interoperable with OpenFHE" means interoperable with a PATCHED
+#                           FORK, not with the library this project installs. Adopting it would mean
+#                           replacing our OpenFHE with a build whose encapsulation is removed, and
+#                           depending on internals upstream deliberately made private - which any
+#                           OpenFHE point release may move. With zero tagged releases on top, that is
+#                           three independent reasons rather than one.
+#
+#                           NO PERFORMANCE NUMBER WAS OBTAINED, and that is not a hole in the survey:
+#                           the benchmark is unreachable without first replacing this project's FHE
+#                           backend, so the build outcome IS the finding. Revisit only if upstream
+#                           builds against unpatched OpenFHE and tags a release.
