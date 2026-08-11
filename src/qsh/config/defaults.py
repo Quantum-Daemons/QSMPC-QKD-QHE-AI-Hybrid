@@ -163,6 +163,19 @@ class FederatedConfig:
     hospitals: int = 4
     test_split: float = 0.2
     secure_aggregation: bool = True
+    #: The browser's lighter federated schedule. A deliberate override of `rounds` and `lr`, because a
+    #: federated round has to finish inside a page interaction - the server-side values above are what
+    #: the full deployment trains with.
+    #:
+    #: These were literals inside `frontend_config()` for three rounds (29, 30, 31), recorded on the
+    #: deferred list with a reason and **no condition that would resolve it** - which fails the backlog
+    #: gate's first clause as well as its three-round clause. The consequence was concrete rather than
+    #: cosmetic: the override could not be tuned the way every value it overrides can, so anyone wanting
+    #: a heavier browser schedule had to edit a dict literal in a function that builds a JSON payload.
+    #: The gate exists to stop exactly this kind of small thing rolling forward, and the fix is smaller
+    #: than the three paragraphs written about deferring it.
+    browser_rounds: int = 6
+    browser_lr: float = 0.15
 
 
 @dataclass
@@ -210,6 +223,20 @@ class DataConfig:
     genomics_biobanks: int = 4
     genomics_allele_min: int = 50
     genomics_allele_max: int = 400
+    #: Which bundled PGS-Catalog score the genomics use case evaluates. A FIELD, not a literal, and
+    #: the reason is the defect this replaces: the pipeline read `config.get("prs", "breast_cancer")`
+    #: while nothing anywhere set that key, so when Round 31 moved the browser, the trainer, the
+    #: registry and the payload to PGS000004 it left the E2E pipeline scoring PGS000001. Two surfaces
+    #: then reported different scores for the same use case - exactly what `qsh.data.loaders` warns
+    #: "would be worse than either alone".
+    #:
+    #: A literal default inside a `config.get()` call is invisible to every mechanism this project
+    #: uses to keep values honest: it does not appear in the config dump, cannot be overridden per
+    #: run, and cannot be compared against what the browser fetched. A value that selects a model
+    #: belongs here beside the KEM and the FHE backend. Valid names are the keys of
+    #: `qsh.data.loaders._PRS_FILES`; `tests/test_prs_pipeline_parity.py` pins this against the
+    #: browser payload the registry points at.
+    genomics_prs_score: str = "breast_cancer_prs313"
 
 
 @dataclass

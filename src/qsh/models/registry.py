@@ -17,6 +17,19 @@ Every use case has up to three model tiers, and the *relationship between them* 
                    here; it is the class of model that closes at this operating point. State the
                    operating point, not a prediction about the field - the scoped claim is falsifiable
                    and the unscoped one was already false.
+
+                   AND IT DOES NOT HOLD FOR EVERY USE CASE. Round 32 found the citation that falsifies
+                   it for genomics specifically: Knight et al., Cell Reports Methods 6(1):101271
+                   (2026-01-26), run polygenic risk scoring under HE over **110,000 SNPs** and describe
+                   it as "practical to use on a single CPU" - roughly 350x this project's 313 variants.
+                   So `genomics.prs` is not small because homomorphic evaluation is expensive. It is
+                   small because PGS000004 HAS 313 variants, which is a property of Mavaddat et al. 2018
+                   and not of CKKS.
+
+                   The cost argument survives where the model is not a bare dot product - finance,
+                   medical and satellite all evaluate something with depth. Applying it to a linear
+                   score was the kind of generalisation that reads as rigour and understates what the
+                   architecture can do.
   T2 ``industry``  the real literature model for that industry, trained locally and published to
                    the Hugging Face Hub as safetensors + ONNX (fp32 server / int8 browser).
   T3 ``large``     models too big to run under encryption at all — served remotely or in-browser

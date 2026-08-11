@@ -283,10 +283,16 @@ is self-audited and carries no side-channel protection, so this is conformance e
 production assurance. Also `node-seal` 7.0.0, which bundles **Microsoft
 SEAL 4.1.2**. Verified 2026-08-09: node-seal 7.0.0 (2025-11-08) is still the newest node-seal, so
 this is not a stale pin here - but the gap to upstream SEAL is wider than it looks and is widening.
-Microsoft SEAL has shipped **six releases since 4.1.2**, reaching **4.4.3 on 2026-08-04**: 4.4.0 is
-described only as "Major security update" with no further detail, and 4.4.3 fixes null-output-pointer
-dereferences and C++ exceptions leaking across the **C API** boundary (issues #753-#755). Whether
-those C API fixes even reach an Emscripten/WASM build is unverified. **No CVE and no GHSA advisory
+Microsoft SEAL has shipped **six releases since 4.1.2**, reaching **4.4.3 on 2026-08-04**. `CHANGES.md`
+calls **4.4.0 a "Critical security update: all users should upgrade ... as soon as possible"**, which
+hardened untrusted deserialization and fixed native memory-safety and concurrency defects across
+ciphertext evaluation; 4.4.3 fixes null-output-pointer dereferences and C++ exceptions leaking across
+the **C API** boundary (issues #753-#755). The C-API hedge applies to 4.4.3 - deserialization and
+ciphertext evaluation are core C++, so 4.4.0's two most serious items **do** reach a WASM build. This
+README said 4.4.0 was "described only as Major security update with no further detail" until Round 32;
+that is the GitHub release body, not the changelog, and it under-stated a critical advisory. Full
+analysis and what it means for this demo: [`docs/deliverable-verification.md`](docs/deliverable-verification.md)
+and [`docs/threat-model.md`](docs/threat-model.md). **No CVE and no GHSA advisory
 exists for SEAL**, so the version is recorded as a fact and no vulnerability is claimed
 (SEAL -> WASM CKKS, MIT) +
 `mpc-framework`/`emp-wasm-engine`/`summon-ts` (garbled-circuit 2PC, MIT) for the demo's real in-browser
@@ -307,7 +313,7 @@ Bundled samples are real measurements where a licence permits it, synthetic wher
 (logged as such, never a silent substitute):
 - **Finance/AML** (demo sample): **PaySim simulator output** (Kaggle `ealaxi/paysim1`, CC-BY-SA-4.0) -> the 8 AML features. PaySim is a *simulator*: these are synthetic transactions from aggregated real mobile-money logs, not real transactions. The **training** corpus is IBM AMLworld HI-Small (CDLA-Sharing-1.0), 5,078,345 transactions at 1 laundering in 981. **AMLworld is synthetic too** - IBM generates it with a multi-agent virtual-world model and states "Everything is synthetic"; the NeurIPS 2023 D&B paper is titled *Realistic Synthetic Financial Transactions for Anti-Money Laundering Models*. It is used because it is calibrated to real transaction statistics and its CDLA-Sharing terms permit publishing derived weights - **not** because it is real data. No commercial-OK corpus of real laundering transactions exists.
 - **Medical**: MedMNIST v2 (CC-BY-4.0), Wisconsin breast-cancer (bundled demo sample; UCI, CC BY 4.0 - attribution required).
-- **Genomics**: **real 1000 Genomes** phase-3 genotypes (Ensembl/IGSR - open *access*, but IGSR grants **no blanket licence**: "rights claimed on pieces of data vary") + **real PGS-Catalog** PGS000001 weights (**per-score licence**, EMBL-EBI terms by default). Neither is cleared for redistribution as commercial-OK; see [DATA_LICENSES.md](DATA_LICENSES.md).
+- **Genomics**: **real 1000 Genomes** phase-3 genotypes (Ensembl/IGSR - open *access*, but IGSR grants **no blanket licence**: "rights claimed on pieces of data vary") + **real PGS-Catalog** PGS000004 / PRS313 weights (**per-score licence**, EMBL-EBI terms by default). Neither is cleared for redistribution as commercial-OK; see [DATA_LICENSES.md](DATA_LICENSES.md).
 - **Satellite**: **real NASA SMAP/MSL** spacecraft telemetry (Telemanom; Hundman et al. 2018; NASA JPL) - **no licence is granted by any provider** `[UNVERIFIED - reasoned inference]`. Telemanom's `LICENSE.txt` is a Caltech copyright assertion covering the *code*; the Kaggle mirror is labelled "Data files (c) Original Authors". 17 U.S.C. 105 removes US copyright only and is not a grant. Bundled demo sample only - the satellite **training** corpus is ESA-ADB (CC BY 3.0 IGO). See [DATA_LICENSES.md](DATA_LICENSES.md).
 - **Telecom/defense**: literature-grounded synthetic QKD-attack telemetry (no commercial-OK real attack dataset - UNSW-NB15 / CICIDS are research-only).
 
@@ -754,9 +760,14 @@ See [`docs/pqc-roadmap.md`](docs/pqc-roadmap.md).
 - **Per-industry models - three tiers, and the gap between them is the measurement** - the
   **crypto/protocol layer is real across all five industries** (PSI/QOT, QSMS secure-sum, BB84/QSDC,
   MPyC MPC, CKKS FHE, federated secure-aggregation). The AI side is organised in tiers because
-  homomorphic evaluation is cost-bounded and will stay that way - the largest model ever run
-  end-to-end under CKKS is 8B parameters at roughly a 10^4x runtime gap (IACR ePrint 2026/935), so a
-  demo cannot honestly claim both a state-of-the-art model *and* encrypted inference of that model:
+  homomorphic evaluation is cost-bounded **at the operating point this demo targets** - a single
+  device, in a browser tab, running CKKS through `node-seal` (SEAL compiled to WASM, single-threaded).
+  Park et al. ([arXiv:2601.18511v2](https://arxiv.org/abs/2601.18511v2)) run Llama-3-8B end to end
+  under CKKS, 128 encrypted tokens in 20 s - on **eight** NVIDIA RTX PRO 6000 GPUs, which is ten orders
+  of magnitude away from a tab. So the constraint is real and it is about the *device*, not about the
+  field: a demo cannot honestly claim both a state-of-the-art model *and* encrypted inference of that
+  model **here**. This sentence read "and will stay that way ... (IACR ePrint 2026/935)" until Round 32,
+  which was a prediction rather than a measurement and cited the systematisation instead of the paper:
 
   | tier | what it is | where it runs |
   |---|---|---|
@@ -855,7 +866,7 @@ See [`docs/pqc-roadmap.md`](docs/pqc-roadmap.md).
 - **Public-demo data (real where the licence permits, synthetic otherwise)** - the client-side demo loads **real
   commercial-OK datasets where shippable**, mirroring the full deployment: **medical** uses a real Wisconsin
   Diagnostic Breast-Cancer sample (UCI dataset 17 via sklearn, **CC BY 4.0 - attribution required**) + a real logistic-regression model;
-  **genomics** uses the real PGS-Catalog PGS000001 PRS weights (77 SNPs; **licensed per score** - PGS000001 carries the Catalog's default terms, *not* a blanket CC-BY grant) over real 1000 Genomes
+  **genomics** uses the real PGS-Catalog PGS000004 / PRS313 PRS weights (313 variants; **licensed per score** - PGS000004 carries the Catalog's default terms, *not* a blanket CC-BY grant) over real 1000 Genomes
   genotypes -> a real in-browser **Polygenic Risk Score** with per-SNP signed SHAP; **finance** uses a real
   **PaySim** transaction sample (CC-BY-SA-4.0) + the distilled CKKS-linear fraud model; and **satellite** scores
   **real NASA SMAP/MSL telemetry** (no licence stated by any provider - see DATA_LICENSES.md) with the real linear anomaly model - all tiny static JSON

@@ -71,6 +71,11 @@ WEB = REPO / "web" / "public" / "data" / "genomics"
 #: one score to the other is a visible one-line change in `realData.ts`, not a silent consequence of
 #: renaming something here.
 _PAYLOAD = {
+    # PRS77 is not a browser payload any more: the file was moved to data/genomics/ in Round 32 because
+    # nothing in the browser read it and Vite was serving genotype data for no demo benefit. The entry
+    # stays so `--score breast_cancer` names a path rather than raising KeyError, and the provenance
+    # guard below refuses to write it - which is the honest state, since the registry describes the
+    # PRS313 payload and stamping its text on a 77-variant file would state a false provenance.
     "breast_cancer": "pgs000001_prs.json",
     "breast_cancer_prs313": "pgs000004_prs313.json",
 }

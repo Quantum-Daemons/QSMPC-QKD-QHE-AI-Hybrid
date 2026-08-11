@@ -6,8 +6,14 @@
 //
 //   MEASURED (local WebGPU)  computed in this tab on a real GPU adapter
 //   MEASURED (local WASM)    computed in this tab on the WebAssembly runtime
-//   REMOTE                   computed by the API or a hosted Space; latency includes the network
+//   MEASURED (plain JS)      computed in this tab as a hand-written JS loop; no ORT, no wasm, no GPU
 //   SIMULATED                no computation of the advertised kind happened
+//
+// This list said "exactly four" and then named REMOTE while omitting measured-js - the count was right
+// only because one member was added and another removed and the header was updated for neither. It sat
+// twenty lines above the comment explaining both changes, which is the failure mode worth noting: a
+// summary at the top of a file drifts from the definition below it precisely because the definition is
+// what gets edited.
 //
 // SIMULATED is not a failure state and is used deliberately. QKD has no browser API and cannot have
 // one, so every QKD number here comes from an analytic channel model. Zama's own documentation says

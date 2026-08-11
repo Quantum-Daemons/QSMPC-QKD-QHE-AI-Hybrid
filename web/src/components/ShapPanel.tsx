@@ -12,10 +12,12 @@
 // told the reader not to read it that way. It survived because the error points toward caution and so
 // reads as rigour. `clientCompute` sets the flag explicitly at each explanation site.
 export default function ShapPanel({ explanation, provenance, baseline, publishedModel, surfacedBackend,
-  isOfReportedClass }: {
+  isOfReportedClass, hasTreeAttribution }: {
   explanation: any; provenance?: string | null; baseline?: string | null;
   publishedModel?: string | null; surfacedBackend?: string | null;
   isOfReportedClass?: boolean | null;
+  /** Whether THIS page's model panel renders tree-ensemble attribution. True on telecom only. */
+  hasTreeAttribution?: boolean | null;
 }) {
   const tops = explanation?.top_features as any[] | undefined;
   if (!tops?.length) return null;
@@ -34,11 +36,25 @@ export default function ShapPanel({ explanation, provenance, baseline, published
         Explains the <b>{provenance ?? "pipeline"}</b> on this page's own data
         {baseline ? <> · reference point: {baseline}</> : null}
         {publishedModel ? (
-          <> · <b>{publishedModel}</b> also ran this page, on its own corpus. Exact linear SHAP
-          applies to the linear student, not to a ResNet or a fixed quantum circuit, so no SHAP is
-          shown for it here. The one published <i>tree ensemble</i> (telecom&apos;s random forest)
-          does now carry attribution — impurity and permutation importance, in the model panel
-          below, computed at training time because a forest has no closed-form Shapley value.</>
+          <> · <b>{publishedModel}</b> also ran this page, on its own corpus, and has <b>no</b> SHAP
+          here: exact linear SHAP applies to the linear student, not to a ResNet, a tree ensemble or a
+          fixed quantum circuit.</>
+        ) : null}
+        {/* The tree-ensemble attribution exists on ONE page, and getting this gate right took two
+            attempts worth recording.
+            Originally the sentence sat inside the `publishedModel` clause and promised the block on
+            every page. `AttributionRows` renders only where the record carries the two tree measures -
+            telecom - so it pointed readers at a block that was not there. But it was worse than that:
+            telecom is precisely the page where `publishedModel` is FALSY, so the sentence appeared on
+            the four pages WITHOUT the block and never on the one with it.
+            The first fix nested it under `hasTreeAttribution` while leaving it inside `publishedModel`,
+            which made it appear nowhere at all - correct in the sense that it no longer lied, and
+            useless. It belongs outside: whether this page's model panel shows tree attribution has
+            nothing to do with whether a published model also ran. */}
+        {hasTreeAttribution ? (
+          <> · The published <i>tree ensemble</i> on this page <b>does</b> carry attribution — impurity
+          and permutation importance, in the model panel below, computed at training time because a
+          forest has no closed-form Shapley value.</>
         ) : null}
       </p>
       {/* Which of these two paragraphs applies is a property of the page's FLOW, not of this panel.
