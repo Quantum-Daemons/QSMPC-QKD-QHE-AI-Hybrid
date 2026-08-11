@@ -504,10 +504,19 @@ Added in Round 18 and previously recorded only in source docstrings.
 
 ## OSS reused
 
-Licences below are what each project publishes. **They are not uniformly commercial-OK** - `PaySim`
-is GPL-3.0 and `MP-SPDZ` carries a CSIRO licence, so the previous heading ("all commercial-OK") was
-wrong on its own table. Neither is a dependency: PaySim is cited only, and MP-SPDZ is a reference
-baseline. Everything this project actually installs is MIT, Apache-2.0 or BSD.
+Licences below are what each project publishes. **They are not uniformly commercial-OK** - `PaySim` is
+GPL-3.0, so the previous heading ("all commercial-OK") was wrong on its own table. PaySim is cited
+only, not a dependency. Everything this project actually installs is MIT, Apache-2.0 or BSD.
+
+**MP-SPDZ correction, 2026-08-11.** This paragraph used to say MP-SPDZ "carries a CSIRO licence" and
+listed it beside PaySim as a reason the set is not commercial-OK. Read at the primary source, its
+`License.txt` says: *"CSIRO grants you a licence to the Software on the terms of the BSD 3-Clause
+Licence."* The top-level grant is therefore plain BSD-3-Clause and belongs in the permissive set. The
+real caveat is narrower and was attached to the wrong thing: **bundled third-party components** inside
+the repository (SPDZ-2 / Bristol, SPDZ-BMR-ORAM / Bristol and Bar-Ilan, and others) carry their own
+terms, which is what needs checking before depending on a specific protocol. Recorded because this
+file's stated purpose is to stop exactly this kind of drift, and it had drifted in the direction of
+being needlessly restrictive - which is still being wrong.
 
 `scripts/bootstrap_submodules.sh` fetches the subset that is still wired up; the submodules removed
 in Round 17 are marked below.
@@ -591,8 +600,12 @@ belongs in this file rather than only in a comment.
   Learning", *Cell* 172(5) (2018).** DOI 10.1016/j.cell.2018.02.010. The chest X-ray source behind
   PneumoniaMNIST. Added: 2026-08-07.
 - **Mavaddat et al., "Polygenic Risk Scores for Prediction of Breast Cancer", *AJHG* 104(1) (2019).**
-  DOI 10.1016/j.ajhg.2018.11.002. PGS Catalog PGS000001 / PPM017270; source of the C-index 0.628 the
-  genomics card cites as external and explicitly does not measure. Added: 2026-08-07.
+  DOI 10.1016/j.ajhg.2018.11.002. The paper behind **PGS000004 (PRS313)**, which the genomics use case
+  has scored since Round 31. Its external baseline is now **AUROC 0.633 [0.624, 0.641]** from PGS Catalog
+  **PPM001647** (Jia et al., JNCI Cancer Spectrum 2020, doi:10.1093/jncics/pkaa021, n=400,812 Europeans),
+  cited and explicitly not measured here. The retired PGS000001 baseline was PPM017270's Harrell C-index
+  0.628 - a different quantity on a different scale, which is one reason the switch was worth making.
+  Added: 2026-08-07, revised 2026-08-11.
 - **"SoK: Private LLM Inference", IACR ePrint 2026/935.** Quoted in `models/registry.py` and
   `models/distil.py` on why distillation is the practical route to FHE-feasible inference. Added:
   2026-08-07.
@@ -709,3 +722,135 @@ Primary sources: Qi, Sun, Lin, Yin, Long, Light Sci. Appl. 8, 22 (2019), doi:10.
 - the `Cs > 0` abort rule and the measured g = 2.57. Pan, Lin, Wu, Sun, Ruan, Yin, Long,
 arXiv:2005.05102 - free-space QSDC, 500 bps over 10 m, QBER 0.49% +/- 0.27%, and the DBER/QBER
 distinction. Long and Liu (2002), Deng, Long and Liu (2003), Deng and Long (2004) - the protocols.
+
+## Round 31 additions, verified at primary source 2026-08-11
+
+Every entry below was loaded at its arXiv abstract page, IACR eprint listing, Federal Register API
+record or whitehouse.gov PDF before being written here. Nothing in this section was taken from a
+secondary write-up or from another file in this repository. Where a claim could not be verified it is
+marked, and where a check came back clean that is recorded too - a negative result that has been
+established is worth keeping, because otherwise it gets re-litigated every round.
+
+### PQC migration, now binding rather than advisory
+
+- **OMB Memorandum M-26-15, "Execution of the Migration to Post-Quantum Cryptography."** Russell T.
+  Vought, Director, Office of Management and Budget, 2026-06-24. Full 10-page PDF read from
+  whitehouse.gov. The operational instrument behind EO 14412, and the most consequential item in this
+  batch for [`docs/pqc-roadmap.md`](../docs/pqc-roadmap.md):
+  - Action One: mitigate as much quantum risk as feasible **by 2030-12-31**.
+  - Action Two: agency PQC Migration Plans to OMB and ONCD **within 120 days** (about 2026-10-22).
+  - Five phases: **1** 2026-2027 strategy and discovery, **2** 2027-2028 pilots, **3** 2028-2030
+    prioritised migration and key establishment, **4** 2031 signature migration, **5** 2035 full
+    migration.
+  - Phases 3 and 4 each end with the sentence *"Ensure all systems are cryptographically agile."* That
+    is a mandated requirement naming the exact property [`docs/crypto-agility.md`](../docs/crypto-agility.md)
+    claims, which changes that document's status from good practice to alignment with a directive.
+  - **"Agencies must align their plans with NIST Internal Report (IR) 8547 ... or successor
+    document."** This sharpens rather than contradicts the roadmap's line that IR 8547 "is still a
+    draft, not binding": the draft is now normatively referenced by a binding memorandum. Both facts
+    have to be stated together, because either alone misleads.
+  - Does not apply to national security systems, consistent with what this repository already records
+    about EO 14412.
+- **Two citation checks recorded so they are not repeated.** Secondary sources (Wiz,
+  gopher.security) label the executive order **14409**. The Federal Register API returns EO
+  **14412**, "Securing the Nation Against Advanced Cryptographic Attacks", signed 2026-06-22,
+  published 2026-06-25, **91 FR 38483**. This repository's number and FR citation are correct and the
+  blogs are wrong. Separately, **NIST IR 8547 is confirmed still at Initial Public Draft** (published
+  2024-11-12, comments closed 2025-01-10, no second draft and no final), so the roadmap's claim holds.
+
+### QKD security proofs that supersede this repository's baseline
+
+- **Sixto, Curras-Lorenzo, Pereira, Zapatero, Navarrete & Curty, "Finite-key security analysis of
+  decoy-state QKD with source and detector imperfections."** arXiv:2606.29943, 2026-06-29. An
+  analytical finite-key proof that carries state-preparation flaws, bit-and-basis side-channel leakage
+  **and correlations**, setting-independent intensity fluctuations, and detection-efficiency mismatch
+  simultaneously. **Directly relevant, and not comfortable reading:** `qkd/bb84.py::_decoy_secure_fraction`
+  and `qkd/decoy_reference.py` both rest on Ma, Qi, Zhao & Lo (2005), and this paper's motivation is
+  that existing proofs "rely on assumptions that are difficult to justify in realistic high-speed
+  implementations, such as the independent and identically distributed nature of the emitted signals"
+  - which is exactly what this repository assumes. The Ma et al. reproduction stays as the reference
+  implementation because that is what the numbers on the page are computed against; this is the 2026
+  replacement and the honest statement is that the demo has not adopted it.
+- **Ivchenko, Khmelev, Kurochkin & Trushechkin, "Security of quantum key distribution with passive
+  basis choice and detection-efficiency mismatch for a realistic satellite setup."** arXiv:2608.09793,
+  2026-08-10. Passive-basis-choice BB84 with mismatch across four threshold detectors plus a
+  decoy-state adaptation, parameterised on the **Micius satellite to Zvenigorod ground station** link -
+  a published real-satellite parameterisation rather than a simulation. The string
+  "detection-efficiency mismatch" appears nowhere else in this repository, and the satellite page's
+  free-space link budget has no term for it.
+- **Hossain & Hossain, "SATLOCK: Handover-Coupled Scheduling for Weather-Resilient Quantum Key
+  Distribution over LEO Constellations."** arXiv:2607.17076, v1 2026-07-19, v2 2026-07-27. Composite
+  channel model with atmospheric loss, pointing jitter, **Markov cloud cover, decoy-state estimation
+  and finite-key correction**; an ILP upper bound; a decentralised DQN reaching 91.8% / 84.6% of ILP.
+  This is the closest published prior art to `qkd/optimize.py` (the WS1 AI-QKD parameter optimizer)
+  applied at constellation scale, and its finding that **finite-key effects eliminate short,
+  low-elevation passes entirely** is a constraint the satellite path should state rather than a
+  refinement.
+
+### Secure inference and threshold FHE
+
+- **Ma, Li & Schmid, "FuseFSS: Efficient Secure LLM Inference with Function Secret Sharing."**
+  arXiv:2606.09551, 2026-06-08. Compiles per-operator protocols into two batched FSS evaluations:
+  1.24x-1.50x end-to-end speedup and 9-16% less online communication over the state of the art in
+  FSS-based GPU secure inference. Targets exactly the layer `mpc/secret_inference.py` occupies, which
+  is `mpyc` with pure-Python secret shares for ReLU and argmax. The honest read is that **the
+  non-linear half is the active research frontier and this repository's implementation is the slow
+  reference design**, not the state of the art - and that the leverage is in the protocol, not in
+  changing the model to suit MPC.
+- **Kim, Kim & Lee, "Revisiting Shamir Secret Sharing for Threshold Fully Homomorphic Encryption."**
+  IACR eprint 2026/1559, received 2026-07-30. Reduces the ThFHE ciphertext modulus from `O(N)` to
+  `O(t log(N/t^2))` bits, with every algorithm completing under 0.2 s at N=64 and scaling past N>=256.
+  The only threshold-FHE anchor here was Chardouvelis, Doettling & Malavolta (2020/1454) in
+  `qhe/rate1_qfhe.py`, which is the quantum-side citation; there was none for the classical
+  multi-party side even though `submodules/HEonGPU` ships N-out-of-N collective bootstrapping. Bears
+  on why [`docs/architecture.md`](../docs/architecture.md) splits linear-to-FHE and
+  non-linear-to-MPC rather than using threshold decryption.
+
+### The primary source for the FHE cost ceiling
+
+- **Park, Park, Park, Ahn, Cheon, Hanrot, Kim, Park & Stehle, "Scaling up FHE-based
+  Privacy-Preserving ML: Higher Throughput, Longer Inputs for LLama-3-8B."** arXiv:2601.18511, v1
+  2026-01-26, v2 2026-06-17. Verbatim from the abstract: *"On 8 NVIDIA RTX PRO 6000 GPUs, 128
+  encrypted tokens take 20s for summarization and 18s/token for generation (vastly outperforming the
+  SOTA 295s on costlier H100 GPUs). For a heterogeneous 4096-token input (last 128 encrypted), it
+  takes 64s for summarization and 22s/token for generation."*
+
+  **Recorded here because it was cited without provenance.** `docs/pqc-roadmap.md` quoted the figure
+  and `models/registry.py` attributed it to the secondary SoK (IACR 2026/935) rather than to this
+  paper, while this file - the provenance file - did not list it at all. It is also the result that
+  retired the registry's unscoped claim that homomorphic evaluation "will remain" cost-bounded: what
+  survives is the scoped claim, that it is cost-bounded at a single device in a browser tab.
+
+  Direction of travel, **metadata-verified only** (titles and dates from the arXiv API listing;
+  abstracts not individually opened, so no number from these four should be quoted):
+  arXiv:2604.04783 GPU acceleration of TFHE nonlinear layers for encrypted LLM inference (2026-04-06);
+  arXiv:2602.11470 Cachemir, FHE generative inference with KV cache (2026-02-12); arXiv:2512.11269 a
+  scalable multi-GPU framework for encrypted large-model inference (2025-12-12); arXiv:2602.22229
+  FHECore, GPU microarchitecture for FHE.
+
+### Negative results, re-verified 2026-08-11
+
+Both support claims this repository already makes, and both are recorded so the search is not redone.
+
+- **No in-browser FHE or MPC execution has been published since webSPDZ.** An IACR eprint full-text
+  search for "WebAssembly" returns 8 results across all years, the newest crypto-relevant one still
+  **2025/487 webSPDZ**; an arXiv sweep of WebAssembly, garbled-circuit and browser-plus-homomorphic
+  queries, newest first, returns 40 papers back to 2026-02 with zero in-browser FHE or MPC results.
+  The Round 30 finding therefore re-verifies, and the composition novelty claim rests on it.
+- **Nothing in QHE or QOTP is newer than Round 30's citations.** An arXiv query on `cat:quant-ph AND
+  abs:homomorphic`, newest first, puts arXiv:2607.17131 (Blind Transpiler, already cited) at the top
+  of the relevant set; the only newer quant-ph hit is arXiv:2607.21449 (QuantumChain, blockchain-backed
+  QFL, 2026-07-23), which is off-thesis.
+
+### Verified but not yet cited from anywhere
+
+Held here rather than dropped, because both bear on the WS4(c) / WS4(f) split and the client in this
+project is a browser tab.
+
+- **van Dam, Grimbergen & Wehner, "Verifiable blind quantum computing: Comparative analysis and design
+  considerations for client architectures."** arXiv:2607.05650, 2026-07-06. Classifies BQC clients as
+  emission-, measurement- and rotation-based and concludes that measurement-based remote state
+  preparation and reflection-based teleportation are the default candidates.
+- **Lee, Kim & Chung, "BPBO: Blindness-Preserving Brickwork Optimization by Certified Region
+  Resynthesis."** arXiv:2606.29962, 2026-06-29. Grover-3 pattern reduced from 3x725 to 3x98 while
+  preserving blindness.
