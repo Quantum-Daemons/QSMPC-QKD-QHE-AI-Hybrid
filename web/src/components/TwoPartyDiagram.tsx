@@ -324,8 +324,26 @@ export default function TwoPartyDiagram({
   const rowY = (i: number) => ROW0 + i * ROW_H;
 
   return (
+    <>
+    {/* TEXT EQUIVALENT. The SVG below is one `role="img"`, which collapses its entire subtree for
+        assistive technology - so everything this file calls the most-looked-at part of the page was
+        unavailable: the QBER, the secure-key verdict, the secure-sum or PSI result, the QSDC abort
+        reason, the published-model row and the advantage score. None of it appears in text anywhere
+        else on the page either, so it was not duplicated elsewhere; it was simply unreachable.
+        The list below is generated from the SAME `label(metrics, config)` calls the diagram draws, so
+        it cannot drift from what is on screen, and it carries the per-step state that the diagram
+        encodes only as opacity and a check mark. */}
+    <ol className="sr-only">
+      {steps.map((s, i) => (
+        <li key={i}>
+          {`${s.label(metrics, config)} - ${
+            isActive(s) ? "in progress" : isDone(s) ? "complete" : "not yet run"}`}
+        </li>
+      ))}
+    </ol>
     <svg viewBox={`0 0 780 ${bottomY + 78}`} width="100%" xmlns="http://www.w3.org/2000/svg"
-      style={{ fontFamily: "inherit" }} role="img" aria-label={`${usecase} two-party diagram`}>
+      style={{ fontFamily: "inherit" }} role="img"
+      aria-label={`${usecase} two-party diagram; the same content is listed in text immediately before this figure`}>
       <defs>
         <marker id="tp-c" markerWidth="9" markerHeight="9" refX="7" refY="3.2" orient="auto">
           <path d="M0,0 L8,3.2 L0,6.4 Z" fill="var(--accent)" /></marker>
@@ -450,5 +468,6 @@ export default function TwoPartyDiagram({
         MPC-FHE hybrid: linear → FHE (CKKS ciphertext) · non-linear → MPC (secret-shares) · vs QSMPC-FHE · PoC runs LAN/local
       </text>
     </svg>
+    </>
   );
 }

@@ -39,6 +39,27 @@ export const runsFibreQkd = (usecase: string) => clientFlow(usecase).includes("q
 export const QCNN_USECASES = new Set(["finance_aml", "medical_fl"]);
 export const hasTrainedQcnn = (usecase: string) => QCNN_USECASES.has(usecase);
 
+/** Use cases where a federated-training stage has both real data and somewhere to be rendered.
+ *
+ * The same rule as the predicates above, applied to an injected stage. `qfl` is `useState(true)` with
+ * no writer, so the stage was injected into finance, genomics, telecom, satellite and the generic
+ * demo as well - and in three of those it had neither half:
+ *
+ *   - No render target. `OrchestrationGraph`'s default flow has no `federated_training` node and
+ *     `TwoPartyDiagram`'s federated step is medical-only, so the animation advanced to a stage no
+ *     figure contained and every diagram row dimmed with nothing highlighted.
+ *   - No real data. `realFederatedSet` maps only medical and finance to a bundled sample, so genomics,
+ *     telecom and satellite trained on a synthetic two-cluster toy - whose accuracy was then handed to
+ *     the agent panel as "federated accuracy" with no qualifier, on pages that never mention
+ *     federation. The demo banner meanwhile still tells visitors federated training is the medical
+ *     page's feature.
+ *
+ * Finance qualifies on both counts: `realFederatedSet` has its sample, and its diagram renders the
+ * step. `tests/test_federated_scope.py` checks this set against the data map so it cannot drift.
+ */
+export const FEDERATED_USECASES = new Set(["medical_fl", "finance_aml"]);
+export const runsFederated = (usecase: string) => FEDERATED_USECASES.has(usecase);
+
 export const MODEL_SIZES = [
   { id: "lightweight", label: "Lightweight" },
   { id: "medium", label: "Medium" },
@@ -110,8 +131,9 @@ export function usePipelineRun(usecase: string, recordRef: RefObject<HTMLElement
   const [mpc, setMpc] = useState("");
   const [sig, setSig] = useState("");
   const [workload, setWorkload] = useState("linear");
-  // Always on. It runs a real client-side FedAvg over the page's real bundled sample, so it is
-  // part of what the demo does rather than something to opt into. The state is kept so the flag can
+  // On by default where it is real. It runs a client-side FedAvg over the page's own bundled sample,
+  // which is worth showing without making a visitor find a checkbox - but only two use cases HAVE such
+  // a sample, so `buildConfig` gates the flag on `runsFederated`. The state is kept so the flag can
   // still be turned off programmatically for a test or a comparison.
   const [qfl, setQfl] = useState(true);
   const [optiqkd, setOptiqkd] = useState(false);         // "Optimize QKD (OptiQKD)" toggle (WS1 AI-QKD)
@@ -136,6 +158,17 @@ export function usePipelineRun(usecase: string, recordRef: RefObject<HTMLElement
 
   const stopRef = useRef<(() => void) | null>(null);
   const controlRef = useRef<PipelineControl | null>(null);
+  // Which run owns the UI. Incremented by every `launch`, captured by that launch's handlers.
+  //
+  // WHY THIS EXISTS. `stop()` only sets a flag the pipeline reads BETWEEN stages, so a run stopped
+  // mid-stage keeps executing to the end of that stage and then calls its `onEnd` - which used to
+  // write its metrics, artifacts, signature and benchmark into state that a NEWER run already owned.
+  // Pressing Restart during `private_inference` (seconds long: CKKS convolution, a garbled-circuit
+  // argmax, three or four ONNX evaluations) therefore replaced the new run's results with the
+  // previous run's, and flipped the badge to "stopped" while the new run was visibly still going.
+  // The caption on the use-case page invites exactly that click. Comparing tokens makes a superseded
+  // run inert rather than merely flagged.
+  const runTokenRef = useRef(0);
   const logRef = useRef<HTMLDivElement>(null);
   const recorderRef = useRef<FrameRecorder | null>(null);
   const stageStartRef = useRef<Record<string, number>>({});
@@ -170,7 +203,14 @@ export function usePipelineRun(usecase: string, recordRef: RefObject<HTMLElement
     // spread every numeric/editable param into the run config; the backend + demo read the keys they
     // know (ctx.config.get(key, <config default>)), so a Parameters-panel edit overrides the default.
     const { qsmpc_op, inference, prime, ...nums } = params;
-    const c: Record<string, unknown> = { kem, qkd, fhe, mpc, sig, workload, ...nums };
+    // `usecase` is READ by the run - `clientCompute`'s security facts pick the free-space channel
+    // model with `config.usecase === "satellite_comms"` - and was never emitted here, so the key was
+    // permanently `undefined` and the ternary permanently took the fibre branch. The satellite page
+    // therefore printed a decoy-state tagged fraction of 7.26 computed over 50 km of FIBRE, using two
+    // parameters that page does not even render, where the free-space downlink gives roughly 125.
+    // A number labelled `measured` that describes a different channel is the defect class this
+    // project treats as most serious, and it was caused by a missing key rather than by wrong maths.
+    const c: Record<string, unknown> = { usecase, kem, qkd, fhe, mpc, sig, workload, ...nums };
     // Gated on the SAME predicates that decide whether the control is rendered, because `params`
     // survives a use-case change and the Orchestration page changes it without remounting. Set QSMPC
     // op = sum, Inference = qcnn and prime = 97 on Finance, then switch to Generic demo: the three
@@ -183,7 +223,9 @@ export function usePipelineRun(usecase: string, recordRef: RefObject<HTMLElement
     // Only when a choice was made. Absent, runPublishedModel falls to browserModel(usecase), so the
     // key never appears in a signed payload claiming a selection the visitor did not make.
     if (publishedModel) c.published_model = publishedModel;
-    if (qfl) c.qfl = true;                                // run Quantum Federated Learning this run
+    // Gated on the same predicate style as the controls above: the flag reaches the run only where a
+    // federated stage has real data and a figure to appear in.
+    if (qfl && runsFederated(usecase)) c.qfl = true;
     if (optiqkd) c.qkd_optimize = true;                  // run the AI-QKD parameter optimization this run
     return c;
   };
@@ -213,7 +255,12 @@ export function usePipelineRun(usecase: string, recordRef: RefObject<HTMLElement
       const s = stageStartRef.current[e.stage];          // recover per-stage duration (both transports)
       if (s != null) stageMsRef.current[e.stage] = Math.round((e.t - s) * 1000);
     }
-    if (e.type === "pipeline_pause") setState("paused");
+    // "pausing"/"stopping" are honest intermediate states: the button has been pressed, the flag is
+    // set, and the stage in flight runs to its end before the pipeline reads it. Only
+    // `pipeline_pause_effective` means the run is actually sitting at the gate.
+    if (e.type === "pipeline_pause") setState("pausing");
+    if (e.type === "pipeline_pause_effective") setState("paused");
+    if (e.type === "pipeline_stop_requested") setState("stopping");
     if (e.type === "pipeline_resume") setState("running");
     if (e.type === "metric") setMetrics((m) => ({ ...m, [String(e.data.name)]: e.data.value }));
   };
@@ -221,14 +268,20 @@ export function usePipelineRun(usecase: string, recordRef: RefObject<HTMLElement
   const launch = async (startPaused: boolean) => {
     stopRef.current?.();
     reset();
+    // Claim the UI for this run. Anything arriving from an earlier token is dropped, so the previous
+    // run finishing its in-flight stage cannot write over these results.
+    const token = ++runTokenRef.current;
+    const mine = () => token === runTokenRef.current;
+    const onEventOwned = (e: PipelineEvent) => { if (mine()) handleEvent(e); };
     setState(startPaused ? "paused" : "running");
     captureFrame();   // initial frame
 
     if (DEMO) {
       setRunId("client");
       controlRef.current = runClientPipeline(usecase, buildConfig(), {
-        onEvent: handleEvent,
+        onEvent: onEventOwned,
         onEnd: (st) => {
+          if (!mine()) return;
           setState(st.state); setMetrics(st.metrics); setArtifacts(st.artifacts ?? {});
           setSignature((st.artifacts as any)?.result_signature ?? null);
           finishBenchmark({ metrics: st.metrics, artifacts: st.artifacts ?? {} });
@@ -239,10 +292,11 @@ export function usePipelineRun(usecase: string, recordRef: RefObject<HTMLElement
     }
 
     const { run_id } = await api.start(usecase, buildConfig(), startPaused);
+    if (!mine()) return;                       // a newer run started while this awaited the server
     setRunId(run_id);
-    stopRef.current = streamRun(run_id, handleEvent, async () => {
+    stopRef.current = streamRun(run_id, onEventOwned, async () => {
       const st = await api.status(run_id).catch(() => null);
-      if (st) {
+      if (st && mine()) {
         setState(st.state); setMetrics(st.metrics); setArtifacts((st.artifacts as any) ?? {});
         setSignature((st.artifacts as any)?.result_signature ?? null);
         finishBenchmark({ metrics: st.metrics, artifacts: (st.artifacts as any) ?? {} });
@@ -256,8 +310,12 @@ export function usePipelineRun(usecase: string, recordRef: RefObject<HTMLElement
   const resume = async () => { if (DEMO) { controlRef.current?.resume(); return; } if (runId) await api.resume(runId); };
   const step = async () => { if (DEMO) { controlRef.current?.step(); return; } if (runId) await api.step(runId); };
   const stop = async () => {
-    if (DEMO) { controlRef.current?.stop(); setState("stopped"); return; }
-    if (runId) { await api.stop(runId); setState("stopped"); }
+    // Do NOT set "stopped" here. The pipeline emits `pipeline_stop_requested` (badge: stopping) and
+    // reports "stopped" from `onEnd` once it has actually stopped, which is at the next stage
+    // boundary. Setting it here is what made the badge say stopped while the run was still visibly
+    // producing output.
+    if (DEMO) { controlRef.current?.stop(); return; }
+    if (runId) { setState("stopping"); await api.stop(runId); }
   };
 
   const downloadGif = async (filename: string) => {
@@ -283,5 +341,10 @@ export function usePipelineRun(usecase: string, recordRef: RefObject<HTMLElement
     start, startStepwise, pause, resume, step, stop,
     downloadGif, downloadPng, downloadEvents, downloadMetricsCsv,
     running: state === "running", paused: state === "paused",
+    // `running` and `paused` are exact-match, so the transitional "pausing"/"stopping" states are
+    // neither - which would have re-enabled Start and the published-model select mid-run. Button
+    // enablement asks "is a run in flight", which is a different question from "is it producing
+    // output right now", and conflating the two is what made the two new states unsafe to add.
+    inFlight: !["idle", "done", "stopped", "error"].includes(state),
   };
 }

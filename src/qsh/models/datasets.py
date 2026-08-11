@@ -256,6 +256,10 @@ def cicids2017_fixed_dir() -> Path:
 # Scientific Data 12 (2025), s41597-025-05035-3. Code MIT at kplabs-pl/OPS-SAT-AD.
 OPSSAT_FETCH = (
     "curl -L -o \"$QSH_DATA_ROOT/raw/opssat/dataset.csv\" "
+    # A concept DOI cannot go here: this is a direct FILE fetch and needs a specific record. The
+    # record 12588359 is superseded (both it and 15108715 share concept DOI 10.5281/zenodo.12588358),
+    # so if this download starts 404ing, resolve the concept DOI to the current record and update the
+    # id rather than assuming the dataset moved.
     "'https://zenodo.org/records/12588359/files/dataset.csv?download=1'"
 )
 

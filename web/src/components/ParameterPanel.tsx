@@ -12,8 +12,18 @@ type Run = ReturnType<typeof usePipelineRun>;
 type Field = [label: string, key: string, step: number, min: number, title?: string, max?: number];
 
 export default function ParameterPanel({ run }: { run: Run }) {
-  const { params, setParams, resetParams, usecase } = run;
+  const { params, setParams, resetParams, usecase, optiqkd } = run;
   const p = params as Record<string, number | string>;
+  /**
+   * The QSMPC op the run will ACTUALLY perform, mirroring `clientCompute`:
+   * `config.qsmpc_op || (usecase === "genomics" ? "sum" : "psi")`.
+   *
+   * The inert-control guards below used to key off the raw control value, which is "" by default -
+   * so on genomics the resolved op is `sum` while `p.qsmpc_op` is "", and on finance the resolved op
+   * is `psi` while nothing marked the secure-sum-only fields inert. Dimming has to follow what runs,
+   * not what the select happens to display.
+   */
+  const resolvedOp = String(p.qsmpc_op || (usecase === "genomics" ? "sum" : "psi"));
   /**
    * Commit a numeric edit, CLAMPED to that field's own min/max.
    *
@@ -43,8 +53,10 @@ export default function ParameterPanel({ run }: { run: Run }) {
     const inertBecause =
       key === "qrng_eps_log2" && p.qrng_post === "von_neumann"
         ? "No effect on the von Neumann extractor - switch QRNG extractor to Toeplitz or seedless to use the LHL eps."
-      : key === "aml_transactions" && p.qsmpc_op === "sum"
+      : key === "aml_transactions" && resolvedOp === "sum"
         ? "No effect while QSMPC op is Secure sum - only the PSI branch sizes its sets from this."
+      : key === "qkd_opt_samples" && !optiqkd
+        ? "No effect while Optimize QKD is off - only the OptiQKD search reads this, and it is off by default."
       : null;
     const dim = inertBecause !== null;
     return (
@@ -187,14 +199,26 @@ export default function ParameterPanel({ run }: { run: Run }) {
             {/* Only the secure-sum path reads it, and only genomics/finance run that path. The old
                 label promised a prime and accepted any integer: additive sharing over Z_100 is not
                 a field, so the value is snapped to the next prime on entry rather than trusted. */}
-            {qsmpc && (
+            {/* `prime` is read ONLY on the secure-sum branch of the QSMPC stage, so on finance and the
+                generic demo - where the resolved op is PSI - it was a live, undimmed field that
+                changed nothing in the run. This panel already owns the mechanism for that case and
+                had not applied it here. Dimmed with the reason rather than removed, because the
+                field is genuinely load-bearing on genomics. */}
+            {qsmpc && (() => {
+              const primeInert = resolvedOp !== "sum"
+                ? "No effect while QSMPC op resolves to PSI - only the secure-sum branch shares over this field."
+                : null;
+              return (
             <div style={{ minWidth: 120, flex: "1 1 120px" }}>
-              <label className="muted" htmlFor="pp-prime" style={{ fontSize: 12 }}>QSMS prime (0=auto)</label>
+              <label className="muted" htmlFor="pp-prime"
+                style={{ fontSize: 12, opacity: primeInert ? 0.45 : 1 }}>QSMS prime (0=auto)</label>
               <input id="pp-prime" name="prime" type="number" step={2} min={0} value={p.prime as number}
-                style={{ width: "100%" }}
-                title="Snapped to the next prime: secure summation shares over a prime field, and a composite modulus is not one."
+                style={{ width: "100%", opacity: primeInert ? 0.45 : 1 }}
+                aria-disabled={primeInert ? true : undefined}
+                title={primeInert ?? "Snapped to the next prime: secure summation shares over a prime field, and a composite modulus is not one."}
                 onChange={(e) => setNum("prime", e.target.value, 0)} />
-            </div>)}
+            </div>);
+            })()}
             <div style={{ minWidth: 120, flex: "1 1 120px" }}>
               <label className="muted" htmlFor="pp-ext" style={{ fontSize: 12 }}>QRNG extractor</label>
               <select id="pp-ext" name="qrng_post" value={p.qrng_post as string} style={{ width: "100%" }}

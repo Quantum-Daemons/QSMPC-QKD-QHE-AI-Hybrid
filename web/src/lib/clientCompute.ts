@@ -209,7 +209,10 @@ export function securityFacts(config: any, metrics: Record<string, any>): Securi
     facts.push({
       label: "QKD key material",
       value: keyBits == null ? "not reported" : `${keyBits} secure bits`,
-      kind: "measured", source: "BB84 decoy-state run, GLLP secure fraction",
+      kind: "measured",
+      source: String(config?.qkd_protocol ?? qkdCfg().protocol) === "e91"
+        ? "E91 / CHSH run, GLLP secure fraction"
+        : "BB84 decoy-state run, GLLP secure fraction",
       warn: keyBits === 0
         ? "the QKD profile is selected but this channel produced NO secure key: the session rests on "
           + "the PQC hybrid alone"
@@ -277,7 +280,14 @@ export function securityScore(o: SecOpts) {
   c.security_model = it ? s.info_theoretic : s.computational;
   const cat = kemCategory(o.kem);
   c.key_strength = (s.key_strength_by_category as Record<string, number>)[String(cat)] ?? 16;
+  // Mirrors `benchmark/security.py`: 0.11 is the Shor-Preskill BB84 bound, but this project's GLLP
+  // model yields zero secure key from 0.098106, so a QBER in between used to score FULL marks on a
+  // dead channel. The fact display right below was already guarded against this; the SCORE was not.
+  // `qkdKeyBits` is the field that carries this: `secFromConfig` fills it from the run's measured
+  // `secure_key_bits`, so zero here means the protocol emitted no key, not merely that QKD was off.
+  const deadKey = o.qkdKeyBits != null && o.qkdKeyBits <= 0;
   if (o.qber == null) c.eavesdropper_detection = 0;
+  else if (deadKey) c.eavesdropper_detection = s.eavesdrop_warn_pts;
   else if (o.qber < s.qber_secure_threshold) c.eavesdropper_detection = s.eavesdrop_secure_pts;
   else if (o.qber < s.qber_danger_threshold) c.eavesdropper_detection = s.eavesdrop_warn_pts;
   else c.eavesdropper_detection = 0;
@@ -1256,10 +1266,17 @@ export function runClientPipeline(
     }
   }
 
+  // `gate()` is awaited BETWEEN stages, so a pause or stop requested mid-stage does not take effect
+  // until that stage finishes - and `private_inference` is seconds long. The UI used to flip its badge
+  // to "paused"/"stopped" the instant the button was pressed, so the badge asserted a state the run
+  // was demonstrably not in while the log kept streaming and metric rows kept appearing. The request
+  // and its effect are now two different events, and the badge distinguishes them.
   async function gate() {
+    let announced = false;
     while (!state.stopped) {
       if (!state.paused) return;
       if (state.step > 0) { state.step--; return; }
+      if (!announced) { announced = true; emit("pipeline_pause_effective", "", "paused"); }
       await sleep(50);
     }
   }
@@ -1942,7 +1959,15 @@ async function loadQcnnWeights(usecase: string): Promise<QcnnWeights | null> {
         // wired, its neighbour left to a constant, from the same object already in scope.
         const sec = secFromConfig(config, metrics);
         const isInf = ["finance_aml", "medical_fl", "genomics"].includes(usecase);
-        const qrow = qsmpcFheRow(wl, ms, rng(7), 6, 1, qubitsOf(config), sec);
+        // `benchScale(usecase, ...)`, NOT 1. The scale argument was the other half of the same defect
+        // the comment below describes. Fixing the classical denominator aligned one input and left
+        // this one hardcoded, so the quantum row here was costed at scale 1 while `assembleBenchmark`
+        // costs it at `benchScale(usecase, ...)`. That is 1 by coincidence for finance and medical -
+        // `archDims` takes the `studentParams > 0` branch and ignores `modelSize` - and 33 for
+        // genomics, which has no t1_crypto student and falls through to the tier architecture. So the
+        // diagram bar read 10/10 on the genomics page while the benchmark panel two cards down read
+        // about 9.1 from the same run. One quantity, two values, both on screen.
+        const qrow = qsmpcFheRow(wl, ms, rng(7), 6, benchScale(usecase, ms, wl), qubitsOf(config), sec);
         // Costed against the MEASURED hybrid, the same input assembleBenchmark uses.
         //
         // This passed `null` and therefore scored the quantum path against a COST MODEL of the
@@ -2037,10 +2062,12 @@ async function loadQcnnWeights(usecase: string): Promise<QcnnWeights | null> {
   })();
 
   return {
-    pause() { state.paused = true; emit("pipeline_pause", "", "paused"); },
+    // Requested, not yet in effect: the running stage keeps going until the next `gate()`.
+    pause() { state.paused = true; emit("pipeline_pause", "", "pause requested"); },
     resume() { state.paused = false; emit("pipeline_resume", "", "running"); },
     step() { state.step += 1; },
-    stop() { state.stopped = true; },
+    // Same asymmetry: the flag is read between stages, so the run stops at the next boundary.
+    stop() { state.stopped = true; emit("pipeline_stop_requested", "", "stop requested"); },
   };
 }
 

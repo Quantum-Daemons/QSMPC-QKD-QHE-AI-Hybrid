@@ -31,6 +31,12 @@ MONETIZATION*.md
 # And `report/build_data.py` measures its row count — that now falls back to the committed value in
 # `report/generated/macros.tex`, so a fresh clone still builds the report.
 docs/browser-verification-checklist.md
+# HAZARD, learned the hard way in Round 29: an ignored file is NOT protected from git. Switching to a
+# branch or commit where this file was still TRACKED restores the tracked copy over the working one,
+# and pulling past the commit that untracked it then deletes the result. That is exactly how a round's
+# worth of edits to this file was lost - the commit message described changes that, because the file
+# was already untracked, had never been committed. Keep a copy outside the repository
+# (~/.local/share/qsh-private/) and re-copy it after any branch switch.
 
 # ============================================================================
 #  Python
@@ -132,6 +138,13 @@ models/**/fixtures.npy
 # scripts/data/fetch_g1k_dosages.py; kept local so the repository does not redistribute more
 # per-sample genotype data than the demo actually needs.
 data/genomics/g1k_dosages_full.tsv
+# Same reasoning, PRS313: 2,504 individuals x 313 variants is a 24x larger per-sample genotype
+# disclosure than the 400 x 77 slice DATA_LICENSES section 4 analysed and justified. Committing it
+# would silently widen that scope, so it stays local; a tracked artefact for PRS313 would need its own
+# entry in section 4 and a subset matching the justification's shape.
+data/genomics/g1k_dosages_prs313.tsv
+# pysam caches remote tabix indexes in the CWD, so a dosage fetch leaves ALL.chr*.tbi in the repo root.
+*.vcf.gz.tbi
 
 # Raw training corpora. QSH_DATA_ROOT points here; scripts/train and scripts/prep_model_inputs.py
 # read from it. NONE of this may be redistributed -- AMLworld is CDLA-Sharing, ESA-ADB is

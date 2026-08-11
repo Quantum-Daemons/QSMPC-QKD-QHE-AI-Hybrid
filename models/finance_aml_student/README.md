@@ -40,7 +40,7 @@ that teacher rather than against the published literature.
 
 - **Target metric**: minority-class F1 (laundering)
 - **Baseline to beat**: 0.6323 - GFP+XGBoost, IBM AMLworld HI-Small, NeurIPS 2023 D&B (63.23 +/- 0.17)
-- **Published ceiling**: 0.6816 - Multi-PNA+EU, AAAI-24 vol.38 no.10 pp.11838-11846 (68.16 +/- 2.65)
+- **Published ceiling**: 0.7401 - MEGA-PNA, arXiv:2412.00241v2 Table 2 'Minority-class F1 scores (%) on AML edge classification task', AML Small HI (74.01 +/- 1.55). PREPRINT - no venue confirmed, which is why it is named as such. It replaces Multi-PNA+EU (AAAI-24, 68.16 +/- 2.65): that row is in the SAME table with two better ones above it (MEGA-GIN 70.83, MEGA-PNA 74.01) and has not been the ceiling since December 2024. Verified by reading the table, not the abstract.
 - **Companion metric shown alongside**: `auprc` - reported together because the aggregate figure can look healthy while the class that matters is not.
 
 ## Training data
