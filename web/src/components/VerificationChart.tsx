@@ -143,10 +143,10 @@ export function RealDataScatter({ usecase }: { usecase: string }) {
                    contentStyle={{ background: "#161b26", border: `1px solid ${GRID}`, fontSize: 11 }}
                    formatter={(v: number) => v.toLocaleString()} />
           <Legend verticalAlign="top" align="right" height={18} wrapperStyle={{ fontSize: 10 }} />
-          <Scatter name={data.class_names[0]} data={neg} fill="#4a5568" fillOpacity={0.55}
-                   isAnimationActive={false} />
-          <Scatter name={data.class_names[1]} data={pos} fill="#c05621" fillOpacity={0.85}
-                   isAnimationActive={false} />
+          <Scatter name={data.class_names[0]} data={neg} fill="#8296b5" fillOpacity={0.75}
+                   shape="circle" isAnimationActive={false} />
+          <Scatter name={data.class_names[1]} data={pos} fill="#e07a3c" fillOpacity={0.85}
+                   shape="triangle" isAnimationActive={false} />
         </ScatterChart>
       </ResponsiveContainer>
     </figure>
