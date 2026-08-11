@@ -16,8 +16,9 @@ tags:
 2 x LSTM(80), sequence length 250, dropout 0.3, non-parametric dynamic threshold with pruning
 
 Part of [QSMPC-QKD-QHE-AI-Hybrid](https://github.com/thedaemon-wizard/QSMPC-QKD-QHE-AI-Hybrid),
-a quantum-safe orchestration demo. This is the **plaintext** model for the
-`satellite_comms` use case; the encrypted path runs a distilled student, not this model.
+a quantum-safe orchestration demo.
+This is the **plaintext** model for the `satellite_comms` use case; the encrypted
+path runs a distilled student, not this model.
 
 ## Measured performance
 
@@ -49,7 +50,7 @@ a quantum-safe orchestration demo. This is the **plaintext** model for the
 - **Licence**: CC-BY-3.0-IGO
 - **Source**: https://zenodo.org/records/12528696 (licence read 2026-08-03)
 
-Missions are anonymised Mission1/2/3 - they are not named Sentinel anything. 17.5 years, 1.19% annotated. Mission3 is excluded upstream for triviality.
+Missions are anonymised Mission1/2/3 — they are not named Sentinel anything. 17.5 years, 1.19% annotated. Mission3 is excluded upstream for triviality.
 
 ## Notes and limitations
 
