@@ -227,11 +227,25 @@ export function securityFacts(config: any, metrics: Record<string, any>): Securi
     // assumption is invisible unless the counterfactual is computed. Delta >= 1 means no detection
     // could be certified single-photon and the same hardware would yield nothing without decoys.
     const mu = qkdCfg().mu_signal;
-    const chan = config?.usecase === "satellite_comms" ? FREE_SPACE : FIBER;
+    // The channel model AND the parameters fed to it both have to follow the use case.
+    //
+    // Round 29 fixed half of this. It emitted `usecase` so the MODEL switched to free-space on the
+    // satellite page - and left the parameter reads on `qkd_distance_km` / `qkd_misalignment` /
+    // `qkd_eve`, which are the FIBRE page's controls. Those keys are always present (they default from
+    // `qkd.*` config), so the satellite page evaluated the free-space model at 50 km with fibre
+    // misalignment: the tagged fraction went from 7.26 to 2.89 rather than to the free-space figure,
+    // and the three controls that page actually renders - `sat_distance_km`, `sat_eve`, `sat_pulses` -
+    // still could not move it. A half-corrected number is harder to catch than an uncorrected one,
+    // because it moved.
+    const sat = config?.usecase === "satellite_comms";
+    const chan = sat ? FREE_SPACE : FIBER;
     const delta = taggedFraction(mu, { ...chan,
-      distanceKm: Number(config?.qkd_distance_km ?? chan.distanceKm),
-      misalignment: Number(config?.qkd_misalignment ?? chan.misalignment),
-      eveFraction: Number(config?.qkd_eve ?? 0) });
+      distanceKm: Number((sat ? config?.sat_distance_km : config?.qkd_distance_km) ?? chan.distanceKm),
+      // No misalignment control is rendered on the satellite page, so the free-space channel's own
+      // 0.025 is the honest value there. Reading `qkd_misalignment` unconditionally would have
+      // substituted the fibre page's 0.015 - always, since that key is never absent.
+      misalignment: Number((sat ? undefined : config?.qkd_misalignment) ?? chan.misalignment),
+      eveFraction: Number((sat ? config?.sat_eve : config?.qkd_eve) ?? 0) });
     facts.push({
       label: "Decoy-state necessity",
       // Always print the number. ">= 1" was a needless loss of information: on the default fibre
