@@ -32,7 +32,6 @@ Regenerate:  .venv/bin/python scripts/prep_real_data_2d.py
 from __future__ import annotations
 
 import json
-import sys
 from pathlib import Path
 
 import numpy as np
@@ -104,7 +103,7 @@ def medical() -> dict:
     xi, yi = list(d.feature_names).index("mean radius"), list(d.feature_names).index("mean texture")
     # sklearn encodes 0=malignant, 1=benign. Emit 1=malignant so the positive class is the disease,
     # matching how every other use case in this repo orders its classes.
-    pts = [[_round(r[xi]), _round(r[yi]), int(t == 0)] for r, t in zip(d.data, d.target)]
+    pts = [[_round(r[xi]), _round(r[yi]), int(t == 0)] for r, t in zip(d.data, d.target, strict=True)]
     return {
         "usecase": "medical_fl",
         "is_training_corpus": False,
@@ -172,7 +171,7 @@ def finance() -> dict:
     xi, yi = names.index("src_fan_out_ratio"), names.index("src_burst_fanout")
     rows = d["samples"]
     labels = d["labels"]
-    pts = [[_round(r[xi]), _round(r[yi]), int(t)] for r, t in zip(rows, labels)]
+    pts = [[_round(r[xi]), _round(r[yi]), int(t)] for r, t in zip(rows, labels, strict=True)]
     return {
         "usecase": "finance_aml",
         "is_training_corpus": True,
@@ -201,7 +200,7 @@ def finance() -> dict:
 
 
 def genomics() -> dict:
-    """gnomAD allele frequency, AFR against European, for the 77 variants the score is built from.
+    """gnomAD allele frequency, AFR against European, for the 313 variants the score is built from.
 
     NOT the training corpus, and the panel says so. The page scores real 1000 Genomes genotypes, but
     IGSR grants no blanket redistribution licence - it states that itself - so the training data
@@ -209,25 +208,29 @@ def genomics() -> dict:
     share-alike, no field-of-use limit.
 
     WHY THIS PROJECTION. The page already shows one globally-set high-risk cut flagging 16.2% of AFR
-    against 3.75% of AMR. That chart STATES the disparity. This one EXPLAINS it: each point is one of
+    against 2.8% of EUR. That chart STATES the disparity. This one EXPLAINS it: each point is one of
     the score's own variants, positioned by how common it is in African-ancestry against
     European-ancestry samples. On-diagonal means ancestry-invariant; off-diagonal means the allele
-    frequency itself depends on ancestry. PGS000001 was fitted on a 100% European cohort (22,627
-    individuals, Mavaddat et al., JNCI 2015), so weights learned where frequencies differ are exactly
-    how a distribution shift arises without any single weight being wrong.
+    frequency itself depends on ancestry. PRS313's own published discrimination follows the same
+    gradient - PGS000004's 28 Catalog AUROC records run 0.5877-0.668 for European samples against 0.55
+    for an African-ancestry one - so weights fitted where frequencies differ are exactly how a
+    distribution shift arises without any single weight being wrong.
 
     The class split is effect size, not disease: variants at or above the median |weight| carry more
     of the score, so an off-diagonal point in that class moves the distribution more than an
     off-diagonal point in the other.
     """
-    src = REPO / "web" / "public" / "data" / "genomics" / "pgs000001_prs.json"
-    af_path = REPO / "data" / "genomics" / "gnomad_af.json"
+    # PRS313 since Round 31. Keyed by chr:pos:effect_allele, not rsID - PGS000004 publishes none, and
+    # the gnomAD cache is keyed the same way so the two join without a third identifier in between.
+    src = REPO / "web" / "public" / "data" / "genomics" / "pgs000004_prs313.json"
+    af_path = REPO / "data" / "genomics" / "gnomad_af_prs313.json"
     if not src.exists() or not af_path.exists():
-        print("  genomics: SKIP, run scripts/fetch_gnomad_af.py first")
+        print("  genomics: SKIP, run scripts/fetch_gnomad_af.py --score prs313 and "
+              "scripts/data/build_prs_browser_payload.py first")
         return {}
     prs = json.loads(src.read_text())
     af = json.loads(af_path.read_text())
-    w = {rs: abs(float(x)) for rs, x in zip(prs["rsids"], prs["weights"])}
+    w = {k: abs(float(x)) for k, x in zip(prs["keys"], prs["weights"], strict=True)}
     med = float(np.median([v for v in w.values()]))
     pts, diverged_big = [], 0
     for rs, rec in af.items():
@@ -243,7 +246,7 @@ def genomics() -> dict:
     return {
         "usecase": "genomics",
         "is_training_corpus": False,
-        "provenance": "gnomAD v4 allele frequencies for the 77 variants of PGS000001 - the page "
+        "provenance": "gnomAD v4 allele frequencies for the 313 variants of PGS000004 - the page "
                       "scores 1000 Genomes genotypes, which carry no blanket redistribution "
                       "licence, so a CC0 reference population stands in. Each point is one variant "
                       "of the score itself, so this is the same modality from a different cohort, "
@@ -255,12 +258,13 @@ def genomics() -> dict:
         "y": {"key": "af_nfe", "label": "allele frequency, European ancestry"},
         "class_names": ["smaller effect weight", "larger effect weight"],
         "base_rate": _round(n_big / len(pts)),
-        "note": (f"{len(pts)} of 77 variants resolved in gnomAD v4. The diagonal is "
+        "note": (f"{len(pts)} of {len(prs['keys'])} variants resolved in gnomAD v4, looked up by "
+                 f"GRCh38 coordinate because PGS000004 publishes no rsIDs. The diagonal is "
                  f"ancestry-invariant; distance from it is the portability problem in its raw form. "
                  f"{diverged_big} of the {n_big} larger-effect variants differ by at least 0.20 in "
-                 f"allele frequency between the two groups - and PGS000001's development cohort was "
-                 f"100% European, so those are the weights doing the damage. This is the mechanism "
-                 f"behind the ancestry-strata chart above, not a second finding."),
+                 f"allele frequency between the two groups - and PRS313 was developed in European "
+                 f"cohorts, so those are the weights doing the damage. This is the mechanism behind "
+                 f"the ancestry-strata chart above, not a second finding."),
         "points": pts,
     }
 
