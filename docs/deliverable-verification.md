@@ -262,6 +262,58 @@ the version and the release history are recorded as facts, the gap is recorded a
 vulnerability is claimed. Re-check this on any round that touches the FHE path; the release cadence
 since April 2026 is roughly monthly.
 
+## Round 28: a claim retracted, and the work it would take to earn it back
+
+**Circuit privacy (WS4 items c and f) is NOT demonstrated, and the function that was cited for it
+applies no circuit.** `qhe/qotp.py` carried `pauli_concealment_demo`, whose docstring said it
+returned "fidelities proving the result (and hence the server's circuit effect) is hidden".
+Reading the six lines of the body: `server_out = encrypt(psi, a, b)`. That is the INPUT state
+under a mask. No gate, no unitary, therefore no circuit effect to conceal. `README.md` cited it as
+the WS4(c)/(f) evidence and a passing test asserted the verdict, so the claim had three
+independent-looking supports and no measurement underneath any of them.
+
+The second half is worse than the first. `fidelity_correct_key` compared `decrypt(encrypt(psi, a,
+b), a, b)` against `psi`, which is 1.0 for every input and every key by construction - and it was
+half of the `circuit_private` predicate, so half the verdict was carried by a term that could not
+fail. `tests/test_round2.py` asserted both the 1.0 and the verdict. This is the same tautology
+this project found in `qhe/private_inference.py`, where `plain_probability` was set to the same
+value it was compared against; that one was fixed in Round 25 and this was the last instance.
+**When a tautology is found in one place, the remaining instances are not hypothetical - they
+should be searched for by shape rather than waited for.**
+
+What is retracted: the function is renamed `pauli_output_concealment_demo`, the tautological term
+is excluded from the verdict and renamed `roundtrip_fidelity_selfcheck`, the payload carries
+`applies_a_circuit: False`, and the README row now says PARTIAL and names what is missing. QOTP
+input hiding is untouched and remains real.
+
+**The condition for earning the claim back**, recorded so this does not become an item that stops
+being mentioned: apply an actual circuit on the server side and propagate the Pauli frame through
+it. That is well defined for **Clifford** circuits, where a Pauli conjugated by a Clifford is a
+Pauli, so the client can update its frame and decrypt exactly. It breaks at **T**, since `T X
+T-dagger` is not Pauli - which is precisely the difficulty Ortega and Martin-Delgado's scheme
+addresses and which this repository does not implement. A Clifford-only demonstration would be
+honest and worth having; until it exists, no document here may cite `qotp.py` as evidence of
+circuit privacy.
+
+**Two adjacent labels corrected at the same time**, both of the same kind - a true statement about
+one artefact applied to a different one. `README.md` and `docs/architecture.md` called
+`qhe/qcnn.py` a "Clifford+T QCNN"; that module contains no T gate at all (`AngleEmbedding` then
+CNOT/RY/RZ) and its `t_count()` is a labelled Solovay-Kitaev estimate of a fault-tolerant
+deployment's cost. The label is accurate for the BROWSER circuit in `web/src/lib/quantumSim.ts`,
+which is built from H, CNOT and T and counts 56 of them. And `README.md` published `1.0` and
+`1.2769` for what read as one ct/pt ratio; they measure qubits and bytes respectively, and the
+note now says so where the number appears.
+
+**A genomics control that announced a result it did not produce.** Selecting `Inference = QCNN` on
+the genomics page rendered "the class this page surfaces comes from the quantum circuit" while no
+trained weights ship for genomics, so CKKS had produced it. Two panels read the control value
+instead of `artifacts.primary_inference.backend`. Fixed, and the option is now hidden where no
+weights exist, since this project's rule is that such a control is removed or made real.
+**Genomics QCNN training is deferred with a condition**: revisit alongside the per-score licence
+audit that already blocks `genomics.prs` publication, because both turn on the same corpus
+questions. `tests/test_qcnn_usecases.py` compares the availability set against the files on disk
+in both directions, so the deferral cannot quietly become a stale list.
+
 ## Verification assets added in Rounds 22-23
 
 Two checks now exist that assert against sources OUTSIDE this repository. That is the point of both:

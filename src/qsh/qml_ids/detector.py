@@ -3,10 +3,19 @@
 Two detectors with the same interface:
   * :class:`ClassicalIDS` -- RandomForest baseline (the report's Phase-1 classical SOTA).
   * :class:`QuantumIDS`   -- a PennyLane variational quantum classifier (angle-encoded,
-    the WS2 research target; smaller parameter count, the report's selling point).
+    the WS2 research target; smaller parameter count).
 
-Both report accuracy + macro-F1 and the binary (attack vs normal) F1 the report's
-success criteria track (F1 >= 0.93).
+Both report accuracy, macro-F1, and the binary (attack vs normal) F1.
+
+WHICH NUMBER IS THE HEADLINE, because the choice flatters one detector. This docstring used to name
+the report's binary F1 >= 0.93 as the criterion these detectors are tracked against, and call the
+quantum one "the report's selling point". Measured on the shipped corpus, ``QuantumIDS`` scores
+binary F1 0.9333 - clearing that bar by 0.003 - while its MACRO F1 is 0.4667 against a RandomForest
+at 0.9866. An eight-class detector that collapses attack types into "something happened" can pass a
+binary threshold while being close to useless per class, and this project treats an aggregate that
+hides a broken class as a defect rather than a result. ``models/metrics.json`` records
+``quantum_beats_classical: false``; read macro-F1 as the headline and the binary figure as the
+report's historical target, not as evidence of a working multi-class detector.
 """
 
 from __future__ import annotations

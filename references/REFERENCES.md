@@ -191,8 +191,15 @@ papers. Where the two used to overlap, that file is the owner.
   Added: 2026-06-27
   File: `Reverse_Delegated_Training_and_Private_Inference_via_Perfectly-Secure_Quantum_Homomorphic_Encryption.pdf`
   QOTP plus classical FHE hybrid, Clifford+T QCNN, Pauli-gate concealment for circuit privacy,
-  MNIST 96.7 percent. **Relationship to this repository:** `src/qsh/qhe/qcnn.py` is an *independent*
-  implementation of the paper's construction. It does not import, vendor or wrap the authors'
+  MNIST 96.7 percent - those are the PAPER's properties, and two of them this repository does not
+  reproduce. **Relationship to this repository:** `src/qsh/qhe/qcnn.py` is an *independent and
+  PARTIAL* implementation of the paper's construction. It is not Clifford+T: the module builds
+  `AngleEmbedding` plus CNOT/RY/RZ and contains no T gate, with `t_count()` returning a labelled
+  Solovay-Kitaev estimate rather than a count. Pauli-gate concealment for CIRCUIT privacy is also not
+  reproduced - `qotp.py` conceals a state, not a computation, because propagating the Pauli frame
+  through the circuit breaks at T, which is the difficulty the paper exists to address. The browser
+  circuit in `web/src/lib/quantumSim.ts` is the one that is genuinely Clifford+T, and it counts its
+  T gates. It does not import, vendor or wrap the authors'
   reference code at `OrtegaSA/CQC-QHE-repo`; an earlier version of this line claimed code reuse that
   never existed, and the submodule was removed in Round 17. Cited as the source of the construction,
   which is the accurate relationship.
