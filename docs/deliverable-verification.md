@@ -250,17 +250,86 @@ still the newest node-seal on npm, so this is not a stale pin here.
 
 The wording this file carried until Round 23 - "and that is upstream's newest" - was ambiguous in a
 way that flattered the position. It is true of node-seal and false of SEAL. Measured: Microsoft SEAL
-has shipped **six releases since 4.1.2** and reached **4.4.3 on 2026-08-04**. 4.4.0 (2026-07-25) is
-described only as "Major security update", with no further detail; 4.4.1 fixes a MinGW build; 4.4.3
-fixes null-output-pointer dereferences and C++ exceptions leaking across the **C API** boundary
-(issues #753-#755). Whether C API fixes reach an Emscripten/WASM build at all is **unverified** and
-should not be assumed either way.
+has shipped **six releases since 4.1.2** and reached **4.4.3 on 2026-08-04**.
 
-Round 19's instruction was to document the gap rather than claim a vulnerability, and that still
-holds: a GitHub Security Advisory query for SEAL returns **no advisories**, and no CVE exists. So
-the version and the release history are recorded as facts, the gap is recorded as widening, and no
-vulnerability is claimed. Re-check this on any round that touches the FHE path; the release cadence
+**Round 32 correction, and it was wrong in the direction that matters.** Until now this paragraph said
+4.4.0 was "described only as 'Major security update', with no further detail". That is true of the
+GitHub *release body* and false of the changelog. `CHANGES.md` on `main`, read at the primary source
+2026-08-11, gives six bullets and the first is stronger than "Major":
+
+> **Critical security update:** all users should upgrade to Microsoft SEAL 4.4.0 as soon as possible.
+> Hardened untrusted deserialization. Restored loading of objects serialized by earlier Microsoft SEAL
+> 4.x minor releases; the wire format is unchanged. Fixed native memory-safety and concurrency defects
+> across ciphertext evaluation and memory management. Hardened the C ABI and .NET wrapper against
+> various failures. Strengthened cryptographic input validation and release-build/dependency security
+> controls.
+
+So this register **under-stated a critical advisory in a dependency the browser demo ships**, which is
+the worse direction to be wrong in, and it did so while `report/technical-report.tex` described it
+correctly - the one place that had it right was the one an audit flagged as overclaiming. The lesson is
+narrow and practical: **a GitHub release body is not a changelog.** Read `CHANGES.md`.
+
+The correction also sharpens the WASM question rather than leaving it open. 4.4.1 fixes a MinGW build
+and 4.4.3 fixes null-output-pointer dereferences and C++ exceptions leaking across the **C API**
+boundary (issues #753-#755) - and the hedge "whether C API fixes reach an Emscripten/WASM build is
+unverified" is correct for those. But **untrusted deserialization and ciphertext-evaluation memory
+safety are core C++**, not the C API, so 4.4.0's two most serious items **do** reach a WASM build. The
+hedge applies to 4.4.3, not to 4.4.0, and applying it to both was how the more serious release came to
+read as the less consequential one.
+
+What this does and does not mean for the demo is in `docs/threat-model.md`: `clientFHE.ts` deserialises
+only ciphertexts it produced in the same tab, so the hostile-input precondition for the deserialization
+hardening is absent here. Round 19's instruction was to document the gap rather than claim a
+vulnerability, and that still holds - a GitHub Security Advisory query for SEAL returns **no
+advisories** and no CVE exists. The version and release history are recorded as facts, the gap is
+recorded as widening, and no vulnerability is claimed.
+
+**Re-check this on any round that touches the FHE path.** Round 31 touched `requirements-fhe.txt` and
+did not honour that trigger, which is how a three-week-old critical advisory went unread; the cadence
 since April 2026 is roughly monthly.
+
+### Is a bump available? Measured in Round 32, and the answer is yes
+
+Round 31 declined FIDESlib on a build outcome rather than a README claim. The same method applied here,
+because "node-seal is the constraint" had been asserted for several rounds without anyone trying it.
+
+What node-seal actually is: `.gitmodules` points `submodules/SEAL` at **`s0l0ist/SEAL`**, a fork with
+zero tags and one branch, pinned at commit `dd3c6548`. Diffed against `microsoft/SEAL` v4.1.2, the fork's
+divergence is **purely additive** - `native/src/seal/bindings.cpp` (1,005 lines of Emscripten embind),
+`base64.h`, CMake glue, and bumped bundled ZLIB/Zstd. **It modifies no SEAL crypto source.**
+
+So the test was: take `microsoft/SEAL` v4.4.3, add the fork's binding layer, build to WASM.
+
+| step | result |
+|---|---|
+| configure (emcmake, mirroring node-seal's own `seal-cmake.sh`) | exit 0 |
+| build (emmake, emcc 6.0.6) | exit 0, **0 errors** |
+| `bindings.cpp` object | `build_final/.../bindings.cpp.o` produced |
+| library | `libseal-4.4.a`, 4.9 MB |
+
+**The embind layer compiles unchanged against SEAL 4.4.3's public API.** That is the question that
+mattered, and it is answered.
+
+**The one blocker found is not SEAL's, and it is a build flag.** The first attempts died on
+`native/src/seal/util/defines.h:84: error: "Unsupported system"`. That guard tests for the bare
+`EMSCRIPTEN` macro, and it is **byte-identical in 4.1.2 and 4.4.3** - so this is not a regression. The
+cause is upstream Emscripten: emcc 6.0.6 defines `__EMSCRIPTEN__` and **not** bare `EMSCRIPTEN` (verified
+with `emcc -dM -E`). Passing `-DEMSCRIPTEN` fixes it. Two consequences worth separating:
+
+- A node-seal bump to 4.4.3 is a **build-configuration change plus a submodule re-point**, not a porting
+  exercise.
+- node-seal's own build would fail the same way on a current emsdk **at 4.1.2**, because it does not pass
+  that define and relies on a deprecated macro. Its nine months without a release is not only a
+  maintenance signal; the build is pinned to an emsdk era.
+
+**What was NOT verified, so it is not claimed:** a CKKS encrypt/evaluate/decrypt round trip through the
+linked WASM module. This built the static library and the bindings object; it did not produce and exercise
+the full `node-seal` JS package. That is the remaining step before any bump ships, and it is the step that
+would catch a behavioural difference the compiler cannot see.
+
+Reopening condition, now concrete rather than "wait for node-seal": either upstream node-seal cuts a
+release on SEAL 4.4.x, or this project carries the three-line delta (fork re-point, `-DEMSCRIPTEN`,
+rebuild) and passes a round-trip test. The second is now known to be reachable.
 
 **Genomics has no label, so it has no QCNN: declined, and not for the reason recorded for two
 rounds.** The deferral condition on file was the per-score licence audit. Round 31 checked what would
@@ -296,6 +365,36 @@ updates its frame" and "the client does not learn the circuit" are close to mutu
 claim, artifact and test agree. Earning it would mean implementing the Ortega and Martin-Delgado
 construction, which this repository does not. WS4(c) is met for Clifford circuits and is claimed
 separately, so (f) no longer rides along with it. See also "What this project cannot verify".
+
+**Rust and tfhe-rs in the client: DECLINED, and it should have been recorded three rounds ago.** Asked
+for explicitly in one ORDER file ("if tfhe-rs is implementable on WebGPU, introduce it; Rust is
+acceptable as well as JavaScript for client-side processing") and then listed among the required
+client-side technologies in two more. It was never done and never declined - the repository has no
+`Cargo.toml`, `tfhe-rs` appears only in licence tables, and the private checklist contained the
+whole-word `rust` **zero** times in 2,748 lines. That is the "items that vanish without a decision"
+failure this gate exists to catch, and it is worse than a stale deferral because there was nothing on
+any list to go stale.
+
+Two independent reasons, either sufficient:
+
+- **It cannot do the thing it would be adopted for.** Zama's own TFHE-rs WASM documentation states the
+  build supports key generation, encryption and decryption but **not FHE computation**, and IACR ePrint
+  2026/515 defines "client-side operations" the same way while the server evaluates. Adopting Rust to
+  get in-browser FHE evaluation would produce a client that encrypts and decrypts - which is what the
+  demo's PQC path already does in TypeScript, and less than what its CKKS path already does through
+  `node-seal`. There is no capability to gain.
+- **The licence reason this project had recorded was imprecise, and the accurate one is sharper.**
+  `references/REFERENCES.md` said "the commercial terms for the tfhe-rs family require a paid licence".
+  Read at the primary source, tfhe-rs is **BSD 3-Clause Clear**, whose distinguishing clause is "NO
+  EXPRESS OR IMPLIED LICENSES TO ANY PARTY'S PATENT RIGHTS ARE GRANTED BY THIS LICENSE". The copyright
+  grant is permissive; the **patent grant is expressly withheld**. That is a stronger objection for a
+  project whose rule is commercial-OK dependencies, and it is checkable in one file rather than being a
+  claim about a vendor's pricing.
+
+So Rust is not missing from the client-side stack, it is declined, and WASM is present without it -
+`node-seal` (SEAL through Emscripten) and `emp-wasm` are both WebAssembly. The condition that would
+reopen this: Zama shipping FHE **evaluation** in the WASM target, or any Rust FHE library doing so under
+a licence that grants patent rights.
 
 ## Round 28: a claim retracted, and the work it would take to earn it back
 
@@ -372,7 +471,15 @@ was still tracked will clobber it.
 
 Recovered to the last tracked state and the structural edits redone. A copy now lives outside the
 repository and `.gitignore` carries the hazard beside the rule that caused it. The nine duplicate
-consolidations are the part not yet redone, and are recorded here rather than assumed.
+consolidations were the part not yet redone at the time this was written.
+
+**They were done in Round 30** (commit `dd9c9b0`), and the re-audit found **twelve** pairs rather than
+nine. This paragraph went on asserting them as outstanding, with the superseded count, for two rounds -
+which is the defect this same file diagnoses elsewhere as "a register of open items needs the same
+staleness check as any other document". Round 31 found the mirror image of this in the checklist, where
+a paragraph claimed a consolidation that had **not** happened, and did not check the ledger for the
+inverse. Both directions are the same failure: a status line that nobody re-reads because it reads as
+settled.
 
 **Two commit messages have now described checklist work that was not in the commit.** That is the
 same class as a stale document asserting a fixed item is open: the artefact and the description of
@@ -506,6 +613,62 @@ The committed JSON had been corrected BY HAND while the generator kept emitting 
 note reading "Generated from the source, not written by hand" - so the first retrain reintroduced it.
 A hand-patched generated artifact is a defect with a timer on it.
 
+## Round 32: a switch that reached four of five surfaces, and a gate that passed on nothing
+
+**Three of the four most serious findings were defects the previous round introduced or left**, which is
+the useful thing about this round rather than an embarrassment to bury. Round 31 closed four long-deferred
+items and, in doing so, created two new ones and left a third unfinished. The lesson is not "be more
+careful"; it is that **the work of closing an item is where the next defect gets made**, so a round's own
+changes deserve the audit it gives everything else.
+
+**1. The PRS313 switch reached four surfaces and missed the fifth.** The E2E pipeline read
+`config.get("prs", "breast_cancer")` with nothing anywhere setting that key, so Python scored 77
+rsID-keyed variants while the browser, trainer, registry and payload scored 313 position-keyed ones. And
+`data/loaders.py` carried a sentence arguing that this exact split "would be worse than either alone" -
+by then describing the shipped state rather than warning against it. `config.get(key, literal)` cannot
+fail: an absent key silently yields the default and the result is complete and plausible. **Third
+occurrence of that shape** here, after `config.usecase` read but never emitted and the free-space channel
+reading the fibre page's distance keys. The common factor every time is a default no mechanism compares
+against anything, so the score is now a config FIELD and `tests/test_prs_pipeline_parity.py` runs the use
+case and compares its output to the payload the registry points at.
+
+**2. The newly-gated `check:pqc` exited 0 on an empty vector file.** It asserted `accepted === 0` and
+never asserted how many keys it had tested, so testing nothing reported exactly what testing 2,595 and
+finding no acceptances reports. **Vendoring introduced this**: a fetch either returns the file or fails,
+but a file on disk can be present and empty. It is the project's own SP 800-90B lesson - a health test
+reporting PASS because it was handed too little data to fail - inside the check promoted to a gate one
+round earlier. The three re-validations recorded at the time were the failure modes of the design being
+replaced. Generalised as `RI9`: **after promoting any check to a gate, break it on purpose.**
+
+**3. A citation to an authority that did not contain it.** Three source files cited "DATA_LICENSES
+section 4 justifies about 30,800 genotype cells"; section 4 stated a shape and made no cell-budget
+argument at all. The code invented the authority it appealed to, and the appeal reads exactly like a
+checked one. Section 4 now contains the argument, tabulates all four tracked genotype files, and separates
+tracked-in-git from served-to-the-public - which turned out to matter, because a retired payload was still
+being served for no demo benefit. `RI11` makes "grep the cited section for the cited figure" a row.
+
+**Two measurements that changed a claim rather than confirming one.**
+
+`node-seal` had been recorded as "the constraint" for several rounds without anyone trying it. It pins a
+FORK of SEAL whose divergence from v4.1.2 is **purely additive** - 1,005 lines of Emscripten embind and
+CMake glue, no crypto source touched. Taking `microsoft/SEAL` v4.4.3, adding that binding layer and
+building to WASM: **zero errors**, `libseal-4.4.a` produced. The blocker that stopped the first attempts
+was not SEAL's - `defines.h` tests the bare `EMSCRIPTEN` macro, byte-identical in both versions, and emcc
+6.0.6 defines only `__EMSCRIPTEN__`. So a bump is a build flag plus a submodule re-point, and node-seal's
+own build would fail the same way at 4.1.2 on a current emsdk. Not verified and so not claimed: a CKKS
+round trip through the linked module.
+
+And the HE-genomics literature falsifies this project's own framing in the direction of understating it.
+`registry.py` explained T1 smallness by homomorphic cost; Knight et al. run polygenic scoring under HE
+over **110,000 SNPs on a single CPU**. So `genomics.prs` is small because PGS000004 has 313 variants -
+Mavaddat 2018's property, not CKKS's. The cost argument survives where the model has depth and was
+over-generalised to a linear score, which read as rigour.
+
+**What Round 31 got right and is worth keeping:** every one of these was found by running or deploying,
+not by reading. The pipeline split needed the loader run to see it; the empty-snapshot hole needed the
+file emptied; the tree-attribution sentence needed the page loaded twice, because the first fix rendered
+it nowhere and a diff review would have passed it.
+
 ## Verification assets added in Rounds 22-23
 
 Two checks now exist that assert against sources OUTSIDE this repository. That is the point of both:
@@ -586,9 +749,14 @@ other document. It is not self-maintaining just because maintaining it is its pu
 `browser_override_reason` string. The browser reads them from there rather than from literals, and CI
 fails on a config-parity diff. The DIVERGENCE is unchanged and deliberate - a federated round has to
 finish inside a page interaction - but it is now a declared override read from one source rather than
-two numbers that happened to differ. Residual, recorded rather than fixed: `browser_rounds` and
-`browser_lr` are literals inside `frontend_config()` rather than fields on `FederatedConfig`, so the
-override cannot be tuned the way the values it overrides can.
+two numbers that happened to differ.
+
+The residual this entry recorded - "`browser_rounds` and `browser_lr` are literals inside
+`frontend_config()` rather than fields on `FederatedConfig`" - was **closed in Round 32**, and it is
+worth noting why it took three rounds. It was recorded with a reason and **no condition that would
+resolve it**, which fails this gate's first clause as well as its three-round clause, so nothing was
+ever going to trigger it: an item with no condition cannot become due. The fix was two dataclass fields
+and two lookups, smaller than the paragraph that deferred it.
 
 **2. `qsdc_threshold` - CLOSED, by deletion rather than by justification.** The constant no longer
 exists. `quantum_secure_direct_comm()` takes no threshold parameter and aborts on a loss-aware

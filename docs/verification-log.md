@@ -328,3 +328,61 @@ from-scratch one.
 The lesson is narrower than "check your flags". A default that contradicts a licence commitment will
 eventually be taken, and the only durable fix is a machine check at the point of publication.
 
+
+## Rounds 29-31, added in Round 32 - and why they were missing
+
+`deliverable-verification.md` states that gate-4 results are recorded here. They were not: the last
+entry above was Round 28, so **three rounds of browser verification existed only in commit messages and
+the ledger** while a published document claimed to hold them. The register of results needs the same
+staleness check as any other document, which is the lesson this file's own Round 24b entry draws about a
+different file.
+
+Written from the commits and the measurements taken at the time, and labelled as reconstructed rather
+than presented as if logged live.
+
+### Round 29 (merged `932a3fb`) - two run-integrity defects, found by clicking rather than reading
+
+- **Restart mid-run overwrote the new run with the old one.** The superseded run's async callbacks kept
+  writing after Restart, so the metrics table showed the previous run's numbers under the new run's
+  header. Fixed with a run token that makes a superseded run inert; `usePipelineRun` now discards events
+  whose token is stale.
+- **`config.usecase` was read but never emitted.** `clientCompute` chose its channel model with
+  `config?.usecase === "satellite_comms"`, and `buildConfig` never put `usecase` on the object - so the
+  key was permanently `undefined`, the ternary permanently took the fibre branch, and the satellite page
+  printed a decoy-state tagged fraction of **7.26** computed over 50 km of FIBRE, against roughly 125 for
+  its own free-space downlink, labelled `measured`. `tests/test_run_config_keys.py` now compares the keys
+  the run reads against the keys it emits.
+
+### Round 30 (merged `69314f4`) - a licence condition only the Hub could fix
+
+- The Hub served a **retracted attribution** at the pinned revision: `eval_sample.json` for
+  `qsh-satellite-opssat-ad` said `Kotowski et al` where the corrected local card said `Ruszczak`, and
+  `clientCompute` interpolated that Hub-fetched string verbatim into the run log. OPS-SAT-AD is CC BY 4.0,
+  so correct attribution is a licence condition and **no local fix could reach that surface**. All ten
+  repos were re-uploaded and re-pinned; verified afterwards on the live site, which printed `Ruszczak`.
+- The novelty claim was restated as **the composition** after an adversarial prior-art search found
+  browser MPC has prior art (webSPDZ) while browser CKKS *evaluation* did not.
+- WS4(c) was claimed with a Clifford demo that had been in the tree, uncited, for several rounds.
+
+### Round 31 (merged `cc4a151`) - three defects found by walking the deploy
+
+Each of these was invisible in the source and visible in the browser, which is the argument for gate 4
+existing at all.
+
+- **The genomics baseline had nowhere to render.** The `MetricSpec` rename to `auroc_eur` was correct and
+  no achieved record emits that key, because a reference panel has no phenotype - so the published 0.633
+  appeared only inside a provenance paragraph. The number a visitor is most likely to quote was the
+  hardest one on the page to find. Now its own row, labelled "published baseline, NOT measured here".
+- **Satellite's anomaly verdict and its whole attribution panel were unreachable.** Both sat inside
+  `if (!abort)` in the `qsdc_telemetry` stage, and QSDC essentially never delivers: measured secrecy
+  capacity **-51.58 bit/carrier at the default 800 km** (24.5 dB, g=280) and still **-2.15 at 200 km**
+  (12.4 dB, g=17.5), the shortest downlink the panel offers. A page advertised a published model whose
+  output no user action could produce. The abort is correct physics and is unchanged; the false dependency
+  is gone.
+- **The genomics 2D overlay still described "the 77 variants of PGS000001, 64 resolved"** after the page
+  had moved to PGS000004. A stale overlay renders perfectly. Now 307 of 313, by GRCh38 coordinate.
+
+Also verified live that round: telecom's RandomForest attribution renders with `dark_count_rate` drawn as
+no measured effect (+0.0001 +/- 0.0010); the XAI paragraph says "no encrypted inference stage" on telecom
+and satellite and keeps the original caveat on medical; `crossOriginIsolated === true`; zero `/api`
+requests against a 404 `text/plain` control.
