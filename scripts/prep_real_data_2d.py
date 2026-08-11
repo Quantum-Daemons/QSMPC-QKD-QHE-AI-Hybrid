@@ -208,7 +208,7 @@ def genomics() -> dict:
     cannot ship. gnomAD v4 is CC0, the strongest available position: no attribution obligation, no
     share-alike, no field-of-use limit.
 
-    WHY THIS PROJECTION. The page already shows one globally-set high-risk cut flagging 29.35% of AFR
+    WHY THIS PROJECTION. The page already shows one globally-set high-risk cut flagging 16.2% of AFR
     against 3.75% of AMR. That chart STATES the disparity. This one EXPLAINS it: each point is one of
     the score's own variants, positioned by how common it is in African-ancestry against
     European-ancestry samples. On-diagonal means ancestry-invariant; off-diagonal means the allele

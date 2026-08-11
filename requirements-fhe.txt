@@ -25,5 +25,12 @@ mpyc>=0.11
 # exercised live by the GPU MPC-FHE benchmark glue (scripts/build_gpu_mpc.sh +
 # qsh/benchmark/gpu_mpc_adapter.py). It has no Python binding, so it is not a pip dep.
 #
+# BUILD FLAG THIS NEEDS ON THIS HARDWARE, checked 2026-08-11 and previously unstated. HEonGPU v1.1.3
+# (2026-02-05) documents CUDA >= 11.4 and defaults CMAKE_CUDA_ARCHITECTURES to "80;86;89;90"; its
+# compute-capability table stops at Ada (89, 90). There is no Blackwell sm_120 entry and no upstream
+# CUDA 13.0 validation, so on this project's own target the submodule must be configured with
+#   -D CMAKE_CUDA_ARCHITECTURES=120
+# or it builds for architectures this GPU is not. scripts/build_gpu_mpc.sh is where that belongs.
+#
 # NOTE: DESILO `desilofhe` was REMOVED — its license is non-commercial
 # (https://fhe.desilo.dev/latest/license/), incompatible with this project's commercial intent.

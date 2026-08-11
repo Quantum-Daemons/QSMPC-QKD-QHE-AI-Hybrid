@@ -256,7 +256,22 @@ def load_genomic_prs(n_individuals: int = 400, seed: int = 0, name: str = "breas
     rsids, eff, weights = load_prs(name)
     m = len(weights)
     _, dosage_file = _PRS_FILES[name]
-    g1k = Path(__file__).resolve().parents[3] / "data" / "genomics" / dosage_file
+    root = Path(__file__).resolve().parents[3] / "data" / "genomics"
+    g1k = root / dosage_file
+    if not g1k.exists():
+        # A COMMITTED SLICE OF REAL GENOTYPES, not a synthetic substitute. PRS313's full 2,504-row
+        # matrix is gitignored because DATA_LICENSES section 4 justifies about 30,800 genotype cells
+        # and the full matrix is 24x that. So on a fresh clone and in CI the file above is simply
+        # absent, and the `except Exception` below would return Hardy-Weinberg samples - the documented
+        # fallback, correctly loud, but it meant the PRS313 path (now the default for both the browser
+        # and the trainer) had ZERO CI coverage while a maintainer's run reported green.
+        #
+        # The slice holds the same cell budget in a different shape - 97 individuals x 313 variants
+        # against 400 x 77 for PRS77 - so CI reads real genotypes and the redistribution argument is
+        # unchanged. Tried only when the full file is missing, so a maintainer still gets all 2,504.
+        slice_file = root / f"{Path(dosage_file).stem}_slice.tsv"
+        if slice_file.exists():
+            g1k = slice_file
     try:
         rows = [ln for ln in g1k.read_text().splitlines() if ln.strip() and not ln.startswith("#")]
         header = rows[0].split("\t")

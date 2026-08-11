@@ -2,11 +2,19 @@
 
 The report flags XAI. **EU AI Act Article 13 transparency** is the instrument usually cited for it, but
 it is NOT yet in application: the AI Omnibus (Regulation (EU) 2026/1744, in force 2026-07-27) deferred
-Chapter III Sections 1-3 to 2027-12-02 (Annex III) and 2028-08-02 (Annex I). Treat this as preparation
-for a 2027/2028 obligation
-(in force August 2026) obliges high-risk AI (credit/AML, healthcare) to be interpretable, and
-finance/healthcare supervisors expect **SHAP-style feature attributions** (+ counterfactuals;
-US SR 11-7 model risk, GDPR Art. 22 right-to-explanation).
+Chapter III Sections 1-3 to 2027-12-02 (Annex III) and 2028-08-02 (Annex I). So treat this module as
+preparation for a 2027/2028 obligation, not compliance with a current one.
+
+When it does apply, Article 13 obliges high-risk AI (credit/AML, healthcare) to be interpretable, and
+finance/healthcare supervisors already expect **SHAP-style feature attributions** (+ counterfactuals)
+under instruments that are in force today: US SR 11-7 model risk management and GDPR Art. 22
+right-to-explanation. Those are the reasons to build it now.
+
+(An earlier revision of this docstring said Article 13 was "in force August 2026". The correction was
+applied everywhere else - `ShapPanel.tsx`, `README.md`, `clientCompute.ts` - and left a sentence
+fragment here asserting the very date the two paragraphs above retract, in the module the README cites
+as the implementation. Nothing lints prose, so it survived; that is the argument for stating the
+retracted claim explicitly rather than deleting it silently.)
 
 For **linear / logistic** models the Shapley value has an exact closed form,
 
