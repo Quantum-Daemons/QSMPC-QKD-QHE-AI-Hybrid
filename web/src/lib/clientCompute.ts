@@ -1590,9 +1590,22 @@ export function runClientPipeline(
             : `QSDC ABORTED: secrecy capacity ${secrecy.toFixed(4)} <= 0 at error ${e.toFixed(4)} `
               + `with g=${g.toFixed(1)} (${lossDb.toFixed(1)} dB) — this link closes at `
               + `${secrecyNoEve.toFixed(4)} without Eve, so the loss is attributable — telemetry withheld`);
-        if (!abort) {
-          // REAL NASA SMAP/MSL telemetry + the real linear anomaly model, scored in-browser (the satellite
-          // flow has no private_inference stage, so the real anomaly verdict is surfaced here at delivery).
+        {
+          // REAL NASA SMAP/MSL telemetry + the real linear anomaly model, scored in-browser. The
+          // satellite flow has no private_inference stage, so this is where the anomaly verdict is
+          // surfaced.
+          //
+          // OUTSIDE the delivery branch, for exactly the reason the published-model block below was
+          // moved out: this step scores a window of the BUNDLED corpus, not the telemetry the channel
+          // just delivered, so it has no dependency on whether QSDC aborted.
+          //
+          // Gating it was not a harmless over-caution, because QSDC essentially never delivers here.
+          // `C_s > 0` requires `h(QBER) < 1/(1+g)`, and `g` scales with link loss: measured on the live
+          // site, secrecy capacity is -51.58 bit/carrier at the default 800 km (24.5 dB, g=280) and
+          // still -2.15 at 200 km (12.4 dB, g=17.5), the shortest downlink the panel offers. So the
+          // anomaly verdict, the model's provenance line and the whole SHAP panel were unreachable
+          // through the UI - a page advertising a model whose output no user action could produce.
+          // The abort itself is correct physics and is unchanged; only the false dependency is gone.
           const anom = await realSatelliteAnomaly(u);
           if (anom) {
             artifacts.telemetry_anomaly = anom.isAnomaly;
