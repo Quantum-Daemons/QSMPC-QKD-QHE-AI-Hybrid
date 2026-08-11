@@ -360,35 +360,41 @@ gate CI.
 - **Trusted relays are an assumption**, not a mechanism: a relay holds the key in plaintext and no
   cryptography here changes that.
 
-## Open, with numbers, so they do not roll forward silently (Round 23b)
+## CLOSED in Round 29, and this section was itself the thing that rolled forward (Round 23b)
 
-Two items are known, verified and NOT fixed. Recorded here rather than left implicit, which is this
-project's standing rule for anything deferred.
+Two items were recorded here as "known, verified and NOT fixed", in the present tense, in the section
+whose stated purpose is that nothing deferred rolls forward silently. **Both had been fixed, and the
+register was the last place still asserting them.** One of its sentences was flatly false against the
+tree: it said `federated` is "absent from `web/src/lib/config.defaults.json`" when the key is present
+and carries the browser overrides explicitly. That is worse than a stale number, because a reader
+checking whether an item is open would have trusted it and stopped.
 
-**1. The browser's federated hyperparameters differ from `config.federated`, and cannot read it.**
+The lesson is narrow and worth keeping: a register of open items needs the same staleness check as any
+other document. It is not self-maintaining just because maintaining it is its purpose.
 
-| | Python config | Browser |
-|---|---|---|
-| rounds | 8 | 6 |
-| learning rate | 0.05 | 0.15 |
-| clients | (config) | 4 |
+**1. Browser federated hyperparameters - CLOSED.** `FederatedConfig` is exported by
+`frontend_config()` and reaches `web/src/lib/config.defaults.json`, which carries the server values
+(8 rounds, lr 0.05) alongside explicit `browser_rounds: 6`, `browser_lr: 0.15` and a
+`browser_override_reason` string. The browser reads them from there rather than from literals, and CI
+fails on a config-parity diff. The DIVERGENCE is unchanged and deliberate - a federated round has to
+finish inside a page interaction - but it is now a declared override read from one source rather than
+two numbers that happened to differ. Residual, recorded rather than fixed: `browser_rounds` and
+`browser_lr` are literals inside `frontend_config()` rather than fields on `FederatedConfig`, so the
+override cannot be tuned the way the values it overrides can.
 
-`FederatedConfig` is **not exported to the baked frontend config at all** - `federated` is absent
-from `web/src/lib/config.defaults.json` - so the browser could not read these even if it wanted to.
-The divergence is defensible (a federated round has to finish inside a page interaction) and is now
-stated at the call site in `clientCompute.ts`, but it is a divergence. Fixing it means exporting the
-dataclass first; changing the browser numbers alone would move every reported federated accuracy
-without changing what the server does.
+**2. `qsdc_threshold` - CLOSED, by deletion rather than by justification.** The constant no longer
+exists. `quantum_secure_direct_comm()` takes no threshold parameter and aborts on a loss-aware
+secrecy capacity `Cs = 1 - h(e) - g*h(e_chk)` with `g = 10^(loss_dB/10)`, after Qi et al., *Light Sci.
+Appl.* 8, 22 (2019), attributing the abort to the link budget where that is the cause. The 0.11 that
+remains is `pp_threshold`, scoped to BB84/E91 post-processing where the Shor-Preskill bound is the
+right reference, and the inert UI control that used to expose it was removed in Round 27.
 
-**2. `qsdc_threshold` defaults to 0.11 and is still not traced to a QSDC source.**
-
-0.11 is the textbook BB84 one-way security threshold (Shor-Preskill). QSDC is a different protocol
-with its own security analysis, so the value is not automatically wrong - but nothing in
-`references/` justifies it for QSDC, and it sits above this repository's own measured GLLP zero-key
-point of 0.098106. Either find the QSDC source or replace the default with one that has one.
-
-Neither is user-visible today. Both are the kind of item that becomes a finding two rounds later if
-it is not written down.
+**A third instance of the same 0.11, found in Round 29 and fixed there.**
+`security_scoring.qber_secure_threshold = 0.11` awarded full eavesdropper-detection marks in both
+scoring engines for any QBER below it - including the band [0.098106, 0.11) where this project's own
+GLLP model returns zero secure key. The browser's fact display had been guarded against exactly this
+and the score component had not, and `references/security-scoring-fact-check.md` already listed it
+under defects fixed. Both engines now refuse full marks when the measured key is dead.
 
 ## Dated and dropped items, checked in Round 24
 
