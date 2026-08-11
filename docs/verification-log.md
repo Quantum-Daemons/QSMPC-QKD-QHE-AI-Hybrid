@@ -9,6 +9,53 @@ when it was checked, with the bundle hash and date so a claim can be traced to a
 Nothing here is deleted when it ages - a superseded measurement is evidence about how a number
 moved, which is exactly what the next round needs when a figure looks wrong.
 
+## Verified in Round 28, deploy 2f0d550, bundle index-BET6lubQ.js, 2026-08-11
+
+Deployed `origin/main` at `2f0d550` after clone-verifying that the commit stands alone. Built with
+both `-p qsh-demo` and the behind-proxy override; container recreated and confirmed on the front
+proxy's network as well as its own; front proxy restarted rather than reloaded.
+
+**The bundle changed**, which is the check that proves the image was rebuilt rather than reused:
+`index-BPtZC3yo.js` (1,076,461 B) became `index-BET6lubQ.js`. The old bundle contained `Kotowski
+et al` and no `Ruszczak`; the new one is the reverse.
+
+| what was checked | measured |
+|---|---|
+| `crossOriginIsolated` | **true** - so the timing figures the demo prints are meaningful |
+| `/api/` requests in demo mode | **0** of 12 total requests; **0** cross-origin hosts |
+| console errors across five use-case pages | none |
+| satellite overlay | **529** scatter symbols, and the page renders the CORRECTED citation |
+| medical overlay | **569** symbols, labelled as a different cohort from the model's corpus |
+| finance overlay | **8192** symbols, CDLA share-alike terms shown, log axis noted |
+| genomics overlay | **64** symbols - the gnomAD allele-frequency slice |
+| telecom overlay | **0**, as intended: closed as impossible, not pending |
+| medical QCNN weights served | 19 keys with `headline_metric`, accuracy 0.732558 vs LR 0.953488 |
+| finance QCNN weights served | present as `application/json` (they 404'd as HTML before this deploy) |
+
+**The licence defect is cleared on the live site.** `/data/satellite/real_2d.json` had been
+serving `Ruszczak et al., 'Machine learning detects terminal singularities'` - an
+algebraic-geometry paper's title on an OPS-SAT dataset. OPS-SAT-AD is CC BY 4.0, so that was a
+licence condition being breached in public, not a typo. It now serves the correct title and the
+full author list, confirmed both in the JSON and in the rendered page text.
+
+**Content-type was the discriminator throughout, never the status code.** Every probe was paired
+with a nonsense-path control in the same session. The control returns **200 with `text/html`, 645
+bytes** - the SPA shell - so a file that was never deployed looks present to a status-code check.
+Absent assets matched the control byte-for-byte; present ones returned `application/json`.
+
+**One defect is confirmed still live, and it is fixed in an unmerged branch.** On the genomics
+page, selecting `Inference = QCNN` produces a page that contradicts itself. The run log says,
+correctly:
+
+> QCNN selected but no trained weights ship for genomics: the untrained Clifford+T circuit is a
+> hiding and T-count demonstration (56 T-gates on 8 qubits), NOT a classifier
+
+while the explanation panel says "the class this page surfaces comes from the quantum circuit" and
+the diagram bar says "QCNN surfaced as primary". The surfaced class was 0, from CKKS. Both panels
+read the control value rather than the artifact that records which backend ran. Reproduced
+deliberately here so the record shows the defect was observed on the deployed site rather than
+only reasoned about.
+
 ## Verified in Round 21
 
 Observed on `https://qsmpc-qkd-qhe-ai-hybrid.daemons.jp`, recorded rather than ticked.
