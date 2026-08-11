@@ -189,14 +189,23 @@ published baseline they are measured against - including where the model falls s
   source."* The entropy source is a local state-vector measurement simulation. The optional
   **ANU QRNG** API is opt-in, online-only, never used in CI, and subject to the ANU service terms.
 
-### 6b. Conformance test vectors (fetched at check time, not vendored)
+### 6b. Conformance test vectors
 
 | Source | Used for | Licence | Note |
 |---|---|---|---|
-| C2SP/CCTV ML-KEM `modulus/` | FIPS 203 section 7.2 negative vectors, `web/scripts/check_mlkem_modulus_vectors.mjs` | CC0-1.0 | Fetched at run time from the published set, not redistributed here. CC0 waives copyright but expressly does NOT grant patent rights. |
-| NIST ACVP-Server | FIPS 203 section 7.3 key-check vectors | US Government work, public domain | Not currently vendored. |
+| C2SP/CCTV ML-KEM `modulus/` | FIPS 203 section 7.2 negative vectors, `web/scripts/check_mlkem_modulus_vectors.mjs` | CC0-1.0 | **Vendored** at `web/scripts/vectors/`, 56 KB gzipped, pinned to an upstream commit recorded in `PROVENANCE.txt` alongside per-file SHA-256. Upstream `ML-KEM/README.md`: "All test vectors are made available under the terms of the CC0 1.0." CC0 waives copyright but expressly does NOT grant patent rights. |
+| NIST ACVP-Server | FIPS 203 section 7.3 key-check vectors | US Government work, public domain | Not vendored, and not a substitute for the above: its invalid ML-KEM-512 entries are 1216-byte keys against a correct 800, so they test length, not the modulus. |
 
-Both are test data rather than code, and neither ships in the built bundle.
+Both are test data rather than code, and neither ships in the built bundle — `web/scripts/` is
+outside `web/public/` and is not an import target, so Vite neither bundles nor serves it.
+
+**Why the CC0 set is now redistributed here when it used to be fetched.** The check could not gate
+CI while it needed the network, and the only alternative to vendoring would have been to skip on
+fetch failure. For this particular check that is worse than not running it at all: it exists to
+catch a library that silently accepts malformed encapsulation keys, and it found
+`@noble/post-quantum` 0.2.1 accepting all 2,595 of them. A skip-on-error version would have reported
+that build clean. CC0 is the one licence class under which vendoring needs no further argument.
+`--live` still checks the current published set for anyone who wants it.
 
 ### 6a. Git submodules
 

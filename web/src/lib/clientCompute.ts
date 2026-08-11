@@ -1590,9 +1590,22 @@ export function runClientPipeline(
             : `QSDC ABORTED: secrecy capacity ${secrecy.toFixed(4)} <= 0 at error ${e.toFixed(4)} `
               + `with g=${g.toFixed(1)} (${lossDb.toFixed(1)} dB) — this link closes at `
               + `${secrecyNoEve.toFixed(4)} without Eve, so the loss is attributable — telemetry withheld`);
-        if (!abort) {
-          // REAL NASA SMAP/MSL telemetry + the real linear anomaly model, scored in-browser (the satellite
-          // flow has no private_inference stage, so the real anomaly verdict is surfaced here at delivery).
+        {
+          // REAL NASA SMAP/MSL telemetry + the real linear anomaly model, scored in-browser. The
+          // satellite flow has no private_inference stage, so this is where the anomaly verdict is
+          // surfaced.
+          //
+          // OUTSIDE the delivery branch, for exactly the reason the published-model block below was
+          // moved out: this step scores a window of the BUNDLED corpus, not the telemetry the channel
+          // just delivered, so it has no dependency on whether QSDC aborted.
+          //
+          // Gating it was not a harmless over-caution, because QSDC essentially never delivers here.
+          // `C_s > 0` requires `h(QBER) < 1/(1+g)`, and `g` scales with link loss: measured on the live
+          // site, secrecy capacity is -51.58 bit/carrier at the default 800 km (24.5 dB, g=280) and
+          // still -2.15 at 200 km (12.4 dB, g=17.5), the shortest downlink the panel offers. So the
+          // anomaly verdict, the model's provenance line and the whole SHAP panel were unreachable
+          // through the UI - a page advertising a model whose output no user action could produce.
+          // The abort itself is correct physics and is unchanged; only the false dependency is gone.
           const anom = await realSatelliteAnomaly(u);
           if (anom) {
             artifacts.telemetry_anomaly = anom.isAnomaly;
@@ -1608,6 +1621,13 @@ export function runClientPipeline(
               anom.model.W, anom.model.b, anom.window, anom.featureNames, 5, anom.baseline);
             artifacts.explanation_provenance = "real bundled telemetry model";
             artifacts.explanation_baseline = "mean of the bundled NASA telemetry windows";
+            // This page has NO private_inference stage, so the model explained here is the model
+            // that produced the verdict the page reports - the bars ARE an attribution of it.
+            // Declared as a flag rather than inferred from `primary_inference` being absent: that
+            // inference would hold only by coincidence of which stage writes which artifact, and
+            // this project has twice shipped a wrong number that came from exactly that coupling.
+            // `tests/test_explanation_scope.py` ties this flag to FLOWS membership.
+            artifacts.explanation_is_of_reported_class = true;
           }
         }
         // Satellite's flow has no private_inference stage either, so its published model runs here.
@@ -1746,6 +1766,10 @@ export function runClientPipeline(
           artifacts.explanation_provenance =
             `in-browser IDS classifier, one-vs-rest for ${ids.explain.className}`;
           artifacts.explanation_baseline = "zero vector (features are z-scored, so E[x] = 0)";
+          // Telecom has NO private_inference stage: the class this page reports comes from this
+          // very softmax, so the bars ARE an attribution of the reported class. See the satellite
+          // site above for why this is a declared flag and not inferred from an absent artifact.
+          artifacts.explanation_is_of_reported_class = true;
         }
         emit("log", stage, `QML-IDS (client, softmax logistic on Al-Kuwari-2026 signatures): `
           + `macro-F1=${r2(ids.macroF1)} over 8 classes, worst class ${r2(ids.worstClassF1)} `
@@ -1973,6 +1997,10 @@ async function loadQcnnWeights(usecase: string): Promise<QcnnWeights | null> {
         // exact for weights that mean nothing, so say which case this is rather than let a reader
         // assume the explanation describes the industry model.
         artifacts.explanation_provenance = realIn?.model?.W ? "real bundled model" : "placeholder weights";
+        // These pages DO have an encrypted stage, and it evaluates a different model from the one
+        // explained here - so the bars are not an attribution of the class the page reports. This is
+        // the case the panel's caveat was written for; the two above are the case it was wrong about.
+        artifacts.explanation_is_of_reported_class = false;
         metric(stage, "explanation_model", artifacts.explanation_provenance);
         metric(stage, "explanation_top_contribution", artifacts.explanation.top_features[0]?.contribution ?? 0);
         emit("log", stage, `XAI: top driver = ${artifacts.explanation.top_features[0]?.feature}`);
