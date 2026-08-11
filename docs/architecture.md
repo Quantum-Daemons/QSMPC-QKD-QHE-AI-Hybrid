@@ -21,7 +21,7 @@
    |   qkd/      BB84/decoy sim . channel/QBER . AI optimizer (WS1)       |
    |   qml_ids/  7 attack types + normal . RF + variational QNN (WS2)     |
    |   qsmpc/    Shamir+QFT secure sum . QOT . PSI (WS3)                  |
-   |   qhe/      QOTP . variational QCNN . Rate-1 transport (WS4)         |
+   |   qhe/      QOTP+Clifford homomorphic . QCNN . Rate-1 transport (WS4)|
    |   fhe/      CKKS LINEAR layers: TenSEAL . OpenFHE (CPU) . HEonGPU GPU|
    |             + genuine FHE CONVOLUTION (conv.py: im2col > dot_plain)  |
    |   mpc/      NON-LINEAR (ReLU/argmax/maxpool): MPyC Shamir shares;     |
