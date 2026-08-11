@@ -48,7 +48,7 @@ that teacher rather than against the published literature.
 
 - **Dataset**: OPS-SAT-AD
 - **Licence**: CC-BY-4.0
-- **Source**: https://zenodo.org/records/12588359 (licence read 2026-08-05)
+- **Source**: https://doi.org/10.5281/zenodo.12588358 (licence read 2026-08-05)
 
 2,123 annotated telemetry segments across 9 channels from ESA's OPS-SAT CubeSat, 20.4% anomalous, with 18 published per-segment features plus a `sampling` metadata column, and the benchmark's own train/test split. Ruszczak et al., Scientific Data 12 (2025). CC BY 4.0 and 507 KB, so unlike every other corpus here the DATA can be redistributed as well as the weights. A different task from ESA-ADB: segment classification, not forecasting, so its score is not comparable with the Telemanom model's and neither is the other's baseline.
 

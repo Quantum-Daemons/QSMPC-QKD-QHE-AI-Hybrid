@@ -24,6 +24,7 @@ export default function Orchestration() {
   const [usecase, setUsecase] = useState("finance_aml");
   const graphRef = useRef<HTMLDivElement>(null);
   const run = usePipelineRun(usecase, graphRef);
+  const hasRun = run.events.length > 0;
   const { events, active, done, metrics, signature, state, logRef, gifBusy,
     downloadGif, downloadPng, downloadEvents, downloadMetricsCsv } = run;
 
@@ -66,10 +67,13 @@ export default function Orchestration() {
         <h3>Download artifacts</h3>
         <p>Client-side exports (server also writes JSONL/CSV/JSON to <code>results/</code>). Images are high-DPI.</p>
         <div className="btn-row">
-          <button className="btn ghost" onClick={() => downloadEvents(`${usecase}-events.json`)}>⬇ Events (JSON)</button>
-          <button className="btn ghost" onClick={() => downloadMetricsCsv(`${usecase}-metrics.csv`)}>⬇ Metrics (CSV)</button>
+          <button className="btn ghost" onClick={() => downloadEvents(`${usecase}-events.json`)}
+            disabled={!hasRun} title={hasRun ? undefined : "Run the orchestration first"}>⬇ Events (JSON)</button>
+          <button className="btn ghost" onClick={() => downloadMetricsCsv(`${usecase}-metrics.csv`)}
+            disabled={!hasRun} title={hasRun ? undefined : "Run the orchestration first"}>⬇ Metrics (CSV)</button>
           <button className="btn ghost" onClick={() => downloadPng(`${usecase}-dag.png`)}>⬇ DAG (PNG, hi-DPI)</button>
-          <button className="btn ghost" onClick={() => downloadGif(`${usecase}-orchestration.gif`)} disabled={gifBusy}>
+          <button className="btn ghost" onClick={() => downloadGif(`${usecase}-orchestration.gif`)}
+            disabled={gifBusy || !hasRun} title={hasRun ? undefined : "Run the orchestration first"}>
             {gifBusy ? "Encoding…" : "⬇ Animation (GIF)"}
           </button>
         </div>

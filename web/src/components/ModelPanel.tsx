@@ -241,108 +241,12 @@ function ModelRunner({ usecase, spec }: { usecase: string; spec: ModelSpec }) {
  * quantisation, execution provider - and the honest response is to withhold the number rather than
  * render it.
  */
-function ModelEvalReport({ res }: { res: ModelEvalResult | null }) {
-  if (!res) return null;
-
-  if (res.error) {
-    return (
-      <div className="note" style={{ marginTop: 10, borderColor: "var(--warn)", color: "var(--warn)" }}>
-        \u26a0 The published model did not run: <code>{res.error}</code>
-        <div style={{ marginTop: 6 }}>
-          Reported rather than silently replaced. The pipeline's own bundled model is unaffected.
-        </div>
-      </div>
-    );
-  }
-  if (!res.ran) return null;
-
-  const isForecast = res.task === "forecast";
-  const isF1 = res.metricName === "minority_class_f1";
-  // Three readings, three formats. Accuracy is a percentage and higher is better; a forecast error
-  // is absolute and lower is better; a rare-class F1 is a small decimal that reads as nonsense as a
-  // percentage - the finance student's 0.0178 rendered "1.8%" invites comparison with an accuracy,
-  // which is the number this metric exists to avoid reporting.
-  const fmt = (v: number | null) =>
-    v == null ? "\u2014" : isForecast || isF1 ? v.toFixed(4) : `${(v * 100).toFixed(1)}%`;
-  const unit = isForecast ? "windows" : "rows";
-  const scoreLabel = isForecast ? "forecast MAE measured here"
-    : isF1 ? "rare-class F1 measured here"
-    : "accuracy measured here";
-  const baselineLabel = isForecast ? "persistence baseline (predict no change)"
-    : isF1 ? "all-positive baseline (flag everything)"
-    : "majority-class baseline";
-  const baselineNote = isForecast ? "error from simply repeating the last observed step"
-    : isF1 ? "F1 from flagging every row: precision is the prevalence, recall is 1"
-    : "what guessing the commonest label would score";
-
-  return (
-    <>
-      <table className="mini-table" style={{ marginTop: 12 }}>
-        <tbody>
-          <tr className={res.matchesExpected ? "metric-headline" : undefined}>
-            <td>{scoreLabel}</td>
-            <td className="num">{fmt(res.score)}</td>
-            <td className="muted small">{res.n} held-out {unit}, in this tab</td>
-          </tr>
-          <tr>
-            <td>expected (offline, same {unit})</td>
-            <td className="num">{fmt(res.expected)}</td>
-            <td className="muted small">onnxruntime, measured by scripts/prep_model_inputs.py</td>
-          </tr>
-          <tr className="metric-companion">
-            <td>{baselineLabel}</td>
-            <td className="num">{fmt(res.baseline)}</td>
-            <td className="muted small">
-              {baselineNote}
-            </td>
-          </tr>
-          <tr className="metric-companion">
-            <td>execution provider</td>
-            <td className="num">{res.backend}</td>
-            <td className="muted small">
-              {res.bytes == null ? "served from cache" : `${(res.bytes / 1e6).toFixed(1)} MB transferred`}
-            </td>
-          </tr>
-        </tbody>
-      </table>
-
-      {!res.beatsBaseline && (
-        <div className="note" style={{ marginTop: 10, borderColor: "var(--warn)", color: "var(--warn)" }}>
-          \u26a0 <b>The model does not beat the trivial baseline</b> on these {unit}
-          {isForecast && res.score != null && res.baseline != null
-            ? ` \u2014 its forecast error (${res.score.toFixed(4)}) is about `
-              + `${(res.score / res.baseline).toFixed(0)}\u00d7 that of simply repeating the last `
-              + "observed value. Telemanom derives its anomaly signal from forecast residuals, so "
-              + "residuals this large are dominated by model error rather than by anomalies. The "
-              + "published event-wise F0.5 should be read with that in mind."
-            : "."} Shown because it is measurable here, not because it flatters the model.
-        </div>
-      )}
-      {res.matchesExpected ? (
-        <div className="note" style={{ marginTop: 10 }}>
-          \u2713 The browser reproduced the offline figure on the same {unit}, so this really is the
-          published model running here \u2014 not a bundled stand-in.
-        </div>
-      ) : (
-        <div className="note" style={{ marginTop: 10, borderColor: "var(--warn)", color: "var(--warn)" }}>
-          \u26a0 The browser got {fmt(res.score)} where {fmt(res.expected)} was expected on these {unit}.
-          Something differs \u2014 preprocessing, quantisation, or the execution provider \u2014 so treat this
-          number as unverified rather than as a result.
-        </div>
-      )}
-
-      {/* The sample's own note on why this figure is what it is. Unrendered, the finance student
-          showed 0.3337 here beside the registry's 0.0178 for the same metric with nothing to
-          reconcile them. */}
-      {res.note && (
-        <p className="muted" style={{ fontSize: 11, marginTop: 10 }}>
-          <b>About this figure.</b> {res.note}
-        </p>
-      )}
-      <p className="muted" style={{ fontSize: 11, marginTop: 10 }}>{res.provenance}</p>
-    </>
-  );
-}
+// `ModelEvalReport` lived here: it rendered the PASS/FAIL verdict, the mismatch warning, the sample's
+// own note and the provenance line. It was defined, never referenced, and therefore tree-shaken out of
+// every shipped bundle - so a verification FAIL rendered exactly like a PASS and the only trace was a
+// raw metrics row. All four now render in `UseCasePage`'s "Verification, this run" card, which is the
+// surface that actually appears. Deleted rather than left in place, because an unreferenced component
+// that looks like it handles a case is how the case went unhandled for several rounds.
 
 export function ModelPanel({ usecase }: { usecase: string }) {
   const specs = modelsFor(usecase);
