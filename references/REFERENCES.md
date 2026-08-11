@@ -457,7 +457,7 @@ belongs in this file rather than only in a comment.
 
 - **Ruszczak, Kotowski, Evans & Nalepa, "The OPS-SAT benchmark for detecting anomalies in
   satellite telemetry", *Scientific Data* 12, 710 (2025).** DOI 10.1038/s41597-025-05035-3. Data:
-  Zenodo 10.5281/zenodo.12588359, CC BY 4.0. Source of the 30 published baselines
+  Zenodo 10.5281/zenodo.12588358 (concept DOI), CC BY 4.0. Source of the 30 published baselines
   `satellite_comms.opssat` is quoted against. Added: 2026-08-07.
 - **Kotowski, Haskamp, Andrzejewski, Ruszczak, Nalepa et al., "European Space Agency Benchmark for
   Anomaly Detection in Satellite Telemetry".** arXiv:2406.17826. Data: Zenodo
