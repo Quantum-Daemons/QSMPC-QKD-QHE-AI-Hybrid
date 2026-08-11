@@ -44,6 +44,49 @@ export default function Value() {
         &ldquo;healthcare/life-sciences (~30%) lead the verticals&rdquo;, which neither report supports.
       </p>
 
+      <h2 style={{ marginTop: 28 }}>What is new here, and what is not</h2>
+      <p className="muted">
+        This project's own verification rule is that a novelty claim has to survive an adversarial
+        search for prior art. Applied to its own headline claim, the honest answer is asymmetric, and
+        both halves are stated here rather than only the flattering one.
+      </p>
+      <div className="grid cols-2">
+        <div className="card">
+          <h3>Not new: MPC in a browser</h3>
+          <p>
+            Secure multiparty computation has been compiled to WebAssembly before.{" "}
+            <b>webSPDZ</b> (IACR ePrint 2025/487) compiles MP-SPDZ to WASM and communicates over
+            WebRTC or WebSockets, and it names <b>JIFF</b> and <b>MPyC-Web</b> as earlier
+            browser MPC engines. The garbled-circuit half of this demo is a re-implementation of a
+            known idea, not a first.
+          </p>
+        </div>
+        <div className="card">
+          <h3>Unusual: FHE <i>evaluation</i> in a browser</h3>
+          <p>
+            The search for a browser that <b>evaluates</b> a homomorphic circuit came back empty.
+            Every artefact found encrypts in the browser and evaluates on a server - IACR ePrint
+            2026/515 defines "client-side operations" as encryption and decryption while
+            <i> users offload large computations to servers</i>, and Zama's own TFHE-rs WASM API
+            documents that it supports key generation, encryption and decryption but{" "}
+            <b>not FHE computation</b>, citing WASM threading and the 2&nbsp;GB memory ceiling.
+            Here node-seal evaluates a real CKKS dot product and convolution in the tab.
+          </p>
+        </div>
+      </div>
+      <p className="muted small">
+        So the claim this project makes is the <b>composition</b>, not either half: PQC key
+        establishment, then QKD-derived key material, then secure multiparty computation, then
+        homomorphic evaluation, then the model inference - chained end to end in one browser tab with
+        no server-side compute. A search for an integrated browser system doing all of that returned
+        nothing. Two honest caveats travel with it: the two MPC parties are notional, running over an
+        in-memory transport in a single tab (the protocol, bytes and wall-clock are real, the party
+        separation is not), and the quantum channel is simulated - there is no browser API for QKD and
+        there will not be one. Client-side is also not automatically private: WWW&nbsp;2026's{" "}
+        <b>WAMO</b> paper argues that browser deployment moves a model into a hostile environment,
+        which is why the models here are public on Hugging Face rather than treated as secrets.
+      </p>
+
       <h2 style={{ marginTop: 28 }}>Where this architecture creates value</h2>
       <div className="grid cols-2">
         <div className="card"><h3>Regulatory eligibility</h3><p>PQC-first hybrid + crypto-agility + XAI audit trails position bids for CNSA 2.0 / FIPS-aligned procurement that non-compliant vendors can't enter.</p></div>

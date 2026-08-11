@@ -235,6 +235,52 @@ papers. Where the two used to overlap, that file is the owner.
 
 ---
 
+## Prior art for the novelty claim, and the asymmetry it exposes (Round 30)
+
+Added 2026-08-11. Checklist rule M4 requires a novelty claim to survive an adversarial prior-art
+search. Run against this project's own headline claim, the search returned prior art for one half
+and nothing for the other. Both are recorded, because reporting only the second would be the
+omission this file exists to prevent.
+
+- **Buchsteiner, Koch, Rotaru & Rechberger, "webSPDZ: Versatile MPC on the Web."** IACR ePrint
+  2025/487, received 2025-03-14. Compiles MP-SPDZ's C++ backend to WebAssembly with Emscripten and
+  moves party communication to WebRTC or WebSockets, supporting the 40-plus protocols MP-SPDZ
+  implements. **Its abstract names two earlier browser MPC engines, JIFF and MPyC-Web.** So
+  multiparty computation in a browser tab is established work and the garbled-circuit half of this
+  demo is a re-implementation, not a first. `docs/threat-model.md` already mentioned JIFF; webSPDZ
+  and MPyC-Web were absent. Added: 2026-08-11.
+- **Aikata, Krieger & Sinha Roy, "Privacy at your Fingertips: Enabling Rapid Client-Side
+  Operations in Fully Homomorphic Encryption."** IACR ePrint 2026/515, received 2026-03-13.
+  Verified at the listing: "client-side operations" means encryption and decryption, and the
+  abstract states that FHE "allows users to offload large computations to servers". It reduces
+  client enc/decrypt cost by up to 97 percent - the client still does not evaluate. **This is the
+  clearest evidence that the field's default division of labour is the opposite of this demo's**,
+  which is why it is cited beside the novelty claim rather than in the FHE section. Added:
+  2026-08-11.
+- **Zama, TFHE-rs JS-on-WASM API documentation.** States that the WebAssembly client API supports
+  key generation, encryption and decryption but **not FHE computation**, citing missing WASM
+  threading and the 2 GB WASM memory ceiling. Documentation rather than a result, and the
+  strongest single sentence supporting the in-tab evaluation claim: the leading FHE toolchain
+  deliberately does not evaluate in the browser. Checked 2026-08-11.
+- **Wang, Yu, Han, Gu, Xu & Huang, "WAMO: Toward Secure Browser Inference via Web Model
+  Obfuscation in WebAssembly."** Proceedings of the ACM Web Conference 2026 (WWW '26), 2026-04-09,
+  DOI 10.1145/3774904.3792297. **Carried as a partial contradiction, which is why it is worth
+  having:** it argues that deploying a model in a browser exposes its code and parameters to an
+  untrusted environment, against the intuition that client-side execution is automatically
+  private. It does not threaten this project - the models here are public on Hugging Face, so
+  extraction is not a harm - but it is the paper a reviewer will raise, and the threat model
+  should name it. **Metadata verified via the OpenAlex record for that DOI; the full text was not
+  retrieved (ACM DL refuses automated fetches), so nothing beyond title, authors, venue and date
+  is asserted here.** Added: 2026-08-11.
+
+**The negative results, stated as findings rather than left as absence.** No peer-reviewed
+2025-2026 paper was located that performs CKKS homomorphic *evaluation* of a neural network inside
+a browser tab with no server compute; every browser-FHE artefact found is encrypt-in-browser,
+evaluate-on-server. No WebGPU-accelerated homomorphic-encryption or MPC paper was located for
+2025-2026 either, which is consistent with the note in `web/src/lib/clientFHE.ts` that no
+commercial-OK WebGPU FHE exists in 2026. Absence of evidence is recorded as absence of evidence:
+the searches and their dates are here so the next round can re-run them rather than re-reason.
+
 ## Hybrid FHE/MPC private inference: the 2026 state of the art, and an attack on the nearest design
 
 Added 2026-08-11. Each entry below was verified against the arXiv abstract page or the IACR listing
