@@ -1699,6 +1699,9 @@ simulation, the class is genuinely computed. It just was not a prediction.
 | QC4 | The model is trained in the space the browser actually SUPPLIES | z-scores in, z-scores trained |
 | QC5 | Circuit parity is checked against an independent reimplementation | before any weights are shipped |
 | QC6 | The classical baseline is reported beside the quantum number | every time, including when it loses |
+| QC7 | The epoch is selected on a fold that is NOT the one reported | selecting and reporting on the same rows is leakage |
+| QC8 | The run is seeded and the seed ships with the weights | unseeded reruns moved this headline by 0.07 |
+| QC9 | The printed metric NAME is the metric that was computed | a mislabelled number is worse than a missing one |
 
 **QC4 and QC5 each caught a fault that would have made the fix worthless.**
 
@@ -1715,11 +1718,21 @@ the TRAINED path exactly as meaningless as the untrained one it replaced. Retrai
 a bounded `RY(tanh(z)*pi)` encoding, since z-scores span [-3.11, 6.05] and would otherwise wrap the
 Bloch sphere: <Z0> moved to **0.1669**.
 
-**What the result is, stated without varnish.** Held-out accuracy **0.8947** against a majority
-baseline of 0.6082 and logistic regression at **0.9649** on the identical split. The QCNN learns and
-the classical model beats it, and the log line on the page says so in those words rather than
-implying an advantage. That is consistent with this project's other quantum results - the telecom
-QNN loses to a random forest - and with the concentration literature.
+**What the result is, stated without varnish.** Held-out accuracy **0.7326** on 171 test rows,
+against a majority baseline of **0.5930** and logistic regression at **0.9535** on the identical
+split. The QCNN learns and the classical model beats it comfortably, and the log line on the page
+says so in those words rather than implying an advantage. That is consistent with this project's
+other quantum results - the telecom QNN loses to a random forest - and with the concentration
+literature.
+
+An earlier revision of this section recorded **0.8947** here, and that figure should not be trusted
+in preference to the one above. Three things were wrong with how it was obtained. The run was
+unseeded, and reruns on identical inputs returned 0.9181 / 0.9064 / 0.8947 / 0.8480 - a 0.07 spread,
+so the recorded value was a draw from a distribution rather than a measurement. The epoch was
+selected on the same rows the headline was then read off, which is leakage. And there was no
+validation fold at all, so the split it refers to no longer exists. After seeding, a 70/15/15 split
+and epoch selection on the VALIDATION fold, the shipped figure is 0.7326. The fall is the
+correction; QC7, QC8 and QC9 above exist so it is not repeated.
 
 **QOTP hiding and QCNN prediction are now separate.** Undoing a Pauli frame through Clifford+T is
 not a detail that can be waved through: `T X T-dagger` is not Pauli, which is the difficulty Ortega &
