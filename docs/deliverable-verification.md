@@ -66,7 +66,7 @@ Eight gates. Steps 1-3 and 5-8 are pass/fail; step 4 is a loop that runs until c
    demo prints is coarsened and invalid. Zero `/api` calls in demo mode, verified in the network
    panel rather than by reading code.
 4. **Content, in Chrome, every page** - four axes, iterated until clean. The executable form of this
-   gate is `browser-verification-checklist.md` (results recorded in `verification-log.md`): seven routes including two negative paths, fourteen
+   gate is the browser verification checklist - maintained privately, not in this repository (results recorded in `verification-log.md`, which is published): seven routes including two negative paths, fourteen
    regions per use-case page, eight axes, and the numeric edges to type into every field. It is a
    file rather than a habit because what gets reconstructed from memory each round is whatever
    someone remembers to look at.

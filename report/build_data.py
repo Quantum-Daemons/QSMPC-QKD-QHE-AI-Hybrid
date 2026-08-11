@@ -8,6 +8,7 @@ a worse place for that than a README because it is a fixed artefact someone keep
 from __future__ import annotations
 
 import json
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -93,24 +94,74 @@ def findings_table() -> str:
          "medical F1 fell 0.9181 to 0.7326 once a validation split was introduced"),
         ("Criterion half-applied", "loss-aware QSDC bound added to the module, not to its caller",
          "an inert threshold control, and an eavesdropper reported on every clean run"),
+        ("False provenance",
+         "a panel announced that the quantum circuit produced a class CKKS had produced",
+         "it read the CONTROL value; the artifact recording which backend ran was never consulted"),
+        ("Tautological verdict",
+         "circuit\\_private rested half on decrypt(encrypt(x)) == x, which is 1.0 by construction",
+         "a passing test asserted both the tautology and the verdict, so green read as confirmation"),
+        ("Guard that cannot fail", "r.ok tested on an SPA host that answers 200 with HTML for any path",
+         "it degraded correctly only because JSON parsing then threw and a catch swallowed it"),
+        ("Label true of another artefact", "Clifford+T named a Python module containing zero T gates",
+         "the same label IS accurate for the browser circuit, which counts 56 of them"),
     ]
     findings_table.rows = rows
     return "\n".join(" & ".join([r"\textbf{" + a + "}", b, c]) + r" \\" for a, b, c in rows)
+
+
+#: Fallback for the checklist row count, kept in the COMMITTED generated macros.
+#: `docs/browser-verification-checklist.md` is maintained privately and is no longer tracked, so a
+#: fresh clone does not have it. Reading it unconditionally made the report unbuildable for anyone but
+#: this working copy - a report that only its author can build is not a deliverable. When the file is
+#: present the count is measured from it, exactly as before; when it is absent the previously measured
+#: value is reused from `report/generated/macros.tex`, which IS committed. That keeps the number
+#: derived from the artefact rather than typed into the source, which is the property that matters.
+CHECKLIST = REPO / "docs" / "browser-verification-checklist.md"
+
+
+def _from_committed(macro: str) -> int | None:
+    """The value this macro had last time the checklist WAS present."""
+    committed = OUT / "macros.tex"
+    if not committed.exists():
+        return None
+    m = re.search(r"\\newcommand\{\\" + macro + r"\}\{([\d{},]+)\}", committed.read_text())
+    return int(m.group(1).replace("{,}", "").replace(",", "")) if m else None
+
+
+def _checklist_scalar(macro: str, measure) -> int:
+    """Measure it from the checklist when present, else reuse the committed generated value."""
+    if CHECKLIST.exists():
+        return measure(CHECKLIST.read_text())
+    prior = _from_committed(macro)
+    if prior is not None:
+        print(f"  checklist absent (maintained privately): reusing {macro}={prior} from "
+              f"{(OUT / 'macros.tex').relative_to(REPO)}")
+        return prior
+    raise SystemExit(
+        f"cannot determine \\{macro}: {CHECKLIST.relative_to(REPO)} is absent and "
+        f"{(OUT / 'macros.tex')} carries no prior value. Commit the generated macros, or restore the "
+        "checklist, rather than hardcoding a number here."
+    )
+
+
+def _count_rows(text: str) -> int:
+    return sum(1 for line in text.splitlines()
+               if line.strip().startswith("|") and len(line.split("|")) > 3
+               and line.split("|")[1].strip()[:1].isalnum()
+               and any(ch.isdigit() for ch in line.split("|")[1]))
 
 
 def macros() -> str:
     sha = subprocess.run(["git", "rev-parse", "--short", "HEAD"], cwd=REPO,
                          capture_output=True, text=True).stdout.strip()
     n_pub = sum(1 for s in registry._SPECS if s.hf_repo)
-    checklist = (REPO / "docs" / "browser-verification-checklist.md").read_text()
-    n_rows = sum(1 for line in checklist.splitlines()
-                 if line.strip().startswith("|") and len(line.split("|")) > 3
-                 and line.split("|")[1].strip()[:1].isalnum()
-                 and any(ch.isdigit() for ch in line.split("|")[1]))
+    n_rows = _checklist_scalar("nchecklistrows", _count_rows)
+    n_lines = _checklist_scalar("nchecklistlines", lambda t: len(t.splitlines()))
     return "\n".join([
         r"\newcommand{\gitsha}{" + sha + "}",
         r"\newcommand{\npublished}{" + str(n_pub) + "}",
         r"\newcommand{\nchecklistrows}{" + str(n_rows) + "}",
+        r"\newcommand{\nchecklistlines}{" + f"{n_lines:,}".replace(",", "{,}") + "}",
         r"\newcommand{\nusecases}{5}",
         r"\newcommand{\ndefectclasses}{" + str(len(findings_table.rows)) + "}",
     ])
