@@ -39,6 +39,27 @@ export const runsFibreQkd = (usecase: string) => clientFlow(usecase).includes("q
 export const QCNN_USECASES = new Set(["finance_aml", "medical_fl"]);
 export const hasTrainedQcnn = (usecase: string) => QCNN_USECASES.has(usecase);
 
+/** Use cases where a federated-training stage has both real data and somewhere to be rendered.
+ *
+ * The same rule as the predicates above, applied to an injected stage. `qfl` is `useState(true)` with
+ * no writer, so the stage was injected into finance, genomics, telecom, satellite and the generic
+ * demo as well - and in three of those it had neither half:
+ *
+ *   - No render target. `OrchestrationGraph`'s default flow has no `federated_training` node and
+ *     `TwoPartyDiagram`'s federated step is medical-only, so the animation advanced to a stage no
+ *     figure contained and every diagram row dimmed with nothing highlighted.
+ *   - No real data. `realFederatedSet` maps only medical and finance to a bundled sample, so genomics,
+ *     telecom and satellite trained on a synthetic two-cluster toy - whose accuracy was then handed to
+ *     the agent panel as "federated accuracy" with no qualifier, on pages that never mention
+ *     federation. The demo banner meanwhile still tells visitors federated training is the medical
+ *     page's feature.
+ *
+ * Finance qualifies on both counts: `realFederatedSet` has its sample, and its diagram renders the
+ * step. `tests/test_federated_scope.py` checks this set against the data map so it cannot drift.
+ */
+export const FEDERATED_USECASES = new Set(["medical_fl", "finance_aml"]);
+export const runsFederated = (usecase: string) => FEDERATED_USECASES.has(usecase);
+
 export const MODEL_SIZES = [
   { id: "lightweight", label: "Lightweight" },
   { id: "medium", label: "Medium" },
@@ -110,8 +131,9 @@ export function usePipelineRun(usecase: string, recordRef: RefObject<HTMLElement
   const [mpc, setMpc] = useState("");
   const [sig, setSig] = useState("");
   const [workload, setWorkload] = useState("linear");
-  // Always on. It runs a real client-side FedAvg over the page's real bundled sample, so it is
-  // part of what the demo does rather than something to opt into. The state is kept so the flag can
+  // On by default where it is real. It runs a client-side FedAvg over the page's own bundled sample,
+  // which is worth showing without making a visitor find a checkbox - but only two use cases HAVE such
+  // a sample, so `buildConfig` gates the flag on `runsFederated`. The state is kept so the flag can
   // still be turned off programmatically for a test or a comparison.
   const [qfl, setQfl] = useState(true);
   const [optiqkd, setOptiqkd] = useState(false);         // "Optimize QKD (OptiQKD)" toggle (WS1 AI-QKD)
@@ -201,7 +223,9 @@ export function usePipelineRun(usecase: string, recordRef: RefObject<HTMLElement
     // Only when a choice was made. Absent, runPublishedModel falls to browserModel(usecase), so the
     // key never appears in a signed payload claiming a selection the visitor did not make.
     if (publishedModel) c.published_model = publishedModel;
-    if (qfl) c.qfl = true;                                // run Quantum Federated Learning this run
+    // Gated on the same predicate style as the controls above: the flag reaches the run only where a
+    // federated stage has real data and a figure to appear in.
+    if (qfl && runsFederated(usecase)) c.qfl = true;
     if (optiqkd) c.qkd_optimize = true;                  // run the AI-QKD parameter optimization this run
     return c;
   };
