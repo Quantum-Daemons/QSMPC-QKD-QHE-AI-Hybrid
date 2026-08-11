@@ -93,6 +93,25 @@ def test_every_read_key_is_emitted_or_explicitly_excepted() -> None:
     )
 
 
+def test_the_satellite_channel_reads_the_satellite_parameters() -> None:
+    """The channel MODEL and the parameters fed to it must both follow the use case.
+
+    Round 29 emitted `usecase`, so the model switched to free-space on the satellite page - and left
+    the parameter reads on `qkd_distance_km` / `qkd_eve`, the FIBRE page's controls. Those keys are
+    never absent, so the satellite page evaluated the free-space model at 50 km of fibre distance. The
+    printed tagged fraction moved from 7.26 to 2.89 instead of to 124.77, and the three controls that
+    page renders still could not move it. A half-corrected number is harder to notice than an
+    uncorrected one, because it moved.
+    """
+    read, emitted = _read_keys(), _emitted_keys()
+    for key in ("sat_distance_km", "sat_eve"):
+        assert key in read, (
+            f"{key} is no longer read by clientCompute. If the satellite channel stopped using its "
+            "own parameters, that is the regression this test exists for."
+        )
+        assert key in emitted, f"{key} is read but not emitted by buildConfig"
+
+
 def test_usecase_is_emitted_because_the_channel_model_depends_on_it() -> None:
     """The specific regression, pinned separately so a refactor cannot quietly drop it."""
     assert "usecase" in _emitted_keys(), (

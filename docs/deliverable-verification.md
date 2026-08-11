@@ -364,6 +364,60 @@ The licence posture does not change: PGS000004 carries the same EMBL-EBI default
 PGS000001, so the migration neither unblocks nor further blocks publication, and `hf_repo` stays
 None.
 
+## Round 30: a licence condition only Hugging Face could fix, and a claim the project hid from itself
+
+**The Hub was serving a retracted attribution and no local change could reach it.** The corrected
+OPS-SAT citation had been in the tree and the baked config for two rounds. The browser fetches
+each model's `eval_sample.json` from the Hub at its pinned revision and interpolates that file's
+own `provenance` into the run log, so the live satellite page printed both attributions at once -
+Ruszczak three times from the baked config, "Kotowski et al" once from the Hub. OPS-SAT-AD is CC
+BY 4.0, so that was a licence condition being breached in public. All ten repos re-uploaded and
+re-pinned; verified at each new revision by fetching the Hub rather than trusting the push log.
+
+The lesson generalises past this incident: **the repository had corrected itself everywhere it
+could see, and the surface it could not see was the one still wrong.** `HF6` checked for files on
+the Hub absent locally and nothing checked the reverse. `HF7`-`HF9` now do, including the specific
+case that a provenance string the browser fetches must be verified on the Hub rather than in the
+repo.
+
+**WS4(c) was already met, and the project had been carrying it as unmet.** `qcnn.py` contained a
+working, tested Clifford homomorphic evaluation - real circuit on the encrypted state, Pauli frame
+propagated, fidelity 1.0, maximally-mixed ciphertext - cited in no README and no doc. After
+several rounds of finding overclaims this is the inverse, and it is worth noticing that the same
+process produces both: nobody had read that module against the WS4 table.
+
+The honest gap was narrow: one fixed circuit is not arbitrary circuits. Closing it needed the S
+frame rule, verified numerically over 40 random states before use because a sign error is
+invisible in a single fixed circuit, and a CNOT applier not hardcoded to wires 0 and 1. The demo
+now draws random Clifford words and recovers the result at fidelity 1.0 to depth 30. **WS4(f) is
+split out and NOT claimed** - the client must know the circuit to update its frame, so "the client
+updates its frame" and "the client does not learn the circuit" are close to mutually exclusive
+under plain QOTP. One row covering both could only ever read PARTIAL, which is how a met claim
+stayed invisible.
+
+**The novelty claim was restated after applying M4 to it.** Browser MPC has prior art: webSPDZ
+(IACR 2025/487) compiles MP-SPDZ to WASM and names JIFF and MPyC-Web. Browser CKKS *evaluation* is
+where the search came back empty - IACR 2026/515 defines "client-side operations" as
+encrypt/decrypt while users "offload large computations to servers", and Zama's TFHE-rs WASM API
+documents that it does not evaluate in the browser. The claim is now the composition, stated
+identically in the landing page, the value page, README and the technical report, with both halves
+of the asymmetry and the two caveats that travel with it: the MPC parties are notional, and the
+quantum channel is simulated.
+
+**My own Round 29 fix was half a fix, found by verifying the deploy rather than the code.** The
+satellite decoy figure moved from 7.26 to 2.89 when it should have moved to 124.77: the channel
+MODEL switched to free-space and the parameters fed to it still read the fibre page's keys. The
+intermediate value was LOWER than the wrong original, because free-space at 50 km is less lossy
+than 50 km of fibre - so a half-corrected number looked more conservative than an uncorrected one.
+**A number that moves is easy to accept as fixed.** Verified this time by computing all three
+values from the same model and matching the live page against them.
+
+**The checklist could not verify the architecture the demo is built on.** No row asserted that
+anything runs client-side - every check verified what was displayed, never where it ran.
+`CS1`-`CS9` close that, and `AM1`-`AM3` turn "no additional model" into a dated decision with its
+five falsifiable triggers rather than inertia. Telecom's overlay moves from "not implemented" to
+CLOSED as impossible.
+
 ## Verification assets added in Rounds 22-23
 
 Two checks now exist that assert against sources OUTSIDE this repository. That is the point of both:

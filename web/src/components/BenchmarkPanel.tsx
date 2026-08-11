@@ -75,6 +75,16 @@ export default function BenchmarkPanel(
                 {advantage.score}<span style={{ fontSize: 16, color: "#97a3b6" }}>/10</span>
               </div>
               <div className="tag" style={{ marginTop: 6 }}>{advantage.tier} advantage</div>
+              {/* What the number IS, next to the number. A 38 px "N/10" under the heading "Quantum
+                  advantage" reads to a non-expert as a measured benchmark result, and the disclosure
+                  that it is a weighted composite of three configured ratios sat about thirty lines
+                  below in 11 px muted text. This panel spends four lines explaining that the 0-100
+                  composite was retired for being an unjustified weighted composite; the same reader
+                  should not have to scroll to learn that this is one too. */}
+              <div className="muted" style={{ fontSize: 11, marginTop: 4 }}>
+                a weighted geometric mean of three ratios (communication compactness, latency, security
+                model), not a measured speed-up
+              </div>
               {/* A clamped 10/10 and a run far past the ceiling render identically; say which. */}
               {advantage.clamped && typeof advantage.score_raw === "number" && (
                 <div className="muted" style={{ fontSize: 11, marginTop: 4 }}>
