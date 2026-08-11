@@ -19,7 +19,20 @@ simulation/scaffolds where not - every claim is tied to a primary source in
 > ~$20 B (2033) at ~38 % CAGR). A general **quantum *advantage*** for these workloads is **not** claimed
 > as a market benefit - it is broadly unproven in 2026 (e.g. classical tensor-network simulation matching
 > annealing results), so the numeric "quantum advantage" stays a **research / education** metric in the
-> benchmark. The production-relevant output is the **security posture table** - per-row facts, each
+> benchmark. For the QCNN specifically the evidence is sharper than "unproven": Bermejo, Braccia,
+> Rudolph, Holmes, Cincio and Cerezo show that randomly initialised QCNNs **can only act on
+> low-bodyness measurements of their input and are efficiently classically simulable** with Pauli
+> shadows, and argue that QCNN successes largely reflect benchmark simplicity
+> ([arXiv:2408.12739](https://arxiv.org/abs/2408.12739), rev. Feb 2026). That is the frame for this
+> repository's own measured result - its trained QCNN loses to logistic regression on the same split,
+> which is the expected outcome rather than a disappointing one, and both figures are printed side by
+> side on the page. Relatedly, Li, Wu, Li and Yung separate observable concentration from loss of
+> parameter sensitivity and show that **avoiding concentration is necessary but not sufficient for
+> trainability** ([arXiv:2603.18479](https://arxiv.org/abs/2603.18479), Mar 2026, rev. Jun 2026); the
+> untrained circuit this project removed from its inference path failed exactly the concentration
+> symptom, with |<Z0>| under 0.21 for every input tested.
+>
+> The production-relevant output is the **security posture table** - per-row facts, each
 > traceable to FIPS 203/204 or to the run that produced it. The 0-100 composite that used to hold that
 > role was **retired in Round 22**: 14 of its 17 weights carried no stated rationale and it scored a
 > run with zero secure key bits 100/100 (see

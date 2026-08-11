@@ -235,6 +235,104 @@ papers. Where the two used to overlap, that file is the owner.
 
 ---
 
+## Hybrid FHE/MPC private inference: the 2026 state of the art, and an attack on the nearest design
+
+Added 2026-08-11. Each entry below was verified against the arXiv abstract page or the IACR listing
+directly, not against another file in this repository. The architecture discussion lives in
+[`docs/architecture.md`](../docs/architecture.md); this section is the provenance.
+
+- **Biswas, Chartier, Dhasade, Jurien, Kerriou, Kermarec, Lemou, Tranie, de Vos & Vujasinovic,
+  "Practical and Private Hybrid ML Inference with Fully Homomorphic Encryption" (Safhire).**
+  arXiv:2509.01253, submitted 1 Sep 2025. Linear layers encrypted server-side, non-linearities
+  offloaded to the client **in plaintext**, which removes bootstrapping and allows exact activations;
+  1.5x-10.5x lower latency than Orion. Model confidentiality is protected by **randomised shuffling**
+  of the intermediates the client sees. This is the closest published architecture to this
+  repository's, and the difference is precisely where the non-linear half runs. Added: 2026-08-11.
+- **Kim & Lee, "Shuffling is Not Enough: Breaking Permutation-Based Model Confidentiality in Hybrid
+  FHE Inference."** IACR eprint 2026/1527, ESORICS 2026 (received 2026-07-25). Recovers a
+  permutation-invariant summary of a linear layer exactly and achieves perfect model
+  distinguishability, needing `d+1` queries for a `d`-input layer - 5,712 for all linear layers of a
+  ResNet-20. Breaks the shuffling-plus-noise defence that a plaintext-offload design depends on.
+  **Carried as a trip-wire:** this repository sends the non-linear half as secret shares, so no
+  plaintext intermediate exists to query, but the paper does not analyse the MPC-evaluated case - so
+  the correct claim is that the attack's precondition is absent here, NOT that the MPC variant has
+  been shown secure. If the non-linear path is ever moved to plaintext client offload, this applies
+  directly. Added: 2026-08-11.
+- **Xu, Lu, Yu, Yi, Lin, Wang & Li, "Breaking the Layer Barrier: Remodeling Private Transformer
+  Inference with Hybrid CKKS and MPC" (BLB).** arXiv:2508.19525, Aug 2025. Splits at operator rather
+  than layer granularity and fuses adjacent linear operators to minimise CKKS<->MPC conversions; 21x
+  communication reduction vs BOLT (S&P'24) and 2x vs BumbleBee (NDSS'25), with 13x and 1.8x latency
+  reductions under GPU acceleration. Already named in `README.md` and `docs/architecture.md` as the
+  current end of the Gazelle -> Delphi -> BOLT -> Bumblebee line; recorded here with its numbers.
+  Added: 2026-08-11.
+
+**FHE maturity in 2026, for calibration rather than as a citation to lean on.** Surveys and vendor
+retrospectives converge on roughly 100x-1000x overhead against plaintext, with what actually ships
+being narrow: small-model inference - logistic regression, trees, small networks - completing in
+seconds under CKKS. That is the honest frame for this project's T1 tier. The distilled students here
+are small **because that is what runs under encryption today**, not because a larger model was
+attempted and abandoned, and the measured teacher-student gaps are reported rather than hidden.
+
+## Collaborative AML under FHE: the nearest published work to this repository's finance use case
+
+Added 2026-08-11, verified at the arXiv abstract page.
+
+- **Effendi & Chattopadhyay, "Privacy-Preserving Graph-Based Machine Learning with Fully
+  Homomorphic Encryption for Collaborative Anti-Money Laundering."** arXiv:2411.02926, 5 Nov 2024
+  (rev. 11 Nov 2024); SPACE 2024, DOI 10.1007/978-3-031-80408-3_6. TFHE via Zama Concrete ML, over
+  two pipelines: a GNN with quantisation and pruning, and **graph-based XGBoost using a Graph
+  Feature Preprocessor** - which is the same architecture as this repository's `finance_aml.gbm`
+  teacher. Reports over 99 percent accuracy, F1, precision and recall on a **balanced** AML
+  dataset in both plaintext and encrypted settings, and an 8 percent F1 improvement from graph
+  features on the imbalanced version. Added: 2026-08-11.
+
+**Read those two numbers together, because the pair is the lesson.** This repository's finance
+teacher scores minority-class F1 **0.1519** at AMLworld's real prevalence of roughly 1 in 981. The
+published work scores over 0.99 on a balanced set. Both are correct; they are not the same task,
+and a reader comparing them without the prevalence would conclude this implementation is six times
+worse than the state of the art rather than measured on harder rows. It is the same reason this
+project refuses to quote aggregate accuracy for AML at all - at that prevalence a model predicting
+"never launder" scores 99.9 percent accuracy - and it is why the finance page prints
+minority-class F1 against an all-positive baseline instead.
+
+**One practical note on reuse.** That paper's FHE layer is Zama Concrete ML, which this project
+evaluated and declined: the commercial terms for the tfhe-rs family require a paid licence, and
+Concrete ML's own release cadence had stalled at the time of the audit. So the nearest published
+approach to this use case is built on a stack this repository cannot adopt commercially, which is
+part of why the CKKS path here is TenSEAL and OpenFHE.
+
+**Industry deployment, recorded as a vendor claim and nothing stronger.** Duality Technologies
+publishes a case study in which two competing global banks jointly trained an AML model under its
+platform without exchanging customer data, reporting a 34 percent improvement in detection. The
+figure appears in the vendor's own marketing material and no independent write-up of the
+engagement was locatable, so it is carried here as **`[UNVERIFIED - vendor claim]`** - useful as
+evidence that cross-institution private AML training is being sold and bought in 2026, not as a
+benchmark number. Checked 2026-08-11.
+
+## Quantum machine learning: results that constrain what a QCNN can claim
+
+Added 2026-08-11. Both verified at the arXiv abstract page.
+
+- **Bermejo, Braccia, Rudolph, Holmes, Cincio & Cerezo, "Quantum Convolutional Neural Networks are
+  Effectively Classically Simulable."** arXiv:2408.12739, 22 Aug 2024, revised 20 Feb 2026. Randomly
+  initialised QCNNs can only operate on the information in **low-bodyness measurements** of their
+  input states, and their behaviour is efficiently classically simulable by an algorithm equipped
+  with Pauli shadows. The authors argue QCNN successes largely reflect benchmark simplicity, and that
+  non-trivial datasets are a necessary ingredient for progress in QML. **Why it is cited here:** this
+  repository's trained QCNN loses to logistic regression on the identical split (medical accuracy
+  0.7326 vs 0.9535; finance minority-F1 0.7143 vs 0.8657). This paper is the reason that is the
+  expected result rather than a failure of implementation, and it is quoted in both QCNN model cards.
+  Added: 2026-08-11.
+- **Li, Wu, Li & Yung, "Barren Plateaus Beyond Observable Concentration."** arXiv:2603.18479, 19 Mar
+  2026, revised 19 Jun 2026. Unifies existing barren-plateau explanations under *observable
+  concentration* and proves that avoiding it is **necessary but not sufficient** for trainability,
+  identifying information loss outside the measurement light cone and correlated forward/backward
+  blocks as further sources of gradient suppression. **Why it is cited here:** the untrained
+  Clifford+T circuit this project removed from its inference path showed exactly the concentration
+  symptom - |<Z0>| within +/-0.21 of zero for every input tested, with sign set by numerical noise -
+  and this paper names the mechanism and warns that fixing concentration alone would not have made it
+  trainable. Added: 2026-08-11.
+
 ## QFL - quantum federated and delegated learning (medical and finance use cases)
 
 - **Quantum Delegated and Federated Learning via Quantum Homomorphic Encryption** - Li and Deng,

@@ -88,6 +88,41 @@ pinned into the run config before the run starts, never negotiated in-band betwe
 data and (for medical) extra stages (`FederatedTrainingStage`, `QMLIDSStage`).
 
 ## Faithful hybrid private inference (linear -> FHE, non-linear -> MPC)
+
+### Where the non-linear half goes, and why that choice is a security decision
+
+There are two live answers in the 2026 literature and this repository takes the more expensive one on
+purpose.
+
+**Offload the non-linearity to the client in plaintext.** Safhire (Biswas et al., *Practical and
+Private Hybrid ML Inference with Fully Homomorphic Encryption*, arXiv:2509.01253, 1 Sep 2025) runs
+linear layers encrypted on the server and sends intermediate values to the client, which evaluates
+the activations in the clear. It is the closest published architecture to this one, and the payoff is
+large: no bootstrapping, exact rather than polynomial-approximated activations, and 1.5x to 10.5x
+lower latency than Orion. The cost is that the client now sees per-layer intermediates, so model
+confidentiality has to be recovered by obfuscation - Safhire uses randomised shuffling of
+those values.
+
+**That obfuscation has since been broken.** Kim and Lee, *Shuffling is Not Enough: Breaking
+Permutation-Based Model Confidentiality in Hybrid FHE Inference* (IACR eprint 2026/1527, ESORICS
+2026), recover a permutation-invariant summary of a linear layer exactly, needing `d+1` queries for a
+layer with `d` inputs - 5,712 queries for every linear layer of a ResNet-20 - and achieve perfect
+model distinguishability. Shuffling plus noise, defended by an appeal to shuffle-model differential
+privacy, does not hold.
+
+**This repository sends the non-linear half as secret shares instead**, evaluated under MPyC secure
+comparison, so the client never holds a plaintext intermediate to query. That is slower and it buys
+something specific. **The attack paper does not analyse the MPC-evaluated case**, so the honest
+statement is not "we are immune" but "the attack's precondition - a client that observes plaintext
+intermediates - is absent here, and no one has published the MPC analogue." It is recorded as an open
+question rather than a resolved one.
+
+**This is a trip-wire, not just background.** If the non-linear path is ever changed to plaintext
+client offload for the latency win, eprint 2026/1527 becomes directly applicable and the model
+confidentiality claim must be withdrawn at the same time. Anyone making that change should read it
+first.
+
+### The split itself
 The 2026-standard private-inference split (Gazelle -> Delphi -> BOLT -> Bumblebee -> BLB; EncFormer)
 is **linear layers under FHE** (matmul/conv as CKKS; GPU-accelerable via HEonGPU) and **non-linear
 layers under MPC** (ReLU/argmax via secret-sharing secure comparison). `qsh.mpc.secret_inference`
