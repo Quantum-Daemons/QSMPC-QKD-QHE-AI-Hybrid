@@ -89,6 +89,21 @@ def update_key_cnot(a_c: int, b_c: int, a_t: int, b_t: int) -> tuple[int, int, i
     return a_c, b_c ^ b_t, a_c ^ a_t, b_t
 
 
+def update_key_s(a: int, b: int) -> tuple[int, int]:
+    """S X^a Z^b = X^a Z^(a^b) S, up to a global phase -> keys (a,b) -> (a, a ^ b).
+
+    The third generator, and the one that was missing. {H, S, CNOT} generates the Clifford group, so
+    without S the homomorphic demo could only evaluate the subgroup reachable from H and CNOT - which
+    is why the existing demonstration was a fixed two-gate circuit rather than an arbitrary one.
+
+    Derivation, since a sign error here is invisible in the fidelity of a single fixed circuit:
+    ``S X S-dagger = Y = i X Z``, so conjugating ``X^a Z^b`` by S sends it to ``X^a Z^(a xor b)`` with a
+    phase that is global and therefore unobservable. The ``a`` in the new ``b`` is exactly the X part
+    leaking into the Z part, which is what makes S non-trivial for frame tracking while H merely swaps.
+    """
+    return a, a ^ b
+
+
 def pauli_output_concealment_demo(n: int = 3, seed: int | None = None) -> dict:
     """Show that a state under a random Pauli frame is unreadable without the key.
 
