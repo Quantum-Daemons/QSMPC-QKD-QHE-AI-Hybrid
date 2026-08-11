@@ -90,14 +90,24 @@ const optiTag = (m: M, c: DiagramConfig) => {
 
 // The QSMPC step. `clientCompute:896` resolves `config.qsmpc_op || (genomics ? "sum" : "psi")`, so
 // the diagram has to resolve it the same way or it describes a computation that did not happen.
-// The KIND changes too: a secure sum runs over a d-qudit GHZ state, while PSI is a WebCrypto
-// keyed hash. Drawing HMAC as a quantum arrow overstates what the browser did.
+//
+// The KIND was `q-arrow` for a secure sum, on the grounds that "a secure sum runs over a d-qudit GHZ
+// state". That is true of the BACKEND and false of the browser, which is the only thing this diagram
+// draws: `clientCompute` computes additive shares mod p and its own log line calls that "the classical
+// equivalent of the backend's Shamir + d-level QFT over a GHZ state, which needs qudits no browser can
+// prepare". `q-arrow` is styled in `--quantum` with the same dash and arrowhead as the QKD rows, and
+// the legend labels that exact style "quantum (BB84 decoy-state)" - so the genomics page drew a
+// classical modular sum as a quantum channel, and so did finance whenever Secure sum was selected.
+// One line wide, two pages deep.
+//
+// `mpc-bidir` is the honest style: additive secret-sharing IS secret-share traffic, and the legend
+// already names it. PSI stays classical-bidirectional - it is a WebCrypto keyed hash.
 const qsmpcOpOf = (c: DiagramConfig, usecaseDefault: "psi" | "sum") =>
   (String(c.qsmpcOp ?? "") === "psi" || String(c.qsmpcOp ?? "") === "sum")
     ? (String(c.qsmpcOp) as "psi" | "sum")
     : usecaseDefault;
 const qsmpcKind = (dflt: "psi" | "sum") => (c: DiagramConfig): Kind =>
-  qsmpcOpOf(c, dflt) === "sum" ? "q-arrow" : "c-bidir";
+  qsmpcOpOf(c, dflt) === "sum" ? "mpc-bidir" : "c-bidir";
 const qsmpcLabel = (dflt: "psi" | "sum") => (m: M, c: DiagramConfig) =>
   qsmpcOpOf(c, dflt) === "sum"
     ? `secure sum over GF(${f(m, "qsms_prime")}) · pooled = ${f(m, "secure_sum")}`
@@ -342,7 +352,12 @@ export default function TwoPartyDiagram({
       ))}
     </ol>
     <svg viewBox={`0 0 780 ${bottomY + 78}`} width="100%" xmlns="http://www.w3.org/2000/svg"
-      style={{ fontFamily: "inherit" }} role="img"
+      // minWidth so it SCROLLS inside its card rather than shrinking, which is what `.card
+      // { overflow-x: auto }` already provides for every table. With `width: 100%` and no minimum the
+      // SVG never overflows: at a 360 px content width the 780-unit viewBox scales to ~0.44 and the
+      // 11-unit step labels render at about 4.5 px. Illegible is worse than off-screen, because
+      // off-screen can be scrolled to.
+      style={{ fontFamily: "inherit", minWidth: 680 }} role="img"
       aria-label={`${usecase} two-party diagram; the same content is listed in text immediately before this figure`}>
       <defs>
         <marker id="tp-c" markerWidth="9" markerHeight="9" refX="7" refY="3.2" orient="auto">

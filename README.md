@@ -13,6 +13,30 @@ This is a **research / proof-of-concept**. Real implementations where tractable,
 simulation/scaffolds where not - every claim is tied to a primary source in
 [`references/`](references/REFERENCES.md).
 
+> **What is new here, and what is not.** This project's verification rule is that a novelty claim
+> must survive an adversarial search for prior art. Applied to its own headline claim the answer is
+> asymmetric, so both halves are stated.
+>
+> **MPC in a browser is not new.** webSPDZ (IACR ePrint 2025/487) compiles MP-SPDZ to WebAssembly
+> over WebRTC or WebSockets, and names JIFF and MPyC-Web as earlier browser MPC engines. The
+> garbled-circuit half here re-implements a known idea.
+>
+> **FHE evaluation in a browser is where the search came back empty.** Every artefact found encrypts
+> client-side and evaluates server-side: IACR ePrint 2026/515 defines "client-side operations" as
+> encryption and decryption while *"users offload large computations to servers"*, and Zama's TFHE-rs
+> WASM API documents that it supports key generation, encryption and decryption but **not FHE
+> computation**, citing WASM threading and the 2 GB memory ceiling. This demo evaluates a real CKKS
+> dot product and a real CKKS convolution in the tab.
+>
+> **So the claim is the composition, not either half:** PQC key establishment to QKD-derived key
+> material to secure multiparty computation to homomorphic evaluation to model inference, chained end
+> to end in one browser tab with zero server compute. A search for an integrated browser system doing
+> all of that returned nothing. Two caveats travel with it: the two MPC parties are notional - one
+> tab, an in-memory transport, real protocol and bytes and wall-clock but no genuine party separation
+> - and the quantum channel is simulated, because no browser API for QKD exists. And client-side is
+> not automatically private: WWW 2026's WAMO paper argues browser deployment moves a model into a
+> hostile environment, which is one reason the models here are public rather than treated as secrets.
+
 > **Positioning - quantum-safe, not quantum-advantage.** The value here is **quantum-safe / PQC**, a
 > regulation-driven, fast-growing market (NIST FIPS 203/204/205; NSA CNSA 2.0 procurement mandate 2027;
 > EU roadmap 2026/2030/2035; "harvest-now-decrypt-later"; the PQC market is projected ~$1.6 B (2025) ->
@@ -459,7 +483,8 @@ implementation maps to each, and where gaps remain.
 | (2) bootstrapping bottleneck | **OpenFHE CKKS `EvalBootstrap`** (CPU) + **HEonGPU collective bootstrapping** (GPU) refresh ciphertext levels for deeper circuits - both commercial-OK | `fhe/backends.py` (`OpenFHEBackend(use_bootstrap=True)`) |
 | (3)/(a) quantum encoding / practical QHE | QOTP + a variational QCNN + Rate-1 QFHE at small scale. **Two different circuits, and only one is Clifford+T:** the BROWSER circuit (`web/src/lib/quantumSim.ts`) is built from H, CNOT and T and counts 56 real T gates, while the PYTHON module contains **no T gate at all** - it is `AngleEmbedding` plus CNOT/RY/RZ, and its `t_count()` is a labelled Solovay-Kitaev estimate of what a fault-tolerant deployment would cost, not a count of gates present. Earlier revisions called the Python module Clifford+T. | `qhe/qotp.py`, `qhe/qcnn.py`, `web/src/lib/quantumSim.ts` |
 | (b) QFL gradient leakage (arXiv:2508.15998) | Pairwise-mask secure aggregation + QOTP-delegated learning | `ai/federated.py` |
-| (c)/(f) circuit privacy vs malicious server **and** hiding server circuit from a malicious client | **PARTIAL, and the gap is named.** What holds: **QOTP perfect hiding** - the server sees the maximally-mixed state, so the client's INPUT is private. What does not: circuit privacy. The function cited here applies no circuit, so it conceals a state, not a computation; propagating a Pauli frame through the circuit is well defined for Clifford and breaks at T, which this repo does not implement. Do not read this row as (c)/(f) being met. | `qhe/qotp.py` (`pauli_output_concealment_demo`) |
+| (c) circuit privacy vs a malicious server | **MET for Clifford circuits, and this row previously under-claimed it.** A random Clifford word over {H, S, CNOT} is evaluated on the QOTP-encrypted state; the client tracks the Pauli frame through the same word and recovers the plaintext result at fidelity 1.0, verified to depth 30 across seeds. The server sees the maximally-mixed state throughout, so both the input and the computation's operand are hidden from it. A working fixed-circuit version of this had been in the tree, tested, and cited in no document; the honest gap was that one circuit is not arbitrary circuits, which needed the S frame rule (`H` and `CNOT` alone reach only a subgroup) and a CNOT applier not hardcoded to wires 0 and 1. **Does NOT extend to T:** `T X T-dagger` is not Pauli, so the frame does not propagate, which is why the QCNN's non-linear layers are costed as magic-state T-gates instead. | `qhe/qcnn.py` (`qotp_clifford_random_circuit_demo`), `qhe/qotp.py` (`update_key_h/s/cnot`) |
+| (f) hiding the server's circuit from a malicious client | **NOT met, and in tension with the mechanism rather than merely unimplemented.** The client can only decrypt by applying the circuit's action to its own Pauli frame, so under plain QOTP it must know the circuit - "the client updates its frame" and "the client does not learn the circuit" are close to mutually exclusive. Earning this needs a construction where that does not hold, which is what Ortega and Martin-Delgado's scheme addresses and this repository does not implement. Split from (c) so the one that is met is not held hostage to the one that is not. Cf. QOTPH (arXiv:2604.19256), which builds universal QHE from QOTP over Clifford+T with Pauli key updates and reports results on real quantum processors. | not implemented |
 | (d) efficiency on AI/HPC infra | OpenFHE (CPU) + HEonGPU (GPU) + CROSS (reference), HEonGPU shown on the Blackwell GPU | `fhe/`, `benchmark/` |
 
 **Residual gaps / recommendations**: malicious-secure MPC (PQ-OPRF PSI + identifiable abort);
