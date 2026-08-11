@@ -7,7 +7,7 @@ tenseal>=0.3.15
 #   approximate bootstrapping. The published wheels are per-distro:
 #     *.0.24.4  Ubuntu 24.04 build, cpython-312, requires GLIBCXX_3.4.32
 #     *.0.22.4  Ubuntu 22.04 build, ships a cpython-310 .so (unusable on Python 3.12)
-#   Docker (python:3.12-slim-trixie) and the ConoHa target both satisfy 3.4.32, so the wheel
+#   Docker (python:3.12-slim-trixie) and the demo VPS target both satisfy 3.4.32, so the wheel
 #   works there. RHEL 9 / AlmaLinux 9 tops out at GLIBCXX_3.4.29 and the import fails.
 #   FIX, do not work around: run `bash env/build_openfhe_el9.sh`, which rebuilds the bindings
 #   with gcc-toolset-14 so the extension needs only GLIBCXX_3.4.29 and loads natively.

@@ -1,7 +1,7 @@
 # Verification results log
 
 What each round actually measured against the deployed demo. Split out of
-`browser-verification-checklist.md` in Round 24, which had reached 1478 lines - a checklist you
+the project's browser verification checklist in Round 24, when it had reached 1478 lines - a checklist you
 cannot execute in one pass has stopped being a checklist.
 
 These are **records, not instructions**. The checklist says what to check; this says what was found
