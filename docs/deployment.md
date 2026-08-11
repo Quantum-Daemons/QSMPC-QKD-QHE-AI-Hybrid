@@ -120,7 +120,7 @@ re-served the cached bundle, so a working fix looked broken. The failure is asym
 makes a good fix look bad, you change it again, and the second change is the one that ships
 unverified.
 
-Full browser acceptance criteria: `browser-verification-checklist.md`.
+Full browser acceptance criteria live in the project's browser verification checklist, which is maintained privately and is not part of this repository - it carries the deploy procedure and the internal failure history. The observable outcomes it gates are recorded in `verification-log.md`, which IS published.
 
 ## When TLS or the proxy misbehaves
 

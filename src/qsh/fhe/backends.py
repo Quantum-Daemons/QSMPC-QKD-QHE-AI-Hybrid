@@ -80,7 +80,7 @@ class OpenFHEBackend:
 
     Uses the prebuilt ``openfhe`` Python wheel (v1.5.x, OpenFHE 1.5.1). The wheel is built
     against a recent libstdc++ (Ubuntu 24.04 / Debian trixie -- i.e. the Docker image and the
-    <vps-provider> deploy target), so on those platforms this is a *live* backend; on an older host it
+    demo deploy target), so on those platforms this is a *live* backend; on an older host it
     raises a clear ImportError and callers fall back to TenSEAL.
 
     OpenFHE's CKKS ``EvalBootstrap`` refreshes ciphertext levels for deeper circuits -- this is
