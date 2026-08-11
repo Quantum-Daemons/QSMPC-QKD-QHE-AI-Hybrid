@@ -76,8 +76,12 @@ export function RealDataScatter({ usecase }: { usecase: string }) {
     let live = true;
     // Missing file is not an error worth shouting about - the generator skips a use case whose
     // corpus is not present locally, and a demo without the overlay is still a correct demo.
+    // `r.ok` is not the test: this is an SPA, so the host answers 200 with index.html for a path
+    // that does not exist. Content-type is the discriminator; without it the branch reads as
+    // handling the absent case while the `catch` on HTML actually does the work.
     fetch(`${import.meta.env.BASE_URL}${rel}`)
-      .then((r) => (r.ok ? r.json() : null))
+      .then((r) => (r.ok && (r.headers.get("content-type") ?? "").includes("application/json")
+        ? r.json() : null))
       .then((j) => { if (live) setData(j); })
       .catch(() => { if (live) setData(null); });
     return () => { live = false; };

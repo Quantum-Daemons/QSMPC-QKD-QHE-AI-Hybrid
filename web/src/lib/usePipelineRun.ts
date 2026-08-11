@@ -27,6 +27,18 @@ export const runsQsmpc = (usecase: string) => clientFlow(usecase).includes("qsmp
 export const runsInference = (usecase: string) => clientFlow(usecase).includes("private_inference");
 export const runsFibreQkd = (usecase: string) => clientFlow(usecase).includes("qkd_key_agreement");
 
+/** Use cases that ship trained QCNN weights under `public/data/<dir>/qcnn_weights.json`.
+ *
+ * The same reasoning as the three predicates above, one level down: a control is shown when a stage
+ * reads it, and a BACKEND OPTION is shown when the artefact implementing it exists. Genomics reaches
+ * `private_inference` - so `runsInference` is true and the selector belongs on the page - but ships
+ * no weights, so its QCNN option fell back to CKKS while two panels announced that a quantum circuit
+ * had decided the class. `tests/test_qcnn_usecases.py` asserts this set against the files on disk, so
+ * training a third circuit cannot leave the list stale and deleting one cannot leave it lying.
+ */
+export const QCNN_USECASES = new Set(["finance_aml", "medical_fl"]);
+export const hasTrainedQcnn = (usecase: string) => QCNN_USECASES.has(usecase);
+
 export const MODEL_SIZES = [
   { id: "lightweight", label: "Lightweight" },
   { id: "medium", label: "Medium" },

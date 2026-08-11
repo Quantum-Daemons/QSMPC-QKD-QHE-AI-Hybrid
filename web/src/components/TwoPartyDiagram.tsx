@@ -155,11 +155,17 @@ const HYBRID_INFERENCE: Step[] = [
 const QSMPC_COMPARE: Step = {
   stageId: "quantum_comparison", kind: "compare",
   label: (m, c) => {
-    // "" and "ckks" are the SAME run. clientCompute does `config.inference || "ckks"`, so there is
-    // no per-use-case default to fall back to - the old label said "use-case default" and named a
-    // mechanism that does not exist, which is the same defect class as a control that changes
-    // nothing. Say which backend was surfaced, and say when that came from the default.
-    const primary = String(c.inference ?? "") === "qcnn" ? "QCNN surfaced as primary"
+    // Read the OBSERVED backend, never the control. `config.inference` says what was asked for;
+    // `primary_inference_backend` says what ran. Those differ whenever QCNN is selected on a use
+    // case that ships no trained weights, and keying this label off the control printed "QCNN
+    // surfaced as primary" for a class CKKS had produced. The comment below used to name that exact
+    // defect class while the code above it committed the error.
+    // "" and "ckks" are the SAME run - clientCompute does `config.inference || "ckks"`, so there is
+    // no per-use-case default behind the empty value; the label says so rather than implying one.
+    const ran = m["primary_inference_backend"];
+    const primary = ran === "qcnn-trained" ? "trained QCNN surfaced as primary"
+      : ran == null ? "inference not run"
+      : String(c.inference ?? "") === "qcnn" ? "CKKS surfaced as primary (QCNN selected, no trained weights ship)"
       : String(c.inference ?? "") === "ckks" ? "CKKS surfaced as primary"
       : "CKKS surfaced as primary (default)";
     const cls = m["primary_inference_class"];
