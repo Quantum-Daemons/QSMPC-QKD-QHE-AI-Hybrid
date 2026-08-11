@@ -19,7 +19,20 @@ simulation/scaffolds where not - every claim is tied to a primary source in
 > ~$20 B (2033) at ~38 % CAGR). A general **quantum *advantage*** for these workloads is **not** claimed
 > as a market benefit - it is broadly unproven in 2026 (e.g. classical tensor-network simulation matching
 > annealing results), so the numeric "quantum advantage" stays a **research / education** metric in the
-> benchmark. The production-relevant output is the **security posture table** - per-row facts, each
+> benchmark. For the QCNN specifically the evidence is sharper than "unproven": Bermejo, Braccia,
+> Rudolph, Holmes, Cincio and Cerezo show that randomly initialised QCNNs **can only act on
+> low-bodyness measurements of their input and are efficiently classically simulable** with Pauli
+> shadows, and argue that QCNN successes largely reflect benchmark simplicity
+> ([arXiv:2408.12739](https://arxiv.org/abs/2408.12739), rev. Feb 2026). That is the frame for this
+> repository's own measured result - its trained QCNN loses to logistic regression on the same split,
+> which is the expected outcome rather than a disappointing one, and both figures are printed side by
+> side on the page. Relatedly, Li, Wu, Li and Yung separate observable concentration from loss of
+> parameter sensitivity and show that **avoiding concentration is necessary but not sufficient for
+> trainability** ([arXiv:2603.18479](https://arxiv.org/abs/2603.18479), Mar 2026, rev. Jun 2026); the
+> untrained circuit this project removed from its inference path failed exactly the concentration
+> symptom, with |<Z0>| under 0.21 for every input tested.
+>
+> The production-relevant output is the **security posture table** - per-row facts, each
 > traceable to FIPS 203/204 or to the run that produced it. The 0-100 composite that used to hold that
 > role was **retired in Round 22**: 14 of its 17 weights carried no stated rationale and it scored a
 > run with zero secure key bits 100/100 (see
@@ -38,7 +51,7 @@ Four workstreams (WS), unified by one pipeline and a crypto-agility registry:
 | **WS1** | **AI-QKD** parameter optimization | BB84 **two-intensity decoy-state** simulation (+ a selectable **E91/CHSH** protocol), QBER/SKR telemetry, eavesdropper detection; a **published-reference decoy model** (`qkd/decoy_reference.py`) whose 13 tests assert Ma et al. PRA 72, 012326 (2005) values rather than this project's own - decoy reaches past 140 km where non-decoy dies near 40, and at the customary mu = 0.1 a non-decoy link's tagged fraction exceeds 1 at **zero** distance, so it yields no key even back-to-back; a **QRNG** entropy source (state-vector quantum-measurement sim + SP 800-90B section 4.4 continuous health tests, an **SP 800-90B min-entropy estimate**, and a **Leftover-Hash-Lemma / seedless** Toeplitz extractor) that seeds the key material; a config-gated **leakage-resilient PQC+QKD key combiner**; and **OptiQKD** - a measured AI optimizer (scikit-learn surrogate + gradient-free search) tuning decoy (`mu_signal` / `mu_decoy`) + basis params to raise the secret-key rate vs default (with a convergence metric); the reference framework reports +14-25 % in simulation |
 | **WS2** | **QML-IDS** intrusion detection | 8 classes = **7 QKD attack types + normal traffic**; RandomForest baseline + PennyLane variational quantum classifier. Scored on macro F1, not attack-vs-normal F1 |
 | **WS3** | **QSMPC x QKD** | Shamir + d-level QFT secure summation (faithful to the paper example), quantum oblivious transfer, quantum-safe PSI |
-| **WS4** | **QHE x AI** | Quantum one-time pad (perfect hiding), Clifford+T QCNN private inference, Rate-1 QFHE; classical hybrid = CKKS **linear** layers (TenSEAL CPU / OpenFHE CPU / HEonGPU GPU - commercial-OK) + **MPyC** secret-sharing **non-linear** layers (ReLU/argmax) - incl. a **genuine FHE convolution** (im2col -> CKKS `dot_plain`) so the medical use case runs a real small CNN on **real MedMNIST images** under encryption |
+| **WS4** | **QHE x AI** | Quantum one-time pad (perfect hiding), variational QCNN private inference (Clifford+T in the browser circuit; the Python module has no T gate), Rate-1 quantum **transport** (no `Eval`, so not QFHE); classical hybrid = CKKS **linear** layers (TenSEAL CPU / OpenFHE CPU / HEonGPU GPU - commercial-OK) + **MPyC** secret-sharing **non-linear** layers (ReLU/argmax) - incl. a **genuine FHE convolution** (im2col -> CKKS `dot_plain`) so the medical use case runs a real small CNN on **real MedMNIST images** under encryption |
 
 **Crypto-agility is the headline library strategy** - in the EU NIS Cooperation Group sense
 ([PQC Roadmap](https://digital-strategy.ec.europa.eu/en/library/coordinated-implementation-roadmap-transition-post-quantum-cryptography),
@@ -166,7 +179,7 @@ web/scripts/  check_mlkem_modulus_vectors.mjs - `npm run check:pqc`, FIPS 203 se
   train/      per-vertical training: finance_aml . medical_breastmnist . genomics_prs . satellite_telemanom
   data/      fetch_g1k_dosages.py (1000 Genomes provenance)
 docs/       architecture . crypto-agility . threat-model . pqc-roadmap
-            deliverable-verification . browser-verification-checklist . deployment
+            deliverable-verification . verification-log . deployment
 tests/       pytest suite
 ```
 
@@ -339,7 +352,17 @@ the Blackwell box (TenSEAL CPU + MPyC, `linear` workload):
 | MPC-FHE | TenSEAL CKKS + MPyC (CPU) | medium | ~243 ms | ~215 ms | ~28 ms | ~4.5 KB | 1.0 | ~1483x | computational (RLWE) |
 | MPC-FHE | TenSEAL CKKS + MPyC (CPU) | large \* | ~1885 ms | ~1719 ms | ~165 ms | ~24.5 KB | 1.0 | - | computational (RLWE) |
 | MPC-FHE | HEonGPU CKKS (GPU sm_120) + MPyC | medium | batched | GPU | CPU | - | - | - | computational (RLWE) |
-| QSMPC-FHE | QOTP + QCNN (Clifford+T), no trained weights | - | ~4 ms | Clifford | T-gates x56 | n/a | n/a | **1.0 measured** (literature 1.32x) | information-theoretic (QOTP) |
+| QSMPC-FHE | QOTP + QCNN (Clifford+T in the browser), no trained weights | - | ~4 ms | Clifford | T-gates x56 | n/a | n/a | **1.0 measured in QUBITS** (see note) | information-theoretic (QOTP) |
+
+**Note on the `1.0` in the ct/pt column, because this README publishes two different numbers for
+what looks like one quantity.** The row above says `1.0`; the WS4 table below says the measured
+Rate-1 ratio is 1.2769 at 8 qubits, 1.0693 at 10 and 1.0173 at 12. Both are correct and they measure
+different things. **`1.0` counts QUBITS**: under a QOTP the ciphertext is the same number of qubits as
+the plaintext, which is the whole point of a rate-1 scheme and is exactly 1.0 by construction, key
+excluded. **The 1.2769 family counts BYTES** of the serialised payload, which includes the roughly
+1135-byte encapsulated key - fixed in size, so it dominates a small state and fades as the state
+grows. Neither is the literature's 1.32x, which is a config constant feeding a static KPI and is not
+a measurement of this code. See [`docs/architecture.md`](docs/architecture.md).
 
 The **Security** column used to publish `68 / 100` and `96 / 100`. Those are the retired composite,
 and that particular pair is the worst thing it produced: **16 of the 28 points separating them were
@@ -434,9 +457,9 @@ implementation maps to each, and where gaps remain.
 |---|---|---|
 | (1)/(e) huge compute + ciphertext/plaintext overhead | Benchmark *measures* ~1483x CKKS. For Rate-1 QFHE the ct/pt ratio is **measured and size-dependent** - 1.2769 at 8 qubits, 1.0693 at 10, 1.0173 at 12 - because the ~1135-byte encapsulated key is fixed while the state grows. The **1.32x** figure quoted elsewhere is the *literature* value in `config/defaults.py` feeding a static Overview KPI; it is **not** a measurement of this code, and an earlier revision of this row said the benchmark measured it. See `docs/architecture.md` | `benchmark/`, `qhe/rate1_qfhe.py` |
 | (2) bootstrapping bottleneck | **OpenFHE CKKS `EvalBootstrap`** (CPU) + **HEonGPU collective bootstrapping** (GPU) refresh ciphertext levels for deeper circuits - both commercial-OK | `fhe/backends.py` (`OpenFHEBackend(use_bootstrap=True)`) |
-| (3)/(a) quantum encoding / practical QHE | QOTP + Clifford+T QCNN (own implementation of Ortega &amp; Martin-Delgado) + Rate-1 QFHE at small scale | `qhe/qotp.py`, `qhe/qcnn.py` |
+| (3)/(a) quantum encoding / practical QHE | QOTP + a variational QCNN + Rate-1 QFHE at small scale. **Two different circuits, and only one is Clifford+T:** the BROWSER circuit (`web/src/lib/quantumSim.ts`) is built from H, CNOT and T and counts 56 real T gates, while the PYTHON module contains **no T gate at all** - it is `AngleEmbedding` plus CNOT/RY/RZ, and its `t_count()` is a labelled Solovay-Kitaev estimate of what a fault-tolerant deployment would cost, not a count of gates present. Earlier revisions called the Python module Clifford+T. | `qhe/qotp.py`, `qhe/qcnn.py`, `web/src/lib/quantumSim.ts` |
 | (b) QFL gradient leakage (arXiv:2508.15998) | Pairwise-mask secure aggregation + QOTP-delegated learning | `ai/federated.py` |
-| (c)/(f) circuit privacy vs malicious server **and** hiding server circuit from a malicious client | **QOTP perfect hiding** (server sees the maximally-mixed state) + **Pauli-gate concealment** (wrong key implies scrambled result) | `qhe/qotp.py` (`pauli_concealment_demo`) |
+| (c)/(f) circuit privacy vs malicious server **and** hiding server circuit from a malicious client | **PARTIAL, and the gap is named.** What holds: **QOTP perfect hiding** - the server sees the maximally-mixed state, so the client's INPUT is private. What does not: circuit privacy. The function cited here applies no circuit, so it conceals a state, not a computation; propagating a Pauli frame through the circuit is well defined for Clifford and breaks at T, which this repo does not implement. Do not read this row as (c)/(f) being met. | `qhe/qotp.py` (`pauli_output_concealment_demo`) |
 | (d) efficiency on AI/HPC infra | OpenFHE (CPU) + HEonGPU (GPU) + CROSS (reference), HEonGPU shown on the Blackwell GPU | `fhe/`, `benchmark/` |
 
 **Residual gaps / recommendations**: malicious-secure MPC (PQ-OPRF PSI + identifiable abort);

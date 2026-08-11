@@ -16,8 +16,11 @@ tags:
 logistic regression distilled from the gradient-boosting teacher
 
 Part of [QSMPC-QKD-QHE-AI-Hybrid](https://github.com/thedaemon-wizard/QSMPC-QKD-QHE-AI-Hybrid),
-a quantum-safe orchestration demo. This is the **plaintext** model for the
-`finance_aml` use case and it runs under real CKKS encryption.
+a quantum-safe orchestration demo.
+This is the **encrypted-tier** model for the `finance_aml` use case: it is a
+distilled student small enough to evaluate under real CKKS, and the demo runs it
+that way. It is not the plaintext teacher, and its numbers should be read against
+that teacher rather than against the published literature.
 
 ## Measured performance
 
