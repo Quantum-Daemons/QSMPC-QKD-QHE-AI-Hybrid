@@ -1256,10 +1256,17 @@ export function runClientPipeline(
     }
   }
 
+  // `gate()` is awaited BETWEEN stages, so a pause or stop requested mid-stage does not take effect
+  // until that stage finishes - and `private_inference` is seconds long. The UI used to flip its badge
+  // to "paused"/"stopped" the instant the button was pressed, so the badge asserted a state the run
+  // was demonstrably not in while the log kept streaming and metric rows kept appearing. The request
+  // and its effect are now two different events, and the badge distinguishes them.
   async function gate() {
+    let announced = false;
     while (!state.stopped) {
       if (!state.paused) return;
       if (state.step > 0) { state.step--; return; }
+      if (!announced) { announced = true; emit("pipeline_pause_effective", "", "paused"); }
       await sleep(50);
     }
   }
@@ -2037,10 +2044,12 @@ async function loadQcnnWeights(usecase: string): Promise<QcnnWeights | null> {
   })();
 
   return {
-    pause() { state.paused = true; emit("pipeline_pause", "", "paused"); },
+    // Requested, not yet in effect: the running stage keeps going until the next `gate()`.
+    pause() { state.paused = true; emit("pipeline_pause", "", "pause requested"); },
     resume() { state.paused = false; emit("pipeline_resume", "", "running"); },
     step() { state.step += 1; },
-    stop() { state.stopped = true; },
+    // Same asymmetry: the flag is read between stages, so the run stops at the next boundary.
+    stop() { state.stopped = true; emit("pipeline_stop_requested", "", "stop requested"); },
   };
 }
 
