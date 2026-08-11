@@ -76,7 +76,25 @@ def findings_table() -> str:
          "teacher 0 vs student 0.0032 rendered as the encrypted model beating its teacher"),
         ("Manufactured margin", "treat-all evaluated at a different threshold from the model",
          "a zero margin reported as +0.2308; caught by the degeneracy guard"),
+        ("Leak in a published sample",
+         "finance eval sample: hour\\_of\\_day >= 3 reproduced the label at 100\\% precision",
+         "served from an HF revision whose pin looked valid; the first two leak guards were "
+         "themselves wrong"),
+        ("Guard exempted by its data", "telecom feature\\_names held CLASS names, not feature names",
+         "the leak guard skipped the file and reported success on something it never examined"),
+        ("Half-applied fix", "QCNN repaired in the browser; the Python path stayed a constant predictor",
+         "a coin flip looks broken, a constant predictor looks confident and reproducible"),
+        ("Crossed wiring", "the trainer's CNOT ring indexed a stale axis after chained movedim",
+         "training still converged; only an independent reimplementation disagreed, by 0.73 on a "
+         "quantity bounded in [-1,1]"),
+        ("Feature-space mismatch", "circuit trained on min-max raw units, served StandardScaler z-scores",
+         "seven of eight features pinned to -1; a degenerate state still returned a confident class"),
+        ("Selection on the test set", "epoch chosen and headline reported on the same rows",
+         "medical F1 fell 0.9181 to 0.7326 once a validation split was introduced"),
+        ("Criterion half-applied", "loss-aware QSDC bound added to the module, not to its caller",
+         "an inert threshold control, and an eavesdropper reported on every clean run"),
     ]
+    findings_table.rows = rows
     return "\n".join(" & ".join([r"\textbf{" + a + "}", b, c]) + r" \\" for a, b, c in rows)
 
 
@@ -94,6 +112,7 @@ def macros() -> str:
         r"\newcommand{\npublished}{" + str(n_pub) + "}",
         r"\newcommand{\nchecklistrows}{" + str(n_rows) + "}",
         r"\newcommand{\nusecases}{5}",
+        r"\newcommand{\ndefectclasses}{" + str(len(findings_table.rows)) + "}",
     ])
 
 
@@ -120,6 +139,8 @@ def wrap(body: str, *, cols: str, header: str, caption: str, size: str = r"\smal
         r"\end{tabular}", r"\end{table}"])
 
 
+findings_table()  # populate .rows so the caption below can count them
+
 TABLES = {
     "models.tex": dict(fn=model_table, cols="llllll",
         header=r"\textbf{Model} & \textbf{Tier} & \textbf{Metric} & \textbf{Measured} & "
@@ -134,7 +155,8 @@ TABLES = {
     "findings.tex": dict(fn=findings_table, cols="p{2.5cm}p{5.2cm}p{6.2cm}", longtable=True,
         size=r"\scriptsize",
         header=r"\textbf{Class} & \textbf{What it was} & \textbf{Why nothing caught it}",
-        caption="Eight classes of silent defect, all found in a working system with green tests"),
+        caption=f"{len(findings_table.rows)} classes of silent defect, all found in a working "
+                f"system with green tests"),
 }
 
 for name, cfg in TABLES.items():

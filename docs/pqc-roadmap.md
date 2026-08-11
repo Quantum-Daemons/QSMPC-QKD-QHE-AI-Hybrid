@@ -120,13 +120,22 @@ scaffold hardens). QRNG + OptiQKD above are built from this set; the rest are ad
 | **IACR ePrint 2026/1231** - Hybrid AKE for QKD networks without signatures | 2026-06-10 | The closest published construction to `hybrid_combiner_mode="its_toeplitz"`: KEM-only hybrid AKE with a conditional information-theoretic guarantee when the QKD leg is uncompromised. |
 | **arXiv:2601.18511v2** - Scaling up FHE-based PPML | v2 2026-06-17 | Best published absolute: **Llama-3-8B under CKKS at 20 s prefill / 18 s per output token on 8x RTX PRO 6000**. Quote this rather than hand-waving FHE cost. |
 
-## EU AI Act Art. 50(2): partially met, and what the recognised route actually is
+## EU AI Act Art. 50(2): CLOSED as not-applicable, and what the route would be if it reopened
 
-Verified 2026-08-09. **Deadline 2 December 2026**, which is the nearest unmet compliance date this
-project has.
+Verified 2026-08-09, and re-assessed since: the 2 December 2026 marking deadline does NOT bind this
+demo, because the text it generates falls under the Code of Practice's 200-token exception. It was
+briefly recorded here as the nearest unmet compliance date, which it is not.
 
 Art. 50(1) - telling the person they are interacting with an AI - has been implemented since
-Round 21 and is applicable. **Art. 50(2) is a different obligation and is NOT implemented.** It
+Round 21 and is applicable. **Art. 50(2) was analysed and CLOSED as not-applicable, not as done** -
+see `deliverable-verification.md` and the browser checklist, which are the authoritative records. The
+Agentic AI panel emits 96 tokens (Transformers.js) or 160 (WebLLM), both under the Code of Practice's
+200-token "very short text" exception, so no marking layer is owed and no deadline is running. What
+remains live is the trip-wire, not the obligation: re-check if the panel exceeds 200 tokens, if
+generated text ships inside a file container, or if C2PA text bindings become implementable. The
+paragraphs below describe the obligation as it would apply and are kept for that reason; an earlier
+revision of this section presented it as an open item with a 2 December 2026 deadline, which
+contradicted the decision record. It
 requires providers of AI systems generating synthetic audio, image, video or **text** to mark the
 outputs in a **machine-readable** format, detectable as artificially generated. The Agentic AI panel
 generates text with an in-browser LLM, so it is in scope.

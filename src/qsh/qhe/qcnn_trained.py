@@ -41,7 +41,8 @@ _REPO = Path(__file__).resolve().parents[3]
 
 #: Use case -> trained-weights file. A use case absent here has no trained circuit, and the caller
 #: must decline to surface a class rather than reporting an untrained one.
-_WEIGHTS = {"medical_fl": _REPO / "models" / "qcnn_medical" / "weights.json"}
+_WEIGHTS = {"medical_fl": _REPO / "models" / "qcnn_medical" / "weights.json",
+            "finance_aml": _REPO / "models" / "qcnn_finance" / "weights.json"}
 
 
 @lru_cache(maxsize=8)
@@ -93,6 +94,15 @@ def infer(features, weights: dict) -> tuple[float, int, float]:
         im[src], im[dst] = im[dst].copy(), im[src].copy()
 
     x = np.asarray(features, dtype=float).ravel()
+    # The caller's units differ per use case, and assuming one of them is how the first trained model
+    # became as meaningless as the untrained one. medical arrives already StandardScaler-ed; finance
+    # arrives RAW and mixed-scale (log amount, a z-score, five binary flags), so it must be
+    # standardised here with the moments fitted at training time.
+    if weights.get("input_space") == "raw":
+        mu = np.asarray(weights["feature_mean"], dtype=float)
+        sd = np.asarray(weights["feature_std"], dtype=float)
+        sd = np.where(sd == 0, 1.0, sd)
+        x = (x[:mu.size] - mu) / sd
     for q in range(nq):
         ry(q, float(np.tanh(x[q] if q < x.size else 0.0)) * np.pi)
     for layer in range(int(weights["layers"])):
