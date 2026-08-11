@@ -54,6 +54,13 @@ function loadOrt(useWebGPU: boolean): Promise<typeof OrtTypes> {
 
 import { modelsFor, type ModelSpec } from "./config";
 
+// 30 s, not unbounded. These three cross-origin fetches had no timeout and no abort signal, so on a
+// slow, proxied or blocked network the run sat in `private_inference` forever with the badge on
+// `running` - a corporate visitor's most likely experience of the site being "broken". Only session
+// CREATION was bounded. A timeout turns a hang into a reported failure, and the failure path here is
+// already honest: it degrades and says so rather than substituting a number.
+const HF_FETCH_TIMEOUT_MS = 30_000;
+
 export type OnnxStatus = {
   loaded: boolean;
   backend: string;          // "onnx-webgpu" | "onnx-webnn" | "onnx-wasm" | "none"
@@ -308,7 +315,7 @@ export async function loadModel(usecase: string, modelKey?: string): Promise<boo
       // Fetch explicitly rather than handing ORT a URL, so the transferred byte count and the
       // cache-hit state are observable. "Downloaded 11 MB" versus "served from cache" is the
       // difference between a measurement and an assertion.
-      const res = await fetch(target.url, { mode: "cors" });
+      const res = await fetch(target.url, { mode: "cors", signal: AbortSignal.timeout(HF_FETCH_TIMEOUT_MS) });
       if (!res.ok) throw new Error(`HTTP ${res.status} ${res.statusText} for ${target.url}`);
       status.fromCache = ["memory", "disk", "prefetch"].includes(
         (res as any).headers?.get?.("x-cache") ?? "");
@@ -503,7 +510,7 @@ function evalSample(modelUrl: string): Promise<ModelInputFile | null> {
   if (!hit) {
     hit = (async () => {
       try {
-        const res = await fetch(url, { mode: "cors" });
+        const res = await fetch(url, { mode: "cors", signal: AbortSignal.timeout(HF_FETCH_TIMEOUT_MS) });
         if (!res.ok) return null;              // no evaluation sample published for this model
         return (await res.json()) as ModelInputFile;
       } catch {
