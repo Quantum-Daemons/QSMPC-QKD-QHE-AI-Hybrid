@@ -14,14 +14,26 @@
 // a no-op. 0.6.1 rejects all 780.
 //
 // Vectors: C2SP/CCTV ML-KEM `modulus/`, CC0-1.0. Every value in [q, 2^12-1] at every position in
-// the key, tested individually. They are fetched at run time rather than vendored so this checks
-// the CURRENT published set; pin the URL to a tag if you need reproducibility across time.
+// the key, tested individually.
+//
+// WHERE THE VECTORS COME FROM, and why that changed. They used to be fetched at run time so this
+// always tested the CURRENT published set. That benefit is kept as `--live`, but the default is now
+// the vendored snapshot in `vectors/`, because a check that needs the network cannot gate CI - CI is
+// offline by design - and the only other way to gate it would be to skip on fetch failure. This
+// script is one such skip away from being a conformance check that always passes, which is worse
+// than not having one: it found @noble/post-quantum 0.2.1 accepting all 2,595 malformed
+// encapsulation keys, and a version that skipped quietly would have called that build clean. So
+// there is deliberately NO network fallback in either direction: `--live` fails if the network
+// fails, and the default fails if a vector file is missing.
 //
 // NOTE ON SCOPE, so this is not over-read: it tests one normative input check in one library. It
 // is not a proof of correctness, and noble is self-audited with no side-channel protection.
 import { ml_kem512, ml_kem768, ml_kem1024 } from "@noble/post-quantum/ml-kem.js";
 import { ml_dsa65, ml_dsa87 } from "@noble/post-quantum/ml-dsa.js";
 import { gunzipSync } from "node:zlib";
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 
 const SETS = [
   ["ML-KEM-512", ml_kem512],
@@ -29,16 +41,44 @@ const SETS = [
   ["ML-KEM-1024", ml_kem1024],
 ];
 const BASE = "https://raw.githubusercontent.com/C2SP/CCTV/main/ML-KEM/modulus";
+const VECTORS = join(dirname(fileURLToPath(import.meta.url)), "vectors");
+const LIVE = process.argv.includes("--live");
+
+/** The gzipped vector blob for one parameter set, from disk or from upstream.
+ *
+ * Fails loudly on either path and never substitutes the other. An unreadable snapshot means the
+ * check cannot run, which is a different thing from the check passing, and the message has to say
+ * which - this is read from a CI log by someone who did not write it.
+ */
+async function loadVectors(name) {
+  if (!LIVE) {
+    const path = join(VECTORS, `${name}.txt.gz`);
+    try {
+      return readFileSync(path);
+    } catch (err) {
+      console.error(`\n  ${name}: cannot read the vendored vectors at ${path} (${err.code ?? err.message}).`);
+      console.error("  This is NOT a pass. The conformance check did not run. Either restore the");
+      console.error("  snapshot (see scripts/vectors/PROVENANCE.txt for the pinned upstream commit)");
+      console.error("  or re-fetch the current published set with --live.");
+      process.exit(1);
+    }
+  }
+  const res = await fetch(`${BASE}/${name}.txt.gz`);
+  if (!res.ok) {
+    console.error(`\n  ${name}: HTTP ${res.status} from ${BASE}. --live requires the network;`);
+    console.error("  drop --live to check against the vendored snapshot instead.");
+    process.exit(1);
+  }
+  return Buffer.from(await res.arrayBuffer());
+}
+
+console.log(LIVE
+  ? `  vectors: LIVE from ${BASE}`
+  : `  vectors: vendored snapshot in scripts/vectors (see PROVENANCE.txt; --live to re-fetch)`);
 
 let failures = 0;
 for (const [name, kem] of SETS) {
-  const res = await fetch(`${BASE}/${name}.txt.gz`);
-  if (!res.ok) {
-    console.error(`  ${name}: could not fetch vectors (HTTP ${res.status})`);
-    failures++;
-    continue;
-  }
-  const text = gunzipSync(Buffer.from(await res.arrayBuffer())).toString("utf8");
+  const text = gunzipSync(await loadVectors(name)).toString("utf8");
   const lines = text.trim().split("\n").filter(Boolean);
 
   let accepted = 0;

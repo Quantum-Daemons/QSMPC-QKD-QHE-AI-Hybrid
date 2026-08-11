@@ -7,8 +7,11 @@ rich>=13.7
 
 # Quantum (CPU simulation / circuit authoring)
 qiskit>=1.2
-qiskit-aer>=0.15            # CPU build. NOTE: qiskit-aer-gpu cu11/cu12 wheels do NOT
-                           # support Blackwell sm_120 -> use CUDA-Q / lightning.gpu (see requirements-gpu.txt)
+qiskit-aer>=0.15            # CPU build. qiskit-aer-gpu is not an option here, and the strongest
+                           # reason is maintenance rather than architecture: it has had NO release
+                           # since 0.15.1 on 2024-09-13 (only qiskit-aer-gpu-cu11 is current). Its
+                           # cu11/cu12 wheels also do not target Blackwell sm_120.
+                           # -> use CUDA-Q / lightning.gpu (see requirements-gpu.txt)
 pennylane>=0.38
 
 # Post-quantum cryptography (NIST FIPS 203/204/205)
