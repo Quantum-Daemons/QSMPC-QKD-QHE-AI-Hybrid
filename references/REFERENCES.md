@@ -235,6 +235,87 @@ papers. Where the two used to overlap, that file is the owner.
 
 ---
 
+## QOTP-based quantum homomorphic encryption, and what WS4 can claim (Round 30)
+
+Added 2026-08-11, verified at the arXiv abstract page.
+
+- **Hernandez-Bueno, Lage, Higuero & Astorga, "Quantum Homomorphic Encryption: Towards Practical
+  and Private Computation on Untrusted Quantum Hardware."** arXiv:2604.19256 [quant-ph],
+  2026-04-21, 14 pp. A universal QHE framework derived from the Quantum One-Time Pad,
+  information-theoretically secure, "exploiting the transformation properties of quantum gates
+  under Pauli encryption" for non-interactive homomorphic evaluation of arbitrary Clifford+T
+  circuits, with results from simulators and real quantum processors. **This is WS4, published
+  four months before this round, and the repository did not cite it.** It is the correct
+  positioning reference for `qotp_clifford_random_circuit_demo`, and it also makes the
+  repository's honest disclosure - that the browser circuit is Clifford+T while the Python module
+  contains no T gate - more informative rather than less. Added: 2026-08-11.
+- **Joshi, Mishra & Karthikeyan, "Blind Transpiler: An open-source library for universally blind
+  and homomorphic quantum computations."** arXiv:2607.17131, v1 2026-07-19, v2 2026-08-09.
+  Transpiles Qiskit circuits to blind counterparts and demonstrates a blind variational quantum
+  classifier on IRIS. The closest software prior art to this project's browser QCNN under QOTP.
+  Added: 2026-08-11.
+- **Liu, Gong, Tian, Zhang, Zheng & Xu, "Efficient Quantum Fully Homomorphic Encryption."**
+  arXiv:2604.23490 [quant-ph], v1 2026-04-26, v2 2026-06-21, 32 pp. Reduces the quantum gadget
+  from O(lambda^2) to O(lambda log^2 lambda) EPR pairs and moves every quantum resource to the
+  server, so the client performs only classical LWE key generation and Pauli-key encryption under
+  classical FHE. **Reframes rather than contradicts** this repository's "rate-1 transport, no
+  Eval" caveat: as of April 2026 the direction of travel is a fully classical client, which is
+  architecturally closer to the browser-tab story than to the caveat's pessimism. Added:
+  2026-08-11.
+
+**What this project can and cannot claim on this machinery, recorded here because the split
+matters.** WS4(c), circuit privacy against a malicious server, is met for Clifford circuits: the
+server holds the maximally-mixed state throughout and the client recovers the exact result by
+tracking the Pauli frame. WS4(f), hiding the server's circuit from the client, is NOT met and is
+in tension with the mechanism - the client must know the circuit to update its frame. The two are
+now separate rows in `README.md` rather than one row that could only ever read PARTIAL.
+
+## Prior art for the novelty claim, and the asymmetry it exposes (Round 30)
+
+Added 2026-08-11. Checklist rule M4 requires a novelty claim to survive an adversarial prior-art
+search. Run against this project's own headline claim, the search returned prior art for one half
+and nothing for the other. Both are recorded, because reporting only the second would be the
+omission this file exists to prevent.
+
+- **Buchsteiner, Koch, Rotaru & Rechberger, "webSPDZ: Versatile MPC on the Web."** IACR ePrint
+  2025/487, received 2025-03-14. Compiles MP-SPDZ's C++ backend to WebAssembly with Emscripten and
+  moves party communication to WebRTC or WebSockets, supporting the 40-plus protocols MP-SPDZ
+  implements. **Its abstract names two earlier browser MPC engines, JIFF and MPyC-Web.** So
+  multiparty computation in a browser tab is established work and the garbled-circuit half of this
+  demo is a re-implementation, not a first. `docs/threat-model.md` already mentioned JIFF; webSPDZ
+  and MPyC-Web were absent. Added: 2026-08-11.
+- **Aikata, Krieger & Sinha Roy, "Privacy at your Fingertips: Enabling Rapid Client-Side
+  Operations in Fully Homomorphic Encryption."** IACR ePrint 2026/515, received 2026-03-13.
+  Verified at the listing: "client-side operations" means encryption and decryption, and the
+  abstract states that FHE "allows users to offload large computations to servers". It reduces
+  client enc/decrypt cost by up to 97 percent - the client still does not evaluate. **This is the
+  clearest evidence that the field's default division of labour is the opposite of this demo's**,
+  which is why it is cited beside the novelty claim rather than in the FHE section. Added:
+  2026-08-11.
+- **Zama, TFHE-rs JS-on-WASM API documentation.** States that the WebAssembly client API supports
+  key generation, encryption and decryption but **not FHE computation**, citing missing WASM
+  threading and the 2 GB WASM memory ceiling. Documentation rather than a result, and the
+  strongest single sentence supporting the in-tab evaluation claim: the leading FHE toolchain
+  deliberately does not evaluate in the browser. Checked 2026-08-11.
+- **Wang, Yu, Han, Gu, Xu & Huang, "WAMO: Toward Secure Browser Inference via Web Model
+  Obfuscation in WebAssembly."** Proceedings of the ACM Web Conference 2026 (WWW '26), 2026-04-09,
+  DOI 10.1145/3774904.3792297. **Carried as a partial contradiction, which is why it is worth
+  having:** it argues that deploying a model in a browser exposes its code and parameters to an
+  untrusted environment, against the intuition that client-side execution is automatically
+  private. It does not threaten this project - the models here are public on Hugging Face, so
+  extraction is not a harm - but it is the paper a reviewer will raise, and the threat model
+  should name it. **Metadata verified via the OpenAlex record for that DOI; the full text was not
+  retrieved (ACM DL refuses automated fetches), so nothing beyond title, authors, venue and date
+  is asserted here.** Added: 2026-08-11.
+
+**The negative results, stated as findings rather than left as absence.** No peer-reviewed
+2025-2026 paper was located that performs CKKS homomorphic *evaluation* of a neural network inside
+a browser tab with no server compute; every browser-FHE artefact found is encrypt-in-browser,
+evaluate-on-server. No WebGPU-accelerated homomorphic-encryption or MPC paper was located for
+2025-2026 either, which is consistent with the note in `web/src/lib/clientFHE.ts` that no
+commercial-OK WebGPU FHE exists in 2026. Absence of evidence is recorded as absence of evidence:
+the searches and their dates are here so the next round can re-run them rather than re-reason.
+
 ## Hybrid FHE/MPC private inference: the 2026 state of the art, and an attack on the nearest design
 
 Added 2026-08-11. Each entry below was verified against the arXiv abstract page or the IACR listing

@@ -65,7 +65,10 @@ export default function Orchestration() {
 
       <div className="card" style={{ marginTop: 16 }}>
         <h3>Download artifacts</h3>
-        <p>Client-side exports (server also writes JSONL/CSV/JSON to <code>results/</code>). Images are high-DPI.</p>
+        {/* The parenthetical described the FULL deployment and sat twenty-nine lines below a banner saying
+            no computation is sent to a server. In the client-only build there is no server and no
+            `results/`, so it contradicted the page it was on. */}
+        <p>Client-side exports{isClientDemo() ? "" : " (the full deployment also writes JSONL/CSV/JSON to results/)"}. Images are high-DPI.</p>
         <div className="btn-row">
           <button className="btn ghost" onClick={() => downloadEvents(`${usecase}-events.json`)}
             disabled={!hasRun} title={hasRun ? undefined : "Run the orchestration first"}>⬇ Events (JSON)</button>

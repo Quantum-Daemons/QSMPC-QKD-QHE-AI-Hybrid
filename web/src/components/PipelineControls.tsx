@@ -84,6 +84,12 @@ export default function PipelineControls({ run }: { run: Run }) {
     <div className="card">
       <div className="btn-row">
         {sel("KEM", "sel-kem", "kem", kem, setKem)}
+        {/* The resolved protocol, rendered as visible text. This select is a PROFILE switch - whether a
+            quantum channel contributes key material - while the thing that chooses BB84 versus E91 is
+            `qkd_protocol`, inside the COLLAPSED Parameters panel. Both facts were explained at length in
+            comments here and in the diagram, and on screen the distinction existed only as a `title`
+            tooltip. A visitor reading "QKD + PQC hybrid" had no way to know a second, hidden control
+            decides which protocol runs. */}
         {sel("Key source", "sel-qkd", "qkd", qkd, setQkd,
           "Whether a quantum channel contributes key material at all. WHICH protocol is "
           + "simulated - BB84 decoy-state or E91/CHSH - is a separate setting, "
@@ -101,6 +107,10 @@ export default function PipelineControls({ run }: { run: Run }) {
             {sel("MPC (non-linear)", "sel-mpc", "mpc", mpc, setMpc)}
           </>
         )}
+        <span className="muted" style={{ fontSize: 12, alignSelf: "center" }}
+          title="Set by `qkd.protocol` in the Parameters panel below, not by the Key source select.">
+          protocol: <strong>{String(run.params.qkd_protocol) === "e91" ? "E91 / CHSH" : "BB84 decoy-state"}</strong>
+        </span>
         {sel("Signature", "sel-sig", "sig", sig, setSig)}
         {publishedCandidates.length > 1 && (
           <>
