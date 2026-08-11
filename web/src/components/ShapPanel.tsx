@@ -12,10 +12,12 @@
 // told the reader not to read it that way. It survived because the error points toward caution and so
 // reads as rigour. `clientCompute` sets the flag explicitly at each explanation site.
 export default function ShapPanel({ explanation, provenance, baseline, publishedModel, surfacedBackend,
-  isOfReportedClass }: {
+  isOfReportedClass, hasTreeAttribution }: {
   explanation: any; provenance?: string | null; baseline?: string | null;
   publishedModel?: string | null; surfacedBackend?: string | null;
   isOfReportedClass?: boolean | null;
+  /** Whether THIS page's model panel renders tree-ensemble attribution. True on telecom only. */
+  hasTreeAttribution?: boolean | null;
 }) {
   const tops = explanation?.top_features as any[] | undefined;
   if (!tops?.length) return null;
@@ -34,11 +36,20 @@ export default function ShapPanel({ explanation, provenance, baseline, published
         Explains the <b>{provenance ?? "pipeline"}</b> on this page's own data
         {baseline ? <> · reference point: {baseline}</> : null}
         {publishedModel ? (
-          <> · <b>{publishedModel}</b> also ran this page, on its own corpus. Exact linear SHAP
-          applies to the linear student, not to a ResNet or a fixed quantum circuit, so no SHAP is
-          shown for it here. The one published <i>tree ensemble</i> (telecom&apos;s random forest)
-          does now carry attribution — impurity and permutation importance, in the model panel
-          below, computed at training time because a forest has no closed-form Shapley value.</>
+          <> · <b>{publishedModel}</b> also ran this page, on its own corpus, and has <b>no</b> SHAP
+          here: exact linear SHAP applies to the linear student, not to a ResNet, a tree ensemble or a
+          fixed quantum circuit.
+          {/* The tree-ensemble attribution exists on ONE page and this sentence used to promise it on
+              every page. `AttributionRows` renders only where the record carries the two tree
+              measures, i.e. telecom, so on medical, genomics, finance and satellite the panel pointed
+              a reader at a block that is not there - a milder replay of the defect fixed eight lines
+              below, asserting for all pages what is true of one. Gated on the same flag, so the
+              promise and the block appear together or not at all. */}
+          {hasTreeAttribution ? (
+            <> The published <i>tree ensemble</i> on this page does carry attribution — impurity and
+            permutation importance, in the model panel below, computed at training time because a
+            forest has no closed-form Shapley value.</>
+          ) : null}</>
         ) : null}
       </p>
       {/* Which of these two paragraphs applies is a property of the page's FLOW, not of this panel.

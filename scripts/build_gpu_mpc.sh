@@ -4,7 +4,7 @@
 #   - hpmpc / PIGEON (GPU secret-sharing MPC, MIT) -- non-linear-layer optimization
 #
 # Targets NVIDIA Blackwell (sm_120) + CUDA 13. OPTIONAL: the benchmark runs on
-# TenSEAL/DESILO without these. We integrate the UPSTREAM projects with our own glue
+# TenSEAL without these. We integrate the UPSTREAM projects with our own glue
 # (qsh/benchmark/gpu_mpc_adapter.py); we do not vendor RhombusEnd2End_HEonGPU.
 set -uo pipefail
 cd "$(dirname "$0")/.."
@@ -52,7 +52,7 @@ if [ -d "$HE" ]; then
     && cmake --build "$HE/build" -j"$JOBS" \
     && cmake --build "$HE/build" --target ckks_benchmark bfv_benchmark -j"$JOBS" \
     && echo "==> HEonGPU build OK" \
-    || echo "!! HEonGPU build FAILED (see log). Benchmark falls back to DESILO/TenSEAL."
+    || echo "!! HEonGPU build FAILED (see log). Benchmark falls back to TenSEAL (CPU)."
 fi
 
 # --------------------------------------------------------------------------- #

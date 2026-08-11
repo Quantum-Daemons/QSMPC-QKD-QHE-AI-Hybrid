@@ -148,10 +148,13 @@ statement of known limitations, not a conformance gap against any published requ
   Caveat that *does* apply to the MPC path: both "parties" share one JS heap, so the party separation
   is notional (stated at `clientMPC.ts:10-12`), and it is a demonstration of the protocol, not two
   mutually distrusting hosts. Every result carries a
-  `ProvenanceBadge` with one of exactly five states - `MEASURED (local WebGPU)`, `MEASURED (local
-  WASM)`, `MEASURED (plain JS)`, `REMOTE`, `SIMULATED` - together with the runtime evidence for that claim (`adapter.info`,
+  `ProvenanceBadge` with one of exactly **four** states - `MEASURED (local WebGPU)`, `MEASURED (local
+  WASM)`, `MEASURED (plain JS)`, `SIMULATED` - together with the runtime evidence for that claim (`adapter.info`,
   `crossOriginIsolated`, `ort.env.wasm.numThreads`, bytes transferred vs served from cache). A result
   labelled `MEASURED` that produced no compute or network activity is treated as a defect.
+  (This said "five states" including `REMOTE` until Round 32. `REMOTE` was deleted in Round 24d when the
+  hosted-GPU tier was declined, so the document described a badge state the code cannot emit - and the
+  badge that *can* be emitted, `MEASURED (plain JS)`, was missing from the list.)
 - **Published metrics are what this repository measured, not what the papers report.** Where a figure
   is carried from the literature instead of reproduced - the breast-cancer PRS AUROC being the clearest
   case, since 1000 Genomes has no case/control status to compute one from - it is labelled as external.
