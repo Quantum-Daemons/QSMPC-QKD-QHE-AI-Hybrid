@@ -12,6 +12,7 @@ import ShapPanel from "../components/ShapPanel";
 import TwoPartyDiagram, { USECASE_SPECS } from "../components/TwoPartyDiagram";
 import { FIBER, FREE_SPACE } from "../lib/quantumSim";
 import { DEMO_BANNER, isClientDemo } from "../lib/demoMode";
+import { hasTreeAttribution } from "../lib/config";
 import { USECASE_META } from "../lib/useCases";
 import { usePipelineRun } from "../lib/usePipelineRun";
 
@@ -206,6 +207,7 @@ function UseCaseView({ usecase }: { usecase: string }) {
           publishedModel={metrics?.published_model ? String(metrics.published_model) : null}
           surfacedBackend={artifacts?.primary_inference?.backend ?? null}
           isOfReportedClass={artifacts?.explanation_is_of_reported_class ?? null}
+          hasTreeAttribution={hasTreeAttribution(usecase)}
         />
       ) : null}
 

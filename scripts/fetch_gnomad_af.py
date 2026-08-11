@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Cache gnomAD v4 per-ancestry allele frequencies for the PGS000001 variants.
+"""Cache gnomAD v4 per-ancestry allele frequencies for the PGS000004 (PRS313) variants.
 
 WHY THIS DATA AND NOT THE TRAINING CORPUS. The genomics page scores real 1000 Genomes genotypes,
 but IGSR grants no blanket redistribution licence - it says so itself - so the training corpus
@@ -10,10 +10,11 @@ population, not the training data, and everything downstream is labelled that wa
 WHY IT IS WORTH PLOTTING AT ALL. The page already shows that one globally-set high-risk cut flags
 16.2% of AFR against 2.8% of EUR (PRS313; the retired PRS77 figures were 29.35% and 3.75% of AMR).
 That chart states the disparity; it does not explain it. This
-one does: for each of the 77 variants the score is built from, it plots the allele frequency in
+one does: for each of the 313 variants the score is built from, it plots the allele frequency in
 African-ancestry samples against European-ancestry samples. Points off the diagonal are variants
-whose frequency depends on ancestry, and PGS000001's development cohort was 100% European
-(22,627 individuals, Mavaddat et al. JNCI 2015). A score whose weights were fitted where the
+whose frequency depends on ancestry, and PRS313 was developed in European cohorts - its own 28 Catalog
+AUROC records run 0.5877-0.668 for European samples against 0.55 for an African-ancestry one. A score
+whose weights were fitted where the
 allele frequencies differ is exactly how a distribution shift arises without any accuracy claim
 being wrong.
 
@@ -21,7 +22,8 @@ Cached rather than fetched at build time so the generator is reproducible offlin
 public-demo build never depends on a third-party API being up. gnomAD is CC0, so caching is
 unambiguously permitted.
 
-Usage:  .venv/bin/python scripts/fetch_gnomad_af.py
+Usage:  .venv/bin/python scripts/fetch_gnomad_af.py            # the active score (PRS313)
+        .venv/bin/python scripts/fetch_gnomad_af.py --score prs77   # the retired cache
 """
 from __future__ import annotations
 
@@ -145,7 +147,12 @@ def _prs313_variants() -> list[dict[str, str]]:
 
 
 def _run_prs77() -> int:
-    src = json.loads((REPO / "web" / "public" / "data" / "genomics" / "pgs000001_prs.json").read_text())
+    # Moved out of web/public/ in Round 32. Nothing in the browser read it once realData.ts switched to
+    # the PRS313 payload, but Vite still SERVED it - 30 individuals x 77 SNPs of genotype data published
+    # for no demo benefit, carrying a provenance string the registry had already replaced. That is the
+    # same argument DATA_LICENSES section 4 makes for not shipping the full matrix, applied to a file
+    # that had quietly become gratuitous. Kept under data/ because this retired cache is provenance.
+    src = json.loads((REPO / "data" / "genomics" / "pgs000001_prs_retired.json").read_text())
     rsids = src["rsids"]
     cache = json.loads(OUT.read_text()) if OUT.exists() else {}
     print(f"PGS000001: {len(rsids)} variants by rsID; {len(cache)} already cached")
@@ -202,8 +209,14 @@ def _run_prs313() -> int:
 
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("--score", choices=("prs77", "prs313", "both"), default="both",
-                    help="prs77 = PGS000001 by rsID; prs313 = PGS000004 by GRCh38 coordinate")
+    # Defaults to the ACTIVE score. It defaulted to "both", so a bare run made 77 gnomAD API calls
+    # to refresh data/genomics/gnomad_af.json - a cache with a writer and, since the 2D overlay moved
+    # to the position-keyed cache, no reader at all. A written artefact nobody reads is the
+    # "metric with no reader" defect wearing a data-file costume, and it was costing a third party's
+    # rate limit to maintain.
+    ap.add_argument("--score", choices=("prs77", "prs313", "both"), default="prs313",
+                    help="prs313 (default) = PGS000004 by GRCh38 coordinate, the active score; "
+                         "prs77 = the retired PGS000001 rsID cache, kept for provenance")
     args = ap.parse_args()
     if args.score in ("prs77", "both"):
         _run_prs77()
