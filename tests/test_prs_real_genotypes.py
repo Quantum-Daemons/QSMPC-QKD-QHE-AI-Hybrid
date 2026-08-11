@@ -16,10 +16,26 @@ here.
 from __future__ import annotations
 
 import logging
+from pathlib import Path
 
 import pytest
 
 from qsh.data.loaders import _PRS_FILES, load_genomic_prs, load_prs
+
+REPO = Path(__file__).resolve().parents[1]
+
+#: Scores whose DOSAGE file is committed, so "did it read real genotypes" is a question CI can ask.
+#:
+#: PRS313's dosage matrix is deliberately not in the repository: `DATA_LICENSES` section 4 justifies
+#: redistributing 400 individuals x 77 SNPs, and 2,504 x 313 is 24x that. So on a fresh clone that
+#: score legitimately falls back, and asserting otherwise would be demanding a file the project has
+#: decided not to ship. CI caught exactly that when this file first asserted it for every score.
+def _dosage_present(name: str) -> bool:
+    _, dosage_file = _PRS_FILES[name]
+    return (REPO / "data" / "genomics" / dosage_file).exists()
+
+
+TRACKED_DOSAGE_SCORES = sorted(n for n in _PRS_FILES if _dosage_present(n))
 
 
 class _CatchFallback(logging.Handler):
@@ -31,7 +47,7 @@ class _CatchFallback(logging.Handler):
         self.messages.append(record.getMessage())
 
 
-@pytest.mark.parametrize("name", sorted(_PRS_FILES))
+@pytest.mark.parametrize("name", TRACKED_DOSAGE_SCORES)
 def test_dosages_are_real_not_sampled(name: str) -> None:
     handler = _CatchFallback()
     log = logging.getLogger("qsh")
@@ -50,7 +66,7 @@ def test_dosages_are_real_not_sampled(name: str) -> None:
     assert dosages.shape[0] == 400
 
 
-@pytest.mark.parametrize("name", sorted(_PRS_FILES))
+@pytest.mark.parametrize("name", TRACKED_DOSAGE_SCORES)
 def test_every_score_variant_has_a_dosage_column(name: str) -> None:
     """The join is by column NAME, so a renamed or missing variant must fail loudly, not silently.
 
@@ -77,3 +93,17 @@ def test_the_two_bundled_scores_are_keyed_differently_on_purpose() -> None:
     assert len(rs_keys) == 77
     assert all(k.count(":") == 2 and not k.startswith("rs") for k in pos_keys)
     assert len(pos_keys) == 313
+
+
+def test_at_least_one_score_has_committed_dosages() -> None:
+    """The parametrised tests above must not be able to pass by collecting nothing.
+
+    `TRACKED_DOSAGE_SCORES` is computed from the filesystem, so deleting the bundled dosage file
+    would empty it and every test in this module would pass vacuously - the exact shape of failure
+    this module was written to catch. PRS77's dosages are committed by design (400 individuals x 77
+    SNPs, justified in DATA_LICENSES section 4), so at least one entry must always be present.
+    """
+    assert "breast_cancer" in TRACKED_DOSAGE_SCORES, (
+        "data/genomics/g1k_dosages.tsv is missing. It is committed deliberately, and without it the "
+        "real-genotype assertions in this file collect nothing and pass without checking anything."
+    )
