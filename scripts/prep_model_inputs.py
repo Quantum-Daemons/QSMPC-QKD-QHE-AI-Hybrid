@@ -113,6 +113,44 @@ def _apply_preprocessing_step(x: np.ndarray, step: str) -> np.ndarray:
     raise ValueError(f"unknown preprocessing step {step!r} - add it here and in onnxInference.ts")
 
 
+def _invalidate_pin_if_published(key: str) -> None:
+    """Demote a published model's `hf_revision` when its eval sample is rewritten.
+
+    THE GAP THIS CLOSES. `models/train.py` already demotes the pin to
+    `hf_revision_invalidated_by_retrain` when a model is RETRAINED, on the reasoning that a pin
+    pointing at weights nobody can reproduce is worse than no pin. Regenerating an EVALUATION SAMPLE
+    is the same hazard and had no such hook - and the sample is exactly what the browser fetches
+    `<repo>/resolve/<sha>/eval_sample.json` to get.
+
+    So after the Round 25 label-leak fix the local sample carried 164 positives while Hugging Face
+    still served 149 at the pinned sha, with `hour_of_day` negatives on 3 distinct values against 22
+    for positives - the leak signature. Every local check passed, the pin looked valid, and the
+    browser read the contaminated sample. Nothing anywhere said the two had diverged.
+
+    A warning is not enough here: the pin is what makes the model reachable, so leaving it pointing
+    at a sample that no longer matches the repository is the silent-desync case. Demoting it makes
+    the model drop out of the browser dropdown until it is republished, which is loud and correct.
+    """
+    from qsh.models import registry
+
+    metrics_path = registry.METRICS_PATH
+    try:
+        current = json.loads(metrics_path.read_text())
+    except (FileNotFoundError, json.JSONDecodeError):
+        return
+    entry = current.get(key) or {}
+    rev = entry.get("hf_revision")
+    if not rev:
+        return                       # not published, or already invalidated
+    entry.pop("hf_revision", None)
+    entry["hf_revision_invalidated_by_retrain"] = rev
+    current[key] = entry
+    metrics_path.write_text(json.dumps(current, indent=2, sort_keys=True) + "\n")
+    print(f"    PIN INVALIDATED for {key}: {rev[:12]} -> hf_revision_invalidated_by_retrain. "
+          f"The published sample no longer matches this one, so the model is withheld from the "
+          f"browser until `scripts/publish_hf.py --key {key} --public` re-pins it.")
+
+
 def _warn_single_feature_leak(usecase: str, payload: dict) -> None:
     """Warn when ONE feature separates the classes well enough to be doing the model's job.
 
@@ -189,6 +227,7 @@ def _write(usecase: str, payload: dict) -> Path:
     out = REPO / registry.ARTIFACT_DIRS[key] / "eval_sample.json"
     out.parent.mkdir(parents=True, exist_ok=True)
     _warn_single_feature_leak(usecase, payload)
+    _invalidate_pin_if_published(key)
     out.write_text(json.dumps(payload, indent=1) + "\n")
     size = out.stat().st_size
     print(f"  wrote {out.relative_to(REPO)}  ({size/1024:.0f} KB)")
@@ -477,7 +516,7 @@ def build_satellite_opssat(rng: np.random.Generator) -> dict:
 
     return {
         "provenance": (
-            "OPS-SAT-AD (Kotowski et al., 'The OPS-SAT benchmark for detecting anomalies in "
+            "OPS-SAT-AD (Ruszczak et al., 'The OPS-SAT benchmark for detecting anomalies in "
             "satellite telemetry', Scientific Data 12, 2025; Zenodo 10.5281/zenodo.12588359, "
             "CC BY 4.0). Real telemetry from ESA's OPS-SAT CubeSat, which reentered in May 2024. "
             "These are the 19 precomputed per-segment features of the benchmark's own TEST "
@@ -789,7 +828,7 @@ def build_opssat_student(rng: np.random.Generator) -> dict:
     return {
         "task": "classification",
         "provenance": (
-            "OPS-SAT-AD (Kotowski et al., Scientific Data 12, 2025; Zenodo "
+            "OPS-SAT-AD (Ruszczak et al., Scientific Data 12, 2025; Zenodo "
             "10.5281/zenodo.12588359, CC BY 4.0). Real telemetry from ESA's OPS-SAT CubeSat. The "
             "benchmark's own test partition entire and unsampled, " + prep_note + "."),
         "input": {"shape": [1, int(z.shape[1])], "dtype": "float32", "preprocessing": [],

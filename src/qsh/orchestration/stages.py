@@ -342,15 +342,26 @@ class PrivateInferenceStage(Stage):
                 expectation, cls, _logit = qcnn_infer(x, weights)
                 ctx.artifacts["qhe_prediction"] = cls
                 ctx.artifacts["qhe_backend"] = "qcnn-trained"
+                # Canonical key. medical_fl read only `fhe_prediction`, which the CKKS branch
+                # sets, so selecting QCNN computed a class and the page surfaced None for its
+                # headline diagnosis. Both branches now write `private_prediction` and name the
+                # backend beside it, so a summary cannot read one path and miss the other.
+                ctx.artifacts["private_prediction"] = cls
+                ctx.artifacts["private_prediction_backend"] = "qcnn-trained"
                 bus.metric("qhe_expectation_z0", round(expectation, 4), self.name)
-                bus.metric("qhe_test_accuracy", weights["test_accuracy"], self.name)
+                f1_led = weights.get("headline_metric") == "minority_class_f1"
+                mine = weights["test_minority_f1"] if f1_led else weights["test_accuracy"]
+                theirs = (weights["classical_lr_minority_f1"] if f1_led
+                          else weights["classical_lr_accuracy"])
+                base = weights["all_positive_f1"] if f1_led else weights["majority_baseline"]
+                label = "minority-class F1" if f1_led else "accuracy"
+                bus.metric("qhe_headline_metric", round(float(mine), 4), self.name)
                 bus.log(
                     f"QHE private inference (TRAINED QCNN): class={cls} "
                     f"(<Z0>={expectation:.4f}, {weights['layers']}x{weights['n_qubits']} trained "
-                    f"angles). Held-out accuracy {weights['test_accuracy']:.4f} against logistic "
-                    f"regression {weights['classical_lr_accuracy']:.4f} on the same split - the "
-                    f"classical model is ahead, and this reports it rather than implying advantage.",
-                    self.name)
+                    f"angles). Held-out {label} {mine:.4f} against a baseline of {base:.4f} and "
+                    f"logistic regression at {theirs:.4f} on the same split - the classical model is "
+                    f"ahead, and this reports it rather than implying advantage.", self.name)
             else:
                 # No trained circuit here: report the QOTP hiding demonstration, which this module
                 # genuinely proves, and decline to surface a class rather than passing off a
@@ -379,6 +390,8 @@ class PrivateInferenceStage(Stage):
             backend = reg.get("fhe", ctx.config.get("fhe"))()
             out = encrypted_linear_inference(model, np.asarray(x), backend)
             ctx.artifacts["fhe_prediction"] = out["prediction"]
+            ctx.artifacts["private_prediction"] = out["prediction"]
+            ctx.artifacts["private_prediction_backend"] = "ckks"
             # record exactly what was inferred so ExplainabilityStage explains the same thing
             ctx.data["linear_model"] = model
             ctx.data["features"] = np.asarray(x)

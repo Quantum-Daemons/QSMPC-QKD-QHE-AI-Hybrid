@@ -1,5 +1,5 @@
 {
- "provenance": "OPS-SAT-AD (Kotowski et al., 'The OPS-SAT benchmark for detecting anomalies in satellite telemetry', Scientific Data 12, 2025; Zenodo 10.5281/zenodo.12588359, CC BY 4.0). Real telemetry from ESA's OPS-SAT CubeSat, which reentered in May 2024. These are the 19 precomputed per-segment features of the benchmark's own TEST partition, entire and unsampled, so the figure below is the one the dataset's 30 published baselines are quoted against. Not comparable with the Telemanom model on this same page: that one forecasts continuous ESA-ADB series, this one classifies pre-segmented fragments.",
+ "provenance": "OPS-SAT-AD (Ruszczak et al., 'The OPS-SAT benchmark for detecting anomalies in satellite telemetry', Scientific Data 12, 2025; Zenodo 10.5281/zenodo.12588359, CC BY 4.0). Real telemetry from ESA's OPS-SAT CubeSat, which reentered in May 2024. These are the 19 precomputed per-segment features of the benchmark's own TEST partition, entire and unsampled, so the figure below is the one the dataset's 30 published baselines are quoted against. Not comparable with the Telemanom model on this same page: that one forecasts continuous ESA-ADB series, this one classifies pre-segmented fragments.",
  "input": {
   "shape": [
    1,

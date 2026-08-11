@@ -1831,7 +1831,7 @@ export function runClientPipeline(
 const _qcnnCache: Record<string, QcnnWeights | null> = {};
 async function loadQcnnWeights(usecase: string): Promise<QcnnWeights | null> {
   if (usecase in _qcnnCache) return _qcnnCache[usecase];
-  const dir = usecase === "medical_fl" ? "medical" : usecase.split("_")[0];
+  const dir = usecase === "medical_fl" ? "medical" : usecase.split("_")[0];   // finance_aml -> finance
   try {
     const r = await fetch(`${import.meta.env.BASE_URL}data/${dir}/qcnn_weights.json`);
     _qcnnCache[usecase] = r.ok ? ((await r.json()) as QcnnWeights) : null;
@@ -1856,11 +1856,21 @@ async function loadQcnnWeights(usecase: string): Promise<QcnnWeights | null> {
                                             qubits: qc.qubits, expectation: r2(qc.expectation) };
             metric(stage, "primary_inference_class", qc.cls);
             metric(stage, "qcnn_expectation_z0", r2(qc.expectation));
+            // Report the metric the CORPUS warrants, not always accuracy. At finance's 6% fraud
+            // rate accuracy reads 0.97 against a 0.95 majority baseline and says almost nothing,
+            // while minority-class F1 is 0.71 against an all-positive 0.10. The trainer decides
+            // which is the headline and ships it in `headline_metric`.
+            const f1Led = w.headline_metric === "minority_class_f1";
+            const mine = f1Led ? w.test_minority_f1 : w.test_accuracy;
+            const theirs = f1Led ? w.classical_lr_minority_f1 : w.classical_lr_accuracy;
+            const base = f1Led ? w.all_positive_f1 : w.majority_baseline;
+            const label = f1Led ? "minority-class F1" : "accuracy";
             emit("log", stage, `inference backend = QCNN (QHE, TRAINED): class=${qc.cls} `
               + `(<Z0>=${qc.expectation.toFixed(4)}, ${w.layers}x${w.n_qubits} trained angles, `
-              + `state-vector sim). Held-out accuracy ${w.test_accuracy.toFixed(4)} vs logistic `
-              + `regression ${w.classical_lr_accuracy.toFixed(4)} on the same split - the classical `
-              + `model is ahead, and this reports that rather than implying quantum advantage.`);
+              + `state-vector sim). Held-out ${label} ${(mine ?? 0).toFixed(4)} against a baseline of `
+              + `${(base ?? 0).toFixed(4)} and logistic regression at ${(theirs ?? 0).toFixed(4)} on `
+              + `the same split - the classical model is ahead, and this reports that rather than `
+              + `implying quantum advantage. Test rows were never used to pick the checkpoint.`);
           } else {
             // No trained weights for this use case: refuse to surface a class rather than pass off
             // the untrained circuit's coin flip as a prediction.

@@ -19,33 +19,33 @@ NIST-published vector set.
 
 ## The methodology endorsement
 
-ISO/IEC 23837-2:2023 §5.3.3 is the one standard that blesses the shape of such a test:
+ISO/IEC 23837-2:2023 section 5.3.3 is the one standard that blesses the shape of such a test:
 
 > EAs for these SFRs usually involve performing tests over some pre-defined parameter spaces ...
 > this document adopts the strategy of evenly discretizing the parameter spaces and performing the
 > test step by step.
 
-But §5.3.5 withholds every number:
+But section 5.3.5 withholds every number:
 
 > this document does not specify values for the thresholds and input parameters
 
 So it grounds the form and supplies none of the content. Of its 24 evaluation activities, 21 require
 an optical bench - photon counters, OTDR, calibrated attenuators, tunable lasers. Only clause 6's
-three activities and §8.11 double-click handling are protocol logic a browser can execute.
+three activities and section 8.11 double-click handling are protocol logic a browser can execute.
 
 ## What each source actually prescribes
 
 | Source | What it prescribes | Usable here |
 |---|---|---|
-| NIST SP 800-227 (2025) | Only CAVP/CMVP conformance, and undercuts it: validation "does not guarantee correct functioning on all inputs". Refuses to give side-channel guidance. **But §4.6.3 is directly on point for a hybrid**: the naive combiner `KDF(K1,K2)` "does not preserve IND-CCA security, regardless of the properties of the KDF"; the approved form binds the ciphertexts and encapsulation keys. | Yes - §4.6.3 |
-| FIPS 203 §7.2 / §7.3 | Normative SHALL: encapsulation-key modulus round-trip check, decapsulation-key hash check. Table 1 decapsulation failure rates 2^-138.8 / 2^-164.8 / 2^-174.8. | Yes |
+| NIST SP 800-227 (2025) | Only CAVP/CMVP conformance, and undercuts it: validation "does not guarantee correct functioning on all inputs". Refuses to give side-channel guidance. **But section 4.6.3 is directly on point for a hybrid**: the naive combiner `KDF(K1,K2)` "does not preserve IND-CCA security, regardless of the properties of the KDF"; the approved form binds the ciphertexts and encapsulation keys. | Yes - section 4.6.3 |
+| FIPS 203 section 7.2 / section 7.3 | Normative SHALL: encapsulation-key modulus round-trip check, decapsulation-key hash check. Table 1 decapsulation failure rates 2^-138.8 / 2^-164.8 / 2^-174.8. | Yes |
 | NIST ACVP + C2SP/CCTV | NIST does publish negative vectors, at the algorithm-validation layer: ML-DSA sigVer's five disposition categories, and CCTV's `modulus/`, `strcmp/`, `unlucky/` sets. | Yes |
 | ISO/IEC 23837-1/-2:2023 | The only QKD adversarial test procedures that exist, and they deliberately contain no thresholds. | Form only |
 | ETSI GS QKD 010 | Gives the Trojan-horse relation mu_out <= mu_in x r_rel, then declines to specify the privacy amplification: the adopter "shall provide a security justification". | No |
 | ETSI GS QKD 014 | Concrete negative API behaviour (400/401/503, "size shall be a multiple of 8"). Modest but real. | Yes, modestly |
 | ETSI GS QKD 016 / BSI-CC-PP-0120 | Common Criteria protection profile. Contains no numeric QBER or key-rate thresholds - the place ISO said the numbers would live does not have them either. | No |
 | ISO/IEC 4922-1/-2 | Taxonomy and secret-sharing mechanisms. **No testing, evaluation or conformance clause exists.** | No |
-| NIST IR 8214C (2026-01) | The only authority that mentions stress testing: §7.6.3 says a test case "should consider at least one corrupted party" and may "stress-test ... adverse conditions". Table 5 requires statistical security >= 40 bits, >= 64 suggested - with the honest caveat that this parameter "does not appear in NIST standards". | Yes |
+| NIST IR 8214C (2026-01) | The only authority that mentions stress testing: section 7.6.3 says a test case "should consider at least one corrupted party" and may "stress-test ... adverse conditions". Table 5 requires statistical security >= 40 bits, >= 64 suggested - with the honest caveat that this parameter "does not appear in NIST standards". | Yes |
 | HomomorphicEncryption.org standard | Zero occurrences of "test", "validation" or "conformance". States CKKS "is not described in this standard" - citing it for CKKS would be a misuse. | No |
 | ISO/IEC 28033 | **Not published.** Part 3 is the CKKS part (arithmetic on approximate numbers) and is at **FDIS 50.00, 2026-06-11** - one ballot from publication, so this row has a shelf life of months. Part 1 general DIS 40.60 (2025-12-11), Part 4 FDIS 50.00, Part 5 WD 20.60. Part 1 scopes out correctness: "Verification that the function itself is computed correctly is outside of the scope." Stages checked 2026-08-10. | Not yet |
 
@@ -54,7 +54,7 @@ three activities and §8.11 double-click handling are protocol logic a browser c
 1. **Hybrid key-combiner robustness.** The most defensible test available, because it is the only one
    that tests the *hybrid* property this project claims. Compromise one component secret and show the
    composite survives under the ciphertext-binding combiner and fails under `KDF(K1,K2)`.
-   Sources: SP 800-227 §4.6.3; Barbosa et al., X-Wing, IACR CiC 1(1) 2024; Giacon-Heuer-Poettering,
+   Sources: SP 800-227 section 4.6.3; Barbosa et al., X-Wing, IACR CiC 1(1) 2024; Giacon-Heuer-Poettering,
    KEM Combiners, PKC 2018.
 
 2. **PQC malformed-input rejection.** Binary pass/fail against vectors NIST and C2SP publish - the
@@ -107,7 +107,7 @@ Photonics 4, 686 (2010) never ran an end-to-end attack and report no attack QBER
 ever modelled it must be as *silent compromise* - full key extracted, monitoring unchanged.
 
 **ETSI GS QKD 010 Trojan-horse conformance, and the 21 optical evaluation activities of ISO
-23837-2.** These need real photons. The standards decline to supply both the thresholds (§5.3.5) and
+23837-2.** These need real photons. The standards decline to supply both the thresholds (section 5.3.5) and
 the privacy-amplification formula (GS QKD 010 clause 8), so a browser simulation would be inventing
 the inputs and the pass criteria.
 
