@@ -235,6 +235,41 @@ papers. Where the two used to overlap, that file is the owner.
 
 ---
 
+## QOTP-based quantum homomorphic encryption, and what WS4 can claim (Round 30)
+
+Added 2026-08-11, verified at the arXiv abstract page.
+
+- **Hernandez-Bueno, Lage, Higuero & Astorga, "Quantum Homomorphic Encryption: Towards Practical
+  and Private Computation on Untrusted Quantum Hardware."** arXiv:2604.19256 [quant-ph],
+  2026-04-21, 14 pp. A universal QHE framework derived from the Quantum One-Time Pad,
+  information-theoretically secure, "exploiting the transformation properties of quantum gates
+  under Pauli encryption" for non-interactive homomorphic evaluation of arbitrary Clifford+T
+  circuits, with results from simulators and real quantum processors. **This is WS4, published
+  four months before this round, and the repository did not cite it.** It is the correct
+  positioning reference for `qotp_clifford_random_circuit_demo`, and it also makes the
+  repository's honest disclosure - that the browser circuit is Clifford+T while the Python module
+  contains no T gate - more informative rather than less. Added: 2026-08-11.
+- **Joshi, Mishra & Karthikeyan, "Blind Transpiler: An open-source library for universally blind
+  and homomorphic quantum computations."** arXiv:2607.17131, v1 2026-07-19, v2 2026-08-09.
+  Transpiles Qiskit circuits to blind counterparts and demonstrates a blind variational quantum
+  classifier on IRIS. The closest software prior art to this project's browser QCNN under QOTP.
+  Added: 2026-08-11.
+- **Liu, Gong, Tian, Zhang, Zheng & Xu, "Efficient Quantum Fully Homomorphic Encryption."**
+  arXiv:2604.23490 [quant-ph], v1 2026-04-26, v2 2026-06-21, 32 pp. Reduces the quantum gadget
+  from O(lambda^2) to O(lambda log^2 lambda) EPR pairs and moves every quantum resource to the
+  server, so the client performs only classical LWE key generation and Pauli-key encryption under
+  classical FHE. **Reframes rather than contradicts** this repository's "rate-1 transport, no
+  Eval" caveat: as of April 2026 the direction of travel is a fully classical client, which is
+  architecturally closer to the browser-tab story than to the caveat's pessimism. Added:
+  2026-08-11.
+
+**What this project can and cannot claim on this machinery, recorded here because the split
+matters.** WS4(c), circuit privacy against a malicious server, is met for Clifford circuits: the
+server holds the maximally-mixed state throughout and the client recovers the exact result by
+tracking the Pauli frame. WS4(f), hiding the server's circuit from the client, is NOT met and is
+in tension with the mechanism - the client must know the circuit to update its frame. The two are
+now separate rows in `README.md` rather than one row that could only ever read PARTIAL.
+
 ## Prior art for the novelty claim, and the asymmetry it exposes (Round 30)
 
 Added 2026-08-11. Checklist rule M4 requires a novelty claim to survive an adversarial prior-art

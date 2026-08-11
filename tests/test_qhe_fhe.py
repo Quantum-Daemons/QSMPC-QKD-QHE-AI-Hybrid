@@ -4,7 +4,8 @@ import numpy as np
 import pytest
 
 from qsh.fhe.ckks_inference import LinearModel, encrypted_linear_inference
-from qsh.qhe.qcnn import QCNN, qotp_clifford_homomorphic_demo
+from qsh.qhe.qcnn import (QCNN, qotp_clifford_homomorphic_demo,
+                          qotp_clifford_random_circuit_demo)
 from qsh.qhe.qotp import encrypt, encrypted_density_matrix, pauli_key
 from qsh.qhe.private_inference import private_inference
 
@@ -84,3 +85,49 @@ def test_rate1_qfhe_roundtrip_and_rate():
         rec = decrypt_state(ct, rcpt)
         assert abs(np.vdot(psi, rec)) ** 2 == pytest.approx(1.0, abs=1e-9)
         assert ciphertext_to_plaintext_ratio(ct) < 1.2
+
+
+@pytest.mark.parametrize(("n", "depth", "seed"), [(3, 8, 1), (4, 12, 2), (5, 20, 3), (4, 30, 4)])
+def test_random_clifford_word_evaluates_homomorphically(n, depth, seed):
+    """Arbitrary Clifford words, not one fixed circuit - which is what lets WS4(c) be claimed.
+
+    The pre-existing demo evaluated H then CNOT(0,1) and nothing else, so "Clifford circuits evaluate
+    homomorphically" was an extrapolation from a single point. Two gaps closed it: the S frame rule
+    (without which only the H/CNOT subgroup is reachable) and a CNOT applier not hardcoded to wires
+    (0,1). Depth 30 is included because a frame-tracking error compounds - a wrong rule can still give
+    fidelity 1.0 on a short word by coincidence.
+    """
+    rep = qotp_clifford_random_circuit_demo(n=n, depth=depth, seed=seed)
+    assert rep["correct"], rep
+    assert rep["fidelity_recovered_vs_plaintext"] == pytest.approx(1.0, abs=1e-9)
+    assert sum(rep["gate_counts"].values()) == depth
+    # All three generators must actually appear at these depths, or the test is weaker than it looks.
+    if depth >= 12:
+        assert all(rep["gate_counts"][k] > 0 for k in ("h", "s", "cnot")), rep["gate_counts"]
+    # The payload must keep saying what it does NOT do.
+    assert rep["hides_circuit_from_client"] is False
+
+
+def test_s_frame_rule_matches_the_state_vector():
+    """Verify the S rule numerically, because a sign error is invisible in one fixed circuit.
+
+    S X S-dagger = Y = i X Z, so the X part leaks into the Z part: (a, b) -> (a, a xor b). That is the
+    rule the demo above depends on for every S it draws.
+    """
+    import numpy as np
+
+    from qsh.qhe.qotp import _apply_1q, decrypt, encrypt, pauli_key, update_key_s
+
+    S = np.array([[1, 0], [0, 1j]], dtype=complex)
+    rng = np.random.default_rng(3)
+    n = 3
+    for _ in range(25):
+        psi = rng.normal(size=2 ** n) + 1j * rng.normal(size=2 ** n)
+        psi /= np.linalg.norm(psi)
+        q = int(rng.integers(n))
+        a, b = pauli_key(n, rng)
+        ref = _apply_1q(psi, S, q, n)
+        out = _apply_1q(encrypt(psi, a, b), S, q, n)
+        a2, b2 = a.copy(), b.copy()
+        a2[q], b2[q] = update_key_s(int(a[q]), int(b[q]))
+        assert abs(np.vdot(ref, decrypt(out, a2, b2))) ** 2 == pytest.approx(1.0, abs=1e-9)
