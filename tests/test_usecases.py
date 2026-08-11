@@ -41,8 +41,21 @@ def test_genomics_real_prs_under_ckks():
     from qsh.fhe.backends import get_backend
     from qsh.fhe.ckks_inference import LinearModel, encrypted_linear_inference
 
-    dosages, weights, rsids, eff, freq = load_genomic_prs(n_individuals=200, seed=0)
-    assert len(weights) == 77 and len(rsids) == 77 and rsids[0].startswith("rs")   # real PGS Catalog SNPs
+    # The score comes from the config field, not from a literal here. Round 31 updated this test's
+    # DOCSTRING to say PGS000004/313 and left the assertions on 77 - a test whose stated purpose denied
+    # its own body, and it passed, because the assertions matched the pipeline's own stale default.
+    from qsh.config import get_config
+
+    score = get_config().data.genomics_prs_score
+    dosages, weights, keys, eff, freq = load_genomic_prs(n_individuals=200, seed=0, name=score)
+    n_expected = {"breast_cancer": 77, "breast_cancer_prs313": 313}[score]
+    assert len(weights) == n_expected and len(keys) == n_expected     # real PGS Catalog variants
+    # PGS000001 publishes rsIDs; PGS000004 publishes none, so its keys are chr:pos:effect_allele.
+    # Asserting "starts with rs" unconditionally is what would have caught the split had it been here.
+    if score == "breast_cancer":
+        assert keys[0].startswith("rs")
+    else:
+        assert keys[0].count(":") == 2 and not keys[0].startswith("rs")
     scores = dosages @ weights
     thr = float(np.quantile(scores, 0.75))
     model = LinearModel(np.vstack([np.zeros_like(weights), weights]), np.array([0.0, -thr]))
@@ -53,8 +66,10 @@ def test_genomics_real_prs_under_ckks():
     assert out["max_abs_error"] < 1e-2
     # the live pipeline surfaces the real PRS + a per-SNP signed explanation
     r = genomics.run_demo({"seed": 1})
-    assert r["prs"]["n_snps"] == 77 and r["prs"]["name"] == "breast_cancer"
-    assert r["explanation"]["top_features"][0]["feature"].startswith("rs")
+    assert r["prs"]["n_snps"] == n_expected and r["prs"]["name"] == score
+    # The feature label is the variant key, so its SHAPE follows the score's key space. Pinning "rs"
+    # here would fail on PGS000004 for the right reason and on a future rsID score for the wrong one.
+    assert r["explanation"]["top_features"][0]["feature"] in set(keys)
 
 
 def test_telecom_ids_classical_meets_target():

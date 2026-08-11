@@ -112,20 +112,28 @@ def load_genomic(n: int = 1000, n_snps: int = 64, seed: int = 0
     return synthetic_genotypes(n=n, n_snps=n_snps, seed=seed)
 
 
-# Bundled real Polygenic Risk Scores (PGS Catalog, CC-BY 4.0). Each is a real published per-SNP
-# effect-weight table → the model is a genuine linear PRS = Σ weight_i · dosage_i, which runs as an
-# exact CKKS dot-product (the published "HE-applied-to-PRS" pattern; FHE-native, no surrogate).
+# Bundled real Polygenic Risk Scores (PGS Catalog; licence is PER SCORE, not blanket CC-BY - see
+# DATA_LICENSES). Each is a real published per-SNP effect-weight table → the model is a genuine linear
+# PRS = Σ weight_i · dosage_i, which runs as an exact CKKS dot-product (the published
+# "HE-applied-to-PRS" pattern; FHE-native, no surrogate).
 #: name -> (scoring file, dosage file). Two scores are bundled and they are keyed DIFFERENTLY, which is
 #: the whole reason this is a mapping rather than a filename.
 #:
-#: `breast_cancer` is PGS000001 / PRS77_BC, keyed by rsID, and is what both the Python pipeline and the
-#: browser payload currently score.
+#: `breast_cancer_prs313` is PGS000004 / PRS313_BC (Mavaddat 2018, 313 variants) and is **ACTIVE** - what
+#: the pipeline, the browser payload, the trainer and the registry all score. The score in force is
+#: `DataConfig.genomics_prs_score`, not a default written into any call site.
 #:
-#: `breast_cancer_prs313` is PGS000004 / PRS313_BC, the current clinical instrument (Mavaddat 2018, 313
-#: variants against PRS77's 77). It is STAGED, NOT ACTIVE: the data and the loader path are here and
-#: tested, and the switch is deliberately one documented step rather than done halfway, because the
-#: browser payload and the gnomAD ancestry overlay are generated separately and a use case scoring
-#: PRS313 in Python while showing PRS77 in the browser would be worse than either alone.
+#: `breast_cancer` is PGS000001 / PRS77_BC, keyed by rsID, and is **RETIRED** - kept because its dosage
+#: file is the one small enough to commit in full, so it is what CI exercises for the rsID-keyed code
+#: path, and because retiring the data along with the score would delete the evidence for the switch.
+#:
+#: WHAT THIS COMMENT USED TO SAY, AND WHY IT IS WORTH RECORDING. It said PRS77 "is what both the Python
+#: pipeline and the browser payload currently score" and that PRS313 was "STAGED, NOT ACTIVE ... a use
+#: case scoring PRS313 in Python while showing PRS77 in the browser would be worse than either alone."
+#: Round 31 switched four surfaces and missed the pipeline, so for one round the shipped state was the
+#: exact inverse of that sentence - PRS313 in the browser, PRS77 in Python - and the sentence was still
+#: here arguing against it. A comment that describes an intention outlives the intention; this one now
+#: names the config field instead, so the answer is looked up rather than remembered.
 #:
 #: PGS000004 publishes NO rsIDs - all 313 harmonised rows have an empty `hm_rsID` with
 #: `hm_source=Author-reported` - so it is keyed by `chr:pos:effect_allele` and joined to genotypes by
@@ -133,17 +141,31 @@ def load_genomic(n: int = 1000, n_snps: int = 64, seed: int = 0
 #: positions carry one rsID, 28% carry several, allele matching resolves about half of those, and the
 #: remaining ~15% would have had to be guessed - which would score a DIFFERENT variant's genotypes
 #: while every number on the page still looked reasonable.
+#: The score in force. Every current caller passes ``name`` explicitly, so this default is not
+#: exercised today - which is exactly why it was still pointing at the RETIRED score after Round 31.
+#: A dead default is a trap for the next caller, not a harmless leftover.
+#:
+#: Kept as a literal rather than read from ``DataConfig`` so these loaders stay pure functions with no
+#: config dependency; ``tests/test_prs_pipeline_parity.py`` asserts the two agree, so there is one
+#: authority and a check rather than two authorities and a hope.
+ACTIVE_PRS = "breast_cancer_prs313"
+
 _PRS_FILES = {
     "breast_cancer": ("pgs000001_breast_cancer.tsv", "g1k_dosages.tsv"),
     "breast_cancer_prs313": ("pgs000004_breast_cancer.tsv", "g1k_dosages_prs313.tsv"),
 }
 
 
-def load_prs(name: str = "breast_cancer") -> tuple[list[str], list[str], np.ndarray]:
-    """Load a real PGS-Catalog Polygenic Risk Score → ``(rsids, effect_alleles, effect_weights)``.
+def load_prs(name: str = ACTIVE_PRS) -> tuple[list[str], list[str], np.ndarray]:
+    """Load a real PGS-Catalog Polygenic Risk Score → ``(keys, effect_alleles, effect_weights)``.
 
-    The weights are the real published effect sizes (PGS000001 = a 77-SNP breast-cancer PRS, Mavaddat
-    et al.). Bundled under ``data/genomics/`` so it runs offline (CC-BY needs attribution → DATA_LICENSES).
+    The weights are the real published effect sizes (PGS000004 = a 313-variant breast-cancer PRS,
+    Mavaddat et al. 2018). Bundled under ``data/genomics/`` so it runs offline; the licence is per score,
+    not blanket CC-BY, and attribution requirements are in DATA_LICENSES.
+
+    ``keys`` are rsIDs for a score that publishes them and ``chr:pos:effect_allele`` for one that does
+    not. The first return value was called ``rsids`` until Round 32, which was true of PGS000001 and
+    false of the score now in force.
     """
     from pathlib import Path
 
@@ -241,11 +263,11 @@ def load_satellite_telemetry(n_windows: int = 600, n_channels: int = 6, window: 
         return X, y, names
 
 
-def load_genomic_prs(n_individuals: int = 400, seed: int = 0, name: str = "breast_cancer"):
+def load_genomic_prs(n_individuals: int = 400, seed: int = 0, name: str = ACTIVE_PRS):
     """Real PRS model + a cohort of **real 1000 Genomes** genotype dosages.
 
     Returns ``(dosages (N, M) ∈ {0,1,2}, weights (M,), rsids, effect_alleles, freq (M,))``. The PRS
-    **weights are real** (PGS Catalog, CC-BY) AND the genotype dosages are **real 1000 Genomes phase-3**
+    **weights are real** (PGS Catalog, licence per score) AND the genotype dosages are **real 1000 Genomes phase-3**
     effect-allele counts for exactly these SNPs (fetched once from the Ensembl REST API over IGSR / 1000
     Genomes — open, no-auth, commercial-OK — and bundled as ``data/genomics/g1k_dosages.tsv``). The PRS is
     therefore a genuine score over real human genotypes. Offline-CI fallback (only if the bundled real file
