@@ -163,6 +163,19 @@ class FederatedConfig:
     hospitals: int = 4
     test_split: float = 0.2
     secure_aggregation: bool = True
+    #: The browser's lighter federated schedule. A deliberate override of `rounds` and `lr`, because a
+    #: federated round has to finish inside a page interaction - the server-side values above are what
+    #: the full deployment trains with.
+    #:
+    #: These were literals inside `frontend_config()` for three rounds (29, 30, 31), recorded on the
+    #: deferred list with a reason and **no condition that would resolve it** - which fails the backlog
+    #: gate's first clause as well as its three-round clause. The consequence was concrete rather than
+    #: cosmetic: the override could not be tuned the way every value it overrides can, so anyone wanting
+    #: a heavier browser schedule had to edit a dict literal in a function that builds a JSON payload.
+    #: The gate exists to stop exactly this kind of small thing rolling forward, and the fix is smaller
+    #: than the three paragraphs written about deferring it.
+    browser_rounds: int = 6
+    browser_lr: float = 0.15
 
 
 @dataclass

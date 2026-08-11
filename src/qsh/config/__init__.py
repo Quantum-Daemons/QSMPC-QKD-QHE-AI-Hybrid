@@ -109,8 +109,8 @@ def frontend_config() -> dict:
             "hospitals": c.federated.hospitals,
             "test_split": c.federated.test_split,
             "secure_aggregation": c.federated.secure_aggregation,
-            "browser_rounds": 6,
-            "browser_lr": 0.15,
+            "browser_rounds": c.federated.browser_rounds,
+            "browser_lr": c.federated.browser_lr,
             "browser_override_reason":
                 "the browser runs a lighter schedule so a federated round completes inside a page "
                 "interaction; the server-side values above are what the full deployment trains with",
