@@ -140,10 +140,31 @@ function MetricRows({ spec }: { spec: ModelSpec }) {
   const metricMismatch = recordedMetric != null && recordedMetric !== spec.metric.name;
   const headline = numeric.filter(([k]) => !isCompanion(k));
   const companion = numeric.filter(([k]) => isCompanion(k));
+  // The declared metric is not among the measured ones, so no row carries the baseline.
+  //
+  // This is genuinely the right state for genomics - 1000 Genomes has no phenotype, so no AUROC is
+  // computable and `genomics_prs.py` records `auroc=null` rather than inventing one - but the effect
+  // on the page was that the published figure appeared NOWHERE except inside a long provenance
+  // paragraph. The number a visitor would quote was the hardest one on the page to find, which is
+  // exactly backwards. Rendered as its own row, labelled as external, so it is visible AND cannot be
+  // mistaken for something this run produced.
+  const baselineOrphaned =
+    spec.metric.baseline != null && !numeric.some(([k]) => k === spec.metric.name);
 
   return (
     <table className="mini-table">
       <tbody>
+        {baselineOrphaned && (
+          <tr className="metric-companion">
+            <td><code>{spec.metric.name}</code></td>
+            <td className="num">{fmt(spec.metric.baseline as number)}</td>
+            <td className="muted small">
+              <strong>published baseline, NOT measured here</strong>
+              {spec.metric.ceiling != null ? ` · ceiling ${spec.metric.ceiling}` : ""}
+              {notMeasured?.reason ? ` — ${notMeasured.reason}` : ""}
+            </td>
+          </tr>
+        )}
         {headline.map(([k, v]) => (
           <tr key={k} className={k === spec.metric.name ? "metric-headline" : undefined}>
             {/* `student_metric` / `teacher_metric` are opaque names: they say which model, never
