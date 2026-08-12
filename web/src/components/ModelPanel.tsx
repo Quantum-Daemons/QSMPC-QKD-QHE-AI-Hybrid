@@ -234,6 +234,62 @@ function MetricRows({ spec }: { spec: ModelSpec }) {
  * a feature the forest splits on often can still cost nothing to remove when another feature
  * separates the same class. Showing impurity alone would report such a feature as important.
  */
+/** Probability calibration, where the record carries one.
+ *
+ * Shows the fitted Platt map and what it bought, INCLUDING the metric it cost. On finance the Brier
+ * score improves and the CORP miscalibration term roughly halves while log-loss gets worse, and
+ * printing only the two that moved the right way would be the reporting failure this project
+ * documents elsewhere as pitfall P7. At a 1-in-981 base rate log-loss is dominated by the negatives,
+ * so a sigmoid that improves mean squared error can still cost on the tails.
+ *
+ * No reliability diagram is drawn here even where the split supports one, because the CORP terms are
+ * scalars and a curve would need a bin count this panel has no basis to choose. The record says per
+ * page whether a curve would be defensible on that split, which is a different question from whether
+ * this panel is the place for it.
+ */
+function CalibrationRows({ achieved }: { achieved: Record<string, unknown> }) {
+  const c = achieved.calibration as Record<string, any> | undefined;
+  if (!c || typeof c.a !== "number") return null;
+  const f = (v: unknown, dp = 6) => (typeof v === "number" ? v.toFixed(dp) : "-");
+  const worse = typeof c.log_loss_calibrated === "number" && typeof c.log_loss_raw === "number"
+    && c.log_loss_calibrated > c.log_loss_raw;
+  return (
+    <div style={{ marginTop: 10 }}>
+      <div className="muted small" style={{ marginBottom: 4 }}>
+        <strong>Probability calibration</strong> — Platt, fitted on the validation split and scored on
+        the held-out test split
+      </div>
+      <table className="mini-table">
+        <tbody>
+          <tr><td>map</td><td className="mono">p = 1 / (1 + exp({f(c.a, 4)}·s + {f(c.b, 4)}))</td></tr>
+          <tr><td>Brier</td>
+              <td className="mono">{f(c.brier_raw)} → {f(c.brier_calibrated)}</td></tr>
+          <tr><td>CORP miscalibration (MCB)</td>
+              <td className="mono">{f(c.corp_raw?.mcb, 7)} → {f(c.corp_calibrated?.mcb, 7)}</td></tr>
+          <tr><td>CORP discrimination (DSC)</td>
+              <td className="mono">{f(c.corp_raw?.dsc, 7)} <span className="muted">unchanged</span></td></tr>
+          <tr><td>log-loss</td>
+              <td className="mono" style={worse ? { color: "var(--warn)" } : undefined}>
+                {f(c.log_loss_raw)} → {f(c.log_loss_calibrated)}{worse ? " (worse)" : ""}</td></tr>
+        </tbody>
+      </table>
+      {worse && (
+        <p className="muted" style={{ fontSize: 11, marginTop: 4 }}>
+          Calibration improved the Brier score and halved the miscalibration term while making
+          log-loss worse. Both are shown because reporting only the metrics that moved the right way
+          is the failure this project cites Arp et al. for. At this base rate log-loss is dominated by
+          the negatives, so a sigmoid that lowers mean squared error can still cost on the tails.
+        </p>
+      )}
+      <p className="muted" style={{ fontSize: 11, marginTop: 4 }}>
+        Platt is monotone, so AUC and AUC-PR are unchanged by construction — calibration fixes what a
+        probability <i>means</i>, never how the rows are ordered. Platt rather than isotonic because
+        this calibration set is inside the range where the published comparison puts Platt ahead.
+      </p>
+    </div>
+  );
+}
+
 function AttributionRows({ achieved }: { achieved: Record<string, unknown> }) {
   const num = (k: string) => (achieved[k] ?? null) as Record<string, number> | null;
   const perm = num("classical_rf_permutation_importance");
@@ -372,6 +428,13 @@ export function ModelPanel({ usecase }: { usecase: string }) {
               the record carries the two tree measures, so no other model grows an empty block. */}
           {spec.achieved
             ? <AttributionRows achieved={spec.achieved as Record<string, unknown>} />
+            : null}
+
+          {/* Renders only where the record carries a fitted map, so no model grows an empty block.
+              Today that is finance; the other pages have no calibration fitted yet and say nothing
+              rather than showing a placeholder. */}
+          {spec.achieved
+            ? <CalibrationRows achieved={spec.achieved as Record<string, unknown>} />
             : null}
 
           {/* The one published model with no browser-runnable graph, so the in-run verification
