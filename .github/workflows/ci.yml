@@ -69,7 +69,7 @@ jobs:
           git diff --exit-code -- web/src/lib/config.defaults.json \
             || { echo "::error::config.defaults.json is stale — run: python scripts/export_config.py"; exit 1; }
 
-      - name: Generated prose matches its generator
+      - name: Generated artifacts match their generator and their history
         # The step above compares the two DERIVED artifacts to each other, so it is blind by
         # construction to the case where both agree and neither matches the trainer that writes them.
         # That happened: Round 32 corrected an overclaiming `baseline_gap_note` by hand in

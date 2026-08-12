@@ -33,10 +33,13 @@ from __future__ import annotations
 
 import ast
 import json
+import subprocess
 import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "src"))
+from qsh.models import train  # noqa: E402  (for RUN_SCOPED)
 METRICS = ROOT / "models" / "metrics.json"
 TRAINERS = sorted((ROOT / "scripts" / "train").glob("*.py"))
 
@@ -96,6 +99,41 @@ def _record_metrics_calls(tree: ast.Module) -> list[tuple[str, ast.Dict]]:
     return found
 
 
+def check_no_field_vanished() -> list[str]:
+    """Report any metrics.json field that HEAD has and the working tree does not.
+
+    The prose half of this gate compares a generator's literal to the artifact. It is blind to a
+    field that simply disappears, because there is no prose to disagree with - and that is how Round
+    33 lost eight `quantum_*` fields, including one `references/REFERENCES.md` cites by name, when a
+    trainer was re-run with an optional stage skipped. `train.record_metrics` now carries un-remeasured
+    fields forward and labels them, so a disappearance should no longer happen by accident; this is
+    the check that says so rather than assuming it.
+
+    Compared against `git show HEAD:models/metrics.json` rather than a stored snapshot, so there is no
+    second file to keep current. A deliberate removal is expected to show up here and be resolved by
+    committing it in a change whose message says why - the point is that it stops being silent, not
+    that it becomes impossible.
+    """
+    try:
+        head = subprocess.run(["git", "show", "HEAD:models/metrics.json"], cwd=ROOT,
+                              capture_output=True, text=True, check=True).stdout
+        before = json.loads(head)
+    except (subprocess.CalledProcessError, json.JSONDecodeError, FileNotFoundError):
+        return []                       # no HEAD version (fresh repo) - nothing to compare against
+    now = json.loads(METRICS.read_text())
+    lost: list[str] = []
+    for key, old in before.items():
+        if not isinstance(old, dict):
+            continue
+        if key not in now:
+            lost.append(f"{key}: the whole record is gone")
+            continue
+        for field in old:
+            if field not in now[key] and field not in train.RUN_SCOPED:
+                lost.append(f"{key}.{field}")
+    return lost
+
+
 def main() -> int:
     recorded = json.loads(METRICS.read_text())
     checked = mismatched = uncheckable = 0
@@ -138,10 +176,24 @@ def main() -> int:
     for problem in problems:
         print(f"  x {problem}")
 
+    lost = check_no_field_vanished()
+    for item in lost:
+        print(f"  x FIELD VANISHED since HEAD: {item}")
+
     print(
         f"\n{checked} prose field(s) verified against their generator, "
-        f"{uncheckable} not statically checkable, {mismatched} mismatched"
+        f"{uncheckable} not statically checkable, {mismatched} mismatched; "
+        f"{len(lost)} recorded field(s) vanished since HEAD"
     )
+    if lost:
+        print(
+            "FAIL: a measurement disappeared from models/metrics.json.\n"
+            "      A partial re-run should now carry un-remeasured fields forward and label them, so\n"
+            "      this usually means a field was deleted deliberately - commit that in a change whose\n"
+            "      message says why, or re-run the stage that produces it. Round 33 lost eight\n"
+            "      quantum_* fields this way, one of which references/REFERENCES.md cites by name."
+        )
+        return 1
     if not checked and not uncheckable:
         # The empty-snapshot failure this project has now hit twice: a gate that passes because it
         # found nothing to test. Matching zero generators means the parse or the field list is wrong.
