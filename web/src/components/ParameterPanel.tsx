@@ -3,7 +3,7 @@
 // buildConfig(). Editing a value + re-running demonstrably changes the run (browser-verifiable). "Reset to
 // defaults" restores the config values. No hardcoded parameter values live here — only labels + UI step/min.
 import {
-  hasTrainedQcnn, runsFibreQkd, runsInference, runsQsmpc, type usePipelineRun,
+  hasTrainedQcnn, readsInferenceBackend, runsFibreQkd, runsQsmpc, type usePipelineRun,
 } from "../lib/usePipelineRun";
 
 type Run = ReturnType<typeof usePipelineRun>;
@@ -83,7 +83,9 @@ export default function ParameterPanel({ run }: { run: Run }) {
   // same predicates, so what is shown and what is sent cannot disagree.
   const fibreQkd = runsFibreQkd(usecase);
   const qsmpc = runsQsmpc(usecase);
-  const inference = runsInference(usecase);
+  // Whether a stage READS the backend key, not whether the stage named `private_inference`
+  // runs. Telecom reads it from `qml_ids`, so gating on the name hid the control entirely.
+  const inference = readsInferenceBackend(usecase);
 
   const groups: { title: string; fields: Field[] }[] = [];
   if (fibreQkd) groups.push(
