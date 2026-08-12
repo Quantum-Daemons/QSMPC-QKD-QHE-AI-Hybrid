@@ -1110,8 +1110,14 @@ makes**, in the direction of understating what is possible.
   CKKS-feasibility budget". After this paper that is **a choice of input representation**, not a
   feasibility limit - and this repository is unusually well placed for the alternative, because the
   client is a browser tab already running `onnxruntime-web`, so an encoder could run locally in plaintext
-  with no privacy loss at all. Recorded as a falsifiable trigger in the additional-model decision rather
-  than acted on this round.
+  with no privacy loss at all. Recorded as the **sixth** falsifiable trigger in the additional-model
+  decision (`docs/deliverable-verification.md`) rather than acted on. Corrected 2026-08-12: this entry
+  and `models/metrics.json` both said the trigger was recorded while the table held five rows and none
+  was this one, and the decision itself lived only in an untracked file, so the appeal could not be
+  checked from the repository at all. The trigger is now written and the decision is tracked. Its
+  condition is a measurement rather than a direction: the encoder's latent must fit 4096 CKKS slots at
+  multiplicative depth 1 and run under `onnxruntime-web`. Note the paper's f=8 on a 28x28 input gives
+  3.5x3.5, so the transfer is exactly what is unmeasured.
 
 ### Standards: nothing newer, and one uncited instrument
 
