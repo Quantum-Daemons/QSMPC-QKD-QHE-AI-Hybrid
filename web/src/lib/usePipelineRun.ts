@@ -29,12 +29,27 @@ export const runsFibreQkd = (usecase: string) => clientFlow(usecase).includes("q
 
 /** Use cases that ship trained QCNN weights under `public/data/<dir>/qcnn_weights.json`.
  *
- * The same reasoning as the three predicates above, one level down: a control is shown when a stage
- * reads it, and a BACKEND OPTION is shown when the artefact implementing it exists. Genomics reaches
- * `private_inference` - so `runsInference` is true and the selector belongs on the page - but ships
- * no weights, so its QCNN option fell back to CKKS while two panels announced that a quantum circuit
- * had decided the class. `tests/test_qcnn_usecases.py` asserts this set against the files on disk, so
- * training a third circuit cannot leave the list stale and deleting one cannot leave it lying.
+ * The same reasoning as the three predicates above, one level down. A backend option is honest only
+ * when BOTH halves hold:
+ *
+ *   1. the artefact implementing it exists, and
+ *   2. a stage the use case actually RUNS reads that artefact.
+ *
+ * Genomics failed the first half: it reaches `private_inference`, so `runsInference` is true and the
+ * selector belongs on the page, but it ships no weights - its QCNN option fell back to CKKS while two
+ * panels announced that a quantum circuit had decided the class.
+ *
+ * Telecom then failed the SECOND half, because this comment only stated the first. Adding
+ * `telecom_ids` here and committing `qcnn_weights.json` satisfied condition 1, and the option duly
+ * appeared - but `FLOWS.telecom_ids` runs `qml_ids`, not `private_inference`, and the QCNN branch
+ * lived in the `private_inference` case. Same visible failure as genomics, opposite cause. tsc was
+ * clean, every gate was green, and the weights were served with the right content-type; what surfaced
+ * it was the deployed page never fetching them at all.
+ *
+ * `tests/test_qcnn_usecases.py` asserts this set against the files on disk (half 1) and
+ * `tests/test_qcnn_reachable.py` asserts it against the stages in `FLOWS` (half 2), so training a
+ * third circuit cannot leave the list stale, deleting one cannot leave it lying, and registering one
+ * whose stage cannot reach it fails in CI rather than on the site.
  */
 export const QCNN_USECASES = new Set(["finance_aml", "medical_fl", "telecom_ids"]);
 export const hasTrainedQcnn = (usecase: string) => QCNN_USECASES.has(usecase);
