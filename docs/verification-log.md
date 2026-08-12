@@ -9,6 +9,34 @@ when it was checked, with the bundle hash and date so a claim can be traced to a
 Nothing here is deleted when it ages - a superseded measurement is evidence about how a number
 moved, which is exactly what the next round needs when a figure looks wrong.
 
+## Ordering: it is not chronological, and reading it as chronological will mislead you
+
+**Stated explicitly in Round 33, because the file had drifted into three different orders and nothing
+warned the reader.** Round 28 sits at the top because it was the newest entry when this file was split
+out and was written as the lead; Rounds 21 through 24b then run **oldest to newest** beneath it; and
+Rounds 29 onward are **appended at the end**. So the top of the file is neither the newest nor the
+oldest entry, and scrolling down crosses the round sequence twice.
+
+**The convention from Round 32 onward: append new entries at the END, in ascending round order.** Nothing
+above is reordered, because every entry names its own round, date and bundle, and rewriting the file to
+fix the sequence would rewrite records whose value is that they have not been touched since they were
+written. The index is the fix instead:
+
+| entry | where |
+|---|---|
+| Round 21 | below Round 28 |
+| Round 22 | below Round 21 |
+| Round 23b | below Round 22 |
+| Round 24, Round 24 part 2, Round 24b | below Round 23b |
+| **Round 28** | **at the TOP of the file** |
+| Rounds 29, 30, 31 | appended, reconstructed in Round 32 |
+| Round 32 | appended, reconstructed in Round 33 |
+| Round 33 | appended, at the end |
+
+Rounds 25, 26 and 27 have no entry here and never did. That is a real gap in the record rather than an
+ordering artefact, and it is not reconstructable now: it predates the point where this file existed as
+the recorded home for gate-4 results, and the measurements were not kept anywhere else.
+
 ## Verified in Round 28, deploy 2f0d550, bundle index-BET6lubQ.js, 2026-08-11
 
 Deployed `origin/main` at `2f0d550` after clone-verifying that the commit stands alone. Built with
@@ -386,3 +414,134 @@ Also verified live that round: telecom's RandomForest attribution renders with `
 no measured effect (+0.0001 +/- 0.0010); the XAI paragraph says "no encrypted inference stage" on telecom
 and satellite and keeps the original caveat on medical; `crossOriginIsolated === true`; zero `/api`
 requests against a 404 `text/plain` control.
+
+## Round 32 (merged `4ad9b4e`), added in Round 33 - and the round that fixed this file left a fourth gap
+
+**Round 32 reconstructed Rounds 29-31 here because this file was three rounds stale, and then recorded
+no entry of its own.** Grepping this file for "Round 32" before this entry matched exactly one line: the
+title of the block above, which is about Rounds 29-31. So the round whose finding was "the register of
+results needs the same staleness check as any other document" **demonstrated the finding on itself in the
+same commit** - it closed a three-round gap and opened a one-round gap, and the one-round gap is the same
+defect at an earlier stage.
+
+Reconstructed from the commits and the measurements taken at the time, and **labelled as reconstructed**
+rather than presented as if logged live - same convention as the block above.
+
+**The measurement this file is the recorded home for, and which existed only in a commit message.**
+`check:pqc` was broken on purpose five ways after being promoted to a gate, and the result is stated in
+commit `3de8599`:
+
+| case | exit | note |
+|---|---|---|
+| clean vendored tree | **0** | 2,595 malformed keys, all rejected |
+| empty vector file | **1** | the hole this closed: it used to exit 0 with "0 malformed keys, 0 rejected, 0 accepted OK" |
+| truncated gzip | **1** | |
+| tampered gzip | **1** | caught by the SHA-256, which runs before `gunzipSync` |
+| missing vector file | **1** | "This is NOT a pass. The conformance check did not run." |
+
+**The hash fires first on the vendored path, so the count assertion is the second line of defence rather
+than the first.** That ordering is why the *earlier* record of "779 rejected, 1 accepted when a
+well-formed key is smuggled into the malformed set" can no longer be produced: any modification to the
+vendored gzip now exits at the hash check with a different message. That correction is written up in
+`deliverable-verification.md`; the five-way result is transcribed here because a measurement that lives
+only in a commit message is not a record. **From the tree, a commit describing work that happened and a
+commit describing work that did not look identical.**
+
+**Two run-level defects found by running rather than reading:**
+
+- **The PRS313 switch had missed the E2E pipeline**, so Python scored 77 rsID-keyed variants while the
+  browser, trainer, registry and payload generator scored 313 position-keyed ones. `prs_name =
+  config.get("prs", "breast_cancer")` with nothing setting that key - a literal default that cannot fail
+  and is invisible to the config dump, to per-run override and to the browser comparison. Third defect of
+  that exact shape here. `tests/test_usecases.py` had a docstring naming PGS000004/313 and assertions
+  asserting 77, and it passed, because the assertions agreed with the pipeline's stale default.
+- **The tree-attribution sentence rendered on the four pages that do not have the attribution block, and
+  never on the one that does.** It sat inside the `publishedModel` clause and telecom is precisely the page
+  where `publishedModel` is falsy. The first fix nested it under `hasTreeAttribution` while leaving it
+  inside `publishedModel`, which made it render **nowhere** - no longer false and no longer useful. Found
+  by loading the page twice; a diff review passed both attempts.
+
+**Two measurements that changed a claim rather than confirming one:**
+
+- **A `node-seal` SEAL bump is available**, after several rounds of recording node-seal as "the
+  constraint" without anyone trying it. The fork's divergence from SEAL 4.1.2 is purely additive - about
+  1,005 lines of Emscripten embind and CMake glue, no crypto source touched. SEAL v4.4.3 plus that binding
+  layer built to WASM with **zero errors**, producing `libseal-4.4.a`. The blocker on earlier attempts was
+  a deprecated emcc macro (`defines.h` tests bare `EMSCRIPTEN`; emcc 6.0.6 defines only `__EMSCRIPTEN__`),
+  not SEAL. **Not verified and so not claimed:** a CKKS round trip through the linked module.
+- **SEAL 4.4.0 is upstream-labelled a CRITICAL security update**, not the "Major security update, no
+  further detail" that the README and the ledger both carried. That is true of the GitHub release body and
+  false of `CHANGES.md`, read at the primary source. Both documents were understating a critical advisory
+  in a dependency the browser demo ships, while the technical report - the document an audit had flagged
+  as overclaiming - had it right. **A release body is not a changelog.**
+
+## Round 33 (`66df224`, `df7c847` on this branch) - three gates that could not see what they assert
+
+Recorded from the two commits on this branch, which are done and committed. **Where this entry describes a
+browser observation rather than a gate run it says so**, because most of this round's findings were found
+by running gates and by reading generated artifacts, not by walking a deploy.
+
+**1. The report contradicted its own title page.** The title page, the abstract and a section pointer said
+"eight defect classes" while `\ndefectclasses{}` and the generated findings table say **19**; the abstract
+said "three" retracted conclusions while the Summary and the section itself say **four**. Round 32's final
+commit was literally "rebuild the report", so a regenerated PDF shipped over a title page disagreeing with
+its own contents. **All counts now come from the macro**, and "and four others" became "among others" so no
+arithmetic is hardcoded to go stale. The generated body was right every time; the hand-written front
+matter was wrong - which is the argument for the next item.
+
+**2. A new CI gate, 3/9, that reads the generator rather than the artifact.**
+`scripts/check_generated_prose.py` parses each trainer's prose literal **out of the AST** - no model runs,
+so it costs seconds - and diffs it against `models/metrics.json`. The reason it had to exist: the
+config-parity gate (2/9) compares two **derived** artifacts to each other, so it is blind by construction
+when both agree and neither matches the code that writes them. It reports statically-unreadable fields as
+a printed count rather than hiding them, so a note that moves into an f-string leaves coverage visibly.
+
+Three instances on its first run:
+
+| found | what it was |
+|---|---|
+| `medical_fl.student.baseline_gap_note` | Round 32 judged it an overclaim and corrected it **by hand** in both `models/metrics.json` and `config.defaults.json`, leaving `scripts/train/medical_breastmnist.py` emitting the original. The next retrain would have reverted the correction silently, `publish_hf.py` would have pushed the reverted sentence to a public model card, and the ledger entry recording the correction would have become false with nobody editing it |
+| `finance_aml.scorecard` | `finance_scorecard.py` emitted the key and `metrics.json` had no such record, while `references/he-scheme-selection.md` published its numbers **by hand**. Trainer run on CPU, 272.3 s: **net_benefit 0.00030763** on 1,523,504 test rows, 12 non-zero coefficients, `exact_under_bfv` true - confirming the hand-written +0.000308 from a machine record for the first time, and giving the decision curve real inputs via `net_benefit_threshold` and `net_benefit_treat_all` |
+| `satellite_comms.telemanom` | the trainer emitted a `baseline_gap_note` no artifact carried, so a careful explanation of why `n_events_scored` is 3 rather than 320 reached no reader. Copied via AST, so the two are byte-identical by construction rather than by transcription - which is exactly how the medical note diverged |
+
+**3. A Japanese-named confidential note in the repo root passed every confidentiality gate - measured, not
+hypothesised.** Copied in and walked through all three: not matched by the private-notes or `*.docx` patterns, so
+not ignored, staged by `git add` without complaint, `check-secrets` printed OK, and the no-Japanese
+content gate scanned a **directory list that excluded root-level `.md` other than README**. Fixed:
+`check-secrets` gains a CJK-filename check and the checklist path, and the content gate now derives its
+scope from `git ls-files`, which covers the root, covers any new directory without editing the line, and
+makes "public" mean exactly "tracked". **A first attempt at that failed silently** because `git ls-files`
+octal-escapes non-ASCII paths, so the codepoints never reached `grep` - validated in both directions
+afterwards. Also corrected: `.gitignore`'s claim that `*.docx` is "strictly stronger: it catches every one
+of them" is false, because three of those notes are `.md`.
+
+**4. `hasTreeAttribution` was described as one shared predicate and was not.** Round 32's comment said
+"ONE predicate, shared by" the renderer and the pointer sentence. The predicate tested only **permutation
+importance** while `AttributionRows` required **both** tree measures, so a record carrying one would print
+"does carry attribution" above a block that rendered nothing. **That is the Round 31 defect coming back
+through a different door, inside the fix written to remove it** - the second time in two rounds that
+closing an item is where the next defect was made. Now a single `recordHasTreeAttribution` used by both.
+
+**5. The PQC market figure, and the result inverted the expectation.** The **unsourced** README figure was
+the correct one - Grand View's current edition - and the **sourced** Value-page row was a blend. Its
+"~$2.2B" is Grand View's 2026 value, "$20-30B by 2033-34" splices Grand View's 2033 endpoint to
+Precedence's 2034 one, and "~38-46%" takes its high end from **MarketsandMarkets, a house the row does not
+name, which sizes this market at $0.42B in 2025 - a quarter of the base the same row quoted.** The
+footnote two rows below already describes this exact error ("producing a range no single analyst
+projects") about a *different* row: the lesson had been learned for one row and not applied to the row
+above it. The PQC row now lists each house separately, states the 4x scope spread rather than averaging
+it, and the README points at the table instead of carrying a second copy.
+
+**Also in `df7c847`, each the same class - a published surface asserting something the tree contradicts:**
+the README described a serving ZeroGPU third tier "awaiting a caller" whose Space returns HTTP 401 and
+whose `remote` badge state was deleted from the type in Round 24d, against a ledger that records the tier
+as DECIDED against; `threat-model.md` said the provenance badge has five states twenty lines after the same
+document says four; `DATA_LICENSES.md` listed a gitignored file under "committed"; three `REFERENCES.md`
+entries named `models/registry.py` as citing IACR 2026/935, which Round 31 had removed; and the finance
+chart rendered **two different base rates in one figcaption** - a computed 0.020020 beside a hardcoded
+0.0173 with a 13.3x lift. Both now derive from one `_base_rate()` helper, and the true lift is **11.5x**.
+
+**Not verified live at the time of writing.** Nothing in this entry is a browser measurement on a
+deployed bundle. The round-trip rows (`RT0`-`RT9`) and the five-way `check:pqc` re-validation recorded
+under Round 32 above both still need a deploy walk on this branch, and that is stated here rather than
+left for a reader to infer from the absence of a bundle hash.
