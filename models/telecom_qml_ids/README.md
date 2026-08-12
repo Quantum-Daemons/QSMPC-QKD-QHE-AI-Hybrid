@@ -35,7 +35,7 @@ path runs a distilled student, not this model.
 | `quantum_svc_accuracy` | 0.908333 |
 | `quantum_svc_binary_f1` | 0.945274 |
 | `quantum_svc_macro_f1` | 0.831611 |
-| `wall_clock_s` | 267.1 |
+| `wall_clock_s` | 341.5 |
 
 ## Published baselines this is measured against
 
