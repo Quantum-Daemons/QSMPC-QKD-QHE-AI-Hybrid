@@ -83,8 +83,14 @@ def _static_str(node: ast.expr, constants: dict[str, str]) -> str | None:
     return value if isinstance(value, str) else None
 
 
-def _record_metrics_calls(tree: ast.Module) -> list[tuple[str, ast.Dict]]:
-    """Every ``record_metrics("<key>", {...})`` in the module, as (key, dict-node) pairs."""
+def _record_metrics_calls(tree: ast.Module, constants: dict[str, str]) -> list[tuple[str, ast.Dict]]:
+    """Every ``record_metrics(<key>, {...})`` in the module, as (key, dict-node) pairs.
+
+    The key is resolved through module constants, not only as a string literal. `satellite_opssat.py`
+    writes `record_metrics(STUDENT, {...})` with a perfectly readable literal dict, and this skipped
+    the whole call because `STUDENT` is a Name - so a prose field sat outside the gate for a reason
+    that had nothing to do with the prose.
+    """
     found: list[tuple[str, ast.Dict]] = []
     for node in ast.walk(tree):
         if not isinstance(node, ast.Call) or len(node.args) < 2:
@@ -93,7 +99,7 @@ def _record_metrics_calls(tree: ast.Module) -> list[tuple[str, ast.Dict]]:
         name = func.attr if isinstance(func, ast.Attribute) else getattr(func, "id", None)
         if name != "record_metrics":
             continue
-        key = _static_str(node.args[0], {})
+        key = _static_str(node.args[0], constants)
         if key is not None and isinstance(node.args[1], ast.Dict):
             found.append((key, node.args[1]))
     return found
@@ -144,7 +150,7 @@ def main() -> int:
         tree = ast.parse(path.read_text())
         constants = _module_constants(tree)
         rel = path.relative_to(ROOT)
-        for metrics_key, dict_node in _record_metrics_calls(tree):
+        for metrics_key, dict_node in _record_metrics_calls(tree, constants):
             for key_node, value_node in zip(dict_node.keys, dict_node.values, strict=True):
                 field = _static_str(key_node, {}) if key_node is not None else None
                 if field not in PROSE_FIELDS:
@@ -176,6 +182,24 @@ def main() -> int:
     for problem in problems:
         print(f"  x {problem}")
 
+    # Coverage, measured rather than assumed. A prose field sitting in metrics.json that no generator
+    # emits is exactly the hole this gate was blind to: it passes silently, because there is nothing
+    # to disagree with. Reporting the count each run is what makes a field leaving coverage visible.
+    seen: set[tuple[str, str]] = set()
+    for path in TRAINERS:
+        tree2 = ast.parse(path.read_text())
+        consts2 = _module_constants(tree2)
+        for mk, dn in _record_metrics_calls(tree2, consts2):
+            for kn in dn.keys:
+                f = _static_str(kn, {}) if kn is not None else None
+                if f in PROSE_FIELDS:
+                    seen.add((mk, f))
+    in_artifact = {(k, f) for k, v in recorded.items() if isinstance(v, dict)
+                   for f in v if f in PROSE_FIELDS}
+    unreached = sorted(in_artifact - seen)
+    for k, f in unreached:
+        print(f"  ~ NO GENERATOR reaches {k}.{f} - it cannot be checked by this gate")
+
     lost = check_no_field_vanished()
     for item in lost:
         print(f"  x FIELD VANISHED since HEAD: {item}")
@@ -183,7 +207,8 @@ def main() -> int:
     print(
         f"\n{checked} prose field(s) verified against their generator, "
         f"{uncheckable} not statically checkable, {mismatched} mismatched; "
-        f"{len(lost)} recorded field(s) vanished since HEAD"
+        f"{len(lost)} recorded field(s) vanished since HEAD; "
+        f"{len(in_artifact)} prose field(s) in the artifact, {len(unreached)} beyond this gate's reach"
     )
     if lost:
         print(
