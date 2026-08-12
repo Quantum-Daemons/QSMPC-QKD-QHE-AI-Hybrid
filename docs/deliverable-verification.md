@@ -339,9 +339,10 @@ rebuild) and passes a round-trip test. The second is now known to be reachable.
 **Genomics has no label, so it has no QCNN: declined, and not for the reason recorded for two
 rounds.** The deferral condition on file was the per-score licence audit. Round 31 checked what would
 actually happen if that audit came back clean, and the answer is nothing: `scripts/train/qcnn_variational.py`
-is supervised end to end - `BCEWithLogitsLoss`, best epoch chosen on a validation split, and a report
-block comparing against `all_positive_f1` and `majority_baseline` - and **1000 Genomes is a reference
-panel with no breast-cancer case/control status**. `registry.py` already says so, and
+is supervised end to end - a labelled loss (`BCEWithLogitsLoss` on two classes, `CrossEntropyLoss`
+on more), best epoch chosen on a validation split, and a report block comparing against whichever
+baseline the regime warrants (`all_positive_f1`, `majority_baseline`, or the macro-F1 floors) - and
+**1000 Genomes is a reference panel with no breast-cancer case/control status**. `registry.py` already says so, and
 `genomics_prs.py` records `auroc=null` rather than inventing one. There is no `y` to train against.
 
 Two ways to manufacture one, both rejected on their merits rather than on effort:
