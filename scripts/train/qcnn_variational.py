@@ -80,8 +80,29 @@ def apply_cnot(state: torch.Tensor, ctl: int, tgt: int, nq: int) -> torch.Tensor
     return out
 
 
-def circuit(x: torch.Tensor, theta: torch.Tensor, nq: int = N_QUBITS) -> torch.Tensor:
-    """(batch, nq) features + (layers, nq) angles -> <Z0> per row. State kept FLAT as (batch, 2**nq)."""
+def circuit(x: torch.Tensor, theta: torch.Tensor, nq: int = N_QUBITS,
+            readout_qubits: int = 0) -> torch.Tensor:
+    """(batch, nq) features + (layers, nq) angles -> a readout. State kept FLAT as (batch, 2**nq).
+
+    ``readout_qubits = 0`` gives the original single ``<Z0>`` expectation, shape (batch,), which is
+    BINARY BY CONSTRUCTION: one number through one scalar scale and bias is one logit. That is what
+    this circuit produced until Round 34, and it is why an 8-class macro F1 could not honestly be
+    reported for it - six of eight classes had a floor of zero.
+
+    ``readout_qubits = m`` gives the marginal probabilities of the first m qubits, shape
+    (batch, 2**m), which is a genuine K-class readout for K = 2**m. Qiskit's VQC standardises on
+    exactly this (a computational-basis readout mapped to classes), and at m=3 for 8 classes the map
+    is the identity: nothing is discarded and the probabilities sum to 1 by construction.
+
+    ENDIANNESS. Qubit q is bit q of the flat index, qubit 0 the LEAST significant - the same
+    convention the ``idx & 1`` below relies on for ``<Z0>``, and the one ``quantumSim.ts`` uses. So
+    class ``c = i & (2**m - 1)``. PennyLane puts the FIRST LISTED wire in the MOST significant bit, so
+    an LSB-first read of bits 0,1,2 equals ``qml.probs(wires=[7,6,5])`` and NOT ``wires=[0,1,2]``.
+    Getting that backwards permutes the class map by ``[0,4,2,6,1,5,3,7]`` while leaving accuracy,
+    macro F1 and every loss curve identical - and four of the eight classes are FIXED POINTS of that
+    permutation, so a spot check on the obvious ones passes. ``tests/test_qcnn_multiclass_readout.py``
+    covers all eight individually for that reason.
+    """
     b = x.shape[0]
     dev, cdt = x.device, torch.complex64
     state = torch.zeros((b, 1 << nq), dtype=cdt, device=dev)
@@ -108,6 +129,13 @@ def circuit(x: torch.Tensor, theta: torch.Tensor, nq: int = N_QUBITS) -> torch.T
 
     p = state.abs() ** 2
     idx = torch.arange(p.shape[1], device=dev)
+    if readout_qubits:
+        # Marginal over the first `readout_qubits` wires: sum |amplitude|^2 into 2**m bins keyed by
+        # the low m bits of the flat index. One pass over the state vector, so the cost against the
+        # <Z0> readout is nothing next to the 2**nq state preparation that precedes it.
+        k = 1 << readout_qubits
+        return torch.zeros(p.shape[0], k, device=dev, dtype=p.dtype).index_add_(
+            1, (idx & (k - 1)).to(torch.long), p)
     sign = torch.where((idx & 1) == 0, 1.0, -1.0)         # bit 0 set -> -1
     return (p * sign).sum(1)
 
