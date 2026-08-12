@@ -109,9 +109,20 @@ quantum-kernel SVC reaches 0.8316 and the variational QNN 0.4667. That compariso
 like-for-like and the registry says so: both quantum models are **binary**, so on their own task they
 score 0.9453 and 0.9333, and their macro F1 is depressed by the six classes they never
 attempt. Even granting the binary figures, neither earns its qubits against a random forest that
-takes a fraction of the 267 s the quantum pair needs. `quantum_beats_classical` is recorded as
-`False` in `models/metrics.json`, which is the field this project would have to falsify to
-claim otherwise.
+takes a small fraction of the run the quantum pair needs - `wall_clock_s` in
+`models/metrics.json` covers the whole script and has been measured at 267.1 s and 341.5 s on the
+same machine, so the absolute seconds are load-dependent and only the order of magnitude is a
+claim. `quantum_beats_classical` is recorded as `False` in `models/metrics.json`, which is the
+field this project would have to falsify to claim otherwise.
+
+That last sentence was briefly false. Round 33 re-ran `telecom_ids.py` **without** `--quantum` to
+add the CKKS student, and `record_metrics` replaces a record rather than merging it, so all eight
+`quantum_*` fields - including the `quantum_beats_classical` this paragraph points at - were
+deleted from `models/metrics.json` while three published claims went on citing them. Neither the
+config-parity gate nor the new prose gate could see it: the prose fields were untouched and both
+derived artifacts stayed consistent with each other. Restored in Round 34 by re-running with
+`--quantum`; the values came back identical, which is the only reason the citations above were
+recoverable rather than merely re-asserted.
 The data is synthetic, and the reason was overstated in earlier revisions. The accurate version,
 re-checked 2026-08-05:
 
