@@ -1094,10 +1094,10 @@
             "opset": 17
           },
           "framing": "Architecture comparison, not a performance claim. The data is synthetic because no commercial-OK real attack corpus exists. Every published QML-IDS figure we could verify sits below a random forest on the same data, and arXiv:2512.05069 was withdrawn by its own authors for insufficient evaluation. Per-class F1 is the headline; aggregate accuracy is shown beside it because Engelen et al. (WTMC 2021) demonstrated it stays at 0.99 across a label correction that moved Bot F1 from 0.60 to 0.99.",
-          "git_sha": "69314f4-dirty",
+          "git_sha": "df7c847-dirty",
           "n_classes": 8,
           "n_samples": 2400,
-          "wall_clock_s": 4.0
+          "wall_clock_s": 4.2
         },
         "architecture": "PCA -> angle embedding -> StronglyEntanglingLayers; fidelity quantum kernel",
         "artifacts": [
