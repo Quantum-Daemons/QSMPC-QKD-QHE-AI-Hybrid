@@ -1940,9 +1940,9 @@ export function runClientPipeline(
               + `${w.readout?.bit_order} - reading those bits in another order permutes the class map `
               + `while leaving every aggregate metric identical, which is why the convention ships in `
               + `the weights.`);
-            if (typeof w.test_minority_f1 === "number" || w.per_class_f1) {
-              emit("log", stage, `and it LOSES: macro F1 ${w.test_minority_f1 ?? "n/a"} against a `
-                + `classical logistic regression at ${w.classical_lr_minority_f1 ?? "n/a"} on the same `
+            if (typeof w.test_macro_f1 === "number" || w.per_class_f1) {
+              emit("log", stage, `and it LOSES: macro F1 ${w.test_macro_f1 ?? "n/a"} against a `
+                + `classical logistic regression at ${w.classical_lr_macro_f1 ?? "n/a"} on the same `
                 + `split, with ${w.n_classes_predicted ?? "?"} of ${w.readout?.n_classes ?? 2} classes `
                 + `predicted. Reported because it is the measured result, not because it flatters.`);
             }
@@ -2121,11 +2121,17 @@ export function runClientPipeline(
             // rate accuracy reads 0.97 against a 0.95 majority baseline and says almost nothing,
             // while minority-class F1 is 0.71 against an all-positive 0.10. The trainer decides
             // which is the headline and ships it in `headline_metric`.
-            const f1Led = w.headline_metric === "minority_class_f1";
-            const mine = f1Led ? w.test_minority_f1 : w.test_accuracy;
-            const theirs = f1Led ? w.classical_lr_minority_f1 : w.classical_lr_accuracy;
-            const base = f1Led ? w.all_positive_f1 : w.majority_baseline;
-            const label = f1Led ? "minority-class F1" : "accuracy";
+            // Three regimes, matching `headline_metric` in the artifact. The multiclass arm reads
+            // the uniform-random floor rather than the constant-predictor one: it is the higher of
+            // the two the trainer ships, so the comparison is against the harder baseline.
+            const head = w.headline_metric;
+            const macroLed = head === "macro_f1", f1Led = head === "minority_class_f1";
+            const mine = macroLed ? w.test_macro_f1 : f1Led ? w.test_minority_f1 : w.test_accuracy;
+            const theirs = macroLed ? w.classical_lr_macro_f1
+                         : f1Led ? w.classical_lr_minority_f1 : w.classical_lr_accuracy;
+            const base = macroLed ? w.macro_f1_floors?.uniform_random
+                       : f1Led ? w.all_positive_f1 : w.majority_baseline;
+            const label = macroLed ? "macro F1" : f1Led ? "minority-class F1" : "accuracy";
             emit("log", stage, `inference backend = QCNN (QHE, TRAINED): class=${qc.cls} `
               + `(<Z0>=${qc.expectation.toFixed(4)}, ${w.layers}x${w.n_qubits} trained angles, `
               + `state-vector sim). Held-out ${label} ${(mine ?? 0).toFixed(4)} against a baseline of `

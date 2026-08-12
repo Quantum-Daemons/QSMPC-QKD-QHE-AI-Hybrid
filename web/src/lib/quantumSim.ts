@@ -256,6 +256,9 @@ export interface QcnnWeights {
   input_space: string; encoding: string;
   feature_mean?: number[]; feature_std?: number[];
   test_minority_f1?: number; classical_lr_minority_f1?: number;
+  // Null in the regime they do not apply to, so `?? 0` on the wrong one shows nothing rather than
+  // a plausible zero. Binary artifacts carry the minority pair, multiclass the macro pair.
+  test_macro_f1?: number | null; classical_lr_macro_f1?: number | null;
   all_positive_f1?: number; headline_metric?: string;
   test_accuracy: number; classical_lr_accuracy: number; majority_baseline: number;
 }
