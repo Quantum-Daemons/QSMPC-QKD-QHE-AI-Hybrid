@@ -1,0 +1,135 @@
+{
+  "kind": "logistic-linear-multiclass",
+  "note": "The CKKS-linear student for telecom. What runs under homomorphic encryption is 8 dot products over 7 standardised features - W is 8x7 and b is 8. The ARGMAX IS NOT ENCRYPTED: the client decrypts all 8 class scores and takes the maximum in the clear, because CKKS has no native comparison. That is the standard construction and it is honest in a single-tab demo where the client is the user, but it must not be described as deciding the class under encryption. Distilled from the forest's PROBABILITIES, not its argmax - on 8 classes the argmax discards precisely the minority-class signal that macro F1 is computed from.",
+  "teacher_key": "telecom_ids.qml",
+  "student_key": "telecom_ids.student",
+  "n_features": 7,
+  "features": [
+    "qber_mean",
+    "qber_std",
+    "sift_ratio",
+    "multiphoton_rate",
+    "timing_jitter",
+    "dark_count_rate",
+    "click_asymmetry"
+  ],
+  "input": {
+    "preprocessing": [
+      "subtract mean",
+      "divide by scale"
+    ],
+    "mean": [
+      0.043476421386003494,
+      0.01447134930640459,
+      0.4944039583206177,
+      0.06320337951183319,
+      0.10237080603837967,
+      1.243707629328128e-05,
+      0.08345577120780945
+    ],
+    "scale": [
+      0.04555375501513481,
+      0.012669524177908897,
+      0.058651264756917953,
+      0.06180097535252571,
+      0.061850231140851974,
+      8.303147296828683e-06,
+      0.15906763076782227
+    ]
+  },
+  "W": [
+    [
+      -1.6920322179794312,
+      -3.414257526397705,
+      0.03054332360625267,
+      -2.2285525798797607,
+      -3.0526108741760254,
+      -0.22500276565551758,
+      -0.60781329870224
+    ],
+    [
+      2.9092423915863037,
+      1.817548394203186,
+      1.086143136024475,
+      -0.7251914143562317,
+      -1.7840349674224854,
+      -0.1670898050069809,
+      -1.2686458826065063
+    ],
+    [
+      0.2461971640586853,
+      0.07327580451965332,
+      -3.408674716949463,
+      2.0460381507873535,
+      -2.7818551063537598,
+      -0.058660514652729034,
+      0.07109235227108002
+    ],
+    [
+      -1.7076252698898315,
+      -4.605555534362793,
+      1.235320806503296,
+      -0.9094349145889282,
+      6.144106864929199,
+      -0.027666395530104637,
+      -0.15165987610816956
+    ],
+    [
+      -0.49272987246513367,
+      -0.5882700085639954,
+      2.34137225151062,
+      -0.14385318756103516,
+      -0.36102205514907837,
+      0.9269373416900635,
+      1.9234212636947632
+    ],
+    [
+      -0.445549875497818,
+      0.5711304545402527,
+      -0.4845050871372223,
+      0.6956411600112915,
+      1.6557772159576416,
+      -0.29891738295555115,
+      -0.19172966480255127
+    ],
+    [
+      -0.7080919742584229,
+      3.13045597076416,
+      0.9343003034591675,
+      -1.1748149394989014,
+      -2.9314160346984863,
+      0.06841381639242172,
+      0.010982174426317215
+    ],
+    [
+      1.8905891180038452,
+      3.015671491622925,
+      -1.7344975471496582,
+      2.4401638507843018,
+      3.1110525131225586,
+      -0.2180129885673523,
+      0.21434828639030457
+    ]
+  ],
+  "b": [
+    -0.9201514720916748,
+    0.6242510676383972,
+    0.06374817341566086,
+    -4.600582122802734,
+    -1.0209548473358154,
+    3.574284315109253,
+    2.3716371059417725,
+    -0.09217645227909088
+  ],
+  "n_parameters": 64,
+  "classes": [
+    "normal",
+    "intercept_resend",
+    "photon_number_splitting",
+    "trojan_horse",
+    "detector_blinding",
+    "wavelength_trojan",
+    "rng_manipulation",
+    "combined"
+  ]
+}

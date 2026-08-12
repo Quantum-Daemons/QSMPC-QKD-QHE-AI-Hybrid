@@ -18,47 +18,56 @@ step() { printf '\n=== %s ===\n' "$1"; }
 ok()   { printf '  PASS  %s\n' "$1"; }
 bad()  { printf '  FAIL  %s\n' "$1"; fail=1; }
 
-step "1/8 test suite (pytest -m 'not slow')"
+step "1/9 test suite (pytest -m 'not slow')"
 HF_HUB_OFFLINE=1 "$PY" -m pytest -m "not slow" -q -p no:warnings >/tmp/ci_pytest.log 2>&1 \
   && ok "tests" || { bad "tests"; tail -20 /tmp/ci_pytest.log; }
 
-step "2/8 config parity (defaults.py -> config.defaults.json)"
+step "2/9 config parity (defaults.py -> config.defaults.json)"
 "$PY" scripts/export_config.py >/dev/null 2>&1
 git diff --quiet -- web/src/lib/config.defaults.json \
   && ok "config.defaults.json in sync" \
   || bad "config.defaults.json is stale - commit the regenerated file"
 
-step "3/8 lint, BLOCKING scope (this is the one that was red)"
+step "3/9 generated prose matches its generator"
+"$PY" scripts/check_generated_prose.py \
+  && ok "prose fields match their trainers" || bad "a generated prose field was hand-edited"
+
+step "4/9 lint, BLOCKING scope (this is the one that was red)"
 "$PY" -m ruff check src/qsh/models scripts/train scripts/publish_hf.py scripts/data \
   && ok "ruff blocking scope" || bad "ruff blocking scope"
 
-step "4/8 no confidential files tracked"
+step "5/9 no confidential files tracked"
 make check-secrets >/dev/null 2>&1 && ok "no confidential files" || bad "confidential files tracked"
 
-step "5/8 no Japanese in public files"
-if grep -rIlP '[\x{3040}-\x{309F}\x{30A0}-\x{30FF}\x{4E00}-\x{9FFF}]' \
-     --include='*.py' --include='*.ts' --include='*.tsx' --include='*.md' \
-     --include='*.yml' --include='*.sh' \
-     src api web/src tests scripts docs README.md 2>/dev/null; then
+step "6/9 no Japanese in public files"
+# Scope is `git ls-files`, not a directory list. The directory list was `src api web/src tests scripts
+# docs README.md`, which excluded every root-level .md except README - so a Japanese-language document
+# dropped at the repo root passed this gate. Measured 2026-08-12 with a real confidential note: it
+# passed here AND passed check-secrets AND was not gitignored.
+# Deriving the scope from the index instead fixes three things at once: the root is covered, any new
+# top-level directory is covered without editing this line, and "public" now means exactly "tracked",
+# so the gitignored MONETIZATION_WORKFLOW.ja.md is excluded by construction rather than by an exception.
+if git ls-files -z '*.py' '*.ts' '*.tsx' '*.md' '*.yml' '*.sh' \
+     | xargs -0 -r grep -IlP '[\x{3040}-\x{309F}\x{30A0}-\x{30FF}\x{4E00}-\x{9FFF}]'; then
   bad "Japanese characters in public files (listed above)"
 else
   ok "no Japanese in public files"
 fi
 
-step "6/8 no model artifacts committed"
+step "7/9 no model artifacts committed"
 if git ls-files | grep -E '\.(onnx|safetensors|pt|pth|h5|npy)$'; then
   bad "model artifacts committed - publish to the Hub instead"
 else
   ok "no model artifacts committed"
 fi
 
-step "7/8 web typecheck + build"
+step "8/9 web typecheck + build"
 ( cd web && npx tsc --noEmit >/tmp/ci_tsc.log 2>&1 ) \
   && ok "tsc --noEmit" || { bad "tsc --noEmit"; tail -15 /tmp/ci_tsc.log; }
 ( cd web && npm run build >/tmp/ci_build.log 2>&1 ) \
   && ok "npm run build" || { bad "npm run build"; tail -15 /tmp/ci_build.log; }
 
-step "8/8 PQC conformance (FIPS 203 s7.2 negatives + FIPS 204 sizes)"
+step "9/9 PQC conformance (FIPS 203 s7.2 negatives + FIPS 204 sizes)"
 # Offline by design: reads the vendored CC0 snapshot in web/scripts/vectors. It was ungated for
 # several rounds because it used to fetch its vectors, and the only way to gate a network check is a
 # skip-on-failure fallback -- which for THIS check would be worse than not running it, since it

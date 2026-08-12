@@ -30,6 +30,21 @@ Every use case has up to three model tiers, and the *relationship between them* 
                    medical and satellite all evaluate something with depth. Applying it to a linear
                    score was the kind of generalisation that reads as rigour and understates what the
                    architecture can do.
+
+                   The primary source for depth being the binding cost is ATLAS (arXiv:2607.23478,
+                   2026-07-26), which measures it directly for homomorphic transformer inference.
+                   Cited HERE rather than only in references/REFERENCES.md because that file claimed
+                   this docstring rested on a secondary systematisation (IACR ePrint 2026/935) when
+                   Round 31 had already removed that citation from this file - a reference added for a
+                   code site that was never updated to use it.
+
+                   And it is contested. Trimming (arXiv:2608.00375, 2026-08-01) argues depth is
+                   constrained by the modulus-chain structure and can be decoupled from it via an
+                   auxiliary chain and rational levels. No number from it is quoted anywhere in this
+                   project and none should be: it presents no experiments, closing with the statement
+                   that the framework "will be further validated through concrete implementation and
+                   experimental evaluation". It is recorded as a named direction that would qualify
+                   this paragraph if it were demonstrated, not as a result that already does.
   T2 ``industry``  the real literature model for that industry, trained locally and published to
                    the Hugging Face Hub as safetensors + ONNX (fp32 server / int8 browser).
   T3 ``large``     models too big to run under encryption at all — served remotely or in-browser
@@ -838,6 +853,39 @@ _SPECS: tuple[ModelSpec, ...] = (
                    ArtifactSpec("feature_spec.json", "json", "none", "both")),
         hf_repo="qsh-telecom-qml-ids",
         notes="Shown as an architecture comparison against a random forest on identical data.",
+    ),
+    #: Telecom's T1 tier, added in Round 33. Until then `runs_encrypted=True` held on five specs and
+    #: none of them was telecom, so this was the only use case with no encrypted tier - which meant
+    #: the standing per-industry question about the private-inference artifact class had no artifact
+    #: to judge here, and `references/model-choice-vs-2026-practice.md` answered a model-quality
+    #: question in its place.
+    #:
+    #: `hf_repo=None` and the weights are BUNDLED, following `genomics.prs` - the other CKKS tier
+    #: with no Hub repo. 64 parameters do not need a pinned revision, and bundling means the
+    #: encrypted tier works on a fresh clone with no network.
+    #:
+    #: `runs_encrypted=True` is true of the MODEL: `clientCompute.runEncryptedTelecomStudent`
+    #: evaluates these 8 dot products under real CKKS in the tab. It does NOT claim the argmax is
+    #: encrypted - all 8 scores are decrypted and the maximum is taken in the clear, because CKKS
+    #: has no native comparison. The weights file and the run log both say so.
+    ModelSpec(
+        usecase="telecom_ids",
+        tier="t1_crypto",
+        key="telecom_ids.student",
+        label="CKKS-linear IDS student (8 classes)",
+        architecture="multinomial logistic regression, 8x7 + 8, distilled from the forest on soft targets",
+        params=64,
+        dataset=DS_QKD_ATTACK_SYNTH,
+        metric=M_QML_IDS,
+        runs_encrypted=True,
+        artifacts=(),
+        hf_repo=None,
+        notes=(
+            "Distilled from telecom_ids.qml's PROBABILITIES, not its argmax: on 8 classes the argmax "
+            "discards exactly the minority-class signal macro F1 is computed from, and hard-label "
+            "distillation is a defect this project has already made once. Read n_classes_predicted "
+            "before macro_f1 - a linear student that stops emitting a class scores 0 on it by "
+            "construction, which reads as poor discrimination rather than an absent output."),
     ),
 )
 

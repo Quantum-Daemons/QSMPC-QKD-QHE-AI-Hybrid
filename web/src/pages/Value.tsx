@@ -19,7 +19,9 @@ export default function Value() {
         <thead><tr><th>Segment</th><th>2025–26</th><th>Outlook</th><th>CAGR</th></tr></thead>
         <tbody>
           <tr><td><b>Privacy-preserving AI</b> (the umbrella TAM)</td><td><b>~$3.67B</b></td><td><b>~$46B by 2035</b></td><td><b>~28.8%</b></td></tr>
-          <tr><td>Post-Quantum Cryptography</td><td>~$2.2B</td><td>$20–30B by 2033–34</td><td>~38–46%</td></tr>
+          <tr><td>Post-Quantum Cryptography</td><td>~$1.6–1.68B (2025)</td>
+            <td>$20.5B by 2033 <span className="muted">(Grand View)</span> · $29.95B by 2034 <span className="muted">(Precedence)</span></td>
+            <td>37.8% · 37.7%</td></tr>
           <tr><td>Quantum AI</td><td>~$0.6B</td><td>$5.0B by 2033</td><td>~35%</td></tr>
           <tr><td>Secure MPC</td><td>~$1.1B</td><td>$2.7B by 2034</td><td>~12%</td></tr>
           <tr><td>Quantum cryptography (incl. QKD)</td><td>~$0.7–1.1B (2025–26)</td>
@@ -28,11 +30,22 @@ export default function Value() {
         </tbody>
       </table>
       <p className="muted" style={{ fontSize: 12 }}>
-        The quantum-cryptography row lists three forecasts side by side rather than blending them, because
+        The quantum-cryptography and PQC rows list forecasts side by side rather than blending them, because
         they do not share a base year, a scope or an endpoint: an earlier version of this table combined
         Roots Analysis' ~$0.8B base with Grand View's and Precedence's far higher endpoints and quoted the
-        CAGR span "~18–38%", producing a range no single analyst projects. Read each triple as one house's
-        view.
+        CAGR span "~18–38%", producing a range no single analyst projects. Read each pair or triple as one
+        house's view. The <b>PQC row carried the identical defect two rows above this note</b> until
+        2026-08-12: it read "~$2.2B | $20–30B by 2033–34 | ~38–46%", pairing Grand View's <i>2026</i> value
+        with Grand View's 2033 endpoint and Precedence's 2034 one, and taking the CAGR high end from
+        MarketsandMarkets - a house that is not named in the row and that sizes this market at $0.42B in
+        2025, about a quarter of the base the same row quoted. Figures retrieved 2026-08-12; Grand View
+        serves 403 to automated retrieval, so checking that pair needs an ordinary browser.
+      </p>
+      <p className="muted" style={{ fontSize: 12 }}>
+        Narrower scope definitions put the PQC base about 4x lower and are listed here rather than averaged
+        into the row: MarketsandMarkets $0.42B (2025) to $2.84B by 2030 at 46.2%, and Mordor Intelligence
+        $0.88B (2025) to $4.60B by 2030 at 39.3%. A 4x spread on the base year is a scope disagreement, not
+        four estimates of one quantity, so no single number here is the market size.
       </p>
       <p className="muted" style={{ fontSize: 12 }}>
         Within privacy-preserving AI the analysts disagree, and the disagreement does not reconcile: market.us

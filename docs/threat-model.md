@@ -27,6 +27,25 @@
   extracts from (`transport.py:53`), and the Leftover Hash Lemma needs a seed independent of the source --
   so as implemented it is a **computationally-seeded** extractor, not an unconditionally
   information-theoretic one. The docstring says so; the label "ITS" does not; + QML-IDS (WS2) classifying 7 attack types against normal traffic (8 classes).
+- **Classical control-plane adversary against the QKD stack** - recorded 2026-08-12 as a **GAP**,
+  because until then this document had no such adversary at all. Every QKD adversary above attacks the
+  quantum channel or the network crypto; none attacks the **classical procedure text** that drives the
+  quantum layer. Malik, Anwar and Raza, "Beyond the Quantum Promise: A Security Analysis of Classical
+  Control in Quantum Key Distribution" (arXiv:2608.07626, 2026-08-07), build the first hybrid Tamarin
+  model of the ETSI and ITU-T QKD specifications and find **three specification-level
+  vulnerabilities** - subverted entanglement injection, basis-deferred measurement, and message
+  reflection - each arising from *"a classical control-plane omission in the procedure text"*, with
+  verified countermeasures (**measurement commitment**, **identity-bound MACs**). This lands on
+  `src/qsh/qkd/sdn_controller.py`, which models ETSI GS QKD 015 `PHYS`/`VIRT` links, and on
+  `qkd/kme.py` (GS QKD 014). **Mitigation: none implemented**, and the uncomfortable part is why -
+  the findings are in the specifications this project implements faithfully, so implementing them
+  faithfully reproduces them. **Resolving condition**, so this is falsifiable rather than a standing
+  worry: it closes when the controller and KME either (a) bind SAE identity into the authentication of
+  every control-plane message instead of accepting it as a parameter - the same missing identity
+  binding the GS QKD 014 gap below already records, so one fix serves both - or (b) declare in-band
+  which of the three findings a given payload is exposed to, the way `trust_note()` already declares
+  trusted-relay exposure. Until one of those exists, the control plane here is **modelled, not
+  defended**.
 - **Network MITM / tampering**: Mitigation: AEAD (AES-256-GCM) record layer + ML-DSA
   message authentication over the hybrid session.
 
@@ -81,9 +100,20 @@ actually satisfies belongs in this document. It was absent until Round 23.
 decrypted results:
 
 - Li and Micciancio (EUROCRYPT 2021, ePrint 2020/1533) showed approximate FHE fails IND-CPA-D -
-  security when the adversary sees DECRYPTION RESULTS - and their attack needs **one** decryption
-  query, recovering the secret as `s = a^-1 (m'' - b)`. Demonstrated against HEAAN, SEAL, HElib and
-  PALISADE, "within several seconds".
+  security when the adversary sees DECRYPTION RESULTS. It is a **key-recovery** attack, demonstrated
+  against the CKKS implementations in HEAAN, SEAL, HElib and PALISADE, with **"very modest running
+  times"**.
+  Two claims this document used to make were checked at primary source on 2026-08-12 and did not
+  survive, so they are corrected rather than left: the abstract says "very modest running times" and
+  **not "within several seconds"**, which was quoted here as if verbatim; and the key-recovery
+  expression is `[UNVERIFIED]` - this document rendered it `s = a^-1 (m'' - b)` while secondary
+  sources render it `s = a^-1 b'`, and the PDF is unreachable (eprint returns HTTP 403, the UCSD
+  mirror 404), so **neither form is asserted here**. Nothing below depends on which it is: the
+  conclusion that decryption results leak the key is the abstract's own.
+- **The "needs one decryption query" figure is verifiable, but from a different source.** It is
+  attributed here to IBM **HElib's `CKKS-security.md`**, which states the attack can succeed with
+  **"sometimes as few as a single decryption"**. Li and Micciancio is the result; HElib is the
+  implementation that writes the query count down in its own security documentation.
 - Li, Micciancio, Schultz and Sorrell (CRYPTO 2022, ePrint 2022/816) give the noise-flooding
   countermeasure and its precision cost.
 - Cheon, Choe, Passelegue, Stehle and Suvanto (ACM CCS 2024, ePrint 2024/127) extended the attack
@@ -97,18 +127,88 @@ decrypted results:
   rescaling noise dominates, "an additional precision loss of as little as two bits is sufficient to
   restore a high level of security against passive key-recovery attacks for standard parameters".
 
+**The implementations say this in their own security documentation, and node-seal IS SEAL.** The demo
+runs Microsoft SEAL compiled to WASM, so SEAL's `SECURITY.md` is not background reading, it is the
+upstream security statement for the cipher on the page. Verbatim: *"The CKKS scheme requires
+particular care because it is approximate: decryption returns the message plus a secret-key-dependent
+error term rather than the exact message"*; *"Releasing such decryptions to any party other than the
+secret key owner can therefore leak the secret key, even when only ordinary computation results are
+shared"*; and *"Formally, the CKKS implementation in Microsoft SEAL does not provide IND-CPA-D
+security ...; it targets only IND-CPA security"*. IBM HElib's `CKKS-security.md` states the mechanism
+in one sentence: *"since the scheme itself adds some error, the attacker could learn something from
+the decryption result even if it knows what the decrypted result was supposed to be. Specifically, it
+learns the error, which may leak information about the secret key."*
+
 **How much of this reaches this project.** The public demo is the benign case and should be stated
 as such rather than claimed as a defence: the CKKS keys are generated in the browser tab, used in
 that tab, and the decrypted class is shown to the same person who holds the secret key. There is no
 decryption oracle exposed to anyone else, so an IND-CPA-D adversary would have to be the key holder
 attacking themselves.
 
+**The displayed approximation error is in scope of this section, and it is safe. Both halves of that
+belong in writing.** The demo does not merely decrypt a result, it reports the per-sample CKKS
+approximation error itself: `web/src/lib/clientFHE.ts` computes `maxAbsError` against a plaintext
+reference and `clientCompute.ts` emits it as the run metrics `fhe_max_abs_error` and
+`fhe_conv_max_abs_error` (about 1e-9), which the run panels render. By HElib's sentence above that
+quantity - the error - IS
+the leaking object, so a reader who knows this literature is right to stop on it, and a document that
+listed only "decrypted results" would have skipped the sharpest case. It is nonetheless safe here, and
+the reason is the predicate SEAL states: *"Any mitigation, such as adding noise to decrypted values
+before they are shared (noise flooding), must be implemented by the application before a decrypted
+CKKS value crosses a **trust boundary**."* The trigger is **crossing a trust boundary**, not being
+displayed. A user reading their own approximation error, produced from a key generated in their own
+tab, crosses nothing: the key holder, the decryptor and the viewer are one party. The moment any of
+those three separate - a server-side key, a shared session, a value posted anywhere - the same number
+becomes a key-recovery oracle and the mitigation below is owed. That is the falsifiable condition,
+and it is a property of the architecture rather than of the cipher.
+
 **The server-side deployment is the case that would need work.** If a model owner ran CKKS on a
 server and returned decrypted results to a client, that is precisely the CPAD setting, and the
 countermeasure - noise flooding, with its documented precision cost - would be required before any
-production claim. This project does not implement it, does not use DE-CKKS, and does not perform
-CKKS-to-FHEW scheme switching (ePrint 2026/285 breaks PEGASUS-style switching in OpenFHE, so this is
-worth stating explicitly rather than leaving to inference).
+production claim. This project does not use DE-CKKS and does not perform CKKS-to-FHEW scheme
+switching (ePrint 2026/285 breaks PEGASUS-style switching in OpenFHE, so this is worth stating
+explicitly rather than leaving to inference).
+
+**"This project does not implement noise flooding" was an understatement, and it named the wrong
+subject.** The three CKKS implementations are not in the same position, and this deployment runs the
+one with nothing:
+
+- **SEAL has no noise flooding at all.** Its `SECURITY.md` does not describe a parameter or a mode; it
+  says the mitigation *"must be implemented by the application"*. So there is nothing to enable in
+  node-seal, and the gap is upstream rather than a configuration this project declined to set.
+- **HElib has it built into decryption**, with a settable accuracy target, per its `CKKS-security.md`.
+  That document also gives the scaling law, which is the honest cost of the countermeasure: *"to
+  withstand an attack that has access to the results from decryption of D ciphertexts, the bits
+  parameter should be increased roughly by a factor of sqrt(D)"*.
+- **OpenFHE has `NOISE_FLOODING_DECRYPT` plus `CKKS_M_FACTOR`**, and its security documentation states
+  the tolerated query count: *"By default, OpenFHE chooses a configuration where a relatively large
+  number of decryption queries of the same or related ciphertexts can be tolerated. The lower bound
+  for the tolerated number of such decryption queries is N_d = 128 (but in practical computations, N_d
+  is at least 10,000)."* It also scopes the attack the way this document should: it *"applies to the
+  setting where decryption results need to be shared between multiple parties, e.g., in the threshold
+  FHE setting"* - which is the server-side deployment, not the single-tab demo.
+
+**Two things that stop noise flooding being read as a solved fix.** First, the countermeasure is itself
+under attack: Guo, Nabokov, Suvanto and Johansson, *"Key Recovery Attacks on Approximate Homomorphic
+Encryption with Non-Worst-Case Noise Flooding Countermeasures"*, USENIX Security 2024, targets exactly
+the mitigation named above when the flooding is parameterised on average-case rather than worst-case
+noise. Title, authors and venue are verified via the Lund University research portal; the **body could
+not be loaded (HTTP 403), so no parameter, bound or number from it is quoted here** - it is recorded as
+a named limit on the fix, not as a result. Second, the game is weaker than "malicious": Cheon, Choe,
+Passelegue, Stehle and Suvanto (ePrint 2024/127, CCS 2024) give the adversary *"access to a decryption
+oracle for ciphertexts for which it should know the underlying plaintexts. This includes ciphertexts
+that it (honestly) encrypted and those obtained from the latter by evaluating circuits that it
+chose."* **Honestly generated inputs suffice, and the attack is passive**, so "the parties here are
+only semi-honest" is not a defence against it - which is worth stating because that sentence appears
+elsewhere in this document as a real mitigation for other adversaries.
+
+**The threshold setting OpenFHE points at now has a citation here.** This section had none, while the
+quote above scopes the attack to exactly that case: Zhang, Zhou, Han, Liu and Huang, "Adaptively Secure
+Threshold Decryption from LWE with Polynomial Modulus" (IACR ePrint 2026/1627, received 2026-08-06),
+treats adaptive corruption and leakage from **decryption queries** using *"a refined polynomial noise
+flooding technique based on a detailed min-entropy analysis"*. It matters here rather than in general
+because `submodules/HEonGPU` ships N-out-of-N collective bootstrapping, so the threshold case is
+reachable from this project's own dependency set rather than hypothetical.
 
 **No standard requires testing for this.** The HomomorphicEncryption.org standard contains no
 testing or conformance clause and states that CKKS "is not described in this standard"; ISO/IEC 28033 is not published, and the part that matters here is **Part 3** - mechanisms for arithmetic on approximate numbers, i.e. CKKS - which reached **FDIS stage 50.00 on 2026-06-11** (Part 1 general: DIS 40.60, 2025-12-11; Part 4: FDIS 50.00; Part 5: WD 20.60). Part 1 scopes correctness out. Naming "Parts 1-4 at DIS" was imprecise in both directions: Part 3 is further along than DIS and is the CKKS part, so this claim has a shelf life of months and carries a date for that reason. Checked 2026-08-10. So this section is a
@@ -168,10 +268,13 @@ statement of known limitations, not a conformance gap against any published requ
   container that left `/api/run/*` writable by anonymous visitors while the page displayed "No computation
   is sent to a server". The container was removed and `/api` now 404s, but that exposure was recorded only
   in `architecture.md`; a threat model should carry it.
-- **`REMOTE` is unreachable as deployed.** The five-state provenance scheme below is four-state in
-  practice: no code path sets `remote`, and nothing in `web/src` calls the ZeroGPU Space. The four
-  that do occur are `MEASURED (local WebGPU)`, `MEASURED (local WASM)`, `MEASURED (plain JS)` and
-  `SIMULATED`. `measured-js` was added in Round 21: the bundled distilled model is a hand-written
+- **There is no `REMOTE` provenance.** The scheme has exactly four states - `MEASURED (local WebGPU)`,
+  `MEASURED (local WASM)`, `MEASURED (plain JS)` and `SIMULATED`. `remote` was **removed from the type**
+  in Round 24d, not merely left unset: nothing in `web/src` calls the ZeroGPU Space, that Space returns
+  HTTP 401, and a type member no code path can produce is the same defect as a metric with no reader.
+  This bullet said "the five-state scheme below is four-state in practice" until Round 33, which
+  described the state BEFORE the removal and contradicted the four-state count stated earlier in this
+  same document. `measured-js` was added in Round 21: the bundled distilled model is a hand-written
   loop over plain JS numbers with no wasm module and no GPU, and it had been reporting
   `measured-wasm` - a claim wrong in the flattering direction.
 - **The headline comparison row is simulated.** The QSMPC-FHE row that drives the quantum-advantage

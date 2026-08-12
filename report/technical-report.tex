@@ -35,7 +35,7 @@
 \input{generated/macros}
 
 \title{\vspace{-1.4cm}\textbf{A Quantum-Safe Orchestration Layer with\\Client-Side Encrypted Inference}\\[3pt]
-\large Architecture, measured results, and a verification methodology\\that produced eight defect classes}
+\large Architecture, measured results, and a verification methodology\\that produced \ndefectclasses{} defect classes}
 \author{Technical Report, revision \texttt{\gitsha}}
 \date{10 August 2026}
 
@@ -53,13 +53,13 @@ its garbled-circuit non-linearities \emph{in the browser}, so its cryptographic 
 client-side rather than asserted. \npublished{} models are published with pinned revisions.
 
 The contribution we consider most transferable is not the architecture but the verification
-methodology. Over several rounds it produced eight distinct classes of silent defect --- a
+methodology. Over several rounds it produced \ndefectclasses{} distinct classes of silent defect --- a
 constant-class predictor whose accuracy exactly equalled the majority-class rate, an inverted
 diagnostic label map that made the demonstrator display the opposite of the model's output, a
 shuffled-\texttt{DataLoader} label misalignment statistically indistinguishable from random,
-a baseline cited from the correct paper but the wrong table, and four others. Each was invisible to
-tests, type checks and aggregate metrics. Section~\ref{sec:wrong} documents all eight, including
-three conclusions the authors published and subsequently retracted.
+and a baseline cited from the correct paper but the wrong table, among others. Each was invisible to
+tests, type checks and aggregate metrics. Section~\ref{sec:wrong} tabulates all \ndefectclasses{} and
+states four in full, alongside four conclusions the authors published and subsequently retracted.
 
 We report what the system measures, what it does not, and where its numbers are not comparable to
 the published baselines they sit beside.
@@ -198,8 +198,8 @@ relevant literature reports, with the flattering companion printed beside it:
   \item \textbf{Finance:} minority-class F1 at a 1-in-981 positive rate. The precision-recall
         baseline is $P/(P{+}N)\approx0.001$, so an ROC-AUC of 0.95 says nothing.
   \item \textbf{Satellite:} event-wise $F_{0.5}$ under an overlap rule. Point-adjusted F1 is computed
-        \emph{only} to show its inflation --- a uniform random score ranks 26th of 32 detectors
-        under it.
+        \emph{only} to show its inflation --- under point adjustment ``even a random anomaly score can
+        easily turn into a state-of-the-art TAD method'' (Kim \emph{et al.}, AAAI 2022).
   \item \textbf{Medical:} AUC, with the majority-class rate and the number of distinct classes
         predicted printed alongside (Section~\ref{sec:wrong} explains why).
 \end{itemize}
@@ -632,8 +632,13 @@ is a discipline rather than an infrastructure.
         Decision Net Benefit.'' arXiv:2604.04241, April 2026.
   \item J. Vickers, E. Elkin. Decision curve analysis; net benefit
         $\mathrm{NB}(p) = \mathrm{TP}/N - (\mathrm{FP}/N)\cdot p/(1-p)$.
-  \item Q. Wen \emph{et al.} \emph{TSB-AD}, NeurIPS 2024 Datasets \& Benchmarks --- a uniform random
-        score ranks 26th of 32 detectors under point-adjusted F1.
+  \item S. Kim, K. Choi, H.-S. Choi, B. Lee and S. Yoon. ``Towards a Rigorous Evaluation of
+        Time-series Anomaly Detection.'' AAAI 2022, arXiv:2109.05257 --- under point adjustment ``even a
+        random anomaly score can easily turn into a state-of-the-art TAD method''. This entry cited
+        \emph{TSB-AD} for ``a uniform random score ranks 26th of 32 detectors'' until Round 33; the rank
+        could not be verified (TSB-AD describes 40 algorithms and recommends VUS-PR), and the entry also
+        attributed TSB-AD to the wrong authors --- it is Liu and Paparrizos, NeurIPS 2024 Datasets \&
+        Benchmarks, and it carries no arXiv identifier.
   \item K. Kotowski \emph{et al.} ``European Space Agency Benchmark for Anomaly Detection in
         Satellite Telemetry.'' arXiv:2406.17826. Table 2 (all events) and Supplementary Table 9
         (anomalies alone) are different comparators; this project scores anomalies alone.
