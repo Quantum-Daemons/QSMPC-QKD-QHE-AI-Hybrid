@@ -35,7 +35,7 @@
 \input{generated/macros}
 
 \title{\vspace{-1.4cm}\textbf{A Quantum-Safe Orchestration Layer with\\Client-Side Encrypted Inference}\\[3pt]
-\large Architecture, measured results, and a verification methodology\\that produced eight defect classes}
+\large Architecture, measured results, and a verification methodology\\that produced \ndefectclasses{} defect classes}
 \author{Technical Report, revision \texttt{\gitsha}}
 \date{10 August 2026}
 
@@ -53,13 +53,13 @@ its garbled-circuit non-linearities \emph{in the browser}, so its cryptographic 
 client-side rather than asserted. \npublished{} models are published with pinned revisions.
 
 The contribution we consider most transferable is not the architecture but the verification
-methodology. Over several rounds it produced eight distinct classes of silent defect --- a
+methodology. Over several rounds it produced \ndefectclasses{} distinct classes of silent defect --- a
 constant-class predictor whose accuracy exactly equalled the majority-class rate, an inverted
 diagnostic label map that made the demonstrator display the opposite of the model's output, a
 shuffled-\texttt{DataLoader} label misalignment statistically indistinguishable from random,
-a baseline cited from the correct paper but the wrong table, and four others. Each was invisible to
-tests, type checks and aggregate metrics. Section~\ref{sec:wrong} documents all eight, including
-three conclusions the authors published and subsequently retracted.
+and a baseline cited from the correct paper but the wrong table, among others. Each was invisible to
+tests, type checks and aggregate metrics. Section~\ref{sec:wrong} tabulates all \ndefectclasses{} and
+states four in full, alongside four conclusions the authors published and subsequently retracted.
 
 We report what the system measures, what it does not, and where its numbers are not comparable to
 the published baselines they sit beside.
