@@ -288,8 +288,26 @@ export function VerificationChart({ res, modelKey }: { res: ModelEvalResult; mod
                 <YAxis scale="log" domain={[0.7, "auto"]} allowDataOverflow tick={AXIS} />
                 <Tooltip contentStyle={{ background: "#161b26", border: `1px solid ${GRID}`, fontSize: 11 }} />
                 <Legend wrapperStyle={{ fontSize: 10 }} />
-                <Bar dataKey="negative" stackId="a" fill="#4a5568" name="true negative" />
-                <Bar dataKey="positive" stackId="a" fill="#c05621" name="true positive" />
+                {/* WCAG 2.2 SC 1.4.1 (Use of Color, Level A): these two series were separated by fill
+                    alone until Round 34. Because they are STACKED they share an x position, so the axis
+                    cannot disambiguate them either - colour really was the only channel, and the legend
+                    swatches are colour too. A 45-degree hatch on the positive class is the second
+                    channel; the fill stays, so colour and pattern are redundant rather than either one
+                    being load-bearing. This is the same redundant-encoding approach the scatter chart
+                    above already uses via `shape="circle"` / `shape="triangle"`, applied to a chart type
+                    where Recharts offers no `shape` prop.
+                    Why this survived: the checklist scoped itself to "WCAG 2.2 AA, the four that this UI
+                    can actually fail" and 1.4.1 was not among the four, so no row looked for it. */}
+                <defs>
+                  <pattern id="hatch-positive" patternUnits="userSpaceOnUse" width="5" height="5"
+                           patternTransform="rotate(45)">
+                    <rect width="5" height="5" fill="#c05621" />
+                    <line x1="0" y1="0" x2="0" y2="5" stroke="#f5c199" strokeWidth="1.6" />
+                  </pattern>
+                </defs>
+                <Bar dataKey="negative" stackId="a" fill="#4a5568" name="true negative (solid)" />
+                <Bar dataKey="positive" stackId="a" fill="url(#hatch-positive)"
+                     name="true positive (hatched)" />
               </BarChart>
             </ResponsiveContainer>
           </figure>
@@ -315,10 +333,14 @@ export function VerificationChart({ res, modelKey }: { res: ModelEvalResult; mod
             <Tooltip contentStyle={{ background: "#161b26", border: `1px solid ${GRID}`, fontSize: 11 }}
                      formatter={(v: number) => v.toFixed(4)} />
             <Legend wrapperStyle={{ fontSize: 10 }} />
+            {/* SC 1.4.1 again: these two were `stroke` colour only. A 1.4 vs 1.6 strokeWidth
+                difference is not a perceivable second channel, so `predicted` is dashed. Dashing the
+                PREDICTION rather than the actual is deliberate - the dashed line reads as the derived
+                quantity, which is what it is. */}
             <Line type="monotone" dataKey="actual" stroke="#8a94a6" dot={false} strokeWidth={1.4}
-                  isAnimationActive={false} name="actual" />
+                  isAnimationActive={false} name="actual (solid)" />
             <Line type="monotone" dataKey="predicted" stroke="#4f9dff" dot={false} strokeWidth={1.6}
-                  isAnimationActive={false} name="predicted" />
+                  strokeDasharray="5 3" isAnimationActive={false} name="predicted (dashed)" />
           </LineChart>
         </ResponsiveContainer>
       </figure>
