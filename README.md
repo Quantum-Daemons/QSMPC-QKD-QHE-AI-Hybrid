@@ -39,8 +39,10 @@ simulation/scaffolds where not - every claim is tied to a primary source in
 
 > **Positioning - quantum-safe, not quantum-advantage.** The value here is **quantum-safe / PQC**, a
 > regulation-driven, fast-growing market (NIST FIPS 203/204/205; NSA CNSA 2.0 procurement mandate 2027;
-> EU roadmap 2026/2030/2035; "harvest-now-decrypt-later"; the PQC market is projected ~$1.6 B (2025) ->
-> ~$20 B (2033) at ~38 % CAGR). A general **quantum *advantage*** for these workloads is **not** claimed
+> EU roadmap 2026/2030/2035; "harvest-now-decrypt-later"; Grand View Research sizes the PQC market at
+> ~$1.6 B in 2025 reaching ~$20.5 B by 2033, a 37.8 % CAGR over 2026-2033, and the vendor spread on the
+> base year is about 4x - see the market table on the Value page, which lists each house separately
+> rather than blending them). A general **quantum *advantage*** for these workloads is **not** claimed
 > as a market benefit - it is broadly unproven in 2026 (e.g. classical tensor-network simulation matching
 > annealing results), so the numeric "quantum advantage" stays a **research / education** metric in the
 > benchmark. For the QCNN specifically the evidence is sharper than "unproven": Bermejo, Braccia,
@@ -842,14 +844,21 @@ See [`docs/pqc-roadmap.md`](docs/pqc-roadmap.md).
   caution about evaluation quality, not a universal ranking: arXiv:2512.05069 was withdrawn by its own
   authors for evaluation "insufficient to fully support the paper's conclusions".
 
-- **The third tier (`spaces/qsh-inference/`)** serves the full-precision models from a Hugging Face
-  ZeroGPU Space, for models too large to run in a browser tab or under encryption. Results from it
-  are labelled `REMOTE` - the reported latency includes network and queue time and is not comparable
-  with the in-browser measurements. Note two hosting facts that shape this: free accounts can create
-  **Static Spaces only** (Gradio and Docker Spaces need a paid plan), with a standing exception of
-  **two ZeroGPU Gradio Spaces** for accounts in good standing - which requires the account to be
-  **older than 30 days**. It is **not currently wired up**: nothing in `web/src` references the Space, and although `ProvenanceBadge` declares a `remote` tier no code path sets it. Treat it as a staged component awaiting a caller. When one exists it will degrade to the
-  browser tier when it is absent, rather than assuming it is there.
+- **There is no third (remote) tier, and that is a decision rather than an omission.**
+  `spaces/qsh-inference/` was written to serve full-precision models from a Hugging Face ZeroGPU Space
+  for anything too large to run in a tab or under encryption. It was **decided against in Round 24**
+  and the record is in `docs/deliverable-verification.md`: the public demo is zero-server by design,
+  so a remote provenance contradicts the architecture rather than extending it. The Space itself
+  returns **HTTP 401** (re-checked 2026-08-12) and the org Space listing is empty. `ProvenanceBadge`
+  therefore declares **four** states - `measured-webgpu`, `measured-wasm`, `measured-js`, `simulated` -
+  and `remote` was **removed** from the type in Round 24d, because a type member no code path can
+  produce is the same defect as a metric with no reader. **Reopening condition:** wire it only if the
+  demo acquires a workload that genuinely cannot run client-side, and re-add the badge state in the
+  same commit that first sets it, never before.
+  For the record, the hosting facts that shaped the original plan: free accounts can create **Static
+  Spaces only** (Gradio and Docker Spaces need a paid plan), with a standing exception of **two
+  ZeroGPU Gradio Spaces** for accounts in good standing, which requires an account **older than 30
+  days**.
 
 - **Model artefacts live on the Hugging Face Hub, never in git** - `src/qsh/models/registry.py` is the
   single source of truth for repo ids, pinned revisions, artefact paths, dataset licences, published
