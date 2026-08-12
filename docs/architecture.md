@@ -136,6 +136,58 @@ sentence "non-linearities go to MPC because CKKS cannot do them cheaply" is now 
 and the half it omits is the one a reviewer will raise. Recorded as an alternative design with its
 trade-off, not as a refinement of this one.
 
+**The measured number that closes the argument for the specific non-linearity this demo needs.** The
+final step of a classifier is an argmax, and there is now a published cost for doing that under CKKS:
+Mazzone, Everts, Hahn and Peter, *Efficient Ranking, Order Statistics, and Sorting under CKKS* (USENIX
+Security 2025, arXiv:2412.15126), evaluate argmin/argmax over a **128-element vector in 12.83 s**, with
+comparison depth *"of up to 2 (constant)"*. That is a state-of-the-art result, not a naive baseline,
+and the constant depth blocks the obvious rebuttal that the cost is a depth artefact to be optimised
+away. Twelve seconds for one argmax **rules out a homomorphic argmax in a browser tab**, which is why
+the logits go out as secret shares to a summon-compiled comparison circuit (`web/src/lib/clientMPC.ts`,
+`src/qsh/mpc/secret_inference.py`) rather than staying under CKKS. The split is now a measured decision
+rather than a stated preference.
+
+### What the plaintext-versus-CKKS comparison proves, and what it does not
+
+The demo measures its CKKS result against a plaintext reference computed in the same tab
+(`web/src/lib/clientFHE.ts` returns `maxAbsError`, about 1e-9 on the linear path, and the convolution
+path computes its own against a plaintext reference). That comparison is worth having and it is easy to
+overstate, so the boundary is drawn here rather than left to a reader.
+
+**It is empirical fidelity. It is not cryptographic integrity.** The verifiable-FHE literature proves a
+different property: that **the server ran the circuit that was requested**. Atapoor, Baghery, Pereira
+and Spiessens (*Verifiable FHE via Lattice-based SNARKs*, IACR CiC 2024, ePrint 2024/032) verify an
+approximate neural network of three layers and more than 100 ciphertexts in *"less than 1 second"*, and
+Tremblay Thibault and Walter (Zama, *Towards Verifiable FHE in Practice*, ACM CCS 2025, ePrint
+2024/451) prove TFHE bootstrapping with a prover under 20 min, a proof of about 200 kB and a verifier
+under 10 ms. Neither proves that the decrypted result matches a plaintext reference - that is not what
+those proofs say - and conversely, an agreement figure proves nothing about whether the evaluator
+followed the circuit. **This project implements neither construction**, so the honest reading of the
+comparison is "the approximate scheme agreed with the exact one on this input", full stop. Anyone who
+knows this literature will otherwise read a side-by-side agreement number as an integrity claim, and
+nothing here establishes integrity.
+
+In the taxonomy of Peng et al. (*A Survey of Zero-Knowledge Proof Based Verifiable Machine Learning*,
+arXiv:2502.18535) - verifiable training, verifiable testing, verifiable inference - this dual-path
+comparison sits in **verifiable testing**. Naming the slot is useful precisely because it is the modest
+one.
+
+**How to report it, using someone else's convention rather than inventing one.** Two exist, and they
+are the same measurement in two directions:
+
+- **An integer count of disagreements, expected zero.** Li, Wu and Miao (arXiv:2605.22237) report
+  **"PH-mis"** in Table IX, defined verbatim as *"the integer number of top-1 mismatches between
+  plaintext polynomial evaluation and CKKS evaluation on the evaluated test set; it is zero for every
+  selected row"* - reported **beside** plaintext and ciphertext accuracy, not folded into either.
+- **A percentage of agreements.** Zama's Concrete-ML prints **"Similarity"**, the mean per-sample
+  agreement between clear and FHE predictions. That is the convention from the vendor with the largest
+  FHE-ML install base.
+
+Either is defensible; neither is this project's invention; reporting an unlabelled error magnitude with
+no agreement statistic is the option to avoid. Note also that Concrete-ML's deployment model **returns
+class scores and has the CLIENT decrypt**, which is the mainstream construction for encrypted multiclass
+inference and is what this demo already does - with the client and the key holder being the same tab.
+
 ### The split itself
 The 2026-standard private-inference split (Gazelle -> Delphi -> BOLT -> Bumblebee -> BLB; EncFormer)
 is **linear layers under FHE** (matmul/conv as CKKS; GPU-accelerable via HEonGPU) and **non-linear
