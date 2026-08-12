@@ -1195,7 +1195,15 @@ export function runClientPipeline(
         row.reduce((a, wij, i) => a + wij * (z[i] ?? 0), 0) + (w.b?.[j] ?? 0));
       const encCls = argmax(fhe.logits), plainCls = argmax(plain);
       const maxAbs = Math.max(...fhe.logits.map((v, i) => Math.abs(v - plain[i])));
-      const bits = maxAbs > 0 ? Math.floor(Math.abs(Math.log2(maxAbs))) : null;
+      // Bits of precision is -log2(error), and the sign is the whole point. This read
+      // `Math.abs(Math.log2(maxAbs))` until Round 34, which made the best and the worst case print
+      // IDENTICALLY: an error of 4.294e-9 gives 27 bits, and an error of 2^27 - a total CKKS blow-up,
+      // eight orders of magnitude larger than the logits themselves - also gave "about 27 bits of
+      // precision". Folding the sign turned a catastrophe into a healthy-looking number in the one
+      // metric that exists to detect it. An error at or above 1 has no bits of precision to report,
+      // so it reports as a failure instead of as a plausible positive.
+      const bits = maxAbs > 0 && maxAbs < 1 ? Math.floor(-Math.log2(maxAbs)) : null;
+      const precisionFailed = maxAbs >= 1;
 
       metric(stage, "encrypted_student_params", Number(w.n_parameters) || null);
       metric(stage, "encrypted_student_class", w.classes?.[encCls] ?? encCls);
@@ -1209,7 +1217,11 @@ export function runClientPipeline(
         + `${w.W.length} dot products): class "${w.classes?.[encCls] ?? encCls}" in ${r2(fhe.fheMs)} ms. `
         + `Top-1 mismatches vs the plaintext reference: ${encCls === plainCls ? 0 : 1} of `
         + `${w.W.length ? 1 : 0} scored inputs. Max abs error ${maxAbs.toExponential(3)}`
-        + (bits !== null ? ` (about ${bits} bits of precision, MAX not mean)` : "") + ".");
+        + (bits !== null ? ` (about ${bits} bits of precision, MAX not mean)` : "")
+        + (precisionFailed
+          ? ` -- PRECISION FAILURE: the error is at or above 1, so there are no bits of precision to `
+            + `report. The decrypted result is not a usable approximation of the plaintext one.`
+          : "") + ".");
       emit("log", stage, `the ARGMAX is NOT encrypted: all ${w.W.length} class scores are decrypted `
         + `and the maximum taken in the clear, because CKKS has no native comparison. That is the `
         + `standard construction and it reveals nothing here, since in one tab the client is the user.`);

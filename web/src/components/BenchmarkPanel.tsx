@@ -10,6 +10,11 @@ import {
 import { downloadCSV, downloadJSON, downloadNodePNG } from "../lib/export";
 
 const colorFor = (path: string) => (path === "QSMPC-FHE" ? "#b072ff" : "#4f9dff");
+/** Bar fill: the same colour as `colorFor`, plus a hatch on QSMPC-FHE so the path is not encoded by
+ *  colour alone (WCAG 2.2 SC 1.4.1, Level A). `suffix` picks the per-chart pattern id, because an SVG
+ *  pattern is resolved per document and two charts sharing one id is a real rendering hazard. */
+const fillFor = (path: string, suffix = "") =>
+  (path === "QSMPC-FHE" ? `url(#hatch-qsmpc${suffix})` : colorFor(path));
 const FHE_COLOR = "#4f9dff";   // linear → FHE (CKKS)
 const MPC_COLOR = "#f5a623";   // non-linear → MPC (secret-sharing)
 
@@ -137,7 +142,19 @@ export default function BenchmarkPanel(
                     <XAxis dataKey="name" tick={{ fontSize: 11, fill: "#97a3b6" }} />
                     <YAxis scale="log" domain={[0.5, "auto"]} tick={{ fontSize: 11, fill: "#97a3b6" }} allowDataOverflow />
                     <Tooltip contentStyle={{ background: "#151c2c", border: "1px solid #243049" }} />
-                    <Bar dataKey="ratio">{ratioData.map((d, i) => <Cell key={i} fill={colorFor(d.path)} />)}</Bar>
+                    {/* WCAG 2.2 SC 1.4.1 (Level A). `colorFor` encoded the ciphertext PATH by fill
+                        alone, and the `<Legend />` on the latency chart covers only the single
+                        `latency` series, so it explains nothing about the per-bar colours. The x-axis
+                        `name` mitigates but does not cure it, because `name` is the workload rather
+                        than the path. QSMPC-FHE now carries a hatch as well as its colour. */}
+                    <defs>
+                      <pattern id="hatch-qsmpc" patternUnits="userSpaceOnUse" width="5" height="5"
+                               patternTransform="rotate(45)">
+                        <rect width="5" height="5" fill="#b072ff" />
+                        <line x1="0" y1="0" x2="0" y2="5" stroke="#e5d0ff" strokeWidth="1.6" />
+                      </pattern>
+                    </defs>
+                    <Bar dataKey="ratio">{ratioData.map((d, i) => <Cell key={i} fill={fillFor(d.path)} />)}</Bar>
                   </BarChart>
                 </ResponsiveContainer>
               </div>
@@ -150,7 +167,19 @@ export default function BenchmarkPanel(
                     <YAxis tick={{ fontSize: 11, fill: "#97a3b6" }} />
                     <Tooltip contentStyle={{ background: "#151c2c", border: "1px solid #243049" }} />
                     <Legend />
-                    <Bar dataKey="latency">{latData.map((d, i) => <Cell key={i} fill={colorFor(d.path)} />)}</Bar>
+                    {/* WCAG 2.2 SC 1.4.1 (Level A). `colorFor` encoded the ciphertext PATH by fill
+                        alone, and the `<Legend />` on the latency chart covers only the single
+                        `latency` series, so it explains nothing about the per-bar colours. The x-axis
+                        `name` mitigates but does not cure it, because `name` is the workload rather
+                        than the path. QSMPC-FHE now carries a hatch as well as its colour. */}
+                    <defs>
+                      <pattern id="hatch-qsmpc-lat" patternUnits="userSpaceOnUse" width="5" height="5"
+                               patternTransform="rotate(45)">
+                        <rect width="5" height="5" fill="#b072ff" />
+                        <line x1="0" y1="0" x2="0" y2="5" stroke="#e5d0ff" strokeWidth="1.6" />
+                      </pattern>
+                    </defs>
+                    <Bar dataKey="latency">{latData.map((d, i) => <Cell key={i} fill={fillFor(d.path, "-lat")} />)}</Bar>
                   </BarChart>
                 </ResponsiveContainer>
               </div>
