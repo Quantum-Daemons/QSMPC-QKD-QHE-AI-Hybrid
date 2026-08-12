@@ -235,8 +235,24 @@ export interface QcnnResult {
 //     `qotpQcnnInfer` remains the hiding + T-count demonstration and still reports both honestly.
 //   * Features are min-max scaled with the TRAINING ranges, shipped in the weights. RY(x*pi) needs a
 //     bounded angle; an unscaled WDBC "mean area" of 2500 wraps the Bloch sphere many times.
+/** A trained QCNN's weights.
+ *
+ * `scale` and `bias` are SCALARS for the binary head and ARRAYS for the multiclass one. They were
+ * scalar-only until Round 34, which is the other half of why this model was binary by construction:
+ * one expectation through one affine map is one logit however many classes the labels have.
+ */
 export interface QcnnWeights {
-  n_qubits: number; layers: number; theta: number[][]; scale: number; bias: number;
+  n_qubits: number; layers: number; theta: number[][];
+  scale: number | number[]; bias: number | number[];
+  /** Present only on a multiclass model. `class_index` is the literal formula, shipped as data
+   *  because reading the bits in another order permutes the class map while leaving accuracy, macro
+   *  F1 and every loss curve identical - nothing downstream can detect it. */
+  readout?: { kind: string; n_classes: number; readout_qubits?: number; bit_order?: string;
+              class_index?: string; note?: string };
+  class_names?: string[] | null;
+  per_class_f1?: Record<string, number> | null;
+  n_classes_predicted?: number | null;
+  macro_f1_floors?: { uniform_random: number; majority_class: number; note?: string } | null;
   input_space: string; encoding: string;
   feature_mean?: number[]; feature_std?: number[];
   test_minority_f1?: number; classical_lr_minority_f1?: number;
@@ -245,7 +261,8 @@ export interface QcnnWeights {
 }
 
 export function qcnnInferTrained(features: number[], w: QcnnWeights):
-    { expectation: number; cls: number; logit: number; qubits: number; latencyMs: number } {
+    { expectation: number; cls: number; logit: number; qubits: number; latencyMs: number;
+      probs?: number[]; className?: string } {
   const t0 = performance.now();
   const nq = w.n_qubits, N = 1 << nq;
   const re = new Float64Array(N), im = new Float64Array(N);
@@ -294,9 +311,30 @@ export function qcnnInferTrained(features: number[], w: QcnnWeights):
     for (let q = 0; q < nq; q++) RY(q, w.theta[l][q]);
     for (let q = 0; q < nq; q++) CNOT(q, (q + 1) % nq);
   }
+  // MULTICLASS readout: marginal probabilities of the first m wires, binned by the low m bits of the
+  // flat index. Qubit q is bit q, qubit 0 the LEAST significant - the same convention the `i & 1`
+  // below relies on for <Z0>, and the one the trainer writes into `readout.class_index`.
+  //
+  // NOT PennyLane's order. PennyLane lists the first wire as MOST significant, so this equals
+  // qml.probs(wires=[7,6,5]) and not wires=[0,1,2] - measured, see tests/test_qcnn_multiclass_readout.py.
+  // Reading it backwards permutes the classes by [0,4,2,6,1,5,3,7], of which FOUR are fixed points, so
+  // a spot check on the obvious classes would pass. That is why the convention ships in the weights
+  // rather than living only here.
+  const m = w.readout?.readout_qubits ?? 0;
+  if (m > 0 && Array.isArray(w.scale) && Array.isArray(w.bias)) {
+    const k = 1 << m, probs = new Float64Array(k);
+    for (let i = 0; i < N; i++) probs[i & (k - 1)] += re[i] * re[i] + im[i] * im[i];
+    const sc = w.scale as number[], bi = w.bias as number[];
+    const logits = Array.from({ length: k }, (_, c) => probs[c] * sc[c] + bi[c]);
+    let best = 0;
+    for (let c = 1; c < k; c++) if (logits[c] > logits[best]) best = c;
+    return { expectation: probs[best], cls: best, logit: logits[best], qubits: nq,
+             latencyMs: performance.now() - t0, probs: Array.from(probs),
+             className: w.class_names?.[best] };
+  }
   let exp = 0;
   for (let i = 0; i < N; i++) { const p = re[i] * re[i] + im[i] * im[i]; exp += (i & 1) ? -p : p; }
-  const logit = exp * w.scale + w.bias;
+  const logit = exp * (w.scale as number) + (w.bias as number);
   return { expectation: exp, cls: logit > 0 ? 1 : 0, logit, qubits: nq,
            latencyMs: performance.now() - t0 };
 }
