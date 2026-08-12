@@ -410,6 +410,12 @@ def main() -> int:
     out.mkdir(parents=True, exist_ok=True)
     (out / "weights.json").write_text(json.dumps({
         "usecase": a.usecase, "n_qubits": N_QUBITS, "layers": a.layers,
+        # How many wires actually carry data. It equalled n_qubits until telecom brought 7
+        # features to 8 wires, and the spare wire is left UNENCODED - RY(tanh(0)*pi) is the
+        # identity. The browser reaches the same state by `features[q] ?? 0` with a missing
+        # mean defaulting to 0 and a missing std to 1, so the two agree by construction; this
+        # field is what lets a test assert that rather than infer it.
+        "n_features": len(names),
         "theta": th.tolist(),
         "scale": (sc.tolist() if hasattr(sc, "tolist") else sc),
         "bias": (bi.tolist() if hasattr(bi, "tolist") else bi),
