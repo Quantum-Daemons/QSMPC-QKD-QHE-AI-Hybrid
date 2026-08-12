@@ -602,7 +602,16 @@ export interface MeasuredHybrid {
   dense?: { rotations: number; multiplies: number };
 }
 
-export interface RealHybridRun extends MeasuredHybrid { prediction: number; maxAbsError: number; }
+export interface RealHybridRun extends MeasuredHybrid {
+  prediction: number;
+  maxAbsError: number;
+  /** The decrypted logits and the plaintext reference the CKKS path was measured against.
+   *  Carried so every use case can report the same encrypted-verification figures telecom got in
+   *  Round 33 - a top-1 mismatch COUNT and bits of precision - instead of only a raw error magnitude
+   *  whose scale a reader has no way to judge. */
+  logits: number[];
+  plainLogits: number[];
+}
 
 let _fheWarmed = false;
 /** Whether the one-time CKKS/MPC warm-up has already run in this tab. */
@@ -698,7 +707,7 @@ export async function realClientHybrid(features: number[], u: () => number,
     return {
       prediction: mpc.out[0], fheMs: fhe.fheMs + (conv?.convMs ?? 0), mpcMs: mpc.mpcMs,
       commBytes: mpc.commBytes, ctBytes: fhe.ctBytes, featDim: n,
-      maxAbsError: fhe.maxAbsError, conv,
+      maxAbsError: fhe.maxAbsError, plainLogits: fhe.plainLogits, logits: fhe.logits, conv,
       dense: { rotations: fhe.rotations, multiplies: fhe.multiplies },
     };
   } catch (e) {
@@ -1931,6 +1940,37 @@ export function runClientPipeline(
           artifacts._measured_hybrid = { fheMs: real.fheMs, mpcMs: real.mpcMs, commBytes: real.commBytes,
             ctBytes: real.ctBytes, featDim: real.featDim, conv: real.conv, dense: real.dense };
           metric(stage, "fhe_max_abs_error", r2(real.maxAbsError) || real.maxAbsError);
+          // The encrypted-verification figures, on the same footing telecom got in Round 33 - where
+          // they existed at exactly ONE call site and the other four use cases reported only a raw
+          // error magnitude whose scale a reader has no way to judge.
+          //
+          // Two conventions, both published, and both reported because at n=1 they say different
+          // things. The top-1 mismatch COUNT is arXiv:2605.22237 Table IX, which reports it as an
+          // integer expected to be zero; the agreement percentage is Concrete-ML's "Similarity".
+          // "0 of 1" and "100.0%" are not the same claim.
+          //
+          // Precision in BITS because that is the unit OpenFHE and HElib both use, and the sign is
+          // load-bearing: bits are -log2(error), so an error at or above 1 has no bits to report and
+          // must surface as a failure rather than fold to a plausible positive. That exact fold was a
+          // live defect on the telecom path until Round 34.
+          {
+            const encCls = argmax(real.logits), plainCls = argmax(real.plainLogits);
+            const mism = encCls === plainCls ? 0 : 1;
+            const bits = real.maxAbsError > 0 && real.maxAbsError < 1
+              ? Math.floor(-Math.log2(real.maxAbsError)) : null;
+            metric(stage, "encrypted_top1_mismatches", mism);
+            metric(stage, "encrypted_scores_compared", real.logits.length);
+            metric(stage, "encrypted_agreement", mism === 0 ? 1 : 0);
+            metric(stage, "encrypted_precision_bits", bits);
+            emit("log", stage, `encrypted-vs-plaintext verification: ${mism} of 1 top-1 mismatch`
+              + `es over ${real.logits.length} class scores. Max abs error `
+              + `${real.maxAbsError.toExponential(3)}`
+              + (bits !== null ? ` (about ${bits} bits of precision, MAX not mean)` : "")
+              + (real.maxAbsError >= 1
+                ? " -- PRECISION FAILURE: the error is at or above 1, so the decrypted result is not"
+                  + " a usable approximation of the plaintext one."
+                : "") + ".");
+          }
           // Counted on BOTH paths, so Linear vs CNN is a measured comparison of key-switch cost -
           // the quantity the 2026 CKKS-inference literature identifies as dominant - rather than a
           // wall-clock difference that could be anything.
