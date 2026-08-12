@@ -7,9 +7,17 @@
 WHY THIS DATASET AND NOT SMAP/MSL
     The bundled NASA SMAP/MSL sample is kept for the browser demo, but it is not a defensible
     benchmark: essentially every result on it is reported with point-adjusted F1, and TSB-AD
-    (NeurIPS 2024 D&B) showed a uniform random score ranks 26th of 32 detectors under that measure —
-    it beats six real detectors by doing nothing. ESA-ADB is real ESA telemetry with event-level
-    annotations and a published event-wise protocol.
+    (AAAI 2022, arXiv:2109.05257) showed that under point adjustment "even a random anomaly score
+    can easily turn into a state-of-the-art TAD method". ESA-ADB is real ESA telemetry with
+    event-level annotations and a published event-wise protocol.
+
+    The citation and the number were both WRONG until Round 33. This said TSB-AD "showed a uniform
+    random score ranks 26th of 32 detectors", which could not be verified: TSB-AD's abstract describes
+    40 detection algorithms, not 32, and identifies VUS-PR as the measure it recommends. The claim had
+    propagated to seven places including the README and the technical report, and one of them
+    strengthened it into "it beats six real detectors" - an inference no source supports. Kim et al. is
+    the verified replacement and is the stronger statement: it is about any random score, not a rank
+    in one table.
 
 WHAT TO REPORT
     Event-wise F-beta at beta=0.5, which is what ESA-ADB and Telemanom actually report. Telemanom's
@@ -304,8 +312,9 @@ def main() -> int:
         "metric_note": (
             "Event-wise F-beta at beta=0.5 under the overlap rule, which is what ESA-ADB and "
             "Telemanom report. Telemanom's widely-quoted 0.71 is F0.5, not F1. point_adjusted_f1 is "
-            "shown only to expose how much point adjustment inflates: TSB-AD (NeurIPS 2024) found a "
-            "uniform random score ranks 26th of 32 detectors under it. Only labels whose ESA-ADB "
+            "shown only to expose how much point adjustment inflates: Kim et al. (AAAI 2022) show "
+            "that under point adjustment even a random anomaly score can reach state-of-the-art. Only "
+            "labels whose ESA-ADB "
             "Category is 'Anomaly' count as positives; the 690 annotated rare *nominal* events do not."
         ),
         "baseline_gap_note": (
