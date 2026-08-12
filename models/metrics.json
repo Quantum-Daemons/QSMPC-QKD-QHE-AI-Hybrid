@@ -22,6 +22,24 @@
     "split": "temporal, inductive",
     "wall_clock_s": 96.8
   },
+  "finance_aml.scorecard": {
+    "aunbc_fit": 0.00018612,
+    "auprc": 0.036529,
+    "coefficient_range": 8,
+    "decision_cut": -1,
+    "exact_under_bfv": true,
+    "fit_method": "coordinate-search",
+    "git_sha": "4ad9b4e-dirty",
+    "metric_note": "Fitted by maximising net benefit across five decision thresholds rather than a surrogate loss. `fit_method` is 'coordinate-search': the objective it maximises is the exact AUNBC, but optimality is NOT claimed - the exact integer program over all (sample x threshold) indicators is not tractable at this row count, and reporting a heuristic's result as an optimum would be a different claim. `exact_under_bfv` records that the encrypted score equals the plaintext score bit for bit, which is the property a CKKS student cannot offer; verified in tests/test_scorecard_bfv_exact.py.",
+    "minority_class_f1": 0.037211,
+    "n_features_available": 32,
+    "n_nonzero_coefficients": 12,
+    "n_test": 1523504,
+    "net_benefit": 0.00030763,
+    "net_benefit_threshold": 0.01,
+    "net_benefit_treat_all": -0.00856216,
+    "wall_clock_s": 272.3
+  },
   "finance_aml.student": {
     "agreement": 0.982943,
     "both_scored_zero": false,
@@ -150,7 +168,7 @@
   "medical_fl.student": {
     "agreement": 0.826923,
     "auc": 0.788221,
-    "baseline_gap_note": "This scores far below the 0.901 ResNet-18 baseline, and the reason is capacity: 3,226 parameters over a 14x14 input is a REPRESENTATION choice, not a feasibility limit - and this note said 'a CKKS-feasibility budget' until Round 32, which overstated how forced it was. Kim et al. (arXiv:2506.15258) do HE chest-X-ray inference on a VQGAN latent at downsampling factor 8 rather than on pixels, so the alternative to downsampling 28->14 is re-representing the input. The browser already runs onnxruntime-web, so such an encoder would run locally in plaintext with no privacy loss. Recorded as a trigger, not acted on. Round 24 found it had been WORSE than that - a constant predictor, emitting one class for all 156 test images, with accuracy 0.730769 exactly equal to the majority-class rate and AUC 0.354, below random. It was invisible because the registry declared `auc` while the record stored `accuracy`, and because this student had neither protection its teacher already had: class-weighted loss and AUC-based model selection. Both were added. Read `n_classes_predicted` and `majority_class_rate` beside the score - an accuracy equal to the majority rate is the signature of a model that learned nothing. Workings: references/medical-student-collapse-investigation.md.",
+    "baseline_gap_note": "This scores far below the 0.901 ResNet-18 baseline. The reason is representational rather than cryptographic: 3,226 parameters over a 14x14 input is a REPRESENTATION choice, not a feasibility limit - and this note said 'a CKKS-feasibility budget' until Round 32, which overstated how forced it was. Kim et al. (arXiv:2506.15258) do HE chest-X-ray inference on a VQGAN latent at downsampling factor 8 rather than on pixels, so the alternative to downsampling 28->14 is re-representing the input. The browser already runs onnxruntime-web, so such an encoder would run locally in plaintext with no privacy loss. Recorded as a falsifiable trigger in the additional-model decision, not acted on. Round 24 found it had been WORSE than that - a constant predictor, emitting one class for all 156 test images, with accuracy 0.730769 exactly equal to the majority-class rate and AUC 0.354, below random. It was invisible because the registry declared `auc` while the record stored `accuracy`, and because this student had neither protection its teacher already had: class-weighted loss and AUC-based model selection. Both were added. Read `n_classes_predicted` and `majority_class_rate` beside the score - an accuracy equal to the majority rate is the signature of a model that learned nothing. Workings: references/medical-student-collapse-investigation.md.",
     "both_scored_zero": false,
     "disagreement_on_positives": 0.149123,
     "hf_revision": "cfc0529d3eb4d6e17bd3804981db15667591d1b3",
@@ -238,6 +256,7 @@
   },
   "satellite_comms.telemanom": {
     "anomaly_sample_rate": 0.0075528,
+    "baseline_gap_note": "Read n_events_scored before comparing this to the baseline. The scored test window holds THREE labelled anomaly events, not the 320 that n_anomaly_intervals counts over the whole timeline - the annotated anomalies sit earlier in the mission, so a temporal split leaves almost nothing to score. Both recorded values decompose uniquely on three events: 0.714286 is tp=1 fp=0 fn=2 and 0.454545 is tp=1 fp=1 fn=2, so the 0.26 swing between two identical-config runs is ONE extra false-alarm run. The detector flags 2 points out of 441,600. Three protocol gaps to the citation remain open and are stated rather than closed: ESA-ADB multiplies event precision by the time-level TNR (recorded here as corrected_event_wise_f0_5), it splits each mission in half where this tests on the last 30 percent, and its lightweight test partition holds 65 events against 3 here. Workings: references/satellite-event-count-investigation.md.",
     "dataset": "ESA Anomaly Dataset (ESA-ADB), Mission1 lightweight channels 41-46",
     "event_wise_f0_5": 0.454545,
     "event_wise_fn": 2,
@@ -251,7 +270,7 @@
     "git_sha": "d19e285-dirty",
     "hf_revision": "6ff3d04490e6c7557ea683583c812f24f27816a6",
     "hf_revision_invalidated_by_retrain": "4507c187d0f9998199f6fa0e8064cb23315bbb9a",
-    "metric_note": "Event-wise F-beta at beta=0.5 under the overlap rule, which is what ESA-ADB and Telemanom report. Telemanom's widely-quoted 0.71 is F0.5, not F1. point_adjusted_f1 is shown only to expose how much point adjustment inflates: TSB-AD (NeurIPS 2024) found a uniform random score ranks 26th of 32 detectors under it. Only labels whose ESA-ADB Category is 'Anomaly' count as positives; the 690 annotated rare *nominal* events do not.",
+    "metric_note": "Event-wise F-beta at beta=0.5 under the overlap rule, which is what ESA-ADB and Telemanom report. Telemanom's widely-quoted 0.71 is F0.5, not F1. point_adjusted_f1 is shown only to expose how much point adjustment inflates: Kim et al. (AAAI 2022) show that under point adjustment even a random anomaly score can reach state-of-the-art. Only labels whose ESA-ADB Category is 'Anomaly' count as positives; the 690 annotated rare *nominal* events do not.",
     "n_anomaly_intervals": 320,
     "n_events_scored": 3,
     "n_parameters": 80486,
@@ -312,9 +331,31 @@
       "opset": 17
     },
     "framing": "Architecture comparison, not a performance claim. The data is synthetic because no commercial-OK real attack corpus exists. Every published QML-IDS figure we could verify sits below a random forest on the same data, and arXiv:2512.05069 was withdrawn by its own authors for insufficient evaluation. Per-class F1 is the headline; aggregate accuracy is shown beside it because Engelen et al. (WTMC 2021) demonstrated it stays at 0.99 across a label correction that moved Bot F1 from 0.60 to 0.99.",
-    "git_sha": "69314f4-dirty",
+    "git_sha": "df7c847-dirty",
     "n_classes": 8,
     "n_samples": 2400,
-    "wall_clock_s": 4.0
+    "wall_clock_s": 4.2
+  },
+  "telecom_ids.student": {
+    "aggregate_accuracy": 0.988333,
+    "agreement": 0.995,
+    "argmax_location": "client, in plaintext, after decrypting all 8 class scores",
+    "distilled_on": "teacher predict_proba (soft targets), weighted one-copy-per-class",
+    "macro_f1": 0.988329,
+    "metric_note": "Read `n_classes_predicted` before `macro_f1`. A linear student that stops predicting a class scores 0 on it by construction, and macro F1 then averages in a zero that looks like poor discrimination rather than an absent output - this repo's own QNN carries exactly that defect and is documented as doing so, so the check is not hypothetical. `agreement` is recorded but is NOT evidence the minority classes survived: agreement on the finance student rose from 0.884 to 0.947 across a change that left minority-class F1 unmoved, which is why per-class F1 is the headline here and the aggregate is a companion.",
+    "n_classes": 8,
+    "n_classes_predicted": 8,
+    "n_eval": 600,
+    "n_parameters": 64,
+    "per_class_f1": {
+      "combined": 1.0,
+      "detector_blinding": 1.0,
+      "intercept_resend": 0.986842,
+      "normal": 1.0,
+      "photon_number_splitting": 1.0,
+      "rng_manipulation": 0.986486,
+      "trojan_horse": 0.96732,
+      "wavelength_trojan": 0.965986
+    }
   }
 }

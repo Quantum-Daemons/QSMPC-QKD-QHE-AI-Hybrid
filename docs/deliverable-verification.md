@@ -190,6 +190,11 @@ So a round is not complete when its new work passes. It is complete when:
   terms;
 - the count of deferred items did not increase.
 
+**Round 32 failed the first and third clauses at once - three items closed, at least six opened with no
+condition - and the audit that repaired it is in "Round 33" below.** Read that section before adding
+anything to a deferred list here, because it is where the conditions live and where four items were
+reclassified for failing `QC16`.
+
 **Round 21 recorded two failures against this gate and then closed both, rather than carrying them
 into a fourth round.** They are kept here as the evidence for why the gate exists, in the past tense
 they now belong in.
@@ -398,6 +403,23 @@ a licence that grants patent rights.
 
 ## Round 28: a claim retracted, and the work it would take to earn it back
 
+**SUPERSEDED IN PART BY ROUND 30, marked in Round 33, and this is the one place in the project where the
+DOCUMENTATION was weaker than the IMPLEMENTATION.** Everywhere else the risk here runs the other way, so
+an unmarked supersession in this direction is worth naming rather than quietly editing. Round 30 earned
+**WS4(c) back for Clifford circuits** and `README.md` has claimed it since; the retraction below, and
+the standing prohibition at the end of this section, were left unmarked for three rounds. A reader
+checking whether this project may cite `qotp.py` for circuit privacy therefore found a rule forbidding
+exactly what the README already does, and the rule looked current because nothing said otherwise.
+
+**Current status, so it is not reconstructed from the history below.** WS4(c) is **MET for Clifford
+circuits**: a random Clifford word over {H, S, CNOT} is evaluated on the QOTP-encrypted state, the
+client tracks the Pauli frame through the same word, and the plaintext result is recovered at fidelity
+1.0, verified to depth 30 across seeds - `qhe/qcnn.py::qotp_clifford_random_circuit_demo`, with the frame
+rules in `qhe/qotp.py::update_key_h/s/cnot`. WS4(f) remains **NOT met**, and is a decision rather than a
+backlog item, because it is in tension with the mechanism instead of merely unimplemented - see the
+bullet in "What this project cannot verify". The Round 28 text is kept in full below, because it is the
+evidence for why the claim was retracted in the first place and for what the tautology looked like.
+
 **Circuit privacy (WS4 items c and f) is NOT demonstrated, and the function that was cited for it
 applies no circuit.** `qhe/qotp.py` carried `pauli_concealment_demo`, whose docstring said it
 returned "fidelities proving the result (and hence the server's circuit effect) is hidden".
@@ -428,6 +450,14 @@ T-dagger` is not Pauli - which is precisely the difficulty Ortega and Martin-Del
 addresses and which this repository does not implement. A Clifford-only demonstration would be
 honest and worth having; until it exists, no document here may cite `qotp.py` as evidence of
 circuit privacy.
+
+**That prohibition was SATISFIED, not broken, and it is lifted for the Clifford case as of Round 30.**
+The Clifford-only demonstration this paragraph asked for is what Round 30 built, so `README.md` row (c)
+citing `qhe/qotp.py::update_key_h/s/cnot` alongside `qhe/qcnn.py::qotp_clifford_random_circuit_demo` is
+the permitted case and not a violation. The prohibition **stands unchanged for anything containing T**,
+for the reason this paragraph already gives: `T X T-dagger` is not Pauli, the frame does not propagate,
+and no document here may cite `qotp.py` as evidence of circuit privacy for a non-Clifford circuit. It
+was left unmarked for three rounds - Round 33 marked it.
 
 **Two adjacent labels corrected at the same time**, both of the same kind - a true statement about
 one artefact applied to a different one. `README.md` and `docs/architecture.md` called
@@ -485,12 +515,28 @@ settled.
 same class as a stale document asserting a fixed item is open: the artefact and the description of
 the artefact drift apart, and the description is the thing people read.
 
-**PGS000004 / PRS313 is staged, not switched.** The 313-variant clinical instrument, its
-position-keyed dosage fetcher and the loader path are in place and tested; both the Python
-pipeline and the browser still score PGS000001 / PRS77. The switch is deliberately one step rather
-than done halfway, because the browser payload and the gnomAD ancestry overlay are generated
-separately and a use case scoring PRS313 in Python while displaying PRS77 in the browser would be
-worse than either alone.
+**PGS000004 / PRS313 was staged, not switched - and this paragraph went on saying so for two rounds
+after it stopped being true (corrected in Round 33).** What it said, in the present tense: the
+313-variant instrument and its position-keyed loader path were in place while "both the Python pipeline
+and the browser still score PGS000001 / PRS77", and the switch was being taken in one step because a use
+case scoring PRS313 in Python while displaying PRS77 in the browser "would be worse than either alone".
+
+**The switch completed in Round 31 for four surfaces and in Round 32 for the fifth.** PGS000004 /
+PRS313 is ACTIVE for the pipeline, the browser payload, the trainer, the registry and the generated
+payload; the score in force is the config field `DataConfig.genomics_prs_score` rather than a default
+written into any call site, and `tests/test_prs_pipeline_parity.py` runs the use case and compares its
+output against the payload the registry points at. PGS000001 / PRS77 is RETIRED and kept only because
+its dosage file is the one small enough to commit in full, so it is what CI exercises for the
+rsID-keyed code path.
+
+**Two things are worth keeping about how this paragraph aged, because they are different failures.**
+For one round the shipped state was the exact INVERSE of the warning - PRS313 in the browser, PRS77 in
+Python - and the sentence arguing against that split was still sitting here while the split was live.
+Then Round 32 fixed this same sentence in `src/qsh/data/loaders.py`, wrote a comment block recording
+that it had been wrong, and did not check whether any other copy existed. **A correction that knows it
+is correcting a sentence should grep for that sentence**, which is the cheapest possible check and was
+not run. That is the third instance in this file of a stale open-items entry, after the two in "CLOSED
+in Round 29" and the consolidation count in Round 29 itself.
 
 What the migration required, because it is the interesting part: PGS000004 publishes **no rsIDs at
 all** - every one of its 313 harmonised rows has an empty `hm_rsID` with
@@ -669,6 +715,267 @@ not by reading. The pipeline split needed the loader run to see it; the empty-sn
 file emptied; the tree-attribution sentence needed the page loaded twice, because the first fix rendered
 it nowhere and a diff review would have passed it.
 
+## Round 33: the count went up, which is the one thing the gate forbids
+
+**Round 32 closed three items and opened at least six with no resolving condition.** The gate above has
+three clauses and this failed the two that are supposed to be the easy ones: every deferral records its
+condition, and the count does not increase. It did not even fail quietly - the Round 32 plan named two
+of the new deferrals itself, wrote "give each a condition or reclassify", and then did neither. **An
+instruction a plan issues to itself and does not execute is the same defect as a commit message
+describing work that is not in the commit**, which this file records twice about the checklist. The
+plan is read once and the artefact is read forever, so the artefact is where the instruction has to
+land.
+
+Every item below now carries either a condition that is externally checkable or a reclassification as a
+decision with a reopening condition. Each was put through `QC16` first: ask what would happen if the
+condition were satisfied tomorrow, and if the answer is "still blocked", the condition is decoration.
+**Four failed that test and are reclassified rather than conditioned, and three collapsed into one
+item**, which is how the count comes down instead of being renumbered.
+
+### The condition-free items opened in Round 32
+
+**1. The medical latent-space encoder, and an artifact citing a record that does not contain it.**
+`models/metrics.json` (`medical_fl.student.baseline_gap_note`) and its mirror in
+`web/src/lib/config.defaults.json` both say Kim et al. (arXiv:2506.15258) is "recorded as a falsifiable
+trigger in the additional-model decision". It is not. That decision's trigger table in
+`docs/browser-verification-checklist.md` has **five rows** - bootstrapped CKKS CNN, labelled QKD attack
+corpus, quantum kernel at 8 qubits, encrypted transformer on finance tabular, an encrypted BreastMNIST
+result above this one - and none of them concerns latent-space encoding or a VQGAN. `references/REFERENCES.md`
+repeats the same claim. So three artifacts assert a record, and the record does not exist. **This is
+the Round 32 finding about DATA_LICENSES section 4 in a second place**: the appeal to an authority reads
+exactly like a checked one, and nothing checks that the authority contains the thing appealed to.
+
+The checklist is owned by another worker this round, so the fix is recorded rather than made.
+**Condition, in two parts, both greppable:** a sixth row is added to that trigger table naming the
+latent-encoder route with the measurement that currently blocks it, and the `baseline_gap_note` stops
+asserting the record until the row exists - "not recorded anywhere yet" is a true sentence and costs
+nothing. The row's own content when it is written: *an encoder whose latent fits 4096 CKKS slots at
+multiplicative depth 1 and which runs under `onnxruntime-web`* - the paper's own regime is chest X-ray
+at downsampling factor 8, and 28x28 at factor 8 is 3.5x3.5, so whether the technique transfers to this
+input size at all is the open measurement and must be stated as unmeasured rather than assumed either
+way.
+
+**2. Tailor, the no-MPC exact-ReLU design - RECLASSIFIED as a decision.** IACR ePrint 2026/1551 is
+recorded in `docs/architecture.md` as "an alternative design with its trade-off" and appears on no
+list, so it was carried without being carried. `QC16` retires the condition anyone would write for it:
+if Tailor were adopted tomorrow the demo could not load it. Its backends are **TFHE and FINAL**, and
+the only HE library this project's browser tier can load is `node-seal`, which exposes `bfv`, `bgv` and
+`ckks` and no TFHE at all. So the blocker is not the 222 s server measurement against a page-interaction
+budget, which is what the architecture note leads with - it is that there is no browser artefact to
+evaluate. **This is the Rust/tfhe-rs decline above, applied to a second artefact**, and it should carry
+the same reopening condition: *a TFHE or FINAL implementation that loads in a browser tab and
+EVALUATES - not merely keygen, encrypt and decrypt - and evaluates one exact ReLU inside a page
+interaction.* Recorded as a decision so the architecture note stops being the only place it lives.
+
+**3. Quantum crosstalk in the SDN controller - CONDITIONED, and it is in scope.** `src/qsh/qkd/sdn_controller.py`
+contains no crosstalk term (measured: zero occurrences of the string), while Konteli et al.
+(arXiv:2607.24299) publish all-to-all quantum-level crosstalk on a **commercial** 16x16 MEMS switch with
+the impact expressed directly in decoy-state BB84 terms. The tempting decline is that this project's
+quantum layer is simulated, so a physical-layer penalty is out of scope. That is wrong, and checking it
+is what makes the condition writable: `qkd/decoy_reference.py` already carries a **background-count**
+term and reproduces Ma et al. against it. Crosstalk enters as a background-count contribution, so this
+is a parameter with a measured external source, not a new mechanism. **Condition:** the per-link budget
+in `sdn_controller.py` gains a crosstalk-sourced background contribution taken from arXiv:2607.24299,
+and the item is resolved when a switched multi-user allocation reports a **different** secure key rate
+from an unswitched one - a term that changes no output is the defect this project treats as serious, so
+the test is the delta and not the presence of the code.
+
+**4 and 10 and part of 9 are one item, and that is the finding.** The two 2026 QKD proofs on the
+deferred list are a matched pair - Sixto et al. (arXiv:2606.29943) transmitter side, Navarrete et al.
+(arXiv:2608.09674) receiver side, overlapping author sets, and the receiver paper published within days
+of the already-cited 2608.09793 - and both supersede the same Ma, Qi, Zhao and Lo (2005) baseline that
+`qkd/bb84.py::_decoy_secure_fraction` and `qkd/decoy_reference.py` rest on. `references/REFERENCES.md`
+ends the Sixto entry with "the honest statement is that the demo has not adopted it", which is honest
+and is not a condition. Carrying them as two items, plus "hardware QKD field test" as a third, is
+double and triple counting, because **all three are gated on the same missing thing**.
+
+`QC16` finds it: if either proof were "adopted" tomorrow, nothing on the page could change, because
+their inputs are **device characterisation parameters** - state-preparation flaw magnitude, side-channel
+state distinguishability, detection-efficiency mismatch - and this repository has no device. Adopting
+the proof would mean inventing the numbers the proof exists to bound, which is the move this project
+refuses everywhere else. So it is one item, gated on characterisation, and **it is reclassified as a
+decision with a condition that does not need a device**, because a version is reachable without one:
+
+> **Condition:** publish, beside the Ma et al. secure-key figure, what the 2026 bounds do to it at
+> **one stated parameter point** - one assumed state-preparation flaw magnitude, one assumed mismatch -
+> labelled *modelled, not measured*, so the reader learns the direction and rough size of the penalty
+> rather than being told a 2005 number is current. If a characterised hardware link ever exists, adopt
+> Sixto and Navarrete together in place of Ma et al. in that same round, because that is the round in
+> which the inputs exist.
+
+That condition can be satisfied in a day and it cannot be satisfied by decoration, which is the test.
+
+**The `trojan_horse` / `wavelength_trojan` half of item 4 is a separate and smaller thing, and the
+reference entry states it slightly too strongly.** Those are attack CLASSES in a synthetic IDS corpus -
+five-tuples in `src/qsh/qml_ids/attacks.py`, mirrored in `web/src/lib/clientIDS.ts` - and a synthetic
+label generator does not need a security proof. What it needs is a stated provenance for its numbers.
+**Condition:** each class's five-tuple names the source its magnitudes come from, and where the
+magnitude is this project's own choice the class says so in the same line. Greppable, and it closes the
+real gap, which is unattributed numbers rather than a missing proof.
+
+**5. The second same-day quantum Executive Order - RECLASSIFIED, with a dated reopening condition.**
+Recorded in `references/REFERENCES.md` as "cited nowhere here", with the reason given as the appearance
+problem: a roadmap citing one of two same-day quantum EOs looks like it missed one. Read at the primary
+source rather than left as an appearance question. It is **EO 14413, "Ushering in the Next Frontier of
+Quantum Innovation", signed 2026-06-22, published 2026-06-25 at 91 FR 38487**, five pages, eleven
+sections: national strategy, quantum computing for scientific discovery, sensors and networks, supply
+chains, technology protection, workforce, international engagement, reports.
+
+It is **not** a cryptographic-migration instrument - that is EO 14412 at 91 FR 38483, which this
+repository already cites correctly and whose number the secondary sources get wrong. The one place
+14413 touches this at all is **section 4(f)**, which directs an intelligence assessment of the national
+security implications of commercial quantum computers increasing in scale and performance, "such as the
+implications for the migration to post-quantum cryptography". That is a reporting directive to named
+officials, and it imposes no obligation on any system. **So: declined for scope as a roadmap instrument, and it should be cited in
+one line for exactly that reason** - the citation's job is to record that it was read and found not to
+apply, which is the opposite of missing it. `docs/pqc-roadmap.md` is owned elsewhere this round, so the
+line is recorded here and not written there.
+
+**Reopening condition, and it is a date rather than a hope:** section 3(a) directs an update to the
+National Quantum Strategy within **180 days**, so about **2026-12-19**. If that update, or section 5's
+quantum-network work, carries a migration or deployment directive, 14413 becomes a roadmap instrument
+and must be cited as one. Re-check on that date.
+
+**6. `RI9`'s five-way re-validation - and the premise that it was never run is WRONG. It was run and
+never recorded, which is a different and worse defect.** The Round 32 commit `3de8599` states it
+outright: *"Five ways, measured: clean 0, empty 1, truncated 1, tampered 1, missing 1. The hash fires
+first on the vendored path, so the count is the second line rather than the first, and the comment says
+so."* Meanwhile `RI9` in the checklist still reads as an instruction to re-validate five ways,
+`docs/verification-log.md` carries nothing, and the record below in "Verification assets added in Rounds
+22-23" still lists **three**. **So this is the THIRD time a commit message here has described work that
+no artifact records** - after the two checklist cases in Round 29 - and it is the first time the work
+was actually done. The lesson sharpens rather than repeats: the previous two were commits describing
+work that had not happened, and this one is a commit describing work that had. **From the tree, those
+two look identical.** A measurement that exists only in a commit message is not a record, because
+nothing reads commit messages when checking whether a claim holds.
+
+The outstanding requirement is therefore not to run the five - it is to put them where the register says
+gate results live, and to reconcile three documents that disagree about whether it happened.
+
+The mechanism is worth writing down because it is a good example of a fix invalidating a test rather
+than a claim. Round 32 added a SHA-256 assertion on the vendored gzip, and it runs **inside
+`loadVectors`, before `gunzipSync`**. The third recorded re-validation was a well-formed key smuggled
+into the malformed set, reported as exit 1 with "779 rejected, 1 accepted" - and 779 + 1 = 780, which is
+exactly the ML-KEM-768 count, so that test was constructed to keep the count unchanged. That is
+precisely the case the count assertion cannot catch and the hash can. **The hash now fires first and
+prints a hash mismatch, so the "779 rejected, 1 accepted" line cannot be produced on the vendored path
+at all.** The script's own comment says the hash catches empty, truncated and tampered files alike, and
+that is measured; nobody then went back to the record that quotes the superseded output.
+
+**Condition:** all five re-validations - clean exit 0, empty exit 1, truncated exit 1, tampered exit 1,
+missing exit 1 - recorded in `docs/verification-log.md` with each exit code and each printed message.
+Round 32 ran them and recorded them only in commit `3de8599`, so the condition is a transcription rather
+than a measurement, and it is written into the Round 32 entry of that file in Round 33.
+
+**One thing does still need measuring, and it is the case the five-way list quietly replaced.** The
+"smuggled well-formed key" test and the "tampered" test are not the same test. Tampering is caught by the
+hash, which is why it exits 1; a smuggled key was the test of whether the CHECK ITSELF can distinguish
+779 rejections from 780, and that is now unreachable on the vendored path. To exercise it at all, the
+record has to state **how it got past the hash** - either re-vendor with the recomputed hash, so the
+count assertion is the line of defence under test, or use `--live`, where there is no hash to check.
+Naming the technique is part of the record, because a five-way list that silently substitutes an easier
+case for a harder one is exactly the shape `RI9` exists to catch.
+
+### The older items that never had a condition
+
+**7. Malicious-secure MPC - and the premise that this is the longest-carried deferral is WRONG in the
+direction this project cares about.** "Deferred since Round 1, no condition in any document" is what the
+ledger says, and the ledger is the last place still saying it. The blanket sentence in "What this
+project cannot verify" - "The security model is semi-honest. Malicious security was designated in Round
+1 and never built" - is **false about the browser's non-linear layer**, and it has been false for
+several rounds while three other documents described the real state correctly.
+
+`web/src/lib/clientMPC.ts` runs `mpc-framework` over `emp-wasm-engine`, and `emp-wasm` is a WASM build
+of **`emp-toolkit/emp-ag2pc` and `emp-agmpc`** - authenticated garbling, Wang, Ranellucci and Katz, CCS
+2017, IACR ePrint 2017/030, whose title is literally "Authenticated Garbling and Efficient **Maliciously
+Secure** Two-Party Computation". `docs/architecture.md`, `docs/crypto-agility.md` and
+`docs/threat-model.md` all call it authenticated garbling; this register generalised "semi-honest" over
+the whole project from the paths where it is true. **Same shape as the SEAL 4.4.0 advisory: the register
+was wrong in the understating direction, while the documents an audit would have flagged as
+overclaiming were right.**
+
+What is genuinely semi-honest, and is now scoped rather than generalised: MPyC / Shamir in
+`src/qsh/mpc/secret_inference.py` (the server tier), the keyed-hash PSI, and `src/qsh/qsmpc/qot.py`.
+And the honest caveat on the malicious-secure path is not about the protocol: both parties share one JS
+heap, so the party separation is notional and this is a demonstration of a malicious-secure protocol
+rather than two mutually distrusting hosts. That caveat is already at `clientMPC.ts:10-12`.
+
+The residual is what `README.md` says it is, and the README's parenthetical was **more precise than
+this register's sentence**: PQ-OPRF PSI and **identifiable** abort. Authenticated garbling gives
+security with abort and does not identify the aborting party. **Condition:** a post-quantum OPRF with a
+browser-loadable implementation, and a protocol providing identifiable abort - each named with the
+library that would supply it, at the point where it is claimed. Until one of those exists the residual
+is two named cryptographic primitives that are absent, which is a decision, not a task.
+
+**8. ETSI GS QKD 014 mutual TLS - RECLASSIFIED, because the stated condition was never the binding
+one.** This is a clean `QC16` case. If client certificates were provisioned tomorrow the item would not
+move, because **there is nothing to attach them to**: `src/qsh/qkd/kme.py` is an in-process Python
+object, `api/` exposes no KME route at all, and the module's own `authentication_note()` says so - "this
+in-process KME has no transport to attach that to". Mutual TLS is a transport property and this KME has
+no transport. **Reopening condition:** if the KME is ever exposed over HTTP, mTLS with the SAE identity
+taken from the client certificate goes in **the same change** - the two must not be separable, because
+a reachable KME whose SAE identity is a parameter is worse than an in-process one that says so.
+Greppable: a KME route in `api/` without mTLS is the failure.
+
+**9. The three README residual gaps - and only one of the three is an independent item.** `README.md`
+listed "hardware QKD field test (vs the BB84 simulator); larger fault-tolerant QHE; production
+bootstrapping throughput" with no conditions and no dates, next to "malicious-secure MPC (PQ-OPRF PSI +
+identifiable abort)". Listing them as four independent gaps inflates the count, because one is a boundary
+of the deliverable, one is downstream of a decision already recorded above, and only the third stands on
+its own:
+
+- *hardware QKD field test* is the same gate as items 4 and 10 above - no characterised device - and this
+  file already carries the decision in "What this project cannot verify": no QKD hardware exists here
+  and there will be no browser API for it. It is a **boundary of the deliverable, not a gap in it**.
+  Definition of done if it ever happens, so it is not an open-ended wish: the first thing published is
+  the measured QBER against `decoy_reference.py`'s prediction for the same link budget.
+- *production bootstrapping throughput* is downstream of the OpenFHE `EvalBootstrapSetup` SIGSEGV
+  decision above, which is already recorded as a permanent workaround on this host distribution. A
+  throughput figure needs the bootstrap path to run. **Condition:** publish the figure when `make
+  test-all` completes without the segfault, or when the HEonGPU collective-bootstrap path is benchmarked
+  end to end - one item, gated on a thing already decided, not a second independent item.
+- *larger fault-tolerant QHE* is the only one of the three that is genuinely its own item. Today's
+  `t_count()` is a labelled Solovay-Kitaev estimate of a fault-tolerant deployment's cost, not an
+  executed count. **Condition:** replace the estimate with an executed count when a backend exposing
+  logical, error-corrected qubits is addressable from PennyLane. Externally checkable against a provider
+  backend list, and if it were satisfied tomorrow the item would move.
+
+**11. The four metadata-only arXiv entries - CONDITIONED with a deadline, because that is what they were
+missing.** arXiv:2604.04783, 2602.11470, 2512.11269 and 2602.22229 are labelled honestly in
+`references/REFERENCES.md` - "abstracts not individually opened, so no number from these four should be
+quoted" - and that label is doing real work. What they lacked is any way to stop being in that state.
+**Condition:** an entry is promoted only when a number from it is quoted **with the section or page it
+came from**, and any entry not promoted by **Round 35** is removed. Both halves are greppable, and the
+deadline is the point: an honest label with no deadline is a permanent resident. The Julia decision in
+`README.md`, taken in this same round, is what that looks like after twenty-nine rounds - deferred with
+no condition attached, so it could not even fail the three-round rule.
+
+### Two corrections to this file's own register, found while writing the above
+
+**The staged-PRS paragraph was describing a state that ended in Round 31**, and Round 32 fixed the
+identical sentence in `src/qsh/data/loaders.py` while leaving this copy. Corrected in place, in the Round
+29 section above. This is the third instance of this file's own lesson - a register of open items needs
+the same staleness check as any other document - and the third instance is the one that should end the
+argument that it is bad luck.
+
+**The Round 28 circuit-privacy retraction and its standing prohibition were unmarked as superseded for
+three rounds**, and this was the one place where the DOCUMENTATION was weaker than the implementation.
+Everywhere else in this project the risk runs the other way. Marked in place in the Round 28 section
+above, with the Round 28 text kept as history.
+
+### Two decisions taken outside this file in the same round, recorded here so the register is complete
+
+- **Quantum Risk / Readiness Indices: DECLINED**, in
+  [`references/security-scoring-fact-check.md`](../references/security-scoring-fact-check.md). Named in the
+  instruction that drove the security-scoring work, then absent from the whole repository while the other
+  four candidates got written verdicts. Several citable instruments do exist under that name - a national
+  agency self-assessment, a central-bank sector index, two vendor indices, a maturity model, and Mosca's
+  x + y > z inequality - and every one of them scores an **organisation's migration programme**, where
+  this project's surface is one run of a cryptographic pipeline. Reopening condition recorded there.
+- **Julia: DECLINED**, in [`README.md`](../README.md). No in-browser path exists and no numerical gap
+  exists for it to close. Reopening condition recorded there, and it requires both halves so it can
+  actually fire.
+
 ## Verification assets added in Rounds 22-23
 
 Two checks now exist that assert against sources OUTSIDE this repository. That is the point of both:
@@ -706,20 +1013,61 @@ to an upstream commit with per-file SHA-256 in `PROVENANCE.txt`, and `--live` st
 published set. There is deliberately no fallback in either direction: a missing snapshot exits 1
 saying the check did not run, and `--live` exits 1 if the network fails. A skip-on-error version of
 this particular check would have reported the known-bad 0.2.1 build as clean, which is the single
-outcome it exists to prevent. Re-validated at the point of gating: exit 0 with 2,595 rejected on a
-clean tree; exit 1 on a missing vector file; exit 1 and "779 rejected, 1 accepted" when a well-formed
-key is smuggled into the malformed set.
+outcome it exists to prevent.
+
+**The re-validation record here was wrong in two ways and is corrected in Round 33.** It said: "exit 0
+with 2,595 rejected on a clean tree; exit 1 on a missing vector file; exit 1 and '779 rejected, 1
+accepted' when a well-formed key is smuggled into the malformed set." Three re-validations, against a
+checklist row (`RI9`) that requires **five** - clean 0, empty 1, truncated 1, tampered 1, missing 1 - and
+the third of the three **can no longer be produced by the code that ships**.
+
+Round 32 added a SHA-256 assertion on the vendored gzip, and it runs inside `loadVectors`, **before**
+`gunzipSync`. The smuggle test kept the vector count at 780, which is exactly ML-KEM-768's count, so it
+was built to slip past a count assertion - and that is precisely the case the hash catches. Any
+modification to the vendored gzip now exits at the hash check printing "vendored snapshot does not match
+its recorded SHA-256", so "779 rejected, 1 accepted" is unreachable on the vendored path. The script's
+own comment states that the hash fires first and catches empty, truncated and tampered files alike, and
+records it as measured; nobody then re-read the record quoting the superseded output. **A fix can
+invalidate a test as easily as it can invalidate a claim, and only the claim gets re-read.**
+
+**Outstanding, and now on a list rather than only in a checklist row:** the five-way re-validation `RI9`
+requires, each recorded in `docs/verification-log.md` with its exit code and its printed message. The
+smuggled-key case has to record how it got past the hash, because it cannot be run as written - either
+re-vendor with the recomputed hash so the count assertion is the line of defence under test, or use
+`--live`, where there is no hash to check at all.
 
 ## What this project cannot verify, and says so
 
 - **No QKD hardware exists here.** Every SKR and QBER comes from an analytic channel model. There is
   no browser API for quantum communication and there will not be one.
-- **The security model is semi-honest.** Malicious security was designated in Round 1 and never
-  built.
+- **The security model is semi-honest ON THE PATHS WHERE IT IS - and this bullet was a blanket claim
+  that is false about the browser's non-linear layer. Corrected in Round 33.** It read "The security
+  model is semi-honest. Malicious security was designated in Round 1 and never built", which made this
+  the longest-carried item in the project. `web/src/lib/clientMPC.ts` runs `mpc-framework` over
+  `emp-wasm-engine`, and `emp-wasm` is a WASM build of `emp-toolkit/emp-ag2pc` and `emp-agmpc` -
+  **authenticated garbling**, Wang, Ranellucci and Katz, CCS 2017 (IACR ePrint 2017/030), titled
+  "Authenticated Garbling and Efficient **Maliciously Secure** Two-Party Computation". Three other
+  documents here describe it correctly as authenticated garbling; this register generalised from the
+  paths where semi-honest is true. Same shape as the SEAL 4.4.0 advisory: **the register was wrong in
+  the understating direction while the documents an audit would flag as overclaiming were right.**
+  Semi-honest, scoped: MPyC / Shamir in `mpc/secret_inference.py`, the keyed-hash PSI, and
+  `qsmpc/qot.py`. The caveat on the malicious-secure path is not about the protocol - both parties share
+  one JS heap, so party separation is notional and this demonstrates a malicious-secure protocol rather
+  than two mutually distrusting hosts (`clientMPC.ts:10-12`). **The residual is two named primitives,
+  and `README.md` stated it more precisely than this bullet did:** a PQ-OPRF for the PSI, and
+  **identifiable** abort, which authenticated garbling does not provide. Condition: each named with the
+  browser-loadable library that would supply it, at the point where it is claimed.
 - **Simulated quantum layers are simulated.** The ETSI control plane is standards-faithful over a
   simulated quantum layer, and every payload says so in-band.
 - **GS QKD 014 mutual TLS is not implemented**, so SAE identity is a parameter rather than an
-  authenticated fact.
+  authenticated fact. **Reclassified as a decision in Round 33, because the condition anyone would write
+  for it is decoration.** Provisioning client certificates tomorrow would move nothing: `qkd/kme.py` is
+  an in-process Python object, `api/` exposes no KME route, and mutual TLS is a transport property. The
+  module's own `authentication_note()` already says it - "this in-process KME has no transport to attach
+  that to". **Reopening condition: if the KME is ever exposed over HTTP, mTLS with the SAE identity taken
+  from the client certificate goes in the SAME change.** The two must not be separable, because a
+  reachable KME whose SAE identity is an unauthenticated parameter is worse than an in-process one that
+  says so. Checkable by grep: a KME route in `api/` without mTLS is the failure.
 - **Trusted relays are an assumption**, not a mechanism: a relay holds the key in plaintext and no
   cryptography here changes that.
 - **Circuit privacy against the client (WS4(f)) is not achievable with the QOTP scheme implemented

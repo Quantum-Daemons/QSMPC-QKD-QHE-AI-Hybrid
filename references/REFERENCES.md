@@ -585,10 +585,68 @@ belongs in this file rather than only in a comment.
 - **Egressy et al., "Provably Powerful Graph Neural Networks for Directed Multigraphs" (Multi-PNA+EU),
   AAAI-24, vol. 38 no. 10, pp. 11838-11846.** DOI 10.1609/aaai.v38i10.29073. Source of the 0.6816
   finance ceiling. Added: 2026-08-07.
-- **Liu et al., "The Elephant in the Room: Towards A Reliable Time-Series Anomaly Detection Benchmark"
-  (TSB-AD), NeurIPS 2024 Datasets and Benchmarks.** arXiv:2412.20512. Source of the point-adjustment
-  argument: a uniform random score ranks 26th of 32 detectors under point adjustment, which is why
-  this project reports event-wise F-beta and never point-adjusted F1 as a headline. Added: 2026-08-07.
+- **Liu, Qinghua and Paparrizos, John, "The Elephant in the Room: Towards A Reliable Time-Series
+  Anomaly Detection Benchmark" (TSB-AD), NeurIPS 2024 Datasets and Benchmarks Track.** The
+  proceedings entry IS the citation - **TSB-AD has no arXiv ID at all**, so there is no preprint
+  identifier to give. Cited here as the benchmark that motivates reporting event-wise F-beta and never
+  point-adjusted F1 as a headline (`src/qsh/models/metrics.py`, `event_wise_fbeta`). The specific
+  point-adjustment number this entry used to quote is withdrawn; the replacement is the Kim et al.
+  entry below. Added: 2026-08-07, **corrected 2026-08-12**.
+
+> **This entry cited a different paper and quoted a number that is in neither.** Until 2026-08-12 it
+> read "Liu et al. ... **arXiv:2412.20512**". That arXiv ID belongs to **Boniol, Liu, Huang, Palpanas
+> and Paparrizos, "Dive into Time-Series Anomaly Detection: A Decade Review"** - a survey, not TSB-AD.
+> The two papers share authors, which is how the conflation happened, and it is the same failure mode
+> as the OPS-SAT / ESA-ADB mix-up above: an overlapping author set and a surname that is not a
+> discriminator. Here there is no identifier to swap in, because TSB-AD never had one; an entry that
+> carries an arXiv ID for TSB-AD is wrong by construction.
+>
+> **The "uniform random score ranks 26th of 32 detectors under point adjustment" claim is WITHDRAWN as
+> unverified.** It could not be found in TSB-AD or anywhere else, and TSB-AD's own proceedings abstract
+> does not fit its shape: that abstract evaluates **40 detection algorithms**, not 32. The claim was
+> load-bearing - it was the whole stated reason for a metric choice - so it is replaced by a verbatim
+> one rather than softened. Verified 2026-08-12.
+>
+> **The withdrawn number is quoted in seven places outside this file and they are NOT yet fixed.**
+> Listed so the cleanup is a task rather than a discovery, because a correction that lands in the
+> provenance file only is the weakest possible version of it: `README.md:823`;
+> `report/technical-report.tex:201` and `:636`; `scripts/train/satellite_telemanom.py:10` and `:308`
+> (which is what writes the string into `models/metrics.json:273`, whose `metric_note` therefore carries
+> it, and into `web/src/lib/config.defaults.json:699` via the generated config); and
+> `src/qsh/models/metrics.py:19`, which is the worst of them because it adds an inference the source
+> never supported - "i.e. it beats six real detectors". Those files were owned by another worker while
+> this correction was made, so they were deliberately left alone. **The replacement text for all seven
+> is the Kim et al. entry below**, and the substitution is not merely a swap of citations: the Kim
+> sentences are about a random and an untrained SCORE, so any rewrite that keeps the "beats six real
+> detectors" gloss reintroduces the fabrication.
+>
+> **TSB-AD recommends VUS-PR and this repository does not use it.** The same abstract identifies
+> **VUS-PR as the most reliable measure**. Since TSB-AD is cited here as the authority for rejecting
+> point-adjusted F1, not adopting the measure it actually recommends needs a stated reason rather than
+> silence: event-wise F-beta is what the satellite baselines this project is scored against are
+> computed with (ESA-ADB Supplementary Table 9), so switching measures would break comparability with
+> the published number on the page. That is a defensible choice made AGAINST the recommendation of the
+> cited source, and a reviewer will ask - so it is recorded here as an open trade-off, not as agreement.
+
+- **Kim, Choi, Choi, Lee and Yoon, "Towards a Rigorous Evaluation of Time-series Anomaly Detection",
+  AAAI 2022.** arXiv:2109.05257 `[link]`
+  URL: https://arxiv.org/abs/2109.05257
+  **The load-bearing citation for rejecting point-adjusted F1**, in place of the withdrawn TSB-AD number
+  above, and stronger: verbatim, *"even a random anomaly score can easily turn into a state-of-the-art
+  TAD method"*, and separately, *"an untrained model obtains comparable detection performance to the
+  existing methods even when PA is forbidden."* The first sentence is the point-adjustment failure
+  itself; the second is the harder finding, because it holds with point adjustment switched **OFF** - so
+  the missing control in this field is an untrained baseline, not a better measure.
+  **This paper was already cited in code and never in this file.** `src/qsh/models/metrics.py:17`
+  quotes it as "Kim et al. (AAAI-22)" for a third sentence, that point adjustment *"has a great
+  possibility of overestimating the detection performance"* - a quote this round did not re-verify, so
+  it is recorded as the code's, while the two sentences above were verified at the arXiv abstract page
+  on 2026-08-12. What the repository does with it: `metrics.py` reports **event-wise F-beta with its
+  event count as the headline** and computes `point_adjusted_f1` **only as a companion, to show the
+  inflation** - on the satellite run, `point_adjusted_f1` 0.993691 against `event_wise_f0_5` 0.454545
+  (`models/metrics.json`), which is the whole argument in two numbers from one run. That is
+  the practice both papers argue for, and it does not change with this correction; only the citation
+  supporting it does. Added: 2026-08-12.
 - **Hundman et al., "Detecting Spacecraft Anomalies Using LSTMs and Nonparametric Dynamic
   Thresholding", KDD 2018.** arXiv:1802.04431. Telemanom. Added: 2026-08-07.
 - **Ma, Qi, Zhao & Lo, "Practical decoy state for quantum key distribution", *Phys. Rev. A* 72,
@@ -610,9 +668,20 @@ belongs in this file rather than only in a comment.
   cited and explicitly not measured here. The retired PGS000001 baseline was PPM017270's Harrell C-index
   0.628 - a different quantity on a different scale, which is one reason the switch was worth making.
   Added: 2026-08-07, revised 2026-08-11.
-- **"SoK: Private LLM Inference", IACR ePrint 2026/935.** Quoted in `models/registry.py` and
-  `models/distil.py` on why distillation is the practical route to FHE-feasible inference. Added:
-  2026-08-07.
+- **Al Badawi, Alexandru, Polyakov and Vaikuntanathan, "SoK: Private LLM Inference using Approximate
+  Homomorphic Encryption", IACR ePrint 2026/935**, revised 2026-06-03. Quoted in `models/distil.py` on
+  why distillation is the practical route to FHE-feasible inference. Added: 2026-08-07, corrected
+  2026-08-12. This entry also named `models/registry.py` until Round 33: Round 31 replaced that
+  citation with the primary source (Park et al., arXiv:2601.18511v2), so the SoK has not appeared in
+  the registry since, and two other entries in this file repeated the same stale attribution.
+  **Extended 2026-08-12** with the half of it that bears on how this repository REPORTS rather than on
+  what things cost (verified at the abstract, and extended here rather than filed twice): the SoK
+  proposes a **"Private LLM Card System (PLCS)"** to standardise reporting because *"Frameworks differ
+  in ciphertext packing layouts, model fidelity, software and hardware stacks, and reported metrics"*;
+  it finds only **20% of surveyed implementations model-preserving**; and it puts the runtime gap at
+  roughly **four orders of magnitude**. The 20% is the figure that matters most here, because the
+  plaintext-versus-CKKS agreement this demo prints IS a model-fidelity claim, and this is the survey
+  saying most published work does not make one.
 - **arXiv:2607.11969** - instability of overlap-based anomaly metrics. Quoted in the satellite model
   card and baked into `config.defaults.json`; the reason the event-wise F0.5 non-reproduction is
   reported as metric instability rather than as a training failure. Added: 2026-08-07.
@@ -651,14 +720,74 @@ silent on the notion that governs exactly that. Full discussion in `../docs/thre
 - Cheon, Choe, Passelegue, Stehle, Suvanto, ACM CCS 2024, ePrint 2024/127. Extends the attack class
   to exact FHE. (Distinct from ePrint 2024/116, Checri et al., CRYPTO 2024, filed three days apart
   by a different team at a different venue - easy to conflate, so both are listed.)
+  **The game conditions, verbatim, because they are weaker than readers assume** (verified at the
+  abstract 2026-08-12): the adversary gets *"access to a decryption oracle for ciphertexts for which it
+  should know the underlying plaintexts. This includes ciphertexts that it (honestly) encrypted and
+  those obtained from the latter by evaluating circuits that it chose."* So **honestly generated inputs
+  suffice and the attack is PASSIVE** - "the parties are only semi-honest" is not a defence against
+  CPAD, which is the misreading this entry now exists to block.
 - Checri, Clet, Renard, Sirdey, "Impossibility of CPAD security for a class of FHE schemes",
   ePrint 2026/203. No HELLHO scheme - covering basic BFV, BGV, CKKS and TFHE - can be CPAD secure.
   Practical key recovery on DE-CKKS, supported in OpenFHE, in hours on a laptop.
 - Santato, Zanotto, "How (not) to Switch FHE Schemes", ePrint 2026/285. Breaks PEGASUS-style
   CKKS-to-FHEW switching in OpenFHE. Not applicable here - this project does no scheme switching -
   and recorded so that stays a checked fact rather than an assumption.
-- Ogilvie, ASIACRYPT 2025, ePrint 2025/1618. The constructive counterpoint: about two bits of extra
-  precision loss can restore security against passive key recovery for standard parameters.
+- Ogilvie, "IND-CPA-D and KR-D Security With Reduced Noise from the HintLWE Problem", ASIACRYPT 2025,
+  ePrint 2025/1618. The constructive counterpoint, now with its title recorded and the claim verbatim
+  (verified at the abstract 2026-08-12): *"an additional precision loss of as little as two bits is
+  sufficient to restore a high level of security against passive key-recovery attacks for standard
+  parameters."* Two bits is the number to quote; "about two bits of extra precision loss", which this
+  entry said before, was a paraphrase of a verbatim sentence and there is no reason to paraphrase it.
+
+**The implementations' own security documentation, added 2026-08-12.** This section cited six papers
+and **not one of the three CKKS implementations**, while the demo ships one of them: `node-seal` IS
+Microsoft SEAL compiled to WASM (`web/src/lib/clientFHE.ts`). Upstream's security statement for the
+cipher on the page outranks any secondary summary of it. Full discussion in
+[`../docs/threat-model.md`](../docs/threat-model.md); the load-bearing predicate is **crossing a trust
+boundary**, not displaying a value.
+
+- **Microsoft SEAL, `SECURITY.md`** `[link]`
+  URL: https://github.com/microsoft/SEAL/blob/main/SECURITY.md
+  Verified 2026-08-12. Verbatim: *"The CKKS scheme requires particular care because it is approximate:
+  decryption returns the message plus a secret-key-dependent error term rather than the exact
+  message"*; *"Releasing such decryptions to any party other than the secret key owner can therefore
+  leak the secret key, even when only ordinary computation results are shared"*; *"Formally, the CKKS
+  implementation in Microsoft SEAL does not provide IND-CPA-D security ...; it targets only IND-CPA
+  security"*; *"Any mitigation, such as adding noise to decrypted values before they are shared (noise
+  flooding), must be implemented by the application before a decrypted CKKS value crosses a trust
+  boundary."* Bears on `web/src/lib/clientFHE.ts` and on the threat model's CPAD section. Note what the
+  last sentence implies for this deployment: **SEAL provides no noise flooding**, so there is no
+  parameter to set and the gap is upstream rather than declined.
+- **IBM HElib, `CKKS-security.md`** `[link]`
+  URL: https://github.com/homenc/HElib/blob/master/CKKS-security.md
+  Verified 2026-08-12. The mechanism in one sentence: *"since the scheme itself adds some error, the
+  attacker could learn something from the decryption result even if it knows what the decrypted result
+  was supposed to be. Specifically, it learns the error, which may leak information about the secret
+  key."* The query count Li and Micciancio is usually credited with is here rather than in that paper's
+  reachable text: *"sometimes as few as a single decryption"*. And the cost of the fix: *"to withstand
+  an attack that has access to the results from decryption of D ciphertexts, the bits parameter should
+  be increased roughly by a factor of sqrt(D)"*. HElib implements noise flooding **inside decryption**
+  with a settable accuracy target, which is the contrast that makes SEAL's position specific.
+- **OpenFHE security documentation** `[link]`
+  URL: https://openfhe.org/ - the security documentation on the project site; the deep-link path is
+  deliberately not recorded, because only the text below was captured and a guessed path would be worse
+  than a search for "decryption queries" from the landing page.
+  Verified 2026-08-12. Verbatim: *"By default, OpenFHE chooses a configuration where a relatively large
+  number of decryption queries of the same or related ciphertexts can be tolerated. The lower bound for
+  the tolerated number of such decryption queries is N_d = 128 (but in practical computations, N_d is
+  at least 10,000)."* It also scopes the threat: the attack *"applies to the setting where decryption
+  results need to be shared between multiple parties, e.g., in the threshold FHE setting."* OpenFHE
+  offers `NOISE_FLOODING_DECRYPT` and `CKKS_M_FACTOR`; it is the backend `qsh/fhe/backends.py` uses on
+  the server side, so this is the one place in the project where the mitigation is configurable at all.
+- **Guo, Nabokov, Suvanto, Johansson, "Key Recovery Attacks on Approximate Homomorphic Encryption with
+  Non-Worst-Case Noise Flooding Countermeasures", USENIX Security 2024** `[link]`
+  URL: https://portal.research.lu.se/ - search the title; the record path is not recorded here because
+  the publication page, not a guessed permalink, is what was loaded.
+  **Title, authors and venue VERIFIED** via the Lund University research portal, 2026-08-12. **Body NOT
+  loadable (HTTP 403), so no parameter, bound or number from it is quoted anywhere in this
+  repository.** Recorded because it attacks the very countermeasure the CPAD discussion presents as the
+  fix: noise flooding parameterised on average-case rather than worst-case noise. A section that names
+  noise flooding as the remedy and omits this reads as unaware of it.
 - Bossuat, Costache, Mouchet, Nurnberger, Troncoso-Pastoriza, ePrint 2024/853, IACR CiC 2025, DOI
   10.62056/a3n5tx4e-. NOTE the retitle at the 2025-08-11 revision: originally "Practical
   q-IND-CPA-D-Secure Approximate Homomorphic Encryption", now "Accurate and Composable Noise
@@ -873,8 +1002,12 @@ Where a source could not be loaded it is marked and no number is taken from it.
   Names **multiplicative depth as the dominant cost** of homomorphic transformer inference, with a
   per-layer configuration space reaching ~10^84 for a 12-layer BERT/ViT and 10^225 for 32-layer LLaMA3,
   and 35-50% of candidate configurations numerically invalid. This is a **primary source for the
-  constraint `models/registry.py` asserts** in its T1 docstring, which until now rested on a secondary
-  systematisation (IACR 2026/935) plus Park et al.
+  constraint `models/registry.py` asserts** in its T1 docstring, and Round 33 cited it there.
+  This entry said the docstring "until now rested on a secondary systematisation (IACR 2026/935) plus
+  Park et al.", which was wrong in both halves: Round 31 had already removed the 2026/935 citation
+  from that file, and adding this reference in Round 32 did not put ATLAS into the docstring either -
+  so a reference was recorded as the source for a code site it never touched. Contested by
+  **arXiv:2608.00375** (Trimming) below, which carries no experiments.
 - **Lin and Wu (NTU), "Fine-Grained and Runtime-Configurable Precision for Exact FHE Inference"
   (Tailor).** IACR ePrint 2026/1551, received 2026-07-29, approved 2026-08-03 `[link]`
   URL: https://eprint.iacr.org/2026/1551
@@ -997,3 +1130,280 @@ makes**, in the direction of understating what is possible.
   federated work in 2026; the same against (satellite OR telemetry OR spacecraft) surfaces no encrypted
   telemetry anomaly detection at all. So the encrypted tiers on those two pages are demonstrations rather
   than reproductions of anyone's deployment, which is what they should be described as.
+
+## Round 33 additions, verified at primary source 2026-08-12
+
+Same rule as Rounds 31 and 32: every entry was loaded at its arXiv abstract page, IACR eprint listing,
+JMLR or PNAS record, Europe PMC record, vendor documentation page or repository file before being
+written here. Where a source could not be loaded it is marked **METADATA-ONLY** or **NOT FOUND** and no
+number is taken from it. Nothing in this section was promoted from metadata to verified.
+
+Three items in this batch were **extended in place rather than filed again** - the CPAD section's Cheon
+et al. (2024/127) and Ogilvie (2025/1618) entries, and the "SoK: Private LLM Inference" entry in the
+baselines section - because a second entry for the same source is how this file drifts.
+
+### Reporting: calibration, uncertainty and decision curves, which this file cited nowhere
+
+A grep across the repository for `Vickers`, `decision curve`, `net benefit` and `calibrat` returned
+**zero citations** while `src/qsh/models/metrics.py` implements net benefit, integrates it over a
+threshold range, and selects an operating point by it. The method was named in a docstring and credited
+to no publication.
+
+- **Vickers and Elkin, "Decision curve analysis: a novel method for evaluating prediction models",
+  *Medical Decision Making* 2006;26(6):565-574.** DOI 10.1177/0272989x06295361, PMID 17099194 `[link]`
+  URL: https://doi.org/10.1177/0272989x06295361
+  VERIFIED via Europe PMC, 2026-08-12. The source of the method `metrics.py::net_benefit` implements:
+  its docstring says "Vickers-Elkin net benefit" and carried no citation, and this file had no entry.
+  The implemented form `NB(p) = TP/N - (FP/N) * p/(1-p)` is **algebraically identical** to the published
+  `sensitivity x prevalence - (1 - specificity) x (1 - prevalence) x w` with `w = p/(1-p)`, since
+  `sensitivity x prevalence = TP/N` and `(1 - specificity) x (1 - prevalence) = FP/N` - a reader can
+  check the identity without the PDF, which is why it is written out.
+  **The load-bearing point is what the 2006 contribution actually was:** net benefit plotted **across**
+  threshold probabilities. A single-threshold scalar is the thing decision curve analysis was invented
+  to replace, so quoting one net-benefit number as a headline inverts the paper. This repository is on
+  the right side of that by construction - `area_under_net_benefit` integrates over a stated range and
+  `best_threshold_by_net_benefit` reports its margin over treat-all at the SAME threshold - and the
+  citation makes that deliberate rather than accidental.
+- **Vickers, van Calster and Steyerberg, "A simple, step-by-step guide to interpreting decision curve
+  analysis", *Diagnostic and Prognostic Research* 3:18 (2019).** PMC6777022 `[link]`
+  URL: https://www.ncbi.nlm.nih.gov/pmc/articles/PMC6777022/
+  VERIFIED via Europe PMC, 2026-08-12. The practical companion: it gives the sensitivity/specificity
+  form of the formula above and names **treat-all and treat-none as the standard reference lines** -
+  which is exactly the pair `best_threshold_by_net_benefit` returns, so the reference lines on the page
+  are the field's, not this project's invention.
+- **Dimitriadis, Gneiting and Jordan, "Evaluating probabilistic classifiers: Reliability diagrams and
+  score decompositions revisited", *PNAS* 118 (2021) e2016191118.** arXiv:2008.03033 `[link]`
+  URL: https://arxiv.org/abs/2008.03033
+  VERIFIED 2026-08-12. **CORP = Consistent, Optimally binned, Reproducible**, obtained by isotonic
+  regression via the pool-adjacent-violators algorithm rather than by choosing a bin count. The
+  citation to reach for **if** a reliability diagram is ever added; see the Riley entry below for why
+  none is added now.
+- **Roelofs, Cain, Shlens and Mozer, "Mitigating Bias in Calibration Error Estimation", AISTATS 2022.**
+  arXiv:2012.08668 `[link]`
+  URL: https://arxiv.org/abs/2012.08668
+  VERIFIED 2026-08-12. Verbatim: *"binning-based estimators with bins of equal mass (number of
+  instances) have lower bias than estimators with bins of equal width."* So an equal-width ECE, which
+  is the default in most tutorials, is the biased choice - a one-line design constraint on any future
+  calibration reporting here.
+- **Riley et al., "Minimum sample size for external validation of a clinical prediction model with a
+  binary outcome", *Statistics in Medicine* 2021.** DOI 10.1002/sim.9025 `[link]`
+  URL: https://doi.org/10.1002/sim.9025
+  **METADATA-ONLY.** The Wiley full text was not loaded; the thresholds below are corroborated across
+  secondary sources only and are recorded at that strength deliberately: **at least 100 events and 100
+  non-events** for a performance estimate, and **at least 200 events** for a flexible calibration curve.
+  **This is the citation that rules OUT reliability diagrams on every page of this demo**, and the
+  measured counts are attributable rather than asserted: medical **42** malignant cases in the scored
+  split (`src/qsh/models/distil.py:194`), finance **164** positives in the browser's evaluation sample
+  (`scripts/prep_model_inputs.py:125`), satellite **113** anomalous segments (`anomaly_rate_test`
+  0.213611 x `n_test_segments` 529, `models/satellite_opssat/README.md`), and genomics **no outcome
+  label at all** - 1000 Genomes carries no case/control status, which is why the PRS AUROC there is
+  cited as external and never computed. So **no page clears the 200-event bar**, medical does not clear
+  even the 100-event bar, and a smooth calibration curve drawn on any of them would be a picture of
+  noise. The satellite figure above is the OPS-SAT segment model; the telemanom path is far worse
+  (`n_events_scored` **3**, `models/metrics.json`), so the conclusion does not depend on which satellite
+  model is meant. Recorded as the reason for an absence, which is the kind of decision this file exists to hold.
+- **Arp, Quiring, Pendlebury, Warnecke, Pierazzi, Wressnegger, Cavallaro and Rieck, "Dos and Don'ts of
+  Machine Learning in Computer Security", USENIX Security 2022.** arXiv:2010.09470; also
+  *Communications of the ACM*, DOI 10.1145/3643456 `[link]`
+  URL: https://arxiv.org/abs/2010.09470
+  **Abstract VERIFIED** at arXiv 2026-08-12; the **individual pitfall texts are METADATA-ONLY**, so the
+  two named below are carried as titles and prevalences rather than quoted. Pitfall **P7 Inappropriate
+  Performance Measures** and **P8 Base Rate Fallacy**, present in **62%** and **46%** of their 30-paper
+  survey. This is the canonical citation for why an aggregate metric hides per-class collapse - a claim
+  the telecom page asserts with no source, while `metrics.py::per_class_f1` and the WS2 section of this
+  file both rest on it. Engelen et al. (WTMC 2021, above) is the measured instance of the same failure;
+  this is the systematic statement of it.
+
+### Encrypted-versus-plaintext agreement: the two published reporting conventions
+
+The demo prints a plaintext-versus-CKKS comparison and invented its own presentation of it. There are
+two conventions in the literature and this repository should look like one of them.
+
+- **Li, Wu and Miao, "Decision-Aware Quadratic ReLU Replacement for HE-Friendly Inference",
+  arXiv:2605.22237, 2026-05-25** `[link]`
+  URL: https://arxiv.org/abs/2605.22237
+  VERIFIED at the arXiv HTML 2026-08-12. Its Table IX reports **"PH-mis"**, defined verbatim as *"the
+  integer number of top-1 mismatches between plaintext polynomial evaluation and CKKS evaluation on the
+  evaluated test set; it is zero for every selected row"*. So the published convention is an integer
+  **COUNT**, expected **zero**, reported **beside** plaintext and ciphertext accuracy rather than folded
+  into them. Bears on `web/src/lib/clientFHE.ts` (which measures `maxAbsError` against a plaintext
+  reference) and on however the verification panel presents agreement.
+- **Zama, Concrete-ML documentation** `[link]`
+  URL: https://docs.zama.ai/concrete-ml
+  VERIFIED 2026-08-12. Concrete-ML prints **"Similarity"**: the mean per-sample agreement between clear
+  and FHE predictions, as a **percentage**. That is the de-facto convention from the vendor with the
+  largest FHE-ML install base, and it is the complement of PH-mis rather than a rival to it - a count of
+  disagreements and a percentage of agreements are the same measurement reported two ways, so quoting
+  either is defensible and quoting neither is not. Also relevant to
+  [`../docs/architecture.md`](../docs/architecture.md): Concrete-ML's **deployment model returns class
+  scores and the CLIENT decrypts**, which is the mainstream construction for encrypted multiclass
+  inference and is what this demo already does in a single tab.
+
+### What the cost literature rules out, and what verifiability does not prove
+
+- **Mazzone, Everts, Hahn and Peter, "Efficient Ranking, Order Statistics, and Sorting under CKKS",
+  USENIX Security 2025.** arXiv:2412.15126 `[link]`
+  URL: https://arxiv.org/abs/2412.15126
+  VERIFIED at the abstract 2026-08-12. Argmin/argmax over a **128-element vector in 12.83 s**, with
+  comparison depth *"of up to 2 (constant)"*. This is the measured cost that **rules out a homomorphic
+  argmax in a browser tab** and therefore the published justification for the architecture's choice to
+  send the non-linear half to MPC (`src/qsh/mpc/secret_inference.py`, `web/src/lib/clientMPC.ts`). The
+  depth result also blocks the obvious rebuttal that the cost is a depth artefact: it is constant.
+- **Peng et al., "A Survey of Zero-Knowledge Proof Based Verifiable Machine Learning",
+  arXiv:2502.18535**, revised 2026-03-29 `[link]`
+  URL: https://arxiv.org/abs/2502.18535
+  VERIFIED at the abstract 2026-08-12. Its taxonomy is **verifiable training / verifiable testing /
+  verifiable inference**. Worth recording because it gives this project's dual-path comparison a name
+  from the field: it occupies the **verifiable testing** slot, not verifiable inference.
+- **Atapoor, Baghery, Pereira and Spiessens, "Verifiable FHE via Lattice-based SNARKs", IACR CiC 2024,
+  ePrint 2024/032** `[link]`
+  URL: https://eprint.iacr.org/2024/032
+  VERIFIED at the abstract 2026-08-12. Verifies an approximate neural network of **three layers and more
+  than 100 ciphertexts in "less than 1 second"**.
+- **Tremblay Thibault and Walter (Zama), "Towards Verifiable FHE in Practice", ACM CCS 2025, ePrint
+  2024/451** `[link]`
+  URL: https://eprint.iacr.org/2024/451
+  VERIFIED at the abstract 2026-08-12. TFHE **bootstrapping** proved with a prover under **20 min**, a
+  proof of about **200 kB**, and a verifier under **10 ms**.
+
+> **The load-bearing point about these last two is a NEGATIVE, and it constrains what this project may
+> claim.** Verifiable FHE proves that **the server ran the circuit that was requested**. It does **not**
+> prove that the result matches a plaintext reference. Those are different properties: the first is
+> cryptographic integrity of the evaluation, the second is numerical fidelity of an approximate scheme.
+> So this repository's plaintext-versus-CKKS comparison is **empirical fidelity, not cryptographic
+> integrity**, and it has to say so - a reviewer who knows this literature will otherwise read a
+> side-by-side agreement figure as an integrity claim, which nothing here establishes and which would
+> need one of the two constructions above to establish. Recorded in
+> [`../docs/architecture.md`](../docs/architecture.md) at the place the comparison is described.
+
+### Conformal prediction on dependent data: the honest answer changed in 2024
+
+Both entries matter because the pre-2024 answer - "split conformal is invalid on a time series" - is
+what a reviewer would expect a demo to say about the satellite page's timeline data, and it is wrong.
+
+- **Oliveira, Orenstein, Ramos and Romano, "Split Conformal Prediction and Non-Exchangeable Data",
+  *JMLR* 25(225), 2024** `[link]`
+  URL: https://jmlr.org/papers/v25/ - volume 25, paper 225; the per-paper permalink is not written out
+  because it was not the URL loaded and a guessed one would point at someone else's paper.
+  VERIFIED at the JMLR abstract 2026-08-12. Split conformal *"remains valid for many non-exchangeable
+  processes by adding a small coverage penalty"*.
+- **Barber and Pananjady, "Predictive inference for time series: why is split conformal effective
+  despite temporal dependence?", arXiv:2510.02471**, revised 2026-01-10 `[link]`
+  URL: https://arxiv.org/abs/2510.02471
+  VERIFIED at the abstract 2026-08-12. Bounds the coverage loss by a **"switch coefficient"** and the
+  bound is *"sharp over the class of stationary, beta-mixing processes"*.
+  So the defensible statement about interval coverage on the satellite timeline is **"valid with a
+  bounded penalty"**, not "invalid" and not "valid" unqualified. No conformal method is implemented here
+  (a grep for `conformal` across the repository returns nothing), so this is recorded as the citation to
+  use if intervals are ever added, and as the correction to the answer a reader is likely to assume.
+
+### Genomics reporting: the reference implementation agrees, and one practice this repo does not follow
+
+- **pgsc_calc (PGS Catalog Calculator) documentation** `[link]`
+  URL: https://pgsc-calc.readthedocs.io/
+  VERIFIED 2026-08-12. Verbatim: *"The distribution of PGS scores can differ between genetic ancestry
+  groups, but this does not necessarily correspond to differences in risk (e.g., disease prevalence or
+  mean biomarker values). These differences arise from changes in allele frequencies and linkage
+  disequilibrium (LD) patterns."* It reports PGS as **density plots** and recommends interpreting
+  results *"as distributions or deciles rather than single-point estimates"*. This is the **field
+  reference implementation endorsing what the genomics page already says**, which is the cheapest kind
+  of citation to add and the easiest to have missed.
+- **Ding et al., "Polygenic scoring accuracy varies across the genetic ancestry continuum", *Nature*
+  2023.** DOI 10.1038/s41586-023-06079-4 `[link]`
+  URL: https://doi.org/10.1038/s41586-023-06079-4
+  **METADATA-ONLY** - paywalled, abstract only, 2026-08-12. Accuracy *"decreases as a function of
+  relatedness at the individual level when modelling genetic ancestry as a continuum"*. Recorded as the
+  current best practice **against discrete ancestry bins**, because this repository uses discrete 1000
+  Genomes super-populations. That is a defensible simplification for a demo - the bins are what the
+  corpus ships - but it is the practice a genomics reviewer will raise, so it is written down as a known
+  divergence rather than left to be discovered.
+
+### New primary literature, 2026-08-01 to 2026-08-10, all verified at the abstract and all uncited
+
+- **Malik, Anwar and Raza, "Beyond the Quantum Promise: A Security Analysis of Classical Control in
+  Quantum Key Distribution."** arXiv:2608.07626, 2026-08-07 `[link]`
+  URL: https://arxiv.org/abs/2608.07626
+  **The highest-priority item in this batch.** The first hybrid **Tamarin** model of the ETSI and ITU-T
+  QKD specifications, finding **three specification-level vulnerabilities** - subverted entanglement
+  injection, basis-deferred measurement, message reflection - each arising from *"a classical
+  control-plane omission in the procedure text"*, with verified countermeasures (**measurement
+  commitment**, **identity-bound MACs**). `src/qsh/qkd/sdn_controller.py` models ETSI GS QKD 015
+  `PHYS`/`VIRT` links and `qkd/kme.py` implements GS QKD 014, while
+  [`../docs/threat-model.md`](../docs/threat-model.md) had **no classical-control-plane adversary at
+  all**. Round 33 adds one there with a resolving condition, so the gap is falsifiable rather than
+  merely noted. The finding to keep in view is that these are flaws in the SPECIFICATIONS this project
+  implements faithfully.
+- **Chiang, "Trimming: Decoupling Multiplicative Depth from Modulus Chains in RNS-CKKS via Rational
+  Levels."** arXiv:2608.00375, 2026-08-01 `[link]`
+  URL: https://arxiv.org/abs/2608.00375
+  Referenced from `src/qsh/models/registry.py` in Round 33; this is the provenance entry.
+  **CRITICAL CAVEAT: it has no experiments, and no number from it may be quoted.** Its abstract ends
+  *"The proposed framework will be further validated through concrete implementation and experimental
+  evaluation"*. It contests the depth-dominance premise of **ATLAS** (arXiv:2607.23478, above) as a
+  **named direction only**, which is exactly how it should be cited: a stated alternative to a
+  measured claim is not a counter-measurement.
+- **Zhang, Zhou, Han, Liu and Huang, "Adaptively Secure Threshold Decryption from LWE with Polynomial
+  Modulus."** IACR ePrint 2026/1627, received 2026-08-06 `[link]`
+  URL: https://eprint.iacr.org/2026/1627
+  Adaptive corruption and leakage from **decryption queries**, via *"a refined polynomial noise flooding
+  technique based on a detailed min-entropy analysis"*. That is the same threat surface as the CPAD
+  section above, which had **no threshold-setting citation** even though OpenFHE scopes the CPAD attack
+  to precisely the threshold case and `submodules/HEonGPU` ships N-out-of-N collective bootstrapping.
+- **Al-Mohammed and Al-Ali, "Machine Learning for Specialized QKD Aspects: A Survey of Adaptive
+  Protocols, Free-Space Links, 6G Integration, and Steerability-Aware Security."** arXiv:2608.08280,
+  2026-08-08 `[link]`
+  URL: https://arxiv.org/abs/2608.08280
+  Names *"the boundary between ML-based decision support and security certification"* as an open
+  challenge. Independent support for a line this repository already carries at
+  `references/model-choice-vs-2026-practice.md:200` - *"ML as an overlay for sub-threshold stealthy
+  attacks, never as a replacement for decoy-state accounting"* - which until now rested on a single 2026
+  study cited there and on no statement about the certification boundary itself. A survey is weak
+  evidence for a mechanism and adequate evidence for a boundary, which is all it is used for here.
+- **Chen et al., "DYNAFIX: Dynamic Fixed-Point Encoding for Arbitrary-Range MPC."** IACR ePrint
+  2026/1612, received 2026-08-05 `[link]`
+  URL: https://eprint.iacr.org/2026/1612
+  Bears on `src/qsh/mpc/secret_inference.py` and on the fixed-point weight encoding in
+  `models/genomics_prs/weights.json` - the same problem bioETH-PRS (arXiv:2605.21634, above) solves on
+  the TFHE side, now on the MPC side.
+
+### Negative results and closed searches, verified 2026-08-12
+
+Recorded so no future round re-runs these. A measured horizon is more useful than "nothing found",
+so each one names what was checked and where it stopped.
+
+- **The window after 2026-08-11 is structurally EMPTY, and here are the horizons.** arXiv's newest
+  cs.CR announcement batch is **2026-08-11**, with no 2026-08-12 batch; IACR ePrint's highest number is
+  **2026/1631** (received 2026-08-07, approved 2026-08-10) and **2026/1632 returns HTTP 404**; the
+  Federal Register API returns **total count 0** for "post-quantum cryptography" with `publication_date`
+  greater than or equal to 2026-08-01; and NIST CSRC's **only** August 2026 item is **2026-08-06,
+  NCCoE CSWP 36F on 5G NAS message security**, which is not PQC. So **no PQC instrument exists in
+  August 2026 at all**, and the newest one remains OMB M-26-15 (2026-06-24). Any future round that wants
+  to re-check should start from those four horizons rather than from a fresh sweep.
+- **No published in-browser FHE or MPC, and no prior art on VISUALISING encrypted inference - FIFTH
+  consecutive round.** An IACR full-text search for "WebAssembly" returns **8 results across all
+  years**, the newest crypto-relevant one still **2025/487 webSPDZ**. The composition novelty claim has
+  now survived five independent attempts to refute it, which is worth more than any single sweep.
+- **Bland and Altman (1986) is NOT FOUND and must not be cited.** The canonical method-comparison paper
+  was not loaded: PubMed **2868172** returned a reCAPTCHA and Europe PMC returned navigation chrome
+  only. It is the obvious citation for a plaintext-versus-ciphertext agreement plot, which is exactly
+  why this negative is recorded - the temptation to cite it from memory is the hazard. Use the PH-mis
+  count or Concrete-ML's Similarity convention above, both of which were actually loaded.
+- **HEBench defines no error metric, tolerance or accuracy criterion for approximate schemes.** There is
+  nothing in it to cite as a reporting standard, so this repository's existing note that HEBench covers
+  only primitive operations is correct and stays. Checked 2026-08-12.
+
+### Leads recorded rather than cited
+
+- **EU NIS Cooperation Group PQC roadmap milestones - METADATA-ONLY, DO NOT CITE YET.** National
+  roadmaps by **2026-12-31**, high-risk use cases by **2030-12-31**, full transition by **2035-12-31**.
+  Seen in secondary summaries only, with no primary document loaded, so nothing may be quoted from it
+  and the dates above are recorded as a lead to verify, not as facts. It matters because
+  [`../docs/pqc-roadmap.md`](../docs/pqc-roadmap.md) is **US-instrument-only** while this project's
+  demo is reachable from the EU, and a roadmap with no EU milestone looks parochial rather than scoped.
+  Next round: find the Cooperation Group publication itself before writing any of it down as a date.
+- **91 FR 38487 was cited in this file and nowhere else; that is now closed.** The second same-day
+  quantum executive order of 2026-06-25 ("Ushering in the Next Frontier of Quantum Innovation", FR
+  document 2026-12910) was verified at the Federal Register API in Round 32 and recorded here, while
+  `docs/pqc-roadmap.md` cited only EO 14412 / 91 FR 38483. Round 33 adds the cross-reference to that
+  roadmap, stating only what was verified - title, document number, FR citation and date - because its
+  text was never loaded and it therefore contributes no deadline.

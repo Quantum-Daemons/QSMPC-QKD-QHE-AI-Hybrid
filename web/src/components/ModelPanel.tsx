@@ -11,7 +11,7 @@
 //   * The honest metric is shown next to the flattering one. In four of these five industries the
 //     aggregate number looks excellent while the class that matters is broken, so showing only the
 //     aggregate would be true and misleading at the same time.
-import { modelsFor, type ModelSpec } from "../lib/config";
+import { modelsFor, recordHasTreeAttribution, type ModelSpec } from "../lib/config";
 import { useState } from "react";
 import { browserModels, evaluatePublishedModel, type ModelEvalResult } from "../lib/onnxInference";
 import { AncestryStrataChart, RealDataScatter } from "./VerificationChart";
@@ -240,7 +240,11 @@ function AttributionRows({ achieved }: { achieved: Record<string, unknown> }) {
   const imp = num("classical_rf_impurity_importance");
   const std = num("classical_rf_permutation_importance_std");
   const note = achieved.classical_rf_attribution_note as string | undefined;
-  if (!perm || !imp) return null;
+  // Same predicate `ShapPanel` points at, so the sentence and the block cannot disagree. Round 32
+  // wrote that they shared one and they did not: this guard wanted both measures, the predicate
+  // wanted one. Keeping the local `perm`/`imp` reads for the render below, but the CONDITION is
+  // imported rather than restated - restating it is how the two drifted in the first place.
+  if (!recordHasTreeAttribution(achieved) || !perm || !imp) return null;
 
   // Ranked by permutation importance, because that is the measure to read where they differ.
   const rows = Object.keys(perm).sort((a, b) => perm[b] - perm[a]);

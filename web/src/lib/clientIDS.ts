@@ -72,6 +72,8 @@ export interface IDSResult {
   explain: {
     W: number[][]; b: number[]; x: number[]; predicted: number;
     className: string; featureNames: string[];
+    /** The same row BEFORE this module's z-scoring, for a consumer that carries its own constants. */
+    xRaw: number[]; trueClass: number;
   } | null;
 }
 
@@ -164,6 +166,11 @@ export function clientTrainScoreIDS(seed = 0, nPerClass?: number): IDSResult {
     return {
       W: [restW, W[pred].slice()], b: [restB, b[pred]], x: z.slice(), predicted: pred,
       className: ATTACKS[pred] ?? `class_${pred}`, featureNames: IDS_FEATURE_NAMES,
+      // The RAW (un-standardised) row as well as the z-scored one. The published CKKS student ships
+      // its OWN mean and scale, fitted on its own training split, so it has to standardise from raw
+      // features - feeding it `x` would apply this function's normalisation twice with the wrong
+      // constants and produce a number that looks like a score.
+      xRaw: Xte[idx].slice(), trueClass: yte[idx],
     };
   };
 

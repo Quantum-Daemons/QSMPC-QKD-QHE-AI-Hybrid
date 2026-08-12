@@ -1155,6 +1155,70 @@ export function runClientPipeline(
    * disagreed, the ONNX tier failed on all five use cases, and the run reported the bundled linear
    * model under a MEASURED badge.
    */
+  /** Evaluate the published telecom student's 8 class scores under REAL CKKS, in this tab.
+   *
+   * This is the verification figure for telecom's encrypted tier, and the numbers it reports are the
+   * two conventions the field actually uses rather than ones invented here. The top-1 mismatch COUNT
+   * follows arXiv:2605.22237, whose Table IX reports "the integer number of top-1 mismatches between
+   * plaintext polynomial evaluation and CKKS evaluation" and expects zero; the agreement percentage
+   * follows Concrete-ML, which prints exactly that as "Similarity". Both are reported because at this
+   * sample count a rounded 100% and "0 of 1" carry different information.
+   *
+   * Precision is reported in BITS, which is the unit OpenFHE and HElib both use - OpenFHE's own
+   * examples print |log2(error)| floored - with the raw decimal kept beside it because seeing
+   * -1.999998 against an exact -2 is what makes the approximation concrete. The error here is a MAX
+   * and is labelled as one: OpenFHE averages, so a max is the stricter claim.
+   *
+   * The argmax is NOT computed under encryption and the log says so. CKKS has no native comparison;
+   * all 8 scores are decrypted and the maximum is taken in the clear, which is the mainstream
+   * construction and is what Concrete-ML's deployment model does. A homomorphic argmax costs 12.83 s
+   * for 128 elements (Mazzone et al., USENIX Security 2025), and routing it through the MPC argmax
+   * this repo already implements would demonstrate an architecture rather than establish a security
+   * property, because both MPC parties share one JS heap - `docs/threat-model.md` records that.
+   */
+  async function runEncryptedTelecomStudent(stage: string, raw: number[] | undefined) {
+    try {
+      const r = await fetch(`${import.meta.env.BASE_URL}data/telecom/student_weights.json`);
+      if (!r.ok) { emit("log", stage, `encrypted tier: weights unavailable (HTTP ${r.status})`); return; }
+      const w = await r.json();
+      if (!Array.isArray(w?.W) || !Array.isArray(raw)) {
+        emit("log", stage, "encrypted tier: no input row to score, skipped");
+        return;
+      }
+      // The student's OWN mean/scale, shipped in the same file as the weights it was fitted with.
+      const mean = w.input?.mean ?? [], scale = w.input?.scale ?? [];
+      const z = raw.map((v: number, i: number) => (v - (mean[i] ?? 0)) / (scale[i] || 1));
+
+      if (!_fheWarmed) { await warmFHE(); _fheWarmed = true; }
+      const fhe = await encryptedLinear(w.W, w.b, z);
+      const plain = w.W.map((row: number[], j: number) =>
+        row.reduce((a, wij, i) => a + wij * (z[i] ?? 0), 0) + (w.b?.[j] ?? 0));
+      const encCls = argmax(fhe.logits), plainCls = argmax(plain);
+      const maxAbs = Math.max(...fhe.logits.map((v, i) => Math.abs(v - plain[i])));
+      const bits = maxAbs > 0 ? Math.floor(Math.abs(Math.log2(maxAbs))) : null;
+
+      metric(stage, "encrypted_student_params", Number(w.n_parameters) || null);
+      metric(stage, "encrypted_student_class", w.classes?.[encCls] ?? encCls);
+      metric(stage, "encrypted_student_ms", r2(fhe.fheMs));
+      metric(stage, "encrypted_top1_mismatches", encCls === plainCls ? 0 : 1);
+      metric(stage, "encrypted_scores_compared", w.W.length);
+      metric(stage, "encrypted_max_abs_error", maxAbs);
+      metric(stage, "encrypted_precision_bits", bits);
+      metric(stage, "encrypted_argmax_location", "client, plaintext");
+      emit("log", stage, `encrypted tier (REAL CKKS, ${w.n_parameters} params, `
+        + `${w.W.length} dot products): class "${w.classes?.[encCls] ?? encCls}" in ${r2(fhe.fheMs)} ms. `
+        + `Top-1 mismatches vs the plaintext reference: ${encCls === plainCls ? 0 : 1} of `
+        + `${w.W.length ? 1 : 0} scored inputs. Max abs error ${maxAbs.toExponential(3)}`
+        + (bits !== null ? ` (about ${bits} bits of precision, MAX not mean)` : "") + ".");
+      emit("log", stage, `the ARGMAX is NOT encrypted: all ${w.W.length} class scores are decrypted `
+        + `and the maximum taken in the clear, because CKKS has no native comparison. That is the `
+        + `standard construction and it reveals nothing here, since in one tab the client is the user.`);
+    } catch (e) {
+      // No invented numbers on failure. A skipped encrypted tier is reported as skipped.
+      emit("log", stage, `encrypted tier skipped: ${e instanceof Error ? e.message : String(e)}`);
+    }
+  }
+
   async function runPublishedForStage(stage: string) {
     // The visitor's choice where they made one, else the registry's first fetchable model. Three use
     // cases publish more than one and could previously only ever exercise the first: medical ships
@@ -1779,6 +1843,24 @@ export function runClientPipeline(
           + `why they read high while a single class can be failing — see scripts/train/telecom_ids.py`);
         // Telecom's flow has no private_inference stage, so its published model runs here.
         await runPublishedForStage(stage);
+        // ...and so does its ENCRYPTED tier. Telecom was the only use case with no CKKS evaluation
+        // of any kind, which meant `runs_encrypted` was false on every telecom spec and the
+        // per-industry private-inference question had no artifact to judge here.
+        //
+        // This runs inside `qml_ids` rather than in a new `private_inference` stage on purpose.
+        // `runs_encrypted` is a property of the MODEL - whether its inference is evaluated under
+        // homomorphic encryption - not of the stage that hosts it, and renaming the flow would
+        // change the orchestration graph, the Python pipeline and this page's reported-class
+        // semantics for no gain in what is actually computed.
+        //
+        // What the page REPORTS still comes from the in-tab softmax above, so
+        // `explanation_is_of_reported_class` stays true and the SHAP bars keep explaining the
+        // deciding model. The encrypted run is reported as VERIFICATION of the encrypted tier -
+        // its scores, its agreement with the plaintext reference, its precision - which is the
+        // honest description of what a dual-path comparison establishes. It is empirical fidelity,
+        // not cryptographic integrity: verifiable-FHE proofs establish that a server ran the
+        // circuit it was asked to run, and this establishes something different and complementary.
+        await runEncryptedTelecomStudent(stage, ids.explain?.xRaw);
         break;
       }
       case "private_inference": {

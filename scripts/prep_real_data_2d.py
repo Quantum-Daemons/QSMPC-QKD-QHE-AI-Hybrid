@@ -48,6 +48,13 @@ def _round(x: float, sig: int = 4) -> float:
     return float(f"%.{sig}g" % x)
 
 
+def _base_rate(labels) -> float:
+    """Positive-class fraction. One definition, so a payload's `base_rate` field and any figure
+    quoted in its `note` cannot disagree - which is what happened on the finance payload, where the
+    field said 0.020020 and the prose said 0.0173 and the chart rendered both."""
+    return float(sum(labels) / max(1, len(labels)))
+
+
 def satellite() -> dict:
     """OPS-SAT-AD test segments in the 2D projection that actually separates.
 
@@ -149,7 +156,7 @@ def finance() -> dict:
         src_fan_out_ratio x src_burst_fanout 0.2302   readable with a log y-axis   <- chosen
         src_fan_out_ratio x dst_fan_in_ratio 0.0764   readable, barely separates
 
-    So this ships the middle one: 13.3x lift over the 0.0173 base rate, 848 and 37 distinct values,
+    So this ships the middle one: the best lift-over-base-rate of the readable pairs, 848 and 37 distinct values,
     and `src_burst_fanout` log-scaled because its 95th percentile is 7,801 against a maximum of
     12,540. Class medians differ visibly on both axes - fan-out ratio 0.4865 for laundering against
     0.0943 for legitimate.
@@ -188,8 +195,14 @@ def finance() -> dict:
         "y": {"key": "src_burst_fanout", "label": "source burst fan-out", "scale": "log"},
         "class_names": ["legitimate", "laundering"],
         "separability_auc_pr": 0.2302,
-        "base_rate": _round(float(sum(labels) / max(1, len(labels)))),
-        "note": "AUC-PR 0.2302 against a 0.0173 base rate is a 13.3x lift and still a LOW number. "
+        "base_rate": _round(_base_rate(labels)),
+        # Both figures below are DERIVED from the same labels the base_rate field is derived from.
+        # They were hardcoded as "a 0.0173 base rate is a 13.3x lift" and went stale when the corpus
+        # was resampled: the computed field moved to 0.020020 and the sentence did not, so
+        # VerificationChart.tsx rendered two different base rates in one figcaption. A number quoted in
+        # prose beside the same number computed in a field is a duplicate, and this is which copy drifts.
+        "note": f"AUC-PR 0.2302 against a {_round(_base_rate(labels))} base rate is a "
+                f"{0.2302 / max(_base_rate(labels), 1e-12):.1f}x lift and still a LOW number. "
                 "That is the honest picture - two features do not solve AML, and a projection that "
                 "looked easy would be the misleading one. NOT the highest-scoring pair available "
                 "(format_risk x src_bank_diversity reaches 0.3195) because that one has six "

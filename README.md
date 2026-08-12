@@ -39,8 +39,10 @@ simulation/scaffolds where not - every claim is tied to a primary source in
 
 > **Positioning - quantum-safe, not quantum-advantage.** The value here is **quantum-safe / PQC**, a
 > regulation-driven, fast-growing market (NIST FIPS 203/204/205; NSA CNSA 2.0 procurement mandate 2027;
-> EU roadmap 2026/2030/2035; "harvest-now-decrypt-later"; the PQC market is projected ~$1.6 B (2025) ->
-> ~$20 B (2033) at ~38 % CAGR). A general **quantum *advantage*** for these workloads is **not** claimed
+> EU roadmap 2026/2030/2035; "harvest-now-decrypt-later"; Grand View Research sizes the PQC market at
+> ~$1.6 B in 2025 reaching ~$20.5 B by 2033, a 37.8 % CAGR over 2026-2033, and the vendor spread on the
+> base year is about 4x - see the market table on the Value page, which lists each house separately
+> rather than blending them). A general **quantum *advantage*** for these workloads is **not** claimed
 > as a market benefit - it is broadly unproven in 2026 (e.g. classical tensor-network simulation matching
 > annealing results), so the numeric "quantum advantage" stays a **research / education** metric in the
 > benchmark. For the QCNN specifically the evidence is sharper than "unproven": Bermejo, Braccia,
@@ -241,8 +243,31 @@ CUDA 13.0**. Verified: Python 3.12.11, gcc 11.5, cmake 3.31, Node 22, Docker 29,
   the hybrid benchmark below.
 
 ### Languages
-Python-first. **C++** is used only via the optional GPU-MPC submodules (HEonGPU / hpmpc).
-Go was evaluated and not needed; Julia is optional and deferred.
+Python-first, plus **TypeScript** for the browser tier. **C++** is used only via the optional GPU-MPC
+submodules (HEonGPU / hpmpc). Go was evaluated and not needed.
+
+**Julia: DECLINED 2026-08-12 (Round 33), and it should have been declined twenty-nine plans ago.** It was
+listed as "optional (defer)" in the first plan and this line said "optional and deferred" ever since. The
+word appears in exactly one of thirty plan files and in no instruction after the first, and **no condition
+was ever attached to it** - so it could not even fail the three-round rule in
+[`docs/deliverable-verification.md`](docs/deliverable-verification.md), because an item with no condition
+never becomes due. Two reasons, both checkable:
+
+- **No in-browser path exists.** The browser tier is the deliverable, and Julia's WebAssembly target is
+  still experimental in 2026: `ExportWebAssembly.jl` is marked work-in-progress, Julia's task runtime needs
+  its stacks managed explicitly in the wasm heap rather than on the native WebAssembly stack, and only a
+  few packages are built for the wasm platform through BinaryBuilder's experimental support. This is the
+  same test that declined Rust for the client-side stack: not "is the language good" but "can the tab load
+  it and evaluate".
+- **There is no numerical gap for it to close.** The numerical work runs through numpy, torch and
+  PennyLane, and the paths that dominate wall clock are already compiled native code - SEAL through
+  Emscripten (`node-seal`), torch's kernels, `emp-wasm`. Julia's argument is speed against interpreted
+  Python, and the hot loops here are not interpreted Python.
+
+**Reopening condition (both halves required, so it can actually fire):** a numerical kernel appears here
+that is neither a SEAL/`node-seal` call nor a torch/numpy call and is measured to be a run's bottleneck in
+pure Python, **and** Julia's wasm target stops being experimental - a Julia release listing wasm32 as a
+supported platform, or `ExportWebAssembly.jl` out of WIP.
 
 ---
 
@@ -493,9 +518,20 @@ implementation maps to each, and where gaps remain.
 | (f) hiding the server's circuit from a malicious client | **NOT met, and in tension with the mechanism rather than merely unimplemented.** The client can only decrypt by applying the circuit's action to its own Pauli frame, so under plain QOTP it must know the circuit - "the client updates its frame" and "the client does not learn the circuit" are close to mutually exclusive. Earning this needs a construction where that does not hold, which is what Ortega and Martin-Delgado's scheme addresses and this repository does not implement. Split from (c) so the one that is met is not held hostage to the one that is not. Cf. QOTPH (arXiv:2604.19256), which builds universal QHE from QOTP over Clifford+T with Pauli key updates and reports results on real quantum processors. | not implemented |
 | (d) efficiency on AI/HPC infra | OpenFHE (CPU) + HEonGPU (GPU) + CROSS (reference), HEonGPU shown on the Blackwell GPU | `fhe/`, `benchmark/` |
 
-**Residual gaps / recommendations**: malicious-secure MPC (PQ-OPRF PSI + identifiable abort);
-hardware QKD field test (vs the BB84 simulator); larger fault-tolerant QHE; production bootstrapping
-throughput. (A real quantum-safe MCP server + filesystem-MCP interop now ships in the full deployment.)
+**Residual gaps, each with the condition that would close it.** This was a four-item list with no
+conditions and no dates until Round 33, which meant nothing on it could ever become due. Two of the four
+turned out to be downstream of decisions already recorded in
+[`docs/deliverable-verification.md`](docs/deliverable-verification.md), so they are one item each rather
+than independent gaps:
+
+| residual | condition that closes it |
+|---|---|
+| **PQ-OPRF PSI + identifiable abort** | Name the browser-loadable library that supplies each, at the point where it is claimed. The non-linear 2PC layer is **already malicious-secure** - `emp-wasm` is authenticated garbling (`emp-ag2pc` / `emp-agmpc`, Wang-Ranellucci-Katz CCS 2017) - so what is missing is these two primitives specifically: a post-quantum OPRF for the PSI, which is a semi-honest keyed hash today, and **identifiable** abort, which authenticated garbling does not provide. |
+| **Hardware QKD field test** | A boundary of the deliverable, not a gap in it: no QKD device exists here and there is no browser API for one. If a characterised link ever exists, the first thing published is the **measured QBER against `qkd/decoy_reference.py`'s prediction for the same link budget** - and that is also the round in which the 2026 finite-key proofs (arXiv:2606.29943, arXiv:2608.09674) replace Ma et al. (2005), because it is the round their device inputs exist. |
+| **Larger fault-tolerant QHE** | `t_count()` is a labelled Solovay-Kitaev **estimate** of a fault-tolerant deployment's cost. Replace it with an executed count when a backend exposing logical, error-corrected qubits is addressable from PennyLane. |
+| **Production bootstrapping throughput** | Downstream of the OpenFHE `EvalBootstrapSetup` SIGSEGV already recorded as a permanent workaround on this host distribution. Publish the figure when `make test-all` completes without the segfault, or when the HEonGPU collective-bootstrap path is benchmarked end to end. |
+
+(A real quantum-safe MCP server + filesystem-MCP interop now ships in the full deployment.)
 See [`docs/pqc-roadmap.md`](docs/pqc-roadmap.md).
 
 ---
@@ -817,8 +853,10 @@ See [`docs/pqc-roadmap.md`](docs/pqc-roadmap.md).
     recomputed on every training run, so read `by_super_population.*.frac_above_global_cut` in
     `models/metrics.json` rather than this sentence.)
   - **satellite reports event-wise F-beta at beta=0.5, never point-adjusted F1.** On the same run the
-    point-adjusted figure is **0.994** against an honest **0.4545** - TSB-AD (NeurIPS 2024 D&B) showed
-    a uniform random score ranks 26th of 32 detectors under point adjustment. A windowed isolation
+    point-adjusted figure is **0.994** against an honest **0.4545** - under point adjustment "even a
+    random anomaly score can easily turn into a state-of-the-art TAD method" (Kim et al., AAAI 2022,
+    arXiv:2109.05257). This sentence cited TSB-AD for "a uniform random score ranks 26th of 32
+    detectors" until Round 33, a figure that could not be verified at source. A windowed isolation
     forest runs as a trivial baseline every time (0.0002 here), because a deep model that cannot beat
     it has not earned its complexity. Only labels whose ESA-ADB Category is `Anomaly` count as
     positives; the 690 annotated rare *nominal* events do not.
@@ -842,14 +880,21 @@ See [`docs/pqc-roadmap.md`](docs/pqc-roadmap.md).
   caution about evaluation quality, not a universal ranking: arXiv:2512.05069 was withdrawn by its own
   authors for evaluation "insufficient to fully support the paper's conclusions".
 
-- **The third tier (`spaces/qsh-inference/`)** serves the full-precision models from a Hugging Face
-  ZeroGPU Space, for models too large to run in a browser tab or under encryption. Results from it
-  are labelled `REMOTE` - the reported latency includes network and queue time and is not comparable
-  with the in-browser measurements. Note two hosting facts that shape this: free accounts can create
-  **Static Spaces only** (Gradio and Docker Spaces need a paid plan), with a standing exception of
-  **two ZeroGPU Gradio Spaces** for accounts in good standing - which requires the account to be
-  **older than 30 days**. It is **not currently wired up**: nothing in `web/src` references the Space, and although `ProvenanceBadge` declares a `remote` tier no code path sets it. Treat it as a staged component awaiting a caller. When one exists it will degrade to the
-  browser tier when it is absent, rather than assuming it is there.
+- **There is no third (remote) tier, and that is a decision rather than an omission.**
+  `spaces/qsh-inference/` was written to serve full-precision models from a Hugging Face ZeroGPU Space
+  for anything too large to run in a tab or under encryption. It was **decided against in Round 24**
+  and the record is in `docs/deliverable-verification.md`: the public demo is zero-server by design,
+  so a remote provenance contradicts the architecture rather than extending it. The Space itself
+  returns **HTTP 401** (re-checked 2026-08-12) and the org Space listing is empty. `ProvenanceBadge`
+  therefore declares **four** states - `measured-webgpu`, `measured-wasm`, `measured-js`, `simulated` -
+  and `remote` was **removed** from the type in Round 24d, because a type member no code path can
+  produce is the same defect as a metric with no reader. **Reopening condition:** wire it only if the
+  demo acquires a workload that genuinely cannot run client-side, and re-add the badge state in the
+  same commit that first sets it, never before.
+  For the record, the hosting facts that shaped the original plan: free accounts can create **Static
+  Spaces only** (Gradio and Docker Spaces need a paid plan), with a standing exception of **two
+  ZeroGPU Gradio Spaces** for accounts in good standing, which requires an account **older than 30
+  days**.
 
 - **Model artefacts live on the Hugging Face Hub, never in git** - `src/qsh/models/registry.py` is the
   single source of truth for repo ids, pinned revisions, artefact paths, dataset licences, published

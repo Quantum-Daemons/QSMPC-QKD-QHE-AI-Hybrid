@@ -14,9 +14,14 @@ hypotheticals; each has a citation:
              found aggregate random-forest accuracy sits at 0.99 both before and after, while Bot
              F1 moves 0.60 -> 0.99 and Web XSS 0.11 -> 0.79. The aggregate is blind to the fix.
 
-  satellite  Kim et al. (AAAI-22) show point-adjustment "has a great possibility of overestimating
-             the detection performance", and TSB-AD (NeurIPS 2024 D&B) found a uniform random score
-             ranks 26th of 32 detectors under point-adjusted F1 — i.e. it beats six real detectors.
+  satellite  Kim et al. (AAAI-22, arXiv:2109.05257) show point-adjustment "has a great possibility
+             of overestimating the detection performance", and that under it "even a random anomaly
+             score can easily turn into a state-of-the-art TAD method". A second clause read "TSB-AD
+             found a uniform random score ranks 26th of 32 detectors - i.e. it beats six real
+             detectors" and was removed in Round 33: the rank could not be verified (TSB-AD describes
+             40 algorithms and recommends VUS-PR), and "beats six real detectors" was an inference the
+             source never made. Kim et al. was already cited on the line above for a different quote,
+             so dropping the unverified clause loses nothing.
              Telemanom's own headline 0.71 is F-beta at beta=0.5 under an event-overlap rule, not F1.
 
   genomics   Breast-cancer PRS AUROC is 0.60-0.69 in European ancestry and drops to 0.57-0.65 in

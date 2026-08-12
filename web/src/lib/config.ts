@@ -112,16 +112,27 @@ export const modelsFor = (usecase: string): ModelSpec[] =>
 
 export const allModels = (): Record<string, ModelSpec[]> => ((CONFIG as any).models ?? {});
 
-/** Does any model on this page carry tree-ensemble feature attribution? Telecom only, today.
+/** Does THIS record carry tree-ensemble attribution? Both measures, because the block shows both.
  *
- * ONE predicate, shared by the component that RENDERS the block (`ModelPanel.AttributionRows`) and the
- * one that POINTS AT it (`ShapPanel`). Round 31 added the block on telecom and a sentence promising it
- * on every page, so four pages directed a reader to something that is not there. Two components
- * agreeing by coincidence is what produced that; agreeing by construction is this.
+ * The render condition, in one place. `ModelPanel.AttributionRows` shows permutation and impurity
+ * importance side by side and returns null unless it has both, since the disagreement between them
+ * IS the finding it exists to show. So "carries attribution" has to mean both are present.
+ *
+ * Round 32 claimed this was already one shared predicate. It was not: this function tested only
+ * `classical_rf_permutation_importance` while `AttributionRows` required both, so a record with
+ * permutation importance and no impurity importance made `ShapPanel` print "does carry attribution"
+ * pointing at a block that rendered nothing. That is the Round 31 defect - a sentence pointing at an
+ * absent block - reachable again through a different door, inside the fix written to remove it, and
+ * with a comment asserting the two agreed by construction. They now do: both callers use this.
  */
+export const recordHasTreeAttribution = (achieved: unknown): boolean => {
+  const a = achieved as Record<string, unknown> | null | undefined;
+  return !!a?.classical_rf_permutation_importance && !!a?.classical_rf_impurity_importance;
+};
+
+/** Does any model on this page carry tree-ensemble feature attribution? Telecom only, today. */
 export const hasTreeAttribution = (usecase: string): boolean =>
-  modelsFor(usecase).some((m) =>
-    !!(m.achieved as Record<string, unknown> | undefined)?.classical_rf_permutation_importance);
+  modelsFor(usecase).some((m) => recordHasTreeAttribution(m.achieved));
 
 /** The industry (plaintext) model for a use case — what the headline metric describes. */
 export const teacherModel = (usecase: string): ModelSpec | null =>
