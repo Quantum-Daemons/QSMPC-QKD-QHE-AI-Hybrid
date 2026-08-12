@@ -108,11 +108,11 @@ jobs:
         # Public-facing source and docs are English-only. Scope is the git INDEX rather than a
         # directory list, so "public" means "tracked". Three things follow: the git-ignored .ja
         # monetization workflow is excluded by construction rather than by an exception, the repo ROOT
-        # is covered (the old list named only README.md there, so a Japanese-language document dropped
-        # at the root passed this gate - measured 2026-08-12 with a real confidential note), and a new
-        # top-level directory is covered without editing this step.
+        # is covered, and a new directory or file type is covered without editing this step. The scope
+        # was a six-extension list until Round 34, which left 122 of 356 tracked files unscanned -
+        # including 59 .json, 7 .txt and 5 .tex - while the comment claimed it meant "exactly tracked".
         run: |
-          if git ls-files -z '*.py' '*.ts' '*.tsx' '*.md' '*.yml' '*.sh' \
+          if git ls-files -sz | awk -v RS='\0' -v ORS='\0' '$1 != "160000" { sub(/^[^\t]*\t/, ""); print }' \
                | xargs -0 -r grep -IlP '[\x{3040}-\x{309F}\x{30A0}-\x{30FF}\x{4E00}-\x{9FFF}]'; then
             echo "::error::Japanese characters found in public files (listed above)"
             exit 1
