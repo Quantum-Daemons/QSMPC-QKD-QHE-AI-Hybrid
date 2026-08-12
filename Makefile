@@ -81,9 +81,25 @@ docker-up: ## Local full-stack via docker compose
 docker-demo: ## Lightweight public-demo stack (VPS profile)
 	docker compose -f docker/docker-compose.demo.yml up --build
 
-check-secrets: ## Assert the report .docx and monetization notes are NOT tracked
+# The MONETIZATION and .docx patterns are load-bearing: MONETIZATION.md and MONETIZATION_WORKFLOW.ja.md
+# do live in the repo root, ignored at .gitignore:22, so the first grep catches a `git add -f`.
+#
+# The other three confidential strategy notes are named in Japanese and live OUTSIDE the repo. Measured
+# 2026-08-12: copying one into the repo root passed EVERY gate. It is not matched by MONETIZATION*.md so
+# .gitignore does not ignore it, it is not a .docx, and the "no Japanese in public files" gate scans
+# `src api web/src tests scripts docs README.md` - which excludes root-level .md other than README. So
+# `git add` staged it and `make check-secrets` printed two OKs. Hence the CJK-filename check below.
+#
+# The browser verification checklist had no gate at all, only .gitignore:33 - and .gitignore's own HAZARD
+# note records that an ignored file is not protected from a branch switch, which is how a round of edits
+# was lost in Round 29. A path that must never be published is worth one line here.
+check-secrets: ## Assert confidential notes and the checklist are NOT tracked
 	@! git ls-files | grep -qi 'MONETIZATION' && echo "OK: MONETIZATION notes untracked" || (echo "FAIL: a MONETIZATION file is tracked!" && exit 1)
 	@! git ls-files | grep -q '\.docx$$' && echo "OK: report .docx untracked" || (echo "FAIL: a .docx is tracked!" && exit 1)
+	@! git ls-files -z | tr '\0' '\n' | grep -qP '[\x{3040}-\x{309F}\x{30A0}-\x{30FF}\x{4E00}-\x{9FFF}]' \
+	  && echo "OK: no CJK-named file tracked" \
+	  || (echo "FAIL: a file with a Japanese name is tracked - the confidential strategy notes are named this way!" && exit 1)
+	@! git ls-files | grep -q 'browser-verification-checklist' && echo "OK: verification checklist untracked" || (echo "FAIL: the browser verification checklist is tracked - it must never be published!" && exit 1)
 
 clean: ## Remove caches and build artifacts
 	rm -rf build dist *.egg-info src/*.egg-info .pytest_cache .ruff_cache .mypy_cache
