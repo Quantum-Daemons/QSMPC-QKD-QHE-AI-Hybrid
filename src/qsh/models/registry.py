@@ -854,6 +854,39 @@ _SPECS: tuple[ModelSpec, ...] = (
         hf_repo="qsh-telecom-qml-ids",
         notes="Shown as an architecture comparison against a random forest on identical data.",
     ),
+    #: Telecom's T1 tier, added in Round 33. Until then `runs_encrypted=True` held on five specs and
+    #: none of them was telecom, so this was the only use case with no encrypted tier - which meant
+    #: the standing per-industry question about the private-inference artifact class had no artifact
+    #: to judge here, and `references/model-choice-vs-2026-practice.md` answered a model-quality
+    #: question in its place.
+    #:
+    #: `hf_repo=None` and the weights are BUNDLED, following `genomics.prs` - the other CKKS tier
+    #: with no Hub repo. 64 parameters do not need a pinned revision, and bundling means the
+    #: encrypted tier works on a fresh clone with no network.
+    #:
+    #: `runs_encrypted=True` is true of the MODEL: `clientCompute.runEncryptedTelecomStudent`
+    #: evaluates these 8 dot products under real CKKS in the tab. It does NOT claim the argmax is
+    #: encrypted - all 8 scores are decrypted and the maximum is taken in the clear, because CKKS
+    #: has no native comparison. The weights file and the run log both say so.
+    ModelSpec(
+        usecase="telecom_ids",
+        tier="t1_crypto",
+        key="telecom_ids.student",
+        label="CKKS-linear IDS student (8 classes)",
+        architecture="multinomial logistic regression, 8x7 + 8, distilled from the forest on soft targets",
+        params=64,
+        dataset=DS_QKD_ATTACK_SYNTH,
+        metric=M_QML_IDS,
+        runs_encrypted=True,
+        artifacts=(),
+        hf_repo=None,
+        notes=(
+            "Distilled from telecom_ids.qml's PROBABILITIES, not its argmax: on 8 classes the argmax "
+            "discards exactly the minority-class signal macro F1 is computed from, and hard-label "
+            "distillation is a defect this project has already made once. Read n_classes_predicted "
+            "before macro_f1 - a linear student that stops emitting a class scores 0 on it by "
+            "construction, which reads as poor discrimination rather than an absent output."),
+    ),
 )
 
 
