@@ -285,6 +285,33 @@ def test_every_artifact_records_the_command_that_made_it() -> None:
             f"{name}: layers={w.get('layers')} but training.layers={t['layers']}")
 
 
+def test_the_server_and_browser_resolve_the_headline_the_same_way() -> None:
+    """Two implementations of one mapping, in different languages, with no shared source.
+
+    `clientCompute.ts` and `stages.py` each choose (metric, classical, baseline, label) from
+    `headline_metric`. Nothing makes them agree, and they are read by different audiences - the demo
+    page and the API - so a divergence shows up as two documents quoting different numbers for the
+    same model. The three shipped artifacts happen to exercise all three branches between them
+    (finance minority-class F1, medical accuracy, telecom macro F1), which is why a drift here would
+    be visible on one page and not the others.
+    """
+    server = (Path(__file__).resolve().parents[1] / "src" / "qsh" / "orchestration" / "stages.py"
+              ).read_text(encoding="utf-8")
+    browser = _COMPUTE.read_text(encoding="utf-8")
+    for field in ("test_macro_f1", "classical_lr_macro_f1", "test_minority_f1",
+                  "classical_lr_minority_f1", "test_accuracy", "classical_lr_accuracy",
+                  "majority_baseline", "all_positive_f1", "uniform_random"):
+        assert field in server, f"stages.py no longer reads {field}; the two paths have diverged"
+        assert field in browser, f"clientCompute.ts no longer reads {field}"
+    # The multiclass baseline is the uniform-random floor in BOTH, not the constant-predictor one:
+    # it is the higher of the two the trainer ships, so picking the other would flatter the model.
+    assert 'get("uniform_random")' in server or "['uniform_random']" in server
+    assert "uniform_random" in browser
+    assert "macro_f1" in server and "macro_f1" in browser, (
+        "one of the two paths has lost the multiclass branch, so it would fall through to a metric "
+        "the artifact leaves null and print nothing or zero")
+
+
 def test_the_multiclass_readout_avoids_the_nondeterministic_kernel() -> None:
     """The multiclass marginal must not use `index_add_`, whose CUDA path is nondeterministic.
 
