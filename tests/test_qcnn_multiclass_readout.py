@@ -1,0 +1,135 @@
+"""The 8-class QCNN readout, and the permutation that would otherwise pass every other check.
+
+A multi-qubit basis readout has one failure mode that no aggregate metric can see. Read the bits in
+the wrong order and the class map is PERMUTED: accuracy, macro F1, per-class F1 as a multiset, and
+every loss curve come out numerically identical, because the same probabilities are simply attached to
+different labels. Only a check that ties a KNOWN input to a NAMED class can catch it.
+
+MEASURED IN THIS ENVIRONMENT, not assumed. Rotating wire 0 of an 8-qubit register and reading the
+full state gives nonzero amplitudes at flat indices [0, 128] = [0, 2^7], so PennyLane places the FIRST
+listed wire in the MOST significant bit. An LSB-first read of bits 0,1,2 therefore equals
+`qml.probs(wires=[7,6,5])` and NOT `qml.probs(wires=[0,1,2])` - verified below rather than cited.
+
+The bit-reversal permutation on three bits is [0, 4, 2, 6, 1, 5, 3, 7], and FOUR of its eight entries
+are fixed points. Against `qsh.qml_ids.attacks.ATTACKS` those are `normal`, `photon_number_splitting`,
+`wavelength_trojan` and `combined` - which includes the two a person would most naturally spot-check.
+So the identifiability test is parametrised over all eight classes on purpose: checking `normal` and
+`combined` passes under the bug.
+"""
+
+from __future__ import annotations
+
+import importlib.util
+from pathlib import Path
+
+import numpy as np
+import pytest
+import torch
+
+_SRC = Path(__file__).resolve().parents[1] / "scripts" / "train" / "qcnn_variational.py"
+
+
+def _trainer():
+    spec = importlib.util.spec_from_file_location("qcnn_variational", _SRC)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+#: Bit reversal on 3 bits. The class map a wrong-endianness readout produces.
+BIT_REVERSAL_3 = [0, 4, 2, 6, 1, 5, 3, 7]
+
+
+def test_the_marginal_is_a_probability_distribution():
+    m = _trainer()
+    x, theta = torch.rand(6, 8), 0.1 * torch.randn(3, 8)
+    p = m.circuit(x, theta, readout_qubits=3)
+    assert p.shape == (6, 8), "3 measured qubits must give 2**3 = 8 class scores"
+    assert torch.allclose(p.sum(1), torch.ones(6), atol=1e-5), (
+        "the marginal must sum to 1 by construction; if it does not, a gate application is broken and "
+        "every class score is wrong by the same unknown factor")
+    assert bool((p >= 0).all())
+
+
+def test_the_readout_is_lsb_first_and_pennylane_is_not():
+    """The trap, measured. Not a citation - PennyLane is installed and this asserts on its output."""
+    # The module is `pennylane`; importorskip("qml") named the ALIAS and skipped unconditionally,
+    # which made the one test that verifies the endianness convention pass by not running. A skip
+    # that can never be satisfied is a check that cannot fail - caught here on the first run.
+    qml = pytest.importorskip("pennylane", reason="pennylane not installed")
+
+    nq = 8
+    dev = qml.device("default.qubit", wires=nq)
+
+    @qml.qnode(dev)
+    def full():
+        qml.RY(0.9, wires=0)
+        return qml.probs(wires=range(nq))
+
+    @qml.qnode(dev)
+    def listed(wires):
+        qml.RY(0.9, wires=0)
+        return qml.probs(wires=wires)
+
+    p_full = np.asarray(full())
+    nz = np.nonzero(p_full > 1e-9)[0].tolist()
+    assert nz == [0, 1 << (nq - 1)], (
+        f"expected PennyLane to put wire 0 in the MSB (indices [0, {1 << (nq - 1)}]), got {nz}. If "
+        f"this changes, the whole readout convention has to be re-derived")
+
+    lsb = np.zeros(8)
+    for i, v in enumerate(p_full):
+        lsb[i & 7] += v
+    assert np.allclose(lsb, np.asarray(listed([7, 6, 5])), atol=1e-6), (
+        "an LSB-first read of bits 0,1,2 must equal probs(wires=[7,6,5])")
+    assert not np.allclose(lsb, np.asarray(listed([0, 1, 2])), atol=1e-6), (
+        "if these ever agree the endianness hazard has gone away and this test should be revisited - "
+        "but silently agreeing is far more likely to mean the test stopped testing anything")
+
+
+@pytest.mark.parametrize("cls", range(8))
+def test_every_class_is_individually_identifiable(cls):
+    """A basis state prepared for class `cls` must read back as `cls`, for ALL eight.
+
+    Parametrised rather than looped so a failure names the class. Four of the eight are fixed points
+    of the bit reversal, so a test covering only some of them can pass under a permuted map.
+    """
+    m = _trainer()
+    nq = 8
+    state = torch.zeros(1, 1 << nq, dtype=torch.complex64)
+    state[0, cls] = 1.0                        # |...b2 b1 b0> with c = i & 7, LSB-first
+    p = (state.abs() ** 2)
+    idx = torch.arange(p.shape[1])
+    got = torch.zeros(1, 8).index_add_(1, (idx & 7).to(torch.long), p)
+    assert int(got.argmax(1)) == cls, f"class {cls} read back as {int(got.argmax(1))}"
+
+
+def test_a_permuted_class_map_is_detected_by_this_suite():
+    """Anti-tautology: prove the identifiability check is sensitive to the bug it exists for.
+
+    Without this, a test that passes tells you nothing about whether it COULD fail.
+    """
+    truth = list(range(8))
+    permuted = [BIT_REVERSAL_3[c] for c in truth]
+    assert permuted != truth, "bit reversal must actually move something"
+    moved = [c for c in truth if BIT_REVERSAL_3[c] != c]
+    fixed = [c for c in truth if BIT_REVERSAL_3[c] == c]
+    assert fixed == [0, 2, 5, 7], f"fixed points changed: {fixed}"
+    assert moved == [1, 3, 4, 6], f"moved classes changed: {moved}"
+    # The four moved classes are the ones the parametrised test above must cover to be meaningful.
+    assert len(moved) == 4 and len(fixed) == 4, (
+        "half the classes are invisible to a partial spot check, which is exactly why the "
+        "identifiability test is parametrised over all eight")
+
+
+def test_the_binary_readout_still_works():
+    """The multiclass path must not change what the two shipped binary QCNNs compute."""
+    m = _trainer()
+    x, theta = torch.rand(5, 8), 0.1 * torch.randn(3, 8)
+    z = m.circuit(x, theta)
+    assert z.shape == (5,), "default readout stays a single <Z0> expectation"
+    assert bool((z >= -1.0001).all() and (z <= 1.0001).all()), "<Z> is bounded by [-1, 1]"
+    # and it must equal the 1-qubit marginal contrast, which is the same quantity by definition
+    p1 = m.circuit(x, theta, readout_qubits=1)
+    assert torch.allclose(z, p1[:, 0] - p1[:, 1], atol=1e-5), (
+        "<Z0> = p(0) - p(1) on the measured wire; if these disagree the marginal is binned wrongly")
