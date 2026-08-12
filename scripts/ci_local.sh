@@ -28,9 +28,10 @@ git diff --quiet -- web/src/lib/config.defaults.json \
   && ok "config.defaults.json in sync" \
   || bad "config.defaults.json is stale - commit the regenerated file"
 
-step "3/9 generated prose matches its generator"
+step "3/9 generated artifacts match their generator and their history"
 "$PY" scripts/check_generated_prose.py \
-  && ok "prose fields match their trainers" || bad "a generated prose field was hand-edited"
+  && ok "prose matches generators; no recorded field vanished" \
+  || bad "a prose field was hand-edited, or a measurement disappeared"
 
 step "4/9 lint, BLOCKING scope (this is the one that was red)"
 "$PY" -m ruff check src/qsh/models scripts/train scripts/publish_hf.py scripts/data \
