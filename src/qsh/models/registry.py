@@ -30,6 +30,21 @@ Every use case has up to three model tiers, and the *relationship between them* 
                    medical and satellite all evaluate something with depth. Applying it to a linear
                    score was the kind of generalisation that reads as rigour and understates what the
                    architecture can do.
+
+                   The primary source for depth being the binding cost is ATLAS (arXiv:2607.23478,
+                   2026-07-26), which measures it directly for homomorphic transformer inference.
+                   Cited HERE rather than only in references/REFERENCES.md because that file claimed
+                   this docstring rested on a secondary systematisation (IACR ePrint 2026/935) when
+                   Round 31 had already removed that citation from this file - a reference added for a
+                   code site that was never updated to use it.
+
+                   And it is contested. Trimming (arXiv:2608.00375, 2026-08-01) argues depth is
+                   constrained by the modulus-chain structure and can be decoupled from it via an
+                   auxiliary chain and rational levels. No number from it is quoted anywhere in this
+                   project and none should be: it presents no experiments, closing with the statement
+                   that the framework "will be further validated through concrete implementation and
+                   experimental evaluation". It is recorded as a named direction that would qualify
+                   this paragraph if it were demonstrated, not as a result that already does.
   T2 ``industry``  the real literature model for that industry, trained locally and published to
                    the Hugging Face Hub as safetensors + ONNX (fp32 server / int8 browser).
   T3 ``large``     models too big to run under encryption at all — served remotely or in-browser
