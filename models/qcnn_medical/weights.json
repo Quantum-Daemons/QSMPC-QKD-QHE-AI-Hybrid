@@ -36,6 +36,12 @@
  ],
  "scale": 5.200267314910889,
  "bias": -0.6581352353096008,
+ "readout": {
+  "kind": "expval_z0",
+  "n_classes": 2,
+  "note": "single <Z0> through a scalar scale and bias - one logit, binary by construction"
+ },
+ "class_names": null,
  "feature_names": [
   "mean radius",
   "mean texture",
@@ -76,6 +82,9 @@
  "classical_lr_minority_f1": 0.939394,
  "all_positive_f1": 0.578512,
  "test_prevalence": 0.406977,
+ "n_classes_predicted": null,
+ "per_class_f1": null,
+ "macro_f1_floors": null,
  "headline_metric": "accuracy",
  "n_train": 398,
  "n_test": 171,
