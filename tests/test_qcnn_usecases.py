@@ -62,14 +62,21 @@ def test_declared_set_matches_the_files_on_disk() -> None:
 def test_shipped_weights_are_loadable_and_carry_a_headline_metric(usecase: str) -> None:
     """A shipped file must be usable, not merely present.
 
-    ``headline_metric`` is load-bearing: ``clientCompute`` chooses between accuracy and minority-class
-    F1 from it, and the live deploy once served a weights file predating the field, which silently
-    made a 5 percent-prevalence use case report accuracy.
+    ``headline_metric`` is load-bearing: ``clientCompute`` chooses between accuracy, minority-class
+    F1 and macro F1 from it, and the live deploy once served a weights file predating the field, which
+    silently made a 5 percent-prevalence use case report accuracy.
+
+    The accepted set gained ``macro_f1`` when the 8-class telecom circuit shipped. The two-way version
+    asked only whether the BINARY problem was imbalanced, so a balanced multiclass run fell through to
+    accuracy while the trainer printed "MACRO F1 leads" - the artifact carried floors for macro F1 and
+    told its consumers to headline something else. Widened deliberately rather than by deleting the
+    assertion; ``tests/test_qcnn_reachable.py`` now also requires that whichever value is set names a
+    field the file actually populates.
     """
     import json
 
     w = json.loads((PUBLIC / _data_dir(usecase) / "qcnn_weights.json").read_text())
-    assert w["headline_metric"] in {"accuracy", "minority_class_f1"}
+    assert w["headline_metric"] in {"accuracy", "minority_class_f1", "macro_f1"}
     assert len(w["theta"]) == w["layers"], "theta rows must equal the layer count"
     assert all(len(row) == w["n_qubits"] for row in w["theta"]), "each layer needs one angle per qubit"
     if w.get("input_space") == "raw":

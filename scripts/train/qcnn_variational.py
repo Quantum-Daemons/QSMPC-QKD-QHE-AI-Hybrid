@@ -134,8 +134,18 @@ def circuit(x: torch.Tensor, theta: torch.Tensor, nq: int = N_QUBITS,
         # the low m bits of the flat index. One pass over the state vector, so the cost against the
         # <Z0> readout is nothing next to the 2**nq state preparation that precedes it.
         k = 1 << readout_qubits
-        return torch.zeros(p.shape[0], k, device=dev, dtype=p.dtype).index_add_(
-            1, (idx & (k - 1)).to(torch.long), p)
+        # `view(...).sum(1)`, NOT `index_add_`. The class of a flat index is `i & (k - 1)` = i mod k,
+        # so reshaping to (batch, 2**nq / k, k) puts every index sharing a class into one column and
+        # the marginal is a plain column sum - identical arithmetic, one reduction instead of a
+        # scatter.
+        #
+        # It has to be this way round because `index_add_` on CUDA accumulates with atomicAdd, which
+        # PyTorch documents as nondeterministic: the summation order changes between runs, so the
+        # same seeded command produced macro F1 0.809846 on some runs and 0.807781 on others. That
+        # is why only the MULTICLASS artifact was irreproducible - the binary readout below never
+        # touches this path. Chasing it through thread pinning and PYTHONHASHSEED found nothing,
+        # because the training does not run on the CPU at all.
+        return p.view(p.shape[0], -1, k).sum(1)
     sign = torch.where((idx & 1) == 0, 1.0, -1.0)         # bit 0 set -> -1
     return (p * sign).sum(1)
 
@@ -189,6 +199,9 @@ def main() -> int:
     ap.add_argument("--layers", type=int, default=3)
     ap.add_argument("--epochs", type=int, default=120)
     ap.add_argument("--seed", type=int, default=0)
+    # 1 by default: reproducibility of a published artifact outweighs training speed for a model
+    # this size. Raise it only for exploration, where the numbers are not going to be shipped.
+    ap.add_argument("--threads", type=int, default=1)
     a = ap.parse_args()
 
     X, y, names, prov = load(a.usecase)
@@ -198,6 +211,18 @@ def main() -> int:
     # weights that cannot be regenerated are exactly what this project refuses to ship, and the swing
     # was large enough to be mistaken for a real effect of the changes being made alongside it.
     torch.manual_seed(a.seed)
+    # Only bites on the CPU fallback: with a capable GPU present this trains on CUDA, so the thread
+    # count governs nothing here. It is set anyway so a CPU host gets the same guarantee.
+    #
+    # Kept as a record of a wrong turn, because the wrong answer looked right twice. The 8-class
+    # artifact would not regenerate - the same seeded command gave macro F1 0.809846 on some runs
+    # and 0.807781 on others - and thread pinning was the first hypothesis. Then PYTHONHASHSEED=0
+    # produced three identical runs in a row, which read as a confirmed fix until a fourth run at
+    # the same hash seed broke it. Neither was the cause. The cause was `index_add_` in the
+    # multiclass readout, whose CUDA implementation accumulates with atomicAdd; see the note there.
+    # Both false leads shared a premise worth naming: they assumed the training ran on the CPU,
+    # which nothing had checked.
+    torch.set_num_threads(a.threads)
     rng = np.random.default_rng(a.seed)
     perm = rng.permutation(len(y))
     X, y = X[perm], y[perm]
@@ -439,12 +464,43 @@ def main() -> int:
         "feature_names": names, "input_space": INPUT_SPACE, "encoding": "tanh",
         "feature_mean": mu.tolist(), "feature_std": sd.tolist(),
         "provenance": prov,
+        # THE INVOCATION, recorded because it was not. `layers: 6` was in the file, so the
+        # architecture was recoverable, but `epochs` and `seed` were not - and the defaults do not
+        # reproduce this artifact. Re-running `--usecase telecom` gave macro F1 0.4998 against a
+        # published 0.8098, and `--layers 6` alone gave 0.6443; only `--layers 6 --epochs 400`
+        # returns 0.809846. That took an epoch sweep to recover a number the demo was already
+        # displaying as measured, which is the whole argument for writing it down here.
+        "training": {"layers": a.layers, "epochs": a.epochs, "seed": a.seed,
+                     "threads": a.threads,
+                     "command": f"python scripts/train/qcnn_variational.py --usecase {a.usecase} "
+                                f"--layers {a.layers} --epochs {a.epochs} --seed {a.seed} "
+                                f"--threads {a.threads}",
+                     "note": ("--seed drives the numpy split permutation and torch parameter "
+                              "init. Re-running this command regenerates this file: five "
+                              "consecutive runs gave identical metrics and identical theta to nine "
+                              "decimal places. That is true only since the multiclass readout "
+                              "stopped using index_add_, whose CUDA atomicAdd made the same seeded "
+                              "command land on macro F1 0.809846 or 0.807781 depending on the "
+                              "run.")},
         "test_accuracy": round(qcnn_acc, 6),
         "classical_lr_accuracy": round(float(lr_acc), 6),
         "majority_baseline": round(float(major), 6),
-        "test_minority_f1": round(qcnn_f1, 6),
-        "classical_lr_minority_f1": round(lr_f1, 6),
-        "all_positive_f1": round(all_pos_f1, 6),
+        # Named for what was MEASURED, which is not the same metric in both regimes. On two
+        # classes `f1_score(average="binary")` is the minority-class F1 and an all-positive
+        # predictor is a meaningful floor for it. On K > 2 the same variables hold a MACRO F1,
+        # for which "minority class" names nothing and an all-positive predictor does not exist.
+        #
+        # This is the identical reasoning the `test_prevalence` comment below already applies,
+        # and it was applied to one field of three: the 8-class telecom artifact shipped a macro
+        # F1 of 0.809846 under `test_minority_f1`, carried `macro_f1_floors` for a metric the
+        # file never named, and reported `all_positive_f1: 0.0` - a floor of zero for a baseline
+        # that cannot be constructed. Null in the inapplicable regime, so a consumer that reaches
+        # for the wrong one gets nothing rather than a plausible number.
+        "test_minority_f1": (None if readout_q else round(qcnn_f1, 6)),
+        "classical_lr_minority_f1": (None if readout_q else round(lr_f1, 6)),
+        "all_positive_f1": (None if readout_q else round(all_pos_f1, 6)),
+        "test_macro_f1": (round(qcnn_f1, 6) if readout_q else None),
+        "classical_lr_macro_f1": (round(lr_f1, 6) if readout_q else None),
         # Null for multiclass rather than a number: prevalence is a binary notion and the
         # mean of integer class labels is not one. Recording null is what stops a consumer
         # reading a mean class index as a positive rate.
@@ -461,7 +517,13 @@ def main() -> int:
                      "constant predictor scores 2/(K(K+1)), earning F1 on one class and zero on "
                      "the rest."),
         }),
-        "headline_metric": "minority_class_f1" if imbalanced else "accuracy",
+        # THREE regimes, because the two-way version disagreed with this script's own output. It
+        # asked only "is the binary problem imbalanced", so a balanced 8-class run fell through to
+        # "accuracy" while the console printed "MACRO F1 leads" a hundred lines earlier. The artifact
+        # therefore shipped floors for macro F1 under `macro_f1_floors` and then told every consumer
+        # to headline something else, so the metric those floors exist to scale was never surfaced.
+        "headline_metric": ("macro_f1" if readout_q else
+                            ("minority_class_f1" if imbalanced else "accuracy")),
         "n_train": int(cut), "n_test": int(len(y) - cut),
         "note": ("Variational QCNN trained by backpropagation through a dense state vector. The "
                  "prediction path applies NO QOTP mask: undoing a Pauli frame through Clifford+T is "

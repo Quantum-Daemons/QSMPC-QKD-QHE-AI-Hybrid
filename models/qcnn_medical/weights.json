@@ -2,6 +2,7 @@
  "usecase": "medical",
  "n_qubits": 8,
  "layers": 3,
+ "n_features": 8,
  "theta": [
   [
    -1.4290305376052856,
@@ -75,12 +76,22 @@
   0.057261190578157914
  ],
  "provenance": "Wisconsin Diagnostic Breast Cancer (UCI, CC-BY-4.0), 8 of 30 features",
+ "training": {
+  "layers": 3,
+  "epochs": 120,
+  "seed": 0,
+  "threads": 1,
+  "command": "python scripts/train/qcnn_variational.py --usecase medical --layers 3 --epochs 120 --seed 0 --threads 1",
+  "note": "--seed drives the numpy split permutation and torch parameter init. Re-running this command regenerates this file: five consecutive runs gave identical metrics and identical theta to nine decimal places. That is true only since the multiclass readout stopped using index_add_, whose CUDA atomicAdd made the same seeded command land on macro F1 0.809846 or 0.807781 depending on the run."
+ },
  "test_accuracy": 0.732558,
  "classical_lr_accuracy": 0.953488,
  "majority_baseline": 0.593023,
  "test_minority_f1": 0.622951,
  "classical_lr_minority_f1": 0.939394,
  "all_positive_f1": 0.578512,
+ "test_macro_f1": null,
+ "classical_lr_macro_f1": null,
  "test_prevalence": 0.406977,
  "n_classes_predicted": null,
  "per_class_f1": null,
