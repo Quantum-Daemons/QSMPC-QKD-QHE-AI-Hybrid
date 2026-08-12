@@ -141,6 +141,68 @@ def test_every_use_case_with_weights_on_disk_is_declared() -> None:
         f"weights that no control can select")
 
 
+#: Every place the demo decides whether a visitor's backend choice survives. All three must agree,
+#: and each was individually invisible: the branch was missing, then the control was not rendered,
+#: then the key was stripped on the way to the run.
+_PANEL = Path(__file__).resolve().parents[1] / "web" / "src" / "components" / "ParameterPanel.tsx"
+
+
+def _stages_reading_the_backend_key() -> set[str]:
+    """Stage case blocks that actually read `config.inference`."""
+    return {name for name, body in _stage_blocks().items() if "config.inference" in body}
+
+
+def test_the_declared_backend_stages_are_the_stages_that_read_the_key() -> None:
+    """`INFERENCE_BACKEND_STAGES` is a list, so it can go stale; derive the truth and compare.
+
+    A stage that starts reading `config.inference` without being added here renders no control, and
+    one that stops reading it leaves a control that changes nothing. Both are the same defect.
+    """
+    src = _PIPELINE.read_text(encoding="utf-8")
+    m = re.search(r"INFERENCE_BACKEND_STAGES = \[([^\]]*)\]", src)
+    assert m, "INFERENCE_BACKEND_STAGES not found in usePipelineRun.ts"
+    declared = {s.strip().strip('"') for s in m.group(1).split(",") if s.strip()}
+    actual = _stages_reading_the_backend_key()
+    assert declared == actual, (
+        f"declared backend stages {sorted(declared)} but the stages reading config.inference are "
+        f"{sorted(actual)}. Missing from the list means the Inference control is hidden on any use "
+        f"case whose only such stage is the missing one; extra means it is shown where nothing reads it")
+
+
+@pytest.mark.parametrize("usecase", sorted(_qcnn_usecases()))
+def test_the_backend_control_is_rendered_for_every_qcnn_use_case(usecase: str) -> None:
+    """The third condition: a control must exist to make the selection.
+
+    Reachability alone is not enough. Telecom's QCNN branch was live and unreachable anyway, because
+    `ParameterPanel` gated the whole Inference block on `runsInference` - which asks whether the stage
+    NAMED `private_inference` runs, and telecom's backend stage is `qml_ids`. The page rendered six
+    selects and none of them was a backend selector.
+    """
+    flows = _flows()
+    assert set(flows[usecase]) & _stages_reading_the_backend_key(), (
+        f"{usecase} ships a QCNN but no stage it runs reads config.inference, so no control can "
+        f"select it")
+
+
+def test_the_panel_and_the_config_gate_on_the_same_predicate() -> None:
+    """Shown and sent must agree, and both must be the READS predicate, not the stage-name one.
+
+    `buildConfig` stripped `inference` for telecom under `runsInference`, so even with the control
+    on screen the choice would not have reached the run. Three gates in series; this pins the two
+    that are one line each and easy to revert by accident.
+    """
+    panel, pipeline = _PANEL.read_text(encoding="utf-8"), _PIPELINE.read_text(encoding="utf-8")
+    assert "readsInferenceBackend(usecase)" in panel, (
+        "ParameterPanel no longer derives the Inference control from readsInferenceBackend; if it "
+        "went back to runsInference the control disappears from every qml_ids use case")
+    assert re.search(r"if \(readsInferenceBackend\(usecase\) && inference\) c\.inference", pipeline), (
+        "buildConfig no longer ships `inference` under readsInferenceBackend, so a selection made on "
+        "screen would be dropped before the run sees it")
+    assert "runsInference" not in panel, (
+        "ParameterPanel still references runsInference; the two predicates differ by exactly the case "
+        "this test exists for, so having both in one file invites regating on the wrong one")
+
+
 def test_the_shipped_weights_name_their_readout_convention() -> None:
     """A multiclass readout that does not record its bit order cannot be reproduced from the file.
 

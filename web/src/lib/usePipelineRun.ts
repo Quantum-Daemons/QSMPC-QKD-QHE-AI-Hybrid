@@ -27,6 +27,23 @@ export const runsQsmpc = (usecase: string) => clientFlow(usecase).includes("qsmp
 export const runsInference = (usecase: string) => clientFlow(usecase).includes("private_inference");
 export const runsFibreQkd = (usecase: string) => clientFlow(usecase).includes("qkd_key_agreement");
 
+/** Stages whose implementation reads `config.inference` to choose a backend.
+ *
+ * `runsInference` above answers a different question - whether the use case runs the stage NAMED
+ * `private_inference` - and using it to gate the Inference control conflated the two. Telecom reads
+ * `config.inference` from `qml_ids`, so the control it depends on was never rendered: the page
+ * offered no way to pick a backend at all, while the QCNN branch behind it sat ready. That is the
+ * same inert-control failure as before with the halves swapped, and it survived the fix for the
+ * first half because the reachability test asks about stages and artefacts, not about whether a
+ * control exists to reach them.
+ *
+ * `tests/test_qcnn_reachable.py` now checks this list against the stage bodies that actually read
+ * the key, so a stage gaining or losing the backend switch cannot leave this stale.
+ */
+export const INFERENCE_BACKEND_STAGES = ["private_inference", "qml_ids"];
+export const readsInferenceBackend = (usecase: string) =>
+  clientFlow(usecase).some((s) => INFERENCE_BACKEND_STAGES.includes(s));
+
 /** Use cases that ship trained QCNN weights under `public/data/<dir>/qcnn_weights.json`.
  *
  * The same reasoning as the three predicates above, one level down. A backend option is honest only
@@ -233,7 +250,10 @@ export function usePipelineRun(usecase: string, recordRef: RefObject<HTMLElement
     // every one of them, so it performed a secure summation over Z97 with a QCNN readout, driven by
     // controls that were no longer on screen.
     if (runsQsmpc(usecase) && qsmpc_op) c.qsmpc_op = qsmpc_op;
-    if (runsInference(usecase) && inference) c.inference = inference;
+    // `readsInferenceBackend`, not `runsInference`: the key is read by `qml_ids` too, and gating the
+    // send on the stage NAME meant telecom's selection was dropped on the way to the run even once
+    // the control was on screen and the branch existed. Three gates in series, each invisible alone.
+    if (readsInferenceBackend(usecase) && inference) c.inference = inference;
     if (runsQsmpc(usecase) && prime > 0) c.prime = prime;
     // Only when a choice was made. Absent, runPublishedModel falls to browserModel(usecase), so the
     // key never appears in a signed payload claiming a selection the visitor did not make.
