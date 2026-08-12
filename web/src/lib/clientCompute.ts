@@ -1114,6 +1114,42 @@ const FLOWS: Record<string, string[]> = {
 export function clientFlow(usecase: string): string[] {
   return FLOWS[usecase] ?? FLOWS.demo;
 }
+// Trained QCNN weights, fetched once per use case. These three sit at MODULE scope deliberately.
+// They were written flush-left INSIDE the `private_inference` case block, which reads as top level
+// and is not: an ES module is always strict mode, so a function declaration in a block is scoped to
+// that block. Two consequences, both invisible until something outside that case needed them - the
+// telecom stage could not call `loadQcnnWeights` at all (TS2304), and `_qcnnCache` was re-created on
+// every entry to the case, so the memo never survived a run and the fetch repeated. The HTTP cache
+// hid the second one.
+// Trained QCNN weights, fetched once per use case. Absent file is the normal case for a use case
+// that has no trained circuit yet, and the caller degrades to CKKS rather than inventing a class.
+const _qcnnCache: Record<string, QcnnWeights | null> = {};
+
+/** Directory under `public/data` for a use case's bundled artefacts.
+ *
+ *  `ParameterPanel` decides whether to OFFER the QCNN option, and it must agree with whether the
+ *  weights actually load or the control goes inert again. The two live in different modules, so
+ *  `tests/test_qcnn_usecases.py` compares `QCNN_USECASES` against the files on disk using this same
+ *  mapping rather than relying on the two staying in step by inspection. */
+function dataDirFor(usecase: string): string {
+  return usecase === "medical_fl" ? "medical" : usecase.split("_")[0];        // finance_aml -> finance
+}
+
+async function loadQcnnWeights(usecase: string): Promise<QcnnWeights | null> {
+  if (usecase in _qcnnCache) return _qcnnCache[usecase];
+  try {
+    const r = await fetch(`${import.meta.env.BASE_URL}data/${dataDirFor(usecase)}/qcnn_weights.json`);
+    // `r.ok` is NOT the test. This is an SPA: the host serves index.html with HTTP 200 for any path
+    // that does not exist, so `r.ok` is true for a file that was never deployed. The old guard only
+    // appeared to work because `r.json()` then threw on HTML and the catch swallowed it - a check
+    // that reads as handling the case while the catch does the work. Content-type is the
+    // discriminator, which is the same rule the verification checklist applies to `curl`.
+    const json = (r.headers.get("content-type") ?? "").includes("application/json");
+    _qcnnCache[usecase] = r.ok && json ? ((await r.json()) as QcnnWeights) : null;
+  } catch { _qcnnCache[usecase] = null; }
+  return _qcnnCache[usecase];
+}
+
 
 export function runClientPipeline(
   usecase: string, config: Record<string, any>, h: PipelineHandlers, startPaused = false,
@@ -1882,6 +1918,38 @@ export function runClientPipeline(
         // not cryptographic integrity: verifiable-FHE proofs establish that a server ran the
         // circuit it was asked to run, and this establishes something different and complementary.
         await runEncryptedTelecomStudent(stage, ids.explain?.xRaw);
+
+        // The 8-class QCNN, where the visitor selected it. This lives here rather than in
+        // `private_inference` because telecom has no such stage - and putting the weights on disk and
+        // registering the use case WITHOUT this made the QCNN option appear in the Parameters panel
+        // and do nothing. An inert control is the defect class this file's own checklist opens with
+        // (Round 20 audited use-case pages and found five), and the only thing that surfaced it was
+        // running the deployed page: every local gate was green.
+        if (String(config.inference || "ckks") === "qcnn" && ids.explain?.xRaw) {
+          const w = await loadQcnnWeights(usecase);
+          if (w) {
+            const qc = qcnnInferTrained(ids.explain.xRaw.slice(0, w.n_qubits), w);
+            artifacts.primary_inference = { backend: "qcnn-trained", class: qc.cls,
+                                            qubits: qc.qubits, expectation: r2(qc.expectation) };
+            metric(stage, "primary_inference_backend", "qcnn-trained");
+            metric(stage, "primary_inference_class", w.class_names?.[qc.cls] ?? qc.cls);
+            metric(stage, "qcnn_classes_available", w.readout?.n_classes ?? 2);
+            emit("log", stage, `QCNN (trained, ${w.readout?.n_classes ?? 2}-class basis readout on `
+              + `${w.readout?.readout_qubits ?? 0} of ${w.n_qubits} qubits): class `
+              + `"${w.class_names?.[qc.cls] ?? qc.cls}". Class index is ${w.readout?.class_index}, `
+              + `${w.readout?.bit_order} - reading those bits in another order permutes the class map `
+              + `while leaving every aggregate metric identical, which is why the convention ships in `
+              + `the weights.`);
+            if (typeof w.test_minority_f1 === "number" || w.per_class_f1) {
+              emit("log", stage, `and it LOSES: macro F1 ${w.test_minority_f1 ?? "n/a"} against a `
+                + `classical logistic regression at ${w.classical_lr_minority_f1 ?? "n/a"} on the same `
+                + `split, with ${w.n_classes_predicted ?? "?"} of ${w.readout?.n_classes ?? 2} classes `
+                + `predicted. Reported because it is the measured result, not because it flatters.`);
+            }
+          } else {
+            emit("log", stage, "QCNN selected but no trained weights are published for this use case");
+          }
+        }
         break;
       }
       case "private_inference": {
@@ -2030,34 +2098,6 @@ export function runClientPipeline(
           emit("log", stage, `private inference: class=${inf.prediction}; in-browser CKKS unavailable here — `
             + `representative split ${split.fhe_linear_ms}/${split.mpc_nonlinear_ms} ms, client compute ${clientMs} ms`);
         }
-// Trained QCNN weights, fetched once per use case. Absent file is the normal case for a use case
-// that has no trained circuit yet, and the caller degrades to CKKS rather than inventing a class.
-const _qcnnCache: Record<string, QcnnWeights | null> = {};
-
-/** Directory under `public/data` for a use case's bundled artefacts.
- *
- *  `ParameterPanel` decides whether to OFFER the QCNN option, and it must agree with whether the
- *  weights actually load or the control goes inert again. The two live in different modules, so
- *  `tests/test_qcnn_usecases.py` compares `QCNN_USECASES` against the files on disk using this same
- *  mapping rather than relying on the two staying in step by inspection. */
-function dataDirFor(usecase: string): string {
-  return usecase === "medical_fl" ? "medical" : usecase.split("_")[0];        // finance_aml -> finance
-}
-
-async function loadQcnnWeights(usecase: string): Promise<QcnnWeights | null> {
-  if (usecase in _qcnnCache) return _qcnnCache[usecase];
-  try {
-    const r = await fetch(`${import.meta.env.BASE_URL}data/${dataDirFor(usecase)}/qcnn_weights.json`);
-    // `r.ok` is NOT the test. This is an SPA: the host serves index.html with HTTP 200 for any path
-    // that does not exist, so `r.ok` is true for a file that was never deployed. The old guard only
-    // appeared to work because `r.json()` then threw on HTML and the catch swallowed it - a check
-    // that reads as handling the case while the catch does the work. Content-type is the
-    // discriminator, which is the same rule the verification checklist applies to `curl`.
-    const json = (r.headers.get("content-type") ?? "").includes("application/json");
-    _qcnnCache[usecase] = r.ok && json ? ((await r.json()) as QcnnWeights) : null;
-  } catch { _qcnnCache[usecase] = null; }
-  return _qcnnCache[usecase];
-}
 
         // Inference backend selection (config.inference): "qcnn" routes the reported class through the
         // quantum QOTP+QCNN readout; "ckks"/default keeps the CKKS(FHE)+MPC path. Both are computed for the
