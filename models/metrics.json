@@ -22,6 +22,24 @@
     "split": "temporal, inductive",
     "wall_clock_s": 96.8
   },
+  "finance_aml.scorecard": {
+    "aunbc_fit": 0.00018612,
+    "auprc": 0.036529,
+    "coefficient_range": 8,
+    "decision_cut": -1,
+    "exact_under_bfv": true,
+    "fit_method": "coordinate-search",
+    "git_sha": "4ad9b4e-dirty",
+    "metric_note": "Fitted by maximising net benefit across five decision thresholds rather than a surrogate loss. `fit_method` is 'coordinate-search': the objective it maximises is the exact AUNBC, but optimality is NOT claimed - the exact integer program over all (sample x threshold) indicators is not tractable at this row count, and reporting a heuristic's result as an optimum would be a different claim. `exact_under_bfv` records that the encrypted score equals the plaintext score bit for bit, which is the property a CKKS student cannot offer; verified in tests/test_scorecard_bfv_exact.py.",
+    "minority_class_f1": 0.037211,
+    "n_features_available": 32,
+    "n_nonzero_coefficients": 12,
+    "n_test": 1523504,
+    "net_benefit": 0.00030763,
+    "net_benefit_threshold": 0.01,
+    "net_benefit_treat_all": -0.00856216,
+    "wall_clock_s": 272.3
+  },
   "finance_aml.student": {
     "agreement": 0.982943,
     "both_scored_zero": false,
@@ -150,7 +168,7 @@
   "medical_fl.student": {
     "agreement": 0.826923,
     "auc": 0.788221,
-    "baseline_gap_note": "This scores far below the 0.901 ResNet-18 baseline, and the reason is capacity: 3,226 parameters over a 14x14 input is a REPRESENTATION choice, not a feasibility limit - and this note said 'a CKKS-feasibility budget' until Round 32, which overstated how forced it was. Kim et al. (arXiv:2506.15258) do HE chest-X-ray inference on a VQGAN latent at downsampling factor 8 rather than on pixels, so the alternative to downsampling 28->14 is re-representing the input. The browser already runs onnxruntime-web, so such an encoder would run locally in plaintext with no privacy loss. Recorded as a trigger, not acted on. Round 24 found it had been WORSE than that - a constant predictor, emitting one class for all 156 test images, with accuracy 0.730769 exactly equal to the majority-class rate and AUC 0.354, below random. It was invisible because the registry declared `auc` while the record stored `accuracy`, and because this student had neither protection its teacher already had: class-weighted loss and AUC-based model selection. Both were added. Read `n_classes_predicted` and `majority_class_rate` beside the score - an accuracy equal to the majority rate is the signature of a model that learned nothing. Workings: references/medical-student-collapse-investigation.md.",
+    "baseline_gap_note": "This scores far below the 0.901 ResNet-18 baseline. The reason is representational rather than cryptographic: 3,226 parameters over a 14x14 input is a REPRESENTATION choice, not a feasibility limit - and this note said 'a CKKS-feasibility budget' until Round 32, which overstated how forced it was. Kim et al. (arXiv:2506.15258) do HE chest-X-ray inference on a VQGAN latent at downsampling factor 8 rather than on pixels, so the alternative to downsampling 28->14 is re-representing the input. The browser already runs onnxruntime-web, so such an encoder would run locally in plaintext with no privacy loss. Recorded as a falsifiable trigger in the additional-model decision, not acted on. Round 24 found it had been WORSE than that - a constant predictor, emitting one class for all 156 test images, with accuracy 0.730769 exactly equal to the majority-class rate and AUC 0.354, below random. It was invisible because the registry declared `auc` while the record stored `accuracy`, and because this student had neither protection its teacher already had: class-weighted loss and AUC-based model selection. Both were added. Read `n_classes_predicted` and `majority_class_rate` beside the score - an accuracy equal to the majority rate is the signature of a model that learned nothing. Workings: references/medical-student-collapse-investigation.md.",
     "both_scored_zero": false,
     "disagreement_on_positives": 0.149123,
     "hf_revision": "cfc0529d3eb4d6e17bd3804981db15667591d1b3",
@@ -261,7 +279,8 @@
     "resample": "300s",
     "sample_size_note": "Read n_events_scored before comparing this to published_lightweight_f0_5. The denominator of an event-wise metric is EVENTS, and a temporal split of this corpus leaves very few of them in the scored window: 320 labelled intervals over the whole timeline reduce to a handful inside the test window, because the annotated anomalies are concentrated earlier in the mission. The recorded score is therefore a small-sample figure and one event either way moves it by tenths - it is NOT comparable to a published benchmark computed over the full annotated set, however similar the two decimals look. The number is reported as measured rather than reweighted, and the sample size is reported beside it so the comparison is not made silently.",
     "wall_clock_s": 43.2,
-    "windowed_iforest_event_wise_f0_5": 0.000248
+    "windowed_iforest_event_wise_f0_5": 0.000248,
+    "baseline_gap_note": "Read n_events_scored before comparing this to the baseline. The scored test window holds THREE labelled anomaly events, not the 320 that n_anomaly_intervals counts over the whole timeline - the annotated anomalies sit earlier in the mission, so a temporal split leaves almost nothing to score. Both recorded values decompose uniquely on three events: 0.714286 is tp=1 fp=0 fn=2 and 0.454545 is tp=1 fp=1 fn=2, so the 0.26 swing between two identical-config runs is ONE extra false-alarm run. The detector flags 2 points out of 441,600. Three protocol gaps to the citation remain open and are stated rather than closed: ESA-ADB multiplies event precision by the time-level TNR (recorded here as corrected_event_wise_f0_5), it splits each mission in half where this tests on the last 30 percent, and its lightweight test partition holds 65 events against 3 here. Workings: references/satellite-event-count-investigation.md."
   },
   "telecom_ids.qml": {
     "aggregate_accuracy": 0.986667,

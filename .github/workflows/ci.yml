@@ -69,6 +69,16 @@ jobs:
           git diff --exit-code -- web/src/lib/config.defaults.json \
             || { echo "::error::config.defaults.json is stale — run: python scripts/export_config.py"; exit 1; }
 
+      - name: Generated prose matches its generator
+        # The step above compares the two DERIVED artifacts to each other, so it is blind by
+        # construction to the case where both agree and neither matches the trainer that writes them.
+        # That happened: Round 32 corrected an overclaiming `baseline_gap_note` by hand in
+        # models/metrics.json and web/src/lib/config.defaults.json and left the generator emitting the
+        # original, so the next retrain would have reverted the correction and publish_hf.py would have
+        # pushed the reverted sentence to a public model card. This reads each trainer's string literal
+        # out of the AST - no model runs - and diffs it against the recorded value.
+        run: python scripts/check_generated_prose.py
+
       - name: Lint (blocking, Round-17 modules)
         # The repository carries 51 pre-existing ruff findings that predate this workflow. Turning
         # them into a red build on day one would mean the first thing anyone learns about CI is to
@@ -95,13 +105,15 @@ jobs:
         run: make check-secrets
 
       - name: No Japanese in public files
-        # Public-facing source and docs are English-only. The .ja monetization workflow is
-        # git-ignored, so anything matched here is a genuine leak.
+        # Public-facing source and docs are English-only. Scope is the git INDEX rather than a
+        # directory list, so "public" means "tracked". Three things follow: the git-ignored .ja
+        # monetization workflow is excluded by construction rather than by an exception, the repo ROOT
+        # is covered (the old list named only README.md there, so a Japanese-language document dropped
+        # at the root passed this gate - measured 2026-08-12 with a real confidential note), and a new
+        # top-level directory is covered without editing this step.
         run: |
-          if grep -rIlP '[\x{3040}-\x{309F}\x{30A0}-\x{30FF}\x{4E00}-\x{9FFF}]' \
-               --include='*.py' --include='*.ts' --include='*.tsx' --include='*.md' \
-               --include='*.yml' --include='*.sh' \
-               src api web/src tests scripts docs README.md 2>/dev/null; then
+          if git ls-files -z '*.py' '*.ts' '*.tsx' '*.md' '*.yml' '*.sh' \
+               | xargs -0 -r grep -IlP '[\x{3040}-\x{309F}\x{30A0}-\x{30FF}\x{4E00}-\x{9FFF}]'; then
             echo "::error::Japanese characters found in public files (listed above)"
             exit 1
           fi
