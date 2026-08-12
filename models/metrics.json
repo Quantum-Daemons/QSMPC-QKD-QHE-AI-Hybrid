@@ -256,6 +256,7 @@
   },
   "satellite_comms.telemanom": {
     "anomaly_sample_rate": 0.0075528,
+    "baseline_gap_note": "Read n_events_scored before comparing this to the baseline. The scored test window holds THREE labelled anomaly events, not the 320 that n_anomaly_intervals counts over the whole timeline - the annotated anomalies sit earlier in the mission, so a temporal split leaves almost nothing to score. Both recorded values decompose uniquely on three events: 0.714286 is tp=1 fp=0 fn=2 and 0.454545 is tp=1 fp=1 fn=2, so the 0.26 swing between two identical-config runs is ONE extra false-alarm run. The detector flags 2 points out of 441,600. Three protocol gaps to the citation remain open and are stated rather than closed: ESA-ADB multiplies event precision by the time-level TNR (recorded here as corrected_event_wise_f0_5), it splits each mission in half where this tests on the last 30 percent, and its lightweight test partition holds 65 events against 3 here. Workings: references/satellite-event-count-investigation.md.",
     "dataset": "ESA Anomaly Dataset (ESA-ADB), Mission1 lightweight channels 41-46",
     "event_wise_f0_5": 0.454545,
     "event_wise_fn": 2,
@@ -279,8 +280,7 @@
     "resample": "300s",
     "sample_size_note": "Read n_events_scored before comparing this to published_lightweight_f0_5. The denominator of an event-wise metric is EVENTS, and a temporal split of this corpus leaves very few of them in the scored window: 320 labelled intervals over the whole timeline reduce to a handful inside the test window, because the annotated anomalies are concentrated earlier in the mission. The recorded score is therefore a small-sample figure and one event either way moves it by tenths - it is NOT comparable to a published benchmark computed over the full annotated set, however similar the two decimals look. The number is reported as measured rather than reweighted, and the sample size is reported beside it so the comparison is not made silently.",
     "wall_clock_s": 43.2,
-    "windowed_iforest_event_wise_f0_5": 0.000248,
-    "baseline_gap_note": "Read n_events_scored before comparing this to the baseline. The scored test window holds THREE labelled anomaly events, not the 320 that n_anomaly_intervals counts over the whole timeline - the annotated anomalies sit earlier in the mission, so a temporal split leaves almost nothing to score. Both recorded values decompose uniquely on three events: 0.714286 is tp=1 fp=0 fn=2 and 0.454545 is tp=1 fp=1 fn=2, so the 0.26 swing between two identical-config runs is ONE extra false-alarm run. The detector flags 2 points out of 441,600. Three protocol gaps to the citation remain open and are stated rather than closed: ESA-ADB multiplies event precision by the time-level TNR (recorded here as corrected_event_wise_f0_5), it splits each mission in half where this tests on the last 30 percent, and its lightweight test partition holds 65 events against 3 here. Workings: references/satellite-event-count-investigation.md."
+    "windowed_iforest_event_wise_f0_5": 0.000248
   },
   "telecom_ids.qml": {
     "aggregate_accuracy": 0.986667,
@@ -331,9 +331,31 @@
       "opset": 17
     },
     "framing": "Architecture comparison, not a performance claim. The data is synthetic because no commercial-OK real attack corpus exists. Every published QML-IDS figure we could verify sits below a random forest on the same data, and arXiv:2512.05069 was withdrawn by its own authors for insufficient evaluation. Per-class F1 is the headline; aggregate accuracy is shown beside it because Engelen et al. (WTMC 2021) demonstrated it stays at 0.99 across a label correction that moved Bot F1 from 0.60 to 0.99.",
-    "git_sha": "69314f4-dirty",
+    "git_sha": "df7c847-dirty",
     "n_classes": 8,
     "n_samples": 2400,
-    "wall_clock_s": 4.0
+    "wall_clock_s": 4.2
+  },
+  "telecom_ids.student": {
+    "aggregate_accuracy": 0.988333,
+    "agreement": 0.995,
+    "argmax_location": "client, in plaintext, after decrypting all 8 class scores",
+    "distilled_on": "teacher predict_proba (soft targets), weighted one-copy-per-class",
+    "macro_f1": 0.988329,
+    "metric_note": "Read `n_classes_predicted` before `macro_f1`. A linear student that stops predicting a class scores 0 on it by construction, and macro F1 then averages in a zero that looks like poor discrimination rather than an absent output - this repo's own QNN carries exactly that defect and is documented as doing so, so the check is not hypothetical. `agreement` is recorded but is NOT evidence the minority classes survived: agreement on the finance student rose from 0.884 to 0.947 across a change that left minority-class F1 unmoved, which is why per-class F1 is the headline here and the aggregate is a companion.",
+    "n_classes": 8,
+    "n_classes_predicted": 8,
+    "n_eval": 600,
+    "n_parameters": 64,
+    "per_class_f1": {
+      "combined": 1.0,
+      "detector_blinding": 1.0,
+      "intercept_resend": 0.986842,
+      "normal": 1.0,
+      "photon_number_splitting": 1.0,
+      "rng_manipulation": 0.986486,
+      "trojan_horse": 0.96732,
+      "wavelength_trojan": 0.965986
+    }
   }
 }

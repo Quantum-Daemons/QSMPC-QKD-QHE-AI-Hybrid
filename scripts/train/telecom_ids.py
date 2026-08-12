@@ -62,6 +62,8 @@ def main() -> int:
                     help="samples per class for the quantum models; the kernel is O(n^2) circuits")
     ap.add_argument("--seed", type=int, default=42)
     ap.add_argument("--out", type=Path, default=Path("models/telecom_qml_ids"))
+    ap.add_argument("--student-out", type=Path, default=Path("models/telecom_ids_student"),
+                    help="the T1 CKKS-linear student distilled from the forest")
     args = ap.parse_args()
 
     from sklearn.ensemble import RandomForestClassifier
@@ -246,8 +248,152 @@ def main() -> int:
     }, indent=2) + "\n")
 
     train.record_metrics("telecom_ids.qml", record)
-    print(f"\n  wrote {args.out} and models/metrics.json in {time.time()-started:.1f}s")
+
+    # ---- T1: the CKKS-linear student, so this use case HAS an encrypted tier -------------------
+    student_record = distil_linear_student(rf, Xtr, ytr, Xte, yte, args.student_out, seed=args.seed)
+    train.record_metrics("telecom_ids.student", student_record)
+
+    print(f"\n  wrote {args.out}, {args.student_out} and models/metrics.json "
+          f"in {time.time()-started:.1f}s")
     return 0
+
+
+def distil_linear_student(teacher, Xtr, ytr, Xte, yte, out: Path, *, seed: int) -> dict:
+    """Distil the 8-class RandomForest to a linear model that can run under CKKS.
+
+    WHY THIS EXISTS. `runs_encrypted=True` appeared on five ModelSpecs and none of them was telecom,
+    so this was the one vertical with no encrypted tier at all - which meant the project's standing
+    per-industry question ("is the private-inference artifact class right for this industry?") had no
+    artifact to judge here, and `references/model-choice-vs-2026-practice.md` answered a
+    model-QUALITY question in its place without noticing the substitution.
+
+    SOFT TARGETS, and this is the part that matters. The teacher's *probabilities* are the training
+    signal, not its argmax. Distilling on hard labels was a real defect in this repo once already -
+    `references/finance-gap-investigation.md` records it and `finance_aml.py` carries the fix - and on
+    an 8-class problem it is worse than on a binary one: the argmax discards exactly the minority-class
+    information that macro F1 is computed from. sklearn's LogisticRegression takes no soft labels, so
+    each training row is replicated once per class with `sample_weight` equal to the teacher's
+    probability for that class. Weighted cross-entropy over those copies IS cross-entropy against the
+    soft target, exactly - no approximation, and it costs n_train x 8 rows, which is nothing here.
+
+    THE ARGMAX IS NOT ENCRYPTED, and the caller must say so. CKKS has no native comparison. What runs
+    under encryption is 8 dot products - 56 weights and 8 biases, 8 slots of a ring of 8192 - and the
+    client decrypts all 8 class scores and takes the maximum in the clear. That is the mainstream
+    construction (it is what Concrete-ML's deployment model does) and it is honest here because in a
+    single-tab demo the client IS the user, so nothing is revealed that was not already theirs. The
+    alternatives were both rejected on measured grounds rather than by preference: a homomorphic argmax
+    costs 12.83 s for 128 elements (Mazzone et al., USENIX Security 2025), and handing the argmax to
+    the MPC round that `mpc/secret_inference.py:secure_argmax` already implements would buy an
+    architecture demonstration and not a security property, because `docs/threat-model.md` records that
+    both MPC parties share one JS heap.
+    """
+    import numpy as np
+    from sklearn.linear_model import LogisticRegression
+
+    n_classes = len(ATTACKS)
+    soft = teacher.predict_proba(Xtr)
+    if soft.shape[1] != n_classes:                       # a teacher that never saw a class
+        raise SystemExit(f"teacher emits {soft.shape[1]} columns for {n_classes} classes - the "
+                         f"training split is missing a class and macro F1 would be meaningless")
+
+    # Standardise on the training split only, and ship mean/scale so the browser reproduces it.
+    mean, scale = Xtr.mean(axis=0), Xtr.std(axis=0)
+    scale[scale == 0] = 1.0
+    Ztr, Zte = (Xtr - mean) / scale, (Xte - mean) / scale
+
+    rep_X = np.repeat(Ztr, n_classes, axis=0)
+    rep_y = np.tile(np.arange(n_classes), len(Ztr))
+    rep_w = soft.reshape(-1)
+    keep = rep_w > 1e-6                                  # drop zero-weight copies; sklearn ignores them anyway
+    # No `multi_class=` argument: it was removed in sklearn 1.7, and multinomial (softmax) is the
+    # default for a multiclass fit with lbfgs, which is the objective the soft targets require.
+    student = LogisticRegression(max_iter=4000, C=10.0, random_state=seed)
+    student.fit(rep_X[keep], rep_y[keep], sample_weight=rep_w[keep])
+
+    scores = Zte @ student.coef_.T + student.intercept_  # exactly what the CKKS path computes
+    pred = scores.argmax(axis=1)
+    st = metrics.with_companion(yte, pred, None, headline="macro_f1")
+    n_predicted = int(len(np.unique(pred)))
+    teacher_pred = teacher.predict(Xte)
+    agreement = float((pred == teacher_pred).mean())
+
+    print("\n  T1 CKKS-linear student (distilled from the forest on SOFT targets)")
+    print(f"    macro F1            {st['macro_f1']:.4f}   (teacher {record_macro(teacher, Xte, yte):.4f})")
+    print(f"    classes predicted   {n_predicted}/{n_classes}"
+          + ("" if n_predicted == n_classes else "   <- COLLAPSED, see below"))
+    print(f"    agreement w/teacher {agreement:.4f}   <- NOT evidence the minority classes survived")
+    print("    per-class F1:")
+    for name, f1 in sorted(st["per_class_f1"].items(), key=lambda kv: kv[1]):
+        label = ATTACKS[int(name)] if name.isdigit() and int(name) < len(ATTACKS) else name
+        print(f"      {label:24s} {f1:.4f}")
+
+    out.mkdir(parents=True, exist_ok=True)
+    payload = json.dumps({
+        "kind": "logistic-linear-multiclass",
+        "note": (
+            "The CKKS-linear student for telecom. What runs under homomorphic encryption is 8 dot "
+            "products over 7 standardised features - W is 8x7 and b is 8. The ARGMAX IS NOT "
+            "ENCRYPTED: the client decrypts all 8 class scores and takes the maximum in the clear, "
+            "because CKKS has no native comparison. That is the standard construction and it is "
+            "honest in a single-tab demo where the client is the user, but it must not be described "
+            "as deciding the class under encryption. Distilled from the forest's PROBABILITIES, not "
+            "its argmax - on 8 classes the argmax discards precisely the minority-class signal that "
+            "macro F1 is computed from."),
+        "teacher_key": "telecom_ids.qml",
+        "student_key": "telecom_ids.student",
+        "n_features": int(Xtr.shape[1]),
+        "features": list(FEATURES),
+        "input": {"preprocessing": ["subtract mean", "divide by scale"],
+                  "mean": [float(v) for v in mean], "scale": [float(v) for v in scale]},
+        "W": [[float(w) for w in row] for row in student.coef_],
+        "b": [float(v) for v in student.intercept_],
+        "n_parameters": int(student.coef_.size + student.intercept_.size),
+        "classes": list(ATTACKS),
+    }, indent=2) + "\n"
+    (out / "weights.json").write_text(payload)
+
+    # The browser copy is BUNDLED rather than fetched from the Hub, following `genomics.prs` - the
+    # other tier that runs under CKKS with `hf_repo=None`. 64 floats do not need a pinned revision,
+    # and bundling means the encrypted tier works on a fresh clone with no network. Written from the
+    # same `payload` string, so the two cannot drift: one serialisation, two destinations.
+    web = Path("web/public/data/telecom")
+    web.mkdir(parents=True, exist_ok=True)
+    (web / "student_weights.json").write_text(payload)
+
+    rec = {
+        "macro_f1": round(float(st["macro_f1"]), 6),
+        "per_class_f1": {
+            (ATTACKS[int(k)] if k.isdigit() and int(k) < len(ATTACKS) else k): round(v, 6)
+            for k, v in st["per_class_f1"].items()},
+        "aggregate_accuracy": round(float(st["aggregate_accuracy"]), 6),
+        "n_classes_predicted": n_predicted,
+        "n_classes": n_classes,
+        "n_eval": int(len(yte)),
+        "n_parameters": int(student.coef_.size + student.intercept_.size),
+        "agreement": round(agreement, 6),
+        "distilled_on": "teacher predict_proba (soft targets), weighted one-copy-per-class",
+        "argmax_location": "client, in plaintext, after decrypting all 8 class scores",
+        "metric_note": (
+            "Read `n_classes_predicted` before `macro_f1`. A linear student that stops predicting a "
+            "class scores 0 on it by construction, and macro F1 then averages in a zero that looks "
+            "like poor discrimination rather than an absent output - this repo's own QNN carries "
+            "exactly that defect and is documented as doing so, so the check is not hypothetical. "
+            "`agreement` is recorded but is NOT evidence the minority classes survived: agreement on "
+            "the finance student rose from 0.884 to 0.947 across a change that left minority-class F1 "
+            "unmoved, which is why per-class F1 is the headline here and the aggregate is a "
+            "companion."),
+    }
+    if n_predicted < n_classes:
+        rec["collapse_warning"] = (
+            f"predicts only {n_predicted} of {n_classes} classes, so macro F1 has a floor of zero on "
+            f"the {n_classes - n_predicted} it never emits")
+    return rec
+
+
+def record_macro(model, Xte, yte) -> float:
+    """The teacher's macro F1, recomputed so the student's print is directly comparable."""
+    from sklearn.metrics import f1_score
+    return float(f1_score(yte, model.predict(Xte), average="macro"))
 
 
 if __name__ == "__main__":
