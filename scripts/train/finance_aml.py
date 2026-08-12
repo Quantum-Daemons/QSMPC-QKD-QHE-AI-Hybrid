@@ -506,6 +506,56 @@ def main() -> int:
 
     teacher_metrics = metrics.with_companion(yte, pred, proba, headline="minority_class_f1")
     teacher_metrics["decision_threshold"] = round(float(thr), 6)
+
+    # ---- probability calibration ---------------------------------------------------------------
+    # Fitted on VAL, scored on TEST. The val rows already pick `thr`, and reusing them for the
+    # calibration map is sound precisely because the map's quality is measured on test, which neither
+    # step has seen. Fitting and scoring on the same rows is what would flatter it.
+    #
+    # Platt rather than isotonic: Niculescu-Mizil and Caruana measure Platt ahead of isotonic below
+    # about 200-1000 calibration cases (ICML 2005) and below about 2000 (UAI 2005). No reliability
+    # DIAGRAM is drawn - Riley et al. put the floor for a flexible curve at about 200 events - but the
+    # CORP terms are SCALARS and pool-adjacent-violators chooses no bin count, so they are reportable
+    # exactly where a curve is not. That distinction is why this is measurable here at all.
+    from qsh.models import calibration as cal
+
+    platt = cal.fit_platt(teacher.predict_proba(Xval)[:, 1], yval)
+    p_raw, p_cal = proba[:, 1], platt.apply(proba[:, 1])
+    def _r(d: dict) -> dict:
+        """Round the float terms; the CORP dict also carries strings and ints."""
+        return {k: (round(v, 8) if isinstance(v, float) else v) for k, v in d.items()}
+
+    teacher_metrics["calibration"] = {
+        **platt.as_dict(),
+        "fitted_on": "validation split; scored on the held-out test split",
+        "brier_raw": round(cal.brier(p_raw, yte), 8),
+        "brier_calibrated": round(cal.brier(p_cal, yte), 8),
+        "log_loss_raw": round(cal.log_loss(p_raw, yte), 8),
+        "log_loss_calibrated": round(cal.log_loss(p_cal, yte), 8),
+        "corp_raw": _r(cal.corp_decomposition(p_raw, yte)),
+        "corp_calibrated": _r(cal.corp_decomposition(p_cal, yte)),
+        "reliability_diagram_defensible_here": (
+            "YES on this split, and the first draft of this note said the opposite. Riley et al. "
+            "(Stat Med 2021) put the floor for a flexible calibration curve at about 200 events; this "
+            "test split carries 2,321. The 164-event figure this project quotes elsewhere is the 2D "
+            "OVERLAY payload (8,192 sampled rows at a 0.02 base rate), not the test split, and "
+            "carrying it over here would have declined a curve that the data supports - the same "
+            "wrong-denominator mistake this repository already documents under 'ask what the metric "
+            "was divided by'. The floor genuinely does bind on medical (about 42 events) and "
+            "satellite (about 113). The CORP terms below are reported regardless, because PAV picks "
+            "no bin count and so they are stable where a binned curve is not."),
+        "does_not_move_ranking": (
+            "Platt is monotone, so AUC and AUC-PR are unchanged by construction. Calibration fixes "
+            "what a probability MEANS, never how the rows are ordered."),
+    }
+    _c = teacher_metrics["calibration"]
+    print("\n  calibration (Platt, fitted on val, scored on test)")
+    print(f"    Brier     {_c['brier_raw']:.6f} -> {_c['brier_calibrated']:.6f}")
+    print(f"    log-loss  {_c['log_loss_raw']:.6f} -> {_c['log_loss_calibrated']:.6f}")
+    print(f"    CORP MCB  {_c['corp_raw']['mcb']:.6f} -> {_c['corp_calibrated']['mcb']:.6f}"
+          "   <- the term calibration is supposed to move")
+    print(f"    CORP DSC  {_c['corp_raw']['dsc']:.6f}   (discrimination; a monotone map cannot change it)")
+
     spec = get_spec("finance_aml.gbm")
     print("\n  teacher (GFP + XGBoost)")
     for k, v in teacher_metrics.items():
