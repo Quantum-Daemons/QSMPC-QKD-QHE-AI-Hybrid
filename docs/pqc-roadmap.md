@@ -79,6 +79,14 @@ scaffold hardens). QRNG + OptiQKD above are built from this set; the rest are ad
    crypto (a "crypto bill of materials") to drive migration priority.
 
 ## Timeline anchors
+
+**Scope of this list, stated because it is a limit rather than a judgement.** Every instrument below is
+a **US** one, apart from the BSI and Japanese entries. That is a gap and it is a known one: an EU
+milestone set exists and is **not citable here yet**, because only secondary summaries of it have been
+seen and no primary document has been loaded. It is recorded as a lead to verify in
+[`../references/REFERENCES.md`](../references/REFERENCES.md) (Round 33, "Leads recorded rather than
+cited") rather than written into this table with dates nobody checked. Verified absent, not overlooked,
+2026-08-12.
 - **2026-09-21** - **FIPS 140-2 certificates move to the CMVP Historical List.** NIST's own wording:
   *"FIPS 140-2 active modules can be used until this date for new systems. After this date, FIPS
   140-2 validation certificates will be moved to the Historical List."* Federal agencies may then use
@@ -97,6 +105,14 @@ scaffold hardens). QRNG + OptiQKD above are built from this set; the rest are ad
   Note on the EO number, because secondary sources get it wrong: several write-ups call this **14409**.
   The Federal Register API returns **14412**, published 2026-06-25 at 91 FR 38483. The number above is
   correct.
+
+  **There were TWO quantum executive orders published that day, and this roadmap cited one.** The other
+  is *"Ushering in the Next Frontier of Quantum Innovation"*, Federal Register document **2026-12910**,
+  **91 FR 38487**, published **2026-06-25** (EO 14412 is document 2026-12909 at 91 FR 38483). Recorded
+  because a migration roadmap that cites one of two same-day quantum EOs looks like it missed one. Only
+  its **title, document number, FR citation and date are verified** (Federal Register API, Round 32,
+  re-stated here 2026-08-12); its text has not been read, so **it contributes no deadline to this list**
+  and nothing below rests on it. EO 14412 remains the binding cryptographic instrument.
 - **2026-10-22 / phased to 2035** - **OMB Memorandum M-26-15**, *Execution of the Migration to
   Post-Quantum Cryptography* (2026-06-24), which is how EO 14412 is actually executed and is newer than
   everything else in this list. Agency PQC Migration Plans are due to OMB and ONCD **within 120 days**

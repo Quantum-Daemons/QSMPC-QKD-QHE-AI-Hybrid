@@ -54,6 +54,32 @@ from qsh.models.registry import get as get_spec  # noqa: E402
 #: only ImageNet1k-pretrained, which is the dependency this project dropped for licence reasons.
 ARCHS = {"resnet18": "medical_fl.resnet18", "resnet50": "medical_fl.resnet50"}
 
+#: The `baseline_gap_note` recorded for `medical_fl.student`. It lives here as a named constant, not
+#: inline at the `record_metrics` call, because Round 32 corrected this text by hand in the two DERIVED
+#: artifacts (`models/metrics.json` and `web/src/lib/config.defaults.json`) and left the generator
+#: emitting the old claim. The config-parity CI gate could not see it: that gate compares the two
+#: derived artifacts to EACH OTHER, and both hand-edited sides agreed. So the next retrain of this
+#: script would have silently reverted a correction the project had classified as an overclaim, and
+#: `scripts/publish_hf.py` would have pushed the reverted text to a public Hub model card.
+#: `scripts/check_generated_prose.py` now asserts this literal equals what the artifacts carry.
+BASELINE_GAP_NOTE = (
+    "This scores far below the 0.901 ResNet-18 baseline. The reason is representational rather than "
+    "cryptographic: 3,226 parameters over a 14x14 input is a REPRESENTATION choice, not a feasibility "
+    "limit - and this note said 'a CKKS-feasibility budget' until Round 32, which overstated how forced "
+    "it was. Kim et al. (arXiv:2506.15258) do HE chest-X-ray inference on a VQGAN latent at "
+    "downsampling factor 8 rather than on pixels, so the alternative to downsampling 28->14 is "
+    "re-representing the input. The browser already runs onnxruntime-web, so such an encoder would run "
+    "locally in plaintext with no privacy loss. Recorded as a falsifiable trigger in the "
+    "additional-model decision, not acted on. Round 24 found it had been WORSE than that - a constant "
+    "predictor, emitting one class for all 156 test images, with accuracy 0.730769 exactly equal to the "
+    "majority-class rate and AUC 0.354, below random. It was invisible because the registry declared "
+    "`auc` while the record stored `accuracy`, and because this student had neither protection its "
+    "teacher already had: class-weighted loss and AUC-based model selection. Both were added. Read "
+    "`n_classes_predicted` and `majority_class_rate` beside the score - an accuracy equal to the "
+    "majority rate is the signature of a model that learned nothing. Workings: "
+    "references/medical-student-collapse-investigation.md."
+)
+
 
 def build_resnet(arch: str, n_classes: int = 2, *, pretrained: bool = True):
     """A torchvision ResNet with a 1-channel stem and a fresh head.
@@ -408,18 +434,7 @@ def main() -> int:
         **fidelity.as_metrics(),
         "auc": round(float(student_auc), 6),
         "n_classes_predicted": n_classes_predicted,
-        "baseline_gap_note": (
-            "This scores far below the 0.901 ResNet-18 baseline, and the reason is capacity: 3,226 "
-            "parameters over a 14x14 input is a CKKS-feasibility budget, not a diagnostic one. "
-            "Round 24 found it had been WORSE than that - a constant predictor, emitting one class "
-            "for all 156 test images, with accuracy 0.730769 exactly equal to the majority-class "
-            "rate and AUC 0.354, below random. It was invisible because the registry declared `auc` "
-            "while the record stored `accuracy`, and because this student had neither protection "
-            "its teacher already had: class-weighted loss and AUC-based model selection. Both were "
-            "added. Read `n_classes_predicted` and `majority_class_rate` beside the score - an "
-            "accuracy equal to the majority rate is the signature of a model that learned nothing. "
-            "Workings: references/medical-student-collapse-investigation.md."
-        ),
+        "baseline_gap_note": BASELINE_GAP_NOTE,
         "majority_class_rate": round(float(max(np.mean(y_true == 0), np.mean(y_true == 1))), 6),
         "metric_note": (
             "Two metrics are recorded and they answer different questions. `auc` is the registry's "
