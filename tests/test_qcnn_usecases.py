@@ -75,8 +75,17 @@ def test_shipped_weights_are_loadable_and_carry_a_headline_metric(usecase: str) 
     if w.get("input_space") == "raw":
         # Raw-space models standardise with shipped moments; without them the circuit sees mixed
         # scales and pins its features, which is how the first trained model became meaningless.
-        assert len(w["feature_mean"]) == w["n_qubits"]
-        assert len(w["feature_std"]) == w["n_qubits"]
+        # One moment per ENCODED FEATURE, and features may be fewer than wires. This asserted
+        # `== n_qubits` until Round 34, which was true only while every wire carried data; telecom
+        # puts 7 features on 8 wires and leaves the last UNENCODED, so the strict equality failed on
+        # a model that is correct. The browser feeds `features[q] ?? 0` with a missing mean of 0 and
+        # a missing std of 1, giving RY(0) - the identity - which is exactly what the trainer's
+        # zero-pad produces, so the two agree by construction and this checks that they can.
+        n_feat = w.get("n_features", w["n_qubits"])
+        assert len(w["feature_mean"]) == n_feat, "one mean per encoded feature"
+        assert len(w["feature_std"]) == n_feat, "one std per encoded feature"
+        assert n_feat <= w["n_qubits"], (
+            f"{n_feat} features cannot be encoded on {w['n_qubits']} wires")
 
 
 #: The training artifact for a use case, whose directory is named for the data dir rather than the

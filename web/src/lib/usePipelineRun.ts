@@ -36,7 +36,7 @@ export const runsFibreQkd = (usecase: string) => clientFlow(usecase).includes("q
  * had decided the class. `tests/test_qcnn_usecases.py` asserts this set against the files on disk, so
  * training a third circuit cannot leave the list stale and deleting one cannot leave it lying.
  */
-export const QCNN_USECASES = new Set(["finance_aml", "medical_fl"]);
+export const QCNN_USECASES = new Set(["finance_aml", "medical_fl", "telecom_ids"]);
 export const hasTrainedQcnn = (usecase: string) => QCNN_USECASES.has(usecase);
 
 /** Use cases where a federated-training stage has both real data and somewhere to be rendered.
