@@ -610,9 +610,11 @@ belongs in this file rather than only in a comment.
   cited and explicitly not measured here. The retired PGS000001 baseline was PPM017270's Harrell C-index
   0.628 - a different quantity on a different scale, which is one reason the switch was worth making.
   Added: 2026-08-07, revised 2026-08-11.
-- **"SoK: Private LLM Inference", IACR ePrint 2026/935.** Quoted in `models/registry.py` and
-  `models/distil.py` on why distillation is the practical route to FHE-feasible inference. Added:
-  2026-08-07.
+- **"SoK: Private LLM Inference", IACR ePrint 2026/935.** Quoted in `models/distil.py` on why
+  distillation is the practical route to FHE-feasible inference. Added: 2026-08-07, corrected
+  2026-08-12. This entry also named `models/registry.py` until Round 33: Round 31 replaced that
+  citation with the primary source (Park et al., arXiv:2601.18511v2), so the SoK has not appeared in
+  the registry since, and two other entries in this file repeated the same stale attribution.
 - **arXiv:2607.11969** - instability of overlap-based anomaly metrics. Quoted in the satellite model
   card and baked into `config.defaults.json`; the reason the event-wise F0.5 non-reproduction is
   reported as metric instability rather than as a training failure. Added: 2026-08-07.
@@ -873,8 +875,12 @@ Where a source could not be loaded it is marked and no number is taken from it.
   Names **multiplicative depth as the dominant cost** of homomorphic transformer inference, with a
   per-layer configuration space reaching ~10^84 for a 12-layer BERT/ViT and 10^225 for 32-layer LLaMA3,
   and 35-50% of candidate configurations numerically invalid. This is a **primary source for the
-  constraint `models/registry.py` asserts** in its T1 docstring, which until now rested on a secondary
-  systematisation (IACR 2026/935) plus Park et al.
+  constraint `models/registry.py` asserts** in its T1 docstring, and Round 33 cited it there.
+  This entry said the docstring "until now rested on a secondary systematisation (IACR 2026/935) plus
+  Park et al.", which was wrong in both halves: Round 31 had already removed the 2026/935 citation
+  from that file, and adding this reference in Round 32 did not put ATLAS into the docstring either -
+  so a reference was recorded as the source for a code site it never touched. Contested by
+  **arXiv:2608.00375** (Trimming) below, which carries no experiments.
 - **Lin and Wu (NTU), "Fine-Grained and Runtime-Configurable Precision for Exact FHE Inference"
   (Tailor).** IACR ePrint 2026/1551, received 2026-07-29, approved 2026-08-03 `[link]`
   URL: https://eprint.iacr.org/2026/1551

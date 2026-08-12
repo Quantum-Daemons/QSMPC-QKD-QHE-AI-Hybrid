@@ -168,10 +168,13 @@ statement of known limitations, not a conformance gap against any published requ
   container that left `/api/run/*` writable by anonymous visitors while the page displayed "No computation
   is sent to a server". The container was removed and `/api` now 404s, but that exposure was recorded only
   in `architecture.md`; a threat model should carry it.
-- **`REMOTE` is unreachable as deployed.** The five-state provenance scheme below is four-state in
-  practice: no code path sets `remote`, and nothing in `web/src` calls the ZeroGPU Space. The four
-  that do occur are `MEASURED (local WebGPU)`, `MEASURED (local WASM)`, `MEASURED (plain JS)` and
-  `SIMULATED`. `measured-js` was added in Round 21: the bundled distilled model is a hand-written
+- **There is no `REMOTE` provenance.** The scheme has exactly four states - `MEASURED (local WebGPU)`,
+  `MEASURED (local WASM)`, `MEASURED (plain JS)` and `SIMULATED`. `remote` was **removed from the type**
+  in Round 24d, not merely left unset: nothing in `web/src` calls the ZeroGPU Space, that Space returns
+  HTTP 401, and a type member no code path can produce is the same defect as a metric with no reader.
+  This bullet said "the five-state scheme below is four-state in practice" until Round 33, which
+  described the state BEFORE the removal and contradicted the four-state count stated earlier in this
+  same document. `measured-js` was added in Round 21: the bundled distilled model is a hand-written
   loop over plain JS numbers with no wasm module and no GPU, and it had been reporting
   `measured-wasm` - a claim wrong in the flattering direction.
 - **The headline comparison row is simulated.** The QSMPC-FHE row that drives the quantum-advantage
