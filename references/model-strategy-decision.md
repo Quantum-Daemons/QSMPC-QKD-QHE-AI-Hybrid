@@ -113,7 +113,36 @@ probe disproved it.
 
 ## Decision
 
-No new model. No RL. The remaining levers, in cost order, are the feature map (done where it pays),
-better targets (checked, already optimal for finance), and - the one genuinely open option - fitting
-the model to the objective it is scored on, via the integer scoring systems of arXiv:2604.04241,
-which optimise net benefit directly and are a single CKKS dot product by construction.
+No new model. No RL. The remaining levers, in cost order, are the feature map (done where it pays) and
+better targets (checked, already optimal for finance).
+
+**The third lever - fitting the model to the objective it is scored on - is CLOSED and implemented, and
+this section called it "the one genuinely open option" for several rounds after it shipped (corrected
+Round 33).** The integer scoring systems of Chi and Birbil (arXiv:2604.04241), which optimise net
+benefit directly rather than a surrogate loss, are in the tree end to end:
+
+| where | what is there |
+|---|---|
+| `src/qsh/models/scorecard.py` | the implementation; its docstring writes out the sparse integer program |
+| `scripts/train/finance_scorecard.py` | the trainer |
+| `tests/test_scorecard_bfv_exact.py` | asserts equality under BFV **and** inequality under CKKS, so a change that made CKKS look exact would fail |
+| checklist row `H4` | 60 of 60 rows exact under BFV, against **-1.999998397974359** for an exact -2 under CKKS |
+| `report/technical-report.tex` | cites it |
+| `references/he-scheme-selection.md` | the scheme argument and the net-benefit comparison |
+
+**And as of 2026-08-12 the numbers are a machine record rather than hand-written prose.** Until this
+round `models/metrics.json` had no `finance_aml.scorecard` key at all while `he-scheme-selection.md`
+published its figures by hand - which is how the new generated-prose gate found it. The trainer was run
+(CPU, 272.3 s) and the record now reads **net_benefit 0.00030763** on **1,523,504** test rows,
+**n_nonzero_coefficients 12**, **exact_under_bfv true**, with `net_benefit_threshold` and
+`net_benefit_treat_all` giving the decision curve real inputs. So the hand-written +0.000308 in
+`he-scheme-selection.md` is confirmed by an artifact rather than resting on a transcription.
+
+The finding this closed on is not the accuracy: the integer scorecard **loses** to the CKKS student on
+net benefit, and that was measured in Round 24h. What it buys is **exactness** - the encrypted score
+equals the plaintext score bit for bit under BFV, which no CKKS student can offer - and interpretability,
+which is the reason the credit-scoring literature uses the form at all. It ships as a second,
+independent BFV context alongside CKKS, with no scheme conversion anywhere.
+
+**So there is no genuinely open option left on this list.** If a later round wants one, it has to be
+found rather than inherited from this paragraph.
