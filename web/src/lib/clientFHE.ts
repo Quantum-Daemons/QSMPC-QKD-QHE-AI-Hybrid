@@ -90,6 +90,12 @@ export interface FHEResult {
   fheMs: number;           // REAL measured wall-clock of the encrypted computation
   ctBytes: number | null;   // null = the size could not be read; NEVER 0, which is impossible
   maxAbsError: number;     // CKKS approximation error vs the plaintext reference
+  /** The plaintext reference itself, which this function already computes to get `maxAbsError`.
+   *  Exposed in Round 34 so every caller can report the TOP-1 MISMATCH count - whether the encrypted
+   *  argmax equals the plaintext one - which is the published convention for encrypted-vs-plaintext
+   *  agreement (arXiv:2605.22237 Table IX reports it as an integer expected to be zero). Without it
+   *  each caller would have to recompute W.x + b and could get it subtly wrong. */
+  plainLogits: number[];
   /** Homomorphic rotations performed, counted. Each triggers a key-switch, and key-switching is
    *  what dominates CKKS cost - so this is the number that makes a dense layer and a convolution
    *  comparable on the axis that actually matters, rather than on wall-clock alone. */
@@ -156,7 +162,7 @@ export async function encryptedLinear(W: number[][], b: number[], x: number[]): 
   // approximation error vs the plaintext reference (CKKS is approximate)
   const plain = W.map((row, j) => row.reduce((a, w, i) => a + w * (x[i] ?? 0), 0) + (b[j] ?? 0));
   const maxAbsError = Math.max(...logits.map((v, j) => Math.abs(v - plain[j])), 0);
-  return { logits, fheMs, ctBytes, maxAbsError, rotations, multiplies };
+  return { logits, fheMs, ctBytes, maxAbsError, plainLogits: plain, rotations, multiplies };
 }
 
 export function argmax(a: number[]): number {
