@@ -541,7 +541,33 @@ entries named `models/registry.py` as citing IACR 2026/935, which Round 31 had r
 chart rendered **two different base rates in one figcaption** - a computed 0.020020 beside a hardcoded
 0.0173 with a 13.3x lift. Both now derive from one `_base_rate()` helper, and the true lift is **11.5x**.
 
-**Not verified live at the time of writing.** Nothing in this entry is a browser measurement on a
-deployed bundle. The round-trip rows (`RT0`-`RT9`) and the five-way `check:pqc` re-validation recorded
-under Round 32 above both still need a deploy walk on this branch, and that is stated here rather than
-left for a reader to infer from the absence of a bundle hash.
+**Verified live, 2026-08-12.** The line here previously said nothing in this entry was a browser
+measurement. That was true when written and is superseded for the rows below; the remainder of the entry
+is still local-only and the distinction is kept rather than smoothed over.
+
+Deployed from git on the demo host - branch pulled, rebuilt with the behind-proxy override and the demo
+project name - with CI green on the same commit first. The served bundle moved from `index-Bmsp8Rv3.js`
+to **`index-Chd2NwZu.js`** (1,102,074 bytes), which is how the deploy was confirmed fresh rather than by
+trusting the container's own reported status.
+
+| check | observed |
+|---|---|
+| Telecom encrypted tier runs in the tab | `encrypted tier (REAL CKKS, 64 params, 8 dot products): class "intercept_resend" in 112.2 ms` |
+| Top-1 mismatch count (arXiv:2605.22237 convention) | **0 of 1** scored inputs |
+| Precision in bits (the OpenFHE and HElib unit) | max abs error **4.294e-9**, about **27 bits**, labelled MAX not mean |
+| The argmax disclosure fires | `the ARGMAX is NOT encrypted: all 8 class scores are decrypted and the maximum taken in the clear` |
+| No silent fallback | no "skipped" or "weights unavailable" line present |
+| `crossOriginIsolated` | `true` |
+| Server compute | **zero** `/api/` requests; the page contacted only its own origin |
+| Bundled student weights served | `data/telecom/student_weights.json`, HTTP 200, `application/json`, 3,482 bytes, W 8x7, b 8, 64 parameters |
+| The withdrawn TSB-AD figure | **0** occurrences of "26th of 32" in the served bundle |
+| Registry-driven labels before any run | the "runs under CKKS" tag and "CKKS-linear IDS student" both render |
+
+**A verification method that does not work, found by walking into it.** `curl` returning
+`200 text/html` for a path proves nothing about whether that route exists. The SPA fallback serves
+`200 text/html` for **every** path, so the content-type discriminator this file relies on separates an
+absent API from a present SPA and does **not** separate a valid route from an invalid one. Measured:
+`/use-cases/telecom_ids` returned `200 text/html` to `curl` and rendered **"Page not found"** in the
+browser - the real route is `/usecase/<id>`, singular. Only rendered content tells the two apart, so a
+route check that never reads the DOM is not a route check. `RS2`'s nonsense-path control remains correct
+for what it tests; this is a second and different confusion, and it needs its own row.
