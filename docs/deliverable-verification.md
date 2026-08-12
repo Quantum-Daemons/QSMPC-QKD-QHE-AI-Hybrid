@@ -401,6 +401,43 @@ So Rust is not missing from the client-side stack, it is declined, and WASM is p
 reopen this: Zama shipping FHE **evaluation** in the WASM target, or any Rust FHE library doing so under
 a licence that grants patent rights.
 
+### Additional models: DECIDED, re-stated 2026-08-12 (Round 34) - no additional model
+
+**Moved here from `docs/browser-verification-checklist.md` in Round 34, and the move is the point.**
+That file is deliberately untracked and gitignored, so a deferred item whose resolving condition was
+"add a sixth row to the trigger table" could not be verified from the repository at all. A condition
+that lives outside the artifact it gates is decoration, by this project's own `QC16` test. Worse, the
+`medical_fl.student.baseline_gap_note` in `models/metrics.json` asserted that a latent-encoder trigger
+had been "recorded as a falsifiable trigger in the additional-model decision" when the table had five
+rows and none concerned latent-space encoding - a claim appealing to a record that did not contain it,
+made MORE specific in Round 33 and then filed by Round 33 as a defect against itself. The decision now
+lives in a tracked file, so the appeal is checkable and the sixth trigger below is real.
+
+Not an HF download, not fine-tuning, not transfer learning, not RL, not training something different
+from scratch. The binding constraint is cryptographic rather than statistical: CKKS at ring degree
+8192 gives 4096 slots and one multiplicative level per ciphertext-plaintext dot product, and anything
+deeper bootstraps or switches scheme. The 2026 literature holds the model class fixed and moves the
+protocol, which is the same choice this makes.
+
+`AM1` in the checklist requires this to be re-stated with its date every round. It read "2026-08-11
+(Round 31)" through Rounds 32 and 33 - two rounds during which a decision taken once read as current
+because nothing made the staleness visible. Keeping it in a tracked file is what lets a reviewer see
+the date go stale.
+
+**The six triggers that would flip it**, each with the measurement that currently blocks it:
+
+| trigger | current state |
+|---|---|
+| A bootstrapped CKKS CNN cheap enough for WASM at N about 8192 | cheapest bootstrapped ImageNet CNN is N = 2^15 |
+| A real, labelled, commercial-OK QKD attack corpus | closest is QF-LOG: synthetic, four classes, subscription-gated |
+| A fidelity quantum kernel beating a random forest at 8 qubits or fewer | concentration bound says >= 15 qubits |
+| An encrypted transformer or tabular foundation model on any finance tabular benchmark | none published |
+| Anyone publishing an encrypted BreastMNIST result above this project's | two exist, both simpler architectures |
+| **A latent-space encoder whose latent fits 4096 CKKS slots at multiplicative depth 1 AND runs under `onnxruntime-web`** | Kim et al. (arXiv:2506.15258) encode chest X-rays with a VQGAN latent at downsampling factor 8, but f=8 on this project's 28x28 gives 3.5x3.5, so the transfer is the open measurement rather than a citation. Added Round 34 |
+
+The sixth is the one `metrics.json` was already claiming existed. It is now here, with the condition
+stated as a measurement someone could take rather than as a direction someone could agree with.
+
 ## Round 28: a claim retracted, and the work it would take to earn it back
 
 **SUPERSEDED IN PART BY ROUND 30, marked in Round 33, and this is the one place in the project where the
