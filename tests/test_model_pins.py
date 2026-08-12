@@ -70,11 +70,34 @@ def test_retrain_demotes_the_pin_rather_than_keeping_it(metrics_file):
     assert e["accuracy"] == 0.95
 
 
-def test_retrain_does_not_carry_stale_metrics_forward(metrics_file):
-    """The entry is replaced, not merged: a metric absent from a fresh run must not survive."""
-    train.record_metrics("m", {"accuracy": 0.9, "auc_pr": 0.7})
-    train.record_metrics("m", {"accuracy": 0.95})
-    assert "auc_pr" not in entry(metrics_file)
+def test_a_metric_absent_from_a_fresh_run_cannot_read_as_fresh(metrics_file):
+    """An un-remeasured metric survives, but LABELLED - the invariant changed in Round 34.
+
+    This test used to assert `"auc_pr" not in entry(...)`: the entry was replaced, not merged, so a
+    metric absent from a fresh run could not survive. That rule was deliberate and its reasoning was
+    sound - a stale number must never read as a fresh measurement.
+
+    What it did not anticipate is a run that legitimately measures a strict SUBSET. Round 33 re-ran
+    `telecom_ids.py` without `--quantum` to add a CKKS student, and the rule deleted all eight
+    `quantum_*` fields, including `quantum_beats_classical`, which `references/REFERENCES.md` cites
+    by name as being recorded in `models/metrics.json`. Three published claims spent a round pointing
+    at fields that no longer existed, and no gate could see it.
+
+    So the invariant is now narrower and does the same job: the value survives, and it is marked with
+    the sha of the run that actually measured it, so it cannot be read as this run's output. Deleting
+    the value was never what protected the reader - being able to tell the two apart is.
+    """
+    train.record_metrics("m", {"accuracy": 0.9, "auc_pr": 0.7, "git_sha": SHA_A})
+    train.record_metrics("m", {"accuracy": 0.95, "git_sha": SHA_B})
+
+    e = entry(metrics_file)
+    assert e["auc_pr"] == 0.7, "an un-remeasured metric must not be deleted"
+    assert e["git_sha"] == SHA_B, "the record's own sha is this run's"
+    carried = e["carried_forward_not_remeasured"]
+    assert carried["fields"] == ["auc_pr"]
+    assert carried["measured_at_git_sha"] == SHA_A, (
+        "without this a reader would attribute auc_pr to the run named in the record's git_sha, "
+        "which is the confusion the old delete-it rule was preventing")
 
 
 def test_republishing_clears_the_demotion(metrics_file):

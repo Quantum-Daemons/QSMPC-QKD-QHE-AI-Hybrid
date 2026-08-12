@@ -270,17 +270,45 @@ def _save_safetensors(model, path: Path) -> None:
     save_file(state, str(path))
 
 
+#: Fields that describe THE RUN rather than the model, and so must never be inherited by a later run.
+#: Copying any of these forward would not be stale, it would be false: it would attach a wall clock, a
+#: device, a seed or a published revision to a run that did not produce the numbers beside them.
+RUN_SCOPED = frozenset({
+    "git_sha", "wall_clock_s", "seed", "device", "torch", "python", "checkpoint",
+    "epochs_run", "best_epoch", "hf_revision", "hf_revision_invalidated_by_retrain",
+})
+
+
 def record_metrics(key: str, payload: dict) -> None:
     """Replace one model's achieved metrics in ``models/metrics.json``.
 
     This file is machine-written and read back by the registry. Nothing else may write it: a
     hand-edited metric is indistinguishable from a measured one once it is in the UI.
 
-    The entry is REPLACED, not merged, because a metric absent from a fresh training run must not
-    survive from the previous one. ``hf_revision`` is the single field that needs more care, and
-    the answer is not to preserve it: a retrain genuinely invalidates the pin, because the artefact
-    published at that sha is no longer the model these metrics describe. Carrying it forward would
-    point the browser at weights that did not produce the numbers printed beside them.
+    Fields the new run did not measure are CARRIED FORWARD and labelled, rather than deleted.
+
+    This used to replace the entry outright, and the reason given was sound as far as it went: a
+    metric absent from a fresh run must not survive from the previous one and read as fresh. What
+    that argument missed is that a script can measure a strict SUBSET of what it measured last time
+    without anything being wrong with it - an optional stage that was skipped. Round 33 re-ran
+    ``telecom_ids.py`` without ``--quantum`` to add a CKKS student, and all eight ``quantum_*`` fields
+    were deleted from ``models/metrics.json`` - including ``quantum_beats_classical``, which
+    ``references/REFERENCES.md`` cites BY NAME as being recorded there. Three published claims went
+    on pointing at fields that no longer existed, and neither the config-parity gate nor the prose
+    gate could see it: what was lost was numeric, machine-written and cited, which is the one
+    combination neither covers.
+
+    So both halves of the original concern are now handled separately. Carried-forward fields are
+    listed in ``carried_forward_not_remeasured`` together with the ``git_sha`` of the run that DID
+    measure them, so a reader can tell a fresh number from an inherited one without trusting the
+    record's top-level sha. And ``RUN_SCOPED`` fields are never inherited: a wall clock, a device or
+    a seed copied from another run would not be stale so much as false, because it would describe a
+    run that did not produce the numbers beside it.
+
+    ``hf_revision`` stays in ``RUN_SCOPED`` for the reason it always had: a retrain genuinely
+    invalidates the pin, because the artefact published at that sha is no longer the model these
+    metrics describe. Carrying it forward would point the browser at weights that did not produce
+    the numbers printed beside them.
 
     Dropping it silently is what this did before, and that is wrong in the other direction -- the
     model disappears from the browser tier looking identical to one that was never published. Round
@@ -299,6 +327,23 @@ def record_metrics(key: str, payload: dict) -> None:
         stale = (current.get(key) or {}).get("hf_revision")
         if stale:
             payload["hf_revision_invalidated_by_retrain"] = stale
+
+    previous = dict(current.get(key) or {})
+    carried = {k: v for k, v in previous.items()
+               if k not in payload and k not in RUN_SCOPED and k != "carried_forward_not_remeasured"}
+    if carried:
+        payload.update(carried)
+        payload["carried_forward_not_remeasured"] = {
+            "fields": sorted(carried),
+            "measured_at_git_sha": previous.get("git_sha"),
+            "note": (
+                "These fields were NOT measured by the run that wrote this record. They were "
+                "inherited from the previous one because this run did not produce them - usually an "
+                "optional stage that was skipped. Read them as measurements of the run named in "
+                "measured_at_git_sha, not of this record's own git_sha. Re-run the stage that "
+                "produces them to refresh, or delete them deliberately if the model no longer emits "
+                "them; either way the change is then visible in the diff rather than silent."),
+        }
     current[key] = payload
     METRICS_PATH.write_text(json.dumps(current, indent=2, sort_keys=True) + "\n")
 
