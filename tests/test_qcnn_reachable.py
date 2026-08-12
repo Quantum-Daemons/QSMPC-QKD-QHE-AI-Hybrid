@@ -23,7 +23,6 @@ no hand-kept list, both facts parsed from the modules that define them.
 
 from __future__ import annotations
 
-import ast
 import json
 import re
 from pathlib import Path
@@ -201,6 +200,110 @@ def test_the_panel_and_the_config_gate_on_the_same_predicate() -> None:
     assert "runsInference" not in panel, (
         "ParameterPanel still references runsInference; the two predicates differ by exactly the case "
         "this test exists for, so having both in one file invites regating on the wrong one")
+
+
+def _shipped_weights() -> list[tuple[str, dict]]:
+    root = Path(__file__).resolve().parents[1] / "web" / "public" / "data"
+    out = [(p.parent.name, json.loads(p.read_text(encoding="utf-8")))
+           for p in sorted(root.glob("*/qcnn_weights.json"))]
+    assert out, f"no qcnn_weights.json under {root}; these tests are not looking where they live"
+    return out
+
+
+@pytest.mark.parametrize("regime_field", ["test", "classical_lr"])
+def test_metric_names_follow_the_regime_they_were_measured_in(regime_field: str) -> None:
+    """Exactly one of the minority/macro pair is populated, and it is the applicable one.
+
+    `f1_score(average="binary")` on two classes is a minority-class F1; on K > 2 the same call site
+    holds a MACRO F1, for which "minority class" names nothing. The 8-class telecom artifact shipped
+    a macro F1 of 0.809846 under `test_minority_f1`, carried `macro_f1_floors` for a metric the file
+    never named, and reported `all_positive_f1: 0.0` - a floor of zero for a baseline that cannot be
+    constructed with more than two classes. The value was right and the label was wrong, which is
+    the failure mode no range check catches.
+    """
+    minority_key = f"{regime_field}_minority_f1" if regime_field == "test" else "classical_lr_minority_f1"
+    macro_key = f"{regime_field}_macro_f1" if regime_field == "test" else "classical_lr_macro_f1"
+    for name, w in _shipped_weights():
+        multiclass = int((w.get("readout") or {}).get("readout_qubits") or 0) > 0
+        minority, macro = w.get(minority_key), w.get(macro_key)
+        if multiclass:
+            assert minority is None, f"{name}: {minority_key}={minority} on a multiclass artifact"
+            assert isinstance(macro, float), f"{name}: {macro_key} missing on a multiclass artifact"
+            assert w.get("all_positive_f1") is None, (
+                f"{name}: all_positive_f1={w.get('all_positive_f1')} on {w['readout']['n_classes']} "
+                f"classes, where an all-positive predictor does not exist")
+        else:
+            assert isinstance(minority, float), f"{name}: {minority_key} missing on a binary artifact"
+            assert macro is None, f"{name}: {macro_key}={macro} on a binary artifact"
+
+
+def test_the_headline_metric_names_a_field_that_is_populated() -> None:
+    """`headline_metric` drives what the browser and the server print; it must resolve to a number.
+
+    The two-way version asked only whether the BINARY problem was imbalanced, so a balanced 8-class
+    run fell through to "accuracy" while the trainer's own console printed "MACRO F1 leads". The
+    artifact shipped floors for macro F1 and then told every consumer to headline something else.
+    """
+    fields = {"macro_f1": ("test_macro_f1", "classical_lr_macro_f1"),
+              "minority_class_f1": ("test_minority_f1", "classical_lr_minority_f1"),
+              "accuracy": ("test_accuracy", "classical_lr_accuracy")}
+    for name, w in _shipped_weights():
+        head = w.get("headline_metric")
+        assert head in fields, f"{name}: headline_metric={head!r} is not one of {sorted(fields)}"
+        for key in fields[head]:
+            assert isinstance(w.get(key), float), (
+                f"{name}: headline_metric is {head!r} but {key} is {w.get(key)!r}, so the consumer "
+                f"would print a metric it does not have")
+        multiclass = int((w.get("readout") or {}).get("readout_qubits") or 0) > 0
+        if multiclass:
+            assert head == "macro_f1", (
+                f"{name}: a multiclass artifact must headline macro F1 - accuracy on K classes hides "
+                f"a model that has stopped predicting some of them, which is what the shipped floors "
+                f"exist to scale")
+
+
+def test_every_artifact_records_the_command_that_made_it() -> None:
+    """A published artifact must carry its own invocation, because recovering one cost an epoch sweep.
+
+    `layers: 6` was in the telecom file, so the architecture was recoverable, but epochs and seed were
+    not - and the defaults do not reproduce it. `--usecase telecom` gave macro F1 0.4998 against a
+    published 0.8098, `--layers 6` alone gave 0.6443, and only `--layers 6 --epochs 400` returned
+    0.809846. The demo was displaying six digits from a run nobody could repeat.
+    """
+    for name, w in _shipped_weights():
+        t = w.get("training")
+        assert isinstance(t, dict), f"{name}: no `training` block, so the artifact cannot be regenerated"
+        for key in ("layers", "epochs", "seed", "command"):
+            assert t.get(key) is not None, f"{name}: training.{key} missing"
+        assert t["command"].startswith("python scripts/train/qcnn_variational.py"), (
+            f"{name}: training.command is {t['command']!r}, which is not a runnable invocation")
+        for key in ("layers", "epochs", "seed"):
+            assert f"--{key} {t[key]}" in t["command"], (
+                f"{name}: training.command disagrees with training.{key}={t[key]}, so following the "
+                f"command would not reproduce the file it is attached to")
+        assert w.get("layers") == t["layers"], (
+            f"{name}: layers={w.get('layers')} but training.layers={t['layers']}")
+
+
+def test_the_multiclass_readout_avoids_the_nondeterministic_kernel() -> None:
+    """The multiclass marginal must not use `index_add_`, whose CUDA path is nondeterministic.
+
+    This is what made the 8-class artifact irreproducible: `index_add_` accumulates with atomicAdd,
+    so the same seeded command landed on macro F1 0.809846 or 0.807781 depending on the run, and only
+    the multiclass path touched it - which is why the two binary artifacts always reproduced. Two
+    wrong causes were investigated first (thread count, PYTHONHASHSEED), both resting on the
+    unchecked assumption that training ran on the CPU. It runs on CUDA when one is present.
+    """
+    src = (Path(__file__).resolve().parents[1] / "scripts" / "train" / "qcnn_variational.py"
+           ).read_text(encoding="utf-8")
+    # The CALL form, not the name: this file and the trainer both discuss `index_add_` in prose, and
+    # a substring check on the bare name flagged its own explanation of why it was removed.
+    assert ".index_add_(" not in src, (
+        "index_add_ is back in the trainer. On CUDA it is documented as nondeterministic, and the "
+        "readout it was used for is a plain column sum: p.view(batch, -1, k).sum(1)")
+    assert "p.view(p.shape[0], -1, k).sum(1)" in src, (
+        "the deterministic marginal is gone; if the readout was rewritten, re-verify that repeated "
+        "runs of the same command give identical metrics before shipping an artifact from it")
 
 
 def test_the_shipped_weights_name_their_readout_convention() -> None:
