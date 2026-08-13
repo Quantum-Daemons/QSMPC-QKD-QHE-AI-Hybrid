@@ -123,6 +123,15 @@ export function RealDataScatter({ usecase }: { usecase: string }) {
       {/* Axis labels sit INSIDE the plot margin and the legend is given its own reserved height -
           at the default the x-axis title and the legend row landed on the same pixels. */}
       <ResponsiveContainer width="100%" height={230}>
+        {/* `accessibilityLayer` makes this focusable and DOES NOT make its points keyboard
+            reachable. Measured on the deployed page, not inferred: focus the surface and press
+            ArrowRight - the line and bar charts below open their tooltip with real values, this one
+            does nothing. Recharts walks an activeIndex along a categorical axis, and a scatter with
+            two numeric axes has no such index to step through, so there is nothing for the arrow
+            keys to move between. Kept because focusability is still the prerequisite for any fix,
+            and because removing it would hide the gap rather than close it. The text alternative
+            for this chart is the figcaption above, which states what it shows, its licence and its
+            attribution; that is what a screen-reader user gets today. */}
         <ScatterChart accessibilityLayer margin={{ top: 6, right: 10, bottom: 30, left: -14 }}>
           <CartesianGrid stroke={GRID} strokeDasharray="2 4" />
           <XAxis type="number" dataKey="x" name={data.x.label} tick={AXIS}
