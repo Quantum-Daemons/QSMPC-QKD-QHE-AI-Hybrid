@@ -1943,17 +1943,37 @@ export function runClientPipeline(
             metric(stage, "primary_inference_backend", "qcnn-trained");
             metric(stage, "primary_inference_class", w.class_names?.[qc.cls] ?? qc.cls);
             metric(stage, "qcnn_classes_available", w.readout?.n_classes ?? 2);
+            // THE CLASS NO LONGER COMES FROM THE SOFTMAX, so the SHAP bars are no longer an
+            // attribution of it. `explanation_is_of_reported_class` was set true above - correctly,
+            // for the softmax path and for the encrypted tier, whose comments both reason about it -
+            // and this branch is what invalidates it. It ran AFTER the flag and never touched it, so
+            // with QCNN selected the page rendered two paragraphs at once: "these bars explain the
+            // same model that produced the class reported above" and "the class this page surfaces
+            // came from the trained QCNN ... which is a different decision". Both visible, in that
+            // order, contradicting each other.
+            artifacts.explanation_is_of_reported_class = false;
             emit("log", stage, `QCNN (trained, ${w.readout?.n_classes ?? 2}-class basis readout on `
               + `${w.readout?.readout_qubits ?? 0} of ${w.n_qubits} qubits): class `
               + `"${w.class_names?.[qc.cls] ?? qc.cls}". Class index is ${w.readout?.class_index}, `
               + `${w.readout?.bit_order} - reading those bits in another order permutes the class map `
               + `while leaving every aggregate metric identical, which is why the convention ships in `
               + `the weights.`);
-            if (typeof w.test_macro_f1 === "number" || w.per_class_f1) {
-              emit("log", stage, `and it LOSES: macro F1 ${w.test_macro_f1 ?? "n/a"} against a `
-                + `classical logistic regression at ${w.classical_lr_macro_f1 ?? "n/a"} on the same `
-                + `split, with ${w.n_classes_predicted ?? "?"} of ${w.readout?.n_classes ?? 2} classes `
-                + `predicted. Reported because it is the measured result, not because it flatters.`);
+            // The verdict is COMPUTED, not asserted. This read `and it LOSES:` as a literal, guarded
+            // only on the field being PRESENT - no comparison was ever performed, so a retrained
+            // artifact that put the circuit ahead would have gone on printing that it lost. The
+            // numbers were right beside the sentence the whole time.
+            const mine = w.test_macro_f1, theirs = w.classical_lr_macro_f1;
+            if (typeof mine === "number" && typeof theirs === "number") {
+              const behind = mine < theirs;
+              emit("log", stage, `and it ${behind ? "LOSES" : "WINS"}: macro F1 ${mine} against a `
+                + `classical logistic regression at ${theirs} on the same split, with `
+                + `${w.n_classes_predicted ?? "?"} of ${w.readout?.n_classes ?? 2} classes predicted. `
+                + `Reported because it is the measured result, not because it flatters`
+                + (behind ? "." : " - and if this ever reads WINS, check the split before believing it."));
+            } else if (typeof mine === "number" || w.per_class_f1) {
+              // One number without the other cannot support a verdict, so it does not state one.
+              emit("log", stage, `held-out macro F1 ${mine ?? "n/a"}; no classical comparator ships in `
+                + `this artifact, so no verdict is stated here.`);
             }
           } else {
             emit("log", stage, "QCNN selected but no trained weights are published for this use case");
@@ -2141,12 +2161,18 @@ export function runClientPipeline(
             const base = macroLed ? w.macro_f1_floors?.uniform_random
                        : f1Led ? w.all_positive_f1 : w.majority_baseline;
             const label = macroLed ? "macro F1" : f1Led ? "minority-class F1" : "accuracy";
+            // COMPUTED, like its twin in `qml_ids`. "the classical model is ahead" was unconditional
+            // text over two numbers read from a file, so a retrained artifact that reversed the
+            // ordering would have kept asserting it.
+            const ahead = typeof mine === "number" && typeof theirs === "number"
+              ? (theirs > mine ? "the classical model is ahead" : "the circuit is ahead here")
+              : "no comparator ships in this artifact, so no verdict is stated";
             emit("log", stage, `inference backend = QCNN (QHE, TRAINED): class=${qc.cls} `
               + `(<Z0>=${qc.expectation.toFixed(4)}, ${w.layers}x${w.n_qubits} trained angles, `
               + `state-vector sim). Held-out ${label} ${(mine ?? 0).toFixed(4)} against a baseline of `
               + `${(base ?? 0).toFixed(4)} and logistic regression at ${(theirs ?? 0).toFixed(4)} on `
-              + `the same split - the classical model is ahead, and this reports that rather than `
-              + `implying quantum advantage. Test rows were never used to pick the checkpoint.`);
+              + `the same split - ${ahead}, and this reports what was measured rather than what would `
+              + `flatter. Test rows were never used to pick the checkpoint.`);
           } else {
             // No trained weights for this use case: refuse to surface a class rather than pass off
             // the untrained circuit's coin flip as a prediction.

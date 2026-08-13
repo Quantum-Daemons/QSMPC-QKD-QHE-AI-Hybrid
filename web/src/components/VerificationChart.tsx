@@ -82,8 +82,18 @@ export function EncryptedAgreementChart({ plot }: { plot: EncryptedAgreementPlot
         {/* `title` as a PROP, the way every other chart in this file sets it. Written first as a
             `<title>` child, which recharts does not forward - so the figure rendered with a null
             accessible name, which is exactly the regression Round 34 recorded when six charts ended
-            up with empty titles. Verified on the deployed page, not assumed. */}
-        <ScatterChart accessibilityLayer title={name}
+            up with empty titles. Verified on the deployed page, not assumed.
+
+            `role="img"`, NOT `accessibilityLayer`. The first version used the latter, twenty lines
+            above the scatter that does not and the comment explaining why: `accessibilityLayer`
+            makes a ScatterChart focusable and gives it `role="application"` WITHOUT making its
+            points keyboard-reachable, because recharts steps an activeIndex along a categorical
+            axis and two numeric axes have none. `KB6` says an application role appears only where
+            the keyboard path passed, so this was an inert application role - a regression, in the
+            same commit that fixed the missing title. Fixing one accessibility defect while
+            introducing another is what happens when you verify the thing you changed instead of
+            re-reading the row that governs the element. */}
+        <ScatterChart role="img" title={name}
                       margin={{ top: 6, right: 10, bottom: 4, left: -10 }}>
           <CartesianGrid stroke={GRID} strokeDasharray="2 4" />
           {/* Formatted, because the raw ticks rendered as `3.7326450091317454` - sixteen digits of a
