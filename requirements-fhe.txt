@@ -13,6 +13,17 @@ tenseal>=0.3.15
 #   with gcc-toolset-14 so the extension needs only GLIBCXX_3.4.29 and loads natively.
 #   OpenFHEBackend stays import-guarded, but an unavailable backend must raise — never let a
 #   selected backend silently resolve to a different one (docs/crypto-agility.md, no-silent-fallback).
+#
+#   SCOPE OF THAT FIX — it buys `import openfhe`, and nothing beyond it. Round 34 opened by
+#   re-running the rebuild for a SIGSEGV it could not have fixed: the script had already been run
+#   here (the extension's top required symbol is GLIBCXX_3.4.29, i.e. the local build, not the
+#   wheel's 3.4.32), import worked, plain CKKS worked, and the crash was two wrong crypto-context
+#   parameters on the bootstrapping path — mult_depth 4 against the 20 that EvalBootstrapSetup
+#   needs, and the FIXEDAUTO scaling technique that EvalBootstrap rejects. Both are fixed in
+#   qsh/fhe/backends.py, which documents why each matters. Before reaching for this script, check
+#   that `import openfhe` is the thing actually failing: a libstdc++ story that is true history is
+#   not automatically the diagnosis for the next symptom.
+#   Measurements: docs/verification-log.md, "Round 34".
 openfhe>=1.5.1
 #
 # mpyc: the NON-LINEAR half of the hybrid (ReLU/argmax under secret-sharing MPC). MIT, pure-Python,

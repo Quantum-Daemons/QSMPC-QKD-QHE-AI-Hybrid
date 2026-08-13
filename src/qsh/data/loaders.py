@@ -10,13 +10,33 @@ from __future__ import annotations
 import numpy as np
 
 
-def load_breast_cancer() -> tuple[np.ndarray, np.ndarray]:
-    """Wisconsin breast-cancer (medical tabular, bundled with scikit-learn)."""
+def load_breast_cancer(scaler_fit_fraction: float = 0.7) -> tuple[np.ndarray, np.ndarray]:
+    """Wisconsin breast-cancer (medical tabular, bundled with scikit-learn).
+
+    The scaler is fitted on the first ``scaler_fit_fraction`` of rows and applied to all of them.
+
+    This was ``StandardScaler().fit_transform(ds.data)`` over all 569 rows until Round 34 - the
+    textbook leakage, with every consumer's test rows contributing to the constants applied to
+    themselves. Two facts bound how much it mattered and neither excuses it. The published medical
+    model does not come through here: ``scripts/train/medical_breastmnist.py`` trains on MedMNIST via
+    ``datasets.breastmnist``, so nothing on the Hub or in ``models/metrics.json`` was contaminated.
+    But the demo and benchmark paths do (``usecases/medical_fl``, ``benchmark/runner``), and the
+    browser printed those numbers with nothing saying they had been scaled against their own test rows.
+
+    A fraction rather than a caller-supplied split, because the two consumers split differently and a
+    loader that silently assumed one of them would be a worse lie than the one being fixed. 0.7 is
+    what both actually use, so the constants match what a correct pipeline would produce; a caller
+    that splits elsewhere should pass its own. Fitting on a prefix is only sound when the rows are
+    exchangeable - WDBC ships in no meaningful order, so it is sound here and would NOT be on a
+    time series, where the prefix must be the chronological training window instead.
+    """
     from sklearn.datasets import load_breast_cancer as _lbc
     from sklearn.preprocessing import StandardScaler
 
     ds = _lbc()
-    X = StandardScaler().fit_transform(ds.data).astype(np.float32)
+    cut = max(1, int(len(ds.data) * scaler_fit_fraction))
+    scaler = StandardScaler().fit(ds.data[:cut])
+    X = scaler.transform(ds.data).astype(np.float32)
     return X, ds.target.astype(np.int64)
 
 

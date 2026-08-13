@@ -27,16 +27,48 @@ export const runsQsmpc = (usecase: string) => clientFlow(usecase).includes("qsmp
 export const runsInference = (usecase: string) => clientFlow(usecase).includes("private_inference");
 export const runsFibreQkd = (usecase: string) => clientFlow(usecase).includes("qkd_key_agreement");
 
+/** Stages whose implementation reads `config.inference` to choose a backend.
+ *
+ * `runsInference` above answers a different question - whether the use case runs the stage NAMED
+ * `private_inference` - and using it to gate the Inference control conflated the two. Telecom reads
+ * `config.inference` from `qml_ids`, so the control it depends on was never rendered: the page
+ * offered no way to pick a backend at all, while the QCNN branch behind it sat ready. That is the
+ * same inert-control failure as before with the halves swapped, and it survived the fix for the
+ * first half because the reachability test asks about stages and artefacts, not about whether a
+ * control exists to reach them.
+ *
+ * `tests/test_qcnn_reachable.py` now checks this list against the stage bodies that actually read
+ * the key, so a stage gaining or losing the backend switch cannot leave this stale.
+ */
+export const INFERENCE_BACKEND_STAGES = ["private_inference", "qml_ids"];
+export const readsInferenceBackend = (usecase: string) =>
+  clientFlow(usecase).some((s) => INFERENCE_BACKEND_STAGES.includes(s));
+
 /** Use cases that ship trained QCNN weights under `public/data/<dir>/qcnn_weights.json`.
  *
- * The same reasoning as the three predicates above, one level down: a control is shown when a stage
- * reads it, and a BACKEND OPTION is shown when the artefact implementing it exists. Genomics reaches
- * `private_inference` - so `runsInference` is true and the selector belongs on the page - but ships
- * no weights, so its QCNN option fell back to CKKS while two panels announced that a quantum circuit
- * had decided the class. `tests/test_qcnn_usecases.py` asserts this set against the files on disk, so
- * training a third circuit cannot leave the list stale and deleting one cannot leave it lying.
+ * The same reasoning as the three predicates above, one level down. A backend option is honest only
+ * when BOTH halves hold:
+ *
+ *   1. the artefact implementing it exists, and
+ *   2. a stage the use case actually RUNS reads that artefact.
+ *
+ * Genomics failed the first half: it reaches `private_inference`, so `runsInference` is true and the
+ * selector belongs on the page, but it ships no weights - its QCNN option fell back to CKKS while two
+ * panels announced that a quantum circuit had decided the class.
+ *
+ * Telecom then failed the SECOND half, because this comment only stated the first. Adding
+ * `telecom_ids` here and committing `qcnn_weights.json` satisfied condition 1, and the option duly
+ * appeared - but `FLOWS.telecom_ids` runs `qml_ids`, not `private_inference`, and the QCNN branch
+ * lived in the `private_inference` case. Same visible failure as genomics, opposite cause. tsc was
+ * clean, every gate was green, and the weights were served with the right content-type; what surfaced
+ * it was the deployed page never fetching them at all.
+ *
+ * `tests/test_qcnn_usecases.py` asserts this set against the files on disk (half 1) and
+ * `tests/test_qcnn_reachable.py` asserts it against the stages in `FLOWS` (half 2), so training a
+ * third circuit cannot leave the list stale, deleting one cannot leave it lying, and registering one
+ * whose stage cannot reach it fails in CI rather than on the site.
  */
-export const QCNN_USECASES = new Set(["finance_aml", "medical_fl"]);
+export const QCNN_USECASES = new Set(["finance_aml", "medical_fl", "telecom_ids"]);
 export const hasTrainedQcnn = (usecase: string) => QCNN_USECASES.has(usecase);
 
 /** Use cases where a federated-training stage has both real data and somewhere to be rendered.
@@ -218,7 +250,10 @@ export function usePipelineRun(usecase: string, recordRef: RefObject<HTMLElement
     // every one of them, so it performed a secure summation over Z97 with a QCNN readout, driven by
     // controls that were no longer on screen.
     if (runsQsmpc(usecase) && qsmpc_op) c.qsmpc_op = qsmpc_op;
-    if (runsInference(usecase) && inference) c.inference = inference;
+    // `readsInferenceBackend`, not `runsInference`: the key is read by `qml_ids` too, and gating the
+    // send on the stage NAME meant telecom's selection was dropped on the way to the run even once
+    // the control was on screen and the branch existed. Three gates in series, each invisible alone.
+    if (readsInferenceBackend(usecase) && inference) c.inference = inference;
     if (runsQsmpc(usecase) && prime > 0) c.prime = prime;
     // Only when a choice was made. Absent, runPublishedModel falls to browserModel(usecase), so the
     // key never appears in a signed payload claiming a selection the visitor did not make.

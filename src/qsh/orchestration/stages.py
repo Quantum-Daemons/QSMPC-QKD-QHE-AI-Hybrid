@@ -11,7 +11,6 @@ CryptoRegistry`, so the same chain runs PQC-only or PQC+QKD, TenSEAL or OpenFHE,
 
 from __future__ import annotations
 
-import time
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from typing import Any
@@ -206,10 +205,8 @@ class QSMPCComputeStage(Stage):
             bus.log(f"PSI complete: |A∩B|={res.intersection_size} "
                     f"(sizes {res.size_a},{res.size_b})", self.name)
         elif op == "sum":
-            from ..qsmpc.secure_summation import quantum_secure_sum
 
             from ..config import get_config
-
             from ..qsmpc.secure_summation import QSMS
 
             secrets = ctx.data.get("secrets", [])
@@ -324,7 +321,6 @@ class PrivateInferenceStage(Stage):
             from ..config import get_config
             from ..qhe.private_inference import private_inference
             from ..qhe.qcnn import QCNN
-
             from ..qhe.qcnn_trained import infer as qcnn_infer
             from ..qhe.qcnn_trained import load_weights
 
@@ -349,19 +345,48 @@ class PrivateInferenceStage(Stage):
                 ctx.artifacts["private_prediction"] = cls
                 ctx.artifacts["private_prediction_backend"] = "qcnn-trained"
                 bus.metric("qhe_expectation_z0", round(expectation, 4), self.name)
-                f1_led = weights.get("headline_metric") == "minority_class_f1"
-                mine = weights["test_minority_f1"] if f1_led else weights["test_accuracy"]
-                theirs = (weights["classical_lr_minority_f1"] if f1_led
-                          else weights["classical_lr_accuracy"])
-                base = weights["all_positive_f1"] if f1_led else weights["majority_baseline"]
-                label = "minority-class F1" if f1_led else "accuracy"
-                bus.metric("qhe_headline_metric", round(float(mine), 4), self.name)
-                bus.log(
-                    f"QHE private inference (TRAINED QCNN): class={cls} "
-                    f"(<Z0>={expectation:.4f}, {weights['layers']}x{weights['n_qubits']} trained "
-                    f"angles). Held-out {label} {mine:.4f} against a baseline of {base:.4f} and "
-                    f"logistic regression at {theirs:.4f} on the same split - the classical model is "
-                    f"ahead, and this reports it rather than implying advantage.", self.name)
+                # Three regimes, mirroring `headline_metric` in the artifact and the browser path
+                # in clientCompute.ts. `.get` rather than `[...]`: the fields that do not apply to a
+                # regime are now null or absent, and a KeyError here would abort the stage over a
+                # metric it was only going to print.
+                head = weights.get("headline_metric")
+                macro_led, f1_led = head == "macro_f1", head == "minority_class_f1"
+                if macro_led:
+                    mine = weights.get("test_macro_f1")
+                    theirs = weights.get("classical_lr_macro_f1")
+                    base = (weights.get("macro_f1_floors") or {}).get("uniform_random")
+                    label = "macro F1"
+                elif f1_led:
+                    mine = weights.get("test_minority_f1")
+                    theirs = weights.get("classical_lr_minority_f1")
+                    base = weights.get("all_positive_f1")
+                    label = "minority-class F1"
+                else:
+                    mine = weights.get("test_accuracy")
+                    theirs = weights.get("classical_lr_accuracy")
+                    base = weights.get("majority_baseline")
+                    label = "accuracy"
+                # No `or 0.0`. A missing headline metric means the artifact and this code disagree
+                # about which regime it is in, and printing 0.0000 under a metric name would state a
+                # measured score of zero - the same class of error as the macro F1 that shipped
+                # under a minority-class label. Say what is missing and skip the comparison.
+                if mine is None or theirs is None or base is None:
+                    absent = ", ".join(n for n, v in (("model", mine), ("classical", theirs),
+                                                      ("baseline", base)) if v is None)
+                    bus.log(
+                        f"QHE private inference (TRAINED QCNN): class={cls} "
+                        f"(<Z0>={expectation:.4f}). Headline metric '{head}' is not populated in "
+                        f"the weights file ({absent} missing), so no held-out comparison is "
+                        f"reported for this run.", self.name)
+                else:
+                    bus.metric("qhe_headline_metric", round(float(mine), 4), self.name)
+                    bus.log(
+                        f"QHE private inference (TRAINED QCNN): class={cls} "
+                        f"(<Z0>={expectation:.4f}, {weights['layers']}x{weights['n_qubits']} trained "
+                        f"angles). Held-out {label} {mine:.4f} against a baseline of {base:.4f} and "
+                        f"logistic regression at {theirs:.4f} on the same split - the classical "
+                        f"model is ahead, and this reports it rather than implying advantage.",
+                        self.name)
             else:
                 # No trained circuit here: report the QOTP hiding demonstration, which this module
                 # genuinely proves, and decline to surface a class rather than passing off a

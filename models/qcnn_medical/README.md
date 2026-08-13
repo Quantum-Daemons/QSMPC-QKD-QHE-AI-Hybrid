@@ -42,6 +42,20 @@ selected and reported on the SAME rows and was unseeded, so its figure was a dra
 distribution rather than a measurement: reruns on identical inputs returned 0.9181 / 0.9064 /
 0.8947 / 0.8480. Those numbers are higher than the one above and should not be compared with it.
 
+Seeding made the figure REPRODUCIBLE. It did not make it typical, and that distinction was measured
+on 2026-08-13 rather than assumed. The same command at seeds 0 to 4 returns minority-class F1
+0.622951 / 0.892308 / 0.870968 / 0.738462 / 0.933333 - **median 0.8710, range [0.6230, 0.9333]** -
+and the seed this card reports, seed 0, is **the worst of the five**. Finance's seed 0, by contrast,
+lands exactly on its own median. So the number above is exactly what it says it is and is also an
+unlucky draw, and a reader comparing it against the classical baseline is comparing against the
+low end of a wide spread.
+
+The seed is deliberately NOT re-picked. Choosing one by test-set performance is test-set selection,
+which is the thing the validation-fold checkpoint selection two paragraphs up exists to prevent;
+publishing the spread is the defensible response and this is it. Workings, including an
+entanglement ablation run over the same seeds:
+[`references/qcnn-entanglement-ablation.md`](../../references/qcnn-entanglement-ablation.md).
+
 ## Data and licence
 
 Wisconsin Diagnostic Breast Cancer (UCI, CC-BY-4.0), 8 of 30 features

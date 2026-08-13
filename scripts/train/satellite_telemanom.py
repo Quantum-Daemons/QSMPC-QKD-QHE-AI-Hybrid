@@ -166,8 +166,20 @@ def main() -> int:
     raw = datasets.load_esa_channels()
     print(f"  raw: {raw.shape[0]:,} rows x {raw.shape[1]} channels, "
           f"{raw.index[0].date()} -> {raw.index[-1].date()}")
-    df = raw.resample(args.resample).mean().ffill().bfill()
-    print(f"  resampled to {args.resample}: {df.shape[0]:,} rows")
+    # Imputation, stated because TRIPOD+AI item 11 requires it and because one half of it was a
+    # look-ahead. `ffill` carries the last OBSERVED value forward across a gap, which is the standard
+    # choice for telemetry and uses only the past. `bfill` carries a FUTURE value backwards, and it
+    # was here until Round 34 - so any leading gap, and any gap `ffill` could not close, was filled
+    # with data recorded after it. Dropping the leading rows instead costs a bounded prefix and uses
+    # no future information; `ffill` handles every interior gap, so nothing else changes.
+    df = raw.resample(args.resample).mean().ffill()
+    leading = int(df.isna().any(axis=1).cumprod().sum())     # rows before the first full observation
+    if leading:
+        df = df.iloc[leading:]
+        print(f"  dropped {leading:,} leading row(s) with no prior observation to carry forward "
+              f"(previously back-filled from the future)")
+    df = df.dropna()
+    print(f"  resampled to {args.resample}: {df.shape[0]:,} rows (ffill only, no backward fill)")
 
     labels = datasets.load_esa_labels()
     mask = np.zeros(len(df), dtype=bool)
@@ -178,11 +190,20 @@ def main() -> int:
           f"({100 * mask.mean():.3f}% of the timeline)")
 
     values = df.to_numpy(dtype=np.float32)
-    mu, sigma = values.mean(0), values.std(0) + 1e-8
-    values = (values - mu) / sigma
-
     cut = int(len(values) * (1.0 - TEST_FRACTION))
-    print(f"  temporal split at {df.index[cut].date()}: train {cut:,} / test {len(values)-cut:,}")
+    # Fit the z-score on the TRAINING window only. Until Round 34 this computed mu and sigma over the
+    # WHOLE series and split afterwards, so the test window contributed to the constants applied to
+    # itself - textbook leakage, and on a temporal split it is look-ahead as well. The same repository
+    # already gets this right in finance_aml.py (StandardScaler fitted on the fit window) and in
+    # qcnn_variational.py (mu/sd from X[:cut]), so this was an oversight, not a policy.
+    #
+    # The effect is probably small on a long, roughly stationary telemetry series. "Probably small" is
+    # not a measurement, and a project whose posture is that every number is attributable cannot leave
+    # one contaminated by construction.
+    mu, sigma = values[:cut].mean(0), values[:cut].std(0) + 1e-8
+    values = (values - mu) / sigma
+    print(f"  temporal split at {df.index[cut].date()}: train {cut:,} / test {len(values)-cut:,}"
+          f"  (z-score fitted on the train window only)")
 
     xtr, ytr = windows(values[:cut], SEQ_LEN, args.stride)
     xte, yte = windows(values[cut:], SEQ_LEN, 1)

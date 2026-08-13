@@ -52,6 +52,41 @@ from qsh.models import export, metrics, train  # noqa: E402
 from qsh.models.registry import get as get_spec  # noqa: E402
 from qsh.qml_ids.attacks import ATTACKS, FEATURES, generate  # noqa: E402
 
+#: Hoisted to module level so `scripts/check_generated_prose.py` can read them out of the AST.
+#: They were assigned by subscript onto an already-built dict, which the gate cannot see - so two
+#: published claims sat outside the only check that compares a generator to its artifact. The gate
+#: now reports how many fields are beyond its reach; these were two of the three.
+CLASSICAL_RF_ATTRIBUTION_NOTE = (
+        "Impurity importance (training split, biased toward high-cardinality features) and "
+        "permutation importance (held-out split, scored on macro F1, 20 repeats, std reported). "
+        "Read the permutation figure where they disagree. These rank which features of a SYNTHETIC "
+        "corpus this forest needs, not signals from a real QKD link. Two planted features are "
+        "nearly redundant: sift_ratio separates detector_blinding perfectly on its own yet costs "
+        "almost nothing to remove, because click_asymmetry separates the same class; and "
+        "dark_count_rate is within one std of zero. Exact linear SHAP does not apply to a tree "
+        "ensemble, which is why these two measures are used instead."
+    )
+
+FRAMING = (
+        "Architecture comparison, not a performance claim. The data is synthetic because no "
+        "commercial-OK real attack corpus exists. Every published QML-IDS figure we could verify "
+        "sits below a random forest on the same data, and arXiv:2512.05069 was withdrawn by its own "
+        "authors for insufficient evaluation. Per-class F1 is the headline; aggregate accuracy is "
+        "shown beside it because Engelen et al. (WTMC 2021) demonstrated it stays at 0.99 across a "
+        "label correction that moved Bot F1 from 0.60 to 0.99."
+    )
+
+
+STUDENT_METRIC_NOTE = (
+            "Read `n_classes_predicted` before `macro_f1`. A linear student that stops predicting a "
+            "class scores 0 on it by construction, and macro F1 then averages in a zero that looks "
+            "like poor discrimination rather than an absent output - this repo's own QNN carries "
+            "exactly that defect and is documented as doing so, so the check is not hypothetical. "
+            "`agreement` is recorded but is NOT evidence the minority classes survived: agreement on "
+            "the finance student rose from 0.884 to 0.947 across a change that left minority-class F1 "
+            "unmoved, which is why per-class F1 is the headline here and the aggregate is a "
+            "companion.")
+
 
 def main() -> int:
     ap = argparse.ArgumentParser()
@@ -162,16 +197,7 @@ def main() -> int:
     # It also corroborates a falsifiable prediction this project wrote down before measuring:
     # a correct attribution must NOT name `sift_ratio` or `dark_count_rate` as a dominant driver.
     # They rank last of seven. That is the check working, not a coincidence.
-    record["classical_rf_attribution_note"] = (
-        "Impurity importance (training split, biased toward high-cardinality features) and "
-        "permutation importance (held-out split, scored on macro F1, 20 repeats, std reported). "
-        "Read the permutation figure where they disagree. These rank which features of a SYNTHETIC "
-        "corpus this forest needs, not signals from a real QKD link. Two planted features are "
-        "nearly redundant: sift_ratio separates detector_blinding perfectly on its own yet costs "
-        "almost nothing to remove, because click_asymmetry separates the same class; and "
-        "dark_count_rate is within one std of zero. Exact linear SHAP does not apply to a tree "
-        "ensemble, which is why these two measures are used instead."
-    )
+    record["classical_rf_attribution_note"] = CLASSICAL_RF_ATTRIBUTION_NOTE
 
     print("\n  attribution (top 4 by permutation importance on macro F1)")
     for name, v in sorted(record["classical_rf_permutation_importance"].items(),
@@ -211,14 +237,7 @@ def main() -> int:
     else:
         print("\n  (quantum models skipped; pass --quantum to fit them)")
 
-    record["framing"] = (
-        "Architecture comparison, not a performance claim. The data is synthetic because no "
-        "commercial-OK real attack corpus exists. Every published QML-IDS figure we could verify "
-        "sits below a random forest on the same data, and arXiv:2512.05069 was withdrawn by its own "
-        "authors for insufficient evaluation. Per-class F1 is the headline; aggregate accuracy is "
-        "shown beside it because Engelen et al. (WTMC 2021) demonstrated it stays at 0.99 across a "
-        "label correction that moved Bot F1 from 0.60 to 0.99."
-    )
+    record["framing"] = FRAMING
     record["dataset"] = spec.dataset.name
     record["git_sha"] = train.git_sha()
     record["wall_clock_s"] = round(time.time() - started, 1)
@@ -247,11 +266,22 @@ def main() -> int:
             "next retrain reintroduced it."),
     }, indent=2) + "\n")
 
-    train.record_metrics("telecom_ids.qml", record)
+    train.record_metrics("telecom_ids.qml", {
+        **record,
+        # Restated as literals so the gate can compare generator to artifact. The `**record`
+        # entry has no static key and is skipped; these two are what it reads.
+        "classical_rf_attribution_note": CLASSICAL_RF_ATTRIBUTION_NOTE,
+        "framing": FRAMING,
+    })
 
     # ---- T1: the CKKS-linear student, so this use case HAS an encrypted tier -------------------
     student_record = distil_linear_student(rf, Xtr, ytr, Xte, yte, args.student_out, seed=args.seed)
-    train.record_metrics("telecom_ids.student", student_record)
+    train.record_metrics("telecom_ids.student", {
+        **student_record,
+        # As above: `**` has no static key and is skipped, so this literal is what the
+        # prose gate compares against the artifact.
+        "metric_note": STUDENT_METRIC_NOTE,
+    })
 
     print(f"\n  wrote {args.out}, {args.student_out} and models/metrics.json "
           f"in {time.time()-started:.1f}s")
@@ -373,15 +403,7 @@ def distil_linear_student(teacher, Xtr, ytr, Xte, yte, out: Path, *, seed: int) 
         "agreement": round(agreement, 6),
         "distilled_on": "teacher predict_proba (soft targets), weighted one-copy-per-class",
         "argmax_location": "client, in plaintext, after decrypting all 8 class scores",
-        "metric_note": (
-            "Read `n_classes_predicted` before `macro_f1`. A linear student that stops predicting a "
-            "class scores 0 on it by construction, and macro F1 then averages in a zero that looks "
-            "like poor discrimination rather than an absent output - this repo's own QNN carries "
-            "exactly that defect and is documented as doing so, so the check is not hypothetical. "
-            "`agreement` is recorded but is NOT evidence the minority classes survived: agreement on "
-            "the finance student rose from 0.884 to 0.947 across a change that left minority-class F1 "
-            "unmoved, which is why per-class F1 is the headline here and the aggregate is a "
-            "companion."),
+        "metric_note": STUDENT_METRIC_NOTE,
     }
     if n_predicted < n_classes:
         rec["collapse_warning"] = (

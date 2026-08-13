@@ -28,9 +28,10 @@ git diff --quiet -- web/src/lib/config.defaults.json \
   && ok "config.defaults.json in sync" \
   || bad "config.defaults.json is stale - commit the regenerated file"
 
-step "3/9 generated prose matches its generator"
+step "3/9 generated artifacts match their generator and their history"
 "$PY" scripts/check_generated_prose.py \
-  && ok "prose fields match their trainers" || bad "a generated prose field was hand-edited"
+  && ok "prose matches generators; no recorded field vanished" \
+  || bad "a prose field was hand-edited, or a measurement disappeared"
 
 step "4/9 lint, BLOCKING scope (this is the one that was red)"
 "$PY" -m ruff check src/qsh/models scripts/train scripts/publish_hf.py scripts/data \
@@ -40,14 +41,19 @@ step "5/9 no confidential files tracked"
 make check-secrets >/dev/null 2>&1 && ok "no confidential files" || bad "confidential files tracked"
 
 step "6/9 no Japanese in public files"
-# Scope is `git ls-files`, not a directory list. The directory list was `src api web/src tests scripts
-# docs README.md`, which excluded every root-level .md except README - so a Japanese-language document
-# dropped at the repo root passed this gate. Measured 2026-08-12 with a real confidential note: it
-# passed here AND passed check-secrets AND was not gitignored.
-# Deriving the scope from the index instead fixes three things at once: the root is covered, any new
-# top-level directory is covered without editing this line, and "public" now means exactly "tracked",
-# so the gitignored MONETIZATION_WORKFLOW.ja.md is excluded by construction rather than by an exception.
-if git ls-files -z '*.py' '*.ts' '*.tsx' '*.md' '*.yml' '*.sh' \
+# Scope is EVERY TRACKED FILE, with `grep -I` skipping binaries. It was a six-extension list
+# (*.py *.ts *.tsx *.md *.yml *.sh) until Round 34, and the comment above it claimed the Round 33 fix
+# had made "public mean exactly tracked". It had not: public meant tracked AND one of six extensions,
+# leaving 122 of 356 tracked files unscanned - 59 .json, 7 .txt, 7 .tsv, 5 .tex, 3 .yaml. A
+# Japanese-language confidential note saved as notes.txt or strategy.json passed both this gate and
+# check-secrets. Claiming a scope the code does not have is the "gate blind to its own scope" defect
+# this project keeps finding, and it was in the comment I wrote when fixing the previous instance.
+#
+# LATENT HAZARD, recorded rather than fixed blind: `xargs` exits 123 if ANY batch exits non-zero, so a
+# match in batch 1 with no match in batch 2 still yields 123 and the `if` takes the ok branch - a false
+# pass. Harmless today because the file list is one batch (about 9 KB against a 128 KB command buffer),
+# and it would take roughly a 14x growth in tracked files to split. Re-check if that changes.
+if git ls-files -sz | awk -v RS='\0' -v ORS='\0' '$1 != "160000" { sub(/^[^\t]*\t/, ""); print }' \
      | xargs -0 -r grep -IlP '[\x{3040}-\x{309F}\x{30A0}-\x{30FF}\x{4E00}-\x{9FFF}]'; then
   bad "Japanese characters in public files (listed above)"
 else
