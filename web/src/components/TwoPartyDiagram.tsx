@@ -86,8 +86,12 @@ const pqcOnly = (c: DiagramConfig) => String(c.qkd ?? "") === "pqc-only";
 const eveTag = (m: M) => {
   // One key for both channels: only one QKD stage runs per use case, and the fibre and free-space
   // stages report the same quantity - the intercept-resend fraction that was simulated.
-  const f = m["qkd_eve_fraction"];
-  return f == null || Number(f) <= 0 ? "" : ` (w/ eavesdropper ${f})`;
+  //
+  // Not named `f`: that is the metric formatter declared below, and shadowing it inside a label
+  // helper is a trap for whoever next wants to format something here. `f` is used for the value so
+  // a step-produced 0.30000000000000004 renders as 0.3.
+  const eve = m["qkd_eve_fraction"];
+  return eve == null || Number(eve) <= 0 ? "" : ` (w/ eavesdropper ${f(m, "qkd_eve_fraction")})`;
 };
 
 const optiTag = (m: M, c: DiagramConfig) => {
