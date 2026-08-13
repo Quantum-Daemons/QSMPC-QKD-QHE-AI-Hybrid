@@ -426,6 +426,23 @@ Added 2026-08-11. Both verified at the arXiv abstract page.
   which matters because it is a *different* readout (a 3-qubit basis marginal rather than a single
   `<Z_0>` expectation) and a different task shape, and it did not change the direction of the result.
   Added: 2026-08-11; telecom result and journal reference added 2026-08-13.
+- **Bowles, Ahmed & Schuld, "Better than classical? The subtle art of benchmarking quantum machine
+  learning models."** arXiv:2403.07059, 11 Mar 2024, revised 14 Mar 2024. **Preprint - the arXiv API
+  reports no `journal_ref` and no DOI, checked 2026-08-13**, so cite it as a preprint rather than a
+  paper. 12 quantum models across 6 binary tasks and 160 datasets. Two findings: out-of-the-box
+  classical models outperform the quantum classifiers overall, and **"removing entanglement from a
+  quantum model often results in as good or better performance, suggesting that 'quantumness' may not
+  be the crucial ingredient"**. **Why it is cited here:** the second finding is a claim about
+  circuits, and this project has one, so it was CHECKED rather than repeated. Measured over five
+  seeds per binary model with the CNOT ring skipped and nothing else changed - median minority-class
+  F1 falls 0.714286 to 0.048544 on finance (entangled wins 5 of 5) and 0.870968 to 0.833333 on
+  medical (4 of 5); telecom's 8-class macro F1 falls 0.809846 to 0.467059 on a single seed. **So the
+  tendency they report does not reproduce on this circuit** - which is a statement about this
+  circuit, not a counterexample to a survey of 160 datasets. Full workings, including the one-seed
+  reading that pointed the opposite way before the sweep:
+  [`qcnn-entanglement-ablation.md`](qcnn-entanglement-ablation.md). Note this cuts AGAINST the
+  entry below it only in mechanism, not in verdict: entanglement mattering to a model that still
+  loses to logistic regression is not evidence of advantage. Added: 2026-08-13.
 - **Li, Wu, Li & Yung, "Barren Plateaus Beyond Observable Concentration."** arXiv:2603.18479, 19 Mar
   2026, revised 19 Jun 2026. Unifies existing barren-plateau explanations under *observable
   concentration* and proves that avoiding it is **necessary but not sufficient** for trainability,
