@@ -158,6 +158,31 @@ function plainAggregate(updates, weights) {
 }
 
 // --------------------------------------------------------------------------------------------- //
+//  3b. The ring bound rejects what would overflow it, and admits what fits
+// --------------------------------------------------------------------------------------------- //
+// The bound depends on the client count: with K clients the SUM has to stay inside the signed half,
+// so each share is capped at 2^31/K. It was written as a flat 2^30, which four clients could exceed
+// in aggregate - a guard that admitted the exact overflow it existed to reject. Real weights are
+// order 1 and never approach either number, which is why only an assertion finds this.
+{
+  const K = UPDATES.length;
+  const justOver = (2 ** 31 / K) / SCALE * 1.01;      // one per cent past the per-client cap
+  const big = UPDATES.map((row, u) => (u === 0 ? [justOver, ...row.slice(1)] : row));
+  let threw = false;
+  try { m.secureAggregate(big, W.map(() => 1), KEY, 0); } catch { threw = true; }
+  check("ring-bound-rejects-an-overflowing-share", threw,
+    `a share of ${justOver * SCALE} quantised units was accepted; with ${K} clients anything past ` +
+    `2^31/${K} can push the sum out of the signed half, where the recovered mean is a wrong number ` +
+    `that still looks like a number`);
+
+  // And it must not reject ordinary work: a bound set too tight is a different way to be broken.
+  let ok = true;
+  try { m.secureAggregate(UPDATES, W, KEY, 0); } catch { ok = false; }
+  check("ring-bound-admits-real-updates", ok,
+    "the ordinary four-client update was rejected by the range guard");
+}
+
+// --------------------------------------------------------------------------------------------- //
 //  4. There is no plaintext mode to fall back into
 // --------------------------------------------------------------------------------------------- //
 // How the original claim survived: written once, and the path that would have contradicted it was
