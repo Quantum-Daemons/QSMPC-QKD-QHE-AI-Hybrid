@@ -109,9 +109,20 @@ quantum-kernel SVC reaches 0.8316 and the variational QNN 0.4667. That compariso
 like-for-like and the registry says so: both quantum models are **binary**, so on their own task they
 score 0.9453 and 0.9333, and their macro F1 is depressed by the six classes they never
 attempt. Even granting the binary figures, neither earns its qubits against a random forest that
-takes a fraction of the 267 s the quantum pair needs. `quantum_beats_classical` is recorded as
-`False` in `models/metrics.json`, which is the field this project would have to falsify to
-claim otherwise.
+takes a small fraction of the run the quantum pair needs - `wall_clock_s` in
+`models/metrics.json` covers the whole script and has been measured at 267.1 s and 341.5 s on the
+same machine, so the absolute seconds are load-dependent and only the order of magnitude is a
+claim. `quantum_beats_classical` is recorded as `False` in `models/metrics.json`, which is the
+field this project would have to falsify to claim otherwise.
+
+That last sentence was briefly false. Round 33 re-ran `telecom_ids.py` **without** `--quantum` to
+add the CKKS student, and `record_metrics` replaces a record rather than merging it, so all eight
+`quantum_*` fields - including the `quantum_beats_classical` this paragraph points at - were
+deleted from `models/metrics.json` while three published claims went on citing them. Neither the
+config-parity gate nor the new prose gate could see it: the prose fields were untouched and both
+derived artifacts stayed consistent with each other. Restored in Round 34 by re-running with
+`--quantum`; the values came back identical, which is the only reason the citations above were
+recoverable rather than merely re-asserted.
 The data is synthetic, and the reason was overstated in earlier revisions. The accurate version,
 re-checked 2026-08-05:
 
@@ -399,7 +410,10 @@ benchmark number. Checked 2026-08-11.
 Added 2026-08-11. Both verified at the arXiv abstract page.
 
 - **Bermejo, Braccia, Rudolph, Holmes, Cincio & Cerezo, "Quantum Convolutional Neural Networks are
-  Effectively Classically Simulable."** arXiv:2408.12739, 22 Aug 2024, revised 20 Feb 2026. Randomly
+  Effectively Classically Simulable."** **PRX Quantum 7, 020304 (2026), DOI 10.1103/8qt9-72ts**;
+  arXiv:2408.12739, 22 Aug 2024, revised 20 Feb 2026. Upgraded from the preprint citation on
+  2026-08-13: the journal reference and DOI were read from the arXiv API's `journal_ref` and
+  `arxiv:doi` fields, so this is now a peer-reviewed citation rather than a preprint one. Randomly
   initialised QCNNs can only operate on the information in **low-bodyness measurements** of their
   input states, and their behaviour is efficiently classically simulable by an algorithm equipped
   with Pauli shadows. The authors argue QCNN successes largely reflect benchmark simplicity, and that
@@ -407,7 +421,28 @@ Added 2026-08-11. Both verified at the arXiv abstract page.
   repository's trained QCNN loses to logistic regression on the identical split (medical accuracy
   0.7326 vs 0.9535; finance minority-F1 0.7143 vs 0.8657). This paper is the reason that is the
   expected result rather than a failure of implementation, and it is quoted in both QCNN model cards.
-  Added: 2026-08-11.
+  The 8-class telecom circuit added in Round 34 lands the same way - macro F1 0.8098 against a
+  multinomial logistic regression at 0.9764 on the identical split, with all 8 classes predicted -
+  which matters because it is a *different* readout (a 3-qubit basis marginal rather than a single
+  `<Z_0>` expectation) and a different task shape, and it did not change the direction of the result.
+  Added: 2026-08-11; telecom result and journal reference added 2026-08-13.
+- **Bowles, Ahmed & Schuld, "Better than classical? The subtle art of benchmarking quantum machine
+  learning models."** arXiv:2403.07059, 11 Mar 2024, revised 14 Mar 2024. **Preprint - the arXiv API
+  reports no `journal_ref` and no DOI, checked 2026-08-13**, so cite it as a preprint rather than a
+  paper. 12 quantum models across 6 binary tasks and 160 datasets. Two findings: out-of-the-box
+  classical models outperform the quantum classifiers overall, and **"removing entanglement from a
+  quantum model often results in as good or better performance, suggesting that 'quantumness' may not
+  be the crucial ingredient"**. **Why it is cited here:** the second finding is a claim about
+  circuits, and this project has one, so it was CHECKED rather than repeated. Measured over five
+  seeds per binary model with the CNOT ring skipped and nothing else changed - median minority-class
+  F1 falls 0.714286 to 0.048544 on finance (entangled wins 5 of 5) and 0.870968 to 0.833333 on
+  medical (4 of 5); telecom's 8-class macro F1 falls 0.809846 to 0.467059 on a single seed. **So the
+  tendency they report does not reproduce on this circuit** - which is a statement about this
+  circuit, not a counterexample to a survey of 160 datasets. Full workings, including the one-seed
+  reading that pointed the opposite way before the sweep:
+  [`qcnn-entanglement-ablation.md`](qcnn-entanglement-ablation.md). Note this cuts AGAINST the
+  entry below it only in mechanism, not in verdict: entanglement mattering to a model that still
+  loses to logistic regression is not evidence of advantage. Added: 2026-08-13.
 - **Li, Wu, Li & Yung, "Barren Plateaus Beyond Observable Concentration."** arXiv:2603.18479, 19 Mar
   2026, revised 19 Jun 2026. Unifies existing barren-plateau explanations under *observable
   concentration* and proves that avoiding it is **necessary but not sufficient** for trainability,
@@ -1099,8 +1134,14 @@ makes**, in the direction of understating what is possible.
   CKKS-feasibility budget". After this paper that is **a choice of input representation**, not a
   feasibility limit - and this repository is unusually well placed for the alternative, because the
   client is a browser tab already running `onnxruntime-web`, so an encoder could run locally in plaintext
-  with no privacy loss at all. Recorded as a falsifiable trigger in the additional-model decision rather
-  than acted on this round.
+  with no privacy loss at all. Recorded as the **sixth** falsifiable trigger in the additional-model
+  decision (`docs/deliverable-verification.md`) rather than acted on. Corrected 2026-08-12: this entry
+  and `models/metrics.json` both said the trigger was recorded while the table held five rows and none
+  was this one, and the decision itself lived only in an untracked file, so the appeal could not be
+  checked from the repository at all. The trigger is now written and the decision is tracked. Its
+  condition is a measurement rather than a direction: the encoder's latent must fit 4096 CKKS slots at
+  multiplicative depth 1 and run under `onnxruntime-web`. Note the paper's f=8 on a 28x28 input gives
+  3.5x3.5, so the transfer is exactly what is unmeasured.
 
 ### Standards: nothing newer, and one uncited instrument
 
