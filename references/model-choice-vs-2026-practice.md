@@ -381,7 +381,7 @@ behind.
 
 | Vertical | Is there a benchmark to match? | What this repo should claim |
 |---|---|---|
-| Finance | **No.** The US-UK PETs Prize Challenge (Track A, financial crime) concluded March 2023, its SWIFT data was never released, no leaderboard was published, and no successor exists. | Anchor on the plaintext AMLworld number. **GFP+XGBoost minority-class F1 0.6323 on HI-Small is the published reference, and this repo's finance page prints 0.6323** - equal, on the metric the corpus warrants. |
+| Finance | **No.** The US-UK PETs Prize Challenge (Track A, financial crime) concluded March 2023, its SWIFT data was never released, no leaderboard was published, and no successor exists. | Anchor on the plaintext AMLworld number: GFP+XGBoost minority-class F1 **0.6323** on HI-Small (NeurIPS 2023 D&B). This repository measures **0.1519** against it and does not close the gap - see the correction below. |
 | Medical | **No** privacy-preserving one. MedMNIST v2 has a real plaintext leaderboard; FeTS is federated with no cryptography; MedPerf is federated *evaluation* only. | Compare to MedMNIST plaintext. Every named production deployment is plain FL with no cryptographic guarantee, so adding CKKS puts this ahead of them rather than level. |
 | Genomics | **Yes, and it is the only one.** iDASH is live - 7 Nov 2026, Dallas - with a published rubric. Track 1 is homomorphic evaluation of a pretrained decoder, scored on a correlation term with a **60-minute disqualification**. | The one vertical where an external scoring rubric exists. Note that iDASH publishes participating teams but **not scores**, so the rubric is citable and a recent iDASH *number* is not. |
 | Telecom | **No.** Two 2026 surveys say so in their own words, one of them noting it "could not compare the papers it reviewed" for lack of standard protocols. | The synthetic-corpus decision looks better after this sweep, not worse - see below. |
@@ -415,6 +415,26 @@ the accuracy loss is zero by construction. That is the correct frame for this re
 **the interesting quantity is the overhead and the fidelity of the encrypted path, not an accuracy
 delta**, because a correct implementation should not have an accuracy delta. This repo's CKKS tier
 reporting "0 top-1 mismatches against the plaintext reference" is measuring the right thing.
+
+### Correction, same day, to the finance row above
+
+The first version of this section said the published reference is 0.6323 "and this repo's finance
+page prints 0.6323 - equal, on the metric the corpus warrants." That is wrong in the way that
+matters. **0.6323 is the published BASELINE the page displays as a target; this repository's measured
+minority-class F1 is 0.1519.** The page labels it correctly - the rendered text reads "0.6323
+published baseline, NOT measured here" - and the label is what I misread.
+
+The repository's own record was never unclear about this. `registry.py` carries `baseline=0.6323`
+with `baseline_source` naming GFP+XGBoost, `metrics.json` carries `minority_class_f1` 0.1519, and
+`baseline_gap_note` explains the cause at length: IBM's Graph Feature Preprocessor computes
+per-transaction subgraph patterns over a dynamically updated graph, this project computes per-account
+scalar aggregates, and the gap is unreachable at any threshold because measured AUPRC is far below
+what that F1 requires. It closes with "Reported as measured; not adjusted to close the gap."
+
+Recorded rather than silently edited, because the failure mode is the one this document is about: a
+number that appears on a page next to a model is not automatically that model's score, and reading a
+figure without its label is how a target becomes an achievement. It happened here while writing about
+verification standards, which is the useful part of the example.
 
 Verified 2026-08-13. Negatives above are search-verified rather than assumed; the two most load-bearing
 (no PP-NIDS benchmark, no PP satellite work) rest on 2026 survey papers stating it directly.
