@@ -33,6 +33,8 @@ export interface QFLResult {
   pairs: number;
   /** Held-out rows `finalAcc` was measured on. Reported because it is small enough to matter. */
   evalRows: number;
+  /** What the same held-out rows score with untrained weights - the constant predictor. */
+  baselineAcc: number;
 }
 
 /**
@@ -168,7 +170,12 @@ export function clientQFL(
   const P = 4;
   const idx = Array.from({ length: N }, (_, i) => i);
   for (let i = N - 1; i > 0; i--) { const j = Math.floor(u() * (i + 1)); [idx[i], idx[j]] = [idx[j], idx[i]]; }
-  const cut = Math.floor(N * 0.75);
+  // `fed.test_split`, not a literal. 0.75 stood here while `config.federated.test_split` was 0.2 -
+  // so the two DISAGREED, and the config key was exported all the way to the frontend's type
+  // (`FederatedConfig.test_split`) with no reader anywhere in `web/src`. Same defect as
+  // `error_correction_eff` in the QKD model: a key that looks wired, a literal that runs, and the
+  // only reason nobody noticed is that both values are plausible.
+  const cut = Math.floor(N * (1 - fed.test_split));
   const tr = idx.slice(0, cut), te = idx.slice(cut);
   const parts: number[][] = Array.from({ length: K }, () => []);
   tr.forEach((id, i) => parts[i % K].push(id));        // shard the training set across K clients
@@ -189,6 +196,12 @@ export function clientQFL(
     for (const id of te) if ((sigmoid(dot(w, phi(X[id]))) > 0.5 ? 1 : 0) === Y[id]) c++;
     return c / te.length;
   };
+  // What the SAME held-out rows score before any training: w = 0 gives sigmoid(0) = 0.5, so every
+  // row is predicted 1 and this is the constant-predictor rate. Reported because "accuracy 0.74"
+  // says nothing on its own about whether the federated rounds did anything, and the round-by-round
+  // series cannot say either once the problem is well conditioned enough to converge in one round.
+  // It is the `C` (constant predictor) discipline this project already applies to its other models.
+  const baselineAcc = r2(acc(new Array(P).fill(0)));
 
   // No plaintext branch. A `sessionKey ?? aggregate in the clear` fallback is how the diagram came
   // to claim masking that did not run: the claim is written once and the fallback is taken forever.
@@ -217,7 +230,7 @@ export function clientQFL(
   // bundled federated samples is the real fix and is tracked separately; reporting a bare fraction as
   // an accuracy was the part that had to stop immediately.
   return { roundAcc, finalAcc: roundAcc[roundAcc.length - 1], clients: K, rounds, pairs,
-    evalRows: te.length,
+    evalRows: te.length, baselineAcc,
     aggregation: pairs > 0
       ? `size-weighted FedAvg + ${pairs} pairwise masks (Bonawitz CCS 2017), fixed-point mod 2^32`
       : "size-weighted FedAvg, 1 client - no pair to mask" };
