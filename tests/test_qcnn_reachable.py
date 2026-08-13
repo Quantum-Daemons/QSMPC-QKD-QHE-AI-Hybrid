@@ -353,3 +353,71 @@ def test_the_shipped_weights_name_their_readout_convention() -> None:
             assert len(w.get("class_names") or []) == n, (
                 f"{p} declares {n} classes but lists {len(w.get('class_names') or [])} names")
     assert multiclass, "no multiclass QCNN found; this test is asserting nothing"
+
+
+# --------------------------------------------------------------------------- #
+#  Published-model pinning. Different subject, same rule: a thing the page offers
+#  must resolve to something that exists.
+# --------------------------------------------------------------------------- #
+def _frontend_models() -> list[dict]:
+    cfg = json.loads((Path(__file__).resolve().parents[1] / "web" / "src" / "lib"
+                      / "config.defaults.json").read_text(encoding="utf-8"))
+    out: list[dict] = []
+
+    def walk(o: object) -> None:
+        if isinstance(o, dict):
+            if "hf_repo_id" in o:
+                out.append(o)
+            for v in o.values():
+                walk(v)
+        elif isinstance(o, list):
+            for v in o:
+                walk(v)
+
+    walk(cfg)
+    assert out, "no published-model entries found; config.defaults.json changed shape"
+    return out
+
+
+def test_every_published_model_is_pinned_to_a_revision() -> None:
+    """A published model with no pinned revision is a panel the browser refuses to fill.
+
+    `browserModels()` builds `.../resolve/<hf_revision>/<path>` and deliberately will not fall back
+    to `main` - pinning is what stops a visitor silently getting a different model from the one whose
+    metrics the page is printing. But nothing required the pin to EXIST, and three models shipped
+    without one: finance_aml.gbm, finance_aml.student and telecom_ids.qml. The demo behaved honestly
+    (it says "the browser will not fetch an unpinned model") and three published models were
+    unreachable anyway.
+
+    Two of the three were `hf_revision_invalidated_by_retrain` - correct behaviour, since re-pinning
+    a stale artifact would serve a model whose numbers do not match the page. The fix was to publish,
+    not to re-pin. The third had simply never been recorded.
+
+    Offline on purpose: whether the sha RESOLVES is a network fact and lives in the checklist (RT8).
+    Whether it exists at all is a repository fact and belongs here.
+    """
+    unpinned = [m["key"] for m in _frontend_models()
+                if m.get("hf_repo_id") and not m.get("hf_revision")]
+    assert not unpinned, (
+        f"published models with no pinned revision: {unpinned}. The browser will decline to fetch "
+        f"them, so each is a Published-model panel that renders an explanation instead of a model. "
+        f"Publish (do not hand-pin a stale sha) and let publish_hf.py record the revision.")
+
+
+def test_a_pin_and_an_invalidation_never_name_the_same_revision() -> None:
+    """The record must not assert that its own pin was invalidated.
+
+    `record_metrics` moves `hf_revision` into `hf_revision_invalidated_by_retrain` when a retrain
+    lands without a revision, and nothing cleared it on the way back. After a re-publish,
+    finance_aml.student held the SAME sha in both fields - because re-uploading identical bytes
+    returns the existing commit rather than making a new one. The registry prefers `hf_revision`, so
+    this was invisible at runtime and wrong only in the record.
+    """
+    metrics_path = Path(__file__).resolve().parents[1] / "models" / "metrics.json"
+    metrics = json.loads(metrics_path.read_text(encoding="utf-8"))
+    clashes = [k for k, e in metrics.items()
+               if isinstance(e, dict) and e.get("hf_revision")
+               and e.get("hf_revision") == e.get("hf_revision_invalidated_by_retrain")]
+    assert not clashes, (
+        f"{clashes} name one revision as both the pin and the retrain-invalidated one. "
+        f"publish_hf.py clears the marker it resolves; if this fires, that clearing was lost.")
