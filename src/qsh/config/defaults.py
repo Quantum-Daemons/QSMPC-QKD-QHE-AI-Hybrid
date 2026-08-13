@@ -16,12 +16,30 @@ from dataclasses import asdict, dataclass, field
 class QKDConfig:
     pulses: int = 200_000
     distance_km: float = 50.0
-    fiber_loss_db_per_km: float = 0.2
-    detector_efficiency: float = 0.25
-    dark_count_prob: float = 1e-5
-    misalignment: float = 0.015
-    eve_intercept_fraction: float = 0.0
-    error_correction_eff: float = 1.16
+    # MODELLING CHOICES, and each one departs from a reference this repository already cites and
+    # tests against: the GYS set in `qkd/decoy_reference.py` (Gobby, Yuan & Shields, APL 84, 3762
+    # (2004), as tabulated in Ma et al., PRA 72, 012326 (2005)), asserted by
+    # `tests/test_decoy_reference.py`. They were bare values with no source comment until Round 35,
+    # which read as "nobody knows where these came from" when the truth is that a cited alternative
+    # sits two modules away and these deliberately differ from it.
+    #
+    #                          here     GYS      ratio   favours the demo?
+    #   fibre loss             0.2      0.21     0.95x   yes, less loss
+    #   detector efficiency    0.25     0.045    5.56x   yes, a far better detector
+    #   dark count             1e-5     1.7e-6   5.88x   NO, more noise
+    #   misalignment           0.015    0.033    0.45x   yes, less error
+    #   error correction f_EC  1.16     1.22     0.95x   yes, better error correction
+    #
+    # FOUR OF FIVE LEAN THE SAME WAY. None is wrong - a 2004 InGaAs APD is not what anyone would
+    # model in 2026, and there is no single published detector efficiency to be right about. But the
+    # direction is systematic and a reader comparing this demo's key rates against the published
+    # curves should know it before they do.
+    fiber_loss_db_per_km: float = 0.2         # modelling choice; GYS 0.21
+    detector_efficiency: float = 0.25         # modelling choice; GYS 0.045
+    dark_count_prob: float = 1e-5             # modelling choice; GYS 1.7e-6
+    misalignment: float = 0.015               # modelling choice; GYS 0.033
+    eve_intercept_fraction: float = 0.0       # demo control, not a device property
+    error_correction_eff: float = 1.16        # modelling choice; GYS 1.22 (Cascade/LDPC overhead)
     # --- free-space (satellite downlink) channel ---
     #
     # These existed only as TypeScript literals in quantumSim.ts's FREE_SPACE, which every satellite
