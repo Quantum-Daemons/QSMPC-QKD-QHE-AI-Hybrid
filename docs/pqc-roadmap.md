@@ -193,6 +193,39 @@ Penalty exposure for Art. 50 non-compliance is up to EUR 15 million or 3 percent
 turnover, whichever is higher - worth stating because it is the reason this is a dated item and not
 a nice-to-have.
 
+## Hybrid acceptance: the failure mode this design avoids, and where it would bite (added 2026-08-13)
+
+**arXiv:2607.20800v3** (2026-07-23, revised 2026-08-12; PREPRINT - no journal_ref, no DOI),
+*"Classical Acceptance Is Not Hybrid Authentication"*, tested **eight open-source path-validation
+stacks over seven codebases, nine configurations over six certificate profiles**. On default paths,
+**every stack that parsed a separable hybrid X.509 certificate accepted it** - and destroying the
+post-quantum evidence while leaving the classical evidence valid **changed no verdict in any of the
+27 cells**. Four of the stacks verify post-quantum signatures elsewhere on the same path, so
+immature support does not explain it. Revoking a bound post-quantum certificate likewise changed no
+verdict, because nothing consults it.
+
+**This does not describe this project, and saying so precisely matters more than citing it.** The
+finding is about *separable* hybrid credentials, where a verifier can reach a decision from the
+classical half alone. This repository issues no X.509 at all: the hybrid is a **KEM combiner** -
+ML-KEM-768/1024 and X25519 fed together through HKDF-SHA256 with the transcript bound in
+(`src/qsh/pqc/hybrid_kem.py`, mirrored in `clientCompute.ts`). Both secrets enter one hash, so there
+is no path that reaches a session key from one of them; the code comment has said *"so neither half
+can be cancelled out by an attacker who controls the other"* since it was written.
+
+**Where it would bite if this project grew a transport.** `qkd/kme.py` records that a real ETSI
+GS QKD 014 deployment authenticates SAEs by mutual TLS with the identity taken from the client
+certificate, and that the in-process KME has no transport to attach that to. The moment that
+transport exists, the certificate becomes the thing this paper is about, and `signatures.py`'s note
+that ML-DSA is available *"for a hybrid signature if required by policy"* becomes a decision rather
+than a capability. The paper's contribution is the shape of the answer: a **policy-parametric
+contract** that carries the relying party's hybrid requirement into path validation and returns a
+*labelled* acceptance, so "accepted" and "accepted on classical evidence alone" are distinguishable.
+
+Two companion measurements from the same weeks, recorded as deployment context rather than as
+requirements - both preprints: **arXiv:2608.02147** (2026-08-03) measures post-quantum TLS deployment
+across UK internet sectors, and **arXiv:2607.29005** (2026-07-31) contrasts stated policy with
+observed deployment. They bear on the timeline anchors above, not on this codebase.
+
 ## What a 2026 production deployment needs that this project does not implement
 
 Verified 2026-08-09 against arXiv:2604.12985, "Quantum-safe IPsec in the banking industry"
