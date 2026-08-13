@@ -54,11 +54,19 @@ def _flows() -> dict[str, list[str]]:
     return flows
 
 
-def _flag_assignments() -> list[bool]:
-    """Every `artifacts.explanation_is_of_reported_class = <bool>` in source order."""
+def _flag_assignments() -> list[str]:
+    """Every `artifacts.explanation_is_of_reported_class = <expr>`, as the raw right-hand side.
+
+    Returns the EXPRESSION, not a bool. It used to return `list[bool]` by matching `(true|false)`,
+    and that shape encoded an assumption that stopped being true: that the flag is decided
+    statically per page. On telecom it is not. The in-tab softmax decides unless the visitor selects
+    QCNN, in which case the circuit does and the bars explain something else - so the value is a
+    property of the RUN. Counting literals silently dropped that site and the guard failed for the
+    right reason.
+    """
     code = "\n".join(re.sub(r"//.*$", "", ln) for ln in COMPUTE.read_text().splitlines())
-    return [v == "true" for v in
-            re.findall(r"artifacts\.explanation_is_of_reported_class\s*=\s*(true|false)", code)]
+    return [m.strip() for m in
+            re.findall(r"artifacts\.explanation_is_of_reported_class\s*=\s*([^;]+);", code)]
 
 
 def test_the_flag_is_set_at_every_explanation_site() -> None:
@@ -85,14 +93,29 @@ def test_the_counts_match_the_flows_that_lack_private_inference() -> None:
         "updating - and check whether the new page's explanation site sets the flag."
     )
     assignments = _flag_assignments()
-    assert assignments.count(True) == len(without), (
-        f"{len(without)} use cases have no private_inference stage ({without}) but "
-        f"{assignments.count(True)} sites set the flag true. A page that decides without an "
-        "encrypted stage and does not set it will tell visitors its correct attribution is not one."
+    # A page with no encrypted stage must be able to reach `true`; a page with one must reach
+    # `false`. "Able to reach" rather than "counts equal", because one of these sites is now
+    # conditional - see `_flag_assignments`.
+    can_be_true = [a for a in assignments if a == "true" or not a.startswith("false")]
+    assert len(can_be_true) >= len(without), (
+        f"{len(without)} use cases have no private_inference stage ({without}) but only "
+        f"{len(can_be_true)} sites can reach a true flag ({assignments}). A page that decides "
+        "without an encrypted stage and cannot set it will tell visitors its correct attribution "
+        "is not one."
     )
-    assert assignments.count(False) >= 1, (
-        "no site sets the flag false. The pages WITH an encrypted stage need the original caveat: "
-        "their bars explain a different model from the one that produced the reported class."
+    assert any(a == "false" for a in assignments), (
+        "no site sets the flag false unconditionally. The pages WITH an encrypted stage need the "
+        "original caveat: their bars explain a different model from the one that produced the "
+        "reported class."
+    )
+    # The conditional site must not be a bare literal again: telecom's QCNN branch replaces the
+    # surfaced class, and a literal there is exactly the contradiction this round fixed - the panel
+    # rendered "these bars explain the same model that produced the class above" beside "the class
+    # came from the trained QCNN, a different decision", both at once.
+    assert any(a not in ("true", "false") for a in assignments), (
+        f"every flag assignment is a literal ({assignments}). At least one page decides what "
+        "surfaced at RUN time - telecom, where selecting QCNN replaces the class the softmax "
+        "produced - so a literal there re-creates the two-contradicting-paragraphs defect."
     )
 
 
