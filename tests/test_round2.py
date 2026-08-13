@@ -1,8 +1,14 @@
 """Tests for Round-2 features: config, crypto-agility (sig), pause/resume/step,
 MCP bridge, Pauli concealment, OpenFHE bootstrap."""
 
+import json
+import os
+import signal
+import subprocess
+import sys
 import threading
 import time
+from pathlib import Path
 
 import pytest
 
@@ -126,16 +132,76 @@ def test_stop_from_pause():
 
 
 # --- OpenFHE CKKS bootstrap (commercial-OK; needs the openfhe wheel + recent libstdc++) ---
+#
+# This test used to have two ways to report success without checking anything: it skipped on
+# ImportError, and it skipped when `bootstrap_enabled` was False -- which the backend set by
+# swallowing every exception from its bootstrap setup. On this EL9 host neither fired, because
+# the real failure was a SIGSEGV inside EvalBootstrapSetup that no except clause can catch; it
+# killed the whole run instead. Now: the work happens in a subprocess (so a crash is a failure,
+# not a dead suite), `bootstrap_enabled` is never silently False (the backend raises), and the
+# only skip left is "openfhe genuinely will not import" -- which conftest.py cross-checks, so
+# the skip cannot cover for a host where openfhe imports fine.
+_BOOTSTRAP_PROBE = Path(__file__).with_name("_openfhe_bootstrap_probe.py")
+
+#: Set to "1" on any host where bootstrapping is supposed to work (CI, the Docker image, the
+#: demo VPS). Turns even the legitimate "openfhe missing" skip into a failure there.
+REQUIRE_ENV = "QSH_REQUIRE_OPENFHE_BOOTSTRAP"
+
+
+def _probe_payload(stdout: str) -> dict:
+    for line in reversed(stdout.strip().splitlines()):
+        if line.startswith("{"):
+            return json.loads(line)
+    raise AssertionError(f"probe printed no JSON payload; stdout was:\n{stdout}")
+
+
 @pytest.mark.slow
 def test_openfhe_bootstrap():
-    try:
-        from qsh.fhe.backends import OpenFHEBackend
+    proc = subprocess.run(
+        [sys.executable, str(_BOOTSTRAP_PROBE)],
+        capture_output=True, text=True, timeout=900,
+    )
+    required = os.environ.get(REQUIRE_ENV) == "1"
 
-        b = OpenFHEBackend(use_bootstrap=True)
-    except ImportError:
-        pytest.skip("openfhe not importable on this host (needs Ubuntu-24.04-class libstdc++)")
-    if not b.bootstrap_enabled:
-        pytest.skip("bootstrap not available")
-    ct = b.encrypt([0.5, 0.25, 0.1])
-    out = b.decrypt(b.bootstrap(ct))[:3]
-    assert out[0] == pytest.approx(0.5, abs=1e-2)
+    if proc.returncode == 42:                      # openfhe not importable -- the honest skip
+        reason = _probe_payload(proc.stdout).get("import_error", "<no detail>")
+        msg = (f"openfhe does not import on this host, so CKKS bootstrapping cannot be "
+               f"exercised. Underlying error: {reason}. On RHEL/AlmaLinux 9 the published "
+               f"wheel needs a newer libstdc++ than the system provides -- fix it with "
+               f"`bash env/build_openfhe_el9.sh` (see requirements-fhe.txt).")
+        if required:
+            pytest.fail(f"{REQUIRE_ENV}=1 but {msg}")
+        pytest.skip(msg)
+
+    if proc.returncode < 0:                        # died on a signal; POSIX reports -N
+        sig = signal.Signals(-proc.returncode)
+        pytest.fail(
+            f"OpenFHE bootstrapping crashed the interpreter: {sig.name} "
+            f"({proc.returncode}). This is the defect this test exists to catch -- a native "
+            f"crash, not an exception, so nothing upstream could catch or skip it. Check the "
+            f"crypto-context parameters in qsh/fhe/backends.py (OpenFHEBackend.__init__ "
+            f"documents which ones are load-bearing).\nstderr:\n{proc.stderr[-2000:]}"
+        )
+
+    assert proc.returncode == 0, (
+        f"bootstrap probe exited {proc.returncode}\n"
+        f"stdout:\n{proc.stdout[-2000:]}\nstderr:\n{proc.stderr[-2000:]}"
+    )
+
+    d = _probe_payload(proc.stdout)
+    expected = d["expected"]
+
+    # The ciphertext really was depleted, and bootstrapping really did buy levels back.
+    assert d["level_before"] == d["total_depth"] - 2, d
+    assert d["levels_regained"] > 0, (
+        f"EvalBootstrap returned a ciphertext at the same level it was given "
+        f"({d['level_before']}), so nothing was refreshed: {d}")
+
+    # Values survive the round trip. Bootstrapping is approximate, hence the tolerance: the
+    # depleted ciphertext decrypts near-exactly, the bootstrapped one to about two decimals.
+    assert d["depleted"] == pytest.approx(expected, abs=1e-6), d
+    assert d["refreshed"] == pytest.approx(expected, abs=1e-2), d
+
+    # And the refreshed ciphertext is usable -- one more multiply, which the depleted one
+    # could not have afforded.
+    assert d["reused"] == pytest.approx([2 * v for v in expected], abs=2e-2), d
