@@ -315,15 +315,37 @@ export const USECASE_SPECS: Record<string, Spec> = {
       // bit/carrier" with a done tick beside it - which reads as delivered-but-not-secret, the
       // opposite of what happened. The inline eavesdrop check is this page's headline feature and
       // the diagram was the one surface that did not show it firing.
+      //
+      // AND THE FIX DID NOT FIX IT. Keying the abort off `qsdc_eavesdrop_detected` moved it onto a
+      // metric that is `abort && !lossLimited`, and `lossLimited` is 1 at every setting this demo
+      // offered: the link budget floors loss at 5 dB atmospheric + 3 dB pointing, so g >= 6.31 and
+      // C_s > 0 needs h(e) < 1/(1+g) = 0.137 while the misalignment floor of 0.025 alone gives
+      // h(0.025) = 0.169. Measured on the deployed site at 1 km with Eve at 1.0 - minimum range,
+      // maximum eavesdropper - the log read "QSDC NOT AVAILABLE on this link ... Telemetry falls
+      // back to the PQC session key" while this label read "QSDC direct telemetry · secrecy 0
+      // bit/carrier ✓". The ABORTED branch was unreachable, so the symptom above survived its own
+      // repair, and the sign clamp on `qsdc_secrecy_capacity` rendered -5.2033 as "0".
+      //
+      // Three states now, because there are three: delivered; withheld because the LINK cannot
+      // carry it; withheld because of an attack this link would not have suffered on its own.
+      // `ok` marks the two withheld states completed-but-failed, so the tick stops reading as a
+      // verdict on a delivery that did not happen.
       { stageId: "qsdc_telemetry",
         kind: "q-arrow",
+        ok: (m) => Number(m["qsdc_link_budget_limited"]) !== 1
+          && Number(m["qsdc_eavesdrop_detected"]) !== 1,
         label: (m) => (Number(m["qsdc_eavesdrop_detected"]) === 1
           // "over threshold" was accurate while the abort compared a scalar QBER. It no longer
           // does: the criterion is secrecy capacity Cs <= 0, and Cs depends on channel loss via
           // g = Q_Eve/Q_Bob, so an error rate WELL under the old 0.11 can still abort. Naming
           // the real quantity keeps the diagram and the metrics table telling one story.
-          ? `QSDC ABORTED · secrecy capacity 0 at error ${f(m, "qsdc_error_rate")} (g=${f(m, "qsdc_eve_gain_g")}) · telemetry withheld`
-          : `QSDC direct telemetry · secrecy ${f(m, "qsdc_secrecy_capacity")} bit/carrier`) },
+          ? `QSDC ABORTED · eavesdropper · C_s ${f(m, "qsdc_secrecy_capacity")} at error `
+            + `${f(m, "qsdc_error_rate")} (g=${f(m, "qsdc_eve_gain_g")}) · telemetry withheld`
+          : Number(m["qsdc_link_budget_limited"]) === 1
+            ? `QSDC NOT AVAILABLE · link-budget limited · C_s ${f(m, "qsdc_secrecy_capacity")} `
+              + `bit/carrier at ${f(m, "channel_loss_db")} dB (g=${f(m, "qsdc_eve_gain_g")}) · `
+              + `telemetry withheld, falls back to the PQC session key`
+            : `QSDC direct telemetry · secrecy ${f(m, "qsdc_secrecy_capacity")} bit/carrier`) },
       publishedStep("qsdc_telemetry"),
       QSMPC_COMPARE,
       { stageId: "sign_result", kind: "c-bidir", label: (_m, c) => `${sigName(c)}-signed audit record` },
