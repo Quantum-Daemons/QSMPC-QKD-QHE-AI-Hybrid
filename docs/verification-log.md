@@ -733,7 +733,7 @@ its exit status dropped, which is the `DP2` failure applied to this project's ow
 measurement table written with row IDs in the first column three sections after writing the warning
 against exactly that.
 
-## Round 37 (`9fabdfb` on its branch, bundle `index-J5Enwme_.js`) - private inference had never been drawn, and was measured over one row
+## Round 37 (`ac5d89f` on its branch, bundle `index-CLUy7CWv.js`) - private inference had never been drawn, and was measured over one row
 
 The axis was the standing 19-bullet request, and the finding is why it keeps arriving:
 `docs/deliverable-verification.md` holds a register whose own rule is that an item deferred three
@@ -785,3 +785,10 @@ ones:
   of `ScatterChart` rather than passed as the `title` prop every other chart in the file uses - the
   same regression Round 34 recorded. Its axis ticks also rendered as sixteen-digit floats. Neither is
   visible to tsc, the build, or any assertion in the suite; both were found by looking at the page.
+
+  **Both fixes were re-verified on a fresh deploy rather than assumed**, because the defects were
+  found on bundle `index-J5Enwme_.js` and the fix landed two commits later: the box was still serving
+  the broken build when the fix was committed. On `index-CLUy7CWv.js` the figure's accessible name
+  reads *"Encrypted score against plaintext score, 512 held-out rows"* and the ticks read
+  `3.73 / 8.73 / 13.73 / 21.79`. Claiming a UI fix without redeploying is the same error as reading a
+  metric before the state settles.
