@@ -220,6 +220,28 @@ const publishedStep = (stageId: string): Step => ({
   },
 });
 
+/**
+ * Federated training, drawn from the aggregation the run REPORTS rather than a string kept here.
+ *
+ * This label used to read "federated train + pairwise masking (demo keys)". `clientQFL` generated no
+ * masks, no pairwise seeds and no key material - it was a size-weighted plaintext mean, and the only
+ * `mask` in `clientCompute.ts` belonged to the QSMPC secret-sharing branch, a different stage. So the
+ * diagram named a cryptographic property that no code provided, which is the worst thing this figure
+ * can do: it is the most-looked-at part of the page and a visitor has no other way to learn what the
+ * aggregation was.
+ *
+ * Keying it off `qfl_aggregation` - emitted by the stage that did the work - applies the same rule as
+ * the inference label above ("read the OBSERVED backend, never the control"). A hand-kept string here
+ * can drift from the algorithm; a measured one cannot.
+ *
+ * Shared by medical and finance so the two cannot disagree about one function's behaviour.
+ */
+const FEDERATED_STEP: Step = {
+  stageId: "federated_training",
+  kind: "c-bidir",
+  label: (m) => `federated train · ${f(m, "qfl_aggregation")} · acc ${f(m, "federated_accuracy")}`,
+};
+
 export const USECASE_SPECS: Record<string, Spec> = {
   finance_aml: {
     a: { name: "Bank A", sub: "blacklist + fraud model · LAN" },
@@ -228,6 +250,14 @@ export const USECASE_SPECS: Record<string, Spec> = {
       { stageId: "pqc_handshake", kind: "c-bidir", label: (_m, c) => `PQC handshake — ${kemName(c)}` },
       { stageId: "qkd_key_agreement", kind: "q-arrow", label: (m, c) => `${qkdName(c)} · QBER ${f(m, "qber")}${optiTag(m, c)}`, hidden: pqcOnly, ok: qkdOk },
       { stageId: "qsmpc_compute", kind: qsmpcKind("psi"), label: qsmpcLabel("psi") },
+      // Finance is in FEDERATED_USECASES, so `runClientPipeline` injects `federated_training` here -
+      // before the first of private_inference/qml_ids/qsdc_telemetry/quantum_comparison. This spec
+      // had no such step, and `OrchestrationGraph.FLOWS` had no finance key either, so the run
+      // advanced to a stage NEITHER figure contained: measured live, the stage started at 3.999 s,
+      // reported accuracy, and no svg on the page contained the string "federat". That is the exact
+      // "no render target" defect `usePipelineRun`'s FEDERATED_USECASES comment describes as the
+      // reason the set exists - reintroduced by adding finance to the set on the data test alone.
+      FEDERATED_STEP,
       ...HYBRID_INFERENCE,
       publishedStep("private_inference"),
       QSMPC_COMPARE,
@@ -240,7 +270,7 @@ export const USECASE_SPECS: Record<string, Spec> = {
     steps: [
       { stageId: "pqc_handshake", kind: "c-bidir", label: (_m, c) => `PQC handshake — ${kemName(c)}` },
       { stageId: "qkd_key_agreement", kind: "q-arrow", label: (m, c) => `${qkdName(c)} · QBER ${f(m, "qber")}${optiTag(m, c)}`, hidden: pqcOnly, ok: qkdOk },
-      { stageId: "federated_training", kind: "c-bidir", label: (m) => `federated train + pairwise masking (demo keys) · acc ${f(m, "federated_accuracy")}` },
+      FEDERATED_STEP,
       ...HYBRID_INFERENCE,
       publishedStep("private_inference"),
       QSMPC_COMPARE,
