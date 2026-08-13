@@ -62,15 +62,25 @@ from ...orchestration.stages import (
 )
 
 # Free-space LEO downlink defaults (overridable per-run from the WebUI via ctx.config).
+#
+# `sat_loss_db_per_km` is GONE. It was 0.035, a linear rate chosen to give ~28 dB at 800 km, and the
+# browser rejected that model rounds ago: it reads plausibly at exactly 800 km beside the ~27 dB
+# Micius reports and then diverges badly with range. The channel now carries a FreeSpaceParams and
+# `ChannelParams.loss_db()` applies the diffraction law, so both implementations answer 24.48 dB for
+# the same nominal link instead of 24.48 and 28.0.
 _SAT_DEFAULTS = {
     "sat_distance_km": 800.0,         # LEO slant range (Micius-class)
-    "sat_loss_db_per_km": 0.035,      # free-space effective -> ~28 dB at 800 km
     "sat_detector_efficiency": 0.4,   # SNSPD ground receiver
     "sat_dark_count_prob": 1e-5,      # per gate (night-sky background)
     "sat_misalignment": 0.025,        # atmospheric turbulence + pointing error
     "sat_eve": 0.0,                   # intercept-resend fraction (0 = no eavesdropper)
     "sat_pulses": 4_000_000,          # channel uses (free-space links need many)
     "sat_opt_pulses": 200_000,        # pulses per OptiQKD evaluation (fewer than a full run, for speed)
+    # The two fixed terms of the budget, exposed in the WebUI so the inline eavesdrop check can be
+    # demonstrated: they floor total loss at 8 dB by default, which makes every abort attributable to
+    # the link rather than to Eve at every setting the page used to offer.
+    "sat_atmospheric_db": None,       # None -> QKDConfig.free_space_atmospheric_db
+    "sat_pointing_db": None,          # None -> QKDConfig.free_space_pointing_db
 }
 _DEFAULT_TELEMETRY = (
     "SAT-OK;orbit=LEO;alt=550km;batt=98%;temp=21C;payload=nominal;ts=T+00:42:17"
@@ -78,16 +88,24 @@ _DEFAULT_TELEMETRY = (
 
 
 def _sat_channel(ctx: Context):
-    from ...qkd.channel import ChannelParams
+    from ...config import get_config
+    from ...qkd.channel import ChannelParams, FreeSpaceParams
 
+    qkd = get_config().qkd
     g = lambda k: ctx.config.get(k, _SAT_DEFAULTS[k])  # noqa: E731
+    pick = lambda k, fallback: float(fallback if g(k) is None else g(k))  # noqa: E731
     return ChannelParams(
         distance_km=float(g("sat_distance_km")),
-        fiber_loss_db_per_km=float(g("sat_loss_db_per_km")),
         detector_efficiency=float(g("sat_detector_efficiency")),
         dark_count_prob=float(g("sat_dark_count_prob")),
         misalignment=float(g("sat_misalignment")),
         eve_intercept_fraction=float(g("sat_eve")),
+        free_space=FreeSpaceParams(
+            beam_divergence_urad=qkd.free_space_beam_divergence_urad,
+            rx_aperture_m=qkd.free_space_rx_aperture_m,
+            atmospheric_db=pick("sat_atmospheric_db", qkd.free_space_atmospheric_db),
+            pointing_db=pick("sat_pointing_db", qkd.free_space_pointing_db),
+        ),
     )
 
 
@@ -102,7 +120,7 @@ class SatelliteQKDStage(Stage):
         params = _sat_channel(ctx)
         ctx.put("sat_channel", params)
         n_pulses = int(ctx.config.get("sat_pulses", _SAT_DEFAULTS["sat_pulses"]))
-        loss_db = round(params.distance_km * params.fiber_loss_db_per_km, 1)
+        loss_db = round(params.loss_db(), 1)
         bus.log(f"free-space downlink: {params.distance_km:.0f} km, ~{loss_db} dB loss, "
                 f"eve={params.eve_intercept_fraction:.2f}", self.name)
         res = run_bb84(n_pulses, params, seed=ctx.config.get("seed", 0))

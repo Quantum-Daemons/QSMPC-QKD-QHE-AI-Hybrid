@@ -37,7 +37,12 @@ class QSDCResult:
     delivered: bytes | None        # the message if the channel passed the eavesdrop check, else None
     eavesdrop_detected: bool       # abort ATTRIBUTABLE to Eve: this link would have closed without her
     error_rate: float              # measured error on the sampled check carriers
-    secrecy_capacity: float        # Cs = 1 - h(e) - g h(e), clamped at 0 for reporting
+    # Cs = 1 - h(e) - g h(e). REPORTED SIGNED. This used to be replaced by a literal 0.0 on the
+    # abort path, so a link that missed by 51 bit/carrier and one that missed by 0.001 reported the
+    # same number -- and 0.0 also reads as "marginal but not negative", the one thing it was not.
+    # How badly a link fails is the whole quantity here: it is the difference between "widen the
+    # aperture" and "QSDC does not close over this class of link".
+    secrecy_capacity: float
     message_bits: int
     check_bits: int
     loss_db: float                 # one-way channel loss backing g
@@ -79,7 +84,10 @@ def quantum_secure_direct_comm(
     check_errors = rng.random(n_check) < e
     error_rate = float(check_errors.mean()) if n_check else float(e)
 
-    loss_db = params.distance_km * params.fiber_loss_db_per_km
+    # `params.loss_db()`, not the fibre product: a free-space channel carries a diffraction spec and
+    # this expression silently ignored it, so the same downlink was 28.0 dB here and 24.48 dB in the
+    # browser - a factor 2.7 in g, and so in the secrecy capacity the abort is decided on.
+    loss_db = params.loss_db()
     g = 10.0 ** (loss_db / 10.0)
     secrecy = 1.0 - _h2(error_rate) - g * _h2(error_rate)
 
@@ -91,7 +99,7 @@ def quantum_secure_direct_comm(
     link_limited = secrecy_clean <= 0.0
 
     if secrecy <= 0.0:
-        return QSDCResult(None, not link_limited, round(error_rate, 5), 0.0,
+        return QSDCResult(None, not link_limited, round(error_rate, 5), round(secrecy, 5),
                           n_msg, n_check, round(loss_db, 3), round(g, 3), link_limited)
 
     # above zero secrecy capacity: LDPC frame correction recovers the block exactly

@@ -1099,6 +1099,32 @@ export function clientQFL(
     aggregation: "size-weighted FedAvg, plaintext updates" };
 }
 
+/**
+ * The free-space channel this run selected, in one place.
+ *
+ * `satellite_qkd` and `qsdc_telemetry` each spread `FREE_SPACE` and overrode a subset of its fields
+ * inline - four sites, three different subsets. `channelLossDb` was called WITHOUT `sat_eve` (right,
+ * loss does not depend on Eve) and `intrinsicQber` WITH it (also right), which is exactly the kind
+ * of distinction that survives only while one person holds all four sites in their head. Adding the
+ * two link-budget keys would have made it eight overrides across four sites.
+ *
+ * `eveFraction` stays an explicit argument because the two callers genuinely differ: the counterfactual
+ * that decides `link_budget_limited` re-evaluates the SAME link with Eve removed.
+ */
+function satChannel(config: Record<string, any>, eveFraction?: number) {
+  const fs = FREE_SPACE.freeSpace!;
+  return {
+    ...FREE_SPACE,
+    distanceKm: Number(config.sat_distance_km ?? FREE_SPACE.distanceKm),
+    eveFraction: eveFraction ?? Number(config.sat_eve ?? FREE_SPACE.eveFraction),
+    freeSpace: {
+      ...fs,
+      atmosphericDb: Number(config.sat_atmospheric_db ?? fs.atmosphericDb),
+      pointingDb: Number(config.sat_pointing_db ?? fs.pointingDb),
+    },
+  };
+}
+
 export interface ClientEvent {
   type: string; stage: string; message: string; data: Record<string, any>; t: number;
 }
@@ -1599,8 +1625,7 @@ export function runClientPipeline(
         // quantum arrow in the diagram while the run went on emitting qber, channel_loss_db and
         // secure_key_bits for a channel the page had just said was not there.
         if (config.qkd === "pqc-only") { emit("log", stage, "free-space QKD disabled (PQC-only profile)"); break; }
-        const satChan = { ...FREE_SPACE, distanceKm: Number(config.sat_distance_km ?? FREE_SPACE.distanceKm),
-          eveFraction: Number(config.sat_eve ?? FREE_SPACE.eveFraction) };
+        const satChan = satChannel(config);
         const satProtocol = String(config.qkd_protocol ?? qkdCfg().protocol);
         const satPulses = Number(config.sat_pulses ?? webCfg().demo_sat_pulses);
         const satERes = satProtocol === "e91" ? e91(satPulses, satChan, seed, qkdCfg().e91_visibility) : null;
@@ -1656,9 +1681,7 @@ export function runClientPipeline(
         // Same channel the satellite_qkd stage above built, distance included. Reading only sat_eve
         // here meant the downlink range moved the QKD QBER but not the QSDC error rate, so one
         // control produced two inconsistent pictures of the same link.
-        const e = intrinsicQber({ ...FREE_SPACE,
-          distanceKm: Number(config.sat_distance_km ?? FREE_SPACE.distanceKm),
-          eveFraction: Number(config.sat_eve ?? FREE_SPACE.eveFraction) });
+        const e = intrinsicQber(satChannel(config));
         // QSDC aborts on SECRECY CAPACITY, not on a fixed QBER. Qi et al., Light Sci. Appl. 8, 22
         // (2019), protocol step 2: "If the secrecy capacity C_s is zero, they conclude the channel
         // is insecure and terminate the process."
@@ -1676,8 +1699,7 @@ export function runClientPipeline(
         // The founding QSDC papers (Long-Liu 2002, Deng-Long-Liu 2003, DL04 2004) give no numeric
         // threshold at all - only "if the error rate is high, halt" - and no standards body has ever
         // specified one: ETSI, ITU-T, ISO/IEC and IEEE quantum series are all key distribution.
-        const lossDb = channelLossDb({ ...FREE_SPACE,
-          distanceKm: Number(config.sat_distance_km ?? FREE_SPACE.distanceKm) });
+        const lossDb = channelLossDb(satChannel(config));
         const g = 10 ** (lossDb / 10);
         const secrecy = 1 - h2(e) - g * h2(e);
         const abort = secrecy <= 0;
@@ -1694,13 +1716,17 @@ export function runClientPipeline(
         // finding: QSDC does not close over a LEO free-space downlink under the published
         // criterion. Qi et al. demonstrated it at 4.1 dB on FIBRE; this link is 24.5 dB.
         const secrecyNoEve = (() => {
-          const e0 = intrinsicQber({ ...FREE_SPACE,
-            distanceKm: Number(config.sat_distance_km ?? FREE_SPACE.distanceKm), eveFraction: 0 });
+          const e0 = intrinsicQber(satChannel(config, 0));
           return 1 - h2(e0) - g * h2(e0);
         })();
         const lossLimited = secrecyNoEve <= 0;
         metric(stage, "qsdc_error_rate", r2(e));
-        metric(stage, "qsdc_secrecy_capacity", r2(Math.max(0, secrecy)));
+        // SIGNED. `Math.max(0, secrecy)` stood here, so a link missing by 51 bit/carrier and one
+        // missing by 0.001 both reported "0" - and 0 also reads as marginal-but-not-negative, the
+        // one thing it is not. Measured at 1 km with Eve at 1.0 the true value is -5.2033 and the
+        // page displayed 0. How badly a link fails is the quantity that distinguishes "widen the
+        // aperture" from "QSDC does not close over this class of link".
+        metric(stage, "qsdc_secrecy_capacity", r2(secrecy));
         metric(stage, "qsdc_eve_gain_g", r2(g));
         metric(stage, "qsdc_link_budget_limited", lossLimited ? 1 : 0);
         // Reserved for what the name says: an abort this link would NOT have suffered on its own.
