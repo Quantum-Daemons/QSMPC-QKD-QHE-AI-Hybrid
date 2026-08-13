@@ -195,3 +195,15 @@ jobs:
       - name: QKD model plumbing and identities
         working-directory: web
         run: npm run check:qkd
+
+      # Third for the same reason again, and the sharpest case yet: the diagram claimed "pairwise
+      # masking (demo keys)" and the DAG claimed "(secure aggregation)" while clientQFL summed
+      # plaintext updates, with `secureAgg: true` written as a literal on the return line. tsc, the
+      # build and the whole Python suite stayed green throughout, because none of them can see a
+      # figure asserting a property of code in another file. This asserts the property on the
+      # function: the masks are applied, keyed by the session key, fresh per round, and cancel to a
+      # bit-identical weighted mean. Five seeded defects were each caught by the assertion written
+      # for them before this was wired here.
+      - name: Federated secure aggregation
+        working-directory: web
+        run: npm run check:qfl

@@ -239,7 +239,11 @@ const publishedStep = (stageId: string): Step => ({
 const FEDERATED_STEP: Step = {
   stageId: "federated_training",
   kind: "c-bidir",
-  label: (m) => `federated train · ${f(m, "qfl_aggregation")} · acc ${f(m, "federated_accuracy")}`,
+  // The accuracy carries its denominator. The bundled federated samples are 16 rows (finance) and
+  // 12 (medical), so this is a 4-row and a 3-row score - "acc 0.25" alone reads as a model that is
+  // worse than chance rather than as one held-out row.
+  label: (m) => `federated train · ${f(m, "qfl_aggregation")} · acc ${f(m, "federated_accuracy")} `
+    + `on ${f(m, "federated_eval_rows")} held-out rows`,
 };
 
 export const USECASE_SPECS: Record<string, Spec> = {
