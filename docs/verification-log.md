@@ -34,6 +34,7 @@ written. The index is the fix instead:
 | Round 33, Round 34 | appended, at the end |
 | Round 35 | appended, measured in Round 36 |
 | Round 36 | appended, at the end |
+| Round 37 | appended, at the end |
 
 Rounds 25, 26 and 27 have no entry here and never did. That is a real gap in the record rather than an
 ordering artefact, and it is not reconstructable now: it predates the point where this file existed as
@@ -731,3 +732,56 @@ and thereby found a second unconditional claim; a report rebuild run with its ou
 its exit status dropped, which is the `DP2` failure applied to this project's own generator; and a
 measurement table written with row IDs in the first column three sections after writing the warning
 against exactly that.
+
+## Round 37 (`9fabdfb` on its branch, bundle `index-J5Enwme_.js`) - private inference had never been drawn, and was measured over one row
+
+The axis was the standing 19-bullet request, and the finding is why it keeps arriving:
+`docs/deliverable-verification.md` holds a register whose own rule is that an item deferred three
+rounds must be done or reclassified, and it had **no sections for Rounds 34, 35 or 36** and no entry
+for any of the four longest-carried asks. The register that stops items rolling forward had stopped
+being written.
+
+**Every encrypted-versus-plaintext figure this project reported was over a single row.**
+`encrypted_scores_compared` counted CLASSES; `encrypted_top1_mismatches` could only be 0 or 1. The
+fix costs no homomorphic work: `encryptedLinear` padded one 7-feature input into 4096 slots and the
+rotate-and-add reduction sums a window of `sumWidth`, so packing rows at that stride leaves each
+row's dot product in its own slot with the loop unchanged.
+
+Measured on the deploy, telecom:
+
+| quantity | one row | 512 rows |
+|---|---|---|
+| wall clock | 107.23 ms | **110.92 ms** |
+| class scores compared | 8 | **4096** |
+| top-1 mismatches | 0 of 1 | **0 of 512** |
+| precision | 26 bits | 24 bits |
+
+512 of **600** held-out rows; the 88 that did not fit are disclosed in the metrics, the log and the
+caption. The chart renders 512 symbols with the `y = x` reference line, zero page overflow.
+
+Unchanged and re-confirmed on this bundle: satellite's signed `qsdc_secrecy_capacity` **-51.58** and
+its `QSDC NOT AVAILABLE - link-budget limited` step; medical's federated masking at
+`0.44 untrained -> 0.88 on 80 held-out rows` with 6 pairwise masks.
+
+**The QCNN literature check, declined since Round 25, was falsifiable all along.** The stated reason -
+"no published QCNN reports this circuit on this data" - is true of the circuit and false of the data:
+the medical circuit trains on WDBC. Against Sci Rep 14 (2024), DOI 10.1038/s41598-024-74778-7
+(QCCNN 0.96155 validation over 30 features, no test set), this project's five-seed median is 0.9070
+over 8 features on a held-out test split. **The finding is not the gap**: this project's plain
+logistic regression on 8 features scores 0.9651, above the paper's quantum model on 30 and well above
+the paper's own logistic regression (0.91184), so the published quantum margin rests on a classical
+baseline about 5 points below what the dataset supports.
+
+Five self-inflicted defects, all found and fixed inside the round, and two of them are the interesting
+ones:
+
+- the batch scored 512 of 600 rows silently, while the function's own comment claimed "a cap is
+  visible, and the caller reports how many rows it asked for". It was not, and it could not.
+- the documentation-linkage check **passed locally and failed in CI**, because its haystack included
+  the gitignored checklist - so a link nobody who clones the repository can follow counted as a link.
+  It also searched only markdown, so two investigations reachable from `quantumSim.ts` and from model
+  cards were reported as orphans. Measured properly there was **one** genuine orphan, not three.
+- the agreement chart rendered with a NULL accessible name, because `<title>` was written as a child
+  of `ScatterChart` rather than passed as the `title` prop every other chart in the file uses - the
+  same regression Round 34 recorded. Its axis ticks also rendered as sixteen-digit floats. Neither is
+  visible to tsc, the build, or any assertion in the suite; both were found by looking at the page.
