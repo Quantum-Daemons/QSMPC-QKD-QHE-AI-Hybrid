@@ -16,6 +16,7 @@ import {
 import { encryptedConv2d, encryptedLinear, encryptedStudentInference, warmFHE,
   type CnnStudentWeights } from "./clientFHE";
 import { clientTrainScoreIDS } from "./clientIDS";
+import { clientQFL } from "./clientQFL";
 import { secureArgmax, warmMPC } from "./clientMPC";
 import { optimizeQKD } from "./clientOptiQKD";
 import { generateQuantumBits } from "./clientQRNG";
@@ -1007,97 +1008,6 @@ export async function clientAliceBob(seed = 0, nShared = 8) {
 //  In-browser E2E pipeline with Pause / Resume / Step / Stop
 // --------------------------------------------------------------------------- //
 // ---- Quantum Federated Learning (QFL) — client-side mirror (demo) ------------------------------
-// A GENUINELY-computed, in-browser FedAvg of a HYBRID quantum-classical model: a fixed quantum
-// feature map (the quantumSim QCNN expectation) feeds a classical logistic head that is federated
-// across K simulated clients with size-weighted FedAvg — mirroring the full deployment's
-// Flower + PennyLane HybridQNN. Round accuracy is REALLY computed on a held-out split (not a canned
-// constant). Honest scope: a small simulated VQC feature map + a federated classical head (not
-// fault-tolerant QFL); the full path also trains the VQC weights.
-//
-// This comment used to end "under quantum-safe secure aggregation", and the diagram said "pairwise
-// masking (demo keys)". Neither was true of this function: it summed plaintext updates. `aggregation`
-// replaces the `secureAgg: true` literal that stood here — a boolean hardcoded to the answer it was
-// supposed to report is not a report. The stage publishes it as `qfl_aggregation` and the diagram
-// renders that, so the figure cannot outrun the algorithm again.
-export interface QFLResult {
-  roundAcc: number[]; finalAcc: number; clients: number; rounds: number; aggregation: string;
-}
-
-export function clientQFL(
-  seed = 0,
-  opts?: { clients?: number; rounds?: number; data?: { X: number[][]; Y: number[] } | null },
-): QFLResult {
-  const u = rng(seed + 11);
-  // A DELIBERATE lighter schedule than the server's, now read from config rather than hardcoded.
-  // Round 23b found the browser running 6 rounds at lr 0.15 while `config.federated` said 8 at 0.05,
-  // with no way to reconcile them because FederatedConfig was not exported to the frontend at all.
-  // Round 24 exports it, including the browser overrides and the reason for them, so the override is
-  // a visible decision instead of two unrelated literals that happen to differ.
-  const fed = federatedCfg();
-  const K = opts?.clients ?? fed.hospitals;
-  const rounds = opts?.rounds ?? fed.browser_rounds;
-  const X: number[][] = [];
-  const Y: number[] = [];
-  if (opts?.data?.X?.length) {
-    // Federate over the page's REAL bundled sample. Without this the function always built its own
-    // two-cluster toy, so "federated accuracy" was the same number on every industry page for a
-    // given seed -- a metric that described no dataset the page was showing.
-    const src = opts.data;
-    for (let i = 0; i < src.X.length; i++) { X.push(src.X[i].slice()); Y.push(src.Y[i]); }
-  } else {
-    const D = 4;
-    const N = 240;
-    for (let i = 0; i < N; i++) {
-      const c = i % 2;                                 // two overlapping clusters (non-trivial -> a real curve)
-      X.push(Array.from({ length: D }, () => (c ? 0.5 : -0.5) + (u() * 2 - 1) * 1.0));
-      Y.push(c);
-    }
-  }
-  const N = X.length;
-  // quantum feature map: the QCNN expectation on a few deterministic views of x → 3 quantum features
-  const phi = (x: number[]) => [
-    qcnnExpectation(x).z,
-    qcnnExpectation(x.map((v) => v + 0.7)).z,
-    qcnnExpectation(x.map((v) => v * 1.3 - 0.4)).z,
-    1,                                                 // bias
-  ];
-  const P = 4;
-  const idx = Array.from({ length: N }, (_, i) => i);
-  for (let i = N - 1; i > 0; i--) { const j = Math.floor(u() * (i + 1)); [idx[i], idx[j]] = [idx[j], idx[i]]; }
-  const cut = Math.floor(N * 0.75);
-  const tr = idx.slice(0, cut), te = idx.slice(cut);
-  const parts: number[][] = Array.from({ length: K }, () => []);
-  tr.forEach((id, i) => parts[i % K].push(id));        // shard the training set across K clients
-
-  const sigmoid = (z: number) => 1 / (1 + Math.exp(-z));
-  const dot = (a: number[], b: number[]) => a.reduce((s, v, i) => s + v * b[i], 0);
-  const localTrain = (ids: number[], w0: number[], epochs = fed.local_epochs,
-                      lr = fed.browser_lr) => {
-    const w = [...w0];
-    for (let e = 0; e < epochs; e++) for (const id of ids) {       // local SGD on this client's shard
-      const p = phi(X[id]); const g = sigmoid(dot(w, p)) - Y[id];
-      for (let k = 0; k < P; k++) w[k] -= lr * g * p[k];
-    }
-    return w;
-  };
-  const acc = (w: number[]) => {
-    let c = 0;
-    for (const id of te) if ((sigmoid(dot(w, phi(X[id]))) > 0.5 ? 1 : 0) === Y[id]) c++;
-    return c / te.length;
-  };
-
-  let w = new Array(P).fill(0);
-  const tot = tr.length;
-  const roundAcc: number[] = [];
-  for (let r = 0; r < rounds; r++) {
-    const updates = parts.map((ids) => localTrain(ids, w));        // each client trains locally
-    w = new Array(P).fill(0);                                      // size-weighted FedAvg over plaintext updates
-    updates.forEach((wl, c) => { const wt = parts[c].length / tot; for (let k = 0; k < P; k++) w[k] += wl[k] * wt; });
-    roundAcc.push(r2(acc(w)));
-  }
-  return { roundAcc, finalAcc: roundAcc[roundAcc.length - 1], clients: K, rounds,
-    aggregation: "size-weighted FedAvg, plaintext updates" };
-}
 
 /**
  * The free-space channel this run selected, in one place.
@@ -1871,10 +1781,15 @@ export function runClientPipeline(
         // flow that declares this stage should run it; the guard added nothing but an unreachable
         // second answer to "what is federated_accuracy?".
         const qflData = await realFederatedSet(usecase);
-        const q = clientQFL(seed, { data: qflData });
+        // The PQC handshake's session key, which every flow reaching this stage has already run.
+        // Before this it was the ONLY consumer-less key in the pipeline outside `qsmpc_compute`:
+        // the diagram claimed pairwise masking while no stage but PSI read `_sessionKey` at all.
+        const q = clientQFL(seed, { data: qflData, sessionKey: (config as any)._sessionKey });
         metric(stage, "federated_accuracy", q.finalAcc);
         metric(stage, "qfl_rounds", q.rounds);
         metric(stage, "qfl_clients", q.clients);
+        metric(stage, "qfl_mask_pairs", q.pairs);
+        metric(stage, "federated_eval_rows", q.evalRows);
         // What the aggregation ACTUALLY was, published so the diagram can render it instead of
         // carrying its own claim. See the QFLResult comment for why this replaced `secureAgg`.
         metric(stage, "qfl_aggregation", q.aggregation);
