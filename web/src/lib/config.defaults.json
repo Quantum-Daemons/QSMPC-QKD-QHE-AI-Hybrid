@@ -249,7 +249,7 @@
             "opset": 0
           },
           "git_sha": "e7fea39-dirty",
-          "hf_revision_invalidated_by_retrain": "db3de5fc2c07f76a4de1ae06fe8b7cb1ea254afd",
+          "hf_revision": "27fea7b067635325c67fdd3d45ca0c30d28cd74f",
           "minority_class_f1": 0.15194805194805194,
           "n_test": 1523504,
           "n_train": 3554841,
@@ -289,8 +289,8 @@
           "url": "https://www.kaggle.com/datasets/ealtman2019/ibm-transactions-for-anti-money-laundering-aml"
         },
         "hf_repo_id": "Daemons-Q/qsh-finance-aml-gbm",
-        "hf_revision": null,
-        "hf_revision_stale": "db3de5fc2c07f76a4de1ae06fe8b7cb1ea254afd",
+        "hf_revision": "27fea7b067635325c67fdd3d45ca0c30d28cd74f",
+        "hf_revision_stale": null,
         "key": "finance_aml.gbm",
         "label": "Graph-feature-preprocessed gradient boosting",
         "metric": {
@@ -315,7 +315,7 @@
           "agreement": 0.982943,
           "both_scored_zero": false,
           "disagreement_on_positives": 0.361913,
-          "hf_revision_invalidated_by_retrain": "89e2de895db41591b480eb744ddb6761ed208f75",
+          "hf_revision": "89e2de895db41591b480eb744ddb6761ed208f75",
           "metric_delta": 0.090554,
           "metric_delta_pp": 9.0554,
           "metric_name": "minority_class_f1",
@@ -355,8 +355,8 @@
           "url": "https://www.kaggle.com/datasets/ealtman2019/ibm-transactions-for-anti-money-laundering-aml"
         },
         "hf_repo_id": "Daemons-Q/qsh-finance-aml-ckks-student",
-        "hf_revision": null,
-        "hf_revision_stale": "89e2de895db41591b480eb744ddb6761ed208f75",
+        "hf_revision": "89e2de895db41591b480eb744ddb6761ed208f75",
+        "hf_revision_stale": null,
         "key": "finance_aml.student",
         "label": "CKKS-linear fraud student",
         "metric": {
@@ -1135,6 +1135,7 @@
           },
           "framing": "Architecture comparison, not a performance claim. The data is synthetic because no commercial-OK real attack corpus exists. Every published QML-IDS figure we could verify sits below a random forest on the same data, and arXiv:2512.05069 was withdrawn by its own authors for insufficient evaluation. Per-class F1 is the headline; aggregate accuracy is shown beside it because Engelen et al. (WTMC 2021) demonstrated it stays at 0.99 across a label correction that moved Bot F1 from 0.60 to 0.99.",
           "git_sha": "67dcd50-dirty",
+          "hf_revision": "a928ab536d631edc35ed685d1e164db96674df23",
           "n_classes": 8,
           "n_samples": 2400,
           "quantum_beats_classical": false,
@@ -1172,7 +1173,7 @@
           "url": "https://arxiv.org/abs/2509.14282"
         },
         "hf_repo_id": "Daemons-Q/qsh-telecom-qml-ids",
-        "hf_revision": null,
+        "hf_revision": "a928ab536d631edc35ed685d1e164db96674df23",
         "hf_revision_stale": null,
         "key": "telecom_ids.qml",
         "label": "Quantum-kernel SVC + variational QNN",
