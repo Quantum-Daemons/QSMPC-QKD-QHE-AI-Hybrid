@@ -116,6 +116,31 @@ The claim is "this model scores X on Y". Verified when:
   this ground: AlexNet, VGG16, DenseNet-121 and EfficientNet-B4 are benchmarked on BreastMNIST only
   ImageNet-pretrained, which this project dropped over redistribution terms, so their numbers cannot
   be compared with a from-scratch run;
+
+  **SqueezeNet is declined too, and for a stronger reason - recorded 2026-08-13, having been the one
+  item left open across 29 ORDER files.** The request was conditional: add SqueezeNet, DenseNet-121
+  or AlexNet *only if they are recommended as benchmarks*. It slipped because the four-architecture
+  sentence above enumerates MedMNIST+'s benchmark set, and SqueezeNet is not in it - so the item
+  never matched a search for a decision that had been made about the others.
+
+  Checked at the source rather than inherited: **MedMNIST+ (arXiv:2404.15786) evaluates ten models -
+  VGG16, AlexNet, ResNet-18, DenseNet-121, EfficientNet-B4, and five ViT-B/16 variants - and
+  SqueezeNet is not among them.** Two independently framed reads of the paper's HTML agree, and its
+  own sentence names the convolutional set as "VGG16, AlexNet, ResNet-18, DenseNet-121, and
+  EfficientNet-B4, all of which were pretrained on the ImageNet1k dataset". An internal planning
+  note had recorded SqueezeNet as being in that set; it is not.
+
+  So the four rejected architectures have a published BreastMNIST comparator this project cannot use
+  (wrong training regime). SqueezeNet has **no published BreastMNIST comparator at all** - none in
+  MedMNIST+, and none cited anywhere in this repository's references. Training it from scratch would
+  produce a number with nothing to compare it against, which is the definition of a figure that is
+  not a deliverable here. The ORDER's condition is therefore not met, and its own fallback applies:
+  keep the ResNet-50 plan. **Decision: declined, no repository change.**
+
+  Not re-verified today: whether MedMNIST v2's own baseline table contains SqueezeNet. Its abstract
+  names only "2D / 3D neural networks and open-source / commercial AutoML tools" without
+  enumerating them. What IS established is that no SqueezeNet BreastMNIST figure is cited anywhere
+  in this project, so there is nothing here to compare against either way;
 - the artefact passes gate 2 and is pinned to a commit sha, never a branch;
 - a browser reproduces the offline figure on the same rows, and says so when it does not.
 
