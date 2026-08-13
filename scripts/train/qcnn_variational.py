@@ -81,7 +81,7 @@ def apply_cnot(state: torch.Tensor, ctl: int, tgt: int, nq: int) -> torch.Tensor
 
 
 def circuit(x: torch.Tensor, theta: torch.Tensor, nq: int = N_QUBITS,
-            readout_qubits: int = 0) -> torch.Tensor:
+            readout_qubits: int = 0, entangle: bool = True) -> torch.Tensor:
     """(batch, nq) features + (layers, nq) angles -> a readout. State kept FLAT as (batch, 2**nq).
 
     ``readout_qubits = 0`` gives the original single ``<Z0>`` expectation, shape (batch,), which is
@@ -124,8 +124,15 @@ def circuit(x: torch.Tensor, theta: torch.Tensor, nq: int = N_QUBITS,
             c, s = torch.cos(th / 2), torch.sin(th / 2)
             m = torch.stack([torch.stack([c, -s]), torch.stack([s, c])]).to(cdt)
             state = apply_1q(state, q, m, nq)
-        for q in range(nq):
-            state = apply_cnot(state, q, (q + 1) % nq, nq)
+        # THE ONLY ENTANGLING OPERATION IN THE CIRCUIT. `entangle=False` skips this ring and leaves
+        # everything else identical, turning the model into per-qubit RY rotations on a product
+        # state - a classical feature map with the same parameter count. Bowles, Ahmed & Schuld
+        # (arXiv:2403.07059, 12 models x 160 datasets) report that "removing entanglement from a
+        # quantum model often results in as good or better performance"; this switch is what lets
+        # that be CHECKED on this circuit rather than cited about someone else's.
+        if entangle:
+            for q in range(nq):
+                state = apply_cnot(state, q, (q + 1) % nq, nq)
 
     p = state.abs() ** 2
     idx = torch.arange(p.shape[1], device=dev)
@@ -202,6 +209,10 @@ def main() -> int:
     # 1 by default: reproducibility of a published artifact outweighs training speed for a model
     # this size. Raise it only for exploration, where the numbers are not going to be shipped.
     ap.add_argument("--threads", type=int, default=1)
+    #: Ablation only. `training.entangle` in the artifact records which circuit produced it, so a
+    #: file from an ablation run cannot be mistaken for a shipped one.
+    ap.add_argument("--no-entangle", action="store_true",
+                    help="drop the CNOT ring: identical parameters, no entanglement (ablation)")
     a = ap.parse_args()
 
     X, y, names, prov = load(a.usecase)
@@ -210,6 +221,7 @@ def main() -> int:
     # medical moved across 0.9181 / 0.9064 / 0.8947 / 0.8480 accuracy on identical inputs. Published
     # weights that cannot be regenerated are exactly what this project refuses to ship, and the swing
     # was large enough to be mistaken for a real effect of the changes being made alongside it.
+    entangle = not a.no_entangle
     torch.manual_seed(a.seed)
     # Only bites on the CPU fallback: with a capable GPU present this trains on CUDA, so the thread
     # count governs nothing here. It is set anyway so a CPU host gets the same guarantee.
@@ -308,14 +320,14 @@ def main() -> int:
     best, best_state = 0.0, None
     for ep in range(a.epochs):
         opt.zero_grad()
-        z = circuit(xt[tr], theta, readout_qubits=readout_q)
+        z = circuit(xt[tr], theta, readout_qubits=readout_q, entangle=entangle)
         loss = (lossf(z * scale + bias, yt[tr].long()) if readout_q
                 else lossf(z * scale + bias, yt[tr]))
         loss.backward()
         opt.step()
         if ep % 10 == 0 or ep == a.epochs - 1:
             with torch.no_grad():
-                zt = circuit(xt[va], theta, readout_qubits=readout_q)
+                zt = circuit(xt[va], theta, readout_qubits=readout_q, entangle=entangle)
                 logits = zt * scale + bias
                 pred = (logits.argmax(1).float() if readout_q else (logits > 0).float())
                 acc = (pred == yt[va]).float().mean().item()
@@ -380,7 +392,7 @@ def main() -> int:
         th_t = torch.tensor(best_state[0], dtype=torch.float32, device=dev)
         sc_t = torch.tensor(best_state[1], dtype=torch.float32, device=dev)
         bi_t = torch.tensor(best_state[2], dtype=torch.float32, device=dev)
-        z_all = circuit(xt[te], th_t, readout_qubits=readout_q)
+        z_all = circuit(xt[te], th_t, readout_qubits=readout_q, entangle=entangle)
         logits_all = z_all * sc_t + bi_t
         qcnn_pred = ((logits_all.argmax(1) if readout_q else (logits_all > 0))
                      .int().cpu().numpy())
@@ -471,7 +483,7 @@ def main() -> int:
         # returns 0.809846. That took an epoch sweep to recover a number the demo was already
         # displaying as measured, which is the whole argument for writing it down here.
         "training": {"layers": a.layers, "epochs": a.epochs, "seed": a.seed,
-                     "threads": a.threads,
+                     "threads": a.threads, "entangle": entangle,
                      "command": f"python scripts/train/qcnn_variational.py --usecase {a.usecase} "
                                 f"--layers {a.layers} --epochs {a.epochs} --seed {a.seed} "
                                 f"--threads {a.threads}",
