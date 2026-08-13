@@ -1492,6 +1492,10 @@ export function runClientPipeline(
         const pulses = Number(config.qkd_pulses ?? qkdCfg().pulses);
         const eRes = protocol === "e91" ? e91(pulses, chan, seed, qkdCfg().e91_visibility) : null;   // typed with chshS
         const res = eRes ?? bb84(pulses, chan, seed);
+        // The eavesdropper fraction that actually ran. The telecom diagram labelled its QKD arrow
+        // "(w/ eavesdropper)" unconditionally while `qkd_eve` defaults to 0.0, so a default run drew
+        // an attack it did not simulate. Publishing the value lets the label read the run.
+        metric(stage, "qkd_eve_fraction", chan.eveFraction);
         metric(stage, "qber", r2(res.qber));
         metric(stage, "skr", Math.round(res.secretKeyRate * 1e5) / 1e5);
         metric(stage, "secure_key_bits", res.secureKeyBits);
@@ -1540,6 +1544,9 @@ export function runClientPipeline(
         const satPulses = Number(config.sat_pulses ?? webCfg().demo_sat_pulses);
         const satERes = satProtocol === "e91" ? e91(satPulses, satChan, seed, qkdCfg().e91_visibility) : null;
         const res = satERes ?? bb84(satPulses, satChan, seed);
+        // Same key the fibre stage uses: one QKD stage runs per use case, and both report the same
+        // quantity. The diagram's eavesdropper tag reads it rather than asserting one.
+        metric(stage, "qkd_eve_fraction", satChan.eveFraction);
         metric(stage, "qber", r2(res.qber));
         metric(stage, "channel_loss_db", res.channelLossDb);
         metric(stage, "secure_key_bits", res.secureKeyBits);
