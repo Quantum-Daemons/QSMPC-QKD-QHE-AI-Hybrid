@@ -45,7 +45,8 @@ function load() {
   writeFileSync(entry, `
 export { bb84, e91, FIBER, FREE_SPACE, intrinsicQber, h2, transmittance } from ${JSON.stringify(join(WEB, "src/lib/quantumSim"))};
 export { optimizeQKD } from ${JSON.stringify(join(WEB, "src/lib/clientOptiQKD"))};
-export { qkdCfg } from ${JSON.stringify(join(WEB, "src/lib/config"))};
+export { repetitionCountCutoff, adaptiveProportionCutoff, generateQuantumBits } from ${JSON.stringify(join(WEB, "src/lib/clientQRNG"))};
+export { qkdCfg, qrngCfg } from ${JSON.stringify(join(WEB, "src/lib/config"))};
 `);
   const out = join(dir, "bundle.mjs");
   execFileSync("npx", ["esbuild", entry, "--bundle", "--format=esm", "--platform=node",
@@ -56,6 +57,7 @@ export { qkdCfg } from ${JSON.stringify(join(WEB, "src/lib/config"))};
 const { out, dir } = load();
 const m = await import(`file://${out}`);
 const cfg = m.qkdCfg();
+const cfg_qrng = m.qrngCfg();
 
 // --------------------------------------------------------------------------------------------- //
 //  1. Config reaches the model
@@ -178,6 +180,31 @@ const cfg = m.qkdCfg();
     check(`optiqkd-evals-${budget}`, r.nEvals <= 2 + 8 * rounds && r.convergenceEvals <= r.nEvals,
       `budget ${budget}: nEvals=${r.nEvals} against the ceiling ${2 + 8 * rounds}, ` +
       `convergenceEvals=${r.convergenceEvals}`);
+  }
+}
+
+// --------------------------------------------------------------------------------------------- //
+//  4. QRNG: the standard the code cites, asserted rather than mentioned
+// --------------------------------------------------------------------------------------------- //
+// The checklist named SP 800-90B zero times while the code implements section 4.4 with clause
+// numbers. These are the two numbers in that section that are closed-form and checkable.
+{
+  // SP 800-90B section 4.4.1's own worked example: H = 2 bits/sample at alpha = 2^-20 gives C = 11.
+  check("sp80090b-repetition-cutoff",
+    m.repetitionCountCutoff(2.0, 2 ** -20) === 11,
+    `repetitionCountCutoff(2.0, 2^-20) = ${m.repetitionCountCutoff(2.0, 2 ** -20)}, section 4.4.1 gives 11`);
+
+  // The LHL ceiling, absolute rather than as a delta. A delta check cancels the "+2" term, the
+  // min-entropy factor and the raw over-provision - three of the four config inputs to the number it
+  // claims to verify - and this file's stated form was missing the "+2" as a result.
+  const perRaw = cfg_qrng.min_entropy_per_raw_bit;
+  for (const [bits, eps] of [[4096, -40], [4096, -80], [1024, -40]]) {
+    const r = m.generateQuantumBits(bits, { postProcessing: "toeplitz", epsilonLog2: eps });
+    if (r.lhlMaxBits == null) continue;
+    const predicted = Math.max(1, Math.floor(perRaw * (2 * bits + 16) - 2 * Math.abs(eps) + 2));
+    check(`lhl-absolute-${bits}-${eps}`, r.lhlMaxBits === predicted,
+      `lhlMaxBits=${r.lhlMaxBits} but the closed form gives ${predicted} ` +
+      `(bits=${bits}, eps=${eps}, min_entropy_per_raw_bit=${perRaw})`);
   }
 }
 
