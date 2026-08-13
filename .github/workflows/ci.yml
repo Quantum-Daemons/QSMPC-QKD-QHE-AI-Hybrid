@@ -186,3 +186,12 @@ jobs:
       - name: PQC conformance
         working-directory: web
         run: npm run check:pqc
+
+      # Separate step from the build for the same reason PQC conformance is: a green typecheck says
+      # nothing about whether config reaches the QKD model. It did not - `error_correction_eff` had
+      # no reader in `web/src` at all, and the browser ran on a literal that happened to match. The
+      # check mutates the live config and requires the output to follow by the predicted ratio,
+      # because a before/after diff is passed perfectly by a reader that reads nothing.
+      - name: QKD model plumbing and identities
+        working-directory: web
+        run: npm run check:qkd
