@@ -55,7 +55,10 @@ const FLOWS: Record<string, { id: string; label: string }[]> = {
   telecom_ids: [
     { id: "data", label: "QKD Telemetry" },
     { id: "pqc_handshake", label: "PQC Handshake" },
-    { id: "qkd_key_agreement", label: "QKD Key (w/ Eve)" },
+    // "(w/ Eve)" was here unconditionally while `qkd_eve` defaults to 0.0. Node labels in this graph
+    // are static - it has no metrics - so the honest form is to name the stage and let
+    // TwoPartyDiagram, which does read metrics, carry the run-specific eavesdropper tag.
+    { id: "qkd_key_agreement", label: "QKD Key" },
     { id: "qml_ids", label: "QML-IDS\n(attack detection)" },
     { id: "quantum_comparison", label: "QSMPC-FHE\n(quantum comparison)" },
     { id: "result", label: "Result" },
