@@ -49,6 +49,12 @@ const GRID = "#2a3040";
 type Real2D = {
   usecase: string;
   is_training_corpus: boolean;
+  /** Whether the rows were SIMULATED rather than measured. Carried rather than inferred from the
+   *  provenance prose, because the caption below used to hardcode the word "real" for all five
+   *  payloads and two of them are simulator output - AMLworld by IBM's own statement, and the
+   *  telecom corpus by this repository. The finance page said "8192 real points" about simulated
+   *  transactions until telecom made the wording visible. */
+  corpus_is_synthetic?: boolean;
   provenance: string;
   licence: string;
   attribution: string;
@@ -101,8 +107,11 @@ export function RealDataScatter({ usecase }: { usecase: string }) {
       <figcaption className="muted small">
         {data.is_training_corpus ? (
           <>
-            <strong>The corpus this model actually trains on</strong>, held-out split, {data.points.length} real
-            points. This is a genuine train-versus-inference comparison rather than a lookalike.
+            <strong>The corpus this model actually trains on</strong>, held-out split,{" "}
+            {data.points.length} {data.corpus_is_synthetic ? "simulated" : "real"} points. This is a
+            genuine train-versus-inference comparison rather than a lookalike{data.corpus_is_synthetic
+              ? " - though the rows are simulator output, so nothing here is a claim about a live system"
+              : ""}.
           </>
         ) : (
           <>
@@ -110,7 +119,8 @@ export function RealDataScatter({ usecase }: { usecase: string }) {
                 payload. Medical's substitute is a different MODALITY (morphometry vs ultrasound);
                 genomics' is the same modality from a different COHORT. Hardcoding one phrase here
                 made the genomics caption claim a modality difference that does not exist. */}
-            <strong>NOT this model's training corpus</strong>, {data.points.length} real points - shown beside the
+            <strong>NOT this model's training corpus</strong>, {data.points.length}{" "}
+            {data.corpus_is_synthetic ? "simulated" : "real"} points - shown beside the
             model's scores, deliberately not on the same axes. {data.provenance}
           </>
         )}{" "}
