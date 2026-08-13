@@ -57,9 +57,30 @@ jobs:
         # Offline by design: no test may reach the network. Where a dataset is unavailable the
         # loader falls back to synthetic data and logs that loudly (see qsh/data/loaders.py) — a
         # labelled fallback, never a silent substitution.
+        #
+        # `-m "not slow"` DESELECTS tests/test_round2.py::test_openfhe_bootstrap. Measured:
+        # "10/11 tests collected (1 deselected)" for that file. So this step says nothing
+        # whatsoever about OpenFHE bootstrapping — that is the next step's job, and it is a
+        # separate step precisely so a green tick here is never mistaken for FHE coverage.
         env:
           HF_HUB_OFFLINE: "1"
         run: pytest -m "not slow" -q
+
+      - name: OpenFHE CKKS bootstrapping (the slow test the suite above deselects)
+        # For most of this project's life "CI is green" implied nothing about bootstrapping: the
+        # only test for it was marked slow, so CI never collected it, while on the EL9 dev host
+        # it segfaulted the interpreter. Two green signals, zero coverage. This step closes that
+        # gap by running that one test on purpose.
+        #
+        # QSH_REQUIRE_OPENFHE_BOOTSTRAP=1 removes the last escape hatch: on a host where openfhe
+        # cannot be imported the test would normally skip, and here that is a failure instead.
+        # The runner is ubuntu-24.04 and requirements-fhe.txt pins openfhe>=1.5.1, whose wheel is
+        # built for exactly that distro — so an ImportError here means the dependency broke, not
+        # that the platform is unsupported.
+        env:
+          HF_HUB_OFFLINE: "1"
+          QSH_REQUIRE_OPENFHE_BOOTSTRAP: "1"
+        run: pytest tests/test_round2.py::test_openfhe_bootstrap -m slow -q
 
       - name: Config parity (defaults.py -> config.defaults.json)
         # The committed JSON is what the zero-backend demo reads. If it drifts from the Python
