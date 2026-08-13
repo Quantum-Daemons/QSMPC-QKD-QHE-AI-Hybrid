@@ -43,7 +43,7 @@ function load() {
   const dir = mkdtempSync(join(tmpdir(), "qsh-qkd-"));
   const entry = join(dir, "entry.ts");
   writeFileSync(entry, `
-export { bb84, e91, FIBER, FREE_SPACE, intrinsicQber, h2, transmittance } from ${JSON.stringify(join(WEB, "src/lib/quantumSim"))};
+export { bb84, e91, FIBER, FREE_SPACE, intrinsicQber, h2, transmittance, taggedFraction, channelLossDb } from ${JSON.stringify(join(WEB, "src/lib/quantumSim"))};
 export { optimizeQKD } from ${JSON.stringify(join(WEB, "src/lib/clientOptiQKD"))};
 export { repetitionCountCutoff, adaptiveProportionCutoff, generateQuantumBits } from ${JSON.stringify(join(WEB, "src/lib/clientQRNG"))};
 export { qkdCfg, qrngCfg } from ${JSON.stringify(join(WEB, "src/lib/config"))};
@@ -206,6 +206,61 @@ const cfg_qrng = m.qrngCfg();
       `lhlMaxBits=${r.lhlMaxBits} but the closed form gives ${predicted} ` +
       `(bits=${bits}, eps=${eps}, min_entropy_per_raw_bit=${perRaw})`);
   }
+}
+
+// --------------------------------------------------------------------------------------------- //
+//  6. GLLP tagged fraction, and the free-space loss law
+// --------------------------------------------------------------------------------------------- //
+// MOVED HERE FROM THE BROWSER, and the reason is the point. QK6 was written as a browser check -
+// "tagged fraction rises with distance and with mu" - and could never be run: `mu` is
+// `qkdCfg().mu_signal`, a config constant with NO control on any page, so one of its two axes was
+// not exercisable by a person at all. That is the sibling of a check that cannot fail: a check that
+// cannot be RUN. `taggedFraction` is a pure function, so the assertion belongs where both axes move.
+//
+// Delta = P(n >= 2) / Q_mu, and this is not a formula re-derivation: the ORDERING is asserted, not
+// the value. Distance lowers the transmittance and so Q_mu, raising the ratio; mu raises the
+// multiphoton numerator quadratically against a denominator near-linear in the lossy regime.
+{
+  const at = (km, mu) => m.taggedFraction(mu, { ...m.FIBER, distanceKm: km });
+  const MU = cfg.mu_signal;
+  const KM = [0, 10, 25, 50, 75, 100, 150];
+  for (let i = 1; i < KM.length; i++) {
+    check(`tagged-monotone-in-distance-${KM[i - 1]}-${KM[i]}`,
+      at(KM[i], MU) > at(KM[i - 1], MU),
+      `Delta at ${KM[i]} km is ${at(KM[i], MU)}, not above ${at(KM[i - 1], MU)} at ${KM[i - 1]} km`);
+  }
+  const MUS = [0.05, 0.1, 0.2, 0.3, 0.5, 0.7, 0.9];
+  for (let i = 1; i < MUS.length; i++) {
+    check(`tagged-monotone-in-mu-${MUS[i - 1]}-${MUS[i]}`,
+      at(50, MUS[i]) > at(50, MUS[i - 1]),
+      `Delta at mu=${MUS[i]} is ${at(50, MUS[i])}, not above ${at(50, MUS[i - 1])} at mu=${MUS[i - 1]}`);
+  }
+  // The sharp reference point `decoy_reference.py`'s docstring names: with the GYS set and mu = 0.1
+  // the tagged fraction exceeds 1 at ZERO distance - no detection can be certified single-photon and
+  // the key rate is zero before any loss at all. An ordering check alone would pass a model that was
+  // monotone and wrong by a factor.
+  const gys = { ...m.FIBER, distanceKm: 0, lossDbPerKm: 0.21, detectorEff: 0.045,
+                darkCount: 1.7e-6, misalignment: 0.033 };
+  check("tagged-exceeds-one-on-the-GYS-set-at-zero-distance",
+    m.taggedFraction(0.1, gys) > 1,
+    `Delta = ${m.taggedFraction(0.1, gys)} at mu=0.1, zero distance, GYS parameters; ` +
+    `decoy_reference.py records this as above 1`);
+
+  // Free-space loss is diffraction plus a fixed budget, not a per-km law. A module-level counterpart
+  // to QK7's browser reading, and the assertion the Python side lacked while it was still applying
+  // `distance_km * 0.035` to the same nominal link.
+  const fsAt = (km) => m.channelLossDb({ ...m.FREE_SPACE, distanceKm: km });
+  check("free-space-800km-is-24.5dB", Math.abs(fsAt(800) - 24.48) < 0.01,
+    `800 km gives ${fsAt(800)} dB, not the 24.48 the diffraction model predicts`);
+  check("free-space-has-a-fixed-floor",
+    near(fsAt(1), cfg.free_space_atmospheric_db + cfg.free_space_pointing_db, 1e-9),
+    `at 1 km the loss is ${fsAt(1)} dB, not the ${cfg.free_space_atmospheric_db} + ` +
+    `${cfg.free_space_pointing_db} dB budget floor - the near-field cap is not being applied`);
+  check("free-space-is-not-linear-in-distance",
+    fsAt(2000) - fsAt(1200) < fsAt(1200) - fsAt(400),
+    `loss increments are not decreasing with range, so this is a linear law rather than an ` +
+    `inverse-square one: 400->1200 gives ${fsAt(1200) - fsAt(400)}, 1200->2000 gives ` +
+    `${fsAt(2000) - fsAt(1200)}`);
 }
 
 rmSync(dir, { recursive: true, force: true });
