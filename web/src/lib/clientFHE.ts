@@ -108,6 +108,8 @@ export interface FHEBatchResult {
   logits: number[][];
   plainLogits: number[][];
   rows: number;
+  /** Rows the caller handed over. Larger than `rows` means the cap dropped the difference. */
+  rowsOffered: number;
   /** Rows that fit in one ciphertext at this feature width. The batch is capped at it. */
   rowsPerCiphertext: number;
   fheMs: number;
@@ -145,8 +147,15 @@ export async function encryptedLinearBatch(
   const n = rows[0]?.length ?? 0;
   const sumWidth = 1 << Math.ceil(Math.log2(Math.max(n, 2)));
   const rowsPerCiphertext = Math.max(1, Math.floor(slots / sumWidth));
-  // Capped rather than chunked. Chunking would multiply the cost by the number of chunks and hide
-  // that behind one number; a cap is visible, and the caller reports how many rows it asked for.
+  // Capped rather than chunked. Chunking would multiply the homomorphic cost by the number of chunks
+  // and hide that behind one number.
+  //
+  // `rowsOffered` is returned BECAUSE the cap is silent otherwise. Written first without it, and the
+  // first run scored 512 of a 600-row held-out split: 88 rows dropped, an agreement of 1.0 reported
+  // over the 512, and a caption reading "one of 512 held-out rows" that a reader takes for the whole
+  // split. The comment here even claimed "a cap is visible, and the caller reports how many rows it
+  // asked for" - it was not, and the caller could not, because this function did not tell it.
+  const rowsOffered = rows.length;
   const used = rows.slice(0, rowsPerCiphertext);
 
   const t0 = performance.now();
@@ -197,7 +206,7 @@ export async function encryptedLinearBatch(
     W.map((wr, j) => wr.reduce((a, w, i) => a + w * (row[i] ?? 0), 0) + (b[j] ?? 0)));
   const maxAbsError = Math.max(
     0, ...logits.flatMap((row, r) => row.map((v, j) => Math.abs(v - plainLogits[r][j]))));
-  return { logits, plainLogits, rows: used.length, rowsPerCiphertext, fheMs, ctBytes,
+  return { logits, plainLogits, rows: used.length, rowsOffered, rowsPerCiphertext, fheMs, ctBytes,
            maxAbsError, rotations, multiplies };
 }
 

@@ -31,6 +31,8 @@ export interface EncryptedAgreementPlot {
   kind: "encrypted-agreement";
   points: { enc: number; plain: number; agree: boolean }[];
   rows: number;
+  /** Rows the split offered. Larger than `rows` means the ciphertext could not hold them all. */
+  rowsOffered?: number;
   classes: number;
 }
 
@@ -68,6 +70,13 @@ export function EncryptedAgreementChart({ plot }: { plot: EncryptedAgreementPlot
         <strong>{mismatches}</strong> of {plot.rows} ({plot.rows * plot.classes} class scores);
         worst absolute deviation {worst.toExponential(2)}. All {plot.rows} rows travelled in a single
         ciphertext, so they cost the homomorphic work of one.
+        {plot.rowsOffered != null && plot.rowsOffered > plot.rows ? (
+          <>
+            {" "}The split holds <strong>{plot.rowsOffered}</strong> rows; one ciphertext fits{" "}
+            {plot.rows} at this feature width, so {plot.rowsOffered - plot.rows} were not scored and
+            the agreement above is over {plot.rows}, not over the whole split.
+          </>
+        ) : null}
       </figcaption>
       <ResponsiveContainer width="100%" height={200}>
         <ScatterChart margin={{ top: 6, right: 10, bottom: 4, left: -10 }}>

@@ -1229,6 +1229,10 @@ export function runClientPipeline(
         metric(stage, "encrypted_top1_mismatches", mism);
         metric(stage, "encrypted_scores_compared", batch.rows * w.W.length);
         metric(stage, "encrypted_rows_scored", batch.rows);
+        // The denominator, and the gap. `encrypted_agreement` is over `rows_scored`, not over the
+        // whole split, and those differ whenever the split outgrows one ciphertext.
+        metric(stage, "encrypted_rows_available", batch.rowsOffered);
+        metric(stage, "encrypted_rows_dropped_by_cap", batch.rowsOffered - batch.rows);
         metric(stage, "encrypted_rows_per_ciphertext", batch.rowsPerCiphertext);
         metric(stage, "encrypted_batch_ms", r2(batch.fheMs));
         metric(stage, "encrypted_batch_max_abs_error", batch.maxAbsError);
@@ -1239,15 +1243,21 @@ export function runClientPipeline(
         metric(stage, "encrypted_agreement", r2(1 - mism / Math.max(1, batch.rows)));
         artifacts.encrypted_agreement_plot = {
           kind: "encrypted-agreement",
+          rowsOffered: batch.rowsOffered,
           points: batch.logits.map((row, i) => ({
             enc: row[encCls2[i]], plain: batch.plainLogits[i][encCls2[i]],
             agree: encCls2[i] === plainCls2[i],
           })),
           rows: batch.rows, classes: w.W.length,
         };
-        emit("log", stage, `encrypted tier over the HELD-OUT SPLIT: ${batch.rows} rows x `
-          + `${w.W.length} classes = ${batch.rows * w.W.length} scores in one ciphertext `
-          + `(${batch.rowsPerCiphertext} rows fit at this feature width), ${r2(batch.fheMs)} ms total. `
+        emit("log", stage, `encrypted tier over the HELD-OUT SPLIT: ${batch.rows} of `
+          + `${batch.rowsOffered} rows x ${w.W.length} classes = ${batch.rows * w.W.length} scores in `
+          + `one ciphertext (${batch.rowsPerCiphertext} rows fit at this feature width), `
+          + `${r2(batch.fheMs)} ms total`
+          + (batch.rowsOffered > batch.rows
+            ? `. ${batch.rowsOffered - batch.rows} rows did NOT fit and were not scored, so the `
+              + `agreement below is over ${batch.rows}, not over the whole split`
+            : "") + `. `
           + `Top-1 mismatches vs plaintext: ${mism} of ${batch.rows}. Max abs error `
           + `${batch.maxAbsError.toExponential(3)}`
           + (bits2 !== null ? ` (about ${bits2} bits, MAX not mean)` : "") + ".");
