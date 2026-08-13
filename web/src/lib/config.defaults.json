@@ -1253,7 +1253,6 @@
     "dark_count_prob": 1e-05,
     "detector_efficiency": 0.25,
     "distance_km": 50.0,
-    "e91_pairs": 100000,
     "e91_visibility": 0.97,
     "error_correction_eff": 1.16,
     "eve_intercept_fraction": 0.0,
