@@ -79,6 +79,17 @@ const pqcOnly = (c: DiagramConfig) => String(c.qkd ?? "") === "pqc-only";
 /** The OptiQKD suffix for a QKD arrow: the measured improvement once a run has produced one,
  *  otherwise just that tuning is enabled. Reads the run's metrics rather than restating the
  *  checkbox, so the arrow cannot claim an optimisation that has not happened yet. */
+/** The eavesdropper the run actually simulated, or nothing when there was none.
+ *
+ * Before the run there is no fraction to report, so this stays empty rather than asserting either
+ * way - the arrow is dim at that point and the QBER beside it is an em dash. */
+const eveTag = (m: M) => {
+  // One key for both channels: only one QKD stage runs per use case, and the fibre and free-space
+  // stages report the same quantity - the intercept-resend fraction that was simulated.
+  const f = m["qkd_eve_fraction"];
+  return f == null || Number(f) <= 0 ? "" : ` (w/ eavesdropper ${f})`;
+};
+
 const optiTag = (m: M, c: DiagramConfig) => {
   if (!c.optiqkd) return "";
   const pct = m["qkd_skr_improvement_pct"];
@@ -299,7 +310,13 @@ export const USECASE_SPECS: Record<string, Spec> = {
     b: { name: "Remote site / Eve", sub: "QKD Rx (eavesdropper)" },
     steps: [
       { stageId: "pqc_handshake", kind: "c-bidir", label: (_m, c) => `PQC handshake — ${kemName(c)}` },
-      { stageId: "qkd_key_agreement", kind: "q-arrow", label: (m, c) => `${qkdName(c)} (w/ eavesdropper) · QBER ${f(m, "qber")}${optiTag(m, c)}`, hidden: pqcOnly, ok: qkdOk },
+      // "(w/ eavesdropper)" used to be unconditional here while `qkd_eve` defaults to 0.0, so the
+      // page whose subject is intrusion detection drew an attack that had not been simulated. The
+      // suffix now reads the fraction the stage REPORTS, which is the same rule the federated and
+      // inference labels follow: describe the run, never the intent.
+      { stageId: "qkd_key_agreement", kind: "q-arrow",
+        label: (m, c) => `${qkdName(c)}${eveTag(m)} · QBER ${f(m, "qber")}${optiTag(m, c)}`,
+        hidden: pqcOnly, ok: qkdOk },
       { stageId: "qml_ids", kind: "local-a", label: (m) => `QML-IDS attack detection · macro-F1 ${f(m, "ids_macro_f1")}` },
       publishedStep("qml_ids"),
       QSMPC_COMPARE,
@@ -311,7 +328,7 @@ export const USECASE_SPECS: Record<string, Spec> = {
     b: { name: "LEO satellite", sub: "free-space downlink" },
     steps: [
       { stageId: "pqc_handshake", kind: "c-bidir", label: (_m, c) => `PQC handshake — ${kemName(c)}` },
-      { stageId: "satellite_qkd", kind: "q-arrow", label: (m, c) => `free-space ${qkdName(c)} (${f(m, "channel_loss_db")} dB) · QBER ${f(m, "qber")}${optiTag(m, c)}`,
+      { stageId: "satellite_qkd", kind: "q-arrow", label: (m, c) => `free-space ${qkdName(c)}${eveTag(m)} (${f(m, "channel_loss_db")} dB) · QBER ${f(m, "qber")}${optiTag(m, c)}`,
         ok: qkdOk,
         hidden: pqcOnly },
       // The abort has to reach the arrow. With Eve at 0.5 the log said "QSDC ABORTED: error 0.158 >
