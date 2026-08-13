@@ -47,7 +47,6 @@ def model_table() -> str:
 
 
 def crypto_table() -> str:
-    from qsh.config import defaults as D
     rows = [
         ("KEM", "ML-KEM-768 + X25519", "FIPS 203 hybrid; ct 1088 B"),
         ("Signature", "ML-DSA-65", "FIPS 204; sig 3309 B"),
@@ -177,8 +176,30 @@ def macros() -> str:
     n_pub = sum(1 for s in registry._SPECS if s.hf_repo)
     n_rows = _checklist_scalar("nchecklistrows", _count_rows)
     n_lines = _checklist_scalar("nchecklistlines", lambda t: len(t.splitlines()))
+    # The report's date, from the HEAD COMMIT rather than the wall clock. `\date{10 August 2026}`
+    # was a literal in technical-report.tex and had gone three days stale by 2026-08-13, which is the
+    # same failure this whole directory exists to prevent - every other number here is generated and
+    # the date was not. Commit date rather than `today` so that rebuilding an old commit reproduces
+    # its own date instead of stamping it with whenever the rebuild happened.
+    #
+    # ISO from git, month name from a fixed table in Python. `--date=format:%B` asks git for a
+    # LOCALISED month name, and this host's shell locale is not English - the first attempt emitted
+    # a month name in the local script, which would have put non-Latin characters into the public
+    # PDF and broken the rule that no tracked public file contains any. Formatting here removes the
+    # locale from the question entirely rather than depending on LC_ALL being set by whoever runs
+    # the build.
+    #
+    # The example is described rather than quoted on purpose: pasting the offending output into this
+    # comment is what put those characters into a tracked source file the first time round.
+    iso = subprocess.run(["git", "log", "-1", "--format=%ad", "--date=short"],
+                         cwd=REPO, capture_output=True, text=True).stdout.strip()
+    _MONTHS = ("January", "February", "March", "April", "May", "June",
+               "July", "August", "September", "October", "November", "December")
+    y, m, d = (int(x) for x in iso.split("-"))
+    when = f"{d} {_MONTHS[m - 1]} {y}"
     return "\n".join([
         r"\newcommand{\gitsha}{" + sha + "}",
+        r"\newcommand{\reportdate}{" + when + "}",
         r"\newcommand{\npublished}{" + str(n_pub) + "}",
         r"\newcommand{\nchecklistrows}{" + str(n_rows) + "}",
         r"\newcommand{\nchecklistlines}{" + f"{n_lines:,}".replace(",", "{,}") + "}",

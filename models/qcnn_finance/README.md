@@ -38,6 +38,16 @@ low-bodyness measurements of their input and to be efficiently classically simul
 result, not an anomaly.
 
 The checkpoint was selected on a validation fold, never on the test rows, and the run is seeded.
+
+Seeded means reproducible, not typical - two different properties, and the second one was measured
+on 2026-08-13 rather than assumed. The same command at seeds 0 to 4 returns minority-class F1
+0.714286 / 0.324324 / 0.800000 / 0.461538 / 0.786885: **median 0.7143, range [0.3243, 0.8000]**.
+The seed reported here lands exactly on that median, so this figure is representative as well as
+reproducible - which is worth stating because the sibling medical card's seed is the WORST of its
+five and the two cards would otherwise read identically. The range is wide either way; a single
+seeded number from this circuit should not be read as precise to more than about one decimal.
+Workings, including an entanglement ablation over the same seeds:
+[`references/qcnn-entanglement-ablation.md`](../../references/qcnn-entanglement-ablation.md).
 An earlier revision of the trainer selected the checkpoint on the reported rows, so figures
 produced before the validation split was introduced are not comparable with the one above.
 
