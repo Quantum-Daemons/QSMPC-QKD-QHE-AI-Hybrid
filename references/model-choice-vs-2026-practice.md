@@ -364,3 +364,77 @@ keeping the encrypted step exactly as cheap as it is today.
 
 Not adopted this round, and recorded as a recommendation rather than a plan, because the backbone's
 licence and redistribution terms would need the same scrutiny the ImageNet question already got.
+
+## Re-check, 2026-08-13: is there anything to be judged AGAINST?
+
+Re-run of the per-industry question with a fresh literature sweep. The finding that changes how the
+other sections should be read: **for four of the five verticals there is no public
+privacy-preserving benchmark to be equivalent to.** That is a verified negative, not a gap in the
+search, and it means "appropriate versus the latest research" can only be answered against
+*plaintext* baselines plus honestly reported crypto overhead.
+
+The state of the field generally: a practitioner catalogue of production FHE lists exactly three
+deployments (Microsoft Edge Password Monitor, Apple Live Caller ID Lookup, Apple Enhanced Visual
+Search) and **none of them evaluates a neural network homomorphically** - Apple's runs the model
+on-device and encrypts only the resulting embedding. There is no production FHE ML inference to be
+behind.
+
+| Vertical | Is there a benchmark to match? | What this repo should claim |
+|---|---|---|
+| Finance | **No.** The US-UK PETs Prize Challenge (Track A, financial crime) concluded March 2023, its SWIFT data was never released, no leaderboard was published, and no successor exists. | Anchor on the plaintext AMLworld number: GFP+XGBoost minority-class F1 **0.6323** on HI-Small (NeurIPS 2023 D&B). This repository measures **0.1519** against it and does not close the gap - see the correction below. |
+| Medical | **No** privacy-preserving one. MedMNIST v2 has a real plaintext leaderboard; FeTS is federated with no cryptography; MedPerf is federated *evaluation* only. | Compare to MedMNIST plaintext. Every named production deployment is plain FL with no cryptographic guarantee, so adding CKKS puts this ahead of them rather than level. |
+| Genomics | **Yes, and it is the only one.** iDASH is live - 7 Nov 2026, Dallas - with a published rubric. Track 1 is homomorphic evaluation of a pretrained decoder, scored on a correlation term with a **60-minute disqualification**. | The one vertical where an external scoring rubric exists. Note that iDASH publishes participating teams but **not scores**, so the rubric is citable and a recent iDASH *number* is not. |
+| Telecom | **No.** Two 2026 surveys say so in their own words, one of them noting it "could not compare the papers it reviewed" for lack of standard protocols. | The synthetic-corpus decision looks better after this sweep, not worse - see below. |
+| Satellite | **No**, and almost no privacy work at all. ESA-ADB is the credible plaintext benchmark. | Genuinely novel, which cuts both ways: nothing to be judged against, and nothing to be validated by. |
+
+**Telecom deserves a note, because a decision recorded here as a limitation reads differently now.**
+This project trains on synthetic QKD-attack telemetry because no commercial-OK real corpus exists,
+and the model card says so. The 2026 literature has meanwhile turned hard against the standard
+alternatives: **NSL-KDD has been withdrawn by its own publisher** (the CIC page now serves only
+"this dataset is no longer available"), a EuroS&P 2024 paper excludes KDD/NSL-KDD from analysis as
+"long known to be faulty", and **more than 25% of flows in CIC-IDS2017 are artefacts of a flow
+terminator that closes a TCP flow on the first FIN**. The sharpest number: correcting a fifth of
+CIC-IDS2017 moves aggregate accuracy **0.99 -> 0.99 -> 0.99** while per-class F1 moves 0.18 -> 0.79.
+A ~99% headline on that corpus is uninformative *because* it is invariant to fixing the data.
+
+So the honest framing for telecom is not "we used synthetic data because we had to" but "the corpora
+we would have used are discredited, and a 99% number on them would have been worth less than a
+disclosed synthetic one". What the synthetic corpus cannot do is support a claim about real links -
+which is what the provenance string already says.
+
+**Two things a reviewer would reach for, and what they are worth.** There is no NIDS leaderboard to
+place a result on: Papers with Code, which hosted the only informal ones, was sunset in July 2025 and
+now redirects to an unrelated feed; its archive is frozen at a 2025-07-28 snapshot. And the most-used
+NIDS dataset appears in **only 29% of contemporary papers**, so even the popular choice is not a
+standard.
+
+**Where an equivalence claim IS available.** On tree models under TFHE the accuracy loss is exactly
+zero and the entire cost is latency - one published AMLworld result reports plaintext and FHE
+metrics identical at ~120,000x overhead. The same shape holds for the MPC literature: in genuine MPC
+the accuracy loss is zero by construction. That is the correct frame for this repo's own numbers:
+**the interesting quantity is the overhead and the fidelity of the encrypted path, not an accuracy
+delta**, because a correct implementation should not have an accuracy delta. This repo's CKKS tier
+reporting "0 top-1 mismatches against the plaintext reference" is measuring the right thing.
+
+### Correction, same day, to the finance row above
+
+The first version of this section said the published reference is 0.6323 "and this repo's finance
+page prints 0.6323 - equal, on the metric the corpus warrants." That is wrong in the way that
+matters. **0.6323 is the published BASELINE the page displays as a target; this repository's measured
+minority-class F1 is 0.1519.** The page labels it correctly - the rendered text reads "0.6323
+published baseline, NOT measured here" - and the label is what I misread.
+
+The repository's own record was never unclear about this. `registry.py` carries `baseline=0.6323`
+with `baseline_source` naming GFP+XGBoost, `metrics.json` carries `minority_class_f1` 0.1519, and
+`baseline_gap_note` explains the cause at length: IBM's Graph Feature Preprocessor computes
+per-transaction subgraph patterns over a dynamically updated graph, this project computes per-account
+scalar aggregates, and the gap is unreachable at any threshold because measured AUPRC is far below
+what that F1 requires. It closes with "Reported as measured; not adjusted to close the gap."
+
+Recorded rather than silently edited, because the failure mode is the one this document is about: a
+number that appears on a page next to a model is not automatically that model's score, and reading a
+figure without its label is how a target becomes an achievement. It happened here while writing about
+verification standards, which is the useful part of the example.
+
+Verified 2026-08-13. Negatives above are search-verified rather than assumed; the two most load-bearing
+(no PP-NIDS benchmark, no PP satellite work) rest on 2026 survey papers stating it directly.

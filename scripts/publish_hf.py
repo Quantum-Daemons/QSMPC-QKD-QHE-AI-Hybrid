@@ -304,6 +304,13 @@ def main() -> int:
         for key, sha in revisions.items():
             payload = dict(registry.achieved(key) or {})
             payload["hf_revision"] = sha
+            # DROP the invalidation marker. `record_metrics` sets it when a retrain lands without a
+            # revision, and nothing cleared it afterwards - so a re-publish left the entry asserting
+            # both "pinned at X" and "X was invalidated by a retrain". On finance_aml.student the two
+            # were the SAME sha, because re-uploading identical bytes returns the existing commit.
+            # The registry prefers `hf_revision`, so the contradiction was invisible at runtime and
+            # visible only in the record, which is where this project has been bitten before.
+            payload.pop("hf_revision_invalidated_by_retrain", None)
             record_metrics(key, payload)
         print(f"\nrecorded {len(revisions)} pinned revision(s) in models/metrics.json")
     return 0

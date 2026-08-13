@@ -66,7 +66,7 @@ Eight gates. Steps 1-3 and 5-8 are pass/fail; step 4 is a loop that runs until c
    demo prints is coarsened and invalid. Zero `/api` calls in demo mode, verified in the network
    panel rather than by reading code.
 4. **Content, in Chrome, every page** - four axes, iterated until clean. The executable form of this
-   gate is the browser verification checklist - maintained privately, not in this repository (results recorded in `verification-log.md`, which is published): seven routes including two negative paths, fourteen
+   gate is the browser verification checklist - maintained privately, not in this repository (results recorded in `verification-log.md`, which is published): six route patterns over ten landable pages plus three negative paths (recounted 2026-08-13 against `App.tsx` and the deployed site; the previous figure disagreed with the checklist's own route table, and `/usecase/demo` - counted as a page by one round - renders "No such use case"), fourteen
    regions per use-case page, eight axes, and the numeric edges to type into every field. It is a
    file rather than a habit because what gets reconstructed from memory each round is whatever
    someone remembers to look at.
@@ -116,6 +116,31 @@ The claim is "this model scores X on Y". Verified when:
   this ground: AlexNet, VGG16, DenseNet-121 and EfficientNet-B4 are benchmarked on BreastMNIST only
   ImageNet-pretrained, which this project dropped over redistribution terms, so their numbers cannot
   be compared with a from-scratch run;
+
+  **SqueezeNet is declined too, and for a stronger reason - recorded 2026-08-13, having been the one
+  item left open across 29 ORDER files.** The request was conditional: add SqueezeNet, DenseNet-121
+  or AlexNet *only if they are recommended as benchmarks*. It slipped because the four-architecture
+  sentence above enumerates MedMNIST+'s benchmark set, and SqueezeNet is not in it - so the item
+  never matched a search for a decision that had been made about the others.
+
+  Checked at the source rather than inherited: **MedMNIST+ (arXiv:2404.15786) evaluates ten models -
+  VGG16, AlexNet, ResNet-18, DenseNet-121, EfficientNet-B4, and five ViT-B/16 variants - and
+  SqueezeNet is not among them.** Two independently framed reads of the paper's HTML agree, and its
+  own sentence names the convolutional set as "VGG16, AlexNet, ResNet-18, DenseNet-121, and
+  EfficientNet-B4, all of which were pretrained on the ImageNet1k dataset". An internal planning
+  note had recorded SqueezeNet as being in that set; it is not.
+
+  So the four rejected architectures have a published BreastMNIST comparator this project cannot use
+  (wrong training regime). SqueezeNet has **no published BreastMNIST comparator at all** - none in
+  MedMNIST+, and none cited anywhere in this repository's references. Training it from scratch would
+  produce a number with nothing to compare it against, which is the definition of a figure that is
+  not a deliverable here. The ORDER's condition is therefore not met, and its own fallback applies:
+  keep the ResNet-50 plan. **Decision: declined, no repository change.**
+
+  Not re-verified today: whether MedMNIST v2's own baseline table contains SqueezeNet. Its abstract
+  names only "2D / 3D neural networks and open-source / commercial AutoML tools" without
+  enumerating them. What IS established is that no SqueezeNet BreastMNIST figure is cited anywhere
+  in this project, so there is nothing here to compare against either way;
 - the artefact passes gate 2 and is pinned to a commit sha, never a branch;
 - a browser reproduces the offline figure on the same rows, and says so when it does not.
 
@@ -339,9 +364,10 @@ rebuild) and passes a round-trip test. The second is now known to be reachable.
 **Genomics has no label, so it has no QCNN: declined, and not for the reason recorded for two
 rounds.** The deferral condition on file was the per-score licence audit. Round 31 checked what would
 actually happen if that audit came back clean, and the answer is nothing: `scripts/train/qcnn_variational.py`
-is supervised end to end - `BCEWithLogitsLoss`, best epoch chosen on a validation split, and a report
-block comparing against `all_positive_f1` and `majority_baseline` - and **1000 Genomes is a reference
-panel with no breast-cancer case/control status**. `registry.py` already says so, and
+is supervised end to end - a labelled loss (`BCEWithLogitsLoss` on two classes, `CrossEntropyLoss`
+on more), best epoch chosen on a validation split, and a report block comparing against whichever
+baseline the regime warrants (`all_positive_f1`, `majority_baseline`, or the macro-F1 floors) - and
+**1000 Genomes is a reference panel with no breast-cancer case/control status**. `registry.py` already says so, and
 `genomics_prs.py` records `auroc=null` rather than inventing one. There is no `y` to train against.
 
 Two ways to manufacture one, both rejected on their merits rather than on effort:
@@ -400,6 +426,43 @@ So Rust is not missing from the client-side stack, it is declined, and WASM is p
 `node-seal` (SEAL through Emscripten) and `emp-wasm` are both WebAssembly. The condition that would
 reopen this: Zama shipping FHE **evaluation** in the WASM target, or any Rust FHE library doing so under
 a licence that grants patent rights.
+
+### Additional models: DECIDED, re-stated 2026-08-12 (Round 34) - no additional model
+
+**Moved here from `docs/browser-verification-checklist.md` in Round 34, and the move is the point.**
+That file is deliberately untracked and gitignored, so a deferred item whose resolving condition was
+"add a sixth row to the trigger table" could not be verified from the repository at all. A condition
+that lives outside the artifact it gates is decoration, by this project's own `QC16` test. Worse, the
+`medical_fl.student.baseline_gap_note` in `models/metrics.json` asserted that a latent-encoder trigger
+had been "recorded as a falsifiable trigger in the additional-model decision" when the table had five
+rows and none concerned latent-space encoding - a claim appealing to a record that did not contain it,
+made MORE specific in Round 33 and then filed by Round 33 as a defect against itself. The decision now
+lives in a tracked file, so the appeal is checkable and the sixth trigger below is real.
+
+Not an HF download, not fine-tuning, not transfer learning, not RL, not training something different
+from scratch. The binding constraint is cryptographic rather than statistical: CKKS at ring degree
+8192 gives 4096 slots and one multiplicative level per ciphertext-plaintext dot product, and anything
+deeper bootstraps or switches scheme. The 2026 literature holds the model class fixed and moves the
+protocol, which is the same choice this makes.
+
+`AM1` in the checklist requires this to be re-stated with its date every round. It read "2026-08-11
+(Round 31)" through Rounds 32 and 33 - two rounds during which a decision taken once read as current
+because nothing made the staleness visible. Keeping it in a tracked file is what lets a reviewer see
+the date go stale.
+
+**The six triggers that would flip it**, each with the measurement that currently blocks it:
+
+| trigger | current state |
+|---|---|
+| A bootstrapped CKKS CNN cheap enough for WASM at N about 8192 | cheapest bootstrapped ImageNet CNN is N = 2^15 |
+| A real, labelled, commercial-OK QKD attack corpus | closest is QF-LOG: synthetic, four classes, subscription-gated |
+| A fidelity quantum kernel beating a random forest at 8 qubits or fewer | concentration bound says >= 15 qubits |
+| An encrypted transformer or tabular foundation model on any finance tabular benchmark | none published |
+| Anyone publishing an encrypted BreastMNIST result above this project's | two exist, both simpler architectures |
+| **A latent-space encoder whose latent fits 4096 CKKS slots at multiplicative depth 1 AND runs under `onnxruntime-web`** | Kim et al. (arXiv:2506.15258) encode chest X-rays with a VQGAN latent at downsampling factor 8, but f=8 on this project's 28x28 gives 3.5x3.5, so the transfer is the open measurement rather than a citation. Added Round 34 |
+
+The sixth is the one `metrics.json` was already claiming existed. It is now here, with the condition
+stated as a measurement someone could take rather than as a direction someone could agree with.
 
 ## Round 28: a claim retracted, and the work it would take to earn it back
 

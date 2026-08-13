@@ -602,7 +602,16 @@ export interface MeasuredHybrid {
   dense?: { rotations: number; multiplies: number };
 }
 
-export interface RealHybridRun extends MeasuredHybrid { prediction: number; maxAbsError: number; }
+export interface RealHybridRun extends MeasuredHybrid {
+  prediction: number;
+  maxAbsError: number;
+  /** The decrypted logits and the plaintext reference the CKKS path was measured against.
+   *  Carried so every use case can report the same encrypted-verification figures telecom got in
+   *  Round 33 - a top-1 mismatch COUNT and bits of precision - instead of only a raw error magnitude
+   *  whose scale a reader has no way to judge. */
+  logits: number[];
+  plainLogits: number[];
+}
 
 let _fheWarmed = false;
 /** Whether the one-time CKKS/MPC warm-up has already run in this tab. */
@@ -698,7 +707,7 @@ export async function realClientHybrid(features: number[], u: () => number,
     return {
       prediction: mpc.out[0], fheMs: fhe.fheMs + (conv?.convMs ?? 0), mpcMs: mpc.mpcMs,
       commBytes: mpc.commBytes, ctBytes: fhe.ctBytes, featDim: n,
-      maxAbsError: fhe.maxAbsError, conv,
+      maxAbsError: fhe.maxAbsError, plainLogits: fhe.plainLogits, logits: fhe.logits, conv,
       dense: { rotations: fhe.rotations, multiplies: fhe.multiplies },
     };
   } catch (e) {
@@ -1105,6 +1114,42 @@ const FLOWS: Record<string, string[]> = {
 export function clientFlow(usecase: string): string[] {
   return FLOWS[usecase] ?? FLOWS.demo;
 }
+// Trained QCNN weights, fetched once per use case. These three sit at MODULE scope deliberately.
+// They were written flush-left INSIDE the `private_inference` case block, which reads as top level
+// and is not: an ES module is always strict mode, so a function declaration in a block is scoped to
+// that block. Two consequences, both invisible until something outside that case needed them - the
+// telecom stage could not call `loadQcnnWeights` at all (TS2304), and `_qcnnCache` was re-created on
+// every entry to the case, so the memo never survived a run and the fetch repeated. The HTTP cache
+// hid the second one.
+// Trained QCNN weights, fetched once per use case. Absent file is the normal case for a use case
+// that has no trained circuit yet, and the caller degrades to CKKS rather than inventing a class.
+const _qcnnCache: Record<string, QcnnWeights | null> = {};
+
+/** Directory under `public/data` for a use case's bundled artefacts.
+ *
+ *  `ParameterPanel` decides whether to OFFER the QCNN option, and it must agree with whether the
+ *  weights actually load or the control goes inert again. The two live in different modules, so
+ *  `tests/test_qcnn_usecases.py` compares `QCNN_USECASES` against the files on disk using this same
+ *  mapping rather than relying on the two staying in step by inspection. */
+function dataDirFor(usecase: string): string {
+  return usecase === "medical_fl" ? "medical" : usecase.split("_")[0];        // finance_aml -> finance
+}
+
+async function loadQcnnWeights(usecase: string): Promise<QcnnWeights | null> {
+  if (usecase in _qcnnCache) return _qcnnCache[usecase];
+  try {
+    const r = await fetch(`${import.meta.env.BASE_URL}data/${dataDirFor(usecase)}/qcnn_weights.json`);
+    // `r.ok` is NOT the test. This is an SPA: the host serves index.html with HTTP 200 for any path
+    // that does not exist, so `r.ok` is true for a file that was never deployed. The old guard only
+    // appeared to work because `r.json()` then threw on HTML and the catch swallowed it - a check
+    // that reads as handling the case while the catch does the work. Content-type is the
+    // discriminator, which is the same rule the verification checklist applies to `curl`.
+    const json = (r.headers.get("content-type") ?? "").includes("application/json");
+    _qcnnCache[usecase] = r.ok && json ? ((await r.json()) as QcnnWeights) : null;
+  } catch { _qcnnCache[usecase] = null; }
+  return _qcnnCache[usecase];
+}
+
 
 export function runClientPipeline(
   usecase: string, config: Record<string, any>, h: PipelineHandlers, startPaused = false,
@@ -1195,7 +1240,15 @@ export function runClientPipeline(
         row.reduce((a, wij, i) => a + wij * (z[i] ?? 0), 0) + (w.b?.[j] ?? 0));
       const encCls = argmax(fhe.logits), plainCls = argmax(plain);
       const maxAbs = Math.max(...fhe.logits.map((v, i) => Math.abs(v - plain[i])));
-      const bits = maxAbs > 0 ? Math.floor(Math.abs(Math.log2(maxAbs))) : null;
+      // Bits of precision is -log2(error), and the sign is the whole point. This read
+      // `Math.abs(Math.log2(maxAbs))` until Round 34, which made the best and the worst case print
+      // IDENTICALLY: an error of 4.294e-9 gives 27 bits, and an error of 2^27 - a total CKKS blow-up,
+      // eight orders of magnitude larger than the logits themselves - also gave "about 27 bits of
+      // precision". Folding the sign turned a catastrophe into a healthy-looking number in the one
+      // metric that exists to detect it. An error at or above 1 has no bits of precision to report,
+      // so it reports as a failure instead of as a plausible positive.
+      const bits = maxAbs > 0 && maxAbs < 1 ? Math.floor(-Math.log2(maxAbs)) : null;
+      const precisionFailed = maxAbs >= 1;
 
       metric(stage, "encrypted_student_params", Number(w.n_parameters) || null);
       metric(stage, "encrypted_student_class", w.classes?.[encCls] ?? encCls);
@@ -1209,7 +1262,11 @@ export function runClientPipeline(
         + `${w.W.length} dot products): class "${w.classes?.[encCls] ?? encCls}" in ${r2(fhe.fheMs)} ms. `
         + `Top-1 mismatches vs the plaintext reference: ${encCls === plainCls ? 0 : 1} of `
         + `${w.W.length ? 1 : 0} scored inputs. Max abs error ${maxAbs.toExponential(3)}`
-        + (bits !== null ? ` (about ${bits} bits of precision, MAX not mean)` : "") + ".");
+        + (bits !== null ? ` (about ${bits} bits of precision, MAX not mean)` : "")
+        + (precisionFailed
+          ? ` -- PRECISION FAILURE: the error is at or above 1, so there are no bits of precision to `
+            + `report. The decrypted result is not a usable approximation of the plaintext one.`
+          : "") + ".");
       emit("log", stage, `the ARGMAX is NOT encrypted: all ${w.W.length} class scores are decrypted `
         + `and the maximum taken in the clear, because CKKS has no native comparison. That is the `
         + `standard construction and it reveals nothing here, since in one tab the client is the user.`);
@@ -1861,6 +1918,38 @@ export function runClientPipeline(
         // not cryptographic integrity: verifiable-FHE proofs establish that a server ran the
         // circuit it was asked to run, and this establishes something different and complementary.
         await runEncryptedTelecomStudent(stage, ids.explain?.xRaw);
+
+        // The 8-class QCNN, where the visitor selected it. This lives here rather than in
+        // `private_inference` because telecom has no such stage - and putting the weights on disk and
+        // registering the use case WITHOUT this made the QCNN option appear in the Parameters panel
+        // and do nothing. An inert control is the defect class this file's own checklist opens with
+        // (Round 20 audited use-case pages and found five), and the only thing that surfaced it was
+        // running the deployed page: every local gate was green.
+        if (String(config.inference || "ckks") === "qcnn" && ids.explain?.xRaw) {
+          const w = await loadQcnnWeights(usecase);
+          if (w) {
+            const qc = qcnnInferTrained(ids.explain.xRaw.slice(0, w.n_qubits), w);
+            artifacts.primary_inference = { backend: "qcnn-trained", class: qc.cls,
+                                            qubits: qc.qubits, expectation: r2(qc.expectation) };
+            metric(stage, "primary_inference_backend", "qcnn-trained");
+            metric(stage, "primary_inference_class", w.class_names?.[qc.cls] ?? qc.cls);
+            metric(stage, "qcnn_classes_available", w.readout?.n_classes ?? 2);
+            emit("log", stage, `QCNN (trained, ${w.readout?.n_classes ?? 2}-class basis readout on `
+              + `${w.readout?.readout_qubits ?? 0} of ${w.n_qubits} qubits): class `
+              + `"${w.class_names?.[qc.cls] ?? qc.cls}". Class index is ${w.readout?.class_index}, `
+              + `${w.readout?.bit_order} - reading those bits in another order permutes the class map `
+              + `while leaving every aggregate metric identical, which is why the convention ships in `
+              + `the weights.`);
+            if (typeof w.test_macro_f1 === "number" || w.per_class_f1) {
+              emit("log", stage, `and it LOSES: macro F1 ${w.test_macro_f1 ?? "n/a"} against a `
+                + `classical logistic regression at ${w.classical_lr_macro_f1 ?? "n/a"} on the same `
+                + `split, with ${w.n_classes_predicted ?? "?"} of ${w.readout?.n_classes ?? 2} classes `
+                + `predicted. Reported because it is the measured result, not because it flatters.`);
+            }
+          } else {
+            emit("log", stage, "QCNN selected but no trained weights are published for this use case");
+          }
+        }
         break;
       }
       case "private_inference": {
@@ -1919,6 +2008,37 @@ export function runClientPipeline(
           artifacts._measured_hybrid = { fheMs: real.fheMs, mpcMs: real.mpcMs, commBytes: real.commBytes,
             ctBytes: real.ctBytes, featDim: real.featDim, conv: real.conv, dense: real.dense };
           metric(stage, "fhe_max_abs_error", r2(real.maxAbsError) || real.maxAbsError);
+          // The encrypted-verification figures, on the same footing telecom got in Round 33 - where
+          // they existed at exactly ONE call site and the other four use cases reported only a raw
+          // error magnitude whose scale a reader has no way to judge.
+          //
+          // Two conventions, both published, and both reported because at n=1 they say different
+          // things. The top-1 mismatch COUNT is arXiv:2605.22237 Table IX, which reports it as an
+          // integer expected to be zero; the agreement percentage is Concrete-ML's "Similarity".
+          // "0 of 1" and "100.0%" are not the same claim.
+          //
+          // Precision in BITS because that is the unit OpenFHE and HElib both use, and the sign is
+          // load-bearing: bits are -log2(error), so an error at or above 1 has no bits to report and
+          // must surface as a failure rather than fold to a plausible positive. That exact fold was a
+          // live defect on the telecom path until Round 34.
+          {
+            const encCls = argmax(real.logits), plainCls = argmax(real.plainLogits);
+            const mism = encCls === plainCls ? 0 : 1;
+            const bits = real.maxAbsError > 0 && real.maxAbsError < 1
+              ? Math.floor(-Math.log2(real.maxAbsError)) : null;
+            metric(stage, "encrypted_top1_mismatches", mism);
+            metric(stage, "encrypted_scores_compared", real.logits.length);
+            metric(stage, "encrypted_agreement", mism === 0 ? 1 : 0);
+            metric(stage, "encrypted_precision_bits", bits);
+            emit("log", stage, `encrypted-vs-plaintext verification: ${mism} of 1 top-1 mismatch`
+              + `es over ${real.logits.length} class scores. Max abs error `
+              + `${real.maxAbsError.toExponential(3)}`
+              + (bits !== null ? ` (about ${bits} bits of precision, MAX not mean)` : "")
+              + (real.maxAbsError >= 1
+                ? " -- PRECISION FAILURE: the error is at or above 1, so the decrypted result is not"
+                  + " a usable approximation of the plaintext one."
+                : "") + ".");
+          }
           // Counted on BOTH paths, so Linear vs CNN is a measured comparison of key-switch cost -
           // the quantity the 2026 CKKS-inference literature identifies as dominant - rather than a
           // wall-clock difference that could be anything.
@@ -1978,34 +2098,6 @@ export function runClientPipeline(
           emit("log", stage, `private inference: class=${inf.prediction}; in-browser CKKS unavailable here — `
             + `representative split ${split.fhe_linear_ms}/${split.mpc_nonlinear_ms} ms, client compute ${clientMs} ms`);
         }
-// Trained QCNN weights, fetched once per use case. Absent file is the normal case for a use case
-// that has no trained circuit yet, and the caller degrades to CKKS rather than inventing a class.
-const _qcnnCache: Record<string, QcnnWeights | null> = {};
-
-/** Directory under `public/data` for a use case's bundled artefacts.
- *
- *  `ParameterPanel` decides whether to OFFER the QCNN option, and it must agree with whether the
- *  weights actually load or the control goes inert again. The two live in different modules, so
- *  `tests/test_qcnn_usecases.py` compares `QCNN_USECASES` against the files on disk using this same
- *  mapping rather than relying on the two staying in step by inspection. */
-function dataDirFor(usecase: string): string {
-  return usecase === "medical_fl" ? "medical" : usecase.split("_")[0];        // finance_aml -> finance
-}
-
-async function loadQcnnWeights(usecase: string): Promise<QcnnWeights | null> {
-  if (usecase in _qcnnCache) return _qcnnCache[usecase];
-  try {
-    const r = await fetch(`${import.meta.env.BASE_URL}data/${dataDirFor(usecase)}/qcnn_weights.json`);
-    // `r.ok` is NOT the test. This is an SPA: the host serves index.html with HTTP 200 for any path
-    // that does not exist, so `r.ok` is true for a file that was never deployed. The old guard only
-    // appeared to work because `r.json()` then threw on HTML and the catch swallowed it - a check
-    // that reads as handling the case while the catch does the work. Content-type is the
-    // discriminator, which is the same rule the verification checklist applies to `curl`.
-    const json = (r.headers.get("content-type") ?? "").includes("application/json");
-    _qcnnCache[usecase] = r.ok && json ? ((await r.json()) as QcnnWeights) : null;
-  } catch { _qcnnCache[usecase] = null; }
-  return _qcnnCache[usecase];
-}
 
         // Inference backend selection (config.inference): "qcnn" routes the reported class through the
         // quantum QOTP+QCNN readout; "ckks"/default keeps the CKKS(FHE)+MPC path. Both are computed for the
@@ -2029,11 +2121,17 @@ async function loadQcnnWeights(usecase: string): Promise<QcnnWeights | null> {
             // rate accuracy reads 0.97 against a 0.95 majority baseline and says almost nothing,
             // while minority-class F1 is 0.71 against an all-positive 0.10. The trainer decides
             // which is the headline and ships it in `headline_metric`.
-            const f1Led = w.headline_metric === "minority_class_f1";
-            const mine = f1Led ? w.test_minority_f1 : w.test_accuracy;
-            const theirs = f1Led ? w.classical_lr_minority_f1 : w.classical_lr_accuracy;
-            const base = f1Led ? w.all_positive_f1 : w.majority_baseline;
-            const label = f1Led ? "minority-class F1" : "accuracy";
+            // Three regimes, matching `headline_metric` in the artifact. The multiclass arm reads
+            // the uniform-random floor rather than the constant-predictor one: it is the higher of
+            // the two the trainer ships, so the comparison is against the harder baseline.
+            const head = w.headline_metric;
+            const macroLed = head === "macro_f1", f1Led = head === "minority_class_f1";
+            const mine = macroLed ? w.test_macro_f1 : f1Led ? w.test_minority_f1 : w.test_accuracy;
+            const theirs = macroLed ? w.classical_lr_macro_f1
+                         : f1Led ? w.classical_lr_minority_f1 : w.classical_lr_accuracy;
+            const base = macroLed ? w.macro_f1_floors?.uniform_random
+                       : f1Led ? w.all_positive_f1 : w.majority_baseline;
+            const label = macroLed ? "macro F1" : f1Led ? "minority-class F1" : "accuracy";
             emit("log", stage, `inference backend = QCNN (QHE, TRAINED): class=${qc.cls} `
               + `(<Z0>=${qc.expectation.toFixed(4)}, ${w.layers}x${w.n_qubits} trained angles, `
               + `state-vector sim). Held-out ${label} ${(mine ?? 0).toFixed(4)} against a baseline of `

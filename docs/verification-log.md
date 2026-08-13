@@ -571,3 +571,83 @@ absent API from a present SPA and does **not** separate a valid route from an in
 browser - the real route is `/usecase/<id>`, singular. Only rendered content tells the two apart, so a
 route check that never reads the DOM is not a route check. `RS2`'s nonsense-path control remains correct
 for what it tests; this is a second and different confusion, and it needs its own row.
+
+## Round 34 - OpenFHE bootstrapping was verified nowhere, behind two green signals
+
+Not a browser observation: everything below was measured by running the code on the EL9 dev host
+(Linux 5.14.0-611.5.1.el9_7, Python 3.12 in `.venv`, OpenFHE 1.5.1, 20 cores) and by running the
+collector CI runs.
+
+**The shape of it.** `OpenFHEBackend(use_bootstrap=True)` exited **139 (SIGSEGV, core dumped)**
+while the same constructor without the flag exited 0. Two separate signals both read green over
+that: locally the only test of it, `tests/test_round2.py::test_openfhe_bootstrap`, could skip for
+two different reasons, and on CI it never ran at all. So the feature README line 514 advertises had
+**no passing execution anywhere** - and the crash was not even reachable by the skip logic, because
+a SIGSEGV is not an exception and `except ImportError` never sees it.
+
+**The remedy named in the source was already applied, and was not the problem.**
+`requirements-fhe.txt:12` says to fix this with `bash env/build_openfhe_el9.sh`. Checked before
+running it: the installed extension's highest required symbol is **`GLIBCXX_3.4.29`** (EL9's
+ceiling - the stock Ubuntu-24.04 wheel needs `3.4.32`), and `openfhe.cpython-312-*.so` plus
+`lib/libOPENFHE*.so.1.5.1` are dated **13:56** against the wheel's own `__init__.py` at **13:46**.
+That is the build script's output, already in place. `import openfhe` and a full CKKS
+encrypt/multiply/decrypt both worked before any change. **The libstdc++ story was true history and
+the wrong diagnosis for this bug** - re-running the rebuild would have changed nothing, and
+"the documented fix is already applied" is the thing worth writing down.
+
+**The actual cause: two crypto-context parameters, both of which must be set before
+`GenCryptoContext`.** Located by `faulthandler`, which put the crash on the
+`cc.EvalBootstrapSetup([3, 3])` line, after `Enable(FHE)` had already succeeded.
+
+| parameter | what was set | what bootstrapping needs | symptom when wrong |
+|---|---|---|---|
+| multiplicative depth | `4` (`config/defaults.py:152`) | `GetBootstrapDepth([3,3], UNIFORM_TERNARY)` = **20**, plus the levels you want afterwards | **SIGSEGV** - walks off the modulus chain |
+| scaling technique | CKKS default (`FIXEDAUTO`) | **`FLEXIBLEAUTO`** | `RuntimeError: Degree [10] must be less than or equal to the correction factor [9]` |
+
+`FLEXIBLEAUTOEXT` fails the same way as the default. Depth is now computed as
+`mult_depth + GetBootstrapDepth(...)` = **24**, and both settings are applied only on the
+`use_bootstrap=True` path, so the plain CKKS context is byte-for-byte what it was.
+
+**What a passing run now measures**, at ring dimension **65536** (OpenFHE's standard 128-bit
+security level, not a reduced toy parameter set): context and keys in **3.0 s**, one
+`EvalBootstrap` in **7.7-9.1 s**. A ciphertext is driven down to level **22** by repeated
+multiplication by 1.0 - which spends a level and leaves the plaintext alone - and decrypts there as
+`0.4999999999923404`. After bootstrapping it sits at level **19** (**3 levels regained**) and
+decrypts as `0.5023873687017761`: bootstrapping is approximate, and that ~2-decimal error is the
+evidence it actually ran rather than returning its input. One further multiply then succeeds,
+which is the part that proves the level budget was really restored and not just relabelled.
+
+**Bootstrapping only pays above level 20 here, and cannot run at all at level 23.** `EvalBootstrap`
+returns level 19 whatever it is handed, so on a fresher ciphertext it is an expensive no-op; and on
+the last RNS tower it raises `DropLastElement(): Removing last element of DCRTPoly renders it
+invalid`. Both are now in the `bootstrap()` docstring, because both look like bugs from the outside.
+
+**What CI was actually doing - measured, not inferred.** `.github/workflows/ci.yml` runs
+`pytest -m "not slow" -q`, and the test carries `@pytest.mark.slow`. For `tests/test_round2.py`:
+
+```
+10/11 tests collected (1 deselected) in 0.21s
+```
+
+`test_openfhe_bootstrap` is absent from the collected node ids. It was **deselected, never skipped**
+- CI has not executed a line of it. A new CI step now runs exactly that test with
+`QSH_REQUIRE_OPENFHE_BOOTSTRAP=1`, and the old step carries a comment saying what it does not cover,
+so a green tick on the main suite is no longer readable as FHE coverage.
+
+**Three guards, each verified by breaking it on purpose.** A test that can report success without
+running is the defect class here, so none of these was accepted on the strength of its code:
+
+| guard | how it was proven | observed |
+|---|---|---|
+| Native crash must be a red test, not a dead suite | reintroduced the depth bug (`+ boot_depth * 0`) and ran the suite | `Failed: ... crashed the interpreter: SIGSEGV (-11)`, pytest exit **1** - previously exit **139**, which took the other 290 tests with it |
+| A skip must not cover a working host | a stub test skipping with the old `"bootstrap not available"` text, on this host where `openfhe` imports | banner `UNJUSTIFIED SKIP - failing the session`, exit **1** despite the summary reading `1 passed, 2 skipped`; an unrelated skip in the same run was left alone |
+| Where bootstrapping is expected, even a legitimate skip is a failure | a stub `openfhe` module raising the real `GLIBCXX_3.4.32 not found` text | without the env var: skipped, quoting that error verbatim, exit 0. With `QSH_REQUIRE_OPENFHE_BOOTSTRAP=1`: **failed**, exit 1 |
+
+The skip that remains names the host's actual error and points at `env/build_openfhe_el9.sh`; the
+old one guessed ("needs Ubuntu-24.04-class libstdc++") and, on this host, guessed wrong.
+
+**The backend no longer degrades silently.** `use_bootstrap=True` used to wrap its setup in
+`except Exception: self.bootstrap_enabled = False`, so a hard failure and an absent feature produced
+the identical state - and the test read that state and skipped. It now raises. `bootstrap_enabled`
+is False only when bootstrapping was never asked for, which is the same no-silent-fallback rule
+`get_backend` already follows.
