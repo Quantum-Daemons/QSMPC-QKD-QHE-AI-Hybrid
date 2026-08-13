@@ -148,7 +148,14 @@ export interface BB84Result {
 }
 
 // Analytic decoy-state BB84 (GLLP secure fraction), matching run_bb84() in expectation.
-export function bb84(nPulses: number, p: ChannelParams, seed = 0, fEC = 1.16): BB84Result {
+// `fEC` and `visibility` default from CONFIG, not from a literal. They were `1.16` and `0.97`
+// written here, and `error_correction_eff` had no reader anywhere in `web/src` outside
+// `config.defaults.json` - so editing config moved the Python model and left the browser on the
+// literal, agreeing only because the two numbers happened to match. A default expression is
+// evaluated at CALL time, so reading config here wires every call site at once; threading a
+// parameter through the six of them is what would risk a half-wire.
+export function bb84(nPulses: number, p: ChannelParams, seed = 0,
+                     fEC = qkdCfg().error_correction_eff): BB84Result {
   const u = rng(seed + 1);
   const T = transmittance(p);
   const nSift = Math.max(0, Math.round(nPulses * T * 0.5)); // detected & bases match
@@ -174,7 +181,9 @@ export function bb84(nPulses: number, p: ChannelParams, seed = 0, fEC = 1.16): B
 // S = 2*sqrt(2)*V (Tsirelson bound 2*sqrt(2) at V=1) and QBER = (1-V)/2; a key exists ONLY if the Bell
 // inequality is violated (S > 2). Returns the same shape as bb84() + the measured CHSH S, so selecting
 // "E91" in the Parameters panel visibly moves QBER / secure-key-bits independently of BB84.
-export function e91(nPulses: number, p: ChannelParams, seed = 0, visibility = 0.97, fEC = 1.16): BB84Result & { chshS: number } {
+export function e91(nPulses: number, p: ChannelParams, seed = 0,
+                    visibility = qkdCfg().e91_visibility,
+                    fEC = qkdCfg().error_correction_eff): BB84Result & { chshS: number } {
   const u = rng(seed + 2);
   const T = transmittance(p);
   const vEff = Math.max(0, Math.min(1, visibility * (1 - intrinsicQber(p))));  // channel-degraded visibility

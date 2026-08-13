@@ -24,7 +24,11 @@ const clamp = (x: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, x
 // Two-intensity decoy-state SKR per pulse (Ma-Qi-Zhao-Lo 2005): a signal (mu) + decoy (nu) intensity pair
 // lower-bounds the single-photon yield Y1 and upper-bounds the single-photon error e1; the GLLP rate then
 // keeps only the secure single-photon contribution. mu_decoy genuinely moves the rate via the Y1/e1 bounds.
-const skrModel: Model = (p, prm, fEC = 1.16) => {
+// f_EC from config, for the same reason as `quantumSim`. Leaving the SURROGATE on a literal
+// while wiring `bb84`/`e91` would be the worst of the three states: the reported skr and the
+// optimiser's own baseline would use different f_EC, silently corrupting
+// `qkd_skr_improvement_pct` - and invisibly, for as long as config equals the literal.
+const skrModel: Model = (p, prm, fEC = qkdCfg().error_correction_eff) => {
   const eta = transmittance(p);
   const mu = Math.max(1e-3, prm.muSignal);
   const nu = Math.min(Math.max(1e-4, prm.muDecoy), mu * 0.9);   // decoy strictly weaker than the signal
@@ -48,7 +52,7 @@ const skrModel: Model = (p, prm, fEC = 1.16) => {
 // E91 (entanglement-based, CHSH) SKR mirror of qkd/e91.py: a Werner-state visibility V (degraded by the
 // channel) gives S = 2*sqrt(2)*V and QBER = (1-V)/2; a Bell violation (S>2) is required for a key. Only
 // basis_prob + pp_threshold apply here (the decoy intensities do not).
-const e91Skr: Model = (p, prm, fEC = 1.16) => {
+const e91Skr: Model = (p, prm, fEC = qkdCfg().error_correction_eff) => {
   const eta = transmittance(p);
   const vEff = clamp(qkdCfg().e91_visibility * (1 - intrinsicQber(p)), 0, 1);
   const s = 2 * Math.SQRT2 * vEff;
