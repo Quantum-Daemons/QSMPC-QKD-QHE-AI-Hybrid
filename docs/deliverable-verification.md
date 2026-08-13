@@ -1102,6 +1102,23 @@ CKKS at `poly_modulus_degree` 8192 gives one multiplicative level; no pretrained
 size, and the teachers already sit at or above their published baselines. *Reopens if* bootstrapping
 lands in the browser tier, which would change the parameter budget rather than the preference.
 
+**Metric choice against 2026 practice: ANSWERED, and two of the five choices are
+defensible-but-not-best-practice rather than correct.**
+[`references/2026-metric-practice-fact-check.md`](../references/2026-metric-practice-fact-check.md)
+resolves every arXiv ID it cites and drops the ones that did not resolve. Two findings this project
+acts on: tuning a screening threshold on F1 degenerates to all-positive when discrimination is weak,
+which is a **2014 theorem** (Lipton, Elkan & Narayanaswamy, arXiv:1402.1892, ECML-PKDD 2014) rather
+than a local surprise - the sweep that hit it reproduced it exactly. And **Youden's J, which replaced
+F1 here, is not what current practice recommends**: Van Calster et al. (STRATOS TG6, Lancet Digital
+Health 2025;7(12)) find all classification measures improper at thresholds other than 0.5 or the
+prevalence. *Reopens if* a decision-curve or net-benefit readout is added to a use-case page, which
+is the direction that document points.
+
+**This entry exists because the document was an ORPHAN.** No tracked file pointed at it, so the
+question it answers - "are these metric choices current?" - could only be re-asked. It was linked
+from the gitignored checklist, which does not ship, and a planning sweep reported the set as clean
+because the check written for it could not fail. `DC1` now runs over tracked files only.
+
 **QCNN against literature numbers: RECLASSIFIED from declined to done, Round 37.** The stated reason
 - "no published QCNN reports this circuit on this data" - was true of the circuit and false of the
 data. `QC18`-`QC20` and `references/qcnn-vs-published-wdbc.md` carry the comparison against Sci Rep
