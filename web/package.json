@@ -9,7 +9,8 @@
     "build": "tsc -b && vite build",
     "preview": "vite preview --host",
     "check:pqc": "node scripts/check_mlkem_modulus_vectors.mjs",
-    "check:qkd": "node scripts/check_qkd.mjs"
+    "check:qkd": "node scripts/check_qkd.mjs",
+    "check:qfl": "node scripts/check_qfl.mjs"
   },
   "dependencies": {
     "@huggingface/transformers": "^4.2.0",

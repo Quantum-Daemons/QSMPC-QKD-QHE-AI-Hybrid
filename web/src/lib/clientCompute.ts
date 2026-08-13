@@ -16,6 +16,7 @@ import {
 import { encryptedConv2d, encryptedLinear, encryptedStudentInference, warmFHE,
   type CnnStudentWeights } from "./clientFHE";
 import { clientTrainScoreIDS } from "./clientIDS";
+import { clientQFL } from "./clientQFL";
 import { secureArgmax, warmMPC } from "./clientMPC";
 import { optimizeQKD } from "./clientOptiQKD";
 import { generateQuantumBits } from "./clientQRNG";
@@ -1007,89 +1008,31 @@ export async function clientAliceBob(seed = 0, nShared = 8) {
 //  In-browser E2E pipeline with Pause / Resume / Step / Stop
 // --------------------------------------------------------------------------- //
 // ---- Quantum Federated Learning (QFL) — client-side mirror (demo) ------------------------------
-// A GENUINELY-computed, in-browser FedAvg of a HYBRID quantum-classical model: a fixed quantum
-// feature map (the quantumSim QCNN expectation) feeds a classical logistic head that is federated
-// across K simulated clients with size-weighted FedAvg — mirroring the full deployment's
-// Flower + PennyLane HybridQNN under quantum-safe secure aggregation. Round accuracy is REALLY
-// computed on a held-out split (not a canned constant). Honest scope: a small simulated VQC feature
-// map + a federated classical head (not fault-tolerant QFL); the full path also trains the VQC weights.
-export interface QFLResult {
-  roundAcc: number[]; finalAcc: number; clients: number; rounds: number; secureAgg: boolean;
-}
 
-export function clientQFL(
-  seed = 0,
-  opts?: { clients?: number; rounds?: number; data?: { X: number[][]; Y: number[] } | null },
-): QFLResult {
-  const u = rng(seed + 11);
-  // A DELIBERATE lighter schedule than the server's, now read from config rather than hardcoded.
-  // Round 23b found the browser running 6 rounds at lr 0.15 while `config.federated` said 8 at 0.05,
-  // with no way to reconcile them because FederatedConfig was not exported to the frontend at all.
-  // Round 24 exports it, including the browser overrides and the reason for them, so the override is
-  // a visible decision instead of two unrelated literals that happen to differ.
-  const fed = federatedCfg();
-  const K = opts?.clients ?? fed.hospitals;
-  const rounds = opts?.rounds ?? fed.browser_rounds;
-  const X: number[][] = [];
-  const Y: number[] = [];
-  if (opts?.data?.X?.length) {
-    // Federate over the page's REAL bundled sample. Without this the function always built its own
-    // two-cluster toy, so "federated accuracy" was the same number on every industry page for a
-    // given seed -- a metric that described no dataset the page was showing.
-    const src = opts.data;
-    for (let i = 0; i < src.X.length; i++) { X.push(src.X[i].slice()); Y.push(src.Y[i]); }
-  } else {
-    const D = 4;
-    const N = 240;
-    for (let i = 0; i < N; i++) {
-      const c = i % 2;                                 // two overlapping clusters (non-trivial -> a real curve)
-      X.push(Array.from({ length: D }, () => (c ? 0.5 : -0.5) + (u() * 2 - 1) * 1.0));
-      Y.push(c);
-    }
-  }
-  const N = X.length;
-  // quantum feature map: the QCNN expectation on a few deterministic views of x → 3 quantum features
-  const phi = (x: number[]) => [
-    qcnnExpectation(x).z,
-    qcnnExpectation(x.map((v) => v + 0.7)).z,
-    qcnnExpectation(x.map((v) => v * 1.3 - 0.4)).z,
-    1,                                                 // bias
-  ];
-  const P = 4;
-  const idx = Array.from({ length: N }, (_, i) => i);
-  for (let i = N - 1; i > 0; i--) { const j = Math.floor(u() * (i + 1)); [idx[i], idx[j]] = [idx[j], idx[i]]; }
-  const cut = Math.floor(N * 0.75);
-  const tr = idx.slice(0, cut), te = idx.slice(cut);
-  const parts: number[][] = Array.from({ length: K }, () => []);
-  tr.forEach((id, i) => parts[i % K].push(id));        // shard the training set across K clients
-
-  const sigmoid = (z: number) => 1 / (1 + Math.exp(-z));
-  const dot = (a: number[], b: number[]) => a.reduce((s, v, i) => s + v * b[i], 0);
-  const localTrain = (ids: number[], w0: number[], epochs = fed.local_epochs,
-                      lr = fed.browser_lr) => {
-    const w = [...w0];
-    for (let e = 0; e < epochs; e++) for (const id of ids) {       // local SGD on this client's shard
-      const p = phi(X[id]); const g = sigmoid(dot(w, p)) - Y[id];
-      for (let k = 0; k < P; k++) w[k] -= lr * g * p[k];
-    }
-    return w;
+/**
+ * The free-space channel this run selected, in one place.
+ *
+ * `satellite_qkd` and `qsdc_telemetry` each spread `FREE_SPACE` and overrode a subset of its fields
+ * inline - four sites, three different subsets. `channelLossDb` was called WITHOUT `sat_eve` (right,
+ * loss does not depend on Eve) and `intrinsicQber` WITH it (also right), which is exactly the kind
+ * of distinction that survives only while one person holds all four sites in their head. Adding the
+ * two link-budget keys would have made it eight overrides across four sites.
+ *
+ * `eveFraction` stays an explicit argument because the two callers genuinely differ: the counterfactual
+ * that decides `link_budget_limited` re-evaluates the SAME link with Eve removed.
+ */
+function satChannel(config: Record<string, any>, eveFraction?: number) {
+  const fs = FREE_SPACE.freeSpace!;
+  return {
+    ...FREE_SPACE,
+    distanceKm: Number(config.sat_distance_km ?? FREE_SPACE.distanceKm),
+    eveFraction: eveFraction ?? Number(config.sat_eve ?? FREE_SPACE.eveFraction),
+    freeSpace: {
+      ...fs,
+      atmosphericDb: Number(config.sat_atmospheric_db ?? fs.atmosphericDb),
+      pointingDb: Number(config.sat_pointing_db ?? fs.pointingDb),
+    },
   };
-  const acc = (w: number[]) => {
-    let c = 0;
-    for (const id of te) if ((sigmoid(dot(w, phi(X[id]))) > 0.5 ? 1 : 0) === Y[id]) c++;
-    return c / te.length;
-  };
-
-  let w = new Array(P).fill(0);
-  const tot = tr.length;
-  const roundAcc: number[] = [];
-  for (let r = 0; r < rounds; r++) {
-    const updates = parts.map((ids) => localTrain(ids, w));        // each client trains locally
-    w = new Array(P).fill(0);                                      // size-weighted FedAvg (masks cancel, full path)
-    updates.forEach((wl, c) => { const wt = parts[c].length / tot; for (let k = 0; k < P; k++) w[k] += wl[k] * wt; });
-    roundAcc.push(r2(acc(w)));
-  }
-  return { roundAcc, finalAcc: roundAcc[roundAcc.length - 1], clients: K, rounds, secureAgg: true };
 }
 
 export interface ClientEvent {
@@ -1549,6 +1492,10 @@ export function runClientPipeline(
         const pulses = Number(config.qkd_pulses ?? qkdCfg().pulses);
         const eRes = protocol === "e91" ? e91(pulses, chan, seed, qkdCfg().e91_visibility) : null;   // typed with chshS
         const res = eRes ?? bb84(pulses, chan, seed);
+        // The eavesdropper fraction that actually ran. The telecom diagram labelled its QKD arrow
+        // "(w/ eavesdropper)" unconditionally while `qkd_eve` defaults to 0.0, so a default run drew
+        // an attack it did not simulate. Publishing the value lets the label read the run.
+        metric(stage, "qkd_eve_fraction", chan.eveFraction);
         metric(stage, "qber", r2(res.qber));
         metric(stage, "skr", Math.round(res.secretKeyRate * 1e5) / 1e5);
         metric(stage, "secure_key_bits", res.secureKeyBits);
@@ -1592,12 +1539,14 @@ export function runClientPipeline(
         // quantum arrow in the diagram while the run went on emitting qber, channel_loss_db and
         // secure_key_bits for a channel the page had just said was not there.
         if (config.qkd === "pqc-only") { emit("log", stage, "free-space QKD disabled (PQC-only profile)"); break; }
-        const satChan = { ...FREE_SPACE, distanceKm: Number(config.sat_distance_km ?? FREE_SPACE.distanceKm),
-          eveFraction: Number(config.sat_eve ?? FREE_SPACE.eveFraction) };
+        const satChan = satChannel(config);
         const satProtocol = String(config.qkd_protocol ?? qkdCfg().protocol);
         const satPulses = Number(config.sat_pulses ?? webCfg().demo_sat_pulses);
         const satERes = satProtocol === "e91" ? e91(satPulses, satChan, seed, qkdCfg().e91_visibility) : null;
         const res = satERes ?? bb84(satPulses, satChan, seed);
+        // Same key the fibre stage uses: one QKD stage runs per use case, and both report the same
+        // quantity. The diagram's eavesdropper tag reads it rather than asserting one.
+        metric(stage, "qkd_eve_fraction", satChan.eveFraction);
         metric(stage, "qber", r2(res.qber));
         metric(stage, "channel_loss_db", res.channelLossDb);
         metric(stage, "secure_key_bits", res.secureKeyBits);
@@ -1649,9 +1598,7 @@ export function runClientPipeline(
         // Same channel the satellite_qkd stage above built, distance included. Reading only sat_eve
         // here meant the downlink range moved the QKD QBER but not the QSDC error rate, so one
         // control produced two inconsistent pictures of the same link.
-        const e = intrinsicQber({ ...FREE_SPACE,
-          distanceKm: Number(config.sat_distance_km ?? FREE_SPACE.distanceKm),
-          eveFraction: Number(config.sat_eve ?? FREE_SPACE.eveFraction) });
+        const e = intrinsicQber(satChannel(config));
         // QSDC aborts on SECRECY CAPACITY, not on a fixed QBER. Qi et al., Light Sci. Appl. 8, 22
         // (2019), protocol step 2: "If the secrecy capacity C_s is zero, they conclude the channel
         // is insecure and terminate the process."
@@ -1669,8 +1616,7 @@ export function runClientPipeline(
         // The founding QSDC papers (Long-Liu 2002, Deng-Long-Liu 2003, DL04 2004) give no numeric
         // threshold at all - only "if the error rate is high, halt" - and no standards body has ever
         // specified one: ETSI, ITU-T, ISO/IEC and IEEE quantum series are all key distribution.
-        const lossDb = channelLossDb({ ...FREE_SPACE,
-          distanceKm: Number(config.sat_distance_km ?? FREE_SPACE.distanceKm) });
+        const lossDb = channelLossDb(satChannel(config));
         const g = 10 ** (lossDb / 10);
         const secrecy = 1 - h2(e) - g * h2(e);
         const abort = secrecy <= 0;
@@ -1687,13 +1633,17 @@ export function runClientPipeline(
         // finding: QSDC does not close over a LEO free-space downlink under the published
         // criterion. Qi et al. demonstrated it at 4.1 dB on FIBRE; this link is 24.5 dB.
         const secrecyNoEve = (() => {
-          const e0 = intrinsicQber({ ...FREE_SPACE,
-            distanceKm: Number(config.sat_distance_km ?? FREE_SPACE.distanceKm), eveFraction: 0 });
+          const e0 = intrinsicQber(satChannel(config, 0));
           return 1 - h2(e0) - g * h2(e0);
         })();
         const lossLimited = secrecyNoEve <= 0;
         metric(stage, "qsdc_error_rate", r2(e));
-        metric(stage, "qsdc_secrecy_capacity", r2(Math.max(0, secrecy)));
+        // SIGNED. `Math.max(0, secrecy)` stood here, so a link missing by 51 bit/carrier and one
+        // missing by 0.001 both reported "0" - and 0 also reads as marginal-but-not-negative, the
+        // one thing it is not. Measured at 1 km with Eve at 1.0 the true value is -5.2033 and the
+        // page displayed 0. How badly a link fails is the quantity that distinguishes "widen the
+        // aperture" from "QSDC does not close over this class of link".
+        metric(stage, "qsdc_secrecy_capacity", r2(secrecy));
         metric(stage, "qsdc_eve_gain_g", r2(g));
         metric(stage, "qsdc_link_budget_limited", lossLimited ? 1 : 0);
         // Reserved for what the name says: an abort this link would NOT have suffered on its own.
@@ -1823,38 +1773,45 @@ export function runClientPipeline(
         break;
       }
       case "federated_training": {
-        if (config.qfl) {
-          // REAL client-side Quantum Federated Learning: FedAvg of a quantum-classical model across
-          // simulated clients, round accuracy genuinely computed in-browser (mirrors the full
-          // Flower+PennyLane HybridQNN under quantum-safe secure aggregation).
-          // Federate over this page's REAL bundled sample where one exists, so the accuracy
-          // describes the data the page is actually showing rather than an internal toy.
-          const qflData = await realFederatedSet(usecase);
-          const q = clientQFL(seed, { data: qflData });
-          metric(stage, "federated_accuracy", q.finalAcc);
-          metric(stage, "qfl_rounds", q.rounds);
-          metric(stage, "qfl_clients", q.clients);
-          metric(stage, "federated_accuracy_source",
-            qflData ? `real bundled ${usecase} sample, ${qflData.X.length} rows`
-                    : "synthetic 2-cluster toy (no bundled sample for this use case)");
-          artifacts.qfl = q;
-          emit("log", stage, `Quantum Federated Learning (client): ${q.clients} clients × ${q.rounds} `
-            + `rounds (quantum-classical FedAvg, secure-agg) over `
-            + `${qflData ? `the real bundled ${usecase} sample (${qflData.X.length} rows)` : "a synthetic toy"}`
-            + ` — accuracy ${q.roundAcc[0].toFixed(3)}→${q.finalAcc.toFixed(3)}`);
-        } else {
-          // inference-only: a genuine centralized eval (1 client, 1 round) — measured, not a canned constant.
-          const cq = clientQFL(seed, { clients: 1, rounds: 1 });
-          metric(stage, "federated_accuracy", cq.finalAcc);
-          // Say what this number is. clientQFL generates its own balanced two-cluster toy (not the
-          // Wisconsin sample the data stage announced) and is called with clients:1, rounds:1 -- so
-          // there is no federation and no medical data behind it.
-          metric(stage, "federated_accuracy_source", "synthetic 2-cluster toy, 1 client, 1 round");
-          emit("log", stage, `inference-only: centralized eval accuracy ${cq.finalAcc.toFixed(3)} `
-            + `on a SYNTHETIC 2-cluster toy (not the bundled medical sample), 1 client / 1 round — `
-            + `so this is not a federated result `
-            + `(toggle “Federated (QFL)” to run quantum federated rounds in-browser)`);
-        }
+        // REAL client-side Quantum Federated Learning: FedAvg of a quantum-classical model across
+        // simulated clients, round accuracy genuinely computed in-browser (mirrors the full
+        // Flower+PennyLane HybridQNN).
+        // Federate over this page's REAL bundled sample where one exists, so the accuracy
+        // describes the data the page is actually showing rather than an internal toy.
+        //
+        // The `if (config.qfl)` that wrapped this, and its else branch, are gone. Neither could run
+        // any other way: `qfl` is `useState(true)` with no writer (`setQfl` is declared and returned
+        // and never called), `buildConfig` sets `config.qfl` for every use case in
+        // FEDERATED_USECASES, and medical_fl - the only flow that DECLARES this stage rather than
+        // having it injected - is in that set. So the else branch could not execute, and its log
+        // still told the visitor to "toggle Federated (QFL)", a checkbox removed in Round 18. A
+        // flow that declares this stage should run it; the guard added nothing but an unreachable
+        // second answer to "what is federated_accuracy?".
+        const qflData = await realFederatedSet(usecase);
+        // The PQC handshake's session key, which every flow reaching this stage has already run.
+        // Before this it was the ONLY consumer-less key in the pipeline outside `qsmpc_compute`:
+        // the diagram claimed pairwise masking while no stage but PSI read `_sessionKey` at all.
+        const q = clientQFL(seed, { data: qflData, sessionKey: (config as any)._sessionKey });
+        metric(stage, "federated_accuracy", q.finalAcc);
+        metric(stage, "qfl_rounds", q.rounds);
+        metric(stage, "qfl_clients", q.clients);
+        metric(stage, "qfl_mask_pairs", q.pairs);
+        metric(stage, "federated_eval_rows", q.evalRows);
+        // The same held-out rows with untrained weights. Without it "accuracy 0.74" cannot be read
+        // as evidence that the federated rounds did anything, and the round series cannot supply
+        // that either once the problem converges inside round one.
+        metric(stage, "federated_baseline_accuracy", q.baselineAcc);
+        // What the aggregation ACTUALLY was, published so the diagram can render it instead of
+        // carrying its own claim. See the QFLResult comment for why this replaced `secureAgg`.
+        metric(stage, "qfl_aggregation", q.aggregation);
+        metric(stage, "federated_accuracy_source",
+          qflData ? `real bundled ${usecase} sample, ${qflData.X.length} rows`
+                  : "synthetic 2-cluster toy (no bundled sample for this use case)");
+        artifacts.qfl = q;
+        emit("log", stage, `Quantum Federated Learning (client): ${q.clients} clients × ${q.rounds} `
+          + `rounds (quantum-classical FedAvg; ${q.aggregation}) over `
+          + `${qflData ? `the real bundled ${usecase} sample (${qflData.X.length} rows)` : "a synthetic toy"}`
+          + ` — accuracy ${q.roundAcc[0].toFixed(3)}→${q.finalAcc.toFixed(3)}`);
         break;
       }
       case "qml_ids": {

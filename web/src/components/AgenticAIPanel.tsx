@@ -32,7 +32,15 @@ function runContextLine(usecase: string | undefined, rc?: RunContext | null): st
   if (m.fhe_linear_ms != null) bits.push(`FHE-linear ${m.fhe_linear_ms} ms`);
   if (m.mpc_nonlinear_ms != null) bits.push(`MPC-non-linear ${m.mpc_nonlinear_ms} ms`);
   if (m.qber != null) bits.push(`QBER ${m.qber}`);
-  if (m.federated_accuracy != null) bits.push(`federated accuracy ${m.federated_accuracy}`);
+  // Qualified, because this string is fed to a language model as run context. "federated accuracy
+  // 0.74" invites it to describe the model as good or bad; the untrained score and the row count are
+  // what make the number mean anything, and their absence here is what `test_federated_scope.py`'s
+  // docstring calls out as the accuracy being handed over "with no qualifier".
+  if (m.federated_accuracy != null) {
+    bits.push(`federated accuracy ${m.federated_accuracy}`
+      + (m.federated_baseline_accuracy != null ? ` vs ${m.federated_baseline_accuracy} untrained` : "")
+      + (m.federated_eval_rows != null ? ` on ${m.federated_eval_rows} held-out rows` : ""));
+  }
   if (m.psi_intersection_size != null) bits.push(`PSI |A∩B| ${m.psi_intersection_size}`);
   if (m.secure_key_bits != null) bits.push(`${m.secure_key_bits} secure key bits`);
   const adv = rc.benchmark?.advantage;

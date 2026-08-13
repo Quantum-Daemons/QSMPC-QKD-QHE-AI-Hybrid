@@ -79,6 +79,21 @@ const pqcOnly = (c: DiagramConfig) => String(c.qkd ?? "") === "pqc-only";
 /** The OptiQKD suffix for a QKD arrow: the measured improvement once a run has produced one,
  *  otherwise just that tuning is enabled. Reads the run's metrics rather than restating the
  *  checkbox, so the arrow cannot claim an optimisation that has not happened yet. */
+/** The eavesdropper the run actually simulated, or nothing when there was none.
+ *
+ * Before the run there is no fraction to report, so this stays empty rather than asserting either
+ * way - the arrow is dim at that point and the QBER beside it is an em dash. */
+const eveTag = (m: M) => {
+  // One key for both channels: only one QKD stage runs per use case, and the fibre and free-space
+  // stages report the same quantity - the intercept-resend fraction that was simulated.
+  //
+  // Not named `f`: that is the metric formatter declared below, and shadowing it inside a label
+  // helper is a trap for whoever next wants to format something here. `f` is used for the value so
+  // a step-produced 0.30000000000000004 renders as 0.3.
+  const eve = m["qkd_eve_fraction"];
+  return eve == null || Number(eve) <= 0 ? "" : ` (w/ eavesdropper ${f(m, "qkd_eve_fraction")})`;
+};
+
 const optiTag = (m: M, c: DiagramConfig) => {
   if (!c.optiqkd) return "";
   const pct = m["qkd_skr_improvement_pct"];
@@ -220,6 +235,33 @@ const publishedStep = (stageId: string): Step => ({
   },
 });
 
+/**
+ * Federated training, drawn from the aggregation the run REPORTS rather than a string kept here.
+ *
+ * This label used to read "federated train + pairwise masking (demo keys)". `clientQFL` generated no
+ * masks, no pairwise seeds and no key material - it was a size-weighted plaintext mean, and the only
+ * `mask` in `clientCompute.ts` belonged to the QSMPC secret-sharing branch, a different stage. So the
+ * diagram named a cryptographic property that no code provided, which is the worst thing this figure
+ * can do: it is the most-looked-at part of the page and a visitor has no other way to learn what the
+ * aggregation was.
+ *
+ * Keying it off `qfl_aggregation` - emitted by the stage that did the work - applies the same rule as
+ * the inference label above ("read the OBSERVED backend, never the control"). A hand-kept string here
+ * can drift from the algorithm; a measured one cannot.
+ *
+ * Shared by medical and finance so the two cannot disagree about one function's behaviour.
+ */
+const FEDERATED_STEP: Step = {
+  stageId: "federated_training",
+  kind: "c-bidir",
+  // The accuracy carries its denominator. The bundled federated samples are 16 rows (finance) and
+  // 12 (medical), so this is a 4-row and a 3-row score - "acc 0.25" alone reads as a model that is
+  // worse than chance rather than as one held-out row.
+  label: (m) => `federated train · ${f(m, "qfl_aggregation")} · acc `
+    + `${f(m, "federated_baseline_accuracy")} untrained -> ${f(m, "federated_accuracy")} `
+    + `on ${f(m, "federated_eval_rows")} held-out rows`,
+};
+
 export const USECASE_SPECS: Record<string, Spec> = {
   finance_aml: {
     a: { name: "Bank A", sub: "blacklist + fraud model · LAN" },
@@ -228,6 +270,14 @@ export const USECASE_SPECS: Record<string, Spec> = {
       { stageId: "pqc_handshake", kind: "c-bidir", label: (_m, c) => `PQC handshake — ${kemName(c)}` },
       { stageId: "qkd_key_agreement", kind: "q-arrow", label: (m, c) => `${qkdName(c)} · QBER ${f(m, "qber")}${optiTag(m, c)}`, hidden: pqcOnly, ok: qkdOk },
       { stageId: "qsmpc_compute", kind: qsmpcKind("psi"), label: qsmpcLabel("psi") },
+      // Finance is in FEDERATED_USECASES, so `runClientPipeline` injects `federated_training` here -
+      // before the first of private_inference/qml_ids/qsdc_telemetry/quantum_comparison. This spec
+      // had no such step, and `OrchestrationGraph.FLOWS` had no finance key either, so the run
+      // advanced to a stage NEITHER figure contained: measured live, the stage started at 3.999 s,
+      // reported accuracy, and no svg on the page contained the string "federat". That is the exact
+      // "no render target" defect `usePipelineRun`'s FEDERATED_USECASES comment describes as the
+      // reason the set exists - reintroduced by adding finance to the set on the data test alone.
+      FEDERATED_STEP,
       ...HYBRID_INFERENCE,
       publishedStep("private_inference"),
       QSMPC_COMPARE,
@@ -240,7 +290,7 @@ export const USECASE_SPECS: Record<string, Spec> = {
     steps: [
       { stageId: "pqc_handshake", kind: "c-bidir", label: (_m, c) => `PQC handshake — ${kemName(c)}` },
       { stageId: "qkd_key_agreement", kind: "q-arrow", label: (m, c) => `${qkdName(c)} · QBER ${f(m, "qber")}${optiTag(m, c)}`, hidden: pqcOnly, ok: qkdOk },
-      { stageId: "federated_training", kind: "c-bidir", label: (m) => `federated train + pairwise masking (demo keys) · acc ${f(m, "federated_accuracy")}` },
+      FEDERATED_STEP,
       ...HYBRID_INFERENCE,
       publishedStep("private_inference"),
       QSMPC_COMPARE,
@@ -262,10 +312,25 @@ export const USECASE_SPECS: Record<string, Spec> = {
   },
   telecom_ids: {
     a: { name: "Carrier", sub: "QKD Tx + IDS plane · LAN" },
-    b: { name: "Remote site / Eve", sub: "QKD Rx (eavesdropper)" },
+    // The SECOND unconditional eavesdropper claim on this page, and it outlived the fix to the
+    // first. The arrow's tag now reads the fraction the run reports, so at `qkd_eve` 0.0 - the
+    // default - it correctly says nothing; this box went on calling the far end "Eve" and its link
+    // "QKD Rx (eavesdropper)" on the same clean run. Found by an over-broad browser assertion that
+    // scanned every svg rather than the arrow, which is the one time that is worth doing.
+    //
+    // Party names are static (the Spec type has no metrics), so the honest form is one that is true
+    // either way: this page's subject is watching the link for intrusion, and whether anyone is on
+    // it is what the run decides. The arrow says which.
+    b: { name: "Remote site", sub: "QKD Rx · link monitored for intrusion" },
     steps: [
       { stageId: "pqc_handshake", kind: "c-bidir", label: (_m, c) => `PQC handshake — ${kemName(c)}` },
-      { stageId: "qkd_key_agreement", kind: "q-arrow", label: (m, c) => `${qkdName(c)} (w/ eavesdropper) · QBER ${f(m, "qber")}${optiTag(m, c)}`, hidden: pqcOnly, ok: qkdOk },
+      // "(w/ eavesdropper)" used to be unconditional here while `qkd_eve` defaults to 0.0, so the
+      // page whose subject is intrusion detection drew an attack that had not been simulated. The
+      // suffix now reads the fraction the stage REPORTS, which is the same rule the federated and
+      // inference labels follow: describe the run, never the intent.
+      { stageId: "qkd_key_agreement", kind: "q-arrow",
+        label: (m, c) => `${qkdName(c)}${eveTag(m)} · QBER ${f(m, "qber")}${optiTag(m, c)}`,
+        hidden: pqcOnly, ok: qkdOk },
       { stageId: "qml_ids", kind: "local-a", label: (m) => `QML-IDS attack detection · macro-F1 ${f(m, "ids_macro_f1")}` },
       publishedStep("qml_ids"),
       QSMPC_COMPARE,
@@ -277,7 +342,7 @@ export const USECASE_SPECS: Record<string, Spec> = {
     b: { name: "LEO satellite", sub: "free-space downlink" },
     steps: [
       { stageId: "pqc_handshake", kind: "c-bidir", label: (_m, c) => `PQC handshake — ${kemName(c)}` },
-      { stageId: "satellite_qkd", kind: "q-arrow", label: (m, c) => `free-space ${qkdName(c)} (${f(m, "channel_loss_db")} dB) · QBER ${f(m, "qber")}${optiTag(m, c)}`,
+      { stageId: "satellite_qkd", kind: "q-arrow", label: (m, c) => `free-space ${qkdName(c)}${eveTag(m)} (${f(m, "channel_loss_db")} dB) · QBER ${f(m, "qber")}${optiTag(m, c)}`,
         ok: qkdOk,
         hidden: pqcOnly },
       // The abort has to reach the arrow. With Eve at 0.5 the log said "QSDC ABORTED: error 0.158 >
@@ -285,15 +350,37 @@ export const USECASE_SPECS: Record<string, Spec> = {
       // bit/carrier" with a done tick beside it - which reads as delivered-but-not-secret, the
       // opposite of what happened. The inline eavesdrop check is this page's headline feature and
       // the diagram was the one surface that did not show it firing.
+      //
+      // AND THE FIX DID NOT FIX IT. Keying the abort off `qsdc_eavesdrop_detected` moved it onto a
+      // metric that is `abort && !lossLimited`, and `lossLimited` is 1 at every setting this demo
+      // offered: the link budget floors loss at 5 dB atmospheric + 3 dB pointing, so g >= 6.31 and
+      // C_s > 0 needs h(e) < 1/(1+g) = 0.137 while the misalignment floor of 0.025 alone gives
+      // h(0.025) = 0.169. Measured on the deployed site at 1 km with Eve at 1.0 - minimum range,
+      // maximum eavesdropper - the log read "QSDC NOT AVAILABLE on this link ... Telemetry falls
+      // back to the PQC session key" while this label read "QSDC direct telemetry · secrecy 0
+      // bit/carrier ✓". The ABORTED branch was unreachable, so the symptom above survived its own
+      // repair, and the sign clamp on `qsdc_secrecy_capacity` rendered -5.2033 as "0".
+      //
+      // Three states now, because there are three: delivered; withheld because the LINK cannot
+      // carry it; withheld because of an attack this link would not have suffered on its own.
+      // `ok` marks the two withheld states completed-but-failed, so the tick stops reading as a
+      // verdict on a delivery that did not happen.
       { stageId: "qsdc_telemetry",
         kind: "q-arrow",
+        ok: (m) => Number(m["qsdc_link_budget_limited"]) !== 1
+          && Number(m["qsdc_eavesdrop_detected"]) !== 1,
         label: (m) => (Number(m["qsdc_eavesdrop_detected"]) === 1
           // "over threshold" was accurate while the abort compared a scalar QBER. It no longer
           // does: the criterion is secrecy capacity Cs <= 0, and Cs depends on channel loss via
           // g = Q_Eve/Q_Bob, so an error rate WELL under the old 0.11 can still abort. Naming
           // the real quantity keeps the diagram and the metrics table telling one story.
-          ? `QSDC ABORTED · secrecy capacity 0 at error ${f(m, "qsdc_error_rate")} (g=${f(m, "qsdc_eve_gain_g")}) · telemetry withheld`
-          : `QSDC direct telemetry · secrecy ${f(m, "qsdc_secrecy_capacity")} bit/carrier`) },
+          ? `QSDC ABORTED · eavesdropper · C_s ${f(m, "qsdc_secrecy_capacity")} at error `
+            + `${f(m, "qsdc_error_rate")} (g=${f(m, "qsdc_eve_gain_g")}) · telemetry withheld`
+          : Number(m["qsdc_link_budget_limited"]) === 1
+            ? `QSDC NOT AVAILABLE · link-budget limited · C_s ${f(m, "qsdc_secrecy_capacity")} `
+              + `bit/carrier at ${f(m, "channel_loss_db")} dB (g=${f(m, "qsdc_eve_gain_g")}) · `
+              + `telemetry withheld, falls back to the PQC session key`
+            : `QSDC direct telemetry · secrecy ${f(m, "qsdc_secrecy_capacity")} bit/carrier`) },
       publishedStep("qsdc_telemetry"),
       QSMPC_COMPARE,
       { stageId: "sign_result", kind: "c-bidir", label: (_m, c) => `${sigName(c)}-signed audit record` },
