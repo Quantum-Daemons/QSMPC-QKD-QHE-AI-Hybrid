@@ -23,6 +23,7 @@ already guards for QCNN use cases (``tests/test_qcnn_usecases.py``) and for fede
 from __future__ import annotations
 
 import json
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -117,7 +118,14 @@ def test_each_card_reports_the_classical_baseline(directory: str) -> None:
 #  Documentation hierarchy: an investigation nobody links to is an investigation nobody reads
 # --------------------------------------------------------------------------------------------- #
 
-DOC_ROOTS = ["README.md", "DATA_LICENSES.md"]
+#: The checklist is GITIGNORED. A link from it is not a link for anyone who clones this repository,
+#: which is what "reachable" has to mean here.
+UNPUBLISHED = {"docs/browser-verification-checklist.md"}
+
+
+def _tracked_files() -> list[str]:
+    out = subprocess.run(["git", "ls-files"], cwd=REPO, capture_output=True, text=True, check=True)
+    return [f for f in out.stdout.split() if f not in UNPUBLISHED]
 
 
 def test_every_reference_investigation_is_linked_from_somewhere() -> None:
@@ -125,35 +133,35 @@ def test_every_reference_investigation_is_linked_from_somewhere() -> None:
 
     The recurring per-round request asks for a documentation-hierarchy sweep, and the checklist had
     **zero** numbered rows covering it - only prose. "Re-read everything" is not a pass condition.
-    This is: every investigation must be reachable from a document someone opens.
+    This is: every investigation must be reachable from a file that someone who clones this
+    repository can open.
 
-    Measured when written: all 13 were linked. The check exists so the fourteenth cannot be written,
-    merged, and then answered again from scratch two rounds later - which is exactly what happened to
-    `model-choice-vs-2026-practice.md`, an answered question that kept being re-asked because nothing
-    pointed at it from where the question arises.
+    THE FIRST VERSION OF THIS TEST WAS WRONG IN BOTH DIRECTIONS, and CI caught it where local runs
+    did not. It searched `docs/*.md`, which includes the gitignored checklist, so a link that no repo
+    reader can follow counted as a link - and it passed locally for that reason while failing in CI,
+    where the checklist does not exist. It also searched only markdown and TeX, so
+    `qcnn-inference-investigation.md` (linked from `quantumSim.ts` and the trainer) and
+    `medical-student-collapse-investigation.md` (linked from two model cards) were reported as
+    orphans when a reader can reach both.
+
+    Searching every tracked file fixes both: a link from source, from a model card, from
+    `metrics.json` or from `REFERENCES.md` all count, because all of them ship.
     """
     refs = sorted((REPO / "references").glob("*.md"))
     assert refs, "references/ has no markdown - did it move?"
-    haystack = ""
-    for pattern in ("docs/*.md", "references/*.md", "report/*.tex"):
-        for path in REPO.glob(pattern):
-            haystack += path.read_text(errors="ignore")
-    for root in DOC_ROOTS:
-        p = REPO / root
-        if p.is_file():
-            haystack += p.read_text(errors="ignore")
-
+    tracked = _tracked_files()
     orphans = []
     for ref in refs:
-        if ref.name in ("REFERENCES.md",):        # the index itself; nothing needs to link to it
-            continue
-        # Its own text does not count as a link to itself.
-        others = haystack.replace(ref.read_text(errors="ignore"), "")
-        if ref.name not in others:
+        rel = f"references/{ref.name}"
+        if not any(
+            ref.name in (REPO / f).read_text(errors="ignore")
+            for f in tracked
+            if f != rel and (REPO / f).is_file()
+        ):
             orphans.append(ref.name)
     assert not orphans, (
-        f"{orphans} are in references/ and linked from nowhere. An investigation that no document "
-        "points at gets re-run: the question reappears, someone answers it again, and the dated "
-        "answer already in the repository is never found. Link it from the checklist section where "
-        "the question arises, or from the document whose claim it supports."
+        f"{orphans} are in references/ and no TRACKED file points at them. An investigation nobody "
+        "can reach gets re-run: the question reappears, someone answers it again, and the dated "
+        "answer already in the repository is never found. A link from the gitignored checklist does "
+        "not count - it does not ship."
     )
