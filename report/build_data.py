@@ -159,15 +159,31 @@ def _count_rows(text: str) -> int:
 
     Matching the ID shape ties the count to the thing named. A table row with no ID is not a check: it
     cannot be assigned, referenced from the run sheet, or reported as passed.
+
+    AND IT ASSERTS DISTINCTNESS, because the report says it does. `technical-report.tex` renders
+    "every one of its \nchecklistrows{} rows has a unique identifier" - a claim this function
+    supplies the number for and never checked. It was false when found: RG1-RG4 named both the page
+    regions and the artifact-regenerability block, so 297 rows carried 293 distinct IDs and the
+    published PDF asserted uniqueness over a set that did not have it.
+
+    The checklist itself claims uniqueness "is checked by extracting every ID". That extraction is
+    this function, and until now it extracted without comparing. Raising here means the generator
+    that prints the claim is the thing that enforces it - a build failure rather than a sentence
+    nobody re-derives.
     """
-    n = 0
+    seen: dict[str, int] = {}
     for line in text.splitlines():
         if not line.strip().startswith("|"):
             continue
         cells = line.split("|")
         if len(cells) > 3 and _CHECK_ID.match(cells[1].strip()):
-            n += 1
-    return n
+            seen[cells[1].strip()] = seen.get(cells[1].strip(), 0) + 1
+    dupes = sorted(k for k, v in seen.items() if v > 1)
+    if dupes:
+        raise SystemExit(
+            f"checklist has duplicate check IDs: {dupes}. The report claims every row has a unique "
+            f"identifier; give the newer family its own prefix before rebuilding.")
+    return sum(seen.values())
 
 
 def macros() -> str:
