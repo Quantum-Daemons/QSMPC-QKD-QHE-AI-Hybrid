@@ -79,12 +79,20 @@ export function EncryptedAgreementChart({ plot }: { plot: EncryptedAgreementPlot
         ) : null}
       </figcaption>
       <ResponsiveContainer width="100%" height={200}>
-        <ScatterChart margin={{ top: 6, right: 10, bottom: 4, left: -10 }}>
-          <title>{name}</title>
+        {/* `title` as a PROP, the way every other chart in this file sets it. Written first as a
+            `<title>` child, which recharts does not forward - so the figure rendered with a null
+            accessible name, which is exactly the regression Round 34 recorded when six charts ended
+            up with empty titles. Verified on the deployed page, not assumed. */}
+        <ScatterChart accessibilityLayer title={name}
+                      margin={{ top: 6, right: 10, bottom: 4, left: -10 }}>
           <CartesianGrid stroke={GRID} strokeDasharray="2 4" />
+          {/* Formatted, because the raw ticks rendered as `3.7326450091317454` - sixteen digits of a
+              logit, on both axes. */}
           <XAxis type="number" dataKey="plain" name="plaintext" domain={[lo, hi]} tick={AXIS}
+                 tickFormatter={(v: number) => v.toFixed(2)}
                  label={{ value: "plaintext score", position: "insideBottom", offset: -2, fill: "#8a94a6", fontSize: 10 }} />
-          <YAxis type="number" dataKey="enc" name="encrypted" domain={[lo, hi]} tick={AXIS} />
+          <YAxis type="number" dataKey="enc" name="encrypted" domain={[lo, hi]} tick={AXIS}
+                 tickFormatter={(v: number) => v.toFixed(2)} />
           <ReferenceLine segment={[{ x: lo, y: lo }, { x: hi, y: hi }]} stroke="#8a94a6"
                          strokeDasharray="4 4" ifOverflow="extendDomain" />
           <Tooltip contentStyle={{ background: "#161b26", border: `1px solid ${GRID}`, fontSize: 11 }}
