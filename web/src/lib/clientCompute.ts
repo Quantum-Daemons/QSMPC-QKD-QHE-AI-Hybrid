@@ -13,7 +13,7 @@ import {
   demoSample, federatedCfg, qsmpcCfg, quantumAdvantageCfg, securityScoringCfg, studentModel, tierArchitectures, webCfg,
   workloadMultipliers,
 } from "./config";
-import { encryptedConv2d, encryptedLinear, encryptedStudentInference, warmFHE,
+import { encryptedConv2d, encryptedLinear, encryptedLinearBatch, encryptedStudentInference, warmFHE,
   type CnnStudentWeights } from "./clientFHE";
 import { clientTrainScoreIDS } from "./clientIDS";
 import { clientQFL } from "./clientQFL";
@@ -1164,7 +1164,9 @@ export function runClientPipeline(
    * this repo already implements would demonstrate an architecture rather than establish a security
    * property, because both MPC parties share one JS heap - `docs/threat-model.md` records that.
    */
-  async function runEncryptedTelecomStudent(stage: string, raw: number[] | undefined) {
+  async function runEncryptedTelecomStudent(
+    stage: string, raw: number[] | undefined, testSample?: { X: number[][]; y: number[] },
+  ) {
     try {
       const r = await fetch(`${import.meta.env.BASE_URL}data/telecom/student_weights.json`);
       if (!r.ok) { emit("log", stage, `encrypted tier: weights unavailable (HTTP ${r.status})`); return; }
@@ -1196,20 +1198,60 @@ export function runClientPipeline(
       metric(stage, "encrypted_student_params", Number(w.n_parameters) || null);
       metric(stage, "encrypted_student_class", w.classes?.[encCls] ?? encCls);
       metric(stage, "encrypted_student_ms", r2(fhe.fheMs));
-      metric(stage, "encrypted_top1_mismatches", encCls === plainCls ? 0 : 1);
-      metric(stage, "encrypted_scores_compared", w.W.length);
       metric(stage, "encrypted_max_abs_error", maxAbs);
       metric(stage, "encrypted_precision_bits", bits);
       metric(stage, "encrypted_argmax_location", "client, plaintext");
       emit("log", stage, `encrypted tier (REAL CKKS, ${w.n_parameters} params, `
         + `${w.W.length} dot products): class "${w.classes?.[encCls] ?? encCls}" in ${r2(fhe.fheMs)} ms. `
-        + `Top-1 mismatches vs the plaintext reference: ${encCls === plainCls ? 0 : 1} of `
-        + `${w.W.length ? 1 : 0} scored inputs. Max abs error ${maxAbs.toExponential(3)}`
+        + `Max abs error ${maxAbs.toExponential(3)}`
         + (bits !== null ? ` (about ${bits} bits of precision, MAX not mean)` : "")
         + (precisionFailed
           ? ` -- PRECISION FAILURE: the error is at or above 1, so there are no bits of precision to `
             + `report. The decrypted result is not a usable approximation of the plaintext one.`
           : "") + ".");
+
+      // THE SAME STUDENT OVER THE WHOLE HELD-OUT SPLIT, not the one row above.
+      //
+      // `encrypted_top1_mismatches` and `encrypted_scores_compared` used to be emitted here from the
+      // single row: the mismatch count could only be 0 or 1, and "scores compared" counted CLASSES.
+      // A single agreement is not evidence that encrypted inference reproduces plaintext. The batch
+      // costs no extra homomorphic work - `encryptedLinearBatch` packs the rows at the reduction's
+      // own stride, so one multiply-plain and log2(width) rotations per class serve every row.
+      if (testSample?.X?.length) {
+        const rowsZ = testSample.X.map((row) =>
+          row.map((v, i) => (v - (mean[i] ?? 0)) / (scale[i] || 1)));
+        const batch = await encryptedLinearBatch(w.W, w.b, rowsZ);
+        const encCls2 = batch.logits.map(argmax);
+        const plainCls2 = batch.plainLogits.map(argmax);
+        const mism = encCls2.reduce((a, c, i) => a + (c === plainCls2[i] ? 0 : 1), 0);
+        const bits2 = batch.maxAbsError > 0 && batch.maxAbsError < 1
+          ? Math.floor(-Math.log2(batch.maxAbsError)) : null;
+        metric(stage, "encrypted_top1_mismatches", mism);
+        metric(stage, "encrypted_scores_compared", batch.rows * w.W.length);
+        metric(stage, "encrypted_rows_scored", batch.rows);
+        metric(stage, "encrypted_rows_per_ciphertext", batch.rowsPerCiphertext);
+        metric(stage, "encrypted_batch_ms", r2(batch.fheMs));
+        metric(stage, "encrypted_batch_max_abs_error", batch.maxAbsError);
+        metric(stage, "encrypted_batch_precision_bits", bits2);
+        // The agreement figure follows Concrete-ML's "Similarity"; the mismatch COUNT follows
+        // arXiv:2605.22237 Table IX, which reports it as an integer expected to be zero. Both
+        // conventions are already used for the single-row path; this is the same pair over N rows.
+        metric(stage, "encrypted_agreement", r2(1 - mism / Math.max(1, batch.rows)));
+        artifacts.encrypted_agreement_plot = {
+          kind: "encrypted-agreement",
+          points: batch.logits.map((row, i) => ({
+            enc: row[encCls2[i]], plain: batch.plainLogits[i][encCls2[i]],
+            agree: encCls2[i] === plainCls2[i],
+          })),
+          rows: batch.rows, classes: w.W.length,
+        };
+        emit("log", stage, `encrypted tier over the HELD-OUT SPLIT: ${batch.rows} rows x `
+          + `${w.W.length} classes = ${batch.rows * w.W.length} scores in one ciphertext `
+          + `(${batch.rowsPerCiphertext} rows fit at this feature width), ${r2(batch.fheMs)} ms total. `
+          + `Top-1 mismatches vs plaintext: ${mism} of ${batch.rows}. Max abs error `
+          + `${batch.maxAbsError.toExponential(3)}`
+          + (bits2 !== null ? ` (about ${bits2} bits, MAX not mean)` : "") + ".");
+      }
       emit("log", stage, `the ARGMAX is NOT encrypted: all ${w.W.length} class scores are decrypted `
         + `and the maximum taken in the clear, because CKKS has no native comparison. That is the `
         + `standard construction and it reveals nothing here, since in one tab the client is the user.`);
@@ -1874,7 +1916,7 @@ export function runClientPipeline(
         // honest description of what a dual-path comparison establishes. It is empirical fidelity,
         // not cryptographic integrity: verifiable-FHE proofs establish that a server ran the
         // circuit it was asked to run, and this establishes something different and complementary.
-        await runEncryptedTelecomStudent(stage, ids.explain?.xRaw);
+        await runEncryptedTelecomStudent(stage, ids.explain?.xRaw, ids.testSample);
 
         // The 8-class QCNN, where the visitor selected it. This lives here rather than in
         // `private_inference` because telecom has no such stage - and putting the weights on disk and
