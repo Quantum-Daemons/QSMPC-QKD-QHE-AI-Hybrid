@@ -39,7 +39,10 @@ export default function PipelineControls({ run }: { run: Run }) {
   //    medical_fl + cnn selects a genuinely different (convolutional) architecture. It is also a
   //    complete no-op at Model size = Lightweight, where hidden is [] and [].map(x2) is still [].
   //  * Federated (QFL) injects a stage that runs and logs, but no diagram outside medical_fl has a
-  //    federated_training node to render it.
+  //    federated_training node to render it. (Removing the control fixed the symptom for the four
+  //    use cases that then left the set. It came back when finance was added to FEDERATED_USECASES
+  //    on the data half of the rule alone; both figures now carry the step, and the scope test
+  //    asserts the render half rather than describing it in prose.)
   // Model size is gone. It selected between invented architectures -- a "tabular fraud MLP" at
   // 18/850/9,538 parameters and so on -- while the models that actually exist are an XGBoost
   // teacher and a 33-parameter distilled student. The medical tier advertised 35,458 parameters
