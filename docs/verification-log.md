@@ -33,6 +33,7 @@ written. The index is the fix instead:
 | Round 32 | appended, reconstructed in Round 33 |
 | Round 33, Round 34 | appended, at the end |
 | Round 35 | appended, measured in Round 36 |
+| Round 36 | appended, at the end |
 
 Rounds 25, 26 and 27 have no entry here and never did. That is a real gap in the record rather than an
 ordering artefact, and it is not reconstructable now: it predates the point where this file existed as
@@ -682,3 +683,51 @@ because the atmospheric and pointing terms do not scale with range.
 executing it. It asked for monotonicity in distance AND in mu; `mu` is `qkdCfg().mu_signal`, a config
 constant with no control on any page. Half the check had no way to be exercised by a person. It moved
 into `npm run check:qkd` in Round 36, where both axes move.
+
+## Round 36 (`4b32b62` on its branch, bundle `index-C0as5iW-.js`) - three pages stated a security property the run did not provide
+
+The round asked whether the checklist covers each use case's SECURITY COMMUNICATION path. The
+measured answer was no, and not narrowly: `pqc_handshake`, `qkd_key_agreement`, `satellite_qkd`,
+`qsmpc_compute`, `federated_training` and `_sessionKey` had **zero occurrences each** in the whole
+3,584-line file. Not "no numbered rows" - the words were absent.
+
+Going to look at the unchecked stages found three false claims on screen.
+
+| what the page said | what the run did |
+|---|---|
+| `federated train + pairwise masking (demo keys)` | plaintext size-weighted mean; no masks, no seeds, no key material |
+| `QSDC direct telemetry - secrecy 0 bit/carrier` with a done tick, at eve 1.0 | telemetry withheld; the log said "QSDC NOT AVAILABLE on this link" |
+| `BB84 decoy-state (w/ eavesdropper)` and a party box named `Remote site / Eve` | `qkd_eve` defaults to 0.0 |
+
+Measured on the deploy after fixing each:
+
+| setting | reading |
+|---|---|
+| finance, defaults | `size-weighted FedAvg + 6 pairwise masks (Bonawitz CCS 2017), fixed-point mod 2^32 - acc 0.56 untrained -> 0.68 on 80 held-out rows` |
+| medical, defaults | `acc 0.44 untrained -> 0.88 on 80 held-out rows` |
+| satellite, defaults | `qsdc_secrecy_capacity` **-51.58** (was clamped to 0); step renders NOT AVAILABLE, link-budget limited |
+| satellite, 1 km, 2.0+1.0 dB, eve 0 | `C_s` **+0.49**, delivered - QSDC closes on this page for the first time |
+| satellite, 1 km, 2.0+1.0 dB, eve 0.40 | `C_s` **-0.63**, `eavesdrop_detected` **1** - the ABORTED branch fired for the first time |
+| telecom, `qkd_eve` 0.0 / 0.35 | `BB84 decoy-state - QBER 0.01` / `BB84 decoy-state (w/ eavesdropper 0.35) - QBER 0.1` |
+| finance, `aml_transactions` 4000 / 1000 | `psi_set_size` **260** / **65** - the `perParty` formula both times |
+| finance, eve 1.0, misalignment 0 | `qber` **0.25**, `secure_key_bits` **0** - QK4, unchanged across both deploys |
+
+**The clamp was hiding a model disagreement, not just a sign.** Reporting `qsdc_secrecy_capacity`
+signed exposed that the same nominal 800 km downlink was 24.48 dB in the browser and 28.0 dB in the
+reference implementation, which still applied `distance_km * 0.035` - the linear law the browser's
+own comment records as rejected. Both sides had been reporting "0" for what were really -51.58 and
+-138.93 bit/carrier.
+
+**The federated metric was worse than doing nothing.** The bundled samples shipped 16 and 12 rows, so
+the accuracy was a 4-row and a 3-row score; at five seeds each, finance read untrained 0.75 to
+trained 0.25 and medical untrained 1.00 to trained 0.00, identical on all six rounds. Two causes, and
+only one was size: `amount` spans 0 to 17.69 unstandardised while the feature map is
+`tanh(mean sin(x + i/2))`, so it wraps `sin` nearly three times. Both files are now 400 rows,
+standardised, with an 80-row holdout and a declared EDA block.
+
+**Three of this round's own mistakes are in the checklist rather than here**, because they are
+instructions for the next round: an over-broad browser assertion that reported FAIL on a clean arrow
+and thereby found a second unconditional claim; a report rebuild run with its output redirected and
+its exit status dropped, which is the `DP2` failure applied to this project's own generator; and a
+measurement table written with row IDs in the first column three sections after writing the warning
+against exactly that.
