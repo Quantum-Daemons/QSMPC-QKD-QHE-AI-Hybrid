@@ -410,7 +410,10 @@ benchmark number. Checked 2026-08-11.
 Added 2026-08-11. Both verified at the arXiv abstract page.
 
 - **Bermejo, Braccia, Rudolph, Holmes, Cincio & Cerezo, "Quantum Convolutional Neural Networks are
-  Effectively Classically Simulable."** arXiv:2408.12739, 22 Aug 2024, revised 20 Feb 2026. Randomly
+  Effectively Classically Simulable."** **PRX Quantum 7, 020304 (2026), DOI 10.1103/8qt9-72ts**;
+  arXiv:2408.12739, 22 Aug 2024, revised 20 Feb 2026. Upgraded from the preprint citation on
+  2026-08-13: the journal reference and DOI were read from the arXiv API's `journal_ref` and
+  `arxiv:doi` fields, so this is now a peer-reviewed citation rather than a preprint one. Randomly
   initialised QCNNs can only operate on the information in **low-bodyness measurements** of their
   input states, and their behaviour is efficiently classically simulable by an algorithm equipped
   with Pauli shadows. The authors argue QCNN successes largely reflect benchmark simplicity, and that
@@ -418,7 +421,11 @@ Added 2026-08-11. Both verified at the arXiv abstract page.
   repository's trained QCNN loses to logistic regression on the identical split (medical accuracy
   0.7326 vs 0.9535; finance minority-F1 0.7143 vs 0.8657). This paper is the reason that is the
   expected result rather than a failure of implementation, and it is quoted in both QCNN model cards.
-  Added: 2026-08-11.
+  The 8-class telecom circuit added in Round 34 lands the same way - macro F1 0.8098 against a
+  multinomial logistic regression at 0.9764 on the identical split, with all 8 classes predicted -
+  which matters because it is a *different* readout (a 3-qubit basis marginal rather than a single
+  `<Z_0>` expectation) and a different task shape, and it did not change the direction of the result.
+  Added: 2026-08-11; telecom result and journal reference added 2026-08-13.
 - **Li, Wu, Li & Yung, "Barren Plateaus Beyond Observable Concentration."** arXiv:2603.18479, 19 Mar
   2026, revised 19 Jun 2026. Unifies existing barren-plateau explanations under *observable
   concentration* and proves that avoiding it is **necessary but not sufficient** for trainability,
