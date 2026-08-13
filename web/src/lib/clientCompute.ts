@@ -1010,11 +1010,17 @@ export async function clientAliceBob(seed = 0, nShared = 8) {
 // A GENUINELY-computed, in-browser FedAvg of a HYBRID quantum-classical model: a fixed quantum
 // feature map (the quantumSim QCNN expectation) feeds a classical logistic head that is federated
 // across K simulated clients with size-weighted FedAvg — mirroring the full deployment's
-// Flower + PennyLane HybridQNN under quantum-safe secure aggregation. Round accuracy is REALLY
-// computed on a held-out split (not a canned constant). Honest scope: a small simulated VQC feature
-// map + a federated classical head (not fault-tolerant QFL); the full path also trains the VQC weights.
+// Flower + PennyLane HybridQNN. Round accuracy is REALLY computed on a held-out split (not a canned
+// constant). Honest scope: a small simulated VQC feature map + a federated classical head (not
+// fault-tolerant QFL); the full path also trains the VQC weights.
+//
+// This comment used to end "under quantum-safe secure aggregation", and the diagram said "pairwise
+// masking (demo keys)". Neither was true of this function: it summed plaintext updates. `aggregation`
+// replaces the `secureAgg: true` literal that stood here — a boolean hardcoded to the answer it was
+// supposed to report is not a report. The stage publishes it as `qfl_aggregation` and the diagram
+// renders that, so the figure cannot outrun the algorithm again.
 export interface QFLResult {
-  roundAcc: number[]; finalAcc: number; clients: number; rounds: number; secureAgg: boolean;
+  roundAcc: number[]; finalAcc: number; clients: number; rounds: number; aggregation: string;
 }
 
 export function clientQFL(
@@ -1085,11 +1091,12 @@ export function clientQFL(
   const roundAcc: number[] = [];
   for (let r = 0; r < rounds; r++) {
     const updates = parts.map((ids) => localTrain(ids, w));        // each client trains locally
-    w = new Array(P).fill(0);                                      // size-weighted FedAvg (masks cancel, full path)
+    w = new Array(P).fill(0);                                      // size-weighted FedAvg over plaintext updates
     updates.forEach((wl, c) => { const wt = parts[c].length / tot; for (let k = 0; k < P; k++) w[k] += wl[k] * wt; });
     roundAcc.push(r2(acc(w)));
   }
-  return { roundAcc, finalAcc: roundAcc[roundAcc.length - 1], clients: K, rounds, secureAgg: true };
+  return { roundAcc, finalAcc: roundAcc[roundAcc.length - 1], clients: K, rounds,
+    aggregation: "size-weighted FedAvg, plaintext updates" };
 }
 
 export interface ClientEvent {
@@ -1823,38 +1830,36 @@ export function runClientPipeline(
         break;
       }
       case "federated_training": {
-        if (config.qfl) {
-          // REAL client-side Quantum Federated Learning: FedAvg of a quantum-classical model across
-          // simulated clients, round accuracy genuinely computed in-browser (mirrors the full
-          // Flower+PennyLane HybridQNN under quantum-safe secure aggregation).
-          // Federate over this page's REAL bundled sample where one exists, so the accuracy
-          // describes the data the page is actually showing rather than an internal toy.
-          const qflData = await realFederatedSet(usecase);
-          const q = clientQFL(seed, { data: qflData });
-          metric(stage, "federated_accuracy", q.finalAcc);
-          metric(stage, "qfl_rounds", q.rounds);
-          metric(stage, "qfl_clients", q.clients);
-          metric(stage, "federated_accuracy_source",
-            qflData ? `real bundled ${usecase} sample, ${qflData.X.length} rows`
-                    : "synthetic 2-cluster toy (no bundled sample for this use case)");
-          artifacts.qfl = q;
-          emit("log", stage, `Quantum Federated Learning (client): ${q.clients} clients × ${q.rounds} `
-            + `rounds (quantum-classical FedAvg, secure-agg) over `
-            + `${qflData ? `the real bundled ${usecase} sample (${qflData.X.length} rows)` : "a synthetic toy"}`
-            + ` — accuracy ${q.roundAcc[0].toFixed(3)}→${q.finalAcc.toFixed(3)}`);
-        } else {
-          // inference-only: a genuine centralized eval (1 client, 1 round) — measured, not a canned constant.
-          const cq = clientQFL(seed, { clients: 1, rounds: 1 });
-          metric(stage, "federated_accuracy", cq.finalAcc);
-          // Say what this number is. clientQFL generates its own balanced two-cluster toy (not the
-          // Wisconsin sample the data stage announced) and is called with clients:1, rounds:1 -- so
-          // there is no federation and no medical data behind it.
-          metric(stage, "federated_accuracy_source", "synthetic 2-cluster toy, 1 client, 1 round");
-          emit("log", stage, `inference-only: centralized eval accuracy ${cq.finalAcc.toFixed(3)} `
-            + `on a SYNTHETIC 2-cluster toy (not the bundled medical sample), 1 client / 1 round — `
-            + `so this is not a federated result `
-            + `(toggle “Federated (QFL)” to run quantum federated rounds in-browser)`);
-        }
+        // REAL client-side Quantum Federated Learning: FedAvg of a quantum-classical model across
+        // simulated clients, round accuracy genuinely computed in-browser (mirrors the full
+        // Flower+PennyLane HybridQNN).
+        // Federate over this page's REAL bundled sample where one exists, so the accuracy
+        // describes the data the page is actually showing rather than an internal toy.
+        //
+        // The `if (config.qfl)` that wrapped this, and its else branch, are gone. Neither could run
+        // any other way: `qfl` is `useState(true)` with no writer (`setQfl` is declared and returned
+        // and never called), `buildConfig` sets `config.qfl` for every use case in
+        // FEDERATED_USECASES, and medical_fl - the only flow that DECLARES this stage rather than
+        // having it injected - is in that set. So the else branch could not execute, and its log
+        // still told the visitor to "toggle Federated (QFL)", a checkbox removed in Round 18. A
+        // flow that declares this stage should run it; the guard added nothing but an unreachable
+        // second answer to "what is federated_accuracy?".
+        const qflData = await realFederatedSet(usecase);
+        const q = clientQFL(seed, { data: qflData });
+        metric(stage, "federated_accuracy", q.finalAcc);
+        metric(stage, "qfl_rounds", q.rounds);
+        metric(stage, "qfl_clients", q.clients);
+        // What the aggregation ACTUALLY was, published so the diagram can render it instead of
+        // carrying its own claim. See the QFLResult comment for why this replaced `secureAgg`.
+        metric(stage, "qfl_aggregation", q.aggregation);
+        metric(stage, "federated_accuracy_source",
+          qflData ? `real bundled ${usecase} sample, ${qflData.X.length} rows`
+                  : "synthetic 2-cluster toy (no bundled sample for this use case)");
+        artifacts.qfl = q;
+        emit("log", stage, `Quantum Federated Learning (client): ${q.clients} clients × ${q.rounds} `
+          + `rounds (quantum-classical FedAvg; ${q.aggregation}) over `
+          + `${qflData ? `the real bundled ${usecase} sample (${qflData.X.length} rows)` : "a synthetic toy"}`
+          + ` — accuracy ${q.roundAcc[0].toFixed(3)}→${q.finalAcc.toFixed(3)}`);
         break;
       }
       case "qml_ids": {

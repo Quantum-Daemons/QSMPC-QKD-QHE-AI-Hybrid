@@ -25,11 +25,28 @@ const FLOWS: Record<string, { id: string; label: string }[]> = {
     { id: "result", label: "Result\n+ artifacts" },
     { id: "sign_result", label: "Sign Result\n(ML-DSA)" },
   ],
+  // Finance is in FEDERATED_USECASES, so a `federated_training` stage is injected into its run. It
+  // had no key here, so it fell to `default` - which has no such node either - and the stage lit
+  // nothing. Node labels are static here (this graph has no metrics), so this one names the
+  // algorithm rather than a security property: `clientQFL` aggregates plaintext updates, and
+  // "(secure aggregation)" claimed a guarantee no code provided. TwoPartyDiagram carries the
+  // measured `qfl_aggregation` string for the run-specific version.
+  finance_aml: [
+    { id: "data", label: "Banks' Data" },
+    { id: "pqc_handshake", label: "PQC Handshake\n(ML-KEM + X25519)" },
+    { id: "qkd_key_agreement", label: "QKD Key" },
+    { id: "qsmpc_compute", label: "QSMPC\n(PSI)" },
+    { id: "federated_training", label: "Federated Training\n(size-weighted FedAvg)" },
+    { id: "private_inference", label: "QHE/FHE\nPrivate Inference" },
+    { id: "quantum_comparison", label: "QSMPC-FHE\n(quantum comparison)" },
+    { id: "result", label: "Result\n+ artifacts" },
+    { id: "sign_result", label: "Sign Result\n(ML-DSA)" },
+  ],
   medical_fl: [
     { id: "data", label: "Hospitals' Data" },
     { id: "pqc_handshake", label: "PQC Handshake" },
     { id: "qkd_key_agreement", label: "QKD Key" },
-    { id: "federated_training", label: "Federated Training\n(secure aggregation)" },
+    { id: "federated_training", label: "Federated Training\n(size-weighted FedAvg)" },
     { id: "private_inference", label: "Private Inference" },
     { id: "quantum_comparison", label: "QSMPC-FHE\n(quantum comparison)" },
     { id: "result", label: "Result" },

@@ -87,7 +87,12 @@ export const hasTrainedQcnn = (usecase: string) => QCNN_USECASES.has(usecase);
  *     page's feature.
  *
  * Finance qualifies on both counts: `realFederatedSet` has its sample, and its diagram renders the
- * step. `tests/test_federated_scope.py` checks this set against the data map so it cannot drift.
+ * step. `tests/test_federated_scope.py` checks this set against the data map AND against both
+ * figures, because for one round it checked only the data map. Finance was admitted on the sample
+ * alone while `USECASE_SPECS.finance_aml` had no federated step and `OrchestrationGraph.FLOWS` had
+ * no finance key - so the render half of the rule this comment states was false about the very use
+ * case the comment cites, and CI was green. Measured on the deployed site: the stage started,
+ * reported `federated_accuracy`, and no svg on the page contained the string "federat".
  */
 export const FEDERATED_USECASES = new Set(["medical_fl", "finance_aml"]);
 export const runsFederated = (usecase: string) => FEDERATED_USECASES.has(usecase);
