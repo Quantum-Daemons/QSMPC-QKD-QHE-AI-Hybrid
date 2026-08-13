@@ -1797,6 +1797,10 @@ export function runClientPipeline(
         metric(stage, "qfl_clients", q.clients);
         metric(stage, "qfl_mask_pairs", q.pairs);
         metric(stage, "federated_eval_rows", q.evalRows);
+        // The same held-out rows with untrained weights. Without it "accuracy 0.74" cannot be read
+        // as evidence that the federated rounds did anything, and the round series cannot supply
+        // that either once the problem converges inside round one.
+        metric(stage, "federated_baseline_accuracy", q.baselineAcc);
         // What the aggregation ACTUALLY was, published so the diagram can render it instead of
         // carrying its own claim. See the QFLResult comment for why this replaced `secureAgg`.
         metric(stage, "qfl_aggregation", q.aggregation);
