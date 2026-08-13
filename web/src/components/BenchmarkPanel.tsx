@@ -137,7 +137,7 @@ export default function BenchmarkPanel(
               <div className="card">
                 <h3>Ciphertext / plaintext ratio (log)</h3>
                 <ResponsiveContainer width="100%" height={220}>
-                  <BarChart data={ratioData}>
+                  <BarChart accessibilityLayer data={ratioData}>
                     <CartesianGrid stroke="#243049" />
                     <XAxis dataKey="name" tick={{ fontSize: 11, fill: "#97a3b6" }} />
                     <YAxis scale="log" domain={[0.5, "auto"]} tick={{ fontSize: 11, fill: "#97a3b6" }} allowDataOverflow />
@@ -161,7 +161,7 @@ export default function BenchmarkPanel(
               <div className="card">
                 <h3>Latency per inference (ms)</h3>
                 <ResponsiveContainer width="100%" height={220}>
-                  <BarChart data={latData}>
+                  <BarChart accessibilityLayer data={latData}>
                     <CartesianGrid stroke="#243049" />
                     <XAxis dataKey="name" tick={{ fontSize: 11, fill: "#97a3b6" }} />
                     <YAxis tick={{ fontSize: 11, fill: "#97a3b6" }} />
@@ -207,7 +207,7 @@ export default function BenchmarkPanel(
               </p>
               <div className="grid cols-2">
                 <ResponsiveContainer width="100%" height={180}>
-                  <BarChart data={splitData}>
+                  <BarChart accessibilityLayer data={splitData}>
                     <CartesianGrid stroke="#243049" />
                     <XAxis dataKey="name" tick={{ fontSize: 11, fill: "#97a3b6" }} />
                     <YAxis tick={{ fontSize: 11, fill: "#97a3b6" }} label={{ value: "ms", angle: -90, position: "insideLeft", fill: "#97a3b6", fontSize: 11 }} />
