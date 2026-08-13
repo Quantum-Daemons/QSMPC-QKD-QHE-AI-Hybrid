@@ -27,6 +27,70 @@ import type { ModelEvalResult } from "../lib/onnxInference";
 const AXIS = { fontSize: 10, stroke: "#8a94a6" };
 const GRID = "#2a3040";
 
+export interface EncryptedAgreementPlot {
+  kind: "encrypted-agreement";
+  points: { enc: number; plain: number; agree: boolean }[];
+  rows: number;
+  classes: number;
+}
+
+/**
+ * The one figure this project's central claim needs, and the one it never drew.
+ *
+ * Every chart beside this one shows a PLAINTEXT model's quality, or the input corpus it was scored
+ * on. Neither shows what private inference produced. The claim being made throughout the page is
+ * that the encrypted computation reproduces the plaintext one - and until now that claim reached the
+ * visitor as a scalar taken over a SINGLE row: `encrypted_top1_mismatches` could only be 0 or 1, and
+ * `encrypted_scores_compared` counted classes rather than rows.
+ *
+ * Each point is one held-out row: its decrypted winning score against the plaintext score for the
+ * same row and class. Agreement is the `y = x` line, so a deviation is visible as distance from it
+ * rather than as a number someone has to interpret. Points are coloured by whether the encrypted
+ * argmax matched the plaintext argmax - the integer convention arXiv:2605.22237 Table IX reports and
+ * expects to be zero.
+ *
+ * The rows come from one CKKS ciphertext: `encryptedLinearBatch` packs them at the reduction's own
+ * stride, so N rows cost the same homomorphic work as one.
+ */
+export function EncryptedAgreementChart({ plot }: { plot: EncryptedAgreementPlot }) {
+  if (!plot?.points?.length) return null;
+  const mismatches = plot.points.filter((p) => !p.agree).length;
+  const worst = Math.max(...plot.points.map((p) => Math.abs(p.enc - p.plain)));
+  const lo = Math.min(...plot.points.flatMap((p) => [p.enc, p.plain]));
+  const hi = Math.max(...plot.points.flatMap((p) => [p.enc, p.plain]));
+  const name = `Encrypted score against plaintext score, ${plot.rows} held-out rows`;
+  return (
+    <figure className="chart-figure">
+      <figcaption className="muted small">
+        <strong>Private inference against the plaintext reference.</strong> Each point is one of{" "}
+        {plot.rows} held-out rows scored under CKKS in this tab, plotted against the same row&apos;s
+        plaintext score. The diagonal is exact agreement. Top-1 mismatches:{" "}
+        <strong>{mismatches}</strong> of {plot.rows} ({plot.rows * plot.classes} class scores);
+        worst absolute deviation {worst.toExponential(2)}. All {plot.rows} rows travelled in a single
+        ciphertext, so they cost the homomorphic work of one.
+      </figcaption>
+      <ResponsiveContainer width="100%" height={200}>
+        <ScatterChart margin={{ top: 6, right: 10, bottom: 4, left: -10 }}>
+          <title>{name}</title>
+          <CartesianGrid stroke={GRID} strokeDasharray="2 4" />
+          <XAxis type="number" dataKey="plain" name="plaintext" domain={[lo, hi]} tick={AXIS}
+                 label={{ value: "plaintext score", position: "insideBottom", offset: -2, fill: "#8a94a6", fontSize: 10 }} />
+          <YAxis type="number" dataKey="enc" name="encrypted" domain={[lo, hi]} tick={AXIS} />
+          <ReferenceLine segment={[{ x: lo, y: lo }, { x: hi, y: hi }]} stroke="#8a94a6"
+                         strokeDasharray="4 4" ifOverflow="extendDomain" />
+          <Tooltip contentStyle={{ background: "#161b26", border: `1px solid ${GRID}`, fontSize: 11 }}
+                   formatter={(v: number) => v.toFixed(6)} />
+          <Scatter name="agrees" data={plot.points.filter((p) => p.agree)} fill="#4f9dff" />
+          {mismatches > 0 && (
+            <Scatter name="argmax differs" data={plot.points.filter((p) => !p.agree)} fill="#ff6b6b" />
+          )}
+          {mismatches > 0 && <Legend wrapperStyle={{ fontSize: 10 }} />}
+        </ScatterChart>
+      </ResponsiveContainer>
+    </figure>
+  );
+}
+
 // The real corpus, drawn underneath the model's own numbers.
 //
 // A score on its own cannot distinguish a good model on easy data from a mediocre model on hard

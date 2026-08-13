@@ -103,6 +103,104 @@ export interface FHEResult {
   multiplies: number;
 }
 
+export interface FHEBatchResult {
+  /** `logits[r][j]` — decrypted score for row `r`, class `j`. */
+  logits: number[][];
+  plainLogits: number[][];
+  rows: number;
+  /** Rows that fit in one ciphertext at this feature width. The batch is capped at it. */
+  rowsPerCiphertext: number;
+  fheMs: number;
+  ctBytes: number | null;
+  maxAbsError: number;
+  rotations: number;
+  multiplies: number;
+}
+
+/**
+ * The same linear layer over MANY rows, in the same number of homomorphic operations as one row.
+ *
+ * WHY THIS EXISTS. `encryptedLinear` below pads one input of 7-8 features into a `slots`-wide vector -
+ * 4096 slots at this parameter set - and zeroes the other 4088. Every encrypted-versus-plaintext
+ * figure this project reports was therefore a comparison over ONE row: `encrypted_scores_compared`
+ * counted CLASSES, not rows, and `encrypted_top1_mismatches` was `0 or 1`. A single agreement is not
+ * evidence that encrypted inference reproduces plaintext, and it cannot be plotted against a test set.
+ *
+ * HOW IT WORKS, AND WHY IT COSTS NOTHING EXTRA. The rotate-and-add reduction sums a sliding window of
+ * `sumWidth` slots, so slot `k` ends up holding `sum(slots k..k+sumWidth-1)`. Packing row `r` at slot
+ * offset `r*sumWidth`, with the weight row TILED at the same stride, therefore leaves row `r`'s dot
+ * product sitting in slot `r*sumWidth` - **with the homomorphic loop unchanged**. One encrypt, one
+ * multiply-plain and log2(sumWidth) rotations per class serve every row in the batch. This is
+ * ordinary CKKS SIMD batching, and it is what the convolution path here already does with
+ * `patchesPerCiphertext`; the linear path simply never did it.
+ *
+ * Verified before it was written: the stride-packed reduction recovers each row's dot product exactly,
+ * checked against the plaintext value in plain JS with the same rotation semantics.
+ */
+export async function encryptedLinearBatch(
+  W: number[][], b: number[], rows: number[][],
+): Promise<FHEBatchResult> {
+  const c = await getCtx();
+  const { seal, encoder, encryptor, decryptor, evaluator, galois, slots, scale } = c;
+  const n = rows[0]?.length ?? 0;
+  const sumWidth = 1 << Math.ceil(Math.log2(Math.max(n, 2)));
+  const rowsPerCiphertext = Math.max(1, Math.floor(slots / sumWidth));
+  // Capped rather than chunked. Chunking would multiply the cost by the number of chunks and hide
+  // that behind one number; a cap is visible, and the caller reports how many rows it asked for.
+  const used = rows.slice(0, rowsPerCiphertext);
+
+  const t0 = performance.now();
+  const xPad = new Float64Array(slots);
+  used.forEach((row, r) => {
+    for (let i = 0; i < n; i++) xPad[r * sumWidth + i] = row[i] ?? 0;
+  });
+  const ptX = seal.PlainText ? seal.PlainText() : new seal.Plaintext();
+  encoder.encode(xPad, scale, ptX);
+  const ctX = new seal.Ciphertext();
+  encryptor.encrypt(ptX, ctX);
+  let ctBytes: number | null = null;
+  try { ctBytes = ctX.saveToArray(seal.ComprModeType.none).length; } catch { ctBytes = null; }
+
+  const perClass: number[][] = [];
+  let rotations = 0, multiplies = 0;
+  for (let j = 0; j < W.length; j++) {
+    if (W[j].every((v) => v === 0)) {
+      perClass.push(used.map(() => b[j] ?? 0));      // all-zero row: the logit is the bias
+      continue;
+    }
+    const wPad = new Float64Array(slots);
+    for (let r = 0; r < used.length; r++) {
+      for (let i = 0; i < n; i++) wPad[r * sumWidth + i] = W[j][i] ?? 0;   // TILED at the same stride
+    }
+    const ptW = new seal.Plaintext();
+    encoder.encode(wPad, scale, ptW);
+    let acc = new seal.Ciphertext();
+    evaluator.multiplyPlain(ctX, ptW, acc);
+    multiplies++;
+    for (let s = 1; s < sumWidth; s <<= 1) {
+      const rot = new seal.Ciphertext();
+      evaluator.rotateVector(acc, s, galois, rot);
+      const nxt = new seal.Ciphertext();
+      evaluator.add(acc, rot, nxt);
+      acc = nxt;
+      rotations++;
+    }
+    const out = new seal.Plaintext();
+    decryptor.decrypt(acc, out);
+    const dec = encoder.decodeFloat64(out);
+    perClass.push(used.map((_, r) => dec[r * sumWidth] + (b[j] ?? 0)));
+  }
+  const fheMs = performance.now() - t0;
+
+  const logits = used.map((_, r) => perClass.map((cls) => cls[r]));
+  const plainLogits = used.map((row) =>
+    W.map((wr, j) => wr.reduce((a, w, i) => a + w * (row[i] ?? 0), 0) + (b[j] ?? 0)));
+  const maxAbsError = Math.max(
+    0, ...logits.flatMap((row, r) => row.map((v, j) => Math.abs(v - plainLogits[r][j]))));
+  return { logits, plainLogits, rows: used.length, rowsPerCiphertext, fheMs, ctBytes,
+           maxAbsError, rotations, multiplies };
+}
+
 /**
  * Genuinely encrypt ``x`` and evaluate the linear layer ``W·x + b`` under CKKS, returning the decrypted
  * logits + the REAL measured time + the ciphertext size. ``W`` is ``(out, in)``. The dot product is a
