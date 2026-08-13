@@ -87,7 +87,12 @@ export const hasTrainedQcnn = (usecase: string) => QCNN_USECASES.has(usecase);
  *     page's feature.
  *
  * Finance qualifies on both counts: `realFederatedSet` has its sample, and its diagram renders the
- * step. `tests/test_federated_scope.py` checks this set against the data map so it cannot drift.
+ * step. `tests/test_federated_scope.py` checks this set against the data map AND against both
+ * figures, because for one round it checked only the data map. Finance was admitted on the sample
+ * alone while `USECASE_SPECS.finance_aml` had no federated step and `OrchestrationGraph.FLOWS` had
+ * no finance key - so the render half of the rule this comment states was false about the very use
+ * case the comment cites, and CI was green. Measured on the deployed site: the stage started,
+ * reported `federated_accuracy`, and no svg on the page contained the string "federat".
  */
 export const FEDERATED_USECASES = new Set(["medical_fl", "finance_aml"]);
 export const runsFederated = (usecase: string) => FEDERATED_USECASES.has(usecase);
@@ -145,6 +150,15 @@ export const makeDefaultParams = () => ({
   sat_distance_km: FREE_SPACE.distanceKm,
   sat_eve: FREE_SPACE.eveFraction,
   sat_pulses: webCfg().demo_sat_pulses,
+  // The two fixed terms of the link budget, and the reason the eavesdrop check could never fire.
+  // `channelLossDb` caps the diffraction term at the near field, so these floor total loss at 8 dB
+  // no matter how short the range: g >= 6.31, and C_s > 0 then needs h(QBER) < 1/(1+g) = 0.137
+  // while the misalignment floor of 0.025 alone gives 0.169. Every abort was therefore attributable
+  // to the budget rather than to Eve, at every setting the page offered. Exposing them lets a
+  // visitor select a LINK (the Qi et al. 2019 demonstration was 4.1 dB on fibre) rather than edit
+  // physics; the defaults are the Micius-class downlink and are unchanged.
+  sat_atmospheric_db: FREE_SPACE.freeSpace!.atmosphericDb,
+  sat_pointing_db: FREE_SPACE.freeSpace!.pointingDb,
 });
 
 export const DEFAULT_PARAMS = makeDefaultParams();
