@@ -91,6 +91,14 @@ function qflPairMask(sessionKey: Uint8Array, u: number, v: number, round: number
  * recoverable from masked shares alone - it is not a threat model in which the shares are held by
  * mutually distrusting parties. There is no dropout-recovery secret sharing (Bonawitz section 4),
  * so a client that vanished mid-round would leave its masks uncancelled.
+ *
+ * What a complete version adds, and the citation for it: arXiv:2607.28191 (2026-07-30, PREPRINT - no
+ * journal_ref and no DOI as of 2026-08-13) implements exactly this scheme on Flower with threshold
+ * secret sharing, dropout-resilient aggregation, local update clipping and semi-honest AND malicious
+ * variants, on clinical EEG. It reports the semi-honest variant as the cheapest of the secure
+ * configurations, with the malicious and notary variants adding computation, communication and round
+ * duration. It corroborates the scope note above rather than contradicting it: the masking is the
+ * core, and dropout recovery is the next layer, not a correction to this one.
  */
 export function secureAggregate(
   updates: number[][], weights: number[], sessionKey: Uint8Array, round: number,
