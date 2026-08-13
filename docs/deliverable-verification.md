@@ -1039,6 +1039,83 @@ above, with the Round 28 text kept as history.
   exists for it to close. Reopening condition recorded there, and it requires both halves so it can
   actually fire.
 
+## Rounds 34-36, and the three rounds this register was not written in
+
+**This section exists because the register stopped.** The rule stated above - an item deferred three
+rounds must be done or reclassified - is enforced by writing it down, and Rounds 34, 35 and 36 were
+not written down. The standing per-round request then arrived four times asking for items this
+document already had answers for.
+
+### Round 34 - OpenFHE bootstrapping, and a backend that degraded silently
+
+Recorded in `docs/verification-log.md`. The finding that belongs here: `use_bootstrap=True` wrapped
+its setup in `except Exception: self.bootstrap_enabled = False`, so a hard failure and an absent
+feature produced the identical state, and the test read that state and skipped. It now raises.
+
+### Round 35 - four checks defined and none of them run
+
+`QK4`-`QK7` were added to the checklist and merged without being executed, and without a verification
+log entry. `QK4`, `QK5` and `QK7` were measured in Round 36 and pass. **`QK6` could not be run at
+all**: it asked for monotonicity in `mu`, which has no control on any page, so half of it was never
+exercisable by a person. It moved into `npm run check:qkd`.
+
+The generalisable form, and it is the reason this section is late: **the round that writes a check is
+not the round that runs it, and nothing forced the second half.** `RT9` closes that loop for content
+defects; nothing closed it for newly-added rows.
+
+### Round 36 - three pages stated a security property the run did not provide
+
+The axis was per-use-case security communication. Measured: `pqc_handshake`, `qkd_key_agreement`,
+`satellite_qkd`, `qsmpc_compute`, `federated_training` and `_sessionKey` had **zero occurrences each**
+in the whole checklist. Three false claims followed from nobody having looked:
+
+- the diagram drew "pairwise masking (demo keys)" over a plaintext weighted mean, with
+  `secureAgg: true` a literal on the return line. Now implemented (Bonawitz, CCS 2017) and gated by
+  `npm run check:qfl`.
+- the QSDC eavesdrop check was unreachable - `link_budget_limited` was 1 at every setting - so a
+  full-strength eavesdropper drew "QSDC direct telemetry" with a completion tick. The budget terms
+  are now controls and the check fires at 1 km / 3 dB / Eve 0.40.
+- the telecom QKD arrow and its party box both claimed an eavesdropper while `qkd_eve` defaults to
+  0.0.
+
+Unclamping the QSDC secrecy capacity exposed what the clamp had hidden: **the same nominal 800 km
+downlink was 24.48 dB in the browser and 28.0 dB in the reference implementation**, which still
+applied the linear law the browser had rejected. Both sides had been reporting "0".
+
+## Decisions, part two: the four standing asks
+
+Same format as the register above - the decision, why, and what would reopen it. These four arrive in
+every ORDER file and had no entry here, which is why they arrive in every ORDER file.
+
+**Published models versus current MPC-FHE research: ANSWERED, and the answer is stable.**
+`references/model-choice-vs-2026-practice.md` checks all five verticals against 2025-2026 encrypted
+inference literature with a paper-count table. Finance is the sharp case: across verified papers the
+architecture distribution is ~10 tree ensembles, ~5 linear/SVM, ~2 small MLPs, and **zero**
+transformers or tabular foundation models on a finance benchmark. This project publishes an XGBoost
+teacher and a 33-parameter logistic student under CKKS - squarely what the field evaluates.
+*Reopens if* a verified paper benchmarks encrypted inference on a finance tabular task with a
+different architecture class.
+
+**An additional ML model: DECLINED per option, with measurements.**
+`references/model-strategy-decision.md`. The encrypted tier evaluates 20-3,226 parameters because
+CKKS at `poly_modulus_degree` 8192 gives one multiplicative level; no pretrained model exists at that
+size, and the teachers already sit at or above their published baselines. *Reopens if* bootstrapping
+lands in the browser tier, which would change the parameter budget rather than the preference.
+
+**QCNN against literature numbers: RECLASSIFIED from declined to done, Round 37.** The stated reason
+- "no published QCNN reports this circuit on this data" - was true of the circuit and false of the
+data. `QC18`-`QC20` and `references/qcnn-vs-published-wdbc.md` carry the comparison against Sci Rep
+14 (2024) DOI 10.1038/s41598-024-74778-7 with the three differences that must travel with it.
+*Reopens if* a published QCNN result on WDBC states its qubit count, depth, encoding and feature
+subset on a held-out test split, which would allow a matched comparison instead of an annotated one.
+
+**2D plots of private inference against test data: DONE, Round 37.** The five scatters plotted the
+INPUT corpus and never an inference result, and the one file that is its model's training corpus
+belongs to the only use case that runs no private inference. `EncryptedAgreementChart` now draws the
+encrypted score against the plaintext score per held-out row. *Reopens if* a use case gains a private
+inference path whose output is not linear, since the batching that makes it affordable is specific to
+the packed linear layer.
+
 ## Verification assets added in Rounds 22-23
 
 Two checks now exist that assert against sources OUTSIDE this repository. That is the point of both:
