@@ -132,7 +132,9 @@ export function RealDataScatter({ usecase }: { usecase: string }) {
             and because removing it would hide the gap rather than close it. The text alternative
             for this chart is the figcaption above, which states what it shows, its licence and its
             attribution; that is what a screen-reader user gets today. */}
-        <ScatterChart accessibilityLayer margin={{ top: 6, right: 10, bottom: 30, left: -14 }}>
+        <ScatterChart role="img"
+          title={`Scatter plot: ${data.y.label} against ${data.x.label}`}
+          margin={{ top: 6, right: 10, bottom: 30, left: -14 }}>
           <CartesianGrid stroke={GRID} strokeDasharray="2 4" />
           <XAxis type="number" dataKey="x" name={data.x.label} tick={AXIS}
                  label={{ value: data.x.label, position: "insideBottom", offset: -20,
@@ -207,7 +209,8 @@ export function AncestryStrataChart({ achieved }: { achieved: Record<string, unk
         not an accuracy drop - the panel carries no case/control status, so no AUROC is computable.
       </figcaption>
       <ResponsiveContainer width="100%" height={190}>
-        <BarChart accessibilityLayer data={rows} margin={{ top: 4, right: 8, bottom: 4, left: -18 }}>
+        <BarChart accessibilityLayer title="Share flagged high-risk, by genetic-ancestry group"
+          data={rows} margin={{ top: 4, right: 8, bottom: 4, left: -18 }}>
           <CartesianGrid stroke={GRID} strokeDasharray="2 4" />
           <XAxis dataKey="label" tick={AXIS} interval={0} />
           <YAxis tick={AXIS} tickFormatter={(v: number) => `${(v * 100).toFixed(0)}%`} />
@@ -239,7 +242,8 @@ export function VerificationChart({ res, modelKey }: { res: ModelEvalResult; mod
           of {res.score?.toFixed(3)}. The aggregate is what would hide it.
         </figcaption>
         <ResponsiveContainer width="100%" height={180}>
-          <BarChart accessibilityLayer data={plot.perClass} margin={{ top: 4, right: 8, bottom: 4, left: -18 }}>
+          <BarChart accessibilityLayer title={`Per-class F1 for ${modelKey}`}
+            data={plot.perClass} margin={{ top: 4, right: 8, bottom: 4, left: -18 }}>
             <CartesianGrid stroke={GRID} strokeDasharray="2 4" />
             <XAxis dataKey="label" tick={AXIS} interval={0} angle={-25} textAnchor="end" height={54} />
             <YAxis domain={[0, 1]} tick={AXIS} />
@@ -268,7 +272,8 @@ export function VerificationChart({ res, modelKey }: { res: ModelEvalResult; mod
             baseline moves with prevalence and ROC's does not.
           </figcaption>
           <ResponsiveContainer width="100%" height={180}>
-            <LineChart accessibilityLayer data={plot.pr} margin={{ top: 4, right: 8, bottom: 4, left: -18 }}>
+            <LineChart accessibilityLayer title={`Precision-recall curve for ${modelKey}`}
+              data={plot.pr} margin={{ top: 4, right: 8, bottom: 4, left: -18 }}>
               <CartesianGrid stroke={GRID} strokeDasharray="2 4" />
               <XAxis dataKey="recall" type="number" domain={[0, 1]} tick={AXIS}
                      tickFormatter={(v: number) => v.toFixed(1)} />
@@ -290,7 +295,8 @@ export function VerificationChart({ res, modelKey }: { res: ModelEvalResult; mod
               way it does - a metric says how well, this says why.
             </figcaption>
             <ResponsiveContainer width="100%" height={180}>
-              <BarChart accessibilityLayer data={plot.hist} margin={{ top: 4, right: 8, bottom: 4, left: -18 }}>
+              <BarChart accessibilityLayer title="Score distribution by true class"
+                data={plot.hist} margin={{ top: 4, right: 8, bottom: 4, left: -18 }}>
                 <CartesianGrid stroke={GRID} strokeDasharray="2 4" />
                 <XAxis dataKey="bin" tick={AXIS} label={{ value: "score bin", position: "insideBottom",
                        offset: -2, fill: "#8a94a6", fontSize: 10 }} />
@@ -335,7 +341,8 @@ export function VerificationChart({ res, modelKey }: { res: ModelEvalResult; mod
           model, a few large misses are missed events.
         </figcaption>
         <ResponsiveContainer width="100%" height={190}>
-          <LineChart accessibilityLayer data={plot.series} margin={{ top: 4, right: 8, bottom: 4, left: -18 }}>
+          <LineChart accessibilityLayer title="Forecast against actual, over time"
+            data={plot.series} margin={{ top: 4, right: 8, bottom: 4, left: -18 }}>
             <CartesianGrid stroke={GRID} strokeDasharray="2 4" />
             <XAxis dataKey="i" tick={AXIS} />
             <YAxis tick={AXIS} />
