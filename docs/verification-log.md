@@ -31,7 +31,8 @@ written. The index is the fix instead:
 | **Round 28** | **at the TOP of the file** |
 | Rounds 29, 30, 31 | appended, reconstructed in Round 32 |
 | Round 32 | appended, reconstructed in Round 33 |
-| Round 33 | appended, at the end |
+| Round 33, Round 34 | appended, at the end |
+| Round 35 | appended, measured in Round 36 |
 
 Rounds 25, 26 and 27 have no entry here and never did. That is a real gap in the record rather than an
 ordering artefact, and it is not reconstructable now: it predates the point where this file existed as
@@ -651,3 +652,33 @@ old one guessed ("needs Ubuntu-24.04-class libstdc++") and, on this host, guesse
 the identical state - and the test read that state and skipped. It now raises. `bootstrap_enabled`
 is False only when bootstrapping was never asked for, which is the same no-silent-fallback rule
 `get_backend` already follows.
+
+## Round 35 (`6907585` on its branch) - four checks defined and none of them run
+
+**Written in Round 36, from measurements taken against the Round 35 deploy.** Round 35 added `QK4`
+through `QK7` to the checklist and merged without executing any of them, and without an entry here.
+That is the same gap as Rounds 29-31, with the same cause: the round that writes the checks is not
+the round that runs them, and nothing forces the second half.
+
+`QK4`, `QK5` and `QK7` were run against the deployed Round 35 bundle and all three pass. The
+readings, and why each is the sharp form of its claim:
+
+| setting | row | reading |
+|---|---|---|
+| finance_aml, eve 1.0, misalignment 0 | QK4 | `qber` **0.25**, `secure_key_bits` 0 |
+| finance_aml, misalignment 0.09 | QK5 | `qber` 0.09, `secure_key_bits` **176** |
+| finance_aml, misalignment 0.10 | QK5 | `qber` 0.10, `secure_key_bits` **0** |
+| satellite, 800 km | QK7 | `channel_loss_db` **24.5**, g 280.43 |
+| satellite, 1 km | QK7 | `channel_loss_db` **8.0**, g 6.31 |
+
+`QK4` is Gottesman-Lo's intercept-resend figure verbatim - 25%, not a value near it. `QK5` is the
+one that needed both halves: a key at 0.09 and none at 0.10 places the zero-key point inside
+(0.09, 0.10], which is the GLLP root 0.098106 and NOT the textbook 0.11, where a key would still
+have been alive at 0.10. Measuring only the dead side would have been consistent with both. `QK7`'s
+second row is the one that distinguishes the models: at 1 km the loss does not fall towards zero,
+because the atmospheric and pointing terms do not scale with range.
+
+**`QK6` could not be run at all**, and that is the round's finding rather than an oversight in
+executing it. It asked for monotonicity in distance AND in mu; `mu` is `qkdCfg().mu_signal`, a config
+constant with no control on any page. Half the check had no way to be exercised by a person. It moved
+into `npm run check:qkd` in Round 36, where both axes move.
