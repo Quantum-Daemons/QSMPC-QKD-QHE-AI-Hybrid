@@ -1867,6 +1867,10 @@ export function runClientPipeline(
         break;
       }
       case "qml_ids": {
+        // Whether the QCNN branch below replaced the surfaced class. The SHAP flag is a
+        // CONCLUSION about what produced that class, so it is computed once at the end of this
+        // case rather than assumed at the start and then contradicted.
+        let qcnnSurfacedClass = false;
         // clientIDS genuinely trains an 8-class softmax in this tab, so the timing and the F1 are
         // measured. The *data* is synthetic, which the run logs separately — measured computation
         // over synthetic input is not the same claim as measured performance on real traffic.
@@ -1896,10 +1900,10 @@ export function runClientPipeline(
           artifacts.explanation_provenance =
             `in-browser IDS classifier, one-vs-rest for ${ids.explain.className}`;
           artifacts.explanation_baseline = "zero vector (features are z-scored, so E[x] = 0)";
-          // Telecom has NO private_inference stage: the class this page reports comes from this
-          // very softmax, so the bars ARE an attribution of the reported class. See the satellite
-          // site above for why this is a declared flag and not inferred from an absent artifact.
-          artifacts.explanation_is_of_reported_class = true;
+          // Set ONCE, at the end of this case, from what actually surfaced - see the assignment
+          // after the QCNN branch. Written here first as an unconditional `true`, which was correct
+          // for the softmax and for the encrypted tier and wrong the moment the QCNN branch below
+          // replaced the surfaced class without touching it.
         }
         emit("log", stage, `QML-IDS (client, softmax logistic on Al-Kuwari-2026 signatures): `
           + `macro-F1=${r2(ids.macroF1)} over 8 classes, worst class ${r2(ids.worstClassF1)} `
@@ -1943,15 +1947,13 @@ export function runClientPipeline(
             metric(stage, "primary_inference_backend", "qcnn-trained");
             metric(stage, "primary_inference_class", w.class_names?.[qc.cls] ?? qc.cls);
             metric(stage, "qcnn_classes_available", w.readout?.n_classes ?? 2);
-            // THE CLASS NO LONGER COMES FROM THE SOFTMAX, so the SHAP bars are no longer an
-            // attribution of it. `explanation_is_of_reported_class` was set true above - correctly,
-            // for the softmax path and for the encrypted tier, whose comments both reason about it -
-            // and this branch is what invalidates it. It ran AFTER the flag and never touched it, so
-            // with QCNN selected the page rendered two paragraphs at once: "these bars explain the
-            // same model that produced the class reported above" and "the class this page surfaces
-            // came from the trained QCNN ... which is a different decision". Both visible, in that
-            // order, contradicting each other.
-            artifacts.explanation_is_of_reported_class = false;
+            // The class no longer comes from the softmax, so the SHAP bars are no longer an
+            // attribution of it. Recorded rather than assigned here: the flag is set once, below,
+            // from this variable. With the flag set true earlier and never revised, the page
+            // rendered two paragraphs at once - "these bars explain the same model that produced
+            // the class reported above" and "the class this page surfaces came from the trained
+            // QCNN ... a different decision" - both visible, contradicting each other.
+            qcnnSurfacedClass = true;
             emit("log", stage, `QCNN (trained, ${w.readout?.n_classes ?? 2}-class basis readout on `
               + `${w.readout?.readout_qubits ?? 0} of ${w.n_qubits} qubits): class `
               + `"${w.class_names?.[qc.cls] ?? qc.cls}". Class index is ${w.readout?.class_index}, `
@@ -1979,6 +1981,10 @@ export function runClientPipeline(
             emit("log", stage, "QCNN selected but no trained weights are published for this use case");
           }
         }
+        // ONE assignment, after everything that can change what surfaced. Telecom's value is a
+        // property of the RUN, not of the page: the in-tab softmax decides unless the visitor
+        // selected QCNN, in which case the circuit does and these bars explain something else.
+        artifacts.explanation_is_of_reported_class = !qcnnSurfacedClass;
         break;
       }
       case "private_inference": {
