@@ -312,7 +312,16 @@ export const USECASE_SPECS: Record<string, Spec> = {
   },
   telecom_ids: {
     a: { name: "Carrier", sub: "QKD Tx + IDS plane · LAN" },
-    b: { name: "Remote site / Eve", sub: "QKD Rx (eavesdropper)" },
+    // The SECOND unconditional eavesdropper claim on this page, and it outlived the fix to the
+    // first. The arrow's tag now reads the fraction the run reports, so at `qkd_eve` 0.0 - the
+    // default - it correctly says nothing; this box went on calling the far end "Eve" and its link
+    // "QKD Rx (eavesdropper)" on the same clean run. Found by an over-broad browser assertion that
+    // scanned every svg rather than the arrow, which is the one time that is worth doing.
+    //
+    // Party names are static (the Spec type has no metrics), so the honest form is one that is true
+    // either way: this page's subject is watching the link for intrusion, and whether anyone is on
+    // it is what the run decides. The arrow says which.
+    b: { name: "Remote site", sub: "QKD Rx · link monitored for intrusion" },
     steps: [
       { stageId: "pqc_handshake", kind: "c-bidir", label: (_m, c) => `PQC handshake — ${kemName(c)}` },
       // "(w/ eavesdropper)" used to be unconditional here while `qkd_eve` defaults to 0.0, so the
