@@ -6,8 +6,14 @@ Kaggle datasets into the small, commercial-OK real samples the repo ships + the 
 
   data/finance/paysim_sample.tsv                  PaySim simulator output (synthetic) -> the 8 AML features + label
   data/satellite/smap_msl_telemetry.tsv           real NASA SMAP/MSL telemetry (6 channels) + anomaly label
-  web/public/data/finance/paysim_sample.json      demo: real rows + a distilled CKKS-linear model (SHAP)
   web/public/data/satellite/telemetry.json        demo: real telemetry windows + a real anomaly model
+
+`web/public/data/finance/paysim_sample.json` is NOT written here any more. It is built by
+`scripts/data/build_federated_samples.py` from the TSV this script produces, alongside the medical
+sample, because the browser federates over both and they have to be sized and standardised by one
+decision rather than two. Leaving a second writer here would be the drift this repo keeps finding:
+whoever re-ran this script for the TSV would silently restore the 16-row unstandardised payload that
+made federated accuracy worse than the constant predictor, and every gate would stay green.
 
 Sources (licences re-read 2026-08-03 -- see DATA_LICENSES.md for what each actually grants):
   * PaySim  : Kaggle `ealaxi/paysim1`, license **CC-BY-SA-4.0** (Lopez-Rojas et al. 2016 mobile-money simulator).
@@ -79,9 +85,9 @@ def _paysim_features(df):
 
 
 def prep_finance(src: Path, repo: Path, n: int = 4000, fraud_rate: float = 0.05, seed: int = 0):
+    # The XGBoost teacher and the logistic student moved with the demo JSON to
+    # `scripts/data/build_federated_samples.py`; this function's job is now only the TSV.
     import pandas as pd
-    from sklearn.linear_model import LogisticRegression
-    import xgboost as xgb
 
     csv = next(src.glob("paysim/*.csv"))
     print(f"[finance] reading {csv} ...")
@@ -112,27 +118,16 @@ def prep_finance(src: Path, repo: Path, n: int = 4000, fraud_rate: float = 0.05,
             f.write("\t".join(f"{v:.5f}" for v in row) + f"\t{int(label)}\n")
     print(f"[finance] wrote {out_tsv} ({out_tsv.stat().st_size} B)")
 
-    # demo JSON: real rows + a distilled CKKS-linear model (XGBoost -> logistic student), mirrors the full pipeline
-    gbm = xgb.XGBClassifier(n_estimators=80, max_depth=4, learning_rate=0.2, subsample=0.9,
-                            eval_metric="logloss", n_jobs=2, random_state=seed).fit(Xs, ys)
-    student = LogisticRegression(max_iter=500, class_weight="balanced").fit(Xs, gbm.predict(Xs))
-    W = [list(map(float, np.zeros(8))), list(map(float, student.coef_[0]))]
-    b = [0.0, float(student.intercept_[0])]
-    # ship a small mix of real rows (fraud + legit) for the demo to pick from
-    demo_idx = np.concatenate([np.where(ys == 1)[0][:8], np.where(ys == 0)[0][:8]])
-    rng.shuffle(demo_idx)
-    demo = {
-        "provenance": FIN_PROVENANCE, "names": FIN_NAMES,
-        "samples": [[round(float(v), 5) for v in Xs[i]] for i in demo_idx],
-        "labels": [int(ys[i]) for i in demo_idx],
-        "model": {"W": W, "b": b},
-        "real_model": "XGBoost (n_estimators=80, depth=4) distilled to a CKKS-linear logistic surrogate",
-    }
-    out_json = repo / "web" / "public" / "data" / "finance" / "paysim_sample.json"
-    out_json.parent.mkdir(parents=True, exist_ok=True)
-    out_json.write_text(json.dumps(demo))
-    print(f"[finance] wrote {out_json} ({out_json.stat().st_size} B); xgb_train_acc="
-          f"{(gbm.predict(Xs)==ys).mean():.3f}")
+    # The demo JSON is NOT written here. It used to be, with `demo_idx` picking the first 8 fraud and
+    # first 8 legit rows - the 16 rows that made `federated_accuracy` a 4-row score, and a 4-row score
+    # that came out BELOW the constant predictor on 4 of 5 seeds. It is now built by
+    # `scripts/data/build_federated_samples.py`, which sizes and standardises it together with the
+    # medical sample because the browser federates over both.
+    #
+    # Two writers for one artefact is the drift this repo keeps finding. Re-running this script for
+    # the TSV must not quietly undo that, so it says what to run instead rather than doing it.
+    print("[finance] demo JSON NOT written here - run scripts/data/build_federated_samples.py "
+          "after this, which builds it from the TSV above together with the medical sample")
 
 
 def prep_satellite(src: Path, repo: Path, n_channels: int = 6, length: int = 900, window: int = 8,
