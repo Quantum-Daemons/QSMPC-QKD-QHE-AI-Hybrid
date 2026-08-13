@@ -112,7 +112,11 @@ class QKDConfig:
     opt_mu_decoy_max: float = 0.20
     # --- protocol selection + E91 (entanglement-based) parameters ---
     protocol: str = "bb84"                    # "bb84" (prepare-measure, decoy-state) | "e91" (entanglement/CHSH)
-    e91_pairs: int = 100_000                  # entangled pairs distributed (E91)
+    # `e91_pairs` was removed in Round 35. It had no reader in Python OR TypeScript - the E91
+    # stage sizes itself from `qkd_pulses`, which is the control the Parameters panel actually
+    # exposes. An exported config key nothing reads is the config-space form of a control that
+    # renders and changes nothing, and this project removes those rather than inventing a
+    # reader: wiring it would have created a second, unsurfaced sizing input for one quantity.
     e91_visibility: float = 0.97              # entangled-state visibility -> CHSH S-parameter + QBER (E91)
 
 
