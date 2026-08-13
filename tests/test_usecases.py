@@ -37,14 +37,13 @@ def test_genomics_real_prs_under_ckks():
     breast-cancer) under CKKS — a genuine industry-standard model that is FHE-native (linear)."""
     import numpy as np
 
-    from qsh.data.loaders import load_genomic_prs
-    from qsh.fhe.backends import get_backend
-    from qsh.fhe.ckks_inference import LinearModel, encrypted_linear_inference
-
     # The score comes from the config field, not from a literal here. Round 31 updated this test's
     # DOCSTRING to say PGS000004/313 and left the assertions on 77 - a test whose stated purpose denied
     # its own body, and it passed, because the assertions matched the pipeline's own stale default.
     from qsh.config import get_config
+    from qsh.data.loaders import load_genomic_prs
+    from qsh.fhe.backends import get_backend
+    from qsh.fhe.ckks_inference import LinearModel, encrypted_linear_inference
 
     score = get_config().data.genomics_prs_score
     dosages, weights, keys, eff, freq = load_genomic_prs(n_individuals=200, seed=0, name=score)
@@ -110,7 +109,12 @@ def test_satellite_clean_downlink_yields_key_but_qsdc_cannot_close():
     assert r["secure_key_bits"] >= 256          # free-space BB84 still yields a usable key
     assert r["qber"] < 0.11                     # and BB84's own bound is comfortably met
     assert r["telemetry_delivered"] is False    # QSDC is not available at this link budget
-    assert r["qsdc_secrecy_capacity"] == 0.0    # reported clamped at 0; the raw value is negative
+    # SIGNED, and it has to be. This asserted `== 0.0`, enshrining a clamp that made a link missing
+    # by 61 bit/carrier indistinguishable from one missing by 0.001 - and from a marginal link that
+    # is not negative at all. It also hid a 3.5 dB disagreement between this model and the browser's:
+    # both sides reported "0" while computing -138.93 and -51.58 on the same nominal downlink.
+    assert r["qsdc_secrecy_capacity"] < -50.0
+    assert r["channel_loss_db"] == 24.5         # diffraction + 5 dB atmospheric + 3 dB pointing
     assert r["eavesdrop_detected"] is False     # nothing is attacking it -- do not say otherwise
 
 
@@ -129,11 +133,15 @@ def test_satellite_eavesdropper_is_not_attributable_on_a_link_that_was_already_d
 
 
 def test_qsdc_aborts_on_secrecy_capacity_and_attributes_the_cause():
-    from qsh.qkd.channel import ChannelParams
+    from qsh.qkd.channel import ChannelParams, FreeSpaceParams
     from qsh.qkd.qsdc import quantum_secure_direct_comm
 
     msg = b"SAT-OK;payload=nominal"
-    leo = ChannelParams(distance_km=800, fiber_loss_db_per_km=0.035)      # 28 dB, g ~ 631
+    # The downlink, under the DIFFRACTION law. This read `fiber_loss_db_per_km=0.035` -> 28 dB, a
+    # linear rate the browser had already rejected (it reads plausibly at 800 km beside the ~27 dB
+    # Micius reports and diverges badly with range), so the two implementations disagreed by 3.5 dB
+    # about the same nominal link while both reported secrecy capacity as a clamped "0".
+    leo = ChannelParams(distance_km=800, free_space=FreeSpaceParams())    # 24.48 dB, g ~ 280
     clean = quantum_secure_direct_comm(msg, leo, seed=0)
     assert clean.delivered is None                      # not physical at this loss
     assert clean.link_budget_limited is True
@@ -154,6 +162,45 @@ def test_qsdc_aborts_on_secrecy_capacity_and_attributes_the_cause():
     assert attacked.delivered is None
     assert attacked.eavesdrop_detected is True          # THIS one is genuinely Eve
     assert attacked.link_budget_limited is False
+
+
+def test_the_satellite_eavesdrop_check_is_reachable_from_the_use_case():
+    """The page's headline feature, demonstrated through the pipeline rather than a hand-built channel.
+
+    ``qsdc_eavesdrop_detected`` is ``abort and not link_budget_limited``, and until the link budget
+    became selectable ``link_budget_limited`` was 1 at every setting the demo offered: the fixed
+    5 dB atmospheric + 3 dB pointing terms floor total loss at 8 dB even at zero range, so g >= 6.31
+    and C_s > 0 needs h(QBER) < 1/(1+g) = 0.137 while the misalignment floor of 0.025 alone gives
+    0.169. The metric was therefore 0 by construction, the diagram's ABORTED branch was unreachable,
+    and a full-strength eavesdropper still drew "QSDC direct telemetry ... 0 bit/carrier" with a
+    completion tick.
+
+    ``sat_atmospheric_db`` and ``sat_pointing_db`` select a LINK, not a physics; the defaults are
+    unchanged. Qi et al. (Light Sci. Appl. 8, 22, 2019) demonstrated QSDC at 4.1 dB on fibre, and
+    3 dB total is where this model turns positive.
+
+    Eve is 0.40, not 0.20. QSDC measures its error rate on a FINITE sample of check carriers, so near
+    C_s = 0 the verdict genuinely fluctuates with the seed: at 0.20 two of five seeds abort and three
+    deliver. That is the protocol behaving correctly, not noise to be tuned away - so the test uses a
+    point far enough from the boundary that sampling cannot flip it, and says why.
+    """
+    budget = {"sat_distance_km": 1, "sat_atmospheric_db": 2.0, "sat_pointing_db": 1.0}
+
+    clean = satellite_comms.run_demo({"seed": 1, "sat_eve": 0.0, **budget})
+    assert clean["channel_loss_db"] == 3.0
+    assert clean["telemetry_delivered"] is True          # QSDC closes here, for the first time
+    assert clean["qsdc_secrecy_capacity"] > 0.0
+    assert clean["eavesdrop_detected"] is False
+
+    for seed in range(1, 6):
+        attacked = satellite_comms.run_demo({"seed": seed, "sat_eve": 0.4, **budget})
+        assert attacked["telemetry_delivered"] is False, f"seed {seed} delivered under an attack"
+        assert attacked["qsdc_secrecy_capacity"] < 0.0, f"seed {seed} reported a non-negative C_s"
+        # The whole point: an abort this link would NOT have suffered on its own.
+        assert attacked["eavesdrop_detected"] is True, (
+            f"seed {seed} aborted without attributing it to the eavesdropper - if "
+            "link_budget_limited is 1 here, the budget fields stopped reaching the channel"
+        )
 
 
 def test_attack_generator_shape():

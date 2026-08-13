@@ -144,8 +144,15 @@ def _checklist_scalar(macro: str, measure) -> int:
 
 
 #: A check row's first cell is its ID: one to three capitals then digits - ``RS26``, ``QC14``, ``CS9``,
-#: ``M4``. Nothing else in the checklist matches that shape as an entire cell.
-_CHECK_ID = re.compile(r"^[A-Z]{1,3}[0-9]{1,3}$")
+#: ``M4`` - with an optional lowercase suffix where a check was inserted between two existing ones,
+#: ``RS2b``. Nothing else in the checklist matches that shape as an entire cell.
+#:
+#: The suffix used to be excluded, and that cost twice. ``RS2b`` went uncounted, so the published
+#: total read 320 against a true 321; and the duplicate guard below could not SEE a suffixed ID, so
+#: the one collision a suffix makes likely - a second ``RS2b`` written beside the first - was exactly
+#: the case the guard was blind to. A pattern that decides what counts as a check has to admit every
+#: shape the file uses.
+_CHECK_ID = re.compile(r"^[A-Z]{1,3}[0-9]{1,3}[a-z]?$")
 
 
 def _count_rows(text: str) -> int:

@@ -102,10 +102,32 @@ export default function ParameterPanel({ run }: { run: Run }) {
     { title: "Free-space channel", fields: [
       ["Downlink (km)", "sat_distance_km", 50, 1, "ground-to-LEO slant range - raises loss + QBER"],
       ["Eve fraction", "sat_eve", 0.05, 0,
-       "intercept-resend fraction (0-1). Note this link is ALREADY loss-limited at Eve=0 - its "
-       + "secrecy capacity is negative before she arrives - so raising this cannot flip the abort "
-       + "from link-limited to attributable. BB84 above still detects her", 1],
-      ["Pulses", "sat_pulses", 500000, 1, "channel uses for the free-space downlink"]] });
+       "intercept-resend fraction (0-1). On the DEFAULT 800 km downlink this link is already "
+       + "loss-limited at Eve=0 - its secrecy capacity is negative before she arrives - so raising "
+       + "this cannot flip the abort from link-limited to attributable. It takes BOTH a short range "
+       + "and a small budget: at 1 km with 2.0 + 1.0 dB the clean link carries C_s = +0.4944 "
+       + "bit/carrier, and Eve at 0.40 drives it to -0.6283 - an abort this link would NOT have "
+       + "suffered on its own, which is the one case that reports an eavesdropper. BB84 above "
+       + "detects her at any range", 1],
+      ["Pulses", "sat_pulses", 500000, 1, "channel uses for the free-space downlink"],
+      // The two fixed dB that decided every abort this page has ever shown. `channelLossDb` caps the
+      // diffraction term inside the near field, so these floor total loss at 8 dB at ANY range:
+      // g >= 6.31, and C_s > 0 then needs h(QBER) < 1/(1+g) = 0.137 while the misalignment floor of
+      // 0.025 already gives 0.169. So `qsdc_eavesdrop_detected` (= abort AND NOT link-limited) was 0
+      // at every setting the page offered, the diagram's ABORTED branch was unreachable, and the
+      // inline eavesdrop check named in the page subtitle could not be demonstrated. These select a
+      // LINK, not a physics: the defaults are the Micius-class downlink and are unchanged.
+      ["Atmospheric (dB)", "sat_atmospheric_db", 0.5, 0,
+       "fixed atmospheric attenuation. A downlink crosses the atmosphere once, near the ground, so "
+       + "unlike fibre this does not scale with range. Default 5.0 dB is the Micius-class figure. "
+       + "Qi et al. (Light Sci. Appl. 8, 22, 2019) demonstrated QSDC over a 4.1 dB FIBRE link; "
+       + "lowering this and Pointing to a comparable TOTAL, at short range, is where secrecy "
+       + "capacity turns positive here. It is not enough on its own: at 800 km the diffraction term "
+       + "is 16.5 dB, so even a 3 dB budget leaves C_s at -14.6474", 20],
+      ["Pointing (dB)", "sat_pointing_db", 0.5, 0,
+       "fixed pointing and tracking loss, likewise range-independent. With Atmospheric this is the "
+       + "floor under total channel loss: the diffraction term falls to zero in the near field, "
+       + "these two do not", 20]] });
   // "QSDC abort at QBER" (qsdc_threshold) was REMOVED here. Once the abort criterion became
   // secrecy capacity - Cs = 1 - h(e) - g*h(e), Qi et al. 2019 - nothing read config.qsdc_threshold,
   // so the control sat in this panel moving no surface on the page. There is no QBER threshold to
