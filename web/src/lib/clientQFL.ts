@@ -49,8 +49,16 @@ export interface QFLResult {
  */
 const QFL_SCALE = 1 << 20;
 const QFL_RING = 2 ** 32;
-/** Largest quantised per-client contribution that cannot overflow the signed half of the ring. */
-const QFL_MAX_SHARE = 2 ** 30;
+/**
+ * Largest quantised per-client contribution that cannot overflow the signed half of the ring.
+ *
+ * It depends on K. Written as a flat 2^30 first, which is a guard that does not guard: with four
+ * clients the sum could reach 4 * 2^30 = 2^32, twice the 2^31 the two's-complement recovery can
+ * represent, so the bound admitted exactly the overflow it existed to reject. In practice the
+ * logistic head's weights are order 1 and a share is around 2^20, nowhere near either number - which
+ * is precisely why a wrong bound here would never have been noticed.
+ */
+const qflMaxShare = (clients: number) => 2 ** 31 / Math.max(1, clients);
 
 /**
  * The mask vector shared by the ordered pair (u, v), u < v, at one round.
@@ -87,11 +95,12 @@ export function secureAggregate(
 ): { aggregate: number[]; maskedShares: number[][] } {
   const K = updates.length;
   const P = updates[0]?.length ?? 0;
+  const maxShare = qflMaxShare(K);
   const maskedShares = updates.map((wl, u) => {
     const share = new Array<number>(P);
     for (let k = 0; k < P; k++) {
       const q = Math.round(wl[k] * weights[u] * QFL_SCALE);
-      if (!Number.isFinite(q) || Math.abs(q) > QFL_MAX_SHARE) {
+      if (!Number.isFinite(q) || Math.abs(q) > maxShare) {
         // Loud rather than silent: past this magnitude the ring wraps into the wrong half and the
         // recovered mean is garbage that still looks like a number.
         throw new Error(`QFL share out of ring range: client ${u}, coord ${k}, q=${q}`);
