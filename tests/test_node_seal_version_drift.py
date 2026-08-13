@@ -8,9 +8,20 @@ MEASURED, not inferred:
   - The GitHub API for microsoft/SEAL lists v4.4.3 (2026-08-04) as latest, and the release body of
     v4.4.0 (2026-07-25) opens with the words "Major security update."
 
-So the browser's CKKS runs on a release line that upstream has superseded for security reasons, and
-there is no route to a newer one: node-seal is a single-maintainer package whose SEAL submodule
-points at a personal fork, so upstream fixes do not flow in even when they land.
+So the browser's CKKS runs on a release line that upstream has superseded for security reasons.
+
+WHAT THIS GATE FIRST CLAIMED, AND WHY IT WAS WRONG. It said "there is no route to a newer one",
+reasoning from node-seal being a single-maintainer package pinned to a personal fork. The repository
+had already disproved that and this gate had not read it. `docs/deliverable-verification.md` records
+that the fork's divergence from v4.1.2 is **purely additive** - 1,005 lines of Emscripten embind,
+`base64.h`, CMake glue, bumped ZLIB/Zstd, and **no SEAL crypto source modified** - and that taking
+`microsoft/SEAL` v4.4.3, adding that binding layer and building to WASM produced **zero errors and a
+`libseal-4.4.a`**. The blocker that had stopped earlier attempts was an upstream Emscripten change
+(emcc defines `__EMSCRIPTEN__`, not bare `EMSCRIPTEN`), fixed by passing `-DEMSCRIPTEN`.
+
+So a bump is a submodule re-point plus a build flag, not an impossibility. What is genuinely not
+established is a **CKKS round trip through the linked module** - the repository says so explicitly
+and declines to claim it. That is the open work, and it is a different statement from "closed".
 
 EXPOSURE, stated honestly rather than either ignored or inflated. The 4.3.x/4.4.x fixes concentrate
 on deserialising untrusted input (bounded key deserialisation, oversized headers, decompression
