@@ -75,6 +75,16 @@ export interface IDSResult {
     /** The same row BEFORE this module's z-scoring, for a consumer that carries its own constants. */
     xRaw: number[]; trueClass: number;
   } | null;
+  /**
+   * The held-out rows themselves, RAW (pre-z-scoring), so the encrypted student can be scored on the
+   * same split this result reports - not on one row of it.
+   *
+   * Every encrypted-versus-plaintext figure this page printed was over a SINGLE row: the metric named
+   * `encrypted_scores_compared` counted CLASSES, and `encrypted_top1_mismatches` could only ever be 0
+   * or 1. One agreement is not evidence that encrypted inference reproduces plaintext, and it cannot
+   * be plotted against a test set.
+   */
+  testSample: { X: number[][]; y: number[] };
 }
 
 /** Feature order must match `genData` below, and mirrors `qml_ids/attacks.py:FEATURES`. */
@@ -189,5 +199,8 @@ export function clientTrainScoreIDS(seed = 0, nPerClass?: number): IDSResult {
     binaryF1: f1(tp, fp, fn),
     nParams: N_CLASS * N_FEAT + N_CLASS, nTest: Zte.length, nPerClassUsed: nPer,
     explain: explainSample(),
+    // RAW rows: the encrypted student ships its own mean/scale and applies them itself, so handing
+    // over this module's z-scored copy would standardise twice.
+    testSample: { X: Xte.map((r) => r.slice()), y: yte.slice() },
   };
 }

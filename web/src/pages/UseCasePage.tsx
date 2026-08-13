@@ -1,4 +1,5 @@
-import { VerificationChart } from "../components/VerificationChart";
+import { EncryptedAgreementChart, VerificationChart } from "../components/VerificationChart";
+import type { EncryptedAgreementPlot } from "../components/VerificationChart";
 import { useRef } from "react";
 import { Link, useParams } from "react-router-dom";
 import AgenticAIPanel from "../components/AgenticAIPanel";
@@ -151,6 +152,17 @@ function UseCaseView({ usecase }: { usecase: string }) {
           "Re-scored in this tab", with the failing verdict reachable only as a raw `verification |
           FAIL` row in the metrics table. A card that looks the same whether the check passed or
           failed is worse than no card. */}
+      {/* What PRIVATE inference produced. Its own card, gated only on its own artifact: nesting it
+          inside the verification card above made a figure about the ENCRYPTED path conditional on
+          the PLAINTEXT published model having produced a plot, which is a different question. */}
+      {artifacts?.encrypted_agreement_plot ? (
+        <div className="card">
+          <h3 style={{ margin: "0 0 4px" }}>Private inference against plaintext, this run</h3>
+          <EncryptedAgreementChart
+            plot={artifacts.encrypted_agreement_plot as EncryptedAgreementPlot} />
+        </div>
+      ) : null}
+
       {artifacts?.verification?.plot ? (
         <div className="card">
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
