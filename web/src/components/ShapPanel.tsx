@@ -57,23 +57,27 @@ export default function ShapPanel({ explanation, provenance, baseline, published
           forest has no closed-form Shapley value.</>
         ) : null}
       </p>
-      {/* Which of these two paragraphs applies is a property of the page's FLOW, not of this panel.
-          Where an encrypted stage exists it computes a different model - a small fixed demo pattern
-          on finance and genomics, the published student on medical's convolution branch - and it is
-          that computation which produces the reported class, so the bars must not be read as an
-          attribution of it. Where no encrypted stage exists, the explained model is the deciding
-          model and the bars are exactly that attribution. Asserting the first case on both was a
-          four-page-spanning error: it made the panel disclaim a correct attribution. */}
+      {/* Which of these two paragraphs applies is a property of WHAT PRODUCED THE SURFACED CLASS, not
+          of the page's flow. It was written as a flow property, and the flow is the wrong predicate:
+          telecom's flow has no `private_inference` stage, so this said "this page has no encrypted
+          inference stage" - while `runEncryptedTelecomStudent` emitted a full set of `encrypted_*`
+          metrics and, after Round 37, a card titled "Private inference against plaintext, this run"
+          rendered directly above this sentence. Defensible about the stage graph, false about the
+          page.
+
+          Worse, with QCNN selected BOTH this paragraph and the warning below rendered at once,
+          saying opposite things - because `explanation_is_of_reported_class` was set before the
+          branch that decides what surfaced. That flag is now set after it. */}
       {isOfReportedClass ? (
         <p className="muted small" style={{ marginTop: -2 }}>
-          This page has <b>no encrypted inference stage</b>, so these bars explain the same model that
-          produced the <b>class reported above</b> — read them as an attribution of that decision.
+          These bars explain <b>the same model that produced the class reported above</b> — read them
+          as an attribution of that decision.
         </p>
       ) : (
         <p className="muted small" style={{ marginTop: -2 }}>
-          These bars explain the <b>bundled linear model</b>. The <b>class this page reports</b> comes
-          from the encrypted CKKS + MPC stage, which evaluates a different model - so read the bars as
-          "what drives this model on this input", not as an attribution of the reported class.
+          These bars explain the <b>bundled linear model</b>. The <b>class this page reports</b> came
+          from a different computation — so read the bars as "what drives this model on this input",
+          not as an attribution of the reported class.
         </p>
       )}
       {surfacedBackend === "qcnn-trained" && (
