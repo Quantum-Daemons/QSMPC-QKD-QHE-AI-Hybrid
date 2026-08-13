@@ -123,7 +123,7 @@ export function RealDataScatter({ usecase }: { usecase: string }) {
       {/* Axis labels sit INSIDE the plot margin and the legend is given its own reserved height -
           at the default the x-axis title and the legend row landed on the same pixels. */}
       <ResponsiveContainer width="100%" height={230}>
-        <ScatterChart margin={{ top: 6, right: 10, bottom: 30, left: -14 }}>
+        <ScatterChart accessibilityLayer margin={{ top: 6, right: 10, bottom: 30, left: -14 }}>
           <CartesianGrid stroke={GRID} strokeDasharray="2 4" />
           <XAxis type="number" dataKey="x" name={data.x.label} tick={AXIS}
                  label={{ value: data.x.label, position: "insideBottom", offset: -20,
@@ -198,7 +198,7 @@ export function AncestryStrataChart({ achieved }: { achieved: Record<string, unk
         not an accuracy drop - the panel carries no case/control status, so no AUROC is computable.
       </figcaption>
       <ResponsiveContainer width="100%" height={190}>
-        <BarChart data={rows} margin={{ top: 4, right: 8, bottom: 4, left: -18 }}>
+        <BarChart accessibilityLayer data={rows} margin={{ top: 4, right: 8, bottom: 4, left: -18 }}>
           <CartesianGrid stroke={GRID} strokeDasharray="2 4" />
           <XAxis dataKey="label" tick={AXIS} interval={0} />
           <YAxis tick={AXIS} tickFormatter={(v: number) => `${(v * 100).toFixed(0)}%`} />
@@ -230,7 +230,7 @@ export function VerificationChart({ res, modelKey }: { res: ModelEvalResult; mod
           of {res.score?.toFixed(3)}. The aggregate is what would hide it.
         </figcaption>
         <ResponsiveContainer width="100%" height={180}>
-          <BarChart data={plot.perClass} margin={{ top: 4, right: 8, bottom: 4, left: -18 }}>
+          <BarChart accessibilityLayer data={plot.perClass} margin={{ top: 4, right: 8, bottom: 4, left: -18 }}>
             <CartesianGrid stroke={GRID} strokeDasharray="2 4" />
             <XAxis dataKey="label" tick={AXIS} interval={0} angle={-25} textAnchor="end" height={54} />
             <YAxis domain={[0, 1]} tick={AXIS} />
@@ -259,7 +259,7 @@ export function VerificationChart({ res, modelKey }: { res: ModelEvalResult; mod
             baseline moves with prevalence and ROC's does not.
           </figcaption>
           <ResponsiveContainer width="100%" height={180}>
-            <LineChart data={plot.pr} margin={{ top: 4, right: 8, bottom: 4, left: -18 }}>
+            <LineChart accessibilityLayer data={plot.pr} margin={{ top: 4, right: 8, bottom: 4, left: -18 }}>
               <CartesianGrid stroke={GRID} strokeDasharray="2 4" />
               <XAxis dataKey="recall" type="number" domain={[0, 1]} tick={AXIS}
                      tickFormatter={(v: number) => v.toFixed(1)} />
@@ -281,7 +281,7 @@ export function VerificationChart({ res, modelKey }: { res: ModelEvalResult; mod
               way it does - a metric says how well, this says why.
             </figcaption>
             <ResponsiveContainer width="100%" height={180}>
-              <BarChart data={plot.hist} margin={{ top: 4, right: 8, bottom: 4, left: -18 }}>
+              <BarChart accessibilityLayer data={plot.hist} margin={{ top: 4, right: 8, bottom: 4, left: -18 }}>
                 <CartesianGrid stroke={GRID} strokeDasharray="2 4" />
                 <XAxis dataKey="bin" tick={AXIS} label={{ value: "score bin", position: "insideBottom",
                        offset: -2, fill: "#8a94a6", fontSize: 10 }} />
@@ -326,7 +326,7 @@ export function VerificationChart({ res, modelKey }: { res: ModelEvalResult; mod
           model, a few large misses are missed events.
         </figcaption>
         <ResponsiveContainer width="100%" height={190}>
-          <LineChart data={plot.series} margin={{ top: 4, right: 8, bottom: 4, left: -18 }}>
+          <LineChart accessibilityLayer data={plot.series} margin={{ top: 4, right: 8, bottom: 4, left: -18 }}>
             <CartesianGrid stroke={GRID} strokeDasharray="2 4" />
             <XAxis dataKey="i" tick={AXIS} />
             <YAxis tick={AXIS} />
