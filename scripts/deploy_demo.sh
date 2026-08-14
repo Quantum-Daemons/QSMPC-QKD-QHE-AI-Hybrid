@@ -51,8 +51,14 @@ remote() { "${SSH[@]}" "cd $DIR && $*"; }
 deploy_branch() {
   local branch="$1"
   say "fetch $branch from GitHub (never rsync - a copy ships untracked files and omits uncommitted dirs)"
-  remote "git fetch --quiet origin && git checkout --quiet '$branch' && git reset --hard --quiet origin/'$branch'" \
-    || die "could not put the box on $branch"
+  # `--prune`, and an explicit existence check against the REMOTE. Without them a branch deleted
+  # upstream still resolves through a stale local `origin/<branch>` ref, so checkout and reset both
+  # succeed against a commit that no longer exists and the script reports PASS while serving an old
+  # bundle - a green run describing a branch nobody can fetch.
+  remote "git ls-remote --exit-code --heads origin '$branch' >/dev/null" \
+    || die "origin has no branch '$branch' - push it first, or the box would deploy a stale local ref"
+  remote "git fetch --quiet --prune origin && git checkout --quiet '$branch' && git reset --hard --quiet origin/'$branch'" \
+    || die "could not put the box on $branch (local modifications? run 'git status' there)"
   local head; head=$(remote "git rev-parse --short HEAD") || die "could not read the deployed HEAD"
   ok "box HEAD is $head"
 
@@ -79,6 +85,26 @@ deploy_branch() {
   local bundle; bundle=$(curl -s "$QSH_DEMO_URL/?cb=$RANDOM" | grep -oE '/assets/index-[A-Za-z0-9_-]+\.js' | head -1)
   [ -n "$bundle" ] || die "no bundle referenced by the served index.html"
   ok "200, serving $bundle"
+
+  # DP7's pass condition is literally `git rev-parse --abbrev-ref HEAD` on the box, and only the
+  # return half ran it. If `<branch>` is a tag or a sha, `git checkout` detaches HEAD and this path
+  # reported PASS for a state the row does not accept - the deploy script's own two halves checking
+  # different things, which is this round's subject inside the script written to close DP7.
+  local on; on=$(remote "git rev-parse --abbrev-ref HEAD") || die "could not read the box's branch"
+  [ "$on" = "$branch" ] || die "box reports branch '$on', not '$branch' (detached HEAD?) - DP7 needs a named branch"
+  ok "box is on branch $on"
+
+  # REPORTED, never deleted. `git reset --hard` leaves untracked trees behind, and the box carries
+  # ten submodule directories against two the repository declares - traces of an ORDER-1-era mandate
+  # that was reversed without a record. `.dockerignore` excludes `submodules/`, so they cannot reach
+  # the image; deleting someone's working tree is not this script's call, but going quiet about it is
+  # how "the box equals the commit" becomes an assumption instead of a fact.
+  local untracked; untracked=$(remote "git status --porcelain | grep -c '^??'" || echo 0)
+  if [ "${untracked:-0}" != "0" ]; then
+    printf '  NOTE  %s untracked path(s) on the box that this commit does not describe:\n' "$untracked"
+    remote "git status --porcelain | grep '^??' | head -12" | sed 's/^/          /'
+    printf '        Excluded from the image by .dockerignore. Not deleted - that is your call.\n'
+  fi
   printf '\n  Deployed %s at %s. Verify the pages in Chrome, then run:\n    bash %s --return-to-main\n' \
     "$branch" "$head" "$0"
 }
@@ -95,11 +121,24 @@ return_to_main() {
     || { tail -20 /tmp/qsh_deploy_build.log; die "rebuild from main failed"; }
   remote "$COMPOSE up -d" >/dev/null 2>&1 || die "compose up failed"
 
+  # The same assertions the deploy half runs. They were asymmetric until Round 41: the network check
+  # and the bundle extraction ran only on the way out, and the branch re-read only on the way back -
+  # so each half trusted what the other verified, in the script written because a two-halves problem
+  # went six rounds unnoticed.
+  local nets; nets=$(remote "docker inspect qsh-demo-web-1 --format '{{range \$k,\$v := .NetworkSettings.Networks}}{{\$k}} {{end}}'") \
+    || die "could not read the container's networks"
+  case "$nets" in
+    *_mgmt-net*|*proxy*) ok "on the shared proxy network ($nets)" ;;
+    *) die "container is on '$nets' with no shared proxy network - the site will 502 while docker says Up" ;;
+  esac
+
   local code; code=$(curl -s -o /dev/null -w '%{http_code}' "$QSH_DEMO_URL/?cb=$RANDOM")
   [ "$code" = "200" ] || die "public URL returned $code after returning to main"
-  local branch; branch=$(remote "git rev-parse --abbrev-ref HEAD")
+  local bundle; bundle=$(curl -s "$QSH_DEMO_URL/?cb=$RANDOM" | grep -oE '/assets/index-[A-Za-z0-9_-]+\.js' | head -1)
+  [ -n "$bundle" ] || die "no bundle referenced by the served index.html after returning to main"
+  local branch; branch=$(remote "git rev-parse --abbrev-ref HEAD") || die "could not read the box's branch"
   [ "$branch" = "main" ] || die "box reports branch '$branch', not main"
-  ok "DP7 discharged: box on main at $head, public URL 200"
+  ok "DP7 discharged: box on main at $head, serving $bundle, public URL 200"
 }
 
 case "${1:-}" in

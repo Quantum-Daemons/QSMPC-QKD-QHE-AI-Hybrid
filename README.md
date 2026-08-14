@@ -714,10 +714,13 @@ See [`docs/pqc-roadmap.md`](docs/pqc-roadmap.md).
 - **`EvalBootstrap` is described elsewhere in this README as the answer to the bootstrapping
   bottleneck, and on the documented box it is not runnable.** The OpenFHE bootstrap test **SIGSEGVs**
   inside `EvalBootstrapSetup` on AlmaLinux 9.7 - the import guard in `fhe/backends.py` catches an
-  `ImportError`, and a segfault is not one. `make test` deselects it with `-m "not slow"`
-  (174 collected, 170 passed, 4 deselected); `make test-all` still dies. Round 18 fixed the Makefile
-  and this paragraph kept telling readers `make test` runs a bare `pytest` for three more rounds,
-  which is the doc-versus-code divergence this list exists to catch.
+  `ImportError`, and a segfault is not one. `make test` deselects it with `-m "not slow"`;
+  `make test-all` still dies. Round 18 fixed the Makefile and this paragraph kept telling readers
+  `make test` runs a bare `pytest` for three more rounds, which is the doc-versus-code divergence
+  this list exists to catch - **and the sentence carried `(174 collected, 170 passed, 4 deselected)`
+  until Round 41, which is the exact figure the install section 551 lines above names as the stale
+  one.** Round 40 deleted one copy of that number and wrote a sentence explaining why, and left the
+  other. Two copies, one deleted, is how this file has drifted before; no count is quoted here now.
 - **The retired security score had two paths, and they disagreed for a long time.** The classical row
   was scored without QKD key material while the quantum row assumed 256 bits, and separately the
   classical row passed no QBER while the quantum row passed a literal `0.0128` and a literal leakage

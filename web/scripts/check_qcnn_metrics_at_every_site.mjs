@@ -26,8 +26,19 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const WEB = resolve(dirname(fileURLToPath(import.meta.url)), "..");
+const ROOT = resolve(WEB, "..");
 const SRC = join(WEB, "src/lib/clientCompute.ts");
-const src = readFileSync(SRC, "utf8");
+
+// COMMENTS ARE STRIPPED BEFORE MATCHING, and that is not a detail. The first version of this file
+// tested `!block.includes(metric)` over raw text. Deleting both `metric()` calls and leaving
+// `// TODO: restore qcnn_inference_ms and qcnn_qubits here` made it print OK with the metrics gone -
+// demonstrated, with a negative control. A gate that a comment can switch off is worse than no gate,
+// because its green is read as evidence.
+const decomment = (text) => text
+  .replace(/\/\*[\s\S]*?\*\//g, "")            // block comments
+  .split("\n").map((l) => l.replace(/\/\/.*$/, "")).join("\n");
+
+const src = decomment(readFileSync(SRC, "utf8"));
 const lines = src.split("\n");
 
 // A site is a line that declares this run's primary inference to be the trained QCNN. That claim is
@@ -66,6 +77,40 @@ for (const at of sites) {
 // The detector must be able to see a site at all; a regex that matches nothing passes forever.
 if (!CLAIM.test(src)) {
   failures.push("the primary_inference_backend claim pattern matched nothing - this check is inert");
+}
+
+// THE PYTHON TWIN. `src/qsh/orchestration/stages.py` sets `qhe_backend = "qcnn-trained"` and
+// `private_prediction_backend = "qcnn-trained"` on the full deployment - the same claim, obliging
+// the same cost figures - and this gate read only the TypeScript file. It was written under a header
+// naming four previous one-of-two-twins defects and was scoped to one twin.
+//
+// The width argument is deliberately NOT required here: `qcnn_trained.py` supports medical and
+// finance only (its readout cannot consume the multiclass artifacts, recorded in the model card),
+// and neither ships a second width. Requiring it would be a check that can only fail, which is the
+// defect class this round is repairing.
+{
+  const PY = join(ROOT, "src/qsh/orchestration/stages.py");
+  const py = decomment(readFileSync(PY, "utf8").replace(/#.*$/gm, ""));
+  const pyLines = py.split("\n");
+  const PY_CLAIM = /"(?:qhe_backend|private_prediction_backend)"\]\s*=\s*"qcnn-trained"/;
+  const pySites = [];
+  pyLines.forEach((line, i) => { if (PY_CLAIM.test(line)) pySites.push(i); });
+  if (!pySites.length) {
+    failures.push(
+      "no Python site claims qcnn-trained; if that path was removed, drop this block with the " +
+      "reason - a scope that silently shrinks reads as coverage");
+  }
+  // One block per claim cluster: the two assignments sit within a few lines of each other, so the
+  // metrics need only appear near the FIRST of them.
+  const first = pySites[0];
+  const block = pyLines.slice(Math.max(0, first - WINDOW), first + WINDOW).join("\n");
+  const missing = REQUIRED.filter((m) => !block.includes(m));
+  if (missing.length) {
+    failures.push(
+      `src/qsh/orchestration/stages.py:${first + 1} claims qcnn-trained but does not emit ` +
+      `${missing.join(", ")}. The browser reports the cost of this backend and the backend does ` +
+      "not, so the same claim carries a figure on one transport and nothing on the other.");
+  }
 }
 
 // Every site must also REQUEST the selected width. `loadQcnnWeights` gained a width argument in
