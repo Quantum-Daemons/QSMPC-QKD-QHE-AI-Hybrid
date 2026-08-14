@@ -62,6 +62,10 @@ the claim is true of one path and false of the other:
 | medical, dense layer | 9.65 | 17.02 | **57%** |
 | medical, convolution | 57.59 | 579.30 | **10%** |
 
+The convolution row is measured directly (`fhe_conv_rotate_ms` over `fhe_conv_ms`). The dense row's
+total is `fhe_linear_measured_ms` minus `fhe_conv_ms` - 596.32 less 579.30 - because on medical the
+former is the sum of both stages; the rotate figure is measured.
+
 The convolution is dominated by im2col encoding - 4 channels by 196 patches - not by its 16
 rotations. Rotation count is still the right thing to report, and per-rotation cost is still stable
 across both, but "key-switching dominates" is not a property of this workload as a whole. The
