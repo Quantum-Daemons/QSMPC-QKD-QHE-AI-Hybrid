@@ -34,6 +34,23 @@ export interface EncryptedAgreementPlot {
   /** Rows the split offered. Larger than `rows` means the ciphertext could not hold them all. */
   rowsOffered?: number;
   classes: number;
+  /** Worst deviation over ALL `rows * classes` scores, which is a strictly larger set than `points`.
+      See the caption note: one point is plotted per row, for the winning class only. */
+  maxAbsError?: number;
+  /** Widest PLAINTEXT top-1-to-top-2 gap among the rows that flipped. Reported as a measurement.
+      There is deliberately no tie/not-tie verdict beside it: a flip occurs exactly when the
+      deviation exceeds the margin, so any comparison between the two restates that identity. */
+  flipMarginMax?: number;
+  /** Rows the plaintext model scores identically across classes, so their encrypted outcome is a
+      coin toss and they carry no verification signal - and the agreement rate over the rest.
+
+      In the caption UNCONDITIONALLY, because the count is a property of the corpus and the model,
+      not of the run. The tie sentence below fires only when a flip happened, so on a run where
+      every tie landed on the plaintext tie-break the figure read as a clean sweep. Genomics is the
+      case: 7 of its 30 rows, 23% of the denominator. */
+  undecidableRows?: number;
+  decidableRows?: number;
+  agreementOverDecidable?: number | null;
 }
 
 /**
@@ -67,9 +84,16 @@ export function EncryptedAgreementChart({ plot }: { plot: EncryptedAgreementPlot
         <strong>Private inference against the plaintext reference.</strong> Each point is one of{" "}
         {plot.rows} held-out rows scored under CKKS in this tab, plotted against the same row&apos;s
         plaintext score. The diagonal is exact agreement. Top-1 mismatches:{" "}
-        <strong>{mismatches}</strong> of {plot.rows} ({plot.rows * plot.classes} class scores);
-        worst absolute deviation {worst.toExponential(2)}. All {plot.rows} rows travelled in a single
+        <strong>{mismatches}</strong> of {plot.rows}. All {plot.rows} rows travelled in a single
         ciphertext, so they cost the homomorphic work of one.
+        {/* THE CIPHERTEXT CAP, restored.
+            `5d20d88` put this in the caption precisely so a reader could not take the agreement for
+            the whole split, and `2393c79` - the commit that removed the tie verdict from this same
+            sentence - deleted it as collateral: the removed block's closing `) : null}` was merged
+            with the tie block's, so the cap clause went out with the verdict. `rowsOffered` was left
+            declared and set by four producers and read by nothing, which no type check can see.
+            Telecom is the page it matters on: 512 of 600 rows are scored, and without this the
+            figure reports agreement 1.00 over a denominator it does not name. */}
         {plot.rowsOffered != null && plot.rowsOffered > plot.rows ? (
           <>
             {" "}The split holds <strong>{plot.rowsOffered}</strong> rows; one ciphertext fits{" "}
@@ -77,13 +101,78 @@ export function EncryptedAgreementChart({ plot }: { plot: EncryptedAgreementPlot
             the agreement above is over {plot.rows}, not over the whole split.
           </>
         ) : null}
+        {/* AT ZERO TOO. Gated on `> 0` first, which put the disclosure on genomics and hid it on
+            telecom - and telecom's zero is the informative case: it is what makes that page's 1.00
+            a different claim from genomics' 1.00. Suppressing a count because it is zero is the
+            same conditional-disclosure defect this sentence exists to fix, one level down, and it
+            is the third surface this round on which that gate had to be removed. */}
+        {plot.undecidableRows != null ? (
+          plot.undecidableRows > 0 ? (
+            <>
+              {" "}<strong>{plot.undecidableRows} of those {plot.rows} rows are scored identically
+              across classes by the plaintext model itself</strong>, so its own top-1 there comes
+              from argmax tie-breaking and the encrypted outcome is decided by encryption noise —
+              they carry no signal either way, and the count above moves between runs because of
+              them. Over the {plot.decidableRows} rows the model does decide, agreement is{" "}
+              <strong>{plot.agreementOverDecidable != null
+                ? plot.agreementOverDecidable.toFixed(2) : "not computed"}</strong>.
+            </>
+          ) : (
+            <>
+              {" "}<strong>None</strong> of these {plot.rows} rows is a tie in the plaintext model —
+              it separates every one of them — so the figure above is over rows that carry a real
+              decision, and the agreement is not diluted by any coin toss.
+            </>
+          )
+        ) : null}
+        {/* SCOPE, stated because the first version of this caption did not state it and was read
+            wrong as a result. One point is plotted per row - the WINNING class only - so `worst`
+            is a maximum over `rows` deviations. The metric row beside this figure
+            (`encrypted_batch_max_abs_error`) is the maximum over `rows * classes`, a strictly
+            larger set. On finance those two read 1.80e-8 and 2.47e-8: both correct, 37% apart,
+            and the caption used to print the smaller one immediately after the phrase
+            "(800 class scores)". A number whose scope is narrower than the sentence around it. */}
+        {" "}Worst deviation among the {plot.rows} plotted winning-class scores:{" "}
+        {worst.toExponential(2)}
+        {typeof plot.maxAbsError === "number" ? (
+          <> · across all {plot.rows * plot.classes} class scores, including the losing ones this
+          figure does not plot: {plot.maxAbsError.toExponential(2)}</>
+        ) : null}.
+        {/* What a mismatch MEANS - stated, not adjudicated.
+            Two earlier versions computed a tie/not-tie verdict here, first from the deviation and
+            then from the score range. Both are unfalsifiable: a flip happens exactly when the noise
+            exceeds the margin, so margin <= 2 x deviation always, and dividing by a score range of
+            order 1 leaves it three orders below any threshold worth setting. The verdict restated a
+            theorem while looking like a measurement.
+            The number that actually varies, and that separates this page from telecom's, is the
+            count of rows the plaintext model scores identically - reported above, unconditionally. */}
+        {mismatches > 0 && typeof plot.flipMarginMax === "number" ? (
+          <>
+            {" "}Widest margin the plaintext model held at those {mismatches} flipped rows:{" "}
+            {plot.flipMarginMax === 0
+              ? <><strong>exactly zero</strong> — it does not distinguish those samples at all.</>
+              : <>{plot.flipMarginMax.toExponential(2)}. A flip happens precisely when the deviation
+                exceeds the margin, so this is always below twice the figure above; it is reported
+                as a measurement, not as a verdict on the encryption.</>}
+          </>
+        ) : null}
       </figcaption>
       <ResponsiveContainer width="100%" height={200}>
         {/* `title` as a PROP, the way every other chart in this file sets it. Written first as a
             `<title>` child, which recharts does not forward - so the figure rendered with a null
             accessible name, which is exactly the regression Round 34 recorded when six charts ended
-            up with empty titles. Verified on the deployed page, not assumed. */}
-        <ScatterChart accessibilityLayer title={name}
+            up with empty titles. Verified on the deployed page, not assumed.
+
+            `role="img"`, NOT `accessibilityLayer`. The first version used the latter, twenty lines
+            above the scatter that does not and the comment explaining why: `accessibilityLayer`
+            makes a ScatterChart focusable and gives it `role="application"` WITHOUT making its
+            points keyboard-reachable, because recharts steps an activeIndex along a categorical
+            axis and two numeric axes have none. `KB6` says an application role appears only where
+            the keyboard path passed, so this was an inert application role - a regression, in the
+            same commit that fixed the missing title. Fixing one accessibility defect while
+            introducing another is what happens when you verify the thing you changed instead of
+            re-reading the row that governs the element. */}
+        <ScatterChart role="img" title={name}
                       margin={{ top: 6, right: 10, bottom: 4, left: -10 }}>
           <CartesianGrid stroke={GRID} strokeDasharray="2 4" />
           {/* Formatted, because the raw ticks rendered as `3.7326450091317454` - sixteen digits of a

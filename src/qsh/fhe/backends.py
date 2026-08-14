@@ -43,10 +43,26 @@ class TenSEALBackend:
 
     def __init__(
         self,
-        poly_modulus_degree: int = 8192,
-        coeff_mod_bit_sizes: tuple[int, ...] = (60, 40, 40, 60),
-        global_scale: float = 2 ** 40,
+        poly_modulus_degree: int | None = None,
+        coeff_mod_bit_sizes: tuple[int, ...] | None = None,
+        global_scale: float | None = None,
     ) -> None:
+        # From the config, not from literals repeated in this signature.
+        #
+        # These were three default ARGUMENTS holding 8192, (60, 40, 40, 60) and 2**40 - the same
+        # values as :class:`FHEConfig`, which nothing read. ``FHEConfig.poly_modulus_degree`` had no
+        # reader anywhere in ``src/``: the value that actually built a context was this signature,
+        # the value the browser ran was a literal in ``web/src/lib/clientFHE.ts``, and the value the
+        # report printed was a literal in ``report/build_data.py``. Three live copies and one dead
+        # field, agreeing only because nobody had yet changed one. Raising the ring degree is what
+        # exposed that, so the wiring lands before the change rather than after it.
+        from ..config import get_config
+
+        fhe = get_config().fhe
+        poly_modulus_degree = poly_modulus_degree or fhe.poly_modulus_degree
+        coeff_mod_bit_sizes = coeff_mod_bit_sizes or fhe.coeff_mod_bit_sizes
+        global_scale = global_scale or 2 ** fhe.global_scale_bits
+
         import tenseal as ts
 
         self._ts = ts

@@ -24,7 +24,46 @@ from cryptography.hazmat.primitives.asymmetric.x25519 import (
 from cryptography.hazmat.primitives.kdf.hkdf import HKDF
 
 DEFAULT_KEM = "ML-KEM-768"   # NIST FIPS 203, ~AES-192 security category 3
-_COMBINER_INFO = b"qsh/hybrid-kem/v1 ML-KEM-768+X25519"
+_COMBINER_PREFIX = b"qsh/hybrid-kem/v2 "
+
+
+def _combiner_info(kem_name: str) -> bytes:
+    """Domain separator naming the ACTUAL parameter set, not a fixed one.
+
+    SP 800-227 section 4.6.3: "The domain separator domain_sep should be used to uniquely identify
+    the composite scheme in use (e.g., P1, P2, order of composition, choice of parameter set, key
+    combiner, KDF)."
+
+    This was the literal ``b"...ML-KEM-768+X25519"`` while ``HybridKEMRecipient`` takes ``kem_name``
+    and the browser's ``kemImpl()`` genuinely switches to ML-KEM-1024 when the run selects category
+    5 - measured on the deployed page, ciphertext 1088 bytes to 1568. So the category-5 path
+    derived its key under a separator asserting the category-3 parameter set: the one element of
+    the composite scheme the separator is required to pin, unpinned.
+
+    It also removes a concatenation ambiguity. The transcript joins fixed-width fields with no
+    length prefixes, which is unambiguous only WITHIN a parameter set - ML-KEM-768 gives a 1088-byte
+    ciphertext and a 1184-byte encapsulation key, ML-KEM-1024 gives 1568 and 1568. With the set
+    named in the separator, no two parameter sets share a derivation.
+    """
+    return _COMBINER_PREFIX + kem_name.encode() + b"+X25519"
+
+
+def _length_tag(length: int) -> bytes:
+    """The output length, in the separator.
+
+    HKDF-Expand for L bytes is a PREFIX of the expansion for any L' > L, so two derivations over
+    identical material at different lengths share their first min(L, L') bytes. `length` genuinely
+    varies across callers - transport.py uses 32, qhe/rate1_qfhe.py uses max(32, (2n+7)//8) - so
+    without this an n>=128 QOTP pad would begin with exactly the bytes a 32-byte transport session
+    key over the same material would.
+
+    Not reachable today: every `encapsulate` draws a fresh X25519 ephemeral and a fresh ML-KEM
+    ciphertext, so no two derivations share a transcript. Included because it is the same class of
+    gap as the parameter set, section 4.6.3 asks domain_sep to identify the "key combiner, KDF",
+    and the docstring above claims no two parameter sets share a derivation - which should be true
+    of lengths too.
+    """
+    return b"/L" + str(int(length)).encode()
 
 
 @dataclass
@@ -44,13 +83,14 @@ class HybridCiphertext:
     x25519_ephemeral_public: bytes
 
 
-def _combine(ss_pq: bytes, ss_classical: bytes, transcript: bytes, length: int) -> bytes:
+def _combine(ss_pq: bytes, ss_classical: bytes, transcript: bytes, length: int,
+             info_prefix: bytes) -> bytes:
     """HKDF-SHA256 combiner binding both shared secrets + a transcript."""
     return HKDF(
         algorithm=hashes.SHA256(),
         length=length,
         salt=None,
-        info=_COMBINER_INFO + b"|" + transcript,
+        info=info_prefix + _length_tag(length) + b"|" + transcript,
     ).derive(ss_pq + ss_classical)
 
 
@@ -73,8 +113,11 @@ class HybridKEMRecipient:
         ss_pq = self._kem.decap_secret(ct.mlkem_ciphertext)
         eph_pub = X25519PublicKey.from_public_bytes(ct.x25519_ephemeral_public)
         ss_classical = self._x_priv.exchange(eph_pub)
-        transcript = self._mlkem_public + self._x_pub + ct.x25519_ephemeral_public
-        return _combine(ss_pq, ss_classical, transcript, length)
+        # c1 || c2 || ek1 || ek2 - see the note on `encapsulate`.
+        transcript = (ct.mlkem_ciphertext + ct.x25519_ephemeral_public
+                      + self._mlkem_public + self._x_pub)
+        return _combine(ss_pq, ss_classical, transcript, length,
+                        _combiner_info(self.kem_name))
 
     def free(self) -> None:
         self._kem.free()
@@ -87,13 +130,42 @@ class HybridKEMRecipient:
 
 
 def encapsulate(pub: HybridPublicKey, *, length: int = 32) -> tuple[HybridCiphertext, bytes]:
-    """Sender side: produce (ciphertext, shared_secret) for recipient ``pub``."""
+    """Sender side: produce (ciphertext, shared_secret) for recipient ``pub``.
+
+    Transcript order and contents follow NIST SP 800-227 (September 2025) section 4.6.3, whose
+    IND-CCA-preserving combiner is
+
+        KeyCombineCCA_H:  H(K1, K2, c1, c2, ek1, ek2, domain_sep)
+
+    with inputs ek1, c1, K1 from the first KEM and ek2, c2, K2 from the second. Until Round 38 the
+    transcript here was ek1 || ek2 || c2 - the two encapsulation keys and the X25519 ephemeral
+    public - and OMITTED c1, the ML-KEM ciphertext. That is the wrong half to drop: the same section
+    states that reference [25] "does not incorporate encapsulation keys into the combiner, as this
+    is not needed to achieve the IND-CCA-preserving property", so the ciphertexts are the load-
+    bearing inputs and the encapsulation keys are the optional ones, useful for binding the shared
+    secret to party identities.
+
+    The failure direction is the one a hybrid exists to hedge. If ML-KEM is the broken component and
+    an adversary mauls c1 into a c1' that decapsulates to the same K1, nothing in the old transcript
+    observed c1, so the composite derived a byte-identical session key - X25519 remaining sound did
+    not rescue it. That is precisely the non-preservation the section warns about.
+
+    Scoping it honestly: this demo runs in one process with no network transport and no exposed
+    decapsulation oracle, so this was a conformance and claim-accuracy defect rather than an
+    exploitable break in the shipped artefact. It is fixed because the project's claim is
+    standards-conformance.
+
+    The domain separator moves to v2 with the change. Deriving a different key under an unchanged
+    label is exactly what domain separation exists to prevent.
+    """
     with oqs.KeyEncapsulation(pub.kem_name) as kem:
         mlkem_ct, ss_pq = kem.encap_secret(pub.mlkem_public)
     eph = X25519PrivateKey.generate()
     eph_pub = eph.public_key().public_bytes_raw()
     recipient_x = X25519PublicKey.from_public_bytes(pub.x25519_public)
     ss_classical = eph.exchange(recipient_x)
-    transcript = pub.mlkem_public + pub.x25519_public + eph_pub
-    shared = _combine(ss_pq, ss_classical, transcript, length)
+    # c1 || c2 || ek1 || ek2, matching SP 800-227 section 4.6.3's argument order after K1 and K2.
+    transcript = mlkem_ct + eph_pub + pub.mlkem_public + pub.x25519_public
+    shared = _combine(ss_pq, ss_classical, transcript, length,
+                      _combiner_info(pub.kem_name))
     return HybridCiphertext(mlkem_ct, eph_pub), shared

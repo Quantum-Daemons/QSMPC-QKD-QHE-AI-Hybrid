@@ -49,8 +49,19 @@ function genData(nPer: number, seed: number): { X: number[][]; y: number[] } {
 }
 
 export interface IDSResult {
-  /** Headline: mean per-class F1 over the 8 classes present in the held-out split. */
+  /** Headline: mean per-class F1 over the classes present in the held-out split. */
   macroF1: number;
+  /** How many classes `macroF1` actually averaged over.
+   *
+   *  Reported because the sentence beside it said "over 8 classes" as a LITERAL while this average
+   *  is taken over `present.length` - the classes the split happens to contain. A run missing a
+   *  class printed the same claim over a different denominator, and the reader had no way to tell.
+   *  The deliberate choice to average over present classes only (so an absent class is not scored 0
+   *  and does not drag the mean down) is defensible; stating a count it did not use is not. */
+  classesScored: number;
+  /** How many classes the signature set DEFINES. `classesScored` below it can be smaller when
+   *  a split omits one, and the difference is what the headline sentence has to disclose. */
+  classesDefined: number;
   /** The weakest single class — what macro F1 averages over and what an operator actually feels. */
   worstClassF1: number;
   /** Companions, kept because they are the numbers this field usually quotes, not because they lead. */
@@ -195,6 +206,8 @@ export function clientTrainScoreIDS(seed = 0, nPerClass?: number): IDSResult {
   return {
     accuracy: Zte.length ? correct / Zte.length : 0,
     macroF1: present.length ? perClassF1.reduce((a, v) => a + v, 0) / present.length : 0,
+    classesScored: present.length,
+    classesDefined: N_CLASS,
     worstClassF1: present.length ? Math.min(...perClassF1) : 0,
     binaryF1: f1(tp, fp, fn),
     nParams: N_CLASS * N_FEAT + N_CLASS, nTest: Zte.length, nPerClassUsed: nPer,

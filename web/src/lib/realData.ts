@@ -186,3 +186,43 @@ export async function realFederatedSet(
     return null;      // absent or malformed: the caller reports the toy explicitly
   }
 }
+
+/**
+ * Every row of the page's own corpus, in the SAME 8-feature space `realInput` builds one row in.
+ *
+ * WHY IT LIVES HERE. The encrypted path needs a corpus to evaluate the bundled model over, and the
+ * one thing that must not drift is the feature space: encrypting rows in a different space from the
+ * model's would produce an agreement figure that measures nothing. `realInput` defines that space
+ * per use case - `row.slice(0, 8)` for the tabular pages, the top-8 PRS SNP indices for genomics -
+ * so the corpus is built from the same source with the same selection, in the same file.
+ *
+ * Returns `null` where the page has no corpus of its own, rather than an empty array, so a caller
+ * cannot mistake "no corpus" for "a corpus with nothing in it".
+ */
+export async function realInputCorpus(usecase: string): Promise<number[][] | null> {
+  try {
+    if (usecase === "medical_fl") {
+      const ds = await fetchJSON("/data/medical/breast_cancer_sample.json");
+      const rows = ds.samples as number[][] | undefined;
+      return rows?.length ? rows.map((r) => r.slice(0, 8)) : null;
+    }
+    if (usecase === "finance_aml") {
+      const ds = await fetchJSON("/data/finance/paysim_sample.json");
+      const rows = ds.samples as number[][] | undefined;
+      return rows?.length ? rows.map((r) => r.slice(0, 8)) : null;
+    }
+    if (usecase === "genomics") {
+      const prs = await fetchJSON("/data/genomics/pgs000004_prs313.json");
+      const w = prs.weights as number[];
+      const samples = prs.dosage_samples as number[][] | undefined;
+      if (!samples?.length) return null;
+      // The SAME top-8 selection `realInput` uses, including its fallback, so the two cannot diverge.
+      const top = (prs.top8_idx as number[]) ?? w.map((_, i) => i)
+        .sort((a, b) => Math.abs(w[b]) - Math.abs(w[a])).slice(0, 8);
+      return samples.map((d) => top.map((i) => d[i] ?? 0));
+    }
+  } catch (e) {
+    console.warn("[realData] corpus unavailable:", e);
+  }
+  return null;
+}

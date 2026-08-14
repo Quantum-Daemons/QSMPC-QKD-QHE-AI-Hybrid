@@ -808,8 +808,9 @@ _SPECS: tuple[ModelSpec, ...] = (
                "reduction of it - and it had room to spare. The student now fits over the QUADRATIC "
                "expansion of those features, 209 terms, still one packed dot product at unchanged "
                "multiplicative depth, because the expansion is a function of the plaintext input "
-               "and is computed before encryption. A degree-8192 ring has 4096 slots, so the cipher "
-               "was never the binding constraint here - the feature map was. Measured: "
+               "and is computed before encryption. The ring carries orders of magnitude more slots "
+               "than this feature map needs, so the cipher was never the binding constraint "
+               "here - the feature map was. Measured: "
                "minority-class F1 0.8649 -> 0.9043, AUC-PR 0.9275 -> 0.9681, the latter matching "
                "the teacher exactly."),
     ),

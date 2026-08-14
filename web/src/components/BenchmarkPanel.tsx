@@ -223,8 +223,16 @@ export default function BenchmarkPanel(
                   <div><span style={{ color: MPC_COLOR }}>■</span> MPC-non-linear: <b>{split.mpc_nonlinear_ms} ms</b></div>
                   <div className="muted">MPC communication: <b>{split.mpc_comm_kb ?? "—"} KB</b></div>
                   <div className="muted">total: <b>{split.latency_ms} ms</b> / inference</div>
+                  {/* WHAT THIS NUMBER IS, because directly under "total: 707 ms" and labelled
+                      "client compute (wall-clock)" it read as the whole computation costing 0.07 ms
+                      in the browser. It times the `privateInference` call only - the PLAINTEXT
+                      reference this page runs so it has something to compare the encrypted result
+                      against - and a linear model over 8 features is genuinely sub-millisecond. */}
                   {clientComputeMs != null && (
-                    <div className="muted">client compute (wall-clock): <b>{clientComputeMs} ms</b></div>
+                    <div className="muted">
+                      plaintext reference inference: <b>{clientComputeMs} ms</b>{" "}
+                      <span className="small">— the unencrypted comparison run, not the total above</span>
+                    </div>
                   )}
                 </div>
               </div>
