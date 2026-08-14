@@ -989,12 +989,37 @@ established is worth keeping, because otherwise it gets re-litigated every round
   retired the registry's unscoped claim that homomorphic evaluation "will remain" cost-bounded: what
   survives is the scoped claim, that it is cost-bounded at a single device in a browser tab.
 
-  Direction of travel, **metadata-verified only** (titles and dates from the arXiv API listing;
-  abstracts not individually opened, so no number from these four should be quoted):
-  arXiv:2604.04783 GPU acceleration of TFHE nonlinear layers for encrypted LLM inference (2026-04-06);
-  arXiv:2602.11470 Cachemir, FHE generative inference with KV cache (2026-02-12); arXiv:2512.11269 a
-  scalable multi-GPU framework for encrypted large-model inference (2025-12-12); arXiv:2602.22229
-  FHECore, GPU microarchitecture for FHE.
+- **node-seal, `BENCHMARK.md`** (library benchmark page, last updated 2025-03-27).
+  https://github.com/s0l0ist/node-seal/blob/main/BENCHMARK.md - fetched and read 2026-08-14.
+  Microsoft SEAL v4.1.2 / node-seal v5.1.5 on an Apple M1 Pro; Chrome 134, Firefox 136, Safari 18.3.
+  CKKS `EvaluateRotate` at `n=8192/log(q)=218` reads **6830 us in Chrome**; at `n=16384/log(q)=438`,
+  **41200 us**. Ten iterations per benchmark, no error bars, timers quantised to 10 us (Chrome) and
+  100 us (Firefox/Safari).
+
+  **The only primary source found for browser-WASM CKKS per-primitive cost**, and the comparator this
+  project's 3.10-4.39 ms per rotation is read against in
+  [`encrypted-inference-performance.md`](encrypted-inference-performance.md). The `n=8192` row is
+  comparable (same ring, similar modulus, both Chrome/WASM); the `n=16384` row is **not** - 438 bits
+  against 200 here - and is recorded only so the parameter difference is visible.
+
+- **Ali Sah Ozcan and Erkay Savas**, *GPU Implementations of Three Different Key-Switching Methods
+  for Homomorphic Encryption Schemes*, IACR ePrint **2025/124** (November 2024).
+  https://eprint.iacr.org/2025/124.pdf - PDF downloaded and text-extracted 2026-08-14.
+  Table 5, CKKS relinearization: single-thread Microsoft SEAL on a Ryzen 9 7950X3D gives **1641 us**
+  at ring 8192 and **14563 us** at 16384; HEonGPU on an RTX 4090 gives **41.8 us** and **84.1 us**.
+  Measures relinearization, not rotation - both are key-switching, and node-seal's own table puts the
+  two within 1% at both ring degrees, so it is a sound proxy but is cited as relinearization.
+
+  **Recorded here because Round 38 introduced both sources and this file listed neither** - the same
+  omission it records above for the Nature Communications figure, repeated by the round that read
+  that entry.
+
+  Four metadata-only "direction of travel" entries stood here - arXiv:2604.04783, 2602.11470,
+  2512.11269, 2602.22229 - labelled "abstracts not individually opened, so no number from these four
+  should be quoted". `docs/deliverable-verification.md` gave them a deadline: promoted by quoting a
+  number with its section, or removed by Round 35. **Removed in Round 39, three rounds after the
+  deadline the register set and never executed.** None was ever cited, so nothing depends on them;
+  the arXiv IDs are preserved in this sentence for anyone who wants to re-open the search.
 
 ### Negative results, re-verified 2026-08-11
 
@@ -1009,6 +1034,64 @@ Both support claims this repository already makes, and both are recorded so the 
   abs:homomorphic`, newest first, puts arXiv:2607.17131 (Blind Transpiler, already cited) at the top
   of the relevant set; the only newer quant-ph hit is arXiv:2607.21449 (QuantumChain, blockchain-backed
   QFL, 2026-07-23), which is off-thesis.
+
+### Sweep of 2026-08-01 to 2026-08-14, run 2026-08-14
+
+Thirty searches across seven areas; nothing found changes a claim this repository makes. The window is
+thirteen days wide, so a null was the honest expectation - it is recorded with **what was searched**
+rather than as a bare "nothing found", because an unrecorded null is indistinguishable from a search
+nobody ran, and this project has twice re-derived a negative it had already established.
+
+- **NIST SP 800-227: no change, checked at the primary source.** The CSRC document history reads
+  exactly `01/07/25: SP 800-227 (Draft)` and `09/18/25: SP 800-227 (Final)` and nothing else - no
+  errata, no update, no withdrawal, no follow-on. Section 4.6.3's IND-CCA-preserving combiner, which
+  `src/qsh/pqc/hybrid_kem.py` implements, is unchanged.
+- **FIPS 203 / 204 / 205: no change in window.** All three still show only `08/24/23 Draft` and
+  `08/13/24 Final`. FIPS 204 has an errata spreadsheet dated **2026-07-31**, one day outside the
+  window; it concerns the signature standard rather than the KEM. `csrc.nist.gov/news` carries two
+  August 2026 items, neither PQC.
+- **CKKS and homomorphic encryption: nothing that touches a claim here.** Nine in-window papers on the
+  "homomorphic" query; the two that could plausibly bear on performance do not - one is a survey with
+  no rotation timings and no WASM, the other is BGV matrix multiplication rather than CKKS rotations.
+  The strong bootstrapping results that surface for "August 2026" (BootNet, "Bootstrapping is All You
+  Need") are June 2026 and out of window. Note the asymmetry: **the 3.10-4.39 ms per rotation figure
+  is a measurement of this stack, and no paper can invalidate a measurement** - only a comparative
+  claim, and the one comparison made is already hedged as "the same order, this host faster".
+- **QKD: one in-window record, not applicable.** arXiv:2608.04112 reports a secure-key-rate-per-pulse
+  result in a four-dimensional fibre lab demonstration. This repository scopes hardware QKD out
+  explicitly and validates its simulation against Ma et al. (2005). No new ETSI or ITU-T QKD standard
+  in the window.
+- **QCNN: null.** In-window hits are applications (fault classification, a CNN-QNN hybrid image
+  classifier); no theory or benchmark result bearing on the QCNN claims made here.
+- **MPC-FHE / QSMPC-FHE hybrids: null in window** for anything altering the model-strategy verdict.
+- **ML-KEM and hybrid-combiner cryptanalysis: null**, with one item put on watch below.
+
+**WATCH, not a change: ePrint 2026/1591, a claimed polynomial-time quantum algorithm for the Dihedral
+Coset Problem.** https://eprint.iacr.org/2026/1591 - Daniel R. Simon (AWS Cryptography Group),
+received 2026-08-03, three revisions to 2026-08-12, fetched and read as PDF 2026-08-14. Composed with
+Regev's and Brakerski-Kirshanova-Stehle-Wen's reductions it would give polynomial-time quantum
+algorithms for SVP and LWE, which is why it is here at all.
+
+*Why it changes nothing today, from the document itself rather than from coverage of it:* the title
+carries "[Preliminary Draft]"; four proofs are marked "(Sketch)"; the load-bearing final corollary
+cites two references both listed as "Personal Communication", i.e. unpublished; the abstract carries
+a self-correction noting that the first draft's Lemma 3 "incorrectly conflated pairwise independence
+over the uniform vs. actual distribution". A full-text grep for `ml-kem|kyber|fips|dilithium|concrete
+parameter|deployed` returns **zero hits** - the paper makes no claim against any deployed parameter
+set. It is unrefereed and actively being revised.
+
+*The honest nuance, which is the reason to record it rather than dismiss it:* **this repository's
+ML-KEM + X25519 hybrid is not a hedge against this particular risk.** X25519 already falls to Shor,
+so ML-KEM is the only quantum-resistant leg; if this result were confirmed AND shown to reach
+ML-KEM's concrete parameters, the hybrid would not preserve quantum security. Neither condition holds
+today. *Reopens if* the paper is refereed and published, or a version removes the sketch markers and
+the personal-communication dependencies, or any analysis extends it to concrete ML-KEM parameters.
+
+A related result surfaced while chasing this one and is recorded to stop it being re-found as news:
+**ePrint 2026/155**, Wen and Zheng, Module-LWE and structured extrapolated dihedral cosets (CRYPTO
+2026), proves a quantum polynomial-time *equivalence* in the setting ML-KEM uses. Original 2026-01-30,
+last revised 2026-07-16 - **both before this window** - and it claims no attack and no weakening of
+ML-KEM. Secondary coverage was pairing the two as though both were current.
 
 ### Verified but not yet cited from anywhere
 

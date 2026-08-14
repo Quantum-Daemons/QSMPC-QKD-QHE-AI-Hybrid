@@ -54,7 +54,9 @@ three activities and section 8.11 double-click handling are protocol logic a bro
 1. **Hybrid key-combiner robustness.** The most defensible test available, because it is the only one
    that tests the *hybrid* property this project claims. Compromise one component secret and show the
    composite survives under the ciphertext-binding combiner and fails under `KDF(K1,K2)`.
-   **This became true of the code in Round 38 and was not before.** All four combiner sites
+   **This became true of the code in Round 38 and was not before.** The site count lives in
+   `docs/pqc-roadmap.md` and in what `npm run check:combiner` enumerates, not here - three
+   documents carried three different numbers until Round 39. The combiner sites
    bound the encapsulation keys and omitted `c1`, the ML-KEM ciphertext - and the MCP one
    bound nothing at all, which is expression (16) itself. Section 4.6.3 is explicit that the
    encapsulation keys are *not* what delivers the IND-CCA-preserving property: "[25] does not

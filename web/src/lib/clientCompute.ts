@@ -27,6 +27,7 @@ import { type Provenance } from "../components/ProvenanceBadge";
 import { browserModels, evaluatePublishedModel, onnxStatus, runPublishedModel } from "./onnxInference";
 import { realInput, realInputCorpus, realSatelliteAnomaly, realFederatedSet,
   type RealInput } from "./realData";
+import { hybridCombine, hybridCombinerInfo, kemNameFor } from "./hybridCombiner";
 
 const r1 = (x: number) => Math.round(x * 10) / 10;
 const r2 = (x: number) => Math.round(x * 100) / 100;
@@ -1135,20 +1136,12 @@ export async function clientAliceBob(seed = 0, nShared = 8) {
   const xAlice = x25519.getSharedSecret(aliceX, bobXPub);
   const xBob = x25519.getSharedSecret(bobX, aliceXPub);
   const xAgree = xAlice.length === xBob.length && xAlice.every((b, i) => b === xBob[i]);
-  // Same combiner, transcript and separator as pqc_handshake and the backend: c1 || c2 || ek1 || ek2
-  // under `qsh/hybrid-kem/v2 <parameter set>`, per SP 800-227 section 4.6.3.
-  const abTranscript = new Uint8Array(
-    enc.cipherText.length + aliceXPub.length + bob.publicKey.length + bobXPub.length);
-  abTranscript.set(enc.cipherText, 0);
-  abTranscript.set(aliceXPub, enc.cipherText.length);
-  abTranscript.set(bob.publicKey, enc.cipherText.length + aliceXPub.length);
-  abTranscript.set(bobXPub, enc.cipherText.length + aliceXPub.length + bob.publicKey.length);
-  const abLabel = new TextEncoder().encode("qsh/hybrid-kem/v2 ML-KEM-768+X25519|");
-  const abInfo = new Uint8Array(abLabel.length + abTranscript.length);
-  abInfo.set(abLabel, 0); abInfo.set(abTranscript, abLabel.length);
-  const abIkm = new Uint8Array(enc.sharedSecret.length + xAlice.length);
-  abIkm.set(enc.sharedSecret, 0); abIkm.set(xAlice, enc.sharedSecret.length);
-  const sessionKey = hkdf(sha256, abIkm, undefined, abInfo, 32);
+  // The shared combiner - same module the handshake and the Validations demo use, byte-compatible
+  // with `src/qsh/pqc/hybrid_kem.py`. This block used to build its own info string, which is how
+  // the browser came to disagree with Python and with its own two siblings.
+  const sessionKey = hybridCombine(
+    enc.sharedSecret, xAlice,
+    { c1: enc.cipherText, c2: aliceXPub, ek1: bob.publicKey, ek2: bobXPub }, "ML-KEM-768", 32);
 
   const shared = Array.from({ length: nShared }, acct);
   const aliceList = [...shared, ...Array.from({ length: 200 }, () => `A-${Math.floor(u() * 9e6 + 1e6)}`)];
@@ -1740,24 +1733,15 @@ export function runClientPipeline(
         // The parameter set is IN the separator, not assumed. SP 800-227 s4.6.3 requires domain_sep to
         // identify the composite scheme including the "choice of parameter set", and this was the fixed
         // literal "ML-KEM-768" while `kemImpl()` genuinely switches to ML-KEM-1024 on the category-5 path -
-        // measured on the deployed page, ciphertext 1088 bytes to 1568. It also removes a concatenation
-        // ambiguity: the transcript joins fixed-width fields with no length prefixes, which is unambiguous
-        // only within one parameter set.
-        const kemLabel = (kemSel && kemSel.includes("1024")) ? "ML-KEM-1024" : "ML-KEM-768";
-        const INFO = new TextEncoder().encode(`qsh/hybrid-kem/v2 ${kemLabel}+X25519|`);
-        const bind = (pq: Uint8Array, cl: Uint8Array) => {
-          const tr = new Uint8Array(
-            e.cipherText.length + aliceXPub.length + bob.publicKey.length + bobXPub.length);
-          tr.set(e.cipherText, 0);                                          // c1, ML-KEM ciphertext
-          tr.set(aliceXPub, e.cipherText.length);                           // c2, X25519 ephemeral
-          tr.set(bob.publicKey, e.cipherText.length + aliceXPub.length);    // ek1
-          tr.set(bobXPub, e.cipherText.length + aliceXPub.length + bob.publicKey.length);  // ek2
-          const info = new Uint8Array(INFO.length + tr.length);
-          info.set(INFO, 0); info.set(tr, INFO.length);
-          const ikm = new Uint8Array(pq.length + cl.length);
-          ikm.set(pq, 0); ikm.set(cl, pq.length);
-          return hkdf(sha256, ikm, undefined, info, 32);
-        };
+        // The shared combiner. This block built its own info string until Round 39, which is how
+        // the browser came to derive a different session key from the backend: the output-length
+        // tag was added to Python alone, and nothing could see it because no browser test touched
+        // the combiner. `check:combiner` now reproduces committed Python vectors through the real
+        // module and asserts the separator literal lives in exactly one file.
+        const kemLabel = kemNameFor(kemSel);
+        const bind = (pq: Uint8Array, cl: Uint8Array) =>
+          hybridCombine(pq, cl,
+            { c1: e.cipherText, c2: aliceXPub, ek1: bob.publicKey, ek2: bobXPub }, kemLabel, 32);
         const sessA = bind(e.sharedSecret, xA), sessB = bind(rec, xB);
         const ok = pqOk && sessA.every((b: number, i: number) => b === sessB[i]);
 
@@ -1770,7 +1754,10 @@ export function runClientPipeline(
         // X25519 again here read as "ml-kem-768+x25519 + X25519".
         emit("log", stage, `hybrid KEM = ${kemSel} (NIST cat-${kemCategory(kemSel)}) — `
           + `agreement=${ok}; ${e.cipherText.length} B ML-KEM ciphertext + ${aliceXPub.length} B X25519 `
-          + `ephemeral public key, combined with HKDF-SHA256(pq_ss || x25519_ss), info="qsh/hybrid-kem/v2 ${kemLabel}+X25519", transcript c1||c2||ek1||ek2 per NIST SP 800-227 s4.6.3 — the same combiner the backend uses`);
+          // The info string is DECODED FROM THE COMBINER, not typed here. It used to be typed,
+          // and it printed a separator the run had not used - it omitted the length tag the
+          // backend applies. A run log that states what the run did has to read it.
+          + `ephemeral public key, combined with HKDF-SHA256(pq_ss || x25519_ss), info="${new TextDecoder().decode(hybridCombinerInfo(kemLabel, 32)).replace(/\|$/, "")}" then transcript c1||c2||ek1||ek2, per NIST SP 800-227 s4.6.3 — byte-identical to the backend, asserted by check:combiner`);
         // Quantum entropy source (simulated state-vector measurement, not hardware) — measured health + throughput.
         const qr = generateQuantumBits(Number(config.qrng_bits ?? qrngCfg().bits),
           { source: "sim", postProcessing: String(config.qrng_post ?? qrngCfg().post_processing),
@@ -2053,7 +2040,23 @@ export function runClientPipeline(
         break;
       }
       case "qsmpc_compute": {
-        const key = (config as any)._sessionKey ?? new Uint8Array(32);
+        // No all-zero fallback. `?? new Uint8Array(32)` silently substituted 32 zero bytes when the
+        // handshake had not run, and the stage then reported "keyed-hash PSI" over a keyed hash
+        // whose key is public knowledge - a security property the run does not provide, stated as
+        // if it did. The federated path below already refuses rather than degrades, for exactly this
+        // reason, and its comment says why: "the claim is written once and the fallback is taken
+        // forever."
+        //
+        // `pqc_handshake` precedes this stage in every flow that reaches it, so the throw is
+        // unreachable today. That is the argument FOR making it a throw rather than against it: this
+        // round moved key material between stages, and if the ordering changes again this fails
+        // loudly instead of quietly weakening the PSI to an unkeyed one.
+        const key = (config as any)._sessionKey as Uint8Array | undefined;
+        if (!key || key.length === 0) {
+          throw new Error(
+            "qsmpc_compute needs the PQC session key: keyed-hash PSI has no unkeyed mode",
+          );
+        }
         // genomics defaults to QSMS secure summation; others to keyed-hash PSI (matches the backend)
         const op = config.qsmpc_op || (usecase === "genomics" ? "sum" : "psi");
         if (op === "sum") {
@@ -2247,12 +2250,23 @@ export function runClientPipeline(
         if (String(config.inference || "ckks") === "qcnn" && ids.explain?.xRaw) {
           const w = await loadQcnnWeights(usecase);
           if (w) {
+            // Timed here TOO, and that "too" is the point. The latency was added to the
+            // `private_inference` site alone, which telecom does not have - so a page reporting
+            // `primary_inference_backend = qcnn-trained` carried no `qcnn_inference_ms`, and rows
+            // PF9/PF10 asserting it were false for exactly one page. Found by running the deployed
+            // telecom page, not by any gate: tsc, the suite and all thirteen local gates were green.
+            // Two call sites for one scheme, one of them changed, is the defect this round is named
+            // for - shipped again inside the round that names it.
+            const t0 = performance.now();
             const qc = qcnnInferTrained(ids.explain.xRaw.slice(0, w.n_qubits), w);
+            const qcnnMs = performance.now() - t0;
             artifacts.primary_inference = { backend: "qcnn-trained", class: qc.cls,
                                             qubits: qc.qubits, expectation: r2(qc.expectation) };
             metric(stage, "primary_inference_backend", "qcnn-trained");
             metric(stage, "primary_inference_class", w.class_names?.[qc.cls] ?? qc.cls);
             metric(stage, "qcnn_classes_available", w.readout?.n_classes ?? 2);
+            metric(stage, "qcnn_inference_ms", r2(qcnnMs));
+            metric(stage, "qcnn_qubits", qc.qubits);
             // The class no longer comes from the softmax, so the SHAP bars are no longer an
             // attribution of it. Recorded rather than assigned here: the flag is set once, below,
             // from this variable. With the flag set true earlier and never revised, the page
@@ -2653,12 +2667,21 @@ export function runClientPipeline(
           // the QOTP hiding + T-count demonstration, which is what it can honestly support.
           const w = await loadQcnnWeights(usecase);
           if (w) {
+            // MEASURED, on the same footing as the CKKS tier's `fhe_ms_per_rotation`. The QCNN was
+            // reported by accuracy alone while every encrypted figure carried a latency, so the two
+            // inference paths on one page could not be compared on cost at all. State-vector
+            // simulation is 2^n work in the qubit count, which is the number that makes the figure
+            // interpretable, so it travels with it - as `PF2` requires of the encrypted tier.
+            const t0 = performance.now();
             const qc = qcnnInferTrained(feats.slice(0, w.n_qubits), w);
+            const qcnnMs = performance.now() - t0;
             artifacts.primary_inference = { backend: "qcnn-trained", class: qc.cls,
                                             qubits: qc.qubits, expectation: r2(qc.expectation) };
             metric(stage, "primary_inference_class", qc.cls);
             metric(stage, "primary_inference_backend", "qcnn-trained");
             metric(stage, "qcnn_expectation_z0", r2(qc.expectation));
+            metric(stage, "qcnn_inference_ms", r2(qcnnMs));
+            metric(stage, "qcnn_qubits", qc.qubits);
             // Report the metric the CORPUS warrants, not always accuracy. At finance's 6% fraud
             // rate accuracy reads 0.97 against a 0.95 majority baseline and says almost nothing,
             // while minority-class F1 is 0.71 against an all-positive 0.10. The trainer decides
