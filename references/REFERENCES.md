@@ -989,12 +989,37 @@ established is worth keeping, because otherwise it gets re-litigated every round
   retired the registry's unscoped claim that homomorphic evaluation "will remain" cost-bounded: what
   survives is the scoped claim, that it is cost-bounded at a single device in a browser tab.
 
-  Direction of travel, **metadata-verified only** (titles and dates from the arXiv API listing;
-  abstracts not individually opened, so no number from these four should be quoted):
-  arXiv:2604.04783 GPU acceleration of TFHE nonlinear layers for encrypted LLM inference (2026-04-06);
-  arXiv:2602.11470 Cachemir, FHE generative inference with KV cache (2026-02-12); arXiv:2512.11269 a
-  scalable multi-GPU framework for encrypted large-model inference (2025-12-12); arXiv:2602.22229
-  FHECore, GPU microarchitecture for FHE.
+- **node-seal, `BENCHMARK.md`** (library benchmark page, last updated 2025-03-27).
+  https://github.com/s0l0ist/node-seal/blob/main/BENCHMARK.md - fetched and read 2026-08-14.
+  Microsoft SEAL v4.1.2 / node-seal v5.1.5 on an Apple M1 Pro; Chrome 134, Firefox 136, Safari 18.3.
+  CKKS `EvaluateRotate` at `n=8192/log(q)=218` reads **6830 us in Chrome**; at `n=16384/log(q)=438`,
+  **41200 us**. Ten iterations per benchmark, no error bars, timers quantised to 10 us (Chrome) and
+  100 us (Firefox/Safari).
+
+  **The only primary source found for browser-WASM CKKS per-primitive cost**, and the comparator this
+  project's 3.10-4.39 ms per rotation is read against in
+  [`encrypted-inference-performance.md`](encrypted-inference-performance.md). The `n=8192` row is
+  comparable (same ring, similar modulus, both Chrome/WASM); the `n=16384` row is **not** - 438 bits
+  against 200 here - and is recorded only so the parameter difference is visible.
+
+- **Ali Sah Ozcan and Erkay Savas**, *GPU Implementations of Three Different Key-Switching Methods
+  for Homomorphic Encryption Schemes*, IACR ePrint **2025/124** (November 2024).
+  https://eprint.iacr.org/2025/124.pdf - PDF downloaded and text-extracted 2026-08-14.
+  Table 5, CKKS relinearization: single-thread Microsoft SEAL on a Ryzen 9 7950X3D gives **1641 us**
+  at ring 8192 and **14563 us** at 16384; HEonGPU on an RTX 4090 gives **41.8 us** and **84.1 us**.
+  Measures relinearization, not rotation - both are key-switching, and node-seal's own table puts the
+  two within 1% at both ring degrees, so it is a sound proxy but is cited as relinearization.
+
+  **Recorded here because Round 38 introduced both sources and this file listed neither** - the same
+  omission it records above for the Nature Communications figure, repeated by the round that read
+  that entry.
+
+  Four metadata-only "direction of travel" entries stood here - arXiv:2604.04783, 2602.11470,
+  2512.11269, 2602.22229 - labelled "abstracts not individually opened, so no number from these four
+  should be quoted". `docs/deliverable-verification.md` gave them a deadline: promoted by quoting a
+  number with its section, or removed by Round 35. **Removed in Round 39, three rounds after the
+  deadline the register set and never executed.** None was ever cited, so nothing depends on them;
+  the arXiv IDs are preserved in this sentence for anyone who wants to re-open the search.
 
 ### Negative results, re-verified 2026-08-11
 
