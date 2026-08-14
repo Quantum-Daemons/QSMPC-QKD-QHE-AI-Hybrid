@@ -1551,6 +1551,31 @@ trees against the two the repository declares. `.dockerignore` keeps them out of
 sentence was written unqualified about a scope that had only been measured in one place - which is,
 again, this round's subject.
 
+## Round 42: four gates that enforce nothing in CI, and a number that is wrong
+
+**The largest finding of the last four rounds is about the gates those rounds added.**
+`docs/browser-verification-checklist.md` is gitignored by design - it must not be published - and
+four tests read it: the prefix legend, the workstream index, `CI1`'s step numbering, and the prose
+counts. Measured against a fresh `git archive` checkout, not argued: **all four SKIP**, and
+`pytest -q` still prints PASS. Every clone, and every CI run, has been reporting green for eleven
+tests that examined nothing.
+
+Rounds 39, 40 and 41 each wrote one of those gates and verified it here, where the file exists. The
+scope was measured on one machine. That is this project's most-repeated defect - a check whose
+reported scope is wider than the scope it has - applied to its own enforcement.
+
+**What was done, given the file cannot become public.** The four skip messages now say what is
+unenforced rather than that a file is absent, and `scripts/ci_local.sh` gains gate 15: it fails when
+the checklist is missing, and fails when the four gates skip *on this machine*. That does not make
+them CI gates. It makes this machine the declared enforcement point and removes the one way it could
+silently stop being one. **A local-only gate is worth having; a local-only gate that reads as a CI
+gate is not, and that is what these were.**
+
+Two consequences worth recording: `report/build_data.py`'s `\nchecklistrows` and `\nchecklistlines`
+have the same input, so on any clone they are reused from the committed value rather than computed -
+`\nchecklistlines` is currently 4,178 against 4,186 lines and nothing can catch it. And every row
+this round added or repaired lives in a file no CI job can read.
+
 ## Verification assets added in Rounds 22-23
 
 Two checks now exist that assert against sources OUTSIDE this repository. That is the point of both:
