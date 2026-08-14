@@ -401,7 +401,18 @@ export function qotpQcnnInfer(features: number[], seed = 0, nQubits = 8): QcnnRe
   };
 
   for (let q = 0; q < nQubits; q++) RY(q, (features[q] ?? 0) * Math.PI);      // data encode
-  for (let q = 0; q < nQubits; q++) { if (u() < 0.5) X(q); if (u() < 0.5) Z(q); } // QOTP perfect-hiding mask
+  // QOTP mask STRUCTURE, applied with a demo key. The quantum one-time pad is perfectly hiding when
+  // its key bits are uniform AND secret; `u()` is mulberry32 (32 bits of state, non-cryptographic)
+  // seeded from a value the visitor can see - the run seed on the inference path, a loop index on
+  // the benchmark path - so anyone can recompute this mask. The gates applied are real and the
+  // ciphertext really is the same width as the plaintext, which is what the ct/pt = 1 row reports;
+  // what is absent is the secrecy of the key material.
+  //
+  // This is the disclosure `SecureAggregator.__post_init__` in `src/qsh/ai/federated.py` already
+  // makes about its pairwise keys, for the same reason: naming a scheme's information-theoretic
+  // property beside a demo key reads as a claim about the run that just happened. Until Round 40
+  // this line read "QOTP perfect-hiding mask" with no qualification.
+  for (let q = 0; q < nQubits; q++) { if (u() < 0.5) X(q); if (u() < 0.5) Z(q); }
   for (let round = 0; round < 7; round++) {                                   // Clifford+T QCNN (7 conv rounds)
     for (let q = 0; q < nQubits; q++) H(q);
     for (let q = 0; q < nQubits; q++) CNOT(q, (q + 1) % nQubits);
