@@ -204,8 +204,21 @@ def _count_rows(text: str) -> int:
 
 
 def macros() -> str:
-    sha = subprocess.run(["git", "rev-parse", "--short", "HEAD"], cwd=REPO,
+    # `\gitsha` NAMES THE COMMIT THE MEASUREMENTS CAME FROM, which is the PARENT of the commit that
+    # ships this output. That is a fact to state, not a bug to fix: this runs before the commit
+    # containing its own result exists, so it can never name that commit. The report said
+    # "measurements produced by the code at revision <sha>" and pointed at HEAD-1 - or further back
+    # whenever a regenerated file was not committed, which is how it ended up four behind and
+    # asserting a row count three short of the tree.
+    #
+    # `--dirty` is the load-bearing part. If the working tree differs from HEAD then the measurements
+    # did not come from HEAD either, and a clean sha would be a claim about a commit the numbers do
+    # not describe.
+    sha = subprocess.run(["git", "describe", "--always", "--dirty", "--abbrev=7"], cwd=REPO,
                          capture_output=True, text=True).stdout.strip()
+    if not sha:
+        sha = subprocess.run(["git", "rev-parse", "--short", "HEAD"], cwd=REPO,
+                             capture_output=True, text=True).stdout.strip()
     n_pub = sum(1 for s in registry._SPECS if s.hf_repo)
     n_rows = _checklist_scalar("nchecklistrows", _count_rows)
     n_lines = _checklist_scalar("nchecklistlines", lambda t: len(t.splitlines()))
@@ -284,9 +297,24 @@ TABLES = {
                 f"system with green tests"),
 }
 
-for name, cfg in TABLES.items():
-    fn = cfg.pop("fn")
-    (OUT / name).write_text(wrap(fn(), **cfg) + "\n")
-    print(f"  wrote report/generated/{name}")
-(OUT / "macros.tex").write_text(macros() + "\n")
-print("  wrote report/generated/macros.tex")
+def main() -> int:
+    """Regenerate every `report/generated/*.tex`.
+
+    BEHIND A GUARD, and that is not style. These writes ran at module level, so `import
+    report.build_data` - which a read-only audit does to reuse `_count_rows` - silently rewrote four
+    tracked files. An import is not a request to modify the working tree, and a tool that edits the
+    repository as a side effect of being read makes every "the tree is clean" observation
+    conditional on nobody having imported it.
+    """
+    for name, cfg in TABLES.items():
+        conf = dict(cfg)
+        fn = conf.pop("fn")
+        (OUT / name).write_text(wrap(fn(), **conf) + "\n")
+        print(f"  wrote report/generated/{name}")
+    (OUT / "macros.tex").write_text(macros() + "\n")
+    print("  wrote report/generated/macros.tex")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
