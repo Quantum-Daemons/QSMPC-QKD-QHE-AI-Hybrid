@@ -850,9 +850,6 @@ export async function realClientHybrid(features: number[], u: () => number,
         rows: bt.rows, rowsOffered: bt.rowsOffered, rowsPerCiphertext: bt.rowsPerCiphertext,
         fheMs: bt.fheMs, maxAbsError: bt.maxAbsError,
         flipMarginMax, tieRows, decidable, flippedDecidable,
-        // Six orders of magnitude below the score range: far below anything a model with a real
-        // preference produces, and far ABOVE the ~1e-9 relative deviation CKKS contributes here, so
-        // the threshold separates the two cases instead of collapsing into one of them.
         mismatches: flipped.length,
         points: bt.logits.map((row, i) => ({
           enc: row[encCls[i]], plain: bt.plainLogits[i][encCls[i]],

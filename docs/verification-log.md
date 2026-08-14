@@ -1078,3 +1078,31 @@ Run, so the record is of the run itself rather than of page load. Ten requests:
 UI and produce a request per inference. Every Hub URL here is a pinned-revision artefact download,
 and each revision is a full commit SHA rather than a branch name, so the pin is exact. Inference
 itself runs on onnxruntime-web and node-seal inside the tab.
+
+### The third pass was not dry: removing one disclosure took another with it
+
+Three independent lenses found the same thing. The commit that removed the tie verdict from the
+agreement caption also deleted the **ciphertext-cap** sentence sitting in the same JSX expression -
+the removed block's closing `) : null}` merged with the tie block's - so `rowsOffered` was left
+declared on `EncryptedAgreementPlot`, set by four producers, and read by nothing.
+
+`tsc` passes on that state. An unread optional interface field is not a type error, which is why
+nothing in the build, the gate or the suite noticed.
+
+The effect was on telecom, the one page where the cap bites: 512 of 600 held-out rows are scored.
+The figure read *"one of 512 held-out rows ... Top-1 mismatches: 0 of 512 ... None of these 512 rows
+is a tie"* with nothing saying the split held 600 and 88 were never scored - silently reverting
+`5d20d88`, which added that sentence for exactly this reading, and making checklist row `PI2` a row
+that could only fail.
+
+Restored and confirmed live: *"The split holds 600 rows; one ciphertext fits 512 at this feature
+width, so 88 were not scored and the agreement above is over 512, not over the whole split."*
+
+**`MS9` was too narrow to catch it**, which is the more useful half. It asserted the undecidable trio
+travels with the agreement rate and said nothing about any other field. `MS10` asserts the general
+form - no field the plot type declares may be set by a producer and rendered by nothing - and
+re-seeding the deletion makes it fail naming `rowsOffered` while `tsc` stays clean.
+
+An orphaned comment went out with the same commit: the three lines justifying the deleted 1e-6
+threshold survived into the middle of an object literal, arguing for a test the file retracts thirty
+lines above. Removed.

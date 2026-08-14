@@ -86,6 +86,21 @@ export function EncryptedAgreementChart({ plot }: { plot: EncryptedAgreementPlot
         plaintext score. The diagonal is exact agreement. Top-1 mismatches:{" "}
         <strong>{mismatches}</strong> of {plot.rows}. All {plot.rows} rows travelled in a single
         ciphertext, so they cost the homomorphic work of one.
+        {/* THE CIPHERTEXT CAP, restored.
+            `5d20d88` put this in the caption precisely so a reader could not take the agreement for
+            the whole split, and `2393c79` - the commit that removed the tie verdict from this same
+            sentence - deleted it as collateral: the removed block's closing `) : null}` was merged
+            with the tie block's, so the cap clause went out with the verdict. `rowsOffered` was left
+            declared and set by four producers and read by nothing, which no type check can see.
+            Telecom is the page it matters on: 512 of 600 rows are scored, and without this the
+            figure reports agreement 1.00 over a denominator it does not name. */}
+        {plot.rowsOffered != null && plot.rowsOffered > plot.rows ? (
+          <>
+            {" "}The split holds <strong>{plot.rowsOffered}</strong> rows; one ciphertext fits{" "}
+            {plot.rows} at this feature width, so {plot.rowsOffered - plot.rows} were not scored and
+            the agreement above is over {plot.rows}, not over the whole split.
+          </>
+        ) : null}
         {/* AT ZERO TOO. Gated on `> 0` first, which put the disclosure on genomics and hid it on
             telecom - and telecom's zero is the informative case: it is what makes that page's 1.00
             a different claim from genomics' 1.00. Suppressing a count because it is zero is the
