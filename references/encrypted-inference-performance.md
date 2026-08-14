@@ -37,13 +37,14 @@ degree 8192, coefficient modulus `[60, 40, 40, 60]` (200 bits), one multiplicati
 |---|---|---|---|---|
 | finance | XGBoost-distilled CKKS-linear surrogate, 8 features, 2 classes | 3 | 9.29 | 3.10 |
 | finance | (repeat run) | 3 | 9.72 | 3.24 |
-| medical | distilled linear head, dense layer | 3 | 9.65 | 3.22 |
-| medical | published CNN student, convolution | 16 | 57.59 | 3.60 |
+| medical | bundled linear head, dense layer | 3 | 13.17 | 4.39 |
+| medical | published CNN student, convolution | 16 | 67.81 | 4.24 |
+| medical | published CNN student, dense layers | 136 | 421.40 | 3.10 |
 | telecom | 8-class softmax student, batched over 512 rows | 24 | 76.0 (derived) | 3.17 |
 | genomics | PGS000004 effect weights as `[-w/2, +w/2]` | 6 | 19.07 | 3.18 |
 
 Five independent models, four use cases, dense and convolutional paths, single-row and 512-row
-batches: **3.10 to 3.60 ms per rotation**, a 16% spread. That is the behaviour a rotation at a fixed
+batches: **3.10 to 4.39 ms per rotation**. That is the behaviour a rotation at a fixed
 ring degree should show, and it is why this is the portable figure. (The telecom rotate-ms cell is
 its reported per-rotation figure times its rotation count rather than a separately displayed total;
 the per-rotation value itself is measured.)
@@ -51,25 +52,42 @@ the per-rotation value itself is measured.)
 At ring degree 16384 with the same coefficient modulus, the same finance measurement gives **6.73 ms
 per rotation** - 2.17x, for a doubled ring.
 
-## A claim this measurement corrected
+## A claim this round got wrong, and then measured properly
 
 Two comments in `clientFHE.ts` and one in `clientCompute.ts` asserted that key-switching dominates
-CKKS cost, and used that to justify reporting rotation counts. Timing the rotations separately shows
-the claim is true of one path and false of the other:
+CKKS cost. The first version of this document said the claim held for the dense layer and failed for
+the convolution - rotations 57% against 10% - and concluded that im2col encoding dominated the
+convolution instead. **That was wrong, and the original comments were right.**
 
-| path | rotate ms | total ms | rotation share |
-|---|---|---|---|
-| medical, dense layer | 9.65 | 17.02 | **57%** |
-| medical, convolution | 57.59 | 579.30 | **10%** |
+`fhe_conv_rotation_share` divided the convolution block's rotation time by
+`encryptedStudentInference`'s `fheMs`, which is the WHOLE student: the convolution plus its two dense
+layers. `encryptedStudentInference` returns `{...conv, fheMs, ...}`, so `rotations` and `rotateMs`
+come from the spread and describe the conv block, while `fheMs` is overridden with the accumulated
+total. A numerator and a denominator of different scopes, and the metric name `fhe_conv_ms` said
+convolution while carrying the student's total.
 
-The convolution row is measured directly (`fhe_conv_rotate_ms` over `fhe_conv_ms`). The dense row's
-total is `fhe_linear_measured_ms` minus `fhe_conv_ms` - 596.32 less 579.30 - because on medical the
-former is the sum of both stages; the rotate figure is measured.
+Measured with the scopes separated, medical page, one run:
 
-The convolution is dominated by im2col encoding - 4 channels by 196 patches - not by its 16
-rotations. Rotation count is still the right thing to report, and per-rotation cost is still stable
-across both, but "key-switching dominates" is not a property of this workload as a whole. The
-comments now say what was measured.
+| stage | rotations | rotate ms | stage ms | rotation share |
+|---|---|---|---|---|
+| bundled linear model (`realClientHybrid`) | 3 | 13.17 | 23.2 | **57%** |
+| published student, convolution | 16 | 67.81 | 96.60 | **70%** |
+| published student, dense layers | 136 | 421.40 | 490.23 | **86%** |
+| published student, total | 152 | 489.21 | 586.83 | 83% |
+
+The two stages sum to the total exactly - 96.60 + 490.23 = 586.83 - so nothing is unattributed.
+
+So key-switching dominates everywhere, at 57% to 86% depending on how much non-rotation work the
+stage carries, and the per-rotation cost is 3.2-4.2 ms throughout. The page now reports
+`fhe_conv_ms` (the convolution), `fhe_encrypted_student_ms` (the total),
+`fhe_student_dense_ms` and a rotation share per stage, so the two scopes cannot be divided into each
+other again.
+
+**How this was caught matters more than the number.** It was not caught by a test, by the build, or
+by reading the page - every figure rendered plausibly. It was caught by an adversarial review of the
+round's own diff, asking of each new metric: over what set is this computed, and does the sentence
+beside it describe that same set. That is the question the round was created to ask about other
+people's numbers, and it had not been asked of its own.
 
 ## The published comparator, which does exist
 
