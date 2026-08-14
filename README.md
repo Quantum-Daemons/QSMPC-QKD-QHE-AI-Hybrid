@@ -160,8 +160,11 @@ bash env/setup_venv.sh      # or: make setup
 source .venv/bin/activate
 
 # 2. Run the test suite (crypto correctness, FHE accuracy, E2E smoke)
-make test             # 187 collected, 183 passed, 4 deselected (Node/OpenFHE-gated)
-# `make test` already passes -m "not slow", which is what deselects those four.
+make test             # pytest prints the count; the Node/OpenFHE-gated slow tests are deselected
+# No count is quoted here. This line read "187 collected, 183 passed" while the suite had grown to
+# 393 - and `Makefile` two files over already carries the same lesson from its own help text, which
+# said 174 when the truth was 236. A count maintained by hand in a comment drifts; pytest reports it.
+# `make test` already passes -m "not slow", which is what deselects the gated ones.
 # `make test-all` runs every test, and on AlmaLinux 9.7 the OpenFHE bootstrap test SIGSEGVs inside
 # EvalBootstrapSetup: fhe/backends.py guards against an ImportError, and a segfault is not one.
 
@@ -215,7 +218,12 @@ tests/       pytest suite
 
 Target box: **AlmaLinux 9.7, i5-13600K, 128 GB DDR5, NVIDIA RTX PRO 6000 Blackwell 96 GB,
 CUDA 13.0**. Verified: Python 3.12.11, gcc 11.5, cmake 3.31, Node 22, Docker 29,
-`torch 2.12+cu130` with `cuda.is_available() == True`.
+`torch 2.13.0+cu130` with `cuda.is_available() == True`, nvcc V13.0.88, driver 580.105.08
+(CUDA 13 wheels require 580.65.06 or newer on Linux). Re-measured 2026-08-14; the line read
+`torch 2.12+cu130` until then. CUDA 13.0 became a **stable** PyTorch build target in 2.11, so this
+box is no longer on a leading edge - `TR2`/`TR3` are what verify the capability, by launching a real
+kernel and checking `get_arch_list()` contains the device's `sm_120`, rather than by trusting a
+version string here.
 
 ### NOTE GPU quantum simulation on Blackwell
 `qiskit-aer-gpu` (cu11/cu12 wheels) **does not support Blackwell `sm_120`**. Use:
@@ -620,11 +628,20 @@ See [`docs/pqc-roadmap.md`](docs/pqc-roadmap.md).
 
 - **The model that runs under encryption is now published too.** Each use case has a teacher and a
   distilled student, and the student is what CKKS actually evaluates: 33 parameters for finance
-  against a 138,312-parameter teacher, 3,226 against 11,171,266 for medical, 49 against 80,486 for satellite.
+  against a 141,154-parameter teacher, 3,226 against 11,171,266 for medical, 49 against 80,486 for satellite.
   Until Round 19 only the teachers were published, so the encrypted tier - the part the project is
-  built to demonstrate - was the one part a visitor could not verify. All seven repos are public and
+  built to demonstrate - was the one part a visitor could not verify. All ten repos are public and
   pinned, and the evaluation sample for each lives in that model's own repo at the same revision as
   its weights.
+
+  *Both corrected figures were Round-19-era and outlived what they described.* The finance teacher
+  read **138,312** until Round 40 - the count from before the eleven per-account causal aggregates
+  were added, against `models/metrics.json`'s `teacher_params: 141154` - and the sentence said
+  **seven** repos through the Round 30 re-upload that took the registry to ten. The other three
+  figures in the same sentence still match `metrics.json` exactly, which is why neither was noticed:
+  a paragraph that is three-quarters right reads as right. `report/generated/macros.tex` derives the
+  repo count (`\npublished`) from the registry, so this sentence is the second copy - and the second
+  copy is the one that rots.
 
 - **Retracted: the satellite forecaster is not worse than persistence.** Round 18 reported it as
   roughly 19-22x worse on next-step MAE. That was our measurement error: the probe resampled the
