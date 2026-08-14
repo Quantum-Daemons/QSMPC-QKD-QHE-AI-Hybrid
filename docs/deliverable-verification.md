@@ -1304,6 +1304,40 @@ true of this code, in the canonical document for the KEM registry, sixteen round
 corrected **in place with its provenance**, and where the file is a log the superseded figure is
 marked rather than deleted, because a log that edits its own history is not a log.
 
+**Three claim-accuracy defects found by inventory, recorded as conditioned decisions rather than
+half-fixed.** A 44-site sweep of key derivation and crypto claims produced seven candidates. Two were
+live and are fixed above; one was refuted by a runtime probe (`stages.py`'s zero-key default is
+unreachable, because the handshake always precedes the stage and a failed stage aborts the run - it
+was hardened anyway, since this round moved key material between stages and the cost is nothing); one
+is the ITS combiner. The remaining three are each a sentence claiming more than the code does, in
+paths the public demo either does not reach or does not depend on, and each needs its own
+justification rather than a blanket sweep:
+
+- **`src/qsh/qkd/kme.py` says keys come from "this project's QRNG + extractor path"; `get_key` calls
+  `secrets.token_bytes`.** The claim appears twice - the module docstring and a user-visible
+  `status_extension` note - and the project genuinely has the path being claimed, under
+  `src/qsh/qrng/`. So this is not a wording slip to paper over: it is a choice between wiring the KME
+  to the QRNG path or saying it uses the OS CSPRNG. **Deferred, not declined**, because changing key
+  generation is a behavioural change and no API route constructs a `KeyManagementEntity` today -
+  reachability is tests only, plus a browser mirror of the status string. *Reopens the moment any
+  route or page reaches it*, since a false provenance sentence in a rendered status body is a
+  different severity from one in a docstring.
+- **`src/qsh/qsmpc/qot.py` binds its commitment to `_` and never opens it**, while the module
+  docstring cites "a SHA-256 commitment" as a source of obliviousness. Unreachable from both the demo
+  and the orchestration - the stage imports only the PSI functions - so nothing renders this claim.
+  *Reopens if* `quantum_oblivious_transfer` gains any caller outside `tests/`.
+- **`web/src/lib/quantumSim.ts` calls a mulberry32 frame a "QOTP perfect-hiding mask"**, keyed on the
+  user-visible run seed. Reachable from the public demo. "Perfect hiding" is an information-theoretic
+  term and a 32-bit-state non-cryptographic PRG keyed on a value the visitor can type does not
+  provide it. This is the smallest and most clearly wrong of the three, and it is recorded rather
+  than reworded in the same pass **because a wording change here needs to be made once, correctly,
+  against what the demonstration actually supports** - the surrounding code already documents that
+  this path is a QOTP-hiding and T-count demonstration rather than a predictor. *Reopens next round
+  as a wording fix, unconditionally* - it is page-reachable and no measurement is needed to settle it.
+
+Recording all three with conditions rather than fixing two and forgetting the third is the point:
+this round's own evidence is that an unconditioned item survives indefinitely.
+
 **A gate added, never watched run, and unable to pass.** The "Combiner vectors are regenerated" step
 that closes the stale-vector direction was put in the **web** job, which sets up Node and nothing
 else. It failed with `ModuleNotFoundError: No module named 'oqs'` the first time it ever executed -
