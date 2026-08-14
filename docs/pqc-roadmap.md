@@ -81,12 +81,38 @@ scaffold hardens). QRNG + OptiQKD above are built from this set; the rest are ad
 ## Timeline anchors
 
 **Scope of this list, stated because it is a limit rather than a judgement.** Every instrument below is
-a **US** one, apart from the BSI and Japanese entries. That is a gap and it is a known one: an EU
-milestone set exists and is **not citable here yet**, because only secondary summaries of it have been
-seen and no primary document has been loaded. It is recorded as a lead to verify in
-[`../references/REFERENCES.md`](../references/REFERENCES.md) (Round 33, "Leads recorded rather than
-cited") rather than written into this table with dates nobody checked. Verified absent, not overlooked,
-2026-08-12.
+a **US** one, apart from the BSI, Japanese and EU entries. The EU set was absent until Round 42 and is
+now here: the primary document was loaded on 2026-08-15, nine rounds after `references/REFERENCES.md`
+recorded it as a lead with the note *"Next round: find the Cooperation Group publication itself
+before writing any of it down as a date."* Nothing enforced that sentence - the deadline gate reads
+one file and two phrasings, and this was in another file in a third - which is why it survived. See
+that file for the two ways the lead turned out to overstate its own source. DEADLINE EXECUTED
+Round 42.
+
+- **2026-12-31 / 2030-12-31 / 2035-12-31** - **EU: the NIS Cooperation Group PQC transition
+  milestones.** *A Coordinated Implementation Roadmap for the Transition to Post-Quantum
+  Cryptography*, Part 1, Version 1.1, EU PQC Workstream, dated 11.06.2025 - the first deliverable of
+  the NIS CG work stream on PQC. Its section 4 timeline, in the document's own terms:
+  - **by 31.12.2026** - First Steps implemented by all Member States; initial national PQC
+    transition roadmaps established; transition planning and pilots **initiated** for high- AND
+    medium-risk use cases
+  - **by 31.12.2030** - Next Steps implemented; the transition for **high-risk** use cases
+    **completed**; planning and pilots for medium-risk completed; quantum-safe upgrades enabled by
+    default
+  - **by 31.12.2035** - the transition for **medium-risk** completed, and for low-risk *"completed
+    as much as feasible"*
+
+  The executive summary's wording for 2035 is *"the transition should be completed for as many
+  systems as practically feasible"* - weaker than a full-transition deadline, and worth stating
+  because the lead that carried this for nine rounds recorded it as one. The roadmap is grounded in
+  BSI's assessment of quantum-computer development and in *Securing Tomorrow, Today*, a joint
+  statement by partners from 21 European states, and its steps are framed as supporting NIS2
+  compliance rather than as a separate obligation.
+
+  **What it means here:** nothing in this deliverable is a Member State system, so no milestone
+  binds it. It is recorded because the demo is reachable from the EU and a roadmap with no EU
+  milestone reads as parochial rather than scoped - which is what the Round 33 lead said, and was
+  the one part of it that held.
 - **2026-09-21** - **FIPS 140-2 certificates move to the CMVP Historical List.** NIST's own wording:
   *"FIPS 140-2 active modules can be used until this date for new systems. After this date, FIPS
   140-2 validation certificates will be moved to the Historical List."* Federal agencies may then use
