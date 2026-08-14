@@ -2,7 +2,7 @@ import { useRef, useState } from "react";
 import OrchestrationGraph from "../components/OrchestrationGraph";
 import PipelineControls from "../components/PipelineControls";
 import RunMonitor from "../components/RunMonitor";
-import { EncryptedAgreementChart } from "../components/VerificationChart";
+import { EncryptedAgreementChart, RealDataScatter } from "../components/VerificationChart";
 import type { EncryptedAgreementPlot } from "../components/VerificationChart";
 import { DEMO_BANNER, isClientDemo } from "../lib/demoMode";
 import { USECASES as USE_CASE_META } from "../lib/useCases";
@@ -27,7 +27,7 @@ export default function Orchestration() {
   const graphRef = useRef<HTMLDivElement>(null);
   const run = usePipelineRun(usecase, graphRef);
   const hasRun = run.events.length > 0;
-  const { events, active, done, metrics, signature, state, logRef, gifBusy, artifacts,
+  const { events, active, done, metrics, signature, state, logRef, gifBusy, artifacts, inFlight,
     downloadGif, downloadPng, downloadEvents, downloadMetricsCsv } = run;
 
   return (
@@ -43,7 +43,14 @@ export default function Orchestration() {
       <div className="card" style={{ marginBottom: 16 }}>
         <div className="btn-row">
           <label className="muted" htmlFor="sel-usecase">Use case</label>
+          {/* Disabled mid-run. It was live, and switching during a run redrew the graph for the NEW
+              use case while `active`/`done` still carried the old flow's stage ids, swapped the
+              Parameters panel, and - worst - relabelled the export filenames, so a downloaded
+              artefact named an industry it does not describe. The published-model select two files
+              over has always been gated this way; this one was not. */}
           <select id="sel-usecase" name="usecase" aria-label="Use case" value={usecase}
+            disabled={inFlight}
+            title={inFlight ? "Stop or finish the run before switching use case" : undefined}
             onChange={(e) => setUsecase(e.target.value)}>
             {USECASES.map(([id, label]) => <option key={id} value={id}>{label}</option>)}
           </select>
@@ -80,6 +87,30 @@ export default function Orchestration() {
           <h3 style={{ margin: "0 0 4px" }}>Private inference against plaintext, this run</h3>
           <EncryptedAgreementChart
             plot={artifacts.encrypted_agreement_plot as EncryptedAgreementPlot} />
+        </div>
+      ) : hasRun ? (
+        // A card that vanishes and a flow that performs no private inference look identical, and on
+        // `satellite_comms` the second is the truth - no stage there produces the plot. Saying so is
+        // the difference between "this page has nothing to show you" and "this run had nothing to
+        // show", which are different facts about the demo.
+        <div className="card" style={{ marginTop: 16 }}>
+          <h3 style={{ margin: "0 0 4px" }}>Private inference against plaintext, this run</h3>
+          <p className="muted" style={{ fontSize: 12, margin: 0 }}>
+            This flow produced no encrypted-vs-plaintext comparison. The chart is drawn from
+            <code> encrypted_agreement_plot</code>, which only a stage that scores rows under CKKS
+            emits - <code>satellite_comms</code> runs telemetry analysis and has no such stage, and a
+            stopped or failed run has not reached one. Nothing is missing; there is nothing to plot.
+          </p>
+        </div>
+      ) : null}
+
+      {/* The real-data overlay the use-case pages carry. `RealDataScatter` needs only the use case -
+          it fetches its own payload - so the E2E page could always have shown the corpus its model is
+          scored on, its separability, its licence and its attribution. It renders null where no
+          overlay ships, which covers the generic `demo` entry. */}
+      {hasRun ? (
+        <div className="card" style={{ marginTop: 16 }}>
+          <RealDataScatter usecase={usecase} />
         </div>
       ) : null}
 
