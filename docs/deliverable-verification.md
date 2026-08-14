@@ -1133,6 +1133,60 @@ encrypted score against the plaintext score per held-out row. *Reopens if* a use
 inference path whose output is not linear, since the batching that makes it affordable is specific to
 the packed linear layer.
 
+## Round 38: the round measured its own plan and found it wrong twice
+
+Two of this round's own premises did not survive being measured. Recording that is the point of this
+register.
+
+**Per-rotation cost was to be "one division away".** The plan proposed
+`fhe_linear_ms / fhe_dense_rotations`, both of which the page already prints beside each other.
+`fhe_linear_ms` is the measured wall-clock multiplied by `benchScale()` for the selected model size,
+while the rotation count is raw, so on genomics that division reads 159.9 ms per rotation against a
+measured 3.18. `rotateVector` is now timed directly, and `fhe_linear_measured_ms` and
+`fhe_bench_scale` render beside `fhe_linear_ms` so the projection is decomposable. Rows `PF1`-`PF7`.
+
+**No comparable published figure was expected to exist.** The plan intended to record the absence as
+the finding. One does exist: node-seal's own `BENCHMARK.md` publishes CKKS rotation timings in
+Chrome, Firefox and Safari at both ring degrees. The measurement here is 3.10-3.24 ms per rotation
+against its 6.83 ms Chrome figure at ring 8192, a comparison the two parameter sets support; the
+16384 rows are NOT comparable, because the published modulus is 438 bits against 200 here, and that
+is stated rather than quietly averaged over. Both comparators were fetched and read directly -
+[`encrypted-inference-performance.md`](../references/encrypted-inference-performance.md) quotes the
+rotation rows verbatim.
+
+**A claim this repository asserted in three comments turned out to be half wrong.** "Key-switching
+dominates CKKS cost" holds for the dense layer, where rotations are 57% of wall-clock, and fails for
+the convolution, where they are 10% and im2col encoding over 4 channels by 196 patches is the larger
+term. The per-rotation cost is stable across both; the share is not. The comments now say what was
+measured, and `PF7` keeps them honest.
+
+**The ring degree: raised to 16384, measured, reverted.** Every FHE figure roughly doubled - keygen
+255 to 477 ms on the first click, per-rotation 3.10 to 6.73, precision 25 to 24 bits - and the
+realised benefit measured zero: the medical convolution still packed one image because nothing asks
+it for two, and the linear batch's 512 to 1024 rows went unused because finance offers 400 and
+genomics 30. **Decided** at the user's direction: value back to 8192, wiring kept. *Reopens* when
+batched convolution exists to spend the slots on, at which point it is one line in `config.yaml` and
+one in `defaults.py`.
+
+**The wiring is the durable result.** `FHEConfig.poly_modulus_degree` had no reader anywhere in
+`src/`; the value the TenSEAL backend ran came from its own default arguments, the browser's came
+from a literal in `clientFHE.ts`, and the report PRINTED a literal inside `build_data.py`. Four
+copies, one dead field, agreeing only because nobody had changed one. Rows `PS1`-`PS4` and
+`tests/test_fhe_parameters_single_source.py`.
+
+**And the trap that caught the author, which is why `PS4` exists.** Raising the ring in
+`defaults.py` alone changed nothing: `load_config()` overlays `config.yaml`, so the export script
+rewrote the JSON with the old value and exited 0, the report regenerated with the old value and
+exited 0, and the bundle rebuilt with the old value. An inert edit with three successful exit
+statuses behind it - the `DP2` failure mode with no failure to hide.
+
+**Encrypting the model the page explains.** Finance and genomics reported a class from the bundled
+real model, drew SHAP bars labelled "real bundled model", and computed every `encrypted_*` figure
+from a demo weight pattern that appeared nowhere else on the page. Verifying the fix surfaced three
+more defects in numbers already being published - a metric key written twice with different values,
+a mismatch count with no margin beside it, and a caption whose scope was narrower than its sentence.
+Rows `MS1`-`MS5`.
+
 ## Verification assets added in Rounds 22-23
 
 Two checks now exist that assert against sources OUTSIDE this repository. That is the point of both:
