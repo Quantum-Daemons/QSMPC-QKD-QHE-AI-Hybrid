@@ -37,10 +37,15 @@ export interface EncryptedAgreementPlot {
   /** Worst deviation over ALL `rows * classes` scores, which is a strictly larger set than `points`.
       See the caption note: one point is plotted per row, for the winning class only. */
   maxAbsError?: number;
-  /** Widest PLAINTEXT top-1-to-top-2 gap among the rows that flipped, and whether the deviation
-      above can bridge it. Reported because a mismatch count on its own reads as a precision
-      failure, and on genomics all three flips are rows the plaintext model scores at zero. */
+  /** Widest PLAINTEXT top-1-to-top-2 gap among the rows that flipped, that gap as a fraction of the
+      model's own score range, and whether it is negligible against that range. Reported because a
+      mismatch count on its own reads as a precision failure, and on genomics every flip is a row
+      the plaintext model scores identically across classes.
+
+      NOT compared against the deviation: a flip means the noise exceeded the margin, so that test
+      is true by construction. The scale comparison can come out either way. */
   flipMarginMax?: number;
+  flipMarginRel?: number;
   flipsWithinNoise?: boolean;
 }
 
@@ -99,17 +104,29 @@ export function EncryptedAgreementChart({ plot }: { plot: EncryptedAgreementPlot
           <>
             {" "}The plaintext model&apos;s own margin between its top two scores at those{" "}
             {mismatches} rows is{" "}
-            {plot.flipMarginMax === 0
-              ? <><strong>exactly zero</strong> — the plaintext model scores those samples
-                identically across classes, so its own top-1 is decided by argmax tie-breaking and
-                any deviation at all flips it. These are <strong>ties</strong>, not decisions the
-                encryption got wrong.</>
-              : plot.flipsWithinNoise
-                ? <>at most {plot.flipMarginMax.toExponential(2)}, which the deviation above can
-                  bridge — they are <strong>ties</strong> the plaintext model has no real preference
-                  on, not decisions the encryption got wrong.</>
-                : <>{plot.flipMarginMax.toExponential(2)}, <strong>wider</strong> than the deviation
-                  above can bridge, so these flips are not ties.</>}
+            {/* ONE predicate decides tie-or-not, and it is the same one the `encrypted_flips_are_ties`
+                metric reports. Written first with `flipMarginMax === 0` as its own leading branch,
+                which could short-circuit to "these are ties" while the metric beside it read 0 -
+                two surfaces on one page disagreeing about the same question, which is the defect
+                class this figure exists to avoid. Exactly-zero is now a wording choice INSIDE the
+                ties branch, not a second way of deciding. */}
+            {plot.flipsWithinNoise ? (
+              plot.flipMarginMax === 0
+                ? <><strong>exactly zero</strong> — the plaintext model scores those samples
+                  identically across classes, so its own top-1 is decided by argmax tie-breaking and
+                  any deviation at all flips it. These are <strong>ties</strong>, not decisions the
+                  encryption got wrong.</>
+                : <>at most {plot.flipMarginMax.toExponential(2)}, which is{" "}
+                  {plot.flipMarginRel != null ? plot.flipMarginRel.toExponential(1) : "a negligible fraction"}{" "}
+                  of the range of scores this model produces here — so they are{" "}
+                  <strong>ties</strong> it has no real preference on, not decisions the encryption
+                  got wrong.</>
+            ) : (
+              <>{plot.flipMarginMax.toExponential(2)}, a <strong>material</strong> fraction
+              {plot.flipMarginRel != null ? <> ({plot.flipMarginRel.toExponential(1)})</> : null}{" "}
+              of this model&apos;s score range — these are decisions it held with a real margin and
+              the encrypted run overturned, which is a precision problem, not a tie.</>
+            )}
           </>
         ) : null}
         {plot.rowsOffered != null && plot.rowsOffered > plot.rows ? (

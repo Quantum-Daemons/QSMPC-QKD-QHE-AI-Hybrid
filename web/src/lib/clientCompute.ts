@@ -599,12 +599,21 @@ export interface MeasuredHybrid {
    *  the benchmark as a measured value. */
   ctBytes: number | null;
   /** Set when the run performed a real encrypted CONVOLUTION rather than a dot product. Counted,
-   *  not estimated. Each rotation triggers a key-switch; measured, they are 57% of the dense
-   *  layer's time and 10% of the convolution's, so the COUNT and the per-rotation cost are the
-   *  portable quantities, not a claim about which term is largest. */
+   *  not estimated. Each rotation triggers a key-switch, and key-switching dominates every path
+   *  measured here - 57% of a small dense layer, 70% of this convolution, 86% of the student's
+   *  dense layers - at a per-rotation cost of 3.2-4.2 ms throughout. */
   conv?: { rotations: number; multiplies: number; patchesPerCiphertext: number;
            outH: number; outW: number; channels: number; convMs: number; maxAbsError: number;
            rotateMs: number;
+           /** The CONVOLUTION BLOCK's own time. On the published-weights path `convMs` is the whole
+            *  student - conv plus its dense layers - while `rotations`/`rotateMs` are the conv
+            *  block's, so a rotation share must use THIS as its denominator. Round 38 published
+            *  10% from the mismatched pair. Equal to `convMs` on the synthetic-kernel path, which
+            *  runs the convolution and nothing else. */
+           convOnlyMs: number;
+           /** The student's DENSE layers, on the published-weights path. Reported so the whole
+            *  569 ms is accounted for rather than leaving 488 ms unexplained beside a conv figure. */
+           denseMs?: number; denseRotations?: number; denseRotateMs?: number;
            /** True when the PUBLISHED student's weights drove the computation, false when only its
             *  shape did. The two must never be reported as the same thing. */
            publishedWeights: boolean; totalRotations: number;
@@ -635,8 +644,12 @@ export interface RealHybridRun extends MeasuredHybrid {
              *  only evidence against the encrypted tier if the plaintext model had a real preference
              *  to lose; see the comment at the computation. */
             flipMarginMax: number;
-            /** True when every flip happened at a margin the CKKS deviation could bridge, i.e. the
-             *  plaintext model was indifferent at those rows. */
+            /** That margin as a fraction of the plaintext score RANGE on this corpus. The margin
+             *  alone has no scale, and comparing it against the deviation is a tautology. */
+            flipMarginRel: number;
+            /** True when the flips happened at margins negligible against the model's own score
+             *  spread - i.e. the plaintext model was indifferent there. CAN be false: a large
+             *  deviation overturning a decision held with a real margin fails this. */
             flipsWithinNoise: boolean;
             points: { enc: number; plain: number; agree: boolean }[] } | null;
 }
@@ -752,7 +765,8 @@ export async function realClientHybrid(features: number[], u: () => number,
         conv = { rotations: r.rotations, multiplies: r.multiplies,
                  patchesPerCiphertext: r.patchesPerCiphertext, outH: r.outH, outW: r.outW,
                  channels: wts.conv.out_ch, convMs: r.fheMs, maxAbsError: r.logitMaxAbsError,
-                 rotateMs: r.rotateMs,
+                 rotateMs: r.rotateMs, convOnlyMs: r.convOnlyMs,
+                 denseMs: r.denseMs, denseRotations: r.denseRotations, denseRotateMs: r.denseRotateMs,
                  publishedWeights: true, totalRotations: r.totalRotations,
                  studentParams: wts.n_parameters, studentPrediction: r.prediction };
       } else {
@@ -766,7 +780,7 @@ export async function realClientHybrid(features: number[], u: () => number,
         conv = { rotations: cres.rotations, multiplies: cres.multiplies,
                  patchesPerCiphertext: cres.patchesPerCiphertext, outH: cres.outH, outW: cres.outW,
                  channels: chans, convMs: cres.fheMs, maxAbsError: cres.maxAbsError,
-                 rotateMs: cres.rotateMs,
+                 rotateMs: cres.rotateMs, convOnlyMs: cres.fheMs,
                  publishedWeights: false, totalRotations: cres.rotations };
       }
     }
@@ -791,12 +805,30 @@ export async function realClientHybrid(features: number[], u: () => number,
       const flipped = encCls.map((_, i) => i).filter((i) => encCls[i] !== plainCls[i]);
       const flipMarginMax = flipped.length
         ? Math.max(...flipped.map((i) => decisionMargin(bt.plainLogits[i]))) : 0;
+      // The scale the margin has to be judged against, and the reason it is not the deviation.
+      //
+      // The first version asked `flipMarginMax <= 2 * maxAbsError`, which is a TAUTOLOGY: if a is
+      // the plaintext argmax and c the encrypted one, then margin <= plain[a] - plain[c] =
+      // (enc[a] - enc[c]) + (d_c - d_a) <= 0 + 2E, because enc[c] >= enc[a] by definition of the
+      // encrypted argmax and E bounds every deviation. A flip MEANS the noise exceeded the margin,
+      // so "could the noise explain this flip" is always yes and the opposite branch was dead code.
+      // A check that cannot fail, shipped in the round that named that failure mode.
+      //
+      // The question a reader actually has is different: is the plaintext model INDIFFERENT at
+      // these rows, or did a large deviation overturn a decision it held? That is answered against
+      // the spread of scores the model produces on this corpus, which is independent of the
+      // deviation and can come out either way.
+      const allPlain = bt.plainLogits.flat();
+      const scoreRange = allPlain.length ? Math.max(...allPlain) - Math.min(...allPlain) : 0;
+      const flipMarginRel = scoreRange > 0 ? flipMarginMax / scoreRange : 0;
       batch = {
         rows: bt.rows, rowsOffered: bt.rowsOffered, rowsPerCiphertext: bt.rowsPerCiphertext,
         fheMs: bt.fheMs, maxAbsError: bt.maxAbsError,
-        flipMarginMax,
-        // Two-sided: the deviation can move each of the two scores, so it bridges up to 2x itself.
-        flipsWithinNoise: flipped.length > 0 && flipMarginMax <= 2 * bt.maxAbsError,
+        flipMarginMax, flipMarginRel,
+        // Six orders of magnitude below the score range: far below anything a model with a real
+        // preference produces, and far ABOVE the ~1e-9 relative deviation CKKS contributes here, so
+        // the threshold separates the two cases instead of collapsing into one of them.
+        flipsWithinNoise: flipped.length > 0 && flipMarginRel <= 1e-6,
         mismatches: flipped.length,
         points: bt.logits.map((row, i) => ({
           enc: row[encCls[i]], plain: bt.plainLogits[i][encCls[i]],
@@ -1357,7 +1389,12 @@ export function runClientPipeline(
         const flipped2 = encCls2.map((_, i) => i).filter((i) => encCls2[i] !== plainCls2[i]);
         const flipMarginMax2 = flipped2.length
           ? Math.max(...flipped2.map((i) => decisionMargin(batch.plainLogits[i]))) : 0;
-        const flipsWithinNoise2 = flipped2.length > 0 && flipMarginMax2 <= 2 * batch.maxAbsError;
+        // Against the score SCALE, not the deviation - see the note at the finance/genomics twin
+        // for why the deviation comparison is a tautology that can only ever return true.
+        const allPlain2 = batch.plainLogits.flat();
+        const range2 = allPlain2.length ? Math.max(...allPlain2) - Math.min(...allPlain2) : 0;
+        const flipMarginRel2 = range2 > 0 ? flipMarginMax2 / range2 : 0;
+        const flipsWithinNoise2 = flipped2.length > 0 && flipMarginRel2 <= 1e-6;
         const bits2 = batch.maxAbsError > 0 && batch.maxAbsError < 1
           ? Math.floor(-Math.log2(batch.maxAbsError)) : null;
         metric(stage, "encrypted_top1_mismatches", mism);
@@ -1385,6 +1422,7 @@ export function runClientPipeline(
         metric(stage, "encrypted_agreement_rows", batch.rows);
         if (mism > 0) {
           metric(stage, "encrypted_flip_margin_max", flipMarginMax2);
+          metric(stage, "encrypted_flip_margin_relative", flipMarginRel2);
           metric(stage, "encrypted_flips_are_ties", flipsWithinNoise2 ? 1 : 0);
         }
         artifacts.encrypted_agreement_plot = {
@@ -1399,7 +1437,8 @@ export function runClientPipeline(
           // derive this from what it plots - and printing the plotted maximum beside a class-score
           // count is how the finance caption came to understate the deviation by 37%.
           maxAbsError: batch.maxAbsError,
-          flipMarginMax: flipMarginMax2, flipsWithinNoise: flipsWithinNoise2,
+          flipMarginMax: flipMarginMax2, flipMarginRel: flipMarginRel2,
+          flipsWithinNoise: flipsWithinNoise2,
         };
         emit("log", stage, `encrypted tier over the HELD-OUT SPLIT: ${batch.rows} of `
           + `${batch.rowsOffered} rows x ${w.W.length} classes = ${batch.rows * w.W.length} scores in `
@@ -2237,13 +2276,16 @@ export function runClientPipeline(
             metric(stage, "encrypted_top1_mismatches_batch", bt.mismatches);
             if (bt.mismatches > 0) {
               metric(stage, "encrypted_flip_margin_max", bt.flipMarginMax);
+              // The basis of the verdict, so it is checkable rather than taken on trust.
+              metric(stage, "encrypted_flip_margin_relative", bt.flipMarginRel);
               metric(stage, "encrypted_flips_are_ties", bt.flipsWithinNoise ? 1 : 0);
             }
             artifacts.encrypted_agreement_plot = {
               kind: "encrypted-agreement", points: bt.points, rows: bt.rows,
               rowsOffered: bt.rowsOffered, classes: real.logits.length,
               maxAbsError: bt.maxAbsError,   // all rows x classes; `points` is winning-class only
-              flipMarginMax: bt.flipMarginMax, flipsWithinNoise: bt.flipsWithinNoise,
+              flipMarginMax: bt.flipMarginMax, flipMarginRel: bt.flipMarginRel,
+              flipsWithinNoise: bt.flipsWithinNoise,
             };
             emit("log", stage, `encrypted tier over the page's own corpus: ${bt.rows} of `
               + `${bt.rowsOffered} rows in one ciphertext (${bt.rowsPerCiphertext} fit at this `
@@ -2386,15 +2428,38 @@ export function runClientPipeline(
             metric(stage, "fhe_conv_multiplies", real.conv.multiplies);
             metric(stage, "fhe_conv_patches_packed", real.conv.patchesPerCiphertext);
             metric(stage, "fhe_conv_output_shape", `${real.conv.channels}x${real.conv.outH}x${real.conv.outW}`);
-            metric(stage, "fhe_conv_ms", r2(real.conv.convMs));
-            // Measured, so the "key-switching dominates" claim can be CHECKED here rather
-            // than assumed from the dense path. The convolution has the same 16 rotations
-            // wrapped in a very different work mix - 4 channels x 196 patches of im2col
-            // encoding - so if rotations were the whole story these two would agree.
+            // TWO SCOPES, NAMED, because conflating them published a wrong figure.
+            //
+            // On the published-weights path `convMs` is the WHOLE student - the convolution plus
+            // its two dense layers - while `rotations` and `rotateMs` describe the convolution
+            // block alone. `fhe_conv_ms` has therefore always been the student's total under a
+            // name that says convolution, and Round 38 divided one by the other and published
+            // "rotations are 10% of the convolution, im2col dominates". That share was computed
+            // against a denominator containing 136 rotations the numerator excludes.
+            //
+            // The rename is the fix: the total is `fhe_encrypted_student_ms`, and `fhe_conv_ms` is
+            // the convolution. On the synthetic-kernel path they are equal, because there the
+            // convolution IS the whole computation.
+            metric(stage, "fhe_encrypted_student_ms", r2(real.conv.convMs));
+            metric(stage, "fhe_conv_ms", r2(real.conv.convOnlyMs));
             metric(stage, "fhe_conv_rotate_ms", Math.round(real.conv.rotateMs * 1000) / 1000);
             if (real.conv.rotations > 0) {
+              // Both scoped to the convolution block.
               metric(stage, "fhe_conv_rotation_share",
-                r2(real.conv.rotateMs / Math.max(1e-9, real.conv.convMs)));
+                r2(real.conv.rotateMs / Math.max(1e-9, real.conv.convOnlyMs)));
+              metric(stage, "fhe_conv_ms_per_rotation",
+                Math.round((real.conv.rotateMs / real.conv.rotations) * 1000) / 1000);
+            }
+            // The student's dense layers, so every millisecond of the total is attributed. Without
+            // them the page showed an 81 ms convolution inside a 569 ms student and said nothing
+            // about the other 488.
+            if (real.conv.denseRotations) {
+              metric(stage, "fhe_student_dense_ms", r2(real.conv.denseMs ?? 0));
+              metric(stage, "fhe_student_dense_rotations", real.conv.denseRotations);
+              metric(stage, "fhe_student_dense_rotate_ms",
+                Math.round((real.conv.denseRotateMs ?? 0) * 1000) / 1000);
+              metric(stage, "fhe_student_dense_rotation_share",
+                r2((real.conv.denseRotateMs ?? 0) / Math.max(1e-9, real.conv.denseMs ?? 0)));
             }
             // The convolution's own approximation error against a plaintext reference computed on
             // the same inputs. Reported separately from the dense layer's so a regression in one
