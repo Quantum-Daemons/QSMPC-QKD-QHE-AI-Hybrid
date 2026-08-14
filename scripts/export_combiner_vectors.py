@@ -50,6 +50,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
 from qsh.pqc.hybrid_kem import _combine, _combiner_info  # noqa: E402
+from qsh.pqc.transport import _mix_qkd_its  # noqa: E402
 
 OUT = ROOT / "web" / "scripts" / "vectors" / "hybrid_combiner_vectors.json"
 
@@ -85,15 +86,32 @@ def main() -> int:
             "expected": derived.hex(),
         })
 
+    # The ITS combiner, for the same reason and found the same way. `clientMcp.ts`'s `itsCombine`
+    # called itself a "mirror of transport._mix_qkd_its" while seeding its Toeplitz matrix from a
+    # SHA-256 counter chain against Python's SHAKE-256, so the two derived different keys from the
+    # same inputs. Nothing caught it - the hybrid-KEM gate covers only the KEM combiner - and it is
+    # the identical defect one module over. Two lengths, because the extractor's `need_t` depends on
+    # the input size and a wrong slice would survive a single-length vector.
+    its_vectors = []
+    for n in (32, 48):
+        p, q = _pat(n, 3), _pat(n, 5)
+        its_vectors.append({
+            "name": f"its_toeplitz/{n}B",
+            "pqc": p.hex(), "qkd": q.hex(),
+            "expected": _mix_qkd_its(p, q).hex(),
+        })
+
     OUT.parent.mkdir(parents=True, exist_ok=True)
     OUT.write_text(json.dumps({
         "_generated_by": "scripts/export_combiner_vectors.py (do not edit by hand; edit "
-                         "src/qsh/pqc/hybrid_kem.py and regenerate)",
-        "_what_this_is": "Bytes produced by the PYTHON combiner. web/scripts/check_hybrid_combiner.mjs "
-                         "bundles the real browser module and must reproduce them exactly.",
+                         "src/qsh/pqc/hybrid_kem.py or src/qsh/pqc/transport.py and regenerate)",
+        "_what_this_is": "Bytes produced by the PYTHON combiners. web/scripts/check_hybrid_combiner.mjs "
+                         "bundles the real browser modules and must reproduce them exactly.",
         "vectors": vectors,
+        "its_vectors": its_vectors,
     }, indent=2) + "\n")
-    print(f"wrote {OUT.relative_to(ROOT)} ({len(vectors)} vectors)")
+    print(f"wrote {OUT.relative_to(ROOT)} "
+          f"({len(vectors)} hybrid-KEM, {len(its_vectors)} ITS)")
     return 0
 
 

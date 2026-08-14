@@ -40,6 +40,7 @@ function load() {
   const entry = join(dir, "entry.ts");
   writeFileSync(entry, `
 export { hybridCombine, hybridCombinerInfo } from ${JSON.stringify(join(WEB, "src/lib/hybridCombiner"))};
+export { itsCombine } from ${JSON.stringify(join(WEB, "src/lib/clientMcp"))};
 `);
   const out = join(dir, "bundle.mjs");
   execFileSync("npx", ["esbuild", entry, "--bundle", "--format=esm", "--platform=node",
@@ -149,6 +150,35 @@ for (const v of vectors) {
         + " fails here rather than diverging silently");
 }
 
+// ---------------------------------------------------------------------------------------------
+// 6. The OTHER combiner, which had the same defect and no gate.
+//
+// `itsCombine` in clientMcp.ts described itself as a "mirror of transport._mix_qkd_its" while
+// seeding its Toeplitz matrix from a SHA-256 counter chain against Python's SHAKE-256. The two
+// derived different keys from identical inputs, and it is user-selectable in the demo
+// ("Toeplitz+QLHL (ITS - leakage-resilient)"). Measured on the tree that shipped:
+//
+//     python  72f108ccd0dc879a...   browser  c05240436fae8508a...
+//
+// Checks 1-5 could not see it: they cover the hybrid-KEM combiner only, and a gate is blind
+// outside its own scope however well it works inside it. Same shape as the six-extension "no
+// Japanese in public files" check that left 122 tracked files unscanned while its comment claimed
+// the scope was "exactly tracked".
+// ---------------------------------------------------------------------------------------------
+{
+  const { its_vectors: itsVectors } = JSON.parse(
+    readFileSync(join(WEB, "scripts/vectors/hybrid_combiner_vectors.json"), "utf8"));
+  check("ITS vectors present", Array.isArray(itsVectors) && itsVectors.length >= 2,
+        "regenerate with scripts/export_combiner_vectors.py; two input lengths are needed because"
+        + " the extractor's matrix size depends on the input size");
+  for (const v of itsVectors ?? []) {
+    const got = await m.itsCombine(unhex(v.pqc), unhex(v.qkd));
+    check(`ITS vector ${v.name}`, hex(got) === v.expected,
+          `browser derived ${hex(got).slice(0, 32)}..., Python committed ${v.expected.slice(0, 32)}...`
+          + " - itsCombine no longer mirrors transport._mix_qkd_its");
+  }
+}
+
 rmSync(dir, { recursive: true, force: true });
 
 if (failures.length) {
@@ -156,4 +186,5 @@ if (failures.length) {
   for (const f of failures) console.error("  - " + f);
   process.exit(1);
 }
-console.log(`check:combiner OK (${vectors.length} vectors reproduced from the Python combiner)`);
+console.log(`check:combiner OK (${vectors.length} hybrid-KEM vectors + the ITS combiner reproduced`
+            + " from the Python implementations)");
