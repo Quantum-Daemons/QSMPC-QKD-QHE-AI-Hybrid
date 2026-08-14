@@ -1106,3 +1106,51 @@ re-seeding the deletion makes it fail naming `rowsOffered` while `tsc` stays cle
 An orphaned comment went out with the same commit: the three lines justifying the deleted 1e-6
 threshold survived into the middle of an object literal, arguing for a test the file retracts thirty
 lines above. Removed.
+
+### The fact-check sweep found no new literature, and one real defect in the old literature
+
+Five modalities swept for anything dated 2026-08-10 or later: CKKS/FHE, QKD/QSDC, standards and
+regulation, MPC and federated learning, QML. **Nothing published in that window changes a claim this
+project makes.** The negative is checkable rather than an absence of effort - the FHE sweep
+enumerated the full arXiv cs.CR monthly listing rather than keyword-matching, and probed ePrint
+numbers directly (2026/1644 exists at 2026-08-09; 2026/1648 returns 404) to establish the boundary.
+
+The finding came from reading a standard the project ALREADY CITES against the code.
+
+**NIST SP 800-227 (September 2025, final) section 4.6.3** defines the IND-CCA-preserving combiner as
+
+    KeyCombineCCA_H:  H(K1, K2, c1, c2, ek1, ek2, domain_sep)
+
+and states, of the reference it is drawn from, that it "does not incorporate encapsulation keys into
+the combiner, **as this is not needed to achieve the IND-CCA-preserving property**". So the
+ciphertexts are load-bearing and the encapsulation keys are optional - useful for binding the secret
+to party identities.
+
+This project bound `ek1 || ek2 || c2` and **omitted `c1`, the ML-KEM ciphertext**: the optional half
+included, one of the two that deliver the property dropped. Four sites, all with the same shape:
+`src/qsh/pqc/hybrid_kem.py` (encapsulate and decapsulate), `web/src/lib/crypto.ts`,
+`web/src/lib/clientCompute.ts`. A fourth, `web/src/lib/clientMcp.ts`, bound **nothing at all** - IKM
+`K1 || K2` under a bare label, which is expression (16) of the same document, the combiner it names
+as not preserving IND-CCA - while its own comment claimed it matched the backend.
+
+**Demonstrated, not argued.** With the old transcript, a `c1` mauled by one bit that decapsulates to
+the same `K1` derived a byte-identical session key; with `c1` bound it derives a different one:
+
+    old transcript contains c1: False        new transcript contains c1: True
+    OLD: mauled c1, same K1 -> identical session key: True
+    NEW: mauled c1, same K1 -> identical session key: False
+
+That is the failure direction a hybrid exists to hedge: ML-KEM broken, X25519 sound, and the
+composite key unchanged anyway.
+
+**Scoped honestly**: this runs in one process with no network transport and no exposed decapsulation
+oracle, so it was a conformance and claim-accuracy defect rather than an exploitable break in the
+shipped artefact. It is fixed because standards-conformance is the claim.
+
+All four sites changed together - they must, or backend and browser derive different keys - and the
+domain separator moved to `v2`, because deriving a different key under an unchanged label is what
+domain separation exists to prevent. The deployed page now reports
+*info="qsh/hybrid-kem/v2", transcript c1||c2||ek1||ek2 per NIST SP 800-227 s4.6.3*.
+`references/stress-testing-fact-check.md:56` proposed a test for "the ciphertext-binding combiner";
+that description became true of the code with this change and was not before, and the file now says
+so.
