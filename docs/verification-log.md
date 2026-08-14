@@ -899,3 +899,24 @@ leaving two numbers to be compared.
 time, derived from the macro F1 values in the same table and cross-checked against the stored flag:
 *"the classical baseline (0.9866) is ahead of the best quantum macro F1 here (0.8316)"*.
 
+### Confirmed on the deployed site, not only locally
+
+Deployed from GitHub - fetch, Docker build (exit status captured, 0), `up -d` with the shared-proxy
+override - and re-verified in Chrome on the public URL. Container age 6 s at first read; bundle
+`index-pejoV-ed.js`, changed from Round 37's `index-CLUy7CWv.js`.
+
+| page | what the deployed run shows |
+|---|---|
+| finance | `fhe_model` bundled real model; 400 rows scored; `encrypted_agreement` 1 over 400; 3.227 ms/rotation; `encrypted_tier_measured_ms` 682 ms |
+| genomics | `encrypted_agreement` **0.83** over 30 rows with 5 mismatches - the value the old double-write would have replaced with 1; `encrypted_flip_margin_max` exactly 0; caption states the ties |
+| medical | `fhe_conv_rotation_share` 0.10 against the dense layer's 57%; tier 1,280 ms; 3.04 ms/rotation |
+| telecom | `ids_classes_scored` 8; `ids_metric_roles` renders; `quantum_beats_classical` reads *"the classical baseline (0.9866) is ahead of the best quantum macro F1 here (0.8316)"*; 3.146 ms/rotation over 512 rows |
+| satellite | unchanged, no collision |
+
+`PF5` checked on the live page by running twice in one tab: `fhe_keygen_ms` 470.39 on the first run
+and **absent** on the second, with per-rotation 3.227 then 3.213 - 0.4% apart, which is the stability
+the comparison rests on. Across the four deployed encrypted pages: **3.04, 3.058, 3.146, 3.227
+ms/rotation**.
+
+No `metric_overwritten` on any page. No `NaN`, `undefined` or `[object Object]`. No horizontal
+overflow.
