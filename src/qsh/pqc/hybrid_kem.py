@@ -24,7 +24,28 @@ from cryptography.hazmat.primitives.asymmetric.x25519 import (
 from cryptography.hazmat.primitives.kdf.hkdf import HKDF
 
 DEFAULT_KEM = "ML-KEM-768"   # NIST FIPS 203, ~AES-192 security category 3
-_COMBINER_INFO = b"qsh/hybrid-kem/v2 ML-KEM-768+X25519"
+_COMBINER_PREFIX = b"qsh/hybrid-kem/v2 "
+
+
+def _combiner_info(kem_name: str) -> bytes:
+    """Domain separator naming the ACTUAL parameter set, not a fixed one.
+
+    SP 800-227 section 4.6.3: "The domain separator domain_sep should be used to uniquely identify
+    the composite scheme in use (e.g., P1, P2, order of composition, choice of parameter set, key
+    combiner, KDF)."
+
+    This was the literal ``b"...ML-KEM-768+X25519"`` while ``HybridKEMRecipient`` takes ``kem_name``
+    and the browser's ``kemImpl()`` genuinely switches to ML-KEM-1024 when the run selects category
+    5 - measured on the deployed page, ciphertext 1088 bytes to 1568. So the category-5 path
+    derived its key under a separator asserting the category-3 parameter set: the one element of
+    the composite scheme the separator is required to pin, unpinned.
+
+    It also removes a concatenation ambiguity. The transcript joins fixed-width fields with no
+    length prefixes, which is unambiguous only WITHIN a parameter set - ML-KEM-768 gives a 1088-byte
+    ciphertext and a 1184-byte encapsulation key, ML-KEM-1024 gives 1568 and 1568. With the set
+    named in the separator, no two parameter sets share a derivation.
+    """
+    return _COMBINER_PREFIX + kem_name.encode() + b"+X25519"
 
 
 @dataclass
@@ -44,13 +65,14 @@ class HybridCiphertext:
     x25519_ephemeral_public: bytes
 
 
-def _combine(ss_pq: bytes, ss_classical: bytes, transcript: bytes, length: int) -> bytes:
+def _combine(ss_pq: bytes, ss_classical: bytes, transcript: bytes, length: int,
+             info_prefix: bytes) -> bytes:
     """HKDF-SHA256 combiner binding both shared secrets + a transcript."""
     return HKDF(
         algorithm=hashes.SHA256(),
         length=length,
         salt=None,
-        info=_COMBINER_INFO + b"|" + transcript,
+        info=info_prefix + b"|" + transcript,
     ).derive(ss_pq + ss_classical)
 
 
@@ -76,7 +98,8 @@ class HybridKEMRecipient:
         # c1 || c2 || ek1 || ek2 - see the note on `encapsulate`.
         transcript = (ct.mlkem_ciphertext + ct.x25519_ephemeral_public
                       + self._mlkem_public + self._x_pub)
-        return _combine(ss_pq, ss_classical, transcript, length)
+        return _combine(ss_pq, ss_classical, transcript, length,
+                        _combiner_info(self.kem_name))
 
     def free(self) -> None:
         self._kem.free()
@@ -125,5 +148,6 @@ def encapsulate(pub: HybridPublicKey, *, length: int = 32) -> tuple[HybridCipher
     ss_classical = eph.exchange(recipient_x)
     # c1 || c2 || ek1 || ek2, matching SP 800-227 section 4.6.3's argument order after K1 and K2.
     transcript = mlkem_ct + eph_pub + pub.mlkem_public + pub.x25519_public
-    shared = _combine(ss_pq, ss_classical, transcript, length)
+    shared = _combine(ss_pq, ss_classical, transcript, length,
+                      _combiner_info(pub.kem_name))
     return HybridCiphertext(mlkem_ct, eph_pub), shared

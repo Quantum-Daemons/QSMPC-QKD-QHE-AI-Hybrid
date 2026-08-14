@@ -1696,7 +1696,14 @@ export function runClientPipeline(
         // it. See src/qsh/pqc/hybrid_kem.py::encapsulate for the full note. v2 because the derived
         // key changes and deriving a different key under an unchanged label is what domain
         // separation exists to prevent.
-        const INFO = new TextEncoder().encode("qsh/hybrid-kem/v2 ML-KEM-768+X25519|");
+        // The parameter set is IN the separator, not assumed. SP 800-227 s4.6.3 requires domain_sep to
+        // identify the composite scheme including the "choice of parameter set", and this was the fixed
+        // literal "ML-KEM-768" while `kemImpl()` genuinely switches to ML-KEM-1024 on the category-5 path -
+        // measured on the deployed page, ciphertext 1088 bytes to 1568. It also removes a concatenation
+        // ambiguity: the transcript joins fixed-width fields with no length prefixes, which is unambiguous
+        // only within one parameter set.
+        const kemLabel = (kemSel && kemSel.includes("1024")) ? "ML-KEM-1024" : "ML-KEM-768";
+        const INFO = new TextEncoder().encode(`qsh/hybrid-kem/v2 ${kemLabel}+X25519|`);
         const bind = (pq: Uint8Array, cl: Uint8Array) => {
           const tr = new Uint8Array(
             e.cipherText.length + aliceXPub.length + bob.publicKey.length + bobXPub.length);
@@ -1722,7 +1729,7 @@ export function runClientPipeline(
         // X25519 again here read as "ml-kem-768+x25519 + X25519".
         emit("log", stage, `hybrid KEM = ${kemSel} (NIST cat-${kemCategory(kemSel)}) — `
           + `agreement=${ok}; ${e.cipherText.length} B ML-KEM ciphertext + ${aliceXPub.length} B X25519 `
-          + `ephemeral public key, combined with HKDF-SHA256(pq_ss || x25519_ss), info="qsh/hybrid-kem/v2", transcript c1||c2||ek1||ek2 per NIST SP 800-227 s4.6.3 — the same combiner the backend uses`);
+          + `ephemeral public key, combined with HKDF-SHA256(pq_ss || x25519_ss), info="qsh/hybrid-kem/v2 ${kemLabel}+X25519", transcript c1||c2||ek1||ek2 per NIST SP 800-227 s4.6.3 — the same combiner the backend uses`);
         // Quantum entropy source (simulated state-vector measurement, not hardware) — measured health + throughput.
         const qr = generateQuantumBits(Number(config.qrng_bits ?? qrngCfg().bits),
           { source: "sim", postProcessing: String(config.qrng_post ?? qrngCfg().post_processing),
