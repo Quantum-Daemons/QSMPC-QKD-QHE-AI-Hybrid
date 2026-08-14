@@ -63,7 +63,7 @@ export default function Overview() {
         </div>
         <div className="card">
           <h3>WS4 · QHE × AI</h3>
-          <p>Quantum one-time pad (perfect hiding), Clifford+T QCNN private inference, and Rate-1 QFHE. Classical CKKS (TenSEAL CPU / OpenFHE CPU / HEonGPU GPU) for comparison.</p>
+          <p>Quantum one-time pad (perfectly hiding as a scheme; the demo applies the mask with a seeded key, so its structure and cost are measured and its secrecy is not), Clifford+T QCNN private inference, and Rate-1 QFHE. Classical CKKS (TenSEAL CPU / OpenFHE CPU / HEonGPU GPU) for comparison.</p>
         </div>
       </div>
 
