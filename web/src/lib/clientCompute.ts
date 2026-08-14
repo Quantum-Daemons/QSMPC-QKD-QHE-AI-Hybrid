@@ -2040,7 +2040,23 @@ export function runClientPipeline(
         break;
       }
       case "qsmpc_compute": {
-        const key = (config as any)._sessionKey ?? new Uint8Array(32);
+        // No all-zero fallback. `?? new Uint8Array(32)` silently substituted 32 zero bytes when the
+        // handshake had not run, and the stage then reported "keyed-hash PSI" over a keyed hash
+        // whose key is public knowledge - a security property the run does not provide, stated as
+        // if it did. The federated path below already refuses rather than degrades, for exactly this
+        // reason, and its comment says why: "the claim is written once and the fallback is taken
+        // forever."
+        //
+        // `pqc_handshake` precedes this stage in every flow that reaches it, so the throw is
+        // unreachable today. That is the argument FOR making it a throw rather than against it: this
+        // round moved key material between stages, and if the ordering changes again this fails
+        // loudly instead of quietly weakening the PSI to an unkeyed one.
+        const key = (config as any)._sessionKey as Uint8Array | undefined;
+        if (!key || key.length === 0) {
+          throw new Error(
+            "qsmpc_compute needs the PQC session key: keyed-hash PSI has no unkeyed mode",
+          );
+        }
         // genomics defaults to QSMS secure summation; others to keyed-hash PSI (matches the backend)
         const op = config.qsmpc_op || (usecase === "genomics" ? "sum" : "psi");
         if (op === "sum") {

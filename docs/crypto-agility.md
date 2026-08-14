@@ -89,8 +89,12 @@ a new FHE backend) is **one `register(...)` call** - no stage code changes.
     quantum-safe audit record; emits `signature_verified`).
 
 ## Hybrid + defence-in-depth
-- **KEM is always hybrid** (`ML-KEM` XOR `X25519`): secure if *either* primitive holds - the
-  HNDL hedge. QKD key material can be mixed in (`PQC + QKD`) per **BSI TR-02102-1 v2026-01 section 2.2 "Key Derivation and
+- **KEM is always hybrid** (`ML-KEM` + `X25519`, combined with HKDF-SHA256 over both shared
+  secrets under a domain-separated transcript - NOT XOR, which this line said for sixteen
+  rounds and which was never what the code did): secure if *either* primitive holds - the
+  HNDL hedge. The construction is `src/qsh/pqc/hybrid_kem.py` and
+  `web/src/lib/hybridCombiner.ts`, which `npm run check:combiner` holds byte-identical;
+  described there rather than restated here, so this file cannot drift from it again. QKD key material can be mixed in (`PQC + QKD`) per **BSI TR-02102-1 v2026-01 section 2.2 "Key Derivation and
 Hybridisation"** (p.29; section 2.1 is "Use of Quantum-Safe Mechanisms"),
   which recommends *"a hybrid key agreement mechanism that combines a quantum-safe and a classical
   mechanism"* that *"should remain secure as long as one of the methods used is secure"*. This was
