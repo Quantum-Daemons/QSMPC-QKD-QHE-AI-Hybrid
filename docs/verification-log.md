@@ -792,3 +792,110 @@ ones:
   reads *"Encrypted score against plaintext score, 512 held-out rows"* and the ticks read
   `3.73 / 8.73 / 13.73 / 21.79`. Claiming a UI fix without redeploying is the same error as reading a
   metric before the state settles.
+
+## Round 38 - the page encrypted one model and explained another, and the plan's own metric was 50x wrong
+
+Host: Chrome 149.0.0.0, Linux x86_64, 20 logical cores, `crossOriginIsolated` true. Measured on a
+local production build before deploy, then re-verified on the deployed bundle.
+
+### What was encrypted, before and after
+
+Finance and genomics reported a class from the bundled real model, drew SHAP bars labelled "real
+bundled model", and computed every `encrypted_*` / `fhe_*` figure from the demo pattern
+`((i % 3) - 1) * 0.15`. `realClientHybrid` took no model argument, so it could not have done
+otherwise - while `privateInference`'s own comment three lines away asserted the real model "is what
+the SHAP attribution and the CKKS evaluation both consume".
+
+| finance | deployed `main` (before) | local build (after) |
+|---|---|---|
+| `fhe_model` | absent | bundled real model |
+| `encrypted_scores_compared` | 2 (one row) | 400 rows scored |
+| `fhe_max_abs_error` | 6.20e-13 | 1.93e-9 |
+| `encrypted_precision_bits` | 40 | 28 |
+| `encrypted_agreement` | 1 over 1 row | 1 over 400 rows |
+
+The precision drop is expected and is the honest cost: the real surrogate's weights are orders of
+magnitude larger than the demo pattern's, so the encoded norm is larger. The old numbers described a
+weight vector that appeared nowhere else on the page.
+
+Genomics: 30 rows, `encrypted_agreement` 0.90-0.97 depending on the sampled corpus.
+
+### Three defects found by verifying that change
+
+- **`encrypted_agreement` was written twice into one stage.** The batched figure emitted a rate over
+  30 rows; the single-row path then emitted `mism === 0 ? 1 : 0`, and won. Finance hid it - both read
+  1 - and genomics exposed it, printing `encrypted_agreement 1` beside
+  `encrypted_top1_mismatches_batch 3` of 30. `metric()` now records any key rewritten with a
+  different value as `metric_overwritten`; **seeding the defect back produced
+  `encrypted_agreement: 0.83 -> 1`**, so the guard is known to fire.
+- **A mismatch count without a margin points the wrong way.** Genomics' model is the published PGS
+  weights as `[-w/2, +w/2]` with zero bias, so its two logits are exact negatives and the decision
+  margin IS the polygenic score. `encrypted_flip_margin_max` measured **exactly 0** at the flipped
+  rows: those samples carry no effect allele at any of the top-8 loci, so the plaintext model's own
+  top-1 comes from argmax tie-breaking and any deviation flips it. "3 of 30 mismatches" beside a
+  7.2e-10 deviation reads as CKKS being unreliable, which is the opposite of the measurement.
+- **A caption whose scope was narrower than its sentence.** "worst absolute deviation 1.80e-8"
+  printed immediately after "(800 class scores)" was a maximum over the 400 plotted winning-class
+  scores; the metric row beside it read 2.47e-8 over all 800. Both correct, 37% apart.
+
+### Per-rotation cost, which is the comparable axis, and the plan's error
+
+`fhe_linear_ms` is the measurement multiplied by `benchScale()`; `fhe_dense_rotations` is a raw
+count. The division this round's plan proposed reads **159.9 ms per rotation on genomics against a
+measured 3.18**. `rotateVector` is now timed directly.
+
+| page | rotations | rotate ms | ms/rotation |
+|---|---|---|---|
+| finance | 3 | 9.29 | 3.10 |
+| medical, dense | 3 | 9.65 | 3.22 |
+| medical, convolution | 16 | 57.59 | 3.60 |
+| telecom, 512-row batch | 24 | - | 3.17 |
+| genomics | 6 | 19.07 | 3.18 |
+
+Published comparator, fetched and read directly: node-seal `BENCHMARK.md` (2025-03-27, M1 Pro),
+CKKS `EvaluateRotate` at n=8192/log(q)=218 reads **6830 us in Chrome**. Same order, this host
+roughly 2.2x faster. The n=16384 row is at log(q)=438 against 200 bits here and is recorded as NOT
+comparable.
+
+**A claim refuted by measuring it.** Rotations are 57% of the dense layer's wall-clock and **10%** of
+the convolution's, where im2col encoding over 4 channels by 196 patches dominates. Three comments
+asserting "key-switching dominates CKKS cost" now say what was measured.
+
+### Ring degree 16384: measured and reverted
+
+| | 8192 | 16384 |
+|---|---|---|
+| keygen (first click) | 255.26 ms | 476.71 ms |
+| ms per rotation | 3.098 | 6.725 |
+| linear layer, measured | 19.25 ms | 34.41 ms |
+| batch, 400 rows | 20.59 ms | 36.16 ms |
+| batch precision | 25 bits | 24 bits |
+| rows per ciphertext | 512 | 1024 |
+| medical conv patches packed | 196 (one image) | **196 (one image)** |
+
+Every published FHE figure roughly doubled; the realised benefit was zero. The convolution still
+packed one image because no caller hands it two, and the extra batch rows went unused because finance
+offers 400 and genomics 30. Reverted at the user's direction; the config wiring stayed.
+
+**The first attempt at the change was inert and reported success.** Editing
+`src/qsh/config/defaults.py` alone changed nothing, because `load_config()` overlays `config.yaml`.
+The export script rewrote the JSON with the old value and exited 0, `report/build_data.py`
+regenerated the crypto table with the old value and exited 0, and the bundle rebuilt with the old
+value. Caught by reading the generated output, not by any signal.
+
+### Operational window
+
+`client_compute_ms` reading 0.07 ms directly under "total: 700 ms / inference", labelled "client
+compute (wall-clock)", timed only the plaintext reference call. `encrypted_tier_measured_ms` is the
+measured sum: **finance 700 ms**, **medical 1,269 ms** (579 ms of it the encrypted convolution).
+Both inside the 1-10 s interactive-batch window, and the page now states the verdict rather than
+leaving two numbers to be compared.
+
+### WS2
+
+`ids_classes_scored` renders (8), the headline sentence quotes it instead of a literal, and
+`ids_metric_roles` marks which rows lead - this run shows binary F1 1.00 beside a worst class of
+0.87, which is the gap the marker exists for. `quantum_beats_classical` reaches the DOM for the first
+time, derived from the macro F1 values in the same table and cross-checked against the stored flag:
+*"the classical baseline (0.9866) is ahead of the best quantum macro F1 here (0.8316)"*.
+

@@ -105,9 +105,15 @@ export interface FHEResult {
    *  agreement (arXiv:2605.22237 Table IX reports it as an integer expected to be zero). Without it
    *  each caller would have to recompute W.x + b and could get it subtly wrong. */
   plainLogits: number[];
-  /** Homomorphic rotations performed, counted. Each triggers a key-switch, and key-switching is
-   *  what dominates CKKS cost - so this is the number that makes a dense layer and a convolution
-   *  comparable on the axis that actually matters, rather than on wall-clock alone. */
+  /** Homomorphic rotations performed, counted. Each triggers a key-switch, so this is the number
+   *  that makes a dense layer and a convolution comparable on a shared axis rather than on
+   *  wall-clock alone.
+   *
+   *  Measured in Round 38, and it holds for the DENSE layer only: rotations are 57% of that
+ *  layer's wall-clock (9.65 of 17.0 ms) and 10% of the convolution's (57.6 of 579.3 ms),
+ *  where im2col encoding over 4 channels x 196 patches dominates instead. Per-rotation cost
+ *  is stable across both (3.2-3.6 ms), which is what makes it the comparable unit - not the
+ *  claim that it is always the largest term. */
   rotations: number;
   multiplies: number;
   /** Wall-clock spent INSIDE `rotateVector`, nothing else. The page's `fhe_linear_ms` is this
@@ -264,8 +270,10 @@ export async function encryptedLinear(W: number[][], b: number[], x: number[]): 
   // wall-clock MULTIPLIED by `benchScale(...)`, a cost-model projection for the selected model size,
   // while `fhe_dense_rotations` is a raw count from this loop. Dividing one by the other read
   // 158 ms per rotation on genomics against a true figure near 3 ms. Rotation cost is the unit the
-  // CKKS literature reports, because each rotation triggers a key-switch and key-switching dominates
-  // - so it has to be measured here rather than reconstructed from a scaled total downstream.
+  // CKKS literature reports, because each rotation triggers a key-switch - so it has to be measured
+  // here rather than reconstructed from a scaled total downstream. Rotations are 57% of the dense
+  // layer's time and 10% of the convolution's; the per-rotation COST is what is stable, not the
+  // share.
   let rotations = 0, multiplies = 0, rotateMs = 0;
   for (let j = 0; j < W.length; j++) {
     // an all-zero weight row (our 2-class "class 0" convention) → logit is just the bias; skip the
@@ -314,12 +322,19 @@ export interface ConvResult {
   fheMs: number;
   ctBytes: number | null;   // null = the size could not be read; NEVER 0, which is impossible
   maxAbsError: number;
-  /** Homomorphic rotations performed. Each one triggers a key-switch, which is what dominates. */
+  /** Homomorphic rotations performed. Each one triggers a key-switch. Measured share of this
+   *  operation's wall-clock: 10% - the im2col encoding around them is the larger term here,
+   *  unlike the dense layer where rotations are 57%. */
   rotations: number;
   /** Ciphertext-plaintext multiplications performed. */
   multiplies: number;
   /** How many im2col patches shared one ciphertext. 1 would mean no packing at all. */
   patchesPerCiphertext: number;
+  /** Time inside `rotateVector` only. Measured here as well as on the dense path because the
+   *  dense path's comment - key-switching dominates CKKS cost - is a claim about THIS operation
+   *  too, and the convolution is the one place it can be checked against a different work mix:
+   *  4 channels x 196 patches of im2col encoding around the same 16 rotations. */
+  rotateMs: number;
 }
 
 /**
@@ -401,7 +416,7 @@ export async function encryptedConv2d(
   let ctBytes: number | null = null;
   try { ctBytes = ctX.saveToArray(seal.ComprModeType.none).length; } catch { ctBytes = null; }
 
-  let rotations = 0, multiplies = 0;
+  let rotations = 0, multiplies = 0, rotateMs = 0;
   const maps: number[][] = [];
   for (let oc = 0; oc < kernels.length; oc++) {
     // The same kernel tiled into every patch block, so one multiply-plain covers all positions.
@@ -420,7 +435,9 @@ export async function encryptedConv2d(
     // along - which is exactly what the packing buys.
     for (let s = 1; s < block; s <<= 1) {
       const rot = new seal.Ciphertext();
+      const tr = performance.now();
       evaluator.rotateVector(acc, s, galois, rot);
+      rotateMs += performance.now() - tr;
       const nxt = new seal.Ciphertext();
       evaluator.add(acc, rot, nxt);
       acc = nxt;
@@ -449,7 +466,7 @@ export async function encryptedConv2d(
     }
   }
   return { maps, outH, outW, fheMs, ctBytes, maxAbsError,
-           rotations, multiplies, patchesPerCiphertext: nPatches };
+           rotations, multiplies, patchesPerCiphertext: nPatches, rotateMs };
 }
 
 /** The published student's structure, as written by `distil.save_cnn_student_weights`. */

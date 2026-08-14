@@ -599,9 +599,12 @@ export interface MeasuredHybrid {
    *  the benchmark as a measured value. */
   ctBytes: number | null;
   /** Set when the run performed a real encrypted CONVOLUTION rather than a dot product. Counted,
-   *  not estimated: rotations and the key-switch each triggers are what dominate CKKS cost. */
+   *  not estimated. Each rotation triggers a key-switch; measured, they are 57% of the dense
+   *  layer's time and 10% of the convolution's, so the COUNT and the per-rotation cost are the
+   *  portable quantities, not a claim about which term is largest. */
   conv?: { rotations: number; multiplies: number; patchesPerCiphertext: number;
            outH: number; outW: number; channels: number; convMs: number; maxAbsError: number;
+           rotateMs: number;
            /** True when the PUBLISHED student's weights drove the computation, false when only its
             *  shape did. The two must never be reported as the same thing. */
            publishedWeights: boolean; totalRotations: number;
@@ -749,6 +752,7 @@ export async function realClientHybrid(features: number[], u: () => number,
         conv = { rotations: r.rotations, multiplies: r.multiplies,
                  patchesPerCiphertext: r.patchesPerCiphertext, outH: r.outH, outW: r.outW,
                  channels: wts.conv.out_ch, convMs: r.fheMs, maxAbsError: r.logitMaxAbsError,
+                 rotateMs: r.rotateMs,
                  publishedWeights: true, totalRotations: r.totalRotations,
                  studentParams: wts.n_parameters, studentPrediction: r.prediction };
       } else {
@@ -762,6 +766,7 @@ export async function realClientHybrid(features: number[], u: () => number,
         conv = { rotations: cres.rotations, multiplies: cres.multiplies,
                  patchesPerCiphertext: cres.patchesPerCiphertext, outH: cres.outH, outW: cres.outW,
                  channels: chans, convMs: cres.fheMs, maxAbsError: cres.maxAbsError,
+                 rotateMs: cres.rotateMs,
                  publishedWeights: false, totalRotations: cres.rotations };
       }
     }
@@ -2342,6 +2347,35 @@ export function runClientPipeline(
           metric(stage, "fhe_linear_measured_ms", r2(real.fheMs));
           metric(stage, "fhe_bench_scale", r2(bscale));
           metric(stage, "fhe_linear_ms", r2(real.fheMs * bscale));
+          // THE MEASURED END-TO-END ENCRYPTED LATENCY, which is the only figure that can be read
+          // against an operational requirement.
+          //
+          // `fhe_linear_ms` + `mpc_nonlinear_ms` are both scaled by `bscale`, so the panel's "total"
+          // is a projection for the selected model size, not a time anything took. And
+          // `client_compute_ms` beside it is the PLAINTEXT reference call - sub-millisecond for a
+          // linear model - so neither of the two obvious candidates answers "how long did the
+          // private inference actually take". This does: encrypted linear plus the convolution
+          // where there is one, plus the secret-shared non-linear stage, all as measured.
+          //
+          // The window it is reported against is the one these verticals actually work in: fraud
+          // scoring, clinical decision support and compliance checks are interactive-batch, seconds
+          // rather than milliseconds. Stated as a range with the verdict derived, so a page that
+          // leaves the window says so instead of leaving a reader to compare two numbers.
+          {
+            const measuredMs = real.fheMs + real.mpcMs;
+            metric(stage, "encrypted_tier_measured_ms", r2(measuredMs));
+            const withinWindow = measuredMs <= 10_000;
+            metric(stage, "encrypted_tier_within_operational_window", withinWindow ? 1 : 0);
+            emit("log", stage, `measured end-to-end encrypted inference: ${r2(measuredMs)} ms `
+              + `(CKKS linear${real.conv ? " + convolution" : ""} ${r2(real.fheMs)} ms, `
+              + `secret-shared non-linear ${r2(real.mpcMs)} ms), on WASM CPU in this tab. `
+              + (withinWindow
+                ? "Inside the 1-10 s interactive-batch window these verticals work in."
+                : "OUTSIDE the 1-10 s interactive-batch window - this would not meet the "
+                  + "requirement it is being demonstrated for.")
+              + " Note this is NOT the panel's `total`, which scales the same measurement by "
+              + `${r2(bscale)}x for the selected model size.`);
+          }
           metric(stage, "mpc_nonlinear_ms", r2(real.mpcMs * bscale));
           metric(stage, "mpc_comm_kb", r2((real.commBytes * bscale) / 1024));
           if (real.conv) {
@@ -2353,6 +2387,15 @@ export function runClientPipeline(
             metric(stage, "fhe_conv_patches_packed", real.conv.patchesPerCiphertext);
             metric(stage, "fhe_conv_output_shape", `${real.conv.channels}x${real.conv.outH}x${real.conv.outW}`);
             metric(stage, "fhe_conv_ms", r2(real.conv.convMs));
+            // Measured, so the "key-switching dominates" claim can be CHECKED here rather
+            // than assumed from the dense path. The convolution has the same 16 rotations
+            // wrapped in a very different work mix - 4 channels x 196 patches of im2col
+            // encoding - so if rotations were the whole story these two would agree.
+            metric(stage, "fhe_conv_rotate_ms", Math.round(real.conv.rotateMs * 1000) / 1000);
+            if (real.conv.rotations > 0) {
+              metric(stage, "fhe_conv_rotation_share",
+                r2(real.conv.rotateMs / Math.max(1e-9, real.conv.convMs)));
+            }
             // The convolution's own approximation error against a plaintext reference computed on
             // the same inputs. Reported separately from the dense layer's so a regression in one
             // cannot hide behind the other.
