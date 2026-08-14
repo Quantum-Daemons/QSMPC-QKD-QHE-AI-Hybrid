@@ -157,10 +157,17 @@ function MetricRows({ spec }: { spec: ModelSpec }) {
   // framing is "architecture comparison, not a performance claim" published every input to the
   // comparison and not its result.
   //
-  // DERIVED from the macro F1 values in this table rather than read from the flag, and then checked
-  // AGAINST the flag. A stored boolean can go stale relative to the numbers beside it - it is
-  // written by the training script at one moment and the metrics can be refreshed at another - and
-  // a disagreement is a finding, not something to resolve silently in favour of either side.
+  // DERIVED from the macro F1 values in this table rather than read from the flag, so a reader can
+  // check the verdict against the two numbers it rests on. That is the whole value of the row.
+  //
+  // It is NOT an independent cross-check of the stored flag, and an earlier version of this comment
+  // said it was. `scripts/train/telecom_ids.py` writes the flag as
+  // `max(qnn.macro_f1, qsvc.macro_f1) > rf_metrics["macro_f1"]` and writes those same three values
+  // into the same record in the same call - byte-for-byte the computation below. So agreement
+  // between them is true by construction and is evidence of nothing. The disagreement branch is
+  // kept because a hand-edited or externally-produced `metrics.json` can still reach it, but it is
+  // not a guard against the staleness the old comment claimed, and calling it one made a decoration
+  // read as a check.
   //
   // Macro F1 specifically, because that is this use case's declared headline; comparing on accuracy
   // or binary F1 would compare on exactly the aggregates the panel marks as companions.
@@ -260,9 +267,10 @@ function MetricRows({ spec }: { spec: ModelSpec }) {
                 : <>the classical baseline ({fmt(verdict.classical)}) is <strong>ahead</strong> of the
                   best quantum macro F1 here ({fmt(verdict.best)})</>}
               {verdict.recorded != null && !verdict.agrees ? (
-                <> — <strong>and this contradicts the record</strong>, which stores{" "}
-                <code>quantum_beats_classical: {String(verdict.recorded)}</code>. One of the two is
-                stale; the derivation above uses the numbers in this table.</>
+                <> — <strong>and this contradicts the stored</strong>{" "}
+                <code>quantum_beats_classical: {String(verdict.recorded)}</code>, which can only
+                happen if the record was edited outside the training script. The verdict above is
+                derived from the two numbers in this table.</>
               ) : null}
             </td>
           </tr>
