@@ -47,6 +47,16 @@ export interface EncryptedAgreementPlot {
   flipMarginMax?: number;
   flipMarginRel?: number;
   flipsWithinNoise?: boolean;
+  /** Rows the plaintext model scores identically across classes, so their encrypted outcome is a
+      coin toss and they carry no verification signal - and the agreement rate over the rest.
+
+      In the caption UNCONDITIONALLY, because the count is a property of the corpus and the model,
+      not of the run. The tie sentence below fires only when a flip happened, so on a run where
+      every tie landed on the plaintext tie-break the figure read as a clean sweep. Genomics is the
+      case: 7 of its 30 rows, 23% of the denominator. */
+  undecidableRows?: number;
+  decidableRows?: number;
+  agreementOverDecidable?: number | null;
 }
 
 /**
@@ -82,6 +92,17 @@ export function EncryptedAgreementChart({ plot }: { plot: EncryptedAgreementPlot
         plaintext score. The diagonal is exact agreement. Top-1 mismatches:{" "}
         <strong>{mismatches}</strong> of {plot.rows}. All {plot.rows} rows travelled in a single
         ciphertext, so they cost the homomorphic work of one.
+        {plot.undecidableRows != null && plot.undecidableRows > 0 ? (
+          <>
+            {" "}<strong>{plot.undecidableRows} of those {plot.rows} rows are scored identically
+            across classes by the plaintext model itself</strong>, so its own top-1 there comes from
+            argmax tie-breaking and the encrypted outcome is decided by encryption noise — they
+            carry no signal either way, and the count above moves between runs because of them.
+            Over the {plot.decidableRows} rows the model does decide, agreement is{" "}
+            <strong>{plot.agreementOverDecidable != null
+              ? plot.agreementOverDecidable.toFixed(2) : "not computed"}</strong>.
+          </>
+        ) : null}
         {/* SCOPE, stated because the first version of this caption did not state it and was read
             wrong as a result. One point is plotted per row - the WINNING class only - so `worst`
             is a maximum over `rows` deviations. The metric row beside this figure
