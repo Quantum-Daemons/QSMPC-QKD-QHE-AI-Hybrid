@@ -19,6 +19,7 @@
 // exposes ./throws + ./allows and blocks the deep ./dist/*.wasm specifier; this is a direct filesystem
 // asset reference, so Vite emits + hashes it normally and returns the served URL.
 import sealWasmUrl from "/node_modules/node-seal/dist/seal_throws.wasm?url";
+import { fheCfg } from "./config";
 
 let _ctx: Promise<SealCtx> | null = null;
 
@@ -33,8 +34,16 @@ interface SealCtx {
   scale: number;
 }
 
-const POLY_MODULUS_DEGREE = 8192;          // CKKS ring degree (NIST-128 security at this coeff-modulus)
-const COEFF_MOD_BITS = [60, 40, 40, 60];   // one multiplication of depth (enough for a linear layer)
+// The CKKS parameter set, from the config the backend also reads.
+//
+// These were two literals here, matching two more in `src/qsh/config/defaults.py`, a third pair of
+// default arguments in `src/qsh/fhe/backends.py`, and a fourth copy written into
+// `report/build_data.py`'s crypto table. `FHEConfig.poly_modulus_degree` was read by NONE of them,
+// so the config field that names this parameter governed nothing and the four live copies agreed
+// only because no one had changed one. Changing the ring degree is exactly the operation that turns
+// that into a published PDF describing a parameter set the code does not run.
+const POLY_MODULUS_DEGREE = fheCfg().poly_modulus_degree;
+const COEFF_MOD_BITS = fheCfg().coeff_mod_bit_sizes;   // depth for one multiplication per dot product
 
 //: Power-of-two rotation steps 1 .. 2^(GALOIS_STEP_BITS-1) are pre-generated. 2^10 = 1024 slots is
 //: far above any feature width this demo evaluates (the widest published model takes 32), and a
@@ -55,7 +64,7 @@ async function init(): Promise<SealCtx> {
   const publicKey = keyGen.createPublicKey();
   const secretKey = keyGen.secretKey();
   // Only the steps the rotate-and-add slot sum below actually uses. `createGaloisKeys()` with no
-  // argument generates the full default set for a degree-8192 ring -- key generation is the single
+  // argument generates the full default set for the configured ring -- key generation is the single
   // most expensive thing in `warmFHE()`, and it runs synchronously on the main thread at first Run,
   // which is what made the first click feel like a hang. The loop at the bottom of this file steps
   // 1, 2, 4, ... < sumWidth, so those powers of two are sufficient and anything else would be a
@@ -72,7 +81,7 @@ async function init(): Promise<SealCtx> {
     evaluator: new seal.Evaluator(context),
     galois,
     slots: POLY_MODULUS_DEGREE / 2,
-    scale: Math.pow(2, 40),
+    scale: Math.pow(2, fheCfg().global_scale_bits),
   };
 }
 
@@ -133,7 +142,7 @@ export interface FHEBatchResult {
  * The same linear layer over MANY rows, in the same number of homomorphic operations as one row.
  *
  * WHY THIS EXISTS. `encryptedLinear` below pads one input of 7-8 features into a `slots`-wide vector -
- * 4096 slots at this parameter set - and zeroes the other 4088. Every encrypted-versus-plaintext
+ * `slots` is ring/2, so most of them - and zeroes the rest. Every encrypted-versus-plaintext
  * figure this project reports was therefore a comparison over ONE row: `encrypted_scores_compared`
  * counted CLASSES, not rows, and `encrypted_top1_mismatches` was `0 or 1`. A single agreement is not
  * evidence that encrypted inference reproduces plaintext, and it cannot be plotted against a test set.

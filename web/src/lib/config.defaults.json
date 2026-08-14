@@ -149,6 +149,17 @@
     "secure_aggregation": true,
     "test_split": 0.2
   },
+  "fhe": {
+    "coeff_mod_bit_sizes": [
+      60,
+      40,
+      40,
+      60
+    ],
+    "global_scale_bits": 40,
+    "poly_modulus_degree": 8192,
+    "slots": 4096
+  },
   "ids": {
     "demo_n_per_class": 120,
     "n_per_class": 300,
@@ -1013,7 +1024,7 @@
           "display": "AUC PR",
           "name": "auc_pr"
         },
-        "notes": "19 columns is small enough to evaluate under CKKS as a single packed dot product, so the encrypted tier here runs on the published feature set rather than on a reduction of it - and it had room to spare. The student now fits over the QUADRATIC expansion of those features, 209 terms, still one packed dot product at unchanged multiplicative depth, because the expansion is a function of the plaintext input and is computed before encryption. A degree-8192 ring has 4096 slots, so the cipher was never the binding constraint here - the feature map was. Measured: minority-class F1 0.8649 -> 0.9043, AUC-PR 0.9275 -> 0.9681, the latter matching the teacher exactly.",
+        "notes": "19 columns is small enough to evaluate under CKKS as a single packed dot product, so the encrypted tier here runs on the published feature set rather than on a reduction of it - and it had room to spare. The student now fits over the QUADRATIC expansion of those features, 209 terms, still one packed dot product at unchanged multiplicative depth, because the expansion is a function of the plaintext input and is computed before encryption. The ring carries orders of magnitude more slots than this feature map needs, so the cipher was never the binding constraint here - the feature map was. Measured: minority-class F1 0.8649 -> 0.9043, AUC-PR 0.9275 -> 0.9681, the latter matching the teacher exactly.",
         "onnx_domains": [
           "ai.onnx",
           "ai.onnx.ml"
