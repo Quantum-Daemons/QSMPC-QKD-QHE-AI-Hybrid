@@ -2656,12 +2656,21 @@ export function runClientPipeline(
           // the QOTP hiding + T-count demonstration, which is what it can honestly support.
           const w = await loadQcnnWeights(usecase);
           if (w) {
+            // MEASURED, on the same footing as the CKKS tier's `fhe_ms_per_rotation`. The QCNN was
+            // reported by accuracy alone while every encrypted figure carried a latency, so the two
+            // inference paths on one page could not be compared on cost at all. State-vector
+            // simulation is 2^n work in the qubit count, which is the number that makes the figure
+            // interpretable, so it travels with it - as `PF2` requires of the encrypted tier.
+            const t0 = performance.now();
             const qc = qcnnInferTrained(feats.slice(0, w.n_qubits), w);
+            const qcnnMs = performance.now() - t0;
             artifacts.primary_inference = { backend: "qcnn-trained", class: qc.cls,
                                             qubits: qc.qubits, expectation: r2(qc.expectation) };
             metric(stage, "primary_inference_class", qc.cls);
             metric(stage, "primary_inference_backend", "qcnn-trained");
             metric(stage, "qcnn_expectation_z0", r2(qc.expectation));
+            metric(stage, "qcnn_inference_ms", r2(qcnnMs));
+            metric(stage, "qcnn_qubits", qc.qubits);
             // Report the metric the CORPUS warrants, not always accuracy. At finance's 6% fraud
             // rate accuracy reads 0.97 against a 0.95 majority baseline and says almost nothing,
             // while minority-class F1 is 0.71 against an all-positive 0.10. The trainer decides

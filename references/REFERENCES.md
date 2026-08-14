@@ -1035,6 +1035,64 @@ Both support claims this repository already makes, and both are recorded so the 
   of the relevant set; the only newer quant-ph hit is arXiv:2607.21449 (QuantumChain, blockchain-backed
   QFL, 2026-07-23), which is off-thesis.
 
+### Sweep of 2026-08-01 to 2026-08-14, run 2026-08-14
+
+Thirty searches across seven areas; nothing found changes a claim this repository makes. The window is
+thirteen days wide, so a null was the honest expectation - it is recorded with **what was searched**
+rather than as a bare "nothing found", because an unrecorded null is indistinguishable from a search
+nobody ran, and this project has twice re-derived a negative it had already established.
+
+- **NIST SP 800-227: no change, checked at the primary source.** The CSRC document history reads
+  exactly `01/07/25: SP 800-227 (Draft)` and `09/18/25: SP 800-227 (Final)` and nothing else - no
+  errata, no update, no withdrawal, no follow-on. Section 4.6.3's IND-CCA-preserving combiner, which
+  `src/qsh/pqc/hybrid_kem.py` implements, is unchanged.
+- **FIPS 203 / 204 / 205: no change in window.** All three still show only `08/24/23 Draft` and
+  `08/13/24 Final`. FIPS 204 has an errata spreadsheet dated **2026-07-31**, one day outside the
+  window; it concerns the signature standard rather than the KEM. `csrc.nist.gov/news` carries two
+  August 2026 items, neither PQC.
+- **CKKS and homomorphic encryption: nothing that touches a claim here.** Nine in-window papers on the
+  "homomorphic" query; the two that could plausibly bear on performance do not - one is a survey with
+  no rotation timings and no WASM, the other is BGV matrix multiplication rather than CKKS rotations.
+  The strong bootstrapping results that surface for "August 2026" (BootNet, "Bootstrapping is All You
+  Need") are June 2026 and out of window. Note the asymmetry: **the 3.10-4.39 ms per rotation figure
+  is a measurement of this stack, and no paper can invalidate a measurement** - only a comparative
+  claim, and the one comparison made is already hedged as "the same order, this host faster".
+- **QKD: one in-window record, not applicable.** arXiv:2608.04112 reports a secure-key-rate-per-pulse
+  result in a four-dimensional fibre lab demonstration. This repository scopes hardware QKD out
+  explicitly and validates its simulation against Ma et al. (2005). No new ETSI or ITU-T QKD standard
+  in the window.
+- **QCNN: null.** In-window hits are applications (fault classification, a CNN-QNN hybrid image
+  classifier); no theory or benchmark result bearing on the QCNN claims made here.
+- **MPC-FHE / QSMPC-FHE hybrids: null in window** for anything altering the model-strategy verdict.
+- **ML-KEM and hybrid-combiner cryptanalysis: null**, with one item put on watch below.
+
+**WATCH, not a change: ePrint 2026/1591, a claimed polynomial-time quantum algorithm for the Dihedral
+Coset Problem.** https://eprint.iacr.org/2026/1591 - Daniel R. Simon (AWS Cryptography Group),
+received 2026-08-03, three revisions to 2026-08-12, fetched and read as PDF 2026-08-14. Composed with
+Regev's and Brakerski-Kirshanova-Stehle-Wen's reductions it would give polynomial-time quantum
+algorithms for SVP and LWE, which is why it is here at all.
+
+*Why it changes nothing today, from the document itself rather than from coverage of it:* the title
+carries "[Preliminary Draft]"; four proofs are marked "(Sketch)"; the load-bearing final corollary
+cites two references both listed as "Personal Communication", i.e. unpublished; the abstract carries
+a self-correction noting that the first draft's Lemma 3 "incorrectly conflated pairwise independence
+over the uniform vs. actual distribution". A full-text grep for `ml-kem|kyber|fips|dilithium|concrete
+parameter|deployed` returns **zero hits** - the paper makes no claim against any deployed parameter
+set. It is unrefereed and actively being revised.
+
+*The honest nuance, which is the reason to record it rather than dismiss it:* **this repository's
+ML-KEM + X25519 hybrid is not a hedge against this particular risk.** X25519 already falls to Shor,
+so ML-KEM is the only quantum-resistant leg; if this result were confirmed AND shown to reach
+ML-KEM's concrete parameters, the hybrid would not preserve quantum security. Neither condition holds
+today. *Reopens if* the paper is refereed and published, or a version removes the sketch markers and
+the personal-communication dependencies, or any analysis extends it to concrete ML-KEM parameters.
+
+A related result surfaced while chasing this one and is recorded to stop it being re-found as news:
+**ePrint 2026/155**, Wen and Zheng, Module-LWE and structured extrapolated dihedral cosets (CRYPTO
+2026), proves a quantum polynomial-time *equivalence* in the setting ML-KEM uses. Original 2026-01-30,
+last revised 2026-07-16 - **both before this window** - and it claims no attack and no weakening of
+ML-KEM. Secondary coverage was pairing the two as though both were current.
+
 ### Verified but not yet cited from anywhere
 
 Held here rather than dropped, because both bear on the WS4(c) / WS4(f) split and the client in this
