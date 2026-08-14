@@ -28,6 +28,7 @@ import { browserModels, evaluatePublishedModel, onnxStatus, runPublishedModel } 
 import { realInput, realInputCorpus, realSatelliteAnomaly, realFederatedSet,
   type RealInput } from "./realData";
 import { hybridCombine, hybridCombinerInfo, kemNameFor } from "./hybridCombiner";
+import { isClientDemo } from "./demoMode";
 
 const r1 = (x: number) => Math.round(x * 10) / 10;
 const r2 = (x: number) => Math.round(x * 100) / 100;
@@ -2840,8 +2841,17 @@ export function runClientPipeline(
           // missing: the payload recorded which FHE backend was chosen but not which MPC one, and
           // recorded the QKD family but not the protocol that actually ran - so an E91 run and a
           // BB84 run signed byte-identical config records.
+          // `fhe`/`mpc` record what RAN, not what the config carries. In the client-only demo the
+          // selects are replaced by a badge reading "node-seal CKKS + secret-sharing MPC · real,
+          // in-browser", while the state still held the server-side defaults `tenseal-cpu` and
+          // `mpyc-shamir` - nobody chose them and neither executed. `config.fhe` and `config.mpc`
+          // are read NOWHERE else in this file, so the only consumer was this payload: a
+          // tamper-evident record naming two backends that did not run, ten lines under a badge
+          // saying so. A signed record of the wrong thing is worse than an unsigned one, because
+          // the signature is what invites a reader to trust it.
           config: { kem: config.kem ?? null, qkd: config.qkd ?? null, sig: config.sig ?? null,
-                    fhe: config.fhe ?? null, mpc: config.mpc ?? null,
+                    fhe: isClientDemo() ? "node-seal-ckks" : (config.fhe ?? null),
+                    mpc: isClientDemo() ? "secret-sharing-mpc-wasm" : (config.mpc ?? null),
                     qkd_protocol: config.qkd_protocol ?? null,
                     combiner: config.combiner ?? null },
           metrics: { ...metrics },
