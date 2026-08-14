@@ -19,7 +19,18 @@ from typing import Callable
 class EventType(str, Enum):
     PIPELINE_START = "pipeline_start"
     PIPELINE_END = "pipeline_end"
-    PIPELINE_STOP = "pipeline_stop"
+    # Two events, for the same reason PAUSE has two: the button being pressed and the run actually
+    # halting are different facts, and a run stops only at the next stage boundary. The browser has
+    # emitted `pipeline_stop_requested` since Round 24 and reads it into a "stopping" badge; this
+    # side emitted only PIPELINE_STOP, from inside the loop - the EFFECT, while the browser's
+    # matching name is for the REQUEST. So over the backend transport `pipeline_stop_requested`
+    # never arrived and `pipeline_stop` had no reader in `web/src` at all.
+    #
+    # Round 41 fixed exactly this for pause and left stop one line below it, which is why the
+    # register now carries "one scheme, two implementations" as a standing class rather than an
+    # incident.
+    PIPELINE_STOP_REQUESTED = "pipeline_stop_requested"  # requested; a stage may still be running
+    PIPELINE_STOP = "pipeline_stop"                      # the run has actually halted
     # Two events, because "pause was requested" and "the run has actually stopped" are different
     # facts and the UI shows different states for them ("pausing" vs "paused"). Only the second
     # enables Resume and Step. The browser gate has emitted both since Round 24

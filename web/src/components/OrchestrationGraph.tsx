@@ -30,16 +30,24 @@ import "@xyflow/react/dist/style.css";
 // node that is dim because the diagram is wrong look identical. `tests/test_dag_covers_both_
 // transports.py` asserts this map against the real Python stage lists, resolving `stage.name` from
 // the class definitions so a rename cannot slip past it.
-const BACKEND_EXTRA: Record<string, { id: string; label: string }[]> = {
-  default: [{ id: "explainability", label: "Explainability\n(full deployment)" }],
-  finance_aml: [{ id: "explainability", label: "Explainability\n(full deployment)" }],
-  genomics: [{ id: "explainability", label: "Explainability\n(full deployment)" }],
-  demo: [{ id: "explainability", label: "Explainability\n(full deployment)" }],
-  medical_fl: [{ id: "explainability", label: "Explainability\n(full deployment)" }],
-  telecom_ids: [{ id: "qkd_optimize", label: "OptiQKD\n(full deployment)" }],
+// Each entry names the node it must sit BEFORE, because the backend runs these at a specific point
+// and a diagram that draws them all just before `result` shows the run jumping backwards. Measured
+// on all six use cases: `explainability` runs before `quantum_comparison` and was drawn after it;
+// `qkd_optimize` runs immediately after key agreement and was drawn near the end.
+//
+// The first version of this map had no position and the test that guards it compared SETS, so both
+// were wrong in the same direction and neither could see the other. An ordered artefact needs an
+// ordered check - that is the whole finding.
+const BACKEND_EXTRA: Record<string, { id: string; label: string; before: string }[]> = {
+  default: [{ id: "explainability", label: "Explainability\n(full deployment)", before: "quantum_comparison" }],
+  finance_aml: [{ id: "explainability", label: "Explainability\n(full deployment)", before: "quantum_comparison" }],
+  genomics: [{ id: "explainability", label: "Explainability\n(full deployment)", before: "quantum_comparison" }],
+  demo: [{ id: "explainability", label: "Explainability\n(full deployment)", before: "quantum_comparison" }],
+  medical_fl: [{ id: "explainability", label: "Explainability\n(full deployment)", before: "quantum_comparison" }],
+  telecom_ids: [{ id: "qkd_optimize", label: "OptiQKD\n(full deployment)", before: "qml_ids" }],
   satellite_comms: [
-    { id: "qkd_optimize", label: "OptiQKD\n(full deployment)" },
-    { id: "telemetry_anomaly", label: "Telemetry anomaly\n(full deployment)" },
+    { id: "qkd_optimize", label: "OptiQKD\n(full deployment)", before: "qsdc_telemetry" },
+    { id: "telemetry_anomaly", label: "Telemetry anomaly\n(full deployment)", before: "quantum_comparison" },
   ],
 };
 
@@ -114,9 +122,16 @@ const FLOWS: Record<string, { id: string; label: string }[]> = {
 export function flowFor(usecase: string) {
   const client = FLOWS[usecase] ?? FLOWS.default;
   const extra = BACKEND_EXTRA[usecase] ?? BACKEND_EXTRA.default ?? [];
-  const at = client.findIndex((n) => n.id === "result");
-  const cut = at >= 0 ? at : client.length;
-  return [...client.slice(0, cut), ...extra, ...client.slice(cut)];
+  // Each backend-only node is spliced before the node it precedes in the real pipeline, not lumped
+  // in front of `result`. Lumping them there put `explainability` after `quantum_comparison` on
+  // four flows and `qkd_optimize` near the end on two - so on the full deployment the run lit a
+  // later node and then jumped back, which reads as a stalled or reordered pipeline.
+  const out = [...client];
+  for (const node of extra) {
+    const at = out.findIndex((n) => n.id === node.before);
+    out.splice(at >= 0 ? at : Math.max(0, out.length - 1), 0, node);
+  }
+  return out;
 }
 
 export default function OrchestrationGraph({

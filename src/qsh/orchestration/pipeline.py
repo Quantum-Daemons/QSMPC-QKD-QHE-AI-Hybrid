@@ -63,8 +63,15 @@ class Pipeline:
     _step_budget: int = -1   # -1 = run freely; >=0 = stages allowed before auto-pause
 
     def request_stop(self) -> None:
-        """Ask the pipeline to halt after the current stage (cooperative)."""
+        """Ask the pipeline to halt after the current stage (cooperative).
+
+        Emits the REQUEST. The run is still executing a stage; the loop announces `PIPELINE_STOP`
+        once it has actually halted. Until Round 42 this emitted nothing, so a consumer that
+        distinguishes the two never learned the request had been accepted - the browser's
+        `"stopping"` badge existed and no backend event could produce it.
+        """
         self._stop = True
+        self.bus.emit(Event(EventType.PIPELINE_STOP_REQUESTED, self.name, "stop requested"))
         self._resume_gate.set()   # unblock a paused worker so it can observe the stop
 
     def request_pause(self) -> None:
