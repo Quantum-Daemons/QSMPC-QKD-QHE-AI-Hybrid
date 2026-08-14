@@ -281,7 +281,9 @@ compliance with Art. 50(2), (4) and (5). The requirement itself is that marks be
 robust and interoperable" and machine-readable.
 
 **What now ships**: the Agentic AI panel's downloadable artifact carries an `ai_generated` block -
-`is_ai_generated`, the generating engine and model, the runtime, and an explicit scope and
+`ai_generated` (named `is_ai_generated` here until Round 40, while `AgenticAIPanel.tsx:280` has
+always emitted `ai_generated` - a reader checking the downloadable artifact would have searched for a
+key that does not exist), the generating engine and model, the runtime, and an explicit scope and
 compliance-status field. That is machine-readable and it travels with the artifact that leaves the
 page.
 
