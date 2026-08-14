@@ -48,6 +48,24 @@ def _combiner_info(kem_name: str) -> bytes:
     return _COMBINER_PREFIX + kem_name.encode() + b"+X25519"
 
 
+def _length_tag(length: int) -> bytes:
+    """The output length, in the separator.
+
+    HKDF-Expand for L bytes is a PREFIX of the expansion for any L' > L, so two derivations over
+    identical material at different lengths share their first min(L, L') bytes. `length` genuinely
+    varies across callers - transport.py uses 32, qhe/rate1_qfhe.py uses max(32, (2n+7)//8) - so
+    without this an n>=128 QOTP pad would begin with exactly the bytes a 32-byte transport session
+    key over the same material would.
+
+    Not reachable today: every `encapsulate` draws a fresh X25519 ephemeral and a fresh ML-KEM
+    ciphertext, so no two derivations share a transcript. Included because it is the same class of
+    gap as the parameter set, section 4.6.3 asks domain_sep to identify the "key combiner, KDF",
+    and the docstring above claims no two parameter sets share a derivation - which should be true
+    of lengths too.
+    """
+    return b"/L" + str(int(length)).encode()
+
+
 @dataclass
 class HybridPublicKey:
     """Recipient's public material (safe to publish)."""
@@ -72,7 +90,7 @@ def _combine(ss_pq: bytes, ss_classical: bytes, transcript: bytes, length: int,
         algorithm=hashes.SHA256(),
         length=length,
         salt=None,
-        info=info_prefix + b"|" + transcript,
+        info=info_prefix + _length_tag(length) + b"|" + transcript,
     ).derive(ss_pq + ss_classical)
 
 

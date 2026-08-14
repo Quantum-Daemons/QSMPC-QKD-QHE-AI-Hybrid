@@ -100,8 +100,17 @@ export function createAgent(name: string): ClientAgent {
     sigPublicKey: sig.publicKey, sigSecretKey: sig.secretKey };
 }
 
-// Concatenate-then-KDF hybrid combiner, matching src/qsh/pqc/hybrid_kem.py and clientCompute's
-// pqc_handshake: HKDF-SHA256 over (pq_ss || x25519_ss) with a bound transcript.
+// Concatenate-then-KDF hybrid combiner for the AGENT-TO-AGENT scheme, which is NOT the handshake's.
+//
+// This said "matching src/qsh/pqc/hybrid_kem.py and clientCompute's pqc_handshake" - the same false
+// claim the transcript fix below was made to remove, left standing at the top of the block that
+// removes it. It does not match them and must not: the handshake's classical half is
+// ephemeral-static X25519 with transcript c1 || c2 || ek1 || ek2 under `qsh/hybrid-kem/v2`; this is
+// static-static between two agents, so there is no ephemeral c2, the transcript is
+// c1 || ek1 || xA || xB, and the separator is its own. A maintainer told to make the two agree
+// would silently re-merge two constructions under one separator.
+//
+// HKDF-SHA256 over (pq_ss || x25519_ss) with that transcript bound.
 //
 // The transcript argument is not decoration. Until Round 38 this function took only the two shared
 // secrets and put the bare domain-separation string in `info`, which is exactly expression (16) of
