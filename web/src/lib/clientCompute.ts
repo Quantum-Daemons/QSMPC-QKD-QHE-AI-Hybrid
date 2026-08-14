@@ -10,7 +10,7 @@ import { hkdf } from "@noble/hashes/hkdf.js";
 import { sha256 } from "@noble/hashes/sha2.js";
 import {
   benchCfg, costPerOp, dataCfg, demoFeatureDim, genericArchitecture, idsCfg, medicalCnn, qkdCfg, qrngCfg,
-  demoSample, federatedCfg, qsmpcCfg, quantumAdvantageCfg, securityScoringCfg, studentModel, tierArchitectures, webCfg,
+  demoSample, federatedCfg, fheCfg, qsmpcCfg, quantumAdvantageCfg, securityScoringCfg, studentModel, tierArchitectures, webCfg,
   workloadMultipliers,
 } from "./config";
 import { encryptedConv2d, encryptedLinear, encryptedLinearBatch, encryptedStudentInference, warmFHE,
@@ -642,6 +642,19 @@ let _fheWarmed = false;
 /** Whether the one-time CKKS/MPC warm-up has already run in this tab. */
 const fheReady = () => _fheWarmed && _mpcWarmed;
 let _mpcWarmed = false;
+/**
+ * Wall-clock of the ONE keygen this tab pays, or null before it has happened.
+ *
+ * Measured because raising the ring degree is a trade and this is the side of it a visitor feels.
+ * SEAL key generation - public key plus the Galois keys for every rotation step - runs synchronously
+ * inside WASM on the main thread at first Run, and `clientFHE` records that it "made the first click
+ * feel like a hang". Its cost grows with the ring, so a ring change that is reported only through
+ * the slot count it buys is reported with the price left off.
+ *
+ * Module-level rather than per-run: only the first run in a tab pays it, and attributing it to that
+ * run's inference latency would overstate the inference by the whole keygen.
+ */
+let _fheKeygenMs: number | null = null;
 
 // Run a GENUINE encrypted hybrid inference entirely in the browser: a small linear model evaluated under
 // REAL node-seal CKKS (clientFHE) for the linear layer + a REAL emp-wasm authenticated-garbling 2PC
@@ -687,7 +700,12 @@ export async function realClientHybrid(features: number[], u: () => number,
                                       corpus?: number[][] | null,
 ): Promise<RealHybridRun | null> {
   try {
-    if (!_fheWarmed) { await warmFHE(); _fheWarmed = true; }     // one-time CKKS keygen
+    if (!_fheWarmed) {
+      const tk = performance.now();
+      await warmFHE();
+      _fheKeygenMs = performance.now() - tk;
+      _fheWarmed = true;
+    }     // one-time CKKS keygen
     if (!_mpcWarmed) { await warmMPC(); _mpcWarmed = true; }     // one-time summon compile + emp-wasm init
     const n = features.length;
     // ENCRYPT THE MODEL THE PAGE EXPLAINS.
@@ -1278,7 +1296,12 @@ export function runClientPipeline(
       const mean = w.input?.mean ?? [], scale = w.input?.scale ?? [];
       const z = raw.map((v: number, i: number) => (v - (mean[i] ?? 0)) / (scale[i] || 1));
 
-      if (!_fheWarmed) { await warmFHE(); _fheWarmed = true; }
+      if (!_fheWarmed) {
+      const tk = performance.now();
+      await warmFHE();
+      _fheKeygenMs = performance.now() - tk;
+      _fheWarmed = true;
+    }
       const fhe = await encryptedLinear(w.W, w.b, z);
       const plain = w.W.map((row: number[], j: number) =>
         row.reduce((a, wij, i) => a + wij * (z[i] ?? 0), 0) + (w.b?.[j] ?? 0));
@@ -2145,7 +2168,8 @@ export function runClientPipeline(
         // Medical always evaluates its published student's convolution; the other use cases have
         // linear students, for which the packed dot product IS the real model.
         // Announce the one-time warm-up BEFORE it blocks. SEAL key generation (public + Galois keys at
-        // N=8192) runs synchronously inside WASM on the main thread, and `clientFHE` records that this
+        // the configured ring degree) runs synchronously inside WASM on the main thread, and it grows
+        // with that degree - `clientFHE` records that this
         // "made the first click feel like a hang"; summon compile and emp-wasm init follow. The tab
         // cannot repaint through any of it, so a visitor's first Run looked frozen with the badge on
         // `running`. The fix that was applied then was to make keygen cheaper; saying it is happening
@@ -2285,6 +2309,14 @@ export function runClientPipeline(
               metric(stage, "fhe_ms_per_rotation",
                 Math.round((real.dense.rotateMs / real.dense.rotations) * 1000) / 1000);
             }
+          }
+          // The one-time keygen, on the run that paid it. Reported so the ring degree's price is
+          // visible beside the slot count it buys; a later run in the same tab does not re-pay it,
+          // and the metric is absent there rather than repeating a stale figure as if it had.
+          metric(stage, "fhe_ring_degree", fheCfg().poly_modulus_degree);
+          if (_fheKeygenMs !== null) {
+            metric(stage, "fhe_keygen_ms", r2(_fheKeygenMs));
+            _fheKeygenMs = null;
           }
           // The raw measurement and the multiplier applied to it, so the projection below is
           // decomposable rather than a number of unstated provenance sitting beside raw counts.

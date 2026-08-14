@@ -121,8 +121,9 @@ def distil_linear(teacher_scores: np.ndarray, X: np.ndarray, *,
     as a Pipeline that also owns its scaler. This is the one axis the CKKS cost bound does not
     block, and the reason is worth stating: the expansion is a function of the plaintext input, so
     the client computes it BEFORE encrypting. The encrypted operation is still a single packed dot
-    product, at the same multiplicative depth, over a longer vector - and a degree-8192 ring has
-    4096 slots, so any expansion under that width is free on the crypto side.
+    product, at the same multiplicative depth, over a longer vector - and the ring carries far
+    more slots (``FHEConfig.poly_modulus_degree // 2``) than any expansion here reaches, so the
+    expansion is free on the crypto side.
 
     It is not free statistically: d features become d(d+3)/2, so 19 -> 209 and 32 -> 560, and the
     sample-per-parameter ratio falls accordingly. Measured on OPS-SAT-AD, where it more than paid:

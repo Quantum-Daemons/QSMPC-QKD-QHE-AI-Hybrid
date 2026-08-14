@@ -164,6 +164,35 @@ class QHEConfig:
 @dataclass
 class FHEConfig:
     backend: str = "tenseal"
+    # The CKKS ring degree, and the ONE place it is written. The browser (`web/src/lib/clientFHE.ts`),
+    # the TenSEAL backend and the report's crypto table all read it through the config now, so
+    # changing it is a line rather than a sweep. Note that `config.yaml` overlays this file, so the
+    # value that RUNS is the one there - editing this default alone changes nothing, which is how
+    # Round 38's first attempt at raising the ring produced no effect at all.
+    #
+    # RAISED TO 16384 IN ROUND 38, MEASURED, AND PUT BACK. The case for raising it was the medical
+    # student's encrypted convolution: a degree-N ring carries N/2 slots, and one image needs 3136
+    # of them (14x14 padded to 16x16, 3x3 kernel -> 196 patches at a 16-slot block), so 4096 slots
+    # hold exactly one image and 8192 would hold two.
+    #
+    # Measured in-browser on the finance page, same machine, fresh tab each time:
+    #
+    #     keygen              255.26 ms  ->  476.71 ms   (x1.87)
+    #     ms per rotation       3.098    ->    6.725     (x2.17)
+    #     linear layer         19.25 ms  ->   34.41 ms   (x1.79)
+    #     batch, 400 rows      20.59 ms  ->   36.16 ms   (x1.76)
+    #     batch precision      25 bits   ->   24 bits
+    #
+    # So every FHE figure this project publishes roughly doubles, and the keygen sits on the first
+    # click, which `clientFHE` already records as feeling like a hang. Against that, the realised
+    # benefit measured ZERO: the convolution still packed 196 patches - one image - because nothing
+    # asks it for two, and the linear batch's 512 -> 1024 rows per ciphertext went unused because
+    # finance offers 400 rows and genomics 30. Paying 2x for capacity no caller reaches is the wrong
+    # trade, so the value went back and the wiring stayed.
+    #
+    # Raising it again is one line HERE and one in config.yaml, once batched convolution exists to
+    # spend the slots on. Security is not the constraint either way: coeff_mod_bit_sizes sums to 200
+    # bits and tc128 admits 218 at N=8192, 438 at N=16384.
     poly_modulus_degree: int = 8192
     coeff_mod_bit_sizes: tuple[int, ...] = (60, 40, 40, 60)
     global_scale_bits: int = 40
