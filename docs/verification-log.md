@@ -259,7 +259,8 @@ end to end gives QBER 0.01, macro-F1 0.96, `published telecom_ids.qml @ f0d75431
 with `aria-live="polite"`, text "running". Absent on idle and after a completed run has been read.
 
 **Served bundle contained every new literal** before the browser was trusted: `role:"status"`,
-`aria-live`, `is_ai_generated`, `browser_override_reason`, `Article 50(2)`.
+`aria-live`, `ai_generated`, `browser_override_reason`, `Article 50(2)`. (This list said
+`is_ai_generated` until Round 40; the emitted key is `ai_generated`.)
 
 **One false negative worth recording.** The status indicator first appeared not to render. It was
 rendering correctly - the run had simply finished before the check ran, and the indicator hides on
