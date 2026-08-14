@@ -100,17 +100,64 @@ export function createAgent(name: string): ClientAgent {
     sigPublicKey: sig.publicKey, sigSecretKey: sig.secretKey };
 }
 
-// Concatenate-then-KDF hybrid combiner, matching src/qsh/pqc/hybrid_kem.py and clientCompute's
-// pqc_handshake: HKDF-SHA256 over (pq_ss || x25519_ss) under the project's domain-separation string.
-// Secure as long as EITHER primitive holds, which is the entire reason for running both.
-async function hybridSecret(pq: Uint8Array, classical: Uint8Array): Promise<Uint8Array> {
+// Concatenate-then-KDF hybrid combiner for the AGENT-TO-AGENT scheme, which is NOT the handshake's.
+//
+// This said "matching src/qsh/pqc/hybrid_kem.py and clientCompute's pqc_handshake" - the same false
+// claim the transcript fix below was made to remove, left standing at the top of the block that
+// removes it. It does not match them and must not: the handshake's classical half is
+// ephemeral-static X25519 with transcript c1 || c2 || ek1 || ek2 under `qsh/hybrid-kem/v2`; this is
+// static-static between two agents, so there is no ephemeral c2, the transcript is
+// c1 || ek1 || xA || xB, and the separator is its own. A maintainer told to make the two agree
+// would silently re-merge two constructions under one separator.
+//
+// HKDF-SHA256 over (pq_ss || x25519_ss) with that transcript bound.
+//
+// The transcript argument is not decoration. Until Round 38 this function took only the two shared
+// secrets and put the bare domain-separation string in `info`, which is exactly expression (16) of
+// NIST SP 800-227 (September 2025) - `K <- KDF(K1, K2)` - the combiner section 4.6.3 states "does
+// not preserve IND-CCA security, regardless of the properties of the KDF". Its sibling in
+// `clientCompute.ts` at least bound the public keys; this one bound nothing, while its own comment
+// claimed it matched that sibling and the backend.
+//
+// Section 4.6.3's IND-CCA-preserving form is H(K1, K2, c1, c2, ek1, ek2, domain_sep), and it notes
+// that the encapsulation keys are NOT what delivers the property - the ciphertexts are. Here the
+// classical half is static-static X25519 between two agents, so there is no ephemeral c2; the two
+// static public keys are the binding material on that side, and c1 is the ML-KEM ciphertext.
+//
+// Caller and callee both hold every element, so both derive the same transcript independently - and
+// if they ever did not, the AEAD open below would fail rather than silently pass.
+async function hybridSecret(
+  pq: Uint8Array, classical: Uint8Array, transcript: Uint8Array,
+): Promise<Uint8Array> {
   const ikm = new Uint8Array(pq.length + classical.length);
   ikm.set(pq, 0); ikm.set(classical, pq.length);
+  // ITS OWN LABEL, not the handshake's. SP 800-227 section 4.6.3: "The domain separator
+  // domain_sep should be used to uniquely identify the composite scheme in use (e.g., P1, P2, order
+  // of composition, choice of parameter set, key combiner, KDF)." This is a DIFFERENT composite
+  // scheme from `pqc_handshake`: there the classical half is ephemeral-static X25519 and the
+  // transcript is c1 || c2 || ek1 || ek2; here it is static-static between two agents, so there is
+  // no ephemeral c2 and the transcript is c1 || ek1 || xA || xB. Reusing `qsh/hybrid-kem/v2` for
+  // both - which the first version of this fix did - puts two constructions under one separator,
+  // which is the thing a domain separator exists to prevent.
+  const label = enc.encode("qsh/mcp-agent-kem/v1 ML-KEM-768+X25519-static|");
+  const info = new Uint8Array(label.length + transcript.length);
+  info.set(label, 0); info.set(transcript, label.length);
   const base = await crypto.subtle.importKey("raw", ab(ikm), "HKDF", false, ["deriveBits"]);
   const bits = await crypto.subtle.deriveBits(
-    { name: "HKDF", hash: "SHA-256", salt: new ArrayBuffer(0),
-      info: ab(enc.encode("qsh/hybrid-kem/v1 ML-KEM-768+X25519|")) }, base, 256);
+    { name: "HKDF", hash: "SHA-256", salt: new ArrayBuffer(0), info: ab(info) }, base, 256);
   return new Uint8Array(bits);
+}
+
+/** c1 || ek1 || the two static X25519 publics, in a fixed order both agents can reproduce. */
+function mcpTranscript(
+  ct: Uint8Array, kemPub: Uint8Array, xA: Uint8Array, xB: Uint8Array,
+): Uint8Array {
+  const t = new Uint8Array(ct.length + kemPub.length + xA.length + xB.length);
+  t.set(ct, 0);
+  t.set(kemPub, ct.length);
+  t.set(xA, ct.length + kemPub.length);
+  t.set(xB, ct.length + kemPub.length + xA.length);
+  return t;
 }
 
 // mirror transport._mix_qkd + AESGCM(session_key). ``combiner`` selects the PQC+QKD key combiner
@@ -180,8 +227,13 @@ export async function clientSecureAgentCall(
   // if they disagreed, the AEAD open below would fail rather than silently pass.
   const xCaller = x25519.getSharedSecret(caller.xSecretKey, callee.xPublicKey);
   const xCallee = x25519.getSharedSecret(callee.xSecretKey, caller.xPublicKey);
-  const callerKey = await deriveAeadKey(await hybridSecret(sharedSecret, xCaller), qkdKey, combiner);
-  const calleeKey = await deriveAeadKey(await hybridSecret(recovered, xCallee), qkdKey, combiner);
+  // Both sides build the SAME transcript from material both already hold: the ML-KEM ciphertext,
+  // the callee's KEM public key, and the two agents' static X25519 publics in caller-then-callee
+  // order. Binding it is what stops a mauled ciphertext that decapsulates to the same secret from
+  // yielding the same session key.
+  const tr = mcpTranscript(cipherText, callee.kemPublicKey, caller.xPublicKey, callee.xPublicKey);
+  const callerKey = await deriveAeadKey(await hybridSecret(sharedSecret, xCaller, tr), qkdKey, combiner);
+  const calleeKey = await deriveAeadKey(await hybridSecret(recovered, xCallee, tr), qkdKey, combiner);
   const record = await sealRecord(callerKey.key, wrapAndSign(caller, method, params), 0);
   const opened = await openRecord(calleeKey.key, record);
   const { message, authenticated } = unwrap(opened, caller.sigPublicKey);

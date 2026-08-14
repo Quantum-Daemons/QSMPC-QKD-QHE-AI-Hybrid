@@ -19,6 +19,7 @@
 // exposes ./throws + ./allows and blocks the deep ./dist/*.wasm specifier; this is a direct filesystem
 // asset reference, so Vite emits + hashes it normally and returns the served URL.
 import sealWasmUrl from "/node_modules/node-seal/dist/seal_throws.wasm?url";
+import { fheCfg } from "./config";
 
 let _ctx: Promise<SealCtx> | null = null;
 
@@ -33,8 +34,16 @@ interface SealCtx {
   scale: number;
 }
 
-const POLY_MODULUS_DEGREE = 8192;          // CKKS ring degree (NIST-128 security at this coeff-modulus)
-const COEFF_MOD_BITS = [60, 40, 40, 60];   // one multiplication of depth (enough for a linear layer)
+// The CKKS parameter set, from the config the backend also reads.
+//
+// These were two literals here, matching two more in `src/qsh/config/defaults.py`, a third pair of
+// default arguments in `src/qsh/fhe/backends.py`, and a fourth copy written into
+// `report/build_data.py`'s crypto table. `FHEConfig.poly_modulus_degree` was read by NONE of them,
+// so the config field that names this parameter governed nothing and the four live copies agreed
+// only because no one had changed one. Changing the ring degree is exactly the operation that turns
+// that into a published PDF describing a parameter set the code does not run.
+const POLY_MODULUS_DEGREE = fheCfg().poly_modulus_degree;
+const COEFF_MOD_BITS = fheCfg().coeff_mod_bit_sizes;   // depth for one multiplication per dot product
 
 //: Power-of-two rotation steps 1 .. 2^(GALOIS_STEP_BITS-1) are pre-generated. 2^10 = 1024 slots is
 //: far above any feature width this demo evaluates (the widest published model takes 32), and a
@@ -55,7 +64,7 @@ async function init(): Promise<SealCtx> {
   const publicKey = keyGen.createPublicKey();
   const secretKey = keyGen.secretKey();
   // Only the steps the rotate-and-add slot sum below actually uses. `createGaloisKeys()` with no
-  // argument generates the full default set for a degree-8192 ring -- key generation is the single
+  // argument generates the full default set for the configured ring -- key generation is the single
   // most expensive thing in `warmFHE()`, and it runs synchronously on the main thread at first Run,
   // which is what made the first click feel like a hang. The loop at the bottom of this file steps
   // 1, 2, 4, ... < sumWidth, so those powers of two are sufficient and anything else would be a
@@ -72,7 +81,7 @@ async function init(): Promise<SealCtx> {
     evaluator: new seal.Evaluator(context),
     galois,
     slots: POLY_MODULUS_DEGREE / 2,
-    scale: Math.pow(2, 40),
+    scale: Math.pow(2, fheCfg().global_scale_bits),
   };
 }
 
@@ -96,11 +105,25 @@ export interface FHEResult {
    *  agreement (arXiv:2605.22237 Table IX reports it as an integer expected to be zero). Without it
    *  each caller would have to recompute W.x + b and could get it subtly wrong. */
   plainLogits: number[];
-  /** Homomorphic rotations performed, counted. Each triggers a key-switch, and key-switching is
-   *  what dominates CKKS cost - so this is the number that makes a dense layer and a convolution
-   *  comparable on the axis that actually matters, rather than on wall-clock alone. */
+  /** Homomorphic rotations performed, counted. Each triggers a key-switch, so this is the number
+   *  that makes a dense layer and a convolution comparable on a shared axis rather than on
+   *  wall-clock alone.
+   *
+   *  Measured in Round 38: rotations are 57% of a small dense layer's wall-clock, 70% of the
+   *  published student's convolution and 86% of its dense layers, at a per-rotation cost of
+   *  3.10-4.39 ms across every stage measured. So key-switching does dominate, and the per-rotation figure is the
+   *  comparable unit for the same reason.
+   *
+   *  An earlier revision of this comment said 10% for the convolution and that im2col encoding
+   *  dominated it. That share divided the conv block's rotation time by the WHOLE student's
+   *  wall-clock - a numerator and denominator of different scopes - and the claim is withdrawn. */
   rotations: number;
   multiplies: number;
+  /** Wall-clock spent INSIDE `rotateVector`, nothing else. The page's `fhe_linear_ms` is this
+   *  call's total multiplied by a cost-model scale for the selected model size, so dividing it by
+   *  `rotations` does not give a per-rotation cost - it gave 158 ms against a true ~3 ms. This is
+   *  the measured quantity, and it is the unit published CKKS primitive benchmarks report. */
+  rotateMs: number;
 }
 
 export interface FHEBatchResult {
@@ -117,13 +140,18 @@ export interface FHEBatchResult {
   maxAbsError: number;
   rotations: number;
   multiplies: number;
+  /** Wall-clock spent INSIDE `rotateVector`, nothing else. The page's `fhe_linear_ms` is this
+   *  call's total multiplied by a cost-model scale for the selected model size, so dividing it by
+   *  `rotations` does not give a per-rotation cost - it gave 158 ms against a true ~3 ms. This is
+   *  the measured quantity, and it is the unit published CKKS primitive benchmarks report. */
+  rotateMs: number;
 }
 
 /**
  * The same linear layer over MANY rows, in the same number of homomorphic operations as one row.
  *
  * WHY THIS EXISTS. `encryptedLinear` below pads one input of 7-8 features into a `slots`-wide vector -
- * 4096 slots at this parameter set - and zeroes the other 4088. Every encrypted-versus-plaintext
+ * `slots` is ring/2, so most of them - and zeroes the rest. Every encrypted-versus-plaintext
  * figure this project reports was therefore a comparison over ONE row: `encrypted_scores_compared`
  * counted CLASSES, not rows, and `encrypted_top1_mismatches` was `0 or 1`. A single agreement is not
  * evidence that encrypted inference reproduces plaintext, and it cannot be plotted against a test set.
@@ -171,7 +199,7 @@ export async function encryptedLinearBatch(
   try { ctBytes = ctX.saveToArray(seal.ComprModeType.none).length; } catch { ctBytes = null; }
 
   const perClass: number[][] = [];
-  let rotations = 0, multiplies = 0;
+  let rotations = 0, multiplies = 0, rotateMs = 0;   // see `encryptedLinear` for why rotations are timed
   for (let j = 0; j < W.length; j++) {
     if (W[j].every((v) => v === 0)) {
       perClass.push(used.map(() => b[j] ?? 0));      // all-zero row: the logit is the bias
@@ -188,7 +216,9 @@ export async function encryptedLinearBatch(
     multiplies++;
     for (let s = 1; s < sumWidth; s <<= 1) {
       const rot = new seal.Ciphertext();
+      const tr = performance.now();
       evaluator.rotateVector(acc, s, galois, rot);
+      rotateMs += performance.now() - tr;
       const nxt = new seal.Ciphertext();
       evaluator.add(acc, rot, nxt);
       acc = nxt;
@@ -207,7 +237,7 @@ export async function encryptedLinearBatch(
   const maxAbsError = Math.max(
     0, ...logits.flatMap((row, r) => row.map((v, j) => Math.abs(v - plainLogits[r][j]))));
   return { logits, plainLogits, rows: used.length, rowsOffered, rowsPerCiphertext, fheMs, ctBytes,
-           maxAbsError, rotations, multiplies };
+           maxAbsError, rotations, multiplies, rotateMs };
 }
 
 /**
@@ -238,7 +268,18 @@ export async function encryptedLinear(W: number[][], b: number[], x: number[]): 
   try { ctBytes = ctX.saveToArray(seal.ComprModeType.none).length; } catch { ctBytes = null; }
 
   const logits: number[] = [];
-  let rotations = 0, multiplies = 0;
+  // `rotateMs` times ONLY the `rotateVector` calls, and it exists because the number beside it does
+  // not support the division a reader will try. `fhe_linear_ms` on the page is this function's
+  // wall-clock MULTIPLIED by `benchScale(...)`, a cost-model projection for the selected model size,
+  // while `fhe_dense_rotations` is a raw count from this loop. Dividing one by the other read
+  // 158 ms per rotation on genomics against a true figure near 3 ms. Rotation cost is the unit the
+  // CKKS literature reports, because each rotation triggers a key-switch and key-switching does
+  // dominate here - measured at 57% of a small dense layer, 70% of the student's convolution and
+  // 86% of its dense layers. It has to be measured rather than reconstructed from a scaled total
+  // downstream, and the denominator has to have the same scope as the numerator: dividing the
+  // conv block's rotation time by the whole student's wall-clock produced a bogus 10% figure in
+  // this round's first attempt.
+  let rotations = 0, multiplies = 0, rotateMs = 0;
   for (let j = 0; j < W.length; j++) {
     // an all-zero weight row (our 2-class "class 0" convention) → logit is just the bias; skip the
     // homomorphic eval (CKKS would yield a "transparent" ciphertext, which the safe build rejects).
@@ -254,7 +295,9 @@ export async function encryptedLinear(W: number[][], b: number[], x: number[]): 
     multiplies++;
     for (let s = 1; s < sumWidth; s <<= 1) {                    // rotate-and-add → Σ slots in slot 0
       const rot = new seal.Ciphertext();
+      const tr = performance.now();
       evaluator.rotateVector(acc, s, galois, rot);
+      rotateMs += performance.now() - tr;
       const nxt = new seal.Ciphertext();
       evaluator.add(acc, rot, nxt);
       acc = nxt;
@@ -269,7 +312,7 @@ export async function encryptedLinear(W: number[][], b: number[], x: number[]): 
   // approximation error vs the plaintext reference (CKKS is approximate)
   const plain = W.map((row, j) => row.reduce((a, w, i) => a + w * (x[i] ?? 0), 0) + (b[j] ?? 0));
   const maxAbsError = Math.max(...logits.map((v, j) => Math.abs(v - plain[j])), 0);
-  return { logits, fheMs, ctBytes, maxAbsError, plainLogits: plain, rotations, multiplies };
+  return { logits, fheMs, ctBytes, maxAbsError, plainLogits: plain, rotations, multiplies, rotateMs };
 }
 
 export function argmax(a: number[]): number {
@@ -284,12 +327,20 @@ export interface ConvResult {
   fheMs: number;
   ctBytes: number | null;   // null = the size could not be read; NEVER 0, which is impossible
   maxAbsError: number;
-  /** Homomorphic rotations performed. Each one triggers a key-switch, which is what dominates. */
+  /** Homomorphic rotations performed. Each one triggers a key-switch, and that is the dominant
+   *  term here as elsewhere: measured at 70% of this operation's wall-clock. */
   rotations: number;
   /** Ciphertext-plaintext multiplications performed. */
   multiplies: number;
   /** How many im2col patches shared one ciphertext. 1 would mean no packing at all. */
   patchesPerCiphertext: number;
+  /** Time inside `rotateVector` only. Measured here as well as on the dense path because the
+   *  dense path's comment - key-switching dominates CKKS cost - is a claim about THIS operation
+   *  too, and the convolution is the one place it can be checked against a different work mix:
+   *  4 channels x 196 patches of im2col encoding around the same 16 rotations. Measured: 70%, so
+   *  the claim holds here too. It only appeared not to when the share was computed against the
+   *  whole student's wall-clock instead of the convolution's. */
+  rotateMs: number;
 }
 
 /**
@@ -371,7 +422,7 @@ export async function encryptedConv2d(
   let ctBytes: number | null = null;
   try { ctBytes = ctX.saveToArray(seal.ComprModeType.none).length; } catch { ctBytes = null; }
 
-  let rotations = 0, multiplies = 0;
+  let rotations = 0, multiplies = 0, rotateMs = 0;
   const maps: number[][] = [];
   for (let oc = 0; oc < kernels.length; oc++) {
     // The same kernel tiled into every patch block, so one multiply-plain covers all positions.
@@ -390,7 +441,9 @@ export async function encryptedConv2d(
     // along - which is exactly what the packing buys.
     for (let s = 1; s < block; s <<= 1) {
       const rot = new seal.Ciphertext();
+      const tr = performance.now();
       evaluator.rotateVector(acc, s, galois, rot);
+      rotateMs += performance.now() - tr;
       const nxt = new seal.Ciphertext();
       evaluator.add(acc, rot, nxt);
       acc = nxt;
@@ -419,7 +472,7 @@ export async function encryptedConv2d(
     }
   }
   return { maps, outH, outW, fheMs, ctBytes, maxAbsError,
-           rotations, multiplies, patchesPerCiphertext: nPatches };
+           rotations, multiplies, patchesPerCiphertext: nPatches, rotateMs };
 }
 
 /** The published student's structure, as written by `distil.save_cnn_student_weights`. */
@@ -442,6 +495,21 @@ export interface EncryptedStudentResult extends ConvResult {
   totalMultiplies: number;
   /** Max |encrypted - plaintext| over the logits, so the approximation cost is measured. */
   logitMaxAbsError: number;
+  /** The CONVOLUTION BLOCK's own wall-clock, kept separate from `fheMs`.
+   *
+   *  `fheMs` on this result is the whole student - conv plus every dense layer - because the spread
+   *  of `conv` below is overridden by the accumulated total. That is the right number for "what did
+   *  this inference cost", and the wrong denominator for "what fraction of the convolution is
+   *  rotation": `rotations` and `rotateMs` come from `...conv` and describe the conv block ALONE,
+   *  so dividing one by the other mixes two scopes. Round 38 published a 10% rotation share derived
+   *  from exactly that mismatch. */
+  convOnlyMs: number;
+  /** Wall-clock of the dense layers that follow the convolution. `convOnlyMs + denseMs == fheMs`. */
+  denseMs: number;
+  /** Rotations in the dense layers only. `rotations + denseRotations == totalRotations`. */
+  denseRotations: number;
+  /** Time inside `rotateVector` across the dense layers only. */
+  denseRotateMs: number;
 }
 
 /**
@@ -492,6 +560,11 @@ export async function encryptedStudentInference(
 
   let v = flat;
   let rotations = conv.rotations, multiplies = conv.multiplies, fheMs = conv.fheMs, ctBytes = conv.ctBytes;
+  // Accumulated separately from the totals above, because the return spreads `...conv` (whose
+  // `rotations` and `rotateMs` are the CONV BLOCK's) and then overrides `fheMs` with the total.
+  // Without these, the only pairing a caller can form is conv-scoped rotations over a
+  // student-scoped time - which is the division that produced Round 38's wrong 10% figure.
+  let denseMs = 0, denseRotations = 0, denseRotateMs = 0;
   for (const d of w.dense) {
     if (v.length !== d.in) {
       throw new Error(`dense layer expects ${d.in} inputs, got ${v.length} - the published weights `
@@ -499,6 +572,7 @@ export async function encryptedStudentInference(
     }
     const r = await encryptedLinear(d.weight, d.bias ?? new Array(d.out).fill(0), v);
     rotations += r.rotations; multiplies += r.multiplies; fheMs += r.fheMs;
+    denseMs += r.fheMs; denseRotations += r.rotations; denseRotateMs += r.rotateMs;
     // Null-safe: the largest size actually read across layers, or null if none could be read.
     ctBytes = r.ctBytes == null ? ctBytes
       : ctBytes == null ? r.ctBytes
@@ -539,5 +613,6 @@ export async function encryptedStudentInference(
     logits: v, prediction: argmax(v),
     totalRotations: rotations, totalMultiplies: multiplies,
     logitMaxAbsError: Math.max(...v.map((x, i) => Math.abs(x - ref[i])), 0),
+    convOnlyMs: conv.fheMs, denseMs, denseRotations, denseRotateMs,
   };
 }

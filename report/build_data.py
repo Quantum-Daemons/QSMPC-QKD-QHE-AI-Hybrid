@@ -47,10 +47,20 @@ def model_table() -> str:
 
 
 def crypto_table() -> str:
+    # The FHE row is DERIVED, because a generator that hardcodes the parameter set it is describing
+    # publishes the old one the moment the code changes. Both numbers here were literals - "ring
+    # degree 8192" and "4096 slots" - written inside this function, matching a literal in
+    # `clientFHE.ts` and a default argument in `fhe/backends.py`, none of which read
+    # `FHEConfig.poly_modulus_degree`. Raising the ring would have left this table asserting a
+    # parameter set nothing runs.
+    from qsh.config import get_config
+
+    fhe = get_config().fhe
     rows = [
         ("KEM", "ML-KEM-768 + X25519", "FIPS 203 hybrid; ct 1088 B"),
         ("Signature", "ML-DSA-65", "FIPS 204; sig 3309 B"),
-        ("FHE", "CKKS, ring degree 8192", "4096 slots, one multiplicative level per dot product"),
+        ("FHE", f"CKKS, ring degree {fhe.poly_modulus_degree}",
+         f"{fhe.poly_modulus_degree // 2} slots, one multiplicative level per dot product"),
         ("MPC", "Garbled circuits (emp-wasm)", "non-linear layers: ReLU, argmax"),
         ("QKD", "BB84 two-intensity decoy", "GLLP tagged fraction"),
     ]
