@@ -52,7 +52,10 @@ simulation/scaffolds where not - every claim is tied to a primary source in
 > ([arXiv:2408.12739](https://arxiv.org/abs/2408.12739), rev. Feb 2026). That is the frame for this
 > repository's own measured result - its trained QCNN loses to logistic regression on the same split,
 > which is the expected outcome rather than a disappointing one, and both figures are printed side by
-> side on the page. Relatedly, Li, Wu, Li and Yung separate observable concentration from loss of
+> side on the page. Two circuit widths ship for telecom so the effect of the register size can be
+> read rather than assumed: the eighth wire encodes no feature and is still worth **0.079 macro F1**,
+> while two of the eight classes score better without it
+> ([`references/qcnn-width-ablation.md`](references/qcnn-width-ablation.md)). Relatedly, Li, Wu, Li and Yung separate observable concentration from loss of
 > parameter sensitivity and show that **avoiding concentration is necessary but not sufficient for
 > trainability** ([arXiv:2603.18479](https://arxiv.org/abs/2603.18479), Mar 2026, rev. Jun 2026); the
 > untrained circuit this project removed from its inference path failed exactly the concentration
