@@ -207,7 +207,7 @@ verdict, because nothing consults it.
 **This does not describe this project, and saying so precisely matters more than citing it.** The
 finding is about *separable* hybrid credentials, where a verifier can reach a decision from the
 classical half alone. This repository issues no X.509 at all: the hybrid is a **KEM combiner** -
-ML-KEM-768/1024 and X25519 fed together through HKDF-SHA256 with the transcript bound in - c1 || c2 || ek1 || ek2, the ML-KEM ciphertext and the X25519 ephemeral public followed by both encapsulation keys, per NIST SP 800-227 section 4.6.3. Round 38 found c1 missing here and in three other combiner sites
+ML-KEM-768/1024 and X25519 fed together through HKDF-SHA256 with the transcript bound in - c1 || c2 || ek1 || ek2, the ML-KEM ciphertext and the X25519 ephemeral public followed by both encapsulation keys, per NIST SP 800-227 section 4.6.3. Round 38 found c1 missing in this file and in the two browser mirrors, and found a fourth site (`web/src/lib/clientMcp.ts`) binding nothing at all
 (`src/qsh/pqc/hybrid_kem.py`, mirrored in `clientCompute.ts`). Both secrets enter one hash, so there
 is no path that reaches a session key from one of them; the code comment has said *"so neither half
 can be cancelled out by an attacker who controls the other"* since it was written.
