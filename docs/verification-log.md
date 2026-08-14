@@ -1015,3 +1015,20 @@ carries what it pretended to and does vary (7 of 30 on genomics, 0 of 512 on tel
 **"3.2-4.2 ms throughout" excluded both of its own endpoints.** The stages it summarised measure 4.39,
 4.24 and 3.10; the interval contained neither extreme, and the same string sat in two code comments.
 Now 3.10-4.39.
+
+#### Confirmed on the deploy, and one thing splitting the error key revealed
+
+Redeployed at `2393c79`. Medical, live: the event log reads "16 rotations and 4 multiply-plain in
+**77.67 ms**; the student's 136 dense-layer rotations take **494.04 ms** more. This page's own bundled
+linear model adds 18.9 ms" - and the metrics table reads `fhe_conv_ms` 77.67,
+`fhe_student_dense_ms` 494.04, `fhe_encrypted_student_ms` 571.71, with 77.67 + 494.04 = 571.71
+exactly. Log and table now answer the same question the same way.
+
+`encrypted_flips_are_ties` and `encrypted_flip_margin_relative` are gone from every page.
+
+**Splitting the error key showed something the single key hid**: `fhe_conv_max_abs_error` 4.65e-9
+against `fhe_student_logit_max_abs_error` 3.46e-9 - the convolution's error is LARGER than the
+student's final one. Average pooling over 2x2 divides the deviation by about two before the dense
+layers see it, so the end-to-end figure understates the convolution. Under one key the larger of the
+two was invisible, which is the concrete form of what that metric's own comment had claimed to
+prevent.
