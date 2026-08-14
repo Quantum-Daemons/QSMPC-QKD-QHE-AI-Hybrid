@@ -601,7 +601,7 @@ export interface MeasuredHybrid {
   /** Set when the run performed a real encrypted CONVOLUTION rather than a dot product. Counted,
    *  not estimated. Each rotation triggers a key-switch, and key-switching dominates every path
    *  measured here - 57% of a small dense layer, 70% of this convolution, 86% of the student's
-   *  dense layers - at a per-rotation cost of 3.2-4.2 ms throughout. */
+   *  dense layers - at a per-rotation cost of 3.10-4.39 ms across every stage measured. */
   conv?: { rotations: number; multiplies: number; patchesPerCiphertext: number;
            outH: number; outW: number; channels: number; convMs: number; maxAbsError: number;
            rotateMs: number;
@@ -611,6 +611,9 @@ export interface MeasuredHybrid {
             *  10% from the mismatched pair. Equal to `convMs` on the synthetic-kernel path, which
             *  runs the convolution and nothing else. */
            convOnlyMs: number;
+           /** The STUDENT's final-logit error, where a full student ran. Distinct from
+            *  `maxAbsError`, which is the convolution block's. */
+           studentLogitMaxAbsError?: number;
            /** The student's DENSE layers, on the published-weights path. Reported so the whole
             *  569 ms is accounted for rather than leaving 488 ms unexplained beside a conv figure. */
            denseMs?: number; denseRotations?: number; denseRotateMs?: number;
@@ -644,9 +647,6 @@ export interface RealHybridRun extends MeasuredHybrid {
              *  only evidence against the encrypted tier if the plaintext model had a real preference
              *  to lose; see the comment at the computation. */
             flipMarginMax: number;
-            /** That margin as a fraction of the plaintext score RANGE on this corpus. The margin
-             *  alone has no scale, and comparing it against the deviation is a tautology. */
-            flipMarginRel: number;
             /** Rows whose plaintext top-2 margin is EXACTLY zero - the model does not decide them,
              *  so their encrypted outcome is a coin toss and they carry no verification signal.
              *  Counted on every run, because a run where they all happen to agree looks perfect. */
@@ -655,10 +655,6 @@ export interface RealHybridRun extends MeasuredHybrid {
             decidable: number;
             /** Flips among the decidable rows. This is the one that would indicate a real problem. */
             flippedDecidable: number;
-            /** True when the flips happened at margins negligible against the model's own score
-             *  spread - i.e. the plaintext model was indifferent there. CAN be false: a large
-             *  deviation overturning a decision held with a real margin fails this. */
-            flipsWithinNoise: boolean;
             points: { enc: number; plain: number; agree: boolean }[] } | null;
 }
 
@@ -772,7 +768,15 @@ export async function realClientHybrid(features: number[], u: () => number,
         const r = await encryptedStudentInference(wts, img);
         conv = { rotations: r.rotations, multiplies: r.multiplies,
                  patchesPerCiphertext: r.patchesPerCiphertext, outH: r.outH, outW: r.outW,
-                 channels: wts.conv.out_ch, convMs: r.fheMs, maxAbsError: r.logitMaxAbsError,
+                 channels: wts.conv.out_ch, convMs: r.fheMs,
+                 // The CONVOLUTION BLOCK's error, from the `...conv` spread. This was
+                 // `r.logitMaxAbsError` - the whole student's final-logit error, after pooling and
+                 // both dense layers - published under a convolution-scoped name, on the published
+                 // path only, while the synthetic path put the conv block's error in the same key.
+                 // One key, two meanings, decided by whether a fetch succeeded; and the comment at
+                 // the emit said the two errors were reported separately "so a regression in one
+                 // cannot hide behind the other", which is precisely what it allowed.
+                 maxAbsError: r.maxAbsError, studentLogitMaxAbsError: r.logitMaxAbsError,
                  rotateMs: r.rotateMs, convOnlyMs: r.convOnlyMs,
                  denseMs: r.denseMs, denseRotations: r.denseRotations, denseRotateMs: r.denseRotateMs,
                  publishedWeights: true, totalRotations: r.totalRotations,
@@ -813,37 +817,29 @@ export async function realClientHybrid(features: number[], u: () => number,
       const flipped = encCls.map((_, i) => i).filter((i) => encCls[i] !== plainCls[i]);
       const flipMarginMax = flipped.length
         ? Math.max(...flipped.map((i) => decisionMargin(bt.plainLogits[i]))) : 0;
-      // The scale the margin has to be judged against, and the reason it is not the deviation.
+      // WHY THERE IS NO TIE/NOT-TIE BOOLEAN HERE, after two attempts at one.
       //
-      // The first version asked `flipMarginMax <= 2 * maxAbsError`, which is a TAUTOLOGY: if a is
-      // the plaintext argmax and c the encrypted one, then margin <= plain[a] - plain[c] =
+      // The first asked `flipMarginMax <= 2 * maxAbsError`. That is a theorem, not a test: if `a`
+      // is the plaintext argmax and `c` the encrypted one, margin <= plain[a] - plain[c] =
       // (enc[a] - enc[c]) + (d_c - d_a) <= 0 + 2E, because enc[c] >= enc[a] by definition of the
-      // encrypted argmax and E bounds every deviation. A flip MEANS the noise exceeded the margin,
-      // so "could the noise explain this flip" is always yes and the opposite branch was dead code.
-      // A check that cannot fail, shipped in the round that named that failure mode.
+      // encrypted argmax and E bounds every deviation. A flip MEANS the noise exceeded the margin.
       //
-      // The question a reader actually has is different: is the plaintext model INDIFFERENT at
-      // these rows, or did a large deviation overturn a decision it held? That is answered against
-      // the spread of scores the model produces on this corpus, which is independent of the
-      // deviation and can come out either way.
-      const allPlain = bt.plainLogits.flat();
-      const scoreRange = allPlain.length ? Math.max(...allPlain) - Math.min(...allPlain) : 0;
-      const flipMarginRel = scoreRange > 0 ? flipMarginMax / scoreRange : 0;
-      // HOW MANY ROWS THE PLAINTEXT MODEL CANNOT DECIDE AT ALL, counted unconditionally.
+      // The second divided that margin by the plaintext score range and compared against 1e-6,
+      // which looked independent and is not: the same bound gives rel <= 2E/range, and with
+      // E ~ 1e-9 against a range of order 1 that is ~1e-9 - three orders below the threshold, on
+      // every run this system can produce. It would take a 500x precision collapse to reach the
+      // other branch, and that case is already reported by `encrypted_batch_precision_bits` and by
+      // the maxAbsError >= 1 failure path. Tuning the threshold would only move the impossibility.
       //
-      // Genomics forced this. Its corpus is 30 fixed rows and its model is the published PGS
-      // weights as `[-w/2, +w/2]`, so a sample carrying no effect allele at any of the top-8 loci
-      // scores exactly 0 on both classes. SEVEN of the 30 do. Those rows are decided by argmax
-      // tie-breaking in the clear and by ~1e-9 of encryption noise under CKKS, so each flips with
-      // probability about a half, independently, on every run - the same page, same fixed corpus
-      // and same model printed 3, 5 and 6 mismatches across runs, and `encrypted_agreement` ranges
-      // over roughly 0.77 to 1.00 by chance.
+      // Worse, the experiment that "proved" the second version reachable forced `flipMarginRel` to
+      // a literal and watched the caption change. That tested the rendering branch, not the
+      // predicate - the wrong thing, convincingly.
       //
-      // Reported ALWAYS, not only when a flip happens. The tie explanation used to sit inside
-      // `if (mismatches > 0)`, so on a run where all seven landed the same way as the plaintext
-      // tie-break the page published agreement 1.00 over 30 rows with nothing saying that 23% of
-      // that denominator was a coin toss. The undecidable count is a property of the corpus and the
-      // model, not of the run, so it belongs on every run.
+      // So the boolean is gone rather than re-tuned. What survives is measured and does vary:
+      // `flipMarginMax`, the deviation beside it, and `tieRows` below - the rows the plaintext
+      // model scores identically, which is 7 of 30 on genomics and 0 of 512 on telecom. That count
+      // is what actually separates a meaningful agreement rate from a coin toss, and unlike a
+      // tie/not-tie verdict it is a property of the corpus rather than a restatement of a theorem.
       const tieRows = bt.plainLogits.filter((row) => decisionMargin(row) === 0).length;
       const decidable = bt.rows - tieRows;
       // Flips among the rows the plaintext model actually decides. THIS is the number that would
@@ -853,11 +849,10 @@ export async function realClientHybrid(features: number[], u: () => number,
       batch = {
         rows: bt.rows, rowsOffered: bt.rowsOffered, rowsPerCiphertext: bt.rowsPerCiphertext,
         fheMs: bt.fheMs, maxAbsError: bt.maxAbsError,
-        flipMarginMax, flipMarginRel, tieRows, decidable, flippedDecidable,
+        flipMarginMax, tieRows, decidable, flippedDecidable,
         // Six orders of magnitude below the score range: far below anything a model with a real
         // preference produces, and far ABOVE the ~1e-9 relative deviation CKKS contributes here, so
         // the threshold separates the two cases instead of collapsing into one of them.
-        flipsWithinNoise: flipped.length > 0 && flipMarginRel <= 1e-6,
         mismatches: flipped.length,
         points: bt.logits.map((row, i) => ({
           enc: row[encCls[i]], plain: bt.plainLogits[i][encCls[i]],
@@ -1418,12 +1413,7 @@ export function runClientPipeline(
         const flipped2 = encCls2.map((_, i) => i).filter((i) => encCls2[i] !== plainCls2[i]);
         const flipMarginMax2 = flipped2.length
           ? Math.max(...flipped2.map((i) => decisionMargin(batch.plainLogits[i]))) : 0;
-        // Against the score SCALE, not the deviation - see the note at the finance/genomics twin
-        // for why the deviation comparison is a tautology that can only ever return true.
-        const allPlain2 = batch.plainLogits.flat();
-        const range2 = allPlain2.length ? Math.max(...allPlain2) - Math.min(...allPlain2) : 0;
-        const flipMarginRel2 = range2 > 0 ? flipMarginMax2 / range2 : 0;
-        const flipsWithinNoise2 = flipped2.length > 0 && flipMarginRel2 <= 1e-6;
+        // No tie/not-tie verdict here either - see the note at the finance/genomics twin.
         // The undecidable-row disclosure, on THIS path too.
         //
         // It was added to the finance/genomics/medical batch and not here, which made the fix for a
@@ -1466,8 +1456,6 @@ export function runClientPipeline(
           decidable2 > 0 ? r2(1 - flippedDecidable2 / decidable2) : null);
         if (mism > 0) {
           metric(stage, "encrypted_flip_margin_max", flipMarginMax2);
-          metric(stage, "encrypted_flip_margin_relative", flipMarginRel2);
-          metric(stage, "encrypted_flips_are_ties", flipsWithinNoise2 ? 1 : 0);
         }
         artifacts.encrypted_agreement_plot = {
           kind: "encrypted-agreement",
@@ -1481,8 +1469,7 @@ export function runClientPipeline(
           // derive this from what it plots - and printing the plotted maximum beside a class-score
           // count is how the finance caption came to understate the deviation by 37%.
           maxAbsError: batch.maxAbsError,
-          flipMarginMax: flipMarginMax2, flipMarginRel: flipMarginRel2,
-          flipsWithinNoise: flipsWithinNoise2,
+          flipMarginMax: flipMarginMax2,
           undecidableRows: tieRows2, decidableRows: decidable2,
           agreementOverDecidable: decidable2 > 0 ? r2(1 - flippedDecidable2 / decidable2) : null,
         };
@@ -2330,15 +2317,12 @@ export function runClientPipeline(
             if (bt.mismatches > 0) {
               metric(stage, "encrypted_flip_margin_max", bt.flipMarginMax);
               // The basis of the verdict, so it is checkable rather than taken on trust.
-              metric(stage, "encrypted_flip_margin_relative", bt.flipMarginRel);
-              metric(stage, "encrypted_flips_are_ties", bt.flipsWithinNoise ? 1 : 0);
             }
             artifacts.encrypted_agreement_plot = {
               kind: "encrypted-agreement", points: bt.points, rows: bt.rows,
               rowsOffered: bt.rowsOffered, classes: real.logits.length,
               maxAbsError: bt.maxAbsError,   // all rows x classes; `points` is winning-class only
-              flipMarginMax: bt.flipMarginMax, flipMarginRel: bt.flipMarginRel,
-              flipsWithinNoise: bt.flipsWithinNoise,
+              flipMarginMax: bt.flipMarginMax,
               undecidableRows: bt.tieRows, decidableRows: bt.decidable,
               agreementOverDecidable: bt.decidable > 0
                 ? r2(1 - bt.flippedDecidable / bt.decidable) : null,
@@ -2348,17 +2332,18 @@ export function runClientPipeline(
               + `feature width), ${r2(bt.fheMs)} ms. Top-1 mismatches vs plaintext: `
               + `${bt.mismatches} of ${bt.rows}. Max abs error ${bt.maxAbsError.toExponential(3)}`
               + (bits !== null ? ` (about ${bits} bits, MAX not mean)` : "")
+              // Stated, not adjudicated. A flip always happens at a margin below twice the
+              // deviation - that is a theorem, not a measurement - so a verdict computed from
+              // those two numbers says nothing. The count of rows the model scores IDENTICALLY is
+              // the number that varies and that separates one page from another.
+              + `. ${bt.tieRows} of the ${bt.rows} rows are scored identically across classes by `
+              + `the plaintext model itself, so their outcome is decided by tie-breaking in the `
+              + `clear and by encryption noise here; over the ${bt.decidable} rows it does decide, `
+              + `agreement is `
+              + (bt.decidable > 0 ? r2(1 - bt.flippedDecidable / bt.decidable) : "not computable")
               + (bt.mismatches > 0
-                ? `. The plaintext model's own decision margin at the ${bt.mismatches} flipped `
-                  + (bt.flipMarginMax === 0
-                    ? "row(s) is EXACTLY ZERO: it scores those samples identically across classes, "
-                      + "so its own top-1 comes from argmax tie-breaking and any deviation flips it"
-                    : `row(s) was at most ${bt.flipMarginMax.toExponential(3)}, `
-                      + (bt.flipsWithinNoise
-                        ? "which the deviation above can bridge -- those rows are ties the plaintext "
-                          + "model has no real preference on, not evidence against the encrypted tier"
-                        : "which is WIDER than the deviation can bridge -- these flips are not ties "
-                          + "and need explaining"))
+                ? `. Widest plaintext margin among the ${bt.mismatches} flipped row(s): `
+                  + `${bt.flipMarginMax.toExponential(3)}`
                 : "")
               + (bt.rowsOffered > bt.rows
                 ? `. ${bt.rowsOffered - bt.rows} rows did not fit and were not scored, so the `
@@ -2521,6 +2506,12 @@ export function runClientPipeline(
             // the same inputs. Reported separately from the dense layer's so a regression in one
             // cannot hide behind the other.
             metric(stage, "fhe_conv_max_abs_error", real.conv.maxAbsError);
+            // The student's END-TO-END error, separately, where a student ran. Both are reported so
+            // a regression in the convolution and one in the dense stack cannot land in one number,
+            // which is what the comment above claimed and what the single key prevented.
+            if (real.conv.studentLogitMaxAbsError != null) {
+              metric(stage, "fhe_student_logit_max_abs_error", real.conv.studentLogitMaxAbsError);
+            }
             // Whether the PUBLISHED student's weights drove this, or only its shape did. These are
             // different claims and the run must never let them look alike.
             metric(stage, "fhe_weights", real.conv.publishedWeights
@@ -2538,8 +2529,20 @@ export function runClientPipeline(
               + `class=${real.prediction}; ${real.conv.channels}x3x3 kernels over a `
               + `${real.conv.outH}x${real.conv.outW} output, ${real.conv.patchesPerCiphertext} im2col `
               + `patches packed into one ciphertext, ${real.conv.rotations} rotations and `
-              + `${real.conv.multiplies} multiply-plain in ${r2(real.conv.convMs)} ms `
-              + `(+ ${r2(real.fheMs - real.conv.convMs)} ms dense layer, MPC ${r2(real.mpcMs)} ms). `
+              + `${real.conv.multiplies} multiply-plain in ${r2(real.conv.convOnlyMs)} ms`
+              // EVERY TERM SCOPED, because this sentence carried the withdrawn attribution after
+              // the metrics above it were fixed. It read "<conv rotations> ... in
+              // <the WHOLE student's ms>" - the same numerator/denominator mismatch that produced
+              // the 10% figure - and then labelled `real.fheMs - real.conv.convMs`, which is the
+              // page's own 8-feature bundled linear demo at ~23 ms, as "dense layer" while the
+              // student's actual dense stack cost ~490 ms. A visitor reading the event log got the
+              // retracted story back on the same page whose table had just been corrected.
+              + (real.conv.denseRotations
+                ? `; the student's ${real.conv.denseRotations} dense-layer rotations take `
+                  + `${r2(real.conv.denseMs ?? 0)} ms more`
+                : "")
+              + `. This page's own bundled linear model adds `
+              + `${r2(real.fheMs - real.conv.convMs)} ms, MPC ${r2(real.mpcMs)} ms. `
               + `Nothing here is scaled by a cost model.`);
           } else {
             emit("log", stage, `private inference (REAL in-browser FHE, ${config.model_size ?? "medium"}/${config.workload ?? "linear"}): `

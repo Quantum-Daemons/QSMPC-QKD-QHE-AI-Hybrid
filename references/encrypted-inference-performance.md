@@ -78,7 +78,7 @@ Measured with the scopes separated, medical page, one run:
 The two stages sum to the total exactly - 96.60 + 490.23 = 586.83 - so nothing is unattributed.
 
 So key-switching dominates everywhere, at 57% to 86% depending on how much non-rotation work the
-stage carries, and the per-rotation cost is 3.2-4.2 ms throughout. The page now reports
+stage carries, and the per-rotation cost is 3.10-4.39 ms across every stage measured. The page now reports
 `fhe_conv_ms` (the convolution), `fhe_encrypted_student_ms` (the total),
 `fhe_student_dense_ms` and a rotation share per stage, so the two scopes cannot be divided into each
 other again.

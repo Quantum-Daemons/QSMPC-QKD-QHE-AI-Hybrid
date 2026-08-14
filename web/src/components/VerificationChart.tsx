@@ -37,16 +37,10 @@ export interface EncryptedAgreementPlot {
   /** Worst deviation over ALL `rows * classes` scores, which is a strictly larger set than `points`.
       See the caption note: one point is plotted per row, for the winning class only. */
   maxAbsError?: number;
-  /** Widest PLAINTEXT top-1-to-top-2 gap among the rows that flipped, that gap as a fraction of the
-      model's own score range, and whether it is negligible against that range. Reported because a
-      mismatch count on its own reads as a precision failure, and on genomics every flip is a row
-      the plaintext model scores identically across classes.
-
-      NOT compared against the deviation: a flip means the noise exceeded the margin, so that test
-      is true by construction. The scale comparison can come out either way. */
+  /** Widest PLAINTEXT top-1-to-top-2 gap among the rows that flipped. Reported as a measurement.
+      There is deliberately no tie/not-tie verdict beside it: a flip occurs exactly when the
+      deviation exceeds the margin, so any comparison between the two restates that identity. */
   flipMarginMax?: number;
-  flipMarginRel?: number;
-  flipsWithinNoise?: boolean;
   /** Rows the plaintext model scores identically across classes, so their encrypted outcome is a
       coin toss and they carry no verification signal - and the agreement rate over the rest.
 
@@ -116,45 +110,22 @@ export function EncryptedAgreementChart({ plot }: { plot: EncryptedAgreementPlot
           <> · across all {plot.rows * plot.classes} class scores, including the losing ones this
           figure does not plot: {plot.maxAbsError.toExponential(2)}</>
         ) : null}.
-        {/* What a mismatch MEANS. Without this the genomics figure reports 3 of 30 and reads as
-            the encrypted tier being unreliable, when the deviation is 7e-10 and the model's two
-            logits are exact negatives of each other - so the flipped rows are samples whose
-            polygenic score is zero and which the plaintext model itself does not prefer either
-            way. The count is the honest number; alone it points the wrong way. */}
+        {/* What a mismatch MEANS - stated, not adjudicated.
+            Two earlier versions computed a tie/not-tie verdict here, first from the deviation and
+            then from the score range. Both are unfalsifiable: a flip happens exactly when the noise
+            exceeds the margin, so margin <= 2 x deviation always, and dividing by a score range of
+            order 1 leaves it three orders below any threshold worth setting. The verdict restated a
+            theorem while looking like a measurement.
+            The number that actually varies, and that separates this page from telecom's, is the
+            count of rows the plaintext model scores identically - reported above, unconditionally. */}
         {mismatches > 0 && typeof plot.flipMarginMax === "number" ? (
           <>
-            {" "}The plaintext model&apos;s own margin between its top two scores at those{" "}
-            {mismatches} rows is{" "}
-            {/* ONE predicate decides tie-or-not, and it is the same one the `encrypted_flips_are_ties`
-                metric reports. Written first with `flipMarginMax === 0` as its own leading branch,
-                which could short-circuit to "these are ties" while the metric beside it read 0 -
-                two surfaces on one page disagreeing about the same question, which is the defect
-                class this figure exists to avoid. Exactly-zero is now a wording choice INSIDE the
-                ties branch, not a second way of deciding. */}
-            {plot.flipsWithinNoise ? (
-              plot.flipMarginMax === 0
-                ? <><strong>exactly zero</strong> — the plaintext model scores those samples
-                  identically across classes, so its own top-1 is decided by argmax tie-breaking and
-                  any deviation at all flips it. These are <strong>ties</strong>, not decisions the
-                  encryption got wrong.</>
-                : <>at most {plot.flipMarginMax.toExponential(2)}, which is{" "}
-                  {plot.flipMarginRel != null ? plot.flipMarginRel.toExponential(1) : "a negligible fraction"}{" "}
-                  of the range of scores this model produces here — so they are{" "}
-                  <strong>ties</strong> it has no real preference on, not decisions the encryption
-                  got wrong.</>
-            ) : (
-              <>{plot.flipMarginMax.toExponential(2)}, a <strong>material</strong> fraction
-              {plot.flipMarginRel != null ? <> ({plot.flipMarginRel.toExponential(1)})</> : null}{" "}
-              of this model&apos;s score range — these are decisions it held with a real margin and
-              the encrypted run overturned, which is a precision problem, not a tie.</>
-            )}
-          </>
-        ) : null}
-        {plot.rowsOffered != null && plot.rowsOffered > plot.rows ? (
-          <>
-            {" "}The split holds <strong>{plot.rowsOffered}</strong> rows; one ciphertext fits{" "}
-            {plot.rows} at this feature width, so {plot.rowsOffered - plot.rows} were not scored and
-            the agreement above is over {plot.rows}, not over the whole split.
+            {" "}Widest margin the plaintext model held at those {mismatches} flipped rows:{" "}
+            {plot.flipMarginMax === 0
+              ? <><strong>exactly zero</strong> — it does not distinguish those samples at all.</>
+              : <>{plot.flipMarginMax.toExponential(2)}. A flip happens precisely when the deviation
+                exceeds the margin, so this is always below twice the figure above; it is reported
+                as a measurement, not as a verdict on the encryption.</>}
           </>
         ) : null}
       </figcaption>
