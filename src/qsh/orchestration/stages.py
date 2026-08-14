@@ -11,6 +11,7 @@ CryptoRegistry`, so the same chain runs PQC-only or PQC+QKD, TenSEAL or OpenFHE,
 
 from __future__ import annotations
 
+import time
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from typing import Any
@@ -382,7 +383,18 @@ class PrivateInferenceStage(Stage):
             # reproducible. Round 25 fixed the browser and left this path untouched.
             weights = load_weights(ctx.usecase)
             if weights is not None:
+                # MEASURED, mirroring the browser. `clientCompute.ts` times `qcnnInferTrained` and
+                # reports `qcnn_inference_ms` beside `qcnn_qubits`, because state-vector simulation
+                # is 2^n work and a bare millisecond figure is not comparable without the width.
+                # This path claimed the same `qcnn-trained` backend and reported neither, so the
+                # full deployment surfaced a quantum prediction with no cost beside it while
+                # `web/scripts/check_qcnn_metrics_at_every_site.mjs` - written to stop exactly that -
+                # read only the TypeScript file. That gate now reads this one too.
+                _t0 = time.perf_counter()
                 expectation, cls, _logit = qcnn_infer(x, weights)
+                _qcnn_ms = (time.perf_counter() - _t0) * 1000.0
+                bus.metric("qcnn_inference_ms", round(_qcnn_ms, 2), self.name)
+                bus.metric("qcnn_qubits", int(weights.get("n_qubits", 0)), self.name)
                 ctx.artifacts["qhe_prediction"] = cls
                 ctx.artifacts["qhe_backend"] = "qcnn-trained"
                 # Canonical key. medical_fl read only `fhe_prediction`, which the CKKS branch

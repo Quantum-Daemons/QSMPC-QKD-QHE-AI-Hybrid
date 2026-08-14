@@ -20,7 +20,15 @@ class EventType(str, Enum):
     PIPELINE_START = "pipeline_start"
     PIPELINE_END = "pipeline_end"
     PIPELINE_STOP = "pipeline_stop"
-    PIPELINE_PAUSE = "pipeline_pause"
+    # Two events, because "pause was requested" and "the run has actually stopped" are different
+    # facts and the UI shows different states for them ("pausing" vs "paused"). Only the second
+    # enables Resume and Step. The browser gate has emitted both since Round 24
+    # (`web/src/lib/clientCompute.ts`); this side had only PIPELINE_PAUSE, emitted from INSIDE the
+    # gate - semantically the EFFECT, under the name the browser uses for the REQUEST. So against
+    # this transport the UI reached "pausing" and stayed there: Resume and Step were disabled
+    # forever and Start-stepwise was unusable from its first stage.
+    PIPELINE_PAUSE = "pipeline_pause"                      # requested; a stage may still be running
+    PIPELINE_PAUSE_EFFECTIVE = "pipeline_pause_effective"  # the worker is now blocked at the gate
     PIPELINE_RESUME = "pipeline_resume"
     STAGE_START = "stage_start"
     STAGE_END = "stage_end"
