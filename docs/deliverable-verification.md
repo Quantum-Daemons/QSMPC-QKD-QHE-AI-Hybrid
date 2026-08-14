@@ -1176,6 +1176,22 @@ genomics 30. **Decided** at the user's direction: value back to 8192, wiring kep
 batched convolution exists to spend the slots on, at which point it is one line in `config.yaml` and
 one in `defaults.py`.
 
+**The medical batched-convolution figure: DEFERRED, with the arithmetic that decides it.** This was
+the item the ring change existed to serve, and it is recorded separately rather than as a clause
+inside that decision, because a reader asking "what happened to it?" should not have to find it
+there. The student's encrypted convolution needs 3,136 slots per image - a 14x14 image padded to
+16x16, a 3x3 kernel giving 196 patches at a 16-slot block - so ring 8192 holds one image and ring
+16384 would hold two. Two points is not a figure, and medical already carries a 400-row linear
+agreement chart, so the marginal reader gains nothing while every FHE number on the page doubles.
+Building it properly needs explicit chunking across ciphertexts, which pays linear homomorphic cost
+per chunk and has to report that cost rather than hide it behind one number - the same reason
+`encryptedConv2d` throws today instead of tiling silently.
+
+*Reopens if* either of two things becomes true: the encrypted convolution is batched across
+ciphertexts with the per-chunk cost surfaced, at which point the ring raise pays for itself and both
+land together; or medical's linear agreement chart is removed, which would make even a two-point
+convolution figure the only encrypted-vs-plaintext evidence that page has.
+
 **The wiring is the durable result.** `FHEConfig.poly_modulus_degree` had no reader anywhere in
 `src/`; the value the TenSEAL backend ran came from its own default arguments, the browser's came
 from a literal in `clientFHE.ts`, and the report PRINTED a literal inside `build_data.py`. Four
