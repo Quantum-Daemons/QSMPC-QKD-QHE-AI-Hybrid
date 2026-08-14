@@ -1151,6 +1151,23 @@ All four sites changed together - they must, or backend and browser derive diffe
 domain separator moved to `v2`, because deriving a different key under an unchanged label is what
 domain separation exists to prevent. The deployed page now reports
 *info="qsh/hybrid-kem/v2", transcript c1||c2||ek1||ek2 per NIST SP 800-227 s4.6.3*.
+**And the fix's own first version violated the same section it cites, twice.** Both were caught by
+re-reading section 4.6.3 against what had just been written rather than against what it replaced:
+
+- The MCP path was given `qsh/hybrid-kem/v2`, the handshake's separator - but it is a different
+  composite scheme (static-static X25519, no ephemeral `c2`, transcript `c1 || ek1 || xA || xB`).
+  Two constructions under one separator is what a separator exists to prevent. It now has
+  `qsh/mcp-agent-kem/v1 ML-KEM-768+X25519-static`.
+- The separator named `ML-KEM-768` as a fixed literal while `HybridKEMRecipient` takes a `kem_name`
+  and the browser's `kemImpl()` genuinely switches to ML-KEM-1024 on the category-5 path - measured
+  live, ciphertext 1088 bytes to 1568. So a category-5 run derived its key under a separator
+  asserting the category-3 parameter set. Section 4.6.3 requires domain_sep to identify the
+  "choice of parameter set" explicitly. It is now derived: selecting category 5 on the deployed page
+  produces `info="qsh/hybrid-kem/v2 ML-KEM-1024+X25519"` beside `kem_ciphertext_bytes 1568`.
+
+That also removes a concatenation ambiguity: the transcript joins fixed-width fields with no length
+prefixes, which is unambiguous only within one parameter set, and the set is now in the separator.
+
 `references/stress-testing-fact-check.md:56` proposed a test for "the ciphertext-binding combiner";
 that description became true of the code with this change and was not before, and the file now says
 so.
