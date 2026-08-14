@@ -647,6 +647,14 @@ export interface RealHybridRun extends MeasuredHybrid {
             /** That margin as a fraction of the plaintext score RANGE on this corpus. The margin
              *  alone has no scale, and comparing it against the deviation is a tautology. */
             flipMarginRel: number;
+            /** Rows whose plaintext top-2 margin is EXACTLY zero - the model does not decide them,
+             *  so their encrypted outcome is a coin toss and they carry no verification signal.
+             *  Counted on every run, because a run where they all happen to agree looks perfect. */
+            tieRows: number;
+            /** `rows - tieRows`: the rows a top-1 comparison can actually say something about. */
+            decidable: number;
+            /** Flips among the decidable rows. This is the one that would indicate a real problem. */
+            flippedDecidable: number;
             /** True when the flips happened at margins negligible against the model's own score
              *  spread - i.e. the plaintext model was indifferent there. CAN be false: a large
              *  deviation overturning a decision held with a real margin fails this. */
@@ -821,10 +829,31 @@ export async function realClientHybrid(features: number[], u: () => number,
       const allPlain = bt.plainLogits.flat();
       const scoreRange = allPlain.length ? Math.max(...allPlain) - Math.min(...allPlain) : 0;
       const flipMarginRel = scoreRange > 0 ? flipMarginMax / scoreRange : 0;
+      // HOW MANY ROWS THE PLAINTEXT MODEL CANNOT DECIDE AT ALL, counted unconditionally.
+      //
+      // Genomics forced this. Its corpus is 30 fixed rows and its model is the published PGS
+      // weights as `[-w/2, +w/2]`, so a sample carrying no effect allele at any of the top-8 loci
+      // scores exactly 0 on both classes. SEVEN of the 30 do. Those rows are decided by argmax
+      // tie-breaking in the clear and by ~1e-9 of encryption noise under CKKS, so each flips with
+      // probability about a half, independently, on every run - the same page, same fixed corpus
+      // and same model printed 3, 5 and 6 mismatches across runs, and `encrypted_agreement` ranges
+      // over roughly 0.77 to 1.00 by chance.
+      //
+      // Reported ALWAYS, not only when a flip happens. The tie explanation used to sit inside
+      // `if (mismatches > 0)`, so on a run where all seven landed the same way as the plaintext
+      // tie-break the page published agreement 1.00 over 30 rows with nothing saying that 23% of
+      // that denominator was a coin toss. The undecidable count is a property of the corpus and the
+      // model, not of the run, so it belongs on every run.
+      const tieRows = bt.plainLogits.filter((row) => decisionMargin(row) === 0).length;
+      const decidable = bt.rows - tieRows;
+      // Flips among the rows the plaintext model actually decides. THIS is the number that would
+      // indicate a real problem; the headline rate over all rows is the published convention and is
+      // kept beside it.
+      const flippedDecidable = flipped.filter((i) => decisionMargin(bt.plainLogits[i]) !== 0).length;
       batch = {
         rows: bt.rows, rowsOffered: bt.rowsOffered, rowsPerCiphertext: bt.rowsPerCiphertext,
         fheMs: bt.fheMs, maxAbsError: bt.maxAbsError,
-        flipMarginMax, flipMarginRel,
+        flipMarginMax, flipMarginRel, tieRows, decidable, flippedDecidable,
         // Six orders of magnitude below the score range: far below anything a model with a real
         // preference produces, and far ABOVE the ~1e-9 relative deviation CKKS contributes here, so
         // the threshold separates the two cases instead of collapsing into one of them.
@@ -2273,6 +2302,13 @@ export function runClientPipeline(
             metric(stage, "encrypted_batch_precision_bits", bits);
             metric(stage, "encrypted_agreement", r2(1 - bt.mismatches / Math.max(1, bt.rows)));
             metric(stage, "encrypted_agreement_rows", bt.rows);   // the denominator, never implicit
+            // The part of that denominator that carries no signal, and the rate over the rest.
+            // Emitted on EVERY run, including the ones where no tie happened to flip - see the
+            // note at the computation for why a conditional disclosure is the wrong shape here.
+            metric(stage, "encrypted_undecidable_rows", bt.tieRows);
+            metric(stage, "encrypted_decidable_rows", bt.decidable);
+            metric(stage, "encrypted_agreement_over_decidable",
+              bt.decidable > 0 ? r2(1 - bt.flippedDecidable / bt.decidable) : null);
             metric(stage, "encrypted_top1_mismatches_batch", bt.mismatches);
             if (bt.mismatches > 0) {
               metric(stage, "encrypted_flip_margin_max", bt.flipMarginMax);

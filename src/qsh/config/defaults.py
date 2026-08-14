@@ -177,7 +177,7 @@ class FHEConfig:
     #
     # Measured in-browser on the finance page, same machine, fresh tab each time:
     #
-    #     keygen              255.26 ms  ->  476.71 ms   (x1.87)
+    #     keygen              254.4 ms   ->  491.4 ms    (x1.93, two runs each, back to back)
     #     ms per rotation       3.098    ->    6.725     (x2.17)
     #     linear layer         19.25 ms  ->   34.41 ms   (x1.79)
     #     batch, 400 rows      20.59 ms  ->   36.16 ms   (x1.76)

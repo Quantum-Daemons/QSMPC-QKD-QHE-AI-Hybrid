@@ -818,7 +818,13 @@ The precision drop is expected and is the honest cost: the real surrogate's weig
 magnitude larger than the demo pattern's, so the encoded norm is larger. The old numbers described a
 weight vector that appeared nowhere else on the page.
 
-Genomics: 30 rows, `encrypted_agreement` 0.90-0.97 depending on the sampled corpus.
+Genomics: 30 rows, `encrypted_agreement` ranging 0.83-0.97 across runs - and the corpus does NOT
+vary. `realInputCorpus("genomics")` returns all 30 `dosage_samples` deterministically and the model
+is the fixed top-8 PGS weights, so the same page runs the same 30 rows against the same model every
+time. **Seven of those 30 individuals carry no effect allele at any of the eight loci**, so their
+plaintext score is exactly 0 on both classes and each flips on ~1e-9 of encryption noise,
+independently, per run. The headline rate is therefore 23% coin toss. Counted from the shipped
+`pgs000004_prs313.json`, not inferred.
 
 ### Three defects found by verifying that change
 
@@ -923,10 +929,17 @@ override - and re-verified in Chrome on the public URL. Container age 6 s at fir
 | telecom | `ids_classes_scored` 8; `ids_metric_roles` renders; `quantum_beats_classical` reads *"the classical baseline (0.9866) is ahead of the best quantum macro F1 here (0.8316)"*; 3.146 ms/rotation over 512 rows |
 | satellite | unchanged, no collision |
 
-`PF5` checked on the live page by running twice in one tab: `fhe_keygen_ms` 470.39 on the first run
-and **absent** on the second, with per-rotation 3.227 then 3.213 - 0.4% apart, which is the stability
-the comparison rests on. Across the four deployed encrypted pages: **3.04, 3.058, 3.146, 3.227
-ms/rotation**.
+`PF5` checked on the live page by running twice in one tab: `fhe_keygen_ms` **absent** on the second
+run, with per-rotation 3.227 then 3.213 - 0.4% apart, which is the stability the comparison rests on.
+Across the four deployed encrypted pages: **3.04, 3.058, 3.146, 3.227 ms/rotation**.
+
+The keygen figure on that deployed run read 470.39 ms at ring 8192, against 242-255 ms measured
+locally at the same ring. Those are not comparable: the deployed reading was taken with a build, a
+preview server and a dozen tabs competing for the machine. Because the ring experiment's keygen
+delta rested on two numbers from different sessions, it was **re-measured back to back under one set
+of conditions**: ring 8192 gave 253.41 and 255.46 ms, ring 16384 gave 490.59 and 492.15 ms - within
+1% inside each ring and **1.93x between them**, so the delta is real and the earlier pairing was the
+sloppy part, not the conclusion.
 
 No `metric_overwritten` on any page. No `NaN`, `undefined` or `[object Object]`. No horizontal
 overflow.
