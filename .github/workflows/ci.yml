@@ -90,6 +90,16 @@ jobs:
           git diff --exit-code -- web/src/lib/config.defaults.json \
             || { echo "::error::config.defaults.json is stale — run: python scripts/export_config.py"; exit 1; }
 
+      - name: Combiner vectors are regenerated
+        # The vectors are generated FROM the Python combiners, so a Python change that is not
+        # regenerated leaves the two languages apart while the browser-side parity gate stays green
+        # against stale bytes. Same mechanism as the config-parity step above, and it must run in
+        # THIS job: it needs oqs and the rest of the crypto tier, which the web job does not install.
+        run: |
+          python scripts/export_combiner_vectors.py
+          git diff --exit-code -- web/scripts/vectors/hybrid_combiner_vectors.json \
+            || { echo "::error::hybrid_combiner_vectors.json is stale - run: python scripts/export_combiner_vectors.py"; exit 1; }
+
       - name: Generated artifacts match their generator and their history
         # The step above compares the two DERIVED artifacts to each other, so it is blind by
         # construction to the case where both agree and neither matches the trainer that writes them.
@@ -217,10 +227,10 @@ jobs:
         working-directory: web
         run: npm run check:combiner
 
-      # The vectors are generated FROM the Python combiner, so a Python change that is not
-      # regenerated leaves the two languages apart with a green parity gate. Same mechanism the
-      # config-parity step above uses.
-      - name: Combiner vectors are regenerated
-        run: |
-          python scripts/export_combiner_vectors.py
-          git diff --exit-code -- web/scripts/vectors/hybrid_combiner_vectors.json
+      # The "combiner vectors are regenerated" check is deliberately NOT in this job. It runs
+      # `python`, this job installs only Node, and it failed with ModuleNotFoundError the first time
+      # it ever executed - added in the same round as the parity gate above and never observed to
+      # run. It now lives in the `python` job beside the config-parity check, which is the job that
+      # has the dependencies. `scripts/ci_local.sh` could not have caught this: locally the venv is
+      # always present, which is precisely the local-green/CI-red split that script's header exists
+      # to warn about. A gate written and not watched run is a gate with an unknown result.
