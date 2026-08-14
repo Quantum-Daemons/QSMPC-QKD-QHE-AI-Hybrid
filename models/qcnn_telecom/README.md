@@ -66,6 +66,9 @@ that was run for finance and medical was not run here, and the single ablation f
 (0.809846 entangled against 0.467059 without the CNOT ring) is one seed. Treat the number above as a
 draw, not as a median - the medical card records what that distinction cost there.
 
+**Seed position:** unmeasured - no five-seed spread was run for this circuit, so the number above is
+one draw and not a median.
+
 ## Reproducibility
 
     python scripts/train/qcnn_variational.py --usecase telecom --layers 6 --epochs 400 --seed 0 --threads 1
