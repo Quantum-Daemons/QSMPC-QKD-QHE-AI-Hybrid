@@ -130,10 +130,33 @@ class SatelliteQKDStage(Stage):
         bus.metric("channel_loss_db", loss_db, self.name)
         ctx.metrics.update(qber=res.qber, skr=res.secret_key_rate)
         if res.secure_key_bits >= 256:
-            ctx.put("qkd_key", derive_shared_key(res, 32))
-            bus.log(f"satellite QKD key derived: {res.secure_key_bits} secure bits "
-                    f"(QBER={res.qber:.4f})", self.name)
+            # Folded in, the same way `QKDKeyAgreementStage` does it - see the note there for why
+            # this is a re-derivation rather than a stage reorder. This stage's docstring has said
+            # "derive + fold in" since it was written while `qkd_key` had no reader at all: the PQC
+            # handshake runs before it and reads a key that is not there yet. Fixing one pipeline
+            # and not the other would leave the same defect in one language, twice.
+            from ...config import get_config
+            from ...pqc.transport import _mix_qkd
+
+            qkd_key = derive_shared_key(res, 32)
+            ctx.put("qkd_key", qkd_key)
+            chans = [c for c in (ctx.data.get("channel_initiator"),
+                                 ctx.data.get("channel_responder")) if c is not None]
+            mode = get_config().crypto.hybrid_combiner_mode
+            for chan in chans:
+                chan.session_key = _mix_qkd(chan.session_key, qkd_key, mode=mode)
+            if chans:
+                ctx.put("session_key", chans[0].session_key)
+                bus.metric("qkd_mixed", 1, self.name)
+                bus.log(f"satellite QKD key derived: {res.secure_key_bits} secure bits "
+                        f"(QBER={res.qber:.4f}), folded into the session key via the {mode} "
+                        f"combiner", self.name)
+            else:
+                bus.metric("qkd_mixed", 0, self.name)
+                bus.log(f"satellite QKD key derived: {res.secure_key_bits} secure bits "
+                        f"(QBER={res.qber:.4f}); no PQC channel to fold it into", self.name)
         else:
+            bus.metric("qkd_mixed", 0, self.name)
             bus.log(f"insufficient secure key ({res.secure_key_bits} bits) — "
                     f"link too lossy or eavesdropper present", self.name)
 
