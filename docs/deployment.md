@@ -8,6 +8,26 @@ Three things below are not obvious, were each learned by breaking a live deploy,
 this file exists rather than a README paragraph: `!reset` on the ports list, the shared-Caddy
 network, and clone-verify before touching the live tree.
 
+## Run it, do not follow it: `scripts/deploy_demo.sh`
+
+The sequence below is also a script, and the script is the preferred form because one step of it has
+been skipped in **six consecutive rounds**. `DP7` requires the box to be returned to `main` once the
+round's PR merges; that moment is always after the session which ran the checklist has ended, so the
+only person who could discharge it was never present when it came due. Round 39 rewrote the row's
+wording and left that structure, and it failed a sixth time.
+
+    bash scripts/deploy_demo.sh <branch>          # deploy, then verify the PUBLIC url
+    bash scripts/deploy_demo.sh --return-to-main  # after the merge: this is what discharges DP7
+
+It asserts rather than assumes: the build's exit status is captured, the container's networks are
+checked against the shared-proxy requirement (the 502 trap below), the public URL must answer 200,
+and `--return-to-main` re-reads the branch afterwards rather than trusting the checkout. Connection
+details come from `QSH_DEMO_SSH`, `QSH_DEMO_KEY`, `QSH_DEMO_DIR` and `QSH_DEMO_URL` in the
+environment - the script is tracked, so it carries none of them.
+
+The steps below remain the reference for what the script does and why, and for what it does not cover
+(the clone-verify step is still a manual judgement call).
+
 ## The rule: deploy from git, never by copying
 
 Commit, push, then have the server fetch. Copying a working directory to the server ships untracked
