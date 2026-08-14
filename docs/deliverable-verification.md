@@ -1410,6 +1410,87 @@ times with the scope wrong; the parity test written instead of a fifth fix **fai
 run** against a call site nobody had counted. The combiner gate did the same thing: it was written
 to stop a known divergence and immediately proved the "one definition" property was not held.
 
+## Round 40: claims that move numbers, and controls that move nothing
+
+**The claim that was true, and the fix that would have been wrong.** Round 39 listed
+`quantumSim.ts`'s "QOTP perfect-hiding mask" as a wording fix due this round. Reading it changed the
+fix. The quantum one-time pad **is** perfectly hiding as a scheme, and ct/pt = 1 **is** its genuine
+consequence, so deleting the phrase would have corrected a true statement. What was false is
+narrower: nothing beside the label said the demo draws its mask from mulberry32 seeded by a value on
+the page - the run seed on the inference path, a loop index on the benchmark path - so
+"information-theoretic" read as a property of the run that had just happened. Disclosed instead, in
+the form `SecureAggregator.__post_init__` already uses for its pairwise keys.
+
+The `security_model` string is deliberately **unchanged**, and that is the half worth recording. It
+is parsed in three places - `clientCompute.ts:302`, `:342`, and `security.py:48` - to select the
+information-theoretic score branch and the quantum-advantage multiplier. Editing that sentence for
+readability moves two displayed numbers with every gate green. Measured: `clientCompute.ts` carries
+no diff, so no score moved. `tests/test_security_model_prose_is_not_a_silent_score_input.py` pins the
+mapping rather than refactoring two languages' scorers onto an enum in the round whose own plan warns
+that scoring changes are where numbers move by accident; seeded with the edit this round nearly made,
+it fails.
+
+**A hand-written count drifted for the third and fourth time.** `CI1`'s gate total, the prefix
+legend, and then the workstream index - each corrected by someone fixing the previous one. The WS
+index was the sharpest: Round 39 wrote *"the count above is now derived from the row IDs beside it,
+so the two cannot disagree"* having derived only WS2's, leaving WS1 at 20 against a spec expanding to
+29 and WS4 at 27 against 35, plus "all 346 rows" against 380 and "Three rows" two lines under the 6
+that replaced it. `tests/test_checklist_ws_index.py` expands each spec and requires the count to
+equal it and every named row to exist. **It found a further inconsistency on its first run** - WS2's
+cell said 6 beside eight backticked IDs - which is the third gate in three rounds to fail
+immediately on something nobody had counted.
+
+**The sixth inert control, and the first one measured out of existence.** The "QCNN qubits" field did
+not reach the trained circuit: the requested width fed the benchmark row and the untrained fallback
+while `loadQcnnWeights` returned a fixed 8-wire file. Making it real required a second width to
+exist, so telecom - which encodes 7 features on 8 wires - was trained at both. The padding wire is
+**worth 0.079 macro F1** and two of eight classes are better without it; the per-class table is in
+`references/qcnn-width-ablation.md` because a single macro number hides that. The refactor was proven
+inert before the comparison was trusted, by reproducing the shipped model's `theta` bit for bit.
+
+*Reopens if* a third width is trained, which would make "is 8 the peak" answerable rather than open.
+
+**DESILO FHE: DECLINED, and the answer was available for thirty-nine rounds.** ORDER 1, 2 and 4 asked
+for it - ORDER 4 explicitly saying to check commercial usability at the vendor's licence page and
+adopt an alternative if it failed. It appears nowhere in this repository, and neither did the verdict.
+Fetched 2026-08-14: the DESILO FHE Library Binary Software License Agreement grants a
+*"non-exclusive, non-transferable, royalty-free license to use the Software solely for Non-commercial
+Use"*, and *"for any Commercial Use, you must obtain a separate license by contacting DESILO Inc."*
+**That fails this project's standing constraint of commercially-usable OSS only**, so the absence was
+correct and only the record was missing. *Reopens if* DESILO publishes commercial terms that do not
+require a per-user negotiation.
+
+**The other mandates that vanished without a decision.** Recorded here because `references/` is where
+this project keeps what it declined, and an ask that stops appearing is indistinguishable from one
+that was answered:
+
+- **SHARK and RHOMBUS** (ORDER 1, as the GPU performance path alongside HEonGPU and PIGEON/hpmpc).
+  Absent, undocumented. *Reopens if* either publishes a browser-reachable or CPU-reachable build,
+  since neither helps a demo whose whole compute budget is a visitor's tab.
+- **The `submodules/` populate mandate** (ORDER 1-7). Reversed in practice when MPyC became a pip
+  dependency in Round 17. *Reopens if* a dependency needs a source-level patch, which is the only
+  thing a submodule buys over a pinned package.
+- **Pause / Resume / Step to spec** (ORDER 2-7, six consecutive files, then never again). The buttons
+  exist in `PipelineControls.tsx` and **no checklist row covers them** - the longest-standing
+  coverage gap found this round, and the one most likely to hide a live defect, because a control
+  that half-works looks like one that works.
+- **`sequence-toolbox/SeQUeNCe`** - `docs/pqc-roadmap.md:59` says "GitHub reports the licence as
+  NOASSERTION, so confirm before depending on it", and nothing depends on it, so the confirmation was
+  never needed. *Reopens the moment anything imports it.*
+- **The EU NIS Cooperation Group PQC roadmap** (`references/REFERENCES.md:1527`) - "Next round: find
+  the Cooperation Group publication itself". It carries no `by **Round N**` phrasing, so
+  `test_register_deadlines.py` cannot see it, which is the stated hole in that test's own docstring.
+
+**WebNN: still declined, and now with the condition it always needed.** `README.md` records the
+measurement - probed by building and executing a 2x2 matmul, three cheaper checks having lied, then
+left unused because ORT's WebNN provider cannot complete a session for the medical ResNet - and `CS8`
+checks it. What it lacked was a reopening condition, exactly as WebGL did before Round 39. The
+context moved this round: Chrome 146 promoted WebNN to an **origin trial** and the W3C specification
+reached **Candidate Recommendation in January 2026**, while it remains unavailable cross-browser.
+Neither fact touches the reason for declining. *Reopens if* ONNX Runtime Web's WebNN execution
+provider completes a session for the medical ResNet - a fact about the dependency, checked by running
+the probe that already exists, not by re-reading the spec's maturity.
+
 ## Verification assets added in Rounds 22-23
 
 Two checks now exist that assert against sources OUTSIDE this repository. That is the point of both:
