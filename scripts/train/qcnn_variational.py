@@ -204,6 +204,13 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--usecase", default="medical")
     ap.add_argument("--layers", type=int, default=3)
+    # WIDTH. Was the module constant N_QUBITS=8 for every use case, which made the browser's
+    # "QCNN qubits" control inert on every page that ships trained weights: the control fed the
+    # benchmark row and the untrained fallback, while the trained branch read w.n_qubits and got 8
+    # whatever the visitor chose. Telecom carries 7 features on 8 wires, so 7 is the width its data
+    # actually asks for and the pad wire is the thing worth measuring.
+    ap.add_argument("--qubits", type=int, default=N_QUBITS,
+                    help="circuit width; must be >= the feature count")
     ap.add_argument("--epochs", type=int, default=120)
     ap.add_argument("--seed", type=int, default=0)
     # 1 by default: reproducibility of a published artifact outweighs training speed for a model
@@ -274,12 +281,13 @@ def main() -> int:
     # RY(tanh(0)*pi) = RY(0) = identity - the wire is genuinely unencoded rather than carrying a
     # constant. A constant would be a zero-variance feature the entangling layers still rotate, which
     # looks like an input at training time and means nothing at inference.
-    if Xs.shape[1] < N_QUBITS:
-        pad = N_QUBITS - Xs.shape[1]
-        print(f"  {Xs.shape[1]} features on {N_QUBITS} wires: {pad} wire(s) left unencoded (RY(0))")
+    nq = int(a.qubits)
+    if Xs.shape[1] < nq:
+        pad = nq - Xs.shape[1]
+        print(f"  {Xs.shape[1]} features on {nq} wires: {pad} wire(s) left unencoded (RY(0))")
         Xs = np.hstack([Xs, np.zeros((len(Xs), pad), dtype=Xs.dtype)])
-    elif Xs.shape[1] > N_QUBITS:
-        raise SystemExit(f"{Xs.shape[1]} features exceeds {N_QUBITS} wires")
+    elif Xs.shape[1] > nq:
+        raise SystemExit(f"{Xs.shape[1]} features exceeds {nq} wires")
     dev = "cuda" if torch.cuda.is_available() and torch.cuda.get_device_capability(0)[0] >= 7 else "cpu"
     xt = torch.tensor(Xs, dtype=torch.float32, device=dev)
     yt = torch.tensor(y, dtype=torch.float32, device=dev)
@@ -306,7 +314,7 @@ def main() -> int:
             f"would need a discard rule and there is no defensible one - the alternative in the "
             f"literature discards the surplus states without renormalising.")
 
-    theta = torch.nn.Parameter(0.1 * torch.randn(a.layers, N_QUBITS, device=dev))
+    theta = torch.nn.Parameter(0.1 * torch.randn(a.layers, nq, device=dev))
     # Per-class scale and bias. They were SCALARS, which is the other half of why the old readout was
     # binary: one expectation through one affine map is one logit however many classes the labels have.
     scale = torch.nn.Parameter(torch.full((n_out,), 4.0, device=dev) if readout_q
@@ -320,14 +328,14 @@ def main() -> int:
     best, best_state = 0.0, None
     for ep in range(a.epochs):
         opt.zero_grad()
-        z = circuit(xt[tr], theta, readout_qubits=readout_q, entangle=entangle)
+        z = circuit(xt[tr], theta, nq, readout_qubits=readout_q, entangle=entangle)
         loss = (lossf(z * scale + bias, yt[tr].long()) if readout_q
                 else lossf(z * scale + bias, yt[tr]))
         loss.backward()
         opt.step()
         if ep % 10 == 0 or ep == a.epochs - 1:
             with torch.no_grad():
-                zt = circuit(xt[va], theta, readout_qubits=readout_q, entangle=entangle)
+                zt = circuit(xt[va], theta, nq, readout_qubits=readout_q, entangle=entangle)
                 logits = zt * scale + bias
                 pred = (logits.argmax(1).float() if readout_q else (logits > 0).float())
                 acc = (pred == yt[va]).float().mean().item()
@@ -392,7 +400,7 @@ def main() -> int:
         th_t = torch.tensor(best_state[0], dtype=torch.float32, device=dev)
         sc_t = torch.tensor(best_state[1], dtype=torch.float32, device=dev)
         bi_t = torch.tensor(best_state[2], dtype=torch.float32, device=dev)
-        z_all = circuit(xt[te], th_t, readout_qubits=readout_q, entangle=entangle)
+        z_all = circuit(xt[te], th_t, nq, readout_qubits=readout_q, entangle=entangle)
         logits_all = z_all * sc_t + bi_t
         qcnn_pred = ((logits_all.argmax(1) if readout_q else (logits_all > 0))
                      .int().cpu().numpy())
@@ -446,7 +454,7 @@ def main() -> int:
     out = REPO / "models" / f"qcnn_{a.usecase}"
     out.mkdir(parents=True, exist_ok=True)
     (out / "weights.json").write_text(json.dumps({
-        "usecase": a.usecase, "n_qubits": N_QUBITS, "layers": a.layers,
+        "usecase": a.usecase, "n_qubits": nq, "layers": a.layers,
         # How many wires actually carry data. It equalled n_qubits until telecom brought 7
         # features to 8 wires, and the spare wire is left UNENCODED - RY(tanh(0)*pi) is the
         # identity. The browser reaches the same state by `features[q] ?? 0` with a missing
@@ -482,11 +490,14 @@ def main() -> int:
         # published 0.8098, and `--layers 6` alone gave 0.6443; only `--layers 6 --epochs 400`
         # returns 0.809846. That took an epoch sweep to recover a number the demo was already
         # displaying as measured, which is the whole argument for writing it down here.
-        "training": {"layers": a.layers, "epochs": a.epochs, "seed": a.seed,
+        # `--qubits` belongs in this string because it changes the weights. The first 7-wire run
+        # omitted it, so the recorded command reproduced an EIGHT-wire model - a reproduction line
+        # that does not reproduce is worse than none, since it gets checked once and trusted after.
+        "training": {"layers": a.layers, "epochs": a.epochs, "seed": a.seed, "qubits": nq,
                      "threads": a.threads, "entangle": entangle,
                      "command": f"python scripts/train/qcnn_variational.py --usecase {a.usecase} "
                                 f"--layers {a.layers} --epochs {a.epochs} --seed {a.seed} "
-                                f"--threads {a.threads}",
+                                f"--threads {a.threads} --qubits {nq}",
                      "note": ("--seed drives the numpy split permutation and torch parameter "
                               "init. Re-running this command regenerates this file: five "
                               "consecutive runs gave identical metrics and identical theta to nine "

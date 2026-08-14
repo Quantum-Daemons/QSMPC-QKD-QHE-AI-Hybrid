@@ -1265,19 +1265,38 @@ function dataDirFor(usecase: string): string {
   return usecase === "medical_fl" ? "medical" : usecase.split("_")[0];        // finance_aml -> finance
 }
 
-async function loadQcnnWeights(usecase: string): Promise<QcnnWeights | null> {
-  if (usecase in _qcnnCache) return _qcnnCache[usecase];
-  try {
-    const r = await fetch(`${import.meta.env.BASE_URL}data/${dataDirFor(usecase)}/qcnn_weights.json`);
-    // `r.ok` is NOT the test. This is an SPA: the host serves index.html with HTTP 200 for any path
-    // that does not exist, so `r.ok` is true for a file that was never deployed. The old guard only
-    // appeared to work because `r.json()` then threw on HTML and the catch swallowed it - a check
-    // that reads as handling the case while the catch does the work. Content-type is the
-    // discriminator, which is the same rule the verification checklist applies to `curl`.
-    const json = (r.headers.get("content-type") ?? "").includes("application/json");
-    _qcnnCache[usecase] = r.ok && json ? ((await r.json()) as QcnnWeights) : null;
-  } catch { _qcnnCache[usecase] = null; }
-  return _qcnnCache[usecase];
+/** Load the trained circuit, preferring a shipped variant at the REQUESTED width.
+ *
+ *  Until Round 40 this took only the use case, so the "QCNN qubits" control could not reach the
+ *  trained branch at all: it fed the benchmark row and the untrained fallback while this returned a
+ *  fixed 8-wire circuit whatever the visitor selected. A control that silently ignores you is the
+ *  inert-control defect this file's checklist opens with, and Round 20 found five of them.
+ *
+ *  A width only exists if someone trained it. `qcnn_weights_q<N>.json` is tried first and the
+ *  default file is the fallback, so a requested width that was never trained degrades to the shipped
+ *  circuit rather than to nothing - and `qcnn_qubits` then reports the width that actually RAN,
+ *  which is what lets the page tell the truth about a request it could not honour. */
+async function loadQcnnWeights(usecase: string, qubits?: number): Promise<QcnnWeights | null> {
+  const key = `${usecase}@${qubits ?? "default"}`;
+  if (key in _qcnnCache) return _qcnnCache[key];
+  const dir = `${import.meta.env.BASE_URL}data/${dataDirFor(usecase)}`;
+  const paths = qubits != null
+    ? [`${dir}/qcnn_weights_q${qubits}.json`, `${dir}/qcnn_weights.json`]
+    : [`${dir}/qcnn_weights.json`];
+  for (const path of paths) {
+    try {
+      const r = await fetch(path);
+      // `r.ok` is NOT the test. This is an SPA: the host serves index.html with HTTP 200 for any path
+      // that does not exist, so `r.ok` is true for a file that was never deployed. The old guard only
+      // appeared to work because `r.json()` then threw on HTML and the catch swallowed it - a check
+      // that reads as handling the case while the catch does the work. Content-type is the
+      // discriminator, which is the same rule the verification checklist applies to `curl`.
+      const json = (r.headers.get("content-type") ?? "").includes("application/json");
+      if (r.ok && json) { _qcnnCache[key] = (await r.json()) as QcnnWeights; return _qcnnCache[key]; }
+    } catch { /* try the next candidate */ }
+  }
+  _qcnnCache[key] = null;
+  return null;
 }
 
 
@@ -2248,7 +2267,7 @@ export function runClientPipeline(
         // (Round 20 audited use-case pages and found five), and the only thing that surfaced it was
         // running the deployed page: every local gate was green.
         if (String(config.inference || "ckks") === "qcnn" && ids.explain?.xRaw) {
-          const w = await loadQcnnWeights(usecase);
+          const w = await loadQcnnWeights(usecase, qubitsOf(config));
           if (w) {
             // Timed here TOO, and that "too" is the point. The latency was added to the
             // `private_inference` site alone, which telecom does not have - so a page reporting
@@ -2665,7 +2684,7 @@ export function runClientPipeline(
           // Clifford+T path is not a predictor. Measured: over 24 vectors x 8 seeds its class flipped
           // for 100% of inputs, mean |<Z0>| 0.076, correlation with mean(feature) -0.070. It stays as
           // the QOTP hiding + T-count demonstration, which is what it can honestly support.
-          const w = await loadQcnnWeights(usecase);
+          const w = await loadQcnnWeights(usecase, qubitsOf(config));
           if (w) {
             // MEASURED, on the same footing as the CKKS tier's `fhe_ms_per_rotation`. The QCNN was
             // reported by accuracy alone while every encrypted figure carried a latency, so the two
