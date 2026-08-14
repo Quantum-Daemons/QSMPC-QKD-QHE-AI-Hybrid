@@ -1127,10 +1127,10 @@ ciphertexts are load-bearing and the encapsulation keys are optional - useful fo
 to party identities.
 
 This project bound `ek1 || ek2 || c2` and **omitted `c1`, the ML-KEM ciphertext**: the optional half
-included, one of the two that deliver the property dropped. Four sites, all with the same shape:
-`src/qsh/pqc/hybrid_kem.py` (encapsulate and decapsulate), `web/src/lib/crypto.ts`,
-`web/src/lib/clientCompute.ts`. A fourth, `web/src/lib/clientMcp.ts`, bound **nothing at all** - IKM
-`K1 || K2` under a bare label, which is expression (16) of the same document, the combiner it names
+included, one of the two that deliver the property dropped. Three files shared that shape -
+`src/qsh/pqc/hybrid_kem.py` (encapsulate and decapsulate), `web/src/lib/crypto.ts` and
+`web/src/lib/clientCompute.ts`. A fourth, `web/src/lib/clientMcp.ts`, bound **nothing at all**: IKM
+`K1 || K2` under a bare label, which is expression (16) of the same document - the combiner it names
 as not preserving IND-CCA - while its own comment claimed it matched the backend.
 
 **Demonstrated, not argued.** With the old transcript, a `c1` mauled by one bit that decapsulates to
@@ -1171,3 +1171,58 @@ prefixes, which is unambiguous only within one parameter set, and the set is now
 `references/stress-testing-fact-check.md:56` proposed a test for "the ciphertext-binding combiner";
 that description became true of the code with this change and was not before, and the file now says
 so.
+
+### A fifth combiner site nobody had listed, and what its severity actually is
+
+The combiner change was reviewed by four lenses with three refuters each: **all 29 refutations were
+sustained against the four sites** - nothing survived. The completeness critic then found a fifth
+site, and two defects in the fix itself.
+
+**`clientAliceBob` derived its session key as `enc.sharedSecret.slice(0, 32)`** - the raw ML-KEM
+shared secret, truncated. No X25519, no KDF, no transcript, no separator. Not expression (16), which
+is at least `KDF(K1, K2)`; this was `K1` alone, in a function whose header calls it a mirror of
+`src/qsh/benchmark/alice_bob_e2e.py`, whose Phase 3 goes through the combiner and then `_mix_qkd`.
+It also reported `qkd_mixed: qkd.secureKeyBits >= 256` - a PRECONDITION for mixing, stated as though
+the mix had happened, in a function that mixed nothing.
+
+**Severity, measured rather than assumed.** `clientAliceBob` is imported nowhere; `api.aliceBob`
+posts to a full-mode endpoint and is called nowhere; and `qkd_mix_note`, a string this fix adds,
+appears **0 times in every built bundle** - the function is tree-shaken out of the production build.
+So this was never rendered and no visitor ever saw the claim. The review's framing ("Open the
+Alice<->Bob page") describes a page the demo does not reach. It is fixed rather than deleted because
+it is exported and documented as a mirror, so it would ship the claim the moment anything imported
+it - but it is recorded as dead code, not as something the site published.
+
+It now runs the hybrid: X25519 ephemeral-static beside the ML-KEM half, the same v2 combiner over
+c1 || c2 || ek1 || ek2, and `qkd_mixed: false` with a note saying why - the browser's `bb84()`
+returns bit counts and no key material by design (`SC2`), so there is nothing to fold in.
+
+### Two defects in the fix, and one in the test written to prevent them
+
+**The MCP file's lead comment still claimed it matched the handshake** - the exact false claim the
+transcript change removed, left standing at the top of the block that removes it, contradicted 25
+lines below. A maintainer told to make the two agree would have re-merged two constructions under
+one separator.
+
+**The output length was absent from the domain separator.** HKDF-Expand for L bytes is a prefix of
+the expansion for any larger L', and `length` genuinely varies across callers - 32 for transport
+sessions, `max(32, (2n+7)//8)` for the QOTP pad - so a long pad began with exactly the bytes a short
+session key over the same material would. Not reachable, because every `encapsulate` draws fresh
+material, but it is the same class of gap as the parameter set and the docstring had just claimed
+"no two parameter sets share a derivation". Verified after the fix: the 32-byte derivation is no
+longer a prefix of the 51-byte one.
+
+**And the test written to enforce c1-binding did not enforce it.** Its first version built
+`c1 + c2 + ek1 + ek2` itself and asserted that mauling `c1` changed `_combine`'s output - testing
+`_combine` given a transcript handed to it, not what `encapsulate` binds. Reverting the production
+combiner left it green. That is the defect this round spent its length finding elsewhere, committed
+in the guard written to prevent it, and caught only by running the revert.
+
+Rewritten to pin the production path: derive the key both ways from the real ciphertext and assert
+which one `encapsulate` agrees with, plus a `decapsulate` test that holds K1 fixed so c1 is the only
+variable. The comparison that matters, on a revert of the c1 binding alone:
+
+    tests/test_pqc.py                      0 failures
+    tests/test_hybrid_combiner_binding.py  2 failures
+
+which is exactly the review's point: the property had nothing enforcing it.
