@@ -1117,7 +1117,38 @@ export async function clientAliceBob(seed = 0, nShared = 8) {
   timing.bob_pqc_handshake_ms = r2(performance.now() - t);
   const agree = enc.sharedSecret.length === recovered.length &&
     enc.sharedSecret.every((b, i) => b === recovered[i]);
-  const sessionKey = enc.sharedSecret.slice(0, 32);
+
+  // THE HYBRID, not just the PQ half.
+  //
+  // This read `const sessionKey = enc.sharedSecret.slice(0, 32)` - the raw ML-KEM shared secret,
+  // truncated. No X25519, no KDF, no transcript, no domain separator. Not merely SP 800-227's
+  // expression (16) `KDF(K1, K2)`, which that document says does not preserve IND-CCA; this was K1
+  // alone. And the function claims to mirror `src/qsh/benchmark/alice_bob_e2e.py`, whose Phase 3
+  // calls `establish_initiator`/`establish_responder` - the hybrid combiner, then `_mix_qkd`.
+  //
+  // Found by a completeness pass AFTER four other combiner sites had been fixed, which is the
+  // lesson worth keeping: "all the sites" was four because four were the ones anyone had listed.
+  const bobX = x25519.utils.randomSecretKey();
+  const bobXPub = x25519.getPublicKey(bobX);          // ek2, Bob's static X25519 public
+  const aliceX = x25519.utils.randomSecretKey();
+  const aliceXPub = x25519.getPublicKey(aliceX);      // c2, Alice's ephemeral public
+  const xAlice = x25519.getSharedSecret(aliceX, bobXPub);
+  const xBob = x25519.getSharedSecret(bobX, aliceXPub);
+  const xAgree = xAlice.length === xBob.length && xAlice.every((b, i) => b === xBob[i]);
+  // Same combiner, transcript and separator as pqc_handshake and the backend: c1 || c2 || ek1 || ek2
+  // under `qsh/hybrid-kem/v2 <parameter set>`, per SP 800-227 section 4.6.3.
+  const abTranscript = new Uint8Array(
+    enc.cipherText.length + aliceXPub.length + bob.publicKey.length + bobXPub.length);
+  abTranscript.set(enc.cipherText, 0);
+  abTranscript.set(aliceXPub, enc.cipherText.length);
+  abTranscript.set(bob.publicKey, enc.cipherText.length + aliceXPub.length);
+  abTranscript.set(bobXPub, enc.cipherText.length + aliceXPub.length + bob.publicKey.length);
+  const abLabel = new TextEncoder().encode("qsh/hybrid-kem/v2 ML-KEM-768+X25519|");
+  const abInfo = new Uint8Array(abLabel.length + abTranscript.length);
+  abInfo.set(abLabel, 0); abInfo.set(abTranscript, abLabel.length);
+  const abIkm = new Uint8Array(enc.sharedSecret.length + xAlice.length);
+  abIkm.set(enc.sharedSecret, 0); abIkm.set(xAlice, enc.sharedSecret.length);
+  const sessionKey = hkdf(sha256, abIkm, undefined, abInfo, 32);
 
   const shared = Array.from({ length: nShared }, acct);
   const aliceList = [...shared, ...Array.from({ length: 200 }, () => `A-${Math.floor(u() * 9e6 + 1e6)}`)];
@@ -1147,8 +1178,18 @@ export async function clientAliceBob(seed = 0, nShared = 8) {
       { name: "Private inference (ONNX)", party: "Bob", ms: timing.private_inference_ms },
     ],
     timing_ms: timing, total_ms: totalMs,
-    session_key_agreement: agree, kem: "ML-KEM-768",
-    qber: r2(qkd.qber), qkd_secure_key_bits: qkd.secureKeyBits, qkd_mixed: qkd.secureKeyBits >= 256,
+    session_key_agreement: agree && xAgree, kem: "ML-KEM-768+X25519",
+    // `qkd_mixed` reported `secureKeyBits >= 256` - a PRECONDITION for mixing, stated as though the
+    // mix had happened, in a function that mixed nothing. The browser's `bb84()` returns bit COUNTS
+    // and no key material by design (checklist SC2), so there is nothing here to fold in and the
+    // honest value is false with the reason beside it. The agent panel, which DOES mix, mixes a
+    // stated fixed constant and says so - that is the shape this had to match.
+    qber: r2(qkd.qber), qkd_secure_key_bits: qkd.secureKeyBits,
+    qkd_mixed: false,
+    qkd_mix_note: qkd.secureKeyBits >= 256
+      ? "the BB84 run cleared 256 secure bits, but this mirror derives no key material from it - "
+        + "bb84() returns bit counts, so there is nothing to fold into the session key"
+      : "no secure key bits, so nothing to mix even in principle",
     psi_intersection_size: psi.intersection_size, psi_ground_truth: uniqShared,
     psi_correct: psi.intersection_size === uniqShared,
     private_inference_class: inf.prediction, private_inference_backend: inf.backend,
