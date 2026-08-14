@@ -255,3 +255,17 @@ hr { border: none; border-top: 1px solid var(--border); margin: 24px 0; }
   position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
   overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
 }
+
+/* SC 2.4.1 Bypass Blocks, Level A. The sidebar carries eleven links - six sections plus five
+   use-case simulators - and they are the first eleven tab stops on every page, on every navigation.
+   A keyboard visitor had to walk all of them to reach the content, every time. This is the standard
+   remedy: off-screen until focused, then visible, targeting the <main> that already existed.
+   `:focus` rather than `:focus-visible` - the link is only reachable by keyboard in the first
+   place, so the narrower selector would add a way for it to fail and no way for it to help. */
+.skip-link {
+  position: absolute; left: -9999px; top: 0; z-index: 100;
+  background: var(--panel); color: var(--text);
+  border: 1px solid var(--accent); border-radius: 0 0 8px 0;
+  padding: 10px 16px; font-size: 13px; text-decoration: none;
+}
+.skip-link:focus { left: 0; }
