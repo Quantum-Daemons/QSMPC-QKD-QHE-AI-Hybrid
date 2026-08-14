@@ -195,14 +195,34 @@ export default function OrchestrationGraph({
     return label;
   };
 
+  /** The three states this graph draws, as words.
+   *
+   *  SC 1.4.1 Level A: state was encoded ONLY in colour. `.node-active` is a blue ring and glow and
+   *  `.node-done` changes `border-color` and nothing else, so "which stage is running" and "which
+   *  stages have finished" - the two questions this graph exists to answer - were unavailable to a
+   *  reader who cannot separate those hues, and unavailable to every screen reader, since React Flow
+   *  renders the state as a class on a `<div>` with no text.
+   *
+   *  Used twice below, for the visible label and for the text equivalent, so the two cannot drift.
+   */
+  const stateOf = (id: string) =>
+    activeStage === id ? "running" : doneStages.has(id) ? "done" : "not yet run";
+
   const { nodes, edges } = useMemo(() => {
     const nodes: Node[] = stages.map((s, i) => {
       const cls =
         activeStage === s.id ? "node-active" : doneStages.has(s.id) ? "node-done" : "";
+      // The state as TEXT on its own line, beside the colour rather than instead of it. `pre-line`
+      // is already set below and the captions already carry parenthetical lines such as
+      // "(skipped - PQC-only)", so this is the idiom the node labels use, not a new one. "not yet
+      // run" is left off: it is the resting state of every node before a run, and printing it on all
+      // of them at once says nothing while making each node taller.
+      const st = stateOf(s.id);
+      const label = retitle(s.id, s.label) + (st === "not yet run" ? "" : `\n[${st}]`);
       return {
         id: s.id,
         position: { x: 30 + i * 230, y: 80 },
-        data: { label: retitle(s.id, s.label) },
+        data: { label },
         className: cls,
         style: {
           whiteSpace: "pre-line", width: 190, textAlign: "center" as const,
@@ -228,7 +248,21 @@ export default function OrchestrationGraph({
       m.published_model, m.published_model_backend, m.published_model_status]);
 
   return (
-    <div style={{ height: 260, border: "1px solid var(--border)", borderRadius: 10, overflow: "hidden" }}>
+    <>
+    {/* TEXT EQUIVALENT, the same pattern and for the same reason as `TwoPartyDiagram`'s `sr-only`
+        list. React Flow renders each stage as a `<div>` whose only state signal is a CSS class, so
+        the pipeline's shape, its stage captions and its progress were all unreachable in text. The
+        list is built from the SAME `retitle()` and `stateOf()` calls the nodes use, so it cannot
+        describe a graph other than the one on screen - the failure mode a hand-written summary has.
+        Ordered, because the order IS the pipeline. */}
+    <ol className="sr-only">
+      {stages.map((s) => (
+        <li key={s.id}>{`${retitle(s.id, s.label).replace(/\n/g, " ")} - ${stateOf(s.id)}`}</li>
+      ))}
+    </ol>
+    <div style={{ height: 260, border: "1px solid var(--border)", borderRadius: 10, overflow: "hidden" }}
+         role="group"
+         aria-label={`${usecase} pipeline stages; the same stages and their state are listed in text immediately before this figure`}>
       <ReactFlow nodes={nodes} edges={edges} fitView fitViewOptions={{ padding: 0.15 }}
         minZoom={0.3} maxZoom={2} proOptions={{ hideAttribution: true }}
         nodesDraggable={false} nodesConnectable={false} elementsSelectable={false}
@@ -237,5 +271,6 @@ export default function OrchestrationGraph({
         <Controls showInteractive={false} />
       </ReactFlow>
     </div>
+    </>
   );
 }

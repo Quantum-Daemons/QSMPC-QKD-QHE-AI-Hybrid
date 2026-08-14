@@ -18,6 +18,10 @@ const NAV = [
 export default function App() {
   return (
     <div className="app">
+      {/* SC 2.4.1 Bypass Blocks, Level A. Must be the FIRST focusable element in the document, or it
+          is not a bypass - it would sit behind the block it exists to skip. The `<main id="main">`
+          below is the target; the id is added there for this and is used nowhere else. */}
+      <a className="skip-link" href="#main">Skip to main content</a>
       <aside className="sidebar">
         <div className="brand">
           QSH
@@ -43,7 +47,11 @@ export default function App() {
           CNSA 2.0 · HNDL / Q-Day aware
         </div>
       </aside>
-      <main className="main">
+      {/* `tabIndex={-1}` so the skip link can actually MOVE focus here. Without it the browser
+          scrolls to the anchor and leaves focus on the link, so the next Tab returns to the second
+          sidebar item - the block was skipped visually and not for the keyboard, which is the half
+          of this fix that is easy to ship broken. */}
+      <main className="main" id="main" tabIndex={-1}>
         <Routes>
           <Route path="/" element={<Overview />} />
           <Route path="/value" element={<Value />} />
