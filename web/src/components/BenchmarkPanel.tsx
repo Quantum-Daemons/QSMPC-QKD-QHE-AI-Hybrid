@@ -117,7 +117,12 @@ export default function BenchmarkPanel(
             a genuine <b>state-vector simulation</b> of a QOTP + Clifford+T QCNN private inference run by the
             <code>quantum_comparison</code> stage — its <b>latency is measured</b> and its
             {q?.t_gate_count != null ? ` ${q.t_gate_count} T-gates / ${q.qubits} qubits are counted from the circuit` : " T-gates are counted"}
-            {" "}(simulated, not quantum hardware; ct/pt = 1 is QOTP's perfect-hiding property). See the
+            {" "}(simulated, not quantum hardware; ct/pt = 1 is QOTP's perfect-hiding property). <b>The
+            security model named in that row is the SCHEME's, not this run's:</b> the quantum one-time pad
+            is perfectly hiding when its key bits are uniform and secret, and this simulation draws them
+            from a seeded non-cryptographic generator whose seed is on this page — so the mask is real and
+            recomputable by anyone. The gate count, the width and the latency are measurements; the secrecy
+            is not. See the
             “QSMPC-FHE comparison” bar in the diagram above. <b>Quantum advantage</b> = a transparent weighted
             geometric mean of three ratios (communication-compactness ≈10³× from ct/pt, latency, and the
             computational→information-theoretic security jump), tiered 0–10; the uncapped value is printed
