@@ -151,6 +151,35 @@ function MetricRows({ spec }: { spec: ModelSpec }) {
   const baselineOrphaned =
     spec.metric.baseline != null && !numeric.some(([k]) => k === spec.metric.name);
 
+  // THE VERDICT, which is the one field that states what the comparison concluded and the one that
+  // never reached the page. `quantum_beats_classical` is a BOOLEAN, and the walk above keeps
+  // `typeof v === "number"` only, so it was dropped silently on every render. A record whose whole
+  // framing is "architecture comparison, not a performance claim" published every input to the
+  // comparison and not its result.
+  //
+  // DERIVED from the macro F1 values in this table rather than read from the flag, and then checked
+  // AGAINST the flag. A stored boolean can go stale relative to the numbers beside it - it is
+  // written by the training script at one moment and the metrics can be refreshed at another - and
+  // a disagreement is a finding, not something to resolve silently in favour of either side.
+  //
+  // Macro F1 specifically, because that is this use case's declared headline; comparing on accuracy
+  // or binary F1 would compare on exactly the aggregates the panel marks as companions.
+  const num = (k: string) => (typeof rec[k] === "number" ? (rec[k] as number) : null);
+  const classicalF1 = num("classical_rf_macro_f1");
+  const quantumF1s = Object.entries(rec)
+    .filter(([k, v]) => /^quantum_.*_macro_f1$/.test(k) && typeof v === "number")
+    .map(([, v]) => v as number);
+  const recordedVerdict = typeof rec.quantum_beats_classical === "boolean"
+    ? (rec.quantum_beats_classical as boolean) : null;
+  const verdict = classicalF1 != null && quantumF1s.length
+    ? (() => {
+        const best = Math.max(...quantumF1s);
+        const derived = best > classicalF1;
+        return { best, classical: classicalF1, derived, recorded: recordedVerdict,
+                 agrees: recordedVerdict == null || recordedVerdict === derived };
+      })()
+    : null;
+
   return (
     <table className="mini-table">
       <tbody>
@@ -220,6 +249,24 @@ function MetricRows({ spec }: { spec: ModelSpec }) {
             <td className="muted small">companion — shown so the gap is visible</td>
           </tr>
         ))}
+        {verdict && (
+          <tr className={verdict.agrees ? "metric-companion" : undefined}>
+            <td><code>quantum_beats_classical</code></td>
+            <td className="num">{String(verdict.derived)}</td>
+            <td className="muted small">
+              {verdict.derived
+                ? <>the best quantum macro F1 here ({fmt(verdict.best)}) is <strong>above</strong> the
+                  classical baseline ({fmt(verdict.classical)})</>
+                : <>the classical baseline ({fmt(verdict.classical)}) is <strong>ahead</strong> of the
+                  best quantum macro F1 here ({fmt(verdict.best)})</>}
+              {verdict.recorded != null && !verdict.agrees ? (
+                <> — <strong>and this contradicts the record</strong>, which stores{" "}
+                <code>quantum_beats_classical: {String(verdict.recorded)}</code>. One of the two is
+                stale; the derivation above uses the numbers in this table.</>
+              ) : null}
+            </td>
+          </tr>
+        )}
       </tbody>
     </table>
   );

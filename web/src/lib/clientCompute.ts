@@ -2026,9 +2026,22 @@ export function runClientPipeline(
         // Training volume per class = config.n_per_class (Parameters panel), so it genuinely shifts acc/F1.
         const ids = clientTrainScoreIDS(seed, Number(config.n_per_class ?? idsCfg().n_per_class));
         metric(stage, "ids_macro_f1", r2(ids.macroF1));
+        // The denominator of the headline. `ids_macro_f1` averages over the classes PRESENT in the
+        // held-out split, and the sentence beside it used to say "over 8 classes" as a literal - so
+        // a run whose split happened to omit a class printed a claim about a denominator it had not
+        // used, with nothing on the page able to contradict it.
+        metric(stage, "ids_classes_scored", ids.classesScored);
         metric(stage, "ids_worst_class_f1", r2(ids.worstClassF1));
         metric(stage, "ids_binary_f1", r2(ids.binaryF1));
         metric(stage, "ids_accuracy", r2(ids.accuracy));
+        // Which of the three leads, as a row rather than only as a log line. They render as three
+        // numbers of identical shape, and the two that read highest are the two that collapse the
+        // seven attack types into "attack", so a reader with no marker takes the flattering pair as
+        // the result. The log below says this; the table did not.
+        metric(stage, "ids_metric_roles",
+          `headline: ids_macro_f1 (per-class mean over ${ids.classesScored} classes) and `
+          + "ids_worst_class_f1; companions: ids_binary_f1 and ids_accuracy, both of which merge "
+          + "the seven attack types into one class and so read high while a single class fails");
         metric(stage, "ids_params", ids.nParams);
         // clientIDS clamps this to >=20 and falls back on a non-finite input, so the requested value
         // is not always the value used. Report what the run actually trained on.
@@ -2052,7 +2065,13 @@ export function runClientPipeline(
           // replaced the surfaced class without touching it.
         }
         emit("log", stage, `QML-IDS (client, softmax logistic on Al-Kuwari-2026 signatures): `
-          + `macro-F1=${r2(ids.macroF1)} over 8 classes, worst class ${r2(ids.worstClassF1)} `
+          + `macro-F1=${r2(ids.macroF1)} over the ${ids.classesScored} classes present in the `
+          + `held-out split`
+          + (ids.classesScored < ids.classesDefined
+            ? ` (of ${ids.classesDefined} defined - this split is missing `
+              + `${ids.classesDefined - ids.classesScored}, and an absent class is not scored 0)`
+            : "")
+          + `, worst class ${r2(ids.worstClassF1)} `
           + `— measured on ${ids.nTest} held-out samples (${ids.nPerClassUsed}/class)`);
         emit("log", stage, `companions (NOT the headline): binary attack-vs-normal F1=${r2(ids.binaryF1)}, `
           + `aggregate accuracy=${r2(ids.accuracy)}. Both collapse the seven attack types together, which is `
