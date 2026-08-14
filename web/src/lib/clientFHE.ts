@@ -109,11 +109,14 @@ export interface FHEResult {
    *  that makes a dense layer and a convolution comparable on a shared axis rather than on
    *  wall-clock alone.
    *
-   *  Measured in Round 38, and it holds for the DENSE layer only: rotations are 57% of that
- *  layer's wall-clock (9.65 of 17.0 ms) and 10% of the convolution's (57.6 of 579.3 ms),
- *  where im2col encoding over 4 channels x 196 patches dominates instead. Per-rotation cost
- *  is stable across both (3.2-3.6 ms), which is what makes it the comparable unit - not the
- *  claim that it is always the largest term. */
+   *  Measured in Round 38: rotations are 57% of a small dense layer's wall-clock, 70% of the
+   *  published student's convolution and 86% of its dense layers, at a per-rotation cost of
+   *  3.2-4.2 ms throughout. So key-switching does dominate, and the per-rotation figure is the
+   *  comparable unit for the same reason.
+   *
+   *  An earlier revision of this comment said 10% for the convolution and that im2col encoding
+   *  dominated it. That share divided the conv block's rotation time by the WHOLE student's
+   *  wall-clock - a numerator and denominator of different scopes - and the claim is withdrawn. */
   rotations: number;
   multiplies: number;
   /** Wall-clock spent INSIDE `rotateVector`, nothing else. The page's `fhe_linear_ms` is this
@@ -270,10 +273,12 @@ export async function encryptedLinear(W: number[][], b: number[], x: number[]): 
   // wall-clock MULTIPLIED by `benchScale(...)`, a cost-model projection for the selected model size,
   // while `fhe_dense_rotations` is a raw count from this loop. Dividing one by the other read
   // 158 ms per rotation on genomics against a true figure near 3 ms. Rotation cost is the unit the
-  // CKKS literature reports, because each rotation triggers a key-switch - so it has to be measured
-  // here rather than reconstructed from a scaled total downstream. Rotations are 57% of the dense
-  // layer's time and 10% of the convolution's; the per-rotation COST is what is stable, not the
-  // share.
+  // CKKS literature reports, because each rotation triggers a key-switch and key-switching does
+  // dominate here - measured at 57% of a small dense layer, 70% of the student's convolution and
+  // 86% of its dense layers. It has to be measured rather than reconstructed from a scaled total
+  // downstream, and the denominator has to have the same scope as the numerator: dividing the
+  // conv block's rotation time by the whole student's wall-clock produced a bogus 10% figure in
+  // this round's first attempt.
   let rotations = 0, multiplies = 0, rotateMs = 0;
   for (let j = 0; j < W.length; j++) {
     // an all-zero weight row (our 2-class "class 0" convention) → logit is just the bias; skip the
@@ -322,9 +327,8 @@ export interface ConvResult {
   fheMs: number;
   ctBytes: number | null;   // null = the size could not be read; NEVER 0, which is impossible
   maxAbsError: number;
-  /** Homomorphic rotations performed. Each one triggers a key-switch. Measured share of this
-   *  operation's wall-clock: 10% - the im2col encoding around them is the larger term here,
-   *  unlike the dense layer where rotations are 57%. */
+  /** Homomorphic rotations performed. Each one triggers a key-switch, and that is the dominant
+   *  term here as elsewhere: measured at 70% of this operation's wall-clock. */
   rotations: number;
   /** Ciphertext-plaintext multiplications performed. */
   multiplies: number;
@@ -333,7 +337,9 @@ export interface ConvResult {
   /** Time inside `rotateVector` only. Measured here as well as on the dense path because the
    *  dense path's comment - key-switching dominates CKKS cost - is a claim about THIS operation
    *  too, and the convolution is the one place it can be checked against a different work mix:
-   *  4 channels x 196 patches of im2col encoding around the same 16 rotations. */
+   *  4 channels x 196 patches of im2col encoding around the same 16 rotations. Measured: 70%, so
+   *  the claim holds here too. It only appeared not to when the share was computed against the
+   *  whole student's wall-clock instead of the convolution's. */
   rotateMs: number;
 }
 
@@ -489,6 +495,21 @@ export interface EncryptedStudentResult extends ConvResult {
   totalMultiplies: number;
   /** Max |encrypted - plaintext| over the logits, so the approximation cost is measured. */
   logitMaxAbsError: number;
+  /** The CONVOLUTION BLOCK's own wall-clock, kept separate from `fheMs`.
+   *
+   *  `fheMs` on this result is the whole student - conv plus every dense layer - because the spread
+   *  of `conv` below is overridden by the accumulated total. That is the right number for "what did
+   *  this inference cost", and the wrong denominator for "what fraction of the convolution is
+   *  rotation": `rotations` and `rotateMs` come from `...conv` and describe the conv block ALONE,
+   *  so dividing one by the other mixes two scopes. Round 38 published a 10% rotation share derived
+   *  from exactly that mismatch. */
+  convOnlyMs: number;
+  /** Wall-clock of the dense layers that follow the convolution. `convOnlyMs + denseMs == fheMs`. */
+  denseMs: number;
+  /** Rotations in the dense layers only. `rotations + denseRotations == totalRotations`. */
+  denseRotations: number;
+  /** Time inside `rotateVector` across the dense layers only. */
+  denseRotateMs: number;
 }
 
 /**
@@ -539,6 +560,11 @@ export async function encryptedStudentInference(
 
   let v = flat;
   let rotations = conv.rotations, multiplies = conv.multiplies, fheMs = conv.fheMs, ctBytes = conv.ctBytes;
+  // Accumulated separately from the totals above, because the return spreads `...conv` (whose
+  // `rotations` and `rotateMs` are the CONV BLOCK's) and then overrides `fheMs` with the total.
+  // Without these, the only pairing a caller can form is conv-scoped rotations over a
+  // student-scoped time - which is the division that produced Round 38's wrong 10% figure.
+  let denseMs = 0, denseRotations = 0, denseRotateMs = 0;
   for (const d of w.dense) {
     if (v.length !== d.in) {
       throw new Error(`dense layer expects ${d.in} inputs, got ${v.length} - the published weights `
@@ -546,6 +572,7 @@ export async function encryptedStudentInference(
     }
     const r = await encryptedLinear(d.weight, d.bias ?? new Array(d.out).fill(0), v);
     rotations += r.rotations; multiplies += r.multiplies; fheMs += r.fheMs;
+    denseMs += r.fheMs; denseRotations += r.rotations; denseRotateMs += r.rotateMs;
     // Null-safe: the largest size actually read across layers, or null if none could be read.
     ctBytes = r.ctBytes == null ? ctBytes
       : ctBytes == null ? r.ctBytes
@@ -586,5 +613,6 @@ export async function encryptedStudentInference(
     logits: v, prediction: argmax(v),
     totalRotations: rotations, totalMultiplies: multiplies,
     logitMaxAbsError: Math.max(...v.map((x, i) => Math.abs(x - ref[i])), 0),
+    convOnlyMs: conv.fheMs, denseMs, denseRotations, denseRotateMs,
   };
 }
