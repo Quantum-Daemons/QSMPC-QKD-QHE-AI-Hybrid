@@ -37,6 +37,24 @@ REPO = Path(__file__).resolve().parents[1]
 TS = REPO / "web" / "src" / "lib" / "clientCompute.ts"
 PY = REPO / "src" / "qsh" / "benchmark" / "security.py"
 
+#: The Python files that PRODUCE a security-model string. Round 40 read only `clientCompute.ts`, so
+#: rewording any of these moved the Python security score and the quantum-advantage multiplier with
+#: every gate green - the exact scenario this file's docstring says it exists to prevent, on the
+#: other side of the language boundary.
+_PY_PRODUCERS = [
+    REPO / "src" / "qsh" / "benchmark" / "quantum_qsmpc_fhe.py",
+    REPO / "src" / "qsh" / "benchmark" / "classical_mpc_fhe.py",
+    REPO / "src" / "qsh" / "benchmark" / "gpu_mpc_adapter.py",
+    REPO / "src" / "qsh" / "benchmark" / "alice_bob_e2e.py",
+]
+#: Every place either language TESTS the string to pick a number. `quantum_advantage.py` is the
+#: fourth and was unpinned: it is the Python twin of `clientCompute.ts:342`.
+_PARSE_SITES = [
+    (TS, 'includes("information-theoretic")', 2),
+    (PY, '"information-theoretic" in (security_model or "").lower()', 1),
+    (REPO / "src" / "qsh" / "benchmark" / "quantum_advantage.py", '"information-theoretic" in (', 1),
+]
+
 #: Every security-model string the code may produce, and the class each must score as.
 #: "it" = information-theoretic (the higher-scoring branch), "comp" = computational, "none" = neither.
 EXPECTED: dict[str, str] = {
@@ -53,8 +71,19 @@ _PRODUCER = re.compile(r"security_?[Mm]odel:\s*\"([^\"]+)\"")
 _TOKEN = "information-theoretic"
 
 
+#: `security_model="..."` - the Python producers' form.
+_PY_PRODUCER = re.compile(r"security_model\s*=\s*\"([^\"]+)\"")
+
+
 def _produced() -> set[str]:
     return set(_PRODUCER.findall(TS.read_text()))
+
+
+def _produced_py() -> set[str]:
+    out: set[str] = set()
+    for path in _PY_PRODUCERS:
+        out |= set(_PY_PRODUCER.findall(path.read_text()))
+    return out
 
 
 def test_the_producer_parse_finds_something() -> None:
@@ -92,6 +121,41 @@ def test_each_string_scores_as_the_class_intended_for_it() -> None:
         "a security-model string scores as a different class than declared:\n  " + "\n  ".join(wrong)
         + "\n\nThis is the failure the test exists for: the wording and the score disagree, and only "
         "the wording is visible."
+    )
+
+
+def test_the_python_producers_are_in_the_same_closed_set() -> None:
+    """The other side of the boundary Round 40's version stopped at.
+
+    Rewording `quantum_qsmpc_fhe.py`'s string drops the Python security score AND the advantage
+    multiplier, and the TypeScript-only version of this test could not see it.
+    """
+    found = _produced_py()
+    assert len(found) >= 3, f"only {len(found)} Python security-model strings parsed: {found}"
+    unexpected = sorted(found - EXPECTED.keys())
+    assert not unexpected, (
+        f"Python produces security-model strings not declared here: {unexpected}\n"
+        "They are parsed for `information-theoretic` at security.py:48 and quantum_advantage.py:41, "
+        "so each silently selects a score branch. Declare it with the class you intend."
+    )
+
+
+def test_every_parse_site_is_pinned() -> None:
+    """A fourth site existed and nothing named it.
+
+    `quantum_advantage.py:41` is the Python twin of `clientCompute.ts:342`. Round 40's version
+    asserted the token in `security.py` alone, so the two PYTHON scorers could have diverged from
+    each other with every gate green.
+    """
+    wrong = []
+    for path, needle, count in _PARSE_SITES:
+        got = path.read_text().count(needle)
+        if got != count:
+            wrong.append(f"{path.name}: expected {count} occurrence(s) of {needle!r}, found {got}")
+    assert not wrong, (
+        "a security-model parse site changed:\n  " + "\n  ".join(wrong)
+        + "\n\nIf the scorers were refactored onto an explicit class field, retire these assertions "
+        "and assert instead that the refactor moved no score."
     )
 
 
