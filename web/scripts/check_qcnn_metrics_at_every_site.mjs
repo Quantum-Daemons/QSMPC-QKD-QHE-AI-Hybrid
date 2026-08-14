@@ -68,6 +68,29 @@ if (!CLAIM.test(src)) {
   failures.push("the primary_inference_backend claim pattern matched nothing - this check is inert");
 }
 
+// Every site must also REQUEST the selected width. `loadQcnnWeights` gained a width argument in
+// Round 40 so the "QCNN qubits" control could reach the trained branch; passing it at one of the two
+// sites would leave that control inert on exactly one page, which is the same one-of-two shape this
+// file was written for. Keyed on the call, not on a comment.
+{
+  const calls = [...src.matchAll(/loadQcnnWeights\(([^)]*)\)/g)]
+    .map((m) => m[1].trim())
+    .filter((args) => !args.startsWith("usecase: string"));   // drop the definition itself
+  if (calls.length < 2) {
+    failures.push(`only ${calls.length} loadQcnnWeights call site(s); there were two`);
+  }
+  // `qubitsOf(config` without the closing paren: the capture above stops at the FIRST `)`, so the
+  // argument list of a nested call arrives truncated. Testing for the full `qubitsOf(config)` made
+  // this gate fail on correct code - a false positive in the check written to catch false negatives.
+  const bare = calls.filter((args) => !args.includes("qubitsOf(config"));
+  if (bare.length) {
+    failures.push(
+      `loadQcnnWeights called without the selected width at ${bare.length} site(s): ` +
+      `${JSON.stringify(bare)}. A site that omits it silently ignores the QCNN-qubits control, ` +
+      "which is the inert-control defect this repository has found six times.");
+  }
+}
+
 if (failures.length) {
   console.error("check:qcnn-metrics FAILED");
   for (const f of failures) console.error("  - " + f);
