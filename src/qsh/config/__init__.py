@@ -115,6 +115,25 @@ def frontend_config() -> dict:
                 "the browser runs a lighter schedule so a federated round completes inside a page "
                 "interaction; the server-side values above are what the full deployment trains with",
         },
+        # The CKKS parameter set. Absent until Round 38, which meant the ring degree the browser ran
+        # was a literal in `clientFHE.ts`, the ring degree the server ran was a default argument in
+        # `fhe/backends.py`, and the ring degree the report PRINTED was a literal inside
+        # `report/build_data.py` - three copies, and `FHEConfig.poly_modulus_degree` read by none of
+        # them. They agreed only because no one had changed one. A ring change would have left the
+        # published PDF asserting a parameter set the code no longer used.
+        #
+        # Only the parameters that genuinely govern BOTH sides are exported. `backend`, `use_gpu`,
+        # `max_level` and the OpenFHE knobs describe the server's context and would be false of the
+        # browser, which runs node-seal on WASM CPU with no GPU path - exporting them would replace
+        # a duplicated number with a wrong one.
+        "fhe": {
+            "poly_modulus_degree": c.fhe.poly_modulus_degree,
+            "coeff_mod_bit_sizes": list(c.fhe.coeff_mod_bit_sizes),
+            "global_scale_bits": c.fhe.global_scale_bits,
+            # Derived here so no consumer divides by two on its own: CKKS packs conjugate pairs, so
+            # a degree-N ring carries N/2 usable slots. Three prose sites had this multiplied out.
+            "slots": c.fhe.poly_modulus_degree // 2,
+        },
         "benchmark": {
             "tier_architectures": b.tier_architectures,
             "generic_architecture": b.generic_architecture,
