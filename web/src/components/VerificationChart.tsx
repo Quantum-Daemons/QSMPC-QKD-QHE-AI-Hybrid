@@ -204,11 +204,21 @@ export function EncryptedAgreementChart({ plot }: { plot: EncryptedAgreementPlot
               which points are the disagreements - the single fact the chart exists to show.
               The shape is named in the series name, so the legend, the tooltip and the figcaption
               all say it, the way the confusion bars already say "(solid)" and "(hatched)". */}
+          {/* `isAnimationActive={false}` IS LOAD-BEARING, not tidiness, and leaving it off shipped
+              a blank chart to the deployed site. Adding `shape` moves recharts off its default
+              renderer onto `<Symbols>`, whose `size` is an ANIMATED prop; with animation left on,
+              all 30 symbols stayed at their `from` state and rendered `d="M0,0"` - present in the
+              DOM, correctly positioned, and zero-sized. The legend named two shapes above an empty
+              plot area, which is worse than the colour-only version it replaced.
+              `RealDataScatter` 170 lines below has carried `shape` AND `isAnimationActive={false}`
+              together since Round 34. Half of that pattern was copied. Found only by looking at the
+              deployed page - every gate was green, because a gate that reads the source sees the
+              `shape` prop it asked for and cannot see a path of length zero. */}
           <Scatter name="agrees (circle)" data={plot.points.filter((p) => p.agree)}
-                   fill="#4f9dff" shape="circle" />
+                   fill="#4f9dff" shape="circle" isAnimationActive={false} />
           {mismatches > 0 && (
             <Scatter name="argmax differs (cross)" data={plot.points.filter((p) => !p.agree)}
-                     fill="#ff6b6b" shape="cross" />
+                     fill="#ff6b6b" shape="cross" isAnimationActive={false} />
           )}
           {mismatches > 0 && <Legend wrapperStyle={{ fontSize: 10 }} />}
         </ScatterChart>
