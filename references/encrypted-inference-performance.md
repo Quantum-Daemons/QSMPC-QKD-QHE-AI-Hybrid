@@ -176,8 +176,14 @@ reader to compare, and a page that leaves the window will say so.
 ## One-time cost a visitor feels
 
 CKKS key generation runs once per tab, synchronously on the main thread, and `clientFHE` already
-recorded that it made the first click feel like a hang. Measured: **242-255 ms at ring 8192**, and
-**477 ms at 16384**. That cost is the main reason the 16384 experiment was reverted; see
+recorded that it made the first click feel like a hang. Measured back to back under one set of
+conditions, two runs each: **253.4 and 255.5 ms at ring 8192**, **490.6 and 492.2 ms at 16384** -
+under 1% spread inside each ring, 1.93x between them.
+
+Stated that way because keygen is load-sensitive and an earlier pairing was not controlled: a
+deployed run at ring 8192 measured 470 ms while a machine was building and serving alongside it,
+which is indistinguishable from the 16384 figure and would have made the ring delta look like noise.
+It is not noise; the two sessions were. That cost is the main reason the 16384 experiment was reverted; see
 `src/qsh/config/defaults.py` for the full before/after table and the reasoning.
 
 ## What is not claimed
