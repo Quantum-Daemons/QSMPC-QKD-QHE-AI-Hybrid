@@ -122,3 +122,112 @@ def test_every_chart_has_an_accessible_name() -> None:
         "one there produces a role with a null accessible name - which is how Round 37's chart "
         "shipped, and how Round 34's six did before it. It must be the prop."
     )
+
+
+# --------------------------------------------------------------------------------------------- #
+#  SC 1.4.1 Use of Colour: a category must not be distinguishable by colour alone
+# --------------------------------------------------------------------------------------------- #
+
+#: Round 39 gave a second channel to `RealDataScatter` (circle vs triangle), the histogram, the
+#: forecast lines (solid vs dashed) and the confusion bars (solid vs hatched fill), and MISSED the
+#: private-inference agreement scatter - the one chart where colour carries the most, because red
+#: there means the encrypted path disagreed with the plaintext model.
+#:
+#: The sweep was done from memory rather than from the source. So this check enumerates the series
+#: rather than listing the charts: any chart drawing MORE THAN ONE `<Scatter>` must give each one a
+#: `shape`. One series has no category to confuse and is left alone.
+#:
+#: Scatter only, deliberately. Lines carry `strokeDasharray`, bars carry a pattern fill, and each
+#: needs a differently-shaped check; claiming to cover all four here and testing one is the defect
+#: this file already records in its own scope comment above.
+_CHART_BLOCK = re.compile(r"<ScatterChart\b(?:[^>]|\n)*?>((?:.|\n)*?)</ScatterChart>", re.S)
+
+
+def _scatter_tags(block: str) -> list[str]:
+    """Attribute text of each `<Scatter ... />` in a chart body.
+
+    A BRACE-AWARE SCAN, NOT A REGEX, AND THE REGEX VERSION SKIPPED THE ONE CHART THIS CHECK EXISTS
+    FOR. It was `<Scatter\b((?:[^>]|\n)*?)/>`, and the agreement scatter's props read
+    `data={plot.points.filter((p) => p.agree)}` - an arrow function, so a `>` inside the tag. `[^>]`
+    stopped dead there, the tag never matched, and the whole chart fell out of scope.
+
+    The guard did not save it. `assert charts` passed because `RealDataScatter`, whose props happen
+    to contain no arrow, matched fine - so the check reported healthy while examining a chart that
+    was already correct and silently ignoring the one that was not. A scope guard that counts is
+    weaker than one that names: `test_the_agreement_scatter_is_in_scope` below names it.
+    """
+    out: list[str] = []
+    i = 0
+    while (i := block.find("<Scatter", i)) != -1:
+        if block[i + len("<Scatter")].isalnum():      # <ScatterChart, not <Scatter
+            i += 1
+            continue
+        j, depth = i + len("<Scatter"), 0
+        while j < len(block):
+            c = block[j]
+            if c in "{(":
+                depth += 1
+            elif c in "})":
+                depth -= 1
+            elif c == ">" and depth == 0:
+                break
+            j += 1
+        out.append(block[i:j])
+        i = j + 1
+    return out
+
+
+def _flat_scatter_series() -> tuple[list[str], list[str]]:
+    """(offending series, names of every multi-series scatter chart examined)."""
+    flat: list[str] = []
+    seen: list[str] = []
+    for path in sorted(COMPONENTS.glob("*.tsx")):
+        text = path.read_text()
+        for block in _CHART_BLOCK.finditer(text):
+            series = _scatter_tags(block.group(1))
+            if len(series) < 2:
+                continue                      # one series: no category, nothing to confuse
+            line = text[: block.start()].count("\n") + 1
+            names = [
+                (re.search(r'name=\{?"?([^"}\n]+)', a).group(1).strip()
+                 if re.search(r'name=\{?"?([^"}\n]+)', a) else "?")
+                for a in series
+            ]
+            seen.append(f"{path.name}:{line} [{', '.join(names)}]")
+            for attrs, name in zip(series, names):
+                if "shape=" not in attrs:
+                    flat.append(f"{path.name}:{line} series {name!r} has no shape")
+    return flat, seen
+
+
+def test_the_agreement_scatter_is_in_scope() -> None:
+    """Name the chart, do not count the charts.
+
+    The private-inference agreement scatter is the reason this section exists and was the chart the
+    first parse could not see. Counting found two series elsewhere and reported healthy. This fails
+    if the parse ever loses it again, whatever else it finds.
+    """
+    _, seen = _flat_scatter_series()
+    assert any("agrees" in s for s in seen), (
+        "the private-inference agreement scatter is not among the multi-series charts examined:\n  "
+        + "\n  ".join(seen or ["(none)"])
+        + "\n\nIt is the chart this check was written for - red there means the ENCRYPTED path "
+        "disagreed with plaintext. If the parse cannot reach it, the check is green about charts "
+        "that were never the problem."
+    )
+
+
+def test_a_scatter_category_is_never_colour_alone() -> None:
+    """SC 1.4.1, Level A, asserted per series rather than per file."""
+    flat, seen = _flat_scatter_series()
+    assert seen, (
+        "no multi-series scatter chart was found; this check would pass on an empty set, which is "
+        "how the agreement scatter went three rounds without a second channel"
+    )
+    assert not flat, (
+        "these scatter series are told apart by fill colour alone:\n  "
+        + "\n  ".join(flat)
+        + "\n\nSC 1.4.1 Level A. Add a `shape` - the pattern is in this same file, where "
+        "`RealDataScatter` uses circle against triangle - and name the shape in the series name so "
+        "the legend and tooltip say it too."
+    )
