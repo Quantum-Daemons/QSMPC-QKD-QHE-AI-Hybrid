@@ -107,3 +107,39 @@ def test_the_disclosure_is_not_gated_on_being_non_zero() -> None:
         "the caption has no zero-undecidable branch. Telecom reads 0 of 512, and suppressing that "
         "makes its clean sweep indistinguishable from a page that simply did not say."
     )
+
+
+def test_no_plot_field_is_set_but_never_rendered() -> None:
+    """Every field `EncryptedAgreementPlot` declares must be READ by the component that owns it.
+
+    This is the assertion the first version of this file was missing, and the miss cost a real
+    regression. Removing the tie verdict from the caption also deleted the ciphertext-cap sentence -
+    the removed block's closing `) : null}` merged with the tie block's - so `rowsOffered` was left
+    declared in the interface, set by four producers, and read by nothing. TypeScript cannot see it:
+    an optional interface field that no one reads is not an error. The result was that telecom's
+    figure reported agreement 1.00 over 512 rows without saying the split held 600, silently
+    reverting a fix an earlier round had made for exactly that reading.
+
+    A field that a producer bothers to compute and pass is a field someone decided the reader needed.
+    If the component stops reading it, either the component regressed or the field should go - and
+    both are worth failing over.
+    """
+    chart = (REPO / "web" / "src" / "components" / "VerificationChart.tsx").read_text()
+
+    m = re.search(r"export interface EncryptedAgreementPlot \{(.*?)\n\}", chart, re.S)
+    assert m, "EncryptedAgreementPlot no longer parses - did the interface move or get renamed?"
+    body = m.group(1)
+    # Field names at the interface's top level, comments and doc blocks stripped.
+    fields = re.findall(r"^\s{2}(\w+)\??:", body, re.M)
+    assert len(fields) >= 6, f"only parsed {fields}; the interface should declare at least six fields"
+
+    # Everything after the interface is the component. A field is "read" if it appears as `plot.<f>`.
+    component = chart[m.end():]
+    unread = [f for f in fields if f != "kind" and f"plot.{f}" not in component]
+    assert not unread, (
+        f"{unread} are declared on EncryptedAgreementPlot and never read as `plot.<field>` in the "
+        "component. Either a producer is computing something the figure silently drops - which is "
+        "how the ciphertext-cap disclosure disappeared from the caption while remaining in the "
+        "metrics and the log - or the field is dead and should be removed. tsc will not tell you: "
+        "an unread optional field is not a type error."
+    )
