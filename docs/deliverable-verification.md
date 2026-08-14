@@ -1744,6 +1744,46 @@ on the checklist's own measurement procedures, and `references/REFERENCES.md` no
 deliberately NOT resolved by adding one HCI citation to make the sentence true, because a citation no
 row derives from is the decoration-condition failure `QC16` exists to name.
 
+**The accessibility fix shipped a blank chart, and only the deployed page said so.** Adding
+`shape="circle"` / `shape="cross"` to the agreement scatter moved recharts off its default renderer
+onto `<Symbols>`, whose `size` is an **animated** prop. With animation left on, all 30 symbols sat in
+the DOM, correctly positioned, rendering `d="M0,0"`: a legend naming two shapes above an **empty plot
+area**, which is worse than the colour-only version it replaced. `RealDataScatter` in the same file
+has carried `shape` AND `isAnimationActive={false}` together since Round 34; half of that pattern was
+copied - the half the checklist row named.
+
+Every gate was green. They read the source, found the `shape` prop they asked for, and have no way to
+see a path of length zero. The pairing is now its own invariant, which is what "write the invariant
+at the boundary" means when the boundary is between a prop being PRESENT and it having an EFFECT.
+**This is the third gate this round that was wrong on its first run**, and the only one of the three
+that no seeding would have caught, because the seed and the subject were both in the source and the
+defect was in the render. `bash scripts/ci_local.sh` cannot replace opening the page.
+
+**Two findings from the Chrome pass that are NOT this round's subject**, recorded with conditions so
+they cannot become permanent residents:
+
+- **Switching use case after a run leaves the previous run's model in the DAG caption.** Measured
+  2026-08-15 on the deployed site: run `finance_aml`, switch the selector to `demo`, and the QHE/FHE
+  node still reads `(finance_aml.gbm on wasm)`. A fresh load with `demo` selected reads
+  `Private Inference`, so the caption is correct until a run has happened and stale afterwards. It is
+  this round's own class - a caption naming something other than what ran - and it is left for a
+  round that can change the run-state lifecycle rather than bolted on at the end of this one.
+  **Resolve or condition by **Round 44**.**
+- **`/orchestration?usecase=demo` ignores the query parameter** and renders `finance_aml`. Nothing
+  links to that form, so nobody has hit it, but a URL that names a use case and shows a different one
+  is a link that lies. **Resolve or condition by **Round 44**.**
+
+**A stated limit on this round's keyboard verification.** The browser harness could not deliver
+synthetic `Tab` or `Enter` to the page - focus did not move off the element it started on - so the
+skip link's tab-order behaviour was NOT verified by walking it. What WAS verified on the deployed
+site: it is the first focusable element in the document (`querySelector` of all focusables returns
+it), it becomes visible on focus (`left` goes from `-9999px` to `0px` with a real bounding box), and
+activating it moves focus to `<main id="main" tabIndex={-1}>` rather than only scrolling - checked by
+reading `document.activeElement` after activation. The unverified step is that a physical Tab reaches
+it first, which its position as first focusable establishes structurally but not empirically. Said
+here rather than reported as a clean keyboard walk, because an over-broad browser assertion that
+reported a false FAIL is already in `docs/verification-log.md` as this project's own warning.
+
 ## Verification assets added in Rounds 22-23
 
 Two checks now exist that assert against sources OUTSIDE this repository. That is the point of both:
