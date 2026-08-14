@@ -1351,8 +1351,15 @@ was correct, its command was correct, and reading the diff it looked right - wha
 job it sat in, which is the one property a step's own text cannot show.
 `tests/test_ci_steps_run_in_a_job_that_can_run_them.py` now parses the workflow and fails when a step
 invokes an interpreter its job never installed; run against the commit CI rejected, it names that
-step and that job. The local script gained the same check as gate 13/13, so the two lists agree
-again - which `CI4` has required all along and which nothing enforced.
+step and that job. The local script gained the same check as its own last gate, so the two lists
+agree again - which `CI4` has required all along and which nothing enforced.
+
+*This sentence named "gate 13/13" until Round 40.* It was true when written and false one commit
+later, because the same round added a fourteenth gate and renumbered the script. The renumbering was
+caught by `tests/test_ci_local_step_numbering.py` - which guards the script, not prose about the
+script - so a count in a document describing a count in code drifted with every gate green. That is
+the third instance of a hand-written count going stale in two rounds, and the reason none is written
+by hand any more: the sentence now names the position, not the number.
 
 **A gate nobody has watched run has an unknown result, not a good one.** Three of this round's
 findings are that sentence in different costumes: this one, the register deadline with no executor,
