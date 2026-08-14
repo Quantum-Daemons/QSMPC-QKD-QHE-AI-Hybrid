@@ -1057,3 +1057,24 @@ Confirmed on the deploy at `b1437f4`, telecom, all three surfaces: the log reads
 are scored identically across classes by the plaintext model itself; over the 512 it does decide,
 agreement is 1"*, the caption reads *"None of these 512 rows is a tie in the plaintext model"*, and
 the metrics read 0 / 512 / 1.00.
+
+### Client-side-only inference, re-read against the rows that already assert it
+
+The standing request asks for confirmation that ML inference is client-side only. `CS1`, `CS2`,
+`CS4`, `CS9`, `CS10` and `RS30` already assert it, so **no row was added** - the increment is the
+reading.
+
+Measured on the deployed medical page by wrapping `fetch` and `XMLHttpRequest.open` before clicking
+Run, so the record is of the run itself rather than of page load. Ten requests:
+
+- **Zero `/api/` calls** (`CS1`).
+- Own origin: `/data/medical/breast_cancer_sample.json`, `/assets/ort-wasm-simd-threaded-*.wasm`,
+  `/assets/seal_throws-*.wasm` - the bundled sample and the two WASM runtimes (`CS9`).
+- One external origin, `huggingface.co`, and all seven of its URLs are
+  `/<repo>/resolve/<40-char commit sha>/...` - `eval_sample.json`, `onnx/model*.onnx`,
+  `weights.json`. No `api-inference` host, no per-token or per-request pattern.
+
+`CS10`'s discriminator is the one that matters: a hosted inference API would look identical in the
+UI and produce a request per inference. Every Hub URL here is a pinned-revision artefact download,
+and each revision is a full commit SHA rather than a branch name, so the pin is exact. Inference
+itself runs on onnxruntime-web and node-seal inside the tab.
