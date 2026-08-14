@@ -207,3 +207,20 @@ jobs:
       - name: Federated secure aggregation
         working-directory: web
         run: npm run check:qfl
+
+      # Backend and browser derived DIFFERENT session keys for two rounds, because the output-length
+      # tag was added to the Python combiner alone and no browser test touched the combiner at all.
+      # Three shipped strings asserted they matched, one of them rendered in the Validations panel.
+      # This reproduces committed Python vectors through the real browser module - not a
+      # re-implementation, which would have agreed with itself while the browser drifted.
+      - name: Hybrid-KEM combiner parity
+        working-directory: web
+        run: npm run check:combiner
+
+      # The vectors are generated FROM the Python combiner, so a Python change that is not
+      # regenerated leaves the two languages apart with a green parity gate. Same mechanism the
+      # config-parity step above uses.
+      - name: Combiner vectors are regenerated
+        run: |
+          python scripts/export_combiner_vectors.py
+          git diff --exit-code -- web/scripts/vectors/hybrid_combiner_vectors.json
