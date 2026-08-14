@@ -983,3 +983,35 @@ worth having and the result is worth recording: `QS1`-`QS4`. The FIPS sizes them
 
 Scope, stated: `QS2` was exercised on genomics only. The handshake stage is shared across all five,
 which is a reason to expect the same behaviour elsewhere and not a measurement of it.
+
+### The corrections were themselves reviewed, and four of them were wrong
+
+A second adversarial pass, scoped to the correction commits only. Four survived, all mine.
+
+**The run log still printed the withdrawn attribution.** The `10%` fix changed the `metric()` calls
+and left the `emit("log")` forty lines below untouched, so the medical page's event log read
+"16 rotations and 4 multiply-plain in 591.04 ms" - the conv block's rotation count over the whole
+student's wall-clock, 36.9 ms per rotation - while the metrics table on the same page read 84.35 ms
+and 3.7. It also labelled `real.fheMs - real.conv.convMs`, which is this page's own 8-feature bundled
+linear demo at ~18 ms, as "dense layer", while the student's dense stack cost ~499. Every term is now
+scoped: measured after the fix, the log reads 75.05 ms for the convolution and 498.59 ms for the
+student's 136 dense-layer rotations, and 75.05 + 498.59 = 573.64 is `fhe_encrypted_student_ms`
+exactly.
+
+**`fhe_conv_max_abs_error` was the student's final-logit error on the published path** and the conv
+block's on the synthetic path - one key, two meanings, decided by whether a Hub fetch succeeded, under
+a comment claiming the two errors were reported separately "so a regression in one cannot hide behind
+the other". Now 4.25e-9 for the convolution and 6.87e-9 for the student's logits, as two rows.
+
+**The replacement tie test could not fail either.** `margin / scoreRange <= 1e-6` looked independent
+of the deviation and is not: a flip forces `margin <= 2E`, so `rel <= 2E/range`, and with E ~1e-9
+against a range of order 1 that is ~1e-9 - three orders below the threshold, on every run. It would
+take a 500x precision collapse to reach the other branch, and that case is already reported by
+`encrypted_batch_precision_bits`. **And the experiment that "proved" it reachable forced
+`flipMarginRel` to a literal**, which exercised the rendering branch rather than the predicate - the
+wrong thing, convincingly. The boolean is removed rather than re-tuned; `encrypted_undecidable_rows`
+carries what it pretended to and does vary (7 of 30 on genomics, 0 of 512 on telecom).
+
+**"3.2-4.2 ms throughout" excluded both of its own endpoints.** The stages it summarised measure 4.39,
+4.24 and 3.10; the interval contained neither extreme, and the same string sat in two code comments.
+Now 3.10-4.39.
