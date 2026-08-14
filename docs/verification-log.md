@@ -965,3 +965,21 @@ published before the review: a 10% convolution rotation share, computed by divid
 rotate time by the last row's total.
 
 No `metric_overwritten`, no `NaN`/`undefined`/`[object Object]`, no horizontal overflow.
+
+### Quantum resistance per use case, measured because the standing request asks for it
+
+The security-communication rows (`SC1`-`SC14`) establish what produces key material and what does
+not. None of them asserts the STRENGTH in force on the wire. Measured on the deployed site, all five
+pages: `ml-kem-768+x25519 - NIST Category 3` and `ML-DSA-65 - NIST Category 3`, with
+`kem_ciphertext_bytes` 1088, `signature_bytes` 3309, `classical_public_key_bytes` 32 and
+`signature_verified` 1 - identical on finance, medical, genomics, telecom and satellite.
+
+**The crypto-agility selection genuinely reaches the algorithm.** Switching genomics to
+`ml-kem-1024+x25519` and `ML-DSA-87` moves the ciphertext to **1568 bytes** and the signature to
+**4627 bytes**, with `signature_verified` still 1 - the FIPS 203 and FIPS 204 values for those
+parameter sets, so the larger key was generated, used and verified rather than relabelled. This
+project has shipped a control whose label moved while nothing behind it did, so the check is
+worth having and the result is worth recording: `QS1`-`QS4`. The FIPS sizes themselves are asserted by `npm run check:pqc` (`PQ1`-`PQ3`) and are deliberately not restated as browser rows.
+
+Scope, stated: `QS2` was exercised on genomics only. The handshake stage is shared across all five,
+which is a reason to expect the same behaviour elsewhere and not a measurement of it.
