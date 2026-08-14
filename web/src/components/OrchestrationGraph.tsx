@@ -14,6 +14,35 @@ import "@xyflow/react/dist/style.css";
 // and the backend, but had no node here, so the last two stages of every run lit nothing on the
 // Orchestration page. The `data` node is client-only: there is no `data` stage server-side, so in
 // full mode it stays dim by design.
+// Stages the BACKEND runs that the client pipeline does not. This graph is drawn on
+// `/orchestration` in BOTH modes, and `FLOWS` was reconciled against `clientFlow()` alone - so on
+// the full deployment it went dark for a stage that was actually running, on every use case:
+//
+//   finance / genomics / demo / medical   `explainability`
+//   telecom / satellite                   `qkd_optimize`
+//   satellite                             `telemetry_anomaly`
+//
+// while drawing `federated_training` for finance, which `standard_stages()` does not contain at
+// all. The "diagram shows a stage the pipeline does not run" defect this file was written to fix
+// was live the whole time on the transport nobody looked at.
+//
+// Each label says which deployment lights it, because a node that is dim for a good reason and a
+// node that is dim because the diagram is wrong look identical. `tests/test_dag_covers_both_
+// transports.py` asserts this map against the real Python stage lists, resolving `stage.name` from
+// the class definitions so a rename cannot slip past it.
+const BACKEND_EXTRA: Record<string, { id: string; label: string }[]> = {
+  default: [{ id: "explainability", label: "Explainability\n(full deployment)" }],
+  finance_aml: [{ id: "explainability", label: "Explainability\n(full deployment)" }],
+  genomics: [{ id: "explainability", label: "Explainability\n(full deployment)" }],
+  demo: [{ id: "explainability", label: "Explainability\n(full deployment)" }],
+  medical_fl: [{ id: "explainability", label: "Explainability\n(full deployment)" }],
+  telecom_ids: [{ id: "qkd_optimize", label: "OptiQKD\n(full deployment)" }],
+  satellite_comms: [
+    { id: "qkd_optimize", label: "OptiQKD\n(full deployment)" },
+    { id: "telemetry_anomaly", label: "Telemetry anomaly\n(full deployment)" },
+  ],
+};
+
 const FLOWS: Record<string, { id: string; label: string }[]> = {
   default: [
     { id: "data", label: "Data" },
@@ -36,7 +65,7 @@ const FLOWS: Record<string, { id: string; label: string }[]> = {
     { id: "pqc_handshake", label: "PQC Handshake\n(ML-KEM + X25519)" },
     { id: "qkd_key_agreement", label: "QKD Key" },
     { id: "qsmpc_compute", label: "QSMPC\n(PSI)" },
-    { id: "federated_training", label: "Federated Training\n(size-weighted FedAvg)" },
+    { id: "federated_training", label: "Federated Training\n(size-weighted FedAvg, demo)" },
     { id: "private_inference", label: "QHE/FHE\nPrivate Inference" },
     { id: "quantum_comparison", label: "QSMPC-FHE\n(quantum comparison)" },
     { id: "result", label: "Result\n+ artifacts" },
@@ -46,7 +75,7 @@ const FLOWS: Record<string, { id: string; label: string }[]> = {
     { id: "data", label: "Hospitals' Data" },
     { id: "pqc_handshake", label: "PQC Handshake" },
     { id: "qkd_key_agreement", label: "QKD Key" },
-    { id: "federated_training", label: "Federated Training\n(size-weighted FedAvg)" },
+    { id: "federated_training", label: "Federated Training\n(size-weighted FedAvg, demo)" },
     { id: "private_inference", label: "Private Inference" },
     { id: "quantum_comparison", label: "QSMPC-FHE\n(quantum comparison)" },
     { id: "result", label: "Result" },
@@ -75,8 +104,19 @@ const FLOWS: Record<string, { id: string; label: string }[]> = {
   ],
 };
 
+/** The nodes to draw: the client flow, plus the stages only the backend runs, before `result`.
+ *
+ *  Both are drawn in both modes on purpose. A visitor on the demo sees the full-deployment stages
+ *  labelled as such and permanently dim, which is the honest shape - the alternative is a diagram
+ *  that means something different depending on how the page was served, and this file already
+ *  carries one round's worth of consequences from a flow map that described one transport.
+ */
 export function flowFor(usecase: string) {
-  return FLOWS[usecase] ?? FLOWS.default;
+  const client = FLOWS[usecase] ?? FLOWS.default;
+  const extra = BACKEND_EXTRA[usecase] ?? BACKEND_EXTRA.default ?? [];
+  const at = client.findIndex((n) => n.id === "result");
+  const cut = at >= 0 ? at : client.length;
+  return [...client.slice(0, cut), ...extra, ...client.slice(cut)];
 }
 
 export default function OrchestrationGraph({

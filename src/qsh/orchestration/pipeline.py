@@ -68,9 +68,16 @@ class Pipeline:
         self._resume_gate.set()   # unblock a paused worker so it can observe the stop
 
     def request_pause(self) -> None:
-        """Pause after the current stage finishes; keep all state."""
+        """Pause after the current stage finishes; keep all state.
+
+        Emits the REQUEST. The run is still executing a stage at this point - the gate in `run()`
+        announces `PIPELINE_PAUSE_EFFECTIVE` once it is genuinely blocked. Until Round 41 this method
+        emitted nothing and the gate emitted `PIPELINE_PAUSE`, so a consumer that distinguishes the
+        two saw only the effect under the request's name and never left its "pausing" state.
+        """
         self._step_budget = 0
         self._resume_gate.clear()
+        self.bus.emit(Event(EventType.PIPELINE_PAUSE, self.name, "pause requested"))
 
     def request_resume(self) -> None:
         """Resume free execution from where it paused."""
@@ -106,7 +113,11 @@ class Pipeline:
                 # gate: block here while paused (step_budget == 0). Resume/step releases it.
                 if self._step_budget == 0 and not self._stop:
                     self.state = PipelineState.PAUSED
-                    self.bus.emit(Event(EventType.PIPELINE_PAUSE, self.name, "paused"))
+                    # The EFFECT, not the request. `request_pause()` announced the request; this
+                    # fires only once the worker is actually about to block, which is what the UI
+                    # needs before it may enable Resume and Step. This line said PIPELINE_PAUSE
+                    # until Round 41 - the right moment under the wrong name.
+                    self.bus.emit(Event(EventType.PIPELINE_PAUSE_EFFECTIVE, self.name, "paused"))
                     self._resume_gate.wait()
                     if not self._stop:
                         self.state = PipelineState.RUNNING
