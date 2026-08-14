@@ -1304,6 +1304,26 @@ true of this code, in the canonical document for the KEM registry, sixteen round
 corrected **in place with its provenance**, and where the file is a log the superseded figure is
 marked rather than deleted, because a log that edits its own history is not a log.
 
+**A gate added, never watched run, and unable to pass.** The "Combiner vectors are regenerated" step
+that closes the stale-vector direction was put in the **web** job, which sets up Node and nothing
+else. It failed with `ModuleNotFoundError: No module named 'oqs'` the first time it ever executed -
+a round after being written, on the first push that ran it. `scripts/ci_local.sh` could not have
+caught it and never could: the virtualenv is always on the path locally, so the identical command
+passes. That is the local-green/CI-red asymmetry the script's own header exists to warn about,
+reappearing inside the script written to close it.
+
+Recorded rather than quietly moved, because the interesting part is not the misplacement. The step
+was correct, its command was correct, and reading the diff it looked right - what was wrong was the
+job it sat in, which is the one property a step's own text cannot show.
+`tests/test_ci_steps_run_in_a_job_that_can_run_them.py` now parses the workflow and fails when a step
+invokes an interpreter its job never installed; run against the commit CI rejected, it names that
+step and that job. The local script gained the same check as gate 13/13, so the two lists agree
+again - which `CI4` has required all along and which nothing enforced.
+
+**A gate nobody has watched run has an unknown result, not a good one.** Three of this round's
+findings are that sentence in different costumes: this one, the register deadline with no executor,
+and the prefix legend under an instruction to regenerate.
+
 **A fact-check that found one thing worth watching, and it is not a change.** Thirty searches over
 2026-08-01 to 2026-08-14 returned the expected null against every claim here, verified at primary
 sources rather than at coverage - SP 800-227's document history reads Draft 2025-01-07 and Final
