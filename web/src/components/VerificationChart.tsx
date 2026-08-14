@@ -113,9 +113,18 @@ export function EncryptedAgreementChart({ plot }: { plot: EncryptedAgreementPlot
               across classes by the plaintext model itself</strong>, so its own top-1 there comes
               from argmax tie-breaking and the encrypted outcome is decided by encryption noise —
               they carry no signal either way, and the count above moves between runs because of
-              them. Over the {plot.decidableRows} rows the model does decide, agreement is{" "}
+              them. Over the {plot.decidableRows} rows the model does decide, the encrypted score
+              agrees with the plaintext one{" "}
+              {/* A PROPORTION NEEDS ITS DENOMINATOR NAMED. This rendered as a bare `0.98` - the one
+                  number on the page a practitioner would quote, printed as a dimensionless decimal
+                  that reads equally well as a score, a probability or a ratio. `UX5`'s own worked
+                  example is "the encrypted score agrees with the plaintext one 98.3% of the time",
+                  and it was the sentence right beside the figure that did not say it.
+                  One decimal place, not two: `toFixed(2)` on a fraction gave two significant
+                  figures, so 0.9825 and 0.9849 both printed 0.98 over a few hundred rows. */}
               <strong>{plot.agreementOverDecidable != null
-                ? plot.agreementOverDecidable.toFixed(2) : "not computed"}</strong>.
+                ? `${(plot.agreementOverDecidable * 100).toFixed(1)}% of the time`
+                : "by an amount that was not computed"}</strong>.
             </>
           ) : (
             <>
@@ -186,9 +195,20 @@ export function EncryptedAgreementChart({ plot }: { plot: EncryptedAgreementPlot
                          strokeDasharray="4 4" ifOverflow="extendDomain" />
           <Tooltip contentStyle={{ background: "#161b26", border: `1px solid ${GRID}`, fontSize: 11 }}
                    formatter={(v: number) => v.toFixed(6)} />
-          <Scatter name="agrees" data={plot.points.filter((p) => p.agree)} fill="#4f9dff" />
+          {/* SHAPE as well as fill - SC 1.4.1, and the one chart in this file that was missed when
+              the second channel was added to the others. `RealDataScatter` 170 lines below has
+              carried `shape="circle"` / `shape="triangle"` since that sweep; the histogram, the
+              forecast lines and the confusion bars all got a channel too. This one did not, and it
+              is the chart where colour carries the most: red here means the ENCRYPTED path
+              disagreed with plaintext, so a reader who cannot separate red from blue cannot see
+              which points are the disagreements - the single fact the chart exists to show.
+              The shape is named in the series name, so the legend, the tooltip and the figcaption
+              all say it, the way the confusion bars already say "(solid)" and "(hatched)". */}
+          <Scatter name="agrees (circle)" data={plot.points.filter((p) => p.agree)}
+                   fill="#4f9dff" shape="circle" />
           {mismatches > 0 && (
-            <Scatter name="argmax differs" data={plot.points.filter((p) => !p.agree)} fill="#ff6b6b" />
+            <Scatter name="argmax differs (cross)" data={plot.points.filter((p) => !p.agree)}
+                     fill="#ff6b6b" shape="cross" />
           )}
           {mismatches > 0 && <Legend wrapperStyle={{ fontSize: 10 }} />}
         </ScatterChart>
@@ -249,7 +269,21 @@ const REAL_2D_PATH: Record<string, string> = {
   telecom_ids: "data/telecom/real_2d.json",
 };
 
-export function RealDataScatter({ usecase }: { usecase: string }) {
+/**
+ * `card` asks this component to draw its own bordered frame.
+ *
+ * WHY THE FRAME IS A PROP AND NOT THE CALLER'S `<div>`. Round 41 added this chart to the
+ * orchestration page inside an unconditional `<div className="card">`, with a comment stating that
+ * the component "renders null where no overlay ships, which covers the generic `demo` entry". The
+ * component does. The wrapper did not, so `/orchestration?usecase=demo` drew an empty bordered box
+ * after every run - while the checklist row written in that same commit promises "It renders nothing
+ * for the generic `demo` entry".
+ *
+ * Whether anything renders is known HERE and only here: `demo` has no `REAL_2D_PATH` entry, and even
+ * a mapped use case can fetch a payload with no points. A caller cannot condition on an answer that
+ * arrives in a `useEffect`, so a caller-side frame is a copy of a decision the caller cannot make.
+ */
+export function RealDataScatter({ usecase, card = false }: { usecase: string; card?: boolean }) {
   const [data, setData] = useState<Real2D | null>(null);
   useEffect(() => {
     const rel = REAL_2D_PATH[usecase];
@@ -268,11 +302,17 @@ export function RealDataScatter({ usecase }: { usecase: string }) {
     return () => { live = false; };
   }, [usecase]);
 
+  // The single decision point. Everything below - including the frame, when `card` is set - is
+  // downstream of it, so there is no second place that can answer this question differently.
   if (!data?.points?.length) return null;
   const neg = data.points.filter((p) => p[2] === 0).map((p) => ({ x: p[0], y: p[1] }));
   const pos = data.points.filter((p) => p[2] === 1).map((p) => ({ x: p[0], y: p[1] }));
 
-  return (
+  // Built as a value and wrapped at the end, NOT with a wrapper component declared here: a component
+  // defined during render has a new identity on every render, so React would unmount and remount the
+  // whole chart each time and Recharts would re-measure from zero. The empty-card fix must not cost
+  // the thing it frames.
+  const figure = (
     <figure className="chart-figure">
       <figcaption className="muted small">
         {data.is_training_corpus ? (
@@ -347,6 +387,8 @@ export function RealDataScatter({ usecase }: { usecase: string }) {
       </ResponsiveContainer>
     </figure>
   );
+
+  return card ? <div className="card" style={{ marginTop: 16 }}>{figure}</div> : figure;
 }
 
 // The genomics model is the one published model with no browser-runnable ONNX graph - it is a dot
