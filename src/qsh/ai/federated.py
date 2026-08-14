@@ -55,10 +55,25 @@ def partition(X: np.ndarray, y: np.ndarray, n_clients: int, *, iid: bool = True,
 # --------------------------------------------------------------------------- #
 #  Secure aggregation (pairwise masks from PQC/QKD keys)
 # --------------------------------------------------------------------------- #
-def _mask(seed_key: bytes, shape: tuple[int, ...]) -> np.ndarray:
-    """Deterministic pseudo-random mask from a shared key (SHAKE-256 seeded)."""
+def _mask(seed_key: bytes, shape: tuple[int, ...], round_index: int) -> np.ndarray:
+    """Deterministic pseudo-random mask from a shared key and ROUND (SHAKE-256 seeded).
+
+    The round is domain-separated into the seed, mirroring `qflPairMask` in
+    `web/src/lib/clientQFL.ts`, whose HKDF info string is `qsh/qfl-pairwise-mask/v1|u|v|r<round>`.
+
+    Until Round 39 this took only the pair key, so `federated_train`'s loop reused ONE mask for every
+    round of a run while the browser twin derived a fresh one and documented that requirement. The
+    masks still cancelled and the aggregate was never wrong; what reuse leaks is the per-client
+    update DELTA, because differencing two rounds of one client's masked share gives
+    `(u1 + m) - (u2 + m) = u1 - u2` with no key and no cryptanalysis. That is exactly the quantity
+    pairwise masking exists to hide. `tests/test_federated_mask_is_per_round.py` asserts the delta is
+    unrecoverable rather than asserting that a `round_index` parameter exists - a signature-only fix
+    passes the latter and changes nothing, which is how the combiner's length tag reached one of two
+    languages and stayed there for two rounds.
+    """
     n = int(np.prod(shape))
-    raw = hashlib.shake_256(seed_key).digest(8 * n)
+    seed = seed_key + b"|qsh/qfl-pairwise-mask/v1|r" + str(int(round_index)).encode()
+    raw = hashlib.shake_256(seed).digest(8 * n)
     vals = np.frombuffer(raw, dtype=np.uint64).astype(np.float64)
     return ((vals / 2 ** 64) - 0.5).reshape(shape) * 2.0
 
@@ -85,13 +100,22 @@ class SecureAggregator:
                 for j in range(i + 1, self.n_clients):
                     self.keys[(i, j)] = hashlib.sha256(f"pair-{i}-{j}".encode()).digest()
 
-    def mask_update(self, client: int, update: np.ndarray) -> np.ndarray:
+    def mask_update(self, client: int, update: np.ndarray, round_index: int = 0) -> np.ndarray:
+        """Mask one client's update for `round_index`.
+
+        `round_index` is keyword-defaulted so the existing three call sites keep working, but the
+        FedAvg loop MUST pass the real round - a default that silently means "round 0 forever" is
+        the reuse this signature was widened to remove.
+        """
         out = update.copy()
         for j in range(self.n_clients):
             if j == client:
                 continue
             i0, j0 = min(client, j), max(client, j)
-            m = _mask(self.keys[(i0, j0)], update.shape)
+            # Keyed on the ORDERED pair, so both members of a pair derive the identical mask and the
+            # antisymmetric +/- below still cancels exactly. Folding the round in per-client instead
+            # of per-pair would break cancellation into a plausible-looking wrong aggregate.
+            m = _mask(self.keys[(i0, j0)], update.shape, round_index)
             out += m if client < j else -m
         return out
 
@@ -177,14 +201,16 @@ def federated_train(
     weights = sizes / sizes.sum()
     round_acc: list[float] = []
 
-    for _ in range(rounds):
+    for rnd in range(rounds):
         updates = []
         for c, (Xc, yc) in enumerate(parts):
             local = build_model(kind, **model_kwargs).to(dev)
             _unflatten(local, global_vec)
             vec = _local_train(local, Xc, yc, local_epochs, lr, dev, batch_size)
             weighted = vec * weights[c]                  # FedAvg weighting
-            updates.append(agg.mask_update(c, weighted) if agg else weighted)
+            # `rnd` is what makes the mask fresh. This loop is where the reuse actually lived: the
+            # index was discarded as `_` for the whole life of the function.
+            updates.append(agg.mask_update(c, weighted, rnd) if agg else weighted)
         global_vec = agg.aggregate(updates) if agg else np.sum(updates, axis=0)
         if eval_data is not None:
             _unflatten(global_model, global_vec)

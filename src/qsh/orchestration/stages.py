@@ -97,7 +97,11 @@ class PQCHandshakeStage(Stage):
 
 
 class QKDKeyAgreementStage(Stage):
-    """Run BB84 (or skip in pqc-only mode) and fold the QKD key into the session."""
+    """Run BB84 (or skip in pqc-only mode) and fold the QKD key into the session key.
+
+    The folding is real as of Round 39; before that this docstring, the log line and
+    `security.py`'s composite summary all described a mix that never happened.
+    """
 
     name = "qkd_key_agreement"
 
@@ -129,11 +133,43 @@ class QKDKeyAgreementStage(Stage):
         bus.metric("secure_key_bits", result.secure_key_bits, self.name)
         ctx.metrics.update(qber=result.qber, skr=result.secret_key_rate)
         if result.secure_key_bits >= 256:
+            from ..pqc.transport import _mix_qkd
             from ..qkd.bb84 import derive_shared_key
 
-            ctx.put("qkd_key", derive_shared_key(result, 32))
-            bus.log(f"QKD key derived (QBER={result.qber:.4f}); mixed into session", self.name)
+            qkd_key = derive_shared_key(result, 32)
+            ctx.put("qkd_key", qkd_key)
+            # FOLD IT IN. This stage logged "mixed into session" and mixed nothing.
+            #
+            # `PQCHandshakeStage` runs BEFORE this one (see `standard_stages`) and reads
+            # `ctx.data.get("qkd_key")`, which is None at that point. `ctx.put("qkd_key", ...)` here
+            # then had no reader anywhere downstream - grepped across src/, web/src/ and api/. So a
+            # run whose channel delivered 256+ secure bits logged a hybrid it had not performed, and
+            # `security.py`'s ", QKD-mixed" summary said the same.
+            #
+            # Re-derived here rather than by reordering the two stages. Reordering would work, but
+            # the browser's own FLOWS list `pqc_handshake` before `qkd_key_agreement` and the DAG is
+            # drawn from that order - so the backend and the browser would then disagree about the
+            # pipeline's shape, which is the class of divergence this round exists to remove. The
+            # two stages are adjacent and nothing reads `session_key` or the channels between them.
+            chans = [c for c in (ctx.data.get("channel_initiator"), ctx.data.get("channel_responder"))
+                     if c is not None]
+            mode = get_config().crypto.hybrid_combiner_mode
+            for chan in chans:
+                chan.session_key = _mix_qkd(chan.session_key, qkd_key, mode=mode)
+            if chans:
+                # `session_key` is a COPY in ctx.data, so rebinding the channels is not enough - the
+                # PSI downstream reads this key, not the channel's.
+                ctx.put("session_key", chans[0].session_key)
+                bus.metric("qkd_mixed", 1, self.name)
+                bus.log(f"QKD key derived (QBER={result.qber:.4f}) and folded into the session key "
+                        f"via the {mode} combiner", self.name)
+            else:
+                # No handshake ran, so there is nothing to fold into. Say so rather than claiming it.
+                bus.metric("qkd_mixed", 0, self.name)
+                bus.log(f"QKD key derived (QBER={result.qber:.4f}) but no PQC channel exists to "
+                        f"fold it into", self.name)
         else:
+            bus.metric("qkd_mixed", 0, self.name)
             bus.log("insufficient secure key; continuing PQC-only", self.name)
 
 
@@ -189,7 +225,18 @@ class QSMPCComputeStage(Stage):
 
     def run(self, ctx, bus, reg):
         op = ctx.config.get("qsmpc_op", "psi")
-        key = ctx.data.get("session_key", b"\x00" * 32)
+        # No all-zero default. `ctx.data.get("session_key", b"\x00" * 32)` would have run the
+        # keyed-hash PSI under a key of 32 zero bytes - public knowledge - while the log line below
+        # still read "PSI complete", which is a security property the run did not provide reported as
+        # if it had. `PQCHandshakeStage` always precedes this stage and a failed stage aborts the run,
+        # so this raise is unreachable today; that is why making it a raise costs nothing, and this
+        # round moved key material between stages, which is exactly the change that would reach it.
+        # The browser twin at `web/src/lib/clientCompute.ts` refuses identically.
+        key = ctx.data.get("session_key")
+        if not key:
+            raise RuntimeError(
+                "qsmpc_compute needs the PQC session key: keyed-hash PSI has no unkeyed mode"
+            )
         if op == "psi":
             from ..qsmpc.qot import multiparty_psi, private_set_intersection
 
