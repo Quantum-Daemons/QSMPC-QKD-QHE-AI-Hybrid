@@ -2250,12 +2250,23 @@ export function runClientPipeline(
         if (String(config.inference || "ckks") === "qcnn" && ids.explain?.xRaw) {
           const w = await loadQcnnWeights(usecase);
           if (w) {
+            // Timed here TOO, and that "too" is the point. The latency was added to the
+            // `private_inference` site alone, which telecom does not have - so a page reporting
+            // `primary_inference_backend = qcnn-trained` carried no `qcnn_inference_ms`, and rows
+            // PF9/PF10 asserting it were false for exactly one page. Found by running the deployed
+            // telecom page, not by any gate: tsc, the suite and all thirteen local gates were green.
+            // Two call sites for one scheme, one of them changed, is the defect this round is named
+            // for - shipped again inside the round that names it.
+            const t0 = performance.now();
             const qc = qcnnInferTrained(ids.explain.xRaw.slice(0, w.n_qubits), w);
+            const qcnnMs = performance.now() - t0;
             artifacts.primary_inference = { backend: "qcnn-trained", class: qc.cls,
                                             qubits: qc.qubits, expectation: r2(qc.expectation) };
             metric(stage, "primary_inference_backend", "qcnn-trained");
             metric(stage, "primary_inference_class", w.class_names?.[qc.cls] ?? qc.cls);
             metric(stage, "qcnn_classes_available", w.readout?.n_classes ?? 2);
+            metric(stage, "qcnn_inference_ms", r2(qcnnMs));
+            metric(stage, "qcnn_qubits", qc.qubits);
             // The class no longer comes from the softmax, so the SHAP bars are no longer an
             // attribution of it. Recorded rather than assigned here: the flag is set once, below,
             // from this variable. With the flag set true earlier and never revised, the page
