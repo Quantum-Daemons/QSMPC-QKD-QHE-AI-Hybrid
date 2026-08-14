@@ -41,6 +41,10 @@ export const qkdCfg = () => CONFIG.qkd;
 export const qrngCfg = () => CONFIG.qrng;
 export const idsCfg = () => CONFIG.ids;
 export const cryptoCfg = () => CONFIG.crypto;   // crypto-agility defaults incl. hybrid_combiner_mode
+/** The CKKS parameter set, shared with the backend and with the generated report's crypto table.
+ *  `clientFHE.ts` used to hold its own `POLY_MODULUS_DEGREE` literal; see the note in
+ *  `frontend_config()` for why three independent copies of it was worse than it looks. */
+export const fheCfg = () => CONFIG.fhe;
 export const webCfg = () => CONFIG.web;
 
 /** Provenance of the sample bundled INTO the demo (not the corpus the model was trained on).
