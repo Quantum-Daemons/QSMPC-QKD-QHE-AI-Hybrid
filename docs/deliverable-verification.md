@@ -1304,6 +1304,23 @@ true of this code, in the canonical document for the KEM registry, sixteen round
 corrected **in place with its provenance**, and where the file is a log the superseded figure is
 marked rather than deleted, because a log that edits its own history is not a log.
 
+**A fact-check that found one thing worth watching, and it is not a change.** Thirty searches over
+2026-08-01 to 2026-08-14 returned the expected null against every claim here, verified at primary
+sources rather than at coverage - SP 800-227's document history reads Draft 2025-01-07 and Final
+2025-09-18 and nothing else. The exception is ePrint 2026/1591, a **preliminary draft** claiming a
+polynomial-time quantum algorithm for the Dihedral Coset Problem, which composed with known
+reductions would reach SVP and LWE. It is unrefereed, four of its proofs are marked "(Sketch)", its
+final corollary rests on two "Personal Communication" citations, and a full-text search for any
+deployed parameter set returns nothing.
+
+It is recorded anyway, with the part that is uncomfortable rather than the part that is reassuring:
+**the ML-KEM + X25519 hybrid is not a hedge against this risk.** X25519 already falls to Shor, so
+ML-KEM is the only quantum-resistant leg, and a confirmed result reaching ML-KEM's concrete
+parameters would not be survived by the hybrid. Neither condition holds today, no claim changes, and
+`references/REFERENCES.md` carries the reopening conditions. Writing down the risk the design does
+NOT cover is the reason this entry exists; a watch item that only lists reasons to relax is a
+reassurance, not a record.
+
 **The generalisation this round is willing to defend.** When the same defect class appears three
 times, stop fixing instances and write the invariant. Round 38's disclosure defect was shipped four
 times with the scope wrong; the parity test written instead of a fifth fix **failed on its first
