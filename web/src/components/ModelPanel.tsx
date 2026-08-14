@@ -151,6 +151,42 @@ function MetricRows({ spec }: { spec: ModelSpec }) {
   const baselineOrphaned =
     spec.metric.baseline != null && !numeric.some(([k]) => k === spec.metric.name);
 
+  // THE VERDICT, which is the one field that states what the comparison concluded and the one that
+  // never reached the page. `quantum_beats_classical` is a BOOLEAN, and the walk above keeps
+  // `typeof v === "number"` only, so it was dropped silently on every render. A record whose whole
+  // framing is "architecture comparison, not a performance claim" published every input to the
+  // comparison and not its result.
+  //
+  // DERIVED from the macro F1 values in this table rather than read from the flag, so a reader can
+  // check the verdict against the two numbers it rests on. That is the whole value of the row.
+  //
+  // It is NOT an independent cross-check of the stored flag, and an earlier version of this comment
+  // said it was. `scripts/train/telecom_ids.py` writes the flag as
+  // `max(qnn.macro_f1, qsvc.macro_f1) > rf_metrics["macro_f1"]` and writes those same three values
+  // into the same record in the same call - byte-for-byte the computation below. So agreement
+  // between them is true by construction and is evidence of nothing. The disagreement branch is
+  // kept because a hand-edited or externally-produced `metrics.json` can still reach it, but it is
+  // not a guard against the staleness the old comment claimed, and calling it one made a decoration
+  // read as a check.
+  //
+  // Macro F1 specifically, because that is this use case's declared headline; comparing on accuracy
+  // or binary F1 would compare on exactly the aggregates the panel marks as companions.
+  const num = (k: string) => (typeof rec[k] === "number" ? (rec[k] as number) : null);
+  const classicalF1 = num("classical_rf_macro_f1");
+  const quantumF1s = Object.entries(rec)
+    .filter(([k, v]) => /^quantum_.*_macro_f1$/.test(k) && typeof v === "number")
+    .map(([, v]) => v as number);
+  const recordedVerdict = typeof rec.quantum_beats_classical === "boolean"
+    ? (rec.quantum_beats_classical as boolean) : null;
+  const verdict = classicalF1 != null && quantumF1s.length
+    ? (() => {
+        const best = Math.max(...quantumF1s);
+        const derived = best > classicalF1;
+        return { best, classical: classicalF1, derived, recorded: recordedVerdict,
+                 agrees: recordedVerdict == null || recordedVerdict === derived };
+      })()
+    : null;
+
   return (
     <table className="mini-table">
       <tbody>
@@ -220,6 +256,25 @@ function MetricRows({ spec }: { spec: ModelSpec }) {
             <td className="muted small">companion — shown so the gap is visible</td>
           </tr>
         ))}
+        {verdict && (
+          <tr className={verdict.agrees ? "metric-companion" : undefined}>
+            <td><code>quantum_beats_classical</code></td>
+            <td className="num">{String(verdict.derived)}</td>
+            <td className="muted small">
+              {verdict.derived
+                ? <>the best quantum macro F1 here ({fmt(verdict.best)}) is <strong>above</strong> the
+                  classical baseline ({fmt(verdict.classical)})</>
+                : <>the classical baseline ({fmt(verdict.classical)}) is <strong>ahead</strong> of the
+                  best quantum macro F1 here ({fmt(verdict.best)})</>}
+              {verdict.recorded != null && !verdict.agrees ? (
+                <> — <strong>and this contradicts the stored</strong>{" "}
+                <code>quantum_beats_classical: {String(verdict.recorded)}</code>, which can only
+                happen if the record was edited outside the training script. The verdict above is
+                derived from the two numbers in this table.</>
+              ) : null}
+            </td>
+          </tr>
+        )}
       </tbody>
     </table>
   );

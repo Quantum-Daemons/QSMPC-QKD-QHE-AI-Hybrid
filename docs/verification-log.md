@@ -792,3 +792,437 @@ ones:
   reads *"Encrypted score against plaintext score, 512 held-out rows"* and the ticks read
   `3.73 / 8.73 / 13.73 / 21.79`. Claiming a UI fix without redeploying is the same error as reading a
   metric before the state settles.
+
+## Round 38 - the page encrypted one model and explained another, and the plan's own metric was 50x wrong
+
+Host: Chrome 149.0.0.0, Linux x86_64, 20 logical cores, `crossOriginIsolated` true. Measured on a
+local production build before deploy, then re-verified on the deployed bundle.
+
+### What was encrypted, before and after
+
+Finance and genomics reported a class from the bundled real model, drew SHAP bars labelled "real
+bundled model", and computed every `encrypted_*` / `fhe_*` figure from the demo pattern
+`((i % 3) - 1) * 0.15`. `realClientHybrid` took no model argument, so it could not have done
+otherwise - while `privateInference`'s own comment three lines away asserted the real model "is what
+the SHAP attribution and the CKKS evaluation both consume".
+
+| finance | deployed `main` (before) | local build (after) |
+|---|---|---|
+| `fhe_model` | absent | bundled real model |
+| `encrypted_scores_compared` | 2 (one row) | 400 rows scored |
+| `fhe_max_abs_error` | 6.20e-13 | 1.93e-9 |
+| `encrypted_precision_bits` | 40 | 28 |
+| `encrypted_agreement` | 1 over 1 row | 1 over 400 rows |
+
+The precision drop is expected and is the honest cost: the real surrogate's weights are orders of
+magnitude larger than the demo pattern's, so the encoded norm is larger. The old numbers described a
+weight vector that appeared nowhere else on the page.
+
+Genomics: 30 rows, `encrypted_agreement` ranging 0.83-0.97 across runs - and the corpus does NOT
+vary. `realInputCorpus("genomics")` returns all 30 `dosage_samples` deterministically and the model
+is the fixed top-8 PGS weights, so the same page runs the same 30 rows against the same model every
+time. **Seven of those 30 individuals carry no effect allele at any of the eight loci**, so their
+plaintext score is exactly 0 on both classes and each flips on ~1e-9 of encryption noise,
+independently, per run. The headline rate is therefore 23% coin toss. Counted from the shipped
+`pgs000004_prs313.json`, not inferred.
+
+### Three defects found by verifying that change
+
+- **`encrypted_agreement` was written twice into one stage.** The batched figure emitted a rate over
+  30 rows; the single-row path then emitted `mism === 0 ? 1 : 0`, and won. Finance hid it - both read
+  1 - and genomics exposed it, printing `encrypted_agreement 1` beside
+  `encrypted_top1_mismatches_batch 3` of 30. `metric()` now records any key rewritten with a
+  different value as `metric_overwritten`; **seeding the defect back produced
+  `encrypted_agreement: 0.83 -> 1`**, so the guard is known to fire.
+- **A mismatch count without a margin points the wrong way.** Genomics' model is the published PGS
+  weights as `[-w/2, +w/2]` with zero bias, so its two logits are exact negatives and the decision
+  margin IS the polygenic score. `encrypted_flip_margin_max` measured **exactly 0** at the flipped
+  rows: those samples carry no effect allele at any of the top-8 loci, so the plaintext model's own
+  top-1 comes from argmax tie-breaking and any deviation flips it. "3 of 30 mismatches" beside a
+  7.2e-10 deviation reads as CKKS being unreliable, which is the opposite of the measurement.
+- **A caption whose scope was narrower than its sentence.** "worst absolute deviation 1.80e-8"
+  printed immediately after "(800 class scores)" was a maximum over the 400 plotted winning-class
+  scores; the metric row beside it read 2.47e-8 over all 800. Both correct, 37% apart.
+
+### Per-rotation cost, which is the comparable axis, and the plan's error
+
+`fhe_linear_ms` is the measurement multiplied by `benchScale()`; `fhe_dense_rotations` is a raw
+count. The division this round's plan proposed reads **159.9 ms per rotation on genomics against a
+measured 3.18**. `rotateVector` is now timed directly.
+
+| page | rotations | rotate ms | ms/rotation |
+|---|---|---|---|
+| finance | 3 | 9.29 | 3.10 |
+| medical, bundled linear head | 3 | 13.17 | 4.39 |
+| medical, student convolution | 16 | 67.81 | 4.24 |
+| medical, student dense layers | 136 | 421.40 | 3.10 |
+| telecom, 512-row batch | 24 | - | 3.17 |
+| genomics | 6 | 19.07 | 3.18 |
+
+Published comparator, fetched and read directly: node-seal `BENCHMARK.md` (2025-03-27, M1 Pro),
+CKKS `EvaluateRotate` at n=8192/log(q)=218 reads **6830 us in Chrome**. Same order, this host
+roughly 2.2x faster. The n=16384 row is at log(q)=438 against 200 bits here and is recorded as NOT
+comparable.
+
+**A claim first refuted and then restored.** The round reported rotations at 57% of the dense layer
+and 10% of the convolution, and rewrote three comments around it. The 10% used the whole student's
+wall-clock as the convolution's denominator. Re-measured with the scopes separated:
+
+| stage | rotations | rotate ms | stage ms | share |
+|---|---|---|---|---|
+| bundled linear model | 3 | 13.17 | 23.2 | 57% |
+| student, convolution | 16 | 67.81 | 96.60 | **70%** |
+| student, dense layers | 136 | 421.40 | 490.23 | **86%** |
+
+96.60 + 490.23 = 586.83, the student's total, with nothing unattributed. Key-switching dominates
+every path; the original comments were right and are restored.
+
+### Ring degree 16384: measured and reverted
+
+| | 8192 | 16384 |
+|---|---|---|
+| keygen (first click) | 255.26 ms | 476.71 ms |
+| ms per rotation | 3.098 | 6.725 |
+| linear layer, measured | 19.25 ms | 34.41 ms |
+| batch, 400 rows | 20.59 ms | 36.16 ms |
+| batch precision | 25 bits | 24 bits |
+| rows per ciphertext | 512 | 1024 |
+| medical conv patches packed | 196 (one image) | **196 (one image)** |
+
+Every published FHE figure roughly doubled; the realised benefit was zero. The convolution still
+packed one image because no caller hands it two, and the extra batch rows went unused because finance
+offers 400 and genomics 30. Reverted at the user's direction; the config wiring stayed.
+
+**The first attempt at the change was inert and reported success.** Editing
+`src/qsh/config/defaults.py` alone changed nothing, because `load_config()` overlays `config.yaml`.
+The export script rewrote the JSON with the old value and exited 0, `report/build_data.py`
+regenerated the crypto table with the old value and exited 0, and the bundle rebuilt with the old
+value. Caught by reading the generated output, not by any signal.
+
+### Operational window
+
+`client_compute_ms` reading 0.07 ms directly under "total: 700 ms / inference", labelled "client
+compute (wall-clock)", timed only the plaintext reference call. `encrypted_tier_measured_ms` is the
+measured sum: **finance 700 ms**, **medical 1,269 ms** (579 ms of it the encrypted convolution).
+Both inside the 1-10 s interactive-batch window, and the page now states the verdict rather than
+leaving two numbers to be compared.
+
+### WS2
+
+`ids_classes_scored` renders (8), the headline sentence quotes it instead of a literal, and
+`ids_metric_roles` marks which rows lead - this run shows binary F1 1.00 beside a worst class of
+0.87, which is the gap the marker exists for. `quantum_beats_classical` reaches the DOM for the first
+time, derived from the macro F1 values in the same table and cross-checked against the stored flag:
+*"the classical baseline (0.9866) is ahead of the best quantum macro F1 here (0.8316)"*.
+
+### Confirmed on the deployed site, not only locally
+
+Deployed from GitHub - fetch, Docker build (exit status captured, 0), `up -d` with the shared-proxy
+override - and re-verified in Chrome on the public URL. Container age 6 s at first read; bundle
+`index-pejoV-ed.js`, changed from Round 37's `index-CLUy7CWv.js`.
+
+| page | what the deployed run shows |
+|---|---|
+| finance | `fhe_model` bundled real model; 400 rows scored; `encrypted_agreement` 1 over 400; 3.227 ms/rotation; `encrypted_tier_measured_ms` 682 ms |
+| genomics | `encrypted_agreement` **0.83** over 30 rows with 5 mismatches - the value the old double-write would have replaced with 1; `encrypted_flip_margin_max` exactly 0; caption states the ties |
+| medical | `fhe_conv_rotation_share` 0.10 against the dense layer's 57%; tier 1,280 ms; 3.04 ms/rotation |
+| telecom | `ids_classes_scored` 8; `ids_metric_roles` renders; `quantum_beats_classical` reads *"the classical baseline (0.9866) is ahead of the best quantum macro F1 here (0.8316)"*; 3.146 ms/rotation over 512 rows |
+| satellite | unchanged, no collision |
+
+`PF5` checked on the live page by running twice in one tab: `fhe_keygen_ms` **absent** on the second
+run, with per-rotation 3.227 then 3.213 - 0.4% apart, which is the stability the comparison rests on.
+Across the four deployed encrypted pages: **3.04, 3.058, 3.146, 3.227 ms/rotation**.
+
+The keygen figure on that deployed run read 470.39 ms at ring 8192, against 242-255 ms measured
+locally at the same ring. Those are not comparable: the deployed reading was taken with a build, a
+preview server and a dozen tabs competing for the machine. Because the ring experiment's keygen
+delta rested on two numbers from different sessions, it was **re-measured back to back under one set
+of conditions**: ring 8192 gave 253.41 and 255.46 ms, ring 16384 gave 490.59 and 492.15 ms - within
+1% inside each ring and **1.93x between them**, so the delta is real and the earlier pairing was the
+sloppy part, not the conclusion.
+
+No `metric_overwritten` on any page. No `NaN`, `undefined` or `[object Object]`. No horizontal
+overflow.
+
+### Re-verified on the deployed bundle after the adversarial review
+
+Redeployed from GitHub at `d8bf7ac` (build exit 0, container age 6 s, bundle `index-BhIF87WC.js`).
+
+Genomics, live: `encrypted_agreement` **0.87** this run against **0.83** on the previous deployed
+run - the same 30 fixed rows and the same model, moving by chance - while
+`encrypted_agreement_over_decidable` reads **1.00 over 23 rows** on both. That contrast is the
+finding: the headline is 23% coin toss and the decidable rate is stable and perfect.
+
+Medical, live, with the scopes separated:
+
+| stage | rotations | rotate ms | stage ms | share |
+|---|---|---|---|---|
+| student, convolution | 16 | 56.28 | 84.35 | **0.67** |
+| student, dense layers | 136 | 440.34 | 506.69 | **0.87** |
+
+84.35 + 506.69 = 591.04, which is `fhe_encrypted_student_ms` exactly. Compare the figure this round
+published before the review: a 10% convolution rotation share, computed by dividing the first row's
+rotate time by the last row's total.
+
+No `metric_overwritten`, no `NaN`/`undefined`/`[object Object]`, no horizontal overflow.
+
+### Quantum resistance per use case, measured because the standing request asks for it
+
+The security-communication rows (`SC1`-`SC14`) establish what produces key material and what does
+not. None of them asserts the STRENGTH in force on the wire. Measured on the deployed site, all five
+pages: `ml-kem-768+x25519 - NIST Category 3` and `ML-DSA-65 - NIST Category 3`, with
+`kem_ciphertext_bytes` 1088, `signature_bytes` 3309, `classical_public_key_bytes` 32 and
+`signature_verified` 1 - identical on finance, medical, genomics, telecom and satellite.
+
+**The crypto-agility selection genuinely reaches the algorithm.** Switching genomics to
+`ml-kem-1024+x25519` and `ML-DSA-87` moves the ciphertext to **1568 bytes** and the signature to
+**4627 bytes**, with `signature_verified` still 1 - the FIPS 203 and FIPS 204 values for those
+parameter sets, so the larger key was generated, used and verified rather than relabelled. This
+project has shipped a control whose label moved while nothing behind it did, so the check is
+worth having and the result is worth recording: `QS1`-`QS4`. The FIPS sizes themselves are asserted by `npm run check:pqc` (`PQ1`-`PQ3`) and are deliberately not restated as browser rows.
+
+Scope, stated: `QS2` was exercised on genomics only. The handshake stage is shared across all five,
+which is a reason to expect the same behaviour elsewhere and not a measurement of it.
+
+### The corrections were themselves reviewed, and four of them were wrong
+
+A second adversarial pass, scoped to the correction commits only. Four survived, all mine.
+
+**The run log still printed the withdrawn attribution.** The `10%` fix changed the `metric()` calls
+and left the `emit("log")` forty lines below untouched, so the medical page's event log read
+"16 rotations and 4 multiply-plain in 591.04 ms" - the conv block's rotation count over the whole
+student's wall-clock, 36.9 ms per rotation - while the metrics table on the same page read 84.35 ms
+and 3.7. It also labelled `real.fheMs - real.conv.convMs`, which is this page's own 8-feature bundled
+linear demo at ~18 ms, as "dense layer", while the student's dense stack cost ~499. Every term is now
+scoped: measured after the fix, the log reads 75.05 ms for the convolution and 498.59 ms for the
+student's 136 dense-layer rotations, and 75.05 + 498.59 = 573.64 is `fhe_encrypted_student_ms`
+exactly.
+
+**`fhe_conv_max_abs_error` was the student's final-logit error on the published path** and the conv
+block's on the synthetic path - one key, two meanings, decided by whether a Hub fetch succeeded, under
+a comment claiming the two errors were reported separately "so a regression in one cannot hide behind
+the other". Now 4.25e-9 for the convolution and 6.87e-9 for the student's logits, as two rows.
+
+**The replacement tie test could not fail either.** `margin / scoreRange <= 1e-6` looked independent
+of the deviation and is not: a flip forces `margin <= 2E`, so `rel <= 2E/range`, and with E ~1e-9
+against a range of order 1 that is ~1e-9 - three orders below the threshold, on every run. It would
+take a 500x precision collapse to reach the other branch, and that case is already reported by
+`encrypted_batch_precision_bits`. **And the experiment that "proved" it reachable forced
+`flipMarginRel` to a literal**, which exercised the rendering branch rather than the predicate - the
+wrong thing, convincingly. The boolean is removed rather than re-tuned; `encrypted_undecidable_rows`
+carries what it pretended to and does vary (7 of 30 on genomics, 0 of 512 on telecom).
+
+**"3.2-4.2 ms throughout" excluded both of its own endpoints.** The stages it summarised measure 4.39,
+4.24 and 3.10; the interval contained neither extreme, and the same string sat in two code comments.
+Now 3.10-4.39.
+
+#### Confirmed on the deploy, and one thing splitting the error key revealed
+
+Redeployed at `2393c79`. Medical, live: the event log reads "16 rotations and 4 multiply-plain in
+**77.67 ms**; the student's 136 dense-layer rotations take **494.04 ms** more. This page's own bundled
+linear model adds 18.9 ms" - and the metrics table reads `fhe_conv_ms` 77.67,
+`fhe_student_dense_ms` 494.04, `fhe_encrypted_student_ms` 571.71, with 77.67 + 494.04 = 571.71
+exactly. Log and table now answer the same question the same way.
+
+`encrypted_flips_are_ties` and `encrypted_flip_margin_relative` are gone from every page.
+
+**Splitting the error key showed something the single key hid**: `fhe_conv_max_abs_error` 4.65e-9
+against `fhe_student_logit_max_abs_error` 3.46e-9 - the convolution's error is LARGER than the
+student's final one. Average pooling over 2x2 divides the deviation by about two before the dense
+layers see it, so the end-to-end figure understates the convolution. Under one key the larger of the
+two was invisible, which is the concrete form of what that metric's own comment had claimed to
+prevent.
+
+### The disclosure had to be shipped four times, so the fifth was an assertion
+
+Checking the second-pass fixes myself turned up two more instances of the same defect, both mine:
+telecom's batch LOG had no undecidable sentence while its metrics and caption did, and the caption
+was gated on `undecidableRows > 0` - so telecom's **zero**, the value that makes its 1.00 a different
+claim from genomics' 1.00, rendered nothing at all.
+
+That is four mis-scoped shipments of one disclosure: one of two batch paths, then metrics without the
+caption, then telecom's log, then suppressed at zero. Fixing instances was not working, so
+`tests/test_agreement_disclosure_parity.py` asserts the invariant: every path emitting
+`encrypted_agreement` must emit `encrypted_agreement_rows`, `encrypted_undecidable_rows`,
+`encrypted_decidable_rows` and `encrypted_agreement_over_decidable` from the same block, and the
+caption must have a zero branch rather than a `> 0` gate.
+
+**It failed on its first run**, on a third `encrypted_agreement` call site nobody had counted - the
+no-corpus path, publishing a 0/1 over a single row with no denominator, no tie count and no decidable
+rate. Three adversarial review passes and the author had all walked past it; a count-parity
+assertion found it in one run. Both assertions were then confirmed able to fail by seeding the two
+defect shapes they exist for.
+
+Confirmed on the deploy at `b1437f4`, telecom, all three surfaces: the log reads *"0 of the 512 rows
+are scored identically across classes by the plaintext model itself; over the 512 it does decide,
+agreement is 1"*, the caption reads *"None of these 512 rows is a tie in the plaintext model"*, and
+the metrics read 0 / 512 / 1.00.
+
+### Client-side-only inference, re-read against the rows that already assert it
+
+The standing request asks for confirmation that ML inference is client-side only. `CS1`, `CS2`,
+`CS4`, `CS9`, `CS10` and `RS30` already assert it, so **no row was added** - the increment is the
+reading.
+
+Measured on the deployed medical page by wrapping `fetch` and `XMLHttpRequest.open` before clicking
+Run, so the record is of the run itself rather than of page load. Ten requests:
+
+- **Zero `/api/` calls** (`CS1`).
+- Own origin: `/data/medical/breast_cancer_sample.json`, `/assets/ort-wasm-simd-threaded-*.wasm`,
+  `/assets/seal_throws-*.wasm` - the bundled sample and the two WASM runtimes (`CS9`).
+- One external origin, `huggingface.co`, and all seven of its URLs are
+  `/<repo>/resolve/<40-char commit sha>/...` - `eval_sample.json`, `onnx/model*.onnx`,
+  `weights.json`. No `api-inference` host, no per-token or per-request pattern.
+
+`CS10`'s discriminator is the one that matters: a hosted inference API would look identical in the
+UI and produce a request per inference. Every Hub URL here is a pinned-revision artefact download,
+and each revision is a full commit SHA rather than a branch name, so the pin is exact. Inference
+itself runs on onnxruntime-web and node-seal inside the tab.
+
+### The third pass was not dry: removing one disclosure took another with it
+
+Three independent lenses found the same thing. The commit that removed the tie verdict from the
+agreement caption also deleted the **ciphertext-cap** sentence sitting in the same JSX expression -
+the removed block's closing `) : null}` merged with the tie block's - so `rowsOffered` was left
+declared on `EncryptedAgreementPlot`, set by four producers, and read by nothing.
+
+`tsc` passes on that state. An unread optional interface field is not a type error, which is why
+nothing in the build, the gate or the suite noticed.
+
+The effect was on telecom, the one page where the cap bites: 512 of 600 held-out rows are scored.
+The figure read *"one of 512 held-out rows ... Top-1 mismatches: 0 of 512 ... None of these 512 rows
+is a tie"* with nothing saying the split held 600 and 88 were never scored - silently reverting
+`5d20d88`, which added that sentence for exactly this reading, and making checklist row `PI2` a row
+that could only fail.
+
+Restored and confirmed live: *"The split holds 600 rows; one ciphertext fits 512 at this feature
+width, so 88 were not scored and the agreement above is over 512, not over the whole split."*
+
+**`MS9` was too narrow to catch it**, which is the more useful half. It asserted the undecidable trio
+travels with the agreement rate and said nothing about any other field. `MS10` asserts the general
+form - no field the plot type declares may be set by a producer and rendered by nothing - and
+re-seeding the deletion makes it fail naming `rowsOffered` while `tsc` stays clean.
+
+An orphaned comment went out with the same commit: the three lines justifying the deleted 1e-6
+threshold survived into the middle of an object literal, arguing for a test the file retracts thirty
+lines above. Removed.
+
+### The fact-check sweep found no new literature, and one real defect in the old literature
+
+Five modalities swept for anything dated 2026-08-10 or later: CKKS/FHE, QKD/QSDC, standards and
+regulation, MPC and federated learning, QML. **Nothing published in that window changes a claim this
+project makes.** The negative is checkable rather than an absence of effort - the FHE sweep
+enumerated the full arXiv cs.CR monthly listing rather than keyword-matching, and probed ePrint
+numbers directly (2026/1644 exists at 2026-08-09; 2026/1648 returns 404) to establish the boundary.
+
+The finding came from reading a standard the project ALREADY CITES against the code.
+
+**NIST SP 800-227 (September 2025, final) section 4.6.3** defines the IND-CCA-preserving combiner as
+
+    KeyCombineCCA_H:  H(K1, K2, c1, c2, ek1, ek2, domain_sep)
+
+and states, of the reference it is drawn from, that it "does not incorporate encapsulation keys into
+the combiner, **as this is not needed to achieve the IND-CCA-preserving property**". So the
+ciphertexts are load-bearing and the encapsulation keys are optional - useful for binding the secret
+to party identities.
+
+This project bound `ek1 || ek2 || c2` and **omitted `c1`, the ML-KEM ciphertext**: the optional half
+included, one of the two that deliver the property dropped. Three files shared that shape -
+`src/qsh/pqc/hybrid_kem.py` (encapsulate and decapsulate), `web/src/lib/crypto.ts` and
+`web/src/lib/clientCompute.ts`. A fourth, `web/src/lib/clientMcp.ts`, bound **nothing at all**: IKM
+`K1 || K2` under a bare label, which is expression (16) of the same document - the combiner it names
+as not preserving IND-CCA - while its own comment claimed it matched the backend.
+
+**Demonstrated, not argued.** With the old transcript, a `c1` mauled by one bit that decapsulates to
+the same `K1` derived a byte-identical session key; with `c1` bound it derives a different one:
+
+    old transcript contains c1: False        new transcript contains c1: True
+    OLD: mauled c1, same K1 -> identical session key: True
+    NEW: mauled c1, same K1 -> identical session key: False
+
+That is the failure direction a hybrid exists to hedge: ML-KEM broken, X25519 sound, and the
+composite key unchanged anyway.
+
+**Scoped honestly**: this runs in one process with no network transport and no exposed decapsulation
+oracle, so it was a conformance and claim-accuracy defect rather than an exploitable break in the
+shipped artefact. It is fixed because standards-conformance is the claim.
+
+All four sites changed together - they must, or backend and browser derive different keys - and the
+domain separator moved to `v2`, because deriving a different key under an unchanged label is what
+domain separation exists to prevent. The deployed page now reports
+*info="qsh/hybrid-kem/v2", transcript c1||c2||ek1||ek2 per NIST SP 800-227 s4.6.3*.
+**And the fix's own first version violated the same section it cites, twice.** Both were caught by
+re-reading section 4.6.3 against what had just been written rather than against what it replaced:
+
+- The MCP path was given `qsh/hybrid-kem/v2`, the handshake's separator - but it is a different
+  composite scheme (static-static X25519, no ephemeral `c2`, transcript `c1 || ek1 || xA || xB`).
+  Two constructions under one separator is what a separator exists to prevent. It now has
+  `qsh/mcp-agent-kem/v1 ML-KEM-768+X25519-static`.
+- The separator named `ML-KEM-768` as a fixed literal while `HybridKEMRecipient` takes a `kem_name`
+  and the browser's `kemImpl()` genuinely switches to ML-KEM-1024 on the category-5 path - measured
+  live, ciphertext 1088 bytes to 1568. So a category-5 run derived its key under a separator
+  asserting the category-3 parameter set. Section 4.6.3 requires domain_sep to identify the
+  "choice of parameter set" explicitly. It is now derived: selecting category 5 on the deployed page
+  produces `info="qsh/hybrid-kem/v2 ML-KEM-1024+X25519"` beside `kem_ciphertext_bytes 1568`.
+
+That also removes a concatenation ambiguity: the transcript joins fixed-width fields with no length
+prefixes, which is unambiguous only within one parameter set, and the set is now in the separator.
+
+`references/stress-testing-fact-check.md:56` proposed a test for "the ciphertext-binding combiner";
+that description became true of the code with this change and was not before, and the file now says
+so.
+
+### A fifth combiner site nobody had listed, and what its severity actually is
+
+The combiner change was reviewed by four lenses with three refuters each: **all 29 refutations were
+sustained against the four sites** - nothing survived. The completeness critic then found a fifth
+site, and two defects in the fix itself.
+
+**`clientAliceBob` derived its session key as `enc.sharedSecret.slice(0, 32)`** - the raw ML-KEM
+shared secret, truncated. No X25519, no KDF, no transcript, no separator. Not expression (16), which
+is at least `KDF(K1, K2)`; this was `K1` alone, in a function whose header calls it a mirror of
+`src/qsh/benchmark/alice_bob_e2e.py`, whose Phase 3 goes through the combiner and then `_mix_qkd`.
+It also reported `qkd_mixed: qkd.secureKeyBits >= 256` - a PRECONDITION for mixing, stated as though
+the mix had happened, in a function that mixed nothing.
+
+**Severity, measured rather than assumed.** `clientAliceBob` is imported nowhere; `api.aliceBob`
+posts to a full-mode endpoint and is called nowhere; and `qkd_mix_note`, a string this fix adds,
+appears **0 times in every built bundle** - the function is tree-shaken out of the production build.
+So this was never rendered and no visitor ever saw the claim. The review's framing ("Open the
+Alice<->Bob page") describes a page the demo does not reach. It is fixed rather than deleted because
+it is exported and documented as a mirror, so it would ship the claim the moment anything imported
+it - but it is recorded as dead code, not as something the site published.
+
+It now runs the hybrid: X25519 ephemeral-static beside the ML-KEM half, the same v2 combiner over
+c1 || c2 || ek1 || ek2, and `qkd_mixed: false` with a note saying why - the browser's `bb84()`
+returns bit counts and no key material by design (`SC2`), so there is nothing to fold in.
+
+### Two defects in the fix, and one in the test written to prevent them
+
+**The MCP file's lead comment still claimed it matched the handshake** - the exact false claim the
+transcript change removed, left standing at the top of the block that removes it, contradicted 25
+lines below. A maintainer told to make the two agree would have re-merged two constructions under
+one separator.
+
+**The output length was absent from the domain separator.** HKDF-Expand for L bytes is a prefix of
+the expansion for any larger L', and `length` genuinely varies across callers - 32 for transport
+sessions, `max(32, (2n+7)//8)` for the QOTP pad - so a long pad began with exactly the bytes a short
+session key over the same material would. Not reachable, because every `encapsulate` draws fresh
+material, but it is the same class of gap as the parameter set and the docstring had just claimed
+"no two parameter sets share a derivation". Verified after the fix: the 32-byte derivation is no
+longer a prefix of the 51-byte one.
+
+**And the test written to enforce c1-binding did not enforce it.** Its first version built
+`c1 + c2 + ek1 + ek2` itself and asserted that mauling `c1` changed `_combine`'s output - testing
+`_combine` given a transcript handed to it, not what `encapsulate` binds. Reverting the production
+combiner left it green. That is the defect this round spent its length finding elsewhere, committed
+in the guard written to prevent it, and caught only by running the revert.
+
+Rewritten to pin the production path: derive the key both ways from the real ciphertext and assert
+which one `encapsulate` agrees with, plus a `decapsulate` test that holds K1 fixed so c1 is the only
+variable. The comparison that matters, on a revert of the c1 binding alone:
+
+    tests/test_pqc.py                      0 failures
+    tests/test_hybrid_combiner_binding.py  2 failures
+
+which is exactly the review's point: the property had nothing enforcing it.
