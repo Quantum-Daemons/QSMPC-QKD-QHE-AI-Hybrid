@@ -1483,7 +1483,18 @@ export function runClientPipeline(
             : "") + `. `
           + `Top-1 mismatches vs plaintext: ${mism} of ${batch.rows}. Max abs error `
           + `${batch.maxAbsError.toExponential(3)}`
-          + (bits2 !== null ? ` (about ${bits2} bits, MAX not mean)` : "") + ".");
+          + (bits2 !== null ? ` (about ${bits2} bits, MAX not mean)` : "")
+          // The undecidable count on the LOG too. It reached this path's metrics and the chart
+          // caption and not this sentence, which is the third surface and the third time in one
+          // round that a disclosure landed on some of them. Printed even at zero, because "0 of 512"
+          // is the fact that makes this page's 1.00 a different claim from genomics' 1.00.
+          + `. ${tieRows2} of the ${batch.rows} rows are scored identically across classes by the `
+          + `plaintext model itself; over the ${decidable2} it does decide, agreement is `
+          + (decidable2 > 0 ? r2(1 - flippedDecidable2 / decidable2) : "not computable")
+          + (flipped2.length > 0
+            ? `. Widest plaintext margin among the ${flipped2.length} flipped row(s): `
+              + `${flipMarginMax2.toExponential(3)}`
+            : "") + ".");
       }
       emit("log", stage, `the ARGMAX is NOT encrypted: all ${w.W.length} class scores are decrypted `
         + `and the maximum taken in the clear, because CKKS has no native comparison. That is the `
@@ -2380,7 +2391,23 @@ export function runClientPipeline(
             // directly beside `encrypted_top1_mismatches_batch 3` out of 30 rows, which is 0.9.
             // The single-row scalar being wrong is precisely why the batch figure was added, so
             // leaving it in place under the same name let the thing it replaced win.
-            if (!real.batch) metric(stage, "encrypted_agreement", mism === 0 ? 1 : 0);
+            //
+            // AND IT CARRIES ITS OWN DENOMINATOR AND TIE COUNT, like every other agreement rate.
+            // A parity test written after the fourth mis-scoped disclosure this round found this
+            // third emission site immediately: it published a rate with no `_rows`, no undecidable
+            // count and no decidable rate, which is the same omission the other two paths had just
+            // been fixed for - and three review passes and the author had all walked past it.
+            // Over one row the tie count is 0 or 1 and the rate is 0 or 1; stating them is what
+            // stops a page without a corpus looking like a page that measured something.
+            if (!real.batch) {
+              const single = decisionMargin(real.plainLogits) === 0 ? 1 : 0;
+              metric(stage, "encrypted_agreement", mism === 0 ? 1 : 0);
+              metric(stage, "encrypted_agreement_rows", 1);
+              metric(stage, "encrypted_undecidable_rows", single);
+              metric(stage, "encrypted_decidable_rows", 1 - single);
+              metric(stage, "encrypted_agreement_over_decidable",
+                single === 0 ? (mism === 0 ? 1 : 0) : null);
+            }
             metric(stage, "encrypted_precision_bits", bits);
             emit("log", stage, `encrypted-vs-plaintext verification: ${mism} of 1 top-1 mismatch`
               + `es over ${real.logits.length} class scores. Max abs error `
