@@ -54,6 +54,15 @@ three activities and section 8.11 double-click handling are protocol logic a bro
 1. **Hybrid key-combiner robustness.** The most defensible test available, because it is the only one
    that tests the *hybrid* property this project claims. Compromise one component secret and show the
    composite survives under the ciphertext-binding combiner and fails under `KDF(K1,K2)`.
+   **This became true of the code in Round 38 and was not before.** All four combiner sites
+   bound the encapsulation keys and omitted `c1`, the ML-KEM ciphertext - and the MCP one
+   bound nothing at all, which is expression (16) itself. Section 4.6.3 is explicit that the
+   encapsulation keys are *not* what delivers the IND-CCA-preserving property: "[25] does not
+   incorporate encapsulation keys into the combiner, as this is not needed to achieve the
+   IND-CCA-preserving property". So the construction had included the optional half and
+   dropped one of the two load-bearing ones. Demonstrated rather than argued: with the old
+   transcript, a mauled `c1` that decapsulates to the same `K1` derived a byte-identical
+   session key; with `c1` bound it derives a different one.
    Sources: SP 800-227 section 4.6.3; Barbosa et al., X-Wing, IACR CiC 1(1) 2024; Giacon-Heuer-Poettering,
    KEM Combiners, PKC 2018.
 

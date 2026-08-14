@@ -54,12 +54,20 @@ export function mlkemDemo(): KemDemo {
   // full deployment, so inventing a second, different KDF here would just be a new kind of drift.
   // Concatenate-then-KDF is what makes a hybrid sound: the result holds as long as EITHER half does.
   // Binding the transcript stops an attacker swapping one half for a value of their choosing.
-  const INFO = new TextEncoder().encode("qsh/hybrid-kem/v1 ML-KEM-768+X25519|");
+  // SP 800-227 s4.6.3: transcript is c1 || c2 || ek1 || ek2. It was ek1 || ek2 || c2 until
+  // Round 38 - the ML-KEM ciphertext was missing, which is the input that delivers the
+  // IND-CCA-preserving property; the standard says the encapsulation keys are NOT needed for
+  // it. See src/qsh/pqc/hybrid_kem.py::encapsulate for the full note. v2 because the derived
+  // key changes and deriving a different key under an unchanged label is what domain
+  // separation exists to prevent.
+  const INFO = new TextEncoder().encode("qsh/hybrid-kem/v2 ML-KEM-768+X25519|");
   const combine = (pq: Uint8Array, cl: Uint8Array) => {
-    const transcript = new Uint8Array(bob.publicKey.length + bobXPub.length + aliceXPub.length);
-    transcript.set(bob.publicKey, 0);
-    transcript.set(bobXPub, bob.publicKey.length);
-    transcript.set(aliceXPub, bob.publicKey.length + bobXPub.length);
+    const transcript = new Uint8Array(
+      cipherText.length + aliceXPub.length + bob.publicKey.length + bobXPub.length);
+    transcript.set(cipherText, 0);                                            // c1, ML-KEM ct
+    transcript.set(aliceXPub, cipherText.length);                             // c2, X25519 ephemeral
+    transcript.set(bob.publicKey, cipherText.length + aliceXPub.length);      // ek1
+    transcript.set(bobXPub, cipherText.length + aliceXPub.length + bob.publicKey.length);  // ek2
     const info = new Uint8Array(INFO.length + transcript.length);
     info.set(INFO, 0); info.set(transcript, INFO.length);
     const ikm = new Uint8Array(pq.length + cl.length);
@@ -76,7 +84,7 @@ export function mlkemDemo(): KemDemo {
   return {
     algorithm: "ML-KEM-768 (FIPS 203) + X25519, HKDF-SHA256 combiner",
     classical: "X25519 (RFC 7748)",
-    combiner: "HKDF-SHA256(pq_ss || x25519_ss), info=qsh/hybrid-kem/v1 — same as the backend",
+    combiner: "HKDF-SHA256(pq_ss || x25519_ss), info=qsh/hybrid-kem/v2, transcript c1||c2||ek1||ek2 per SP 800-227 s4.6.3 — same as the backend",
     publicKeyBytes: bob.publicKey.length + bobXPub.length,
     pqcCipherTextBytes: cipherText.length,
     classicalPublicKeyBytes: aliceXPub.length,

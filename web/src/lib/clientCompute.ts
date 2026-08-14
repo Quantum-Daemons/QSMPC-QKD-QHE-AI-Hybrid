@@ -1690,12 +1690,20 @@ export function runClientPipeline(
         const xA = x25519.getSharedSecret(aliceX, bobXPub), xB = x25519.getSharedSecret(bobX, aliceXPub);
         // Same HKDF-SHA256 combiner and domain-separation string as src/qsh/pqc/hybrid_kem.py, so a
         // demo run and a backend run derive the session key the same way.
-        const INFO = new TextEncoder().encode("qsh/hybrid-kem/v1 ML-KEM-768+X25519|");
+        // SP 800-227 s4.6.3: transcript is c1 || c2 || ek1 || ek2. It was ek1 || ek2 || c2 until
+        // Round 38 - the ML-KEM ciphertext was missing, which is the input that delivers the
+        // IND-CCA-preserving property; the standard says the encapsulation keys are NOT needed for
+        // it. See src/qsh/pqc/hybrid_kem.py::encapsulate for the full note. v2 because the derived
+        // key changes and deriving a different key under an unchanged label is what domain
+        // separation exists to prevent.
+        const INFO = new TextEncoder().encode("qsh/hybrid-kem/v2 ML-KEM-768+X25519|");
         const bind = (pq: Uint8Array, cl: Uint8Array) => {
-          const tr = new Uint8Array(bob.publicKey.length + bobXPub.length + aliceXPub.length);
-          tr.set(bob.publicKey, 0);
-          tr.set(bobXPub, bob.publicKey.length);
-          tr.set(aliceXPub, bob.publicKey.length + bobXPub.length);
+          const tr = new Uint8Array(
+            e.cipherText.length + aliceXPub.length + bob.publicKey.length + bobXPub.length);
+          tr.set(e.cipherText, 0);                                          // c1, ML-KEM ciphertext
+          tr.set(aliceXPub, e.cipherText.length);                           // c2, X25519 ephemeral
+          tr.set(bob.publicKey, e.cipherText.length + aliceXPub.length);    // ek1
+          tr.set(bobXPub, e.cipherText.length + aliceXPub.length + bob.publicKey.length);  // ek2
           const info = new Uint8Array(INFO.length + tr.length);
           info.set(INFO, 0); info.set(tr, INFO.length);
           const ikm = new Uint8Array(pq.length + cl.length);
@@ -1714,7 +1722,7 @@ export function runClientPipeline(
         // X25519 again here read as "ml-kem-768+x25519 + X25519".
         emit("log", stage, `hybrid KEM = ${kemSel} (NIST cat-${kemCategory(kemSel)}) — `
           + `agreement=${ok}; ${e.cipherText.length} B ML-KEM ciphertext + ${aliceXPub.length} B X25519 `
-          + `ephemeral public key, combined with HKDF-SHA256(pq_ss || x25519_ss), info="qsh/hybrid-kem/v1" — the same combiner the backend uses`);
+          + `ephemeral public key, combined with HKDF-SHA256(pq_ss || x25519_ss), info="qsh/hybrid-kem/v2", transcript c1||c2||ek1||ek2 per NIST SP 800-227 s4.6.3 — the same combiner the backend uses`);
         // Quantum entropy source (simulated state-vector measurement, not hardware) — measured health + throughput.
         const qr = generateQuantumBits(Number(config.qrng_bits ?? qrngCfg().bits),
           { source: "sim", postProcessing: String(config.qrng_post ?? qrngCfg().post_processing),
