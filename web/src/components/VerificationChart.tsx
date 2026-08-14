@@ -34,6 +34,14 @@ export interface EncryptedAgreementPlot {
   /** Rows the split offered. Larger than `rows` means the ciphertext could not hold them all. */
   rowsOffered?: number;
   classes: number;
+  /** Worst deviation over ALL `rows * classes` scores, which is a strictly larger set than `points`.
+      See the caption note: one point is plotted per row, for the winning class only. */
+  maxAbsError?: number;
+  /** Widest PLAINTEXT top-1-to-top-2 gap among the rows that flipped, and whether the deviation
+      above can bridge it. Reported because a mismatch count on its own reads as a precision
+      failure, and on genomics all three flips are rows the plaintext model scores at zero. */
+  flipMarginMax?: number;
+  flipsWithinNoise?: boolean;
 }
 
 /**
@@ -67,9 +75,43 @@ export function EncryptedAgreementChart({ plot }: { plot: EncryptedAgreementPlot
         <strong>Private inference against the plaintext reference.</strong> Each point is one of{" "}
         {plot.rows} held-out rows scored under CKKS in this tab, plotted against the same row&apos;s
         plaintext score. The diagonal is exact agreement. Top-1 mismatches:{" "}
-        <strong>{mismatches}</strong> of {plot.rows} ({plot.rows * plot.classes} class scores);
-        worst absolute deviation {worst.toExponential(2)}. All {plot.rows} rows travelled in a single
+        <strong>{mismatches}</strong> of {plot.rows}. All {plot.rows} rows travelled in a single
         ciphertext, so they cost the homomorphic work of one.
+        {/* SCOPE, stated because the first version of this caption did not state it and was read
+            wrong as a result. One point is plotted per row - the WINNING class only - so `worst`
+            is a maximum over `rows` deviations. The metric row beside this figure
+            (`encrypted_batch_max_abs_error`) is the maximum over `rows * classes`, a strictly
+            larger set. On finance those two read 1.80e-8 and 2.47e-8: both correct, 37% apart,
+            and the caption used to print the smaller one immediately after the phrase
+            "(800 class scores)". A number whose scope is narrower than the sentence around it. */}
+        {" "}Worst deviation among the {plot.rows} plotted winning-class scores:{" "}
+        {worst.toExponential(2)}
+        {typeof plot.maxAbsError === "number" ? (
+          <> · across all {plot.rows * plot.classes} class scores, including the losing ones this
+          figure does not plot: {plot.maxAbsError.toExponential(2)}</>
+        ) : null}.
+        {/* What a mismatch MEANS. Without this the genomics figure reports 3 of 30 and reads as
+            the encrypted tier being unreliable, when the deviation is 7e-10 and the model's two
+            logits are exact negatives of each other - so the flipped rows are samples whose
+            polygenic score is zero and which the plaintext model itself does not prefer either
+            way. The count is the honest number; alone it points the wrong way. */}
+        {mismatches > 0 && typeof plot.flipMarginMax === "number" ? (
+          <>
+            {" "}The plaintext model&apos;s own margin between its top two scores at those{" "}
+            {mismatches} rows is{" "}
+            {plot.flipMarginMax === 0
+              ? <><strong>exactly zero</strong> — the plaintext model scores those samples
+                identically across classes, so its own top-1 is decided by argmax tie-breaking and
+                any deviation at all flips it. These are <strong>ties</strong>, not decisions the
+                encryption got wrong.</>
+              : plot.flipsWithinNoise
+                ? <>at most {plot.flipMarginMax.toExponential(2)}, which the deviation above can
+                  bridge — they are <strong>ties</strong> the plaintext model has no real preference
+                  on, not decisions the encryption got wrong.</>
+                : <>{plot.flipMarginMax.toExponential(2)}, <strong>wider</strong> than the deviation
+                  above can bridge, so these flips are not ties.</>}
+          </>
+        ) : null}
         {plot.rowsOffered != null && plot.rowsOffered > plot.rows ? (
           <>
             {" "}The split holds <strong>{plot.rowsOffered}</strong> rows; one ciphertext fits{" "}

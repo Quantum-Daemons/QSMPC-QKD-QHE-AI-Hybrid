@@ -25,11 +25,18 @@ import { bb84, channelLossDb, e91, FIBER, FREE_SPACE, h2, intrinsicQber, qcnnExp
   type QcnnWeights } from "./quantumSim";
 import { type Provenance } from "../components/ProvenanceBadge";
 import { browserModels, evaluatePublishedModel, onnxStatus, runPublishedModel } from "./onnxInference";
-import { realInput, realSatelliteAnomaly, realFederatedSet, type RealInput } from "./realData";
+import { realInput, realInputCorpus, realSatelliteAnomaly, realFederatedSet,
+  type RealInput } from "./realData";
 
 const r1 = (x: number) => Math.round(x * 10) / 10;
 const r2 = (x: number) => Math.round(x * 100) / 100;
 const argmax = (a: number[]) => a.reduce((bi, v, i, arr) => (v > arr[bi] ? i : bi), 0);
+/** Gap between the top two scores - what a top-1 decision actually had to lose. `Infinity` for a
+ *  single-class row, so a degenerate model never reads as "decided by a tie". */
+const decisionMargin = (row: number[]) => {
+  const s = [...row].sort((x, y) => y - x);
+  return s.length > 1 ? s[0] - s[1] : Infinity;
+};
 const sleep = (ms: number) => new Promise((res) => setTimeout(res, ms));
 // small prime utilities for the QSMS secure-sum field Z_p (config.prime; 0 = auto-select a prime > the total)
 /**
@@ -600,7 +607,9 @@ export interface MeasuredHybrid {
            publishedWeights: boolean; totalRotations: number;
            studentParams?: number; studentPrediction?: number };
   /** Rotations and multiply-plain for the DENSE layer, so the two workloads compare like for like. */
-  dense?: { rotations: number; multiplies: number };
+  /** `rotateMs` is the measured time inside `rotateVector`, kept separate from `fheMs` because the
+   *  page scales `fheMs` by a cost model and a scaled total cannot yield a per-rotation cost. */
+  dense?: { rotations: number; multiplies: number; rotateMs: number };
 }
 
 export interface RealHybridRun extends MeasuredHybrid {
@@ -612,6 +621,21 @@ export interface RealHybridRun extends MeasuredHybrid {
    *  whose scale a reader has no way to judge. */
   logits: number[];
   plainLogits: number[];
+  /** Whether the ENCRYPTED evaluation used the page's bundled model or the fallback demo pattern.
+   *  Reported because the two are indistinguishable in the output otherwise, and the page spent
+   *  several rounds encrypting one model while reporting and explaining another. */
+  encryptedRealModel: boolean;
+  /** The rows the batched agreement figure was built from, where a corpus was supplied. */
+  batch?: { rows: number; rowsOffered: number; rowsPerCiphertext: number; fheMs: number;
+            maxAbsError: number; mismatches: number;
+            /** Largest PLAINTEXT decision margin among the rows whose top-1 flipped. A mismatch is
+             *  only evidence against the encrypted tier if the plaintext model had a real preference
+             *  to lose; see the comment at the computation. */
+            flipMarginMax: number;
+            /** True when every flip happened at a margin the CKKS deviation could bridge, i.e. the
+             *  plaintext model was indifferent at those rows. */
+            flipsWithinNoise: boolean;
+            points: { enc: number; plain: number; agree: boolean }[] } | null;
 }
 
 let _fheWarmed = false;
@@ -658,16 +682,34 @@ async function publishedStudentWeights(usecase: string | undefined): Promise<Cnn
 
 export async function realClientHybrid(features: number[], u: () => number,
                                       convolve = false,
-                                      usecase?: string): Promise<RealHybridRun | null> {
+                                      usecase?: string,
+                                      realModel?: { W: number[][]; b: number[] } | null,
+                                      corpus?: number[][] | null,
+): Promise<RealHybridRun | null> {
   try {
     if (!_fheWarmed) { await warmFHE(); _fheWarmed = true; }     // one-time CKKS keygen
     if (!_mpcWarmed) { await warmMPC(); _mpcWarmed = true; }     // one-time summon compile + emp-wasm init
     const n = features.length;
-    // small representative 2-class linear model (class 0 = zeros; class 1 = a fixed signed pattern). The
-    // ENCRYPTION + computation are genuinely real (node-seal CKKS); the weights are a small demo model.
-    const w1 = Array.from({ length: n }, (_, i) => ((i % 3) - 1) * 0.15);
-    const W = [Array(n).fill(0), w1];
-    const b = [0, -0.05];
+    // ENCRYPT THE MODEL THE PAGE EXPLAINS.
+    //
+    // This function did not take a model at all. It built `w1 = ((i % 3) - 1) * 0.15` and encrypted
+    // that, while `privateInference` evaluated the page's REAL bundled model to produce the class
+    // shown, and the SHAP panel explained the same real model under the label "real bundled model".
+    // Three surfaces on one row, two of them describing a model the third never touched - so every
+    // `fhe_*` number on finance and genomics measured a weight vector that appears nowhere else on
+    // the page. `privateInference`'s own comment says the real model "is what the SHAP attribution
+    // and the CKKS evaluation both consume", which is the invariant this violated three lines away.
+    //
+    // The demo pattern stays only where no model ships, and the run says which it used rather than
+    // letting the two look alike.
+    const usingRealModel = Array.isArray(realModel?.W) && realModel.W.length > 0
+      && realModel.W.every((row) => Array.isArray(row) && row.length >= n);
+    const W = usingRealModel
+      ? realModel!.W.map((row) => row.slice(0, n))
+      : [Array(n).fill(0), Array.from({ length: n }, (_, i) => ((i % 3) - 1) * 0.15)];
+    const b = usingRealModel
+      ? W.map((_, j) => Number(realModel!.b?.[j] ?? 0))
+      : [0, -0.05];
     const fhe = await encryptedLinear(W, b, features);           // REAL CKKS, measured
     const mpc = await secureArgmax(fhe.logits, u);              // REAL garbled-circuit 2PC argmax, measured
 
@@ -705,11 +747,46 @@ export async function realClientHybrid(features: number[], u: () => number,
                  publishedWeights: false, totalRotations: cres.rotations };
       }
     }
+    // The same model over a whole corpus, where the caller supplied one. Costs no extra homomorphic
+    // work - `encryptedLinearBatch` packs the rows at the reduction's own stride - and it is what
+    // turns "the encrypted number agreed on this one row" into a figure a reader can check.
+    let batch: RealHybridRun["batch"] = null;
+    if (usingRealModel && corpus?.length) {
+      const bt = await encryptedLinearBatch(W, b, corpus.map((r) => r.slice(0, n)));
+      const encCls = bt.logits.map(argmax), plainCls = bt.plainLogits.map(argmax);
+      // A top-1 mismatch is NOT automatically a precision failure, and reporting the count alone
+      // says it is. Genomics is the case that forced this: its model is the published PGS weights
+      // as `W = [-w/2, +w/2]` with zero bias, so the two logits are exact negatives and the
+      // decision margin IS the polygenic score. A sample whose score sits at zero is a genuine tie
+      // and flips under any perturbation whatsoever - 3 of its 30 rows did, at a deviation of
+      // 7.2e-10. Printing "3 of 30 mismatches" beside that leads a reader to exactly the wrong
+      // conclusion about the encrypted tier.
+      //
+      // So measure what the plaintext model actually had to lose: the gap between its top two
+      // scores at the rows that flipped. If that gap is inside what the CKKS deviation can bridge,
+      // the disagreement is the plaintext model being indifferent, not the encryption being wrong.
+      const flipped = encCls.map((_, i) => i).filter((i) => encCls[i] !== plainCls[i]);
+      const flipMarginMax = flipped.length
+        ? Math.max(...flipped.map((i) => decisionMargin(bt.plainLogits[i]))) : 0;
+      batch = {
+        rows: bt.rows, rowsOffered: bt.rowsOffered, rowsPerCiphertext: bt.rowsPerCiphertext,
+        fheMs: bt.fheMs, maxAbsError: bt.maxAbsError,
+        flipMarginMax,
+        // Two-sided: the deviation can move each of the two scores, so it bridges up to 2x itself.
+        flipsWithinNoise: flipped.length > 0 && flipMarginMax <= 2 * bt.maxAbsError,
+        mismatches: flipped.length,
+        points: bt.logits.map((row, i) => ({
+          enc: row[encCls[i]], plain: bt.plainLogits[i][encCls[i]],
+          agree: encCls[i] === plainCls[i],
+        })),
+      };
+    }
     return {
       prediction: mpc.out[0], fheMs: fhe.fheMs + (conv?.convMs ?? 0), mpcMs: mpc.mpcMs,
       commBytes: mpc.commBytes, ctBytes: fhe.ctBytes, featDim: n,
       maxAbsError: fhe.maxAbsError, plainLogits: fhe.plainLogits, logits: fhe.logits, conv,
-      dense: { rotations: fhe.rotations, multiplies: fhe.multiplies },
+      dense: { rotations: fhe.rotations, multiplies: fhe.multiplies, rotateMs: fhe.rotateMs },
+      encryptedRealModel: usingRealModel, batch,
     };
   } catch (e) {
     // Surface the cause (no-fallback policy: a fixable defect must not hide behind the representative path).
@@ -1117,7 +1194,29 @@ export function runClientPipeline(
 
   const emit = (type: string, stage: string, message: string, data: Record<string, any> = {}) =>
     h.onEvent({ type, stage, message, data, t: now() });
+  // Keys already written, so a second write with a DIFFERENT value is visible rather than silent.
+  //
+  // `metrics[name] = value` is last-write-wins over a flat map, and two call sites in one run can
+  // reach the same key with no syntactic relationship between them. That is not hypothetical:
+  // `encrypted_agreement` was emitted by the batched figure (a rate over 30 rows) and then again by
+  // the single-row path (`mism === 0 ? 1 : 0`, which over one row can only be 0 or 1). The second
+  // won. On finance both read 1 and nothing showed; on genomics the page printed
+  // `encrypted_agreement 1` beside `encrypted_top1_mismatches_batch 3` of 30 rows - two rows of the
+  // same table contradicting each other, with the wrong one on top.
+  //
+  // A silent overwrite is the failure mode, so this does not throw: on a demo page an exception
+  // would replace a wrong number with a blank page. It records the collision as a metric of its own
+  // and warns, which makes it reachable from the browser checklist. Rewriting a key with the SAME
+  // value is fine and common - several stages re-report a constant.
+  const metricWrites = new Map<string, any>();
   const metric = (stage: string, name: string, value: any) => {
+    if (metricWrites.has(name) && metricWrites.get(name) !== value) {
+      const clash = `${name}: ${metricWrites.get(name)} -> ${value}`;
+      console.warn("[metric] overwritten with a different value:", clash);
+      metrics.metric_overwritten = clash;
+      emit("metric", stage, "", { name: "metric_overwritten", value: clash });
+    }
+    metricWrites.set(name, value);
     metrics[name] = value;
     emit("metric", stage, "", { name, value });
   };
@@ -1224,6 +1323,13 @@ export function runClientPipeline(
         const encCls2 = batch.logits.map(argmax);
         const plainCls2 = batch.plainLogits.map(argmax);
         const mism = encCls2.reduce((a, c, i) => a + (c === plainCls2[i] ? 0 : 1), 0);
+        // Same margin test as the finance/genomics figure, so a mismatch means the same thing on
+        // every page that draws this chart. An 8-class student can tie too, and a count reported
+        // without the margin reads as a precision failure on whichever page happens to hit one.
+        const flipped2 = encCls2.map((_, i) => i).filter((i) => encCls2[i] !== plainCls2[i]);
+        const flipMarginMax2 = flipped2.length
+          ? Math.max(...flipped2.map((i) => decisionMargin(batch.plainLogits[i]))) : 0;
+        const flipsWithinNoise2 = flipped2.length > 0 && flipMarginMax2 <= 2 * batch.maxAbsError;
         const bits2 = batch.maxAbsError > 0 && batch.maxAbsError < 1
           ? Math.floor(-Math.log2(batch.maxAbsError)) : null;
         metric(stage, "encrypted_top1_mismatches", mism);
@@ -1235,12 +1341,24 @@ export function runClientPipeline(
         metric(stage, "encrypted_rows_dropped_by_cap", batch.rowsOffered - batch.rows);
         metric(stage, "encrypted_rows_per_ciphertext", batch.rowsPerCiphertext);
         metric(stage, "encrypted_batch_ms", r2(batch.fheMs));
+        // Per-rotation cost on this page too, so the comparable unit exists for every use case that
+        // runs an encrypted tier rather than only for the ones with a `private_inference` stage.
+        metric(stage, "fhe_batch_rotations", batch.rotations);
+        if (batch.rotations > 0) {
+          metric(stage, "fhe_ms_per_rotation",
+            Math.round((batch.rotateMs / batch.rotations) * 1000) / 1000);
+        }
         metric(stage, "encrypted_batch_max_abs_error", batch.maxAbsError);
         metric(stage, "encrypted_batch_precision_bits", bits2);
         // The agreement figure follows Concrete-ML's "Similarity"; the mismatch COUNT follows
         // arXiv:2605.22237 Table IX, which reports it as an integer expected to be zero. Both
         // conventions are already used for the single-row path; this is the same pair over N rows.
         metric(stage, "encrypted_agreement", r2(1 - mism / Math.max(1, batch.rows)));
+        metric(stage, "encrypted_agreement_rows", batch.rows);
+        if (mism > 0) {
+          metric(stage, "encrypted_flip_margin_max", flipMarginMax2);
+          metric(stage, "encrypted_flips_are_ties", flipsWithinNoise2 ? 1 : 0);
+        }
         artifacts.encrypted_agreement_plot = {
           kind: "encrypted-agreement",
           rowsOffered: batch.rowsOffered,
@@ -1249,6 +1367,11 @@ export function runClientPipeline(
             agree: encCls2[i] === plainCls2[i],
           })),
           rows: batch.rows, classes: w.W.length,
+          // Over all rows x classes. `points` carries the winning class only, so the caption cannot
+          // derive this from what it plots - and printing the plotted maximum beside a class-score
+          // count is how the finance caption came to understate the deviation by 37%.
+          maxAbsError: batch.maxAbsError,
+          flipMarginMax: flipMarginMax2, flipsWithinNoise: flipsWithinNoise2,
         };
         emit("log", stage, `encrypted tier over the HELD-OUT SPLIT: ${batch.rows} of `
           + `${batch.rowsOffered} rows x ${w.W.length} classes = ${batch.rows * w.W.length} scores in `
@@ -2033,13 +2156,68 @@ export function runClientPipeline(
             + "material leaves the browser.");
           await sleep(0);        // yield once so the log line paints before WASM takes the thread
         }
-        const real = await realClientHybrid(feats, u, usecase === "medical_fl", usecase);
+        // The model the page REPORTS and EXPLAINS, handed to the path that encrypts it, plus the
+        // corpus in the same feature space so the agreement figure covers more than one row.
+        const corpus = realIn?.model?.W ? await realInputCorpus(usecase) : null;
+        const real = await realClientHybrid(feats, u, usecase === "medical_fl", usecase,
+                                            realIn?.model ?? null, corpus);
         if (real) {
           // A real encrypted convolution is not scaled by anything: its latency IS the measurement.
           const bscale = real.conv
             ? 1
             : benchScale(usecase, config.model_size ?? "medium", config.workload ?? "linear");
           artifacts.fhe_prediction = real.prediction;
+          // WHICH model the encryption evaluated. Until Round 38 this was always the demo pattern
+          // while the class and the SHAP bars came from the bundled model, so every `fhe_*` figure
+          // on finance and genomics described a weight vector that appeared nowhere else on the page.
+          metric(stage, "fhe_model", real.encryptedRealModel
+            ? "bundled real model - the same one the class and the SHAP bars come from"
+            : "demo pattern (no bundled model ships for this use case)");
+          if (real.batch) {
+            const bt = real.batch;
+            const bits = bt.maxAbsError > 0 && bt.maxAbsError < 1
+              ? Math.floor(-Math.log2(bt.maxAbsError)) : null;
+            metric(stage, "encrypted_rows_scored", bt.rows);
+            metric(stage, "encrypted_rows_available", bt.rowsOffered);
+            metric(stage, "encrypted_rows_dropped_by_cap", bt.rowsOffered - bt.rows);
+            metric(stage, "encrypted_rows_per_ciphertext", bt.rowsPerCiphertext);
+            metric(stage, "encrypted_batch_ms", r2(bt.fheMs));
+            metric(stage, "encrypted_batch_max_abs_error", bt.maxAbsError);
+            metric(stage, "encrypted_batch_precision_bits", bits);
+            metric(stage, "encrypted_agreement", r2(1 - bt.mismatches / Math.max(1, bt.rows)));
+            metric(stage, "encrypted_agreement_rows", bt.rows);   // the denominator, never implicit
+            metric(stage, "encrypted_top1_mismatches_batch", bt.mismatches);
+            if (bt.mismatches > 0) {
+              metric(stage, "encrypted_flip_margin_max", bt.flipMarginMax);
+              metric(stage, "encrypted_flips_are_ties", bt.flipsWithinNoise ? 1 : 0);
+            }
+            artifacts.encrypted_agreement_plot = {
+              kind: "encrypted-agreement", points: bt.points, rows: bt.rows,
+              rowsOffered: bt.rowsOffered, classes: real.logits.length,
+              maxAbsError: bt.maxAbsError,   // all rows x classes; `points` is winning-class only
+              flipMarginMax: bt.flipMarginMax, flipsWithinNoise: bt.flipsWithinNoise,
+            };
+            emit("log", stage, `encrypted tier over the page's own corpus: ${bt.rows} of `
+              + `${bt.rowsOffered} rows in one ciphertext (${bt.rowsPerCiphertext} fit at this `
+              + `feature width), ${r2(bt.fheMs)} ms. Top-1 mismatches vs plaintext: `
+              + `${bt.mismatches} of ${bt.rows}. Max abs error ${bt.maxAbsError.toExponential(3)}`
+              + (bits !== null ? ` (about ${bits} bits, MAX not mean)` : "")
+              + (bt.mismatches > 0
+                ? `. The plaintext model's own decision margin at the ${bt.mismatches} flipped `
+                  + (bt.flipMarginMax === 0
+                    ? "row(s) is EXACTLY ZERO: it scores those samples identically across classes, "
+                      + "so its own top-1 comes from argmax tie-breaking and any deviation flips it"
+                    : `row(s) was at most ${bt.flipMarginMax.toExponential(3)}, `
+                      + (bt.flipsWithinNoise
+                        ? "which the deviation above can bridge -- those rows are ties the plaintext "
+                          + "model has no real preference on, not evidence against the encrypted tier"
+                        : "which is WIDER than the deviation can bridge -- these flips are not ties "
+                          + "and need explaining"))
+                : "")
+              + (bt.rowsOffered > bt.rows
+                ? `. ${bt.rowsOffered - bt.rows} rows did not fit and were not scored, so the `
+                  + `agreement is over ${bt.rows}` : "") + ".");
+          }
           artifacts._measured_hybrid = { fheMs: real.fheMs, mpcMs: real.mpcMs, commBytes: real.commBytes,
             ctBytes: real.ctBytes, featDim: real.featDim, conv: real.conv, dense: real.dense };
           metric(stage, "fhe_max_abs_error", r2(real.maxAbsError) || real.maxAbsError);
@@ -2063,7 +2241,15 @@ export function runClientPipeline(
               ? Math.floor(-Math.log2(real.maxAbsError)) : null;
             metric(stage, "encrypted_top1_mismatches", mism);
             metric(stage, "encrypted_scores_compared", real.logits.length);
-            metric(stage, "encrypted_agreement", mism === 0 ? 1 : 0);
+            // ONLY when no batch ran, and this is a correctness fix, not a tidy-up. This line and
+            // the batch's `encrypted_agreement` a few dozen lines above share a key and are emitted
+            // into the same stage, so this one - computed over a SINGLE row, where it can only ever
+            // be 0 or 1 - silently overwrote the rate measured over the whole corpus. Finance hid it
+            // (0 mismatches, both read 1); genomics exposed it, printing `encrypted_agreement 1`
+            // directly beside `encrypted_top1_mismatches_batch 3` out of 30 rows, which is 0.9.
+            // The single-row scalar being wrong is precisely why the batch figure was added, so
+            // leaving it in place under the same name let the thing it replaced win.
+            if (!real.batch) metric(stage, "encrypted_agreement", mism === 0 ? 1 : 0);
             metric(stage, "encrypted_precision_bits", bits);
             emit("log", stage, `encrypted-vs-plaintext verification: ${mism} of 1 top-1 mismatch`
               + `es over ${real.logits.length} class scores. Max abs error `
@@ -2080,7 +2266,30 @@ export function runClientPipeline(
           if (real.dense) {
             metric(stage, "fhe_dense_rotations", real.dense.rotations);
             metric(stage, "fhe_dense_multiplies", real.dense.multiplies);
+            // COST PER HOMOMORPHIC ROTATION, from the measured rotation time and the counted
+            // rotations - both raw, neither scaled.
+            //
+            // This is the axis on which this project's encrypted tier can be compared with a
+            // published one at all. Total latency cannot be: this evaluates tens to a few thousand
+            // parameters on WASM CPU in a browser tab, and the 2026 figures it would sit beside are
+            // ResNets and transformers on A100s. Model size drops out of a per-rotation figure, and
+            // a rotation is a key-switch, which is the operation those papers report and the one
+            // that dominates CKKS cost.
+            //
+            // It is NOT `fhe_linear_ms / fhe_dense_rotations`, which is the division the metrics
+            // table invites and which is wrong: `fhe_linear_ms` below is the measurement multiplied
+            // by `benchScale(...)` for the selected model size, while the rotation count is raw.
+            // On genomics that division reads 158 ms per rotation against a measured ~3 ms.
+            metric(stage, "fhe_rotate_measured_ms", Math.round(real.dense.rotateMs * 1000) / 1000);
+            if (real.dense.rotations > 0) {
+              metric(stage, "fhe_ms_per_rotation",
+                Math.round((real.dense.rotateMs / real.dense.rotations) * 1000) / 1000);
+            }
           }
+          // The raw measurement and the multiplier applied to it, so the projection below is
+          // decomposable rather than a number of unstated provenance sitting beside raw counts.
+          metric(stage, "fhe_linear_measured_ms", r2(real.fheMs));
+          metric(stage, "fhe_bench_scale", r2(bscale));
           metric(stage, "fhe_linear_ms", r2(real.fheMs * bscale));
           metric(stage, "mpc_nonlinear_ms", r2(real.mpcMs * bscale));
           metric(stage, "mpc_comm_kb", r2((real.commBytes * bscale) / 1024));

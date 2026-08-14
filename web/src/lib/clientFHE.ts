@@ -101,6 +101,11 @@ export interface FHEResult {
    *  comparable on the axis that actually matters, rather than on wall-clock alone. */
   rotations: number;
   multiplies: number;
+  /** Wall-clock spent INSIDE `rotateVector`, nothing else. The page's `fhe_linear_ms` is this
+   *  call's total multiplied by a cost-model scale for the selected model size, so dividing it by
+   *  `rotations` does not give a per-rotation cost - it gave 158 ms against a true ~3 ms. This is
+   *  the measured quantity, and it is the unit published CKKS primitive benchmarks report. */
+  rotateMs: number;
 }
 
 export interface FHEBatchResult {
@@ -117,6 +122,11 @@ export interface FHEBatchResult {
   maxAbsError: number;
   rotations: number;
   multiplies: number;
+  /** Wall-clock spent INSIDE `rotateVector`, nothing else. The page's `fhe_linear_ms` is this
+   *  call's total multiplied by a cost-model scale for the selected model size, so dividing it by
+   *  `rotations` does not give a per-rotation cost - it gave 158 ms against a true ~3 ms. This is
+   *  the measured quantity, and it is the unit published CKKS primitive benchmarks report. */
+  rotateMs: number;
 }
 
 /**
@@ -171,7 +181,7 @@ export async function encryptedLinearBatch(
   try { ctBytes = ctX.saveToArray(seal.ComprModeType.none).length; } catch { ctBytes = null; }
 
   const perClass: number[][] = [];
-  let rotations = 0, multiplies = 0;
+  let rotations = 0, multiplies = 0, rotateMs = 0;   // see `encryptedLinear` for why rotations are timed
   for (let j = 0; j < W.length; j++) {
     if (W[j].every((v) => v === 0)) {
       perClass.push(used.map(() => b[j] ?? 0));      // all-zero row: the logit is the bias
@@ -188,7 +198,9 @@ export async function encryptedLinearBatch(
     multiplies++;
     for (let s = 1; s < sumWidth; s <<= 1) {
       const rot = new seal.Ciphertext();
+      const tr = performance.now();
       evaluator.rotateVector(acc, s, galois, rot);
+      rotateMs += performance.now() - tr;
       const nxt = new seal.Ciphertext();
       evaluator.add(acc, rot, nxt);
       acc = nxt;
@@ -207,7 +219,7 @@ export async function encryptedLinearBatch(
   const maxAbsError = Math.max(
     0, ...logits.flatMap((row, r) => row.map((v, j) => Math.abs(v - plainLogits[r][j]))));
   return { logits, plainLogits, rows: used.length, rowsOffered, rowsPerCiphertext, fheMs, ctBytes,
-           maxAbsError, rotations, multiplies };
+           maxAbsError, rotations, multiplies, rotateMs };
 }
 
 /**
@@ -238,7 +250,14 @@ export async function encryptedLinear(W: number[][], b: number[], x: number[]): 
   try { ctBytes = ctX.saveToArray(seal.ComprModeType.none).length; } catch { ctBytes = null; }
 
   const logits: number[] = [];
-  let rotations = 0, multiplies = 0;
+  // `rotateMs` times ONLY the `rotateVector` calls, and it exists because the number beside it does
+  // not support the division a reader will try. `fhe_linear_ms` on the page is this function's
+  // wall-clock MULTIPLIED by `benchScale(...)`, a cost-model projection for the selected model size,
+  // while `fhe_dense_rotations` is a raw count from this loop. Dividing one by the other read
+  // 158 ms per rotation on genomics against a true figure near 3 ms. Rotation cost is the unit the
+  // CKKS literature reports, because each rotation triggers a key-switch and key-switching dominates
+  // - so it has to be measured here rather than reconstructed from a scaled total downstream.
+  let rotations = 0, multiplies = 0, rotateMs = 0;
   for (let j = 0; j < W.length; j++) {
     // an all-zero weight row (our 2-class "class 0" convention) → logit is just the bias; skip the
     // homomorphic eval (CKKS would yield a "transparent" ciphertext, which the safe build rejects).
@@ -254,7 +273,9 @@ export async function encryptedLinear(W: number[][], b: number[], x: number[]): 
     multiplies++;
     for (let s = 1; s < sumWidth; s <<= 1) {                    // rotate-and-add → Σ slots in slot 0
       const rot = new seal.Ciphertext();
+      const tr = performance.now();
       evaluator.rotateVector(acc, s, galois, rot);
+      rotateMs += performance.now() - tr;
       const nxt = new seal.Ciphertext();
       evaluator.add(acc, rot, nxt);
       acc = nxt;
@@ -269,7 +290,7 @@ export async function encryptedLinear(W: number[][], b: number[], x: number[]): 
   // approximation error vs the plaintext reference (CKKS is approximate)
   const plain = W.map((row, j) => row.reduce((a, w, i) => a + w * (x[i] ?? 0), 0) + (b[j] ?? 0));
   const maxAbsError = Math.max(...logits.map((v, j) => Math.abs(v - plain[j])), 0);
-  return { logits, fheMs, ctBytes, maxAbsError, plainLogits: plain, rotations, multiplies };
+  return { logits, fheMs, ctBytes, maxAbsError, plainLogits: plain, rotations, multiplies, rotateMs };
 }
 
 export function argmax(a: number[]): number {
