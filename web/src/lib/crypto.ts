@@ -11,8 +11,7 @@
 import { ml_kem768 } from "@noble/post-quantum/ml-kem.js";
 import { ml_dsa65 } from "@noble/post-quantum/ml-dsa.js";
 import { x25519 } from "@noble/curves/ed25519.js";
-import { hkdf } from "@noble/hashes/hkdf.js";
-import { sha256 } from "@noble/hashes/sha2.js";
+import { hybridCombine, hybridCombinerInfo } from "./hybridCombiner";
 
 const hex = (u: Uint8Array, n = 16) =>
   Array.from(u.slice(0, n)).map((b) => b.toString(16).padStart(2, "0")).join("");
@@ -57,31 +56,22 @@ export function mlkemDemo(): KemDemo {
   // SP 800-227 s4.6.3: transcript is c1 || c2 || ek1 || ek2. It was ek1 || ek2 || c2 until
   // Round 38 - the ML-KEM ciphertext was missing, which is the input that delivers the
   // IND-CCA-preserving property; the standard says the encapsulation keys are NOT needed for
-  // it. See src/qsh/pqc/hybrid_kem.py::encapsulate for the full note. v2 because the derived
-  // key changes and deriving a different key under an unchanged label is what domain
-  // separation exists to prevent.
-  // The parameter set is IN the separator, not assumed. SP 800-227 s4.6.3 requires domain_sep to
-  // identify the composite scheme including the "choice of parameter set", and this was the fixed
-  // literal "ML-KEM-768" while `kemImpl()` genuinely switches to ML-KEM-1024 on the category-5 path -
-  // measured on the deployed page, ciphertext 1088 bytes to 1568. It also removes a concatenation
-  // ambiguity: the transcript joins fixed-width fields with no length prefixes, which is unambiguous
-  // only within one parameter set.
-  // This demo path is fixed at ML-KEM-768, so the label is written out rather than derived -
-  // but it is written out BESIDE the parameter set it describes, three lines from the keygen.
-  const INFO = new TextEncoder().encode("qsh/hybrid-kem/v2 ML-KEM-768+X25519|");
-  const combine = (pq: Uint8Array, cl: Uint8Array) => {
-    const transcript = new Uint8Array(
-      cipherText.length + aliceXPub.length + bob.publicKey.length + bobXPub.length);
-    transcript.set(cipherText, 0);                                            // c1, ML-KEM ct
-    transcript.set(aliceXPub, cipherText.length);                             // c2, X25519 ephemeral
-    transcript.set(bob.publicKey, cipherText.length + aliceXPub.length);      // ek1
-    transcript.set(bobXPub, cipherText.length + aliceXPub.length + bob.publicKey.length);  // ek2
-    const info = new Uint8Array(INFO.length + transcript.length);
-    info.set(INFO, 0); info.set(transcript, INFO.length);
-    const ikm = new Uint8Array(pq.length + cl.length);
-    ikm.set(pq, 0); ikm.set(cl, pq.length);
-    return hkdf(sha256, ikm, undefined, info, 32);
-  };
+  // ONE combiner, shared with `clientCompute`'s handshake and byte-compatible with
+  // `src/qsh/pqc/hybrid_kem.py`. The separator, the transcript order and the output-length tag all
+  // live in `hybridCombiner.ts`; this file no longer carries a copy of any of them.
+  //
+  // It used to. Three browser sites each built the info string themselves, and they diverged from
+  // Python (the length tag was added there alone) AND from each other (this one hardcoded
+  // ML-KEM-768 while the handshake derived its label from the run's selection). Editing three
+  // literals in step is the method that failed twice in Round 38; `check:combiner` now asserts the
+  // literal exists in exactly one module, so a site left behind fails a gate.
+  //
+  // This path is fixed at ML-KEM-768 - `ml_kem768.keygen()` above - so the name is passed rather
+  // than derived, next to the keygen that justifies it.
+  const combine = (pq: Uint8Array, cl: Uint8Array) =>
+    hybridCombine(pq, cl,
+      { c1: cipherText, c2: aliceXPub, ek1: bob.publicKey, ek2: bobXPub }, "ML-KEM-768", 32);
+
   const sessionA = combine(pqSecret, xSecretA);
   const sessionB = combine(pqRecovered, xSecretB);
 
@@ -92,7 +82,10 @@ export function mlkemDemo(): KemDemo {
   return {
     algorithm: "ML-KEM-768 (FIPS 203) + X25519, HKDF-SHA256 combiner",
     classical: "X25519 (RFC 7748)",
-    combiner: "HKDF-SHA256(pq_ss || x25519_ss), info=qsh/hybrid-kem/v2, transcript c1||c2||ek1||ek2 per SP 800-227 s4.6.3 — same as the backend",
+    // DERIVED from the combiner, not asserted about it. This read "same as the backend" while
+    // the backend had a length tag this side did not, so the sentence was false on the very
+    // page that displays it. Printing the actual bytes makes it an observation.
+    combiner: `HKDF-SHA256(pq_ss || x25519_ss), info=${new TextDecoder().decode(hybridCombinerInfo("ML-KEM-768", 32))} then transcript c1||c2||ek1||ek2, per SP 800-227 s4.6.3`,
     publicKeyBytes: bob.publicKey.length + bobXPub.length,
     pqcCipherTextBytes: cipherText.length,
     classicalPublicKeyBytes: aliceXPub.length,

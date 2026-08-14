@@ -10,7 +10,8 @@
     "preview": "vite preview --host",
     "check:pqc": "node scripts/check_mlkem_modulus_vectors.mjs",
     "check:qkd": "node scripts/check_qkd.mjs",
-    "check:qfl": "node scripts/check_qfl.mjs"
+    "check:qfl": "node scripts/check_qfl.mjs",
+    "check:combiner": "node scripts/check_hybrid_combiner.mjs"
   },
   "dependencies": {
     "@huggingface/transformers": "^4.2.0",
