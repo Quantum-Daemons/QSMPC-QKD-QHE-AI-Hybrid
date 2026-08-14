@@ -1424,6 +1424,17 @@ export function runClientPipeline(
         const range2 = allPlain2.length ? Math.max(...allPlain2) - Math.min(...allPlain2) : 0;
         const flipMarginRel2 = range2 > 0 ? flipMarginMax2 / range2 : 0;
         const flipsWithinNoise2 = flipped2.length > 0 && flipMarginRel2 <= 1e-6;
+        // The undecidable-row disclosure, on THIS path too.
+        //
+        // It was added to the finance/genomics/medical batch and not here, which made the fix for a
+        // conditional disclosure itself conditional - on which of the two code paths a reader
+        // happened to be looking at. Telecom's 8-class softmax over z-scored features is far less
+        // likely to produce exact ties than genomics' [-w/2, +w/2] model, but "unlikely" is not
+        // something a reader can see, and the count is what lets them stop guessing.
+        const tieRows2 = batch.plainLogits.filter((row) => decisionMargin(row) === 0).length;
+        const decidable2 = batch.rows - tieRows2;
+        const flippedDecidable2 =
+          flipped2.filter((i) => decisionMargin(batch.plainLogits[i]) !== 0).length;
         const bits2 = batch.maxAbsError > 0 && batch.maxAbsError < 1
           ? Math.floor(-Math.log2(batch.maxAbsError)) : null;
         metric(stage, "encrypted_top1_mismatches", mism);
@@ -1449,6 +1460,10 @@ export function runClientPipeline(
         // conventions are already used for the single-row path; this is the same pair over N rows.
         metric(stage, "encrypted_agreement", r2(1 - mism / Math.max(1, batch.rows)));
         metric(stage, "encrypted_agreement_rows", batch.rows);
+        metric(stage, "encrypted_undecidable_rows", tieRows2);
+        metric(stage, "encrypted_decidable_rows", decidable2);
+        metric(stage, "encrypted_agreement_over_decidable",
+          decidable2 > 0 ? r2(1 - flippedDecidable2 / decidable2) : null);
         if (mism > 0) {
           metric(stage, "encrypted_flip_margin_max", flipMarginMax2);
           metric(stage, "encrypted_flip_margin_relative", flipMarginRel2);
@@ -1468,6 +1483,8 @@ export function runClientPipeline(
           maxAbsError: batch.maxAbsError,
           flipMarginMax: flipMarginMax2, flipMarginRel: flipMarginRel2,
           flipsWithinNoise: flipsWithinNoise2,
+          undecidableRows: tieRows2, decidableRows: decidable2,
+          agreementOverDecidable: decidable2 > 0 ? r2(1 - flippedDecidable2 / decidable2) : null,
         };
         emit("log", stage, `encrypted tier over the HELD-OUT SPLIT: ${batch.rows} of `
           + `${batch.rowsOffered} rows x ${w.W.length} classes = ${batch.rows * w.W.length} scores in `
@@ -2322,6 +2339,9 @@ export function runClientPipeline(
               maxAbsError: bt.maxAbsError,   // all rows x classes; `points` is winning-class only
               flipMarginMax: bt.flipMarginMax, flipMarginRel: bt.flipMarginRel,
               flipsWithinNoise: bt.flipsWithinNoise,
+              undecidableRows: bt.tieRows, decidableRows: bt.decidable,
+              agreementOverDecidable: bt.decidable > 0
+                ? r2(1 - bt.flippedDecidable / bt.decidable) : null,
             };
             emit("log", stage, `encrypted tier over the page's own corpus: ${bt.rows} of `
               + `${bt.rowsOffered} rows in one ciphertext (${bt.rowsPerCiphertext} fit at this `
