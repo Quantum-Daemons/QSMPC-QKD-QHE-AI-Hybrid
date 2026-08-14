@@ -86,16 +86,29 @@ export function EncryptedAgreementChart({ plot }: { plot: EncryptedAgreementPlot
         plaintext score. The diagonal is exact agreement. Top-1 mismatches:{" "}
         <strong>{mismatches}</strong> of {plot.rows}. All {plot.rows} rows travelled in a single
         ciphertext, so they cost the homomorphic work of one.
-        {plot.undecidableRows != null && plot.undecidableRows > 0 ? (
-          <>
-            {" "}<strong>{plot.undecidableRows} of those {plot.rows} rows are scored identically
-            across classes by the plaintext model itself</strong>, so its own top-1 there comes from
-            argmax tie-breaking and the encrypted outcome is decided by encryption noise — they
-            carry no signal either way, and the count above moves between runs because of them.
-            Over the {plot.decidableRows} rows the model does decide, agreement is{" "}
-            <strong>{plot.agreementOverDecidable != null
-              ? plot.agreementOverDecidable.toFixed(2) : "not computed"}</strong>.
-          </>
+        {/* AT ZERO TOO. Gated on `> 0` first, which put the disclosure on genomics and hid it on
+            telecom - and telecom's zero is the informative case: it is what makes that page's 1.00
+            a different claim from genomics' 1.00. Suppressing a count because it is zero is the
+            same conditional-disclosure defect this sentence exists to fix, one level down, and it
+            is the third surface this round on which that gate had to be removed. */}
+        {plot.undecidableRows != null ? (
+          plot.undecidableRows > 0 ? (
+            <>
+              {" "}<strong>{plot.undecidableRows} of those {plot.rows} rows are scored identically
+              across classes by the plaintext model itself</strong>, so its own top-1 there comes
+              from argmax tie-breaking and the encrypted outcome is decided by encryption noise —
+              they carry no signal either way, and the count above moves between runs because of
+              them. Over the {plot.decidableRows} rows the model does decide, agreement is{" "}
+              <strong>{plot.agreementOverDecidable != null
+                ? plot.agreementOverDecidable.toFixed(2) : "not computed"}</strong>.
+            </>
+          ) : (
+            <>
+              {" "}<strong>None</strong> of these {plot.rows} rows is a tie in the plaintext model —
+              it separates every one of them — so the figure above is over rows that carry a real
+              decision, and the agreement is not diluted by any coin toss.
+            </>
+          )
         ) : null}
         {/* SCOPE, stated because the first version of this caption did not state it and was read
             wrong as a result. One point is plotted per row - the WINNING class only - so `worst`
