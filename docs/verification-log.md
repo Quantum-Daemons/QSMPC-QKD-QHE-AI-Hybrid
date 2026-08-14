@@ -943,3 +943,25 @@ sloppy part, not the conclusion.
 
 No `metric_overwritten` on any page. No `NaN`, `undefined` or `[object Object]`. No horizontal
 overflow.
+
+### Re-verified on the deployed bundle after the adversarial review
+
+Redeployed from GitHub at `d8bf7ac` (build exit 0, container age 6 s, bundle `index-BhIF87WC.js`).
+
+Genomics, live: `encrypted_agreement` **0.87** this run against **0.83** on the previous deployed
+run - the same 30 fixed rows and the same model, moving by chance - while
+`encrypted_agreement_over_decidable` reads **1.00 over 23 rows** on both. That contrast is the
+finding: the headline is 23% coin toss and the decidable rate is stable and perfect.
+
+Medical, live, with the scopes separated:
+
+| stage | rotations | rotate ms | stage ms | share |
+|---|---|---|---|---|
+| student, convolution | 16 | 56.28 | 84.35 | **0.67** |
+| student, dense layers | 136 | 440.34 | 506.69 | **0.87** |
+
+84.35 + 506.69 = 591.04, which is `fhe_encrypted_student_ms` exactly. Compare the figure this round
+published before the review: a 10% convolution rotation share, computed by dividing the first row's
+rotate time by the last row's total.
+
+No `metric_overwritten`, no `NaN`/`undefined`/`[object Object]`, no horizontal overflow.
