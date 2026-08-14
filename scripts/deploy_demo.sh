@@ -99,7 +99,12 @@ deploy_branch() {
   # that was reversed without a record. `.dockerignore` excludes `submodules/`, so they cannot reach
   # the image; deleting someone's working tree is not this script's call, but going quiet about it is
   # how "the box equals the commit" becomes an assumption instead of a fact.
-  local untracked; untracked=$(remote "git status --porcelain | grep -c '^??'" || echo 0)
+  # `grep -c` prints 0 AND exits 1 when nothing matches, so `|| echo 0` appended a SECOND zero and
+  # the count arrived as "0\n0" - non-empty, so the NOTE fired on every clean deploy with an empty
+  # list under it. A warning that always fires is a warning nobody reads, which is the failure this
+  # block was written to avoid. `grep -c ... || true` keeps the count and discards the status.
+  local untracked; untracked=$(remote "git status --porcelain | grep -c '^??' || true")
+  untracked=$(printf '%s' "$untracked" | tr -dc '0-9')
   if [ "${untracked:-0}" != "0" ]; then
     printf '  NOTE  %s untracked path(s) on the box that this commit does not describe:\n' "$untracked"
     remote "git status --porcelain | grep '^??' | head -12" | sed 's/^/          /'

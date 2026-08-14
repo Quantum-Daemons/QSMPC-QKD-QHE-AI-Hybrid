@@ -34,8 +34,16 @@ export interface QkdLink {
   /** Ordered intermediate nodes for a VIRT link. Each one handles the key in plaintext. */
   virt_next_hop: string[];
   phys_channel_att: number | null;
-  skr: number;
-  eskr: number;
+  /** ETSI GS QKD 015 names these `skr`/`eskr` and defines both as a secret key RATE in bit/s.
+   *  This simulation has no wall-clock model of the quantum channel, so it cannot produce one -
+   *  see the note on `keyBudgetBits` below. They are carried as `null` rather than filled with a
+   *  session total, which is what they held until Round 42: a number of the wrong dimension under
+   *  a spec field name is worse than an absent one, because the field name vouches for it. */
+  skr: number | null;
+  eskr: number | null;
+  /** What this run actually produced, in bits - the quantity the allocation budget is denominated
+   *  in, and the one the panel renders with its unit. */
+  key_budget_bits: number;
   qkdl_applications: string[];
 }
 
@@ -76,13 +84,37 @@ export const linkTrustNote = trustNote;
 export function buildTopology(opts: {
   usecase: string;
   distanceKm: number;
-  skrBitsPerSec: number;
+  /** Key material this run PRODUCED, in BITS. Not a rate, and the name now says so.
+   *
+   *  It was `skrBitsPerSec`, and the caller passes `secure_key_bits` - a total, 1915 - which then
+   *  landed in ETSI GS QKD 015's `skr` and `eskr`. `src/qsh/qkd/sdn_controller.py:107` documents
+   *  those fields as `secret key rate, bit/s` and logs them that way, so a reader who knows the spec
+   *  read a session total as bits per second. The checklist already carries the sentence that
+   *  condemns it, about these same two quantities: "`secure_key_bits` must equal `skr` times the
+   *  pulse count, NOT `skr` itself ... Dimensional mismatch is the check."
+   *
+   *  WHY THIS IS NOT CONVERTED INTO A RATE. Bits per second needs a pulse repetition rate, and this
+   *  simulation has no wall-clock model of the quantum channel: `secretKeyRate` in `quantumSim.ts`
+   *  is `(secureFraction * nSift) / nPulses` - per PULSE - and `pulses` is a count. A repetition
+   *  rate is a property of apparatus (100 MHz in the free-space experiment this repo already cites,
+   *  2.5 GHz in the 64 Mbps fibre demonstration), and `README.md` states that no QKD device exists
+   *  here, calling that "a boundary of the deliverable, not a gap in it". Adopting a clock would
+   *  import a number from equipment this project does not have - which is exactly what the comment
+   *  at `quantumSim.ts:99-103` already refuses to do with that same 100 MHz figure.
+   *
+   *  Surveyed 2026-08-15 for a library that could supply one honestly: TNO-Quantum
+   *  `communication.qkd_key_rate` (Apache-2.0) computes key rate against loss and pulse count, per
+   *  pulse; QKDNetSim is GPL-2.0 and already excluded from this project's commercial-OK set;
+   *  SeQUeNCe is a network simulator and would still require asserting a clock. None supplies a
+   *  repetition rate, because none can - it is a fact about hardware, not a computed quantity.
+   */
+  keyBudgetBits: number;
   qkdEnabled: boolean;
   saeId?: string;
   /** Longest single quantum span before a trusted relay is required, km. */
   maxSpanKm?: number;
 }): SdnTopology {
-  const { usecase, distanceKm, skrBitsPerSec, qkdEnabled } = opts;
+  const { usecase, distanceKm, keyBudgetBits, qkdEnabled } = opts;
   const maxSpan = opts.maxSpanKm ?? 80;
   const saeId = opts.saeId ?? "sae-mcp-agent";
 
@@ -110,14 +142,14 @@ export function buildTopology(opts: {
     links.push(
       { qkdl_id: "qkdl-a-r", qkdl_type: "PHYS", qkdl_local_qkdn_id: "qkdn-a",
         qkdl_remote_qkdn_id: "qkdn-relay", virt_next_hop: [], phys_channel_att: half * 0.2,
-        skr: skrBitsPerSec, eskr: skrBitsPerSec, qkdl_applications: [] },
+        skr: null, eskr: null, key_budget_bits: keyBudgetBits, qkdl_applications: [] },
       { qkdl_id: "qkdl-r-b", qkdl_type: "PHYS", qkdl_local_qkdn_id: "qkdn-relay",
         qkdl_remote_qkdn_id: "qkdn-b", virt_next_hop: [], phys_channel_att: half * 0.2,
-        skr: skrBitsPerSec, eskr: skrBitsPerSec, qkdl_applications: [] },
+        skr: null, eskr: null, key_budget_bits: keyBudgetBits, qkdl_applications: [] },
       // Clause 5.4. A relayed association is never better than its weakest hop.
       { qkdl_id: "qkdl-a-b", qkdl_type: "VIRT", qkdl_local_qkdn_id: "qkdn-a",
         qkdl_remote_qkdn_id: "qkdn-b", virt_next_hop: ["qkdn-relay"], phys_channel_att: null,
-        skr: skrBitsPerSec, eskr: skrBitsPerSec, qkdl_applications: [saeId] },
+        skr: null, eskr: null, key_budget_bits: keyBudgetBits, qkdl_applications: [saeId] },
     );
     notifications.push(`${distanceKm} km exceeds the ${maxSpan} km single-span limit, so the `
       + "controller created a VIRT key association through a trusted relay (clause 5.4). "
@@ -125,7 +157,7 @@ export function buildTopology(opts: {
   } else {
     links.push({ qkdl_id: "qkdl-a-b", qkdl_type: "PHYS", qkdl_local_qkdn_id: "qkdn-a",
       qkdl_remote_qkdn_id: "qkdn-b", virt_next_hop: [], phys_channel_att: distanceKm * 0.2,
-      skr: skrBitsPerSec, eskr: skrBitsPerSec, qkdl_applications: [saeId] });
+      skr: null, eskr: null, key_budget_bits: keyBudgetBits, qkdl_applications: [saeId] });
     notifications.push(`PHYS link created over a single ${distanceKm} km span (clause 5.3) — `
       + "no intermediate node handles the key.");
   }
@@ -150,10 +182,14 @@ export function allocate(topo: SdnTopology, appId: string, bits: number): number
   const app = topo.apps.find((x) => x.app_id === appId);
   if (!app) return 0;
   const backing = topo.links.filter((l) => app.backing_qkdl_id.includes(l.qkdl_id));
-  const budget = backing.reduce((s, l) => s + l.eskr, 0);
+  // Denominated in BITS, which is what an allocation is. This drew down `eskr` until Round 42 -
+  // the ETSI rate field was doubling as the budget ledger, which is why a session total ended up
+  // in it in the first place. Subtracting granted bits from a bit/s field is the dimensional error
+  // one layer below the one the panel displayed.
+  const budget = backing.reduce((s, l) => s + l.key_budget_bits, 0);
   const granted = Math.max(0, Math.floor(Math.min(bits, budget)));
   app.consumed_bits += granted;
-  for (const l of backing) l.eskr = Math.max(0, l.eskr - granted);
+  for (const l of backing) l.key_budget_bits = Math.max(0, l.key_budget_bits - granted);
   return granted;
 }
 
