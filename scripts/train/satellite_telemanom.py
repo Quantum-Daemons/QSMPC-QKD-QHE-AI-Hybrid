@@ -6,10 +6,16 @@
 
 WHY THIS DATASET AND NOT SMAP/MSL
     The bundled NASA SMAP/MSL sample is kept for the browser demo, but it is not a defensible
-    benchmark: essentially every result on it is reported with point-adjusted F1, and TSB-AD
-    (AAAI 2022, arXiv:2109.05257) showed that under point adjustment "even a random anomaly score
+    benchmark: essentially every result on it is reported with point-adjusted F1, and Kim et al.
+    (AAAI-22, arXiv:2109.05257) showed that under point adjustment "even a random anomaly score
     can easily turn into a state-of-the-art TAD method". ESA-ADB is real ESA telemetry with
     event-level annotations and a published event-wise protocol.
+
+    That attribution read "TSB-AD (AAAI 2022, arXiv:2109.05257)" until Round 40, five lines above the
+    paragraph below documenting this very conflation. `references/REFERENCES.md` states that
+    **TSB-AD has no arXiv ID at all** and that "an entry that carries an arXiv ID for TSB-AD is wrong
+    by construction"; `src/qsh/models/metrics.py` has carried the quote correctly attributed to Kim
+    et al. throughout. Fifth instance in this repository of a fix reaching one of two twins.
 
     The citation and the number were both WRONG until Round 33. This said TSB-AD "showed a uniform
     random score ranks 26th of 32 detectors", which could not be verified: TSB-AD's abstract describes
