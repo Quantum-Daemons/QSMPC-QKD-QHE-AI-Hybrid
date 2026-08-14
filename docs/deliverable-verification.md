@@ -1491,6 +1491,66 @@ Neither fact touches the reason for declining. *Reopens if* ONNX Runtime Web's W
 provider completes a session for the medical ResNet - a fact about the dependency, checked by running
 the probe that already exists, not by re-reading the spec's maturity.
 
+## Round 41: every gate names a boundary and checks one side of it
+
+Round 40 wrote five checks. **Each names a boundary and verifies one side of it**, and eight findings
+fall out of that single fact - the row but not the prose beneath it, TypeScript but not Python, the
+demo transport but not the backend, the deploy script's return but not its outgoing half. Each gate
+file's own header cites four or five previous one-of-two-twins defects; each was then scoped to one
+twin. The three-strikes rule for writing an invariant applies here at eight.
+
+**Two were worse than stale.** `check:qcnn-metrics` could be switched off by a single comment: it
+tested `!block.includes(metric)` over raw text, so deleting both `metric()` calls and leaving
+`// TODO: restore qcnn_inference_ms and qcnn_qubits here` made it print OK with the metrics gone -
+demonstrated with a negative control before the fix. And **Pause was dead in the full deployment**:
+`events.py` had only `pipeline_pause`, emitted from inside the gate - semantically the effect, under
+the browser's name for the request - so a paused backend run reached `"pausing"` and stayed there,
+with Resume and Step disabled forever. Rows `OR7`/`OR8` assert exactly that behaviour and were walked
+on the deployed page, which is client-only: the one transport where both events exist. They now say
+which side each was verified on, which is the smallest form of the fix this whole round is about.
+
+**The DAG was wrong for every use case on the backend.** `explainability` had no node on four flows,
+`qkd_optimize` none on two, `telemetry_anomaly` none on satellite, while finance drew
+`federated_training` that `standard_stages()` never runs. Demo mode agreed, so the
+"diagram shows a stage the pipeline does not run" defect this file was written to fix was live the
+whole time on the transport nobody looked at. `BACKEND_EXTRA` carries them, each labelled with the
+deployment that lights it, because a node dim for a good reason and a node dim because the diagram is
+wrong look identical.
+
+**Writing the prose-count gate reproduced its own subject, twice.** The first version matched digits
+and missed `at six` - one of the two instances it existed for - and its quoted-history exemption was
+per LINE, so a live claim sharing a sentence with a quotation was exempted. Both are recorded in the
+test rather than quietly fixed, because the pattern is the point: a gate covering one notation and
+not the other is the same defect one level up.
+
+**`\gitsha` could never name its own commit**, and that is a fact to state rather than a bug to fix:
+it reads `HEAD` at generation time, which is the parent of the commit that ships the output. It was
+four behind and asserting a row count three short of the tree. It now uses `git describe --dirty`, so
+a working tree that differs from `HEAD` says so instead of naming a clean commit the numbers do not
+describe. Separately, `report/build_data.py` rewrote four tracked files **on import** - an audit that
+imported it to reuse one function modified the repository. Verified fixed by measurement: the md5 of
+`report/generated` before and after an import is identical.
+
+**A signed record named two backends that did not run.** The demo replaces the FHE/MPC selects with a
+badge reading "node-seal CKKS + secret-sharing MPC", while the state kept the server defaults
+`tenseal-cpu` and `mpyc-shamir` - read nowhere except the ML-DSA-signed payload, under a comment
+claiming it records every selection that shaped the run. A signed record of the wrong thing is worse
+than an unsigned one, because the signature is what invites a reader to trust it.
+
+**Four areas were re-fact-checked and found sound**, recorded so the next round does not re-derive
+them: OptiQKD's `+14-25%` is correctly attributed to AML-QKD (arXiv:2603.04192) with the v1→v2
+downward revision noted and the repo's own retracted 48.8% marked as retracted; the QRNG reproduces
+SP 800-90B section 4.4.1's worked example and gates on the continuous tests rather than SP 800-22;
+`references/model-choice-vs-2026-practice.md` carries a dated re-check from 2026-08-13; and the BUSI
+licence is genuinely unresolvable - an independent attempt this round reproduced exactly the
+"a citation request is not a grant" conclusion `DATA_LICENSES.md` already states.
+
+**A correction to Round 40's own register entry.** It said SHARK and RHOMBUS "appear nowhere". True
+of the repository; `submodules/shark/` exists on the deploy box, untracked, along with nine other
+trees against the two the repository declares. `.dockerignore` keeps them out of the image. The
+sentence was written unqualified about a scope that had only been measured in one place - which is,
+again, this round's subject.
+
 ## Verification assets added in Rounds 22-23
 
 Two checks now exist that assert against sources OUTSIDE this repository. That is the point of both:
