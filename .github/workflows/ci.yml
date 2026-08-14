@@ -227,6 +227,18 @@ jobs:
         working-directory: web
         run: npm run check:combiner
 
+      # Structural check on a RELATION between two branches, which no type checker can see. The QCNN
+      # latency metrics were added to the private_inference call site and not to the qml_ids one, so
+      # telecom reported `primary_inference_backend = qcnn-trained` with no cost beside it while two
+      # checklist rows asserted the cost renders on every such page. tsc, the test suite and every
+      # gate above were green; the deployed telecom page said "inference not run".
+      #
+      # Fourth instance here of shipping one fix to one of two twins - the combiner length tag, the
+      # ITS combiner PRG, the federated mask round index, and this.
+      - name: QCNN cost metrics at every site claiming the backend
+        working-directory: web
+        run: npm run check:qcnn-metrics
+
       # The "combiner vectors are regenerated" check is deliberately NOT in this job. It runs
       # `python`, this job installs only Node, and it failed with ModuleNotFoundError the first time
       # it ever executed - added in the same round as the parity gate above and never observed to

@@ -1341,6 +1341,28 @@ parameters would not be survived by the hybrid. Neither condition holds today, n
 NOT cover is the reason this entry exists; a watch item that only lists reasons to relax is a
 reassurance, not a record.
 
+**And the round shipped its own class again, which is the entry that matters most here.** Putting the
+QCNN on the same cost axis as CKKS meant timing `qcnnInferTrained`. It has **two** call sites -
+`private_inference` for finance and medical, and `qml_ids` for telecom, which exists precisely
+because telecom has no `private_inference` stage. Only the first was instrumented, so the telecom
+page reported `primary_inference_backend = qcnn-trained` with no latency beside it, while the two
+checklist rows written in the same commit asserted the latency renders on every such page. **Rows
+that can only fail, added by the round whose stated job was removing rows that can only fail.**
+
+Nothing available could have caught it: `tsc` was green, the Python suite was green, and all
+thirteen local gates were green, because both branches are individually well-formed and the defect is
+the RELATION between them. It was found by running the deployed telecom page and reading "inference
+not run" - the fourth time this project has been saved by looking at the live site after every gate
+agreed.
+
+This is the fourth instance of one-fix-to-one-of-two-twins recorded here: the combiner length tag
+(Python, not the browser), the ITS combiner PRG (SHAKE-256 against a SHA-256 chain), the federated
+mask round index (TypeScript, not Python), and now this. So the response is the structural check
+rather than a fifth careful read: `web/scripts/check_qcnn_metrics_at_every_site.mjs` finds every site
+that CLAIMS the backend and requires the same metric set at each, keyed on the claim rather than on
+the function name - because a call made only for comparison carries no such obligation. Seeded with
+the real defect, it names the exact line.
+
 **The generalisation this round is willing to defend.** When the same defect class appears three
 times, stop fixing instances and write the invariant. Round 38's disclosure defect was shipped four
 times with the scope wrong; the parity test written instead of a fifth fix **failed on its first
