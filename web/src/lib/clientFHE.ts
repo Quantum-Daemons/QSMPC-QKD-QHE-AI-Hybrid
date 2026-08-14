@@ -111,7 +111,7 @@ export interface FHEResult {
    *
    *  Measured in Round 38: rotations are 57% of a small dense layer's wall-clock, 70% of the
    *  published student's convolution and 86% of its dense layers, at a per-rotation cost of
-   *  3.2-4.2 ms throughout. So key-switching does dominate, and the per-rotation figure is the
+   *  3.10-4.39 ms across every stage measured. So key-switching does dominate, and the per-rotation figure is the
    *  comparable unit for the same reason.
    *
    *  An earlier revision of this comment said 10% for the convolution and that im2col encoding
