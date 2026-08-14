@@ -1032,3 +1032,28 @@ student's final one. Average pooling over 2x2 divides the deviation by about two
 layers see it, so the end-to-end figure understates the convolution. Under one key the larger of the
 two was invisible, which is the concrete form of what that metric's own comment had claimed to
 prevent.
+
+### The disclosure had to be shipped four times, so the fifth was an assertion
+
+Checking the second-pass fixes myself turned up two more instances of the same defect, both mine:
+telecom's batch LOG had no undecidable sentence while its metrics and caption did, and the caption
+was gated on `undecidableRows > 0` - so telecom's **zero**, the value that makes its 1.00 a different
+claim from genomics' 1.00, rendered nothing at all.
+
+That is four mis-scoped shipments of one disclosure: one of two batch paths, then metrics without the
+caption, then telecom's log, then suppressed at zero. Fixing instances was not working, so
+`tests/test_agreement_disclosure_parity.py` asserts the invariant: every path emitting
+`encrypted_agreement` must emit `encrypted_agreement_rows`, `encrypted_undecidable_rows`,
+`encrypted_decidable_rows` and `encrypted_agreement_over_decidable` from the same block, and the
+caption must have a zero branch rather than a `> 0` gate.
+
+**It failed on its first run**, on a third `encrypted_agreement` call site nobody had counted - the
+no-corpus path, publishing a 0/1 over a single row with no denominator, no tie count and no decidable
+rate. Three adversarial review passes and the author had all walked past it; a count-parity
+assertion found it in one run. Both assertions were then confirmed able to fail by seeding the two
+defect shapes they exist for.
+
+Confirmed on the deploy at `b1437f4`, telecom, all three surfaces: the log reads *"0 of the 512 rows
+are scored identically across classes by the plaintext model itself; over the 512 it does decide,
+agreement is 1"*, the caption reads *"None of these 512 rows is a tie in the plaintext model"*, and
+the metrics read 0 / 512 / 1.00.
