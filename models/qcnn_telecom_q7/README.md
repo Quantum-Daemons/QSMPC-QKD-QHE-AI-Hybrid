@@ -49,6 +49,15 @@ per-class table is in [`references/qcnn-width-ablation.md`](../../references/qcn
 because a single macro number would hide that. With one seed those two deltas are directional rather
 than settled.
 
+**No five-seed spread is published for this circuit**, for the same reason as the 8-wire model it is
+compared against: one run is 6 layers x 400 epochs. Every figure on this card is therefore a draw and
+not a median. The medical card records what that distinction cost where it WAS measured - its seed 0
+turned out to be the worst of five, understating that circuit by a wide margin - so the absence of a
+sweep here is a limit on what these numbers support, not a sign that they are stable.
+
+**Seed position:** unmeasured - no five-seed spread was run for this circuit, so both the macro
+number and the two per-class deltas above are one draw and not a median.
+
 ## Reproducing
 
     python scripts/train/qcnn_variational.py --usecase telecom --layers 6 --epochs 400 --seed 0 --threads 1 --qubits 7
