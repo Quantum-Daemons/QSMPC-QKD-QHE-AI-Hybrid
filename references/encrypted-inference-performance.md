@@ -20,7 +20,9 @@ key-switch, which is the primitive the CKKS literature benchmarks, and model siz
 
 The obvious derivation - `fhe_linear_ms / fhe_dense_rotations`, both of which the page already
 printed side by side - is wrong, and wrong by a lot. `fhe_linear_ms` is the measured wall-clock
-multiplied by `benchScale()` for the model size selected in the Parameters panel, while
+multiplied by `benchScale()` for the run's model size - a value that comes from the config
+default, since the Parameters-panel selector for it was removed in Round 20 and this document
+described it as current - while
 `fhe_dense_rotations` is a raw count from the loop. On the genomics page the scale factor is 33, so
 that division reads **159.9 ms per rotation against a true 3.18**.
 
@@ -162,13 +164,18 @@ a time anything took. And the line under it, labelled "client compute (wall-cloc
 0.07 ms, is the plaintext reference inference only - which, sitting directly beneath a 700 ms total,
 read as the whole computation costing 0.07 ms in the browser. That label now says what it is.
 
-`encrypted_tier_measured_ms` is the measured sum: CKKS linear, plus the convolution where there is
-one, plus the secret-shared non-linear stage.
+`encrypted_tier_measured_ms` is the measured sum: the page's bundled linear model, plus the whole
+published student where there is one - convolution AND its dense layers - plus the secret-shared
+non-linear stage. Stated that way because an earlier revision of this document said "plus the
+convolution", which is the same scope error the section above withdraws: `real.fheMs` adds
+`conv.convMs`, and on the published-weights path that field carries the student's total, not the
+convolution's. The per-stage split is in `docs/verification-log.md` under "with the scopes
+separated".
 
 | use case | measured encrypted inference | inside a 1-10 s window |
 |---|---|---|
 | finance | 700 ms | yes |
-| medical | 1,269 ms (of which 579 ms is the encrypted convolution) | yes |
+| medical | 1,269 ms (convolution 84.35 ms, the student's dense layers 506.69 ms) | yes |
 
 Both are inside it with room. The page reports the verdict rather than leaving two numbers for a
 reader to compare, and a page that leaves the window will say so.

@@ -5,6 +5,7 @@
 // realises the report's "MCP + quantum-safe layer for agentic AI" entirely in the browser. Reuses
 // @noble/post-quantum (same as crypto.ts) + WebCrypto; used by the Agentic-AI page and the demo-mode
 // Validations mirror so the public demo runs the MCP demo with zero server compute.
+import { shake256 } from "@noble/hashes/sha3.js";
 import { ml_dsa65 } from "@noble/post-quantum/ml-dsa.js";
 import { ml_kem768 } from "@noble/post-quantum/ml-kem.js";
 import { x25519 } from "@noble/curves/ed25519.js";
@@ -35,27 +36,36 @@ const packBits = (bits: Uint8Array): Uint8Array => {
 async function sha256(bytes: Uint8Array): Promise<Uint8Array> {
   return new Uint8Array(await crypto.subtle.digest("SHA-256", ab(bytes)));
 }
-// SHA-256 counter-mode PRG for the Toeplitz seed (WebCrypto has no SHAKE-256, so this mirrors
-// transport._mix_qkd_its's SHAKE seed with a SHA-256 chain — the same computationally-seeded strong-extractor model).
-async function expandBytes(seedInput: Uint8Array, nBytes: number): Promise<Uint8Array> {
-  const out = new Uint8Array(nBytes); let off = 0, ctr = 0;
-  while (off < nBytes) {
-    const blk = new Uint8Array(seedInput.length + 4);
-    blk.set(seedInput); new DataView(blk.buffer).setUint32(seedInput.length, ctr++);
-    const h = await sha256(blk);
-    const take = Math.min(h.length, nBytes - off);
-    out.set(h.subarray(0, take), off); off += take;
-  }
-  return out;
-}
-// Information-theoretic leakage-resilient combiner (mirror of transport._mix_qkd_its; Giestinhas & Spiller
-// 2026): a modified-Toeplitz + Leftover-Hash-Lemma strong extractor over pqc||qkd whose 256-bit output keeps
-// the min-entropy of WHICHEVER input stays uncompromised — unlike HKDF (computational) or a naive XOR/concat.
-async function itsCombine(pqc: Uint8Array, qkd: Uint8Array): Promise<Uint8Array> {
+// Information-theoretic leakage-resilient combiner. A BYTE-FOR-BYTE mirror of
+// `transport._mix_qkd_its` (Giestinhas & Spiller 2026): a modified-Toeplitz + Leftover-Hash-Lemma
+// strong extractor over pqc||qkd whose 256-bit output keeps the min-entropy of WHICHEVER input stays
+// uncompromised — unlike HKDF (computational) or a naive XOR/concat.
+//
+// "Mirror" is a MEASURED claim here, not an aspiration. Until Round 39 this seeded its Toeplitz
+// matrix from a SHA-256 counter chain, under a comment explaining that "WebCrypto has no SHAKE-256".
+// That was true of WebCrypto and irrelevant to this bundle: `@noble/hashes` ships `shake256` and
+// three other modules here already import from it. So the two implementations derived DIFFERENT keys
+// from the same inputs while the comment asserted they mirrored. Measured on the tree that shipped:
+//
+//     python  : 72f108ccd0dc879a6752ec520a14167e2898723fc184b88a3c4a3ba5690a8fa1
+//     browser : c05240436fae8508a61edd91376f4c0d74b69dfeb46bbe3f924a24a41a59f9f8
+//
+// That is the SAME defect as the hybrid-KEM divergence Round 38 shipped and Round 39 fixed — one
+// scheme, two languages, different bytes, a comment claiming parity. This one was found by
+// inventory rather than by a gate, so it now has the gate: `scripts/export_combiner_vectors.py`
+// emits ITS vectors from the Python function and `npm run check:combiner` reproduces them through
+// this module.
+// Exported for `web/scripts/check_hybrid_combiner.mjs`, which reproduces committed Python vectors
+// through THIS function. The alternative was a re-implementation in the gate, which would have
+// agreed with itself while this module drifted - the precise failure the gate exists to catch.
+export async function itsCombine(pqc: Uint8Array, qkd: Uint8Array): Promise<Uint8Array> {
   const combined = bitsOf(concat(pqc, qkd));                 // info-theoretic input material
   const outBits = 256;                                       // 32-byte AES-256 session key
   const needT = outBits + combined.length - 1;
-  const tbytes = await expandBytes(concat(new TextEncoder().encode("qsh/its-combiner/v1\x00"), pqc, qkd), Math.ceil(needT / 8));
+  const tbytes = shake256(
+    concat(enc.encode("qsh/its-combiner/v1\x00"), pqc, qkd),
+    { dkLen: Math.ceil(needT / 8) },
+  );
   const tvec = bitsOf(tbytes);
   const out = new Uint8Array(outBits);
   for (let i = 0; i < outBits; i++) { let acc = 0; for (let j = 0; j < combined.length; j++) acc ^= tvec[i + j] & combined[j]; out[i] = acc & 1; }

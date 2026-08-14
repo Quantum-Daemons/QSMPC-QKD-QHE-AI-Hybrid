@@ -225,7 +225,18 @@ class QSMPCComputeStage(Stage):
 
     def run(self, ctx, bus, reg):
         op = ctx.config.get("qsmpc_op", "psi")
-        key = ctx.data.get("session_key", b"\x00" * 32)
+        # No all-zero default. `ctx.data.get("session_key", b"\x00" * 32)` would have run the
+        # keyed-hash PSI under a key of 32 zero bytes - public knowledge - while the log line below
+        # still read "PSI complete", which is a security property the run did not provide reported as
+        # if it had. `PQCHandshakeStage` always precedes this stage and a failed stage aborts the run,
+        # so this raise is unreachable today; that is why making it a raise costs nothing, and this
+        # round moved key material between stages, which is exactly the change that would reach it.
+        # The browser twin at `web/src/lib/clientCompute.ts` refuses identically.
+        key = ctx.data.get("session_key")
+        if not key:
+            raise RuntimeError(
+                "qsmpc_compute needs the PQC session key: keyed-hash PSI has no unkeyed mode"
+            )
         if op == "psi":
             from ..qsmpc.qot import multiparty_psi, private_set_intersection
 
