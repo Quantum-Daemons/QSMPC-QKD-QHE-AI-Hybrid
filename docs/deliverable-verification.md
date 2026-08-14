@@ -1154,11 +1154,19 @@ is stated rather than quietly averaged over. Both comparators were fetched and r
 [`encrypted-inference-performance.md`](../references/encrypted-inference-performance.md) quotes the
 rotation rows verbatim.
 
-**A claim this repository asserted in three comments turned out to be half wrong.** "Key-switching
-dominates CKKS cost" holds for the dense layer, where rotations are 57% of wall-clock, and fails for
-the convolution, where they are 10% and im2col encoding over 4 channels by 196 patches is the larger
-term. The per-rotation cost is stable across both; the share is not. The comments now say what was
-measured, and `PF7` keeps them honest.
+**A claim this round refuted, and then had to un-refute.** The round reported that "key-switching
+dominates CKKS cost" held for the dense layer at 57% and failed for the convolution at 10%, and
+rewrote three comments accordingly. The 10% divided the convolution block's rotation time by the
+WHOLE student's wall-clock, because `encryptedStudentInference` returns `{...conv, fheMs}` - the
+spread carries the conv block's rotation figures and `fheMs` is overridden with the total. Measured
+with the scopes separated: **57% dense, 70% convolution, 86% the student's dense layers**, summing
+to the total exactly. Key-switching dominates everywhere; the comments are restored and now carry
+the measurement. `PF7` and the scope-named metrics keep the two apart.
+
+This was caught by an adversarial review of the round's own diff, not by a test or by looking at the
+page - every figure rendered plausibly. The round existed to ask "over what set is this number
+computed, and does the sentence beside it describe that set"; it had asked that of the code it was
+fixing and not of the code it was adding.
 
 **The ring degree: raised to 16384, measured, reverted.** Every FHE figure roughly doubled - keygen
 255 to 477 ms on the first click, per-rotation 3.10 to 6.73, precision 25 to 24 bits - and the

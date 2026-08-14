@@ -847,8 +847,9 @@ measured 3.18**. `rotateVector` is now timed directly.
 | page | rotations | rotate ms | ms/rotation |
 |---|---|---|---|
 | finance | 3 | 9.29 | 3.10 |
-| medical, dense | 3 | 9.65 | 3.22 |
-| medical, convolution | 16 | 57.59 | 3.60 |
+| medical, bundled linear head | 3 | 13.17 | 4.39 |
+| medical, student convolution | 16 | 67.81 | 4.24 |
+| medical, student dense layers | 136 | 421.40 | 3.10 |
 | telecom, 512-row batch | 24 | - | 3.17 |
 | genomics | 6 | 19.07 | 3.18 |
 
@@ -857,9 +858,18 @@ CKKS `EvaluateRotate` at n=8192/log(q)=218 reads **6830 us in Chrome**. Same ord
 roughly 2.2x faster. The n=16384 row is at log(q)=438 against 200 bits here and is recorded as NOT
 comparable.
 
-**A claim refuted by measuring it.** Rotations are 57% of the dense layer's wall-clock and **10%** of
-the convolution's, where im2col encoding over 4 channels by 196 patches dominates. Three comments
-asserting "key-switching dominates CKKS cost" now say what was measured.
+**A claim first refuted and then restored.** The round reported rotations at 57% of the dense layer
+and 10% of the convolution, and rewrote three comments around it. The 10% used the whole student's
+wall-clock as the convolution's denominator. Re-measured with the scopes separated:
+
+| stage | rotations | rotate ms | stage ms | share |
+|---|---|---|---|---|
+| bundled linear model | 3 | 13.17 | 23.2 | 57% |
+| student, convolution | 16 | 67.81 | 96.60 | **70%** |
+| student, dense layers | 136 | 421.40 | 490.23 | **86%** |
+
+96.60 + 490.23 = 586.83, the student's total, with nothing unattributed. Key-switching dominates
+every path; the original comments were right and are restored.
 
 ### Ring degree 16384: measured and reverted
 
