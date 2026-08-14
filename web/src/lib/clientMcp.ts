@@ -122,7 +122,15 @@ async function hybridSecret(
 ): Promise<Uint8Array> {
   const ikm = new Uint8Array(pq.length + classical.length);
   ikm.set(pq, 0); ikm.set(classical, pq.length);
-  const label = enc.encode("qsh/hybrid-kem/v2 ML-KEM-768+X25519|");
+  // ITS OWN LABEL, not the handshake's. SP 800-227 section 4.6.3: "The domain separator
+  // domain_sep should be used to uniquely identify the composite scheme in use (e.g., P1, P2, order
+  // of composition, choice of parameter set, key combiner, KDF)." This is a DIFFERENT composite
+  // scheme from `pqc_handshake`: there the classical half is ephemeral-static X25519 and the
+  // transcript is c1 || c2 || ek1 || ek2; here it is static-static between two agents, so there is
+  // no ephemeral c2 and the transcript is c1 || ek1 || xA || xB. Reusing `qsh/hybrid-kem/v2` for
+  // both - which the first version of this fix did - puts two constructions under one separator,
+  // which is the thing a domain separator exists to prevent.
+  const label = enc.encode("qsh/mcp-agent-kem/v1 ML-KEM-768+X25519-static|");
   const info = new Uint8Array(label.length + transcript.length);
   info.set(label, 0); info.set(transcript, label.length);
   const base = await crypto.subtle.importKey("raw", ab(ikm), "HKDF", false, ["deriveBits"]);

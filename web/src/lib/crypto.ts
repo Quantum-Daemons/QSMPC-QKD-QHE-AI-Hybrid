@@ -60,6 +60,14 @@ export function mlkemDemo(): KemDemo {
   // it. See src/qsh/pqc/hybrid_kem.py::encapsulate for the full note. v2 because the derived
   // key changes and deriving a different key under an unchanged label is what domain
   // separation exists to prevent.
+  // The parameter set is IN the separator, not assumed. SP 800-227 s4.6.3 requires domain_sep to
+  // identify the composite scheme including the "choice of parameter set", and this was the fixed
+  // literal "ML-KEM-768" while `kemImpl()` genuinely switches to ML-KEM-1024 on the category-5 path -
+  // measured on the deployed page, ciphertext 1088 bytes to 1568. It also removes a concatenation
+  // ambiguity: the transcript joins fixed-width fields with no length prefixes, which is unambiguous
+  // only within one parameter set.
+  // This demo path is fixed at ML-KEM-768, so the label is written out rather than derived -
+  // but it is written out BESIDE the parameter set it describes, three lines from the keygen.
   const INFO = new TextEncoder().encode("qsh/hybrid-kem/v2 ML-KEM-768+X25519|");
   const combine = (pq: Uint8Array, cl: Uint8Array) => {
     const transcript = new Uint8Array(
