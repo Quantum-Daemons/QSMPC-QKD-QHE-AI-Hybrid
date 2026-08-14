@@ -231,3 +231,42 @@ def test_a_scatter_category_is_never_colour_alone() -> None:
         "`RealDataScatter` uses circle against triangle - and name the shape in the series name so "
         "the legend and tooltip say it too."
     )
+
+
+def test_a_shaped_scatter_does_not_animate_its_symbols() -> None:
+    """A `shape` that renders at zero size is worse than no `shape` at all.
+
+    FOUND ON THE DEPLOYED PAGE, WITH EVERY GATE GREEN. Round 42 added `shape="circle"` and
+    `shape="cross"` to the agreement scatter for SC 1.4.1 and shipped it. On the live site all 30
+    symbols were in the DOM, correctly positioned, and rendered `d="M0,0"` - a legend naming two
+    shapes above an empty plot area. Passing `shape` moves recharts off its default renderer onto
+    `<Symbols>`, whose `size` is an animated prop, and with animation left on the symbols never left
+    their `from` state.
+
+    `RealDataScatter` in the same file has carried `shape` AND `isAnimationActive={false}` together
+    since Round 34. Half the pattern was copied - the half the checklist row named.
+
+    The gate above cannot catch this: it reads the source, finds the `shape` prop it asked for, and
+    has no way to see a path of length zero. So this is the pairing asserted as its own invariant,
+    which is what "write the invariant at the boundary" means when the boundary is between a prop
+    being PRESENT and it having an EFFECT.
+    """
+    bad: list[str] = []
+    for path in sorted(COMPONENTS.glob("*.tsx")):
+        text = path.read_text()
+        for block in _CHART_BLOCK.finditer(text):
+            for attrs in _scatter_tags(block.group(1)):
+                if "shape=" in attrs and "isAnimationActive={false}" not in attrs:
+                    line = text[: block.start()].count("\n") + 1
+                    name = re.search(r'name=\{?"?([^"}\n]+)', attrs)
+                    bad.append(
+                        f"{path.name}:{line} series "
+                        f"{(name.group(1).strip() if name else '?')!r} has shape but animates"
+                    )
+    assert not bad, (
+        "these scatter series pass `shape` while recharts animates the symbol size:\n  "
+        + "\n  ".join(bad)
+        + "\n\nThey will render d=\"M0,0\" - present, positioned, invisible. Add "
+        "`isAnimationActive={false}`, as RealDataScatter does. A shape channel that draws nothing is "
+        "not an accessibility fix, it is a blank chart with a more detailed legend."
+    )
