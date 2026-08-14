@@ -10,12 +10,15 @@
     "preview": "vite preview --host",
     "check:pqc": "node scripts/check_mlkem_modulus_vectors.mjs",
     "check:qkd": "node scripts/check_qkd.mjs",
-    "check:qfl": "node scripts/check_qfl.mjs"
+    "check:qfl": "node scripts/check_qfl.mjs",
+    "check:combiner": "node scripts/check_hybrid_combiner.mjs",
+    "check:qcnn-metrics": "node scripts/check_qcnn_metrics_at_every_site.mjs"
   },
   "dependencies": {
     "@huggingface/transformers": "^4.2.0",
     "@mlc-ai/web-llm": "^0.2.84",
     "@noble/curves": "^2.2.0",
+    "@noble/hashes": "^2.2.0",
     "@noble/post-quantum": "^0.6.1",
     "@types/gif.js": "^0.2.5",
     "@xyflow/react": "^12.3.5",

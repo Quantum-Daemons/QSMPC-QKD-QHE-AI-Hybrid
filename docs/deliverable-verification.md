@@ -259,18 +259,33 @@ execution providers, not a WebGL one**, and Transformers.js is the same. The ins
 and WebGPU as alternatives, and this project took the one that exists. WebGPU is implemented, probed
 for a genuine hardware adapter, and declined when the adapter is a software rasteriser. Nothing is
 missing; the list simply named a technology the runtime does not offer.
+*Reopens if* ONNX Runtime Web ships a WebGL execution provider - a fact about the dependency, so it
+is checked by reading that release's provider list, not by re-arguing the decision. "It will not be
+implemented" is a statement about the runtime's capabilities and expires the moment they change.
 
 **ZeroGPU Space: blocked on a date, not on work.** Four consecutive rounds, the longest-carried item
 here. `spaces/qsh-inference/` exists, and `ProvenanceBadge` declares a `remote` tier no code path
-sets. The blocker is a Hugging Face account-age unlock around 2026-09-01. That is a condition, not a
+sets. **BLOCKED UNTIL 2026-09-01**, a Hugging Face account-age unlock. That is a condition, not a
 task, so it is recorded as one: **when the account unlocks, wire it or delete the Space and the
 `remote` tier together.** It must not appear in a fifth deferred list unqualified.
+
+Round 39 added the marker so the date is enforced rather than remembered:
+`tests/test_register_deadlines.py` fails from 2026-09-01 with no code change, which is the only way
+a gate can fire on an item whose defining property is that nobody is editing it. Four rounds of
+"still blocked" happened because the blocker was a sentence. **Do not move the date** when it goes
+red - wire the Space or delete it and the `remote` tier, then stamp this paragraph. Moving the date
+is how the arXiv deadline in item 11 reached Round 39.
 
 **OpenFHE `EvalBootstrapSetup` SIGSEGV: permanently worked around, on purpose.** Three rounds. The
 segfault is inside OpenFHE on AlmaLinux 9.7, and `fhe/backends.py` guards an `ImportError`, which a
 segfault is not. `make test` deselects it with `-m "not slow"`; `make test-all` still dies. Fixing an
 upstream crash on one host distribution is not this project's work, and the workaround is the
 outcome rather than a placeholder for one. Recorded as a decision.
+*Reopens if* the crash stops reproducing on the pinned OpenFHE version on EL9 - which CI already has
+standing evidence about, since the workflow runs that one deselected test on purpose with
+`QSH_REQUIRE_OPENFHE_BOOTSTRAP=1` on ubuntu-24.04. Two platforms, one of which passes, is the whole
+reason this is a host-specific workaround rather than a missing feature; if the EL9 host starts
+passing, the deselection is dead weight and `make test-all` should stop dying.
 
 **node-seal is on SEAL 4.1.2, and node-seal is the constraint, not us.** Promised in Round 19,
 tasked again in Round 21, never written, and then it dropped off the list without resolution. The
@@ -1013,6 +1028,18 @@ deadline is the point: an honest label with no deadline is a permanent resident.
 `README.md`, taken in this same round, is what that looks like after twenty-nine rounds - deferred with
 no condition attached, so it could not even fail the three-round rule.
 
+**DEADLINE EXECUTED Round 39.** None of the four was ever promoted, so all four were removed from
+`references/REFERENCES.md`; the arXiv IDs survive in one sentence there for anyone re-opening the
+search. It ran three rounds late, and the reason is the finding: the rule was correct, greppable and
+had **no executor**, so it was discharged only when someone happened to read the paragraph. That is
+the same shape as `DP7` - a checklist row that was right and ignored for five consecutive rounds -
+and as the disclosure that shipped four times with the wrong scope. A rule nobody is obliged to run
+is an intention, not a control. `tests/test_register_deadlines.py` now parses this file for its own
+`by **Round N**` sentences and fails once one passes undischarged, so the next deadline is enforced
+by the suite rather than by memory. The stamp above is the only thing that discharges one; the first
+draft of that test exempted paragraphs containing "promoted" or "removed", which is what a
+conditioning sentence says, so it passed while this very deadline was three rounds overdue.
+
 ### Two corrections to this file's own register, found while writing the above
 
 **The staged-PRS paragraph was describing a state that ended in Round 31**, and Round 32 fixed the
@@ -1210,6 +1237,171 @@ from a demo weight pattern that appeared nowhere else on the page. Verifying the
 more defects in numbers already being published - a metric key written twice with different values,
 a mismatch count with no margin beside it, and a caption whose scope was narrower than its sentence.
 Rows `MS1`-`MS5`.
+
+## Round 39: the round that reconciled Round 38 with itself
+
+Round 38 fixed a cross-language crypto defect across five sites and, in the same round, **introduced
+a new one**. It also left no trace of any of that work here: when Round 39 opened, `grep -c "SP
+800-227\|combiner"` over this file returned **0**. The round's largest finding was absent from the
+artefact whose entire purpose is that the standing per-round asks need not be re-derived, because
+the register is written last, when the round is already long.
+
+**The hybrid-KEM combiner: backend and browser derived DIFFERENT session keys for two rounds.**
+Round 38 hardened the combiner toward NIST SP 800-227 section 4.6.3, which requires the ciphertexts
+in the derivation for the IND-CCA-preserving property, and separately added an output-length tag so
+a 32-byte session key cannot be a prefix of a longer QOTP pad - HKDF-Expand for `L` bytes is a
+prefix of its own expansion for any `L' > L`. The tag went into `src/qsh/pqc/hybrid_kem.py` and into
+**none** of the three browser sites. Measured, not argued:
+
+```
+python info : qsh/hybrid-kem/v2 ML-KEM-768+X25519/L32|<transcript>
+browser info: qsh/hybrid-kem/v2 ML-KEM-768+X25519|<transcript>
+same session key?  False
+```
+
+Three shipped strings asserted the opposite, one of them rendered in the Validations panel. The
+commit that introduced the divergence is the one **immediately after** a commit message reading
+*"All four sites change together - they must, or backend and browser derive different keys."* The
+existing binding test was Python-only, so nothing could catch it.
+
+*What was actually wrong* was not the missing tag - it was that the same value had four definitions.
+Round 39 gave it **one**: `web/src/lib/hybridCombiner.ts` holds the browser's single definition, and
+`web/scripts/check_hybrid_combiner.mjs` reproduces committed Python vectors **through the real
+browser module** - not through a re-implementation, which would have agreed with itself while the
+browser drifted. Its fifth check greps the tree and fails if the scheme literal appears in more than
+one module, so the four-definition state cannot return. `scripts/export_combiner_vectors.py`
+generates the vectors from the production Python function, and CI diffs them, so a Python-side
+change that is not regenerated turns the parity gate red instead of leaving it green and wrong.
+
+**The backend logged a QKD mix that never happened.** `standard_stages()` ran `PQCHandshakeStage`
+**before** `QKDKeyAgreementStage`; the handshake read `ctx.data.get("qkd_key")`, which is `None` at
+that point, and the QKD stage then stored a key with no reader anywhere in `src/`, `web/src` or
+`api/` while logging *"mixed into session"*. `SatelliteQKDStage` had the same defect with a quieter
+symptom. **Scoped honestly:** live in the full deployment, and **not** page-visible in the
+client-only public demo, whose `securityFacts` reports secure bits as a measurement and claims no
+mix. Fixed by folding the derived key into the live channels rather than by reordering the stages,
+so a run that yields under 256 secure bits still degrades to PQC-only exactly as before - the fold
+only **adds** the mix on runs where QKD succeeded. `tests/test_qkd_is_mixed_in.py` asserts on the
+key bytes and not on the log line, parameterised over both pipelines, because a test that greps the
+log passes as soon as the wording is fixed.
+
+**The expired rule, and why a rule needs an executor.** See item 11 above: a deadline this register
+set on itself ran three rounds past its date because nothing was obliged to check it.
+`tests/test_register_deadlines.py` now enforces every `by **Round N**` sentence in this file. Its
+own first draft **passed on the overdue deadline**, because it exempted any paragraph containing
+"promoted" or "removed" and that is what a conditioning sentence says. That is this project's
+tautology class - a check whose predicate cannot fail - for the fourth time, and the first time it
+was caught before the commit rather than a round later.
+
+**Documents that disagreed with the code and with each other.** Round 38 published corrected numbers
+without retracting the superseded ones in the same breath, so both stood. The scope error was in the
+document that exists to correct scope errors: *"1,269 ms (of which 579 ms is the encrypted
+convolution)"*, where 579 ms is the whole student and the convolution measured 84 ms. The withdrawn
+`fhe_conv_rotation_share 0.10` was still tabulated under "what the deployed run shows", 26 lines
+above its own retraction. The retracted uncontrolled keygen pair survived in two files beside the
+controlled one. `docs/crypto-agility.md` described the combiner as *"ML-KEM XOR X25519"* - never
+true of this code, in the canonical document for the KEM registry, sixteen rounds stale. Each is now
+corrected **in place with its provenance**, and where the file is a log the superseded figure is
+marked rather than deleted, because a log that edits its own history is not a log.
+
+**Three claim-accuracy defects found by inventory, recorded as conditioned decisions rather than
+half-fixed.** A 44-site sweep of key derivation and crypto claims produced seven candidates. Two were
+live and are fixed above; one was refuted by a runtime probe (`stages.py`'s zero-key default is
+unreachable, because the handshake always precedes the stage and a failed stage aborts the run - it
+was hardened anyway, since this round moved key material between stages and the cost is nothing); one
+is the ITS combiner. The remaining three are each a sentence claiming more than the code does, in
+paths the public demo either does not reach or does not depend on, and each needs its own
+justification rather than a blanket sweep:
+
+- **`src/qsh/qkd/kme.py` says keys come from "this project's QRNG + extractor path"; `get_key` calls
+  `secrets.token_bytes`.** The claim appears twice - the module docstring and a user-visible
+  `status_extension` note - and the project genuinely has the path being claimed, under
+  `src/qsh/qrng/`. So this is not a wording slip to paper over: it is a choice between wiring the KME
+  to the QRNG path or saying it uses the OS CSPRNG. **Deferred, not declined**, because changing key
+  generation is a behavioural change and no API route constructs a `KeyManagementEntity` today -
+  reachability is tests only, plus a browser mirror of the status string. *Reopens the moment any
+  route or page reaches it*, since a false provenance sentence in a rendered status body is a
+  different severity from one in a docstring.
+- **`src/qsh/qsmpc/qot.py` binds its commitment to `_` and never opens it**, while the module
+  docstring cites "a SHA-256 commitment" as a source of obliviousness. Unreachable from both the demo
+  and the orchestration - the stage imports only the PSI functions - so nothing renders this claim.
+  *Reopens if* `quantum_oblivious_transfer` gains any caller outside `tests/`.
+- **`web/src/lib/quantumSim.ts` calls a mulberry32 frame a "QOTP perfect-hiding mask"**, keyed on the
+  user-visible run seed. Reachable from the public demo. "Perfect hiding" is an information-theoretic
+  term and a 32-bit-state non-cryptographic PRG keyed on a value the visitor can type does not
+  provide it. This is the smallest and most clearly wrong of the three, and it is recorded rather
+  than reworded in the same pass **because a wording change here needs to be made once, correctly,
+  against what the demonstration actually supports** - the surrounding code already documents that
+  this path is a QOTP-hiding and T-count demonstration rather than a predictor. *Reopens next round
+  as a wording fix, unconditionally* - it is page-reachable and no measurement is needed to settle it.
+
+Recording all three with conditions rather than fixing two and forgetting the third is the point:
+this round's own evidence is that an unconditioned item survives indefinitely.
+
+**A gate added, never watched run, and unable to pass.** The "Combiner vectors are regenerated" step
+that closes the stale-vector direction was put in the **web** job, which sets up Node and nothing
+else. It failed with `ModuleNotFoundError: No module named 'oqs'` the first time it ever executed -
+a round after being written, on the first push that ran it. `scripts/ci_local.sh` could not have
+caught it and never could: the virtualenv is always on the path locally, so the identical command
+passes. That is the local-green/CI-red asymmetry the script's own header exists to warn about,
+reappearing inside the script written to close it.
+
+Recorded rather than quietly moved, because the interesting part is not the misplacement. The step
+was correct, its command was correct, and reading the diff it looked right - what was wrong was the
+job it sat in, which is the one property a step's own text cannot show.
+`tests/test_ci_steps_run_in_a_job_that_can_run_them.py` now parses the workflow and fails when a step
+invokes an interpreter its job never installed; run against the commit CI rejected, it names that
+step and that job. The local script gained the same check as gate 13/13, so the two lists agree
+again - which `CI4` has required all along and which nothing enforced.
+
+**A gate nobody has watched run has an unknown result, not a good one.** Three of this round's
+findings are that sentence in different costumes: this one, the register deadline with no executor,
+and the prefix legend under an instruction to regenerate.
+
+**A fact-check that found one thing worth watching, and it is not a change.** Thirty searches over
+2026-08-01 to 2026-08-14 returned the expected null against every claim here, verified at primary
+sources rather than at coverage - SP 800-227's document history reads Draft 2025-01-07 and Final
+2025-09-18 and nothing else. The exception is ePrint 2026/1591, a **preliminary draft** claiming a
+polynomial-time quantum algorithm for the Dihedral Coset Problem, which composed with known
+reductions would reach SVP and LWE. It is unrefereed, four of its proofs are marked "(Sketch)", its
+final corollary rests on two "Personal Communication" citations, and a full-text search for any
+deployed parameter set returns nothing.
+
+It is recorded anyway, with the part that is uncomfortable rather than the part that is reassuring:
+**the ML-KEM + X25519 hybrid is not a hedge against this risk.** X25519 already falls to Shor, so
+ML-KEM is the only quantum-resistant leg, and a confirmed result reaching ML-KEM's concrete
+parameters would not be survived by the hybrid. Neither condition holds today, no claim changes, and
+`references/REFERENCES.md` carries the reopening conditions. Writing down the risk the design does
+NOT cover is the reason this entry exists; a watch item that only lists reasons to relax is a
+reassurance, not a record.
+
+**And the round shipped its own class again, which is the entry that matters most here.** Putting the
+QCNN on the same cost axis as CKKS meant timing `qcnnInferTrained`. It has **two** call sites -
+`private_inference` for finance and medical, and `qml_ids` for telecom, which exists precisely
+because telecom has no `private_inference` stage. Only the first was instrumented, so the telecom
+page reported `primary_inference_backend = qcnn-trained` with no latency beside it, while the two
+checklist rows written in the same commit asserted the latency renders on every such page. **Rows
+that can only fail, added by the round whose stated job was removing rows that can only fail.**
+
+Nothing available could have caught it: `tsc` was green, the Python suite was green, and all
+thirteen local gates were green, because both branches are individually well-formed and the defect is
+the RELATION between them. It was found by running the deployed telecom page and reading "inference
+not run" - the fourth time this project has been saved by looking at the live site after every gate
+agreed.
+
+This is the fourth instance of one-fix-to-one-of-two-twins recorded here: the combiner length tag
+(Python, not the browser), the ITS combiner PRG (SHAKE-256 against a SHA-256 chain), the federated
+mask round index (TypeScript, not Python), and now this. So the response is the structural check
+rather than a fifth careful read: `web/scripts/check_qcnn_metrics_at_every_site.mjs` finds every site
+that CLAIMS the backend and requires the same metric set at each, keyed on the claim rather than on
+the function name - because a call made only for comparison carries no such obligation. Seeded with
+the real defect, it names the exact line.
+
+**The generalisation this round is willing to defend.** When the same defect class appears three
+times, stop fixing instances and write the invariant. Round 38's disclosure defect was shipped four
+times with the scope wrong; the parity test written instead of a fifth fix **failed on its first
+run** against a call site nobody had counted. The combiner gate did the same thing: it was written
+to stop a known divergence and immediately proved the "one definition" property was not held.
 
 ## Verification assets added in Rounds 22-23
 
@@ -1421,10 +1613,20 @@ backlog gate was written to catch and did not:
   metrics. **Declined**: a static reproduction of a paper's optical bench would be a picture, while
   the diagram that exists shows the run that actually happened. The right citation lives in
   `references/`, not in a redrawn figure.
+  *Reopens if* the QOT path ever runs against real optics rather than a simulation, because then the
+  bench layout stops being someone else's picture and starts describing this project's own apparatus;
+  or if `TwoPartyDiagram.tsx` stops filling from live metrics, since the whole argument for declining
+  is that the diagram which exists is the measured one.
 - *GitHub / Google Drive MCP interop.* Deferred with the reason "needs OAuth creds and outward-facing
   accounts that cannot be provisioned in an automated build", which is still true. **Declined**:
   filesystem MCP interop already demonstrates that the quantum-safe channel carries a real third-party
   MCP server, and a second connector would demonstrate the same property at the cost of credentials
   this project should not hold.
+  *Reopens if* a third-party MCP server can be reached with **no credential this project should not
+  hold** - an unauthenticated or read-only-public server - because the stated cost then goes to zero
+  and the demonstration is strictly wider. It does **not** reopen because OAuth became easier; the
+  objection is to holding the credentials, not to the effort of obtaining them.
 
-Recorded as decisions so neither reappears as a silent omission.
+Recorded as decisions so neither reappears as a silent omission, and both now carry the condition
+that lets them fail the three-round rule. A decision with no reopening condition cannot be wrong -
+it can only be permanent, which is the property this register exists to deny.

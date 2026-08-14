@@ -2,6 +2,8 @@ import { useRef, useState } from "react";
 import OrchestrationGraph from "../components/OrchestrationGraph";
 import PipelineControls from "../components/PipelineControls";
 import RunMonitor from "../components/RunMonitor";
+import { EncryptedAgreementChart } from "../components/VerificationChart";
+import type { EncryptedAgreementPlot } from "../components/VerificationChart";
 import { DEMO_BANNER, isClientDemo } from "../lib/demoMode";
 import { USECASES as USE_CASE_META } from "../lib/useCases";
 import { usePipelineRun } from "../lib/usePipelineRun";
@@ -25,7 +27,7 @@ export default function Orchestration() {
   const graphRef = useRef<HTMLDivElement>(null);
   const run = usePipelineRun(usecase, graphRef);
   const hasRun = run.events.length > 0;
-  const { events, active, done, metrics, signature, state, logRef, gifBusy,
+  const { events, active, done, metrics, signature, state, logRef, gifBusy, artifacts,
     downloadGif, downloadPng, downloadEvents, downloadMetricsCsv } = run;
 
   return (
@@ -62,6 +64,24 @@ export default function Orchestration() {
       </div>
 
       <RunMonitor events={events} metrics={metrics} signature={signature} logRef={logRef} />
+
+      {/* The standing requirement is a 2D plot OF PRIVATE INFERENCE against the plaintext reference.
+          It rendered on the use-case pages and not here, on the page that actually runs the
+          end-to-end pipeline - so the one place a visitor watches the whole thing execute was the
+          one place with no evidence of what the encrypted tier produced.
+
+          `run.artifacts` already carried the payload and `EncryptedAgreementChart` already took it;
+          nothing new is computed or drawn. It is conditional on the artifact rather than on the use
+          case, so a flow that runs no private inference shows nothing instead of an empty axis - the
+          same predicate `UseCasePage` uses, which keeps the two pages from disagreeing about whether
+          this run produced a plot. */}
+      {artifacts?.encrypted_agreement_plot ? (
+        <div className="card" style={{ marginTop: 16 }}>
+          <h3 style={{ margin: "0 0 4px" }}>Private inference against plaintext, this run</h3>
+          <EncryptedAgreementChart
+            plot={artifacts.encrypted_agreement_plot as EncryptedAgreementPlot} />
+        </div>
+      ) : null}
 
       <div className="card" style={{ marginTop: 16 }}>
         <h3>Download artifacts</h3>

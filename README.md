@@ -791,8 +791,11 @@ See [`docs/pqc-roadmap.md`](docs/pqc-roadmap.md).
   non-linear argmax, both parties loopback in one tab (zero VPS). Federated learning is offered as an
   in-browser **Quantum Federated Learning** toggle (a real client-side FedAvg of a quantum-classical
   model); the full deployment runs the **PennyLane** QFL over this repo's own FedAvg + secure aggregation, plus server-side FHE inference (incl.
-  the genuine medical CNN under real encrypted convolution - in-browser, node-seal CKKS does the
-  linear/argmax, so only the CNN's conv cost is approximated client-side).
+  the genuine medical CNN under real encrypted convolution - in-browser, node-seal CKKS evaluates
+  the published student END TO END: convolution, average pool and both dense layers, 152 counted
+  rotations. Nothing is approximated. This line said "only the CNN's conv cost is approximated
+  client-side" until Round 39, contradicting the passage above that already described the
+  end-to-end path).
 - **Per-industry models - three tiers, and the gap between them is the measurement** - the
   **crypto/protocol layer is real across all five industries** (PSI/QOT, QSMS secure-sum, BB84/QSDC,
   MPyC MPC, CKKS FHE, federated secure-aggregation). The AI side is organised in tiers because

@@ -881,7 +881,7 @@ every path; the original comments were right and are restored.
 
 | | 8192 | 16384 |
 |---|---|---|
-| keygen (first click) | 255.26 ms | 476.71 ms |
+| keygen (first click) | 255.26 ms | 476.71 ms | **UNCONTROLLED PAIR - superseded.** These two came from different sessions. Re-measured back to back: 253.41/255.46 at 8192 and 490.59/492.15 at 16384, under 1% inside each ring and 1.93x between them |
 | ms per rotation | 3.098 | 6.725 |
 | linear layer, measured | 19.25 ms | 34.41 ms |
 | batch, 400 rows | 20.59 ms | 36.16 ms |
@@ -903,7 +903,7 @@ value. Caught by reading the generated output, not by any signal.
 
 `client_compute_ms` reading 0.07 ms directly under "total: 700 ms / inference", labelled "client
 compute (wall-clock)", timed only the plaintext reference call. `encrypted_tier_measured_ms` is the
-measured sum: **finance 700 ms**, **medical 1,269 ms** (579 ms of it the encrypted convolution).
+measured sum: **finance 700 ms**, **medical 1,269 ms**. The medical figure is the whole encrypted student, not the convolution - 579 ms was `fhe_encrypted_student_ms`, and this sentence called it the convolution until Round 39. The per-stage split, measured after the scopes were separated, is in the table below: convolution 84.35 ms, dense layers 506.69 ms.
 Both inside the 1-10 s interactive-batch window, and the page now states the verdict rather than
 leaving two numbers to be compared.
 
@@ -925,7 +925,7 @@ override - and re-verified in Chrome on the public URL. Container age 6 s at fir
 |---|---|
 | finance | `fhe_model` bundled real model; 400 rows scored; `encrypted_agreement` 1 over 400; 3.227 ms/rotation; `encrypted_tier_measured_ms` 682 ms |
 | genomics | `encrypted_agreement` **0.83** over 30 rows with 5 mismatches - the value the old double-write would have replaced with 1; `encrypted_flip_margin_max` exactly 0; caption states the ties |
-| medical | `fhe_conv_rotation_share` 0.10 against the dense layer's 57%; tier 1,280 ms; 3.04 ms/rotation |
+| medical | `fhe_conv_rotation_share` **0.10 - WITHDRAWN**, see the correction below: that share divided the convolution's rotation time by the whole student's wall-clock. Measured with the scopes separated it is 0.67-0.70. Tier 1,280 ms; 3.04 ms/rotation |
 | telecom | `ids_classes_scored` 8; `ids_metric_roles` renders; `quantum_beats_classical` reads *"the classical baseline (0.9866) is ahead of the best quantum macro F1 here (0.8316)"*; 3.146 ms/rotation over 512 rows |
 | satellite | unchanged, no collision |
 
