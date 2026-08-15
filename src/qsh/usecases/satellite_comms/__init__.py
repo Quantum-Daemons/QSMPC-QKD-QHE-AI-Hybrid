@@ -74,7 +74,10 @@ _SAT_DEFAULTS = {
     "sat_dark_count_prob": 1e-5,      # per gate (night-sky background)
     "sat_misalignment": 0.025,        # atmospheric turbulence + pointing error
     "sat_eve": 0.0,                   # intercept-resend fraction (0 = no eavesdropper)
-    "sat_pulses": 4_000_000,          # channel uses (free-space links need many)
+    # 10e6, raised with the decoy-model switch: at 4e6 this downlink yielded 223 secure bits,
+    # under the 256 the stage needs to derive a key, so satellite silently stopped mixing QKD.
+    # Kept in step with `WebConfig.demo_sat_pulses`; see the note there for the finite-key residual.
+    "sat_pulses": 10_000_000,         # channel uses (free-space links need many)
     "sat_opt_pulses": 200_000,        # pulses per OptiQKD evaluation (fewer than a full run, for speed)
     # The two fixed terms of the budget, exposed in the WebUI so the inline eavesdrop check can be
     # demonstrated: they floor total loss at 8 dB by default, which makes every abort attributable to
@@ -115,7 +118,7 @@ class SatelliteQKDStage(Stage):
     name = "satellite_qkd"
 
     def run(self, ctx: Context, bus: EventBus, reg: CryptoRegistry) -> None:
-        from ...qkd.bb84 import derive_shared_key, run_bb84
+        from ...qkd.bb84 import QKDParams, derive_shared_key, run_bb84
 
         params = _sat_channel(ctx)
         ctx.put("sat_channel", params)
@@ -123,7 +126,12 @@ class SatelliteQKDStage(Stage):
         loss_db = round(params.loss_db(), 1)
         bus.log(f"free-space downlink: {params.distance_km:.0f} km, ~{loss_db} dB loss, "
                 f"eve={params.eve_intercept_fraction:.2f}", self.name)
-        res = run_bb84(n_pulses, params, seed=ctx.config.get("seed", 0))
+        # `qkd_params=QKDParams()`, for the same reason the registry entry now carries it: the
+        # default branch is the NON-decoy GLLP form, and this stage's own use case page labels its
+        # rate a decoy-state bound. This surface bypasses the crypto registry, so it does not
+        # inherit that fix and has to ask for the model by name.
+        res = run_bb84(n_pulses, params, seed=ctx.config.get("seed", 0),
+                       qkd_params=QKDParams())
         bus.metric("qber", round(res.qber, 5), self.name)
         # `skr_per_pulse`, for the same reason as `orchestration/stages.py`: this is bits per
         # channel use, and `skr` is a spec field name meaning bit/s. The satellite twin is

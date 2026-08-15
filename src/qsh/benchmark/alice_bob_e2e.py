@@ -34,7 +34,7 @@ def run_alice_bob_e2e(*, seed: int = 0, n_shared: int = 8) -> dict:
     from ..fhe.ckks_inference import LinearModel, encrypted_linear_inference
     from ..pqc.hybrid_kem import HybridKEMRecipient
     from ..pqc.transport import establish_initiator, establish_responder
-    from ..qkd.bb84 import derive_shared_key, run_bb84
+    from ..qkd.bb84 import QKDParams, derive_shared_key, run_bb84
     from ..qkd.channel import ChannelParams
     from ..qsmpc.qot import private_set_intersection
     from .security import compute_security_score
@@ -49,7 +49,10 @@ def run_alice_bob_e2e(*, seed: int = 0, n_shared: int = 8) -> dict:
 
     # --- Phase 2: QKD (BB84, 50 km fibre) -> shared QKD key, eavesdrop check via QBER ---
     t = time.perf_counter()
-    qkd = run_bb84(40_000, ChannelParams(distance_km=50), seed=seed)
+    # `qkd_params=QKDParams()` - the benchmark must measure the model the demo ships, not the
+    # legacy branch it reaches by omission.
+    qkd = run_bb84(40_000, ChannelParams(distance_km=50), seed=seed,
+                   qkd_params=QKDParams())
     qkd_key = derive_shared_key(qkd, 32) if qkd.secure_key_bits >= 256 else None
     timing["qkd_negotiation_ms"] = _ms(t)
 
