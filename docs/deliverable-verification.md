@@ -2225,6 +2225,140 @@ current claim changes: `docs/pqc-roadmap.md`, `references/REFERENCES.md`, `src/q
 `web/src/lib/clientSdnController.ts` all correctly state V1.1.1 as the only published GS QKD 014
 edition.
 
+## Round 46: the fix changed one language again, and the gate was built so it could not see it
+
+**BUSINESS DOC RECONCILED Round 46.**
+
+### The spine
+
+`_decoy_secure_fraction` is reached only when `qkd_params` is supplied, and in the whole repository
+only `src/qsh/qkd/optimize.py` ever supplied it. Every production Python surface called `run_bb84`
+without it and went on computing the figure Round 45 condemned, removed from the browser, and wrote
+three documents about:
+
+| path | bit/pulse | secure bits |
+|---|---|---|
+| browser, after Round 45 | 0.002355 | 470 |
+| **Python, all production call sites** | **0.008936** | **1,787** |
+
+And `orchestration/crypto_agility.py` registered that path under the name **`"bb84-decoy"`**. The
+name was the claim and the claim was false.
+
+**Round 45's own gate was built so it could not see it.** It imported `_decoy_secure_fraction` and
+called it directly - a private helper no production caller invokes. Pointed at what production runs,
+resolved through the registry exactly as `QKDStage` resolves it, it is **red by 3.795x** on the
+unmodified tree. Round 44's title was "the fix changed one language"; Round 45 did it again and
+certified itself against the half it had already fixed.
+
+Fixed at the registry, so `stages.py` inherits it, plus the three surfaces that bypass the registry.
+A scope gate pins the class: no production call site may reach the legacy branch by omission.
+
+### The block size turned out to be a security parameter
+
+200,000 pulses gave **1,244 sifted bits**. At that block size a composably-secure finite-key analysis
+yields **no key at all** - the positive-key threshold for these device parameters is ~5e3 to 1.1e4
+sifted bits (Rusca, Boaron, Grunenfelder, Martin & Zbinden, *Appl. Phys. Lett.* **112**, 171104,
+2018). Corroborating primary datum, Lucamarini et al., *Opt. Express* **21**, 24550 (2013), Fig. 2:
+*"1.4x10^5 counts ... is the smallest sample size providing a positive rate"* at 50 km. So an
+asymptotic rate was being published for a block that provably yields nothing.
+
+`qkd.pulses` 200,000 -> **2,000,000** (12,442 sifted bits). `demo_alice_bob_pulses` and `sat_pulses`
+raised in step - the satellite downlink had fallen to **223** secure bits, below the 256 needed to
+derive a key, so satellite had silently stopped mixing QKD at all.
+
+**The honest residual:** at 10e6 the 800 km downlink still yields ~3,660 sifted bits, BELOW the
+finite-key band. Clearing it there needs ~30e6 pulses and ~1.5 GB of Python array, and the reason is
+physical - 24.48 dB of loss. The free-space rate is asymptotic-only in a stronger sense than the
+fibre one.
+
+### Round 45's own caveat was wrong in both directions
+
+It read "roughly 1,900 sifted bits" - a figure matching no computed quantity anywhere; it is 1,244.
+And it called the result "a modelled upper bound, ~2.4x a real deployed link". Refuted: Li et al.,
+*Nat. Photon.* **17**, 416-421 (2023), arXiv:2307.02364, measured **22.2 +/- 0.8 Mb/s at 50 km** on a
+2.5 GHz clock = **8.88e-3 bit/pulse** with full composable finite-key security - **3.8x HIGHER per
+pulse than this project's figure**. It is not an upper bound on real hardware; it is the N->infinity
+limit of a lower bound, and real hardware beats it.
+
+### A real QCNN, in all three places the circuit lived
+
+Everything named `qcnn_*` was a hardware-efficient ansatz - RY on every wire, a CNOT ring - scoring
+**zero of five** Cong, Choi & Lukin structural elements. The model cards already described it
+correctly; only the name was false, which is the harder version.
+
+Now conv (one SHARED filter at every position) -> pool (rotation on the survivor conditioned on its
+partner) -> register reduction -> fully-connected block. Parameters **51 / 76 / 101** at 4 / 8 / 16
+qubits: increments of 25 and 25, a CONSTANT per doubling where the old ansatz doubled.
+
+**The circuit existed in THREE places** - the trainer, the browser's own state-vector copy, and a
+third Python inference path - and all three are ported in the same change. "Two implementations of
+one thing" is this project's named recurring defect; here it was three, and the third surfaced only
+because a test raised `IndexError` on the new weight shape.
+
+Two measurements changed the design. A 2-angle shared filter underfits where the readout needs
+several wires, so the filter is the expressive 8-angle two-qubit block. And odd registers were broken
+outright: `layer_plan` computed `active //= 2` (9 -> 4) while the circuit did `active[0::2]` (9 -> 5),
+leaving one wire that carried an encoded feature to the readout having never been convolved or
+pooled. That collapsed finance at 9 qubits to accuracy **0.0517** on a 5% positive set and medical at
+9 qubits to minority-F1 **0.0000**.
+
+Retrained: medical 0.9186, finance 0.9767, telecom macro F1 0.6146, telecom-q7 0.5104. **8 and 9
+qubits now agree exactly**, and that is a result rather than a coincidence - a shared filter cannot
+allocate capacity to a wire carrying no feature, where the old ansatz gave it independent trainable
+angles. Telecom is down from 0.8098 and that is reported: an 8-class readout needs 3 wires, so only
+one pool stage is possible at 8 qubits and the architecture's depth cannot be used.
+
+### Round 45's six gate defects, each the class it was fixing
+
+`secretKeyRateNonDecoy` was an inert FIELD shipped in the same commit as the gate against inert
+CONTROLS. That gate could be satisfied by a COMMENT, because it did not call `_code_only()` which the
+same file defines - and `clientCompute.ts` carried the satisfying string inside the JSDoc Round 45
+wrote to explain wiring it. `quantumSim.ts` documented the RETRACTED direction of an inequality its
+own test asserts the other way. The log gate was self-perpetuating: `## Round 44, added in Round 45`
+satisfied `now = 45`, so writing the PREVIOUS round's pointer discharged the CURRENT round's
+obligation, forever. `_DEADLINE` was fixed at the opening `**` and left at the closing, so a clause
+bolded as a whole still returned zero matches. And the `skr_per_pulse` rounding pair split.
+
+**The deadline gate fired on Round 45's own changelog**, which quoted the pattern it had just fixed.
+Making the marker case-sensitive is what lets narrative and obligation be told apart.
+
+### Records corrected, each re-verified at primary source
+
+Two of the research pass's own proposed corrections were refuted in its adversarial stage, so none
+was applied on trust. IACR ePrint 2026/1282 is **BBM92**, 24-dimensional, binary, on simulated FSO
+telemetry - not "this exact problem". PGS scoring files carry **no** `#license` header: PGS000004
+downloaded from the EBI FTP has 14 `#` lines and none is a licence, which
+`scripts/train/genomics_prs.py` has said correctly all along while two prose sites contradicted it.
+`decoy_reference.py` had **four wrong equation numbers** against arXiv:quant-ph/0503005v2 - the key
+rate is Eq. (1) not (33), `Y_i` is (7) not (6), `e_i` is (9) not (7), and `e_0 = 1/2` is prose - in
+the module whose docstring says it "exists to be CHECKED".
+
+**Calibration: the denominator was wrong, and the correction is not a swap.** `calibration.py`
+compared positive-EVENT counts against thresholds both papers state in calibration CASES;
+`n_calibration` is 710,969, which is 355x the UAI figure. Read at source, ICML 2005 says the opposite
+of the conclusion drawn from it: *"When there are 1000 or more points in the calibration set,
+Isotonic Regression always yields performance as good as, or better than, Platt Scaling."* Platt is
+retained anyway, because those papers benchmark balanced problems and at a 1-in-981 base rate the
+binding quantity is plausibly the 2,321 positive events, which they do not address. Switching on a
+sentence about case counts would repeat the same error in the other direction. Conditioned
+`by **Round 48**`.
+
+### 5G-NIDD: the rejection is withdrawn and the adoption is NOT a drop-in
+
+`DATA_LICENSES.md` rejected 5G-NIDD for carrying no licence string. Overturned at the authors'
+repository of record - Fairdata/Metax, DOI 10.23729/e80ac9df-d9fb-47e7-8d0d-01384a415361 - which
+returns **CC BY 4.0**, `access_type: Open`, `restriction_grounds: []`, verified today. IEEE DataPort's
+"Subscription Required" is a mirror, not the repository of record.
+
+**But it does not fill the gap it was expected to.** The telecom model classifies QKD-layer attacks
+(`intercept_resend`, `photon_number_splitting`, `trojan_horse`, ...) from QKD physical observables
+(`qber_mean`, `sift_ratio`, `multiphoton_rate`, ...). 5G-NIDD classifies network-layer attacks
+(UDPFlood, SYNScan, ...) from 52 columns of flow statistics. **Measured overlap: zero in the label
+space and zero in the feature space.** The reason telecom has no real dataset is that QKD attack
+classification needs a physical QKD testbed under attack, and 5G-NIDD is a different problem rather
+than a substitute. It is therefore adopted as a SEPARATE network-layer model, conditioned
+`by **Round 48**`.
+
 ## Verification assets added in Rounds 22-23
 
 Two checks now exist that assert against sources OUTSIDE this repository. That is the point of both:
