@@ -30,7 +30,7 @@ class Agent:
     signer: SignatureKeypair
 
     @classmethod
-    def create(cls, name: str) -> "Agent":
+    def create(cls, name: str) -> Agent:
         return cls(name=name, kem=HybridKEMRecipient(), signer=generate_keypair())
 
     @property

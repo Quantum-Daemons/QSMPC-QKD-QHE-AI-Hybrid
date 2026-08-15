@@ -16,10 +16,10 @@ from pathlib import Path
 
 import numpy as np
 
-from .classical_mpc_fhe import run_classical, run_hybrid
+from ..monitoring.exporter import record_benchmark
+from .classical_mpc_fhe import run_hybrid
 from .metrics import BenchResult
 from .quantum_qsmpc_fhe import run_quantum
-from ..monitoring.exporter import record_benchmark
 
 MODEL_SIZES = ("lightweight", "medium", "large")
 

@@ -15,8 +15,17 @@ from __future__ import annotations
 import math
 
 from qsh.qkd.decoy_reference import (
-    ChannelSpec, gain, h2, key_rate_decoy, key_rate_nondecoy, max_distance_km,
-    optimal_decoy, optimal_nondecoy, qber, tagged_fraction, transmittance,
+    ChannelSpec,
+    gain,
+    h2,
+    key_rate_decoy,
+    key_rate_nondecoy,
+    max_distance_km,
+    optimal_decoy,
+    optimal_nondecoy,
+    qber,
+    tagged_fraction,
+    transmittance,
 )
 
 PAPER = ChannelSpec(q_sift=1.0)     # efficient BB84, as Ma et al. plot it

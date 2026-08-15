@@ -15,7 +15,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from qsh.orchestration.events import Event
-from qsh.orchestration.pipeline import Pipeline, PipelineState, build_pipeline
+from qsh.orchestration.pipeline import Pipeline, build_pipeline
 
 RESULTS_DIR = Path(__file__).resolve().parents[1] / "results"
 
@@ -27,7 +27,7 @@ class Run:
     config: dict
     pipeline: Pipeline
     ctx: object
-    queue: "queue.Queue[Event]" = field(default_factory=queue.Queue)
+    queue: queue.Queue[Event] = field(default_factory=queue.Queue)
     thread: threading.Thread | None = None
 
     @property

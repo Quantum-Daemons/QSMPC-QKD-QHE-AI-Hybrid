@@ -4,10 +4,9 @@ import numpy as np
 import pytest
 
 from qsh.fhe.ckks_inference import LinearModel, encrypted_linear_inference
-from qsh.qhe.qcnn import (QCNN, qotp_clifford_homomorphic_demo,
-                          qotp_clifford_random_circuit_demo)
-from qsh.qhe.qotp import encrypt, encrypted_density_matrix, pauli_key
 from qsh.qhe.private_inference import private_inference
+from qsh.qhe.qcnn import QCNN, qotp_clifford_homomorphic_demo, qotp_clifford_random_circuit_demo
+from qsh.qhe.qotp import encrypt, encrypted_density_matrix, pauli_key
 
 
 def test_qotp_is_perfectly_hiding():
@@ -116,7 +115,7 @@ def test_s_frame_rule_matches_the_state_vector():
     """
     import numpy as np
 
-    from qsh.qhe.qotp import _apply_1q, decrypt, encrypt, pauli_key, update_key_s
+    from qsh.qhe.qotp import _apply_1q, decrypt, update_key_s
 
     S = np.array([[1, 0], [0, 1j]], dtype=complex)
     rng = np.random.default_rng(3)

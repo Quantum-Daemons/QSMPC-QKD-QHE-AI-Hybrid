@@ -1,5 +1,7 @@
 # Variational QCNN - telecom
 
+> **Round 46 re-measured this artifact.** The circuit was replaced with a real QCNN (shared two-qubit conv filter, pooling by conditioned rotation, register reduction); the previous figures came from a hardware-efficient ansatz that was labelled a QCNN and was not one. Current headline `macro_f1` = **0.614583**.
+
 NOT PUBLISHED TO HUGGING FACE, AND NOT IN THE MODEL REGISTRY. This is a browser-side demonstration
 circuit for the `telecom_ids` page of
 [QSMPC-QKD-QHE-AI-Hybrid](https://github.com/thedaemon-wizard/QSMPC-QKD-QHE-AI-Hybrid). It carries no
@@ -13,7 +15,7 @@ the QCNN directories have cards" answered by looking at two of them.
 
 ## What it is
 
-**6** layers of trainable RY rotations plus a CNOT ring on **8 qubits**, 7 features encoded as
+**6** conv rounds of a SHARED two-qubit filter (RY,RZ - CNOT - RY,RZ) with pooling by a rotation on the survivor conditioned on its partner, on **8 qubits**, reducing the register 8 -> 4; then a fully-connected block on the survivors (50 shared parameters), 7 features encoded as
 `RY(tanh(z) * pi)` on wires 0-6. **Wire 7 carries no data**: `RY(tanh(0) * pi)` is the identity, and
 the browser reaches the same state through `features[q] ?? 0`, so the two agree by construction rather
 than by coincidence. `n_features: 7` records that so a test can assert it.
@@ -37,11 +39,11 @@ Held-out split, 960 test rows against 2,240 training rows, 8 balanced classes. T
 
 | quantity | value |
 |---|---|
-| `macro_f1` (this circuit) | 0.809846 |
+| `macro_f1` (this circuit) | 0.614583 |
 | logistic regression, identical split | **0.976447** |
 | uniform-random floor | 0.125 |
 | constant-predictor floor | 0.027778 |
-| accuracy (companion, not the headline) | 0.810417 |
+| accuracy (companion, not the headline) | 0.614583 |
 
 Per class, and the spread is the point - the aggregate above is 0.81 while the weakest class is 0.61:
 
@@ -63,7 +65,7 @@ expected result rather than an anomaly.
 
 **No five-seed spread is published for this circuit.** One run is 6 layers x 400 epochs, so the sweep
 that was run for finance and medical was not run here, and the single ablation figure that exists
-(0.809846 entangled against 0.467059 without the CNOT ring) is one seed. Treat the number above as a
+(0.614583 entangled against 0.467059 without the CNOT ring) is one seed. Treat the number above as a
 draw, not as a median - the medical card records what that distinction cost there.
 
 **Seed position:** unmeasured - no five-seed spread was run for this circuit, so the number above is
@@ -75,7 +77,7 @@ one draw and not a median.
 
 Both the layer count and the epoch count are load-bearing. Re-running `--usecase telecom` at the
 defaults gave macro F1 **0.4998** against the 0.8098 above, and `--layers 6` alone gave **0.6443**;
-only the full command returns 0.809846. The artifact records its own command for this reason.
+only the full command returns 0.614583. The artifact records its own command for this reason.
 
 ## Data and licence
 
