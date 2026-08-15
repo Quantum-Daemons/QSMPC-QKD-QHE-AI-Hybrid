@@ -65,6 +65,17 @@ function UseCaseView({ usecase }: { usecase: string }) {
                     optiqkd: run.optiqkd, workload: run.workload,
                     inference: String(run.params.inference ?? "") }} />
       </div>
+      {/* THE REASON, VISIBLE - the same fix as `Orchestration.tsx`'s export row and for the same
+          reason. `disabled` removes a button from the tab order, so a reason living only in `title`
+          is reachable by hovering a mouse and by nothing else. Both pages were swept together
+          because a fix applied to one export row and not the other is exactly how the agreement
+          scatter went three rounds without the shape channel its four siblings were given. */}
+      {!hasRun && (
+        <p className="muted small" style={{ marginTop: 10, marginBottom: 0 }}>
+          Run the simulator first - the animation, events and metrics exports stay unavailable until
+          a run has produced events. The diagram image can be exported at any time.
+        </p>
+      )}
       <div className="btn-row" style={{ marginTop: 10 }}>
         <button className="btn ghost" onClick={() => downloadPng(`${usecase}-two-party.png`)}>⬇ Diagram (PNG)</button>
         <button className="btn ghost" onClick={() => downloadGif(`${usecase}-simulator.gif`)}

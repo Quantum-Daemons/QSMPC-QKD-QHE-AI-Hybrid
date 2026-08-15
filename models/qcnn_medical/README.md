@@ -56,6 +56,9 @@ publishing the spread is the defensible response and this is it. Workings, inclu
 entanglement ablation run over the same seeds:
 [`references/qcnn-entanglement-ablation.md`](../../references/qcnn-entanglement-ablation.md).
 
+**Seed position:** seed 0, the WORST of five on minority-class F1 (0.622951 against a median
+of 0.8710, range [0.6230, 0.9333]). Read every figure on this card as the low end of that spread.
+
 ## Data and licence
 
 Wisconsin Diagnostic Breast Cancer (UCI, CC-BY-4.0), 8 of 30 features

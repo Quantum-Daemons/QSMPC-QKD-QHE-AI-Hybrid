@@ -23,8 +23,10 @@ export default function SdnControlPlanePanel({
   qkdEnabled: boolean;
 }) {
   const topo: SdnTopology = useMemo(() => {
-    const t = buildTopology({ usecase, distanceKm, skrBitsPerSec: keyBudgetBits, qkdEnabled, maxSpanKm });
-    // Draw down a realistic slice so eskr differs from skr and the budget is visibly finite.
+    const t = buildTopology({ usecase, distanceKm, keyBudgetBits, qkdEnabled, maxSpanKm });
+    // Draw down a realistic slice so the remaining budget is visibly finite. This said "so eskr
+    // differs from skr" while both fields held the same session total - the sentence described a
+    // difference between two copies of one number.
     if (t.apps.length) allocate(t, t.apps[0].app_id, Math.round(keyBudgetBits * 0.25));
     return t;
   }, [usecase, distanceKm, keyBudgetBits, qkdEnabled, maxSpanKm]);
@@ -68,8 +70,12 @@ export default function SdnControlPlanePanel({
       ) : (
         <table className="mini-table">
           <tbody>
-            <tr><th>qkdl_id</th><th>qkdl_type</th><th>path</th><th className="num">skr</th>
-              <th className="num">eskr</th><th>trust</th></tr>
+            {/* `skr` keeps the spec's name and is empty; the column beside it says what this run
+                actually produced, with its unit. Renaming the ETSI field would break the rule that
+                field names come from the published YANG; filling it with a total broke a bigger
+                one. */}
+            <tr><th>qkdl_id</th><th>qkdl_type</th><th>path</th><th className="num">skr (bit/s)</th>
+              <th className="num">key budget</th><th>trust</th></tr>
             {topo.links.map((l) => (
               <tr key={l.qkdl_id} className={l.qkdl_type === "VIRT" ? "metric-companion" : undefined}>
                 <td><code>{l.qkdl_id}</code></td>
@@ -79,8 +85,10 @@ export default function SdnControlPlanePanel({
                   {l.virt_next_hop.length ? ` → ${l.virt_next_hop.join(" → ")} → ` : " → "}
                   {l.qkdl_remote_qkdn_id}
                 </td>
-                <td className="num">{l.skr.toFixed(1)}</td>
-                <td className="num">{l.eskr.toFixed(1)}</td>
+                {/* The spec's rate fields, empty because this simulation has no clock to
+                    produce one. They held a session total until Round 42. */}
+                <td className="num muted" title="ETSI skr is a rate in bit/s; this simulation has no wall-clock model of the quantum channel, so no rate is reported">n/a</td>
+                <td className="num">{l.key_budget_bits.toLocaleString()} bit</td>
                 <td className="muted small">{linkTrustNote(l)}</td>
               </tr>
             ))}

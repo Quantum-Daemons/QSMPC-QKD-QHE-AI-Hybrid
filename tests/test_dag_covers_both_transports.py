@@ -115,6 +115,50 @@ def test_every_backend_stage_has_a_node() -> None:
     )
 
 
+def _drawn_in_order(usecase: str) -> list[str]:
+    """`flowFor()`'s result, reproduced from the two maps and the `before` field."""
+    client = _graph_flow(usecase, "FLOWS")
+    extra_src = TSX.read_text()
+    block = re.search(r"const BACKEND_EXTRA[^=]*=\s*\{(.*?)\n\};", extra_src, re.S)
+    assert block, "BACKEND_EXTRA not found"
+    entry = re.search(rf"\b{usecase}:\s*\[(.*?)\]", block.group(1), re.S) \
+        or re.search(r"\bdefault:\s*\[(.*?)\]", block.group(1), re.S)
+    pairs = re.findall(r'id:\s*"([a-z_]+)"[^}]*?before:\s*"([a-z_]+)"', entry.group(1)) if entry else []
+    out = list(client)
+    for node, before in pairs:
+        at = out.index(before) if before in out else max(0, len(out) - 1)
+        out.insert(at, node)
+    return out
+
+
+def test_the_drawn_order_is_the_order_the_backend_runs() -> None:
+    """A set comparison cannot see a diagram that runs backwards.
+
+    The first version of this file compared SETS, and every backend-only node was spliced in front
+    of `result` regardless of where it actually runs. Both were wrong in the same direction, so
+    neither could reveal the other: all six use cases drew `explainability` after
+    `quantum_comparison` (it runs before) or `qkd_optimize` near the end (it runs third). On the full
+    deployment the visitor watched a later node light and the run then jump backwards - which reads
+    as a stalled pipeline, the exact failure the sibling test's docstring names.
+
+    An ordered artefact needs an ordered check. Restricting to the stages the backend actually runs
+    keeps client-only nodes (`data`, and finance's injected `federated_training`) out of the
+    comparison rather than forcing them into a backend list that has no place for them.
+    """
+    wrong = []
+    for usecase in _BACKEND_LISTS:
+        ran = _backend_stages(usecase)
+        drawn = [s for s in _drawn_in_order(usecase) if s in ran]
+        if drawn != ran:
+            wrong.append(f"{usecase}:\n      drawn: {' -> '.join(drawn)}\n      ran  : {' -> '.join(ran)}")
+    assert not wrong, (
+        "the DAG draws stages in an order the backend does not run them:\n    "
+        + "\n    ".join(wrong)
+        + "\n\nEach BACKEND_EXTRA entry carries a `before` naming the node it precedes; a node with "
+        "the wrong `before` lights out of sequence and the run appears to go backwards."
+    )
+
+
 def test_no_node_is_drawn_for_a_stage_neither_transport_runs() -> None:
     """The reverse direction: a node that can never light.
 

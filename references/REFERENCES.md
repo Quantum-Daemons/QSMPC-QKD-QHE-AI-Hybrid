@@ -1515,16 +1515,54 @@ so each one names what was checked and where it stopped.
 - **HEBench defines no error metric, tolerance or accuracy criterion for approximate schemes.** There is
   nothing in it to cite as a reporting standard, so this repository's existing note that HEBench covers
   only primitive operations is correct and stays. Checked 2026-08-12.
+- **This folder cannot ground a UX or accessibility recommendation, and every round has been asked
+  for one anyway. Measured 2026-08-15, said out loud here for the first time.** The standing
+  per-round request asks for a UX review *grounded in* `references/`. A grep of all **16** markdown
+  files for `usability`, `accessibility`, `WCAG`, `human-computer`, `human factors`, `affordance`,
+  `user experience`, `HCI`, `cognitive load` and `eye-tracking` returns **zero** hits. Widening to
+  `interface design`, `visualis/visualiz`, `readability`, `legibility` and `colour-blind` returns
+  **two**, and neither is a source: one is `he-scheme-selection.md` calling a twelve-coefficient
+  model readable, and the other is the entry four bullets above recording that no prior art on
+  visualising encrypted inference exists. All **15** bundled PDFs are quantum, cryptography or
+  business-of-quantum papers. **There is no HCI or human-factors source in this reference set at
+  all.**
+
+  So the UX rows do not rest on this folder, and any claim that they do would be false. What they
+  rest on is stated instead: the **WCAG 2.2 success criteria themselves**, quoted by number in
+  `docs/browser-verification-checklist.md`, plus that file's own measurement procedures - composite
+  the alpha before reading a contrast ratio, read the `role` the element carries rather than the prop
+  that was passed, enumerate the series from the source rather than from the last sweep's list. That
+  is a defensible basis; it is simply a different one from a paper in this folder.
+
+  **Not resolved by adding a citation to look resolved.** A single HCI paper bolted on here would let
+  the round report "grounded in references/" while the rows continued to come from WCAG, which is the
+  decoration-condition failure `QC16` describes. If an HCI source is ever added it has to be because
+  a row actually derives from it. Recorded so that no future round answers this bullet by asserting
+  a grounding it does not have - which is what nine rounds of silence amounted to.
 
 ### Leads recorded rather than cited
 
-- **EU NIS Cooperation Group PQC roadmap milestones - METADATA-ONLY, DO NOT CITE YET.** National
-  roadmaps by **2026-12-31**, high-risk use cases by **2030-12-31**, full transition by **2035-12-31**.
-  Seen in secondary summaries only, with no primary document loaded, so nothing may be quoted from it
-  and the dates above are recorded as a lead to verify, not as facts. It matters because
-  [`../docs/pqc-roadmap.md`](../docs/pqc-roadmap.md) is **US-instrument-only** while this project's
-  demo is reachable from the EU, and a roadmap with no EU milestone looks parochial rather than scoped.
-  Next round: find the Cooperation Group publication itself before writing any of it down as a date.
+- **EU NIS Cooperation Group PQC roadmap milestones - DEADLINE EXECUTED Round 42, and the lead
+  was wrong twice in the flattering direction.** The primary document is *A Coordinated Implementation Roadmap
+  for the Transition to Post-Quantum Cryptography*, Part 1, Version 1.1, EU PQC Workstream,
+  11.06.2025, the first deliverable of the NIS CG work stream on PQC. Fetched and read as PDF; its
+  section 4 timeline is now quoted in [`../docs/pqc-roadmap.md`](../docs/pqc-roadmap.md).
+
+  What this entry said, against what the document says:
+  - *"full transition by 2035-12-31"* - **no.** 2035 is medium-risk completed and low-risk
+    *"completed as much as feasible"*, and the executive summary reads *"completed for as many
+    systems as practically feasible"*. The lead was stronger than its source.
+  - *"`docs/pqc-roadmap.md` is **US-instrument-only**"* - **no.** That file already said *"Every
+    instrument below is a US one, apart from the BSI and Japanese entries"* and recorded the EU set
+    as *"Verified absent, not overlooked"*. The roadmap was precise; this lead dropped its qualifier.
+
+  The dates themselves were right, which is how both overstatements survived being re-read.
+
+  **Why it took nine rounds.** This entry ended *"Next round: find the Cooperation Group publication
+  itself"* and was written in Round 33. `tests/test_register_deadlines.py` reads
+  `docs/deliverable-verification.md` and matches `by **Round N**` or `BLOCKED UNTIL <date>`; this
+  obligation was in a different file, in a third phrasing. Both halves of that gate's scope have been
+  widened, and this sentence is the seed it was widened against.
 - **91 FR 38487 was cited in this file and nowhere else; that is now closed.** The second same-day
   quantum executive order of 2026-06-25 ("Ushering in the Next Frontier of Quantum Innovation", FR
   document 2026-12910) was verified at the Federal Register API in Round 32 and recorded here, while
