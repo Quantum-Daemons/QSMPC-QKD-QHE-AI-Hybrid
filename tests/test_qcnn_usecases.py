@@ -78,8 +78,23 @@ def test_shipped_weights_are_loadable_and_carry_a_headline_metric(usecase: str) 
 
     w = json.loads((PUBLIC / _data_dir(usecase) / "qcnn_weights.json").read_text())
     assert w["headline_metric"] in {"accuracy", "minority_class_f1", "macro_f1"}
-    assert len(w["theta"]) == w["layers"], "theta rows must equal the layer count"
-    assert all(len(row) == w["n_qubits"] for row in w["theta"]), "each layer needs one angle per qubit"
+    # ROUND 46: `theta` is a FLAT shared-weight vector, not `(layers, n_qubits)`. The old assertion
+    # ("theta rows must equal the layer count") encoded the per-wire ansatz that was replaced by a
+    # real QCNN. The invariant now is that its length is exactly what the architecture requires, so
+    # a weights file trained at one width cannot be served at another.
+    import sys as _sys
+    _sys.path.insert(0, str(REPO / "scripts" / "train"))
+    from qcnn_variational import param_count as _pc
+
+    _ro = (w.get("readout") or {}).get("readout_qubits", 0) or 0
+    assert len(w["theta"]) == _pc(w["n_qubits"], _ro, w["layers"]), (
+        f'theta has {len(w["theta"])} parameters; the QCNN at {w["n_qubits"]} qubits, '
+        f'{w["layers"]} conv rounds and readout {_ro} requires {_pc(w["n_qubits"], _ro, w["layers"])}'
+    )
+    # Removed in Round 46 with the line above: "one angle per qubit" was the DEFINING property of
+    # the per-wire ansatz the QCNN replaced. A convolution shares one filter across positions,
+    # so no parameter axis is the qubit count - `param_count` above is the invariant now.
+    assert all(isinstance(v, (int, float)) for v in w["theta"]), "theta must be a flat vector"
     if w.get("input_space") == "raw":
         # Raw-space models standardise with shipped moments; without them the circuit sees mixed
         # scales and pins its features, which is how the first trained model became meaningless.

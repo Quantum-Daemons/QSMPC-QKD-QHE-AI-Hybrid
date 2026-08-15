@@ -80,9 +80,121 @@ def apply_cnot(state: torch.Tensor, ctl: int, tgt: int, nq: int) -> torch.Tensor
     return out
 
 
+def _ry(th: torch.Tensor, cdt) -> torch.Tensor:
+    c, s = torch.cos(th / 2), torch.sin(th / 2)
+    return torch.stack([torch.stack([c, -s]), torch.stack([s, c])]).to(cdt)
+
+
+def _rz(th: torch.Tensor, cdt) -> torch.Tensor:
+    """diag(e^{-i th/2}, e^{+i th/2}). RY alone spans only real rotations, so a filter built from it
+    cannot reach a general two-qubit unitary however many times it is applied."""
+    z = torch.zeros((), dtype=th.dtype, device=th.device)
+    p = torch.complex(torch.cos(th / 2), -torch.sin(th / 2))
+    q = torch.complex(torch.cos(th / 2), torch.sin(th / 2))
+    zc = torch.complex(z, z)
+    return torch.stack([torch.stack([p, zc]), torch.stack([zc, q])]).to(cdt)
+
+
+def apply_cry(state: torch.Tensor, ctl: int, tgt: int, th: torch.Tensor,
+              nq: int) -> torch.Tensor:
+    """Controlled-RY: rotate `tgt` only on the branches where `ctl` is |1>.
+
+    THIS IS THE POOLING OPERATION, and it is what makes the circuit a QCNN rather than a layered
+    ansatz. Cong, Choi & Lukin pool by MEASURING one qubit of each pair and applying a rotation on
+    the survivor conditioned on that outcome. A state-vector simulator has no mid-circuit
+    measurement, so the standard equivalent - and the one PennyLane's own QCNN demo uses - is a
+    controlled rotation followed by simply never touching the control qubit again. The conditioning
+    is unitary instead of classical; the register reduction and the information flow are the same.
+    """
+    N = 1 << nq
+    i = torch.arange(N, device=state.device)
+    cb, tb = 1 << ctl, 1 << tgt
+    sel0 = ((i & cb) != 0) & ((i & tb) == 0)     # control set, target clear
+    src, dst = i[sel0], i[sel0] | tb
+    c, s = torch.cos(th / 2), torch.sin(th / 2)
+    a, b = state[:, src], state[:, dst]
+    out = state.clone()
+    out[:, src] = c.to(state.dtype) * a - s.to(state.dtype) * b
+    out[:, dst] = s.to(state.dtype) * a + c.to(state.dtype) * b
+    return out
+
+
+def layer_plan(nq: int = N_QUBITS, readout_qubits: int = 0, layers: int = 1) -> list[dict]:
+    """The architecture, as data, so a test can assert its SHAPE without running it.
+
+    One entry per stage. `active` is how many wires the stage acts on; `kind` is `conv` or `pool`.
+    The register halves at each pool and stops when a further halving would leave fewer wires than
+    the readout needs - a 3-qubit readout for 8 classes cannot pool all the way to one wire.
+    """
+    keep = max(1, readout_qubits)
+    plan, active = [], nq
+    while active // 2 >= keep and active > 1:
+        for r in range(layers):
+            plan.append({"kind": "conv", "active": active, "_round": r})
+        plan.append({"kind": "pool", "active": active})
+        active //= 2
+    plan.append({"kind": "fc", "active": active})
+    return plan
+
+
+def param_shapes(nq: int = N_QUBITS, readout_qubits: int = 0, layers: int = 1) -> dict:
+    """Named parameter blocks and their shapes.
+
+    NO AXIS IS THE QUBIT COUNT. That is the whole difference from what this file used to do: the
+    old `theta` was `(layers, nq)`, one independent angle per wire, which is per-position weights -
+    the opposite of a convolution. Here a stage carries `(2,)` conv angles and `(1,)` pool angle
+    SHARED across every pair in that stage, so the filter is translationally invariant.
+    """
+    stages = sum(1 for p in layer_plan(nq, readout_qubits, layers) if p["kind"] == "pool")
+    # EIGHT angles per filter, not two. The first version of this architecture used a single
+    # RY per wire plus a CNOT - 2 shared angles - and it underfits badly where the readout needs
+    # several wires: telecom (8 classes, 3 readout qubits) gets ONE pool stage, so 2-angle filters
+    # gave 14 parameters for an 8-class problem against the old ansatz's 48, and macro F1 fell from
+    # 0.81 to 0.48. Hur et al. use an expressive two-qubit block for exactly this reason.
+    #
+    # The filter is still SHARED across every pair in a stage, so this adds capacity without
+    # reintroducing per-position weights, and the count is still O(log N) in the register width -
+    # each doubling adds one stage, hence a constant `8*layers + 1`.
+    return {"conv": (stages, layers, 8), "pool": (stages,), "fc": (1,)}
+
+
+def param_count(nq: int = N_QUBITS, readout_qubits: int = 0, layers: int = 1) -> int:
+    """Total trainable scalars. O(log N) in the register width, by construction.
+
+    Each doubling of `nq` adds exactly one pool stage, hence `2 * layers + 1` parameters - a
+    CONSTANT increment, where a per-wire ansatz would double. `tests/test_the_qcnn_has_the_structure_the_name_claims.py`
+    asserts the increment rather than the value, because any single count is satisfiable by picking
+    a small constant.
+    """
+    import math as _m
+
+    return int(sum(_m.prod(s) if s else 1 for s in param_shapes(nq, readout_qubits, layers).values()))
+
+
+def init_params(nq: int = N_QUBITS, readout_qubits: int = 0, layers: int = 1,
+                seed: int = 0) -> torch.Tensor:
+    """Flat parameter vector, small-angle initialised."""
+    g = torch.Generator().manual_seed(seed)
+    return (torch.randn(param_count(nq, readout_qubits, layers), generator=g) * 0.1).requires_grad_(True)
+
+
+def _unpack(theta: torch.Tensor, nq: int, readout_qubits: int, layers: int):
+    shapes = param_shapes(nq, readout_qubits, layers)
+    n_conv = shapes["conv"][0] * shapes["conv"][1] * shapes["conv"][2]
+    n_pool = shapes["pool"][0]
+    conv = theta[:n_conv].reshape(shapes["conv"])
+    pool = theta[n_conv:n_conv + n_pool]
+    fc = theta[n_conv + n_pool]
+    return conv, pool, fc
+
+
 def circuit(x: torch.Tensor, theta: torch.Tensor, nq: int = N_QUBITS,
-            readout_qubits: int = 0, entangle: bool = True) -> torch.Tensor:
-    """(batch, nq) features + (layers, nq) angles -> a readout. State kept FLAT as (batch, 2**nq).
+            readout_qubits: int = 0, entangle: bool = True, layers: int = 1) -> torch.Tensor:
+    """(batch, nq) features + a FLAT shared-weight vector -> a readout. State FLAT as (batch, 2**nq).
+
+    `theta` is no longer `(layers, nq)`. It is the flat concatenation of the conv, pool and
+    fully-connected blocks that `param_shapes()` describes, none of whose axes is the qubit count -
+    see the note there for why per-wire angles are the thing a convolution replaces.
 
     ``readout_qubits = 0`` gives the original single ``<Z0>`` expectation, shape (batch,), which is
     BINARY BY CONSTRUCTION: one number through one scalar scale and bias is one logit. That is what
@@ -118,21 +230,60 @@ def circuit(x: torch.Tensor, theta: torch.Tensor, nq: int = N_QUBITS,
         nxt[:, i1] = s * a + c * bb
         state = nxt
 
-    for layer in range(theta.shape[0]):                   # trainable conv rounds
-        for q in range(nq):
-            th = theta[layer, q]
-            c, s = torch.cos(th / 2), torch.sin(th / 2)
-            m = torch.stack([torch.stack([c, -s]), torch.stack([s, c])]).to(cdt)
-            state = apply_1q(state, q, m, nq)
-        # THE ONLY ENTANGLING OPERATION IN THE CIRCUIT. `entangle=False` skips this ring and leaves
-        # everything else identical, turning the model into per-qubit RY rotations on a product
-        # state - a classical feature map with the same parameter count. Bowles, Ahmed & Schuld
-        # (arXiv:2403.07059, 12 models x 160 datasets) report that "removing entanglement from a
-        # quantum model often results in as good or better performance"; this switch is what lets
-        # that be CHECKED on this circuit rather than cited about someone else's.
-        if entangle:
-            for q in range(nq):
-                state = apply_cnot(state, q, (q + 1) % nq, nq)
+    # ---- QCNN proper: conv (shared filter) -> pool (measurement-conditioned) -> reduce ----
+    #
+    # ROUND 46 REPLACED WHAT WAS HERE. It was `for layer: for q: RY(theta[layer,q])` plus a CNOT
+    # ring - PennyLane's `BasicEntanglerLayers`, exactly - under the name QCNN. Zero of the five
+    # structural elements of Cong, Choi & Lukin (Nat. Phys. 15, 1273, 2019) were present: no shared
+    # weights, no pooling, no register reduction, no fully-connected block on a reduced register,
+    # and Theta(L*n) parameters instead of O(log N).
+    #
+    # Reference architecture: Hur, Kim & Park, "Quantum convolutional neural network for classical
+    # data classification", Quantum Machine Intelligence 4, 3 (2022), arXiv:2108.00661.
+    conv, pool, fc = _unpack(theta, nq, readout_qubits, layers)
+    cdt = torch.complex64
+    active = list(range(nq))
+    stage = 0
+    for step in layer_plan(nq, readout_qubits, layers):
+        if step["kind"] == "conv":
+            # ONE FILTER, APPLIED AT EVERY POSITION. `conv[stage, round]` carries two angles shared
+            # by every pair in this stage - that sharing is what the word "convolution" denotes.
+            r = step.get("_round", 0)
+            w = conv[stage, r]
+            for a, b in zip(active[0::2], active[1::2]):
+                # RY,RZ on each wire -> CNOT -> RY,RZ on each. One filter, every position.
+                for wire, iy, iz in ((a, 0, 1), (b, 2, 3)):
+                    state = apply_1q(state, wire, _ry(w[iy], cdt), nq)
+                    state = apply_1q(state, wire, _rz(w[iz], cdt), nq)
+                if entangle:
+                    state = apply_cnot(state, a, b, nq)
+                for wire, iy, iz in ((a, 4, 5), (b, 6, 7)):
+                    state = apply_1q(state, wire, _ry(w[iy], cdt), nq)
+                    state = apply_1q(state, wire, _rz(w[iz], cdt), nq)
+        elif step["kind"] == "pool":
+            pairs = list(zip(active[0::2], active[1::2]))
+            for a, b in pairs:
+                state = apply_cry(state, b, a, pool[stage], nq)   # condition survivor a on b
+            # AN ODD REGISTER HAS AN ORPHAN, and it must not simply survive. `active[0::2]` kept it
+            # in the active set, so on a 9-wire register the widths went 9->5->3->2 while
+            # `layer_plan` said 9->4->2->1, and one wire carried an encoded feature to the readout
+            # having never been convolved or pooled. Measured cost: finance at 9 qubits collapsed to
+            # predicting every row positive - accuracy 0.0517 on a 5% positive set - and medical at 9
+            # qubits to minority-F1 0.0000.
+            #
+            # The orphan is now pooled into the FIRST survivor, so its information reaches the
+            # readout, and the survivors are the `a` of each pair - which makes the circuit's widths
+            # equal `layer_plan`'s by construction rather than by coincidence.
+            if len(active) % 2 == 1:
+                state = apply_cry(state, active[-1], active[0], pool[stage], nq)
+            active = [a for a, _ in pairs]
+            stage += 1
+        else:                                                      # fully connected on survivors
+            for wire in active:
+                state = apply_1q(state, wire, _ry(fc, cdt), nq)
+            if entangle and len(active) > 1:
+                for j in range(len(active)):
+                    state = apply_cnot(state, active[j], active[(j + 1) % len(active)], nq)
 
     p = state.abs() ** 2
     idx = torch.arange(p.shape[1], device=dev)
@@ -314,7 +465,10 @@ def main() -> int:
             f"would need a discard rule and there is no defensible one - the alternative in the "
             f"literature discards the surplus states without renormalising.")
 
-    theta = torch.nn.Parameter(0.1 * torch.randn(a.layers, nq, device=dev))
+    # FLAT and SHARED. Was `(a.layers, nq)` - one independent angle per wire, which is precisely
+    # the per-position weighting a convolution replaces with one filter. `param_count` is O(log nq).
+    theta = torch.nn.Parameter(
+        init_params(nq, readout_qubits=readout_q or 0, layers=a.layers, seed=a.seed).to(dev))
     # Per-class scale and bias. They were SCALARS, which is the other half of why the old readout was
     # binary: one expectation through one affine map is one logit however many classes the labels have.
     scale = torch.nn.Parameter(torch.full((n_out,), 4.0, device=dev) if readout_q
@@ -328,14 +482,14 @@ def main() -> int:
     best, best_state = 0.0, None
     for ep in range(a.epochs):
         opt.zero_grad()
-        z = circuit(xt[tr], theta, nq, readout_qubits=readout_q, entangle=entangle)
+        z = circuit(xt[tr], theta, nq, readout_qubits=readout_q, entangle=entangle, layers=a.layers)
         loss = (lossf(z * scale + bias, yt[tr].long()) if readout_q
                 else lossf(z * scale + bias, yt[tr]))
         loss.backward()
         opt.step()
         if ep % 10 == 0 or ep == a.epochs - 1:
             with torch.no_grad():
-                zt = circuit(xt[va], theta, nq, readout_qubits=readout_q, entangle=entangle)
+                zt = circuit(xt[va], theta, nq, readout_qubits=readout_q, entangle=entangle, layers=a.layers)
                 logits = zt * scale + bias
                 pred = (logits.argmax(1).float() if readout_q else (logits > 0).float())
                 acc = (pred == yt[va]).float().mean().item()
@@ -400,7 +554,7 @@ def main() -> int:
         th_t = torch.tensor(best_state[0], dtype=torch.float32, device=dev)
         sc_t = torch.tensor(best_state[1], dtype=torch.float32, device=dev)
         bi_t = torch.tensor(best_state[2], dtype=torch.float32, device=dev)
-        z_all = circuit(xt[te], th_t, nq, readout_qubits=readout_q, entangle=entangle)
+        z_all = circuit(xt[te], th_t, nq, readout_qubits=readout_q, entangle=entangle, layers=a.layers)
         logits_all = z_all * sc_t + bi_t
         qcnn_pred = ((logits_all.argmax(1) if readout_q else (logits_all > 0))
                      .int().cpu().numpy())
@@ -510,7 +664,11 @@ def main() -> int:
         # `--qubits` belongs in this string because it changes the weights. The first 7-wire run
         # omitted it, so the recorded command reproduced an EIGHT-wire model - a reproduction line
         # that does not reproduce is worse than none, since it gets checked once and trusted after.
-        "training": {"layers": a.layers, "epochs": a.epochs, "seed": a.seed, "qubits": nq,
+        # THE ARTIFACT RECORDS ITS OWN ARCHITECTURE. Without it a retrained card and a stale
+        # weights file are indistinguishable, which is the failure this round's plan named:
+        # "renaming the label and shipping weights from the old circuit".
+        "training": {"architecture": "qcnn-cong-hur",
+                     "layers": a.layers, "epochs": a.epochs, "seed": a.seed, "qubits": nq,
                      "threads": a.threads, "entangle": entangle,
                      "command": f"python scripts/train/qcnn_variational.py --usecase {a.usecase} "
                                 f"--layers {a.layers} --epochs {a.epochs} --seed {a.seed} "
