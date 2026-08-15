@@ -188,7 +188,7 @@ Section~\ref{sec:featuremap} shows what that distinction bought once it was reco
 Students are fitted against the teacher's own output rather than ground truth, so
 \texttt{agreement} measures substitution rather than two independent fits that happen to correlate.
 Fidelity and task performance are reported separately because they decouple empirically: in one case
-agreement rose from 0.8841 to 0.9471 while the task metric did not move at all. Reporting one as
+agreement rose from 0.8841 to 0.9471 in Round 24 while the task metric did not move at all. The current value is 0.9829; the pair is quoted as a before/after, not as today's figure. Reporting one as
 though it were the other is a category error this project made and corrected.
 
 \subsection{Metric selection}
@@ -412,6 +412,12 @@ disclosure must be stated; here it is, and the claim is not made.
 \label{sec:results}
 
 \input{generated/models}
+
+% Licences in their own table, printed whole. They were a column inside the models table above,
+% rendered through split(";")[0][:22]; that removed the qualifier from three of the seven licences
+% this report publishes, and a qualifier is what makes a licence string long, so the truncation was
+% biased toward overclaiming. The models table now names the corpus and this one carries the terms.
+\input{generated/licences}
 
 \begin{figure}[h]\centering
 \includegraphics[width=0.95\textwidth]{generated/fig_baselines.pdf}

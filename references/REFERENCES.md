@@ -1503,6 +1503,26 @@ so each one names what was checked and where it stopped.
   NCCoE CSWP 36F on 5G NAS message security**, which is not PQC. So **no PQC instrument exists in
   August 2026 at all**, and the newest one remains OMB M-26-15 (2026-06-24). Any future round that wants
   to re-check should start from those four horizons rather than from a fresh sweep.
+
+  **Round 43 correction, against this project's own interest: the CSRC count above is wrong by one.**
+  The listing carries **two** August 2026 items, not one - 2026-08-06 CSWP 36F and **2026-08-05,
+  *Transit Cybersecurity Framework Community Profile***. The second is a sector CSF profile and not a
+  cryptographic instrument, so **the conclusion is unaffected**: there is still no PQC instrument in
+  August 2026. The word "only" is what was wrong, and a stated horizon that undercounts is exactly
+  what a later round trusts instead of re-running.
+
+  **Method limit on that correction, stated because it bounds what the correction may be used for.**
+  The re-check went through a summarising fetch rather than the CSRC publications API. That is enough
+  to establish that a second August item exists - a correction that costs this project a claim, so the
+  direction of error is safe - and **not** enough to assert an exhaustive August list. A round wanting
+  an authoritative count should hit the API directly.
+
+  **Horizons re-stamped 2026-08-15, at primary source.** The Federal Register API returns the literal
+  `"count":0` for "post-quantum cryptography" published on or after 2026-08-01; arXiv cs.CR's newest
+  submission is **2608.13465** (2026-08-13T16:46:56Z); IACR ePrint **2026/1644** is live and
+  **2026/1645** returns 404. **2026-08-14 and 2026-08-15 are structurally empty** on both preprint
+  servers, so a sweep of those two days is a sweep of an empty set and is recorded as one rather than
+  as a search that found nothing.
 - **No published in-browser FHE or MPC, and no prior art on VISUALISING encrypted inference - FIFTH
   consecutive round.** An IACR full-text search for "WebAssembly" returns **8 results across all
   years**, the newest crypto-relevant one still **2025/487 webSPDZ**. The composition novelty claim has

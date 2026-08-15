@@ -1,0 +1,108 @@
+{
+ "usecase": "finance",
+ "n_qubits": 9,
+ "layers": 3,
+ "n_features": 8,
+ "theta": [
+  [
+   0.39763331413269043,
+   -2.0058796405792236,
+   0.07849503308534622,
+   -1.0229740142822266,
+   0.5980708599090576,
+   -1.7000776529312134,
+   0.6119734644889832,
+   -1.101363182067871,
+   -0.2428513467311859
+  ],
+  [
+   -0.002542579546570778,
+   0.10035848617553711,
+   0.28918367624282837,
+   -0.07233152538537979,
+   1.553314447402954,
+   -0.014733172953128815,
+   0.0021920311264693737,
+   1.57309091091156,
+   0.004483992233872414
+  ],
+  [
+   0.1571081429719925,
+   1.4810676574707031,
+   -0.8730946183204651,
+   -1.1334779262542725,
+   -0.8095570206642151,
+   -1.875661015510559,
+   -0.10890906304121017,
+   -0.08659161627292633,
+   1.5315535068511963
+  ]
+ ],
+ "scale": 4.996273517608643,
+ "bias": -1.9084806442260742,
+ "readout": {
+  "kind": "expval_z0",
+  "n_classes": 2,
+  "note": "single <Z0> through a scalar scale and bias - one logit, binary by construction"
+ },
+ "class_names": null,
+ "feature_names": [
+  "amount",
+  "velocity_24h",
+  "cross_border",
+  "night_tx",
+  "new_payee",
+  "amount_zscore",
+  "device_risk",
+  "geo_mismatch"
+ ],
+ "input_space": "raw",
+ "encoding": "tanh",
+ "feature_mean": [
+  10.922980907142842,
+  0.00035714285714285714,
+  0.4592857142857143,
+  0.030357142857142857,
+  0.4375,
+  0.04525036071428573,
+  0.7639285714285714,
+  0.5806947035714286
+ ],
+ "feature_std": [
+  1.9037880244344714,
+  0.01889484866630189,
+  0.49833958997732736,
+  0.17156802363696524,
+  0.49607837082461076,
+  1.04920264936133,
+  0.42466658590435474,
+  0.48881131352983914
+ ],
+ "provenance": "PaySim simulator output (Kaggle ealaxi/paysim1, CC-BY-SA-4.0; Lopez-Rojas et al. 2016) - SYNTHETIC transactions from aggregated real mobile-money logs, 8 AML features, the same 8 the browser pipeline feeds",
+ "training": {
+  "layers": 3,
+  "epochs": 120,
+  "seed": 0,
+  "qubits": 9,
+  "threads": 1,
+  "entangle": true,
+  "command": "python scripts/train/qcnn_variational.py --usecase finance --layers 3 --epochs 120 --seed 0 --threads 1 --qubits 9",
+  "note": "--seed drives the numpy split permutation and torch parameter init. Re-running this command regenerates this file: five consecutive runs gave identical metrics and identical theta to nine decimal places. That is true only since the multiclass readout stopped using index_add_, whose CUDA atomicAdd made the same seeded command land on macro F1 0.809846 or 0.807781 depending on the run."
+ },
+ "test_accuracy": 0.981667,
+ "classical_lr_accuracy": 0.985,
+ "majority_baseline": 0.948333,
+ "test_minority_f1": 0.813559,
+ "classical_lr_minority_f1": 0.865672,
+ "all_positive_f1": 0.098257,
+ "test_macro_f1": null,
+ "classical_lr_macro_f1": null,
+ "test_prevalence": 0.051667,
+ "n_classes_predicted": null,
+ "per_class_f1": null,
+ "macro_f1_floors": null,
+ "headline_metric": "minority_class_f1",
+ "n_train": 2800,
+ "n_test": 1200,
+ "note": "Variational QCNN trained by backpropagation through a dense state vector. The prediction path applies NO QOTP mask: undoing a Pauli frame through Clifford+T is not implemented here (T X T-dagger is not Pauli), so hiding and prediction are kept separate rather than claiming a correction that does not exist. Simulated, not hardware; the classical baseline above is reported so no quantum advantage is implied."
+}
