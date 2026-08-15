@@ -9,7 +9,11 @@ PY     := $(VENV)/bin/python
 .DEFAULT_GOAL := help
 .PHONY: help venv setup setup-ai setup-fhe setup-api submodules data test lint \
         run-finance run-medical benchmark api web docker-up docker-demo clean check-secrets \
-        ci-local
+        ci-local report
+# `report` MUST be phony: a directory named report/ exists, so make considered the target up to date
+# and printed "is up to date" without running a single recipe line. A build step that silently does
+# nothing is worse than one that fails, and this one would have left the PDF stale in the round whose
+# subject is a stale PDF.
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
