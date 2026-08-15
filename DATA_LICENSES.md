@@ -142,7 +142,9 @@ this as synthetic; it is never presented as measured on real traffic.
   trade"; that prediction was wrong and is recorded here rather than quietly replaced. All three
   teacher repos and all three encrypted-student repos are public.
 
-- **PGS Catalog is not blanket CC BY 4.0.** Scoring files carry a `#license` header that defaults to
+- **PGS Catalog is not blanket CC BY 4.0.** Round 46 correction: scoring files carry **no**
+  `#license` header - PGS000004 downloaded today has 14 `#` lines and none is a licence. The
+  licence is in the REST record only, as a pass-through to
   the EMBL-EBI Terms of Use, and **individual scores can be more restrictive** - the PGS Catalog
   documentation shows a live CC BY-NC-ND 4.0 example. `scripts/train/genomics_prs.py` re-reads that
   header at run time (`audit_licence()`) and **records** it. Publication is gated separately, by
