@@ -9,9 +9,9 @@ from __future__ import annotations
 
 from functools import lru_cache
 
-from qsh.config import get_config
-
 import numpy as np
+
+from qsh.config import get_config
 
 
 @lru_cache(maxsize=4)

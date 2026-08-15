@@ -13,6 +13,7 @@ import pytest
 pytest.importorskip("fastapi")
 
 from api.main import app_config
+
 from qsh.config import frontend_config
 
 

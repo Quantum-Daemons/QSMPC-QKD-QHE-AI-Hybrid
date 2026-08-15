@@ -1,5 +1,24 @@
 # Does the unencoded wire do anything? Telecom QCNN at 7 wires against 8
 
+> **ROUND 46 SUPERSEDED EVERY NUMBER IN THIS FILE, AND THE CONCLUSION SURVIVES.**
+>
+> All measurements below were taken on a circuit labelled QCNN that was a hardware-efficient
+> ansatz - RY on every wire plus a CNOT ring, `BasicEntanglerLayers` - with independent per-wire
+> angles. Round 46 replaced it with a real QCNN (one SHARED two-qubit filter applied at every
+> position, pooling by a rotation on the survivor conditioned on its partner, register reduction,
+> O(log N) parameters). The width question this file asks is therefore being asked of a different
+> circuit, and these seed spreads do not transfer.
+>
+> **The finding that DOES transfer, and is now stronger.** On the real QCNN the extra wire is
+> provably inert: 8 and 9 qubits give byte-identical metrics on both finance (0.976667) and medical
+> (0.918605), because a shared filter cannot allocate capacity to a wire carrying no feature. The old
+> ansatz gave that wire its own trainable angles, which is exactly why it produced a spread worth
+> ablating at all. The honest summary is that the width ablation was measuring the ansatz's spurious
+> per-wire capacity, not a property of the data.
+>
+> Re-running this ablation on the new circuit is deferred **by Round 48**, because the interesting
+> comparison is no longer 8-vs-9 wires but conv-rounds against pool-stages.
+
 Measured 2026-08-14, Round 40. Companion to `qcnn-entanglement-ablation.md`, which asks the same
 question of the entangling ring.
 

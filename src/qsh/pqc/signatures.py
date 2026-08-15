@@ -21,7 +21,7 @@ class SignatureKeypair:
 
     sig_name: str
     public_key: bytes
-    _signer: "oqs.Signature"
+    _signer: oqs.Signature
 
     def sign(self, message: bytes) -> bytes:
         return self._signer.sign(message)
