@@ -1275,3 +1275,36 @@ in this file rather than in the register:
 - **A limit, stated.** The browser harness could not deliver synthetic `Tab` or `Enter` to the page -
   focus did not move off the element it started on - so the skip link's tab-ORDER was not walked. Its
   position as first focusable establishes it structurally and not empirically.
+
+## Round 44, added in Round 45 - a POINTER, and the fourth time this gap has opened
+
+**Round 44 wrote no section here.** That is the fourth recurrence of the gap this file already
+documents twice - Rounds 25-27 were never reconstructable, Rounds 29-31 were reconstructed in Round
+32 by a round that recorded nothing of its own, Rounds 39-42 became the pointer above - and it
+recurred *in the round immediately after the one that wrote that pointer*. The root cause stated at
+`:364` still holds: **the round that writes the checks is not the round that runs them, and nothing
+forces the second half.**
+
+Round 45 added what does force it: `tests/test_the_log_has_an_entry_for_the_current_round.py`. A
+round that raises the register's heading without leaving a section here now fails a gate rather than
+relying on the next round to notice.
+
+This is a pointer and not a reconstruction, for the reason `:1241` gives: *a reconstruction presented
+as a record is worse than an absent record, because the absence is visible and the imitation is not.*
+Round 44 **did** verify on the deployed site; it wrote the measurements into the register instead of
+here.
+
+| Round | Where its deployed-site measurements live |
+|---|---|
+| 44 | `docs/deliverable-verification.md`, "Round 44" section - `skr_per_pulse` 0.00958 x `source_rate_hz` 1e8 = `skr_bit_s` 957,659; `channel_time_s` 0.002; `stored_key_count` 4 = floor(1436/352), restored from a permanent 0 |
+
+**One line above is now known to be wrong, and it is left standing with this correction beside it.**
+The Round 43 entry records `skr (bit/s)` rendering `n/a` beside `key budget 1,436 bit`. It does not
+record the `0` sitting between them - `stored_key_count`, permanently zero from Round 42 to Round 44.
+Round 44's register entry already says so. Repeating it here because this file is where a reader
+looks for what was seen on the page, and the entry that missed it is in this file.
+
+**And the figure Round 44 recorded is no longer the one the demo shows.** Its 957,659 bit/s was the
+non-decoy GLLP fraction multiplied by an assumed clock, while three surfaces called it a decoy-state
+bound; Round 45 measured that gap at 4.07x and replaced the model. The Round 44 numbers above are
+correct as a record of what was on the page that day, and are not the current expected values.
