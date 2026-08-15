@@ -104,6 +104,32 @@ export const FREE_SPACE: ChannelParams = {
  * but it is the closest measured free-space QBER to the 2.85% this model gives at 800 km, and it
  * is the reason the misalignment floor here is 0.025 rather than a fibre-like 0.015.
  */
+/**
+ * The one multiplication that gives a bit/s, returned as a TRIPLE so no call site can emit a rate
+ * without also emitting the clock it assumed and the channel time that clock implies.
+ *
+ * `perPulse` is what every model here computes - `(secureFraction * nSift) / nPulses`, dimensionless
+ * bits per pulse. `fRepHz` is the source repetition rate, the ONE quantity this simulation does not
+ * and cannot measure: it is a property of a transmitter, stated in a paper's experimental section
+ * rather than derived from one. Multiplying the two gives the quantity ETSI GS QKD 015 defines
+ * `skr` to be.
+ *
+ * Returning all three together is deliberate. A previous round put a session TOTAL into a field
+ * documented as bit/s; the shape that prevents the sequel is one that makes it impossible to publish
+ * a rate while leaving the assumption behind it unpublished.
+ */
+export function keyRateWithClock(perPulse: number, pulses: number, fRepHz: number): {
+  skrBitPerSec: number | null; channelSeconds: number | null; sourceRateHz: number;
+} {
+  // Guarded rather than trusted: a zero or negative clock would give Infinity or a negative time,
+  // and both would render. `null` means "this run reported no rate", which is not the same claim as
+  // zero bits per second on a working link.
+  if (!(fRepHz > 0) || !Number.isFinite(fRepHz)) {
+    return { skrBitPerSec: null, channelSeconds: null, sourceRateHz: fRepHz };
+  }
+  return { skrBitPerSec: perPulse * fRepHz, channelSeconds: pulses / fRepHz, sourceRateHz: fRepHz };
+}
+
 export function channelLossDb(p: ChannelParams): number {
   if (!p.freeSpace) return p.distanceKm * p.lossDbPerKm;
   const fs = p.freeSpace;

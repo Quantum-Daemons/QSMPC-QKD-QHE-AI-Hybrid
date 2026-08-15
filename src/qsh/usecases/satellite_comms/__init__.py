@@ -125,7 +125,11 @@ class SatelliteQKDStage(Stage):
                 f"eve={params.eve_intercept_fraction:.2f}", self.name)
         res = run_bb84(n_pulses, params, seed=ctx.config.get("seed", 0))
         bus.metric("qber", round(res.qber, 5), self.name)
-        bus.metric("skr", round(res.secret_key_rate, 6), self.name)
+        # `skr_per_pulse`, for the same reason as `orchestration/stages.py`: this is bits per
+        # channel use, and `skr` is a spec field name meaning bit/s. The satellite twin is
+        # renamed in the same change as the fibre one - fixing one and not the other is the
+        # asymmetry this round found on the browser side and would otherwise repeat here.
+        bus.metric("skr_per_pulse", round(res.secret_key_rate, 6), self.name)
         bus.metric("secure_key_bits", res.secure_key_bits, self.name)
         bus.metric("channel_loss_db", loss_db, self.name)
         ctx.metrics.update(qber=res.qber, skr=res.secret_key_rate)
