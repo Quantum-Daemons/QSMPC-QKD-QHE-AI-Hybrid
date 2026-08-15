@@ -27,13 +27,21 @@ WHY NOTHING CAUGHT IT
 
 THE INVARIANT, STATED GENERALLY
 
-`skr` and `eskr` are `number | null` and null is their designed value here. So any arithmetic that
-reaches them through a nullish fallback silently yields the fallback - which is indistinguishable
-from a real measurement of zero. That is the class, not the instance: **a field emptied on purpose
-must have no arithmetic reader that can quietly substitute a number for its absence.**
+A rate field can legitimately be absent - PQC-only runs have no quantum channel, and no run has one
+before it starts. So any arithmetic reaching such a field through a nullish fallback silently yields
+the fallback, which is indistinguishable from a real measurement of zero. That is the class, not the
+instance: **a field that can be absent by design must have no arithmetic reader that can quietly
+substitute a number for its absence.**
 
 The check is therefore on the READING side, which is the side Round 42 did not change, and the side
 this file was written to add.
+
+ROUND 44 CHANGED THE PREMISE, AND THIS PARAGRAPH WITH IT. `skr` now carries a genuine bit/s derived
+from an assumed source repetition rate, and is still nullable for the two cases above. `eskr` no
+longer exists as a field at all - it is computed by `linkEskr()`, so the assignment Round 42 deleted
+cannot be written. The first version of this docstring said "`skr` and `eskr` are `number | null`",
+which stopped being true in the commit that fixed the defect it describes; leaving it would have been
+this round's own subject, in the file arguing against it.
 """
 
 from __future__ import annotations
@@ -45,7 +53,9 @@ REPO = Path(__file__).resolve().parents[1]
 TS = REPO / "web" / "src" / "lib" / "clientSdnController.ts"
 PANEL = REPO / "web" / "src" / "components" / "SdnControlPlanePanel.tsx"
 
-#: The fields Round 42 emptied on purpose. Their declared type is `number | null`.
+#: The rate fields. `skr` is stored and nullable; `eskr` is derived and has no field at all.
+#: Both names are scanned, because a fallback on either is the same substitution of a
+#: number for an absence.
 EMPTIED = ("skr", "eskr")
 
 _COMMENT = re.compile(r"/\*[\s\S]*?\*/|//[^\n]*")
@@ -61,14 +71,33 @@ def _code_only(text: str) -> str:
     return _COMMENT.sub(lambda m: "\n" * m.group(0).count("\n"), text)
 
 
-def test_the_emptied_fields_are_still_declared_nullable() -> None:
-    """If they stop being null this check has no subject, and that is a decision to make openly."""
+def test_the_rate_fields_can_still_be_absent_and_eskr_has_no_storage() -> None:
+    """The premise, restated after Round 44 changed it - openly, because it fired on that change.
+
+    This first asserted that both `skr` and `eskr` were declared `number | null`, and it went red the
+    moment Round 44 made `eskr` a computed value. That is the check working: its docstring said "if
+    they stop being null this check has no subject, and that is a decision to make openly", and the
+    decision is recorded here rather than by deleting the assertion.
+
+    What holds now is stronger than nullability:
+      - `skr` is still `number | null`, because a run can legitimately produce no rate (PQC-only,
+        or before a run) and `0 bit/s` would be a claim about a link rather than the absence of one.
+      - `eskr` has NO FIELD AT ALL. It is `linkEskr(link, topo)`, computed on read. Round 42's defect
+        was `allocate()` subtracting granted bits from it; a field that does not exist cannot be
+        decremented, which is a guarantee rather than a convention.
+    """
     src = _code_only(TS.read_text())
-    for field in EMPTIED:
-        assert re.search(rf"\b{field}:\s*number\s*\|\s*null", src), (
-            f"`{field}` is no longer declared `number | null`. If a real rate now fills it, this "
-            "gate's premise is gone - delete it deliberately rather than letting it pass vacuously."
-        )
+    assert re.search(r"\bskr:\s*number\s*\|\s*null", src), (
+        "`skr` is no longer declared `number | null`. A run that produces no rate must be able to "
+        "say so; substituting 0 would be a claim about the link."
+    )
+    assert not re.search(r"^\s*eskr:\s*number", src, re.M), (
+        "`eskr` has a stored field again. It was made a derived value precisely so `allocate()` "
+        "could not decrement it - restoring storage restores the way Round 42's defect was written."
+    )
+    assert "export function linkEskr" in src, (
+        "`linkEskr` is gone, so `eskr` is either unavailable or has silently moved back into storage"
+    )
 
 
 def test_no_arithmetic_reads_an_emptied_field_through_a_fallback() -> None:
