@@ -106,6 +106,9 @@ def _browser() -> dict:
             f"import * as m from {json.dumps(bundle.as_uri())};\n"
             f"const chan = {{ ...m.FIBER, distanceKm: {DISTANCE_KM} }};\n"
             "const runs = [1, 2, 3, 4, 5].map((s) => m.bb84(%d, chan, s));\n" % PULSES
+            # E91 was exported into this bundle by Round 45 and never called - the harness
+            # imported the model it said it was not checking. It is evaluated now.
+            + "const e91runs = [1, 2, 3, 4, 5].map((s) => m.e91(%d, chan, s));\n" % PULSES
             + "console.log(JSON.stringify({\n"
             "  rates: runs.map((r) => r.secretKeyRate),\n"
             "  bits: runs.map((r) => r.secureKeyBits),\n"
@@ -113,6 +116,8 @@ def _browser() -> dict:
             "  qbers: runs.map((r) => r.qber),\n"
             "  nonDecoy: runs.map((r) => r.secretKeyRateNonDecoy ?? null),\n"
             "  eta: m.transmittance(chan),\n"
+            "  e91Rates: e91runs.map((r) => r.secretKeyRate),\n"
+            "  e91Qbers: e91runs.map((r) => r.qber),\n"
             "  eDet: m.intrinsicQber(chan),\n"
             "}));\n"
         )
@@ -369,3 +374,31 @@ def _rate_fact_source(src: str) -> str | None:
 
     m = re.search(r'label:\s*"Secret-key rate".*?source:\s*(.*?)\n', src, re.S)
     return m.group(1).strip().rstrip(",") if m else None
+
+
+def test_the_e91_bound_does_not_move_with_the_seed_either() -> None:
+    """E91 was held to a lower standard than BB84, and the harness could not see it.
+
+    Round 45 made the BB84 bound seed-independent - it takes the intrinsic error rate, not the
+    session's draw - and left `e91()` computing its secure fraction from the SAMPLED qber. So the
+    E91 page's rate moved between reloads for exactly the reason the BB84 page's had.
+
+    `src/qsh/qkd/e91.py:54` has always computed its fraction from the visibility-derived error rate
+    and never from a sample, so the BROWSER was the divergent one. That is the shape this round is
+    about: one language moved.
+
+    The harness could not have caught it. `e91` was exported into the esbuild bundle by Round 45 and
+    never called - the model the file's own docstring said it was "checked separately below" was
+    imported and evaluated zero times. It is evaluated now.
+    """
+    b = _browser()
+    rates = b.get("e91Rates")
+    assert rates, "the harness no longer evaluates e91; it was imported-but-unused for a whole round"
+    assert len(set(f"{r:.12f}" for r in rates)) == 1, (
+        f"the E91 bound differs across seeds: {rates}. A secret-key bound is a property of the "
+        "channel and the source visibility, not of one session's sampling noise."
+    )
+    assert len(set(f"{q:.9f}" for q in b["e91Qbers"])) > 1, (
+        "the E91 measured QBER is now identical across seeds too, so the noise was removed rather "
+        "than moved off the bound. The QBER is a measurement and must still vary."
+    )

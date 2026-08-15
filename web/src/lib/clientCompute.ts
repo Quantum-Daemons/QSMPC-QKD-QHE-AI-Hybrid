@@ -260,9 +260,19 @@ export function securityFacts(config: any, metrics: Record<string, any>): Securi
       source: isE91
         ? "E91 / CHSH run, GLLP secure fraction"
         : "BB84 decoy-state run, two-intensity secure fraction",
+      // THE BAND, NOT JUST THE ENDPOINT. This tested `keyBits === 0` while the behaviour it warns
+      // about switches at 256 - the threshold `stages.py` and `:1233` below both use to decide
+      // whether QKD is folded into the session at all. So a run producing 1..255 bits showed a
+      // positive count, fired no warning, and silently fell back to PQC-only. Round 45's 4x
+      // correction moved the entry to that band from 93 km to 63 km: three clicks of a control
+      // whose step is 5 km.
       warn: keyBits === 0
         ? "the QKD profile is selected but this channel produced NO secure key: the session rests on "
           + "the PQC hybrid alone"
+        : keyBits != null && keyBits > 0 && keyBits < 256
+        ? `this channel produced ${keyBits} secure bits, below the 256 a session key needs, so no `
+          + "QKD key is derived and the session rests on the PQC hybrid alone. The bits are real; "
+          + "there are not enough of them."
         : undefined,
     });
     if (skr != null) {
@@ -1233,6 +1243,11 @@ export async function clientAliceBob(seed = 0, nShared = 8) {
     qkd_mix_note: qkd.secureKeyBits >= 256
       ? "the BB84 run cleared 256 secure bits, but this mirror derives no key material from it - "
         + "bb84() returns bit counts, so there is nothing to fold into the session key"
+      // Was "no secure key bits, so nothing to mix even in principle" for ANY value below 256,
+      // so a run with 94 bits printed `qkd_secure_key_bits: 94` beside prose denying they existed.
+      : qkd.secureKeyBits > 0
+      ? `${qkd.secureKeyBits} secure bits, below the 256 a session key needs - not enough to mix, `
+        + "which is a different statement from having none"
       : "no secure key bits, so nothing to mix even in principle",
     psi_intersection_size: psi.intersection_size, psi_ground_truth: uniqShared,
     psi_correct: psi.intersection_size === uniqShared,
@@ -1896,8 +1911,20 @@ export function runClientPipeline(
         // RENAMED from `skr`. ETSI GS QKD 015's `skr` is bit/s and this number is bits per PULSE;
         // leaving one name on two dimensions inside the same signed payload is the defect this
         // round exists to remove, one namespace over.
-        metric(stage, "skr_per_pulse", Math.round(res.secretKeyRate * 1e5) / 1e5);
+        // 1e6, matching `api.ts`. The pair split in Round 45: that file moved to six decimals with a
+        // comment saying "the control-plane panel shows 0.002355", and these two sites stayed at
+        // 1e5, so the panel showed 0.00235 and the comment described the other surface.
+        metric(stage, "skr_per_pulse", Math.round(res.secretKeyRate * 1e6) / 1e6);
         metric(stage, "secure_key_bits", res.secureKeyBits);
+        // ACTUALLY REPORTED NOW. `secretKeyRateNonDecoy` was added in Round 45 with a JSDoc
+        // saying "Reported beside `secretKeyRate`" and was read by nothing but its own test -
+        // an inert FIELD shipped in the same commit as the gate against inert CONTROLS. The
+        // counterfactual is the point of computing a decoy bound: at mu=0.5 it is 0, because
+        // the tagged fraction is 7.26 and no detection can be certified single-photon.
+        if (res.secretKeyRateNonDecoy != null) {
+          metric(stage, "skr_per_pulse_no_decoy",
+                 Math.round(res.secretKeyRateNonDecoy * 1e6) / 1e6);
+        }
         // THE FOUR TOGETHER, on both QKD stages. The satellite twin below emitted no rate at all
         // while its own comment claimed "both report the same quantity" - a comment naming a
         // boundary and describing one side of it.
@@ -1960,8 +1987,20 @@ export function runClientPipeline(
         metric(stage, "qkd_eve_fraction", satChan.eveFraction);
         metric(stage, "qber", r2(res.qber));
         metric(stage, "channel_loss_db", res.channelLossDb);
-        metric(stage, "skr_per_pulse", Math.round(res.secretKeyRate * 1e5) / 1e5);
+        // 1e6, matching `api.ts`. The pair split in Round 45: that file moved to six decimals with a
+        // comment saying "the control-plane panel shows 0.002355", and these two sites stayed at
+        // 1e5, so the panel showed 0.00235 and the comment described the other surface.
+        metric(stage, "skr_per_pulse", Math.round(res.secretKeyRate * 1e6) / 1e6);
         metric(stage, "secure_key_bits", res.secureKeyBits);
+        // ACTUALLY REPORTED NOW. `secretKeyRateNonDecoy` was added in Round 45 with a JSDoc
+        // saying "Reported beside `secretKeyRate`" and was read by nothing but its own test -
+        // an inert FIELD shipped in the same commit as the gate against inert CONTROLS. The
+        // counterfactual is the point of computing a decoy bound: at mu=0.5 it is 0, because
+        // the tagged fraction is 7.26 and no detection can be certified single-photon.
+        if (res.secretKeyRateNonDecoy != null) {
+          metric(stage, "skr_per_pulse_no_decoy",
+                 Math.round(res.secretKeyRateNonDecoy * 1e6) / 1e6);
+        }
         // The same four as the fibre stage, from the FREE-SPACE clock key. The default value is the
         // same 100 MHz, but the provenance is not: on this page it is the anchor's own measured
         // configuration, and on fibre it is that clock carried over to different apparatus. Two keys
