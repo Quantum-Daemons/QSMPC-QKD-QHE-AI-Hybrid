@@ -45,6 +45,30 @@ Workstreams: **WS1** AI-QKD parameter optimisation and entropy, **WS2** QML-IDS,
   torch), so it is an analogue of the paper's theme rather than a reproduction of its method.
   Both the v1 and v2 PDFs are kept locally for provenance (`OptiQKD_*.pdf`, `AML-QKD_*.pdf`); cite v2.
 
+- **Quantum key distribution over a 2 km free-space channel with a high secure key rate** - Park,
+  Kim, Im, Jo, Kim, Choi and Ihn, **arXiv:2607.24118v1** [quant-ph], submitted 2026-07-27 `[link]`
+  URL: https://arxiv.org/abs/2607.24118
+  Added: no PDF bundled; abstract loaded and claim verified 2026-08-15
+  Licence **CC BY 4.0**, read from the abstract page's own licence line.
+  **v1 only. It has an arXiv DataCite DOI (10.48550/arXiv.2607.24118) and NO journal DOI** - which
+  is not the same thing as "no DOI", the phrasing a code comment used until Round 44. Every arXiv
+  paper carries a DataCite DOI; what is absent here is peer review.
+  Reports, verbatim from the abstract: a **100 MHz** repetition rate, **164.8 kbps** secure key rate
+  and QBER of **approximately 3.3 %** over a 2 km outdoor free-space channel, with active beam-wander
+  correction by fast-steering mirrors.
+  **What it grounds, and only this:** the `source_rate_hz` / `free_space_source_rate_hz` defaults in
+  `src/qsh/config/defaults.py`. Round 44 made the source repetition rate an explicit, operator-set
+  assumption so ETSI GS QKD 015's `skr`/`eskr` could carry the bit/s the spec defines them as, and
+  this paper's 100 MHz is the default that assumption starts from. It also anchors the 0.025
+  misalignment floor in the free-space channel model.
+  **Explicit negative, because a borrowed clock invites a borrowed result.** No other number from
+  this paper is used. Its 164.8 kbps is quoted on the control-plane panel purely as the nearest
+  measured figure this repository cites, labelled as belonging to a different channel - a 2 km
+  horizontal path, not this model's 50 km of fibre or its ground-to-LEO slant range - and it is
+  **neither reproduced nor claimed** anywhere in this project. A preprint is a weaker source than a
+  refereed one and the demo's own bit/s is a simulation under an assumed clock; both facts travel
+  with the number wherever it is shown.
+
 - **Information-Theoretic Solutions for Seedless QRNG Bootstrapping and Hybrid PQC-QKD Key
   Combination** - Giestinhas and Spiller, University of York, arXiv:2603.26907v2 [quant-ph], 2026
   `[R-local]`
