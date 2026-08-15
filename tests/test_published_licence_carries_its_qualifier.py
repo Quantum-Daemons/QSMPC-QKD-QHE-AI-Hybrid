@@ -144,9 +144,9 @@ def test_the_renderers_do_not_truncate_a_seeded_licence() -> None:
     """
     import sys as _sys
     _sys.path.insert(0, str(REPO / "report"))
-    from build_data import licence_table, model_table  # noqa: PLC0415
-
     from dataclasses import replace  # noqa: PLC0415
+
+    from build_data import licence_table, model_table  # noqa: PLC0415
 
     real = sorted(registry._SPECS, key=lambda s: s.key)[0]
     hedged = "CC-BY-4.0 asserted by SOMEBODY; the upstream grant is NOT verifiable"

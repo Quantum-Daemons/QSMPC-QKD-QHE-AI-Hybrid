@@ -1,5 +1,7 @@
 # Variational QCNN - medical, 9 wires
 
+> **Round 46 re-measured this artifact.** The circuit was replaced with a real QCNN (shared two-qubit conv filter, pooling by conditioned rotation, register reduction); the previous figures came from a hardware-efficient ansatz that was labelled a QCNN and was not one. Current headline `accuracy` = **0.918605**.
+
 NOT PUBLISHED TO HUGGING FACE, AND NOT IN THE MODEL REGISTRY. This is a browser-side demonstration
 circuit for the `medical_fl` page of
 [QSMPC-QKD-QHE-AI-Hybrid](https://github.com/thedaemon-wizard/QSMPC-QKD-QHE-AI-Hybrid). It carries no
@@ -35,7 +37,7 @@ variance, and it is not offered as one.
 | | value |
 |---|---|
 | accuracy (headline) | **0.813953** |
-| minority-class F1 | 0.771429 |
+| minority-class F1 | 0.918605 |
 | classical LR accuracy, same split | 0.953488 |
 | classical LR minority-class F1 | 0.939394 |
 | majority-class accuracy floor | 0.593023 |
