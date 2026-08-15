@@ -62,8 +62,11 @@ const cfg_qrng = m.qrngCfg();
 // --------------------------------------------------------------------------------------------- //
 //  1. Config reaches the model
 // --------------------------------------------------------------------------------------------- //
-// The GLLP secure fraction is 1 - h2(q) - f_EC*h2(q). Raising f_EC must LOWER it, at every QBER
-// where a key exists. If the model ignores config, the two runs are identical and this fails.
+// Raising f_EC must LOWER the secure fraction, at every QBER where a key exists. (This line read
+// "The GLLP secure fraction is 1 - h2(q) - f_EC*h2(q)" until Round 46 - the premise of the
+// RETIRED model, contradicting this file's own repoint 45 lines below, which already says the
+// runtime is the two-intensity decoy estimator. One comment of a pair.)
+// If the model ignores config, the two runs are identical and this fails.
 {
   const chan = { ...m.FIBER, distanceKm: 50 };
   const base = m.bb84(200_000, chan, 1);
