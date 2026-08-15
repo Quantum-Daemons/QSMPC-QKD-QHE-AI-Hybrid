@@ -67,7 +67,7 @@ def infer(features, weights: dict) -> tuple[float, int, float]:
     reordering it.
     """
     nq = int(weights["n_qubits"])
-    theta = np.asarray(weights["theta"], dtype=float)
+    theta = np.asarray(weights["theta"], dtype=float).ravel()
     n = 1 << nq
     re = np.zeros(n)
     im = np.zeros(n)
@@ -105,11 +105,65 @@ def infer(features, weights: dict) -> tuple[float, int, float]:
         x = (x[:mu.size] - mu) / sd
     for q in range(nq):
         ry(q, float(np.tanh(x[q] if q < x.size else 0.0)) * np.pi)
-    for layer in range(int(weights["layers"])):
-        for q in range(nq):
-            ry(q, float(theta[layer, q]))
-        for q in range(nq):
-            cnot(q, (q + 1) % nq)
+    # QCNN, mirroring scripts/train/qcnn_variational.py and web/src/lib/quantumSim.ts.
+    #
+    # ROUND 46: THIS WAS THE THIRD COPY OF THE CIRCUIT. The trainer, the browser and this inference
+    # path each carried their own state-vector implementation, and this one still read `theta` as
+    # `(layers, n_qubits)` after the other two moved to a shared-filter QCNN - so it raised
+    # IndexError on every retrained artifact. "Two implementations of one thing" is this project's
+    # named recurring defect; here it was three, and only a test caught the third.
+    def rz(q: int, th: float) -> None:
+        c, s = np.cos(th / 2.0), np.sin(th / 2.0)
+        bit = 1 << q
+        idx = np.arange(n)
+        hi = (idx & bit) != 0
+        r, m = re.copy(), im.copy()
+        re[hi], im[hi] = c * r[hi] - s * m[hi], c * m[hi] + s * r[hi]
+        re[~hi], im[~hi] = c * r[~hi] + s * m[~hi], c * m[~hi] - s * r[~hi]
+
+    def cry(ctl: int, tgt: int, th: float) -> None:
+        c, s = np.cos(th / 2.0), np.sin(th / 2.0)
+        cb, tb = 1 << ctl, 1 << tgt
+        idx = np.arange(n)
+        sel = ((idx & cb) != 0) & ((idx & tb) == 0)
+        i0, i1 = idx[sel], idx[sel] | tb
+        r0, m0, r1, m1 = re[i0].copy(), im[i0].copy(), re[i1].copy(), im[i1].copy()
+        re[i0], im[i0] = c * r0 - s * r1, c * m0 - s * m1
+        re[i1], im[i1] = s * r0 + c * r1, s * m0 + c * m1
+
+    layers = int(weights["layers"])
+    readout_q = max(1, int((weights.get("readout") or {}).get("readout_qubits", 0) or 0))
+    probe, stages = nq, 0
+    while probe // 2 >= readout_q and probe > 1:
+        stages += 1
+        probe //= 2
+    n_conv = stages * layers * 8
+    conv = theta[:n_conv].reshape(stages, layers, 8)
+    pool = theta[n_conv:n_conv + stages]
+    fc = float(theta[n_conv + stages])
+
+    active = list(range(nq))
+    for st in range(stages):
+        for r in range(layers):
+            w8 = conv[st, r]
+            for a, b in zip(active[0::2], active[1::2]):
+                ry(a, float(w8[0])); rz(a, float(w8[1]))
+                ry(b, float(w8[2])); rz(b, float(w8[3]))
+                cnot(a, b)
+                ry(a, float(w8[4])); rz(a, float(w8[5]))
+                ry(b, float(w8[6])); rz(b, float(w8[7]))
+        survivors = []
+        for a, b in zip(active[0::2], active[1::2]):
+            cry(b, a, float(pool[st]))
+            survivors.append(a)
+        if len(active) % 2 == 1:
+            cry(active[-1], active[0], float(pool[st]))
+        active = survivors
+    for q in active:
+        ry(q, fc)
+    if len(active) > 1:
+        for j in range(len(active)):
+            cnot(active[j], active[(j + 1) % len(active)])
 
     p = re * re + im * im
     sign = np.where((np.arange(n) & 1) == 0, 1.0, -1.0)
