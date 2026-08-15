@@ -53,6 +53,35 @@ def test_the_python_mirror_still_documents_the_unit() -> None:
     )
 
 
+def test_the_python_ledger_is_denominated_in_bits_too() -> None:
+    """The SAME assertion as the browser's, against the file the browser is compared to.
+
+    ROUND 44. Round 42 removed `eskr -= granted_bits` from `clientSdnController.ts` and wrote this
+    file to keep it out. It then read `PY` for one thing only - the `#: bit/s` unit comment - so
+    `src/qsh/qkd/sdn_controller.py` went on budgeting against `eskr` and accumulating granted BITS
+    into `expected_consumption`, both documented bit/s, for two more rounds.
+
+    That file is the DIMENSIONAL REFERENCE this gate cites when it judges the browser. A reference
+    that is wrong makes the comparison worthless, so "it has no production caller" was never a reason
+    to leave it - and "we fixed the language the defect was reported in" is the boundary-with-one-side
+    this project keeps finding.
+
+    Both fields are now read-only properties, so the assignment cannot be written at all; this
+    asserts the ledger arithmetic that remains.
+    """
+    src = PY.read_text()
+    alloc = src[src.index("    def allocate("):]
+    alloc = alloc[: alloc.index("\n    def ", 10)] if "\n    def " in alloc[10:] else alloc
+    assert "key_budget_bits" in alloc, (
+        "the Python allocate() no longer draws down a bit-denominated budget"
+    )
+    for rate_field in ("eskr", "expected_consumption"):
+        assert f"link.{rate_field} =" not in alloc and f"link.{rate_field} +=" not in alloc, (
+            f"the Python allocate() writes `{rate_field}`, a bit/s field, from a bit count - the "
+            "exact operation Round 42 removed from the browser and left standing here"
+        )
+
+
 def test_the_browser_never_puts_a_bit_count_in_a_rate_field() -> None:
     """The defect, asserted on the assignment rather than on the rendered string."""
     src = TS.read_text()
