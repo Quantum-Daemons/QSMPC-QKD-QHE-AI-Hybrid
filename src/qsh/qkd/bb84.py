@@ -8,10 +8,22 @@ key rate (SKR) is computed - by the two-intensity decoy-state bound of Ma, Qi, Z
 when it is not.
 
 Round 45 corrected the word "finite-key" here. Neither branch applies a finite-key
-correction: both are asymptotic bounds, and on the browser's 200,000-pulse run that
-is roughly 1,900 sifted bits paying no statistical penalty at all. The direction of
-that omission is certain even though its size is not quantified here, so the claim
-is now stated as what the code does rather than as the stronger thing it does not.
+correction: both are asymptotic bounds, paying no statistical penalty at all.
+
+ROUND 46 CORRECTED THE NUMBER IN THIS PARAGRAPH AND THEN THE PARAMETER IT DESCRIBED.
+It read "roughly 1,900 sifted bits" - a figure that matched no computed quantity
+anywhere in the repository. The 200,000-pulse run gave ``nSift = N * Q_mu * 0.5``
+= **1,244** in the browser and 1,188 in this Monte Carlo. Round 45 wrote a caveat
+about a block size it had not measured.
+
+The size of the omission is now quantified rather than left as a direction. At
+~1,244 sifted bits a composably-secure finite-key analysis yields **no key at all**;
+the positive-key threshold for these device parameters at 50 km is ~5e3 to 1.1e4
+sifted bits (Rusca, Boaron, Grunenfelder, Martin & Zbinden, *Appl. Phys. Lett.*
+**112**, 171104 (2018)). So the default pulse count was raised to 2,000,000
+(12,442 sifted bits) - see ``QKDConfig.pulses``. That does not make the rate
+finite-key correct; it stops an asymptotic rate being published for a block that
+provably yields nothing.
 
 This is the physical substrate for WS1 (AI-QKD): the AI optimizer
 (:mod:`~qsh.qkd.ai_optimizer`) tunes parameters here to maximise SKR / minimise QBER.
