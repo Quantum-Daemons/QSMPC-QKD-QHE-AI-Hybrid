@@ -102,12 +102,19 @@ export default function Validations() {
             <table style={{ marginTop: 12 }}>
               <tbody>
                 <tr><td>QBER</td><td style={{ color: qkd.eavesdropper_likely ? "var(--danger)" : "var(--accent-2)" }}>{qkd.qber}</td></tr>
-                {/* PER PULSE, and the label now says so. It read "secret key rate" with no unit beside a
+                {/* PER PULSE, and the label says so. It read "secret key rate" with no unit beside a
                     dimensionless per-pulse fraction, while ETSI GS QKD 015 defines a field of that
                     name as bit/s - the same one-name-two-dimensions problem Round 44 removed from
-                    the control-plane panel, on a page nobody was looking at. The payload key is
-                    still `skr`; renaming it crosses into `api/inference_service.py` and is
-                    conditioned rather than done here. */}
+                    the control-plane panel, on a page nobody was looking at.
+
+                    ROUND 45 FIXED THE OTHER HALF, AND THIS COMMENT WAS THE EVIDENCE OF IT. It used
+                    to end "the payload key is still `skr`; renaming it crosses into
+                    `api/inference_service.py` and is conditioned rather than done here" - a
+                    sentence Round 44 falsified in the same commit that broke this page. It DID
+                    rename `inference_service.py`, and this reader, and left the CLIENT branch of
+                    `api.ts` emitting `skr`. The demo builds CLIENT_ONLY, so that branch is the only
+                    one the public site executes and this cell rendered blank there. The sentence
+                    remained true only of the branch nobody had looked at. */}
                 <tr><td>secret key rate (per pulse)</td><td>{qkd.skr_per_pulse}</td></tr>
                 <tr><td>secure key bits</td><td>{qkd.secure_key_bits}</td></tr>
                 <tr><td>eavesdropper?</td><td style={{ color: qkd.eavesdropper_likely ? "var(--danger)" : "var(--accent-2)" }}>{String(qkd.eavesdropper_likely)}</td></tr>

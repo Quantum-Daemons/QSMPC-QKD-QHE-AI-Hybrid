@@ -1,6 +1,6 @@
 # Datasets and model sources - licences, attribution, and what may be published
 
-Three different things carry three different licences, and conflating them is how a project ends up
+Four different things carry four different licences, and conflating them is how a project ends up
 redistributing something it may not:
 
 1. **Training corpora** - large, fetched on demand, never committed and never redistributed.
@@ -8,6 +8,15 @@ redistributing something it may not:
    public demo run offline.
 3. **Trained model weights** - derived artefacts, published to the Hugging Face Hub *only* when the
    training corpus's licence permits it.
+4. **Bundled reference PDFs** - third-party papers committed under `references/` and redistributed
+   verbatim to anyone who clones. Section 8.
+
+Bucket 4 was added in Round 45, and its absence was not a missing row. It was a **structural blind
+spot**: `references/` held 11 tracked PDFs totalling 14.5 MB - the largest single redistribution
+category in the repository, about 45% of everything tracked - and none of the three buckets above
+covered "a third-party document we hand out unchanged". The file whose stated job is *what may be
+published* had never had them in scope, so nothing was wrong in it; the question had simply never
+been asked here.
 
 The project's own code is Apache-2.0. Everything below keeps its own licence.
 
@@ -271,6 +280,64 @@ a licence change, or a default branch that has not moved in a year.
 - **Zama tfhe-rs / Concrete** - BSD-3-Clear, research only; commercial use needs a paid patent licence.
 - **QKDNetSim** - **GPL-2.0** (strong copyleft), so it is not listed as a commercial-OK reference
   implementation.
+
+## 8. Bundled reference PDFs (committed, redistributed verbatim)
+
+Every PDF under `references/` is handed to anyone who clones, so each needs a grant that permits
+that. Adjudicated **per file at primary source on 2026-08-15**, not by venue and not by inference.
+
+**Read arXiv licences from OAI-PMH, not from the Atom API.** `export.arxiv.org/api/query` carries no
+licence field at all and reports "not present" even for a CC0 paper, so anyone adjudicating from it
+reads the whole corpus as unlicensed. `oaipmh.arxiv.org/oai?verb=GetRecord&metadataPrefix=arXiv`
+returns a real `<license>` element. Three of the six papers kept below are licensed exactly because
+that distinction was checked.
+
+### Kept - an explicit grant permitting redistribution
+
+| File (`references/`) | Identified as | Licence | Verified at |
+|---|---|---|---|
+| `Efficient_Simulation_of_Quantum_Secure_Multiparty_Computation.pdf` | arXiv:2501.10083v1 | **CC0 1.0** | arXiv OAI-PMH `<license>` |
+| `Quantum_Federated_Learning_A_Comprehensive_Survey.pdf` | arXiv:2508.15998v1 | **CC BY 4.0** | arXiv OAI-PMH `<license>` |
+| `Quantum-Secure_Multiparty_Deep_Learning.pdf` | Phys. Rev. X **15**, 041056 (2025) | **CC BY 4.0** | Crossref `license` (`vor`) and the PDF's own page-1 footer |
+| `Quantum_Secure_Multiparty_Computation_based_on_Secure_Summation_and_QKD.pdf` | Research Square `10.21203/rs.3.rs-6706796/v1` | **CC BY 4.0** | Crossref `license` and the PDF's own cover page |
+| `Rate-1_Quantum_Fully_Homomorphic_Encryption.pdf` | IACR ePrint **2020/1454** | **CC BY 4.0** | ePrint licence link; **byte-identical** to the live ePrint PDF, sha256 `75abdb4e...`, 357,090 B |
+| `Leveraging_ASIC_AI_Chips_for_Homomorphic_Encryption.pdf` | IACR ePrint **2026/160** | **CC BY 4.0** | ePrint licence link; **byte-identical** to the live ePrint PDF, sha256 `65e6ccae...`, 3,634,311 B |
+| `Quantum_Delegated_and_Federated_Learning_via_Quantum_Homomorphic_Encryption.pdf` | *Research Directions: Quantum Technologies* **3**, e3, `10.1017/qut.2025.2` | **CC BY 4.0** | Crossref `license` and the PDF's own page-1 statement |
+
+The last row is a **swap, not a survival**. The arXiv preprint of that paper (arXiv:2409.19359) is
+under arXiv's default licence and grants nothing, but the journal version of record is CC BY 4.0, so
+the file was replaced rather than dropped and the reference is unchanged. Byte-identity for the two
+ePrints is recorded because those two PDFs carry no self-identification at all - `Rate-1` has no
+arXiv stamp, no DOI, no copyright line and no venue header anywhere in 34 pages, so matching the
+live ePrint byte for byte is the only thing that ties the file to the licence being claimed for it.
+
+### Excluded - no grant permitting redistribution
+
+Removed from tracking in Round 45 and excluded by `.gitignore`. All four remain cited in
+`references/REFERENCES.md` with their URL; only the bundled copy is gone.
+
+| File | Licence | Why excluded |
+|---|---|---|
+| `EncFormer_..._over_Encrypted_Data.pdf` | arXiv `nonexclusive-distrib/1.0` | Grants **arXiv** the right to distribute and grants third parties nothing |
+| `Reverse_Delegated_Training_..._Homomorphic_Encryption.pdf` | arXiv `nonexclusive-distrib/1.0` | Same |
+| `Experimental_secure_multiparty_computation_..._bit_commitment.pdf` | **CC BY-NC-ND 4.0** (npj Quantum Information, Crossref `vor` + `tdm`) | NonCommercial and NoDerivatives both conflict with this repository's Apache-2.0 posture. Section 7 above already rejects a *dataset* on this exact licence, so bundling this was the inconsistency |
+| `Quantum-Safe_Multi-Party_Computation_..._Gopher_Security's_Quantum_Safety_Blog.pdf` | **none found** | A vendor blog page printed to PDF. No grant in the document or on the source page |
+
+The last row is **not** recorded as "all rights reserved". That phrase appears nowhere in the source
+and would be an inference; what is true is that no grant was found, and this project's own rule -
+`scripts/train/genomics_prs.py:123`, *"SILENCE IS NOT PERMISSION"* - makes an absent grant sufficient
+to exclude without needing to characterise it further.
+
+### What this replaced
+
+`.gitignore` had excluded reference PDFs on **size** (`~35 MB total`) plus one copyright call, never
+on licence, and the result was an inversion: the two most permissively licensed PDFs in the project,
+both CC BY 4.0, were excluded for being ~17 MB each while a CC BY-NC-ND camera-ready shipped. The
+rules now state a licence reason per file.
+
+Enforced by `tests/test_bundled_reference_pdfs_carry_a_grant.py`, which derives the corpus from
+`git ls-files` rather than a glob - so a newly committed PDF is in scope the moment it is tracked,
+and cannot be admitted by editing a list.
 
 ## Vendored submodules, and a transitive licence that is absent rather than restrictive
 

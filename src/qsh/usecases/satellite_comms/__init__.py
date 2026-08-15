@@ -132,7 +132,14 @@ class SatelliteQKDStage(Stage):
         bus.metric("skr_per_pulse", round(res.secret_key_rate, 6), self.name)
         bus.metric("secure_key_bits", res.secure_key_bits, self.name)
         bus.metric("channel_loss_db", loss_db, self.name)
-        ctx.metrics.update(qber=res.qber, skr=res.secret_key_rate)
+        # AND THIS LINE, which Round 44 did not rename while writing the comment above saying that
+        # renaming one and not the other is the asymmetry it had just found. It repeated it three
+        # lines down, in its own twin, under its own warning. The fibre twin at
+        # `orchestration/stages.py` renamed both writes; this one renamed the bus metric and left
+        # `ctx.metrics`. Nothing shipped a wrong number - only `stages.py` reads `ctx.metrics`, and
+        # only for `secure_key_bits`/`qber` - but a per-pulse fraction sat in a key called `skr`,
+        # which is the exact collision the round's title claimed to have removed.
+        ctx.metrics.update(qber=res.qber, skr_per_pulse=res.secret_key_rate)
         if res.secure_key_bits >= 256:
             # Folded in, the same way `QKDKeyAgreementStage` does it - see the note there for why
             # this is a re-derivation rather than a stage reorder. This stage's docstring has said

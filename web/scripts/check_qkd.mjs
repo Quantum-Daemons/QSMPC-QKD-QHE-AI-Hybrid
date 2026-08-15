@@ -43,7 +43,7 @@ function load() {
   const dir = mkdtempSync(join(tmpdir(), "qsh-qkd-"));
   const entry = join(dir, "entry.ts");
   writeFileSync(entry, `
-export { bb84, e91, FIBER, FREE_SPACE, intrinsicQber, h2, transmittance, taggedFraction, channelLossDb } from ${JSON.stringify(join(WEB, "src/lib/quantumSim"))};
+export { bb84, e91, FIBER, FREE_SPACE, intrinsicQber, h2, transmittance, taggedFraction, channelLossDb, decoySecureFraction } from ${JSON.stringify(join(WEB, "src/lib/quantumSim"))};
 export { optimizeQKD } from ${JSON.stringify(join(WEB, "src/lib/clientOptiQKD"))};
 export { repetitionCountCutoff, adaptiveProportionCutoff, generateQuantumBits } from ${JSON.stringify(join(WEB, "src/lib/clientQRNG"))};
 export { qkdCfg, qrngCfg } from ${JSON.stringify(join(WEB, "src/lib/config"))};
@@ -103,16 +103,33 @@ const cfg_qrng = m.qrngCfg();
     near(restored, beforeMutation),
     `restoring config did not restore the rate (${restored} vs ${beforeMutation})`);
 
-  // AND IT MOVES BY THE PREDICTED AMOUNT, not merely in the right direction. Sifting does not depend
-  // on f_EC, so the rate scales exactly with the GLLP secure fraction 1 - h2(q) - f*h2(q). Asserting
-  // the ratio is what separates "config is read" from "config is read and used correctly".
-  const q0 = m.bb84(200_000, chan, 1).qber;
-  const frac = (f) => Math.max(0, 1 - m.h2(q0) - f * m.h2(q0));
+  // AND IT MOVES BY THE PREDICTED AMOUNT, not merely in the right direction. Asserting the ratio is
+  // what separates "config is read" from "config is read and used correctly".
+  //
+  // ROUND 45 REPOINTED THIS PREDICTION, AND THE OLD ONE GOING RED IS WHY. It predicted the ratio
+  // from the GLLP secure fraction 1 - h2(q) - f*h2(q), which was the model until this round; `bb84()`
+  // now runs the two-intensity decoy-state estimator, where f_EC enters as the error-correction term
+  // of R = Q1(1 - h2(e1)) - f Q_mu h2(E_mu). The check caught its own staleness the moment the
+  // physics moved, which is the behaviour a gate is for - so it is repointed rather than relaxed.
+  //
+  // Two changes ride along, both required by the new model:
+  //   - the prediction reads the INTRINSIC error rate, not `bb84().qber`. The bound is a function of
+  //     the channel and no longer of one session's sampling draw, so predicting from a sampled QBER
+  //     would compare a deterministic quantity against a noisy one and fail intermittently.
+  //   - it calls `decoySecureFraction` with EXPLICIT arguments. That keeps this a plumbing check -
+  //     does the config value reach the model - rather than a second TypeScript derivation of the
+  //     same algebra, which this file's header forbids for good reason.
+  const eta = m.transmittance(chan);
+  const eDet = m.intrinsicQber(chan);
+  const y0 = 2 * chan.darkCount;
+  const mu = Math.max(1e-3, cfg.mu_signal);
+  const nu = Math.min(Math.max(1e-4, cfg.mu_decoy), mu * 0.9);
+  const frac = (f) => m.decoySecureFraction(eta, mu, nu, eDet, y0, f, 0.5).perPulse;
   const predicted = frac(1.22) / frac(1.16);
   check("fEC-moves-by-the-predicted-ratio",
     near(afterMutation / beforeMutation, predicted, 1e-6),
-    `f_EC 1.16 -> 1.22 changed skr by a factor ${afterMutation / beforeMutation}, but the GLLP ` +
-    `fraction at QBER ${q0} predicts ${predicted}`);
+    `f_EC 1.16 -> 1.22 changed skr by a factor ${afterMutation / beforeMutation}, but the ` +
+    `two-intensity decoy bound at intrinsic QBER ${eDet} predicts ${predicted}`);
 }
 
 // --------------------------------------------------------------------------------------------- //

@@ -30,6 +30,28 @@ references/The Business of Quantum Technologies.pdf
 references/OptiQKD_*.pdf
 references/AML-QKD_*.pdf
 references/Information-Theoretic_Solutions_for_Seedless_QRNG_*.pdf
+#
+# NO REDISTRIBUTION GRANT (Round 45). The four rules below exclude on LICENCE, which is what the
+# three rules above never did: they exclude on SIZE (~35 MB) and on one copyright call, and the
+# result was an inversion - the two most permissively licensed reference PDFs in the project, both
+# CC BY 4.0, were excluded for being ~17 MB each, while a CC BY-NC-ND camera-ready shipped.
+# Adjudicated per file at primary source and recorded in DATA_LICENSES.md section 8.
+#
+# arXiv's default "nonexclusive-distrib/1.0" grants arXiv the right to distribute and grants THIRD
+# PARTIES NOTHING, so bundling one of these in a public repository is redistribution without a
+# licence. Verified through the arXiv OAI-PMH interface, whose <license> element carries the real
+# value; the Atom API used by export.arxiv.org/api/query reports no licence field at all and would
+# have read every paper here as unlicensed, including a CC0 one.
+references/EncFormer_Secure_and_Efficient_Transformer_Inference_over_Encrypted_Data.pdf
+references/Reverse_Delegated_Training_and_Private_Inference_via_Perfectly-Secure_Quantum_Homomorphic_Encryption.pdf
+# CC BY-NC-ND 4.0 (Crossref, both `vor` and `tdm`). NonCommercial and NoDerivatives both conflict
+# with this repository's Apache-2.0 posture, and DATA_LICENSES.md section 7 already rejects a
+# dataset on exactly this licence - so shipping it was the inconsistency, not excluding it.
+references/Experimental_secure_multiparty_computation_from_quantum_oblivious_transfer_with_bit_commitment.pdf
+# No grant found anywhere in the document or on the page it was printed from. NOT the same claim as
+# "all rights reserved", which is nowhere in the source and would be an inference; an absent grant is
+# simply an absent grant, and this project's own rule is that silence is not permission.
+references/Quantum-Safe_Multi-Party_Computation_for_Distributed_AI_Datasets*.pdf
 # Commercial / monetization notes (kept local only — both the EN plan and JA workflow)
 MONETIZATION*.md
 # The browser verification checklist: still maintained, no longer published (Round 28).
