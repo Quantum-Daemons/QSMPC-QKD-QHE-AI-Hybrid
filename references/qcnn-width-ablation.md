@@ -123,10 +123,37 @@ exist to force.
   is that **this experiment does not separate them**, and that a claim in either direction needs more
   than five seeds.
 - **Not** that telecom's +0.079 for its pad wire is refuted. That measurement was also single-seed
-  and is recorded as such on its card; it is now the third of three single-seed width readings and
-  the only one not re-run at five seeds. **Re-run it by Round 45** or restate it as one draw.
+  and is recorded as such on its card; it was the third of three single-seed width readings and the
+  only one not re-run at five seeds. **Re-run it by Round 45** or restate it as one draw.
+  **DEADLINE EXECUTED Round 45** - re-run at five seeds; see the section below, where it behaves
+  unlike the other two.
 - **Not** a statement about quantum advantage. Classical logistic regression on the same split beats
   every circuit here: finance 0.8657 against 0.8136, medical 0.9535 against 0.8140.
+
+## Telecom re-run at five seeds - the median holds, and it still does not separate the widths
+
+Round 45, `--usecase telecom --layers 6 --epochs 400 --threads 1`, the command recorded inside
+`models/qcnn_telecom/weights.json`. Seed 0 reproduced **0.8098** exactly, so the artifact's stored
+reproduce line does reproduce its own headline.
+
+| use case | metric | 8 wires, 5 seeds | median | 7 wires, 5 seeds | median |
+|---|---|---|---|---|---|
+| telecom | macro F1 | 0.8098 / 0.7675 / 0.8280 / 0.8179 / 0.8046 | **0.8098** | 0.7312 / 0.7243 / 0.7303 / 0.7586 / 0.8616 | **0.7312** |
+
+**The sign does not flip.** Seed 0 alone reports **+0.0786**; the five-seed median reports
+**+0.0786** - the same figure to four decimals, because seed 0 happens to be the median draw for
+both widths. Telecom is therefore the one width reading of the three that survives being re-run:
+finance went +0.099 to **-0.034** and medical +0.081 to **-0.035**, and this one did not move at all.
+
+**And it still does not establish that 8 wires beats 7.** The ranges overlap, and the strongest
+single result in the whole experiment is a SEVEN-wire draw: seed 4 scores **0.8616**, above every
+one of the five 8-wire runs (best 0.8280). A median gap with overlapping spreads and the best
+individual draw on the losing side is not a separation; it is a reason to keep saying so.
+
+What this changes in the record: the pad-wire result may now be quoted as a five-seed median rather
+than as one draw, which is what the obligation asked for. What it does not change is the conclusion -
+`QC22` still applies, and the honest claim remains that a difference in either direction needs more
+than five seeds.
 
 ## What ships
 
