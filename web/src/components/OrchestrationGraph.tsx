@@ -30,16 +30,24 @@ import "@xyflow/react/dist/style.css";
 // node that is dim because the diagram is wrong look identical. `tests/test_dag_covers_both_
 // transports.py` asserts this map against the real Python stage lists, resolving `stage.name` from
 // the class definitions so a rename cannot slip past it.
-const BACKEND_EXTRA: Record<string, { id: string; label: string }[]> = {
-  default: [{ id: "explainability", label: "Explainability\n(full deployment)" }],
-  finance_aml: [{ id: "explainability", label: "Explainability\n(full deployment)" }],
-  genomics: [{ id: "explainability", label: "Explainability\n(full deployment)" }],
-  demo: [{ id: "explainability", label: "Explainability\n(full deployment)" }],
-  medical_fl: [{ id: "explainability", label: "Explainability\n(full deployment)" }],
-  telecom_ids: [{ id: "qkd_optimize", label: "OptiQKD\n(full deployment)" }],
+// Each entry names the node it must sit BEFORE, because the backend runs these at a specific point
+// and a diagram that draws them all just before `result` shows the run jumping backwards. Measured
+// on all six use cases: `explainability` runs before `quantum_comparison` and was drawn after it;
+// `qkd_optimize` runs immediately after key agreement and was drawn near the end.
+//
+// The first version of this map had no position and the test that guards it compared SETS, so both
+// were wrong in the same direction and neither could see the other. An ordered artefact needs an
+// ordered check - that is the whole finding.
+const BACKEND_EXTRA: Record<string, { id: string; label: string; before: string }[]> = {
+  default: [{ id: "explainability", label: "Explainability\n(full deployment)", before: "quantum_comparison" }],
+  finance_aml: [{ id: "explainability", label: "Explainability\n(full deployment)", before: "quantum_comparison" }],
+  genomics: [{ id: "explainability", label: "Explainability\n(full deployment)", before: "quantum_comparison" }],
+  demo: [{ id: "explainability", label: "Explainability\n(full deployment)", before: "quantum_comparison" }],
+  medical_fl: [{ id: "explainability", label: "Explainability\n(full deployment)", before: "quantum_comparison" }],
+  telecom_ids: [{ id: "qkd_optimize", label: "OptiQKD\n(full deployment)", before: "qml_ids" }],
   satellite_comms: [
-    { id: "qkd_optimize", label: "OptiQKD\n(full deployment)" },
-    { id: "telemetry_anomaly", label: "Telemetry anomaly\n(full deployment)" },
+    { id: "qkd_optimize", label: "OptiQKD\n(full deployment)", before: "qsdc_telemetry" },
+    { id: "telemetry_anomaly", label: "Telemetry anomaly\n(full deployment)", before: "quantum_comparison" },
   ],
 };
 
@@ -114,9 +122,16 @@ const FLOWS: Record<string, { id: string; label: string }[]> = {
 export function flowFor(usecase: string) {
   const client = FLOWS[usecase] ?? FLOWS.default;
   const extra = BACKEND_EXTRA[usecase] ?? BACKEND_EXTRA.default ?? [];
-  const at = client.findIndex((n) => n.id === "result");
-  const cut = at >= 0 ? at : client.length;
-  return [...client.slice(0, cut), ...extra, ...client.slice(cut)];
+  // Each backend-only node is spliced before the node it precedes in the real pipeline, not lumped
+  // in front of `result`. Lumping them there put `explainability` after `quantum_comparison` on
+  // four flows and `qkd_optimize` near the end on two - so on the full deployment the run lit a
+  // later node and then jumped back, which reads as a stalled or reordered pipeline.
+  const out = [...client];
+  for (const node of extra) {
+    const at = out.findIndex((n) => n.id === node.before);
+    out.splice(at >= 0 ? at : Math.max(0, out.length - 1), 0, node);
+  }
+  return out;
 }
 
 export default function OrchestrationGraph({
@@ -180,14 +195,34 @@ export default function OrchestrationGraph({
     return label;
   };
 
+  /** The three states this graph draws, as words.
+   *
+   *  SC 1.4.1 Level A: state was encoded ONLY in colour. `.node-active` is a blue ring and glow and
+   *  `.node-done` changes `border-color` and nothing else, so "which stage is running" and "which
+   *  stages have finished" - the two questions this graph exists to answer - were unavailable to a
+   *  reader who cannot separate those hues, and unavailable to every screen reader, since React Flow
+   *  renders the state as a class on a `<div>` with no text.
+   *
+   *  Used twice below, for the visible label and for the text equivalent, so the two cannot drift.
+   */
+  const stateOf = (id: string) =>
+    activeStage === id ? "running" : doneStages.has(id) ? "done" : "not yet run";
+
   const { nodes, edges } = useMemo(() => {
     const nodes: Node[] = stages.map((s, i) => {
       const cls =
         activeStage === s.id ? "node-active" : doneStages.has(s.id) ? "node-done" : "";
+      // The state as TEXT on its own line, beside the colour rather than instead of it. `pre-line`
+      // is already set below and the captions already carry parenthetical lines such as
+      // "(skipped - PQC-only)", so this is the idiom the node labels use, not a new one. "not yet
+      // run" is left off: it is the resting state of every node before a run, and printing it on all
+      // of them at once says nothing while making each node taller.
+      const st = stateOf(s.id);
+      const label = retitle(s.id, s.label) + (st === "not yet run" ? "" : `\n[${st}]`);
       return {
         id: s.id,
         position: { x: 30 + i * 230, y: 80 },
-        data: { label: retitle(s.id, s.label) },
+        data: { label },
         className: cls,
         style: {
           whiteSpace: "pre-line", width: 190, textAlign: "center" as const,
@@ -213,7 +248,21 @@ export default function OrchestrationGraph({
       m.published_model, m.published_model_backend, m.published_model_status]);
 
   return (
-    <div style={{ height: 260, border: "1px solid var(--border)", borderRadius: 10, overflow: "hidden" }}>
+    <>
+    {/* TEXT EQUIVALENT, the same pattern and for the same reason as `TwoPartyDiagram`'s `sr-only`
+        list. React Flow renders each stage as a `<div>` whose only state signal is a CSS class, so
+        the pipeline's shape, its stage captions and its progress were all unreachable in text. The
+        list is built from the SAME `retitle()` and `stateOf()` calls the nodes use, so it cannot
+        describe a graph other than the one on screen - the failure mode a hand-written summary has.
+        Ordered, because the order IS the pipeline. */}
+    <ol className="sr-only">
+      {stages.map((s) => (
+        <li key={s.id}>{`${retitle(s.id, s.label).replace(/\n/g, " ")} - ${stateOf(s.id)}`}</li>
+      ))}
+    </ol>
+    <div style={{ height: 260, border: "1px solid var(--border)", borderRadius: 10, overflow: "hidden" }}
+         role="group"
+         aria-label={`${usecase} pipeline stages; the same stages and their state are listed in text immediately before this figure`}>
       <ReactFlow nodes={nodes} edges={edges} fitView fitViewOptions={{ padding: 0.15 }}
         minZoom={0.3} maxZoom={2} proOptions={{ hideAttribution: true }}
         nodesDraggable={false} nodesConnectable={false} elementsSelectable={false}
@@ -222,5 +271,6 @@ export default function OrchestrationGraph({
         <Controls showInteractive={false} />
       </ReactFlow>
     </div>
+    </>
   );
 }

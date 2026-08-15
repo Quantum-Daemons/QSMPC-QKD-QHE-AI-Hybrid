@@ -1334,6 +1334,12 @@ justification rather than a blanket sweep:
   against what the demonstration actually supports** - the surrounding code already documents that
   this path is a QOTP-hiding and T-count demonstration rather than a predictor. *Reopens next round
   as a wording fix, unconditionally* - it is page-reachable and no measurement is needed to settle it.
+  **DEADLINE EXECUTED Round 40**, and not as the sentence above expected: reading the line changed
+  the fix, because the quantum one-time pad genuinely IS perfectly hiding as a scheme. What was
+  missing was the disclosure that the demo draws its mask from mulberry32 seeded by a value on the
+  page, and that is what `quantumSim.ts:404-414` now carries. See "The claim that was true, and the
+  fix that would have been wrong" in Round 40. Left visible rather than deleted because a promise
+  that was kept in a different shape than it was made is worth more than a promise that vanished.
 
 Recording all three with conditions rather than fixing two and forgetting the third is the point:
 this round's own evidence is that an unconditioned item survives indefinitely.
@@ -1477,9 +1483,13 @@ that was answered:
 - **`sequence-toolbox/SeQUeNCe`** - `docs/pqc-roadmap.md:59` says "GitHub reports the licence as
   NOASSERTION, so confirm before depending on it", and nothing depends on it, so the confirmation was
   never needed. *Reopens the moment anything imports it.*
-- **The EU NIS Cooperation Group PQC roadmap** (`references/REFERENCES.md:1527`) - "Next round: find
-  the Cooperation Group publication itself". It carries no `by **Round N**` phrasing, so
-  `test_register_deadlines.py` cannot see it, which is the stated hole in that test's own docstring.
+- **The EU NIS Cooperation Group PQC roadmap** (`references/REFERENCES.md`) - the promise was
+  "Next round: find the Cooperation Group publication itself", written in Round 33. **DEADLINE
+  EXECUTED Round 42**: the primary source was loaded, its section 4 timeline is quoted in
+  `docs/pqc-roadmap.md`, and the lead turned out to overstate that source twice. The reason it took
+  nine rounds is recorded above and is now closed on both axes - `test_register_deadlines.py` reads
+  every tracked markdown file under `docs/` and `references/`, and reads `Next round:` alongside
+  `by **Round N**` and `BLOCKED UNTIL`.
 
 **WebNN: still declined, and now with the condition it always needed.** `README.md` records the
 measurement - probed by building and executing a 2x2 matmul, three cheaper checks having lied, then
@@ -1550,6 +1560,229 @@ of the repository; `submodules/shark/` exists on the deploy box, untracked, alon
 trees against the two the repository declares. `.dockerignore` keeps them out of the image. The
 sentence was written unqualified about a scope that had only been measured in one place - which is,
 again, this round's subject.
+
+## Round 42: four gates that enforce nothing in CI, and a number that is wrong
+
+**The largest finding of the last four rounds is about the gates those rounds added.**
+`docs/browser-verification-checklist.md` is gitignored by design - it must not be published - and
+four tests read it: the prefix legend, the workstream index, `CI1`'s step numbering, and the prose
+counts. Measured against a fresh `git archive` checkout, not argued: **all four SKIP**, and
+`pytest -q` still prints PASS. Every clone, and every CI run, has been reporting green for eleven
+tests that examined nothing.
+
+Rounds 39, 40 and 41 each wrote one of those gates and verified it here, where the file exists. The
+scope was measured on one machine. That is this project's most-repeated defect - a check whose
+reported scope is wider than the scope it has - applied to its own enforcement.
+
+**What was done, given the file cannot become public.** The four skip messages now say what is
+unenforced rather than that a file is absent, and `scripts/ci_local.sh` gains gate 15: it fails when
+the checklist is missing, and fails when the four gates skip *on this machine*. That does not make
+them CI gates. It makes this machine the declared enforcement point and removes the one way it could
+silently stop being one. **A local-only gate is worth having; a local-only gate that reads as a CI
+gate is not, and that is what these were.**
+
+Two consequences worth recording: `report/build_data.py`'s `\nchecklistrows` and `\nchecklistlines`
+have the same input, so on any clone they are reused from the committed value rather than computed -
+`\nchecklistlines` is currently 4,178 against 4,186 lines and nothing can catch it. And every row
+this round added or repaired lives in a file no CI job can read.
+
+**A promise that outlived nine rounds, and the gate that could not see it.**
+`references/REFERENCES.md` ended a metadata-only entry with *"Next round: find the Cooperation Group
+publication itself before writing any of it down as a date."* (**DEADLINE EXECUTED Round 42** - the
+quotation is history, and the stamp is what says so; without it this paragraph reads as a fifth
+pending promise, which is the gate working.) It was written in **Round 33**. It was
+still there in Round 42. Nothing malfunctioned: `test_register_deadlines.py` read one file,
+`docs/deliverable-verification.md`, and two phrasings, `by **Round N**` and `BLOCKED UNTIL <date>`.
+The promise was in another file, in a third phrasing. **The test's own docstring stated that hole**
+- "someone can still write 'blocked until September' in prose and no gate will see it" - and stating
+a hole is not covering it. This is the round's subject arriving inside the test written to stop
+obligations from being forgotten.
+
+Both axes are now widened. The file set is every **tracked** markdown file under `docs/` and
+`references/`, defined by `git ls-files` so it is what a clone contains rather than what one machine
+has - the same definition, for the same reason, that the checklist finding above turns on. The
+phrasing set gains `Next round:` and `Reopens next round`, which are treated as **due on sight**: a
+promise relative to a round it never names cannot be waited for, so the only ways to satisfy it are
+to do the thing or to rewrite it as `by **Round N**`.
+
+The phrasing match is **case-sensitive**, and that is its whole precision. These files are dense with
+prose *about* future rounds that promises nothing - "so the next round does not re-derive", "one
+caution for the next round", "instructions for the next round:". Measured before the regex was
+written: the case-sensitive form matched 5 lines, all 5 genuine; the case-insensitive form added 3,
+all 3 false. A gate that fires on commentary gets an exemption bolted onto it within two rounds, and
+this project's tautology class is made of exemptions.
+
+**Four promises were found and all four discharged**, none by deletion. They are listed as separate
+items on purpose: the stamp discharges the item it sits in, so a section-wide stamp would exempt any
+promise a later round writes into this section - the discharge has to be as narrow as the obligation.
+
+- **The EU lead itself**, in `references/REFERENCES.md`. Done at the primary source this round.
+  DEADLINE EXECUTED Round 42.
+- **Its quotation in `docs/pqc-roadmap.md`**, which recorded the lead while replacing the "Verified
+  absent" paragraph. DEADLINE EXECUTED Round 42.
+- **Its entry in this register's own reopening list**, which named the hole precisely - "it carries
+  no `by **Round N**` phrasing, so `test_register_deadlines.py` cannot see it" - and then waited for
+  someone to act on the observation. DEADLINE EXECUTED Round 42.
+- **`quantumSim.ts`'s wording fix**, promised as *"Reopens next round as a wording fix,
+  unconditionally"* - and this one was the surprise. It had **already been kept, in Round 40**, and
+  was still reading as pending two rounds later. A promise kept in a different shape than it was made
+  is invisible to everyone except the person who kept it. DEADLINE EXECUTED Round 40, stamped this
+  round with the round that actually did it, not the round that noticed.
+
+**The gate broke on its own stamp, immediately.** Two of the four `DEADLINE EXECUTED Round <N>`
+stamps landed near the 100-column margin, the wrap split `DEADLINE` from `EXECUTED`, and the gate
+reported both items as pending while they read as discharged to any human. A marker that stops
+matching when a paragraph is reflowed would have been "fixed" by unwrapping prose to satisfy a
+parser. It now tolerates one line break between its words and refuses to span a blank line, so a
+stamp cannot be assembled out of two different paragraphs. Both directions are pinned by a test.
+
+**And the seed went on the side that was added**, which is the discipline this project keeps
+relearning: a seeded `by **Round N**` in the register would have proved nothing, because that file
+and that phrasing were already covered. The seed is a `Next round:` sentence in `references/`, both
+new axes at once. Its first version was itself defective - it asserted a non-empty result, and went
+green off a promise that was already in the file and not yet discharged, so it would have passed with
+the seeding line deleted. It now diffs against the unseeded file.
+
+**Round 41's defect, and it is mine.** `Orchestration.tsx` wrapped `RealDataScatter` in an
+unconditional `<div className="card">` and the comment on the lines immediately above it said the
+component *"renders null where no overlay ships, which covers the generic `demo` entry"*. It does.
+The wrapper did not, so `/orchestration?usecase=demo` drew an **empty bordered box after every run**,
+while `OR12` - written in the same commit - promised "It renders nothing for the generic `demo`
+entry". The component's behaviour was checked and the wrapper's was not: this round's subject, one
+level in, in code written during the round that named it.
+
+The frame is now a `card` prop drawn after the component's own `return null`, because the caller
+cannot answer the question - `demo` has no `REAL_2D_PATH` entry and even a mapped use case can fetch
+a payload with no points, an answer that arrives in a `useEffect` after render. A call-site condition
+would have been a second and weaker copy of a decision the component already makes.
+`tests/test_a_frame_is_not_drawn_around_nothing.py` asserts the class, not the instance: no card in
+`web/src` may contain a lone component that can `return null`.
+
+**That gate caught nothing on its first run, and the reason was the comment explaining the fix.**
+The comment quotes `<div className="card">`, the card regex matched inside it, and `.*?</div>` then
+ran past the seeded defect twenty lines below. A source gate that does not blank comments is at its
+blindest exactly where someone took the trouble to write down what went wrong - the QCNN gate was
+defeated by one comment in an earlier round and was repaired the same way. Its second failure was in
+the same family: the body slice was bounded by `// The genomics model`, a comment the blanking had
+just removed, so the slice ran to end of file and the ordering assertion would have compared this
+component's `return null` against a different component's frame.
+
+**`QC20` could not be passed by anything, and was rewritten rather than reported FAIL again.** It
+asked for "the five-seed spread reported beside any shipped QCNN figure". Two of the four shipped
+circuits have no spread - `qcnn_telecom` states so outright, one run being 6 layers x 400 epochs, and
+`qcnn_telecom_q7` inherits a single seed - and `grep spread web/src` finds the spread rendered on no
+page for any of the four, so the browser half was unsatisfiable everywhere. **A row nothing can pass
+is not a standard; it is a permanent FAIL, and a column of permanent FAILs is a column readers learn
+to skip.** The row now asks for the property the spread was FOR - can a reader tell whether this
+number is typical - which is satisfiable two honest ways: give the seed's position in a measured
+spread, or say no spread was measured.
+
+**And the gate for it failed its own negative control.** Written as a prose match over the phrasings
+the cards use, it went GREEN when the disclosure was deleted from `qcnn_telecom_q7` - because that
+card cross-references the MEDICAL card's spread, and a regex cannot tell a card's statement about
+itself from its statement about a sibling. A card could satisfy a check about its own numbers by
+mentioning somebody else's. The answer was the one this register keeps arriving at: an explicit
+marker nobody writes by accident. `BLOCKED UNTIL`, `DEADLINE EXECUTED`, and now `**Seed position:**`
+at the start of a line, on all four cards. **Both of this round's new gates were wrong on their first
+run and both were caught by seeding rather than by reading them.**
+
+**The accessibility sweep, ordered by whether a visitor is MISLED rather than inconvenienced.**
+
+*Misled.* The private-inference agreement scatter told `agrees` from `argmax differs` by **fill
+alone** - three rounds after the same sweep gave a second channel to `RealDataScatter`, the
+histogram, the forecast lines and the benchmark bars. It is the chart where colour carries the most:
+red means the ENCRYPTED path disagreed with plaintext, the one fact the chart exists to show. It was
+missed because the charts were enumerated from memory, and the round's own plan had named that as the
+likeliest way this item would ship a defect. `tests/test_chart_accessibility.py` now enumerates
+SERIES from the source. The DAG had the same shape one level up: `.node-active` is a blue ring and
+`.node-done` changes `border-color`, so "which stage is running" was **colour only** - and React Flow
+renders it as a class on a text-free `<div>`, so it was unavailable in text as well. Both channels
+added: `[running]` / `[done]` on the node label, and an `sr-only` ordered list built from the same
+`retitle()` and `stateOf()` calls the nodes use, so it cannot describe a different graph. Agreement
+printed as a bare **0.98** - a dimensionless decimal that reads as a score, a probability or a ratio,
+where `UX5`'s own worked example is "agrees 98.3% of the time"; now a percentage, at one decimal,
+because `toFixed(2)` on a fraction gave two significant figures and 0.9825 and 0.9849 both printed
+0.98.
+
+*Blocked rather than misled.* `RunMonitor`'s empty row had one cell where every other row has two, so
+it announced as a row with a column missing. Six export buttons across two pages put their reason in
+a `title` on a `disabled` control - and `disabled` removes a button from the tab order, so the reason
+was reachable by hovering a mouse and by nothing else; one visible sentence now says it to everyone.
+`/orchestration` had **no live region** while `/usecase/<id>` has had one since Round 39 - the page
+whose whole subject is watching a pipeline advance was the page that did not announce it. And **2.4.1
+was failing outright**: the sidebar's eleven links were the first eleven tab stops on every page, on
+every navigation, with no way past. A skip link now targets `<main id="main" tabIndex={-1}>`, and the
+`tabIndex` is the half that is easy to ship broken - without it the browser scrolls and leaves focus
+on the link, so the block is skipped for the eye and not for the keyboard.
+
+**Three criteria had no row at all** - 4.1.3 Status Messages, 1.3.1 Info and Relationships, 2.4.1
+Bypass Blocks - and two of the three were failing when a row was finally written for them. That is
+the same finding this file already recorded about scoping the accessibility list: *"a checklist that
+names the criteria it will check is asserting that the rest cannot fail."* It named four, then seven,
+and the criteria outside the list kept being the ones that failed.
+
+**Two open items are now open by DECLARATION rather than by omission**, which is the only difference
+that lets them be counted. **1.4.11 Non-text Contrast**: added as a bullet in Round 34, no
+measurement recorded anywhere since, so nothing said it was outstanding - dated unmeasured as of
+2026-08-15. **1.4.13 Content on Hover or Focus**: re-measured, and it has grown - **10** `<Tooltip>`
+sites now, 3 in `BenchmarkPanel` and 7 in `VerificationChart`, still zero `trigger` props, zero
+Escape handlers, zero keyboard paths. Recharts' default tooltip is neither dismissible nor
+persistent, so closing it means a custom tooltip in every chart; that belongs to a round that chooses
+it. **Heading levels skip** `h1` to `h3` on three pages because the app's convention is h1-for-page
+and h3-for-card in the page files AND the components; half-fixing the page files would leave the
+component headings skipping, so it is recorded with a date instead of rushed. None of the three
+misleads a reader, which is why they are below the ones that do.
+
+**And the standing UX bullet cannot be answered by `references/`, which nobody has said in nine
+rounds of being asked.** Measured rather than asserted: a grep of all 16 markdown files for
+`usability`, `accessibility`, `WCAG`, `human-computer`, `human factors`, `affordance`, `user
+experience`, `HCI`, `cognitive load` and `eye-tracking` returns **zero** hits; widening to `interface
+design`, `visualis/visualiz`, `readability`, `legibility` and `colour-blind` returns two, neither a
+source; all 15 bundled PDFs are quantum, cryptography or business-of-quantum papers. There is no HCI
+source in the reference set at all. So the UX rows rest on the **WCAG 2.2 criteria themselves** and
+on the checklist's own measurement procedures, and `references/REFERENCES.md` now says so. It is
+deliberately NOT resolved by adding one HCI citation to make the sentence true, because a citation no
+row derives from is the decoration-condition failure `QC16` exists to name.
+
+**The accessibility fix shipped a blank chart, and only the deployed page said so.** Adding
+`shape="circle"` / `shape="cross"` to the agreement scatter moved recharts off its default renderer
+onto `<Symbols>`, whose `size` is an **animated** prop. With animation left on, all 30 symbols sat in
+the DOM, correctly positioned, rendering `d="M0,0"`: a legend naming two shapes above an **empty plot
+area**, which is worse than the colour-only version it replaced. `RealDataScatter` in the same file
+has carried `shape` AND `isAnimationActive={false}` together since Round 34; half of that pattern was
+copied - the half the checklist row named.
+
+Every gate was green. They read the source, found the `shape` prop they asked for, and have no way to
+see a path of length zero. The pairing is now its own invariant, which is what "write the invariant
+at the boundary" means when the boundary is between a prop being PRESENT and it having an EFFECT.
+**This is the third gate this round that was wrong on its first run**, and the only one of the three
+that no seeding would have caught, because the seed and the subject were both in the source and the
+defect was in the render. `bash scripts/ci_local.sh` cannot replace opening the page.
+
+**Two findings from the Chrome pass that are NOT this round's subject**, recorded with conditions so
+they cannot become permanent residents:
+
+- **Switching use case after a run leaves the previous run's model in the DAG caption.** Measured
+  2026-08-15 on the deployed site: run `finance_aml`, switch the selector to `demo`, and the QHE/FHE
+  node still reads `(finance_aml.gbm on wasm)`. A fresh load with `demo` selected reads
+  `Private Inference`, so the caption is correct until a run has happened and stale afterwards. It is
+  this round's own class - a caption naming something other than what ran - and it is left for a
+  round that can change the run-state lifecycle rather than bolted on at the end of this one.
+  **Resolve or condition by **Round 44**.**
+- **`/orchestration?usecase=demo` ignores the query parameter** and renders `finance_aml`. Nothing
+  links to that form, so nobody has hit it, but a URL that names a use case and shows a different one
+  is a link that lies. **Resolve or condition by **Round 44**.**
+
+**A stated limit on this round's keyboard verification.** The browser harness could not deliver
+synthetic `Tab` or `Enter` to the page - focus did not move off the element it started on - so the
+skip link's tab-order behaviour was NOT verified by walking it. What WAS verified on the deployed
+site: it is the first focusable element in the document (`querySelector` of all focusables returns
+it), it becomes visible on focus (`left` goes from `-9999px` to `0px` with a real bounding box), and
+activating it moves focus to `<main id="main" tabIndex={-1}>` rather than only scrolling - checked by
+reading `document.activeElement` after activation. The unverified step is that a physical Tab reaches
+it first, which its position as first focusable establishes structurally but not empirically. Said
+here rather than reported as a clean keyboard walk, because an over-broad browser assertion that
+reported a false FAIL is already in `docs/verification-log.md` as this project's own warning.
 
 ## Verification assets added in Rounds 22-23
 

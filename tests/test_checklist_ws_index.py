@@ -48,7 +48,13 @@ _SPEC_ID = re.compile(r"`([A-Z]{1,3}\d{1,3}[a-z]?)`")
 @pytest.fixture(scope="module")
 def doc() -> str:
     if not DOC.exists():
-        pytest.skip("browser-verification-checklist.md is not present in this checkout")
+        pytest.skip(
+            "LOCAL-ONLY GATE, SKIPPED. docs/browser-verification-checklist.md is gitignored by "
+            "design (it must not be published), so this check is a no-op in CI and in every "
+            "clone - it enforces nothing there and its green tick means only that the file was "
+            "absent. `scripts/ci_local.sh` gate 15 fails when the file is missing, so the one "
+            "machine that CAN run this cannot silently stop running it."
+        )
     return DOC.read_text()
 
 

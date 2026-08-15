@@ -106,13 +106,13 @@ export default function Orchestration() {
 
       {/* The real-data overlay the use-case pages carry. `RealDataScatter` needs only the use case -
           it fetches its own payload - so the E2E page could always have shown the corpus its model is
-          scored on, its separability, its licence and its attribution. It renders null where no
-          overlay ships, which covers the generic `demo` entry. */}
-      {hasRun ? (
-        <div className="card" style={{ marginTop: 16 }}>
-          <RealDataScatter usecase={usecase} />
-        </div>
-      ) : null}
+          scored on, its separability, its licence and its attribution.
+          `card` as a PROP rather than a `<div className="card">` here. The component renders null
+          where no overlay ships; the wrapper did not, so `demo` drew an empty bordered box after
+          every run for a round - while these very lines claimed it rendered nothing, and `OR12`,
+          written in the same commit, promised the same. The frame now belongs to the only code that
+          can know whether there is anything to frame. */}
+      {hasRun ? <RealDataScatter usecase={usecase} card /> : null}
 
       <div className="card" style={{ marginTop: 16 }}>
         <h3>Download artifacts</h3>
@@ -120,6 +120,17 @@ export default function Orchestration() {
             no computation is sent to a server. In the client-only build there is no server and no
             `results/`, so it contradicted the page it was on. */}
         <p>Client-side exports{isClientDemo() ? "" : " (the full deployment also writes JSONL/CSV/JSON to results/)"}. Images are high-DPI.</p>
+        {/* THE REASON, VISIBLE. Three of these four buttons carry their reason only in a `title`,
+            and `disabled` takes a button out of the tab order entirely - so the reason was reachable
+            by hovering a mouse and by nothing else. A keyboard or screen-reader visitor got a
+            control announced as unavailable with no statement of what would make it available.
+            One sentence above the row says it once, to everyone, instead of three times to some. */}
+        {!hasRun && (
+          <p className="muted small" style={{ marginTop: -4 }}>
+            Run the orchestration first - the export buttons below stay unavailable until a run has
+            produced events. The DAG image can be exported at any time.
+          </p>
+        )}
         <div className="btn-row">
           <button className="btn ghost" onClick={() => downloadEvents(`${usecase}-events.json`)}
             disabled={!hasRun} title={hasRun ? undefined : "Run the orchestration first"}>⬇ Events (JSON)</button>
@@ -132,6 +143,27 @@ export default function Orchestration() {
           </button>
         </div>
       </div>
+
+      {/* Run status, announced and visible from anywhere on the page.
+          The identical block has been on `UseCasePage` since Round 39 and this page never got one,
+          although this is the page whose entire subject is watching a pipeline advance: the state
+          badge lives in the controls card at the top and scrolls out of view, and the DAG's own
+          progress was - until this round - encoded in colour alone. So a visitor reading the lower
+          half of the page had no announcement of a stage change and no non-colour signal either.
+          `role="status"` with `aria-live="polite"` announces without stealing focus. Rendered only
+          while it says something: during a run and while paused. */}
+      {(run.running || run.paused) && (
+        <div role="status" aria-live="polite"
+          style={{
+            position: "fixed", right: 16, bottom: 16, zIndex: 50,
+            background: "var(--panel)", border: "1px solid var(--accent)", borderRadius: 10,
+            padding: "8px 14px", boxShadow: "0 4px 18px rgba(0,0,0,.45)",
+            display: "flex", alignItems: "center", gap: 10, fontSize: 12,
+          }}>
+          <span className={`badge-state ${run.state}`}>{run.state}</span>
+          {run.active ? <span className="muted"><code>{run.active}</code></span> : null}
+        </div>
+      )}
     </div>
   );
 }

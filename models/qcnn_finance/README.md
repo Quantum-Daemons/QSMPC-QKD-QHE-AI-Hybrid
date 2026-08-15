@@ -46,6 +46,9 @@ The seed reported here lands exactly on that median, so this figure is represent
 reproducible - which is worth stating because the sibling medical card's seed is the WORST of its
 five and the two cards would otherwise read identically. The range is wide either way; a single
 seeded number from this circuit should not be read as precise to more than about one decimal.
+**Seed position:** the reported seed lands exactly on the five-seed median, so this figure is
+representative as well as reproducible.
+
 Workings, including an entanglement ablation over the same seeds:
 [`references/qcnn-entanglement-ablation.md`](../../references/qcnn-entanglement-ablation.md).
 An earlier revision of the trainer selected the checkpoint on the reported rows, so figures

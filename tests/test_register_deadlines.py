@@ -37,16 +37,67 @@ fire. That is this project's tautology class, the fourth instance: the FHE tie m
 So the exemption is an explicit stamp, `DEADLINE EXECUTED Round <N>`, which nobody writes while
 conditioning an item and which names the round that discharged it. The bare word "executed" would
 have reintroduced the same bug the moment someone wrote "to be executed by Round 42".
+
+ROUND 42: THIS GATE NAMED A BOUNDARY AND CHECKED ONE SIDE OF IT
+
+`references/REFERENCES.md` carried *"Next round: find the Cooperation Group publication itself before
+writing any of it down as a date"* from **Round 33 to Round 42** - nine rounds. Nothing was broken.
+The obligation was simply outside this file's scope on **both** axes at once:
+
+- the **file set** was one file, `docs/deliverable-verification.md`, and the promise was in another;
+- the **phrasing** was `by **Round N**` and `BLOCKED UNTIL <date>`, and the promise was a third.
+
+That is this round's subject arriving inside the test written to stop obligations from being
+forgotten: a gate that verifies one side of a boundary it names. The docstring above even *stated*
+the phrasing hole - "someone can still write 'blocked until September' in prose and no gate will see
+it" - and stating a hole is not covering it.
+
+Both axes are now widened. The file set is every **tracked** markdown file under `docs/` and
+`references/`, so it is what a clone contains rather than what one machine has. The phrasings are
+three.
+
+WHY `Next round:` IS ALWAYS OVERDUE
+
+`by **Round 35**` carries its own due date; `Next round:` does not. It is relative to a round the
+sentence never names, and the only file with round headings is the register, so there is no general
+way to compute when it falls due. The rule is therefore that this phrasing is due **on sight**:
+whoever reads it is, by construction, in a round at or after the one it meant.
+
+That makes the phrasing unusable without discharging it, which is the intended outcome and not a
+side effect. The register's own words are that *"an honest label with no deadline is a permanent
+resident"*; a deadline nobody can evaluate is the same thing with a date-shaped hole in it. Write
+`by **Round N**` and the gate will wait for you.
 """
 
 from __future__ import annotations
 
 import datetime as _dt
 import re
+import subprocess
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[1]
 REGISTER = REPO / "docs" / "deliverable-verification.md"
+
+#: Gitignored, so it is not in a clone and a promise in it binds one machine. Same exclusion, and the
+#: same reason, as `test_model_artifact_inventory.py`'s `UNPUBLISHED`.
+UNPUBLISHED = {"docs/browser-verification-checklist.md"}
+
+
+def _watched() -> list[Path]:
+    """Tracked markdown under `docs/` and `references/`.
+
+    TRACKED, not globbed. A filesystem walk would pull in the gitignored checklist, and a promise
+    only one machine can see is not the thing this gate is about. `git ls-files` is the same
+    definition `test_model_artifact_inventory.py` uses, and it failed there first - in CI, where the
+    checklist does not exist - which is why it is the definition here rather than a glob.
+    """
+    out = subprocess.run(
+        ["git", "ls-files", "docs", "references"], cwd=REPO, capture_output=True, text=True, check=True
+    )
+    files = [f for f in out.stdout.split() if f.endswith(".md") and f not in UNPUBLISHED]
+    assert files, "git ls-files returned no markdown under docs/ or references/ - the scope is empty"
+    return [REPO / f for f in files]
 
 #: "any entry not promoted by **Round 35** is removed", and any future sentence of that shape.
 _DEADLINE = re.compile(r"by \*\*Round (\d+)\*\*", re.I)
@@ -54,18 +105,40 @@ _DEADLINE = re.compile(r"by \*\*Round (\d+)\*\*", re.I)
 _HEADING = re.compile(r"^##+ Rounds? (\d+)", re.M)
 #: The ONLY thing that discharges a deadline. Deliberately unlike anything a conditioning sentence
 #: says - see "WHY THE EXEMPTION IS A STAMP AND NOT A KEYWORD" above.
-_EXECUTED = re.compile(r"DEADLINE EXECUTED Round (\d+)")
-#: Start of the next register item ("**12. ...**") or section, whichever comes first. The unit of
-#: discharge is the ITEM, not the paragraph: the stamp records what was done and why it ran late,
-#: which is several sentences, and a paragraph-scoped search would push the author to cram it onto
-#: the end of the conditioning sentence or, worse, to drop the reasoning to satisfy the parser.
-_NEXT_ITEM = re.compile(r"^(?:\*\*\d+\.|#{2,} )", re.M)
+#:
+#: TOLERANT OF ONE LINE WRAP between its words, because these files are hard-wrapped at 100 columns
+#: and the stamp is four words long. Writing the four Round-42 stamps broke this immediately: two of
+#: them landed near the margin, the wrap put `DEADLINE` and `EXECUTED` on different lines, and the
+#: gate reported the items as still pending while they read as discharged to any human. A marker that
+#: silently stops matching when a paragraph is reflowed would have been "fixed" by someone unwrapping
+#: prose to satisfy a parser. At most ONE newline per gap, never a blank line: a stamp must not be
+#: assembled out of one paragraph's last word and the next paragraph's first.
+_WRAP = r"[ \t]*\n?[ \t]*"
+_EXECUTED = re.compile(_WRAP.join(["DEADLINE", "EXECUTED", "Round", r"(\d+)"]))
+#: Start of an item: the register's numbered form ("**12. ...**"), a top-level bold bullet
+#: ("- **The EU NIS ...**", which is how `references/REFERENCES.md` and half the register write an
+#: entry), or a section heading. The unit of discharge is the ITEM, not the paragraph: the stamp
+#: records what was done and why it ran late, which is several sentences, and a paragraph-scoped
+#: search would push the author to cram it onto the end of the conditioning sentence or, worse, to
+#: drop the reasoning to satisfy the parser.
+#: Anchored at column 0 on purpose - indented `  - **...**` sub-bullets elaborate an item rather than
+#: starting one, and treating them as boundaries would cut an entry into pieces the stamp cannot span.
+_ITEM_START = re.compile(r"^(?:\*\*\d+\.|- \*\*|#{2,} )", re.M)
 
 
 def _item_containing(text: str, pos: int) -> str:
-    """The register item the character at `pos` belongs to."""
-    nxt = _NEXT_ITEM.search(text, pos)
-    return text[pos: nxt.start() if nxt else len(text)]
+    """The item the character at `pos` belongs to - from its START, not from `pos`.
+
+    The first version sliced forward from the match, so a stamp written ABOVE the deadline sentence
+    did not count. That is not hypothetical house style: the corrected EU entry opens by saying it is
+    resolved and quotes the promise it discharged several paragraphs later, which is the natural way
+    to write it and the way a reader wants to read it. Searching from the item's start accepts both
+    orders and still refuses to look past the item, which is the boundary the tests below pin.
+    """
+    starts = [m.start() for m in _ITEM_START.finditer(text) if m.start() <= pos]
+    begin = starts[-1] if starts else 0
+    nxt = _ITEM_START.search(text, pos)
+    return text[begin: nxt.start() if nxt else len(text)]
 
 
 #: The register's OTHER deadline shape. The round-based gate below was written first and would have
@@ -87,6 +160,22 @@ _BLOCKED_UNTIL = re.compile(r"BLOCKED UNTIL (20\d\d)-(\d\d)-(\d\d)")
 #: exactly as the round-based check only sees the `by **Round N**` phrasing. That is a real hole, and
 #: naming it is the point; the alternative on offer was a heuristic with a 100% false-positive rate,
 #: and claiming a scope the code does not have is this project's most-repeated defect.
+#: Round 42 closed the half of that hole this project actually writes - see below - and the sentence
+#: above is left standing because the other half is still open and a gate should not be read as
+#: covering more than it does.
+
+#: The third phrasing, and the one that survived nine rounds: a promise relative to a round it never
+#: names. Due on sight - see "WHY `Next round:` IS ALWAYS OVERDUE" in the module docstring.
+#:
+#: CASE-SENSITIVE, and that is the whole of its precision. These files are dense with prose ABOUT
+#: future rounds that promises nothing: "so the next round does not re-derive", "one caution for the
+#: next round", "instructions for the next round:". Every one of those is lowercase because it is a
+#: clause inside a sentence; an obligation is written as a sentence opener, `Next round:`, or as the
+#: register's italic reopening marker. Measured on the tracked set before this was written: the
+#: case-sensitive form matched 5 lines, all five genuine obligations or quotations of one, and the
+#: case-insensitive form added 3 lines, all three false. A gate that fires on commentary gets an
+#: exemption bolted on within two rounds, and the exemption is where the tautologies come from.
+_NEXT_ROUND = re.compile(r"Next round:|Reopens next round")
 
 
 def _current_round() -> int:
@@ -216,6 +305,148 @@ def test_the_dated_gate_can_fire_and_ignores_provenance_dates() -> None:
     assert str(past) not in _due(
         f"\n\n**99. Item.** BLOCKED UNTIL {past}. DEADLINE EXECUTED Round 39, the Space was wired.\n\n"
     ), "the stamp did not discharge a dated blocker, so a discharged item stays red forever"
+
+
+def test_no_relative_promise_is_left_pending_anywhere_in_docs_or_references() -> None:
+    """The widened gate: three phrasings, every tracked doc, not one file and one phrasing.
+
+    This is the check that would have caught the EU lead in Round 34 instead of Round 42. It reads
+    the same three markers the register uses and applies them to every file a clone contains under
+    `docs/` and `references/`, because the promise that survived nine rounds was in `references/`.
+
+    Discharging one means the same thing it has always meant: do the thing, then write
+    `DEADLINE EXECUTED Round <N>` in the item. Quoting a discharged promise as history is fine and is
+    how three of these read today - the quote sits inside an item that carries the stamp.
+    """
+    now = _current_round()
+    today = _dt.date.today()
+    pending: list[str] = []
+
+    for path in _watched():
+        text = path.read_text()
+        rel = path.relative_to(REPO)
+        for regex, due_here in (
+            (_NEXT_ROUND, lambda m: True),
+            (_DEADLINE, lambda m: int(m.group(1)) < now),
+            (_BLOCKED_UNTIL, lambda m: _dt.date(*map(int, m.groups())) <= today),
+        ):
+            for m in regex.finditer(text):
+                if not due_here(m):
+                    continue
+                item = _item_containing(text, m.start())
+                if _EXECUTED.search(item):
+                    continue
+                line = text.count("\n", 0, m.start()) + 1
+                pending.append(f"{rel}:{line}: {' '.join(item.split())[:150]}")
+
+    assert not pending, (
+        "these promises are due and nothing records them as done:\n  "
+        + "\n  ".join(pending)
+        + "\n\n'Next round:' is due on sight - it names no round, so no round can be waited for. Do "
+        "the thing and stamp the item 'DEADLINE EXECUTED Round <N>', or rewrite the promise as "
+        "'by **Round N**' and the gate will wait. Moving the promise is not discharging it: that is "
+        "how one sentence in references/REFERENCES.md reached its ninth round."
+    )
+
+
+def test_the_widened_gate_fires_on_the_side_that_was_added() -> None:
+    """Seed the NEW side, not the side the old gate already watched.
+
+    A seed in `docs/deliverable-verification.md` would prove nothing here: that file and the
+    `by **Round N**` phrasing were already covered, and a green tick from re-testing covered ground
+    is how this gate stayed narrow for nine rounds. So the seed is BOTH new axes at once - a
+    `Next round:` sentence in a `references/` file - and the assertion names the file it was found
+    in, so a future narrowing that quietly drops `references/` from the scope goes red here rather
+    than passing on the register alone.
+    """
+    watched = {str(p.relative_to(REPO)) for p in _watched()}
+    assert "references/REFERENCES.md" in watched, (
+        "references/REFERENCES.md has left the watched set - the file that carried the nine-round "
+        "promise is exactly the one this gate was widened to reach"
+    )
+
+    real = (REPO / "references" / "REFERENCES.md").read_text()
+
+    def _pending(extra: str) -> set[int]:
+        text = real + extra
+        return {
+            m.start() for m in _NEXT_ROUND.finditer(text)
+            if not _EXECUTED.search(_item_containing(text, m.start()))
+        }
+
+    # DIFFED against the unseeded file, not asserted as a non-empty list. The first version checked
+    # `assert caught` and went green off a promise that was already in REFERENCES.md and not yet
+    # discharged - the seed contributed nothing and the test would have passed with the seeding line
+    # deleted. Appending leaves every existing offset where it was, so the difference is exactly the
+    # seed.
+    base = _pending("")
+    seeded = (
+        "\n\n- **A metadata-only entry.** Seen in secondary summaries only, so nothing may be quoted "
+        "from it. Next round: find the publication itself before writing any of it down as a date.\n\n"
+    )
+    assert _pending(seeded) - base, (
+        "the seeded promise in references/ was not caught - either the phrasing is no longer "
+        "matched or the file dropped out of scope, which returns the gate to the shape that missed "
+        "a promise for nine rounds"
+    )
+
+    stamped = seeded.rstrip() + " DEADLINE EXECUTED Round 42, the primary source was loaded.\n\n"
+    assert not _pending(stamped) - base, (
+        "the stamp did not discharge a promise in references/, so a genuinely finished obligation "
+        "would stay red and the only way to green would be to delete the history"
+    )
+
+
+def test_the_stamp_survives_a_line_wrap_but_not_a_paragraph_break() -> None:
+    """A four-word marker in a file hard-wrapped at 100 columns will be split. Both sides pinned.
+
+    Found by writing the Round 42 stamps: two of the four landed near the margin, the wrap put
+    `DEADLINE` and `EXECUTED` on separate lines, and the gate reported items as pending that read as
+    discharged. Two of the stamps in the tracked files are wrapped today, so this tolerance is load
+    bearing and not a convenience.
+
+    The second half is the limit. `\\s+` would have let a stamp be assembled from one paragraph's
+    last word and the next paragraph's first - a marker that appears where nobody wrote it, which is
+    a worse failure than one that fails to appear where somebody did.
+    """
+    assert _EXECUTED.search("... its own source. DEADLINE\n  EXECUTED Round 42."), (
+        "a stamp split by an ordinary line wrap is not recognised; reflowing a paragraph would "
+        "silently re-open every item in it"
+    )
+    assert _EXECUTED.search("resolved.\nDEADLINE EXECUTED\nRound 42, the source was loaded."), (
+        "a stamp wrapped before the round number is not recognised - the number is the last word, "
+        "so it is the one most likely to be pushed onto the next line"
+    )
+    assert not _EXECUTED.search("... nothing was DEADLINE\n\nEXECUTED Round 42 says the next item."), (
+        "a blank line was spanned, so a stamp can now be assembled from two different paragraphs - "
+        "the marker would appear where nobody wrote it"
+    )
+
+
+def test_the_stamp_is_read_when_it_is_written_above_the_promise() -> None:
+    """Order within an item must not decide whether a discharge counts.
+
+    The first `_item_containing` sliced forward from the deadline match, so this passed only when the
+    stamp came after. The corrected EU entry opens with its resolution and quotes the promise several
+    paragraphs down - the readable order - and under the old slicing that entry would have been
+    reported as pending while saying, in its first line, that it was not.
+    """
+    text = (
+        "- **An entry.** DEADLINE EXECUTED Round 42, resolved at the primary source.\n\n"
+        "  Its own history: this entry ended *\"Next round: find the publication\"* and nothing "
+        "enforced it.\n\n"
+        "- **A different entry.** Next round: do the other thing.\n"
+    )
+    pending = [
+        text.count("\n", 0, m.start()) + 1 for m in _NEXT_ROUND.finditer(text)
+        if not _EXECUTED.search(_item_containing(text, m.start()))
+    ]
+    # Line 3 is the quoted history inside the stamped entry; line 5 is the unstamped one.
+    assert 5 in pending, "the unstamped entry was missed, so the gate has stopped seeing promises"
+    assert 3 not in pending, (
+        f"the quoted history under a stamped entry was reported as pending (lines {pending}); a "
+        "stamp above its own promise is the order these entries are written in"
+    )
 
 
 def test_the_stamp_discharges_only_the_item_it_is_written_in() -> None:

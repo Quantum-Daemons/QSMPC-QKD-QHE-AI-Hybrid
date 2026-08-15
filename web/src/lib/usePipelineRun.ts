@@ -310,6 +310,11 @@ export function usePipelineRun(usecase: string, recordRef: RefObject<HTMLElement
     if (e.type === "pipeline_pause") setState("pausing");
     if (e.type === "pipeline_pause_effective") setState("paused");
     if (e.type === "pipeline_stop_requested") setState("stopping");
+    // The EFFECT. The client pipeline announces its halt through `onEnd`, which the backend
+    // transport has no equivalent of - so over the API a stopped run told nobody it had stopped and
+    // the badge stayed on "stopping". Reading it costs nothing on the client path, where `onEnd`
+    // arrives immediately after and sets the same state.
+    if (e.type === "pipeline_stop") setState("stopped");
     if (e.type === "pipeline_resume") setState("running");
     if (e.type === "metric") setMetrics((m) => ({ ...m, [String(e.data.name)]: e.data.value }));
   };
@@ -359,7 +364,7 @@ export function usePipelineRun(usecase: string, recordRef: RefObject<HTMLElement
   const resume = async () => { if (DEMO) { controlRef.current?.resume(); return; } if (runId) await api.resume(runId); };
   const step = async () => { if (DEMO) { controlRef.current?.step(); return; } if (runId) await api.step(runId); };
   const stop = async () => {
-    // Do NOT set "stopped" here. The pipeline emits `pipeline_stop_requested` (badge: stopping) and
+    // Do NOT set "stopped" here. Both pipelines emit `pipeline_stop_requested` (badge: stopping) and
     // reports "stopped" from `onEnd` once it has actually stopped, which is at the next stage
     // boundary. Setting it here is what made the badge say stopped while the run was still visibly
     // producing output.

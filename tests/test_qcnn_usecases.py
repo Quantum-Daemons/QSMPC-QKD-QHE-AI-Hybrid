@@ -146,3 +146,60 @@ def test_the_shipped_copy_agrees_with_the_trained_artifact(usecase: str) -> None
         "keys. If a difference is deliberate, it needs a reason here rather than a silent divergence "
         "between the numbers shown and the circuit run."
     )
+
+
+# --------------------------------------------------------------------------------------------- #
+#  Every shipped QCNN card says where its seed sits, or says no spread exists
+# --------------------------------------------------------------------------------------------- #
+
+#: Checklist row `QC20`, rewritten in Round 42 because the previous wording could not be satisfied by
+#: anything. It asked for "the five-seed spread reported beside any shipped QCNN figure", and the
+#: spread does not exist for two of the four shipped circuits (one run is 6 layers x 400 epochs) and
+#: is rendered on no page in the browser at all. A row nothing can pass is not a standard; it is a
+#: permanent FAIL, and a column of permanent FAILs is a column readers learn to skip.
+#:
+#: What replaced it is the property the spread was FOR: a reader must be able to tell whether the
+#: number in front of them is typical. Two ways to satisfy that, and both are honest - report the
+#: seed's position in a measured spread, or state that no spread was measured. What is forbidden is
+#: the third option, which is what a card silently does by default: print a figure and say nothing,
+#: so a single draw reads as a settled result.
+#:
+#: The medical card is why this matters and not a formality. Its seed 0 is the WORST of five on
+#: minority-class F1 - 0.622951 against a median of 0.8710 - so a reader comparing it against the
+#: classical baseline was comparing against the low end of a wide spread and had no way to know.
+#:
+#: A MARKER, NOT A PROSE MATCH - AND THE PROSE VERSION FAILED ITS OWN NEGATIVE CONTROL. The first
+#: version searched for the phrasings the cards happened to use: "worst of five", "lands exactly on
+#: its median", "No five-seed spread is published". Deleting the disclosure from `qcnn_telecom_q7`
+#: and re-running produced GREEN, because that card cross-references the MEDICAL card's spread - "its
+#: seed 0 turned out to be the worst of five" - and a regex cannot tell a card's statement about
+#: itself from its statement about a sibling. A card could have satisfied a check about its own
+#: numbers by mentioning somebody else's.
+#:
+#: That is this project's tautology class in another costume - a matcher satisfied by prose ABOUT the
+#: subject rather than by the subject - and the answer has been the same every time it appeared: an
+#: explicit marker nobody writes by accident. `BLOCKED UNTIL`, `DEADLINE EXECUTED`, and now
+#: `**Seed position:**` at the start of a line. Cross-references stay in the prose where they are
+#: useful, and the line that discharges the row is the line that speaks about itself.
+_SEED_POSITION = re.compile(r"^\*\*Seed position:\*\*\s+\S", re.M)
+
+
+def test_every_shipped_qcnn_card_places_its_seed() -> None:
+    """`QC20`. Enumerated from disk, because a hand-listed set is a second place to forget one."""
+    cards = sorted((REPO / "models").glob("qcnn_*/README.md"))
+    assert len(cards) >= 4, (
+        f"only {len(cards)} QCNN model cards found; this check enumerates the shipped circuits from "
+        "disk and an empty or shrunken glob passes for the same reason an empty check passes"
+    )
+    silent = [
+        str(c.relative_to(REPO)) for c in cards if not _SEED_POSITION.search(c.read_text())
+    ]
+    assert not silent, (
+        "these QCNN model cards print figures without saying whether the seed behind them is "
+        f"typical: {silent}.\n"
+        "State the seed's position in the measured spread, or state that no spread was measured for "
+        "that circuit. Do NOT re-pick the seed to close the gap - selecting on test performance is "
+        "test-set selection, refused in references/qcnn-entanglement-ablation.md - and do NOT close "
+        "it by deleting the disclosure, which is the only move that makes the numbers look better "
+        "while making them mean less."
+    )

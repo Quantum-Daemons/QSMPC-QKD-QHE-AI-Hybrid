@@ -83,7 +83,13 @@ def test_the_checklist_row_does_not_hardcode_the_count() -> None:
 
     doc = REPO / "docs" / "browser-verification-checklist.md"
     if not doc.exists():
-        pytest.skip("browser-verification-checklist.md is not present in this checkout")
+        pytest.skip(
+            "LOCAL-ONLY GATE, SKIPPED. docs/browser-verification-checklist.md is gitignored by "
+            "design (it must not be published), so this check is a no-op in CI and in every "
+            "clone - it enforces nothing there and its green tick means only that the file was "
+            "absent. `scripts/ci_local.sh` gate 15 fails when the file is missing, so the one "
+            "machine that CAN run this cannot silently stop running it."
+        )
     row = [ln for ln in doc.read_text().splitlines() if ln.startswith("| CI1 ")]
     assert row, "row CI1 has gone; the local-gate check is no longer in the checklist"
     stale = re.search(r"numbered `?(\d+)/(\d+)", row[0])
