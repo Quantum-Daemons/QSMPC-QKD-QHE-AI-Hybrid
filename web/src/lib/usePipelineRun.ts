@@ -183,6 +183,14 @@ export const makeDefaultParams = () => ({
   // physics; the defaults are the Micius-class downlink and are unchanged.
   sat_atmospheric_db: FREE_SPACE.freeSpace!.atmosphericDb,
   sat_pointing_db: FREE_SPACE.freeSpace!.pointingDb,
+  // The two assumed source clocks, in MHz, one per channel. From config rather than a literal, so
+  // the control opens on exactly the value `clientCompute.ts` would have used had nobody touched it
+  // - a control whose default disagrees with the fallback behind it is a silent state change on
+  // first render. Two keys because the two defaults have different provenance: the free-space
+  // figure is the anchor experiment's own configuration, the fibre one is that clock carried over
+  // to a channel it was not measured on.
+  qkd_source_rate_mhz: qkdCfg().source_rate_hz / 1e6,
+  sat_source_rate_mhz: qkdCfg().free_space_source_rate_hz / 1e6,
 });
 
 export const DEFAULT_PARAMS = makeDefaultParams();

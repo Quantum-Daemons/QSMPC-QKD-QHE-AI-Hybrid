@@ -33,6 +33,37 @@ import { isClientDemo } from "./demoMode";
 
 const r1 = (x: number) => Math.round(x * 10) / 10;
 const r2 = (x: number) => Math.round(x * 100) / 100;
+/**
+ * The operator's source repetition rate for one channel, in Hz, or the shipped default.
+ *
+ * THE CONTROL EXISTS BECAUSE THE PANEL ALREADY SAID IT DID. `SdnControlPlanePanel` told the visitor,
+ * in a tooltip and again in prose, that the rate "is a control in the Parameters panel" and that
+ * every figure in those columns "scales exactly" with it. No such control was ever rendered - the
+ * rate came from baked config. This project has found six INERT controls, rendered and read by
+ * nothing; that was the inverse, and worse, because a visitor could not even go and look.
+ *
+ * The control is denominated in MHz and the key SAYS SO, because 100 MHz is what the panel prints
+ * and 100000000 is what a bare Hz spinner would demand. One conversion, in one place, guarded by a
+ * name that carries its unit - which is the whole lesson of the round this sits in.
+ *
+ * Fibre and free space keep SEPARATE keys, exactly as `qkd_distance_km` and `sat_distance_km` do.
+ * Their defaults are two config entries rather than one because their provenance differs: the free
+ * space figure is the anchor experiment's own configuration, the fibre one is that clock carried
+ * over. Collapsing them into a single control would re-create the defect the distance split exists
+ * to prevent, where the satellite page silently evaluated a fibre page's parameter.
+ *
+ * IT TAKES THE VALUE, NOT THE KEY NAME, and that is not a stylistic choice. The first version had
+ * the signature `(config, key, fallbackHz)` and read `config?.[key]` inside, so the two call sites
+ * passed the string "qkd_source_rate_mhz". That is a real read at runtime and an INVISIBLE one to
+ * static analysis: the inert-control gate added in this round scans for `config.<key>`-shaped
+ * expressions and reported both brand-new controls as unread. The gate was right about what it could
+ * see. Passing `config?.qkd_source_rate_mhz` at the call site keeps the conversion in one place and
+ * keeps the read where a reader - and a checker - can find it.
+ */
+const sourceRateHz = (mhzFromControl: unknown, fallbackHz: number): number => {
+  const mhz = Number(mhzFromControl);
+  return Number.isFinite(mhz) && mhz > 0 ? mhz * 1e6 : fallbackHz;
+};
 const argmax = (a: number[]) => a.reduce((bi, v, i, arr) => (v > arr[bi] ? i : bi), 0);
 /** Gap between the top two scores - what a top-1 decision actually had to lose. `Infinity` for a
  *  single-class row, so a degenerate model never reads as "decided by a tie". */
@@ -215,28 +246,46 @@ export function securityFacts(config: any, metrics: Record<string, any>): Securi
     facts.push({ label: "QKD key material", value: "none - PQC-only profile", kind: "measured",
       source: "operator selection; no quantum channel in this run" });
   } else {
+    // ONE protocol test, read by every row below it. It was written inline on the key-material row
+    // and nowhere else, so when the secret-key-rate row was added three lines later it simply did
+    // not ask - and told E91 users their rate came from a decoy-state estimate. A shared constant
+    // is what stops the next row from being the next omission.
+    const isE91 = String(config?.qkd_protocol ?? qkdCfg().protocol) === "e91";
     // The warning is the point. A QKD profile that produced no key is the case the composite scored
     // 100 on, because nothing checked whether the channel actually delivered.
     facts.push({
       label: "QKD key material",
       value: keyBits == null ? "not reported" : `${keyBits} secure bits`,
       kind: "measured",
-      source: String(config?.qkd_protocol ?? qkdCfg().protocol) === "e91"
+      source: isE91
         ? "E91 / CHSH run, GLLP secure fraction"
-        : "BB84 decoy-state run, GLLP secure fraction",
+        : "BB84 decoy-state run, two-intensity secure fraction",
       warn: keyBits === 0
         ? "the QKD profile is selected but this channel produced NO secure key: the session rests on "
           + "the PQC hybrid alone"
         : undefined,
     });
     if (skr != null) {
+      // PROTOCOL-AWARE, like the row immediately above and unlike this row until Round 45. It was
+      // emitted unconditionally as "GLLP bound over the decoy-state estimate", so the E91 page
+      // attributed its rate to decoy states - a countermeasure for the multi-photon pulses of an
+      // attenuated laser, which entanglement-based QKD does not have and cannot use. One of a
+      // sibling pair three lines apart was made protocol-aware and the other was not.
       facts.push({ label: "Secret-key rate", value: `${skr} per pulse`, kind: "measured",
-        source: "GLLP bound over the decoy-state estimate" });
+        source: isE91
+          ? "GLLP secure fraction on the observed QBER; E91 has no decoy states"
+          : "two-intensity decoy-state bound, Ma, Qi, Zhao & Lo, Phys. Rev. A 72, 012326 (2005)" });
     }
-    // What the decoy states are actually buying on THIS channel. The runtime model is asymptotic
-    // decoy-state, which already assumes the single-photon contribution has been bounded - so the
-    // assumption is invisible unless the counterfactual is computed. Delta >= 1 means no detection
-    // could be certified single-photon and the same hardware would yield nothing without decoys.
+    // What the decoy states are actually buying on THIS channel.
+    //
+    // ROUND 45 CORRECTED THIS COMMENT AND THE MODEL UNDER IT. It used to say "the runtime model is
+    // asymptotic decoy-state, which already assumes the single-photon contribution has been
+    // bounded". The runtime model was neither: it computed 1 - h2(q) - f h2(q) on the observed QBER
+    // and credited every sifted bit as single-photon, which is stronger than any decoy bound rather
+    // than an approximation of one. `bb84()` now runs the two-intensity estimator, so the sentence
+    // describes the code for the first time. Delta >= 1 still means no detection could be certified
+    // single-photon and the same hardware would yield nothing without decoys - and on this link it
+    // is 7.26, so the counterfactual really is zero rather than merely smaller.
     const mu = qkdCfg().mu_signal;
     // The channel model AND the parameters fed to it both have to follow the use case.
     //
@@ -1854,7 +1903,8 @@ export function runClientPipeline(
         // boundary and describing one side of it.
         {
           const clk = keyRateWithClock(res.secretKeyRate, pulses,
-                                       Number(qkdCfg().source_rate_hz));
+                                       sourceRateHz(config?.qkd_source_rate_mhz,
+                                                    Number(qkdCfg().source_rate_hz)));
           if (clk.skrBitPerSec != null) metric(stage, "skr_bit_s", Math.round(clk.skrBitPerSec));
           if (clk.channelSeconds != null) metric(stage, "channel_time_s", clk.channelSeconds);
           metric(stage, "source_rate_hz", clk.sourceRateHz);
@@ -1918,7 +1968,8 @@ export function runClientPipeline(
         // because one could carry only one of those two sentences.
         {
           const clk = keyRateWithClock(res.secretKeyRate, satPulses,
-                                       Number(qkdCfg().free_space_source_rate_hz));
+                                       sourceRateHz(config?.sat_source_rate_mhz,
+                                                    Number(qkdCfg().free_space_source_rate_hz)));
           if (clk.skrBitPerSec != null) metric(stage, "skr_bit_s", Math.round(clk.skrBitPerSec));
           if (clk.channelSeconds != null) metric(stage, "channel_time_s", clk.channelSeconds);
           metric(stage, "source_rate_hz", clk.sourceRateHz);

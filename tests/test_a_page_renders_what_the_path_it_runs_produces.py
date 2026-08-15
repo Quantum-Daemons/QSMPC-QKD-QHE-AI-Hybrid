@@ -142,6 +142,41 @@ def test_prose_naming_a_control_names_one_that_is_rendered() -> None:
     )
 
 
+def test_every_rendered_control_is_read_somewhere() -> None:
+    """The inert-control direction, which nothing has ever asserted.
+
+    `tests/test_run_config_keys.py` checks that every key the browser READS is emitted. The reverse -
+    a control the panel renders that nothing consumes - has been found by hand SIX times in this
+    project and has never had a gate. A visitor adjusts it, the run produces an identical number, and
+    the page has quietly told them their input does not matter.
+
+    It earned its place immediately. The first version of `sourceRateHz` in `clientCompute.ts` took
+    the config object and a KEY NAME and read `config?.[key]` internally, so the two controls added
+    in this very round were read at runtime and invisible to any static reader - this check reported
+    both as inert. The call sites now pass `config?.qkd_source_rate_mhz` directly. A gate that fails
+    on the change that introduced it is the gate working.
+    """
+    keys = re.findall(r'\[\s*"[^"]+"\s*,\s*"([a-z0-9_]+)"', PARAMS.read_text())
+    assert len(keys) >= 15, (
+        f"only {len(keys)} controls parsed from ParameterPanel.tsx; the field tuple shape changed "
+        "and this check would pass by finding nothing"
+    )
+    body = "\n".join(
+        p.read_text() for p in sorted({*WEB.rglob("*.ts"), *WEB.rglob("*.tsx")})
+        if p.name != "ParameterPanel.tsx"
+    )
+    # A READ is a `config.k` / `config?.k` / `config["k"]` / `params.k` shaped expression. A bare
+    # mention of the name in prose is not evidence that anything consumes it.
+    inert = [k for k in keys
+             if not re.search(rf"""(?:config|params|cfg|p)\s*\??\s*[.\[]\s*["']?{k}\b""", body)]
+    assert not inert, (
+        f"these controls are rendered by the Parameters panel and read nowhere: {inert}\n\n"
+        "A control that changes no number is a promise the page does not keep. Either wire it to the "
+        "model or remove it - and if it is read through an indirection the scan cannot see, move the "
+        "read to the call site so a reader can find it too."
+    )
+
+
 def test_the_panel_prose_and_its_tooltip_make_the_same_claim() -> None:
     """One caveat, two surfaces - and they must not drift apart.
 
