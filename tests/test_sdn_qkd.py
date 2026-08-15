@@ -57,14 +57,68 @@ def test_unknown_node_is_rejected_rather_than_invented():
 
 
 def test_allocation_is_bounded_by_the_link_budget():
+    """The budget is BITS, and it always was - the field it used to read was not.
+
+    This asserted `skr=1000.0` and then that 1000 bits could be allocated, which reads as a test of
+    the ledger and was a test of a bit/s field being spent as though it were a bit count. Round 42
+    removed that operation from the browser and left it here; the assertions moved with the fix
+    because they were part of its surface, not collateral to it.
+    """
     c = _three_node_controller()
-    c.create_physical_link("qkdl-ab", "qkdn-a", "qkdn-b", attenuation_db=6.0, skr=1000.0)
+    c.create_physical_link("qkdl-ab", "qkdn-a", "qkdn-b", attenuation_db=6.0, skr=1000.0,
+                           key_budget_bits=1000, channel_time_s=1.0)
     c.register_application(QkdApplication(
         app_id="sae-1", server_app_id="orchestrator", backing_qkdl_id=["qkdl-ab"]))
     assert c.allocate("sae-1", 400) == 400
     # The remaining budget, not the request, decides.
     assert c.allocate("sae-1", 10_000) == 600
     assert c.allocate("sae-1", 1) == 0
+
+
+def test_the_rate_fields_are_derived_and_cannot_be_written() -> None:
+    """`eskr` and `expected_consumption` have no storage, so `allocate()` cannot decrement them.
+
+    A comment asking nobody to spend a rate is weaker than removing the thing to be spent. These are
+    read-only properties: the assignment Round 42 deleted from the browser is now an AttributeError
+    here rather than a convention.
+    """
+    c = _three_node_controller()
+    c.create_physical_link("qkdl-ab", "qkdn-a", "qkdn-b", attenuation_db=6.0, skr=1000.0,
+                           key_budget_bits=1000, channel_time_s=2.0)
+    link = c.links["qkdl-ab"]
+    assert link.eskr == 1000.0, "with nothing consumed, the effective rate is the rate"
+
+    c.register_application(QkdApplication(
+        app_id="sae-1", server_app_id="orchestrator", backing_qkdl_id=["qkdl-ab"]))
+    c.allocate("sae-1", 400)
+    # 400 bits over 2 s is 200 bit/s of consumption, so the effective rate falls by 200 - not by 400.
+    # A rate decremented by a bit count is exactly the dimensional error this file now guards.
+    assert link.consumed_bits == 400
+    assert link.expected_consumption == 200.0
+    assert link.eskr == 800.0
+
+    for attr, value in (("eskr", 1.0), ("expected_consumption", 1.0)):
+        with pytest.raises(AttributeError):
+            setattr(link, attr, value)
+
+
+def test_a_link_with_no_clock_reports_no_consumption_rather_than_dividing_by_zero() -> None:
+    """`channel_time_s` is optional, and its absence must not produce Infinity.
+
+    A rate of Infinity renders, and a rendered number is believed. Absent clock means the
+    consumption rate is unknown, and the honest value for unknown here is zero consumption against
+    the stated rate - never a division by zero.
+    """
+    c = _three_node_controller()
+    c.create_physical_link("qkdl-ab", "qkdn-a", "qkdn-b", attenuation_db=6.0, skr=500.0,
+                           key_budget_bits=1000)
+    c.register_application(QkdApplication(
+        app_id="sae-1", server_app_id="orchestrator", backing_qkdl_id=["qkdl-ab"]))
+    c.allocate("sae-1", 400)
+    link = c.links["qkdl-ab"]
+    assert link.consumed_bits == 400, "the bit ledger still moves"
+    assert link.expected_consumption == 0.0
+    assert link.eskr == 500.0
 
 
 def test_application_referencing_an_unknown_link_is_rejected():

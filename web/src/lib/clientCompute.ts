@@ -20,7 +20,8 @@ import { clientQFL } from "./clientQFL";
 import { secureArgmax, warmMPC } from "./clientMPC";
 import { optimizeQKD } from "./clientOptiQKD";
 import { generateQuantumBits } from "./clientQRNG";
-import { bb84, channelLossDb, e91, FIBER, FREE_SPACE, h2, intrinsicQber, qcnnExpectation,
+import { bb84, channelLossDb, e91, FIBER, FREE_SPACE, h2, intrinsicQber, keyRateWithClock,
+  qcnnExpectation,
   qcnnInferTrained, qotpQcnnInfer, rng, taggedFraction,
   type QcnnWeights } from "./quantumSim";
 import { type Provenance } from "../components/ProvenanceBadge";
@@ -197,7 +198,7 @@ export function securityFacts(config: any, metrics: Record<string, any>): Securi
   const pqcOnly = config?.qkd === "pqc-only";
   const keyBits = typeof metrics.secure_key_bits === "number" ? metrics.secure_key_bits : null;
   const qber = typeof metrics.qber === "number" ? metrics.qber : null;
-  const skr = typeof metrics.skr === "number" ? metrics.skr : null;
+  const skr = typeof metrics.skr_per_pulse === "number" ? metrics.skr_per_pulse : null;
 
   const facts: SecurityFact[] = [
     { label: "KEM", value: `${kem} - NIST Category ${cat}`, kind: "standard",
@@ -1843,8 +1844,22 @@ export function runClientPipeline(
         // an attack it did not simulate. Publishing the value lets the label read the run.
         metric(stage, "qkd_eve_fraction", chan.eveFraction);
         metric(stage, "qber", r2(res.qber));
-        metric(stage, "skr", Math.round(res.secretKeyRate * 1e5) / 1e5);
+        // RENAMED from `skr`. ETSI GS QKD 015's `skr` is bit/s and this number is bits per PULSE;
+        // leaving one name on two dimensions inside the same signed payload is the defect this
+        // round exists to remove, one namespace over.
+        metric(stage, "skr_per_pulse", Math.round(res.secretKeyRate * 1e5) / 1e5);
         metric(stage, "secure_key_bits", res.secureKeyBits);
+        // THE FOUR TOGETHER, on both QKD stages. The satellite twin below emitted no rate at all
+        // while its own comment claimed "both report the same quantity" - a comment naming a
+        // boundary and describing one side of it.
+        {
+          const clk = keyRateWithClock(res.secretKeyRate, pulses,
+                                       Number(qkdCfg().source_rate_hz));
+          if (clk.skrBitPerSec != null) metric(stage, "skr_bit_s", Math.round(clk.skrBitPerSec));
+          if (clk.channelSeconds != null) metric(stage, "channel_time_s", clk.channelSeconds);
+          metric(stage, "source_rate_hz", clk.sourceRateHz);
+          metric(stage, "qkd_pulses", pulses);
+        }
         if (eRes) metric(stage, "chsh_s", r2(eRes.chshS));
         emit("log", stage, eRes
           ? `E91 (entanglement / CHSH S=${r2(eRes.chshS)}): QBER=${res.qber.toFixed(4)}, ${res.secureKeyBits} secure bits`
@@ -1895,7 +1910,20 @@ export function runClientPipeline(
         metric(stage, "qkd_eve_fraction", satChan.eveFraction);
         metric(stage, "qber", r2(res.qber));
         metric(stage, "channel_loss_db", res.channelLossDb);
+        metric(stage, "skr_per_pulse", Math.round(res.secretKeyRate * 1e5) / 1e5);
         metric(stage, "secure_key_bits", res.secureKeyBits);
+        // The same four as the fibre stage, from the FREE-SPACE clock key. The default value is the
+        // same 100 MHz, but the provenance is not: on this page it is the anchor's own measured
+        // configuration, and on fibre it is that clock carried over to different apparatus. Two keys
+        // because one could carry only one of those two sentences.
+        {
+          const clk = keyRateWithClock(res.secretKeyRate, satPulses,
+                                       Number(qkdCfg().free_space_source_rate_hz));
+          if (clk.skrBitPerSec != null) metric(stage, "skr_bit_s", Math.round(clk.skrBitPerSec));
+          if (clk.channelSeconds != null) metric(stage, "channel_time_s", clk.channelSeconds);
+          metric(stage, "source_rate_hz", clk.sourceRateHz);
+          metric(stage, "qkd_pulses", satPulses);
+        }
         if (satERes) metric(stage, "chsh_s", r2(satERes.chshS));
         (config as any)._satQber = res.qber;
         emit("log", stage, satERes

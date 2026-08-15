@@ -1276,6 +1276,7 @@
     "free_space_misalignment": 0.025,
     "free_space_pointing_db": 3.0,
     "free_space_rx_aperture_m": 1.2,
+    "free_space_source_rate_hz": 100000000.0,
     "misalignment": 0.015,
     "mu_decoy": 0.1,
     "mu_signal": 0.5,
@@ -1293,7 +1294,8 @@
     "optimize_n_samples": 48,
     "pp_threshold": 0.11,
     "protocol": "bb84",
-    "pulses": 200000
+    "pulses": 200000,
+    "source_rate_hz": 100000000.0
   },
   "qrng": {
     "anu_opt_in": false,

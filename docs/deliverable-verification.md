@@ -1806,10 +1806,22 @@ they cannot become permanent residents:
   `Private Inference`, so the caption is correct until a run has happened and stale afterwards. It is
   this round's own class - a caption naming something other than what ran - and it is left for a
   round that can change the run-state lifecycle rather than bolted on at the end of this one.
-  **Resolve or condition by **Round 44**.**
+  **Resolve or condition by **Round 44**. DEADLINE EXECUTED Round 43** - and the discharge was
+  written a round before the stamp. Round 43 rewrote `usePipelineRun.ts`'s `[usecase]` effect to
+  call `reset()` and to cancel the in-flight run, and verified it on the deployed site across four
+  surfaces: the DAG caption went from `(finance_aml.gbm on wasm)` to `Private Inference`, the badge
+  from `done` to `idle`, the exports from enabled to disabled, and the agreement card from present
+  to absent. The work was done and the sentence describing it still read as pending, which is the
+  same shape as the count sentence two sections up.
 - **`/orchestration?usecase=demo` ignores the query parameter** and renders `finance_aml`. Nothing
   links to that form, so nobody has hit it, but a URL that names a use case and shows a different one
-  is a link that lies. **Resolve or condition by **Round 44**.**
+  is a link that lies. **Resolve or condition by **Round 44**. CONDITIONED Round 44, by **Round 46**.**
+  Round 44 spent its length on the rate fields and the two defects behind them, and this is a
+  separate surface: `Orchestration.tsx` holds the use case in `useState` and never reads
+  `useSearchParams`, so resolving it means deciding what an unknown or misspelled value does - fall
+  back visibly, or refuse - and that is a UX decision rather than a one-line read. Deferred WITH a
+  round, not with a hope. The condition that would make it urgent: **the moment anything links to
+  `/orchestration?usecase=`**, at which point a lying URL is being handed to someone.
 
 **A stated limit on this round's keyboard verification.** The browser harness could not deliver
 synthetic `Tab` or `Enter` to the page - focus did not move off the element it started on - so the
@@ -1884,7 +1896,7 @@ recorded - medical's seed 0 is the worst of five at 8 wires.
 `if (true)`, and the bundle carries upstream's own *"WebNN EP requires either JSEP or WebGPU EP to be
 enabled."* On the no-adapter path - exactly where WebNN would help - it cannot be requested at all.
 
-**BUSINESS DOC RECONCILED Round 43.** The confidential business-recommendations document - its
+**BUSINESS DOC RECONCILED Round 44.** The confidential business-recommendations document - its
 filename is Japanese and is therefore not written here, which is why this paragraph describes it
 instead - lives at the parent directory, **outside this repository**, and 21 consecutive ORDER files
 (18-38) name it in the documentation-merge bullet. Its own title says it covers rounds 17-20. Every document sweep for
@@ -1920,6 +1932,76 @@ the added item is a sector CSF profile, so the conclusion holds and the word "on
 And gate 6 caught gate 16: the first version put the business document's Japanese filename into both
 `ci_local.sh` and this file, and the no-Japanese-in-public-files rule failed on the check written to
 enforce a different rule. The register now describes that file rather than naming it.
+
+## Round 44: the fix changed one language, and the field it emptied is still being read
+
+**Round 42's own fix did both things it was written to prevent, and its guard caught neither.**
+
+**It changed TypeScript only.** `src/qsh/qkd/sdn_controller.py` went on budgeting a bit COUNT against
+`eskr` and accumulating granted BITS into `expected_consumption`, both documented `#: bit/s` - the
+exact operation Round 42 removed from the browser. The guard written alongside,
+`test_sdn_fields_carry_the_dimension_the_spec_says.py`, asserted the bit-denominated ledger against
+the TS file and read the PY file **only for the unit comment**. That file is the dimensional
+reference the gate cites when judging the browser, so the reference was the thing that was wrong.
+
+**And emptying `eskr` broke its reader, silently.** `stored_key_count` still computed
+`(link?.eskr ?? 0) / 352`, so the GS QKD 014 table advertised a key management entity holding
+**exactly zero keys, on every run, for two rounds**. `null ?? 0` is 0; nothing raised, nothing
+logged, no test failed. `tests/test_sdn_qkd.py` does assert `stored_key_count > 0` - against the
+**Python** `KeyManagementEntity`, a different implementation that was never changed. **Round 43
+walked this exact panel**, recorded the `n/a` and the `1,436 bit` beside it, and did not record the
+`0` between them. Reading a panel for the thing you changed is not reading the panel.
+
+**The rate fields now carry what their names promise.** The gap between a per-pulse key rate and
+bit/s was exactly one scalar, and it is not measurable here: a source repetition rate is a property
+of a transmitter, stated in a paper's experimental section rather than derived from one. So it is an
+explicit operator input - `source_rate_hz`, defaulting to the 100 MHz of arXiv:2607.24118v1 (CC BY
+4.0, no journal DOI), now promoted into `references/REFERENCES.md` because a shipped default may not
+rest on a code comment. Two keys, not one: on the satellite page that clock is the anchor's own
+measured configuration, and on fibre it is the same number carried to different apparatus. One key
+could carry only one of those sentences.
+
+**`eskr` has no storage in either language.** It is `linkEskr()` in the browser and a read-only
+property in Python, so `allocate()` cannot decrement it - a field that does not exist cannot be
+spent. A comment asking nobody to spend a rate is weaker than removing the thing to be spent.
+
+**Round 42's stated conclusion was broader than its evidence**, and this is the correction rather
+than a reversal. It surveyed three libraries and rejected them on three DIFFERENT grounds -
+per-pulse, GPL licence before the physics was examined, "would still require asserting a clock" -
+then generalised to *"No library supplies a repetition rate because none can."* Round 44's sweep
+found that **SeQUeNCe does model a source clock**, with a default of 8e7 Hz. A default is not a
+measurement, so the operative conclusion survives; the sentence did not. The narrow claim is that a
+repetition rate is an INPUT to key-rate analysis, which is the argument for asking openly.
+
+**Two things that must not be written**, recorded because the research pass had to correct them
+before they entered a document: *"QuTiP's time axis is dimensionless"* is false - setting hbar = 1
+identifies energy with inverse time rather than removing the unit, and qutip-qip documents hardware
+parameters in GHz, making that axis nanoseconds. The defensible statement is that qutip core exposes
+no source-clock, repetition-rate, channel or link-budget abstraction. And *"Boaron et al. reach
+6.5 bit/s over 421 km"* couples the wrong rate to the wrong distance: 6.5 bps is at **405 km**, and
+the 421.1 km row is **0.25 bps**. A 26x error in a reference point is this project's own defect class.
+
+**An uncited number was removed rather than promoted.** *"2.5 GHz in the 64 Mbps fibre
+demonstration"* had a single occurrence in `clientSdnController.ts`, no source anywhere in the
+repository, and was doing argumentative work inside the rationale for not computing a rate at all.
+
+**The deadline gate was blind to its own line wrap.** `by\n**Round 45**` at `:1992` was invisible to
+`_DEADLINE`, which required a literal space - while `_EXECUTED`, twelve lines away in the same file,
+had been made wrap-tolerant in Round 42 for exactly this reason. All three markers now share `_WRAP`.
+The lesson was learned on one regex and not carried to its sibling.
+
+**Where this round shipped its own defect.** The research sweep, reading the live tree, found that
+`src/qsh/orchestration/stages.py` put a per-pulse fraction into a metric named `skr` - **after** I had
+fixed that collision in the browser and written a commit message about Round 42 having changed one
+language. Three Python sites renamed together. The gate that asserts the emptied fields are nullable
+also fired on my own change, and its premise was restated rather than deleted; its module docstring
+said the same stale thing and was corrected in the same edit.
+
+**Verified on the deployed site**, which no source gate can do: `skr_per_pulse` 0.00958 x
+`source_rate_hz` 1e8 = `skr_bit_s` 957,659; `channel_time_s` 0.002 = 200,000 / 1e8;
+957,659 x 0.002 = 1915 = `secure_key_bits`; panel `skr` 958,000 and `eskr` 718,500 =
+958,000 - 479 bits / 0.002 s; `key budget` 1,436 bit; **`stored_key_count` 4 = floor(1436/352)**,
+restored from a permanent 0. No NaN, no Infinity.
 
 ## Verification assets added in Rounds 22-23
 

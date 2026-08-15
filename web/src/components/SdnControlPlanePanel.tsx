@@ -6,11 +6,18 @@
 // of error this project keeps finding: a label asserting something the architecture does not do.
 import { useMemo } from "react";
 import {
-  allocate, buildTopology, kmeStatus, linkTrustNote, type SdnTopology,
+  allocate, buildTopology, kmeStatus, linkEskr, linkTrustNote, type SdnTopology,
 } from "../lib/clientSdnController";
+
+/** One wording, used by both rate cells, so the caveat cannot drift between two columns. */
+const RATE_CELL_TITLE =
+  "bit/s - this simulation's per-pulse key rate multiplied by an ASSUMED source repetition rate. "
+  + "No QKD hardware exists in this project and nothing here measures a clock, so the rate scales "
+  + "exactly with the Source rate control in the Parameters panel. Not a measurement.";
 
 export default function SdnControlPlanePanel({
   usecase, distanceKm, keyBudgetBits, qkdEnabled, maxSpanKm,
+  secretKeyRatePerPulse, sourceRateHz, pulses,
 }: {
   usecase: string;
   distanceKm: number;
@@ -21,15 +28,27 @@ export default function SdnControlPlanePanel({
   keyBudgetBits: number;
   /** False under the PQC-only profile — there is then no key association to manage. */
   qkdEnabled: boolean;
+  /** Bits of secret key per PULSE, as the run reported it (`metrics.skr_per_pulse`). */
+  secretKeyRatePerPulse: number;
+  /** The ASSUMED source repetition rate in Hz that the run used. Comes from the run's own metric,
+   *  not from the params, for the same reason `keyBudgetBits` does: the panel must show what RAN. */
+  sourceRateHz: number;
+  /** Channel uses this run made. */
+  pulses: number;
 }) {
   const topo: SdnTopology = useMemo(() => {
-    const t = buildTopology({ usecase, distanceKm, keyBudgetBits, qkdEnabled, maxSpanKm });
+    const t = buildTopology({ usecase, distanceKm, keyBudgetBits, qkdEnabled, maxSpanKm,
+                              secretKeyRatePerPulse, sourceRateHz, pulses });
     // Draw down a realistic slice so the remaining budget is visibly finite. This said "so eskr
     // differs from skr" while both fields held the same session total - the sentence described a
     // difference between two copies of one number.
     if (t.apps.length) allocate(t, t.apps[0].app_id, Math.round(keyBudgetBits * 0.25));
     return t;
-  }, [usecase, distanceKm, keyBudgetBits, qkdEnabled, maxSpanKm]);
+    // Every value the topology reads must be listed, or the panel keeps a stale one. This is
+    // the dependency-array class the DAG's node labels already hit: threaded in, used, and
+    // omitted here, so React never rebuilt and the label stayed frozen.
+  }, [usecase, distanceKm, keyBudgetBits, qkdEnabled, maxSpanKm,
+      secretKeyRatePerPulse, sourceRateHz, pulses]);
 
   const kme = kmeStatus(topo);
   const ext = (kme.status_extension ?? {}) as Record<string, string>;
@@ -37,6 +56,26 @@ export default function SdnControlPlanePanel({
   return (
     <div className="card" style={{ marginTop: 16 }}>
       <h3>QKD control plane · ETSI GS QKD 015</h3>
+      {/* THE ASSUMPTION, ADJACENT TO THE NUMBERS IT GOVERNS. A bit/s figure invites a comparison
+          with published systems whether or not one is offered, and the nearest measured figure this
+          repository cites belongs to a different channel. Saying so beside the table is cheaper than
+          hoping nobody makes the comparison - and this project's own rule is that a figure a reader
+          would quote must carry its caveat in the same visual block, not thirty lines below. */}
+      {topo.source_rate_hz != null && (
+        <p className="muted small" style={{ marginTop: 0 }}>
+          <b>skr and eskr are bit/s, and they rest on an assumption.</b>{" "}
+          They are computed as this run&apos;s simulated per-pulse key rate multiplied by a source
+          repetition rate of{" "}
+          <b>{(topo.source_rate_hz / 1e6).toLocaleString()} MHz</b>, over a channel time of{" "}
+          {topo.channel_seconds != null ? `${(topo.channel_seconds * 1e3).toFixed(3)} ms` : "n/a"}{" "}
+          (pulses divided by that rate). <b>No QKD device exists in this project</b> and nothing here
+          measures a clock: the rate is a control in the Parameters panel and every figure in these
+          two columns scales with it. Its default is the 100 MHz reported by arXiv:2607.24118
+          (preprint, 2026-07-27, CC BY 4.0) for a 2 km free-space link; <b>that paper&apos;s own
+          164.8 kbit/s at QBER ~3.3% is its measurement over its own channel, not this one&apos;s,
+          and is neither reproduced nor claimed here.</b>
+        </p>
+      )}
       <p className="muted small" style={{ marginTop: 0 }}>
         Three planes, kept apart on purpose. GS QKD 015 clause 1 puts application interfaces
         <b> out of scope</b> of the control interface, so the Agentic-AI panel is a{" "}
@@ -70,13 +109,19 @@ export default function SdnControlPlanePanel({
       ) : (
         <table className="mini-table">
           <tbody>
-            {/* `skr` keeps the spec's name and is empty; the column beside it says what this run
-                actually produced, with its unit. Renaming the ETSI field would break the rule that
-                field names come from the published YANG; filling it with a total broke a bigger
-                one. */}
-            <tr><th>qkdl_id</th><th>qkdl_type</th><th>path</th><th className="num">skr (bit/s)</th>
+            {/* `skr` and `eskr` now carry the quantity the spec's name promises - bit/s - because
+                the run supplies the one factor that was missing: an ASSUMED source repetition rate.
+                They held a session total until Round 42, which nulled them; Round 44 fills them from
+                (bits per pulse) x (pulses per second) rather than leaving a spec field permanently
+                empty because its one input was never asked for. `n/a` still shows where a run
+                produced no rate - PQC-only, or before a run - because 0 bit/s is a claim. */}
+            <tr><th>qkdl_id</th><th>qkdl_type</th><th>path</th>
+              <th className="num">skr (bit/s, assumed clock)</th>
+              <th className="num">eskr (bit/s, assumed clock)</th>
               <th className="num">key budget</th><th>trust</th></tr>
-            {topo.links.map((l) => (
+            {topo.links.map((l) => {
+              const eskr = linkEskr(l, topo);
+              return (
               <tr key={l.qkdl_id} className={l.qkdl_type === "VIRT" ? "metric-companion" : undefined}>
                 <td><code>{l.qkdl_id}</code></td>
                 <td><code>{l.qkdl_type}</code></td>
@@ -85,13 +130,16 @@ export default function SdnControlPlanePanel({
                   {l.virt_next_hop.length ? ` → ${l.virt_next_hop.join(" → ")} → ` : " → "}
                   {l.qkdl_remote_qkdn_id}
                 </td>
-                {/* The spec's rate fields, empty because this simulation has no clock to
-                    produce one. They held a session total until Round 42. */}
-                <td className="num muted" title="ETSI skr is a rate in bit/s; this simulation has no wall-clock model of the quantum channel, so no rate is reported">n/a</td>
+                <td className="num" title={RATE_CELL_TITLE}>
+                  {l.skr == null ? <span className="muted">n/a</span> : Math.round(l.skr).toLocaleString()}
+                </td>
+                <td className="num" title={RATE_CELL_TITLE}>
+                  {eskr == null ? <span className="muted">n/a</span> : Math.round(eskr).toLocaleString()}
+                </td>
                 <td className="num">{l.key_budget_bits.toLocaleString()} bit</td>
                 <td className="muted small">{linkTrustNote(l)}</td>
-              </tr>
-            ))}
+              </tr>);
+            })}
           </tbody>
         </table>
       )}
