@@ -265,7 +265,12 @@ implemented" is a statement about the runtime's capabilities and expires the mom
 
 **ZeroGPU Space: blocked on a date, not on work.** Four consecutive rounds, the longest-carried item
 here. `spaces/qsh-inference/` exists, and `ProvenanceBadge` declares a `remote` tier no code path
-sets. **BLOCKED UNTIL 2026-09-01**, a Hugging Face account-age unlock. That is a condition, not a
+sets. **BLOCKED UNTIL 2026-09-01**, a Hugging Face account-age unlock. **DEADLINE EXECUTED Round 43**
+- and the discharge is that the decision was already taken and never stamped here. "ZeroGPU: DECIDED
+2026-08-10, and the decision is not to wire it" is recorded further down this file; this paragraph
+kept its blocker unstamped, so `tests/test_register_deadlines.py` would have gone red on 2026-09-01
+on wall-clock alone, with no code change and nothing left to decide. Seventeen days of warning,
+found by reading the gate rather than by waiting for it. That is a condition, not a
 task, so it is recorded as one: **when the account unlocks, wire it or delete the Space and the
 `remote` tier together.** It must not appear in a fifth deferred list unqualified.
 
@@ -442,7 +447,7 @@ So Rust is not missing from the client-side stack, it is declined, and WASM is p
 reopen this: Zama shipping FHE **evaluation** in the WASM target, or any Rust FHE library doing so under
 a licence that grants patent rights.
 
-### Additional models: DECIDED, re-stated 2026-08-12 (Round 34) - no additional model
+### Additional models: DECIDED, re-stated 2026-08-15 (Round 43) - no additional model
 
 **Moved here from `docs/browser-verification-checklist.md` in Round 34, and the move is the point.**
 That file is deliberately untracked and gitignored, so a deferred item whose resolving condition was
@@ -1501,6 +1506,33 @@ Neither fact touches the reason for declining. *Reopens if* ONNX Runtime Web's W
 provider completes a session for the medical ResNet - a fact about the dependency, checked by running
 the probe that already exists, not by re-reading the spec's maturity.
 
+**Round 43: the condition was right and it is now stronger, because on the path where WebNN would
+help it cannot be requested at all.** Read off the installed package, `onnxruntime-web` **1.27.0**
+(pinned in `package-lock.json`; npm `latest` is still 1.27.0, so nothing newer is being declined):
+
+- `dist/ort.wasm.js:3659` - `if (false) { registerBackend("webnn", wasmBackend2, 5); }`
+- `dist/ort.webgpu.js:4466` - `if (true)  { registerBackend("webnn", wasmBackend2, 5); }`
+
+and upstream's own error text, in the shipped bundle: *"WebNN EP requires either JSEP or WebGPU EP to
+be enabled."* That is a structural dependency, not a build-flag accident.
+
+`onnxInference.ts` imports `onnxruntime-web/webgpu` when a real adapter exists and
+`onnxruntime-web/wasm` otherwise. **So on the no-adapter machine - exactly where WebNN would be the
+useful fallback - no WebNN backend is registered and none can be requested.** `status.webnnAvailable`
+reports a BROWSER capability the LOADED BUNDLE has no path to consume, and the comment calling the
+provider "probed, not used" is understated: on that path it could not be used.
+
+The condition therefore has two halves and **both must be false** before it reopens: (1) the EP still
+requires JSEP or WebGPU, so the wasm path can never offer it; (2) on the webgpu path, where it IS
+registered, it still could not complete a session for the medical ResNet when measured (162.7 s
+against 5.1 s on wasm). Spec maturity - Chrome's origin trial, the W3C Candidate Recommendation of
+January 2026 - is not part of this condition and never was.
+
+**Also recorded, no defect measured, so no change made:** two ONNX Runtimes ship. `onnxruntime-web`
+1.27.0 is pinned for this project's inference while `@huggingface/transformers` pulls its own nested
+`onnxruntime-web@1.26.0-dev.20260416`. Nothing is broken by it; a real artifact with influence and no
+record is the shape this project keeps finding, so it is written down rather than acted on.
+
 ## Round 41: every gate names a boundary and checks one side of it
 
 Round 40 wrote five checks. **Each names a boundary and verifies one side of it**, and eight findings
@@ -1585,6 +1617,12 @@ Two consequences worth recording: `report/build_data.py`'s `\nchecklistrows` and
 have the same input, so on any clone they are reused from the committed value rather than computed -
 `\nchecklistlines` is currently 4,178 against 4,186 lines and nothing can catch it. And every row
 this round added or repaired lives in a file no CI job can read.
+
+**Round 43 correction to the sentence above.** Both numbers are now 4,240 and they agree, because
+`c64dbfe` regenerated the macros at the end of Round 42. The paragraph describing them was not
+updated, so this file went on reporting a drift that its own round had closed - **the number was
+fixed and the sentence about the number was left**, which is the same shape as everything else in
+this section, committed inside the paragraph that names it.
 
 **A promise that outlived nine rounds, and the gate that could not see it.**
 `references/REFERENCES.md` ended a metadata-only entry with *"Next round: find the Cooperation Group
@@ -1838,11 +1876,22 @@ own comment states that the hash fires first and catches empty, truncated and ta
 records it as measured; nobody then re-read the record quoting the superseded output. **A fix can
 invalidate a test as easily as it can invalidate a claim, and only the claim gets re-read.**
 
-**Outstanding, and now on a list rather than only in a checklist row:** the five-way re-validation `RI9`
-requires, each recorded in `docs/verification-log.md` with its exit code and its printed message. The
-smuggled-key case has to record how it got past the hash, because it cannot be run as written - either
-re-vendor with the recomputed hash so the count assertion is the line of defence under test, or use
-`--live`, where there is no hash to check at all.
+**Outstanding, NARROWED in Round 43 - and this paragraph was overstating it.** It said the five-way
+re-validation was outstanding. It is not: the five-row table, with each exit code and each printed
+message, is transcribed at `docs/verification-log.md:434-444` under "The measurement this file is the
+recorded home for, and which existed only in a commit message". Round 33 did what the condition above
+asked for, and this sentence was never reduced to what remained.
+
+Round 43 found it by grepping this repository for `RI9` in that file, getting **zero hits**, and
+concluding the transcription had never happened. The grep matched the ROW ID; the measurement is
+recorded under its own heading and does not name the row. **A search for the label is not a search for
+the thing** - which is the same defect as everything else in this section, committed while auditing it.
+
+What is genuinely outstanding is **one case of the five**: the smuggled well-formed key. It cannot be
+run as written, because the SHA-256 fires before `gunzipSync`, so any record of it has to state **how
+it got past the hash** - either re-vendor with the recomputed hash, so the count assertion is the line
+of defence under test, or use `--live`, where there is no hash at all. **Resolve or condition by
+**Round 45**.**
 
 ## What this project cannot verify, and says so
 

@@ -474,6 +474,15 @@ client-side (`web/src/lib/clientCompute.ts`) so the public demo shows identical 
 
 ## Deployment
 
+Host-specific deployment - the port-collision workaround, the shared-proxy override and the
+public-demo profile - is in [`docs/deployment.md`](docs/deployment.md). That file had **no inbound
+link from any tracked file** until Round 43, and it is the only document carrying the workaround, so
+a cloner hitting the collision had no way to find the answer that already existed.
+
+A generated 14-section technical report is at
+[`report/technical-report.pdf`](report/technical-report.pdf); build it with `make report`. Every
+table in it is generated from the repository's own artefacts rather than transcribed.
+
 - **Full deployment (federated learning + inference)** - Docker image build -> server startup:
   ```bash
   git clone <repo> qsh && cd qsh

@@ -101,6 +101,15 @@ check-secrets: ## Assert confidential notes and the checklist are NOT tracked
 	  || (echo "FAIL: a file with a Japanese name is tracked - the confidential strategy notes are named this way!" && exit 1)
 	@! git ls-files | grep -q 'browser-verification-checklist' && echo "OK: verification checklist untracked" || (echo "FAIL: the browser verification checklist is tracked - it must never be published!" && exit 1)
 
+report: ## Regenerate the report's tables and rebuild the PDF
+	# Two pdflatex passes: the first resolves \input and writes the .aux, the second the ToC and
+	# cross-references. Run this LAST in a round - anything that edits the checklist moves
+	# \nchecklistrows and \nchecklistlines, and a PDF built before that edit is stale on arrival.
+	$(PY) report/build_data.py
+	cd report && pdflatex -interaction=nonstopmode technical-report.tex >/dev/null
+	cd report && pdflatex -interaction=nonstopmode technical-report.tex >/dev/null
+	@echo "  report/technical-report.pdf rebuilt"
+
 clean: ## Remove caches and build artifacts
 	rm -rf build dist *.egg-info src/*.egg-info .pytest_cache .ruff_cache .mypy_cache
 	find . -type d -name __pycache__ -prune -exec rm -rf {} +
