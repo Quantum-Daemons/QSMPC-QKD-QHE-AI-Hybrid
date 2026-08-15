@@ -49,7 +49,7 @@ point. Recorded as a known gap rather than silently left as "we used Youden".
 **arXiv:2604.25110, "Knowledge Distillation Must Account for What It Loses" (2026-04-28)** proposes a
 *"Distillation Loss Statement"* reporting "what was preserved, what was lost, and why the remaining
 losses are acceptable", and argues students be judged "not only by retained task scores". That is
-what `FidelityReport` does, and the finance student is the case in point: agreement rose 0.884 ->
+what `FidelityReport` does, and the finance student is the case in point: in **Round 24** agreement rose 0.884 ->
 0.947 while minority-class F1 did not move.
 
 Corroborated by arXiv:2605.31191, which finds teacher-student agreement flat while accuracy gains
