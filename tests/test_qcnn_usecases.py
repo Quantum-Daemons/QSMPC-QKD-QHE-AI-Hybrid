@@ -17,6 +17,7 @@ worse trade than a narrow regex over a line whose shape is asserted here too.
 """
 from __future__ import annotations
 
+import json
 import re
 from pathlib import Path
 
@@ -184,6 +185,32 @@ def test_the_shipped_copy_agrees_with_the_trained_artifact(usecase: str) -> None
 _SEED_POSITION = re.compile(r"^\*\*Seed position:\*\*\s+\S", re.M)
 
 
+def test_every_qcnn_artifact_has_a_card() -> None:
+    """The set is the ARTIFACTS, not the cards that happen to exist.
+
+    Found by training two new widths in Round 43. `test_every_shipped_qcnn_card_places_its_seed`
+    globs `qcnn_*/README.md`, so `models/qcnn_finance_q9/weights.json` with **no card at all** went
+    straight through it - the check enumerated its own subject from the thing it was checking, and an
+    artifact that documents nothing is the strongest possible way to satisfy "every card documents
+    its seed".
+
+    Enumerating from `weights.json` fixes the direction: an artifact must produce a card, not a card
+    must produce a card.
+    """
+    artifacts = sorted((REPO / "models").glob("qcnn_*/weights.json"))
+    assert len(artifacts) >= 4, (
+        f"only {len(artifacts)} QCNN artifacts found; the glob has stopped finding them"
+    )
+    undocumented = [
+        str(a.parent.relative_to(REPO)) for a in artifacts if not (a.parent / "README.md").exists()
+    ]
+    assert not undocumented, (
+        f"these QCNN artifacts ship weights with no model card: {undocumented}.\n"
+        "A card is where the seed position, the floors and the classical comparator live. Without "
+        "one the numbers reach the browser and nothing states what they mean."
+    )
+
+
 def test_every_shipped_qcnn_card_places_its_seed() -> None:
     """`QC20`. Enumerated from disk, because a hand-listed set is a second place to forget one."""
     cards = sorted((REPO / "models").glob("qcnn_*/README.md"))
@@ -203,3 +230,81 @@ def test_every_shipped_qcnn_card_places_its_seed() -> None:
         "it by deleting the disclosure, which is the only move that makes the numbers look better "
         "while making them mean less."
     )
+
+
+# --------------------------------------------------------------------------------------------- #
+#  The offered widths are the widths that ship - checked in both directions, like the set above
+# --------------------------------------------------------------------------------------------- #
+
+def _declared_widths() -> dict[str, list[int]]:
+    """`QCNN_WIDTHS` as the browser declares it."""
+    text = SRC.read_text()
+    m = re.search(r"export const QCNN_WIDTHS: Record<string, number\[\]> = \{(.*?)\};", text, re.S)
+    assert m, f"QCNN_WIDTHS not found in {SRC.relative_to(REPO)} - did the declaration move?"
+    return {
+        k: [int(n) for n in re.findall(r"\d+", v)]
+        for k, v in re.findall(r"(\w+):\s*\[([^\]]*)\]", m.group(1))
+    }
+
+
+def _widths_on_disk() -> dict[str, list[int]]:
+    """Widths with a shipped artifact, read from `web/public/data/<dir>/qcnn_weights*.json`.
+
+    The unsuffixed file is the default width; `_q<n>` names its own. Both are read from the FILE's
+    `n_qubits` rather than from its name, so a mislabelled file is a failure and not a silent pass.
+    """
+    known = ["finance_aml", "medical_fl", "genomics", "satellite_comms", "telecom_ids"]
+    out: dict[str, list[int]] = {}
+    for uc in known:
+        found = []
+        for p in sorted((PUBLIC / _data_dir(uc)).glob("qcnn_weights*.json")):
+            found.append(int(json.loads(p.read_text())["n_qubits"]))
+        if found:
+            out[uc] = sorted(found)
+    return out
+
+
+def test_offered_qcnn_widths_are_exactly_the_widths_that_ship() -> None:
+    """Both directions, because a one-way check rots the other way.
+
+    The control offered 2..14 on every page with trained weights while two artifacts existed for
+    telecom and one each for finance and medical. Every other value silently loaded the 8-wire file,
+    and the run then reported `qcnn_qubits` as the width that actually ran - so the control and the
+    metric disagreed with nothing on the page to say which was which.
+
+    Declaring a width that does not ship recreates that. Shipping one that is not declared makes it
+    unreachable, which is the same waste as the artifact nobody could select.
+    """
+    declared, disk = _declared_widths(), _widths_on_disk()
+    assert declared, "no widths declared; the parse has stopped working"
+    assert set(declared) == set(disk), (
+        f"the use cases with declared widths {sorted(declared)} differ from those with shipped "
+        f"artifacts {sorted(disk)}"
+    )
+    wrong = {
+        uc: {"declared": sorted(declared[uc]), "on disk": disk[uc]}
+        for uc in declared
+        if sorted(declared[uc]) != disk[uc]
+    }
+    assert not wrong, (
+        f"declared QCNN widths do not match the artifacts on disk: {wrong}.\n"
+        "A width with no artifact loads a different circuit in silence; an artifact with no declared "
+        "width cannot be selected at all."
+    )
+
+
+def test_the_width_floor_is_the_feature_count() -> None:
+    """No shipped width may be narrower than the features it must encode.
+
+    This is why the sets differ per use case and not by preference: a wire carries a feature or is
+    padded, so the floor is the feature count. `qcnn_variational.py` refuses a narrower run outright
+    ("8 features exceeds 7 wires"), which is how Round 43 learned that finance and medical cannot
+    have a 7-wire twin the way telecom does - the plan had assumed they could.
+    """
+    thin = []
+    for uc in _declared_widths():
+        for p in sorted((PUBLIC / _data_dir(uc)).glob("qcnn_weights*.json")):
+            w = json.loads(p.read_text())
+            if int(w["n_qubits"]) < int(w["n_features"]):
+                thin.append(f"{p.relative_to(REPO)}: {w['n_qubits']} wires for {w['n_features']} features")
+    assert not thin, "these shipped circuits have fewer wires than features:\n  " + "\n  ".join(thin)
