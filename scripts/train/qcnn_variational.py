@@ -451,7 +451,24 @@ def main() -> int:
           f"{'ahead' if (lr_f1 if imbalanced else lr_acc) > (qcnn_f1 if imbalanced else qcnn_acc) else 'behind'}")
 
     th, sc, bi = best_state
-    out = REPO / "models" / f"qcnn_{a.usecase}"
+    # THE DIRECTORY IS A FUNCTION OF THE WIDTH, because the artifact is.
+    #
+    # This wrote `models/qcnn_{usecase}` for every width. `models/qcnn_telecom_q7` exists anyway,
+    # because Round 40 trained at 7 wires and MOVED the result by hand - an unrecorded step, and the
+    # cost of it is that the reproduce command stored inside `qcnn_telecom_q7/weights.json` does not
+    # reproduce `qcnn_telecom_q7`. Run it and it writes `models/qcnn_telecom`, DESTROYING the 8-wire
+    # weights the demo serves and that card's headline number describes.
+    #
+    # The comment forty lines below already states the rule this broke - "a reproduction line that
+    # does not reproduce is worse than none, since it gets checked once and trusted after" - and it
+    # was written about the `--qubits` FLAG being missing from the recorded string. The flag went in;
+    # the location it writes to stayed keyed to the use case alone. The command reproduced the
+    # weights and not the artifact.
+    #
+    # `_q{nq}` is the directory Round 40 created by hand, so nothing moves: the naming that already
+    # exists becomes the naming the trainer produces.
+    suffix = "" if nq == N_QUBITS else f"_q{nq}"
+    out = REPO / "models" / f"qcnn_{a.usecase}{suffix}"
     out.mkdir(parents=True, exist_ok=True)
     (out / "weights.json").write_text(json.dumps({
         "usecase": a.usecase, "n_qubits": nq, "layers": a.layers,

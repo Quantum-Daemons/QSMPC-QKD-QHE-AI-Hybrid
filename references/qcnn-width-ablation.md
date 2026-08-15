@@ -81,3 +81,57 @@ Checklist row `PF10`.
 *Reopens if* a third width is trained, which would make the "peak at 8" question answerable rather
 than merely open; or if the seed sensitivity of the two reversed per-class deltas is measured, which
 would turn the directional reading above into a settled one.
+
+---
+
+# Round 43: the same question on finance and medical, and the answer reverses at the median
+
+## Why the widths differ per use case
+
+Telecom was narrowed from 8 wires to 7 because it encodes **7 features**, so the 8-wire model's last
+wire is padding. Finance and medical encode **8 features**, so 7 is not a width they have:
+`scripts/train/qcnn_variational.py` exits with `8 features exceeds 7 wires`. The only spare-wire
+question available on those two is the widening one, 8 to 9.
+
+The plan for this round assumed a 7-wire twin could be trained for all three, mirroring telecom. It
+could not. The floor is the feature count, and that is a property of the data rather than a choice.
+
+## Result: at seed 0 the extra wire helps on both. At five seeds it helps on neither.
+
+| use case | metric | 8 wires, 5 seeds | median | 9 wires, 5 seeds | median |
+|---|---|---|---|---|---|
+| finance | minority-class F1 | 0.7143 / 0.3243 / 0.8000 / 0.4615 / 0.7869 | **0.7143** | 0.8136 / 0.6800 / 0.4444 / 0.7937 / 0.6800 | **0.6800** |
+| medical | accuracy | 0.7326 / 0.9186 / 0.9070 / 0.8023 / 0.9535 | **0.9070** | 0.8140 / 0.9186 / 0.8721 / 0.7907 / 0.9070 | **0.8721** |
+
+Seed 0 alone reports **finance +0.099** and **medical +0.081** for the wider circuit. The five-seed
+median reports **finance -0.034** and **medical -0.035**. The sign flips on both.
+
+## Why the single-seed reading was wrong in the flattering direction, on both
+
+For medical the mechanism is recorded and was measured in Round 42: **seed 0 is the worst of five for
+the 8-wire model** (0.7326 against a median of 0.9070). A seed-0-to-seed-0 width comparison therefore
+puts the new width's ordinary draw against the old width's unluckiest one. For finance the mirror
+holds - seed 0 is the **best** of five at 9 wires (0.8136 against a median of 0.6800).
+
+Neither is evidence of a bias in the circuit. Both are evidence that a five-seed spread of width
+[0.32, 0.80] cannot be read at one point, which is what `QC20` and the `**Seed position:**` marker
+exist to force.
+
+## What this does NOT show
+
+- **Not** that 8 wires beats 9. The spreads overlap heavily on both use cases. The defensible claim
+  is that **this experiment does not separate them**, and that a claim in either direction needs more
+  than five seeds.
+- **Not** that telecom's +0.079 for its pad wire is refuted. That measurement was also single-seed
+  and is recorded as such on its card; it is now the third of three single-seed width readings and
+  the only one not re-run at five seeds. **Re-run it by Round 45** or restate it as one draw.
+- **Not** a statement about quantum advantage. Classical logistic regression on the same split beats
+  every circuit here: finance 0.8657 against 0.8136, medical 0.9535 against 0.8140.
+
+## What ships
+
+Both 9-wire circuits ship, as `web/public/data/{finance,medical}/qcnn_weights_q9.json`, and the
+browser's QCNN width control now offers exactly the widths that ship - {8, 9} on finance and medical,
+{7, 8} on telecom - instead of 2..14 with a silent fallback to 8. Shipping a width that loses at the
+median is deliberate: the control is meant to reach a real circuit, and a visitor who moves it should
+see that more wires is not free.

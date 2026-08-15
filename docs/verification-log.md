@@ -1227,3 +1227,51 @@ variable. The comparison that matters, on a revert of the c1 binding alone:
     tests/test_hybrid_combiner_binding.py  2 failures
 
 which is exactly the review's point: the property had nothing enforcing it.
+
+---
+
+## Rounds 39-42, added in Round 43 - and this is a POINTER, not four entries
+
+**This file's last round section was Round 38.** Rounds 39, 40, 41 and 42 have no entry, which is the
+third instance of the gap this file already documents twice: Rounds 25-27 were never reconstructable,
+and Rounds 29-31 were reconstructed in Round 32 by a round that then recorded nothing of its own.
+The cause has not changed and is stated at `:364`: *"the round that writes the checks is not the round
+that runs them, and nothing forces the second half."*
+
+**What this block deliberately is not.** It is not four reconstructed entries. Each of those rounds
+did real browser verification and the measurements exist - in
+[`deliverable-verification.md`](deliverable-verification.md), which carries a full `## Round 39`,
+`## Round 40`, `## Round 41` and `## Round 42` section, and in the branch commit messages. Writing
+them out here from those sources would produce four entries that read as though someone sat at a
+browser and took them, and **a reconstruction presented as a record is worse than an absent record**,
+because the absence is visible and the imitation is not. Round 32's block says the same thing about
+its own reconstruction: *"labelled as reconstructed rather than presented as if logged live."*
+
+So this is a pointer. Where the measurements for those four rounds actually live:
+
+| Round | Subject | Where the measurements are |
+|---|---|---|
+| 39 | the previous round's outputs disagreed with each other; backend and browser derived different session keys | `deliverable-verification.md` "Round 39", plus `tests/test_hybrid_combiner_parity.py` |
+| 40 | claims that move numbers - `security_model` is parsed to raise two displayed scores | `deliverable-verification.md` "Round 40"; `tests/test_security_model_prose_is_not_a_silent_score_input.py` |
+| 41 | every gate names a boundary and checks one side of it | `deliverable-verification.md` "Round 41" |
+| 42 | four gates that enforce nothing in CI, and a number that is wrong | `deliverable-verification.md` "Round 42" |
+
+**What Round 43 measured on the deployed site**, recorded here because it was taken here and belongs
+in this file rather than in the register:
+
+- **Client-side compute, on the wire.** A full `medical_fl` run captured at bundle
+  `index-DWKgg_IL.js`, 2026-08-15: **zero POST requests**, and exactly two origins contacted - the
+  demo origin for static assets (`ort-wasm-simd-threaded-*.wasm`, `seal_throws-*.wasm`,
+  `/data/*/real_2d.json`) and `huggingface.co` / `us.aws.cdn.hf.co` for model weights pinned by
+  40-hex revision. **No request to the demo origin matched `/api/`, `/run`, `/infer`, `/predict` or
+  `/compute`.** This is the strongest evidence `CS1`-`CS11` have had; every prior round asserted the
+  property from the source.
+- **All ten pages**, same bundle: 0 empty cards, 0 single-cell table rows, no `NaN`/`undefined`, no
+  horizontal overflow, no console output from the deployed bundle. The skip link is the first
+  focusable element and activation leaves `document.activeElement === document.getElementById("main")`.
+  The DAG carries `[running]`/`[done]` text and a 10-item `sr-only` stage list. The agreement scatter
+  draws 27 circles and 3 crosses with real paths. `skr (bit/s)` renders `n/a` beside `key budget`
+  `1,436 bit`. Agreement reads `100.0% of the time`.
+- **A limit, stated.** The browser harness could not deliver synthetic `Tab` or `Enter` to the page -
+  focus did not move off the element it started on - so the skip link's tab-ORDER was not walked. Its
+  position as first focusable establishes it structurally and not empirically.

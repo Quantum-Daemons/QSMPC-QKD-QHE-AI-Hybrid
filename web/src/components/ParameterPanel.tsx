@@ -3,7 +3,7 @@
 // buildConfig(). Editing a value + re-running demonstrably changes the run (browser-verifiable). "Reset to
 // defaults" restores the config values. No hardcoded parameter values live here — only labels + UI step/min.
 import {
-  hasTrainedQcnn, readsInferenceBackend, runsFibreQkd, runsQsmpc, type usePipelineRun,
+  hasTrainedQcnn, qcnnWidths, readsInferenceBackend, runsFibreQkd, runsQsmpc, type usePipelineRun,
 } from "../lib/usePipelineRun";
 
 type Run = ReturnType<typeof usePipelineRun>;
@@ -157,8 +157,13 @@ export default function ParameterPanel({ run }: { run: Run }) {
        + "leftover-hash-lemma ceiling reported as qrng_lhl_max_bits; it shortens the delivered "
        + "output only when that ceiling falls below the bits you asked for", -1]] },
     { title: "Quantum / run", fields: [
+      // On a page with trained weights this row is REPLACED by a select of the widths that ship -
+      // see `qcnnWidths` below. It stays a free 2..14 number only where no trained circuit exists,
+      // because there the width drives the untrained fallback and the benchmark row, where any value
+      // is meaningful.
+      ...(hasTrainedQcnn(usecase) ? [] : [
       ["QCNN qubits", "qubits", 1, 2,
-       "state-vector QCNN qubit count - capped at 14: the simulator is exact, so cost is 2^n", 14],
+       "state-vector QCNN qubit count - capped at 14: the simulator is exact, so cost is 2^n", 14] as Field]),
       // min 1, not 0. quantumSim's rng() does `(seed >>> 0) || 1`, so seed 0 and seed 1 produced
       // byte-identical runs everywhere: the field's own minimum was a duplicate of the value one
       // step above it, and anyone comparing "seed 0" with "seed 1" was comparing a run with itself.
@@ -218,6 +223,25 @@ export default function ParameterPanel({ run }: { run: Run }) {
                     fell back to CKKS while two panels announced a quantum circuit had decided - a
                     control that changes nothing, which this project removes rather than explains. */}
                 {hasTrainedQcnn(usecase) && <option value="qcnn">QCNN (QHE)</option>}
+              </select>
+            </div>)}
+            {/* QCNN WIDTH, offered as the widths that actually ship rather than as 2..14.
+                The number input let a visitor pick any width from 2 to 14 while exactly two trained
+                circuits existed per page; every other value silently loaded the 8-wire file. The run
+                then reported `qcnn_qubits` as the width that RAN, so the control and the metric
+                disagreed and nothing on the page said which was which.
+                The floor is the feature count - a wire carries a feature or is padded - so telecom
+                (7 features) offers 7 and 8 while finance and medical (8 features) offer 8 and 9.
+                `qcnnWidths` is gated against the files on disk in both directions. */}
+            {hasTrainedQcnn(usecase) && qcnnWidths(usecase).length > 0 && (
+            <div style={{ minWidth: 120, flex: "1 1 120px" }}>
+              <label className="muted" htmlFor="pp-qubits" style={{ fontSize: 12 }}
+                title="Wires in the trained QCNN. Only widths with a shipped circuit are offered: a width with no artifact would silently load a different one.">QCNN qubits</label>
+              <select id="pp-qubits" name="qubits" value={String(p.qubits)} style={{ width: "100%" }}
+                onChange={(e) => setParams({ ...params, qubits: Number(e.target.value) })}>
+                {qcnnWidths(usecase).map((w) => (
+                  <option key={w} value={w}>{w} wires</option>
+                ))}
               </select>
             </div>)}
             {/* Only the secure-sum path reads it, and only genomics/finance run that path. The old
