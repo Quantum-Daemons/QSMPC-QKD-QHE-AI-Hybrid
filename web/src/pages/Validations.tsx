@@ -108,7 +108,7 @@ export default function Validations() {
                     the control-plane panel, on a page nobody was looking at. The payload key is
                     still `skr`; renaming it crosses into `api/inference_service.py` and is
                     conditioned rather than done here. */}
-                <tr><td>secret key rate (per pulse)</td><td>{qkd.skr}</td></tr>
+                <tr><td>secret key rate (per pulse)</td><td>{qkd.skr_per_pulse}</td></tr>
                 <tr><td>secure key bits</td><td>{qkd.secure_key_bits}</td></tr>
                 <tr><td>eavesdropper?</td><td style={{ color: qkd.eavesdropper_likely ? "var(--danger)" : "var(--accent-2)" }}>{String(qkd.eavesdropper_likely)}</td></tr>
               </tbody>
