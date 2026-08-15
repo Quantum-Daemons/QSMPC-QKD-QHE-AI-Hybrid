@@ -130,9 +130,18 @@ class QKDKeyAgreementStage(Stage):
         extra = {"entropy": "qrng"} if qrng_on else {}
         result = provider(n_pulses=n_pulses, params=params, seed=ctx.config.get("seed", 0), **extra)
         bus.metric("qber", round(result.qber, 5), self.name)
-        bus.metric("skr", round(result.secret_key_rate, 5), self.name)
+        # `skr_per_pulse`, NOT `skr`. `QKDResult.secret_key_rate` is documented at `bb84.py:64` as
+        # "bits of secure key per channel use" - a dimensionless per-pulse fraction - while ETSI
+        # GS QKD 015 defines a field called `skr` as a RATE in bit/s. Round 44 removed that collision
+        # from the browser and would have left it standing here, in the Python orchestration path,
+        # which is the round's own title: the fix changed one language.
+        #
+        # No bit/s is emitted here. The browser derives one from an assumed source repetition rate
+        # and says so beside the number; this path has no such control and no surface to caveat on,
+        # so it publishes the quantity it actually has, under a name that says which.
+        bus.metric("skr_per_pulse", round(result.secret_key_rate, 5), self.name)
         bus.metric("secure_key_bits", result.secure_key_bits, self.name)
-        ctx.metrics.update(qber=result.qber, skr=result.secret_key_rate)
+        ctx.metrics.update(qber=result.qber, skr_per_pulse=result.secret_key_rate)
         if result.secure_key_bits >= 256:
             from ..pqc.transport import _mix_qkd
             from ..qkd.bb84 import derive_shared_key
