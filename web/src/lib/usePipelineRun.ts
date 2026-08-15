@@ -71,6 +71,30 @@ export const readsInferenceBackend = (usecase: string) =>
 export const QCNN_USECASES = new Set(["finance_aml", "medical_fl", "telecom_ids"]);
 export const hasTrainedQcnn = (usecase: string) => QCNN_USECASES.has(usecase);
 
+/** The widths a trained circuit actually SHIPS for, per use case.
+ *
+ * The "QCNN qubits" control offered 2..14 on every page while exactly two artifacts existed for
+ * telecom and one each for finance and medical. Every other width fell back to the 8-wire file in
+ * silence: the control moved, the run reported `qcnn_qubits` as the width that actually ran, and the
+ * two disagreed with no way for a visitor to tell. Round 40 made the control REACH the circuit;
+ * it did not make the range honest.
+ *
+ * WHY THE SETS DIFFER, and it is a property of the data rather than a choice. A wire must carry a
+ * feature or be padded, so the floor is the feature count: telecom has 7 features, finance and
+ * medical have 8, and `qcnn_variational.py` refuses a narrower run outright ("8 features exceeds 7
+ * wires"). Telecom can therefore be narrowed and the others can only be widened.
+ *
+ * Kept beside `QCNN_USECASES` and gated the same way - `tests/test_qcnn_usecases.py` compares this
+ * against `web/public/data/<dir>/qcnn_weights*.json` in BOTH directions, so adding a width without
+ * declaring it, or declaring one without shipping it, fails in CI rather than on the site.
+ */
+export const QCNN_WIDTHS: Record<string, number[]> = {
+  finance_aml: [8, 9],
+  medical_fl: [8, 9],
+  telecom_ids: [7, 8],
+};
+export const qcnnWidths = (usecase: string) => QCNN_WIDTHS[usecase] ?? [];
+
 /** Use cases where a federated-training stage has both real data and somewhere to be rendered.
  *
  * The same rule as the predicates above, applied to an injected stage. `qfl` is `useState(true)` with
@@ -242,8 +266,27 @@ export function usePipelineRun(usecase: string, recordRef: RefObject<HTMLElement
   // published, pinned and perfectly runnable - vanished.
   //
   // This is the same leak the Parameters controls had, one selector later. Anything keyed to the use
-  // case has to be reset when the use case changes, or gated at the point of use; this does both.
-  useEffect(() => { setPublishedModel(""); }, [usecase]);
+  // case has to be reset when the use case changes, or gated at the point of use.
+  //
+  // ROUND 43: that sentence states a rule about a SET and the code below it implemented one member.
+  // `publishedModel` was cleared; the nine fields a run writes were not, because `reset()` is only
+  // called from `launch()`. Measured on the deployed site: run `finance_aml` on `/orchestration`,
+  // switch the selector to `demo`, and the QHE/FHE node still reads "(finance_aml.gbm on wasm)".
+  // The caption was only the visible corner of it - `Orchestration.tsx` also offered the previous
+  // run's events for export under the NEW use case's filename, and drew the old encrypted-agreement
+  // chart under the new selection.
+  //
+  // It calls `reset()`, which is declared further down: legal because the effect body runs after
+  // render, not during it, and `tsc` confirms. It cancels the in-flight run FIRST, because
+  // `/usecase/:id` navigation is not blocked by `inFlight` the way the Orchestration selector is, so
+  // a stage still running could otherwise write into the use case the visitor just switched to.
+  useEffect(() => {
+    stopRef.current?.();          // stop the previous run before its next stage lands
+    runTokenRef.current += 1;     // and drop anything already in flight from it
+    setPublishedModel("");
+    reset();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [usecase]);
 
   const buildConfig = () => {
     // spread every numeric/editable param into the run config; the backend + demo read the keys they
@@ -279,9 +322,19 @@ export function usePipelineRun(usecase: string, recordRef: RefObject<HTMLElement
     return c;
   };
 
+  /** Clear everything a run writes. ALL NINE fields, not the seven this used to clear.
+   *
+   *  `state` and `runId` were missing. From `launch()` that was invisible, because the next two
+   *  statements set both - but the `[usecase]` effect above has no such follow-up, so resetting
+   *  seven of nine would have left the badge reading `done` over an empty event log and a stale
+   *  `runId` addressing a run belonging to another use case. Seven of nine is the same defect one
+   *  layer in, which is why the set is derived from the writers rather than listed by hand:
+   *  `handleEvent` writes active/done/events/metrics/state, the two `onEnd` blocks add
+   *  artifacts/signature/benchmark, and `launch` adds runId.
+   */
   const reset = () => {
     setEvents([]); setActive(null); setDone(new Set()); setMetrics({}); setSignature(null);
-    setArtifacts({}); setBenchmark(null);
+    setArtifacts({}); setBenchmark(null); setState("idle"); setRunId(null);
     stageStartRef.current = {}; stageMsRef.current = {};
     recorderRef.current = recordRef.current ? new FrameRecorder(recordRef.current) : null;
   };

@@ -71,3 +71,22 @@ commercial use permitted.
 Simulated state-vector evaluation, not quantum hardware. The circuit is a demonstration that the
 private-inference selector surfaces a class from something with trained parameters; it is not
 offered as a competitive classifier for this task.
+
+## Reproducing
+
+    python scripts/train/qcnn_variational.py --usecase medical --layers 3 --epochs 120 --seed 0 --threads 1 --qubits 8
+
+Recorded inside `weights.json` and, since Round 43, it writes THIS directory: the trainer's output
+path is now a function of the width, so a `--qubits` run cannot overwrite a sibling artifact. Until
+then every width wrote `models/qcnn_<usecase>`, which is why running the telecom 7-wire line would
+have destroyed the 8-wire file the demo serves.
+
+## A second width ships, and it does not win
+
+`models/qcnn_medical_q9` carries a 9-wire circuit - one wire more than the 8 features, so one unencoded
+pad, the same question telecom answered from the narrow side. **At seed 0 the 9-wire model leads; at
+the five-seed median it trails.** 8 wires median 0.9070, 9 wires median 0.8721 on accuracy; the seed-0 comparison flatters 9 wires because seed 0 is the WORST of five for the 8-wire model, which this card records above.
+
+7 wires is not available here: this use case encodes 8 features and `qcnn_variational.py` refuses a
+run with fewer wires than features. Telecom can be narrowed because it carries 7. See
+[`references/qcnn-width-ablation.md`](../../references/qcnn-width-ablation.md) for all three.

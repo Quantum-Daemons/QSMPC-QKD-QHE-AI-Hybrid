@@ -33,17 +33,54 @@ def fmt(v, nd=4):
     return f"{v:.{nd}f}" if isinstance(v, float) else ("--" if v is None else str(v))
 
 
-def model_table() -> str:
+def model_table(specs=None) -> str:
+    """One row per published model. The licence column carries the DATASET NAME, not the licence.
+
+    IT USED TO CARRY `s.dataset.licence.split(";")[0][:22]` - two truncations in one expression, both
+    cutting from the end, which is where a hedge lives. Measured over the seven licences that reach
+    this table, four were altered and three lost their qualifier:
+
+        "CC-BY-4.0 asserted by MedMNIST; the upstream BUSI grant is NOT verifiable"
+            -> "CC-BY-4.0 asserted by "   the `;` took the caveat, [:22] took the attributor
+        "per-score; EMBL-EBI Terms of Use by default"  -> "per-score"
+        "provider's own pages state conflicting terms" -> "provider's own pages s"
+
+    "CC-BY-4.0 asserted by " tells a reader the corpus is CC-BY-4.0. The sentence exists to say that
+    the upstream grant behind that assertion is NOT verifiable. **Truncation is biased toward
+    overclaiming, because the caveat comes last** - and this was published in the PDF.
+
+    The column is now the dataset name, which is short by nature and needs no cutting, and the
+    licences are printed whole by `licence_table()` below. The licence is a property of the DATASET,
+    which is why the old column repeated and re-truncated the same string once per model.
+
+    `specs` is a parameter so a test can render a synthetic spec and check the rendering itself,
+    rather than only checking the committed output.
+    """
     rows = []
-    for s in sorted(registry._SPECS, key=lambda x: (x.usecase, x.tier)):
+    for s in sorted(specs if specs is not None else registry._SPECS, key=lambda x: (x.usecase, x.tier)):
         a = M.get(s.key) or {}
         got = a.get(s.metric.name, a.get("student_metric"))
         tier = {"t1_crypto": "T1", "t2_industry": "T2", "t3_large": "T3"}.get(s.tier, s.tier)
         rows.append(" & ".join([
             r"\texttt{" + esc(s.key) + "}", tier, esc(s.metric.display),
-            fmt(got), fmt(s.metric.baseline), esc(s.dataset.licence.split(";")[0][:22]),
+            fmt(got), fmt(s.metric.baseline), esc(s.dataset.name),
         ]) + r" \\")
     return "\n".join(rows)
+
+
+def licence_table(specs=None) -> str:
+    """Every dataset licence that reaches the report, in full, once each.
+
+    Deduplicated by dataset, because a licence belongs to the corpus and not to each model trained on
+    it. Sorted so the output is stable across runs; `p{}` columns in the wrapper let the long strings
+    wrap rather than be cut, which is the whole point of the table.
+    """
+    seen: dict[str, str] = {}
+    for s in specs if specs is not None else registry._SPECS:
+        seen.setdefault(s.dataset.name, s.dataset.licence)
+    return "\n".join(
+        " & ".join([esc(name), esc(lic)]) + r" \\" for name, lic in sorted(seen.items())
+    )
 
 
 def crypto_table() -> str:
@@ -282,11 +319,18 @@ findings_table()  # populate .rows so the caption below can count them
 TABLES = {
     "models.tex": dict(fn=model_table, cols="llllll",
         header=r"\textbf{Model} & \textbf{Tier} & \textbf{Metric} & \textbf{Measured} & "
-               r"\textbf{Baseline} & \textbf{Data licence}",
+               r"\textbf{Baseline} & \textbf{Dataset}",
         caption="Published models: measured value against the baseline each is compared to. "
                 "Tier T1 runs under encryption; T2 is the plaintext teacher. A dash means the "
                 "model is declared in the registry but not trained in this build, which is "
-                "reported rather than hidden."),
+                "reported rather than hidden. Dataset licences are given in full in the next "
+                "table; this column names the corpus so the licence is never abbreviated."),
+    "licences.tex": dict(fn=licence_table, cols=r"p{4.2cm}p{9.5cm}",
+        header=r"\textbf{Dataset} & \textbf{Licence, in full}",
+        caption="Dataset licences, quoted whole. An earlier revision printed this column inside the "
+                "models table through split(\";\")[0][:22], which removed the qualifier from three "
+                "of the seven licences that reach this report - and a qualifier is what makes a "
+                "licence string long, so truncation is biased toward overclaiming."),
     "crypto.tex": dict(fn=crypto_table, cols="lll",
         header=r"\textbf{Layer} & \textbf{Primitive} & \textbf{Note}",
         caption="Cryptographic parameters as configured"),
