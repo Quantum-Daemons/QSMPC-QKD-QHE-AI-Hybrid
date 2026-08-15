@@ -229,6 +229,11 @@ INPUT ./generated/models.tex
 INPUT ./generated/models.tex
 INPUT ./generated/models.tex
 INPUT generated/models.tex
+INPUT ./generated/licences.tex
+INPUT ./generated/licences.tex
+INPUT ./generated/licences.tex
+INPUT ./generated/licences.tex
+INPUT generated/licences.tex
 INPUT ./generated/fig_baselines.pdf
 INPUT ./generated/fig_baselines.pdf
 INPUT ./generated/fig_baselines.pdf

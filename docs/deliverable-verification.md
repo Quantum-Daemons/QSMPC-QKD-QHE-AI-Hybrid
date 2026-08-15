@@ -265,7 +265,12 @@ implemented" is a statement about the runtime's capabilities and expires the mom
 
 **ZeroGPU Space: blocked on a date, not on work.** Four consecutive rounds, the longest-carried item
 here. `spaces/qsh-inference/` exists, and `ProvenanceBadge` declares a `remote` tier no code path
-sets. **BLOCKED UNTIL 2026-09-01**, a Hugging Face account-age unlock. That is a condition, not a
+sets. **BLOCKED UNTIL 2026-09-01**, a Hugging Face account-age unlock. **DEADLINE EXECUTED Round 43**
+- and the discharge is that the decision was already taken and never stamped here. "ZeroGPU: DECIDED
+2026-08-10, and the decision is not to wire it" is recorded further down this file; this paragraph
+kept its blocker unstamped, so `tests/test_register_deadlines.py` would have gone red on 2026-09-01
+on wall-clock alone, with no code change and nothing left to decide. Seventeen days of warning,
+found by reading the gate rather than by waiting for it. That is a condition, not a
 task, so it is recorded as one: **when the account unlocks, wire it or delete the Space and the
 `remote` tier together.** It must not appear in a fifth deferred list unqualified.
 
@@ -442,7 +447,7 @@ So Rust is not missing from the client-side stack, it is declined, and WASM is p
 reopen this: Zama shipping FHE **evaluation** in the WASM target, or any Rust FHE library doing so under
 a licence that grants patent rights.
 
-### Additional models: DECIDED, re-stated 2026-08-12 (Round 34) - no additional model
+### Additional models: DECIDED, re-stated 2026-08-15 (Round 43) - no additional model
 
 **Moved here from `docs/browser-verification-checklist.md` in Round 34, and the move is the point.**
 That file is deliberately untracked and gitignored, so a deferred item whose resolving condition was
@@ -1501,6 +1506,33 @@ Neither fact touches the reason for declining. *Reopens if* ONNX Runtime Web's W
 provider completes a session for the medical ResNet - a fact about the dependency, checked by running
 the probe that already exists, not by re-reading the spec's maturity.
 
+**Round 43: the condition was right and it is now stronger, because on the path where WebNN would
+help it cannot be requested at all.** Read off the installed package, `onnxruntime-web` **1.27.0**
+(pinned in `package-lock.json`; npm `latest` is still 1.27.0, so nothing newer is being declined):
+
+- `dist/ort.wasm.js:3659` - `if (false) { registerBackend("webnn", wasmBackend2, 5); }`
+- `dist/ort.webgpu.js:4466` - `if (true)  { registerBackend("webnn", wasmBackend2, 5); }`
+
+and upstream's own error text, in the shipped bundle: *"WebNN EP requires either JSEP or WebGPU EP to
+be enabled."* That is a structural dependency, not a build-flag accident.
+
+`onnxInference.ts` imports `onnxruntime-web/webgpu` when a real adapter exists and
+`onnxruntime-web/wasm` otherwise. **So on the no-adapter machine - exactly where WebNN would be the
+useful fallback - no WebNN backend is registered and none can be requested.** `status.webnnAvailable`
+reports a BROWSER capability the LOADED BUNDLE has no path to consume, and the comment calling the
+provider "probed, not used" is understated: on that path it could not be used.
+
+The condition therefore has two halves and **both must be false** before it reopens: (1) the EP still
+requires JSEP or WebGPU, so the wasm path can never offer it; (2) on the webgpu path, where it IS
+registered, it still could not complete a session for the medical ResNet when measured (162.7 s
+against 5.1 s on wasm). Spec maturity - Chrome's origin trial, the W3C Candidate Recommendation of
+January 2026 - is not part of this condition and never was.
+
+**Also recorded, no defect measured, so no change made:** two ONNX Runtimes ship. `onnxruntime-web`
+1.27.0 is pinned for this project's inference while `@huggingface/transformers` pulls its own nested
+`onnxruntime-web@1.26.0-dev.20260416`. Nothing is broken by it; a real artifact with influence and no
+record is the shape this project keeps finding, so it is written down rather than acted on.
+
 ## Round 41: every gate names a boundary and checks one side of it
 
 Round 40 wrote five checks. **Each names a boundary and verifies one side of it**, and eight findings
@@ -1585,6 +1617,12 @@ Two consequences worth recording: `report/build_data.py`'s `\nchecklistrows` and
 have the same input, so on any clone they are reused from the committed value rather than computed -
 `\nchecklistlines` is currently 4,178 against 4,186 lines and nothing can catch it. And every row
 this round added or repaired lives in a file no CI job can read.
+
+**Round 43 correction to the sentence above.** Both numbers are now 4,240 and they agree, because
+`c64dbfe` regenerated the macros at the end of Round 42. The paragraph describing them was not
+updated, so this file went on reporting a drift that its own round had closed - **the number was
+fixed and the sentence about the number was left**, which is the same shape as everything else in
+this section, committed inside the paragraph that names it.
 
 **A promise that outlived nine rounds, and the gate that could not see it.**
 `references/REFERENCES.md` ended a metadata-only entry with *"Next round: find the Cooperation Group
@@ -1784,6 +1822,105 @@ it first, which its position as first focusable establishes structurally but not
 here rather than reported as a clean keyboard walk, because an over-broad browser assertion that
 reported a false FAIL is already in `docs/verification-log.md` as this project's own warning.
 
+## Round 43: the licence column truncated the caveat, and the record stopped being kept
+
+**The published deliverable overclaimed by truncation.** `report/build_data.py` rendered the Data
+licence column as `esc(s.dataset.licence.split(";")[0][:22])` - two truncations in one expression,
+both cutting from the end. Of the **seven** licences that reach the report, **four are altered and
+three lose their qualifier**:
+
+    CC-BY-4.0 asserted by MedMNIST; the upstream BUSI grant is NOT verifiable  ->  "CC-BY-4.0 asserted by "
+    per-score; EMBL-EBI Terms of Use by default                                ->  "per-score"
+    provider's own pages state conflicting terms                               ->  "provider's own pages s"
+
+"CC-BY-4.0 asserted by " tells a reader the corpus is CC-BY-4.0; the sentence exists to say the
+upstream grant behind that assertion is not verifiable. **Truncation is biased toward overclaiming,
+because a caveat comes last.** The licences now print whole in their own table and the models table
+names the corpus. The gate asserts no rendered cell is a **proper prefix** of a source licence, which
+catches `split(";")` and `[:22]` with one predicate - a length check would have caught the second and
+sailed past the first.
+
+**An earlier draft of this round's plan said "6 of 11 altered, 5 losing a qualifier".** Four of the
+eleven `Dataset` objects in `registry.py` are attached to no `ModelSpec` and never reach the table.
+An overstatement of a defect about overstatement, caught by counting rather than trusting the count.
+
+**The record stopped being kept.** `docs/verification-log.md` ended at Round 38; Rounds 39-42 have no
+entry, the third instance of a gap that file already documents twice. It now carries a **pointer**,
+not four reconstructed entries - the measurements exist in this file's own per-round sections, and a
+reconstruction presented as a record is worse than an absent record, because the absence is visible
+and the imitation is not.
+
+**Three claims this audit made about itself were wrong**, and correcting them is the point:
+
+- **`RI9` was not outstanding.** Its five-way table is transcribed at `verification-log.md:434-444`.
+  Grepping that file for `RI9` returns zero hits because the measurement sits under its own heading
+  and does not name the row. **A search for the label is not a search for the thing.** Only the
+  smuggled-well-formed-key case remains, conditioned `by **Round 45**`.
+- **`PF7` was not violated.** 84.35 + 506.69 does not reconstruct 1,269 because 1,269 is
+  `encrypted_tier_measured_ms`, the whole tier, while `fhe_encrypted_student_ms` is 579. The identity
+  holds by construction in `clientFHE.ts`. The real defect is one sentence calling 1,269 "the whole
+  encrypted student" and then naming 579 as that field - two names for one quantity.
+- **The finance agreement pair was already past tense** at both sites. What it lacked was a round
+  anchor, so `0.947` read as current where `models/metrics.json` says `0.982943`. Both now say
+  Round 24 and name the current value.
+
+**A use-case change cleared one field of the run.** `usePipelineRun.ts` carried the rule - "anything
+keyed to the use case has to be reset when the use case changes" - and implemented `publishedModel`.
+The nine fields a run writes survived, so switching use case after a run left the previous model in
+the DAG caption, its events under the new use case's export filename, and its agreement chart under
+the new selection. `reset()` was itself incomplete at seven of nine.
+
+**The QCNN width control now offers only widths that ship, and training one revealed two more
+things.** 7 wires is impossible for finance and medical - both encode 8 features and the trainer
+refuses a narrower run - so the spare-wire question runs the other way, 8 to 9. The trainer wrote
+`models/qcnn_<usecase>` at every width, so the reproduce command recorded in `qcnn_telecom_q7` would
+have **destroyed the 8-wire artifact**; the output path is now a function of the width. And **the
+width result reverses at five seeds**: seed 0 says +0.099 (finance) and +0.081 (medical) for the
+wider circuit, the median says -0.034 and -0.035. The sign flips on both, for the reason Round 42
+recorded - medical's seed 0 is the worst of five at 8 wires.
+
+**The WebNN condition is stronger than it was written.** In the installed `onnxruntime-web` 1.27.0,
+`ort.wasm.js:3659` has `if (false) { registerBackend("webnn", ...) }` against `ort.webgpu.js:4466`'s
+`if (true)`, and the bundle carries upstream's own *"WebNN EP requires either JSEP or WebGPU EP to be
+enabled."* On the no-adapter path - exactly where WebNN would help - it cannot be requested at all.
+
+**BUSINESS DOC RECONCILED Round 43.** The confidential business-recommendations document - its
+filename is Japanese and is therefore not written here, which is why this paragraph describes it
+instead - lives at the parent directory, **outside this repository**, and 21 consecutive ORDER files
+(18-38) name it in the documentation-merge bullet. Its own title says it covers rounds 17-20. Every document sweep for
+twenty-three rounds walked past it, because the sweeps walk the repo and it is not in the repo -
+the same scope defect this project keeps finding, applied to the one file it was told about by name.
+It is confidential-class like `MONETIZATION*`, so it stays out of the repository and **its content is
+not recorded here or anywhere tracked**. `scripts/ci_local.sh` gate 16 now fails when this stamp is
+older than the register's latest round. Local-only by construction, as gate 15 is.
+
+**`docs/deployment.md` had zero inbound links** while being the only document carrying the demo's
+port-collision workaround, and the technical report had no `make` target. Both fixed, and the orphan
+question is now asked of `docs/` and `report/` - the same question `test_model_artifact_inventory.py`
+asks of `references/`, whose scope was one folder.
+
+**Fact-check, 2026-08-15.** 55 agents, six lanes, refuted-by-default: **6 claims survived, 42 were
+refuted, 61 negatives recorded.** The Federal Register API returns `"count":0` for post-quantum
+cryptography since 2026-08-01; arXiv cs.CR's newest is 2608.13465 (2026-08-13) and IACR 2026/1645 is
+404, so **2026-08-14 and 2026-08-15 are structurally empty** - a sweep of those days is a sweep of an
+empty set. One correction against our own interest: NIST CSRC has **two** August 2026 items, not one;
+the added item is a sector CSF profile, so the conclusion holds and the word "only" was wrong.
+
+**Where this round shipped its own defect.** Three, all caught by running rather than reading:
+
+- The licence gate's scope was `models.tex`; when the licences moved to `licences.tex` **as part of
+  the fix**, it went red on all seven and reported correct output as broken.
+- The seed-position gate enumerated `qcnn_*/README.md`, so a new artifact with **no card at all**
+  satisfied "every card documents its seed". It now enumerates `weights.json`.
+- The new `PM5` row collided with an existing `PM5`, and `report/build_data.py::_count_rows` refused
+  to build - the duplicate-ID guard a previous round added, catching this round's row on the first
+  rebuild after it was written. Renamed `PM6`. **The guard was worth more than the care that skipped
+  it**, which is the argument for having it.
+
+And gate 6 caught gate 16: the first version put the business document's Japanese filename into both
+`ci_local.sh` and this file, and the no-Japanese-in-public-files rule failed on the check written to
+enforce a different rule. The register now describes that file rather than naming it.
+
 ## Verification assets added in Rounds 22-23
 
 Two checks now exist that assert against sources OUTSIDE this repository. That is the point of both:
@@ -1838,11 +1975,22 @@ own comment states that the hash fires first and catches empty, truncated and ta
 records it as measured; nobody then re-read the record quoting the superseded output. **A fix can
 invalidate a test as easily as it can invalidate a claim, and only the claim gets re-read.**
 
-**Outstanding, and now on a list rather than only in a checklist row:** the five-way re-validation `RI9`
-requires, each recorded in `docs/verification-log.md` with its exit code and its printed message. The
-smuggled-key case has to record how it got past the hash, because it cannot be run as written - either
-re-vendor with the recomputed hash so the count assertion is the line of defence under test, or use
-`--live`, where there is no hash to check at all.
+**Outstanding, NARROWED in Round 43 - and this paragraph was overstating it.** It said the five-way
+re-validation was outstanding. It is not: the five-row table, with each exit code and each printed
+message, is transcribed at `docs/verification-log.md:434-444` under "The measurement this file is the
+recorded home for, and which existed only in a commit message". Round 33 did what the condition above
+asked for, and this sentence was never reduced to what remained.
+
+Round 43 found it by grepping this repository for `RI9` in that file, getting **zero hits**, and
+concluding the transcription had never happened. The grep matched the ROW ID; the measurement is
+recorded under its own heading and does not name the row. **A search for the label is not a search for
+the thing** - which is the same defect as everything else in this section, committed while auditing it.
+
+What is genuinely outstanding is **one case of the five**: the smuggled well-formed key. It cannot be
+run as written, because the SHA-256 fires before `gunzipSync`, so any record of it has to state **how
+it got past the hash** - either re-vendor with the recomputed hash, so the count assertion is the line
+of defence under test, or use `--live`, where there is no hash at all. **Resolve or condition by
+**Round 45**.**
 
 ## What this project cannot verify, and says so
 
