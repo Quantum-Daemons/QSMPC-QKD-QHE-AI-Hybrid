@@ -49,7 +49,18 @@ sys.path.insert(0, str(REPO / "src"))
 
 from qsh.models import registry  # noqa: E402
 
-GENERATED = REPO / "report" / "generated" / "models.tex"
+#: EVERY generated table, not one file. The licences moved out of `models.tex` into `licences.tex`
+#: as part of this round's fix, and a gate pinned to the old filename went red on all seven the
+#: moment the fix landed - reporting the correct output as broken because its scope named a file
+#: instead of the thing it was checking. That is this project's most-repeated defect, and it took
+#: fifteen minutes to commit it inside the gate written against it.
+GEN_DIR = REPO / "report" / "generated"
+
+
+def _generated_tex() -> str:
+    files = sorted(GEN_DIR.glob("*.tex"))
+    assert files, "report/generated has no .tex - run report/build_data.py"
+    return "\n".join(f.read_text() for f in files)
 
 
 def _escaped(s: str) -> str:
@@ -68,12 +79,12 @@ def test_there_are_licences_to_check() -> None:
     """A parse that finds nothing passes every assertion below for the wrong reason."""
     lic = _published_licences()
     assert len(lic) >= 5, f"only {len(lic)} distinct spec licences found; has the registry moved?"
-    assert GENERATED.exists(), f"{GENERATED.relative_to(REPO)} is missing - run report/build_data.py"
+    assert _generated_tex(), "report/generated/*.tex is empty - run report/build_data.py"
 
 
 def test_every_published_licence_appears_in_full() -> None:
     """The whole sentence, not its first clause and not its first 22 characters."""
-    tex = GENERATED.read_text()
+    tex = _generated_tex()
     missing = sorted(lic for lic in _published_licences() if _escaped(lic) not in tex)
     assert not missing, (
         "these dataset licences do not appear in full in the generated report table:\n  "
@@ -98,7 +109,7 @@ def test_no_rendered_cell_is_a_truncation_of_a_licence() -> None:
     # and a gate that cries wolf is one someone silences.
     exact = {_escaped(lic) for lic in licences}
     offenders: list[str] = []
-    for line in GENERATED.read_text().splitlines():
+    for line in _generated_tex().splitlines():
         if "&" not in line:
             continue
         for cell in (c.strip().rstrip("\\").strip() for c in line.split("&")):
@@ -114,3 +125,44 @@ def test_no_rendered_cell_is_a_truncation_of_a_licence() -> None:
         + "\n\nBoth truncations in `build_data.py` cut from the end, which is where hedges live. "
         "Removing only one of them leaves the defect this check exists for."
     )
+
+
+def test_the_renderers_do_not_truncate_a_seeded_licence() -> None:
+    """Seed the RENDERER, not the committed output.
+
+    The two checks above compare `report/generated/models.tex` against the registry. They are red
+    today and go green when the generator is fixed - but they would also go green if someone hand-
+    edited the `.tex`, and they say nothing about a licence string that does not exist yet.
+
+    So this one calls `model_table()` and `licence_table()` on a synthetic spec whose licence has the
+    exact shape that was broken: long, semicolon-bearing, with the hedge last. That is the side being
+    added - the generator's behaviour on input it has never seen - rather than the artifact the fix
+    happens to produce today.
+
+    The short control matters as much: a licence that needs no cutting must not be reported, or the
+    check is satisfied by refusing to render anything.
+    """
+    import sys as _sys
+    _sys.path.insert(0, str(REPO / "report"))
+    from build_data import licence_table, model_table  # noqa: PLC0415
+
+    from dataclasses import replace  # noqa: PLC0415
+
+    real = sorted(registry._SPECS, key=lambda s: s.key)[0]
+    hedged = "CC-BY-4.0 asserted by SOMEBODY; the upstream grant is NOT verifiable"
+    seeded = replace(real, dataset=replace(real.dataset, name="Seeded corpus", licence=hedged))
+
+    rendered = model_table([seeded]) + "\n" + licence_table([seeded])
+    assert _escaped(hedged) in rendered, (
+        f"the generator did not emit the seeded licence whole. It rendered:\n{rendered}\n\n"
+        "This is the shape that was broken - long, semicolon-bearing, hedge last. A fix that only "
+        "raised the [:22] width, or only dropped the split(';'), would fail here."
+    )
+    for cut in (hedged.split(";")[0], hedged[:22], hedged.split(";")[0][:22]):
+        assert _escaped(cut) not in rendered.replace(_escaped(hedged), ""), (
+            f"a truncated form {cut!r} survives in the output beside the full string"
+        )
+
+    short = replace(real, dataset=replace(real.dataset, name="Short corpus", licence="MIT"))
+    out = licence_table([short])
+    assert "MIT" in out, "a licence needing no cut was dropped; the check must not be satisfied by silence"
