@@ -413,6 +413,12 @@ disclosure must be stated; here it is, and the claim is not made.
 
 \input{generated/models}
 
+% Licences in their own table, printed whole. They were a column inside the models table above,
+% rendered through split(";")[0][:22]; that removed the qualifier from three of the seven licences
+% this report publishes, and a qualifier is what makes a licence string long, so the truncation was
+% biased toward overclaiming. The models table now names the corpus and this one carries the terms.
+\input{generated/licences}
+
 \begin{figure}[h]\centering
 \includegraphics[width=0.95\textwidth]{generated/fig_baselines.pdf}
 \caption{Measured value against published baseline. Two comparisons are deliberately not
