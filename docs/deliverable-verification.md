@@ -2136,7 +2136,12 @@ pass `config?.qkd_source_rate_mhz` directly.
   moment `## Round 45` was written - the gate accepts only a `DEADLINE EXECUTED` stamp, by design,
   because otherwise "conditioned" is an unbounded deferral device. **The gate was right and the
   register was wrong.**
-- **`_DEADLINE` was blind to a bold span.** `references/qcnn-width-ablation.md:127` writes
+- **`_DEADLINE` was blind to a bold span. DEADLINE EXECUTED Round 45**, and this bullet is why the
+  marker is now emphasis-aware rather than adjacency-based: **the gate fired on this sentence**.
+  Quoting the pattern it had just fixed put two live `by Round 45**` matches inside a narrative
+  item, indistinguishable from an obligation, and both would have gone red the moment `## Round 46`
+  was written. Round 46 made the marker case-sensitive, which excludes narrative without excluding
+  this. `references/qcnn-width-ablation.md:127` writes
   `**Re-run it by Round 45**`, so the literal text is `by Round 45**` with no `**` before `Round`.
   That file returned **zero** matches at every value of `now` while carrying an obligation due this
   round. Round 44 taught the marker to tolerate a line wrap and never asked what else could sit
