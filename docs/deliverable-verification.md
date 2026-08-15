@@ -1815,13 +1815,30 @@ they cannot become permanent residents:
   same shape as the count sentence two sections up.
 - **`/orchestration?usecase=demo` ignores the query parameter** and renders `finance_aml`. Nothing
   links to that form, so nobody has hit it, but a URL that names a use case and shows a different one
-  is a link that lies. **Resolve or condition by **Round 44**. CONDITIONED Round 44, by **Round 46**.**
-  Round 44 spent its length on the rate fields and the two defects behind them, and this is a
-  separate surface: `Orchestration.tsx` holds the use case in `useState` and never reads
-  `useSearchParams`, so resolving it means deciding what an unknown or misspelled value does - fall
-  back visibly, or refuse - and that is a UX decision rather than a one-line read. Deferred WITH a
-  round, not with a hope. The condition that would make it urgent: **the moment anything links to
-  `/orchestration?usecase=`**, at which point a lying URL is being handed to someone.
+  is a link that lies. **Resolve or condition by **Round 44**. CONDITIONED Round 44, by **Round 46**.
+  DEADLINE EXECUTED Round 45.** Round 44 spent its length on the rate fields and the two defects
+  behind them, and this is a separate surface: `Orchestration.tsx` held the use case in `useState`
+  and never read `useSearchParams`, so resolving it meant deciding what an unknown or misspelled
+  value does - fall back visibly, or refuse - and that is a UX decision rather than a one-line read.
+
+  **Round 45 resolved it, and the reason it did rather than re-dating it a third time is worth
+  recording.** This item was written "resolve **or condition**", was conditioned in Round 44, and
+  said so in its own text - and it would still have gone red the moment `## Round 45` was written,
+  because the gate accepts only a `DEADLINE EXECUTED` stamp. That is deliberate: the gate's own seed
+  says the conditioning-sentence exemption "is exactly the bug this test was rewritten to remove",
+  since otherwise "conditioned" is an unbounded deferral device, which is how one sentence in
+  `references/REFERENCES.md` reached its ninth round. **The gate was right and the register was
+  wrong.** An item on its third date with a one-line read behind it is not a scheduling problem.
+
+  What shipped: `usecaseFromQuery()` validates `?usecase=` against the canonical `USECASES` list;
+  a known id is selected, an unknown one falls back to `finance_aml` **and the page names the
+  rejected value** ("There is no use case called X. Showing Y instead"). Read once as the initial
+  value, so a visitor changing the selector is not reverted by a stale query string. Silence would
+  have reproduced the original behaviour with intent added, which is why the notice is the half that
+  makes it a fix. Guarded by
+  `tests/test_a_page_renders_what_the_path_it_runs_produces.py::test_a_url_that_names_a_use_case_shows_it_or_says_why_not`,
+  which asserts all three of: the parameter is read, it is validated against `USECASES`, and a
+  rejection is reported.
 
 **A stated limit on this round's keyboard verification.** The browser harness could not deliver
 synthetic `Tab` or `Enter` to the page - focus did not move off the element it started on - so the
@@ -1867,7 +1884,10 @@ and the imitation is not.
 - **`RI9` was not outstanding.** Its five-way table is transcribed at `verification-log.md:434-444`.
   Grepping that file for `RI9` returns zero hits because the measurement sits under its own heading
   and does not name the row. **A search for the label is not a search for the thing.** Only the
-  smuggled-well-formed-key case remains, conditioned `by **Round 45**`.
+  smuggled-well-formed-key case remains, conditioned `by **Round 45**`. **DEADLINE EXECUTED Round
+  45** - run as a bad re-vendor (truncate to 770 vectors, recompute the SHA so the hash gate passes)
+  and the count assertion caught it, exit 1. Full output and the scope limit are recorded with the
+  RI9 item later in this file.
 - **`PF7` was not violated.** 84.35 + 506.69 does not reconstruct 1,269 because 1,269 is
   `encrypted_tier_measured_ms`, the whole tier, while `fhe_encrypted_student_ms` is 579. The identity
   holds by construction in `clientFHE.ts`. The real defect is one sentence calling 1,269 "the whole
@@ -2072,7 +2092,26 @@ What is genuinely outstanding is **one case of the five**: the smuggled well-for
 run as written, because the SHA-256 fires before `gunzipSync`, so any record of it has to state **how
 it got past the hash** - either re-vendor with the recomputed hash, so the count assertion is the line
 of defence under test, or use `--live`, where there is no hash at all. **Resolve or condition by
-**Round 45**.**
+**Round 45**. DEADLINE EXECUTED Round 45**, by the first route, and here is what it produced.
+
+The case was run as a **bad re-vendor**, which is the one situation the file's own comment says the
+count check exists for: `ML-KEM-512.txt.gz` was truncated from 775 vectors to 770, re-gzipped, and its
+SHA-256 recomputed and written into `SETS` - so the hash gate is satisfied by a file that is genuinely
+short. Measured output:
+
+```
+  ML-KEM-512: expected 775 vectors, read 770.
+  This is NOT a pass. A truncated or empty snapshot tests nothing, and testing
+  nothing reports zero acceptances - which is what a clean run also reports.
+PQC conformance: 1 check(s) FAILED.          (exit 1)
+```
+
+So the count assertion **is** the line of defence once the hash is made to agree, and the failure text
+names the confusion it prevents: zero acceptances from an empty file reads identically to zero
+acceptances from a clean run. The vectors and the checker were restored immediately and re-verified
+green (775 / 780 / 1040, 0 accepted). What this does NOT establish is a case where a *well-formed but
+wrong* key is accepted - no such vector was constructed, and the honest scope of this discharge is the
+truncation route, which is the route the code was written to survive.
 
 ## What this project cannot verify, and says so
 

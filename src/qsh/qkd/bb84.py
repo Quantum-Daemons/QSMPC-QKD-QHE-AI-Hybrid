@@ -2,8 +2,16 @@
 
 A prepare-and-measure BB84 simulation: Alice encodes random bits in random bases,
 the :mod:`~qsh.qkd.channel` transports them with loss/noise/eavesdropping, Bob
-measures in random bases, the parties sift, estimate QBER, and a finite-key secret
-key rate (SKR) is computed with the GLLP/decoy-state secure-fraction formula.
+measures in random bases, the parties sift, estimate QBER, and an ASYMPTOTIC secret
+key rate (SKR) is computed - by the two-intensity decoy-state bound of Ma, Qi, Zhao
+& Lo (2005) when ``qkd_params`` is supplied, and by the legacy non-decoy GLLP form
+when it is not.
+
+Round 45 corrected the word "finite-key" here. Neither branch applies a finite-key
+correction: both are asymptotic bounds, and on the browser's 200,000-pulse run that
+is roughly 1,900 sifted bits paying no statistical penalty at all. The direction of
+that omission is certain even though its size is not quantified here, so the claim
+is now stated as what the code does rather than as the stronger thing it does not.
 
 This is the physical substrate for WS1 (AI-QKD): the AI optimizer
 (:mod:`~qsh.qkd.ai_optimizer`) tunes parameters here to maximise SKR / minimise QBER.
