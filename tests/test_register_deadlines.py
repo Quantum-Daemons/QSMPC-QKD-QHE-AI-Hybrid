@@ -117,7 +117,29 @@ def _watched() -> list[Path]:
 _WRAP = r"[ \t]*\n?[ \t]*"
 
 #: "any entry not promoted by **Round 35** is removed", and any future sentence of that shape.
-_DEADLINE = re.compile(_WRAP.join([r"by", r"\*\*Round", r"(\d+)\*\*"]), re.I)
+#:
+#: ROUND 45: the opening `**` is now OPTIONAL, because an obligation can be bolded as a whole clause
+#: rather than round-by-round. `references/qcnn-width-ablation.md:127` writes
+#:
+#:     the only one not re-run at five seeds. **Re-run it by Round 45** or restate it as one draw.
+#:
+#: so the literal text at the marker is `by Round 45**`: the emphasis opens before `Re-run`, and no
+#: `**` sits in front of `Round` for the old pattern to anchor on. That file returned ZERO matches
+#: while carrying an obligation due this round. Round 44 taught this regex to tolerate a LINE WRAP
+#: between its words and never asked what else could sit between them - the same lesson one costume
+#: over, which is the shape this entire round is about.
+#:
+#: The closing `**` stays REQUIRED, and that is load-bearing rather than incidental. Dropping it too
+#: was measured against the corpus and sweeps in four narrative sentences that are not obligations:
+#: "had been *restored* by Round 20 on the stated grounds", "filed by Round 33 as a defect against
+#: itself", "SUPERSEDED IN PART BY ROUND 30", and one at `references/REFERENCES.md:1044`. Prose says
+#: "by Round N"; a deadline bolds the round. That is the discriminator, so it is kept.
+#:
+#: `_EXECUTED` and `_BLOCKED_UNTIL` below need no equivalent change and are deliberately untouched:
+#: neither pattern contains an asterisk, so no emphasis boundary can hide either. Stated here rather
+#: than left silent, because "fixed one regex of a sibling set" is the very defect being repaired and
+#: the reader is owed the check rather than the assurance.
+_DEADLINE = re.compile(r"by" + _WRAP + r"(?:\*\*)?Round" + _WRAP + r"(\d+)\*\*", re.I)
 #: "## Round 38: the round ..." / "## Rounds 34-36, ..." - the register's own round markers.
 _HEADING = re.compile(r"^##+ Rounds? (\d+)", re.M)
 #: The ONLY thing that discharges a deadline. Deliberately unlike anything a conditioning sentence
@@ -517,4 +539,46 @@ def test_every_marker_survives_a_line_wrap_and_none_spans_a_paragraph() -> None:
         assert not rx.search(across_blank), (
             f"{rx.pattern!r} spans a blank line, so a marker can be assembled from one paragraph's "
             "last word and the next paragraph's first - it would appear where nobody wrote it"
+        )
+
+
+def test_a_deadline_survives_being_bolded_as_a_whole_clause() -> None:
+    """The other way a marker can be split: by emphasis, not by whitespace.
+
+    Round 44 made `_DEADLINE` tolerant of a line wrap. The very next obligation written in this
+    project used a different shape and was invisible anyway:
+
+        **Re-run it by Round 45** or restate it as one draw.      references/qcnn-width-ablation.md:127
+
+    The bold span opens before `Re-run`, so at the marker the literal text is `by Round 45**` with no
+    `**` before `Round`. One file, one obligation, due this round, zero matches. Round 44 asked "can
+    whitespace get between these words" and not "what else can".
+
+    The bound is asserted in the same breath, because a marker that matches everything is worse than
+    one that matches too little - it fires on history and teaches the reader to ignore it. Plain
+    narrative prose says "by Round N" with no emphasis at all, and four such sentences exist in the
+    watched corpus today; the closing `**` is what separates an obligation from a recollection.
+    """
+    bolded_clause = "**Re-run it by Round 45** or restate it as one draw."
+    m = _DEADLINE.search(bolded_clause)
+    assert m, (
+        "`_DEADLINE` cannot see an obligation whose whole clause is bolded, which is how "
+        "references/qcnn-width-ablation.md:127 is written. The opening `**` must be optional."
+    )
+    assert int(m.group(1)) == 45, f"matched but extracted round {m.group(1)!r} instead of 45"
+
+    # Both older forms keep working - this is a widening, and a widening that drops a case is a swap.
+    assert _DEADLINE.search("resolve or condition by **Round 45**."), "the fully-bolded form broke"
+    assert _DEADLINE.search("condition by\n**Round 45**."), "the wrap tolerance was lost"
+
+    # The bound. Each of these is real text from the watched corpus, and none is an obligation.
+    for narrative in (
+        "had been *restored* by Round 20 on the stated grounds that it moves the bit count",
+        "made MORE specific in Round 33 and then filed by Round 33 as a defect against itself",
+        "**SUPERSEDED IN PART BY ROUND 30, marked in Round 33**",
+        "renumbered with its section, or removed by Round 35. **Removed in Round 39.**",
+    ):
+        assert not _DEADLINE.search(narrative), (
+            f"`_DEADLINE` now fires on narrative prose: {narrative!r}. A deadline bolds the round; "
+            "recollection does not. Dropping the closing `**` requirement is what breaks this."
         )
