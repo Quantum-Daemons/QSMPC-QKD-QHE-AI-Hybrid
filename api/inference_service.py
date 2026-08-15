@@ -55,10 +55,14 @@ def pqc_handshake_demo() -> dict:
 
 def qkd_demo(distance_km: float = 50.0, eve: float = 0.0) -> dict:
     """Run a small BB84 session; return QBER/SKR (and Eve detection)."""
-    from qsh.qkd.bb84 import run_bb84
+    from qsh.qkd.bb84 import QKDParams, run_bb84
     from qsh.qkd.channel import ChannelParams
 
+    # `qkd_params=QKDParams()`: without it this endpoint returns the legacy non-decoy figure while
+    # /validations labels it a per-pulse decoy bound. Round 45 fixed the browser's copy of this
+    # payload and not the server's.
     r = run_bb84(40_000, ChannelParams(distance_km=distance_km, eve_intercept_fraction=eve),
+                 qkd_params=QKDParams(),
                  seed=1)
     return {
         "distance_km": distance_km, "eve_fraction": eve,
