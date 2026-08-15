@@ -1,4 +1,5 @@
-import { useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import OrchestrationGraph from "../components/OrchestrationGraph";
 import PipelineControls from "../components/PipelineControls";
 import RunMonitor from "../components/RunMonitor";
@@ -20,10 +21,37 @@ const USECASES: [string, string][] = [
 
 const DEMO = isClientDemo();
 
+const DEFAULT_USECASE = "finance_aml";
+
+/**
+ * Read `?usecase=` and say what happened, rather than silently ignoring it.
+ *
+ * `/orchestration?usecase=demo` rendered `finance_aml`. Nothing links to that form, so nobody had
+ * hit it - but a URL that names a use case and shows a different one is a link that lies, and it was
+ * carried as an open item from Round 42 to Round 44 and then re-dated to Round 46 without being
+ * discharged. The register's own gate treats moving a date as not discharging it, so this resolves
+ * it instead.
+ *
+ * A REJECTED VALUE IS ANNOUNCED, not swallowed. Falling back silently is what the parameter already
+ * did; the only difference would have been that the code now meant to. Returning the reason lets the
+ * page say "there is no use case called X, showing Y" - which is the behaviour a mistyped or stale
+ * link deserves, and the one that makes the fallback visible to whoever sent it.
+ */
+function usecaseFromQuery(raw: string | null): { id: string; rejected: string | null } {
+  if (raw == null || raw === "") return { id: DEFAULT_USECASE, rejected: null };
+  return USECASES.some(([id]) => id === raw)
+    ? { id: raw, rejected: null }
+    : { id: DEFAULT_USECASE, rejected: raw };
+}
+
 // Generic "run any pipeline" view. The per-use-case pages (/usecase/:id) fix the use case
 // and add the two-party simulator diagram + benchmark + XAI; this page keeps the selector.
 export default function Orchestration() {
-  const [usecase, setUsecase] = useState("finance_aml");
+  const [searchParams] = useSearchParams();
+  // Read ONCE, as the initial value. The selector below is the source of truth afterwards, so a
+  // visitor who changes it does not have their choice reverted by a stale query string on re-render.
+  const initial = useMemo(() => usecaseFromQuery(searchParams.get("usecase")), []);
+  const [usecase, setUsecase] = useState(initial.id);
   const graphRef = useRef<HTMLDivElement>(null);
   const run = usePipelineRun(usecase, graphRef);
   const hasRun = run.events.length > 0;
@@ -39,6 +67,17 @@ export default function Orchestration() {
         time, and export the animated run. (Per-industry pages add a two-party simulator + benchmark.)
       </p>
       {DEMO && <div className="note" style={{ marginBottom: 12 }}>🖥️ {DEMO_BANNER}</div>}
+      {/* The rejected-parameter notice. Silence here would be indistinguishable from the defect
+          this replaced - the page would still show a use case the URL did not name, and the only
+          change would be that it meant to. Naming the bad value is what lets whoever followed the
+          link tell a typo from a stale bookmark. */}
+      {initial.rejected != null && (
+        <div className="note" style={{ marginBottom: 12 }}>
+          There is no use case called <b>{initial.rejected}</b>. Showing{" "}
+          <b>{USECASES.find(([id]) => id === initial.id)?.[1] ?? initial.id}</b> instead - pick
+          another from the selector below.
+        </div>
+      )}
 
       <div className="card" style={{ marginBottom: 16 }}>
         <div className="btn-row">
