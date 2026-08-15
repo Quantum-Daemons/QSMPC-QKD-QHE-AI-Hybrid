@@ -16,6 +16,51 @@ from dataclasses import asdict, dataclass, field
 class QKDConfig:
     pulses: int = 200_000
     distance_km: float = 50.0
+    # SOURCE REPETITION RATE, in Hz. THE ONLY ASSUMED QUANTITY IN THE QKD MODEL, and it is assumed
+    # rather than derived because it is a property of a transmitter this project does not own.
+    #
+    # Everything else here is computed. `secret_key_rate` is bits PER PULSE in all four models
+    # (`quantumSim.ts` bb84/e91, `bb84.py`, `e91.py`, `decoy_reference.py`), and `pulses` is a count,
+    # so nothing in the simulation has ever had a time axis. ETSI GS QKD 015 defines `skr`/`eskr` as
+    # a secret key RATE in bit/s. Round 42 found a session TOTAL sitting in those fields and set them
+    # to null, correctly, because bit/s = (bits per pulse) x (pulses per second) and the second
+    # factor did not exist.
+    #
+    # It still does not exist as a measurement. What changed in Round 44 is that it is now an
+    # explicit, labelled INPUT instead of an absence: one scalar, editable on the page, defaulting to
+    # a published figure, with the UI stating that it describes apparatus this project does not have.
+    # That is the honest form - the alternative was to keep a spec field permanently empty because
+    # the one number it needed was never asked for.
+    #
+    # Round 42's own conclusion was broader than its evidence: "No library supplies a repetition rate
+    # because none can." Three candidates were surveyed and rejected on three DIFFERENT grounds -
+    # TNO-Quantum for being per-pulse, QKDNetSim on GPL licence before its physics was examined,
+    # SeQUeNCe for "would still require asserting a clock". Only the first is the ground the
+    # generalisation rests on. The correct statement is narrower and survives: a repetition rate is
+    # an INPUT to key-rate analysis, stated in a paper's experimental section, not an output of it -
+    # which is why asserting one openly is the fix rather than a compromise.
+    #
+    # DEFAULT: 100 MHz, from Park, Kim, Im, Jo, Kim, Choi & Ihn, "Quantum key distribution over a
+    # 2 km free-space channel with a high secure key rate", arXiv:2607.24118v1 (2026-07-27), CC BY
+    # 4.0, which reports 164.8 kbps at QBER ~3.3% over 2 km at 100 MHz. It has an arXiv DataCite DOI
+    # and NO journal DOI. That paper's channel is a 2 km horizontal path and this model's default is
+    # 50 km of fibre, so the CLOCK is borrowed and the rest of the experiment is not - the demo must
+    # never present its derived bit/s as a reproduction of that result.
+    source_rate_hz: float = 100_000_000.0
+    # THE SAME CLOCK, ON A DIFFERENT LINK, AND THE PROVENANCE IS NOT THE SAME - which is why this is
+    # a second key and not a shared one. arXiv:2607.24118's 100 MHz was measured on a FREE-SPACE
+    # link, so for the satellite page the default is the anchor's own configuration. For fibre it is
+    # that free-space clock carried over, which is an assumption about different apparatus. One key
+    # could carry only one of those two sentences, and every other channel quantity in this dataclass
+    # is already paired for the same reason (`misalignment` / `free_space_misalignment`).
+    #
+    # A "2.5 GHz in the 64 Mbps fibre demonstration" figure sat in `clientSdnController.ts` for
+    # several rounds with NO citation anywhere in this repository - nobody could say which
+    # demonstration it named - and it was doing argumentative work in the rationale for not
+    # computing a rate at all. It was removed rather than promoted to this default. If a fibre
+    # demonstration with a stated repetition rate ever enters `references/REFERENCES.md`, the fibre
+    # default moves to it in the same change.
+    free_space_source_rate_hz: float = 100_000_000.0
     # MODELLING CHOICES, and each one departs from a reference this repository already cites and
     # tests against: the GYS set in `qkd/decoy_reference.py` (Gobby, Yuan & Shields, APL 84, 3762
     # (2004), as tabulated in Ma et al., PRA 72, 012326 (2005)), asserted by
