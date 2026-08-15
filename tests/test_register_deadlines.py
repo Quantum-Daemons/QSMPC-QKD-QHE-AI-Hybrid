@@ -99,21 +99,30 @@ def _watched() -> list[Path]:
     assert files, "git ls-files returned no markdown under docs/ or references/ - the scope is empty"
     return [REPO / f for f in files]
 
+#: TOLERANT OF ONE LINE WRAP between its words, and it governs ALL THREE markers below.
+#:
+#: These files are hard-wrapped at 100 columns, so any multi-word marker can be split by a reflow.
+#: Round 42 learned this on the stamp: two of its four `DEADLINE EXECUTED Round <N>` stamps landed
+#: near the margin, the wrap separated `DEADLINE` from `EXECUTED`, and the gate reported discharged
+#: items as pending. The fix was applied to `_EXECUTED` and to nothing else.
+#:
+#: ROUND 44: the identical hole was still open in `_DEADLINE`, twelve lines away in the same file.
+#: `docs/deliverable-verification.md:1992` carries "**Resolve or condition by\n**Round 45**.**" - the
+#: wrap fell between `by` and `**Round`, so the register's authoritative statement of that obligation,
+#: the one that says HOW to discharge it, was invisible to the gate that exists to surface it. The
+#: lesson was learned on one regex and not carried to its sibling: a boundary named on one side.
+#:
+#: At most ONE newline per gap, never a blank line - a marker must not be assembled out of one
+#: paragraph's last word and the next paragraph's first.
+_WRAP = r"[ \t]*\n?[ \t]*"
+
 #: "any entry not promoted by **Round 35** is removed", and any future sentence of that shape.
-_DEADLINE = re.compile(r"by \*\*Round (\d+)\*\*", re.I)
+_DEADLINE = re.compile(_WRAP.join([r"by", r"\*\*Round", r"(\d+)\*\*"]), re.I)
 #: "## Round 38: the round ..." / "## Rounds 34-36, ..." - the register's own round markers.
 _HEADING = re.compile(r"^##+ Rounds? (\d+)", re.M)
 #: The ONLY thing that discharges a deadline. Deliberately unlike anything a conditioning sentence
 #: says - see "WHY THE EXEMPTION IS A STAMP AND NOT A KEYWORD" above.
 #:
-#: TOLERANT OF ONE LINE WRAP between its words, because these files are hard-wrapped at 100 columns
-#: and the stamp is four words long. Writing the four Round-42 stamps broke this immediately: two of
-#: them landed near the margin, the wrap put `DEADLINE` and `EXECUTED` on different lines, and the
-#: gate reported the items as still pending while they read as discharged to any human. A marker that
-#: silently stops matching when a paragraph is reflowed would have been "fixed" by someone unwrapping
-#: prose to satisfy a parser. At most ONE newline per gap, never a blank line: a stamp must not be
-#: assembled out of one paragraph's last word and the next paragraph's first.
-_WRAP = r"[ \t]*\n?[ \t]*"
 _EXECUTED = re.compile(_WRAP.join(["DEADLINE", "EXECUTED", "Round", r"(\d+)"]))
 #: Start of an item: the register's numbered form ("**12. ...**"), a top-level bold bullet
 #: ("- **The EU NIS ...**", which is how `references/REFERENCES.md` and half the register write an
@@ -153,7 +162,9 @@ def _item_containing(text: str, pos: int) -> str:
 #: is dense with access dates because its credibility rests on them, so a heuristic over prose either
 #: fires on provenance or is tuned until it fires on nothing. A gate that cries wolf gets ignored,
 #: which is the DP7 failure this whole exercise exists to fix, so the marker is explicit.
-_BLOCKED_UNTIL = re.compile(r"BLOCKED UNTIL (20\d\d)-(\d\d)-(\d\d)")
+#: Wrap-tolerant for the same reason as its two siblings. It has not been split yet; fixing only the
+#: regex that has already failed is how this hole reached Round 44 in the first place.
+_BLOCKED_UNTIL = re.compile(_WRAP.join(["BLOCKED", "UNTIL", r"(20\d\d)-(\d\d)-(\d\d)"]))
 
 #: KNOWN LIMIT, stated rather than papered over: this catches dated blockers that use the marker, and
 #: nothing else. Someone can still write "blocked until September" in prose and no gate will see it -
@@ -469,3 +480,41 @@ def test_the_stamp_discharges_only_the_item_it_is_written_in() -> None:
         "a stamp in item 98 silenced the overdue deadline in item 99 - the discharge boundary has "
         "widened past the item, so one stamp now exempts unrelated rules"
     )
+
+
+def test_every_marker_survives_a_line_wrap_and_none_spans_a_paragraph() -> None:
+    """All THREE markers, not the one that has already failed.
+
+    Round 42 made `_EXECUTED` wrap-tolerant after two of its own stamps were split by a reflow, and
+    stopped there. `_DEADLINE` kept a literal space for two more rounds, and
+    `docs/deliverable-verification.md:1992` - "**Resolve or condition by\\n**Round 45**.**" - was
+    invisible to the gate the whole time. That is the register's authoritative statement of the RI9
+    obligation, the sentence that says how to discharge it, unseen by the check that exists to
+    surface it.
+
+    The same obligation is also written same-line 134 lines earlier, so the gate would still have
+    fired eventually - from a different item, carrying less. "It would have been caught anyway" is
+    how a hole survives; the sentence that explains the work is the one that has to be visible.
+
+    Both directions are asserted for each marker, because tolerance without a bound is how a marker
+    starts matching text nobody wrote.
+    """
+    cases = [
+        (_DEADLINE, "resolve or condition by **Round 45**.", "condition by\n**Round 45**.",
+         "condition by\n\n**Round 45**."),
+        (_EXECUTED, "DEADLINE EXECUTED Round 43, done.", "DEADLINE\n  EXECUTED Round 43, done.",
+         "DEADLINE\n\nEXECUTED Round 43, done."),
+        (_BLOCKED_UNTIL, "BLOCKED UNTIL 2026-09-01, an unlock.", "BLOCKED\n  UNTIL 2026-09-01.",
+         "BLOCKED\n\nUNTIL 2026-09-01."),
+    ]
+    for rx, same_line, wrapped, across_blank in cases:
+        assert rx.search(same_line), f"{rx.pattern!r} no longer matches its own unwrapped form"
+        assert rx.search(wrapped), (
+            f"{rx.pattern!r} is not wrap-tolerant. These files are hard-wrapped at 100 columns, so a "
+            "reflow would silently hide the marker - and reflowing prose to satisfy a parser is the "
+            "'fix' this tolerance exists to make unnecessary."
+        )
+        assert not rx.search(across_blank), (
+            f"{rx.pattern!r} spans a blank line, so a marker can be assembled from one paragraph's "
+            "last word and the next paragraph's first - it would appear where nobody wrote it"
+        )
