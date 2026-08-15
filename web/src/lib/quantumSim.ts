@@ -199,7 +199,11 @@ export interface BB84Result {
    * express in Round 29 and never got to: what the operator would be entitled to claim if the
    * multi-photon pulses could not be accounted for.
    *
-   * Always >= `secretKeyRate`: dropping a certification can only raise an unbounded estimate.
+   * Always <= `secretKeyRate`, and the inequality runs THIS way round. Decoy states let Y1 and
+   * e1 be ESTIMATED rather than discarded, so removing them cannot raise the rate. This line
+   * said `>=` until Round 46 - the direction Round 45's own test docstring records as its
+   * first error and corrected in the assertion, while leaving it standing in the type's
+   * documentation. Anyone making the code match its own JSDoc would have turned the gate red.
    *
    * OPTIONAL, and its absence is a claim rather than a gap. `e91()` does not set it, because there
    * are no decoy states in entanglement-based QKD to remove: decoys are a countermeasure for the
@@ -271,9 +275,12 @@ export function decoySecureFraction(
 // against 0.002355 from the bound this repository already implements in Python: 4.01x, published as
 // ~958 kbit/s once Round 44 multiplied it by an assumed 100 MHz clock. For scale, Yuan et al.,
 // IEEE/OSA JLT 36, 3427 (2018), report >1 Mb/s at 1 GHz over 50 km of fibre for the T12 protocol -
-// >0.001 bit/pulse - and say T12 sifts about twice as efficiently as the standard BB84 modelled
-// here. The old figure was ~9.6x a real deployed link; the bound below is ~2.4x it, which the
-// optimistic detector efficiency (0.25) and the asymptotic treatment account for.
+// >0.001 bit/pulse. ROUND 46 CORRECTED WHAT THAT COMPARISON MEANT. Round 45 concluded the new
+// bound was "~2.4x a real deployed link", i.e. still optimistic but close. It is wrong in both
+// directions: Li et al., Nat. Photon. 17, 416-421 (2023), arXiv:2307.02364, measured 22.2 +/- 0.8
+// Mb/s at 50 km on a 2.5 GHz clock = 8.88e-3 bit/pulse WITH composable finite-key security - 3.8x
+// HIGHER per pulse than the bound below. This is not an upper bound on real hardware; it is the
+// N->infinity limit of a lower bound, and real hardware beats it.
 //
 // `fEC` and `visibility` default from CONFIG, not from a literal. They were `1.16` and `0.97`
 // written here, and `error_correction_eff` had no reader anywhere in `web/src` outside
@@ -341,10 +348,19 @@ export function e91(nPulses: number, p: ChannelParams, seed = 0,
   const vEff = Math.max(0, Math.min(1, visibility * (1 - intrinsicQber(p))));  // channel-degraded visibility
   const s = 2 * Math.SQRT2 * vEff;                                             // CHSH parameter
   const e0 = (1 - vEff) / 2;                                                   // ideal QBER from the visibility
+  // ONE LOSSY ARM, matching `src/qsh/qkd/e91.py`, whose own comment reads "coincidence detection
+  // (lossy arm)". Round 46 considered squaring this for a two-arm source and did NOT, for the
+  // reason this whole round exists: changing the physics in one language is how the two drift.
+  // The modelling choice is Python's, it is documented there, and the browser mirrors it.
   const nPairs = Math.max(0, Math.round(nPulses * T * 0.5));                   // coincidence detections (key basis)
   const std = nPairs > 0 ? Math.sqrt((e0 * (1 - e0)) / nPairs) : 0;
   const qber = Math.min(0.5, Math.max(0, e0 + std * gauss(u)));
-  const secureFraction = s <= 2 ? 0 : Math.max(0, 1 - h2(qber) - fEC * h2(qber));  // no key without a Bell violation
+  // THE BOUND TAKES `e0`, NOT `qber` - the model error rate, not this session's draw. Round 45 made
+  // exactly this change for BB84, measured that five seeds had been producing five different
+  // "bounds", and left E91 deriving its rate from the sampled QBER. `e91.py:54` has always computed
+  // its secure fraction from the visibility-derived `qber` and never from a sample, so the browser
+  // was the one that diverged. The measured QBER above still varies; the bound no longer does.
+  const secureFraction = s <= 2 ? 0 : Math.max(0, 1 - h2(e0) - fEC * h2(e0));  // no key without a Bell violation
   return {
     qber, siftedBits: nPairs,
     secretKeyRate: nPulses > 0 ? (secureFraction * nPairs) / nPulses : 0,
