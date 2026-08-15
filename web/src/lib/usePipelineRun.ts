@@ -71,6 +71,30 @@ export const readsInferenceBackend = (usecase: string) =>
 export const QCNN_USECASES = new Set(["finance_aml", "medical_fl", "telecom_ids"]);
 export const hasTrainedQcnn = (usecase: string) => QCNN_USECASES.has(usecase);
 
+/** The widths a trained circuit actually SHIPS for, per use case.
+ *
+ * The "QCNN qubits" control offered 2..14 on every page while exactly two artifacts existed for
+ * telecom and one each for finance and medical. Every other width fell back to the 8-wire file in
+ * silence: the control moved, the run reported `qcnn_qubits` as the width that actually ran, and the
+ * two disagreed with no way for a visitor to tell. Round 40 made the control REACH the circuit;
+ * it did not make the range honest.
+ *
+ * WHY THE SETS DIFFER, and it is a property of the data rather than a choice. A wire must carry a
+ * feature or be padded, so the floor is the feature count: telecom has 7 features, finance and
+ * medical have 8, and `qcnn_variational.py` refuses a narrower run outright ("8 features exceeds 7
+ * wires"). Telecom can therefore be narrowed and the others can only be widened.
+ *
+ * Kept beside `QCNN_USECASES` and gated the same way - `tests/test_qcnn_usecases.py` compares this
+ * against `web/public/data/<dir>/qcnn_weights*.json` in BOTH directions, so adding a width without
+ * declaring it, or declaring one without shipping it, fails in CI rather than on the site.
+ */
+export const QCNN_WIDTHS: Record<string, number[]> = {
+  finance_aml: [8, 9],
+  medical_fl: [8, 9],
+  telecom_ids: [7, 8],
+};
+export const qcnnWidths = (usecase: string) => QCNN_WIDTHS[usecase] ?? [];
+
 /** Use cases where a federated-training stage has both real data and somewhere to be rendered.
  *
  * The same rule as the predicates above, applied to an injected stage. `qfl` is `useState(true)` with
