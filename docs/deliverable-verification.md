@@ -1618,11 +1618,20 @@ have the same input, so on any clone they are reused from the committed value ra
 `\nchecklistlines` is currently 4,178 against 4,186 lines and nothing can catch it. And every row
 this round added or repaired lives in a file no CI job can read.
 
-**Round 43 correction to the sentence above.** Both numbers are now 4,240 and they agree, because
-`c64dbfe` regenerated the macros at the end of Round 42. The paragraph describing them was not
-updated, so this file went on reporting a drift that its own round had closed - **the number was
-fixed and the sentence about the number was left**, which is the same shape as everything else in
-this section, committed inside the paragraph that names it.
+**Round 43 correction to the sentence above.** Both numbers agreed again, because `c64dbfe`
+regenerated the macros at the end of Round 42. The paragraph describing them was not updated, so this
+file went on reporting a drift that its own round had closed - **the number was fixed and the
+sentence about the number was left**, which is the same shape as everything else in this section,
+committed inside the paragraph that names it.
+
+**Round 45: and the correction ITSELF went stale, which is the third turn of the same screw.** That
+sentence was written as "both numbers are now 4,240"; by Round 44 they were 4,244 and by Round 45
+they are 4,256 across 407 rows. A correction that pins a literal to a growing quantity is a stale
+sentence with a later date on it. The figures are therefore **removed from this paragraph rather than
+updated**: `report/generated/macros.tex` holds the current values, `make report` regenerates them,
+and prose that needs the count should say where it lives instead of copying it. The lesson this
+section keeps re-learning is not "update the number" - it is "do not transcribe a number that has a
+generator".
 
 **A promise that outlived nine rounds, and the gate that could not see it.**
 `references/REFERENCES.md` ended a metadata-only entry with *"Next round: find the Cooperation Group
@@ -1815,13 +1824,30 @@ they cannot become permanent residents:
   same shape as the count sentence two sections up.
 - **`/orchestration?usecase=demo` ignores the query parameter** and renders `finance_aml`. Nothing
   links to that form, so nobody has hit it, but a URL that names a use case and shows a different one
-  is a link that lies. **Resolve or condition by **Round 44**. CONDITIONED Round 44, by **Round 46**.**
-  Round 44 spent its length on the rate fields and the two defects behind them, and this is a
-  separate surface: `Orchestration.tsx` holds the use case in `useState` and never reads
-  `useSearchParams`, so resolving it means deciding what an unknown or misspelled value does - fall
-  back visibly, or refuse - and that is a UX decision rather than a one-line read. Deferred WITH a
-  round, not with a hope. The condition that would make it urgent: **the moment anything links to
-  `/orchestration?usecase=`**, at which point a lying URL is being handed to someone.
+  is a link that lies. **Resolve or condition by **Round 44**. CONDITIONED Round 44, by **Round 46**.
+  DEADLINE EXECUTED Round 45.** Round 44 spent its length on the rate fields and the two defects
+  behind them, and this is a separate surface: `Orchestration.tsx` held the use case in `useState`
+  and never read `useSearchParams`, so resolving it meant deciding what an unknown or misspelled
+  value does - fall back visibly, or refuse - and that is a UX decision rather than a one-line read.
+
+  **Round 45 resolved it, and the reason it did rather than re-dating it a third time is worth
+  recording.** This item was written "resolve **or condition**", was conditioned in Round 44, and
+  said so in its own text - and it would still have gone red the moment `## Round 45` was written,
+  because the gate accepts only a `DEADLINE EXECUTED` stamp. That is deliberate: the gate's own seed
+  says the conditioning-sentence exemption "is exactly the bug this test was rewritten to remove",
+  since otherwise "conditioned" is an unbounded deferral device, which is how one sentence in
+  `references/REFERENCES.md` reached its ninth round. **The gate was right and the register was
+  wrong.** An item on its third date with a one-line read behind it is not a scheduling problem.
+
+  What shipped: `usecaseFromQuery()` validates `?usecase=` against the canonical `USECASES` list;
+  a known id is selected, an unknown one falls back to `finance_aml` **and the page names the
+  rejected value** ("There is no use case called X. Showing Y instead"). Read once as the initial
+  value, so a visitor changing the selector is not reverted by a stale query string. Silence would
+  have reproduced the original behaviour with intent added, which is why the notice is the half that
+  makes it a fix. Guarded by
+  `tests/test_a_page_renders_what_the_path_it_runs_produces.py::test_a_url_that_names_a_use_case_shows_it_or_says_why_not`,
+  which asserts all three of: the parameter is read, it is validated against `USECASES`, and a
+  rejection is reported.
 
 **A stated limit on this round's keyboard verification.** The browser harness could not deliver
 synthetic `Tab` or `Enter` to the page - focus did not move off the element it started on - so the
@@ -1867,7 +1893,10 @@ and the imitation is not.
 - **`RI9` was not outstanding.** Its five-way table is transcribed at `verification-log.md:434-444`.
   Grepping that file for `RI9` returns zero hits because the measurement sits under its own heading
   and does not name the row. **A search for the label is not a search for the thing.** Only the
-  smuggled-well-formed-key case remains, conditioned `by **Round 45**`.
+  smuggled-well-formed-key case remains, conditioned `by **Round 45**`. **DEADLINE EXECUTED Round
+  45** - run as a bad re-vendor (truncate to 770 vectors, recompute the SHA so the hash gate passes)
+  and the count assertion caught it, exit 1. Full output and the scope limit are recorded with the
+  RI9 item later in this file.
 - **`PF7` was not violated.** 84.35 + 506.69 does not reconstruct 1,269 because 1,269 is
   `encrypted_tier_measured_ms`, the whole tier, while `fhe_encrypted_student_ms` is 579. The identity
   holds by construction in `clientFHE.ts`. The real defect is one sentence calling 1,269 "the whole
@@ -2003,6 +2032,194 @@ said the same stale thing and was corrected in the same edit.
 958,000 - 479 bits / 0.002 s; `key budget` 1,436 bit; **`stored_key_count` 4 = floor(1436/352)**,
 restored from a permanent 0. No NaN, no Infinity.
 
+## Round 45: the number got a unit, and the unit made it wrong in public
+
+Round 44 gave the secret-key rate a genuine bit/s and put ~958 kbit/s on the public demo. It did not
+ask whether the per-pulse fraction underneath was the quantity the page said it was. It was not.
+
+**BUSINESS DOC RECONCILED Round 45.**
+
+### The rate was not the bound the page named, and the gap was 4.07x
+
+`web/src/lib/quantumSim.ts` computed $`1 - h_2(q) - f\,h_2(q)`$ on the **observed** QBER - the
+non-decoy GLLP form - while seven surfaces called it a decoy-state bound. `taggedFraction()` had
+existed since Round 29, was called exactly once, and its only consumers were a display string and a
+warning: the decoy estimate was computed, printed beside the rate, and never fed it.
+
+The gap was not a coefficient. Two departures from physics rode along, and **both were stronger than
+a decoy bound rather than approximations of one**, so the label named a technique that would have
+*lowered* the figure:
+
+- `nSift` used the transmittance $`\eta`$ as the per-pulse detection probability. For a weak coherent
+  source that is $`1 - e^{-\eta\mu}`$, so using $`\eta`$ asserts $`\mu \approx 1`$ photon/pulse. Real
+  decoy systems run $`\mu \approx 0.4`$-$`0.5`$.
+- every sifted bit was credited as single-photon, $`p_1 = 1`$.
+
+Measured at the demo's own operating point, 50 km on the shipped fibre defaults, against this
+repository's own `src/qsh/qkd/bb84.py::_decoy_secure_fraction`:
+
+| model | bit/pulse | bit/s at 100 MHz |
+|---|---|---|
+| displayed before | 0.009434 | 943,371 (958,000 live, seed-dependent) |
+| two-intensity decoy, Ma et al. 2005 | **0.002355** | **235,479** |
+| non-decoy GLLP counterfactual | 0.000000 | 0 |
+
+`bb84()` now calls `decoySecureFraction()`, a transcription of the Python function rather than a
+re-derivation - the repository already owned this algebra twice, and a third unchecked copy is the
+recurring defect here, not a safeguard. Detections come from the gain
+$`Q_\mu = Y_0 + 1 - e^{-\eta\mu}`$, which halves the sifted count at the defaults; that is the
+correction, not a regression, since the old figure counted one detection per transmitted photon.
+
+**The external check.** Yuan et al., *IEEE/OSA J. Lightwave Technol.* **36**, 3427 (2018): the T12
+protocol gives over 1 Mb/s at 1 GHz across 50 km of fibre, $`>0.001`$ bit/pulse, and the same paper
+says T12 sifts about twice as efficiently as the standard BB84 modelled here. The old display was
+~9.6x a real deployed link. The new one is ~2.4x it, which the optimistic detector efficiency (0.25)
+and the asymptotic treatment account for. Cited, not bundled: its arXiv licence grants nothing.
+
+**The bound is no longer seed-dependent.** It takes the intrinsic error rate, so it is a property of
+the channel; the measured QBER still varies. Five seeds previously produced five different "bounds",
+0.008992 to 0.009577, which is why the public figure moved between page loads.
+
+**The counterfactual is zero, not merely smaller.** At $`\mu = 0.5`$ the tagged fraction is 7.26, so
+no detection can be certified single-photon - without decoy states this link yields nothing at all.
+
+**E91 was left alone, because GLLP on the observed QBER is correct there.** Its defect was the label:
+the secret-key-rate row was emitted OUTSIDE the protocol branch three lines above it, so the E91 page
+attributed its rate to decoy states - a countermeasure for the multi-photon pulses of an attenuated
+laser, which entanglement-based QKD does not have. One shared `isE91` constant now feeds both rows.
+
+### The first numeric cross-language gate, and why it had to be new
+
+Every existing cross-language QKD check is **textual**: one greps the Python file for a unit comment,
+and `web/scripts/check_qkd.mjs` deliberately asserts only plumbing and identities inside TypeScript,
+because a mirror written in TypeScript would copy a TypeScript bug. Both are right about what they
+do. Neither can see that two languages compute different physics.
+`tests/test_the_browser_computes_the_bound_the_page_names.py` executes the browser through esbuild +
+node and compares against the Python function evaluated live.
+
+**Its first version asserted the wrong direction and the model corrected it.** It required the
+non-decoy counterfactual to be LARGER, reasoning that the browser's old number was larger and was
+therefore the non-decoy one. It was neither: crediting $`p_1 = 1`$ is an unbounded estimate above
+both. Recorded in the test rather than quietly swapped - mistaking "the number that was displayed"
+for "the number without the certification" is how this survived seven surfaces.
+
+### Three defects Round 44 shipped, all the same shape
+
+- **`/validations` rendered a blank cell on the public demo.** The client branch of `demoQkd` still
+  returned `skr` while the page read `skr_per_pulse`, and the demo builds `CLIENT_ONLY`, so that
+  branch is the only one it executes. Three producers and the reader were renamed; the one that ships
+  was not. `SW3` could not catch it - an `undefined` React child renders as nothing, not as the token
+  `undefined`. The comment above the broken line still called the rename "conditioned rather than
+  done here", a sentence falsified in the same commit that broke the page.
+- **Two rendered strings promised a "Source rate control in the Parameters panel" that did not
+  exist.** Six INERT controls have been found here - rendered, read by nothing. This was the inverse
+  and worse: a visitor could not even go and look. The control now exists, one per channel
+  (`qkd_source_rate_mhz`, `sat_source_rate_mhz`), separate for the same reason `qkd_distance_km` and
+  `sat_distance_km` are.
+- **`satellite_comms/__init__.py`** wrote a per-pulse fraction into `ctx.metrics["skr"]` three lines
+  below its own comment saying that renaming one write and not the other is the asymmetry Round 44
+  had just found. It repeated it under its own warning.
+
+### A gate that failed on the change that introduced it
+
+`test_every_rendered_control_is_read_somewhere` asserts the inert direction, which nothing had ever
+checked. The first `sourceRateHz` took a config object and a KEY NAME and read `config?.[key]`
+internally, so both controls added this round were read at runtime and invisible to static analysis -
+and the new gate reported both as inert. It was right about what it could see. The call sites now
+pass `config?.qkd_source_rate_mhz` directly.
+
+### Every deadline due was discharged, and one was on its third date
+
+- **`/orchestration?usecase=`** now reads, validates against the canonical list, and **names a
+  rejected value**. Silence would have reproduced the original behaviour with intent added. The item
+  said "resolve **or condition**", was conditioned in Round 44, and would still have gone red the
+  moment `## Round 45` was written - the gate accepts only a `DEADLINE EXECUTED` stamp, by design,
+  because otherwise "conditioned" is an unbounded deferral device. **The gate was right and the
+  register was wrong.**
+- **`_DEADLINE` was blind to a bold span.** `references/qcnn-width-ablation.md:127` writes
+  `**Re-run it by Round 45**`, so the literal text is `by Round 45**` with no `**` before `Round`.
+  That file returned **zero** matches at every value of `now` while carrying an obligation due this
+  round. Round 44 taught the marker to tolerate a line wrap and never asked what else could sit
+  between the words. The closing `**` stays required, measured rather than assumed: dropping it too
+  sweeps in four narrative sentences that are not obligations. `_EXECUTED` and `_BLOCKED_UNTIL`
+  contain no asterisk and cannot be hidden this way - stated rather than left silent, because "fixed
+  one regex of a sibling set" is the defect being repaired.
+- **Telecom's pad wire, re-run at five seeds, and it behaves unlike the other two.** Seed 0
+  reproduced the card's 0.8098 exactly. The five-seed median gap is **+0.0786** against seed 0's
+  **+0.0786** - identical to four decimals, because seed 0 is the median draw for both widths.
+  Finance went +0.099 to -0.034 and medical +0.081 to -0.035; this one did not move. It still does
+  not separate the widths: the ranges overlap and the best single result in the whole experiment is a
+  **seven**-wire draw, 0.8616, above all five 8-wire runs.
+- **RI9's smuggled well-formed key**, run as a bad re-vendor. Full output with the RI9 item above.
+
+### `references/` PDFs: adjudicated per file, and the old rule was inverted
+
+`.gitignore` excluded on **size** and one copyright call, never on licence, and the outcome was an
+inversion - the two most permissively licensed papers in the project, both CC BY 4.0, were dropped
+for being ~17 MB each while a CC BY-NC-ND camera-ready shipped to every clone. Seven kept, four
+removed, each verified at primary source. Full table in `DATA_LICENSES.md` section 8, which is also
+where the file gained a **fourth preamble bucket**: its taxonomy had three and none covered "a
+third-party document redistributed verbatim", so 14.5 MB - about 45% of everything tracked - had
+never been in scope for the file that owns licence findings.
+
+**The trap worth recording.** arXiv's Atom API (`export.arxiv.org/api/query`) carries no licence
+field at all and reports "not present" even for a CC0 paper. An adjudication run through it reads the
+entire corpus as unlicensed. OAI-PMH returns a real `<license>` element; three of the seven kept
+papers are kept because that distinction was checked.
+
+### Mathematical notation: GitHub markdown math, adopted where it is safe
+
+Display equations use `$$...$$` and inline uses `` $`...`$ `` - the code-span form, which degrades to
+visible backticks in a non-rendering viewer and cannot be captured by a stray `$`. GitHub documents
+four delimiter forms and no per-surface difference between them.
+
+**The currency risk was measured, not assumed.** `README.md:43` and `docs/verification-log.md:531`
+use `$` for dollar amounts. GitHub's server-rendered HTML for `main` contains both as literal text
+with zero math markers, against positive controls that do show them - so those lines are safe as
+*observed output*, not as derived from a rule. The widely repeated tokenizer heuristic ("the closing
+`$` must not be followed by a digit") is **NOT FOUND** in any GitHub primary source, and
+`github/cmark-gfm` contains no math extension at all, so there is no specification to cite. Re-scan
+if line 43 is edited.
+
+**Ported, not derived.** `report/technical-report.tex` already typesets five of these correctly; the
+QSDC secrecy capacity existed as **three** ASCII restatements across three files against one correct
+display equation, so that is where the conversion started.
+
+### JupyterLite / marimo / pyvista-wasm: declined, with a reopening condition
+
+Decisive, and not a matter of taste: **the crypto stack does not exist in Pyodide.** No SEAL/CKKS, no
+TenSEAL, no MPC runtime and no ONNX among the 354 distribution packages; `onnxruntime` publishes no
+emscripten wheel. A notebook that runs this project's actual pipeline is **not implementable**, not
+merely inadvisable - it could only narrate the pipeline or re-implement it, and two implementations
+of one thing is this project's named defect class.
+
+Two further blockers, each independently sufficient. Both tools fetch their runtime from the
+**jsDelivr CDN** by default (marimo's own bug #575, open since 2024-01-15), which breaks the
+no-third-party-origin claim the demo rests on. And accessibility is unassessed upstream: no
+JupyterLab/JupyterLite issue cites SC 1.4.1, 1.4.11, 1.4.13 or 4.1.3, and marimo has no accessibility
+documentation at all - absence of reports, not conformance.
+
+**`pyvista-wasm` does not exist.** No `vtk`, `pyvista`, `trame` or `itk` in the Pyodide lockfile; the
+PyPI packages of that name are third-party API lookalikes in a personal namespace, not PyVista
+artifacts.
+
+*Reopens only when all four hold:* a Pyodide wheel exists for at least one of CKKS/TFHE or an MPC
+runtime, so the notebook can execute the real pipeline; the runtime is self-hosted from this
+project's own origin with a CI check that the kernel's package set matches the app's lockfile; cold
+start is measured in-house, because **no citable benchmark exists** - the universally repeated
+"6.4 MB, 4-5 seconds" is byte-identical boilerplate across the 2022 and current Pyodide roadmaps and
+is not a measurement of any shipped version; and the four WCAG criteria above are tested in-house.
+
+### ETSI horizon, recorded because it has a date for the first time
+
+**GS QKD 015 ed3 is V2.1.2 Stable draft (2026-05-27), TB approval 2026-12-02**, and GS QKD 014 ed2
+(V1.3.1, Stable draft) carries the same approval date. **The "V3.1.1 draft" figure is refuted** -
+zero hits for "3.1.1" on the work-item page and no v3 tag of any kind in the forge, whose in-progress
+branch is named v2.1.2. Recorded so a later round does not re-import it from a search summary. No
+current claim changes: `docs/pqc-roadmap.md`, `references/REFERENCES.md`, `src/qsh/qkd/kme.py` and
+`web/src/lib/clientSdnController.ts` all correctly state V1.1.1 as the only published GS QKD 014
+edition.
+
 ## Verification assets added in Rounds 22-23
 
 Two checks now exist that assert against sources OUTSIDE this repository. That is the point of both:
@@ -2072,7 +2289,26 @@ What is genuinely outstanding is **one case of the five**: the smuggled well-for
 run as written, because the SHA-256 fires before `gunzipSync`, so any record of it has to state **how
 it got past the hash** - either re-vendor with the recomputed hash, so the count assertion is the line
 of defence under test, or use `--live`, where there is no hash at all. **Resolve or condition by
-**Round 45**.**
+**Round 45**. DEADLINE EXECUTED Round 45**, by the first route, and here is what it produced.
+
+The case was run as a **bad re-vendor**, which is the one situation the file's own comment says the
+count check exists for: `ML-KEM-512.txt.gz` was truncated from 775 vectors to 770, re-gzipped, and its
+SHA-256 recomputed and written into `SETS` - so the hash gate is satisfied by a file that is genuinely
+short. Measured output:
+
+```
+  ML-KEM-512: expected 775 vectors, read 770.
+  This is NOT a pass. A truncated or empty snapshot tests nothing, and testing
+  nothing reports zero acceptances - which is what a clean run also reports.
+PQC conformance: 1 check(s) FAILED.          (exit 1)
+```
+
+So the count assertion **is** the line of defence once the hash is made to agree, and the failure text
+names the confusion it prevents: zero acceptances from an empty file reads identically to zero
+acceptances from a clean run. The vectors and the checker were restored immediately and re-verified
+green (775 / 780 / 1040, 0 accepted). What this does NOT establish is a case where a *well-formed but
+wrong* key is accepted - no such vector was constructed, and the honest scope of this discharge is the
+truncation route, which is the route the code was written to survive.
 
 ## What this project cannot verify, and says so
 
@@ -2146,7 +2382,7 @@ and two lookups, smaller than the paragraph that deferred it.
 
 **2. `qsdc_threshold` - CLOSED, by deletion rather than by justification.** The constant no longer
 exists. `quantum_secure_direct_comm()` takes no threshold parameter and aborts on a loss-aware
-secrecy capacity `Cs = 1 - h(e) - g*h(e_chk)` with `g = 10^(loss_dB/10)`, after Qi et al., *Light Sci.
+secrecy capacity $`C_s = 1 - h(e) - g\,h(e_{\text{chk}})`$ with $`g = 10^{\,\text{loss\_dB}/10}`$, after Qi et al., *Light Sci.
 Appl.* 8, 22 (2019), attributing the abort to the link budget where that is the cause. The 0.11 that
 remains is `pp_threshold`, scoped to BB84/E91 post-processing where the Shor-Preskill bound is the
 right reference, and the inert UI control that used to expose it was removed in Round 27.

@@ -11,9 +11,12 @@ import {
 
 /** One wording, used by both rate cells, so the caveat cannot drift between two columns. */
 const RATE_CELL_TITLE =
-  "bit/s - this simulation's per-pulse key rate multiplied by an ASSUMED source repetition rate. "
-  + "No QKD hardware exists in this project and nothing here measures a clock, so the rate scales "
-  + "exactly with the Source rate control in the Parameters panel. Not a measurement.";
+  "bit/s - this run's two-intensity decoy-state bound per pulse (Ma, Qi, Zhao & Lo, Phys. Rev. A 72, "
+  + "012326, 2005) multiplied by an ASSUMED source repetition rate. No QKD hardware exists in this "
+  + "project and nothing here measures a clock, so the rate scales exactly with the Source rate "
+  + "(MHz) control in the Parameters panel. A modelled upper bound, not a measurement: Yuan et al. "
+  + "(IEEE/OSA JLT 36, 3427, 2018) report over 1 Mb/s at 1 GHz over 50 km of fibre with a protocol "
+  + "that sifts about twice as efficiently as the standard BB84 modelled here.";
 
 export default function SdnControlPlanePanel({
   usecase, distanceKm, keyBudgetBits, qkdEnabled, maxSpanKm,
@@ -64,16 +67,20 @@ export default function SdnControlPlanePanel({
       {topo.source_rate_hz != null && (
         <p className="muted small" style={{ marginTop: 0 }}>
           <b>skr and eskr are bit/s, and they rest on an assumption.</b>{" "}
-          They are computed as this run&apos;s simulated per-pulse key rate multiplied by a source
+          They are computed as this run&apos;s <b>two-intensity decoy-state bound</b> per pulse
+          (Ma, Qi, Zhao &amp; Lo, <i>Phys. Rev. A</i> <b>72</b>, 012326, 2005) multiplied by a source
           repetition rate of{" "}
           <b>{(topo.source_rate_hz / 1e6).toLocaleString()} MHz</b>, over a channel time of{" "}
           {topo.channel_seconds != null ? `${(topo.channel_seconds * 1e3).toFixed(3)} ms` : "n/a"}{" "}
           (pulses divided by that rate). <b>No QKD device exists in this project</b> and nothing here
-          measures a clock: the rate is a control in the Parameters panel and every figure in these
-          two columns scales with it. Its default is the 100 MHz reported by arXiv:2607.24118
-          (preprint, 2026-07-27, CC BY 4.0) for a 2 km free-space link; <b>that paper&apos;s own
-          164.8 kbit/s at QBER ~3.3% is its measurement over its own channel, not this one&apos;s,
-          and is neither reproduced nor claimed here.</b>
+          measures a clock: the rate is the <b>Source rate (MHz)</b> control in the Parameters panel,
+          and every figure in these two columns scales with it. Its default is the 100 MHz reported
+          by arXiv:2607.24118 (preprint, 2026-07-27, CC BY 4.0) for a 2 km free-space link;{" "}
+          <b>that paper&apos;s own 164.8 kbit/s at QBER ~3.3% is its measurement over its own
+          channel, not this one&apos;s, and is neither reproduced nor claimed here.</b>{" "}
+          Read the result as a <b>modelled upper bound</b>: Yuan et al. (<i>IEEE/OSA J. Lightwave
+          Technol.</i> <b>36</b>, 3427, 2018) report over 1 Mb/s at 1 GHz across 50 km of fibre using
+          a protocol that sifts about twice as efficiently as the standard BB84 modelled here.
         </p>
       )}
       <p className="muted small" style={{ marginTop: 0 }}>

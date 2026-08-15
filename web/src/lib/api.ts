@@ -88,7 +88,18 @@ export const api = {
     // client BB84 mirror; pulse count + eavesdrop threshold come from config so Validations stays consistent
     // with the pipeline (the same QBER the pipeline treats as secure isn't flagged "eavesdropper" here).
     const r = bb84(webCfg().demo_alice_bob_pulses, { ...FIBER, distanceKm: km, eveFraction: eve }, 1);
-    return Promise.resolve({ qber: Math.round(r.qber * 1e4) / 1e4, skr: Math.round(r.secretKeyRate * 1e5) / 1e5,
+    // `skr_per_pulse`, matching the server branch above and `api/inference_service.py:65`. Round 44
+    // renamed three producers and the reader on /validations, and missed THIS one - the only branch
+    // the public demo ever executes, because the demo builds CLIENT_ONLY and `isClientDemo()` is
+    // then unconditionally true. The page read `qkd.skr_per_pulse`, got `undefined`, and React
+    // rendered an empty cell: a blank value shipped under "secret key rate (per pulse)". `SW3`
+    // could not see it, because an `undefined` React child renders as nothing at all rather than as
+    // the token "undefined" - the one wrong value that leaves no trace on the page.
+    //
+    // Six decimals rather than five: the decoy bound is ~4x smaller than the figure this used to
+    // round, and 1e5 would print 0.00235 where the control-plane panel shows 0.002355.
+    return Promise.resolve({ qber: Math.round(r.qber * 1e4) / 1e4,
+      skr_per_pulse: Math.round(r.secretKeyRate * 1e6) / 1e6,
       secure_key_bits: r.secureKeyBits, eavesdropper_likely: r.qber > securityScoringCfg().qber_secure_threshold });
   },
   results: () => j<{ name: string; bytes: number }[]>("/api/results"),
