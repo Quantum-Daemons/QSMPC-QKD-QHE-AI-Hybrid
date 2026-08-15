@@ -81,9 +81,24 @@ def default_registry() -> CryptoRegistry:
                  lambda: HybridKEMRecipient("ML-KEM-1024"))
 
     # QKD family: BB84 simulation (default) and a "pqc-only" no-QKD mode
-    from ..qkd.bb84 import run_bb84
+    from ..qkd.bb84 import QKDParams, run_bb84
 
-    reg.register("qkd", "bb84-decoy", lambda **kw: run_bb84(**kw), default=True)
+    # `qkd_params=QKDParams()` IS THE REGISTRATION, not an embellishment on it. This entry is named
+    # "bb84-decoy" and until Round 46 it ran `run_bb84(**kw)` with no `qkd_params`, which takes the
+    # LEGACY branch at `bb84.py`: uniform bases, transmittance used directly as the detection
+    # probability, and `1 - h2(q) - f h2(q)` on the observed QBER. That is the non-decoy GLLP form.
+    #
+    # Round 45 removed exactly that model from the browser, measured the gap at 4.07x and wrote three
+    # documents about it - and left this line, so `QKDStage` went on resolving a provider called
+    # "bb84-decoy" that computed 0.008936 bit/pulse against the browser's 0.002355. The name was the
+    # claim, and the claim was false.
+    #
+    # Fixed HERE rather than at the call site, deliberately: `stages.py` never names `run_bb84`, it
+    # asks the registry for whatever "bb84-decoy" means. One place decides what the name means. The
+    # two surfaces that bypass the registry are fixed separately, and both directions are guarded by
+    # `tests/test_the_browser_computes_the_bound_the_page_names.py`.
+    reg.register("qkd", "bb84-decoy",
+                 lambda **kw: run_bb84(qkd_params=QKDParams(), **kw), default=True)
     reg.register("qkd", "pqc-only", lambda **kw: None)
 
     # FHE family: commercial-OK CKKS only -- TenSEAL CPU (default, Apache-2.0) and
