@@ -177,6 +177,33 @@ def test_every_rendered_control_is_read_somewhere() -> None:
     )
 
 
+def test_a_url_that_names_a_use_case_shows_it_or_says_why_not() -> None:
+    """`/orchestration?usecase=` was ignored, and silence is not a fix for it either.
+
+    The page held its use case in `useState` and never read the query string, so
+    `/orchestration?usecase=demo` rendered `finance_aml`. Nothing linked to that form, which is why
+    it survived: it was carried from Round 42, came due in Round 44, and was re-dated to Round 46
+    rather than discharged. The register's gate treats moving a date as not discharging it.
+
+    Both halves are asserted, because reading the parameter and then silently substituting a default
+    would reproduce the original behaviour with intent added. A rejected value has to be NAMED on
+    the page - that is what distinguishes a typo from a stale bookmark for whoever followed the link.
+    """
+    src = (WEB / "pages" / "Orchestration.tsx").read_text()
+    assert "useSearchParams" in src, (
+        "/orchestration no longer reads the query string, so `?usecase=` is ignored again and a URL "
+        "that names a use case can show a different one"
+    )
+    assert re.search(r"USECASES\.some\(|USECASES\.find\(", src), (
+        "the query parameter is read but not validated against the known use cases; an unknown "
+        "value would be passed to the pipeline instead of refused"
+    )
+    assert "rejected" in src, (
+        "nothing reports a rejected `?usecase=` value. Falling back silently is what the page "
+        "already did before it read the parameter at all."
+    )
+
+
 def test_the_panel_prose_and_its_tooltip_make_the_same_claim() -> None:
     """One caveat, two surfaces - and they must not drift apart.
 
