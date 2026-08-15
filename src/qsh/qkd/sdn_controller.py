@@ -105,8 +105,41 @@ class QkdLink:
 
     # --- performance (``qkdl_performance`` / ``common_performance``) ----------------------------
     skr: float = 0.0                           #: secret key rate, bit/s
-    eskr: float = 0.0                          #: effective SKR after application consumption, bit/s
-    expected_consumption: float = 0.0          #: bit/s
+    #: THE LEDGER, in BITS. `allocate()` writes this and `key_budget_bits`, and nothing else.
+    #:
+    #: Round 42 found a session total in the browser's `skr`/`eskr` and fixed the BROWSER. Here,
+    #: `allocate()` went on doing the same thing it removed there: it compared a bit COUNT against
+    #: `eskr` (documented bit/s), then accumulated granted BITS into `expected_consumption` (also
+    #: documented bit/s) and subtracted one from the other. The guard written alongside that fix,
+    #: `tests/test_sdn_fields_carry_the_dimension_the_spec_says.py`, asserts the bit-denominated
+    #: ledger against the TypeScript file and greps this one only for the unit comment above - so
+    #: the reference the gate cites was the thing that was wrong, for two rounds.
+    consumed_bits: int = 0
+    key_budget_bits: int = 0                   #: bits this link has left to hand out
+    #: Seconds of quantum channel the run implies (pulses / source rate). `None` until a caller
+    #: supplies it; `eskr` refuses to guess without it rather than dividing by zero.
+    channel_time_s: float | None = None
+
+    @property
+    def expected_consumption(self) -> float:
+        """bit/s. DERIVED - bits handed out over the channel time they were handed out in.
+
+        A property with no setter, on purpose: `link.expected_consumption = granted` is now an
+        ``AttributeError`` rather than a comment asking nobody to write it. That is the strongest
+        available form of "this field is not a ledger".
+        """
+        if self.channel_time_s is None or self.channel_time_s <= 0:
+            return 0.0
+        return self.consumed_bits / self.channel_time_s
+
+    @property
+    def eskr(self) -> float:
+        """bit/s. Effective secret key rate after the applications' consumption.
+
+        Also derived, also unsettable. `allocate()` cannot decrement it because there is nothing to
+        decrement - which is the shape that prevents Round 42's defect returning in a correct unit.
+        """
+        return max(0.0, self.skr - self.expected_consumption)
 
     @property
     def traverses_trusted_nodes(self) -> bool:
@@ -186,12 +219,13 @@ class SdnController:
 
     # --- clause 5.3: physical (direct) link creation --------------------------------------------
     def create_physical_link(self, qkdl_id: str, local: str, remote: str, *,
-                             attenuation_db: float, skr: float, wavelength_nm: float = 1550.0) -> QkdLink:
+                             attenuation_db: float, skr: float, wavelength_nm: float = 1550.0, key_budget_bits: int = 0, channel_time_s: float | None = None) -> QkdLink:
         self._require_nodes(local, remote)
         link = QkdLink(
             qkdl_id=qkdl_id, qkdl_local_qkdn_id=local, qkdl_remote_qkdn_id=remote,
             qkdl_type="PHYS", phys_qkd_role="TRANSMITTER", phys_channel_att=attenuation_db,
-            phys_wavelength=wavelength_nm, skr=skr, eskr=skr,
+            phys_wavelength=wavelength_nm, skr=skr,
+            key_budget_bits=key_budget_bits, channel_time_s=channel_time_s,
         )
         self.links[qkdl_id] = link
         self._notify(f"PHYS link {qkdl_id} {local}<->{remote} up: {attenuation_db:.1f} dB, "
@@ -200,7 +234,7 @@ class SdnController:
 
     # --- clause 5.4: virtual (multi-hop) link creation ------------------------------------------
     def create_virtual_link(self, qkdl_id: str, local: str, remote: str, *,
-                            path: list[str], skr: float) -> QkdLink:
+                            path: list[str], skr: float, key_budget_bits: int = 0, channel_time_s: float | None = None) -> QkdLink:
         """Create a relayed key association across ``path`` of intermediate nodes.
 
         Every hop must have ``key_relay_mode_enable`` -- a node that does not offer relay cannot be
@@ -214,7 +248,8 @@ class SdnController:
             qkdl_id=qkdl_id, qkdl_local_qkdn_id=local, qkdl_remote_qkdn_id=remote,
             qkdl_type="VIRT", virt_next_hop=list(path),
             # A relayed association is bounded by its weakest hop, never better than it.
-            skr=skr, eskr=skr, virt_bandwidth=skr,
+            skr=skr, virt_bandwidth=skr,
+            key_budget_bits=key_budget_bits, channel_time_s=channel_time_s,
         )
         self.links[qkdl_id] = link
         self._notify(f"VIRT link {qkdl_id} {local}=>{remote} via {'->'.join(path)}: "
@@ -234,19 +269,22 @@ class SdnController:
 
     # --- resource allocation --------------------------------------------------------------------
     def allocate(self, app_id: str, bits: int) -> int:
-        """Charge ``bits`` of key material to a registered SAE, bounded by the link's eskr budget.
+        """Charge ``bits`` of key material to a registered SAE, bounded by the link's BIT budget.
 
         Returns the bits actually granted. The controller allocates; it does not deliver -- delivery
         is the KME's job over GS QKD 014, which is a different interface.
         """
         app = self.applications[app_id]
-        budget = sum(self.links[q].eskr for q in app.backing_qkdl_id)
+        # BITS against BITS. This budgeted against `eskr`, a bit/s field, so a count was compared
+        # with a rate and the difference written back into the rate - the browser's exact defect,
+        # left standing here when Round 42 fixed only TypeScript.
+        budget = sum(self.links[q].key_budget_bits for q in app.backing_qkdl_id)
         granted = int(min(bits, budget))
         app.consumed_bits += granted
         for q in app.backing_qkdl_id:
             link = self.links[q]
-            link.expected_consumption += granted
-            link.eskr = max(0.0, link.skr - link.expected_consumption)
+            link.consumed_bits += granted
+            link.key_budget_bits = max(0, link.key_budget_bits - granted)
         if granted < bits:
             self._notify(f"SAE {app_id} requested {bits} bits, granted {granted} — link budget "
                          f"exhausted (this is the honest answer, not a padded one)")
