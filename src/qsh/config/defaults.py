@@ -14,7 +14,25 @@ from dataclasses import asdict, dataclass, field
 
 @dataclass
 class QKDConfig:
-    pulses: int = 200_000
+    # BLOCK SIZE, and it is a security parameter rather than a speed knob.
+    #
+    # This was 200_000, giving `nSift = N * Q_mu * 0.5` = **1,244 sifted bits** at the shipped 50 km
+    # channel. At that block size a composably-secure finite-key analysis yields **no key at all**:
+    # the positive-key threshold for these device parameters is ~5e3 to 1.1e4 sifted bits (Rusca,
+    # Boaron, Grunenfelder, Martin & Zbinden, Appl. Phys. Lett. 112, 171104 (2018), 1-decoy finite-key
+    # bound). Corroborating primary datum, Lucamarini et al., Opt. Express 21, 24550 (2013), Fig. 2
+    # caption: "1.4x10^5 counts ... is the smallest sample size providing a positive rate" at 50 km.
+    #
+    # 2_000_000 gives **12,442 sifted bits**, above that band. This does NOT make the displayed rate
+    # finite-key correct - no finite-key correction is applied anywhere in this project, and the UI
+    # says so - but it is the first setting at which the asymptotic number describes a block that
+    # could carry a real key. Publishing an asymptotic rate for a block that provably yields zero is
+    # the thing this changes.
+    #
+    # Free either way in the browser: `bb84()` in `quantumSim.ts` is analytic, not a per-pulse loop.
+    # The Python Monte Carlo does allocate per-pulse arrays - measured 0.07 s and ~0.13 GB peak here,
+    # against 0.66 s and ~1.04 GB at 20e6, which is why this is 2e6 and not larger.
+    pulses: int = 2_000_000
     distance_km: float = 50.0
     # SOURCE REPETITION RATE, in Hz. THE ONLY ASSUMED QUANTITY IN THE QKD MODEL, and it is assumed
     # rather than derived because it is a property of a transmitter this project does not own.
@@ -460,8 +478,20 @@ class WebConfig:
     agent_timeout_ms: int = 120_000     # bounds a stuck WebGPU/model load (slow first-run ~60-70 s)
     tfjs_max_new_tokens: int = 96
     webllm_max_tokens: int = 160
-    demo_alice_bob_pulses: int = 40_000
-    demo_sat_pulses: int = 4_000_000    # free-space BB84 channel uses in the demo satellite run
+    # Raised with `QKDConfig.pulses` for the same reason - see the note there. At 40_000 the decoy
+    # bound gives 94 secure bits, below the 256 a session key needs, so `/validations` reported a
+    # positive bit count beside prose reading "no secure key bits".
+    demo_alice_bob_pulses: int = 400_000
+    # 4_000_000 gave **223** secure bits over the 800 km free-space downlink under the decoy bound -
+    # below the 256 threshold `SatelliteQKDStage` needs to derive a key, so the satellite use case
+    # stopped folding QKD into its session entirely. 10_000_000 gives 559.
+    #
+    # AND THE HONEST RESIDUAL, recorded rather than engineered away: at 10e6 the downlink yields
+    # ~3,660 sifted bits, still BELOW the ~5e3-1.1e4 finite-key positive-key band. Clearing it there
+    # would need ~30e6 pulses and ~1.5 GB of Python array, and the reason is physical - 24.48 dB of
+    # loss at 800 km. The free-space rate is therefore asymptotic-only in a stronger sense than the
+    # fibre one, and the register says so rather than the number pretending otherwise.
+    demo_sat_pulses: int = 10_000_000   # free-space BB84 channel uses in the demo satellite run
 
 
 @dataclass

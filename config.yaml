@@ -4,7 +4,14 @@
 # Point at a different file with the QSH_CONFIG environment variable.
 
 qkd:
-  pulses: 200000
+  # Kept in step with `QKDConfig.pulses` in src/qsh/config/defaults.py, which carries the reasoning:
+  # 200000 gave 1,244 sifted bits, below the ~5e3-1.1e4 finite-key positive-key band, so an
+  # asymptotic rate was being published for a block that provably yields no composably-secure key.
+  #
+  # This file SHADOWS the dataclass and the header above promises it shows the defaults, so a value
+  # changed there and not here makes that promise false while every gate stays green. It did:
+  # raising the dataclass to 2_000_000 moved nothing until this line changed too.
+  pulses: 2000000
   distance_km: 50.0
   fiber_loss_db_per_km: 0.2
   detector_efficiency: 0.25
