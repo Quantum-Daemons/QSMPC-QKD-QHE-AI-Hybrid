@@ -123,6 +123,49 @@ def test_resume_after_an_effective_pause_actually_continues() -> None:
     assert "pipeline_end" in seen
 
 
+def test_stop_is_two_events_too() -> None:
+    """The same defect sat one line below the pause fix and Round 41 did not look.
+
+    `clientCompute.ts` emits `pipeline_stop_requested` (the request) and the browser reads it into a
+    "stopping" badge. Python emitted only `PIPELINE_STOP`, from inside the loop - the EFFECT, under
+    a name the browser does not use for that. So over the backend transport the request never
+    arrived, `pipeline_stop` had no reader in `web/src` at all, and `usePipelineRun.ts`'s own comment
+    asserted "the pipeline emits pipeline_stop_requested" about a pipeline that did not.
+
+    Asserted here rather than in a new file on purpose: a second file would be a second gate looking
+    at one side, which is the thing this round is about.
+    """
+    names = {e.value for e in EventType}
+    assert "pipeline_stop_requested" in names, "the request half of stop is missing on the Python side"
+    assert "pipeline_stop" in names
+
+    p, seen = _pipeline()
+    t = threading.Thread(target=lambda: p.run(Context()), daemon=True)
+    t.start()
+    time.sleep(0.08)
+    p.request_stop()
+    t.join(timeout=10)
+
+    assert "pipeline_stop_requested" in seen, (
+        "request_stop() emitted nothing; the UI cannot show 'stopping' over this transport"
+    )
+    assert "pipeline_stop" in seen, "the run never announced that it had actually halted"
+    assert seen.index("pipeline_stop_requested") < seen.index("pipeline_stop"), (
+        "the halt was announced before the request - a run reporting it stopped before it had"
+    )
+    assert p.state is PipelineState.STOPPED
+
+
+def test_the_browser_reads_both_halves_of_stop_as_well() -> None:
+    """Same reason as the pause twin: a rename on the TypeScript side re-splits the pair."""
+    src = TS.read_text()
+    assert 'e.type === "pipeline_stop_requested"' in src, "the browser no longer reads the request"
+    assert 'e.type === "pipeline_stop"' in src, (
+        "the browser does not read `pipeline_stop`, so a backend run that halts announces it to "
+        "nobody and the badge stays on 'stopping'"
+    )
+
+
 def test_the_browser_still_reads_the_same_two_names() -> None:
     """If the TypeScript side is renamed, this fix is half-applied again.
 

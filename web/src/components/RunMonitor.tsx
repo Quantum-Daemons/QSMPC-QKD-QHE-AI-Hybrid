@@ -31,7 +31,13 @@ export default function RunMonitor({
             {Object.entries(metrics).map(([k, v]) => (
               <tr key={k}><td className="muted">{k}</td><td className="mono">{String(v)}</td></tr>
             ))}
-            {Object.keys(metrics).length === 0 && <tr><td className="muted">no metrics yet</td></tr>}
+            {/* `colSpan={2}`. Every other row in this table has two cells; this one had one, so a
+                screen reader announced a row with a missing second column - it reads as data that
+                failed to load rather than as an empty table. SC 1.3.1: the row's structure has to
+                match the structure it is announced within. */}
+            {Object.keys(metrics).length === 0 && (
+              <tr><td className="muted" colSpan={2}>no metrics yet</td></tr>
+            )}
           </tbody>
         </table>
         {signature && (
