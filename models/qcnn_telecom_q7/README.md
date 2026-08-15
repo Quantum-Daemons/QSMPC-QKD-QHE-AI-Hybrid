@@ -1,5 +1,7 @@
 # Variational QCNN - telecom, 7 wires
 
+> **Round 46 re-measured this artifact.** The circuit was replaced with a real QCNN (shared two-qubit conv filter, pooling by conditioned rotation, register reduction); the previous figures came from a hardware-efficient ansatz that was labelled a QCNN and was not one. Current headline `macro_f1` = **0.510417**.
+
 NOT PUBLISHED TO HUGGING FACE, AND NOT IN THE MODEL REGISTRY. This is a browser-side demonstration
 circuit for the `telecom_ids` page of
 [QSMPC-QKD-QHE-AI-Hybrid](https://github.com/thedaemon-wizard/QSMPC-QKD-QHE-AI-Hybrid). It carries no
@@ -18,7 +20,7 @@ same circuit trained at the width the data actually asks for.
 
 ## What it is
 
-**6** layers of trainable RY rotations plus a CNOT ring on **7 qubits**, all 7 features encoded as
+**6** conv rounds of a SHARED two-qubit filter (RY,RZ - CNOT - RY,RZ) with pooling by a rotation on the survivor conditioned on its partner, on **7 qubits**, reducing the register 7 -> 3; then a fully-connected block on the survivors (50 shared parameters), all 7 features encoded as
 `RY(tanh(z) * pi)` on wires 0-6 with no padding wire. Readout, class map and scaling convention are
 identical to the 8-wire card next door (`readout_qubits: 3`, `bit_order: "lsb_first"`,
 `class_index: "c = i & 7"`, 8-element `scale`/`bias`) - only the width differs, which is the whole
@@ -34,8 +36,8 @@ Same corpus, split, seed, layers and epoch budget as the 8-wire model. Only the 
 
 | | 8 wires (default) | **7 wires (this model)** |
 |---|---|---|
-| macro F1 | 0.809846 | **0.731204** |
-| accuracy | 0.810417 | **0.735417** |
+| macro F1 | 0.510417 | **0.731204** |
+| accuracy | 0.510417 | **0.735417** |
 | classes predicted | 8 of 8 | **8 of 8** |
 | classical LR macro F1 | 0.976447 | 0.976447 |
 

@@ -81,7 +81,7 @@ def test_every_tracked_pdf_is_adjudicated_and_kept() -> None:
     missing = [p for p in _tracked_pdfs() if Path(p).name not in kept]
     assert not missing, (
         "these PDFs are committed - every clone receives them - and no row in section 8 of "
-        f"DATA_LICENSES.md records a licence permitting that:\n  " + "\n  ".join(missing)
+        "DATA_LICENSES.md records a licence permitting that:\n  " + "\n  ".join(missing)
         + "\n\nAdjudicate at PRIMARY SOURCE and add a row. For an arXiv paper use OAI-PMH:\n"
         "  https://oaipmh.arxiv.org/oai?verb=GetRecord&metadataPrefix=arXiv"
         "&identifier=oai:arXiv.org:NNNN.NNNNN\n"

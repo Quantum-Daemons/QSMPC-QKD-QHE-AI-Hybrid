@@ -250,7 +250,9 @@ def circuit(x: torch.Tensor, theta: torch.Tensor, nq: int = N_QUBITS,
             # by every pair in this stage - that sharing is what the word "convolution" denotes.
             r = step.get("_round", 0)
             w = conv[stage, r]
-            for a, b in zip(active[0::2], active[1::2]):
+            # strict=False on purpose: an ODD register leaves an orphan, which is
+            # dropped here and pooled into the first survivor below.
+            for a, b in zip(active[0::2], active[1::2], strict=False):
                 # RY,RZ on each wire -> CNOT -> RY,RZ on each. One filter, every position.
                 for wire, iy, iz in ((a, 0, 1), (b, 2, 3)):
                     state = apply_1q(state, wire, _ry(w[iy], cdt), nq)
@@ -261,7 +263,7 @@ def circuit(x: torch.Tensor, theta: torch.Tensor, nq: int = N_QUBITS,
                     state = apply_1q(state, wire, _ry(w[iy], cdt), nq)
                     state = apply_1q(state, wire, _rz(w[iz], cdt), nq)
         elif step["kind"] == "pool":
-            pairs = list(zip(active[0::2], active[1::2]))
+            pairs = list(zip(active[0::2], active[1::2], strict=False))
             for a, b in pairs:
                 state = apply_cry(state, b, a, pool[stage], nq)   # condition survivor a on b
             # AN ODD REGISTER HAS AN ORPHAN, and it must not simply survive. `active[0::2]` kept it

@@ -109,7 +109,7 @@ def run_bb84(
     *,
     error_correction_eff: float = 1.16,   # f_EC, real Cascade/LDPC overhead (>1)
     seed: int | None = None,
-    qkd_params: "QKDParams | None" = None,
+    qkd_params: QKDParams | None = None,
     entropy: str | None = None,           # "qrng" -> seed the basis/bit choices from the quantum RNG
 ) -> QKDResult:
     """Simulate a decoy-state BB84 session over ``n_pulses`` channel uses.
