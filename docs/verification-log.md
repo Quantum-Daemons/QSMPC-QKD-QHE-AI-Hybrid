@@ -1308,3 +1308,75 @@ looks for what was seen on the page, and the entry that missed it is in this fil
 non-decoy GLLP fraction multiplied by an assumed clock, while three surfaces called it a decoy-state
 bound; Round 45 measured that gap at 4.07x and replaced the model. The Round 44 numbers above are
 correct as a record of what was on the page that day, and are not the current expected values.
+
+## Round 45 (`b914e8f` on its branch, bundle `index-DKpFP7vh.js`) - the rate was 4.07x the bound the page named
+
+Verified in Chrome against the public deploy, 2026-08-15. Every figure below was read off the page,
+not computed from the source.
+
+**The decoy bound, and it reconciles in both directions.**
+
+| read on the page | value |
+|---|---|
+| `skr_per_pulse` | **0.00235** |
+| `skr_bit_s` | **235,479** |
+| `channel_time_s` | **0.002** |
+| `source_rate_hz` | **100,000,000** |
+| `qkd_pulses` | **200,000** |
+| `secure_key_bits` | **470** |
+| panel `skr` / `eskr` | **235,000** / **176,000** |
+| `key budget` | **352 bit** |
+| `stored_key_count` | **1** = floor(352/352) |
+
+`0.002355 x 1e8 = 235,479`. `200,000 / 1e8 = 0.002 s`. `235,479 x 0.002 = 470.96`, floored to the
+**470** the page prints. The browser figure equals `src/qsh/qkd/bb84.py::_decoy_secure_fraction` to
+better than 1e-9, which is asserted by a gate rather than eyeballed here.
+
+**Before this round the same panel showed ~958,000 bit/s**, from the non-decoy GLLP fraction on the
+observed QBER, while three surfaces called it a decoy-state bound.
+
+**The Source rate control is real, which is the check no source gate can make.** Moving it from 100
+to 250 MHz, on the deployed page:
+
+| | 100 MHz | 250 MHz | expected |
+|---|---|---|---|
+| `skr_bit_s` | 235,479 | **588,697** | x2.5 = 588,698, to rounding |
+| `channel_time_s` | 0.002 | **0.0008** | /2.5 |
+| `skr_per_pulse` | 0.00235 | **0.00235** | unchanged - the bound is a property of the channel, not the clock |
+| panel `skr` | 235,000 | **587,500** | scales |
+
+Two rendered strings promised this control before it existed. The third row is the one that matters:
+a control that moved the per-pulse figure too would mean the clock had leaked into the physics.
+
+**`/validations` shows a number again.** `secret key rate (per pulse)` reads **0.002355** where it
+had rendered an empty cell since Round 44; `secure key bits` **94** = floor(0.002355 x 40,000), the
+`demo_alice_bob_pulses` count. QBER 0.0124, eavesdropper false.
+
+**`/orchestration?usecase=` resolves or explains itself.**
+`?usecase=nonsense_value` renders *"There is no use case called nonsense_value. Showing Finance —
+cross-bank AML / PSI instead - pick another from the selector below."* and the selector reads
+`finance_aml`. `?usecase=satellite_comms` selects satellite with no notice. Both directions walked.
+
+**The two source-rate controls are per channel, not shared.** The satellite page renders
+`sat_source_rate_mhz` and NOT `qkd_source_rate_mhz`; the fibre pages render the reverse. That mirrors
+`sat_distance_km` / `qkd_distance_km`, whose conflation once had the satellite page evaluating a
+free-space model at fibre parameters.
+
+**All ten pages walked**: `/`, `/value`, `/usecases`, `/orchestration`, `/validations` and the five
+use-case pages. Zero occurrences of `NaN`, `undefined` or `Infinity` in rendered text on any of them,
+correct `h1` on each, and **no console errors or warnings** from this bundle across the sweep.
+
+**The E91 label, walked rather than inferred.** This was going to be recorded as a stated limit -
+verified by gate and by source reading only - and it was cheap enough to close instead. Selecting
+`e91` in the Parameters panel (`pp-proto`) and running telecom_ids on the deployed page:
+
+| row | rendered |
+|---|---|
+| QKD key material | `1597 secure bits` - measured, `E91 / CHSH run, GLLP secure fraction` |
+| Secret-key rate | `0.00799 per pulse` - measured, **`GLLP secure fraction on the observed QBER; E91 has no decoy states`** |
+| `chsh_s` | **2.7** (above the classical bound of 2, so a key exists) |
+
+Before this round that second row read *"GLLP bound over the decoy-state estimate"* on this page,
+because it was emitted outside the protocol branch three lines above it. E91 is entanglement-based
+and has no attenuated laser to put decoy states on, so the page was attributing its key to a
+technique the protocol cannot use. The word "decoy" still appears in the row - now negating.
