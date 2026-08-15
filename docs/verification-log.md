@@ -1380,3 +1380,58 @@ Before this round that second row read *"GLLP bound over the decoy-state estimat
 because it was emitted outside the protocol branch three lines above it. E91 is entanglement-based
 and has no attenuated laser to put decoy states on, so the page was attributing its key to a
 technique the protocol cannot use. The word "decoy" still appears in the row - now negating.
+
+## Round 46 (`f5c1d0a`-era branch, bundle `index-CtNKHnlK.js`) - both languages, one model, and a block size that can carry a key
+
+Verified in Chrome against the public deploy, 2026-08-15. Every figure read off the page.
+
+**The block size, and the counterfactual that was inert until this round.**
+
+| read on the page | value |
+|---|---|
+| `qkd_pulses` (control) | **2,000,000** |
+| `skr_per_pulse` | **0.002355** |
+| `skr_bit_s` | **235,479** |
+| `channel_time_s` | **0.02** |
+| `secure_key_bits` | **4,709** |
+| `skr_per_pulse_no_decoy` | **0** |
+| panel `skr` / `eskr` | **235,500** / **176,650** |
+| `key budget` | **3,532 bit** |
+| `stored_key_count` | **10** = floor(3532/352) |
+
+`0.002355 x 2e6 = 4,710`, floored to the 4,709 shown. `2e6 / 1e8 = 0.02 s`. The bit/s figure is
+UNCHANGED by the pulse increase, correctly - a rate is per-pulse times clock, and only the totals
+scale. `stored_key_count` was 1 at 200,000 pulses.
+
+**`skr_per_pulse_no_decoy` renders 0**, and that is the point of emitting it. Round 45 added the
+field with a JSDoc saying "Reported beside `secretKeyRate`" and nothing read it. It is zero because
+the tagged fraction is 7.26 at mu = 0.5: without decoy states this link certifies no detection as
+single-photon and yields nothing at all. The counterfactual is now visible rather than asserted.
+
+**The 0-255 band, walked at two distances.** At 95 km the run gives 499 secure bits and no warning -
+correct, it is above the threshold. At 115 km:
+
+    secure_key_bits   141
+    stored_key_count  0
+    "... below the 256 a session key needs, so no QKD key is derived and the session rests on the
+     PQC hybrid alone. The bits are real; there are not enough of them."
+
+Before this round that band printed "no secure key bits" beside a positive count, and fired no
+warning at all because the test was `keyBits === 0` while the behaviour switches at 256. Raising the
+pulse count also moved the entry to the band from ~63 km to ~110 km, so the cliff is no longer three
+clicks from the default.
+
+**The QCNN runs in the browser**, on `/usecase/telecom_ids` with Inference set to QCNN:
+`qcnn_qubits 8`, `qcnn_classes_available 8`, `qcnn_inference_ms 1.92`, class rendered. This is the
+ported architecture - shared conv filter, pooling by conditioned rotation, register reduction - not
+the ansatz it replaced, and it is the same circuit the trainer and `qsh/qhe/qcnn_trained.py` run.
+
+**The provenance strings are protocol-correct**: `BB84 decoy-state run, two-intensity secure
+fraction` and `two-intensity decoy-state bound, Ma, Qi, Zhao & Lo, Phys. Rev. A 72, 012326 (2005)`.
+
+Zero occurrences of `NaN`, `undefined` or `Infinity` in rendered text on any page walked.
+
+**A limit, stated.** The ten-page sweep for this round covered `/usecase/finance_aml` and
+`/usecase/telecom_ids` in depth plus the pages reached during the Round 45 sweep on an earlier
+bundle. The remaining seven were not re-walked on `index-CtNKHnlK.js`, so their cleanliness is
+inherited from the previous bundle rather than measured on this one.
