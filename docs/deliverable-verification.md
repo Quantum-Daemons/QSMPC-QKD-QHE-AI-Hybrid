@@ -1906,11 +1906,20 @@ cryptography since 2026-08-01; arXiv cs.CR's newest is 2608.13465 (2026-08-13) a
 empty set. One correction against our own interest: NIST CSRC has **two** August 2026 items, not one;
 the added item is a sector CSF profile, so the conclusion holds and the word "only" was wrong.
 
-**Where this round shipped its own defect.** The licence gate's scope was `models.tex`; when the
-licences moved to `licences.tex` as part of the fix, it went red on all seven and reported correct
-output as broken. The seed-position gate enumerated `qcnn_*/README.md`, so a new artifact with **no
-card at all** satisfied "every card documents its seed". Both were found by running them, not by
-reading them.
+**Where this round shipped its own defect.** Three, all caught by running rather than reading:
+
+- The licence gate's scope was `models.tex`; when the licences moved to `licences.tex` **as part of
+  the fix**, it went red on all seven and reported correct output as broken.
+- The seed-position gate enumerated `qcnn_*/README.md`, so a new artifact with **no card at all**
+  satisfied "every card documents its seed". It now enumerates `weights.json`.
+- The new `PM5` row collided with an existing `PM5`, and `report/build_data.py::_count_rows` refused
+  to build - the duplicate-ID guard a previous round added, catching this round's row on the first
+  rebuild after it was written. Renamed `PM6`. **The guard was worth more than the care that skipped
+  it**, which is the argument for having it.
+
+And gate 6 caught gate 16: the first version put the business document's Japanese filename into both
+`ci_local.sh` and this file, and the no-Japanese-in-public-files rule failed on the check written to
+enforce a different rule. The register now describes that file rather than naming it.
 
 ## Verification assets added in Rounds 22-23
 
