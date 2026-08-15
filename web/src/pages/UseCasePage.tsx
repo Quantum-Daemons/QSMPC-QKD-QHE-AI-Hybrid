@@ -287,8 +287,13 @@ function UseCaseView({ usecase }: { usecase: string }) {
         // long it is. Terrestrial fibre is the opposite, which is why the relay caveat exists.
         maxSpanKm={usecase === "satellite_comms" ? Infinity : undefined}
         // secure_key_bits is the key material this run actually produced, which is what the
-        // controller's allocation budget is denominated in. metrics.skr is per-pulse and is not.
+        // controller's allocation budget is denominated in. `skr_per_pulse` is per-pulse and is not.
         keyBudgetBits={Number(metrics.secure_key_bits ?? 0)}
+        // From the RUN's own metrics, not from the params. The panel must render what ran, and a
+        // visitor can edit the params after a run without re-running.
+        secretKeyRatePerPulse={Number(metrics.skr_per_pulse ?? 0)}
+        sourceRateHz={Number(metrics.source_rate_hz ?? 0)}
+        pulses={Number(metrics.qkd_pulses ?? 0)}
         qkdEnabled={run.qkd !== "pqc-only"} />
 
       <div className="note" style={{ marginTop: 16, fontSize: 12 }}>
