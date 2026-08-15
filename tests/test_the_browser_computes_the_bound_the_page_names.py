@@ -205,13 +205,28 @@ def test_the_bound_does_not_move_with_the_seed() -> None:
     )
 
 
-def test_the_non_decoy_figure_is_still_available_and_is_larger() -> None:
+def test_the_non_decoy_counterfactual_is_reported_and_is_not_larger() -> None:
     """Both numbers, because the counterfactual is the point of computing a decoy bound at all.
 
-    `taggedFraction()` was added in Round 29 to show what decoy states buy on this channel, and has
-    never fed anything. Exposing the non-decoy rate beside the decoy one is what makes the
-    comparison visible - and asserting it is STRICTLY LARGER catches the failure mode where both
-    fields end up wired to the same function and agree perfectly for the wrong reason.
+    THE FIRST VERSION OF THIS TEST ASSERTED THE WRONG DIRECTION, and the model corrected it. It
+    required the non-decoy figure to be LARGER, reasoning that the browser's old number was larger
+    and the old number was the non-decoy one. It was not: the old number credited every sifted bit
+    as single-photon (`p1 = 1`), which is neither a decoy bound nor a non-decoy bound but an
+    unbounded estimate stronger than both. Recorded rather than quietly swapped, because mistaking
+    "the number that was displayed" for "the number without the certification" is exactly how the
+    mislabel survived seven surfaces for sixteen rounds.
+
+    The real ordering, at this operating point:
+
+        non-decoy GLLP   0.000000 bit/pulse   <- Delta = 7.26, no detection certifiable
+        decoy bound      0.002355 bit/pulse   <- what the page now shows
+        old display      0.009434 bit/pulse   <- p1 = 1, mu ~ 1; not a bound at all
+
+    Decoy states RAISE what an operator may claim, by letting Y1 and e1 be estimated instead of
+    discarded. So the counterfactual must be <= the bound, and at mu = 0.5 it is zero outright -
+    `decoy_reference.py`'s docstring makes the same point about the GYS parameter set, where the
+    tagged fraction exceeds 1 at zero distance. "Without decoy states this link yields nothing" is a
+    sharper thing to show a reader than a merely smaller number.
     """
     b = _browser()
     nd = b["nonDecoy"][0]
@@ -219,10 +234,14 @@ def test_the_non_decoy_figure_is_still_available_and_is_larger() -> None:
         "`bb84()` no longer reports the non-decoy figure. The decoy bound alone is a number with "
         "nothing to compare it to; the counterfactual is what shows the assumption doing work."
     )
-    assert nd > b["rates"][0], (
-        f"the non-decoy figure {nd:.6f} is not larger than the decoy bound {b['rates'][0]:.6f}. "
-        "Dropping the single-photon certification can only ever RAISE an unbounded estimate, so "
-        "these two being equal means one field is reading the other's function."
+    assert nd <= b["rates"][0] + 1e-12, (
+        f"the non-decoy figure {nd:.6f} exceeds the decoy bound {b['rates'][0]:.6f}. Decoy states "
+        "let Y1 and e1 be ESTIMATED rather than discarded, so removing them cannot raise the rate. "
+        "A counterfactual above the bound means one of the two is not computing what it claims."
+    )
+    assert b["rates"][0] > 0, (
+        "the decoy bound is zero at the demo's operating point, so the panel would show no key at "
+        "all - check the channel defaults before believing the counterfactual comparison"
     )
 
 

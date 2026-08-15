@@ -156,9 +156,21 @@ export function intrinsicQber(p: ChannelParams): number {
  * Eve splits a photon from every multi-photon pulse and keeps it, so in the worst case every such
  * detection is hers. Delta >= 1 means no key at any distance or error rate.
  *
- * This is reported rather than used: the runtime model is the asymptotic decoy-state one, which
- * already assumes the decoy method has bounded the single-photon contribution. That assumption is
- * invisible until you compute what the same link would do without it, which is what this shows.
+ * ROUND 45 CORRECTED THIS PARAGRAPH, WHICH WAS FALSE. It used to say "the runtime model is the
+ * asymptotic decoy-state one, which already assumes the decoy method has bounded the single-photon
+ * contribution". It did not. Until this round `bb84()` computed `1 - h2(q) - f h2(q)` on the
+ * OBSERVED QBER - the non-decoy GLLP form - and no decoy quantity reached the rate at all. This
+ * function was called exactly once, in `clientCompute.ts`, and its only consumers were a display
+ * string and a warning: the decoy estimate was computed, printed beside the rate, and never fed it.
+ *
+ * The claim was also stronger than a decoy bound could be, not weaker. Crediting every sifted bit as
+ * single-photon (`p1 = 1`) and using the transmittance as the detection probability (`mu ~ 1`) are
+ * assumptions no decoy protocol can justify, so the mislabel inflated the figure by 4.07x at the
+ * demo's own operating point rather than rounding it off.
+ *
+ * `bb84()` now calls `decoySecureFraction()` below, and Delta is still worth computing for exactly
+ * the reason this paragraph originally gave: the assumption is invisible until you see what the same
+ * link would do without it.
  *
  * Ma, Qi, Zhao, Lo, Phys. Rev. A 72, 012326 (2005) for the gain; GLLP, QIC 4, 325 (2004) for the
  * tagged-fraction bound. Mirrors `src/qsh/qkd/decoy_reference.py`, whose test suite asserts the
@@ -179,9 +191,90 @@ export interface BB84Result {
   secretKeyRate: number;
   secureKeyBits: number;
   channelLossDb: number;
+  /**
+   * The same link with the decoy-state certification removed, per pulse.
+   *
+   * Reported beside `secretKeyRate` rather than instead of it, because a bound with nothing to
+   * compare it to reads as a measurement. This is the counterfactual `taggedFraction()` was added to
+   * express in Round 29 and never got to: what the operator would be entitled to claim if the
+   * multi-photon pulses could not be accounted for.
+   *
+   * Always >= `secretKeyRate`: dropping a certification can only raise an unbounded estimate.
+   *
+   * OPTIONAL, and its absence is a claim rather than a gap. `e91()` does not set it, because there
+   * are no decoy states in entanglement-based QKD to remove: decoys are a countermeasure for the
+   * multi-photon pulses an attenuated laser emits, and E91 has no such source. Filling this in with
+   * the E91 rate would assert that decoy states buy nothing there, which is a statement about a
+   * technique that does not apply.
+   */
+  secretKeyRateNonDecoy?: number;
 }
 
-// Analytic decoy-state BB84 (GLLP secure fraction), matching run_bb84() in expectation.
+/**
+ * Two-intensity decoy-state secret key rate per pulse. Ma, Qi, Zhao & Lo, Phys. Rev. A 72, 012326
+ * (2005), Eqs. 34-37 for the bounds and the GLLP rate that consumes them.
+ *
+ * PORTED, NOT DERIVED. This is a transcription of `_decoy_secure_fraction` in `src/qsh/qkd/bb84.py`,
+ * which `tests/test_the_browser_computes_the_bound_the_page_names.py` asserts this against at full
+ * precision by executing both. The neighbouring `src/qsh/qkd/decoy_reference.py` reproduces the
+ * paper's own published curves in its own test suite. Re-deriving the algebra here would have given
+ * the browser a second, unchecked implementation of a formula the repository already owns twice -
+ * and "two implementations of one thing" is this project's most expensive recurring defect.
+ *
+ * WHAT IT FIXES. A signal intensity `mu` and a weaker decoy intensity `nu` let Y1 be lower-bounded
+ * and e1 upper-bounded from the two observed gains, so the rate can credit the single-photon
+ * contribution `Q1` and discard the rest. Before this round the browser credited EVERYTHING as
+ * single-photon and used `eta` as the detection probability, which asserts mu ~ 1 photon/pulse -
+ * two assumptions no decoy protocol can deliver, on a figure the page labelled a decoy bound.
+ *
+ * Returns the per-pulse rate together with the signal QBER and the single-photon error bound, so a
+ * caller cannot publish the rate without the two quantities that determine it.
+ */
+export function decoySecureFraction(
+  eta: number, mu: number, nu: number, eDet: number, y0: number, fEC: number, siftRatio: number,
+): { perPulse: number; eMu: number; e1: number } {
+  const e0 = 0.5;                                     // a dark count is uncorrelated: wrong half the time
+  const qMu = y0 + 1 - Math.exp(-eta * mu);           // overall signal gain
+  if (!(qMu > 0)) return { perPulse: 0, eMu: 0.5, e1: 0.5 };
+  const eMu = (e0 * y0 + eDet * (1 - Math.exp(-eta * mu))) / qMu;
+  const qNu = y0 + 1 - Math.exp(-eta * nu);           // overall decoy gain
+  // The decoy must be strictly weaker than the signal or the two gains carry the same information
+  // and Y1 cannot be separated out. Returning zero rather than throwing: a misconfigured intensity
+  // pair is an operator error the panel should render as "no key", not a crash on a public page.
+  if (mu <= nu || !(qNu > 0)) return { perPulse: 0, eMu, e1: 0.5 };
+  const eNu = (e0 * y0 + eDet * (1 - Math.exp(-eta * nu))) / qNu;
+  const y1 = Math.max(0, (mu / (mu * nu - nu * nu)) * (
+    qNu * Math.exp(nu) - ((nu * nu) / (mu * mu)) * qMu * Math.exp(mu)
+    - ((mu * mu - nu * nu) / (mu * mu)) * y0));
+  const q1 = y1 * mu * Math.exp(-mu);                 // secure single-photon gain
+  const e1 = y1 > 0
+    ? Math.min(0.5, Math.max(0, (eNu * qNu * Math.exp(nu) - e0 * y0) / (y1 * nu)))
+    : 0.5;
+  const r = q1 * (1 - h2(e1)) - fEC * qMu * h2(eMu);
+  return { perPulse: Math.max(0, r) * siftRatio, eMu, e1 };
+}
+
+// Decoy-state BB84, matching run_bb84(qkd_params=...) in `src/qsh/qkd/bb84.py`.
+//
+// ROUND 45 MADE THIS FUNCTION MATCH ITS OWN NAME. It was headed "Analytic decoy-state BB84 (GLLP
+// secure fraction)" while computing `1 - h2(q) - f h2(q)` on the observed QBER, which is the GLLP
+// form for a link with NO decoy states, and no decoy quantity entered it. Two departures from
+// physics rode along, both inflating the result:
+//
+//   - `nSift` used the transmittance `eta` as the per-pulse detection probability. For a weak
+//     coherent source that probability is `1 - exp(-eta mu)`, so using eta asserts mu ~ 1
+//     photon/pulse. Real decoy systems run mu ~ 0.4-0.5.
+//   - every sifted bit was credited as single-photon, i.e. p1 = 1, which is stronger than any decoy
+//     bound can deliver rather than an approximation of one.
+//
+// At the demo's own operating point - 50 km, shipped fibre defaults - that was 0.009434 bit/pulse
+// against 0.002355 from the bound this repository already implements in Python: 4.01x, published as
+// ~958 kbit/s once Round 44 multiplied it by an assumed 100 MHz clock. For scale, Yuan et al.,
+// IEEE/OSA JLT 36, 3427 (2018), report >1 Mb/s at 1 GHz over 50 km of fibre for the T12 protocol -
+// >0.001 bit/pulse - and say T12 sifts about twice as efficiently as the standard BB84 modelled
+// here. The old figure was ~9.6x a real deployed link; the bound below is ~2.4x it, which the
+// optimistic detector efficiency (0.25) and the asymptotic treatment account for.
+//
 // `fEC` and `visibility` default from CONFIG, not from a literal. They were `1.16` and `0.97`
 // written here, and `error_correction_eff` had no reader anywhere in `web/src` outside
 // `config.defaults.json` - so editing config moved the Python model and left the browser on the
@@ -191,22 +284,47 @@ export interface BB84Result {
 export function bb84(nPulses: number, p: ChannelParams, seed = 0,
                      fEC = qkdCfg().error_correction_eff): BB84Result {
   const u = rng(seed + 1);
-  const T = transmittance(p);
-  const nSift = Math.max(0, Math.round(nPulses * T * 0.5)); // detected & bases match
-  const e0 = intrinsicQber(p);
-  // sampling noise on the measured QBER (binomial -> gaussian for large nSift)
-  const std = nSift > 0 ? Math.sqrt((e0 * (1 - e0)) / nSift) : 0;
-  const qber = Math.min(0.5, Math.max(0, e0 + std * gauss(u)));
-  const secureFraction = Math.max(0, 1 - h2(qber) - fEC * h2(qber));
+  const eta = transmittance(p);
+  const cfg = qkdCfg();
+  const mu = Math.max(1e-3, cfg.mu_signal);
+  const nu = Math.min(Math.max(1e-4, cfg.mu_decoy), mu * 0.9);  // strictly weaker than the signal
+  const y0 = 2 * p.darkCount;                                   // background yield, two detectors
+  const eDet = intrinsicQber(p);
+  // Detections come from the GAIN, not from eta: Q_mu = Y_0 + 1 - exp(-eta mu). This halves the
+  // sifted count at the shipped defaults (0.0124 against 0.0250) and it is the correction, not a
+  // regression - the previous figure counted one detection per transmitted photon.
+  const qMu = y0 + 1 - Math.exp(-eta * mu);
+  const nSift = Math.max(0, Math.round(nPulses * qMu * 0.5)); // detected & bases match
+
+  // The MEASUREMENT still fluctuates: sampling noise on the observed QBER, binomial -> gaussian.
+  const std = nSift > 0 ? Math.sqrt((eDet * (1 - eDet)) / nSift) : 0;
+  const qber = Math.min(0.5, Math.max(0, eDet + std * gauss(u)));
+
+  // The BOUND does not. It is a function of the channel, and it takes the INTRINSIC error rate -
+  // exactly as the Python path does - so it is identical across seeds while the QBER above varies.
+  // Deriving it from the sampled QBER is what made the public figure move between page loads:
+  // five seeds gave five different "bounds", 0.008992 to 0.009577.
+  const decoy = decoySecureFraction(eta, mu, nu, eDet, y0, fEC, 0.5);
+
+  // The counterfactual, on the same channel: GLLP with the multi-photon fraction untagged. Kept
+  // beside the bound because the assumption is invisible without it.
+  const delta = taggedFraction(mu, p);
+  const untagged = 1 - delta;
+  const nonDecoy = delta >= 1 ? 0 : Math.max(0, 0.5 * qMu * (
+    untagged - fEC * h2(decoy.eMu) - untagged * h2(Math.min(0.5, decoy.eMu / untagged))));
+
   return {
     qber,
     siftedBits: nSift,
-    secretKeyRate: nPulses > 0 ? (secureFraction * nSift) / nPulses : 0,
-    secureKeyBits: Math.floor(secureFraction * nSift),
+    secretKeyRate: decoy.perPulse,
+    // skr * pulses, as the Python path does. Deriving bits from a separate fraction times nSift is
+    // how the two could drift apart while both looked reasonable.
+    secureKeyBits: Math.floor(decoy.perPulse * nPulses),
     // channelLossDb(), not the linear product: with the free-space model selected `lossDbPerKm`
     // is 0, so recomputing it here would have REPORTED 0 dB on the satellite page while the
     // transmittance above used the real diffraction figure.
     channelLossDb: Math.round(channelLossDb(p) * 10) / 10,
+    secretKeyRateNonDecoy: nonDecoy,
   };
 }
 

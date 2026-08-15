@@ -94,7 +94,21 @@ export default function ParameterPanel({ run }: { run: Run }) {
       ["Distance (km)", "qkd_distance_km", 5, 1, "fibre distance - raises loss + QBER"],
       // Both feed intrinsicQber, which saturates at 0.5, so anything past these renders identically.
       ["Eve fraction", "qkd_eve", 0.05, 0, "intercept-resend fraction (0-1) - raises QBER", 1],
-      ["Misalignment", "qkd_misalignment", 0.005, 0, "baseline optical error", 0.5]] });
+      ["Misalignment", "qkd_misalignment", 0.005, 0, "baseline optical error", 0.5],
+      // THE CONTROL THE PANEL ALREADY CLAIMED EXISTED. `SdnControlPlanePanel` told the visitor twice
+      // that skr/eskr "scale exactly with the Source rate control in the Parameters panel", and no
+      // such control was ever rendered - the rate came from baked config. Six inert controls have
+      // been found in this project; that was the inverse, and worse, because the sentence sent a
+      // reader looking for something that was not there.
+      //
+      // In MHz because that is the unit the panel prints, and the key name carries it so the one
+      // conversion in `clientCompute.ts` cannot be silently wrong.
+      ["Source rate (MHz)", "qkd_source_rate_mhz", 10, 1,
+       "ASSUMED source repetition rate. No QKD hardware exists in this project and nothing here "
+       + "measures a clock, so bit/s figures are this run's per-pulse bound multiplied by whatever "
+       + "you set here. Default 100 MHz is the rate reported by arXiv:2607.24118 for a 2 km "
+       + "free-space link - carried over, not measured on fibre. Moving this moves skr, eskr and "
+       + "the channel time together"]] });
   // The satellite channel, which `satellite_qkd` and `qsdc_telemetry` have always read and nothing
   // ever rendered. Without these the QSDC abort threshold could not be reached from the UI: Eve was
   // pinned at 0, so free-space QBER stayed near 0.033 against a 0.11 abort threshold.
@@ -127,7 +141,16 @@ export default function ParameterPanel({ run }: { run: Run }) {
       ["Pointing (dB)", "sat_pointing_db", 0.5, 0,
        "fixed pointing and tracking loss, likewise range-independent. With Atmospheric this is the "
        + "floor under total channel loss: the diffraction term falls to zero in the near field, "
-       + "these two do not", 20]] });
+       + "these two do not", 20],
+      // Its own key, not the fibre page's. `qkd_distance_km` vs `sat_distance_km` exists because a
+      // previous round evaluated the free-space MODEL at the fibre page's PARAMETERS and produced a
+      // number that moved, which is harder to catch than one that does not. A single shared source
+      // rate would rebuild exactly that.
+      ["Source rate (MHz)", "sat_source_rate_mhz", 10, 1,
+       "ASSUMED source repetition rate for the downlink. Its default is the 100 MHz of "
+       + "arXiv:2607.24118, whose own link is free-space - so unlike the fibre page this is the "
+       + "anchor's own configuration rather than a figure carried across channel types. Still an "
+       + "assumption: no clock is measured anywhere in this project"]] });
   // "QSDC abort at QBER" (qsdc_threshold) was REMOVED here. Once the abort criterion became
   // secrecy capacity - Cs = 1 - h(e) - g*h(e), Qi et al. 2019 - nothing read config.qsdc_threshold,
   // so the control sat in this panel moving no surface on the page. There is no QBER threshold to
