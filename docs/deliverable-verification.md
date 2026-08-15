@@ -1822,6 +1822,96 @@ it first, which its position as first focusable establishes structurally but not
 here rather than reported as a clean keyboard walk, because an over-broad browser assertion that
 reported a false FAIL is already in `docs/verification-log.md` as this project's own warning.
 
+## Round 43: the licence column truncated the caveat, and the record stopped being kept
+
+**The published deliverable overclaimed by truncation.** `report/build_data.py` rendered the Data
+licence column as `esc(s.dataset.licence.split(";")[0][:22])` - two truncations in one expression,
+both cutting from the end. Of the **seven** licences that reach the report, **four are altered and
+three lose their qualifier**:
+
+    CC-BY-4.0 asserted by MedMNIST; the upstream BUSI grant is NOT verifiable  ->  "CC-BY-4.0 asserted by "
+    per-score; EMBL-EBI Terms of Use by default                                ->  "per-score"
+    provider's own pages state conflicting terms                               ->  "provider's own pages s"
+
+"CC-BY-4.0 asserted by " tells a reader the corpus is CC-BY-4.0; the sentence exists to say the
+upstream grant behind that assertion is not verifiable. **Truncation is biased toward overclaiming,
+because a caveat comes last.** The licences now print whole in their own table and the models table
+names the corpus. The gate asserts no rendered cell is a **proper prefix** of a source licence, which
+catches `split(";")` and `[:22]` with one predicate - a length check would have caught the second and
+sailed past the first.
+
+**An earlier draft of this round's plan said "6 of 11 altered, 5 losing a qualifier".** Four of the
+eleven `Dataset` objects in `registry.py` are attached to no `ModelSpec` and never reach the table.
+An overstatement of a defect about overstatement, caught by counting rather than trusting the count.
+
+**The record stopped being kept.** `docs/verification-log.md` ended at Round 38; Rounds 39-42 have no
+entry, the third instance of a gap that file already documents twice. It now carries a **pointer**,
+not four reconstructed entries - the measurements exist in this file's own per-round sections, and a
+reconstruction presented as a record is worse than an absent record, because the absence is visible
+and the imitation is not.
+
+**Three claims this audit made about itself were wrong**, and correcting them is the point:
+
+- **`RI9` was not outstanding.** Its five-way table is transcribed at `verification-log.md:434-444`.
+  Grepping that file for `RI9` returns zero hits because the measurement sits under its own heading
+  and does not name the row. **A search for the label is not a search for the thing.** Only the
+  smuggled-well-formed-key case remains, conditioned `by **Round 45**`.
+- **`PF7` was not violated.** 84.35 + 506.69 does not reconstruct 1,269 because 1,269 is
+  `encrypted_tier_measured_ms`, the whole tier, while `fhe_encrypted_student_ms` is 579. The identity
+  holds by construction in `clientFHE.ts`. The real defect is one sentence calling 1,269 "the whole
+  encrypted student" and then naming 579 as that field - two names for one quantity.
+- **The finance agreement pair was already past tense** at both sites. What it lacked was a round
+  anchor, so `0.947` read as current where `models/metrics.json` says `0.982943`. Both now say
+  Round 24 and name the current value.
+
+**A use-case change cleared one field of the run.** `usePipelineRun.ts` carried the rule - "anything
+keyed to the use case has to be reset when the use case changes" - and implemented `publishedModel`.
+The nine fields a run writes survived, so switching use case after a run left the previous model in
+the DAG caption, its events under the new use case's export filename, and its agreement chart under
+the new selection. `reset()` was itself incomplete at seven of nine.
+
+**The QCNN width control now offers only widths that ship, and training one revealed two more
+things.** 7 wires is impossible for finance and medical - both encode 8 features and the trainer
+refuses a narrower run - so the spare-wire question runs the other way, 8 to 9. The trainer wrote
+`models/qcnn_<usecase>` at every width, so the reproduce command recorded in `qcnn_telecom_q7` would
+have **destroyed the 8-wire artifact**; the output path is now a function of the width. And **the
+width result reverses at five seeds**: seed 0 says +0.099 (finance) and +0.081 (medical) for the
+wider circuit, the median says -0.034 and -0.035. The sign flips on both, for the reason Round 42
+recorded - medical's seed 0 is the worst of five at 8 wires.
+
+**The WebNN condition is stronger than it was written.** In the installed `onnxruntime-web` 1.27.0,
+`ort.wasm.js:3659` has `if (false) { registerBackend("webnn", ...) }` against `ort.webgpu.js:4466`'s
+`if (true)`, and the bundle carries upstream's own *"WebNN EP requires either JSEP or WebGPU EP to be
+enabled."* On the no-adapter path - exactly where WebNN would help - it cannot be requested at all.
+
+**BUSINESS DOC RECONCILED Round 43.** The confidential business-recommendations document - its
+filename is Japanese and is therefore not written here, which is why this paragraph describes it
+instead - lives at the parent directory, **outside this repository**, and 21 consecutive ORDER files
+(18-38) name it in the documentation-merge bullet. Its own title says it covers rounds 17-20. Every document sweep for
+twenty-three rounds walked past it, because the sweeps walk the repo and it is not in the repo -
+the same scope defect this project keeps finding, applied to the one file it was told about by name.
+It is confidential-class like the private business notes, so it stays out of the repository and **its content is
+not recorded here or anywhere tracked**. `scripts/ci_local.sh` gate 16 now fails when this stamp is
+older than the register's latest round. Local-only by construction, as gate 15 is.
+
+**`docs/deployment.md` had zero inbound links** while being the only document carrying the demo's
+port-collision workaround, and the technical report had no `make` target. Both fixed, and the orphan
+question is now asked of `docs/` and `report/` - the same question `test_model_artifact_inventory.py`
+asks of `references/`, whose scope was one folder.
+
+**Fact-check, 2026-08-15.** 55 agents, six lanes, refuted-by-default: **6 claims survived, 42 were
+refuted, 61 negatives recorded.** The Federal Register API returns `"count":0` for post-quantum
+cryptography since 2026-08-01; arXiv cs.CR's newest is 2608.13465 (2026-08-13) and IACR 2026/1645 is
+404, so **2026-08-14 and 2026-08-15 are structurally empty** - a sweep of those days is a sweep of an
+empty set. One correction against our own interest: NIST CSRC has **two** August 2026 items, not one;
+the added item is a sector CSF profile, so the conclusion holds and the word "only" was wrong.
+
+**Where this round shipped its own defect.** The licence gate's scope was `models.tex`; when the
+licences moved to `licences.tex` as part of the fix, it went red on all seven and reported correct
+output as broken. The seed-position gate enumerated `qcnn_*/README.md`, so a new artifact with **no
+card at all** satisfied "every card documents its seed". Both were found by running them, not by
+reading them.
+
 ## Verification assets added in Rounds 22-23
 
 Two checks now exist that assert against sources OUTSIDE this repository. That is the point of both:
