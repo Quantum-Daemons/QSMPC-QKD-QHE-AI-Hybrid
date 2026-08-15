@@ -860,9 +860,13 @@ was correct for QSDC because the wiretap secrecy capacity `Cs = 1 - 2h(e)` has i
 the same as Shor-Preskill, so the two coincided by identity. The identity is real but the conclusion
 was wrong, because `Cs = 1 - 2h(e)` is the **loss-free** case.
 
-The published criterion is `Cs > 0`, and `Cs` depends on channel loss:
+The published criterion is $`C_s > 0`$, and $`C_s`$ depends on channel loss:
 
-    Cs = Q_Bob [ 1 - h(e) - g h(e_chk) ],    g = Q_Eve / Q_Bob = 10^(loss_dB / 10)
+$$
+C_s \;=\; Q_{\text{Bob}}\bigl[\,1 - h(e) - g\,h(e_{\text{chk}})\bigr],
+\qquad
+g \;=\; \frac{Q_{\text{Eve}}}{Q_{\text{Bob}}} \;=\; 10^{\,\text{loss\_dB}/10}
+$$
 
 So the tolerable error rate falls fast as the link gets lossier: 0.110 at 0 dB, **0.048 at the 4.1 dB
 Qi et al. measured on a real 1.5 km fibre link (g = 2.57)**, and ~0.0003 at the ~24.5 dB this

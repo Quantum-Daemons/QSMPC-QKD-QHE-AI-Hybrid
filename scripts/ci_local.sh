@@ -161,8 +161,11 @@ step "16/16 the out-of-repo business document has been reconciled with this roun
 # the confidential business-recommendations document lives at the PARENT directory, outside this
 # repository (its filename is Japanese, so it is described here rather than written), so
 # every sweep that walks the repo walks past it. Twenty-one consecutive ORDER files (18 through 38)
-# name it in the documentation-merge bullet. Its own title says it covers rounds 17 to 20. The
-# project is at round 43.
+# name it in the documentation-merge bullet. Its own title says it covers rounds 17 to 20, and the
+# project is many rounds past that - the GAP is the point, and its exact size is derived below from
+# the register rather than asserted here. This sentence used to end "the project is at round 43": a
+# hand-maintained round number sitting three lines above the code that computes the same number
+# correctly, and stale by two within a fortnight.
 #
 # It is confidential-class like MONETIZATION*, so it cannot be moved in here and its CONTENT must
 # never be quoted - not in the checklist, not in a commit, not in this script. What this reads is its
