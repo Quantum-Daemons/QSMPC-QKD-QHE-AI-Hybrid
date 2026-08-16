@@ -309,10 +309,16 @@ DS_CICIDS2017_FIXED = DatasetSpec(
         "while the CICIDS2017 dataset page itself says only 'publicly available for researchers' and "
         "names no licence. That is an unresolved ambiguity rather than a permission - the same class "
         "of question Round 19 settled by dropping the ImageNet dependency instead of guessing. The "
-        "Engelen redistribution is separately hosted and states nothing. 5G-NIDD was evaluated as an "
-        "alternative and rejected: IEEE DataPort marks it subscription-required and neither that "
-        "record nor the authors' NetsLab page carries a licence string. So the shipped telecom model "
-        "trains on synthetic telemetry, and no code path loads this corpus."
+        "Engelen redistribution is separately hosted and states nothing. 5G-NIDD was evaluated as "
+        "an alternative and rejected here on the same grounds, and THAT REJECTION IS WITHDRAWN: it "
+        "is CC BY 4.0 with access_type Open at the authors' repository of record (Fairdata/Metax, "
+        "DOI 10.23729/e80ac9df-d9fb-47e7-8d0d-01384a415361), and the subscription-required IEEE "
+        "DataPort listing the rejection rested on is a mirror, not the source. CC BY 4.0 requires "
+        "attribution wherever the data or a model trained on it is published; see DATA_LICENSES.md "
+        "section 1, which is the owner of that adjudication - this note is a copy of it and copies "
+        "are what went stale. 5G-NIDD does not change this spec either way: it is network-layer "
+        "flow statistics, a different problem from QKD-attack classification, so the shipped "
+        "telecom model still trains on synthetic telemetry and no code path loads this corpus."
     ),
 )
 DS_WDBC = DatasetSpec(

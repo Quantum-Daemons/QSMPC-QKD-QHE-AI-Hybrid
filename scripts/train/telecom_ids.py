@@ -8,10 +8,17 @@ WHAT THIS IS AND IS NOT
     This is an **architecture comparison, not a performance claim**, and the numbers are reported
     that way. Three reasons, all of them citable:
 
-      * The data is **synthetic**. No commercial-OK real network-attack corpus exists: UNSW-NB15
-        needs the authors' agreement for commercial use, and neither CIC-IDS2017 nor the
-        Engelen-corrected redistribution states a licence at all. The class structure follows
-        Al-Kuwari et al. (arXiv:2509.14282, 16 Sep 2025) — 8 classes = 7 attack types + normal.
+      * The data is **synthetic**, and the reason stated here was too broad. This docstring used to
+        say "No commercial-OK real network-attack corpus exists". 5G-NIDD is one - CC BY 4.0,
+        access_type Open, at Fairdata/Metax, DOI 10.23729/e80ac9df-d9fb-47e7-8d0d-01384a415361 -
+        and this project rejected it until Round 47 on a mirror that carries no licence string.
+        What survives is narrower and is the actual constraint: **no commercial-OK corpus of real
+        QKD-LAYER attacks exists**, because that needs a physical QKD testbed under attack.
+        UNSW-NB15 needs the authors' agreement for commercial use; CIC-IDS2017's provider pages
+        state conflicting terms and the Engelen-corrected redistribution states none; and 5G-NIDD
+        is network-layer flow statistics, a different problem rather than a substitute for the
+        labels this script trains on. The class structure follows Al-Kuwari et al.
+        (arXiv:2509.14282, 16 Sep 2025) - 8 classes = 7 attack types + normal.
       * Published QML-IDS results are **mixed, not uniformly below a random forest**. An earlier
         revision of this docstring claimed they were, and the very paper cited above refutes it:
         Al-Kuwari et al. Table VIII reports a hybrid QLSTM at 94.7% accuracy / 94.7% F1 against

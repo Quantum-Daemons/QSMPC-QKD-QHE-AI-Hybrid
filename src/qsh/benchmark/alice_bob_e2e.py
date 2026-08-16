@@ -31,6 +31,7 @@ def _ms(t0: float) -> float:
 
 def run_alice_bob_e2e(*, seed: int = 0, n_shared: int = 8) -> dict:
     """Run the two-party protocol and return per-party timing + results + scores."""
+    from ..config import get_config
     from ..fhe.ckks_inference import LinearModel, encrypted_linear_inference
     from ..pqc.hybrid_kem import HybridKEMRecipient
     from ..pqc.transport import establish_initiator, establish_responder
@@ -51,7 +52,15 @@ def run_alice_bob_e2e(*, seed: int = 0, n_shared: int = 8) -> dict:
     t = time.perf_counter()
     # `qkd_params=QKDParams()` - the benchmark must measure the model the demo ships, not the
     # legacy branch it reaches by omission.
-    qkd = run_bb84(40_000, ChannelParams(distance_km=50), seed=seed,
+    #
+    # The block size is READ, not spelled. Round 46 raised `demo_alice_bob_pulses` to 400_000
+    # because at 40_000 the decoy bound yields 94 secure bits - under the 256 `derive_shared_key`
+    # needs - and raised it in the browser only. This file kept the literal, so the deployed page
+    # reported a QKD-mixed session while the Python benchmark of the same protocol scored 73.0 with
+    # `qkd_mixed: False`. Two demonstrations of one protocol disagreed about whether the quantum
+    # half contributed at all.
+    cfg = get_config()
+    qkd = run_bb84(cfg.web.demo_alice_bob_pulses, ChannelParams(distance_km=50), seed=seed,
                    qkd_params=QKDParams())
     qkd_key = derive_shared_key(qkd, 32) if qkd.secure_key_bits >= 256 else None
     timing["qkd_negotiation_ms"] = _ms(t)

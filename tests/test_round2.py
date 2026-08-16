@@ -23,11 +23,19 @@ from qsh.qhe.qotp import pauli_output_concealment_demo
 # --- config ---------------------------------------------------------------
 def test_config_loads_with_defaults():
     c = load_config()
-    # 2_000_000 since Round 46. The block size is a SECURITY parameter here, not a speed knob:
-    # 200_000 gave 1,244 sifted bits at the shipped 50 km channel, below the ~5e3-1.1e4 finite-key
-    # positive-key band, so the asymptotic rate on the page described a block that provably yields
-    # no composably-secure key. `src/qsh/config/defaults.py` carries the citations.
-    assert c.qkd.pulses == 2_000_000
+    # This assertion pins the value the YAML and the dataclass must agree on, and the value moved
+    # twice for reasons worth recording here rather than only in the config.
+    #
+    # Round 46 raised it 200_000 -> 2_000_000 and justified the raise with a "~5e3-1.1e4 finite-key
+    # positive-key band" attributed to Rusca et al. (2018). Round 47 refuted that band on both
+    # counts: the paper states no positivity threshold at all, and `src/qsh/qkd/finite_key.py`, which
+    # implements that paper's own equations, puts the threshold at ~1e5 sifted bits - about 4e7
+    # pulses at the intensities shipped until this round - on the 50 km channel this project ships.
+    # At 2_000_000 pulses the single-photon lower bound is NEGATIVE, so Round 46's block carried no
+    # composable key at any parameter setting; the raise was made against a number that was not in
+    # the paper it cited. `src/qsh/config/defaults.py` carries the full record, the corrected
+    # citations, and the margin the current 20_000_000 is sized for.
+    assert c.qkd.pulses == 20_000_000
     assert c.qhe.sk_eps == pytest.approx(1e-3)
     assert c.orchestration.step_delay > 0
     assert "kem" in c.crypto.to_dict() if hasattr(c.crypto, "to_dict") else True

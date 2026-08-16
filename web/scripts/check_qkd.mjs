@@ -123,7 +123,12 @@ const cfg_qrng = m.qrngCfg();
   //     does the config value reach the model - rather than a second TypeScript derivation of the
   //     same algebra, which this file's header forbids for good reason.
   const eta = m.transmittance(chan);
-  const eDet = m.intrinsicQber(chan);
+  // `chan.misalignment`, NOT `intrinsicQber(chan)`. In Ma et al. the `e_det` argument is the
+  // probability a detected SIGNAL photon lands in the wrong detector; `decoySecureFraction` adds
+  // the dark-count contribution back itself as `e0 * y0`. Passing the observed QBER charged the
+  // background twice, and Round 47 corrected it in `quantumSim.ts`, `bb84.py` and here - three
+  // surfaces, one change, because fixing two of three is this project's most-repeated defect.
+  const eDet = chan.misalignment;
   const y0 = 2 * chan.darkCount;
   const mu = Math.max(1e-3, cfg.mu_signal);
   const nu = Math.min(Math.max(1e-4, cfg.mu_decoy), mu * 0.9);
@@ -132,7 +137,7 @@ const cfg_qrng = m.qrngCfg();
   check("fEC-moves-by-the-predicted-ratio",
     near(afterMutation / beforeMutation, predicted, 1e-6),
     `f_EC 1.16 -> 1.22 changed skr by a factor ${afterMutation / beforeMutation}, but the ` +
-    `two-intensity decoy bound at intrinsic QBER ${eDet} predicts ${predicted}`);
+    `two-intensity decoy bound at misalignment ${eDet} predicts ${predicted}`);
 }
 
 // --------------------------------------------------------------------------------------------- //

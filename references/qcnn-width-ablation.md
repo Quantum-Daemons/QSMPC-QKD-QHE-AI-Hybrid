@@ -1,5 +1,42 @@
 # Does the unencoded wire do anything? Telecom QCNN at 7 wires against 8
 
+> **ROUND 47 REVERSED THE TELECOM FINDING. THE SIGN FLIPPED; IT WAS NOT MERELY RESTATED.**
+>
+> This file concludes that 8 wires beat 7 on telecom by **+0.0786** macro F1, and Round 45 restated
+> that as a five-seed median. Round 47 found that the multiclass readout was binning the class index
+> over wires 0..m-1, which after pooling includes wires the circuit had discarded - wire 1 is the
+> pooling control of the pair (0, 1), conditioned into wire 0 and then never touched again, and it
+> supplied one bit of every class index while frozen at its pre-pooling value. The readout now bins
+> over the SURVIVING wires, recorded in each artifact as `readout.wires`. The fully-connected block
+> was corrected in the same round from one shared scalar to a per-survivor RY+RZ.
+>
+> On the corrected circuit, at the same seed, the same split and the same command:
+>
+> | telecom macro F1 | 8 wires | 7 wires | delta |
+> |---|---|---|---|
+> | superseded, this file's Round 40/45 finding | 0.8098 | 0.7312 | **+0.0786 for 8 wires** |
+> | Round 47, corrected readout and FC block | **0.458324** | **0.500452** | **-0.042128, 7 WINS** |
+>
+> **The conclusion of this file no longer holds in the direction it states it.** Do not quote
+> "+0.0786", "the padding wire is worth 0.079 macro F1", or the per-class table below as current;
+> they describe a readout that read a discarded wire. Both Round 47 figures are single-seed, so the
+> reversal is a reason to stop quoting the old direction rather than a licence to quote the new one
+> as settled - the ranges were never separated and still are not.
+>
+> **The pad-wire conclusion for finance and medical survives and is now stronger, but its numbers
+> moved.** The Round 46 banner below quotes byte-identical metrics of 0.976667 (finance) and
+> 0.918605 (medical); after the Round 47 retrain the identical-across-widths figures are finance
+> minority-class F1 **0.84058** with accuracy **0.981667**, and medical accuracy **0.860465** with
+> minority-class F1 **0.8125**. Identical at both widths on every recorded metric, on both corpora -
+> the claim is the same and the values are not.
+>
+> Nothing below is deleted. Every superseded number stays where it was measured, because a
+> conclusion that moved is only checkable against the record that moved it.
+>
+> Re-running this ablation at more than one seed on the corrected circuit is still open; the four
+> configurations Round 47 tried on telecom, and their failure to recover the lost macro F1, are
+> recorded on `models/qcnn_telecom/README.md`.
+
 > **ROUND 46 SUPERSEDED EVERY NUMBER IN THIS FILE, AND THE CONCLUSION SURVIVES.**
 >
 > All measurements below were taken on a circuit labelled QCNN that was a hardware-efficient
