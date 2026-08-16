@@ -41,6 +41,7 @@ non-exclusive"* - a licensing mistake there cannot be undone.
 | **Satellite** | [ESA Anomaly Dataset](https://zenodo.org/records/12528696), Mission1 lightweight channels 41-46 | **CC BY 3.0 IGO** | **Yes** | Missions are anonymised `Mission1/2/3` - they are **not** named Sentinel anything. Multi-year telemetry, ~15.4M samples per channel. (**Unresolved:** this file said 14 years and `src/qsh/models/registry.py` said 17.5 for the same corpus. The ESA-ADB Zenodo record, arXiv:2406.17826 abstract and the kplabs-pl/ESA-ADB README do not state the span, so neither figure was re-verified; the specific number is withheld here rather than asserted.) Only labels whose `anomaly_types.csv` Category is `Anomaly` count as positives; the annotated **rare *nominal* events** are not faults and scoring them as such would inflate the anomaly rate. |
 | **Satellite (second model)** | [OPS-SAT-AD](https://doi.org/10.5281/zenodo.12588358) | **CC BY 4.0** | **Yes - including the data itself** | Ruszczak et al., *The OPS-SAT benchmark for detecting anomalies in satellite telemetry*, Scientific Data 12 (2025), `s41597-025-05035-3`; code MIT at `kplabs-pl/OPS-SAT-AD`. 2,123 annotated segments across 9 channels from ESA's OPS-SAT CubeSat, 20.4% anomalous, with 19 precomputed per-segment features and the benchmark's own train/test split. **The only corpus in this project whose DATA may be redistributed, not just derived weights** - CC BY 4.0 and 507 KB, against ESA-ADB's CC BY 3.0 IGO and 3.6 GB. The published test partition ships entire inside the model's own HF repo as `eval_sample.json`, so the browser reproduces the figure the dataset's 30 published baselines are quoted against. A **different task** from ESA-ADB above: segment classification, not forecasting, so the two scores are not comparable and neither is the other's baseline. |
 | **Telecom (declared, NOT implemented)** | [CIC-IDS2017](https://www.unb.ca/cic/datasets/ids-2017.html), [Engelen-corrected](https://intrusion-detection.distrinet-research.be/WTMC2021/) | **the provider's two pages disagree** | **No** | Re-checked 2026-08-05, and the earlier wording here was too strong. The CIC's institute-level FAQ states *"You may redistribute, republish, and mirror our datasets in any form; however, any use or redistribution of the data must include a citation"*, and places it under commercial use. The CICIDS2017 dataset page itself says only *"publicly available for researchers"* and names no licence. So terms ARE stated, they just conflict - which is an unresolved ambiguity, not a permission, and the same class of question Round 19 settled by removing the ImageNet dependency rather than guessing. The Engelen redistribution is separately hosted and states nothing. **Absent a consistent affirmative grant, neither is bundled or redistributed.** **No code path loads it:** `cicids2017_fixed_dir()` is never called; the shipped telecom model trains on synthetic telemetry. Cite Engelen, Rimmer & Joosen (WTMC 2021) *and* Sharafaldin et al. (2018). |
+| **Telecom (network-layer; adopted, NOT yet implemented)** | [5G-NIDD](https://doi.org/10.23729/e80ac9df-d9fb-47e7-8d0d-01384a415361) - labelled attack traffic captured on a live 5G test network, 52 columns of flow statistics | **CC BY 4.0** | **Yes - attribution required** | **This row is a withdrawn rejection, and the withdrawal is the point.** Until Round 47 this dataset sat in section 7 as NOT commercial-OK, on the reasoning that IEEE DataPort marks it subscription-required and that neither that record nor the authors' NetsLab page carries a licence string. Both of those observations were true and the conclusion drawn from them was still wrong: IEEE DataPort is a **mirror**, and the authors' repository of record is Fairdata/Metax, DOI [10.23729/e80ac9df-d9fb-47e7-8d0d-01384a415361](https://doi.org/10.23729/e80ac9df-d9fb-47e7-8d0d-01384a415361), which returns **CC BY 4.0** with `access_type: Open` and `restriction_grounds: []`. The error was possible because the adjudication stopped at the first host that came up and read silence there as silence everywhere - and this file's own *"SILENCE IS NOT PERMISSION"* rule (section 8) says an absent grant is not a permission; it does not say an absent grant **at a mirror** is evidence about the source. Checking a licence means checking the repository of record, which for a Finnish research dataset is Fairdata, not a US mirror that fronts a paywall. **CC BY 4.0 REQUIRES ATTRIBUTION**: publishing the data, or any model trained on it, must credit the dataset authors as named in the Metax record - the same obligation the WDBC and OPS-SAT-AD rows carry, and a permissive licence does not remove it. **No code path loads it yet**, and adopting it is not a drop-in: the shipped telecom model classifies QKD-layer attacks from QKD physical observables, 5G-NIDD classifies network-layer attacks from flow statistics, and the measured overlap is zero in both the label space and the feature space (`docs/deliverable-verification.md`). It is therefore a **separate** network-layer model rather than a replacement for the synthetic telemetry in section 3. The published comparison point on this corpus is Wang, Fok & Thing, arXiv:2504.20436 - recorded in `references/REFERENCES.md` under WS2, because section 5 requires each published card to name the baseline it is measured against. |
 
 **ESA-ADB channels are distributed as Python pickles.** Unpickling arbitrary downloaded bytes
 executes whatever the stream asks for, so `qsh.models.datasets` loads them through a **restricted
@@ -109,8 +110,15 @@ overlay slice is a projection of a corpus, and QCNN weights are a model fitted o
 
 ## 3. Telecom has no real dataset in the demo, and says so
 
-No commercial-OK real network-attack corpus exists: UNSW-NB15 requires the authors' agreement for
-commercial use, and the CIC-IDS family is research-use. The demo therefore uses **synthetic**
+**The reason stated here was wrong, and it is corrected rather than quietly swapped.** Every earlier
+revision opened *"No commercial-OK real network-attack corpus exists"*, resting on UNSW-NB15
+requiring the authors' agreement for commercial use and the CIC-IDS family being research-use. Those
+two facts hold, but the sentence generalised them into a claim about the whole field, and 5G-NIDD
+falsifies it: CC BY 4.0, Open, section 1. The narrower statement that survives is the real reason and
+always was - **no commercial-OK corpus of real QKD-layer attacks exists**, because producing one
+needs a physical QKD testbed under attack. 5G-NIDD is network-layer traffic and a different problem,
+not a substitute, which is why adopting it changes what this project may publish without changing
+what the telecom demo runs on. The demo therefore uses **synthetic**
 telemetry whose class structure follows Al-Kuwari et al., arXiv:2509.14282, **16 Sep 2025** (later in *IET Quantum Communication* 7(1), e70028) - **8 classes = 7 attack types + normal traffic**, not "eight attack scenarios". The run logs
 this as synthetic; it is never presented as measured on real traffic.
 
@@ -275,13 +283,30 @@ a licence change, or a default branch that has not moved in a year.
   below the published baseline. The gap is reported rather than closed by taking the dependency.
 - **Bank Account Fraud** suite - CC BY-NC-ND; **IEEE-CIS** - restrictive Kaggle terms.
 - **UNSW-NB15** - commercial use requires the authors' agreement.
-- **5G-NIDD** - evaluated 2026-08-05 and rejected. Secondary sources report CC BY 4.0, but IEEE
-  DataPort marks it subscription-required and neither that record nor the authors' NetsLab page
-  carries a licence string. A commercial-OK policy cannot rest on secondary evidence.
 - **NSL-KDD** - research-only, and in any case a 1999-derived corpus that no longer reflects current traffic; listed so the record of what was considered is complete.
 - **Zama tfhe-rs / Concrete** - BSD-3-Clear, research only; commercial use needs a paid patent licence.
 - **QKDNetSim** - **GPL-2.0** (strong copyleft), so it is not listed as a commercial-OK reference
   implementation.
+
+### Removed from this list: 5G-NIDD, whose rejection is withdrawn
+
+**5G-NIDD** was listed above as NOT commercial-OK from 2026-08-05 until Round 47. That entry is
+withdrawn and the dataset now appears in **section 1** as usable, CC BY 4.0, `access_type: Open`,
+adjudicated at the authors' repository of record (Fairdata/Metax, DOI
+10.23729/e80ac9df-d9fb-47e7-8d0d-01384a415361). The old reasoning was that secondary sources
+reporting CC BY 4.0 cannot carry a commercial-OK policy while IEEE DataPort marks the dataset
+subscription-required and names no licence. The principle was right and its application was
+inverted: the Metax record is the primary source and the IEEE DataPort listing is the mirror, so the
+adjudication rejected the dataset on the weaker of the two pieces of evidence and called that
+caution. A rejection is not automatically the safe answer - it is a finding, and it needs a primary
+source exactly as a permission does.
+
+This note stays instead of the deleted bullet because a reader who acted on the rejection needs to
+meet the correction where they met the error. It is the third correction of this shape in this file -
+CIC-IDS2017's "states no licence at all" was too strong (section 1), and the QHE reference PDF was
+swapped for its CC BY journal version rather than dropped (section 8) - and all three failed the same
+way: a first source was read, no grant was found in it, and "not found here" was recorded as "not
+granted anywhere".
 
 ## 8. Bundled reference PDFs (committed, redistributed verbatim)
 

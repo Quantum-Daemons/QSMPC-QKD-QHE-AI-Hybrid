@@ -50,6 +50,7 @@ put them on. The defect there is the label, not the formula, and it is checked s
 
 from __future__ import annotations
 
+import ast
 import json
 import subprocess
 import sys
@@ -118,7 +119,7 @@ def _browser() -> dict:
             "  eta: m.transmittance(chan),\n"
             "  e91Rates: e91runs.map((r) => r.secretKeyRate),\n"
             "  e91Qbers: e91runs.map((r) => r.qber),\n"
-            "  eDet: m.intrinsicQber(chan),\n"
+            "  eDet: chan.misalignment,\n"
             "}));\n"
         )
         out = subprocess.run([ "node", str(runner) ], check=True, capture_output=True, text=True)
@@ -201,27 +202,81 @@ def test_the_production_python_path_computes_the_bound_too() -> None:
     )
 
 
-def test_no_production_call_site_takes_the_legacy_branch() -> None:
-    """Scope, so the next call site cannot repeat it.
+def _tracked_python() -> list[str]:
+    """The corpus, asked of git rather than maintained by hand.
 
-    The numeric check above pins ONE path. This pins the class: any `run_bb84(` outside the
-    optimiser and the tests must ask for the decoy model, either directly or through the registry
-    provider. Stated as a property rather than a file list, because a gate whose scope names files
-    is this project's most-repeated defect.
+    ROUND 47 REWROTE THIS. The previous version iterated a three-element tuple of paths under a
+    docstring reading "stated as a property rather than a file list, because a gate whose scope
+    names files is this project's most-repeated defect". It was a file list. It could only ever
+    fail on the files already known to be wrong, and in the same commit that wrote it Round 46
+    raised a block size in the browser and left both Python twins on the old literal - inside two
+    of the three files this very tuple names.
+
+    Asking git means a file added tomorrow is in scope the moment it is committed.
     """
-    import re
+    out = subprocess.run(
+        ["git", "ls-files", "--", "*.py"], cwd=REPO, check=True, capture_output=True, text=True
+    ).stdout.split()
+    return [p for p in out if not p.startswith("tests/")]
 
-    offenders: list[str] = []
-    for rel in ("src/qsh/usecases/satellite_comms/__init__.py", "api/inference_service.py",
-                "src/qsh/benchmark/alice_bob_e2e.py"):
+
+def _run_bb84_call_sites() -> list[tuple[str, int, "ast.Call"]]:
+    """Every `run_bb84(...)` call in tracked non-test Python, by AST rather than by regex.
+
+    The regex the previous version used - `run_bb84\\((?:[^()]|\\([^()]*\\))*\\)` - cannot nest more
+    than one level of parentheses, so a call whose channel argument gained a second nested call
+    would silently stop matching and the site would leave the gate's scope without anyone editing
+    the gate. The parser has no such depth limit.
+    """
+    sites: list[tuple[str, int, ast.Call]] = []
+    for rel in _tracked_python():
         path = REPO / rel
         if not path.exists():
             continue
-        src = path.read_text()
-        for m in re.finditer(r"run_bb84\((?:[^()]|\([^()]*\))*\)", src):
-            if "qkd_params" not in m.group(0):
-                line = src.count("\n", 0, m.start()) + 1
-                offenders.append(f"{rel}:{line}: {' '.join(m.group(0).split())[:90]}")
+        try:
+            tree = ast.parse(path.read_text())
+        except SyntaxError:                                  # pragma: no cover - not our source
+            continue
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.Call):
+                continue
+            func = node.func
+            name = func.attr if isinstance(func, ast.Attribute) else getattr(func, "id", "")
+            if name == "run_bb84":
+                sites.append((rel, node.lineno, node))
+    return sites
+
+
+def test_the_scan_this_file_performs_has_a_subject() -> None:
+    """Non-vacuity, first, because every check below is a loop over what this returns.
+
+    A `git ls-files` that returns nothing - wrong cwd, no git, a submodule - would turn all three
+    scope assertions green while asserting nothing at all. That failure mode is exactly why the
+    file list was replaced, so it does not get to come back through the corpus.
+    """
+    corpus = _tracked_python()
+    assert len(corpus) >= 20, (
+        f"git ls-files returned only {len(corpus)} tracked non-test Python files; the scan below "
+        "has effectively no subject. Check that REPO is a git worktree."
+    )
+    sites = _run_bb84_call_sites()
+    assert len(sites) >= 2, (
+        f"found {len(sites)} `run_bb84` call sites in {len(corpus)} files. The protocol entry "
+        "point is reached from the orchestration registry, the satellite stage, the benchmark and "
+        "the API at minimum; finding fewer means the AST walk is not seeing calls it should."
+    )
+
+
+def test_no_production_call_site_takes_the_legacy_branch() -> None:
+    """Scope, so the next call site cannot repeat it.
+
+    The numeric check above pins ONE path. This pins the class: any `run_bb84(` outside the tests
+    must ask for the decoy model, either directly or through the registry provider.
+    """
+    offenders: list[str] = []
+    for rel, line, node in _run_bb84_call_sites():
+        if not any(kw.arg == "qkd_params" for kw in node.keywords):
+            offenders.append(f"{rel}:{line}")
     assert not offenders, (
         "these production call sites take `run_bb84`'s LEGACY branch, which computes the non-decoy "
         "GLLP fraction on the observed QBER:\n  " + "\n  ".join(offenders)
@@ -231,13 +286,81 @@ def test_no_production_call_site_takes_the_legacy_branch() -> None:
     )
 
 
+def test_no_call_site_hardcodes_its_block_size() -> None:
+    """The block size is a security parameter, so config owns it and no call site may spell it.
+
+    THIS IS THE CHECK ROUND 46 NEEDED AND DID NOT HAVE. `demo_alice_bob_pulses` was raised from
+    40,000 to 400,000 with the reason written directly above it in `config/defaults.py`: at 40,000
+    the decoy bound yields 94 secure bits, below the 256 a session key needs. The browser reads
+    that key. Both Python twins kept the literal, so the deployed page derived a QKD-mixed session
+    and the Python benchmark of the same protocol silently did not.
+
+    A literal is what let the two drift. The number is not merely a tuning constant - it decides
+    whether the demonstration demonstrates anything - and a value that appears in three places
+    stays equal only for as long as someone remembers all three.
+    """
+    offenders: list[str] = []
+    for rel, line, node in _run_bb84_call_sites():
+        block = node.args[0] if node.args else next(
+            (kw.value for kw in node.keywords if kw.arg == "n_pulses"), None)
+        if isinstance(block, ast.Constant) and isinstance(block.value, int):
+            offenders.append(f"{rel}:{line}: run_bb84({block.value:_}, ...)")
+    assert not offenders, (
+        "these call sites spell their BB84 block size as a literal:\n  " + "\n  ".join(offenders)
+        + "\n\nRead it from config instead - `WebConfig.demo_alice_bob_pulses` for the two-party "
+        "demo, `sat_pulses` for the satellite downlink - so raising it raises it everywhere. "
+        "Round 46 raised the browser's copy and left two Python copies behind, which is the fourth "
+        "time in four rounds that a fix changed one language."
+    )
+
+
+def test_the_python_two_party_demo_derives_the_session_key_the_browser_does() -> None:
+    """The identity that matters to a visitor: both demos of the same protocol reach the same
+    verdict about whether QKD contributed to the session.
+
+    This is the numeric complement to the structural checks above, and it is the one that is
+    actually red on the unmodified tree: at 40,000 pulses the decoy bound gives 94 secure bits,
+    `derive_shared_key` is skipped, `qkd_mixed` comes back False and the security score drops to
+    73.0 - while the browser, at the same nominal operating point, reports a mixed session.
+
+    Asserted on the SHIPPED config value rather than on a number written here, so raising the
+    block size again cannot leave this file behind in the same way it left the call sites.
+    """
+    import json as _json
+
+    from qsh.benchmark.alice_bob_e2e import run_alice_bob_e2e
+
+    web_cfg = _json.loads((WEB / "src" / "lib" / "config.defaults.json").read_text())
+    browser_pulses = int(web_cfg["web"]["demo_alice_bob_pulses"])
+    assert browser_pulses > 0, "the browser config no longer carries a two-party block size"
+
+    res = run_alice_bob_e2e(seed=0)
+    bits = int(res["qkd_secure_key_bits"])
+    assert bits >= 256, (
+        f"the Python two-party demo yields {bits} secure bits, below the 256 "
+        "`derive_shared_key` needs, so `qkd_mixed` is "
+        f"{res['qkd_mixed']} and the run scores {res['security_score']}. The browser runs the same "
+        f"protocol at {browser_pulses:_} pulses and reports a mixed session. Two demonstrations of "
+        "one protocol must not disagree about whether the quantum half contributed."
+    )
+    assert res["qkd_mixed"] is True, (
+        f"{bits} secure bits were available and the session still did not mix them"
+    )
+
+
 def _eta_and_edet() -> tuple[float, float]:
-    """The channel the assertions are made on, computed once from config."""
+    """The channel the assertions are made on, computed once from config.
+
+    `e_det` is the MISALIGNMENT alone. It was `misalignment + 0.5 * p_dark / eta` - the observed
+    QBER - until Round 47, which is the quantity `intrinsic_qber` returns and the wrong argument
+    for the decoy bound: `_decoy_secure_fraction` adds the background back as `e0 * y0`, so the
+    dark counts were charged twice. This reference helper carried the same error as the two
+    implementations it was checking, which is why the identity held while both sides were wrong.
+    """
     c = _cfg()
     eta = float(c["detector_efficiency"]) * 10 ** (
         -float(c["fiber_loss_db_per_km"]) * DISTANCE_KM / 10)
-    e_det = min(0.5, float(c["misalignment"]) + 0.5 * float(c["dark_count_prob"]) / max(eta, 1e-12))
-    return eta, e_det
+    return eta, float(c["misalignment"])
 
 
 def test_the_operating_point_is_the_one_the_demo_ships() -> None:
@@ -401,4 +524,69 @@ def test_the_e91_bound_does_not_move_with_the_seed_either() -> None:
     assert len(set(f"{q:.9f}" for q in b["e91Qbers"])) > 1, (
         "the E91 measured QBER is now identical across seeds too, so the noise was removed rather "
         "than moved off the bound. The QBER is a measurement and must still vary."
+    )
+
+
+def test_the_decoy_bound_does_not_count_dark_counts_twice() -> None:
+    """`e_det` in Ma et al. is the MISALIGNMENT, not the observed QBER.
+
+    WHY THIS EXISTS
+
+    `_decoy_secure_fraction` computes the observed error rate itself:
+
+        e_mu = (e0 * y0 + e_det * (1 - exp(-eta * mu))) / q_mu
+
+    The `e0 * y0` term IS the dark-count contribution - background clicks are unbiased, so they
+    err half the time. `e_det` is the probability that a detected SIGNAL photon lands in the wrong
+    detector, which is the misalignment and nothing else.
+
+    Both languages passed `intrinsic_qber(params)`, which is
+    `misalignment + 0.5 * dark_count_prob / eta` - the dark-count term already folded in. So the
+    background was charged twice and the bound came out too low. `intrinsic_qber` is the right
+    quantity for the OBSERVED QBER the panel displays, and both files still use it there; it is
+    only wrong as this function's argument.
+
+    Measured cost, in the conservative direction: 0.57% on the 50 km fibre, where eta is 0.025,
+    and **18.9%** on the 800 km free-space downlink, where eta is 17x smaller and the
+    `0.5 * p_dark / eta` term is correspondingly larger. A bound that understates itself is safe
+    but not correct, and the size of the error grows exactly where the link is hardest.
+
+    ASSERTED NUMERICALLY, not by grepping the call sites. A textual version of this check caught
+    Python and missed the browser: `quantumSim.ts` assigns `const eDet = intrinsicQber(p)` on one
+    line and passes `eDet` on another, so the argument's provenance is invisible to a regex over
+    the call span. That is the same blind spot a helper-taking-a-key created in Round 46. Two
+    numbers from two languages cannot hide behind a local variable.
+    """
+    from qsh.qkd.bb84 import _decoy_secure_fraction
+
+    c = _cfg()
+    eta = float(c["detector_efficiency"]) * 10 ** (
+        -float(c["fiber_loss_db_per_km"]) * DISTANCE_KM / 10)
+    mu = float(c["mu_signal"])
+    nu = min(max(1e-4, float(c["mu_decoy"])), mu * 0.9)
+    y0 = 2.0 * float(c["dark_count_prob"])
+    f_ec = float(c["error_correction_eff"])
+    mis = float(c["misalignment"])
+    double_counted = mis + 0.5 * float(c["dark_count_prob"]) / max(eta, 1e-12)
+
+    right = _decoy_secure_fraction(eta, mu, nu, mis, y0, f_ec, 0.5)[0]
+    wrong = _decoy_secure_fraction(eta, mu, nu, double_counted, y0, f_ec, 0.5)[0]
+    assert right > wrong > 0, (
+        "the two readings of `e_det` are indistinguishable at this operating point, so this check "
+        f"cannot tell them apart: misalignment-only {right}, double-counted {wrong}. Non-vacuity "
+        "first - without a gap there is nothing to assert."
+    )
+
+    got = _python_production_rate()
+    assert abs(got - right) <= 1e-12, (
+        f"the production Python path reports {got:.8f} bit/pulse; the decoy bound with `e_det` as "
+        f"the MISALIGNMENT gives {right:.8f} and with the observed QBER (dark counts charged "
+        f"twice) gives {wrong:.8f}. `e0 * y0` inside `_decoy_secure_fraction` is already the "
+        "background term."
+    )
+    b = _browser()
+    assert abs(b["rates"][0] - right) <= 1e-9, (
+        f"the browser reports {b['rates'][0]:.8f} against {right:.8f}. If it matches "
+        f"{wrong:.8f} instead, it is still passing `intrinsicQber` where the misalignment belongs "
+        "- which is what Python was doing until this round, in the other language."
     )
