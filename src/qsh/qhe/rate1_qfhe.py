@@ -92,8 +92,9 @@ def ciphertext_to_plaintext_ratio(ct: Rate1Ciphertext) -> float:
 
 def decrypt_state(ct: Rate1Ciphertext, recipient: HybridKEMRecipient) -> np.ndarray:
     """Recover |psi> using the recipient's hybrid secret key."""
-    from ..pqc.hybrid_kem import HybridCiphertext
     import hashlib
+
+    from ..pqc.hybrid_kem import HybridCiphertext
 
     mlkem_ct, off = _unframe(ct.key_ciphertext, 0)
     eph_pub, off = _unframe(ct.key_ciphertext, off)

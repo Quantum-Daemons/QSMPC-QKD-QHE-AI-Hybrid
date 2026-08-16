@@ -12,12 +12,12 @@ import {
 /** One wording, used by both rate cells, so the caveat cannot drift between two columns. */
 const RATE_CELL_TITLE =
   "bit/s - this run's two-intensity decoy-state bound per pulse (Ma, Qi, Zhao & Lo, Phys. Rev. A 72, "
-  + "012326, 2005) multiplied by an ASSUMED source repetition rate. No QKD hardware exists in this "
-  + "project and nothing here measures a clock, so the rate scales exactly with the Source rate "
-  + "(MHz) control in the Parameters panel. A modelled upper bound, not a measurement: Yuan et al. "
-  + "(IEEE/OSA JLT 36, 3427, 2018) report over 1 Mb/s at 1 GHz over 50 km of fibre with a protocol "
-  + "that sifts about twice as efficiently as the standard BB84 modelled here.";
-
+  + "012326, 2005) multiplied by an ASSUMED source repetition rate. ASYMPTOTIC: no finite-key "
+  + "correction is applied anywhere in this project. It is the infinite-key limit of a LOWER bound, "
+  + "not a ceiling on real hardware - Li et al. (Nat. Photon. 17, 416-421, 2023) measured 22.2 Mb/s "
+  + "at 50 km on a 2.5 GHz clock, 8.88e-3 bit/pulse, which is 3.8x HIGHER than this figure and "
+  + "carries full composable finite-key security. No QKD hardware exists in this project and nothing "
+  + "here measures a clock: the rate scales exactly with the Source rate (MHz) control in the Parameters panel.";
 export default function SdnControlPlanePanel({
   usecase, distanceKm, keyBudgetBits, qkdEnabled, maxSpanKm,
   secretKeyRatePerPulse, sourceRateHz, pulses,
@@ -78,9 +78,13 @@ export default function SdnControlPlanePanel({
           by arXiv:2607.24118 (preprint, 2026-07-27, CC BY 4.0) for a 2 km free-space link;{" "}
           <b>that paper&apos;s own 164.8 kbit/s at QBER ~3.3% is its measurement over its own
           channel, not this one&apos;s, and is neither reproduced nor claimed here.</b>{" "}
-          Read the result as a <b>modelled upper bound</b>: Yuan et al. (<i>IEEE/OSA J. Lightwave
-          Technol.</i> <b>36</b>, 3427, 2018) report over 1 Mb/s at 1 GHz across 50 km of fibre using
-          a protocol that sifts about twice as efficiently as the standard BB84 modelled here.
+          <b>It is ASYMPTOTIC.</b> No finite-key correction is applied, so this is the infinite-key
+          limit of a <i>lower</i> bound - not a ceiling on what hardware can do. Li et al.
+          (<i>Nat. Photon.</i> <b>17</b>, 416-421, 2023) measured <b>22.2 Mb/s at 50 km</b> on a
+          2.5 GHz clock, <b>8.88 x 10<sup>-3</sup> bit/pulse</b> with full composable finite-key
+          security - <b>3.8x higher per pulse than the figure above</b>. A round of this project
+          previously called the same number &quot;a modelled upper bound, ~2.4x a real deployed
+          link&quot;; that was wrong in both directions and is corrected here.
         </p>
       )}
       <p className="muted small" style={{ marginTop: 0 }}>

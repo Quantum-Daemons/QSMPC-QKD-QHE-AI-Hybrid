@@ -106,6 +106,9 @@ def _browser() -> dict:
             f"import * as m from {json.dumps(bundle.as_uri())};\n"
             f"const chan = {{ ...m.FIBER, distanceKm: {DISTANCE_KM} }};\n"
             "const runs = [1, 2, 3, 4, 5].map((s) => m.bb84(%d, chan, s));\n" % PULSES
+            # E91 was exported into this bundle by Round 45 and never called - the harness
+            # imported the model it said it was not checking. It is evaluated now.
+            + "const e91runs = [1, 2, 3, 4, 5].map((s) => m.e91(%d, chan, s));\n" % PULSES
             + "console.log(JSON.stringify({\n"
             "  rates: runs.map((r) => r.secretKeyRate),\n"
             "  bits: runs.map((r) => r.secureKeyBits),\n"
@@ -113,6 +116,8 @@ def _browser() -> dict:
             "  qbers: runs.map((r) => r.qber),\n"
             "  nonDecoy: runs.map((r) => r.secretKeyRateNonDecoy ?? null),\n"
             "  eta: m.transmittance(chan),\n"
+            "  e91Rates: e91runs.map((r) => r.secretKeyRate),\n"
+            "  e91Qbers: e91runs.map((r) => r.qber),\n"
             "  eDet: m.intrinsicQber(chan),\n"
             "}));\n"
         )
@@ -138,6 +143,101 @@ def _python_decoy(eta: float, e_det: float) -> float:
     skr, _e_mu, _e1 = _decoy_secure_fraction(
         eta, mu, nu, e_det, y0, float(c["error_correction_eff"]), sift)
     return skr
+
+
+def _python_production_rate() -> float:
+    """What the PRODUCTION Python path computes - reached the way `stages.py` reaches it.
+
+    THIS IS THE CHECK THIS FILE SHOULD HAVE MADE IN ROUND 45 AND DID NOT.
+
+    `_python_decoy()` above imports `_decoy_secure_fraction` and calls it directly. That is a
+    private helper. `src/qsh/qkd/bb84.py:116` branches on `qkd_params`, and the helper is reached
+    ONLY in the branch taken when `qkd_params` is supplied - which, in the whole repository, only
+    `src/qsh/qkd/optimize.py` ever did. Every production surface (`orchestration/stages.py`,
+    `usecases/satellite_comms/__init__.py`, `api/inference_service.py`) called `run_bb84` without it
+    and went on computing `1 - h2(q) - f h2(q)` on the observed QBER: 0.008936 bit/pulse against the
+    browser's 0.002355, a factor of 4.
+
+    So Round 45 announced "the first numeric cross-language check in the project", and pointed it at
+    a function no Python caller invoked. Its own title - Round 44's - was "the fix changed one
+    language". It did it again and certified itself against the half it had fixed.
+
+    This resolves the provider through `crypto_agility.CryptoRegistry` exactly as `QKDStage` does,
+    so what is asserted is what the orchestration actually runs, not what a helper could do.
+    """
+    from qsh.orchestration.crypto_agility import default_registry
+    from qsh.qkd.channel import ChannelParams
+
+    c = _cfg()
+    provider = default_registry().get("qkd", "bb84-decoy")
+    res = provider(
+        n_pulses=PULSES,
+        params=ChannelParams(
+            distance_km=DISTANCE_KM,
+            misalignment=float(c["misalignment"]),
+            eve_intercept_fraction=0.0,
+        ),
+        seed=1,
+    )
+    return float(res.secret_key_rate)
+
+
+def test_the_production_python_path_computes_the_bound_too() -> None:
+    """Both languages, at the surface each actually runs.
+
+    Red on the unmodified tree by ~4x, and it cannot be satisfied by editing the browser.
+    """
+    got = _python_production_rate()
+    expected = _python_decoy(*_eta_and_edet())
+    assert expected > 0, "the reference bound is zero here; check the channel defaults first"
+    assert abs(got - expected) <= 1e-9, (
+        f"the PRODUCTION Python path reports {got:.6f} bit/pulse where the decoy bound this "
+        f"repository implements gives {expected:.6f} - a factor of {got / expected:.3f}.\n\n"
+        "`run_bb84` only reaches `_decoy_secure_fraction` when `qkd_params` is supplied, and the "
+        "registry entry named 'bb84-decoy' does not supply it. The name is the claim.\n\n"
+        "Fix it where the provider is built - `orchestration/crypto_agility.py` - so every caller "
+        "that resolves through the registry inherits it, and pass `QKDParams()` at the two call "
+        "sites that bypass the registry."
+    )
+
+
+def test_no_production_call_site_takes_the_legacy_branch() -> None:
+    """Scope, so the next call site cannot repeat it.
+
+    The numeric check above pins ONE path. This pins the class: any `run_bb84(` outside the
+    optimiser and the tests must ask for the decoy model, either directly or through the registry
+    provider. Stated as a property rather than a file list, because a gate whose scope names files
+    is this project's most-repeated defect.
+    """
+    import re
+
+    offenders: list[str] = []
+    for rel in ("src/qsh/usecases/satellite_comms/__init__.py", "api/inference_service.py",
+                "src/qsh/benchmark/alice_bob_e2e.py"):
+        path = REPO / rel
+        if not path.exists():
+            continue
+        src = path.read_text()
+        for m in re.finditer(r"run_bb84\((?:[^()]|\([^()]*\))*\)", src):
+            if "qkd_params" not in m.group(0):
+                line = src.count("\n", 0, m.start()) + 1
+                offenders.append(f"{rel}:{line}: {' '.join(m.group(0).split())[:90]}")
+    assert not offenders, (
+        "these production call sites take `run_bb84`'s LEGACY branch, which computes the non-decoy "
+        "GLLP fraction on the observed QBER:\n  " + "\n  ".join(offenders)
+        + "\n\nPass `qkd_params=QKDParams()`. The legacy branch is not wrong - it is a different, "
+        "explicitly-named model that the optimiser's comparison tests still need - but nothing "
+        "user-facing should reach it by omission."
+    )
+
+
+def _eta_and_edet() -> tuple[float, float]:
+    """The channel the assertions are made on, computed once from config."""
+    c = _cfg()
+    eta = float(c["detector_efficiency"]) * 10 ** (
+        -float(c["fiber_loss_db_per_km"]) * DISTANCE_KM / 10)
+    e_det = min(0.5, float(c["misalignment"]) + 0.5 * float(c["dark_count_prob"]) / max(eta, 1e-12))
+    return eta, e_det
 
 
 def test_the_operating_point_is_the_one_the_demo_ships() -> None:
@@ -274,3 +374,31 @@ def _rate_fact_source(src: str) -> str | None:
 
     m = re.search(r'label:\s*"Secret-key rate".*?source:\s*(.*?)\n', src, re.S)
     return m.group(1).strip().rstrip(",") if m else None
+
+
+def test_the_e91_bound_does_not_move_with_the_seed_either() -> None:
+    """E91 was held to a lower standard than BB84, and the harness could not see it.
+
+    Round 45 made the BB84 bound seed-independent - it takes the intrinsic error rate, not the
+    session's draw - and left `e91()` computing its secure fraction from the SAMPLED qber. So the
+    E91 page's rate moved between reloads for exactly the reason the BB84 page's had.
+
+    `src/qsh/qkd/e91.py:54` has always computed its fraction from the visibility-derived error rate
+    and never from a sample, so the BROWSER was the divergent one. That is the shape this round is
+    about: one language moved.
+
+    The harness could not have caught it. `e91` was exported into the esbuild bundle by Round 45 and
+    never called - the model the file's own docstring said it was "checked separately below" was
+    imported and evaluated zero times. It is evaluated now.
+    """
+    b = _browser()
+    rates = b.get("e91Rates")
+    assert rates, "the harness no longer evaluates e91; it was imported-but-unused for a whole round"
+    assert len(set(f"{r:.12f}" for r in rates)) == 1, (
+        f"the E91 bound differs across seeds: {rates}. A secret-key bound is a property of the "
+        "channel and the source visibility, not of one session's sampling noise."
+    )
+    assert len(set(f"{q:.9f}" for q in b["e91Qbers"])) > 1, (
+        "the E91 measured QBER is now identical across seeds too, so the noise was removed rather "
+        "than moved off the bound. The QBER is a measurement and must still vary."
+    )
