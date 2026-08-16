@@ -61,7 +61,12 @@ def qkd_demo(distance_km: float = 50.0, eve: float = 0.0) -> dict:
     # `qkd_params=QKDParams()`: without it this endpoint returns the legacy non-decoy figure while
     # /validations labels it a per-pulse decoy bound. Round 45 fixed the browser's copy of this
     # payload and not the server's.
-    r = run_bb84(40_000, ChannelParams(distance_km=distance_km, eve_intercept_fraction=eve),
+    # The block size is READ, not spelled, for the same reason as
+    # `benchmark/alice_bob_e2e.py`: `demo_alice_bob_pulses` was raised to 400_000 in Round 46
+    # because 40_000 leaves the decoy bound at 94 secure bits, and the raise reached the browser
+    # only. This endpoint backs the same panel, so a literal here reintroduces the split it fixed.
+    r = run_bb84(get_config().web.demo_alice_bob_pulses,
+                 ChannelParams(distance_km=distance_km, eve_intercept_fraction=eve),
                  qkd_params=QKDParams(),
                  seed=1)
     return {

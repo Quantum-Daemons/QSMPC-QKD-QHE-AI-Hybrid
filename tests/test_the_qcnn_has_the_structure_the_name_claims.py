@@ -93,13 +93,55 @@ def test_weights_are_shared_within_a_layer() -> None:
     # and fired on the filter's own 8 angles - a shape that has nothing to do with the register.
     # What sharing actually means is that a stage's block does not GROW with the register: only the
     # NUMBER of stages may differ between widths, never the size of a stage's filter.
+    #
+    # ROUND 47: comparing `a[1:] == b[1:]` was VACUOUS for the 1-D blocks. `pool` was `(stages,)`
+    # and `fc` was `(1,)`, for which `[1:]` is `()` at every width - so `()  == ()` passed
+    # unconditionally, and an `fc` of shape `(nq,)`, the exact per-position weighting this test
+    # exists to forbid, would have passed too. Every axis EXCEPT a leading stage count is compared
+    # now, and the stage axis is checked separately below for being a stage count rather than a
+    # wire count.
+    STAGE_AXIS = {"conv", "pool"}          # blocks whose leading axis is the pooling-stage index
     for name in s8:
         a, b = s8[name], s16[name]
-        assert a[1:] == b[1:], (
-            f"parameter block {name!r} is {a} at 8 qubits and {b} at 16 - the per-stage filter grows "
-            "with the register, so weights are per-position rather than shared. A convolution "
-            "applies ONE filter at every position."
-        )
+        if name in STAGE_AXIS:
+            assert a[1:] == b[1:], (
+                f"parameter block {name!r} is {a} at 8 qubits and {b} at 16 - the per-stage filter "
+                "grows with the register, so weights are per-position rather than shared. A "
+                "convolution applies ONE filter at every position."
+            )
+            assert a[0] <= b[0], (
+                f"block {name!r} has {a[0]} stages at 8 qubits and {b[0]} at 16; a wider register "
+                "cannot have fewer pooling stages"
+            )
+        else:
+            # No stage axis, so nothing may differ at all. `fc` acts on the register that SURVIVES
+            # pooling, whose size is bounded by the readout requirement rather than by nq - 4
+            # survivors at both 8 and 16 qubits - so its shape must be identical at both widths.
+            assert a == b, (
+                f"parameter block {name!r} is {a} at 8 qubits and {b} at 16. This block has no "
+                "stage axis, so any difference means it is sized by the register: that is "
+                "per-position weighting, which is what separates a generic ansatz from a QCNN."
+            )
+    assert 8 not in s8["fc"] and 16 not in s16["fc"], (
+        f"the fully-connected block is sized by the register: {s8['fc']} at 8 qubits, "
+        f"{s16['fc']} at 16. It must be sized by the SURVIVING register, which pooling bounds."
+    )
+
+
+def test_the_sharing_check_would_notice_per_position_weights() -> None:
+    """Anti-tautology for the check above, against the shape it exists to forbid.
+
+    The previous version of that test compared `shape[1:]`, which is `()` for any 1-D block. This
+    reconstructs what it would have concluded about an `fc` of shape `(nq,)` - one angle per wire,
+    the definition of per-position weighting - and asserts the OLD comparison passes it while the
+    new one does not. Without this, a green test is consistent with a test that cannot fail.
+    """
+    bad8, bad16 = (8,), (16,)                 # `fc: (nq,)` - one independent angle per wire
+    assert bad8[1:] == bad16[1:], (
+        "the old `[1:]` comparison does not pass per-wire weights, so this anti-tautology is "
+        "describing a failure mode that never existed"
+    )
+    assert bad8 != bad16, "the new full-shape comparison must reject per-wire weights"
 
 
 def test_pooling_reduces_the_register_by_measurement_conditioned_rotation() -> None:
@@ -144,6 +186,7 @@ def test_no_shipped_artifact_claims_an_architecture_it_does_not_have() -> None:
     """
     import json
 
+    q = _mod()
     dirs = sorted((REPO / "models").glob("qcnn_*"))
     assert dirs, "no models/qcnn_* directories; this check has no subject"
     stale = []
@@ -152,6 +195,20 @@ def test_no_shipped_artifact_claims_an_architecture_it_does_not_have() -> None:
         arch = str(w.get("training", {}).get("architecture", ""))
         if "qcnn" not in arch.lower():
             stale.append(f"{d.name}: architecture={arch!r}")
+            continue
+        # ROUND 47: the string check above is nearly vacuous - the DIRECTORY is called `qcnn_*`,
+        # so any label naming its own directory passes. What actually separates the architectures
+        # is the PARAMETER COUNT: the retired ansatz carried `layers * n_qubits` angles, the QCNN
+        # carries `param_count(...)`. Weights from the old circuit cannot satisfy this, whatever
+        # their label says, and no amount of relabelling makes them.
+        nq, layers = int(w["n_qubits"]), int(w["layers"])
+        ro = int(w.get("readout", {}).get("readout_qubits", 0) or 0)
+        want = q.param_count(nq, readout_qubits=ro, layers=layers)
+        got = len(w["theta"])
+        if got != want:
+            stale.append(
+                f"{d.name}: {got} angles shipped, the QCNN at nq={nq} layers={layers} "
+                f"readout={ro} needs {want} (the retired ansatz would need {layers * nq})")
     assert not stale, (
         "these shipped artifacts do not record a QCNN architecture:\n  " + "\n  ".join(stale)
         + "\n\nRetrain them. A card naming an architecture over weights from a different circuit is "
