@@ -2824,8 +2824,10 @@ export function runClientPipeline(
             // `realIn.values`, which is StandardScaler output because the CKKS tier and the SHAP
             // panel are fitted there. A QCNN artifact declaring `input_space: "raw"` standardises
             // its input again, so handing it `feats` charged the transform twice and flattened the
-            // wire: measured at tanh sd 3.3e-05 on `amount`, with 69 of 400 rows - 17.25% - given a
-            // different class than the same rows correctly fed.
+            // wire: measured at tanh sd 3.3e-05 on `amount`, with 101 of 400 rows - 25.25% - given
+            // a different class than the same rows correctly fed. (17.25% appeared here for one
+            // round; that figure is a different comparison - two encoders over one array, rather
+            // than one encoder over two - and describes a fix that was not the one made.)
             //
             // Falls back to `feats` only when the artifact does NOT declare `raw`, so a future
             // artifact in a third space cannot silently pick up the wrong array; the pairing is

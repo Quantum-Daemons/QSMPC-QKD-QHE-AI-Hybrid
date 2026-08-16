@@ -73,7 +73,10 @@ MODELS = {
         # this Space's finance model would have failed on its first real request.
         "shape": [1, 32],
         "classes": ["not laundering", "laundering"],
-        "metric": "minority-class F1 0.081 measured; 0.632 published (see the model card for why)",
+        # 0.151948, not 0.081. This figure and the one in README.md were BOTH left on a
+        # pre-improvement retrain, so the Space published a stale number on two surfaces at once.
+        # Read from models/metrics.json (`finance_aml.gbm`, minority_class_f1) in Round 49.
+        "metric": "minority-class F1 0.151948 measured; 0.632 published (see the model card for why)",
     },
 }
 

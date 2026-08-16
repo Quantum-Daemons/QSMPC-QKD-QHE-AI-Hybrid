@@ -1,5 +1,76 @@
 # Does the unencoded wire do anything? Telecom QCNN at 7 wires against 8
 
+> **DEADLINE EXECUTED Round 49. RE-RUN AT FIVE SEEDS ON THE CURRENT CIRCUIT. THE PAD-WIRE FINDING
+> IS CONFIRMED AND STRENGTHENED; THE TELECOM FINDING IS NOT - ITS DIRECTION HOLDS AND ITS
+> SEPARATION DOES NOT.**
+>
+> Every figure below this banner and above the next was single-seed. Round 46 deferred the re-run
+> `by Round 48` and Round 48 did not do it, so this discharges it one round late.
+>
+> **Provenance check first, because a sweep that does not reproduce the shipped artifacts is
+> measuring something else.** Seed 0 of each configuration reproduces its shipped `weights.json` to
+> every recorded digit: telecom 8 wires 0.5110 against 0.510963, telecom 7 wires 0.5419 against
+> 0.541894, finance 0.7353 against 0.735294, medical 0.8837 against 0.883721. Same circuit.
+>
+> **Telecom, macro F1, 7 wires against 8, paired by seed:**
+>
+> | seed | 8 wires | 7 wires | delta (7 minus 8) |
+> |---|---|---|---|
+> | 0 | 0.5110 | 0.5419 | +0.0309 |
+> | 1 | 0.4645 | 0.4578 | **-0.0067** |
+> | 2 | 0.4774 | 0.5799 | +0.1025 |
+> | 3 | 0.4835 | 0.5360 | +0.0525 |
+> | 4 | 0.4865 | 0.5388 | +0.0523 |
+> | **mean** | **0.4846** | **0.5309** | **+0.0463** |
+> | sd | 0.0170 | 0.0446 | 0.0396 |
+>
+> Seven wires wins **four of five** seeds and the mean gap is +0.0463, larger than the single-seed
+> +0.030931 this replaces. **That is not a separation, and the honest reading is that the question
+> remains open.** The ranges overlap substantially - the best 8-wire run (0.5110) beats the worst
+> 7-wire run (0.4578) - and neither test of the paired differences reaches significance at n=5:
+> paired t(4) = 2.613, **p = 0.059**; Wilcoxon signed-rank, **p = 0.125**. The 7-wire configuration
+> is also the more variable of the two by a factor of 2.6 in sd, so its higher mean is partly a
+> longer tail upward.
+>
+> So: the ORIGINAL conclusion of this file - 8 wires beat 7 by +0.0786 - is dead, and five seeds
+> agree on the direction of its reversal. Quoting "7 wires beat 8" as an established result is
+> still wrong. What five seeds support is "the padding wire buys nothing measurable, and may cost
+> something"; what they do not support is a number.
+>
+> **The pad-wire finding on finance and medical is now confirmed at five seeds and it is exact.**
+> At every one of five seeds, on both corpora, 8 and 9 wires give **byte-identical** metrics:
+>
+> | seed | finance minority F1 (q8 = q9) | finance accuracy | medical minority F1 (q8 = q9) | medical accuracy |
+> |---|---|---|---|---|
+> | 0 | 0.7353 | 0.9700 | 0.8438 | 0.8837 |
+> | 1 | 0.6939 | 0.9750 | 0.8889 | 0.9186 |
+> | 2 | 0.8679 | 0.9883 | 0.8364 | 0.8953 |
+> | 3 | 0.8000 | 0.9800 | 0.8387 | 0.8837 |
+> | 4 | 0.8387 | 0.9833 | 0.8387 | 0.8837 |
+>
+> Not "within noise" - identical, on every metric, at every seed. A shared filter cannot allocate
+> capacity to a wire carrying no feature, and this is what that looks like when it is measured
+> rather than argued. Round 46 asserted it from one seed; it now has five, and the strength of this
+> result is the reason the telecom result's weakness is worth stating plainly rather than
+> presenting the two together as "the ablation was re-run".
+>
+> **Neither telecom width is remotely close to the classical baseline**, which is unchanged because
+> it never sees the circuit: multinomial logistic regression scores **0.976447** macro F1 on the
+> identical split, 0.45 ahead of the better circuit and roughly ten times the gap between the two
+> widths. Every comparison in this file is between two configurations that both lose heavily.
+>
+> **What this does NOT discharge.** Round 46's banner deferred the re-run and also said "the
+> interesting comparison is no longer 8-vs-9 wires but conv-rounds against pool-stages". This
+> re-ran the width question it was told to re-run. The conv-rounds-against-pool-stages ablation has
+> still never been done, and narrowing the obligation to the half that was easy to measure would be
+> the kind of quiet scope reduction this file exists to make visible.
+>
+> Recipe, 30 runs, artifacts restored afterwards so nothing here changed what ships:
+>
+>     python scripts/train/qcnn_variational.py --usecase telecom --layers 6 --epochs 400 --seed {0..4} --threads 1 --qubits {8,7}
+>     python scripts/train/qcnn_variational.py --usecase finance --layers 3 --epochs 120 --seed {0..4} --threads 1 --qubits {8,9}
+>     python scripts/train/qcnn_variational.py --usecase medical --layers 3 --epochs 120 --seed {0..4} --threads 1 --qubits {8,9}
+
 > **ROUND 47 REVERSED THE TELECOM FINDING. THE SIGN FLIPPED; IT WAS NOT MERELY RESTATED - AND THE
 > REVERSAL HAS NOW SURVIVED TWO RETRAINS, THOUGH THE GAP NARROWED FROM 0.042128 TO 0.030931.**
 >

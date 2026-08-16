@@ -141,10 +141,39 @@ between the two passes the textbook test while the model returns nothing.
 **Round 46 corrected the numbers here, and the correction widens the gap.** This read "the measured
 GLLP zero-key point is 0.098106" with "1915 secure bits" at eavesdropper 0 - both from the non-decoy
 GLLP form Round 45 removed from the browser and Round 46 removed from the Python path. Under the
-two-intensity decoy bound the zero-key point is **channel-dependent** rather than one constant:
-intrinsic QBER **0.0635 at 1 km, 0.0593 at 50 km, 0.0534 at 100 km**. The window in which the
-textbook test passes on a channel yielding nothing is therefore about twice as wide as this
-paragraph claimed. Verified both directions in the browser: eavesdropper 0 gives QBER 0.01 and a
+two-intensity decoy bound the zero-key point is **channel-dependent** rather than one constant.
+
+**Round 49 re-derived these and found them wrong on two axes at once**, which is why the correction
+names the quantity as well as the value.
+
+*The first axis is the intensities.* The figures this paragraph carried - 0.0635, 0.0593, 0.0534 -
+reproduce to four decimals at `mu = 0.5 / nu = 0.1`, the pair in force when they were taken. Round 47
+moved the shipped pair to the finite-key optimum `mu = 0.3416 / nu = 0.1417` and did not revisit
+them, so they were correct arithmetic about a configuration this repository no longer runs.
+
+*The second axis is that two different quantities were being given one name.* `e_det` is the error on
+DETECTED SIGNAL photons and is what the bound takes as input; the QBER a panel renders adds the
+dark-count background back as `e0 * y0`. Keeping those apart is the entire purpose of
+`e_det_for_bound`, whose docstring says `intrinsic_qber` "is the right quantity for the OBSERVED QBER
+a panel displays and the wrong one for this bound" - and this paragraph labelled the bound's input
+"intrinsic QBER". At the shipped intensities:
+
+| channel | `e_det` zero-key point (the bound's input) | observed QBER at that point |
+|---|---|---|
+| 1 km | 0.070672 | 0.070693 |
+| 50 km | 0.066894 | 0.067094 |
+| 100 km | 0.059196 | 0.061196 |
+
+The columns diverge with distance because the background term is fixed while the detected-signal rate
+falls, so by 100 km the gap is 0.002 - a tenth of the remaining distance to the textbook threshold,
+which is why quoting either figure under the other's name is not a rounding matter.
+
+At 200 km the bound returns nothing at ANY misalignment including zero: at `eta = 2.5e-5` the
+background yield `y0 = 2e-5` is comparable to the signal, so there is no zero-key point to quote.
+
+The window in which the textbook test passes on a channel that yields nothing is therefore about
+twice as wide as this paragraph originally claimed - 0.0707 to 0.11 at 1 km, against 0.098 to 0.11.
+Verified both directions in the browser: eavesdropper 0 gives QBER 0.01 and a
 positive key; eavesdropper 0.35 gives QBER 0.1 and 0 secure bits, and both the posture table and the
 sequence diagram report the failure.
 

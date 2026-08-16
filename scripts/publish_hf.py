@@ -127,6 +127,11 @@ def model_card(spec: registry.ModelSpec, achieved: dict | None) -> str:
         f"- **Licence**: {spec.dataset.licence}",
         f"- **Source**: {spec.dataset.url} (licence read {spec.dataset.licence_checked})",
     ]
+    # A CC BY model card without a credit line does not satisfy the licence it declares in its own
+    # front matter, and this card is the copy a Hub visitor reads. Emitted from the registry so it
+    # cannot drift from what the browser and the eval sample say.
+    if spec.dataset.attribution:
+        body.append(f"- **Attribution ({spec.dataset.licence})**: {spec.dataset.attribution}")
     if spec.dataset.notes:
         body += ["", spec.dataset.notes]
     body.append("")

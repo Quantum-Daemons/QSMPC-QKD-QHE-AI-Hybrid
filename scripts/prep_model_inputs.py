@@ -80,7 +80,23 @@ N_SAMPLES = {"medical_fl": None, "finance_aml": 8192, "satellite_comms": 128,
              # there is no licence question and no reason to subsample; medical's is the official
              # BreastMNIST test split, the same one medical_fl.resnet18 ships, so the two teachers
              # are verified on identical rows and the comparison between them is like for like.
-             "telecom_ids": None, "medical_resnet50": None}
+             "telecom_ids": None, "medical_resnet50": None,
+             # 5G-NIDD, and the one case here where "the whole test split" is not an option: it is
+             # 303,973 rows x 39 features, roughly 100 MB against a 4.5 MB largest-committed-sample
+             # today. 16,384 rows keeps the interval on a 9-class macro F1 tight while landing in
+             # the same size class as the finance sample. See build_telecom_nidd for why the draw is
+             # NOT proportional and what that costs.
+             "telecom_nidd": 16384}
+
+#: Minimum rows per class in the 5G-NIDD sample, regardless of prevalence.
+#:
+#: A strictly proportional 16,384-row draw gives ICMPFlood about 15 rows, at which point its
+#: per-class F1 moves in steps of 1/15 and the browser would be "verifying" noise. The test
+#: partition holds 289 ICMPFlood rows, so a floor of 200 is satisfiable for every class. The cost is
+#: real and is stated in the payload rather than hidden: the sample is not the corpus distribution,
+#: so its macro F1 is not the corpus macro F1. `build_finance_student` makes the same trade for the
+#: same reason and explains its own 19x prevalence gap rather than papering over it.
+NIDD_MIN_PER_CLASS = 200
 
 
 def _session(model_dir: str, prefer_int8: bool = True):
@@ -151,8 +167,21 @@ def _invalidate_pin_if_published(key: str) -> None:
           f"browser until `scripts/publish_hf.py --key {key} --public` re-pins it.")
 
 
-def _warn_single_feature_leak(usecase: str, payload: dict) -> None:
+#: One-vs-rest rank-AUC at or above which a single feature is reported as doing the model's job.
+#: Named rather than inline because a caller that records the result has to publish the threshold
+#: the number was measured at, and two copies of 0.90 would be one copy too many.
+LEAK_AUC_THRESHOLD = 0.90
+
+
+def _warn_single_feature_leak(usecase: str, payload: dict) -> list[tuple[float, str, int]]:
     """Warn when ONE feature separates the classes well enough to be doing the model's job.
+
+    Returns the flagged ``(auc, feature_name, class_index)`` triples, highest first, so a caller can
+    RECORD what was found rather than only print it. Every existing caller ignores the return value
+    and is unaffected. `scripts/train/telecom_nidd.py` needs the list as data: on 5G-NIDD the check
+    fires on 21 of 39 features, legitimately, and the published feature_spec has to state that count
+    and distinguish it from the three row identifiers it does NOT fire on. A count asserted in prose
+    and measured nowhere is the drift this repository has a gate for.
 
     This exists because one did. The finance sample was built from `nrows=400_000` of a time-sorted
     corpus, which left `hour_of_day >= 3` implying laundering at 100% precision - a leak created by
@@ -180,14 +209,14 @@ def _warn_single_feature_leak(usecase: str, payload: dict) -> None:
     samples, labels = payload.get("samples"), payload.get("labels")
     names = payload.get("feature_names") or []
     if not samples or not labels:
-        return
+        return []
     y = np.asarray(labels, dtype=int)
     classes = np.unique(y)
     if classes.size < 2:
-        return
+        return []
     x = np.asarray(samples, dtype=float)
     if x.ndim != 2 or x.shape[1] != len(names):
-        return                                    # image/sequence payloads: not a flat feature space
+        return []                                 # image/sequence payloads: not a flat feature space
 
     flagged: list[tuple[float, str, int]] = []
     for j, nm in enumerate(names):
@@ -203,14 +232,16 @@ def _warn_single_feature_leak(usecase: str, payload: dict) -> None:
             auc = max(auc, 1.0 - auc)             # symmetric: a perfectly inverted feature is as telling
             if auc > best_auc:
                 best_auc, best_cls = auc, int(c)
-        if best_auc >= 0.90:
+        if best_auc >= LEAK_AUC_THRESHOLD:
             flagged.append((best_auc, nm, best_cls))
-    for auc, nm, c in sorted(flagged, reverse=True):
+    flagged.sort(reverse=True)
+    for auc, nm, c in flagged:
         label = (payload.get("class_names") or [])
         cname = label[c] if c < len(label) else str(c)
         print(f"    LEAK WARNING [{usecase}]: '{nm}' alone separates class '{cname}' from the rest "
               f"at AUC {auc:.4f}. A label recoverable from one feature measures the sampling, not "
               f"the model - check how the rows were drawn before publishing this.")
+    return flagged
 
 def _write(usecase: str, payload: dict) -> Path:
     """Write beside the model, not into the web bundle.
@@ -259,6 +290,7 @@ _MODEL_KEY = {
     "satellite_comms": "satellite_comms.telemanom",
     "satellite_opssat": "satellite_comms.opssat",
     "telecom_ids": "telecom_ids.qml",
+    "telecom_nidd": "telecom_ids.nidd",
     "medical_resnet50": "medical_fl.resnet50",
     "medical_student": "medical_fl.student",
     "opssat_student": "satellite_comms.opssat_student",
@@ -605,6 +637,121 @@ def build_telecom(rng: np.random.Generator) -> dict:
 
 
 # --------------------------------------------------------------------------------------------- #
+#  telecom_nidd -- 5G-NIDD, a floored draw from the same held-out quarter the trainer scores on
+# --------------------------------------------------------------------------------------------- #
+def build_telecom_nidd(rng: np.random.Generator) -> dict:
+    """A per-class-floored draw from the seed-42 held-out quarter `train/telecom_nidd.py` scores on.
+
+    THE SPLIT IS REGENERATED, NOT STORED, so the sample cannot drift from the corpus the model was
+    trained against: same loader, same seed, same stratified 25%.
+
+    THE DRAW IS NOT PROPORTIONAL, and that is the one thing a reader has to know about this file.
+    Two constraints collide. The whole test split is 303,973 x 39 and would ship about 100 MB. A
+    proportional 16,384-row subsample of it gives ICMPFlood roughly 15 rows, and a per-class F1
+    computed on 15 rows is noise that the page would present as a verification. So every class gets
+    at least NIDD_MIN_PER_CLASS and the remainder is proportional, which means the sample
+    over-represents the four smallest classes and its macro F1 is NOT the corpus figure the registry
+    records. The payload says so in `expected.note`; without that the browser would reproduce a
+    number measured on a differently-composed sample and call it reproduction.
+    """
+    from sklearn.model_selection import train_test_split
+
+    from qsh.models import datasets as D
+    from qsh.models import registry
+
+    x_all, y_all, feature_names, class_names = D.load_5g_nidd()
+    # Mirrors scripts/train/telecom_nidd.py exactly: test_size=0.25, random_state=42, stratified.
+    _, x_te, _, y_te = train_test_split(x_all, y_all, test_size=0.25, random_state=42,
+                                        stratify=y_all)
+
+    want = N_SAMPLES["telecom_nidd"]
+    by_class = {c: np.flatnonzero(y_te == c) for c in range(len(class_names))}
+    short = [class_names[c] for c, pool in by_class.items() if len(pool) < NIDD_MIN_PER_CLASS]
+    if short:
+        raise SystemExit(
+            f"{short} have fewer than {NIDD_MIN_PER_CLASS} rows in the held-out split, so the "
+            f"per-class floor cannot be met. Lower NIDD_MIN_PER_CLASS deliberately rather than "
+            f"letting a class ship at a size where its F1 is noise.")
+
+    # Floors first, then the remaining budget proportionally, so the total is exactly `want` rather
+    # than `want` plus however much the floors happened to add.
+    take = {c: NIDD_MIN_PER_CLASS for c in by_class}
+    remaining = want - NIDD_MIN_PER_CLASS * len(by_class)
+    sizes = np.array([len(by_class[c]) for c in sorted(by_class)], dtype=float)
+    extra = np.floor(remaining * sizes / sizes.sum()).astype(int)
+    for c, e in zip(sorted(by_class), extra, strict=True):
+        take[c] = min(take[c] + int(e), len(by_class[c]))
+    idx = np.concatenate([rng.choice(by_class[c], size=take[c], replace=False)
+                          for c in sorted(by_class)])
+    rng.shuffle(idx)
+    x, y = x_te[idx], y_te[idx]
+
+    # Round BEFORE predicting: the payload ships 6-decimal values, so an expectation computed on the
+    # unrounded array is an expectation for numbers the browser never sees. On a tree ensemble that
+    # shows up as split-boundary flips.
+    x = np.asarray(x, dtype=float).round(6)
+    sess, graph = _session("telecom_nidd")
+    out = sess.run(None, {sess.get_inputs()[0].name: x.astype(np.float32)})
+    scores = next((o for o in out if getattr(o, "ndim", 0) == 2 and o.shape[1] > 1), out[0])
+    pred = np.asarray(scores).argmax(1)
+
+    corpus = registry.achieved("telecom_ids.nidd") or {}
+    spec = registry.get("telecom_ids.nidd")
+    drawn = {class_names[c]: int(take[c]) for c in sorted(take)}
+
+    return {
+        "task": "classification",
+        "provenance": (
+            "5G-NIDD, real 5G network traffic. " + spec.dataset.attribution + " "
+            "CC BY 4.0 requires attribution wherever the data is redistributed, and THIS FILE "
+            "REDISTRIBUTES THE DATA - these are unmodified rows of the published corpus, not a "
+            "derived statistic - so the credit line above is a licence condition here rather than a "
+            "courtesy. 5G-NIDD joins OPS-SAT-AD as the second corpus in this project whose data may "
+            "be shipped at all. "
+            "NETWORK-LAYER flow statistics, which is a DIFFERENT TASK from the QKD-layer attack "
+            "classifier on this same page: no shared labels and no shared features, so the two "
+            "figures are not a comparison. "
+            "13 of the corpus's 52 columns are dropped before the model sees them, with reasons, in "
+            "qsh.models.datasets.NIDD_DROPPED and in this model's feature_spec.json. Three of those "
+            "are integer row identifiers whose restoration reproduces the accuracies published for "
+            "this corpus; that counterfactual is the reason this model exists and is recorded in "
+            "models/metrics.json as leak_counterfactual_*."
+        ),
+        "input": {"shape": [1, x.shape[1]], "dtype": "float32", "preprocessing": [],
+                  "layout": ("samples[i] is one network flow's 39 features, in the order below. The "
+                             "five categorical columns are already ordinal-encoded against the "
+                             "published vocabulary in feature_spec.json; -1 means missing or "
+                             "out-of-vocabulary, for a categorical or a numeric alike")},
+        "feature_names": list(feature_names),
+        "class_names": list(class_names),
+        "samples": np.asarray(x, dtype=float).tolist(),
+        "labels": np.asarray(y, dtype=int).tolist(),
+        "expected": {
+            "graph": graph,
+            "accuracy": float((pred == y).mean()),
+            "majority_baseline": float(max(np.bincount(y)) / len(y)),
+            **declared_metric_expectation("telecom_ids.nidd", y, pred),
+            "rows_per_class": drawn,
+            "note": (
+                f"NOT A PROPORTIONAL SAMPLE, so this macro F1 is not the "
+                f"{corpus.get('macro_f1', float('nan')):.4f} the registry records on the full "
+                f"{corpus.get('n_eval', 0):,}-row test split, and neither figure is wrong. Every "
+                f"class here is floored at {NIDD_MIN_PER_CLASS} rows because a strictly "
+                f"proportional draw of this size gives ICMPFlood about 15, at which point its "
+                f"per-class F1 moves in steps of 1/15 and verifying against it would be theatre. "
+                f"The floor over-represents the four smallest classes, and since those are the "
+                f"classes the model is BEST at - seven of nine score above 0.98 while the two "
+                f"majority classes mutually confuse - it moves both figures upward. Read "
+                f"rows_per_class beside them. "
+                f"One further inversion, which is the opposite of this project's usual warning: on "
+                f"this corpus macro F1 is the optimistic number and accuracy the pessimistic one, "
+                f"because the two majority classes are 39.3% and 37.6% of the corpus and confuse "
+                f"with each other."),
+        },
+    }
+
+
+# --------------------------------------------------------------------------------------------- #
 #  medical_resnet50 -- the SAME BreastMNIST test split resnet18 uses, so the two compare directly
 # --------------------------------------------------------------------------------------------- #
 def build_medical_resnet50(rng: np.random.Generator) -> dict:
@@ -910,6 +1057,7 @@ BUILDERS = {"medical_fl": build_medical, "finance_aml": build_finance,
             "finance_student": build_finance_student,
             "satellite_opssat": build_satellite_opssat,
             "telecom_ids": build_telecom,
+            "telecom_nidd": build_telecom_nidd,
             "medical_resnet50": build_medical_resnet50,
             "satellite_comms": build_satellite}
 
