@@ -316,8 +316,12 @@ that. Adjudicated **per file at primary source on 2026-08-15**, not by venue and
 **Read arXiv licences from OAI-PMH, not from the Atom API.** `export.arxiv.org/api/query` carries no
 licence field at all and reports "not present" even for a CC0 paper, so anyone adjudicating from it
 reads the whole corpus as unlicensed. `oaipmh.arxiv.org/oai?verb=GetRecord&metadataPrefix=arXiv`
-returns a real `<license>` element. Three of the six papers kept below are licensed exactly because
-that distinction was checked.
+returns a real `<license>` element. **Two of the seven** papers kept below are licensed exactly
+because that distinction was checked - the two whose "Verified at" column reads `arXiv OAI-PMH`.
+
+This said "three of the six" until Round 49 and was wrong in both numbers: the table below has seven
+rows, and only two of them are arXiv papers at all. Recounted against the table rather than adjusted
+by arithmetic, because a count corrected without looking is a count that will drift again.
 
 ### Kept - an explicit grant permitting redistribution
 

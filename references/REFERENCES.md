@@ -1624,12 +1624,20 @@ so each one names what was checked and where it stopped.
   for one anyway. Measured 2026-08-15, said out loud here for the first time.** The standing
   per-round request asks for a UX review *grounded in* `references/`. A grep of all **16** markdown
   files for `usability`, `accessibility`, `WCAG`, `human-computer`, `human factors`, `affordance`,
-  `user experience`, `HCI`, `cognitive load` and `eye-tracking` returns **zero** hits. Widening to
+  `user experience`, `HCI`, `cognitive load` and `eye-tracking` returns hits in exactly **one** file,
+  and that file is THIS one - the sentence you are reading is the only match, because recording the
+  absence created it. Excluding this file the count is **zero**, which is the substantive claim and
+  is unchanged. Re-measured Round 49; the original "zero" was true when written and is now literally
+  one by self-reference, which is worth stating rather than silently editing the number to something
+  that reads as a real source having appeared. Widening to
   `interface design`, `visualis/visualiz`, `readability`, `legibility` and `colour-blind` returns
   **two**, and neither is a source: one is `he-scheme-selection.md` calling a twelve-coefficient
   model readable, and the other is the entry four bullets above recording that no prior art on
-  visualising encrypted inference exists. All **15** bundled PDFs are quantum, cryptography or
-  business-of-quantum papers. **There is no HCI or human-factors source in this reference set at
+  visualising encrypted inference exists. The bundled PDFs are quantum and cryptography papers:
+  **7 committed** to the repository, with 4 more present on a working checkout and deliberately not
+  redistributed (`DATA_LICENSES.md` section 8 adjudicates each). This said "All **15**" until Round
+  49, a count matching neither figure, and the one business-of-quantum title it alluded to is among
+  the four that are NOT committed. **There is no HCI or human-factors source in this reference set at
   all.**
 
   So the UX rows do not rest on this folder, and any claim that they do would be false. What they
