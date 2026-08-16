@@ -164,8 +164,9 @@ def infer(features, weights: dict) -> tuple[float, int, float]:
                 ry(a, float(w8[0])); rz(a, float(w8[1]))
                 ry(b, float(w8[2])); rz(b, float(w8[3]))
                 cnot(a, b)
-                ry(a, float(w8[4])); rz(a, float(w8[5]))
-                ry(b, float(w8[6])); rz(b, float(w8[7]))
+                # RZ before RY in the second half; see scripts/train/qcnn_variational.py.
+                rz(a, float(w8[5])); ry(a, float(w8[4]))
+                rz(b, float(w8[7])); ry(b, float(w8[6]))
         survivors = []
         for a, b in zip(active[0::2], active[1::2]):
             cry(b, a, float(pool[st]))
@@ -178,8 +179,10 @@ def infer(features, weights: dict) -> tuple[float, int, float]:
             f"the fully-connected block carries {fc.shape[0]} survivor(s) but pooling left "
             f"{len(active)} ({active}). The artifact's parameter layout does not match the circuit "
             "this module implements, and continuing would silently apply the wrong angles.")
+    # RZ before RY: a diagonal gate applied last is unobservable through |amplitude|^2 and a CNOT
+    # ring. See the note in scripts/train/qcnn_variational.py.
     for j, q in enumerate(active):
-        ry(q, float(fc[j, 0])); rz(q, float(fc[j, 1]))
+        rz(q, float(fc[j, 1])); ry(q, float(fc[j, 0]))
     if len(active) > 1:
         for j in range(len(active)):
             cnot(active[j], active[(j + 1) % len(active)])

@@ -62,6 +62,37 @@ SHIPPED = [
 ]
 
 
+def _require_browser_or_skip() -> None:
+    """Skip when the browser toolchain is absent - unless the environment forbids skipping.
+
+    THE SKIP WAS THE HOLE. These gates are the only ones that can see a change reaching one
+    language and not the other, and they guarded on `if not ESBUILD.exists(): pytest.skip(...)`.
+    `web/node_modules` is gitignored and the CI python job installed no Node, so on every GitHub
+    run they reported SKIP and the workflow went green. Measured on a clone of the tip: 20
+    collected, 11 passed, **9 skipped**. Seeding the pre-Round-47 fully-connected block into
+    `quantumSim.ts` fails these gates by 0.585 locally and passes the entire CI workflow.
+
+    `QSH_REQUIRE_BROWSER_GATES=1` turns the skip into a failure. CI sets it; a developer without
+    node still gets the skip, with the message saying what is unchecked.
+    """
+    import os
+
+    if ESBUILD.exists():
+        return
+    msg = (
+        "web/node_modules/.bin/esbuild is absent, so the browser model cannot be executed. "
+        "Run `npm ci` in web/. This is a SKIP rather than a pass: the identity is unchecked, "
+        "not satisfied."
+    )
+    if os.environ.get("QSH_REQUIRE_BROWSER_GATES") == "1":
+        pytest.fail(
+            msg + " QSH_REQUIRE_BROWSER_GATES=1 is set, so this is a FAILURE: the cross-language "
+            "checks are mandatory in this environment and skipping them is what let a "
+            "one-language fix ship green."
+        )
+    pytest.skip(msg)
+
+
 def _trainer():
     import qcnn_variational as q
 
@@ -106,12 +137,7 @@ def _standardise(x, w) -> "torch.Tensor":
 
 def _browser_probs(rel_dir: str, fname: str, rows: list[list[float]]) -> list[list[float]]:
     """Run the browser's own QCNN on the shipped artifact, through the module graph it ships."""
-    if not ESBUILD.exists():
-        pytest.skip(
-            "web/node_modules/.bin/esbuild is absent, so the browser model cannot be executed. "
-            "Run `npm ci` in web/. This is a SKIP rather than a pass: the identity below is "
-            "unchecked, not satisfied."
-        )
+    _require_browser_or_skip()
     with tempfile.TemporaryDirectory() as tmp:
         d = Path(tmp)
         entry, bundle, runner = d / "entry.ts", d / "bundle.mjs", d / "run.mjs"

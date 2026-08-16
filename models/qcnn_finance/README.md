@@ -1,10 +1,25 @@
 # Variational QCNN - finance
 
-> **Round 47 retrained this artifact after two circuit corrections.** Current headline
-> `minority_class_f1` = **0.84058**, against **0.714286** on the card this replaces - a figure that
-> predates the Round 46 rewrite of the circuit and was never updated for it, so this card was stating
-> a retired ansatz's number while the browser served a different one. Only the second correction
-> reaches this use case, and the section below says why the number moved at all.
+> **Round 47 retrained this artifact a SECOND time, after finding that 4 of its 77 parameters could
+> not move the readout at any input - and this is the use case where the fix made the headline
+> WORSE.** Current headline `minority_class_f1` = **0.735294**, against 0.84058 on the card this
+> replaces: **-0.105**. Three of the four QCNN artifacts gained from the same change and this one
+> regressed. It is not presented as a clean win anywhere on these six cards.
+>
+> The four dead angles were `theta[76]`, the fully-connected block's RZ, applied AFTER the RY with
+> only a CNOT ring and `|amplitude|^2` between it and the readout - a diagonal gate applied last
+> cannot move a computational-basis readout - and `theta[23]`, `theta[47]` and `theta[71]`, the 8th
+> conv angle of each of the three stages' final layer round, each an `rz` on the wire that stage's
+> pooling is about to discard. **The fix was ORDERING, not deletion**: RZ before RY in both places,
+> so the phases RZ writes are mixed back into amplitudes by the RY that follows. `theta` is still 77
+> scalars and all 77 are now reachable.
+> `tests/test_the_qcnn_has_the_structure_the_name_claims.py::test_every_trainable_parameter_reaches_the_readout`
+> perturbs every parameter at five (width, readout, layers) configurations and fails if one cannot
+> move the output.
+>
+> Two earlier figures on this card are superseded rather than deleted: 0.714286 belongs to the
+> retired hardware-efficient ansatz Round 46 replaced, and 0.84058 to this circuit with four of its
+> angles inert.
 
 NOT PUBLISHED TO HUGGING FACE, AND NOT IN THE MODEL REGISTRY. This is a browser-side demonstration
 circuit for the `finance_aml` page of
@@ -24,10 +39,16 @@ rotation on the survivor conditioned on its partner, on 8 qubits, reducing the r
 
 `theta` is **77** scalars: 72 conv (3 stages x 3 rounds x 8 angles in the shared filter), 3 pool
 angles, and 2 in the fully-connected block. It was 76 until Round 47, when the fully-connected block
-stopped being one shared scalar and became a per-survivor RY+RZ. Cong, Choi & Lukin specify "a
+stopped being one shared scalar and became a per-survivor RZ+RY. Cong, Choi & Lukin specify "a
 unitary F on the remaining qubits"; weight sharing is what makes a CONVOLUTION a convolution and
 belongs to the conv layers only. The count stays O(log N) in the register width because pooling stops
 at a bounded survivor count, not because F is shared.
+
+**Within the filter and within F, RZ precedes RY, and that ordering is load-bearing.** Applied after
+the RY, an RZ on the measured survivor is a diagonal gate applied last and commutes with the `Z` it
+is measured in; an RZ on the wire pooling is about to discard is followed only by that wire's use as
+a CRY control, which is diagonal in its basis, and then by the readout ignoring it. Measured under
+the old order, 4 of these 77 angles could not move the readout at any input.
 
 Trained by backpropagation through a dense state vector, then reimplemented independently in plain
 numpy (`src/qsh/qhe/qcnn_trained.py`); the two agree to 2.4e-07, which is how a crossed CNOT ring
@@ -44,16 +65,16 @@ metric is **minority_class_f1**, chosen by the corpus rather than by preference.
 
 | quantity | value |
 |---|---|
-| `minority_class_f1` (this circuit) | 0.84058 |
+| `minority_class_f1` (this circuit) | 0.735294 |
 | logistic regression, identical split, minority-class F1 | 0.865672 |
 | all-positive F1 floor | 0.098257 |
-| accuracy (companion, not the headline) | 0.981667 |
+| accuracy (companion, not the headline) | 0.97 |
 | logistic regression accuracy | 0.985 |
 | majority-class accuracy floor | 0.948333 |
 | test prevalence | 0.051667 |
 | n_train / n_test | 2800 / 1200 |
 
-**The classical baseline is ahead**, by 0.025092 of minority-class F1 and by 0.003333 of accuracy.
+**The classical baseline is ahead**, by 0.130378 of minority-class F1 and by 0.015 of accuracy.
 That is reported here rather than omitted, and the browser log line says the same thing on the page.
 Randomly initialised QCNNs are known to operate only on low-bodyness measurements of their input and
 to be efficiently classically simulable (arXiv:2408.12739), so a classical model winning on tabular
@@ -72,22 +93,33 @@ still applies. Do not re-pick the seed to close a gap: selecting on test perform
 selection, refused in
 [`references/qcnn-entanglement-ablation.md`](../../references/qcnn-entanglement-ablation.md).
 
-## Why this number moved when the readout fix was not about this circuit
+## This is the artifact the dead-parameter fix made worse
 
-The first Round 47 correction is to the MULTICLASS readout, which binned the class index over wires
-0..m-1 - a list that includes wires pooling had discarded. This circuit does not use that readout:
-`readout.kind` is `expval_z0`, one expectation through one scalar scale and bias, binary by
-construction. The correction cannot reach it.
+Four parameters that no gradient could reach became reachable, and the minority-class F1 fell from
+0.84058 to 0.735294. Across the four distinct circuits the same one-line reordering produced:
 
-The second correction does reach it, and not through capacity. The new fully-connected block adds an
-RZ on the survivor, and RZ commutes with the Z it is measured in, so that angle is invisible to the
-readout: moving it by 1.234 radians through the trainer's own `circuit()` changes `<Z0>` by 1.8e-07
-on a 64-row batch, while moving the neighbouring FC RY by the same amount changes it by 0.78. What it
-does change is `param_count`, 76 to 77 - and `torch.randn(77)` is not `torch.randn(76)` with one
-extra draw, so the whole initialisation vector moved and the run landed in a different basin. **The
-movement on this use case is a re-initialisation effect, not a gain in expressive power**, and it
-should be read together with the wide seed spread recorded above rather than as an improvement the
-architecture earned.
+| artifact | headline metric | before | after | change |
+|---|---|---|---|---|
+| `qcnn_telecom` | macro F1 | 0.458324 | 0.510963 | +0.053 |
+| `qcnn_telecom_q7` | macro F1 | 0.500452 | 0.541894 | +0.041 |
+| `qcnn_medical` | minority-class F1 | 0.8125 | 0.84375 | +0.031 |
+| **`qcnn_finance`** | **minority-class F1** | **0.84058** | **0.735294** | **-0.105** |
+
+Three improved and one regressed, and the one that regressed moved further than any of the three that
+improved. **This is not a clean win and is not presented as one.**
+
+What is established is narrow and worth stating exactly: four angles that could not affect the output
+at any input can now affect it, which is a defect fixed regardless of which way the metric went. What
+is NOT established is that the change improves this architecture, because a fix that alters
+`torch.randn`'s consumption order also moves the initialisation, and this circuit's retired five-seed
+ablation spanned 0.32 to 0.80 on exactly this metric. A single-draw move of 0.105 sits comfortably
+inside that width. **Reading either sign of this row as an architectural result would need a seed
+sweep that has not been run**, and re-picking the seed to recover the old figure would be test-set
+selection.
+
+The Round 47 MULTICLASS readout correction - binning the class index over surviving wires rather than
+over wires 0..m-1 - still does not reach this use case at all: `readout.kind` is `expval_z0`, one
+expectation through one scalar scale and bias, binary by construction.
 
 ## Data and licence
 
@@ -120,9 +152,10 @@ have destroyed the 8-wire file the demo serves.
 
 `models/qcnn_finance_q9` carries a 9-wire circuit - one wire more than the 8 features, so one
 unencoded pad. **Every recorded metric is identical between the two widths**: minority-class F1
-0.84058, accuracy 0.981667, and the same floors, prevalence and split sizes, to all six digits the
+0.735294, accuracy 0.97, and the same floors, prevalence and split sizes, to all six digits the
 artifacts record. The same is true of the medical pair, so the pad-wire result is now measured twice
-and in the same direction.
+and in the same direction - and it has now survived two retrains that moved the values, which is a
+stronger statement than surviving one.
 
 The mechanism is the shared filter. One two-qubit filter is applied at every position, so there are
 no per-wire angles for a data-free wire to claim; a pad in |0> contributes nothing the filter can
@@ -130,12 +163,14 @@ allocate capacity to. The pre-Round-46 ansatz gave every wire its own trainable 
 exactly why the same comparison produced a spread worth ablating back then - it was measuring the
 ansatz's spurious per-wire capacity rather than a property of the data.
 
-The trained parameter vectors are not bit-identical: 4 of 77 angles differ by more than 1e-4 between
-the two widths. All four are angles the `<Z0>` readout cannot see - three are the final RZ on the
-wire each pooling stage discards, one is the FC RZ on the measured survivor - and moving all four by
-1.234 radians changes `<Z0>` by 3.6e-07, against 0.37 for a neighbouring conv angle. They carry no
-gradient signal and drift on numerical noise, which is why the angles differ while no published
-number does.
+**The trained parameter vectors are now near-identical too, and that is a consequence of the
+dead-parameter fix.** Before it, 4 of 77 angles differed between the two widths by more than 1e-4 -
+`theta[23]`, `theta[47]`, `theta[71]` and `theta[76]`, which are exactly the four the `<Z0>` readout
+could not see. They carried no gradient signal, so they drifted on numerical noise while no published
+number moved with them. With the ordering corrected those four are reachable and no longer drift:
+**zero of 77 angles now differ by more than 1e-4**, the largest disagreement anywhere in the vector
+is 1.1e-05, and `scale` and `bias` agree to 4.8e-07 and 6.0e-07. A pad wire changes nothing the
+optimiser can use, and now it changes almost nothing at all.
 
 7 wires is not available here: this use case encodes 8 features and `qcnn_variational.py` refuses a
 run with fewer wires than features. Telecom can be narrowed because it carries 7. See

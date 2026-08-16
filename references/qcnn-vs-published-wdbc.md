@@ -4,9 +4,10 @@
 > HAS CARRIED.**
 >
 > The five-seed sweep below was run on the hardware-efficient ansatz that Round 46 replaced with a
-> real QCNN, and the shipped artifact was retrained again in Round 47 when the fully-connected block
-> became a per-survivor unitary. The shipped medical accuracy is now **0.860465** (minority-class F1
-> **0.8125**) against the same logistic regression's **0.953488**, from
+> real QCNN, and the shipped artifact was retrained TWICE in Round 47 - once when the fully-connected
+> block became a per-survivor unitary, and again when two classes of parameter turned out to be
+> analytically dead. The shipped medical accuracy is now **0.883721** (minority-class F1 **0.84375**)
+> against the same logistic regression's **0.953488**, from
 > `models/qcnn_medical/weights.json`, which the model card is gated against. **The seeds 0-4 sweep has
 > NOT been re-run**, so no median and no range exists for the current circuit - `0.7326`, `0.9070` and
 > the `[0.7326, 0.9535]` range below belong to a circuit this repository deleted.

@@ -83,6 +83,7 @@ from __future__ import annotations
 import math
 from dataclasses import dataclass
 
+from .bb84 import e_det_for_bound
 from .channel import ChannelParams
 
 __all__ = [
@@ -180,7 +181,7 @@ def finite_key_length(n_pulses: int, channel: ChannelParams | None = None,
     # this file first time through before that fix was made. Any eavesdropping is deliberately not
     # folded in here either: `e_det` is a device property, and an intercept-resend fraction belongs
     # in the observed statistics rather than in the detector model.
-    e_det = channel.misalignment
+    e_det = e_det_for_bound(channel)
     y0 = 2.0 * channel.dark_count_prob
 
     # The security budget is split across the statistical terms. eps_sec/20 for each of the

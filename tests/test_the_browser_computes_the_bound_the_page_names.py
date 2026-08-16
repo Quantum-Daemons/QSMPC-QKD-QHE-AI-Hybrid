@@ -74,6 +74,37 @@ DISTANCE_KM = 50.0
 PULSES = 200_000
 
 
+def _require_browser_or_skip() -> None:
+    """Skip when the browser toolchain is absent - unless the environment forbids skipping.
+
+    THE SKIP WAS THE HOLE. These gates are the only ones that can see a change reaching one
+    language and not the other, and they guarded on `if not ESBUILD.exists(): pytest.skip(...)`.
+    `web/node_modules` is gitignored and the CI python job installed no Node, so on every GitHub
+    run they reported SKIP and the workflow went green. Measured on a clone of the tip: 20
+    collected, 11 passed, **9 skipped**. Seeding the pre-Round-47 fully-connected block into
+    `quantumSim.ts` fails these gates by 0.585 locally and passes the entire CI workflow.
+
+    `QSH_REQUIRE_BROWSER_GATES=1` turns the skip into a failure. CI sets it; a developer without
+    node still gets the skip, with the message saying what is unchecked.
+    """
+    import os
+
+    if ESBUILD.exists():
+        return
+    msg = (
+        "web/node_modules/.bin/esbuild is absent, so the browser model cannot be executed. "
+        "Run `npm ci` in web/. This is a SKIP rather than a pass: the identity is unchecked, "
+        "not satisfied."
+    )
+    if os.environ.get("QSH_REQUIRE_BROWSER_GATES") == "1":
+        pytest.fail(
+            msg + " QSH_REQUIRE_BROWSER_GATES=1 is set, so this is a FAILURE: the cross-language "
+            "checks are mandatory in this environment and skipping them is what let a "
+            "one-language fix ship green."
+        )
+    pytest.skip(msg)
+
+
 def _cfg() -> dict:
     return json.loads((WEB / "src" / "lib" / "config.defaults.json").read_text())["qkd"]
 
@@ -84,12 +115,7 @@ def _browser() -> dict:
     Bundled with esbuild exactly as `web/scripts/check_qkd.mjs` does, so this exercises the same
     module graph the browser gets rather than a hand-rolled re-import.
     """
-    if not ESBUILD.exists():
-        pytest.skip(
-            "web/node_modules/.bin/esbuild is absent, so the browser model cannot be executed. "
-            "Run `npm ci` in web/. This is a SKIP rather than a pass: the identity below is "
-            "unchecked, not satisfied."
-        )
+    _require_browser_or_skip()
     with tempfile.TemporaryDirectory() as tmp:
         d = Path(tmp)
         entry, bundle, runner = d / "entry.ts", d / "bundle.mjs", d / "run.mjs"
@@ -590,3 +616,108 @@ def test_the_decoy_bound_does_not_count_dark_counts_twice() -> None:
         f"{wrong:.8f} instead, it is still passing `intrinsicQber` where the misalignment belongs "
         "- which is what Python was doing until this round, in the other language."
     )
+
+
+#: Eve fractions the sweep below is made at. 0.5 is well past the textbook intercept-resend point
+#: at which BB84 yields nothing, so a key surviving there is not a modelling nuance.
+EVE_SWEEP = (0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.75, 1.0)
+
+
+def _browser_eve_sweep() -> list[dict]:
+    """The browser's own bb84() across the eavesdropper control, one run per setting."""
+    _require_browser_or_skip()
+    with tempfile.TemporaryDirectory() as tmp:
+        d = Path(tmp)
+        entry, bundle, runner = d / "entry.ts", d / "bundle.mjs", d / "run.mjs"
+        entry.write_text(
+            "export { bb84, FIBER } from "
+            f"{json.dumps(str(WEB / 'src/lib/quantumSim'))};\n")
+        subprocess.run(
+            [str(ESBUILD), str(entry), "--bundle", "--format=esm", "--platform=node",
+             f"--outfile={bundle}", "--log-level=error"],
+            cwd=WEB, check=True, capture_output=True)
+        runner.write_text(
+            f"import * as m from {json.dumps(bundle.as_uri())};\n"
+            f"const eves = {json.dumps(list(EVE_SWEEP))};\n"
+            f"const out = eves.map((e) => {{\n"
+            f"  const ch = {{ ...m.FIBER, distanceKm: {DISTANCE_KM}, eveFraction: e }};\n"
+            f"  const r = m.bb84({PULSES}, ch, 1);\n"
+            "  return { eve: e, qber: r.qber, skr: r.secretKeyRate, bits: r.secureKeyBits };\n"
+            "});\n"
+            "console.log(JSON.stringify(out));\n")
+        out = subprocess.run(["node", str(runner)], check=True, capture_output=True, text=True)
+        return json.loads(out.stdout)
+
+
+def test_an_eavesdropper_destroys_the_key_in_both_languages() -> None:
+    """The eavesdropper control must reach the number it is a control for.
+
+    WHY THIS EXISTS
+
+    Round 47 corrected `e_det` from `intrinsic_qber` to the misalignment, because
+    `_decoy_secure_fraction` adds the dark-count contribution back itself and the background was
+    being charged twice. That correction was right about dark counts and wrong about Eve.
+
+    `intrinsic_qber` is `misalignment + 0.5 * p_dark / eta + 0.25 * eve_intercept_fraction`. It was
+    the ONLY path by which the eavesdropper fraction reached the secret-key bound - `transmittance`
+    does not depend on it, and `E_mu` is modelled from `e_det` rather than measured from the
+    sampled QBER. So removing it removed the dark-count double charge AND unhooked the
+    eavesdropper, and the browser went on publishing a full-strength key under a full
+    intercept-resend attack.
+
+    MEASURED on the unmodified tree, 200,000 pulses at 50 km, seed 1:
+
+        eve   browser qber   browser skr     browser secure bits
+        0.0   0.0137         0.001976547     395
+        0.5   0.1360         0.001976547     395
+        1.0   0.2598         0.001976547     395   <- unchanged at every setting
+
+    Python survived only by accident: `run_bb84` aborts when the SAMPLED qber exceeds
+    `pp_threshold`, so the key died at eve ~0.35 through a threshold test rather than through the
+    bound. `quantumSim.ts` has no such abort, so nothing stopped it at all.
+
+    The fix is to put Eve back where the physics puts her. `e_det` in Ma et al. is the probability
+    that a DETECTED SIGNAL photon lands in the wrong detector, and intercept-resend causes exactly
+    that, at the textbook rate of 0.25 per intercepted pulse. Dark counts stay in the separate
+    `e0 * y0` term, so the double charge does not come back.
+    """
+    py = []
+    from qsh.qkd.bb84 import QKDParams, run_bb84
+    from qsh.qkd.channel import ChannelParams
+
+    for eve in EVE_SWEEP:
+        r = run_bb84(PULSES, ChannelParams(distance_km=DISTANCE_KM, eve_intercept_fraction=eve),
+                     seed=1, qkd_params=QKDParams())
+        py.append({"eve": eve, "qber": r.qber, "skr": r.secret_key_rate,
+                   "bits": r.secure_key_bits})
+    br = _browser_eve_sweep()
+
+    # NON-VACUITY: an eavesdropper must actually disturb the channel, or nothing below has a subject.
+    assert py[-1]["qber"] > py[0]["qber"] + 0.1, (
+        f"a full intercept-resend attack moved the Python QBER from {py[0]['qber']:.4f} to "
+        f"{py[-1]['qber']:.4f}; the channel model is not modelling Eve at all"
+    )
+    assert br[-1]["qber"] > br[0]["qber"] + 0.1, "the browser channel model is not modelling Eve"
+
+    for lang, rows in (("Python", py), ("browser", br)):
+        rates = [r["skr"] for r in rows]
+        assert rates == sorted(rates, reverse=True), (
+            f"{lang}: the secret-key rate is not monotonically non-increasing in the eavesdropper "
+            f"fraction: {[f'{x:.6f}' for x in rates]}"
+        )
+        dead = [r for r in rows if r["eve"] >= 0.5]
+        assert all(r["skr"] == 0.0 and r["bits"] == 0 for r in dead), (
+            f"{lang} still publishes a secret key at eve >= 0.5:\n  "
+            + "\n  ".join(f"eve={r['eve']}: qber={r['qber']:.4f} skr={r['skr']:.9f} "
+                          f"bits={r['bits']}" for r in dead)
+            + "\n\nIntercept-resend on half the pulses puts the QBER far above any threshold at "
+            "which BB84 yields a key. If the rate has not moved at all, the eavesdropper fraction "
+            "is not reaching the bound - check what `e_det` is being passed."
+        )
+
+    for a, b in zip(py, br, strict=True):
+        assert abs(a["skr"] - b["skr"]) <= 1e-9, (
+            f"at eve={a['eve']} Python reports {a['skr']:.9f} bit/pulse and the browser "
+            f"{b['skr']:.9f}. The eavesdropper must reach both bounds the same way; one language "
+            "aborting on a sampled QBER while the other carries Eve in the bound is not agreement."
+        )

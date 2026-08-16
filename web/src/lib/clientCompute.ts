@@ -2841,8 +2841,16 @@ export function runClientPipeline(
             const ahead = typeof mine === "number" && typeof theirs === "number"
               ? (theirs > mine ? "the classical model is ahead" : "the circuit is ahead here")
               : "no comparator ships in this artifact, so no verdict is stated";
+            // `w.theta.length`, NOT `layers x n_qubits`. That product is the RETIRED
+            // hardware-efficient ansatz's parameter count - one angle per wire per layer - and it
+            // survived on the visitor-facing log line after Round 46 replaced the circuit with a
+            // shared-filter QCNN. It rendered "3x8 trained angles" = 24 for artifacts carrying 77,
+            // and "6x8" = 48 for telecom's 57: the only architecture description on the page,
+            // describing a circuit the page does not run. The count is now read from the artifact,
+            // so it cannot disagree with the weights it is printed beside.
             emit("log", stage, `inference backend = QCNN (QHE, TRAINED): class=${qc.cls} `
-              + `(<Z0>=${qc.expectation.toFixed(4)}, ${w.layers}x${w.n_qubits} trained angles, `
+              + `(<Z0>=${qc.expectation.toFixed(4)}, ${w.theta.length} shared-filter angles over `
+              + `${w.n_qubits} wires, ${w.layers} conv rounds per stage, `
               + `state-vector sim). Held-out ${label} ${(mine ?? 0).toFixed(4)} against a baseline of `
               + `${(base ?? 0).toFixed(4)} and logistic regression at ${(theirs ?? 0).toFixed(4)} on `
               + `the same split - ${ahead}, and this reports what was measured rather than what would `

@@ -320,7 +320,7 @@ def test_the_extractor_fails_a_card_that_states_a_number_its_artifact_does_not()
 
     assert not [w for _, w in _claims(text) if not _matches(w, pool)], "precondition: card is green"
 
-    tampered = text.replace("| `macro_f1` (this circuit) | 0.458324 |",
+    tampered = text.replace("| `macro_f1` (this circuit) | 0.510963 |",
                             "| `macro_f1` (this circuit) | 0.614583 |")
     assert tampered != text, (
         "the row this control tampers with is no longer in the card verbatim. Point it at whatever "
