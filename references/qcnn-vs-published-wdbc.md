@@ -1,5 +1,25 @@
 # The QCNN against published numbers on the same dataset (Round 37, 2026-08-13)
 
+> **THE PROJECT-SIDE COLUMN OF THIS COMPARISON IS SUPERSEDED, AND THIS IS THE FIRST BANNER THIS FILE
+> HAS CARRIED.**
+>
+> The five-seed sweep below was run on the hardware-efficient ansatz that Round 46 replaced with a
+> real QCNN, and the shipped artifact was retrained TWICE in Round 47 - once when the fully-connected
+> block became a per-survivor unitary, and again when two classes of parameter turned out to be
+> analytically dead. The shipped medical accuracy is now **0.883721** (minority-class F1 **0.84375**)
+> against the same logistic regression's **0.953488**, from
+> `models/qcnn_medical/weights.json`, which the model card is gated against. **The seeds 0-4 sweep has
+> NOT been re-run**, so no median and no range exists for the current circuit - `0.7326`, `0.9070` and
+> the `[0.7326, 0.9535]` range below belong to a circuit this repository deleted.
+>
+> **The comparator side is unaffected**, and so is everything this file exists to say: the Sci Rep
+> 2024 figure is still 0.96155 on 30 features with no test set, the three differences that have to
+> travel with any comparison are unchanged, and a single-seed project number still must not be put
+> beside a published one without them. Only the project's own column moved.
+>
+> Nothing below is deleted, for the reason `deliverable-verification.md` gives: a conclusion that
+> moved is only checkable against the record that moved it.
+
 The browser verification checklist declined this check, with a reason: *"it is parity against an
 independent reimplementation, not against a paper's numbers, because no published QCNN reports this
 circuit on this data."*

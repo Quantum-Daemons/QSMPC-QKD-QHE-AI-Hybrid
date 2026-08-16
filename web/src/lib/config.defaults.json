@@ -1278,8 +1278,8 @@
     "free_space_rx_aperture_m": 1.2,
     "free_space_source_rate_hz": 100000000.0,
     "misalignment": 0.015,
-    "mu_decoy": 0.1,
-    "mu_signal": 0.5,
+    "mu_decoy": 0.1417,
+    "mu_signal": 0.3416,
     "opt_basis_prob_max": 0.9,
     "opt_basis_prob_min": 0.5,
     "opt_mu_decoy_max": 0.2,
@@ -1294,7 +1294,7 @@
     "optimize_n_samples": 48,
     "pp_threshold": 0.11,
     "protocol": "bb84",
-    "pulses": 2000000,
+    "pulses": 20000000,
     "source_rate_hz": 100000000.0
   },
   "qrng": {
@@ -1351,7 +1351,7 @@
   },
   "web": {
     "agent_timeout_ms": 120000,
-    "demo_alice_bob_pulses": 400000,
+    "demo_alice_bob_pulses": 20000000,
     "demo_sat_pulses": 10000000,
     "tfjs_max_new_tokens": 96,
     "tfjs_models": [
