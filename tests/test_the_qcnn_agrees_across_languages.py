@@ -199,7 +199,126 @@ def test_the_browser_and_the_trainer_compute_the_same_circuit(rel_dir: str, fnam
         )
 
 
-def test_the_comparison_would_notice_a_divergence() -> None:
+@pytest.mark.parametrize("usecase", ["finance", "medical"])
+def test_the_numpy_inference_path_computes_the_same_circuit(usecase: str) -> None:
+    """THE THIRD IMPLEMENTATION, which the two checks above do not cover.
+
+    `src/qsh/qhe/qcnn_trained.py` is a numpy re-implementation of the same circuit, reached from
+    `orchestration/stages.py` - a production path, not a demo one. It unpacks the SAME flat theta,
+    and until Round 47 it unpacked the fully-connected block as a single scalar: the pre-Round-47
+    form, left behind when the trainer and the browser were both moved to a per-survivor RY+RZ.
+
+    That is the sixth instance of this project's most-repeated defect and the third in this one
+    circuit. It is also the most instructive, because it was NOT producing a wrong number. Both
+    artifacts it serves are binary, so they pool to a single survivor; `theta[n_conv + stages]` is
+    then exactly that survivor's RY angle, and the dropped RZ commutes with the `<Z0>` readout.
+    Measured on the shipped weights before the fix: 6.9e-07 on finance, 1.4e-06 on medical.
+
+    A defect that is correct by coincidence is worse than one that is wrong, because nothing can
+    see it. `test_the_old_fc_block_diverges_once_there_are_two_survivors` below is the seed that
+    makes this assertion evidence rather than a restatement of that coincidence.
+
+    Only the binary use cases are covered here because this module computes `<Z0>` and has no
+    multiclass readout at all - it cannot consume telecom. That asymmetry is itself worth knowing,
+    and `test_every_qcnn_implementation_is_pinned_to_another` records which pairs are pinned.
+    """
+    import numpy as np
+
+    from qsh.qhe.qcnn_trained import infer
+
+    path = REPO / "models" / f"qcnn_{usecase}" / "weights.json"
+    if not path.exists():
+        pytest.skip(f"{path.relative_to(REPO)} is not present")
+    w = json.loads(path.read_text())
+    q = _trainer()
+    nq, layers = int(w["n_qubits"]), int(w["layers"])
+    ro = int(w.get("readout", {}).get("readout_qubits", 0) or 0)
+
+    rows = _rows_for(w, n=24)
+    x = _standardise(torch.tensor(rows, dtype=torch.float32), w)
+    if x.shape[1] < nq:
+        x = torch.cat([x, torch.zeros(x.shape[0], nq - x.shape[1])], dim=1)
+    theta = torch.tensor(w["theta"], dtype=torch.float32)
+
+    mine = q.circuit(x, theta, nq=nq, readout_qubits=ro, layers=layers).detach().numpy()
+    theirs = np.array([infer([float(v) for v in r], w)[0] for r in rows])
+    delta = float(np.max(np.abs(mine - theirs)))
+    assert delta < 1e-4, (
+        f"qcnn_trained.py and the trainer disagree by {delta:.6f} on models/qcnn_{usecase}. Both "
+        "unpack the same flat theta; check the fully-connected block first, which is (survivors, 2) "
+        "and was a single scalar until Round 47."
+    )
+
+
+def test_the_old_fc_block_diverges_once_there_are_two_survivors() -> None:
+    """The seed for the check above, because that one passes on a coincidence.
+
+    At `readout_qubits = 2` on 8 wires the register pools to TWO survivors, and the shared-scalar
+    block that `qcnn_trained.py` used to implement stops agreeing with the trainer. Without this,
+    a green numpy-vs-trainer comparison would be consistent with the defect still being present -
+    which is exactly the state the repository was in until this round.
+    """
+    q = _trainer()
+    nq, layers, ro = 8, 3, 2
+    survivors = q.surviving_wires(nq, ro, layers)
+    assert len(survivors) == 2, f"this seed needs two survivors, got {survivors}"
+
+    n = q.param_count(nq, readout_qubits=ro, layers=layers)
+    g = torch.Generator().manual_seed(1)
+    theta = torch.randn(n, generator=g) * 0.5
+    x = torch.tanh(torch.randn(16, nq, generator=g) * 0.7)
+
+    good = q.circuit(x, theta, nq=nq, readout_qubits=ro, layers=layers).detach()
+    shapes = q.param_shapes(nq, readout_qubits=ro, layers=layers)
+    n_conv = shapes["conv"][0] * shapes["conv"][1] * shapes["conv"][2]
+    collapsed = theta.clone()
+    collapsed[n_conv + shapes["pool"][0]:] = theta[n_conv + shapes["pool"][0]]
+    altered = q.circuit(x, collapsed, nq=nq, readout_qubits=ro, layers=layers).detach()
+
+    delta = float((good - altered).abs().max())
+    assert delta > 1e-2, (
+        f"collapsing the fully-connected block to one shared angle moved a two-survivor readout by "
+        f"only {delta:.2e}. If that is genuinely negligible, the comparison above cannot "
+        "distinguish the old block from the new one and proves nothing."
+    )
+
+
+def test_every_qcnn_implementation_is_pinned_to_another() -> None:
+    """Scope, so a FOURTH re-implementation cannot appear unpinned.
+
+    This circuit exists in more than one place by design - a torch trainer, a numpy inference path
+    and a TypeScript browser mirror - and every round that changed it changed a subset. Rather than
+    trusting that the three checked above are all of them, this discovers files that unpack a flat
+    `theta` and requires each to be named here with the check that pins it.
+    """
+    import re
+    import subprocess
+
+    tracked = subprocess.run(["git", "ls-files", "--", "*.py", "*.ts"], cwd=REPO,
+                             check=True, capture_output=True, text=True).stdout.split()
+    #: file -> the test that numerically pins it to another implementation.
+    PINNED = {
+        "scripts/train/qcnn_variational.py": "the reference; every other check compares against it",
+        "web/src/lib/quantumSim.ts": "test_the_browser_and_the_trainer_compute_the_same_circuit",
+        "src/qsh/qhe/qcnn_trained.py": "test_the_numpy_inference_path_computes_the_same_circuit",
+    }
+    unpinned = []
+    for rel in tracked:
+        if rel.startswith("tests/"):
+            continue
+        src = (REPO / rel).read_text(errors="ignore")
+        # Unpacks a flat parameter vector AND builds a pooling register: that is this circuit.
+        if re.search(r"theta\[|w\.theta\[", src) and re.search(r"survivor|active\[0::2\]|pool", src):
+            if rel not in PINNED:
+                unpinned.append(rel)
+    assert not unpinned, (
+        "these files unpack the QCNN's flat parameter vector and no numeric check pins them to "
+        "another implementation:\n  " + "\n  ".join(unpinned)
+        + "\n\nAdd a comparison, or record here which existing check covers it. Three separate "
+        "rounds have now shipped a change that reached some implementations and not others; the "
+        "count of implementations is exactly what nobody was tracking."
+    )
+    assert len(PINNED) >= 3, "the pinned set has shrunk; a re-implementation was removed silently"
     """Anti-tautology: perturb one implementation and require the comparison to reject it.
 
     The three implementations agree, so every assertion above is green on arrival. This makes the
