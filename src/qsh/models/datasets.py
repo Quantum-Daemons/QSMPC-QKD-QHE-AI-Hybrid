@@ -293,3 +293,187 @@ def opssat_ad(split: str = "train"):
     x = part[list(OPSSAT_FEATURES)].to_numpy(dtype=np.float64)
     y = part["anomaly"].to_numpy(dtype=np.int64)
     return x, y
+
+
+# --------------------------------------------------------------------------- #
+#  Telecom (network layer) - 5G-NIDD (CC-BY-4.0)
+# --------------------------------------------------------------------------- #
+# The corpus this project rejected until Round 47 on a mirror that carries no licence string. The
+# authors' repository of record is Fairdata/Metax, where the record reads access_type Open,
+# license CC-BY-4.0 and restriction_grounds []. IEEE DataPort is a mirror and its subscription wall
+# is not the licence.
+#
+# It is a DIFFERENT TASK from `telecom_ids.qml` on the same page: 9-class network-layer flow
+# classification on real 5G traffic against 8-class QKD-layer attack classification on synthetic
+# telemetry. Zero overlap in label space or feature space, so neither score is the other's baseline.
+#
+# Siriwardhana et al., "Descriptor: 5G Wireless Network Intrusion Detection Dataset (5G-NIDD)",
+# IEEE Data Descriptions, doi:10.1109/IEEEDATA.2025.3592888.
+#: The fetch is a TWO-STEP TOKEN DANCE and both steps must be one pipeline. Two facts a reader will
+#: otherwise rediscover the hard way, both measured at source:
+#:
+#:   * the authorize endpoint lives on ``etsin.fairdata.fi``, not on ``download.fairdata.fi``.
+#:     ``https://download.fairdata.fi/authorize`` is a 404 from nginx - that endpoint does not
+#:     exist - and calling ``download?dataset=..&file=..`` without a token returns 400
+#:     ``{'token': ['Missing data for required field.']}``;
+#:   * the URL that comes back carries a JWT with an ``exp`` claim. Split across two shell commands
+#:     run minutes apart, the second fails opaquely, so this is deliberately one pipeline.
+#:
+#: Only ``Combined.zip`` is fetched. The dataset's advertised 7,985,550,132 B across 14 files is
+#: real but misleading: 12 of those are raw PCAP captures (BS1.zip 2.4 GB, BS2.zip 1.6 GB) and
+#: per-attack splits. The single file needed here is 28,028,224 B compressed, 275,265,610 B as CSV.
+NIDD_FETCH = (
+    "mkdir -p \"$QSH_DATA_ROOT/raw/5g-nidd\" && "
+    "curl -sS -X POST -H 'Content-Type: application/json' "
+    "-d '{\"cr_id\":\"9d13ef28-2ca7-44b0-9950-225359afac65\",\"file\":\"/Combined.zip\"}' "
+    "https://etsin.fairdata.fi/api/download/authorize "
+    "| python3 -c 'import json,sys;print(json.load(sys.stdin)[\"url\"])' "
+    "| xargs curl -L -o \"$QSH_DATA_ROOT/raw/5g-nidd/Combined.zip\" && "
+    "unzip -o -d \"$QSH_DATA_ROOT/raw/5g-nidd\" \"$QSH_DATA_ROOT/raw/5g-nidd/Combined.zip\""
+)
+
+#: Every column removed from the 52, with the reason, as DATA rather than as a code comment - so
+#: `feature_spec.json` can publish the reasons and a reader can check them against the corpus.
+#:
+#: Three of these are the finding this model exists to record. `Unnamed: 0`, `Seq` and `Offset` are
+#: row counters; restoring them takes macro F1 from 0.9262 to 0.9995 and accuracy from 0.7609 to
+#: 0.9997, which is the published range for this corpus. See `scripts/train/telecom_nidd.py`, which
+#: measures both fits every run rather than quoting these numbers.
+NIDD_DROPPED: dict[str, str] = {
+    "Label": "target leak: the binary collapse of `Attack Type` (Benign vs Malicious)",
+    "Attack Type": "the target",
+    "Attack Tool": (
+        "target leak: 6 tools over 9 classes, many-to-one in both directions (Hping3 -> ICMPFlood/"
+        "SYNFlood/UDPFlood, Nmap -> SYNScan/TCPConnectScan/UDPScan, SlowrateDoS <- Slowloris+"
+        "Torshammer). Alone it scores accuracy 0.9615, macro F1 0.5017"),
+    "Unnamed: 0": "row identifier: the CSV's own index column, one-vs-rest AUC 0.9990 on SYNScan",
+    "Seq": "row identifier: Argus flow sequence number, one-vs-rest AUC 0.9275 on ICMPFlood",
+    "Offset": "row identifier: byte offset into the capture, one-vs-rest AUC 0.9502 on ICMPFlood",
+    "RunTime": "duplicate of `Dur`, bit-identical on all 1,215,890 rows",
+    "Mean": "duplicate of `Dur`, bit-identical on all 1,215,890 rows",
+    "Sum": "duplicate of `Dur`, bit-identical on all 1,215,890 rows",
+    "Min": "duplicate of `Dur`, bit-identical on all 1,215,890 rows",
+    "Max": "duplicate of `Dur`, bit-identical on all 1,215,890 rows",
+    "sVid": "constant: one distinct value (610.0) over 9.42% non-null rows, zero information",
+    "dVid": "constant: one distinct value (610.0) over 0.17% non-null rows, zero information",
+}
+
+#: The three dropped row identifiers, kept as a name so the leak counterfactual in the trainer is
+#: reproducible rather than a hand-typed list that could drift from NIDD_DROPPED.
+NIDD_IDENTIFIERS = ("Unnamed: 0", "Seq", "Offset")
+
+#: The 39 usable features, in corpus order: 52 - 3 labels - 3 identifiers - 5 duplicate durations
+#: - 2 constants. Order is fixed here because it is the ONNX input contract: the browser feeds a row
+#: in this order and a silent reordering would produce a confident wrong answer rather than an error.
+NIDD_FEATURES = (
+    "Dur", "Proto", "sTos", "dTos", "sDSb", "dDSb", "sTtl", "dTtl", "sHops", "dHops",
+    "Cause", "TotPkts", "SrcPkts", "DstPkts", "TotBytes", "SrcBytes", "DstBytes",
+    "sMeanPktSz", "dMeanPktSz", "Load", "SrcLoad", "DstLoad", "Loss", "SrcLoss", "DstLoss",
+    "pLoss", "SrcGap", "DstGap", "Rate", "SrcRate", "DstRate", "State", "SrcWin", "DstWin",
+    "SrcTCPBase", "DstTCPBase", "TcpRtt", "SynAck", "AckDat",
+)
+
+#: The 9 classes, sorted, matching the integer label encoding used everywhere downstream.
+NIDD_CLASSES = (
+    "Benign", "HTTPFlood", "ICMPFlood", "SYNFlood", "SYNScan",
+    "SlowrateDoS", "TCPConnectScan", "UDPFlood", "UDPScan",
+)
+
+#: The PUBLISHED ordinal vocabulary for the five categorical columns, as a literal.
+#:
+#: This is a literal and not a per-run `astype("category")` for two independent reasons. First,
+#: `export_xgboost` converts through `FloatTensorType([None, n_features])`, so an XGBoost
+#: `enable_categorical=True` model cannot survive ONNX export at all - the browser gets floats.
+#: Second, a vocabulary re-derived per run would silently remap codes the moment a row order or a
+#: subsample changed, and the ONNX graph carries thresholds against the OLD codes: the failure is a
+#: confident wrong class, not an error. Measured cost of encoding rather than using the category
+#: dtype: macro F1 0.926183 encoded against 0.926086 native, i.e. nothing.
+#:
+#: Values are sorted, so the mapping is reconstructible from the corpus by anyone. An unseen or null
+#: value encodes to -1.0, the same sentinel `nan_to_num` uses for missing numerics - `dDSb` is
+#: 77.56% null and `sDSb` 0.02%, so "missing" is a real and frequent state here, not an error case.
+NIDD_CATEGORICAL: dict[str, tuple[str, ...]] = {
+    "Proto": ("arp", "icmp", "ipv6-icmp", "llc", "lldp", "sctp", "tcp", "udp"),
+    "sDSb": ("39", "4", "52", "54", "af11", "af12", "af41", "cs0", "cs4", "cs6", "cs7", "ef"),
+    "dDSb": ("af11", "af12", "cs0", "cs1", "cs4", "ef"),
+    "Cause": ("Shutdown", "Start", "Status"),
+    "State": ("ACC", "CON", "ECO", "FIN", "INT", "NRS", "REQ", "RSP", "RST", "TST", "URP"),
+}
+
+#: The sentinel a missing numeric or an out-of-vocabulary categorical encodes to. One value for both
+#: so a consumer has one rule to implement rather than two.
+NIDD_MISSING = -1.0
+
+
+def nidd_combined_csv() -> Path:
+    return require(raw("5g-nidd", "Combined.csv"), NIDD_FETCH)
+
+
+def load_5g_nidd(nrows: int | None = None, *, with_identifiers: bool = False):
+    """Return ``(X float32, y int64, feature_names, class_names)`` for 5G-NIDD Combined.csv.
+
+    ``with_identifiers`` restores the three dropped row counters as extra trailing columns. It is a
+    DIAGNOSTIC, not a training option: it exists so `scripts/train/telecom_nidd.py` can fit the leak
+    counterfactual through this same loader and the same encoding, rather than reimplementing the
+    drop list beside it and reporting a difference that is partly its own. Nothing exported to ONNX
+    may be fitted with it on - the shipped model takes 39 columns.
+
+    THE FOUR TRAPS ARE ASSERTED, NOT ASSUMED. Every drop below rests on a property of the published
+    file, and an upstream re-release that FIXES one of them must fail loudly here rather than
+    silently discard five real features and two informative columns. The assertions cost one pass
+    over columns that are being dropped anyway.
+    """
+    import numpy as np
+    import pandas as pd
+
+    df = pd.read_csv(nidd_combined_csv(), nrows=nrows, low_memory=False)
+
+    missing = [c for c in (*NIDD_FEATURES, "Attack Type", *NIDD_IDENTIFIERS) if c not in df.columns]
+    if missing:
+        raise SystemExit(
+            f"5G-NIDD Combined.csv is missing {missing} - the published file has 52 columns and this "
+            f"one has {df.shape[1]}. Re-fetch it rather than working around the difference:\n"
+            f"    {NIDD_FETCH}")
+
+    # Trap 2. Six columns, one feature: Dur == RunTime == Mean == Sum == Min == Max, bit-identical.
+    for dup in ("RunTime", "Mean", "Sum", "Min", "Max"):
+        delta = float((df["Dur"] - df[dup]).abs().max())
+        assert delta == 0.0, (
+            f"`{dup}` is no longer bit-identical to `Dur` (max|diff| = {delta:.3e}). This corpus "
+            f"ships six columns holding one duration; if upstream has changed that, {dup} is now a "
+            f"real feature and NIDD_FEATURES must grow rather than keep dropping it.")
+
+    # Trap 4. sVid/dVid are 610.0 or null, so they carry no information at any null rate.
+    for const in ("sVid", "dVid"):
+        n_distinct = int(df[const].nunique(dropna=True))
+        assert n_distinct <= 1, (
+            f"`{const}` now takes {n_distinct} distinct values, so it is no longer the constant this "
+            f"loader drops it for. Re-measure before publishing anything trained without it.")
+
+    y_names = df["Attack Type"].astype(str)
+    unknown = sorted(set(y_names.unique()) - set(NIDD_CLASSES))
+    assert not unknown, (
+        f"`Attack Type` carries classes NIDD_CLASSES does not list: {unknown}. The class order is the "
+        f"published label encoding and the ONNX output contract, so it must be updated deliberately.")
+    code = {name: i for i, name in enumerate(NIDD_CLASSES)}
+    y = y_names.map(code).to_numpy(dtype=np.int64)
+
+    names = list(NIDD_FEATURES) + (list(NIDD_IDENTIFIERS) if with_identifiers else [])
+    frame = df[names].copy()
+
+    # `include="str"` rather than `include=object`. On pandas 3.0.5 both still select all five
+    # columns, but `object` emits Pandas4Warning "This behavior is deprecated and will be removed in
+    # a future version. Explicitly pass 'str'" - so this is the spelling that keeps working, and the
+    # assertion below is what catches the day it stops selecting anything.
+    str_cols = list(frame.select_dtypes(include="str").columns)
+    assert set(str_cols) == set(NIDD_CATEGORICAL), (
+        f"string columns {str_cols} do not match the published vocabulary keys "
+        f"{sorted(NIDD_CATEGORICAL)}. A column that silently became numeric would be ordinal-encoded "
+        f"by neither path and reach the model as NaN.")
+    for col, vocab in NIDD_CATEGORICAL.items():
+        index = {v: float(i) for i, v in enumerate(vocab)}
+        frame[col] = frame[col].astype(str).map(index).astype("float64")
+
+    x = np.nan_to_num(frame.to_numpy(dtype=np.float32), nan=NIDD_MISSING,
+                      posinf=np.finfo(np.float32).max, neginf=np.finfo(np.float32).min)
+    return x, y, names, list(NIDD_CLASSES)

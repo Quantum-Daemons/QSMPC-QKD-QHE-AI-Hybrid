@@ -294,8 +294,13 @@ function MetricRows({ spec }: { spec: ModelSpec }) {
  * Shows the fitted Platt map and what it bought, INCLUDING the metric it cost. On finance the Brier
  * score improves and the CORP miscalibration term roughly halves while log-loss gets worse, and
  * printing only the two that moved the right way would be the reporting failure this project
- * documents elsewhere as pitfall P7. At a 1-in-981 base rate log-loss is dominated by the negatives,
- * so a sigmoid that improves mean squared error can still cost on the tails.
+ * documents elsewhere as pitfall P7.
+ *
+ * Round 49 measured WHY log-loss gets worse, and the reason is not the base rate: `fit_platt` is
+ * fitted on a probability rather than a log-odds, so with 90% of the raw scores below 1e-4 the
+ * sigmoid is constant across nine of ten deciles and returns 0.00090148 for all of them. The map
+ * rendered below is that map. See references/finance-calibration-isotonic-vs-platt.md; the fix is
+ * to the argument, not to this panel, and it needs a retrain.
  *
  * No reliability diagram is drawn here even where the split supports one, because the CORP terms are
  * scalars and a curve would need a bin count this panel has no basis to choose. The record says per
@@ -337,9 +342,12 @@ function CalibrationRows({ achieved }: { achieved: Record<string, unknown> }) {
         </p>
       )}
       <p className="muted" style={{ fontSize: 11, marginTop: 4 }}>
-        Platt is monotone, so AUC and AUC-PR are unchanged by construction — calibration fixes what a
-        probability <i>means</i>, never how the rows are ordered. Platt rather than isotonic because
-        this calibration set is inside the range where the published comparison puts Platt ahead.
+        Platt is <i>strictly</i> monotone, so AUC and AUC-PR are unchanged by construction —
+        calibration fixes what a probability <i>means</i>, never how the rows are ordered. Platt
+        rather than isotonic is a measured tie-break, not a size argument: this calibration set is
+        far past the range the published comparison discusses, and on this split the two score
+        within noise on Brier and log-loss. Isotonic is only <i>weakly</i> monotone, and it cost
+        9.09% of AUC-PR here by collapsing 1.39M distinct scores to 138.
       </p>
     </div>
   );
@@ -502,6 +510,13 @@ export function ModelPanel({ usecase }: { usecase: string }) {
             <a href={spec.dataset.url} target="_blank" rel="noreferrer noopener">source</a>
             {!spec.dataset.publishable && " · weights not published (licence)"}
           </p>
+          {/* The CC BY credit, rendered rather than merely recorded. Four corpora here carry the
+              condition and this line is where a visitor meets it; the same string also goes into
+              the Hugging Face model card and the evaluation sample's provenance, so all three
+              surfaces a reader can reach carry the attribution instead of one of them. */}
+          {spec.dataset.attribution && (
+            <p className="muted small"><strong>Attribution:</strong> {spec.dataset.attribution}</p>
+          )}
           {spec.metric.baseline_source && (
             <p className="muted small"><strong>Baseline:</strong> {spec.metric.baseline_source}</p>
           )}

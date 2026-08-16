@@ -84,7 +84,11 @@ export type ModelSpec = {
    *  from `hf_revision` alone and are fixed by completely different actions. */
   hf_revision_stale: string | null;
   artifacts: ModelArtifact[];
-  dataset: { name: string; licence: string; url: string; publishable: boolean };
+  /** `attribution` is the CC BY credit line. Four of this project's corpora are CC BY and the
+   *  condition attaches wherever the data or a model trained on it is published - which includes
+   *  this page. Before it was exported, a visitor saw "OPS-SAT-AD - CC BY 4.0 [source]" and no
+   *  author, so the licence was named and not honoured. Empty for corpora with no such condition. */
+  dataset: { name: string; licence: string; url: string; publishable: boolean; attribution: string };
   metric: {
     name: string; display: string;
     baseline: number | null; baseline_source: string;

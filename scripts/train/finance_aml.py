@@ -512,14 +512,26 @@ def main() -> int:
     # calibration map is sound precisely because the map's quality is measured on test, which neither
     # step has seen. Fitting and scoring on the same rows is what would flatter it.
     #
-    # Platt rather than isotonic: Niculescu-Mizil and Caruana measure Platt ahead of isotonic below
-    # about 200-1000 calibration cases (ICML 2005) and below about 2000 (UAI 2005). No reliability
-    # DIAGRAM is drawn - Riley et al. put the floor for a flexible curve at about 200 events - but the
-    # CORP terms are SCALARS and pool-adjacent-violators chooses no bin count, so they are reportable
-    # exactly where a curve is not. That distinction is why this is measurable here at all.
+    # Platt rather than isotonic is a MEASURED tie-break since Round 49, not the size argument the
+    # earlier note made: this calibration set is 710,969 cases, far past the ICML/UAI thresholds, and
+    # on this split isotonic and Platt score within noise on Brier and log-loss. Isotonic loses on
+    # what is not a proper scoring rule - it is only weakly monotone, and it cost 9.09% of AUPRC by
+    # collapsing 1,388,669 distinct scores to 138. No reliability DIAGRAM is drawn - Riley et al. put
+    # the floor for a flexible curve at about 200 events - but the CORP terms are SCALARS and
+    # pool-adjacent-violators chooses no bin count, so they are reportable exactly where a curve is
+    # not. Full workings: references/finance-calibration-isotonic-vs-platt.md.
+    #
+    # `on_logit=True` IS THE FIX FOR THE DEFECT ROUND 49 MEASURED AND LEFT IN PLACE. This call used
+    # to hand `fit_platt` a PROBABILITY. Platt's map is linear in its argument, 90% of these scores
+    # are under 1e-4, so the fitted sigmoid returned the one constant 0.00090148 across nine of ten
+    # deciles - which is where the +8.7% log-loss and the 2.83x ECE that this block used to report
+    # came from. Fitted on logit(s) instead, the same two floats give Brier 0.00142199 and log-loss
+    # 0.00818964, better than both the old map and isotonic. The flag lives in `fit_platt` rather
+    # than here so that `Platt.as_dict()` publishes which argument the floats belong to; a transform
+    # applied here would leave the published formula describing a different function.
     from qsh.models import calibration as cal
 
-    platt = cal.fit_platt(teacher.predict_proba(Xval)[:, 1], yval)
+    platt = cal.fit_platt(teacher.predict_proba(Xval)[:, 1], yval, on_logit=True)
     p_raw, p_cal = proba[:, 1], platt.apply(proba[:, 1])
     def _r(d: dict) -> dict:
         """Round the float terms; the CORP dict also carries strings and ints."""
@@ -545,8 +557,16 @@ def main() -> int:
             "satellite (about 113). The CORP terms below are reported regardless, because PAV picks "
             "no bin count and so they are stable where a binned curve is not."),
         "does_not_move_ranking": (
-            "Platt is monotone, so AUC and AUC-PR are unchanged by construction. Calibration fixes "
-            "what a probability MEANS, never how the rows are ordered."),
+            "Platt is STRICTLY monotone, so AUC and AUC-PR are unchanged by construction: measured "
+            "Round 49, both are identical to the uncalibrated values to ten decimals, and that held "
+            "for the map fitted on the probability and for the logit(s) map that now ships alike. "
+            "The qualifier matters and was missing - isotonic is only WEAKLY monotone, and on this "
+            "same split it moved AUROC by -0.00031674 and AUPRC by -0.01121590 (-9.09%). "
+            "Calibration by a strictly monotone map fixes what a probability MEANS, never how the "
+            "rows are ordered. ONE HONEST QUALIFIER ON THE MAP THAT SHIPS: logit() clips at 1e-12, "
+            "so scores below 1e-12 or above 1-1e-12 would tie. None exist on this split (the raw "
+            "range is 4.4e-11 to 0.99997), so no pair is tied and the AUCs above are exact; a "
+            "retrain that saturates a leaf would need this re-checked rather than assumed."),
     }
     _c = teacher_metrics["calibration"]
     print("\n  calibration (Platt, fitted on val, scored on test)")

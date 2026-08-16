@@ -4,6 +4,17 @@ The load-bearing test is the CORP identity S = MCB - DSC + UNC. Three numbers co
 and printed side by side would look identical to a decomposition and mean nothing; the identity is
 what makes them one object. It is asserted to 1e-12 rather than approximately, because it is exact
 arithmetic and a loose tolerance would hide a real error in the recalibration step.
+
+THE HOLE THIS SUITE HAD, AND WHAT NOW COVERS IT
+
+Every test below the `scored` fixture ran `fit_platt` on a LOG-ODDS - the fixture builds
+`3.0 * (x - 0.5)` and names the variable `logit`. The only production caller,
+`scripts/train/finance_aml.py`, passed `predict_proba(...)[:, 1]`, a PROBABILITY. The map is linear
+in its argument, so those are different functions, and this suite passed for three rounds because it
+and the pipeline were each internally consistent about different things. No assertion here was
+false; the missing one was about the SHAPE of the fitted map, and
+`test_a_probability_score_is_not_fitted_into_a_near_constant` is it. That test fails against the
+call as it shipped through Round 49 and passes against `on_logit=True`.
 """
 
 from __future__ import annotations
@@ -22,6 +33,34 @@ def scored():
     y = (rng.uniform(0, 1, 4000) < x).astype(int)
     logit = 3.0 * (x - 0.5)                       # ranks perfectly, probabilities far too extreme
     return logit, y
+
+
+@pytest.fixture()
+def imbalanced():
+    """PROBABILITY scores at a finance-like base rate, which is the argument `fit_platt` really gets.
+
+    THE DISTINCTION THIS FIXTURE EXISTS FOR is the defect Round 49 measured. `scored` yields a
+    LOG-ODDS, and every test using it therefore exercised `fit_platt` on the argument its formula
+    assumes. The finance trainer passes a PROBABILITY. Because the shipped map is linear in whatever
+    it is handed, feeding it a probability at a 1-in-656 base rate - where 90 percent of scores sit
+    below 1e-4 - collapses nine deciles onto one constant, and the map cannot express a risk below
+    1 in 1,109 at all. The unit tests could not see it: their fixture passed a logit and the trainer
+    passed a probability, so both were internally consistent and disagreed with each other.
+
+    So this deliberately mirrors the trainer's shape rather than the other fixture's: scores in (0, 1)
+    spanning several orders of magnitude, and a base rate near 1 in 650. A fixture that handed over
+    a logit here would reintroduce exactly the blind spot.
+    """
+    rng = np.random.default_rng(7)
+    n = 6000
+    # Log-uniform over ~5 decades, which is the span the shipped finance scores actually cover
+    # (4.4e-11 to 0.99997); a uniform draw would put almost nothing near the extremes and the clip
+    # below would never be exercised.
+    s = 10.0 ** rng.uniform(-6.0, -0.05, n)
+    y = (rng.uniform(0, 1, n) < s).astype(int)
+    if y.sum() < 2:                        # `fit_platt` refuses a single-class calibration set
+        y[rng.integers(0, n, 2)] = 1
+    return s, y
 
 
 def test_the_corp_identity_holds_exactly(scored):
@@ -99,6 +138,46 @@ def test_the_shipped_parameters_reproduce_the_transform(scored):
     assert np.allclose(by_hand, fitted.apply(logit), atol=1e-12), (
         "a consumer applying the published formula must get the identical numbers")
     assert d["formula"] == "p = 1 / (1 + exp(a * score + b))"
+    assert d["on_logit"] is False
+
+
+def test_the_shipped_parameters_reproduce_the_on_logit_transform(imbalanced):
+    """Same contract for the map finance actually ships, whose argument is not the score.
+
+    The transform moved inside `fit_platt`, so the published JSON has to say so. This reimplements
+    the formula string from the JSON alone - clip, log-odds, sigmoid, in that order - because that
+    is exactly what a consumer holding the weights file can do and nothing more.
+    """
+    s, y = imbalanced
+    fitted = cal.fit_platt(s, y, on_logit=True)
+    d = fitted.as_dict()
+    assert d["on_logit"] is True
+    assert d["formula"] == (
+        "p = 1 / (1 + exp(a * logit(clip(score, logit_clip_eps, 1 - logit_clip_eps)) + b)), "
+        "logit(q) = log(q / (1 - q))")
+
+    q = np.clip(s, d["logit_clip_eps"], 1.0 - d["logit_clip_eps"])
+    by_hand = 1.0 / (1.0 + np.exp(d["a"] * np.log(q / (1.0 - q)) + d["b"]))
+    assert np.allclose(by_hand, fitted.apply(s), atol=1e-12), (
+        "a consumer applying the published formula must get the identical numbers")
+
+
+def test_the_clip_keeps_a_saturated_score_finite(imbalanced):
+    """A retrain that saturates a leaf to exactly 0 or 1 must not become an infinity in the fit.
+
+    Nothing on the shipped finance split is clipped - its scores span 4.4e-11 to 0.99997 - so this
+    guards the retrain, not today's numbers. Without the clip `logit(0)` is -inf, the regression
+    returns NaN parameters, and the failure surfaces as a weights file full of nulls rather than as
+    an error.
+    """
+    s, y = imbalanced
+    s = s.copy()
+    s[:5] = 0.0
+    s[5:10] = 1.0
+    fitted = cal.fit_platt(s, y, on_logit=True)
+    assert np.isfinite(fitted.a) and np.isfinite(fitted.b)
+    p = fitted.apply(s)
+    assert np.all(np.isfinite(p)) and p.min() > 0.0 and p.max() < 1.0
 
 
 @pytest.mark.parametrize(("k", "n"), [(42, 156), (164, 8192), (113, 529)])
