@@ -38,9 +38,13 @@ network and queue time and is not comparable with the in-browser measurements.
 ## Honest scope
 
 Metrics are what the project measured, shown with the published baseline - including where the
-measurement falls short of it. The finance model reaches minority-class F1 0.081 against a published
-0.632; the model card explains why (the published baseline uses IBM's Graph Feature Preprocessor,
-which ships under a Proprietary licence this project cannot adopt).
+measurement falls short of it. The finance model reaches minority-class F1 0.151948 against a
+published 0.632; the model card explains why (the published baseline uses IBM's Graph Feature
+Preprocessor, which ships under a Proprietary licence this project cannot adopt).
+
+This read 0.081 until Round 49, in BOTH this file and `app.py` - a pre-improvement figure left behind
+by a retrain, on the one surface in this project that is published outside the repository. The
+current value is what `models/metrics.json` records for `finance_aml.gbm`.
 
 ## Quota
 
