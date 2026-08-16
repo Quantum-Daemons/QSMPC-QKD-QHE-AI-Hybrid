@@ -140,7 +140,21 @@ def infer(features, weights: dict) -> tuple[float, int, float]:
     n_conv = stages * layers * 8
     conv = theta[:n_conv].reshape(stages, layers, 8)
     pool = theta[n_conv:n_conv + stages]
-    fc = float(theta[n_conv + stages])
+    # THE FULLY-CONNECTED BLOCK IS (survivors, 2), NOT ONE SCALAR. This read
+    # `fc = float(theta[n_conv + stages])` and applied that single angle to every survivor, which is
+    # the pre-Round-47 block. Round 47 made it a per-survivor RY+RZ in the trainer and in
+    # `quantumSim.ts` and left this THIRD implementation behind - the same defect, a sixth time in
+    # five rounds, in the language that had already been fixed twice.
+    #
+    # It was not producing a wrong number, and that is the part worth recording. Both artifacts this
+    # module serves are BINARY, so they pool all the way to a single survivor; `theta[n_conv+stages]`
+    # is then exactly that survivor's RY angle, and the RZ it dropped commutes with the <Z0>
+    # measurement below. Measured against the trainer on the shipped weights: 6.9e-07 on finance and
+    # 1.4e-06 on medical, which is float32 noise. Correct by two coincidences, not by construction.
+    #
+    # Seeded proof that it was one artifact away from breaking: at `readout_qubits=2` on 8 wires the
+    # register pools to TWO survivors, and the old form diverges from the trainer by **0.2701**.
+    fc = theta[n_conv + stages:].reshape(-1, 2)
 
     active = list(range(nq))
     for st in range(stages):
@@ -159,8 +173,13 @@ def infer(features, weights: dict) -> tuple[float, int, float]:
         if len(active) % 2 == 1:
             cry(active[-1], active[0], float(pool[st]))
         active = survivors
-    for q in active:
-        ry(q, fc)
+    if fc.shape[0] != len(active):
+        raise ValueError(
+            f"the fully-connected block carries {fc.shape[0]} survivor(s) but pooling left "
+            f"{len(active)} ({active}). The artifact's parameter layout does not match the circuit "
+            "this module implements, and continuing would silently apply the wrong angles.")
+    for j, q in enumerate(active):
+        ry(q, float(fc[j, 0])); rz(q, float(fc[j, 1]))
     if len(active) > 1:
         for j in range(len(active)):
             cnot(active[j], active[(j + 1) % len(active)])
