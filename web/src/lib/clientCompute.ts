@@ -2810,8 +2810,23 @@ export function runClientPipeline(
             // inference paths on one page could not be compared on cost at all. State-vector
             // simulation is 2^n work in the qubit count, which is the number that makes the figure
             // interpretable, so it travels with it - as `PF2` requires of the encrypted tier.
+            // THE SPACE THE ARTIFACT DECLARES, not whatever `feats` happens to be in. `feats` is
+            // `realIn.values`, which is StandardScaler output because the CKKS tier and the SHAP
+            // panel are fitted there. A QCNN artifact declaring `input_space: "raw"` standardises
+            // its input again, so handing it `feats` charged the transform twice and flattened the
+            // wire: measured at tanh sd 3.3e-05 on `amount`, with 69 of 400 rows - 17.25% - given a
+            // different class than the same rows correctly fed.
+            //
+            // Falls back to `feats` only when the artifact does NOT declare `raw`, so a future
+            // artifact in a third space cannot silently pick up the wrong array; the pairing is
+            // asserted in tests/test_the_encoder_receives_the_space_the_artifact_declares.py.
+            // BY NAME, with no default branch. `w.input_space` names the units the circuit was
+            // trained on; the sample ships its rows keyed by the space each is in. A boolean
+            // `=== "raw" ? a : b` would send an artifact retrained into a third space to whichever
+            // array the else-branch happens to name - which is exactly how this shipped.
+            const qcnnFeats = realIn?.bySpace?.[w.input_space] ?? (realIn ? undefined : feats);
             const t0 = performance.now();
-            const qc = qcnnInferTrained(feats.slice(0, w.n_qubits), w);
+            const qc = qcnnInferTrained((qcnnFeats ?? feats).slice(0, w.n_qubits), w);
             const qcnnMs = performance.now() - t0;
             artifacts.primary_inference = { backend: "qcnn-trained", class: qc.cls,
                                             qubits: qc.qubits, expectation: r2(qc.expectation) };
