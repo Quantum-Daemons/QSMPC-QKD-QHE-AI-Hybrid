@@ -64,10 +64,24 @@ def private_inference(qcnn: QCNN, x: np.ndarray, *, verify_hidden: bool = True
 
       * `input_hidden` is brute-forced only for ``n_qubits <= 3``, and on a FIXED basis state
         rather than on ``x``. Above that it is set True by construction rather than checked.
-      * The untrained circuit is not a classifier. Measured over 200 random inputs at 4 and 8
-        qubits, ``predict_proba`` never exceeds 0.241, so it never crosses the 0.5 boundary and
-        returns class 0 for every input. Use ``qhe.qcnn_trained`` for a prediction; use this for
-        the hiding demonstration and the T-count.
+      * The untrained circuit is not a classifier, and the bound below needs its recipe.
+        Measured over 200 draws per cell with a fixed circuit (seed 0):
+
+            inputs           nq=4 max   nq=8 max   crossings of 0.5
+            uniform[0,1)       0.2392     0.2304     0 / 200
+            uniform[-1,1)      0.2280     0.2737     0 / 200
+            normal(0,1)        0.9834     0.9122     18 / 200 and 20 / 200
+
+        The figure this docstring carried - "never exceeds 0.241" - reproduces only on
+        uniform[0,1), which is presumably what was drawn, and the docstring never said so.
+        It is not robust: uniform[-1,1) at 8 qubits already reaches 0.2737, and on unbounded
+        inputs the circuit crosses 0.5 for about a tenth of draws. So "returns class 0 for
+        every input" is true of a bounded input range and false in general.
+
+        What survives, and is the reason this path is not a predictor: the output is a
+        function of the circuit rather than of the data in any useful sense - it is an
+        untrained fixed circuit. Use ``qhe.qcnn_trained`` for a prediction; use this for the
+        hiding demonstration and the T-count.
     """
     prob = qcnn.predict_proba(x)
     pred = int(prob >= 0.5)

@@ -656,6 +656,21 @@ export function qcnnInferTrained(features: number[], w: QcnnWeights):
     // The artifact declares the same list. Checked rather than trusted: if the trainer pooled to a
     // different set than this circuit did, the class labels are permuted and every aggregate metric
     // stays numerically identical, which is the failure mode this whole file exists to catch.
+    // THE PARAMETER VECTOR MUST BE LONG ENOUGH FOR THE LAYOUT THIS RUN COMPUTED. Indexing past the
+    // end of `w.theta` gives `undefined`, which becomes NaN through cos/sin; `NaN > 0` is false, so
+    // the argmax loop never advances and the readout returns class 0 with an all-NaN probability
+    // vector. For telecom class 0 is `normal`, so a short artifact would not throw, would not warn,
+    // and would label every row on the page as benign traffic.
+    //
+    // The wires mismatch below already throws. This one did not, and it is the likelier of the two:
+    // a retrain that changes the parameter count without changing the survivor set produces exactly
+    // it. Latent today - telecom ships 57 angles and the layout wants 57 - and one artifact away.
+    const wantTheta = nConv + stages + 2 * active.length;
+    if (!Array.isArray(w.theta) || w.theta.length < wantTheta) {
+      throw new Error(`QCNN artifact carries ${w.theta?.length ?? 0} angles; this circuit at `
+        + `${nq} wires needs ${wantTheta} (conv ${nConv} + pool ${stages} + fc 2x${active.length}). `
+        + `Refusing rather than reporting class 0 from NaN probabilities.`);
+    }
     const declared = w.readout?.wires;
     if (Array.isArray(declared) && (declared.length !== rw.length
         || declared.some((d: number, j: number) => d !== rw[j]))) {

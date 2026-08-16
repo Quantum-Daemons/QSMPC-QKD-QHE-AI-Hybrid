@@ -52,14 +52,23 @@ sys.path.insert(0, str(REPO / "scripts" / "train"))
 
 torch = pytest.importorskip("torch")
 
-#: use case directory -> shipped weights file, for every multiclass artifact. The binary artifacts
-#: read out a single <Z0> and are covered by the same comparison at `readout_qubits = 0`.
-SHIPPED = [
-    ("telecom", "qcnn_weights.json"),
-    ("telecom", "qcnn_weights_q7.json"),
-    ("finance", "qcnn_weights.json"),
-    ("medical", "qcnn_weights.json"),
-]
+def _shipped() -> list[tuple[str, str]]:
+    """Every shipped QCNN artifact, from the filesystem rather than from a list kept by hand.
+
+    THIS WAS A HAND-WRITTEN LIST OF FOUR, on a branch named "the gate was a file list". Six
+    artifacts ship; the two it omitted were `finance/qcnn_weights_q9.json` and
+    `medical/qcnn_weights_q9.json`, and BOTH widths are selectable by the visitor from the QCNN
+    qubits control - so the two implementations could have diverged on a configuration a reader can
+    reach, with nothing comparing them.
+    """
+    out = [(p.parent.name, p.name) for p in sorted(PUBLIC.glob("*/qcnn_weights*.json"))]
+    assert len(out) >= 4, (
+        f"found {len(out)} shipped QCNN artifacts under {PUBLIC}; the glob is not seeing files it "
+        "should, and every comparison below would then be vacuous")
+    return out
+
+
+SHIPPED = _shipped()
 
 
 def _require_browser_or_skip() -> None:
