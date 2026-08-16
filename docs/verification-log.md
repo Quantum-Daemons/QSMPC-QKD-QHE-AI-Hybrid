@@ -63,6 +63,18 @@ et al` and no `Ruszczak`; the new one is the reverse.
 | medical QCNN weights served | 19 keys with `headline_metric`, accuracy 0.732558 vs LR 0.953488 |
 | finance QCNN weights served | present as `application/json` (they 404'd as HTML before this deploy) |
 
+**The medical accuracy in that row is no longer the artifact's, and the row is left as measured.**
+0.732558 is what the deploy served on 2026-08-11 and the record of a deploy is not editable
+afterwards. The circuit has been replaced once (Round 46, a hardware-efficient ansatz relabelled as
+a real QCNN) and corrected TWICE in Round 47 - once for the fully-connected block and the multiclass
+readout, and once for two classes of analytically dead parameter. The shipped figure is now accuracy
+**0.883721** with minority-class F1 **0.84375** against the same logistic regression's **0.953488** /
+**0.939394** - so the direction of the comparison is unchanged and only its size moved. The
+intermediate figures from the first Round 47 retrain, accuracy 0.860465 with minority-class F1
+0.8125, are themselves SUPERSEDED and are recorded here only so the sequence is followable.
+`models/qcnn_medical/weights.json` is authoritative; anything quoting 0.732558, or 0.860465, as
+current is quoting a retired circuit.
+
 **The licence defect is cleared on the live site.** `/data/satellite/real_2d.json` had been
 serving `Ruszczak et al., 'Machine learning detects terminal singularities'` - an
 algebraic-geometry paper's title on an OPS-SAT dataset. OPS-SAT-AD is CC BY 4.0, so that was a
@@ -1435,3 +1447,75 @@ Zero occurrences of `NaN`, `undefined` or `Infinity` in rendered text on any pag
 `/usecase/telecom_ids` in depth plus the pages reached during the Round 45 sweep on an earlier
 bundle. The remaining seven were not re-walked on `index-CtNKHnlK.js`, so their cleanliness is
 inherited from the previous bundle rather than measured on this one.
+
+## Round 47 (`3c63ea8`, branch `round47-the-gate-was-a-file-list`) - a POINTER, and the absence is recorded on the day it happened
+
+**No deployed-site walk has been recorded for Round 47.** The bundle carrying this round's changes
+has not been walked in Chrome, and no figure below was read off a page. This entry is written the way
+the Rounds 39-42 and Round 44 entries are - as a pointer that is honest about what is missing - and
+for the reason `:1241` gives: *a reconstruction presented as a record is worse than an absent record,
+because the absence is visible and the imitation is not.* Round 44 is the counter-example this file
+keeps: it verified on the deploy and wrote nowhere, and the gap was found a round later. Here the
+gap is stated in the round that has it.
+
+**Where Round 47's evidence lives, all of it in-repo:**
+
+| what it establishes | where |
+|---|---|
+| the round as a whole | `docs/deliverable-verification.md`, "Round 47" and "Round 47, continued" sections |
+| the finite-key threshold, computed rather than cited, and checked against the paper's Table I | `src/qsh/qkd/finite_key.py`, `tests/test_finite_key_reproduces_the_published_table.py` |
+| the block size every config key must clear, and the two declared residuals | `tests/test_every_block_size_clears_the_band_the_config_names.py` |
+| the browser and the trainer computing the same QCNN, numerically, on the shipped artifacts | `tests/test_the_qcnn_agrees_across_languages.py` |
+| the readout binning over surviving wires | `tests/test_qcnn_multiclass_readout.py` (which checks the trainer's `readout_wires()` against an independent re-derivation of the survivors, not the artifacts), and `readout.wires` = `[0, 2, 4]` in the TWO MULTICLASS artifacts - `models/qcnn_telecom/weights.json` (8 wires) and `models/qcnn_telecom_q7/weights.json` (7 wires). The other four QCNN artifacts carry `readout.kind` = `expval_z0` with no `wires` key at all: a single `<Z0>` expectation bins nothing, so it has no binning to correct. This row said "every `models/*/weights.json`" for one round, and a reviewer executing it on any binary artifact found nothing. |
+| no trainable parameter being analytically dead, at five configurations | `tests/test_the_qcnn_has_the_structure_the_name_claims.py::test_every_trainable_parameter_reaches_the_readout` |
+| the published QCNN metrics, per artifact | `models/*/weights.json` and the cards gated against them |
+| the browser and Python agreeing on the decoy bound, including under an eavesdropper | `tests/test_the_browser_computes_the_bound_the_page_names.py` |
+| those cross-language gates actually RUNNING rather than skipping | `.github/workflows/ci.yml`: Node install plus `QSH_REQUIRE_BROWSER_GATES=1` |
+
+**What that leaves unestablished, stated rather than implied.** These are gate results and artifact
+contents, which is a different thing from a rendered page. Every one of the numbers below is a
+quantity a visitor can see, and each has moved since the last bundle that was walked:
+
+- `/usecase/telecom_ids` with Inference = QCNN now runs a **per-survivor** fully-connected block and
+  reads the class index off the **surviving** wires. Before the fix the browser and the trainer
+  disagreed on the argmax for 39 of 64 telecom rows, so the rendered CLASS is the thing to look at,
+  not merely the absence of `NaN`.
+- **All six QCNN artifacts were retrained a second time** after two classes of parameter turned out
+  to be analytically dead, so every rendered QCNN figure on every use-case page has moved again:
+  telecom macro F1 0.458324 -> **0.510963**, telecom-q7 0.500452 -> **0.541894**, medical accuracy
+  0.860465 -> **0.883721**, finance minority-class F1 0.84058 -> **0.735294**. The finance number
+  went DOWN. The classical logistic regression rendered beside each of them is unchanged, because it
+  never sees the circuit, and it is still ahead on all three use cases.
+- **The Eve intercept control now does something**, and what a visitor sees on the QKD panel when
+  they move it is the single largest untested change in this round. At `eve_intercept_fraction` =
+  1.0 the page used to print 0.001976547 bit/pulse and 395 secure bits at QBER 0.2598 - the same
+  figures as eve = 0. Measured in-repo after the fix, at 200,000 pulses and identical in both
+  languages: eve 0.2 gives 0.000058995 and 11 secure bits, eve 0.3 gives zero from the bound itself,
+  and from eve 0.35 the `pp_threshold` abort fires. **Whether the page RENDERS that abort sensibly -
+  rather than a blank, a `NaN` or a silent zero - has not been observed.**
+- The QKD panel's per-pulse figure moves in two directions at once and neither has been read off a
+  page: the intensity change to the finite-key optimum costs **16.5%** of the asymptotic rate
+  (0.002368 -> 0.001977 bit/pulse, `src/qsh/config/defaults.py`), while the decoy-bound error-term
+  fix RAISES the fibre figure by **0.57%** and the 800 km downlink by **18.9%**.
+- `qkd_surrogate_skr_default`, rendered in the same panel as `skr_per_pulse`, was computed by a
+  FOURTH implementation of the decoy algebra that was left on the old error term. It read 0.498% low
+  on fibre and 13.664% low on the 800 km downlink, so the two figures in that one panel disagreed
+  with each other. Now 0.000% on both, and unobserved on a page.
+- `qkd.pulses` and `demo_alice_bob_pulses` are both **20,000,000**, ten times the block the Round 46
+  sweep saw, so `channel_time_s`, `secure_key_bits`, `key budget` and `stored_key_count` all scale
+  and the `/validations` count is a different number from the 94 recorded in the Round 45 entry.
+
+**And the gates that stand in for a walk were not all running.** Every browser-side cross-language
+check guards on `if not ESBUILD.exists(): pytest.skip(...)`, `web/node_modules` is gitignored, and
+the GitHub CI Python job installed no Node - so in CI they SKIPPED. Measured on a clone of the tip
+with no `web/node_modules`: **21 collected, 11 passed, 10 skipped** - 6 in
+`tests/test_the_browser_computes_the_bound_the_page_names.py` and 4 in
+`tests/test_the_qcnn_agrees_across_languages.py`. This paragraph said 20 / 11 / 9 for one round,
+which was the count one commit before it was written; the commit that published it added a 21st
+gate, and that gate skips too. For the rounds in which this file's entry has been a pointer
+to in-repo evidence, part of that evidence was not being produced by CI at all; it was being produced
+only by `scripts/ci_local.sh` on one machine. `.github/workflows/ci.yml` now installs Node and sets
+`QSH_REQUIRE_BROWSER_GATES=1`, which turns the skip into a failure.
+
+A walk of the deployed bundle therefore remains owed, and this paragraph is the record that it is
+owed rather than done.
