@@ -80,9 +80,16 @@ def _require_browser_or_skip() -> None:
     THE SKIP WAS THE HOLE. These gates are the only ones that can see a change reaching one
     language and not the other, and they guarded on `if not ESBUILD.exists(): pytest.skip(...)`.
     `web/node_modules` is gitignored and the CI python job installed no Node, so on every GitHub
-    run they reported SKIP and the workflow went green. Measured on a clone of the tip: 20
-    collected, 11 passed, **9 skipped**. Seeding the pre-Round-47 fully-connected block into
-    `quantumSim.ts` fails these gates by 0.585 locally and passes the entire CI workflow.
+    run they reported SKIP and the workflow went green. Measured on a clone of the tip with no
+    `web/node_modules`: **21 collected, 11 passed, 10 skipped** - 6 here and 4 in
+    `test_the_qcnn_agrees_across_languages.py`. An earlier revision said 20 / 11 / 9, which was the
+    count one commit before this docstring was written.
+
+    Seeding the pre-Round-47 shared-scalar fully-connected block into `quantumSim.ts` fails FOUR of
+    the QCNN gates locally - maximum readout differences 0.399170 (telecom-q7), 0.331032 (telecom),
+    0.016233 (medical), 0.008699 (finance) - and passes the entire CI workflow. The single "0.585"
+    an earlier revision quoted belongs to the PRE-RETRAIN weights of f5861c9, where the same seeding
+    gives 0.585404 on telecom; the commit that published it retrained all six artifacts.
 
     `QSH_REQUIRE_BROWSER_GATES=1` turns the skip into a failure. CI sets it; a developer without
     node still gets the skip, with the message saying what is unchecked.
@@ -317,7 +324,8 @@ def test_no_call_site_hardcodes_its_block_size() -> None:
 
     THIS IS THE CHECK ROUND 46 NEEDED AND DID NOT HAVE. `demo_alice_bob_pulses` was raised from
     40,000 to 400,000 with the reason written directly above it in `config/defaults.py`: at 40,000
-    the decoy bound yields 94 secure bits, below the 256 a session key needs. The browser reads
+    the decoy bound yields **79** secure bits at the intensities shipped now (94 at Round 46's
+    mu = 0.5 / nu = 0.1), below the 256 a session key needs. The browser reads
     that key. Both Python twins kept the literal, so the deployed page derived a QKD-mixed session
     and the Python benchmark of the same protocol silently did not.
 
@@ -345,9 +353,10 @@ def test_the_python_two_party_demo_derives_the_session_key_the_browser_does() ->
     verdict about whether QKD contributed to the session.
 
     This is the numeric complement to the structural checks above, and it is the one that is
-    actually red on the unmodified tree: at 40,000 pulses the decoy bound gives 94 secure bits,
-    `derive_shared_key` is skipped, `qkd_mixed` comes back False and the security score drops to
-    73.0 - while the browser, at the same nominal operating point, reports a mixed session.
+    actually red on the unmodified tree: at 40,000 pulses the decoy bound gives **79** secure bits
+    at the shipped intensities (94 at Round 46's mu = 0.5 / nu = 0.1), `derive_shared_key` is
+    skipped, `qkd_mixed` comes back False and the security score drops to 73.0 - while the browser,
+    at the same nominal operating point, reports a mixed session.
 
     Asserted on the SHIPPED config value rather than on a number written here, so raising the
     block size again cannot leave this file behind in the same way it left the call sites.
@@ -572,10 +581,23 @@ def test_the_decoy_bound_does_not_count_dark_counts_twice() -> None:
     quantity for the OBSERVED QBER the panel displays, and both files still use it there; it is
     only wrong as this function's argument.
 
-    Measured cost, in the conservative direction: 0.57% on the 50 km fibre, where eta is 0.025,
-    and **18.9%** on the 800 km free-space downlink, where eta is 17x smaller and the
-    `0.5 * p_dark / eta` term is correspondingly larger. A bound that understates itself is safe
-    but not correct, and the size of the error grows exactly where the link is hardest.
+    Measured cost, in the conservative direction, WITH THE INTENSITIES NAMED - an earlier revision
+    of this docstring gave "0.57% and 18.9%" without them, and 18.9% is not a "low by" figure at any
+    intensity pair. It is the same gap with the WRONG bound as denominator, i.e. how much the fix
+    RAISES the number, which is the convention `docs/verification-log.md` uses.
+
+        mu = 0.5    / nu = 0.1     (in force while the double charge shipped):
+            fibre 50 km       0.5673% low   (0.5705% raise)
+            800 km downlink  15.9152% low  (18.9276% raise)
+        mu = 0.3416 / nu = 0.1417  (SHIPPED NOW, the finite-key optimum):
+            fibre 50 km       0.4984% low   (0.5009% raise)
+            800 km downlink  13.6638% low  (15.8262% raise)
+
+    The body below computes with the config's own `mu_signal` / `mu_decoy`, so what it demonstrates
+    is the 0.4984% figure and not the retired 0.57%. eta is 17.5x smaller on the downlink than on
+    the fibre and the `0.5 * p_dark / eta` term is correspondingly larger, which is why the same
+    defect costs an order of magnitude more there. A bound that understates itself is safe but not
+    correct, and the size of the error grows exactly where the link is hardest.
 
     ASSERTED NUMERICALLY, not by grepping the call sites. A textual version of this check caught
     Python and missed the browser: `quantumSim.ts` assigns `const eDet = intrinsicQber(p)` on one

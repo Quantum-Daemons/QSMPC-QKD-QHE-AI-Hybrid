@@ -63,8 +63,10 @@ def qkd_demo(distance_km: float = 50.0, eve: float = 0.0) -> dict:
     # payload and not the server's.
     # The block size is READ, not spelled, for the same reason as
     # `benchmark/alice_bob_e2e.py`: `demo_alice_bob_pulses` was raised to 400_000 in Round 46
-    # because 40_000 leaves the decoy bound at 94 secure bits, and the raise reached the browser
-    # only. This endpoint backs the same panel, so a literal here reintroduces the split it fixed.
+    # because 40_000 leaves the decoy bound at **79** secure bits, and the raise reached the browser
+    # only. (94 was the count at Round 46's mu = 0.5 / nu = 0.1; Round 47's finite-key optimum
+    # 0.3416 / 0.1417 makes it 79. Still far below the 256 a session key needs.) This endpoint
+    # backs the same panel, so a literal here reintroduces the split it fixed.
     r = run_bb84(get_config().web.demo_alice_bob_pulses,
                  ChannelParams(distance_km=distance_km, eve_intercept_fraction=eve),
                  qkd_params=QKDParams(),

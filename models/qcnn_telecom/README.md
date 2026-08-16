@@ -10,9 +10,16 @@
 > marginalisation at readout; that was 1 of this circuit's 48 conv angles, carried since Round 46.
 >
 > **The fix was ORDERING, not deletion.** RZ before RY in both places, so the phases RZ writes are
-> mixed back into amplitudes by the RY that follows. Measured before the fix: moving every fc RZ by
-> 1.234 rad changed this circuit's readout by 5.96e-08, against 2.6e-01 for the RY angles beside
-> them. After it, the same perturbation moves the readout by 1.4e-01.
+> mixed back into amplitudes by the RY that follows. RE-MEASURED on the weights shipped here, with
+> the procedure stated because an earlier revision of this banner quoted figures with no seed and no
+> inputs: reconstruct the pre-fix gate order from
+> `git show 8017538^:scripts/train/qcnn_variational.py`, feed `x = tanh(randn(8, n_qubits) * 0.7)` at
+> `torch.Generator().manual_seed(0)`, add 1.234 rad to every fc RZ angle and take `max |delta|` of
+> `circuit()`. Under the pre-fix order that moves this circuit's readout by **5.96e-08**, which is
+> 2^-24, a float32 ULP, against **1.77e-01** for the RY angles beside them. Under the shipped order
+> the same RZ perturbation moves it by **2.28e-01**. The `2.6e-01` and `1.4e-01` an earlier revision
+> printed here are withdrawn: they carried no recipe, and the weights they were taken on were
+> replaced by this retrain.
 > `tests/test_the_qcnn_has_the_structure_the_name_claims.py::test_every_trainable_parameter_reaches_the_readout`
 > now perturbs EVERY parameter at five (width, readout, layers) configurations and fails if any one
 > of them cannot move the output.
@@ -83,8 +90,12 @@ does not cover this circuit.
 
 ## Measured performance
 
-Held-out split, 960 test rows against 2,240 training rows, 8 balanced classes. The headline metric is
-**macro F1**, because an aggregate over 8 classes is what hides a broken one.
+Held-out split, **480 test rows** against 2,240 training rows, 8 balanced classes. The headline
+metric is **macro F1**, because an aggregate over 8 classes is what hides a broken one. 3200 rows
+split 70 / 15 / 15 gives 2240 train, 480 validation, 480 test; every figure below is computed on
+those 480 test rows only. An earlier revision of this card said 960, which was validation PLUS test:
+the trainer recorded `n_test` as everything after the training cut. The metrics were always computed
+on the 480-row slice, so only the row count was wrong.
 
 | quantity | value |
 |---|---|
@@ -96,7 +107,7 @@ Held-out split, 960 test rows against 2,240 training rows, 8 balanced classes. T
 | constant-predictor macro F1 floor | 0.027778 |
 | majority-class accuracy floor | 0.152083 |
 | classes predicted | 8 |
-| n_train / n_test | 2240 / 960 |
+| n_train / n_val / n_test | 2240 / 480 / 480 |
 
 **The classical baseline is ahead by 0.465484 of macro F1 - 47 points.** Reported here, and the page
 says the same thing. Randomly initialised QCNNs operate only on low-bodyness measurements of their
@@ -162,9 +173,13 @@ discriminative signal, and the honest reading is that part of that 0.614583 was 
 claim.
 
 Making the five dead parameters live gave back **+0.053** of macro F1, from 0.458324 to 0.510963.
-That is the largest of the four effects the same fix had across the six artifacts, and it is not a
-clean win across the set: the finance circuit REGRESSED by 0.105 under the identical change. See the
-table on `models/qcnn_finance/README.md`. What the +0.053 does establish is that the parameters were
+That is the largest of the three GAINS the same fix produced across the six artifacts, and it is not
+the largest effect: the finance circuit REGRESSED by 0.105 under the identical change, twice the size
+of this gain and the largest single move of the four. Measured from the artifacts at each commit:
+telecom macro F1 +0.052639, telecom-q7 macro F1 +0.041442, medical minority F1 +0.031250, finance
+minority F1 -0.105286. An earlier revision of this paragraph called +0.053 "the largest of the four
+effects", which the finance figure in its own next clause contradicts. See the table on
+`models/qcnn_finance/README.md`. What the +0.053 does establish is that the parameters were
 worth something once a gradient could reach them, which is the point of the fix; what it does not
 establish is that this architecture is competitive, because the classical baseline is still 47 points
 ahead.
@@ -181,11 +196,19 @@ dead** - these are superseded as current figures and kept as the capacity eviden
 | 12 wires, 6 layers | 0.4362 | - | - |
 | 8 wires, 6 layers, per-survivor FC (shipped at the time) | 0.4583 | 0.4185 | 0.4553 |
 
-Ten runs across four configurations did not find the missing 0.156, which is the evidence that the
-drop was the readout defect and not a capacity limit: more layers did not recover it, more wires did
-not recover it, and a strictly more expressive fully-connected block did not recover it. The
-dead-parameter fix then recovered a third of it by making the parameters that were already there
-reachable - which is consistent with the same reading, since it added no capacity either.
+Ten runs across four configurations did not find the missing **0.110876**, which is the evidence that
+the drop was the readout defect and not a capacity limit: more layers did not recover it, more wires
+did not recover it, and a strictly more expressive fully-connected block did not recover it - the
+best cell above, 0.4826, is still 0.0866 short. That gap is macro F1 against macro F1: the
+pre-correction run's macro F1 was **0.5692**, recorded in
+`git show 4ee258e:models/qcnn_telecom/weights.json` beside its 0.614583 accuracy, so the baseline
+was never missing from the record. An
+earlier revision of this card printed the gap as 0.156, which is 0.614583 minus 0.458324 - the
+ACCURACY minus a macro F1, exactly the two metrics the table three paragraphs above warns are
+different - and that figure is withdrawn. The dead-parameter fix then recovered 0.052639 of the
+0.110876, which is nearly half rather than the third the inflated denominator implied, by making the
+parameters that were already there reachable - consistent with the same reading, since it added no
+capacity either.
 
 These ten figures come from a sweep and not from this artifact, so they are not in `weights.json`
 and the model-card gate does not check them. The shipped row is no longer the shipped configuration:
@@ -194,10 +217,12 @@ its seed 0 of 0.4583 is the PREVIOUS artifact's headline, superseded by the 0.51
 ## The width conclusion has reversed
 
 `references/qcnn-width-ablation.md` concluded that 8 wires beat 7 on telecom by +0.0786 macro F1.
-With the corrected circuit the sign has flipped, and the second retrain made the gap LARGER rather
-than closing it: 7 wires scores **0.541894** and 8 wires scores **0.510963**, so the NARROWER circuit
-leads by 0.030931. At the previous retrain the same pair read 0.500452 against 0.458324, a lead of
-0.042128, so the reversal has now survived a change that moved both sides. Both figures are still
+With the corrected circuit the sign has flipped, and the second retrain raised both widths and left
+the sign intact while NARROWING the gap: 7 wires scores **0.541894** and 8 wires scores **0.510963**,
+so the narrower circuit leads by 0.030931. At the previous retrain the same pair read 0.500452
+against 0.458324, a lead of 0.042128, so the reversal has now survived a change that moved both
+sides - on a margin that closed by 0.011197 rather than opening. An earlier revision of this
+paragraph said the gap grew, which the two figures it quotes contradict. Both figures are still
 single-seed, so this retires the old direction rather than settling the new one - see
 `models/qcnn_telecom_q7/README.md` for the other side of the pair and the width ablation file for the
 superseded numbers, which are marked and not deleted.
