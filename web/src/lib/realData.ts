@@ -16,8 +16,43 @@
 // blanket CC-BY; IGSR grants no blanket licence; no provider states one for SMAP/MSL) and shipped
 // that way. A stale copy reads as authoritative, which is worse than a pointer.
 
+/** One row in every space the payload declares, keyed by that space's own name.
+ *
+ *  Built in ONE place so a consumer selecting by name cannot pick up an array the file never
+ *  labelled. `samples` is written last, so a payload naming the same space twice resolves to its
+ *  primary declaration rather than to an entry in the extras map. An array of a different length
+ *  cannot be indexed by the same row index and is dropped rather than mis-indexed.
+ */
+function rowBySpace(ds: any, idx: number, width: number): Record<string, number[]> {
+  const out: Record<string, number[]> = {};
+  const n = (ds.samples as number[][] | undefined)?.length ?? 0;
+  const extras = (ds.samples_by_space ?? {}) as Record<string, number[][]>;
+  for (const [space, rows] of Object.entries(extras)) {
+    if (Array.isArray(rows) && rows.length === n) out[space] = rows[idx].slice(0, width);
+  }
+  if (typeof ds.feature_space === "string" && Array.isArray(ds.samples)) {
+    out[ds.feature_space] = (ds.samples as number[][])[idx].slice(0, width);
+  }
+  return out;
+}
+
 export interface RealInput {
   values: number[];                          // the 8 demo features (REAL)
+  /** THE SAME ROW in every space the payload declares, keyed by the space's own name.
+   *
+   *  `values` is StandardScaler output, because the distilled CKKS-linear model and the exact-linear
+   *  SHAP panel are both fitted in that space and must stay there. But `qcnn_weights.json` for
+   *  finance declares `input_space: "raw"`, so `qcnnInferTrained` standardises whatever it is handed
+   *  a SECOND time, with the trainer's moments rather than this sample's. Measured before this map
+   *  existed, through the browser's own encoder: wire 0 (`amount`) collapsed to a tanh sd of
+   *  3.3e-05, 556 of 3200 values saturated, and 101 of 400 rows - 25.25% - were given a different
+   *  class than the same rows correctly fed.
+   *
+   *  KEYED BY NAME, not a boolean. A consumer asks for the space it was trained on and gets nothing
+   *  if the file cannot serve it. A `input_space === "raw" ? a : b` selection has a silent default
+   *  branch, so an artifact retrained into a third space would land on whichever array the else
+   *  names - which is precisely how this defect shipped. */
+  bySpace?: Record<string, number[]>;
   names: string[];                           // feature names (mirror the backend / real rsIDs)
   provenance: string;                        // human label for the event log + UI badge
   model?: { W: number[][]; b: number[] };    // a REAL model (trained LR / PRS weights) for faithful SHAP
@@ -115,8 +150,14 @@ export async function realInput(usecase: string, u: () => number): Promise<RealI
       // encrypted inference. The SHAP attribution then reflects the real distilled fraud model on real data.
       const ds = await fetchJSON("/data/finance/paysim_sample.json");
       const rows = ds.samples as number[][];
-      const row = rows[Math.floor(u() * rows.length) % rows.length];   // a REAL PaySim transaction
-      return { values: row.slice(0, 8), names: ds.names, provenance: ds.provenance, model: ds.model,
+      const idx = Math.floor(u() * rows.length) % rows.length;
+      const row = rows[idx];                                           // a REAL PaySim transaction
+      // The same transaction in raw units, for any consumer whose artifact declares `raw`. Indexed,
+      // not re-drawn: a second random pick would hand the QCNN a different transaction from the one
+      // the CKKS tier and the SHAP panel are describing, and the page would attribute one row's
+      // explanation to another row's prediction.
+      return { values: row.slice(0, 8), bySpace: rowBySpace(ds, idx, 8),
+               names: ds.names, provenance: ds.provenance, model: ds.model,
                baseline: columnMeans(rows, 8) };
     }
   } catch (e) {
