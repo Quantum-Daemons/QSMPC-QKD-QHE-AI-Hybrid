@@ -69,11 +69,21 @@ class QKDConfig:
     # At the intensities that were shipped (mu = 0.5, nu = 0.1) the threshold is 3.84e7 pulses, and
     # the Python Monte Carlo allocates ~2.0 GB there - too much to put behind an interactive
     # endpoint. But mu ~ 0.5 is the optimum for the ASYMPTOTIC rate, not for the composable key
-    # length, and those optima are in different places. At the finite-key optimum below
-    # (mu = 0.3416, nu = 0.1417) the threshold falls to 1.31e7 pulses, a factor of 2.9, for 16.5% of
-    # the headline asymptotic rate. 2e7 then sits comfortably past it: about 1,800 bits of composable
-    # key, against 217 bits at 1.4e7 - too thin a margin to publish given this implementation's own
-    # 2-3x conservatism.
+    # length, and those optima are in different places. Moving the intensities to the finite-key
+    # optimum below (mu = 0.3416, nu = 0.1417) brings the threshold down to **1.41e7 pulses**, which
+    # 2e7 clears by 1.42x.
+    #
+    # AND ONLY TWO OF THE FOUR OPTIMISED VARIABLES ARE SHIPPED, which is why the figure is 1.41e7
+    # and not the 1.31e7 an earlier revision of this comment claimed. `optimise_parameters` searches
+    # the four variables Rusca et al. name - mu, nu, p_mu1 and p_Z - and its solution also sets
+    # p_signal = 0.3764 and p_Z = 0.5042. Neither has a shipped counterpart: the asymptotic decoy
+    # code takes no intensity probability at all, and `QKDParams.basis_prob` is 0.5. So the
+    # threshold this configuration actually reaches is the one computed at p_signal = p_Z = 0.5,
+    # and quoting the optimiser's full-solution figure beside a config that ships half of it was
+    # the same defect this round is named for, in the document rather than the code.
+    #
+    # `tests/test_every_block_size_clears_the_band_the_config_names.py` computes the threshold from
+    # the shipped config rather than from this comment, so the two cannot drift.
     #
     # Measured cost of the Monte Carlo at 2e7: 0.66 s and ~1.05 GB peak, against 0.08 s and 0.15 GB
     # at 2e6. Free either way in the browser: `bb84()` in `quantumSim.ts` is analytic, not a
@@ -196,12 +206,18 @@ class QKDConfig:
     # Measured trade, at the shipped 50 km channel:
     #
     #     mu=0.5,   nu=0.1     asymptotic 0.002368 bit/pulse   positive-key threshold 3.84e7 pulses
-    #     mu=0.342, nu=0.142   asymptotic 0.001977 bit/pulse   positive-key threshold 1.31e7 pulses
+    #     mu=0.342, nu=0.142   asymptotic 0.001977 bit/pulse   positive-key threshold 1.41e7 pulses
     #
-    # So the finite-key optimum costs 16.5% of the headline asymptotic rate and buys a 2.9x smaller
-    # block. That is worth taking, because the asymptotic rate was never the binding constraint: at
-    # 3.84e7 pulses the Python Monte Carlo allocates ~2.0 GB, which is not something to put behind
-    # an interactive endpoint, while 1.31e7 costs ~0.7 GB.
+    # BOTH ROWS AT p_signal = p_z = 0.5, the shipped setting, so the two are comparable. The 1.31e7
+    # an earlier revision of this table printed is the optimiser's FULL solution, which also sets
+    # p_signal = 0.3764 - not a config key here - and is therefore not what this build computes; see
+    # the note on `pulses` above.
+    #
+    # So the finite-key optimum costs 16.5% of the headline asymptotic rate and buys a 2.7x smaller
+    # block (38,410,230 -> 14,055,773). That is worth taking, because the asymptotic rate was never
+    # the binding constraint: at 3.84e7 pulses the Python Monte Carlo allocates ~2.0 GB, which is not
+    # something to put behind an interactive endpoint, while 1.41e7 costs ~0.74 GB (measured 0.737 GB
+    # peak RSS at 14,055,773 pulses, against 1.033 GB at 2e7).
     #
     # Chosen by an optimiser, so the value is reproducible rather than tuned by hand:
     #   python -c "from qsh.qkd.finite_key import optimise_parameters; print(optimise_parameters()[0])"
@@ -548,8 +564,9 @@ class WebConfig:
     tfjs_max_new_tokens: int = 96
     webllm_max_tokens: int = 160
     # Raised with `QKDConfig.pulses` for the same reason - see the note there. At 40_000 the decoy
-    # bound gives 94 secure bits, below the 256 a session key needs, so `/validations` reported a
-    # positive bit count beside prose reading "no secure key bits".
+    # bound gives **79** secure bits, below the 256 a session key needs, so `/validations` reported a
+    # positive bit count beside prose reading "no secure key bits". (94 was the count at Round 46's
+    # mu = 0.5 / nu = 0.1; the finite-key optimum this round shipped makes it 79.)
     # Kept EQUAL to `QKDConfig.pulses` and for the same reason: this is the block the two-party
     # panel reports on, so if it sits below the composable threshold the panel publishes an
     # asymptotic rate for a block that carries no key. Round 47 also removed the two Python call
@@ -557,18 +574,25 @@ class WebConfig:
     # a fix changed one language, and the reason `run_bb84` call sites may no longer spell a
     # literal block size at all.
     demo_alice_bob_pulses: int = 20_000_000
-    # 4_000_000 gave **223** secure bits over the 800 km free-space downlink under the decoy bound -
+    # 4_000_000 gives **222** secure bits over the 800 km free-space downlink under the decoy bound -
     # below the 256 threshold `SatelliteQKDStage` needs to derive a key, so the satellite use case
-    # stopped folding QKD into its session entirely. 10_000_000 gives 559.
+    # stopped folding QKD into its session entirely. 10_000_000 gives **555**. (223 and 559 were the
+    # counts before this round moved the intensities to the finite-key optimum; both are deterministic
+    # across seeds, since the decoy bound is analytic.)
     #
     # AND THE HONEST RESIDUAL, recorded rather than engineered away, and MUCH LARGER THAN THIS
-    # COMMENT USED TO SAY. At 10e6 the downlink yields ~3,660 sifted bits. This line previously
-    # measured that against the "~5e3-1.1e4 finite-key positive-key band" and concluded the gap could
-    # be closed with ~30e6 pulses and ~1.5 GB of Python array. Both figures came from a band that
-    # Round 47 refuted - see the note on `QKDConfig.pulses` above and `src/qsh/qkd/finite_key.py`.
-    # The corrected positive-key threshold is ~1e5 sifted bits and about 4e7 pulses on the 50 km
-    # FIBRE channel, so 3,660 sifted bits is short by well over an order of magnitude rather than by
-    # the small factor implied here, and the 30e6-pulse fix was never a fix.
+    # COMMENT USED TO SAY. RE-MEASURED at the shipped intensities (mu = 0.3416, nu = 0.1417): at 10e6
+    # the downlink yields **~2,440 sifted bits** - a 5-seed mean of 2,442, spread 2,397 to 2,470. The
+    # ~3,660 this line carried is the pre-Round-47 figure at mu = 0.5 / nu = 0.1, where the same
+    # 5 seeds give a mean of 3,582; the subsection was rewritten in the round that moved the
+    # intensities and this line was carried across without re-measurement.
+    #
+    # This line previously measured that against the "~5e3-1.1e4 finite-key positive-key band" and
+    # concluded the gap could be closed with ~30e6 pulses and ~1.5 GB of Python array. Both figures
+    # came from a band that Round 47 refuted - see the note on `QKDConfig.pulses` above and
+    # `src/qsh/qkd/finite_key.py`. The corrected positive-key threshold is ~1e5 sifted bits and about
+    # 4e7 pulses on the 50 km FIBRE channel, so 2,440 sifted bits is short by well over an order of
+    # magnitude rather than by the small factor implied here, and the 30e6-pulse fix was never a fix.
     #
     # The free-space threshold is not quoted, because it has not been evaluated: `finite_key.py`
     # takes a fibre `ChannelParams`, and the 800 km downlink's 24.48 dB budget is built elsewhere.

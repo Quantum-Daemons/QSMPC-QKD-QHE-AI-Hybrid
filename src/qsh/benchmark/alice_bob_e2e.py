@@ -54,11 +54,14 @@ def run_alice_bob_e2e(*, seed: int = 0, n_shared: int = 8) -> dict:
     # legacy branch it reaches by omission.
     #
     # The block size is READ, not spelled. Round 46 raised `demo_alice_bob_pulses` to 400_000
-    # because at 40_000 the decoy bound yields 94 secure bits - under the 256 `derive_shared_key`
-    # needs - and raised it in the browser only. This file kept the literal, so the deployed page
-    # reported a QKD-mixed session while the Python benchmark of the same protocol scored 73.0 with
-    # `qkd_mixed: False`. Two demonstrations of one protocol disagreed about whether the quantum
-    # half contributed at all.
+    # because at 40_000 the decoy bound yields **79** secure bits - under the 256 `derive_shared_key`
+    # needs - and raised it in the browser only. (94 was the figure at the mu = 0.5 / nu = 0.1
+    # intensities of Round 46; Round 47 moved them to the finite-key optimum 0.3416 / 0.1417, which
+    # takes the per-pulse rate from 0.002368 to 0.001977 and the count to int(0.001977 * 40000) = 79.
+    # The conclusion is unchanged - it is still far below 256.) This file kept the literal, so the
+    # deployed page reported a QKD-mixed session while the Python benchmark of the same protocol
+    # scored 73.0 with `qkd_mixed: False`. Two demonstrations of one protocol disagreed about
+    # whether the quantum half contributed at all.
     cfg = get_config()
     qkd = run_bb84(cfg.web.demo_alice_bob_pulses, ChannelParams(distance_km=50), seed=seed,
                    qkd_params=QKDParams())

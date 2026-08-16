@@ -1,7 +1,7 @@
 # Does the unencoded wire do anything? Telecom QCNN at 7 wires against 8
 
 > **ROUND 47 REVERSED THE TELECOM FINDING. THE SIGN FLIPPED; IT WAS NOT MERELY RESTATED - AND THE
-> REVERSAL HAS NOW SURVIVED TWO RETRAINS, WITH THE GAP GROWING.**
+> REVERSAL HAS NOW SURVIVED TWO RETRAINS, THOUGH THE GAP NARROWED FROM 0.042128 TO 0.030931.**
 >
 > This file concludes that 8 wires beat 7 on telecom by **+0.0786** macro F1, and Round 45 restated
 > that as a five-seed median. Round 47 found two defects and retrained twice.
@@ -10,8 +10,10 @@
 > pooling includes wires the circuit had discarded - wire 1 is the pooling control of the pair
 > (0, 1), conditioned into wire 0 and then never touched again, and it supplied one bit of every
 > class index while frozen at its pre-pooling value. The readout now bins over the SURVIVING wires,
-> recorded in each artifact as `readout.wires`. The fully-connected block was corrected in the same
-> pass from one shared scalar to a per-survivor two-angle rotation.
+> recorded as `readout.wires` in the two MULTICLASS artifacts this file compares, `qcnn_telecom` and
+> `qcnn_telecom_q7`. The four binary artifacts carry `readout.kind` = `expval_z0` and no `wires` key:
+> a single `<Z0>` expectation bins nothing. The fully-connected block was corrected in the same pass
+> from one shared scalar to a per-survivor two-angle rotation.
 >
 > **Second**, two classes of parameter turned out to be analytically dead - carried by the optimiser,
 > counted in the parameter count, and unable to move the readout at any input. The fully-connected
@@ -40,12 +42,17 @@
 > deploy, and it is unchanged by every retrain because it never sees the circuit.
 >
 > **The pad-wire conclusion for finance and medical survives and is now stronger, but its numbers
-> moved twice.** The Round 46 banner below quotes byte-identical metrics of 0.976667 (finance) and
-> 0.918605 (medical); the first Round 47 retrain made those **0.84058** and **0.860465**; the
-> current identical-across-widths figures are finance minority-class F1 **0.735294** with accuracy
-> **0.97**, and medical accuracy **0.883721** with minority-class F1 **0.84375**. Identical at both
-> widths on every recorded metric, on both corpora, across three successive circuits - the claim is
-> the same each time and the values are not.
+> moved twice, and the metrics have to be named or the moves read as falls that never happened.**
+> The Round 46 banner below quotes ACCURACIES of 0.976667 (finance) and 0.918605 (medical). Over the
+> first Round 47 retrain finance accuracy went UP, to **0.981667**, while finance minority-class F1 -
+> this artifact's headline metric - went 0.794118 to **0.84058**, also up; medical accuracy went
+> **0.860465** and medical minority-class F1 0.888889 to **0.8125**. The current
+> identical-across-widths figures are finance minority-class F1 **0.735294** with accuracy **0.97**,
+> and medical accuracy **0.883721** with minority-class F1 **0.84375**. An earlier revision of this
+> paragraph juxtaposed 0.976667 with 0.84058 as though one became the other; that is an accuracy
+> against a minority-class F1, a -0.136 fall that happened on no metric, and on both metrics finance
+> in fact rose over that step. Identical at both widths on every recorded metric, on both corpora,
+> across three successive circuits - the claim is the same each time and the values are not.
 >
 > **The dead-parameter fix also removed the one place the two widths did differ.** Before it, 4 of
 > 77 trained angles differed between 8 and 9 wires by more than 1e-4, and they were exactly the four
