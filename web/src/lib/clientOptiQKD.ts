@@ -4,7 +4,7 @@
 // convergence profile vs the default-parameter baseline on the SAME simulated channel — a simulation, not
 // deployed QKD. Search space + defaults + protocol come from config (config.defaults.json / /api/config).
 import { qkdCfg } from "./config";
-import { ChannelParams, h2, intrinsicQber, transmittance } from "./quantumSim";
+import { ChannelParams, eDetForBound, h2, intrinsicQber, transmittance } from "./quantumSim";
 
 export interface OptiQKDParams { muSignal: number; muDecoy: number; basisProb: number; ppThreshold: number; }
 export interface OptiQKDResult {
@@ -33,7 +33,16 @@ const skrModel: Model = (p, prm, fEC = qkdCfg().error_correction_eff) => {
   const mu = Math.max(1e-3, prm.muSignal);
   const nu = Math.min(Math.max(1e-4, prm.muDecoy), mu * 0.9);   // decoy strictly weaker than the signal
   const y0 = 2 * p.darkCount;                                   // background yield (two detectors)
-  const eDet = intrinsicQber(p);
+  // `eDetForBound`, NOT `intrinsicQber`. THIS FILE IS THE FOURTH IMPLEMENTATION OF THE DECOY
+  // ALGEBRA and commit 3c63ea8 named only three - `bb84.py`, `quantumSim.ts`, `check_qkd.mjs` - in
+  // the very commit whose subject is that a fix reached one language. A grep for `e0 * y0` returns
+  // four files; three of them were corrected.
+  //
+  // Measured gap while it was left behind: the surrogate baseline read 0.001966695848615933 on
+  // fibre against `bb84()`'s 0.001976547318720314 (0.498% low) and 4.793756674e-5 against
+  // 5.552428392e-5 on the free-space downlink (13.664% low), and both numbers are printed in the
+  // same stage - `qkd_surrogate_skr_default` beside `skr_per_pulse`.
+  const eDet = eDetForBound(p);
   const siftRatio = prm.basisProb ** 2 + (1 - prm.basisProb) ** 2;
   const e0 = 0.5;
   const qMu = y0 + 1 - Math.exp(-eta * mu);

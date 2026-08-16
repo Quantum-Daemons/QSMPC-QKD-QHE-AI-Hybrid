@@ -479,21 +479,24 @@ Added 2026-08-11. Both verified at the arXiv abstract page.
   with Pauli shadows. The authors argue QCNN successes largely reflect benchmark simplicity, and that
   non-trivial datasets are a necessary ingredient for progress in QML. **Why it is cited here:** this
   repository's trained QCNN loses to logistic regression on the identical split (medical accuracy
-  **0.860465** vs **0.953488**; finance minority-class F1 **0.84058** vs **0.865672**). This paper is
+  **0.883721** vs **0.953488**; finance minority-class F1 **0.735294** vs **0.865672**). This paper is
   the reason that is the expected result rather than a failure of implementation, and it is quoted in
   both QCNN model cards. The 8-class telecom circuit added in Round 34 lands the same way - macro F1
-  **0.458324** against a multinomial logistic regression at **0.976447** on the identical split, with
+  **0.510963** against a multinomial logistic regression at **0.976447** on the identical split, with
   all 8 classes predicted - which matters because it is a *different* readout (a 3-qubit basis
   marginal rather than a single `<Z_0>` expectation) and a different task shape, and it did not change
   the direction of the result. **The figures in this bullet were 0.7326, 0.7143 and 0.8098 until
-  Round 47**, measured first on a hardware-efficient ansatz (replaced in Round 46) and then through a
-  multiclass readout that binned the class index over a wire pooling had discarded (corrected in Round
-  47, which also made the fully-connected block per-survivor). All three artifacts were retrained; the
+  Round 47, and then 0.860465, 0.84058 and 0.458324 for part of Round 47 itself**: measured first on
+  a hardware-efficient ansatz (replaced in Round 46), then through a multiclass readout that binned
+  the class index over a wire pooling had discarded (corrected in Round 47, which also made the
+  fully-connected block per-survivor), and then on a circuit carrying two classes of analytically
+  dead parameter (reordered later in the same round). All six artifacts were retrained twice; the
   current values are read from `models/*/weights.json`, which each card is now gated against. **The
-  direction never moved - the classical baseline wins on all three use cases before and after - and
-  only its size did**, which is the only thing this citation was ever quoted for.
+  direction never moved - the classical baseline wins on all three use cases before and after every
+  one of those changes - and only its size did**, which is the only thing this citation was ever
+  quoted for.
   Added: 2026-08-11; telecom result and journal reference added 2026-08-13; metrics refreshed after
-  the Round 47 retrain.
+  each of the two Round 47 retrains.
 - **Bowles, Ahmed & Schuld, "Better than classical? The subtle art of benchmarking quantum machine
   learning models."** arXiv:2403.07059, 11 Mar 2024, revised 14 Mar 2024. **Preprint - the arXiv API
   reports no `journal_ref` and no DOI, checked 2026-08-13**, so cite it as a preprint rather than a
@@ -514,7 +517,7 @@ Added 2026-08-11. Both verified at the arXiv abstract page.
   **THOSE FIVE FIGURES BELONG TO A CIRCUIT THIS PROJECT NO LONGER SHIPS**, and they have not been
   re-measured. They were taken on the hardware-efficient ansatz - RY on every wire plus one CNOT ring,
   which `--no-entangle` removed completely - that Round 46 replaced with a real QCNN and Round 47
-  corrected again. On the current circuit the flag is also **not an exact ablation**: it gates the
+  corrected TWICE. On the current circuit the flag is also **not an exact ablation**: it gates the
   conv filter's CNOT and the survivor ring in the fully-connected block, but the pooling stage is a
   controlled rotation, which entangles, and it is not gated. So the sentence "the tendency does not
   reproduce on this circuit" now names a circuit that no longer exists, and re-running it is open

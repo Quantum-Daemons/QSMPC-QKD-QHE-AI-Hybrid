@@ -43,7 +43,7 @@ function load() {
   const dir = mkdtempSync(join(tmpdir(), "qsh-qkd-"));
   const entry = join(dir, "entry.ts");
   writeFileSync(entry, `
-export { bb84, e91, FIBER, FREE_SPACE, intrinsicQber, h2, transmittance, taggedFraction, channelLossDb, decoySecureFraction } from ${JSON.stringify(join(WEB, "src/lib/quantumSim"))};
+export { bb84, e91, FIBER, FREE_SPACE, intrinsicQber, eDetForBound, h2, transmittance, taggedFraction, channelLossDb, decoySecureFraction } from ${JSON.stringify(join(WEB, "src/lib/quantumSim"))};
 export { optimizeQKD } from ${JSON.stringify(join(WEB, "src/lib/clientOptiQKD"))};
 export { repetitionCountCutoff, adaptiveProportionCutoff, generateQuantumBits } from ${JSON.stringify(join(WEB, "src/lib/clientQRNG"))};
 export { qkdCfg, qrngCfg } from ${JSON.stringify(join(WEB, "src/lib/config"))};
@@ -126,9 +126,15 @@ const cfg_qrng = m.qrngCfg();
   // `chan.misalignment`, NOT `intrinsicQber(chan)`. In Ma et al. the `e_det` argument is the
   // probability a detected SIGNAL photon lands in the wrong detector; `decoySecureFraction` adds
   // the dark-count contribution back itself as `e0 * y0`. Passing the observed QBER charged the
-  // background twice, and Round 47 corrected it in `quantumSim.ts`, `bb84.py` and here - three
-  // surfaces, one change, because fixing two of three is this project's most-repeated defect.
-  const eDet = chan.misalignment;
+  // background twice, and it was then corrected to the bare misalignment, which dropped the
+  // eavesdropper. FOUR surfaces implement this algebra - `bb84.py`, `quantumSim.ts`,
+  // `clientOptiQKD.ts` and this file - and the commit that claimed to fix it named three.
+  // `eDetForBound(chan)`, the SAME helper the model uses, rather than a local re-derivation.
+  // This line has now been wrong twice in one round: first as `intrinsicQber(chan)`, which charged
+  // dark counts twice, then as the bare misalignment, which dropped the eavesdropper. A check that
+  // re-derives the model's argument can be wrong in a way the model is not, which is the opposite
+  // of what a check is for.
+  const eDet = m.eDetForBound(chan);
   const y0 = 2 * chan.darkCount;
   const mu = Math.max(1e-3, cfg.mu_signal);
   const nu = Math.min(Math.max(1e-4, cfg.mu_decoy), mu * 0.9);

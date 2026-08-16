@@ -29,8 +29,11 @@
 > Nothing below is deleted, and none of it is re-measured. Do not quote 0.714286, 0.870968,
 > 0.809846, 0.622951 or any ratio in this file as a property of the shipped circuit. The current
 > published metrics are in `models/*/weights.json` and on the six model cards, which are gated
-> against them: telecom macro F1 **0.458324**, telecom at 7 wires **0.500452**, finance
-> minority-class F1 **0.84058**, medical accuracy **0.860465**.
+> against them: telecom macro F1 **0.510963**, telecom at 7 wires **0.541894**, finance
+> minority-class F1 **0.735294**, medical accuracy **0.883721**. (Round 47 retrained twice: the
+> intermediate figures 0.458324 / 0.500452 / 0.84058 / 0.860465 are superseded by a second retrain in
+> the same round, after two classes of parameter turned out to be analytically dead. Do not quote
+> those either.)
 >
 > **The one conclusion that is untouched** is the one this file shares with `REFERENCES.md`: the QCNN
 > loses to logistic regression on every use case, before and after both changes. Entanglement
@@ -127,8 +130,9 @@ best EPOCH on a validation split precisely to avoid that. What is defensible is 
 spread. A single seeded number with a [0.6230, 0.9333] range behind it should carry that range.
 
 **The medical card no longer publishes 0.6230**, and no five-seed spread exists for what it does
-publish. After the Round 46 circuit replacement and the Round 47 fully-connected-block correction the
-shipped medical artifact reports accuracy **0.860465** with minority-class F1 **0.8125** at seed 0,
+publish. After the Round 46 circuit replacement and Round 47's two corrections - the
+fully-connected-block rewrite and then the dead-parameter reordering - the shipped medical artifact
+reports accuracy **0.883721** with minority-class F1 **0.84375** at seed 0,
 against the same logistic regression's 0.953488 / 0.939394. Whether seed 0 is still an unlucky draw
 is UNKNOWN on the current circuit: the seed sweep in this file was never re-run, so the argument
 above stands as a method and its numbers do not stand as a measurement.

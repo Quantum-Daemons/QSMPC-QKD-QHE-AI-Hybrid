@@ -1,34 +1,61 @@
 # Does the unencoded wire do anything? Telecom QCNN at 7 wires against 8
 
-> **ROUND 47 REVERSED THE TELECOM FINDING. THE SIGN FLIPPED; IT WAS NOT MERELY RESTATED.**
+> **ROUND 47 REVERSED THE TELECOM FINDING. THE SIGN FLIPPED; IT WAS NOT MERELY RESTATED - AND THE
+> REVERSAL HAS NOW SURVIVED TWO RETRAINS, WITH THE GAP GROWING.**
 >
 > This file concludes that 8 wires beat 7 on telecom by **+0.0786** macro F1, and Round 45 restated
-> that as a five-seed median. Round 47 found that the multiclass readout was binning the class index
-> over wires 0..m-1, which after pooling includes wires the circuit had discarded - wire 1 is the
-> pooling control of the pair (0, 1), conditioned into wire 0 and then never touched again, and it
-> supplied one bit of every class index while frozen at its pre-pooling value. The readout now bins
-> over the SURVIVING wires, recorded in each artifact as `readout.wires`. The fully-connected block
-> was corrected in the same round from one shared scalar to a per-survivor RY+RZ.
+> that as a five-seed median. Round 47 found two defects and retrained twice.
 >
-> On the corrected circuit, at the same seed, the same split and the same command:
+> **First**, the multiclass readout was binning the class index over wires 0..m-1, which after
+> pooling includes wires the circuit had discarded - wire 1 is the pooling control of the pair
+> (0, 1), conditioned into wire 0 and then never touched again, and it supplied one bit of every
+> class index while frozen at its pre-pooling value. The readout now bins over the SURVIVING wires,
+> recorded in each artifact as `readout.wires`. The fully-connected block was corrected in the same
+> pass from one shared scalar to a per-survivor two-angle rotation.
+>
+> **Second**, two classes of parameter turned out to be analytically dead - carried by the optimiser,
+> counted in the parameter count, and unable to move the readout at any input. The fully-connected
+> block's per-survivor RZ was applied AFTER the RY, with only a CNOT ring and `|amplitude|^2` between
+> it and the measurement; and the 8th conv angle of each stage's final layer round is an `rz` on the
+> wire pooling is about to discard. That was 5 of 57 angles at 8 wires and 4 of 55 at 7. The fix was
+> ORDERING, not deletion: RZ before RY, so the phases RZ writes are mixed back into amplitudes.
+>
+> At the same seed, the same split and the same commands:
 >
 > | telecom macro F1 | 8 wires | 7 wires | delta |
 > |---|---|---|---|
 > | superseded, this file's Round 40/45 finding | 0.8098 | 0.7312 | **+0.0786 for 8 wires** |
-> | Round 47, corrected readout and FC block | **0.458324** | **0.500452** | **-0.042128, 7 WINS** |
+> | superseded, Round 47 corrected readout and FC block | 0.458324 | 0.500452 | -0.042128, 7 wins |
+> | **CURRENT, Round 47 after the dead parameters were made live** | **0.510963** | **0.541894** | **-0.030931, 7 WINS** |
 >
 > **The conclusion of this file no longer holds in the direction it states it.** Do not quote
 > "+0.0786", "the padding wire is worth 0.079 macro F1", or the per-class table below as current;
-> they describe a readout that read a discarded wire. Both Round 47 figures are single-seed, so the
-> reversal is a reason to stop quoting the old direction rather than a licence to quote the new one
-> as settled - the ranges were never separated and still are not.
+> they describe a readout that read a discarded wire. Both current figures are single-seed, so two
+> retrains agreeing on the sign is a reason to stop quoting the old direction rather than a licence
+> to quote the new one as settled - the ranges were never separated and still are not.
+>
+> **Neither width is close to the classical baseline.** Multinomial logistic regression on the
+> identical split scores **0.976447** macro F1, which is 0.43 to 0.47 ahead of both circuits and more
+> than ten times the gap between them. That is the number that matters to anyone choosing what to
+> deploy, and it is unchanged by every retrain because it never sees the circuit.
 >
 > **The pad-wire conclusion for finance and medical survives and is now stronger, but its numbers
-> moved.** The Round 46 banner below quotes byte-identical metrics of 0.976667 (finance) and
-> 0.918605 (medical); after the Round 47 retrain the identical-across-widths figures are finance
-> minority-class F1 **0.84058** with accuracy **0.981667**, and medical accuracy **0.860465** with
-> minority-class F1 **0.8125**. Identical at both widths on every recorded metric, on both corpora -
-> the claim is the same and the values are not.
+> moved twice.** The Round 46 banner below quotes byte-identical metrics of 0.976667 (finance) and
+> 0.918605 (medical); the first Round 47 retrain made those **0.84058** and **0.860465**; the
+> current identical-across-widths figures are finance minority-class F1 **0.735294** with accuracy
+> **0.97**, and medical accuracy **0.883721** with minority-class F1 **0.84375**. Identical at both
+> widths on every recorded metric, on both corpora, across three successive circuits - the claim is
+> the same each time and the values are not.
+>
+> **The dead-parameter fix also removed the one place the two widths did differ.** Before it, 4 of
+> 77 trained angles differed between 8 and 9 wires by more than 1e-4, and they were exactly the four
+> the `<Z0>` readout could not see: unable to carry gradient, they drifted on numerical noise. Now
+> zero of 77 differ by more than 1e-4 - largest disagreement 1.1e-05 on finance and 4.2e-06 on
+> medical.
+>
+> **The effect of making the dead parameters live was MIXED, not a clean win**: telecom 8 wires
+> +0.053, telecom 7 wires +0.041, medical minority-class F1 +0.031, finance minority-class F1
+> **-0.105**. Three improved, one regressed, and the regression is the largest single move.
 >
 > Nothing below is deleted. Every superseded number stays where it was measured, because a
 > conclusion that moved is only checkable against the record that moved it.
