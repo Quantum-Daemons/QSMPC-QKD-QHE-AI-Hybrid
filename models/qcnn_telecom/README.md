@@ -34,7 +34,7 @@ the QCNN directories have cards" answered by looking at two of them.
 
 ## What it is
 
-**6** conv rounds of a SHARED two-qubit filter (RY,RZ - CNOT - RY,RZ), then ONE pooling stage by a
+**6** conv rounds of a SHARED two-qubit filter (RY,RZ - CNOT - RZ,RY), then ONE pooling stage by a
 rotation on the survivor conditioned on its partner, on **8 qubits**, reducing the register 8 -> 4;
 then a fully-connected block on the four survivors [0, 2, 4, 6]. 7 features are encoded as
 `RY(tanh(z) * pi)` on wires 0-6. **Wire 7 carries no data**: `RY(tanh(0) * pi)` is the identity, and
@@ -53,7 +53,7 @@ three survivors rather than four.
 RY angle applied identically to every survivor, which makes F a global rotation that cannot
 distinguish the wires the class index is read from. Cong, Choi & Lukin ask for "a unitary F on the
 remaining qubits"; weight sharing is what makes a CONVOLUTION a convolution and is a property of the
-conv layers only. F is now RY+RZ per survivor - 4 survivors x 2 angles = 8 parameters. This stays
+conv layers only. F is now RZ+RY per survivor - 4 survivors x 2 angles = 8 parameters. This stays
 O(log N) because the SURVIVOR COUNT IS BOUNDED, not because the block is shared: `layer_plan` stops
 pooling while `active // 2 >= readout_qubits`, so the register reaching F holds 4 survivors at 8
 qubits and 4 again at 16.

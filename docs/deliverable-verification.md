@@ -2558,7 +2558,8 @@ The ablation carries a supersession banner and nothing in it is deleted.
 
 ### The fifth instance, committed by this round and caught by its own morning's gate
 
-The fully-connected block became a **per-survivor** RY+RZ in the trainer, per Cong, Choi & Lukin's
+The fully-connected block became a **per-survivor** RY+RZ in the trainer (reordered to RZ+RY later in
+the round - see "Round 47, continued"), per Cong, Choi & Lukin's
 *"a unitary F on the remaining qubits"* - one shared scalar makes F a single global rotation, which
 cannot distinguish the wires the class index is read from. The browser was left on the shared scalar.
 Measured before it was caught: **maximum readout probability difference 0.45**, and the argmax class

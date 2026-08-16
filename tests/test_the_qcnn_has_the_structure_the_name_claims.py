@@ -229,9 +229,20 @@ def test_every_trainable_parameter_reaches_the_readout() -> None:
 
     MEASURED on the shipped artifacts, before the order was corrected: moving every fc RZ angle by
     1.234 rad changed the telecom readout by 5.96e-08 and the finance readout by 8.94e-08 - float32
-    noise - against 2.6e-01 and 5.9e-01 for the RY angles beside them. A quarter of the telecom
-    model's fully-connected parameters, and half of finance's, were untrainable in the strict sense
-    that no gradient could ever reach them.
+    noise - against 2.6e-01 and 5.9e-01 for the RY angles beside them.
+
+    COUNTED, because the first version of this docstring said "a quarter of the telecom model's
+    fully-connected parameters" and that was wrong in both directions. Reconstructing the pre-fix
+    gate order and perturbing every angle individually:
+
+        telecom      5 dead of 57   ( 8.8% of the circuit)   4 of 8 fc angles  (50% of the block)
+        telecom-q7   4 dead of 55   ( 7.3%)                  3 of 6 fc angles  (50%)
+        finance      4 dead of 77   ( 5.2%)                  1 of 2 fc angles  (50%)
+        medical      4 dead of 77   ( 5.2%)                  1 of 2 fc angles  (50%)
+
+    So it was HALF the fully-connected block in every model, never a quarter, and a much smaller
+    fraction of the whole circuit than "a quarter" suggests. The commit that introduced this file
+    carried the overstatement into its own subject line; this is the measured version.
 
     The fix was ordering, not deletion: RZ before RY, so the phases RZ writes are mixed back into
     amplitudes by the RY that follows. After the change the same perturbation moves the readout by
