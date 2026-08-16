@@ -138,7 +138,7 @@ const f = (m: M, k: string, d = "—") => {
 
 /**
  * A key-agreement step succeeded only if it yielded key material. The QBER alone cannot say so: the
- * GLLP zero-key point measured in this repository is 0.098106, BELOW the textbook BB84 bound of
+ * GLLP zero-key point measured in this repository is the decoy-state bound's channel-dependent zero-key point, BELOW the textbook BB84 bound of
  * 0.11, so a QBER inside [0.098, 0.11) looks acceptable against the textbook figure while the
  * decoy-state estimate returns nothing. Ask the run what it produced instead of re-deriving it.
  */
