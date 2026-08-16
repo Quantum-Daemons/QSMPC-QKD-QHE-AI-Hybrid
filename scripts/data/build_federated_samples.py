@@ -100,12 +100,24 @@ def _eda(X: np.ndarray, names: list[str]) -> dict:
             "mean": round(float(c.mean()), 5), "sd": round(float(c.std()), 5),
             "n_unique": int(len(np.unique(c))),
         })
+    # DUPLICATE PAIRS, computed rather than remembered. `amount` and `amount_zscore` shipped as
+    # byte-identical columns for eleven rounds with nothing saying so: two of eight QCNN wires
+    # carried one feature, and the exact-linear SHAP panel split that feature's attribution across
+    # both as though they were independent evidence. `degenerate` already named the constant column
+    # (`velocity_24h`); nothing named the duplicated one, because nobody had looked.
+    dupes = []
+    for i in range(len(names)):
+        for j in range(i + 1, len(names)):
+            if float(np.max(np.abs(X[:, i] - X[:, j]))) <= 1e-4:
+                dupes.append([names[i], names[j]])
     return {
         "columns": cols,
         "degenerate": [c["name"] for c in cols if c["n_unique"] < 2 or c["sd"] < 1e-6],
+        "duplicates": dupes,
         "note": ("Per-column statistics of the rows shipped in this file. `degenerate` names columns "
-                 "that carry effectively no signal; they are kept so the feature order stays the one "
-                 "the backend, the registry and the published weights all use."),
+                 "that carry effectively no signal and `duplicates` names pairs that are the same "
+                 "column twice; both are kept rather than removed so the feature order stays the "
+                 "one the backend, the registry and the published weights all use."),
     }
 
 
@@ -145,6 +157,23 @@ def build_finance(n: int, seed: int) -> dict:
         "provenance": BUNDLED_DEMO_SAMPLES["finance_aml"][0],
         "names": FIN_NAMES,
         "samples": [[round(float(v), 5) for v in r] for r in Xs],
+        # THE SAME ROWS IN THE SPACE THE QCNN ARTIFACT DECLARES, and the reason both are needed.
+        #
+        # `samples` is StandardScaler output and must stay that way: the distilled CKKS-linear model
+        # above is fitted on it, and the exact-linear SHAP panel attributes in the same space. But
+        # `models/qcnn_finance/weights.json` declares `input_space: "raw"` - its moments were fitted
+        # by the trainer on the whole raw TSV - so the browser standardises whatever it is handed a
+        # SECOND time, with a DIFFERENT scaler (the trainer's, not this file's 70% fit).
+        #
+        # Measured on the shipped pair before this field existed: wire 0 (`amount`) encoded to a
+        # tanh range of [-0.99999992, -0.99982701], sd 3.3e-05; 556 of 3200 values saturated; 69 of
+        # 400 rows changed class, 17.25%; accuracy 0.8200 as deployed against 0.9875 correctly fed.
+        # The model's most informative input carried nothing at all.
+        #
+        # The mismatch cannot be undone in the browser - this file ships no numeric scaler constants,
+        # and the two scalers differ - so the raw columns have to come from here.
+        "feature_space": "zscore",
+        "samples_by_space": {"raw": [[round(float(v), 5) for v in r] for r in X]},
         "labels": [int(v) for v in y],
         "model": {"W": [[0.0] * 8, [float(w) for w in student.coef_[0]]],
                   "b": [0.0, float(student.intercept_[0])]},
@@ -178,6 +207,9 @@ def build_medical(n: int, seed: int) -> dict:
         "provenance": BUNDLED_DEMO_SAMPLES["medical_fl"][0],
         "names": MED_NAMES,
         "samples": [[round(float(v), 5) for v in r] for r in X],
+        # The space `samples` is in, named rather than implied. The browser keys its per-space row
+        # map on this, so an artifact asks for the space it was trained on BY NAME.
+        "feature_space": "zscore",
         "labels": [int(v) for v in y],
         "model": {"W": [[0.0] * 8, [float(w) for w in student.coef_[0]]],
                   "b": [0.0, float(student.intercept_[0])]},
