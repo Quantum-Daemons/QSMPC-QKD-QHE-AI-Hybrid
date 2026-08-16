@@ -31,7 +31,7 @@ documentation.
 
 ## What it is
 
-3 conv rounds of a SHARED two-qubit filter (RY,RZ - CNOT - RY,RZ) per stage, with pooling by a
+3 conv rounds of a SHARED two-qubit filter (RY,RZ - CNOT - RZ,RY) per stage, with pooling by a
 rotation on the survivor conditioned on its partner, on 8 qubits, reducing the register
 8 -> 4 -> 2 -> 1. A fully-connected block then acts on what survives, which here is the single wire
 0. Data is encoded as `RY(tanh(z) * pi)` and the circuit is read out as the expectation of Z on qubit
