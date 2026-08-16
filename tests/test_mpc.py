@@ -5,8 +5,8 @@ import pytest
 
 pytest.importorskip("mpyc")
 
-from qsh.mpc import hybrid_private_inference, secure_argmax, secure_relu
 from qsh.fhe.backends import get_backend
+from qsh.mpc import hybrid_private_inference, secure_argmax, secure_relu
 
 
 def test_secure_relu_matches_plaintext():

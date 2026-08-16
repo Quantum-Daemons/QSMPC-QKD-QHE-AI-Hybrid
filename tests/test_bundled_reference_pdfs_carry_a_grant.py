@@ -81,7 +81,7 @@ def test_every_tracked_pdf_is_adjudicated_and_kept() -> None:
     missing = [p for p in _tracked_pdfs() if Path(p).name not in kept]
     assert not missing, (
         "these PDFs are committed - every clone receives them - and no row in section 8 of "
-        f"DATA_LICENSES.md records a licence permitting that:\n  " + "\n  ".join(missing)
+        "DATA_LICENSES.md records a licence permitting that:\n  " + "\n  ".join(missing)
         + "\n\nAdjudicate at PRIMARY SOURCE and add a row. For an arXiv paper use OAI-PMH:\n"
         "  https://oaipmh.arxiv.org/oai?verb=GetRecord&metadataPrefix=arXiv"
         "&identifier=oai:arXiv.org:NNNN.NNNNN\n"
@@ -144,4 +144,53 @@ def test_the_gitignore_rules_state_a_licence_reason() -> None:
     assert re.search(r"nonexclusive-distrib", block), (
         "the .gitignore comment no longer names arXiv's default licence. It is the one that looks "
         "like a grant and is not, so naming it is the whole point of the comment."
+    )
+
+
+def test_every_R_marker_names_a_file_a_clone_actually_gets() -> None:
+    """The marker IS the claim, and Round 45 falsified it four times.
+
+    `references/REFERENCES.md:14` defines `[R]` as "the PDF is committed to this folder and you get
+    it when you clone". Round 45 untracked four PDFs on licence grounds, wrote the adjudication
+    table, listed "leaving `REFERENCES.md` marking them `[R]`" in its own plan under "where this
+    round most likely ships its own defect" - and shipped exactly that.
+
+    The file had already been broken this way once: `:19` records that "an earlier revision marked
+    the `[R-local]` entries `[R]`, which told a reader they had files that a clone never contained".
+    So the licence half of the boundary got a new table and a new gate, and the reader-facing half
+    got neither.
+
+    Checked in BOTH directions, because either alone is satisfiable by deleting the other side.
+    """
+    import re
+
+    text = (REPO / "references" / "REFERENCES.md").read_text()
+    tracked = {Path(p).name for p in _tracked_pdfs()}
+    assert tracked, "no tracked reference PDFs; this check has no subject"
+
+    claimed, orphans = set(), []
+    for m in re.finditer(r"`\[R\]`", text):
+        # The entry's own `File:` line. The legend and the prose about markers have none, and are
+        # deliberately not entries.
+        block = text[m.start():m.start() + 1400]
+        fm = re.search(r"File:\s*`?([^`\n]+\.pdf)", block)
+        if not fm:
+            continue
+        stem = fm.group(1).strip().split("...")[0].strip()
+        hit = next((x for x in tracked if x.startswith(stem[:40])), None)
+        if hit is None:
+            orphans.append(f"REFERENCES.md:{text.count(chr(10), 0, m.start()) + 1}: {stem[:70]}")
+        else:
+            claimed.add(hit)
+
+    assert not orphans, (
+        "these entries are marked `[R]` - which promises a clone contains the PDF - and the file is "
+        "not tracked:\n  " + "\n  ".join(orphans)
+        + "\n\nUse `[link]` (never bundled) or `[R-local]` (present here, gitignored). Excluding a "
+        "PDF and leaving its marker tells a reader they have a file they do not have."
+    )
+    missing = sorted(tracked - claimed)
+    assert not missing, (
+        f"these PDFs ARE tracked but no `[R]` entry claims them: {missing}\n\n"
+        "A bundled paper with no entry is a file a clone receives and no reader can place."
     )

@@ -554,7 +554,8 @@ def build_telecom(rng: np.random.Generator) -> dict:
     """
     from sklearn.model_selection import train_test_split
 
-    from qsh.qml_ids.attacks import ATTACKS, FEATURES as QML_FEATURES, generate
+    from qsh.qml_ids.attacks import ATTACKS, generate
+    from qsh.qml_ids.attacks import FEATURES as QML_FEATURES
 
     # Mirrors scripts/train/telecom_ids.py: n_per_class=300, seed=42, stratified 25% test split.
     # generate() returns (X, y, LABEL names) - its own docstring says so. Unpacking the third value

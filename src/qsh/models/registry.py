@@ -231,8 +231,12 @@ DS_PGS_CATALOG = DatasetSpec(
     licence_checked="2026-08-03",
     publishable=False,
     notes=(
-        "NOT blanket CC-BY-4.0. Every scoring file carries a '#license' header and individual scores "
-        "can be CC BY-NC-ND. PGS000001 itself carries the Catalog default terms, not CC-BY. An earlier "
+        "NOT blanket CC-BY-4.0. Round 46 corrected this note: scoring files carry NO '#license' "
+        "header at all - a raw download of PGS000004 today has 14 '#' lines and none of them is a "
+        "licence. The licence lives only in the REST record, as an EMBL-EBI Terms-of-Use "
+        "pass-through, and individual scores can be CC BY-NC-ND. `scripts/train/genomics_prs.py` "
+        "has said this correctly since it was written; this note and DATA_LICENSES.md contradicted "
+        "the working code. PGS000001 itself carries the Catalog default terms, not CC-BY. An earlier "
         "revision of this note claimed the header was re-read by qsh.models.licences.audit_pgs_score() "
         "before publishing; no such module exists and no such check runs. publishable=False is what "
         "actually prevents publication, and it is enforced by scripts/publish_hf.py."
@@ -528,9 +532,15 @@ M_QML_IDS = MetricSpec(
         "inconsistent across studies' - active but methodologically early, which is a different and "
         "better-founded statement than 'worse than a random forest'. The Al-Kuwari paper is now "
         "peer-reviewed: IET Quantum Communication 7(1), DOI 10.1049/qtc2.70028 (2026-02-23). And the "
-        "strongest 2026 result on this exact problem is CLASSICAL, which corroborates the framing "
-        "here: IACR ePrint 2026/1282 reaches 96.9% recall / 97.6% precision with physics-aware "
-        "temporal features plus XGBoost, against 17.3% recall for static QBER thresholding."
+        "nearest strong 2026 result is CLASSICAL, which corroborates the framing here - but it is "
+        "a DIFFERENT problem and Round 46 stopped calling it the same one. IACR ePrint 2026/1282 "
+        "reaches 96.9% recall / 97.6% precision with physics-aware temporal features plus XGBoost "
+        "against 17.3% for static QBER thresholding - but its abstract, read at source, is "
+        "entanglement-based BBM92, a 24-dimensional feature space over 30-second sliding windows, "
+        "binary detection of blended sub-threshold attacks on simulated FSO telemetry. This model "
+        "classifies 8 BB84 attack TYPES from per-session physical observables. Neither the "
+        "protocol, the label space nor the feature space matches, so it is an anchor, not a "
+        "baseline."
     ),
     companion="classical_rf_macro_f1",
 )
