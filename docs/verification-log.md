@@ -1646,3 +1646,36 @@ round reported two, which was a defect in the scan's own regex truncating the `R
 convention, not in the file.
 
 A walk of the deployed bundle is owed for Rounds 48 and 49 both.
+
+### Round 49's own defect, found after the PR was opened: a docstring that asserted what the code did not do
+
+The `imbalanced` fixture added in `da7cd89` carried three figures in its docstring - a base rate near
+1 in 650, ninety percent of scores below 1e-4, and the claim that it reproduces the probability-fed
+collapse. **None of the three was measured, and all three were false.** Re-run on the committed
+draw: base rate **1 in 15.9**, **34.83%** of scores below 1e-4, and a probability-fed spread of
+**2.48x** across the bottom nine deciles - so the fixture written to expose the collapse did not
+produce it. `y = uniform < s` draws the labels from the score itself, which makes the teacher
+perfectly calibrated by construction; the on-logit fit then comes back near the identity and there is
+no defect left to catch.
+
+The tests passed, which is the point. They asserted that the published formula reproduces the fitted
+map and that the clip keeps a saturated score finite - both true, and neither sensitive to whether
+the fixture had the shape its own docstring described.
+
+This is the same failure as the one this round corrected in `docs/crypto-agility.md`, committed in
+the same round by the correction pass. That paragraph was wrong because a figure was transcribed
+instead of derived; this docstring was wrong because a figure was *asserted* without ever being
+computed. The log entry above says every figure was "re-derived rather than transcribed", and for the
+documents it names that is true - it was not true of the test fixture written alongside them.
+
+The replacement builds the score from a log-odds with a long left tail and the labels from a
+DIFFERENT map of that log-odds, so the teacher is miscalibrated the way a real booster is. Every
+figure in its docstring was re-measured against the committed draw and reproduces exactly: 34
+positives in 24,000 (1 in 705.9), 89.91% below 1e-4, span 6.975e-08 to 0.9998613, probability-fed
+spread 1.000399x against on-logit 90.6954x.
+
+It also carries the assertion the suite never had.
+`test_a_probability_score_is_not_fitted_into_a_near_constant` checks the SHAPE of the fitted map
+rather than a metric, which is what every existing test missed: fed a probability, `fit_platt`
+returned a map emitting one number for nine of ten deciles and Brier IMPROVED, so a metric-only suite
+waves it through. It did, for three rounds.

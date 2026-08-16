@@ -48,19 +48,86 @@ def imbalanced():
     passed a probability, so both were internally consistent and disagreed with each other.
 
     So this deliberately mirrors the trainer's shape rather than the other fixture's: scores in (0, 1)
-    spanning several orders of magnitude, and a base rate near 1 in 650. A fixture that handed over
-    a logit here would reintroduce exactly the blind spot.
+    spanning several orders of magnitude, and 34 positives in 24,000 - one in 706, inside the band
+    the shipped split spans (its calibration window is 801 in 710,969, one in 888; its test window
+    2,321 in 1,523,504, one in 656). A fixture that handed over a logit here would reintroduce
+    exactly the blind spot.
+
+    TWO PROPERTIES ARE LOAD-BEARING AND THE FIRST DRAFT OF THIS FIXTURE HAD NEITHER. It drew
+    `s = 10 ** uniform(-6, -0.05)` and then `y = uniform < s`, which put the base rate at one in 16
+    rather than one in 650 and only 34.8% of scores below 1e-4 rather than 90%. Worse, drawing the
+    labels from `s` itself makes the teacher perfectly calibrated by construction, so the on-logit
+    fit came back the identity and the on-score fit did not collapse - the defect this file exists
+    to catch was not reproduced, and the docstring above asserted figures the code did not produce.
+    So the score is now built from a log-odds with a long left tail, and the labels from a DIFFERENT
+    map of that log-odds, which is what leaves the teacher miscalibrated in the way a real booster is.
     """
-    rng = np.random.default_rng(7)
-    n = 6000
-    # Log-uniform over ~5 decades, which is the span the shipped finance scores actually cover
-    # (4.4e-11 to 0.99997); a uniform draw would put almost nothing near the extremes and the clip
-    # below would never be exercised.
-    s = 10.0 ** rng.uniform(-6.0, -0.05, n)
-    y = (rng.uniform(0, 1, n) < s).astype(int)
-    if y.sum() < 2:                        # `fit_platt` refuses a single-class calibration set
-        y[rng.integers(0, n, 2)] = 1
+    n = 24_000
+    rng = np.random.default_rng(49)
+    z = -16.5 + 1.87 * rng.gamma(2.0, 1.0, n)    # log-odds: dense at the bottom, thin right tail
+    s = 1.0 / (1.0 + np.exp(-z))                 # the teacher's probability, strictly inside (0, 1)
+    # The event rate the teacher does NOT report. A shallower slope and an offset, so the score ranks
+    # well and is mis-scaled - the situation calibration is for.
+    p_true = 1.0 / (1.0 + np.exp(-(0.85 * z - 1.2)))
+    y = (rng.uniform(0.0, 1.0, n) < p_true).astype(int)
+    # Measured on this draw: 34 positives (one in 705.9), 89.91% of scores below 1e-4, s spanning
+    # 6.975e-08 to 0.9998613. That floor is four orders of magnitude ABOVE `LOGIT_CLIP_EPS`, so
+    # nothing here is clipped - which is what makes `test_the_clip_keeps_a_saturated_score_finite`
+    # a test of the clip rather than a test of the fixture.
     return s, y
+
+
+def test_a_probability_score_is_not_fitted_into_a_near_constant(imbalanced):
+    """The assertion this suite was missing: the fitted map must still be a FUNCTION of the score.
+
+    Every other test here checks that calibration improves a NUMBER. None checks that the fitted map
+    varies over its input, and that is the one thing the shipped call got wrong: fed a probability,
+    `fit_platt` returned a map that emitted 0.00090148 for nine of finance's ten deciles. Brier even
+    improved, so a metric-only suite waves it through - which is what happened for three rounds.
+
+    So this asserts SHAPE, and on this fixture rather than on finance's numbers, so a retrain cannot
+    invalidate it. Two independent ways for the map to be degenerate, both measured on both arms:
+
+      1. SPREAD ACROSS THE BULK. Take the mid-point of each decile and require the calibrated
+         probability at the ninth to be at least 10x the one at the first - the bottom nine deciles,
+         the exact region that collapsed. Measured: 90.6954x on_logit, 1.000399x probability-fed.
+         The threshold is not tuned to either arm; it is their geometric mid-point,
+         sqrt(1.000399 * 90.6954) = 9.53, which on a ratio's multiplicative scale is as far from
+         both as one number can sit. The fixed arm keeps 9x of headroom.
+
+      2. THE FLOOR. A calibrator whose output support starts at the base rate cannot say "much safer
+         than average" about anything - the answer that matters most on a screening problem, and the
+         one finance lost when its floor of 1 in 1,109 landed at 0.80x the calibration window's own
+         base rate. Require the floor an order of magnitude below the base rate: the log-odds fit
+         reaches 3.9e-04x of it, the probability-fed fit stops at 0.37x.
+
+    The probability-fed arm is fitted here too and asserted to collapse. That costs a fraction of a
+    second and it is worth it: without it this test cannot tell a fixed calibrator from a fixture
+    that has quietly lost its skew, and it would go on passing while guarding nothing.
+    """
+    s, y = imbalanced
+    mids = np.quantile(s, np.arange(0.05, 1.0, 0.10))   # one representative score per decile
+    base_rate = float(y.mean())
+
+    fitted = cal.fit_platt(s, y, on_logit=True)
+    p = fitted.apply(mids)
+    floor = float(fitted.apply(s).min())
+    assert np.all(np.diff(p) > 0.0), "Platt is strictly monotone; a flat step here is a sign error"
+    assert p[8] / p[0] >= 10.0, (
+        f"the fitted map is near-constant over the bulk of the score range: it spans only "
+        f"{p[8] / p[0]:.6f}x across the first nine deciles, so nine tenths of the population get "
+        f"effectively one number back")
+    assert floor < base_rate / 10.0, (
+        f"the map cannot express a risk an order of magnitude below the base rate {base_rate:.6g}; "
+        f"its floor is {floor:.6g}")
+
+    # The arm that shipped through Round 49, kept as a live measurement rather than as a comment: it
+    # is what makes the two thresholds above discriminating instead of decorative.
+    collapsed = cal.fit_platt(s, y).apply(mids)
+    assert collapsed[8] / collapsed[0] < 1.01, (
+        f"the fixture no longer reproduces the defect: fitting on the probability is supposed to "
+        f"return one constant across the bottom nine deciles and it spanned "
+        f"{collapsed[8] / collapsed[0]:.6f}x, so the assertions above are no longer load-bearing")
 
 
 def test_the_corp_identity_holds_exactly(scored):
