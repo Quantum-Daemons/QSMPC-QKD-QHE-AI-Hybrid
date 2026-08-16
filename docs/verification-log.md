@@ -63,6 +63,15 @@ et al` and no `Ruszczak`; the new one is the reverse.
 | medical QCNN weights served | 19 keys with `headline_metric`, accuracy 0.732558 vs LR 0.953488 |
 | finance QCNN weights served | present as `application/json` (they 404'd as HTML before this deploy) |
 
+**The medical accuracy in that row is no longer the artifact's, and the row is left as measured.**
+0.732558 is what the deploy served on 2026-08-11 and the record of a deploy is not editable
+afterwards. The circuit has been replaced once (Round 46, a hardware-efficient ansatz relabelled as
+a real QCNN) and corrected once (Round 47, the fully-connected block), and the shipped figure is now
+accuracy **0.860465** with minority-class F1 **0.8125** against the same logistic regression's
+**0.953488** / **0.939394** - so the direction of the comparison is unchanged and only its size
+moved. `models/qcnn_medical/weights.json` is authoritative; anything quoting 0.732558 as current is
+quoting a retired circuit.
+
 **The licence defect is cleared on the live site.** `/data/satellite/real_2d.json` had been
 serving `Ruszczak et al., 'Machine learning detects terminal singularities'` - an
 algebraic-geometry paper's title on an OPS-SAT dataset. OPS-SAT-AD is CC BY 4.0, so that was a
@@ -1435,3 +1444,43 @@ Zero occurrences of `NaN`, `undefined` or `Infinity` in rendered text on any pag
 `/usecase/telecom_ids` in depth plus the pages reached during the Round 45 sweep on an earlier
 bundle. The remaining seven were not re-walked on `index-CtNKHnlK.js`, so their cleanliness is
 inherited from the previous bundle rather than measured on this one.
+
+## Round 47 (`3c63ea8`, branch `round47-the-gate-was-a-file-list`) - a POINTER, and the absence is recorded on the day it happened
+
+**No deployed-site walk has been recorded for Round 47.** The bundle carrying this round's changes
+has not been walked in Chrome, and no figure below was read off a page. This entry is written the way
+the Rounds 39-42 and Round 44 entries are - as a pointer that is honest about what is missing - and
+for the reason `:1241` gives: *a reconstruction presented as a record is worse than an absent record,
+because the absence is visible and the imitation is not.* Round 44 is the counter-example this file
+keeps: it verified on the deploy and wrote nowhere, and the gap was found a round later. Here the
+gap is stated in the round that has it.
+
+**Where Round 47's evidence lives, all of it in-repo:**
+
+| what it establishes | where |
+|---|---|
+| the round as a whole | `docs/deliverable-verification.md`, "Round 47" section |
+| the finite-key threshold, computed rather than cited, and checked against the paper's Table I | `src/qsh/qkd/finite_key.py`, `tests/test_finite_key_reproduces_the_published_table.py` |
+| the block size every config key must clear, and the two declared residuals | `tests/test_every_block_size_clears_the_band_the_config_names.py` |
+| the browser and the trainer computing the same QCNN, numerically, on the shipped artifacts | `tests/test_the_qcnn_agrees_across_languages.py` |
+| the readout binning over surviving wires | `tests/test_qcnn_multiclass_readout.py`, `readout.wires` in every `models/*/weights.json` |
+| the published QCNN metrics, per artifact | `models/*/weights.json` and the cards gated against them |
+
+**What that leaves unestablished, stated rather than implied.** These are gate results and artifact
+contents, which is a different thing from a rendered page. Every one of the numbers below is a
+quantity a visitor can see, and each has moved since the last bundle that was walked:
+
+- `/usecase/telecom_ids` with Inference = QCNN now runs a **per-survivor** fully-connected block and
+  reads the class index off the **surviving** wires. Before the fix the browser and the trainer
+  disagreed on the argmax for 39 of 64 telecom rows, so the rendered CLASS is the thing to look at,
+  not merely the absence of `NaN`.
+- The QKD panel's per-pulse figure moves in two directions at once and neither has been read off a
+  page: the intensity change to the finite-key optimum costs **16.5%** of the asymptotic rate
+  (0.002368 -> 0.001977 bit/pulse, `src/qsh/config/defaults.py`), while the decoy-bound error-term
+  fix RAISES the fibre figure by **0.57%** and the 800 km downlink by **18.9%**.
+- `qkd.pulses` and `demo_alice_bob_pulses` are both **20,000,000**, ten times the block the Round 46
+  sweep saw, so `channel_time_s`, `secure_key_bits`, `key budget` and `stored_key_count` all scale
+  and the `/validations` count is a different number from the 94 recorded in the Round 45 entry.
+
+A walk of the deployed bundle therefore remains owed, and this paragraph is the record that it is
+owed rather than done.
