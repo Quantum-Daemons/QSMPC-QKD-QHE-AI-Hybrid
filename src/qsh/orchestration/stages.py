@@ -129,6 +129,11 @@ class QKDKeyAgreementStage(Stage):
         qrng_on = bool(ctx.config.get("qrng_enabled", get_config().qrng.enabled))
         extra = {"entropy": "qrng"} if qrng_on else {}
         result = provider(n_pulses=n_pulses, params=params, seed=ctx.config.get("seed", 0), **extra)
+        # Five decimals here and four in `api/inference_service.py:79`, for the same metric name on
+        # the same panel. Left AT five deliberately rather than narrowed: a displayed QBER of
+        # 0.01578 against 0.0158 is a presentation difference on a quantity whose own sampling noise
+        # is larger than either, and narrowing to match the API would LOSE a digit. Recorded so the
+        # asymmetry is a decision rather than an oversight, unlike the one below.
         bus.metric("qber", round(result.qber, 5), self.name)
         # `skr_per_pulse`, NOT `skr`. `QKDResult.secret_key_rate` is documented at `bb84.py:64` as
         # "bits of secure key per channel use" - a dimensionless per-pulse fraction - while ETSI
@@ -139,7 +144,14 @@ class QKDKeyAgreementStage(Stage):
         # No bit/s is emitted here. The browser derives one from an assumed source repetition rate
         # and says so beside the number; this path has no such control and no surface to caveat on,
         # so it publishes the quantity it actually has, under a name that says which.
-        bus.metric("skr_per_pulse", round(result.secret_key_rate, 5), self.name)
+        # SIX decimals. Round 48 aligned `api/inference_service.py` from five to six to match
+        # `web/src/lib/api.ts`, under a commit line reading "one panel, two roundings" - and reached
+        # three of the FOUR sites that publish this metric. This one kept five, so the fibre
+        # orchestration path emitted 0.00198 for the quantity the browser, the demo API and the
+        # satellite twin nine lines above all emit as 0.001977. A fix about one metric having two
+        # spellings, itself spelled two ways, in a file whose own comment four lines up says "the fix
+        # changed one language".
+        bus.metric("skr_per_pulse", round(result.secret_key_rate, 6), self.name)
         bus.metric("secure_key_bits", result.secure_key_bits, self.name)
         ctx.metrics.update(qber=result.qber, skr_per_pulse=result.secret_key_rate)
         if result.secure_key_bits >= 256:

@@ -88,21 +88,100 @@ def test_the_readout_is_lsb_first_and_pennylane_is_not():
         "but silently agreeing is far more likely to mean the test stopped testing anything")
 
 
-@pytest.mark.parametrize("cls", range(8))
-def test_every_class_is_individually_identifiable(cls):
-    """A basis state prepared for class `cls` must read back as `cls`, for ALL eight.
+#: Every (width, readout, depth) combination the repository ships or has shipped. The readout wires
+#: are NOT the same set at every width - 16 qubits pools twice and reads [0, 4, 8] - so a test that
+#: only ever asks about 8 cannot see a convention that is right for one width and wrong for another.
+SHIPPED_WIDTHS = [(8, 3, 3), (8, 3, 6), (7, 3, 6), (9, 3, 3), (16, 3, 3)]
 
-    Parametrised rather than looped so a failure names the class. Four of the eight are fixed points
-    of the bit reversal, so a test covering only some of them can pass under a permuted map.
+
+def _basis_encoding(nq: int, flat_idx: int) -> torch.Tensor:
+    """The feature row whose data encoding is exactly the basis state ``|flat_idx>``.
+
+    The encoder applies ``RY(x_q * pi)`` to wire q of ``|0...0>``, and ``RY(pi)|0> = |1>``, so a 0/1
+    feature vector prepares one basis state EXACTLY rather than approximately. That is what lets the
+    assertion below be about the readout instead of about training noise.
+    """
+    return torch.tensor([[float((flat_idx >> q) & 1) for q in range(nq)]])
+
+
+@pytest.mark.parametrize("nq,ro,layers", SHIPPED_WIDTHS)
+def test_every_class_is_individually_identifiable(nq, ro, layers):
+    """A basis state prepared for class `c` must read back as `c`, for every class at every width.
+
+    WHY THIS WAS REWRITTEN IN ROUND 49
+
+    The version this replaces could not fail, for three compounding reasons, and it is worth naming
+    all three because each on its own would have been enough:
+
+      1. **It never ran the circuit.** It bound `m = _trainer()` and then never used it. Every
+         subsequent line operated on a hand-built tensor, so the trainer could have been deleted and
+         this test would still have passed.
+      2. **It asserted a retired convention.** It binned with `idx & 7` - wires 0, 1, 2 - which is
+         precisely the readout Round 47 REPLACED with survivor binning after finding that wire 1 is
+         a pooling control the circuit discards. The test was pinning the defect.
+      3. **The assertion was a tautology.** With `state[0, cls] = 1.0` for `cls` in 0..7, the flat
+         index IS the class, so `idx & 7` reduces to `cls & 7 == cls` - true by construction for all
+         eight, at every width, forever.
+
+    So the one test whose whole purpose is to catch a permuted class map was green on both the
+    permuted map and the fixed one.
+
+    WHAT THIS DOES INSTEAD
+
+    Runs the SHIPPED circuit. With `theta = 0` every rotation is the identity and `entangle=False`
+    drops the CNOT ring, so `circuit()` reduces to its data encoder followed by its real binning
+    path - the same `readout_wires` lookup and the same gather the trained model uses. The one-hot
+    assertion is what makes that reduction checkable rather than assumed: if a future change made
+    the convolution something other than the identity at theta=0, the state would spread, the peak
+    probability would drop below 1, and this fails loudly instead of quietly testing nothing.
     """
     m = _trainer()
-    nq = 8
-    state = torch.zeros(1, 1 << nq, dtype=torch.complex64)
-    state[0, cls] = 1.0                        # |...b2 b1 b0> with c = i & 7, LSB-first
-    p = (state.abs() ** 2)
-    idx = torch.arange(p.shape[1])
-    got = torch.zeros(1, 8).index_add_(1, (idx & 7).to(torch.long), p)
-    assert int(got.argmax(1)) == cls, f"class {cls} read back as {int(got.argmax(1))}"
+    wires = m.readout_wires(nq, readout_qubits=ro, layers=layers)
+    theta = torch.zeros(m.param_count(nq, ro, layers))
+    for cls in range(1 << ro):
+        # The flat index whose SURVIVOR-wire bits spell `cls`, least-significant bit first. Built
+        # from `readout_wires` rather than from a literal, so a width whose survivors are not
+        # [0, 2, 4] is asked the right question rather than a convenient one.
+        flat = sum(((cls >> j) & 1) << w for j, w in enumerate(wires))
+        p = m.circuit(_basis_encoding(nq, flat), theta,
+                      nq=nq, readout_qubits=ro, entangle=False, layers=layers)
+        peak = float(p.max())
+        assert abs(peak - 1.0) < 1e-5, (
+            f"at nq={nq} the encoding of flat index {flat} is not a basis state (peak probability "
+            f"{peak:.6f}). theta=0 with entangle=False is supposed to reduce the circuit to its "
+            "encoder; if it no longer does, this test is measuring the ansatz rather than the "
+            "readout and the reduction has to be re-derived before the assertion below means "
+            "anything.")
+        assert int(p.argmax(1)) == cls, (
+            f"nq={nq} readout_qubits={ro}: the state prepared for class {cls} on wires {wires} "
+            f"read back as class {int(p.argmax(1))}. The class map is permuted, which leaves "
+            "accuracy, macro F1 and every loss curve numerically identical - no aggregate metric "
+            "can see this.")
+
+
+@pytest.mark.parametrize("nq,ro,layers", SHIPPED_WIDTHS)
+def test_the_retired_convention_would_fail_that_check(nq, ro, layers):
+    """Anti-tautology for the test above, against the convention that actually shipped.
+
+    The check is only worth having if the readout it replaced would fail it. Measured here rather
+    than asserted: `i & (2**m - 1)` reads wires 0..m-1, the survivors are not that set at any width
+    this repository ships, and the disagreement is counted rather than merely claimed to exist.
+
+    Six of eight classes at every width, which is the number that makes the point - the two that
+    survive are the ones whose survivor bits happen to coincide with the low bits, and a spot check
+    landing on either would have reported the defect as absent.
+    """
+    m = _trainer()
+    wires = m.readout_wires(nq, readout_qubits=ro, layers=layers)
+    assert wires != list(range(ro)), (
+        f"at nq={nq} the survivors are {wires}, which IS wires 0..{ro - 1}. The retired convention "
+        "and the shipped one agree here, so the test above cannot distinguish them at this width.")
+    misread = [cls for cls in range(1 << ro)
+               if (sum(((cls >> j) & 1) << w for j, w in enumerate(wires)) & ((1 << ro) - 1)) != cls]
+    assert len(misread) == 6, (
+        f"the retired `i & (2**m - 1)` binning misreads {len(misread)} of {1 << ro} classes at "
+        f"nq={nq} ({misread}), not the 6 measured in Round 49. The readout convention has moved and "
+        "the test above needs re-deriving, not this number adjusting.")
 
 
 def test_a_permuted_class_map_is_detected_by_this_suite():
