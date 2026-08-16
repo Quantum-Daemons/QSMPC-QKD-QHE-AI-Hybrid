@@ -1580,7 +1580,7 @@ claiming it records every selection that shaped the run. A signed record of the 
 than an unsigned one, because the signature is what invites a reader to trust it.
 
 **Four areas were re-fact-checked and found sound**, recorded so the next round does not re-derive
-them: OptiQKD's `+14-25%` is correctly attributed to AML-QKD (arXiv:2603.04192) with the v1→v2
+them: OptiQKD's `+14-25%` is correctly attributed to AML-QKD (arXiv:2603.04192) with the v1 -> v2
 downward revision noted and the repo's own retracted 48.8% marked as retracted; the QRNG reproduces
 SP 800-90B section 4.4.1's worked example and gates on the continuous tests rather than SP 800-22;
 `references/model-choice-vs-2026-practice.md` carries a dated re-check from 2026-08-13; and the BUSI
@@ -2358,14 +2358,22 @@ one pool stage is possible at 8 qubits and the architecture's depth cannot be us
 
 **EVERY NUMBER IN THAT PARAGRAPH WAS RE-MEASURED IN ROUND 47 AND ALL FOUR MOVED**, because the
 multiclass readout was binning the class index over a discarded wire and the fully-connected block
-was one shared scalar rather than a per-survivor unitary. Current, from `models/*/weights.json`:
-medical accuracy **0.860465** (minority F1 0.8125), finance minority F1 **0.84058** (accuracy
-0.981667), telecom macro F1 **0.458324**, telecom-q7 macro F1 **0.500452**. The claim that 8 and 9
-qubits agree exactly SURVIVES and is now measured on the corrected circuit - the values are
-byte-identical across widths on both binary corpora - and the claim that telecom fell survives too,
-further than Round 46 knew: part of 0.614583 was the discarded wire's bit and was never the QCNN's to
-claim. The telecom-q7 figure has also crossed its 8-wire sibling, which reverses the width finding
-the Round 45 entry above restates. See the Round 47 section.
+was one shared scalar rather than a per-survivor unitary. **THEN ALL FOUR MOVED AGAIN IN THE SAME
+ROUND**, when two classes of parameter turned out to be analytically dead. The intermediate figures -
+medical accuracy 0.860465 (minority F1 0.8125), finance minority F1 0.84058 (accuracy 0.981667),
+telecom macro F1 0.458324, telecom-q7 macro F1 0.500452 - are **SUPERSEDED** and belong to the
+circuit that carried five dead angles; see "Round 47, continued" below. Current, from
+`models/*/weights.json`: medical accuracy **0.883721** (minority F1 0.84375), finance minority F1
+**0.735294** (accuracy 0.97), telecom macro F1 **0.510963**, telecom-q7 macro F1 **0.541894**.
+Classical logistic regression on the identical splits is ahead on all three use cases, before and
+after both retrains: 0.953488, 0.865672 and 0.976447 respectively.
+
+The claim that 8 and 9 qubits agree exactly SURVIVES both retrains and is now measured on three
+successive circuits - the values are byte-identical across widths on both binary corpora - and the
+claim that telecom fell survives too, further than Round 46 knew: part of 0.614583 was the discarded
+wire's bit and was never the QCNN's to claim. The telecom-q7 figure has also crossed its 8-wire
+sibling, which reverses the width finding the Round 45 entry above restates. See the Round 47
+sections.
 
 ### Round 45's six gate defects, each the class it was fixing
 
@@ -2500,9 +2508,11 @@ survivors and records them in each artifact as `readout.wires` = `[0, 2, 4]`.
 
 **Telecom's published macro F1 falls 0.614583 -> 0.458324**, and the previous number was inflated by
 the defect: wire 1's bit encoded the register BEFORE pooling mixed it away, which is information the
-architecture is supposed to have discarded. Four configurations were run to see whether the loss was
-capacity rather than the fix, and **none of them recovered it** (macro F1, corrected readout
-throughout):
+architecture is supposed to have discarded. **0.458324 is itself SUPERSEDED later in this same round
+by 0.510963**, when the dead parameters below were made live; the fall it records is unaffected, and
+every figure in the rest of this subsection is the pre-dead-parameter one. Four configurations were
+run to see whether the loss was capacity rather than the fix, and **none of them recovered it** (macro
+F1, corrected readout throughout):
 
 | configuration | seed 0 | seed 1 | seed 2 |
 |---|---|---|---|
@@ -2517,11 +2527,12 @@ not a capacity limit. The shipped seed is the HIGHEST of its three, so the headl
 spread and not a median; the seed is deliberately not re-picked, because choosing one on test
 performance is test-set selection.
 
-**Every published QCNN metric, as the artifacts state them.** These are read from
-`models/*/weights.json`, which `tests/test_a_model_card_states_what_its_weights_state.py` now checks
-each card against:
+**Every published QCNN metric, as the artifacts stated them AT THIS POINT IN THE ROUND. The QCNN
+column below is SUPERSEDED** by the retrain recorded in "Round 47, continued"; the classical and
+floor columns are unchanged, because neither depends on the circuit. The table is kept because the
+supersession is only checkable against what it replaced:
 
-| artifact | headline | QCNN | classical LR | majority |
+| artifact | headline | QCNN (SUPERSEDED) | classical LR | majority |
 |---|---|---|---|---|
 | `qcnn_telecom` | macro F1 | 0.458324 (acc 0.502083) | **0.976447** (acc 0.977083) | 0.152083 |
 | `qcnn_telecom_q7` | macro F1 | 0.500452 (acc 0.541667) | **0.976447** | 0.152083 |
@@ -2532,15 +2543,18 @@ each card against:
 
 **The classical baseline wins on all three use cases, as it did before the retrain.** Nothing here is
 a quantum-advantage result and the direction of the comparison is unchanged; only its size moved.
+That is still true of the current figures, which are tabulated in the continuation section below and
+read from the same `models/*/weights.json` that
+`tests/test_a_model_card_states_what_its_weights_state.py` checks each card against.
 
 **The width conclusion REVERSED.** `references/qcnn-width-ablation.md` concluded that 8 wires beat 7
 on telecom by +0.0786 macro F1, and Round 45 restated that as a five-seed median. With the corrected
-readout, 7 wires scores **0.500452** and 8 wires **0.458324** - the narrower circuit leads by
-0.042128. The mechanism is consistent with the defect: at 7 wires pooling leaves exactly three
-survivors `[0, 2, 4]` and all three are read, so there was never a spare pre-pooling bit to leak.
-Both figures are single-seed, on both sides of the reversal, so this retires the old direction rather
-than establishing the new one. The ablation carries a supersession banner and nothing in it is
-deleted.
+readout, 7 wires scores 0.500452 and 8 wires 0.458324 - the narrower circuit leads by 0.042128.
+**Those two figures are superseded by the continuation section; the reversal is not.** The mechanism
+is consistent with the defect: at 7 wires pooling leaves exactly three survivors `[0, 2, 4]` and all
+three are read, so there was never a spare pre-pooling bit to leak. Both figures are single-seed, on
+both sides of the reversal, so this retires the old direction rather than establishing the new one.
+The ablation carries a supersession banner and nothing in it is deleted.
 
 ### The fifth instance, committed by this round and caught by its own morning's gate
 
@@ -2592,6 +2606,12 @@ larger. Safe direction, wrong number, and worst exactly where the link is hardes
 the discipline the four previous instances exist to teach. `intrinsic_qber` stays correct for the
 OBSERVED QBER, which is the quantity it names.
 
+**THAT FIX WAS HALF RIGHT AND HAD TO COME BACK IN THE SAME ROUND, AND THE HALF IT GOT WRONG PUBLISHED
+A KEY UNDER A FULL ATTACK.** It replaced `intrinsic_qber` with the BARE MISALIGNMENT, which removed
+the double charge and silently unhooked the eavesdropper - `intrinsic_qber` was the only path by
+which `eve_intercept_fraction` reached the bound. It also named THREE implementations of the decoy
+algebra when there are four. Both are recorded in "Round 47, continued" below, with the measurements.
+
 ### Supporting, each one an instance of a class this register already names
 
 - **`QKDParams` reads its intensities from config** instead of spelling `mu_signal = 0.5` and
@@ -2635,6 +2655,205 @@ rather than left for a reader to discover: `--no-entangle` gates the conv filter
 survivor ring in the fully-connected block, but the pooling stage is a CRY - a controlled rotation,
 which entangles - and it is NOT gated. The file's own claim that "the ablation is exact rather than
 approximate" was true of the ring-only ansatz it was measured on and is false of the QCNN.
+
+## Round 47, continued: parameters the optimiser carried and could not move, and a key published under a full attack
+
+This section is a continuation of the one above rather than a new round. Everything in it was found
+after the entry above was written, by continuing to check the things that entry had just fixed - which
+is how the fourth, fifth and sixth instances of the one-language defect were found too.
+
+### Two classes of parameter were analytically dead
+
+Dead in the strict sense: carried by the optimiser, counted in the parameter count, and **unable to
+move the readout at any input**. There were two of them and they had different mechanisms.
+
+**1. The fully-connected block's per-survivor RZ.** It was applied AFTER the RY, and the only
+operations after that block are a CNOT ring - a basis permutation - and `|amplitude|^2`, which
+discards phase. A diagonal gate applied last cannot move a computational-basis readout, and on the
+two binary artifacts it commutes with the `<Z0>` it is measured in. MEASURED before the fix: moving
+every fc RZ by 1.234 rad changed the telecom readout by **5.96e-08** and the finance readout by
+**8.94e-08** - float32 noise - against **2.6e-01** and **5.9e-01** for the RY angles beside them.
+These angles were added earlier in this same round, for faithfulness to Cong, Choi & Lukin's "a
+unitary F on the remaining qubits". Half of what was added was decoration.
+
+**2. The 8th conv angle of each stage's final layer round.** An `rz` on the wire pooling is about to
+discard. Its only later interaction is as the CONTROL of a CRY, which is diagonal in that wire's
+basis, and then marginalisation at readout. That was 3 of 72 conv angles on the binary models and 1
+of 48 on telecom, **carried since Round 46**.
+
+**THE FIX WAS ORDERING, NOT DELETION.** RZ before RY in both places, so the phases RZ writes are
+mixed back into amplitudes by the RY that follows. No parameter was removed and no count changed;
+what changed is how many of them the readout can see. Measured on the same perturbation after the
+change: **1.4e-01**, against 5.96e-08 before.
+
+Counted per artifact, by perturbing every angle under the pre-fix ordering:
+
+| artifact | angles | dead before the fix | which |
+|---|---|---|---|
+| `qcnn_telecom` | 57 | **5** | 4 fc RZ, one per survivor, plus `theta[47]` |
+| `qcnn_telecom_q7` | 55 | **4** | 3 fc RZ, one per survivor, plus `theta[47]` |
+| `qcnn_finance`, `qcnn_finance_q9` | 77 | **4** | `theta[76]` plus `theta[23]`, `theta[47]`, `theta[71]` |
+| `qcnn_medical`, `qcnn_medical_q9` | 77 | **4** | the same four indices |
+
+**The gate is a property over ALL parameters, not a check for this mistake.**
+`test_every_trainable_parameter_reaches_the_readout` in
+`tests/test_the_qcnn_has_the_structure_the_name_claims.py` perturbs EVERY parameter at five
+(width, readout, layers) configurations and fails if any one of them cannot move the output. The
+specific error is not the interesting one: a circuit that ends in a diagonal gate, that pools a wire
+away before its angle is used, or that indexes past the end of a block all produce the same
+condition, and all of them are invisible to accuracy - the model simply trains the parameters that
+work - and to a parameter count, which counts angles rather than asking whether they do anything.
+
+### The measured effect of making them live is MIXED, and is not presented as a win
+
+| artifact | headline metric | before | after | change |
+|---|---|---|---|---|
+| `qcnn_telecom` | macro F1 | 0.458324 | **0.510963** | +0.053 |
+| `qcnn_telecom_q7` | macro F1 | 0.500452 | **0.541894** | +0.041 |
+| `qcnn_medical` | minority-class F1 | 0.8125 | **0.84375** | +0.031 |
+| `qcnn_finance` | minority-class F1 | 0.84058 | **0.735294** | **-0.105** |
+
+**Three improved, one regressed, and the regression is larger than any of the three gains.** What is
+established is that four or five angles per circuit that could not affect the output at any input can
+now affect it - a defect fixed whichever way each metric went. What is NOT established is that the
+change improves this architecture: reordering the gates also changes how `torch.randn` is consumed,
+so every initialisation moved as well, and the retired five-seed ablations on these corpora spanned
+0.32 to 0.80 (finance) and 0.62 to 0.93 (medical) on exactly these metrics. Single-draw moves of this
+size sit inside those widths. **A seed sweep on the current circuit has not been run**, and the seed
+is deliberately not re-picked to recover the finance figure, because choosing one on test performance
+is test-set selection.
+
+### Every published QCNN metric, current, with its classical baseline and its floors
+
+Read from `models/*/weights.json`. `tests/test_a_model_card_states_what_its_weights_state.py` checks
+each card against the file in its own directory, and was RED on all six cards until they were
+rewritten to these values.
+
+| artifact | headline | QCNN | classical LR, identical split | floor |
+|---|---|---|---|---|
+| `qcnn_telecom` | macro F1 | 0.510963 (acc 0.554167) | **0.976447** (acc 0.977083) | uniform 0.125, constant 0.027778, majority acc 0.152083 |
+| `qcnn_telecom_q7` | macro F1 | 0.541894 (acc 0.585417) | **0.976447** (acc 0.977083) | as above |
+| `qcnn_finance` | minority F1 | 0.735294 (acc 0.97) | **0.865672** (acc 0.985) | all-positive F1 0.098257, majority acc 0.948333 |
+| `qcnn_finance_q9` | minority F1 | identical to `qcnn_finance` on every recorded metric | | |
+| `qcnn_medical` | accuracy | 0.883721 (minority F1 0.84375) | **0.953488** (minority F1 0.939394) | all-positive F1 0.578512, majority acc 0.593023 |
+| `qcnn_medical_q9` | accuracy | identical to `qcnn_medical` on every recorded metric | | |
+
+**THE CLASSICAL BASELINE STILL WINS ON ALL THREE USE CASES.** It won before the Round 46 rewrite,
+before the readout correction, and before this one. Nothing in this round is a quantum-advantage
+result; the direction of the comparison has never changed and only its size has moved. Every circuit
+does clear its floors, which is the only thing the aggregate numbers establish.
+
+### The telecom headline has now moved four times, and this is all four
+
+Stated once, plainly, because the number is quoted in several documents and three of the four are
+wrong as a baseline for a different reason each.
+
+| figure | what it was measured on |
+|---|---|
+| 0.809846 | the RETIRED hardware-efficient ansatz replaced in Round 46. A different circuit. **Never this one's baseline.** |
+| 0.614583 | published as macro F1 by an earlier card rewrite. It was the ACCURACY of that run, not an F1. |
+| 0.458324 | the real QCNN with the readout corrected to bin over surviving wires - the first true macro F1 of this architecture. |
+| **0.510963** | **current**, after the dead parameters were made live. |
+
+The first row is the one to watch for: it is the largest, it belongs to a deleted circuit, and it is
+what an older document offers a reader asking what telecom scored.
+
+### The width reversal holds and the gap GREW; the pad wire is still inert
+
+| telecom macro F1 | 8 wires | 7 wires | delta |
+|---|---|---|---|
+| superseded, Round 40/45 finding | 0.8098 | 0.7312 | +0.0786 for 8 wires |
+| superseded, corrected readout and FC block | 0.458324 | 0.500452 | -0.042128, 7 wins |
+| **current** | **0.510963** | **0.541894** | **-0.030931, 7 WINS** |
+
+Two independent retrains now agree on the sign, having moved both sides. Both remain single-seed, so
+this retires the published direction rather than settling the opposite one; `QC22` still applies.
+`references/qcnn-width-ablation.md` carries the updated banner and nothing in it is deleted.
+
+**Pad-wire inertness holds on both binary corpora**: finance 8 against 9 wires and medical 8 against
+9 wires are identical on every recorded metric, for the third successive circuit. And the one place
+the widths did differ has closed. Before this fix, 4 of 77 trained angles differed between the widths
+by more than 1e-4 - exactly the four the `<Z0>` readout could not see, drifting on numerical noise
+because no gradient reached them. Now **zero of 77 differ by more than 1e-4**: the largest
+disagreement anywhere is 1.1e-05 on finance and 4.2e-06 on medical, with `scale` bit-identical
+between the medical widths.
+
+### The browser published a full-strength key under a complete intercept-resend attack
+
+**MEASURED before the fix: at `eve_intercept_fraction` = 1.0 the browser reported 0.001976547
+bit/pulse and 395 secure bits at a QBER of 0.2598 - unchanged, to every printed digit, from eve = 0.**
+A page with a control labelled "Eve intercept fraction" moved the displayed QBER and nothing else.
+
+Two causes, and the first is this round's own doing. The entry above replaced `intrinsic_qber` with
+the BARE MISALIGNMENT in `_decoy_secure_fraction`, which removed a genuine double-charge of the dark
+counts and, in the same line, **removed the only path by which `eve_intercept_fraction` reached the
+bound**: `transmittance` does not depend on it and `E_mu` is modelled rather than measured, so with
+the eavesdropper gone from `e_det` the decoy bound became independent of the attack. Second, the
+browser had no counterpart to Python's `pp_threshold` abort, so even a QBER far above the
+post-processing limit produced a key rather than a refusal. Python survived only because that abort
+fired; the browser had nothing to fall back on.
+
+Fixed as `e_det = misalignment + 0.25 * eve_intercept_fraction` in both languages - Ma et al.'s
+`e_det` is the error on DETECTED SIGNAL photons, which is exactly what intercept-resend causes, at
+the textbook 0.25 rate, while the dark-count term stays where it belongs as `e0 * y0` inside the same
+function - plus porting the `pp_threshold` abort into `web/src/lib/quantumSim.ts`. After, at 200,000
+pulses on the default 50 km fibre, **identical in both languages to every digit printed**:
+
+| `eve_intercept_fraction` | bit/pulse | secure bits | what stops it |
+|---|---|---|---|
+| 0 | 0.001976547 | 395 | nothing; this is the published figure |
+| 0.2 | 0.000058995 | 11 | the decoy bound, degraded 33x |
+| 0.3 | 0 | 0 | the decoy bound reaches zero |
+| 0.35 and above | 0 | 0 | `pp_threshold` = 0.11 exceeded; post-processing ABORTS |
+
+The eve = 0 row is what the page used to print at eve = 1.0. **A protocol that does not abort has not
+checked for Eve; it has only drawn her a QBER.**
+
+### `clientOptiQKD.ts` was a FOURTH implementation of the decoy algebra, and the commit that fixed three did not name it
+
+The entry above says the error term was fixed "in three languages at once" and lists
+`src/qsh/qkd/bb84.py`, `web/src/lib/quantumSim.ts` and `web/scripts/check_qkd.mjs`. A grep for
+`e0 * y0` returns FOUR files. `web/src/lib/clientOptiQKD.ts` computes the same bound for the
+surrogate-model baseline and was left on `intrinsicQber`.
+
+**Measured gap while it was behind**: 0.498% low on the 50 km fibre (0.001966695848615933 against
+`bb84()`'s 0.001976547318720314) and **13.664% low on the 800 km free-space downlink**
+(4.793756674e-5 against 5.552428392e-5). Both numbers are rendered in the SAME panel -
+`qkd_surrogate_skr_default` sits beside `skr_per_pulse` - so a visitor could read two figures for one
+channel and see them disagree. Now 0.000% on both.
+
+This is the SEVENTH instance of the one-language defect, counting from the fourth named in the entry
+above, and the sharpest: the commit whose subject line is that a fix reached one language enumerated
+three call sites of four.
+
+### Every browser-side cross-language gate was SKIPPING in GitHub CI
+
+The gates that execute the browser's own TypeScript through esbuild and node, and compare its numbers
+against Python's, are the only checks in this repository that can see a change reaching one language
+and not the other - which is this round's entire subject. They guard on
+`if not ESBUILD.exists(): pytest.skip(...)`. `web/node_modules` is gitignored and the Python CI job
+installed no Node, so on a fresh checkout they reported SKIP and the workflow went green.
+
+**MEASURED on a clone of the tip: 20 collected, 11 passed, 9 SKIPPED.** Proven consequence: seeding
+the pre-Round-47 shared-scalar fully-connected block into `quantumSim.ts` fails these gates by a
+readout difference of 0.585 when esbuild is present, and passes the entire workflow when it is not.
+The local runner `scripts/ci_local.sh` was therefore strictly STRONGER than CI, which is the reverse
+of what a CI gate is for.
+
+`.github/workflows/ci.yml` now installs Node 22, runs `npm ci` in `web/`, and sets
+`QSH_REQUIRE_BROWSER_GATES=1`, which turns the skip into a failure. A gate that cannot run is not a
+gate that passes; it is a gate nobody is running.
+
+### The figures this continuation moved, and where they were corrected
+
+| file | treatment |
+|---|---|
+| all six `models/qcnn_*/README.md` | rewritten to their own `weights.json`, per-class tables regenerated from `per_class_f1`; previous headlines marked superseded, not deleted |
+| `references/qcnn-width-ablation.md` | Round 47 banner updated with the new width figures and the mixed-effect table; both superseded rows kept |
+| `docs/deliverable-verification.md`, Round 46 section | the four intermediate figures marked SUPERSEDED in place, current values added beside them |
+| `docs/deliverable-verification.md`, Round 47 section | 0.458324 / 0.500452 / 0.84058 / 0.8125 / 0.860465 marked superseded where they appear as current; the four-configuration sweep kept as capacity evidence |
+| `references/REFERENCES.md`, `references/qcnn-entanglement-ablation.md`, `references/qcnn-vs-published-wdbc.md` | current values inserted where the previous retrain's figures were being presented as current |
+| `docs/verification-log.md`, Round 47 entry | the list of quantities a visitor can see, and which have moved since the last walked bundle, extended with the eavesdropper and QCNN changes |
 
 ## Verification assets added in Rounds 22-23
 

@@ -309,9 +309,16 @@ def circuit(x: torch.Tensor, theta: torch.Tensor, nq: int = N_QUBITS,
                     state = apply_1q(state, wire, _rz(w[iz], cdt), nq)
                 if entangle:
                     state = apply_cnot(state, a, b, nq)
+                # RZ BEFORE RY in the second half of the filter, for the same reason as the
+                # fully-connected block. On the wire pooling is about to discard, the only later
+                # interaction is as the CONTROL of a CRY - diagonal in that wire's basis - and then
+                # marginalisation at readout. A diagonal gate followed only by diagonal use is
+                # unobservable, so `rz(b, w8[7])` was dead: moving it by 1.234 rad changed the
+                # readout by less than 1e-5 at every width. That was 3 of 72 conv angles on the
+                # binary models and 1 of 48 on telecom, carried since Round 46.
                 for wire, iy, iz in ((a, 4, 5), (b, 6, 7)):
-                    state = apply_1q(state, wire, _ry(w[iy], cdt), nq)
                     state = apply_1q(state, wire, _rz(w[iz], cdt), nq)
+                    state = apply_1q(state, wire, _ry(w[iy], cdt), nq)
         elif step["kind"] == "pool":
             pairs = list(zip(active[0::2], active[1::2], strict=False))
             for a, b in pairs:
@@ -336,9 +343,20 @@ def circuit(x: torch.Tensor, theta: torch.Tensor, nq: int = N_QUBITS,
             # global rotation, which cannot distinguish the wires the class index is read from.
             # Cong, Choi & Lukin call for "a unitary F on the remaining qubits"; translational
             # invariance belongs to the convolution layers, not to F.
+            # RZ BEFORE RY, and the order is the whole point. A diagonal gate applied LAST cannot
+            # be observed: the only operations after this block are a CNOT ring, which permutes
+            # basis states, and |amplitude|^2, which discards phase. Round 47 added these RZ angles
+            # for faithfulness to Cong et al.'s "unitary F on the remaining qubits" and applied them
+            # after the RY, so all of them were inert - measured, moving every fc RZ by 1.234 rad
+            # changed the telecom readout by 5.96e-08 and the finance readout by 8.94e-08, against
+            # 2.6e-01 and 5.9e-01 for the RY angles beside them. Half the block was decoration.
+            #
+            # With RZ first, the phases it writes are mixed back into amplitudes by the RY, so both
+            # parameters of the single-qubit rotation reach the readout and F is a genuine
+            # two-parameter unitary rather than a one-parameter one carrying a spare number.
             for j, wire in enumerate(active):
-                state = apply_1q(state, wire, _ry(fc[j, 0], cdt), nq)
                 state = apply_1q(state, wire, _rz(fc[j, 1], cdt), nq)
+                state = apply_1q(state, wire, _ry(fc[j, 0], cdt), nq)
             if entangle and len(active) > 1:
                 for j in range(len(active)):
                     state = apply_cnot(state, active[j], active[(j + 1) % len(active)], nq)

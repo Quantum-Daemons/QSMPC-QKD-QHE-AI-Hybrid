@@ -144,6 +144,28 @@ export function transmittance(p: ChannelParams): number {
   return p.detectorEff * 10 ** (-channelLossDb(p) / 10);
 }
 
+/**
+ * `e_det` as Ma, Qi, Zhao & Lo define it: the error rate on DETECTED SIGNAL photons.
+ *
+ * Misalignment plus the eavesdropper's disturbance, and deliberately NOT the dark-count term -
+ * `decoySecureFraction` adds the background back as `e0 * y0`, so including it here charges it
+ * twice. `intrinsicQber` is the right quantity for the OBSERVED QBER a panel displays and the
+ * wrong one for this bound; the two differ by exactly that background term.
+ *
+ * ROUND 47 GOT THIS HALF-RIGHT AND HAD TO COME BACK. It replaced `intrinsicQber` with the bare
+ * misalignment, which removed the double charge and silently unhooked the EAVESDROPPER, because
+ * `intrinsicQber` was the only path by which `eveFraction` reached the bound - `transmittance` does
+ * not depend on it and `eMu` is modelled here rather than measured. Measured consequence: a full
+ * intercept-resend attack still published 0.001976547 bit/pulse and 395 secure bits at QBER 0.2598,
+ * identical to eve = 0, on a page whose control is labelled "Eve intercept fraction".
+ *
+ * Intercept-resend disturbs a detected signal photon at the textbook rate of 0.25 per intercepted
+ * pulse, which is precisely what `e_det` denotes, so Eve belongs here and the background does not.
+ */
+export function eDetForBound(p: ChannelParams): number {
+  return Math.min(0.5, p.misalignment + 0.25 * p.eveFraction);
+}
+
 export function intrinsicQber(p: ChannelParams): number {
   const base = p.misalignment + (0.5 * p.darkCount) / Math.max(transmittance(p), 1e-9);
   return Math.min(0.5, base + 0.25 * p.eveFraction);
@@ -212,6 +234,8 @@ export interface BB84Result {
    * technique that does not apply.
    */
   secretKeyRateNonDecoy?: number;
+  /** Set when the observed QBER exceeded `pp_threshold` and post-processing refused to proceed. */
+  aborted?: boolean;
 }
 
 /**
@@ -311,14 +335,9 @@ export function bb84(nPulses: number, p: ChannelParams, seed = 0,
   // QBER above varies. Deriving it from the sampled QBER is what made the public figure move
   // between page loads: five seeds gave five different "bounds", 0.008992 to 0.009577.
   //
-  // It takes `p.misalignment`, NOT `eDet`. In Ma et al. the `e_det` argument is the probability a
-  // detected SIGNAL photon lands in the wrong detector; the dark-count contribution is the
-  // separate `e0 * y0` term inside `decoySecureFraction`. `intrinsicQber` is
-  // `misalignment + 0.5 * darkCount / eta`, so passing it charged the background twice - 0.57% low
-  // on the 50 km fibre, 18.9% low on the 800 km free-space downlink where eta is 17x smaller.
-  // `eDet` remains correct for the observed QBER two lines up. Python had the identical defect and
-  // both are fixed together.
-  const decoy = decoySecureFraction(eta, mu, nu, p.misalignment, y0, fEC, 0.5);
+  // It takes `eDetForBound(p)`, NOT `eDet` and not the bare misalignment - see that function for
+  // why the first charges dark counts twice and the second unhooks the eavesdropper.
+  const decoy = decoySecureFraction(eta, mu, nu, eDetForBound(p), y0, fEC, 0.5);
 
   // The counterfactual, on the same channel: GLLP with the multi-photon fraction untagged. Kept
   // beside the bound because the assumption is invisible without it.
@@ -326,6 +345,24 @@ export function bb84(nPulses: number, p: ChannelParams, seed = 0,
   const untagged = 1 - delta;
   const nonDecoy = delta >= 1 ? 0 : Math.max(0, 0.5 * qMu * (
     untagged - fEC * h2(decoy.eMu) - untagged * h2(Math.min(0.5, decoy.eMu / untagged))));
+
+  // POST-PROCESSING ABORT, mirroring `bb84.py`'s `if measured_qber > pp_threshold`. The browser had
+  // no counterpart at all: Python's key died under an eavesdropper only because this threshold test
+  // fired, and with no such test here the page went on publishing a full-strength key at every
+  // setting of its own Eve control. A protocol that does not abort has not checked for Eve; it has
+  // only drawn her a QBER.
+  const ppThreshold = qkdCfg().pp_threshold;
+  if (qber > ppThreshold) {
+    return {
+      qber,
+      siftedBits: nSift,
+      secretKeyRate: 0,
+      secureKeyBits: 0,
+      channelLossDb: Math.round(channelLossDb(p) * 10) / 10,
+      secretKeyRateNonDecoy: 0,
+      aborted: true,
+    };
+  }
 
   return {
     qber,
@@ -554,8 +591,10 @@ export function qcnnInferTrained(features: number[], w: QcnnWeights):
         RY(a, convAt(st, r, 0)); RZ(a, convAt(st, r, 1));
         RY(b, convAt(st, r, 2)); RZ(b, convAt(st, r, 3));
         CNOT(a, b);
-        RY(a, convAt(st, r, 4)); RZ(a, convAt(st, r, 5));
-        RY(b, convAt(st, r, 6)); RZ(b, convAt(st, r, 7));
+        // RZ before RY in the second half - see the trainer's note. On the wire pooling discards, a
+        // trailing diagonal gate is unobservable, so convAt(st, r, 7) was a dead angle.
+        RZ(a, convAt(st, r, 5)); RY(a, convAt(st, r, 4));
+        RZ(b, convAt(st, r, 7)); RY(b, convAt(st, r, 6));
       }
     }
     const survivors: number[] = [];                            // pool: condition survivor on partner
@@ -569,7 +608,11 @@ export function qcnnInferTrained(features: number[], w: QcnnWeights):
     if (active.length % 2 === 1) CRY(active[active.length - 1], active[0], poolAt(st));
     active = survivors;
   }
-  active.forEach((q, j) => { RY(q, fcAt(j, 0)); RZ(q, fcAt(j, 1)); });   // unitary on what survives
+  // RZ BEFORE RY - a diagonal gate applied last cannot be observed, because the only operations
+  // after this block are a CNOT ring (a basis permutation) and |amplitude|^2 (which discards
+  // phase). Measured while the order was RY-then-RZ: moving every fc RZ by 1.234 rad changed the
+  // telecom readout by 5.96e-08. Half the fully-connected block was decoration.
+  active.forEach((q, j) => { RZ(q, fcAt(j, 1)); RY(q, fcAt(j, 0)); });   // unitary on what survives
   if (active.length > 1) for (let j = 0; j < active.length; j++) CNOT(active[j], active[(j + 1) % active.length]);
   // MULTICLASS readout: marginal probabilities of the first m SURVIVING wires - the ones the
   // fully-connected block above just acted on - with survivor j contributing bit j of the class

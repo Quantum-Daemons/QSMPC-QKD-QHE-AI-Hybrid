@@ -60,6 +60,20 @@ import numpy as np
 from .channel import ChannelParams, intrinsic_qber
 
 
+def e_det_for_bound(params: ChannelParams) -> float:
+    """`e_det` as Ma et al. define it: the error rate on DETECTED SIGNAL photons.
+
+    Misalignment plus the eavesdropper's disturbance, and deliberately NOT the dark-count term -
+    `_decoy_secure_fraction` adds the background back as `e0 * y0`, so including it here charges it
+    twice. `intrinsic_qber` is the right quantity for the OBSERVED QBER a panel displays and the
+    wrong one for this bound; the two differ by exactly that background term.
+
+    Intercept-resend on a fraction f of pulses disturbs a detected signal photon at 0.25 * f, the
+    textbook BB84 figure, which is what `intrinsic_qber` also uses.
+    """
+    return min(0.5, params.misalignment + 0.25 * params.eve_intercept_fraction)
+
+
 def _h2(x: float) -> float:
     """Binary entropy H2(x)."""
     if x <= 0 or x >= 1:
@@ -209,16 +223,24 @@ def run_bb84(
         nu = min(max(1e-4, float(qkd_params.mu_decoy)), mu * 0.9)      # decoy strictly weaker than the signal
         y0 = 2.0 * params.dark_count_prob                             # background yield (two detectors)
         sift_ratio = p * p + (1.0 - p) * (1.0 - p)                    # biased-basis reconciliation ratio
-        # `params.misalignment`, NOT `intrinsic_qber(params)`. In Ma et al. `e_det` is the
-        # probability that a detected SIGNAL photon lands in the wrong detector; the dark-count
-        # contribution is the separate `e0 * y0` term inside the function. `intrinsic_qber` is
-        # `misalignment + 0.5 * p_dark / eta`, so passing it charged the background twice and the
-        # bound came out LOW - by 0.57% on the 50 km fibre and by 18.9% on the 800 km free-space
-        # downlink, where eta is 17x smaller and the dark-count term correspondingly larger. Safe
-        # direction, wrong number, and worst exactly where the link is hardest. `intrinsic_qber`
-        # stays correct for the OBSERVED QBER above, which is the quantity it names.
+        # `params.misalignment + 0.25 * eve_intercept_fraction`, NOT `intrinsic_qber(params)` and
+        # NOT the misalignment alone. In Ma et al. `e_det` is the probability a detected SIGNAL
+        # photon lands in the wrong detector; the dark-count contribution is the separate `e0 * y0`
+        # term inside the function.
+        #
+        # `intrinsic_qber` is `misalignment + 0.5 * p_dark / eta + 0.25 * eve`, so passing it charged
+        # the background TWICE - 0.57% low on fibre, 18.9% low on the 800 km downlink. Round 47
+        # replaced it with the bare misalignment, which fixed the double charge and silently
+        # unhooked the EAVESDROPPER: `intrinsic_qber` was the only path by which
+        # `eve_intercept_fraction` reached the bound, since `transmittance` does not depend on it
+        # and `E_mu` is modelled here rather than measured. Measured consequence in the browser,
+        # which has no abort to fall back on: a full intercept-resend attack still published
+        # 0.001976547 bit/pulse and 395 secure bits at QBER 0.2598, unchanged from eve = 0.
+        #
+        # Intercept-resend disturbs a detected signal photon at the textbook rate of 0.25, which is
+        # exactly what `e_det` denotes, so Eve belongs here and the background does not.
         skr, _e_mu, _e1 = _decoy_secure_fraction(
-            eta, mu, nu, params.misalignment, y0, error_correction_eff, sift_ratio)
+            eta, mu, nu, e_det_for_bound(params), y0, error_correction_eff, sift_ratio)
         secure_bits = int(max(0.0, skr) * n_pulses)
 
     return QKDResult(
