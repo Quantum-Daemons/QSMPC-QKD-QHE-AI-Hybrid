@@ -2255,21 +2255,62 @@ A scope gate pins the class: no production call site may reach the legacy branch
 
 ### The block size turned out to be a security parameter
 
-200,000 pulses gave **1,244 sifted bits**. At that block size a composably-secure finite-key analysis
-yields **no key at all** - the positive-key threshold for these device parameters is ~5e3 to 1.1e4
-sifted bits (Rusca, Boaron, Grunenfelder, Martin & Zbinden, *Appl. Phys. Lett.* **112**, 171104,
-2018). Corroborating primary datum, Lucamarini et al., *Opt. Express* **21**, 24550 (2013), Fig. 2:
-*"1.4x10^5 counts ... is the smallest sample size providing a positive rate"* at 50 km. So an
-asymptotic rate was being published for a block that provably yields nothing.
+**THE THRESHOLD IN THIS SUBSECTION WAS WRONG AND THE CITATION UNDER IT WAS NOT IN THE PAPER.
+CORRECTED IN ROUND 47, IN PLACE, because the numbers below were carried into five other files and a
+silent edit would leave the propagation unexplained.** What Round 46 wrote: *"the positive-key
+threshold for these device parameters is ~5e3 to 1.1e4 sifted bits (Rusca, Boaron, Grunenfelder,
+Martin & Zbinden, Appl. Phys. Lett. 112, 171104, 2018)"*. Two failures, and the second is the worse
+one.
 
-`qkd.pulses` 200,000 -> **2,000,000** (12,442 sifted bits). `demo_alice_bob_pulses` and `sat_pulses`
-raised in step - the satellite downlink had fallen to **223** secure bits, below the 256 needed to
-derive a key, so satellite had silently stopped mixing QKD at all.
+**The attribution.** That paper states no positivity threshold anywhere. It compares the 1-decoy
+against the 2-decoy protocol for privacy-amplification block sizes n_Z from 1e5 to 1e11, and its own
+sentence is that the 1-decoy approach wins *"unless a really big (> 10^11) or really small (< 10^5)
+PA block size is applied"*. A number was attributed to a paper that does not contain it, and the
+citation is what stopped anyone checking.
 
-**The honest residual:** at 10e6 the 800 km downlink still yields ~3,660 sifted bits, BELOW the
-finite-key band. Clearing it there needs ~30e6 pulses and ~1.5 GB of Python array, and the reason is
-physical - 24.48 dB of loss. The free-space rate is asymptotic-only in a stronger sense than the
-fibre one.
+**The number.** `src/qsh/qkd/finite_key.py` now implements the paper's equations, and on this
+project's own 50 km channel they put the threshold at **~1e5 sifted bits, about 4e7 pulses** - an
+order of magnitude above the band that was published here. At the shipped 2,000,000 pulses the
+single-photon lower bound `s^l_{Z,1}` is **NEGATIVE**, so no composable key exists at that block size
+under any setting of the intensities, their probabilities or the basis bias; that was searched over
+the paper's own variable set, not assumed.
+
+**The refutation was already on the page.** Lucamarini et al., *Opt. Express* **21**, 24550 (2013),
+Fig. 2: *"1.4x10^5 counts ... is the smallest sample size providing a positive rate"* at 50 km. Round
+46 printed that one line below a band 13 to 28 times smaller and called it a corroborating primary
+datum. It never corroborated that band. It agrees with the corrected figure, and it did so in the
+next sentence for three rounds.
+
+**How accurate our own number is, quoted wherever the threshold is quoted.** Validated against Rusca
+et al.'s published Table I (SKR at n_Z = 1e7 for 26 / 46 / 56 / 64 dB), this implementation is
+CONSERVATIVE by roughly 2-3x at moderate loss and by more at high loss, even after optimising the
+intensities and the basis bias as the paper describes. Its threshold is therefore an UPPER bound on
+what is required and is stated as an order of magnitude, never to two figures. What survives that
+uncertainty: Round 46's 2,000,000-pulse block carried no composable key, since a factor of 2-3 cannot
+rescue a negative count; the Round 46 band was far too small; and the citation was wrong independent
+of any numerics.
+
+**What Round 46 did, which stands on narrower ground than it claimed.** `qkd.pulses` 200,000 ->
+**2,000,000** (1,244 -> 12,442 sifted bits), with `demo_alice_bob_pulses` and `sat_pulses` raised in
+step - the satellite downlink had fallen to **223** secure bits, below the 256 needed to derive a
+key, so satellite had silently stopped mixing QKD at all. That last consequence was real and is
+unaffected. The finite-key argument for the raise was not: 2,000,000 does not clear the corrected
+threshold either, so the raise landed in the right direction for a reason that did not survive
+checking. Round 47 sized the fibre block against the COMPUTED threshold instead, and against a margin
+rather than against the threshold itself, because a 2-3x conservative bound should not be taken at
+its edge - `src/qsh/config/defaults.py` records the current value, the intensity re-optimisation that
+lowers the pulse count needed, and the margin in composable bits. What the page publishes at 50 km is
+still the ASYMPTOTIC decoy bound, labelled as one on every surface; the composable length is a second
+quantity shown beside it, not a relabelling of the first.
+
+**The honest residual, and it is bigger than Round 46 recorded:** at 10e6 the 800 km downlink yields
+~3,660 sifted bits. Round 46 measured that against the refuted band and concluded ~30e6 pulses and
+~1.5 GB of Python array would clear it; both figures fall with the band. Against the corrected fibre
+threshold the shortfall is well over an order of magnitude, and the free-space threshold itself is
+not quoted because it has not been evaluated - only its direction is safe, and it is the unhelpful
+one, since 24.48 dB of loss means lower gain per pulse and a higher QBER at equal statistics. The
+reason is physical rather than a setting. The free-space rate is asymptotic-only in a stronger sense
+than the fibre one.
 
 ### Round 45's own caveat was wrong in both directions
 

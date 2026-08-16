@@ -126,6 +126,22 @@ docstring.
   labels, while Bot F1 moves 0.60 to 0.99: the aggregate is blind to the fix. `telecom_ids.py`
   reports both for exactly this reason.
 
+- **Network Attack Traffic Detection With Hybrid Quantum-Enhanced Convolution Neural Network** -
+  Wang, Fok and Thing, arXiv:2504.20436 [cs.CR], 29 Apr 2025 `[link]`
+  URL: https://arxiv.org/abs/2504.20436
+  Added: no PDF bundled; recorded 2026-08-15 with the 5G-NIDD licence withdrawal below
+  **The published comparison point on 5G-NIDD**, which is this paper's sole dataset. On the standard
+  split it reports classical CNN 99.61 percent, QCNN-AnE 99.62 percent, QCNN-AmE 99.65 percent,
+  Quan-ConvCNN 99.71 percent and QuanvolutionNN 98.67 percent accuracy. Two things have to be said
+  before that ordering is quoted as a quantum win. The models are **hybrid quantum-classical CNNs,
+  not pure Cong-style QCNNs**, so the name does not mean here what it means in the QCNN section
+  below; and the authors' own claimed advantage is on **generalisation to unseen attacks**, not on
+  the standard split, where a 0.10-point spread over a 99.61 percent classical baseline is not a
+  result to lean on. Recorded because `DATA_LICENSES.md` section 5 requires every published model
+  card to name the baseline it is measured against, and until this entry there was no such baseline
+  on record for 5G-NIDD - which made the corpus look, from inside this repository, like a dataset
+  with no external comparison point rather than one with a 2025 quantum paper already on it.
+
 - **Withdrawn: a hybrid quantum-classical autoencoder IDS** - arXiv:2512.05069 `[link]`
   URL: https://arxiv.org/abs/2512.05069
   Added: no PDF bundled; withdrawal confirmed 2026-08-04
@@ -164,9 +180,23 @@ re-checked 2026-08-05:
   disagree. That is an unresolved ambiguity, not a permission, and it is the same class of question
   as the ImageNet one that Round 19 resolved by dropping the dependency rather than guessing.
 - **The Engelen-corrected redistribution** is hosted separately and states nothing.
-- **5G-NIDD was evaluated and rejected.** The adjudication lives in
-  [`DATA_LICENSES.md`](../DATA_LICENSES.md) - it was written out in full in both files, and a licence
-  finding with two homes is a licence finding that will be corrected in one of them.
+- **5G-NIDD was evaluated and rejected, and that rejection is WITHDRAWN.** The dataset is
+  **CC BY 4.0**, `access_type: Open`, at the authors' repository of record - Fairdata/Metax, DOI
+  10.23729/e80ac9df-d9fb-47e7-8d0d-01384a415361. The rejection had been read off IEEE DataPort,
+  which is a mirror, marks the dataset subscription-required and carries no licence string; absence
+  of a grant at a mirror was recorded as absence of a grant. The adjudication still lives in
+  [`DATA_LICENSES.md`](../DATA_LICENSES.md), where 5G-NIDD now sits in section 1 as usable with
+  **attribution required** - CC BY 4.0 obliges anyone publishing the data, or a model trained on it,
+  to credit the dataset authors.
+
+  The previous revision of this bullet ended: *"a licence finding with two homes is a licence finding
+  that will be corrected in one of them."* It was right, and it undercounted. The finding had
+  **three** homes - this file, `DATA_LICENSES.md` and `src/qsh/models/registry.py` - the withdrawal
+  was written into a **fourth**, `docs/deliverable-verification.md`, and for a full round that fourth
+  file was the only place the truth was recorded while three others went on calling the dataset
+  rejected. The sentence warning about duplication was itself one of the copies that went stale.
+  Duplication is not fixed by noticing it in prose; it is fixed by there being one owner, which is
+  the rule stated immediately below and which this entry existed in violation of.
 
 Licence adjudications belong in [`DATA_LICENSES.md`](../DATA_LICENSES.md); this file cites the
 papers. Where the two used to overlap, that file is the owner.
