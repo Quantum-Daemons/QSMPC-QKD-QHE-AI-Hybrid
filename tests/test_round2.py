@@ -23,7 +23,11 @@ from qsh.qhe.qotp import pauli_output_concealment_demo
 # --- config ---------------------------------------------------------------
 def test_config_loads_with_defaults():
     c = load_config()
-    assert c.qkd.pulses == 200_000
+    # 2_000_000 since Round 46. The block size is a SECURITY parameter here, not a speed knob:
+    # 200_000 gave 1,244 sifted bits at the shipped 50 km channel, below the ~5e3-1.1e4 finite-key
+    # positive-key band, so the asymptotic rate on the page described a block that provably yields
+    # no composably-secure key. `src/qsh/config/defaults.py` carries the citations.
+    assert c.qkd.pulses == 2_000_000
     assert c.qhe.sk_eps == pytest.approx(1e-3)
     assert c.orchestration.step_delay > 0
     assert "kem" in c.crypto.to_dict() if hasattr(c.crypto, "to_dict") else True

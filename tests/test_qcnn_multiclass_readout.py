@@ -42,8 +42,9 @@ BIT_REVERSAL_3 = [0, 4, 2, 6, 1, 5, 3, 7]
 
 def test_the_marginal_is_a_probability_distribution():
     m = _trainer()
-    x, theta = torch.rand(6, 8), 0.1 * torch.randn(3, 8)
-    p = m.circuit(x, theta, readout_qubits=3)
+    # ROUND 46: `theta` is a flat shared-weight vector sized by the architecture, not (layers, nq).
+    x, theta = torch.rand(6, 8), m.init_params(8, readout_qubits=3, layers=3, seed=0)
+    p = m.circuit(x, theta, readout_qubits=3, layers=3)
     assert p.shape == (6, 8), "3 measured qubits must give 2**3 = 8 class scores"
     assert torch.allclose(p.sum(1), torch.ones(6), atol=1e-5), (
         "the marginal must sum to 1 by construction; if it does not, a gate application is broken and "
@@ -125,11 +126,11 @@ def test_a_permuted_class_map_is_detected_by_this_suite():
 def test_the_binary_readout_still_works():
     """The multiclass path must not change what the two shipped binary QCNNs compute."""
     m = _trainer()
-    x, theta = torch.rand(5, 8), 0.1 * torch.randn(3, 8)
-    z = m.circuit(x, theta)
+    x, theta = torch.rand(5, 8), m.init_params(8, readout_qubits=0, layers=3, seed=0)
+    z = m.circuit(x, theta, layers=3)
     assert z.shape == (5,), "default readout stays a single <Z0> expectation"
     assert bool((z >= -1.0001).all() and (z <= 1.0001).all()), "<Z> is bounded by [-1, 1]"
     # and it must equal the 1-qubit marginal contrast, which is the same quantity by definition
-    p1 = m.circuit(x, theta, readout_qubits=1)
+    p1 = m.circuit(x, theta, readout_qubits=1, layers=3)
     assert torch.allclose(z, p1[:, 0] - p1[:, 1], atol=1e-5), (
         "<Z0> = p(0) - p(1) on the measured wire; if these disagree the marginal is binned wrongly")

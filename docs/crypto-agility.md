@@ -135,10 +135,17 @@ secure bits and the posture table says so, where `bb84-decoy` reports the run's 
 
 **Driving the channel** changes the QBER row and its verdict. The verdict is taken from what the run
 produced (`secure_key_bits > 0`), not from a threshold comparison, because the threshold cannot
-answer it: this repository's measured GLLP zero-key point is 0.098106, BELOW the textbook BB84 bound
-of 0.11, so a QBER in [0.098, 0.11) passes the textbook test while the decoy-state estimate returns
-nothing. Verified both directions in the browser: eavesdropper 0 gives QBER 0.01 and 1915 secure
-bits; eavesdropper 0.35 gives QBER 0.1 and 0 secure bits, and both the posture table and the
+answer it: this repository's zero-key point is well BELOW the textbook BB84 bound of 0.11, so a QBER
+between the two passes the textbook test while the model returns nothing.
+
+**Round 46 corrected the numbers here, and the correction widens the gap.** This read "the measured
+GLLP zero-key point is 0.098106" with "1915 secure bits" at eavesdropper 0 - both from the non-decoy
+GLLP form Round 45 removed from the browser and Round 46 removed from the Python path. Under the
+two-intensity decoy bound the zero-key point is **channel-dependent** rather than one constant:
+intrinsic QBER **0.0635 at 1 km, 0.0593 at 50 km, 0.0534 at 100 km**. The window in which the
+textbook test passes on a channel yielding nothing is therefore about twice as wide as this
+paragraph claimed. Verified both directions in the browser: eavesdropper 0 gives QBER 0.01 and a
+positive key; eavesdropper 0.35 gives QBER 0.1 and 0 secure bits, and both the posture table and the
 sequence diagram report the failure.
 
 **The signature family** changes the recorded algorithm name and the signature size (ML-DSA-65 =

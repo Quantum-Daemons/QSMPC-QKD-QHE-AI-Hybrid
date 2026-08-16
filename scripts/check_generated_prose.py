@@ -40,6 +40,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 from qsh.models import train  # noqa: E402  (for RUN_SCOPED)
+
 METRICS = ROOT / "models" / "metrics.json"
 TRAINERS = sorted((ROOT / "scripts" / "train").glob("*.py"))
 

@@ -14,7 +14,30 @@ them, so both are stated with the right attribution:
     is less constrained and so easier to overfit, while "Platt's method also has some overfitting
     control built in".
 
-Every count above is inside both regimes, so Platt is the method and isotonic is not.
+ROUND 46 CORRECTED THIS, AND THE CORRECTION IS ABOUT THE DENOMINATOR.
+
+Those thresholds are stated by both papers in CALIBRATION CASES - the size of the set the calibrator
+is fitted on. The counts above are POSITIVE EVENTS. They are different quantities, and this file
+compared one against the other: `models/metrics.json` records `n_calibration = 710969` for finance,
+which is 355x the UAI figure and 711x the ICML one, not "inside both regimes". The finance figure was
+also stale at 164 - `scripts/train/finance_aml.py` already records that as the 2D overlay
+subsample's count and puts the test split at 2,321 events.
+
+Read at primary source, ICML 2005 says the opposite of the conclusion drawn from it, verbatim:
+
+    "When there are 1000 or more points in the calibration set, Isotonic Regression always yields
+     performance as good as, or better than, Platt Scaling."
+
+SO WHY IS THE METHOD STILL PLATT? Because the honest answer is that this is now an OPEN MEASUREMENT
+rather than a settled choice. Both papers benchmark broadly balanced problems; at a 1-in-981 base
+rate the quantity that plausibly binds is the positive-event count, not the case count, and neither
+paper addresses that regime. Swapping to isotonic on the strength of a sentence about case counts
+would repeat the exact error this note is correcting, in the other direction.
+
+What the record already shows, from the same run: Platt improves Brier (0.00150259 -> 0.00145433) and
+DEGRADES log-loss by 8.7% (0.00965987 -> 0.01049835). A calibrator that helps one proper scoring rule
+and hurts another is not obviously the right one. Running isotonic on this split and comparing both
+metrics plus the CORP decomposition is conditioned **by Round 48**.
 
 Separately: no page here may draw a reliability DIAGRAM. Riley et al. (Stat Med 2021,
 doi:10.1002/sim.9025) put the floor for a flexible calibration curve at about 200 events; nothing
@@ -67,9 +90,13 @@ class Platt:
             "n_calibration": int(self.n_calibration),
             "positives_calibration": int(self.positives_calibration),
             "why_not_isotonic": (
-                "Platt outperforms isotonic below about 200-1000 calibration cases (Niculescu-Mizil "
-                "and Caruana, ICML 2005) and below about 2000 (same authors, UAI 2005); this "
-                "calibration set is inside both regimes, and isotonic is easier to overfit there."),
+                "OPEN, not settled - Round 46 found the denominator wrong. The ICML/UAI "
+                "thresholds (200-1000 and 2000) are CALIBRATION CASES; this set has 710,969, so "
+                "ICML 2005 in fact says isotonic is 'as good as, or better than' Platt here. "
+                "Platt is retained because those papers benchmark balanced problems and at a "
+                "1-in-981 base rate the binding quantity is plausibly the 2,321 positive events, "
+                "which they do not address. Platt improves Brier and degrades log-loss by 8.7% on "
+                "this split; the isotonic comparison is conditioned by Round 48."),
         }
 
 
