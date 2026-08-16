@@ -57,10 +57,16 @@ DECLARED_RESIDUALS = {
         "draws, and what the page publishes from it is an improvement RATIO plus the optimised "
         "per-pulse fraction, neither of which is a key length. Measured rather than asserted: the "
         "reported improvement is identical to four significant figures at 20,000, 200,000 and "
-        "2,000,000 pulses per evaluation (77.922% at every one, five seeds), because the decoy "
-        "bound is analytic in the channel and the sampled QBER only enters through an abort test "
-        "that never fires at this operating point. Raising it would cost 48x the work and move no "
-        "digit of anything displayed."
+        "2,000,000 pulses per evaluation - the INVARIANCE across block sizes is the exemption's "
+        "justification, and it holds seed by seed. The VALUE varies with the seed: 113.429% at "
+        "seed 0, and 113.429 / 113.431 / 106.354 / 109.1885 / 113.3703 for seeds 0-4, each of "
+        "those identical at all three pulse counts. That is because the decoy bound is analytic in "
+        "the channel and the sampled QBER only enters through an abort test that never fires at "
+        "this operating point. THE FIGURE HERE READ 77.922% AND WAS STALE ON ARRIVAL: that is the "
+        "pre-Round-47 measurement, and this round's own move of mu_signal 0.5 -> 0.3416 - committed "
+        "alongside this file - lowered the baseline SKR from 0.002368 to 0.0019765 bit/pulse while "
+        "leaving the optimum unchanged, so the ratio rose. Raising the sample would cost 48x the "
+        "work and move no digit of anything displayed."
     ),
 }
 
@@ -79,9 +85,16 @@ def _threshold(n_pulses_hint: int = 0) -> int:
     `minimum_pulses_for_positive_key(ch)` with the module's DEFAULT `FiniteKeyParams`, which are
     mu = 0.5 / nu = 0.1 - the intensities that shipped until this round. It therefore computed a
     threshold of 3.84e7 for a demo that runs at 0.3416 / 0.1417, and reported the shipped 2e7 block
-    as failing when it clears its actual threshold of 1.31e7 by a factor of 1.5. A gate that reads
-    the channel from config and the intensities from a default is the same half-a-fix this round
-    is named for, committed inside the gate that exists to catch it.
+    as failing when it clears its actual threshold of **1.406e7 by a factor of 1.42**. A gate that
+    reads the channel from config and the intensities from a default is the same half-a-fix this
+    round is named for, committed inside the gate that exists to catch it.
+
+    AND THE THRESHOLD IS 1.406e7, NOT THE 1.31e7 THIS DOCSTRING QUOTED FOR ONE ROUND. This helper
+    returns 14,055,773 - measurable by calling it. 13,078,257 (1.31e7) is what `optimise_parameters`
+    reports for its FULL solution, which also sets `p_signal` = 0.3764 and `p_z` = 0.5042; neither
+    ships (there is no `p_signal` config field and `basis_prob` is 0.5), so quoting the optimiser's
+    number as this build's threshold credited the config with two variables it does not carry.
+    `src/qsh/config/defaults.py` records the same correction.
     """
     from qsh.config import get_config
     from qsh.qkd.channel import ChannelParams

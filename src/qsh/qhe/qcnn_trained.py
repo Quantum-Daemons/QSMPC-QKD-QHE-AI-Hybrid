@@ -148,12 +148,24 @@ def infer(features, weights: dict) -> tuple[float, int, float]:
     #
     # It was not producing a wrong number, and that is the part worth recording. Both artifacts this
     # module serves are BINARY, so they pool all the way to a single survivor; `theta[n_conv+stages]`
-    # is then exactly that survivor's RY angle, and the RZ it dropped commutes with the <Z0>
-    # measurement below. Measured against the trainer on the shipped weights: 6.9e-07 on finance and
-    # 1.4e-06 on medical, which is float32 noise. Correct by two coincidences, not by construction.
+    # is then exactly that survivor's RY angle. HISTORICALLY - under the RY-then-RZ ordering in force
+    # while the old form was live - the RZ it dropped was the LAST gate before the readout and so
+    # commuted with the <Z0>. That argument does not describe the current tree: later in the same
+    # round the fc block was reordered to RZ-then-RY, and a trailing-diagonal RZ no longer exists to
+    # commute. Against the trainer of the revision that carried the old form, on that revision's
+    # weights and 24 rows, the gap was 6.9e-07 on finance and 1.4e-06 on medical - float32 noise, and
+    # correct by two coincidences rather than by construction. Both figures are HISTORICAL; the
+    # equivalent measurement on the current tree is the shipped-vs-numpy parity below.
     #
     # Seeded proof that it was one artifact away from breaking: at `readout_qubits=2` on 8 wires the
-    # register pools to TWO survivors, and the old form diverges from the trainer by **0.2701**.
+    # register pools to TWO survivors, and on the seed the repo's own gate pins -
+    # `tests/test_the_qcnn_agrees_across_languages.py::
+    #  test_the_old_fc_block_diverges_once_there_are_two_survivors`, torch seed 1, 16 rows - the old
+    # form diverges from the trainer by **0.0335** in class probability (0.0946 summed per row).
+    # That is the TEST's figure, re-measured on the current tree, and it is four orders of magnitude
+    # above the ~1e-06 float32 agreement the shipped binary artifacts show. An earlier revision of
+    # this comment said 0.2701, which is roughly 8x the reproducible value and matches no draw the
+    # repo pins; the divergence is seed-dependent, so only the pinned seed's number is quotable.
     fc = theta[n_conv + stages:].reshape(-1, 2)
 
     active = list(range(nq))

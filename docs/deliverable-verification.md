@@ -2157,11 +2157,16 @@ pass `config?.qkd_source_rate_mhz` directly.
   **seven**-wire draw, 0.8616, above all five 8-wire runs.
   **SUPERSEDED IN ROUND 47, AND THE SIGN FLIPPED.** Every figure in this bullet was measured on the
   hardware-efficient ansatz Round 46 replaced, through a readout Round 47 found was binning the class
-  index over a wire pooling had discarded. On the corrected circuit, same seed and same command,
-  telecom is **0.500452 at 7 wires against 0.458324 at 8** - the narrower one leads by 0.042128. The
-  five-seed spread was not re-run, so both sides of the reversal are single-seed. `0.8098`,
-  `+0.0786` and `0.8616` are retained as what was measured then and must not be quoted as current;
-  see the Round 47 section and `references/qcnn-width-ablation.md`.
+  index over a wire pooling had discarded. On the READOUT-CORRECTED circuit, same seed and same
+  command, telecom was **0.500452 at 7 wires against 0.458324 at 8** - the narrower one led by
+  0.042128. **Those two figures are THEMSELVES SUPERSEDED by the continuation section below; the
+  reversal is not.** Current, read from `models/qcnn_telecom_q7/weights.json` and
+  `models/qcnn_telecom/weights.json` after the analytically dead parameters were made live:
+  **0.541894 at 7 wires against 0.510963 at 8 - the narrower one still leads, by 0.030931**, a margin
+  that NARROWED by 0.011197 rather than opening. The five-seed spread was not re-run, so both sides
+  of the reversal are single-seed. `0.8098`, `+0.0786`, `0.8616`, `0.500452`, `0.458324` and
+  `0.042128` are all retained as what was measured then and must not be quoted as current; see the
+  Round 47 section and `references/qcnn-width-ablation.md`.
 - **RI9's smuggled well-formed key**, run as a bad re-vendor. Full output with the RI9 item above.
 
 ### `references/` PDFs: adjudicated per file, and the old rule was inverted
@@ -2311,9 +2316,14 @@ still the ASYMPTOTIC decoy bound, labelled as one on every surface; the composab
 quantity shown beside it, not a relabelling of the first.
 
 **The honest residual, and it is bigger than Round 46 recorded:** at 10e6 the 800 km downlink yields
-~3,660 sifted bits. Round 46 measured that against the refuted band and concluded ~30e6 pulses and
-~1.5 GB of Python array would clear it; both figures fall with the band. Against the corrected fibre
-threshold the shortfall is well over an order of magnitude, and the free-space threshold itself is
+**~2,440 sifted bits** - a 5-seed mean of 2,442, spread 2,397 to 2,470, measured at the intensities
+this round shipped (mu = 0.3416, nu = 0.1417). **This entry said ~3,660 for one round**, which is the
+figure at the retired mu = 0.5 / nu = 0.1 (5-seed mean 3,582); this subsection was rewritten in the
+same round that moved the intensities and the line was carried across without re-measurement. Round
+46 measured its own figure against the refuted band and concluded ~30e6 pulses and ~1.5 GB of Python
+array would clear it; both figures fall with the band, and the residual is larger still at the
+corrected intensities. Against the corrected fibre threshold the shortfall is well over an order of
+magnitude, and the free-space threshold itself is
 not quoted because it has not been evaluated - only its direction is safe, and it is the unhelpful
 one, since 24.48 dB of loss means lower gain per pulse and a higher QBER at equal statistics. The
 reason is physical rather than a setting. The free-space rate is asymptotic-only in a stronger sense
@@ -2369,7 +2379,11 @@ Classical logistic regression on the identical splits is ahead on all three use 
 after both retrains: 0.953488, 0.865672 and 0.976447 respectively.
 
 The claim that 8 and 9 qubits agree exactly SURVIVES both retrains and is now measured on three
-successive circuits - the values are byte-identical across widths on both binary corpora - and the
+successive circuits - the two widths are **identical on every recorded metric** on both binary
+corpora. That phrasing is deliberate and replaces "byte-identical", which was wrong of the
+ARTIFACTS: the recorded metrics match exactly, but `theta` does not (max |difference| 1.1e-05 on
+finance, 4.2e-06 on medical), `bias` differs on both and `scale` differs on finance. See the
+continuation section below, which states the same pair of facts. And the
 claim that telecom fell survives too, further than Round 46 knew: part of 0.614583 was the discarded
 wire's bit and was never the QCNN's to claim. The telecom-q7 figure has also crossed its 8-wire
 sibling, which reverses the width finding the Round 45 entry above restates. See the Round 47
@@ -2485,14 +2499,27 @@ would leave the propagation unexplained. What this round BUILT, recorded here:
 | | mu | nu | asymptotic bit/pulse | positive-key threshold |
 |---|---|---|---|---|
 | shipped until Round 47 (asymptotic optimum) | 0.5 | 0.1 | 0.002368 | 3.84e7 pulses, ~2.0 GB of array |
-| shipped now (finite-key optimum) | **0.3416** | **0.1417** | **0.001977** | **1.31e7 pulses, ~0.7 GB** |
+| shipped now (intensities only, from the finite-key optimum) | **0.3416** | **0.1417** | **0.001977** | **1.41e7 pulses, ~0.74 GB** |
 
-  16.5% of the headline asymptotic rate for a **2.9x** smaller block. The two optima are in different
-  places, which is the whole point: mu ~ 0.5 maximises a rate that assumes infinite statistics.
+  It COSTS 16.5% of the headline asymptotic rate and buys a **2.7x** smaller block. The two optima
+  are in different places, which is the whole point: mu ~ 0.5 maximises a rate that assumes infinite
+  statistics.
 
-- **`qkd.pulses` and `demo_alice_bob_pulses` are both 20,000,000**, past the 1.31e7 threshold with a
-  margin rather than at its edge: about **1,800** bits of composable key, against **217** bits at
-  1.4e7 - too thin to publish given this implementation's own 2-3x uncertainty.
+  **AND ONLY TWO OF THE FOUR OPTIMISED VARIABLES SHIPPED.** `optimise_parameters` searches mu, nu,
+  `p_signal` and `p_z`, and its full solution also sets `p_signal` = 0.3764 and `p_z` = 0.5042, at
+  which the threshold is 1.31e7 pulses. Neither has a shipped counterpart - there is no `p_signal`
+  config field and `QKDConfig.basis_prob` is 0.5 - so the threshold that applies to this build is the
+  **14,055,773** pulses the gate's own `_threshold()` computes, and both rows of the table above are
+  at `p_signal` = `p_z` = 0.5 and therefore comparable. **This table said 1.31e7 / 2.9x for one
+  round**, which credited the config with two variables it does not carry;
+  `src/qsh/config/defaults.py` records the same correction.
+
+- **`qkd.pulses` and `demo_alice_bob_pulses` are both 20,000,000**, past the 1.41e7 threshold with a
+  margin rather than at its edge: **1,626** bits of composable key, while 1.4e7 sits just BELOW the
+  threshold and yields **no composable key at all** (-12.0 bits). That is a factor of 1.42, which is
+  thin given this implementation's own 2-3x uncertainty. (The "about 1,800 bits, against 217 at
+  1.4e7" this bullet carried for one round are the optimiser's full-solution figures, not this
+  build's; at the shipped `p` the 1.4e7 comparison point has no key.)
 - What the page publishes at 50 km is still the **asymptotic** decoy bound, labelled as one on every
   surface. The composable length is a second quantity shown beside it, not a relabelling of the
   first.
@@ -2504,12 +2531,25 @@ The class index was binned by `i & (k-1)`, which reads wires 0..m-1. After pooli
 never touched again - supplied one bit of every class index while frozen at its PRE-pooling value.
 `layer_plan`'s own docstring justifies stopping the register reduction early on the premise that the
 readout wires ARE the survivors; the readout did not implement that premise. It now bins over the
-survivors and records them in each artifact as `readout.wires` = `[0, 2, 4]`.
+survivors and records them as `readout.wires` = `[0, 2, 4]` in the **two MULTICLASS artifacts** -
+`qcnn_telecom` (8 wires) and `qcnn_telecom_q7` (7 wires), 2 of the 6 QCNN artifacts. The four binary
+artifacts are untouched by this fix and deliberately carry NO `wires` key: the trainer emits
+`readout.kind` = `expval_z0` for them, a single `<Z0>` expectation that reads one surviving wire and
+bins nothing. An earlier revision said "each artifact", and `docs/verification-log.md` said "every
+`models/*/weights.json`" - a reviewer executing that on any of the four binary artifacts finds
+nothing.
 
-**Telecom's published macro F1 falls 0.614583 -> 0.458324**, and the previous number was inflated by
-the defect: wire 1's bit encoded the register BEFORE pooling mixed it away, which is information the
-architecture is supposed to have discarded. **0.458324 is itself SUPERSEDED later in this same round
-by 0.510963**, when the dead parameters below were made live; the fall it records is unaffected, and
+**Telecom's macro F1 falls 0.5692 -> 0.458324**, and the previous number was inflated by the defect.
+**The published headline appeared to fall 0.614583 -> 0.458324, and that pairing crosses metrics**:
+0.614583 was the previous run's ACCURACY - `git show 4ee258e:models/qcnn_telecom/weights.json`
+records `test_macro_f1` = 0.5692 beside it - so the defect-attributable macro-F1 loss is **0.110876**,
+not the 0.156259 this entry asserted for one round. The remaining 0.045 is the card mislabel that
+this round's own new gate, `tests/test_a_model_card_states_what_its_weights_state.py`, exists to
+catch; it is not the readout. The accuracy fall on its own is 0.614583 -> 0.502083 = 0.1125, so
+0.156259 is only ever the cross-metric subtraction. Wire 1's bit encoded the register BEFORE pooling
+mixed it away, which is information the architecture is supposed to have discarded. **0.458324 is
+itself SUPERSEDED later in this same round by 0.510963**, when the dead parameters below were made
+live; the fall it records is unaffected, and
 every figure in the rest of this subsection is the pre-dead-parameter one. Four configurations were
 run to see whether the loss was capacity rather than the fix, and **none of them recovered it** (macro
 F1, corrected readout throughout):
@@ -2521,11 +2561,12 @@ F1, corrected readout throughout):
 | 12 wires, 6 layers | 0.4362 | - | - |
 | 8 wires, 6 layers, per-survivor FC (SHIPPED) | **0.4583** | 0.4185 | 0.4553 |
 
-Ten runs across four configurations did not find the missing 0.156. That is recorded rather than
-retried until something flattered, and it is the evidence that the drop was the readout defect and
-not a capacity limit. The shipped seed is the HIGHEST of its three, so the headline is the top of a
-spread and not a median; the seed is deliberately not re-picked, because choosing one on test
-performance is test-set selection.
+Ten runs across four configurations did not find the missing **0.110876** - macro F1 against macro
+F1, measured from the previous circuit's own 0.5692 and not from the 0.614583 the row above records
+as an accuracy mislabelled as an F1. That is recorded rather than retried until something flattered,
+and it is the evidence that the drop was the readout defect and not a capacity limit. The shipped
+seed is the HIGHEST of its three, so the headline is the top of a spread and not a median; the seed
+is deliberately not re-picked, because choosing one on test performance is test-set selection.
 
 **Every published QCNN metric, as the artifacts stated them AT THIS POINT IN THE ROUND. The QCNN
 column below is SUPERSEDED** by the retrain recorded in "Round 47, continued"; the classical and
@@ -2588,22 +2629,47 @@ for that defect, in the language that had already been fixed twice in it.
 
 **It was not producing a wrong number, and that is the part worth recording.** Both artifacts this
 module serves are BINARY, so they pool all the way to a single survivor; `theta[n_conv + stages]` is
-then exactly that survivor's RY angle, and the RZ it dropped commutes with the `<Z0>` measurement it
-ends on. Measured against the trainer on the shipped weights, the gap is **6.9e-07** on finance and
-**1.4e-06** on medical - float32 noise. Correct by two coincidences rather than by construction, and
-one artifact away from breaking: at `readout_qubits = 2` on 8 wires the register pools to TWO
-survivors and the old form diverges from the trainer by **0.2701**. A shape check now raises rather
-than applying whatever angles the artifact happens to carry.
+then exactly that survivor's RY angle. **The second coincidence is HISTORICAL and must be read as
+such:** under the RY-then-RZ ordering in force while the old form was live, the RZ it dropped was the
+LAST gate before the readout and so commuted with the `<Z0>`. That argument was invalidated LATER IN
+THIS SAME ROUND, when the fc block was reordered to RZ-then-RY - see "Two classes of parameter were
+analytically dead" below - so there is no longer a trailing diagonal to commute. Measured against the
+trainer of the revision that carried the old form, on that revision's weights and the 24 rows the
+gate uses, the gap was **6.9e-07** on finance and **1.4e-06** on medical - float32 noise. Both
+figures belong to that revision, not to the current tree.
+
+Correct by two coincidences rather than by construction, and one artifact away from breaking: at
+`readout_qubits = 2` on 8 wires the register pools to TWO survivors and the old form diverges from
+the trainer by **0.0335** in class probability (0.0946 summed per row). That is the figure the repo's
+own seeded gate produces -
+`tests/test_the_qcnn_agrees_across_languages.py::test_the_old_fc_block_diverges_once_there_are_two_survivors`,
+torch seed 1, 16 rows - re-measured on the current tree. **This entry said 0.2701 for one round**,
+which is about 8x the reproducible value and matches no draw the repo pins; the divergence is
+seed-dependent, so only the pinned seed's number is quotable, and the gate's own assertion is
+`> 1e-2`, which is why nothing caught the overstatement. A shape check now raises rather than
+applying whatever angles the artifact happens to carry.
 
 ### The decoy bound was handed the wrong error term, in three languages at once
 
 `_decoy_secure_fraction` was passed `intrinsic_qber`, which is `misalignment + 0.5 * p_dark / eta`,
 where Ma et al. want `e_det` - the probability that a detected SIGNAL photon lands in the wrong
 detector. The dark-count contribution is the separate `e0 * y0` term inside the same function, so the
-background was charged twice and the bound came out **LOW by 0.57% on the 50 km fibre and by 18.9% on
-the 800 km free-space downlink**, where eta is 17x smaller and the dark-count term correspondingly
-larger. Safe direction, wrong number, and worst exactly where the link is hardest. Fixed in
-`src/qsh/qkd/bb84.py`, `web/src/lib/quantumSim.ts` and `web/scripts/check_qkd.mjs` together, which is
+background was charged twice and the bound came out LOW - by how much depends on the intensities, and
+an earlier revision of this sentence gave "0.57% and 18.9%" without naming them. **18.9% is not a
+"low by" figure at any intensity pair**: it is the same gap with the WRONG bound as denominator, i.e.
+how much the fix RAISES the number, which is the convention `docs/verification-log.md` correctly uses
+for it. Both conventions, at both pairs:
+
+| intensities | fibre 50 km | 800 km downlink |
+|---|---|---|
+| mu 0.5 / nu 0.1, in force while the double charge shipped | 0.5673% low (0.5705% raise) | **15.9152% low** (18.9276% raise) |
+| mu 0.3416 / nu 0.1417, **shipped now** | 0.4984% low (0.5009% raise) | **13.6638% low** (15.8262% raise) |
+
+The fibre figure rounds to 0.57% under both conventions, which is exactly what let the (0.57, 18.9)
+pair be copied out of a "RAISES" sentence into a "LOW by" one without the mismatch showing. eta is
+17.5x smaller on the downlink and the dark-count term correspondingly larger. Safe direction, wrong
+number, and worst exactly where the link is hardest. Fixed in `src/qsh/qkd/bb84.py`,
+`web/src/lib/quantumSim.ts` and `web/scripts/check_qkd.mjs` together, which is
 the discipline the four previous instances exist to teach. `intrinsic_qber` stays correct for the
 OBSERVED QBER, which is the quantity it names.
 
@@ -2671,11 +2737,30 @@ move the readout at any input**. There were two of them and they had different m
 **1. The fully-connected block's per-survivor RZ.** It was applied AFTER the RY, and the only
 operations after that block are a CNOT ring - a basis permutation - and `|amplitude|^2`, which
 discards phase. A diagonal gate applied last cannot move a computational-basis readout, and on the
-two binary artifacts it commutes with the `<Z0>` it is measured in. MEASURED before the fix: moving
-every fc RZ by 1.234 rad changed the telecom readout by **5.96e-08** and the finance readout by
-**8.94e-08** - float32 noise - against **2.6e-01** and **5.9e-01** for the RY angles beside them.
-These angles were added earlier in this same round, for faithfulness to Cong, Choi & Lukin's "a
-unitary F on the remaining qubits". Half of what was added was decoration.
+two binary artifacts it commutes with the `<Z0>` it is measured in.
+
+RE-MEASURED, WITH THE RECIPE, BECAUSE THE FIRST SET OF FIGURES HERE HAD NEITHER. An earlier revision
+of this paragraph read "moving every fc RZ by 1.234 rad changed the telecom readout by 5.96e-08 and
+the finance readout by 8.94e-08 - float32 noise - against 2.6e-01 and 5.9e-01 for the RY angles
+beside them", with no seed, no inputs and no command, on weights that a later retrain in this same
+round replaced. Those figures are WITHDRAWN. The procedure that replaces them: reconstruct the
+pre-fix order from `git show 8017538^:scripts/train/qcnn_variational.py`, take each artifact's
+`theta` from `models/qcnn_*/weights.json`, feed `x = tanh(randn(8, n_qubits) * 0.7)` at
+`torch.Generator().manual_seed(0)`, add 1.234 rad to every fc RZ angle - and separately to every fc
+RY angle - and take `max |delta|` of `circuit()`:
+
+| artifact | fc RZ, pre-fix order | fc RY, pre-fix order | fc RZ, shipped order |
+|---|---|---|---|
+| `qcnn_telecom` | **5.96e-08** | 1.77e-01 | 2.28e-01 |
+| `qcnn_telecom_q7` | **1.19e-07** | 3.64e-01 | 1.59e-01 |
+| `qcnn_finance` | **5.96e-08** | 9.89e-01 | 4.82e-02 |
+| `qcnn_medical` | **8.94e-08** | 5.12e-01 | 7.16e-02 |
+
+The three pre-fix RZ figures are float32 ULPs - 2^-24, 2^-23 and 1.5 * 2^-24 - so the angles were
+inert rather than weak, which is the claim. `8.94e-08` belongs to MEDICAL under this recipe, not to
+finance as the withdrawn sentence had it. These angles were added earlier in this same round, for
+faithfulness to Cong, Choi & Lukin's "a unitary F on the remaining qubits". Half of what was added
+was decoration.
 
 **2. The 8th conv angle of each stage's final layer round.** An `rz` on the wire pooling is about to
 discard. Its only later interaction is as the CONTROL of a CRY, which is diagonal in that wire's
@@ -2685,7 +2770,9 @@ of 48 on telecom, **carried since Round 46**.
 **THE FIX WAS ORDERING, NOT DELETION.** RZ before RY in both places, so the phases RZ writes are
 mixed back into amplitudes by the RY that follows. No parameter was removed and no count changed;
 what changed is how many of them the readout can see. Measured on the same perturbation after the
-change: **1.4e-01**, against 5.96e-08 before.
+change, per artifact: **4.82e-02 to 2.28e-01** - the right-hand column of the table above. A single
+`1.4e-01` was quoted here for one rewrite; it matches no artifact under the stated recipe and is
+withdrawn with the rest of that set.
 
 Counted per artifact, by perturbing every angle under the pre-fix ordering:
 
@@ -2759,7 +2846,7 @@ wrong as a baseline for a different reason each.
 The first row is the one to watch for: it is the largest, it belongs to a deleted circuit, and it is
 what an older document offers a reader asking what telecom scored.
 
-### The width reversal holds and the gap GREW; the pad wire is still inert
+### The width reversal holds and the gap NARROWED (0.042128 -> 0.030931); the pad wire is still inert
 
 | telecom macro F1 | 8 wires | 7 wires | delta |
 |---|---|---|---|
@@ -2835,11 +2922,21 @@ and not the other - which is this round's entire subject. They guard on
 `if not ESBUILD.exists(): pytest.skip(...)`. `web/node_modules` is gitignored and the Python CI job
 installed no Node, so on a fresh checkout they reported SKIP and the workflow went green.
 
-**MEASURED on a clone of the tip: 20 collected, 11 passed, 9 SKIPPED.** Proven consequence: seeding
-the pre-Round-47 shared-scalar fully-connected block into `quantumSim.ts` fails these gates by a
-readout difference of 0.585 when esbuild is present, and passes the entire workflow when it is not.
-The local runner `scripts/ci_local.sh` was therefore strictly STRONGER than CI, which is the reverse
-of what a CI gate is for.
+**MEASURED on a clone of the tip with no `web/node_modules`: 21 collected, 11 passed, 10 SKIPPED** -
+6 in `tests/test_the_browser_computes_the_bound_the_page_names.py` and 4 in
+`tests/test_the_qcnn_agrees_across_languages.py`. This entry said 20 / 11 / 9 for one round; that was
+the count one commit earlier, and the commit that published it added a 21st gate which skips too.
+
+Proven consequence, with the seeding procedure stated: replace the per-survivor `fcAt` pair in
+`quantumSim.ts` with `for (const q of active) RY(q, w.theta[nConv + stages]);` - the pre-Round-47
+shared scalar - and `tests/test_the_qcnn_agrees_across_languages.py` fails FOUR gates when esbuild is
+present, at maximum readout differences **0.399170** (telecom-q7), **0.331032** (telecom),
+**0.016233** (medical) and **0.008699** (finance), while the entire workflow passes when esbuild is
+absent. **The single 0.585 this entry quoted is HISTORICAL and was stale in its own commit:** it
+reproduces exactly - 0.585404 on telecom - against the PRE-RETRAIN weights of `f5861c9`, and the
+commit that published the figure retrained all six artifacts in the same change. The local runner
+`scripts/ci_local.sh` was therefore strictly STRONGER than CI, which is the reverse of what a CI gate
+is for.
 
 `.github/workflows/ci.yml` now installs Node 22, runs `npm ci` in `web/`, and sets
 `QSH_REQUIRE_BROWSER_GATES=1`, which turns the skip into a failure. A gate that cannot run is not a
@@ -2855,6 +2952,52 @@ gate that passes; it is a gate nobody is running.
 | `docs/deliverable-verification.md`, Round 47 section | 0.458324 / 0.500452 / 0.84058 / 0.8125 / 0.860465 marked superseded where they appear as current; the four-configuration sweep kept as capacity evidence |
 | `references/REFERENCES.md`, `references/qcnn-entanglement-ablation.md`, `references/qcnn-vs-published-wdbc.md` | current values inserted where the previous retrain's figures were being presented as current |
 | `docs/verification-log.md`, Round 47 entry | the list of quantities a visitor can see, and which have moved since the last walked bundle, extended with the eavesdropper and QCNN changes |
+
+### Every Round 47 figure an adversarial re-measurement found wrong, and what it is now
+
+The round above wrote a large number of quantitative claims. They were re-measured against this tree,
+one at a time, and the ones below did not hold. Each row states what was CLAIMED, what is MEASURED,
+and by what. Nothing here changes a conclusion; the directions all survive. What changed is that a
+figure was quoted from a superseded intensity setting, from a pre-retrain artifact, from a different
+metric, or with no recipe at all - which is the same class of defect as the one-language fix this
+round is named for, in the numbers rather than in the code.
+
+| claimed | measured | how |
+|---|---|---|
+| held-out sizes 171 / 1200 / 960 on the six cards | **86 / 600 / 480** | the trainer recorded validation PLUS test as `n_test`; the metrics were always on the smaller slice |
+| telecom "the missing 0.156" | **0.110876** | 0.5692 (the previous artifact's macro F1) minus 0.458324; 0.156259 subtracted a macro F1 from an ACCURACY |
+| "the two agree to 2.4e-07" (finance, medical cards) | **1.1e-06** finance, **4.7e-07** medical at 24 rows | the repo's own parity harness on the CURRENT weights; 2.4e-07 is the pre-Round-47 circuit |
+| "0.57% low on fibre, 18.9% low on the 800 km downlink" | **0.4984% / 13.6638% low** at the shipped intensities; 0.5673% / 15.9152% low at mu 0.5 / nu 0.1 | 18.9% is the RAISE convention, not "low by", at any pair |
+| "20 collected, 11 passed, 9 skipped" | **21 collected, 11 passed, 10 skipped** | fresh clone of the tip with no `web/node_modules` |
+| "0.2701 divergence at readout_qubits=2" | **0.0335** | the repo's own seeded gate for that claim, torch seed 1, 16 rows |
+| "fails these gates by a readout difference of 0.585" | **0.399170 / 0.331032 / 0.016233 / 0.008699**, four gates | seeding the old shared scalar at the tip; 0.585404 reproduces only against `f5861c9`'s pre-retrain weights |
+| "`readout.wires` in every `models/*/weights.json`" | **the two multiclass artifacts**, 2 of 6 | the four binary ones carry `readout.kind` = `expval_z0` and no `wires` key |
+| "at 10e6 the 800 km downlink yields ~3,660 sifted bits" | **~2,440** (5-seed mean 2,442) | `run_bb84` on the shipped free-space channel at the shipped intensities |
+| "77.922% at every one" for the OptiQKD improvement | **113.429%** at seed 0, 106.354 to 113.431 across seeds 0-4 | `optimize_qkd`; the INVARIANCE across pulse counts is real and is what the exemption rests on |
+| "at 40_000 the decoy bound yields 94 secure bits" | **79** | `run_bb84(40_000, 50 km)`; 94 is the mu 0.5 / nu 0.1 figure |
+| Round 45 note giving 0.500452 / 0.458324 as the corrected circuit's answer | **0.541894 / 0.510963** | `models/qcnn_telecom{,_q7}/weights.json`; the older pair is now marked superseded in place |
+| the dropped RZ "commutes with the `<Z0>`" | true of the RY-then-RZ ordering only | the fc block was reordered to RZ-then-RY later in the same round |
+| 8-vs-9 wires "byte-identical" | **identical on every recorded metric**; `theta` differs by 1.1e-05 / 4.2e-06 | key-by-key diff of the two artifacts |
+| dead-parameter figures 5.96e-08 / 8.94e-08 / 2.6e-01 / 5.9e-01 / 1.4e-01 | re-measured per artifact with the recipe stated - see the table in "Two classes of parameter were analytically dead" | pre-fix circuit from `8017538^`, shipped theta, torch seed 0 |
+| "the largest of the four effects" (+0.053, telecom card) | the largest of the three GAINS; the finance regression of -0.105286 is twice as large | the four before/after pairs read from the artifacts at each commit |
+| "the reversal holds and WIDENS" / "the gap GREW" | the gap **NARROWED**, 0.042128 -> 0.030931 | the two macro-F1 pairs the same sentences quote |
+| finance_q9 / medical_q9: "both of those figures belong to the Round 46 circuit" | only one does; 0.813559 / 0.813953 are the RETIRED ansatz's stored metrics | `git show e94ea90:models/qcnn_*_q9/weights.json` |
+| width ablation: Round 46's 0.976667 "made 0.84058" | an accuracy against a minority-class F1; finance ROSE on both metrics over that step | the artifacts at `4ee258e` and `3c63ea8` |
+| "1.31e7 threshold, ~1,800 bits at 2e7, 217 bits at 1.4e7" | **1.406e7**, **1,626** bits, and **no key at all** (-12.0 bits) at 1.4e7 | the shipped config ships two of the optimiser's four variables; `p_signal` and `p_z` are not config keys |
+
+One correction in this pass was itself wrong, and it is recorded because that is the same failure
+one level up. The "0.45 max readout difference, argmax disagreeing on 39 of 64 telecom rows" in
+`web/src/lib/quantumSim.ts` was withdrawn as unrecoverable, on the grounds that two retrains had
+replaced the artifacts. It is recoverable: checking out `3c63ea8`, using ITS trainer and ITS
+`models/qcnn_telecom/weights.json`, and collapsing only the fully-connected block to the shared
+scalar reproduces **0.585404 with 8 of 8 argmax disagreements at n=8**, and **0.598319 with 62 of
+64 at n=64**, on rows built as `tanh(standardise(randn(n, 7) * 0.7))` at torch seed 0.
+
+The published figures therefore UNDERSTATED the defect rather than overstating it - the only claim
+in this round's record that erred in that direction - and 39 of 64 is reachable only by feeding the
+trainer unstandardised rows, which violates the preprocessing contract the round's own test file
+documents. A claim withdrawn for being unmeasurable, when it was measurable all along, is the same
+defect as a claim asserted without measurement.
 
 ## Verification assets added in Rounds 22-23
 

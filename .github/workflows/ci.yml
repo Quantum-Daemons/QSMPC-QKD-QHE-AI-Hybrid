@@ -81,11 +81,21 @@ jobs:
           # which is this project's most-repeated defect. They guard on
           # `if not ESBUILD.exists(): pytest.skip(...)`, `web/node_modules` is gitignored, and this
           # job installed no Node - so on a fresh checkout they reported SKIP and the run went
-          # green. MEASURED on a clone of the tip: 20 collected, 11 passed, **9 skipped**.
+          # green. MEASURED on a clone of the tip with no `web/node_modules`: 21 collected,
+          # 11 passed, **10 skipped** - 6 in tests/test_the_browser_computes_the_bound_the_page_
+          # names.py and 4 in tests/test_the_qcnn_agrees_across_languages.py. An earlier revision
+          # of this comment said 20 / 11 / 9, which was the count one commit earlier: the commit
+          # that wrote the comment added a 21st gate, and it skips too.
           #
           # Proven consequence: seeding the pre-Round-47 shared-scalar fully-connected block into
-          # `quantumSim.ts` fails these gates by a readout difference of 0.585 when esbuild is
-          # present, and passes the entire workflow when it is not. The local runner
+          # `quantumSim.ts` - replacing the per-survivor `fcAt` pair with
+          # `for (const q of active) RY(q, w.theta[nConv + stages]);` - fails FOUR of these gates
+          # when esbuild is present, at maximum readout differences 0.399170 (telecom-q7), 0.331032
+          # (telecom), 0.016233 (medical) and 0.008699 (finance), and passes the entire workflow
+          # when it is not. The single "0.585" an earlier revision quoted was measured on the
+          # PRE-RETRAIN weights of f5861c9, where the same seeding gives 0.585404 on telecom; the
+          # commit that published the figure retrained all six artifacts, so it was stale on
+          # arrival. The local runner
           # (`scripts/ci_local.sh`) was strictly STRONGER than CI, which is the reverse of what a
           # CI gate is for.
           #
