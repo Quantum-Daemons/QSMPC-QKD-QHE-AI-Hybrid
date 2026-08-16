@@ -1,14 +1,22 @@
 # Variational QCNN - finance, 9 wires
 
-> **Round 47 retrained this artifact after two circuit corrections.** Current headline
-> `minority_class_f1` = **0.84058**. The card this replaces contradicted itself: its banner gave the
-> minority-class F1 as 0.976667 while its own table gave 0.813559, and 0.976667 is the number that
-> table printed as the ACCURACY. A rewrite had written accuracy into the F1 field. Both figures
-> belonged to the Round 46 circuit in any case, and neither is this artifact's.
+> **Round 47 retrained this artifact a SECOND time, after finding that 4 of its 77 parameters could
+> not move the readout at any input - and this is the use case where the fix made the headline
+> WORSE.** Current headline `minority_class_f1` = **0.735294**, against 0.84058 on the card this
+> replaces: **-0.105**. Three of the four QCNN circuits gained from the identical change and this
+> one regressed; the honest reading, and the reason it is not being re-seeded, is on
+> [`models/qcnn_finance/README.md`](../qcnn_finance/README.md).
 >
-> Round 46's banner is superseded rather than deleted: it re-measured this artifact after the
-> hardware-efficient ansatz was replaced with a real QCNN, and its figures now belong to a retired
-> circuit.
+> The four dead angles were `theta[76]`, the fully-connected block's RZ applied AFTER its RY, and
+> `theta[23]`, `theta[47]` and `theta[71]`, the 8th conv angle of each stage's final layer round -
+> an `rz` on the wire that stage's pooling is about to discard. **The fix was ORDERING, not
+> deletion**: RZ before RY, so the phases RZ writes are mixed back into amplitudes by the RY that
+> follows. `theta` is still 77 scalars and all 77 are now reachable.
+>
+> Two earlier banners are superseded rather than deleted. The one before last contradicted itself -
+> it gave the minority-class F1 as 0.976667 while its own table gave 0.813559, and 0.976667 was that
+> table's ACCURACY - and both of those figures belong to the Round 46 circuit. 0.84058 belongs to
+> this circuit with four of its angles inert.
 
 NOT PUBLISHED TO HUGGING FACE, AND NOT IN THE MODEL REGISTRY. This is a browser-side demonstration
 circuit for the `finance_aml` page of
@@ -28,21 +36,22 @@ question telecom answered from the other side: **is unencoded capacity worth any
 ## The answer, on the corrected circuit: no, and now it is exact
 
 **Every recorded metric is identical between 8 and 9 wires.** Not close - identical, to all six
-digits both artifacts record: minority-class F1 0.84058, accuracy 0.981667, and the same floors,
+digits both artifacts record: minority-class F1 0.735294, accuracy 0.97, and the same floors,
 prevalence and split sizes. The medical pair says the same thing at the same two widths, so this is
-now measured twice on two corpora.
+measured twice on two corpora - and it has now survived two retrains that moved the values
+underneath it, which is a stronger statement than surviving one.
 
 The mechanism is the shared filter. One two-qubit filter is applied at every position, so no wire has
 angles of its own and a pad held in |0> is capacity the filter cannot allocate. That is a property of
 the architecture rather than of this corpus, which is why it reproduces exactly rather than
 approximately.
 
-The trained parameter vectors are not bit-identical: 4 of 77 angles differ by more than 1e-4. All
-four are angles the `<Z0>` readout cannot see - three are the final RZ on the wire each pooling stage
-discards, one is the FC RZ on the measured survivor - and moving all four by 1.234 radians through
-the trainer's own `circuit()` changes `<Z0>` by 3.6e-07 on a 64-row batch, against 0.37 for a
-neighbouring conv angle. They carry no gradient signal and drift on numerical noise. No published
-number moves with them.
+**The parameter vectors converged too, and the dead-parameter fix is why.** Before it, 4 of 77 angles
+differed between the widths by more than 1e-4 - `theta[23]`, `theta[47]`, `theta[71]` and
+`theta[76]`, exactly the four the `<Z0>` readout could not see. Carrying no gradient signal, they
+drifted on numerical noise while no published number moved with them. Now that the ordering makes
+them reachable, **zero of 77 angles differ by more than 1e-4**: the largest disagreement anywhere in
+the vector is 1.1e-05, and `scale` and `bias` agree to 4.8e-07 and 6.0e-07.
 
 **The five-seed width comparison this card used to publish is SUPERSEDED.** It reported 8 wires at
 median 0.7143 and 9 wires at median 0.6800 on minority-class F1, with seed 0 flattering the wider
@@ -56,10 +65,10 @@ rather than deleted, because they are the evidence that the conclusion moved.
 
 | quantity | value |
 |---|---|
-| `minority_class_f1` (headline) | 0.84058 |
+| `minority_class_f1` (headline) | 0.735294 |
 | logistic regression, same split, minority-class F1 | 0.865672 |
 | all-positive F1 floor | 0.098257 |
-| accuracy (companion, not the headline) | 0.981667 |
+| accuracy (companion, not the headline) | 0.97 |
 | logistic regression accuracy | 0.985 |
 | majority-class accuracy floor | 0.948333 |
 | test prevalence | 0.051667 |
@@ -67,8 +76,9 @@ rather than deleted, because they are the evidence that the conclusion moved.
 
 Accuracy is not the headline and is shown only so the floor beside it can be read: at a prevalence of
 0.051667, predicting "legitimate" for every row scores 0.948333. **This circuit beats its F1 floor and
-loses to classical logistic regression on the same split**, by 0.025092 of minority-class F1, which is
-the same verdict the 8-wire model carries and the same one it carried before the retrain.
+loses to classical logistic regression on the same split**, by 0.130378 of minority-class F1 and by
+0.015 of accuracy - the same verdict the 8-wire model carries and the same direction it carried
+before either retrain. The size of the gap grew; the direction did not change.
 
 **Seed position:** unmeasured for this circuit. The five-seed spread that used to place this card's
 seed - "best of five", 0.813559 against a median of 0.6800 - was measured on the retired ansatz and

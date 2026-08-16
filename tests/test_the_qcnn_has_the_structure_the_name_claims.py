@@ -214,3 +214,57 @@ def test_no_shipped_artifact_claims_an_architecture_it_does_not_have() -> None:
         + "\n\nRetrain them. A card naming an architecture over weights from a different circuit is "
         "the same defect as the label this round removed, one layer down."
     )
+
+
+def test_every_trainable_parameter_reaches_the_readout() -> None:
+    """No parameter may be analytically dead.
+
+    WHY THIS EXISTS
+
+    Round 47 gave the fully-connected block a per-survivor RY AND RZ, to match Cong, Choi & Lukin's
+    "a unitary F on the remaining qubits" rather than the single shared scalar that was there. Half
+    of it was decoration. The block is the LAST thing before the readout, and the only operations
+    after it are a CNOT ring - which permutes basis states - and `|amplitude|**2`, which discards
+    phase. RZ is diagonal. A diagonal gate applied last cannot move a computational-basis readout.
+
+    MEASURED on the shipped artifacts, before the order was corrected: moving every fc RZ angle by
+    1.234 rad changed the telecom readout by 5.96e-08 and the finance readout by 8.94e-08 - float32
+    noise - against 2.6e-01 and 5.9e-01 for the RY angles beside them. A quarter of the telecom
+    model's fully-connected parameters, and half of finance's, were untrainable in the strict sense
+    that no gradient could ever reach them.
+
+    The fix was ordering, not deletion: RZ before RY, so the phases RZ writes are mixed back into
+    amplitudes by the RY that follows. After the change the same perturbation moves the readout by
+    1.4e-01.
+
+    WHY THIS IS ASSERTED AS A PROPERTY OVER ALL PARAMETERS
+
+    Because the specific mistake is not the interesting one. Any circuit that ends in a diagonal
+    gate, or that pools a wire away before its angle is used, or that indexes past the end of a
+    block, produces a parameter the optimiser will happily carry and never move. That is invisible
+    to every accuracy metric - the model simply trains the parameters that work - and invisible to
+    the parameter-count checks above, which count angles rather than asking whether they do
+    anything.
+    """
+    q = _mod()
+    dead: list[str] = []
+    for nq, ro, layers in ((8, 3, 6), (8, 0, 3), (7, 3, 6), (9, 0, 3), (12, 3, 6)):
+        n = q.param_count(nq, readout_qubits=ro, layers=layers)
+        g = torch.Generator().manual_seed(0)
+        theta = torch.randn(n, generator=g) * 0.6
+        x = torch.tanh(torch.randn(8, nq, generator=g) * 0.7)
+        base = q.circuit(x, theta, nq=nq, readout_qubits=ro, layers=layers).detach()
+        for i in range(n):
+            bumped = theta.clone()
+            bumped[i] += 1.234                      # large enough that a live angle cannot hide
+            out = q.circuit(x, bumped, nq=nq, readout_qubits=ro, layers=layers).detach()
+            if float((base - out).abs().max()) < 1e-5:
+                dead.append(f"nq={nq} readout={ro} layers={layers}: theta[{i}]")
+    assert not dead, (
+        "these parameters cannot move the readout at any input - the optimiser carries them and no "
+        "gradient ever reaches them:\n  " + "\n  ".join(dead)
+        + "\n\nA dead parameter is invisible to accuracy, because the model just trains the ones "
+        "that work, and invisible to a parameter count, because it is still counted. The usual "
+        "cause is a diagonal gate applied last: RZ before a computational-basis readout is "
+        "unobservable, and so is anything separated from the readout by only a basis permutation."
+    )

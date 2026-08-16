@@ -1,15 +1,24 @@
 # Variational QCNN - telecom, 7 wires
 
-> **Round 47 retrained this artifact after two circuit corrections.** The multiclass readout had been
-> binning the class index over wires 0..m-1, which on a wider register includes wires pooling
-> discarded; it now bins over the SURVIVING wires, recorded in `weights.json` as `readout.wires` =
-> [0, 2, 4]. The fully-connected block had been one shared scalar angle applied to every survivor; it
-> is now a per-survivor RY+RZ, as Cong, Choi & Lukin specify. Current headline `macro_f1` =
-> **0.500452**, against **0.731204** on the card this replaces.
+> **Round 47 retrained this artifact a SECOND time, after finding that 4 of its 55 parameters could
+> not move the readout at any input.** Three were the fully-connected block's per-survivor RZ,
+> applied AFTER the RY, with only a CNOT ring - a basis permutation - and `|amplitude|^2` between
+> them and the readout; a diagonal gate applied last cannot move a computational-basis readout. The
+> fourth is `theta[47]`, the 8th angle of the last conv round, an `rz` on the wire pooling is about
+> to discard, whose only later interaction is as the CONTROL of a CRY and then marginalisation.
 >
-> Round 46's banner is superseded rather than deleted: it re-measured this artifact after the
-> hardware-efficient ansatz was replaced with a real QCNN, and its figure now belongs to a retired
-> circuit.
+> **The fix was ORDERING, not deletion**: RZ before RY in both places, so the phases RZ writes are
+> mixed back into amplitudes by the RY that follows. `theta` is still 55 scalars; what changed is
+> that all 55 are now reachable from the readout.
+> `tests/test_the_qcnn_has_the_structure_the_name_claims.py::test_every_trainable_parameter_reaches_the_readout`
+> perturbs every parameter at five (width, readout, layers) configurations and fails if one cannot
+> move the output.
+>
+> Current headline `macro_f1` = **0.541894**, against 0.500452 on the card this replaces - **+0.041**.
+> Three of the four artifacts gained from this fix and one regressed; see
+> `models/qcnn_finance/README.md` for the one that lost 0.105. Every earlier banner on this card is
+> superseded rather than deleted: 0.731204 belongs to the retired hardware-efficient ansatz and
+> 0.500452 to this circuit with half of its fully-connected block still inert.
 
 NOT PUBLISHED TO HUGGING FACE, AND NOT IN THE MODEL REGISTRY. This is a browser-side demonstration
 circuit for the `telecom_ids` page of
@@ -35,10 +44,17 @@ then a fully-connected block on the three survivors [0, 2, 4], all 7 features en
 `RY(tanh(z) * pi)` on wires 0-6 with no padding wire.
 
 `theta` is **55** scalars: 48 conv (1 stage x 6 rounds x 8 angles in the shared filter), 1 pool
-angle, and 6 in the fully-connected block. The fully-connected block is per-survivor RY+RZ - 3
+angle, and 6 in the fully-connected block. The fully-connected block is per-survivor RZ+RY - 3
 survivors x 2 angles - and is NOT shared; weight sharing is a property of the convolution layers,
 which is what makes them convolutions. It stays O(log N) because the survivor count is bounded by
 where pooling stops, not because F is one angle.
+
+**The RZ comes first, and the order is load-bearing rather than stylistic.** With RY first, RZ is a
+diagonal gate applied last, and a diagonal gate applied last cannot move a computational-basis
+readout - the only things between it and the measurement are a CNOT ring, which permutes basis
+states, and `|amplitude|^2`, which discards phase. The same argument retires the 8th angle of the
+last conv round, which sits on the wire pooling discards and is thereafter only a CRY control.
+Measured under the old order, 4 of these 55 angles could not move the readout at any input.
 
 Readout, class map and scaling convention are identical to the 8-wire card next door
 (`readout_qubits: 3`, `bit_order: "lsb_first"`, `wires: [0, 2, 4]`,
@@ -61,8 +77,8 @@ Same corpus, split, seed, layers and epoch budget as the 8-wire model. Only the 
 
 | quantity | value |
 |---|---|
-| `macro_f1` (this circuit) | 0.500452 |
-| accuracy (companion, not the headline) | 0.541667 |
+| `macro_f1` (this circuit) | 0.541894 |
+| accuracy (companion, not the headline) | 0.585417 |
 | logistic regression, identical split, macro F1 | 0.976447 |
 | logistic regression accuracy | 0.977083 |
 | uniform-random macro F1 floor | 0.125 |
@@ -71,7 +87,7 @@ Same corpus, split, seed, layers and epoch budget as the 8-wire model. Only the 
 | classes predicted | 8 |
 | n_train / n_test | 2240 / 960 |
 
-**This model beats its floors and loses to classical logistic regression by 0.475995 of macro F1.**
+**This model beats its floors and loses to classical logistic regression by 0.434553 of macro F1.**
 The LR figure is identical to the 8-wire run's because it never sees the circuit, which is a useful
 control: an unchanged baseline is evidence the data path did not move.
 
@@ -79,34 +95,40 @@ Per class, from this run:
 
 | class | F1 |
 |---|---|
-| detector_blinding | 0.960526 |
-| photon_number_splitting | 0.888889 |
-| combined | 0.646154 |
-| wavelength_trojan | 0.5 |
-| trojan_horse | 0.446429 |
-| normal | 0.4 |
-| intercept_resend | 0.161616 |
-| rng_manipulation | 0.0 |
+| detector_blinding | 0.993197 |
+| photon_number_splitting | 0.941176 |
+| combined | 0.720588 |
+| rng_manipulation | 0.635135 |
+| intercept_resend | 0.440678 |
+| trojan_horse | 0.391608 |
+| normal | 0.212766 |
+| wavelength_trojan | 0.0 |
 
-`rng_manipulation` scores exactly 0.0 while `n_classes_predicted` is 8, so the label is still emitted
-and never lands on a true row. The 8-wire circuit scores 0.483221 on that class, which is the clearest
-place the two widths differ and the reason a macro number alone would mislead here.
+**The zero moved class.** Before the dead parameters were made live it was `rng_manipulation` that
+scored exactly 0.0 here, and that class now scores 0.635135; `wavelength_trojan` took its place at
+0.0. `n_classes_predicted` is 8 either way, so the label is emitted and never lands on a true row. A
+class scoring zero is a property of this circuit rather than of that class, which is a thing only a
+per-class table can show and no aggregate can.
 
-**Seed position:** unmeasured - no seed sweep was run for the 7-wire circuit after the Round 47
-corrections, so every figure on this card is one draw and not a median. The 8-wire card records a
-three-seed spread for its own configuration in which seed 0 is the highest of the three, so a
-same-seed comparison between the widths is being made at the 8-wire circuit's best available draw and
-still loses. Do not read that as strengthening the 7-wire result; read it as a limit on both.
+**Seed position:** unmeasured - no seed sweep has been run for the 7-wire circuit on either Round 47
+circuit, so every figure on this card is one draw and not a median. The 8-wire card's own three-seed
+spread is superseded for the same reason: it was measured before the dead parameters were made live.
+Neither side of the width comparison has a spread on the current circuit, which is a limit on both.
 
 ## The width conclusion has reversed, and this is the side that gained
 
 `references/qcnn-width-ablation.md` concluded in Round 40, and restated at five seeds in Round 45,
-that 8 wires beat 7 on telecom by +0.0786 macro F1. With the corrected readout **the sign has
-flipped**: 7 wires 0.500452, 8 wires 0.458324, so this model leads by 0.042128. That is a reversal of
-the recorded finding, not a restatement of it, and the ablation file now carries a supersession banner
+that 8 wires beat 7 on telecom by +0.0786 macro F1. With the corrected circuit **the sign has
+flipped**: 7 wires 0.541894, 8 wires 0.510963, so this model leads by 0.030931. That is a reversal of
+the recorded finding, not a restatement of it, and the ablation file carries a supersession banner
 saying so.
 
-Both sides are single-seed on the corrected circuit. A flipped sign measured once is a reason to stop
+**The reversal survived a change that moved both sides.** At the first Round 47 retrain the pair read
+7 wires 0.500452 against 8 wires 0.458324, a lead of 0.042128; making the dead parameters live raised
+both widths and left the narrower one ahead, by 0.030931. Two independent retrains agreeing on the
+sign is more than one, and it is still not a separation.
+
+Both sides remain single-seed. A flipped sign measured twice without a spread is a reason to stop
 quoting the old direction, not a licence to quote the new one as settled, and neither width is
 separated from the other by this experiment. The old per-class table and the old five-seed spreads
 stay in the ablation file marked superseded, because deleting them would remove the evidence that the
@@ -125,7 +147,7 @@ than none, because it gets checked once and trusted afterwards.
 
 Simulated state-vector circuit trained by backpropagation, not quantum hardware and not a claim of
 quantum advantage - classical logistic regression on the same split beats both widths by more than
-0.47 of macro F1, which is far larger than the gap between them. The corpus is synthetic QKD-attack
+0.43 of macro F1, which is over ten times the gap between them. The corpus is synthetic QKD-attack
 telemetry generated by `qsh.qml_ids.attacks` with class structure per Al-Kuwari et al.
 (arXiv:2509.14282); no commercial-OK real attack corpus exists, which is why no number here is a
 performance claim about a real link.
