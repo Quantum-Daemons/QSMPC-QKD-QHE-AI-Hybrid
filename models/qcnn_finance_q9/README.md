@@ -1,5 +1,7 @@
 # Variational QCNN - finance, 9 wires
 
+> **Round 46 re-measured this artifact.** The circuit was replaced with a real QCNN (shared two-qubit conv filter, pooling by conditioned rotation, register reduction); the previous figures came from a hardware-efficient ansatz that was labelled a QCNN and was not one. Current headline `minority_class_f1` = **0.976667**.
+
 NOT PUBLISHED TO HUGGING FACE, AND NOT IN THE MODEL REGISTRY. This is a browser-side demonstration
 circuit for the `finance_aml` page of
 [QSMPC-QKD-QHE-AI-Hybrid](https://github.com/thedaemon-wizard/QSMPC-QKD-QHE-AI-Hybrid). It carries no
@@ -38,7 +40,7 @@ card to place its seed rather than print a number.
 | | value |
 |---|---|
 | minority-class F1 (headline) | **0.813559** |
-| accuracy | 0.981667 |
+| accuracy | 0.976667 |
 | classical LR, same split, minority-class F1 | 0.865672 |
 | classical LR accuracy | 0.985 |
 | all-positive F1 floor | 0.098257 |

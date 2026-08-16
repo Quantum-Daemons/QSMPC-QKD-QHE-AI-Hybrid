@@ -161,8 +161,12 @@ def test_every_rendered_control_is_read_somewhere() -> None:
         f"only {len(keys)} controls parsed from ParameterPanel.tsx; the field tuple shape changed "
         "and this check would pass by finding nothing"
     )
+    # `_code_only`, like the two checks above it. Without it a key mentioned in a JSDoc counts
+    # as a read - and `clientCompute.ts` carries `config?.qkd_source_rate_mhz` inside the very
+    # comment Round 45 wrote to explain wiring it, so deleting the real read left this green.
+    # The file defines `_code_only` and warns about exactly this; this test did not call it.
     body = "\n".join(
-        p.read_text() for p in sorted({*WEB.rglob("*.ts"), *WEB.rglob("*.tsx")})
+        _code_only(p.read_text()) for p in sorted({*WEB.rglob("*.ts"), *WEB.rglob("*.tsx")})
         if p.name != "ParameterPanel.tsx"
     )
     # A READ is a `config.k` / `config?.k` / `config["k"]` / `params.k` shaped expression. A bare

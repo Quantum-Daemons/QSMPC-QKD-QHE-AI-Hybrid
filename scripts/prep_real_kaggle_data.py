@@ -133,6 +133,7 @@ def prep_finance(src: Path, repo: Path, n: int = 4000, fraud_rate: float = 0.05,
 def prep_satellite(src: Path, repo: Path, n_channels: int = 6, length: int = 900, window: int = 8,
                    anchor: int = 350, max_anom: int = 150, seed: int = 0):
     import csv as _csv
+
     from sklearn.linear_model import LogisticRegression
 
     nasa = src / "nasa"

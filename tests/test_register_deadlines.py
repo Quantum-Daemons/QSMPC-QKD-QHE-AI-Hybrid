@@ -139,7 +139,53 @@ _WRAP = r"[ \t]*\n?[ \t]*"
 #: neither pattern contains an asterisk, so no emphasis boundary can hide either. Stated here rather
 #: than left silent, because "fixed one regex of a sibling set" is the very defect being repaired and
 #: the reader is owed the check rather than the assurance.
-_DEADLINE = re.compile(r"by" + _WRAP + r"(?:\*\*)?Round" + _WRAP + r"(\d+)\*\*", re.I)
+#: ROUND 46: the closing `**` no longer has to be ADJACENT to the digits either.
+#:
+#: Round 45 made the opening `**` optional and asserted that the closing one was the discriminator
+#: against narrative prose. Both halves were right and the second was still one-sided: it required
+#: the `**` immediately after the number, so a clause bolded as a whole
+#:
+#:     **Re-run it by Round 46 or restate it as one draw**
+#:
+#: leaves `by Round 46 or restate...` at the marker with no adjacent `**` at all - zero matches, the
+#: same hole one word further along. Round 45 fixed the opening and left the closing, which is the
+#: sibling-pair defect that file's own comment says it exists to stop.
+#:
+#: `_inside_bold` below replaces adjacency with the property adjacency was standing in for: is this
+#: marker inside an emphasis span? Counting `**` from the start of the line and asking whether the
+#: count is ODD answers that exactly, and it still excludes the four narrative sentences ("restored
+#: by Round 20", "SUPERSEDED IN PART BY ROUND 30") because those carry no emphasis at all.
+#: CASE-SENSITIVE, and that is what makes the widening safe. Dropping adjacency alone swept in
+#: `**SUPERSEDED IN PART BY ROUND 30, marked in Round 33**` - bolded narrative, not an
+#: obligation. The register writes deadlines in sentence case ("by **Round N**") and writes
+#: supersession markers in caps, so case is the discriminator adjacency was standing in for.
+#: Measured over the whole corpus: 9 matches, all real, zero narrative.
+_DEADLINE_LOOSE = re.compile(r"by" + _WRAP + r"(?:\*\*)?Round" + _WRAP + r"(\d+)(\*\*)?")
+
+
+def _inside_bold(text: str, pos: int) -> bool:
+    """Is `pos` inside a `**...**` span? True when an odd number of `**` precede it on its line."""
+    line_start = text.rfind("\n", 0, pos) + 1
+    return text.count("**", line_start, pos) % 2 == 1
+
+
+class _Deadline:
+    """`_DEADLINE`'s interface, with adjacency replaced by emphasis-membership."""
+
+    pattern = _DEADLINE_LOOSE.pattern
+
+    @staticmethod
+    def finditer(text):
+        for m in _DEADLINE_LOOSE.finditer(text):
+            if m.group(2) or _inside_bold(text, m.start()):
+                yield m
+
+    @staticmethod
+    def search(text):
+        return next(_Deadline.finditer(text), None)
+
+
+_DEADLINE = _Deadline
 #: "## Round 38: the round ..." / "## Rounds 34-36, ..." - the register's own round markers.
 _HEADING = re.compile(r"^##+ Rounds? (\d+)", re.M)
 #: The ONLY thing that discharges a deadline. Deliberately unlike anything a conditioning sentence
@@ -572,7 +618,16 @@ def test_a_deadline_survives_being_bolded_as_a_whole_clause() -> None:
     assert _DEADLINE.search("condition by\n**Round 45**."), "the wrap tolerance was lost"
 
     # The bound. Each of these is real text from the watched corpus, and none is an obligation.
+    # ROUND 46: the closing `**` no longer has to touch the digits either.
+    m46 = _DEADLINE.search("**Re-run it by Round 46 or restate it as one draw**")
+    assert m46 and int(m46.group(1)) == 46, (
+        "`_DEADLINE` cannot see a clause whose bold span closes AFTER the round number. Round 45 "
+        "made the opening `**` optional and left the closing one adjacent - the same hole one word "
+        "further along, in the sibling this file's own comment says it exists to stop."
+    )
+
     for narrative in (
+        "**SUPERSEDED IN PART BY ROUND 30, marked in Round 33**",
         "had been *restored* by Round 20 on the stated grounds that it moves the bit count",
         "made MORE specific in Round 33 and then filed by Round 33 as a defect against itself",
         "**SUPERSEDED IN PART BY ROUND 30, marked in Round 33**",

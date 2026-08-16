@@ -10,7 +10,7 @@ documentation.
 
 ## What it is
 
-3 layers of trainable RY rotations plus a CNOT ring on 8 qubits, data encoded as `RY(tanh(z) *
+3 conv rounds of a SHARED two-qubit filter (RY,RZ - CNOT - RY,RZ) with pooling by a rotation on the survivor conditioned on its partner, on 8 qubits, reducing the register 8 -> 4 -> 2 -> 1, then a fully-connected block on the survivors (76 SHARED parameters, O(log N) in the register width), data encoded as `RY(tanh(z) *
 pi)`, read out as the expectation of Z on qubit 0 and mapped through a learned scale and bias.
 Trained by backpropagation through a dense state vector, then reimplemented independently in plain
 numpy (`src/qsh/qhe/qcnn_trained.py`); the two agree to 2.4e-07, which is how a crossed CNOT ring

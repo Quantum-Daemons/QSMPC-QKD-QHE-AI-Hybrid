@@ -13,11 +13,17 @@ Markers:
 
 - `[R]` the PDF is committed to this folder and you get it when you clone.
 - `[R-local]` the PDF sits in this folder on the author's machine but is **gitignored**, so a clone
-  does not contain it. Two are ~17 MB each and one is a copyrighted book. Fetch from the URL.
+  does not contain it. Fetch from the URL. Two are ~17 MB each and one is a copyrighted book;
+  since Round 45 four more are excluded on LICENCE rather than size, adjudicated per file in
+  [`DATA_LICENSES.md`](../DATA_LICENSES.md) section 8.
 - `[link]` never bundled. Fetch from the URL.
 
 An earlier revision marked the `[R-local]` entries `[R]`, which told a reader they had files that a
-clone never contained.
+clone never contained. **It happened again in Round 45**, to four entries: that round excluded the
+PDFs on licence, wrote the adjudication table, listed "leaving `REFERENCES.md` marking them `[R]`"
+in its own plan as the defect it was most likely to ship, and shipped it. The marker is the claim
+about what a clone contains, and it is checked by
+`tests/test_bundled_reference_pdfs_carry_a_grant.py` from Round 46 onward.
 
 Workstreams: **WS1** AI-QKD parameter optimisation and entropy, **WS2** QML-IDS, **WS3** QSMPC x QKD,
 **WS4** QHE x AI. Cross-cutting: PQC-first hybrid, crypto-agility, XAI.
@@ -188,7 +194,7 @@ papers. Where the two used to overlap, that file is the owner.
   worked example (t=3, n=7, d=11, X=2, Y=3, giving S=5).
 
 - **Experimental secure multiparty computation from quantum oblivious transfer with bit commitment**
-- Zhang et al., npj Quantum Information, 2026 `[R]`
+- Zhang et al., npj Quantum Information, 2026 `[link]`
   URL: https://www.nature.com/articles/s41534-026-01219-w (npj QI 12, 76, 2026)
   Preprint: https://arxiv.org/abs/2411.04558
   Added: 2026-06-27
@@ -208,7 +214,7 @@ papers. Where the two used to overlap, that file is the owner.
   as security metrics.
 
 - **Quantum-Safe Multi-Party Computation for Distributed AI Datasets** - Gopher Security blog, 2026
-  `[R]`
+  `[link]`
   URL: https://gopher.security/blog
   Added: 2026-06-27
   File: `Quantum-Safe_Multi-Party_Computation_for_Distributed_AI_Datasets....pdf`
@@ -221,7 +227,7 @@ papers. Where the two used to overlap, that file is the owner.
 ## WS4 - QHE x AI (quantum/classical homomorphic encryption + AI)
 
 - **Reverse Delegated Training and Private Inference via Perfectly-Secure Quantum Homomorphic
-  Encryption** - Ortega and Martin-Delgado, arXiv:2602.12712, 2026 `[R]`
+  Encryption** - Ortega and Martin-Delgado, arXiv:2602.12712, 2026 `[link]`
   URL: https://arxiv.org/abs/2602.12712
   Added: 2026-06-27
   File: `Reverse_Delegated_Training_and_Private_Inference_via_Perfectly-Secure_Quantum_Homomorphic_Encryption.pdf`
@@ -257,7 +263,7 @@ papers. Where the two used to overlap, that file is the owner.
   NTT and throughput discussion. Code: `EfficientHE/CROSS`, TPU-oriented, reference only.
 
 - **EncFormer: Secure and Efficient Transformer Inference over Encrypted Data** - Zhu, Jin, Aung and
-  Xiao (NUS and A*STAR), arXiv:2604.09975 [cs.CR], 11 Apr 2026 `[R]`
+  Xiao (NUS and A*STAR), arXiv:2604.09975 [cs.CR], 11 Apr 2026 `[link]`
   URL: https://arxiv.org/abs/2604.09975
   Added: 2026-06-27
   File: `EncFormer_Secure_and_Efficient_Transformer_Inference_over_Encrypted_Data.pdf`

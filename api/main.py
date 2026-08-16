@@ -13,7 +13,6 @@ serves the static SPA and uses these endpoints sparingly (client does the rest).
 from __future__ import annotations
 
 import asyncio
-import json
 from pathlib import Path
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect

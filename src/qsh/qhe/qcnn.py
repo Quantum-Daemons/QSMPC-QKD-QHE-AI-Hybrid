@@ -178,8 +178,16 @@ def qotp_clifford_random_circuit_demo(n: int = 4, depth: int = 12, seed: int | N
     which is exactly why the QCNN's non-linear layers are costed as magic-state T-gates rather than
     evaluated this way.
     """
-    from .qotp import (_apply_1q, decrypt, encrypted_density_matrix, encrypt, pauli_key,
-                       update_key_cnot, update_key_h, update_key_s)
+    from .qotp import (
+        _apply_1q,
+        decrypt,
+        encrypt,
+        encrypted_density_matrix,
+        pauli_key,
+        update_key_cnot,
+        update_key_h,
+        update_key_s,
+    )
 
     rng = np.random.default_rng(seed)
     H = np.array([[1, 1], [1, -1]], dtype=complex) / np.sqrt(2)

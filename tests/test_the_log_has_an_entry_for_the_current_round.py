@@ -55,8 +55,22 @@ def test_the_log_names_the_current_round() -> None:
     """The round on the register's newest heading appears somewhere in the log."""
     now = _current_round()
     text = LOG.read_text()
-    # "## Round 45", "## Rounds 39-42", "## Round 44, added in Round 45" - any heading that names it.
-    named = [m.group(0) for m in re.finditer(rf"^##+ .*\b{now}\b.*$", text, re.M)]
+    # THE HEADING MUST BE *ABOUT* THIS ROUND, not merely mention it.
+    #
+    # This matched any heading containing the digits, and `## Round 44, added in Round 45` satisfied
+    # `now = 45`. So writing the PREVIOUS round's pointer discharged the CURRENT round's obligation -
+    # and next round `## Round 45, added in Round 46` would discharge Round 46, forever. A gate whose
+    # pass condition is produced as a by-product of the thing it is meant to force is not a gate.
+    #
+    # The discriminator is the FIRST round number in the heading: that is the round the section is
+    # about. "## Round 44, added in Round 45" -> 44. "## Rounds 39-42, added in Round 43" -> 39, and
+    # the range is expanded so a pointer covering several rounds still counts for each of them.
+    named = []
+    for m in re.finditer(r"^##+ Rounds? (\d+)(?:\s*-\s*(\d+))?", text, re.M):
+        lo = int(m.group(1))
+        hi = int(m.group(2)) if m.group(2) else lo
+        if lo <= now <= hi:
+            named.append(m.group(0))
     assert named, (
         f"the register is at Round {now} and docs/verification-log.md has no heading naming it.\n\n"
         "This file has lost four separate runs of rounds - 25-27 are gone for good - and its own "

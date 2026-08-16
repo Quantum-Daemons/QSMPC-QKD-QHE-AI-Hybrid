@@ -199,7 +199,11 @@ export interface BB84Result {
    * express in Round 29 and never got to: what the operator would be entitled to claim if the
    * multi-photon pulses could not be accounted for.
    *
-   * Always >= `secretKeyRate`: dropping a certification can only raise an unbounded estimate.
+   * Always <= `secretKeyRate`, and the inequality runs THIS way round. Decoy states let Y1 and
+   * e1 be ESTIMATED rather than discarded, so removing them cannot raise the rate. This line
+   * said `>=` until Round 46 - the direction Round 45's own test docstring records as its
+   * first error and corrected in the assertion, while leaving it standing in the type's
+   * documentation. Anyone making the code match its own JSDoc would have turned the gate red.
    *
    * OPTIONAL, and its absence is a claim rather than a gap. `e91()` does not set it, because there
    * are no decoy states in entanglement-based QKD to remove: decoys are a countermeasure for the
@@ -271,9 +275,12 @@ export function decoySecureFraction(
 // against 0.002355 from the bound this repository already implements in Python: 4.01x, published as
 // ~958 kbit/s once Round 44 multiplied it by an assumed 100 MHz clock. For scale, Yuan et al.,
 // IEEE/OSA JLT 36, 3427 (2018), report >1 Mb/s at 1 GHz over 50 km of fibre for the T12 protocol -
-// >0.001 bit/pulse - and say T12 sifts about twice as efficiently as the standard BB84 modelled
-// here. The old figure was ~9.6x a real deployed link; the bound below is ~2.4x it, which the
-// optimistic detector efficiency (0.25) and the asymptotic treatment account for.
+// >0.001 bit/pulse. ROUND 46 CORRECTED WHAT THAT COMPARISON MEANT. Round 45 concluded the new
+// bound was "~2.4x a real deployed link", i.e. still optimistic but close. It is wrong in both
+// directions: Li et al., Nat. Photon. 17, 416-421 (2023), arXiv:2307.02364, measured 22.2 +/- 0.8
+// Mb/s at 50 km on a 2.5 GHz clock = 8.88e-3 bit/pulse WITH composable finite-key security - 3.8x
+// HIGHER per pulse than the bound below. This is not an upper bound on real hardware; it is the
+// N->infinity limit of a lower bound, and real hardware beats it.
 //
 // `fEC` and `visibility` default from CONFIG, not from a literal. They were `1.16` and `0.97`
 // written here, and `error_correction_eff` had no reader anywhere in `web/src` outside
@@ -341,10 +348,19 @@ export function e91(nPulses: number, p: ChannelParams, seed = 0,
   const vEff = Math.max(0, Math.min(1, visibility * (1 - intrinsicQber(p))));  // channel-degraded visibility
   const s = 2 * Math.SQRT2 * vEff;                                             // CHSH parameter
   const e0 = (1 - vEff) / 2;                                                   // ideal QBER from the visibility
+  // ONE LOSSY ARM, matching `src/qsh/qkd/e91.py`, whose own comment reads "coincidence detection
+  // (lossy arm)". Round 46 considered squaring this for a two-arm source and did NOT, for the
+  // reason this whole round exists: changing the physics in one language is how the two drift.
+  // The modelling choice is Python's, it is documented there, and the browser mirrors it.
   const nPairs = Math.max(0, Math.round(nPulses * T * 0.5));                   // coincidence detections (key basis)
   const std = nPairs > 0 ? Math.sqrt((e0 * (1 - e0)) / nPairs) : 0;
   const qber = Math.min(0.5, Math.max(0, e0 + std * gauss(u)));
-  const secureFraction = s <= 2 ? 0 : Math.max(0, 1 - h2(qber) - fEC * h2(qber));  // no key without a Bell violation
+  // THE BOUND TAKES `e0`, NOT `qber` - the model error rate, not this session's draw. Round 45 made
+  // exactly this change for BB84, measured that five seeds had been producing five different
+  // "bounds", and left E91 deriving its rate from the sampled QBER. `e91.py:54` has always computed
+  // its secure fraction from the visibility-derived `qber` and never from a sample, so the browser
+  // was the one that diverged. The measured QBER above still varies; the bound no longer does.
+  const secureFraction = s <= 2 ? 0 : Math.max(0, 1 - h2(e0) - fEC * h2(e0));  // no key without a Bell violation
   return {
     qber, siftedBits: nPairs,
     secretKeyRate: nPulses > 0 ? (secureFraction * nPairs) / nPulses : 0,
@@ -403,7 +419,10 @@ export interface QcnnResult {
  * one expectation through one affine map is one logit however many classes the labels have.
  */
 export interface QcnnWeights {
-  n_qubits: number; layers: number; theta: number[][];
+  n_qubits: number; layers: number;
+  /** FLAT since Round 46. Was `number[][]` of shape (layers, n_qubits) - one angle per wire,
+   *  which is the per-position weighting a convolution replaces with one shared filter. */
+  theta: number[];
   scale: number | number[]; bias: number | number[];
   /** Present only on a multiclass model. `class_index` is the literal formula, shipped as data
    *  because reading the bits in another order permutes the class map while leaving accuracy, macro
@@ -471,10 +490,67 @@ export function qcnnInferTrained(features: number[], w: QcnnWeights):
     }
     RY(q, Math.tanh(v) * Math.PI);
   }
-  for (let l = 0; l < w.layers; l++) {
-    for (let q = 0; q < nq; q++) RY(q, w.theta[l][q]);
-    for (let q = 0; q < nq; q++) CNOT(q, (q + 1) % nq);
+  // ---- QCNN, mirroring scripts/train/qcnn_variational.py exactly ----
+  //
+  // ROUND 46 REPLACED WHAT WAS HERE, IN BOTH LANGUAGES IN THE SAME CHANGE. This read
+  // `for l: for q: RY(theta[l][q]); CNOT ring` - PennyLane's `BasicEntanglerLayers` - under the name
+  // QCNN, and so did the trainer. Porting only Python would have left the browser running a
+  // different circuit on weights trained by another, which is this round's own subject.
+  //
+  // Cong, Choi & Lukin, Nat. Phys. 15, 1273 (2019); Hur, Kim & Park, QMI 4, 3 (2022).
+  const RZ = (q: number, th: number) => {
+    // diag(e^{-i th/2}, e^{+i th/2}). RY alone spans only real rotations.
+    const c = Math.cos(th / 2), s = Math.sin(th / 2), bit = 1 << q;
+    for (let i = 0; i < N; i++) {
+      const r = re[i], m = im[i];
+      if (i & bit) { re[i] = c * r - s * m; im[i] = c * m + s * r; }
+      else { re[i] = c * r + s * m; im[i] = c * m - s * r; }
+    }
+  };
+  const CRY = (ctl: number, tgt: number, th: number) => {
+    const c = Math.cos(th / 2), s = Math.sin(th / 2), cb = 1 << ctl, tb = 1 << tgt;
+    for (let i = 0; i < N; i++) {
+      if (!(i & cb) || (i & tb)) continue;
+      const j = i | tb;
+      const r0 = re[i], i0 = im[i], r1 = re[j], i1 = im[j];
+      re[i] = c * r0 - s * r1; im[i] = c * i0 - s * i1;
+      re[j] = s * r0 + c * r1; im[j] = s * i0 + c * i1;
+    }
+  };
+  const readoutQ = Math.max(1, w.readout?.readout_qubits ?? 0);
+  // Stage count, derived the same way `layer_plan()` derives it.
+  let probe = nq, stages = 0;
+  while (Math.floor(probe / 2) >= readoutQ && probe > 1) { stages++; probe = Math.floor(probe / 2); }
+  const nConv = stages * w.layers * 8;
+  const convAt = (st: number, r: number, k: number) => w.theta[(st * w.layers + r) * 8 + k];
+  const poolAt = (st: number) => w.theta[nConv + st];
+  const fcTheta = w.theta[nConv + stages];
+
+  let active = Array.from({ length: nq }, (_, i) => i);
+  for (let st = 0; st < stages; st++) {
+    for (let r = 0; r < w.layers; r++) {                       // conv: ONE filter, every position
+      for (let i = 0; i + 1 < active.length; i += 2) {
+        const a = active[i], b = active[i + 1];
+        RY(a, convAt(st, r, 0)); RZ(a, convAt(st, r, 1));
+        RY(b, convAt(st, r, 2)); RZ(b, convAt(st, r, 3));
+        CNOT(a, b);
+        RY(a, convAt(st, r, 4)); RZ(a, convAt(st, r, 5));
+        RY(b, convAt(st, r, 6)); RZ(b, convAt(st, r, 7));
+      }
+    }
+    const survivors: number[] = [];                            // pool: condition survivor on partner
+    for (let i = 0; i + 1 < active.length; i += 2) {
+      CRY(active[i + 1], active[i], poolAt(st));
+      survivors.push(active[i]);
+    }
+    // An odd register has an orphan; it is pooled into the first survivor rather than passed
+    // through untouched. Leaving it active made the widths disagree with the trainer's plan and
+    // collapsed two artifacts outright - see the note in qcnn_variational.py.
+    if (active.length % 2 === 1) CRY(active[active.length - 1], active[0], poolAt(st));
+    active = survivors;
   }
+  for (const q of active) RY(q, fcTheta);                      // fully connected on what survives
+  if (active.length > 1) for (let j = 0; j < active.length; j++) CNOT(active[j], active[(j + 1) % active.length]);
   // MULTICLASS readout: marginal probabilities of the first m wires, binned by the low m bits of the
   // flat index. Qubit q is bit q, qubit 0 the LEAST significant - the same convention the `i & 1`
   // below relies on for <Z0>, and the one the trainer writes into `readout.class_index`.

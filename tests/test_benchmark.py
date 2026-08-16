@@ -7,11 +7,10 @@ import numpy as np
 from qsh.benchmark.alice_bob_e2e import run_alice_bob_e2e
 from qsh.benchmark.classical_mpc_fhe import run_classical
 from qsh.benchmark.gpu_mpc_adapter import available
+from qsh.benchmark.quantum_advantage import quantum_advantage
 from qsh.benchmark.quantum_qsmpc_fhe import run_quantum
 from qsh.benchmark.runner import _linear_model_and_data, compute_advantage, run_benchmark
 from qsh.benchmark.security import compute_security_score, kem_category
-from qsh.benchmark.quantum_advantage import quantum_advantage
-from qsh.fhe.ckks_inference import LinearModel
 
 
 def test_classical_path_preserves_accuracy():

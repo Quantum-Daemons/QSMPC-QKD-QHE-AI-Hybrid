@@ -142,7 +142,14 @@ def hybrid_private_inference(layers, x, backend, *, use_mpc: bool = True) -> dic
     With ``use_mpc=False`` the non-linear ops run in plaintext (the client-demo fallback).
     """
     from ..fhe.conv import avgpool2d, fhe_conv2d, maxpool2d
-    from .layers import ConvSpec, DenseSpec, FlattenSpec, PoolSpec, normalize_layers, plaintext_forward
+    from .layers import (
+        ConvSpec,
+        DenseSpec,
+        FlattenSpec,
+        PoolSpec,
+        normalize_layers,
+        plaintext_forward,
+    )
 
     specs = normalize_layers(layers)
     arch_class = "cnn" if any(isinstance(s, ConvSpec) for s in specs) else "mlp"

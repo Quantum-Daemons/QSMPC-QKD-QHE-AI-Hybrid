@@ -6,7 +6,14 @@ verify the implementation against the source rather than against this project's 
 
 Primary source for the simulator equations:
     X. Ma, B. Qi, Y. Zhao, H.-K. Lo, "Practical decoy state for quantum key distribution",
-    Phys. Rev. A 72, 012326 (2005).
+    Phys. Rev. A 72, 012326 (2005). arXiv:quant-ph/0503005v2.
+
+ROUND 46 RE-CHECKED EVERY EQUATION NUMBER IN THIS FILE AGAINST THAT PDF, and four of them were
+wrong: the key rate is Eq. (1) and was cited as (33), Y_i is Eq. (7) and was cited as (6), e_i is
+Eq. (9) and was cited as (7), and e_0 = 1/2 is stated in prose rather than as Eq. (4). A module whose
+docstring says it "exists to be CHECKED" is exactly the one where a reader follows the citation, so a
+wrong number here costs more than elsewhere. The FORMULAS were correct throughout - only the pointers
+were wrong, which is the harder version to notice.
 
 The GLLP secure fraction for the NON-decoy case:
     D. Gottesman, H.-K. Lo, N. Luetkenhaus, J. Preskill, Quantum Inf. Comput. 4, 325 (2004),
@@ -28,7 +35,8 @@ from dataclasses import dataclass
 
 E0 = 0.5
 """Error rate of a dark count: a background click is uncorrelated with the prepared state, so it is
-wrong half the time. Ma et al. Eq. (4)."""
+wrong half the time. Ma et al. state this in the prose following Eq. (9) rather than as a
+numbered equation; the Eq. (4) citation this line carried until Round 46 was wrong."""
 
 
 @dataclass(frozen=True)
@@ -86,12 +94,16 @@ def qber(mu: float, eta: float, ch: ChannelSpec) -> float:
 
 
 def single_photon_yield(eta: float, ch: ChannelSpec) -> float:
-    """Y_1 = Y_0 + eta - Y_0 eta. Ma et al. Eq. (6) at i = 1."""
+    """Y_1 = Y_0 + eta - Y_0 eta. Ma et al. Eq. (7) at i = 1.
+
+    (Was cited as Eq. (6) until Round 46; checked against arXiv:quant-ph/0503005v2.)"""
     return ch.dark_count + eta - ch.dark_count * eta
 
 
 def single_photon_error(eta: float, ch: ChannelSpec) -> float:
-    """e_1 = (e_0 Y_0 + e_det eta) / Y_1. Ma et al. Eq. (7) at i = 1."""
+    """e_1 = (e_0 Y_0 + e_det eta) / Y_1. Ma et al. Eq. (9) at i = 1.
+
+    (Was cited as Eq. (7) - which is the Y_i equation - until Round 46.)"""
     y1 = single_photon_yield(eta, ch)
     if y1 <= 0.0:
         return E0
@@ -121,7 +133,7 @@ def key_rate_decoy(mu: float, distance_km: float, ch: ChannelSpec) -> float:
 
         R >= q { -Q_mu f h2(E_mu) + Q_1 [1 - h2(e_1)] },  q = ch.q_sift.
 
-    Ma et al. Eq. (33). Decoy states let Y_1 and e_1 be estimated directly, so the single-photon
+    Ma et al. Eq. (1). Decoy states let Y_1 and e_1 be estimated directly, so the single-photon
     contribution Q_1 is credited rather than discarded.
     """
     eta = transmittance(distance_km, ch)
