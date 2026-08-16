@@ -334,18 +334,25 @@ export function securityFacts(config: any, metrics: Record<string, any>): Securi
   }
 
   if (qber != null) {
-    // Two thresholds, and they disagree with each other. 0.11 is the textbook BB84 figure; this
-    // repository's own GLLP model puts the zero-key point at 0.098106, BELOW it - so a QBER in
-    // [0.098, 0.11) used to score full eavesdropper-detection marks on a channel already dead.
-    // Report against the model that actually ran, and name the textbook figure beside it.
-    const dead = skr != null ? skr <= 0 : qber >= 0.098106;
+    // THE ZERO-KEY POINT IS NOT A CONSTANT, and naming one was naming a model this project no
+    // longer runs. This read "GLLP zero-key point 0.098106" - the NON-DECOY figure, removed from
+    // both the Python and the browser paths in Rounds 45-46 when the decoy-state bound replaced it.
+    // The decoy bound's zero-key QBER depends on the channel (eta, mu, nu), so there is no single
+    // number to substitute; quoting one would repeat the same mistake with a fresher digit.
+    //
+    // What is reportable is the mechanism: the rate this run computed, and the post-processing
+    // threshold the protocol actually aborts on. The fallback, for a run that reported no rate, is
+    // now that same configured threshold rather than a retired model's constant.
+    const dead = skr != null ? skr <= 0 : qber >= s.qber_secure_threshold;
     facts.push({
       label: "QBER",
       value: `${qber}${dead ? " - no secure key at this error rate" : ""}`,
       kind: "measured",
-      source: "this run's channel model; GLLP zero-key point 0.098106, textbook BB84 bound "
-        + `${s.qber_secure_threshold}`,
-      warn: dead ? "above this channel model's zero-key point" : undefined,
+      source: skr != null
+        ? "this run's two-intensity decoy-state bound (Ma, Qi, Zhao & Lo, Phys. Rev. A 72, 012326); "
+          + `post-processing aborts above ${s.qber_secure_threshold}`
+        : `no rate reported by this run; post-processing threshold ${s.qber_secure_threshold}`,
+      warn: dead ? "the decoy-state bound yields no secure key on this channel" : undefined,
     });
   }
   return facts;
@@ -364,9 +371,12 @@ export function securityScore(o: SecOpts) {
   c.security_model = it ? s.info_theoretic : s.computational;
   const cat = kemCategory(o.kem);
   c.key_strength = (s.key_strength_by_category as Record<string, number>)[String(cat)] ?? 16;
-  // Mirrors `benchmark/security.py`: 0.11 is the Shor-Preskill BB84 bound, but this project's GLLP
-  // model yields zero secure key from 0.098106, so a QBER in between used to score FULL marks on a
-  // dead channel. The fact display right below was already guarded against this; the SCORE was not.
+  // Mirrors `benchmark/security.py`: 0.11 is the Shor-Preskill BB84 bound, and a channel can be
+  // dead below it - which is why the guard is on the KEY rather than on the QBER. The figure that
+  // used to appear here, "this project's GLLP model yields zero secure key from 0.098106", belonged
+  // to the non-decoy model that Rounds 45-46 removed from both languages; the decoy bound's
+  // zero-key point is channel-dependent and there is no constant to put in its place. Stated in
+  // the past tense because the reasoning is what survives, not the number.
   // `qkdKeyBits` is the field that carries this: `secFromConfig` fills it from the run's measured
   // `secure_key_bits`, so zero here means the protocol emitted no key, not merely that QKD was off.
   const deadKey = o.qkdKeyBits != null && o.qkdKeyBits <= 0;
