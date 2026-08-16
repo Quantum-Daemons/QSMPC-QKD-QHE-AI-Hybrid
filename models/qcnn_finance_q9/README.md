@@ -15,8 +15,14 @@
 >
 > Two earlier banners are superseded rather than deleted. The one before last contradicted itself -
 > it gave the minority-class F1 as 0.976667 while its own table gave 0.813559, and 0.976667 was that
-> table's ACCURACY - and both of those figures belong to the Round 46 circuit. 0.84058 belongs to
-> this circuit with four of its angles inert.
+> table's ACCURACY. **Only ONE of those two figures is a Round 46 number**: 0.976667 was the Round 46
+> circuit's accuracy. 0.813559 belongs to the RETIRED hardware-efficient ansatz - it is that
+> circuit's stored `test_minority_f1` (pre-Round-46 `weights.json`, and the 0.8136 in the Round 43
+> five-seed sweep), left in the table when only the accuracy cell was refreshed. The Round 46
+> circuit's real minority-class F1 was **0.794118** and was never printed on any card. An earlier
+> revision of this banner said both figures belonged to Round 46, which the note 65 lines below -
+> "0.813559 was measured on the retired ansatz" - already contradicted. 0.84058 belongs to this
+> circuit with four of its angles inert.
 
 NOT PUBLISHED TO HUGGING FACE, AND NOT IN THE MODEL REGISTRY. This is a browser-side demonstration
 circuit for the `finance_aml` page of
@@ -72,7 +78,7 @@ rather than deleted, because they are the evidence that the conclusion moved.
 | logistic regression accuracy | 0.985 |
 | majority-class accuracy floor | 0.948333 |
 | test prevalence | 0.051667 |
-| n_train / n_test | 2800 / 1200 |
+| n_train / n_val / n_test | 2800 / 600 / 600 |
 
 Accuracy is not the headline and is shown only so the floor beside it can be read: at a prevalence of
 0.051667, predicting "legitimate" for every row scores 0.948333. **This circuit beats its F1 floor and

@@ -227,9 +227,23 @@ def test_every_trainable_parameter_reaches_the_readout() -> None:
     after it are a CNOT ring - which permutes basis states - and `|amplitude|**2`, which discards
     phase. RZ is diagonal. A diagonal gate applied last cannot move a computational-basis readout.
 
-    MEASURED on the shipped artifacts, before the order was corrected: moving every fc RZ angle by
-    1.234 rad changed the telecom readout by 5.96e-08 and the finance readout by 8.94e-08 - float32
-    noise - against 2.6e-01 and 5.9e-01 for the RY angles beside them.
+    RE-MEASURED on the shipped artifacts, with the recipe stated because an earlier revision of this
+    docstring gave the figures with no seed, no inputs and no command, and the weights they were
+    taken on were replaced by a later retrain. Reconstruct the pre-fix order from
+    `git show 8017538^:scripts/train/qcnn_variational.py`, take each artifact's theta, feed
+    x = tanh(randn(8, n_qubits) * 0.7) at torch.Generator().manual_seed(0), add 1.234 rad to every
+    fc RZ angle, and take max |delta| of circuit():
+
+                     fc RZ, pre-fix   fc RY, pre-fix   fc RZ, shipped order
+        telecom        5.96e-08          1.77e-01            2.28e-01
+        telecom-q7     1.19e-07          3.64e-01            1.59e-01
+        finance        5.96e-08          9.89e-01            4.82e-02
+        medical        8.94e-08          5.12e-01            7.16e-02
+
+    The three pre-fix RZ figures are float32 ULPs - 2^-24, 2^-23 and 1.5 * 2^-24 - so those angles
+    were inert rather than merely weak. The withdrawn figures were "telecom 5.96e-08 and finance
+    8.94e-08 against 2.6e-01 and 5.9e-01": 8.94e-08 is MEDICAL's value under this recipe, and
+    neither comparator reproduces at any artifact.
 
     COUNTED, because the first version of this docstring said "a quarter of the telecom model's
     fully-connected parameters" and that was wrong in both directions. Reconstructing the pre-fix
@@ -246,7 +260,9 @@ def test_every_trainable_parameter_reaches_the_readout() -> None:
 
     The fix was ordering, not deletion: RZ before RY, so the phases RZ writes are mixed back into
     amplitudes by the RY that follows. After the change the same perturbation moves the readout by
-    1.4e-01.
+    4.8e-02 to 2.3e-01 depending on the artifact - see the right-hand column of the table above. The
+    single "1.4e-01" an earlier revision quoted is withdrawn: it matches no artifact under the
+    recipe above, and none was stated with it.
 
     WHY THIS IS ASSERTED AS A PROPERTY OVER ALL PARAMETERS
 

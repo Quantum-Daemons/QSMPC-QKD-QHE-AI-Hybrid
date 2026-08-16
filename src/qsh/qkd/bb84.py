@@ -229,7 +229,21 @@ def run_bb84(
         # term inside the function.
         #
         # `intrinsic_qber` is `misalignment + 0.5 * p_dark / eta + 0.25 * eve`, so passing it charged
-        # the background TWICE - 0.57% low on fibre, 18.9% low on the 800 km downlink. Round 47
+        # the background TWICE. THE COST DEPENDS ON THE INTENSITIES, and an earlier revision of this
+        # comment gave "0.57% low on fibre, 18.9% low on the 800 km downlink" without saying which:
+        # 18.9% is not a "low by" figure at any intensity pair - it is the same gap with the WRONG
+        # bound as denominator, i.e. how much the fix RAISES the number, which is the convention
+        # docs/verification-log.md uses. Measured both ways, at both pairs:
+        #
+        #   mu = 0.5   / nu = 0.1     (in force while the double charge shipped):
+        #       fibre 50 km      0.5673% low   (0.5705% raise)
+        #       800 km downlink 15.9152% low  (18.9276% raise)
+        #   mu = 0.3416 / nu = 0.1417 (SHIPPED NOW, the finite-key optimum):
+        #       fibre 50 km      0.4984% low   (0.5009% raise)
+        #       800 km downlink 13.6638% low  (15.8262% raise)
+        #
+        # So at the intensities this file ships, the double charge was 0.50% low on fibre and 13.66%
+        # low on the 800 km downlink - the pair web/src/lib/clientOptiQKD.ts already records. Round 47
         # replaced it with the bare misalignment, which fixed the double charge and silently
         # unhooked the EAVESDROPPER: `intrinsic_qber` was the only path by which
         # `eve_intercept_fraction` reached the bound, since `transmittance` does not depend on it

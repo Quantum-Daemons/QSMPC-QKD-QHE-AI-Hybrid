@@ -577,10 +577,26 @@ export function qcnnInferTrained(features: number[], w: QcnnWeights):
   // to the convolution layers, and F is a general unitary on what survives pooling.
   //
   // The Python trainer was changed first and this was missed, which is the exact defect this round
-  // is named for, committed inside the round that names it. Measured before the fix: max readout
-  // probability difference 0.45 against the trained weights, and the argmax class disagreed on 39
-  // of 64 telecom rows. `tests/test_the_qcnn_agrees_across_languages.py` now asserts the identity
-  // numerically so the next divergence cannot be silent.
+  // is named for, committed inside the round that names it.
+  //
+  // RE-MEASURED AT THE COMMIT THE FIGURES BELONG TO, and they turned out to UNDERSTATE the defect.
+  // The numbers first written here - "max readout probability difference 0.45, argmax disagreeing
+  // on 39 of 64 telecom rows" - carried no seed or row recipe, and a first correction pass withdrew
+  // them as unrecoverable. That was wrong: checking out 3c63ea8, taking ITS trainer and ITS
+  // `models/qcnn_telecom/weights.json`, and collapsing only the fc block to the shared scalar gives
+  // **0.585404 with 8 of 8 argmax disagreements at n=8** and **0.598319 with 62 of 64 at n=64**,
+  // on rows built as `tanh(standardise(randn(n, 7) * 0.7))` at torch seed 0. The published 39/64
+  // is reachable only by feeding the trainer unstandardised rows, which violates the preprocessing
+  // contract this file's own test documents.
+  //
+  // So the defect was worse than reported, and "the figure cannot be recovered" was a second
+  // inaccuracy layered on the first. Seeding the old shared
+  // scalar back into this file at the tip (replace the fcAt pair below with
+  // `for (const q of active) RY(q, w.theta[nConv + stages]);`) and running
+  // `tests/test_the_qcnn_agrees_across_languages.py` fails FOUR gates, at maximum readout
+  // differences 0.399170 (telecom-q7), 0.331032 (telecom), 0.016233 (medical) and 0.008699
+  // (finance), on the harness's own rows. That gate now asserts the identity numerically, so the
+  // next divergence cannot be silent.
   const fcAt = (j: number, k: 0 | 1) => w.theta[nConv + stages + 2 * j + k];
 
   let active = Array.from({ length: nq }, (_, i) => i);
@@ -610,8 +626,11 @@ export function qcnnInferTrained(features: number[], w: QcnnWeights):
   }
   // RZ BEFORE RY - a diagonal gate applied last cannot be observed, because the only operations
   // after this block are a CNOT ring (a basis permutation) and |amplitude|^2 (which discards
-  // phase). Measured while the order was RY-then-RZ: moving every fc RZ by 1.234 rad changed the
-  // telecom readout by 5.96e-08. Half the fully-connected block was decoration.
+  // phase). Measured while the order was RY-then-RZ, on the shipped telecom weights with
+  // x = tanh(randn(8, n_qubits) * 0.7) at torch seed 0: moving every fc RZ by 1.234 rad changed the
+  // telecom readout by 5.96e-08, which is 2^-24 - a float32 ULP, so the angle was inert rather than
+  // weak. The recipe and the other three artifacts are in scripts/train/qcnn_variational.py.
+  // Half the fully-connected block was decoration.
   active.forEach((q, j) => { RZ(q, fcAt(j, 1)); RY(q, fcAt(j, 0)); });   // unitary on what survives
   if (active.length > 1) for (let j = 0; j < active.length; j++) CNOT(active[j], active[(j + 1) % active.length]);
   // MULTICLASS readout: marginal probabilities of the first m SURVIVING wires - the ones the

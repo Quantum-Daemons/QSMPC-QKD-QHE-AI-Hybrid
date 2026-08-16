@@ -347,9 +347,23 @@ def circuit(x: torch.Tensor, theta: torch.Tensor, nq: int = N_QUBITS,
             # be observed: the only operations after this block are a CNOT ring, which permutes
             # basis states, and |amplitude|^2, which discards phase. Round 47 added these RZ angles
             # for faithfulness to Cong et al.'s "unitary F on the remaining qubits" and applied them
-            # after the RY, so all of them were inert - measured, moving every fc RZ by 1.234 rad
-            # changed the telecom readout by 5.96e-08 and the finance readout by 8.94e-08, against
-            # 2.6e-01 and 5.9e-01 for the RY angles beside them. Half the block was decoration.
+            # after the RY, so all of them were inert.
+            #
+            # RE-MEASURED ON THE SHIPPED WEIGHTS, WITH THE RECIPE STATED - an earlier revision of
+            # this comment gave four figures with no seed, no inputs and no command, and the weights
+            # they were taken on were replaced by a later retrain. Reconstruct the pre-fix order
+            # (`git show 8017538^:scripts/train/qcnn_variational.py`), take each artifact's theta,
+            # feed x = tanh(randn(8, n_qubits) * 0.7) at torch.Generator().manual_seed(0), add
+            # 1.234 rad to every fc RZ angle, and take max |delta| of circuit():
+            #
+            #                  fc RZ, pre-fix   fc RY, pre-fix   fc RZ, shipped order
+            #   telecom          5.96e-08         1.77e-01            2.28e-01
+            #   telecom_q7       1.19e-07         3.64e-01            1.59e-01
+            #   finance          5.96e-08         9.89e-01            4.82e-02
+            #   medical          8.94e-08         5.12e-01            7.16e-02
+            #
+            # The three pre-fix RZ figures are float32 ULPs - 2^-24, 2^-23 and 1.5 * 2^-24 - so the
+            # angles were inert, not merely small. Half the block was decoration.
             #
             # With RZ first, the phases it writes are mixed back into amplitudes by the RY, so both
             # parameters of the single-qubit rotation reach the readout and F is a genuine
@@ -825,7 +839,13 @@ def main() -> int:
         # to headline something else, so the metric those floors exist to scale was never surfaced.
         "headline_metric": ("macro_f1" if readout_q else
                             ("minority_class_f1" if imbalanced else "accuracy")),
-        "n_train": int(cut), "n_test": int(len(y) - cut),
+        # `n - vcut`, NOT `len(y) - cut`. The split is 70/15/15 and the reported metrics are
+        # computed on `te = slice(vcut, n)` alone, but this recorded validation PLUS test - so every
+        # model card stated a held-out size exactly twice the one the number was measured on
+        # (medical "171 test rows" for 86, finance "1200" for 600, telecom "960" for 480). The
+        # validation split exists precisely so checkpoint selection never touches the reported rows;
+        # counting it as test undoes that separation in the record even though the code respected it.
+        "n_train": int(cut), "n_val": int(vcut - cut), "n_test": int(n - vcut),
         "note": ("Variational QCNN trained by backpropagation through a dense state vector. The "
                  "prediction path applies NO QOTP mask: undoing a Pauli frame through Clifford+T is "
                  "not implemented here (T X T-dagger is not Pauli), so hiding and prediction are "

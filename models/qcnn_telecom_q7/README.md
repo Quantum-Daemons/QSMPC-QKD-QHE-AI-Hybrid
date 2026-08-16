@@ -85,7 +85,7 @@ Same corpus, split, seed, layers and epoch budget as the 8-wire model. Only the 
 | constant-predictor macro F1 floor | 0.027778 |
 | majority-class accuracy floor | 0.152083 |
 | classes predicted | 8 |
-| n_train / n_test | 2240 / 960 |
+| n_train / n_val / n_test | 2240 / 480 / 480 |
 
 **This model beats its floors and loses to classical logistic regression by 0.434553 of macro F1.**
 The LR figure is identical to the 8-wire run's because it never sees the circuit, which is a useful

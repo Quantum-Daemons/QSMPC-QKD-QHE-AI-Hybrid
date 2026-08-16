@@ -68,9 +68,16 @@ def _require_browser_or_skip() -> None:
     THE SKIP WAS THE HOLE. These gates are the only ones that can see a change reaching one
     language and not the other, and they guarded on `if not ESBUILD.exists(): pytest.skip(...)`.
     `web/node_modules` is gitignored and the CI python job installed no Node, so on every GitHub
-    run they reported SKIP and the workflow went green. Measured on a clone of the tip: 20
-    collected, 11 passed, **9 skipped**. Seeding the pre-Round-47 fully-connected block into
-    `quantumSim.ts` fails these gates by 0.585 locally and passes the entire CI workflow.
+    run they reported SKIP and the workflow went green. Measured on a clone of the tip with no
+    `web/node_modules`: **21 collected, 11 passed, 10 skipped** - 6 in
+    `test_the_browser_computes_the_bound_the_page_names.py` and 4 here. An earlier revision said
+    20 / 11 / 9, which was the count one commit before this docstring was written.
+
+    Seeding the pre-Round-47 shared-scalar fully-connected block into `quantumSim.ts` fails FOUR
+    of these gates locally - maximum readout differences 0.399170 (telecom-q7), 0.331032 (telecom),
+    0.016233 (medical), 0.008699 (finance) - and passes the entire CI workflow. The single "0.585"
+    an earlier revision quoted belongs to the PRE-RETRAIN weights of f5861c9, where the same seeding
+    gives 0.585404 on telecom; the commit that published it retrained all six artifacts.
 
     `QSH_REQUIRE_BROWSER_GATES=1` turns the skip into a failure. CI sets it; a developer without
     node still gets the skip, with the message saying what is unchecked.

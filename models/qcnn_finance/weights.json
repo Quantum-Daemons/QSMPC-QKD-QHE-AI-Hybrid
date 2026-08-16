@@ -148,6 +148,7 @@
  "macro_f1_floors": null,
  "headline_metric": "minority_class_f1",
  "n_train": 2800,
- "n_test": 1200,
+ "n_val": 600,
+ "n_test": 600,
  "note": "Variational QCNN trained by backpropagation through a dense state vector. The prediction path applies NO QOTP mask: undoing a Pauli frame through Clifford+T is not implemented here (T X T-dagger is not Pauli), so hiding and prediction are kept separate rather than claiming a correction that does not exist. Simulated, not hardware; the classical baseline above is reported so no quantum advantage is implied."
 }

@@ -16,8 +16,14 @@
 >
 > Two earlier banners are superseded rather than deleted. The one before last contradicted itself -
 > it gave the accuracy as 0.918605 while its own table gave 0.813953, and printed 0.918605 as the
-> MINORITY-CLASS F1 - and both of those figures belong to the Round 46 circuit. 0.860465 belongs to
-> this circuit with four of its angles inert.
+> MINORITY-CLASS F1. **Only ONE of those two figures is a Round 46 number**: 0.918605 was the Round
+> 46 circuit's accuracy, printed in the minority-F1 row by mistake. 0.813953 belongs to the RETIRED
+> hardware-efficient ansatz - it is that circuit's stored `test_accuracy` (pre-Round-46
+> `weights.json`, and the 0.8140 in the Round 43 five-seed sweep). The Round 46 circuit's real
+> minority-class F1 was **0.888889** and was never printed on any card. An earlier revision of this
+> banner said both figures belonged to Round 46, which the seed-position note below - "0.813953 ...
+> was measured on the retired ansatz" - already contradicted. 0.860465 belongs to this circuit with
+> four of its angles inert.
 
 NOT PUBLISHED TO HUGGING FACE, AND NOT IN THE MODEL REGISTRY. This is a browser-side demonstration
 circuit for the `medical_fl` page of
@@ -70,7 +76,7 @@ marked superseded rather than deleted, because they are the evidence that the co
 | logistic regression minority-class F1 | 0.939394 |
 | all-positive F1 floor | 0.578512 |
 | test prevalence | 0.406977 |
-| n_train / n_test | 398 / 171 |
+| n_train / n_val / n_test | 398 / 85 / 86 |
 
 Accuracy leads here because the split is close to balanced (prevalence 0.406977), which is the
 reverse of the finance card. **This circuit beats both of its floors and loses to classical logistic

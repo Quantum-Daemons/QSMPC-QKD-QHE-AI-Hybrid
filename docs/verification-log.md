@@ -1466,7 +1466,7 @@ gap is stated in the round that has it.
 | the finite-key threshold, computed rather than cited, and checked against the paper's Table I | `src/qsh/qkd/finite_key.py`, `tests/test_finite_key_reproduces_the_published_table.py` |
 | the block size every config key must clear, and the two declared residuals | `tests/test_every_block_size_clears_the_band_the_config_names.py` |
 | the browser and the trainer computing the same QCNN, numerically, on the shipped artifacts | `tests/test_the_qcnn_agrees_across_languages.py` |
-| the readout binning over surviving wires | `tests/test_qcnn_multiclass_readout.py`, `readout.wires` in every `models/*/weights.json` |
+| the readout binning over surviving wires | `tests/test_qcnn_multiclass_readout.py` (which checks the trainer's `readout_wires()` against an independent re-derivation of the survivors, not the artifacts), and `readout.wires` = `[0, 2, 4]` in the TWO MULTICLASS artifacts - `models/qcnn_telecom/weights.json` (8 wires) and `models/qcnn_telecom_q7/weights.json` (7 wires). The other four QCNN artifacts carry `readout.kind` = `expval_z0` with no `wires` key at all: a single `<Z0>` expectation bins nothing, so it has no binning to correct. This row said "every `models/*/weights.json`" for one round, and a reviewer executing it on any binary artifact found nothing. |
 | no trainable parameter being analytically dead, at five configurations | `tests/test_the_qcnn_has_the_structure_the_name_claims.py::test_every_trainable_parameter_reaches_the_readout` |
 | the published QCNN metrics, per artifact | `models/*/weights.json` and the cards gated against them |
 | the browser and Python agreeing on the decoy bound, including under an eavesdropper | `tests/test_the_browser_computes_the_bound_the_page_names.py` |
@@ -1507,8 +1507,12 @@ quantity a visitor can see, and each has moved since the last bundle that was wa
 
 **And the gates that stand in for a walk were not all running.** Every browser-side cross-language
 check guards on `if not ESBUILD.exists(): pytest.skip(...)`, `web/node_modules` is gitignored, and
-the GitHub CI Python job installed no Node - so in CI they SKIPPED. Measured on a clone of the tip:
-**20 collected, 11 passed, 9 skipped**. For the rounds in which this file's entry has been a pointer
+the GitHub CI Python job installed no Node - so in CI they SKIPPED. Measured on a clone of the tip
+with no `web/node_modules`: **21 collected, 11 passed, 10 skipped** - 6 in
+`tests/test_the_browser_computes_the_bound_the_page_names.py` and 4 in
+`tests/test_the_qcnn_agrees_across_languages.py`. This paragraph said 20 / 11 / 9 for one round,
+which was the count one commit before it was written; the commit that published it added a 21st
+gate, and that gate skips too. For the rounds in which this file's entry has been a pointer
 to in-repo evidence, part of that evidence was not being produced by CI at all; it was being produced
 only by `scripts/ci_local.sh` on one machine. `.github/workflows/ci.yml` now installs Node and sets
 `QSH_REQUIRE_BROWSER_GATES=1`, which turns the skip into a failure.

@@ -51,8 +51,11 @@ a CRY control, which is diagonal in its basis, and then by the readout ignoring 
 the old order, 4 of these 77 angles could not move the readout at any input.
 
 Trained by backpropagation through a dense state vector, then reimplemented independently in plain
-numpy (`src/qsh/qhe/qcnn_trained.py`); the two agree to 2.4e-07, which is how a crossed CNOT ring
-in the trainer was found.
+numpy (`src/qsh/qhe/qcnn_trained.py`). Re-measured on the weights shipped here, the two agree to
+**1.1e-06**, stable at that value for every row count tried (8, 16, 24, 64, 256) - float32 noise.
+The often-quoted **2.4e-07** is HISTORICAL: it was measured on the pre-Round-47 circuit, and it is
+how a crossed CNOT ring in the trainer was found. The gate re-measures the agreement on every run
+at a 1e-4 tolerance, which is why the drift across two retrains was not caught by the suite.
 
 The prediction path applies NO QOTP mask. Undoing a Pauli frame through Clifford+T is not
 implemented in this repository, so hiding and prediction are kept separate rather than claiming a
@@ -60,8 +63,12 @@ correction that does not exist.
 
 ## Measured performance
 
-Held-out split, 1200 test rows against 2800 training rows, prevalence 0.051667. The headline
-metric is **minority_class_f1**, chosen by the corpus rather than by preference.
+Held-out split, **600 test rows** against 2800 training rows, prevalence 0.051667. The headline
+metric is **minority_class_f1**, chosen by the corpus rather than by preference. 4000 rows split
+70 / 15 / 15 gives 2800 train, 600 validation, 600 test; every figure below is computed on those
+600 test rows only. An earlier revision of this card said 1200, which was validation PLUS test: the
+trainer recorded `n_test` as everything after the training cut. The metrics were always computed on
+the 600-row slice, so only the row count was wrong.
 
 | quantity | value |
 |---|---|
@@ -72,7 +79,7 @@ metric is **minority_class_f1**, chosen by the corpus rather than by preference.
 | logistic regression accuracy | 0.985 |
 | majority-class accuracy floor | 0.948333 |
 | test prevalence | 0.051667 |
-| n_train / n_test | 2800 / 1200 |
+| n_train / n_val / n_test | 2800 / 600 / 600 |
 
 **The classical baseline is ahead**, by 0.130378 of minority-class F1 and by 0.015 of accuracy.
 That is reported here rather than omitted, and the browser log line says the same thing on the page.

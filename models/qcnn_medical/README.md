@@ -51,8 +51,13 @@ a CRY control, which is diagonal in its basis, and then by the readout ignoring 
 the old order, 4 of these 77 angles could not move the readout at any input.
 
 Trained by backpropagation through a dense state vector, then reimplemented independently in plain
-numpy (`src/qsh/qhe/qcnn_trained.py`); the two agree to 2.4e-07, which is how a crossed CNOT ring
-in the trainer was found.
+numpy (`src/qsh/qhe/qcnn_trained.py`). Re-measured on the weights shipped here, the two agree to
+**4.7e-07** on the 24 seeded rows `tests/test_the_qcnn_agrees_across_languages.py` uses, and the
+figure grows with the sample - 3.0e-07 at 8 rows, 7.3e-07 at 256 - so it is float32 noise rather
+than a constant, and the row count has to travel with it. The often-quoted **2.4e-07** is
+HISTORICAL: it was measured on the pre-Round-47 circuit, and it is how a crossed CNOT ring in the
+trainer was found. The gate re-measures the agreement on every run at a 1e-4 tolerance, which is
+why the drift across two retrains was not caught by the suite.
 
 The prediction path applies NO QOTP mask. Undoing a Pauli frame through Clifford+T is not
 implemented in this repository, so hiding and prediction are kept separate rather than claiming a
@@ -60,8 +65,12 @@ correction that does not exist.
 
 ## Measured performance
 
-Held-out split, 171 test rows against 398 training rows, prevalence 0.406977. The headline metric
+Held-out split, **86 test rows** against 398 training rows, prevalence 0.406977. The headline metric
 is **accuracy**, chosen by the corpus rather than by preference: this split is close to balanced.
+569 rows split 70 / 15 / 15 gives 398 train, 85 validation, 86 test; every figure below is computed
+on those 86 rows only. An earlier revision of this card said 171, which was validation PLUS test:
+the trainer recorded `n_test` as everything after the training cut. The metrics were always computed
+on the 86-row slice - 0.406977 is 35/86 and 0.883721 is 76/86 - so only the row count was wrong.
 
 | quantity | value |
 |---|---|
@@ -72,7 +81,7 @@ is **accuracy**, chosen by the corpus rather than by preference: this split is c
 | logistic regression minority-class F1 | 0.939394 |
 | all-positive F1 floor | 0.578512 |
 | test prevalence | 0.406977 |
-| n_train / n_test | 398 / 171 |
+| n_train / n_val / n_test | 398 / 85 / 86 |
 
 **The classical baseline is ahead**, by 0.069767 of accuracy and by 0.095644 of minority-class F1.
 That is reported here rather than omitted, and the browser log line says the same thing on the page.
