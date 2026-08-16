@@ -1519,3 +1519,130 @@ only by `scripts/ci_local.sh` on one machine. `.github/workflows/ci.yml` now ins
 
 A walk of the deployed bundle therefore remains owed, and this paragraph is the record that it is
 owed rather than done.
+
+## Round 48 (`e192214`, branch `round48-the-page-was-serving-a-crippled-model`) - WRITTEN IN ROUND 49, because Round 48 wrote nothing
+
+**This entry is late by one round, and that is the most important thing in it.** Round 48 shipped
+three commits (`2d83b62`, `5aa444b`, `75b4cbf`), merged as PR #39, and deployed - and wrote no
+`## Round 48` section in `docs/deliverable-verification.md`, no entry here, and no checklist rows for
+any of its six changes. Not a thin record: none.
+
+The convention this file already had for a missing record is the Rounds 39-42 and Round 44 pointer,
+and `:1241` states the principle those entries rest on - *a reconstruction presented as a record is
+worse than an absent record, because the absence is visible and the imitation is not.* So this entry
+is dated as what it is: written in Round 49, about Round 48, from the commits and the artifacts
+rather than from anything observed at the time.
+
+**What made this different from Round 44's identical gap is that nothing could have noticed.** Both
+round-obligation gates derive "which round it is" from the register's newest `## Round N` heading -
+`tests/test_register_deadlines.py::_current_round()` and a second copy of the same function in
+`tests/test_the_log_has_an_entry_for_the_current_round.py`, whose own comment explains that reading
+the same file means the two "cannot disagree". They cannot. Neither can disagree with a register that
+stopped being written. Measured on this tip: `_current_round()` returned **47**, so the log gate asked
+whether the log named round 47, it did, and both went green with an entire round missing. Three
+obligations conditioned `by Round 48` stayed pending for the same reason.
+
+Round 49 adds `tests/test_the_register_records_every_round_that_shipped.py`, which takes the round
+from git merge subjects instead - `roundN-` branch names, which no amount of forgetting to write prose
+can change - and fails when the register lags. It is red at this commit, where history said 48 and the
+register said 47.
+
+**Where Round 48's evidence lives:**
+
+| what it establishes | where |
+|---|---|
+| the round as a whole | `docs/deliverable-verification.md`, "Round 48" section, written in Round 49 |
+| the finance QCNN receiving the feature space its artifact declares | `tests/test_the_encoder_receives_the_space_the_artifact_declares.py` |
+| the raw-space rows the fix required, and the EDA that found the degenerate columns | `scripts/data/build_federated_samples.py`, `samples_by_space` and `eda.duplicates` |
+| the browser selecting that space by name, with no default branch | `web/src/lib/realData.ts` (`rowBySpace`), `web/src/lib/clientCompute.ts` |
+| an artifact shorter than its declared circuit failing loudly | the theta-length guard in `web/src/lib/quantumSim.ts` |
+
+**The defect it fixed was visitor-facing and real.** The finance page fed the QCNN z-scored values
+while its artifact declared `input_space: "raw"`, so the encoder received a space the weights were not
+trained on; correcting it raised the encoded spread on wire 0 by about **17,000x** on the live site.
+
+**What Round 48 got wrong, found in Round 49 and fixed there.** Both are the same defect class this
+project has now recorded seven rounds running - a fix reaching one of the places that states the thing:
+
+- `skr_per_pulse` has FOUR emitters, and Round 48's "one panel, two roundings" fix reached three.
+  `src/qsh/orchestration/stages.py` kept five decimals nine lines below its own satellite twin using
+  six.
+- The corrected federated figures (25.25% / 0.9125) landed in ONE of three copies. The commit that
+  said "this commit uses the right one" left the superseded 17.25% in two other files.
+
+**No deployed-site walk was recorded for Round 48**, and unlike Round 47 - where the absence was
+written down in the round that had it - here the absence was itself unrecorded until now. A walk of
+this bundle is owed and was never performed.
+
+## Round 49 (branch `round49-the-round-that-left-no-record`) - a POINTER, and the deploy walk is deferred by an explicit decision
+
+**No deployed-site walk has been recorded for Round 49.** This is a deferral, not an oversight: with
+the round's three conditioned obligations all landing in one session, the choice was between finishing
+the record and walking the bundle, and the record won. Round 48 is the reason - a round that ships
+without its record disables every gate that depends on knowing which round it is, and this round
+exists mostly to fix that. Walking the site and writing nothing down is the failure this file already
+records twice (Round 44, Round 48); writing the record and owing the walk is the smaller debt, and it
+is stated here rather than left to be discovered.
+
+**What the round was for.** Round 48 shipped and wrote no record, and no gate noticed, because both
+round-obligation gates take the round number from the register a forgotten round fails to write. The
+fix is a second, independent source: git merge subjects name `roundN-` branches.
+
+| what it establishes | where |
+|---|---|
+| the register cannot silently lag the merged history | `tests/test_the_register_records_every_round_that_shipped.py` - red at `e192214`, where history said 48 and the register said 47, and it asserts on `__code__.co_names` that its own source is not the register |
+| one metric has one rounding, across both languages | `tests/test_one_metric_has_one_rounding.py` - scoped to metric channels, so the `mean`/`sd` over-fire was fixed by narrowing the scope rather than by widening an exception list |
+| every directory that ships an artifact ships a card | `tests/test_every_shipped_artifact_has_a_card.py` - enumerates ARTIFACTS, which is the one thing a card-globbing gate cannot do |
+| the 8-class readout is identifiable at every shipped width | `tests/test_qcnn_multiclass_readout.py`, rewritten - the version it replaces could not fail |
+| the three conditioned obligations | `references/qcnn-width-ablation.md`, `references/finance-calibration-isotonic-vs-platt.md`, and the 5G-NIDD sections of `docs/deliverable-verification.md` |
+
+**The three obligations, all discharged.**
+
+1. **The width ablation, re-run at five seeds.** Finance and medical give BYTE-IDENTICAL metrics at 8
+   and 9 wires at every seed on both corpora - the pad-wire finding is now exact where it was one
+   seed. Telecom 7-vs-8 is the honest half: 7 wins 4 of 5 seeds and the mean gap is +0.0463, LARGER
+   than the single-seed figure it replaces, but the ranges overlap and neither test separates them
+   (paired t p = 0.059, Wilcoxon p = 0.125). Reported as a direction that survives and a magnitude
+   that does not. Seed 0 reproduces all four shipped artifacts to every recorded digit, which is what
+   makes the sweep about the current circuit rather than some other one.
+2. **Isotonic against Platt, and the answer was neither.** The shipped `fit_platt` is fed a
+   PROBABILITY where its map expects a log-odds, so it returns one constant (0.00090148) for deciles
+   1 through 9 and cannot express a risk below 1 in 1,109 on a corpus whose base rate is 1 in 656.
+   That is the source of the +8.7% log-loss the record has carried for three rounds as a base-rate
+   effect. The unit tests could not catch it: their fixture passes a logit and the trainer passes a
+   probability. Isotonic wins nothing a corrected Platt does not also win and costs 9.09% of AUPRC,
+   collapsing 1,388,669 distinct scores to 138 and emitting exact zeros on 30.5% of test rows.
+   Recommendation recorded: keep Platt, fix what it is fed. THE FIX IS NOT APPLIED - it retrains and
+   rewrites `models/`, and this was scoped as a measurement.
+3. **5G-NIDD adopted and published**, `Daemons-Q/qsh-telecom-5g-nidd-gbm` at revision `b00628c5`.
+
+**A record correction found while measuring.** The retained-Platt argument named 2,321 positive
+events as the binding quantity. That is the TEST split's event count; the calibration partition has
+**801**, and `models/metrics.json` already recorded `positives_calibration: 801` one line above the
+sentence that said 2,321.
+
+**Defects this round found in its own past work.** Two from Round 48, both the same class - a fix
+reaching one of the places that states the thing: `skr_per_pulse` had a fourth emitter the "one
+panel, two roundings" fix missed, and the corrected federated figures landed in one of three copies.
+A seventh instance was found in `qcnn_variational.py`, where the docstring still stated the readout
+convention Round 47 replaced forty lines below it - documentation drift only, since all three
+implementations bin by survivors and the browser throws when an artifact disagrees.
+
+**Stale figures corrected, each re-derived rather than transcribed.** `docs/crypto-agility.md` was
+wrong on two axes at once - its figures reproduce exactly at the retired `mu = 0.5 / nu = 0.1`, AND it
+called the bound's input "intrinsic QBER" when the two differ by the dark-count term. Re-deriving
+mattered: the corrected triple carried into this round from the plan turned out to mix the two
+quantities, so transcribing it would have shipped a wrong set. `spaces/qsh-inference` published a
+pre-improvement finance F1 (0.081 against the recorded 0.151948) in BOTH its README and its `app.py`,
+on the one surface this project publishes outside the repository. `DATA_LICENSES.md` said "three of
+the six" reference papers where the table has seven rows and two of them are arXiv papers.
+`references/REFERENCES.md` said "15 bundled PDFs" where 7 are committed and 11 are on a working
+checkout, and its "zero hits" HCI grep now returns exactly one - itself, by self-reference, which is
+recorded rather than edited to a number that would read as a real source appearing.
+
+**The checklist was two rounds behind, not one.** Rounds 47 AND 48 both added nothing; the highest
+round it named was 46. Twenty rows added. Zero duplicate IDs, re-verified - an earlier scan in this
+round reported two, which was a defect in the scan's own regex truncating the `RS2b`/`SC8b` suffix
+convention, not in the file.
+
+A walk of the deployed bundle is owed for Rounds 48 and 49 both.

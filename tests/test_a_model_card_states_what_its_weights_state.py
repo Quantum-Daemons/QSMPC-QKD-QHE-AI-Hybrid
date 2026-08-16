@@ -144,13 +144,25 @@ def _artifact_for(card: Path) -> tuple[str, dict]:
         records = json.loads((REPO / "models" / "metrics.json").read_text())
         if key in records:
             return f"models/metrics.json[{key}]", records[key]
-    weights = directory / "weights.json"
-    if weights.exists():
-        return str(weights.relative_to(REPO)), json.loads(weights.read_text())
+    # The artifact file, whatever this directory calls it. `weights.json` was the only name until
+    # Round 49, when cards were written for the three directories that had none - and
+    # `models/finance_aml_scorecard` ships `scorecard.json`, so it resolved to nothing and the gate
+    # raised on a card that documents a real artifact perfectly well.
+    #
+    # Adding the key to `ARTIFACT_DIRS` would NOT have been the fix: `finance_aml.scorecard` is
+    # deliberately absent from the registry and `tests/test_model_artifact_inventory.py` declares it
+    # in `NON_REGISTRY_METRICS` with the reason. Registering it to satisfy this gate would have made
+    # two files contradict each other about whether it is a registry model. The gate's lookup was
+    # the thing that was too narrow, so the gate's lookup is what widened.
+    for fname in ("weights.json", "scorecard.json"):
+        artifact = directory / fname
+        if artifact.exists():
+            return str(artifact.relative_to(REPO)), json.loads(artifact.read_text())
     raise AssertionError(
-        f"{card.relative_to(REPO)} has no artifact to be checked against: its directory carries no "
-        f"weights.json and its name maps to no key in registry.ARTIFACT_DIRS. A card documenting "
-        "nothing is the failure mode this file exists for, so this is an error rather than a skip."
+        f"{card.relative_to(REPO)} has no artifact to be checked against: its directory carries "
+        f"none of weights.json / scorecard.json and its name maps to no key in "
+        "registry.ARTIFACT_DIRS. A card documenting nothing is the failure mode this file exists "
+        "for, so this is an error rather than a skip."
     )
 
 
