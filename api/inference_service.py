@@ -73,7 +73,11 @@ def qkd_demo(distance_km: float = 50.0, eve: float = 0.0) -> dict:
                  seed=1)
     return {
         "distance_km": distance_km, "eve_fraction": eve,
-        "qber": round(r.qber, 4), "skr_per_pulse": round(r.secret_key_rate, 5),
+        "qber": round(r.qber, 4),
+        # SIX decimals, matching `web/src/lib/api.ts` which feeds the same panel. This was
+        # five, so one panel showed 0.00198 from Python and 0.001977 from the browser for
+        # one quantity. The satellite twin already used six.
+        "skr_per_pulse": round(r.secret_key_rate, 6),
         "secure_key_bits": r.secure_key_bits,
         # Config, not a literal. This was 0.08 while the browser used
         # security_scoring.qber_secure_threshold (0.11), so full mode and demo mode returned

@@ -334,18 +334,25 @@ export function securityFacts(config: any, metrics: Record<string, any>): Securi
   }
 
   if (qber != null) {
-    // Two thresholds, and they disagree with each other. 0.11 is the textbook BB84 figure; this
-    // repository's own GLLP model puts the zero-key point at 0.098106, BELOW it - so a QBER in
-    // [0.098, 0.11) used to score full eavesdropper-detection marks on a channel already dead.
-    // Report against the model that actually ran, and name the textbook figure beside it.
-    const dead = skr != null ? skr <= 0 : qber >= 0.098106;
+    // THE ZERO-KEY POINT IS NOT A CONSTANT, and naming one was naming a model this project no
+    // longer runs. This read "GLLP zero-key point 0.098106" - the NON-DECOY figure, removed from
+    // both the Python and the browser paths in Rounds 45-46 when the decoy-state bound replaced it.
+    // The decoy bound's zero-key QBER depends on the channel (eta, mu, nu), so there is no single
+    // number to substitute; quoting one would repeat the same mistake with a fresher digit.
+    //
+    // What is reportable is the mechanism: the rate this run computed, and the post-processing
+    // threshold the protocol actually aborts on. The fallback, for a run that reported no rate, is
+    // now that same configured threshold rather than a retired model's constant.
+    const dead = skr != null ? skr <= 0 : qber >= s.qber_secure_threshold;
     facts.push({
       label: "QBER",
       value: `${qber}${dead ? " - no secure key at this error rate" : ""}`,
       kind: "measured",
-      source: "this run's channel model; GLLP zero-key point 0.098106, textbook BB84 bound "
-        + `${s.qber_secure_threshold}`,
-      warn: dead ? "above this channel model's zero-key point" : undefined,
+      source: skr != null
+        ? "this run's two-intensity decoy-state bound (Ma, Qi, Zhao & Lo, Phys. Rev. A 72, 012326); "
+          + `post-processing aborts above ${s.qber_secure_threshold}`
+        : `no rate reported by this run; post-processing threshold ${s.qber_secure_threshold}`,
+      warn: dead ? "the decoy-state bound yields no secure key on this channel" : undefined,
     });
   }
   return facts;
@@ -364,9 +371,12 @@ export function securityScore(o: SecOpts) {
   c.security_model = it ? s.info_theoretic : s.computational;
   const cat = kemCategory(o.kem);
   c.key_strength = (s.key_strength_by_category as Record<string, number>)[String(cat)] ?? 16;
-  // Mirrors `benchmark/security.py`: 0.11 is the Shor-Preskill BB84 bound, but this project's GLLP
-  // model yields zero secure key from 0.098106, so a QBER in between used to score FULL marks on a
-  // dead channel. The fact display right below was already guarded against this; the SCORE was not.
+  // Mirrors `benchmark/security.py`: 0.11 is the Shor-Preskill BB84 bound, and a channel can be
+  // dead below it - which is why the guard is on the KEY rather than on the QBER. The figure that
+  // used to appear here, "this project's GLLP model yields zero secure key from 0.098106", belonged
+  // to the non-decoy model that Rounds 45-46 removed from both languages; the decoy bound's
+  // zero-key point is channel-dependent and there is no constant to put in its place. Stated in
+  // the past tense because the reasoning is what survives, not the number.
   // `qkdKeyBits` is the field that carries this: `secFromConfig` fills it from the run's measured
   // `secure_key_bits`, so zero here means the protocol emitted no key, not merely that QKD was off.
   const deadKey = o.qkdKeyBits != null && o.qkdKeyBits <= 0;
@@ -2810,8 +2820,23 @@ export function runClientPipeline(
             // inference paths on one page could not be compared on cost at all. State-vector
             // simulation is 2^n work in the qubit count, which is the number that makes the figure
             // interpretable, so it travels with it - as `PF2` requires of the encrypted tier.
+            // THE SPACE THE ARTIFACT DECLARES, not whatever `feats` happens to be in. `feats` is
+            // `realIn.values`, which is StandardScaler output because the CKKS tier and the SHAP
+            // panel are fitted there. A QCNN artifact declaring `input_space: "raw"` standardises
+            // its input again, so handing it `feats` charged the transform twice and flattened the
+            // wire: measured at tanh sd 3.3e-05 on `amount`, with 69 of 400 rows - 17.25% - given a
+            // different class than the same rows correctly fed.
+            //
+            // Falls back to `feats` only when the artifact does NOT declare `raw`, so a future
+            // artifact in a third space cannot silently pick up the wrong array; the pairing is
+            // asserted in tests/test_the_encoder_receives_the_space_the_artifact_declares.py.
+            // BY NAME, with no default branch. `w.input_space` names the units the circuit was
+            // trained on; the sample ships its rows keyed by the space each is in. A boolean
+            // `=== "raw" ? a : b` would send an artifact retrained into a third space to whichever
+            // array the else-branch happens to name - which is exactly how this shipped.
+            const qcnnFeats = realIn?.bySpace?.[w.input_space] ?? (realIn ? undefined : feats);
             const t0 = performance.now();
-            const qc = qcnnInferTrained(feats.slice(0, w.n_qubits), w);
+            const qc = qcnnInferTrained((qcnnFeats ?? feats).slice(0, w.n_qubits), w);
             const qcnnMs = performance.now() - t0;
             artifacts.primary_inference = { backend: "qcnn-trained", class: qc.cls,
                                             qubits: qc.qubits, expectation: r2(qc.expectation) };
