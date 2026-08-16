@@ -93,13 +93,55 @@ def test_weights_are_shared_within_a_layer() -> None:
     # and fired on the filter's own 8 angles - a shape that has nothing to do with the register.
     # What sharing actually means is that a stage's block does not GROW with the register: only the
     # NUMBER of stages may differ between widths, never the size of a stage's filter.
+    #
+    # ROUND 47: comparing `a[1:] == b[1:]` was VACUOUS for the 1-D blocks. `pool` was `(stages,)`
+    # and `fc` was `(1,)`, for which `[1:]` is `()` at every width - so `()  == ()` passed
+    # unconditionally, and an `fc` of shape `(nq,)`, the exact per-position weighting this test
+    # exists to forbid, would have passed too. Every axis EXCEPT a leading stage count is compared
+    # now, and the stage axis is checked separately below for being a stage count rather than a
+    # wire count.
+    STAGE_AXIS = {"conv", "pool"}          # blocks whose leading axis is the pooling-stage index
     for name in s8:
         a, b = s8[name], s16[name]
-        assert a[1:] == b[1:], (
-            f"parameter block {name!r} is {a} at 8 qubits and {b} at 16 - the per-stage filter grows "
-            "with the register, so weights are per-position rather than shared. A convolution "
-            "applies ONE filter at every position."
-        )
+        if name in STAGE_AXIS:
+            assert a[1:] == b[1:], (
+                f"parameter block {name!r} is {a} at 8 qubits and {b} at 16 - the per-stage filter "
+                "grows with the register, so weights are per-position rather than shared. A "
+                "convolution applies ONE filter at every position."
+            )
+            assert a[0] <= b[0], (
+                f"block {name!r} has {a[0]} stages at 8 qubits and {b[0]} at 16; a wider register "
+                "cannot have fewer pooling stages"
+            )
+        else:
+            # No stage axis, so nothing may differ at all. `fc` acts on the register that SURVIVES
+            # pooling, whose size is bounded by the readout requirement rather than by nq - 4
+            # survivors at both 8 and 16 qubits - so its shape must be identical at both widths.
+            assert a == b, (
+                f"parameter block {name!r} is {a} at 8 qubits and {b} at 16. This block has no "
+                "stage axis, so any difference means it is sized by the register: that is "
+                "per-position weighting, which is what separates a generic ansatz from a QCNN."
+            )
+    assert 8 not in s8["fc"] and 16 not in s16["fc"], (
+        f"the fully-connected block is sized by the register: {s8['fc']} at 8 qubits, "
+        f"{s16['fc']} at 16. It must be sized by the SURVIVING register, which pooling bounds."
+    )
+
+
+def test_the_sharing_check_would_notice_per_position_weights() -> None:
+    """Anti-tautology for the check above, against the shape it exists to forbid.
+
+    The previous version of that test compared `shape[1:]`, which is `()` for any 1-D block. This
+    reconstructs what it would have concluded about an `fc` of shape `(nq,)` - one angle per wire,
+    the definition of per-position weighting - and asserts the OLD comparison passes it while the
+    new one does not. Without this, a green test is consistent with a test that cannot fail.
+    """
+    bad8, bad16 = (8,), (16,)                 # `fc: (nq,)` - one independent angle per wire
+    assert bad8[1:] == bad16[1:], (
+        "the old `[1:]` comparison does not pass per-wire weights, so this anti-tautology is "
+        "describing a failure mode that never existed"
+    )
+    assert bad8 != bad16, "the new full-shape comparison must reject per-wire weights"
 
 
 def test_pooling_reduces_the_register_by_measurement_conditioned_rotation() -> None:
@@ -144,6 +186,7 @@ def test_no_shipped_artifact_claims_an_architecture_it_does_not_have() -> None:
     """
     import json
 
+    q = _mod()
     dirs = sorted((REPO / "models").glob("qcnn_*"))
     assert dirs, "no models/qcnn_* directories; this check has no subject"
     stale = []
@@ -152,8 +195,103 @@ def test_no_shipped_artifact_claims_an_architecture_it_does_not_have() -> None:
         arch = str(w.get("training", {}).get("architecture", ""))
         if "qcnn" not in arch.lower():
             stale.append(f"{d.name}: architecture={arch!r}")
+            continue
+        # ROUND 47: the string check above is nearly vacuous - the DIRECTORY is called `qcnn_*`,
+        # so any label naming its own directory passes. What actually separates the architectures
+        # is the PARAMETER COUNT: the retired ansatz carried `layers * n_qubits` angles, the QCNN
+        # carries `param_count(...)`. Weights from the old circuit cannot satisfy this, whatever
+        # their label says, and no amount of relabelling makes them.
+        nq, layers = int(w["n_qubits"]), int(w["layers"])
+        ro = int(w.get("readout", {}).get("readout_qubits", 0) or 0)
+        want = q.param_count(nq, readout_qubits=ro, layers=layers)
+        got = len(w["theta"])
+        if got != want:
+            stale.append(
+                f"{d.name}: {got} angles shipped, the QCNN at nq={nq} layers={layers} "
+                f"readout={ro} needs {want} (the retired ansatz would need {layers * nq})")
     assert not stale, (
         "these shipped artifacts do not record a QCNN architecture:\n  " + "\n  ".join(stale)
         + "\n\nRetrain them. A card naming an architecture over weights from a different circuit is "
         "the same defect as the label this round removed, one layer down."
+    )
+
+
+def test_every_trainable_parameter_reaches_the_readout() -> None:
+    """No parameter may be analytically dead.
+
+    WHY THIS EXISTS
+
+    Round 47 gave the fully-connected block a per-survivor RY AND RZ, to match Cong, Choi & Lukin's
+    "a unitary F on the remaining qubits" rather than the single shared scalar that was there. Half
+    of it was decoration. The block is the LAST thing before the readout, and the only operations
+    after it are a CNOT ring - which permutes basis states - and `|amplitude|**2`, which discards
+    phase. RZ is diagonal. A diagonal gate applied last cannot move a computational-basis readout.
+
+    RE-MEASURED on the shipped artifacts, with the recipe stated because an earlier revision of this
+    docstring gave the figures with no seed, no inputs and no command, and the weights they were
+    taken on were replaced by a later retrain. Reconstruct the pre-fix order from
+    `git show 8017538^:scripts/train/qcnn_variational.py`, take each artifact's theta, feed
+    x = tanh(randn(8, n_qubits) * 0.7) at torch.Generator().manual_seed(0), add 1.234 rad to every
+    fc RZ angle, and take max |delta| of circuit():
+
+                     fc RZ, pre-fix   fc RY, pre-fix   fc RZ, shipped order
+        telecom        5.96e-08          1.77e-01            2.28e-01
+        telecom-q7     1.19e-07          3.64e-01            1.59e-01
+        finance        5.96e-08          9.89e-01            4.82e-02
+        medical        8.94e-08          5.12e-01            7.16e-02
+
+    The three pre-fix RZ figures are float32 ULPs - 2^-24, 2^-23 and 1.5 * 2^-24 - so those angles
+    were inert rather than merely weak. The withdrawn figures were "telecom 5.96e-08 and finance
+    8.94e-08 against 2.6e-01 and 5.9e-01": 8.94e-08 is MEDICAL's value under this recipe, and
+    neither comparator reproduces at any artifact.
+
+    COUNTED, because the first version of this docstring said "a quarter of the telecom model's
+    fully-connected parameters" and that was wrong in both directions. Reconstructing the pre-fix
+    gate order and perturbing every angle individually:
+
+        telecom      5 dead of 57   ( 8.8% of the circuit)   4 of 8 fc angles  (50% of the block)
+        telecom-q7   4 dead of 55   ( 7.3%)                  3 of 6 fc angles  (50%)
+        finance      4 dead of 77   ( 5.2%)                  1 of 2 fc angles  (50%)
+        medical      4 dead of 77   ( 5.2%)                  1 of 2 fc angles  (50%)
+
+    So it was HALF the fully-connected block in every model, never a quarter, and a much smaller
+    fraction of the whole circuit than "a quarter" suggests. The commit that introduced this file
+    carried the overstatement into its own subject line; this is the measured version.
+
+    The fix was ordering, not deletion: RZ before RY, so the phases RZ writes are mixed back into
+    amplitudes by the RY that follows. After the change the same perturbation moves the readout by
+    4.8e-02 to 2.3e-01 depending on the artifact - see the right-hand column of the table above. The
+    single "1.4e-01" an earlier revision quoted is withdrawn: it matches no artifact under the
+    recipe above, and none was stated with it.
+
+    WHY THIS IS ASSERTED AS A PROPERTY OVER ALL PARAMETERS
+
+    Because the specific mistake is not the interesting one. Any circuit that ends in a diagonal
+    gate, or that pools a wire away before its angle is used, or that indexes past the end of a
+    block, produces a parameter the optimiser will happily carry and never move. That is invisible
+    to every accuracy metric - the model simply trains the parameters that work - and invisible to
+    the parameter-count checks above, which count angles rather than asking whether they do
+    anything.
+    """
+    q = _mod()
+    dead: list[str] = []
+    for nq, ro, layers in ((8, 3, 6), (8, 0, 3), (7, 3, 6), (9, 0, 3), (12, 3, 6)):
+        n = q.param_count(nq, readout_qubits=ro, layers=layers)
+        g = torch.Generator().manual_seed(0)
+        theta = torch.randn(n, generator=g) * 0.6
+        x = torch.tanh(torch.randn(8, nq, generator=g) * 0.7)
+        base = q.circuit(x, theta, nq=nq, readout_qubits=ro, layers=layers).detach()
+        for i in range(n):
+            bumped = theta.clone()
+            bumped[i] += 1.234                      # large enough that a live angle cannot hide
+            out = q.circuit(x, bumped, nq=nq, readout_qubits=ro, layers=layers).detach()
+            if float((base - out).abs().max()) < 1e-5:
+                dead.append(f"nq={nq} readout={ro} layers={layers}: theta[{i}]")
+    assert not dead, (
+        "these parameters cannot move the readout at any input - the optimiser carries them and no "
+        "gradient ever reaches them:\n  " + "\n  ".join(dead)
+        + "\n\nA dead parameter is invisible to accuracy, because the model just trains the ones "
+        "that work, and invisible to a parameter count, because it is still counted. The usual "
+        "cause is a diagonal gate applied last: RZ before a computational-basis readout is "
+        "unobservable, and so is anything separated from the readout by only a basis permutation."
     )

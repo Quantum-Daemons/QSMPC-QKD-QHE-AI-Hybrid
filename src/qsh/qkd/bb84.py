@@ -16,14 +16,34 @@ anywhere in the repository. The 200,000-pulse run gave ``nSift = N * Q_mu * 0.5`
 = **1,244** in the browser and 1,188 in this Monte Carlo. Round 45 wrote a caveat
 about a block size it had not measured.
 
-The size of the omission is now quantified rather than left as a direction. At
-~1,244 sifted bits a composably-secure finite-key analysis yields **no key at all**;
-the positive-key threshold for these device parameters at 50 km is ~5e3 to 1.1e4
-sifted bits (Rusca, Boaron, Grunenfelder, Martin & Zbinden, *Appl. Phys. Lett.*
-**112**, 171104 (2018)). So the default pulse count was raised to 2,000,000
-(12,442 sifted bits) - see ``QKDConfig.pulses``. That does not make the rate
-finite-key correct; it stops an asymptotic rate being published for a block that
-provably yields nothing.
+ROUND 47 CORRECTED THE THRESHOLD THAT PARAGRAPH WAS MEASURED AGAINST, AND THE
+PAPER IT WAS CREDITED TO. This docstring stated that "the positive-key threshold
+for these device parameters at 50 km is ~5e3 to 1.1e4 sifted bits (Rusca, Boaron,
+Grunenfelder, Martin & Zbinden, *Appl. Phys. Lett.* **112**, 171104 (2018))".
+That paper states no positivity threshold at all - it compares the 1-decoy against
+the 2-decoy protocol for privacy-amplification blocks from 1e5 to 1e11 and
+concludes that 1-decoy wins "unless a really big (> 10^11) or really small
+(< 10^5) PA block size is applied". The band was attributed to a paper that does
+not contain it.
+
+The threshold is now COMPUTED here instead of cited: :mod:`~qsh.qkd.finite_key`
+implements that paper's equations, and on this project's own 50 km channel, at the
+intensities shipped until Round 47, it puts the positive-key threshold at **~1e5
+sifted bits, about 4e7 pulses** - an order of magnitude above the band that was
+quoted. Lucamarini et al., *Opt. Express* **21**, 24550 (2013) put "1.4x10^5
+counts" as "the smallest sample size providing a positive rate" at 50 km, which
+agrees with the computed figure and always did.
+
+Quoted as an order of magnitude on purpose. Checked against Rusca et al.'s
+published Table I, our implementation is CONSERVATIVE by roughly 2-3x at moderate
+loss and more at high loss, so its threshold is an upper bound on what is required.
+What that uncertainty does not touch: at Round 46's 2,000,000 pulses (12,442 sifted
+bits) the single-photon lower bound ``s^l_{Z,1}`` is NEGATIVE, so no composable key
+existed there at any parameter setting, and a factor of 2-3 cannot rescue a
+negative count. The raise from 200,000 to 2,000,000 therefore rested on a threshold
+that did not survive checking. ``QKDConfig.pulses`` carries the current block size
+and the margin it is sized for; what THIS module reports either way is the
+asymptotic decoy bound, a different quantity, labelled as one.
 
 This is the physical substrate for WS1 (AI-QKD): the AI optimizer
 (:mod:`~qsh.qkd.ai_optimizer`) tunes parameters here to maximise SKR / minimise QBER.
@@ -33,11 +53,25 @@ quantum mechanics explicitly; the Monte-Carlo path scales to long keys.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 import numpy as np
 
 from .channel import ChannelParams, intrinsic_qber
+
+
+def e_det_for_bound(params: ChannelParams) -> float:
+    """`e_det` as Ma et al. define it: the error rate on DETECTED SIGNAL photons.
+
+    Misalignment plus the eavesdropper's disturbance, and deliberately NOT the dark-count term -
+    `_decoy_secure_fraction` adds the background back as `e0 * y0`, so including it here charges it
+    twice. `intrinsic_qber` is the right quantity for the OBSERVED QBER a panel displays and the
+    wrong one for this bound; the two differ by exactly that background term.
+
+    Intercept-resend on a fraction f of pulses disturbs a detected signal photon at 0.25 * f, the
+    textbook BB84 figure, which is what `intrinsic_qber` also uses.
+    """
+    return min(0.5, params.misalignment + 0.25 * params.eve_intercept_fraction)
 
 
 def _h2(x: float) -> float:
@@ -87,6 +121,13 @@ class QKDResult:
     params: ChannelParams
 
 
+def _qkd_cfg():
+    """The shipped QKD config, imported lazily so this module stays importable standalone."""
+    from ..config import get_config
+
+    return get_config().qkd
+
+
 @dataclass
 class QKDParams:
     """Tunable protocol parameters the AI optimizer (:mod:`~qsh.qkd.optimize`) searches over.
@@ -95,12 +136,20 @@ class QKDParams:
     above 0.5 (Lo-Chau-Ardehali 2005). ``mu_signal`` = decoy-state signal mean photon number: higher mu
     means more detections but more PNS-leakable multi-photon pulses (a QBER penalty) -> a genuine optimum
     near ~0.5. ``pp_threshold`` = post-processing QBER abort threshold. When ``run_bb84`` is called with
-    ``qkd_params=None`` these have no effect (the legacy uniform-basis path runs unchanged)."""
+    ``qkd_params=None`` these have no effect (the legacy uniform-basis path runs unchanged).
 
-    mu_signal: float = 0.5
-    mu_decoy: float = 0.1
+    THE DEFAULTS ARE READ FROM CONFIG, not spelled here. They were `mu_signal = 0.5` and
+    `mu_decoy = 0.1` as literals, and every production surface constructs a bare ``QKDParams()`` -
+    so when Round 47 moved the shipped intensities to the finite-key optimum in
+    ``QKDConfig``, the browser picked them up from ``config.defaults.json`` and every Python caller
+    went on using 0.5 / 0.1 from this dataclass. That is the fourth instance of one fix reaching one
+    language, found by the cross-language rate identity in
+    ``tests/test_the_browser_computes_the_bound_the_page_names.py`` rather than by reading."""
+
+    mu_signal: float = field(default_factory=lambda: _qkd_cfg().mu_signal)
+    mu_decoy: float = field(default_factory=lambda: _qkd_cfg().mu_decoy)
     basis_prob: float = 0.5
-    pp_threshold: float = 0.11
+    pp_threshold: float = field(default_factory=lambda: _qkd_cfg().pp_threshold)
 
 
 def run_bb84(
@@ -174,8 +223,38 @@ def run_bb84(
         nu = min(max(1e-4, float(qkd_params.mu_decoy)), mu * 0.9)      # decoy strictly weaker than the signal
         y0 = 2.0 * params.dark_count_prob                             # background yield (two detectors)
         sift_ratio = p * p + (1.0 - p) * (1.0 - p)                    # biased-basis reconciliation ratio
+        # `params.misalignment + 0.25 * eve_intercept_fraction`, NOT `intrinsic_qber(params)` and
+        # NOT the misalignment alone. In Ma et al. `e_det` is the probability a detected SIGNAL
+        # photon lands in the wrong detector; the dark-count contribution is the separate `e0 * y0`
+        # term inside the function.
+        #
+        # `intrinsic_qber` is `misalignment + 0.5 * p_dark / eta + 0.25 * eve`, so passing it charged
+        # the background TWICE. THE COST DEPENDS ON THE INTENSITIES, and an earlier revision of this
+        # comment gave "0.57% low on fibre, 18.9% low on the 800 km downlink" without saying which:
+        # 18.9% is not a "low by" figure at any intensity pair - it is the same gap with the WRONG
+        # bound as denominator, i.e. how much the fix RAISES the number, which is the convention
+        # docs/verification-log.md uses. Measured both ways, at both pairs:
+        #
+        #   mu = 0.5   / nu = 0.1     (in force while the double charge shipped):
+        #       fibre 50 km      0.5673% low   (0.5705% raise)
+        #       800 km downlink 15.9152% low  (18.9276% raise)
+        #   mu = 0.3416 / nu = 0.1417 (SHIPPED NOW, the finite-key optimum):
+        #       fibre 50 km      0.4984% low   (0.5009% raise)
+        #       800 km downlink 13.6638% low  (15.8262% raise)
+        #
+        # So at the intensities this file ships, the double charge was 0.50% low on fibre and 13.66%
+        # low on the 800 km downlink - the pair web/src/lib/clientOptiQKD.ts already records. Round 47
+        # replaced it with the bare misalignment, which fixed the double charge and silently
+        # unhooked the EAVESDROPPER: `intrinsic_qber` was the only path by which
+        # `eve_intercept_fraction` reached the bound, since `transmittance` does not depend on it
+        # and `E_mu` is modelled here rather than measured. Measured consequence in the browser,
+        # which has no abort to fall back on: a full intercept-resend attack still published
+        # 0.001976547 bit/pulse and 395 secure bits at QBER 0.2598, unchanged from eve = 0.
+        #
+        # Intercept-resend disturbs a detected signal photon at the textbook rate of 0.25, which is
+        # exactly what `e_det` denotes, so Eve belongs here and the background does not.
         skr, _e_mu, _e1 = _decoy_secure_fraction(
-            eta, mu, nu, intrinsic_qber(params), y0, error_correction_eff, sift_ratio)
+            eta, mu, nu, e_det_for_bound(params), y0, error_correction_eff, sift_ratio)
         secure_bits = int(max(0.0, skr) * n_pulses)
 
     return QKDResult(

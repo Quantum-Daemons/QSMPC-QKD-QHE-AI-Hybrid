@@ -126,6 +126,22 @@ docstring.
   labels, while Bot F1 moves 0.60 to 0.99: the aggregate is blind to the fix. `telecom_ids.py`
   reports both for exactly this reason.
 
+- **Network Attack Traffic Detection With Hybrid Quantum-Enhanced Convolution Neural Network** -
+  Wang, Fok and Thing, arXiv:2504.20436 [cs.CR], 29 Apr 2025 `[link]`
+  URL: https://arxiv.org/abs/2504.20436
+  Added: no PDF bundled; recorded 2026-08-15 with the 5G-NIDD licence withdrawal below
+  **The published comparison point on 5G-NIDD**, which is this paper's sole dataset. On the standard
+  split it reports classical CNN 99.61 percent, QCNN-AnE 99.62 percent, QCNN-AmE 99.65 percent,
+  Quan-ConvCNN 99.71 percent and QuanvolutionNN 98.67 percent accuracy. Two things have to be said
+  before that ordering is quoted as a quantum win. The models are **hybrid quantum-classical CNNs,
+  not pure Cong-style QCNNs**, so the name does not mean here what it means in the QCNN section
+  below; and the authors' own claimed advantage is on **generalisation to unseen attacks**, not on
+  the standard split, where a 0.10-point spread over a 99.61 percent classical baseline is not a
+  result to lean on. Recorded because `DATA_LICENSES.md` section 5 requires every published model
+  card to name the baseline it is measured against, and until this entry there was no such baseline
+  on record for 5G-NIDD - which made the corpus look, from inside this repository, like a dataset
+  with no external comparison point rather than one with a 2025 quantum paper already on it.
+
 - **Withdrawn: a hybrid quantum-classical autoencoder IDS** - arXiv:2512.05069 `[link]`
   URL: https://arxiv.org/abs/2512.05069
   Added: no PDF bundled; withdrawal confirmed 2026-08-04
@@ -164,9 +180,23 @@ re-checked 2026-08-05:
   disagree. That is an unresolved ambiguity, not a permission, and it is the same class of question
   as the ImageNet one that Round 19 resolved by dropping the dependency rather than guessing.
 - **The Engelen-corrected redistribution** is hosted separately and states nothing.
-- **5G-NIDD was evaluated and rejected.** The adjudication lives in
-  [`DATA_LICENSES.md`](../DATA_LICENSES.md) - it was written out in full in both files, and a licence
-  finding with two homes is a licence finding that will be corrected in one of them.
+- **5G-NIDD was evaluated and rejected, and that rejection is WITHDRAWN.** The dataset is
+  **CC BY 4.0**, `access_type: Open`, at the authors' repository of record - Fairdata/Metax, DOI
+  10.23729/e80ac9df-d9fb-47e7-8d0d-01384a415361. The rejection had been read off IEEE DataPort,
+  which is a mirror, marks the dataset subscription-required and carries no licence string; absence
+  of a grant at a mirror was recorded as absence of a grant. The adjudication still lives in
+  [`DATA_LICENSES.md`](../DATA_LICENSES.md), where 5G-NIDD now sits in section 1 as usable with
+  **attribution required** - CC BY 4.0 obliges anyone publishing the data, or a model trained on it,
+  to credit the dataset authors.
+
+  The previous revision of this bullet ended: *"a licence finding with two homes is a licence finding
+  that will be corrected in one of them."* It was right, and it undercounted. The finding had
+  **three** homes - this file, `DATA_LICENSES.md` and `src/qsh/models/registry.py` - the withdrawal
+  was written into a **fourth**, `docs/deliverable-verification.md`, and for a full round that fourth
+  file was the only place the truth was recorded while three others went on calling the dataset
+  rejected. The sentence warning about duplication was itself one of the copies that went stale.
+  Duplication is not fixed by noticing it in prose; it is fixed by there being one owner, which is
+  the rule stated immediately below and which this entry existed in violation of.
 
 Licence adjudications belong in [`DATA_LICENSES.md`](../DATA_LICENSES.md); this file cites the
 papers. Where the two used to overlap, that file is the owner.
@@ -449,13 +479,24 @@ Added 2026-08-11. Both verified at the arXiv abstract page.
   with Pauli shadows. The authors argue QCNN successes largely reflect benchmark simplicity, and that
   non-trivial datasets are a necessary ingredient for progress in QML. **Why it is cited here:** this
   repository's trained QCNN loses to logistic regression on the identical split (medical accuracy
-  0.7326 vs 0.9535; finance minority-F1 0.7143 vs 0.8657). This paper is the reason that is the
-  expected result rather than a failure of implementation, and it is quoted in both QCNN model cards.
-  The 8-class telecom circuit added in Round 34 lands the same way - macro F1 0.8098 against a
-  multinomial logistic regression at 0.9764 on the identical split, with all 8 classes predicted -
-  which matters because it is a *different* readout (a 3-qubit basis marginal rather than a single
-  `<Z_0>` expectation) and a different task shape, and it did not change the direction of the result.
-  Added: 2026-08-11; telecom result and journal reference added 2026-08-13.
+  **0.883721** vs **0.953488**; finance minority-class F1 **0.735294** vs **0.865672**). This paper is
+  the reason that is the expected result rather than a failure of implementation, and it is quoted in
+  both QCNN model cards. The 8-class telecom circuit added in Round 34 lands the same way - macro F1
+  **0.510963** against a multinomial logistic regression at **0.976447** on the identical split, with
+  all 8 classes predicted - which matters because it is a *different* readout (a 3-qubit basis
+  marginal rather than a single `<Z_0>` expectation) and a different task shape, and it did not change
+  the direction of the result. **The figures in this bullet were 0.7326, 0.7143 and 0.8098 until
+  Round 47, and then 0.860465, 0.84058 and 0.458324 for part of Round 47 itself**: measured first on
+  a hardware-efficient ansatz (replaced in Round 46), then through a multiclass readout that binned
+  the class index over a wire pooling had discarded (corrected in Round 47, which also made the
+  fully-connected block per-survivor), and then on a circuit carrying two classes of analytically
+  dead parameter (reordered later in the same round). All six artifacts were retrained twice; the
+  current values are read from `models/*/weights.json`, which each card is now gated against. **The
+  direction never moved - the classical baseline wins on all three use cases before and after every
+  one of those changes - and only its size did**, which is the only thing this citation was ever
+  quoted for.
+  Added: 2026-08-11; telecom result and journal reference added 2026-08-13; metrics refreshed after
+  each of the two Round 47 retrains.
 - **Bowles, Ahmed & Schuld, "Better than classical? The subtle art of benchmarking quantum machine
   learning models."** arXiv:2403.07059, 11 Mar 2024, revised 14 Mar 2024. **Preprint - the arXiv API
   reports no `journal_ref` and no DOI, checked 2026-08-13**, so cite it as a preprint rather than a
@@ -472,7 +513,17 @@ Added 2026-08-11. Both verified at the arXiv abstract page.
   reading that pointed the opposite way before the sweep:
   [`qcnn-entanglement-ablation.md`](qcnn-entanglement-ablation.md). Note this cuts AGAINST the
   entry below it only in mechanism, not in verdict: entanglement mattering to a model that still
-  loses to logistic regression is not evidence of advantage. Added: 2026-08-13.
+  loses to logistic regression is not evidence of advantage.
+  **THOSE FIVE FIGURES BELONG TO A CIRCUIT THIS PROJECT NO LONGER SHIPS**, and they have not been
+  re-measured. They were taken on the hardware-efficient ansatz - RY on every wire plus one CNOT ring,
+  which `--no-entangle` removed completely - that Round 46 replaced with a real QCNN and Round 47
+  corrected TWICE. On the current circuit the flag is also **not an exact ablation**: it gates the
+  conv filter's CNOT and the survivor ring in the fully-connected block, but the pooling stage is a
+  controlled rotation, which entangles, and it is not gated. So the sentence "the tendency does not
+  reproduce on this circuit" now names a circuit that no longer exists, and re-running it is open
+  work rather than a result carried forward. See the supersession banner on
+  [`qcnn-entanglement-ablation.md`](qcnn-entanglement-ablation.md).
+  Added: 2026-08-13; superseded-circuit note added in Round 47.
 - **Li, Wu, Li & Yung, "Barren Plateaus Beyond Observable Concentration."** arXiv:2603.18479, 19 Mar
   2026, revised 19 Jun 2026. Unifies existing barren-plateau explanations under *observable
   concentration* and proves that avoiding it is **necessary but not sufficient** for trainability,

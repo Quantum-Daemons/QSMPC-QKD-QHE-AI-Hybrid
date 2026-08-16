@@ -140,7 +140,33 @@ def infer(features, weights: dict) -> tuple[float, int, float]:
     n_conv = stages * layers * 8
     conv = theta[:n_conv].reshape(stages, layers, 8)
     pool = theta[n_conv:n_conv + stages]
-    fc = float(theta[n_conv + stages])
+    # THE FULLY-CONNECTED BLOCK IS (survivors, 2), NOT ONE SCALAR. This read
+    # `fc = float(theta[n_conv + stages])` and applied that single angle to every survivor, which is
+    # the pre-Round-47 block. Round 47 made it a per-survivor RY+RZ in the trainer and in
+    # `quantumSim.ts` and left this THIRD implementation behind - the same defect, a sixth time in
+    # five rounds, in the language that had already been fixed twice.
+    #
+    # It was not producing a wrong number, and that is the part worth recording. Both artifacts this
+    # module serves are BINARY, so they pool all the way to a single survivor; `theta[n_conv+stages]`
+    # is then exactly that survivor's RY angle. HISTORICALLY - under the RY-then-RZ ordering in force
+    # while the old form was live - the RZ it dropped was the LAST gate before the readout and so
+    # commuted with the <Z0>. That argument does not describe the current tree: later in the same
+    # round the fc block was reordered to RZ-then-RY, and a trailing-diagonal RZ no longer exists to
+    # commute. Against the trainer of the revision that carried the old form, on that revision's
+    # weights and 24 rows, the gap was 6.9e-07 on finance and 1.4e-06 on medical - float32 noise, and
+    # correct by two coincidences rather than by construction. Both figures are HISTORICAL; the
+    # equivalent measurement on the current tree is the shipped-vs-numpy parity below.
+    #
+    # Seeded proof that it was one artifact away from breaking: at `readout_qubits=2` on 8 wires the
+    # register pools to TWO survivors, and on the seed the repo's own gate pins -
+    # `tests/test_the_qcnn_agrees_across_languages.py::
+    #  test_the_old_fc_block_diverges_once_there_are_two_survivors`, torch seed 1, 16 rows - the old
+    # form diverges from the trainer by **0.0335** in class probability (0.0946 summed per row).
+    # That is the TEST's figure, re-measured on the current tree, and it is four orders of magnitude
+    # above the ~1e-06 float32 agreement the shipped binary artifacts show. An earlier revision of
+    # this comment said 0.2701, which is roughly 8x the reproducible value and matches no draw the
+    # repo pins; the divergence is seed-dependent, so only the pinned seed's number is quotable.
+    fc = theta[n_conv + stages:].reshape(-1, 2)
 
     active = list(range(nq))
     for st in range(stages):
@@ -150,8 +176,9 @@ def infer(features, weights: dict) -> tuple[float, int, float]:
                 ry(a, float(w8[0])); rz(a, float(w8[1]))
                 ry(b, float(w8[2])); rz(b, float(w8[3]))
                 cnot(a, b)
-                ry(a, float(w8[4])); rz(a, float(w8[5]))
-                ry(b, float(w8[6])); rz(b, float(w8[7]))
+                # RZ before RY in the second half; see scripts/train/qcnn_variational.py.
+                rz(a, float(w8[5])); ry(a, float(w8[4]))
+                rz(b, float(w8[7])); ry(b, float(w8[6]))
         survivors = []
         for a, b in zip(active[0::2], active[1::2]):
             cry(b, a, float(pool[st]))
@@ -159,8 +186,15 @@ def infer(features, weights: dict) -> tuple[float, int, float]:
         if len(active) % 2 == 1:
             cry(active[-1], active[0], float(pool[st]))
         active = survivors
-    for q in active:
-        ry(q, fc)
+    if fc.shape[0] != len(active):
+        raise ValueError(
+            f"the fully-connected block carries {fc.shape[0]} survivor(s) but pooling left "
+            f"{len(active)} ({active}). The artifact's parameter layout does not match the circuit "
+            "this module implements, and continuing would silently apply the wrong angles.")
+    # RZ before RY: a diagonal gate applied last is unobservable through |amplitude|^2 and a CNOT
+    # ring. See the note in scripts/train/qcnn_variational.py.
+    for j, q in enumerate(active):
+        rz(q, float(fc[j, 1])); ry(q, float(fc[j, 0]))
     if len(active) > 1:
         for j in range(len(active)):
             cnot(active[j], active[(j + 1) % len(active)])

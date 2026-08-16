@@ -53,6 +53,17 @@ jobs:
           pip install -r requirements-ai.txt
           pip install -e .
 
+      # Needed by the cross-language gates: they bundle `web/src/lib/*.ts` with esbuild and run it
+      # under node to compare the browser's numbers against Python's. Without this the gates skip.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - name: Install web dependencies (for the cross-language gates)
+        working-directory: web
+        run: npm ci
+
       - name: Test suite
         # Offline by design: no test may reach the network. Where a dataset is unavailable the
         # loader falls back to synthetic data and logs that loudly (see qsh/data/loaders.py) — a
@@ -64,6 +75,33 @@ jobs:
         # separate step precisely so a green tick here is never mistaken for FHE coverage.
         env:
           HF_HUB_OFFLINE: "1"
+          # THE CROSS-LANGUAGE GATES WERE SKIPPING HERE, SILENTLY. Several tests execute the
+          # browser's own model through esbuild + node and compare its numbers against Python -
+          # they are the only checks that can see a change reaching one language and not the other,
+          # which is this project's most-repeated defect. They guard on
+          # `if not ESBUILD.exists(): pytest.skip(...)`, `web/node_modules` is gitignored, and this
+          # job installed no Node - so on a fresh checkout they reported SKIP and the run went
+          # green. MEASURED on a clone of the tip with no `web/node_modules`: 21 collected,
+          # 11 passed, **10 skipped** - 6 in tests/test_the_browser_computes_the_bound_the_page_
+          # names.py and 4 in tests/test_the_qcnn_agrees_across_languages.py. An earlier revision
+          # of this comment said 20 / 11 / 9, which was the count one commit earlier: the commit
+          # that wrote the comment added a 21st gate, and it skips too.
+          #
+          # Proven consequence: seeding the pre-Round-47 shared-scalar fully-connected block into
+          # `quantumSim.ts` - replacing the per-survivor `fcAt` pair with
+          # `for (const q of active) RY(q, w.theta[nConv + stages]);` - fails FOUR of these gates
+          # when esbuild is present, at maximum readout differences 0.399170 (telecom-q7), 0.331032
+          # (telecom), 0.016233 (medical) and 0.008699 (finance), and passes the entire workflow
+          # when it is not. The single "0.585" an earlier revision quoted was measured on the
+          # PRE-RETRAIN weights of f5861c9, where the same seeding gives 0.585404 on telecom; the
+          # commit that published the figure retrained all six artifacts, so it was stale on
+          # arrival. The local runner
+          # (`scripts/ci_local.sh`) was strictly STRONGER than CI, which is the reverse of what a
+          # CI gate is for.
+          #
+          # With this set, the skip becomes a failure instead. The Node install below is what makes
+          # that satisfiable.
+          QSH_REQUIRE_BROWSER_GATES: "1"
         run: pytest -m "not slow" -q
 
       - name: OpenFHE CKKS bootstrapping (the slow test the suite above deselects)
