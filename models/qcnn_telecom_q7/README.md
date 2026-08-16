@@ -38,7 +38,7 @@ same circuit trained at the width the data actually asks for.
 
 ## What it is
 
-**6** conv rounds of a SHARED two-qubit filter (RY,RZ - CNOT - RY,RZ), then ONE pooling stage by a
+**6** conv rounds of a SHARED two-qubit filter (RY,RZ - CNOT - RZ,RY), then ONE pooling stage by a
 rotation on the survivor conditioned on its partner, on **7 qubits**, reducing the register 7 -> 3;
 then a fully-connected block on the three survivors [0, 2, 4], all 7 features encoded as
 `RY(tanh(z) * pi)` on wires 0-6 with no padding wire.
