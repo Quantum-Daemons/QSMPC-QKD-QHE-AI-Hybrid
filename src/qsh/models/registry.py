@@ -100,6 +100,20 @@ class DatasetSpec:
     licence_checked: str          # ISO date the licence text was last read at ``url``
     publishable: bool             # may derived weights go to a PUBLIC HF repo?
     notes: str = ""
+    #: The credit line CC BY requires wherever the data, or a model trained on it, is published.
+    #:
+    #: SEPARATE FROM ``notes`` because the two have different audiences and different force. ``notes``
+    #: is this project's own adjudication and does not leave Python -- ``frontend_models()`` exports
+    #: name/licence/url/publishable and nothing else, so a visitor to a use-case page saw
+    #: "OPS-SAT-AD -- CC BY 4.0 [source]" and no author at all. That is a licence condition going
+    #: unmet on a public site, not an untidy caption. This field is threaded to the browser, to the
+    #: Hugging Face model card and to the evaluation sample's provenance, which are the three places
+    #: a reader meets the data.
+    #:
+    #: Defaulted to "" so no call site breaks, but every CC BY corpus here carries one and adding a
+    #: fifth without one should look wrong: this project's single most-repeated defect is a fix that
+    #: reached one of two twins, and a per-dataset obligation is exactly that shape.
+    attribution: str = ""
 
 
 @dataclass(frozen=True)
@@ -223,6 +237,16 @@ DS_BREASTMNIST = DatasetSpec(
         "number. So the letter's 19% does NOT wholesale survive downsampling; a real floor on this "
         "benchmark does."
     ),
+    # Both layers, because the corpus is a derivative and CC BY credit runs through to the source.
+    # The second sentence is not decoration: the licence note above records that the upstream grant
+    # is what is actually unverifiable, so naming BUSI is what lets a reader check that for
+    # themselves rather than take this project's word for it.
+    attribution=(
+        "Yang, Shi, Wei, Liu, Zhao, Ke, Pfister & Ni, 'MedMNIST v2 - A large-scale lightweight "
+        "benchmark for 2D and 3D biomedical image classification', Scientific Data 10:41 (2023), "
+        "CC BY 4.0. BreastMNIST is derived from Al-Dhabyani, Gomaa, Khaled & Fahmy, 'Dataset of "
+        "breast ultrasound images', Data in Brief 28:104863 (2020)."
+    ),
 )
 DS_PGS_CATALOG = DatasetSpec(
     name="PGS Catalog scoring files",
@@ -270,6 +294,14 @@ DS_OPSSAT_AD = DatasetSpec(
         "other corpus here the DATA can be redistributed as well as the weights. A different task "
         "from ESA-ADB: segment classification, not forecasting, so its score is not comparable "
         "with the Telemanom model's and neither is the other's baseline."
+    ),
+    # This is the one corpus whose DATA is redistributed here -- the whole published test partition
+    # ships inside two HF repos as eval_sample.json -- so the CC BY credit is a condition on this
+    # project's own distribution, not only a courtesy to a reader.
+    attribution=(
+        "Ruszczak, Kotowski, Evans & Nalepa, 'The OPS-SAT benchmark for detecting anomalies in "
+        "satellite telemetry', Scientific Data 12, 710 (2025), doi:10.1038/s41597-025-05035-3, "
+        "CC BY 4.0."
     ),
 )
 DS_ESA_ADB = DatasetSpec(
@@ -331,6 +363,52 @@ DS_WDBC = DatasetSpec(
         "UCI relicensed its repository to CC BY 4.0; the dataset page states it explicitly. Ships in "
         "scikit-learn, which is why it is the bundled medical sample. Attribution is still required — "
         "'public domain' would be wrong."
+    ),
+    # The note directly above has said "attribution is still required" since Round 21 while there
+    # was no field to put it in, so the requirement was recorded and not discharged. This is it.
+    attribution=(
+        "Wolberg, Street & Mangasarian, 'Breast Cancer Wisconsin (Diagnostic)', UCI Machine "
+        "Learning Repository (1995), doi:10.24432/C5DW2B, CC BY 4.0."
+    ),
+)
+
+# The corpus this project rejected on licence grounds and then un-rejected: see DS_CICIDS2017_FIXED,
+# which owns that retraction. Adopted here as its own model rather than as a replacement for the
+# QKD-attack classifier, because it is a different problem.
+DS_5G_NIDD = DatasetSpec(
+    name="5G-NIDD (Combined.csv)",
+    licence="CC-BY-4.0",
+    url="https://doi.org/10.23729/e80ac9df-d9fb-47e7-8d0d-01384a415361",
+    licence_checked="2026-08-16",
+    publishable=True,
+    notes=(
+        "1,215,890 real 5G network flows x 52 columns, counted in this file rather than quoted, "
+        "9 classes: Benign 477,737 | UDPFlood 457,340 | HTTPFlood 140,812 | SlowrateDoS 73,124 | "
+        "TCPConnectScan 20,052 | SYNScan 20,043 | UDPScan 15,906 | SYNFlood 9,721 | ICMPFlood 1,155. "
+        "LICENCE VERIFIED AT THE SOURCE, not at a mirror: the Metax record for dataset "
+        "9d13ef28-2ca7-44b0-9950-225359afac65 reads access_type Open, license CC-BY-4.0 and "
+        "restriction_grounds []. The IEEE DataPort listing whose subscription wall this project "
+        "originally read as a licence restriction is a MIRROR; the Fairdata record is the "
+        "authors' repository of record. "
+        "THIRTEEN OF THE 52 COLUMNS ARE UNUSABLE and the loader drops them with reasons attached "
+        "(qsh.models.datasets.NIDD_DROPPED, republished in the model's feature_spec.json): 3 labels "
+        "(`Attack Type`, its binary collapse `Label`, and `Attack Tool` which scores accuracy 0.9615 "
+        "on its own), 3 row identifiers, 5 columns bit-identical to `Dur` on every row "
+        "(`RunTime`/`Mean`/`Sum`/`Min`/`Max`), and 2 constants (`sVid`/`dVid`, one distinct value "
+        "each). 39 features remain. "
+        "THE ROW IDENTIFIERS ARE THE FINDING. `Unnamed: 0`, `Seq` and `Offset` are counters, and "
+        "each trips this project's own single-feature leak threshold on its own: one-vs-rest AUC "
+        "0.9990 (SYNScan), 0.9275 and 0.9502 (both ICMPFlood). Restoring all three to the same "
+        "model moves accuracy from 0.7610 to 0.9997. What that does and does NOT establish is set "
+        "out on the ModelSpec below."
+    ),
+    # Taken VERBATIM from the Metax record's own `bibliographic_citation`, not assembled here. An
+    # assembled credit line is a place to guess an author list; the depositors published the form
+    # they want to be cited in, and using it is both safer and more correct.
+    attribution=(
+        "Y. Siriwardhana et al., 'Descriptor: 5G Wireless Network Intrusion Detection Dataset "
+        "(5G-NIDD)', in IEEE Data Descriptions, doi:10.1109/IEEEDATA.2025.3592888. Dataset: "
+        "doi:10.23729/e80ac9df-d9fb-47e7-8d0d-01384a415361, CC BY 4.0."
     ),
 )
 
@@ -549,6 +627,32 @@ M_QML_IDS = MetricSpec(
         "baseline."
     ),
     companion="classical_rf_macro_f1",
+)
+M_NIDD = MetricSpec(
+    name="macro_f1",
+    display="macro F1 across 9 network-attack classes",
+    # `baseline=None` IS THE DECISION, and it follows M_IDS above rather than being an omission.
+    # `ModelPanel` renders `metric.baseline` beside whichever recorded key matches `metric.name`, so
+    # `baseline=0.9961` here would print "macro_f1 0.9266, baseline 0.9961" - a macro F1 against an
+    # ACCURACY, which is the exact failure tests/test_metric_baseline_consistency.py exists for. The
+    # published figures for this corpus are accuracies; they belong in prose, below.
+    baseline=None,
+    baseline_source=(
+        "Two published figures on 5G-NIDD are usually quoted - Wang, Fok & Thing report 99.61% "
+        "accuracy for a CNN and 99.71% for a hybrid quantum-classical Quan-ConvCNN - and BOTH are "
+        "accuracies, which is why no number appears in `baseline`. Three caveats, and the third is "
+        "new and material. (1) Those are hybrid quantum-classical results with a 0.10-point spread, "
+        "and the authors' own claim is about generalisation to UNSEEN attacks rather than about the "
+        "headline; `references/REFERENCES.md` WS2 records this. (2) Accuracy is the wrong "
+        "comparator on a corpus whose two majority classes are 39.3% and 37.6% of the rows. (3) "
+        "MEASURED HERE: an identical gradient-boosted model reaches accuracy 0.9997 with three "
+        "integer row counters restored and 0.7610 without them, so the published 99.6-99.7% range "
+        "is reproducible from row identifiers alone. That does NOT establish that those papers used "
+        "them - their feature set is not stated in what was read - so it is recorded as an open "
+        "question about the comparison rather than as a refutation of the papers. Either way it "
+        "means these figures are an anchor and not a target that has been beaten or missed."
+    ),
+    companion="aggregate_accuracy",
 )
 
 
@@ -871,6 +975,42 @@ _SPECS: tuple[ModelSpec, ...] = (
         hf_repo="qsh-telecom-qml-ids",
         notes="Shown as an architecture comparison against a random forest on identical data.",
     ),
+    ModelSpec(
+        usecase="telecom_ids",
+        tier="t2_industry",
+        key="telecom_ids.nidd",
+        label="5G-NIDD network-attack classifier (9 classes)",
+        architecture="gradient-boosted trees over 39 flow-statistic features",
+        params=None,
+        dataset=DS_5G_NIDD,
+        metric=M_NIDD,
+        # `_ONNX_FP32_ONLY`, like finance_aml.gbm. A tree ensemble exports as a single
+        # ai.onnx.ml TreeEnsembleClassifier whose thresholds live in node attributes, so
+        # `is_quantizable()` returns False and NO int8 graph is ever written. Declaring one would
+        # point the browser -- which prefers int8 -- at a file that 404s at the pinned revision.
+        artifacts=_ONNX_FP32_ONLY,
+        hf_repo="qsh-telecom-5g-nidd-gbm",
+        notes=(
+            "NETWORK-LAYER flow classification on real 5G traffic. This is a DIFFERENT TASK from "
+            "the QKD-layer attack classifier on this same page, with zero overlap in label space "
+            "or feature space, so neither score is the other's baseline and 0.93 here is not "
+            "'worse' than 0.99 there. "
+            "READ THE TWO NUMBERS THE OTHER WAY ROUND FROM EVERYWHERE ELSE IN THIS PROJECT. Every "
+            "other model here reports an aggregate that flatters and a per-class figure that does "
+            "not. On this corpus the inversion holds: macro F1 is the OPTIMISTIC number and "
+            "aggregate accuracy the pessimistic one, because seven minority classes score 0.98-1.00 "
+            "while the two majority classes (39.3% and 37.6% of the rows) mutually confuse. The "
+            "residual is one confusion pair, Benign <-> UDPFlood, not diffuse weakness. "
+            "THE REASON THIS MODEL IS WORTH SHIPPING is the counterfactual recorded beside its "
+            "metrics every run: refitting the identical configuration with the corpus's three "
+            "integer row identifiers restored moves accuracy from 0.7610 to 0.9997 and macro F1 "
+            "from 0.9266 to 0.9999. That is the same shape of result Engelen et al. (WTMC 2021) "
+            "produced for CIC-IDS2017, which this repository already cites as its reason for "
+            "reporting per-class F1 first. It is an open question about how the published "
+            "99.6-99.7% figures were obtained, NOT a demonstration that they were obtained that "
+            "way -- see M_NIDD's baseline_source, which states the limit of the claim."
+        ),
+    ),
     #: Telecom's T1 tier, added in Round 33. Until then `runs_encrypted=True` held on five specs and
     #: none of them was telecom, so this was the only use case with no encrypted tier - which meant
     #: the standing per-industry question about the private-inference artifact class had no artifact
@@ -967,6 +1107,7 @@ ARTIFACT_DIRS: dict[str, str] = {
     "satellite_comms.opssat": "models/satellite_opssat",
     "satellite_comms.opssat_student": "models/satellite_opssat_student",
     "telecom_ids.qml": "models/telecom_qml_ids",
+    "telecom_ids.nidd": "models/telecom_nidd",
     "finance_aml.student": "models/finance_aml_student",
     "medical_fl.student": "models/medical_breastmnist_student",   # already on disk from training
     "satellite_comms.student": "models/satellite_telemanom_student",
@@ -1077,6 +1218,9 @@ def frontend_models() -> dict:
                 "licence": s.dataset.licence,
                 "url": s.dataset.url,
                 "publishable": s.dataset.publishable,
+                # Exported because a CC BY credit that never leaves Python discharges nothing. Four
+                # of these corpora are CC BY and the page showed a licence string with no author.
+                "attribution": s.dataset.attribution,
             },
             "metric": {
                 "name": s.metric.name,
