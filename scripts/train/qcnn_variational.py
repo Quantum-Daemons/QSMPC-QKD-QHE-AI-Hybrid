@@ -137,6 +137,42 @@ def layer_plan(nq: int = N_QUBITS, readout_qubits: int = 0, layers: int = 1) -> 
     return plan
 
 
+def surviving_wires(nq: int = N_QUBITS, readout_qubits: int = 0, layers: int = 1) -> list[int]:
+    """WHICH wires are still live when the fully-connected block runs.
+
+    `layer_plan` says how MANY wires each stage acts on; this says which ones. Computed the way
+    `circuit()` computes it - pair up the active list, keep the `a` of each pair - so the two agree
+    by construction rather than by a comment promising they do.
+    """
+    active = list(range(nq))
+    for step in layer_plan(nq, readout_qubits, layers):
+        if step["kind"] == "pool":
+            active = [a for a, _ in zip(active[0::2], active[1::2], strict=False)]
+    return active
+
+
+def readout_wires(nq: int = N_QUBITS, readout_qubits: int = 0, layers: int = 1) -> list[int]:
+    """The wires the class index is built from, least-significant bit first.
+
+    THE SURVIVORS, not wires 0..m-1. Until Round 47 the readout binned by `i & (k - 1)`, which
+    reads bits 0..m-1, and wire q is bit q - so a 3-qubit readout read wires 0, 1, 2 while the
+    survivors were [0, 2, 4, 6]. Wire 1 is the pooling control of the pair (0, 1): conditioned
+    wire 0 on itself and was then never touched again, so one bit of every class index came from a
+    wire frozen before the fully-connected block ran.
+
+    Exposed as a function rather than inlined because it has to reach three places - the circuit,
+    the artifact that ships to the browser, and the gate that checks it - and a convention that
+    lives in only one of them is how this project's last four rounds each shipped a defect.
+    """
+    surv = surviving_wires(nq, readout_qubits, layers)
+    if readout_qubits > len(surv):
+        raise ValueError(
+            f"a {readout_qubits}-qubit readout needs {readout_qubits} surviving wires but pooling "
+            f"leaves {len(surv)} ({surv}) at nq={nq}. `layer_plan` must stop earlier."
+        )
+    return surv[:readout_qubits]
+
+
 def param_shapes(nq: int = N_QUBITS, readout_qubits: int = 0, layers: int = 1) -> dict:
     """Named parameter blocks and their shapes.
 
@@ -154,8 +190,22 @@ def param_shapes(nq: int = N_QUBITS, readout_qubits: int = 0, layers: int = 1) -
     #
     # The filter is still SHARED across every pair in a stage, so this adds capacity without
     # reintroducing per-position weights, and the count is still O(log N) in the register width -
-    # each doubling adds one stage, hence a constant `8*layers + 1`.
-    return {"conv": (stages, layers, 8), "pool": (stages,), "fc": (1,)}
+    # each doubling adds one stage.
+    #
+    # THE `fc` BLOCK IS NOT SHARED, AND MUST NOT BE. Cong, Choi & Lukin: "a fully connected layer
+    # is applied as a unitary F on the remaining qubits". Translational invariance is a property of
+    # the CONVOLUTION layers - it is what makes them convolutions - and F is a general unitary on
+    # the reduced register, not a filter applied at every position. Until Round 47 `fc` was a
+    # single scalar RY angle applied identically to every survivor, which is the weakest of the
+    # five structural elements this architecture claims and is not what the paper specifies.
+    #
+    # It stays O(log N) because the SURVIVOR COUNT IS BOUNDED, not because the block is shared:
+    # `layer_plan` stops pooling while `active // 2 >= readout_qubits`, so the register that
+    # reaches F has between `readout_qubits` and `2*readout_qubits - 1` wires whatever nq is - 4
+    # survivors at both 8 and 16 qubits. A block of `(survivors, 2)` is therefore constant in the
+    # register width, and the per-doubling increment stays constant.
+    surv = len(surviving_wires(nq, readout_qubits, layers))
+    return {"conv": (stages, layers, 8), "pool": (stages,), "fc": (surv, 2)}
 
 
 def param_count(nq: int = N_QUBITS, readout_qubits: int = 0, layers: int = 1) -> int:
@@ -184,7 +234,7 @@ def _unpack(theta: torch.Tensor, nq: int, readout_qubits: int, layers: int):
     n_pool = shapes["pool"][0]
     conv = theta[:n_conv].reshape(shapes["conv"])
     pool = theta[n_conv:n_conv + n_pool]
-    fc = theta[n_conv + n_pool]
+    fc = theta[n_conv + n_pool:].reshape(shapes["fc"])
     return conv, pool, fc
 
 
@@ -259,9 +309,16 @@ def circuit(x: torch.Tensor, theta: torch.Tensor, nq: int = N_QUBITS,
                     state = apply_1q(state, wire, _rz(w[iz], cdt), nq)
                 if entangle:
                     state = apply_cnot(state, a, b, nq)
+                # RZ BEFORE RY in the second half of the filter, for the same reason as the
+                # fully-connected block. On the wire pooling is about to discard, the only later
+                # interaction is as the CONTROL of a CRY - diagonal in that wire's basis - and then
+                # marginalisation at readout. A diagonal gate followed only by diagonal use is
+                # unobservable, so `rz(b, w8[7])` was dead: moving it by 1.234 rad changed the
+                # readout by less than 1e-5 at every width. That was 3 of 72 conv angles on the
+                # binary models and 1 of 48 on telecom, carried since Round 46.
                 for wire, iy, iz in ((a, 4, 5), (b, 6, 7)):
-                    state = apply_1q(state, wire, _ry(w[iy], cdt), nq)
                     state = apply_1q(state, wire, _rz(w[iz], cdt), nq)
+                    state = apply_1q(state, wire, _ry(w[iy], cdt), nq)
         elif step["kind"] == "pool":
             pairs = list(zip(active[0::2], active[1::2], strict=False))
             for a, b in pairs:
@@ -281,8 +338,39 @@ def circuit(x: torch.Tensor, theta: torch.Tensor, nq: int = N_QUBITS,
             active = [a for a, _ in pairs]
             stage += 1
         else:                                                      # fully connected on survivors
-            for wire in active:
-                state = apply_1q(state, wire, _ry(fc, cdt), nq)
+            # A UNITARY ON THE REDUCED REGISTER, so each survivor carries its OWN angles. Sharing
+            # one scalar across every survivor - what this did until Round 47 - makes F a single
+            # global rotation, which cannot distinguish the wires the class index is read from.
+            # Cong, Choi & Lukin call for "a unitary F on the remaining qubits"; translational
+            # invariance belongs to the convolution layers, not to F.
+            # RZ BEFORE RY, and the order is the whole point. A diagonal gate applied LAST cannot
+            # be observed: the only operations after this block are a CNOT ring, which permutes
+            # basis states, and |amplitude|^2, which discards phase. Round 47 added these RZ angles
+            # for faithfulness to Cong et al.'s "unitary F on the remaining qubits" and applied them
+            # after the RY, so all of them were inert.
+            #
+            # RE-MEASURED ON THE SHIPPED WEIGHTS, WITH THE RECIPE STATED - an earlier revision of
+            # this comment gave four figures with no seed, no inputs and no command, and the weights
+            # they were taken on were replaced by a later retrain. Reconstruct the pre-fix order
+            # (`git show 8017538^:scripts/train/qcnn_variational.py`), take each artifact's theta,
+            # feed x = tanh(randn(8, n_qubits) * 0.7) at torch.Generator().manual_seed(0), add
+            # 1.234 rad to every fc RZ angle, and take max |delta| of circuit():
+            #
+            #                  fc RZ, pre-fix   fc RY, pre-fix   fc RZ, shipped order
+            #   telecom          5.96e-08         1.77e-01            2.28e-01
+            #   telecom_q7       1.19e-07         3.64e-01            1.59e-01
+            #   finance          5.96e-08         9.89e-01            4.82e-02
+            #   medical          8.94e-08         5.12e-01            7.16e-02
+            #
+            # The three pre-fix RZ figures are float32 ULPs - 2^-24, 2^-23 and 1.5 * 2^-24 - so the
+            # angles were inert, not merely small. Half the block was decoration.
+            #
+            # With RZ first, the phases it writes are mixed back into amplitudes by the RY, so both
+            # parameters of the single-qubit rotation reach the readout and F is a genuine
+            # two-parameter unitary rather than a one-parameter one carrying a spare number.
+            for j, wire in enumerate(active):
+                state = apply_1q(state, wire, _rz(fc[j, 1], cdt), nq)
+                state = apply_1q(state, wire, _ry(fc[j, 0], cdt), nq)
             if entangle and len(active) > 1:
                 for j in range(len(active)):
                     state = apply_cnot(state, active[j], active[(j + 1) % len(active)], nq)
@@ -290,22 +378,43 @@ def circuit(x: torch.Tensor, theta: torch.Tensor, nq: int = N_QUBITS,
     p = state.abs() ** 2
     idx = torch.arange(p.shape[1], device=dev)
     if readout_qubits:
-        # Marginal over the first `readout_qubits` wires: sum |amplitude|^2 into 2**m bins keyed by
-        # the low m bits of the flat index. One pass over the state vector, so the cost against the
-        # <Z0> readout is nothing next to the 2**nq state preparation that precedes it.
-        k = 1 << readout_qubits
-        # `view(...).sum(1)`, NOT `index_add_`. The class of a flat index is `i & (k - 1)` = i mod k,
-        # so reshaping to (batch, 2**nq / k, k) puts every index sharing a class into one column and
-        # the marginal is a plain column sum - identical arithmetic, one reduction instead of a
-        # scatter.
+        # Marginal over the first `readout_qubits` SURVIVORS - the wires still live when the
+        # fully-connected block runs - and NOT over wires 0..m-1.
         #
-        # It has to be this way round because `index_add_` on CUDA accumulates with atomicAdd, which
+        # ROUND 47 FIXED THIS. `i & (k - 1)` reads bits 0..m-1, and wire q is bit q, so a 3-qubit
+        # readout read wires 0, 1 and 2. After one pooling stage the survivors are [0, 2, 4, 6]:
+        # wire 1 is the CRY CONTROL of the pair (0, 1), measured away, never touched again. One bit
+        # of every class index was therefore decided by a wire the second half of the circuit does
+        # not see, frozen at its pre-pooling value.
+        #
+        # It was not a choice. `layer_plan` justifies stopping early with "a 3-qubit readout for 8
+        # classes cannot pool all the way to one wire" - a rationale that only makes sense if the
+        # readout wires ARE the survivors - and this binning is byte-identical to the pre-Round-46
+        # version, where nothing pooled and every wire was live. A stale port, carried across the
+        # rewrite that introduced pooling.
+        k = 1 << readout_qubits
+        wires = readout_wires(nq, readout_qubits, layers)
+        assert wires == active[:readout_qubits], (
+            f"the declared readout wires {wires} are not the ones this run pooled down to "
+            f"({active[:readout_qubits]}); the artifact would ship a convention the circuit does "
+            "not use"
+        )
+        cls = torch.zeros(p.shape[1], dtype=torch.long, device=dev)
+        for j, wire in enumerate(wires):
+            cls |= ((idx >> wire) & 1) << j
+        # A GATHER AND A VIEW, not `index_add_`. Every class owns exactly 2**(nq-m) flat indices, so
+        # a stable sort by class makes the groups contiguous and equal-sized and the marginal is a
+        # plain reduction over the last axis.
+        #
+        # It has to avoid `index_add_` because that accumulates with atomicAdd on CUDA, which
         # PyTorch documents as nondeterministic: the summation order changes between runs, so the
         # same seeded command produced macro F1 0.809846 on some runs and 0.807781 on others. That
         # is why only the MULTICLASS artifact was irreproducible - the binary readout below never
         # touches this path. Chasing it through thread pinning and PYTHONHASHSEED found nothing,
-        # because the training does not run on the CPU at all.
-        return p.view(p.shape[0], -1, k).sum(1)
+        # because the training does not run on the CPU at all. `torch.argsort(stable=True)` and a
+        # fixed-shape sum are both deterministic.
+        perm = torch.argsort(cls, stable=True)
+        return p[:, perm].view(p.shape[0], k, -1).sum(2)
     sign = torch.where((idx & 1) == 0, 1.0, -1.0)         # bit 0 set -> -1
     return (p * sign).sum(1)
 
@@ -646,13 +755,19 @@ def main() -> int:
                              "construction"}
                     if readout_q == 0 else
                     {"kind": "basis_marginal", "n_classes": n_out, "readout_qubits": readout_q,
-                     "bit_order": "lsb_first", "class_index": f"c = i & {n_out - 1}",
-                     "note": f"marginal probabilities of the first {readout_q} wires, qubit q = bit q of the "
-                             "flat index, qubit 0 least significant. NOT PennyLane's order: "
-                             "qml.probs lists the first wire as MOST significant, so this equals "
-                             "qml.probs(wires=[7,6,5]) and not wires=[0,1,2]. Reading it backwards "
-                             "permutes the classes by [0,4,2,6,1,5,3,7], of which four are fixed "
-                             "points."}),
+                     "bit_order": "lsb_first",
+                     # THE WIRES, not a formula over wire indices. `c = i & 7` described a readout
+                     # over wires 0..m-1, which Round 47 found includes wires pooling discarded.
+                     "wires": readout_wires(nq, readout_q, a.layers),
+                     "class_index": "c = sum_j bit(wires[j]) << j",
+                     "note": f"marginal probabilities of the first {readout_q} SURVIVING wires "
+                             f"{readout_wires(nq, readout_q, a.layers)} - the ones the "
+                             "fully-connected block acts on - with survivor j as bit j, least "
+                             "significant first. NOT the first m wires: pooling keeps every other "
+                             "wire, so wires 0..m-1 include discarded pooling controls. NOT "
+                             "PennyLane's order either: qml.probs lists the first wire as MOST "
+                             "significant. Reading the bits backwards permutes the classes by "
+                             "[0,4,2,6,1,5,3,7], of which four are fixed points."}),
         "class_names": (class_labels if readout_q else None),
         "feature_names": names, "input_space": INPUT_SPACE, "encoding": "tanh",
         "feature_mean": mu.tolist(), "feature_std": sd.tolist(),
@@ -724,7 +839,13 @@ def main() -> int:
         # to headline something else, so the metric those floors exist to scale was never surfaced.
         "headline_metric": ("macro_f1" if readout_q else
                             ("minority_class_f1" if imbalanced else "accuracy")),
-        "n_train": int(cut), "n_test": int(len(y) - cut),
+        # `n - vcut`, NOT `len(y) - cut`. The split is 70/15/15 and the reported metrics are
+        # computed on `te = slice(vcut, n)` alone, but this recorded validation PLUS test - so every
+        # model card stated a held-out size exactly twice the one the number was measured on
+        # (medical "171 test rows" for 86, finance "1200" for 600, telecom "960" for 480). The
+        # validation split exists precisely so checkpoint selection never touches the reported rows;
+        # counting it as test undoes that separation in the record even though the code respected it.
+        "n_train": int(cut), "n_val": int(vcut - cut), "n_test": int(n - vcut),
         "note": ("Variational QCNN trained by backpropagation through a dense state vector. The "
                  "prediction path applies NO QOTP mask: undoing a Pauli frame through Clifford+T is "
                  "not implemented here (T X T-dagger is not Pauli), so hiding and prediction are "

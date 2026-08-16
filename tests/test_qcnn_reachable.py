@@ -328,9 +328,23 @@ def test_the_multiclass_readout_avoids_the_nondeterministic_kernel() -> None:
     assert ".index_add_(" not in src, (
         "index_add_ is back in the trainer. On CUDA it is documented as nondeterministic, and the "
         "readout it was used for is a plain column sum: p.view(batch, -1, k).sum(1)")
-    assert "p.view(p.shape[0], -1, k).sum(1)" in src, (
-        "the deterministic marginal is gone; if the readout was rewritten, re-verify that repeated "
-        "runs of the same command give identical metrics before shipping an artifact from it")
+    # ROUND 47 REPLACED THE EXPRESSION THIS USED TO PIN. It asserted the literal string
+    # `p.view(p.shape[0], -1, k).sum(1)`, which was the deterministic marginal at the time. But that
+    # marginal binned by `i & (k - 1)` - wires 0..m-1 - and Round 47 found that set includes wires
+    # pooling has DISCARDED, so the readout now gathers by the surviving wires first. Pinning one
+    # spelling made a correct change look like a regression while saying nothing about the property
+    # the check exists to protect.
+    #
+    # The property is that the reduction is deterministic on CUDA. `argsort(stable=True)` and a
+    # fixed-shape `.sum()` are; `index_add_` and `scatter_add_` are not. The prohibition above is
+    # the real assertion, and this one requires that SOME deterministic reduction is still present
+    # rather than one particular way of writing it.
+    assert any(form in src for form in (".sum(1)", ".sum(2)", ".sum(dim=")), (
+        "no reduction of the state vector into class bins is visible in the trainer. If the readout "
+        "was rewritten again, re-verify that repeated runs of the same seeded command give "
+        "identical metrics before shipping an artifact from it.")
+    assert ".scatter_add_(" not in src, (
+        "scatter_add_ accumulates with the same nondeterministic CUDA path as index_add_")
 
 
 def test_the_shipped_weights_name_their_readout_convention() -> None:

@@ -43,7 +43,7 @@ function load() {
   const dir = mkdtempSync(join(tmpdir(), "qsh-qkd-"));
   const entry = join(dir, "entry.ts");
   writeFileSync(entry, `
-export { bb84, e91, FIBER, FREE_SPACE, intrinsicQber, h2, transmittance, taggedFraction, channelLossDb, decoySecureFraction } from ${JSON.stringify(join(WEB, "src/lib/quantumSim"))};
+export { bb84, e91, FIBER, FREE_SPACE, intrinsicQber, eDetForBound, h2, transmittance, taggedFraction, channelLossDb, decoySecureFraction } from ${JSON.stringify(join(WEB, "src/lib/quantumSim"))};
 export { optimizeQKD } from ${JSON.stringify(join(WEB, "src/lib/clientOptiQKD"))};
 export { repetitionCountCutoff, adaptiveProportionCutoff, generateQuantumBits } from ${JSON.stringify(join(WEB, "src/lib/clientQRNG"))};
 export { qkdCfg, qrngCfg } from ${JSON.stringify(join(WEB, "src/lib/config"))};
@@ -123,7 +123,18 @@ const cfg_qrng = m.qrngCfg();
   //     does the config value reach the model - rather than a second TypeScript derivation of the
   //     same algebra, which this file's header forbids for good reason.
   const eta = m.transmittance(chan);
-  const eDet = m.intrinsicQber(chan);
+  // `chan.misalignment`, NOT `intrinsicQber(chan)`. In Ma et al. the `e_det` argument is the
+  // probability a detected SIGNAL photon lands in the wrong detector; `decoySecureFraction` adds
+  // the dark-count contribution back itself as `e0 * y0`. Passing the observed QBER charged the
+  // background twice, and it was then corrected to the bare misalignment, which dropped the
+  // eavesdropper. FOUR surfaces implement this algebra - `bb84.py`, `quantumSim.ts`,
+  // `clientOptiQKD.ts` and this file - and the commit that claimed to fix it named three.
+  // `eDetForBound(chan)`, the SAME helper the model uses, rather than a local re-derivation.
+  // This line has now been wrong twice in one round: first as `intrinsicQber(chan)`, which charged
+  // dark counts twice, then as the bare misalignment, which dropped the eavesdropper. A check that
+  // re-derives the model's argument can be wrong in a way the model is not, which is the opposite
+  // of what a check is for.
+  const eDet = m.eDetForBound(chan);
   const y0 = 2 * chan.darkCount;
   const mu = Math.max(1e-3, cfg.mu_signal);
   const nu = Math.min(Math.max(1e-4, cfg.mu_decoy), mu * 0.9);
@@ -132,7 +143,7 @@ const cfg_qrng = m.qrngCfg();
   check("fEC-moves-by-the-predicted-ratio",
     near(afterMutation / beforeMutation, predicted, 1e-6),
     `f_EC 1.16 -> 1.22 changed skr by a factor ${afterMutation / beforeMutation}, but the ` +
-    `two-intensity decoy bound at intrinsic QBER ${eDet} predicts ${predicted}`);
+    `two-intensity decoy bound at misalignment ${eDet} predicts ${predicted}`);
 }
 
 // --------------------------------------------------------------------------------------------- //

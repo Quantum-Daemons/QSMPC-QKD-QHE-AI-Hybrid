@@ -4,14 +4,21 @@
 # Point at a different file with the QSH_CONFIG environment variable.
 
 qkd:
-  # Kept in step with `QKDConfig.pulses` in src/qsh/config/defaults.py, which carries the reasoning:
-  # 200000 gave 1,244 sifted bits, below the ~5e3-1.1e4 finite-key positive-key band, so an
-  # asymptotic rate was being published for a block that provably yields no composably-secure key.
+  # Kept in step with `QKDConfig.pulses` in src/qsh/config/defaults.py, which carries the reasoning.
+  # This line used to summarise that reasoning as "200000 gave 1,244 sifted bits, below the
+  # ~5e3-1.1e4 finite-key positive-key band". Round 47 refuted the band on both counts: no such
+  # threshold appears in the paper it was credited to, and src/qsh/qkd/finite_key.py, which
+  # implements that paper's own equations, puts the positive-key threshold at ~1e5 sifted bits and
+  # about 4e7 pulses at the intensities shipped until this round - an order of magnitude higher than
+  # the band. At 2000000 pulses the single-photon lower bound is NEGATIVE, so Round 46's block
+  # carried no composable key at any parameter setting. The value here follows the dataclass, which
+  # is sized against the computed threshold rather than against a quoted band; the rate this project
+  # publishes on the page remains the ASYMPTOTIC decoy bound, labelled as one everywhere it appears.
   #
   # This file SHADOWS the dataclass and the header above promises it shows the defaults, so a value
   # changed there and not here makes that promise false while every gate stays green. It did:
-  # raising the dataclass to 2_000_000 moved nothing until this line changed too.
-  pulses: 2000000
+  # raising the dataclass moved nothing until this line changed too.
+  pulses: 20000000
   distance_km: 50.0
   fiber_loss_db_per_km: 0.2
   detector_efficiency: 0.25

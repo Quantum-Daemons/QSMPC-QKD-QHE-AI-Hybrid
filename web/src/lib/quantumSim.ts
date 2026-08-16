@@ -144,6 +144,28 @@ export function transmittance(p: ChannelParams): number {
   return p.detectorEff * 10 ** (-channelLossDb(p) / 10);
 }
 
+/**
+ * `e_det` as Ma, Qi, Zhao & Lo define it: the error rate on DETECTED SIGNAL photons.
+ *
+ * Misalignment plus the eavesdropper's disturbance, and deliberately NOT the dark-count term -
+ * `decoySecureFraction` adds the background back as `e0 * y0`, so including it here charges it
+ * twice. `intrinsicQber` is the right quantity for the OBSERVED QBER a panel displays and the
+ * wrong one for this bound; the two differ by exactly that background term.
+ *
+ * ROUND 47 GOT THIS HALF-RIGHT AND HAD TO COME BACK. It replaced `intrinsicQber` with the bare
+ * misalignment, which removed the double charge and silently unhooked the EAVESDROPPER, because
+ * `intrinsicQber` was the only path by which `eveFraction` reached the bound - `transmittance` does
+ * not depend on it and `eMu` is modelled here rather than measured. Measured consequence: a full
+ * intercept-resend attack still published 0.001976547 bit/pulse and 395 secure bits at QBER 0.2598,
+ * identical to eve = 0, on a page whose control is labelled "Eve intercept fraction".
+ *
+ * Intercept-resend disturbs a detected signal photon at the textbook rate of 0.25 per intercepted
+ * pulse, which is precisely what `e_det` denotes, so Eve belongs here and the background does not.
+ */
+export function eDetForBound(p: ChannelParams): number {
+  return Math.min(0.5, p.misalignment + 0.25 * p.eveFraction);
+}
+
 export function intrinsicQber(p: ChannelParams): number {
   const base = p.misalignment + (0.5 * p.darkCount) / Math.max(transmittance(p), 1e-9);
   return Math.min(0.5, base + 0.25 * p.eveFraction);
@@ -212,6 +234,8 @@ export interface BB84Result {
    * technique that does not apply.
    */
   secretKeyRateNonDecoy?: number;
+  /** Set when the observed QBER exceeded `pp_threshold` and post-processing refused to proceed. */
+  aborted?: boolean;
 }
 
 /**
@@ -307,11 +331,13 @@ export function bb84(nPulses: number, p: ChannelParams, seed = 0,
   const std = nSift > 0 ? Math.sqrt((eDet * (1 - eDet)) / nSift) : 0;
   const qber = Math.min(0.5, Math.max(0, eDet + std * gauss(u)));
 
-  // The BOUND does not. It is a function of the channel, and it takes the INTRINSIC error rate -
-  // exactly as the Python path does - so it is identical across seeds while the QBER above varies.
-  // Deriving it from the sampled QBER is what made the public figure move between page loads:
-  // five seeds gave five different "bounds", 0.008992 to 0.009577.
-  const decoy = decoySecureFraction(eta, mu, nu, eDet, y0, fEC, 0.5);
+  // The BOUND does not. It is a function of the channel, so it is identical across seeds while the
+  // QBER above varies. Deriving it from the sampled QBER is what made the public figure move
+  // between page loads: five seeds gave five different "bounds", 0.008992 to 0.009577.
+  //
+  // It takes `eDetForBound(p)`, NOT `eDet` and not the bare misalignment - see that function for
+  // why the first charges dark counts twice and the second unhooks the eavesdropper.
+  const decoy = decoySecureFraction(eta, mu, nu, eDetForBound(p), y0, fEC, 0.5);
 
   // The counterfactual, on the same channel: GLLP with the multi-photon fraction untagged. Kept
   // beside the bound because the assumption is invisible without it.
@@ -319,6 +345,24 @@ export function bb84(nPulses: number, p: ChannelParams, seed = 0,
   const untagged = 1 - delta;
   const nonDecoy = delta >= 1 ? 0 : Math.max(0, 0.5 * qMu * (
     untagged - fEC * h2(decoy.eMu) - untagged * h2(Math.min(0.5, decoy.eMu / untagged))));
+
+  // POST-PROCESSING ABORT, mirroring `bb84.py`'s `if measured_qber > pp_threshold`. The browser had
+  // no counterpart at all: Python's key died under an eavesdropper only because this threshold test
+  // fired, and with no such test here the page went on publishing a full-strength key at every
+  // setting of its own Eve control. A protocol that does not abort has not checked for Eve; it has
+  // only drawn her a QBER.
+  const ppThreshold = qkdCfg().pp_threshold;
+  if (qber > ppThreshold) {
+    return {
+      qber,
+      siftedBits: nSift,
+      secretKeyRate: 0,
+      secureKeyBits: 0,
+      channelLossDb: Math.round(channelLossDb(p) * 10) / 10,
+      secretKeyRateNonDecoy: 0,
+      aborted: true,
+    };
+  }
 
   return {
     qber,
@@ -427,7 +471,10 @@ export interface QcnnWeights {
   /** Present only on a multiclass model. `class_index` is the literal formula, shipped as data
    *  because reading the bits in another order permutes the class map while leaving accuracy, macro
    *  F1 and every loss curve identical - nothing downstream can detect it. */
-  readout?: { kind: string; n_classes: number; readout_qubits?: number; bit_order?: string;
+  readout?: { kind: string; n_classes: number; readout_qubits?: number;
+    /** The surviving wires the class index is built from, LSB first. Round 47: the readout used
+     *  to bin by `i & (k-1)`, i.e. wires 0..m-1, which includes wires pooling discarded. */
+    wires?: number[]; bit_order?: string;
               class_index?: string; note?: string };
   class_names?: string[] | null;
   per_class_f1?: Record<string, number> | null;
@@ -524,7 +571,33 @@ export function qcnnInferTrained(features: number[], w: QcnnWeights):
   const nConv = stages * w.layers * 8;
   const convAt = (st: number, r: number, k: number) => w.theta[(st * w.layers + r) * 8 + k];
   const poolAt = (st: number) => w.theta[nConv + st];
-  const fcTheta = w.theta[nConv + stages];
+  // The fully-connected block is a UNITARY ON THE REDUCED REGISTER, so each survivor carries its
+  // own (RY, RZ) pair: theta[nConv + stages + 2*j] and [... + 1]. It was a single shared scalar
+  // until Round 47, which is not what Cong, Choi & Lukin specify - translational invariance belongs
+  // to the convolution layers, and F is a general unitary on what survives pooling.
+  //
+  // The Python trainer was changed first and this was missed, which is the exact defect this round
+  // is named for, committed inside the round that names it.
+  //
+  // RE-MEASURED AT THE COMMIT THE FIGURES BELONG TO, and they turned out to UNDERSTATE the defect.
+  // The numbers first written here - "max readout probability difference 0.45, argmax disagreeing
+  // on 39 of 64 telecom rows" - carried no seed or row recipe, and a first correction pass withdrew
+  // them as unrecoverable. That was wrong: checking out 3c63ea8, taking ITS trainer and ITS
+  // `models/qcnn_telecom/weights.json`, and collapsing only the fc block to the shared scalar gives
+  // **0.585404 with 8 of 8 argmax disagreements at n=8** and **0.598319 with 62 of 64 at n=64**,
+  // on rows built as `tanh(standardise(randn(n, 7) * 0.7))` at torch seed 0. The published 39/64
+  // is reachable only by feeding the trainer unstandardised rows, which violates the preprocessing
+  // contract this file's own test documents.
+  //
+  // So the defect was worse than reported, and "the figure cannot be recovered" was a second
+  // inaccuracy layered on the first. Seeding the old shared
+  // scalar back into this file at the tip (replace the fcAt pair below with
+  // `for (const q of active) RY(q, w.theta[nConv + stages]);`) and running
+  // `tests/test_the_qcnn_agrees_across_languages.py` fails FOUR gates, at maximum readout
+  // differences 0.399170 (telecom-q7), 0.331032 (telecom), 0.016233 (medical) and 0.008699
+  // (finance), on the harness's own rows. That gate now asserts the identity numerically, so the
+  // next divergence cannot be silent.
+  const fcAt = (j: number, k: 0 | 1) => w.theta[nConv + stages + 2 * j + k];
 
   let active = Array.from({ length: nq }, (_, i) => i);
   for (let st = 0; st < stages; st++) {
@@ -534,8 +607,10 @@ export function qcnnInferTrained(features: number[], w: QcnnWeights):
         RY(a, convAt(st, r, 0)); RZ(a, convAt(st, r, 1));
         RY(b, convAt(st, r, 2)); RZ(b, convAt(st, r, 3));
         CNOT(a, b);
-        RY(a, convAt(st, r, 4)); RZ(a, convAt(st, r, 5));
-        RY(b, convAt(st, r, 6)); RZ(b, convAt(st, r, 7));
+        // RZ before RY in the second half - see the trainer's note. On the wire pooling discards, a
+        // trailing diagonal gate is unobservable, so convAt(st, r, 7) was a dead angle.
+        RZ(a, convAt(st, r, 5)); RY(a, convAt(st, r, 4));
+        RZ(b, convAt(st, r, 7)); RY(b, convAt(st, r, 6));
       }
     }
     const survivors: number[] = [];                            // pool: condition survivor on partner
@@ -549,21 +624,49 @@ export function qcnnInferTrained(features: number[], w: QcnnWeights):
     if (active.length % 2 === 1) CRY(active[active.length - 1], active[0], poolAt(st));
     active = survivors;
   }
-  for (const q of active) RY(q, fcTheta);                      // fully connected on what survives
+  // RZ BEFORE RY - a diagonal gate applied last cannot be observed, because the only operations
+  // after this block are a CNOT ring (a basis permutation) and |amplitude|^2 (which discards
+  // phase). Measured while the order was RY-then-RZ, on the shipped telecom weights with
+  // x = tanh(randn(8, n_qubits) * 0.7) at torch seed 0: moving every fc RZ by 1.234 rad changed the
+  // telecom readout by 5.96e-08, which is 2^-24 - a float32 ULP, so the angle was inert rather than
+  // weak. The recipe and the other three artifacts are in scripts/train/qcnn_variational.py.
+  // Half the fully-connected block was decoration.
+  active.forEach((q, j) => { RZ(q, fcAt(j, 1)); RY(q, fcAt(j, 0)); });   // unitary on what survives
   if (active.length > 1) for (let j = 0; j < active.length; j++) CNOT(active[j], active[(j + 1) % active.length]);
-  // MULTICLASS readout: marginal probabilities of the first m wires, binned by the low m bits of the
-  // flat index. Qubit q is bit q, qubit 0 the LEAST significant - the same convention the `i & 1`
-  // below relies on for <Z0>, and the one the trainer writes into `readout.class_index`.
+  // MULTICLASS readout: marginal probabilities of the first m SURVIVING wires - the ones the
+  // fully-connected block above just acted on - with survivor j contributing bit j of the class
+  // index, least significant first. The same convention the `i & 1` below relies on for <Z0>.
   //
-  // NOT PennyLane's order. PennyLane lists the first wire as MOST significant, so this equals
-  // qml.probs(wires=[7,6,5]) and not wires=[0,1,2] - measured, see tests/test_qcnn_multiclass_readout.py.
-  // Reading it backwards permutes the classes by [0,4,2,6,1,5,3,7], of which FOUR are fixed points, so
-  // a spot check on the obvious classes would pass. That is why the convention ships in the weights
-  // rather than living only here.
+  // ROUND 47: this was `probs[i & (k - 1)]`, which reads wires 0..m-1. Wire q is bit q, so a
+  // 3-qubit readout read wires 0, 1, 2 while the survivors after pooling are [0, 2, 4, 6] - wire 1
+  // is the CRY control of the pair (0, 1), conditioned into wire 0 and then never touched again.
+  // One bit of every class index came from a wire frozen before the FC block ran. The Python
+  // trainer had the identical defect and both are fixed together, because a fix that changes one
+  // language is what the last four rounds each shipped.
+  //
+  // NOT PennyLane's order. PennyLane lists the first wire as MOST significant, so an LSB-first read
+  // is qml.probs on the reversed wire list - measured, see tests/test_qcnn_multiclass_readout.py.
+  // Reading it backwards permutes the classes by [0,4,2,6,1,5,3,7], of which FOUR are fixed points,
+  // so a spot check on the obvious classes would pass. That is why the convention ships in the
+  // weights rather than living only here.
   const m = w.readout?.readout_qubits ?? 0;
   if (m > 0 && Array.isArray(w.scale) && Array.isArray(w.bias)) {
     const k = 1 << m, probs = new Float64Array(k);
-    for (let i = 0; i < N; i++) probs[i & (k - 1)] += re[i] * re[i] + im[i] * im[i];
+    const rw = active.slice(0, m);                             // survivors, from the run just made
+    // The artifact declares the same list. Checked rather than trusted: if the trainer pooled to a
+    // different set than this circuit did, the class labels are permuted and every aggregate metric
+    // stays numerically identical, which is the failure mode this whole file exists to catch.
+    const declared = w.readout?.wires;
+    if (Array.isArray(declared) && (declared.length !== rw.length
+        || declared.some((d: number, j: number) => d !== rw[j]))) {
+      throw new Error(`QCNN readout wires disagree: artifact says [${declared}], circuit pooled to `
+        + `[${rw}]. The class map would be permuted silently.`);
+    }
+    for (let i = 0; i < N; i++) {
+      let c = 0;
+      for (let j = 0; j < m; j++) c |= ((i >>> rw[j]) & 1) << j;
+      probs[c] += re[i] * re[i] + im[i] * im[i];
+    }
     const sc = w.scale as number[], bi = w.bias as number[];
     const logits = Array.from({ length: k }, (_, c) => probs[c] * sc[c] + bi[c]);
     let best = 0;

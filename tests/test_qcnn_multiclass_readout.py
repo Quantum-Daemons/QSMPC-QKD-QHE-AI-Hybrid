@@ -134,3 +134,79 @@ def test_the_binary_readout_still_works():
     p1 = m.circuit(x, theta, readout_qubits=1, layers=3)
     assert torch.allclose(z, p1[:, 0] - p1[:, 1], atol=1e-5), (
         "<Z0> = p(0) - p(1) on the measured wire; if these disagree the marginal is binned wrongly")
+
+
+def _survivors(mod, nq: int, readout_qubits: int) -> list[int]:
+    """The wires still live when the fully-connected block runs.
+
+    Derived HERE from `layer_plan`, independently of `surviving_wires()`, so that the assertion
+    below compares two derivations rather than one value against itself. If the trainer's helper
+    is edited to agree with a wrong readout, this recomputation does not follow it.
+    """
+    active = list(range(nq))
+    for step in mod.layer_plan(nq, readout_qubits=readout_qubits):
+        if step["kind"] == "pool":
+            active = [a for a, _ in zip(active[0::2], active[1::2], strict=False)]
+    return active
+
+
+def test_every_readout_wire_survived_the_pooling():
+    """A class index may only be built from wires the circuit still processes.
+
+    WHY THIS EXISTS
+
+    The multiclass readout bins the state by `i & (k - 1)` - the low `m` bits of the flat index -
+    and wire `q` is bit `q`, so a 3-qubit readout reads wires 0, 1 and 2. After one pooling stage
+    on 8 wires the survivors are [0, 2, 4, 6]. **Wire 1 is a pooling CONTROL that was measured
+    away**: `apply_cry(state, b=1, a=0, ...)` conditions wire 0 on it, and from that point nothing
+    touches wire 1 again - the fully-connected block iterates `active`, which no longer contains it.
+
+    So one of the three wires the class index is built from is frozen at its pre-pooling value
+    while the other two are carried through the FC block. That is not a deliberate choice:
+    `layer_plan`'s own docstring justifies stopping early by saying "a 3-qubit readout for 8 classes
+    cannot pool all the way to one wire", a rationale that is only coherent if the readout wires
+    ARE the survivors. The binning is byte-identical to the pre-Round-46 version, where there was
+    no pooling at all and every wire was live - it is a stale port, not a design.
+
+    Stated over every (width, readout) pair the repository ships rather than the one that is wrong,
+    so a future width cannot reintroduce it.
+    """
+    m = _trainer()
+    offenders = []
+    for nq in (8, 9, 12, 16):
+        for ro in (1, 2, 3):
+            surv = _survivors(m, nq, ro)
+            read = m.readout_wires(nq, readout_qubits=ro)
+            dead = [w for w in read if w not in surv]
+            if dead or len(read) != ro:
+                offenders.append(
+                    f"nq={nq} readout_qubits={ro}: reads wires {read}, survivors are {surv}, "
+                    f"so wire(s) {dead or '(wrong count)'} are not live")
+    assert not offenders, (
+        "the multiclass readout builds its class index from wires the circuit discarded:\n  "
+        + "\n  ".join(offenders)
+        + "\n\nBin over the first `readout_qubits` SURVIVORS instead of over wires 0..m-1. A "
+        "discarded pooling control is frozen before the fully-connected block runs, so one bit of "
+        "every class index is decided by a wire the second half of the circuit never sees."
+    )
+
+
+def test_that_check_can_actually_fail():
+    """Anti-tautology for the check above, using the convention that shipped until Round 47.
+
+    `i & (k - 1)` reads wires 0..m-1. At the width the telecom model ships - 8 wires, 3 readout
+    qubits - that set is NOT a subset of the survivors, so the check has teeth. Without this, a
+    green subset assertion would be consistent with `readout_wires` simply returning the survivors
+    it is compared against.
+    """
+    m = _trainer()
+    surv = _survivors(m, 8, 3)
+    old_convention = list(range(3))                      # what `i & (k - 1)` reads
+    assert surv == [0, 2, 4, 6], f"survivor derivation moved: {surv}"
+    assert any(w not in surv for w in old_convention), (
+        "the pre-Round-47 readout convention is a subset of the survivors, so the check above "
+        "cannot distinguish it from the fix and is vacuous"
+    )
+    assert m.readout_wires(8, readout_qubits=3) == [0, 2, 4], (
+        "the shipped readout is not the first three survivors"
+    )
