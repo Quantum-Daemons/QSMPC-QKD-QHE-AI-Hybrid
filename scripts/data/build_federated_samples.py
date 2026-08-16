@@ -167,7 +167,11 @@ def build_finance(n: int, seed: int) -> dict:
         #
         # Measured on the shipped pair before this field existed: wire 0 (`amount`) encoded to a
         # tanh range of [-0.99999992, -0.99982701], sd 3.3e-05; 556 of 3200 values saturated; 69 of
-        # 400 rows changed class, 17.25%; accuracy 0.8200 as deployed against 0.9875 correctly fed.
+        # 400 rows changed class, 25.25%; accuracy 0.8200 as deployed against 0.9125 correctly fed.
+        # (An earlier revision of this comment said 17.25% / 0.9875. That pair compares `raw` against
+        # `zscore` on the SAME array - one array through two encoders - and describes a different fix,
+        # "stop standardising", which the trainer's raw-fitted moments rule out. The pair above is
+        # the deployed feed against the correct feed, which is what a visitor actually saw.)
         # The model's most informative input carried nothing at all.
         #
         # The mismatch cannot be undone in the browser - this file ships no numeric scaler constants,

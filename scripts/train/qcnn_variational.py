@@ -257,8 +257,21 @@ def circuit(x: torch.Tensor, theta: torch.Tensor, nq: int = N_QUBITS,
     is the identity: nothing is discarded and the probabilities sum to 1 by construction.
 
     ENDIANNESS. Qubit q is bit q of the flat index, qubit 0 the LEAST significant - the same
-    convention the ``idx & 1`` below relies on for ``<Z0>``, and the one ``quantumSim.ts`` uses. So
-    class ``c = i & (2**m - 1)``. PennyLane puts the FIRST LISTED wire in the MOST significant bit, so
+    convention the ``idx & 1`` below relies on for ``<Z0>``, and the one ``quantumSim.ts`` uses.
+
+    Bit j of the class index is bit ``readout_wires()[j]`` of the flat index - the SURVIVING wires,
+    not wires 0..m-1. This paragraph said ``class c = i & (2**m - 1)`` until Round 49, which is the
+    binning Round 47 replaced forty lines below for the reason recorded there: wire 1 is a pooling
+    control the circuit discards. The code was fixed and this docstring was not.
+
+    Scope of that, stated precisely because over-claiming it would be the same error in the other
+    direction: this was documentation drift, NOT a second computed answer. The three implementations
+    all bin by survivors, and ``quantumSim.ts`` additionally throws when an artifact's declared
+    ``readout.wires`` disagree with what its own pooling produced. What was wrong was the one place a
+    reader would look to CHECK the convention - stated as current, directly above code contradicting
+    it - which is why it is worth a paragraph rather than a silent deletion.
+
+    PennyLane puts the FIRST LISTED wire in the MOST significant bit, so
     an LSB-first read of bits 0,1,2 equals ``qml.probs(wires=[7,6,5])`` and NOT ``wires=[0,1,2]``.
     Getting that backwards permutes the class map by ``[0,4,2,6,1,5,3,7]`` while leaving accuracy,
     macro F1 and every loss curve identical - and four of the eight classes are FIXED POINTS of that
