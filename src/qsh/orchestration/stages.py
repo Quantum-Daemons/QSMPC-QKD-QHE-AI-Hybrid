@@ -385,7 +385,10 @@ class PrivateInferenceStage(Stage):
             x = ctx.data.get("features", np.zeros(qubits))
 
             # TRAINED circuit where weights exist. The untrained QCNN is not a classifier: measured
-            # over 200 random inputs at 4 and 8 qubits, `predict_proba` never exceeds 0.241, so it
+            # over 200 random UNIFORM[0,1) inputs at 4 and 8 qubits `predict_proba` peaks at 0.239
+            # and 0.230 - the "never exceeds 0.241" this comment used to state, now with the input
+            # distribution it needs, because on normal(0,1) draws it reaches 0.98 and crosses 0.5
+            # for about a tenth of them. On the bounded range the demo actually feeds, it
             # never crosses the 0.5 boundary and returns class 0 for EVERY input at every seed, with
             # correlation -0.05 against the input. That is a CONSTANT PREDICTOR - harder to notice
             # than the browser's coin-flip form of the same defect, because it looks stable and
