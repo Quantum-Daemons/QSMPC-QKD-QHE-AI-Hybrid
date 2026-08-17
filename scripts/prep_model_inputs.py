@@ -82,7 +82,7 @@ N_SAMPLES = {"medical_fl": None, "finance_aml": 8192, "satellite_comms": 128,
              # are verified on identical rows and the comparison between them is like for like.
              "telecom_ids": None, "medical_resnet50": None,
              # 5G-NIDD, and the one case here where "the whole test split" is not an option: it is
-             # 303,973 rows x 39 features, roughly 100 MB against a 4.5 MB largest-committed-sample
+             # 303,973 rows x 47 features, roughly 120 MB against a 4.5 MB largest-committed-sample
              # today. 16,384 rows keeps the interval on a 9-class macro F1 tight while landing in
              # the same size class as the finance sample. See build_telecom_nidd for why the draw is
              # NOT proportional and what that costs.
@@ -179,9 +179,9 @@ def _warn_single_feature_leak(usecase: str, payload: dict) -> list[tuple[float, 
     Returns the flagged ``(auc, feature_name, class_index)`` triples, highest first, so a caller can
     RECORD what was found rather than only print it. Every existing caller ignores the return value
     and is unaffected. `scripts/train/telecom_nidd.py` needs the list as data: on 5G-NIDD the check
-    fires on 21 of 39 features, legitimately, and the published feature_spec has to state that count
-    and distinguish it from the three row identifiers it does NOT fire on. A count asserted in prose
-    and measured nowhere is the drift this repository has a gate for.
+    fires on roughly half the features, legitimately, and the published feature_spec has to state
+    that count and distinguish it from the row identifiers it does NOT fire on. A count asserted in
+    prose and measured nowhere is the drift this repository has a gate for.
 
     This exists because one did. The finance sample was built from `nrows=400_000` of a time-sorted
     corpus, which left `hour_of_day >= 3` implying laundering at 100% precision - a leak created by
@@ -646,7 +646,7 @@ def build_telecom_nidd(rng: np.random.Generator) -> dict:
     trained against: same loader, same seed, same stratified 25%.
 
     THE DRAW IS NOT PROPORTIONAL, and that is the one thing a reader has to know about this file.
-    Two constraints collide. The whole test split is 303,973 x 39 and would ship about 100 MB. A
+    Two constraints collide. The whole test split is 303,973 x 47 and would ship about 120 MB. A
     proportional 16,384-row subsample of it gives ICMPFlood roughly 15 rows, and a per-class F1
     computed on 15 rows is noise that the page would present as a verification. So every class gets
     at least NIDD_MIN_PER_CLASS and the remainder is proportional, which means the sample
@@ -711,15 +711,19 @@ def build_telecom_nidd(rng: np.random.Generator) -> dict:
             "NETWORK-LAYER flow statistics, which is a DIFFERENT TASK from the QKD-layer attack "
             "classifier on this same page: no shared labels and no shared features, so the two "
             "figures are not a comparison. "
-            "13 of the corpus's 52 columns are dropped before the model sees them, with reasons, in "
-            "qsh.models.datasets.NIDD_DROPPED and in this model's feature_spec.json. Three of those "
-            "are integer row identifiers whose restoration reproduces the accuracies published for "
-            "this corpus; that counterfactual is the reason this model exists and is recorded in "
+            "These rows come from BTS1_BTS2_fields_preserved.csv, the 113-column export, and NOT "
+            "from Combined.csv, the 52-column one this model used until Round 50. Same corpus and "
+            "same rows; the wide file carries `IdleTime`, which is worth 22 accuracy points on its "
+            "own and is re-measured every run as idle_time_ablation in models/metrics.json. "
+            "66 of the 113 columns are dropped before the model sees them, with reasons, in "
+            "qsh.models.datasets.NIDD_DROPPED and in this model's feature_spec.json. Nine of those "
+            "are integer row identifiers whose restoration takes accuracy to about 0.9997, the "
+            "range published for this corpus; that counterfactual is recorded in "
             "models/metrics.json as leak_counterfactual_*."
         ),
         "input": {"shape": [1, x.shape[1]], "dtype": "float32", "preprocessing": [],
-                  "layout": ("samples[i] is one network flow's 39 features, in the order below. The "
-                             "five categorical columns are already ordinal-encoded against the "
+                  "layout": ("samples[i] is one network flow's 47 features, in the order below. The "
+                             "ten categorical columns are already ordinal-encoded against the "
                              "published vocabulary in feature_spec.json; -1 means missing or "
                              "out-of-vocabulary, for a categorical or a numeric alike")},
         "feature_names": list(feature_names),
@@ -740,13 +744,15 @@ def build_telecom_nidd(rng: np.random.Generator) -> dict:
                 f"proportional draw of this size gives ICMPFlood about 15, at which point its "
                 f"per-class F1 moves in steps of 1/15 and verifying against it would be theatre. "
                 f"The floor over-represents the four smallest classes, and since those are the "
-                f"classes the model is BEST at - seven of nine score above 0.98 while the two "
-                f"majority classes mutually confuse - it moves both figures upward. Read "
-                f"rows_per_class beside them. "
+                f"classes the model is BEST at - seven of nine score at or above 0.9999 while the "
+                f"two majority classes are the only pair that confuses - it moves both figures "
+                f"upward. Read rows_per_class beside them. "
                 f"One further inversion, which is the opposite of this project's usual warning: on "
                 f"this corpus macro F1 is the optimistic number and accuracy the pessimistic one, "
-                f"because the two majority classes are 39.3% and 37.6% of the corpus and confuse "
-                f"with each other."),
+                f"because the two majority classes are 39.3% and 37.6% of the corpus and the "
+                f"residual error is entirely between them. That inversion survived the Round 50 "
+                f"refit onto the wide export; it shrank from 0.1655 to about 0.0121 rather than "
+                f"reversing."),
         },
     }
 
