@@ -19,10 +19,16 @@ call as it shipped through Round 49 and passes against `on_logit=True`.
 
 from __future__ import annotations
 
+import json
+import pathlib
+
 import numpy as np
 import pytest
 
 from qsh.models import calibration as cal
+
+METRICS = json.loads((pathlib.Path(__file__).resolve().parents[1]
+                      / "models" / "metrics.json").read_text())
 
 
 @pytest.fixture()
@@ -228,6 +234,14 @@ def test_the_shipped_parameters_reproduce_the_on_logit_transform(imbalanced):
     assert np.allclose(by_hand, fitted.apply(s), atol=1e-12), (
         "a consumer applying the published formula must get the identical numbers")
 
+    # The three fields every consumer artifact carries and nothing asserted. `n_calibration` is set
+    # from `len(s)` eight lines below `x = np.concatenate([s, s])` - the smoothed-target encoding
+    # duplicates every row - so a refactor reaching for the wrong one would double the published
+    # 801/710,969 and leave this suite green.
+    assert d["method"] == "platt"
+    assert d["n_calibration"] == len(s)
+    assert d["positives_calibration"] == int(y.sum())
+
 
 def test_the_clip_keeps_a_saturated_score_finite(imbalanced):
     """A retrain that saturates a leaf to exactly 0 or 1 must not become an infinity in the fit.
@@ -245,6 +259,47 @@ def test_the_clip_keeps_a_saturated_score_finite(imbalanced):
     assert np.isfinite(fitted.a) and np.isfinite(fitted.b)
     p = fitted.apply(s)
     assert np.all(np.isfinite(p)) and p.min() > 0.0 and p.max() < 1.0
+
+
+def test_the_shipped_finance_map_is_the_logit_arm():
+    """The gate on the ARTIFACT, which is the one this suite did not have and needed.
+
+    Everything above tests `fit_platt` in isolation. That is precisely the shape of the defect: the
+    library was fine, the suite was fine, and the TRAINER passed the wrong argument - so every test
+    stayed green for three rounds while `models/metrics.json` published a map that returned one
+    constant for nine of ten deciles. Reverting `on_logit=True` in
+    `scripts/train/finance_aml.py` today would still leave ruff, the config-parity gate and
+    `scripts/check_generated_prose.py` green: the prose gate cannot reach a nested dict, the block
+    arrives through a `**splat` whose AST key is None, and its trainer glob never reads
+    `calibration.py`. Nothing else in CI reads this field. So this asserts the published record.
+
+    It reads the artifact rather than recomputing it, because recomputing needs the corpus and a GPU
+    and this must run in seconds on every push. The last assertion is the load-bearing one: it is
+    not a threshold on a metric but a statement about what the map CAN SAY, evaluated at the
+    smallest score the shipped split actually contains.
+    """
+    published = METRICS["finance_aml.gbm"]["calibration"]
+
+    assert published["method"] == "platt"
+    assert published["on_logit"] is True, (
+        "the shipped finance map must be fitted on log-odds; fitted on the probability it collapses "
+        "nine of ten deciles onto one constant, which is the Round 49 defect")
+    assert published["formula"] == cal._FORMULA_ON_LOGIT
+    assert published["logit_clip_eps"] == cal.LOGIT_CLIP_EPS
+    assert published["log_loss_calibrated"] < published["log_loss_raw"], (
+        "the map that shipped through Round 49 was WORSE than not calibrating at all on log-loss "
+        "(0.01049835 against 0.00965987); that is the signature this asserts against")
+
+    # Rebuilt from the published fields ONLY - the six `Platt` takes, not the eighteen `as_dict`
+    # emits - so this also checks the record carries enough to reconstruct the map.
+    fitted = cal.Platt(**{k: published[k] for k in (
+        "a", "b", "n_calibration", "positives_calibration", "on_logit", "logit_clip_eps")})
+    base_rate = METRICS["finance_aml.gbm"]["calibration"]["corp_raw"]["base_rate"]
+    floor = float(fitted.apply(np.array([4.4e-11]))[0])
+    assert floor < base_rate / 10.0, (
+        f"the shipped calibrator cannot express a risk an order of magnitude below the base rate "
+        f"{base_rate:.6g} - at the smallest score on this split it returns {floor:.6g}. The Round 49 "
+        f"map floored at 0.00090148, which is 0.8x the base rate, and that is the defect")
 
 
 @pytest.mark.parametrize(("k", "n"), [(42, 156), (164, 8192), (113, 529)])

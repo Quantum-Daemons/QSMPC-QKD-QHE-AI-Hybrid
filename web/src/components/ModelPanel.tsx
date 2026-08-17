@@ -249,13 +249,40 @@ function MetricRows({ spec }: { spec: ModelSpec }) {
             </td>
           </tr>
         )}
-        {companion.map(([k, v]) => (
-          <tr key={k} className="metric-companion">
-            <td><code>{k}</code></td>
-            <td className="num">{fmt(v)}</td>
-            <td className="muted small">companion — shown so the gap is visible</td>
-          </tr>
-        ))}
+        {companion.map(([k, v]) => {
+          // The caption is DERIVED, not hardcoded. It read "shown so the gap is visible" for every
+          // companion on every model, which asserts the aggregate is the flattering number being
+          // disclosed. That is true of most models here and FALSE of `telecom_ids.nidd`, whose macro
+          // F1 sits above its aggregate accuracy - so the one model that needed the caveat was the
+          // one the caption contradicted. Compare the two numbers and say which way round they are.
+          // Compare against the DECLARED metric, not against "the only headline". Most records carry
+          // several headline rows - ablations, counterfactuals, linear floors - so a
+          // headline.length === 1 test falls back to the uninformative caption on every model that
+          // has anything to compare, which is all of them. `spec.metric.name` is the one row the
+          // registry says this model is judged on, and it is what the baseline is rendered against
+          // two rows up, so it is the right thing for the companion to be read against too.
+          const declared = headline.find(([k]) => k === spec.metric.name);
+          const h = declared ? Number(declared[1]) : NaN;
+          const c = Number(v);
+          const known = Number.isFinite(h) && Number.isFinite(c);
+          // Three cases, not two. `telecom_ids.student` records macro_f1 and aggregate_accuracy as
+          // the SAME number, and a two-branch ternary files equality under whichever branch is the
+          // fallback - which would have printed "LOWER than the headline" about two identical values.
+          const caption = !known
+            ? "companion — the same run reported on a different metric"
+            : Math.abs(c - h) < 5e-5
+              ? "companion — equal to the headline here, so neither is the flattering figure"
+              : c > h
+                ? "companion — higher than the headline, so it is the flattering figure and the headline is the honest one"
+                : "companion — LOWER than the headline here; the aggregate is the pessimistic figure, not the flattering one";
+          return (
+            <tr key={k} className="metric-companion">
+              <td><code>{k}</code></td>
+              <td className="num">{fmt(v)}</td>
+              <td className="muted small">{caption}</td>
+            </tr>
+          );
+        })}
         {verdict && (
           <tr className={verdict.agrees ? "metric-companion" : undefined}>
             <td><code>quantum_beats_classical</code></td>
@@ -291,16 +318,19 @@ function MetricRows({ spec }: { spec: ModelSpec }) {
  */
 /** Probability calibration, where the record carries one.
  *
- * Shows the fitted Platt map and what it bought, INCLUDING the metric it cost. On finance the Brier
- * score improves and the CORP miscalibration term roughly halves while log-loss gets worse, and
- * printing only the two that moved the right way would be the reporting failure this project
- * documents elsewhere as pitfall P7.
+ * Shows the fitted Platt map and what it bought, INCLUDING any metric it cost. The "worse" branch
+ * below is a GENERAL GUARD, not a finance fact: it fires off the recorded numbers whenever log-loss
+ * moves the wrong way, because printing only the metrics that moved the right way is the reporting
+ * failure this project documents elsewhere as pitfall P7. On finance it no longer fires.
  *
- * Round 49 measured WHY log-loss gets worse, and the reason is not the base rate: `fit_platt` is
- * fitted on a probability rather than a log-odds, so with 90% of the raw scores below 1e-4 the
- * sigmoid is constant across nine of ten deciles and returns 0.00090148 for all of them. The map
- * rendered below is that map. See references/finance-calibration-isotonic-vs-platt.md; the fix is
- * to the argument, not to this panel, and it needs a retrain.
+ * IT USED TO, AND WHY IT STOPPED IS THE POINT. Through Round 49 this panel rendered a map whose
+ * log-loss was worse than not calibrating at all. Round 49 measured the cause and it was not the
+ * base rate: `fit_platt` was being fitted on a probability rather than a log-odds, so with 90% of
+ * the raw scores below 1e-4 the sigmoid was constant across nine of ten deciles and returned
+ * 0.00090148 for all of them. The fix is `on_logit=True` in the trainer, and it is NOT confined to
+ * the trainer - the map row below renders `a` and `b`, and those two floats mean a different
+ * function depending on which argument they were fitted against, so this panel has to read
+ * `c.on_logit` and say which. See references/finance-calibration-isotonic-vs-platt.md.
  *
  * No reliability diagram is drawn here even where the split supports one, because the CORP terms are
  * scalars and a curve would need a bin count this panel has no basis to choose. The record says per
@@ -321,7 +351,15 @@ function CalibrationRows({ achieved }: { achieved: Record<string, unknown> }) {
       </div>
       <table className="mini-table">
         <tbody>
-          <tr><td>map</td><td className="mono">p = 1 / (1 + exp({f(c.a, 4)}·s + {f(c.b, 4)}))</td></tr>
+          {/* The two floats are meaningless without the argument they were fitted against: the map
+              is linear in whatever it is handed, so the same a and b describe a different function
+              over a score than over its log-odds. `on_logit` travels with them in the weights JSON
+              for exactly this reason, and rendering one form for both is the defect the flag exists
+              to prevent. The published `formula` string is NOT rendered instead - it is symbolic in
+              a and b, and this row is the only place in the app where the fitted floats appear. */}
+          <tr><td>map</td><td className="mono">{c.on_logit
+            ? `p = 1 / (1 + exp(${f(c.a, 4)}·logit(clip(s, ${c.logit_clip_eps}, 1 - ${c.logit_clip_eps})) + ${f(c.b, 4)})), logit(q) = log(q / (1 - q))`
+            : `p = 1 / (1 + exp(${f(c.a, 4)}·s + ${f(c.b, 4)}))`}</td></tr>
           <tr><td>Brier</td>
               <td className="mono">{f(c.brier_raw)} → {f(c.brier_calibrated)}</td></tr>
           <tr><td>CORP miscalibration (MCB)</td>
@@ -335,10 +373,12 @@ function CalibrationRows({ achieved }: { achieved: Record<string, unknown> }) {
       </table>
       {worse && (
         <p className="muted" style={{ fontSize: 11, marginTop: 4 }}>
-          Calibration improved the Brier score and halved the miscalibration term while making
-          log-loss worse. Both are shown because reporting only the metrics that moved the right way
-          is the failure this project cites Arp et al. for. At this base rate log-loss is dominated by
-          the negatives, so a sigmoid that lowers mean squared error can still cost on the tails.
+          Calibration moved log-loss the wrong way here. Every term is shown anyway, because
+          reporting only the metrics that moved the right way is the failure this project cites
+          Arp et al. for. Two causes are worth separating before this is read as a property of the
+          base rate: at a low base rate log-loss is dominated by the negatives, so a sigmoid that
+          lowers mean squared error can still cost on the tails — but a map fitted on the wrong
+          argument produces the same signature, and on finance that is what it turned out to be.
         </p>
       )}
       <p className="muted" style={{ fontSize: 11, marginTop: 4 }}>
@@ -522,6 +562,17 @@ export function ModelPanel({ usecase }: { usecase: string }) {
           )}
           {typeof spec.achieved?.baseline_gap_note === "string" && (
             <p className="muted small"><strong>Gap to baseline:</strong> {spec.achieved.baseline_gap_note}</p>
+          )}
+          {/* `metric_note` reached the browser in config.defaults.json and was rendered NOWHERE.
+              SIX records carry one - finance_aml.scorecard, medical_fl.student,
+              satellite_comms.opssat_student, satellite_comms.telemanom, telecom_ids.nidd and
+              telecom_ids.student - each written by a trainer, checked by the prose gate, shipped in
+              the bundle, and shown to nobody. It is the field that says WHICH of two recorded numbers
+              answers WHICH question, so its absence is what let the companion caption above assert a
+              direction the record contradicted. Sits above `notes` because it qualifies the table
+              rather than the model. */}
+          {typeof spec.achieved?.metric_note === "string" && (
+            <p className="muted small"><strong>Reading these metrics:</strong> {spec.achieved.metric_note}</p>
           )}
           {spec.notes && <p className="muted small">{spec.notes}</p>}
           <ModelRunner usecase={usecase} spec={spec} />
