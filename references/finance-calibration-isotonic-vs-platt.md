@@ -15,15 +15,30 @@
 > ranking to the last recorded digit, and never emits a probability of exactly 0. Isotonic costs
 > **9.09% of AUPRC**.
 >
-> **Recommendation: do not switch to isotonic. Change the argument passed to `fit_platt`.** That
-> change is NOT applied here - this round was scoped as a measurement, and applying it retrains the
-> teacher and rewrites `models/`.
+> **Recommendation: do not switch to isotonic. Change the argument passed to `fit_platt`.**
+>
+> **APPLIED AND RE-VERIFIED SINCE. The recommendation above was carried out.** `fit_platt` grew an
+> `on_logit=True` option that carries the transform, the clip and the published formula string with
+> the two floats; `scripts/train/finance_aml.py` passes it; the teacher was retrained and
+> `models/metrics.json` and `web/src/lib/config.defaults.json` regenerated from it. **The retrain
+> reproduced this file's predictions exactly** - `a = -0.5853491088584304`, `b = 1.6417462922842536`
+> against the `a = -0.58535`, `b = 1.64175` measured below; Brier `0.00142199`, log-loss
+> `0.00818964`, CORP MCB `1.178e-05`; `brier_raw`, `log_loss_raw`, `corp_raw` and the DSC/UNC terms
+> all bit-identical, and AUROC `0.9525582593503528` / AUPRC `0.12334101789973353` unchanged to every
+> recorded digit, which is the ranking claim this file makes and now verifies from a second
+> direction. Nothing measured below is edited: every superseded figure stays where it was measured,
+> and the `platt_prob` arm is retained in the harness as the control that makes the comparison
+> legible.
 
 Measured 2026-08-16, Round 49. Script: `scripts/train/finance_calibration_ablation.py`.
 Raw output: `data-full/artifacts/finance_calibration_ablation.json` (untracked, regenerate with the
 script). Reproduce with:
 
-    python scripts/train/finance_calibration_ablation.py --repeats 20 --bins 20
+    python scripts/train/finance_calibration_ablation.py --refit --repeats 20 --bins 20
+
+`--refit` matters and did not appear here at first: the cached score file is keyed on the SEED
+ALONE, so a run after any change to the teacher, the features or the split is served the old scores
+with no warning. Discarding the cache is the only guard, and it is manual.
 
 ## Provenance: this is the shipped split, not a new one
 
@@ -135,9 +150,14 @@ instead, `a = -0.58535`, `b = 1.64175` and the same two floats spread deciles 1 
 
 **The unit tests could not have caught this.** `tests/test_calibration.py` names its fixture
 variable `logit` and builds it as `3.0 * (x - 0.5)`, so every test exercises `fit_platt` on a
-log-odds. The only production caller, `scripts/train/finance_aml.py:522`, passes
-`teacher.predict_proba(Xval)[:, 1]`. The suite and the pipeline disagree about what the argument
-is, and both are internally consistent.
+log-odds. The only production caller, `scripts/train/finance_aml.py`, passed
+`teacher.predict_proba(Xval)[:, 1]`. The suite and the pipeline disagreed about what the argument
+is, and both were internally consistent. (No line number is given because the one first recorded
+here went stale within the round: that call now reads `fit_platt(..., on_logit=True)`, so a pointer
+would land a reader on a line that contradicts the sentence pointing at it. The hole is closed from
+the other side too - `test_a_probability_score_is_not_fitted_into_a_near_constant` asserts the
+fitted map is not near-constant across the bottom nine deciles, and fails at `1.000399x` against
+the probability-fed call.)
 
 ## 3. Calibration and ranking: true of Platt, FALSE of isotonic, measured
 
@@ -313,7 +333,12 @@ At 2,321 events the two split the two proper scoring rules - isotonic takes Brie
 - **Nothing here is measured on medical, satellite or telecom.** Those splits carry about 42 and 113
   events and no calibrator is fitted on them at all. The Riley et al. floor for a flexible
   reliability CURVE still binds there and this file does not touch it.
-- **The `platt_logit` arm is not shipped.** It is a measurement of a one-line change, not the change.
+- ~~**The `platt_logit` arm is not shipped.** It is a measurement of a one-line change, not the
+  change.~~ **SUPERSEDED - it ships now.** Kept rather than deleted because it was a true and
+  load-bearing caveat when this table was written: everything else in this section still limits what
+  the measurement establishes, and this line limited what had been ACTED on. The retrain closed it
+  and reproduced the numbers above to every recorded digit, so the caveat that remains is the one
+  directly beneath: one seed, one corpus, one booster.
 
 ## Sites carrying prose this measurement contradicts
 
@@ -324,5 +349,10 @@ artifact is a defect with a timer on it.
 |---|---|
 | `src/qsh/models/calibration.py` docstring and `why_not_isotonic` | corrected in this round (it is the generator) |
 | `web/src/components/ModelPanel.tsx` | corrected in this round; it told visitors the calibration set "is inside the range where the published comparison puts Platt ahead", which Round 46 had already refuted and which never reached this file |
-| `models/metrics.json` -> `finance_aml.gbm.calibration.why_not_isotonic` | NOT hand-edited. Regenerated by the next `scripts/train/finance_aml.py` run |
-| `web/src/lib/config.defaults.json` -> `models/finance_aml[1].achieved.calibration` | NOT hand-edited. Derived from `models/metrics.json` via `scripts/export_config.py` |
+| `models/metrics.json` -> `finance_aml.gbm.calibration.why_not_isotonic` | NOT hand-edited. REGENERATED SINCE, by the `scripts/train/finance_aml.py` run that applied the fix; the block now carries `on_logit: true`, `logit_clip_eps`, the log-odds `formula` string and the new `a`/`b` |
+| `web/src/lib/config.defaults.json` -> `models/finance_aml[1].achieved.calibration` | NOT hand-edited. Derived from `models/metrics.json` via `scripts/export_config.py`, re-run after the retrain. Checked: no allowlist sits between the two, so `on_logit` and `logit_clip_eps` do reach the browser |
+| `web/src/components/ModelPanel.tsx` map row | CORRECTED SINCE, and it was the one live "landed in one of three sites" defect: the row rendered `p = 1 / (1 + exp(a*s + b))` unconditionally, so after the retrain it would have printed a score-domain formula beside logit-fitted floats. It now branches on `on_logit` |
+| `tests/test_calibration.py` | CORRECTED SINCE. The `imbalanced` fixture claimed a 1-in-650 base rate and 90% of scores below 1e-4 and delivered 1-in-16 and 34.8%, drawing its labels from the score itself - so the defect was not reproduced and a shape assertion would have passed on the broken arm. Rebuilt, and the missing near-constant test added. A second test now pins the ARTIFACT (`on_logit`, the formula string, the clip, and that the map can express a risk an order of magnitude below the base rate), because nothing in CI read that field and a revert of the trainer's one argument left every gate green |
+| `docs/browser-verification-checklist.md` PP10 | CORRECTED SINCE. Its worked example was "measured on finance: Brier and MCB improved while log-loss got WORSE", which the fix makes false. The rule is kept; the example is re-labelled as the pre-fix state |
+| `docs/deliverable-verification.md` Round 46 stamp | CORRECTED SINCE. Still asserted in the present tense that `fit_platt` "is fed a probability"; every sibling site had a supersession note and this one did not |
+| `report/technical-report.tex`, `README.md` pin counts | ADJACENT, corrected where measured. The retrain unpinned both finance models (`hf_revision` -> `hf_revision_invalidated_by_retrain`), emptying the finance browser tier until a re-publish; README's "10 of 13" was wrong before and after, and is now stated from the registry (11 of 11 published specs pinned, 4 of 15 not published) |

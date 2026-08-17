@@ -936,10 +936,15 @@ See [`docs/pqc-roadmap.md`](docs/pqc-roadmap.md).
   baselines and measured metrics. It flows through `frontend_config()` into the SPA, so no model id,
   URL or number is hard-coded in TypeScript. The browser fetches the ONNX graph from the CDN **at a
   pinned 40-character commit sha**, never `main`, so a visitor cannot silently get a different model
-  from the one whose metrics the page is printing. **10 of 13 registry specs carry a
-  pinned `hf_revision`**; `onnxInference.ts` deliberately skips the rest rather than fall back to
-  `main`, so those models are not fetched at all - the pinning guarantee holds, but it is a smaller
-  set than this paragraph used to imply. Publish with `python scripts/publish_hf.py`; it defaults to
+  from the one whose metrics the page is printing. Of the 15 registry specs, **11 declare a Hub repo
+  and all 11 currently carry a pinned `hf_revision`**; the other 4 are not published at all.
+  `onnxInference.ts` deliberately skips anything unpinned rather than fall back to `main`, so such a
+  model is not fetched at all - the pinning guarantee holds, and the set it covers is worth stating
+  as a number rather than implying. That number MOVES: a retrain demotes `hf_revision` to
+  `hf_revision_invalidated_by_retrain` (`train.py`), because the recorded sha now points at weights
+  the metrics no longer describe, and it is restored only by re-publishing. Round 49 hit exactly
+  that - retraining finance for the calibration fix unpinned both finance models and emptied that
+  use case's browser tier until the re-publish landed. Publish with `python scripts/publish_hf.py`; it defaults to
   **private** because the Hub's public-repo grant is "perpetual, irrevocable", and it refuses to
   publish publicly at all when the registry marks the training data non-publishable.
 

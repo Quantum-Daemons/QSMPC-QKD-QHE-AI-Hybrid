@@ -6,16 +6,16 @@
     "auroc": 0.9525582593503528,
     "baseline_gap_note": "This reaches minority-class F1 well below the published 0.6323 (GFP+XGBoost, AMLworld HI-Small, NeurIPS 2023 D&B). The cause is a feature ARCHITECTURE difference, not a tuning one: the gap is unreachable at any threshold, because measured AUPRC is far below what that F1 requires. IBM's Graph Feature Preprocessor computes per-transaction subgraph patterns over a dynamically updated graph; this project computes per-account scalar aggregates. A degree is one number per account, whereas a GFP feature is a pattern match in that transaction's own neighbourhood at the moment it arrives. GFP ships in `snapml` under a Proprietary licence and is excluded by this project's commercial-OK-only rule, but the licence is not itself the cause - the architecture is, and it is reimplementable without `snapml`, simply at more cost than renaming aggregates. Reachability is computed to 4 hops against injected CYCLE attempts of up to 10; that was previously recorded as a main cause and is NOT one - the GFP paper (arXiv:2402.08593) decomposes its own contribution and caps multi-hop cycle and scatter-gather features at about 4% relative, while fan-in/fan-out, which is reimplemented here, carries more than 30%. The evaluation is strictly inductive and temporally split. Per-account aggregates are causal (each row sees only edges strictly before it); the structural block - cycle closure, scatter-gather, bank diversity, burst degree - is still fitted on the training window, because recomputing sparse reachability at every timestep is not tractable here. Reported as measured; not adjusted to close the gap. Full workings: references/finance-gap-investigation.md.",
     "calibration": {
-      "a": -7.837780988704507,
-      "b": 7.010575605947596,
-      "brier_calibrated": 0.00145433,
+      "a": -0.5853491088584304,
+      "b": 1.6417462922842536,
+      "brier_calibrated": 0.00142199,
       "brier_raw": 0.00150259,
       "corp_calibrated": {
         "base_rate": 0.00152346,
-        "brier": 0.00145433,
+        "brier": 0.00142199,
         "brier_recalibrated": 0.00141021,
         "dsc": 0.00011093,
-        "mcb": 4.412e-05,
+        "mcb": 1.178e-05,
         "method": "CORP (pool-adjacent-violators); no bin count is chosen",
         "n": 1523504,
         "positives": 2321,
@@ -34,16 +34,18 @@
         "source": "Dimitriadis, Gneiting and Jordan, arXiv:2008.03033, PNAS 118 e2016191118",
         "unc": 0.00152114
       },
-      "does_not_move_ranking": "Platt is monotone, so AUC and AUC-PR are unchanged by construction. Calibration fixes what a probability MEANS, never how the rows are ordered.",
+      "does_not_move_ranking": "Platt is STRICTLY monotone, so AUC and AUC-PR are unchanged by construction: measured Round 49, both are identical to the uncalibrated values to ten decimals, and that held for the map fitted on the probability and for the logit(s) map that now ships alike. The qualifier matters and was missing - isotonic is only WEAKLY monotone, and on this same split it moved AUROC by -0.00031674 and AUPRC by -0.01121590 (-9.09%). Calibration by a strictly monotone map fixes what a probability MEANS, never how the rows are ordered. ONE HONEST QUALIFIER ON THE MAP THAT SHIPS: logit() clips at 1e-12, so scores below 1e-12 or above 1-1e-12 would tie. None exist on this split (the raw range is 4.4e-11 to 0.99997), so no pair is tied and the AUCs above are exact; a retrain that saturates a leaf would need this re-checked rather than assumed.",
       "fitted_on": "validation split; scored on the held-out test split",
-      "formula": "p = 1 / (1 + exp(a * score + b))",
-      "log_loss_calibrated": 0.01049835,
+      "formula": "p = 1 / (1 + exp(a * logit(clip(score, logit_clip_eps, 1 - logit_clip_eps)) + b)), logit(q) = log(q / (1 - q))",
+      "log_loss_calibrated": 0.00818964,
       "log_loss_raw": 0.00965987,
+      "logit_clip_eps": 1e-12,
       "method": "platt",
       "n_calibration": 710969,
+      "on_logit": true,
       "positives_calibration": 801,
       "reliability_diagram_defensible_here": "YES on this split, and the first draft of this note said the opposite. Riley et al. (Stat Med 2021) put the floor for a flexible calibration curve at about 200 events; this test split carries 2,321. The 164-event figure this project quotes elsewhere is the 2D OVERLAY payload (8,192 sampled rows at a 0.02 base rate), not the test split, and carrying it over here would have declined a curve that the data supports - the same wrong-denominator mistake this repository already documents under 'ask what the metric was divided by'. The floor genuinely does bind on medical (about 42 events) and satellite (about 113). The CORP terms below are reported regardless, because PAV picks no bin count and so they are stable where a binned curve is not.",
-      "why_not_isotonic": "OPEN, not settled - Round 46 found the denominator wrong. The ICML/UAI thresholds (200-1000 and 2000) are CALIBRATION CASES; this set has 710,969, so ICML 2005 in fact says isotonic is 'as good as, or better than' Platt here. Platt is retained because those papers benchmark balanced problems and at a 1-in-981 base rate the binding quantity is plausibly the 2,321 positive events, which they do not address. The isotonic comparison is conditioned by Round 48."
+      "why_not_isotonic": "MEASURED Round 49 on this split, not argued: isotonic Brier 0.00142218 / log-loss 0.00820025 against 0.00142199 / 0.00818964 for the same fit_platt fed logit(s) - within noise on both proper scoring rules, so ICML 2005's 'as good as, or better than' holds here in the 'as good as' form. Platt is kept on the tie-break: isotonic is only WEAKLY monotone, collapsed 1,388,669 distinct scores to 138, and cost AUROC 0.00031674 and AUPRC 0.01121590 (-9.09%), while both Platt arms moved neither to ten decimals; it also emitted exactly 0 on 464,176 test rows, one a true positive, and 138 breakpoints are not two floats a browser can apply. ONE CORRECTION TO THE OLD REASONING SURVIVES HERE: the calibration set carries 801 events, not 2,321 (that is the test split). The second - that a/b were fitted on a PROBABILITY rather than a log-odds, making the map return 0.00090148 for nine of ten deciles - is FIXED, not outstanding: on_logit is true above and the map published here is the logit(s) arm those numbers describe. Workings: references/finance-calibration-isotonic-vs-platt.md."
     },
     "data_digest": "0dfc7207d92b892c",
     "dataset": "IBM AMLworld HI-Small",
@@ -53,14 +55,14 @@
       "int8_skipped_reason": "tree ensemble: parameters live in node attributes, not weight tensors, so dynamic int8 quantisation has nothing to quantise",
       "opset": 0
     },
-    "git_sha": "e7fea39-dirty",
-    "hf_revision": "27fea7b067635325c67fdd3d45ca0c30d28cd74f",
+    "git_sha": "67138f8-dirty",
+    "hf_revision": "91562e197d93340397d62b2d8a7e8f6350134e6c",
     "minority_class_f1": 0.15194805194805194,
     "n_test": 1523504,
     "n_train": 3554841,
     "positive_rate": 0.00101943,
     "split": "temporal, inductive",
-    "wall_clock_s": 88.2
+    "wall_clock_s": 96.6
   },
   "finance_aml.scorecard": {
     "aunbc_fit": 0.00018612,

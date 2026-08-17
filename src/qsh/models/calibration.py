@@ -133,6 +133,37 @@ _FORMULA_ON_LOGIT = (
     "p = 1 / (1 + exp(a * logit(clip(score, logit_clip_eps, 1 - logit_clip_eps)) + b)), "
     "logit(q) = log(q / (1 - q))")
 
+#: The retention argument, one per input convention, for the same reason the formula has two. The
+#: INVARIANT is that no string `as_dict` publishes may assert the value of a field `as_dict` also
+#: publishes: a single unconditional text ended "on_logit is true above", which an `on_logit=False`
+#: fit printed three keys below its own `"on_logit": false`. That is the defect being fixed - a map
+#: and its argument agreeing nowhere - reproduced inside the fix's own prose. The ON_LOGIT text is
+#: byte-identical to what `models/metrics.json` already carries, so splitting it regenerates nothing.
+_WHY_NOT_ISOTONIC_COMMON = (
+    "MEASURED Round 49 on this split, not argued: isotonic Brier 0.00142218 / log-loss "
+    "0.00820025 against 0.00142199 / 0.00818964 for the same fit_platt fed logit(s) - "
+    "within noise on both proper scoring rules, so ICML 2005's 'as good as, or better "
+    "than' holds here in the 'as good as' form. Platt is kept on the tie-break: "
+    "isotonic is only WEAKLY monotone, collapsed 1,388,669 distinct scores to 138, and "
+    "cost AUROC 0.00031674 and AUPRC 0.01121590 (-9.09%), while both Platt arms moved "
+    "neither to ten decimals; it also emitted exactly 0 on 464,176 test rows, one a "
+    "true positive, and 138 breakpoints are not two floats a browser can apply. ONE "
+    "CORRECTION TO THE OLD REASONING SURVIVES HERE: the calibration set carries 801 "
+    "events, not 2,321 (that is the test split). The second - that a/b were fitted on "
+    "a PROBABILITY rather than a log-odds, making the map return 0.00090148 for nine "
+    "of ten deciles - is ")
+_WHY_NOT_ISOTONIC_TAIL_ON_LOGIT = (
+    "FIXED, not outstanding: on_logit is true above and the map "
+    "published here is the logit(s) arm those numbers describe. Workings: "
+    "references/finance-calibration-isotonic-vs-platt.md.")
+_WHY_NOT_ISOTONIC_TAIL_ON_SCORE = (
+    "the defect this very fit reproduces: on_logit is false above, so "
+    "these a/b were fitted on whatever argument the caller passed, and if that was a probability "
+    "this is the defective arm rather than the shipped one. The shipped finance map sets on_logit "
+    "true. A caller that deliberately passes an already-log-odds score is also on_logit false and "
+    "is fine - this object cannot tell the two apart, which is why the flag records the fit and not "
+    "the intent. Workings: references/finance-calibration-isotonic-vs-platt.md.")
+
 
 def logit(p: np.ndarray, *, eps: float = LOGIT_CLIP_EPS) -> np.ndarray:
     """Log-odds of a probability, clipped so a saturated 0 or 1 cannot become an infinity."""
@@ -182,21 +213,9 @@ class Platt:
             "formula": _FORMULA_ON_LOGIT if self.on_logit else _FORMULA_ON_SCORE,
             "n_calibration": int(self.n_calibration),
             "positives_calibration": int(self.positives_calibration),
-            "why_not_isotonic": (
-                "MEASURED Round 49 on this split, not argued: isotonic Brier 0.00142218 / log-loss "
-                "0.00820025 against 0.00142199 / 0.00818964 for the same fit_platt fed logit(s) - "
-                "within noise on both proper scoring rules, so ICML 2005's 'as good as, or better "
-                "than' holds here in the 'as good as' form. Platt is kept on the tie-break: "
-                "isotonic is only WEAKLY monotone, collapsed 1,388,669 distinct scores to 138, and "
-                "cost AUROC 0.00031674 and AUPRC 0.01121590 (-9.09%), while both Platt arms moved "
-                "neither to ten decimals; it also emitted exactly 0 on 464,176 test rows, one a "
-                "true positive, and 138 breakpoints are not two floats a browser can apply. ONE "
-                "CORRECTION TO THE OLD REASONING SURVIVES HERE: the calibration set carries 801 "
-                "events, not 2,321 (that is the test split). The second - that a/b were fitted on "
-                "a PROBABILITY rather than a log-odds, making the map return 0.00090148 for nine "
-                "of ten deciles - is FIXED, not outstanding: on_logit is true above and the map "
-                "published here is the logit(s) arm those numbers describe. Workings: "
-                "references/finance-calibration-isotonic-vs-platt.md."),
+            "why_not_isotonic": _WHY_NOT_ISOTONIC_COMMON + (
+                _WHY_NOT_ISOTONIC_TAIL_ON_LOGIT if self.on_logit
+                else _WHY_NOT_ISOTONIC_TAIL_ON_SCORE),
         }
 
 
