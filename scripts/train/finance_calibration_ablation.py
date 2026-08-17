@@ -1,7 +1,13 @@
 #!/usr/bin/env python
 """Isotonic vs Platt vs raw on the finance AML split, and whether CASES or EVENTS binds.
 
-WHY THIS EXISTS
+STATUS: THE DEFECT THIS SCRIPT FOUND HAS SINCE BEEN FIXED, AND THE REST OF THIS DOCSTRING IS
+WRITTEN FROM BEFORE IT WAS. Read the present tense below as the state at the time of measurement.
+`fit_platt` now takes `on_logit=True` and `scripts/train/finance_aml.py` passes it, so the arm named
+`platt_logit` here is the map that ships rather than a hypothetical; `platt_prob` is retained as the
+control that makes the comparison legible. Two consequences for reading this file: the retention
+argument at "Platt was retained anyway ..." below is the SUPERSEDED position, and the ICML 2005
+sentence quoted above it is not - it survives verbatim in `calibration.py` and is still live.
 
 `src/qsh/models/calibration.py` records an OPEN question, conditioned on Round 48:
 
@@ -65,16 +71,6 @@ sys.path.insert(0, str(_ROOT / "src"))
 
 from qsh.models import calibration as cal  # noqa: E402
 from qsh.models import datasets, train  # noqa: E402
-
-#: Clip before the log-odds transform. The raw scores are strictly inside (0, 1) on this split
-#: (min 4.4e-11, max 0.99997), so nothing is actually clipped here; the guard exists so a retrain
-#: that saturates a leaf cannot turn a calibration arm into an infinity.
-_LOGIT_EPS = 1e-12
-
-
-def logit(p: np.ndarray) -> np.ndarray:
-    q = np.clip(np.asarray(p, dtype=np.float64), _LOGIT_EPS, 1.0 - _LOGIT_EPS)
-    return np.log(q / (1.0 - q))
 
 
 def _finance_aml():
@@ -229,7 +225,10 @@ def score_block(p: np.ndarray, y: np.ndarray, bins: tuple[int, ...]) -> dict:
 # --------------------------------------------------------------------------- #
 #  Calibrators. Three fitted arms; `raw` is the identity and is not fitted.
 # --------------------------------------------------------------------------- #
-#: Order matters only for printing. `platt_prob` is what ships today.
+#: Order matters only for printing. Which arm SHIPS is a fact about `models/metrics.json`, and this
+#: script never opens that file - so it is not asserted here. `platt_prob` is retained as the
+#: deliberately-defective control: it is the call this measurement found, and the two thresholds the
+#: comparison rests on are only meaningful next to it.
 ARMS = ("platt_prob", "platt_logit", "isotonic")
 
 
@@ -239,17 +238,27 @@ def fit_arms(s_cal: np.ndarray, y_cal: np.ndarray) -> dict:
     iso = IsotonicRegression(out_of_bounds="clip")
     iso.fit(s_cal, y_cal.astype(np.float64))
     return {
+        # `on_logit=True` rather than a log-odds computed here and passed in. The two were bit-
+        # identical while this file kept its own `logit`, which is exactly why the local copy was
+        # deleted: the transform is now half of a PUBLISHED contract (`Platt.as_dict` ships the flag
+        # and the clip alongside a and b), and a second definition of it here could drift from the
+        # one the browser reapplies while every number below still looked right.
+        #
+        # The clip inside it is 1e-12 and nothing on this split reaches it: the raw scores run
+        # 4.4e-11 to 0.99997, measured. The guard is for a retrain that saturates a leaf, which
+        # would otherwise hand the fit an infinity and return NaN parameters rather than an error.
         "platt_prob": cal.fit_platt(s_cal, y_cal),
-        "platt_logit": cal.fit_platt(logit(s_cal), y_cal),
+        "platt_logit": cal.fit_platt(s_cal, y_cal, on_logit=True),
         "isotonic": iso,
     }
 
 
 def apply_arm(name: str, fitted, s_score: np.ndarray) -> np.ndarray:
-    if name == "platt_prob":
+    # Both Platt arms take the RAW SCORE. `Platt._argument` applies the log-odds internally when the
+    # fit was on one, so transforming here as well would apply it twice and silently corrupt every
+    # `platt_logit` number in the sweeps rather than raising.
+    if name != "isotonic":
         return fitted.apply(s_score)
-    if name == "platt_logit":
-        return fitted.apply(logit(s_score))
     return np.asarray(fitted.predict(s_score), dtype=np.float64)
 
 
