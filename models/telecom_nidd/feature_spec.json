@@ -1,6 +1,8 @@
 {
   "features": [
+    "Flgs",
     "Dur",
+    "IdleTime",
     "Proto",
     "sTos",
     "dTos",
@@ -31,14 +33,20 @@
     "Rate",
     "SrcRate",
     "DstRate",
+    "Dir",
     "State",
     "SrcWin",
     "DstWin",
+    "sVlan",
+    "dVlan",
+    "sVid",
+    "dVid",
     "SrcTCPBase",
     "DstTCPBase",
     "TcpRtt",
     "SynAck",
-    "AckDat"
+    "AckDat",
+    "TcpOpt"
   ],
   "classes": [
     "Benign",
@@ -52,6 +60,21 @@
     "UDPScan"
   ],
   "categorical_vocabularies": {
+    "Flgs": [
+      " *        ",
+      " *    V   ",
+      " *    f   ",
+      " e        ",
+      " e    f   ",
+      " e &      ",
+      " e *      ",
+      " e d      ",
+      " e g      ",
+      " e i      ",
+      " e r      ",
+      " e s      ",
+      " eU       "
+    ],
     "Proto": [
       "arp",
       "icmp",
@@ -89,6 +112,15 @@
       "Start",
       "Status"
     ],
+    "Dir": [
+      "   ->",
+      "   ?>",
+      "  <-",
+      "  <->",
+      "  <?",
+      "  <?>",
+      "  who"
+    ],
     "State": [
       "ACC",
       "CON",
@@ -101,6 +133,21 @@
       "RST",
       "TST",
       "URP"
+    ],
+    "sVlan": [
+      "0x0262"
+    ],
+    "dVlan": [
+      "0x0262"
+    ],
+    "TcpOpt": [
+      "      T",
+      "   S",
+      "   S  T",
+      "M",
+      "Mws   T",
+      "MwsS",
+      "MwsS  T"
     ]
   },
   "missing_value": -1.0,
@@ -108,16 +155,69 @@
     "Label": "target leak: the binary collapse of `Attack Type` (Benign vs Malicious)",
     "Attack Type": "the target",
     "Attack Tool": "target leak: 6 tools over 9 classes, many-to-one in both directions (Hping3 -> ICMPFlood/SYNFlood/UDPFlood, Nmap -> SYNScan/TCPConnectScan/UDPScan, SlowrateDoS <- Slowloris+Torshammer). Alone it scores accuracy 0.9615, macro F1 0.5017",
-    "Unnamed: 0": "row identifier: the CSV's own index column, one-vs-rest AUC 0.9990 on SYNScan",
-    "Seq": "row identifier: Argus flow sequence number, one-vs-rest AUC 0.9275 on ICMPFlood",
-    "Offset": "row identifier: byte offset into the capture, one-vs-rest AUC 0.9502 on ICMPFlood",
+    "Unnamed: 0": "row identifier: the CSV's own index column, 728,316 distinct values. Restoring it alone takes accuracy from 0.9829 to 0.9997 - it is the single most dangerous column in the file",
+    "SrcId": "row identifier: Argus source identifier, and constant `0.0.0.0` on every row here",
+    "Rank": "row identifier: Argus record rank, 467,717 distinct integer values",
+    "Seq": "row identifier: Argus flow sequence number, 137,210 distinct integer values",
+    "Offset": "row identifier: byte offset into the capture, 1,118,981 distinct integer values",
+    "AutoId": "row identifier: Argus auto-increment id, and constant `0` on every row here",
+    "Trans": "row identifier: Argus aggregation count, and constant `1` on every row here",
+    "StartTime": "row identifier: wall-clock capture timestamp. The attack classes were generated in sequence, so absolute time separates them by when the capture ran, not by what it saw",
+    "LastTime": "row identifier: wall-clock capture timestamp, same objection as `StartTime`",
+    "SrcAddr": "host fingerprint: 121 distinct source addresses on a closed testbed, so the attacker hosts are enumerable and the model would learn the lab rather than the attack",
+    "DstAddr": "host fingerprint: 170 distinct destination addresses on the same closed testbed",
+    "SrcMac": "host fingerprint (hardware address); also empty in this release: 100% null on all 1,215,890 rows, so it carries no state at all",
+    "DstMac": "host fingerprint (hardware address); also empty in this release: 100% null on all 1,215,890 rows, so it carries no state at all",
+    "SrcOui": "host fingerprint (MAC vendor prefix); also empty in this release: 100% null on all 1,215,890 rows, so it carries no state at all",
+    "DstOui": "host fingerprint (MAC vendor prefix); also empty in this release: 100% null on all 1,215,890 rows, so it carries no state at all",
+    "Sport": "host fingerprint: 65,550 distinct source ports. Ephemeral port RANGES differ per tool, so this is a fingerprint of the generator, not a property of the traffic",
+    "Dport": "host fingerprint: 3,668 distinct destination ports, which name the targeted service directly and each attack class here targeted its own service",
+    "sIpId": "host fingerprint: IP identification field, 65,535 distinct values, per-host counter",
+    "dIpId": "host fingerprint: IP identification field, 63,775 distinct values, per-host counter",
     "RunTime": "duplicate of `Dur`, bit-identical on all 1,215,890 rows",
     "Mean": "duplicate of `Dur`, bit-identical on all 1,215,890 rows",
     "Sum": "duplicate of `Dur`, bit-identical on all 1,215,890 rows",
     "Min": "duplicate of `Dur`, bit-identical on all 1,215,890 rows",
     "Max": "duplicate of `Dur`, bit-identical on all 1,215,890 rows",
-    "sVid": "constant: one distinct value (610.0) over 9.42% non-null rows, zero information",
-    "dVid": "constant: one distinct value (610.0) over 0.17% non-null rows, zero information"
+    "StdDev": "constant: a single value on all 1,215,890 rows, so it carries no state at all",
+    "TotAppByte": "constant: a single value on all 1,215,890 rows, so it carries no state at all",
+    "SAppBytes": "constant: a single value on all 1,215,890 rows, so it carries no state at all",
+    "DAppBytes": "constant: a single value on all 1,215,890 rows, so it carries no state at all",
+    "PCRatio": "constant: a single value on all 1,215,890 rows, so it carries no state at all",
+    "Retrans": "constant: a single value on all 1,215,890 rows, so it carries no state at all",
+    "SrcRetra": "constant: a single value on all 1,215,890 rows, so it carries no state at all",
+    "DstRetra": "constant: a single value on all 1,215,890 rows, so it carries no state at all",
+    "pRetran": "constant: a single value on all 1,215,890 rows, so it carries no state at all",
+    "sCo": "empty in this release: 100% null on all 1,215,890 rows, so it carries no state at all",
+    "dCo": "empty in this release: 100% null on all 1,215,890 rows, so it carries no state at all",
+    "sMpls": "empty in this release: 100% null on all 1,215,890 rows, so it carries no state at all",
+    "dMpls": "empty in this release: 100% null on all 1,215,890 rows, so it carries no state at all",
+    "sAS": "empty in this release: 100% null on all 1,215,890 rows, so it carries no state at all",
+    "dAS": "empty in this release: 100% null on all 1,215,890 rows, so it carries no state at all",
+    "iAS": "empty in this release: 100% null on all 1,215,890 rows, so it carries no state at all",
+    "NStrok": "empty in this release: 100% null on all 1,215,890 rows, so it carries no state at all",
+    "sNStrok": "empty in this release: 100% null on all 1,215,890 rows, so it carries no state at all",
+    "dNStrok": "empty in this release: 100% null on all 1,215,890 rows, so it carries no state at all",
+    "SIntPkt": "empty in this release: 100% null on all 1,215,890 rows, so it carries no state at all",
+    "SIntDist": "empty in this release: 100% null on all 1,215,890 rows, so it carries no state at all",
+    "SIntPktAct": "empty in this release: 100% null on all 1,215,890 rows, so it carries no state at all",
+    "SIntActDist": "empty in this release: 100% null on all 1,215,890 rows, so it carries no state at all",
+    "SIntPktIdl": "empty in this release: 100% null on all 1,215,890 rows, so it carries no state at all",
+    "SIntIdlDist": "empty in this release: 100% null on all 1,215,890 rows, so it carries no state at all",
+    "DIntPkt": "empty in this release: 100% null on all 1,215,890 rows, so it carries no state at all",
+    "DIntDist": "empty in this release: 100% null on all 1,215,890 rows, so it carries no state at all",
+    "DIntPktAct": "empty in this release: 100% null on all 1,215,890 rows, so it carries no state at all",
+    "DIntActDist": "empty in this release: 100% null on all 1,215,890 rows, so it carries no state at all",
+    "DIntPktIdl": "empty in this release: 100% null on all 1,215,890 rows, so it carries no state at all",
+    "SrcJitAct": "empty in this release: 100% null on all 1,215,890 rows, so it carries no state at all",
+    "DstJitter": "empty in this release: 100% null on all 1,215,890 rows, so it carries no state at all",
+    "DstJitAct": "empty in this release: 100% null on all 1,215,890 rows, so it carries no state at all",
+    "srcUdata": "empty in this release: 100% null on all 1,215,890 rows, so it carries no state at all",
+    "dstUdata": "empty in this release: 100% null on all 1,215,890 rows, so it carries no state at all",
+    "sVpri": "empty in this release: 100% null on all 1,215,890 rows, so it carries no state at all",
+    "dVpri": "empty in this release: 100% null on all 1,215,890 rows, so it carries no state at all",
+    "SRange": "empty in this release: 100% null on all 1,215,890 rows, so it carries no state at all",
+    "ERange": "empty in this release: 100% null on all 1,215,890 rows, so it carries no state at all"
   },
-  "note": "39 of the corpus's 52 columns. The 13 dropped ones are listed above WITH THE REASON each was dropped, because three of them are the point of this model: `Unnamed: 0`, `Seq` and `Offset` are integer row counters, and refitting this identical configuration with them restored reproduces the 99.6-99.7% accuracies published for this corpus while dropping them costs about 24 points. Those figures are recorded as `leak_counterfactual_*` in models/metrics.json and are re-measured on every run. A SEPARATE AND LEGITIMATE MATTER, stated because the numbers look alarming next to that: 21 of the 39 kept features still clear the 0.90 one-vs-rest AUC threshold after all 13 drops, led by `Rate` at 0.9941 on ICMPFlood and `AckDat` at 0.9928 on HTTPFlood. Those are real flow statistics rather than bookkeeping columns: each attack class in this corpus was produced by a different tool against a different service, so packet rate, ACK timing, TTL and TCP window separating them is the signal an intrusion detector is meant to use. They are reported and kept. The three identifiers cleared the same threshold while describing only where a row sits in a file, and that is the distinction this file exists to make - see `single_feature_leak_check` in models/metrics.json for the full measured list. `categorical_vocabularies` is the ordinal encoding the five string columns were fitted under; index into the list, and use `missing_value` for anything absent or unseen. It is published rather than re-derived because a vocabulary rebuilt from different rows would remap codes the ONNX thresholds were fitted against."
+  "note": "47 of the 113 columns in BTS1_BTS2_fields_preserved.csv. THIS IS THE WIDE EXPORT AND THE MODEL WAS FITTED ON Combined.csv (52 columns) UNTIL ROUND 50; the two carry the same 1,215,890 rows, and the six columns the narrow one lacks are the difference between accuracy 0.76 and 0.98. One of them does all of it: `idle_time_ablation` in models/metrics.json refits without `IdleTime` alone every run and lands on the old score. The 66 dropped columns are listed above WITH THE REASON each was dropped. They are 3 targets, 9 row identifiers, 10 host fingerprints, 5 columns bit-identical to `Dur`, and 39 that hold exactly one state in this release - 30 of those are 100% null, including every SIntPkt/DIntPkt inter-packet-time and jitter column, which are EMPTY here and not merely uninformative. `Unnamed: 0` IS THE ONE TO CHECK FIRST. It is the CSV's own row index and leaving it in takes accuracy to 0.9997, which is the range published for this corpus and is a leak rather than a result; `leak_counterfactual_*` in models/metrics.json re-measures it every run. A SEPARATE AND LEGITIMATE MATTER, stated because the numbers look alarming next to that: 24 of the 47 kept features still clear the 0.90 one-vs-rest AUC threshold after all 66 drops. Those are real flow statistics rather than bookkeeping columns: each attack class in this corpus was produced by a different tool against a different service, so packet rate, ACK timing, TTL and TCP window separating them is the signal an intrusion detector is meant to use. They are reported and kept. The row identifiers cleared the same threshold while describing only where a row sits in a file, and that is the distinction this file exists to make - see `single_feature_leak_check` in models/metrics.json for the full measured list. `categorical_vocabularies` is the ordinal encoding the ten string columns were fitted under; index into the list, and use `missing_value` for anything absent or unseen. THE LEADING AND TRAILING SPACES IN `Flgs`, `Dir` AND `TcpOpt` ARE PART OF THE VALUE: Argus writes them as fixed-width fields and the vocabulary is the raw cell, so look up the cell as read and do not strip it. The vocabulary is published rather than re-derived because one rebuilt from different rows would remap codes the ONNX thresholds were fitted against."
 }
