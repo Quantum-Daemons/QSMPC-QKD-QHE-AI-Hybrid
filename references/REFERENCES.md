@@ -102,7 +102,7 @@ Workstreams: **WS1** AI-QKD parameter optimisation and entropy, **WS2** QML-IDS,
 accuracy 0.7608 against literature figures of 0.90 to 0.98 and attributed the gap to row-identifier
 leakage in the published work. Round 50 measured the cause instead and it is one column: `IdleTime`,
 which `Combined.csv` does not carry and the release's `BTS1_BTS2_fields_preserved.csv` does. Adding it
-gives 0.9820 with every identifier and host fingerprint dropped, so the published range is reachable
+gives 0.982897 with every identifier and host fingerprint dropped, so the published range is reachable
 without leakage of any kind. The leakage-aware prior work Round 49 did not consult is cited in that
 file. The identifier finding itself stands - three integer counters move the narrow configuration to
 0.9997 - but it does not explain anyone else's numbers.

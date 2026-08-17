@@ -376,13 +376,13 @@ DS_WDBC = DatasetSpec(
 # which owns that retraction. Adopted here as its own model rather than as a replacement for the
 # QKD-attack classifier, because it is a different problem.
 DS_5G_NIDD = DatasetSpec(
-    name="5G-NIDD (Combined.csv)",
+    name="5G-NIDD (BTS1_BTS2_fields_preserved.csv)",
     licence="CC-BY-4.0",
     url="https://doi.org/10.23729/e80ac9df-d9fb-47e7-8d0d-01384a415361",
     licence_checked="2026-08-16",
     publishable=True,
     notes=(
-        "1,215,890 real 5G network flows x 52 columns, counted in this file rather than quoted, "
+        "1,215,890 real 5G network flows x 113 columns, counted in this file rather than quoted, "
         "9 classes: Benign 477,737 | UDPFlood 457,340 | HTTPFlood 140,812 | SlowrateDoS 73,124 | "
         "TCPConnectScan 20,052 | SYNScan 20,043 | UDPScan 15,906 | SYNFlood 9,721 | ICMPFlood 1,155. "
         "LICENCE VERIFIED AT THE SOURCE, not at a mirror: the Metax record for dataset "
@@ -390,17 +390,29 @@ DS_5G_NIDD = DatasetSpec(
         "restriction_grounds []. The IEEE DataPort listing whose subscription wall this project "
         "originally read as a licence restriction is a MIRROR; the Fairdata record is the "
         "authors' repository of record. "
-        "THIRTEEN OF THE 52 COLUMNS ARE UNUSABLE and the loader drops them with reasons attached "
+        "THE EXPORT CHANGED IN ROUND 50 AND THAT IS THE MOST IMPORTANT LINE HERE. This is "
+        "`BTS1_BTS2_fields_preserved.csv`, 113 columns. The release also ships `Combined.csv` at 52 "
+        "columns, which is what this project trained on until Round 50. Same rows, same classes, "
+        "same distribution - and all 52 of Combined's columns are informationally identical in the "
+        "wide file, equal distinct-value counts on every one, so Combined is a strict column "
+        "SUBSET. It omits `IdleTime`, and that single column is worth 22 accuracy points: 0.9829 "
+        "with it, 0.7616 without. Five other columns Combined lacks (`Dir`, `Flgs`, `TcpOpt`, "
+        "`sVlan`, `dVlan`) are worth 0.0006 accuracy between them - which is redundancy rather than "
+        "emptiness, since `Dir` alone separates ICMPFlood at one-vs-rest AUC 0.9811 and `TcpOpt` "
+        "separates SlowrateDoS at 0.9433. The other 41 columns already carry what they carry. "
+        "SIXTY-SIX OF THE 113 COLUMNS ARE UNUSABLE and the loader drops them with reasons attached "
         "(qsh.models.datasets.NIDD_DROPPED, republished in the model's feature_spec.json): 3 labels "
         "(`Attack Type`, its binary collapse `Label`, and `Attack Tool` which scores accuracy 0.9615 "
-        "on its own), 3 row identifiers, 5 columns bit-identical to `Dur` on every row "
-        "(`RunTime`/`Mean`/`Sum`/`Min`/`Max`), and 2 constants (`sVid`/`dVid`, one distinct value "
-        "each). 39 features remain. "
-        "THE ROW IDENTIFIERS ARE THE FINDING. `Unnamed: 0`, `Seq` and `Offset` are counters, and "
-        "each trips this project's own single-feature leak threshold on its own: one-vs-rest AUC "
-        "0.9990 (SYNScan), 0.9275 and 0.9502 (both ICMPFlood). Restoring all three to the same "
-        "model moves accuracy from 0.7610 to 0.9997. What that does and does NOT establish is set "
-        "out on the ModelSpec below."
+        "on its own), 9 row identifiers, 10 host fingerprints (addresses, MACs, ports, IP ids), 5 "
+        "columns bit-identical to `Dur` on every row (`RunTime`/`Mean`/`Sum`/`Min`/`Max`), and 39 "
+        "that hold exactly one state. 47 features remain. "
+        "THE 39 SINGLE-STATE COLUMNS ARE WORTH A SEPARATE SENTENCE because their names promise "
+        "signal: 30 of them are 100% NULL in this release, and that includes every SIntPkt/DIntPkt "
+        "inter-packet-time column and every jitter column. They are empty, not weak. "
+        "THE ROW IDENTIFIERS REMAIN A FINDING, with a narrower claim than Round 49 made. "
+        "`Unnamed: 0` is the CSV's own index and restoring it alone takes accuracy from 0.9829 to "
+        "0.9997. That is what a row counter is worth on this corpus. It is NOT the explanation for "
+        "the published 99.6-99.7% figures - see the ModelSpec below, which withdraws that."
     ),
     # Taken VERBATIM from the Metax record's own `bibliographic_citation`, not assembled here. An
     # assembled credit line is a place to guess an author list; the depositors published the form
@@ -640,17 +652,22 @@ M_NIDD = MetricSpec(
     baseline_source=(
         "Two published figures on 5G-NIDD are usually quoted - Wang, Fok & Thing report 99.61% "
         "accuracy for a CNN and 99.71% for a hybrid quantum-classical Quan-ConvCNN - and BOTH are "
-        "accuracies, which is why no number appears in `baseline`. Three caveats, and the third is "
-        "new and material. (1) Those are hybrid quantum-classical results with a 0.10-point spread, "
-        "and the authors' own claim is about generalisation to UNSEEN attacks rather than about the "
-        "headline; `references/REFERENCES.md` WS2 records this. (2) Accuracy is the wrong "
-        "comparator on a corpus whose two majority classes are 39.3% and 37.6% of the rows. (3) "
-        "MEASURED HERE: an identical gradient-boosted model reaches accuracy 0.9997 with three "
-        "integer row counters restored and 0.7610 without them, so the published 99.6-99.7% range "
-        "is reproducible from row identifiers alone. That does NOT establish that those papers used "
-        "them - their feature set is not stated in what was read - so it is recorded as an open "
-        "question about the comparison rather than as a refutation of the papers. Either way it "
-        "means these figures are an anchor and not a target that has been beaten or missed."
+        "accuracies, which is why no number appears in `baseline`. Three caveats. (1) Those are "
+        "hybrid quantum-classical results with a 0.10-point spread, and the authors' own claim is "
+        "about generalisation to UNSEEN attacks rather than about the headline; "
+        "`references/REFERENCES.md` WS2 records this. (2) Accuracy is the wrong comparator on a "
+        "corpus whose two majority classes are 39.3% and 37.6% of the rows. (3) MEASURED HERE: an "
+        "identical gradient-boosted model reaches accuracy 0.9997 with the corpus's integer row "
+        "counters restored, so the published range is reproducible from row identifiers alone. "
+        "ROUND 50 CORRECTED WHAT THAT THIRD POINT WAS TAKEN TO MEAN. It was written when this model "
+        "scored 0.7610 and read as evidence that the published figures probably leaned on those "
+        "counters, on the unstated premise that nothing else could close a 24-point gap. Something "
+        "else could. Refitted on the corpus's 113-column export with every identifier and every "
+        "host fingerprint dropped, the same configuration scores 0.9829 - about 1.3 points below "
+        "the published accuracies rather than 24 - and the column that closes the gap is one flow "
+        "statistic, `IdleTime`, which the 52-column export does not carry. The leak measurement "
+        "stands as a fact about row counters. The insinuation about the papers does not, and is "
+        "withdrawn. These figures are an anchor and not a target that has been beaten or missed."
     ),
     companion="aggregate_accuracy",
 )
@@ -980,7 +997,7 @@ _SPECS: tuple[ModelSpec, ...] = (
         tier="t2_industry",
         key="telecom_ids.nidd",
         label="5G-NIDD network-attack classifier (9 classes)",
-        architecture="gradient-boosted trees over 39 flow-statistic features",
+        architecture="gradient-boosted trees over 47 flow-statistic features",
         params=None,
         dataset=DS_5G_NIDD,
         metric=M_NIDD,
@@ -993,22 +1010,32 @@ _SPECS: tuple[ModelSpec, ...] = (
         notes=(
             "NETWORK-LAYER flow classification on real 5G traffic. This is a DIFFERENT TASK from "
             "the QKD-layer attack classifier on this same page, with zero overlap in label space "
-            "or feature space, so neither score is the other's baseline and 0.93 here is not "
-            "'worse' than 0.99 there. "
-            "READ THE TWO NUMBERS THE OTHER WAY ROUND FROM EVERYWHERE ELSE IN THIS PROJECT. Every "
-            "other model here reports an aggregate that flatters and a per-class figure that does "
-            "not. On this corpus the inversion holds: macro F1 is the OPTIMISTIC number and "
-            "aggregate accuracy the pessimistic one, because seven minority classes score 0.98-1.00 "
-            "while the two majority classes (39.3% and 37.6% of the rows) mutually confuse. The "
-            "residual is one confusion pair, Benign <-> UDPFlood, not diffuse weakness. "
-            "THE REASON THIS MODEL IS WORTH SHIPPING is the counterfactual recorded beside its "
-            "metrics every run: refitting the identical configuration with the corpus's three "
-            "integer row identifiers restored moves accuracy from 0.7610 to 0.9997 and macro F1 "
-            "from 0.9266 to 0.9999. That is the same shape of result Engelen et al. (WTMC 2021) "
-            "produced for CIC-IDS2017, which this repository already cites as its reason for "
-            "reporting per-class F1 first. It is an open question about how the published "
-            "99.6-99.7% figures were obtained, NOT a demonstration that they were obtained that "
-            "way -- see M_NIDD's baseline_source, which states the limit of the claim."
+            "or feature space, so neither score is the other's baseline. "
+            "REFITTED IN ROUND 50 ON A WIDER EXPORT OF THE SAME CORPUS, which is the fact that "
+            "explains every number here. It trained on `Combined.csv` (52 columns) and scored "
+            "accuracy 0.7608; it now trains on `BTS1_BTS2_fields_preserved.csv` (113 columns) and "
+            "scores about 0.9829. The rows are identical and the method is unchanged. One column "
+            "does all of it: `IdleTime`, a flow statistic the narrow export omits. Removing it "
+            "alone from the wide fit returns the model to 0.7616, and that ablation is re-measured "
+            "on every run as `idle_time_ablation`. It is not an identifier - 17 distinct integer "
+            "values over 1.2 million rows - and it separates SlowrateDoS, an attack defined by "
+            "idling, at one-vs-rest AUC 0.9574. "
+            "READ THE TWO NUMBERS THE OTHER WAY ROUND FROM EVERYWHERE ELSE IN THIS PROJECT - STILL. "
+            "Every other model here reports an aggregate that flatters and a per-class figure that "
+            "does not. On this corpus macro F1 is the OPTIMISTIC number and aggregate accuracy the "
+            "pessimistic one, and the refit shrank that inversion without removing it: the gap was "
+            "0.1655 (0.9263 macro F1 against 0.7608 accuracy) and is about 0.0121 (0.9950 against "
+            "0.9829). The mechanism is the same one as before, not a new one - Benign and UDPFlood "
+            "are 39.3% and 37.6% of the rows and remain the only pair that confuses, so accuracy "
+            "is dominated by them while the macro average is carried by seven classes at 0.9999 or "
+            "better. The residual error is 1.71% of the test split against 23.92% before, and it is "
+            "one direction: UDPFlood predicted as Benign. "
+            "THE LEAK COUNTERFACTUAL IS STILL RECORDED EVERY RUN and its claim is now narrower. "
+            "Restoring the corpus's integer row identifiers takes accuracy to about 0.9997, the "
+            "same shape of result Engelen et al. (WTMC 2021) produced for CIC-IDS2017. Round 49 "
+            "read that as an explanation for the published 99.6-99.7% figures; it is not, because "
+            "0.9829 is reachable here with no identifiers at all -- see M_NIDD's baseline_source, "
+            "which withdraws that reading."
         ),
     ),
     #: Telecom's T1 tier, added in Round 33. Until then `runs_encrypted=True` held on five specs and

@@ -1719,3 +1719,43 @@ It also carries the assertion the suite never had.
 rather than a metric, which is what every existing test missed: fed a probability, `fit_platt`
 returned a map emitting one number for nine of ten deciles and Brier IMPROVED, so a metric-only suite
 waves it through. It did, for three rounds.
+
+## Round 50 (branch `round50-one-column-explained-the-gap`) - the first walk in three rounds, on the deploy
+
+**A deployed-site walk was performed and this entry records it**, which Rounds 48 and 49 both owed and
+neither did. `DP7` is discharged for the first time in sixteen rounds.
+
+**Measured before touching anything.** The served bundle was `index-CvOb630D.js`: it contained Round
+48's `input_space` (2 hits) and `samples_by_space` (1), and **zero** hits for `telecom_ids.nidd`,
+`qsh-telecom-5g-nidd-gbm` or `5G-NIDD`. So Round 49 had never reached the box, and the model it
+published to Hugging Face was invisible to every visitor for a full round.
+
+After `scripts/deploy_demo.sh --return-to-main`: box on `main` at `f555a89`, bundle
+`index-Dxu788k6.js`, public URL 200, and the same greps return 1 each.
+
+**All ten pages walked.** No `NaN`, no `undefined`, no `[object Object]`, no duplicate headings on any
+page. Genomics renders its orphaned baseline as an explanation rather than a bare number.
+
+**The 5G-NIDD model runs for a visitor, and reproduces its own recorded figure:**
+
+> PASS telecom_ids.nidd: re-scored all 16379 published held-out rows in this tab and got macro_f1 0.93
+> against the recorded 0.93 (|delta| 0.00e+0)
+
+on `onnx-wasm`, 1x39, 6.3 ms, predicted class 7 against true 7, with the full IEEE Data Descriptions
+citation and CC BY 4.0 attribution rendered. Backend is wasm rather than WebGPU because the graph is
+`ai.onnx.ml` and the WebGPU build does not register `TreeEnsembleClassifier` - correct, not a
+regression. Independently corroborated this round: WebNN is still Chrome Origin Trial M147-M149 with
+no Safari or Firefox implementation, so the code's decision to probe it and never offer it to ORT is
+right for 2026.
+
+**Two defects found on the deploy, both fixed in this round.** The companion caption rendered four
+times identically as "companion - shown so the gap is visible", including on the row where it asserts
+the opposite of the truth. And `export.opset` renders as **0** to a visitor, which is not a valid
+opset - recorded here as observed; it is a display of an absent value rather than a wrong computation.
+
+**What the walk could not cover.** The finance page was run and its CKKS agreement plot verified
+(`encrypted_agreement 1`, 400 of 400 rows, 0 top-1 mismatches, 7 charts rendered), but the medical,
+genomics and satellite pipelines were not run to completion, so their charts were confirmed present
+rather than confirmed correct. The 5G-NIDD figures a visitor now sees are the RETRAINED ones
+(0.982897 / 0.995019 at pin `a3cbe059`), which post-date this walk - the walk observed the 0.7609
+model. **A second walk is owed on the redeploy** and is not claimed here.

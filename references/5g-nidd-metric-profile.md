@@ -70,19 +70,27 @@ dropped:
 
 | configuration | features | accuracy | macro F1 |
 |---|---|---|---|
-| wide export, identifiers and hosts dropped | 47 | **0.9820** | 0.9945 |
-| the same, minus the six columns `Combined.csv` lacks | 41 | 0.7617 | 0.9267 |
-| the same, **minus `IdleTime` alone** | 46 | **0.7617** | 0.9267 |
+| wide export, identifiers and hosts dropped | 47 | **0.982897** | 0.995019 |
+| the same, minus the six columns `Combined.csv` lacks | 41 | 0.760949 | 0.926455 |
+| the same, **minus `IdleTime` alone** | 46 | **0.761558** | 0.927503 |
 | shipped narrow (`Combined.csv`) | 39 | 0.7608 | 0.9263 |
 
 **`IdleTime` accounts for the entire gap.** Removing that one column from the wide export reproduces
-the narrow result to within 0.001 accuracy; the other five columns absent from `Combined.csv` (`Dir`,
-`Flgs`, `TcpOpt`, `sVlan`, `dVlan`) change nothing, each scoring one-vs-rest AUC 0.5000. `IdleTime`
-scores 0.9577 on `SlowrateDoS`, which is what a legitimately dominant feature looks like on an attack
-defined by idling - it is a flow statistic, not an identifier.
+the narrow result to within 0.001 accuracy. `IdleTime` scores one-vs-rest AUC **0.9574** on
+`SlowrateDoS`, which is what a legitimately dominant feature looks like on an attack defined by
+idling - a flow statistic, not an identifier.
 
-So the published 0.90-0.98 figures **are reproducible without any leakage**: 0.9820 accuracy and
-0.9945 macro F1 on the wide export, dropping every identifier. This project's model is not wrong; it
+**A claim made here in an earlier revision was wrong and is corrected rather than quietly dropped.**
+It said the other five columns absent from `Combined.csv` "change nothing, each scoring one-vs-rest
+AUC 0.5000". Two of them do not: **`Dir` scores 0.9811** on ICMPFlood and **`TcpOpt` 0.9433** on
+SlowrateDoS, both above this project's own 0.90 leak-screen threshold (`sVlan` 0.6207, `Flgs` 0.6136,
+`dVlan` 0.5020). What is true is that they are **redundant, not empty**: dropping all six costs 0.2219
+accuracy against 0.2213 for `IdleTime` alone, so the five together are worth 0.0006. Individually
+informative and jointly superfluous is a different statement from uninformative, and the first
+version asserted the second on the strength of a measurement taken in a different feature context.
+
+So the published 0.90-0.98 figures **are reproducible without any leakage**: 0.982897 accuracy and
+0.995019 macro F1 on the wide export, dropping every identifier. This project's model is not wrong; it
 was fitted on a feature-poor export of the corpus and then compared against results obtained from a
 richer one.
 
@@ -118,12 +126,13 @@ The identifier finding itself stands - restoring `Unnamed: 0`, `Seq` and `Offset
 configuration from 0.7608 to 0.9997, and three integer row counters should not be able to do that.
 
 What does **not** stand is the implication that the published figures are explained by it. They are
-not. 0.9820 accuracy is reachable on this corpus with every identifier removed, using one extra flow
+not. 0.982897 accuracy is reachable on this corpus with every identifier removed, using one extra flow
 statistic that `Combined.csv` does not carry. Round 49 read a 24-point gap as evidence that published
 work leaned on row counters, when the larger part of that gap was its own choice of export.
 
 **What should change.** The model should be refitted on `BTS1_BTS2_fields_preserved.csv` with
-`IdleTime` included and every identifier and host fingerprint dropped, which moves it from 0.7608 to
-about 0.9820 without weakening a single leak control. Until that is done, `telecom_ids.nidd` remains
+`IdleTime` included and every identifier and host fingerprint dropped. **Done in Round 50**: the model
+now scores 0.982897 / 0.995019 and is published at revision `a3cbe059`, with Benign recall moving from
+0.5345 to 1.0000 and the residual error down to 1.71% of the test split, all of it UDPFlood -> Benign. Until that is done, `telecom_ids.nidd` remains
 an honest measurement of a narrower experiment than the one its card compares itself to, and the card
 should say so.
