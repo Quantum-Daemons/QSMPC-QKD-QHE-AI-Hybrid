@@ -590,17 +590,17 @@ See [`docs/pqc-roadmap.md`](docs/pqc-roadmap.md).
 - **Three of the four CKKS students can be verified in a browser.** They shipped no held-out sample,
   so selecting one reported DID NOT RUN. Samples ship model-ready with `preprocessing: []`, because
   the browser's `applyPreprocessing` is per-scalar and cannot apply a 32-length mean/scale vector or
-  an area resize. Reproduced before publishing: medical accuracy 0.730769, OPS-SAT rare-class F1
-  0.864865, finance rare-class F1 0.333709 on its shipped rows. `satellite_comms.student` still has
+  an area resize. Reproduced before publishing: medical accuracy 0.769231, OPS-SAT rare-class F1
+  0.904348, finance rare-class F1 0.376130 on its shipped rows. `satellite_comms.student` still has
   none, and the blocker is its METRIC, not a missing scaler: it is scored on event-wise F0.5, which
   is defined over contiguous runs of a timeline and cannot be computed from independent rows.
 
 - **The browser scores each student on the metric it was published with.** Three of the four record
   rare-class F1, and reporting accuracy for them would have confirmed a number nobody claimed - the
   finance student is about 99 percent accurate on a corpus that is 0.1 percent positive. Its F1 is
-  also 19x higher on the shipped rows than on the full corpus, because the sample is stratified to
+  also 6.1x higher on the shipped rows than on the full corpus, because the sample is stratified to
   contain positives; what survives the change of prevalence is the ratio to the all-positive
-  baseline, 9.3x here against about 8.7x on the corpus, and the page says so beside the figure.
+  baseline, 9.6x here against about 8.7x on the corpus, and the page says so beside the figure.
 
 - **Two new trained models, and one of them is a negative result.** `medical_fl.resnet50` exists to
   test a published claim rather than to win one: MedMNIST v2 reports ResNet-50 at AUC 0.857 against
