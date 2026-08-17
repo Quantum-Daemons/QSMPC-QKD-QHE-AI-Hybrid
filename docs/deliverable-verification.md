@@ -2424,8 +2424,11 @@ binding quantity is plausibly the 2,321 positive events, which they do not addre
 sentence about case counts would repeat the same error in the other direction. Conditioned
 `by **Round 48**`. **DEADLINE EXECUTED Round 49** - measured, and the paragraph above is wrong in
 two places: the calibration set carries **801** events, not 2,321 (2,321 is the TEST split), and the
-shipped `fit_platt` is fed a probability rather than a log-odds, which makes its map return one
-constant for nine of ten deciles. Isotonic and a correctly-fed Platt score within noise. Result and
+shipped `fit_platt` WAS fed a probability rather than a log-odds, which MADE its map return one
+constant for nine of ten deciles - **FIXED LATER IN THE SAME ROUND**: `fit_platt` gained
+`on_logit=True`, which carries the transform, the 1e-12 clip and the published formula string with
+the two floats; the teacher was retrained and the shipped map is now the logit arm
+(`a = -0.5853491088584304`, `b = 1.6417462922842536`, `on_logit: true`). Isotonic and a correctly-fed Platt score within noise. Result and
 recommendation: Round 49's section below, workings in
 `references/finance-calibration-isotonic-vs-platt.md`.
 
@@ -3505,12 +3508,25 @@ exactly 0 on 464,176 test rows, one of them a real laundering transaction. And `
 publishes two floats and a formula so the browser can reapply the identical map; 138 breakpoints are
 not that.
 
-**What is NOT done here, said rather than left to be discovered.** The one-line argument fix is not
+**What is NOT done here, said rather than left to be discovered.** ~~The one-line argument fix is not
 applied: it retrains the teacher and rewrites `models/`, and this round was scoped as a measurement.
 So `models/metrics.json` and the `config.defaults.json` derived from it still carry the superseded
-`why_not_isotonic` sentence, and they are deliberately NOT hand-patched - the generator
-(`src/qsh/models/calibration.py`) is corrected instead, because a hand-edited generated artifact is a
-defect with a timer on it and `scripts/check_generated_prose.py` exists for exactly that reason. One
+`why_not_isotonic` sentence~~ - **SUPERSEDED later in this same round: the fix WAS applied, the
+teacher retrained, and both derived artifacts regenerated.** They now carry `on_logit: true`, the
+log-odds `formula` string, `logit_clip_eps`, and `a = -0.5853491088584304` /
+`b = 1.6417462922842536`, reproducing the ablation's predicted `-0.58535` / `1.64175` to five
+figures. The struck text stands rather than being deleted because the doctrine in the rest of this
+sentence is still right and was followed to the letter: the derived copies were never hand-patched,
+the generator was corrected and the artifacts re-derived from it. They are deliberately NOT
+hand-patched - the generator (`src/qsh/models/calibration.py`) is corrected instead, because a
+hand-edited generated artifact is a defect with a timer on it. **ONE CLAUSE OF THAT DOCTRINE IS
+WRONG AND WAS MEASURED WRONG WHILE APPLYING IT:** `scripts/check_generated_prose.py` does NOT exist
+for exactly that reason in this case, because it cannot see this field at all - it does not descend
+into nested dicts, the calibration block reaches `record_metrics` through a `**splat` whose AST key
+node is `None`, and its trainer glob never reads `calibration.py`. The gate exited 0 throughout
+while `models/metrics.json` carried a `does_not_move_ranking` its generator no longer emitted. The
+config-parity gate is no help either - it compares the two DERIVED copies to each other, so it stays
+green while both are stale together. **Nothing in CI would have caught a skipped retrain.** One
 visitor-facing copy WAS corrected, because it was false on its own terms rather than merely stale:
 `web/src/components/ModelPanel.tsx` still told visitors this calibration set "is inside the range
 where the published comparison puts Platt ahead" - the claim Round 46 refuted, in a file Round 46's

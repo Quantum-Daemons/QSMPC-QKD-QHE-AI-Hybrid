@@ -1612,8 +1612,39 @@ fix is a second, independent source: git merge subjects name `roundN-` branches.
    effect. The unit tests could not catch it: their fixture passes a logit and the trainer passes a
    probability. Isotonic wins nothing a corrected Platt does not also win and costs 9.09% of AUPRC,
    collapsing 1,388,669 distinct scores to 138 and emitting exact zeros on 30.5% of test rows.
-   Recommendation recorded: keep Platt, fix what it is fed. THE FIX IS NOT APPLIED - it retrains and
-   rewrites `models/`, and this was scoped as a measurement.
+   Recommendation recorded: keep Platt, fix what it is fed. **THE FIX WAS APPLIED LATER IN THIS
+   ROUND, on this branch.** This sentence first read "THE FIX IS NOT APPLIED - it retrains and
+   rewrites `models/`, and this was scoped as a measurement", which was true when written and
+   stopped being true without the paragraph changing - the defect class this log exists to catch.
+   What landed: `fit_platt` grew `on_logit=True`, carrying the log-odds transform, a 1e-12 clip and
+   the published formula string WITH the two floats rather than leaving the transform at the call
+   site; `scripts/train/finance_aml.py` passes it; the teacher was retrained and
+   `models/metrics.json` and `web/src/lib/config.defaults.json` regenerated from it. Verified
+   against the prediction rather than assumed: `a = -0.5853491088584304`, `b = 1.6417462922842536`
+   against the ablation's `-0.58535` / `1.64175`; Brier 0.00145433 -> **0.00142199**; log-loss
+   0.01049835 -> **0.00818964** (the arm that had been shipping was WORSE than not calibrating at
+   all, 0.00965987); CORP MCB 4.412e-05 -> **1.178e-05**; AUROC and AUPRC bit-identical at
+   0.9525582593503528 / 0.12334101789973353, which is this round's ranking claim measured from a
+   second direction. Two things the fix needed beyond the one line, both of the "landed in one of
+   three sites" class this round was already tracking: `web/src/components/ModelPanel.tsx` rendered
+   `p = 1/(1 + exp(a*s + b))` unconditionally and would have printed a score-domain formula beside
+   logit-fitted floats, and the `imbalanced` test fixture did not reproduce the defect it was written
+   for - it claimed a 1-in-650 base rate and 90% of scores below 1e-4 and delivered 1-in-16 and
+   34.8%, drawing its labels from the score itself - so the regression test would have been built on
+   a fixture that could not fail. **A THIRD CONSEQUENCE, WHICH WAS NEARLY FILED AS A PRE-EXISTING
+   FAILURE AND WAS NOT ONE.** The retrain moved `hf_revision` into
+   `hf_revision_invalidated_by_retrain` for `finance_aml.gbm` and `finance_aml.student` - correct
+   behaviour, since the recorded sha now pointed at weights the metrics no longer described - which
+   turned `tests/test_qcnn_reachable.py::test_every_published_model_is_pinned_to_a_revision` RED. It
+   was GREEN at `ece9830`. `onnxInference.ts` then skips both, so the finance use case had zero
+   browser-runnable models: the flagship panel, including the calibration row this round fixed,
+   would have rendered a stale-pin explanation instead of a model. Resolved by re-publishing both to
+   the Hub - `finance_aml.gbm` at `91562e197d93340397d62b2d8a7e8f6350134e6c` (new bytes),
+   `finance_aml.student` at `89e2de895db41591b480eb744ddb6761ed208f75` (unchanged bytes, so the Hub
+   returned the existing commit rather than an empty one) - and re-running `scripts/export_config.py`.
+   The gate is green again. Recorded because "a retrain unpins what it retrains" is a standing
+   consequence of every retrain in this repository, not a one-off, and the round that discovered it
+   is the round that should say so.
 3. **5G-NIDD adopted and published**, `Daemons-Q/qsh-telecom-5g-nidd-gbm` at revision `b00628c5`.
 
 **A record correction found while measuring.** The retained-Platt argument named 2,321 positive
