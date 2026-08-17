@@ -249,13 +249,28 @@ function MetricRows({ spec }: { spec: ModelSpec }) {
             </td>
           </tr>
         )}
-        {companion.map(([k, v]) => (
-          <tr key={k} className="metric-companion">
-            <td><code>{k}</code></td>
-            <td className="num">{fmt(v)}</td>
-            <td className="muted small">companion — shown so the gap is visible</td>
-          </tr>
-        ))}
+        {companion.map(([k, v]) => {
+          // The caption is DERIVED, not hardcoded. It read "shown so the gap is visible" for every
+          // companion on every model, which asserts the aggregate is the flattering number being
+          // disclosed. That is true of most models here and FALSE of `telecom_ids.nidd`, whose macro
+          // F1 sits above its aggregate accuracy - so the one model that needed the caveat was the
+          // one the caption contradicted. Compare the two numbers and say which way round they are.
+          const h = headline.length === 1 ? Number(headline[0][1]) : NaN;
+          const c = Number(v);
+          const known = Number.isFinite(h) && Number.isFinite(c);
+          const caption = !known
+            ? "companion — the same run reported on a different metric"
+            : c > h
+              ? "companion — higher than the headline, so it is the flattering figure and the headline is the honest one"
+              : "companion — LOWER than the headline here; the aggregate is the pessimistic figure, not the flattering one";
+          return (
+            <tr key={k} className="metric-companion">
+              <td><code>{k}</code></td>
+              <td className="num">{fmt(v)}</td>
+              <td className="muted small">{caption}</td>
+            </tr>
+          );
+        })}
         {verdict && (
           <tr className={verdict.agrees ? "metric-companion" : undefined}>
             <td><code>quantum_beats_classical</code></td>
@@ -535,6 +550,17 @@ export function ModelPanel({ usecase }: { usecase: string }) {
           )}
           {typeof spec.achieved?.baseline_gap_note === "string" && (
             <p className="muted small"><strong>Gap to baseline:</strong> {spec.achieved.baseline_gap_note}</p>
+          )}
+          {/* `metric_note` reached the browser in config.defaults.json and was rendered NOWHERE.
+              SIX records carry one - finance_aml.scorecard, medical_fl.student,
+              satellite_comms.opssat_student, satellite_comms.telemanom, telecom_ids.nidd and
+              telecom_ids.student - each written by a trainer, checked by the prose gate, shipped in
+              the bundle, and shown to nobody. It is the field that says WHICH of two recorded numbers
+              answers WHICH question, so its absence is what let the companion caption above assert a
+              direction the record contradicted. Sits above `notes` because it qualifies the table
+              rather than the model. */}
+          {typeof spec.achieved?.metric_note === "string" && (
+            <p className="muted small"><strong>Reading these metrics:</strong> {spec.achieved.metric_note}</p>
           )}
           {spec.notes && <p className="muted small">{spec.notes}</p>}
           <ModelRunner usecase={usecase} spec={spec} />
