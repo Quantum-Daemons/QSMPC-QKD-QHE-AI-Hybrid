@@ -524,9 +524,15 @@ def main() -> int:
     # `on_logit=True` IS THE FIX FOR THE DEFECT ROUND 49 MEASURED AND LEFT IN PLACE. This call used
     # to hand `fit_platt` a PROBABILITY. Platt's map is linear in its argument, 90% of these scores
     # are under 1e-4, so the fitted sigmoid returned the one constant 0.00090148 across nine of ten
-    # deciles - which is where the +8.7% log-loss and the 2.83x ECE that this block used to report
-    # came from. Fitted on logit(s) instead, the same two floats give Brier 0.00142199 and log-loss
-    # 0.00818964, better than both the old map and isotonic. The flag lives in `fit_platt` rather
+    # deciles - which is where the +8.7% log-loss this block used to report came from, and the 2.83x
+    # ECE(20) the ablation measured alongside it (0.00183223 against 0.00064837 uncalibrated; this
+    # block computes no ECE). Fitted on logit(s) instead, the same `fit_platt` - different a and b,
+    # since they are the output of a fit on a different argument - gives Brier 0.00142199 and
+    # log-loss 0.00818964. That beats the old map on both, and is within noise of isotonic
+    # (0.00142218 / 0.00820025), which still WINS on CORP MCB, 9.34e-06 against 1.18e-05: the term
+    # printed below as "the term calibration is supposed to move". Platt is kept on the ranking and
+    # publication tie-breaks recorded above, not on a clean sweep of the scores. The flag lives in
+    # `fit_platt` rather
     # than here so that `Platt.as_dict()` publishes which argument the floats belong to; a transform
     # applied here would leave the published formula describing a different function.
     from qsh.models import calibration as cal
