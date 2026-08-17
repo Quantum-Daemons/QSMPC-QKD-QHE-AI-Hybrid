@@ -213,16 +213,16 @@
           "auroc": 0.9525582593503528,
           "baseline_gap_note": "This reaches minority-class F1 well below the published 0.6323 (GFP+XGBoost, AMLworld HI-Small, NeurIPS 2023 D&B). The cause is a feature ARCHITECTURE difference, not a tuning one: the gap is unreachable at any threshold, because measured AUPRC is far below what that F1 requires. IBM's Graph Feature Preprocessor computes per-transaction subgraph patterns over a dynamically updated graph; this project computes per-account scalar aggregates. A degree is one number per account, whereas a GFP feature is a pattern match in that transaction's own neighbourhood at the moment it arrives. GFP ships in `snapml` under a Proprietary licence and is excluded by this project's commercial-OK-only rule, but the licence is not itself the cause - the architecture is, and it is reimplementable without `snapml`, simply at more cost than renaming aggregates. Reachability is computed to 4 hops against injected CYCLE attempts of up to 10; that was previously recorded as a main cause and is NOT one - the GFP paper (arXiv:2402.08593) decomposes its own contribution and caps multi-hop cycle and scatter-gather features at about 4% relative, while fan-in/fan-out, which is reimplemented here, carries more than 30%. The evaluation is strictly inductive and temporally split. Per-account aggregates are causal (each row sees only edges strictly before it); the structural block - cycle closure, scatter-gather, bank diversity, burst degree - is still fitted on the training window, because recomputing sparse reachability at every timestep is not tractable here. Reported as measured; not adjusted to close the gap. Full workings: references/finance-gap-investigation.md.",
           "calibration": {
-            "a": -7.837780988704507,
-            "b": 7.010575605947596,
-            "brier_calibrated": 0.00145433,
+            "a": -0.5853491088584304,
+            "b": 1.6417462922842536,
+            "brier_calibrated": 0.00142199,
             "brier_raw": 0.00150259,
             "corp_calibrated": {
               "base_rate": 0.00152346,
-              "brier": 0.00145433,
+              "brier": 0.00142199,
               "brier_recalibrated": 0.00141021,
               "dsc": 0.00011093,
-              "mcb": 4.412e-05,
+              "mcb": 1.178e-05,
               "method": "CORP (pool-adjacent-violators); no bin count is chosen",
               "n": 1523504,
               "positives": 2321,
@@ -241,16 +241,18 @@
               "source": "Dimitriadis, Gneiting and Jordan, arXiv:2008.03033, PNAS 118 e2016191118",
               "unc": 0.00152114
             },
-            "does_not_move_ranking": "Platt is monotone, so AUC and AUC-PR are unchanged by construction. Calibration fixes what a probability MEANS, never how the rows are ordered.",
+            "does_not_move_ranking": "Platt is STRICTLY monotone, so AUC and AUC-PR are unchanged by construction: measured Round 49, both are identical to the uncalibrated values to ten decimals, and that held for the map fitted on the probability and for the logit(s) map that now ships alike. The qualifier matters and was missing - isotonic is only WEAKLY monotone, and on this same split it moved AUROC by -0.00031674 and AUPRC by -0.01121590 (-9.09%). Calibration by a strictly monotone map fixes what a probability MEANS, never how the rows are ordered. ONE HONEST QUALIFIER ON THE MAP THAT SHIPS: logit() clips at 1e-12, so scores below 1e-12 or above 1-1e-12 would tie. None exist on this split (the raw range is 4.4e-11 to 0.99997), so no pair is tied and the AUCs above are exact; a retrain that saturates a leaf would need this re-checked rather than assumed.",
             "fitted_on": "validation split; scored on the held-out test split",
-            "formula": "p = 1 / (1 + exp(a * score + b))",
-            "log_loss_calibrated": 0.01049835,
+            "formula": "p = 1 / (1 + exp(a * logit(clip(score, logit_clip_eps, 1 - logit_clip_eps)) + b)), logit(q) = log(q / (1 - q))",
+            "log_loss_calibrated": 0.00818964,
             "log_loss_raw": 0.00965987,
+            "logit_clip_eps": 1e-12,
             "method": "platt",
             "n_calibration": 710969,
+            "on_logit": true,
             "positives_calibration": 801,
             "reliability_diagram_defensible_here": "YES on this split, and the first draft of this note said the opposite. Riley et al. (Stat Med 2021) put the floor for a flexible calibration curve at about 200 events; this test split carries 2,321. The 164-event figure this project quotes elsewhere is the 2D OVERLAY payload (8,192 sampled rows at a 0.02 base rate), not the test split, and carrying it over here would have declined a curve that the data supports - the same wrong-denominator mistake this repository already documents under 'ask what the metric was divided by'. The floor genuinely does bind on medical (about 42 events) and satellite (about 113). The CORP terms below are reported regardless, because PAV picks no bin count and so they are stable where a binned curve is not.",
-            "why_not_isotonic": "OPEN, not settled - Round 46 found the denominator wrong. The ICML/UAI thresholds (200-1000 and 2000) are CALIBRATION CASES; this set has 710,969, so ICML 2005 in fact says isotonic is 'as good as, or better than' Platt here. Platt is retained because those papers benchmark balanced problems and at a 1-in-981 base rate the binding quantity is plausibly the 2,321 positive events, which they do not address. The isotonic comparison is conditioned by Round 48."
+            "why_not_isotonic": "MEASURED Round 49 on this split, not argued: isotonic Brier 0.00142218 / log-loss 0.00820025 against 0.00142199 / 0.00818964 for the same fit_platt fed logit(s) - within noise on both proper scoring rules, so ICML 2005's 'as good as, or better than' holds here in the 'as good as' form. Platt is kept on the tie-break: isotonic is only WEAKLY monotone, collapsed 1,388,669 distinct scores to 138, and cost AUROC 0.00031674 and AUPRC 0.01121590 (-9.09%), while both Platt arms moved neither to ten decimals; it also emitted exactly 0 on 464,176 test rows, one a true positive, and 138 breakpoints are not two floats a browser can apply. ONE CORRECTION TO THE OLD REASONING SURVIVES HERE: the calibration set carries 801 events, not 2,321 (that is the test split). The second - that a/b were fitted on a PROBABILITY rather than a log-odds, making the map return 0.00090148 for nine of ten deciles - is FIXED, not outstanding: on_logit is true above and the map published here is the logit(s) arm those numbers describe. Workings: references/finance-calibration-isotonic-vs-platt.md."
           },
           "data_digest": "0dfc7207d92b892c",
           "dataset": "IBM AMLworld HI-Small",
@@ -260,14 +262,14 @@
             "int8_skipped_reason": "tree ensemble: parameters live in node attributes, not weight tensors, so dynamic int8 quantisation has nothing to quantise",
             "opset": 0
           },
-          "git_sha": "e7fea39-dirty",
-          "hf_revision": "27fea7b067635325c67fdd3d45ca0c30d28cd74f",
+          "git_sha": "67138f8-dirty",
+          "hf_revision": "91562e197d93340397d62b2d8a7e8f6350134e6c",
           "minority_class_f1": 0.15194805194805194,
           "n_test": 1523504,
           "n_train": 3554841,
           "positive_rate": 0.00101943,
           "split": "temporal, inductive",
-          "wall_clock_s": 88.2
+          "wall_clock_s": 96.6
         },
         "architecture": "GFP (graph features) + XGBoost",
         "artifacts": [
@@ -302,7 +304,7 @@
           "url": "https://www.kaggle.com/datasets/ealtman2019/ibm-transactions-for-anti-money-laundering-aml"
         },
         "hf_repo_id": "Daemons-Q/qsh-finance-aml-gbm",
-        "hf_revision": "27fea7b067635325c67fdd3d45ca0c30d28cd74f",
+        "hf_revision": "91562e197d93340397d62b2d8a7e8f6350134e6c",
         "hf_revision_stale": null,
         "key": "finance_aml.gbm",
         "label": "Graph-feature-preprocessed gradient boosting",
@@ -1220,8 +1222,8 @@
       },
       {
         "achieved": {
-          "aggregate_accuracy": 0.760946,
-          "baseline_gap_note": "There is no baseline number to have a gap to, and that is a deliberate registry decision rather than a missing measurement: the two figures usually quoted for this corpus (99.61% for a CNN, 99.71% for a hybrid quantum-classical Quan-ConvCNN, Wang/Fok/Thing) are ACCURACIES, and this model is judged on macro F1, so putting them in `baseline` would render an accuracy beside a macro F1 as though the two were the same scale. What can be said is measured here and recorded above. Fitting this identical configuration with the corpus's three integer row identifiers restored - `Unnamed: 0`, `Seq`, `Offset`, all three of which trip this project's own single-feature leak threshold on their own - reproduces that 99.6-99.7% range. Removing them costs roughly 24 points of accuracy. The published figures are therefore an anchor rather than a target that has been beaten or missed. THE LIMIT OF THAT CLAIM: it shows the range is reachable from row counters on this corpus. It does NOT show the cited papers used them, because their feature set is not stated in what was read. This is an open question about the comparison, not a refutation of the papers.",
+          "aggregate_accuracy": 0.982897,
+          "baseline_gap_note": "There is no baseline number to have a gap to, and that is a deliberate registry decision rather than a missing measurement: the two figures usually quoted for this corpus (99.61% for a CNN, 99.71% for a hybrid quantum-classical Quan-ConvCNN, Wang/Fok/Thing) are ACCURACIES, and this model is judged on macro F1, so putting them in `baseline` would render an accuracy beside a macro F1 as though the two were the same scale. WHAT THE GAP ACTUALLY IS, now that it has been measured properly. This model scores about 0.9829 accuracy with every row identifier and every host fingerprint dropped, so it sits about 1.3 points below those published accuracies rather than the 24 points it sat below them last round. Against the 9-class multiclass figure that is directly comparable in task - BiTAD, Future Internet 17(11) 482, accuracy 0.9047 - it is above, though on its own split rather than a shared one, so that is an anchor and not a head-to-head. THE CORRECTION THAT MATTERS. Round 49 recorded that restoring the corpus's integer row counters reproduces the published range and implied the published range was therefore explained by them. The first half is still measured true here and is recorded every run as `leak_counterfactual_accuracy`. The second half does not follow and is withdrawn: 0.9829 is reachable on this corpus with no identifiers at all, using one additional flow statistic (`IdleTime`) that Combined.csv does not carry, so most of the gap Round 49 attributed to leakage was its own choice of export. What the counterfactual shows is what a row counter is worth, which is a statement about this corpus and not about anyone's paper.",
           "class_counts": {
             "Benign": 477737,
             "HTTPFlood": 140812,
@@ -1233,70 +1235,150 @@
             "UDPFlood": 457340,
             "UDPScan": 15906
           },
-          "dataset": "5G-NIDD (Combined.csv)",
+          "dataset": "5G-NIDD (BTS1_BTS2_fields_preserved.csv)",
           "dataset_attribution": "Y. Siriwardhana et al., 'Descriptor: 5G Wireless Network Intrusion Detection Dataset (5G-NIDD)', in IEEE Data Descriptions, doi:10.1109/IEEEDATA.2025.3592888. Dataset: doi:10.23729/e80ac9df-d9fb-47e7-8d0d-01384a415361, CC BY 4.0.",
           "dropped_columns": {
             "Attack Tool": "target leak: 6 tools over 9 classes, many-to-one in both directions (Hping3 -> ICMPFlood/SYNFlood/UDPFlood, Nmap -> SYNScan/TCPConnectScan/UDPScan, SlowrateDoS <- Slowloris+Torshammer). Alone it scores accuracy 0.9615, macro F1 0.5017",
             "Attack Type": "the target",
+            "AutoId": "row identifier: Argus auto-increment id, and constant `0` on every row here",
+            "DAppBytes": "constant: a single value on all 1,215,890 rows, so it carries no state at all",
+            "DIntActDist": "empty in this release: 100% null on all 1,215,890 rows, so it carries no state at all",
+            "DIntDist": "empty in this release: 100% null on all 1,215,890 rows, so it carries no state at all",
+            "DIntPkt": "empty in this release: 100% null on all 1,215,890 rows, so it carries no state at all",
+            "DIntPktAct": "empty in this release: 100% null on all 1,215,890 rows, so it carries no state at all",
+            "DIntPktIdl": "empty in this release: 100% null on all 1,215,890 rows, so it carries no state at all",
+            "Dport": "host fingerprint: 3,668 distinct destination ports, which name the targeted service directly and each attack class here targeted its own service",
+            "DstAddr": "host fingerprint: 170 distinct destination addresses on the same closed testbed",
+            "DstJitAct": "empty in this release: 100% null on all 1,215,890 rows, so it carries no state at all",
+            "DstJitter": "empty in this release: 100% null on all 1,215,890 rows, so it carries no state at all",
+            "DstMac": "host fingerprint (hardware address); also empty in this release: 100% null on all 1,215,890 rows, so it carries no state at all",
+            "DstOui": "host fingerprint (MAC vendor prefix); also empty in this release: 100% null on all 1,215,890 rows, so it carries no state at all",
+            "DstRetra": "constant: a single value on all 1,215,890 rows, so it carries no state at all",
+            "ERange": "empty in this release: 100% null on all 1,215,890 rows, so it carries no state at all",
             "Label": "target leak: the binary collapse of `Attack Type` (Benign vs Malicious)",
+            "LastTime": "row identifier: wall-clock capture timestamp, same objection as `StartTime`",
             "Max": "duplicate of `Dur`, bit-identical on all 1,215,890 rows",
             "Mean": "duplicate of `Dur`, bit-identical on all 1,215,890 rows",
             "Min": "duplicate of `Dur`, bit-identical on all 1,215,890 rows",
-            "Offset": "row identifier: byte offset into the capture, one-vs-rest AUC 0.9502 on ICMPFlood",
+            "NStrok": "empty in this release: 100% null on all 1,215,890 rows, so it carries no state at all",
+            "Offset": "row identifier: byte offset into the capture, 1,118,981 distinct integer values",
+            "PCRatio": "constant: a single value on all 1,215,890 rows, so it carries no state at all",
+            "Rank": "row identifier: Argus record rank, 467,717 distinct integer values",
+            "Retrans": "constant: a single value on all 1,215,890 rows, so it carries no state at all",
             "RunTime": "duplicate of `Dur`, bit-identical on all 1,215,890 rows",
-            "Seq": "row identifier: Argus flow sequence number, one-vs-rest AUC 0.9275 on ICMPFlood",
+            "SAppBytes": "constant: a single value on all 1,215,890 rows, so it carries no state at all",
+            "SIntActDist": "empty in this release: 100% null on all 1,215,890 rows, so it carries no state at all",
+            "SIntDist": "empty in this release: 100% null on all 1,215,890 rows, so it carries no state at all",
+            "SIntIdlDist": "empty in this release: 100% null on all 1,215,890 rows, so it carries no state at all",
+            "SIntPkt": "empty in this release: 100% null on all 1,215,890 rows, so it carries no state at all",
+            "SIntPktAct": "empty in this release: 100% null on all 1,215,890 rows, so it carries no state at all",
+            "SIntPktIdl": "empty in this release: 100% null on all 1,215,890 rows, so it carries no state at all",
+            "SRange": "empty in this release: 100% null on all 1,215,890 rows, so it carries no state at all",
+            "Seq": "row identifier: Argus flow sequence number, 137,210 distinct integer values",
+            "Sport": "host fingerprint: 65,550 distinct source ports. Ephemeral port RANGES differ per tool, so this is a fingerprint of the generator, not a property of the traffic",
+            "SrcAddr": "host fingerprint: 121 distinct source addresses on a closed testbed, so the attacker hosts are enumerable and the model would learn the lab rather than the attack",
+            "SrcId": "row identifier: Argus source identifier, and constant `0.0.0.0` on every row here",
+            "SrcJitAct": "empty in this release: 100% null on all 1,215,890 rows, so it carries no state at all",
+            "SrcMac": "host fingerprint (hardware address); also empty in this release: 100% null on all 1,215,890 rows, so it carries no state at all",
+            "SrcOui": "host fingerprint (MAC vendor prefix); also empty in this release: 100% null on all 1,215,890 rows, so it carries no state at all",
+            "SrcRetra": "constant: a single value on all 1,215,890 rows, so it carries no state at all",
+            "StartTime": "row identifier: wall-clock capture timestamp. The attack classes were generated in sequence, so absolute time separates them by when the capture ran, not by what it saw",
+            "StdDev": "constant: a single value on all 1,215,890 rows, so it carries no state at all",
             "Sum": "duplicate of `Dur`, bit-identical on all 1,215,890 rows",
-            "Unnamed: 0": "row identifier: the CSV's own index column, one-vs-rest AUC 0.9990 on SYNScan",
-            "dVid": "constant: one distinct value (610.0) over 0.17% non-null rows, zero information",
-            "sVid": "constant: one distinct value (610.0) over 9.42% non-null rows, zero information"
+            "TotAppByte": "constant: a single value on all 1,215,890 rows, so it carries no state at all",
+            "Trans": "row identifier: Argus aggregation count, and constant `1` on every row here",
+            "Unnamed: 0": "row identifier: the CSV's own index column, 728,316 distinct values. Restoring it alone takes accuracy from 0.9829 to 0.9997 - it is the single most dangerous column in the file",
+            "dAS": "empty in this release: 100% null on all 1,215,890 rows, so it carries no state at all",
+            "dCo": "empty in this release: 100% null on all 1,215,890 rows, so it carries no state at all",
+            "dIpId": "host fingerprint: IP identification field, 63,775 distinct values, per-host counter",
+            "dMpls": "empty in this release: 100% null on all 1,215,890 rows, so it carries no state at all",
+            "dNStrok": "empty in this release: 100% null on all 1,215,890 rows, so it carries no state at all",
+            "dVpri": "empty in this release: 100% null on all 1,215,890 rows, so it carries no state at all",
+            "dstUdata": "empty in this release: 100% null on all 1,215,890 rows, so it carries no state at all",
+            "iAS": "empty in this release: 100% null on all 1,215,890 rows, so it carries no state at all",
+            "pRetran": "constant: a single value on all 1,215,890 rows, so it carries no state at all",
+            "sAS": "empty in this release: 100% null on all 1,215,890 rows, so it carries no state at all",
+            "sCo": "empty in this release: 100% null on all 1,215,890 rows, so it carries no state at all",
+            "sIpId": "host fingerprint: IP identification field, 65,535 distinct values, per-host counter",
+            "sMpls": "empty in this release: 100% null on all 1,215,890 rows, so it carries no state at all",
+            "sNStrok": "empty in this release: 100% null on all 1,215,890 rows, so it carries no state at all",
+            "sVpri": "empty in this release: 100% null on all 1,215,890 rows, so it carries no state at all",
+            "srcUdata": "empty in this release: 100% null on all 1,215,890 rows, so it carries no state at all"
           },
           "export": {
-            "fp32_bytes": 5481544,
+            "fp32_bytes": 1233407,
             "int8_skipped_reason": "tree ensemble: parameters live in node attributes, not weight tensors, so dynamic int8 quantisation has nothing to quantise",
             "onnx_domains": [
               "ai.onnx.ml"
             ],
             "opset": 0
           },
-          "framing": "Real 5G network traffic, 9 attack classes, 39 flow-statistic features. This is a NETWORK-LAYER model and a different task from the QKD-layer classifier on the same page - no shared labels, no shared features, so the two scores are not a comparison. The reason it is published is not its score but the counterfactual recorded beside it: the identical configuration refitted with the corpus's three integer row identifiers restored reproduces the published 99.6-99.7% accuracy range, and dropping them costs roughly 24 accuracy points. Read `leak_counterfactual_accuracy` against `aggregate_accuracy` - that pair is the result.",
-          "git_sha": "e192214-dirty",
-          "hf_revision": "b00628c548df4299b3454b5723900897758facbb",
-          "leak_counterfactual_accuracy": 0.999724,
-          "leak_counterfactual_accuracy_gain": 0.238778,
+          "framing": "Real 5G network traffic, 9 attack classes, 47 flow-statistic features. This is a NETWORK-LAYER model and a different task from the QKD-layer classifier on the same page - no shared labels, no shared features, so the two scores are not a comparison. IT IS FITTED ON THE FIELDS-PRESERVED EXPORT (113 columns) AND WAS FITTED ON Combined.csv (52) UNTIL ROUND 50, which is the single most important thing to know about the numbers here: the same rows and the same classes, but the narrow export omits `IdleTime` and that one column is worth 22 points of accuracy. `idle_time_ablation` re-measures this every run by refitting without it, and the result reproduces what this model used to score. Two controls are recorded beside the headline and both are worth more than the headline. `idle_time_ablation` says the old weakness was a choice of export, not a property of the corpus. `leak_counterfactual_accuracy` says that restoring four integer row counters takes accuracy to about 0.9997, which is not a better model but a leak.",
+          "git_sha": "c89ff94-dirty",
+          "hf_revision": "a3cbe059e97cdde5cacc301294c14d6d61a5ae26",
+          "idle_time_ablation": {
+            "what_this_means": "Removing `IdleTime` ALONE costs essentially the same accuracy as removing all six columns Combined.csv omits, and both land on the score this model published while it was fitted on Combined.csv. The other five - `Dir`, `Flgs`, `TcpOpt`, `sVlan`, `dVlan` - are worth 0.0006 accuracy between them. So the model's former weakness was one absent flow statistic, not the corpus and not the method. THAT IS REDUNDANCY AND NOT EMPTINESS, stated because the shorter version would be false. Two of those five are individually strong - `Dir` scores one-vs-rest AUC 0.9811 on ICMPFlood and `TcpOpt` 0.9433 on SlowrateDoS, both above the 0.90 threshold `single_feature_leak_check` uses, and both appear in its flagged list. What the ablation shows is that the other 41 columns already carry what they carry. `IdleTime` IS NOT AN IDENTIFIER and the distinction is the same one `leak_counterfactual_*` exists to draw: it takes 17 distinct integer values over 1,215,890 rows, so it cannot encode a row position, and it separates `SlowrateDoS` - an attack defined by holding a connection idle - at one-vs-rest AUC 0.9574. A row counter that scores that well describes where a row sits in a file. This describes what the traffic did.",
+            "without_all_six_columns_combined_lacks": {
+              "accuracy": 0.760949,
+              "accuracy_cost": 0.221947,
+              "dropped": [
+                "Flgs",
+                "IdleTime",
+                "Dir",
+                "sVlan",
+                "dVlan",
+                "TcpOpt"
+              ],
+              "macro_f1": 0.926455,
+              "n_features": 41
+            },
+            "without_idle_time": {
+              "accuracy": 0.761558,
+              "accuracy_cost": 0.221339,
+              "dropped": [
+                "IdleTime"
+              ],
+              "macro_f1": 0.927503,
+              "n_features": 46
+            }
+          },
+          "leak_counterfactual_accuracy": 0.999734,
+          "leak_counterfactual_accuracy_gain": 0.016837,
           "leak_counterfactual_features": [
             "Unnamed: 0",
+            "Rank",
             "Seq",
             "Offset"
           ],
-          "leak_counterfactual_macro_f1": 0.999494,
+          "leak_counterfactual_macro_f1": 0.999505,
           "linear_baseline": {
-            "accuracy": 0.754995,
-            "macro_f1": 0.890884,
+            "accuracy": 0.754866,
+            "macro_f1": 0.889891,
             "n_classes_predicted": 9,
-            "n_features": 34,
+            "n_features": 37,
             "n_train_rows": 300000,
-            "what_it_is": "multinomial logistic regression on the 34 NUMERIC features only, standardised, fitted directly rather than distilled. The 5 ordinal codes are excluded because their integer order is nominal and a linear model would read it as a magnitude. Recorded as the classical floor and as a feasibility probe for a future CKKS-linear tier: it predicts 9 of 9 classes, so a linear student on this corpus does not collapse the way an 8-class one nearly does elsewhere in this project."
+            "what_it_is": "multinomial logistic regression on the 37 NUMERIC features only, standardised, fitted directly rather than distilled. The 10 ordinal codes are excluded because their integer order is nominal and a linear model would read it as a magnitude. Recorded as the classical floor and as a feasibility probe for a future CKKS-linear tier: it predicts 9 of 9 classes, so a linear student on this corpus does not collapse the way an 8-class one nearly does elsewhere in this project."
           },
-          "macro_f1": 0.926439,
+          "macro_f1": 0.995019,
           "majority_baseline": 0.392911,
-          "metric_note": "THE TWO NUMBERS READ THE OPPOSITE WAY ROUND FROM EVERY OTHER MODEL IN THIS PROJECT, and this note exists because the page would otherwise imply the reverse. Everywhere else here the aggregate flatters and the per-class figure exposes it, which is why `aggregate_accuracy` is rendered as the companion 'shown so the gap is visible'. On this corpus macro F1 is the OPTIMISTIC number and aggregate accuracy the PESSIMISTIC one. The reason is the class distribution: seven minority classes are near-perfectly separated while the two majority classes - Benign at 39.3% of rows and UDPFlood at 37.6% - mutually confuse, so a macro average over 9 classes is carried by the seven that work and an accuracy over rows is dominated by the two that do not. The residual is one confusion pair, not diffuse weakness; read `per_class_f1` and it is visible directly. Neither figure is the flattering one to quote alone.",
+          "metric_note": "THE TWO NUMBERS STILL READ THE OPPOSITE WAY ROUND FROM EVERY OTHER MODEL IN THIS PROJECT, and the refit onto the wide export did NOT fix that - it shrank it. Everywhere else here the aggregate flatters and the per-class figure exposes it, which is why `aggregate_accuracy` is rendered as the companion 'shown so the gap is visible'. On this corpus macro F1 is still the OPTIMISTIC number and aggregate accuracy still the PESSIMISTIC one. What changed is the size of the disagreement: macro F1 minus accuracy was 0.1655 on the narrow export (0.9263 against 0.7608) and is about 0.0121 now (0.9950 against 0.9829). THE MECHANISM IS UNCHANGED, which is the part a reader is most likely to get wrong. It is not that a small class now drags the macro average - the smallest class, ICMPFlood at 289 test rows, scores 1.0000 and lifts it. It is the same two majority classes as before: Benign at 39.3% of rows and UDPFlood at 37.6% are the only pair that confuses at all, they carry 77% of the test set between them, so accuracy is dominated by them while a macro average over 9 classes is carried by the seven scoring 0.9999 or better. Adding `IdleTime` separated that pair almost completely rather than changing which pair it is. The residual is one directional confusion - UDPFlood predicted as Benign - and it is 1.71% of the test set against 23.92% before. Read `per_class_f1` and it is visible directly: the two lowest entries are Benign and UDPFlood, and every other class is at or above 0.9999. Neither figure is the flattering one to quote alone.",
           "n_classes": 9,
           "n_classes_predicted": 9,
           "n_eval": 303973,
-          "n_features": 39,
+          "n_features": 47,
           "n_samples": 1215890,
           "per_class_f1": {
-            "Benign": 0.640207,
-            "HTTPFlood": 0.990946,
-            "ICMPFlood": 0.998273,
+            "Benign": 0.978706,
+            "HTTPFlood": 0.999972,
+            "ICMPFlood": 1.0,
             "SYNFlood": 1.0,
-            "SYNScan": 0.998303,
-            "SlowrateDoS": 0.982467,
-            "TCPConnectScan": 0.998405,
-            "UDPFlood": 0.730732,
-            "UDPScan": 0.998617
+            "SYNScan": 1.0,
+            "SlowrateDoS": 0.999973,
+            "TCPConnectScan": 0.9999,
+            "UDPFlood": 0.976749,
+            "UDPScan": 0.999874
           },
-          "sample_size_note": "Trained and scored on the whole of 5G-NIDD Combined.csv - 1,215,890 flows, stratified 75/25 at seed 42, so the test split is 303,973 rows and every class keeps its corpus proportion. No subsampling and no class rebalancing: `ICMPFlood` is 1,155 rows in the corpus and 289 in the test split, which is small but is the real prevalence, and resampling it would report a per-class F1 for a distribution the deployed model never sees. The browser evaluation sample is a different matter and is NOT proportional - see the note in eval_sample.json, which states its per-class floor and why its macro F1 is not this one.",
+          "sample_size_note": "Trained and scored on the whole of 5G-NIDD BTS1_BTS2_fields_preserved.csv - 1,215,890 flows, stratified 75/25 at seed 42, so the test split is 303,973 rows and every class keeps its corpus proportion. Row for row this is the same corpus as Combined.csv, which this model used until Round 50; only the column count differs, 113 against 52. No subsampling and no class rebalancing: `ICMPFlood` is 1,155 rows in the corpus and 289 in the test split, which is small but is the real prevalence, and resampling it would report a per-class F1 for a distribution the deployed model never sees. The browser evaluation sample is a different matter and is NOT proportional - see the note in eval_sample.json, which states its per-class floor and why its macro F1 is not this one.",
           "single_feature_leak_check": {
             "flagged": [
               {
@@ -1330,6 +1412,11 @@
                 "one_vs_rest_auc": 0.982118
               },
               {
+                "class": "ICMPFlood",
+                "feature": "Dir",
+                "one_vs_rest_auc": 0.982103
+              },
+              {
                 "class": "HTTPFlood",
                 "feature": "SynAck",
                 "one_vs_rest_auc": 0.957942
@@ -1341,6 +1428,11 @@
               },
               {
                 "class": "SlowrateDoS",
+                "feature": "IdleTime",
+                "one_vs_rest_auc": 0.957372
+              },
+              {
+                "class": "SlowrateDoS",
                 "feature": "DstWin",
                 "one_vs_rest_auc": 0.957025
               },
@@ -1348,6 +1440,11 @@
                 "class": "SlowrateDoS",
                 "feature": "SrcWin",
                 "one_vs_rest_auc": 0.948538
+              },
+              {
+                "class": "SlowrateDoS",
+                "feature": "TcpOpt",
+                "one_vs_rest_auc": 0.943339
               },
               {
                 "class": "HTTPFlood",
@@ -1405,15 +1502,15 @@
                 "one_vs_rest_auc": 0.904627
               }
             ],
-            "n_features_flagged": 21,
-            "n_features_total": 39,
+            "n_features_flagged": 24,
+            "n_features_total": 47,
             "n_rows_checked": 100000,
             "threshold": 0.9,
-            "what_this_means": "One-vs-rest rank-AUC per feature per class, at the 0.90 threshold scripts/prep_model_inputs.py already publishes against, measured AFTER all 13 drops. A LARGE NUMBER HERE IS EXPECTED ON THIS CORPUS AND IS NOT THE LEAK THIS MODEL IS ABOUT. The attacks are generated by distinct tools against distinct services, so a scan, a SYN flood and a slow-rate HTTP attack genuinely differ in TTL, packet rate, TCP window and ACK timing - these are the flow statistics an intrusion detector is supposed to use. The check's own docstring anticipates the case and warns rather than failing. The distinction that matters is against `leak_counterfactual_*`: `Unnamed: 0`, `Seq` and `Offset` cleared the same threshold while being bookkeeping columns that carry no information about the traffic at all, which is why those three are dropped and these are kept. Recorded rather than described so the distinction is checkable."
+            "what_this_means": "One-vs-rest rank-AUC per feature per class, at the 0.90 threshold scripts/prep_model_inputs.py already publishes against, measured AFTER all 66 drops. A LARGE NUMBER HERE IS EXPECTED ON THIS CORPUS AND IS NOT THE LEAK THIS MODEL IS ABOUT. The attacks are generated by distinct tools against distinct services, so a scan, a SYN flood and a slow-rate HTTP attack genuinely differ in TTL, packet rate, TCP window and ACK timing - these are the flow statistics an intrusion detector is supposed to use. The check's own docstring anticipates the case and warns rather than failing. The distinction that matters is against `leak_counterfactual_*`: `Unnamed: 0`, `Rank`, `Seq` and `Offset` cleared the same threshold while being bookkeeping columns that carry no information about the traffic at all, which is why those four are dropped and these are kept. `IdleTime` is in this list and is the case that shows the rule is not circular - it clears the threshold on SlowrateDoS, it is the single most valuable column in the corpus by `idle_time_ablation`, and it takes 17 distinct integer values over 1.2 million rows, so no amount of it can address a row. Recorded rather than described so the distinction is checkable."
           },
-          "wall_clock_s": 93.9
+          "wall_clock_s": 92.6
         },
-        "architecture": "gradient-boosted trees over 39 flow-statistic features",
+        "architecture": "gradient-boosted trees over 47 flow-statistic features",
         "artifacts": [
           {
             "browser_runnable": true,
@@ -1441,25 +1538,25 @@
         "dataset": {
           "attribution": "Y. Siriwardhana et al., 'Descriptor: 5G Wireless Network Intrusion Detection Dataset (5G-NIDD)', in IEEE Data Descriptions, doi:10.1109/IEEEDATA.2025.3592888. Dataset: doi:10.23729/e80ac9df-d9fb-47e7-8d0d-01384a415361, CC BY 4.0.",
           "licence": "CC-BY-4.0",
-          "name": "5G-NIDD (Combined.csv)",
+          "name": "5G-NIDD (BTS1_BTS2_fields_preserved.csv)",
           "publishable": true,
           "url": "https://doi.org/10.23729/e80ac9df-d9fb-47e7-8d0d-01384a415361"
         },
         "hf_repo_id": "Daemons-Q/qsh-telecom-5g-nidd-gbm",
-        "hf_revision": "b00628c548df4299b3454b5723900897758facbb",
+        "hf_revision": "a3cbe059e97cdde5cacc301294c14d6d61a5ae26",
         "hf_revision_stale": null,
         "key": "telecom_ids.nidd",
         "label": "5G-NIDD network-attack classifier (9 classes)",
         "metric": {
           "baseline": null,
-          "baseline_source": "Two published figures on 5G-NIDD are usually quoted - Wang, Fok & Thing report 99.61% accuracy for a CNN and 99.71% for a hybrid quantum-classical Quan-ConvCNN - and BOTH are accuracies, which is why no number appears in `baseline`. Three caveats, and the third is new and material. (1) Those are hybrid quantum-classical results with a 0.10-point spread, and the authors' own claim is about generalisation to UNSEEN attacks rather than about the headline; `references/REFERENCES.md` WS2 records this. (2) Accuracy is the wrong comparator on a corpus whose two majority classes are 39.3% and 37.6% of the rows. (3) MEASURED HERE: an identical gradient-boosted model reaches accuracy 0.9997 with three integer row counters restored and 0.7610 without them, so the published 99.6-99.7% range is reproducible from row identifiers alone. That does NOT establish that those papers used them - their feature set is not stated in what was read - so it is recorded as an open question about the comparison rather than as a refutation of the papers. Either way it means these figures are an anchor and not a target that has been beaten or missed.",
+          "baseline_source": "Two published figures on 5G-NIDD are usually quoted - Wang, Fok & Thing report 99.61% accuracy for a CNN and 99.71% for a hybrid quantum-classical Quan-ConvCNN - and BOTH are accuracies, which is why no number appears in `baseline`. Three caveats. (1) Those are hybrid quantum-classical results with a 0.10-point spread, and the authors' own claim is about generalisation to UNSEEN attacks rather than about the headline; `references/REFERENCES.md` WS2 records this. (2) Accuracy is the wrong comparator on a corpus whose two majority classes are 39.3% and 37.6% of the rows. (3) MEASURED HERE: an identical gradient-boosted model reaches accuracy 0.9997 with the corpus's integer row counters restored, so the published range is reproducible from row identifiers alone. ROUND 50 CORRECTED WHAT THAT THIRD POINT WAS TAKEN TO MEAN. It was written when this model scored 0.7610 and read as evidence that the published figures probably leaned on those counters, on the unstated premise that nothing else could close a 24-point gap. Something else could. Refitted on the corpus's 113-column export with every identifier and every host fingerprint dropped, the same configuration scores 0.9829 - about 1.3 points below the published accuracies rather than 24 - and the column that closes the gap is one flow statistic, `IdleTime`, which the 52-column export does not carry. The leak measurement stands as a fact about row counters. The insinuation about the papers does not, and is withdrawn. These figures are an anchor and not a target that has been beaten or missed.",
           "ceiling": null,
           "ceiling_source": "",
           "companion": "aggregate_accuracy",
           "display": "macro F1 across 9 network-attack classes",
           "name": "macro_f1"
         },
-        "notes": "NETWORK-LAYER flow classification on real 5G traffic. This is a DIFFERENT TASK from the QKD-layer attack classifier on this same page, with zero overlap in label space or feature space, so neither score is the other's baseline and 0.93 here is not 'worse' than 0.99 there. READ THE TWO NUMBERS THE OTHER WAY ROUND FROM EVERYWHERE ELSE IN THIS PROJECT. Every other model here reports an aggregate that flatters and a per-class figure that does not. On this corpus the inversion holds: macro F1 is the OPTIMISTIC number and aggregate accuracy the pessimistic one, because seven minority classes score 0.98-1.00 while the two majority classes (39.3% and 37.6% of the rows) mutually confuse. The residual is one confusion pair, Benign <-> UDPFlood, not diffuse weakness. THE REASON THIS MODEL IS WORTH SHIPPING is the counterfactual recorded beside its metrics every run: refitting the identical configuration with the corpus's three integer row identifiers restored moves accuracy from 0.7610 to 0.9997 and macro F1 from 0.9266 to 0.9999. That is the same shape of result Engelen et al. (WTMC 2021) produced for CIC-IDS2017, which this repository already cites as its reason for reporting per-class F1 first. It is an open question about how the published 99.6-99.7% figures were obtained, NOT a demonstration that they were obtained that way -- see M_NIDD's baseline_source, which states the limit of the claim.",
+        "notes": "NETWORK-LAYER flow classification on real 5G traffic. This is a DIFFERENT TASK from the QKD-layer attack classifier on this same page, with zero overlap in label space or feature space, so neither score is the other's baseline. REFITTED IN ROUND 50 ON A WIDER EXPORT OF THE SAME CORPUS, which is the fact that explains every number here. It trained on `Combined.csv` (52 columns) and scored accuracy 0.7608; it now trains on `BTS1_BTS2_fields_preserved.csv` (113 columns) and scores about 0.9829. The rows are identical and the method is unchanged. One column does all of it: `IdleTime`, a flow statistic the narrow export omits. Removing it alone from the wide fit returns the model to 0.7616, and that ablation is re-measured on every run as `idle_time_ablation`. It is not an identifier - 17 distinct integer values over 1.2 million rows - and it separates SlowrateDoS, an attack defined by idling, at one-vs-rest AUC 0.9574. READ THE TWO NUMBERS THE OTHER WAY ROUND FROM EVERYWHERE ELSE IN THIS PROJECT - STILL. Every other model here reports an aggregate that flatters and a per-class figure that does not. On this corpus macro F1 is the OPTIMISTIC number and aggregate accuracy the pessimistic one, and the refit shrank that inversion without removing it: the gap was 0.1655 (0.9263 macro F1 against 0.7608 accuracy) and is about 0.0121 (0.9950 against 0.9829). The mechanism is the same one as before, not a new one - Benign and UDPFlood are 39.3% and 37.6% of the rows and remain the only pair that confuses, so accuracy is dominated by them while the macro average is carried by seven classes at 0.9999 or better. The residual error is 1.71% of the test split against 23.92% before, and it is one direction: UDPFlood predicted as Benign. THE LEAK COUNTERFACTUAL IS STILL RECORDED EVERY RUN and its claim is now narrower. Restoring the corpus's integer row identifiers takes accuracy to about 0.9997, the same shape of result Engelen et al. (WTMC 2021) produced for CIC-IDS2017. Round 49 read that as an explanation for the published 99.6-99.7% figures; it is not, because 0.9829 is reachable here with no identifiers at all -- see M_NIDD's baseline_source, which withdraws that reading.",
         "onnx_domains": [
           "ai.onnx.ml"
         ],

@@ -319,59 +319,158 @@ def opssat_ad(split: str = "train"):
 #:   * the URL that comes back carries a JWT with an ``exp`` claim. Split across two shell commands
 #:     run minutes apart, the second fails opaquely, so this is deliberately one pipeline.
 #:
-#: Only ``Combined.zip`` is fetched. The dataset's advertised 7,985,550,132 B across 14 files is
-#: real but misleading: 12 of those are raw PCAP captures (BS1.zip 2.4 GB, BS2.zip 1.6 GB) and
-#: per-attack splits. The single file needed here is 28,028,224 B compressed, 275,265,610 B as CSV.
+#: ``BTS1_BTS2_fields_preserved.zip`` IS THE FILE TO FETCH, and this changed in Round 50. The
+#: release also offers ``Combined.zip``, which is what this loader read until then: same 1,215,890
+#: rows, but 52 columns against 113. Every one of those 52 is present and informationally identical
+#: in the wide export - equal distinct-value counts on all of them - so ``Combined.csv`` is a strict
+#: column SUBSET, and one of the columns it omits, ``IdleTime``, is worth 22 points of accuracy on
+#: its own. Measured: 0.9829 here against 0.7609 on the narrow export, and removing ``IdleTime``
+#: alone from this file reproduces the narrow figure to within 0.001. See
+#: ``references/5g-nidd-metric-profile.md`` and the `idle_time_ablation` block that
+#: ``scripts/train/telecom_nidd.py`` re-measures every run.
+#:
+#: The dataset's advertised 7,985,550,132 B across 14 files is real but misleading: 12 of those are
+#: raw PCAP captures (BS1.zip 2.4 GB, BS2.zip 1.6 GB) and per-attack splits. The single file needed
+#: here is 46,527,823 B compressed and 472,438,689 B as CSV.
 NIDD_FETCH = (
-    "mkdir -p \"$QSH_DATA_ROOT/raw/5g-nidd\" && "
+    "mkdir -p \"$QSH_DATA_ROOT/raw/5g-nidd/fields_preserved\" && "
     "curl -sS -X POST -H 'Content-Type: application/json' "
-    "-d '{\"cr_id\":\"9d13ef28-2ca7-44b0-9950-225359afac65\",\"file\":\"/Combined.zip\"}' "
+    "-d '{\"cr_id\":\"9d13ef28-2ca7-44b0-9950-225359afac65\","
+    "\"file\":\"/BTS1_BTS2_fields_preserved.zip\"}' "
     "https://etsin.fairdata.fi/api/download/authorize "
     "| python3 -c 'import json,sys;print(json.load(sys.stdin)[\"url\"])' "
-    "| xargs curl -L -o \"$QSH_DATA_ROOT/raw/5g-nidd/Combined.zip\" && "
-    "unzip -o -d \"$QSH_DATA_ROOT/raw/5g-nidd\" \"$QSH_DATA_ROOT/raw/5g-nidd/Combined.zip\""
+    "| xargs curl -L -o \"$QSH_DATA_ROOT/raw/5g-nidd/fields_preserved.zip\" && "
+    "unzip -o -d \"$QSH_DATA_ROOT/raw/5g-nidd/fields_preserved\" "
+    "\"$QSH_DATA_ROOT/raw/5g-nidd/fields_preserved.zip\""
 )
 
-#: Every column removed from the 52, with the reason, as DATA rather than as a code comment - so
+#: Columns that hold exactly ONE STATE in this release, counting "missing" as a state, and are
+#: therefore dropped. 30 of them are 100% null and 9 hold a single non-null value on every row.
+#: (Four more all-null columns - `SrcMac`, `DstMac`, `SrcOui`, `DstOui` - are listed under host
+#: fingerprints instead, because they would be dropped for that reason even if upstream filled them.)
+#:
+#: THE SInt*/DInt*/JIT* COLUMNS ARE IN HERE AND THAT SURPRISES PEOPLE. Argus computes inter-packet
+#: time, inter-packet distribution and jitter, and their names read like the most discriminative
+#: features a flow record could carry - but this release ships them EMPTY, 1,215,890 nulls each. Do
+#: not reason about what they would contribute; they contribute nothing because they are not there.
+#:
+#: The rule is deliberately "one state INCLUDING null", not "one distinct non-null value". `sVid`,
+#: `dVid`, `sVlan` and `dVlan` each hold one value (610.0 / `0x0262`) over 9.42% and 0.17% of rows
+#: respectively and are null elsewhere, so they carry a real two-state present/absent signal and are
+#: KEPT as features. They were dropped under the narrow export's stricter rule; that changed here,
+#: and it is worth essentially nothing - best one-vs-rest AUC 0.6207 for `sVlan` and 0.5020 for
+#: `dVlan` - so the change is a consistency fix rather than a source of the improvement.
+NIDD_CONSTANT_VALUED: tuple[str, ...] = (
+    "StdDev", "TotAppByte", "SAppBytes", "DAppBytes", "PCRatio",
+    "Retrans", "SrcRetra", "DstRetra", "pRetran",
+)
+NIDD_ALL_NULL: tuple[str, ...] = (
+    "sCo", "dCo", "sMpls", "dMpls", "sAS", "dAS", "iAS", "NStrok", "sNStrok", "dNStrok",
+    "SIntPkt", "SIntDist", "SIntPktAct", "SIntActDist", "SIntPktIdl", "SIntIdlDist",
+    "DIntPkt", "DIntDist", "DIntPktAct", "DIntActDist", "DIntPktIdl",
+    "SrcJitAct", "DstJitter", "DstJitAct", "srcUdata", "dstUdata",
+    "sVpri", "dVpri", "SRange", "ERange",
+)
+NIDD_SINGLE_STATE: tuple[str, ...] = NIDD_CONSTANT_VALUED + NIDD_ALL_NULL
+
+_EMPTY = "empty in this release: 100% null on all 1,215,890 rows, so it carries no state at all"
+_ZERO = "constant: a single value on all 1,215,890 rows, so it carries no state at all"
+
+#: Every column removed from the 113, with the reason, as DATA rather than as a code comment - so
 #: `feature_spec.json` can publish the reasons and a reader can check them against the corpus.
 #:
-#: Three of these are the finding this model exists to record. `Unnamed: 0`, `Seq` and `Offset` are
-#: row counters; restoring them takes macro F1 from 0.9262 to 0.9995 and accuracy from 0.7609 to
-#: 0.9997, which is the published range for this corpus. See `scripts/train/telecom_nidd.py`, which
-#: measures both fits every run rather than quoting these numbers.
+#: `Unnamed: 0` IS THE ENTRY THAT MATTERS MOST and omitting it is the mistake this file has now seen
+#: made twice. It is the CSV's own row index; leaving it in takes accuracy to 0.9997, which looks
+#: like a result and is a leak. The first wide fit attempted in Round 50 named `SrcId`, `Rank`, `Seq`
+#: and `Offset` but not `Unnamed: 0` and was briefly recorded as confirmation of the published
+#: figures. `scripts/train/telecom_nidd.py` refits with all four restored every run so the number is
+#: measured rather than remembered.
 NIDD_DROPPED: dict[str, str] = {
+    # ---- the target and its two leaks ----------------------------------------------------------
     "Label": "target leak: the binary collapse of `Attack Type` (Benign vs Malicious)",
     "Attack Type": "the target",
     "Attack Tool": (
         "target leak: 6 tools over 9 classes, many-to-one in both directions (Hping3 -> ICMPFlood/"
         "SYNFlood/UDPFlood, Nmap -> SYNScan/TCPConnectScan/UDPScan, SlowrateDoS <- Slowloris+"
         "Torshammer). Alone it scores accuracy 0.9615, macro F1 0.5017"),
-    "Unnamed: 0": "row identifier: the CSV's own index column, one-vs-rest AUC 0.9990 on SYNScan",
-    "Seq": "row identifier: Argus flow sequence number, one-vs-rest AUC 0.9275 on ICMPFlood",
-    "Offset": "row identifier: byte offset into the capture, one-vs-rest AUC 0.9502 on ICMPFlood",
+    # ---- row identifiers: where a row sits in a file, not what the traffic did ------------------
+    "Unnamed: 0": (
+        "row identifier: the CSV's own index column, 728,316 distinct values. Restoring it alone "
+        "takes accuracy from 0.9829 to 0.9997 - it is the single most dangerous column in the file"),
+    "SrcId": "row identifier: Argus source identifier, and constant `0.0.0.0` on every row here",
+    "Rank": "row identifier: Argus record rank, 467,717 distinct integer values",
+    "Seq": "row identifier: Argus flow sequence number, 137,210 distinct integer values",
+    "Offset": "row identifier: byte offset into the capture, 1,118,981 distinct integer values",
+    "AutoId": "row identifier: Argus auto-increment id, and constant `0` on every row here",
+    "Trans": "row identifier: Argus aggregation count, and constant `1` on every row here",
+    "StartTime": (
+        "row identifier: wall-clock capture timestamp. The attack classes were generated in "
+        "sequence, so absolute time separates them by when the capture ran, not by what it saw"),
+    "LastTime": "row identifier: wall-clock capture timestamp, same objection as `StartTime`",
+    # ---- host fingerprints: which machine, not which behaviour ---------------------------------
+    "SrcAddr": (
+        "host fingerprint: 121 distinct source addresses on a closed testbed, so the attacker hosts "
+        "are enumerable and the model would learn the lab rather than the attack"),
+    "DstAddr": "host fingerprint: 170 distinct destination addresses on the same closed testbed",
+    "SrcMac": f"host fingerprint (hardware address); also {_EMPTY}",
+    "DstMac": f"host fingerprint (hardware address); also {_EMPTY}",
+    "SrcOui": f"host fingerprint (MAC vendor prefix); also {_EMPTY}",
+    "DstOui": f"host fingerprint (MAC vendor prefix); also {_EMPTY}",
+    "Sport": (
+        "host fingerprint: 65,550 distinct source ports. Ephemeral port RANGES differ per tool, so "
+        "this is a fingerprint of the generator, not a property of the traffic"),
+    "Dport": (
+        "host fingerprint: 3,668 distinct destination ports, which name the targeted service "
+        "directly and each attack class here targeted its own service"),
+    "sIpId": "host fingerprint: IP identification field, 65,535 distinct values, per-host counter",
+    "dIpId": "host fingerprint: IP identification field, 63,775 distinct values, per-host counter",
+    # ---- six columns, one duration --------------------------------------------------------------
     "RunTime": "duplicate of `Dur`, bit-identical on all 1,215,890 rows",
     "Mean": "duplicate of `Dur`, bit-identical on all 1,215,890 rows",
     "Sum": "duplicate of `Dur`, bit-identical on all 1,215,890 rows",
     "Min": "duplicate of `Dur`, bit-identical on all 1,215,890 rows",
     "Max": "duplicate of `Dur`, bit-identical on all 1,215,890 rows",
-    "sVid": "constant: one distinct value (610.0) over 9.42% non-null rows, zero information",
-    "dVid": "constant: one distinct value (610.0) over 0.17% non-null rows, zero information",
+    # ---- the 39 single-state columns, assembled from the tuples above so the two cannot drift ----
+    **{c: _ZERO for c in NIDD_CONSTANT_VALUED},
+    **{c: _EMPTY for c in NIDD_ALL_NULL},
 }
 
-#: The three dropped row identifiers, kept as a name so the leak counterfactual in the trainer is
-#: reproducible rather than a hand-typed list that could drift from NIDD_DROPPED.
-NIDD_IDENTIFIERS = ("Unnamed: 0", "Seq", "Offset")
+#: The four dropped row counters, kept as a name so the leak counterfactual in the trainer is
+#: reproducible rather than a hand-typed list that could drift from NIDD_DROPPED. `Unnamed: 0` is
+#: first because it is the one that does the damage on its own.
+NIDD_IDENTIFIERS = ("Unnamed: 0", "Rank", "Seq", "Offset")
 
-#: The 39 usable features, in corpus order: 52 - 3 labels - 3 identifiers - 5 duplicate durations
-#: - 2 constants. Order is fixed here because it is the ONNX input contract: the browser feeds a row
-#: in this order and a silent reordering would produce a confident wrong answer rather than an error.
+#: The 47 usable features, in corpus order: 113 - 3 targets - 9 identifiers - 10 host fingerprints
+#: - 5 duplicate durations - 39 single-state columns. Order is fixed here because it is the ONNX
+#: input contract: the browser feeds a row in this order and a silent reordering would produce a
+#: confident wrong answer rather than an error.
+#:
+#: `IdleTime` IS THE COLUMN THIS MODEL WAS REFITTED FOR. It is absent from `Combined.csv`, it takes
+#: 17 distinct integer values so it cannot be a row counter, and removing it alone from this list
+#: drops accuracy from 0.9829 to 0.7616 - the entire gap against the narrow export. It scores
+#: one-vs-rest AUC 0.9574 on `SlowrateDoS`, which is what a legitimately dominant feature looks like
+#: on an attack whose definition is holding a connection idle.
 NIDD_FEATURES = (
-    "Dur", "Proto", "sTos", "dTos", "sDSb", "dDSb", "sTtl", "dTtl", "sHops", "dHops",
-    "Cause", "TotPkts", "SrcPkts", "DstPkts", "TotBytes", "SrcBytes", "DstBytes",
-    "sMeanPktSz", "dMeanPktSz", "Load", "SrcLoad", "DstLoad", "Loss", "SrcLoss", "DstLoss",
-    "pLoss", "SrcGap", "DstGap", "Rate", "SrcRate", "DstRate", "State", "SrcWin", "DstWin",
-    "SrcTCPBase", "DstTCPBase", "TcpRtt", "SynAck", "AckDat",
+    "Flgs", "Dur", "IdleTime", "Proto", "sTos", "dTos", "sDSb", "dDSb", "sTtl", "dTtl",
+    "sHops", "dHops", "Cause", "TotPkts", "SrcPkts", "DstPkts", "TotBytes", "SrcBytes",
+    "DstBytes", "sMeanPktSz", "dMeanPktSz", "Load", "SrcLoad", "DstLoad", "Loss", "SrcLoss",
+    "DstLoss", "pLoss", "SrcGap", "DstGap", "Rate", "SrcRate", "DstRate", "Dir", "State",
+    "SrcWin", "DstWin", "sVlan", "dVlan", "sVid", "dVid", "SrcTCPBase", "DstTCPBase",
+    "TcpRtt", "SynAck", "AckDat", "TcpOpt",
 )
+
+#: The six features `Combined.csv` does not carry, named so the trainer's ablation is reproducible.
+#: `IdleTime` is worth the whole difference between the two exports and the other five are worth
+#: 0.0006 accuracy between them: dropping all six costs 0.2219 against 0.2213 for `IdleTime` alone.
+#:
+#: THAT IS REDUNDANCY, NOT EMPTINESS, and the distinction is worth keeping straight because the
+#: obvious shorthand is wrong. Individually two of the five are strongly discriminative - `Dir`
+#: scores one-vs-rest AUC 0.9811 on `ICMPFlood` and `TcpOpt` 0.9433 on `SlowrateDoS`, both above
+#: this project's 0.90 leak-check threshold - and `Flgs` (0.6136), `sVlan` (0.6207) and `dVlan`
+#: (0.5020) are weak. What the ablation shows is that whatever the strong two carry is already
+#: recoverable from the other 41 columns, so adding them changes nothing. Do not restate this as
+#: "the other five carry no signal": measured, two of them do.
+NIDD_ABSENT_FROM_COMBINED = ("Flgs", "IdleTime", "Dir", "sVlan", "dVlan", "TcpOpt")
 
 #: The 9 classes, sorted, matching the integer label encoding used everywhere downstream.
 NIDD_CLASSES = (
@@ -379,7 +478,7 @@ NIDD_CLASSES = (
     "SlowrateDoS", "TCPConnectScan", "UDPFlood", "UDPScan",
 )
 
-#: The PUBLISHED ordinal vocabulary for the five categorical columns, as a literal.
+#: The PUBLISHED ordinal vocabulary for the ten categorical columns, as a literal.
 #:
 #: This is a literal and not a per-run `astype("category")` for two independent reasons. First,
 #: `export_xgboost` converts through `FloatTensorType([None, n_features])`, so an XGBoost
@@ -387,17 +486,35 @@ NIDD_CLASSES = (
 #: Second, a vocabulary re-derived per run would silently remap codes the moment a row order or a
 #: subsample changed, and the ONNX graph carries thresholds against the OLD codes: the failure is a
 #: confident wrong class, not an error. Measured cost of encoding rather than using the category
-#: dtype: macro F1 0.926183 encoded against 0.926086 native, i.e. nothing.
+#: dtype on the narrow export: macro F1 0.926183 encoded against 0.926086 native, i.e. nothing.
 #:
 #: Values are sorted, so the mapping is reconstructible from the corpus by anyone. An unseen or null
 #: value encodes to -1.0, the same sentinel `nan_to_num` uses for missing numerics - `dDSb` is
 #: 77.56% null and `sDSb` 0.02%, so "missing" is a real and frequent state here, not an error case.
+#:
+#: THE WHITESPACE IN `Flgs`, `Dir` AND `TcpOpt` IS PART OF THE VALUE AND IS DELIBERATELY KEPT. Argus
+#: writes those three as fixed-width flag fields, so the cell really is `" e s      "` and not
+#: `"e s"`. Stripping would be lossless on this release - no two values collide once stripped - but
+#: it would put a transformation between the published CSV and the published vocabulary, and the
+#: contract this file offers a consumer is "look the raw cell up in the list". One rule, no
+#: preprocessing.
 NIDD_CATEGORICAL: dict[str, tuple[str, ...]] = {
+    "Flgs": (" *        ", " *    V   ", " *    f   ", " e        ", " e    f   ", " e &      ",
+             " e *      ", " e d      ", " e g      ", " e i      ", " e r      ", " e s      ",
+             " eU       "),
     "Proto": ("arp", "icmp", "ipv6-icmp", "llc", "lldp", "sctp", "tcp", "udp"),
     "sDSb": ("39", "4", "52", "54", "af11", "af12", "af41", "cs0", "cs4", "cs6", "cs7", "ef"),
     "dDSb": ("af11", "af12", "cs0", "cs1", "cs4", "ef"),
     "Cause": ("Shutdown", "Start", "Status"),
+    "Dir": ("   ->", "   ?>", "  <-", "  <->", "  <?", "  <?>", "  who"),
     "State": ("ACC", "CON", "ECO", "FIN", "INT", "NRS", "REQ", "RSP", "RST", "TST", "URP"),
+    # One value plus a null state. Kept as features, unlike the 39 single-state columns, because
+    # present-versus-absent is two states and `sVlan` is present on 9.42% of rows. Worth almost
+    # nothing in practice - best one-vs-rest AUC 0.6207 and 0.5020 - and kept for the consistency of
+    # the rule rather than for a score.
+    "sVlan": ("0x0262",),
+    "dVlan": ("0x0262",),
+    "TcpOpt": ("      T", "   S", "   S  T", "M", "Mws   T", "MwsS", "MwsS  T"),
 }
 
 #: The sentinel a missing numeric or an out-of-vocabulary categorical encodes to. One value for both
@@ -405,37 +522,44 @@ NIDD_CATEGORICAL: dict[str, tuple[str, ...]] = {
 NIDD_MISSING = -1.0
 
 
-def nidd_combined_csv() -> Path:
-    return require(raw("5g-nidd", "Combined.csv"), NIDD_FETCH)
+def nidd_fields_preserved_csv() -> Path:
+    return require(raw("5g-nidd", "fields_preserved", "BTS1_BTS2_fields_preserved.csv"), NIDD_FETCH)
 
 
 def load_5g_nidd(nrows: int | None = None, *, with_identifiers: bool = False):
-    """Return ``(X float32, y int64, feature_names, class_names)`` for 5G-NIDD Combined.csv.
+    """Return ``(X float32, y int64, feature_names, class_names)`` for the WIDE 5G-NIDD export.
 
-    ``with_identifiers`` restores the three dropped row counters as extra trailing columns. It is a
+    Reads ``BTS1_BTS2_fields_preserved.csv`` (113 columns), not ``Combined.csv`` (52). Same rows,
+    same nine classes, same distribution - `Combined.csv` is a strict column subset - but it omits
+    ``IdleTime``, and that one column is worth 22 accuracy points here. Round 50 changed this.
+
+    ``with_identifiers`` restores the four dropped row counters as extra trailing columns. It is a
     DIAGNOSTIC, not a training option: it exists so `scripts/train/telecom_nidd.py` can fit the leak
     counterfactual through this same loader and the same encoding, rather than reimplementing the
     drop list beside it and reporting a difference that is partly its own. Nothing exported to ONNX
-    may be fitted with it on - the shipped model takes 39 columns.
+    may be fitted with it on - the shipped model takes 47 columns.
 
-    THE FOUR TRAPS ARE ASSERTED, NOT ASSUMED. Every drop below rests on a property of the published
-    file, and an upstream re-release that FIXES one of them must fail loudly here rather than
-    silently discard five real features and two informative columns. The assertions cost one pass
-    over columns that are being dropped anyway.
+    THE TRAPS ARE ASSERTED, NOT ASSUMED. Every drop rests on a property of the published file, and
+    an upstream re-release that FIXES one of them must fail loudly here rather than silently discard
+    real features. The assertions cost one pass over columns that are being dropped anyway.
     """
     import numpy as np
     import pandas as pd
 
-    df = pd.read_csv(nidd_combined_csv(), nrows=nrows, low_memory=False)
+    df = pd.read_csv(nidd_fields_preserved_csv(), nrows=nrows, low_memory=False)
 
-    missing = [c for c in (*NIDD_FEATURES, "Attack Type", *NIDD_IDENTIFIERS) if c not in df.columns]
+    missing = [c for c in (*NIDD_FEATURES, "Attack Type", *NIDD_IDENTIFIERS, *NIDD_SINGLE_STATE)
+               if c not in df.columns]
     if missing:
         raise SystemExit(
-            f"5G-NIDD Combined.csv is missing {missing} - the published file has 52 columns and this "
-            f"one has {df.shape[1]}. Re-fetch it rather than working around the difference:\n"
+            f"BTS1_BTS2_fields_preserved.csv is missing {missing} - the published file has 113 "
+            f"columns and this one has {df.shape[1]}. IF THE MISSING NAMES LOOK LIKE THE WHOLE "
+            f"FEATURE SET, the likely cause is that Combined.csv (52 columns) is sitting at this "
+            f"path: that is the NARROW export this model was refitted away from in Round 50 and it "
+            f"does not carry `IdleTime`. Re-fetch rather than working around the difference:\n"
             f"    {NIDD_FETCH}")
 
-    # Trap 2. Six columns, one feature: Dur == RunTime == Mean == Sum == Min == Max, bit-identical.
+    # Trap 1. Six columns, one feature: Dur == RunTime == Mean == Sum == Min == Max, bit-identical.
     for dup in ("RunTime", "Mean", "Sum", "Min", "Max"):
         delta = float((df["Dur"] - df[dup]).abs().max())
         assert delta == 0.0, (
@@ -443,12 +567,26 @@ def load_5g_nidd(nrows: int | None = None, *, with_identifiers: bool = False):
             f"ships six columns holding one duration; if upstream has changed that, {dup} is now a "
             f"real feature and NIDD_FEATURES must grow rather than keep dropping it.")
 
-    # Trap 4. sVid/dVid are 610.0 or null, so they carry no information at any null rate.
-    for const in ("sVid", "dVid"):
-        n_distinct = int(df[const].nunique(dropna=True))
-        assert n_distinct <= 1, (
-            f"`{const}` now takes {n_distinct} distinct values, so it is no longer the constant this "
-            f"loader drops it for. Re-measure before publishing anything trained without it.")
+    # Trap 2. The 39 single-state columns hold ONE state each, counting null as a state. This is the
+    # trap most likely to fire on a re-release, because 30 of them are Argus statistics that a fixed
+    # export would fill in - the SIntPkt/DIntPkt inter-packet times and the jitter columns above all.
+    # If that happens they are real features and this list must shrink, not keep discarding them.
+    for const in NIDD_SINGLE_STATE:
+        n_states = int(df[const].nunique(dropna=False))
+        assert n_states <= 1, (
+            f"`{const}` now takes {n_states} states, so it is no longer the single-state column this "
+            f"loader drops it for. Move it into NIDD_FEATURES and re-measure before publishing "
+            f"anything trained without it.")
+
+    # Trap 3. `IdleTime` is the reason this loader reads the wide export at all: dropping it alone
+    # costs 0.9829 -> 0.7616 accuracy. A re-release that flattened it would silently return this
+    # model to the narrow export's score while every label still said 47 features.
+    if nrows is None:
+        n_idle = int(df["IdleTime"].nunique(dropna=False))
+        assert n_idle > 1, (
+            "`IdleTime` is single-state in this file, which means it is NOT the column measured in "
+            "references/5g-nidd-metric-profile.md and this fit will score about 0.76, not 0.98. "
+            "Check that the CSV at the path above is the fields-preserved export.")
 
     y_names = df["Attack Type"].astype(str)
     unknown = sorted(set(y_names.unique()) - set(NIDD_CLASSES))
@@ -461,7 +599,7 @@ def load_5g_nidd(nrows: int | None = None, *, with_identifiers: bool = False):
     names = list(NIDD_FEATURES) + (list(NIDD_IDENTIFIERS) if with_identifiers else [])
     frame = df[names].copy()
 
-    # `include="str"` rather than `include=object`. On pandas 3.0.5 both still select all five
+    # `include="str"` rather than `include=object`. On pandas 3.0.5 both still select all ten
     # columns, but `object` emits Pandas4Warning "This behavior is deprecated and will be removed in
     # a future version. Explicitly pass 'str'" - so this is the spelling that keeps working, and the
     # assertion below is what catches the day it stops selecting anything.
@@ -471,6 +609,16 @@ def load_5g_nidd(nrows: int | None = None, *, with_identifiers: bool = False):
         f"{sorted(NIDD_CATEGORICAL)}. A column that silently became numeric would be ordinal-encoded "
         f"by neither path and reach the model as NaN.")
     for col, vocab in NIDD_CATEGORICAL.items():
+        # Trap 4. An unseen value encodes to the SAME sentinel as a missing one, which is the right
+        # contract for a consumer and the wrong silence at training time: a stale vocabulary would
+        # quietly turn a whole category into "missing". Checked on full reads only, since a --nrows
+        # head legitimately sees fewer values than the vocabulary lists, never more.
+        if nrows is None:
+            unseen = sorted(set(df[col].dropna().astype(str).unique()) - set(vocab))
+            assert not unseen, (
+                f"`{col}` carries values NIDD_CATEGORICAL does not list: {unseen}. They would encode "
+                f"to {NIDD_MISSING} alongside genuine nulls. Extend the vocabulary by APPENDING - "
+                f"reordering it remaps codes the exported ONNX thresholds were fitted against.")
         index = {v: float(i) for i, v in enumerate(vocab)}
         frame[col] = frame[col].astype(str).map(index).astype("float64")
 
