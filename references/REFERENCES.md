@@ -97,6 +97,16 @@ Workstreams: **WS1** AI-QKD parameter optimisation and entropy, **WS2** QML-IDS,
 
 ## WS2 - QML-IDS (quantum machine learning for intrusion detection)
 
+**Workings for the 5G-NIDD metric profile live in
+[`5g-nidd-metric-profile.md`](5g-nidd-metric-profile.md).** Round 49 published `telecom_ids.nidd` with
+accuracy 0.7608 against literature figures of 0.90 to 0.98 and attributed the gap to row-identifier
+leakage in the published work. Round 50 measured the cause instead and it is one column: `IdleTime`,
+which `Combined.csv` does not carry and the release's `BTS1_BTS2_fields_preserved.csv` does. Adding it
+gives 0.9820 with every identifier and host fingerprint dropped, so the published range is reachable
+without leakage of any kind. The leakage-aware prior work Round 49 did not consult is cited in that
+file. The identifier finding itself stands - three integer counters move the narrow configuration to
+0.9997 - but it does not explain anyone else's numbers.
+
 This section was promised by the preamble of every earlier revision of this file and never written,
 while `src/qsh/qml_ids/` and the Telecom/Defense use case shipped. The gap mattered: WS2 is the one
 workstream whose honest answer is negative, and the reasoning lived only in a training script's
@@ -913,9 +923,9 @@ boundary**, not displaying a value.
 ## QSDC security basis: secrecy capacity, not a fixed QBER (Round 24)
 
 **This entry corrects an earlier version of itself.** That version said `qkd.pp_threshold = 0.11`
-was correct for QSDC because the wiretap secrecy capacity `Cs = 1 - 2h(e)` has its root at 0.110028,
+was correct for QSDC because the wiretap secrecy capacity $`C_s = 1 - 2h(e)`$ has its root at 0.110028,
 the same as Shor-Preskill, so the two coincided by identity. The identity is real but the conclusion
-was wrong, because `Cs = 1 - 2h(e)` is the **loss-free** case.
+was wrong, because $`C_s = 1 - 2h(e)`$ is the **loss-free** case.
 
 The published criterion is $`C_s > 0`$, and $`C_s`$ depends on channel loss:
 
@@ -929,7 +939,7 @@ So the tolerable error rate falls fast as the link gets lossier: 0.110 at 0 dB, 
 Qi et al. measured on a real 1.5 km fibre link (g = 2.57)**, and ~0.0003 at the ~24.5 dB this
 project's own free-space downlink reports. Applying 0.11 to a lossy channel is wrong in the
 **permissive** direction - it delivers over a channel whose secrecy capacity is already zero. The
-satellite path now computes `Cs` directly.
+satellite path now computes $`C_s`$ directly.
 
 Three further facts that stop any single number being quoted safely:
 
@@ -972,7 +982,7 @@ knowing: **"IEEE 1913-2019" is not a real published standard** (the PAR was with
 exactly once, about QKD.
 
 Primary sources: Qi, Sun, Lin, Yin, Long, Light Sci. Appl. 8, 22 (2019), doi:10.1038/s41377-019-0132-3
-- the `Cs > 0` abort rule and the measured g = 2.57. Pan, Lin, Wu, Sun, Ruan, Yin, Long,
+- the $`C_s > 0`$ abort rule and the measured $`g = 2.57`$. Pan, Lin, Wu, Sun, Ruan, Yin, Long,
 arXiv:2005.05102 - free-space QSDC, 500 bps over 10 m, QBER 0.49% +/- 0.27%, and the DBER/QBER
 distinction. Long and Liu (2002), Deng, Long and Liu (2003), Deng and Long (2004) - the protocols.
 

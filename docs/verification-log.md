@@ -153,10 +153,19 @@ the default 0.2 dB/km.
 The config-to-bundle half of the same check, run against the override layer: `config.yaml` at 0.2
 gives a bundle carrying `fiber_loss_db_per_km:.2`, at 0.9 gives `.9`, and restoring returns `.2`.
 
-Three CKKS students now run and reproduce: medical accuracy 0.730769, OPS-SAT rare-class F1 0.864865,
-finance rare-class F1 0.333709 on its shipped rows. `satellite_comms.student` still reports
+Three CKKS students now run and reproduce, each against the `expected` block of its own
+`models/*/eval_sample.json`. **The three figures were written out here and in `README.md` and went
+stale in both** - Round 50 corrected them and removed the copy rather than correcting it twice, since
+one sentence duplicated across two files is two places to forget. The artifact is the record; read
+`expected.accuracy` and `expected.minority_class_f1` there. `satellite_comms.student` still reports
 `DID NOT RUN` with its reason - it is scored on event-wise F0.5, a sequence metric the per-row
 evaluator cannot compute.
+
+What the stale copies said, kept because a number that moved is only checkable against the record
+that moved it: medical accuracy 0.730769 against the true 0.769231 - and 0.730769 is that artifact's
+own `majority_baseline`, so the README was printing the trivial predictor as the model's score, the
+exact signature this project elsewhere calls "a model that learned nothing". OPS-SAT rare-class F1
+0.864865 against 0.904348, and finance 0.333709 against 0.376130, both superseded by retrains.
 
 Reproduction check: ResNet-18 scored 85.9 percent in the browser against 85.9 percent measured
 offline on the same 156 rows, majority baseline 73.1 percent, 11.3 MB transferred. The medical
@@ -281,7 +290,7 @@ is conditional on a transient state, sample it DURING that state, not after.
 
 **Facts re-derived rather than trusted:**
 
-- QSDC abort threshold: `Cs = 1 - 2h(e)` reaches zero at **0.110028**, identical to Shor-Preskill
+- QSDC abort threshold: $`C_s = 1 - 2h(e)`$ reaches zero at **0.110028**, identical to Shor-Preskill
   because it is the same expression. At the GLLP zero-key point 0.098106 QSDC still has Cs = +0.074.
 - Finance gap: AUPRC 0.0732 makes F1 0.6323 unreachable at any threshold; unseen accounts affect
   0.39% of test rows; causal aggregation measures 1.45x the shipped approach, leakage 2.76x causal.

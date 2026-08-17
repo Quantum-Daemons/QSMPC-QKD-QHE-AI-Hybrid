@@ -310,8 +310,16 @@ granted anywhere".
 
 ## 8. Bundled reference PDFs (committed, redistributed verbatim)
 
-Every PDF under `references/` is handed to anyone who clones, so each needs a grant that permits
-that. Adjudicated **per file at primary source on 2026-08-15**, not by venue and not by inference.
+Every **tracked** PDF under `references/` is handed to anyone who clones, so each needs a grant that
+permits that. Adjudicated **per file at primary source on 2026-08-15**, not by venue and not by
+inference.
+
+This said "every PDF under `references/`" until Round 50, which is false of a working checkout: **7 of
+the 11** PDFs present on disk are tracked, and the other four are gitignored and reach no clone. The
+distinction matters because it is exactly what the enforcing test encodes -
+`tests/test_bundled_reference_pdfs_carry_a_grant.py` derives its corpus from `git ls-files`, so a
+sentence about "every PDF in the directory" describes a set the gate does not check and a clone does
+not receive.
 
 **Read arXiv licences from OAI-PMH, not from the Atom API.** `export.arxiv.org/api/query` carries no
 licence field at all and reports "not present" even for a CC0 paper, so anyone adjudicating from it
@@ -363,8 +371,26 @@ to exclude without needing to characterise it further.
 
 `.gitignore` had excluded reference PDFs on **size** (`~35 MB total`) plus one copyright call, never
 on licence, and the result was an inversion: the two most permissively licensed PDFs in the project,
-both CC BY 4.0, were excluded for being ~17 MB each while a CC BY-NC-ND camera-ready shipped. The
-rules now state a licence reason per file.
+both CC BY 4.0, were excluded for being ~17 MB each while a CC BY-NC-ND camera-ready shipped.
+
+**This paragraph then said "the rules now state a licence reason per file", and that was false.**
+Corrected Round 50 by reading `.gitignore` rather than this file. Four of the eight reference-PDF
+exclusion rules state a licence reason; the other four (`.gitignore:28-32`) still exclude on size and
+on one copyright call, exactly as before, and `.gitignore`'s own comment block says so in terms - *"the
+three rules above never did [exclude on licence]: they exclude on SIZE"*. Two tracked files
+contradicting each other about which rule is in force is worse than either being wrong alone, and
+`.gitignore` is the one that is right.
+
+**The inversion is also only half resolved.** The CC BY-NC-ND file was removed, which was the acute
+half. But `references/Information-Theoretic_Solutions_for_Seedless_QRNG_*.pdf` is **CC BY 4.0** and
+**1.8 MB**, and is still excluded by a rule whose stated reason is the other two files' combined
+~35 MB. CC BY permits redistribution without compelling it, so this is not a licence violation - it is
+a file excluded for a reason that does not apply to it, under a heading claiming the reason-per-file
+problem was fixed.
+
+Scope, stated accurately: section 8's "Excluded" table adjudicates four files that were **deleted** in
+Round 45 and exist nowhere in the tree. The four PDFs actually untracked today are governed by the
+size and copyright rules above, and are not adjudicated in that table at all.
 
 Enforced by `tests/test_bundled_reference_pdfs_carry_a_grant.py`, which derives the corpus from
 `git ls-files` rather than a glob - so a newly committed PDF is in scope the moment it is tracked,
