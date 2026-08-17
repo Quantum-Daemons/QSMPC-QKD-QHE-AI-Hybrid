@@ -44,10 +44,14 @@ def _full_scale():
         ("finance / IBM AMLworld HI-Small", ds.raw("amlworld", "HI-Small_Trans.csv"), ds.AMLWORLD_FETCH),
         ("satellite / ESA-ADB Mission1", ds.raw("esa", "ESA-Mission1"), ds.ESA_FETCH),
         ("telecom / CIC-IDS2017 (Engelen-corrected)", ds.raw("cicids2017-fixed"), ds.CICIDS_FETCH),
-        # 26.7 MiB compressed, so unlike its neighbours this one is genuinely cheap to fetch. It is
+        # 44.4 MiB compressed, so unlike its neighbours this one is genuinely cheap to fetch. It is
         # still listed rather than downloaded: `make data` reports and prints commands, and one
         # corpus quietly breaking that rule is how the rule stops being true.
-        ("telecom / 5G-NIDD Combined", ds.raw("5g-nidd", "Combined.csv"), ds.NIDD_FETCH),
+        #
+        # The FIELDS-PRESERVED export, not Combined.csv: same rows, 113 columns against 52, and one
+        # of the extra columns (`IdleTime`) is worth 22 accuracy points. Round 50 changed this.
+        ("telecom / 5G-NIDD fields-preserved",
+         ds.raw("5g-nidd", "fields_preserved", "BTS1_BTS2_fields_preserved.csv"), ds.NIDD_FETCH),
     ]
 
 

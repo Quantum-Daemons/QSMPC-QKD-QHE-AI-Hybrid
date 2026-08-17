@@ -2190,13 +2190,34 @@ Display equations use `$$...$$` and inline uses `` $`...`$ `` - the code-span fo
 visible backticks in a non-rendering viewer and cannot be captured by a stray `$`. GitHub documents
 four delimiter forms and no per-surface difference between them.
 
-**The currency risk was measured, not assumed.** `README.md:43` and `docs/verification-log.md:531`
-use `$` for dollar amounts. GitHub's server-rendered HTML for `main` contains both as literal text
-with zero math markers, against positive controls that do show them - so those lines are safe as
-*observed output*, not as derived from a rule. The widely repeated tokenizer heuristic ("the closing
-`$` must not be followed by a digit") is **NOT FOUND** in any GitHub primary source, and
-`github/cmark-gfm` contains no math extension at all, so there is no specification to cite. Re-scan
-if line 43 is edited.
+**The currency risk was measured, not assumed.** `README.md` and `docs/verification-log.md` use `$`
+for dollar amounts. GitHub's server-rendered HTML for `main` contains both as literal text with zero
+math markers, against positive controls that do show them - so those lines are safe as *observed
+output*, not as derived from a rule. The widely repeated tokenizer heuristic ("the closing `$` must
+not be followed by a digit") is **NOT FOUND** in any GitHub primary source, and `github/cmark-gfm`
+contains no math extension at all, so there is no specification to cite.
+
+**This paragraph cited line numbers and both had drifted.** It named `docs/verification-log.md:531`,
+which carries no `$` at all; the dollar amounts had moved to `:543` and `:545` by Round 49 and to
+`:552` and `:554` by Round 50, twice in two rounds, because every insertion above them moves them
+again. So the evidence for a claim about `$` was a line containing no `$`, and the re-scan condition
+pointed at the wrong place.
+
+Corrected Round 50 by citing the CONTENT instead of the line: the risky configuration is a line
+carrying **two `$` on one line**. Find them with `grep -nP '\$[^$]*\$'` rather than by line number.
+There is exactly one such CURRENCY line in each file - the PQC market sentence in `README.md`
+(*"~$1.6 B ... ~$20.5 B by 2033"*) and the Grand View / Precedence market-spread sentence in
+`docs/verification-log.md` (*"~$2.2B ... $20-30B by 2033-34"*). Re-scan when either is edited.
+
+**That grep also matches deliberate math, and saying "exactly one per file" without qualifying it was
+wrong when first written here.** `docs/verification-log.md` returns two hits: the currency sentence,
+and the QSDC secrecy-capacity inline converted in this same round, which is a `` $`...`$ `` code span
+and is *supposed* to carry two `$`. The two cases are told apart by the backticks, not by the count.
+A reader running the grep will see both, so the distinction belongs here rather than being discovered
+as a surprise - which is how the line-number pointer failed in the first place.
+
+A line number is a pointer into a file that changes; the sentence is a pointer into a file's meaning,
+which is what the claim is actually about.
 
 **Ported, not derived.** `report/technical-report.tex` already typesets five of these correctly; the
 QSDC secrecy capacity existed as **three** ASCII restatements across three files against one correct
@@ -3532,3 +3553,93 @@ visitor-facing copy WAS corrected, because it was false on its own terms rather 
 where the published comparison puts Platt ahead" - the claim Round 46 refuted, in a file Round 46's
 correction never reached. That is Round 48's "landed in one of three copies" defect, found again in
 the paragraph that documented it.
+## Round 50: one column explained the gap, and the round's own claims needed correcting three times
+
+**BUSINESS DOC RECONCILED Round 50.**
+
+Round 49 shipped a model and a claim about it. The model was invisible - it had never been deployed -
+and the claim was wrong about someone else's work. Both are fixed, and the corrections came from
+measurement rather than from re-reading.
+
+### DP7 discharged after sixteen rounds, and the walk found what it was for
+
+The demo box had been left on the Round-48 branch, so Round 49's entire output - including a published
+model - reached no visitor. `scripts/deploy_demo.sh --return-to-main` puts it on `main` at `f555a89`.
+Measured before and after from the served bundle: `index-CvOb630D.js` carried Round 48's `input_space`
+and zero occurrences of `telecom_ids.nidd`; `index-Dxu788k6.js` carries the model, the pin and the
+attribution. All ten pages walked - no `NaN`, no `undefined`, no duplicate headings - and the 5G-NIDD
+model reproduced its recorded metric client-side across all 16,379 published rows at `|delta| 0.00e+0`.
+
+### The 5G-NIDD claim was overstated, and the cause is one column
+
+Round 49 wrote that the published 99.6-99.7% figures are "an anchor rather than a target" and that "it
+is not established that those papers dropped `Unnamed: 0`". Neither sentence had been checked, and
+leakage-aware work on this corpus exists - three papers, now cited in
+`references/5g-nidd-metric-profile.md`.
+
+Measured instead of argued. Binary benign-vs-attack scores **0.7630** against the 9-class **0.7608**,
+so the multiclass structure costs nothing and the whole error budget is one pair: Benign/UDPFlood,
+23.7% of the test split, with all seven other classes contributing 0.23%. The cause is **`IdleTime`**,
+a flow statistic the release's `Combined.csv` export does not carry and its
+`BTS1_BTS2_fields_preserved.csv` does. Refitted on the wide export with every identifier and host
+fingerprint dropped: **accuracy 0.982897, macro F1 0.995019**, Benign recall 0.5345 -> **1.0000**,
+residual error 1.71% and all of it in one direction. Republished at revision `a3cbe059`.
+
+So the published range is reachable **without leakage of any kind**, and Round 49 read a 24-point gap
+as evidence about other people's methods when the larger part of it was its own choice of export. The
+identifier finding stands on its own - four row counters still move the configuration to 0.9997 - but
+it does not explain anyone else's numbers.
+
+### Three of this round's own claims were wrong, and each was caught by checking rather than by review
+
+Recorded because the pattern matters more than the individual figures:
+
+1. **The leak reproduced itself inside the investigation.** The first wide fit returned 0.9997 and was
+   briefly taken as confirmation. The drop list named `SrcId`, `Rank`, `Seq` and `Offset` but not
+   `Unnamed: 0`. Caught only because 0.9997 was suspiciously identical to Round 49's counterfactual,
+   then confirmed with a deliberate control.
+2. **"The other five new columns each score AUC 0.5000" was false.** `Dir` scores 0.9811 and `TcpOpt`
+   0.9433, both above this project's own leak threshold. The true statement is that they are
+   *redundant*, not empty - dropping all six costs 0.2219 against 0.2213 for `IdleTime` alone. That
+   claim had reached five places before it was corrected.
+3. **The proposed explanation for the surviving metric inversion was wrong.** It was written that a
+   small class drags the macro mean down; ICMPFlood scores 1.0000 and *lifts* it. The mechanism is
+   unchanged from before the refit - Benign and UDPFlood carry 77% of rows, so accuracy is dominated
+   by the only pair that confuses while the macro is carried by seven classes at 0.9999 or better.
+
+The inversion itself **persists** and the record says so: macro F1 0.9950 above accuracy 0.9829. What
+changed is its size, from 0.1655 to 0.0121. It was not fixed and is not described as fixed.
+
+### Six models explained their own metrics to nobody
+
+`metric_note` reached the browser inside `config.defaults.json` and had no render path in `web/src/`.
+Six records carry one. The consequence was live: the companion row's caption was the hardcoded string
+"companion - shown so the gap is visible", which asserts the aggregate is the flattering figure -
+false of `telecom_ids.nidd`, whose macro F1 sits above its accuracy. The one model that needed the
+caveat was the one whose caption contradicted it, while the note explaining it was invisible. The
+caption is now derived from the two values it captions.
+
+### Stale figures, and one that was printing the trivial predictor as a score
+
+`README.md` reported medical student accuracy as 0.730769. That is the artifact's own
+`majority_baseline`; the accuracy is 0.769231. Two more were superseded retrains (0.864865 ->
+0.904348, 0.333709 -> 0.376130), and two derived figures moved with them - the all-positive ratio is
+9.6x not 9.3x, and "19x" described the prevalence ratio, not the F1 ratio, which is 6.1x. The whole
+sentence was duplicated verbatim in `docs/verification-log.md` and stale in both; the copy is removed
+rather than corrected twice.
+
+`DATA_LICENSES.md` claimed "the rules now state a licence reason per file". Four of eight reference-PDF
+rules still exclude on size, and `.gitignore`'s own comments say so - two tracked files contradicting
+each other about which rule is in force. Also corrected: "every PDF under `references/` is handed to
+anyone who clones" is false of a working checkout, where 7 of 11 are tracked.
+
+### The checklist had a duplicate this project's own row forbids
+
+`DP8`, added in Round 49, restated `DP7`'s second clause with the same command and the same failure
+history - in the same table as `RT10`, "No two checklist rows assert the same thing in different
+words". Removed. `CS12`'s rationale claimed `CS1` reads the source when `CS1` says "read the network
+panel, not the code"; `QK3` wrote the bare `skr` this file retracts twice. Fourteen rows added for
+gaps the standing request names and the file genuinely lacked, each verified absent first. Recount
+with the file's own regex: **449 rows, 53 prefixes, zero duplicate IDs** - and Round 49's report of
+"377 rows, 40 prefixes" was wrong, from a narrower regex than the file documents.
+
