@@ -33,7 +33,7 @@ path runs a distilled student, not this model.
 | `n_test` | 1523504 |
 | `n_train` | 3554841 |
 | `positive_rate` | 0.00101943 |
-| `wall_clock_s` | 88.2 |
+| `wall_clock_s` | 96.6 |
 
 ## Published baselines this is measured against
 

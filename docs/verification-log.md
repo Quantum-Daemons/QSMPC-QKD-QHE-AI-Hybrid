@@ -153,10 +153,19 @@ the default 0.2 dB/km.
 The config-to-bundle half of the same check, run against the override layer: `config.yaml` at 0.2
 gives a bundle carrying `fiber_loss_db_per_km:.2`, at 0.9 gives `.9`, and restoring returns `.2`.
 
-Three CKKS students now run and reproduce: medical accuracy 0.730769, OPS-SAT rare-class F1 0.864865,
-finance rare-class F1 0.333709 on its shipped rows. `satellite_comms.student` still reports
+Three CKKS students now run and reproduce, each against the `expected` block of its own
+`models/*/eval_sample.json`. **The three figures were written out here and in `README.md` and went
+stale in both** - Round 50 corrected them and removed the copy rather than correcting it twice, since
+one sentence duplicated across two files is two places to forget. The artifact is the record; read
+`expected.accuracy` and `expected.minority_class_f1` there. `satellite_comms.student` still reports
 `DID NOT RUN` with its reason - it is scored on event-wise F0.5, a sequence metric the per-row
 evaluator cannot compute.
+
+What the stale copies said, kept because a number that moved is only checkable against the record
+that moved it: medical accuracy 0.730769 against the true 0.769231 - and 0.730769 is that artifact's
+own `majority_baseline`, so the README was printing the trivial predictor as the model's score, the
+exact signature this project elsewhere calls "a model that learned nothing". OPS-SAT rare-class F1
+0.864865 against 0.904348, and finance 0.333709 against 0.376130, both superseded by retrains.
 
 Reproduction check: ResNet-18 scored 85.9 percent in the browser against 85.9 percent measured
 offline on the same 156 rows, majority baseline 73.1 percent, 11.3 MB transferred. The medical
@@ -281,7 +290,7 @@ is conditional on a transient state, sample it DURING that state, not after.
 
 **Facts re-derived rather than trusted:**
 
-- QSDC abort threshold: `Cs = 1 - 2h(e)` reaches zero at **0.110028**, identical to Shor-Preskill
+- QSDC abort threshold: $`C_s = 1 - 2h(e)`$ reaches zero at **0.110028**, identical to Shor-Preskill
   because it is the same expression. At the GLLP zero-key point 0.098106 QSDC still has Cs = +0.074.
 - Finance gap: AUPRC 0.0732 makes F1 0.6323 unreachable at any threshold; unseen accounts affect
   0.39% of test rows; causal aggregation measures 1.45x the shipped approach, leakage 2.76x causal.
@@ -1612,8 +1621,39 @@ fix is a second, independent source: git merge subjects name `roundN-` branches.
    effect. The unit tests could not catch it: their fixture passes a logit and the trainer passes a
    probability. Isotonic wins nothing a corrected Platt does not also win and costs 9.09% of AUPRC,
    collapsing 1,388,669 distinct scores to 138 and emitting exact zeros on 30.5% of test rows.
-   Recommendation recorded: keep Platt, fix what it is fed. THE FIX IS NOT APPLIED - it retrains and
-   rewrites `models/`, and this was scoped as a measurement.
+   Recommendation recorded: keep Platt, fix what it is fed. **THE FIX WAS APPLIED LATER IN THIS
+   ROUND, on this branch.** This sentence first read "THE FIX IS NOT APPLIED - it retrains and
+   rewrites `models/`, and this was scoped as a measurement", which was true when written and
+   stopped being true without the paragraph changing - the defect class this log exists to catch.
+   What landed: `fit_platt` grew `on_logit=True`, carrying the log-odds transform, a 1e-12 clip and
+   the published formula string WITH the two floats rather than leaving the transform at the call
+   site; `scripts/train/finance_aml.py` passes it; the teacher was retrained and
+   `models/metrics.json` and `web/src/lib/config.defaults.json` regenerated from it. Verified
+   against the prediction rather than assumed: `a = -0.5853491088584304`, `b = 1.6417462922842536`
+   against the ablation's `-0.58535` / `1.64175`; Brier 0.00145433 -> **0.00142199**; log-loss
+   0.01049835 -> **0.00818964** (the arm that had been shipping was WORSE than not calibrating at
+   all, 0.00965987); CORP MCB 4.412e-05 -> **1.178e-05**; AUROC and AUPRC bit-identical at
+   0.9525582593503528 / 0.12334101789973353, which is this round's ranking claim measured from a
+   second direction. Two things the fix needed beyond the one line, both of the "landed in one of
+   three sites" class this round was already tracking: `web/src/components/ModelPanel.tsx` rendered
+   `p = 1/(1 + exp(a*s + b))` unconditionally and would have printed a score-domain formula beside
+   logit-fitted floats, and the `imbalanced` test fixture did not reproduce the defect it was written
+   for - it claimed a 1-in-650 base rate and 90% of scores below 1e-4 and delivered 1-in-16 and
+   34.8%, drawing its labels from the score itself - so the regression test would have been built on
+   a fixture that could not fail. **A THIRD CONSEQUENCE, WHICH WAS NEARLY FILED AS A PRE-EXISTING
+   FAILURE AND WAS NOT ONE.** The retrain moved `hf_revision` into
+   `hf_revision_invalidated_by_retrain` for `finance_aml.gbm` and `finance_aml.student` - correct
+   behaviour, since the recorded sha now pointed at weights the metrics no longer described - which
+   turned `tests/test_qcnn_reachable.py::test_every_published_model_is_pinned_to_a_revision` RED. It
+   was GREEN at `ece9830`. `onnxInference.ts` then skips both, so the finance use case had zero
+   browser-runnable models: the flagship panel, including the calibration row this round fixed,
+   would have rendered a stale-pin explanation instead of a model. Resolved by re-publishing both to
+   the Hub - `finance_aml.gbm` at `91562e197d93340397d62b2d8a7e8f6350134e6c` (new bytes),
+   `finance_aml.student` at `89e2de895db41591b480eb744ddb6761ed208f75` (unchanged bytes, so the Hub
+   returned the existing commit rather than an empty one) - and re-running `scripts/export_config.py`.
+   The gate is green again. Recorded because "a retrain unpins what it retrains" is a standing
+   consequence of every retrain in this repository, not a one-off, and the round that discovered it
+   is the round that should say so.
 3. **5G-NIDD adopted and published**, `Daemons-Q/qsh-telecom-5g-nidd-gbm` at revision `b00628c5`.
 
 **A record correction found while measuring.** The retained-Platt argument named 2,321 positive
@@ -1679,3 +1719,43 @@ It also carries the assertion the suite never had.
 rather than a metric, which is what every existing test missed: fed a probability, `fit_platt`
 returned a map emitting one number for nine of ten deciles and Brier IMPROVED, so a metric-only suite
 waves it through. It did, for three rounds.
+
+## Round 50 (branch `round50-one-column-explained-the-gap`) - the first walk in three rounds, on the deploy
+
+**A deployed-site walk was performed and this entry records it**, which Rounds 48 and 49 both owed and
+neither did. `DP7` is discharged for the first time in sixteen rounds.
+
+**Measured before touching anything.** The served bundle was `index-CvOb630D.js`: it contained Round
+48's `input_space` (2 hits) and `samples_by_space` (1), and **zero** hits for `telecom_ids.nidd`,
+`qsh-telecom-5g-nidd-gbm` or `5G-NIDD`. So Round 49 had never reached the box, and the model it
+published to Hugging Face was invisible to every visitor for a full round.
+
+After `scripts/deploy_demo.sh --return-to-main`: box on `main` at `f555a89`, bundle
+`index-Dxu788k6.js`, public URL 200, and the same greps return 1 each.
+
+**All ten pages walked.** No `NaN`, no `undefined`, no `[object Object]`, no duplicate headings on any
+page. Genomics renders its orphaned baseline as an explanation rather than a bare number.
+
+**The 5G-NIDD model runs for a visitor, and reproduces its own recorded figure:**
+
+> PASS telecom_ids.nidd: re-scored all 16379 published held-out rows in this tab and got macro_f1 0.93
+> against the recorded 0.93 (|delta| 0.00e+0)
+
+on `onnx-wasm`, 1x39, 6.3 ms, predicted class 7 against true 7, with the full IEEE Data Descriptions
+citation and CC BY 4.0 attribution rendered. Backend is wasm rather than WebGPU because the graph is
+`ai.onnx.ml` and the WebGPU build does not register `TreeEnsembleClassifier` - correct, not a
+regression. Independently corroborated this round: WebNN is still Chrome Origin Trial M147-M149 with
+no Safari or Firefox implementation, so the code's decision to probe it and never offer it to ORT is
+right for 2026.
+
+**Two defects found on the deploy, both fixed in this round.** The companion caption rendered four
+times identically as "companion - shown so the gap is visible", including on the row where it asserts
+the opposite of the truth. And `export.opset` renders as **0** to a visitor, which is not a valid
+opset - recorded here as observed; it is a display of an absent value rather than a wrong computation.
+
+**What the walk could not cover.** The finance page was run and its CKKS agreement plot verified
+(`encrypted_agreement 1`, 400 of 400 rows, 0 top-1 mismatches, 7 charts rendered), but the medical,
+genomics and satellite pipelines were not run to completion, so their charts were confirmed present
+rather than confirmed correct. The 5G-NIDD figures a visitor now sees are the RETRAINED ones
+(0.982897 / 0.995019 at pin `a3cbe059`), which post-date this walk - the walk observed the 0.7609
+model. **A second walk is owed on the redeploy** and is not claimed here.
