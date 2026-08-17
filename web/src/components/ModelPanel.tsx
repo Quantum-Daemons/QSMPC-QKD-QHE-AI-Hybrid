@@ -255,14 +255,26 @@ function MetricRows({ spec }: { spec: ModelSpec }) {
           // disclosed. That is true of most models here and FALSE of `telecom_ids.nidd`, whose macro
           // F1 sits above its aggregate accuracy - so the one model that needed the caveat was the
           // one the caption contradicted. Compare the two numbers and say which way round they are.
-          const h = headline.length === 1 ? Number(headline[0][1]) : NaN;
+          // Compare against the DECLARED metric, not against "the only headline". Most records carry
+          // several headline rows - ablations, counterfactuals, linear floors - so a
+          // headline.length === 1 test falls back to the uninformative caption on every model that
+          // has anything to compare, which is all of them. `spec.metric.name` is the one row the
+          // registry says this model is judged on, and it is what the baseline is rendered against
+          // two rows up, so it is the right thing for the companion to be read against too.
+          const declared = headline.find(([k]) => k === spec.metric.name);
+          const h = declared ? Number(declared[1]) : NaN;
           const c = Number(v);
           const known = Number.isFinite(h) && Number.isFinite(c);
+          // Three cases, not two. `telecom_ids.student` records macro_f1 and aggregate_accuracy as
+          // the SAME number, and a two-branch ternary files equality under whichever branch is the
+          // fallback - which would have printed "LOWER than the headline" about two identical values.
           const caption = !known
             ? "companion — the same run reported on a different metric"
-            : c > h
-              ? "companion — higher than the headline, so it is the flattering figure and the headline is the honest one"
-              : "companion — LOWER than the headline here; the aggregate is the pessimistic figure, not the flattering one";
+            : Math.abs(c - h) < 5e-5
+              ? "companion — equal to the headline here, so neither is the flattering figure"
+              : c > h
+                ? "companion — higher than the headline, so it is the flattering figure and the headline is the honest one"
+                : "companion — LOWER than the headline here; the aggregate is the pessimistic figure, not the flattering one";
           return (
             <tr key={k} className="metric-companion">
               <td><code>{k}</code></td>
