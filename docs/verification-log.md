@@ -1759,3 +1759,58 @@ genomics and satellite pipelines were not run to completion, so their charts wer
 rather than confirmed correct. The 5G-NIDD figures a visitor now sees are the RETRAINED ones
 (0.982897 / 0.995019 at pin `a3cbe059`), which post-date this walk - the walk observed the 0.7609
 model. **A second walk is owed on the redeploy** and is not claimed here.
+
+## Round 51 (branch `round51-the-caption-swapped-one-wrong-claim-for-another`) - the second walk, and it found the fix from last round
+
+**The walk Round 50 recorded as owed was performed**, on `index-CYDapC47.js` at `62e6b79` - the
+content that merged as `9adcdf0`, so the served bundle is the merged tree even though the box's branch
+pointer still needs returning. All five use-case pipelines were RUN to completion this time, which is
+what Round 50 could not claim: it ran finance only and confirmed the other four as present.
+
+| use case | published models | encrypted agreement | charts | NaN / dup headings |
+|---|---|---|---|---|
+| finance_aml | PASS gbm, PASS student | 1 (400/400) | 7 | none |
+| medical_fl | PASS resnet18, resnet50, student | 1 | 1 | none |
+| genomics | correctly reports no published model | **0.8** - see below | 6 | none |
+| telecom_ids | PASS qml, PASS nidd (16,379 rows) | n/a | - | none |
+| satellite_comms | PASS telemanom, opssat, opssat_student | none - structural | 2 | none |
+
+**Genomics `encrypted_agreement` 0.8 is not a defect, and the run log already says why.** Five of
+thirty rows flip, and the page reports that seven of the thirty are scored IDENTICALLY across classes
+by the plaintext model itself, so their outcome is decided by tie-breaking; over the 23 rows the model
+actually decides, agreement is 1. The widest plaintext margin among the five flipped rows is
+**0.000e+0** - they are exact ties - and max absolute CKKS error is 8.277e-10, about 30 bits. The
+encryption did not disagree with anything; it broke ties differently.
+
+**But the metric row renders a bare 0.8** beside finance and medical at 1.0, and the sentence that
+makes it readable is in the run log rather than beside the number. That is the same defect class as
+`metric_note` rendering nowhere: a figure shipped without the caveat that makes it interpretable.
+Recorded, not yet fixed.
+
+### Round 50's own fix was wrong, and the deployed site is what showed it
+
+Round 50 replaced a hardcoded companion caption - "shown so the gap is visible", which asserts the
+companion is always the flattering number - with one DERIVED from the values. Deriving the direction
+was right. Attaching an interpretation to it was not.
+
+Measured on the deploy: `medical_fl.resnet18` renders `auc` 0.9147 as its declared metric and
+`accuracy` 0.8654 as the companion, and the caption announced the accuracy as **"the pessimistic
+figure, not the flattering one"**. AUC is rank-based and accuracy threshold-based; on an imbalanced
+split AUC sits above accuracy by construction, and neither is pessimistic about the other. That
+model's own `metric_note` - made visible by the same round - says *"Do not read the accuracy against
+the AUC baseline"*. So the new caption contradicted the caveat it had been written to reveal.
+
+Flattering-versus-pessimistic only means anything when both rows estimate the same quantity on the
+same scale, and comparability is not decidable from the key names. The caption now states the
+RELATION and stops: "above `auc` here", "below `macro_f1` here", "equal to `macro_f1` here", and it
+points to the note where one exists. The relation is a fact; the reading is a judgement, and the
+judgement now has `metric_note` to live in.
+
+Three rounds running, this caption has been the same defect in three forms: a hardcoded claim, a
+derived claim that over-reached, and now a stated relation. The pattern is asserting an
+interpretation the code has not checked.
+
+**`DP7` is NOT discharged this round.** The return-to-main deploy was blocked by a local permission
+control, so the box remains on the Round 50 branch. The served content is the merged tree, so no
+visitor sees anything stale; what is wrong is the branch pointer, and it is recorded here rather than
+left to be discovered.
