@@ -53,7 +53,7 @@
     "export": {
       "fp32_bytes": 4706288,
       "int8_skipped_reason": "tree ensemble: parameters live in node attributes, not weight tensors, so dynamic int8 quantisation has nothing to quantise",
-      "opset": 0
+      "opset": null
     },
     "git_sha": "67138f8-dirty",
     "hf_revision": "91562e197d93340397d62b2d8a7e8f6350134e6c",
@@ -414,7 +414,7 @@
       "onnx_domains": [
         "ai.onnx.ml"
       ],
-      "opset": 0
+      "opset": null
     },
     "framing": "Real 5G network traffic, 9 attack classes, 47 flow-statistic features. This is a NETWORK-LAYER model and a different task from the QKD-layer classifier on the same page - no shared labels, no shared features, so the two scores are not a comparison. IT IS FITTED ON THE FIELDS-PRESERVED EXPORT (113 columns) AND WAS FITTED ON Combined.csv (52) UNTIL ROUND 50, which is the single most important thing to know about the numbers here: the same rows and the same classes, but the narrow export omits `IdleTime` and that one column is worth 22 points of accuracy. `idle_time_ablation` re-measures this every run by refitting without it, and the result reproduces what this model used to score. Two controls are recorded beside the headline and both are worth more than the headline. `idle_time_ablation` says the old weakness was a choice of export, not a property of the corpus. `leak_counterfactual_accuracy` says that restoring four integer row counters takes accuracy to about 0.9997, which is not a better model but a leak.",
     "git_sha": "c89ff94-dirty",
