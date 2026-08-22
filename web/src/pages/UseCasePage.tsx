@@ -1,4 +1,4 @@
-import { EncryptedAgreementChart, VerificationChart } from "../components/VerificationChart";
+import { EncryptedAgreementChart, NoEncryptedComparison, VerificationChart } from "../components/VerificationChart";
 import type { EncryptedAgreementPlot } from "../components/VerificationChart";
 import { useRef } from "react";
 import { Link, useParams } from "react-router-dom";
@@ -172,6 +172,8 @@ function UseCaseView({ usecase }: { usecase: string }) {
           <EncryptedAgreementChart
             plot={artifacts.encrypted_agreement_plot as EncryptedAgreementPlot} />
         </div>
+      ) : hasRun ? (
+        <NoEncryptedComparison usecase={usecase} />
       ) : null}
 
       {artifacts?.verification?.plot ? (
