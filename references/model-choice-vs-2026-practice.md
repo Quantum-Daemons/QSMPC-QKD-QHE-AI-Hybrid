@@ -22,9 +22,13 @@ distribution is lopsided:
 This project publishes an XGBoost teacher and a 33-parameter logistic student under CKKS. That is
 squarely what the field evaluates, and the absence at the bottom of that table is not for want of
 looking: encrypted-transformer machinery is mature (EncFormer arXiv:2604.09975; AEGIS
-arXiv:2604.03425) and tabular foundation models are mature, but every verified encrypted-deep-model
+arXiv:2604.03425) and tabular foundation models are mature, but every verified encrypted **transformer or tabular-foundation-model**
 paper benchmarks NLP or vision - GLUE, SST-2, Rotten Tomatoes, CIFAR - never a finance tabular or
-transaction benchmark.
+transaction benchmark. **Scoped in Round 55, because the unrestricted version was falsified by a
+paper this same file cites 120 lines below:** TGHE (arXiv:2606.26664) runs a CKKS-encrypted GNN on
+DGraphFin, which is a finance fraud graph. The claim that survives is about the architecture
+classes the table above actually counts, and a universal quantifier is only ever as good as the
+search behind it - the second time this round that reading has been forced.
 
 **The papers give three reasons themselves, and they reinforce each other.**
 

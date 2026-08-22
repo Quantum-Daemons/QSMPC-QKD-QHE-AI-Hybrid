@@ -1,7 +1,20 @@
 """Quantum QSMPC-FHE private-inference benchmark path.
 
-Evaluates the quantum path: a QHE-protected QCNN private inference (QOTP + Clifford+T
-QCNN), recording latency, T-gate count, qubit overhead and -- crucially -- the
+Evaluates the quantum path: a QHE-protected QCNN private inference (QOTP + a parameterised
+RY/RZ/CNOT circuit), recording latency, an ESTIMATED T-gate budget, qubit overhead and -- crucially
+-- the
+
+CORRECTED ROUND 55, AND THE CORRECTION HAD ALREADY BEEN MADE ELSEWHERE. This said "Clifford+T QCNN"
+and "T-gate count". `qsh/qhe/qcnn.py` builds no T gates at all - the circuit is RY/RZ rotations and
+CNOT entanglers - and `t_count()` is a Solovay-Kitaev BUDGET, `ceil(3*log2(1/eps))` per rotation
+times the parameter count, which its own docstring calls "rough" and "-ish". At 8 qubits it returns
+630, a number no gate list contains. `report/build_data.py` records this correction as *fixed* and
+`docs/deliverable-verification.md` names README and architecture.md as the two files corrected. This
+module was the third copy, and its docstring is what a reader of this code sees first.
+
+The browser row is different and is genuinely counted: 56 T-gates from an actual gate list. So the
+two rows of one table mean different things by "T-gates", which `BenchmarkPanel` now says.
+
 *information-theoretic* security model (QOTP perfect hiding), which the classical
 RLWE path cannot match. The Rate-1 QFHE ciphertext/plaintext ratio is also measured
 to contrast communication efficiency.
