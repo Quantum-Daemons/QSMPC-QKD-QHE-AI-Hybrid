@@ -3708,3 +3708,45 @@ The return-to-main deploy was blocked by a local permission control. The served 
 tree, so nothing a visitor sees is stale - what is wrong is the box's branch pointer. Recorded here
 rather than left to be discovered, and it carries to Round 52.
 
+### Four published models were distributing work whose licence conditions were unmet
+
+Found while checking dataset commercial-use eligibility, which is a different question and is how it
+surfaced at all. Two corpora sit under licences that REQUIRE attribution and carried an empty credit
+line:
+
+| corpus | licence | published models affected |
+|---|---|---|
+| ESA Anomaly Dataset (ESA-ADB) | **CC-BY-3.0-IGO** | `satellite_comms.telemanom`, `satellite_comms.student` |
+| IBM AMLworld HI-Small | **CDLA-Sharing-1.0** | `finance_aml.gbm`, `finance_aml.student` |
+
+All four are live on the Hub, so this is an unmet condition on distributed artifacts rather than an
+untidy record. **The two clauses are not the same thing and the fix should not blur them**: CC BY 3.0
+IGO is an author-credit requirement; CDLA-Sharing-1.0 section 3.1 is a notices-must-travel
+requirement. Both warrant the credit line; only the first is credit in the CC sense, and describing
+CDLA as an attribution licence would be over-claiming in the opposite direction from the original
+defect.
+
+**This is the EIGHTH instance of one defect class, and the seventh was the fix that caused it.**
+Round 49 added `DatasetSpec.attribution` and backfilled what it called "all four CC BY corpora in the
+same commit", explicitly reasoning that adding it for one corpus is this project's most-repeated
+mistake. It matched on the literal string `CC-BY-4.0`. The two corpora whose licences are SPELLED
+differently - `CC-BY-3.0-IGO` and `CDLA-Sharing-1.0` - are exactly the two it missed. They then stayed
+missed for two rounds because every other corpus was correct, so no page looked wrong and no gate
+fired.
+
+`tests/test_every_attribution_licence_carries_its_credit.py` matches the licence FAMILY (`CC-BY`,
+`CC BY`, `CDLA-SHARING`) instead of a literal, so a corpus added tomorrow under `CC-BY-SA-4.0` or any
+IGO port is in scope the day it lands. CC0 and public-domain are explicitly waived, so the gate's
+silence about them is a recorded decision rather than an oversight. Seeded both ways.
+
+**A second finding, which explains how the ESA-ADB gap was possible.** The CC BY 3.0 IGO term appears
+on the Zenodo landing page and is ABSENT from Zenodo's REST metadata, which returns no licence field
+at all. An API-only adjudication reads this corpus as unlicensed - the same failure shape as Round
+47's 5G-NIDD error, where a mirror's silence was read as the source's silence. Recorded on the model
+card so the next reader does not repeat it.
+
+**The registry fix alone does not discharge the condition.** Hub cards are generated, so the credit
+reaches the published artifact only on a republish. Fixing the record and not republishing would leave
+four uncredited artifacts and a repository that believes otherwise - which is the failure this round
+is about, one layer up.
+
