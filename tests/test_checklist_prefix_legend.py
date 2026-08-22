@@ -83,3 +83,58 @@ def test_every_prefix_in_use_is_explained(doc: str) -> None:
         "The legend already says to regenerate rather than hand-edit. It drifted five families "
         "behind anyway, which is why this test exists rather than a third reminder."
     )
+
+
+def test_no_row_id_is_used_twice():
+    """The guard the document says exists and did not.
+
+    The legend's own history paragraph ends: `RG1`-`RG4` were two families at once - "fixed by
+    renaming the newer one to `AR`, and **by making the build fail rather than trusting anyone to
+    notice**". Nothing implemented that. No test, no script and no Makefile target scanned for
+    duplicate row IDs, so the only thing standing between a collision and the document was whoever
+    happened to run `sort | uniq -d` by hand.
+
+    Round 55 alone produced FOUR collisions - `CS13`, `CS14`, `MN7`, `QS9`-`QS11`, `RG12`, `RG14` -
+    every one caught by a manual scan and none by a gate. That is the failure this file's own
+    docstring names: "the rule is right, greppable, and has no executor". It had one more executor
+    than the rules it was written about, and one fewer than it claimed.
+
+    WHY A DUPLICATE MATTERS rather than merely being untidy: every cross-reference in this document
+    is by ID, `RS36` says "go back to `RS0`", the WS index names rows by ID, and the register cites
+    them. Two rows sharing an ID makes every reference to it ambiguous, and the second row is
+    invisible to anyone who searches, finds the first, and stops.
+    """
+    text = DOC.read_text() if DOC.exists() else ""
+    if not text:
+        pytest.skip(
+            "LOCAL-ONLY GATE, SKIPPED. docs/browser-verification-checklist.md is gitignored by "
+            "design, so this check is a no-op anywhere the file is absent.")
+
+    # The document's own row-ID pattern, `[a-z]?` included - the suffix `RS2b` uses. Dropping it
+    # once already blinded a scan to exactly the collision a suffix makes likely.
+    ids = re.findall(r"^\| ([A-Z]{1,3}[0-9]{1,3}[a-z]?) \|", text, re.M)
+    assert len(ids) > 300, (
+        f"only {len(ids)} row IDs parsed, which is far below this document's size - the row format "
+        "changed and this scan is no longer looking at the rows. Re-derive the pattern before "
+        "trusting a green result from it.")
+
+    seen: dict[str, int] = {}
+    dupes: list[str] = []
+    for line_no, line in enumerate(text.splitlines(), 1):
+        m = re.match(r"^\| ([A-Z]{1,3}[0-9]{1,3}[a-z]?) \|", line)
+        if not m:
+            continue
+        rid = m.group(1)
+        if rid in seen:
+            dupes.append(f"{rid} at lines {seen[rid]} and {line_no}")
+        else:
+            seen[rid] = line_no
+
+    assert not dupes, (
+        "these row IDs are used more than once:\n  " + "\n  ".join(dupes)
+        + "\n\nEvery cross-reference in this document is by ID, so a collision makes each reference "
+        "to it ambiguous and hides the second row from anyone who searches and stops at the first. "
+        "Renumber the NEWER row to the next free number in its family:\n"
+        "    grep -oE '^\\| <PREFIX>[0-9]+' docs/browser-verification-checklist.md \\\n"
+        "      | grep -oE '[0-9]+' | sort -n | tail -1"
+    )

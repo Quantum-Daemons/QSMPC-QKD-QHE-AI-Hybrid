@@ -2062,11 +2062,25 @@ export function runClientPipeline(
         // emitted qsdc_error_rate, qsdc_secrecy_capacity and qsdc_eavesdrop_detected - delivering
         // telemetry over the quantum channel the run had just said did not exist. QSDC is a quantum
         // direct-communication protocol; there is no PQC-only version of it to fall back to.
+        // A LABELLED BLOCK, NOT `break`. `break` inside a `switch` case exits the whole case, so
+        // selecting the PQC-only profile on satellite did not merely skip QSDC - it skipped the
+        // anomaly verdict, the entire SHAP panel and the published-model row that follow, and
+        // `usePipelineRun` offers `pqc-only` on every use case. The page lost four panels and said
+        // nothing about why.
+        //
+        // That contradicts the comment on the very block it was skipping, which argues at length
+        // that the step "scores a window of the BUNDLED corpus, not the telemetry the channel just
+        // delivered, so it has no dependency on whether QSDC aborted". Round 31 moved that block out
+        // of `if (!abort)` for exactly this reason and left it inside the PQC-only return - the same
+        // fix, one of two call sites, which is this project's most-repeated shape.
+        qsdc: {
         if (config.qkd === "pqc-only") {
           emit("log", stage, "QSDC direct telemetry skipped (PQC-only profile): QSDC carries the "
             + "message on the quantum channel itself, so with no quantum channel there is nothing "
-            + "to send it over. The payload travels under the PQC session key instead.");
-          break;
+            + "to send it over. The payload travels under the PQC session key instead. The telemetry "
+            + "anomaly verdict and its explanation still run below: they score the bundled corpus, "
+            + "not the delivered payload.");
+          break qsdc;
         }
         metric(stage, "inference_provenance", "simulated");
         metric(stage, "inference_backend", "analytic free-space channel model (quantumSim)");
@@ -2176,6 +2190,7 @@ export function runClientPipeline(
             : `QSDC ABORTED: secrecy capacity ${secrecy.toFixed(4)} <= 0 at error ${e.toFixed(4)} `
               + `with g=${g.toFixed(1)} (${lossDb.toFixed(1)} dB) — this link closes at `
               + `${secrecyNoEve.toFixed(4)} without Eve, so the loss is attributable — telemetry withheld`);
+        }   // end qsdc: everything below scores the BUNDLED corpus and runs on both profiles
         {
           // REAL NASA SMAP/MSL telemetry + the real linear anomaly model, scored in-browser. The
           // satellite flow has no private_inference stage, so this is where the anomaly verdict is
@@ -2353,7 +2368,22 @@ export function runClientPipeline(
         // clientIDS genuinely trains an 8-class softmax in this tab, so the timing and the F1 are
         // measured. The *data* is synthetic, which the run logs separately — measured computation
         // over synthetic input is not the same claim as measured performance on real traffic.
-        metric(stage, "inference_provenance", "measured-wasm");
+        // `measured-js`, NOT `measured-wasm`. `clientIDS.ts` imports only `idsCfg` and `rng`; its
+        // training loop is `Math.exp`/`Math.max` arithmetic and `rng` is a JS LCG. No wasm module is
+        // instantiated anywhere on this path.
+        //
+        // The twin was corrected for this precise reason and carries the reason in its own comment -
+        // "Claiming WASM here made every pipeline run on every page render 'MEASURED (local WASM)'
+        // without a wasm module ever being instantiated" - and `ProvenanceBadge.tsx` repeats it:
+        // "The claim was wrong in the direction that flatters." That fix reached one of the two
+        // sites. Telecom has no `private_inference` stage, so nothing downstream overwrote it, and
+        // the badge rendered "MEASURED (local WASM) / Computed in this browser tab on the
+        // WebAssembly runtime" for a plain-JS loop.
+        //
+        // Downgrading this does NOT downgrade the published ONNX model, which gets its own badge and
+        // genuinely does run on the wasm runtime - the same convention the `private_inference` twin
+        // follows when it publishes `measured-js` and then goes on to run node-seal CKKS.
+        metric(stage, "inference_provenance", "measured-js");
         metric(stage, "inference_backend", "in-browser softmax training (clientIDS), synthetic telemetry");
         // genuine in-browser IDS: softmax logistic trained + scored on the Al-Kuwari-2026 attack signatures.
         // Training volume per class = config.n_per_class (Parameters panel), so it genuinely shifts acc/F1.
@@ -2830,7 +2860,13 @@ export function runClientPipeline(
           } else {
             emit("log", stage, `private inference (REAL in-browser FHE, ${config.model_size ?? "medium"}/${config.workload ?? "linear"}): `
               + `class=${real.prediction}; node-seal CKKS ${r2(real.fheMs * bscale)} ms + secret-sharing MPC ${r2(real.mpcMs * bscale)} ms `
-              + `(measured per-op x${r1(bscale)} arch scale; real unit ${r2(real.fheMs)}/${r2(real.mpcMs)} ms, ct=${real.ctBytes}B), ONNX ${clientMs} ms`);
+              + `(measured per-op x${r1(bscale)} arch scale; real unit ${r2(real.fheMs)}/${r2(real.mpcMs)} ms, ct=${real.ctBytes}B), `
+              // "plaintext reference", NOT "ONNX". `clientMs` times `privateInference`, which has had
+              // no ONNX tier since Round 17 and says so in its own comments; its body is two plain-JS
+              // dot products. The genuine ONNX latency (`published_inference_ms`) lands in the SAME
+              // stage log, so this line carried two ONNX-labelled numbers differing by orders of
+              // magnitude. The sibling emit fifteen lines below already says "client compute".
+              + `plaintext reference ${clientMs} ms`);
           }
         } else {
           // honest last resort: node-seal genuinely unavailable here (e.g. no WASM) — representative figure, logged
