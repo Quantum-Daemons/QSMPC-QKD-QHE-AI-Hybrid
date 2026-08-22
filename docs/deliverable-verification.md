@@ -187,7 +187,7 @@ encrypted convolution and reports the rotation count it actually executed.
 ### A protocol implementation
 
 Verified when the construction's own constraints are checked, not merely quoted. QSMS is defined
-over GF(d) with d prime and n <= d <= 2n; the shipped config pinned d = 4099 for n = 7, which
+over $`GF(d)`$ with $`d`$ prime and $`n \le d \le 2n`$; the shipped config pinned $`d = 4099`$ for $`n = 7`$, which
 satisfied "prime" and "exceeds n" and nothing else, and silently disabled the exact statevector
 simulation the UI described. Where two of a construction's requirements genuinely conflict - here,
 the field bound against the sum not wrapping - the run records which trade it made rather than one
@@ -2296,7 +2296,7 @@ Martin & Zbinden, Appl. Phys. Lett. 112, 171104, 2018)"*. Two failures, and the 
 one.
 
 **The attribution.** That paper states no positivity threshold anywhere. It compares the 1-decoy
-against the 2-decoy protocol for privacy-amplification block sizes n_Z from 1e5 to 1e11, and its own
+against the 2-decoy protocol for privacy-amplification block sizes $`n_Z`$ from $`10^5`$ to $`10^{11}`$, and its own
 sentence is that the 1-decoy approach wins *"unless a really big (> 10^11) or really small (< 10^5)
 PA block size is applied"*. A number was attributed to a paper that does not contain it, and the
 citation is what stopped anyone checking.
@@ -2315,7 +2315,7 @@ datum. It never corroborated that band. It agrees with the corrected figure, and
 next sentence for three rounds.
 
 **How accurate our own number is, quoted wherever the threshold is quoted.** Validated against Rusca
-et al.'s published Table I (SKR at n_Z = 1e7 for 26 / 46 / 56 / 64 dB), this implementation is
+et al.'s published Table I (SKR at $`n_Z = 10^7`$ for 26 / 46 / 56 / 64 dB), this implementation is
 CONSERVATIVE by roughly 2-3x at moderate loss and by more at high loss, even after optimising the
 intensities and the basis bias as the paper describes. Its threshold is therefore an UPPER bound on
 what is required and is stated as an order of magnitude, never to two figures. What survives that
@@ -2547,7 +2547,7 @@ would leave the propagation unexplained. What this round BUILT, recorded here:
 - **`src/qsh/qkd/finite_key.py`** implements Rusca et al.'s equations (1), (3), (4), (A16), (A19),
   (A21), (A22), (A23) of arXiv:1801.03443v2, each cited by number, so the repository computes the
   threshold it used to cite a band for.
-- **It is checked against the paper's own Table I** - secret key rate at n_Z = 1e7 for 26 / 46 / 56 /
+- **It is checked against the paper's own Table I** - secret key rate at $`n_Z = 10^7`$ for 26 / 46 / 56 /
   64 dB - in `tests/test_finite_key_reproduces_the_published_table.py`. It comes out CONSERVATIVE by
   roughly 2-3x at moderate loss and more at high loss, so the threshold it computes is an upper bound
   on what is required. It is therefore quoted everywhere as an order of magnitude, **~1e5 sifted
@@ -2815,7 +2815,7 @@ RY angle - and take `max |delta|` of `circuit()`:
 | `qcnn_finance` | **5.96e-08** | 9.89e-01 | 4.82e-02 |
 | `qcnn_medical` | **8.94e-08** | 5.12e-01 | 7.16e-02 |
 
-The three pre-fix RZ figures are float32 ULPs - 2^-24, 2^-23 and 1.5 * 2^-24 - so the angles were
+The three pre-fix RZ figures are float32 ULPs - $`2^{-24}`$, $`2^{-23}`$ and $`1.5 \times 2^{-24}`$ - so the angles were
 inert rather than weak, which is the claim. `8.94e-08` belongs to MEDICAL under this recipe, not to
 finance as the withdrawn sentence had it. These angles were added earlier in this same round, for
 faithfulness to Cong, Choi & Lukin's "a unitary F on the remaining qubits". Half of what was added
@@ -3070,14 +3070,14 @@ tagged-fraction bound (QIC 4, 325). None of the asserted numbers originated here
 
 | Assertion | Published | Measured |
 |---|---|---|
-| tagged fraction at mu = 0.1, zero distance | > 1 | 1.0417 |
+| tagged fraction at $`\mu = 0.1`$, zero distance | > 1 | 1.0417 |
 | decoy max distance | over 140 km | 142.2 km |
 | non-decoy max distance | about 42 km | 39.8 km |
-| decoy R/eta, flat, linear in eta | 0.11 | 0.1136 |
-| non-decoy R/eta^2, flat, quadratic | 0.15 | 0.1510 |
+| decoy $`R/\eta`$, flat, linear in $`\eta`$ | 0.11 | 0.1136 |
+| non-decoy $`R/\eta^2`$, flat, quadratic | 0.15 | 0.1510 |
 
 The trap this closed is worth keeping: the published curves are plotted for efficient BB84 where the
-sifting factor q tends to 1, while this project runs standard BB84 at q = 1/2. Reproducing them with
+sifting factor $`q \to 1`$, while this project runs standard BB84 at $`q = 1/2`$. Reproducing them with
 q = 1/2 gives values at exactly HALF the published ones - close enough to read as a fitting
 discrepancy, wrong enough to void the comparison. `q_sift` is explicit and a test pins the factor.
 
@@ -3483,7 +3483,7 @@ The calibration set carries **801** positive events, not 2,321. 2,321 is the TES
 `models/metrics.json` records `positives_calibration: 801` one line above the sentence that says
 2,321. Correcting a wrong denominator with a wrong numerator is the same defect at one remove.
 
-And `fit_platt` is handed a **probability**, not a log-odds. Its map `p = 1/(1+exp(a*s+b))` is linear
+And `fit_platt` is handed a **probability**, not a log-odds. Its map $`p = 1/(1 + e^{a s + b})`$ is linear
 in `s`; 90% of the teacher's scores are below 1e-4, so with `a = -7.8378` the map is constant to four
 decimals across nine of ten deciles and returns **0.00090148** for all of them. Its entire output
 support is [0.00090148, 0.695715] - it cannot express a risk below 1 in 1,109 for any input, on a
