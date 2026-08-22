@@ -2580,3 +2580,35 @@ check can discriminate here, because the shipped source is fair by construction;
 Python twin asserts on the call with an `ast` parse. The browser check now does the same, with
 comments stripped first - the block explaining why `raw` is required contains the string
 `minEntropyMcv(raw)`, so a plain grep matches its own documentation.
+
+### Round 56, continued: two labels that claimed more than their evidence, and my own gate that reached three of four
+
+**The badge reported an adapter probe as an execution provider.** `status.backend` is
+`gpu ? "onnx-webgpu" : "onnx-wasm"`, where `gpu` is `hasWebGPU()`. The comment above it said "the
+provider that RAN" - and **that same comment records fixing this exact class once already**, for
+WebNN: *"a label describing something the code does not do, which is the exact defect this project
+keeps finding."* The fix reached the WebNN half of one ternary and not the WebGPU half.
+
+What the probe establishes is real and worth reporting: a non-software adapter exists (rasterisers
+are declined by name, on a measured 300x) and the WebGPU build loaded. What it does not establish is
+node placement - ORT falls back **per node** to the WASM floor for unregistered operators, which is
+the same mechanism the `ai.onnx.ml` note two sentences earlier depends on. `README.md` asserted both
+facts three lines apart: that `ai.onnx.ml` models take WASM whatever the adapter says, and that the
+reported backend is "never a false webgpu that silently ran on WASM".
+
+**What I did NOT establish, stated because the audit asserted it and I could not reproduce it.** The
+audit named specific unregistered operators per model. I confirmed the graphs - int8 is PREFERRED,
+and `medical_breastmnist_resnet18`'s int8 build is 20x `ConvInteger` + 18x `DynamicQuantizeLinear`,
+`satellite_telemanom`'s is Slice/Concat/Transpose/Shape - but ORT 1.27.0's WebGPU op registry is not
+enumerable from the shipped bundle, so **which of those fall back is unmeasured here.** The comments
+now state the mechanism and stop short of the per-model verdict rather than repeating a claim I
+cannot support. Closing it needs `endProfiling()` and a third badge state, because two cannot express
+a partial answer.
+
+**And the licence gate I wrote this session reached three of four surfaces.** `README.md:863` read
+`MedMNIST v2 **BreastMNIST** (CC-BY-4.0)` - a proper PREFIX of the registry string, cut exactly where
+the hedge begins - and the file carried zero occurrences of BUSI, unverifiable or asserted-by. The
+gate written to stop a downgrade reaching only some copies was hardcoded to `DATA_LICENSES.md` and
+`prep_model_inputs.py`, so it could not see the file most readers open first. **The same shape as the
+defect it exists for, one level up:** a fix that covers the places the fixer happened to be looking
+at. Extended to README's table and seeded - reverting the truncation now fails with the line number.

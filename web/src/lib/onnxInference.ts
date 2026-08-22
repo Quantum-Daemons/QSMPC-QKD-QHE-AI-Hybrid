@@ -346,11 +346,31 @@ export async function loadModel(usecase: string, modelKey?: string): Promise<boo
         `ONNX session creation exceeded ${SESSION_CREATE_TIMEOUT_MS / 1000}s — either the graph `
         + `uses operators this browser cannot execute, or it is too large for this device`,
       );
-      // Report the provider that RAN, not a capability that was probed. This said "onnx-webnn"
-      // while the WebNN provider was not even in the list -- a label describing something the code
-      // does not do, which is the exact defect this project keeps finding. `webnn` is still probed
-      // and recorded separately as an environment fact.
-      // The provider that RAN. webnn is reported separately because it is available and unused.
+      // THE PROVIDER REQUESTED AND ACCEPTED - not, as this said for several rounds, "the provider
+      // that RAN".
+      //
+      // The comment here already recorded fixing this exact class once: it said "onnx-webnn" while
+      // the WebNN provider was not even in the list, "a label describing something the code does not
+      // do, which is the exact defect this project keeps finding". **That fix reached the WebNN half
+      // of one ternary and not the WebGPU half.**
+      //
+      // What `gpu` establishes is real and worth reporting: `requestAdapter()` returned an adapter,
+      // it is not a software rasteriser (declined by name above), and the WebGPU build loaded. What
+      // it does NOT establish is node placement. ORT assigns nodes to execution providers in
+      // preference order and falls back PER NODE to the WASM floor for operators the WebGPU EP does
+      // not register - which is the same mechanism the `ai.onnx.ml` note above depends on. A graph
+      // can therefore run partly on each while this field shows one state.
+      //
+      // Verified on the shipped artefacts: the int8 build is PREFERRED (see the artifact selection
+      // above), and `medical_breastmnist_resnet18`'s int8 graph is 20x ConvInteger + 18x
+      // DynamicQuantizeLinear, `satellite_telemanom`'s is Slice/Concat/Transpose/Shape arithmetic.
+      // Whether ORT 1.27.0's WebGPU EP registers those was NOT established here - the op registry is
+      // not enumerable from the shipped bundle - so this comment states the mechanism and stops
+      // short of a per-model verdict rather than asserting one it cannot support.
+      //
+      // Closing it properly needs `startProfiling()`/`endProfiling()` or ORT's "kernel not found in
+      // registries" log at `logSeverityLevel: 1`, and a third state, because two cannot express a
+      // partial answer.
       status.backend = gpu ? "onnx-webgpu" : "onnx-wasm";
       status.webnnAvailable = webnn;   // proven by execution, but deliberately not used
       status.loaded = true;
@@ -865,7 +885,9 @@ export interface PublishedModelRun {
   /** The 40-char commit the weights were fetched from. Printed, so the claim is checkable. */
   revision: string;
   graph: string;
-  /** "onnx-webgpu" or "onnx-wasm": the execution provider that actually ran, not the one requested. */
+  /** "onnx-webgpu" or "onnx-wasm": the execution provider REQUESTED and whose adapter was accepted.
+   *  Not a per-node placement claim - ORT falls back per node to the WASM floor for unregistered
+   *  operators, so a graph may run partly on each. See the note at the assignment. Not the one requested. */
   backend: string;
   inputShape: number[];
   rowIndex: number;
