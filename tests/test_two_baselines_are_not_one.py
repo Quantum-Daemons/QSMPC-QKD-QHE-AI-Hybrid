@@ -98,10 +98,48 @@ def test_the_chart_reads_the_registry_field_not_the_evaluator_field():
         "majority-class accuracy, all-positive F1 or persistence MAE - not prior published research.")
 
 
+def test_at_least_one_shipped_model_can_actually_render_the_comparison():
+    """The gate Round 54 did not have, and its absence let a dead feature ship.
+
+    Round 54 drew the published baseline as a reference line on the per-class-F1 chart and asserted
+    that the value came from `spec.metric.baseline` rather than `res.baseline`. Both assertions were
+    true and the line rendered NOWHERE: every model carrying a baseline plots as a PR curve, and every
+    model plotting per-class F1 is a telecom multiclass model whose baseline is deliberately null. The
+    intersection was empty and nothing checked it, because the gate tested the MECHANISM and not the
+    OUTCOME.
+
+    So this asserts reachability: at least one shipped model must have both a published baseline and a
+    measured value for the SAME declared metric, or the comparison chart is unreachable and the
+    feature is decoration.
+    """
+    cfg = _config()
+    drawable = []
+    for specs in cfg.get("models", {}).values():
+        for spec in specs:
+            metric = (spec.get("metric") or {})
+            name, base = metric.get("name"), metric.get("baseline")
+            measured = (spec.get("achieved") or {}).get(name)
+            if isinstance(base, (int, float)) and isinstance(measured, (int, float)):
+                drawable.append(f"{spec['key']}: {name} measured {measured} vs published {base}")
+    assert drawable, (
+        "no shipped model has BOTH a published baseline and a measured value under the same declared "
+        "metric, so `MeasuredAgainstPublished` can never draw. A comparison nobody can see is not a "
+        "comparison - check `metric.name` against the keys in `achieved` before adding the chart back."
+    )
+    assert len(drawable) >= 3, (
+        f"only {len(drawable)} model(s) can render the comparison: {drawable}. That is thin enough "
+        "that a single registry edit would make the feature unreachable again.")
+
+
 def test_the_published_line_is_labelled_with_its_metric_name():
     """A bare number on an axis is not attributable, and these two look identical when bare."""
     src = CHART.read_text()
-    assert "published ${priorName}" in src, (
-        "the published reference line no longer carries its metric name. It is drawn over a "
-        "per-class F1 axis while the value is an AGGREGATE, so the label is what stops a reader "
-        "comparing a macro F1 against a single class's F1 as though they were the same quantity.")
+    assert "MeasuredAgainstPublished" in src, (
+        "the measured-against-published chart is gone. If the comparison moved, check it still puts "
+        "both quantities on ONE axis - a published aggregate drawn over a precision axis or over "
+        "per-class F1 bars is the same category error as drawing the trivial predictor as prior "
+        "research.")
+    assert "<code>{metric}</code>" in src, (
+        "the comparison chart no longer names its metric. Two bars labelled only 'this project' and "
+        "'published' do not say what is being compared, and this project has twice shipped a plot "
+        "where the two quantities were not the same.")

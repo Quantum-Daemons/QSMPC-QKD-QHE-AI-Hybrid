@@ -1932,3 +1932,199 @@ than the extractor:
 **`satellite_comms.student` is absent from the satellite row above and that is the recorded state**,
 not an omission: it is scored on event-wise F0.5, a sequence metric the per-row evaluator cannot
 compute, so it reports DID NOT RUN with its reason rather than substituting a figure.
+
+## Round 55 (branch `round55-the-reference-line-could-never-draw`, bundle `index-BYWN9-KK.js`) - a feature that rendered nowhere, found by looking
+
+Round 54 merged, box returned to `main` at `770b533`, new bundle deployed and walked.
+
+**The calibration diagram works, and this is the first time anyone has seen it.** Round 51 added it;
+it had never been deployed. Confirmed on the live site from the rendered figure captions:
+
+> Calibration of `finance_aml.gbm`: mean p(positive) against the frequency...
+> Calibration of `telecom_ids.qml`: mean winning-class confidence against the frequency...
+
+Both branches, both correct: binary bins p(positive), multi-class bins winning-class confidence.
+
+**And the baseline reference line added the same round rendered NOWHERE.** Queried the SVG text on
+finance and telecom after full runs; the only `published` string on either page is the model-run
+label. The cause is structural: every model with a baseline plots a PR curve, every model plotting
+per-class F1 has a null baseline, and the intersection is empty. The Round 54 gate passed because it
+asserted which FIELD was read, never that the result appears.
+
+Replaced with `MeasuredAgainstPublished` - one axis, both bars the same metric, the metric named on
+the figure. **Seven models can render it**: `finance_aml.gbm`, three medical, three satellite. The
+gate now asserts reachability, so an unreachable comparison fails.
+
+Pipelines re-run on this bundle: finance (8 charts) and telecom (4 charts) both to completion, zero
+`NaN`, zero `[object Object]`.
+
+**What this walk did not cover.** Medical, genomics and satellite were not re-run on THIS bundle -
+they were driven to completion on the previous one in Round 53 and nothing between the two rounds
+touched their pipelines. Stated rather than implied, because "re-verified" and "verified last round
+and unchanged since" are different claims.
+
+### Round 55, continued: QCNN on the deploy, and what "the same footing as CKKS" actually means
+
+Driven on the live site: finance with `Inference = QCNN`, Parameters panel opened, `#pp-inf` set to
+`qcnn`, full run.
+
+**It runs and reports its structure**, which matches the Cong/Hur architecture the project cites:
+`<Z0> = -0.6622`, **77 shared-filter angles over 8 wires, 3 conv rounds per stage**, state-vector
+simulation. Advantage 10/10, class 0, no `NaN`.
+
+**And it reports a comparison, which is honest and is not what `CS13` asks for.** Verbatim:
+
+> Held-out minority-class F1 0.7353 against a baseline of 0.0983 and logistic regression at 0.8657 on
+> the same split - the classical model is ahead, and this reports what was measured rather than what
+> would flatter.
+
+That is a SAME-SPLIT classical comparison. `CS13` asks for QCNN "against literature on the same
+footing as CKKS", and the published QCNN figure this project cites (`QC18`, Sci Rep 14 (2024), QCCNN
+0.96155) comes from a different corpus and a different task. Putting it beside a PaySim
+minority-class F1 would be the cross-corpus category error `CS14` forbids, and the same error Round 55
+just removed from the chart layer.
+
+So the asymmetry is real and is arguably the RIGHT way round: QCNN is compared against a classical
+model on the data actually in front of it, which is more informative than a number from another
+dataset. `CS13` is annotated rather than ticked, because the row asks for a footing the evidence says
+should not be adopted.
+
+### Round 55: the full-page audit, all ten pages on the deploy
+
+Systematic pass over every route, checking what the standing request names - content, terminology,
+numbers, buttons, results, duplicates - rather than the `NaN` spot-check earlier rounds settled for.
+
+| page | chars | headings | buttons | unnamed | dup headings | bad tokens |
+|---|---|---|---|---|---|---|
+| `/` | 3,802 | 7 | 0 | 0 | none | none |
+| `/value` | 7,615 | 14 | 0 | 0 | none | none |
+| `/validations` | 1,793 | 9 | 6 | 0 | none | none |
+| `/usecases` | 5,050 | 6 | 0 | 0 | none | none |
+| `/orchestration` | 2,332 | 4 | 15 | 0 | none | none (10 DAG nodes) |
+| five `/usecase/*` | - | - | 14 each | 0 | none | none |
+
+"Bad tokens" scans for `NaN`, `undefined`, `[object Object]` and `Infinity`. Zero across all ten.
+Zero duplicate headings anywhere. Zero buttons without an accessible name.
+
+**Two things that looked like defects and are not.**
+
+`/usecase/nope` did not match the wording this log recorded in Round 49 ("There is no use case called
+X. Showing Finance"). It has been REPLACED by something better and the old record is what is stale:
+the page now renders `h1` = "No such use case", lists all five valid ids with their titles, and offers
+a route back to the index. It no longer silently substitutes Finance, which is the behaviour Round 28
+recorded as a defect. Correcting the record rather than the page.
+
+A checkbox on the finance page carries no `id`, which an automated scan flags. It is wrapped in a
+`<label>` reading "mix QKD-domain key", so the association is valid and the control is named. Recorded
+because an `id`-based a11y check would report it as a fault and it is not one.
+
+### Round 55, continued: three flags re-verified as wrong, and a chart that committed the error it was built to prevent
+
+**The eight open fact-check items were re-verified at source before any of them was applied, and three
+of them were themselves wrong.** That ratio is the argument for the step. The GNN-under-FHE compile
+failure stands - its own abstract says quantization and pruning "were used to render the GNN
+FHE-compatible", which reads like success, while section 4.4 says no circuit was ever produced; the
+abstract is the trap and the line citing it was right. ZKBoost was described correctly - "proving
+training occurred" is what a zero-knowledge proof of training is. And the 8-class taxonomy grounding
+is confirmed, with all eight classes listed in the paper's section III-C.
+
+**Of the five that held, one broke a second claim as it fell.** "Exactly two published
+BreastMNIST-under-encryption baselines" was wrong: PriMed (*Expert Systems* 42(1):e13283) is
+chronologically FIRST, three years before the two that were listed - and it performs a genuine
+homomorphic convolution. So the sentence resting on the count, "neither performs a genuine homomorphic
+convolution, this project does", fell with it. A claim of the form "nobody else does X" is only ever as
+good as the search behind it, and this one had a search behind it that stopped at two. What replaces it
+is a cost claim, which is checkable rather than exhaustive: PriMed pays 294.2 MB of encrypted input and
+a mid-inference re-encryption round-trip under BFV, against CKKS at N=8192 with no round-trip. A fourth,
+Gecko (arXiv:2608.02378), is listed with the caveat that has to travel with it - its 413 ms never
+encrypts the image, only the features.
+
+**`MeasuredAgainstPublished` was built to stop a category error and committed one.** Its caption
+asserted "both bars are the same metric on the same axis" for every model. For
+`satellite_comms.telemanom` that is false, and the registry says so in three separate fields - three
+scored events against ESA-ADB's 29, a different split, and a time-level TNR factor applied there and
+not here. Its own `sample_size_note` reads "NOT comparable to a published benchmark computed over the
+full event set". The chart drew 0.4545 beside 0.968 anyway.
+
+The first fix for that was wrong and worth recording. Keying the caveat off "does the model carry a
+`sample_size_note`" looked structural, and it is not: `telecom_ids.nidd` carries one too and its note is
+a REASSURANCE - stratified 75/25, every class at corpus proportion. One field name, two opposite
+meanings, which is the same trap `tests/test_two_baselines_are_not_one.py` exists for. The caveat is now
+an explicit per-model registry field.
+
+**And `sample_size_note` rendered nowhere at all.** Round 50 found `metric_note` exported to the browser
+and displayed on no page, and fixed it. That fix reached ONE field: `sample_size_note` and
+`classical_rf_attribution_note` were in exactly the same state five rounds later. The new gate
+enumerates note fields FROM THE CONFIG rather than from a list - a hard-coded list would need updating
+by the same person who forgot to render the field. It also strips comments before matching, because the
+first version passed a seeded revert: the comment in `ModelPanel` explaining why the field must be
+rendered NAMES the field, so deleting every render site left the identifier in the file and the gate
+green. That is the QRNG gate's failure repeated, and catching it in the same hour is the only reason it
+is not a tenth entry in the register.
+
+### Round 55, continued: QSDC delivered on a link it had no power to judge
+
+**118 times in 200.** The abort was decided on the point estimate of 29 check carriers. On the shipped
+default channel the true QBER is 0.01520 against a tolerance of 0.00241 - the link provably cannot carry
+QSDC - and an 11-byte message delivered 59% of the time, because `0.9848^29 = 0.64` makes a zero-error
+sample the common case. Not a wrong threshold: a threshold applied to a number that does not mean what
+the comparison assumes.
+
+It now runs on a one-sided **Serfling** bound at `eps = 1e-9`, sampling without replacement because the
+check carriers come from the same finite block. **Recorded as this project's own conservative choice
+rather than as a citation**, because the QSDC literature has no finite-size parameter-estimation
+procedure and says so in print - Pan et al., Photonics Res. 8, 1522 (2020) call it "an interesting
+direction for future research", the IEEE COMST survey calls it "currently under investigation", and
+Long's own group in Entropy 27(4), 332 (2025) adheres to "the asymptotic limit, assuming an infinite
+block length". The two papers that do carry finite-size QSDC analysis are about the wiretap CODE and
+about DECOY INTENSITIES; citing either here would misrepresent them.
+
+Aborts attribute three ways now. `statistics_limited` says the sample could not tell, which is not a
+statement about the channel, and reporting it as an eavesdropper or a link-budget failure would be a
+claim the data does not support.
+
+**Separately, Eq. (8) takes `h(e_x + e_z)` and this used a pooled rate.** The paper's own arithmetic
+settles it: `I(A:E) = g*Q_Bob*h(e_x+e_z) = 9.1e-4` at `g = 2.57`, `Q_Bob = 0.3%`, `e_x = e_z = 0.8%`,
+and only `h(0.016)` reproduces it at 9.1248e-4 against 4.08e-4 for the pooled `h(0.006)`. Pooling
+understates Eve by 2.24x and overstates the secrecy capacity by 26%. **That is the third permissive
+correction to one formula**, after the 0.11 threshold and the omitted detector efficiency, and all three
+erred in the same direction - a simplification that makes a demo work is not a neutral coin flip.
+
+**The fix then missed a call site inside the file it was being applied to.** `clientCompute.ts`
+evaluates the capacity twice - once for the measured channel, once with Eve removed to attribute the
+abort - three hundred lines and a `switch` arm apart, and the commit whose comment said "fixed in BOTH
+languages in one change" reached one of them. Both now call one exported `qsdcSecrecyCapacity`, pinned
+by a gate that also reproduces the paper's own number, because two implementations can agree with each
+other and both be wrong, which is exactly what had been happening.
+
+**What the bound costs, stated rather than tuned around.** A 2 km fibre link at misalignment 0.001 needs
+a **32 KB** block before a certificate is possible - 8 KB gives C_s -0.485. The satellite downlink is
+reachable only at zero atmospheric AND zero pointing loss with a **4 MB** block. The demo sends **74
+bytes**. Qi et al.'s own experiment runs blocks of 1,312 x 830 = 1,088,960 pulses, so the requirement is
+not an artefact of strictness - it is the regime the published experiments already occupy.
+
+The satellite test's previous docstring, written earlier in this same round, said the fixture sat "far
+enough from the boundary that finite-sample fluctuation cannot flip the verdict". That treats finite
+sampling as noise to steer around. It is a certification limit and no distance from the boundary escapes
+it.
+
+### Round 55, continued: two claims about the outside world that were wrong
+
+**`pyvista-wasm` exists.** It was dismissed here as a "third-party API lookalike in a personal
+namespace". It is version 0.12.0 as of 2026-08-21, Apache-2.0, by `tkoyama010` - the #5 all-time
+contributor to `pyvista/pyvista` - wrapping Kitware's own `@kitware/vtk-wasm`. A personal namespace was
+read as evidence of illegitimacy when it was only evidence of a namespace. It stays declined, on grounds
+that survive checking: pre-alpha, two CDN origins by default, a 22 MB payload pinned two majors stale,
+and no three-dimensional data in this project to render. All five `real_2d.json` are `[x, y, class]`
+with a binary label in the third slot.
+
+The Pyodide half of that decision is stronger than before, not weaker: 356 packages in the 314.0.5
+lockfile, none of TenSEAL/OpenFHE/SEAL/concrete-ml/onnxruntime present, and none of them has ever
+published an emscripten wheel. What did change is that JupyterLite and marimo were being dismissed
+together when only marimo's CDN blocker is unfixable - JupyterLite supports self-hosting three ways.
+
+**All three MPC dependencies are archived upstream**, last pushed mid-2025. `threat-model.md` had
+already been corrected once, replacing "JIFF is unmaintained and the PSE MPC Framework sunset" with
+these three as the maintained replacements - and the replacements have since been sunset in turn. A
+correction goes stale exactly like the claim it fixed. `RS21` runs this query for submodules and nothing
+ran it for npm packages, which is why a year passed unnoticed; `CS15` now covers it.

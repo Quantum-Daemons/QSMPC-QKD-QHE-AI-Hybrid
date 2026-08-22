@@ -18,7 +18,7 @@
 // recharts is already a dependency (BenchmarkPanel), so this costs no bundle growth.
 import { useEffect, useState } from "react";
 import {
-  Bar, BarChart, CartesianGrid, Legend, Line, LineChart, ReferenceLine,
+  Bar, BarChart, CartesianGrid, Cell, Legend, Line, LineChart, ReferenceLine,
   ResponsiveContainer, Scatter, ScatterChart, Tooltip, XAxis, YAxis,
 } from "recharts";
 
@@ -548,6 +548,87 @@ export function NoEncryptedComparison({ usecase }: { usecase?: string }) {
   );
 }
 
+/** Measured against published, on ONE metric and ONE axis.
+ *
+ *  WHY THIS IS A SEPARATE CHART AND NOT A REFERENCE LINE. Round 54 drew `MetricSpec.baseline` as a
+ *  line on the per-class-F1 chart. Measured afterwards on the deployed site, it rendered NOWHERE, and
+ *  the reason is structural rather than a wiring slip: every model carrying a published baseline
+ *  (finance 0.6323, medical 0.901, satellite 0.968/0.979) plots as a PR curve, and every model that
+ *  plots per-class F1 is a telecom multiclass model whose baseline is deliberately `null`. The
+ *  intersection of "has a baseline" and "draws that chart" is empty.
+ *
+ *  Moving the line to the PR-curve branch would have been worse, not better: that y-axis is
+ *  PRECISION, and a `minority_class_f1` of 0.6323 is not a precision value. A horizontal line there
+ *  compares an F1 against a precision - the same class of error as drawing the trivial predictor as
+ *  prior research, which the gate for that field exists to prevent.
+ *
+ *  So the comparison gets its own axis, where both bars are the same quantity by construction and the
+ *  metric is named on it - EXCEPT where the registry says otherwise, which is the `caveat` prop. */
+export function MeasuredAgainstPublished(
+  { measured, published, ceiling, metric, modelKey, source, caveat }:
+  { measured: number | null; published: number | null; ceiling?: number | null;
+    metric: string; modelKey: string; source?: string; caveat?: string | null },
+) {
+  if (measured == null || published == null) return null;
+  // THE SAME METRIC NAME IS NOT THE SAME MEASUREMENT, and this chart shipped asserting that it is.
+  //
+  // The caption claimed "both bars are the same metric on the same axis" unconditionally. For
+  // `satellite_comms.telemanom` that claim is FALSE, and the registry already said so in its own
+  // words: the scored window holds THREE labelled events against ESA-ADB's 65, the split differs
+  // (last 30% here, half the mission there), and ESA-ADB multiplies event precision by the TIME-LEVEL
+  // true-negative rate. Its `sample_size_note` states outright that the figure "is NOT comparable to a
+  // published benchmark computed over the full event set" - and this chart drew 0.4545 beside 0.968
+  // anyway, under a caption promising the opposite. A chart built to prevent a category error
+  // committed one, on the single model whose registry entry warns about it three times.
+  //
+  // The caveat is an EXPLICIT REGISTRY FIELD rather than a heuristic. The first draft of this used
+  // "does the model carry a `sample_size_note`" as the signal, which is wrong: `telecom_ids.nidd`
+  // carries one too and its note is a REASSURANCE - stratified 75/25, every class at corpus
+  // proportion. One field name, two opposite meanings, which is the same two-fields-one-word trap
+  // `tests/test_two_baselines_are_not_one.py` exists for.
+  const who = caveat ? "published*" : "published";
+  const data = [
+    { who: "this project", value: measured },
+    { who, value: published },
+    ...(ceiling != null ? [{ who: "ceiling", value: ceiling }] : []),
+  ];
+  return (
+    <figure className="chart-figure">
+      <figcaption className="muted small">
+        <code>{metric}</code> for <code>{modelKey}</code>: measured here against the published figure.
+        {caveat
+          ? <> The two bars share a metric <b>name</b> and are <b>not</b> the same measurement. Read
+              the note under the chart before comparing their heights.</>
+          : <> Both bars are the same metric on the same axis - the comparison is only meaningful
+              because of that, and this project has twice shipped a plot where it was not true.</>}
+        {source ? <> Baseline: {source}</> : null}
+      </figcaption>
+      <ResponsiveContainer width="100%" height={150}>
+        <BarChart accessibilityLayer title={`${metric} measured against published for ${modelKey}`}
+          data={data} margin={{ top: 4, right: 8, bottom: 4, left: -18 }}>
+          <CartesianGrid stroke={GRID} strokeDasharray="2 4" />
+          <XAxis dataKey="who" tick={AXIS} />
+          <YAxis domain={[0, 1]} tick={AXIS} />
+          <Tooltip contentStyle={{ background: "#161b26", border: `1px solid ${GRID}`, fontSize: 11 }}
+                   formatter={(v: number) => v.toFixed(4)} />
+          <Bar dataKey="value" name={metric} isAnimationActive={false}>
+            {data.map((d) => (
+              <Cell key={d.who}
+                    fill={d.who === "this project" ? "#4f9dff"
+                        : d.who.startsWith("published") ? "#e6a23c" : "#8a94a6"} />
+            ))}
+          </Bar>
+        </BarChart>
+      </ResponsiveContainer>
+      {caveat ? (
+        <p className="muted small" style={{ marginTop: 6 }}>
+          <b>* not a like-for-like comparison.</b> {caveat}
+        </p>
+      ) : null}
+    </figure>
+  );
+}
+
 export function VerificationChart(
   { res, modelKey, usecase }: { res: ModelEvalResult; modelKey: string; usecase?: string },
 ) {
@@ -588,11 +669,6 @@ export function VerificationChart(
             <Tooltip contentStyle={{ background: "#161b26", border: `1px solid ${GRID}`, fontSize: 11 }}
                      formatter={(v: number) => v.toFixed(4)} />
             <Bar dataKey="f1" fill="#4f9dff" name="F1" />
-            {prior != null ? (
-              <ReferenceLine y={prior} stroke="#e6a23c" strokeDasharray="6 3"
-                label={{ value: `published ${priorName} ${prior}`, position: "insideTopRight",
-                         fill: "#e6a23c", fontSize: 10 }} />
-            ) : null}
           </BarChart>
         </ResponsiveContainer>
       </figure>
