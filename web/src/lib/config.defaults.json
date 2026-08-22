@@ -263,7 +263,7 @@
             "opset": null
           },
           "git_sha": "67138f8-dirty",
-          "hf_revision": "91562e197d93340397d62b2d8a7e8f6350134e6c",
+          "hf_revision": "b35b4cbb2ad3d7de732acfc70ce931e9523c910f",
           "minority_class_f1": 0.15194805194805194,
           "n_test": 1523504,
           "n_train": 3554841,
@@ -304,7 +304,7 @@
           "url": "https://www.kaggle.com/datasets/ealtman2019/ibm-transactions-for-anti-money-laundering-aml"
         },
         "hf_repo_id": "Daemons-Q/qsh-finance-aml-gbm",
-        "hf_revision": "91562e197d93340397d62b2d8a7e8f6350134e6c",
+        "hf_revision": "b35b4cbb2ad3d7de732acfc70ce931e9523c910f",
         "hf_revision_stale": null,
         "key": "finance_aml.gbm",
         "label": "Graph-feature-preprocessed gradient boosting",
@@ -330,7 +330,7 @@
           "agreement": 0.982943,
           "both_scored_zero": false,
           "disagreement_on_positives": 0.361913,
-          "hf_revision": "89e2de895db41591b480eb744ddb6761ed208f75",
+          "hf_revision": "475b160d9b42cdc8630a3f9dec3302076216630f",
           "metric_delta": 0.090554,
           "metric_delta_pp": 9.0554,
           "metric_name": "minority_class_f1",
@@ -371,7 +371,7 @@
           "url": "https://www.kaggle.com/datasets/ealtman2019/ibm-transactions-for-anti-money-laundering-aml"
         },
         "hf_repo_id": "Daemons-Q/qsh-finance-aml-ckks-student",
-        "hf_revision": "89e2de895db41591b480eb744ddb6761ed208f75",
+        "hf_revision": "475b160d9b42cdc8630a3f9dec3302076216630f",
         "hf_revision_stale": null,
         "key": "finance_aml.student",
         "label": "CKKS-linear fraud student",
@@ -754,8 +754,7 @@
             "opset": 17
           },
           "git_sha": "d19e285-dirty",
-          "hf_revision": "6ff3d04490e6c7557ea683583c812f24f27816a6",
-          "hf_revision_invalidated_by_retrain": "4507c187d0f9998199f6fa0e8064cb23315bbb9a",
+          "hf_revision": "22b4cd0eeaa66ab146eac028dd3f9f7da8d882c6",
           "metric_note": "Event-wise F-beta at beta=0.5 under the overlap rule, which is what ESA-ADB and Telemanom report. Telemanom's widely-quoted 0.71 is F0.5, not F1. point_adjusted_f1 is shown only to expose how much point adjustment inflates: Kim et al. (AAAI 2022) show that under point adjustment even a random anomaly score can reach state-of-the-art. Only labels whose ESA-ADB Category is 'Anomaly' count as positives; the 690 annotated rare *nominal* events do not.",
           "n_anomaly_intervals": 320,
           "n_events_scored": 3,
@@ -808,7 +807,7 @@
           "url": "https://zenodo.org/records/12528696"
         },
         "hf_repo_id": "Daemons-Q/qsh-satellite-telemanom-esa",
-        "hf_revision": "6ff3d04490e6c7557ea683583c812f24f27816a6",
+        "hf_revision": "22b4cd0eeaa66ab146eac028dd3f9f7da8d882c6",
         "hf_revision_stale": null,
         "key": "satellite_comms.telemanom",
         "label": "Telemanom LSTM forecaster (per channel)",
@@ -834,8 +833,7 @@
           "agreement": 0.998677,
           "both_scored_zero": false,
           "disagreement_on_positives": 0.142857,
-          "hf_revision": "719ae0feef270a54a74bcad4770105f8bb58b2f6",
-          "hf_revision_invalidated_by_retrain": "18814a2496661459cd25912c3e251473e5fab821",
+          "hf_revision": "fb7542b9b68e3e04bcab2a72ee5ed2eaa6adb9cf",
           "metric_delta": -0.003234,
           "metric_delta_pp": -0.3234,
           "metric_name": "event_wise_f0_5",
@@ -876,7 +874,7 @@
           "url": "https://zenodo.org/records/12528696"
         },
         "hf_repo_id": "Daemons-Q/qsh-satellite-telemanom-ckks-student",
-        "hf_revision": "719ae0feef270a54a74bcad4770105f8bb58b2f6",
+        "hf_revision": "fb7542b9b68e3e04bcab2a72ee5ed2eaa6adb9cf",
         "hf_revision_stale": null,
         "key": "satellite_comms.student",
         "label": "CKKS-linear telemetry anomaly student",
