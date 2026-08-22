@@ -147,8 +147,8 @@ two-intensity decoy bound the zero-key point is **channel-dependent** rather tha
 names the quantity as well as the value.
 
 *The first axis is the intensities.* The figures this paragraph carried - 0.0635, 0.0593, 0.0534 -
-reproduce to four decimals at `mu = 0.5 / nu = 0.1`, the pair in force when they were taken. Round 47
-moved the shipped pair to the finite-key optimum `mu = 0.3416 / nu = 0.1417` and did not revisit
+reproduce to four decimals at $`\mu = 0.5`$ / $`\nu = 0.1`$, the pair in force when they were taken. Round 47
+moved the shipped pair to the finite-key optimum $`\mu = 0.3416`$ / $`\nu = 0.1417`$ and did not revisit
 them, so they were correct arithmetic about a configuration this repository no longer runs.
 
 *The second axis is that two different quantities were being given one name.* `e_det` is the error on
@@ -168,7 +168,7 @@ The columns diverge with distance because the background term is fixed while the
 falls, so by 100 km the gap is 0.002 - a tenth of the remaining distance to the textbook threshold,
 which is why quoting either figure under the other's name is not a rounding matter.
 
-At 200 km the bound returns nothing at ANY misalignment including zero: at `eta = 2.5e-5` the
+At 200 km the bound returns nothing at ANY misalignment including zero: at $`\eta = 2.5\times10^{-5}`$ the
 background yield `y0 = 2e-5` is comparable to the signal, so there is no zero-key point to quote.
 
 The window in which the textbook test passes on a channel that yields nothing is therefore about

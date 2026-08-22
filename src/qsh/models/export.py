@@ -67,7 +67,7 @@ class ExportReport:
     int8_path: str
     fp32_bytes: int
     int8_bytes: int
-    opset: int
+    opset: int | None                  # None when the graph imports no default-domain opset
     fp32_max_abs_error: float          # vs the source model
     int8_agreement: float | None       # fraction of fixtures where int8 and fp32 agree; None if skipped
     int8_max_abs_error: float | None   # vs fp32 ONNX, reported not gated; None if skipped
@@ -291,13 +291,23 @@ def browser_runnable(domains: list[str], ops: list[str] | None = None) -> bool:
     return not (set(ops or ()) & BROWSER_HOSTILE_OPS)
 
 
-def graph_opset(path: Path) -> int:
-    """The default-domain opset actually present in the file.
+def graph_opset(path: Path) -> int | None:
+    """The default-domain opset actually present in the file, or None when the graph imports none.
 
     torch's exporter emits at the opset it has implementations for and only then attempts a
     down-conversion, which can fail with "Failed to convert the model to the target version" and
     leave the higher opset in place. Reporting the requested opset rather than the real one would
     put a wrong number in the model card and mislead anyone checking browser compatibility.
+
+    NONE, NOT ZERO, WHEN ABSENT. A tree ensemble is a single `ai.onnx.ml` node and imports no
+    default-domain opset at all - `is_quantizable` below relies on exactly that. This returned 0 for
+    that case, and 0 is a version number rather than an absence, so it reached the deployed page as
+    `export.opset  0` on both `finance_aml.gbm` and `telecom_ids.nidd`. Observed in the Round 50 walk.
+    There is no opset 0 in ONNX; a reader checking browser compatibility sees a failed export.
+
+    `null` is dropped by the browser's metric walk, which pushes only finite numbers, so the row
+    disappears instead of asserting something false. The domain is already recorded separately by
+    `graph_domains`, which is where "this is an ai.onnx.ml graph" belongs.
     """
     import onnx
 
@@ -305,7 +315,7 @@ def graph_opset(path: Path) -> int:
     for op in model.opset_import:
         if op.domain in ("", "ai.onnx"):
             return int(op.version)
-    return 0
+    return None
 
 
 def verify_and_quantize(source_model, fixtures: np.ndarray, out_dir: Path, *,

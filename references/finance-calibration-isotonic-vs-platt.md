@@ -143,7 +143,7 @@ strictly monotone in the raw score and therefore bin identically.
 Its full output support is **[0.00090148, 0.695715]**: it cannot express a risk below 1 in 1,109 for
 any input whatsoever, on a corpus whose base rate is 1 in 656 and whose first decile's observed rate
 is 1 in 152,351. That is the mechanism, and it follows directly from the form of the map. Platt fits
-`p = 1/(1 + exp(a*s + b))`, linear in `s`. With `a = -7.8378`, `b = 7.0106` and `s < 1e-4` across
+$`p = 1/(1 + e^{a s + b})`$, linear in $`s`$. With $`a = -7.8378`$, $`b = 7.0106`$ and $`s < 10^{-4}`$ across
 nine deciles, `a*s` is below 1e-3 and the map is a constant to four decimals. Fitted on `logit(s)`
 instead, `a = -0.58535`, `b = 1.64175` and the same two floats spread deciles 1 to 9 over
 5.2e-06 to 4.4e-04.
@@ -190,7 +190,7 @@ Isotonic assigns probability exactly 0 to 464,176 test transactions and exactly 
 laundering transaction landed on an exact zero. `log_loss` clips at 1e-15, so the run scores; the
 scored value is a property of the clip, not of the model. Measured directly, that single row
 contributes 0.28% of isotonic's whole log loss (2.267e-05 of 0.00820025), and re-clipping at
-1/(2n) = 7.033e-07 moves the total only to 0.00818709. So the hazard is real and, on this draw,
+$`1/(2n) = 7.033\times10^{-7}`$ moves the total only to 0.00818709. So the hazard is real and, on this draw,
 small. It is a hazard rather than a result because one event is one event.
 
 Two consequences beyond the metric. A probability of exactly 0 is an assertion no amount of AML
