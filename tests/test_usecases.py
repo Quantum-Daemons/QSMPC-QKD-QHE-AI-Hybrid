@@ -150,58 +150,115 @@ def test_qsdc_aborts_on_secrecy_capacity_and_attributes_the_cause():
 
     # A link where QSDC genuinely closes: g near 1 is the regime the published demonstrations use
     # (Qi et al. 2019 measured 4.1 dB on fibre). Only here is an abort attributable to an attacker.
+    #
+    # THE BLOCK IS 32 KB AND THAT IS THE POINT OF THIS ROUND, not an arbitrary fixture size. The
+    # eavesdrop check is decided on a Serfling upper bound over the check subset, so certifying an
+    # error rate costs carriers: on THIS link the crossover sits between 8 KB (C_s -0.485,
+    # statistics-limited) and 32 KB (C_s +0.113, certified). Below it nothing about the channel can
+    # be concluded - which is why the 22-byte `msg` that used to run here now aborts, and why it
+    # previously DELIVERED for a reason that was arithmetic rather than physics.
+    #
+    # The crossover was 8 KB when this test was first re-derived an hour earlier, with the entropy
+    # argument still pooled. Correcting it to `h(e_x + e_z)` quadrupled the block a certificate
+    # costs. Two independent corrections compounding in the same direction is the signal worth
+    # keeping: both were permissive, and neither was visible in the delivered/withheld verdict.
+    block = b"x" * 32768
     short = ChannelParams(distance_km=2, fiber_loss_db_per_km=0.2, misalignment=0.001,
                           dark_count_prob=1e-9)
-    ok = quantum_secure_direct_comm(msg, short, seed=0)
-    assert ok.delivered == msg and ok.secrecy_capacity > 0.0
+    ok = quantum_secure_direct_comm(block, short, seed=0)
+    assert ok.delivered == block and ok.secrecy_capacity > 0.0
     assert ok.link_budget_limited is False
+    assert ok.statistics_limited is False               # enough carriers to certify
 
     attacked = quantum_secure_direct_comm(
-        msg, ChannelParams(distance_km=2, fiber_loss_db_per_km=0.2, misalignment=0.001,
-                           dark_count_prob=1e-9, eve_intercept_fraction=0.6), seed=0)
+        block, ChannelParams(distance_km=2, fiber_loss_db_per_km=0.2, misalignment=0.001,
+                             dark_count_prob=1e-9, eve_intercept_fraction=0.6), seed=0)
     assert attacked.delivered is None
     assert attacked.eavesdrop_detected is True          # THIS one is genuinely Eve
     assert attacked.link_budget_limited is False
+
+    # And the third attribution, which is the one this round added. The SAME link and the SAME clean
+    # channel at a short block cannot conclude anything, and must not report an eavesdropper or a
+    # link-budget failure to say so. Before the bound, this call delivered.
+    tiny = quantum_secure_direct_comm(msg, short, seed=0)
+    assert tiny.delivered is None
+    assert tiny.statistics_limited is True
+    assert tiny.eavesdrop_detected is False, (
+        "a 22-byte block cannot certify anything about this channel, so attributing its abort to an "
+        "eavesdropper is an accusation the sample does not support")
+    assert tiny.link_budget_limited is False, (
+        "this link closes asymptotically - the binding constraint is the number of check carriers, "
+        "and reporting it as a link-budget failure would send a reader to widen the aperture")
+    assert tiny.error_rate_upper > tiny.error_rate, (
+        "the certified bound must sit above the point estimate; if they coincide the abort is being "
+        "decided on the point estimate again, which is the defect")
 
 
 def test_the_satellite_eavesdrop_check_is_reachable_from_the_use_case():
     """The page's headline feature, demonstrated through the pipeline rather than a hand-built channel.
 
-    ``qsdc_eavesdrop_detected`` is ``abort and not link_budget_limited``, and until the link budget
-    became selectable ``link_budget_limited`` was 1 at every setting the demo offered: the fixed
-    5 dB atmospheric + 3 dB pointing terms floor total loss at 8 dB even at zero range, so g >= 6.31
-    and C_s > 0 needs h(QBER) < 1/(1+g) = 0.137 while the misalignment floor of 0.025 alone gives
-    0.169. The metric was therefore 0 by construction, the diagram's ABORTED branch was unreachable,
-    and a full-strength eavesdropper still drew "QSDC direct telemetry ... 0 bit/carrier" with a
-    completion tick.
+    ``qsdc_eavesdrop_detected`` is ``abort and not link_budget_limited and not statistics_limited``,
+    and this test exists because that metric was 0 by construction for many rounds: the fixed 5 dB
+    atmospheric and 3 dB pointing terms floored total loss at 8 dB even at zero range, so the diagram's
+    ABORTED branch was unreachable and a full-strength eavesdropper still drew a completion tick.
 
-    ``sat_atmospheric_db`` and ``sat_pointing_db`` select a LINK, not a physics; the defaults are
-    unchanged. Qi et al. (Light Sci. Appl. 8, 22, 2019) demonstrated QSDC at 4.1 dB on fibre, and
-    3 dB total is where this model turns positive.
+    REWRITTEN IN ROUND 55, AND THE PREVIOUS VERSION'S REASONING WAS WRONG IN A WAY WORTH KEEPING.
+    It said: "QSDC measures its error rate on a FINITE sample of check carriers, so near C_s = 0 the
+    verdict genuinely fluctuates with the seed ... the test uses a point far enough from the boundary
+    that sampling cannot flip it." That treats finite sampling as NOISE to be steered around. It is
+    not noise. It is a certification limit, and no distance from the boundary escapes it: the abort is
+    now decided on a Serfling upper bound, and at 74 bytes of telemetry - 25 check carriers - the
+    bound certifies nothing at any epsilon. The old fixture delivered because 0.9848^29 = 0.64 made a
+    zero-error sample the common case, not because the channel was sound.
 
-    Eve is 0.40, not 0.20. QSDC measures its error rate on a FINITE sample of check carriers, so near
-    C_s = 0 the verdict genuinely fluctuates with the seed: at 0.20 two of five seeds abort and three
-    deliver. That is the protocol behaving correctly, not noise to be tuned away - so the test uses a
-    point far enough from the boundary that sampling cannot flip it, and says why.
+    So the assertions here changed from "it delivers at 2.5 dB" to the three attributions, which is
+    what the metric is actually for.
     """
-    budget = {"sat_distance_km": 1, "sat_atmospheric_db": 2.0, "sat_pointing_db": 1.0}
+    # RE-DERIVED TWICE IN ROUND 55, against two corrections that compounded.
+    #
+    # (1) `g` now includes detector efficiency - a fixed 3.979 dB before the channel contributes.
+    # (2) The Eve term now takes `h(e_x + e_z)`, i.e. `h(2e)`, as Qi et al. Eq. (8) writes it. Their
+    #     own arithmetic settles it: they state I(A:E) = g*Q_Bob*h(e_x+e_z) = 9.1e-4, and only
+    #     h(0.016) = 9.1248e-4 reproduces that, against 4.08e-4 for the pooled h(0.006).
+    #
+    # With the free-space misalignment floor of 0.025, C_s > 0 now needs
+    # `1 - h(0.025) - g*h(0.05) > 0`, i.e. `g < 2.902`, i.e. TOTAL loss below 4.626 dB - leaving the
+    # channel at most 0.647 dB after the detector's 3.979 dB. The 2.5 dB budget this test used
+    # earlier in the same round now lands at C_s = -0.443 asymptotically, so no block length rescues
+    # it. That is not a regression; the 2.5 dB figure was derived from the pooled formula.
+    budget = {"sat_distance_km": 1, "sat_atmospheric_db": 1.5, "sat_pointing_db": 1.0}
 
-    clean = satellite_comms.run_demo({"seed": 1, "sat_eve": 0.0, **budget})
-    assert clean["channel_loss_db"] == 3.0
-    assert clean["telemetry_delivered"] is True          # QSDC closes here, for the first time
+    # At the SHIPPED telemetry length the check certifies nothing, and must say so rather than
+    # blaming either the channel or an attacker.
+    short = satellite_comms.run_demo({"seed": 1, "sat_eve": 0.0, **budget})
+    assert short["telemetry_delivered"] is False
+    assert short["eavesdrop_detected"] is False, (
+        "a 74-byte block gives ~25 check carriers, which cannot certify any error rate - reporting "
+        "an eavesdropper from it is an accusation the sample does not support")
+
+    # The eavesdrop branch IS reachable, and pinning exactly where matters more than that it is:
+    # zero atmospheric and pointing loss, which the panel permits (both are min 0), plus a 4 MB
+    # block. Both are extremes. A real downlink occupies neither, and the honest reading of this
+    # test is that QSDC does not close over this class of link at the lengths the demo sends - which
+    # is what `RI8` in the browser checklist recorded from the other direction.
+    ideal = dict(sat_distance_km=1, sat_atmospheric_db=0.0, sat_pointing_db=0.0,
+                 telemetry="S" * 4_194_304)
+    clean = satellite_comms.run_demo({"seed": 1, "sat_eve": 0.0, **ideal})
+    assert clean["telemetry_delivered"] is True, (
+        "the eavesdrop-detection branch is unreachable at EVERY setting the demo offers, which is "
+        "the state Round 32 fixed - re-derive the budget rather than deleting this assertion")
     assert clean["qsdc_secrecy_capacity"] > 0.0
     assert clean["eavesdrop_detected"] is False
 
     for seed in range(1, 6):
-        attacked = satellite_comms.run_demo({"seed": seed, "sat_eve": 0.4, **budget})
+        attacked = satellite_comms.run_demo({"seed": seed, "sat_eve": 0.4, **ideal})
         assert attacked["telemetry_delivered"] is False, f"seed {seed} delivered under an attack"
         assert attacked["qsdc_secrecy_capacity"] < 0.0, f"seed {seed} reported a non-negative C_s"
-        # The whole point: an abort this link would NOT have suffered on its own.
+        # The whole point: an abort this link would NOT have suffered on its own, and one the check
+        # had enough carriers to conclude.
         assert attacked["eavesdrop_detected"] is True, (
-            f"seed {seed} aborted without attributing it to the eavesdropper - if "
-            "link_budget_limited is 1 here, the budget fields stopped reaching the channel"
-        )
-
+            f"seed {seed} aborted without attributing it to the eavesdropper - if this fails, check "
+            "whether the abort is statistics-limited instead, which is a different claim")
 
 def test_attack_generator_shape():
     X, y, names = generate(n_per_class=50, seed=0)

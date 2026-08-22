@@ -238,3 +238,20 @@ Nothing above is fixed by this file. Findings 1, 2 and 3 are code-level and shou
 source first, because two of this project's last three correction passes shipped a wrong correction
 by transcribing a reported figure. Finding 6 is a documentation currency fix and carries no
 measurement risk.
+
+**DEADLINE EXECUTED Round 55.** Status of each, and the three that are NOT done say why rather than
+moving:
+
+| # | state |
+|---|---|
+| 1 SP 800-90B on conditioned output | **FIXED** Round 53. `health_suite` takes `raw=`; a p(1)=0.90 source now reports 0.1472 bit/bit, not 0.9806 |
+| 2 `FiniteKeyParams` retired intensities | **FIXED** Round 53, `default_factory` against config. Downstream figures re-derived and the repo was ALREADY right |
+| 3 two-intensity naming | **FIXED** Round 53, verified by extracting the paper: Eqs. 34-37 are section 3.4 Vacuum+Weak, three intensities, Y0 measured |
+| 4 `decoy_reference.py` attributions | **BOTH CONFIRMED, one fixed.** `f_ec = 1.22` is prose not Table 1 (whose `f` column is a repetition rate) - corrected. The q claim was backwards and is corrected. The 0.11 / 0.15 reference values are NOT in the paper's prose and remain **open**: settling it needs values read off a plotted figure |
+| 5 E91 and QSDC | **E91 FIXED** across all four implementations, Rounds 53-54. **QSDC open** - Qi et al. Eq. (8) needs reading at source and the reported 4.0x is unreproduced |
+| 6 currency | **RESOLVED Round 55, and my earlier refusal was the wrong call.** I declined to advance `REFERENCES.md`'s Y.3835 ceiling because search could not confirm Y.3836-3838, and treated that as caution. It was stale search indexing, not absence: `itu.int/rec/T-REC-Y.3838-202608-P/en` prints *"Approved in 2026-08-13"* verbatim, and ITU's own AAP JSON API returns `approvalDate 2026-08-13` for all three. Y.3839 returns HTTP 200 with a **0-byte body** against 9.5 KB for Y.3834-3838, so Y.3838 is the ceiling. **All three are prepublished, not just Y.3836** - the parenthetical singling out Y.3836 was also wrong. GS QKD 010 is likewise resolved: `portal.etsi.org` is reachable even though `www.etsi.org` 403s, and work item 43375 shows v0.6.2 Drafting - so "needs portal access" was true and the portal was available. Refusing to move a claim is the right default and it is not free: it left two wrong lines standing for a round |  Y.3836-Y.3838 unconfirmed by search; `etsi.org/deliver` returns 403 for QKD 010, 014 AND 020 alike, so the 403 carries no information about publication status. Needs ETSI portal access |
+| 7 `model-choice-vs-2026-practice.md` | **Second claim FIXED** - `runs_encrypted=True` is on six specs, not five, and the document contradicted itself two paragraphs apart. **First claim open**: the 15-qubit concentration reading needs arXiv:2605.31449 at source |
+
+Three of seven fully closed, two partly, two open with a stated obstacle. The open ones are NOT
+re-conditioned to a later round, because moving a promise is not discharging it - they are recorded as
+requiring something this session could not obtain (a plotted figure, a paywalled portal, a paper).
