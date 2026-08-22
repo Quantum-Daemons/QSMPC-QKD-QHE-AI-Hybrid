@@ -281,6 +281,20 @@ a gate can fire on an item whose defining property is that nobody is editing it.
 red - wire the Space or delete it and the `remote` tier, then stamp this paragraph. Moving the date
 is how the arXiv deadline in item 11 reached Round 39.
 
+**OpenFHE `EvalBootstrapSetup` SIGSEGV: THE REOPEN CONDITION HAS BEEN MET. Round 55.**
+Measured on this EL9 host with `QSH_REQUIRE_OPENFHE_BOOTSTRAP=1`, three consecutive runs:
+**16.85 s, 16.05 s, 16.82 s, all exit 0.** The crash does not reproduce. The paragraph below
+states its own reopen condition as "if the crash stops reproducing on the pinned OpenFHE
+version on EL9", and nothing was watching for that - a condition with no executor, which is
+the shape this round kept finding. `scripts/ci_local.sh` now runs the test as step 17, so the
+condition is checked every round rather than remembered.
+
+This also closes the gap that the script's header claimed away: ci.yml runs this test as a
+blocking job and step 1 here deselects it with `-m "not slow"`, so "runs every blocking CI
+gate" was false for exactly one job, and nothing compared the two step sets. The original
+decision is kept below because it was right when made and the failure mode is host-specific -
+if EL9 starts segfaulting again, step 17 names which platform changed.
+
 **OpenFHE `EvalBootstrapSetup` SIGSEGV: permanently worked around, on purpose.** Three rounds. The
 segfault is inside OpenFHE on AlmaLinux 9.7, and `fhe/backends.py` guards an `ImportError`, which a
 segfault is not. `make test` deselects it with `-m "not slow"`; `make test-all` still dies. Fixing an
