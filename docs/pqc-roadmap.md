@@ -33,8 +33,8 @@ not a code rewrite. Add remote re-key + in-flight algorithm substitution next. [
   AML-QKD arXiv:2603.04192v2, Mohamed et al. 2026, one paper in two versions: v1 reported +20-30 % and v2 revised that down to +14-25 % SKR via TCN+RL, in simulation. Benchmarking against v1 would be quoting a figure the authors superseded.)
   Opt-in per run; a simulation, not deployed QKD. yes
 - **QRNG** - a local **state-vector quantum-measurement** entropy source with the **SP 800-90B section
-  4.4 continuous health tests** (Repetition Count, cutoff `C = 1 + ceil(-log2(alpha)/H)`, and Adaptive
-  Proportion over a 1024-sample window, both at alpha = 2^-20, plus the section 4.3 start-up test over
+  4.4 continuous health tests** (Repetition Count, cutoff $`C = 1 + \lceil -\log_2(\alpha)/H \rceil`$, and Adaptive
+  Proportion over a 1024-sample window, both at $`\alpha = 2^{-20}`$, plus the section 4.3 start-up test over
   1024 samples) + a **SP 800-90B most-common-value min-entropy estimate**. Three SP 800-22 tests
   (monobit / runs / block-frequency) are also computed, but as an **output-stream sanity check only**:
   SP 800-90B section 4.1 states that SP 800-22-style tests *"will almost always fail, and thus are not
@@ -291,8 +291,8 @@ Round 24 measured why `finance_aml.gbm` sat at 0.0808 against a published 0.6323
 risen to 0.1519 by making the per-account aggregates causal - and ruled out the
 threshold, unseen accounts, and the 4-hop reachability limit - see
 `../references/finance-gap-investigation.md`. The residual is architectural: IBM's Graph Feature
-Preprocessor computes **per-transaction subgraph patterns over a graph updated as each transaction
-arrives**, while this pipeline computes **per-account scalar aggregates**. That difference is
+Preprocessor differs from this pipeline in feature ARCHITECTURE, not in licence - the mechanism is
+derived in `../references/finance-gap-investigation.md` and is not restated here. That difference is
 implementable without `snapml` and is a bounded, well-specified workstream. A measured intermediate
 step already exists: causal prior-at-time aggregation beat the shipped approach by 1.45x AUPRC at
 matched feature count, with no leakage.
