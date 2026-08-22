@@ -2266,3 +2266,29 @@ step count, and was true of the paragraph three lines above it.
 **A correction to something I asserted mid-round.** I reported a *pre-existing* `RG12` collision in
 this document. There was none - the duplicate was my own new row, and I had misread my own scan
 output. The gate now says so unambiguously by printing both line numbers.
+
+### Round 55, continued: the audit fixes verified on the deploy
+
+`main` at `cc9a1c6`, bundle **`index-B8CifKLO.js`**, box on `main`, public 200. Each fix checked by
+observing the thing it was supposed to change, and the thing it was supposed to leave alone.
+
+**The provenance badge, and the discrimination is the evidence.** The telecom page now carries TWO
+badges saying different things, each correct:
+
+    MEASURED (plain JS) . in-browser softmax training (clientIDS), synthetic telemetry
+    MEASURED (local WASM) . onnx-wasm
+
+The JS training loop reads plain JS; the published ONNX model, which genuinely does run on the wasm
+runtime, still reads local WASM. "WebAssembly runtime" no longer appears for the JS path. A single
+badge changing would not have shown that the downgrade was targeted rather than blanket.
+
+**PQC-only on satellite now skips one stage and keeps the page.** With that profile selected: the
+QSDC skip message renders, including its new sentence that "the telemetry anomaly verdict and its
+explanation still run below"; the anomaly verdict renders; the SHAP panel renders; the
+published-model row renders; three figures draw; and `qsdc_secrecy_capacity` is correctly ABSENT.
+Before this, all four of those panels vanished with no explanation.
+
+**The ONNX label is gone from the client timer.** On genomics the FHE line renders and reads
+`plaintext reference <ms>`; `, ONNX <n>` no longer appears anywhere on the page. That line used to
+carry two ONNX-labelled numbers differing by orders of magnitude, one of which was two plain-JS dot
+products.
