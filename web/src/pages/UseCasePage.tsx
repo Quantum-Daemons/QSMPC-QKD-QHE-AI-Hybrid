@@ -223,6 +223,7 @@ function UseCaseView({ usecase }: { usecase: string }) {
                 metric={spec.metric?.name ?? ""}
                 modelKey={spec.key}
                 source={spec.metric?.baseline_source}
+                caveat={spec.metric?.comparison_caveat || null}
               />
             ) : null;
           })()}
