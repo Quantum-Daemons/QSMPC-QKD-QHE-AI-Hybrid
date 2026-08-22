@@ -172,7 +172,7 @@ def _min_entropy_mcv(bits: np.ndarray) -> float:
     return float(-np.log2(p_upper)) if p_upper > 0 else 0.0
 
 
-def health_suite(bits, *, alpha: float = 0.01, block_size: int = 128,
+def health_suite(bits, *, raw=None, alpha: float = 0.01, block_size: int = 128,
                  health_alpha: float = HEALTH_ALPHA) -> HealthReport:
     """Run the SP 800-90B continuous health tests plus the SP 800-22 output checks.
 
@@ -184,19 +184,40 @@ def health_suite(bits, *, alpha: float = 0.01, block_size: int = 128,
     ``alpha`` is the SP 800-22 significance level; ``health_alpha`` is the SP 800-90B false-positive
     rate, which the standard puts between 2^-20 and 2^-40 — four to twelve orders of magnitude
     apart, which is itself a hint that the two families answer different questions.
+    
+    ``raw`` is the pre-conditioning stream. The SP 800-90B tests and the min-entropy estimate run on
+    it; SP 800-22 runs on ``bits``. Passing only ``bits`` measures the CONDITIONER, which is what
+    this function did until Round 51 - see the note at the call site below.
     """
     b = np.asarray(bits).astype(np.int64).ravel()
+    # SP 800-22 answers a question about the OUTPUT stream, so it stays on `bits`.
     mp = _monobit(b)
     rp = _runs(b)
     bp = _block_frequency(b, block_size)
-    h = _min_entropy_mcv(b)
+
+    # THE TWO FAMILIES TAKE DIFFERENT STREAMS, and until Round 51 both took whatever the caller
+    # passed - which was the CONDITIONED output. The comment on the line below already said "on the
+    # raw stream"; it described an argument the function never received.
+    #
+    # Measured, because the symptom is not that a broken source fails to fail. At p(1) = 0.90 the
+    # raw stream has min-entropy 0.1472 bit/bit; run after the Toeplitz extractor the same estimator
+    # reports 0.9806, against 0.9892 for a fair 50/50 source. A badly biased source and a healthy one
+    # are then a hundredth of a bit apart, because an extractor produces near-uniform output BY
+    # CONSTRUCTION. The figure was not wrong about what it measured - it was measuring the extractor
+    # while every label around it said entropy source, and it is the number a reader would use to
+    # judge the noise.
+    #
+    # `raw` defaults to `bits` so existing callers keep their behaviour rather than silently changing
+    # meaning; the entropy-source callers pass it explicitly.
+    r = b if raw is None else np.asarray(raw).astype(np.int64).ravel()
+    h = _min_entropy_mcv(r)
 
     # SP 800-90B section 4.4 — the required continuous tests, on the raw stream.
-    rc_ok, rc_cutoff, rc_run = repetition_count_test(b, h, health_alpha)
-    ap_ok, ap_cutoff, ap_count = adaptive_proportion_test(b, h, ADAPTIVE_PROPORTION_W, health_alpha)
+    rc_ok, rc_cutoff, rc_run = repetition_count_test(r, h, health_alpha)
+    ap_ok, ap_cutoff, ap_count = adaptive_proportion_test(r, h, ADAPTIVE_PROPORTION_W, health_alpha)
     # Section 4.3 start-up: the same tests over the first >= 1024 samples, before any output is used.
-    startup = b[:STARTUP_SAMPLES]
-    startup_ok = bool(b.size < STARTUP_SAMPLES or (
+    startup = r[:STARTUP_SAMPLES]
+    startup_ok = bool(r.size < STARTUP_SAMPLES or (
         repetition_count_test(startup, h, health_alpha)[0]
         and adaptive_proportion_test(startup, h, ADAPTIVE_PROPORTION_W, health_alpha)[0]))
 

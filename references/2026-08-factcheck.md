@@ -11,6 +11,16 @@ transcribed instead of derived.
 
 ### 1. SP 800-90B health tests run on CONDITIONED output. spot-checked, and the reported reason was wrong
 
+**FIXED Round 51.** `health_suite` now takes `raw=` and runs the section 4.4 continuous tests and
+the min-entropy estimate on the pre-conditioning stream; SP 800-22 stays on the output, which is what
+it is for. Re-derived here rather than transcribed: a p(1)=0.90 source reported **0.9806** bit/bit
+before and reports **0.1472** after, against **0.9892** for a fair source - so the figure now
+discriminates where it previously separated a badly biased source from a healthy one by 0.01 bit.
+`tests/test_health_tests_measure_the_noise_source.py` pins it, and the call site is checked by
+parsing the call's keywords rather than grepping the source. The first version of that check DID grep,
+and it did not fire when the call site was reverted, because the comment explaining why `raw=raw`
+matters sits above the call and contains the string.
+
 `src/qsh/qrng/simulator.py:147` calls `health_suite(bits, ...)` where `bits` is the post-processed
 output. `src/qsh/qrng/health.py`'s own opening docstring states the contract it violates: the
 section 4.4 continuous tests "run on raw samples **before any conditioning**". `raw` is in scope four

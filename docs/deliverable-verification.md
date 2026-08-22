@@ -3745,6 +3745,26 @@ at all. An API-only adjudication reads this corpus as unlicensed - the same fail
 47's 5G-NIDD error, where a mirror's silence was read as the source's silence. Recorded on the model
 card so the next reader does not repeat it.
 
+**Why each licence bites, read at source rather than summarised - and the two reasons are different.**
+
+*CC BY 3.0 IGO* requires keeping copyright notices intact and providing "any attributions that the
+Licensor indicates", the title, and the URI where practicable. It reaches adaptations, so
+`satellite_comms`'s `eval_sample.json` - real ESA-ADB channels resampled to 60s and z-scored - is
+covered as an adaptation of the Work.
+
+*CDLA-Sharing-1.0* is narrower and the narrowness is the point. Section 3.1(c) requires preserving
+"all credit or attribution to the Data Provider(s)" and 3.3 requires the licence name or a hyperlink
+to travel - but **section 3.5 exempts Results, the outputs of computational analysis**. Trained
+weights are a Result. So the obligation does NOT attach to `finance_aml.gbm` because a model was
+trained on AMLworld; it attaches because its `eval_sample.json` ships **8,192 row-level records** of
+the corpus, described in its own provenance as "unmodified rows of the published corpus, carrying the
+engineered features". Row-level derived columns are Enhanced Data under 3.1, not a Result under 3.5.
+
+That distinction is worth holding precisely in both directions. Overstating it - calling CDLA an
+author-credit licence - would be the mirror of the original defect. Understating it, by reading 3.5 as
+covering anything a model touches, would have concluded no credit was owed at all and left the
+condition unmet.
+
 **The registry fix alone does not discharge the condition.** Hub cards are generated, so the credit
 reaches the published artifact only on a republish. Fixing the record and not republishing would leave
 four uncredited artifacts and a repository that believes otherwise - which is the failure this round
