@@ -2398,3 +2398,27 @@ separate rather than folded into step 1, so a regression names which platform ch
 
 A condition with no executor is an intention. That is the third form of the same finding this round,
 after `DP7` and the duplicate-ID guard the checklist said it had.
+
+### Round 55, closing: the last fixes on the deploy, and the limit of what a browser walk can show
+
+`main` at `732e7c5`, bundle **`index-Db6DAXc9.js`**, box on `main`, public 200.
+
+**The measured branch publishes a measurement.** On finance, `fhe_max_abs_error` reads
+**7.305226645826224e-9** and `encrypted_batch_max_abs_error` reads **2.263164677884788e-8** - both in
+the 1e-9 band `docs/threat-model.md` describes for this key. `fhe_max_abs_error_representative` is
+ABSENT, which is correct: node-seal loaded, so the fallback did not run. And the config constant
+`4.6e-07` appears nowhere on the page.
+
+**A probe of my own returned a false positive and is recorded rather than quietly dropped.** A regex
+for `encrypted_tier` matched `encrypted_tier_measured_ms`, a pre-existing and unrelated metric. The
+tier status should NOT render on the measured branch, and it does not. Two false positives this round
+- the other was an unanchored `ARR` matching "carried" and "Narrower" on `/value` - and both were
+caught by looking at what actually matched instead of trusting the boolean.
+
+**THE LIMIT, STATED RATHER THAN LEFT IMPLICIT.** The fallback branch cannot be exercised in a browser
+where node-seal loads, so the deployed walk confirms the measured half and NOT the representative
+half. What covers the other half is
+`tests/test_a_config_constant_never_wears_a_measurements_name.py`, at source level, seeded in both
+directions. A walk that can only reach one branch is evidence about one branch, and saying so is the
+difference between this record and the Round 54 one that reported a feature as shipped after checking
+only that its gate was green.
