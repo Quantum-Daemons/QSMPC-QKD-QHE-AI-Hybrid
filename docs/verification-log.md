@@ -2227,3 +2227,42 @@ DATASET cell names the corpus.
 
 **And the new gate 15 immediately caught my own mistake**: two prefixes added to the checklist without
 adding them to the legend. That is the gate doing exactly what the old one could not.
+
+### Round 55, continued: three visitor-facing labels, and the guard the checklist said it had
+
+**A badge said WASM for a loop that is plain JS.** Telecom emitted `measured-wasm` for
+`Math.exp`/`Math.max` arithmetic over a JS LCG, and the page rendered "MEASURED (local WASM) /
+Computed in this browser tab on the WebAssembly runtime". The twin had been corrected for this exact
+reason and carries the reason in its own comment - "Claiming WASM here made every pipeline run on
+every page render 'MEASURED (local WASM)' without a wasm module ever being instantiated" - with
+`ProvenanceBadge.tsx` adding "the claim was wrong in the direction that flatters". The fix reached one
+of two sites, and telecom has no `private_inference` stage, so nothing downstream overwrote it.
+
+**A latency was printed under the name of a runtime that did not produce it.** The FHE stage logged
+`ONNX ${clientMs} ms`, where `clientMs` times `privateInference` - which has had no ONNX tier since
+Round 17 and says so in its own comments. The genuine ONNX latency lands in the SAME stage log, so
+one line carried two ONNX-labelled numbers differing by orders of magnitude. The sibling emit fifteen
+lines below already said "client compute".
+
+**Selecting PQC-only on satellite deleted four panels.** `break` inside a `switch` case exits the
+whole case, so the PQC-only guard skipped not just QSDC but the anomaly verdict, the SHAP panel and
+the published-model row - and `usePipelineRun` offers that profile on every use case. It contradicted
+the comment on the block it was skipping, which argues at length that the step "scores a window of the
+BUNDLED corpus... so it has no dependency on whether QSDC aborted". Round 31 moved that block out of
+`if (!abort)` for exactly that reason and left it inside the PQC-only return: the same fix, one of two
+call sites.
+
+**And the duplicate-ID guard the document claims to have does not exist.** The legend's history
+paragraph ends: `RG1`-`RG4` were two families at once, "fixed by renaming the newer one to `AR`, and
+**by making the build fail rather than trusting anyone to notice**". Nothing implemented that. No
+test, no script, no Makefile target scanned for duplicate row IDs. Round 55 alone produced four
+collisions - `CS13`/`CS14`, `MN7`, `QS9`-`QS11`, `RG12`/`RG14` - every one caught by a manual
+`sort | uniq -d` and none by a gate.
+
+That is precisely the failure `test_checklist_prefix_legend.py`'s own docstring names: "the rule is
+right, greppable, and has no executor." It was written about the register deadline, `DP7` and `CI1`'s
+step count, and was true of the paragraph three lines above it.
+
+**A correction to something I asserted mid-round.** I reported a *pre-existing* `RG12` collision in
+this document. There was none - the duplicate was my own new row, and I had misread my own scan
+output. The gate now says so unambiguously by printing both line numbers.
