@@ -3,7 +3,7 @@ import { useSearchParams } from "react-router-dom";
 import OrchestrationGraph from "../components/OrchestrationGraph";
 import PipelineControls from "../components/PipelineControls";
 import RunMonitor from "../components/RunMonitor";
-import { EncryptedAgreementChart, RealDataScatter } from "../components/VerificationChart";
+import { EncryptedAgreementChart, NoEncryptedComparison, RealDataScatter } from "../components/VerificationChart";
 import type { EncryptedAgreementPlot } from "../components/VerificationChart";
 import { DEMO_BANNER, isClientDemo } from "../lib/demoMode";
 import { USECASES as USE_CASE_META } from "../lib/useCases";
@@ -132,15 +132,10 @@ export default function Orchestration() {
         // `satellite_comms` the second is the truth - no stage there produces the plot. Saying so is
         // the difference between "this page has nothing to show you" and "this run had nothing to
         // show", which are different facts about the demo.
-        <div className="card" style={{ marginTop: 16 }}>
-          <h3 style={{ margin: "0 0 4px" }}>Private inference against plaintext, this run</h3>
-          <p className="muted" style={{ fontSize: 12, margin: 0 }}>
-            This flow produced no encrypted-vs-plaintext comparison. The chart is drawn from
-            <code> encrypted_agreement_plot</code>, which only a stage that scores rows under CKKS
-            emits - <code>satellite_comms</code> runs telemetry analysis and has no such stage, and a
-            stopped or failed run has not reached one. Nothing is missing; there is nothing to plot.
-          </p>
-        </div>
+        //
+        // ONE COPY, shared with the use-case page. This text lived here and the use-case page
+        // rendered null, so the same absence was explained on one surface and silent on the other.
+        <NoEncryptedComparison usecase={usecase} />
       ) : null}
 
       {/* The real-data overlay the use-case pages carry. `RealDataScatter` needs only the use case -
