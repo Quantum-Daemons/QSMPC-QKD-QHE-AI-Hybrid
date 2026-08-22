@@ -43,6 +43,23 @@ Also reported, NOT reproduced here: `health.py:171` uses `n` where SP 800-90B se
 
 ### 2. `FiniteKeyParams` hardcodes the retired intensities. spot-checkable from the code
 
+**FIXED Round 51.** `FiniteKeyParams.mu_signal` / `.mu_decoy` now use `default_factory` against
+`QKDConfig`, the same wiring `QKDParams` took in Round 47. A bare `FiniteKeyParams()` returns
+0.3416 / 0.1417.
+
+The reported downstream figures were re-derived and the repository was ALREADY right about them: the
+positive-key threshold at 50 km measures **3.84e7 pulses** at the retired pair and **1.40e7** at the
+shipped one, which is what Round 47 recorded (3.84e7 / 1.41e7). The sweep's "42,448 against 143,645"
+is a sifted-bit figure, a different quantity from the pulse counts the docs quote, so nothing
+downstream needed changing - which is why the rule is to re-derive before correcting.
+
+**Why nothing caught it, which is the part worth keeping.** The refuted-band test builds
+`FiniteKeyParams()` bare and asserts the threshold lands in 5e6 to 2e8. Both pairs sit inside that
+band, so it was green on the defect and on the fix alike - a gate positioned exactly where the drift
+happens, with a tolerance wider than the effect. `tests/test_intensity_defaults_come_from_config.py`
+asserts the SOURCE of the default instead, which has no tolerance to hide in, and checks
+`default_factory` rather than the value so a literal that happens to match today still fails.
+
 `src/qsh/qkd/finite_key.py:115-116` carries `mu=0.5, nu=0.1`; the shipped configuration is
 `mu_signal=0.3416, mu_decoy=0.1417`. `src/qsh/qkd/bb84.py:141-147` fixed exactly this for `QKDParams`
 and the sibling did not follow - the same one-site-short pattern this project has recorded in seven
