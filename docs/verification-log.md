@@ -1962,3 +1962,29 @@ Pipelines re-run on this bundle: finance (8 charts) and telecom (4 charts) both 
 they were driven to completion on the previous one in Round 53 and nothing between the two rounds
 touched their pipelines. Stated rather than implied, because "re-verified" and "verified last round
 and unchanged since" are different claims.
+
+### Round 55, continued: QCNN on the deploy, and what "the same footing as CKKS" actually means
+
+Driven on the live site: finance with `Inference = QCNN`, Parameters panel opened, `#pp-inf` set to
+`qcnn`, full run.
+
+**It runs and reports its structure**, which matches the Cong/Hur architecture the project cites:
+`<Z0> = -0.6622`, **77 shared-filter angles over 8 wires, 3 conv rounds per stage**, state-vector
+simulation. Advantage 10/10, class 0, no `NaN`.
+
+**And it reports a comparison, which is honest and is not what `CS13` asks for.** Verbatim:
+
+> Held-out minority-class F1 0.7353 against a baseline of 0.0983 and logistic regression at 0.8657 on
+> the same split - the classical model is ahead, and this reports what was measured rather than what
+> would flatter.
+
+That is a SAME-SPLIT classical comparison. `CS13` asks for QCNN "against literature on the same
+footing as CKKS", and the published QCNN figure this project cites (`QC18`, Sci Rep 14 (2024), QCCNN
+0.96155) comes from a different corpus and a different task. Putting it beside a PaySim
+minority-class F1 would be the cross-corpus category error `CS14` forbids, and the same error Round 55
+just removed from the chart layer.
+
+So the asymmetry is real and is arguably the RIGHT way round: QCNN is compared against a classical
+model on the data actually in front of it, which is more informative than a number from another
+dataset. `CS13` is annotated rather than ticked, because the row asks for a footing the evidence says
+should not be adopted.
