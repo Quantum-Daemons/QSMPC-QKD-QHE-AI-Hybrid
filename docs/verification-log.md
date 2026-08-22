@@ -2436,3 +2436,40 @@ followed by " as asserted" hit it. The card is correct in four places: the YAML 
 line, the Attribution parenthetical and the full argument. Three false positives this round - an
 unanchored `ARR` matching "carried", `encrypted_tier` matching `encrypted_tier_measured_ms`, and this
 - every one caught by reading what actually matched instead of trusting the boolean.
+
+### Round 55, closing: the unresolved lead resolved, and it cleared the file it was filed against
+
+The audit left one lead open: `src/qsh/models/datasets.py` states that "the same method scores
+event-wise F0.5 of 0.786 here and 0.061 on all channels", and the auditor could not tell whether
+0.061 comes from ESA-ADB's Table 2 or its Supplementary Table 9. Neither reported nor cleared.
+
+**Resolved by reading arXiv:2406.17826v2, and the sentence is CORRECT.** Both figures are Table 2,
+same panel, same event set, differing only in channel scope:
+
+    Table 2 (all events excluding communication gaps), Telemanom-ESA-Pruned, Mission1
+        lightweight subset, channels 41-46 ....... 0.786
+        full set of channels ..................... 0.061
+
+    Supplementary Table 9 (anomalies alone) ...... 0.968 lightweight / 0.039 full
+
+`0.061` occurs three times in the whole PDF, all inside Table 2, and appears nowhere in Supplementary
+Table 9. So the pairing is within-table and there is no category error. **And swapping 0.786 for the
+Round 24 comparator 0.968 would CREATE one**, because 0.968's full-channel partner is 0.039.
+
+**The defect was next door, and it was latent.** `scripts/train/satellite_telemanom.py` read the
+lightweight half from `spec.metric.baseline` - which Round 24 correctly moved to Supplementary Table
+9's **0.968** - while keeping `0.061` as a literal. That pairs two tables and two event sets under a
+label whose entire meaning is that only the channel scope differs. It had not fired because the
+shipped `models/metrics.json` still holds the consistent Table 2 pair: the trainer has not run since
+the baseline moved. The next run would have written the mixed one.
+
+**The shape is worth more than the instance.** Replacing a literal with a registry read looks like
+removing duplication. Here it silently swapped which table one half of a matched pair came from, and
+it did so at the moment the registry value was being corrected - so a fix to one number broke a
+different number that had been reading it. Three prose sites carried the same implication and are
+corrected; `datasets.py` needed no change and is the one place that stayed consistent, precisely
+because it kept 0.786.
+
+**The duplicate-ID gate caught its third collision of the round**, again before it shipped. It has
+now fired on `CS13`/`CS14`, `MN7`, `QS9`-`QS11`, `RG12`/`RG14`, `CI9`/`CI10` and `MS9` - every one my
+own, and every one invisible to the previous four rounds of manual scanning.
