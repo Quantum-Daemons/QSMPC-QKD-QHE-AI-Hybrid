@@ -21,6 +21,7 @@ import { secureArgmax, warmMPC } from "./clientMPC";
 import { optimizeQKD } from "./clientOptiQKD";
 import { generateQuantumBits } from "./clientQRNG";
 import { bb84, channelLossDb, e91, FIBER, FREE_SPACE, h2, intrinsicQber, keyRateWithClock,
+  qsdcSecrecyCapacity,
   qcnnExpectation,
   qcnnInferTrained, qotpQcnnInfer, rng, taggedFraction,
   type QcnnWeights } from "./quantumSim";
@@ -2090,7 +2091,7 @@ export function runClientPipeline(
         // The founding QSDC papers (Long-Liu 2002, Deng-Long-Liu 2003, DL04 2004) give no numeric
         // threshold at all - only "if the error rate is high, halt" - and no standards body has ever
         // specified one: ETSI, ITU-T, ISO/IEC and IEEE quantum series are all key distribution.
-        // `g` IS Q_Eve/Q_Bob AND IT INCLUDES DETECTOR EFFICIENCY. Qi, Lo et al. state it twice,
+        // `g` IS Q_Eve/Q_Bob AND IT INCLUDES DETECTOR EFFICIENCY. Qi, Long et al. state it twice,
         // including numerically: "the loss of the back channel, includes the efficiency of the
         // detector and channel loss, is about 4.1 dB, so that g = 2.57" - and 10^(4.1/10) = 2.5704
         // reproduces that exactly, so the FORM was right and what went into L was not. Omitting
@@ -2104,7 +2105,15 @@ export function runClientPipeline(
         // 4.00x. One number would be wrong for one of the two paths.
         const lossDb = channelLossDb(satChannel(config)) - 10 * Math.log10(qkdCfg().free_space_detector_efficiency);
         const g = 10 ** (lossDb / 10);
-        const secrecy = 1 - h2(e) - g * h2(e);
+        // THE SECOND ENTROPY TAKES e_x + e_z, NOT A POOLED RATE. Eq. (8) is
+        // `Cs = Q_Bob * [1 - h(e) - g*h(e_x + e_z)]`, with e_x and e_z the per-basis error rates from
+        // the check. Their own numbers settle it: the paper states I(A:E) = g*Q_Bob*h(e_x+e_z) =
+        // 9.1e-4 at g=2.57, Q_Bob=0.3%, e_x=e_z=0.8%, and only h(0.016) = 9.1248e-4 reproduces that -
+        // h(0.006) gives 4.08e-4, off by 2.2x. Pooling understates Eve by ~2.24x and OVERSTATES Cs by
+        // 26%. Doubling is sound here only because nothing in this channel model distinguishes the
+        // bases, so the two rates share an expectation; a basis-asymmetric model would need both.
+        // Fixed in BOTH languages in one change - `src/qsh/qkd/qsdc.py` carries the same expression.
+        const secrecy = qsdcSecrecyCapacity(e, g);
         const abort = secrecy <= 0;
         // WHY the abort fired matters more than THAT it fired, and reporting both as
         // `qsdc_eavesdrop_detected` was wrong. Re-evaluate the same link with Eve removed: if it
@@ -2120,7 +2129,12 @@ export function runClientPipeline(
         // criterion. Qi et al. demonstrated it at 4.1 dB on FIBRE; this link is 24.5 dB.
         const secrecyNoEve = (() => {
           const e0 = intrinsicQber(satChannel(config, 0));
-          return 1 - h2(e0) - g * h2(e0);
+          // THE SECOND CALL SITE, AND IT KEPT THE POOLED ARGUMENT WHEN THE FIRST WAS FIXED.
+          // Caught the same hour, inside the SAME FILE, by a commit whose own comment claimed the
+          // change had been applied in both languages. The twin was three hundred lines away and
+          // a `switch` arm apart. Both sites now call one exported function, which is the only
+          // form of this fix that a gate can check.
+          return qsdcSecrecyCapacity(e0, g);
         })();
         const lossLimited = secrecyNoEve <= 0;
         metric(stage, "qsdc_error_rate", r2(e));
