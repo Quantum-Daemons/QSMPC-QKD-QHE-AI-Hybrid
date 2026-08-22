@@ -179,7 +179,7 @@
         "artifacts": [],
         "browser_runnable": false,
         "dataset": {
-          "attribution": "",
+          "attribution": "Altman et al., 'Realistic Synthetic Financial Transactions for Anti-Money Laundering Models', NeurIPS 2023 Datasets and Benchmarks. Data: IBM Transactions for Anti-Money Laundering (AML), CDLA-Sharing-1.0.",
           "licence": "CDLA-Sharing-1.0",
           "name": "IBM AMLworld HI-Small",
           "publishable": true,
@@ -297,7 +297,7 @@
         ],
         "browser_runnable": true,
         "dataset": {
-          "attribution": "",
+          "attribution": "Altman et al., 'Realistic Synthetic Financial Transactions for Anti-Money Laundering Models', NeurIPS 2023 Datasets and Benchmarks. Data: IBM Transactions for Anti-Money Laundering (AML), CDLA-Sharing-1.0.",
           "licence": "CDLA-Sharing-1.0",
           "name": "IBM AMLworld HI-Small",
           "publishable": true,
@@ -364,7 +364,7 @@
         ],
         "browser_runnable": true,
         "dataset": {
-          "attribution": "",
+          "attribution": "Altman et al., 'Realistic Synthetic Financial Transactions for Anti-Money Laundering Models', NeurIPS 2023 Datasets and Benchmarks. Data: IBM Transactions for Anti-Money Laundering (AML), CDLA-Sharing-1.0.",
           "licence": "CDLA-Sharing-1.0",
           "name": "IBM AMLworld HI-Small",
           "publishable": true,
@@ -801,7 +801,7 @@
         ],
         "browser_runnable": true,
         "dataset": {
-          "attribution": "",
+          "attribution": "Kotowski et al., 'European Space Agency Benchmark for Anomaly Detection in Satellite Telemetry', arXiv:2406.17826. Data: ESA Anomaly Dataset, Zenodo record 12528696, CC BY 3.0 IGO.",
           "licence": "CC-BY-3.0-IGO",
           "name": "ESA Anomaly Dataset (ESA-ADB), Mission1 lightweight channels 41-46",
           "publishable": true,
@@ -869,7 +869,7 @@
         ],
         "browser_runnable": true,
         "dataset": {
-          "attribution": "",
+          "attribution": "Kotowski et al., 'European Space Agency Benchmark for Anomaly Detection in Satellite Telemetry', arXiv:2406.17826. Data: ESA Anomaly Dataset, Zenodo record 12528696, CC BY 3.0 IGO.",
           "licence": "CC-BY-3.0-IGO",
           "name": "ESA Anomaly Dataset (ESA-ADB), Mission1 lightweight channels 41-46",
           "publishable": true,

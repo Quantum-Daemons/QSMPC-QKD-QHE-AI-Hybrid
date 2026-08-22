@@ -188,6 +188,14 @@ DS_AMLWORLD = DatasetSpec(
     url="https://www.kaggle.com/datasets/ealtman2019/ibm-transactions-for-anti-money-laundering-aml",
     licence_checked="2026-08-03",
     publishable=True,
+    # CDLA-Sharing-1.0 section 3.1 requires the attribution notices to travel with the data and with
+    # anything published from it. Empty until Round 51, alongside `DS_ESA_ADB` - the two corpora whose
+    # licences are NOT spelled `CC-BY-4.0`, which is exactly what Round 49's backfill matched on.
+    attribution=(
+        "Altman et al., 'Realistic Synthetic Financial Transactions for Anti-Money Laundering "
+        "Models', NeurIPS 2023 Datasets and Benchmarks. Data: IBM Transactions for Anti-Money "
+        "Laundering (AML), CDLA-Sharing-1.0."
+    ),
     notes=(
         "5M transactions, 515K accounts, ~1 laundering transaction in 981. NeurIPS 2023 D&B. "
         "SYNTHETIC: IBM generates it with a multi-agent virtual-world model and states 'Everything is "
@@ -310,9 +318,26 @@ DS_ESA_ADB = DatasetSpec(
     url="https://zenodo.org/records/12528696",
     licence_checked="2026-08-03",
     publishable=True,
+    # CC BY 3.0 IGO REQUIRES ATTRIBUTION, and this field was empty until Round 51 while two models
+    # trained against this corpus were published. Round 49 added `attribution` and backfilled "all
+    # four CC BY corpora" - it matched on the string `CC-BY-4.0` and this licence is `CC-BY-3.0-IGO`,
+    # so the one corpus whose licence is spelled differently is the one the backfill missed. Eighth
+    # instance of a fix reaching every site but one.
+    #
+    # Kotowski first for the PAPER, De Canio first on the Zenodo RECORD - both correct, and
+    # `references/REFERENCES.md` records why citing the paper for the benchmark and the Zenodo DOI for
+    # the data is not an inconsistency. Thirteen places in this repository once credited OPS-SAT-AD to
+    # "Kotowski et al."; the DOI and the Zenodo id are the reliable discriminators, not the surname.
+    attribution=(
+        "Kotowski et al., 'European Space Agency Benchmark for Anomaly Detection in Satellite "
+        "Telemetry', arXiv:2406.17826. Data: ESA Anomaly Dataset, Zenodo record 12528696, "
+        "CC BY 3.0 IGO."
+    ),
     notes=(
         "Missions are anonymised Mission1/2/3 — they are not named Sentinel anything. 17.5 years, "
-        "1.19% annotated. Mission3 is excluded upstream for triviality."
+        "1.19% annotated. Mission3 is excluded upstream for triviality. The CC BY 3.0 IGO term "
+        "appears on the Zenodo landing page but NOT in its REST metadata, which returns no licence "
+        "at all - an API-only check reads this corpus as unlicensed."
     ),
 )
 DS_SMAP_MSL = DatasetSpec(
