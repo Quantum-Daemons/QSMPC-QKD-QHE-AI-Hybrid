@@ -226,7 +226,23 @@ export function adaptiveProportionCutoff(h: number, w = ADAPTIVE_PROPORTION_W, a
     tail -= Math.exp(logPmf);
     logPmf += Math.log((n - c) / (c + 1)) + lp - lq;
   }
-  return Math.min(w, 1 + c);
+  // `c`, NOT `1 + c`. At the top of each iteration `tail` holds P[X >= c] exactly - it starts at
+  // P[X >= 0] = 1 and loses one pmf term per step - so the loop exits holding the SMALLEST c with
+  // P[X >= c] <= alpha, which is the cutoff by definition.
+  //
+  // The `1 +` was transcribed from the Python twin, where it is correct for a reason that does not
+  // transfer: `binom.isf(alpha, n, p)` returns the largest x with P[X > x] <= alpha, i.e. one BELOW
+  // the cutoff, so that copy has to add one back. Two implementations of one quantity, and the
+  // correction term belonged to only one of them.
+  //
+  // The result was a uniform off-by-one at EVERY entropy - measured 991/990, 793/792, 626/625,
+  // 590/589, 325/324, 106/105 - in the PERMISSIVE direction, because a higher cutoff fails fewer
+  // windows. This is the client-side-only demo, so the wrong value is the one a visitor is shown
+  // and the one `healthPassed` is computed from.
+  //
+  // Nothing asserted either cutoff. `check_qkd.mjs` spot-checked `repetitionCountCutoff(2.0)` alone,
+  // and one spot check on a sibling function cannot see a uniform offset in this one.
+  return Math.min(w, c);
 }
 
 /** Fail if one value dominates any non-overlapping window of W samples — a collapsed source. */

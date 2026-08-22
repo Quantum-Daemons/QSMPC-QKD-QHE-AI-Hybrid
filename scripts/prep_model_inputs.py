@@ -329,8 +329,13 @@ def build_medical(rng: np.random.Generator) -> dict:
 
     return {
         "provenance": (
+            # THE LICENCE STRING THAT SHIPS TO THE HUB, which is where the claim actually binds - this
+            # text lands in every published `eval_sample.json`. The 2026-08-10 downgrade reached
+            # `registry.py` and one row of `DATA_LICENSES.md` and not this hardcoded copy, so the
+            # un-downgraded wording was the one being redistributed.
             "real MedMNIST v2 BreastMNIST test-split images (Yang et al., Scientific Data 10:41, "
-            "2023; CC BY 4.0), derived from the Al-Dhabyani et al. BUSI ultrasound dataset. These "
+            "2023; CC BY 4.0 as asserted by MedMNIST - the upstream BUSI grant is NOT verifiable, "
+            "see DATA_LICENSES.md), derived from the Al-Dhabyani et al. BUSI ultrasound dataset. These "
             "are the images medical_fl.resnet18 was trained and evaluated on -- unlike the Wisconsin "
             "WDBC sample this page uses for the FHE/MPC pipeline, which is a different corpus."
         ),
