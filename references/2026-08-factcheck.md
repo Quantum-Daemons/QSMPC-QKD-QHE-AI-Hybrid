@@ -125,6 +125,18 @@ Reported, and both are quotation-level claims worth re-reading at source before 
 
 ### 5. E91 and QSDC, both permissive, neither flipping a shipped verdict
 
+**E91 HALF FIXED Round 53, re-derived exactly.** The composition was a units confusion between a
+VISIBILITY and an ERROR PROBABILITY: a channel flipping a bit with probability `e` has visibility
+`(1 - 2e)`, not `(1 - e)`. At the shipped 50 km channel with V = 0.97 and e = 0.015200 the old form
+gave **0.022372** and the corrected one gives **0.029744** - and composing the two error sources
+independently, `q_V + e - 2*q_V*e`, gives **0.029744** as well, agreeing to **0.000%**. Exact rather
+than first-order agreement is what makes this a correction and not a modelling preference. The
+reported 24.8% understatement reproduces exactly.
+
+**QSDC NOT addressed.** Qi et al. Eq. (8) defining `g` as back-channel loss "including the efficiency
+of the detector" needs reading at source before `qsdc.py` is touched, and the reported 4.0x is
+unreproduced here. Left open.
+
 `src/qsh/qkd/e91.py:44-46` applies visibility as `V*(1-e)` and then `QBER=(1-V)/2`, which halves the
 error term - reported as 0.022372 against a self-consistent 0.029744, **24.8% low**.
 `src/qsh/qkd/qsdc.py:90-92` uses channel loss alone for `g`, where Qi et al. Eq. (8) define it as the
@@ -132,6 +144,19 @@ back-channel loss "including the efficiency of the detector" - reported **4.0x**
 Both make the demo look better than the model justifies, which is the direction that matters.
 
 ### 6. Currency
+
+**NOT RESOLVED Round 53, and the attempt is recorded because it failed in an informative way.**
+ITU's own recommendation index does not expand the Y.3800 series on the page fetched, and search could
+confirm Y.3832 / Y.3833 (12/2025) and Y.3828 (04/2025) but **not** Y.3836, Y.3837 or Y.3838. The
+reported "series now runs to Y.3838, approved 2026-08-13" is therefore UNVERIFIED here and
+`REFERENCES.md`'s Y.3835 ceiling is left alone rather than advanced on a search summary.
+
+The GS QKD 010 claim is worse than unverified - it is **contradicted**. The sweep reports 010 "has
+never been published and sits at draft v0.6.2"; a search summary reports V1.1.1 dated 2023-04, and
+both a V0.0.1 (2017-12) and a V0.4.1 (2021-06) draft are visible in ETSI's open docbox. Direct fetches
+of `etsi.org/deliver` return **HTTP 403 for QKD 010, 014 AND 020** - including 014, which is certainly
+published - so the 403 is a bot block and carries no information about publication status. This needs
+ETSI portal access to settle; nothing in the repo was changed on it.
 
 - **ITU-T**: `references/REFERENCES.md:962` says the series runs to Y.3835. It now runs to **Y.3838**
   (Y.3836, Y.3837 and Y.3838 approved 2026-08-13; Y.3836 is still flagged prepublished).
@@ -141,6 +166,20 @@ Both make the demo look better than the model justifies, which is the direction 
   specs this project implements.
 
 ### 7. Two claims in `model-choice-vs-2026-practice.md` no longer hold
+
+**SECOND CLAIM CONFIRMED AND CORRECTED Round 53.** `runs_encrypted=True` is on **six** specs, not
+five - `finance_aml.student`, `medical_fl.student`, `genomics.prs`, `satellite_comms.student`,
+`satellite_comms.opssat_student`, `telecom_ids.student`. The document contradicted itself: the
+sentence after the count says the telecom gap "is being closed in this same round", which is what
+made it six. Corrected by annotating rather than rewriting, since the pre-closure count is the finding.
+
+The student-beats-teacher observation is also confirmed: `telecom_ids.student` scores macro F1
+**0.988329** against the random forest it was distilled from at **0.986629**, 64 parameters, 0.995
+agreement. Recorded as an observation - soft-target distillation regularises and 0.0017 on 600 rows is
+inside this project's own recorded noise - not as a claim that the linear model is better.
+
+**FIRST CLAIM NOT RESOLVED.** The 15-qubit concentration reading requires arXiv:2605.31449 at source,
+and it is not settled by reasoning about the summary. Left open.
 
 `:282-291` explains quantum-kernel underperformance by a 15-qubit concentration threshold. The cited
 work (arXiv:2605.31449) reportedly says 15 qubits is where the **Hamming** kernel overtakes the

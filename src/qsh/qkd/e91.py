@@ -41,7 +41,24 @@ def run_e91(n_pairs: int = 100_000, params: ChannelParams | None = None, *, visi
     rng = np.random.default_rng(seed)
     eta = params.transmittance()
     p = float(np.clip(basis_prob, 0.01, 0.99))
-    v_eff = float(np.clip(visibility * (1.0 - intrinsic_qber(params)), 0.0, 1.0))   # channel-degraded visibility
+    # CHANNEL-DEGRADED VISIBILITY, and the factor is 2e rather than e.
+    #
+    # This read `visibility * (1 - intrinsic_qber(params))` and understated QBER by 24.8%, in the
+    # direction that flatters the demo. The error is a units confusion between a VISIBILITY and an
+    # ERROR PROBABILITY: a channel that flips a bit with probability e has visibility (1 - 2e), not
+    # (1 - e), because visibility spans [-1, 1] of correlation while an error probability spans
+    # [0, 1/2] of QBER.
+    #
+    # Checked by composing the two error sources independently instead, which needs no visibility
+    # algebra at all: q = q_V + e - 2*q_V*e. At the shipped 50 km channel, V = 0.97 and e = 0.015200:
+    #
+    #     shipped   (1 - V(1-e))/2   = 0.022372
+    #     this form (1 - V(1-2e))/2  = 0.029744
+    #     independent composition    = 0.029744   <- identical, to 0.000%
+    #
+    # The agreement is exact rather than first-order, which is what makes this a correction and not a
+    # modelling preference.
+    v_eff = float(np.clip(visibility * (1.0 - 2.0 * intrinsic_qber(params)), 0.0, 1.0))
     s = chsh_s(v_eff)
     qber = float(min(0.5, (1.0 - v_eff) / 2.0))
     detected = rng.random(n_pairs) < eta                                   # coincidence detection (lossy arm)
