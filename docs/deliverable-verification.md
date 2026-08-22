@@ -4027,3 +4027,46 @@ Round 54 merged, the register read 53 against a git history of 54 and
 nothing to do with the round's content. Recorded because the range form is used elsewhere in this file
 and will do it again.
 
+
+## Round 56: the standing requirements, each with its evidence and its gap
+
+The standing request asks for a list of what is done, what is pending, and what is a concern. This is
+that list, built from measurement rather than from recollection. Row counts are from the gitignored
+checklist; every "verified" line names how it was checked.
+
+### Covered, with the evidence
+
+| requirement | covering rows | evidence |
+|---|---|---|
+| The workflow loop: local -> push -> CI -> box pull -> Docker rebuild -> public URL -> repeat | **`RT0`-`RT9`**, an ORDERED loop; `RT9` is the branch back | `RT1` local gate before push, `RT3` CI green on the PUSHED head, `RT5` image REBUILT not reused, `RT6` bundle filename changed, `RT7` public URL with cache-bust |
+| Client-side-only inference | 17 `CS` rows | `CS1` zero `/api/` requests, `CS2` `/api/*` returns 404 `text/plain` (measured), `CS4` `crossOriginIsolated`, `CS12` zero POSTs on the wire, `CS15` npm crypto deps checked for archival |
+| 2D plots per vertical | 21 `RD` rows | all five payloads served, 8192/569/307/3200/529 points, each with licence, attribution, provenance and named axes |
+| QCNN | 36 `QC`/`QR` rows | cross-language parity to 2.4e-07; `QC18` carries the WDBC literature comparison |
+| Published HF models | 32 `HF`/`PM`/`MS` rows | `HF15` added this round: the DEPLOYED bundle must carry the new pins |
+| Page content, terminology, numbers, buttons, duplicates | 43 `RG`/`SW`/`UX`/`MN` rows | ten pages walked; zero bad tokens, zero duplicate headings, zero unnamed buttons, zero CJK |
+| Dataset licence and commercial use | 15 `L`/`DL`/`CP`/`T` rows | 7 tracked reference PDFs each with an explicit redistribution grant, adjudicated per file at primary source; 4 excluded and gitignored; gate derives its corpus from `git ls-files` |
+
+### Open, with what is actually missing
+
+| item | state | what would close it |
+|---|---|---|
+| **Mobile layout** | **UNMEASURED.** The automation here resizes the OS window without moving the viewport - `innerWidth` stays 1280, `outerWidth` reads 0 | CDP device emulation, then assert zero horizontal overflow and WCAG 2.2 AA 2.5.8 tap targets at 24x24 CSS px. `UX12` |
+| **WebGPU node placement** | **UNMEASURED.** The badge reports an accepted adapter, not per-node assignment; ORT 1.27.0's op registry is not enumerable from the shipped bundle | `endProfiling()` or `logSeverityLevel: 1`, plus a THIRD badge state - two cannot express a partial answer. `CS17` |
+| **Telecom's separability estimator** | **UNDETERMINED and recorded as such.** Its four readings are 0.9798 / 0.9915 / 0.9925 / 1.0000; every plausible estimator lands inside any usable band | Nothing can fix this by tolerance. Either state the estimator in the payload or accept it. `RD22` skips with the reason |
+| **QSDC finite-size certification** | Working as designed and the design is now honest: at the demo's 74-byte telemetry no block can be certified | Nothing to fix. `QS13` records the crossovers - 32 KB on fibre, 4 MB on the downlink |
+| **JupyterLite / marimo / pyvista-wasm** | DECLINED with reopening conditions, re-verified 2026-08-22 against the Pyodide 314.0.5 lockfile (356 packages, no CKKS/MPC/ONNX) | `DC8`; the `pyvista-wasm` "does not exist" reasoning was WITHDRAWN this round - it exists and is by a PyVista core maintainer |
+
+### The concern worth stating above the others
+
+Every defect this round was **one copy of several**: a formula corrected in one of two call sites in
+one file, a lesson applied to one of two primitives in one gate, a licence downgrade reaching three
+of four surfaces, a health fix reaching one of two languages, a caption written for one payload and
+inherited by two more. **Three of those were fixes I made in this same session**, which is the part
+that matters: the defect is not carelessness about the first copy, it is that nothing enumerates the
+copies. The gates added this round enumerate rather than list - note fields from the config, row IDs
+from the file, combiner branches from the exporter - because a hand-written list is maintained by the
+same person who forgot the second copy.
+
+BUSINESS DOC RECONCILED Round 56. The out-of-repo document was at R16-R18 and is now brought level
+with what has been measured since. Its content is not quoted here, in the checklist, or in any commit
+- only the fact of the reconciliation, which is what gate 16 reads.
