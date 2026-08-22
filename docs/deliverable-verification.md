@@ -3906,3 +3906,50 @@ retrain, recorded as such rather than claimed as a fix.
 next paragraph says the sixth was being added in that same round, so the document contradicted itself.
 Annotated rather than rewritten, because the pre-closure count is the finding.
 
+## Round 55: the reference line could never draw, and the gate checked the mechanism not the outcome
+
+**BUSINESS DOC RECONCILED Round 55.**
+
+Round 54 drew `MetricSpec.baseline` as a reference line on the per-class-F1 chart and gated it: the
+value must come from `spec.metric.baseline`, never from `res.baseline` (the trivial predictor). Both
+assertions were true. **Measured on the deployed site, the line rendered nowhere.**
+
+The reason is structural rather than a wiring slip. Every model carrying a published baseline plots
+as a **PR curve** - finance 0.6323, medical 0.901/0.857, satellite 0.968/0.979 - and every model that
+plots **per-class F1** is a telecom multiclass model whose baseline is deliberately `null`. The
+intersection of "has a baseline" and "draws that chart" was **empty**, and nothing noticed because the
+gate tested the MECHANISM (which field is read) and not the OUTCOME (whether anything appears).
+
+**Moving it to the PR-curve branch would have been worse.** That y-axis is PRECISION, and a
+`minority_class_f1` of 0.6323 is not a precision value. A horizontal line there compares an F1 against
+a precision - the same category error as drawing the trivial predictor as prior research, which the
+gate for that field exists to prevent. The fix was not to relocate the line but to stop drawing a
+line at all.
+
+`MeasuredAgainstPublished` gives the comparison its own axis, where both bars are the same quantity by
+construction and the metric is named on the figure. **Seven models render it**: finance gbm, three
+medical, and three satellite. The gate now asserts REACHABILITY - at least one shipped model must have
+both a published baseline and a measured value under the same declared metric - so a comparison
+nobody can see fails rather than passes.
+
+### The calibration diagram was verified on the deploy, and it works
+
+Round 51 added it and it had never been seen by a visitor. Confirmed rendering on both branches:
+"Calibration of `finance_aml.gbm`: mean p(positive) against the frequency..." and "Calibration of
+`telecom_ids.qml`: mean winning-class confidence against the frequency...". Binary bins p(positive),
+multi-class bins winning-class confidence, and the forecast branch has none because a regression has
+no probability to calibrate.
+
+Also settled by reading rather than building: the per-row prediction-vs-label scatter is not missing
+work. It was considered and declined, with the reason recorded in the type - "a prediction-versus-label
+scatter for a classifier is a confusion matrix drawn badly, the y-axis is categorical". The reliability
+diagram is the instrument that answers the same question honestly.
+
+### A range heading loses its upper bound
+
+`## Rounds 53-54` parses as **53** under `^##+ Rounds? (\d+)`, which both round-readers use. With
+Round 54 merged, the register read 53 against a git history of 54 and
+`test_the_register_records_every_round_that_shipped` went red - correctly, and for a reason that has
+nothing to do with the round's content. Recorded because the range form is used elsewhere in this file
+and will do it again.
+
