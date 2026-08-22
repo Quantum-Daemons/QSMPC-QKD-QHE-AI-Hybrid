@@ -50,6 +50,50 @@ class QSDCResult:
     loss_db: float                 # one-way channel loss backing g
     eve_gain_g: float              # g = Q_Eve / Q_Bob = 10^(loss_dB/10)
     link_budget_limited: bool      # Cs <= 0 even with Eve removed -- the link, not an attack
+    #: Serfling upper confidence bound on the MESSAGE carriers' error rate, at ``EPS_PE``. This is
+    #: the quantity the abort is decided on; ``error_rate`` above is the point estimate and is kept
+    #: only so the gap between the two is visible.
+    error_rate_upper: float = 0.0
+    #: The block is too short for the check subset to certify ANY useful error rate, so the abort is
+    #: attributable to sample size rather than to Eve or to the link budget. Distinct from both:
+    #: a statistics-limited abort says nothing about the channel.
+    statistics_limited: bool = False
+
+
+#: Failure probability of the parameter estimation. Matches the QSDC precedent that exists - Wu, Long
+#: & Hayashi, Phys. Rev. Applied 17, 064011 (2022), Fig. 4, evaluate their finite-length rate at
+#: "B <= 1e-9, E <= 1e-9" - and standard QKD practice.
+EPS_PE = 1e-9
+
+
+def serfling_upper(observed: float, n_check: int, n_message: int, eps: float = EPS_PE) -> float:
+    """One-sided upper confidence bound on the error rate of the UNMEASURED carriers.
+
+    Sampling is WITHOUT REPLACEMENT - the check carriers are drawn from the same finite block as the
+    message carriers and then discarded - so the right tool is Serfling's inequality, not Hoeffding's.
+    Curras-Lorenzo, Navarrete, Pereira & Curty, arXiv:2410.04095, Eq. (15), after Lemma 6 of
+    Tomamichel, Lim, Gisin & Renner, Nat. Commun. 3, 634 (2012), after Serfling, Ann. Statist. 2, 39
+    (1974). Guarantees ``Pr[e_message >= e_up] <= eps``.
+
+    NOT A QSDC CITATION, AND THAT MATTERS. The QSDC literature does not specify a finite-size
+    parameter-estimation procedure, and says so: Pan et al., Photonics Res. 8, 1522 (2020) - "the
+    finite-size analysis of QKD cannot be directly invoked for QSDC ... would be an interesting
+    direction for future research"; the IEEE COMST survey (arXiv:2311.13974) - "the finite-length
+    security analysis of QSDC is currently under investigation"; and Lei et al., Entropy 27(4), 332
+    (2025), from Long's own group, which adheres to "the asymptotic limit, assuming an infinite block
+    length". The two papers that do carry finite-size QSDC analysis are about other layers entirely -
+    Wu-Long-Hayashi on the wiretap CODE, Sun et al. (IEEE Trans. Commun. 72, 4633) on DECOY
+    INTENSITIES - and citing either for a check-subset bound would misrepresent them.
+
+    So this bound is imported from QKD and is THIS PROJECT'S OWN CONSERVATIVE CHOICE. Recorded as
+    such rather than dressed in a citation that does not cover it.
+    """
+    if n_check <= 0 or n_message <= 0:
+        return 0.5
+    n_total = n_check + n_message
+    dev = math.sqrt(n_total * (n_check + 1) * math.log(1.0 / eps)
+                    / (2.0 * n_message * n_check * n_check))
+    return float(min(0.5, observed + dev))
 
 
 def quantum_secure_direct_comm(
@@ -89,7 +133,7 @@ def quantum_secure_direct_comm(
     # `params.loss_db()`, not the fibre product: a free-space channel carries a diffraction spec and
     # this expression silently ignored it, so the same downlink was 28.0 dB here and 24.48 dB in the
     # browser - a factor 2.7 in g, and so in the secrecy capacity the abort is decided on.
-    # `g` IS Q_Eve/Q_Bob, AND IT INCLUDES DETECTOR EFFICIENCY. Qi, Lo et al. define it twice - "g
+    # `g` IS Q_Eve/Q_Bob, AND IT INCLUDES DETECTOR EFFICIENCY. Qi, Long et al. define it twice - "g
     # represents the gap between QEve and QBob, depending on the back channel loss and the efficiency
     # of detector", and again numerically: "the loss of the back channel, INCLUDES THE EFFICIENCY OF
     # THE DETECTOR and channel loss, is about 4.1 dB, so that g = 2.57". 10^(4.1/10) = 2.5704
@@ -113,19 +157,82 @@ def quantum_secure_direct_comm(
     # detector efficiency. This is the honest floor, not the final answer.
     loss_db = params.loss_db() - 10.0 * math.log10(params.detector_efficiency)
     g = 10.0 ** (loss_db / 10.0)
-    secrecy = 1.0 - _h2(error_rate) - g * _h2(error_rate)
 
-    # Attribute the abort. Re-evaluate the identical link with Eve removed: if it still cannot
-    # close, the limit is the link budget and calling it "eavesdrop detected" accuses a clean
-    # channel. Only an abort the link would NOT have suffered on its own is Eve's.
+    # THE ABORT IS DECIDED ON THE UPPER BOUND, NOT ON THE POINT ESTIMATE.
+    #
+    # `error_rate` is the frequency of errors on a HANDFUL of check carriers, and it was fed straight
+    # into the secrecy capacity. Measured before this change, on the SHIPPED default channel: an
+    # 11-byte message gives 29 check carriers, the true QBER is 0.01520 against a tolerance of
+    # 0.00241 - so the link provably cannot carry QSDC - and the transfer DELIVERED 118 times in 200.
+    # Not because the physics was wrong; because 0.9848^29 = 0.64, so a zero-error sample is the
+    # common case at that block length. The check reported success on a channel it had no power to
+    # judge, which is worse than a wrong threshold: it is a threshold applied to a number that does
+    # not mean what the comparison assumes.
+    #
+    # With the bound in place the same call aborts, and so does every message this demo can send.
+    # That is the correct answer and it is worth stating plainly rather than tuning around: at 29
+    # check carriers with ZERO observed errors, epsilon = 1e-9 certifies only e < 0.701, and
+    # h(0.701) is near 1, so C_s is deeply negative. There is no epsilon that rescues it - even a
+    # laughable eps = 1e-2 certifies only e < 0.331. Certifying the fibre tolerance of 2.405e-3 needs
+    # about 1.8e6 check carriers; the satellite tolerance of 9.635e-5 needs about 1.1e9. Qi et al.'s
+    # own experiment runs blocks of 1,312 x 830 = 1,088,960 pulses, which is the regime this bound
+    # says is required - so the arithmetic is not an artefact of being too strict, it is what the
+    # published experiments already do.
+    # AND THE ENTROPY ARGUMENT IS THE SUM OF THE TWO BASIS ERROR RATES, NOT A POOLED ONE.
+    #
+    # Eq. (8) reads `Cs = Q_Bob * [ 1 - h(e) - g * h(e_x + e_z) ]`, and the paper defines `e_x`,
+    # `e_z` as "the bit-error rates in the X-basis and the Z-basis in the error-check". This is
+    # structural rather than notational: Eq. (5) gives Eve's term as `h(xi)` with
+    # `xi = (1 - sqrt((1-2p)^2 + (1-2e_x-2e_z)^2 [1 - (1-2p)^2]))/2`, and at the maximising `p = 1/2`
+    # the `(1-2p)^2` terms vanish and `xi` collapses to exactly `e_x + e_z`.
+    #
+    # Their own arithmetic settles it. The paper states `I(A:E) = g * Q_Bob * h(e_x + e_z) = 9.1e-4`
+    # at `g = 2.57`, `Q_Bob = 0.3%`, `e_x = e_z = 0.8%`. Reproducing that number:
+    #
+    #     h(e_x + e_z) = h(0.016)  ->  9.1248e-4   MATCHES to the stated precision
+    #     h(e)         = h(0.006)  ->  4.0798e-4   off by 2.2x
+    #     h(e_x)       = h(0.008)  ->  5.1828e-4   off by 1.8x
+    #
+    # Only the sum reproduces it. A pooled single rate understates Eve's information by ~2.24x and
+    # OVERSTATES the secrecy capacity by 26% at the paper's own operating point - the third
+    # optimistic-security error found in this one function, after the 0.11 threshold and the omitted
+    # detector efficiency. All three erred in the same direction, which is worth noticing: a
+    # simplification that makes a demo work is not a neutral coin flip.
+    #
+    # `2 * e_check` IS JUSTIFIED HERE AND WOULD NOT BE IN GENERAL. The paper does not assume
+    # `e_x == e_z`; it measures and plots them separately. Doubling is legitimate in this simulator
+    # only because nothing in `intrinsic_qber` distinguishes the bases - misalignment, dark counts
+    # and Eve's intercept-resend all act symmetrically - so the two basis rates have the same
+    # expectation by construction. A channel model with basis-dependent asymmetry would have to
+    # carry both rates. Note also that `e` in the FIRST term is a different measurement: Bob's
+    # bit-error rate on the return leg (0.6% in the paper), against 0.8% per basis on the check.
+    error_upper = serfling_upper(error_rate, n_check, n_msg)
+    eve_arg = min(0.5, 2.0 * error_upper)          # h(e_x + e_z); the sum saturates at 1/2
+    secrecy = 1.0 - _h2(error_upper) - g * _h2(eve_arg)
+
+    # Attribute the abort, now THREE ways. A statistics-limited abort says nothing about the channel:
+    # the sample was too small to certify anything, and reporting that as either "eavesdropper" or
+    # "link budget" would be an accusation the data does not support. Checked first because it
+    # dominates - if the block cannot certify the CLEAN channel's own error rate, nothing downstream
+    # of the check is evidence about anything.
     clean = replace(params, eve_intercept_fraction=0.0)
-    secrecy_clean = 1.0 - (1.0 + g) * _h2(intrinsic_qber(clean))
+    e_clean = intrinsic_qber(clean)
+    secrecy_clean = 1.0 - _h2(e_clean) - g * _h2(min(0.5, 2.0 * e_clean))
+    # Would this block certify the clean channel, given a PERFECT sample of it? If even that fails,
+    # the binding constraint is the number of carriers rather than the physics.
+    e_clean_up = serfling_upper(e_clean, n_check, n_msg)
+    stats_limited = (1.0 - _h2(e_clean_up)
+                     - g * _h2(min(0.5, 2.0 * e_clean_up))) <= 0.0 < secrecy_clean
     link_limited = secrecy_clean <= 0.0
 
+    common = dict(message_bits=n_msg, check_bits=n_check, loss_db=round(loss_db, 3),
+                  eve_gain_g=round(g, 3), link_budget_limited=link_limited,
+                  error_rate_upper=round(error_upper, 5), statistics_limited=stats_limited)
+
     if secrecy <= 0.0:
-        return QSDCResult(None, not link_limited, round(error_rate, 5), round(secrecy, 5),
-                          n_msg, n_check, round(loss_db, 3), round(g, 3), link_limited)
+        # Eve is blamed only for an abort that is neither link-limited nor statistics-limited.
+        return QSDCResult(None, not (link_limited or stats_limited), round(error_rate, 5),
+                          round(secrecy, 5), **common)
 
     # above zero secrecy capacity: LDPC frame correction recovers the block exactly
-    return QSDCResult(message, False, round(error_rate, 5), round(secrecy, 5),
-                      n_msg, n_check, round(loss_db, 3), round(g, 3), link_limited)
+    return QSDCResult(message, False, round(error_rate, 5), round(secrecy, 5), **common)
