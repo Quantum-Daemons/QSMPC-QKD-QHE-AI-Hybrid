@@ -74,6 +74,17 @@ band admits both - a gate that cannot see the drift it is positioned to catch.
 
 ### 3. "Two-intensity decoy-state bound" names a protocol the cited equations are not
 
+**RESOLVED Round 53, verified at source.** The paper was fetched and its text extracted. Section 3.4
+is titled *Vacuum+Weak decoy state* and introduces Eqs. (33)-(37); the sentence that makes them tight
+reads *"from vacuum decoy state, Eq. (33), Alice and Bob can estimate Y0 accurately"*. So Eqs. 34-37
+are the THREE-intensity protocol. The paper's own two-intensity case is section 3.5, *One decoy
+state*, which BOUNDS Y0 rather than knowing it.
+
+This repository does neither exactly: two intensities, with `y0` supplied by the channel model. In a
+simulator that is legitimate and TIGHTER than section 3.5, because the dark-count rate is known
+exactly; on hardware it would not be. The name was accurate about the intensity count and misleading
+about the equations, so `bb84.py` and `README.md` now say which part comes from where.
+
 `src/qsh/qkd/bb84.py:6,86,102` and `README.md:80` call it a two-intensity bound. Ma, Qi, Zhao and Lo
 section 3.4 describe Eqs. 34-37 as "a two-decoy-state protocol with a **vacuum and a weak** decoy
 state" - signal plus two decoys, three intensities. The repo implements signal + one weak decoy and
@@ -81,6 +92,28 @@ supplies `Y0` analytically (`bb84.py:224`) instead of measuring a vacuum decoy, 
 is self-consistent and the NAME is what misattributes it.
 
 ### 4. `decoy_reference.py` attributes two things to Ma et al. that are not there
+
+**BOTH CONFIRMED Round 53, and the first is worse than reported.**
+
+*`f_ec = 1.22` is not Table 1.* Table 1's columns are lambda, alpha, e_detector, Y0, eta_Bob and
+**f = 2MHz / 0.1MHz - a repetition rate**. 1.22 is from the prose: *"use f(e) = 1.22, which is the
+upper bound of f(e) in secure distance for this experiment"*. Four of the five defaults ARE Table 1;
+the docstring said all five were. A correct number under a wrong provenance - the harder kind to
+notice, because nothing computed from it is wrong.
+
+*The q claim was backwards.* The docstring said the reproduced curves are efficient BB84 "and Ma et
+al. say so in the text". The text says the reverse: Eq. (42), which is what Figure 2 plots, is
+introduced with **"where q = 1/2 with standard BB84"**.
+
+**And the reference values are not in the paper at all.** R/eta ~ 0.11 and R/eta^2 ~ 0.15 appear
+nowhere in its prose - searched. `tests/test_decoy_reference.py` passes `q_sift=1.0` to reach them,
+which doubles the rate; at the q the paper names for that figure this model gives 0.0568 and 0.0755.
+Three possibilities and the record does not pretend to know which: the values were read off the
+plotted curve and the curve is at q ~ 1 despite the caption; or they were read correctly and this
+model is 2x low with `q_sift=1.0` closing the gap by coincidence; or they came from this model and
+were then attributed to the paper. **NOT resolved here** - resolving it means reading values off a
+plotted figure, which cannot be done from an extracted text layer. The 13 tests are left untouched
+and the docstring now says the assertions are this module's own outputs until that reading is done.
 
 Reported, and both are quotation-level claims worth re-reading at source before acting:
 
