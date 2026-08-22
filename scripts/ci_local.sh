@@ -23,10 +23,21 @@ HF_HUB_OFFLINE=1 "$PY" -m pytest -m "not slow" -q -p no:warnings >/tmp/ci_pytest
   && ok "tests" || { bad "tests"; tail -20 /tmp/ci_pytest.log; }
 
 step "2/16 config parity (defaults.py -> config.defaults.json)"
-"$PY" scripts/export_config.py >/dev/null 2>&1
-git diff --quiet -- web/src/lib/config.defaults.json \
-  && ok "config.defaults.json in sync" \
-  || bad "config.defaults.json is stale - commit the regenerated file"
+# THE GENERATOR'S EXIT STATUS IS TESTED, because it decides what the diff below means.
+# This read `>/dev/null 2>&1` with the status discarded. Both generators write their artifact LAST,
+# so any exception before that leaves the committed file byte-identical and `git diff --quiet`
+# returns 0 - the gate then prints "in sync" for a generator that crashed. Seeded by raising at the
+# top of `export_config.py`: exit 1, verdict PASS. These two were the only commands in this script
+# whose status was neither tested nor logged, which makes this DP2 ("the build's exit status is
+# captured and printed, never redirected to /dev/null") broken inside the script that enforces it.
+if ! "$PY" scripts/export_config.py >/tmp/ci_export_config.log 2>&1; then
+  bad "scripts/export_config.py FAILED - the diff below would say 'in sync' for a file it never wrote"
+  tail -15 /tmp/ci_export_config.log
+elif git diff --quiet -- web/src/lib/config.defaults.json; then
+  ok "config.defaults.json in sync"
+else
+  bad "config.defaults.json is stale - commit the regenerated file"
+fi
 
 step "3/16 generated artifacts match their generator and their history"
 "$PY" scripts/check_generated_prose.py \
@@ -116,10 +127,30 @@ step "13/16 combiner vectors regenerated from the Python side"
 # being written. Locally the venv is always present, so this script would have gone on saying PASS
 # while CI could only ever say FAIL. That asymmetry is what this file's header is about, and a gate
 # nobody has watched run has an unknown result rather than a good one.
-"$PY" scripts/export_combiner_vectors.py >/dev/null 2>&1
-git diff --quiet -- web/scripts/vectors/hybrid_combiner_vectors.json \
-  && ok "vectors in sync with the Python combiners" \
-  || bad "hybrid_combiner_vectors.json is stale - commit the regenerated file"
+# Same fix as gate 2, and it matters MORE here. `check_hybrid_combiner.mjs` reproduces the COMMITTED
+# bytes by design, so this vector file is the only artefact holding the Python and browser combiners
+# to one session key. A `_combine` change applied to `hybrid_kem.py` and the binding test but missed
+# in this exporter leaves the vectors stale and both gates green.
+# Two artefacts now, for the same reason: each pins a browser reimplementation to the Python that
+# owns the quantity. `qrng_cutoffs.json` was added in Round 55 after `adaptiveProportionCutoff`
+# shipped a uniform +1 at every entropy with nothing able to see it - the only assertion in the
+# repo was a single correct spot check on the SIBLING function.
+vec_fail=0
+for gen in scripts/export_combiner_vectors.py scripts/export_qrng_cutoffs.py; do
+  if ! "$PY" "$gen" >/tmp/ci_export_vectors.log 2>&1; then
+    bad "$gen FAILED - its artefact was not regenerated, so the diff below proves nothing"
+    tail -15 /tmp/ci_export_vectors.log
+    vec_fail=1
+  fi
+done
+if [ "$vec_fail" = "0" ]; then
+  if git diff --quiet -- web/scripts/vectors/hybrid_combiner_vectors.json web/scripts/vectors/qrng_cutoffs.json; then
+    ok "vectors in sync with the Python combiners and the SP 800-90B cutoffs"
+  else
+    bad "a generated vector file is stale - commit the regenerated file(s)"
+    git diff --stat -- web/scripts/vectors/
+  fi
+fi
 
 step "14/16 QCNN cost metrics at EVERY site that claims the backend"
 # Structural, not another careful read. The latency was added to the private_inference call site and
@@ -144,13 +175,31 @@ step "15/16 the local-only checklist gates are actually running"
 # renamed checklist here indistinguishable from four passing checks. That is the same
 # scope-measured-on-one-side defect this project keeps finding, applied to its own enforcement point.
 if [ -f docs/browser-verification-checklist.md ]; then
-  skipped=$("$PY" -m pytest tests/test_checklist_prefix_legend.py tests/test_checklist_ws_index.py \
-              tests/test_ci_local_step_numbering.py tests/test_checklist_prose_counts.py \
-              -q -p no:warnings 2>&1 | grep -c "LOCAL-ONLY GATE, SKIPPED" || true)
-  if [ "${skipped:-0}" = "0" ]; then
-    ok "checklist present; its four gates ran here (they cannot run anywhere else)"
-  else
+  # CAPTURE ONCE AND TEST THREE THINGS: pytest's exit status, that no test SKIPPED, and that the
+  # expected number of tests actually RAN. The previous form piped pytest straight into `grep -c`
+  # wrapped in `|| true`, so only the skip count survived and pytest's status was thrown away.
+  # Seeded by deleting `tests/test_checklist_prefix_legend.py`: pytest exits 4 (file not found), the
+  # skip count is 0, and the gate printed "its four gates ran here". Nothing else in the repo names
+  # those four paths, so a rename would have silently removed four invariants.
+  #
+  # The RUN COUNT is the load-bearing half: a deleted file produces 0 skips exactly like a clean run,
+  # and only a floor on how many tests executed distinguishes them. Counted from the progress line
+  # (`-q` prints one status character per test and no "N passed" summary under this project's
+  # addopts), so the count is of characters pytest emitted rather than of a message it might reword.
+  cl_out=$("$PY" -m pytest tests/test_checklist_prefix_legend.py tests/test_checklist_ws_index.py \
+             tests/test_ci_local_step_numbering.py tests/test_checklist_prose_counts.py \
+             -q -p no:warnings 2>&1); cl_rc=$?
+  cl_skipped=$(printf '%s' "$cl_out" | grep -c "LOCAL-ONLY GATE, SKIPPED" || true)
+  cl_ran=$(printf '%s\n' "$cl_out" | grep -oE '^[.sxFE]+ +\[100%\]' | tr -cd '.sxFE' | wc -c)
+  if [ "$cl_rc" -ne 0 ]; then
+    bad "the checklist gates did not run cleanly (pytest exit $cl_rc) - a missing or renamed file exits 4 and is otherwise indistinguishable from zero skips"
+    printf '%s\n' "$cl_out" | tail -12
+  elif [ "${cl_skipped:-0}" != "0" ]; then
     bad "the checklist gates skipped ON THIS MACHINE - they enforce nothing anywhere"
+  elif [ "${cl_ran:-0}" -lt 11 ]; then
+    bad "only ${cl_ran:-0} checklist gate tests ran, expected at least 11 - a deleted file reports 0 skips exactly like a clean run"
+  else
+    ok "checklist present; its four gates ran here ($cl_ran tests; they cannot run anywhere else)"
   fi
 else
   bad "docs/browser-verification-checklist.md is missing; four invariants now enforce nothing, here or in CI"
