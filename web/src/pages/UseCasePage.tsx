@@ -1,4 +1,4 @@
-import { EncryptedAgreementChart, NoEncryptedComparison, VerificationChart } from "../components/VerificationChart";
+import { EncryptedAgreementChart, MeasuredAgainstPublished, NoEncryptedComparison, VerificationChart } from "../components/VerificationChart";
 import type { EncryptedAgreementPlot } from "../components/VerificationChart";
 import { useRef } from "react";
 import { Link, useParams } from "react-router-dom";
@@ -13,7 +13,7 @@ import ShapPanel from "../components/ShapPanel";
 import TwoPartyDiagram, { USECASE_SPECS } from "../components/TwoPartyDiagram";
 import { FIBER, FREE_SPACE } from "../lib/quantumSim";
 import { DEMO_BANNER, isClientDemo } from "../lib/demoMode";
-import { hasTreeAttribution } from "../lib/config";
+import { hasTreeAttribution, modelsFor } from "../lib/config";
 import { USECASE_META } from "../lib/useCases";
 import { usePipelineRun } from "../lib/usePipelineRun";
 
@@ -205,6 +205,27 @@ function UseCaseView({ usecase }: { usecase: string }) {
             modelKey={String(artifacts.verification.modelKey ?? "")}
             usecase={usecase}
           />
+          {/* Measured against published, on ONE metric. The verification chart's own axes are
+              precision/recall or per-class F1, neither of which a published aggregate belongs on -
+              so the comparison the standing request asks for gets its own axis rather than a line
+              drawn across a chart that means something else. */}
+          {(() => {
+            const spec = modelsFor(usecase).find(
+              (m) => m.key === String(artifacts.verification.modelKey ?? ""));
+            const rec = (spec?.achieved ?? {}) as Record<string, unknown>;
+            const measured = typeof rec[spec?.metric?.name ?? ""] === "number"
+              ? (rec[spec?.metric?.name ?? ""] as number) : null;
+            return spec ? (
+              <MeasuredAgainstPublished
+                measured={measured}
+                published={spec.metric?.baseline ?? null}
+                ceiling={spec.metric?.ceiling ?? null}
+                metric={spec.metric?.name ?? ""}
+                modelKey={spec.key}
+                source={spec.metric?.baseline_source}
+              />
+            ) : null;
+          })()}
           {/* The sample's own note on why the figure is what it is. Unrendered, the finance student
               once showed 0.3337 here beside a recorded 0.0178 for the same metric, with nothing on
               screen to reconcile them. */}

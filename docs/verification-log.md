@@ -1932,3 +1932,33 @@ than the extractor:
 **`satellite_comms.student` is absent from the satellite row above and that is the recorded state**,
 not an omission: it is scored on event-wise F0.5, a sequence metric the per-row evaluator cannot
 compute, so it reports DID NOT RUN with its reason rather than substituting a figure.
+
+## Round 55 (branch `round55-the-reference-line-could-never-draw`, bundle `index-BYWN9-KK.js`) - a feature that rendered nowhere, found by looking
+
+Round 54 merged, box returned to `main` at `770b533`, new bundle deployed and walked.
+
+**The calibration diagram works, and this is the first time anyone has seen it.** Round 51 added it;
+it had never been deployed. Confirmed on the live site from the rendered figure captions:
+
+> Calibration of `finance_aml.gbm`: mean p(positive) against the frequency...
+> Calibration of `telecom_ids.qml`: mean winning-class confidence against the frequency...
+
+Both branches, both correct: binary bins p(positive), multi-class bins winning-class confidence.
+
+**And the baseline reference line added the same round rendered NOWHERE.** Queried the SVG text on
+finance and telecom after full runs; the only `published` string on either page is the model-run
+label. The cause is structural: every model with a baseline plots a PR curve, every model plotting
+per-class F1 has a null baseline, and the intersection is empty. The Round 54 gate passed because it
+asserted which FIELD was read, never that the result appears.
+
+Replaced with `MeasuredAgainstPublished` - one axis, both bars the same metric, the metric named on
+the figure. **Seven models can render it**: `finance_aml.gbm`, three medical, three satellite. The
+gate now asserts reachability, so an unreachable comparison fails.
+
+Pipelines re-run on this bundle: finance (8 charts) and telecom (4 charts) both to completion, zero
+`NaN`, zero `[object Object]`.
+
+**What this walk did not cover.** Medical, genomics and satellite were not re-run on THIS bundle -
+they were driven to completion on the previous one in Round 53 and nothing between the two rounds
+touched their pipelines. Stated rather than implied, because "re-verified" and "verified last round
+and unchanged since" are different claims.
