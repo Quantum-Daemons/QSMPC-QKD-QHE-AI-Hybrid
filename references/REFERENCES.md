@@ -32,6 +32,15 @@ Workstreams: **WS1** AI-QKD parameter optimisation and entropy, **WS2** QML-IDS,
 
 ## WS1 - AI-QKD (real-time parameter optimization) + entropy (QRNG)
 
+**A source-level fact-check current at 2026-08-22 lives in
+[`2026-08-factcheck.md`](2026-08-factcheck.md).** It confirms the ETSI/NIST/Rusca citations in this
+section at their cover pages and re-derives every internal figure exact, and it contradicts six
+claims - the SP 800-90B health tests being run on conditioned rather than raw samples, the
+`FiniteKeyParams` defaults still carrying the retired intensities, "two-intensity decoy-state bound"
+naming a protocol the cited equations are not, two attributions in `decoy_reference.py`, permissive
+terms in the E91 and QSDC models, and the ITU-T series now running to Y.3838 rather than Y.3835.
+Each carries whether it was reproduced locally or is recorded as reported-and-unreproduced.
+
 - **AML-QKD: Adaptive Machine Learning Framework for Real-time Parameter Tuning in QKD** - Mohamed,
   Kaldari and Al-Kuwari, Qatar Center for Quantum Computing (HBKU), **arXiv:2603.04192** [quant-ph]
   `[R-local]`
@@ -959,7 +968,8 @@ Three further facts that stop any single number being quoted safely:
 **No standards body has specified QSDC**, and this was checked exhaustively rather than assumed.
 All 14 published ETSI QKD deliverables were searched full-text (2.0 M characters): zero hits for
 QSDC or "secure direct communication", against a control of 7 documents matching "BB84". ITU-T's
-complete X.1700-X.1749 and Y.3800-Y.3835 sets are QKD or QRNG throughout, and the work programme
+complete X.1700-X.1749 and Y.3800-**Y.3838** sets are QKD or QRNG throughout (this said Y.3835 until Round 51; Y.3836, Y.3837 and Y.3838 were approved 2026-08-13, Y.3836 still flagged
+prepublished), and the work programme
 across every study period 2001-2028 and every status returns zero QSDC items against a control of
 186 quantum-titled items. ISO/IEC JTC 1/SC 27's entire catalogue contains exactly two
 quantum-titled standards, both parts of 23837, both QKD. IEEE has no QSDC standard - and no QKD one
