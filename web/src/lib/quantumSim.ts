@@ -25,6 +25,26 @@ export function h2(x: number): number {
   return -x * Math.log2(x) - (1 - x) * Math.log2(1 - x);
 }
 
+/** QSDC secrecy capacity, Qi et al., Light Sci. Appl. 8, 22 (2019), Eq. (8).
+ *
+ *      Cs = 1 - h(e) - g * h(e_x + e_z)
+ *
+ *  EXTRACTED SO IT CAN BE CHECKED ACROSS LANGUAGES. It lived inline in the `qsdc_telemetry` arm of a
+ *  `switch` inside a generator in `clientCompute.ts`, which cannot be imported, so nothing could
+ *  compare it against `src/qsh/qkd/qsdc.py`. This project has now shipped THREE corrections to this
+ *  one expression - the 0.11 threshold, the omitted detector efficiency in `g`, and the pooled
+ *  entropy argument - and each had to be applied by hand in two files, with no gate able to notice
+ *  if the second application were forgotten. `tests/test_qsdc_agrees_across_languages.py` pins it.
+ *
+ *  The second argument is the SUM of the per-basis check error rates, not a pooled rate. Eq. (5)
+ *  gives Eve's term as `h(xi)`, and at the maximising `p = 1/2` xi collapses to exactly `e_x + e_z`;
+ *  the paper's own `I(A:E) = g*Q_Bob*h(e_x+e_z) = 9.1e-4` is reproduced only by `h(0.016)`, at
+ *  9.1248e-4, against 4.08e-4 for `h(0.006)`. Doubling one measured rate is sound here only because
+ *  nothing in this channel model distinguishes the bases. */
+export function qsdcSecrecyCapacity(e: number, g: number): number {
+  return 1 - h2(e) - g * h2(Math.min(0.5, 2 * e));
+}
+
 export interface ChannelParams {
   distanceKm: number;
   /** Fibre only. A free-space link is not attenuated per kilometre - see `freeSpace` below. */

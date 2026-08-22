@@ -476,7 +476,7 @@ the date go stale.
 |---|---|
 | A bootstrapped CKKS CNN cheap enough for WASM at N about 8192 | cheapest bootstrapped ImageNet CNN is N = 2^15 |
 | A real, labelled, commercial-OK QKD attack corpus | closest is QF-LOG: synthetic, four classes, subscription-gated |
-| A fidelity quantum kernel beating a random forest at 8 qubits or fewer | concentration bound says >= 15 qubits |
+| A fidelity quantum kernel beating a random forest at 8 qubits or fewer | **NO LONGER BLOCKED - Round 55.** The blocker read "concentration bound says >= 15 qubits"; arXiv:2605.31449 says 15 is where the fidelity kernel FAILS and that concentration worsens with qubit count, so 8 qubits is the favourable regime. This falsifier is live and unblocked |
 | An encrypted transformer or tabular foundation model on any finance tabular benchmark | none published |
 | Anyone publishing an encrypted BreastMNIST result above this project's | two exist, both simpler architectures |
 | **A latent-space encoder whose latent fits 4096 CKKS slots at multiplicative depth 1 AND runs under `onnxruntime-web`** | Kim et al. (arXiv:2506.15258) encode chest X-rays with a VQGAN latent at downsampling factor 8, but f=8 on this project's 28x28 gives 3.5x3.5, so the transfer is the open measurement rather than a citation. Added Round 34 |
@@ -2242,28 +2242,71 @@ display equation, so that is where the conversion started.
 
 ### JupyterLite / marimo / pyvista-wasm: declined, with a reopening condition
 
-Decisive, and not a matter of taste: **the crypto stack does not exist in Pyodide.** No SEAL/CKKS, no
-TenSEAL, no MPC runtime and no ONNX among the 354 distribution packages; `onnxruntime` publishes no
-emscripten wheel. A notebook that runs this project's actual pipeline is **not implementable**, not
-merely inadvisable - it could only narrate the pipeline or re-implement it, and two implementations
-of one thing is this project's named defect class.
+Decisive, and not a matter of taste: **the crypto stack does not exist in Pyodide.** Re-verified
+2026-08-22 against the authoritative `pyodide-lock.json` for **314.0.5 (2026-08-15)**: **356**
+packages, of which `tenseal`, `openfhe`, `seal`, `concrete*`, `onnxruntime` and `onnx` are **all
+absent**, and the only crypto present is `cryptography`, `pycryptodome` and `pynacl`. Checked at PyPI,
+none of TenSEAL 0.3.17, openfhe 1.5.1, concrete-ml 1.9.0 or onnxruntime 1.29.0 has **ever** published
+an emscripten wheel, and no issue requesting one exists in `pyodide/pyodide` or
+`pyodide/pyodide-recipes`. A notebook that runs this project's actual pipeline is **not
+implementable**, not merely inadvisable - it could only narrate the pipeline or re-implement it, and
+two implementations of one thing is this project's named defect class.
 
-Two further blockers, each independently sufficient. Both tools fetch their runtime from the
-**jsDelivr CDN** by default (marimo's own bug #575, open since 2024-01-15), which breaks the
-no-third-party-origin claim the demo rests on. And accessibility is unassessed upstream: no
-JupyterLab/JupyterLite issue cites SC 1.4.1, 1.4.11, 1.4.13 or 4.1.3, and marimo has no accessibility
-documentation at all - absence of reports, not conformance.
+Two further blockers. Both tools fetch their runtime from the **jsDelivr CDN** by default, which
+breaks the no-third-party-origin claim the demo rests on - **but not equally, and lumping them
+together was imprecise.** JupyterLite supports self-hosting through `pyodideUrl` in
+`jupyter-lite.json`, the `JUPYTERLITE_PYODIDE_URL` environment variable, and
+`jupyter lite build --pyodide <local tarball>`. marimo **hardcodes** `cdn.jsdelivr.net` in
+`frontend/src/core/wasm/worker/bootstrap.ts` as a bare template literal with no config key, no
+environment variable and no flag; its own bug #575 has been open since 2024-01-15 and was last touched
+2026-05-19. So the CDN objection is *fixable for JupyterLite and unfixable for marimo*. And
+accessibility is unassessed upstream: no JupyterLab/JupyterLite issue cites SC 1.4.1, 1.4.11, 1.4.13
+or 4.1.3, and marimo has no accessibility documentation at all - absence of reports, not conformance.
 
-**`pyvista-wasm` does not exist.** No `vtk`, `pyvista`, `trame` or `itk` in the Pyodide lockfile; the
-PyPI packages of that name are third-party API lookalikes in a personal namespace, not PyVista
-artifacts.
+**CORRECTION, Round 55: `pyvista-wasm` exists, and the reasoning that said otherwise is withdrawn.**
+This section claimed the PyPI packages of that name are "third-party API lookalikes in a personal
+namespace, not PyVista artifacts". Checked at source: `pyvista-wasm` **0.12.0 was published
+2026-08-21**, Apache-2.0, the fourteenth release since 2026-03-25, by **Tetsuo Koyama
+(`tkoyama010`)** - the **#5 all-time contributor to `pyvista/pyvista` with 683 contributions**, a core
+maintainer rather than an impostor. It wraps `@kitware/vtk-wasm`, which is Kitware's own Apache-2.0
+WebAssembly port of VTK, at v3.0.0 (2026-08-20). "Personal namespace" was read as evidence of
+illegitimacy when it was only evidence of a namespace.
 
-*Reopens only when all four hold:* a Pyodide wheel exists for at least one of CKKS/TFHE or an MPC
-runtime, so the notebook can execute the real pipeline; the runtime is self-hosted from this
-project's own origin with a CI check that the kernel's package set matches the app's lockfile; cold
-start is measured in-house, because **no citable benchmark exists** - the universally repeated
-"6.4 MB, 4-5 seconds" is byte-identical boilerplate across the 2022 and current Pyodide roadmaps and
-is not a measurement of any shipped version; and the four WCAG criteria above are tested in-house.
+It is still declined, on grounds that are checkable rather than dismissive: pre-alpha with 6 stars and
+not under the `pyvista` org; it fetches from **two** third-party origins by default (`unpkg` for the
+UMD bundle, `jsDelivr` for a **22 MB** binary payload) and pins `vtk-wasm@1.7.4`, two majors behind
+Kitware's current release; and, decisively, **this project has no three-dimensional data**. All five
+`web/public/data/*/real_2d.json` are `[x, y, class]` where the third element is a binary label, not a
+coordinate. The agreement scatter and the calibration plot are 2-D *by necessity* - their meaning is
+distance from `y = x`, and a third axis destroys the read rather than enriching it.
+
+*The notebook walkthrough reopens only when all four hold:* a Pyodide wheel exists for at least one of
+CKKS/TFHE or an MPC runtime, so the notebook can execute the real pipeline; the runtime is self-hosted
+from this project's own origin with a CI check that the kernel's package set matches the app's
+lockfile; cold start is measured in-house, because **no citable benchmark exists** - the universally
+repeated "6.4 MB, 4-5 seconds" is byte-identical boilerplate across the 2022 and current Pyodide
+roadmaps and is not a measurement of any shipped version; and the four WCAG criteria above are tested
+in-house. **For marimo specifically, a fifth:** it ships a supported way to move the runtime off
+`cdn.jsdelivr.net`, which as of 2026-08-22 it does not.
+
+*The 3-D path reopens only when this project acquires data that is genuinely three-dimensional.* If it
+ever does, the dependency to reach for is **`@kitware/vtk-wasm` direct from npm and vendored**, not
+`pyvista-wasm` - whose only contribution is a Python code-generation layer this project has no
+Python-in-browser tier to use, and whose defaults reintroduce the two third-party origins.
+
+**What comparable projects actually do, which is the evidence this decision was missing.** Hugging
+Face's `webml-community` org publishes 74 Spaces of which **72 are `sdk=static`** and zero are Gradio;
+`Xenova` publishes 55 of which 52 are static; `transformers.js-examples` has 60 example directories
+and **zero notebooks**. **No FHE or MPC project anywhere ships JupyterLite or marimo** - Zama's six
+public Spaces are all `sdk=gradio`, i.e. server-side Python, and all were last modified in 2024. Where
+JupyterLite genuinely is used - SymPy Live, the NumPy/SciPy/scikit-learn docs - the payload is always
+pure Python and never a native crypto extension. The convergence is on bespoke static JS/wasm apps,
+which is what this project already is.
+
+**And an independent re-confirmation of `CS11`.** Zama's own documentation states that TFHE-rs's WASM
+API "includes functionality for key generation, encryption, and decryption. **However, it does not
+support FHE computations**" - reached from the opposite direction, by surveying live demos rather than
+by reading the licence, and landing on the same conclusion.
 
 ### ETSI horizon, recorded because it has a date for the first time
 
@@ -3905,4 +3948,51 @@ retrain, recorded as such rather than claimed as a fix.
 `runs_encrypted=True` is on **six** specs and `model-choice-vs-2026-practice.md` said five - while its
 next paragraph says the sixth was being added in that same round, so the document contradicted itself.
 Annotated rather than rewritten, because the pre-closure count is the finding.
+
+## Round 55: the reference line could never draw, and the gate checked the mechanism not the outcome
+
+**BUSINESS DOC RECONCILED Round 55.**
+
+Round 54 drew `MetricSpec.baseline` as a reference line on the per-class-F1 chart and gated it: the
+value must come from `spec.metric.baseline`, never from `res.baseline` (the trivial predictor). Both
+assertions were true. **Measured on the deployed site, the line rendered nowhere.**
+
+The reason is structural rather than a wiring slip. Every model carrying a published baseline plots
+as a **PR curve** - finance 0.6323, medical 0.901/0.857, satellite 0.968/0.979 - and every model that
+plots **per-class F1** is a telecom multiclass model whose baseline is deliberately `null`. The
+intersection of "has a baseline" and "draws that chart" was **empty**, and nothing noticed because the
+gate tested the MECHANISM (which field is read) and not the OUTCOME (whether anything appears).
+
+**Moving it to the PR-curve branch would have been worse.** That y-axis is PRECISION, and a
+`minority_class_f1` of 0.6323 is not a precision value. A horizontal line there compares an F1 against
+a precision - the same category error as drawing the trivial predictor as prior research, which the
+gate for that field exists to prevent. The fix was not to relocate the line but to stop drawing a
+line at all.
+
+`MeasuredAgainstPublished` gives the comparison its own axis, where both bars are the same quantity by
+construction and the metric is named on the figure. **Seven models render it**: finance gbm, three
+medical, and three satellite. The gate now asserts REACHABILITY - at least one shipped model must have
+both a published baseline and a measured value under the same declared metric - so a comparison
+nobody can see fails rather than passes.
+
+### The calibration diagram was verified on the deploy, and it works
+
+Round 51 added it and it had never been seen by a visitor. Confirmed rendering on both branches:
+"Calibration of `finance_aml.gbm`: mean p(positive) against the frequency..." and "Calibration of
+`telecom_ids.qml`: mean winning-class confidence against the frequency...". Binary bins p(positive),
+multi-class bins winning-class confidence, and the forecast branch has none because a regression has
+no probability to calibrate.
+
+Also settled by reading rather than building: the per-row prediction-vs-label scatter is not missing
+work. It was considered and declined, with the reason recorded in the type - "a prediction-versus-label
+scatter for a classifier is a confusion matrix drawn badly, the y-axis is categorical". The reliability
+diagram is the instrument that answers the same question honestly.
+
+### A range heading loses its upper bound
+
+`## Rounds 53-54` parses as **53** under `^##+ Rounds? (\d+)`, which both round-readers use. With
+Round 54 merged, the register read 53 against a git history of 54 and
+`test_the_register_records_every_round_that_shipped` went red - correctly, and for a reason that has
+nothing to do with the round's content. Recorded because the range form is used elsewhere in this file
+and will do it again.
 
