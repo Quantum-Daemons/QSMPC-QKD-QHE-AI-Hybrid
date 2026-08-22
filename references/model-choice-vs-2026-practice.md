@@ -303,9 +303,24 @@ one. For telecom it did not answer it - it left it silently unanswered, which re
 statement about accuracy. The question the rest of this file asks of every vertical is *what runs under
 encryption*, and the answer for telecom was **nothing**.
 
-Measured rather than inferred: `runs_encrypted=True` appears on exactly **five** `ModelSpec` entries in
-`src/qsh/models/registry.py` - the finance student, the medical student, the genomics PRS, and both
-satellite students. `telecom_ids` has **two T2 specs and no T1**: `telecom_ids.qml` and
+Measured rather than inferred: `runs_encrypted=True` appeared on exactly **five** `ModelSpec` entries
+in `src/qsh/models/registry.py` - the finance student, the medical student, the genomics PRS, and both
+satellite students.
+
+**RE-MEASURED Round 53: it is now SIX**, and the sixth is `telecom_ids.student` - the entry the next
+paragraph says was being added in the same round. So this sentence and the one below it have
+contradicted each other since the day they were written, with the count frozen at its pre-closure
+value while the prose described the closure. Left as "appeared" with the correction beside it rather
+than silently updated, because the point of the paragraph is what the count was BEFORE the gap was
+closed, and rewriting it to six would erase the finding it exists to record.
+
+**And the student beat its teacher, which the argument below does not allow for.** Distilled from the
+random forest (`distil_linear_student(rf, ...)`, `scripts/train/telecom_ids.py:285`), the 64-parameter
+CKKS-linear student scores macro F1 **0.988329** against the forest's **0.986629**, at 0.995
+agreement. A student exceeding its teacher is not impossible - soft-target distillation regularises,
+and 0.0017 on 600 held-out rows is well inside the noise this project records elsewhere for
+event-wise metrics - but it should be stated rather than assumed away. Recorded here as an
+observation, not as a claim that the linear model is better than the forest. `telecom_ids` has **two T2 specs and no T1**: `telecom_ids.qml` and
 `telecom_ids.transformer`, the latter itself a documented non-artifact. So on the one use case whose whole
 subject matter is the security of a quantum channel, the demo ran no encrypted inference, and this file
 gave it a verdict that did not mention it. **The gap was invisible because the verdict column was full.**

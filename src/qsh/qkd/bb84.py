@@ -3,8 +3,10 @@
 A prepare-and-measure BB84 simulation: Alice encodes random bits in random bases,
 the :mod:`~qsh.qkd.channel` transports them with loss/noise/eavesdropping, Bob
 measures in random bases, the parties sift, estimate QBER, and an ASYMPTOTIC secret
-key rate (SKR) is computed - by the two-intensity decoy-state bound of Ma, Qi, Zhao
-& Lo (2005) when ``qkd_params`` is supplied, and by the legacy non-decoy GLLP form
+key rate (SKR) is computed - by a two-intensity decoy-state bound built on the
+Vacuum+Weak estimator of Ma, Qi, Zhao & Lo (2005), with the vacuum yield supplied
+by the channel model rather than measured (see `_decoy_secure_fraction`), when
+``qkd_params`` is supplied, and by the legacy non-decoy GLLP form
 when it is not.
 
 Round 45 corrected the word "finite-key" here. Neither branch applies a finite-key
@@ -84,6 +86,23 @@ def _h2(x: float) -> float:
 def _decoy_secure_fraction(eta: float, mu: float, nu: float, e_det: float, y0: float,
                            f_ec: float, sift_ratio: float) -> tuple[float, float, float]:
     """Two-intensity decoy-state secret-key rate per pulse (Ma, Qi, Zhao & Lo 2005).
+
+    WHICH PROTOCOL THIS IS, stated precisely because the citation alone implies a different one.
+    Eqs. (34)-(37) belong to the paper's section 3.4, **Vacuum+Weak decoy state** - THREE intensities
+    (signal, weak decoy, vacuum), where the vacuum decoy is what makes the bound tight: "from vacuum
+    decoy state, Eq. (33), Alice and Bob can estimate Y0 accurately". The paper's own TWO-intensity
+    treatment is section 3.5, One decoy state, and it handles the missing vacuum by BOUNDING Y0
+    rather than knowing it.
+
+    This implementation does neither exactly. It sends signal + one weak decoy - genuinely two
+    intensities - and supplies `y0` from the channel model (`2 * dark_count_prob`) instead of
+    measuring it with a vacuum decoy or bounding it. In a simulator that is legitimate and in fact
+    tighter than section 3.5, because the dark-count rate is known exactly rather than estimated;
+    on hardware it would not be available and the section 3.5 bound would be the honest choice.
+
+    So: the estimator is section 3.4's, the intensity count is section 3.5's, and the vacuum yield is
+    the model's. Calling it "the two-intensity bound of Ma et al." is true about the intensity count
+    and misleading about the equations, which is why this paragraph exists.
 
     A signal (``mu``) + decoy (``nu``) intensity pair lower-bounds the single-photon yield ``Y1`` and
     upper-bounds the single-photon error ``e1``; the GLLP rate then keeps only the *secure* single-photon
@@ -219,7 +238,9 @@ def run_bb84(
         skr = secure_fraction * (n_sift / n_pulses)
         secure_bits = int(secure_fraction * n_sift)
     else:
-        # two-intensity decoy-state single-photon secure rate — mu_decoy genuinely tightens Y1/e1 (Ma 2005)
+        # two-intensity decoy-state single-photon secure rate - mu_decoy genuinely tightens Y1/e1.
+        # Ma et al. 2005 Eqs. 34-37 (their section 3.4, Vacuum+Weak); `y0` below is MODELLED here, not
+        # measured from a vacuum decoy - see `_decoy_secure_fraction` for why that is not the same protocol.
         nu = min(max(1e-4, float(qkd_params.mu_decoy)), mu * 0.9)      # decoy strictly weaker than the signal
         y0 = 2.0 * params.dark_count_prob                             # background yield (two detectors)
         sift_ratio = p * p + (1.0 - p) * (1.0 - p)                    # biased-basis reconciliation ratio

@@ -43,9 +43,20 @@ numbered equation; the Eq. (4) citation this line carried until Round 46 was wro
 class ChannelSpec:
     """A fibre BB84 channel.
 
-    Defaults are the GYS parameter set as tabulated in Ma et al. (2005) Table 1, from
-    C. Gobby, Z. L. Yuan, A. J. Shields, Appl. Phys. Lett. 84, 3762 (2004). They are defaults so
-    the published curves can be reproduced without restating them at each call site.
+    Defaults are the GYS parameter set from C. Gobby, Z. L. Yuan, A. J. Shields, Appl. Phys. Lett.
+    84, 3762 (2004), as tabulated in Ma et al. (2005) Table 1. They are defaults so the published
+    curves can be reproduced without restating them at each call site.
+
+    **FOUR of the five are Table 1; `f_ec` is NOT, and saying "as tabulated in Table 1" of all of
+    them was wrong.** Table 1 gives alpha = 0.21 dB/km, e_detector = 3.3%, Y0 = 1.7e-6 and
+    eta_Bob = 0.045 - which are `alpha_db_per_km`, `misalignment`, `dark_count` and `detector_eff`
+    here. Its remaining column, `f`, is a REPETITION RATE: 2 MHz for GYS, 0.1 MHz for KTH.
+
+    `f_ec = 1.22` comes from the paper's prose instead - "use f(e) = 1.22, which is the upper bound
+    of f(e) in secure distance for this experiment", cited onward to its own reference [12], and
+    also at "mu_optimal ~ 0.48 for f(e) = 1.22". A correct number under a wrong provenance, which is
+    the harder kind to notice: nothing computed from it is wrong, and a reader checking Table 1 for
+    it finds a megahertz.
     """
 
     alpha_db_per_km: float = 0.21
@@ -56,15 +67,33 @@ class ChannelSpec:
     q_sift: float = 0.5
     """Sifting factor.
 
-    0.5 is standard BB84: Alice and Bob choose bases independently and agree half the time. But the
-    published curves this module reproduces are plotted for the EFFICIENT BB84 of Lo, Chau and
-    Ardehali, where a biased basis choice sends q -> 1, and Ma et al. say so in the text.
+    0.5 is standard BB84: Alice and Bob choose bases independently and agree half the time.
 
-    This matters more than it looks. Reproducing the paper's figures with q = 0.5 gives values
-    exactly HALF the published ones - 0.0568 against 0.11, and 0.0755 against 0.15 - which is close
-    enough to look like a units or fitting discrepancy and wrong enough to invalidate the
-    comparison. The default here is the standard protocol because that is what this project runs;
-    the tests pass q_sift = 1.0 to compare against the paper on the paper's own terms.
+    **THIS DOCSTRING ASSERTED THE OPPOSITE OF THE PAPER AND IS CORRECTED IN ROUND 53.** It said the
+    published curves are plotted for the EFFICIENT BB84 of Lo, Chau and Ardehali "and Ma et al. say
+    so in the text". Read at source (arXiv quant-ph/0503005), the text says the reverse. Eq. (42) is
+    what Figure 2 plots, and the sentence introducing it reads:
+
+        "where q = 1/2 with standard BB84"
+
+    The paper does define both conventions earlier - "1/2 for the BB84 protocol ... and if one uses
+    the efficient BB84 protocol, q ~ 1" - but for the figure this module reproduces it states 1/2.
+
+    **What follows from that, stated as an open question rather than silently repaired.** The
+    reference values this module is tested against, R/eta ~ 0.11 and R/eta^2 ~ 0.15, appear NOWHERE
+    in the paper's prose - searched, and they are not there. `tests/test_decoy_reference.py` passes
+    `q_sift=1.0` to reach them, which doubles the rate; at the q the paper names for that figure this
+    model produces 0.0568 and 0.0755. So one of three things is true and the record should not
+    pretend to know which: the figures were read off Figure 2's plotted curve rather than its text
+    and the curve is at q ~ 1 despite the caption; or they were read correctly and this model is 2x
+    low, with `q_sift=1.0` closing the gap by coincidence; or they were derived from this model in
+    the first place and then attributed to the paper.
+
+    **Not resolved here, because resolving it requires reading values off a plotted figure**, which
+    is not something to do from an extracted text layer. Until then the 0.11 / 0.15 assertions are
+    this module's own outputs at `q_sift=1.0`, and describing them as "the published values" is the
+    claim that needs evidence. The default stays 0.5 because that is what this project runs and what
+    the paper names.
     """
 
 
