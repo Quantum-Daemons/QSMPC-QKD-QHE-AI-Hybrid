@@ -114,9 +114,18 @@ export default function BenchmarkPanel(
         return (
           <p className="muted" style={{ fontSize: 11, margin: "8px 0 0", lineHeight: 1.5 }}>
             <b>How these are produced (this run):</b> the <span style={{ color: "#b072ff" }}>QSMPC-FHE</span> row is
-            a genuine <b>state-vector simulation</b> of a QOTP + Clifford+T QCNN private inference run by the
+            a genuine <b>state-vector simulation</b> of a QOTP-protected parameterised RY/RZ/CNOT circuit run by the
             <code>quantum_comparison</code> stage — its <b>latency is measured</b> and its
-            {q?.t_gate_count != null ? ` ${q.t_gate_count} T-gates / ${q.qubits} qubits are counted from the circuit` : " T-gates are counted"}
+            {/* "counted from the circuit" is true of the BROWSER row and false of the Python one.
+                `qsh/qhe/qcnn.py` builds no T gates; its `t_count()` is a Solovay-Kitaev budget,
+                ceil(3*log2(1/eps)) per rotation times the parameter count, returning 630 at 8 qubits.
+                The browser path counts 56 from an actual gate list. One table, two meanings, and the
+                caption asserted the stronger one for both. */}
+            {q?.t_gate_count != null
+              ? ` ${q.t_gate_count} T-gates / ${q.qubits} qubits`
+                + (q.t_gate_count > 200 ? " (a Solovay-Kitaev BUDGET over the rotations, not a gate count)"
+                                        : " are counted from the circuit")
+              : " T-gates are estimated"}
             {" "}(simulated, not quantum hardware; ct/pt = 1 is QOTP's perfect-hiding property). <b>The
             security model named in that row is the SCHEME's, not this run's:</b> the quantum one-time pad
             is perfectly hiding when its key bits are uniform and secret, and this simulation draws them

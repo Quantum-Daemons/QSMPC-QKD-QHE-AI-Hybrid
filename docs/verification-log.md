@@ -2292,3 +2292,65 @@ Before this, all four of those panels vanished with no explanation.
 `plaintext reference <ms>`; `, ONNX <n>` no longer appears anywhere on the page. That line used to
 carry two ONNX-labelled numbers differing by orders of magnitude, one of which was two plain-JS dot
 products.
+
+### Round 55, continued: corrections that had already been made somewhere else
+
+Every item here is a claim this project had **already corrected in one place** and left standing in
+another. That is the round's dominant finding at document granularity rather than at code granularity.
+
+**An un-re-verified figure was being published to the Hub.** `DATA_LICENSES.md` records that this
+project has carried two different spans for ESA-ADB - 14 years there, 17.5 in the registry - and that
+neither is re-verifiable: the Zenodo record, arXiv:2406.17826 and the upstream README all decline to
+state it. That file **withheld** the number. `registry.py` kept asserting it, and `publish_hf.py`
+copies `DatasetSpec.notes` verbatim into the model card, so the withheld figure appears in
+`models/satellite_telemanom/README.md` and `models/satellite_telemanom_student/README.md`. **A figure
+withheld everywhere except the copy that leaves the repository is not withheld.**
+
+**Two README copies of a generalisation `DATA_LICENSES.md` explicitly withdraws as WRONG.** That file
+records: the sentence "no commercial-OK real network-attack corpus exists" generalised two true facts
+about UNSW-NB15 and CIC-IDS into a claim about the field, and **5G-NIDD falsifies it** - CC BY 4.0,
+and this repository trains on it. The README said it twice, and `5G-NIDD` appeared nowhere in the
+README at all.
+
+**The checklist's orientation paragraph said telecom runs no CKKS.** The MPC half is right; the CKKS
+half is false, and four other passages in the same file already carry the correction. **Measured on
+the deployed site** at bundle `index-B8CifKLO.js`: the telecom page emits `encrypted_student_ms`,
+`encrypted_batch_ms` and `fhe_ms_per_rotation` from real node-seal. A correction landing in the
+detailed rows does not reach the paragraph a reader orients from, and the orientation paragraph is
+the one that misleads. The same paragraph called BB84/E91 "state-vector"; both are analytic channel
+models with a Gaussian-sampled QBER, and the adjective belongs to the QRNG named beside them.
+
+**"Clifford+T QCNN" and "T-gate count" for a circuit with zero T gates.** `qcnn.py` builds RY/RZ
+rotations and CNOT entanglers; `t_count()` is a Solovay-Kitaev BUDGET - `ceil(3*log2(1/eps))` per
+rotation times the parameter count - which its own docstring calls "rough" and "-ish", returning 630
+at 8 qubits. `report/build_data.py` records this correction as *fixed* and
+`docs/deliverable-verification.md` names README and architecture.md as the two files corrected. This
+module was the third copy. `BenchmarkPanel` also asserted "counted from the circuit" for both rows of
+one table, which is true of the browser row (56, genuinely counted) and false of the Python one.
+
+**A deleted `def` line merged an anti-tautology test into its neighbour.**
+`test_the_comparison_would_notice_a_divergence` lost its header but not its body, so collection read
+10 instead of 11 and `pytest -k` on that name matched nothing, while
+`docs/deliverable-verification.md` went on asserting the test exists. Detection was never lost - the
+body still ran - but a check nobody can ask for by name is one nobody will notice losing.
+
+**`DATA_LICENSES.md` said 5G-NIDD was "adopted, NOT yet implemented", that "no code path loads it
+yet", and that it has "52 columns".** All three false: `datasets.py` fetches it,
+`scripts/train/telecom_nidd.py` trains on all 1,215,890 flows, and the file has **113 columns**, 66
+dropped, **47 features**. The attribution obligation itself was discharged and renders in
+`ModelPanel`; only the prose went stale.
+
+**`references/satellite-event-count-investigation.md` still opens on the retired comparator.**
+Everything in it is framed against ESA-ADB's lenient 0.786 from Table 2, which Round 24 replaced with
+Supplementary Table 9's like-for-like 0.968 across the registry, README, both model cards, config,
+`build_data.py` and the trainer - and `README.md` links here in the present tense. Banner added,
+following this project's own convention. The denominator argument is unaffected and is why the file
+exists; three scored events against ESA-ADB's 29 holds against either comparator.
+
+**And the MathJax audit measured a proxy for the property.** Round 54 concluded "the conversion is
+largely DONE" from a grep for **backticked** `x = y`. Bare prose mathematics has no backticks and is
+invisible to that pattern by construction, so the probe could only ever return the already-marked-up
+cases - mechanism rather than outcome, again. An outcome-shaped scan finds four bare sites the grep
+cannot, each of them within three lines of its own converted twin. Converted in the house
+`` $`...`$ `` form; the first attempt used plain `$...$`, which is the delimiter this file's own
+style note reserves for display math.
