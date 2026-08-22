@@ -503,7 +503,7 @@ Added 2026-08-11. Both verified at the arXiv abstract page.
   both QCNN model cards. The 8-class telecom circuit added in Round 34 lands the same way - macro F1
   **0.510963** against a multinomial logistic regression at **0.976447** on the identical split, with
   all 8 classes predicted - which matters because it is a *different* readout (a 3-qubit basis
-  marginal rather than a single `<Z_0>` expectation) and a different task shape, and it did not change
+  marginal rather than a single $`\langle Z_0 \rangle`$ expectation) and a different task shape, and it did not change
   the direction of the result. **The figures in this bullet were 0.7326, 0.7143 and 0.8098 until
   Round 47, and then 0.860465, 0.84058 and 0.458324 for part of Round 47 itself**: measured first on
   a hardware-efficient ansatz (replaced in Round 46), then through a multiclass readout that binned
@@ -1071,8 +1071,8 @@ established is worth keeping, because otherwise it gets re-litigated every round
   reference design**, not the state of the art - and that the leverage is in the protocol, not in
   changing the model to suit MPC.
 - **Kim, Kim & Lee, "Revisiting Shamir Secret Sharing for Threshold Fully Homomorphic Encryption."**
-  IACR eprint 2026/1559, received 2026-07-30. Reduces the ThFHE ciphertext modulus from `O(N)` to
-  `O(t log(N/t^2))` bits, with every algorithm completing under 0.2 s at N=64 and scaling past N>=256.
+  IACR eprint 2026/1559, received 2026-07-30. Reduces the ThFHE ciphertext modulus from $`O(N)`$ to
+  $`O(t \log(N/t^2))`$ bits, with every algorithm completing under 0.2 s at $`N = 64`$ and scaling past $`N \ge 256`$.
   The only threshold-FHE anchor here was Chardouvelis, Doettling & Malavolta (2020/1454) in
   `qhe/rate1_qfhe.py`, which is the quantum-side citation; there was none for the classical
   multi-party side even though `submodules/HEonGPU` ships N-out-of-N collective bootstrapping. Bears
