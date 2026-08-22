@@ -2162,3 +2162,68 @@ NOT render on `medical_fl.resnet18`, which carries no such note - the field-pres
 works rather than always-firing. `Reading these metrics:` renders on medical. `Gap to baseline:`
 renders on finance. And the QSDC stage emits
 `asymptotic (infinite block; no finite-size certificate)`.
+
+### Round 55, continued: an exhaustive audit, and four gates that could not fail
+
+A 77-agent audit across eight areas of the standing request, every finding put to an independent
+adversarial verifier told to refute it. **51 findings survived; 17 were refuted.** Each of the six
+acted on below was then re-verified by hand, by seeding the defect and watching the gate stay green.
+
+**The PQC conformance gate could not detect a totally broken ML-KEM.** Its ML-KEM half read one
+outcome - did `encapsulate` throw - and never encapsulated to a WELL-FORMED key. Seeded by making
+`encapsulate` throw unconditionally, it printed `780 malformed keys, 780 rejected, 0 accepted  OK`
+and exited **0**. The ML-DSA block eight lines below already had a keygen-sign-verify round trip, and
+its own comment says why: a noble `0.2.x` to `0.6.x` argument-order change once broke every signature
+while TypeScript and the production build stayed green. `web/package.json` pins `^0.6.1`, so the same
+class of break is in range for ML-KEM. The lesson reached one of the two primitives in one file.
+
+**The SP 800-90B adaptive-proportion cutoff was one too high in the browser, at every entropy.**
+`1 + c` where the loop already held the answer; the `1 +` belongs to the Python copy, where
+`binom.isf` returns one BELOW the cutoff. Measured across the grid: 991/990, 793/792, 626/625,
+590/589, 325/324, 106/105 - **permissive**, because a higher cutoff fails fewer windows, and
+visitor-facing, because this is the client-side-only demo and `healthPassed` is computed from it.
+
+The reason nothing caught it is the part worth keeping. There WAS an assertion:
+`repetitionCountCutoff(2.0, 2^-20) === 11`, which is correct, is SP 800-90B section 4.4.1's own
+worked example - and is on the SIBLING function. **One point on one of two functions cannot see a
+uniform offset in the other.** The fix is a 13-entropy grid for both functions, exported from Python
+by `scripts/export_qrng_cutoffs.py`, regenerated in CI, and compared entry by entry.
+
+**Two CI gates reported success for work that did not happen.** Gate 2 ran `export_config.py` with
+`>/dev/null 2>&1` and its status discarded, then diffed the artefact. Both generators write their
+output LAST, so an exception leaves the committed file byte-identical and the diff returns 0: seeded
+by raising at the top of the generator, exit 1, verdict **PASS "in sync"**. Gate 15 piped pytest into
+`grep -c` wrapped in `|| true`, so only the skip count survived: seeded by deleting a gate file,
+pytest exits 4, the skip count is 0, verdict **PASS "its four gates ran here"**. These were the only
+two commands in a 206-line script whose status was neither tested nor logged - which made `DP2`,
+"the build's exit status is captured and printed, never redirected to /dev/null", broken inside the
+script that enforces it. Gate 15 now also requires a minimum RUN COUNT, because a deleted file
+reports zero skips exactly like a clean run.
+
+**A fabricated `accuracy=1.0` on the row the full deployment serves.** `run_quantum` returned it from
+a `correct += 1` that was unconditional and never read. There is nothing to be accurate about - the
+QCNN has no trained weights, and `private_inference.py` says in its own docstring "Nothing is
+decrypted and nothing is compared". The browser twin had already been corrected to `accuracy: null`,
+with a comment recording the three rounds it had been wrong; **that fix reached one language**, and
+`usePipelineRun.ts` PREFERS the Python artifact, so the identical row of the identical table printed
+1.0 through one transport and an em dash through the other. The flattering side of the contradiction
+was the one that shipped.
+
+**The BreastMNIST licence downgrade reached one of four copies.** On 2026-08-10 it was checked and
+downgraded - MedMNIST licenses ITSELF CC BY 4.0, but the upstream BUSI grant attaches to the ARTICLE,
+and a citation request is not a grant. `registry.py` and one row of `DATA_LICENSES.md` carried it.
+The row whose own text reads "the same corpus as the ResNet-18 row above" said a flat "CC BY 4.0 /
+Yes". So did the redistributed-eval-sample paragraph. And `scripts/prep_model_inputs.py` hardcoded
+the flat string into the `provenance` of every published `eval_sample.json` - **the surface where the
+claim actually binds**, because that file ships inside three Hugging Face repos. The word
+"unverifiable" appeared exactly once in a 428-line licence document.
+
+**The first version of the licence gate cried wolf and had to be narrowed.** Scanning every line
+that mentions the corpus fired on three that merely REFER to BreastMNIST while stating a different
+corpus's licence - the PneumoniaMNIST row saying it is "a different subset from BreastMNIST", the
+WDBC overlay row, and the paragraph where the corpus and its qualifier sit on adjacent wrapped lines.
+A gate that fires on correct text gets disabled, so it now reads the licence CELL of the row whose
+DATASET cell names the corpus.
+
+**And the new gate 15 immediately caught my own mistake**: two prefixes added to the checklist without
+adding them to the legend. That is the gate doing exactly what the old one could not.

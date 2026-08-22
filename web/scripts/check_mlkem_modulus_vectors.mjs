@@ -51,10 +51,12 @@ import { fileURLToPath } from "node:url";
 //
 // The counts are the same 775 / 780 / 1040 that every document quotes, and the hashes are the ones
 // already written in vectors/PROVENANCE.txt - recorded there and, until now, never checked.
+// The trailing number is the FIPS 203 Table 3 ciphertext length for that parameter set - 768, 1088,
+// 1568 bytes. Asserted on the positive round trip below, which this file did not previously do.
 const SETS = [
-  ["ML-KEM-512", ml_kem512, 775, "4292314fd44bb211a27ef38273dcac32f602601c2f65b15a69773221227bf298"],
-  ["ML-KEM-768", ml_kem768, 780, "22308df988866e2731c9b79bfa0ce754ea962a77b198436d56bde6481a526af7"],
-  ["ML-KEM-1024", ml_kem1024, 1040, "5792e788280ecdf5be7bfd2d8b66e18a0f9b9c80f4beb1d801fd27d20e882bf7"],
+  ["ML-KEM-512", ml_kem512, 775, "4292314fd44bb211a27ef38273dcac32f602601c2f65b15a69773221227bf298", 768],
+  ["ML-KEM-768", ml_kem768, 780, "22308df988866e2731c9b79bfa0ce754ea962a77b198436d56bde6481a526af7", 1088],
+  ["ML-KEM-1024", ml_kem1024, 1040, "5792e788280ecdf5be7bfd2d8b66e18a0f9b9c80f4beb1d801fd27d20e882bf7", 1568],
 ];
 const BASE = "https://raw.githubusercontent.com/C2SP/CCTV/main/ML-KEM/modulus";
 const VECTORS = join(dirname(fileURLToPath(import.meta.url)), "vectors");
@@ -107,7 +109,7 @@ console.log(LIVE
   : `  vectors: vendored snapshot in scripts/vectors (see PROVENANCE.txt; --live to re-fetch)`);
 
 let failures = 0;
-for (const [name, kem, expectedCount, expectedSha] of SETS) {
+for (const [name, kem, expectedCount, expectedSha, expectedCtLen] of SETS) {
   const text = gunzipSync(await loadVectors(name, expectedSha)).toString("utf8");
   const lines = text.trim().split("\n").filter(Boolean);
 
@@ -134,6 +136,38 @@ for (const [name, kem, expectedCount, expectedSha] of SETS) {
     }
   }
 
+  // A POSITIVE ROUND TRIP FIRST, because "everything was rejected" is what a WORKING library and a
+  // TOTALLY BROKEN one both report.
+  //
+  // This half of the file read one outcome - did `encapsulate` throw - and never encapsulated to a
+  // WELL-FORMED key. Seeded by making `encapsulate` throw unconditionally, it printed
+  // "780 malformed keys, 780 rejected, 0 accepted  OK" and exited 0. A library in which ML-KEM does
+  // not work at all passed the PQC conformance gate.
+  //
+  // The ML-DSA block below already had exactly this discipline, and its own comment says why: a noble
+  // 0.2.x -> 0.6.x argument-order change broke every signature while TypeScript and the production
+  // build stayed green. `web/package.json` pins `^0.6.1`, so the same class of break is in range for
+  // ML-KEM. The lesson reached one of the two primitives in this file - the one-of-several-twins
+  // shape this project has now recorded eleven times.
+  //
+  // Both halves seeded: `encapsulate` throwing gives "round-trip false ... FAIL" exit 1, and a
+  // `decapsulate` returning the wrong 32 bytes gives "ct 1088 ss 32 round-trip false ... FAIL", so
+  // the length checks alone cannot carry it.
+  let roundTripOk = false;
+  let ctLen = 0, ssLen = 0;
+  try {
+    const { publicKey, secretKey } = kem.keygen(new Uint8Array(64).fill(9));
+    const { cipherText, sharedSecret } = kem.encapsulate(publicKey);
+    const back = kem.decapsulate(cipherText, secretKey);
+    ctLen = cipherText.length;
+    ssLen = sharedSecret.length;
+    roundTripOk = ctLen === expectedCtLen && ssLen === 32
+      && Buffer.compare(Buffer.from(sharedSecret), Buffer.from(back)) === 0;
+  } catch (e) {
+    console.error(`  ${name}: encapsulate/decapsulate round trip threw - ${e.message}`);
+  }
+  if (!roundTripOk) failures++;
+
   let accepted = 0;
   for (const line of lines) {
     const ek = Uint8Array.from(Buffer.from(line.trim(), "hex"));
@@ -146,9 +180,12 @@ for (const [name, kem, expectedCount, expectedSha] of SETS) {
   }
   const ok = accepted === 0;
   if (!ok) failures++;
+  // The round trip prints on the SAME LINE as the rejection count, so "N rejected, 0 accepted"
+  // cannot appear without evidence that the library can encapsulate at all.
   console.log(
-    `  ${name.padEnd(12)} ${lines.length} malformed keys, ` +
-    `${lines.length - accepted} rejected, ${accepted} accepted  ${ok ? "OK" : "FAIL"}`);
+    `  ${name.padEnd(12)} ct ${ctLen} ss ${ssLen} round-trip ${roundTripOk}, ` +
+    `${lines.length} malformed keys, ${lines.length - accepted} rejected, ${accepted} accepted  ` +
+    `${ok && roundTripOk ? "OK" : "FAIL"}`);
 }
 
 // ---------------------------------------------------------------------------
