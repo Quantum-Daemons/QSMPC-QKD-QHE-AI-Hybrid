@@ -2398,3 +2398,41 @@ separate rather than folded into step 1, so a regression names which platform ch
 
 A condition with no executor is an intention. That is the third form of the same finding this round,
 after `DP7` and the duplicate-ID guard the checklist said it had.
+
+### Round 55, closing: the Hub still carried both corrections' pre-fix text
+
+**The audit said it never inspected Hugging Face, and that turned out to be the gap that mattered.**
+Its own coverage note reads: "Hugging Face Hub state was not inspected... the findings assert what
+*would be* published from this tree." Checked against the live Hub: both satellite cards still carried
+**"17.5 years"**, the span `DATA_LICENSES.md` withheld as un-re-verifiable, and the three medical
+cards still stated a flat **CC BY 4.0** for BreastMNIST, the grant downgraded on 2026-08-10.
+
+**Fixing the registry does not fix the published artifact**, and that is the whole point of the
+licence finding: `eval_sample.json` ships inside three model repos, so the string a third party
+receives is the one that binds. Round 51 recorded this same lesson in its own plan and it had to be
+learned again on a different field.
+
+Republished five models. Verified by fetching the cards back:
+
+    qsh-medical-breastmnist-resnet18        licence hedged, YAML license_name cc-by-4.0-asserted-by-medmnist
+    qsh-medical-breastmnist-resnet50        licence hedged
+    qsh-medical-breastmnist-ckks-student    licence hedged
+    qsh-satellite-telemanom-esa             span withheld, "17.5 years" gone
+    qsh-satellite-telemanom-ckks-student    span withheld, "17.5 years" gone
+
+All five return 200 to an anonymous fetch, and the five new `hf_revision` pins resolve 200 with the
+ONNX weights reachable at the pinned revision.
+
+**`--public` was mandatory and checking that first mattered.** `publish_hf.py` calls
+`update_repo_settings(private=private)` explicitly, precisely because `create_repo(exist_ok=True)`
+does NOT change visibility - a fix recorded in the script's own comment. Without the flag it would
+have flipped five currently-public repositories to private, and the demo fetches its weights from
+them, so the live site would have broken while every local gate stayed green.
+
+**A third false positive, recorded like the other two.** The probe reported the medical cards as
+still carrying a flat licence. It was matching the YAML slug
+`license_name: cc-by-4.0-asserted-by-medmnist` - hyphenated, so a regex looking for `CC BY 4.0` not
+followed by " as asserted" hit it. The card is correct in four places: the YAML field, the Licence
+line, the Attribution parenthetical and the full argument. Three false positives this round - an
+unanchored `ARR` matching "carried", `encrypted_tier` matching `encrypted_tier_measured_ms`, and this
+- every one caught by reading what actually matched instead of trusting the boolean.
