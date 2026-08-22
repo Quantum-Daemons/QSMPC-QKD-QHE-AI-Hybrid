@@ -45,7 +45,7 @@ function load() {
   writeFileSync(entry, `
 export { bb84, e91, FIBER, FREE_SPACE, intrinsicQber, eDetForBound, h2, transmittance, taggedFraction, channelLossDb, decoySecureFraction } from ${JSON.stringify(join(WEB, "src/lib/quantumSim"))};
 export { optimizeQKD } from ${JSON.stringify(join(WEB, "src/lib/clientOptiQKD"))};
-export { repetitionCountCutoff, adaptiveProportionCutoff, generateQuantumBits } from ${JSON.stringify(join(WEB, "src/lib/clientQRNG"))};
+export { repetitionCountCutoff, adaptiveProportionCutoff, generateQuantumBits, minEntropyMcv, toeplitzExtract } from ${JSON.stringify(join(WEB, "src/lib/clientQRNG"))};
 export { qkdCfg, qrngCfg } from ${JSON.stringify(join(WEB, "src/lib/config"))};
 `);
   const out = join(dir, "bundle.mjs");
@@ -253,6 +253,67 @@ const cfg_qrng = m.qrngCfg();
     const got = m.repetitionCountCutoff(Number(h), cutoffs.alpha);
     if (got !== want) mismatches.push(`repetition h=${h}: browser ${got}, python ${want}`);
   }
+  // THE ENTROPY FIGURE MUST DESCRIBE THE SOURCE, NOT THE EXTRACTOR.
+  //
+  // SP 800-90B section 4.4 runs its continuous tests on raw samples BEFORE conditioning, and the
+  // min-entropy figure is a statement about the noise source. `generateQuantumBits` computed all of
+  // it from the post-extractor output. `src/qsh/qrng/health.py` takes `raw=` and
+  // `tests/test_health_tests_measure_the_noise_source.py` pins it - in PYTHON ONLY, so the Round 51
+  // fix reached the reference implementation and not the one every visitor runs.
+  //
+  // Checked on a BIASED stream because the shipped source is near-fair, which is exactly why this
+  // survived: at P(1) = 0.5 the two readings differ in the third decimal. At P(1) = 0.90 they are
+  // 0.151 against 0.975.
+  {
+    const n = 200000, p1 = 0.90;
+    let st = 12345;
+    const u = () => (st = (st * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff;
+    const raw = new Uint8Array(n);
+    for (let i = 0; i < n; i++) raw[i] = u() < p1 ? 1 : 0;
+    const cond = m.toeplitzExtract(raw, Math.floor(n / 4), u);
+    const hRaw = m.minEntropyMcv(raw), hCond = m.minEntropyMcv(cond);
+    check("sp80090b-entropy-separates-source-from-extractor",
+      hRaw < 0.30 && hCond > 0.90 && hCond - hRaw > 0.5,
+      `raw ${hRaw.toFixed(4)} vs conditioned ${hCond.toFixed(4)} - these must SEPARATE, or the `
+      + "fixture is no longer biased and this check proves nothing");
+    // The property that matters: what the module REPORTS tracks the source. Asserted through the
+    // module's own estimator on the raw stream, which is what the call site now passes.
+    // AND THE CALL SITE, because the two checks above pass whether or not `generateQuantumBits` uses
+    // `raw` - they exercise the ESTIMATOR on hand-built streams, and the estimator was never the
+    // thing that was wrong. Seeded by reverting the call site: both stayed green. That is the
+    // mechanism-versus-outcome defect, committed inside the gate written to catch it.
+    //
+    // No output-based check can discriminate here. The shipped source is fair by construction, so
+    // raw and conditioned agree to the third decimal on every stream the public API can produce -
+    // which is why `tests/test_health_tests_measure_the_noise_source.py` asserts on the CALL too,
+    // with an `ast` parse. Same reasoning, same remedy.
+    //
+    // COMMENTS ARE STRIPPED FIRST. The comment block explaining why `raw` must be used contains the
+    // string `minEntropyMcv(raw)`, so a plain grep matches its own documentation - the exact trap
+    // the QRNG register gate hit once already.
+    {
+      const src = readFileSync(join(WEB, "src/lib/clientQRNG.ts"), "utf8")
+        .replace(/\/\*[\s\S]*?\*\//g, " ").replace(/\/\/[^\n]*/g, " ");
+      const body = src.slice(src.indexOf("export function generateQuantumBits"));
+      check("sp80090b-call-site-passes-the-raw-stream",
+        /minEntropyMcv\(\s*raw\s*\)/.test(body)
+        && /repetitionCountTest\(\s*raw\s*,/.test(body)
+        && /adaptiveProportionTest\(\s*raw\s*,/.test(body)
+        && !/minEntropyMcv\(\s*bits\s*\)/.test(body),
+        "generateQuantumBits computes its SP 800-90B figures from `bits` (post-conditioning) rather "
+        + "than `raw`. An extractor makes any source look uniform, so the reported min-entropy would "
+        + "describe the Toeplitz stage under a label that says entropy source - measured 0.9749 "
+        + "against a true 0.1510 at P(1)=0.90.");
+    }
+
+    check("sp80090b-cutoffs-follow-the-raw-stream",
+      m.repetitionCountCutoff(hRaw) > m.repetitionCountCutoff(hCond)
+      && m.adaptiveProportionCutoff(hRaw) > m.adaptiveProportionCutoff(hCond),
+      `repetition ${m.repetitionCountCutoff(hRaw)}/${m.repetitionCountCutoff(hCond)}, adaptive `
+      + `${m.adaptiveProportionCutoff(hRaw)}/${m.adaptiveProportionCutoff(hCond)} - a biased source `
+      + "must widen both cutoffs relative to its conditioned output");
+  }
+
   check("sp80090b-cutoffs-match-python",
     mismatches.length === 0,
     mismatches.length

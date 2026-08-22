@@ -139,7 +139,11 @@ function lgamma(x: number): number {
 const MCV_Z = 2.5758293035489004;
 
 // SP 800-90B (6.3.1) most-common-value min-entropy estimate: bits of min-entropy per bit.
-function minEntropyMcv(bits: Uint8Array): number {
+// EXPORTED so a cross-language gate can reach it. The shipped source is near-fair, so the
+// raw-versus-conditioned defect is invisible through the public `generateQuantumBits` API - it
+// only shows on a BIASED stream, and the internal PROB_ONE cannot be injected. What is not
+// exported cannot be checked, which is the same reason the default MCP combiner went unpinned.
+export function minEntropyMcv(bits: Uint8Array): number {
   const n = bits.length;
   if (n === 0) return 0;
   let ones = 0;
@@ -156,7 +160,7 @@ function lhlOutputLength(minEntropyBits: number, epsilonLog2: number): number {
 
 // Toeplitz-hash (universal-2) extractor: out = T @ bits (mod 2). T's defining bits come from an
 // independent second source (toeplitzBits -> the seedless two-source construction) or a PRG (u).
-function toeplitzExtract(bits: Uint8Array, outLen: number, u: () => number, toeplitzBits?: Uint8Array): Uint8Array {
+export function toeplitzExtract(bits: Uint8Array, outLen: number, u: () => number, toeplitzBits?: Uint8Array): Uint8Array {
   const m = bits.length;
   outLen = Math.max(1, Math.min(outLen, m));
   const needT = outLen + m - 1;
@@ -295,14 +299,39 @@ export function generateQuantumBits(nBits: number, opts: { source?: string; post
   }
   const bits = proc.slice(0, nBits);
   const dt = Math.max(performance.now() - t0, 1e-6);
+  // SP 800-22 STAYS ON THE OUTPUT: monobit, runs and block-frequency are statements about the stream
+  // a consumer receives, and running them on raw would be the mirror-image error.
   const mp = monobit(bits), rp = runs(bits), bp = blockFrequency(bits, blockSize);
-  // 90B gates; 22 is reported alongside. See the note on the health helpers above.
-  const hMin = minEntropyMcv(bits);
-  const rct = repetitionCountTest(bits, hMin);
-  const apt = adaptiveProportionTest(bits, hMin);
+
+  // SP 800-90B SECTION 4.4 RUNS ON `raw`, NOT ON `bits`, AND THIS COPY DID NOT.
+  //
+  // Section 4.4's continuous tests run on raw samples BEFORE any conditioning, and the min-entropy
+  // figure is a statement about the NOISE SOURCE. This function bound `raw` at the top and then
+  // computed `hMin`, both continuous tests and the reported `minEntropyPerBit` from `bits` - the
+  // post-extractor output. An extractor produces near-uniform output by construction, so the number
+  // described the Toeplitz stage under a label that says entropy source.
+  //
+  // Measured in this module on a p(1) = 0.90 stream: raw min-entropy **0.1510**, conditioned
+  // **0.9749**. A ruined source and a healthy one are a hundredth of a bit apart. The cutoffs move
+  // too - repetition count 134 against 22, adaptive proportion 965 against 597.
+  //
+  // `src/qsh/qrng/health.py` takes `raw=` and its docstring states this clause; `simulator.py`
+  // passes it; `tests/test_health_tests_measure_the_noise_source.py` pins it - IN PYTHON ONLY. The
+  // Round 51 fix reached the reference implementation and not the one every visitor executes, and
+  // the demo is client-side only, so the wrong figure is the only figure anyone sees.
+  //
+  // NOT changed: `healthPassed`. Sections 4.4.1 and 4.4.2 catch a source that has gone STUCK, not
+  // one that is merely skewed, so the verdict is correct either way and asserting otherwise would
+  // claim the standard says something it does not. What was wrong is the reported entropy.
+  const hMin = minEntropyMcv(raw);
+  const rct = repetitionCountTest(raw, hMin);
+  const apt = adaptiveProportionTest(raw, hMin);
   const sp80022Passed = mp >= alpha && rp >= alpha && bp >= alpha;
   // The adaptive-proportion window is the binding requirement: below it that test cannot run at all.
-  const healthConclusive = bits.length >= ADAPTIVE_PROPORTION_W;
+  // Judged on `raw`, because that is now the stream the adaptive-proportion test consumes. Judging
+  // it on `bits` would let a short raw stream report a conclusive verdict from a test that could not
+  // run - the same mismatch, one field over.
+  const healthConclusive = raw.length >= ADAPTIVE_PROPORTION_W;
   return {
     bits, nBits: bits.length, source, postProcessing: post,
     healthPassed: healthConclusive && rct.passed && apt.passed,
@@ -312,7 +341,7 @@ export function generateQuantumBits(nBits: number, opts: { source?: string; post
     sp80022Passed,
     monobitP: mp, runsP: rp, blockFreqP: bp,
     throughputBitsPerSec: (bits.length / dt) * 1000, simulated: true,
-    minEntropyPerBit: minEntropyMcv(bits), extractionRate: bits.length / Math.max(1, rawConsumed),
+    minEntropyPerBit: hMin, extractionRate: bits.length / Math.max(1, rawConsumed),
     lhlMaxBits, requestedBits: nBits,
   };
 }

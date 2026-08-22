@@ -2525,3 +2525,134 @@ assert DIMENSIONAL correctness - bits against bit/s - in both files, and their d
 Round 42/44 instance where a fix reached the browser and left Python budgeting in the wrong unit for
 two rounds. The shared literals between those two files are arXiv IDs and ETSI clause numbers, not a
 shared numeric derivation, so there is no silent-drift surface there.
+
+## Round 56 (branch `round56-qrng-crossed-the-language-boundary`)
+
+### I merged on cancelled CI, and the wait loop I wrote is why
+
+PR #50 merged at 13:35:37 while CI on its head was **in progress**, and the two runs before it had
+concluded **cancelled**. The loop was:
+
+    [ "$n" -ge 2 ] && [ "$n" = "$c" ] && break     # c counts status == "completed"
+
+and **`cancelled` IS `completed`**. Pushing a follow-up commit cancels the in-flight runs, so the loop
+saw two completed runs, exited, and the next line merged.
+
+The head_sha discipline established earlier in this session was performed and passed. The commit was
+the right one; **the verdict was never read.** That is this project's second signature defect - a
+check reading the MECHANISM (did the run finish) and not the OUTCOME (did it pass) - committed in my
+own tooling, in the same session that found four instances of it elsewhere.
+
+The remedy is `scripts/wait_for_ci.sh`, which requires `conclusion == "success"` on every run for the
+sha, is bounded so a sha with no runs cannot hang forever ("no verdict is not a pass"), and carries
+the incident in its header. Exercised both ways: it refuses the cancelled commit `6ea8bb6` with
+"A cancelled run is COMPLETED and is NOT a pass. Do not merge.", and accepts `bf22678`, the last
+genuinely green one.
+
+Everything that merged passes all 17 gates locally and CI on `main` was re-run after the merge. The
+process was wrong even though the artefact was fine, and the process is what was supposed to be
+carrying the guarantee.
+
+### The Round 51 QRNG fix reached one language, and the browser is the one visitors run
+
+`health_suite` was moved onto the raw stream in Python in Round 51, with
+`tests/test_health_tests_measure_the_noise_source.py` written to pin it. `clientQRNG.ts` bound `raw`
+and then computed `hMin`, both SP 800-90B continuous tests and the reported `minEntropyPerBit` from
+`bits` - the post-extractor output.
+
+Measured inside that module on a P(1) = 0.90 stream: **raw min-entropy 0.1510, conditioned 0.9749.**
+Repetition-count cutoff 134 against 22; adaptive-proportion 965 against 597. An extractor produces
+near-uniform output by construction, so the figure described the Toeplitz stage under a label reading
+"entropy source" - and the demo is client-side only, so that was the only figure anyone saw.
+
+**Why it survived in both languages:** on the SHIPPED near-fair source the two readings differ in the
+third decimal - 0.9057 against 0.9605. The Python test's docstring records exactly this, and it was
+true of the browser for five more rounds.
+
+`healthPassed` is deliberately unchanged. Sections 4.4.1 and 4.4.2 catch a source that has gone
+STUCK, not one that is merely skewed, so the verdict was correct either way; claiming otherwise would
+assert the standard says something it does not.
+
+**And my first gate for it was the wrong shape.** It checked that `minEntropyMcv` separates a biased
+stream from its conditioned output - which the estimator always did - and **passed with the call site
+reverted.** Mechanism instead of outcome, inside the gate written to catch that. No output-based
+check can discriminate here, because the shipped source is fair by construction; that is why the
+Python twin asserts on the call with an `ast` parse. The browser check now does the same, with
+comments stripped first - the block explaining why `raw` is required contains the string
+`minEntropyMcv(raw)`, so a plain grep matches its own documentation.
+
+### Round 56, continued: two labels that claimed more than their evidence, and my own gate that reached three of four
+
+**The badge reported an adapter probe as an execution provider.** `status.backend` is
+`gpu ? "onnx-webgpu" : "onnx-wasm"`, where `gpu` is `hasWebGPU()`. The comment above it said "the
+provider that RAN" - and **that same comment records fixing this exact class once already**, for
+WebNN: *"a label describing something the code does not do, which is the exact defect this project
+keeps finding."* The fix reached the WebNN half of one ternary and not the WebGPU half.
+
+What the probe establishes is real and worth reporting: a non-software adapter exists (rasterisers
+are declined by name, on a measured 300x) and the WebGPU build loaded. What it does not establish is
+node placement - ORT falls back **per node** to the WASM floor for unregistered operators, which is
+the same mechanism the `ai.onnx.ml` note two sentences earlier depends on. `README.md` asserted both
+facts three lines apart: that `ai.onnx.ml` models take WASM whatever the adapter says, and that the
+reported backend is "never a false webgpu that silently ran on WASM".
+
+**What I did NOT establish, stated because the audit asserted it and I could not reproduce it.** The
+audit named specific unregistered operators per model. I confirmed the graphs - int8 is PREFERRED,
+and `medical_breastmnist_resnet18`'s int8 build is 20x `ConvInteger` + 18x `DynamicQuantizeLinear`,
+`satellite_telemanom`'s is Slice/Concat/Transpose/Shape - but ORT 1.27.0's WebGPU op registry is not
+enumerable from the shipped bundle, so **which of those fall back is unmeasured here.** The comments
+now state the mechanism and stop short of the per-model verdict rather than repeating a claim I
+cannot support. Closing it needs `endProfiling()` and a third badge state, because two cannot express
+a partial answer.
+
+**And the licence gate I wrote this session reached three of four surfaces.** `README.md:863` read
+`MedMNIST v2 **BreastMNIST** (CC-BY-4.0)` - a proper PREFIX of the registry string, cut exactly where
+the hedge begins - and the file carried zero occurrences of BUSI, unverifiable or asserted-by. The
+gate written to stop a downgrade reaching only some copies was hardcoded to `DATA_LICENSES.md` and
+`prep_model_inputs.py`, so it could not see the file most readers open first. **The same shape as the
+defect it exists for, one level up:** a fix that covers the places the fixer happened to be looking
+at. Extended to README's table and seeded - reverting the truncation now fails with the line number.
+
+### Round 56, continued: a caption its own payload retracts, and a figure that was unfalsifiable rather than wrong
+
+**The separability caption asserted a verdict the same figcaption contradicts four lines later.** It
+appended *"so the model's decisions are being drawn on data that is genuinely separable - chosen by
+scoring every feature pair, not by eye."* Both halves fail on payloads that render it:
+
+- "Genuinely separable" is contradicted by `note`, printed by the SAME figcaption. Finance's note
+  says 0.2302 against a 0.02002 base rate *"is a 11.5x lift and still a LOW number... two features do
+  not solve AML"*. Telecom's says the lift is 1.13x.
+- "Not by eye" is false for finance, and the generator says so in its own words: the AUC-PR winner
+  `format_risk x src_bank_diversity` scores **0.3195** and was REJECTED as unreadable - *"A tree does
+  not care how values are spaced; an eye does."* The shipped pair was chosen on readability among the
+  separable ones. A defensible choice, honestly recorded, and the opposite of what the caption said.
+
+Written for satellite when it was the only payload carrying the field, then inherited by two more.
+**Third instance of this defect in this one component**, the first two recorded in its own comments,
+and the remedy is the one it used twice: derived numbers in the caption, interpretation in `note`.
+
+**And the audit's claim about `separability_auc_pr` was wrong - as was my first check of it.** The
+audit reported the finance figure as not reproducing on the plotted rows. My first probe agreed:
+best single-feature rank AUC-PR is 0.0566 against a stated 0.2302. **Both of us measured a single
+feature; the stated figure is a JOINT two-feature score.** Measured on the shipped points:
+
+    single-feature rank AUC-PR   0.0566
+    RF 2D, 5-fold cross-validated 0.2016     <- what the literal reports
+    RF 2D, in-sample              0.4378
+    stated                        0.2302
+
+So the number reproduces and the audit is refuted. What survives is narrower and real: the field is a
+hardcoded literal and **no payload stated the estimator**, so an unstated choice moves finance's
+answer by a factor of eight, and both alternatives are what a re-deriver tries first. The number was
+never wrong - it was **unfalsifiable**, which for this project is its own defect.
+
+The estimator is now recorded in the generator and pinned. **The gate's band is itself checked to
+EXCLUDE the in-sample and single-feature readings**, because a tolerance admitting all three would
+pass whichever estimator produced the literal - the wider-tolerance-than-the-drift shape already on
+record here from a decoy-state band. Telecom is SKIPPED with its reason stated: its four readings are
+0.9798 / 0.9915 / 0.9925 / 1.0000, all inside any usable band, so the estimator is genuinely
+undetermined there and no tolerance fixes that.
+
+**Two audit claims refuted by checking, in two turns.** That ratio is the argument for verifying
+before acting, and it cuts both ways: the same discipline that refuted these produced the narrower
+findings that replaced them.
