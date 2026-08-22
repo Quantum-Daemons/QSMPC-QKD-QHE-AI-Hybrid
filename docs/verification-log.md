@@ -1988,3 +1988,32 @@ So the asymmetry is real and is arguably the RIGHT way round: QCNN is compared a
 model on the data actually in front of it, which is more informative than a number from another
 dataset. `CS13` is annotated rather than ticked, because the row asks for a footing the evidence says
 should not be adopted.
+
+### Round 55: the full-page audit, all ten pages on the deploy
+
+Systematic pass over every route, checking what the standing request names - content, terminology,
+numbers, buttons, results, duplicates - rather than the `NaN` spot-check earlier rounds settled for.
+
+| page | chars | headings | buttons | unnamed | dup headings | bad tokens |
+|---|---|---|---|---|---|---|
+| `/` | 3,802 | 7 | 0 | 0 | none | none |
+| `/value` | 7,615 | 14 | 0 | 0 | none | none |
+| `/validations` | 1,793 | 9 | 6 | 0 | none | none |
+| `/usecases` | 5,050 | 6 | 0 | 0 | none | none |
+| `/orchestration` | 2,332 | 4 | 15 | 0 | none | none (10 DAG nodes) |
+| five `/usecase/*` | - | - | 14 each | 0 | none | none |
+
+"Bad tokens" scans for `NaN`, `undefined`, `[object Object]` and `Infinity`. Zero across all ten.
+Zero duplicate headings anywhere. Zero buttons without an accessible name.
+
+**Two things that looked like defects and are not.**
+
+`/usecase/nope` did not match the wording this log recorded in Round 49 ("There is no use case called
+X. Showing Finance"). It has been REPLACED by something better and the old record is what is stale:
+the page now renders `h1` = "No such use case", lists all five valid ids with their titles, and offers
+a route back to the index. It no longer silently substitutes Finance, which is the behaviour Round 28
+recorded as a defect. Correcting the record rather than the page.
+
+A checkbox on the finance page carries no `id`, which an automated scan flags. It is wrapped in a
+`<label>` reading "mix QKD-domain key", so the association is valid and the control is named. Recorded
+because an `id`-based a11y check would report it as a fault and it is not one.
