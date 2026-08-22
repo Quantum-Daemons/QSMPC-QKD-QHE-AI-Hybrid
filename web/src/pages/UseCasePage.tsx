@@ -55,7 +55,18 @@ function UseCaseView({ usecase }: { usecase: string }) {
 
       {/* Live two-party simulator: Start/Stop/Restart/Pause/Step drive the diagram animation */}
       <PipelineControls run={run} />
-      <div ref={diagramRef} style={{ marginTop: 16, background: "var(--panel)", borderRadius: 10, padding: 8 }}>
+      {/* `overflowX: "auto"` because this div hand-rolls the LOOK of `.card` and not its behaviour.
+          `.card` carries `overflow-x: auto`, and its comment records the mobile audit that put it
+          there - at 390px the document was 1326px wide, 936px of horizontal page scroll, "from two
+          diagram SVGs (990px, 930px)" among others. `TwoPartyDiagram`'s SVG sets `minWidth: 680`
+          DELIBERATELY, so it scrolls inside its container rather than shrinking to ~4.5px labels,
+          and its comment says that is "what `.card { overflow-x: auto }` already provides". It was
+          right about the rule and wrong about this element: copying the panel background, radius and
+          padding by hand reproduced the appearance and dropped the one property that mattered.
+          Measured on the deploy at a 500px viewport before this: 204px of document overflow, and
+          exactly ONE genuine cause once nav-internal scrollers are discounted - this SVG. */}
+      <div ref={diagramRef} style={{ marginTop: 16, background: "var(--panel)", borderRadius: 10,
+                                     padding: 8, overflowX: "auto" }}>
         {/* The protocol and the QSMPC op live in params, not in the crypto-agility family selects.
             Passing only the family is what let an E91 run draw a BB84 arrow. */}
         <TwoPartyDiagram usecase={usecase} activeStage={active} doneStages={done} metrics={metrics}

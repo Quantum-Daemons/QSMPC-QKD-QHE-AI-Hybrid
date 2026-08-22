@@ -310,11 +310,26 @@ library through its published package does not require vendoring its source tree
 | **Alisah-Ozcan/HEonGPU** | GPU CKKS for the MPC-FHE benchmark | **submodule** | Apache-2.0 |
 | **chart21/hpmpc** (PIGEON) | GPU secret-sharing MPC for the same benchmark | **submodule** | MIT |
 
-**Client-side / AI OSS (npm, all commercial-OK):** `@noble/post-quantum` **0.6.1** (MIT) for
+**Client-side / AI OSS (npm, all commercial-OK):** `@noble/post-quantum` **0.7.0** (MIT) for
 in-browser ML-KEM and ML-DSA. The pin matters: **0.2.1 accepted all 2,595 malformed encapsulation
 keys** in the C2SP/CCTV modulus set, because its polynomial coder took the compression path for
 d=12 where FIPS 203 specifies plain ByteEncode12/ByteDecode12, making the section 7.2 modulus check
-a no-op. 0.6.1 rejects all 2,595, and `npm run check:pqc` asserts it. Note the honest scope: noble
+a no-op. 0.6.1 and 0.7.0 reject all 2,595, and `npm run check:pqc` asserts it - now with a
+keygen/encapsulate/decapsulate round trip and the FIPS 203 Table 3 ciphertext lengths on the same
+line, because the rejection count alone reads identically for a working library and a totally broken
+one.
+
+**Moved from 0.6.1 to 0.7.0 in Round 56, and what that release is NOT.** `^0.6.1` does not admit
+0.7.0 - a caret on a 0.x version means `>=0.6.1 <0.7.0` - so this was a deliberate bump, verified by
+running `check:pqc` unmodified against 0.7.0: identical rejection counts, identical key/ciphertext
+/signature sizes, exit 0. The breaking changes do not reach this project (the removed hybrid aliases
+and `utils.afunction` appear zero times here) and the argument order is unchanged. **Its
+`MultiplyNTTs` note is a PERFORMANCE fix, not a security one** - 0.7.0's own comment says the wide
+intermediate "forc[es] JS engines into slow float fmod", and 0.6.1 reduces before truncating, so
+0.6.1 is not numerically wrong. Recorded because that changelog line reads like a vulnerability and
+would otherwise be transcribed as one. What 0.7.0 genuinely improves for this repo's usage: ML-DSA
+draws randomness before decoding the secret key, and ML-KEM detaches the caller's public key before
+caching. Note the honest scope: noble
 is self-audited and carries no side-channel protection, so this is conformance evidence, not
 production assurance. Also `node-seal` 7.0.0, which bundles **Microsoft
 SEAL 4.1.2**. Verified 2026-08-09: node-seal 7.0.0 (2025-11-08) is still the newest node-seal, so
