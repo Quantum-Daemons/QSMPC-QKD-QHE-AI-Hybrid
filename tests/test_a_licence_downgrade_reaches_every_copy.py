@@ -41,6 +41,7 @@ from qsh.models.registry import specs
 REPO = Path(__file__).resolve().parents[1]
 LICENCES = REPO / "DATA_LICENSES.md"
 PREP = REPO / "scripts" / "prep_model_inputs.py"
+README = REPO / "README.md"
 
 #: Words that mark a licence as qualified rather than granted. Matched case-insensitively.
 HEDGES = ("unverifiable", "not verifiable", "asserted by", "unresolved")
@@ -141,3 +142,43 @@ def test_the_string_that_ships_to_the_hub_carries_the_qualifier():
         "no BreastMNIST licence string found in prep_model_inputs.py - if the generator moved, "
         "re-derive this test rather than deleting it; the point is that the SHIPPED string is "
         "checked, not only the ones in this repository.")
+
+
+def test_the_readme_table_carries_the_qualifier_too():
+    """The fourth surface, and this gate could not see it when it was written.
+
+    The Round 55 fix reached `registry.py`, `DATA_LICENSES.md` and `prep_model_inputs.py`. README
+    said `MedMNIST v2 **BreastMNIST** (CC-BY-4.0)` - a proper PREFIX of the registry string, cut
+    exactly where the hedge begins - and carried ZERO occurrences of "BUSI", "unverifiable" or
+    "asserted by MedMNIST". The gate written to stop a downgrade reaching only some copies was itself
+    hardcoded to two files, so it reached three of four surfaces and reported success.
+
+    That is the same shape as the defect it exists for, one level up: a fix that covers the places
+    the fixer happened to be looking at. README is the file most readers see first.
+
+    SCOPED to the row whose dataset cell names the corpus, for the reason recorded in the docstring
+    above: a whole-file scan for the corpus name fires on passing mentions and gets switched off.
+    """
+    text = README.read_text()
+    bad = []
+    for i, line in enumerate(text.splitlines(), 1):
+        cells = [c.strip() for c in line.split("|")]
+        if len(cells) < 4:
+            continue
+        # A row that NAMES a hedged corpus and STATES a licence in the same cell.
+        for name, lic in _registry_licences().items():
+            if not _hedged(lic):
+                continue
+            token = next((t for c, t in CORPUS_TOKENS.items() if c.lower() in name.lower()), None)
+            if token is None:
+                continue
+            for cell in cells:
+                if token in cell and re.search(r"CC[ -]?BY|CDLA", cell, re.I) and not _hedged(cell):
+                    bad.append(f"README.md:{i} - names {token} and states its licence unqualified: "
+                               f"{cell[:80]!r}")
+    assert not bad, (
+        "README states a hedged licence without its qualifier:\n  " + "\n  ".join(bad)
+        + "\n\nThe registry qualifies it and README is where most readers look first. Note the "
+        "truncation shape: the unqualified form is a proper PREFIX of the qualified one, cut exactly "
+        "where the hedge starts, so it reads as complete."
+    )
