@@ -2128,3 +2128,37 @@ already been corrected once, replacing "JIFF is unmaintained and the PSE MPC Fra
 these three as the maintained replacements - and the replacements have since been sunset in turn. A
 correction goes stale exactly like the claim it fixed. `RS21` runs this query for submodules and nothing
 ran it for npm packages, which is why a year passed unnoticed; `CS15` now covers it.
+
+### Round 55, continued: the deploy walk, and the outcome check Round 54 did not do
+
+Deployed `main` at `6b94278`, bundle **`index-D9K2fM4m.js`** (previously `index-BYWN9-KK.js`), box on
+`main`, public URL 200.
+
+**`MeasuredAgainstPublished` renders, and it discriminates per model.** Round 54 asserted that a
+published baseline was read from the right field and shipped a feature that rendered nowhere. The
+difference this time is that the chart was observed on the deployed site, per model, with the
+caveat branch checked against the non-caveat branch:
+
+| model | caption | x-axis | bars | caveat footnote |
+|---|---|---|---|---|
+| `satellite_comms.telemanom` | "share a metric **name** and are **not** the same measurement" | `this project`, **`published*`** | 2 | **yes** |
+| `satellite_comms.opssat` | "both bars are the same metric on the same axis" | `this project`, `published`, `ceiling` | 3 | no |
+| `medical_fl.resnet18` | "both bars are the same metric on the same axis" | `this project`, `published`, `ceiling` | 3 | no |
+| `finance_aml.gbm` | "both bars are the same metric on the same axis" | `this project`, `published`, `ceiling` | 3 | no |
+
+The star and the footnote appear on exactly one model and the ceiling bar appears on exactly the
+three that carry one. **A feature that renders identically everywhere is not evidence that it is
+reading anything** - two branches observed to differ is.
+
+**The chart is gated behind a RUN, which is why "it renders" needed checking at all.** On page load
+`MeasuredAgainstPublished` returns null: it lives inside the `artifacts.verification` block, so
+nothing draws until a pipeline run completes and a published model has been selected. A verifier who
+loads the page and looks will see zero charts and conclude the feature is dead. That is the shape of
+`RI8` - a panel that exists and no user action reaches - and here the action exists but is not
+obvious. Recorded so the next walk does not repeat the confusion.
+
+Also observed on the deploy: `Sample size:` renders on `satellite_comms.telemanom` and correctly does
+NOT render on `medical_fl.resnet18`, which carries no such note - the field-presence conditional
+works rather than always-firing. `Reading these metrics:` renders on medical. `Gap to baseline:`
+renders on finance. And the QSDC stage emits
+`asymptotic (infinite block; no finite-size certificate)`.
