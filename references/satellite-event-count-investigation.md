@@ -1,5 +1,24 @@
 # The satellite metric is computed over three events (Round 24, 2026-08-09)
 
+> **THE COMPARATOR THIS INVESTIGATION ARGUES AGAINST WAS SUPERSEDED IN ROUND 24, AND THIS FILE STILL
+> OPENS ON IT. Banner added Round 55.**
+>
+> Everything below is framed against ESA-ADB's **0.786** from Table 2. That is the LENIENT row and the
+> wrong comparator: Table 2 scores all events excluding communication gaps, i.e. anomalies PLUS
+> annotated rare *nominal* events, while this project scores anomalies alone. The like-for-like row is
+> Supplementary Table 9, Telemanom-ESA-Pruned, **corrected event-wise F0.5 0.968**, and that is what
+> the registry, the README, both model cards, `config.defaults.json`, `report/build_data.py` and the
+> trainer have all carried since Round 24.
+>
+> `README.md` links here in the present tense, so a reader arrives at a page whose opening sentence
+> contradicts every other surface. **The denominator argument below is unaffected and is the reason
+> this file exists** - three scored events against ESA-ADB's 29 is the point, and it holds against
+> either comparator. Only the number in the opening paragraph is retired. 0.786 legitimately survives
+> in the registry as the recorded field `published_lightweight_f0_5`.
+>
+> Following the convention of [`qcnn-vs-published-wdbc.md`](qcnn-vs-published-wdbc.md), which carries
+> the same kind of banner for the same kind of reason.
+
 `satellite_comms.telemanom` records event-wise F0.5 **0.4545** against ESA-ADB's published
 **0.786**, and the demo has been rendering those two numbers side by side as if they were
 comparable. They are not, and the reason is the denominator.
