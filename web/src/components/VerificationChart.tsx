@@ -345,10 +345,28 @@ export function RealDataScatter({ usecase, card = false }: { usecase: string; ca
             model's scores, deliberately not on the same axes. {data.provenance}
           </>
         )}{" "}
+        {/* THE NUMBERS, NOT A VERDICT ON THEM - and this is the third time this component has had to
+            learn that; the first two are in the comments above.
+            It used to append "so the model's decisions are being drawn on data that is genuinely
+            separable - chosen by scoring every feature pair, not by eye." Both halves fail on at
+            least one payload that renders it:
+            - "genuinely separable" is contradicted four lines below by `note`, which the SAME
+              figcaption prints. Finance's note says 0.2302 against a 0.02002 base rate "is a 11.5x
+              lift and still a LOW number... two features do not solve AML"; telecom's says the lift
+              is only 1.13x.
+            - "not by eye" is false for finance and the generator says so in its own words. The
+              AUC-PR winner is `format_risk x src_bank_diversity` at 0.3195 and was REJECTED as
+              unreadable - "A tree does not care how values are spaced; an eye does" - so the
+              shipped pair was chosen on readability among the separable ones. That is a defensible
+              choice, honestly recorded, and the opposite of what the caption claimed.
+            Written for satellite when it was the only payload carrying the field, then inherited by
+            finance and telecom. `note` already carries the interpretation for all three, which is
+            the remedy this component used twice before: keep the derived numbers here, let the
+            payload speak for itself. */}
         {data.separability_auc_pr != null && (
           <>The two classes separate in this projection at AUC-PR {data.separability_auc_pr.toFixed(4)} against a
-          base rate of {data.base_rate.toFixed(4)}, so the model's decisions are being drawn on data that is
-          genuinely separable - chosen by scoring every feature pair, not by eye. </>
+          base rate of {data.base_rate.toFixed(4)} - a {(data.separability_auc_pr / data.base_rate).toFixed(2)}x
+          lift. Read the note below for what that means on this corpus. </>
         )}
         {/* `note` carries the finding - what the chart actually shows, computed by the generator
             from the same points. It was written and then not rendered, which is the quietest way to

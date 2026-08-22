@@ -202,6 +202,18 @@ def finance() -> dict:
         "x": {"key": "src_fan_out_ratio", "label": "source fan-out ratio"},
         "y": {"key": "src_burst_fanout", "label": "source burst fan-out", "scale": "log"},
         "class_names": ["legitimate", "laundering"],
+        # THE ESTIMATOR, stated because the number is a literal and without it the figure is
+        # unfalsifiable. Joint TWO-feature AUC-PR over the shipped points, 5-fold cross-validated
+        # random forest (200 trees, seed 0) - the same procedure for every payload carrying this
+        # field. Measured spread on these exact rows, which is why it matters:
+        #
+        #     single-feature rank AUC-PR   0.0566
+        #     RF 2D, 5-fold CV             0.2016   <- what this literal reports
+        #     RF 2D, in-sample             0.4378
+        #
+        # An unstated choice moves the answer by a factor of eight, and both alternatives are what a
+        # re-deriver would plausibly try first. `tests/test_the_separability_figure_reproduces.py`
+        # pins it and its band is checked to EXCLUDE the other two readings.
         "separability_auc_pr": 0.2302,
         "base_rate": _round(_base_rate(labels)),
         # Both figures below are DERIVED from the same labels the base_rate field is derived from.

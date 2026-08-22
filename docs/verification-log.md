@@ -2612,3 +2612,47 @@ gate written to stop a downgrade reaching only some copies was hardcoded to `DAT
 `prep_model_inputs.py`, so it could not see the file most readers open first. **The same shape as the
 defect it exists for, one level up:** a fix that covers the places the fixer happened to be looking
 at. Extended to README's table and seeded - reverting the truncation now fails with the line number.
+
+### Round 56, continued: a caption its own payload retracts, and a figure that was unfalsifiable rather than wrong
+
+**The separability caption asserted a verdict the same figcaption contradicts four lines later.** It
+appended *"so the model's decisions are being drawn on data that is genuinely separable - chosen by
+scoring every feature pair, not by eye."* Both halves fail on payloads that render it:
+
+- "Genuinely separable" is contradicted by `note`, printed by the SAME figcaption. Finance's note
+  says 0.2302 against a 0.02002 base rate *"is a 11.5x lift and still a LOW number... two features do
+  not solve AML"*. Telecom's says the lift is 1.13x.
+- "Not by eye" is false for finance, and the generator says so in its own words: the AUC-PR winner
+  `format_risk x src_bank_diversity` scores **0.3195** and was REJECTED as unreadable - *"A tree does
+  not care how values are spaced; an eye does."* The shipped pair was chosen on readability among the
+  separable ones. A defensible choice, honestly recorded, and the opposite of what the caption said.
+
+Written for satellite when it was the only payload carrying the field, then inherited by two more.
+**Third instance of this defect in this one component**, the first two recorded in its own comments,
+and the remedy is the one it used twice: derived numbers in the caption, interpretation in `note`.
+
+**And the audit's claim about `separability_auc_pr` was wrong - as was my first check of it.** The
+audit reported the finance figure as not reproducing on the plotted rows. My first probe agreed:
+best single-feature rank AUC-PR is 0.0566 against a stated 0.2302. **Both of us measured a single
+feature; the stated figure is a JOINT two-feature score.** Measured on the shipped points:
+
+    single-feature rank AUC-PR   0.0566
+    RF 2D, 5-fold cross-validated 0.2016     <- what the literal reports
+    RF 2D, in-sample              0.4378
+    stated                        0.2302
+
+So the number reproduces and the audit is refuted. What survives is narrower and real: the field is a
+hardcoded literal and **no payload stated the estimator**, so an unstated choice moves finance's
+answer by a factor of eight, and both alternatives are what a re-deriver tries first. The number was
+never wrong - it was **unfalsifiable**, which for this project is its own defect.
+
+The estimator is now recorded in the generator and pinned. **The gate's band is itself checked to
+EXCLUDE the in-sample and single-feature readings**, because a tolerance admitting all three would
+pass whichever estimator produced the literal - the wider-tolerance-than-the-drift shape already on
+record here from a decoy-state band. Telecom is SKIPPED with its reason stated: its four readings are
+0.9798 / 0.9915 / 0.9925 / 1.0000, all inside any usable band, so the estimator is genuinely
+undetermined there and no tolerance fixes that.
+
+**Two audit claims refuted by checking, in two turns.** That ratio is the argument for verifying
+before acting, and it cuts both ways: the same discipline that refuted these produced the narrower
+findings that replaced them.
