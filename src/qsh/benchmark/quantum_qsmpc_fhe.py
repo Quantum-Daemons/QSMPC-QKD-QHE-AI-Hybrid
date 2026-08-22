@@ -39,16 +39,18 @@ def run_quantum(
     """
     qc = QCNN(n_qubits=n_qubits, seed=seed)
     n = min(n_samples, len(X))
-    correct = 0
     t0 = time.perf_counter()
     rep = None
     for i in range(n):
         feats = np.asarray(X[i], dtype=float).ravel()[:n_qubits]
         rep = private_inference(qc, feats, verify_hidden=(i == 0))
-        # QCNN is untrained here -> we measure the *system*, not task accuracy;
-        # decision-consistency vs plaintext is exact (QHE is correctness-preserving)
-        correct += 1
     dt = time.perf_counter() - t0
+    # THE `correct` COUNTER THAT USED TO LIVE HERE WAS `correct += 1` INSIDE THE LOOP, UNCONDITIONAL
+    # AND NEVER READ, and it fed `accuracy=1.0` below. There is nothing here to be accurate about:
+    # the QCNN carries no trained weights, and `private_inference` says so itself - "Nothing is
+    # decrypted and nothing is compared" - and names the probability-versus-plaintext comparison a
+    # tautology. What this function legitimately measures is latency, throughput, the counted T-gate
+    # total, the qubit count and the security model.
 
     # Rate-1 QFHE communication ratio for a representative state
     from ..pqc.hybrid_kem import HybridKEMRecipient
@@ -79,7 +81,12 @@ def run_quantum(
         workload=workload,
         latency_ms=round(dt / n * 1000, 3),
         throughput_ips=round(n / dt, 2),
-        accuracy=1.0,  # QHE preserves the plaintext decision exactly
+        # NOT 1.0. The browser twin was corrected to `accuracy: null` with a comment recording that
+        # it "reported 1.0 for three rounds while the MPC-FHE row eight lines above carries a comment
+        # forbidding exactly that". That fix reached ONE LANGUAGE, and this is the transport the full
+        # deployment serves - `usePipelineRun.ts` PREFERS `st.artifacts.benchmark_result` - so the
+        # identical row on the identical page printed 1.0 here and an em dash there.
+        accuracy=None,
         ciphertext_plaintext_ratio=round(rate, 4),
         t_gate_count=qc.t_count(),
         qubits=n_qubits,
