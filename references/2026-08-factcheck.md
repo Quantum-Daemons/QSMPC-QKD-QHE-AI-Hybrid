@@ -125,7 +125,14 @@ Reported, and both are quotation-level claims worth re-reading at source before 
 
 ### 5. E91 and QSDC, both permissive, neither flipping a shipped verdict
 
-**E91 HALF FIXED Round 53, re-derived exactly.** The composition was a units confusion between a
+**E91 FIXED IN ALL THREE IMPLEMENTATIONS - Python in Round 53, the two browser copies in Round 54,
+and the one-round gap is the finding.** Round 53 fixed `qkd/e91.py` and left
+`web/src/lib/quantumSim.ts` and `web/src/lib/clientOptiQKD.ts` carrying the bug. **This demo is
+client-side only**, so the copy that was fixed is the one no visitor executes and the two that were
+missed are the ones that render. Ninth instance of one fix reaching one language, committed by the
+round that was closing a fact-check about exactly this class of defect.
+
+**Re-derived exactly.** The composition was a units confusion between a
 VISIBILITY and an ERROR PROBABILITY: a channel flipping a bit with probability `e` has visibility
 `(1 - 2e)`, not `(1 - e)`. At the shipped 50 km channel with V = 0.97 and e = 0.015200 the old form
 gave **0.022372** and the corrected one gives **0.029744** - and composing the two error sources

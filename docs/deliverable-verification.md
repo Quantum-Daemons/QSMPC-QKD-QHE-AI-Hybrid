@@ -2219,6 +2219,23 @@ as a surprise - which is how the line-number pointer failed in the first place.
 A line number is a pointer into a file that changes; the sentence is a pointer into a file's meaning,
 which is what the claim is actually about.
 
+**THE REMAINING BACKLOG IS MUCH SMALLER THAN THE COUNT SUGGESTS, measured Round 54.** A grep for
+backticked `x = y` across `README.md`, `docs/` and `references/` returns 325 hits, and earlier audits
+put "~46 formulas remaining". Sampled, almost all of them are CODE rather than mathematics -
+`use_bootstrap=True`, `shape="circle"`, `on_logit=True`, `auroc=null`, `d="M0,0"`, `now = 45`. In this
+file, 31 hits contained **three** genuine physics quantities, and two of those were already converted.
+
+So the honest statement is that the conversion is largely DONE for the things the house style is
+about, and the residual count is an artefact of a pattern that cannot tell `p_1 = 1` from
+`hm_source=Author-reported`. Converting by count would turn config keys into mathematics, which is
+worse than leaving them.
+
+**A bulk edit here damaged four already-correct sites before it was caught.** Replacing
+`` `p_1 = 1` `` with `` $`p_1 = 1`$ `` double-wrapped the sites that already had the delimiters,
+producing `` $$`p_1 = 1`$$ `` - a DISPLAY-math delimiter around a code span, which renders wrong.
+Caught by reading the result rather than the diff stat, reverted, and recorded because "convert every
+match" is exactly the shape of instruction that produces it.
+
 **Ported, not derived.** `report/technical-report.tex` already typesets five of these correctly; the
 QSDC secrecy capacity existed as **three** ASCII restatements across three files against one correct
 display equation, so that is where the conversion started.
@@ -2432,7 +2449,7 @@ telemetry - not "this exact problem". PGS scoring files carry **no** `#license` 
 downloaded from the EBI FTP has 14 `#` lines and none is a licence, which
 `scripts/train/genomics_prs.py` has said correctly all along while two prose sites contradicted it.
 `decoy_reference.py` had **four wrong equation numbers** against arXiv:quant-ph/0503005v2 - the key
-rate is Eq. (1) not (33), `Y_i` is (7) not (6), `e_i` is (9) not (7), and `e_0 = 1/2` is prose - in
+rate is Eq. (1) not (33), `Y_i` is (7) not (6), `e_i` is (9) not (7), and $`e_0 = 1/2`$ is prose - in
 the module whose docstring says it "exists to be CHECKED".
 
 **Calibration: the denominator was wrong, and the correction is not a swap.** `calibration.py`
@@ -3829,4 +3846,63 @@ calling CDLA an author-credit licence would be the mirror of the original defect
 Also recorded: ESA-ADB's CC BY 3.0 IGO term is on its Zenodo landing page and ABSENT from Zenodo's
 REST metadata, so an API-only adjudication reads the corpus as unlicensed. That is how it went
 uncredited, and it is the same shape as reading a mirror's silence as the source's silence.
+
+## Rounds 53-54: the four pipelines, and a fix that reached the one language that does not ship
+
+**BUSINESS DOC RECONCILED Round 54.**
+
+Round 52 recorded that only finance had been driven to completion. All five pipelines have now been
+run end to end on the deployed site with every published model re-scored in-tab and passing. Four
+fact-check findings closed and three left open with reasons.
+
+### E91 confused a visibility with an error probability, in FOUR places
+
+`v_eff = visibility * (1 - e)`. A channel that flips a bit with probability `e` has visibility
+`(1 - 2e)`: visibility spans [-1, 1] of correlation, an error probability spans [0, 1/2] of QBER, and
+the factor of two between them was missing. QBER understated by **24.8%**, always in the demo's
+favour. At the shipped 50 km channel the corrected form gives 0.029744 and independent composition
+`q_V + e - 2*q_V*e` gives 0.029744 - agreeing to **0.000%**, exactly rather than to first order,
+which is what makes it a correction and not a choice between models.
+
+**Round 53 fixed `qkd/e91.py` and nothing else. This demo is CLIENT-SIDE ONLY, so the copy it fixed
+is the one no visitor executes and the two it missed are the ones that render** - ninth instance of
+one fix reaching one language, committed by the round that was closing a fact-check about that exact
+defect class.
+
+**And the fourth copy was in the checker.** `web/scripts/check_qkd.mjs` asserts the CHSH-Werner
+identity as `2*sqrt(2)*V*(1-e)`. It carried the same confusion, so it was ASSERTING the bug, and it
+stayed green for as long as every implementation was wrong in the same way. It only went red once the
+implementations were right - which is the useful diagnostic and the reason a checker that shares a
+derivation with the thing it checks is worth suspecting.
+
+### The cross-language gate had collected the evidence and never looked at it
+
+`tests/test_the_browser_computes_the_bound_the_page_names.py` already exported `e91Qbers` from the
+browser and asserted nothing on them; its docstring said "E91 is left alone", which was true of the
+secure-fraction FORM and had quietly come to cover the QBER too.
+
+Closing it needed one more decision. The browser SAMPLES its reported `qber` (`e0 + std * gauss(u)`)
+while Python returns the analytic value, so comparing them is comparing two different quantities. At
+this demo's ~2,500 sifted pairs the shot noise is sigma ~ 0.0034 against a bug of 0.0074 - **a
+5-sigma statistical gate would have put the bug at -2.17 sigma and passed it.** So `e91()` now
+returns `e0`, the model error rate the bound already uses, and the gate asserts an identity at 1e-9
+with no statistical slack. Seeded by restoring the bug in both browser copies: it fires with the exact
+figures, 0.022372 against 0.029744.
+
+### Also closed, and two corrections to this project's own record
+
+`decoy_reference.py` asserted its own outputs as the paper's: R/eta ~ 0.11 and R/eta^2 ~ 0.15 appear
+nowhere in Ma et al.'s prose, and the module reached them by passing `q_sift=1.0` while the paper
+introduces the figure those curves come from with "where q = 1/2 with standard BB84". Deliberately NOT
+resolved - deciding it needs values read off a plotted figure - and the docstring now carries that
+status instead of the claim.
+
+`export.opset` does NOT still render 0; that sentence was written in the Round 52 log from a Round 50
+note rather than from the page. It renders 17 for `telecom_ids.qml` and is correctly OMITTED for the
+two tree ensembles, which carry no default-domain opset. Closed as a side effect of the Round 50
+retrain, recorded as such rather than claimed as a fix.
+
+`runs_encrypted=True` is on **six** specs and `model-choice-vs-2026-practice.md` said five - while its
+next paragraph says the sixth was being added in that same round, so the document contradicted itself.
+Annotated rather than rewritten, because the pre-closure count is the finding.
 

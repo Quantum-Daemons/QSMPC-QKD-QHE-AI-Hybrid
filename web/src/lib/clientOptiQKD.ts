@@ -63,7 +63,16 @@ const skrModel: Model = (p, prm, fEC = qkdCfg().error_correction_eff) => {
 // basis_prob + pp_threshold apply here (the decoy intensities do not).
 const e91Skr: Model = (p, prm, fEC = qkdCfg().error_correction_eff) => {
   const eta = transmittance(p);
-  const vEff = clamp(qkdCfg().e91_visibility * (1 - intrinsicQber(p)), 0, 1);
+  // (1 - 2e), NOT (1 - e). A channel that flips a bit with probability e has visibility (1 - 2e):
+  // visibility spans [-1, 1] of correlation, an error probability spans [0, 1/2] of QBER, and the
+  // factor of two between them is exactly what went missing. Understated QBER by 24.8% at the
+  // shipped channel, always in the demo's favour.
+  //
+  // Round 53 fixed `qkd/e91.py` and NOT these two, which is the ninth instance of one fix reaching
+  // one language - and the worst-directed one yet, because this demo is CLIENT-SIDE ONLY. The Python
+  // copy does not run for a visitor; these do. Checked against independent composition, which needs
+  // no visibility algebra: V = 0.97, e = 0.015200 gives 0.029744 both ways, agreeing to 0.000%.
+  const vEff = clamp(qkdCfg().e91_visibility * (1 - 2 * intrinsicQber(p)), 0, 1);
   const s = 2 * Math.SQRT2 * vEff;
   const qber = Math.min(0.5, (1 - vEff) / 2);
   const siftRatio = prm.basisProb ** 2 + (1 - prm.basisProb) ** 2;
