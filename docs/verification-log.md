@@ -2354,3 +2354,47 @@ cases - mechanism rather than outcome, again. An outcome-shaped scan finds four 
 cannot, each of them within three lines of its own converted twin. Converted in the house
 `` $`...`$ `` form; the first attempt used plain `$...$`, which is the delimiter this file's own
 style note reserves for display math.
+
+### Round 55, continued: a config constant wearing a measurement's name, and a workaround whose reopen condition had quietly been met
+
+**`fhe_max_abs_error` was emitted from `config.defaults.json` on one branch and from a real
+decryption on the other.** The fallback published the literal `4.6e-07` under the identical key the
+measured path fills with `6.20e-13` / `1.93e-9`. The only distinguisher was the log line beside it,
+and `downloadMetricsCsv` exports `{metric, value}` pairs with no log - so the CSV a reviewer opens
+showed a config default indistinguishable from a measurement, under a key `docs/threat-model.md`
+describes as the computed CKKS approximation error.
+
+Worth recording that the direction cuts AGAINST the usual pattern: `4.6e-07` is three to four orders
+WORSE than measured, so it understated precision. It is still a constant wearing a measurement's
+name. Renamed `fhe_max_abs_error_representative`, with an `encrypted_tier` status beside it following
+the `published_model_status: "failed"` convention already in the file. The latent twin on the bench
+row - which set the same constant UNCONDITIONALLY, measured branch included, and reaches no component
+today - is renamed too, because "nothing renders it" is a property of the current UI and not of the
+value.
+
+**A gate written earlier this same round had two defects.** `test_qsdc_agrees_across_languages.py`
+used a bare `pytest.skip`, making it the only one of the three cross-language browser gates not
+escalated by `QSH_REQUIRE_BROWSER_GATES=1`: measured with the variable set and esbuild absent, the
+two twins FAIL and it SKIPs. And its skip message claimed "this skip is why `check:qkd` is also a CI
+gate" - `qsdcSecrecyCapacity` appears **zero** times in `web/scripts`. Nothing in the web job covers
+that identity. **Citing a compensating control without checking it is the same move as citing an
+authority for a number that is not in it**, which `RI11` exists for, and I made it while writing a
+gate about one-language fixes.
+
+`scripts/ci_local.sh` step 1 now exports the variable too. This machine has esbuild, so it costs
+nothing and turns a silent skip - from a pruned `node_modules`, a failed `npm ci`, a renamed binary -
+into a failure.
+
+**And the OpenFHE EL9 workaround has met its own reopen condition.** It was recorded as a deliberate,
+permanent, host-specific workaround for a SIGSEGV inside `EvalBootstrapSetup` on AlmaLinux 9.7, with
+the condition written down: "reopens if the crash stops reproducing on the pinned OpenFHE version on
+EL9". Nothing watched for it. Measured on this EL9 host with `QSH_REQUIRE_OPENFHE_BOOTSTRAP=1`, three
+consecutive runs: **16.85 s, 16.05 s, 16.82 s, all exit 0.** The crash does not reproduce.
+
+That also closes a gap the script's own header claimed away. `ci.yml` runs that test as a blocking
+job; step 1 here deselects it with `-m "not slow"`, so "runs every blocking CI gate" was false for
+exactly one job - and **nothing anywhere compared the two step sets**. It is step 17 now, kept
+separate rather than folded into step 1, so a regression names which platform changed.
+
+A condition with no executor is an intention. That is the third form of the same finding this round,
+after `DP7` and the duplicate-ID guard the checklist said it had.
