@@ -106,8 +106,8 @@ decrypted results:
   Two claims this document used to make were checked at primary source on 2026-08-12 and did not
   survive, so they are corrected rather than left: the abstract says "very modest running times" and
   **not "within several seconds"**, which was quoted here as if verbatim; and the key-recovery
-  expression is `[UNVERIFIED]` - this document rendered it `s = a^-1 (m'' - b)` while secondary
-  sources render it `s = a^-1 b'`, and the PDF is unreachable (eprint returns HTTP 403, the UCSD
+  expression is `[UNVERIFIED]` - this document rendered it $`s = a^{-1}(m'' - b)`$ while secondary
+  sources render it $`s = a^{-1} b'`$, and the PDF is unreachable (eprint returns HTTP 403, the UCSD
   mirror 404), so **neither form is asserted here**. Nothing below depends on which it is: the
   conclusion that decryption results leak the key is the abstract's own.
 - **The "needs one decryption query" figure is verifiable, but from a different source.** It is
@@ -331,7 +331,7 @@ which is a reason to state it, not a reason to be quiet about it.
 **Not defensible:** any implication that pooling under encryption makes the *released* counts safe to
 publish. It does not, and the literature is unambiguous.
 
-Closing this properly means adding calibrated noise to the released aggregate with a stated epsilon,
+Closing this properly means adding calibrated noise to the released aggregate with a stated $`\epsilon`$,
 and reporting the utility cost - a UK Biobank study (DOI 10.1093/jamia/ocaf090, Jun 2025) found odds
-ratios destabilising below epsilon about ln(2), with some reversing sign. That is a design decision
+ratios destabilising below $`\epsilon \approx \ln 2`$, with some reversing sign. That is a design decision
 with a real accuracy price, and it is recorded here as open rather than silently absent.
