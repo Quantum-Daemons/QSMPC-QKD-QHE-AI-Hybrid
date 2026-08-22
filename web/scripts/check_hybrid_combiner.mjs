@@ -40,7 +40,7 @@ function load() {
   const entry = join(dir, "entry.ts");
   writeFileSync(entry, `
 export { hybridCombine, hybridCombinerInfo } from ${JSON.stringify(join(WEB, "src/lib/hybridCombiner"))};
-export { itsCombine } from ${JSON.stringify(join(WEB, "src/lib/clientMcp"))};
+export { itsCombine, deriveAeadKey } from ${JSON.stringify(join(WEB, "src/lib/clientMcp"))};
 `);
   const out = join(dir, "bundle.mjs");
   execFileSync("npx", ["esbuild", entry, "--bundle", "--format=esm", "--platform=node",
@@ -179,6 +179,30 @@ for (const v of vectors) {
   }
 }
 
+// ---------------------------------------------------------------------------------------------
+// THE DEFAULT BRANCH, which had no vectors while the block above pinned the non-default one.
+//
+// `transport._mix_qkd` reads `crypto.hybrid_combiner_mode`, default "hkdf", so the ITS vectors above
+// cover the path most runs do NOT take. The default path was unpinned because `deriveAeadKey` was
+// module-private and `itsCombine` was exported - the sibling that was easy to reach got the gate.
+// Four parameters are hand-copied between the two files, and the salt/ikm order is the easiest of
+// them to transpose: HKDF takes salt = QKD key, ikm = session key. Transposing them still derives 32
+// plausible bytes.
+// ---------------------------------------------------------------------------------------------
+{
+  const { hkdf_vectors: hkdfVectors } = JSON.parse(
+    readFileSync(join(WEB, "scripts/vectors/hybrid_combiner_vectors.json"), "utf8"));
+  check("transport-HKDF vectors present", Array.isArray(hkdfVectors) && hkdfVectors.length >= 2,
+        "regenerate with scripts/export_combiner_vectors.py; two QKD-key lengths are needed because"
+        + " the salt is the variable-length input and one length would not notice a truncation");
+  for (const v of hkdfVectors ?? []) {
+    const { bytes } = await m.deriveAeadKey(unhex(v.pqc), unhex(v.qkd), "hkdf");
+    check(`transport-HKDF vector ${v.name}`, hex(bytes) === v.expected,
+          `browser derived ${hex(bytes).slice(0, 32)}..., Python committed ${v.expected.slice(0, 32)}...`
+          + " - deriveAeadKey no longer mirrors transport._mix_qkd on the DEFAULT branch");
+  }
+}
+
 rmSync(dir, { recursive: true, force: true });
 
 if (failures.length) {
@@ -186,5 +210,5 @@ if (failures.length) {
   for (const f of failures) console.error("  - " + f);
   process.exit(1);
 }
-console.log(`check:combiner OK (${vectors.length} hybrid-KEM vectors + the ITS combiner reproduced`
+console.log(`check:combiner OK (${vectors.length} hybrid-KEM vectors + the ITS combiner + the DEFAULT transport-HKDF combiner reproduced`
             + " from the Python implementations)");

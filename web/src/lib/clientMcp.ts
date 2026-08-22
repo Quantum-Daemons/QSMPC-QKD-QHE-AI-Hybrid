@@ -174,7 +174,13 @@ function mcpTranscript(
 // (crypto.hybrid_combiner_mode): "hkdf" = HKDF-SHA256 dual-PRF (holds if either input does, computationally);
 // "its_toeplitz" = the information-theoretic Toeplitz+QLHL leakage-resilient combiner (itsCombine).
 // Returns the CryptoKey + the raw derived bytes (for a non-secret fingerprint that proves the combiner ran).
-async function deriveAeadKey(
+// EXPORTED so the DEFAULT combiner branch can be checked across languages, exactly as `itsCombine`
+// above already is. It was module-private, which is the whole reason the non-default ITS path had two
+// cross-language vectors and the default HKDF path had none - the sibling that was easy to reach got
+// pinned and the one every run takes did not. Four parameters are hand-copied from
+// `src/qsh/pqc/transport.py`: the info string, the salt/ikm order (salt is the QKD key), 32 output
+// bytes and SHA-256. `web/scripts/check_hybrid_combiner.mjs` now reproduces the Python bytes.
+export async function deriveAeadKey(
   sharedSecret: Uint8Array, qkdKey?: Uint8Array, combiner = "hkdf",
 ): Promise<{ key: CryptoKey; bytes: Uint8Array }> {
   let keyBytes = sharedSecret;

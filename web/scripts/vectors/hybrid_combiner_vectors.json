@@ -52,5 +52,19 @@
       "qkd": "11161b20252a2f34393e43484d52575c61666b70757a7f84898e93989da2a7acb1b6bbc0c5cacfd4d9dee3e8edf2f7fc",
       "expected": "b957e23ed009491574212a76242399119a049e644cd990d5c5fd2d299fb1fca3"
     }
+  ],
+  "hkdf_vectors": [
+    {
+      "name": "transport_hkdf/qkd32B",
+      "pqc": "11181f262d343b424950575e656c737a81888f969da4abb2b9c0c7ced5dce3ea",
+      "qkd": "111c27323d48535e69747f8a95a0abb6c1ccd7e2edf8030e19242f3a45505b66",
+      "expected": "8280e9c618ddcb49d70c229017f56c5d1d775330efce2e8fc92891e4c57cf6a6"
+    },
+    {
+      "name": "transport_hkdf/qkd48B",
+      "pqc": "11181f262d343b424950575e656c737a81888f969da4abb2b9c0c7ced5dce3ea",
+      "qkd": "111c27323d48535e69747f8a95a0abb6c1ccd7e2edf8030e19242f3a45505b66717c87929da8b3bec9d4dfeaf5000b16",
+      "expected": "7ab775a1727be21419276ba7818e23c62619bf785c4986ca607f9e3e2d27403f"
+    }
   ]
 }

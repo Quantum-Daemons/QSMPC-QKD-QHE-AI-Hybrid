@@ -637,7 +637,10 @@ M_ESA = MetricSpec(
     ceiling=None,
     ceiling_source="",
     companion="event_wise_f0_5_full_channels",
-    # The companion is the whole point: the same method scores 0.061 on the full Mission1 channel set.
+    # The companion is the whole point: the same method scores 0.061 on the full Mission1 channel set -
+    # but that is a TABLE 2 figure, whose matched lightweight partner is Table 2's 0.786, not the 0.968
+    # three lines above (Supp. Table 9, anomalies alone, whose own full-channel number is 0.039). The
+    # channel-scope collapse only means something within one table and one event set.
     comparison_caveat=(
         "The two bars are event-wise F0.5 under the same overlap rule, and that is where the "
         "agreement stops. This project's scored window contains THREE labelled anomaly events; "

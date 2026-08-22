@@ -2398,3 +2398,130 @@ separate rather than folded into step 1, so a regression names which platform ch
 
 A condition with no executor is an intention. That is the third form of the same finding this round,
 after `DP7` and the duplicate-ID guard the checklist said it had.
+
+### Round 55, closing: the Hub still carried both corrections' pre-fix text
+
+**The audit said it never inspected Hugging Face, and that turned out to be the gap that mattered.**
+Its own coverage note reads: "Hugging Face Hub state was not inspected... the findings assert what
+*would be* published from this tree." Checked against the live Hub: both satellite cards still carried
+**"17.5 years"**, the span `DATA_LICENSES.md` withheld as un-re-verifiable, and the three medical
+cards still stated a flat **CC BY 4.0** for BreastMNIST, the grant downgraded on 2026-08-10.
+
+**Fixing the registry does not fix the published artifact**, and that is the whole point of the
+licence finding: `eval_sample.json` ships inside three model repos, so the string a third party
+receives is the one that binds. Round 51 recorded this same lesson in its own plan and it had to be
+learned again on a different field.
+
+Republished five models. Verified by fetching the cards back:
+
+    qsh-medical-breastmnist-resnet18        licence hedged, YAML license_name cc-by-4.0-asserted-by-medmnist
+    qsh-medical-breastmnist-resnet50        licence hedged
+    qsh-medical-breastmnist-ckks-student    licence hedged
+    qsh-satellite-telemanom-esa             span withheld, "17.5 years" gone
+    qsh-satellite-telemanom-ckks-student    span withheld, "17.5 years" gone
+
+All five return 200 to an anonymous fetch, and the five new `hf_revision` pins resolve 200 with the
+ONNX weights reachable at the pinned revision.
+
+**`--public` was mandatory and checking that first mattered.** `publish_hf.py` calls
+`update_repo_settings(private=private)` explicitly, precisely because `create_repo(exist_ok=True)`
+does NOT change visibility - a fix recorded in the script's own comment. Without the flag it would
+have flipped five currently-public repositories to private, and the demo fetches its weights from
+them, so the live site would have broken while every local gate stayed green.
+
+**A third false positive, recorded like the other two.** The probe reported the medical cards as
+still carrying a flat licence. It was matching the YAML slug
+`license_name: cc-by-4.0-asserted-by-medmnist` - hyphenated, so a regex looking for `CC BY 4.0` not
+followed by " as asserted" hit it. The card is correct in four places: the YAML field, the Licence
+line, the Attribution parenthetical and the full argument. Three false positives this round - an
+unanchored `ARR` matching "carried", `encrypted_tier` matching `encrypted_tier_measured_ms`, and this
+- every one caught by reading what actually matched instead of trusting the boolean.
+
+### Round 55, closing: the unresolved lead resolved, and it cleared the file it was filed against
+
+The audit left one lead open: `src/qsh/models/datasets.py` states that "the same method scores
+event-wise F0.5 of 0.786 here and 0.061 on all channels", and the auditor could not tell whether
+0.061 comes from ESA-ADB's Table 2 or its Supplementary Table 9. Neither reported nor cleared.
+
+**Resolved by reading arXiv:2406.17826v2, and the sentence is CORRECT.** Both figures are Table 2,
+same panel, same event set, differing only in channel scope:
+
+    Table 2 (all events excluding communication gaps), Telemanom-ESA-Pruned, Mission1
+        lightweight subset, channels 41-46 ....... 0.786
+        full set of channels ..................... 0.061
+
+    Supplementary Table 9 (anomalies alone) ...... 0.968 lightweight / 0.039 full
+
+`0.061` occurs three times in the whole PDF, all inside Table 2, and appears nowhere in Supplementary
+Table 9. So the pairing is within-table and there is no category error. **And swapping 0.786 for the
+Round 24 comparator 0.968 would CREATE one**, because 0.968's full-channel partner is 0.039.
+
+**The defect was next door, and it was latent.** `scripts/train/satellite_telemanom.py` read the
+lightweight half from `spec.metric.baseline` - which Round 24 correctly moved to Supplementary Table
+9's **0.968** - while keeping `0.061` as a literal. That pairs two tables and two event sets under a
+label whose entire meaning is that only the channel scope differs. It had not fired because the
+shipped `models/metrics.json` still holds the consistent Table 2 pair: the trainer has not run since
+the baseline moved. The next run would have written the mixed one.
+
+**The shape is worth more than the instance.** Replacing a literal with a registry read looks like
+removing duplication. Here it silently swapped which table one half of a matched pair came from, and
+it did so at the moment the registry value was being corrected - so a fix to one number broke a
+different number that had been reading it. Three prose sites carried the same implication and are
+corrected; `datasets.py` needed no change and is the one place that stayed consistent, precisely
+because it kept 0.786.
+
+**The duplicate-ID gate caught its third collision of the round**, again before it shipped. It has
+now fired on `CS13`/`CS14`, `MN7`, `QS9`-`QS11`, `RG12`/`RG14`, `CI9`/`CI10` and `MS9` - every one my
+own, and every one invisible to the previous four rounds of manual scanning.
+
+### Round 55, closing: a republish is not a deploy
+
+Measured immediately after republishing five models, before rebuilding the site: the repository
+carried **11 `hf_revision` pins and the served bundle contained 6 of them.** The five republished
+revisions were absent.
+
+That gap is invisible from every direction that was being watched. The Hub cards were correct, the
+repository was correct, all seventeen local gates were green, and the deployed page fetched weights at
+the OLD revisions - which is the artefact a visitor actually receives. Nothing on the page said so,
+because nothing on the page knows which revision it wanted.
+
+`HF15` records the check as a set difference rather than a reminder: extract the 40-hex strings from
+the deployed `index-*.js`, subtract the `hf_revision` values in `config.defaults.json`, and require
+zero missing. It is the Hub half of the lesson `DP4` already carries for source changes - a change
+that has not reached the served bundle has not reached anyone - and the two halves had never been
+stated together.
+
+**The duplicate-ID gate fired for the fourth time this round**, on `HF14`. Every one of the four has
+been my own new row, and every one was caught before it shipped. Four rounds of manual scanning had
+never caught one.
+
+### Round 55, closing: the combiner branch every run takes had no vectors, and the reason was mechanical
+
+`transport._mix_qkd` reads `crypto.hybrid_combiner_mode`, which **defaults to `hkdf`**. The committed
+vector file pinned three hybrid-KEM cases and two ITS cases - and **zero** for the default transport
+branch. The non-default path was gated and the default path was not.
+
+**The reason is mechanical rather than a lapse of judgement, which is what makes it worth recording.**
+`itsCombine` is `export`ed from `clientMcp.ts`; `deriveAeadKey` was module-private. A checker can only
+reach what is exported, so the sibling that was reachable is the sibling that got a gate. Nobody chose
+to leave the default unpinned; the module boundary chose for them.
+
+Four parameters are hand-copied between `src/qsh/pqc/transport.py` and `web/src/lib/clientMcp.ts`: the
+info string `qsh/transport/pqc+qkd`, the salt/ikm order, 32 output bytes and SHA-256. Verified equal
+before changing anything - both derive `3782c865514641d3ed3e05fb4f834e74928470b788ca2c54e9cd78652062e7b9`
+from the same inputs - which is exactly why a drift would have been silent.
+
+**The seeding found something the vector design nearly missed.** Transposing salt and ikm in the
+browser makes it derive **identical bytes for both QKD-key lengths**, because with the session key as
+both salt and IKM the QKD key stops contributing at all. That is not a wrong key, it is a key with no
+quantum contribution - and a single-length vector would have reported it as merely different rather
+than as degenerate. Two lengths, because the salt is the variable-length input.
+
+Adjacent and verified CLEAN, so it is not re-checked: the **SDN control plane** twin
+(`src/qsh/qkd/sdn_controller.py` / `web/src/lib/clientSdnController.ts`) IS covered across languages.
+`tests/test_sdn_fields_carry_the_dimension_the_spec_says.py` and
+`tests/test_a_field_emptied_on_purpose_has_no_arithmetic_reader.py` both read the TypeScript and
+assert DIMENSIONAL correctness - bits against bit/s - in both files, and their docstrings record the
+Round 42/44 instance where a fix reached the browser and left Python budgeting in the wrong unit for
+two rounds. The shared literals between those two files are arXiv IDs and ETSI clause numbers, not a
+shared numeric derivation, so there is no silent-drift surface there.

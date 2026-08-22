@@ -37,6 +37,11 @@ WHAT TO REPORT
     wrong row, and the lenient one. On the *full* Mission1 channel set the same method scores 0.061;
     that collapse is the honest headline and is printed alongside.
 
+    CARE WITH THAT PAIRING, added Round 55. 0.061 is a TABLE 2 figure, so its matched partner is
+    Table 2's 0.786 and NOT the 0.968 this paragraph just adopted - Supp. Table 9's own full-channel
+    number is 0.039. The channel-scope collapse is a within-table comparison and only means anything
+    if both halves come from one table and one event set.
+
     Two protocol gaps remain open and are recorded rather than closed: ESA-ADB's precision is
     multiplied by the time-level TNR (both values are computed here), and it splits each mission in
     half where this script tests on the last 30 percent - 65 annotated events in its lightweight
@@ -266,7 +271,11 @@ def main() -> int:
               f"{spec.metric.baseline}: one event moves this score by tenths")
     print(f"    point-adjusted F1       {pa_f1:.4f}   <- companion; inflated by construction")
     print(f"    published lightweight   {spec.metric.baseline}  ({spec.metric.baseline_source})")
-    print("    published full-channel  0.061  <- the same method on all Mission1 channels")
+    # NAMES ITS TABLE, because the line above it does not come from the same one. 0.968 is Supp.
+    # Table 9 (anomalies alone); 0.061 is Table 2 (all events). "The same method" was true of the
+    # channel scope and false of the event set, and printing them adjacent implied otherwise.
+    print("    published full-channel  0.061  <- Table 2, all events, all Mission1 channels")
+    print("    published lightweight   0.786  <- Table 2, the SAME row as 0.061; scope is the only difference")
 
     # Trivial baseline. If this wins, the deep model has not earned its complexity.
     iso_f05 = _isolation_forest_baseline(xte, truth, args.seed)
@@ -323,7 +332,22 @@ def main() -> int:
         "corrected_event_wise_f0_5": round(float(ev_f05_corr), 6),
         "point_adjusted_f1": round(float(pa_f1), 6),
         "windowed_iforest_event_wise_f0_5": round(float(iso_f05), 6),
-        "published_lightweight_f0_5": spec.metric.baseline,
+        # BOTH FROM ESA-ADB TABLE 2, and the literal is deliberate. `spec.metric.baseline` is 0.968,
+        # which is Supplementary Table 9 - anomalies ALONE, with event precision multiplied by the
+        # time-level TNR. `published_full_channel_f0_5` is 0.061, which is Table 2 - ALL events
+        # excluding communication gaps. Sourcing one from the registry and hardcoding the other
+        # paired two different tables and two different event sets under a "lightweight vs full
+        # channels" label whose whole point is that only the CHANNEL SCOPE differs.
+        #
+        # Latent rather than live when found: the shipped `models/metrics.json` still holds the
+        # consistent Table 2 pair (0.786 / 0.061) because this trainer has not run since the
+        # baseline moved to 0.968 in Round 24. The next run would have written the mixed pair.
+        #
+        # This is the Round 24 category error reintroduced by a refactor - replacing a literal with
+        # a registry read looks like removing duplication, and here it silently swapped which table
+        # one half of a matched pair came from. Supp. Table 9's own full-channel partner is 0.039,
+        # not 0.061, so the two are not interchangeable in either direction.
+        "published_lightweight_f0_5": 0.786,
         "published_full_channel_f0_5": 0.061,
         "n_parameters": n_params,
         "n_anomaly_intervals": int(len(labels)),

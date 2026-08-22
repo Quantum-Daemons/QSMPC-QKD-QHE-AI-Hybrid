@@ -50,7 +50,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
 from qsh.pqc.hybrid_kem import _combine, _combiner_info  # noqa: E402
-from qsh.pqc.transport import _mix_qkd_its  # noqa: E402
+from qsh.pqc.transport import _mix_qkd, _mix_qkd_its  # noqa: E402
 
 OUT = ROOT / "web" / "scripts" / "vectors" / "hybrid_combiner_vectors.json"
 
@@ -101,6 +101,26 @@ def main() -> int:
             "expected": _mix_qkd_its(p, q).hex(),
         })
 
+    # THE DEFAULT BRANCH, which had ZERO vectors while its non-default sibling had two.
+    #
+    # `transport._mix_qkd` takes `mode` from `crypto.hybrid_combiner_mode`, which defaults to
+    # "hkdf" - so `its_vectors` above pins the path most runs do NOT take, and the path they DO take
+    # was unpinned. Four parameters are hand-copied between `transport.py` and `clientMcp.ts`: the
+    # info string `qsh/transport/pqc+qkd`, the salt/ikm order (salt = QKD key, ikm = session key,
+    # which is the easiest of the four to transpose), 32 output bytes, and SHA-256. Verified equal
+    # on 2026-08-22 - `3782c865...` from both - which is exactly why a drift would be silent.
+    #
+    # Two lengths for the QKD key, because HKDF's salt is the variable-length input here and a
+    # single length would not notice a truncation.
+    hkdf_vectors = []
+    for n in (32, 48):
+        ss, qkd = _pat(32, 7), _pat(n, 11)
+        hkdf_vectors.append({
+            "name": f"transport_hkdf/qkd{n}B",
+            "pqc": ss.hex(), "qkd": qkd.hex(),
+            "expected": _mix_qkd(ss, qkd, mode="hkdf").hex(),
+        })
+
     OUT.parent.mkdir(parents=True, exist_ok=True)
     OUT.write_text(json.dumps({
         "_generated_by": "scripts/export_combiner_vectors.py (do not edit by hand; edit "
@@ -109,9 +129,10 @@ def main() -> int:
                          "bundles the real browser modules and must reproduce them exactly.",
         "vectors": vectors,
         "its_vectors": its_vectors,
+        "hkdf_vectors": hkdf_vectors,
     }, indent=2) + "\n")
     print(f"wrote {OUT.relative_to(ROOT)} "
-          f"({len(vectors)} hybrid-KEM, {len(its_vectors)} ITS)")
+          f"({len(vectors)} hybrid-KEM, {len(its_vectors)} ITS, {len(hkdf_vectors)} transport-HKDF)")
     return 0
 
 
