@@ -2090,7 +2090,19 @@ export function runClientPipeline(
         // The founding QSDC papers (Long-Liu 2002, Deng-Long-Liu 2003, DL04 2004) give no numeric
         // threshold at all - only "if the error rate is high, halt" - and no standards body has ever
         // specified one: ETSI, ITU-T, ISO/IEC and IEEE quantum series are all key distribution.
-        const lossDb = channelLossDb(satChannel(config));
+        // `g` IS Q_Eve/Q_Bob AND IT INCLUDES DETECTOR EFFICIENCY. Qi, Lo et al. state it twice,
+        // including numerically: "the loss of the back channel, includes the efficiency of the
+        // detector and channel loss, is about 4.1 dB, so that g = 2.57" - and 10^(4.1/10) = 2.5704
+        // reproduces that exactly, so the FORM was right and what went into L was not. Omitting
+        // eta_d makes g too small, which OVERSTATES secrecy capacity: an optimistic-security error.
+        //
+        // Fixed in BOTH languages in one change. `src/qsh/qkd/qsdc.py` carries the identical
+        // expression, and this project has recorded nine rounds of a fix reaching one language -
+        // most recently E91, where the copy that was fixed was the one no visitor executes.
+        //
+        // Downlink, eta_d 0.40: g 280.43 -> 701.06, a factor 2.50x. On fibre at eta_d 0.25 it is
+        // 4.00x. One number would be wrong for one of the two paths.
+        const lossDb = channelLossDb(satChannel(config)) - 10 * Math.log10(qkdCfg().free_space_detector_efficiency);
         const g = 10 ** (lossDb / 10);
         const secrecy = 1 - h2(e) - g * h2(e);
         const abort = secrecy <= 0;

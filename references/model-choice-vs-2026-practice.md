@@ -279,21 +279,52 @@ generates its own and labels it `synthetic, methodology-grounded`, citing arXiv:
 the honest framing. But the eight-class shape should not be described as a standard, because it is
 not one.
 
-**The quantum kernel is configured below the regime the literature says works.** arXiv:2605.31449
-(May 2026) documents fidelity quantum kernels **exponentially concentrating**, beating that regime
-only at **15 qubits or more**. This project's configuration is `q_n_qubits = 4` and
-`quantum_qubits = 8`. The measured result is exactly what concentration predicts: quantum-kernel SVC
+**THIS PARAGRAPH READ ITS CITATION BACKWARDS AND IS WITHDRAWN. Round 55.**
+
+It said arXiv:2605.31449 documents fidelity quantum kernels "beating that regime only at **15 qubits
+or more**", concluding that `q_n_qubits = 4` and `quantum_qubits = 8` are below the regime that works
+and that the weak result is therefore explained.
+
+Read at source - Agnihotri, Krebsbach, Reiter & Wellens, *Support Vector Machine with a Scalable
+Quantum Kernel*, 2026-05-29 - the paper says the opposite. Verbatim:
+
+> "Throughout the simulations, the Hamming quantum kernel outperforms the fidelity quantum kernel
+> whenever 15 or more qubits are used."
+
+> "For n >= 15, the test accuracy of the FQK drops sharply, approaching a random guesser ... for
+> n >= 25 qubits."
+
+> "For small n, the accuracy of all three methods is close to 1."
+
+**15 qubits is a CEILING on the fidelity kernel, not a floor**, and concentration worsens
+monotonically with qubit count - corroborated independently by Thanasilp, Wang, Cerezo & Holmes,
+*Nat. Commun.* **15**, 5200 (2024): exponentially concentrated *in the number of qubits*. So 4 and 8
+qubits are the LEAST concentrated regime, the best case for this kernel, not a broken one. Two further
+refinements: the 15-qubit crossover is Hamming-versus-fidelity specifically, and it is a shot-budget
+artefact rather than a physical constant - "1024 measurement shots are insufficient to reliably
+estimate the overlaps ... with more than n = 15 qubits".
+
+**What survives is the measurement, and it now has no published explanation.** Quantum-kernel SVC
 macro F1 **0.8316** and variational QNN **0.4667** against RandomForest **0.9866**, with
-`quantum_beats_classical: false` already recorded.
+`quantum_beats_classical: false`. That is still an honest recorded negative. What it is NOT is
+"underperforming for a published, quantified reason" - removing the inverted citation leaves *quantum
+lost, cause unknown*, and saying so is the correct state of the record. Claiming a better finding than
+"quantum lost" on the strength of a paper that says the reverse is worse than reporting the loss.
 
-So the quantum components are not underperforming through a bug - they are underperforming for a
-published, quantified reason, at a qubit count that is itself the explanation. That is a better
-finding than "quantum lost" and it belongs beside the number.
+The relevant literature is also not empty: 2025-26 QML-IDS work operates at exactly these 4-8 qubit
+counts because that is what NISQ hardware and simulators allow, and is audited as showing no advantage
+rather than being unpopulated.
 
-The defensible framing for ML here is narrow and real: a conventional 11% QBER threshold catches only
-**25.82%** of attacks in one 2026 study, with ML dropping the false-negative rate from 0.8477 to
-0.0198. ML as an overlay for sub-threshold stealthy attacks, never as a replacement for decoy-state
-accounting.
+**The ML-overlay framing IS supported, and is now attributable** - it previously carried no citation.
+arXiv:2608.04047 (2026-08-04), *Beyond the QBER Threshold*, verbatim: *"a fixed 11% QBER threshold
+achieves only 25.82% accuracy with a False Negative Rate (FNR) of 0.8477, whereas the proposed
+framework reduces the FNR to 0.0198."*
+
+**But this file misdescribed it.** It said the threshold "catches only 25.82% of attacks". **25.82% is
+an ACCURACY**; with FNR 0.8477 the attack catch rate is **15.23%**. That is the accuracy-versus-recall
+conflation this project corrected in the finance calibration work, repeated here about someone else's
+number. ML as an overlay for sub-threshold stealthy attacks, never as a replacement for decoy-state
+accounting - the conclusion stands, the arithmetic behind it is corrected.
 
 ### A third finding, and it is the one this section left out: telecom had no encrypted tier at all
 

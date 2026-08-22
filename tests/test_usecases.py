@@ -184,10 +184,24 @@ def test_the_satellite_eavesdrop_check_is_reachable_from_the_use_case():
     deliver. That is the protocol behaving correctly, not noise to be tuned away - so the test uses a
     point far enough from the boundary that sampling cannot flip it, and says why.
     """
-    budget = {"sat_distance_km": 1, "sat_atmospheric_db": 2.0, "sat_pointing_db": 1.0}
+    # RE-DERIVED IN ROUND 55, because `g` changed and this budget was calibrated against the old one.
+    #
+    # `g` now includes detector efficiency, as Qi et al. define it twice ("the loss of the back
+    # channel, includes the efficiency of the detector and channel loss"). At the shipped
+    # `free_space_detector_efficiency = 0.4` that is a FIXED 3.979 dB of the budget before the
+    # channel contributes anything.
+    #
+    # The window is genuinely narrow and worth stating rather than tuning past. With the free-space
+    # misalignment floor of 0.025, h(e) = 0.1687, so C_s > 0 needs g < 4.929, i.e. TOTAL loss below
+    # 6.928 dB - leaving the channel at most 2.948 dB. The old 2.0 + 1.0 = 3.0 dB now lands at
+    # C_s = -0.0100, barely negative; it was chosen when the detector term was missing.
+    #
+    # 1.5 + 1.0 = 2.5 dB gives C_s = +0.0815, which keeps the margin this test's own docstring
+    # requires - far enough from the boundary that finite-sample fluctuation cannot flip the verdict.
+    budget = {"sat_distance_km": 1, "sat_atmospheric_db": 1.5, "sat_pointing_db": 1.0}
 
     clean = satellite_comms.run_demo({"seed": 1, "sat_eve": 0.0, **budget})
-    assert clean["channel_loss_db"] == 3.0
+    assert clean["channel_loss_db"] == 2.5
     assert clean["telemetry_delivered"] is True          # QSDC closes here, for the first time
     assert clean["qsdc_secrecy_capacity"] > 0.0
     assert clean["eavesdrop_detected"] is False

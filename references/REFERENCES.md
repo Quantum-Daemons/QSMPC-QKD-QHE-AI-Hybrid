@@ -966,7 +966,7 @@ Three further facts that stop any single number being quoted safely:
   security threshold. Collapsing them into one comparison is a modelling error in its own right.
 
 **No standards body has specified QSDC**, and this was checked exhaustively rather than assumed.
-All 14 published ETSI QKD deliverables were searched full-text (2.0 M characters): zero hits for
+All ETSI QKD deliverables then reachable were searched full-text (**"14 published" is one too many, corrected Round 55**: the portal shows **13 published**, plus GS QKD 003 V1.1.1 which is WITHDRAWN, and GS QKD 001 and 006 Stopped - 14 only if the withdrawn one is counted) (2.0 M characters): zero hits for
 QSDC or "secure direct communication", against a control of 7 documents matching "BB84". ITU-T's
 complete X.1700-X.1749 and Y.3800-**Y.3838** sets are QKD or QRNG throughout (this said Y.3835 until Round 51; Y.3836, Y.3837 and Y.3838 were approved 2026-08-13, Y.3836 still flagged
 prepublished), and the work programme
