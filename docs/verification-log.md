@@ -2494,3 +2494,34 @@ stated together.
 **The duplicate-ID gate fired for the fourth time this round**, on `HF14`. Every one of the four has
 been my own new row, and every one was caught before it shipped. Four rounds of manual scanning had
 never caught one.
+
+### Round 55, closing: the combiner branch every run takes had no vectors, and the reason was mechanical
+
+`transport._mix_qkd` reads `crypto.hybrid_combiner_mode`, which **defaults to `hkdf`**. The committed
+vector file pinned three hybrid-KEM cases and two ITS cases - and **zero** for the default transport
+branch. The non-default path was gated and the default path was not.
+
+**The reason is mechanical rather than a lapse of judgement, which is what makes it worth recording.**
+`itsCombine` is `export`ed from `clientMcp.ts`; `deriveAeadKey` was module-private. A checker can only
+reach what is exported, so the sibling that was reachable is the sibling that got a gate. Nobody chose
+to leave the default unpinned; the module boundary chose for them.
+
+Four parameters are hand-copied between `src/qsh/pqc/transport.py` and `web/src/lib/clientMcp.ts`: the
+info string `qsh/transport/pqc+qkd`, the salt/ikm order, 32 output bytes and SHA-256. Verified equal
+before changing anything - both derive `3782c865514641d3ed3e05fb4f834e74928470b788ca2c54e9cd78652062e7b9`
+from the same inputs - which is exactly why a drift would have been silent.
+
+**The seeding found something the vector design nearly missed.** Transposing salt and ikm in the
+browser makes it derive **identical bytes for both QKD-key lengths**, because with the session key as
+both salt and IKM the QKD key stops contributing at all. That is not a wrong key, it is a key with no
+quantum contribution - and a single-length vector would have reported it as merely different rather
+than as degenerate. Two lengths, because the salt is the variable-length input.
+
+Adjacent and verified CLEAN, so it is not re-checked: the **SDN control plane** twin
+(`src/qsh/qkd/sdn_controller.py` / `web/src/lib/clientSdnController.ts`) IS covered across languages.
+`tests/test_sdn_fields_carry_the_dimension_the_spec_says.py` and
+`tests/test_a_field_emptied_on_purpose_has_no_arithmetic_reader.py` both read the TypeScript and
+assert DIMENSIONAL correctness - bits against bit/s - in both files, and their docstrings record the
+Round 42/44 instance where a fix reached the browser and left Python budgeting in the wrong unit for
+two rounds. The shared literals between those two files are arXiv IDs and ETSI clause numbers, not a
+shared numeric derivation, so there is no silent-drift surface there.
