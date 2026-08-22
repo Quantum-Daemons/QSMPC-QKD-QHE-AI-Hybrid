@@ -361,7 +361,18 @@ def test_every_qcnn_implementation_is_pinned_to_another() -> None:
         "count of implementations is exactly what nobody was tracking."
     )
     assert len(PINNED) >= 3, "the pinned set has shrunk; a re-implementation was removed silently"
+
+
+def test_the_comparison_would_notice_a_divergence():
     """Anti-tautology: perturb one implementation and require the comparison to reject it.
+
+    HEADER RESTORED ROUND 55. A commit deleted this `def` line without its body, so the docstring and
+    the whole perturbation ran as a tail of `test_every_qcnn_implementation_is_pinned_to_another`.
+    Collection read 10 instead of 11 and `pytest -k test_the_comparison_would_notice_a_divergence`
+    matched nothing, while `docs/deliverable-verification.md` went on asserting the companion test
+    exists. Detection was not lost - the body still executed - but an anti-tautology check hidden
+    inside another test's name is one nobody can ask for by name, and the count that would have shown
+    it was not being read.
 
     The three implementations agree, so every assertion above is green on arrival. This makes the
     green mean something by showing the same comparison is not satisfied by an altered circuit -

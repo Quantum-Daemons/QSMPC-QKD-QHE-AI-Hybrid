@@ -2230,6 +2230,23 @@ about, and the residual count is an artefact of a pattern that cannot tell `p_1 
 `hm_source=Author-reported`. Converting by count would turn config keys into mathematics, which is
 worse than leaving them.
 
+**AND THAT MEASUREMENT WAS TAKEN WITH A PROBE THAT COULD NOT SEE THE REMAINING CASES. Round 55.**
+The Round 54 sweep greps for **backticked** `x = y`. Bare prose mathematics has no backticks, so it
+is invisible to that pattern by construction, and "largely DONE" was concluded from a search that
+could only ever return the already-marked-up cases. This is the mechanism-versus-outcome shape again:
+the probe measured a proxy for the property rather than the property.
+
+Re-run with an outcome-shaped probe - scan for Greek-letter names, entropy and ratio expressions
+OUTSIDE code fences and outside `$...$` - it finds bare sites the backtick grep cannot: `mu = 0.5 /
+nu = 0.1` at :2402 (whose converted twin sits in `verification-log.md`), `R/eta ~ 0.11` at :3937
+three lines from its own $`R/\eta`$, `q = 1/2` at :3141 on the line after a converted $`q = 1/2`$,
+and `(g = 2.57)` in `REFERENCES.md` three lines under its own `$$` definition. All four converted.
+
+The "do not blanket-convert" list below still stands and grew: `mu`, `nu` and `eta` at :2627 are
+real Python parameter names in `decoy_reference.py`, :3929 is sigma-as-a-unit, :2618 is a table
+header, and :3939 and :2360 are verbatim quotations. Four sites converted by hand, five deliberately
+left.
+
 **A bulk edit here damaged four already-correct sites before it was caught.** Replacing
 `` `p_1 = 1` `` with `` $`p_1 = 1`$ `` double-wrapped the sites that already had the delimiters,
 producing `` $$`p_1 = 1`$$ `` - a DISPLAY-math delimiter around a code span, which renders wrong.
@@ -2399,7 +2416,7 @@ quantity shown beside it, not a relabelling of the first.
 **The honest residual, and it is bigger than Round 46 recorded:** at 10e6 the 800 km downlink yields
 **~2,440 sifted bits** - a 5-seed mean of 2,442, spread 2,397 to 2,470, measured at the intensities
 this round shipped (mu = 0.3416, nu = 0.1417). **This entry said ~3,660 for one round**, which is the
-figure at the retired mu = 0.5 / nu = 0.1 (5-seed mean 3,582); this subsection was rewritten in the
+figure at the retired $`\mu = 0.5`$ / $`\nu = 0.1`$ (5-seed mean 3,582); this subsection was rewritten in the
 same round that moved the intensities and the line was carried across without re-measurement. Round
 46 measured its own figure against the refuted band and concluded ~30e6 pulses and ~1.5 GB of Python
 array would clear it; both figures fall with the band, and the residual is larger still at the
@@ -3138,7 +3155,7 @@ tagged-fraction bound (QIC 4, 325). None of the asserted numbers originated here
 
 The trap this closed is worth keeping: the published curves are plotted for efficient BB84 where the
 sifting factor $`q \to 1`$, while this project runs standard BB84 at $`q = 1/2`$. Reproducing them with
-q = 1/2 gives values at exactly HALF the published ones - close enough to read as a fitting
+$`q = 1/2`$ gives values at exactly HALF the published ones - close enough to read as a fitting
 discrepancy, wrong enough to void the comparison. `q_sift` is explicit and a test pins the factor.
 
 **`npm run check:pqc` (`web/scripts/check_mlkem_modulus_vectors.mjs`).** FIPS 203 section 7.2
@@ -3934,7 +3951,7 @@ figures, 0.022372 against 0.029744.
 
 ### Also closed, and two corrections to this project's own record
 
-`decoy_reference.py` asserted its own outputs as the paper's: R/eta ~ 0.11 and R/eta^2 ~ 0.15 appear
+`decoy_reference.py` asserted its own outputs as the paper's: $`R/\eta \approx 0.11`$ and $`R/\eta^2 \approx 0.15`$ appear
 nowhere in Ma et al.'s prose, and the module reached them by passing `q_sift=1.0` while the paper
 introduces the figure those curves come from with "where q = 1/2 with standard BB84". Deliberately NOT
 resolved - deciding it needs values read off a plotted figure - and the docstring now carries that
