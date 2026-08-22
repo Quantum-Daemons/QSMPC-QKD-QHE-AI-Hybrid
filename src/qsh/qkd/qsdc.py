@@ -16,6 +16,8 @@ correction (LDPC) and privacy amplification.
 
 from __future__ import annotations
 
+import math
+
 from dataclasses import dataclass, replace
 
 import numpy as np
@@ -87,7 +89,29 @@ def quantum_secure_direct_comm(
     # `params.loss_db()`, not the fibre product: a free-space channel carries a diffraction spec and
     # this expression silently ignored it, so the same downlink was 28.0 dB here and 24.48 dB in the
     # browser - a factor 2.7 in g, and so in the secrecy capacity the abort is decided on.
-    loss_db = params.loss_db()
+    # `g` IS Q_Eve/Q_Bob, AND IT INCLUDES DETECTOR EFFICIENCY. Qi, Lo et al. define it twice - "g
+    # represents the gap between QEve and QBob, depending on the back channel loss and the efficiency
+    # of detector", and again numerically: "the loss of the back channel, INCLUDES THE EFFICIENCY OF
+    # THE DETECTOR and channel loss, is about 4.1 dB, so that g = 2.57". 10^(4.1/10) = 2.5704
+    # reproduces their figure exactly, so the functional form was right and what went into L was not.
+    #
+    # Omitting eta_d makes g too SMALL, which understates I(A:E) and OVERSTATES secrecy capacity - an
+    # optimistic-security error, the same direction as the two this project has already corrected.
+    #
+    # Measured on the shipped configuration, and the factor is NOT one number:
+    #
+    #     fibre 50 km   eta_d 0.25   g 10.00 -> 40.00    4.00x   QBER tolerance 0.011551 -> 0.002405
+    #     downlink      eta_d 0.40   g 280.43 -> 701.06  2.50x   tolerance 2.669e-4 -> 9.635e-5
+    #
+    # The 4.0x quoted in the sweep is exactly 1/0.25 from this repo's own default - it is NOT Qi's
+    # number, whose SNSPDs at 70% would give 1.43x. On the satellite downlink, which is the path QSDC
+    # actually serves here, the factor is 2.5x. Quoting a single "4.0x" would be wrong for satellite.
+    #
+    # CAVEAT CARRIED: Qi et al. do not itemise their 4.1 dB - the components they state sum to
+    # 2.15 dB, leaving ~1.95 dB unaccounted, presumably return-path optics. A fully defensible `g`
+    # would be an explicit return-path budget with its terms named, rather than channel loss plus
+    # detector efficiency. This is the honest floor, not the final answer.
+    loss_db = params.loss_db() - 10.0 * math.log10(params.detector_efficiency)
     g = 10.0 ** (loss_db / 10.0)
     secrecy = 1.0 - _h2(error_rate) - g * _h2(error_rate)
 

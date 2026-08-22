@@ -41,7 +41,7 @@ three activities and section 8.11 double-click handling are protocol logic a bro
 | FIPS 203 section 7.2 / section 7.3 | Normative SHALL: encapsulation-key modulus round-trip check, decapsulation-key hash check. Table 1 decapsulation failure rates 2^-138.8 / 2^-164.8 / 2^-174.8. | Yes |
 | NIST ACVP + C2SP/CCTV | NIST does publish negative vectors, at the algorithm-validation layer: ML-DSA sigVer's five disposition categories, and CCTV's `modulus/`, `strcmp/`, `unlucky/` sets. | Yes |
 | ISO/IEC 23837-1/-2:2023 | The only QKD adversarial test procedures that exist, and they deliberately contain no thresholds. | Form only |
-| ETSI GS QKD 010 | Gives the Trojan-horse relation $`\mu_{\text{out}} \le \mu_{\text{in}} \cdot r_{\text{rel}}`$, then declines to specify the privacy amplification: the adopter "shall provide a security justification". | No |
+| ETSI GS QKD 010 | Gives the Trojan-horse relation $`\mu_{\text{out}} \le \mu_{\text{in}} \cdot r_{\text{rel}}`$ as **equation (8) inside clause 7.4**, then **MANDATES** privacy amplification without fixing one formula: clause 8 says the bound *"shall be used ... to determine the amount of privacy amplification that shall be applied"* and the adopter *"shall provide a security justification for how they calculate the amount"*. **CORRECTED Round 55** - this row previously said 010 "declines to specify the privacy amplification", which is a different and wrong claim, and cited "clause 8" for the relation, which is an equation number read as a clause number. **AND 010 IS NOT PUBLISHED**: ETSI work item 43375, reference `DGS/QKD-0010_ISTrojan`, is at **v0.6.2, status Drafting**, TB approval targeted 2026-12-02, and its public draft cover states *"Do not use as reference material. Do not cite this document other than as work in progress."* The "V1.1.1 (2023-04)" a search summary reported belongs to **GS QKD 016**, the Common Criteria Protection Profile. Clause content above is from the public v0.4.1; v0.6.2 is not public, so numbering may have moved. | No |
 | ETSI GS QKD 014 | Concrete negative API behaviour (400/401/503, "size shall be a multiple of 8"). Modest but real. | Yes, modestly |
 | ETSI GS QKD 016 / BSI-CC-PP-0120 | Common Criteria protection profile. Contains no numeric QBER or key-rate thresholds - the place ISO said the numbers would live does not have them either. | No |
 | ISO/IEC 4922-1/-2 | Taxonomy and secret-sharing mechanisms. **No testing, evaluation or conformance clause exists.** | No |
@@ -119,7 +119,8 @@ ever modelled it must be as *silent compromise* - full key extracted, monitoring
 
 **ETSI GS QKD 010 Trojan-horse conformance, and the 21 optical evaluation activities of ISO
 23837-2.** These need real photons. The standards decline to supply both the thresholds (section 5.3.5) and
-the privacy-amplification formula (GS QKD 010 clause 8), so a browser simulation would be inventing
+the privacy-amplification formula (GS QKD 010 clause 8 - an UNPUBLISHED draft whose own
+cover forbids citation; see the row above), so a browser simulation would be inventing
 the inputs and the pass criteria.
 
 **Any aggregate stress score.** This is the third time this project has been offered a composite and
