@@ -972,8 +972,7 @@ Three further facts that stop any single number being quoted safely:
 **No standards body has specified QSDC**, and this was checked exhaustively rather than assumed.
 All ETSI QKD deliverables then reachable were searched full-text (**"14 published" is one too many, corrected Round 55**: the portal shows **13 published**, plus GS QKD 003 V1.1.1 which is WITHDRAWN, and GS QKD 001 and 006 Stopped - 14 only if the withdrawn one is counted) (2.0 M characters): zero hits for
 QSDC or "secure direct communication", against a control of 7 documents matching "BB84". ITU-T's
-complete X.1700-X.1749 and Y.3800-**Y.3838** sets are QKD or QRNG throughout (this said Y.3835 until Round 51; Y.3836, Y.3837 and Y.3838 were approved 2026-08-13, Y.3836 still flagged
-prepublished), and the work programme
+complete X.1700-X.1749 and Y.3800-**Y.3838** sets are QKD or QRNG throughout (this said Y.3835 until Round 51; Y.3836, Y.3837 and Y.3838 were approved 2026-08-13 and **all three are flagged prepublished**, not just Y.3836 - corrected Round 56, re-fetched per recommendation: Y.3835 reads "In force" alone at 9,796 B while Y.3836/3837/3838 read "In force" AND "prepublished" at 9,647/9,590/9,515 B. The ceiling holds: Y.3839 and Y.3840 return **200 with a zero-length body**, which is this project's established discriminator for a recommendation that does not exist - and note that a browser User-Agent collapses ALL of these to a 245 B stub, so the UA that defeats ETSI's bot block destroys the signal here), and the work programme
 across every study period 2001-2028 and every status returns zero QSDC items against a control of
 186 quantum-titled items. ISO/IEC JTC 1/SC 27's entire catalogue contains exactly two
 quantum-titled standards, both parts of 23837, both QKD. IEEE has no QSDC standard - and no QKD one
