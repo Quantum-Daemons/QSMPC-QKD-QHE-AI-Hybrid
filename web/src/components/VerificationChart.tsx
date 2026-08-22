@@ -563,24 +563,44 @@ export function NoEncryptedComparison({ usecase }: { usecase?: string }) {
  *  prior research, which the gate for that field exists to prevent.
  *
  *  So the comparison gets its own axis, where both bars are the same quantity by construction and the
- *  metric is named on it. */
+ *  metric is named on it - EXCEPT where the registry says otherwise, which is the `caveat` prop. */
 export function MeasuredAgainstPublished(
-  { measured, published, ceiling, metric, modelKey, source }:
+  { measured, published, ceiling, metric, modelKey, source, caveat }:
   { measured: number | null; published: number | null; ceiling?: number | null;
-    metric: string; modelKey: string; source?: string },
+    metric: string; modelKey: string; source?: string; caveat?: string | null },
 ) {
   if (measured == null || published == null) return null;
+  // THE SAME METRIC NAME IS NOT THE SAME MEASUREMENT, and this chart shipped asserting that it is.
+  //
+  // The caption claimed "both bars are the same metric on the same axis" unconditionally. For
+  // `satellite_comms.telemanom` that claim is FALSE, and the registry already said so in its own
+  // words: the scored window holds THREE labelled events against ESA-ADB's 65, the split differs
+  // (last 30% here, half the mission there), and ESA-ADB multiplies event precision by the TIME-LEVEL
+  // true-negative rate. Its `sample_size_note` states outright that the figure "is NOT comparable to a
+  // published benchmark computed over the full event set" - and this chart drew 0.4545 beside 0.968
+  // anyway, under a caption promising the opposite. A chart built to prevent a category error
+  // committed one, on the single model whose registry entry warns about it three times.
+  //
+  // The caveat is an EXPLICIT REGISTRY FIELD rather than a heuristic. The first draft of this used
+  // "does the model carry a `sample_size_note`" as the signal, which is wrong: `telecom_ids.nidd`
+  // carries one too and its note is a REASSURANCE - stratified 75/25, every class at corpus
+  // proportion. One field name, two opposite meanings, which is the same two-fields-one-word trap
+  // `tests/test_two_baselines_are_not_one.py` exists for.
+  const who = caveat ? "published*" : "published";
   const data = [
     { who: "this project", value: measured },
-    { who: "published", value: published },
+    { who, value: published },
     ...(ceiling != null ? [{ who: "ceiling", value: ceiling }] : []),
   ];
   return (
     <figure className="chart-figure">
       <figcaption className="muted small">
         <code>{metric}</code> for <code>{modelKey}</code>: measured here against the published figure.
-        Both bars are the same metric on the same axis - the comparison is only meaningful because of
-        that, and this project has twice shipped a plot where it was not true.
+        {caveat
+          ? <> The two bars share a metric <b>name</b> and are <b>not</b> the same measurement. Read
+              the note under the chart before comparing their heights.</>
+          : <> Both bars are the same metric on the same axis - the comparison is only meaningful
+              because of that, and this project has twice shipped a plot where it was not true.</>}
         {source ? <> Baseline: {source}</> : null}
       </figcaption>
       <ResponsiveContainer width="100%" height={150}>
@@ -595,11 +615,16 @@ export function MeasuredAgainstPublished(
             {data.map((d) => (
               <Cell key={d.who}
                     fill={d.who === "this project" ? "#4f9dff"
-                        : d.who === "published" ? "#e6a23c" : "#8a94a6"} />
+                        : d.who.startsWith("published") ? "#e6a23c" : "#8a94a6"} />
             ))}
           </Bar>
         </BarChart>
       </ResponsiveContainer>
+      {caveat ? (
+        <p className="muted small" style={{ marginTop: 6 }}>
+          <b>* not a like-for-like comparison.</b> {caveat}
+        </p>
+      ) : null}
     </figure>
   );
 }
