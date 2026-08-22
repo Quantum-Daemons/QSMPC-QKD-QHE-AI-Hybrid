@@ -3830,3 +3830,62 @@ Also recorded: ESA-ADB's CC BY 3.0 IGO term is on its Zenodo landing page and AB
 REST metadata, so an API-only adjudication reads the corpus as unlicensed. That is how it went
 uncredited, and it is the same shape as reading a mirror's silence as the source's silence.
 
+## Rounds 53-54: the four pipelines, and a fix that reached the one language that does not ship
+
+**BUSINESS DOC RECONCILED Round 54.**
+
+Round 52 recorded that only finance had been driven to completion. All five pipelines have now been
+run end to end on the deployed site with every published model re-scored in-tab and passing. Four
+fact-check findings closed and three left open with reasons.
+
+### E91 confused a visibility with an error probability, in FOUR places
+
+`v_eff = visibility * (1 - e)`. A channel that flips a bit with probability `e` has visibility
+`(1 - 2e)`: visibility spans [-1, 1] of correlation, an error probability spans [0, 1/2] of QBER, and
+the factor of two between them was missing. QBER understated by **24.8%**, always in the demo's
+favour. At the shipped 50 km channel the corrected form gives 0.029744 and independent composition
+`q_V + e - 2*q_V*e` gives 0.029744 - agreeing to **0.000%**, exactly rather than to first order,
+which is what makes it a correction and not a choice between models.
+
+**Round 53 fixed `qkd/e91.py` and nothing else. This demo is CLIENT-SIDE ONLY, so the copy it fixed
+is the one no visitor executes and the two it missed are the ones that render** - ninth instance of
+one fix reaching one language, committed by the round that was closing a fact-check about that exact
+defect class.
+
+**And the fourth copy was in the checker.** `web/scripts/check_qkd.mjs` asserts the CHSH-Werner
+identity as `2*sqrt(2)*V*(1-e)`. It carried the same confusion, so it was ASSERTING the bug, and it
+stayed green for as long as every implementation was wrong in the same way. It only went red once the
+implementations were right - which is the useful diagnostic and the reason a checker that shares a
+derivation with the thing it checks is worth suspecting.
+
+### The cross-language gate had collected the evidence and never looked at it
+
+`tests/test_the_browser_computes_the_bound_the_page_names.py` already exported `e91Qbers` from the
+browser and asserted nothing on them; its docstring said "E91 is left alone", which was true of the
+secure-fraction FORM and had quietly come to cover the QBER too.
+
+Closing it needed one more decision. The browser SAMPLES its reported `qber` (`e0 + std * gauss(u)`)
+while Python returns the analytic value, so comparing them is comparing two different quantities. At
+this demo's ~2,500 sifted pairs the shot noise is sigma ~ 0.0034 against a bug of 0.0074 - **a
+5-sigma statistical gate would have put the bug at -2.17 sigma and passed it.** So `e91()` now
+returns `e0`, the model error rate the bound already uses, and the gate asserts an identity at 1e-9
+with no statistical slack. Seeded by restoring the bug in both browser copies: it fires with the exact
+figures, 0.022372 against 0.029744.
+
+### Also closed, and two corrections to this project's own record
+
+`decoy_reference.py` asserted its own outputs as the paper's: R/eta ~ 0.11 and R/eta^2 ~ 0.15 appear
+nowhere in Ma et al.'s prose, and the module reached them by passing `q_sift=1.0` while the paper
+introduces the figure those curves come from with "where q = 1/2 with standard BB84". Deliberately NOT
+resolved - deciding it needs values read off a plotted figure - and the docstring now carries that
+status instead of the claim.
+
+`export.opset` does NOT still render 0; that sentence was written in the Round 52 log from a Round 50
+note rather than from the page. It renders 17 for `telecom_ids.qml` and is correctly OMITTED for the
+two tree ensembles, which carry no default-domain opset. Closed as a side effect of the Round 50
+retrain, recorded as such rather than claimed as a fix.
+
+`runs_encrypted=True` is on **six** specs and `model-choice-vs-2026-practice.md` said five - while its
+next paragraph says the sixth was being added in that same round, so the document contradicted itself.
+Annotated rather than rewritten, because the pre-closure count is the finding.
+

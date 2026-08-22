@@ -386,10 +386,19 @@ export function bb84(nPulses: number, p: ChannelParams, seed = 0,
 // "E91" in the Parameters panel visibly moves QBER / secure-key-bits independently of BB84.
 export function e91(nPulses: number, p: ChannelParams, seed = 0,
                     visibility = qkdCfg().e91_visibility,
-                    fEC = qkdCfg().error_correction_eff): BB84Result & { chshS: number } {
+                    fEC = qkdCfg().error_correction_eff): BB84Result & { chshS: number; e0: number } {
   const u = rng(seed + 2);
   const T = transmittance(p);
-  const vEff = Math.max(0, Math.min(1, visibility * (1 - intrinsicQber(p))));  // channel-degraded visibility
+  // (1 - 2e), NOT (1 - e). A channel that flips a bit with probability e has visibility (1 - 2e):
+  // visibility spans [-1, 1] of correlation, an error probability spans [0, 1/2] of QBER, and the
+  // factor of two between them is exactly what went missing. Understated QBER by 24.8% at the
+  // shipped channel, always in the demo's favour.
+  //
+  // Round 53 fixed `qkd/e91.py` and NOT these two, which is the ninth instance of one fix reaching
+  // one language - and the worst-directed one yet, because this demo is CLIENT-SIDE ONLY. The Python
+  // copy does not run for a visitor; these do. Checked against independent composition, which needs
+  // no visibility algebra: V = 0.97, e = 0.015200 gives 0.029744 both ways, agreeing to 0.000%.
+  const vEff = Math.max(0, Math.min(1, visibility * (1 - 2 * intrinsicQber(p))));  // channel-degraded visibility
   const s = 2 * Math.SQRT2 * vEff;                                             // CHSH parameter
   const e0 = (1 - vEff) / 2;                                                   // ideal QBER from the visibility
   // ONE LOSSY ARM, matching `src/qsh/qkd/e91.py`, whose own comment reads "coincidence detection
@@ -414,6 +423,12 @@ export function e91(nPulses: number, p: ChannelParams, seed = 0,
     // transmittance above used the real diffraction figure.
     channelLossDb: Math.round(channelLossDb(p) * 10) / 10,
     chshS: s,
+    // The MODEL error rate, exported so a cross-language gate has something exact to compare.
+    // `qber` above is a sampled draw around it, and at this demo's ~2,500 sifted pairs its shot
+    // noise (sigma ~ 0.0034) is half the size of the visibility bug it would need to detect - so a
+    // statistical comparison on `qber` could not have caught Round 53's one-language fix, while an
+    // identity on `e0` catches it at any block size.
+    e0,
   };
 }
 

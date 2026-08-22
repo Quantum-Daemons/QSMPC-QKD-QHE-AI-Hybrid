@@ -156,9 +156,14 @@ const cfg_qrng = m.qrngCfg();
   const eIntr = m.intrinsicQber(chan);
 
   // The relation the code implements. Asserted exactly, because both sides are deterministic.
+  //
+  // (1 - 2e), NOT (1 - e). This checker carried the SAME units confusion as the three
+  // implementations it exists to check - a channel flipping a bit with probability e has visibility
+  // (1 - 2e) - so it was asserting the bug rather than catching it, and it went green for as long as
+  // every implementation was wrong in the same way. Round 54: the fourth and last copy.
   check("chsh-werner-identity",
-    near(e.chshS, 2 * Math.SQRT2 * V * (1 - eIntr), 1e-9),
-    `S=${e.chshS} but 2*sqrt(2)*V*(1-e_intrinsic)=${2 * Math.SQRT2 * V * (1 - eIntr)}`);
+    near(e.chshS, 2 * Math.SQRT2 * V * (1 - 2 * eIntr), 1e-9),
+    `S=${e.chshS} but 2*sqrt(2)*V*(1-2*e_intrinsic)=${2 * Math.SQRT2 * V * (1 - 2 * eIntr)}`);
 
   // S must never exceed the Tsirelson bound. An S above it is unphysical, not a good result.
   check("chsh-tsirelson", e.chshS <= 2 * Math.SQRT2 + 1e-12,
