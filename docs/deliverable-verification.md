@@ -3770,3 +3770,63 @@ reaches the published artifact only on a republish. Fixing the record and not re
 four uncredited artifacts and a repository that believes otherwise - which is the failure this round
 is about, one layer up.
 
+## Round 52: the credit reached the artifact, and two gates were wider than the drifts they watched
+
+**BUSINESS DOC RECONCILED Round 52.**
+
+Round 51 put the missing attribution in the registry and the browser. That did not discharge either
+licence, because Hub model cards are GENERATED - the credit reaches the published artifact only on a
+republish, and the published artifact is what a recipient receives. Four models republished and each
+verified by fetching its card back from the Hub at the new pin rather than reading the local file:
+`satellite_comms.telemanom` `22b4cd0e`, `satellite_comms.student` `fb7542b9`, `finance_aml.gbm`
+`b35b4cbb`, `finance_aml.student` `475b160d`. One attribution line each.
+
+### Two fact-check findings closed, and both were mis-stated by the sweep that raised them
+
+**The QRNG entropy figure was measuring the extractor.** `simulator.py` passed post-Toeplitz output
+to `health_suite` while `raw` sat two lines above. The reported symptom - "a broken source passes" -
+is FALSE and re-deriving it is what showed that: `passed` correctly stays True for a merely biased
+source either way, because SP 800-90B's continuous tests catch a stuck source, not a skewed one.
+The real defect is the estimate. A p(1)=0.90 source has raw min-entropy **0.1472** bit/bit and read
+**0.9806** after conditioning, against **0.9892** for a fair source - a badly biased source and a
+healthy one a hundredth of a bit apart, because an extractor produces near-uniform output by
+construction. That is also why it survived: on the data this project generates the two readings are
+indistinguishable, so nothing looked wrong.
+
+**`FiniteKeyParams` still carried the retired intensities**, 0.5 / 0.1 against the shipped
+0.3416 / 0.1417 - the sibling of a fix `QKDParams` took in Round 47, unfollowed for four rounds. The
+reported downstream consequences were re-derived and **the repository was already right**: the
+positive-key threshold measures 3.84e7 pulses at the retired pair and 1.40e7 at the shipped one,
+matching what Round 47 recorded. The sweep's "42,448 against 143,645" is a sifted-bit figure, a
+different quantity from the pulse counts the docs quote. Nothing downstream needed changing, which is
+precisely why re-deriving before correcting is the rule - a plausible correction to a correct number
+is still a regression.
+
+### The pattern worth keeping: two gates with tolerances wider than the drift
+
+The refuted-band test constructs `FiniteKeyParams()` bare and asserts the positive-key threshold
+falls in 5e6 to 2e8. **Both intensity pairs land inside that band.** So the gate sitting exactly where
+the drift happens was green on the defect and green on the fix alike. The replacement asserts the
+SOURCE of the default - an identity, with no tolerance to hide in - and checks `default_factory`
+rather than the value, so a literal that happens to equal the config today still fails.
+
+**And the first gate written for the QRNG fix had the same shape of hole.** It checked
+`"raw=raw" in inspect.getsource(...)`. Seeded by reverting the call site, it stayed GREEN - because
+the comment explaining why `raw=raw` is load-bearing sits directly above the call and contains the
+string. A gate matching its own explanatory comment passes for the wrong reason. It now parses the
+call with `ast` and checks the keyword set; re-seeded with the comment deliberately left in place, it
+fires.
+
+### Licence precision, read at source
+
+CC BY 3.0 IGO reaches adaptations, so the satellite `eval_sample.json` - real ESA-ADB channels
+resampled to 60s and z-scored - is covered. CDLA-Sharing-1.0 **section 3.5 exempts Results**, so
+trained weights alone would owe nothing; the obligation attaches because the finance
+`eval_sample.json` ships 8,192 row-level records its own provenance calls "unmodified rows of the
+published corpus", which is Enhanced Data under 3.1. Read at cdla.dev rather than summarised, because
+calling CDLA an author-credit licence would be the mirror of the original defect.
+
+Also recorded: ESA-ADB's CC BY 3.0 IGO term is on its Zenodo landing page and ABSENT from Zenodo's
+REST metadata, so an API-only adjudication reads the corpus as unlicensed. That is how it went
+uncredited, and it is the same shape as reading a mirror's silence as the source's silence.
+
