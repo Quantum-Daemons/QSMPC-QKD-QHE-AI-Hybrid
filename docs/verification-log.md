@@ -1814,3 +1814,44 @@ interpretation the code has not checked.
 control, so the box remains on the Round 50 branch. The served content is the merged tree, so no
 visitor sees anything stale; what is wrong is the branch pointer, and it is recorded here rather than
 left to be discovered.
+
+### Round 51, continued - the sweep items, each with what was actually established
+
+**QCNN reproduction, verified rather than asserted.** All 33 QCNN gates pass with
+`QSH_REQUIRE_BROWSER_GATES=1` set, so `test_the_qcnn_agrees_across_languages.py` RAN rather than
+skipping - the browser's `qotpQcnnInfer` and the trainer's `circuit()` agree numerically on the
+shipped artifacts. Readout identifiability holds at all five shipped widths, and no trainable
+parameter is analytically dead. The per-artifact figures against their classical baselines, all
+recorded on the pages: finance accuracy 0.97 against LR 0.985; medical 0.883721 against 0.953488;
+telecom macro F1 0.510963 (8 wires) and 0.541894 (7 wires) against LR 0.976447. **The classical
+baseline beats the circuit on every use case**, which is what the pages say and is the honest result.
+
+**2D plots on the E2E page, measured.** `/orchestration` renders two: the encrypted-vs-plaintext
+agreement scatter and the real-corpus 2D scatter, with `encrypted_agreement` 1 on the demo flow and no
+`NaN`. It does NOT render `VerificationChart`, so the calibration diagram added this round appears on
+use-case pages only - a scope fact, not a defect, and stated here so the next walk does not look for
+it in the wrong place.
+
+**The calibration diagram is NOT yet verified on the deploy.** It typechecks, its data is computed,
+both call sites exist and the dead-component gate passes - but the deployed bundle predates it,
+because this branch is unmerged and `DP7` is blocked. Recorded as locally-verified and
+deploy-unverified rather than counted as done.
+
+**JupyterLite / marimo / pyvista-wasm: the existing declination stands, and now has outside
+corroboration.** `DC8` declines all three with a four-part reopening condition, recording that the
+crypto stack does not exist in Pyodide - no SEAL/CKKS, no TenSEAL, no MPC runtime, no ONNX among 354
+packages - and that `pyvista-wasm` does not exist as a real package. An independent 2026 search
+agrees on both counts: JupyterLite and marimo are real and Pyodide-backed, and no credible
+pyvista-to-WASM/WebGPU path surfaced. **No adoption work is warranted.** The WebGPU-3D half was
+genuinely absent from the checklist - the literal string `3D` occurred zero times before Round 50 -
+and is now `DC9`.
+
+**Client-side-only inference, re-confirmed against the rows that assert it.** 14 `CS` rows cover the
+six technologies the standing request names. WebNN is probed and never offered to ORT, which external
+evidence supports: it remains a Chrome Origin Trial (M147-M149) at W3C Candidate Recommendation with
+no Safari or Firefox implementation. `ai.onnx.ml` forces the wasm build because the WebGPU build does
+not register `TreeEnsembleClassifier`, so both telecom models report `onnx-wasm` by design.
+
+**The round-trip workflow the standing request names is covered**: `RT0`-`RT11`, with `RT9` closing
+the loop back to `RT0` on any public-site failure and `RT11` (added Round 50) requiring the local
+implementation check before the walk. Host identity is deliberately absent from every row.
