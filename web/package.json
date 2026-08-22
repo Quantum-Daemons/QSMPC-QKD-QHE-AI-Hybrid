@@ -19,7 +19,7 @@
     "@mlc-ai/web-llm": "^0.2.84",
     "@noble/curves": "^2.2.0",
     "@noble/hashes": "^2.2.0",
-    "@noble/post-quantum": "^0.6.1",
+    "@noble/post-quantum": "^0.7.0",
     "@types/gif.js": "^0.2.5",
     "@xyflow/react": "^12.3.5",
     "emp-wasm-engine": "^0.5.4",

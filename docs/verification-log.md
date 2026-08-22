@@ -2656,3 +2656,92 @@ undetermined there and no tolerance fixes that.
 **Two audit claims refuted by checking, in two turns.** That ratio is the argument for verifying
 before acting, and it cuts both ways: the same discipline that refuted these produced the narrower
 findings that replaced them.
+
+### Round 56, continued: the frontier fact-check, and a Round 55 withdrawal that reached one of two copies
+
+A sweep of everything load-bearing that could have moved since 2026-08. **Four of five areas
+UNCHANGED**, which is the expected answer for a three-week window and is recorded as an answer rather
+than as an absence of findings.
+
+**The one that changes an argument.** `docs/browser-verification-checklist.md` still asserted that
+fidelity quantum kernels "beat that regime only at **15 qubits or more** (arXiv:2605.31449)", used to
+explain the telecom quantum-kernel shortfall. Round 55 read that paper, found the reading inverted,
+and withdrew it - **in `references/model-choice-vs-2026-practice.md` only.** The checklist copy went
+on asserting it. A Round 55 fix, reaching one of two copies, found in Round 56.
+
+15 is a CEILING on the fidelity kernel, not a floor: *"For n >= 15, the test accuracy of the FQK
+drops sharply, approaching a random guesser"*, and concentration worsens with qubit count, so 4 and 8
+are the LEAST-concentrated regime. The paper is a proposed FIX for concentration, not an account of
+why a fidelity kernel underperforms at small n. The honest state is **"quantum lost, cause
+unknown"**, and a citation that says the opposite is worse than no citation because it stops anyone
+looking.
+
+**ITU-T, re-fetched per recommendation rather than taken on report.** Y.3835 reads "In force" alone
+at 9,796 B; Y.3836, Y.3837 and Y.3838 read "In force" AND **"prepublished"** at 9,647 / 9,590 /
+9,515 B - so `REFERENCES.md` naming only Y.3836 as prepublished was wrong about the other two. The
+ceiling holds: **Y.3839 and Y.3840 return 200 with a zero-length body.** Worth recording the method
+trap: a browser User-Agent - the thing that defeats ETSI's bot block - collapses *every* one of these
+ITU pages to a 245 B stub, destroying the very signal that discriminates them.
+
+**`@noble/post-quantum` 0.6.1 -> 0.7.0.** `^0.6.1` does not admit 0.7.0 (a caret on 0.x is
+`>=0.6.1 <0.7.0`), so nothing would have moved without a deliberate bump. Verified by running
+`check:pqc` **unmodified** against 0.7.0: identical rejection counts, identical sizes, exit 0. That
+evidence only became meaningful earlier this same round - before the round trip was added, that gate
+passed a library whose `encapsulate` threw unconditionally.
+
+**And a caution recorded against my own future self.** 0.7.0's changelog line about a `MultiplyNTTs`
+intermediate reaching 2^35 reads exactly like a security fix. It is not: 0.7.0's own comment says the
+wide intermediate forces "slow float fmod", and 0.6.1 reduces before truncating, so 0.6.1 is not
+numerically wrong. Written down because the shape of that line is what gets transcribed as "upgraded
+for a security fix" by someone reading only the changelog.
+
+**Unchanged and verified, so they are not re-checked:** FIPS 203/204/205 (no new publication; FIPS
+206 and 207 IPDs return 404); every ETSI GS QKD draft status dated 2026-06-09 or earlier with the TB
+approval wave still ahead; SEAL 4.4.3, OpenFHE 1.5.1, node-seal 7.0.0, TFHE-rs 1.7.0, MP-SPDZ 0.4.3
+all current; **onnxruntime-web is still 1.27.0 on npm** although the core repo tagged 1.28/1.29 -
+reading only GitHub releases would wrongly call the pin stale; and `ConvInteger`,
+`DynamicQuantizeLinear` and `MatMulInteger` are absent from the WebGPU operator list at 1.27.0, 1.29.0
+AND main, so `CS17`'s open question would still be open on the newest release.
+
+**TFHE-rs' WASM limitation holds verbatim**, which is the ground `CS11` declines Rust on: *"it does
+not support FHE computations"*, last touched 2026-06-19.
+
+### Round 56, continued: mobile was unmeasurable with one tool and trivial with another
+
+`UX12` recorded mobile layout as UNMEASURED, with the reason: the browser automation resizes the OS
+window without moving the viewport - `innerWidth` stayed 1280 and `outerWidth` read **0**. That was
+honest and it was also a tooling limit, not a fact about the site. **CDP device emulation moves the
+viewport**, and the measurement took minutes once the right tool was used.
+
+Measured on the deployed page at a 500px viewport: **204px of horizontal document overflow.**
+
+**The naive probe blamed 40 elements and was wrong about 39 of them.** Almost all were nav links
+inside `.nav { overflow-x: auto }` - a deliberate scrolling strip, `scrollWidth` 1285 against
+`clientWidth` 453, whose children legitimately extend past the viewport. Counting an element that
+sits inside a scroller as "overflowing the page" is the same false-positive shape as the four earlier
+probe errors this round. Discounting any element with a scrolling ancestor leaves **exactly one
+genuine cause**.
+
+**And the cause is a correct decision whose enabling condition was dropped one file away.**
+`TwoPartyDiagram`'s SVG sets `min-width: 680px` deliberately: a 780-unit viewBox in a 360px column
+renders 11-unit step labels at about 4.5px, and its comment argues "illegible is worse than
+off-screen, because off-screen can be scrolled to". That is right. The comment then says the
+scrolling is "what `.card { overflow-x: auto }` already provides" - and `.card` does carry that rule,
+with its own comment recording the audit that added it: at 390px the document was 1326px wide, 936px
+of scroll, "from two diagram SVGs (990px, 930px)" among others.
+
+**`UseCasePage` renders the diagram in a hand-styled div that copies the card's background, radius
+and padding - and not its `overflow-x`.** The look was reproduced and the one property that mattered
+was dropped. A fix that reached the CSS class and not the element that imitates it.
+
+**A correction to something I asserted in `UX12`.** I wrote that "no element carries a `min-width`
+above 0/auto". That was read off a TRUNCATED probe output - the SVG carries `min-width: 680px` and
+was in the list I never saw the end of. The claim that mobile was unmeasured was right; the
+supporting evidence I offered for it was not.
+
+**And the gate for this needed comment-stripping, for the third time this session.** The comment
+added to `UseCasePage` explaining why the wrapper must scroll QUOTES `minWidth: 680`, so the raw-text
+scan classified `UseCasePage` itself as a wide component. Prose about a property is exactly what a
+file accumulates when someone fixes that property. The gate also had to move from the file that SETS
+the width to the RENDER SITES, because the scroller lives in a different file - the first version
+flagged the component it had just fixed.
