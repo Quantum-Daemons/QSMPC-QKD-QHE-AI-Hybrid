@@ -351,7 +351,7 @@ Bundled samples are real measurements where a licence permits it, synthetic wher
 - **Medical**: MedMNIST v2 (CC-BY-4.0), Wisconsin breast-cancer (bundled demo sample; UCI, CC BY 4.0 - attribution required).
 - **Genomics**: **real 1000 Genomes** phase-3 genotypes (Ensembl/IGSR - open *access*, but IGSR grants **no blanket licence**: "rights claimed on pieces of data vary") + **real PGS-Catalog** PGS000004 / PRS313 weights (**per-score licence**, EMBL-EBI terms by default). Neither is cleared for redistribution as commercial-OK; see [DATA_LICENSES.md](DATA_LICENSES.md).
 - **Satellite**: **real NASA SMAP/MSL** spacecraft telemetry (Telemanom; Hundman et al. 2018; NASA JPL) - **no licence is granted by any provider** `[UNVERIFIED - reasoned inference]`. Telemanom's `LICENSE.txt` is a Caltech copyright assertion covering the *code*; the Kaggle mirror is labelled "Data files (c) Original Authors". 17 U.S.C. 105 removes US copyright only and is not a grant. Bundled demo sample only - the satellite **training** corpus is ESA-ADB (CC BY 3.0 IGO). See [DATA_LICENSES.md](DATA_LICENSES.md).
-- **Telecom/defense**: literature-grounded synthetic QKD-attack telemetry (no commercial-OK real attack dataset - UNSW-NB15 / CICIDS are research-only).
+- **Telecom/defense**: literature-grounded synthetic QKD-attack telemetry (no commercial-OK real corpus of **QKD-layer** attacks exists - producing one needs a physical QKD testbed under attack).
 
 Loaders + generators: `qsh.data.loaders` / `qsh.data.synthetic`.
 
@@ -636,7 +636,7 @@ See [`docs/pqc-roadmap.md`](docs/pqc-roadmap.md).
   stronger one. More decisively, arXiv:2411.02926v2 ran this exact comparison under FHE and the
   **GNN pipeline never compiled** - it failed on ONNX operator support in Concrete ML - while the
   XGBoost pipeline completed at 88,000-165,000x overhead. Training it would mean building the weaker
-  model to run a path the literature records as not working.
+  model to run a path the literature recorded as not working **in 2024**, and which DESIGN (arXiv:2507.05649) and TGHE (arXiv:2606.26664) have since done - so it is a dated result rather than a standing impossibility.
 
 - **The model that runs under encryption is now published too.** Each use case has a teacher and a
   distilled student, and the student is what CKKS actually evaluates: 33 parameters for finance
@@ -957,7 +957,7 @@ See [`docs/pqc-roadmap.md`](docs/pqc-roadmap.md).
   **real NASA SMAP/MSL telemetry** (no licence stated by any provider - see DATA_LICENSES.md) with the real linear anomaly model - all tiny static JSON
   under `web/public/data/`, loaded by [`web/src/lib/realData.ts`](web/src/lib/realData.ts) and computed with the
   real in-browser node-seal CKKS + secret-sharing MPC. Only **telecom** has no commercial-OK real attack dataset
-  (UNSW-NB15 / CICIDS are research-only), so it uses representative synthetic features (logged as such in the run).
+  - the narrower and correct statement, since **5G-NIDD is CC BY 4.0 and commercially usable**, and this repository trains on it. What does not exist is a commercial-OK corpus of QKD-LAYER attacks, which is a different problem needing a physical QKD testbed under attack - so the QKD IDS uses representative synthetic features (logged as such in the run).
   The bundled sets are public / de-identified, so no real *personal* data leaves the browser - the privacy property
   is demonstrated on real, realistic inputs.
 - **Config single-source** - the benchmark cost model, tier architectures, workload multipliers,
