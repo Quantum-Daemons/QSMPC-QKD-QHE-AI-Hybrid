@@ -1026,7 +1026,7 @@ a comment claiming the two errors were reported separately "so a regression in o
 the other". Now 4.25e-9 for the convolution and 6.87e-9 for the student's logits, as two rows.
 
 **The replacement tie test could not fail either.** `margin / scoreRange <= 1e-6` looked independent
-of the deviation and is not: a flip forces `margin <= 2E`, so `rel <= 2E/range`, and with E ~1e-9
+of the deviation and is not: a flip forces $`\text{margin} \le 2E`$, so $`\text{rel} \le 2E/\text{range}`$, and with $`E \sim 10^{-9}`$
 against a range of order 1 that is ~1e-9 - three orders below the threshold, on every run. It would
 take a 500x precision collapse to reach the other branch, and that case is already reported by
 `encrypted_batch_precision_bits`. **And the experiment that "proved" it reachable forced
@@ -1426,7 +1426,7 @@ scale. `stored_key_count` was 1 at 200,000 pulses.
 
 **`skr_per_pulse_no_decoy` renders 0**, and that is the point of emitting it. Round 45 added the
 field with a JSDoc saying "Reported beside `secretKeyRate`" and nothing read it. It is zero because
-the tagged fraction is 7.26 at mu = 0.5: without decoy states this link certifies no detection as
+the tagged fraction is 7.26 at $`\mu = 0.5`$: without decoy states this link certifies no detection as
 single-photon and yields nothing at all. The counterfactual is now visible rather than asserted.
 
 **The 0-255 band, walked at two distances.** At 95 km the run gives 499 secure bits and no warning -
@@ -1636,7 +1636,7 @@ fix is a second, independent source: git merge subjects name `roundN-` branches.
    0.9525582593503528 / 0.12334101789973353, which is this round's ranking claim measured from a
    second direction. Two things the fix needed beyond the one line, both of the "landed in one of
    three sites" class this round was already tracking: `web/src/components/ModelPanel.tsx` rendered
-   `p = 1/(1 + exp(a*s + b))` unconditionally and would have printed a score-domain formula beside
+   $`p = 1/(1 + e^{a s + b})`$ unconditionally and would have printed a score-domain formula beside
    logit-fitted floats, and the `imbalanced` test fixture did not reproduce the defect it was written
    for - it claimed a 1-in-650 base rate and 90% of scores below 1e-4 and delivered 1-in-16 and
    34.8%, drawing its labels from the score itself - so the regression test would have been built on
@@ -1669,7 +1669,7 @@ convention Round 47 replaced forty lines below it - documentation drift only, si
 implementations bin by survivors and the browser throws when an artifact disagrees.
 
 **Stale figures corrected, each re-derived rather than transcribed.** `docs/crypto-agility.md` was
-wrong on two axes at once - its figures reproduce exactly at the retired `mu = 0.5 / nu = 0.1`, AND it
+wrong on two axes at once - its figures reproduce exactly at the retired $`\mu = 0.5`$ / $`\nu = 0.1`$, AND it
 called the bound's input "intrinsic QBER" when the two differ by the dark-count term. Re-deriving
 mattered: the corrected triple carried into this round from the plan turned out to mix the two
 quantities, so transcribing it would have shipped a wrong set. `spaces/qsh-inference` published a
