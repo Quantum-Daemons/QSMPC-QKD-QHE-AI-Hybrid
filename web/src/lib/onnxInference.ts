@@ -478,6 +478,23 @@ export interface ModelEvalResult {
     perClass?: Array<{ label: string; f1: number }>;
     /** Predicted against actual for a forecast window. */
     series?: Array<{ i: number; actual: number; predicted: number }>;
+    /** Reliability: mean PREDICTED probability against OBSERVED frequency, per probability bin.
+     *
+     *  The one comparison of prediction against test data that is honest on the same axis. A
+     *  prediction-versus-label scatter for a classifier is a confusion matrix drawn badly - the
+     *  y-axis is categorical - and this project's other charts already cover ranking (`pr`),
+     *  separability (`hist`) and per-class weakness (`perClass`). None of them shows whether a
+     *  probability MEANS anything, which is a different property and the one the finance calibration
+     *  work turned on: Round 50 found `fit_platt` returning one constant for nine deciles, a defect
+     *  that is invisible to every metric here and unmissable on this plot.
+     *
+     *  Both axes are probabilities, so `y = x` is perfect calibration and the deviation is readable
+     *  without a legend. Binary models bin P(positive); multi-class models bin the winning-class
+     *  confidence against whether that prediction was right, which is the same question asked of a
+     *  different quantity and is labelled as such where it renders. */
+    reliability?: Array<{ p: number; observed: number; n: number }>;
+    /** What `reliability` bins: "p(positive)" for binary, "winning-class confidence" otherwise. */
+    reliabilityOf?: string;
   };
 }
 
@@ -544,6 +561,35 @@ function applyPreprocessing(v: number, steps: string[]): number {
  * a missing normalisation step silently turned 0.8782 into 0.4615 with no error anywhere; this is
  * the guard against shipping that class of mistake to a visitor.
  */
+/** Equal-WIDTH probability bins: mean predicted probability against observed frequency.
+ *
+ * Equal-width rather than equal-frequency (deciles) on purpose. Equal-frequency bins hide exactly
+ * the failure this plot exists to show: when a calibrator collapses most of its output onto one
+ * value - which is what Round 50 found `fit_platt` doing, returning 0.00090148 for nine of finance's
+ * ten deciles - equal-frequency binning spreads that constant across ten x-positions and draws a
+ * plausible curve. Equal-width binning puts every one of those rows in a single bin and the collapse
+ * is the thing you see.
+ *
+ * Empty bins are dropped rather than plotted at zero: a bin with no rows has no observed frequency,
+ * and drawing 0 there would read as "predicted high, observed never".
+ */
+function reliabilityBins(
+  n: number, prob: (i: number) => number, hit: (i: number) => boolean, bins = 12,
+): Array<{ p: number; observed: number; n: number }> {
+  const sum = new Float64Array(bins), obs = new Float64Array(bins), cnt = new Int32Array(bins);
+  for (let i = 0; i < n; i++) {
+    const p = prob(i);
+    if (!Number.isFinite(p)) continue;
+    const b = Math.min(bins - 1, Math.max(0, Math.floor(p * bins)));
+    sum[b] += p; cnt[b] += 1; if (hit(i)) obs[b] += 1;
+  }
+  const out: Array<{ p: number; observed: number; n: number }> = [];
+  for (let b = 0; b < bins; b++) {
+    if (cnt[b] > 0) out.push({ p: sum[b] / cnt[b], observed: obs[b] / cnt[b], n: cnt[b] });
+  }
+  return out;
+}
+
 export async function evaluatePublishedModel(
   usecase: string, tolerance = 0.05, modelKey?: string,
 ): Promise<ModelEvalResult | null> {
@@ -695,7 +741,16 @@ export async function evaluatePublishedModel(
         const b = Math.min(bins - 1, Math.max(0, Math.floor(t * bins)));
         if (labels[i] === 1) hist[b].positive++; else hist[b].negative++;
       }
-      plot = { kind: "pr-curve", pr, hist };
+      // Reliability. `positiveScore` is a DIFFERENCE when the graph emits per-class scores, and a
+      // difference is not a probability - binning it against an observed frequency would compare two
+      // different things on one axis, which is the defect this round already found in the companion
+      // caption and in the baseline-on-a-foreign-axis question. So take the probability directly:
+      // column 1 is P(positive) for a two-column classifier output, and the single column already is
+      // one when the graph emits a lone sigmoid.
+      const pPos = (i: number) => (width > 1 ? data[i * width + 1] : data[i]);
+      plot = { kind: "pr-curve", pr, hist,
+               reliability: reliabilityBins(n, pPos, (i) => labels[i] === 1),
+               reliabilityOf: "p(positive)" };
     } else {
       const perClass: Array<{ label: string; f1: number }> = [];
       for (let c = 0; c < nClasses; c++) {
@@ -708,7 +763,18 @@ export async function evaluatePublishedModel(
         perClass.push({ label: file.class_names?.[c] ?? String(c),
                         f1: ctp === 0 ? 0 : (2 * ctp) / (2 * ctp + cfp + cfn) });
       }
-      plot = { kind: "per-class-f1", perClass };
+      // Confidence calibration for the multi-class case: bin the WINNING class's probability against
+      // whether that prediction was right. Same question - does the number mean what it says - asked
+      // of a different quantity, so it is labelled differently where it renders rather than being
+      // silently pooled with the binary case.
+      const conf = (i: number) => {
+        let m = data[i * width];
+        for (let c = 1; c < width; c++) if (data[i * width + c] > m) m = data[i * width + c];
+        return m;
+      };
+      plot = { kind: "per-class-f1", perClass,
+               reliability: reliabilityBins(n, conf, (i) => preds[i] === labels[i]),
+               reliabilityOf: "winning-class confidence" };
     }
 
     // Score on the metric the model was PUBLISHED with. Three of the four distilled students record

@@ -41,7 +41,7 @@ three activities and section 8.11 double-click handling are protocol logic a bro
 | FIPS 203 section 7.2 / section 7.3 | Normative SHALL: encapsulation-key modulus round-trip check, decapsulation-key hash check. Table 1 decapsulation failure rates 2^-138.8 / 2^-164.8 / 2^-174.8. | Yes |
 | NIST ACVP + C2SP/CCTV | NIST does publish negative vectors, at the algorithm-validation layer: ML-DSA sigVer's five disposition categories, and CCTV's `modulus/`, `strcmp/`, `unlucky/` sets. | Yes |
 | ISO/IEC 23837-1/-2:2023 | The only QKD adversarial test procedures that exist, and they deliberately contain no thresholds. | Form only |
-| ETSI GS QKD 010 | Gives the Trojan-horse relation mu_out <= mu_in x r_rel, then declines to specify the privacy amplification: the adopter "shall provide a security justification". | No |
+| ETSI GS QKD 010 | Gives the Trojan-horse relation $`\mu_{\text{out}} \le \mu_{\text{in}} \cdot r_{\text{rel}}`$, then declines to specify the privacy amplification: the adopter "shall provide a security justification". | No |
 | ETSI GS QKD 014 | Concrete negative API behaviour (400/401/503, "size shall be a multiple of 8"). Modest but real. | Yes, modestly |
 | ETSI GS QKD 016 / BSI-CC-PP-0120 | Common Criteria protection profile. Contains no numeric QBER or key-rate thresholds - the place ISO said the numbers would live does not have them either. | No |
 | ISO/IEC 4922-1/-2 | Taxonomy and secret-sharing mechanisms. **No testing, evaluation or conformance clause exists.** | No |
@@ -74,13 +74,13 @@ three activities and section 8.11 double-click handling are protocol logic a bro
 3. **Finite-key rate versus block size.** Two independent peer-reviewed sources ten years apart, both
    with complete parameter sets, and the recent one ships code.
    Lim, Curty, Walenta, Xu, Zbinden, PRA 89, 022307 (2014): block size 10^4 still reaches 135 km.
-   Wiesemann et al., Quantum 10, 2037 (2026): N_Z = 10^7 reaches about 50 dB, ~250 km at 0.2 dB/km.
+   Wiesemann et al., Quantum 10, 2037 (2026): $`N_Z = 10^7`$ reaches about 50 dB, ~250 km at 0.2 dB/km.
 
 4. **Decoy versus non-decoy under photon-number splitting.** Closed form, canonical, unusually sharp
-   assertions. Ma, Qi, Zhao, Lo, PRA 72, 012326 (2005) with the GYS parameter set (alpha 0.21 dB/km,
-   e_det 3.3%, Y_0 1.7e-6, eta_Bob 0.045, f_EC 1.22): non-decoy R/eta^2 approximately 0.15 flat,
+   assertions. Ma, Qi, Zhao, Lo, PRA 72, 012326 (2005) with the GYS parameter set ($`\alpha`$ 0.21 dB/km,
+   $`e_{\text{det}}`$ 3.3%, $`Y_0`$ 1.7e-6, $`\eta_{\text{Bob}}`$ 0.045, $`f_{EC}`$ 1.22): non-decoy $`R/\eta^2`$ approximately 0.15 flat,
    decoy R/eta approximately 0.11 flat; non-decoy dies near 42 km, decoy survives past 140 km.
-   The sharpest single claim: **with GYS parameters and mu = 0.1 non-decoy, the tagged fraction
+   The sharpest single claim: **with GYS parameters and $`\mu = 0.1`$ non-decoy, the tagged fraction
    exceeds 1 at zero distance** - no key even back-to-back.
 
 Two cheap anchors are worth having as well: intercept-resend, where BB84 gives **exactly 25%**
@@ -102,7 +102,7 @@ them. From Gottesman-Lo Table 1, read directly:
 | BB84 proven secure below | **11.0%** | 18.9% |
 | Six-state proven secure below | 12.7% | 26.4% |
 
-- **11.0%** is Shor-Preskill, the point where 1 - 2H(delta) reaches zero (11.0028%).
+- **11.0%** is Shor-Preskill, the point where $`1 - 2H(\delta)`$ reaches zero (11.0028%).
 - **14.6% is not a security threshold.** It is the one-way *insecurity* bound from optimal
   approximate cloning, and is frequently misquoted as a two-way security threshold.
 - **12.6% and 12.9% are not canonical.** The nearby real numbers are 12.7% (Lo, six-state one-way)

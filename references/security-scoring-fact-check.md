@@ -90,7 +90,7 @@ and some are from national agencies rather than vendors. Researched at the prima
 | IQM **State of Quantum 2026** Quantum Readiness Index | composite score with five named tiers (Aware 0-19 through Leading 80-100) | a country or organisation | Workforce, Innovation, Investment, Adoption |
 | WEF **Quantum Readiness Toolkit** | principles-based assessment and prioritisation framework | an organisation | governance, risk, talent, technology |
 | **QRAMM** | quantum-readiness maturity model with a free automated-scoring toolkit and compliance mapping | an enterprise | maturity levels |
-| Mosca, **A Methodology for Quantum Risk Assessment** (Global Risk Institute / evolutionQ) | the x + y > z inequality: asset lifetime plus migration time against time-to-threat | an organisation's asset portfolio | three time parameters |
+| Mosca, **A Methodology for Quantum Risk Assessment** (Global Risk Institute / evolutionQ) | the $`x + y > z`$ inequality: asset lifetime plus migration time against time-to-threat | an organisation's asset portfolio | three time parameters |
 
 **The name in the instruction is plural, and that turns out to be the finding.** "Indices" is a genre,
 not a specification. Its members do not agree with each other on how many dimensions there are - three,

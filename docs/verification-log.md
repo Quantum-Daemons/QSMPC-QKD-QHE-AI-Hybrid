@@ -1026,7 +1026,7 @@ a comment claiming the two errors were reported separately "so a regression in o
 the other". Now 4.25e-9 for the convolution and 6.87e-9 for the student's logits, as two rows.
 
 **The replacement tie test could not fail either.** `margin / scoreRange <= 1e-6` looked independent
-of the deviation and is not: a flip forces `margin <= 2E`, so `rel <= 2E/range`, and with E ~1e-9
+of the deviation and is not: a flip forces $`\text{margin} \le 2E`$, so $`\text{rel} \le 2E/\text{range}`$, and with $`E \sim 10^{-9}`$
 against a range of order 1 that is ~1e-9 - three orders below the threshold, on every run. It would
 take a 500x precision collapse to reach the other branch, and that case is already reported by
 `encrypted_batch_precision_bits`. **And the experiment that "proved" it reachable forced
@@ -1426,7 +1426,7 @@ scale. `stored_key_count` was 1 at 200,000 pulses.
 
 **`skr_per_pulse_no_decoy` renders 0**, and that is the point of emitting it. Round 45 added the
 field with a JSDoc saying "Reported beside `secretKeyRate`" and nothing read it. It is zero because
-the tagged fraction is 7.26 at mu = 0.5: without decoy states this link certifies no detection as
+the tagged fraction is 7.26 at $`\mu = 0.5`$: without decoy states this link certifies no detection as
 single-photon and yields nothing at all. The counterfactual is now visible rather than asserted.
 
 **The 0-255 band, walked at two distances.** At 95 km the run gives 499 secure bits and no warning -
@@ -1636,7 +1636,7 @@ fix is a second, independent source: git merge subjects name `roundN-` branches.
    0.9525582593503528 / 0.12334101789973353, which is this round's ranking claim measured from a
    second direction. Two things the fix needed beyond the one line, both of the "landed in one of
    three sites" class this round was already tracking: `web/src/components/ModelPanel.tsx` rendered
-   `p = 1/(1 + exp(a*s + b))` unconditionally and would have printed a score-domain formula beside
+   $`p = 1/(1 + e^{a s + b})`$ unconditionally and would have printed a score-domain formula beside
    logit-fitted floats, and the `imbalanced` test fixture did not reproduce the defect it was written
    for - it claimed a 1-in-650 base rate and 90% of scores below 1e-4 and delivered 1-in-16 and
    34.8%, drawing its labels from the score itself - so the regression test would have been built on
@@ -1669,7 +1669,7 @@ convention Round 47 replaced forty lines below it - documentation drift only, si
 implementations bin by survivors and the browser throws when an artifact disagrees.
 
 **Stale figures corrected, each re-derived rather than transcribed.** `docs/crypto-agility.md` was
-wrong on two axes at once - its figures reproduce exactly at the retired `mu = 0.5 / nu = 0.1`, AND it
+wrong on two axes at once - its figures reproduce exactly at the retired $`\mu = 0.5`$ / $`\nu = 0.1`$, AND it
 called the bound's input "intrinsic QBER" when the two differ by the dark-count term. Re-deriving
 mattered: the corrected triple carried into this round from the plan turned out to mix the two
 quantities, so transcribing it would have shipped a wrong set. `spaces/qsh-inference` published a
@@ -1759,3 +1759,99 @@ genomics and satellite pipelines were not run to completion, so their charts wer
 rather than confirmed correct. The 5G-NIDD figures a visitor now sees are the RETRAINED ones
 (0.982897 / 0.995019 at pin `a3cbe059`), which post-date this walk - the walk observed the 0.7609
 model. **A second walk is owed on the redeploy** and is not claimed here.
+
+## Round 51 (branch `round51-the-caption-swapped-one-wrong-claim-for-another`) - the second walk, and it found the fix from last round
+
+**The walk Round 50 recorded as owed was performed**, on `index-CYDapC47.js` at `62e6b79` - the
+content that merged as `9adcdf0`, so the served bundle is the merged tree even though the box's branch
+pointer still needs returning. All five use-case pipelines were RUN to completion this time, which is
+what Round 50 could not claim: it ran finance only and confirmed the other four as present.
+
+| use case | published models | encrypted agreement | charts | NaN / dup headings |
+|---|---|---|---|---|
+| finance_aml | PASS gbm, PASS student | 1 (400/400) | 7 | none |
+| medical_fl | PASS resnet18, resnet50, student | 1 | 1 | none |
+| genomics | correctly reports no published model | **0.8** - see below | 6 | none |
+| telecom_ids | PASS qml, PASS nidd (16,379 rows) | n/a | - | none |
+| satellite_comms | PASS telemanom, opssat, opssat_student | none - structural | 2 | none |
+
+**Genomics `encrypted_agreement` 0.8 is not a defect, and the run log already says why.** Five of
+thirty rows flip, and the page reports that seven of the thirty are scored IDENTICALLY across classes
+by the plaintext model itself, so their outcome is decided by tie-breaking; over the 23 rows the model
+actually decides, agreement is 1. The widest plaintext margin among the five flipped rows is
+**0.000e+0** - they are exact ties - and max absolute CKKS error is 8.277e-10, about 30 bits. The
+encryption did not disagree with anything; it broke ties differently.
+
+**But the metric row renders a bare 0.8** beside finance and medical at 1.0, and the sentence that
+makes it readable is in the run log rather than beside the number. That is the same defect class as
+`metric_note` rendering nowhere: a figure shipped without the caveat that makes it interpretable.
+Recorded, not yet fixed.
+
+### Round 50's own fix was wrong, and the deployed site is what showed it
+
+Round 50 replaced a hardcoded companion caption - "shown so the gap is visible", which asserts the
+companion is always the flattering number - with one DERIVED from the values. Deriving the direction
+was right. Attaching an interpretation to it was not.
+
+Measured on the deploy: `medical_fl.resnet18` renders `auc` 0.9147 as its declared metric and
+`accuracy` 0.8654 as the companion, and the caption announced the accuracy as **"the pessimistic
+figure, not the flattering one"**. AUC is rank-based and accuracy threshold-based; on an imbalanced
+split AUC sits above accuracy by construction, and neither is pessimistic about the other. That
+model's own `metric_note` - made visible by the same round - says *"Do not read the accuracy against
+the AUC baseline"*. So the new caption contradicted the caveat it had been written to reveal.
+
+Flattering-versus-pessimistic only means anything when both rows estimate the same quantity on the
+same scale, and comparability is not decidable from the key names. The caption now states the
+RELATION and stops: "above `auc` here", "below `macro_f1` here", "equal to `macro_f1` here", and it
+points to the note where one exists. The relation is a fact; the reading is a judgement, and the
+judgement now has `metric_note` to live in.
+
+Three rounds running, this caption has been the same defect in three forms: a hardcoded claim, a
+derived claim that over-reached, and now a stated relation. The pattern is asserting an
+interpretation the code has not checked.
+
+**`DP7` is NOT discharged this round.** The return-to-main deploy was blocked by a local permission
+control, so the box remains on the Round 50 branch. The served content is the merged tree, so no
+visitor sees anything stale; what is wrong is the branch pointer, and it is recorded here rather than
+left to be discovered.
+
+### Round 51, continued - the sweep items, each with what was actually established
+
+**QCNN reproduction, verified rather than asserted.** All 33 QCNN gates pass with
+`QSH_REQUIRE_BROWSER_GATES=1` set, so `test_the_qcnn_agrees_across_languages.py` RAN rather than
+skipping - the browser's `qotpQcnnInfer` and the trainer's `circuit()` agree numerically on the
+shipped artifacts. Readout identifiability holds at all five shipped widths, and no trainable
+parameter is analytically dead. The per-artifact figures against their classical baselines, all
+recorded on the pages: finance accuracy 0.97 against LR 0.985; medical 0.883721 against 0.953488;
+telecom macro F1 0.510963 (8 wires) and 0.541894 (7 wires) against LR 0.976447. **The classical
+baseline beats the circuit on every use case**, which is what the pages say and is the honest result.
+
+**2D plots on the E2E page, measured.** `/orchestration` renders two: the encrypted-vs-plaintext
+agreement scatter and the real-corpus 2D scatter, with `encrypted_agreement` 1 on the demo flow and no
+`NaN`. It does NOT render `VerificationChart`, so the calibration diagram added this round appears on
+use-case pages only - a scope fact, not a defect, and stated here so the next walk does not look for
+it in the wrong place.
+
+**The calibration diagram is NOT yet verified on the deploy.** It typechecks, its data is computed,
+both call sites exist and the dead-component gate passes - but the deployed bundle predates it,
+because this branch is unmerged and `DP7` is blocked. Recorded as locally-verified and
+deploy-unverified rather than counted as done.
+
+**JupyterLite / marimo / pyvista-wasm: the existing declination stands, and now has outside
+corroboration.** `DC8` declines all three with a four-part reopening condition, recording that the
+crypto stack does not exist in Pyodide - no SEAL/CKKS, no TenSEAL, no MPC runtime, no ONNX among 354
+packages - and that `pyvista-wasm` does not exist as a real package. An independent 2026 search
+agrees on both counts: JupyterLite and marimo are real and Pyodide-backed, and no credible
+pyvista-to-WASM/WebGPU path surfaced. **No adoption work is warranted.** The WebGPU-3D half was
+genuinely absent from the checklist - the literal string `3D` occurred zero times before Round 50 -
+and is now `DC9`.
+
+**Client-side-only inference, re-confirmed against the rows that assert it.** 14 `CS` rows cover the
+six technologies the standing request names. WebNN is probed and never offered to ORT, which external
+evidence supports: it remains a Chrome Origin Trial (M147-M149) at W3C Candidate Recommendation with
+no Safari or Firefox implementation. `ai.onnx.ml` forces the wasm build because the WebGPU build does
+not register `TreeEnsembleClassifier`, so both telecom models report `onnx-wasm` by design.
+
+**The round-trip workflow the standing request names is covered**: `RT0`-`RT11`, with `RT9` closing
+the loop back to `RT0` on any public-site failure and `RT11` (added Round 50) requiring the local
+implementation check before the walk. Host identity is deliberately absent from every row.

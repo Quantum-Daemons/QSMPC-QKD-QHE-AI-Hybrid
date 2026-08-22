@@ -32,6 +32,15 @@ Workstreams: **WS1** AI-QKD parameter optimisation and entropy, **WS2** QML-IDS,
 
 ## WS1 - AI-QKD (real-time parameter optimization) + entropy (QRNG)
 
+**A source-level fact-check current at 2026-08-22 lives in
+[`2026-08-factcheck.md`](2026-08-factcheck.md).** It confirms the ETSI/NIST/Rusca citations in this
+section at their cover pages and re-derives every internal figure exact, and it contradicts six
+claims - the SP 800-90B health tests being run on conditioned rather than raw samples, the
+`FiniteKeyParams` defaults still carrying the retired intensities, "two-intensity decoy-state bound"
+naming a protocol the cited equations are not, two attributions in `decoy_reference.py`, permissive
+terms in the E91 and QSDC models, and the ITU-T series now running to Y.3838 rather than Y.3835.
+Each carries whether it was reproduced locally or is recorded as reported-and-unreproduced.
+
 - **AML-QKD: Adaptive Machine Learning Framework for Real-time Parameter Tuning in QKD** - Mohamed,
   Kaldari and Al-Kuwari, Qatar Center for Quantum Computing (HBKU), **arXiv:2603.04192** [quant-ph]
   `[R-local]`
@@ -494,7 +503,7 @@ Added 2026-08-11. Both verified at the arXiv abstract page.
   both QCNN model cards. The 8-class telecom circuit added in Round 34 lands the same way - macro F1
   **0.510963** against a multinomial logistic regression at **0.976447** on the identical split, with
   all 8 classes predicted - which matters because it is a *different* readout (a 3-qubit basis
-  marginal rather than a single `<Z_0>` expectation) and a different task shape, and it did not change
+  marginal rather than a single $`\langle Z_0 \rangle`$ expectation) and a different task shape, and it did not change
   the direction of the result. **The figures in this bullet were 0.7326, 0.7143 and 0.8098 until
   Round 47, and then 0.860465, 0.84058 and 0.458324 for part of Round 47 itself**: measured first on
   a hardware-efficient ansatz (replaced in Round 46), then through a multiclass readout that binned
@@ -959,7 +968,8 @@ Three further facts that stop any single number being quoted safely:
 **No standards body has specified QSDC**, and this was checked exhaustively rather than assumed.
 All 14 published ETSI QKD deliverables were searched full-text (2.0 M characters): zero hits for
 QSDC or "secure direct communication", against a control of 7 documents matching "BB84". ITU-T's
-complete X.1700-X.1749 and Y.3800-Y.3835 sets are QKD or QRNG throughout, and the work programme
+complete X.1700-X.1749 and Y.3800-**Y.3838** sets are QKD or QRNG throughout (this said Y.3835 until Round 51; Y.3836, Y.3837 and Y.3838 were approved 2026-08-13, Y.3836 still flagged
+prepublished), and the work programme
 across every study period 2001-2028 and every status returns zero QSDC items against a control of
 186 quantum-titled items. ISO/IEC JTC 1/SC 27's entire catalogue contains exactly two
 quantum-titled standards, both parts of 23837, both QKD. IEEE has no QSDC standard - and no QKD one
@@ -1061,8 +1071,8 @@ established is worth keeping, because otherwise it gets re-litigated every round
   reference design**, not the state of the art - and that the leverage is in the protocol, not in
   changing the model to suit MPC.
 - **Kim, Kim & Lee, "Revisiting Shamir Secret Sharing for Threshold Fully Homomorphic Encryption."**
-  IACR eprint 2026/1559, received 2026-07-30. Reduces the ThFHE ciphertext modulus from `O(N)` to
-  `O(t log(N/t^2))` bits, with every algorithm completing under 0.2 s at N=64 and scaling past N>=256.
+  IACR eprint 2026/1559, received 2026-07-30. Reduces the ThFHE ciphertext modulus from $`O(N)`$ to
+  $`O(t \log(N/t^2))`$ bits, with every algorithm completing under 0.2 s at $`N = 64`$ and scaling past $`N \ge 256`$.
   The only threshold-FHE anchor here was Chardouvelis, Doettling & Malavolta (2020/1454) in
   `qhe/rate1_qfhe.py`, which is the quantum-side citation; there was none for the classical
   multi-party side even though `submodules/HEonGPU` ships N-out-of-N collective bootstrapping. Bears

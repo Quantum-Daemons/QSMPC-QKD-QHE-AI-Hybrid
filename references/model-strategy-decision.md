@@ -91,7 +91,7 @@ ring 65536 for attention; Safhire (arXiv:2509.01253) offloads non-linearities to
 1.5-10.5x latency improvement. This project applies a known technique; it does not introduce one.
 
 **Two costs that are NOT zero and were initially overlooked.** Depth is unchanged, but slot-summation
-rotations rise from ceil(log2 19) = 5 to ceil(log2 209) = **8 key-switches**, which is more noise
+rotations rise from $`\lceil \log_2 19 \rceil = 5`$ to $`\lceil \log_2 209 \rceil = 8`$ **key-switches**, which is more noise
 growth and more runtime. And the client must know the 209-term feature map, which **discloses model
 structure** (not weights) - Safhire treats exactly that as the problem it solves. Neither is fatal
 here, and both belong in the record rather than in a footnote nobody reads.

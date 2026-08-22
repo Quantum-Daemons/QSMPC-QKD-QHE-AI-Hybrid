@@ -145,7 +145,7 @@ encrypted path. Two defects were found in how it was distilled:
    scored at sklearn's default 0.5. At a 1-in-981 positive rate 0.5 is nowhere near optimal, and the
    encrypted path cannot apply a tuned cut downstream because it decides by argmax over two logits -
    which IS a 0.5 threshold. The fix is to fold the tuned threshold into the bias, since
-   `p >= q` is `w.x + b - logit(q) >= 0`; verified exact against `log(q/(1-q))`.
+   $`p \ge q`$ is $`w \cdot x + b - \text{logit}(q) \ge 0`$; verified exact against $`\log(q/(1-q))`$.
 
 Both were fixed. The result is honest but mixed, and the mixed half needs stating first.
 
@@ -198,9 +198,8 @@ function of them supports.
 
 ## Windowing the aggregates does not close the gap (Round 24f, 2026-08-10)
 
-The gap note says the reference computes per-transaction subgraph patterns over a dynamically
-updated graph while this project computes per-account scalar aggregates over all prior time. One
-reading of that difference is **recency**: a cumulative degree cannot separate an account that has
+Taking the architecture difference recorded above - per-transaction neighbourhood patterns against
+per-account cumulative aggregates - one reading of it is **recency**: a cumulative degree cannot separate an account that has
 been busy for a year from one that was silent for a year and then sent forty transactions this
 morning, and the second is what a mule looks like.
 

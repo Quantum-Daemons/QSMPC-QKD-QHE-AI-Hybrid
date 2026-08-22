@@ -465,6 +465,64 @@ export function AncestryStrataChart({ achieved }: { achieved: Record<string, unk
   );
 }
 
+/** Predicted probability against observed frequency. Both axes are probabilities, so `y = x` is
+ *  perfect calibration and the deviation is readable without a legend.
+ *
+ *  This is the one chart here that compares a PREDICTION against the TEST data on a shared axis. The
+ *  others answer different questions: `pr` is ranking, `hist` is separability, `perClass` is where
+ *  the aggregate hides a weak class. None of them can see whether a probability means what it says,
+ *  and that is a property this project has already been caught getting wrong - Round 50 found the
+ *  finance calibrator emitting one constant across nine deciles while Brier IMPROVED, so every
+ *  metric on the page waved it through.
+ *
+ *  Deliberately NOT drawn as a prediction-versus-label scatter, which is what the request's wording
+ *  suggests: for a classifier the label axis is categorical, so that plot is a confusion matrix drawn
+ *  badly. Probability against frequency is the same comparison in the form the data actually takes.
+ */
+function ReliabilityChart(
+  { data, of, modelKey }: {
+    data: Array<{ p: number; observed: number; n: number }>; of: string; modelKey: string;
+  },
+) {
+  if (data.length < 2) return null;   // one bin is a point, and a point has no calibration to show
+  const worst = data.reduce((a, b) =>
+    Math.abs(b.observed - b.p) > Math.abs(a.observed - a.p) ? b : a);
+  return (
+    <figure className="chart-figure">
+      <figcaption className="muted small">
+        Calibration of <code>{modelKey}</code>: mean {of} against the frequency actually observed in
+        the same bin, over {res_n(data)} rows. The grey diagonal is perfect calibration. Widest
+        deviation {Math.abs(worst.observed - worst.p).toFixed(3)} at predicted {worst.p.toFixed(3)}
+        against observed {worst.observed.toFixed(3)} ({worst.n} rows). Bins are equal-WIDTH, so a
+        calibrator that collapses its output onto one value shows up as a single tall bin rather than
+        being spread across the axis.
+      </figcaption>
+      <ResponsiveContainer width="100%" height={180}>
+        {/* `role="img"` and NOT `accessibilityLayer`, which is what the other scatters here do and
+            what `tests/test_chart_accessibility.py` enforces: on a ScatterChart the accessibility
+            layer sets role="application" with tabindex=0 and no keyboard path, because recharts
+            walks an activeIndex along a categorical axis and this chart has none. That takes a
+            screen-reader user out of browse mode and hands them a widget that ignores every key.
+            The figcaption above is the text alternative, and it carries the numbers. */}
+        <ScatterChart role="img" title={`Calibration of ${modelKey}`}
+          margin={{ top: 4, right: 8, bottom: 4, left: -18 }}>
+          <CartesianGrid stroke={GRID} strokeDasharray="2 4" />
+          <XAxis type="number" dataKey="p" domain={[0, 1]} tick={AXIS} name="predicted"
+                 tickFormatter={(v: number) => v.toFixed(1)} />
+          <YAxis type="number" dataKey="observed" domain={[0, 1]} tick={AXIS} name="observed" />
+          <Tooltip contentStyle={{ background: "#161b26", border: `1px solid ${GRID}`, fontSize: 11 }}
+                   formatter={(v: number) => Number(v).toFixed(4)} />
+          <ReferenceLine segment={[{ x: 0, y: 0 }, { x: 1, y: 1 }]} stroke="#8a94a6"
+                         strokeDasharray="4 4" />
+          <Scatter data={data} fill="#4f9dff" isAnimationActive={false} name="bin" />
+        </ScatterChart>
+      </ResponsiveContainer>
+    </figure>
+  );
+}
+
+const res_n = (d: Array<{ n: number }>) => d.reduce((a, b) => a + b.n, 0);
+
 export function VerificationChart({ res, modelKey }: { res: ModelEvalResult; modelKey: string }) {
   const plot = res.plot;
   if (!plot) return null;
@@ -472,6 +530,7 @@ export function VerificationChart({ res, modelKey }: { res: ModelEvalResult; mod
   if (plot.kind === "per-class-f1" && plot.perClass?.length) {
     const worst = plot.perClass.reduce((a, b) => (b.f1 < a.f1 ? b : a));
     return (
+      <div className="chart-pair">
       <figure className="chart-figure">
         <figcaption className="muted small">
           Per-class F1 for <code>{modelKey}</code>, {res.n} held-out rows scored in this tab.
@@ -490,6 +549,11 @@ export function VerificationChart({ res, modelKey }: { res: ModelEvalResult; mod
           </BarChart>
         </ResponsiveContainer>
       </figure>
+      {plot.reliability?.length ? (
+        <ReliabilityChart data={plot.reliability} of={plot.reliabilityOf ?? "predicted probability"}
+                          modelKey={modelKey} />
+      ) : null}
+      </div>
     );
   }
 
@@ -563,6 +627,10 @@ export function VerificationChart({ res, modelKey }: { res: ModelEvalResult; mod
               </BarChart>
             </ResponsiveContainer>
           </figure>
+        ) : null}
+        {plot.reliability?.length ? (
+          <ReliabilityChart data={plot.reliability} of={plot.reliabilityOf ?? "p(positive)"}
+                            modelKey={modelKey} />
         ) : null}
       </div>
     );
