@@ -2525,3 +2525,58 @@ assert DIMENSIONAL correctness - bits against bit/s - in both files, and their d
 Round 42/44 instance where a fix reached the browser and left Python budgeting in the wrong unit for
 two rounds. The shared literals between those two files are arXiv IDs and ETSI clause numbers, not a
 shared numeric derivation, so there is no silent-drift surface there.
+
+## Round 56 (branch `round56-qrng-crossed-the-language-boundary`)
+
+### I merged on cancelled CI, and the wait loop I wrote is why
+
+PR #50 merged at 13:35:37 while CI on its head was **in progress**, and the two runs before it had
+concluded **cancelled**. The loop was:
+
+    [ "$n" -ge 2 ] && [ "$n" = "$c" ] && break     # c counts status == "completed"
+
+and **`cancelled` IS `completed`**. Pushing a follow-up commit cancels the in-flight runs, so the loop
+saw two completed runs, exited, and the next line merged.
+
+The head_sha discipline established earlier in this session was performed and passed. The commit was
+the right one; **the verdict was never read.** That is this project's second signature defect - a
+check reading the MECHANISM (did the run finish) and not the OUTCOME (did it pass) - committed in my
+own tooling, in the same session that found four instances of it elsewhere.
+
+The remedy is `scripts/wait_for_ci.sh`, which requires `conclusion == "success"` on every run for the
+sha, is bounded so a sha with no runs cannot hang forever ("no verdict is not a pass"), and carries
+the incident in its header. Exercised both ways: it refuses the cancelled commit `6ea8bb6` with
+"A cancelled run is COMPLETED and is NOT a pass. Do not merge.", and accepts `bf22678`, the last
+genuinely green one.
+
+Everything that merged passes all 17 gates locally and CI on `main` was re-run after the merge. The
+process was wrong even though the artefact was fine, and the process is what was supposed to be
+carrying the guarantee.
+
+### The Round 51 QRNG fix reached one language, and the browser is the one visitors run
+
+`health_suite` was moved onto the raw stream in Python in Round 51, with
+`tests/test_health_tests_measure_the_noise_source.py` written to pin it. `clientQRNG.ts` bound `raw`
+and then computed `hMin`, both SP 800-90B continuous tests and the reported `minEntropyPerBit` from
+`bits` - the post-extractor output.
+
+Measured inside that module on a P(1) = 0.90 stream: **raw min-entropy 0.1510, conditioned 0.9749.**
+Repetition-count cutoff 134 against 22; adaptive-proportion 965 against 597. An extractor produces
+near-uniform output by construction, so the figure described the Toeplitz stage under a label reading
+"entropy source" - and the demo is client-side only, so that was the only figure anyone saw.
+
+**Why it survived in both languages:** on the SHIPPED near-fair source the two readings differ in the
+third decimal - 0.9057 against 0.9605. The Python test's docstring records exactly this, and it was
+true of the browser for five more rounds.
+
+`healthPassed` is deliberately unchanged. Sections 4.4.1 and 4.4.2 catch a source that has gone
+STUCK, not one that is merely skewed, so the verdict was correct either way; claiming otherwise would
+assert the standard says something it does not.
+
+**And my first gate for it was the wrong shape.** It checked that `minEntropyMcv` separates a biased
+stream from its conditioned output - which the estimator always did - and **passed with the call site
+reverted.** Mechanism instead of outcome, inside the gate written to catch that. No output-based
+check can discriminate here, because the shipped source is fair by construction; that is why the
+Python twin asserts on the call with an `ast` parse. The browser check now does the same, with
+comments stripped first - the block explaining why `raw` is required contains the string
+`minEntropyMcv(raw)`, so a plain grep matches its own documentation.
