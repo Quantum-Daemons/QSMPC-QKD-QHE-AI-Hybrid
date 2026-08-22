@@ -43,9 +43,15 @@ languages - and the fix cannot satisfy both by restating itself.
 
 WHAT IS DELIBERATELY *NOT* ASSERTED
 
-E91 is left alone. `e91()` uses the same GLLP-on-observed-QBER form, and for an entanglement-based
-protocol that is CORRECT: there are no decoy states in E91, because there is no attenuated laser to
-put them on. The defect there is the label, not the formula, and it is checked separately below.
+E91's SECURE-FRACTION FORM is left alone. `e91()` uses the same GLLP-on-observed-QBER form, and for
+an entanglement-based protocol that is CORRECT: there are no decoy states in E91, because there is no
+attenuated laser to put them on. The defect there is the label, not the formula.
+
+**Its QBER is NOT left alone, since Round 54.** The harness already exported `e91Qbers` and nothing
+asserted on them, so when Round 53 corrected the visibility composition in `qkd/e91.py` and not in
+the browser's two copies, this file collected the disagreement and stayed green. That is the ninth
+instance of one fix reaching one language, and the worst-directed one: the demo is CLIENT-SIDE ONLY,
+so the Python copy it fixed does not run for a visitor and the two it missed do.
 """
 
 from __future__ import annotations
@@ -152,6 +158,7 @@ def _browser() -> dict:
             "  eta: m.transmittance(chan),\n"
             "  e91Rates: e91runs.map((r) => r.secretKeyRate),\n"
             "  e91Qbers: e91runs.map((r) => r.qber),\n"
+            "  e91E0s: e91runs.map((r) => r.e0),\n"
             "  eDet: chan.misalignment,\n"
             "}));\n"
         )
@@ -743,3 +750,47 @@ def test_an_eavesdropper_destroys_the_key_in_both_languages() -> None:
             f"{b['skr']:.9f}. The eavesdropper must reach both bounds the same way; one language "
             "aborting on a sampled QBER while the other carries Eve in the bound is not agreement."
         )
+
+
+def test_the_browser_e91_qber_is_the_one_python_computes() -> None:
+    """Both languages must degrade the Werner visibility the same way.
+
+    WHY THIS IS A SEPARATE ASSERTION from the decoy identity above: E91's secure-fraction FORM is
+    deliberately not compared, because GLLP-on-observed-QBER is correct for an entanglement protocol.
+    What must agree is the OBSERVED QBER itself, which is pure channel physics and has no protocol
+    freedom in it.
+
+    THE DEFECT THIS PINS. A channel that flips a bit with probability e has visibility `(1 - 2e)`,
+    not `(1 - e)` - visibility spans [-1, 1] of correlation while an error probability spans [0, 1/2]
+    of QBER. All three implementations used `(1 - e)` and understated QBER by 24.8%, always in the
+    demo's favour. Round 53 fixed `qkd/e91.py`; `clientOptiQKD.ts` and `quantumSim.ts` kept the bug
+    for one commit, and because this demo runs client-side only, the fixed copy was the one nobody
+    executes.
+
+    Checked against independent composition rather than against the other implementation's algebra,
+    so agreeing on a shared mistake cannot satisfy it: two independent bit-flip sources compose as
+    `q = q_V + e - 2*q_V*e`, and `(1 - V(1-2e))/2` equals that exactly, not to first order.
+    """
+    b = _browser()
+    got = b["e91E0s"][0]
+
+    from qsh.qkd.channel import ChannelParams, intrinsic_qber
+
+    c = _cfg()
+    # The same channel the harness hands the browser, built the way `_python_production_rate` does.
+    e = intrinsic_qber(ChannelParams(
+        distance_km=DISTANCE_KM,
+        misalignment=float(c["misalignment"]),
+        eve_intercept_fraction=0.0,
+    ))
+    v = float(c["e91_visibility"])
+    expected = min(0.5, (1.0 - max(0.0, min(1.0, v * (1.0 - 2.0 * e)))) / 2.0)
+    independent = (1.0 - v) / 2.0 + e - 2.0 * ((1.0 - v) / 2.0) * e
+    assert abs(expected - independent) < 1e-12, (
+        f"the Python form {expected:.9f} and independent composition {independent:.9f} disagree; "
+        "the correction itself needs re-deriving before this comparison means anything")
+    assert abs(got - expected) <= 1e-9, (
+        f"the browser reports E91 QBER {got:.9f} where Python computes {expected:.9f}. If the "
+        f"browser is low by about 24.8%, it is still composing visibility as `(1 - e)` instead of "
+        "`(1 - 2e)` - check `clientOptiQKD.ts` and `quantumSim.ts`, BOTH of which carry a copy."
+    )
