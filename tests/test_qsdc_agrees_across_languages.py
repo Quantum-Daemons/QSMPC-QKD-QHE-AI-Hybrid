@@ -71,13 +71,42 @@ def _python(e: float, g: float) -> float:
     return 1.0 - _h2(e) - g * _h2(min(0.5, 2.0 * e))
 
 
+def _require_browser_or_skip() -> None:
+    """Skip when the browser toolchain is absent - unless the environment forbids skipping.
+
+    ADDED ROUND 55, HOURS AFTER THIS FILE WAS WRITTEN, AND THE ORIGINAL WAS WRONG TWICE.
+
+    It used a bare `pytest.skip`, making this the only one of the three cross-language browser gates
+    not escalated by `QSH_REQUIRE_BROWSER_GATES=1`. Measured with the variable set and esbuild
+    absent: the two twins FAIL and this one SKIPs. The skip is exactly the hole those twins exist to
+    close - `web/node_modules` is gitignored and the CI python job installs no Node, so a
+    one-language fix ships green on a skip.
+
+    And its message claimed compensation that does not exist: it said "this skip is why `check:qkd`
+    is also a CI gate", but `qsdcSecrecyCapacity` appears **zero** times anywhere in `web/scripts`.
+    Nothing in the web job checks this identity. Citing a compensating control without checking it
+    is the same move as citing an authority for a number that is not in it, which `RI11` exists for.
+    """
+    import os
+
+    if ESBUILD.exists():
+        return
+    msg = (
+        "web/node_modules/.bin/esbuild is absent, so the browser expression cannot be executed. "
+        "Run `npm ci` in web/. This is a SKIP rather than a pass: the identity is unchecked, not "
+        "satisfied - and NOTHING in web/scripts covers `qsdcSecrecyCapacity`, so no other gate is "
+        "watching this one."
+    )
+    if os.environ.get("QSH_REQUIRE_BROWSER_GATES") == "1":
+        pytest.fail(
+            msg + " QSH_REQUIRE_BROWSER_GATES=1 is set, so this is a FAILURE: the cross-language "
+            "checks are mandatory in this environment."
+        )
+    pytest.skip(msg)
+
+
 def _browser() -> list[float]:
-    if not ESBUILD.exists():
-        pytest.skip(
-            "web/node_modules/.bin/esbuild is absent, so the browser expression cannot be executed. "
-            "This skip is why `check:qkd` is also a CI gate: on the GitHub python job node_modules "
-            "is not installed and this test cannot run, so the cross-language claim has to be "
-            "checkable from the web job too.")
+    _require_browser_or_skip()
     with tempfile.TemporaryDirectory() as tmp:
         d = Path(tmp)
         entry, bundle, runner = d / "entry.ts", d / "bundle.mjs", d / "run.mjs"

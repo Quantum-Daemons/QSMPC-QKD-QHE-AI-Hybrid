@@ -1002,7 +1002,11 @@ function mpcFheRow(usecase: string | undefined, workload: string, modelSize: str
     // (decisions matching plaintext)/n in classical_mpc_fhe.py; nothing here evaluates a model, so
     // reporting 1.0 as if it were a result would be the flattering-number pattern this project
     // rules out. null makes the panel print an em dash instead of a perfect score.
-    accuracy: null, max_abs_error: cost.demo_max_abs_error, ciphertext_plaintext_ratio: ctpt,
+    // THE LATENT TWIN of the `fhe_max_abs_error` defect two thousand lines below: this sets the
+    // config constant UNCONDITIONALLY, on the measured branch as well as the fallback. It reaches no
+    // component today, which is the only reason it is not a live mislabel - and "nothing renders it"
+    // is a property of the current UI, not of the value. Named for what it is.
+    accuracy: null, max_abs_error_representative: cost.demo_max_abs_error, ciphertext_plaintext_ratio: ctpt,
     fhe_linear_ms: r2(fhe), mpc_nonlinear_ms: r2(mpc), mpc_comm_kb: r2(comm / 1024),
     t_gate_count: null, qubits: null,
     security_model: "computational (RLWE) + secret-sharing MPC",
@@ -2872,7 +2876,23 @@ export function runClientPipeline(
           // honest last resort: node-seal genuinely unavailable here (e.g. no WASM) — representative figure, logged
           artifacts.fhe_prediction = inf.prediction;
           const split = mpcFheRow(usecase, config.workload ?? "linear", config.model_size ?? "medium", null, secFromConfig(config, metrics));
-          metric(stage, "fhe_max_abs_error", costPerOp().demo_max_abs_error);
+          // A CONFIG CONSTANT MUST NOT BE PUBLISHED UNDER THE MEASURED METRIC'S KEY.
+          //
+          // This emitted `costPerOp().demo_max_abs_error` - the literal 4.6e-07 from
+          // `config.defaults.json` - under the SAME key the measured path fills from a real
+          // decryption, which records 6.20e-13 and 1.93e-9. The only thing distinguishing them was
+          // the log line beside it, and `downloadMetricsCsv` exports {metric, value} pairs with no
+          // log at all, so the CSV a reviewer opens shows a config default indistinguishable from a
+          // measurement. `docs/threat-model.md` describes this key as the computed CKKS
+          // approximation error, "about 1e-9".
+          //
+          // Note the direction: 4.6e-07 is three to four orders WORSE than measured, so this
+          // understated precision rather than flattering it. That does not make it a measurement.
+          //
+          // Renamed and given an explicit tier status, following the `published_model_status:
+          // "failed"` convention this file already uses for the other unavailable-backend case.
+          metric(stage, "encrypted_tier", "unavailable: node-seal did not load in this browser");
+          metric(stage, "fhe_max_abs_error_representative", costPerOp().demo_max_abs_error);
           metric(stage, "fhe_linear_ms", split.fhe_linear_ms);
           metric(stage, "mpc_nonlinear_ms", split.mpc_nonlinear_ms);
           metric(stage, "mpc_comm_kb", split.mpc_comm_kb);
