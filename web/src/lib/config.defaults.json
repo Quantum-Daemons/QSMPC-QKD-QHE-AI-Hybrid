@@ -519,7 +519,7 @@
             "opset": 18
           },
           "git_sha": "61b855e-dirty",
-          "hf_revision": "d4ce98e47541cfe4bb94074e574ac12c54bd56df",
+          "hf_revision": "b2bdfce046356364bc763d6918f784b4acad1cdb",
           "macro_f1": 0.8249158249158248,
           "n_parameters": 11171266,
           "resolution": 28,
@@ -566,7 +566,7 @@
           "url": "https://medmnist.com/"
         },
         "hf_repo_id": "Daemons-Q/qsh-medical-breastmnist-resnet18",
-        "hf_revision": "d4ce98e47541cfe4bb94074e574ac12c54bd56df",
+        "hf_revision": "b2bdfce046356364bc763d6918f784b4acad1cdb",
         "hf_revision_stale": null,
         "key": "medical_fl.resnet18",
         "label": "ResNet-18 on BreastMNIST",
@@ -601,8 +601,7 @@
             "opset": 18
           },
           "git_sha": "85209a9-dirty",
-          "hf_revision": "6d2917f277d26b86121cee0aa758cff7725d771c",
-          "hf_revision_invalidated_by_retrain": "cefc83e340fef2289b43e5ba616ca7c5c6b599b4",
+          "hf_revision": "6c94226bf7b5d26476bcb23d8ee30782898e541c",
           "macro_f1": 0.6492063492063492,
           "n_parameters": 23505858,
           "resolution": 28,
@@ -642,7 +641,7 @@
           "url": "https://medmnist.com/"
         },
         "hf_repo_id": "Daemons-Q/qsh-medical-breastmnist-resnet50",
-        "hf_revision": "6d2917f277d26b86121cee0aa758cff7725d771c",
+        "hf_revision": "6c94226bf7b5d26476bcb23d8ee30782898e541c",
         "hf_revision_stale": null,
         "key": "medical_fl.resnet50",
         "label": "ResNet-50 on BreastMNIST (published comparison)",
@@ -671,7 +670,7 @@
           "baseline_gap_note": "This scores far below the 0.901 ResNet-18 baseline. The reason is representational rather than cryptographic: 3,226 parameters over a 14x14 input is a REPRESENTATION choice, not a feasibility limit - and this note said 'a CKKS-feasibility budget' until Round 32, which overstated how forced it was. Kim et al. (arXiv:2506.15258) do HE chest-X-ray inference on a VQGAN latent at downsampling factor 8 rather than on pixels, so the alternative to downsampling 28->14 is re-representing the input. The browser already runs onnxruntime-web, so such an encoder would run locally in plaintext with no privacy loss. Recorded as the sixth falsifiable trigger in the additional-model decision in docs/deliverable-verification.md, not acted on - and note that f=8 on a 28x28 input gives 3.5x3.5, so the transfer is the open measurement rather than a citation. This sentence claimed the trigger existed for two rounds while the table held five rows and none of them was this one; the trigger was written, and the decision moved to a tracked file so the claim can be checked. Round 24 found it had been WORSE than that - a constant predictor, emitting one class for all 156 test images, with accuracy 0.730769 exactly equal to the majority-class rate and AUC 0.354, below random. It was invisible because the registry declared `auc` while the record stored `accuracy`, and because this student had neither protection its teacher already had: class-weighted loss and AUC-based model selection. Both were added. Read `n_classes_predicted` and `majority_class_rate` beside the score - an accuracy equal to the majority rate is the signature of a model that learned nothing. Workings: references/medical-student-collapse-investigation.md.",
           "both_scored_zero": false,
           "disagreement_on_positives": 0.149123,
-          "hf_revision": "cfc0529d3eb4d6e17bd3804981db15667591d1b3",
+          "hf_revision": "db4ecb56deb86af9df9232f2492af5692792d85b",
           "majority_class_rate": 0.730769,
           "metric_delta": 0.096154,
           "metric_delta_pp": 9.6154,
@@ -722,7 +721,7 @@
           "url": "https://medmnist.com/"
         },
         "hf_repo_id": "Daemons-Q/qsh-medical-breastmnist-ckks-student",
-        "hf_revision": "cfc0529d3eb4d6e17bd3804981db15667591d1b3",
+        "hf_revision": "db4ecb56deb86af9df9232f2492af5692792d85b",
         "hf_revision_stale": null,
         "key": "medical_fl.student",
         "label": "FHE-feasible diagnostic CNN",
@@ -761,7 +760,7 @@
             "opset": 17
           },
           "git_sha": "d19e285-dirty",
-          "hf_revision": "22b4cd0eeaa66ab146eac028dd3f9f7da8d882c6",
+          "hf_revision": "28172a542116c20748e3972b246659509ecabd43",
           "metric_note": "Event-wise F-beta at beta=0.5 under the overlap rule, which is what ESA-ADB and Telemanom report. Telemanom's widely-quoted 0.71 is F0.5, not F1. point_adjusted_f1 is shown only to expose how much point adjustment inflates: Kim et al. (AAAI 2022) show that under point adjustment even a random anomaly score can reach state-of-the-art. Only labels whose ESA-ADB Category is 'Anomaly' count as positives; the 690 annotated rare *nominal* events do not.",
           "n_anomaly_intervals": 320,
           "n_events_scored": 3,
@@ -814,7 +813,7 @@
           "url": "https://zenodo.org/records/12528696"
         },
         "hf_repo_id": "Daemons-Q/qsh-satellite-telemanom-esa",
-        "hf_revision": "22b4cd0eeaa66ab146eac028dd3f9f7da8d882c6",
+        "hf_revision": "28172a542116c20748e3972b246659509ecabd43",
         "hf_revision_stale": null,
         "key": "satellite_comms.telemanom",
         "label": "Telemanom LSTM forecaster (per channel)",
@@ -841,7 +840,7 @@
           "agreement": 0.998677,
           "both_scored_zero": false,
           "disagreement_on_positives": 0.142857,
-          "hf_revision": "fb7542b9b68e3e04bcab2a72ee5ed2eaa6adb9cf",
+          "hf_revision": "da87224679c1a4ba2c75296d82a451c22aeee33a",
           "metric_delta": -0.003234,
           "metric_delta_pp": -0.3234,
           "metric_name": "event_wise_f0_5",
@@ -882,7 +881,7 @@
           "url": "https://zenodo.org/records/12528696"
         },
         "hf_repo_id": "Daemons-Q/qsh-satellite-telemanom-ckks-student",
-        "hf_revision": "fb7542b9b68e3e04bcab2a72ee5ed2eaa6adb9cf",
+        "hf_revision": "da87224679c1a4ba2c75296d82a451c22aeee33a",
         "hf_revision_stale": null,
         "key": "satellite_comms.student",
         "label": "CKKS-linear telemetry anomaly student",
