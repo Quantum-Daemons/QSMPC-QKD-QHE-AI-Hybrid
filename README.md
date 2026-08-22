@@ -784,8 +784,13 @@ See [`docs/pqc-roadmap.md`](docs/pqc-roadmap.md).
   the flag, but ORT's WebNN provider cannot complete a session for the medical ResNet. A graph
   using `ai.onnx.ml` takes the WASM build whatever the adapter says, because ORT's CI builds the
   WebGPU wasm with `--disable_ml_ops`, so those kernels are compiled out rather than merely
-  unpreferred. Because the choice comes from a real `requestAdapter()` call, the reported backend is
-  never a false "webgpu" that silently ran on WASM. Model weights stream from the HF/MLC **CDN** on first run
+  unpreferred. Because the choice comes from a real `requestAdapter()` call, the reported
+  backend is never "webgpu" on a machine with no usable adapter. **It does not mean every node ran on
+  the GPU**, and the sentence before this one is why: ORT assigns nodes to execution providers in
+  preference order and falls back per node, so a graph can run partly on WebGPU and partly on the
+  WASM floor while the badge shows a single state. Which nodes fell back is **not measured here** -
+  closing that needs `startProfiling()`/`endProfiling()` or ORT's "kernel not found in registries"
+  log, and the badge's two states cannot express a partial answer. Model weights stream from the HF/MLC **CDN** on first run
   (browser-cached after) - zero VPS bandwidth/compute. WebLLM needs WebGPU; without it the page falls
   back to Transformers.js (WASM) and the quantum-safe MCP envelope still runs. The in-browser models
   illustrate the agentic-AI + MCP flow; they are not the production inference path.
@@ -855,7 +860,7 @@ See [`docs/pqc-roadmap.md`](docs/pqc-roadmap.md).
   | vertical | T2 model | data | measured | published baseline |
   |---|---|---|---|---|
   | **finance** | GFP + XGBoost (graph-feature preprocessing over the transaction multigraph) | IBM **AMLworld HI-Small**, 5,078,345 transactions, 1 laundering in 981 (CDLA-Sharing-1.0) | minority-class F1 **0.1519**, AUPRC **0.1233** vs a 0.0015 prevalence baseline | 0.632 (NeurIPS 2023 D&B) - see the gap note below |
-  | **medical** | **ResNet-18** trained from random initialisation (no ImageNet weights, so no ImageNet terms attach) | MedMNIST v2 **BreastMNIST** (CC-BY-4.0) | AUC **0.9147** | 0.901 (Yang et al., Scientific Data 10:41, 2023) |
+  | **medical** | **ResNet-18** trained from random initialisation (no ImageNet weights, so no ImageNet terms attach) | MedMNIST v2 **BreastMNIST** (CC BY 4.0 **asserted by MedMNIST**; the upstream BUSI grant is **not verifiable** - see [DATA_LICENSES.md](DATA_LICENSES.md)) | AUC **0.9147** | 0.901 (Yang et al., Scientific Data 10:41, 2023) |
   | **genomics** | published **PRS** effect-weight vector - not a neural network | PGS Catalog **PGS000004 (PRS313)** over **2,504 real 1000 Genomes samples** | ancestry portability, below | AUROC 0.633 [0.624, 0.641] - *external citation, not measurable here: a reference panel carries no phenotype. Fitted WITH covariates a dot product does not have, and 8% of variants were missing in that cohort, so it is a citation and not a target* |
   | **satellite** | **Telemanom** 2xLSTM(80), seq 250, non-parametric dynamic threshold + pruning | **ESA-ADB Mission1** lightweight channels 41-46, multi-year real telemetry (CC-BY-3.0-IGO) | event-wise F0.5 **0.4545** over just **3 events** | 0.968 (ESA-ADB Supp. Table 9, anomalies only) |
   | **telecom** | RF baseline + quantum-kernel SVC + variational QNN | literature-grounded synthetic QKD-attack telemetry (7 attack types + normal) | macro F1 - **RF 0.987**, quantum-kernel SVC **0.832**, variational QNN **0.467** | no trustworthy single number exists - see below |

@@ -46,7 +46,14 @@ const LABEL: Record<Provenance, string> = {
 };
 
 const TITLE: Record<Provenance, string> = {
-  "measured-webgpu": "Computed in this browser tab on a real GPU adapter. Timings are wall-clock.",
+  // "on a real GPU adapter" is established - `requestAdapter()` returned one and software
+  // rasterisers are declined by name. "every operator ran there" is NOT: ORT falls back per node to
+  // the WASM floor for operators its WebGPU EP does not register, and this badge has two states
+  // where a partial answer needs three. Says what is known and stops.
+  "measured-webgpu":
+    "Computed in this browser tab with the WebGPU provider requested and a real, non-software GPU " +
+    "adapter accepted. Operators the WebGPU provider does not implement fall back to the WebAssembly " +
+    "runtime within the same run, and which ones did is not measured. Timings are wall-clock.",
   "measured-wasm": "Computed in this browser tab on the WebAssembly runtime. Timings are wall-clock.",
   "measured-js":
     "Computed in this browser tab in plain JavaScript arithmetic - a real model, really evaluated, " +
