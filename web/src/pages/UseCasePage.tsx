@@ -201,6 +201,7 @@ function UseCaseView({ usecase }: { usecase: string }) {
           <VerificationChart
             res={artifacts.verification as never}
             modelKey={String(artifacts.verification.modelKey ?? "")}
+            usecase={usecase}
           />
           {/* The sample's own note on why the figure is what it is. Unrendered, the finance student
               once showed 0.3337 here beside a recorded 0.0178 for the same metric, with nothing on

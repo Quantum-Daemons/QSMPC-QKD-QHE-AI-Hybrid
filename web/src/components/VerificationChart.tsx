@@ -23,6 +23,7 @@ import {
 } from "recharts";
 
 import type { ModelEvalResult } from "../lib/onnxInference";
+import { modelsFor } from "../lib/config";
 
 const AXIS = { fontSize: 10, stroke: "#8a94a6" };
 const GRID = "#2a3040";
@@ -523,8 +524,25 @@ function ReliabilityChart(
 
 const res_n = (d: Array<{ n: number }>) => d.reduce((a, b) => a + b.n, 0);
 
-export function VerificationChart({ res, modelKey }: { res: ModelEvalResult; modelKey: string }) {
+export function VerificationChart(
+  { res, modelKey, usecase }: { res: ModelEvalResult; modelKey: string; usecase?: string },
+) {
   const plot = res.plot;
+
+  // THE PUBLISHED BASELINE, and it is NOT `res.baseline`.
+  //
+  // `ModelEvalResult.baseline` is the TRIVIAL predictor - majority-class accuracy, all-positive F1,
+  // persistence MAE. `MetricSpec.baseline` is prior published research. Two fields, one word, and
+  // drawing the wrong one would render a published 0.901 as a chance line. They are looked up from
+  // different objects here on purpose, and `tests/test_two_baselines_are_not_one.py` pins them apart.
+  //
+  // Drawn only when the registry's DECLARED metric is the quantity the chart plots. A macro F1
+  // baseline over a per-class F1 axis is an aggregate against its own components - which is
+  // informative (it shows which classes fall below the published aggregate) but must say so, so the
+  // label carries the metric name rather than the word "baseline" alone.
+  const spec = usecase ? modelsFor(usecase).find((m) => m.key === modelKey) : undefined;
+  const prior = spec?.metric?.baseline ?? null;
+  const priorName = spec?.metric?.name ?? "";
   if (!plot) return null;
 
   if (plot.kind === "per-class-f1" && plot.perClass?.length) {
@@ -546,6 +564,11 @@ export function VerificationChart({ res, modelKey }: { res: ModelEvalResult; mod
             <Tooltip contentStyle={{ background: "#161b26", border: `1px solid ${GRID}`, fontSize: 11 }}
                      formatter={(v: number) => v.toFixed(4)} />
             <Bar dataKey="f1" fill="#4f9dff" name="F1" />
+            {prior != null ? (
+              <ReferenceLine y={prior} stroke="#e6a23c" strokeDasharray="6 3"
+                label={{ value: `published ${priorName} ${prior}`, position: "insideTopRight",
+                         fill: "#e6a23c", fontSize: 10 }} />
+            ) : null}
           </BarChart>
         </ResponsiveContainer>
       </figure>
