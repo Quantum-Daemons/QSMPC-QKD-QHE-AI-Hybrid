@@ -1891,6 +1891,44 @@ for the three models that have a baseline.
 **What this walk did NOT cover, stated rather than implied.** Only the finance pipeline was run to
 completion; medical, genomics, satellite and telecom were confirmed to render but not driven through
 a full run, so their charts are confirmed PRESENT and not confirmed CORRECT. The satellite page's
-missing encrypted-agreement plot is structural and unchanged. `export.opset` still renders 0 on the
-telecom page - recorded in Round 50, still not fixed, and still a display of an absent value rather
-than a wrong computation.
+missing encrypted-agreement plot is structural and unchanged.
+
+**CORRECTION, made in Round 53 against the same deploy.** The sentence that stood here said
+"`export.opset` still renders 0 on the telecom page - recorded in Round 50, still not fixed". That was
+written from the Round 50 note rather than from the page, and it is false. Re-read on the deployed
+site: the telecom page renders `export.opset 17` for `telecom_ids.qml` and **no opset row at all** for
+`telecom_ids.nidd`; the finance page renders no opset row either. Round 50's observation of `0` was of
+the PRE-RETRAIN 5G-NIDD record, whose `export.opset` was literally `0`; the Round 50 refit re-exported
+it and the field is now `None`, which the panel omits rather than printing.
+
+That is the correct behaviour and worth saying why: both are `ai.onnx.ml` tree ensembles, and such a
+graph carries no default-domain (`ai.onnx`) opset, so there is no number to show. `0` was a wrong
+answer, `None` omitted is the right one, and the item is CLOSED - not by anyone fixing it, but as a
+side effect of the retrain. Recorded that way rather than claimed as a fix.
+
+## Round 53 (branch `round53-the-pipelines-were-driven-to-completion`, bundle `index-BrgAhT5P.js`) - the four pipelines Round 52 only rendered
+
+Round 52 recorded that only finance had been driven to completion and that the other four were
+"confirmed to RENDER and not confirmed to be CORRECT". All five have now been run end to end on the
+deployed site.
+
+| use case | published models re-scored in-tab | charts | result |
+|---|---|---|---|
+| finance_aml | `gbm` 8192 rows, `student` 8192 rows | 8 | PASS both, at the new pins `b35b4cbb` / `475b160d` |
+| medical_fl | `resnet18` 156, `resnet50` 156, `student` 156 | 8 | PASS all three |
+| genomics | none - it registers no browser model | 6 | correct by construction, and the page says so |
+| satellite_comms | `telemanom` 128, `opssat` 529, `opssat_student` 529 | 2 | PASS all three |
+| telecom_ids | `qml` 600, `nidd` 16,379 | 4 | PASS both |
+
+Zero `NaN`, zero `undefined`, zero `[object Object]`, zero duplicate headings on any of them.
+`/orchestration` renders its 10-node DAG clean.
+
+**The QRNG fix is visible on the deploy**, on every use-case page, and it reports the source rather
+than the extractor:
+
+> PASS per SP 800-90B 4.4 (repetition-count 11/23, adaptive-proportion 529/612); SP 800-22 reported
+> not gating: pass
+
+**`satellite_comms.student` is absent from the satellite row above and that is the recorded state**,
+not an omission: it is scored on event-wise F0.5, a sequence metric the per-row evaluator cannot
+compute, so it reports DID NOT RUN with its reason rather than substituting a figure.
