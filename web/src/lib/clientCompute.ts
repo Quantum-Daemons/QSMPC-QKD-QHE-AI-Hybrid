@@ -2148,6 +2148,21 @@ export function runClientPipeline(
         metric(stage, "qsdc_link_budget_limited", lossLimited ? 1 : 0);
         // Reserved for what the name says: an abort this link would NOT have suffered on its own.
         metric(stage, "qsdc_eavesdrop_detected", abort && !lossLimited ? 1 : 0);
+        // THIS VERDICT IS ASYMPTOTIC, AND SAYING SO IS THE PARITY WITH PYTHON.
+        //
+        // `src/qsh/qkd/qsdc.py` samples a finite check subset and decides on a Serfling upper bound
+        // at eps = 1e-9, because a handful of check carriers cannot certify a low error rate: it
+        // used to deliver 118 times in 200 on a link whose true QBER was six times its own
+        // tolerance, purely because a zero-error sample is common at 29 carriers. This path has no
+        // sampled subset - it evaluates the analytic channel error directly - so it reports the
+        // INFINITE-BLOCK limit, which is a different and more permissive quantity.
+        //
+        // The two do not contradict each other and the page must not imply a certificate it did not
+        // compute. Stating the regime is the honest form: an asymptotic C_s > 0 is a necessary
+        // condition for delivery, never a sufficient one, and the block length needed to certify it
+        // is large - 32 KB on a 2 km fibre link, 4 MB on this downlink at its most favourable
+        // setting, against the 74 bytes of telemetry the demo sends.
+        metric(stage, "qsdc_regime", "asymptotic (infinite block; no finite-size certificate)");
         artifacts.telemetry_delivered = !abort;
         emit("log", stage, !abort
           ? `QSDC delivered telemetry (secrecy ${secrecy.toFixed(4)} bit/carrier, g=${g.toFixed(1)})`
