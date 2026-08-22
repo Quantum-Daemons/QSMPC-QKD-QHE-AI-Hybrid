@@ -476,7 +476,7 @@ the date go stale.
 |---|---|
 | A bootstrapped CKKS CNN cheap enough for WASM at N about 8192 | cheapest bootstrapped ImageNet CNN is N = 2^15 |
 | A real, labelled, commercial-OK QKD attack corpus | closest is QF-LOG: synthetic, four classes, subscription-gated |
-| A fidelity quantum kernel beating a random forest at 8 qubits or fewer | concentration bound says >= 15 qubits |
+| A fidelity quantum kernel beating a random forest at 8 qubits or fewer | **NO LONGER BLOCKED - Round 55.** The blocker read "concentration bound says >= 15 qubits"; arXiv:2605.31449 says 15 is where the fidelity kernel FAILS and that concentration worsens with qubit count, so 8 qubits is the favourable regime. This falsifier is live and unblocked |
 | An encrypted transformer or tabular foundation model on any finance tabular benchmark | none published |
 | Anyone publishing an encrypted BreastMNIST result above this project's | two exist, both simpler architectures |
 | **A latent-space encoder whose latent fits 4096 CKKS slots at multiplicative depth 1 AND runs under `onnxruntime-web`** | Kim et al. (arXiv:2506.15258) encode chest X-rays with a VQGAN latent at downsampling factor 8, but f=8 on this project's 28x28 gives 3.5x3.5, so the transfer is the open measurement rather than a citation. Added Round 34 |
