@@ -524,6 +524,30 @@ function ReliabilityChart(
 
 const res_n = (d: Array<{ n: number }>) => d.reduce((a, b) => a + b.n, 0);
 
+/** Why there is no encrypted-vs-plaintext chart for this run.
+ *
+ *  ONE COPY, used by both surfaces. `/orchestration` carried this explanation and the satellite
+ *  USE-CASE page rendered `null`, so a visitor comparing satellite against finance saw a missing
+ *  chart on one page and a reason on the other. An absence that is explained in one place and silent
+ *  in another is worse than either, because the silent page reads as an oversight.
+ */
+export function NoEncryptedComparison({ usecase }: { usecase?: string }) {
+  return (
+    <div className="card">
+      <h3 style={{ margin: "0 0 4px" }}>Private inference against plaintext, this run</h3>
+      <p className="muted" style={{ fontSize: 12, margin: 0 }}>
+        This flow produced no encrypted-vs-plaintext comparison. The chart is drawn from
+        <code> encrypted_agreement_plot</code>, which only a stage that scores rows under CKKS emits
+        {usecase === "satellite_comms"
+          ? <> - <code>satellite_comms</code> runs telemetry analysis and has no such stage</>
+          : <> - this use case has no such stage in its flow</>}
+        , and a stopped or failed run has not reached one. Nothing is missing; there is nothing to
+        plot.
+      </p>
+    </div>
+  );
+}
+
 export function VerificationChart(
   { res, modelKey, usecase }: { res: ModelEvalResult; modelKey: string; usecase?: string },
 ) {
