@@ -2219,6 +2219,23 @@ as a surprise - which is how the line-number pointer failed in the first place.
 A line number is a pointer into a file that changes; the sentence is a pointer into a file's meaning,
 which is what the claim is actually about.
 
+**THE REMAINING BACKLOG IS MUCH SMALLER THAN THE COUNT SUGGESTS, measured Round 54.** A grep for
+backticked `x = y` across `README.md`, `docs/` and `references/` returns 325 hits, and earlier audits
+put "~46 formulas remaining". Sampled, almost all of them are CODE rather than mathematics -
+`use_bootstrap=True`, `shape="circle"`, `on_logit=True`, `auroc=null`, `d="M0,0"`, `now = 45`. In this
+file, 31 hits contained **three** genuine physics quantities, and two of those were already converted.
+
+So the honest statement is that the conversion is largely DONE for the things the house style is
+about, and the residual count is an artefact of a pattern that cannot tell `p_1 = 1` from
+`hm_source=Author-reported`. Converting by count would turn config keys into mathematics, which is
+worse than leaving them.
+
+**A bulk edit here damaged four already-correct sites before it was caught.** Replacing
+`` `p_1 = 1` `` with `` $`p_1 = 1`$ `` double-wrapped the sites that already had the delimiters,
+producing `` $$`p_1 = 1`$$ `` - a DISPLAY-math delimiter around a code span, which renders wrong.
+Caught by reading the result rather than the diff stat, reverted, and recorded because "convert every
+match" is exactly the shape of instruction that produces it.
+
 **Ported, not derived.** `report/technical-report.tex` already typesets five of these correctly; the
 QSDC secrecy capacity existed as **three** ASCII restatements across three files against one correct
 display equation, so that is where the conversion started.
@@ -2432,7 +2449,7 @@ telemetry - not "this exact problem". PGS scoring files carry **no** `#license` 
 downloaded from the EBI FTP has 14 `#` lines and none is a licence, which
 `scripts/train/genomics_prs.py` has said correctly all along while two prose sites contradicted it.
 `decoy_reference.py` had **four wrong equation numbers** against arXiv:quant-ph/0503005v2 - the key
-rate is Eq. (1) not (33), `Y_i` is (7) not (6), `e_i` is (9) not (7), and `e_0 = 1/2` is prose - in
+rate is Eq. (1) not (33), `Y_i` is (7) not (6), `e_i` is (9) not (7), and $`e_0 = 1/2`$ is prose - in
 the module whose docstring says it "exists to be CHECKED".
 
 **Calibration: the denominator was wrong, and the correction is not a swap.** `calibration.py`
