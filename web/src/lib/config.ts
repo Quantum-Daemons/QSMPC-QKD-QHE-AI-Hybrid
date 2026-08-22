@@ -94,6 +94,10 @@ export type ModelSpec = {
     baseline: number | null; baseline_source: string;
     ceiling: number | null; ceiling_source: string;
     companion: string;
+    /** Non-empty when `baseline` and the measured value share a metric name but not a protocol, so
+     *  a side-by-side bar chart compares experimental setups rather than methods. Rendered by
+     *  `MeasuredAgainstPublished`, which also marks the published bar when this is set. */
+    comparison_caveat?: string;
   };
   /** Measured by a training run, or null when the model has never been trained. Never a placeholder. */
   achieved: Record<string, unknown> | null;

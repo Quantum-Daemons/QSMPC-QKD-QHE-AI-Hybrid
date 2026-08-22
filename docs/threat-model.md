@@ -247,7 +247,21 @@ statement of known limitations, not a conformance gap against any published requ
   described as such in `architecture.md` and `crypto-agility.md` - this bullet contradicted them.
   Caveat that *does* apply to the MPC path: both "parties" share one JS heap, so the party separation
   is notional (stated at `clientMPC.ts:10-12`), and it is a demonstration of the protocol, not two
-  mutually distrusting hosts. Every result carries a
+  mutually distrusting hosts.
+  **A SECOND CAVEAT, ADDED ROUND 55, AND IT IS A SUPPLY-CHAIN ONE.** The correction above replaced
+  "JIFF is unmaintained and the PSE MPC Framework sunset" with the three packages that actually ship -
+  and all three of those are now themselves archived upstream. Verified at the GitHub API on
+  2026-08-22: `emp-wasm` (archived, last push **2025-06-13**), `mpc-framework` (archived,
+  **2025-07-22**) and `summon` (archived, **2025-07-09**), each present under both `voltrevo/*` and the
+  `privacy-ethereum/*` org it moved to. So the whole garbled-circuit tier - `emp-wasm-engine ^0.5.4`,
+  `mpc-framework ^0.3.0`, `summon-ts ^0.6.2` - rests on code with no upstream maintainer and no
+  security-patch path. That does not make the protocol wrong or the measurements false, and nothing
+  here is being withdrawn; it means the tier carries a risk the CKKS tier does not, since `node-seal`
+  tracks Microsoft SEAL. Note the shape: the previous bullet was corrected by naming the maintained
+  replacements for two sunset dependencies, and the replacements have since been sunset in turn - a
+  correction can go stale in the same way the claim it fixed did. `RS21` in the browser checklist runs
+  exactly this query for submodules; it did not cover npm dependencies, which is why this went a year
+  unnoticed. Every result carries a
   `ProvenanceBadge` with one of exactly **four** states - `MEASURED (local WebGPU)`, `MEASURED (local
   WASM)`, `MEASURED (plain JS)`, `SIMULATED` - together with the runtime evidence for that claim (`adapter.info`,
   `crossOriginIsolated`, `ort.env.wasm.numThreads`, bytes transferred vs served from cache). A result

@@ -28,9 +28,15 @@ transaction benchmark.
 
 **The papers give three reasons themselves, and they reinforce each other.**
 
-1. **Accuracy.** GBDTs still win on tabular data. IEEE S&P 2026 (arXiv:2605.26903) states it
-   plainly: *"High speed and interpretability make GBDTs popular in finance and healthcare, where
-   neural networks may fall short."*
+1. **Accuracy.** GBDTs still win on tabular data **outside the small-data regime**, and the
+   qualifier is load-bearing: TabPFN (*Nature* 637:319-326, 8 Jan 2025) beats them *"on datasets with
+   up to 10,000 samples and 500 features"*, while its own authors concede that *"for larger datasets
+   and highly non-smooth regression datasets, approaches such as CatBoost, XGB or AutoGluon are
+   likely to outperform TabPFN"*. This project's finance corpus is far past that threshold, so the
+   GBDT choice stands - but the unqualified version of this sentence stopped being true in Jan 2025.
+   IEEE S&P 2026 (arXiv:2605.26903) states the operative half plainly: *"High speed and
+   interpretability make GBDTs popular in finance and healthcare, where neural networks may fall
+   short."*
 2. **Cost.** A 2026 head-to-head (arXiv:2605.04858) finds FHE's benchmarked strength is regressions
    while MPC wins for CNNs - which is why this project runs CKKS for the linear tier and garbled
    circuits for the non-linearities rather than the other way round.
@@ -131,6 +137,15 @@ Two further details worth carrying: its FHE latency is **~10.5 s per transaction
 slowdown**, and **its GNN pipeline failed to compile to FHE entirely** - only the XGBoost path
 worked. Both are useful when anyone proposes an encrypted graph model for this use case.
 
+**Re-verified Round 55 and the claim STANDS, which is worth recording because the abstract contradicts
+it.** The abstract says quantization and pruning "were used to render the GNN FHE-compatible", which
+reads like success; section 4.4 is unambiguous that no circuit was ever produced - "the absence of
+support for the ScatterElements ONNX operator in Concrete ML posed a significant challenge during the
+final compilation". Read the section, not the abstract. But cite it as a **2024 result, not a standing
+impossibility**: DESIGN (arXiv:2507.05649) and TGHE (arXiv:2606.26664, IEEE ICWS 2026) have since run
+encrypted GNN inference. Neither is end-to-end either - TGHE transmits edge attributes in plaintext for
+its correction terms.
+
 ## What is genuinely absent, stated as a non-goal rather than a gap
 
 No verified paper evaluates an encrypted transformer or tabular foundation model on a finance
@@ -145,7 +160,7 @@ Not architecture. The 2026 deltas are all efficiency and threat model: hiding re
 (anonymous GBDT, IEEE S&P 2026), removing server-to-server communication (PVODTE, IEEE TDSC 2026),
 amortising over very large forests (Kangaroo, 969 trees at ~60 ms/tree over WAN), making *training*
 non-interactive rather than inference (PoPETs 2026, 360x speedup for XGBoost training over FHE),
-proving training occurred (ZKBoost, IACR 2026/202, from JPMorgan AI Research), and securing the
+proving training occurred (ZKBoost, IACR 2026/202, with JPMorgan AI Research - the author list spans CNRS/IRIF, JPMorgan and Arizona State, so "from" over-attributed it), and securing the
 preprocessing (ALIOTH). The model class is held fixed across all of them.
 
 ---
@@ -161,18 +176,35 @@ preprocessing (ALIOTH). The model class is held fixed across all of them.
 
 ## Healthcare: ahead of the two papers that do the same thing
 
-This was expected to be the weakest defence and is the strongest. There are exactly two published
-BreastMNIST-under-encryption baselines, and **both are simpler than what this project runs**:
+This was expected to be the weakest defence and it holds up, but **"exactly two" was wrong and so was
+the exclusivity claim that rested on it.** Round 55 searched properly and found four:
 
 | baseline | architecture | result | latency | ring |
 |---|---|---|---|---|
+| **PriMed** - Gopalakrishnan et al., *Expert Systems* 42(1):e13283 (online Mar 2023) | Conv(3->8,k3) -> Square -> AvgPool -> FC, **BFV** via Pyfhel/SEAL | **87.58%** | **171.4 s** | m=4096 |
 | Al Badawi & Bin Yusof, *BioData Mining* 17:33 (Sep 2024) | RBF-kernel **SVM**, CKKS/OpenFHE | F1 0.80 | 2.09 s | **N=65536** |
 | Selvakumar & Senthilkumar, *Sci Rep* (Jul 2025) | 2-layer quantized **FCNN**, TFHE | 81.82% -> 81.81% encrypted | **137.68 s/sample** | - |
+| **Gecko** - Wei et al., arXiv:2608.02378 (Aug 2026), preprint | frozen ResNet50v2 in **plaintext client-side**, then encrypted predictor, CKKS/Lattigo | **87.18%** vs 87.82% plaintext | **413 ms** | conjugate-invariant |
 
-Neither performs a genuine homomorphic convolution. This project does, and that part stands: it is a
-real encrypted convolution, not a unit cost multiplied by an op count, and it means the medical use case
-should be presented against *these* papers rather than against crypto-systems work like Orion or BootNet -
-the latter needs N=32768 for ImageNet and is a different claim entirely.
+**Two corrections, and the second is the one that stings.** PriMed is not a third entry appended to a
+list - it is chronologically **first**, three years before the two that were here. And it *does* perform
+a genuine homomorphic convolution, so the sentence that used to stand here - "neither performs a genuine
+homomorphic convolution, this project does" - was an exclusivity claim built on an incomplete search.
+A claim of the form "nobody else does X" is only ever as good as the search behind it, and this one had
+a search behind it that stopped at two.
+
+What survives is a claim about COST, which is checkable rather than exhaustive: PriMed pays 294.2 MB of
+encrypted input and a mid-inference client re-encryption round-trip to replenish the BFV noise budget,
+where this project's CKKS path runs at N=8192 without a round-trip. So the medical use case should be
+presented against *these* papers rather than against crypto-systems work like Orion or BootNet - the
+latter needs N=32768 for ImageNet and is a different claim entirely.
+
+**Gecko is listed with a caveat that has to travel with it.** Its 413 ms is not comparable to the others:
+the raw image is never encrypted. The client runs the frozen backbone in plaintext and encrypts only the
+compressed feature vector, so it is a hybrid, and it belongs in this table only under the "or its
+features" reading. It also never spells the dataset's name - Table 5 reads "Breast", identified as
+BreastMNIST structurally (ultrasound, 128x128, 2 classes, MedMNIST v2 cited), which is weaker evidence
+than a verbatim mention and is recorded as such.
 
 **The ring-degree comparison that used to follow is withdrawn (Round 33).** This section said the
 convolution runs "at **N=8192**, one eighth the ring degree the SVM baseline needed. That is a legitimate
@@ -273,7 +305,7 @@ load-bearing should have an entry with its authors and date.
 
 Two findings, both of which this project should absorb rather than argue with.
 
-**There is no public 8-class QKD-attack dataset.** Two papers use eight classes with *incompatible*
+**There is no public 8-class QKD-attack dataset.** At least three papers use eight classes with *incompatible*
 taxonomies - only three of seven attacks overlap - both on private simulated data. This project
 generates its own and labels it `synthetic, methodology-grounded`, citing arXiv:2509.14282, which is
 the honest framing. But the eight-class shape should not be described as a standard, because it is
@@ -404,8 +436,11 @@ Rust for the client-side stack.
 For healthcare, a **frozen pretrained backbone with a CKKS-encrypted linear head** fits this
 project's exact budget: a ViT CLS token is 768-D, which sits comfortably inside 4096 slots, and one
 ciphertext-plaintext dot product per class is precisely depth 1. The 2025 medical instantiation
-exists and is measured - arXiv:2511.20983 reports **96.12% plaintext against 90.02% encrypted** at
-326 KB per aggregation round. That would let this project say "ViT-class backbone" honestly while
+is FEDERATED rather than frozen-backbone, and the difference matters here - arXiv:2511.20983 reports
+**96.12% plaintext against 90.02% encrypted** at 326 KB per aggregation round, but section III-C has
+each client "independently train a ViT model on its private dataset". So it validates the
+CLS-token-plus-CKKS-linear-head SHAPE and says nothing about the frozen part, which is the half this
+project would be relying on. That would let this project say "ViT-class backbone" honestly while
 keeping the encrypted step exactly as cheap as it is today.
 
 Not adopted this round, and recorded as a recommendation rather than a plan, because the backbone's
@@ -431,7 +466,7 @@ behind.
 | Medical | **No** privacy-preserving one. MedMNIST v2 has a real plaintext leaderboard; FeTS is federated with no cryptography; MedPerf is federated *evaluation* only. | Compare to MedMNIST plaintext. Every named production deployment is plain FL with no cryptographic guarantee, so adding CKKS puts this ahead of them rather than level. |
 | Genomics | **Yes, and it is the only one.** iDASH is live - 7 Nov 2026, Dallas - with a published rubric. Track 1 is homomorphic evaluation of a pretrained decoder, scored on a correlation term with a **60-minute disqualification**. | The one vertical where an external scoring rubric exists. Note that iDASH publishes participating teams but **not scores**, so the rubric is citable and a recent iDASH *number* is not. |
 | Telecom | **No.** Two 2026 surveys say so in their own words, one of them noting it "could not compare the papers it reviewed" for lack of standard protocols. | The synthetic-corpus decision looks better after this sweep, not worse - see below. |
-| Satellite | **No**, and almost no privacy work at all. ESA-ADB is the credible plaintext benchmark. | Genuinely novel, which cuts both ways: nothing to be judged against, and nothing to be validated by. |
+| Satellite | **No**, and no *cryptographic* privacy work at all. The closest is plain FedAvg on ESA-ADB (Atefrad & Karami 2025, F0.5 0.86, precision 0.93, AUC 0.85), which lists differential privacy and secure aggregation as **future** work - the same category the Medical row already discounts. ESA-ADB is the credible plaintext benchmark. | Genuinely novel, which cuts both ways: nothing to be judged against, and nothing to be validated by. |
 
 **Telecom deserves a note, because a decision recorded here as a limitation reads differently now.**
 This project trains on synthetic QKD-attack telemetry because no commercial-OK real corpus exists,

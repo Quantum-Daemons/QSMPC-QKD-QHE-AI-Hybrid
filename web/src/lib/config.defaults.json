@@ -196,6 +196,7 @@
           "ceiling": 0.7401,
           "ceiling_source": "MEGA-PNA, arXiv:2412.00241v2 Table 2 'Minority-class F1 scores (%) on AML edge classification task', AML Small HI (74.01 +/- 1.55). PREPRINT - no venue confirmed, which is why it is named as such. It replaces Multi-PNA+EU (AAAI-24, 68.16 +/- 2.65): that row is in the SAME table with two better ones above it (MEGA-GIN 70.83, MEGA-PNA 74.01) and has not been the ceiling since December 2024. Verified by reading the table, not the abstract.",
           "companion": "auprc",
+          "comparison_caveat": "",
           "display": "minority-class F1 (laundering)",
           "name": "minority_class_f1"
         },
@@ -314,6 +315,7 @@
           "ceiling": 0.7401,
           "ceiling_source": "MEGA-PNA, arXiv:2412.00241v2 Table 2 'Minority-class F1 scores (%) on AML edge classification task', AML Small HI (74.01 +/- 1.55). PREPRINT - no venue confirmed, which is why it is named as such. It replaces Multi-PNA+EU (AAAI-24, 68.16 +/- 2.65): that row is in the SAME table with two better ones above it (MEGA-GIN 70.83, MEGA-PNA 74.01) and has not been the ceiling since December 2024. Verified by reading the table, not the abstract.",
           "companion": "auprc",
+          "comparison_caveat": "",
           "display": "minority-class F1 (laundering)",
           "name": "minority_class_f1"
         },
@@ -381,6 +383,7 @@
           "ceiling": 0.7401,
           "ceiling_source": "MEGA-PNA, arXiv:2412.00241v2 Table 2 'Minority-class F1 scores (%) on AML edge classification task', AML Small HI (74.01 +/- 1.55). PREPRINT - no venue confirmed, which is why it is named as such. It replaces Multi-PNA+EU (AAAI-24, 68.16 +/- 2.65): that row is in the SAME table with two better ones above it (MEGA-GIN 70.83, MEGA-PNA 74.01) and has not been the ceiling since December 2024. Verified by reading the table, not the abstract.",
           "companion": "auprc",
+          "comparison_caveat": "",
           "display": "minority-class F1 (laundering)",
           "name": "minority_class_f1"
         },
@@ -491,6 +494,7 @@
           "ceiling": 0.668,
           "ceiling_source": "Highest AUROC among PGS000004's OWN Catalog performance records: 0.668 (PPM012913, n=302,425, European). Measured across all 28 AUROC records for this score on 2026-08-11, not taken from a range quoted elsewhere - a first attempt at this line read the first page of results only and put the ceiling at 0.6573, which is a real record but not the maximum. European records span 0.5877-0.668 over 22 entries; the largest cohort is PPM012918 at n=5,328,392 with 0.665. The previous ceiling of 0.69 was chosen against a C-index scale, so it was never a bound on an AUROC for this score even though it happens to sit close to one. WORTH READING BESIDE THIS USE CASE'S FINDING: the lowest of the 28 is 0.55 (PPM005171, n=3,801, 'African unspecified'), against 0.5877-0.668 for European samples. The published record set shows the same ancestry gap this page demonstrates by a different route.",
           "companion": "",
+          "comparison_caveat": "",
           "display": "AUROC (European ancestry)",
           "name": "auroc_eur"
         },
@@ -572,6 +576,7 @@
           "ceiling": 0.919,
           "ceiling_source": "Google AutoML Vision, MedMNIST v2 (AUC 0.919)",
           "companion": "accuracy",
+          "comparison_caveat": "",
           "display": "AUC",
           "name": "auc"
         },
@@ -647,6 +652,7 @@
           "ceiling": 0.919,
           "ceiling_source": "Google AutoML Vision, MedMNIST v2 (AUC 0.919)",
           "companion": "accuracy",
+          "comparison_caveat": "",
           "display": "AUC",
           "name": "auc"
         },
@@ -726,6 +732,7 @@
           "ceiling": 0.919,
           "ceiling_source": "Google AutoML Vision, MedMNIST v2 (AUC 0.919)",
           "companion": "accuracy",
+          "comparison_caveat": "",
           "display": "AUC",
           "name": "auc"
         },
@@ -817,6 +824,7 @@
           "ceiling": null,
           "ceiling_source": "",
           "companion": "event_wise_f0_5_full_channels",
+          "comparison_caveat": "The two bars are event-wise F0.5 under the same overlap rule, and that is where the agreement stops. This project's scored window contains THREE labelled anomaly events; ESA-ADB's Mission1 lightweight test partition contains 29, roughly a tenfold difference in the denominator - at three events, one extra false alarm moves the score by 0.26, which is larger than most of the gap being read off this chart. The splits differ too (last 30 percent here, half the mission there), and ESA-ADB multiplies event precision by the time-level true-negative rate, which this figure does not. Treat 0.968 as an indicative target, not as a score this bar was competing against.",
           "display": "event-wise F0.5",
           "name": "event_wise_f0_5"
         },
@@ -884,6 +892,7 @@
           "ceiling": null,
           "ceiling_source": "",
           "companion": "event_wise_f0_5_full_channels",
+          "comparison_caveat": "The two bars are event-wise F0.5 under the same overlap rule, and that is where the agreement stops. This project's scored window contains THREE labelled anomaly events; ESA-ADB's Mission1 lightweight test partition contains 29, roughly a tenfold difference in the denominator - at three events, one extra false alarm moves the score by 0.26, which is larger than most of the gap being read off this chart. The splits differ too (last 30 percent here, half the mission there), and ESA-ADB multiplies event precision by the time-level true-negative rate, which this figure does not. Treat 0.968 as an indicative target, not as a score this bar was competing against.",
           "display": "event-wise F0.5",
           "name": "event_wise_f0_5"
         },
@@ -962,6 +971,7 @@
           "ceiling": 0.979,
           "ceiling_source": "FCNN, the best of the 30 published baselines - there is no higher number to cite.",
           "companion": "f1",
+          "comparison_caveat": "",
           "display": "AUC PR",
           "name": "auc_pr"
         },
@@ -1032,6 +1042,7 @@
           "ceiling": 0.979,
           "ceiling_source": "FCNN, the best of the 30 published baselines - there is no higher number to cite.",
           "companion": "f1",
+          "comparison_caveat": "",
           "display": "AUC PR",
           "name": "auc_pr"
         },
@@ -1098,6 +1109,7 @@
           "ceiling": null,
           "ceiling_source": "",
           "companion": "aggregate_accuracy",
+          "comparison_caveat": "",
           "display": "macro F1 across attack classes",
           "name": "macro_f1"
         },
@@ -1207,6 +1219,7 @@
           "ceiling": null,
           "ceiling_source": "",
           "companion": "classical_rf_macro_f1",
+          "comparison_caveat": "",
           "display": "macro F1 (synthetic QKD-attack telemetry)",
           "name": "macro_f1"
         },
@@ -1551,6 +1564,7 @@
           "ceiling": null,
           "ceiling_source": "",
           "companion": "aggregate_accuracy",
+          "comparison_caveat": "",
           "display": "macro F1 across 9 network-attack classes",
           "name": "macro_f1"
         },
@@ -1606,6 +1620,7 @@
           "ceiling": null,
           "ceiling_source": "",
           "companion": "classical_rf_macro_f1",
+          "comparison_caveat": "",
           "display": "macro F1 (synthetic QKD-attack telemetry)",
           "name": "macro_f1"
         },

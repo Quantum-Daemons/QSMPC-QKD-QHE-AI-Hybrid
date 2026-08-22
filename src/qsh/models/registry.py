@@ -134,6 +134,15 @@ class MetricSpec:
     ceiling_source: str = ""
     companion: str = ""               # the aggregate metric to show alongside, to expose the gap
     higher_is_better: bool = True
+    #: Set when the measured figure and ``baseline`` share a metric NAME but are not the same
+    #: measurement, so a bar chart placing them side by side is comparing protocols rather than
+    #: methods. ``MeasuredAgainstPublished`` renders this under the plot and marks the published bar;
+    #: empty means the caption's like-for-like claim stands.
+    #:
+    #: Explicit per model, NOT inferred from the presence of a note field: ``sample_size_note`` reads
+    #: as a warning on ``satellite_comms.telemanom`` and as a REASSURANCE on ``telecom_ids.nidd``, so
+    #: keying off it would suppress a valid comparison and is the two-fields-one-word trap again.
+    comparison_caveat: str = ""
 
 
 @dataclass(frozen=True)
@@ -619,6 +628,16 @@ M_ESA = MetricSpec(
     ceiling_source="",
     companion="event_wise_f0_5_full_channels",
     # The companion is the whole point: the same method scores 0.061 on the full Mission1 channel set.
+    comparison_caveat=(
+        "The two bars are event-wise F0.5 under the same overlap rule, and that is where the "
+        "agreement stops. This project's scored window contains THREE labelled anomaly events; "
+        "ESA-ADB's Mission1 lightweight test partition contains 29, roughly a tenfold difference in "
+        "the denominator - at three events, one extra false alarm moves the score by 0.26, which is "
+        "larger than most of the gap being read off this chart. The splits differ too (last 30 "
+        "percent here, half the mission there), and ESA-ADB multiplies event precision by the "
+        "time-level true-negative rate, which this figure does not. Treat 0.968 as an indicative "
+        "target, not as a score this bar was competing against."
+    ),
 )
 M_IDS = MetricSpec(
     name="macro_f1",
@@ -1282,6 +1301,11 @@ def frontend_models() -> dict:
                 "ceiling": s.metric.ceiling,
                 "ceiling_source": s.metric.ceiling_source,
                 "companion": s.metric.companion,
+                # Hand-listed, so a new MetricSpec field reaches the browser only when someone adds
+                # it here. `comparison_caveat` was added in Round 55 and the first export silently
+                # omitted it - the gate caught it, but note the shape: adding a dataclass field is
+                # not the same act as exporting it, and nothing about the former implies the latter.
+                "comparison_caveat": s.metric.comparison_caveat,
             },
             "achieved": achieved(s.key),
             "notes": s.notes,

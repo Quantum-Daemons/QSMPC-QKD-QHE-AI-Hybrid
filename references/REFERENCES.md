@@ -121,8 +121,12 @@ while `src/qsh/qml_ids/` and the Telecom/Defense use case shipped. The gap matte
 workstream whose honest answer is negative, and the reasoning lived only in a training script's
 docstring.
 
-- **A Quantum Machine Learning Approach for Intrusion Detection Systems** - Al-Kuwari et al.,
-  arXiv:2509.14282 [cs.CR], 16 Sep 2025 `[link]`
+- **Resisting Quantum Key Distribution Attacks Using Quantum Machine Learning** - Al-Kuwari et al.,
+  *IET Quantum Communication* 7(1), January 2026, DOI 10.1049/qtc2.70028
+  (arXiv:2509.14282 [cs.CR], v1 16 Sep 2025, v2 19 Feb 2026) `[link]`
+  TITLE CORRECTED Round 55. This entry carried "A Quantum Machine Learning Approach for Intrusion
+  Detection Systems", which is not the title on v1, on v2, or in IET - a plausible-sounding
+  reconstruction from the subject matter rather than a transcription. It is also no longer a preprint.
   URL: https://arxiv.org/abs/2509.14282
   Added: no PDF bundled; claim re-verified 2026-08-04
   Supplies the **class structure**: 8 classes = 7 attack types plus normal. That taxonomy is what

@@ -595,6 +595,24 @@ export function ModelPanel({ usecase }: { usecase: string }) {
           {typeof spec.achieved?.metric_note === "string" && (
             <p className="muted small"><strong>Reading these metrics:</strong> {spec.achieved.metric_note}</p>
           )}
+          {/* THE SAME DEFECT AS `metric_note`, ON ITS SIBLINGS, FOUND ROUND 55.
+              The comment above records `metric_note` being exported and rendered nowhere. That fix
+              reached ONE field. `sample_size_note` (satellite_comms.telemanom, telecom_ids.nidd) and
+              `classical_rf_attribution_note` (telecom_ids.qml) were exported the same way, by the
+              same trainers, into the same bundle - and were still shown to nobody two rounds later.
+              A fix reaching one of several twins is this project's most-repeated defect and this is
+              it at field granularity; `tests/test_every_registry_note_is_rendered.py` now enumerates
+              the fields from the config rather than from memory, so the next one cannot hide.
+              `sample_size_note` is the load-bearing one: on telemanom it is the text saying three
+              scored events cannot be compared with a full-partition benchmark. */}
+          {typeof spec.achieved?.sample_size_note === "string" && (
+            <p className="muted small"><strong>Sample size:</strong> {spec.achieved.sample_size_note}</p>
+          )}
+          {typeof spec.achieved?.classical_rf_attribution_note === "string" && (
+            <p className="muted small">
+              <strong>Attributing the classical baseline:</strong> {spec.achieved.classical_rf_attribution_note}
+            </p>
+          )}
           {spec.notes && <p className="muted small">{spec.notes}</p>}
           <ModelRunner usecase={usecase} spec={spec} />
           {spec.hf_repo_id && (
