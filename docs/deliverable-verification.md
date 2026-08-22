@@ -3643,3 +3643,68 @@ gaps the standing request names and the file genuinely lacked, each verified abs
 with the file's own regex: **449 rows, 53 prefixes, zero duplicate IDs** - and Round 49's report of
 "377 rows, 40 prefixes" was wrong, from a narrower regex than the file documents.
 
+## Round 51: the caption swapped one wrong claim for another, and the plot could not be drawn honestly
+
+**BUSINESS DOC RECONCILED Round 51.**
+
+### The second walk, performed
+
+Round 50 recorded a walk as owed because its own walk observed the pre-retrain model. Done, on
+`index-CYDapC47.js` at `62e6b79` - the content that merged as `9adcdf0` - with **all five pipelines
+RUN to completion**, which Round 50 could not claim. Every published model reproduced its recorded
+metric in-tab: finance gbm and student, medical resnet18/resnet50/student, satellite telemanom/opssat/
+opssat_student, telecom qml and nidd. No `NaN`, no duplicate headings, no `[object Object]` anywhere.
+
+`encrypted_agreement` is 1 on finance (400/400) and medical, and **0.8 on genomics** - which is not a
+defect and the run log says why: five of thirty rows flip, seven of the thirty are scored IDENTICALLY
+across classes by the plaintext model, the widest plaintext margin among the flipped rows is
+**0.000e+0**, and over the 23 rows the model actually decides agreement is 1. Max CKKS error 8.277e-10.
+The encryption broke ties; it did not disagree. **Recorded as still-open**: the metric row renders a
+bare 0.8 beside 1.0 elsewhere and the sentence that makes it readable lives in the log, which is the
+same defect class as `metric_note` rendering nowhere.
+
+### Round 50's fix was wrong in a new way, and the deploy is what showed it
+
+Round 50 replaced a hardcoded companion caption - "shown so the gap is visible", asserting the
+companion is always the flattering figure - with one derived from the values. Deriving the direction
+was right; attaching an interpretation to it was not.
+
+`medical_fl.resnet18` renders `auc` 0.9147 as its declared metric and `accuracy` 0.8654 as the
+companion, and the caption announced the accuracy as "the pessimistic figure, not the flattering one".
+AUC is rank-based, accuracy threshold-based; on an imbalanced split AUC sits above accuracy by
+construction. That model's own `metric_note` - made visible by the same round - says *"Do not read the
+accuracy against the AUC baseline"*, so the caption contradicted the caveat it existed to reveal.
+
+The caption now states the relation and stops. **Three rounds, three forms of one defect**: a
+hardcoded claim, a derived claim that over-reached, a stated relation. What recurred was asserting an
+interpretation the code had not checked.
+
+### The requested prior-research plot cannot be drawn honestly, and that is the finding
+
+The standing request asks for prior-research accuracy on the private-inference plots, and Round 50
+wrote `RD14` demanding one. Measured before building: **not one published model has a baseline whose
+metric lives on its chart's axis.** Medical's baseline is an AUC against a per-class-F1 chart; finance,
+satellite and medical-student are F1 / F0.5 / AUC-PR against a precision axis. The single pairing that
+would map - `telecom_ids.nidd`, macro F1 on a macro-F1 chart - has `baseline: null` by design.
+
+So the line would be wrong on all five that have a baseline and correct only on the one that does not.
+0.901 on an F1 axis is the right numeric range and the wrong quantity, and a chart gives the reader no
+column header to check it against. Not built. `RD14` is rewritten from "must be plotted" to "shown
+beside the metric it measures, and NOT drawn on a foreign axis", and a gate pins the mapping so a
+changed metric or plot pairing forces the question to be re-answered rather than inherited. It also
+asserts on the code that `VerificationChart` never reads `metric.baseline` - two fields share that
+name, the registry's being prior research and `ModelEvalResult`'s the trivial predictor.
+
+### Opset 0 is not an opset
+
+`graph_opset` returned 0 for "no default-domain opset", which is the tree-ensemble case by
+construction, so `finance_aml.gbm` and `telecom_ids.nidd` both published `export.opset: 0` to
+visitors. `None` now means absent and the row disappears. Re-derived from the shipped graphs rather
+than retrained; re-serialising `metrics.json` changed exactly the two intended lines.
+
+### DP7 not discharged
+
+The return-to-main deploy was blocked by a local permission control. The served content is the merged
+tree, so nothing a visitor sees is stale - what is wrong is the box's branch pointer. Recorded here
+rather than left to be discovered, and it carries to Round 52.
+
