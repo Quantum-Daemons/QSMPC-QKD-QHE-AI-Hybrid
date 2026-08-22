@@ -265,16 +265,37 @@ function MetricRows({ spec }: { spec: ModelSpec }) {
           const h = declared ? Number(declared[1]) : NaN;
           const c = Number(v);
           const known = Number.isFinite(h) && Number.isFinite(c);
-          // Three cases, not two. `telecom_ids.student` records macro_f1 and aggregate_accuracy as
-          // the SAME number, and a two-branch ternary files equality under whichever branch is the
-          // fallback - which would have printed "LOWER than the headline" about two identical values.
-          const caption = !known
-            ? "companion — the same run reported on a different metric"
+
+          // THE CAPTION STATES THE RELATION AND STOPS THERE. It does not say which figure is
+          // "flattering" or "pessimistic", and the first version of this derived caption did - which
+          // was the same defect as the hardcoded string it replaced, one step further along.
+          //
+          // Round 50 replaced "shown so the gap is visible" because that asserted the companion is
+          // always the flattering number, false for `telecom_ids.nidd`. The replacement derived the
+          // DIRECTION from the values, which is sound, and then attached an INTERPRETATION to it,
+          // which is not: flattering-versus-pessimistic only means anything when both rows estimate
+          // the same quantity on the same scale.
+          //
+          // Measured on the deployed site: `medical_fl.resnet18` renders `auc` 0.9147 as its declared
+          // metric and `accuracy` 0.8654 as the companion, and the caption announced the accuracy as
+          // "the pessimistic figure". AUC is rank-based and accuracy is threshold-based; on an
+          // imbalanced split AUC sits above accuracy by construction and neither is pessimistic about
+          // the other. That model's own `metric_note` - rendered a few lines below by this same round -
+          // says "Do not read the accuracy against the AUC baseline", so the caption contradicted the
+          // caveat it was written to make visible.
+          //
+          // Comparability is not decidable from the key names, so the caption no longer claims it.
+          // The relation is a fact and is stated; the reading is a judgement and belongs to
+          // `metric_note`, which now has somewhere to appear.
+          const relation = !known
+            ? "the same run reported on a different metric"
             : Math.abs(c - h) < 5e-5
-              ? "companion — equal to the headline here, so neither is the flattering figure"
+              ? `equal to ${spec.metric.name} here`
               : c > h
-                ? "companion — higher than the headline, so it is the flattering figure and the headline is the honest one"
-                : "companion — LOWER than the headline here; the aggregate is the pessimistic figure, not the flattering one";
+                ? `above ${spec.metric.name} here`
+                : `below ${spec.metric.name} here`;
+          const hasNote = typeof spec.achieved?.metric_note === "string";
+          const caption = `companion — ${relation}${hasNote && known ? "; see how to read these, below" : ""}`;
           return (
             <tr key={k} className="metric-companion">
               <td><code>{k}</code></td>

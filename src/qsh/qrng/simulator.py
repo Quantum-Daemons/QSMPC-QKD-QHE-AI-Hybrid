@@ -144,6 +144,8 @@ def generate_quantum_bits(n_bits: int = 4096, *, source: str = "sim",
     return QRNGResult(
         bits=bits, n_bits=int(bits.size), source=source, post_processing=post_processing,
         raw_bits_consumed=raw_consumed,
-        health=health_suite(bits, alpha=health_alpha, block_size=health_block_size),
+        # `raw=raw` is load-bearing: SP 800-90B section 4.4 requires its continuous tests on the
+        # PRE-CONDITIONING stream, and passing only `bits` measured the Toeplitz extractor.
+        health=health_suite(bits, raw=raw, alpha=health_alpha, block_size=health_block_size),
         throughput_bits_per_s=float(bits.size) / dt, simulated=simulated,
         extraction_rate=float(bits.size) / max(1, raw_consumed))
