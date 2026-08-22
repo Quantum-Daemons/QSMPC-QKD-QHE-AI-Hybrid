@@ -2473,3 +2473,24 @@ because it kept 0.786.
 **The duplicate-ID gate caught its third collision of the round**, again before it shipped. It has
 now fired on `CS13`/`CS14`, `MN7`, `QS9`-`QS11`, `RG12`/`RG14`, `CI9`/`CI10` and `MS9` - every one my
 own, and every one invisible to the previous four rounds of manual scanning.
+
+### Round 55, closing: a republish is not a deploy
+
+Measured immediately after republishing five models, before rebuilding the site: the repository
+carried **11 `hf_revision` pins and the served bundle contained 6 of them.** The five republished
+revisions were absent.
+
+That gap is invisible from every direction that was being watched. The Hub cards were correct, the
+repository was correct, all seventeen local gates were green, and the deployed page fetched weights at
+the OLD revisions - which is the artefact a visitor actually receives. Nothing on the page said so,
+because nothing on the page knows which revision it wanted.
+
+`HF15` records the check as a set difference rather than a reminder: extract the 40-hex strings from
+the deployed `index-*.js`, subtract the `hf_revision` values in `config.defaults.json`, and require
+zero missing. It is the Hub half of the lesson `DP4` already carries for source changes - a change
+that has not reached the served bundle has not reached anyone - and the two halves had never been
+stated together.
+
+**The duplicate-ID gate fired for the fourth time this round**, on `HF14`. Every one of the four has
+been my own new row, and every one was caught before it shipped. Four rounds of manual scanning had
+never caught one.
