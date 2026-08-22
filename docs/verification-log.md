@@ -2705,3 +2705,43 @@ AND main, so `CS17`'s open question would still be open on the newest release.
 
 **TFHE-rs' WASM limitation holds verbatim**, which is the ground `CS11` declines Rust on: *"it does
 not support FHE computations"*, last touched 2026-06-19.
+
+### Round 56, continued: mobile was unmeasurable with one tool and trivial with another
+
+`UX12` recorded mobile layout as UNMEASURED, with the reason: the browser automation resizes the OS
+window without moving the viewport - `innerWidth` stayed 1280 and `outerWidth` read **0**. That was
+honest and it was also a tooling limit, not a fact about the site. **CDP device emulation moves the
+viewport**, and the measurement took minutes once the right tool was used.
+
+Measured on the deployed page at a 500px viewport: **204px of horizontal document overflow.**
+
+**The naive probe blamed 40 elements and was wrong about 39 of them.** Almost all were nav links
+inside `.nav { overflow-x: auto }` - a deliberate scrolling strip, `scrollWidth` 1285 against
+`clientWidth` 453, whose children legitimately extend past the viewport. Counting an element that
+sits inside a scroller as "overflowing the page" is the same false-positive shape as the four earlier
+probe errors this round. Discounting any element with a scrolling ancestor leaves **exactly one
+genuine cause**.
+
+**And the cause is a correct decision whose enabling condition was dropped one file away.**
+`TwoPartyDiagram`'s SVG sets `min-width: 680px` deliberately: a 780-unit viewBox in a 360px column
+renders 11-unit step labels at about 4.5px, and its comment argues "illegible is worse than
+off-screen, because off-screen can be scrolled to". That is right. The comment then says the
+scrolling is "what `.card { overflow-x: auto }` already provides" - and `.card` does carry that rule,
+with its own comment recording the audit that added it: at 390px the document was 1326px wide, 936px
+of scroll, "from two diagram SVGs (990px, 930px)" among others.
+
+**`UseCasePage` renders the diagram in a hand-styled div that copies the card's background, radius
+and padding - and not its `overflow-x`.** The look was reproduced and the one property that mattered
+was dropped. A fix that reached the CSS class and not the element that imitates it.
+
+**A correction to something I asserted in `UX12`.** I wrote that "no element carries a `min-width`
+above 0/auto". That was read off a TRUNCATED probe output - the SVG carries `min-width: 680px` and
+was in the list I never saw the end of. The claim that mobile was unmeasured was right; the
+supporting evidence I offered for it was not.
+
+**And the gate for this needed comment-stripping, for the third time this session.** The comment
+added to `UseCasePage` explaining why the wrapper must scroll QUOTES `minWidth: 680`, so the raw-text
+scan classified `UseCasePage` itself as a wide component. Prose about a property is exactly what a
+file accumulates when someone fixes that property. The gate also had to move from the file that SETS
+the width to the RENDER SITES, because the scroller lives in a different file - the first version
+flagged the component it had just fixed.
