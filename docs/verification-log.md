@@ -1855,3 +1855,42 @@ not register `TreeEnsembleClassifier`, so both telecom models report `onnx-wasm`
 **The round-trip workflow the standing request names is covered**: `RT0`-`RT11`, with `RT9` closing
 the loop back to `RT0` on any public-site failure and `RT11` (added Round 50) requiring the local
 implementation check before the walk. Host identity is deliberately absent from every row.
+
+## Round 52 (branch `round52-the-credit-reached-the-artifact`, bundle `index-BrgAhT5P.js`) - walked, and the credit was observed rather than inferred
+
+`DP7` discharged first: box returned to `main` at `e433371`, then the round branch deployed at
+`e96a270`. All ten pages walked on the deployed site.
+
+**Clean across every page**: zero `NaN`, zero `undefined`, zero `[object Object]`, zero duplicate
+headings. Charts render on all five use-case pages (genomics 2, others 1 before a run, 8 on finance
+after one).
+
+**The licence fix was verified where it binds, in three places rather than one.**
+
+| surface | observed |
+|---|---|
+| Hub card at the new pin | 1 attribution line on each of the four republished repos, fetched back from huggingface.co |
+| satellite page | 4 Attribution lines - ESA-ADB twice, OPS-SAT-AD twice |
+| finance page | 3 Attribution lines - AMLworld |
+
+Fetching the card back from the Hub rather than reading the local copy is the point: they are
+different objects, and assuming otherwise is the whole defect.
+
+**Both republished finance models ran at their NEW pins and reproduced their recorded figures:**
+
+> PASS finance_aml.gbm: re-scored all 8192 published held-out rows in this tab, minority_class_f1
+> 0.54 against the recorded 0.54
+> PASS finance_aml.student (not the selected model): same, 8192 rows
+
+with `pinned to b35b4cbb2ad3` and `pinned to 475b160d9b42` rendered on the page - so the browser is
+fetching the republished artifacts, not cached older ones.
+
+**`metric_note` renders** on the telecom page, and the `/usecases` index still shows `vs published`
+for the three models that have a baseline.
+
+**What this walk did NOT cover, stated rather than implied.** Only the finance pipeline was run to
+completion; medical, genomics, satellite and telecom were confirmed to render but not driven through
+a full run, so their charts are confirmed PRESENT and not confirmed CORRECT. The satellite page's
+missing encrypted-agreement plot is structural and unchanged. `export.opset` still renders 0 on the
+telecom page - recorded in Round 50, still not fixed, and still a display of an absent value rather
+than a wrong computation.
