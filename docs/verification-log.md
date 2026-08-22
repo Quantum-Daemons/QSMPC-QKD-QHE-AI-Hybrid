@@ -2128,3 +2128,141 @@ already been corrected once, replacing "JIFF is unmaintained and the PSE MPC Fra
 these three as the maintained replacements - and the replacements have since been sunset in turn. A
 correction goes stale exactly like the claim it fixed. `RS21` runs this query for submodules and nothing
 ran it for npm packages, which is why a year passed unnoticed; `CS15` now covers it.
+
+### Round 55, continued: the deploy walk, and the outcome check Round 54 did not do
+
+Deployed `main` at `6b94278`, bundle **`index-D9K2fM4m.js`** (previously `index-BYWN9-KK.js`), box on
+`main`, public URL 200.
+
+**`MeasuredAgainstPublished` renders, and it discriminates per model.** Round 54 asserted that a
+published baseline was read from the right field and shipped a feature that rendered nowhere. The
+difference this time is that the chart was observed on the deployed site, per model, with the
+caveat branch checked against the non-caveat branch:
+
+| model | caption | x-axis | bars | caveat footnote |
+|---|---|---|---|---|
+| `satellite_comms.telemanom` | "share a metric **name** and are **not** the same measurement" | `this project`, **`published*`** | 2 | **yes** |
+| `satellite_comms.opssat` | "both bars are the same metric on the same axis" | `this project`, `published`, `ceiling` | 3 | no |
+| `medical_fl.resnet18` | "both bars are the same metric on the same axis" | `this project`, `published`, `ceiling` | 3 | no |
+| `finance_aml.gbm` | "both bars are the same metric on the same axis" | `this project`, `published`, `ceiling` | 3 | no |
+
+The star and the footnote appear on exactly one model and the ceiling bar appears on exactly the
+three that carry one. **A feature that renders identically everywhere is not evidence that it is
+reading anything** - two branches observed to differ is.
+
+**The chart is gated behind a RUN, which is why "it renders" needed checking at all.** On page load
+`MeasuredAgainstPublished` returns null: it lives inside the `artifacts.verification` block, so
+nothing draws until a pipeline run completes and a published model has been selected. A verifier who
+loads the page and looks will see zero charts and conclude the feature is dead. That is the shape of
+`RI8` - a panel that exists and no user action reaches - and here the action exists but is not
+obvious. Recorded so the next walk does not repeat the confusion.
+
+Also observed on the deploy: `Sample size:` renders on `satellite_comms.telemanom` and correctly does
+NOT render on `medical_fl.resnet18`, which carries no such note - the field-presence conditional
+works rather than always-firing. `Reading these metrics:` renders on medical. `Gap to baseline:`
+renders on finance. And the QSDC stage emits
+`asymptotic (infinite block; no finite-size certificate)`.
+
+### Round 55, continued: an exhaustive audit, and four gates that could not fail
+
+A 77-agent audit across eight areas of the standing request, every finding put to an independent
+adversarial verifier told to refute it. **51 findings survived; 17 were refuted.** Each of the six
+acted on below was then re-verified by hand, by seeding the defect and watching the gate stay green.
+
+**The PQC conformance gate could not detect a totally broken ML-KEM.** Its ML-KEM half read one
+outcome - did `encapsulate` throw - and never encapsulated to a WELL-FORMED key. Seeded by making
+`encapsulate` throw unconditionally, it printed `780 malformed keys, 780 rejected, 0 accepted  OK`
+and exited **0**. The ML-DSA block eight lines below already had a keygen-sign-verify round trip, and
+its own comment says why: a noble `0.2.x` to `0.6.x` argument-order change once broke every signature
+while TypeScript and the production build stayed green. `web/package.json` pins `^0.6.1`, so the same
+class of break is in range for ML-KEM. The lesson reached one of the two primitives in one file.
+
+**The SP 800-90B adaptive-proportion cutoff was one too high in the browser, at every entropy.**
+`1 + c` where the loop already held the answer; the `1 +` belongs to the Python copy, where
+`binom.isf` returns one BELOW the cutoff. Measured across the grid: 991/990, 793/792, 626/625,
+590/589, 325/324, 106/105 - **permissive**, because a higher cutoff fails fewer windows, and
+visitor-facing, because this is the client-side-only demo and `healthPassed` is computed from it.
+
+The reason nothing caught it is the part worth keeping. There WAS an assertion:
+`repetitionCountCutoff(2.0, 2^-20) === 11`, which is correct, is SP 800-90B section 4.4.1's own
+worked example - and is on the SIBLING function. **One point on one of two functions cannot see a
+uniform offset in the other.** The fix is a 13-entropy grid for both functions, exported from Python
+by `scripts/export_qrng_cutoffs.py`, regenerated in CI, and compared entry by entry.
+
+**Two CI gates reported success for work that did not happen.** Gate 2 ran `export_config.py` with
+`>/dev/null 2>&1` and its status discarded, then diffed the artefact. Both generators write their
+output LAST, so an exception leaves the committed file byte-identical and the diff returns 0: seeded
+by raising at the top of the generator, exit 1, verdict **PASS "in sync"**. Gate 15 piped pytest into
+`grep -c` wrapped in `|| true`, so only the skip count survived: seeded by deleting a gate file,
+pytest exits 4, the skip count is 0, verdict **PASS "its four gates ran here"**. These were the only
+two commands in a 206-line script whose status was neither tested nor logged - which made `DP2`,
+"the build's exit status is captured and printed, never redirected to /dev/null", broken inside the
+script that enforces it. Gate 15 now also requires a minimum RUN COUNT, because a deleted file
+reports zero skips exactly like a clean run.
+
+**A fabricated `accuracy=1.0` on the row the full deployment serves.** `run_quantum` returned it from
+a `correct += 1` that was unconditional and never read. There is nothing to be accurate about - the
+QCNN has no trained weights, and `private_inference.py` says in its own docstring "Nothing is
+decrypted and nothing is compared". The browser twin had already been corrected to `accuracy: null`,
+with a comment recording the three rounds it had been wrong; **that fix reached one language**, and
+`usePipelineRun.ts` PREFERS the Python artifact, so the identical row of the identical table printed
+1.0 through one transport and an em dash through the other. The flattering side of the contradiction
+was the one that shipped.
+
+**The BreastMNIST licence downgrade reached one of four copies.** On 2026-08-10 it was checked and
+downgraded - MedMNIST licenses ITSELF CC BY 4.0, but the upstream BUSI grant attaches to the ARTICLE,
+and a citation request is not a grant. `registry.py` and one row of `DATA_LICENSES.md` carried it.
+The row whose own text reads "the same corpus as the ResNet-18 row above" said a flat "CC BY 4.0 /
+Yes". So did the redistributed-eval-sample paragraph. And `scripts/prep_model_inputs.py` hardcoded
+the flat string into the `provenance` of every published `eval_sample.json` - **the surface where the
+claim actually binds**, because that file ships inside three Hugging Face repos. The word
+"unverifiable" appeared exactly once in a 428-line licence document.
+
+**The first version of the licence gate cried wolf and had to be narrowed.** Scanning every line
+that mentions the corpus fired on three that merely REFER to BreastMNIST while stating a different
+corpus's licence - the PneumoniaMNIST row saying it is "a different subset from BreastMNIST", the
+WDBC overlay row, and the paragraph where the corpus and its qualifier sit on adjacent wrapped lines.
+A gate that fires on correct text gets disabled, so it now reads the licence CELL of the row whose
+DATASET cell names the corpus.
+
+**And the new gate 15 immediately caught my own mistake**: two prefixes added to the checklist without
+adding them to the legend. That is the gate doing exactly what the old one could not.
+
+### Round 55, continued: three visitor-facing labels, and the guard the checklist said it had
+
+**A badge said WASM for a loop that is plain JS.** Telecom emitted `measured-wasm` for
+`Math.exp`/`Math.max` arithmetic over a JS LCG, and the page rendered "MEASURED (local WASM) /
+Computed in this browser tab on the WebAssembly runtime". The twin had been corrected for this exact
+reason and carries the reason in its own comment - "Claiming WASM here made every pipeline run on
+every page render 'MEASURED (local WASM)' without a wasm module ever being instantiated" - with
+`ProvenanceBadge.tsx` adding "the claim was wrong in the direction that flatters". The fix reached one
+of two sites, and telecom has no `private_inference` stage, so nothing downstream overwrote it.
+
+**A latency was printed under the name of a runtime that did not produce it.** The FHE stage logged
+`ONNX ${clientMs} ms`, where `clientMs` times `privateInference` - which has had no ONNX tier since
+Round 17 and says so in its own comments. The genuine ONNX latency lands in the SAME stage log, so
+one line carried two ONNX-labelled numbers differing by orders of magnitude. The sibling emit fifteen
+lines below already said "client compute".
+
+**Selecting PQC-only on satellite deleted four panels.** `break` inside a `switch` case exits the
+whole case, so the PQC-only guard skipped not just QSDC but the anomaly verdict, the SHAP panel and
+the published-model row - and `usePipelineRun` offers that profile on every use case. It contradicted
+the comment on the block it was skipping, which argues at length that the step "scores a window of the
+BUNDLED corpus... so it has no dependency on whether QSDC aborted". Round 31 moved that block out of
+`if (!abort)` for exactly that reason and left it inside the PQC-only return: the same fix, one of two
+call sites.
+
+**And the duplicate-ID guard the document claims to have does not exist.** The legend's history
+paragraph ends: `RG1`-`RG4` were two families at once, "fixed by renaming the newer one to `AR`, and
+**by making the build fail rather than trusting anyone to notice**". Nothing implemented that. No
+test, no script, no Makefile target scanned for duplicate row IDs. Round 55 alone produced four
+collisions - `CS13`/`CS14`, `MN7`, `QS9`-`QS11`, `RG12`/`RG14` - every one caught by a manual
+`sort | uniq -d` and none by a gate.
+
+That is precisely the failure `test_checklist_prefix_legend.py`'s own docstring names: "the rule is
+right, greppable, and has no executor." It was written about the register deadline, `DP7` and `CI1`'s
+step count, and was true of the paragraph three lines above it.
+
+**A correction to something I asserted mid-round.** I reported a *pre-existing* `RG12` collision in
+this document. There was none - the duplicate was my own new row, and I had misread my own scan
+output. The gate now says so unambiguously by printing both line numbers.
