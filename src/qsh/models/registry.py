@@ -343,7 +343,17 @@ DS_ESA_ADB = DatasetSpec(
         "CC BY 3.0 IGO."
     ),
     notes=(
-        "Missions are anonymised Mission1/2/3 — they are not named Sentinel anything. 17.5 years, "
+        # THE SPAN IS WITHHELD, NOT ASSERTED. `DATA_LICENSES.md` records the two figures this
+        # project has carried for the same corpus - 14 years there, 17.5 here - and that neither
+        # was re-verifiable: the Zenodo record, the arXiv:2406.17826 abstract and the kplabs-pl
+        # ESA-ADB README all decline to state it. That file withheld the number; this one kept
+        # asserting it, and `scripts/publish_hf.py` copies `DatasetSpec.notes` verbatim into the
+        # model card, so the un-re-verified figure was being published to the Hub in both
+        # `satellite_telemanom` and `satellite_telemanom_student`. A withheld figure that stays
+        # in the one copy that leaves the repository is not withheld.
+        "Missions are anonymised Mission1/2/3 — they are not named Sentinel anything. "
+        "Multi-year telemetry; the exact span is NOT stated by the Zenodo record, the paper or "
+        "the upstream README, so it is withheld here rather than asserted - see DATA_LICENSES.md. "
         "1.19% annotated. Mission3 is excluded upstream for triviality. The CC BY 3.0 IGO term "
         "appears on the Zenodo landing page but NOT in its REST metadata, which returns no licence "
         "at all - an API-only check reads this corpus as unlicensed."

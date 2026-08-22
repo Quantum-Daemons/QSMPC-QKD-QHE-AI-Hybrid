@@ -949,7 +949,7 @@ g \;=\; \frac{Q_{\text{Eve}}}{Q_{\text{Bob}}} \;=\; 10^{\,\text{loss\_dB}/10}
 $$
 
 So the tolerable error rate falls fast as the link gets lossier: 0.110 at 0 dB, **0.048 at the 4.1 dB
-Qi et al. measured on a real 1.5 km fibre link (g = 2.57)**, and ~0.0003 at the ~24.5 dB this
+Qi et al. measured on a real 1.5 km fibre link ($`g = 2.57`$)**, and ~0.0003 at the ~24.5 dB this
 project's own free-space downlink reports. Applying 0.11 to a lossy channel is wrong in the
 **permissive** direction - it delivers over a channel whose secrecy capacity is already zero. The
 satellite path now computes $`C_s`$ directly.

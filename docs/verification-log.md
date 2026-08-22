@@ -2266,3 +2266,135 @@ step count, and was true of the paragraph three lines above it.
 **A correction to something I asserted mid-round.** I reported a *pre-existing* `RG12` collision in
 this document. There was none - the duplicate was my own new row, and I had misread my own scan
 output. The gate now says so unambiguously by printing both line numbers.
+
+### Round 55, continued: the audit fixes verified on the deploy
+
+`main` at `cc9a1c6`, bundle **`index-B8CifKLO.js`**, box on `main`, public 200. Each fix checked by
+observing the thing it was supposed to change, and the thing it was supposed to leave alone.
+
+**The provenance badge, and the discrimination is the evidence.** The telecom page now carries TWO
+badges saying different things, each correct:
+
+    MEASURED (plain JS) . in-browser softmax training (clientIDS), synthetic telemetry
+    MEASURED (local WASM) . onnx-wasm
+
+The JS training loop reads plain JS; the published ONNX model, which genuinely does run on the wasm
+runtime, still reads local WASM. "WebAssembly runtime" no longer appears for the JS path. A single
+badge changing would not have shown that the downgrade was targeted rather than blanket.
+
+**PQC-only on satellite now skips one stage and keeps the page.** With that profile selected: the
+QSDC skip message renders, including its new sentence that "the telemetry anomaly verdict and its
+explanation still run below"; the anomaly verdict renders; the SHAP panel renders; the
+published-model row renders; three figures draw; and `qsdc_secrecy_capacity` is correctly ABSENT.
+Before this, all four of those panels vanished with no explanation.
+
+**The ONNX label is gone from the client timer.** On genomics the FHE line renders and reads
+`plaintext reference <ms>`; `, ONNX <n>` no longer appears anywhere on the page. That line used to
+carry two ONNX-labelled numbers differing by orders of magnitude, one of which was two plain-JS dot
+products.
+
+### Round 55, continued: corrections that had already been made somewhere else
+
+Every item here is a claim this project had **already corrected in one place** and left standing in
+another. That is the round's dominant finding at document granularity rather than at code granularity.
+
+**An un-re-verified figure was being published to the Hub.** `DATA_LICENSES.md` records that this
+project has carried two different spans for ESA-ADB - 14 years there, 17.5 in the registry - and that
+neither is re-verifiable: the Zenodo record, arXiv:2406.17826 and the upstream README all decline to
+state it. That file **withheld** the number. `registry.py` kept asserting it, and `publish_hf.py`
+copies `DatasetSpec.notes` verbatim into the model card, so the withheld figure appears in
+`models/satellite_telemanom/README.md` and `models/satellite_telemanom_student/README.md`. **A figure
+withheld everywhere except the copy that leaves the repository is not withheld.**
+
+**Two README copies of a generalisation `DATA_LICENSES.md` explicitly withdraws as WRONG.** That file
+records: the sentence "no commercial-OK real network-attack corpus exists" generalised two true facts
+about UNSW-NB15 and CIC-IDS into a claim about the field, and **5G-NIDD falsifies it** - CC BY 4.0,
+and this repository trains on it. The README said it twice, and `5G-NIDD` appeared nowhere in the
+README at all.
+
+**The checklist's orientation paragraph said telecom runs no CKKS.** The MPC half is right; the CKKS
+half is false, and four other passages in the same file already carry the correction. **Measured on
+the deployed site** at bundle `index-B8CifKLO.js`: the telecom page emits `encrypted_student_ms`,
+`encrypted_batch_ms` and `fhe_ms_per_rotation` from real node-seal. A correction landing in the
+detailed rows does not reach the paragraph a reader orients from, and the orientation paragraph is
+the one that misleads. The same paragraph called BB84/E91 "state-vector"; both are analytic channel
+models with a Gaussian-sampled QBER, and the adjective belongs to the QRNG named beside them.
+
+**"Clifford+T QCNN" and "T-gate count" for a circuit with zero T gates.** `qcnn.py` builds RY/RZ
+rotations and CNOT entanglers; `t_count()` is a Solovay-Kitaev BUDGET - `ceil(3*log2(1/eps))` per
+rotation times the parameter count - which its own docstring calls "rough" and "-ish", returning 630
+at 8 qubits. `report/build_data.py` records this correction as *fixed* and
+`docs/deliverable-verification.md` names README and architecture.md as the two files corrected. This
+module was the third copy. `BenchmarkPanel` also asserted "counted from the circuit" for both rows of
+one table, which is true of the browser row (56, genuinely counted) and false of the Python one.
+
+**A deleted `def` line merged an anti-tautology test into its neighbour.**
+`test_the_comparison_would_notice_a_divergence` lost its header but not its body, so collection read
+10 instead of 11 and `pytest -k` on that name matched nothing, while
+`docs/deliverable-verification.md` went on asserting the test exists. Detection was never lost - the
+body still ran - but a check nobody can ask for by name is one nobody will notice losing.
+
+**`DATA_LICENSES.md` said 5G-NIDD was "adopted, NOT yet implemented", that "no code path loads it
+yet", and that it has "52 columns".** All three false: `datasets.py` fetches it,
+`scripts/train/telecom_nidd.py` trains on all 1,215,890 flows, and the file has **113 columns**, 66
+dropped, **47 features**. The attribution obligation itself was discharged and renders in
+`ModelPanel`; only the prose went stale.
+
+**`references/satellite-event-count-investigation.md` still opens on the retired comparator.**
+Everything in it is framed against ESA-ADB's lenient 0.786 from Table 2, which Round 24 replaced with
+Supplementary Table 9's like-for-like 0.968 across the registry, README, both model cards, config,
+`build_data.py` and the trainer - and `README.md` links here in the present tense. Banner added,
+following this project's own convention. The denominator argument is unaffected and is why the file
+exists; three scored events against ESA-ADB's 29 holds against either comparator.
+
+**And the MathJax audit measured a proxy for the property.** Round 54 concluded "the conversion is
+largely DONE" from a grep for **backticked** `x = y`. Bare prose mathematics has no backticks and is
+invisible to that pattern by construction, so the probe could only ever return the already-marked-up
+cases - mechanism rather than outcome, again. An outcome-shaped scan finds four bare sites the grep
+cannot, each of them within three lines of its own converted twin. Converted in the house
+`` $`...`$ `` form; the first attempt used plain `$...$`, which is the delimiter this file's own
+style note reserves for display math.
+
+### Round 55, continued: a config constant wearing a measurement's name, and a workaround whose reopen condition had quietly been met
+
+**`fhe_max_abs_error` was emitted from `config.defaults.json` on one branch and from a real
+decryption on the other.** The fallback published the literal `4.6e-07` under the identical key the
+measured path fills with `6.20e-13` / `1.93e-9`. The only distinguisher was the log line beside it,
+and `downloadMetricsCsv` exports `{metric, value}` pairs with no log - so the CSV a reviewer opens
+showed a config default indistinguishable from a measurement, under a key `docs/threat-model.md`
+describes as the computed CKKS approximation error.
+
+Worth recording that the direction cuts AGAINST the usual pattern: `4.6e-07` is three to four orders
+WORSE than measured, so it understated precision. It is still a constant wearing a measurement's
+name. Renamed `fhe_max_abs_error_representative`, with an `encrypted_tier` status beside it following
+the `published_model_status: "failed"` convention already in the file. The latent twin on the bench
+row - which set the same constant UNCONDITIONALLY, measured branch included, and reaches no component
+today - is renamed too, because "nothing renders it" is a property of the current UI and not of the
+value.
+
+**A gate written earlier this same round had two defects.** `test_qsdc_agrees_across_languages.py`
+used a bare `pytest.skip`, making it the only one of the three cross-language browser gates not
+escalated by `QSH_REQUIRE_BROWSER_GATES=1`: measured with the variable set and esbuild absent, the
+two twins FAIL and it SKIPs. And its skip message claimed "this skip is why `check:qkd` is also a CI
+gate" - `qsdcSecrecyCapacity` appears **zero** times in `web/scripts`. Nothing in the web job covers
+that identity. **Citing a compensating control without checking it is the same move as citing an
+authority for a number that is not in it**, which `RI11` exists for, and I made it while writing a
+gate about one-language fixes.
+
+`scripts/ci_local.sh` step 1 now exports the variable too. This machine has esbuild, so it costs
+nothing and turns a silent skip - from a pruned `node_modules`, a failed `npm ci`, a renamed binary -
+into a failure.
+
+**And the OpenFHE EL9 workaround has met its own reopen condition.** It was recorded as a deliberate,
+permanent, host-specific workaround for a SIGSEGV inside `EvalBootstrapSetup` on AlmaLinux 9.7, with
+the condition written down: "reopens if the crash stops reproducing on the pinned OpenFHE version on
+EL9". Nothing watched for it. Measured on this EL9 host with `QSH_REQUIRE_OPENFHE_BOOTSTRAP=1`, three
+consecutive runs: **16.85 s, 16.05 s, 16.82 s, all exit 0.** The crash does not reproduce.
+
+That also closes a gap the script's own header claimed away. `ci.yml` runs that test as a blocking
+job; step 1 here deselects it with `-m "not slow"`, so "runs every blocking CI gate" was false for
+exactly one job - and **nothing anywhere compared the two step sets**. It is step 17 now, kept
+separate rather than folded into step 1, so a regression names which platform changed.
+
+A condition with no executor is an intention. That is the third form of the same finding this round,
+after `DP7` and the duplicate-ID guard the checklist said it had.
