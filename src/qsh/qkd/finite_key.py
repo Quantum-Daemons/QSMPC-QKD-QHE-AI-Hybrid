@@ -81,7 +81,7 @@ EQUATIONS, by number in arXiv:1801.03443v2
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from .bb84 import e_det_for_bound
 from .channel import ChannelParams
@@ -102,6 +102,17 @@ def _h2(x: float) -> float:
     return -x * math.log2(x) - (1.0 - x) * math.log2(1.0 - x)
 
 
+def _qkd_cfg():
+    """The shipped QKD config, imported lazily so this module stays importable standalone.
+
+    Mirrors `bb84._qkd_cfg` deliberately rather than importing it: same shape, same reason, and a
+    reader comparing the two dataclasses sees the same mechanism in both.
+    """
+    from ..config import get_config
+
+    return get_config().qkd
+
+
 @dataclass(frozen=True)
 class FiniteKeyParams:
     """The variables Rusca et al. optimise over, plus the security parameters.
@@ -112,8 +123,13 @@ class FiniteKeyParams:
     optimisation has the paper's procedure behind it rather than a hand-picked grid.
     """
 
-    mu_signal: float = 0.5
-    mu_decoy: float = 0.1
+    # READ FROM CONFIG, not spelled here - the same fix `QKDParams` took in Round 47 and this
+    # sibling did not follow, which is the one-site-short pattern this project has recorded in eight
+    # consecutive rounds. These were `0.5` and `0.1` while the shipped pair moved to the finite-key
+    # optimum `0.3416` / `0.1417`, so every bare `FiniteKeyParams()` - which is how the refuted-band
+    # test constructs it - evaluated the paper's bound at intensities the demo does not run.
+    mu_signal: float = field(default_factory=lambda: _qkd_cfg().mu_signal)
+    mu_decoy: float = field(default_factory=lambda: _qkd_cfg().mu_decoy)
     p_signal: float = 0.5          # p_mu1, probability of sending the signal intensity
     p_z: float = 0.5               # basis bias, applied to Alice and Bob alike
     eps_sec: float = 1e-9          # the paper's own value
