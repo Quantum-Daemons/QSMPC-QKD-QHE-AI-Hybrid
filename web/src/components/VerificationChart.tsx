@@ -530,6 +530,7 @@ export function VerificationChart({ res, modelKey }: { res: ModelEvalResult; mod
   if (plot.kind === "per-class-f1" && plot.perClass?.length) {
     const worst = plot.perClass.reduce((a, b) => (b.f1 < a.f1 ? b : a));
     return (
+      <div className="chart-pair">
       <figure className="chart-figure">
         <figcaption className="muted small">
           Per-class F1 for <code>{modelKey}</code>, {res.n} held-out rows scored in this tab.
@@ -548,6 +549,11 @@ export function VerificationChart({ res, modelKey }: { res: ModelEvalResult; mod
           </BarChart>
         </ResponsiveContainer>
       </figure>
+      {plot.reliability?.length ? (
+        <ReliabilityChart data={plot.reliability} of={plot.reliabilityOf ?? "predicted probability"}
+                          modelKey={modelKey} />
+      ) : null}
+      </div>
     );
   }
 
@@ -621,6 +627,10 @@ export function VerificationChart({ res, modelKey }: { res: ModelEvalResult; mod
               </BarChart>
             </ResponsiveContainer>
           </figure>
+        ) : null}
+        {plot.reliability?.length ? (
+          <ReliabilityChart data={plot.reliability} of={plot.reliabilityOf ?? "p(positive)"}
+                            modelKey={modelKey} />
         ) : null}
       </div>
     );
