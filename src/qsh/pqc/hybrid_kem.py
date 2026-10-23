@@ -1,10 +1,14 @@
 """Hybrid post-quantum key encapsulation: ML-KEM + X25519.
 
-Implements the NSA/NIST/IETF-recommended *hybrid* construction (a classical ECDH
-combined with a NIST PQC KEM) so the session key is secure as long as *either*
-primitive holds. This is the report's "PQC-first hybrid" mandate (CNSA 2.0, FIPS 203)
-and defends against Harvest-Now-Decrypt-Later: the X25519 half gives today's
-assurance, the ML-KEM half gives quantum resistance.
+Implements a *hybrid* construction (a classical ECDH combined with a NIST PQC KEM), the
+kind BSI TR-02102-1 v2026-01 section 2.2 recommends and NIST SP 800-227 section 4.6.3
+specifies a combiner for, so the session key is secure as long as *either* primitive
+holds. This is the report's "PQC-first hybrid" (FIPS 203 for the ML-KEM half). It is NOT
+a CNSA 2.0 requirement, as this docstring used to say: NSA "will not require NSS
+developers to use hybrid certified products" (CNSA 2.0 FAQ Ver. 2.2), and the ML-KEM-768
+default is not a CNSA 2.0 parameter set (ML-KEM-1024 is selectable). It defends against
+Harvest-Now-Decrypt-Later: the X25519 half gives today's assurance, the ML-KEM half gives
+quantum resistance.
 
 Backends: ML-KEM via Open Quantum Safe ``liboqs`` (``oqs``); X25519 + HKDF via
 ``cryptography``. The two shared secrets are bound together with HKDF-SHA256 over a

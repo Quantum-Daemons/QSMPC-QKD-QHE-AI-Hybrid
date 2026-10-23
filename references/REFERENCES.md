@@ -647,11 +647,23 @@ Added in Round 18 and previously recorded only in source docstrings.
 - NIST **SP 800-90B** - entropy sources, including the clause 4.4 continuous health tests
   (Repetition Count, Adaptive Proportion) that `src/qsh/qrng/health.py` implements.
   URL: https://csrc.nist.gov/pubs/sp/800/90/b/final
-- NSA **CNSA 2.0** - 2027 procurement mandate. On QKD, NSA answers **"No"** to using it to protect a
-  National Security System and says it "does not support the usage of QKD or QC". It does **not**
-  recommend a PQC-hybrid QKD add-on either. The hybrid framing in this repository comes from **BSI
-  TR-02102-1 v2026-01 section 2.2**, not from NSA.
-  URL: https://www.nsa.gov/Cybersecurity/Post-Quantum-Cryptography-FAQs/
+- NSA **CNSA 2.0** - national security systems only (*"NSA does not mandate requirements on any other
+  entity outside of NSS"*). Under CNSSP 15, CNSA 2.0 algorithms are required in all new NSS acquisitions
+  from 2027-01-01, equipment that cannot support them is phased out by 2030-12-31, and CNSA 2.0 is
+  mandatory for all use by 2031-12-31. On QKD, the CNSA 2.0 and Quantum Computing FAQ (Ver. 2.2, October
+  2026) answers **"No"** to using it to protect a National Security System, and on hybrids it says NSA
+  *"will not require NSS developers to use hybrid certified products"*. The sentence that NSA *"does not
+  support the usage of QKD or QC to protect communications in National Security Systems"* is from NSA's
+  Post-Quantum Cybersecurity Resources page, not the FAQ (it was attributed to the FAQ until
+  2026-10-24). NSA does **not** recommend a PQC-hybrid QKD add-on, and neither does BSI: TR-02102-1
+  v2026-01 recommends a quantum-safe plus classical hybrid (section 2.2) and does not recommend QKD
+  (section 2.1). The optional QKD add-on in this repository is the project's own choice.
+  URL (FAQ Ver. 2.2): https://media.defense.gov/2022/Sep/07/2003071836/-1/-1/0/CSI_CNSA_2.0__FAQ_v2.2.PDF
+  (linked from https://www.nsa.gov/Cybersecurity/Post-Quantum-Cryptography-Resource-Hub/; nsa.gov
+  returns HTTP 403 to scripts, so the 2026-10-23 check read an archived copy)
+  URL (resources page): https://www.nsa.gov/Cybersecurity/Post-Quantum-Cybersecurity-Resources/
+  The URL this entry used to give, `nsa.gov/Cybersecurity/Post-Quantum-Cryptography-FAQs/`, could not be
+  confirmed (UNVERIFIED - needs confirmation) and is no longer cited.
 - **BSI TR-02102-1**, version 2026-01.
   URL: https://www.bsi.bund.de/EN/Themen/Unternehmen-und-Organisationen/Standards-und-Zertifizierung/Technische-Richtlinien/TR-nach-Thema-sortiert/tr02102/tr02102_node.html
 - **HNDL** (Harvest Now, Decrypt Later) and Q-Day acceleration - Gidney, arXiv:2505.15917, 2025.
@@ -842,9 +854,12 @@ belongs in this file rather than only in a comment.
   card and baked into `config.defaults.json`; the reason the event-wise F0.5 non-reproduction is
   reported as metric instability rather than as a training failure. Added: 2026-08-07.
 - **EO 14412, "Securing the Nation Against Advanced Cryptographic Attacks"**, signed 2026-06-22,
-  91 FR 38483. PQC key establishment on high-value assets by 2030-12-31, digital signatures by
-  2031-12-31, FAR rule putting contractors on the 2030 date; National Security Systems excluded and
-  remaining on CNSA 2.0. The binding US instrument, against NIST IR 8547 which is still a draft.
+  91 FR 38483. PQC key establishment on high-value assets and high impact systems by 2030-12-31,
+  digital signatures by 2031-12-31 (section 4(b)); section 6(c) directs the FAR Council to publish a
+  *proposed* rule within 180 days (about 2026-12-19) that would put covered contractors on FIPS,
+  including the PQC FIPS, by 2030-12-31 - none in the Federal Register as of 2026-10-23 (this entry
+  used to describe that rule as if it existed); National Security Systems excluded and remaining on
+  CNSA 2.0. The binding US instrument, against NIST IR 8547 which is still a draft.
   Added: 2026-08-07.
 
 ## Security scoring: sources evaluated and DECLINED (Round 22)
@@ -1031,7 +1046,7 @@ established is worth keeping, because otherwise it gets re-litigated every round
   whitehouse.gov. The operational instrument behind EO 14412, and the most consequential item in this
   batch for [`docs/pqc-roadmap.md`](../docs/pqc-roadmap.md):
   - Action One: mitigate as much quantum risk as feasible **by 2030-12-31**.
-  - Action Two: agency PQC Migration Plans to OMB and ONCD **within 120 days** (about 2026-10-22).
+  - Action Two: agency PQC Migration Plans to OMB and ONCD **within 120 days** (due about 2026-10-22, now passed).
   - Five phases: **1** 2026-2027 strategy and discovery, **2** 2027-2028 pilots, **3** 2028-2030
     prioritised migration and key establishment, **4** 2031 signature migration, **5** 2035 full
     migration.

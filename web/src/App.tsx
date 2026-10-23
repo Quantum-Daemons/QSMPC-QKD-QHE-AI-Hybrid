@@ -44,7 +44,8 @@ export default function App() {
         </nav>
         <div style={{ marginTop: 28, fontSize: 11 }} className="muted">
           PQC-first hybrid · NIST FIPS 203/204<br />
-          CNSA 2.0 · HNDL / Q-Day aware
+          {/* Was "CNSA 2.0 · HNDL / Q-Day aware", which reads as a compliance badge. */}
+          Tracks CNSA 2.0 (defaults are not CNSA 2.0) · HNDL aware
         </div>
       </aside>
       {/* `tabIndex={-1}` so the skip link can actually MOVE focus here. Without it the browser

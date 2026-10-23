@@ -41,8 +41,10 @@ simulated quantum layer -- is an established pattern, not a shortcut: arXiv:2607
 validated a VPN against a *simulated* KME before moving to LuxQuanta hardware.
 
 The national position on QKD itself is worth stating where a reader will see it: ANSSI, BSI, NLNCSA
-and the Swedish authorities jointly hold that QKD is "not yet sufficiently mature from a security
-point of view" and that the priority is PQC migration in hybrid solutions. This module models a QKD
+and the Swedish authorities jointly hold that "QKD is not yet sufficiently mature from a security
+perspective" and that "the clear priorities should therefore be the migration to post-quantum
+cryptography and/or the adoption of symmetric keying" (Position Paper on Quantum Key Distribution,
+2024). This module models a QKD
 control plane; it does not claim QKD is production-ready.
 """
 
