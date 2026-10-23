@@ -13,8 +13,7 @@ export default function UseCases() {
       <h1 className="page-title">Industry Use Cases</h1>
       <p className="page-sub">
         Each use case has its own page: a live <b>two-party (Alice↔Bob) simulator</b> you Start / Pause /
-        Step / Stop / Restart, with that industry's benchmark (latency · accuracy · security posture ·
-        quantum advantage) and, where applicable, a signed XAI explanation. Finance / Medical / Genomics run a
+        Step / Stop / Restart, with that industry's benchmark (latency · accuracy · security posture) and, where applicable, a signed XAI explanation. Finance / Medical / Genomics run a
         private inference; Telecom and Satellite are QKD/QSDC paths. Each card names the model that
         page actually runs, the corpus it was trained on and that corpus's licence, read from the
         registry rather than written here.

@@ -7,11 +7,14 @@ with a classical FHE scheme:
 
     ct = ( QOTP.Enc(otk, |psi>) ,  FHE.Enc(pk, otk) )
 
-The quantum part has the same dimension as the plaintext, so the *ciphertext/plaintext
-ratio approaches 1* ("rate-1") -- decisive for transferring large encrypted states
-(e.g. medical images). This module wires QOTP (:mod:`~qsh.qhe.qotp`) to a classical
-key-encapsulation stand-in and reports the achieved rate, the metric the benchmark
-tracks (target <= 1.2).
+In the paper, "rate 1" is an ASYMPTOTIC statement: rate is plaintext size over evaluated-ciphertext
+size, counted in qubits for quantum data and bits for classical data and summed (Def. 6.1), and it
+tends to 1 only as the security parameter and the message length grow (Sec. 6.2). It is reached by
+moving the Pauli key into the rate-1 CLASSICAL FHE of Brakerski, Doettling, Garg and Malavolta
+(TCC 2019) - so classical FHE reaches rate 1 as well (also Gentry and Halevi, TCC 2019), and a
+rate-1 QFHE is not a quantum advantage in ciphertext expansion. Security is computational
+(quantum LWE). This module wires QOTP (:mod:`~qsh.qhe.qotp`) to a classical key-encapsulation
+stand-in and reports a ratio in BYTES of a simulated state vector, which is not the paper's measure.
 
 WHAT THIS MODULE IS NOT, stated because the name promises more than the code delivers.
 There is **no ``Eval``**. The public surface is ``encrypt_state``,
@@ -25,10 +28,17 @@ The FHE half is a self-declared stand-in, not an FHE scheme - the QOTP key is ma
 derived from a hybrid-KEM shared secret. That is stated in ``encrypt_state`` and repeated here
 because a reader who only skims the module header would otherwise take "Rate-1 QFHE" at face value.
 
-The measured ratio is size-dependent and approaches 1 from above, because the encapsulated key is a
-fixed ~1135 bytes while the state grows: **1.2769 at 8 qubits, 1.0693 at 10, 1.0173 at 12**. The
-1.32 figure in ``config/defaults.py`` is the LITERATURE value feeding a static Overview KPI, not a
-measurement of this code.
+The byte ratio is size-dependent and approaches 1 from above - **1.2769 at 8 qubits, 1.0693 at 10,
+1.0173 at 12** - but only because its denominator is a CLASSICALLY SIMULATED state vector of 2^n
+complex amplitudes (16 * 2^n bytes), which swamps the fixed ~1135-byte encapsulated key. A quantum
+ciphertext has no size in bytes. In the paper's own units this transport is n qubits plus the
+masked 2n-bit pad plus a fixed KEM ciphertext: about 1135x at 8 qubits, tending to 3 (not 1) as n
+grows, because 2n key bits are sent every time.
+
+CORRECTED 2026-10-23: this docstring called the ``qsmpc_ct_pt_ratio = 1.32`` config constant "the
+LITERATURE value". It is not: the paper reports no concrete figure at all (checked against
+``references/Rate-1_Quantum_Fully_Homomorphic_Encryption.pdf``). The constant fed a static Overview
+card comparing it with a CKKS byte ratio; the card and the constant are both removed.
 """
 
 from __future__ import annotations

@@ -194,9 +194,11 @@ const QSMPC_COMPARE: Step = {
       : String(c.inference ?? "") === "ckks" ? "CKKS surfaced as primary"
       : "CKKS surfaced as primary (default)";
     const cls = m["primary_inference_class"];
+    // No "advantage N/10" suffix: the quantum-advantage score is retired from display and this stage
+    // no longer emits `quantum_advantage_score` (see `quantumAdvantage` in clientCompute.ts).
     return `QSMPC-FHE comparison · QOTP + QCNN (T-gates) · ${primary}`
       + (cls == null ? "" : ` · class ${cls}`)
-      + ` · advantage ${f(m, "quantum_advantage_score")}/10`;
+      + ` · ${f(m, "qsmpc_t_gates")} T-gates counted`;
   },
 };
 

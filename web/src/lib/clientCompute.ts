@@ -2,7 +2,8 @@
 // benchmark + E2E pipeline, so the demo runs entirely in the browser (PQC via @noble,
 // QKD/QBER via quantumSim, private inference via onnxruntime-web, PSI via WebCrypto HMAC).
 // The security-score and quantum-advantage formulas mirror src/qsh/benchmark/{security,
-// quantum_advantage}.py so demo numbers track the server.
+// quantum_advantage}.py. Neither is RENDERED: the 0-100 composite was retired in Round 22 and the
+// quantum-advantage score on 2026-10-23 (see `quantumAdvantage`).
 import { ml_dsa65, ml_dsa87 } from "@noble/post-quantum/ml-dsa.js";
 import { ml_kem768, ml_kem1024 } from "@noble/post-quantum/ml-kem.js";
 import { x25519 } from "@noble/curves/ed25519.js";
@@ -231,6 +232,17 @@ export function securityFacts(config: any, metrics: Record<string, any>): Securi
   const keyBits = typeof metrics.secure_key_bits === "number" ? metrics.secure_key_bits : null;
   const qber = typeof metrics.qber === "number" ? metrics.qber : null;
   const skr = typeof metrics.skr_per_pulse === "number" ? metrics.skr_per_pulse : null;
+  // ONE protocol test, at FUNCTION scope. It used to be declared inside the QKD branch below, under a
+  // comment saying "A shared constant is what stops the next row from being the next omission" - and
+  // the QBER row sits OUTSIDE that branch, so it could not read the constant and did omit the test:
+  // an E91 run's QBER was captioned "this run's two-intensity decoy-state bound ... aborts above 0.11".
+  // E91 here has no decoy states, and its rate reaches zero at the point computed below, not at 0.11.
+  const isE91 = String(config?.qkd_protocol ?? qkdCfg().protocol) === "e91";
+  const fEC = qkdCfg().error_correction_eff;
+  // Where the E91 model's device-dependent rate 1 - h(e) - fEC h(e) reaches zero (0.0981 at 1.16).
+  const e91ZeroKey = (() => { let lo = 0, hi = 0.5;
+    for (let i = 0; i < 60; i++) { const m = (lo + hi) / 2; if (1 - (1 + fEC) * h2(m) > 0) lo = m; else hi = m; }
+    return Math.round(lo * 1e4) / 1e4; })();
 
   const facts: SecurityFact[] = [
     { label: "KEM", value: `${kem} - NIST Category ${cat}`, kind: "standard",
@@ -250,8 +262,8 @@ export function securityFacts(config: any, metrics: Record<string, any>): Securi
     // ONE protocol test, read by every row below it. It was written inline on the key-material row
     // and nowhere else, so when the secret-key-rate row was added three lines later it simply did
     // not ask - and told E91 users their rate came from a decoy-state estimate. A shared constant
-    // is what stops the next row from being the next omission.
-    const isE91 = String(config?.qkd_protocol ?? qkdCfg().protocol) === "e91";
+    // is what stops the next row from being the next omission. (Now declared at function scope:
+    // declared here, it did not reach the QBER row outside this branch.)
     // The warning is the point. A QKD profile that produced no key is the case the composite scored
     // 100 on, because nothing checked whether the channel actually delivered.
     facts.push({
@@ -259,7 +271,7 @@ export function securityFacts(config: any, metrics: Record<string, any>): Securi
       value: keyBits == null ? "not reported" : `${keyBits} secure bits`,
       kind: "measured",
       source: isE91
-        ? "E91 / CHSH run, GLLP secure fraction"
+        ? "E91 / CHSH run, device-dependent secure fraction on the model error rate"
         : "BB84 decoy-state run, two-intensity secure fraction",
       // THE BAND, NOT JUST THE ENDPOINT. This tested `keyBits === 0` while the behaviour it warns
       // about switches at 256 - the threshold `stages.py` and `:1233` below both use to decide
@@ -284,7 +296,9 @@ export function securityFacts(config: any, metrics: Record<string, any>): Securi
       // sibling pair three lines apart was made protocol-aware and the other was not.
       facts.push({ label: "Secret-key rate", value: `${skr} per pulse`, kind: "measured",
         source: isE91
-          ? "GLLP secure fraction on the observed QBER; E91 has no decoy states"
+          ? "device-dependent secure fraction 1 - h(e) - f h(e) on the MODEL error rate, not the "
+            + "sampled QBER (Shor-Preskill form; entangled source: Ma, Fung & Lo, Phys. Rev. A 76, "
+            + "012307, 2007); no decoy states. CHSH S is a consistency check, not a certificate"
           : "two-intensity decoy-state bound, Ma, Qi, Zhao & Lo, Phys. Rev. A 72, 012326 (2005)" });
     }
     // What the decoy states are actually buying on THIS channel.
@@ -349,11 +363,19 @@ export function securityFacts(config: any, metrics: Record<string, any>): Securi
       label: "QBER",
       value: `${qber}${dead ? " - no secure key at this error rate" : ""}`,
       kind: "measured",
-      source: skr != null
+      source: skr != null && isE91
+        ? `E91: a sampled draw around the Werner-model error rate (1 - V)/2, with S = 2 sqrt(2) V. The `
+          + `device-dependent rate reaches zero at ${e91ZeroKey} (f = ${fEC}); a device-independent `
+          + "analysis would need S > 2.424, i.e. Q < 0.0715, for this noise model (Acin et al., "
+          + "Phys. Rev. Lett. 98, 230501, 2007)"
+        : skr != null
         ? "this run's two-intensity decoy-state bound (Ma, Qi, Zhao & Lo, Phys. Rev. A 72, 012326); "
           + `post-processing aborts above ${s.qber_secure_threshold}`
         : `no rate reported by this run; post-processing threshold ${s.qber_secure_threshold}`,
-      warn: dead ? "the decoy-state bound yields no secure key on this channel" : undefined,
+      warn: dead
+        ? (isE91 ? "the device-dependent E91 rate yields no secure key at this error rate"
+                 : "the decoy-state bound yields no secure key on this channel")
+        : undefined,
     });
   }
   return facts;
@@ -403,8 +425,23 @@ export function securityScore(o: SecOpts) {
 }
 
 // --------------------------------------------------------------------------- //
-//  Quantum advantage (mirror of qsh/benchmark/quantum_advantage.py)
+//  Quantum advantage (mirror of qsh/benchmark/quantum_advantage.py) - RETIRED FROM DISPLAY
 // --------------------------------------------------------------------------- //
+// Kept as the mirror of the Python module, and called from NOWHERE. Do not wire it back to a panel,
+// a log line, a diagram label or a prompt: `tests/test_the_retired_comparisons_stay_retired.py` fails
+// if anything outside this definition calls it.
+//
+// Why it was retired, so the reason survives the code. It printed "Quantum path is ~6146x more
+// communication-compact and 5794x faster; dominant advantage" and "10/10", and its three inputs did not
+// measure the same thing on both sides:
+//   communication  a CKKS ciphertext BYTE ratio divided by a QOTP QUBIT ratio of 1.0 that leaves out
+//                  the 2n-bit classical key (and classical FHE reaches rate 1 as well: Gentry-Halevi,
+//                  TCC 2019; Brakerski-Doettling-Garg-Malavolta, TCC 2019)
+//   latency        a real CKKS + garbled-circuit inference divided by an 8-qubit state-vector simulation
+//                  of an UNTRAINED circuit on random input - and it moved 5794x -> 8163x -> 9610x
+//                  between three runs, because it is a ratio of two noisy wall-clocks
+//   security       a 1.5x multiplier for a label the run does not achieve (the pad is seeded)
+// It is the same retirement, for the same reason, as the 0-100 composite in Round 22.
 export function quantumAdvantage(classical: any, quantum: any, w?: { comm: number; latency: number; security: number }) {
   const qa = quantumAdvantageCfg();      // weights + tiers from the central config (single source)
   const ww = w ?? { comm: qa.w_comm, latency: qa.w_latency, security: qa.w_security };
@@ -1020,9 +1057,19 @@ function mpcFheRow(usecase: string | undefined, workload: string, modelSize: str
 }
 
 // QSMPC-FHE row — GENUINE state-vector QOTP + Clifford+T QCNN inference (quantumSim.qotpQcnnInfer):
-// `latency_ms` is the REAL-measured wall-clock of the simulation, `t_gate_count`/`qubits` are COUNTED from
-// the actual circuit, and ct/pt = 1.0 is the QOTP perfect-hiding property (Rate-1 QFHE's ~1.3 is the
-// classical-key-included literature figure). A state-vector SIMULATION, not quantum hardware.
+// `latency_ms` is the REAL-measured wall-clock of the simulation and `t_gate_count`/`qubits` are COUNTED
+// from the actual circuit. A state-vector SIMULATION, not quantum hardware.
+//
+// ct/pt IS WITHHELD (null) FOR THIS ROW, and the comment here used to say the opposite twice over. It
+// said ct/pt = 1.0 "is the QOTP perfect-hiding property" and that "Rate-1 QFHE's ~1.3 is the classical-
+// key-included literature figure". Neither holds. A QOTP ciphertext is n qubits PLUS a 2n-bit classical
+// key (Ambainis, Mosca, Tapp, de Wolf, FOCS 2000; Boykin and Roychowdhury, PRA 67, 042317, 2003), so
+// "1.0" counts only the half that does not grow. In the Rate-1 QFHE paper's own units (qubits plus bits,
+// Chardouvelis, Doettling, Malavolta, TCC 2021, Def. 6.1) an 8-qubit KEM-wrapped transport is ~1135x and
+// tends to ~3x, not 1, as n grows. And that paper reports NO concrete figure - "~1.3" is not in it.
+// Printing 1.0 beside the CKKS row's byte ratio is the comparison the overview card made, so the
+// quantum row shows a dash and the table footnote says why.
+const QSMPC_SECURITY_MODEL = "information-theoretic as a scheme (QOTP); not this run - the pad is seeded";
 function qsmpcFheRow(workload: string, modelSize: string, u: () => number, samples = 4, scale = 1,
   nQubits = benchCfg().quantum_qubits,
   sec?: { kem?: string; qkdBits?: number | null; qber?: number | null }) {
@@ -1061,11 +1108,14 @@ function qsmpcFheRow(workload: string, modelSize: string, u: () => number, sampl
     // input is `u() * 2 - 1`, uniform noise. What this row legitimately measures is the state-vector
     // simulation's latency, its counted T-gate total, its qubit count and its security model.
     accuracy: null, max_abs_error: null,
-    ciphertext_plaintext_ratio: 1.0,                  // QOTP: ciphertext = same #qubits as plaintext (genuine)
+    ciphertext_plaintext_ratio: null,                 // withheld: not comparable in bytes, see the header
     t_gate_count: last.tGates, qubits: last.qubits,   // counted from the actual gate list
-    security_model: "information-theoretic (QOTP perfect hiding)",
+    // ONE constant, read twice. The row label and the scorer input were two literals, and the scorer
+    // parses the label for "information-theoretic" - so rewording one copy would have moved a score
+    // with every gate green (`tests/test_security_model_prose_is_not_a_silent_score_input.py`).
+    security_model: QSMPC_SECURITY_MODEL,
     security_score: securityScore({
-      securityModel: "information-theoretic (QOTP perfect hiding)", kem: sec?.kem,
+      securityModel: QSMPC_SECURITY_MODEL, kem: sec?.kem,
       // qber was the literal 0.0128 here while the panel described the score as reflecting "QBER
       // eavesdrop margin" for this run — so moving the Eve slider changed the QKD panel and left this
       // number untouched. Use the run's measured QBER when the pipeline produced one.
@@ -1093,8 +1143,8 @@ export async function clientBenchmark(workload = "linear", samples = 20, modelSi
   if (modelSize !== "large") { const reps = Math.min(samples, 6); for (let i = 0; i < reps; i++) hybridForward(dims, u); }
   const classical = mpcFheRow(undefined, workload, modelSize);
   const quantum = qsmpcFheRow(workload, modelSize, u, Math.min(samples, 6), benchScale(undefined, modelSize, workload));
-  return { workload, model_size: modelSize, results: [classical, quantum],
-    advantage: quantumAdvantage(classical, quantum) };
+  // `advantage` is null: the quantum-advantage score is retired from display (see `quantumAdvantage`).
+  return { workload, model_size: modelSize, results: [classical, quantum], advantage: null };
 }
 
 // Inference use cases produce both an MPC-FHE row + a QSMPC-FHE comparison; telecom/satellite get the
@@ -1165,7 +1215,7 @@ export function assembleBenchmark(
   const measured: MeasuredHybrid | null = opts?.artifacts?._measured_hybrid ?? null;
   const c = mpcFheRow(usecase, workload, modelSize, measured, sec);
   return { workload, model_size: modelSize, results: pub ? [c, q, pub] : [c, q],
-    advantage: quantumAdvantage(c, q),
+    advantage: null,                    // retired from display; see `quantumAdvantage`
     live: true, client_compute_ms: clientComputeMs, measured: !!measured,
     security_facts: securityFacts(config, opts?.metrics ?? {}) };
 }
@@ -1953,6 +2003,12 @@ export function runClientPipeline(
           metric(stage, "qkd_pulses", pulses);
         }
         if (eRes) metric(stage, "chsh_s", r2(eRes.chshS));
+        // The MODEL error rate e0 = (1 - V)/2, to four places, beside the sampled `qber`. S is computed
+        // from the same V, so S = 2 sqrt(2)(1 - 2 e0) holds EXACTLY - a self-consistency of the Werner
+        // model, not an independent validation - and only approximately from the displayed `qber`,
+        // which is a shot-noise draw rounded to two places: at 1 km with no misalignment it shows
+        // 0.02 while e0 is 0.0150, so 2 sqrt(2)(1 - 2 x 0.02) = 2.72 against the S of 2.74 shown.
+        if (eRes) metric(stage, "e91_model_qber", Math.round(eRes.e0 * 1e4) / 1e4);
         emit("log", stage, eRes
           ? `E91 (entanglement / CHSH S=${r2(eRes.chshS)}): QBER=${res.qber.toFixed(4)}, ${res.secureKeyBits} secure bits`
           : `BB84 (decoy-state): QBER=${res.qber.toFixed(4)}, ${res.secureKeyBits} secure bits`);
@@ -2030,6 +2086,8 @@ export function runClientPipeline(
           metric(stage, "qkd_pulses", satPulses);
         }
         if (satERes) metric(stage, "chsh_s", r2(satERes.chshS));
+        // The satellite twin of the fibre stage's `e91_model_qber` - same reason, same precision.
+        if (satERes) metric(stage, "e91_model_qber", Math.round(satERes.e0 * 1e4) / 1e4);
         (config as any)._satQber = res.qber;
         emit("log", stage, satERes
           ? `free-space E91 (CHSH S=${r2(satERes.chshS)}): ${res.channelLossDb}dB loss, QBER=${res.qber.toFixed(4)}, ${res.secureKeyBits} bits`
@@ -3054,14 +3112,15 @@ export function runClientPipeline(
         // badge read 10/10 while the metrics table two panels down read 9.6 and the log line agreed
         // with the table. `private_inference` runs before this stage, so the measurement is already
         // in hand - there was never a reason to model it.
-        const measuredHybrid: MeasuredHybrid | null = artifacts._measured_hybrid ?? null;
-        const adv = isInf
-          ? quantumAdvantage(mpcFheRow(usecase, wl, ms, measuredHybrid, sec), qrow)
-          : null;
-        if (adv) metric(stage, "quantum_advantage_score", adv.score);
+        // NO ADVANTAGE SCORE IS COMPUTED OR LOGGED HERE ANY MORE. This stage emitted
+        // `quantum_advantage_score` and a log line ending "quantum advantage 10/10 (dominant)", on
+        // /orchestration and on every inference page, and the agent prompt then quoted it back as run
+        // context. Its inputs were a CKKS byte ratio divided by a QOTP qubit ratio and a CKKS+MPC
+        // inference latency divided by an 8-qubit state-vector simulation latency - neither pair
+        // measures the same thing. Retired on 2026-10-23, as the 0-100 composite was in Round 22.
         metric(stage, "qsmpc_t_gates", qrow.t_gate_count);
-        emit("log", stage, `QSMPC-FHE comparison (QOTP+QCNN, ${qrow.t_gate_count} T-gates)`
-          + (adv ? `: quantum advantage ${adv.score}/10 (${adv.tier})` : " (security baseline)"));
+        emit("log", stage, `QSMPC-FHE comparison (QOTP+QCNN, ${qrow.t_gate_count} T-gates): `
+          + "gate count, qubit count and simulation latency are measured; no advantage score is derived");
         break;
       }
       case "result": {

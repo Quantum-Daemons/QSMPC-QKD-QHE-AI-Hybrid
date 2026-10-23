@@ -25,7 +25,6 @@ export default function BenchmarkPanel(
   const chartRef = useRef<HTMLDivElement>(null);
   const rows: any[] = result?.results ?? [];
   const facts: any[] = result?.security_facts ?? [];
-  const advantage = result?.advantage ?? null;
   const workload = result?.workload ?? "linear";
 
   // Bars are labelled by PATH, not by backend.
@@ -36,8 +35,13 @@ export default function BenchmarkPanel(
   // one, so two of the three bars could not be identified at all. `path` is short, distinct, and is
   // already the first column of the Detailed results table below, so the chart and the table now
   // name the same rows the same way. The backend still reaches the reader through that table.
-  const ratioData = rows.filter((r) => r.ciphertext_plaintext_ratio != null)
-    .map((r) => ({ name: r.path, ratio: r.ciphertext_plaintext_ratio, path: r.path }));
+  // The QSMPC-FHE row's ct/pt is NEVER rendered, whichever transport produced it. The browser row
+  // carries null; the Python row still carries a byte ratio of a SIMULATED state vector (1.2769 at
+  // 8 qubits) for API compatibility. Neither is comparable with the CKKS byte ratio beside it, and
+  // rendering either recreates the comparison the retired overview card and score made.
+  const ctpt = (r: any) => (r.path === "QSMPC-FHE" ? null : r.ciphertext_plaintext_ratio ?? null);
+  const ratioData = rows.filter((r) => ctpt(r) != null)
+    .map((r) => ({ name: r.path, ratio: ctpt(r), path: r.path }));
   const latData = rows.map((r) => ({ name: r.path, latency: r.latency_ms, path: r.path }));
   // hybrid split — the MPC-FHE row carries the linear-FHE vs non-linear-MPC breakdown
   const split = rows.find((r) => r.fhe_linear_ms != null && r.mpc_nonlinear_ms != null);
@@ -50,7 +54,7 @@ export default function BenchmarkPanel(
     <div className="card" style={{ marginTop: 16 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", flexWrap: "wrap", gap: 8 }}>
         <h3 style={{ marginTop: 0 }}>
-          {compact ? "Security posture & quantum advantage" : "Benchmark — MPC-FHE vs QSMPC-FHE (from this run)"}
+          {compact ? "Security posture" : "Benchmark — MPC-FHE and QSMPC-FHE rows (from this run)"}
         </h3>
         <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
           {result?.live && <span className="tag" style={{ borderColor: "#b072ff", color: "#b072ff" }}>live run</span>}
@@ -67,47 +71,18 @@ export default function BenchmarkPanel(
       {rows.length === 0 && (
         <p className="muted" style={{ margin: "8px 0 0" }}>
           Press <b>▶ Run</b> above — the benchmark fills in from that live run (computation time, accuracy,
-          the security posture facts{compact ? "" : ", the FHE-linear / MPC-non-linear split"} and the quantum
-          advantage). One run, one result.
+          the security posture facts{compact ? "" : " and the FHE-linear / MPC-non-linear split"}). One run,
+          one result.
         </p>
       )}
 
-      {advantage && (
-        <div className="card" style={{ marginTop: 12, borderColor: "#b072ff" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 20, flexWrap: "wrap" }}>
-            <div style={{ textAlign: "center", minWidth: 120 }}>
-              <div style={{ fontSize: 38, fontWeight: 700, color: "#b072ff", lineHeight: 1 }}>
-                {advantage.score}<span style={{ fontSize: 16, color: "#97a3b6" }}>/10</span>
-              </div>
-              <div className="tag" style={{ marginTop: 6 }}>{advantage.tier} advantage</div>
-              {/* What the number IS, next to the number. A 38 px "N/10" under the heading "Quantum
-                  advantage" reads to a non-expert as a measured benchmark result, and the disclosure
-                  that it is a weighted composite of three configured ratios sat about thirty lines
-                  below in 11 px muted text. This panel spends four lines explaining that the 0-100
-                  composite was retired for being an unjustified weighted composite; the same reader
-                  should not have to scroll to learn that this is one too. */}
-              <div className="muted" style={{ fontSize: 11, marginTop: 4 }}>
-                a weighted geometric mean of three ratios (communication compactness, latency, security
-                model), not a measured speed-up
-              </div>
-              {/* A clamped 10/10 and a run far past the ceiling render identically; say which. */}
-              {advantage.clamped && typeof advantage.score_raw === "number" && (
-                <div className="muted" style={{ fontSize: 11, marginTop: 4 }}>
-                  raw {advantage.score_raw} (clamped to 0-10)
-                </div>
-              )}
-            </div>
-            <div style={{ flex: 1, minWidth: 240 }}>
-              <h3 style={{ marginTop: 0 }}>Quantum advantage</h3>
-              <p style={{ margin: "4px 0" }}>{advantage.interpretation}</p>
-              <p className="muted" style={{ fontSize: 12, margin: 0 }}>
-                communication ×{advantage.communication_ratio} · latency ×{advantage.latency_ratio} ·
-                security ×{advantage.security_multiplier}
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* THE QUANTUM-ADVANTAGE SCORE THAT STOOD HERE IS RETIRED AND NOT RENDERED (2026-10-23).
+          It printed "N/10", a tier, and "Quantum path is ~6146x more communication-compact and 5794x
+          faster; dominant advantage". Its inputs did not measure the same thing on the two sides: a
+          CKKS byte ratio over a QOTP qubit ratio that omits the 2n-bit key, a real CKKS + MPC
+          inference over an 8-qubit simulation of an untrained circuit (the ratio moved 5794x, 8163x,
+          9610x across three runs), and a 1.5x multiplier for a security label the run does not
+          achieve. Same retirement, same reason, as the 0-100 composite below. */}
 
       {rows.length > 0 && (() => {
         const q = rows.find((r: any) => r.path === "QSMPC-FHE");
@@ -126,17 +101,20 @@ export default function BenchmarkPanel(
                 + (q.t_gate_count > 200 ? " (a Solovay-Kitaev BUDGET over the rotations, not a gate count)"
                                         : " are counted from the circuit")
               : " T-gates are estimated"}
-            {" "}(simulated, not quantum hardware; ct/pt = 1 is QOTP's perfect-hiding property). <b>The
+            {" "}(simulated, not quantum hardware). <b>Its ct/pt is shown as a dash:</b> a quantum ciphertext
+            has no size in bytes - the one-time pad maps n qubits to n qubits plus a 2n-bit classical key - so it
+            cannot share a column with the CKKS byte ratio. <b>The
             security model named in that row is the SCHEME's, not this run's:</b> the quantum one-time pad
             is perfectly hiding when its key bits are uniform and secret, and this simulation draws them
             from a seeded non-cryptographic generator whose seed is on this page — so the mask is real and
             recomputable by anyone. The gate count, the width and the latency are measurements; the secrecy
             is not. See the
-            “QSMPC-FHE comparison” bar in the diagram above. <b>Quantum advantage</b> = a transparent weighted
-            geometric mean of three ratios (communication-compactness ≈10³× from ct/pt, latency, and the
-            computational→information-theoretic security jump), tiered 0–10; the uncapped value is printed
-            beside it when the run is past the ceiling. The 0–100 composite that used to sit here is <b>retired and no longer
-            rendered</b>: 14 of its 17 weights carried no stated rationale, it scored a zero-secure-key run
+            “QSMPC-FHE comparison” bar in the diagram above. <b>Two scores that used to sit here are retired
+            and no longer rendered.</b> The <b>quantum-advantage</b> score divided quantities that are not
+            the same on the two sides - a ciphertext byte ratio by a qubit ratio, and a real encrypted
+            inference by a simulation of an untrained circuit - and classical FHE also reaches rate 1
+            (Gentry and Halevi, TCC 2019), so the gap it reported was not a quantum advantage. The 0–100
+            composite: 14 of its 17 weights carried no stated rationale, it scored a zero-secure-key run
             100/100, and the 68-vs-96 gap it displayed was mostly an artefact of which arguments two functions
             happened to pass. The <b>Security posture</b> table above replaces it with per-row facts, each
             traceable to FIPS 203/204 or to this run.
@@ -149,7 +127,15 @@ export default function BenchmarkPanel(
           {!compact && (
             <div className="grid cols-2" style={{ marginTop: 14 }}>
               <div className="card">
-                <h3>Ciphertext / plaintext ratio (log)</h3>
+                <h3>CKKS ciphertext / plaintext size, this configuration (log)</h3>
+                {/* Only the CKKS row is plotted. Its ratio is ciphertext bytes / (inputs x 8 bytes), so it
+                    measures SLOT UTILISATION: the same N = 8192 ciphertext is about 12x against 4,096
+                    packed values and about 1,500x against 33 (Cheon, Kim, Kim, Song, ASIACRYPT 2017). The
+                    quantum row is left out because a quantum ciphertext has no byte size. */}
+                <p className="muted" style={{ fontSize: 11, margin: "0 0 6px" }}>
+                  Depends on how many of the 4,096 slots are used (about 12x when all are filled). The quantum
+                  row is not plotted: a quantum ciphertext has no size in bytes.
+                </p>
                 <ResponsiveContainer width="100%" height={220}>
                   <BarChart accessibilityLayer title="Ciphertext to plaintext size ratio, log scale"
                             data={ratioData}>
@@ -175,6 +161,12 @@ export default function BenchmarkPanel(
               </div>
               <div className="card">
                 <h3>Latency per inference (ms)</h3>
+                {/* Kept as per-row measurements and captioned, following the recorded decision to state
+                    non-comparability rather than hide a measurement. The two bars time different work. */}
+                <p className="muted" style={{ fontSize: 11, margin: "0 0 6px" }}>
+                  Different computations, not a speed comparison: MPC-FHE runs a real CKKS and garbled-circuit
+                  inference; QSMPC-FHE simulates an untrained 8-qubit circuit on random input.
+                </p>
                 <ResponsiveContainer width="100%" height={220}>
                   <BarChart accessibilityLayer title="Latency per inference, milliseconds"
                             data={latData}>
@@ -300,7 +292,7 @@ export default function BenchmarkPanel(
                       <td style={{ color: FHE_COLOR }}>{r.fhe_linear_ms ?? "—"}</td>
                       <td style={{ color: MPC_COLOR }}>{r.mpc_nonlinear_ms ?? "—"}</td>
                       <td>{r.mpc_comm_kb ?? "—"}</td>
-                      <td>{r.accuracy ?? "—"}</td><td>{r.ciphertext_plaintext_ratio ?? "—"}</td>
+                      <td>{r.accuracy ?? "—"}</td><td>{ctpt(r) ?? "—"}</td>
                       <td style={{ fontSize: 11 }}>{r.security_model}</td>
                     </tr>
                   ))}

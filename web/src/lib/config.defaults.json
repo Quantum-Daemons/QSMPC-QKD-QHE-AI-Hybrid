@@ -7,7 +7,6 @@
       "fhe_ms_per_dot": 12.0,
       "mpc_comm_bytes_per_cmp": 256,
       "mpc_ms_per_cmp": 1.6,
-      "qsmpc_ct_pt_ratio": 1.32,
       "qsmpc_qubits": 8,
       "qsmpc_t_gates": 56
     },

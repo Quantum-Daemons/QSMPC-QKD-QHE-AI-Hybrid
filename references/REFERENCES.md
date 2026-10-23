@@ -303,9 +303,22 @@ papers. Where the two used to overlap, that file is the owner.
   URL: https://eprint.iacr.org/2020/1454
   Added: 2026-06-27
   File: `Rate-1_Quantum_Fully_Homomorphic_Encryption.pdf`
-  Ciphertext-to-plaintext ratio near 1, malicious circuit privacy under LWE. Informs
-  `src/qsh/qhe/rate1_qfhe.py` (QOTP plus rate-1 classical FHE keys) and the benchmark's
-  communication-efficiency metric.
+  Rate approaching 1 ASYMPTOTICALLY: rate is plaintext over evaluated-ciphertext size, qubits plus
+  bits (Def. 6.1), and it tends to 1 only as the security parameter and the message grow (Sec. 6.2),
+  reached by moving the Pauli key into the rate-1 classical FHE of Brakerski, Doettling, Garg and
+  Malavolta (TCC 2019). Malicious circuit privacy, under quantum LWE - computational, not
+  information-theoretic. **The paper reports no concrete ratio**: the 1.32 this repository once called
+  its "literature value" is not in it, and that constant, the Overview card it fed and the
+  quantum-advantage score built on the same comparison were removed on 2026-10-23. Informs
+  `src/qsh/qhe/rate1_qfhe.py` (QOTP plus a KEM-masked key; no Eval).
+- **Classical rate-1 FHE, the counterpart the comparison above omitted** `[R]`
+  Gentry and Halevi, "Compressible FHE with Applications to PIR", TCC 2019, LNCS 11892, pp. 438-464,
+  doi:10.1007/978-3-030-36033-7_17 (ePrint 2019/733): rate $1-\epsilon$ under (ring) LWE, with a
+  concrete rate-4/9 PIR. Brakerski, Doettling, Garg and Malavolta, "Leveraging Linear Decryption:
+  Rate-1 Fully-Homomorphic Encryption and Time-Lock Puzzles", TCC 2019, LNCS 11892, pp. 407-437,
+  doi:10.1007/978-3-030-36033-7_16 (ePrint 2019/720): rate $1-1/\lambda$ from LWE. Because classical
+  FHE also reaches rate 1 - and rate-1 QFHE is built on the second - a gap between a quantum and a
+  classical ciphertext ratio is not a quantum advantage. Added: 2026-10-23.
 
 - **Leveraging ASIC AI Chips for Homomorphic Encryption (CROSS)** - Tong et al., IACR ePrint
   2026/160, HPCA 2026 `[R]`
@@ -334,8 +347,9 @@ papers. Where the two used to overlap, that file is the owner.
 Added 2026-08-11, verified at the arXiv abstract page.
 
 - **Hernandez-Bueno, Lage, Higuero & Astorga, "Quantum Homomorphic Encryption: Towards Practical
-  and Private Computation on Untrusted Quantum Hardware."** arXiv:2604.19256 [quant-ph],
-  2026-04-21, 14 pp. A universal QHE framework derived from the Quantum One-Time Pad,
+  QOTP-Encrypted Computation on Gate-Based Hardware."** arXiv:2604.19256 [quant-ph], v1 2026-04-21
+  (14 pp, titled "...Towards Practical and Private Computation on Untrusted Quantum Hardware"),
+  **v2 2026-09-15, 28 pp, retitled** - checked at arXiv on 2026-10-23. A universal QHE framework derived from the Quantum One-Time Pad,
   information-theoretically secure, "exploiting the transformation properties of quantum gates
   under Pauli encryption" for non-interactive homomorphic evaluation of arbitrary Clifford+T
   circuits, with results from simulators and real quantum processors. **This is WS4, published
@@ -355,7 +369,10 @@ Added 2026-08-11, verified at the arXiv abstract page.
   classical FHE. **Reframes rather than contradicts** this repository's "rate-1 transport, no
   Eval" caveat: as of April 2026 the direction of travel is a fully classical client, which is
   architecturally closer to the browser-tab story than to the caveat's pessimism. Added:
-  2026-08-11.
+  2026-08-11. **Caution, 2026-10-23:** v3 (2026-10-13) carries the authors' comment that the
+  conclusion contains mistakes that need to be corrected. It is NOT withdrawn - the abstract stands -
+  but treat its conclusions as provisional until a corrected version appears, and do not build an
+  argument on them.
 
 **What this project can and cannot claim on this machinery, recorded here because the split
 matters.** WS4(c), circuit privacy against a malicious server, is met for Clifford circuits: the
