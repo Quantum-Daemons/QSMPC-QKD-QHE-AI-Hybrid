@@ -109,7 +109,16 @@ def _qkd_text(facts: list[dict]) -> str:
 
 
 def test_an_e91_run_is_described_by_the_e91_model() -> None:
-    text = _qkd_text(_facts("e91"))
+    facts = _facts("e91")
+    text = _qkd_text(facts)
+    # The whole table, not only the three rows above: the decoy-state row and its warning ("the decoy
+    # states are what make this link work at all") were shown on E91 runs, found on the deployed demo
+    # after this test had checked only the three rows it selected.
+    assert not any(f.get("label") == "Decoy-state necessity" for f in facts), [f["label"] for f in facts]
+    # "no decoy states" in the rate row's source is correct and stays; the WARNING must not.
+    whole = json.dumps(facts)
+    assert "without decoy states this link yields NO key" not in whole, whole
+    assert "tagged fraction" not in whole, whole
     for bad in ("decoy-state bound", "two-intensity", "GLLP", "observed QBER", "aborts above 0.11"):
         assert bad not in text, f"an E91 run's facts say {bad!r}:\n{text}"
     assert "Werner-model error rate" in text and "0.0981" in text, text
@@ -148,7 +157,9 @@ def test_every_qkd_row_is_labelled_simulated(protocol: str) -> None:
     facts = _facts(protocol)
     qkd = [f for f in facts if f.get("label") in ("QBER", "Secret-key rate", "QKD key material",
                                                      "Decoy-state necessity")]
-    assert len(qkd) == 4, [f.get("label") for f in facts]
+    # Four rows on BB84; three on E91, which has no decoy states. This line asserted four for both
+    # until the deployed page showed the decoy row's warning on an E91 run.
+    assert len(qkd) == (3 if protocol == "e91" else 4), [f.get("label") for f in facts]
     wrong = [f"{f['label']}: {f.get('kind')}" for f in qkd if f.get("kind") != "simulated"]
     assert not wrong, f"QKD rows not labelled simulated on a {protocol} run: {wrong}"
     # Anti-tautology: the PQC rows are still what they were.
