@@ -466,7 +466,12 @@ class BenchmarkConfig:
     cost_per_op: dict = field(default_factory=lambda: {
         "fhe_ms_per_dot": 12.0, "mpc_ms_per_cmp": 1.6, "mpc_comm_bytes_per_cmp": 256,
         "demo_ct_pt_ratio": 1483.0, "demo_max_abs_error": 4.6e-7,
-        "qsmpc_ct_pt_ratio": 1.32, "qsmpc_t_gates": 56, "qsmpc_qubits": 8})
+        # `qsmpc_ct_pt_ratio` (1.32) was REMOVED on 2026-10-23. Its only reader was a static Overview
+        # card comparing it with `demo_ct_pt_ratio`, and it was described as the Rate-1 QFHE
+        # "literature value" - the paper (Chardouvelis, Doettling, Malavolta, TCC 2021) reports no
+        # concrete figure. `demo_ct_pt_ratio` stays: it is the MPC-FHE row's representative ct/pt when
+        # no measured ciphertext is available, and it measures slot utilisation, not CKKS itself.
+        "qsmpc_t_gates": 56, "qsmpc_qubits": 8})
     # the tiny FHE-feasible medical CNN (genuine convolution under FHE+MPC)
     medical_cnn: dict = field(default_factory=lambda: {
         "img_size": 14, "channels": [4], "hidden": 16, "pool": "avg",

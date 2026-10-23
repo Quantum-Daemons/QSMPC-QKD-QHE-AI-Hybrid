@@ -1,15 +1,27 @@
 import { Link } from "react-router-dom";
 
-import { costPerOp } from "../lib/config";
 import { DEMO_BANNER, isClientDemo } from "../lib/demoMode";
 
 export default function Overview() {
-  // Ciphertext expansion is a measured property of the two crypto paths, so it is read from the
-  // config rather than written here. The page previously printed "~1.0" while the config said 1.32,
-  // and README printed a third value again — one quantity, three numbers.
-  const cost = costPerOp();
-  const qRatio = cost.qsmpc_ct_pt_ratio;
-  const cRatio = cost.demo_ct_pt_ratio;
+  // THE CIPHERTEXT-RATIO CARD THAT STOOD IN THIS ROW IS REMOVED, AND NOTHING REPLACES IT.
+  //
+  // It read "~1.32 Rate-1 QFHE ciphertext/plaintext ratio vs ~1483x for classical CKKS", from two
+  // configuration constants, and it compared things that are not the same quantity:
+  //
+  //   1.32  was (bytes of a CLASSICALLY SIMULATED 2^n-amplitude state vector + a KEM-wrapped pad) /
+  //         (bytes of that state vector). A quantum ciphertext has no size in bytes; the exponential
+  //         denominator is a property of the simulation, and the code itself measures 1.2769 at 8
+  //         qubits. The number is NOT in the Rate-1 QFHE paper it was attributed to
+  //         (Chardouvelis, Doettling, Malavolta, TCC 2021, ePrint 2020/1454), which reports no
+  //         concrete figure: its "rate 1" is an asymptotic limit for long messages, under quantum LWE.
+  //   1483  was CKKS ciphertext bytes / (about 34 float64 inputs) - slot UTILISATION. The same
+  //         N = 8192 ciphertext is ~12x against 4,096 packed values (Cheon, Kim, Kim, Song,
+  //         ASIACRYPT 2017).
+  //
+  // And classical FHE reaches rate 1 too (Gentry-Halevi, TCC 2019; Brakerski-Doettling-Garg-Malavolta,
+  // TCC 2019) - rate-1 QFHE is built on the latter - so a gap between these two numbers is not a
+  // quantum advantage. A user's independent check flagged the card on 2026-10-06; it was removed on
+  // 2026-10-23. `tests/test_the_retired_comparisons_stay_retired.py` keeps it from coming back.
 
   return (
     <div>
@@ -27,13 +39,17 @@ export default function Overview() {
 
       <div className="grid cols-4">
         <div className="card"><div className="kpi c">4</div><p>workstreams: AI-QKD, QML-IDS, QSMPC×QKD, QHE×AI</p></div>
-        <div className="card"><div className="kpi q">2</div><p>security models compared: computational (RLWE) vs information-theoretic</p></div>
+        {/* QUALIFIED, because the unqualified card claimed more than any run here achieves. The
+            quantum one-time pad is information-theoretically hiding AS A SCHEME, given a uniform
+            secret pad (Ambainis, Mosca, Tapp, de Wolf, FOCS 2000). In this demo the pad is drawn from
+            a seeded, non-cryptographic generator, and on the Python path it is wrapped by
+            ML-KEM-768 + X25519, which makes the composite computational (MLWE, FIPS 203). */}
+        <div className="card"><div className="kpi q">2</div><p>security models compared: computational (RLWE, MLWE) vs information-theoretic <i>as a scheme</i> (quantum one-time pad). This demo seeds the pad, so no run here is information-theoretically secure.</p></div>
         {/* Cloudflare (2026-04-07) is the one that committed to being "fully post-quantum secure
             including, crucially, post-quantum authentication". Google (2026-03-25) set "a timeline
             for post-quantum cryptography migration to 2029" — a migration timeline, not a
             full-PQC commitment. Attributing the stronger claim to both overstated Google. */}
         <div className="card"><div className="kpi c">2029</div><p>Cloudflare target for full PQC including authentication; Google targets PQC migration by the same year. CNSA 2.0 requires new NSS acquisitions to be quantum-resistant from 2027</p></div>
-        <div className="card"><div className="kpi q">~{qRatio}</div><p>Rate-1 QFHE ciphertext/plaintext ratio vs ~{Math.round(cRatio)}× for classical CKKS</p></div>
         {/* The novelty, stated where a first-time visitor reads it. Everything else on this page is
             context that other projects share; this is the part that is unusual, and it was legible
             only from the banner - which did not render here. */}
