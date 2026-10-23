@@ -58,7 +58,14 @@ _PARSE_SITES = [
 #: Every security-model string the code may produce, and the class each must score as.
 #: "it" = information-theoretic (the higher-scoring branch), "comp" = computational, "none" = neither.
 EXPECTED: dict[str, str] = {
-    "information-theoretic (QOTP perfect hiding)": "it",
+    # The QSMPC-FHE labels, reworded on 2026-10-23 from "information-theoretic (QOTP perfect hiding)".
+    # The one-time pad is information-theoretically hiding AS A SCHEME; no run here is, because the
+    # pad is seeded (browser) or numpy-generated and KEM-wrapped (Python). The class stays "it"
+    # DELIBERATELY: the substring is what the scorers test, and keeping it means no score moves -
+    # which matters even though neither score is rendered any more (the 0-100 composite was retired
+    # in Round 22 and the quantum-advantage score on 2026-10-23).
+    "information-theoretic as a scheme (QOTP); not this run - the pad is seeded": "it",
+    "information-theoretic as a scheme (QOTP); not this run - numpy pad, ML-KEM-768 + X25519 wrap": "it",
     "computational (RLWE) + secret-sharing MPC": "comp",
     "computational (RLWE / FIPS-203 family)": "comp",
     "computational + QKD (two-party, TTP-free)": "comp",
@@ -67,6 +74,16 @@ EXPECTED: dict[str, str] = {
 
 #: `security_model: "..."` and `securityModel: "..."` producers.
 _PRODUCER = re.compile(r"security_?[Mm]odel:\s*\"([^\"]+)\"")
+#: A label hoisted into a constant - `const QSMPC_SECURITY_MODEL = "..."` / `QSMPC_SECURITY_MODEL = (
+#: "...")`. ADDED 2026-10-23, when the QSMPC label became one constant read twice. Without this the
+#: closed-set check below would have stopped SEEING that label at all - the literal producer regexes
+#: match `security_model: "..."` and nothing else - so moving a string into a constant would have
+#: removed it from the very gate that exists to watch it.
+_CONST_PRODUCER = re.compile(r"\b([A-Z][A-Z0-9_]*SECURITY_MODEL)\s*=\s*\(?\s*\"([^\"]+)\"")
+#: A producer that passes ANY upper-case constant rather than a literal. Deliberately broader than
+#: `_CONST_PRODUCER`: the first version required the `SECURITY_MODEL` suffix here too, and so missed a
+#: rename to e.g. `QSMPC_SEC_LABEL` - the reference and the definition both left the pattern together.
+_CONST_REF = re.compile(r"security_?[Mm]odel\s*[:=]\s*([A-Z][A-Z0-9_]+)\b")
 #: The substring both languages test for.
 _TOKEN = "information-theoretic"
 
@@ -76,14 +93,33 @@ _PY_PRODUCER = re.compile(r"security_model\s*=\s*\"([^\"]+)\"")
 
 
 def _produced() -> set[str]:
-    return set(_PRODUCER.findall(TS.read_text()))
+    src = TS.read_text()
+    return set(_PRODUCER.findall(src)) | {v for _, v in _CONST_PRODUCER.findall(src)}
 
 
 def _produced_py() -> set[str]:
     out: set[str] = set()
     for path in _PY_PRODUCERS:
-        out |= set(_PY_PRODUCER.findall(path.read_text()))
+        src = path.read_text()
+        out |= set(_PY_PRODUCER.findall(src)) | {v for _, v in _CONST_PRODUCER.findall(src)}
     return out
+
+
+def test_every_constant_a_producer_references_is_seen() -> None:
+    """The blind spot the constant form opened, closed: a referenced constant must be captured.
+
+    `security_model: QSMPC_SECURITY_MODEL` produces a label exactly as a literal does, but no literal
+    regex can read it. If the constant were renamed to something the capture pattern does not match,
+    the label would drop out of the closed set silently and every test above would still pass.
+    """
+    missing = []
+    for path in [TS, *_PY_PRODUCERS]:
+        src = path.read_text()
+        defined = {name for name, _ in _CONST_PRODUCER.findall(src)}
+        for ref in set(_CONST_REF.findall(src)):
+            if ref not in defined:
+                missing.append(f"{path.name}: {ref} is referenced as a security model but not captured")
+    assert not missing, "\n".join(missing)
 
 
 def test_the_producer_parse_finds_something() -> None:
@@ -96,7 +132,10 @@ def test_the_set_of_security_model_strings_is_closed() -> None:
     """New or reworded strings must be declared here, because they decide a score."""
     found = _produced()
     unexpected = sorted(found - EXPECTED.keys())
-    vanished = sorted(EXPECTED.keys() - found)
+    # A declared string must be produced by SOME language. Until 2026-10-23 both languages emitted
+    # one shared QSMPC label; they now differ HONESTLY - the browser pad is seeded, the Python pad is
+    # numpy-generated and KEM-wrapped - so the Python label is legitimately absent from the TS file.
+    vanished = sorted(EXPECTED.keys() - found - _produced_py())
     assert not unexpected, (
         f"security-model strings not declared in this test: {unexpected}\n"
         "These are parsed for `information-theoretic` at clientCompute.ts:302 and :342 and at "
