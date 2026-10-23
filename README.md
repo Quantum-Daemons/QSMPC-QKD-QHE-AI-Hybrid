@@ -3,7 +3,7 @@
 > An end-to-end orchestration **security layer** that chains **QKD -> QSMPC -> QHE/FHE ->
 > privacy-preserving AI** on a **PQC-first hybrid** foundation, with industry use cases
 > (finance / healthcare / genomics / telecom-defence / **satellite**), a **classical-vs-quantum
-> benchmark** (latency, accuracy, a **security posture table**, **quantum advantage**, and an
+> benchmark** (latency, accuracy, a **security posture table**, and an
 > **Alice <-> Bob** two-party E2E), and a researcher/business-facing **SPA** that runs **entirely
 > client-side** in public-demo mode.
 
@@ -44,8 +44,8 @@ simulation/scaffolds where not - every claim is tied to a primary source in
 > base year is about 4x - see the market table on the Value page, which lists each house separately
 > rather than blending them). A general **quantum *advantage*** for these workloads is **not** claimed
 > as a market benefit - it is broadly unproven in 2026 (e.g. classical tensor-network simulation matching
-> annealing results), so the numeric "quantum advantage" stays a **research / education** metric in the
-> benchmark. For the QCNN specifically the evidence is sharper than "unproven": Bermejo, Braccia,
+> annealing results), and the numeric "quantum advantage" score the benchmark used to print is
+> **retired from every surface** (2026-10-23): its inputs measured different things on the two sides. For the QCNN specifically the evidence is sharper than "unproven": Bermejo, Braccia,
 > Rudolph, Holmes, Cincio and Cerezo show that randomly initialised QCNNs **can only act on
 > low-bodyness measurements of their input and are efficiently classically simulable** with Pauli
 > shadows, and argue that QCNN successes largely reflect benchmark simplicity
@@ -144,7 +144,7 @@ Each use case has its **own page** (`/usecase/:id`) - a **live two-party simulat
 Pause / Step / Stop / Restart. A **single Run** drives both the animated E2E protocol **and** the
 benchmark: the benchmark is **assembled from that very run** (no separate "Run benchmark" button) -
 the MPC-FHE row is the run's **real measured FHE-linear + MPC-non-linear latency**, shown next to the
-QSMPC-FHE comparison, quantum advantage, security posture, and (on all five use-case pages) a signed
+QSMPC-FHE comparison, security posture, and (on all five use-case pages) a signed
 SHAP explanation. The two-party diagram makes the **MPC-FHE secret-sharing over a LAN <-> WAN <-> LAN** link
 explicit - linear layers cross as a **CKKS ciphertext**, non-linear layers as **secret-shares**. In
 the **public demo** (`?demo=client`) every use case runs **entirely in the browser** with **real,
@@ -433,17 +433,18 @@ the Blackwell box (TenSEAL CPU + MPyC, `linear` workload):
 | MPC-FHE | TenSEAL CKKS + MPyC (CPU) | medium | ~243 ms | ~215 ms | ~28 ms | ~4.5 KB | 1.0 | ~1483x | computational (RLWE) |
 | MPC-FHE | TenSEAL CKKS + MPyC (CPU) | large \* | ~1885 ms | ~1719 ms | ~165 ms | ~24.5 KB | 1.0 | - | computational (RLWE) |
 | MPC-FHE | HEonGPU CKKS (GPU sm_120) + MPyC | medium | batched | GPU | CPU | - | - | - | computational (RLWE) |
-| QSMPC-FHE | QOTP + QCNN (Clifford+T in the browser), no trained weights | - | ~4 ms | Clifford | T-gates x56 | n/a | n/a | **1.0 measured in QUBITS** (see note) | information-theoretic (QOTP) |
+| QSMPC-FHE | QOTP + QCNN (Clifford+T in the browser), no trained weights | - | ~4 ms | Clifford | T-gates x56 | n/a | n/a | - (see note) | information-theoretic as a scheme (QOTP); not this run (seeded pad) |
 
-**Note on the `1.0` in the ct/pt column, because this README publishes two different numbers for
-what looks like one quantity.** The row above says `1.0`; the WS4 table below says the measured
-Rate-1 ratio is 1.2769 at 8 qubits, 1.0693 at 10 and 1.0173 at 12. Both are correct and they measure
-different things. **`1.0` counts QUBITS**: under a QOTP the ciphertext is the same number of qubits as
-the plaintext, which is the whole point of a rate-1 scheme and is exactly 1.0 by construction, key
-excluded. **The 1.2769 family counts BYTES** of the serialised payload, which includes the roughly
-1135-byte encapsulated key - fixed in size, so it dominates a small state and fades as the state
-grows. Neither is the literature's 1.32x, which is a config constant feeding a static KPI and is not
-a measurement of this code. See [`docs/architecture.md`](docs/architecture.md).
+**Note on the dash in the QSMPC-FHE ct/pt cell.** Earlier revisions printed `1.0` here and 1.2769 in
+the WS4 table below, and a config constant of 1.32 fed an Overview card. None of the three can share a
+column with the CKKS byte ratio. `1.0` counts QUBITS only: a one-time pad maps $n$ qubits to $n$ qubits,
+but it also needs a $2n$-bit classical key, which `1.0` leaves out (Ambainis, Mosca, Tapp and de Wolf,
+FOCS 2000). The 1.2769 family (1.0693 at 10 qubits, 1.0173 at 12) divides by the BYTES of a classically
+simulated state vector of $2^n$ amplitudes, and a quantum ciphertext has no size in bytes. In the units of
+the Rate-1 QFHE paper, qubits plus bits (Chardouvelis, Doettling and Malavolta, TCC 2021, Def. 6.1), this
+module's 8-qubit KEM-wrapped transport is about 1135x, tending to 3 as $n$ grows. And 1.32 is not in
+that paper, which reports no concrete figure; the constant and the card are removed. See
+[`docs/architecture.md`](docs/architecture.md).
 
 The **Security** column used to publish `68 / 100` and `96 / 100`. Those are the retired composite,
 and that particular pair is the worst thing it produced: **16 of the 28 points separating them were
@@ -453,10 +454,14 @@ reports the security *model*, which is the part that was ever a property of the 
 
 \* **projected** from measured medium per-op cost, not run end-to-end. GPU FHE wins on **batched**
 workloads; for a tiny single-vector input the per-call kernel overhead can exceed CPU (raw encrypt
-throughput was ~700 ops/s GPU vs ~34 CPU). The headline: the quantum **Rate-1** path is ~10^3x more
-communication-compact than classical CKKS, with information-theoretic (vs computational) security -
-and the hybrid now shows *where* the classical cost goes (FHE dominates the linear layers; MPC adds
-the non-linear secure comparisons + a few KB of communication).
+throughput was ~700 ops/s GPU vs ~34 CPU). What the hybrid shows is *where* the classical cost goes
+(FHE dominates the linear layers; MPC adds the non-linear secure comparisons + a few KB of
+communication). **Withdrawn 2026-10-23:** this paragraph used to call the quantum Rate-1 path about
+$10^3$ times more compact than classical CKKS, with information-theoretic security. Neither half holds.
+The ratio compared a simulated state vector's bytes with a CKKS ciphertext at under 1% slot use (about
+12x at full packing; Cheon, Kim, Kim and Song, ASIACRYPT 2017); classical FHE reaches rate 1 as well
+(Gentry and Halevi, TCC 2019; Brakerski, Doettling, Garg and Malavolta, TCC 2019); and Rate-1 QFHE
+rests on quantum LWE, so its security is computational.
 
 **Three enriched dimensions** (Round 3):
 - **Security posture table** (replaced the 0-100 score in Round 22) - per-row facts, each either
@@ -466,13 +471,13 @@ the non-linear secure comparisons + a few KB of communication).
   decoy states are buying. `qsh/benchmark/security.py` still computes the old composite for
   backwards compatibility but nothing renders it. Why it was retired:
   `references/security-scoring-fact-check.md`.
-- **Quantum advantage (0-10)** - `qsh/benchmark/quantum_advantage.py`: weighted geometric mean of
-  communication-compactness (approx. 10^3x), latency, and the security jump -> a tiered score
-  (*dominant*). Recomputed 2026-08-09 from this table's own rows: **8.12 standalone**, uncapped. The
-  finance E2E run reports **10/10**, and that is a CLAMP, not a maximum - the raw composite measured
-  10.65, so the panel prints `raw 10.65 (clamped to 0-10)` beside the tier. A reader who sees 10 and
-  concludes the run sits exactly at the ceiling is being misled by the clamp, which is why the raw
-  value is printed. The earlier "9.2 on the finance E2E run" in this line was stale.
+- **Quantum advantage (0-10) - retired 2026-10-23, not rendered.** `qsh/benchmark/quantum_advantage.py`
+  is kept, as the 0-100 composite was, but no panel, log line, diagram label or agent prompt shows it.
+  Its three inputs did not measure the same thing on the two sides: a CKKS byte ratio divided by a qubit
+  ratio that omits the classical key; a real CKKS and garbled-circuit inference latency divided by an
+  8-qubit state-vector simulation of an untrained circuit (5794x, 8163x and 9610x across three runs of
+  one page); and a 1.5x multiplier for a security label the run does not achieve. Gate:
+  `tests/test_the_retired_comparisons_stay_retired.py`.
 - **Per-use-case two-party simulator** - each industry has its own page (`/usecase/:id`) with a
   **live two-party (Alice <-> Bob) sequence diagram** (`web/src/components/TwoPartyDiagram.tsx`) whose
   steps light up as that use case's pipeline runs - **Start / Pause / Resume / Step / Stop / Restart
@@ -482,7 +487,7 @@ the non-linear secure comparisons + a few KB of communication).
   exports a high-DPI PNG + a multi-second GIF. A standalone per-party-timing micro-benchmark also
   exists at `qsh/benchmark/alice_bob_e2e.py` (`POST /api/alice-bob`).
 
-The benchmark, security posture and quantum advantage are computed server-side **and** mirrored
+The benchmark and security posture are computed server-side **and** mirrored
 client-side (`web/src/lib/clientCompute.ts`) so the public demo shows identical numbers with no backend.
 
 ---
@@ -545,7 +550,7 @@ implementation maps to each, and where gaps remain.
 
 | Sub-problem | How QSH addresses it | Where |
 |---|---|---|
-| (1)/(e) huge compute + ciphertext/plaintext overhead | Benchmark *measures* ~1483x CKKS. For Rate-1 QFHE the ct/pt ratio is **measured and size-dependent** - 1.2769 at 8 qubits, 1.0693 at 10, 1.0173 at 12 - because the ~1135-byte encapsulated key is fixed while the state grows. The **1.32x** figure quoted elsewhere is the *literature* value in `config/defaults.py` feeding a static Overview KPI; it is **not** a measurement of this code, and an earlier revision of this row said the benchmark measured it. See `docs/architecture.md` | `benchmark/`, `qhe/rate1_qfhe.py` |
+| (1)/(e) huge compute + ciphertext/plaintext overhead | The benchmark measures the CKKS ciphertext/plaintext byte ratio for this configuration: about 1483x at roughly 34 of 4,096 slots, about 12x at full packing, so it measures slot utilisation rather than CKKS itself. The Rate-1 QFHE module reports a byte ratio of a SIMULATED state vector (1.2769 at 8 qubits, 1.0693 at 10, 1.0173 at 12), which cannot be compared with it; in the paper's own units, qubits plus bits, its 8-qubit KEM-wrapped transport is about 1135x. The 1.32 constant this row used to call the literature value is not in the paper and is removed. See `docs/architecture.md` | `benchmark/`, `qhe/rate1_qfhe.py` |
 | (2) bootstrapping bottleneck | **OpenFHE CKKS `EvalBootstrap`** (CPU) + **HEonGPU collective bootstrapping** (GPU) refresh ciphertext levels for deeper circuits - both commercial-OK | `fhe/backends.py` (`OpenFHEBackend(use_bootstrap=True)`) |
 | (3)/(a) quantum encoding / practical QHE | QOTP + a variational QCNN + Rate-1 QFHE at small scale. **Two different circuits, and only one is Clifford+T:** the BROWSER circuit (`web/src/lib/quantumSim.ts`) is built from H, CNOT and T and counts 56 real T gates, while the PYTHON module contains **no T gate at all** - it is `AngleEmbedding` plus CNOT/RY/RZ, and its `t_count()` is a labelled Solovay-Kitaev estimate of what a fault-tolerant deployment would cost, not a count of gates present. Earlier revisions called the Python module Clifford+T. | `qhe/qotp.py`, `qhe/qcnn.py`, `web/src/lib/quantumSim.ts` |
 | (b) QFL gradient leakage (arXiv:2508.15998) | Pairwise-mask secure aggregation + QOTP-delegated learning | `ai/federated.py` |
