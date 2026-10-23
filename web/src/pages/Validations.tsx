@@ -128,13 +128,16 @@ export default function Validations() {
       <div className="card">
         <h3>MCP-style agent-to-agent tool call</h3>
         <p>
-          Two AI agents establish a PQC (ML-KEM-768 + X25519, optionally QKD-mixed) session and
+          {/* "optionally QKD-mixed" described a FIXED 32-byte constant (0x71 x 32, the backend's
+              b"q"*32) as QKD key material. The QKD models here return counts, never key bytes. */}
+          Two AI agents establish a PQC (ML-KEM-768 + X25519) session - optionally mixed with a fixed
+          QKD-domain constant, not a QKD key - and
           exchange an <b>ML-DSA-signed</b>, AES-256-GCM-sealed MCP tool call — closing the report's gap
           of quantum-resistant + private agent↔data-silo communication (no trusted third party).
         </p>
         <div className="btn-row">
           <label className="muted">
-            <input type="checkbox" checked={mcpQkd} onChange={(e) => setMcpQkd(e.target.checked)} /> mix QKD key
+            <input type="checkbox" checked={mcpQkd} onChange={(e) => setMcpQkd(e.target.checked)} /> mix fixed QKD-domain constant
           </label>
           <button className="btn" disabled={busy === "mcp"}
             onClick={async () => { setBusy("mcp"); setMcp(await api.demoMcp(mcpQkd)); setBusy(""); }}>
@@ -145,7 +148,7 @@ export default function Validations() {
           <table style={{ marginTop: 12 }}>
             <tbody>
               <tr><td>session</td><td className="mono">{mcp.session}</td></tr>
-              <tr><td>KEM / QKD-mixed</td><td>{mcp.kem} / {String(mcp.qkd_mixed)}</td></tr>
+              <tr><td>KEM / QKD-domain constant mixed</td><td>{mcp.kem} / {String(mcp.qkd_mixed)}</td></tr>
               <tr><td>method</td><td className="mono">{mcp.method}</td></tr>
               <tr><td>authenticated ({mcp.signature_alg})</td>
                 <td style={{ color: mcp.authenticated ? "var(--accent-2)" : "var(--danger)" }}>{String(mcp.authenticated)}</td></tr>

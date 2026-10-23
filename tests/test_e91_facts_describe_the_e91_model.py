@@ -24,6 +24,13 @@ Behaviourally, through the real browser module: for an E91 run every QKD fact na
 and none names decoy states, GLLP or the observed QBER; for a BB84 run the decoy-state wording is
 unchanged. And both E91 emit sites expose the model error rate, so S = 2 sqrt(2)(1 - 2 e0) can be
 checked exactly from the page.
+
+THE SAME TABLE CALLED EVERY QKD ROW "MEASURED"
+
+Under the heading "what this run measured", with the warning "The bits are real; there are not
+enough of them." No QKD device exists in this project, and the browser's bb84() returns a COUNT,
+never key bytes (checklist SC2). The QKD rows are now kind "simulated", for both protocols, and the
+banner every page renders says the quantum channel is simulated.
 """
 
 from __future__ import annotations
@@ -74,7 +81,7 @@ esbuild.build({
 """
 
 
-def _facts(protocol: str) -> list[dict]:
+def _facts(protocol: str, key_bits: int = 145000) -> list[dict]:
     _require_browser_or_skip()
     with tempfile.TemporaryDirectory() as tmp:
         d = Path(tmp)
@@ -86,7 +93,7 @@ def _facts(protocol: str) -> list[dict]:
         subprocess.run(["node", str(build)], cwd=WEB, check=True, capture_output=True, text=True)
         cfg = {"qkd": "bb84-decoy", "qkd_protocol": protocol, "usecase": "telecom_ids",
                "qkd_distance_km": 50, "qkd_misalignment": 0.015, "qkd_eve": 0}
-        metrics = {"qber": 0.03, "skr_per_pulse": 0.007286, "secure_key_bits": 145000}
+        metrics = {"qber": 0.03, "skr_per_pulse": 0.007286, "secure_key_bits": key_bits}
         runner.write_text(
             f"globalThis.window = globalThis; globalThis.self = globalThis;\n"
             f"const m = await import({json.dumps(bundle.as_uri())});\n"
@@ -134,3 +141,31 @@ def test_both_e91_sites_expose_the_model_error_rate() -> None:
     assert chsh == model == 2, (
         f"{chsh} chsh_s emit site(s) and {model} e91_model_qber site(s). The fibre and satellite QKD "
         "stages each run E91; a model error rate on one and not the other is the one-twin defect.")
+
+
+@pytest.mark.parametrize("protocol", ["e91", "bb84"])
+def test_every_qkd_row_is_labelled_simulated(protocol: str) -> None:
+    facts = _facts(protocol)
+    qkd = [f for f in facts if f.get("label") in ("QBER", "Secret-key rate", "QKD key material",
+                                                     "Decoy-state necessity")]
+    assert len(qkd) == 4, [f.get("label") for f in facts]
+    wrong = [f"{f['label']}: {f.get('kind')}" for f in qkd if f.get("kind") != "simulated"]
+    assert not wrong, f"QKD rows not labelled simulated on a {protocol} run: {wrong}"
+    # Anti-tautology: the PQC rows are still what they were.
+    kinds = {f["label"]: f.get("kind") for f in facts}
+    assert kinds.get("KEM") == "standard" and kinds.get("KEM ciphertext") == "measured", kinds
+    # The 1..255 band is the only one whose warning carried the sentence, so ask for it.
+    band = _facts(protocol, key_bits=94)
+    warn = next(f.get("warn") or "" for f in band if f.get("label") == "QKD key material")
+    assert "below the 256" in warn, f"the 1..255-bit warning did not fire: {warn!r}"
+    assert "bits are real" not in warn and "simulated channel model" in warn, warn
+
+
+def test_the_panel_renders_the_simulated_kind_and_the_banner_says_so() -> None:
+    panel = (WEB / "src" / "components" / "BenchmarkPanel.tsx").read_text()
+    assert re.search(r'f\.kind\s*===\s*"simulated"\s*\?\s*"simulated', panel), (
+        "BenchmarkPanel renders every non-standard row as 'measured'; a simulated kind is invisible")
+    banner = (WEB / "src" / "lib" / "demoMode.ts").read_text()
+    m = re.search(r"export const DEMO_BANNER\s*=([^;]*);", banner, flags=re.S)
+    assert m and "quantum channel (QKD, QSDC) is" in m.group(1) and "simulated" in m.group(1), (
+        "the banner every page renders no longer says the quantum channel is simulated")

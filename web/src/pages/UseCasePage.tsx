@@ -49,7 +49,6 @@ function UseCaseView({ usecase }: { usecase: string }) {
       <p className="page-sub">{meta.blurb}</p>
       <div className="pill-row" style={{ marginBottom: 10 }}>
         <span className="tag">{meta.industry}</span>
-        <span className="muted" style={{ fontSize: 12 }}>{meta.market}</span>
       </div>
       {DEMO && <div className="note" style={{ marginBottom: 12 }}>🖥️ {DEMO_BANNER}</div>}
 

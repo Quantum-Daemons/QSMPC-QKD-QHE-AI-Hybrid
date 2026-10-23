@@ -194,8 +194,11 @@ export interface SecurityFact {
   value: string;
   /** The standard, specification or measurement this rests on. Empty is not allowed. */
   source: string;
-  /** "standard" = checkable against a published document; "measured" = produced by this run. */
-  kind: "standard" | "measured";
+  /** "standard" = checkable against a published document; "measured" = produced by this run;
+   *  "simulated" = computed by this run's analytic quantum-channel model. No QKD device exists in this
+   *  project, so every QKD row is "simulated" - calling a channel model's output "measured" is the
+   *  claim the Research PoC note on the Overview page disowns. */
+  kind: "standard" | "measured" | "simulated";
   /** Set when the run contradicts the claim, e.g. a QKD profile that produced no key. */
   warn?: string;
 }
@@ -210,8 +213,8 @@ export interface SecurityFact {
  * moved the wrong way: measured on the deployed demo, Eve at 0.6 with QBER 0.16 and ZERO secure key
  * bits scored 100 out of 100.
  *
- * Every entry below is either checkable against a published standard or produced by this run, and
- * each says which. No entry is a weight. The NIST category leads because it is the one figure here
+ * Every entry below is checkable against a published standard, measured in this run, or computed by
+ * this run's simulated quantum channel, and each says which. No entry is a weight. The NIST category leads because it is the one figure here
  * that is comparable with another system: FIPS 203 anchors ML-KEM-768 at Category 3 and ML-KEM-1024
  * at Category 5 against AES/SHA reference problems.
  *
@@ -269,7 +272,7 @@ export function securityFacts(config: any, metrics: Record<string, any>): Securi
     facts.push({
       label: "QKD key material",
       value: keyBits == null ? "not reported" : `${keyBits} secure bits`,
-      kind: "measured",
+      kind: "simulated",
       source: isE91
         ? "E91 / CHSH run, device-dependent secure fraction on the model error rate"
         : "BB84 decoy-state run, two-intensity secure fraction",
@@ -282,10 +285,12 @@ export function securityFacts(config: any, metrics: Record<string, any>): Securi
       warn: keyBits === 0
         ? "the QKD profile is selected but this channel produced NO secure key: the session rests on "
           + "the PQC hybrid alone"
+        // The last sentence used to read "The bits are real; there are not enough of them." The
+        // browser's bb84() returns a COUNT and never key bytes (checklist SC2), so there were no bits.
         : keyBits != null && keyBits > 0 && keyBits < 256
         ? `this channel produced ${keyBits} secure bits, below the 256 a session key needs, so no `
-          + "QKD key is derived and the session rests on the PQC hybrid alone. The bits are real; "
-          + "there are not enough of them."
+          + "QKD key is derived and the session rests on the PQC hybrid alone. The count comes from "
+          + "the simulated channel model."
         : undefined,
     });
     if (skr != null) {
@@ -294,7 +299,7 @@ export function securityFacts(config: any, metrics: Record<string, any>): Securi
       // attributed its rate to decoy states - a countermeasure for the multi-photon pulses of an
       // attenuated laser, which entanglement-based QKD does not have and cannot use. One of a
       // sibling pair three lines apart was made protocol-aware and the other was not.
-      facts.push({ label: "Secret-key rate", value: `${skr} per pulse`, kind: "measured",
+      facts.push({ label: "Secret-key rate", value: `${skr} per pulse`, kind: "simulated",
         source: isE91
           ? "device-dependent secure fraction 1 - h(e) - f h(e) on the MODEL error rate, not the "
             + "sampled QBER (Shor-Preskill form; entangled source: Ma, Fung & Lo, Phys. Rev. A 76, "
@@ -337,7 +342,7 @@ export function securityFacts(config: any, metrics: Record<string, any>): Securi
       // link Delta is 7.26, and "7.26" says the decoy states are carrying the entire link, where
       // ">= 1" only says they are carrying some of it.
       value: `tagged fraction ${delta.toFixed(2)} at mu ${mu}`,
-      kind: "measured",
+      kind: "simulated",
       source: "GLLP tagged fraction over this channel; Ma PRA 72 012326, GLLP QIC 4 325",
       warn: delta >= 1
         ? "without decoy states this link yields NO key. The worst-case bound on Eve-known "
@@ -362,7 +367,7 @@ export function securityFacts(config: any, metrics: Record<string, any>): Securi
     facts.push({
       label: "QBER",
       value: `${qber}${dead ? " - no secure key at this error rate" : ""}`,
-      kind: "measured",
+      kind: "simulated",
       source: skr != null && isE91
         ? `E91: a sampled draw around the Werner-model error rate (1 - V)/2, with S = 2 sqrt(2) V. The `
           + `device-dependent rate reaches zero at ${e91ZeroKey} (f = ${fEC}); a device-independent `

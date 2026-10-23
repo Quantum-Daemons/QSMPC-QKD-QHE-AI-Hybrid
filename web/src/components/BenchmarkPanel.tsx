@@ -246,10 +246,13 @@ export default function BenchmarkPanel(
           )}
           {facts.length > 0 && (
             <div className="card" style={{ marginTop: 14 }}>
-              <h3>Security posture — what this run measured</h3>
+              {/* "what this run measured" headed rows that come from an analytic channel model: no
+                  QKD device exists in this project, so the QKD rows are now labelled "simulated". */}
+              <h3>Security posture — what this run measured or simulated</h3>
               <p className="muted small" style={{ marginTop: 0 }}>
-                Reported, not scored. Each row is either checkable against a published standard or
-                produced by this run, and says which. There is no composite: the 0–100 score this
+                Reported, not scored. Each row is checkable against a published standard, measured in
+                this run, or simulated by this run's analytic quantum-channel model (every QKD row - no
+                QKD device exists here), and says which. There is no composite: the 0–100 score this
                 replaced summed five weights that were chosen rather than derived, and it awarded a
                 perfect 100 to a run whose quantum channel produced zero secure key bits.
               </p>
@@ -260,7 +263,7 @@ export default function BenchmarkPanel(
                       <td>{f.label}</td>
                       <td className="num">{f.value}</td>
                       <td className="muted small">
-                        {f.kind === "standard" ? "standard · " : "measured · "}{f.source}
+                        {f.kind === "standard" ? "standard · " : f.kind === "simulated" ? "simulated · " : "measured · "}{f.source}
                       </td>
                     </tr>
                   ))}

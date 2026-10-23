@@ -10,8 +10,9 @@
 License: **Apache-2.0**, Python **3.12**, GPU: **NVIDIA RTX PRO 6000 Blackwell + CUDA 13**
 
 This is a **research / proof-of-concept**. Real implementations where tractable, honest
-simulation/scaffolds where not - every claim is tied to a primary source in
-[`references/`](references/REFERENCES.md).
+simulation/scaffolds where not - claims are cited to primary sources in
+[`references/`](references/REFERENCES.md) where one exists, and the corrections each fact-check made are
+recorded in [`docs/verification-log.md`](docs/verification-log.md).
 
 > **What is new here, and what is not.** This project's verification rule is that a novelty claim
 > must survive an adversarial search for prior art. Applied to its own headline claim the answer is
@@ -28,28 +29,27 @@ simulation/scaffolds where not - every claim is tied to a primary source in
 > computation**, citing WASM threading and the 2 GB memory ceiling. This demo evaluates a real CKKS
 > dot product and a real CKKS convolution in the tab.
 >
-> **So the claim is the composition, not either half:** PQC key establishment to QKD-derived key
-> material to secure multiparty computation to homomorphic evaluation to model inference, chained end
-> to end in one browser tab with zero server compute. A search for an integrated browser system doing
+> **So the claim is the composition, not either half:** PQC key establishment to a simulated QKD link
+> (it yields a key length, not key bytes) to secure multiparty computation to homomorphic evaluation to
+> model inference, chained end to end in one browser tab with zero server compute. A search for an integrated browser system doing
 > all of that returned nothing. Two caveats travel with it: the two MPC parties are notional - one
 > tab, an in-memory transport, real protocol and bytes and wall-clock but no genuine party separation
 > - and the quantum channel is simulated, because no browser API for QKD exists. And client-side is
 > not automatically private: WWW 2026's WAMO paper argues browser deployment moves a model into a
 > hostile environment, which is one reason the models here are public rather than treated as secrets.
 
-> **Positioning - quantum-safe, not quantum-advantage.** The value here is **quantum-safe / PQC**, a
-> regulation-driven, fast-growing market (NIST FIPS 203/204/205; NSA CNSA 2.0 procurement mandate 2027;
-> EU roadmap 2026/2030/2035; "harvest-now-decrypt-later"; Grand View Research sizes the PQC market at
-> ~$1.6 B in 2025 reaching ~$20.5 B by 2033, a 37.8 % CAGR over 2026-2033, and the vendor spread on the
-> base year is about 4x - see the market table on the Value page, which lists each house separately
-> rather than blending them). A general **quantum *advantage*** for these workloads is **not** claimed
+> **Positioning - quantum-safe, not quantum-advantage.** The value here is **quantum-safe / PQC**, and
+> what drives it is regulation (NIST FIPS 203/204/205; for national security systems only, CNSSP 15
+> requires CNSA 2.0 algorithms in new acquisitions from 2027 and in all use by 2031; US EO 14412 moves
+> federal high-value assets and high impact systems to PQC key establishment by 2030 and signatures by
+> 2031; EU roadmap 2026/2030/2035; "harvest-now-decrypt-later"). A general **quantum *advantage*** for these workloads is **not** claimed
 > as a market benefit - it is broadly unproven in 2026 (e.g. classical tensor-network simulation matching
 > annealing results), and the numeric "quantum advantage" score the benchmark used to print is
 > **retired from every surface** (2026-10-23): its inputs measured different things on the two sides. For the QCNN specifically the evidence is sharper than "unproven": Bermejo, Braccia,
 > Rudolph, Holmes, Cincio and Cerezo show that randomly initialised QCNNs **can only act on
 > low-bodyness measurements of their input and are efficiently classically simulable** with Pauli
 > shadows, and argue that QCNN successes largely reflect benchmark simplicity
-> ([arXiv:2408.12739](https://arxiv.org/abs/2408.12739), rev. Feb 2026). That is the frame for this
+> (PRX Quantum 7, 020304, 2026; [arXiv:2408.12739](https://arxiv.org/abs/2408.12739)). That is the frame for this
 > repository's own measured result - its trained QCNN loses to logistic regression on the same split,
 > which is the expected outcome rather than a disappointing one, and both figures are printed side by
 > side on the page. Two circuit widths ship for telecom so the effect of the register size can be
@@ -464,11 +464,12 @@ The ratio compared a simulated state vector's bytes with a CKKS ciphertext at un
 rests on quantum LWE, so its security is computational.
 
 **Three enriched dimensions** (Round 3):
-- **Security posture table** (replaced the 0-100 score in Round 22) - per-row facts, each either
-  checkable against a published standard or produced by the run, and labelled which: NIST category
-  and ciphertext/signature sizes from FIPS 203/204, QKD secure key bits, SKR, the QBER verdict taken
-  from `secure_key_bits > 0` rather than a threshold, and the GLLP tagged fraction showing what the
-  decoy states are buying. `qsh/benchmark/security.py` still computes the old composite for
+- **Security posture table** (replaced the 0-100 score in Round 22) - per-row facts, each checkable
+  against a published standard, measured by the run, or simulated by the run's analytic quantum-channel
+  model, and labelled which: NIST category and ciphertext/signature sizes from FIPS 203/204, and, as
+  simulated rows (no QKD device exists here), QKD secure key bits, SKR, the QBER verdict taken from
+  `secure_key_bits > 0` rather than a threshold, and the GLLP tagged fraction showing what the decoy
+  states are buying. `qsh/benchmark/security.py` still computes the old composite for
   backwards compatibility but nothing renders it. Why it was retired:
   `references/security-scoring-fact-check.md`.
 - **Quantum advantage (0-10) - retired 2026-10-23, not rendered.** `qsh/benchmark/quantum_advantage.py`
@@ -489,6 +490,7 @@ rests on quantum LWE, so its security is computational.
 
 The benchmark and security posture are computed server-side **and** mirrored
 client-side (`web/src/lib/clientCompute.ts`) so the public demo shows identical numbers with no backend.
+In both, the QKD figures come from the simulated channel model.
 
 ---
 
@@ -521,8 +523,8 @@ table in it is generated from the repository's own artefacts rather than transcr
   `nvidia-container-toolkit` + the `deploy.resources` GPU block is optional and faster). Ports are env-overridable
   (`WEB_PORT` / `API_PORT` / `GRAFANA_PORT`).
 - **Client-side build (implementation capability)**: the SPA also builds **fully client-side** - every
-  computation runs in the browser (real CKKS FHE + an emp-wasm garbled-circuit 2PC, ONNX inference, BB84 /
-  PSI / SHAP / QFL), with **zero `/api` compute**. In this mode the system needs **neither the backend
+  computation runs in the browser (real CKKS FHE + an emp-wasm garbled-circuit 2PC, ONNX inference, a
+  simulated BB84 channel, PSI / SHAP / QFL), with **zero `/api` compute**. In this mode the system needs **neither the backend
   FHE/MPC compute path nor the frontend FHE/MPC backend-selectors** - the client owns both - so it requires
   no GPU and no server-side ML. The same pages and buttons work in both modes.
 - **Monitoring**: see [`monitoring/README.md`](monitoring/README.md) (Prometheus + Grafana for the local
@@ -777,10 +779,14 @@ See [`docs/pqc-roadmap.md`](docs/pqc-roadmap.md).
   qOLE, and the **free-space satellite QKD + QSDC** path are **simulated** (analytic channel +
   information-structure models), not hardware-validated. QHE evaluation is exact for Clifford
   circuits; non-Clifford layers are costed as T-gates, not run fault-tolerantly.
-- **NSA stance** - NSA does **not** endorse QKD in any form for national security systems. Its CNSA 2.0 /
-  Quantum Computing FAQ answers *"Can I use a QKD system to protect my NSS from a quantum computer?"* with
-  **"No"**, and says it *"does not support the usage of QKD or QC"* for NSS. Presenting QKD as a hybrid
-  add-on is **this project's** design choice, taken from **BSI TR-02102-1 v2026-01 section 2.2**, not from NSA.
+- **NSA and BSI stance** - NSA does **not** endorse QKD in any form for national security systems. Its
+  CNSA 2.0 and Quantum Computing FAQ (Ver. 2.2, October 2026) answers *"Can I use a QKD system to protect
+  my national security system from a quantum computer?"* with **"No"**, and its Post-Quantum
+  Cybersecurity Resources page says NSA *"does not support the usage of QKD or QC to protect
+  communications in National Security Systems"*. BSI does not recommend QKD either: TR-02102-1 v2026-01
+  section 2.1 calls it *"currently not ready for use from a security point of view"*, and the hybrid it
+  recommends (section 2.2) is a quantum-safe plus a classical key agreement - the ML-KEM + X25519 layer
+  here. Offering QKD as an optional add-on to that hybrid is **this project's** design choice alone.
 - **GPU/vendor & licensing** - Blackwell+CUDA13 narrows the quantum-GPU stack to CUDA-Q/cuQuantum.
   The FHE stack is deliberately **commercial-OK** (TenSEAL Apache-2.0, OpenFHE BSD-2, HEonGPU Apache-2.0);
   **DESILO was removed** because its license is non-commercial. Multiple swappable backends avoid lock-in.
@@ -854,8 +860,9 @@ See [`docs/pqc-roadmap.md`](docs/pqc-roadmap.md).
   client-side" until Round 39, contradicting the passage above that already described the
   end-to-end path).
 - **Per-industry models - three tiers, and the gap between them is the measurement** - the
-  **crypto/protocol layer is real across all five industries** (PSI/QOT, QSMS secure-sum, BB84/QSDC,
-  MPyC MPC, CKKS FHE, federated secure-aggregation). The AI side is organised in tiers because
+  **classical crypto/protocol layer is real across all five industries** (PSI/QOT, QSMS secure-sum,
+  MPyC MPC, CKKS FHE, federated secure-aggregation); BB84 and QSDC are simulated (analytic channel
+  models), as "Simulation vs reality" under Concerns & recommendations says. The AI side is organised in tiers because
   homomorphic evaluation is cost-bounded **at the operating point this demo targets** - a single
   device, in a browser tab, running CKKS through `node-seal` (SEAL compiled to WASM, single-threaded).
   Park et al. ([arXiv:2601.18511v2](https://arxiv.org/abs/2601.18511v2)) run Llama-3-8B end to end

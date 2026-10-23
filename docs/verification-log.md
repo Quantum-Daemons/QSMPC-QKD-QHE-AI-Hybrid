@@ -548,14 +548,16 @@ through a different door, inside the fix written to remove it** - the second tim
 closing an item is where the next defect was made. Now a single `recordHasTreeAttribution` used by both.
 
 **5. The PQC market figure, and the result inverted the expectation.** The **unsourced** README figure was
-the correct one - Grand View's current edition - and the **sourced** Value-page row was a blend. Its
-"~$2.2B" is Grand View's 2026 value, "$20-30B by 2033-34" splices Grand View's 2033 endpoint to
-Precedence's 2034 one, and "~38-46%" takes its high end from **MarketsandMarkets, a house the row does not
-name, which sizes this market at $0.42B in 2025 - a quarter of the base the same row quoted.** The
+the correct one - one house's current edition - and the **sourced** Value-page row was a blend. Its base
+was one house's 2026 value, its endpoint spliced that house's 2033 figure to a second house's 2034 one,
+and its growth-rate range took its high end from **a third house the row does not name, whose base for
+the same market was a quarter of the one the same row quoted.** [The figures were removed from this
+entry on 2026-10-24, with the market table and the README sentence it describes: this project's public
+material carries no market-size figures.] The
 footnote two rows below already describes this exact error ("producing a range no single analyst
 projects") about a *different* row: the lesson had been learned for one row and not applied to the row
 above it. The PQC row now lists each house separately, states the 4x scope spread rather than averaging
-it, and the README points at the table instead of carrying a second copy.
+it, and the README points at the table instead of carrying a second copy. (Both removed 2026-10-24.)
 
 **Also in `df7c847`, each the same class - a published surface asserting something the tree contradicts:**
 the README described a serving ZeroGPU third tier "awaiting a caller" whose Space returns HTTP 401 and
@@ -2745,3 +2747,42 @@ scan classified `UseCasePage` itself as a wide component. Prose about a property
 file accumulates when someone fixes that property. The gate also had to move from the file that SETS
 the width to the RENDER SITES, because the scroller lives in a different file - the first version
 flagged the component it had just fixed.
+
+### Round 58: two comparisons that measured different things, and the E91 page described a protocol it was not running
+
+**Context.** An independent check of the public text (2026-10-06) and a live survey of the deployed demo
+on 2026-10-23. The full findings table, with a primary source per row, is the Round 58 section of
+`docs/deliverable-verification.md`; this entry records what was surprising.
+
+**The E91 relation reproduces exactly - from a number the page did not show.** On `/orchestration` with
+E91 selected the three scenarios read QBER 0.03 / S 2.66 / positive key (misalignment 0.015, 50 km),
+0.27 / 1.29 / zero key (Eve = 1) and 0.02 / 2.74 (no misalignment, 1 km). S = 2 sqrt(2) (1 - 2Q) holds
+for all three only with the MODEL error rate e0; from the displayed QBER, which is a sampled draw
+rounded to two places, two of the three give 1.30 and 2.72. It is a self-consistency check of a
+Werner-state model, not an independent validation. The model rate is now emitted as
+`e91_model_qber` at both E91 sites so the relation can be checked from the page.
+
+**And the same page captioned the E91 QBER with BB84's decoy-state bound.** The protocol test had been
+hoisted into a constant whose own comment said a shared constant "is what stops the next row from
+being the next omission" - declared inside a branch, while the QBER row sat outside it. Fixed by
+moving the declaration to function scope; the gate runs the real browser module for both protocols.
+
+**The ratio card and the advantage score were the same mistake twice.** Each divided a simulated
+state vector's bytes (or qubits) by a CKKS byte ratio at under 1% slot use. One more thing the
+retirement had to reach: the score was also fed to the in-browser agent as run context, so a model
+was being asked to reason from it.
+
+**The security-posture table called every QKD row "measured".** Under "what this run measured", with
+"The bits are real; there are not enough of them." The browser's `bb84()` returns a count and never key
+bytes, which a checklist row (SC2) already recorded. The rows are now kind "simulated", and
+the banner every page renders says the quantum channel is simulated.
+
+**Three attributions the sources did not support, found by reading them rather than their
+summaries.** BSI TR-02102-1 v2026-01 was credited with the QKD add-on; its section 2.2 hybrid is
+quantum-safe plus classical and does not mention QKD. A sentence quoted from "the NSA FAQ" is on a
+different NSA page. And "a FAR rule putting contractors on the 2030 date" describes a rule that EO
+14412 only directs to be PROPOSED.
+
+**One copy of several, again.** The novelty sentence had a third copy in the technical report; the
+market figures had five, two of them in this file and the register, quoted as history. Both gates
+enumerate the copies rather than naming them.
