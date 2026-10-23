@@ -34,7 +34,12 @@ export default function Overview() {
         An end-to-end security layer that chains <b className="hl-c">QKD</b> →{" "}
         <b className="hl-c">QSMPC</b> → <b className="hl-q">QHE/FHE</b> →{" "}
         <b>privacy-preserving AI</b> on a <b>PQC-first hybrid</b> foundation —
-        validated for finance, healthcare, genomics and telecom/defence.
+        {/* Was "validated for finance, healthcare, genomics and telecom/defence". Nothing here is
+            validated in any of those settings - the note at the bottom of this page says the
+            quantum-channel results are "simulated, not hardware-validated" - and the list left out
+            the fifth use case. */}
+        demonstrated on finance, healthcare, genomics, telecom/defence and satellite use cases,
+        with the quantum channel simulated.
       </p>
 
       <div className="grid cols-4">
@@ -45,11 +50,14 @@ export default function Overview() {
             a seeded, non-cryptographic generator, and on the Python path it is wrapped by
             ML-KEM-768 + X25519, which makes the composite computational (MLWE, FIPS 203). */}
         <div className="card"><div className="kpi q">2</div><p>security models compared: computational (RLWE, MLWE) vs information-theoretic <i>as a scheme</i> (quantum one-time pad). This demo seeds the pad, so no run here is information-theoretically secure.</p></div>
-        {/* Cloudflare (2026-04-07) is the one that committed to being "fully post-quantum secure
-            including, crucially, post-quantum authentication". Google (2026-03-25) set "a timeline
-            for post-quantum cryptography migration to 2029" — a migration timeline, not a
-            full-PQC commitment. Attributing the stronger claim to both overstated Google. */}
-        <div className="card"><div className="kpi c">2029</div><p>Cloudflare target for full PQC including authentication; Google targets PQC migration by the same year. CNSA 2.0 requires new NSS acquisitions to be quantum-resistant from 2027</p></div>
+        {/* Both are TARGETS, not commitments. Cloudflare (blog "Cloudflare targets 2029 for full
+            post-quantum security", 2026-04-07): "We now target 2029 to be fully post-quantum (PQ)
+            secure including, crucially, post-quantum authentication", with intermediate milestones
+            "subject to change". Google (2026-03-25): "We're setting a timeline for post-quantum
+            cryptography migration to 2029". CNSA 2.0 binds national security systems only, and what
+            CNSSP 15 requires from 2027 is CNSA 2.0 algorithms in new acquisitions (NSA CNSA 2.0 FAQ
+            Ver. 2.2, Oct 2026) - "quantum-resistant" was looser than the rule. */}
+        <div className="card"><div className="kpi c">2029</div><p>Cloudflare target for full PQC including authentication; Google targets PQC migration by the same year. For national security systems, CNSA 2.0 algorithms are required in new acquisitions from 2027</p></div>
         {/* The novelty, stated where a first-time visitor reads it. Everything else on this page is
             context that other projects share; this is the part that is unusual, and it was legible
             only from the banner - which did not render here. */}
@@ -89,7 +97,7 @@ export default function Overview() {
           <span className="tag">data</span> →
           <span className="tag deep">QRNG entropy</span> →
           <span className="tag deep">PQC handshake (ML-KEM + X25519)</span> →
-          <span className="tag deep">QKD key agreement (BB84 decoy / E91)</span> →
+          <span className="tag deep">QKD key agreement (BB84 decoy / E91, simulated)</span> →
           <span className="tag deep">QSMPC compute (PSI / secure sum)</span> →
           <span className="tag scaffold">QHE/FHE private inference</span> →
           <span className="tag">result + artifacts</span>
@@ -103,13 +111,17 @@ export default function Overview() {
       </div>
 
       <div className="note" style={{ marginTop: 24 }}>
+        {/* This note used to say QKD was an add-on "per BSI" and that "the hybrid framing here is
+            BSI's". BSI's hybrid (TR-02102-1 v2026-01 section 2.2) is PQC + CLASSICAL key agreement and
+            does not mention QKD; section 2.1 does not recommend QKD at all. So the QKD add-on is this
+            project's choice alone, and only the ML-KEM + X25519 layer follows BSI. */}
         <b>Research PoC.</b> Quantum-channel results (QKD distance/QBER gains, photonic inference,
-        full qOLE) are <b>simulated</b>, not hardware-validated. QKD is presented strictly as a
-        PQC-hybrid add-on, never standalone — per <b>BSI TR-02102-1 v2026-01</b>, which states that QKD
-        "is currently not ready for use from a security point of view" and recommends hybrid key
-        agreement. Not per NSA: NSA answers "No" to using QKD to protect a national security system
-        and does not endorse a hybrid QKD add-on either, so the hybrid framing here is BSI's and this
-        project's, not NSA's.
+        full qOLE) are <b>simulated</b>, not hardware-validated. QKD appears only as an optional add-on
+        to the PQC hybrid, never standalone, and that is this project's choice, not a recommendation:
+        <b>BSI TR-02102-1 v2026-01</b> states that QKD "is currently not ready for use from a security
+        point of view" and does not recommend it (section 2.1). What BSI recommends is hybrid key
+        agreement combining a quantum-safe and a classical mechanism (section 2.2), which the ML-KEM +
+        X25519 layer implements. NSA answers "No" to using QKD to protect a national security system.
       </div>
     </div>
   );

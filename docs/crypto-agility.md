@@ -94,14 +94,16 @@ a new FHE backend) is **one `register(...)` call** - no stage code changes.
   rounds and which was never what the code did): secure if *either* primitive holds - the
   HNDL hedge. The construction is `src/qsh/pqc/hybrid_kem.py` and
   `web/src/lib/hybridCombiner.ts`, which `npm run check:combiner` holds byte-identical;
-  described there rather than restated here, so this file cannot drift from it again. QKD key material can be mixed in (`PQC + QKD`) per **BSI TR-02102-1 v2026-01 section 2.2 "Key Derivation and
-Hybridisation"** (p.29; section 2.1 is "Use of Quantum-Safe Mechanisms"),
-  which recommends *"a hybrid key agreement mechanism that combines a quantum-safe and a classical
-  mechanism"* that *"should remain secure as long as one of the methods used is secure"*. This was
-  previously attributed to an "NSA hybrid recommendation" - **NSA publishes no such PQC+QKD hybrid
-  recommendation**; its published position is against QKD for National Security Systems, and the same
-  BSI guideline states QKD *"is currently not ready for use from a security point of view"*;
-  QKD is never used standalone.
+  described there rather than restated here, so this file cannot drift from it again. The PQC +
+  classical hybrid follows **BSI TR-02102-1 v2026-01 section 2.2 "Key Derivation and Hybridisation"**
+  (p.29), which recommends *"a hybrid key agreement mechanism that combines a quantum-safe and a
+  classical mechanism"* that *"should remain secure as long as one of the methods used is secure"*.
+  QKD key material can additionally be mixed in (`PQC + QKD`), and that is this project's own choice:
+  section 2.2 does not mention QKD, and section 2.1 ("Use of Quantum-Safe Mechanisms") states QKD *"is
+  currently not ready for use from a security point of view"* and that BSI does not recommend QKD
+  protocols. Until 2026-10-24 this paragraph credited the QKD mix to section 2.2; before that, to an
+  "NSA hybrid recommendation" - **NSA publishes no such PQC+QKD hybrid recommendation**, and its
+  published position is against QKD for National Security Systems. QKD is never used standalone.
 - **Transport** (`pqc/transport.py`) wraps the agreed key in AES-256-GCM; the **MCP agent
   bridge** (`pqc/mcp_bridge.py`) adds ML-DSA message signatures.
 

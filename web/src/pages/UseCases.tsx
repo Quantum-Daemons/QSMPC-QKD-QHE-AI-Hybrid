@@ -68,7 +68,6 @@ export default function UseCases() {
                   ? <>{pinned.length} model{pinned.length > 1 ? "s" : ""} published and pinned - verifiable in your browser</>
                   : <>weights not published: the source data's licence does not clearly permit redistributing them</>}
               </p>
-              <p className="muted" style={{ fontSize: 11 }}>{u.market}</p>
               <span className="btn" style={{ marginTop: 6, display: "inline-block" }}>Open simulator →</span>
             </Link>
           );
