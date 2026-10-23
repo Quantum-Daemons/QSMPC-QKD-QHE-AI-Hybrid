@@ -33,7 +33,7 @@ export default function Overview() {
       <p className="page-sub">
         An end-to-end security layer that chains <b className="hl-c">QKD</b> →{" "}
         <b className="hl-c">QSMPC</b> → <b className="hl-q">QHE/FHE</b> →{" "}
-        <b>privacy-preserving AI</b> on a <b>PQC-first hybrid</b> foundation —
+        <b>privacy-preserving AI</b> on a <b>PQC-first hybrid</b> foundation —{" "}
         {/* Was "validated for finance, healthcare, genomics and telecom/defence". Nothing here is
             validated in any of those settings - the note at the bottom of this page says the
             quantum-channel results are "simulated, not hardware-validated" - and the list left out
@@ -117,7 +117,7 @@ export default function Overview() {
             project's choice alone, and only the ML-KEM + X25519 layer follows BSI. */}
         <b>Research PoC.</b> Quantum-channel results (QKD distance/QBER gains, photonic inference,
         full qOLE) are <b>simulated</b>, not hardware-validated. QKD appears only as an optional add-on
-        to the PQC hybrid, never standalone, and that is this project's choice, not a recommendation:
+        to the PQC hybrid, never standalone, and that is this project's choice, not a recommendation:{" "}
         <b>BSI TR-02102-1 v2026-01</b> states that QKD "is currently not ready for use from a security
         point of view" and does not recommend it (section 2.1). What BSI recommends is hybrid key
         agreement combining a quantum-safe and a classical mechanism (section 2.2), which the ML-KEM +

@@ -2783,6 +2783,14 @@ quantum-safe plus classical and does not mention QKD. A sentence quoted from "th
 different NSA page. And "a FAR rule putting contractors on the 2030 date" describes a rule that EO
 14412 only directs to be PROPOSED.
 
+**And the deployed branch showed one more, which my own gate had written down as correct.** After the
+QBER row was fixed, an E91 run on the live page still listed "Decoy-state necessity" with the warning
+that "the decoy states are what make this link work at all" - on a protocol with no decoy states. The
+test written earlier the same day asserted FOUR QKD rows for both protocols, so it did not miss the
+defect; it specified it. It now expects three on E91 and checks the whole table, and seeding the row
+back fails two tests. The same walk found three words run together by JSX line breaks and two agent
+prompts that asked the in-browser model to defend claims the page itself rejects.
+
 **One copy of several, again.** The novelty sentence had a third copy in the technical report; the
 market figures had five, two of them in this file and the register, quoted as history. Both gates
 enumerate the copies rather than naming them.
