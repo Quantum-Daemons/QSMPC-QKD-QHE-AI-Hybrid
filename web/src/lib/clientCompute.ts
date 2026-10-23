@@ -306,51 +306,58 @@ export function securityFacts(config: any, metrics: Record<string, any>): Securi
             + "012307, 2007); no decoy states. CHSH S is a consistency check, not a certificate"
           : "two-intensity decoy-state bound, Ma, Qi, Zhao & Lo, Phys. Rev. A 72, 012326 (2005)" });
     }
-    // What the decoy states are actually buying on THIS channel.
-    //
-    // ROUND 45 CORRECTED THIS COMMENT AND THE MODEL UNDER IT. It used to say "the runtime model is
-    // asymptotic decoy-state, which already assumes the single-photon contribution has been
-    // bounded". The runtime model was neither: it computed 1 - h2(q) - f h2(q) on the observed QBER
-    // and credited every sifted bit as single-photon, which is stronger than any decoy bound rather
-    // than an approximation of one. `bb84()` now runs the two-intensity estimator, so the sentence
-    // describes the code for the first time. Delta >= 1 still means no detection could be certified
-    // single-photon and the same hardware would yield nothing without decoys - and on this link it
-    // is 7.26, so the counterfactual really is zero rather than merely smaller.
-    const mu = qkdCfg().mu_signal;
-    // The channel model AND the parameters fed to it both have to follow the use case.
-    //
-    // Round 29 fixed half of this. It emitted `usecase` so the MODEL switched to free-space on the
-    // satellite page - and left the parameter reads on `qkd_distance_km` / `qkd_misalignment` /
-    // `qkd_eve`, which are the FIBRE page's controls. Those keys are always present (they default from
-    // `qkd.*` config), so the satellite page evaluated the free-space model at 50 km with fibre
-    // misalignment: the tagged fraction went from 7.26 to 2.89 rather than to the free-space figure,
-    // and the three controls that page actually renders - `sat_distance_km`, `sat_eve`, `sat_pulses` -
-    // still could not move it. A half-corrected number is harder to catch than an uncorrected one,
-    // because it moved.
-    const sat = config?.usecase === "satellite_comms";
-    const chan = sat ? FREE_SPACE : FIBER;
-    const delta = taggedFraction(mu, { ...chan,
-      distanceKm: Number((sat ? config?.sat_distance_km : config?.qkd_distance_km) ?? chan.distanceKm),
-      // No misalignment control is rendered on the satellite page, so the free-space channel's own
-      // 0.025 is the honest value there. Reading `qkd_misalignment` unconditionally would have
-      // substituted the fibre page's 0.015 - always, since that key is never absent.
-      misalignment: Number((sat ? undefined : config?.qkd_misalignment) ?? chan.misalignment),
-      eveFraction: Number((sat ? config?.sat_eve : config?.qkd_eve) ?? 0) });
-    facts.push({
-      label: "Decoy-state necessity",
-      // Always print the number. ">= 1" was a needless loss of information: on the default fibre
-      // link Delta is 7.26, and "7.26" says the decoy states are carrying the entire link, where
-      // ">= 1" only says they are carrying some of it.
-      value: `tagged fraction ${delta.toFixed(2)} at mu ${mu}`,
-      kind: "simulated",
-      source: "GLLP tagged fraction over this channel; Ma PRA 72 012326, GLLP QIC 4 325",
-      warn: delta >= 1
-        ? "without decoy states this link yields NO key. The worst-case bound on Eve-known "
-          + "(multi-photon) detections exceeds the total detection probability, so not one "
-          + "detection could be certified single-photon and the whole sifted block is discarded. "
-          + "The decoy states are what make this link work at all."
-        : undefined,
-    });
+    // BB84 ONLY. An E91 run showed this row too, warning that "the decoy states are what make this
+    // link work at all" - on a protocol that uses none. The tagged fraction is a property of an
+    // attenuated laser's multi-photon pulses; an entangled source's security analysis needs no decoy
+    // states (Ma, Fung & Lo, Phys. Rev. A 76, 012307, 2007). Found on the deployed demo, 2026-10-24,
+    // after a gate written the same day had asserted the row's presence on E91 runs.
+    if (!isE91) {
+      // What the decoy states are actually buying on THIS channel.
+      //
+      // ROUND 45 CORRECTED THIS COMMENT AND THE MODEL UNDER IT. It used to say "the runtime model is
+      // asymptotic decoy-state, which already assumes the single-photon contribution has been
+      // bounded". The runtime model was neither: it computed 1 - h2(q) - f h2(q) on the observed QBER
+      // and credited every sifted bit as single-photon, which is stronger than any decoy bound rather
+      // than an approximation of one. `bb84()` now runs the two-intensity estimator, so the sentence
+      // describes the code for the first time. Delta >= 1 still means no detection could be certified
+      // single-photon and the same hardware would yield nothing without decoys - and on this link it
+      // is 7.26, so the counterfactual really is zero rather than merely smaller.
+      const mu = qkdCfg().mu_signal;
+      // The channel model AND the parameters fed to it both have to follow the use case.
+      //
+      // Round 29 fixed half of this. It emitted `usecase` so the MODEL switched to free-space on the
+      // satellite page - and left the parameter reads on `qkd_distance_km` / `qkd_misalignment` /
+      // `qkd_eve`, which are the FIBRE page's controls. Those keys are always present (they default from
+      // `qkd.*` config), so the satellite page evaluated the free-space model at 50 km with fibre
+      // misalignment: the tagged fraction went from 7.26 to 2.89 rather than to the free-space figure,
+      // and the three controls that page actually renders - `sat_distance_km`, `sat_eve`, `sat_pulses` -
+      // still could not move it. A half-corrected number is harder to catch than an uncorrected one,
+      // because it moved.
+      const sat = config?.usecase === "satellite_comms";
+      const chan = sat ? FREE_SPACE : FIBER;
+      const delta = taggedFraction(mu, { ...chan,
+        distanceKm: Number((sat ? config?.sat_distance_km : config?.qkd_distance_km) ?? chan.distanceKm),
+        // No misalignment control is rendered on the satellite page, so the free-space channel's own
+        // 0.025 is the honest value there. Reading `qkd_misalignment` unconditionally would have
+        // substituted the fibre page's 0.015 - always, since that key is never absent.
+        misalignment: Number((sat ? undefined : config?.qkd_misalignment) ?? chan.misalignment),
+        eveFraction: Number((sat ? config?.sat_eve : config?.qkd_eve) ?? 0) });
+      facts.push({
+        label: "Decoy-state necessity",
+        // Always print the number. ">= 1" was a needless loss of information: on the default fibre
+        // link Delta is 7.26, and "7.26" says the decoy states are carrying the entire link, where
+        // ">= 1" only says they are carrying some of it.
+        value: `tagged fraction ${delta.toFixed(2)} at mu ${mu}`,
+        kind: "simulated",
+        source: "GLLP tagged fraction over this channel; Ma PRA 72 012326, GLLP QIC 4 325",
+        warn: delta >= 1
+          ? "without decoy states this link yields NO key. The worst-case bound on Eve-known "
+            + "(multi-photon) detections exceeds the total detection probability, so not one "
+            + "detection could be certified single-photon and the whole sifted block is discarded. "
+            + "The decoy states are what make this link work at all."
+          : undefined,
+      });
+    }
   }
 
   if (qber != null) {

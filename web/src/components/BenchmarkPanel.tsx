@@ -89,7 +89,7 @@ export default function BenchmarkPanel(
         return (
           <p className="muted" style={{ fontSize: 11, margin: "8px 0 0", lineHeight: 1.5 }}>
             <b>How these are produced (this run):</b> the <span style={{ color: "#b072ff" }}>QSMPC-FHE</span> row is
-            a genuine <b>state-vector simulation</b> of a QOTP-protected parameterised RY/RZ/CNOT circuit run by the
+            a genuine <b>state-vector simulation</b> of a QOTP-protected parameterised RY/RZ/CNOT circuit run by the{" "}
             <code>quantum_comparison</code> stage — its <b>latency is measured</b> and its
             {/* "counted from the circuit" is true of the BROWSER row and false of the Python one.
                 `qsh/qhe/qcnn.py` builds no T gates; its `t_count()` is a Solovay-Kitaev budget,

@@ -29,7 +29,10 @@ export const USECASES: UseCaseMeta[] = [
     blurb: "Hospitals train a shared diagnostic model with secure aggregation (no patient data leaves), then a clinician runs a private, signed-explained diagnosis.",
     inference: true,
     agenticTool: "query_cohort",
-    agenticPrompt: "In one sentence, why does a clinician's agent querying a federated diagnostic model over MCP need a quantum-safe (PQC + QKD) channel under HIPAA?",
+    // Was "... need a quantum-safe (PQC + QKD) channel under HIPAA?". HIPAA names no PQC or QKD
+    // requirement, so the question asked the in-browser model to explain an obligation that does not
+    // exist - and the model answers what it is asked.
+    agenticPrompt: "In one sentence, what does a quantum-safe channel add when a clinician's agent queries a federated diagnostic model over MCP?",
   },
   {
     id: "genomics", title: "Genomics — confidential analysis", nav: "Genomics", industry: "genomics",
@@ -50,7 +53,10 @@ export const USECASES: UseCaseMeta[] = [
     blurb: "A ground station and a LEO satellite run a simulated free-space BB84 downlink, then test whether Quantum Secure Direct Communication could carry mission telemetry over it, with an inline eavesdrop check. Under the published secrecy criterion it cannot at any range offered here, and the run says so.",
     inference: false,
     agenticTool: "relay_mission_telemetry",
-    agenticPrompt: "In one sentence, why relay satellite mission telemetry via QSDC over a quantum-safe MCP channel instead of classical encryption over the free-space link?",
+    // Was "why relay satellite mission telemetry via QSDC ... instead of classical encryption". This
+    // page's own finding is that QSDC cannot close over this LEO downlink at any range it offers, so
+    // the old question asked the model to argue against the page.
+    agenticPrompt: "In one sentence, what limits Quantum Secure Direct Communication over a LEO free-space downlink compared with QKD plus classical encryption?",
   },
 ];
 

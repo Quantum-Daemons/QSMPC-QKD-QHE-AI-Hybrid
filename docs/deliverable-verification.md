@@ -4109,6 +4109,9 @@ session. Nothing was changed on the strength of a secondary write-up.
 | NIST IR 8547 (report) | "deprecates RSA-2048 and ECC-256 by 2030" | initial public draft; 112-bit strength deprecated after 2030, P-256 only disallowed after 2035 | NIST IR 8547 ipd, Table 2 |
 | FIPS 140-2, M-26-15 | future tense | past: certificates historical since 2026-09-21; agency plans were due about 2026-10-22 | CMVP; M-26-15 |
 | QCNN simulability citation | arXiv preprint | PRX Quantum 7, 020304 (2026) | arXiv journal reference |
+| E91 decoy-state row (found on the deployed branch) | an E91 run showed "Decoy-state necessity" and its warning that "the decoy states are what make this link work at all" - and the gate written earlier this round ASSERTED four QKD rows for both protocols, so it codified the defect | BB84 only; the E91 test now checks the whole table, not three selected rows | Ma, Fung and Lo, Phys. Rev. A 76, 012307 (2007): an entangled source needs no decoy states |
+| Agent prompts (found on the deployed branch) | medical asked why HIPAA needs a "(PQC + QKD)" channel; satellite asked why QSDC beats classical encryption on a link where this page finds QSDC cannot close | neutral questions | HIPAA names no PQC or QKD requirement; the page's own QSDC finding |
+| Three missing spaces (found on the deployed branch) | "foundation -demonstrated", "recommendation:BSI", "thequantum_comparison": a JSX line break before an inline tag or a comment drops the space | `{" "}` at each | rendered text |
 | References | arXiv:2604.23490 called nothing; arXiv:2604.19256 had its v1 title | 2604.23490 v3 carries the authors' comment that its conclusion contains mistakes (NOT withdrawn); 2604.19256 has its v2 title | arXiv API |
 
 ### Open, recorded as proposals rather than changed
@@ -4127,7 +4130,9 @@ session. Nothing was changed on the strength of a secondary write-up.
 The defect class is the same as every recent round: one copy of several. The novelty sentence had a
 third copy, in the technical report, that the plan did not name. The market figures sat in five places,
 two of them in the verification records. The E91 protocol test existed and was scoped one branch too
-narrowly for the row that needed it. The new gates enumerate the copies instead of naming one:
+narrowly for the row that needed it - and after the fix, the deployed page showed a fourth BB84-only
+row on E91 runs, which a gate I wrote the same day had asserted should be there: a test that selects
+the rows it checks cannot see the row it did not select. The new gates enumerate the copies instead of naming one:
 `test_public_text_claims_only_what_the_demo_does.py` scans every public text file for market figures,
 the three novelty copies and twelve corrected phrases; `test_e91_facts_describe_the_e91_model.py` runs
 the real browser module for both protocols and both key-count bands; every check was seeded and fires.
