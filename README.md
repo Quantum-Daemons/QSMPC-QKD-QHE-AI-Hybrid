@@ -468,8 +468,8 @@ rests on quantum LWE, so its security is computational.
   against a published standard, measured by the run, or simulated by the run's analytic quantum-channel
   model, and labelled which: NIST category and ciphertext/signature sizes from FIPS 203/204, and, as
   simulated rows (no QKD device exists here), QKD secure key bits, SKR, the QBER verdict taken from
-  `secure_key_bits > 0` rather than a threshold, and the GLLP tagged fraction showing what the decoy
-  states are buying. `qsh/benchmark/security.py` still computes the old composite for
+  `secure_key_bits > 0` rather than a threshold, and, on BB84 runs, the GLLP tagged fraction showing
+  what the decoy states are buying (E91 uses none, so its table has no such row). `qsh/benchmark/security.py` still computes the old composite for
   backwards compatibility but nothing renders it. Why it was retired:
   `references/security-scoring-fact-check.md`.
 - **Quantum advantage (0-10) - retired 2026-10-23, not rendered.** `qsh/benchmark/quantum_advantage.py`
