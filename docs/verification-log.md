@@ -2938,3 +2938,24 @@ asset references: node-seal's wasm through a `?url` import, ONNX Runtime's wasm 
 `import.meta.url`, and the GIF worker through another `?url`. Each was confirmed by what the browser
 fetched or what the build emitted, not by the build exiting cleanly: a mis-rewritten wasm path is
 served `index.html` by the SPA fallback and fails only when the module is instantiated.
+
+### Round 63: a prototype measured beside the demo, and a toolchain the host could not supply
+
+**Context.** The Polytune prototype decided after Round 60's research, built after the two major
+upgrades and kept out of the production build.
+
+**The host route failed for a reason a version number shows.** The wasm32 standard library was added
+to the host for this round, and the build would still have failed: Polytune declares Rust 1.89 and the
+system compiler is 1.88. The container is not a preference here; it is the only route that builds the
+crate on this machine, and the documentation says which route works for which crate rather than
+offering both as equivalent.
+
+**The measurement had to count what the tab cannot show.** Both implementations run their parties in
+one tab, where a message costs a function call, so wall-clock alone flatters whichever sends more. The
+in-memory channel therefore counts messages as well as bytes, and emp-wasm's counts were taken by
+replicating its call against the same installed packages. That is what turns "six times faster" into
+"six times faster here, and five times the traffic".
+
+**Browser note.** The connected Chrome could no longer reach this machine's loopback, so the prototype
+and the emp-wasm baseline were both measured in the app's built-in browser, which keeps the two on one
+engine.

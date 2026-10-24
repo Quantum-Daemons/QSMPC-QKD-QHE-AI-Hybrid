@@ -1,0 +1,43 @@
+# A PROTOTYPE, not part of the demo. Nothing under web/ imports it, and the web image does not build it.
+# It runs the demo's garbled-circuit argmax (web/src/lib/clientMPC.ts) on Polytune instead of the
+# archived mpc-framework + emp-wasm + summon stack, so the two can be compared before anything is
+# replaced. Build it with ./build.sh, which uses the official Rust container (see README.md here).
+[package]
+name = "polytune-argmax"
+version = "0.1.0"
+edition = "2024"
+# Polytune's own minimum. The host's system Rust (1.88 on this project's Linux box) is below it,
+# which is why the build runs in a container.
+rust-version = "1.89"
+publish = false
+license = "MIT"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+# Pinned to the commit the prototype was written against (sine-fdn/polytune main, 2026-09-30). Its
+# latest release is a pre-release (v0.2.0-alpha.4), so a commit is the stabler reference.
+polytune = { git = "https://github.com/sine-fdn/polytune", rev = "47dc37840a241ba0e27c1b2234059746a1ba05b7" }
+futures = { version = "0.3.34", default-features = false, features = ["std", "async-await", "executor"] }
+web-time = "1.1"
+wasm-bindgen = "=0.2.129"
+wasm-bindgen-futures = "0.4.79"
+js-sys = "0.3.106"
+
+# Polytune's wasm32 note: these getrandom features are required, together with
+# RUSTFLAGS='--cfg getrandom_backend="wasm_js"' (set by build.sh).
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+getrandom_0_2 = { package = "getrandom", version = "0.2.16", features = ["js"] }
+getrandom_0_3 = { package = "getrandom", version = "0.3", features = ["wasm_js"] }
+getrandom_0_4 = { package = "getrandom", version = "0.4", features = ["wasm_js"] }
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+
+# wasm-opt is skipped so the build needs no download at build time beyond the crates; the measurement
+# is of the protocol, and the emp-wasm side is measured as shipped.
+[package.metadata.wasm-pack.profile.release]
+wasm-opt = false
