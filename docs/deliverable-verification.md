@@ -4488,6 +4488,14 @@ summary was signed. The GIF worker asset the `?url` import names is referenced f
 served as JavaScript, and the agent's dynamically imported Transformers.js chunk loaded and answered on
 WASM in 2.4 s. All six `check:*` scripts pass.
 
+**Walked on the public demo with this branch deployed** (29f1db6, serving `index-BlGVcorX.js`, the file
+name the local build produced; the image's Node build stage built it with vite 6). All ten pages render
+with no error boundary and zero horizontal overflow. The medical pipeline completed: encrypted
+inference 1292.4 ms (CKKS 604.81 ms, the garbled-circuit non-linear half 687.59 ms), ResNet-18 on
+onnx-wasm in 36.72 ms, the published models verified PASS and the summary signed, with both wasm assets
+fetched at 200. The agent answered on WASM in 2.5 s with the envelope authenticated and the tampered
+copy rejected, and the console showed no error.
+
 BUSINESS DOC RECONCILED Round 62. The out-of-repo document is brought level with this round. Its content
 is not quoted here, in the checklist, or in any commit - only the fact of the reconciliation, which is
 what gate 16 reads.
