@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom";
+import { Link } from "react-router";
 import KeyPoints from "../components/KeyPoints";
 import StageBadge from "../components/StageBadge";
 import { DEMO_BANNER, isClientDemo } from "../lib/demoMode";
