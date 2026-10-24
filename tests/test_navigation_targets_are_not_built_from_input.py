@@ -2,18 +2,18 @@
 
 WHY THIS EXISTS
 
-`npm audit` reports two react-router advisories that only a major upgrade (v7.18 or later) clears: an
+Round 59 found two react-router advisories that only a major upgrade (v7.18 or later) cleared: an
 open redirect when a `<Link to>` or `useNavigate` target containing a backslash is built from untrusted
-input, and constructor injection through `deserializeErrors()` in data-router hydration. Round 59
-upgraded react-router-dom to 6.30.6, which clears the advisory scoped to that package, and assessed the
-other two as unreachable here: the app calls no `useNavigate`, renders no data router (the
-`deserializeErrors` code is not in the bundle), and every link target is either a string literal or
-built from the static NAV and USECASES lists. The one URL parameter the app reads, `?usecase=`, is
-validated against USECASES and never becomes a link.
+input, and constructor injection through `deserializeErrors()` in data-router hydration. It assessed
+both as unreachable here: the app calls no `useNavigate`, renders no data router, and every link target
+is either a string literal or built from the static NAV and USECASES lists. The one URL parameter the
+app reads, `?usecase=`, is validated against USECASES and never becomes a link. Round 61 upgraded to
+react-router 7.18.4, which fixes both.
 
-That assessment is a property of the code, and code changes. This test holds it, so that the day a
-link target is built from a query parameter, the residual advisory stops being unreachable and this
-fails before the change ships.
+The test stays, because the property it holds is worth more than the advisory it was written for. A
+link target built from input is an open redirect whatever the router version, and the next bypass of
+the library's backslash handling would make it reachable again. This fails the day a link target is
+built from a query parameter, before the change ships.
 """
 
 from __future__ import annotations
@@ -42,8 +42,8 @@ def _sources():
 def test_no_imperative_navigation():
     hits = [f"{p.relative_to(REPO)}" for p, s in _sources() if re.search(r"\buseNavigate\b|\bredirect\(", s)]
     assert not hits, (
-        "useNavigate / redirect() appeared. The residual react-router open-redirect advisory applies to "
-        f"navigation targets built from input; check where these targets come from: {hits}")
+        "useNavigate / redirect() appeared. An open redirect needs a navigation target built from input, "
+        f"whatever the router version; check where these targets come from: {hits}")
 
 
 def _braced_values(src: str, attr: str):
@@ -69,8 +69,8 @@ def test_every_link_target_is_a_literal_or_from_a_static_list():
     assert not offenders, (
         "a link target is built from an expression not on the allowlist:\n  " + "\n  ".join(offenders)
         + "\n\nIf it comes from a static list, add it to ALLOWED_EXPRESSIONS with that list named. If it "
-        "comes from a URL parameter or any other input, the react-router open-redirect advisory (fixed "
-        "only in v7.18+) becomes reachable: upgrade first, or validate the target against a fixed list.")
+        "comes from a URL parameter or any other input, it is an open redirect waiting for the next "
+        "bypass of the router's own checks: validate the target against a fixed list instead.")
     # Anti-tautology: the scan must actually see the targets it allows.
     assert ALLOWED_EXPRESSIONS <= found, f"the scan no longer sees {ALLOWED_EXPRESSIONS - found}; re-derive"
 
