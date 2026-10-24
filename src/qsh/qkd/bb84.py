@@ -59,7 +59,7 @@ from dataclasses import dataclass, field
 
 import numpy as np
 
-from .channel import ChannelParams, intrinsic_qber
+from .channel import ChannelParams, compose_independent_errors, intrinsic_qber
 
 
 def e_det_for_bound(params: ChannelParams) -> float:
@@ -68,12 +68,14 @@ def e_det_for_bound(params: ChannelParams) -> float:
     Misalignment plus the eavesdropper's disturbance, and deliberately NOT the dark-count term -
     `_decoy_secure_fraction` adds the background back as `e0 * y0`, so including it here charges it
     twice. `intrinsic_qber` is the right quantity for the OBSERVED QBER a panel displays and the
-    wrong one for this bound; the two differ by exactly that background term.
+    wrong one for this bound; the two differ by that background term (scaled by 1 - 0.5 f when an
+    eavesdropper is present, since both compose her disturbance the same way).
 
     Intercept-resend on a fraction f of pulses disturbs a detected signal photon at 0.25 * f, the
-    textbook BB84 figure, which is what `intrinsic_qber` also uses.
+    textbook BB84 figure, independently of misalignment - so the two are COMPOSED, exactly as
+    `intrinsic_qber` composes them (they were added until 2026-10-24).
     """
-    return min(0.5, params.misalignment + 0.25 * params.eve_intercept_fraction)
+    return min(0.5, compose_independent_errors(params.misalignment, 0.25 * params.eve_intercept_fraction))
 
 
 def _h2(x: float) -> float:

@@ -81,7 +81,7 @@ esbuild.build({
 """
 
 
-def _facts(protocol: str, key_bits: int = 145000) -> list[dict]:
+def _facts(protocol: str, key_bits: int = 145000, eve: float = 0) -> list[dict]:
     _require_browser_or_skip()
     with tempfile.TemporaryDirectory() as tmp:
         d = Path(tmp)
@@ -92,7 +92,7 @@ def _facts(protocol: str, key_bits: int = 145000) -> list[dict]:
             "out": json.dumps(str(bundle)), "stub": json.dumps(_STUB)})
         subprocess.run(["node", str(build)], cwd=WEB, check=True, capture_output=True, text=True)
         cfg = {"qkd": "bb84-decoy", "qkd_protocol": protocol, "usecase": "telecom_ids",
-               "qkd_distance_km": 50, "qkd_misalignment": 0.015, "qkd_eve": 0}
+               "qkd_distance_km": 50, "qkd_misalignment": 0.015, "qkd_eve": eve}
         metrics = {"qber": 0.03, "skr_per_pulse": 0.007286, "secure_key_bits": key_bits}
         runner.write_text(
             f"globalThis.window = globalThis; globalThis.self = globalThis;\n"
@@ -106,6 +106,32 @@ def _qkd_text(facts: list[dict]) -> str:
     rows = [f for f in facts if f.get("label") in ("QBER", "Secret-key rate", "QKD key material")]
     assert len(rows) == 3, f"expected the three QKD rows, got {[f.get('label') for f in facts]}"
     return " | ".join(f"{f['label']}: {f.get('source', '')} {f.get('warn') or ''}" for f in rows)
+
+
+def _f_ec() -> float:
+    cfg = json.loads((WEB / "src" / "lib" / "config.defaults.json").read_text())
+    return float(cfg["qkd"]["error_correction_eff"])
+
+
+def _h2(x: float) -> float:
+    import math
+    return 0.0 if x <= 0 or x >= 1 else -x * math.log2(x) - (1 - x) * math.log2(1 - x)
+
+
+def _di_threshold(f_ec: float) -> tuple[float, float]:
+    """Acin et al. (PRL 98, 230501, 2007) device-independent zero-key point for S = 2 sqrt(2)(1 - 2Q).
+
+    Independent of the browser code: bisection on r(Q) = 1 - f h(Q) - h((1 + sqrt((S/2)^2 - 1))/2).
+    """
+    import math
+    chsh = lambda q: 2 * math.sqrt(2) * (1 - 2 * q)  # noqa: E731
+    r = lambda q: 1 - f_ec * _h2(q) - _h2((1 + math.sqrt(max(0.0, (chsh(q) / 2) ** 2 - 1))) / 2)  # noqa: E731
+    lo, hi = 0.0, (1 - 1 / math.sqrt(2)) / 2
+    for _ in range(60):
+        m = (lo + hi) / 2
+        lo, hi = (m, hi) if r(m) > 0 else (lo, m)
+    q = round(lo, 4)
+    return q, round(chsh(q), 3)
 
 
 def test_an_e91_run_is_described_by_the_e91_model() -> None:
@@ -122,7 +148,12 @@ def test_an_e91_run_is_described_by_the_e91_model() -> None:
     for bad in ("decoy-state bound", "two-intensity", "GLLP", "observed QBER", "aborts above 0.11"):
         assert bad not in text, f"an E91 run's facts say {bad!r}:\n{text}"
     assert "Werner-model error rate" in text and "0.0981" in text, text
-    assert "S > 2.424" in text, "the device-independent comparison must stay beside the E91 QBER"
+    # The device-independent threshold at the SAME error-correction efficiency as the 0.0981 beside
+    # it. The caption quoted S > 2.424 / Q < 0.0715 - the f = 1 figures - next to an f = 1.16
+    # device-dependent point; both are now computed from one f, and this recomputes them here.
+    q_di, s_di = _di_threshold(_f_ec())
+    assert f"S > {s_di}" in text and f"Q < {q_di}" in text, (q_di, s_di, text)
+    assert "S > 2.424" not in text, "the f = 1 threshold is back beside an f = 1.16 figure"
 
 
 def test_a_bb84_run_keeps_its_decoy_wording() -> None:
@@ -180,3 +211,18 @@ def test_the_panel_renders_the_simulated_kind_and_the_banner_says_so() -> None:
     m = re.search(r"export const DEMO_BANNER\s*=([^;]*);", banner, flags=re.S)
     assert m and "quantum channel (QKD, QSDC) is" in m.group(1) and "simulated" in m.group(1), (
         "the banner every page renders no longer says the quantum channel is simulated")
+
+
+def test_an_eavesdropped_e91_run_is_not_called_a_werner_state() -> None:
+    """Intercept-resend leaves a mixture of Werner and measured-and-resent pairs - separable at full
+    attack - so "Werner-model error rate" described a state the run did not have. The relation
+    S = 2 sqrt(2)(1 - 2Q) still holds in the measured plane, and the caption has to say both."""
+    text = _qkd_text(_facts("e91", eve=0.5))
+    assert "not a Werner state" in text and "Werner-model error rate" not in text, text
+    assert "S = 2 sqrt(2) (1 - 2Q)" in text and "V'(3 - 2f) <= 1" in text, text
+
+
+def test_the_two_thresholds_are_ordered_and_neither_is_the_s_gt_2_gate() -> None:
+    q_di, s_di = _di_threshold(_f_ec())
+    # Device-independent certification needs MORE violation than the device-dependent rate needs.
+    assert s_di > 2.27 > 2.0 and q_di < 0.0981, (q_di, s_di)
