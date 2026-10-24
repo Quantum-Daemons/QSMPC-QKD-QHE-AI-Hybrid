@@ -1,4 +1,6 @@
 import { useState } from "react";
+import NetKeyCards from "../components/NetKeyCards";
+import NetworkPositioning from "../components/NetworkPositioning";
 import { EveSweepChart } from "../components/QkdCharts";
 import { api } from "../lib/api";
 import { mldsaDemo, mlkemDemo } from "../lib/crypto";
@@ -162,6 +164,14 @@ export default function Validations() {
           </table>
         )}
       </div>
+
+      {/* The network layer's key schedules, computed in this tab (Round 58). The tunnels themselves
+          run in the companion network demo; nothing here connects to it. */}
+      <h2 style={{ marginTop: 28 }}>Network-layer key schedules (computed in your tab)</h2>
+      <div className="card">
+        <NetworkPositioning />
+      </div>
+      <NetKeyCards />
 
       <div className="btn-row" style={{ marginTop: 20 }}>
         <button className="btn ghost" onClick={() => downloadJSON({ kem, sig, pqc, qkd, mcp }, "qsh-validations.json")}>

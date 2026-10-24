@@ -2794,3 +2794,47 @@ prompts that asked the in-browser model to defend claims the page itself rejects
 **One copy of several, again.** The novelty sentence had a third copy in the technical report; the
 market figures had five, two of them in this file and the register, quoted as history. Both gates
 enumerate the copies rather than naming them.
+
+### Round 58, continued: composing Eve's error, and what the model curves showed
+
+**The composition was the smallest change with the widest reach.** Two flips on one bit cancel, so
+intercept-resend's 0.25 f composes with the channel error as a + b - 2ab; the code added them. It took
+four sites in two languages at once - the abort reads one and the decoy bound the other, and a
+cross-language test compares the two rates at every Eve fraction - and it moved nothing that has no
+eavesdropper. E91 at 50 km under a full attack now reads S 1.33, not 1.29, and S = 2 sqrt(2)(1 - 2Q)
+still holds exactly, because the state is a Werner/intercept-resend mixture whose CHSH value in the
+measured plane equals a Werner state's at the same error rate. The caption had called that mixture a
+Werner state; it is separable at a full attack.
+
+**The caption's two thresholds came from different error-correction assumptions.** "S > 2.424, i.e.
+Q < 0.0715" is the device-independent point at f = 1; the zero-key point beside it, 0.0981, is at
+f = 1.16. At one f the device-independent threshold is S > 2.456, Q < 0.0658, and both are now
+computed rather than quoted.
+
+**Plotting a quantity across its range found two things a single run hides.** Without decoy states the
+BB84 bound on the telecom page is zero at every distance shown - the multi-photon fraction exceeds the
+detection probability everywhere - so the decoy states are not improving the link, they are the link.
+And QSDC on the satellite page closes only when the fixed atmospheric and pointing losses are set near
+zero, out to about 129 km at 0 + 0 dB, which no LEO slant range is; at the default budget it fails at
+every range, 0.1 km included. Four tooltip figures saying otherwise dated from before two formula
+corrections; they are now computed by the function the stage runs.
+
+**The redesign corrected more than it rearranged.** Moving text into tables meant re-reading each
+sentence against the code: the Overview pill row put QKD on a key path it never joins, the agility
+paragraph offered two options the demo does not have, the Validations page filed a real PQC handshake
+under "Quantum simulations", the browser's benchmark row named the Python row's MPC mechanism, and four
+"above/below" pointers pointed the wrong way. The one 3D view with content - the QCNN's reduced Bloch
+vectors shrinking and leaving the encoding plane - reads the real circuit through a hook that leaves
+the measured path unchanged; the two illustrations say on the figure that they add nothing.
+
+**The network layer, added as math rather than tunnels.** A browser has no sockets, so the companion
+network project's WireGuard and IPsec work could only come in as key schedules run between two in-tab
+peers - and each was held to an official vector where one exists: NIST ACVP for ML-KEM-768 (10/10,
+including two modified ciphertexts that must fall through to implicit rejection), the cacophony vector
+for the Noise_IKpsk2 core, NIST CAVP SP 800-135 for the IKEv2 derivation. Two layers have no vectors
+anywhere - the RFC 9370 intermediate exchange and the RFC 8784 PPK - and two of twelve seeded defects,
+both composition errors in exactly those layers, pass the check. The page labels those rows "computed
+per spec - no official vectors" rather than letting a green row imply more. One check was added
+because a test showed a gap: dropping WireGuard's identifier string from the handshake passed every
+other assertion, so both peers' initial state is now compared with constants an independent
+implementation hardcodes, labelled non-authoritative.
