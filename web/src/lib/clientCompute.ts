@@ -2298,7 +2298,7 @@ export function runClientPipeline(
           ? `QSDC (simulated) delivered telemetry (secrecy ${secrecy.toFixed(4)} bit/carrier, g=${g.toFixed(1)})`
           : lossLimited
             ? `QSDC (simulated) NOT AVAILABLE on this link — secrecy capacity ${secrecy.toFixed(4)} bit/carrier `
-              + `at ${lossDb.toFixed(1)} dB (g=${g.toFixed(1)}), and it is still `
+              + `at ${lossDb.toFixed(1)} dB including the detector (g=${g.toFixed(1)}), and it is still `
               + `${secrecyNoEve.toFixed(4)} with NO eavesdropper. The limit is the link budget, not `
               // The criterion as computed: C_s = 1 - h(e) - g h(e_x + e_z), with e_x + e_z = 2e here.
               // This line quoted "C_s > 0 requires h(QBER) < 1/(1+g)", the POOLED form that the
@@ -2307,7 +2307,7 @@ export function runClientPipeline(
               + `${(g * h2(Math.min(0.5, 2 * e))).toFixed(4)} at e = ${e.toFixed(4)}. `
               + `Telemetry falls back to the PQC session key.`
             : `QSDC (simulated) ABORTED: secrecy capacity ${secrecy.toFixed(4)} <= 0 at error ${e.toFixed(4)} `
-              + `with g=${g.toFixed(1)} (${lossDb.toFixed(1)} dB) — this link closes at `
+              + `with g=${g.toFixed(1)} (${lossDb.toFixed(1)} dB including the detector) — this link closes at `
               + `${secrecyNoEve.toFixed(4)} without Eve, so the loss is attributable — telemetry withheld`);
         }   // end qsdc: everything below scores the BUNDLED corpus and runs on both profiles
         {

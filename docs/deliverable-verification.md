@@ -4185,6 +4185,19 @@ commits and hashes: `references/net-key-schedules.md`; licences: `DATA_LICENSES.
 performance figure was imported: the companion repository commits none. A positioning diagram shows
 the two layers and links the companion demo with its caveat that its QKD is simulated too.
 
+### Walked on the deployed branch (ab105a7)
+
+All ten routes and both not-found paths were walked in a browser on the public demo before the PR:
+the architecture diagram, the novelty sentence at 248 px, the regulatory clock (18 rows), the use-case
+table, the E91 scenarios on `/orchestration` (0.03 / 2.66 / 0.007286 and e0 0.0297; Eve 1: 0.27 / 1.33 /
+0 and e0 0.2649; 0.02 / 2.74 / 0.09037 and e0 0.015), the three key-schedule cards (ACVP 10/10, the
+WireGuard checks, CAVP 7/7 and RFC 5903) with their chunks fetched only on click, the posture table and
+3D view on an inference page, the E91 caption under an eavesdropper, and the computed QSDC tooltips
+(+0.1150, -64.7390). At a 390 px emulated phone viewport every route measured zero horizontal page
+overflow. One defect was found and fixed in this PR: the diagram's QSDC label paired the 24.5 dB
+channel loss with a g that includes the detector's 4 dB (g = 701 is 28.5 dB), while the log printed the
+same g at 28.5 dB; both now say which loss they name.
+
 BUSINESS DOC RECONCILED Round 58. The out-of-repo document is brought level with this round. Its content
 is not quoted here, in the checklist, or in any commit - only the fact of the reconciliation, which is
 what gate 16 reads.

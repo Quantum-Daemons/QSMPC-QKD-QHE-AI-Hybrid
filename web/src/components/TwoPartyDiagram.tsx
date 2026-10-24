@@ -379,9 +379,12 @@ export const USECASE_SPECS: Record<string, Spec> = {
           ? `QSDC ABORTED · eavesdropper · C_s ${f(m, "qsdc_secrecy_capacity")} at error `
             + `${f(m, "qsdc_error_rate")} (g=${f(m, "qsdc_eve_gain_g")}) · telemetry withheld`
           : Number(m["qsdc_link_budget_limited"]) === 1
+            // "at 24.5 dB (g=701.06)" paired the CHANNEL loss with a g that includes the detector's
+            // 4.0 dB (10^(24.5/10) is 282, not 701), while the run log printed the same g at 28.5 dB.
+            // Both now name the channel loss and say g carries the detector too. Round 58.
             ? `QSDC NOT AVAILABLE · link-budget limited · C_s ${f(m, "qsdc_secrecy_capacity")} `
-              + `bit/carrier at ${f(m, "channel_loss_db")} dB (g=${f(m, "qsdc_eve_gain_g")}) · `
-              + `telemetry withheld, falls back to the PQC session key`
+              + `bit/carrier at ${f(m, "channel_loss_db")} dB channel loss (g=${f(m, "qsdc_eve_gain_g")}, `
+              + `detector included) · telemetry withheld, falls back to the PQC session key`
             : `QSDC direct telemetry · secrecy ${f(m, "qsdc_secrecy_capacity")} bit/carrier`) },
       publishedStep("qsdc_telemetry"),
       QSMPC_COMPARE,
