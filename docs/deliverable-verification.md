@@ -4460,3 +4460,34 @@ carried no router warning.
 BUSINESS DOC RECONCILED Round 61. The out-of-repo document is brought level with this round. Its content
 is not quoted here, in the checklist, or in any commit - only the fact of the reconciliation, which is
 what gate 16 reads.
+
+## Round 62: vite 6, which clears the dev-server advisories
+
+**Round 61 closed first.** PR #57 merged as ebb60c0, the demo was redeployed from main and serves the
+branch walk's bundle (`index-CSWSJrjw.js`), clicked navigation works there, and the production audit on
+main reports 2.
+
+**What changed.** `vite` ^5.4.10 becomes ~6.4.5, which brings `esbuild` 0.25.12 in place of 0.21.5,
+and the `@vitejs/plugin-react` range starts at 4.7.0, the release that declares vite 6 support (it was
+already the installed version). 6.4.5 rather than 7 or 8: the advisories are fixed from vite 6.4.4 and
+esbuild 0.25.0, and 6 is one major hop from 5.
+
+| packages flagged | Round 61 main | this branch |
+|---|---|---|
+| production only | 2 | 2 (`mpc-framework`, `zod`) |
+| including development tooling | 4 | 2: `vite` and `esbuild` cleared |
+
+**What vite 6 could have broken, checked.** The build emits the same 23 assets, including the same four
+wasm files and the GIF worker, and the entry chunk grows 4.5 KB gzipped (1.2%). The dev server - the
+part of vite the advisories were about - starts, serves the app with the project's COOP and COEP
+headers, transforms `main.tsx`, and refuses `/@fs/etc/hosts` with 403. On the built bundle
+(`index-BlGVcorX.js`) the medical pipeline completed all eight stages: CKKS ran with node-seal's wasm
+fetched through its `?url` asset; the garbled-circuit 2PC ran its non-linear half in 704.84 ms over
+209.83 KB; ResNet-18 ran on onnx-wasm in 42.18 ms; all three published models verified PASS; and the
+summary was signed. The GIF worker asset the `?url` import names is referenced from the entry and
+served as JavaScript, and the agent's dynamically imported Transformers.js chunk loaded and answered on
+WASM in 2.4 s. All six `check:*` scripts pass.
+
+BUSINESS DOC RECONCILED Round 62. The out-of-repo document is brought level with this round. Its content
+is not quoted here, in the checklist, or in any commit - only the fact of the reconciliation, which is
+what gate 16 reads.
