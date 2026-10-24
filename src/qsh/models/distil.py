@@ -126,9 +126,35 @@ def distil_linear(teacher_scores: np.ndarray, X: np.ndarray, *,
     expansion is free on the crypto side.
 
     It is not free statistically: d features become d(d+3)/2, so 19 -> 209 and 32 -> 560, and the
-    sample-per-parameter ratio falls accordingly. Measured on OPS-SAT-AD, where it more than paid:
-    minority-class F1 0.8485 -> 0.9391 and AUC-PR 0.9235 -> 0.9810, which beats both the teacher
-    (0.9189) and the published baseline (0.979). Check it per model rather than assuming.
+    sample-per-parameter ratio falls accordingly. Measured on OPS-SAT-AD, and the numbers an
+    earlier revision of this docstring gave do NOT match the shipped record. It claimed:
+
+    WITHDRAWN-CLAIM-BEGIN
+    "minority-class F1 0.8485 -> 0.9391 and AUC-PR 0.9235 -> 0.9810, which beats both the teacher
+    (0.9189) and the published baseline (0.979)"
+    WITHDRAWN-CLAIM-END
+
+    Against `models/metrics.json` for `satellite_comms.opssat_student`:
+
+        auc_pr            0.968055     (claimed 0.9810)
+        minority_class_f1 0.904348     (claimed 0.9391)
+        teacher auc_pr    0.968107     student is 5.2e-05 BELOW it, not above
+        teacher f1        0.918919     student F1 is BELOW it too
+        published         0.979        0.968055 is BELOW it
+
+    Three errors, and they compound. **The claim against the published baseline is false** - 0.968055
+    is below 0.979. **The comparison with the teacher (0.9189) uses two different metrics**: 0.9189 is
+    the teacher's F1 and was being read against the student's AUC-PR, which is the two-fields-one-word
+    trap this project has a test for. And **the degree-1 "before" figures are reproducible from
+    nothing**: no committed artefact records a pre-expansion score, so 0.8485 and 0.9235 cannot be
+    checked at all.
+
+    What the record supports: the quadratic expansion produces a student that TRACKS its teacher
+    closely on the declared metric - auc_pr 0.968055 against 0.968107 - at 209 expanded features
+    (210 parameters with the bias, the record's `student_params`), one
+    encrypted dot product, unchanged multiplicative depth. That is the claim worth making, and it is
+    about fidelity at low cost rather than about beating anyone. Check it per model rather than
+    assuming.
     """
     from sklearn.linear_model import LogisticRegression
     from sklearn.pipeline import Pipeline
