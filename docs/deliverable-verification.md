@@ -4293,9 +4293,12 @@ run the quantum-safe MCP envelope authenticated and the tampered copy was reject
 regression on either backend.
 
 **A defect the timing exposed, recorded and not fixed here.** On this machine the WebGPU path, which the
-agent prefers whenever a GPU adapter exists, is about 80 times slower per token than WASM, and its first
-run cannot finish inside the panel's 120 s limit: it downloads `onnx/model.onnx`, 313 MiB of fp32
-weights, which took 277 s here, and main's build timed out the same way. The model's label in
+agent prefers whenever a GPU adapter exists, is about 80 times slower per token than WASM, and no first
+run finished inside the panel's 120 s limit. Locally the 313 MiB of fp32 weights it fetches
+(`onnx/model.onnx`) took 277 s on their own, and main's build timed out the same way; on the public
+demo the same file arrived in 19.6 s and the first run timed out anyway, because generation itself runs
+at 0.75 to 1.1 s per token for up to 96 tokens. Warm runs took 18 to 117 s, depending on the sampled
+length. The model's label in
 `src/qsh/config/defaults.py` reads "tiny, ~80 MB", a figure that matches the old
 `decoder_model_merged_quantized.onnx`, which neither version loads; WASM loads the 226 MiB
 `model_quantized.onnx`. The panel's second Transformers.js model is further off: by the Hub's file
@@ -4304,6 +4307,19 @@ listing, `onnx-community/Qwen2.5-0.5B-Instruct` would fetch a 1901 MiB `model.on
 been exercised before (the verification log records transformers-wasm at 2430 ms). Both defects are on main and on the public demo today. The fix changes
 which backend and weights the panel uses and the text that describes them, so it is left for its own
 change. UNVERIFIED - needs confirmation: whether WebGPU is this slow on other GPU and OS combinations.
+
+**Walked on the public demo with this branch deployed** (57f42b2, serving `index-B6Uw15BG.js`, the
+file name the local build produced). All ten pages render their headings with no error boundary and
+zero horizontal overflow at desktop width. Links clicked inside the app keep the same document, so
+client-side routing works on 6.30.6; an unknown path renders the not-found page with only the static
+targets; `/orchestration?usecase=nonsense_value` shows its fallback notice and no link carries the
+value. The medical pipeline ran all eight stages and signed its summary (ML-DSA-65, verified true). The
+agent timed out on its first run and answered on the second, on WebGPU, in 85.0 s; the envelope
+authenticated and rejected the tampered copy. Two observations on the same WebGPU path, neither caused
+by this change: the published medical ResNet-18's `session.run` alone took 18216 ms on `onnx-webgpu`
+(the README records a gap of the same order, 12842 ms against 42 ms on WASM, and attributes it to a
+software adapter; this adapter is hardware), and the inference tier's ONNX Runtime (1.27.0, not moved
+here) logs at error level that some nodes were not assigned to the WebGPU provider.
 
 BUSINESS DOC RECONCILED Round 59. The out-of-repo document is brought level with this round. Its content
 is not quoted here, in the checklist, or in any commit - only the fact of the reconciliation, which is
