@@ -28,6 +28,11 @@ WHAT WAS CORRECTED, AND THE PRIMARY SOURCE FOR EACH
    - CNSA 2.0 "procurement that non-compliant vendors can't enter" and "be compliant before bids" -
      the defaults are not CNSA 2.0 parameter sets.
 
+4. Backend advice the measurement reversed (Round 60). The agent panel called WASM "the slower"
+   backend and its timeout note advised "a WebGPU-capable browser". On the machine measured, WebGPU
+   ran distilGPT-2 about 80 times slower per token and was the backend that could not finish inside
+   the time limit (register, Round 59).
+
 WHY A SOURCE-LEVEL GATE
 
 Each of these sat in more than one file, and this project's most-repeated defect is a fix reaching one
@@ -124,6 +129,8 @@ _RETIRED = [
     ("be compliant before bids", "the defaults are not CNSA 2.0 parameter sets"),
     ("weaker of the two commitments", "neither post ranks itself against the other"),
     ("The hybrid (PQC+QKD) channel protects it today", "QKD is simulated here"),
+    ("slower WASM backend", "WASM is the default backend, and the faster one on the machine measured"),
+    ("a WebGPU-capable browser", "on the machine measured, WebGPU was the backend that could not finish"),
 ]
 
 

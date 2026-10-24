@@ -546,9 +546,30 @@ class OrchestrationConfig:
 class WebConfig:
     """Frontend-only knobs (served via /api/config + baked into config.defaults.json) — the in-browser
     AI model lists / generation limits / timeout, plus demo-sim sizes that were inline TS literals."""
+    # Transformers.js models, each PINNED to a commit, with the bytes of the weights file each backend
+    # fetches taken from the Hub's file listing at that commit (2026-10-24). The model picker computes
+    # the size it shows from `bytes`: the label used to read "tiny, ~80 MB", typed by hand, and no file
+    # the library loads is that size - WASM fetches `model_quantized.onnx` (236.7 MB) and WebGPU
+    # `model.onnx` (327.8 MB). The 80 MB figure was the old `decoder_model_merged_quantized.onnx`.
+    # `dtype` is passed to the pipeline explicitly, so the file `bytes` describes is the file that is
+    # fetched whatever the library's per-device default becomes. A label must not carry a size.
     tfjs_models: list = field(default_factory=lambda: [
-        {"id": "Xenova/distilgpt2", "label": "distilGPT-2 (tiny, ~80 MB)"},
-        {"id": "onnx-community/Qwen2.5-0.5B-Instruct", "label": "Qwen2.5-0.5B-Instruct (ONNX)"}])
+        {"id": "Xenova/distilgpt2", "label": "distilGPT-2",
+         "revision": "a41c10485c18a64b6606729b6a082330cbd8f49e",
+         "dtype": {"wasm": "q8", "webgpu": "fp32"},
+         "bytes": {"wasm": 236_698_606, "webgpu": 327_825_716}},
+        {"id": "onnx-community/Qwen2.5-0.5B-Instruct", "label": "Qwen2.5-0.5B-Instruct",
+         "revision": "22942cb7d7ba4cc81bb4673549ca4d4614469b5e",
+         "dtype": {"wasm": "q8", "webgpu": "fp32"},
+         "bytes": {"wasm": 512_096_557, "webgpu": 1_993_796_793}}])
+    # The backend the small models run on unless the visitor picks WebGPU: the Transformers.js agent
+    # and the published ONNX models of the inference stage. WASM, because on the machine measured (an
+    # NVIDIA RTX PRO 6000 adapter, Chrome 152 on Linux) WebGPU ran distilGPT-2 at 750 to 1140 ms per
+    # token against about 9 ms on WASM, and one ResNet-18 session.run took 18216 ms on onnx-webgpu
+    # (register, Round 59). Other GPUs and browsers were not measured, which is why WebGPU stays one
+    # selection away rather than being removed.
+    tfjs_default_device: str = "wasm"
+    onnx_default_backend: str = "wasm"
     # Download sizes are the MEASURED totals from the MLC model repos' blob listings, not estimates.
     # Ordered smallest-first so the cheapest option is the default: a drive-by visitor should not be
     # handed a 2 GB download to see the page work. SmolLM2-360M is the smallest MLC build that still
@@ -565,7 +586,10 @@ class WebConfig:
          "bytes": 0, "requires": "shader-f16"},
         {"id": "Phi-3-mini-4k-instruct-q4f16_1-MLC", "label": "Phi-3-mini-4k (~2 GB, needs shader-f16)",
          "bytes": 2_000_000_000, "requires": "shader-f16"}])
-    agent_timeout_ms: int = 120_000     # bounds a stuck WebGPU/model load (slow first-run ~60-70 s)
+    # The agent is abandoned after this long WITHOUT PROGRESS - no download event and no answer - not
+    # after this long in total. A first run downloads its weights (236.7 MB for distilGPT-2 on WASM),
+    # and until Round 60 a total limit cut off downloads that were still arriving.
+    agent_timeout_ms: int = 120_000
     tfjs_max_new_tokens: int = 96
     webllm_max_tokens: int = 160
     # Raised with `QKDConfig.pulses` for the same reason - see the note there. At 40_000 the decoy
