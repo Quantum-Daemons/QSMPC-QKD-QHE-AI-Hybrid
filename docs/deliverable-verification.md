@@ -4233,3 +4233,78 @@ opening quote removed, and a quoted but unmarked boast - and all four fire.
 
 The commit that started this branch was authored with the wrong identity and is re-authored here, as
 this repository's commits now are, with the account's noreply address.
+
+## Round 59: dependency advisories, which of them reach the public demo, and an agent path nobody had timed
+
+`npm audit` on main flagged 9 production packages, and 16 with the development tooling included; it
+counts packages, and several share one advisory (react-router-dom is flagged for react-router's,
+mpc-framework for zod's). This round updates what can be updated inside the declared ranges, assesses the rest
+against what the public demo actually ships, and gates the one assessment that depends on application
+code rather than on packaging.
+
+| packages flagged | main (e2508b3) | this branch |
+|---|---|---|
+| production only (`npm audit --omit=dev`) | 9: 3 moderate, 6 high | 4: 2 moderate, 2 high |
+| including development tooling | 16: 5 moderate, 11 high | 6: 3 moderate, 3 high |
+
+**What moved.** `npm audit fix` without `--force`, so no declared range was widened: 51 lockfile
+versions changed, 2 packages were added and 7 removed. The ones that matter are
+`@huggingface/transformers` 4.2.0 to 4.3.1, which brings its own `onnxruntime-web` (1.26.0-dev to
+1.31.0-dev), `onnxruntime-node` (1.24.3 to 1.30.0, and with it `adm-zip` 0.5.17 to 0.6.1) and `sharp`
+(0.34.5 to 0.35.5); `protobufjs` 7.6.4 to 7.6.6, which both copies of `onnxruntime-web` use;
+`react-router` and `react-router-dom` 6.30.4 to 6.30.6; and, development-only, `postcss`, `browserslist`, `nanoid`, `source-map-js` and
+`baseline-browser-mapping`. The `react-router-dom` range now starts at the patched release (`~6.30.6`,
+was `^6.27.0`), because 6.30.2 to 6.30.5 carry GHSA-jjmj-jmhj-qwj2 and main resolved to 6.30.4. That
+advisory needs an application with an open redirect, which this one does not have (see the gate below),
+so the public demo was not exposed through it; the floor is raised anyway so that a fresh resolve cannot
+land in that range.
+
+**What remains, and whether the public demo reaches it.**
+
+| package | advisory | fixed in | reaches the public demo? |
+|---|---|---|---|
+| react-router, react-router-dom (moderate) | GHSA-wrjc-x8rr-h8h6: open redirect through a backslash in a `<Link>` or `useNavigate` target built from attacker input | react-router 7.18.0, a major upgrade | No. Nothing calls `useNavigate`, and every link target is a literal or comes from the static NAV and USECASES lists; the one query parameter the app reads, `?usecase=`, is checked against USECASES and never becomes a link. Held by the gate below. |
+| react-router (moderate) | GHSA-337j-9hxr-rhxg: constructor injection through `deserializeErrors()` in SSR hydration | 7.18.0 | No. The advisory says it does not affect Declarative Mode; the app renders one `<BrowserRouter>` and does no server rendering or hydration. |
+| zod, through mpc-framework (high) | GHSA-mrhx-c7xc-m3w5: memory exhaustion while validating an oversized array | zod 4.6.6; no mpc-framework release | No. mpc-framework imports zod only in its PlaintextEngine and errorToString helpers, and none of the built chunks carries zod code. mpc-framework is archived upstream (threat model, Round 55 caveat), so no fix will come from there. |
+| vite (8 advisories, 2 high) and esbuild (moderate) | dev-server issues: `server.fs` bypasses, a `.map` path traversal in optimized deps, launch-editor command handling (mostly Windows), esbuild serve-mode CORS | vite 6.4.4, a major upgrade | No. The web image builds with Node and serves the static bundle from `caddy:2-alpine`; no Vite or esbuild process runs in production. `npm run preview` binds every interface, but the preview server carries none of the dev-server code paths these advisories name. `npm run dev` binds localhost only, and the stated conditions (network exposure with `--host`, Windows, middleware mode, or a Vim or Emacs editor plus an attacker-created file name starting with a plus or minus sign) are not this project's setup. That makes them a developer-machine risk, not a zero one. |
+
+**The gate.** `tests/test_navigation_targets_are_not_built_from_input.py` holds the router assessment,
+because it is a property of the code and code changes: no `useNavigate` or `redirect(` anywhere in
+`web/src`; every `to={...}` expression is on a two-entry allowlist, each entry from a static list; the
+`?usecase=` parameter stays validated and never feeds a link; and an anti-tautology check fails if the
+scan stops seeing the targets it allows. The value of `to={...}` is read with balanced braces, because a
+first regex stopped at the `}` of a template literal's `${}` and then swallowed the next prop. Seeded
+three ways - a `useNavigate` import, a `<Link to={searchParams.get(...)}>`, and the NAV targets replaced
+by a literal - and each fires the check it should; the restored tree passes.
+
+**The upgraded inference library, timed against the one it replaces.** Of everything that moved, the
+inference library is the change a visitor would feel. Measured on one machine (an NVIDIA RTX PRO 6000
+Blackwell adapter, Chrome 152 on Linux), both builds served from the same local origin so they share
+one weights cache, greedy decoding of exactly 32 tokens, run order A-B-A:
+
+| build | WebGPU, fp32 weights | WASM, q8 weights |
+|---|---|---|
+| 4.2.0 (main) | 41.3 s and 36.3 s; 1136 ms per token | 0.44 s and 0.33 s |
+| 4.3.1 (this branch) | 30.1 s and 23.9 s, then 33.2 s and 25.4 s; 748 and 795 ms per token | 0.36 s and 0.28 s; 96 tokens in 0.87 s |
+
+Both versions emit the same tokens. In the app itself, on the branch build, the agent answered on WebGPU
+in 74.4 s and 18.2 s on two runs with the weights cached (sampling, so the lengths differ), and on every
+run the quantum-safe MCP envelope authenticated and the tampered copy was rejected. The upgrade is not a
+regression on either backend.
+
+**A defect the timing exposed, recorded and not fixed here.** On this machine the WebGPU path, which the
+agent prefers whenever a GPU adapter exists, is about 80 times slower per token than WASM, and its first
+run cannot finish inside the panel's 120 s limit: it downloads `onnx/model.onnx`, 313 MiB of fp32
+weights, which took 277 s here, and main's build timed out the same way. The model's label in
+`src/qsh/config/defaults.py` reads "tiny, ~80 MB", a figure that matches the old
+`decoder_model_merged_quantized.onnx`, which neither version loads; WASM loads the 226 MiB
+`model_quantized.onnx`. The panel's second Transformers.js model is further off: by the Hub's file
+listing, `onnx-community/Qwen2.5-0.5B-Instruct` would fetch a 1901 MiB `model.onnx` on WebGPU and a
+488 MiB `model_quantized.onnx` on WASM (sizes from the listing, not timed here). Only the WASM path had
+been exercised before (the verification log records transformers-wasm at 2430 ms). Both defects are on main and on the public demo today. The fix changes
+which backend and weights the panel uses and the text that describes them, so it is left for its own
+change. UNVERIFIED - needs confirmation: whether WebGPU is this slow on other GPU and OS combinations.
+
+BUSINESS DOC RECONCILED Round 59. The out-of-repo document is brought level with this round. Its content
+is not quoted here, in the checklist, or in any commit - only the fact of the reconciliation, which is
+what gate 16 reads.
