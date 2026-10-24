@@ -2884,3 +2884,26 @@ adapter exists, so on this machine it picks the path that is 80 times slower and
 download, and its label says "~80 MB" for a model whose smallest loaded weights are 226 MiB. Only the
 WASM path had ever been timed. Recorded, not fixed in the dependency change: the fix decides which
 backend the panel uses.
+
+### Round 60: the default that was wrong for the machine it was measured on, and a limit that timed the network
+
+**Context.** The fix Round 59 recorded and left open. Both in-browser model tiers chose WebGPU because
+an adapter existed, and on the one machine measured that was the slow path for both.
+
+**What the change is, and is not.** The default moved to WASM, and WebGPU became a selection in each
+place a run starts: the agent panel's Backend and the pipeline's Model backend. It is not a claim that
+WASM is faster everywhere. One machine was measured, the record says so, and WebGPU stayed
+selectable for exactly that reason. The selection is sent only when made, like the published-model
+choice beside it, so a payload never records a choice nobody made.
+
+**The second defect sat inside the first.** The agent's 120 s limit was a limit on total time, so on
+a slow connection a first run's download could use it up on its own while every byte was still
+arriving. With WASM as the default that would have been the next timeout report. The limit now
+measures time without progress. The download reports progress, which a visitor can now watch, and
+each event resets the clock.
+
+**Labels that compute rather than assert.** The old size was typed beside the model id and was off by
+a factor of three for the file actually fetched. Recording the bytes per backend fixed the label only
+together with two other changes: pinning the revision, so the file cannot change under the number,
+and passing `dtype` explicitly, so the library's per-device default cannot pick a different file. The
+gate checks all three, because any one alone leaves the label free to drift.
