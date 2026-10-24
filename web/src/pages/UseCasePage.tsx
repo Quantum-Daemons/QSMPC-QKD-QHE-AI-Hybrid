@@ -1,7 +1,7 @@
 import { EncryptedAgreementChart, MeasuredAgainstPublished, NoEncryptedComparison, VerificationChart } from "../components/VerificationChart";
 import type { EncryptedAgreementPlot } from "../components/VerificationChart";
 import { useRef } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useParams } from "react-router";
 import AgenticAIPanel from "../components/AgenticAIPanel";
 import SdnControlPlanePanel from "../components/SdnControlPlanePanel";
 import BenchmarkPanel from "../components/BenchmarkPanel";

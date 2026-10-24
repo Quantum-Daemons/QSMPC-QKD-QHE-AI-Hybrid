@@ -2907,3 +2907,20 @@ a factor of three for the file actually fetched. Recording the bytes per backend
 together with two other changes: pinning the revision, so the file cannot change under the number,
 and passing `dtype` explicitly, so the library's per-device default cannot pick a different file. The
 gate checks all three, because any one alone leaves the label free to drift.
+
+### Round 61: a major upgrade where the newest major was the wrong one
+
+**Context.** The first of the two major upgrades decided after Round 59, one PR each.
+
+**Which major.** npm's `latest` for react-router is 8.5.0, and an upgrade that took `latest` would have
+required React 19 and a newer Node than this project's image is pinned to - a far larger change than
+the advisory asked for. The advisories are fixed from 7.18.0, so the target is the `version-7` tag,
+7.18.4. The difference between "the fixed version" and "the newest version" is the whole size of this
+change.
+
+**What was checked rather than trusted.** The v6 to v7 notes list behaviour changes, each of which was
+compared with the app instead of assumed not to apply: relative paths in splat routes (no relative
+link targets exist, and the only splat is the catch-all), state updates wrapped in startTransition
+(navigation was exercised by clicking, not by loading URLs, so a transition that never committed would
+have shown), and the removal of data-router APIs (none used). The gate written for the advisories is
+kept, because it holds a property and not a version.

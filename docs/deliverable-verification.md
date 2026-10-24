@@ -4414,3 +4414,49 @@ whether the warning predates this change was not checked.
 BUSINESS DOC RECONCILED Round 60. The out-of-repo document is brought level with this round. Its content
 is not quoted here, in the checklist, or in any commit - only the fact of the reconciliation, which is
 what gate 16 reads.
+
+## Round 61: react-router 7, which clears the two router advisories Round 59 could only assess
+
+**Round 60 closed first.** PR #56 merged as f08cf8f, the demo was redeployed from main and serves the
+branch walk's bundle (`index-BnD6oAsI.js`), and the agent answered there on `transformers-wasm`.
+
+**What changed.** `react-router-dom` ~6.30.6 is replaced by `react-router` ~7.18.4, and the seven
+imports now name `react-router`: in v7, `react-router-dom` is only a re-export of it. The 7.x line
+was chosen over the newer 8.x because 8 requires React 19.2.7 and Node 22.22, and this project is on
+React 18.3; 7.18.4 requires React 18 or later and Node 20 or later. `@remix-run/router` leaves the tree
+(v7 carries its own router), and `cookie` 1.1.1 and `set-cookie-parser` 2.7.3 arrive as v7's
+dependencies. v7's behavioural changes were checked against the app rather than assumed harmless: the
+routes are flat with absolute paths, one `*` catch-all and no nested routes or `Outlet`, so the change
+to relative paths inside splat routes does not apply, and nothing uses the data-router APIs v7 removed.
+
+| packages flagged | Round 60 main | this branch |
+|---|---|---|
+| production only (`npm audit --omit=dev`) | 4 | 2: `mpc-framework` and `zod`, one advisory |
+| including development tooling | 6 | 4: adds `vite` and `esbuild`, which Round 62 addresses |
+
+The entry chunk grows by 16 KB raw, 5.7 KB gzipped (1.5%).
+
+**Verified locally on the built bundle** (`index-CSWSJrjw.js`): links clicked inside the app keep the
+same document across five routes; the active nav link is right on each, with `end` keeping the root
+link from matching every page; Back returns to the previous route; an unknown path renders the
+not-found page; `/agentic-ai` redirects to `/usecases`; all five `/usecase/:id` pages render and an
+unknown id says there is no such use case; `?usecase=telecom_ids` selects telecom and
+`?usecase=nonsense_value` shows its fallback notice; and the finance pipeline ran all nine stages, both
+models verified PASS and the summary signed. All six `check:*` scripts pass.
+
+**The navigation gate stays.** `tests/test_navigation_targets_are_not_built_from_input.py` was written
+to hold an assessment the upgrade has now made unnecessary. It is kept, with its docstring and
+messages rewritten, because the property it holds - no link target built from input - is an open
+redirect under any router version, and the next bypass of the library's own checks would make it
+reachable again.
+
+**Walked on the public demo with this branch deployed** (7ac17e6, serving `index-CSWSJrjw.js`, the file
+name the local build produced). Seven routes reached by clicking kept the same document with the right
+active nav link; Back worked; the not-found page, the `/agentic-ai` redirect, every `/usecase/:id`,
+an unknown id, the `?usecase=` selection and its fallback all behaved, with zero horizontal overflow;
+the medical pipeline verified all three published models and signed its summary; and the console
+carried no router warning.
+
+BUSINESS DOC RECONCILED Round 61. The out-of-repo document is brought level with this round. Its content
+is not quoted here, in the checklist, or in any commit - only the fact of the reconciliation, which is
+what gate 16 reads.
