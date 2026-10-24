@@ -2854,3 +2854,33 @@ explicit marker pair replaces the heuristic: what is quoted between them is blan
 the markers must balance, and each span must quote something. Rewording my own refutation was also
 needed - "the beats-the-baseline claim is false" repeats the boast word, and under a strict convention a
 refutation that is not inside the markers should not reuse it.
+
+### Round 59: an audit count that depended on a flag, and a timeout that was the download, not the upgrade
+
+**Context.** A separate branch for `npm audit`, after Round 57 merged. The question for each advisory
+was not whether it exists but whether the public demo, which is a static bundle served by Caddy,
+reaches it.
+
+**Two counts, and which one is the claim.** The same lockfile flags 9 packages with `--omit=dev` and
+16 without it. Quoting either number alone would mislead in one direction or the
+other, so the register carries both, before and after: 9 to 4 for production dependencies, 16 to 6
+overall. The two survivors only the full count shows - vite and esbuild - are dev-server advisories,
+and that was checked in the installed vite rather than assumed: its `preview()` mounts `sirv` and an
+HTML fallback and none of the open-in-editor, raw-fs or transform middlewares the advisories name.
+
+**The first timing said regression, and it was wrong.** After the upgrade the in-browser agent ran
+into the panel's 120 s timeout on its first run. The weights cache then showed why: the run had fetched
+`onnx/model.onnx`, 313 MiB, which finished at 277 s, long after the timeout fired. Reproducing that on
+main's build required the same origin, because the browser's weights cache is per origin, and main
+timed out too. On the public demo the same file later arrived in 19.6 s and the first run timed out
+anyway, so the download explains the local timeout but not the defect. Wall-clock times from the panel could not settle it either way, since it samples and
+each run stops at a different length, so a small page timed both library builds with greedy decoding
+of a fixed 32 tokens, A-B-A. The upgrade is faster on WebGPU (795 against 1136 ms per token) and level
+on WASM.
+
+**What the controlled timing found instead.** WASM runs the same model at about 9 ms per token; WebGPU
+at 750 to 1140 ms per token, on a workstation-class NVIDIA adapter. The panel prefers WebGPU whenever an
+adapter exists, so on this machine it picks the path that is 80 times slower and twice as large to
+download, and its label says "~80 MB" for a model whose smallest loaded weights are 226 MiB. Only the
+WASM path had ever been timed. Recorded, not fixed in the dependency change: the fix decides which
+backend the panel uses.
