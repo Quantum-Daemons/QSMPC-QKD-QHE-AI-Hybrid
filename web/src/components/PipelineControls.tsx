@@ -1,8 +1,8 @@
 // Crypto-agility selectors + advanced params + Run/Pause/Resume/Step/Stop/Restart controls.
 // Shared by the generic Orchestration page and every per-use-case page (driven by usePipelineRun).
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { type usePipelineRun } from "../lib/usePipelineRun";
-import { browserModels } from "../lib/onnxInference";
+import { browserModels, hasWebGPU } from "../lib/onnxInference";
 import { isClientDemo } from "../lib/demoMode";
 import ParameterPanel from "./ParameterPanel";
 
@@ -14,8 +14,12 @@ export default function PipelineControls({ run }: { run: Run }) {
   // local secret-sharing), so the server-side backend selectors (TenSEAL/OpenFHE/MPyC/…) don't apply.
   const demo = isClientDemo();
   const { usecase, opts, kem, setKem, qkd, setQkd, fhe, setFhe, mpc, setMpc, sig, setSig,
-    optiqkd, setOptiqkd, publishedModel, setPublishedModel,
+    optiqkd, setOptiqkd, publishedModel, setPublishedModel, onnxBackend, setOnnxBackend,
     state, running, paused, inFlight, start, startStepwise, pause, resume, step, stop } = run;
+  // Resolved once: whether WebGPU can be offered at all. Without a usable adapter the option is shown
+  // disabled with the reason, rather than offered and then silently run on WASM.
+  const [gpuUsable, setGpuUsable] = useState(false);
+  useEffect(() => { hasWebGPU().then(setGpuUsable); }, []);
 
   // The published models this use case can actually fetch and run, in registry order. Rendered only
   // when there is a genuine choice: telecom publishes one, genomics none, and offering a select with
@@ -133,6 +137,23 @@ export default function PipelineControls({ run }: { run: Run }) {
               {publishedCandidates.map((c) => (
                 <option key={c.spec.key} value={c.spec.key}>{c.spec.label}</option>
               ))}
+            </select>
+          </>
+        )}
+        {publishedCandidates.length > 0 && (
+          <>
+            <label className="muted" htmlFor="sel-onnx-backend">Model backend</label>
+            <select id="sel-onnx-backend" name="onnx_backend" aria-label="Model backend"
+              value={onnxBackend} disabled={inFlight}
+              title={"Where the published models run. WASM is the default: on the machine measured, one "
+                + "ResNet-18 inference took 18216 ms on WebGPU with a hardware adapter, against tens of "
+                + "milliseconds on WASM. Other GPUs and browsers were not measured, so WebGPU stays "
+                + "selectable to try on this one."}
+              onChange={(e) => setOnnxBackend(e.target.value === "webgpu" ? "webgpu" : "")}>
+              <option value="">WASM (default)</option>
+              <option value="webgpu" disabled={!gpuUsable}>
+                {gpuUsable ? "WebGPU" : "WebGPU (no usable adapter)"}
+              </option>
             </select>
           </>
         )}

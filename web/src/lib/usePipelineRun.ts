@@ -222,6 +222,10 @@ export function usePipelineRun(usecase: string, recordRef: RefObject<HTMLElement
   // cases publish more than one and could only ever exercise the first: medical has ResNet-18,
   // ResNet-50 and the CKKS student; satellite has four across two incomparable tasks.
   const [publishedModel, setPublishedModel] = useState("");
+  // The backend the published ONNX models run on. "" = the config default (WASM); "webgpu" only when
+  // the visitor selects it. A visitor's choice about their machine rather than the use case, so it
+  // is NOT reset when the use case changes.
+  const [onnxBackend, setOnnxBackend] = useState<"" | "webgpu">("");
   const [params, setParams] = useState({ ...DEFAULT_PARAMS });
   const resetParams = () => setParams({ ...makeDefaultParams() });
 
@@ -325,6 +329,8 @@ export function usePipelineRun(usecase: string, recordRef: RefObject<HTMLElement
     // Only when a choice was made. Absent, runPublishedModel falls to browserModel(usecase), so the
     // key never appears in a signed payload claiming a selection the visitor did not make.
     if (publishedModel) c.published_model = publishedModel;
+    // Same rule: sent only when chosen, so a run's payload never claims a selection nobody made.
+    if (onnxBackend === "webgpu") c.onnx_backend = "webgpu";
     // Gated on the same predicate style as the controls above: the flag reaches the run only where a
     // federated stage has real data and a figure to appear in.
     if (qfl && runsFederated(usecase)) c.qfl = true;
@@ -451,7 +457,7 @@ export function usePipelineRun(usecase: string, recordRef: RefObject<HTMLElement
   return {
     usecase, opts, kem, setKem, qkd, setQkd, fhe, setFhe, mpc, setMpc, sig, setSig,
     workload, setWorkload, qfl, setQfl, optiqkd, setOptiqkd,
-    publishedModel, setPublishedModel,
+    publishedModel, setPublishedModel, onnxBackend, setOnnxBackend,
     params, setParams, resetParams,
     runId, state, events, active, done, metrics, signature, artifacts, benchmark,
     gifBusy, logRef, captureFrame,

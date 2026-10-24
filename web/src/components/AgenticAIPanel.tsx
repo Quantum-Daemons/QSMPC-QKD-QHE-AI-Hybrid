@@ -1,12 +1,16 @@
 import { useEffect, useState } from "react";
-import { type AgentRun, type Engine, hasWebGPU, runAgent, TFJS_MODELS, WEBLLM_MODELS } from "../lib/clientAI";
+import {
+  type AgentRun, DEFAULT_DEVICE, type Device, type Engine, hasWebGPU, runAgent, tfjsModelLabel,
+  TFJS_MODELS, WEBLLM_MODELS,
+} from "../lib/clientAI";
 import { clientSecureWrap, type McpResult } from "../lib/clientMcp";
 import { isSoftwareAdapter, webgpuInfo } from "../lib/onnxInference";
 import { cryptoCfg } from "../lib/config";
 import { downloadJSON } from "../lib/export";
 
 // Reusable in-browser agentic-AI + quantum-safe MCP panel. A small LLM runs entirely client-side
-// (WebGPU via WebLLM / Transformers.js) and its request+response are sealed+signed over the client
+// (Transformers.js on WASM by default or WebGPU on request; WebLLM on WebGPU) and its
+// request+response are sealed+signed over the client
 // quantum-safe MCP channel (clientMcp) — zero server. Used standalone on the Agentic-AI page AND
 // embedded in each use-case page (per-industry prompt + MCP tool, fed by the live run's metrics) so
 // the report's MCP "delegate-and-verify" layer is demonstrated contextually per target industry.
@@ -56,6 +60,10 @@ export default function AgenticAIPanel({
 }: AgenticAIPanelProps) {
   const [engine, setEngine] = useState<Engine>("transformers");
   const [model, setModel] = useState(TFJS_MODELS[0].id);
+  // Transformers.js backend. WASM unless the visitor picks WebGPU: on the machine measured, WebGPU ran
+  // distilGPT-2 about 80 times slower per token and no first run finished inside the timeout
+  // (register, Round 59). A visitor's choice, so it survives a use-case change like engine and model.
+  const [device, setDevice] = useState<Device>(DEFAULT_DEVICE);
   const [prompt, setPrompt] = useState(defaultPrompt || FALLBACK_PROMPT);
   const [busy, setBusy] = useState(false);
   const [progress, setProgress] = useState("");
@@ -105,7 +113,7 @@ export default function AgenticAIPanel({
   // A result is stale once the pipeline has produced different numbers than it was generated from.
   const stale = run !== null && ranWithCtx !== null && ranWithCtx !== ctxLine;
     const effectivePrompt = ctxLine ? `${ctxLine}\n\n${prompt}` : prompt;
-    const r = await runAgent(engine, effectivePrompt, { model, onProgress: setProgress });
+    const r = await runAgent(engine, effectivePrompt, { model, device, onProgress: setProgress });
     setRun(r);
     // wrap {prompt, answer, run-context} through the client quantum-safe MCP channel, tagged with the
     // per-industry tool name (signed + sealed + tamper-tested)
@@ -160,8 +168,11 @@ export default function AgenticAIPanel({
             </>
           ) : (
             <>
-              ⚠ WebGPU not detected — WebLLM is disabled; Transformers.js will run on the slower WASM
-              backend.
+              {/* "will run on the slower WASM backend" until Round 60. WASM is the default backend
+                  for Transformers.js everywhere now, and on the machine measured it was the faster
+                  one by about 80 times per token. */}
+              ⚠ WebGPU not detected — WebLLM is disabled. Transformers.js runs on WASM, which is its
+              default backend anyway.
             </>
           )}
         </div>
@@ -174,9 +185,27 @@ export default function AgenticAIPanel({
             <option value="transformers">Transformers.js (ONNX · WebGPU/WASM)</option>
             <option value="webllm" disabled={!gpu}>WebLLM (chat LLM · WebGPU)</option>
           </select>
+          {engine === "transformers" && (
+            <>
+              <label className="muted" htmlFor={`ai-device-${usecase ?? "std"}`}>Backend</label>
+              <select id={`ai-device-${usecase ?? "std"}`} value={device} disabled={busy}
+                onChange={(e) => setDevice(e.target.value as Device)}
+                title={"WASM is the default. On the machine measured, WebGPU ran distilGPT-2 about 80 "
+                  + "times slower per token than WASM and downloads larger fp32 weights; other GPUs and "
+                  + "browsers were not measured, so WebGPU stays selectable to try on this one."}>
+                <option value="wasm">WASM (default)</option>
+                <option value="webgpu" disabled={!gpu}>WebGPU{gpu ? "" : " (no usable adapter)"}</option>
+              </select>
+            </>
+          )}
           <label className="muted" htmlFor={`ai-model-${usecase ?? "std"}`}>Model</label>
           <select id={`ai-model-${usecase ?? "std"}`} value={model} onChange={(e) => setModel(e.target.value)}>
-            {models.map((m) => <option key={m.id} value={m.id}>{m.label}</option>)}
+            {/* Transformers.js sizes are COMPUTED from the bytes the config records for the selected
+                backend's weights file; the label used to say "tiny, ~80 MB", which matched no file
+                the library loads. */}
+            {engine === "transformers"
+              ? TFJS_MODELS.map((m) => <option key={m.id} value={m.id}>{tfjsModelLabel(m, device)}</option>)
+              : models.map((m) => <option key={m.id} value={m.id}>{m.label}</option>)}
           </select>
           {/* Labelled for what it mixes. The analytic BB84/E91 models return bit COUNTS - a secret
               key RATE and a secure-bit total - not key material, so there is no run-derived key to
