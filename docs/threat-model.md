@@ -289,17 +289,18 @@ statement of known limitations, not a conformance gap against any published requ
   container that left `/api/run/*` writable by anonymous visitors while the page displayed "No computation
   is sent to a server". The container was removed and `/api` now 404s, but that exposure was recorded only
   in `architecture.md`; a threat model should carry it.
-- **Three production dependency advisories stay open, each assessed against what the demo ships
-  (Round 59).** `npm audit` flags four packages for them. Two are react-router's (an open redirect
-  through a link target built from attacker input, and constructor injection during server-side
-  hydration), fixed only in the 7.x major: the app builds no link target from input and renders a
-  declarative `<BrowserRouter>` with no hydration, and
-  `tests/test_navigation_targets_are_not_built_from_input.py` fails the day a link target is built from
-  a query parameter, which is when the first one would become reachable. The third is zod's (memory
-  exhaustion on an oversized array), reached through `mpc-framework`, which is archived and will not
-  release a fix; no zod code is in the built bundle. The vite and esbuild advisories are dev-server
-  issues, and the public image serves static files from Caddy with no Vite process. Each of these is an
-  assessment of reachability, not a fix, and the register's Round 59 section carries the evidence.
+- **One production dependency advisory stays open, assessed against what the demo ships (Rounds 59
+  and 61).** Round 59 found three. The two react-router ones (an open redirect through a link target
+  built from attacker input, and constructor injection during server-side hydration) were fixed by the
+  upgrade to react-router 7.18.4 in Round 61; before that they were unreachable, because the app builds
+  no link target from input and renders a declarative `<BrowserRouter>` with no hydration.
+  `tests/test_navigation_targets_are_not_built_from_input.py` still fails the day a link target is
+  built from a query parameter, because that would be an open redirect under any router version. The
+  one that remains is zod's (memory exhaustion on an oversized array), reached through
+  `mpc-framework`, which is archived and will not release a fix; no zod code is in the built bundle.
+  The vite and esbuild advisories are dev-server issues, and the public image serves static files from
+  Caddy with no Vite process. Each open item is an assessment of reachability, not a fix, and the
+  register's Round 59 and 61 sections carry the evidence.
 - **There is no `REMOTE` provenance.** The scheme has exactly four states - `MEASURED (local WebGPU)`,
   `MEASURED (local WASM)`, `MEASURED (plain JS)` and `SIMULATED`. `remote` was **removed from the type**
   in Round 24d, not merely left unset: nothing in `web/src` calls the ZeroGPU Space, that Space returns

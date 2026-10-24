@@ -1,4 +1,4 @@
-import { Link, Navigate, NavLink, Route, Routes } from "react-router-dom";
+import { Link, Navigate, NavLink, Route, Routes } from "react-router";
 import Overview from "./pages/Overview";
 import Value from "./pages/Value";
 import Validations from "./pages/Validations";

@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom";
+import { Link } from "react-router";
 
 import ArchitectureDiagram from "../components/ArchitectureDiagram";
 import Details from "../components/Details";
