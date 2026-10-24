@@ -2872,7 +2872,8 @@ HTML fallback and none of the open-in-editor, raw-fs or transform middlewares th
 into the panel's 120 s timeout on its first run. The weights cache then showed why: the run had fetched
 `onnx/model.onnx`, 313 MiB, which finished at 277 s, long after the timeout fired. Reproducing that on
 main's build required the same origin, because the browser's weights cache is per origin, and main
-timed out too. Wall-clock times from the panel could not settle it either way, since it samples and
+timed out too. On the public demo the same file later arrived in 19.6 s and the first run timed out
+anyway, so the download explains the local timeout but not the defect. Wall-clock times from the panel could not settle it either way, since it samples and
 each run stops at a different length, so a small page timed both library builds with greedy decoding
 of a fixed 32 tokens, A-B-A. The upgrade is faster on WebGPU (795 against 1136 ms per token) and level
 on WASM.
