@@ -1,13 +1,14 @@
 // Unified benchmark results panel (Round 7). It is CONTROLLED: the per-use-case page's single "Run"
 // drives the live E2E pipeline and the assembled benchmark is passed in via `result` — there is no
 // separate "Run benchmark" button. The MPC-FHE row is the live run's real measured FHE-linear +
-// MPC-non-linear split; the QSMPC-FHE row + quantum-advantage + security are the comparison.
+// MPC-non-linear split; the QSMPC-FHE row and the security posture are the comparison (the quantum-advantage score is retired).
 // `compact` (telecom/satellite, no private inference) shows the security + advantage only.
 import { useRef } from "react";
 import {
   Bar, BarChart, CartesianGrid, Cell, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis,
 } from "recharts";
 import { downloadCSV, downloadJSON, downloadNodePNG } from "../lib/export";
+import Details from "./Details";
 
 const colorFor = (path: string) => (path === "QSMPC-FHE" ? "#b072ff" : "#4f9dff");
 /** Bar fill: the same colour as `colorFor`, plus a hatch on QSMPC-FHE so the path is not encoded by
@@ -70,7 +71,7 @@ export default function BenchmarkPanel(
 
       {rows.length === 0 && (
         <p className="muted" style={{ margin: "8px 0 0" }}>
-          Press <b>▶ Run</b> above — the benchmark fills in from that live run (computation time, accuracy,
+          Press <b>▶ Start</b> above — the benchmark fills in from that live run (computation time, accuracy,
           the security posture facts{compact ? "" : " and the FHE-linear / MPC-non-linear split"}). One run,
           one result.
         </p>
@@ -86,39 +87,50 @@ export default function BenchmarkPanel(
 
       {rows.length > 0 && (() => {
         const q = rows.find((r: any) => r.path === "QSMPC-FHE");
+        // A table of what each row is, instead of a 279-word paragraph; the retirement history moved
+        // into a fold. "The Security posture table above" was wrong - the table renders below - and
+        // "Press Run" named a button labelled Start (both fixed in Round 58).
         return (
-          <p className="muted" style={{ fontSize: 11, margin: "8px 0 0", lineHeight: 1.5 }}>
-            <b>How these are produced (this run):</b> the <span style={{ color: "#b072ff" }}>QSMPC-FHE</span> row is
-            a genuine <b>state-vector simulation</b> of a QOTP-protected parameterised RY/RZ/CNOT circuit run by the{" "}
-            <code>quantum_comparison</code> stage — its <b>latency is measured</b> and its
-            {/* "counted from the circuit" is true of the BROWSER row and false of the Python one.
-                `qsh/qhe/qcnn.py` builds no T gates; its `t_count()` is a Solovay-Kitaev budget,
-                ceil(3*log2(1/eps)) per rotation times the parameter count, returning 630 at 8 qubits.
-                The browser path counts 56 from an actual gate list. One table, two meanings, and the
-                caption asserted the stronger one for both. */}
-            {q?.t_gate_count != null
-              ? ` ${q.t_gate_count} T-gates / ${q.qubits} qubits`
-                + (q.t_gate_count > 200 ? " (a Solovay-Kitaev BUDGET over the rotations, not a gate count)"
-                                        : " are counted from the circuit")
-              : " T-gates are estimated"}
-            {" "}(simulated, not quantum hardware). <b>Its ct/pt is shown as a dash:</b> a quantum ciphertext
-            has no size in bytes - the one-time pad maps n qubits to n qubits plus a 2n-bit classical key - so it
-            cannot share a column with the CKKS byte ratio. <b>The
-            security model named in that row is the SCHEME's, not this run's:</b> the quantum one-time pad
-            is perfectly hiding when its key bits are uniform and secret, and this simulation draws them
-            from a seeded non-cryptographic generator whose seed is on this page — so the mask is real and
-            recomputable by anyone. The gate count, the width and the latency are measurements; the secrecy
-            is not. See the
-            “QSMPC-FHE comparison” bar in the diagram above. <b>Two scores that used to sit here are retired
-            and no longer rendered.</b> The <b>quantum-advantage</b> score divided quantities that are not
-            the same on the two sides - a ciphertext byte ratio by a qubit ratio, and a real encrypted
-            inference by a simulation of an untrained circuit - and classical FHE also reaches rate 1
-            (Gentry and Halevi, TCC 2019), so the gap it reported was not a quantum advantage. The 0–100
-            composite: 14 of its 17 weights carried no stated rationale, it scored a zero-secure-key run
-            100/100, and the 68-vs-96 gap it displayed was mostly an artefact of which arguments two functions
-            happened to pass. The <b>Security posture</b> table above replaces it with per-row facts, each
-            traceable to FIPS 203/204 or to this run.
-          </p>
+          <div style={{ margin: "8px 0 0" }}>
+            <table className="facts-table small">
+              <thead><tr><th>Row</th><th>What ran</th><th>Measured</th><th>Not comparable</th></tr></thead>
+              <tbody>
+                <tr><td>MPC-FHE</td><td>real CKKS (node-seal) + garbled-circuit 2PC between notional parties</td><td>latency, communication, ct/pt</td><td>ct/pt measures CKKS slot use</td></tr>
+                <tr><td style={{ color: "#b072ff" }}>QSMPC-FHE</td><td>state-vector simulation of a QOTP-protected RY/RZ/CNOT circuit (<code>quantum_comparison</code> stage)</td>
+                  {/* "counted from the circuit" is true of the BROWSER row and false of the Python one.
+                      `qsh/qhe/qcnn.py` builds no T gates; its `t_count()` is a Solovay-Kitaev budget,
+                      ceil(3*log2(1/eps)) per rotation times the parameter count, returning 630 at 8 qubits.
+                      The browser path counts 56 from an actual gate list. One table, two meanings, and the
+                      caption asserted the stronger one for both. */}
+                  <td>latency;{q?.t_gate_count != null
+                    ? ` ${q.t_gate_count} T-gates / ${q.qubits} qubits`
+                      + (q.t_gate_count > 200 ? " (a Solovay-Kitaev BUDGET over the rotations, not a gate count)"
+                                              : " are counted from the circuit")
+                    : " T-gates are estimated"}</td>
+                  <td>ct/pt is a dash: a quantum ciphertext has no size in bytes</td></tr>
+                <tr><td>plaintext</td><td>the published model, unencrypted</td><td>latency</td><td>a different model and computation</td></tr>
+              </tbody>
+            </table>
+            <ul className="key-points" style={{ margin: "6px 0 0", paddingLeft: 18, fontSize: 12.5 }}>
+              <li>The QSMPC-FHE row is simulated, not quantum hardware; its gate count, width and latency are measurements, its secrecy is not.</li>
+              <li>The security model in that row is the SCHEME's, not this run's: the one-time pad is perfectly hiding with uniform secret key bits, and this simulation draws them from a seeded generator whose seed is on this page.</li>
+              <li>The Security posture table below gives per-row facts, each traceable to FIPS 203/204 or to this run.</li>
+            </ul>
+            <Details summary="Why two scores that used to sit here were retired">
+              <p>
+                The <b>quantum-advantage</b> score divided quantities that are not the same on the two sides -
+                a ciphertext byte ratio by a qubit ratio, and a real encrypted inference by a simulation of an
+                untrained circuit - and classical FHE also reaches rate 1 (Gentry and Halevi, TCC 2019), so
+                the gap it reported was not a quantum advantage. A quantum ciphertext has no size in bytes:
+                the one-time pad maps n qubits to n qubits plus a 2n-bit classical key.
+              </p>
+              <p>
+                The 0–100 composite: 14 of its 17 weights carried no stated rationale, it scored a
+                zero-secure-key run 100/100, and the 68-vs-96 gap it displayed was mostly an artefact of which
+                arguments two functions happened to pass.
+              </p>
+            </Details>
+          </div>
         );
       })()}
 

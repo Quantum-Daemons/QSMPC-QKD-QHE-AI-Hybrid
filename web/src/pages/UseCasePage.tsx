@@ -11,6 +11,12 @@ import PipelineControls from "../components/PipelineControls";
 import RunMonitor from "../components/RunMonitor";
 import ShapPanel from "../components/ShapPanel";
 import TwoPartyDiagram, { USECASE_SPECS } from "../components/TwoPartyDiagram";
+import { Qcnn3D, Qotp3D, Sat3D } from "../components/Lazy3D";
+import { FibreDistanceCharts, QsdcRangeChart } from "../components/QkdCharts";
+import Details from "../components/Details";
+import NotFound from "../components/NotFound";
+import KeyPoints from "../components/KeyPoints";
+import StageBadge from "../components/StageBadge";
 import { FIBER, FREE_SPACE } from "../lib/quantumSim";
 import { DEMO_BANNER, isClientDemo } from "../lib/demoMode";
 import { hasTreeAttribution, modelsFor } from "../lib/config";
@@ -102,6 +108,25 @@ function UseCaseView({ usecase }: { usecase: string }) {
       </div>
 
       <RunMonitor events={events} metrics={metrics} signature={signature} logRef={logRef} />
+
+      {/* The simulated channel across its whole range, beside the single run above. Computed from the
+          same model functions the run calls, at this page's own parameter values. Round 58. */}
+      {(usecase === "telecom_ids" || usecase === "satellite_comms") && (
+        <div className="card">
+          <h3>Simulated quantum channel across its range <StageBadge kind="simulated" /></h3>
+          {usecase === "satellite_comms"
+            ? <>
+                <QsdcRangeChart eve={Number(run.params.sat_eve ?? FREE_SPACE.eveFraction)}
+                  atmosphericDb={Number(run.params.sat_atmospheric_db ?? FREE_SPACE.freeSpace!.atmosphericDb)}
+                  pointingDb={Number(run.params.sat_pointing_db ?? FREE_SPACE.freeSpace!.pointingDb)} />
+                <Details summary="Downlink geometry in 3D (an illustration)">
+                  <Sat3D slantKm={Number(run.params.sat_distance_km ?? FREE_SPACE.distanceKm)} />
+                </Details>
+              </>
+            : <FibreDistanceCharts misalignment={Number(run.params.qkd_misalignment ?? FIBER.misalignment)}
+                eve={Number(run.params.qkd_eve ?? 0)} />}
+        </div>
+      )}
 
       {/* What produced the inference on this page: the published ONNX model, the bundled real
           model, or placeholder weights. Read from the run's own metrics, not asserted. */}
@@ -274,6 +299,19 @@ function UseCaseView({ usecase }: { usecase: string }) {
       <BenchmarkPanel compact={!meta.inference} result={benchmark}
         clientComputeMs={benchmark?.client_compute_ms ?? null} />
 
+      {/* What the QSMPC-FHE row's circuit does, in 3D: the per-qubit reduced Bloch vectors of the real
+          state-vector simulation (content), beside the one-time pad on a single qubit (illustration).
+          Loaded on demand. Round 58. */}
+      {meta.inference && (
+        <div className="card" style={{ marginTop: 14 }}>
+          <h3>Inside the QSMPC-FHE comparison <StageBadge kind="seeded" /></h3>
+          <Qcnn3D features={[0.3, -0.5, 0.8, 0.1, -0.9, 0.6, -0.2, 0.4]} seed={1} />
+          <Details summary="The quantum one-time pad on one qubit, in 3D (an illustration)">
+            <Qotp3D x={0.3} />
+          </Details>
+        </div>
+      )}
+
       {/* Agentic AI · quantum-safe MCP — per-industry panel, fed by THIS run's live metrics (Round 10).
           The report frames MCP as a per-use-case cross-cutting layer; the same panel is kept standalone.
           It is an application-plane SAE: see the control-plane panel directly below, which is the
@@ -284,23 +322,19 @@ function UseCaseView({ usecase }: { usecase: string }) {
 
       {usecase === "medical_fl" && (
         <div className="note" style={{ marginTop: 12, fontSize: 12 }}>
-          Federated learning runs on every run here - there is no toggle. A real client-side FedAvg
-          over the page's own bundled Wisconsin sample, not a synthetic stand-in, so the accuracy it
-          reports describes the data shown above it.
-          <div style={{ marginTop: 6 }}>
-            <b>The encrypted path evaluates the published student itself</b> - all 3,226 parameters
-            of it, fetched from its own pinned Hugging Face revision and run end to end under CKKS:
-            conv, average pool, and both dense layers, with im2col patches packed into a single
-            ciphertext and reduced by rotate-and-add. The run reports the total rotations it
-            performed, because key-switching - one per rotation - is what dominates CKKS inference
-            cost. Nothing here is multiplied by a cost model, and if the weights cannot be fetched
-            the run says so rather than substituting invented ones.
-          </div>
-          <div style={{ marginTop: 6 }}>
-            There is no Workload selector any more. It offered Linear against CNN, and once CNN
-            began running the real student, Linear was the only fabricated option left - an
-            8-feature dot product with a hand-written weight pattern matching no trained model.
-          </div>
+          {/* 167 words became four points; the history of the removed selector moved into a fold. */}
+          <KeyPoints items={[
+            "Federated learning runs on every run here - a real client-side FedAvg over the page's own bundled Wisconsin sample, with no toggle.",
+            <><b>The encrypted path evaluates the published student itself</b>: all 3,226 parameters, from its pinned Hugging Face revision, end to end under CKKS - conv, average pool and both dense layers.</>,
+            "The run reports the total rotations it performed, because key-switching - one per rotation - is what dominates CKKS inference cost.",
+            "Nothing is multiplied by a cost model; if the weights cannot be fetched, the run says so rather than substituting invented ones.",
+          ]} />
+          <Details summary="Why there is no Workload selector">
+            It offered Linear against CNN, and once CNN began running the real student, Linear was the
+            only fabricated option left - an 8-feature dot product with a hand-written weight pattern
+            matching no trained model. The im2col patches are packed into a single ciphertext and
+            reduced by rotate-and-add.
+          </Details>
         </div>
       )}
 
@@ -332,10 +366,11 @@ function UseCaseView({ usecase }: { usecase: string }) {
         qkdEnabled={run.qkd !== "pqc-only"} />
 
       <div className="note" style={{ marginTop: 16, fontSize: 12 }}>
-        State: <b>{state}</b>. The diagram above is a live two-party simulator — each protocol step lights up as the
-        pipeline runs, and the benchmark below fills in from that same run (one Run, one result). Demo mode computes
-        entirely in the browser (no server compute); the full deployment adds the server-side backends and the real
-        MCP server. PoC runs LAN/local; the diagram illustrates the WAN two-party deployment.
+        {/* "the benchmark below fills in" sat BELOW the benchmark (fixed in Round 58). */}
+        State: <b>{state}</b>. The diagram at the top is a live two-party simulator — each protocol step lights up as
+        the pipeline runs, and every panel on this page fills in from that same run (one Run, one result). Demo mode
+        computes entirely in the browser (no server compute); the full deployment adds the server-side backends and
+        the real MCP server. PoC runs LAN/local; the diagram illustrates the WAN two-party deployment.
         <div className="muted" style={{ marginTop: 6, fontSize: 11 }}>
           Hybrid split grounded in <i>EncFormer</i> (linear→FHE, non-linear→MPC) · system-level cost per
           <i> "Beyond Latency: MPC &amp; FHE for PPML"</i> (arXiv 2604.00169, 2026) · two-party QOT per
@@ -376,21 +411,8 @@ function UseCaseView({ usecase }: { usecase: string }) {
  *  provenance line belonging to an industry they did not ask for. */
 function UnknownUseCase({ id }: { id?: string }) {
   return (
-    <section className="page">
-      <h1 className="page-title">No such use case</h1>
-      <p className="page-sub">
-        {id ? <>This app has no use case with the id <code>{id}</code>.</> : <>No use case id was given.</>}
-        {" "}These are the ones it does have:
-      </p>
-      <ul>
-        {Object.keys(USECASE_SPECS).map((key) => (
-          <li key={key} style={{ marginBottom: 4 }}>
-            <Link to={`/usecase/${key}`}><code>{key}</code></Link>
-            {USECASE_META[key] ? <span className="muted"> — {USECASE_META[key].title}</span> : null}
-          </li>
-        ))}
-      </ul>
-      <p><Link to="/usecases">Back to the use-case index</Link></p>
-    </section>
+    <NotFound title="No such use case"
+      lead={<>{id ? <>This app has no use case with the id <code>{id}</code>.</> : <>No use case id was given.</>}
+        {" "}These are the pages and use cases it does have:</>} />
   );
 }

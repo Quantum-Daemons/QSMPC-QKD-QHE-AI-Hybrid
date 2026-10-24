@@ -1089,7 +1089,11 @@ function mpcFheRow(usecase: string | undefined, workload: string, modelSize: str
     accuracy: null, max_abs_error_representative: cost.demo_max_abs_error, ciphertext_plaintext_ratio: ctpt,
     fhe_linear_ms: r2(fhe), mpc_nonlinear_ms: r2(mpc), mpc_comm_kb: r2(comm / 1024),
     t_gate_count: null, qubits: null,
-    security_model: "computational (RLWE) + secret-sharing MPC",
+    // "garbled-circuit 2PC", not "secret-sharing MPC". That label is right for the Python row (MPyC
+    // Shamir across hosts) and was copied to this one, where the non-linear layer is an emp-wasm
+    // authenticated-garbling 2PC whose INPUTS are additively shared - between notional parties in
+    // one tab (clientMPC.ts). The benchmark table showed the Python mechanism on the browser row.
+    security_model: "computational (RLWE) + garbled-circuit 2PC",
     security_score: securityScore({
       securityModel: "computational (RLWE / FIPS-203 family)", kem: sec?.kem,
       qkdKeyBits: sec?.qkdBits,
@@ -2974,7 +2978,7 @@ export function runClientPipeline(
               + `Nothing here is scaled by a cost model.`);
           } else {
             emit("log", stage, `private inference (REAL in-browser FHE, ${config.model_size ?? "medium"}/${config.workload ?? "linear"}): `
-              + `class=${real.prediction}; node-seal CKKS ${r2(real.fheMs * bscale)} ms + secret-sharing MPC ${r2(real.mpcMs * bscale)} ms `
+              + `class=${real.prediction}; node-seal CKKS ${r2(real.fheMs * bscale)} ms + garbled-circuit 2PC ${r2(real.mpcMs * bscale)} ms `
               + `(measured per-op x${r1(bscale)} arch scale; real unit ${r2(real.fheMs)}/${r2(real.mpcMs)} ms, ct=${real.ctBytes}B), `
               // "plaintext reference", NOT "ONNX". `clientMs` times `privateInference`, which has had
               // no ONNX tier since Round 17 and says so in its own comments; its body is two plain-JS

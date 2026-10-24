@@ -8,6 +8,7 @@ import { useMemo } from "react";
 import {
   allocate, buildTopology, kmeStatus, linkEskr, linkTrustNote, type SdnTopology,
 } from "../lib/clientSdnController";
+import Details from "./Details";
 
 /** One wording, used by both rate cells, so the caveat cannot drift between two columns. */
 const RATE_CELL_TITLE =
@@ -65,27 +66,37 @@ export default function SdnControlPlanePanel({
           hoping nobody makes the comparison - and this project's own rule is that a figure a reader
           would quote must carry its caveat in the same visual block, not thirty lines below. */}
       {topo.source_rate_hz != null && (
-        <p className="muted small" style={{ marginTop: 0 }}>
-          <b>skr and eskr are bit/s, and they rest on an assumption.</b>{" "}
-          They are computed as this run&apos;s <b>two-intensity decoy-state bound</b> per pulse
-          (Ma, Qi, Zhao &amp; Lo, <i>Phys. Rev. A</i> <b>72</b>, 012326, 2005) multiplied by a source
-          repetition rate of{" "}
-          <b>{(topo.source_rate_hz / 1e6).toLocaleString()} MHz</b>, over a channel time of{" "}
-          {topo.channel_seconds != null ? `${(topo.channel_seconds * 1e3).toFixed(3)} ms` : "n/a"}{" "}
-          (pulses divided by that rate). <b>No QKD device exists in this project</b> and nothing here
-          measures a clock: the rate is the <b>Source rate (MHz)</b> control in the Parameters panel,
-          and every figure in these two columns scales with it. Its default is the 100 MHz reported
-          by arXiv:2607.24118 (preprint, 2026-07-27, CC BY 4.0) for a 2 km free-space link;{" "}
-          <b>that paper&apos;s own 164.8 kbit/s at QBER ~3.3% is its measurement over its own
-          channel, not this one&apos;s, and is neither reproduced nor claimed here.</b>{" "}
-          <b>It is ASYMPTOTIC.</b> No finite-key correction is applied, so this is the infinite-key
-          limit of a <i>lower</i> bound - not a ceiling on what hardware can do. Li et al.
-          (<i>Nat. Photon.</i> <b>17</b>, 416-421, 2023) measured <b>22.2 Mb/s at 50 km</b> on a
-          2.5 GHz clock, <b>8.88 x 10<sup>-3</sup> bit/pulse</b> with full composable finite-key
-          security - <b>3.8x higher per pulse than the figure above</b>. A round of this project
-          previously called the same number &quot;a modelled upper bound, ~2.4x a real deployed
-          link&quot;; that was wrong in both directions and is corrected here.
-        </p>
+        <div style={{ marginTop: 0 }}>
+          {/* 214 words became a table of how the number is built, with the comparison to published
+              systems and the correction history in a fold. What stays visible is the assumption itself,
+              because a bit/s figure invites comparison whether or not one is offered. */}
+          <p className="muted small" style={{ marginTop: 0 }}>
+            <b>skr and eskr are bit/s, and they rest on an assumption.</b> <b>No QKD device exists in this
+            project</b> and nothing here measures a clock: the rate is the <b>Source rate (MHz)</b>{" "}
+            control in the Parameters panel, and every figure in these two columns scales with it.
+          </p>
+          <table className="facts-table small">
+            <thead><tr><th>Factor</th><th>Value in this run</th><th>Where it comes from</th></tr></thead>
+            <tbody>
+              <tr><td>secure fraction per pulse</td><td>this run&apos;s two-intensity decoy-state bound</td><td>Ma, Qi, Zhao &amp; Lo, <i>Phys. Rev. A</i> <b>72</b>, 012326 (2005); <b>asymptotic</b> - no finite-key correction, so the infinite-key limit of a lower bound</td></tr>
+              <tr><td>x source repetition rate</td><td><b>{(topo.source_rate_hz / 1e6).toLocaleString()} MHz</b></td><td>an assumption; default 100 MHz from arXiv:2607.24118 (2 km free-space link), whose own measured rate is not reproduced or claimed here</td></tr>
+              <tr><td>channel time</td><td>{topo.channel_seconds != null ? `${(topo.channel_seconds * 1e3).toFixed(3)} ms` : "n/a"}</td><td>pulses divided by that rate</td></tr>
+            </tbody>
+          </table>
+          <Details summary="How this compares with published systems">
+            <p>
+              arXiv:2607.24118 (preprint, 2026-07-27, CC BY 4.0) reports 164.8 kbit/s at QBER ~3.3% - its
+              measurement over its own channel, not this one&apos;s. Li et al. (<i>Nat. Photon.</i>{" "}
+              <b>17</b>, 416-421, 2023) measured <b>22.2 Mb/s at 50 km</b> on a 2.5 GHz clock,{" "}
+              <b>8.88 x 10<sup>-3</sup> bit/pulse</b> with full composable finite-key security - 3.8x higher
+              per pulse than the figure above, so this bound is not a ceiling on what hardware can do.
+            </p>
+            <p>
+              A round of this project previously called the same number &quot;a modelled upper bound, ~2.4x a
+              real deployed link&quot;; that was wrong in both directions and is corrected here.
+            </p>
+          </Details>
+        </div>
       )}
       <p className="muted small" style={{ marginTop: 0 }}>
         Three planes, kept apart on purpose. GS QKD 015 clause 1 puts application interfaces

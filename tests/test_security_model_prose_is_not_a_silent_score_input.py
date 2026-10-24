@@ -67,6 +67,9 @@ EXPECTED: dict[str, str] = {
     "information-theoretic as a scheme (QOTP); not this run - the pad is seeded": "it",
     "information-theoretic as a scheme (QOTP); not this run - numpy pad, ML-KEM-768 + X25519 wrap": "it",
     "computational (RLWE) + secret-sharing MPC": "comp",
+    # The BROWSER row's label since 2026-10-24: its non-linear layer is a garbled-circuit 2PC, and
+    # the Python row (MPyC Shamir) keeps the secret-sharing label above.
+    "computational (RLWE) + garbled-circuit 2PC": "comp",
     "computational (RLWE / FIPS-203 family)": "comp",
     "computational + QKD (two-party, TTP-free)": "comp",
     "none (plaintext reference)": "none",
