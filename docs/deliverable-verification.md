@@ -4398,6 +4398,19 @@ thread; what the argmax costs in time and bytes; whether the Summon-built circui
 Garble; and the state of the other candidates looked at (swanky, emp-ag2pc, webSPDZ, MPyC-Web, JIFF),
 none of which was confirmed here to run both parties in one tab without a server.
 
+**Walked on the public demo with this branch deployed** (67394fa, serving `index-BnD6oAsI.js`, the file
+name the local build produced). All ten pages render their headings with no error boundary and zero
+horizontal overflow at 1280 px, and the pages carrying the new selects measure zero overflow at 390 px
+(both selects end at x=262). The Model backend select appears only where a published model exists.
+The agent's first run on WASM answered in 11.0 s including the 237 MB download, which before this
+change timed out on every first visit, and a warm run took 1.4 s. The medical pipeline ran in 14 s
+with ResNet-18 on onnx-wasm in 38.17 ms, the satellite pipeline in 6 s with Telemanom on onnx-wasm in
+3.98 ms, and every re-verifiable published model passed on both pages. With WebGPU selected, the
+medical pipeline took 45 s, ResNet-18 ran on onnx-webgpu in 7363.55 ms, and verification still passed.
+One ONNX Runtime warning, logged at error level, was seen on the satellite page: the Telemanom graph
+declares an output of {1,6} and the whole-sample evaluation produces {128,6}. The scores verified, and
+whether the warning predates this change was not checked.
+
 BUSINESS DOC RECONCILED Round 60. The out-of-repo document is brought level with this round. Its content
 is not quoted here, in the checklist, or in any commit - only the fact of the reconciliation, which is
 what gate 16 reads.
