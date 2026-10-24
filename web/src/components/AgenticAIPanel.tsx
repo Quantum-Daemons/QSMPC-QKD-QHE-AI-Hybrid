@@ -43,8 +43,10 @@ function runContextLine(usecase: string | undefined, rc?: RunContext | null): st
   }
   if (m.psi_intersection_size != null) bits.push(`PSI |A∩B| ${m.psi_intersection_size}`);
   if (m.secure_key_bits != null) bits.push(`${m.secure_key_bits} secure key bits`);
-  const adv = rc.benchmark?.advantage;
-  if (adv?.score != null) bits.push(`quantum advantage ${adv.score}/10`);
+  // NO QUANTUM-ADVANTAGE SCORE IN THE CONTEXT. This line used to append "quantum advantage 10/10",
+  // and because the string is handed to a language model as run context, the model was invited to
+  // repeat a score whose inputs measured different things on the two sides. The score is retired
+  // from display (see `quantumAdvantage` in clientCompute.ts); its absence here is deliberate.
   if (!bits.length) return "";
   return `Context from this ${usecase ?? "pipeline"} run — ${bits.join(", ")}.`;
 }
@@ -72,6 +74,17 @@ export default function AgenticAIPanel({
   // model about 300x slower than the wasm build - that wording would have been actively wrong on a
   // machine where an adapter exists and was refused on purpose.
   const [gpuKind, setGpuKind] = useState<"usable" | "software" | "absent">("absent");
+  // THE PROMPT FOLLOWS THE USE CASE. `useState(defaultPrompt)` reads its argument on the FIRST render
+  // only, and the route component that mounts this panel stays mounted when a visitor moves between
+  // use cases in the nav - so after Finance -> Medical the medical page still asked the AML question
+  // ("why must an AML agent that scores a transaction across two banks..."), before and after a run.
+  // A hard load showed the right one, which is why it survived: every check that started from a fresh
+  // URL passed. A previous use case's answer and MCP envelope are cleared with it, because they
+  // describe a run that is no longer on the page. Engine and model are the visitor's choices and stay.
+  useEffect(() => {
+    setPrompt(defaultPrompt || FALLBACK_PROMPT);
+    setRun(null); setMcp(null); setProgress(""); setRanWithCtx(null);
+  }, [usecase, defaultPrompt]);
   useEffect(() => {
     hasWebGPU().then(setGpu);
     webgpuInfo().then((i: Record<string, unknown>) => {

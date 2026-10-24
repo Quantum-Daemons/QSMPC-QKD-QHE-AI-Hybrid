@@ -2219,9 +2219,10 @@ pointed at the wrong place.
 
 Corrected Round 50 by citing the CONTENT instead of the line: the risky configuration is a line
 carrying **two `$` on one line**. Find them with `grep -nP '\$[^$]*\$'` rather than by line number.
-There is exactly one such CURRENCY line in each file - the PQC market sentence in `README.md`
-(*"~$1.6 B ... ~$20.5 B by 2033"*) and the Grand View / Precedence market-spread sentence in
-`docs/verification-log.md` (*"~$2.2B ... $20-30B by 2033-34"*). Re-scan when either is edited.
+There is exactly one such CURRENCY line in each file - the PQC market sentence in `README.md` and the
+market-spread sentence in `docs/verification-log.md`. Re-scan when either is edited. [Round 58,
+2026-10-24: both sentences were removed, and so were the figures this paragraph quoted from them - the
+project's public material carries no market-size figures - so neither file has a currency line now.]
 
 **That grep also matches deliberate math, and saying "exactly one per file" without qualifying it was
 wrong when first written here.** `docs/verification-log.md` returns two hits: the currency sentence,
@@ -4070,3 +4071,133 @@ same person who forgot the second copy.
 BUSINESS DOC RECONCILED Round 56. The out-of-repo document was at R16-R18 and is now brought level
 with what has been measured since. Its content is not quoted here, in the checklist, or in any commit
 - only the fact of the reconciliation, which is what gate 16 reads.
+
+## Round 58: two comparisons that measured different things, and public text that claimed more than the demo does
+
+An independent check of the public text (2026-10-06) listed ten issues and changed nothing. A survey
+of all ten routes of the deployed demo on 2026-10-23 confirmed them and found more. Every item below
+was re-read at its primary source before it was changed; copies of the sources were kept for the
+session. Nothing was changed on the strength of a secondary write-up.
+
+### Retired from every surface
+
+| what | why it was not a measurement | where it reached a visitor |
+|---|---|---|
+| Overview card "~1.32 Rate-1 QFHE ciphertext/plaintext ratio vs ~1483x for classical CKKS", and the `qsmpc_ct_pt_ratio` constant behind it | 1.32 divided bytes of a CLASSICALLY SIMULATED $2^n$-amplitude state vector; a quantum ciphertext has no size in bytes. It is not in the paper it was attributed to: Chardouvelis, Doettling and Malavolta (TCC 2021) report no concrete figure, and their "rate 1" is an asymptotic limit under quantum LWE. 1483 was CKKS bytes over about 34 inputs, i.e. slot utilisation (about 12x at full packing; Cheon, Kim, Kim and Song, ASIACRYPT 2017). Classical FHE reaches rate 1 as well (Gentry and Halevi, TCC 2019; Brakerski, Doettling, Garg and Malavolta, TCC 2019) | the landing page |
+| The 0-10 "quantum advantage" score, its tier, interpretation and log line | it divided the same mismatched byte and qubit ratios, divided a real CKKS plus garbled-circuit latency by an 8-qubit simulation, and multiplied by 1.5 for a security label the run does not achieve. Three runs printed 5794x, 8163x and 9610x "faster" | /orchestration log, every inference page's panel and log, a diagram label, the in-browser agent's prompt context, /usecases, README, and the Python stage metric. The Python module is kept and called from nowhere, as the composite was in Round 22 |
+| The QSMPC-FHE row's ct/pt cell | the last place the two ratios sat side by side | the benchmark table, now a dash |
+
+### Corrected
+
+| item | was | is | source |
+|---|---|---|---|
+| E91 security facts | the QBER row said "two-intensity decoy-state bound ... aborts above 0.11" on an E91 run, because the protocol test was declared inside a branch the row could not see | Werner-model error rate; device-dependent rate reaches zero at 0.0981 (f = 1.16); a device-independent analysis would need S > 2.424, i.e. Q < 0.0715 | Acin et al., Phys. Rev. Lett. 98, 230501 (2007); Ma, Fung and Lo, Phys. Rev. A 76, 012307 (2007) |
+| E91 model error rate | not exposed, so the relation S = 2 sqrt(2) (1 - 2 e0) could only be checked against the 2-dp SAMPLED QBER, from which two of three reported rows do not reproduce | `e91_model_qber` at both E91 sites (fibre and satellite) | the simulator's own model |
+| QKD rows of the security-posture table | "measured", under "what this run measured", with "The bits are real" | kind "simulated"; the browser's `bb84()` returns a count, never key bytes (checklist SC2) | code |
+| Demo banner | silent about QKD; the simulated label sat at the bottom of two pages and in hover text | every page says the quantum channel (QKD, QSDC) is simulated | code |
+| "information-theoretic" | unqualified | "as a scheme" (quantum one-time pad, given a uniform pad); the demo seeds the pad, so no run here is information-theoretically secure | Ambainis, Mosca, Tapp and de Wolf, FOCS 2000 |
+| Agent prompt on SPA navigation | `useState(defaultPrompt)` read its prop once: Finance then Medical in the nav kept the AML question | reset on use-case change | reproduced by a nav click, not by a fresh URL |
+| Validations "mix QKD key" | described a fixed 32-byte constant as a QKD key | "mix fixed QKD-domain constant" | `clientMcp.ts`, `mcp_demo` |
+| Novelty sentence, three copies | "then QKD-derived key material" | "then a simulated QKD link (it yields a key length, not key bytes)", identical in README, Value and the technical report | code |
+| Market-size figures | README top, a Value-page table and notes, a line on every use-case page, two quotes in the verification records | removed; the project's public material carries none | policy |
+| Overview subtitle | "validated for finance, healthcare, genomics and telecom/defence" | "demonstrated on ... and satellite use cases, with the quantum channel simulated" | the page's own "simulated, not hardware-validated" note |
+| BSI attribution | QKD as a hybrid add-on "per BSI", "on BSI's authority" | the add-on is this project's choice. TR-02102-1 v2026-01 section 2.1 (p.29) does not recommend QKD; section 2.2 recommends a quantum-safe plus CLASSICAL hybrid and does not mention QKD | BSI TR-02102-1 v2026-01 |
+| NSA | a "2027 procurement mandate"; "QKD non-recommended standalone"; a quote attributed to the FAQ | national security systems only; CNSSP 15: new acquisitions 2027-01-01, phase-out 2030-12-31, all use 2031-12-31; the FAQ answers "No" to QKD for NSS; "does not support the usage of QKD or QC" is from the Post-Quantum Cybersecurity Resources page | CNSA 2.0 and Quantum Computing FAQ Ver. 2.2 (October 2026); CNSSP 15 |
+| CNSA 2.0 eligibility | "position bids for CNSA 2.0 / FIPS-aligned procurement"; a sidebar badge; "be compliant before bids" | the defaults are not CNSA 2.0 parameter sets (ML-KEM-1024 and ML-DSA-87 are selectable); nothing here is FIPS 140-3 or NIAP validated | FAQ Ver. 2.2 |
+| Cloudflare / Google 2029 | "Cloudflare commits"; Google's the "weaker" commitment | both are targets; neither post ranks itself against the other | Cloudflare blog 2026-04-07; Google blog 2026-03-25 |
+| EO 14412 | high-value assets only; "a FAR rule putting contractors on the 2030 date" | high-value assets AND high impact systems (section 4(b)); section 6(c) directs a PROPOSED FAR rule within 180 days, none in the Federal Register as of 2026-10-23 | 91 FR 38483 |
+| NIST IR 8547 (report) | "deprecates RSA-2048 and ECC-256 by 2030" | initial public draft; 112-bit strength deprecated after 2030, P-256 only disallowed after 2035 | NIST IR 8547 ipd, Table 2 |
+| FIPS 140-2, M-26-15 | future tense | past: certificates historical since 2026-09-21; agency plans were due about 2026-10-22 | CMVP; M-26-15 |
+| QCNN simulability citation | arXiv preprint | PRX Quantum 7, 020304 (2026) | arXiv journal reference |
+| E91 decoy-state row (found on the deployed branch) | an E91 run showed "Decoy-state necessity" and its warning that "the decoy states are what make this link work at all" - and the gate written earlier this round ASSERTED four QKD rows for both protocols, so it codified the defect | BB84 only; the E91 test now checks the whole table, not three selected rows | Ma, Fung and Lo, Phys. Rev. A 76, 012307 (2007): an entangled source needs no decoy states |
+| Agent prompts (found on the deployed branch) | medical asked why HIPAA needs a "(PQC + QKD)" channel; satellite asked why QSDC beats classical encryption on a link where this page finds QSDC cannot close | neutral questions | HIPAA names no PQC or QKD requirement; the page's own QSDC finding |
+| Three missing spaces (found on the deployed branch) | "foundation -demonstrated", "recommendation:BSI", "thequantum_comparison": a JSX line break before an inline tag or a comment drops the space | `{" "}` at each | rendered text |
+| References | arXiv:2604.23490 called nothing; arXiv:2604.19256 had its v1 title | 2604.23490 v3 carries the authors' comment that its conclusion contains mistakes (NOT withdrawn); 2604.19256 has its v2 title | arXiv API |
+
+### Proposals: four adopted in the same PR, two still open
+
+The first four were recorded as proposals and then adopted by the user's decision on 2026-10-24, in
+this same PR:
+
+| item | adopted as |
+|---|---|
+| Eve's error was added linearly to the channel error | composed as independent errors, a + b - 2ab, at all four sites (`intrinsic_qber` / `e_det_for_bound` and their browser mirrors) through one helper per language. Eve-free figures unchanged; E91 at 50 km with a full attack moves from S 1.29 / e0 0.2722 to S 1.33 / e0 0.2649 (displayed QBER 0.27 either way). The relation S = 2 sqrt(2)(1 - 2Q) still holds exactly |
+| The S > 2 gate never binds | stated in the caption and the code; the device-independent threshold is now computed from the configured f: S > 2.456, Q < 0.0658 at f = 1.16 (the caption had compared an f = 1 threshold, S > 2.424, with an f = 1.16 zero-key point) |
+| "Werner state" for Eve > 0 | the caption names the state a mixture of Werner and intercept-resend pairs, separable once V'(3 - 2f) <= 1 |
+| `/orchestration` log lines | "simulated" in the QKD and QSDC log lines, on the graph's quantum nodes and in the diagram legend |
+
+Still open:
+
+| item | why it is a judgement | proposal |
+|---|---|---|
+| EU AI Act date on the medical line | it said Art. 13 applies from 2 Dec 2027 (Annex III); a diagnostic model is more likely an Annex I product (MDR), 2 Aug 2028 | removed with the market line; UNVERIFIED - needs confirmation which annex applies before restating it anywhere |
+| Honest perfectly-secure QHE expansion | about 15x per Ortega and Martin-Delgado | UNVERIFIED - needs confirmation against the paper before it is quoted |
+
+### The concern worth stating above the others
+
+The defect class is the same as every recent round: one copy of several. The novelty sentence had a
+third copy, in the technical report, that the plan did not name. The market figures sat in five places,
+two of them in the verification records. The E91 protocol test existed and was scoped one branch too
+narrowly for the row that needed it - and after the fix, the deployed page showed a fourth BB84-only
+row on E91 runs, which a gate I wrote the same day had asserted should be there: a test that selects
+the rows it checks cannot see the row it did not select. The new gates enumerate the copies instead of naming one:
+`test_public_text_claims_only_what_the_demo_does.py` scans every public text file for market figures,
+the three novelty copies and twelve corrected phrases; `test_e91_facts_describe_the_e91_model.py` runs
+the real browser module for both protocols and both key-count bands; every check was seeded and fires.
+
+### The readability layer, and what it surfaced (same PR)
+
+The user asked for every page to lead with its key points and fold the rest, with diagrams and 2D/3D
+models where prose stood. Doing it surfaced more corrections than it made layout changes:
+
+| page or component | change | what the change exposed |
+|---|---|---|
+| Overview | an architecture diagram of the stages as they run, each badged real / notional parties / simulated / seeded pad; workstreams and crypto-agility as tables; the Research PoC note moved up unchanged | the pill row drew QRNG as its own stage (it runs inside the PQC handshake), coloured real CKKS as a scaffold and put QKD on the key path; the agility paragraph listed the PQC+QKD combiner and TenSEAL/OpenFHE as demo run options (neither is) |
+| Value | the novelty sentence, verbatim, directly under the heading (it was about 1,300 px down; measured at 248-440 px in a 1280x621 window after); a regulatory clock - timeline by jurisdiction plus a table - replacing a 191-word paragraph | every date now carries who it binds and how firm it is; the closing "preparation, not a present-day mandate" sentence stays visible |
+| Validations | the real PQC hybrid handshake moved out of a "Quantum simulations" heading; QBER and secure bits against the eavesdropper fraction as a chart | the subtitle dropped "simulated" in demo mode |
+| Use-case pages | model curves: BB84 rate with and without decoy states and E91's CHSH value against fibre length (telecom); QSDC secrecy capacity against downlink range (satellite) | without decoy states the bound is zero at EVERY distance shown, so the decoy states carry the whole link; QSDC closes only with the fixed losses near zero (out to about 129 km at 0 + 0 dB), never at a LEO slant range |
+| Benchmark, agreement chart, SDN panel, model panel | tables and a stat strip in place of paragraphs; long generated registry prose shows its first sentence with the rest folded at render time (it cannot be edited: CI regenerates it) | four wrong references: "Press Run" for a Start button, "table above", "model panel below", "benchmark below" |
+| 3D (three.js, loaded only where drawn) | the QCNN's per-qubit reduced Bloch vectors through the real circuit (a snapshot hook leaves the measured path unchanged); the one-time pad and the downlink geometry as illustrations | the two illustrations are captioned as adding no information: the pad's states lie on one circle, and the channel model has no altitude or elevation |
+| Browser benchmark row | security model "computational (RLWE) + garbled-circuit 2PC" | it said "secret-sharing MPC" - the Python row's mechanism - on the row of a browser that runs a garbled-circuit 2PC |
+| Satellite tooltips and log | QSDC figures computed at render time by the function the stage runs (`qsdcLink`) | four quoted figures dated from before two formula corrections; at 1 km and 2 + 1 dB the tooltip promised a delivery the current model refuses even with no eavesdropper; the NOT AVAILABLE log quoted the superseded pooled criterion |
+| Agent prompts | neutral questions on the medical and satellite pages | they asked the model why HIPAA needs PQC + QKD (it names neither) and why QSDC beats classical encryption on a link the page finds it cannot close over |
+
+Gates added for this part: the Eve composition at all four sites with browser parity, the DI threshold
+recomputed independently, no QSDC literal in a tooltip, the decoy row absent on E91, and the existing
+accessibility, wide-content and dead-component gates extended to the new components by construction.
+
+### Network-layer key schedules, computed in the tab (same PR)
+
+The user asked for the useful parts of the companion network project (WireGuard, IPsec) to be added
+and verified. A browser has no sockets and no kernel tunnel, so what can be added is the key-schedule
+MATH, run for real between two in-tab peers, and each piece is held to an official vector where one
+exists:
+
+| computation | validated against | computed per spec only |
+|---|---|---|
+| ML-KEM-768 known-answer test | NIST ACVP-Server (commit 975de31): keyGen 3, encapsulation 3, decapsulation 4 (two valid, two modified ciphertexts) - 10/10 in the browser | - |
+| WireGuard handshake (Noise_IKpsk2), PSK from an in-tab ML-KEM-768 + X25519 hybrid through the session key's combiner | the Noise core: cacophony vector (commit 8ee9d41, public domain) - both messages, four transport messages, handshake hash | WireGuard framing (148 / 92 bytes, mac1, TAI64N, indices) per the whitepaper - no authoritative implementation publishes a fixed transcript; two initial-state constants cross-checked against boringtun, labelled non-authoritative |
+| IKEv2 key schedule | RFC 7296 prf / prf+ / SKEYSEED / key stream: NIST CAVP SP 800-135 (6 cases); ECP-256 shared secret: RFC 5903 section 8.1 | the RFC 9370 ML-KEM-768 intermediate exchange and the RFC 8784 PPK layer - no official vectors; ML-KEM in IKEv2 is draft-ietf-ipsecme-ikev2-mlkem-09, in the RFC Editor queue (IANA method 36) |
+
+Ten of twelve seeded defects were caught by the check; the two that pass are composition errors in the
+RFC 9370 and RFC 8784 layers, which nothing can catch without vectors - stated, not hidden. Sources,
+commits and hashes: `references/net-key-schedules.md`; licences: `DATA_LICENSES.md` section 6b. No
+performance figure was imported: the companion repository commits none. A positioning diagram shows
+the two layers and links the companion demo with its caveat that its QKD is simulated too.
+
+### Walked on the deployed branch (ab105a7)
+
+All ten routes and both not-found paths were walked in a browser on the public demo before the PR:
+the architecture diagram, the novelty sentence at 248 px, the regulatory clock (18 rows), the use-case
+table, the E91 scenarios on `/orchestration` (0.03 / 2.66 / 0.007286 and e0 0.0297; Eve 1: 0.27 / 1.33 /
+0 and e0 0.2649; 0.02 / 2.74 / 0.09037 and e0 0.015), the three key-schedule cards (ACVP 10/10, the
+WireGuard checks, CAVP 7/7 and RFC 5903) with their chunks fetched only on click, the posture table and
+3D view on an inference page, the E91 caption under an eavesdropper, and the computed QSDC tooltips
+(+0.1150, -64.7390). At a 390 px emulated phone viewport every route measured zero horizontal page
+overflow. One defect was found and fixed in this PR: the diagram's QSDC label paired the 24.5 dB
+channel loss with a g that includes the detector's 4 dB (g = 701 is 28.5 dB), while the log printed the
+same g at 28.5 dB; both now say which loss they name.
+
+BUSINESS DOC RECONCILED Round 58. The out-of-repo document is brought level with this round. Its content
+is not quoted here, in the checklist, or in any commit - only the fact of the reconciliation, which is
+what gate 16 reads.

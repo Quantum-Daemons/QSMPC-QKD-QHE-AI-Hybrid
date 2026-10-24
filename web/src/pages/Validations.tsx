@@ -1,4 +1,7 @@
 import { useState } from "react";
+import NetKeyCards from "../components/NetKeyCards";
+import NetworkPositioning from "../components/NetworkPositioning";
+import { EveSweepChart } from "../components/QkdCharts";
 import { api } from "../lib/api";
 import { mldsaDemo, mlkemDemo } from "../lib/crypto";
 import { DEMO_BANNER, isClientDemo } from "../lib/demoMode";
@@ -28,11 +31,11 @@ export default function Validations() {
       <h1 className="page-title">Validations</h1>
       <p className="page-sub">
         Run the cryptographic primitives live. PQC runs <b>entirely in your browser</b>{" "}
-        (pure-JS @noble/post-quantum); QKD + MCP {DEMO ? "also run in-browser (zero server compute)" : "run as server-side simulations"}.
+        (pure-JS @noble/post-quantum); the simulated QKD channel and the MCP agent call {DEMO ? "also run in-browser (zero server compute)" : "run server-side"}.
       </p>
       {DEMO && <div className="note" style={{ marginBottom: 12 }}>🖥️ {DEMO_BANNER}</div>}
 
-      <h2>Client-side post-quantum crypto (in-browser)</h2>
+      <h2>Post-quantum cryptography</h2>
       <div className="grid cols-2">
         <div className="card">
           <h3>ML-KEM-768 key encapsulation</h3>
@@ -67,10 +70,6 @@ export default function Validations() {
             </table>
           )}
         </div>
-      </div>
-
-      <h2 style={{ marginTop: 28 }}>{DEMO ? "Quantum simulations (in-browser)" : "Server-side quantum simulations"}</h2>
-      <div className="grid cols-2">
         <div className="card">
           <h3>Hybrid KEM handshake (ML-KEM-768 + X25519)</h3>
           <p>The PQC-first hybrid session key derivation, computed {DEMO ? "in your browser (@noble)" : "by the backend (liboqs)"}.</p>
@@ -89,6 +88,12 @@ export default function Validations() {
             </table>
           )}
         </div>
+      </div>
+
+      {/* "Quantum simulations" headed the real PQC hybrid handshake and the simulated BB84 channel
+          together until Round 58; the handshake now sits with the other post-quantum primitives. */}
+      <h2 style={{ marginTop: 28 }}>Simulated quantum channel {DEMO ? "(in your browser)" : "(server-side)"}</h2>
+      <div className="grid cols-1">
         <div className="card">
           <h3>BB84 QKD with eavesdropper</h3>
           <p>Slide the intercept-resend fraction; watch QBER rise above the security threshold.</p>
@@ -121,6 +126,7 @@ export default function Validations() {
               </tbody>
             </table>
           )}
+          <EveSweepChart distanceKm={qkdCfg().distance_km} />
         </div>
       </div>
 
@@ -128,13 +134,16 @@ export default function Validations() {
       <div className="card">
         <h3>MCP-style agent-to-agent tool call</h3>
         <p>
-          Two AI agents establish a PQC (ML-KEM-768 + X25519, optionally QKD-mixed) session and
+          {/* "optionally QKD-mixed" described a FIXED 32-byte constant (0x71 x 32, the backend's
+              b"q"*32) as QKD key material. The QKD models here return counts, never key bytes. */}
+          Two AI agents establish a PQC (ML-KEM-768 + X25519) session - optionally mixed with a fixed
+          QKD-domain constant, not a QKD key - and
           exchange an <b>ML-DSA-signed</b>, AES-256-GCM-sealed MCP tool call — closing the report's gap
           of quantum-resistant + private agent↔data-silo communication (no trusted third party).
         </p>
         <div className="btn-row">
           <label className="muted">
-            <input type="checkbox" checked={mcpQkd} onChange={(e) => setMcpQkd(e.target.checked)} /> mix QKD key
+            <input type="checkbox" checked={mcpQkd} onChange={(e) => setMcpQkd(e.target.checked)} /> mix fixed QKD-domain constant
           </label>
           <button className="btn" disabled={busy === "mcp"}
             onClick={async () => { setBusy("mcp"); setMcp(await api.demoMcp(mcpQkd)); setBusy(""); }}>
@@ -145,7 +154,7 @@ export default function Validations() {
           <table style={{ marginTop: 12 }}>
             <tbody>
               <tr><td>session</td><td className="mono">{mcp.session}</td></tr>
-              <tr><td>KEM / QKD-mixed</td><td>{mcp.kem} / {String(mcp.qkd_mixed)}</td></tr>
+              <tr><td>KEM / QKD-domain constant mixed</td><td>{mcp.kem} / {String(mcp.qkd_mixed)}</td></tr>
               <tr><td>method</td><td className="mono">{mcp.method}</td></tr>
               <tr><td>authenticated ({mcp.signature_alg})</td>
                 <td style={{ color: mcp.authenticated ? "var(--accent-2)" : "var(--danger)" }}>{String(mcp.authenticated)}</td></tr>
@@ -155,6 +164,14 @@ export default function Validations() {
           </table>
         )}
       </div>
+
+      {/* The network layer's key schedules, computed in this tab (Round 58). The tunnels themselves
+          run in the companion network demo; nothing here connects to it. */}
+      <h2 style={{ marginTop: 28 }}>Network-layer key schedules (computed in your tab)</h2>
+      <div className="card">
+        <NetworkPositioning />
+      </div>
+      <NetKeyCards />
 
       <div className="btn-row" style={{ marginTop: 20 }}>
         <button className="btn ghost" onClick={() => downloadJSON({ kem, sig, pqc, qkd, mcp }, "qsh-validations.json")}>

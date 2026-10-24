@@ -5,6 +5,14 @@
 import {
   hasTrainedQcnn, qcnnWidths, readsInferenceBackend, runsFibreQkd, runsQsmpc, type usePipelineRun,
 } from "../lib/usePipelineRun";
+import { freeSpaceLink, qsdcLink } from "../lib/quantumSim";
+
+/** QSDC secrecy capacity at a stated link, signed to four places - the same `qsdcLink` the
+ *  satellite stage runs, so a tooltip cannot quote a figure the page would not produce. */
+function csAt(distanceKm: number, atmosphericDb: number, pointingDb: number, eveFraction: number): string {
+  const v = qsdcLink(freeSpaceLink({ distanceKm, atmosphericDb, pointingDb, eveFraction })).cs;
+  return `${v >= 0 ? "+" : ""}${v.toFixed(4)}`;
+}
 
 type Run = ReturnType<typeof usePipelineRun>;
 // `max` exists because QCNN qubits drives a 2^n state vector evaluated several times per run and
@@ -92,7 +100,8 @@ export default function ParameterPanel({ run }: { run: Run }) {
     { title: "QKD channel", fields: [
       ["QKD pulses", "qkd_pulses", 10000, 1, "channel uses for the BB84 run"],
       ["Distance (km)", "qkd_distance_km", 5, 1, "fibre distance - raises loss + QBER"],
-      // Both feed intrinsicQber, which saturates at 0.5, so anything past these renders identically.
+      // Both feed intrinsicQber. The misalignment cap of 0.5 is where the composed error saturates;
+      // Eve alone reaches at most 0.25 (f = 1), composed independently with the channel's own error.
       ["Eve fraction", "qkd_eve", 0.05, 0, "intercept-resend fraction (0-1) - raises QBER", 1],
       ["Misalignment", "qkd_misalignment", 0.005, 0, "baseline optical error", 0.5],
       // THE CONTROL THE PANEL ALREADY CLAIMED EXISTED. `SdnControlPlanePanel` told the visitor twice
@@ -116,18 +125,23 @@ export default function ParameterPanel({ run }: { run: Run }) {
     { title: "Free-space channel", fields: [
       ["Downlink (km)", "sat_distance_km", 50, 1, "ground-to-LEO slant range - raises loss + QBER"],
       ["Eve fraction", "sat_eve", 0.05, 0,
+       // COMPUTED, not quoted. These figures were literals (+0.4944, -0.6283) written under the
+       // pooled-entropy formula without detector efficiency, and at 1 km with 2.0 + 1.0 dB the
+       // current model gives -0.5984 with NO eavesdropper - so the tooltip described a delivery
+       // that setting cannot produce. `csAt` runs the same function the satellite stage runs.
        "intercept-resend fraction (0-1). On the DEFAULT 800 km downlink this link is already "
        + "loss-limited at Eve=0 - its secrecy capacity is negative before she arrives - so raising "
        + "this cannot flip the abort from link-limited to attributable. It takes BOTH a short range "
-       + "and a small budget: at 1 km with 2.0 + 1.0 dB the clean link carries C_s = +0.4944 "
-       + "bit/carrier, and Eve at 0.40 drives it to -0.6283 - an abort this link would NOT have "
-       + "suffered on its own, which is the one case that reports an eavesdropper. BB84 above "
-       + "detects her at any range", 1],
+       + `and a near-zero budget: at 1 km with 0 + 0 dB the clean link carries C_s = ${csAt(1, 0, 0, 0)} `
+       + `bit/carrier, and Eve at 0.40 drives it to ${csAt(1, 0, 0, 0.4)} - an abort this link would NOT `
+       + "have suffered on its own, which is the one case that reports an eavesdropper. BB84 above "
+       + "detects her at that fraction at any range", 1],
       ["Pulses", "sat_pulses", 500000, 1, "channel uses for the free-space downlink"],
       // The two fixed dB that decided every abort this page has ever shown. `channelLossDb` caps the
-      // diffraction term inside the near field, so these floor total loss at 8 dB at ANY range:
-      // g >= 6.31, and C_s > 0 then needs h(QBER) < 1/(1+g) = 0.137 while the misalignment floor of
-      // 0.025 already gives 0.169. So `qsdc_eavesdrop_detected` (= abort AND NOT link-limited) was 0
+      // diffraction term inside the near field, so these floor total loss at 8 dB at ANY range, and
+      // with the detector's 4.0 dB g >= 15.8: at the default budget C_s is negative at every range
+      // (corrected 2026-10-24; this read g >= 6.31 and a pooled tolerance, both superseded). So
+      // `qsdc_eavesdrop_detected` (= abort AND NOT link-limited) was 0
       // at every setting the page offered, the diagram's ABORTED branch was unreachable, and the
       // inline eavesdrop check named in the page subtitle could not be demonstrated. These select a
       // LINK, not a physics: the defaults are the Micius-class downlink and are unchanged.
@@ -137,7 +151,7 @@ export default function ParameterPanel({ run }: { run: Run }) {
        + "Qi et al. (Light Sci. Appl. 8, 22, 2019) demonstrated QSDC over a 4.1 dB FIBRE link; "
        + "lowering this and Pointing to a comparable TOTAL, at short range, is where secrecy "
        + "capacity turns positive here. It is not enough on its own: at 800 km the diffraction term "
-       + "is 16.5 dB, so even a 3 dB budget leaves C_s at -14.6474", 20],
+       + `is 16.5 dB, so even a 3 dB budget leaves C_s at ${csAt(800, 1.5, 1.5, 0)}`, 20],
       ["Pointing (dB)", "sat_pointing_db", 0.5, 0,
        "fixed pointing and tracking loss, likewise range-independent. With Atmospheric this is the "
        + "floor under total channel loss: the diffraction term falls to zero in the near field, "

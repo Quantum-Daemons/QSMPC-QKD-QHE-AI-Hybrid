@@ -194,9 +194,11 @@ const QSMPC_COMPARE: Step = {
       : String(c.inference ?? "") === "ckks" ? "CKKS surfaced as primary"
       : "CKKS surfaced as primary (default)";
     const cls = m["primary_inference_class"];
+    // No "advantage N/10" suffix: the quantum-advantage score is retired from display and this stage
+    // no longer emits `quantum_advantage_score` (see `quantumAdvantage` in clientCompute.ts).
     return `QSMPC-FHE comparison · QOTP + QCNN (T-gates) · ${primary}`
       + (cls == null ? "" : ` · class ${cls}`)
-      + ` · advantage ${f(m, "quantum_advantage_score")}/10`;
+      + ` · ${f(m, "qsmpc_t_gates")} T-gates counted`;
   },
 };
 
@@ -377,9 +379,12 @@ export const USECASE_SPECS: Record<string, Spec> = {
           ? `QSDC ABORTED · eavesdropper · C_s ${f(m, "qsdc_secrecy_capacity")} at error `
             + `${f(m, "qsdc_error_rate")} (g=${f(m, "qsdc_eve_gain_g")}) · telemetry withheld`
           : Number(m["qsdc_link_budget_limited"]) === 1
+            // "at 24.5 dB (g=701.06)" paired the CHANNEL loss with a g that includes the detector's
+            // 4.0 dB (10^(24.5/10) is 282, not 701), while the run log printed the same g at 28.5 dB.
+            // Both now name the channel loss and say g carries the detector too. Round 58.
             ? `QSDC NOT AVAILABLE · link-budget limited · C_s ${f(m, "qsdc_secrecy_capacity")} `
-              + `bit/carrier at ${f(m, "channel_loss_db")} dB (g=${f(m, "qsdc_eve_gain_g")}) · `
-              + `telemetry withheld, falls back to the PQC session key`
+              + `bit/carrier at ${f(m, "channel_loss_db")} dB channel loss (g=${f(m, "qsdc_eve_gain_g")}, `
+              + `detector included) · telemetry withheld, falls back to the PQC session key`
             : `QSDC direct telemetry · secrecy ${f(m, "qsdc_secrecy_capacity")} bit/carrier`) },
       publishedStep("qsdc_telemetry"),
       QSMPC_COMPARE,
@@ -557,7 +562,7 @@ export default function TwoPartyDiagram({
             drawn, so advertising one in the key was the same hardcoding one level down. */}
         {!pqcOnly(config) && (<>
           <line x1={200} y1={-3} x2={222} y2={-3} stroke="var(--quantum)" strokeWidth={2} strokeDasharray="4 3" markerEnd="url(#tp-q)" />
-          <text x={227} y={1}>quantum ({qkdName(config)})</text>
+          <text x={227} y={1}>quantum, simulated ({qkdName(config)})</text>
         </>)}
         <line x1={430} y1={-3} x2={452} y2={-3} stroke="#f5a623" strokeWidth={2} strokeDasharray="2 2" markerEnd="url(#tp-m)" markerStart="url(#tp-ml)" />
         <text x={457} y={1}>MPC secret-shares</text>

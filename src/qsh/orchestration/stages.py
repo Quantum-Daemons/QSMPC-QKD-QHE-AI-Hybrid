@@ -623,15 +623,18 @@ class QuantumComparisonStage(Stage):
         results = [r for r in (c_row, q_row) if r]
         adv = quantum_advantage(c_bench, q) if c_bench is not None else None
 
+        # `advantage` stays in the artifact for backwards compatibility - the Python module is kept,
+        # as the retired 0-100 composite was - but it is no longer EMITTED: no metric, no log line.
+        # The UI renders it nowhere (BenchmarkPanel, the agent prompt and the diagram label were all
+        # cut on 2026-10-23), so a log line here would be the one place a visitor still read
+        # "quantum advantage 10/10 (dominant)" in a full deployment. Its inputs divided a CKKS byte
+        # ratio by a QOTP qubit ratio and a real encrypted inference by a simulated untrained circuit.
         ctx.artifacts["benchmark_result"] = {
             "workload": workload, "model_size": model_size,
             "results": results, "advantage": adv, "live": True,
         }
-        if adv:
-            bus.metric("quantum_advantage_score", adv["score"], self.name)
         bus.log(f"benchmark assembled from the live run: "
-                f"{'MPC-FHE (measured) + ' if c_row else ''}QSMPC-FHE comparison"
-                + (f"; quantum advantage {adv['score']}/10 ({adv['tier']})" if adv else ""), self.name)
+                f"{'MPC-FHE (measured) + ' if c_row else ''}QSMPC-FHE comparison", self.name)
 
 
 class SignatureStage(Stage):

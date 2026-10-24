@@ -2,7 +2,8 @@
 // benchmark + E2E pipeline, so the demo runs entirely in the browser (PQC via @noble,
 // QKD/QBER via quantumSim, private inference via onnxruntime-web, PSI via WebCrypto HMAC).
 // The security-score and quantum-advantage formulas mirror src/qsh/benchmark/{security,
-// quantum_advantage}.py so demo numbers track the server.
+// quantum_advantage}.py. Neither is RENDERED: the 0-100 composite was retired in Round 22 and the
+// quantum-advantage score on 2026-10-23 (see `quantumAdvantage`).
 import { ml_dsa65, ml_dsa87 } from "@noble/post-quantum/ml-dsa.js";
 import { ml_kem768, ml_kem1024 } from "@noble/post-quantum/ml-kem.js";
 import { x25519 } from "@noble/curves/ed25519.js";
@@ -21,7 +22,7 @@ import { secureArgmax, warmMPC } from "./clientMPC";
 import { optimizeQKD } from "./clientOptiQKD";
 import { generateQuantumBits } from "./clientQRNG";
 import { bb84, channelLossDb, e91, FIBER, FREE_SPACE, h2, intrinsicQber, keyRateWithClock,
-  qsdcSecrecyCapacity,
+  qsdcLink, qsdcSecrecyCapacity,
   qcnnExpectation,
   qcnnInferTrained, qotpQcnnInfer, rng, taggedFraction,
   type QcnnWeights } from "./quantumSim";
@@ -193,8 +194,11 @@ export interface SecurityFact {
   value: string;
   /** The standard, specification or measurement this rests on. Empty is not allowed. */
   source: string;
-  /** "standard" = checkable against a published document; "measured" = produced by this run. */
-  kind: "standard" | "measured";
+  /** "standard" = checkable against a published document; "measured" = produced by this run;
+   *  "simulated" = computed by this run's analytic quantum-channel model. No QKD device exists in this
+   *  project, so every QKD row is "simulated" - calling a channel model's output "measured" is the
+   *  claim the Research PoC note on the Overview page disowns. */
+  kind: "standard" | "measured" | "simulated";
   /** Set when the run contradicts the claim, e.g. a QKD profile that produced no key. */
   warn?: string;
 }
@@ -209,8 +213,8 @@ export interface SecurityFact {
  * moved the wrong way: measured on the deployed demo, Eve at 0.6 with QBER 0.16 and ZERO secure key
  * bits scored 100 out of 100.
  *
- * Every entry below is either checkable against a published standard or produced by this run, and
- * each says which. No entry is a weight. The NIST category leads because it is the one figure here
+ * Every entry below is checkable against a published standard, measured in this run, or computed by
+ * this run's simulated quantum channel, and each says which. No entry is a weight. The NIST category leads because it is the one figure here
  * that is comparable with another system: FIPS 203 anchors ML-KEM-768 at Category 3 and ML-KEM-1024
  * at Category 5 against AES/SHA reference problems.
  *
@@ -231,6 +235,42 @@ export function securityFacts(config: any, metrics: Record<string, any>): Securi
   const keyBits = typeof metrics.secure_key_bits === "number" ? metrics.secure_key_bits : null;
   const qber = typeof metrics.qber === "number" ? metrics.qber : null;
   const skr = typeof metrics.skr_per_pulse === "number" ? metrics.skr_per_pulse : null;
+  // ONE protocol test, at FUNCTION scope. It used to be declared inside the QKD branch below, under a
+  // comment saying "A shared constant is what stops the next row from being the next omission" - and
+  // the QBER row sits OUTSIDE that branch, so it could not read the constant and did omit the test:
+  // an E91 run's QBER was captioned "this run's two-intensity decoy-state bound ... aborts above 0.11".
+  // E91 here has no decoy states, and its rate reaches zero at the point computed below, not at 0.11.
+  const isE91 = String(config?.qkd_protocol ?? qkdCfg().protocol) === "e91";
+  const fEC = qkdCfg().error_correction_eff;
+  // Where the E91 model's device-dependent rate 1 - h(e) - fEC h(e) reaches zero (0.0981 at 1.16).
+  const e91ZeroKey = (() => { let lo = 0, hi = 0.5;
+    for (let i = 0; i < 60; i++) { const m = (lo + hi) / 2; if (1 - (1 + fEC) * h2(m) > 0) lo = m; else hi = m; }
+    return Math.round(lo * 1e4) / 1e4; })();
+  // And where a DEVICE-INDEPENDENT analysis of the same noise model stops certifying key, at the SAME
+  // error-correction efficiency (Acin et al., PRL 98, 230501, 2007): r = 1 - fEC h(Q) -
+  // h((1 + sqrt((S/2)^2 - 1))/2) with S = 2 sqrt(2) (1 - 2Q). This caption used to quote S > 2.424 /
+  // Q < 0.0715 - the fEC = 1 figures - beside a device-dependent 0.0981 computed at fEC = 1.16, so the
+  // two thresholds it compared came from different error-correction assumptions.
+  const chshAt = (q: number) => 2 * Math.SQRT2 * (1 - 2 * q);
+  const e91DiZeroKey = (() => { let lo = 0, hi = (1 - Math.SQRT1_2) / 2;   // S = 2 at the upper end
+    const r = (q: number) => 1 - fEC * h2(q) - h2((1 + Math.sqrt(Math.max(0, (chshAt(q) / 2) ** 2 - 1))) / 2);
+    for (let i = 0; i < 60; i++) { const m = (lo + hi) / 2; if (r(m) > 0) lo = m; else hi = m; }
+    return Math.round(lo * 1e4) / 1e4; })();
+  const sDi = Math.round(chshAt(e91DiZeroKey) * 1000) / 1000;
+  const sDd = Math.round(chshAt(e91ZeroKey) * 1000) / 1000;
+  // The channel this run used, and the eavesdropper fraction on it: both the decoy row (BB84) and the
+  // E91 caption read them, so they are built once. See the decoy row for why the parameter reads have
+  // to follow the use case.
+  const sat = config?.usecase === "satellite_comms";
+  const chan = sat ? FREE_SPACE : FIBER;
+  const eveFrac = Number((sat ? config?.sat_eve : config?.qkd_eve) ?? 0);
+  const runChannel = { ...chan,
+    distanceKm: Number((sat ? config?.sat_distance_km : config?.qkd_distance_km) ?? chan.distanceKm),
+    // No misalignment control is rendered on the satellite page, so the free-space channel's own
+    // 0.025 is the honest value there. Reading `qkd_misalignment` unconditionally would have
+    // substituted the fibre page's 0.015 - always, since that key is never absent.
+    misalignment: Number((sat ? undefined : config?.qkd_misalignment) ?? chan.misalignment),
+    eveFraction: eveFrac };
 
   const facts: SecurityFact[] = [
     { label: "KEM", value: `${kem} - NIST Category ${cat}`, kind: "standard",
@@ -250,16 +290,16 @@ export function securityFacts(config: any, metrics: Record<string, any>): Securi
     // ONE protocol test, read by every row below it. It was written inline on the key-material row
     // and nowhere else, so when the secret-key-rate row was added three lines later it simply did
     // not ask - and told E91 users their rate came from a decoy-state estimate. A shared constant
-    // is what stops the next row from being the next omission.
-    const isE91 = String(config?.qkd_protocol ?? qkdCfg().protocol) === "e91";
+    // is what stops the next row from being the next omission. (Now declared at function scope:
+    // declared here, it did not reach the QBER row outside this branch.)
     // The warning is the point. A QKD profile that produced no key is the case the composite scored
     // 100 on, because nothing checked whether the channel actually delivered.
     facts.push({
       label: "QKD key material",
       value: keyBits == null ? "not reported" : `${keyBits} secure bits`,
-      kind: "measured",
+      kind: "simulated",
       source: isE91
-        ? "E91 / CHSH run, GLLP secure fraction"
+        ? "E91 / CHSH run, device-dependent secure fraction on the model error rate"
         : "BB84 decoy-state run, two-intensity secure fraction",
       // THE BAND, NOT JUST THE ENDPOINT. This tested `keyBits === 0` while the behaviour it warns
       // about switches at 256 - the threshold `stages.py` and `:1233` below both use to decide
@@ -270,10 +310,12 @@ export function securityFacts(config: any, metrics: Record<string, any>): Securi
       warn: keyBits === 0
         ? "the QKD profile is selected but this channel produced NO secure key: the session rests on "
           + "the PQC hybrid alone"
+        // The last sentence used to read "The bits are real; there are not enough of them." The
+        // browser's bb84() returns a COUNT and never key bytes (checklist SC2), so there were no bits.
         : keyBits != null && keyBits > 0 && keyBits < 256
         ? `this channel produced ${keyBits} secure bits, below the 256 a session key needs, so no `
-          + "QKD key is derived and the session rests on the PQC hybrid alone. The bits are real; "
-          + "there are not enough of them."
+          + "QKD key is derived and the session rests on the PQC hybrid alone. The count comes from "
+          + "the simulated channel model."
         : undefined,
     });
     if (skr != null) {
@@ -282,56 +324,57 @@ export function securityFacts(config: any, metrics: Record<string, any>): Securi
       // attributed its rate to decoy states - a countermeasure for the multi-photon pulses of an
       // attenuated laser, which entanglement-based QKD does not have and cannot use. One of a
       // sibling pair three lines apart was made protocol-aware and the other was not.
-      facts.push({ label: "Secret-key rate", value: `${skr} per pulse`, kind: "measured",
+      facts.push({ label: "Secret-key rate", value: `${skr} per pulse`, kind: "simulated",
         source: isE91
-          ? "GLLP secure fraction on the observed QBER; E91 has no decoy states"
+          ? "device-dependent secure fraction 1 - h(e) - f h(e) on the MODEL error rate, not the "
+            + "sampled QBER (Shor-Preskill form; entangled source: Ma, Fung & Lo, Phys. Rev. A 76, "
+            + "012307, 2007); no decoy states. CHSH S is a consistency check, not a certificate"
           : "two-intensity decoy-state bound, Ma, Qi, Zhao & Lo, Phys. Rev. A 72, 012326 (2005)" });
     }
-    // What the decoy states are actually buying on THIS channel.
-    //
-    // ROUND 45 CORRECTED THIS COMMENT AND THE MODEL UNDER IT. It used to say "the runtime model is
-    // asymptotic decoy-state, which already assumes the single-photon contribution has been
-    // bounded". The runtime model was neither: it computed 1 - h2(q) - f h2(q) on the observed QBER
-    // and credited every sifted bit as single-photon, which is stronger than any decoy bound rather
-    // than an approximation of one. `bb84()` now runs the two-intensity estimator, so the sentence
-    // describes the code for the first time. Delta >= 1 still means no detection could be certified
-    // single-photon and the same hardware would yield nothing without decoys - and on this link it
-    // is 7.26, so the counterfactual really is zero rather than merely smaller.
-    const mu = qkdCfg().mu_signal;
-    // The channel model AND the parameters fed to it both have to follow the use case.
-    //
-    // Round 29 fixed half of this. It emitted `usecase` so the MODEL switched to free-space on the
-    // satellite page - and left the parameter reads on `qkd_distance_km` / `qkd_misalignment` /
-    // `qkd_eve`, which are the FIBRE page's controls. Those keys are always present (they default from
-    // `qkd.*` config), so the satellite page evaluated the free-space model at 50 km with fibre
-    // misalignment: the tagged fraction went from 7.26 to 2.89 rather than to the free-space figure,
-    // and the three controls that page actually renders - `sat_distance_km`, `sat_eve`, `sat_pulses` -
-    // still could not move it. A half-corrected number is harder to catch than an uncorrected one,
-    // because it moved.
-    const sat = config?.usecase === "satellite_comms";
-    const chan = sat ? FREE_SPACE : FIBER;
-    const delta = taggedFraction(mu, { ...chan,
-      distanceKm: Number((sat ? config?.sat_distance_km : config?.qkd_distance_km) ?? chan.distanceKm),
-      // No misalignment control is rendered on the satellite page, so the free-space channel's own
-      // 0.025 is the honest value there. Reading `qkd_misalignment` unconditionally would have
-      // substituted the fibre page's 0.015 - always, since that key is never absent.
-      misalignment: Number((sat ? undefined : config?.qkd_misalignment) ?? chan.misalignment),
-      eveFraction: Number((sat ? config?.sat_eve : config?.qkd_eve) ?? 0) });
-    facts.push({
-      label: "Decoy-state necessity",
-      // Always print the number. ">= 1" was a needless loss of information: on the default fibre
-      // link Delta is 7.26, and "7.26" says the decoy states are carrying the entire link, where
-      // ">= 1" only says they are carrying some of it.
-      value: `tagged fraction ${delta.toFixed(2)} at mu ${mu}`,
-      kind: "measured",
-      source: "GLLP tagged fraction over this channel; Ma PRA 72 012326, GLLP QIC 4 325",
-      warn: delta >= 1
-        ? "without decoy states this link yields NO key. The worst-case bound on Eve-known "
-          + "(multi-photon) detections exceeds the total detection probability, so not one "
-          + "detection could be certified single-photon and the whole sifted block is discarded. "
-          + "The decoy states are what make this link work at all."
-        : undefined,
-    });
+    // BB84 ONLY. An E91 run showed this row too, warning that "the decoy states are what make this
+    // link work at all" - on a protocol that uses none. The tagged fraction is a property of an
+    // attenuated laser's multi-photon pulses; an entangled source's security analysis needs no decoy
+    // states (Ma, Fung & Lo, Phys. Rev. A 76, 012307, 2007). Found on the deployed demo, 2026-10-24,
+    // after a gate written the same day had asserted the row's presence on E91 runs.
+    if (!isE91) {
+      // What the decoy states are actually buying on THIS channel.
+      //
+      // ROUND 45 CORRECTED THIS COMMENT AND THE MODEL UNDER IT. It used to say "the runtime model is
+      // asymptotic decoy-state, which already assumes the single-photon contribution has been
+      // bounded". The runtime model was neither: it computed 1 - h2(q) - f h2(q) on the observed QBER
+      // and credited every sifted bit as single-photon, which is stronger than any decoy bound rather
+      // than an approximation of one. `bb84()` now runs the two-intensity estimator, so the sentence
+      // describes the code for the first time. Delta >= 1 still means no detection could be certified
+      // single-photon and the same hardware would yield nothing without decoys - and on this link it
+      // is 7.26, so the counterfactual really is zero rather than merely smaller.
+      const mu = qkdCfg().mu_signal;
+      // The channel model AND the parameters fed to it both have to follow the use case.
+      //
+      // Round 29 fixed half of this. It emitted `usecase` so the MODEL switched to free-space on the
+      // satellite page - and left the parameter reads on `qkd_distance_km` / `qkd_misalignment` /
+      // `qkd_eve`, which are the FIBRE page's controls. Those keys are always present (they default from
+      // `qkd.*` config), so the satellite page evaluated the free-space model at 50 km with fibre
+      // misalignment: the tagged fraction went from 7.26 to 2.89 rather than to the free-space figure,
+      // and the three controls that page actually renders - `sat_distance_km`, `sat_eve`, `sat_pulses` -
+      // still could not move it. A half-corrected number is harder to catch than an uncorrected one,
+      // because it moved. (`runChannel` above now carries those reads for every row that needs them.)
+      const delta = taggedFraction(mu, runChannel);
+      facts.push({
+        label: "Decoy-state necessity",
+        // Always print the number. ">= 1" was a needless loss of information: on the default fibre
+        // link Delta is 7.26, and "7.26" says the decoy states are carrying the entire link, where
+        // ">= 1" only says they are carrying some of it.
+        value: `tagged fraction ${delta.toFixed(2)} at mu ${mu}`,
+        kind: "simulated",
+        source: "GLLP tagged fraction over this channel; Ma PRA 72 012326, GLLP QIC 4 325",
+        warn: delta >= 1
+          ? "without decoy states this link yields NO key. The worst-case bound on Eve-known "
+            + "(multi-photon) detections exceeds the total detection probability, so not one "
+            + "detection could be certified single-photon and the whole sifted block is discarded. "
+            + "The decoy states are what make this link work at all."
+          : undefined,
+      });
+    }
   }
 
   if (qber != null) {
@@ -348,12 +391,34 @@ export function securityFacts(config: any, metrics: Record<string, any>): Securi
     facts.push({
       label: "QBER",
       value: `${qber}${dead ? " - no secure key at this error rate" : ""}`,
-      kind: "measured",
-      source: skr != null
+      kind: "simulated",
+      source: skr != null && isE91
+        ? (eveFrac > 0
+            // A WERNER STATE ONLY WITHOUT EVE. Intercept-resend on a fraction f of pairs leaves a
+            // MIXTURE of (1 - f) noisy Werner pairs and f measured-and-resent ones; its correlation
+            // tensor is V'(1 - f/2, -(1 - f), 1 - f/2), not V_eff(1, -1, 1), and it is separable once
+            // V'(3 - 2f) <= 1 (Horodecki criterion for Bell-diagonal states). In the plane the
+            // protocol measures, its QBER and CHSH value equal a Werner state's at V_eff = V'(1 - f/2),
+            // which is why S = 2 sqrt(2) (1 - 2Q) still holds - the state label was what was wrong.
+            ? `E91 with an eavesdropper on ${eveFrac} of the pairs: a sampled draw around the model error `
+              + "rate of a mixture of Werner pairs and intercept-resend pairs - not a Werner state, and "
+              + `separable once V'(3 - 2f) <= 1 with V' = ${Math.round(qkdCfg().e91_visibility
+                * (1 - 2 * intrinsicQber({ ...runChannel, eveFraction: 0 })) * 1e4) / 1e4} here. Its `
+              + "QBER and CHSH value in the measured plane still obey S = 2 sqrt(2) (1 - 2Q). "
+            : "E91: a sampled draw around the Werner-model error rate (1 - V)/2, with S = 2 sqrt(2) V. ")
+          + `The device-dependent rate reaches zero at Q = ${e91ZeroKey} (S = ${sDd}, f = ${fEC}); a `
+          + `device-independent analysis at the same f would need S > ${sDi}, i.e. Q < ${e91DiZeroKey} `
+          + "(Acin et al., Phys. Rev. Lett. 98, 230501, 2007), so between those two error rates this "
+          + "model reports key a device-independent analysis would not certify. The S > 2 test never "
+          + `decides the key here: the rate is already zero below S = ${sDd}`
+        : skr != null
         ? "this run's two-intensity decoy-state bound (Ma, Qi, Zhao & Lo, Phys. Rev. A 72, 012326); "
           + `post-processing aborts above ${s.qber_secure_threshold}`
         : `no rate reported by this run; post-processing threshold ${s.qber_secure_threshold}`,
-      warn: dead ? "the decoy-state bound yields no secure key on this channel" : undefined,
+      warn: dead
+        ? (isE91 ? "the device-dependent E91 rate yields no secure key at this error rate"
+                 : "the decoy-state bound yields no secure key on this channel")
+        : undefined,
     });
   }
   return facts;
@@ -403,8 +468,23 @@ export function securityScore(o: SecOpts) {
 }
 
 // --------------------------------------------------------------------------- //
-//  Quantum advantage (mirror of qsh/benchmark/quantum_advantage.py)
+//  Quantum advantage (mirror of qsh/benchmark/quantum_advantage.py) - RETIRED FROM DISPLAY
 // --------------------------------------------------------------------------- //
+// Kept as the mirror of the Python module, and called from NOWHERE. Do not wire it back to a panel,
+// a log line, a diagram label or a prompt: `tests/test_the_retired_comparisons_stay_retired.py` fails
+// if anything outside this definition calls it.
+//
+// Why it was retired, so the reason survives the code. It printed "Quantum path is ~6146x more
+// communication-compact and 5794x faster; dominant advantage" and "10/10", and its three inputs did not
+// measure the same thing on both sides:
+//   communication  a CKKS ciphertext BYTE ratio divided by a QOTP QUBIT ratio of 1.0 that leaves out
+//                  the 2n-bit classical key (and classical FHE reaches rate 1 as well: Gentry-Halevi,
+//                  TCC 2019; Brakerski-Doettling-Garg-Malavolta, TCC 2019)
+//   latency        a real CKKS + garbled-circuit inference divided by an 8-qubit state-vector simulation
+//                  of an UNTRAINED circuit on random input - and it moved 5794x -> 8163x -> 9610x
+//                  between three runs, because it is a ratio of two noisy wall-clocks
+//   security       a 1.5x multiplier for a label the run does not achieve (the pad is seeded)
+// It is the same retirement, for the same reason, as the 0-100 composite in Round 22.
 export function quantumAdvantage(classical: any, quantum: any, w?: { comm: number; latency: number; security: number }) {
   const qa = quantumAdvantageCfg();      // weights + tiers from the central config (single source)
   const ww = w ?? { comm: qa.w_comm, latency: qa.w_latency, security: qa.w_security };
@@ -1009,7 +1089,11 @@ function mpcFheRow(usecase: string | undefined, workload: string, modelSize: str
     accuracy: null, max_abs_error_representative: cost.demo_max_abs_error, ciphertext_plaintext_ratio: ctpt,
     fhe_linear_ms: r2(fhe), mpc_nonlinear_ms: r2(mpc), mpc_comm_kb: r2(comm / 1024),
     t_gate_count: null, qubits: null,
-    security_model: "computational (RLWE) + secret-sharing MPC",
+    // "garbled-circuit 2PC", not "secret-sharing MPC". That label is right for the Python row (MPyC
+    // Shamir across hosts) and was copied to this one, where the non-linear layer is an emp-wasm
+    // authenticated-garbling 2PC whose INPUTS are additively shared - between notional parties in
+    // one tab (clientMPC.ts). The benchmark table showed the Python mechanism on the browser row.
+    security_model: "computational (RLWE) + garbled-circuit 2PC",
     security_score: securityScore({
       securityModel: "computational (RLWE / FIPS-203 family)", kem: sec?.kem,
       qkdKeyBits: sec?.qkdBits,
@@ -1020,9 +1104,19 @@ function mpcFheRow(usecase: string | undefined, workload: string, modelSize: str
 }
 
 // QSMPC-FHE row — GENUINE state-vector QOTP + Clifford+T QCNN inference (quantumSim.qotpQcnnInfer):
-// `latency_ms` is the REAL-measured wall-clock of the simulation, `t_gate_count`/`qubits` are COUNTED from
-// the actual circuit, and ct/pt = 1.0 is the QOTP perfect-hiding property (Rate-1 QFHE's ~1.3 is the
-// classical-key-included literature figure). A state-vector SIMULATION, not quantum hardware.
+// `latency_ms` is the REAL-measured wall-clock of the simulation and `t_gate_count`/`qubits` are COUNTED
+// from the actual circuit. A state-vector SIMULATION, not quantum hardware.
+//
+// ct/pt IS WITHHELD (null) FOR THIS ROW, and the comment here used to say the opposite twice over. It
+// said ct/pt = 1.0 "is the QOTP perfect-hiding property" and that "Rate-1 QFHE's ~1.3 is the classical-
+// key-included literature figure". Neither holds. A QOTP ciphertext is n qubits PLUS a 2n-bit classical
+// key (Ambainis, Mosca, Tapp, de Wolf, FOCS 2000; Boykin and Roychowdhury, PRA 67, 042317, 2003), so
+// "1.0" counts only the half that does not grow. In the Rate-1 QFHE paper's own units (qubits plus bits,
+// Chardouvelis, Doettling, Malavolta, TCC 2021, Def. 6.1) an 8-qubit KEM-wrapped transport is ~1135x and
+// tends to ~3x, not 1, as n grows. And that paper reports NO concrete figure - "~1.3" is not in it.
+// Printing 1.0 beside the CKKS row's byte ratio is the comparison the overview card made, so the
+// quantum row shows a dash and the table footnote says why.
+const QSMPC_SECURITY_MODEL = "information-theoretic as a scheme (QOTP); not this run - the pad is seeded";
 function qsmpcFheRow(workload: string, modelSize: string, u: () => number, samples = 4, scale = 1,
   nQubits = benchCfg().quantum_qubits,
   sec?: { kem?: string; qkdBits?: number | null; qber?: number | null }) {
@@ -1061,11 +1155,14 @@ function qsmpcFheRow(workload: string, modelSize: string, u: () => number, sampl
     // input is `u() * 2 - 1`, uniform noise. What this row legitimately measures is the state-vector
     // simulation's latency, its counted T-gate total, its qubit count and its security model.
     accuracy: null, max_abs_error: null,
-    ciphertext_plaintext_ratio: 1.0,                  // QOTP: ciphertext = same #qubits as plaintext (genuine)
+    ciphertext_plaintext_ratio: null,                 // withheld: not comparable in bytes, see the header
     t_gate_count: last.tGates, qubits: last.qubits,   // counted from the actual gate list
-    security_model: "information-theoretic (QOTP perfect hiding)",
+    // ONE constant, read twice. The row label and the scorer input were two literals, and the scorer
+    // parses the label for "information-theoretic" - so rewording one copy would have moved a score
+    // with every gate green (`tests/test_security_model_prose_is_not_a_silent_score_input.py`).
+    security_model: QSMPC_SECURITY_MODEL,
     security_score: securityScore({
-      securityModel: "information-theoretic (QOTP perfect hiding)", kem: sec?.kem,
+      securityModel: QSMPC_SECURITY_MODEL, kem: sec?.kem,
       // qber was the literal 0.0128 here while the panel described the score as reflecting "QBER
       // eavesdrop margin" for this run — so moving the Eve slider changed the QKD panel and left this
       // number untouched. Use the run's measured QBER when the pipeline produced one.
@@ -1093,8 +1190,8 @@ export async function clientBenchmark(workload = "linear", samples = 20, modelSi
   if (modelSize !== "large") { const reps = Math.min(samples, 6); for (let i = 0; i < reps; i++) hybridForward(dims, u); }
   const classical = mpcFheRow(undefined, workload, modelSize);
   const quantum = qsmpcFheRow(workload, modelSize, u, Math.min(samples, 6), benchScale(undefined, modelSize, workload));
-  return { workload, model_size: modelSize, results: [classical, quantum],
-    advantage: quantumAdvantage(classical, quantum) };
+  // `advantage` is null: the quantum-advantage score is retired from display (see `quantumAdvantage`).
+  return { workload, model_size: modelSize, results: [classical, quantum], advantage: null };
 }
 
 // Inference use cases produce both an MPC-FHE row + a QSMPC-FHE comparison; telecom/satellite get the
@@ -1165,7 +1262,7 @@ export function assembleBenchmark(
   const measured: MeasuredHybrid | null = opts?.artifacts?._measured_hybrid ?? null;
   const c = mpcFheRow(usecase, workload, modelSize, measured, sec);
   return { workload, model_size: modelSize, results: pub ? [c, q, pub] : [c, q],
-    advantage: quantumAdvantage(c, q),
+    advantage: null,                    // retired from display; see `quantumAdvantage`
     live: true, client_compute_ms: clientComputeMs, measured: !!measured,
     security_facts: securityFacts(config, opts?.metrics ?? {}) };
 }
@@ -1953,9 +2050,17 @@ export function runClientPipeline(
           metric(stage, "qkd_pulses", pulses);
         }
         if (eRes) metric(stage, "chsh_s", r2(eRes.chshS));
+        // The MODEL error rate e0 = (1 - V)/2, to four places, beside the sampled `qber`. S is computed
+        // from the same V, so S = 2 sqrt(2)(1 - 2 e0) holds EXACTLY - a self-consistency of the Werner
+        // model, not an independent validation - and only approximately from the displayed `qber`,
+        // which is a shot-noise draw rounded to two places: at 1 km with no misalignment it shows
+        // 0.02 while e0 is 0.0150, so 2 sqrt(2)(1 - 2 x 0.02) = 2.72 against the S of 2.74 shown.
+        if (eRes) metric(stage, "e91_model_qber", Math.round(eRes.e0 * 1e4) / 1e4);
         emit("log", stage, eRes
-          ? `E91 (entanglement / CHSH S=${r2(eRes.chshS)}): QBER=${res.qber.toFixed(4)}, ${res.secureKeyBits} secure bits`
-          : `BB84 (decoy-state): QBER=${res.qber.toFixed(4)}, ${res.secureKeyBits} secure bits`);
+          // "simulated" in the line itself: /orchestration shows these figures with no other label in
+          // a full deployment (the banner that says so renders only in the public demo).
+          ? `E91 (simulated, entanglement / CHSH S=${r2(eRes.chshS)}): QBER=${res.qber.toFixed(4)}, ${res.secureKeyBits} secure bits`
+          : `BB84 (simulated, decoy-state): QBER=${res.qber.toFixed(4)}, ${res.secureKeyBits} secure bits`);
         if (config.qkd_optimize) {   // AI-QKD parameter optimization (OptiQKD, WS1) — measured SKR gain
           const opt = optimizeQKD(chan, protocol,
             Number(config.qkd_opt_samples ?? qkdCfg().optimize_n_samples));
@@ -2030,10 +2135,12 @@ export function runClientPipeline(
           metric(stage, "qkd_pulses", satPulses);
         }
         if (satERes) metric(stage, "chsh_s", r2(satERes.chshS));
+        // The satellite twin of the fibre stage's `e91_model_qber` - same reason, same precision.
+        if (satERes) metric(stage, "e91_model_qber", Math.round(satERes.e0 * 1e4) / 1e4);
         (config as any)._satQber = res.qber;
         emit("log", stage, satERes
-          ? `free-space E91 (CHSH S=${r2(satERes.chshS)}): ${res.channelLossDb}dB loss, QBER=${res.qber.toFixed(4)}, ${res.secureKeyBits} bits`
-          : `free-space BB84: ${res.channelLossDb}dB loss, QBER=${res.qber.toFixed(4)}, ${res.secureKeyBits} bits`);
+          ? `free-space E91 (simulated, CHSH S=${r2(satERes.chshS)}): ${res.channelLossDb}dB loss, QBER=${res.qber.toFixed(4)}, ${res.secureKeyBits} bits`
+          : `free-space BB84 (simulated): ${res.channelLossDb}dB loss, QBER=${res.qber.toFixed(4)}, ${res.secureKeyBits} bits`);
         // The fibre stage returns before its optimise block under the PQC-only profile; this one
         // had no such guard, so the same checkbox did work here and nothing there.
         if (config.qkd_optimize && String(config.qkd ?? "") !== "pqc-only") {
@@ -2091,7 +2198,9 @@ export function runClientPipeline(
         // Same channel the satellite_qkd stage above built, distance included. Reading only sat_eve
         // here meant the downlink range moved the QKD QBER but not the QSDC error rate, so one
         // control produced two inconsistent pictures of the same link.
-        const e = intrinsicQber(satChannel(config));
+        // One shared evaluation (`qsdcLink`), so the tooltips that quote C_s read the same function.
+        const link = qsdcLink(satChannel(config));
+        const e = link.e;
         // QSDC aborts on SECRECY CAPACITY, not on a fixed QBER. Qi et al., Light Sci. Appl. 8, 22
         // (2019), protocol step 2: "If the secrecy capacity C_s is zero, they conclude the channel
         // is insecure and terminate the process."
@@ -2121,8 +2230,8 @@ export function runClientPipeline(
         //
         // Downlink, eta_d 0.40: g 280.43 -> 701.06, a factor 2.50x. On fibre at eta_d 0.25 it is
         // 4.00x. One number would be wrong for one of the two paths.
-        const lossDb = channelLossDb(satChannel(config)) - 10 * Math.log10(qkdCfg().free_space_detector_efficiency);
-        const g = 10 ** (lossDb / 10);
+        const lossDb = link.lossDb;
+        const g = link.g;
         // THE SECOND ENTROPY TAKES e_x + e_z, NOT A POOLED RATE. Eq. (8) is
         // `Cs = Q_Bob * [1 - h(e) - g*h(e_x + e_z)]`, with e_x and e_z the per-basis error rates from
         // the check. Their own numbers settle it: the paper states I(A:E) = g*Q_Bob*h(e_x+e_z) =
@@ -2131,22 +2240,24 @@ export function runClientPipeline(
         // 26%. Doubling is sound here only because nothing in this channel model distinguishes the
         // bases, so the two rates share an expectation; a basis-asymmetric model would need both.
         // Fixed in BOTH languages in one change - `src/qsh/qkd/qsdc.py` carries the same expression.
-        const secrecy = qsdcSecrecyCapacity(e, g);
+        const secrecy = link.cs;
         const abort = secrecy <= 0;
         // WHY the abort fired matters more than THAT it fired, and reporting both as
         // `qsdc_eavesdrop_detected` was wrong. Re-evaluate the same link with Eve removed: if it
         // still cannot close, the limit is the LINK BUDGET, and the page was accusing a clean
         // channel of carrying an eavesdropper on every single run.
         //
-        // It always does still cannot close, at every setting this demo offers. The fixed 5 dB
-        // atmospheric + 3 dB pointing budget alone gives g = 6.31, and C_s > 0 there needs
-        // QBER < ~0.019 while the misalignment floor is 0.025 - so even at zero range, with a
-        // perfect pointing solution and no eavesdropper, secrecy capacity is negative. Moving
-        // `sat_distance_km` cannot produce a delivery. That is not a bug in this code, it is the
-        // finding: QSDC does not close over a LEO free-space downlink under the published
-        // criterion. Qi et al. demonstrated it at 4.1 dB on FIBRE; this link is 24.5 dB.
+        // At the DEFAULT budget it still cannot close at any range: 5 dB atmospheric + 3 dB pointing
+        // plus the detector's 4.0 dB give g = 15.8 even at zero range, and C_s is -3.70 at 0.1 km
+        // with no eavesdropper. Only with the fixed losses below about 0.65 dB in total does a short
+        // link close (at 0 + 0 dB it closes out to about 129 km, still well short of a LEO slant
+        // range). That is not a bug in this code, it is the finding: QSDC does not close over a LEO
+        // free-space downlink under the published criterion. Qi et al. demonstrated it at 4.1 dB on
+        // FIBRE; the default downlink here is 24.5 dB. (This comment said "at every setting this
+        // demo offers" until 2026-10-24 - written before the Atmospheric and Pointing controls
+        // existed, with a g that omitted detector efficiency.)
         const secrecyNoEve = (() => {
-          const e0 = intrinsicQber(satChannel(config, 0));
+          const e0 = qsdcLink(satChannel(config, 0)).e;
           // THE SECOND CALL SITE, AND IT KEPT THE POOLED ARGUMENT WHEN THE FIRST WAS FIXED.
           // Caught the same hour, inside the SAME FILE, by a commit whose own comment claimed the
           // change had been applied in both languages. The twin was three hundred lines away and
@@ -2158,8 +2269,9 @@ export function runClientPipeline(
         metric(stage, "qsdc_error_rate", r2(e));
         // SIGNED. `Math.max(0, secrecy)` stood here, so a link missing by 51 bit/carrier and one
         // missing by 0.001 both reported "0" - and 0 also reads as marginal-but-not-negative, the
-        // one thing it is not. Measured at 1 km with Eve at 1.0 the true value is -5.2033 and the
-        // page displayed 0. How badly a link fails is the quantity that distinguishes "widen the
+        // one thing it is not. At 1 km with Eve at 1.0 (default budget) the value is -15.6045 by the
+        // current formula (-5.2033 when this was written, before detector efficiency entered g) and
+        // the page displayed 0. How badly a link fails is the quantity that distinguishes "widen the
         // aperture" from "QSDC does not close over this class of link".
         metric(stage, "qsdc_secrecy_capacity", r2(secrecy));
         metric(stage, "qsdc_eve_gain_g", r2(g));
@@ -2183,16 +2295,19 @@ export function runClientPipeline(
         metric(stage, "qsdc_regime", "asymptotic (infinite block; no finite-size certificate)");
         artifacts.telemetry_delivered = !abort;
         emit("log", stage, !abort
-          ? `QSDC delivered telemetry (secrecy ${secrecy.toFixed(4)} bit/carrier, g=${g.toFixed(1)})`
+          ? `QSDC (simulated) delivered telemetry (secrecy ${secrecy.toFixed(4)} bit/carrier, g=${g.toFixed(1)})`
           : lossLimited
-            ? `QSDC NOT AVAILABLE on this link — secrecy capacity ${secrecy.toFixed(4)} bit/carrier `
-              + `at ${lossDb.toFixed(1)} dB (g=${g.toFixed(1)}), and it is still `
+            ? `QSDC (simulated) NOT AVAILABLE on this link — secrecy capacity ${secrecy.toFixed(4)} bit/carrier `
+              + `at ${lossDb.toFixed(1)} dB including the detector (g=${g.toFixed(1)}), and it is still `
               + `${secrecyNoEve.toFixed(4)} with NO eavesdropper. The limit is the link budget, not `
-              + `an attack: C_s > 0 requires h(QBER) < 1/(1+g) = ${(1 / (1 + g)).toExponential(2)}, `
-              + `and h(${e.toFixed(4)}) = ${h2(e).toFixed(4)} here. `
+              // The criterion as computed: C_s = 1 - h(e) - g h(e_x + e_z), with e_x + e_z = 2e here.
+              // This line quoted "C_s > 0 requires h(QBER) < 1/(1+g)", the POOLED form that the
+              // per-basis correction replaced - a necessary condition, not the one this code applies.
+              + `an attack: C_s = 1 - h(e) - g h(2e) = 1 - ${h2(e).toFixed(4)} - `
+              + `${(g * h2(Math.min(0.5, 2 * e))).toFixed(4)} at e = ${e.toFixed(4)}. `
               + `Telemetry falls back to the PQC session key.`
-            : `QSDC ABORTED: secrecy capacity ${secrecy.toFixed(4)} <= 0 at error ${e.toFixed(4)} `
-              + `with g=${g.toFixed(1)} (${lossDb.toFixed(1)} dB) — this link closes at `
+            : `QSDC (simulated) ABORTED: secrecy capacity ${secrecy.toFixed(4)} <= 0 at error ${e.toFixed(4)} `
+              + `with g=${g.toFixed(1)} (${lossDb.toFixed(1)} dB including the detector) — this link closes at `
               + `${secrecyNoEve.toFixed(4)} without Eve, so the loss is attributable — telemetry withheld`);
         }   // end qsdc: everything below scores the BUNDLED corpus and runs on both profiles
         {
@@ -2863,7 +2978,7 @@ export function runClientPipeline(
               + `Nothing here is scaled by a cost model.`);
           } else {
             emit("log", stage, `private inference (REAL in-browser FHE, ${config.model_size ?? "medium"}/${config.workload ?? "linear"}): `
-              + `class=${real.prediction}; node-seal CKKS ${r2(real.fheMs * bscale)} ms + secret-sharing MPC ${r2(real.mpcMs * bscale)} ms `
+              + `class=${real.prediction}; node-seal CKKS ${r2(real.fheMs * bscale)} ms + garbled-circuit 2PC ${r2(real.mpcMs * bscale)} ms `
               + `(measured per-op x${r1(bscale)} arch scale; real unit ${r2(real.fheMs)}/${r2(real.mpcMs)} ms, ct=${real.ctBytes}B), `
               // "plaintext reference", NOT "ONNX". `clientMs` times `privateInference`, which has had
               // no ONNX tier since Round 17 and says so in its own comments; its body is two plain-JS
@@ -3054,14 +3169,15 @@ export function runClientPipeline(
         // badge read 10/10 while the metrics table two panels down read 9.6 and the log line agreed
         // with the table. `private_inference` runs before this stage, so the measurement is already
         // in hand - there was never a reason to model it.
-        const measuredHybrid: MeasuredHybrid | null = artifacts._measured_hybrid ?? null;
-        const adv = isInf
-          ? quantumAdvantage(mpcFheRow(usecase, wl, ms, measuredHybrid, sec), qrow)
-          : null;
-        if (adv) metric(stage, "quantum_advantage_score", adv.score);
+        // NO ADVANTAGE SCORE IS COMPUTED OR LOGGED HERE ANY MORE. This stage emitted
+        // `quantum_advantage_score` and a log line ending "quantum advantage 10/10 (dominant)", on
+        // /orchestration and on every inference page, and the agent prompt then quoted it back as run
+        // context. Its inputs were a CKKS byte ratio divided by a QOTP qubit ratio and a CKKS+MPC
+        // inference latency divided by an 8-qubit state-vector simulation latency - neither pair
+        // measures the same thing. Retired on 2026-10-23, as the 0-100 composite was in Round 22.
         metric(stage, "qsmpc_t_gates", qrow.t_gate_count);
-        emit("log", stage, `QSMPC-FHE comparison (QOTP+QCNN, ${qrow.t_gate_count} T-gates)`
-          + (adv ? `: quantum advantage ${adv.score}/10 (${adv.tier})` : " (security baseline)"));
+        emit("log", stage, `QSMPC-FHE comparison (QOTP+QCNN, ${qrow.t_gate_count} T-gates): `
+          + "gate count, qubit count and simulation latency are measured; no advantage score is derived");
         break;
       }
       case "result": {

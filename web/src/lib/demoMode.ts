@@ -42,8 +42,14 @@ export function isClientDemo(): boolean {
 // "Demo = inference only" stopped being true when Round 18 made federated learning run client-side
 // on every medical run, and Round 19 removed the toggle that used to gate it. The banner said the
 // demo could not do the thing the page below it was doing.
+//
+// The quantum-channel clause is here because this banner is the one text every page renders. The
+// "simulated" label used to live at the bottom of Overview and Value, in a use-case page's last
+// card and in hover text, while /orchestration and the security-posture table showed QKD figures
+// with no label at all - and the posture table called them "measured".
 export const DEMO_BANNER =
   "Client-side compute — this page runs in your browser (WASM / WebGPU + @noble PQC). " +
   "No computation is sent to a server. Inference, CKKS, garbled-circuit MPC and — on the medical " +
-  "and finance pages — federated training all run here; the full local deployment adds the " +
-  "server-side backends and the real MCP server.";
+  "and finance pages — federated training all run here. The quantum channel (QKD, QSDC) is " +
+  "simulated: no browser API for QKD exists. The full local deployment adds the server-side " +
+  "backends and the real MCP server.";

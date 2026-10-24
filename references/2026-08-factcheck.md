@@ -229,7 +229,9 @@ device IMPERFECTIONS and leaky receivers, not tighter statistics, so they will n
 Wu et al., *Quantum Engineering* **1**, e26 (2019) - the DL04 5.7% figure at `defaults.py:245`.
 Publisher and mirror both returned 403. Metadata confirms the citation; the text was not opened, so
 the attribution is plausible and unrefuted rather than verified. CNSA 2.0 pages and the ITU AAP
-record for Y.3836 were likewise unreachable.
+record for Y.3836 were likewise unreachable. (CNSA 2.0 resolved 2026-10-23: the CNSA 2.0 and Quantum
+Computing FAQ Ver. 2.2 was read from an archived copy of the PDF the NSA resource hub links, and
+CNSSP 15 from cnss.gov; see `docs/pqc-roadmap.md`.)
 
 ## Disposition
 

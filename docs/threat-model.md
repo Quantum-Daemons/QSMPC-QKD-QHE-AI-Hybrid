@@ -5,11 +5,14 @@
   exists. Mitigation: PQC-first hybrid (ML-KEM+X25519) on every channel - confidential
   as long as *either* primitive holds; the X25519 half covers today, ML-KEM the quantum future.
 - **Quantum adversary at Q-Day**: breaks RSA/ECC. Mitigation: ML-KEM/ML-DSA (FIPS 203/204);
-  QKD adds information-theoretic key material as a *hybrid add-on*, never standalone - following BSI
-  TR-02102-1 v2026-01, not NSA, which does not endorse QKD in any form for NSS. The usual
-  citation for that is NSA CNSA 2.0, but no NSA page is retrievable (HTTP 403 to every automated
-  fetch), so the quotable source is **BSI TR-02102-1 v2026-01**: QKD *"is currently not ready for
-  use from a security point of view"*.
+  QKD is an optional *add-on* to the PQC hybrid, never standalone - this project's choice, which
+  neither BSI nor NSA recommends. Real QKD would add key material whose secrecy rests on physics
+  rather than on a hardness assumption; here the quantum channel is simulated, so the add-on
+  contributes none of that security. **BSI TR-02102-1 v2026-01** section 2.1 says QKD *"is currently
+  not ready for use from a security point of view"* and does not recommend it; the hybrid BSI does
+  recommend (section 2.2) is quantum-safe plus classical, the ML-KEM + X25519 layer. NSA's CNSA 2.0
+  and Quantum Computing FAQ (Ver. 2.2, October 2026) answers "No" to using QKD to protect a national
+  security system.
 - **Honest-but-curious compute server** (delegated AI): would read inputs/model. Mitigation:
   QHE (QOTP perfect hiding) for the quantum path; CKKS for the classical path; secure
   aggregation hides per-client gradients in federated learning -- **but see the residual risk below:

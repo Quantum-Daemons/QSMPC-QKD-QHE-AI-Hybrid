@@ -303,9 +303,22 @@ papers. Where the two used to overlap, that file is the owner.
   URL: https://eprint.iacr.org/2020/1454
   Added: 2026-06-27
   File: `Rate-1_Quantum_Fully_Homomorphic_Encryption.pdf`
-  Ciphertext-to-plaintext ratio near 1, malicious circuit privacy under LWE. Informs
-  `src/qsh/qhe/rate1_qfhe.py` (QOTP plus rate-1 classical FHE keys) and the benchmark's
-  communication-efficiency metric.
+  Rate approaching 1 ASYMPTOTICALLY: rate is plaintext over evaluated-ciphertext size, qubits plus
+  bits (Def. 6.1), and it tends to 1 only as the security parameter and the message grow (Sec. 6.2),
+  reached by moving the Pauli key into the rate-1 classical FHE of Brakerski, Doettling, Garg and
+  Malavolta (TCC 2019). Malicious circuit privacy, under quantum LWE - computational, not
+  information-theoretic. **The paper reports no concrete ratio**: the 1.32 this repository once called
+  its "literature value" is not in it, and that constant, the Overview card it fed and the
+  quantum-advantage score built on the same comparison were removed on 2026-10-23. Informs
+  `src/qsh/qhe/rate1_qfhe.py` (QOTP plus a KEM-masked key; no Eval).
+- **Classical rate-1 FHE, the counterpart the comparison above omitted** `[R]`
+  Gentry and Halevi, "Compressible FHE with Applications to PIR", TCC 2019, LNCS 11892, pp. 438-464,
+  doi:10.1007/978-3-030-36033-7_17 (ePrint 2019/733): rate $1-\epsilon$ under (ring) LWE, with a
+  concrete rate-4/9 PIR. Brakerski, Doettling, Garg and Malavolta, "Leveraging Linear Decryption:
+  Rate-1 Fully-Homomorphic Encryption and Time-Lock Puzzles", TCC 2019, LNCS 11892, pp. 407-437,
+  doi:10.1007/978-3-030-36033-7_16 (ePrint 2019/720): rate $1-1/\lambda$ from LWE. Because classical
+  FHE also reaches rate 1 - and rate-1 QFHE is built on the second - a gap between a quantum and a
+  classical ciphertext ratio is not a quantum advantage. Added: 2026-10-23.
 
 - **Leveraging ASIC AI Chips for Homomorphic Encryption (CROSS)** - Tong et al., IACR ePrint
   2026/160, HPCA 2026 `[R]`
@@ -334,8 +347,9 @@ papers. Where the two used to overlap, that file is the owner.
 Added 2026-08-11, verified at the arXiv abstract page.
 
 - **Hernandez-Bueno, Lage, Higuero & Astorga, "Quantum Homomorphic Encryption: Towards Practical
-  and Private Computation on Untrusted Quantum Hardware."** arXiv:2604.19256 [quant-ph],
-  2026-04-21, 14 pp. A universal QHE framework derived from the Quantum One-Time Pad,
+  QOTP-Encrypted Computation on Gate-Based Hardware."** arXiv:2604.19256 [quant-ph], v1 2026-04-21
+  (14 pp, titled "...Towards Practical and Private Computation on Untrusted Quantum Hardware"),
+  **v2 2026-09-15, 28 pp, retitled** - checked at arXiv on 2026-10-23. A universal QHE framework derived from the Quantum One-Time Pad,
   information-theoretically secure, "exploiting the transformation properties of quantum gates
   under Pauli encryption" for non-interactive homomorphic evaluation of arbitrary Clifford+T
   circuits, with results from simulators and real quantum processors. **This is WS4, published
@@ -355,7 +369,10 @@ Added 2026-08-11, verified at the arXiv abstract page.
   classical FHE. **Reframes rather than contradicts** this repository's "rate-1 transport, no
   Eval" caveat: as of April 2026 the direction of travel is a fully classical client, which is
   architecturally closer to the browser-tab story than to the caveat's pessimism. Added:
-  2026-08-11.
+  2026-08-11. **Caution, 2026-10-23:** v3 (2026-10-13) carries the authors' comment that the
+  conclusion contains mistakes that need to be corrected. It is NOT withdrawn - the abstract stands -
+  but treat its conclusions as provisional until a corrected version appears, and do not build an
+  argument on them.
 
 **What this project can and cannot claim on this machinery, recorded here because the split
 matters.** WS4(c), circuit privacy against a malicious server, is met for Clifford circuits: the
@@ -630,11 +647,23 @@ Added in Round 18 and previously recorded only in source docstrings.
 - NIST **SP 800-90B** - entropy sources, including the clause 4.4 continuous health tests
   (Repetition Count, Adaptive Proportion) that `src/qsh/qrng/health.py` implements.
   URL: https://csrc.nist.gov/pubs/sp/800/90/b/final
-- NSA **CNSA 2.0** - 2027 procurement mandate. On QKD, NSA answers **"No"** to using it to protect a
-  National Security System and says it "does not support the usage of QKD or QC". It does **not**
-  recommend a PQC-hybrid QKD add-on either. The hybrid framing in this repository comes from **BSI
-  TR-02102-1 v2026-01 section 2.2**, not from NSA.
-  URL: https://www.nsa.gov/Cybersecurity/Post-Quantum-Cryptography-FAQs/
+- NSA **CNSA 2.0** - national security systems only (*"NSA does not mandate requirements on any other
+  entity outside of NSS"*). Under CNSSP 15, CNSA 2.0 algorithms are required in all new NSS acquisitions
+  from 2027-01-01, equipment that cannot support them is phased out by 2030-12-31, and CNSA 2.0 is
+  mandatory for all use by 2031-12-31. On QKD, the CNSA 2.0 and Quantum Computing FAQ (Ver. 2.2, October
+  2026) answers **"No"** to using it to protect a National Security System, and on hybrids it says NSA
+  *"will not require NSS developers to use hybrid certified products"*. The sentence that NSA *"does not
+  support the usage of QKD or QC to protect communications in National Security Systems"* is from NSA's
+  Post-Quantum Cybersecurity Resources page, not the FAQ (it was attributed to the FAQ until
+  2026-10-24). NSA does **not** recommend a PQC-hybrid QKD add-on, and neither does BSI: TR-02102-1
+  v2026-01 recommends a quantum-safe plus classical hybrid (section 2.2) and does not recommend QKD
+  (section 2.1). The optional QKD add-on in this repository is the project's own choice.
+  URL (FAQ Ver. 2.2): https://media.defense.gov/2022/Sep/07/2003071836/-1/-1/0/CSI_CNSA_2.0__FAQ_v2.2.PDF
+  (linked from https://www.nsa.gov/Cybersecurity/Post-Quantum-Cryptography-Resource-Hub/; nsa.gov
+  returns HTTP 403 to scripts, so the 2026-10-23 check read an archived copy)
+  URL (resources page): https://www.nsa.gov/Cybersecurity/Post-Quantum-Cybersecurity-Resources/
+  The URL this entry used to give, `nsa.gov/Cybersecurity/Post-Quantum-Cryptography-FAQs/`, could not be
+  confirmed (UNVERIFIED - needs confirmation) and is no longer cited.
 - **BSI TR-02102-1**, version 2026-01.
   URL: https://www.bsi.bund.de/EN/Themen/Unternehmen-und-Organisationen/Standards-und-Zertifizierung/Technische-Richtlinien/TR-nach-Thema-sortiert/tr02102/tr02102_node.html
 - **HNDL** (Harvest Now, Decrypt Later) and Q-Day acceleration - Gidney, arXiv:2505.15917, 2025.
@@ -825,9 +854,12 @@ belongs in this file rather than only in a comment.
   card and baked into `config.defaults.json`; the reason the event-wise F0.5 non-reproduction is
   reported as metric instability rather than as a training failure. Added: 2026-08-07.
 - **EO 14412, "Securing the Nation Against Advanced Cryptographic Attacks"**, signed 2026-06-22,
-  91 FR 38483. PQC key establishment on high-value assets by 2030-12-31, digital signatures by
-  2031-12-31, FAR rule putting contractors on the 2030 date; National Security Systems excluded and
-  remaining on CNSA 2.0. The binding US instrument, against NIST IR 8547 which is still a draft.
+  91 FR 38483. PQC key establishment on high-value assets and high impact systems by 2030-12-31,
+  digital signatures by 2031-12-31 (section 4(b)); section 6(c) directs the FAR Council to publish a
+  *proposed* rule within 180 days (about 2026-12-19) that would put covered contractors on FIPS,
+  including the PQC FIPS, by 2030-12-31 - none in the Federal Register as of 2026-10-23 (this entry
+  used to describe that rule as if it existed); National Security Systems excluded and remaining on
+  CNSA 2.0. The binding US instrument, against NIST IR 8547 which is still a draft.
   Added: 2026-08-07.
 
 ## Security scoring: sources evaluated and DECLINED (Round 22)
@@ -1014,7 +1046,7 @@ established is worth keeping, because otherwise it gets re-litigated every round
   whitehouse.gov. The operational instrument behind EO 14412, and the most consequential item in this
   batch for [`docs/pqc-roadmap.md`](../docs/pqc-roadmap.md):
   - Action One: mitigate as much quantum risk as feasible **by 2030-12-31**.
-  - Action Two: agency PQC Migration Plans to OMB and ONCD **within 120 days** (about 2026-10-22).
+  - Action Two: agency PQC Migration Plans to OMB and ONCD **within 120 days** (due about 2026-10-22, now passed).
   - Five phases: **1** 2026-2027 strategy and discovery, **2** 2027-2028 pilots, **3** 2028-2030
     prioritised migration and key establishment, **4** 2031 signature migration, **5** 2035 full
     migration.

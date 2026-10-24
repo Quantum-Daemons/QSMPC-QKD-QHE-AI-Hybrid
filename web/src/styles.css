@@ -52,6 +52,7 @@ code, .mono { font-family: ui-monospace, "SFMono-Regular", Menlo, monospace; }
 .page-sub { color: var(--muted); margin: 0 0 24px; max-width: 760px; }
 
 .grid { display: grid; gap: 16px; }
+.grid.cols-1 { grid-template-columns: 1fr; }
 .grid.cols-2 { grid-template-columns: repeat(2, 1fr); }
 .grid.cols-3 { grid-template-columns: repeat(3, 1fr); }
 .grid.cols-4 { grid-template-columns: repeat(4, 1fr); }
@@ -269,3 +270,29 @@ hr { border: none; border-top: 1px solid var(--border); margin: 24px 0; }
   padding: 10px 16px; font-size: 13px; text-decoration: none;
 }
 .skip-link:focus { left: 0; }
+
+/* --- readability layer (Round 58) ----------------------------------------------------------------
+   Key points first, method and history folded. `.details` holds what a first-time reader can skip;
+   it is never used for a caveat that qualifies a visible number (checklist UX6). */
+.details { margin-top: 10px; border-top: 1px dashed var(--border); padding-top: 8px; }
+.details > summary { cursor: pointer; color: var(--accent); font-size: 12.5px; list-style: none; }
+.details > summary::-webkit-details-marker { display: none; }
+.details > summary::before { content: "+ "; font-family: ui-monospace, Menlo, monospace; }
+.details[open] > summary::before { content: "- "; }
+.details-body { margin-top: 6px; color: var(--muted); font-size: 13px; line-height: 1.55; }
+.details-body p { margin: 6px 0; }
+.key-points ul { margin: 6px 0 2px; padding-left: 18px; }
+.key-points li { margin: 4px 0; color: var(--text); font-size: 13.5px; line-height: 1.45; }
+.key-points-title { font-size: 11px; text-transform: uppercase; letter-spacing: 0.07em; color: var(--muted); }
+.stage-badge {
+  display: inline-block; font-size: 10.5px; padding: 1px 7px; border-radius: 99px;
+  border: 1px solid; white-space: nowrap; vertical-align: middle;
+}
+.stage-badge.real { color: var(--accent-2); border-color: var(--accent-2); }
+.stage-badge.notional { color: var(--accent); border-color: var(--accent); }
+.stage-badge.simulated { color: var(--quantum); border-color: var(--quantum); }
+.stage-badge.seeded { color: var(--warn); border-color: var(--warn); }
+.facts-table th, .facts-table td { padding: 7px 8px; vertical-align: top; }
+.facts-table td:first-child { white-space: nowrap; font-weight: 600; }
+.lead { font-size: 15px; line-height: 1.6; color: var(--text); max-width: 860px; }
+.figure-note { font-size: 11.5px; color: var(--muted); margin-top: 6px; }

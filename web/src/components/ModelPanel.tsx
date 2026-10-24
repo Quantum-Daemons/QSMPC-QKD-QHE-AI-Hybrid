@@ -15,6 +15,7 @@ import { modelsFor, recordHasTreeAttribution, type ModelSpec } from "../lib/conf
 import { useState } from "react";
 import { browserModels, evaluatePublishedModel, type ModelEvalResult } from "../lib/onnxInference";
 import { AncestryStrataChart, RealDataScatter } from "./VerificationChart";
+import RegistryNote from "./RegistryNote";
 
 const TIER_LABEL: Record<string, string> = {
   t1_crypto: "encrypted (FHE/MPC-feasible)",
@@ -579,10 +580,10 @@ export function ModelPanel({ usecase }: { usecase: string }) {
             <p className="muted small"><strong>Attribution:</strong> {spec.dataset.attribution}</p>
           )}
           {spec.metric.baseline_source && (
-            <p className="muted small"><strong>Baseline:</strong> {spec.metric.baseline_source}</p>
+            <RegistryNote label="Baseline" text={spec.metric.baseline_source} />
           )}
           {typeof spec.achieved?.baseline_gap_note === "string" && (
-            <p className="muted small"><strong>Gap to baseline:</strong> {spec.achieved.baseline_gap_note}</p>
+            <RegistryNote label="Gap to baseline" text={spec.achieved.baseline_gap_note} />
           )}
           {/* `metric_note` reached the browser in config.defaults.json and was rendered NOWHERE.
               SIX records carry one - finance_aml.scorecard, medical_fl.student,
@@ -593,7 +594,7 @@ export function ModelPanel({ usecase }: { usecase: string }) {
               direction the record contradicted. Sits above `notes` because it qualifies the table
               rather than the model. */}
           {typeof spec.achieved?.metric_note === "string" && (
-            <p className="muted small"><strong>Reading these metrics:</strong> {spec.achieved.metric_note}</p>
+            <RegistryNote label="Reading these metrics" text={spec.achieved.metric_note} />
           )}
           {/* THE SAME DEFECT AS `metric_note`, ON ITS SIBLINGS, FOUND ROUND 55.
               The comment above records `metric_note` being exported and rendered nowhere. That fix
@@ -606,14 +607,12 @@ export function ModelPanel({ usecase }: { usecase: string }) {
               `sample_size_note` is the load-bearing one: on telemanom it is the text saying three
               scored events cannot be compared with a full-partition benchmark. */}
           {typeof spec.achieved?.sample_size_note === "string" && (
-            <p className="muted small"><strong>Sample size:</strong> {spec.achieved.sample_size_note}</p>
+            <RegistryNote label="Sample size" text={spec.achieved.sample_size_note} />
           )}
           {typeof spec.achieved?.classical_rf_attribution_note === "string" && (
-            <p className="muted small">
-              <strong>Attributing the classical baseline:</strong> {spec.achieved.classical_rf_attribution_note}
-            </p>
+            <RegistryNote label="Attributing the classical baseline" text={spec.achieved.classical_rf_attribution_note} />
           )}
-          {spec.notes && <p className="muted small">{spec.notes}</p>}
+          {spec.notes && <RegistryNote label="About this model" text={spec.notes} />}
           <ModelRunner usecase={usecase} spec={spec} />
           {spec.hf_repo_id && (
             <p className="muted small">
