@@ -77,10 +77,10 @@ Four workstreams (WS), unified by one pipeline and a crypto-agility registry:
 
 | WS | Theme | What's implemented |
 |----|-------|--------------------|
-| **WS1** | **AI-QKD** parameter optimization | BB84 **two-intensity decoy-state** simulation (Ma et al.'s Vacuum+Weak estimator with the vacuum yield modelled rather than measured - the paper's own two-intensity case, its section 3.5, bounds $`Y_0`$ instead) (+ a selectable **E91/CHSH** protocol), QBER/SKR telemetry, eavesdropper detection; a **published-reference decoy model** (`qkd/decoy_reference.py`) whose 13 tests assert Ma et al. PRA 72, 012326 (2005) values rather than this project's own - decoy reaches past 140 km where non-decoy dies near 40, and at the customary $`\mu = 0.1`$ a non-decoy link's tagged fraction exceeds 1 at **zero** distance, so it yields no key even back-to-back; a **QRNG** entropy source (state-vector quantum-measurement sim + SP 800-90B section 4.4 continuous health tests, an **SP 800-90B min-entropy estimate**, and a **Leftover-Hash-Lemma / seedless** Toeplitz extractor) that seeds the key material; a config-gated **leakage-resilient PQC+QKD key combiner**; and **OptiQKD** - a measured AI optimizer (scikit-learn surrogate + gradient-free search) tuning decoy (`mu_signal` / `mu_decoy`) + basis params to raise the secret-key rate vs default (with a convergence metric); the reference framework reports +14-25 % in simulation |
+| **WS1** | **AI-QKD** parameter optimization | BB84 **two-intensity decoy-state** simulation (Ma et al.'s Vacuum+Weak estimator with the vacuum yield modelled rather than measured - the paper's own two-intensity case, its section 3.5, bounds $`Y_0`$ instead) (+ a selectable **E91/CHSH** protocol), QBER/SKR telemetry, eavesdropper detection (intercept-resend's 0.25 f disturbance composed independently with the channel error, a + b - 2ab, in both languages); a **published-reference decoy model** (`qkd/decoy_reference.py`) whose 13 tests assert Ma et al. PRA 72, 012326 (2005) values rather than this project's own - decoy reaches past 140 km where non-decoy dies near 40, and at the customary $`\mu = 0.1`$ a non-decoy link's tagged fraction exceeds 1 at **zero** distance, so it yields no key even back-to-back; a **QRNG** entropy source (state-vector quantum-measurement sim + SP 800-90B section 4.4 continuous health tests, an **SP 800-90B min-entropy estimate**, and a **Leftover-Hash-Lemma / seedless** Toeplitz extractor) that seeds the key material; a config-gated **leakage-resilient PQC+QKD key combiner**; and **OptiQKD** - a measured AI optimizer (scikit-learn surrogate + gradient-free search) tuning decoy (`mu_signal` / `mu_decoy`) + basis params to raise the secret-key rate vs default (with a convergence metric); the reference framework reports +14-25 % in simulation |
 | **WS2** | **QML-IDS** intrusion detection | 8 classes = **7 QKD attack types + normal traffic**; RandomForest baseline + PennyLane variational quantum classifier. Scored on macro F1, not attack-vs-normal F1 |
 | **WS3** | **QSMPC x QKD** | Shamir + d-level QFT secure summation (faithful to the paper example), quantum oblivious transfer, quantum-safe PSI |
-| **WS4** | **QHE x AI** | Quantum one-time pad (perfect hiding), variational QCNN private inference (Clifford+T in the browser circuit; the Python module has no T gate), Rate-1 quantum **transport** (no `Eval`, so not QFHE); classical hybrid = CKKS **linear** layers (TenSEAL CPU / OpenFHE CPU / HEonGPU GPU - commercial-OK) + **MPyC** secret-sharing **non-linear** layers (ReLU/argmax) - incl. a **genuine FHE convolution** (im2col -> CKKS `dot_plain`) so the medical use case runs a real small CNN on **real MedMNIST images** under encryption |
+| **WS4** | **QHE x AI** | Quantum one-time pad (perfectly hiding as a scheme; the demo's pad is seeded), variational QCNN private inference (Clifford+T in the browser circuit; the Python module has no T gate), Rate-1 quantum **transport** (no `Eval`, so not QFHE); classical hybrid = CKKS **linear** layers (TenSEAL CPU / OpenFHE CPU / HEonGPU GPU - commercial-OK) + **MPyC** secret-sharing **non-linear** layers (ReLU/argmax) in the full deployment, an emp-wasm garbled-circuit 2PC between notional parties in the browser - incl. a **genuine FHE convolution** (im2col -> CKKS `dot_plain`) so the medical use case runs a real small CNN on **real MedMNIST images** under encryption |
 
 **Crypto-agility is the headline library strategy** - in the EU NIS Cooperation Group sense
 ([PQC Roadmap](https://digital-strategy.ec.europa.eu/en/library/coordinated-implementation-roadmap-transition-post-quantum-cryptography),
@@ -125,8 +125,8 @@ argmax - so its FHE/MPC figures are **genuinely measured client-side, zero VPS c
 | `finance_aml` | PQC -> QKD -> **PSI** (cross-bank blacklists) -> FHE fraud inference | finance / AML |
 | `medical_fl` | PQC -> QKD -> **federated training** + secure aggregation -> private diagnosis | healthcare |
 | `genomics` | PQC -> QKD -> **QSMS secure summation** (pooled allele counts) -> FHE | genomics |
-| `telecom_ids` | PQC -> QKD (w/ eavesdropper) -> **QML-IDS** attack detection | telecom / defence |
-| `satellite_comms` | PQC -> **free-space QKD** (BB84 downlink) -> **QSDC** direct telemetry (inline eavesdrop check) | satellite |
+| `telecom_ids` | PQC -> simulated QKD (optional eavesdropper) -> **QML-IDS** attack detection | telecom / defence |
+| `satellite_comms` | PQC -> simulated **free-space QKD** (BB84 downlink) -> **QSDC** test with an inline eavesdrop check (it cannot close at the default link budget, and the run says why) | satellite |
 
 **Maturity, stated in the same breath as the novelty.** CISA's Space Systems Critical Infrastructure
 Working Group (*Space Systems Security and Resilience Landscape: Zero Trust in the Space
@@ -491,6 +491,40 @@ rests on quantum LWE, so its security is computational.
 The benchmark and security posture are computed server-side **and** mirrored
 client-side (`web/src/lib/clientCompute.ts`) so the public demo shows identical numbers with no backend.
 In both, the QKD figures come from the simulated channel model.
+
+### What the pages show (Round 58)
+
+Every page leads with its key points; method and history are folded, never a caveat that qualifies a
+visible number.
+
+- **Overview** - an architecture diagram of the stages as they run in the browser, each badged real,
+  real protocol with notional parties, simulated, or simulated with a seeded pad. The simulated QKD link
+  is drawn off the key path, because nothing it produces reaches the browser's session key.
+- **Value** - the novelty sentence first, then a regulatory clock (a timeline by jurisdiction and a
+  table) in which every date carries who it binds and how firm it is: requirement, proposed rule,
+  draft, company target, deferred, or passed.
+- **Validations** - the PQC primitives; the simulated BB84 channel with a sweep of QBER and secure bits
+  against the eavesdropper fraction; the MCP agent call; and the network layer's key schedules,
+  computed in the tab:
+  - an ML-KEM-768 known-answer test against NIST ACVP cases (key generation, encapsulation, and
+    decapsulation of valid and modified ciphertexts);
+  - a WireGuard Noise_IKpsk2 handshake keyed by a preshared key from an in-tab ML-KEM-768 + X25519
+    hybrid - the Noise core is checked against the official cacophony vector, and the WireGuard framing
+    follows the whitepaper, for which no published vector exists;
+  - an IKEv2 key schedule - the RFC 7296 derivation checked against NIST CAVP SP 800-135 vectors, the
+    RFC 9370 ML-KEM-768 and RFC 8784 post-quantum preshared-key layers computed per the RFCs (they
+    have no official vectors). ML-KEM in IKEv2 is still an Internet-Draft in the RFC Editor queue.
+
+  Sources, commits and hashes: [`references/net-key-schedules.md`](references/net-key-schedules.md).
+  The tunnels themselves run in the companion network demo, https://pqc-qkd-hybrid.daemons.jp/
+  (WireGuard and strongSwan between containers; its QKD key servers are simulated too). Nothing here
+  connects to it, and no figure from it is quoted.
+- **Use-case pages** - model curves for the simulated channel, computed by the functions a run calls:
+  BB84's rate with and without decoy states and E91's CHSH value against fibre length (telecom), and
+  QSDC secrecy capacity against downlink range (satellite).
+- **3D views** (three.js, loaded only where drawn) - the QCNN's per-qubit reduced Bloch vectors through
+  the real circuit, and two illustrations, the one-time pad on one qubit and the downlink geometry,
+  each captioned as adding no information beyond a 2D drawing.
 
 ---
 
