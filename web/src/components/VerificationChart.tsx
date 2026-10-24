@@ -24,6 +24,7 @@ import {
 
 import type { ModelEvalResult } from "../lib/onnxInference";
 import { modelsFor } from "../lib/config";
+import Details from "./Details";
 
 const AXIS = { fontSize: 10, stroke: "#8a94a6" };
 const GRID = "#2a3040";
@@ -81,6 +82,17 @@ export function EncryptedAgreementChart({ plot }: { plot: EncryptedAgreementPlot
   const name = `Encrypted score against plaintext score, ${plot.rows} held-out rows`;
   return (
     <figure className="chart-figure">
+      {/* A strip of the four numbers the caption below qualifies, for a reader scanning the page. The
+          caption keeps every denominator and caveat beside the figure (checklist UX6); only the
+          meaning of a flipped row's margin is folded. Round 58. */}
+      <table className="facts-table small" style={{ marginBottom: 6 }}>
+        <tbody><tr>
+          <td>rows scored</td><td>{plot.rows}{plot.rowsOffered != null && plot.rowsOffered > plot.rows ? ` of ${plot.rowsOffered}` : ""}</td>
+          <td>top-1 mismatches</td><td>{mismatches}</td>
+          <td>plaintext ties</td><td>{plot.undecidableRows ?? "not reported"}</td>
+          <td>worst deviation</td><td>{worst.toExponential(2)}</td>
+        </tr></tbody>
+      </table>
       <figcaption className="muted small">
         <strong>Private inference against the plaintext reference.</strong> Each point is one of{" "}
         {plot.rows} held-out rows scored under CKKS in this tab, plotted against the same row&apos;s
@@ -161,12 +173,16 @@ export function EncryptedAgreementChart({ plot }: { plot: EncryptedAgreementPlot
             {" "}Widest margin the plaintext model held at those {mismatches} flipped rows:{" "}
             {plot.flipMarginMax === 0
               ? <><strong>exactly zero</strong> — it does not distinguish those samples at all.</>
-              : <>{plot.flipMarginMax.toExponential(2)}. A flip happens precisely when the deviation
-                exceeds the margin, so this is always below twice the figure above; it is reported
-                as a measurement, not as a verdict on the encryption.</>}
+              : <>{plot.flipMarginMax.toExponential(2)}.</>}
           </>
         ) : null}
       </figcaption>
+      {mismatches > 0 && typeof plot.flipMarginMax === "number" && plot.flipMarginMax > 0 ? (
+        <Details summary="What a flipped row's margin means">
+          A flip happens precisely when the deviation exceeds the margin, so the margin is always below
+          twice the worst deviation; it is reported as a measurement, not as a verdict on the encryption.
+        </Details>
+      ) : null}
       <ResponsiveContainer width="100%" height={200}>
         {/* `title` as a PROP, the way every other chart in this file sets it. Written first as a
             `<title>` child, which recharts does not forward - so the figure rendered with a null
