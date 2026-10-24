@@ -1724,15 +1724,35 @@
     "agent_timeout_ms": 120000,
     "demo_alice_bob_pulses": 20000000,
     "demo_sat_pulses": 10000000,
+    "onnx_default_backend": "wasm",
+    "tfjs_default_device": "wasm",
     "tfjs_max_new_tokens": 96,
     "tfjs_models": [
       {
+        "bytes": {
+          "wasm": 236698606,
+          "webgpu": 327825716
+        },
+        "dtype": {
+          "wasm": "q8",
+          "webgpu": "fp32"
+        },
         "id": "Xenova/distilgpt2",
-        "label": "distilGPT-2 (tiny, ~80 MB)"
+        "label": "distilGPT-2",
+        "revision": "a41c10485c18a64b6606729b6a082330cbd8f49e"
       },
       {
+        "bytes": {
+          "wasm": 512096557,
+          "webgpu": 1993796793
+        },
+        "dtype": {
+          "wasm": "q8",
+          "webgpu": "fp32"
+        },
         "id": "onnx-community/Qwen2.5-0.5B-Instruct",
-        "label": "Qwen2.5-0.5B-Instruct (ONNX)"
+        "label": "Qwen2.5-0.5B-Instruct",
+        "revision": "22942cb7d7ba4cc81bb4673549ca4d4614469b5e"
       }
     ],
     "webllm_max_tokens": 160,

@@ -1,6 +1,10 @@
 // In-browser ONNX inference for the client-side demo, via onnxruntime-web.
 //
-// Execution-provider preference: WebGPU -> WebNN -> WASM (mature -> experimental -> floor). Vite
+// Backend: WASM by default (`web.onnx_default_backend`), WebGPU only when the visitor selects it AND a
+// hardware adapter exists; WebNN is probed and not requested (see the note at the provider list).
+// Until Round 60 the order was WebGPU -> WebNN -> WASM whenever an adapter existed. On the machine
+// measured, one ResNet-18 session.run took 18216 ms on onnx-webgpu with a hardware adapter, against
+// tens of milliseconds on WASM (register, Round 59), so the faster path became the default. Vite
 // bundles the ORT wasm as a same-origin hashed asset (so it satisfies the COOP/COEP
 // cross-origin-isolation headers); we let ORT resolve it via import.meta.url rather than overriding
 // wasmPaths.
@@ -52,7 +56,10 @@ function loadOrt(useWebGPU: boolean): Promise<typeof OrtTypes> {
   return ortBuilds[kind]!;
 }
 
-import { modelsFor, type ModelSpec } from "./config";
+import { modelsFor, type ModelSpec, webCfg } from "./config";
+
+/** WASM unless a caller passes "webgpu": the visitor's selection, never the adapter's existence. */
+export const DEFAULT_ONNX_BACKEND = webCfg().onnx_default_backend as OnnxBackend;
 
 // 30 s, not unbounded. These three cross-origin fetches had no timeout and no abort signal, so on a
 // slow, proxied or blocked network the run sat in `private_inference` forever with the badge on
@@ -61,9 +68,15 @@ import { modelsFor, type ModelSpec } from "./config";
 // already honest: it degrades and says so rather than substituting a number.
 const HF_FETCH_TIMEOUT_MS = 30_000;
 
+/** The backend a caller asks for. What it gets is `OnnxStatus.backend`, which can differ. */
+export type OnnxBackend = "wasm" | "webgpu";
+
 export type OnnxStatus = {
   loaded: boolean;
   backend: string;          // "onnx-webgpu" | "onnx-webnn" | "onnx-wasm" | "none"
+  /** What the session was created FOR. WebGPU requested on a machine without a usable adapter
+   *  gives backend "onnx-wasm" with requested "webgpu", and the page can say which happened. */
+  requested: OnnxBackend | null;
   modelKey: string | null;
   url: string | null;
   bytes: number | null;     // transferred size, or null when served from cache
@@ -77,7 +90,7 @@ export type OnnxStatus = {
 };
 
 const status: OnnxStatus = {
-  loaded: false, backend: "none", modelKey: null, url: null, bytes: null,
+  loaded: false, backend: "none", requested: null, modelKey: null, url: null, bytes: null,
   fromCache: false, threads: 1, crossOriginIsolated: false, loadMs: null, error: null,
 };
 
@@ -258,20 +271,23 @@ export function browserModel(usecase: string): { spec: ModelSpec; url: string } 
   return browserModels(usecase)[0] ?? null;
 }
 
-export async function loadModel(usecase: string, modelKey?: string): Promise<boolean> {
+export async function loadModel(
+  usecase: string, modelKey?: string, backend: OnnxBackend = DEFAULT_ONNX_BACKEND,
+): Promise<boolean> {
   // Keyed on the MODEL, not the use case. The cache used to match on a use-case prefix, so once a
   // satellite model was loaded every later satellite request got that same session back - which
   // meant selecting the OPS-SAT classifier ran the Telemanom forecaster's graph and failed on
   // input rank, since one takes [n,19] and the other [n,250,6].
   const want = modelKey ?? browserModel(usecase)?.spec.key;
-  if (session && want && status.modelKey === want) return true;
+  // And on the requested BACKEND: a session created for WASM must not answer a WebGPU request.
+  if (session && want && status.modelKey === want && status.requested === backend) return true;
   // Keyed by model, because `inflight` was a single global promise: a caller asking for model B
   // while model A was still loading got A's promise back, and then read the module-level `session`
   // believing it held B. The graph-name assertion in runPublishedModel/evaluatePublishedModel runs
   // BEFORE loadModel, so it cannot catch that swap. Two callers now genuinely exist at once - the
   // pipeline's inference stage and the Models panel's Run buttons - so this stopped being
   // theoretical.
-  const slot = want ?? `__usecase__:${usecase}`;
+  const slot = `${want ?? `__usecase__:${usecase}`}@${backend}`;
   const pending = inflight.get(slot);
   if (pending) return pending;
   const load = (async () => {
@@ -305,7 +321,9 @@ export async function loadModel(usecase: string, modelKey?: string): Promise<boo
       // build, which happened to be the one being loaded unconditionally.
       const needsMlDomain = (target.spec as { onnx_domains?: string[] }).onnx_domains
         ?.includes("ai.onnx.ml") ?? false;
-      const gpuAvailable = !needsMlDomain && await hasWebGPU();
+      // WebGPU only on REQUEST. An adapter existing used to be enough, and on the machine measured
+      // that path was the slow one (see the header). The adapter check still applies when asked.
+      const gpuAvailable = backend === "webgpu" && !needsMlDomain && await hasWebGPU();
       const ort = await loadOrt(gpuAvailable);
       ortRuntime = ort;
       ort.env.wasm.numThreads = resolveThreads();
@@ -372,6 +390,7 @@ export async function loadModel(usecase: string, modelKey?: string): Promise<boo
       // registries" log at `logSeverityLevel: 1`, and a third state, because two cannot express a
       // partial answer.
       status.backend = gpu ? "onnx-webgpu" : "onnx-wasm";
+      status.requested = backend;
       status.webnnAvailable = webnn;   // proven by execution, but deliberately not used
       status.loaded = true;
       status.modelKey = target.spec.key;
@@ -385,6 +404,7 @@ export async function loadModel(usecase: string, modelKey?: string): Promise<boo
       session = null;
       status.loaded = false;
       status.backend = "none";
+      status.requested = backend;
       status.modelKey = target.spec.key;
       status.url = target.url;
       status.loadMs = performance.now() - started;
@@ -611,7 +631,7 @@ function reliabilityBins(
 }
 
 export async function evaluatePublishedModel(
-  usecase: string, tolerance = 0.05, modelKey?: string,
+  usecase: string, tolerance = 0.05, modelKey?: string, backend: OnnxBackend = DEFAULT_ONNX_BACKEND,
 ): Promise<ModelEvalResult | null> {
   const base: ModelEvalResult = {
     ran: false, task: "classification", metricName: "accuracy", n: 0, score: null, expected: null,
@@ -647,7 +667,7 @@ export async function evaluatePublishedModel(
     };
   }
 
-  if (!(await loadModel(usecase, target.spec.key)) || !session) {
+  if (!(await loadModel(usecase, target.spec.key, backend)) || !session) {
     return {
       ...base, provenance: file.provenance,
       error: status.error
@@ -930,7 +950,7 @@ export type PublishedRunOutcome =
  * selects the same row and the stage is reproducible.
  */
 export async function runPublishedModel(
-  usecase: string, opts: { modelKey?: string; rowIndex?: number } = {},
+  usecase: string, opts: { modelKey?: string; rowIndex?: number; backend?: OnnxBackend } = {},
 ): Promise<PublishedRunOutcome> {
   const started = performance.now();
   const target = opts.modelKey
@@ -963,7 +983,7 @@ export async function runPublishedModel(
         + `${fetchedGraph}` };
   }
 
-  if (!(await loadModel(usecase, key)) || !session) {
+  if (!(await loadModel(usecase, key, opts.backend ?? DEFAULT_ONNX_BACKEND)) || !session) {
     return { kind: "failed", modelKey: key, error: status.error ?? "session creation failed" };
   }
 
