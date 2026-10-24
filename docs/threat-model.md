@@ -268,7 +268,10 @@ statement of known limitations, not a conformance gap against any published requ
   is `sine-fdn/polytune` with the Garble language (MIT, maintained, WRK17b multi-party authenticated
   garbling against malicious adversaries), at the cost of a Rust and wasm-pack build step and an alpha
   API; mpz would be a downgrade to semi-honest security. The register's Round 60 section carries the
-  comparison and what remains unverified. Every result carries a
+  comparison and what remains unverified. **Round 63 prototyped it** (`prototypes/polytune-argmax/`, not
+  part of the build): two Polytune parties complete the demo's argmax in one tab, correctly, about six
+  times faster than emp-wasm at 2 classes, while sending about five times the bytes - the cost that
+  would dominate on separate hosts, which was not timed. Every result carries a
   `ProvenanceBadge` with one of exactly **four** states - `MEASURED (local WebGPU)`, `MEASURED (local
   WASM)`, `MEASURED (plain JS)`, `SIMULATED` - together with the runtime evidence for that claim (`adapter.info`,
   `crossOriginIsolated`, `ort.env.wasm.numThreads`, bytes transferred vs served from cache). A result
