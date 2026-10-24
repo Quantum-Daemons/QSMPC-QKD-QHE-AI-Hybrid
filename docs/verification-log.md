@@ -2924,3 +2924,17 @@ link targets exist, and the only splat is the catch-all), state updates wrapped 
 (navigation was exercised by clicking, not by loading URLs, so a transition that never committed would
 have shown), and the removal of data-router APIs (none used). The gate written for the advisories is
 kept, because it holds a property and not a version.
+
+### Round 62: upgrading the tool the advisories were about, and checking that tool
+
+**Context.** The second major upgrade decided after Round 59. vite's advisories concern its dev
+server, which the public demo never runs, so checking only the production bundle would have tested
+the part that did not need fixing. The dev server was started and exercised too: it served the app
+with the cross-origin isolation headers the browser tiers depend on, and refused a request for a file
+outside the project.
+
+**The asset paths were the risk in the bundle.** Three runtime paths depend on how vite rewrites
+asset references: node-seal's wasm through a `?url` import, ONNX Runtime's wasm through
+`import.meta.url`, and the GIF worker through another `?url`. Each was confirmed by what the browser
+fetched or what the build emitted, not by the build exiting cleanly: a mis-rewritten wasm path is
+served `index.html` by the SPA fallback and fails only when the module is instantiated.

@@ -298,9 +298,11 @@ statement of known limitations, not a conformance gap against any published requ
   built from a query parameter, because that would be an open redirect under any router version. The
   one that remains is zod's (memory exhaustion on an oversized array), reached through
   `mpc-framework`, which is archived and will not release a fix; no zod code is in the built bundle.
-  The vite and esbuild advisories are dev-server issues, and the public image serves static files from
-  Caddy with no Vite process. Each open item is an assessment of reachability, not a fix, and the
-  register's Round 59 and 61 sections carry the evidence.
+  The vite and esbuild advisories were dev-server issues, unreachable from the public image, which
+  serves static files from Caddy with no Vite process; Round 62 upgraded vite to 6.4.5 with esbuild
+  0.25.12, which fixes them, so `npm audit` including the development tooling now reports the same two
+  packages as the production audit. The open item is an assessment of reachability, not a fix, and the
+  register's Round 59, 61 and 62 sections carry the evidence.
 - **There is no `REMOTE` provenance.** The scheme has exactly four states - `MEASURED (local WebGPU)`,
   `MEASURED (local WASM)`, `MEASURED (plain JS)` and `SIMULATED`. `remote` was **removed from the type**
   in Round 24d, not merely left unset: nothing in `web/src` calls the ZeroGPU Space, that Space returns
