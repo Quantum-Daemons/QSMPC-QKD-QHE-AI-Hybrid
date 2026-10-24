@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<title>Polytune argmax prototype</title>
+<!-- A measurement page for the prototype, not part of the demo. Serve this directory after ./build.sh
+     (for example: python3 -m http.server 4319 --bind 127.0.0.1) and open it. It builds the shares
+     exactly as web/src/lib/clientMPC.ts does, runs both parties in this tab, checks every result
+     against the plaintext argmax, and leaves the runs in window.__runs. -->
+<body style="font-family: system-ui, sans-serif; margin: 16px">
+<h1 style="font-size: 18px">Polytune secure argmax, two parties in one tab</h1>
+<p>Classes: <input id="n" type="number" min="2" max="10" value="2" style="width: 4em">
+   Runs: <input id="k" type="number" min="1" max="20" value="6" style="width: 4em">
+   <button id="go">Run</button></p>
+<pre id="out">loading the wasm module</pre>
+<script type="module">
+import init, { secure_argmax } from "./pkg/polytune_argmax.js";
+
+// clientMPC.ts parameters: fixed-point scale, offset, clamp and the additive-share mask.
+const SCALE = 64, OFFSET = 8, QMAX = 2 * OFFSET * SCALE, BIG = 1 << 16;
+const quant = (x) => Math.min(QMAX, Math.max(0, Math.round((x + OFFSET) * SCALE)));
+const out = document.getElementById("out");
+
+await init();
+out.textContent = "ready";
+
+async function bench(n, k) {
+  const runs = [];
+  for (let i = 0; i < k; i++) {
+    const logits = Array.from({ length: n }, () => Math.random() * 6 - 3);
+    const q = logits.map(quant);
+    const a = q.map(() => Math.floor(Math.random() * BIG));
+    const b = q.map((v, j) => v - a[j] + BIG);
+    let want = 0;
+    for (let j = 1; j < n; j++) if (q[j] > q[want]) want = j;
+    const t0 = performance.now();
+    const r = await secure_argmax(Int32Array.from(a), Int32Array.from(b));
+    runs.push({ n, arg: r.arg, want, correct: r.arg === want, mpcMs: r.mpcMs, compileMs: r.compileMs,
+      wallMs: performance.now() - t0, bytes: r.bytes, messages: r.messages, andOps: r.andOps });
+    out.textContent = JSON.stringify(runs, null, 1);
+  }
+  window.__runs = runs;
+  return runs;
+}
+window.__bench = bench;
+document.getElementById("go").onclick = () =>
+  bench(Number(document.getElementById("n").value), Number(document.getElementById("k").value));
+</script>
+</body>
+</html>
