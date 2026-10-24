@@ -76,12 +76,28 @@ class ChannelParams:
         return self.detector_efficiency * 10 ** (-self.loss_db() / 10)
 
 
-def intrinsic_qber(params: ChannelParams) -> float:
-    """Analytic baseline QBER from misalignment + dark counts + any eavesdropping.
+def compose_independent_errors(a: float, b: float) -> float:
+    """Error rate after two INDEPENDENT bit-flip sources: a(1 - b) + b(1 - a) = a + b - 2ab.
 
-    Intercept-resend on a fraction f of pulses adds ~f * 0.25 to the error rate
-    (the textbook BB84 disturbance of an intercept-resend attack).
+    Two flips on the same bit cancel, so independent error sources do not simply add. Until
+    2026-10-24 the eavesdropper's disturbance was ADDED to the channel error, which overcounts by 2ab:
+    at 50 km with a full intercept-resend attack the model QBER read 0.2722 where this gives 0.2649.
+    `quantumSim.ts::composeIndependentErrors` is the browser twin; both languages' two call sites
+    (`intrinsic_qber` / `e_det_for_bound` here and in `bb84.py`) use it, which is what the
+    cross-language rate test holds them to.
+    """
+    return a + b - 2.0 * a * b
+
+
+def intrinsic_qber(params: ChannelParams) -> float:
+    """Analytic baseline QBER from misalignment + dark counts, composed with any eavesdropping.
+
+    Intercept-resend on a fraction f of pulses flips a bit with probability 0.25 * f (the textbook
+    BB84 disturbance), independently of the channel's own errors, so the two are composed with
+    `compose_independent_errors` rather than added. The channel's base term (misalignment plus the
+    dark-count share) stays a sum: it is a small-error approximation this model has always used,
+    and composing it too would move every Eve-free figure for no physical gain at these rates.
     """
     base = params.misalignment + 0.5 * params.dark_count_prob / max(params.transmittance(), 1e-9)
     eve = 0.25 * params.eve_intercept_fraction
-    return float(min(0.5, base + eve))
+    return float(min(0.5, compose_independent_errors(base, eve)))
