@@ -4499,3 +4499,61 @@ copy rejected, and the console showed no error.
 BUSINESS DOC RECONCILED Round 62. The out-of-repo document is brought level with this round. Its content
 is not quoted here, in the checklist, or in any commit - only the fact of the reconciliation, which is
 what gate 16 reads.
+
+## Round 63: the archived garbled-circuit tier, rebuilt on Polytune and measured, not adopted
+
+**Round 62 closed first.** PR #58 merged as 966b44b, the demo was redeployed from main and serves the
+branch walk's bundle (`index-BlGVcorX.js`), and `npm audit` on main, development tooling included,
+reports the two packages behind the one zod advisory.
+
+**What was built.** `prototypes/polytune-argmax/` computes what `secureArgmax` in `clientMPC.ts`
+computes - the argmax of N additively shared logits, only the index revealed - on `sine-fdn/polytune`
+(pinned to commit 47dc378) with the circuit written in Garble, both parties in one tab over an
+in-memory channel (Polytune's own channel is compiled out on wasm32). It is a measurement, not a
+replacement: nothing under `web/` imports it and the web image does not build it, which
+`tests/test_prototypes_stay_out_of_the_web_build.py` holds - no reference from `web/`, no Rust
+toolchain in `docker/Dockerfile.web`, and the build outputs gitignored. Seeded three ways (an import
+from `web/src`, a `cargo` step in the web Dockerfile, the root rule for `pkg/` removed), and each fires.
+The third did not at first: wasm-pack writes a `.gitignore` of `*` into `pkg/`, so `git check-ignore`
+kept passing with no root rule at all, and would have stopped the day the directory was regenerated
+without it. The check now requires the root rules as well as the effective state.
+
+**The build environment, and why it is a container.** Polytune requires Rust 1.89 and the host's system
+Rust is 1.88, so the host route - the `rust-std-static-wasm32-unknown-unknown` package plus
+`wasm-pack` - cannot build it, although it works for crates the host compiler can. `build.sh` builds a
+builder image from the official `rust:1.99.1-bookworm` (pinned by digest) with the wasm32 target,
+`wasm-pack` 0.15.0 and `wasm-bindgen-cli` 0.2.129, and runs the native test and `wasm-pack build`
+inside it as the calling user. The README's Dev environment section and the prototype's own README
+carry the steps. The image is 2.4 GB; a cold build of the crate took 50 s.
+
+**Measured** (Chrome 152, the development machine; emp-wasm's byte and message counts and its 10-class
+times from replicating `secureArgmax` in Node 22 against the installed packages, whose byte count
+matches the 209.83 KiB the pipeline reports):
+
+| implementation | classes | correct | protocol time | bytes | messages |
+|---|---|---|---|---|---|
+| Polytune | 2 | 6 of 6 | 117.5 to 120.1 ms warm, 150.5 ms first | 1,018,898 | 69 |
+| emp-wasm (shipped) | 2 | 3 of 3 | 690 to 730 ms in the browser | 214,861 | 43 |
+| Polytune | 10 | 3 of 3 | 589 to 603 ms | 7,184,705 | 195 |
+| emp-wasm | 10 | 3 of 3 | 745 to 767 ms | 1,241,896 | 55 |
+
+The native test agrees with the plaintext argmax in all four of its cases. Polytune's circuit has 400
+AND gates at 2 classes and 2,997 at 10; its wasm package is 458 KB gzipped with the Garble compiler
+inside, against 486 KB gzipped for the chunk carrying emp-wasm and mpc-framework.
+
+**What it means.** The open question Round 60 recorded - whether two Polytune parties complete over an
+in-memory channel on WASM's single thread - is answered: they do, and correctly. In one tab Polytune is
+about six times faster at 2 classes and 1.3 times faster at 10, and it is maintained. Against that it
+sends 4.7 to 5.8 times the bytes and 1.6 to 3.5 times the messages, which is the cost that matters once
+the parties are separate hosts, and it adds a Rust build step and an alpha API to a tier that has none.
+Nothing is replaced in this round.
+
+**The client-side Rust decline still stands.** It concerned tfhe-rs: no FHE evaluation in its WASM build,
+and a licence that withholds patent rights. Neither applies to Polytune, which is MIT and evaluates in
+the tab - but adopting it would still be its own decision, on the network numbers this round did not
+take. UNVERIFIED - needs confirmation: the timings over a real link; a security review of the
+integration and of Polytune's alpha API; the effect of `wasm-opt`, which was not run.
+
+BUSINESS DOC RECONCILED Round 63. The out-of-repo document is brought level with this round. Its content
+is not quoted here, in the checklist, or in any commit - only the fact of the reconciliation, which is
+what gate 16 reads.
