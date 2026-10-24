@@ -1,0 +1,28 @@
+{
+  "about": "WireGuard's precomputed initial handshake state, as one independent implementation publishes it: Ci = Hash(Construction) and Hi = Hash(Ci || Identifier), whitepaper section 5.4.2's first two lines. This is NOT a handshake vector and NOT from an authoritative implementation (wireguard-go and the Linux module compute these at start-up instead of publishing them). It pins one WireGuard-specific step the Noise vector cannot: that the Identifier is the Noise prologue. Consumed by web/src/lib/netkeys/wireguard.ts; see references/net-key-schedules.md.",
+  "construction": "Noise_IKpsk2_25519_ChaChaPoly_BLAKE2s",
+  "identifier": "WireGuard v1 zx2c4 Jason@zx2c4.com",
+  "source": {
+    "publisher": "boringtun, Cloudflare's userspace WireGuard implementation (Rust)",
+    "repository": "https://github.com/cloudflare/boringtun",
+    "commit": "6dcc889a95ad82400932f785d874421d70308195",
+    "commitDate": "2026-06-15T07:58:57Z",
+    "path": "boringtun/src/noise/handshake.rs",
+    "url": "https://raw.githubusercontent.com/cloudflare/boringtun/6dcc889a95ad82400932f785d874421d70308195/boringtun/src/noise/handshake.rs",
+    "bytes": 36430,
+    "sha256": "6c2e3eada1e0095f6dae7829540c135c6251f71602f439d818ad6ca3c7a2a262",
+    "gitBlobSha1": "40ed8037d8b9788ea94b6553c07f738a49097f29",
+    "retrieved": "2026-10-24",
+    "licence": "BSD-3-Clause (repository licence as reported by the GitHub API). Two 32-byte constants are copied as data; no code is copied.",
+    "constants": "INITIAL_CHAIN_KEY (line 28) and INITIAL_CHAIN_HASH (line 34), decimal byte arrays in the source, converted to hex here"
+  },
+  "authoritative": false,
+  "initialChainingKey": {
+    "formula": "Ci = Hash(Construction)",
+    "hex": "60e26daef327efc02ec335e2a025d2d016eb4206f87277f52d38d1988b78cd36"
+  },
+  "initialHash": {
+    "formula": "Hi = Hash(Ci || Identifier)",
+    "hex": "2211b361081ac566691243db458ad5322d9c6c662293e8b70ee19c65ba079ef3"
+  }
+}

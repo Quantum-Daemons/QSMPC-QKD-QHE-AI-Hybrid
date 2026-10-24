@@ -12,7 +12,8 @@
     "check:qkd": "node scripts/check_qkd.mjs",
     "check:qfl": "node scripts/check_qfl.mjs",
     "check:combiner": "node scripts/check_hybrid_combiner.mjs",
-    "check:qcnn-metrics": "node scripts/check_qcnn_metrics_at_every_site.mjs"
+    "check:qcnn-metrics": "node scripts/check_qcnn_metrics_at_every_site.mjs",
+    "check:netkeys": "node scripts/check_net_key_schedules.mjs"
   },
   "dependencies": {
     "@huggingface/transformers": "^4.2.0",
