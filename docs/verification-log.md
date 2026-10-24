@@ -2838,3 +2838,19 @@ per spec - no official vectors" rather than letting a green row imply more. One 
 because a test showed a gap: dropping WireGuard's identifier string from the handshake passed every
 other assertion, so both peers' initial state is now compared with constants an independent
 implementation hardcodes, labelled non-authoritative.
+
+### Round 57: one sentence in two files, and why counting quotes could not tell a correction from a claim
+
+**Context.** Finished on its own branch after Round 58 merged. Found by reading the OPS-SAT student's
+record against the prose that described it: the distiller's docstring and the trainer's comment both
+said the student beat the published baseline and its teacher, and the record says the opposite on the
+first count and a different metric on the second.
+
+**The interesting failure was the gate's, not the prose's.** A withdrawal has to restate the claim it
+withdraws, so a scanner for "beats 0.979" sees the correction as the defect. The first discriminator
+counted double quotes from the start of the comment block - and Python source is full of quote
+characters, so a single apostrophe or string literal upstream inverted every verdict below it. An
+explicit marker pair replaces the heuristic: what is quoted between them is blanked before the scan,
+the markers must balance, and each span must quote something. Rewording my own refutation was also
+needed - "the beats-the-baseline claim is false" repeats the boast word, and under a strict convention a
+refutation that is not inside the markers should not reuse it.
