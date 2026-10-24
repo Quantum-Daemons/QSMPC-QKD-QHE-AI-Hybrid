@@ -4201,3 +4201,35 @@ same g at 28.5 dB; both now say which loss they name.
 BUSINESS DOC RECONCILED Round 58. The out-of-repo document is brought level with this round. Its content
 is not quoted here, in the checklist, or in any commit - only the fact of the reconciliation, which is
 what gate 16 reads.
+
+## Round 57: a docstring that beat a baseline it did not, and a gate that tells a withdrawal from a claim
+
+Started before Round 58 and finished after it, on its own branch. Two source files - the distiller's
+docstring and the OPS-SAT trainer's comment - carried one identical sentence: the CKKS student's
+minority-class F1 and AUC-PR "beat both the teacher (0.9189) and the published baseline (0.979)".
+Against `models/metrics.json`:
+
+| quantity | claimed | recorded |
+|---|---|---|
+| student auc_pr | 0.9810 | 0.968055 - below the published 0.979 |
+| student minority-class F1 | 0.9391 | 0.904348 (`student_metric`, metric_name minority_class_f1) |
+| teacher | "0.9189" | that is the teacher's F1, read against the student's AUC-PR; the teacher's auc_pr is 0.968107 |
+| degree-1 "before" figures | 0.8485 / 0.9235 | recorded in no committed artefact |
+
+Both copies are corrected together, and say what the record does support: at 209 expanded features
+(210 parameters with the bias) and one encrypted dot product, the student TRACKS its teacher on the
+declared metric - 0.968055 against 0.968107 - which is a fidelity-at-low-cost result, not a win.
+
+**The gate.** `tests/test_prose_does_not_beat_a_baseline_the_record_does_not.py` fails when a source file
+says a model beats, passes, exceeds or outperforms a published baseline (named within three lines) that
+the record puts it below. A correction must quote what it withdraws, so the corrected text contains the
+sentence the gate looks for; the first version told the two apart by counting double quotes back to the
+start of the comment block, which misfired on the very correction it protected - Python source is full
+of quote characters. It is now an explicit convention: a retracted claim is quoted between
+`WITHDRAWN-CLAIM-BEGIN` and `WITHDRAWN-CLAIM-END`, those spans are blanked before the scan, and nothing
+else is exempt. The markers must balance and each span must hold a paired quotation, so the exemption
+cannot become a loophole. Seeded four ways - an unmarked boast, a dangling BEGIN, a span with its
+opening quote removed, and a quoted but unmarked boast - and all four fire.
+
+The commit that started this branch was authored with the wrong identity and is re-authored here, as
+this repository's commits now are, with the account's noreply address.

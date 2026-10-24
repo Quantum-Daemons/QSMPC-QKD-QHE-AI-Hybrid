@@ -84,10 +84,24 @@ def main() -> int:
     # and the encrypted step stays one dot product at unchanged multiplicative depth - capacity
     # bought without spending ciphertext.
     #
-    # Measured, which is why this is not merely tidier: minority-class F1 0.8485 -> 0.9391 and
-    # AUC-PR 0.9235 -> 0.9810, passing both the teacher (0.9189) and the published 0.979. It was
-    # worth asking whether the encrypted tier had to be the weakest model in the project. Here it
-    # did not, and the constraint that looked binding was the feature map, not the cipher.
+    # CORRECTED ROUND 57, AND THIS WAS THE SECOND COPY. It read:
+    # WITHDRAWN-CLAIM-BEGIN
+    # "minority-class F1 0.8485 -> 0.9391 and AUC-PR 0.9235 -> 0.9810, passing both the teacher
+    # (0.9189) and the published 0.979"
+    # WITHDRAWN-CLAIM-END
+    # The shipped record says auc_pr 0.968055 and minority_class_f1 0.904348, so the
+    # student is BELOW the published 0.979 and marginally below the teacher's 0.968107 - and
+    # "the teacher (0.9189)" was the teacher's F1 read against the student's AUC-PR. The degree-1
+    # "before" figures are recorded nowhere and cannot be checked.
+    #
+    # `src/qsh/models/distil.py` carried the identical claim and both are corrected together;
+    # fixing one would have left the other asserting a beaten baseline.
+    #
+    # What survives is the real result: at 209 expanded features (210 parameters with the bias,
+    # the record's `student_params`) and one encrypted dot product at
+    # unchanged multiplicative depth, the student TRACKS its teacher - 0.968055 against 0.968107.
+    # It was worth asking whether the encrypted tier had to be the weakest model in the project.
+    # It does not have to be the weakest; it also does not beat the published number.
     print("\n  distilling to the CKKS student (quadratic expansion, computed client-side) ...")
     student = distil.distil_linear(teacher.predict_proba(xtr), xtr, seed=args.seed, degree=2)
     student_pred = student.predict(xte)
