@@ -102,7 +102,8 @@ controls, live WebSocket event streaming, config-driven parameters editable in t
 **Parameters** panel - every QKD / QRNG / OptiQKD / IDS / data knob defaults from `config/defaults.py`
 and is editable per run, with reset-to-defaults; no hardcoded values), and
 high-DPI PNG / animated-GIF export of the run. An **Agentic AI, MCP** capability runs a small language
-model **entirely in the browser** (WebGPU via Transformers.js + WebLLM, Apache-2.0) whose
+model **entirely in the browser** (Transformers.js on WASM by default and WebGPU on request, or WebLLM
+on WebGPU; Apache-2.0) whose
 request/response is sealed + signed over a **client-side quantum-safe MCP** channel - agentic AI with a
 quantum-safe layer, zero server compute. It is **integrated into every use-case page** as a per-industry
 panel (its own MCP tool - `score_transaction` / `query_cohort` / `pool_allele_counts` /
@@ -642,6 +643,10 @@ See [`docs/pqc-roadmap.md`](docs/pqc-roadmap.md).
   SwiftShader gave `onnx-webgpu` at 12842 ms, no adapter gave `onnx-wasm` at 42 ms. `requestAdapter()`
   succeeds on a software rasteriser, so "is WebGPU available" answered yes and the code took the
   build that was 300x slower than the one it had just declined. Now declined by name.
+  **Round 60: a hardware adapter can be just as slow.** On an NVIDIA RTX PRO 6000 under Chrome 152 on
+  Linux, one ResNet-18 `session.run` took 18216 ms on `onnx-webgpu`, and distilGPT-2 ran at 750 to
+  1140 ms per token on WebGPU against about 9 ms on WASM. So the small models now run on WASM by
+  default and on WebGPU only when the visitor selects it; other GPUs and browsers were not measured.
 
 - **Three of the four CKKS students can be verified in a browser.** They shipped no held-out sample,
   so selecting one reported DID NOT RUN. Samples ship model-ready with `preprocessing: []`, because
@@ -831,8 +836,14 @@ See [`docs/pqc-roadmap.md`](docs/pqc-roadmap.md).
   **MPC-FHE row is real measured crypto** (node-seal CKKS + emp-wasm 2PC) - so the demo shows measured, not
   estimated, numbers.
 - **In-browser AI (demo)** - the per-use-case Agentic-AI panel runs **small** models client-side (Transformers.js
-  on onnxruntime-web; WebLLM on WebGPU). The ONNX path uses **the WebGPU build only where a real `requestAdapter()` returns a HARDWARE
-  adapter**, and the WASM build otherwise. A returned adapter is no longer sufficient: a software
+  on onnxruntime-web; WebLLM on WebGPU). **Both the agent's Transformers.js models and the published ONNX
+  models run on WASM by default, and on WebGPU only when the visitor selects it** (the Backend and Model
+  backend controls), because on the machine measured the WebGPU path was the slow one by one to two
+  orders of magnitude (see "A software WebGPU adapter is slower than no adapter" above). The model
+  picker's sizes are computed from the bytes the config records for each backend's weights file, at a
+  pinned commit: 236.7 MB of q8 weights for distilGPT-2 on WASM, 327.8 MB of fp32 on WebGPU. When
+  WebGPU is selected, the ONNX path uses **the WebGPU build only where a real `requestAdapter()` returns a HARDWARE
+  adapter**, and the WASM build otherwise. A returned adapter is not sufficient: a software
   rasteriser (SwiftShader, lavapipe, llvmpipe, WARP) is declined by name, because it measured about
   300x slower than the wasm build it displaces - ResNet-50 at 12842 ms against 42 ms on the same
   model and row. Every shader dispatch is emulated on the CPU while wasm runs SIMD kernels natively,
@@ -851,8 +862,9 @@ See [`docs/pqc-roadmap.md`](docs/pqc-roadmap.md).
   WASM floor while the badge shows a single state. Which nodes fell back is **not measured here** -
   closing that needs `startProfiling()`/`endProfiling()` or ORT's "kernel not found in registries"
   log, and the badge's two states cannot express a partial answer. Model weights stream from the HF/MLC **CDN** on first run
-  (browser-cached after) - zero VPS bandwidth/compute. WebLLM needs WebGPU; without it the page falls
-  back to Transformers.js (WASM) and the quantum-safe MCP envelope still runs. The in-browser models
+  (browser-cached after) - zero VPS bandwidth/compute. WebLLM needs WebGPU; without it WebLLM is
+  disabled, Transformers.js runs on WASM as it does by default, and the quantum-safe MCP envelope still
+  runs. The in-browser models
   illustrate the agentic-AI + MCP flow; they are not the production inference path.
 - **MCP** - the **full deployment ships a real MCP server**: an **`MCPServer`** server (MCP Python SDK >=2.0, MIT; the class was named `FastMCP` before v2.0.0 and `server.py` resolves either)
   exposing the 5 per-industry tools, bound to the quantum-safe transport so a `tools/call` runs end-to-end

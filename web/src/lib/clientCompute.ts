@@ -27,7 +27,10 @@ import { bb84, channelLossDb, e91, FIBER, FREE_SPACE, h2, intrinsicQber, keyRate
   qcnnInferTrained, qotpQcnnInfer, rng, taggedFraction,
   type QcnnWeights } from "./quantumSim";
 import { type Provenance } from "../components/ProvenanceBadge";
-import { browserModels, evaluatePublishedModel, onnxStatus, runPublishedModel } from "./onnxInference";
+import {
+  browserModels, DEFAULT_ONNX_BACKEND, evaluatePublishedModel, type OnnxBackend, onnxStatus,
+  runPublishedModel,
+} from "./onnxInference";
 import { realInput, realInputCorpus, realSatelliteAnomaly, realFederatedSet,
   type RealInput } from "./realData";
 import { hybridCombine, hybridCombinerInfo, kemNameFor } from "./hybridCombiner";
@@ -1733,6 +1736,9 @@ export function runClientPipeline(
     }
   }
 
+  // WASM unless the visitor selected WebGPU (`onnx_backend`, sent only when chosen). Until Round 60
+  // an adapter merely existing selected WebGPU, and on the machine measured that was the slow path.
+  const onnxBackendChoice: OnnxBackend = config.onnx_backend === "webgpu" ? "webgpu" : DEFAULT_ONNX_BACKEND;
   async function runPublishedForStage(stage: string) {
     // The visitor's choice where they made one, else the registry's first fetchable model. Three use
     // cases publish more than one and could previously only ever exercise the first: medical ships
@@ -1749,7 +1755,7 @@ export function runClientPipeline(
       chosen = undefined;
     }
     const pub = await runPublishedModel(usecase, {
-      rowIndex: Math.floor(u() * 4096), modelKey: chosen,
+      rowIndex: Math.floor(u() * 4096), modelKey: chosen, backend: onnxBackendChoice,
     });
     if (pub.kind === "ran") {
       const p = pub.run;
@@ -1772,8 +1778,12 @@ export function runClientPipeline(
         outcome = `Predicted ${p.className ?? p.predictedClass}`
           + (p.trueClass != null ? ` (true ${p.trueClassName ?? p.trueClass})` : "");
       }
+      metric(stage, "published_model_backend_requested", onnxBackendChoice);
+      // Says which of the two facts applies when they differ: WebGPU selected, no usable adapter.
+      const fellBack = onnxBackendChoice === "webgpu" && p.backend !== "onnx-webgpu"
+        ? " (WebGPU was selected; this browser has no usable adapter)" : "";
       emit("log", stage,
-        `published model ${p.modelKey} ran here on ${p.backend}: row ${p.rowIndex} of its own `
+        `published model ${p.modelKey} ran here on ${p.backend}${fellBack}: row ${p.rowIndex} of its own `
         + `held-out sample, input ${p.inputShape.join("x")}, ${r2(p.latencyMs)} ms. ${outcome}`
         + `. Weights from ${p.repoId} at ${p.revision.slice(0, 12)}, ${p.provenance}`);
     } else if (pub.kind === "failed") {
@@ -1810,7 +1820,7 @@ export function runClientPipeline(
       const key = target.spec.key;
       const isSelected = pub.kind === "ran" && pub.run.modelKey === key;
       try {
-        const v = await evaluatePublishedModel(usecase, 0.05, key);
+        const v = await evaluatePublishedModel(usecase, 0.05, key, onnxBackendChoice);
         if (v && v.ran && v.score != null && v.expected != null) {
           // Only the selected model's numbers become run metrics; the rest are logged. Otherwise
           // four models would overwrite each other's `verified_score` and the panel would show

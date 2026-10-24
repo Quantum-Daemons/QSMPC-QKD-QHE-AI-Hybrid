@@ -264,7 +264,11 @@ statement of known limitations, not a conformance gap against any published requ
   replacements for two sunset dependencies, and the replacements have since been sunset in turn - a
   correction can go stale in the same way the claim it fixed did. `RS21` in the browser checklist runs
   exactly this query for submodules; it did not cover npm dependencies, which is why this went a year
-  unnoticed. Every result carries a
+  unnoticed. **Replacements were researched in Round 60, and nothing has been adopted.** The closest fit
+  is `sine-fdn/polytune` with the Garble language (MIT, maintained, WRK17b multi-party authenticated
+  garbling against malicious adversaries), at the cost of a Rust and wasm-pack build step and an alpha
+  API; mpz would be a downgrade to semi-honest security. The register's Round 60 section carries the
+  comparison and what remains unverified. Every result carries a
   `ProvenanceBadge` with one of exactly **four** states - `MEASURED (local WebGPU)`, `MEASURED (local
   WASM)`, `MEASURED (plain JS)`, `SIMULATED` - together with the runtime evidence for that claim (`adapter.info`,
   `crossOriginIsolated`, `ort.env.wasm.numThreads`, bytes transferred vs served from cache). A result

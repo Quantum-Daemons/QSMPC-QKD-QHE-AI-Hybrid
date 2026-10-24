@@ -4324,3 +4324,93 @@ here) logs at error level that some nodes were not assigned to the WebGPU provid
 BUSINESS DOC RECONCILED Round 59. The out-of-repo document is brought level with this round. Its content
 is not quoted here, in the checklist, or in any commit - only the fact of the reconciliation, which is
 what gate 16 reads.
+
+## Round 60: the small models run on WASM unless the visitor selects WebGPU
+
+**Round 59 closed first.** PR #55 merged as fdcd939, the demo was redeployed from main and serves the
+bundle the branch walk saw (`index-B6Uw15BG.js`), and `npm audit --omit=dev` on merged main reports
+the branch's 4 (checklist NS11).
+
+**What changed.** Round 59 found that both in-browser model tiers took WebGPU whenever a hardware
+adapter existed, and that on the machine measured that path was the slow one by one to two orders of
+magnitude. The fix chosen: WASM by default, WebGPU one selection away, and sizes that match the
+download.
+
+- Defaults in the single source of truth: `WebConfig.tfjs_default_device` and
+  `WebConfig.onnx_default_backend`, both `wasm`, exported to `config.defaults.json`.
+- The agent: a Backend select (WASM by default; WebGPU disabled without a usable adapter).
+  `runTransformersJs` decides the device from the request first and the adapter check second, and a
+  WebGPU request on a machine without an adapter runs WASM and says so in the result.
+- The ONNX tier: `loadModel` takes the requested backend, its session cache is keyed on model and
+  requested backend, and `OnnxStatus.requested` records what was asked beside `backend`, what was
+  granted. The pipeline sends `onnx_backend` only when WebGPU is chosen (a Model backend select beside
+  Published model); the single-row run and the whole-sample verification both use it, and the log says
+  when WebGPU was selected but no usable adapter existed.
+- Sizes: each Transformers.js model is pinned to a commit and records the dtype and the bytes of the
+  weights file per backend, from the Hub's file listing at that commit. The loader passes `dtype` and
+  `revision`, so the size the picker computes describes the file that is fetched: distilGPT-2 is 237 MB
+  of q8 weights on WASM and 328 MB of fp32 on WebGPU, Qwen2.5-0.5B 512 MB and 1994 MB.
+- The agent's 120 s limit now measures a stall, not the total. A first run reports its download
+  ("downloading onnx/model_quantized.onnx 49% of 237 MB"), each event resets the limit, and a download
+  that is still arriving is no longer reported as a timeout.
+- Public text: three README passages, `docs/architecture.md`, the panel note that called WASM "the
+  slower" backend, and the timeout note that advised "a WebGPU-capable browser". Both phrases are
+  retired in `test_public_text_claims_only_what_the_demo_does.py`.
+
+**Measured locally, on the machine Round 59 measured** (Chrome 152, NVIDIA RTX PRO 6000):
+
+| path | before (Round 59) | now |
+|---|---|---|
+| agent, first run | timed out at 120 s, on WebGPU | 13.7 s on WASM, of which 10.8 s was the 237 MB download |
+| agent, warm | 18 to 117 s, on WebGPU | 1.6 s, on WASM |
+| agent, WebGPU selected | - | 99.9 s including the 328 MB download; answered, envelope verified |
+| medical ResNet-18, one `session.run` | 18216 ms on onnx-webgpu (public demo) | 37.43 ms on onnx-wasm; 7649.87 ms with WebGPU selected |
+| medical pipeline, all stages | 63.6 s (public demo) | 16 s; all three published models re-verified PASS on 156 rows, on both backends |
+
+**The gate.** `tests/test_small_models_default_to_wasm.py`: WASM is the default in both configs;
+neither tier derives its backend from the adapter's existence alone; every Transformers.js model is
+pinned and records dtype and bytes for both backends, and its label carries no size; the loader passes
+`dtype` and `revision`; the picker computes its size from the bytes; and the agent's limit measures a
+stall. Seeded nine ways - the default set to webgpu, a typed size in a label, the revision removed, the
+device decided by the adapter alone in each tier, `dtype` not passed, the panel showing the typed
+label, a total-time limit, and no progress reported - and each fires the check it should.
+
+**What this does not establish.** One machine. UNVERIFIED - needs confirmation: whether WebGPU is this
+slow on other GPU, driver and OS combinations; and how much of the ResNet's WebGPU time is ONNX
+Runtime's per-node fallback for the int8 operators (the console warns that some nodes were not
+assigned to the WebGPU provider). The runtime's profiler would answer the second, and was not run.
+
+**The archived garbled-circuit tier: what could replace it (researched, nothing changed).**
+`mpc-framework`, `emp-wasm-engine` and `summon-ts` are archived, and `mpc-framework` pulls the zod that
+carries GHSA-mrhx-c7xc-m3w5. Checked at the GitHub API on 2026-10-24:
+
+| candidate | licence | state | protocol |
+|---|---|---|---|
+| `sine-fdn/polytune` with `sine-fdn/garble-lang` | MIT | not archived; last commit 2026-09-30; latest release v0.2.0-alpha.4 (2025-12-29), a pre-release | WRK17b multi-party authenticated garbling, "secure against malicious adversaries that can control up to all-but-one of the parties" (its README) |
+| `tlsnotary/mpz2` (formerly `privacy-scaling-explorations/mpz`) | GitHub detects no licence file | not archived; pushed 2026-10-16; no release | half-gates, semi-honest |
+
+Polytune is the closer fit: the same protocol family as the tier today, maintained, and its browser
+example runs every party from one page (through an HTTP broker; an in-memory channel would have to be
+written). The cost is a Rust and wasm-pack step in the web build and an alpha API. mpz would mean a
+downgrade to semi-honest security and a threat-model change. Nothing was built or run. UNVERIFIED -
+needs confirmation: that two Polytune parties complete over an in-memory channel on WASM's single
+thread; what the argmax costs in time and bytes; whether the Summon-built circuit can be expressed in
+Garble; and the state of the other candidates looked at (swanky, emp-ag2pc, webSPDZ, MPyC-Web, JIFF),
+none of which was confirmed here to run both parties in one tab without a server.
+
+**Walked on the public demo with this branch deployed** (67394fa, serving `index-BnD6oAsI.js`, the file
+name the local build produced). All ten pages render their headings with no error boundary and zero
+horizontal overflow at 1280 px, and the pages carrying the new selects measure zero overflow at 390 px
+(both selects end at x=262). The Model backend select appears only where a published model exists.
+The agent's first run on WASM answered in 11.0 s including the 237 MB download, which before this
+change timed out on every first visit, and a warm run took 1.4 s. The medical pipeline ran in 14 s
+with ResNet-18 on onnx-wasm in 38.17 ms, the satellite pipeline in 6 s with Telemanom on onnx-wasm in
+3.98 ms, and every re-verifiable published model passed on both pages. With WebGPU selected, the
+medical pipeline took 45 s, ResNet-18 ran on onnx-webgpu in 7363.55 ms, and verification still passed.
+One ONNX Runtime warning, logged at error level, was seen on the satellite page: the Telemanom graph
+declares an output of {1,6} and the whole-sample evaluation produces {128,6}. The scores verified, and
+whether the warning predates this change was not checked.
+
+BUSINESS DOC RECONCILED Round 60. The out-of-repo document is brought level with this round. Its content
+is not quoted here, in the checklist, or in any commit - only the fact of the reconciliation, which is
+what gate 16 reads.
