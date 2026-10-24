@@ -559,7 +559,7 @@ export default function TwoPartyDiagram({
             drawn, so advertising one in the key was the same hardcoding one level down. */}
         {!pqcOnly(config) && (<>
           <line x1={200} y1={-3} x2={222} y2={-3} stroke="var(--quantum)" strokeWidth={2} strokeDasharray="4 3" markerEnd="url(#tp-q)" />
-          <text x={227} y={1}>quantum ({qkdName(config)})</text>
+          <text x={227} y={1}>quantum, simulated ({qkdName(config)})</text>
         </>)}
         <line x1={430} y1={-3} x2={452} y2={-3} stroke="#f5a623" strokeWidth={2} strokeDasharray="2 2" markerEnd="url(#tp-m)" markerStart="url(#tp-ml)" />
         <text x={457} y={1}>MPC secret-shares</text>

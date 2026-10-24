@@ -105,7 +105,7 @@ const FLOWS: Record<string, { id: string; label: string }[]> = {
     { id: "data", label: "Mission Telemetry" },
     { id: "pqc_handshake", label: "PQC Handshake" },
     { id: "satellite_qkd", label: "Free-space QKD" },
-    { id: "qsdc_telemetry", label: "QSDC\n(direct + eavesdrop check)" },
+    { id: "qsdc_telemetry", label: "QSDC\n(simulated; direct + eavesdrop check)" },
     { id: "quantum_comparison", label: "QSMPC-FHE\n(quantum comparison)" },
     { id: "result", label: "Result" },
     { id: "sign_result", label: "Sign Result\n(ML-DSA)" },
@@ -178,7 +178,9 @@ export default function OrchestrationGraph({
       const pretty = proto === "e91" ? "E91 / CHSH"
         : proto === "bb84" ? "BB84 decoy-state"
         : q.includes("decoy") ? "BB84 decoy-state" : q ? "BB84" : "QKD";
-      return `${head}\n(${pretty}${id === "satellite_qkd" ? " downlink" : ""})`;
+      // ", simulated" on the node: no QKD device exists in this project, and this graph is the one
+      // place on /orchestration that names the protocol before a run.
+      return `${head}\n(${pretty}${id === "satellite_qkd" ? " downlink" : ""}, simulated)`;
     }
     if (id === "sign_result") {
       return `${head}\n(${config.sig ? String(config.sig).toUpperCase() : "ML-DSA"})`;

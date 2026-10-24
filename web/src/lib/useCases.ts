@@ -50,7 +50,7 @@ export const USECASES: UseCaseMeta[] = [
   },
   {
     id: "satellite_comms", title: "Satellite — free-space QKD + QSDC", nav: "Satellite", industry: "satellite",
-    blurb: "A ground station and a LEO satellite run a simulated free-space BB84 downlink, then test whether Quantum Secure Direct Communication could carry mission telemetry over it, with an inline eavesdrop check. Under the published secrecy criterion it cannot at any range offered here, and the run says so.",
+    blurb: "A ground station and a LEO satellite run a simulated free-space BB84 downlink, then test whether Quantum Secure Direct Communication could carry mission telemetry over it, with an inline eavesdrop check. With the default link budget it cannot close at any range under the published secrecy criterion, and the run says why.",
     inference: false,
     agenticTool: "relay_mission_telemetry",
     // Was "why relay satellite mission telemetry via QSDC ... instead of classical encryption". This

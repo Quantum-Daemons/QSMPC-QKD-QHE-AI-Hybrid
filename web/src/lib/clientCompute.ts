@@ -22,7 +22,7 @@ import { secureArgmax, warmMPC } from "./clientMPC";
 import { optimizeQKD } from "./clientOptiQKD";
 import { generateQuantumBits } from "./clientQRNG";
 import { bb84, channelLossDb, e91, FIBER, FREE_SPACE, h2, intrinsicQber, keyRateWithClock,
-  qsdcSecrecyCapacity,
+  qsdcLink, qsdcSecrecyCapacity,
   qcnnExpectation,
   qcnnInferTrained, qotpQcnnInfer, rng, taggedFraction,
   type QcnnWeights } from "./quantumSim";
@@ -246,6 +246,31 @@ export function securityFacts(config: any, metrics: Record<string, any>): Securi
   const e91ZeroKey = (() => { let lo = 0, hi = 0.5;
     for (let i = 0; i < 60; i++) { const m = (lo + hi) / 2; if (1 - (1 + fEC) * h2(m) > 0) lo = m; else hi = m; }
     return Math.round(lo * 1e4) / 1e4; })();
+  // And where a DEVICE-INDEPENDENT analysis of the same noise model stops certifying key, at the SAME
+  // error-correction efficiency (Acin et al., PRL 98, 230501, 2007): r = 1 - fEC h(Q) -
+  // h((1 + sqrt((S/2)^2 - 1))/2) with S = 2 sqrt(2) (1 - 2Q). This caption used to quote S > 2.424 /
+  // Q < 0.0715 - the fEC = 1 figures - beside a device-dependent 0.0981 computed at fEC = 1.16, so the
+  // two thresholds it compared came from different error-correction assumptions.
+  const chshAt = (q: number) => 2 * Math.SQRT2 * (1 - 2 * q);
+  const e91DiZeroKey = (() => { let lo = 0, hi = (1 - Math.SQRT1_2) / 2;   // S = 2 at the upper end
+    const r = (q: number) => 1 - fEC * h2(q) - h2((1 + Math.sqrt(Math.max(0, (chshAt(q) / 2) ** 2 - 1))) / 2);
+    for (let i = 0; i < 60; i++) { const m = (lo + hi) / 2; if (r(m) > 0) lo = m; else hi = m; }
+    return Math.round(lo * 1e4) / 1e4; })();
+  const sDi = Math.round(chshAt(e91DiZeroKey) * 1000) / 1000;
+  const sDd = Math.round(chshAt(e91ZeroKey) * 1000) / 1000;
+  // The channel this run used, and the eavesdropper fraction on it: both the decoy row (BB84) and the
+  // E91 caption read them, so they are built once. See the decoy row for why the parameter reads have
+  // to follow the use case.
+  const sat = config?.usecase === "satellite_comms";
+  const chan = sat ? FREE_SPACE : FIBER;
+  const eveFrac = Number((sat ? config?.sat_eve : config?.qkd_eve) ?? 0);
+  const runChannel = { ...chan,
+    distanceKm: Number((sat ? config?.sat_distance_km : config?.qkd_distance_km) ?? chan.distanceKm),
+    // No misalignment control is rendered on the satellite page, so the free-space channel's own
+    // 0.025 is the honest value there. Reading `qkd_misalignment` unconditionally would have
+    // substituted the fibre page's 0.015 - always, since that key is never absent.
+    misalignment: Number((sat ? undefined : config?.qkd_misalignment) ?? chan.misalignment),
+    eveFraction: eveFrac };
 
   const facts: SecurityFact[] = [
     { label: "KEM", value: `${kem} - NIST Category ${cat}`, kind: "standard",
@@ -332,16 +357,8 @@ export function securityFacts(config: any, metrics: Record<string, any>): Securi
       // misalignment: the tagged fraction went from 7.26 to 2.89 rather than to the free-space figure,
       // and the three controls that page actually renders - `sat_distance_km`, `sat_eve`, `sat_pulses` -
       // still could not move it. A half-corrected number is harder to catch than an uncorrected one,
-      // because it moved.
-      const sat = config?.usecase === "satellite_comms";
-      const chan = sat ? FREE_SPACE : FIBER;
-      const delta = taggedFraction(mu, { ...chan,
-        distanceKm: Number((sat ? config?.sat_distance_km : config?.qkd_distance_km) ?? chan.distanceKm),
-        // No misalignment control is rendered on the satellite page, so the free-space channel's own
-        // 0.025 is the honest value there. Reading `qkd_misalignment` unconditionally would have
-        // substituted the fibre page's 0.015 - always, since that key is never absent.
-        misalignment: Number((sat ? undefined : config?.qkd_misalignment) ?? chan.misalignment),
-        eveFraction: Number((sat ? config?.sat_eve : config?.qkd_eve) ?? 0) });
+      // because it moved. (`runChannel` above now carries those reads for every row that needs them.)
+      const delta = taggedFraction(mu, runChannel);
       facts.push({
         label: "Decoy-state necessity",
         // Always print the number. ">= 1" was a needless loss of information: on the default fibre
@@ -376,10 +393,24 @@ export function securityFacts(config: any, metrics: Record<string, any>): Securi
       value: `${qber}${dead ? " - no secure key at this error rate" : ""}`,
       kind: "simulated",
       source: skr != null && isE91
-        ? `E91: a sampled draw around the Werner-model error rate (1 - V)/2, with S = 2 sqrt(2) V. The `
-          + `device-dependent rate reaches zero at ${e91ZeroKey} (f = ${fEC}); a device-independent `
-          + "analysis would need S > 2.424, i.e. Q < 0.0715, for this noise model (Acin et al., "
-          + "Phys. Rev. Lett. 98, 230501, 2007)"
+        ? (eveFrac > 0
+            // A WERNER STATE ONLY WITHOUT EVE. Intercept-resend on a fraction f of pairs leaves a
+            // MIXTURE of (1 - f) noisy Werner pairs and f measured-and-resent ones; its correlation
+            // tensor is V'(1 - f/2, -(1 - f), 1 - f/2), not V_eff(1, -1, 1), and it is separable once
+            // V'(3 - 2f) <= 1 (Horodecki criterion for Bell-diagonal states). In the plane the
+            // protocol measures, its QBER and CHSH value equal a Werner state's at V_eff = V'(1 - f/2),
+            // which is why S = 2 sqrt(2) (1 - 2Q) still holds - the state label was what was wrong.
+            ? `E91 with an eavesdropper on ${eveFrac} of the pairs: a sampled draw around the model error `
+              + "rate of a mixture of Werner pairs and intercept-resend pairs - not a Werner state, and "
+              + `separable once V'(3 - 2f) <= 1 with V' = ${Math.round(qkdCfg().e91_visibility
+                * (1 - 2 * intrinsicQber({ ...runChannel, eveFraction: 0 })) * 1e4) / 1e4} here. Its `
+              + "QBER and CHSH value in the measured plane still obey S = 2 sqrt(2) (1 - 2Q). "
+            : "E91: a sampled draw around the Werner-model error rate (1 - V)/2, with S = 2 sqrt(2) V. ")
+          + `The device-dependent rate reaches zero at Q = ${e91ZeroKey} (S = ${sDd}, f = ${fEC}); a `
+          + `device-independent analysis at the same f would need S > ${sDi}, i.e. Q < ${e91DiZeroKey} `
+          + "(Acin et al., Phys. Rev. Lett. 98, 230501, 2007), so between those two error rates this "
+          + "model reports key a device-independent analysis would not certify. The S > 2 test never "
+          + `decides the key here: the rate is already zero below S = ${sDd}`
         : skr != null
         ? "this run's two-intensity decoy-state bound (Ma, Qi, Zhao & Lo, Phys. Rev. A 72, 012326); "
           + `post-processing aborts above ${s.qber_secure_threshold}`
@@ -2022,8 +2053,10 @@ export function runClientPipeline(
         // 0.02 while e0 is 0.0150, so 2 sqrt(2)(1 - 2 x 0.02) = 2.72 against the S of 2.74 shown.
         if (eRes) metric(stage, "e91_model_qber", Math.round(eRes.e0 * 1e4) / 1e4);
         emit("log", stage, eRes
-          ? `E91 (entanglement / CHSH S=${r2(eRes.chshS)}): QBER=${res.qber.toFixed(4)}, ${res.secureKeyBits} secure bits`
-          : `BB84 (decoy-state): QBER=${res.qber.toFixed(4)}, ${res.secureKeyBits} secure bits`);
+          // "simulated" in the line itself: /orchestration shows these figures with no other label in
+          // a full deployment (the banner that says so renders only in the public demo).
+          ? `E91 (simulated, entanglement / CHSH S=${r2(eRes.chshS)}): QBER=${res.qber.toFixed(4)}, ${res.secureKeyBits} secure bits`
+          : `BB84 (simulated, decoy-state): QBER=${res.qber.toFixed(4)}, ${res.secureKeyBits} secure bits`);
         if (config.qkd_optimize) {   // AI-QKD parameter optimization (OptiQKD, WS1) — measured SKR gain
           const opt = optimizeQKD(chan, protocol,
             Number(config.qkd_opt_samples ?? qkdCfg().optimize_n_samples));
@@ -2102,8 +2135,8 @@ export function runClientPipeline(
         if (satERes) metric(stage, "e91_model_qber", Math.round(satERes.e0 * 1e4) / 1e4);
         (config as any)._satQber = res.qber;
         emit("log", stage, satERes
-          ? `free-space E91 (CHSH S=${r2(satERes.chshS)}): ${res.channelLossDb}dB loss, QBER=${res.qber.toFixed(4)}, ${res.secureKeyBits} bits`
-          : `free-space BB84: ${res.channelLossDb}dB loss, QBER=${res.qber.toFixed(4)}, ${res.secureKeyBits} bits`);
+          ? `free-space E91 (simulated, CHSH S=${r2(satERes.chshS)}): ${res.channelLossDb}dB loss, QBER=${res.qber.toFixed(4)}, ${res.secureKeyBits} bits`
+          : `free-space BB84 (simulated): ${res.channelLossDb}dB loss, QBER=${res.qber.toFixed(4)}, ${res.secureKeyBits} bits`);
         // The fibre stage returns before its optimise block under the PQC-only profile; this one
         // had no such guard, so the same checkbox did work here and nothing there.
         if (config.qkd_optimize && String(config.qkd ?? "") !== "pqc-only") {
@@ -2161,7 +2194,9 @@ export function runClientPipeline(
         // Same channel the satellite_qkd stage above built, distance included. Reading only sat_eve
         // here meant the downlink range moved the QKD QBER but not the QSDC error rate, so one
         // control produced two inconsistent pictures of the same link.
-        const e = intrinsicQber(satChannel(config));
+        // One shared evaluation (`qsdcLink`), so the tooltips that quote C_s read the same function.
+        const link = qsdcLink(satChannel(config));
+        const e = link.e;
         // QSDC aborts on SECRECY CAPACITY, not on a fixed QBER. Qi et al., Light Sci. Appl. 8, 22
         // (2019), protocol step 2: "If the secrecy capacity C_s is zero, they conclude the channel
         // is insecure and terminate the process."
@@ -2191,8 +2226,8 @@ export function runClientPipeline(
         //
         // Downlink, eta_d 0.40: g 280.43 -> 701.06, a factor 2.50x. On fibre at eta_d 0.25 it is
         // 4.00x. One number would be wrong for one of the two paths.
-        const lossDb = channelLossDb(satChannel(config)) - 10 * Math.log10(qkdCfg().free_space_detector_efficiency);
-        const g = 10 ** (lossDb / 10);
+        const lossDb = link.lossDb;
+        const g = link.g;
         // THE SECOND ENTROPY TAKES e_x + e_z, NOT A POOLED RATE. Eq. (8) is
         // `Cs = Q_Bob * [1 - h(e) - g*h(e_x + e_z)]`, with e_x and e_z the per-basis error rates from
         // the check. Their own numbers settle it: the paper states I(A:E) = g*Q_Bob*h(e_x+e_z) =
@@ -2201,22 +2236,24 @@ export function runClientPipeline(
         // 26%. Doubling is sound here only because nothing in this channel model distinguishes the
         // bases, so the two rates share an expectation; a basis-asymmetric model would need both.
         // Fixed in BOTH languages in one change - `src/qsh/qkd/qsdc.py` carries the same expression.
-        const secrecy = qsdcSecrecyCapacity(e, g);
+        const secrecy = link.cs;
         const abort = secrecy <= 0;
         // WHY the abort fired matters more than THAT it fired, and reporting both as
         // `qsdc_eavesdrop_detected` was wrong. Re-evaluate the same link with Eve removed: if it
         // still cannot close, the limit is the LINK BUDGET, and the page was accusing a clean
         // channel of carrying an eavesdropper on every single run.
         //
-        // It always does still cannot close, at every setting this demo offers. The fixed 5 dB
-        // atmospheric + 3 dB pointing budget alone gives g = 6.31, and C_s > 0 there needs
-        // QBER < ~0.019 while the misalignment floor is 0.025 - so even at zero range, with a
-        // perfect pointing solution and no eavesdropper, secrecy capacity is negative. Moving
-        // `sat_distance_km` cannot produce a delivery. That is not a bug in this code, it is the
-        // finding: QSDC does not close over a LEO free-space downlink under the published
-        // criterion. Qi et al. demonstrated it at 4.1 dB on FIBRE; this link is 24.5 dB.
+        // At the DEFAULT budget it still cannot close at any range: 5 dB atmospheric + 3 dB pointing
+        // plus the detector's 4.0 dB give g = 15.8 even at zero range, and C_s is -3.70 at 0.1 km
+        // with no eavesdropper. Only with the fixed losses below about 0.65 dB in total does a short
+        // link close (at 0 + 0 dB it closes out to about 129 km, still well short of a LEO slant
+        // range). That is not a bug in this code, it is the finding: QSDC does not close over a LEO
+        // free-space downlink under the published criterion. Qi et al. demonstrated it at 4.1 dB on
+        // FIBRE; the default downlink here is 24.5 dB. (This comment said "at every setting this
+        // demo offers" until 2026-10-24 - written before the Atmospheric and Pointing controls
+        // existed, with a g that omitted detector efficiency.)
         const secrecyNoEve = (() => {
-          const e0 = intrinsicQber(satChannel(config, 0));
+          const e0 = qsdcLink(satChannel(config, 0)).e;
           // THE SECOND CALL SITE, AND IT KEPT THE POOLED ARGUMENT WHEN THE FIRST WAS FIXED.
           // Caught the same hour, inside the SAME FILE, by a commit whose own comment claimed the
           // change had been applied in both languages. The twin was three hundred lines away and
@@ -2228,8 +2265,9 @@ export function runClientPipeline(
         metric(stage, "qsdc_error_rate", r2(e));
         // SIGNED. `Math.max(0, secrecy)` stood here, so a link missing by 51 bit/carrier and one
         // missing by 0.001 both reported "0" - and 0 also reads as marginal-but-not-negative, the
-        // one thing it is not. Measured at 1 km with Eve at 1.0 the true value is -5.2033 and the
-        // page displayed 0. How badly a link fails is the quantity that distinguishes "widen the
+        // one thing it is not. At 1 km with Eve at 1.0 (default budget) the value is -15.6045 by the
+        // current formula (-5.2033 when this was written, before detector efficiency entered g) and
+        // the page displayed 0. How badly a link fails is the quantity that distinguishes "widen the
         // aperture" from "QSDC does not close over this class of link".
         metric(stage, "qsdc_secrecy_capacity", r2(secrecy));
         metric(stage, "qsdc_eve_gain_g", r2(g));
@@ -2253,15 +2291,18 @@ export function runClientPipeline(
         metric(stage, "qsdc_regime", "asymptotic (infinite block; no finite-size certificate)");
         artifacts.telemetry_delivered = !abort;
         emit("log", stage, !abort
-          ? `QSDC delivered telemetry (secrecy ${secrecy.toFixed(4)} bit/carrier, g=${g.toFixed(1)})`
+          ? `QSDC (simulated) delivered telemetry (secrecy ${secrecy.toFixed(4)} bit/carrier, g=${g.toFixed(1)})`
           : lossLimited
-            ? `QSDC NOT AVAILABLE on this link — secrecy capacity ${secrecy.toFixed(4)} bit/carrier `
+            ? `QSDC (simulated) NOT AVAILABLE on this link — secrecy capacity ${secrecy.toFixed(4)} bit/carrier `
               + `at ${lossDb.toFixed(1)} dB (g=${g.toFixed(1)}), and it is still `
               + `${secrecyNoEve.toFixed(4)} with NO eavesdropper. The limit is the link budget, not `
-              + `an attack: C_s > 0 requires h(QBER) < 1/(1+g) = ${(1 / (1 + g)).toExponential(2)}, `
-              + `and h(${e.toFixed(4)}) = ${h2(e).toFixed(4)} here. `
+              // The criterion as computed: C_s = 1 - h(e) - g h(e_x + e_z), with e_x + e_z = 2e here.
+              // This line quoted "C_s > 0 requires h(QBER) < 1/(1+g)", the POOLED form that the
+              // per-basis correction replaced - a necessary condition, not the one this code applies.
+              + `an attack: C_s = 1 - h(e) - g h(2e) = 1 - ${h2(e).toFixed(4)} - `
+              + `${(g * h2(Math.min(0.5, 2 * e))).toFixed(4)} at e = ${e.toFixed(4)}. `
               + `Telemetry falls back to the PQC session key.`
-            : `QSDC ABORTED: secrecy capacity ${secrecy.toFixed(4)} <= 0 at error ${e.toFixed(4)} `
+            : `QSDC (simulated) ABORTED: secrecy capacity ${secrecy.toFixed(4)} <= 0 at error ${e.toFixed(4)} `
               + `with g=${g.toFixed(1)} (${lossDb.toFixed(1)} dB) — this link closes at `
               + `${secrecyNoEve.toFixed(4)} without Eve, so the loss is attributable — telemetry withheld`);
         }   // end qsdc: everything below scores the BUNDLED corpus and runs on both profiles
