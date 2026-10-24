@@ -767,7 +767,32 @@ export function qcnnInferTrained(features: number[], w: QcnnWeights):
            latencyMs: performance.now() - t0 };
 }
 
-export function qotpQcnnInfer(features: number[], seed = 0, nQubits = 8): QcnnResult {
+/** Reduced single-qubit Bloch vectors (x, y, z) of every qubit of a state vector. Length below 1 is
+ *  entanglement with the rest of the register; a y component is what T gates add to an RY encoding. */
+export function blochVectors(re: Float64Array, im: Float64Array, nQubits: number): [number, number, number][] {
+  const N = 1 << nQubits;
+  const out: [number, number, number][] = [];
+  for (let q = 0; q < nQubits; q++) {
+    const bit = 1 << q;
+    let z = 0, r01re = 0, r01im = 0;
+    for (let i = 0; i < N; i++) {
+      const p = re[i] * re[i] + im[i] * im[i];
+      if (i & bit) { z -= p; continue; }
+      z += p;
+      const j = i | bit;
+      // rho_01 += psi_i * conj(psi_j)
+      r01re += re[i] * re[j] + im[i] * im[j];
+      r01im += im[i] * re[j] - re[i] * im[j];
+    }
+    out.push([2 * r01re, -2 * r01im, z]);
+  }
+  return out;
+}
+
+/** `onSnapshot`, when given, receives the state after encoding, after the pad and after each conv
+ *  round - for the 3D view of what the circuit does. Absent (every measured call), it costs nothing. */
+export function qotpQcnnInfer(features: number[], seed = 0, nQubits = 8,
+                              onSnapshot?: (label: string, re: Float64Array, im: Float64Array) => void): QcnnResult {
   const t0 = performance.now();
   const N = 1 << nQubits;
   const re = new Float64Array(N);
@@ -809,6 +834,7 @@ export function qotpQcnnInfer(features: number[], seed = 0, nQubits = 8): QcnnRe
   };
 
   for (let q = 0; q < nQubits; q++) RY(q, (features[q] ?? 0) * Math.PI);      // data encode
+  onSnapshot?.("encoded", re, im);
   // QOTP mask STRUCTURE, applied with a demo key. The quantum one-time pad is perfectly hiding when
   // its key bits are uniform AND secret; `u()` is mulberry32 (32 bits of state, non-cryptographic)
   // seeded from a value the visitor can see - the run seed on the inference path, a loop index on
@@ -821,10 +847,12 @@ export function qotpQcnnInfer(features: number[], seed = 0, nQubits = 8): QcnnRe
   // property beside a demo key reads as a claim about the run that just happened. Until Round 40
   // this line read "QOTP perfect-hiding mask" with no qualification.
   for (let q = 0; q < nQubits; q++) { if (u() < 0.5) X(q); if (u() < 0.5) Z(q); }
+  onSnapshot?.("padded", re, im);
   for (let round = 0; round < 7; round++) {                                   // Clifford+T QCNN (7 conv rounds)
     for (let q = 0; q < nQubits; q++) H(q);
     for (let q = 0; q < nQubits; q++) CNOT(q, (q + 1) % nQubits);
     for (let q = 0; q < nQubits; q++) T(q);                                  // 8 T/round × 7 = 56 counted
+    onSnapshot?.(`round ${round + 1}`, re, im);
   }
   let exp = 0;                                                               // ⟨Z₀⟩
   for (let i = 0; i < N; i++) { const p = re[i] * re[i] + im[i] * im[i]; exp += (i & 1) ? -p : p; }

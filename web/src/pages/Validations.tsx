@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { EveSweepChart } from "../components/QkdCharts";
 import { api } from "../lib/api";
 import { mldsaDemo, mlkemDemo } from "../lib/crypto";
 import { DEMO_BANNER, isClientDemo } from "../lib/demoMode";
@@ -28,11 +29,11 @@ export default function Validations() {
       <h1 className="page-title">Validations</h1>
       <p className="page-sub">
         Run the cryptographic primitives live. PQC runs <b>entirely in your browser</b>{" "}
-        (pure-JS @noble/post-quantum); QKD + MCP {DEMO ? "also run in-browser (zero server compute)" : "run as server-side simulations"}.
+        (pure-JS @noble/post-quantum); the simulated QKD channel and the MCP agent call {DEMO ? "also run in-browser (zero server compute)" : "run server-side"}.
       </p>
       {DEMO && <div className="note" style={{ marginBottom: 12 }}>🖥️ {DEMO_BANNER}</div>}
 
-      <h2>Client-side post-quantum crypto (in-browser)</h2>
+      <h2>Post-quantum cryptography</h2>
       <div className="grid cols-2">
         <div className="card">
           <h3>ML-KEM-768 key encapsulation</h3>
@@ -67,10 +68,6 @@ export default function Validations() {
             </table>
           )}
         </div>
-      </div>
-
-      <h2 style={{ marginTop: 28 }}>{DEMO ? "Quantum simulations (in-browser)" : "Server-side quantum simulations"}</h2>
-      <div className="grid cols-2">
         <div className="card">
           <h3>Hybrid KEM handshake (ML-KEM-768 + X25519)</h3>
           <p>The PQC-first hybrid session key derivation, computed {DEMO ? "in your browser (@noble)" : "by the backend (liboqs)"}.</p>
@@ -89,6 +86,12 @@ export default function Validations() {
             </table>
           )}
         </div>
+      </div>
+
+      {/* "Quantum simulations" headed the real PQC hybrid handshake and the simulated BB84 channel
+          together until Round 58; the handshake now sits with the other post-quantum primitives. */}
+      <h2 style={{ marginTop: 28 }}>Simulated quantum channel {DEMO ? "(in your browser)" : "(server-side)"}</h2>
+      <div className="grid cols-1">
         <div className="card">
           <h3>BB84 QKD with eavesdropper</h3>
           <p>Slide the intercept-resend fraction; watch QBER rise above the security threshold.</p>
@@ -121,6 +124,7 @@ export default function Validations() {
               </tbody>
             </table>
           )}
+          <EveSweepChart distanceKm={qkdCfg().distance_km} />
         </div>
       </div>
 

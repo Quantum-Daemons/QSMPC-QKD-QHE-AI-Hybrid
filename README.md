@@ -988,7 +988,7 @@ See [`docs/pqc-roadmap.md`](docs/pqc-roadmap.md).
   **PaySim** transaction sample (CC-BY-SA-4.0) + the distilled CKKS-linear fraud model; and **satellite** scores
   **real NASA SMAP/MSL telemetry** (no licence stated by any provider - see DATA_LICENSES.md) with the real linear anomaly model - all tiny static JSON
   under `web/public/data/`, loaded by [`web/src/lib/realData.ts`](web/src/lib/realData.ts) and computed with the
-  real in-browser node-seal CKKS + secret-sharing MPC. Only **telecom** has no commercial-OK real attack dataset
+  real in-browser node-seal CKKS + an emp-wasm garbled-circuit 2PC (notional parties). Only **telecom** has no commercial-OK real attack dataset
   - the narrower and correct statement, since **5G-NIDD is CC BY 4.0 and commercially usable**, and this repository trains on it. What does not exist is a commercial-OK corpus of QKD-LAYER attacks, which is a different problem needing a physical QKD testbed under attack - so the QKD IDS uses representative synthetic features (logged as such in the run).
   The bundled sets are public / de-identified, so no real *personal* data leaves the browser - the privacy property
   is demonstrated on real, realistic inputs.
