@@ -4450,6 +4450,13 @@ messages rewritten, because the property it holds - no link target built from in
 redirect under any router version, and the next bypass of the library's own checks would make it
 reachable again.
 
+**Walked on the public demo with this branch deployed** (7ac17e6, serving `index-CSWSJrjw.js`, the file
+name the local build produced). Seven routes reached by clicking kept the same document with the right
+active nav link; Back worked; the not-found page, the `/agentic-ai` redirect, every `/usecase/:id`,
+an unknown id, the `?usecase=` selection and its fallback all behaved, with zero horizontal overflow;
+the medical pipeline verified all three published models and signed its summary; and the console
+carried no router warning.
+
 BUSINESS DOC RECONCILED Round 61. The out-of-repo document is brought level with this round. Its content
 is not quoted here, in the checklist, or in any commit - only the fact of the reconciliation, which is
 what gate 16 reads.
