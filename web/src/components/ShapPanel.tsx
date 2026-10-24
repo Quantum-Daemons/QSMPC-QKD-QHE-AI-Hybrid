@@ -53,7 +53,7 @@ export default function ShapPanel({ explanation, provenance, baseline, published
             nothing to do with whether a published model also ran. */}
         {hasTreeAttribution ? (
           <> · The published <i>tree ensemble</i> on this page <b>does</b> carry attribution — impurity
-          and permutation importance, in the model panel below, computed at training time because a
+          and permutation importance, in the model panel above, computed at training time because a
           forest has no closed-form Shapley value.</>
         ) : null}
       </p>
