@@ -243,10 +243,17 @@ published baseline they are measured against - including where the model falls s
 | Source | Used for | Licence | Note |
 |---|---|---|---|
 | C2SP/CCTV ML-KEM `modulus/` | FIPS 203 section 7.2 negative vectors, `web/scripts/check_mlkem_modulus_vectors.mjs` | CC0-1.0 | **Vendored** at `web/scripts/vectors/`, 56 KB gzipped, pinned to an upstream commit recorded in `PROVENANCE.txt` alongside per-file SHA-256. Upstream `ML-KEM/README.md`: "All test vectors are made available under the terms of the CC0 1.0." CC0 waives copyright but expressly does NOT grant patent rights. |
-| NIST ACVP-Server | FIPS 203 section 7.3 key-check vectors | US Government work, public domain | Not vendored, and not a substitute for the above: its invalid ML-KEM-512 entries are 1216-byte keys against a correct 800, so they test length, not the modulus. |
+| NIST ACVP-Server | FIPS 203 section 7.3 key-check vectors | US Government work, public domain | Not vendored for that check, and not a substitute for the above: its invalid ML-KEM-512 entries are 1216-byte keys against a correct 800, so they test length, not the modulus. |
+| NIST ACVP-Server, commit `975de31` | ML-KEM-768 keyGen / encapsulation / decapsulation known-answer test run in the browser (`web/src/lib/netkeys/vectors/mlkem768_acvp.json`, 10 cases) | US Government work, public domain | **Vendored subset**, copied verbatim with per-file SHA-256 in the JSON. Added Round 58. |
+| cacophony `vectors/cacophony.txt`, commit `8ee9d41` | the Noise_IKpsk2_25519_ChaChaPoly_BLAKE2s vector the in-browser WireGuard core is checked against (`noise_ikpsk2.json`) | public domain (Unlicense, upstream `LICENSE`) | one vector of the file, with its SHA-256. Added Round 58. |
+| NIST CAVP SP 800-135 `ikev2.zip` | IKEv2 prf / prf+ / SKEYSEED / key-stream cases (`ikev2_cavp.json`, 6 cases) | US Government work, public domain | Added Round 58. |
+| RFC 5903 section 8.1 | the ECP-256 shared-secret example | IETF Trust; code components under Simplified BSD | one worked example. Added Round 58. |
+| boringtun (Cloudflare), commit `6dcc889`, `boringtun/src/noise/handshake.rs` | the two WireGuard initial-state hash constants used as a NON-authoritative cross-check (`wireguard_initial_state.json`) | BSD-3-Clause, Copyright (c) 2019 Cloudflare, Inc. | two 32-byte values that follow from the WireGuard construction and identifier strings; attributed here although they are facts of the protocol rather than code. Added Round 58. |
 
-Both are test data rather than code, and neither ships in the built bundle — `web/scripts/` is
-outside `web/public/` and is not an import target, so Vite neither bundles nor serves it.
+The two sets above the line are test data rather than code and do not ship in the built bundle -
+`web/scripts/` is outside `web/public/` and is not an import target. The Round 58 vector files DO
+ship: the Validations page runs them in the visitor's tab, from a chunk loaded only when a check is
+run. Full provenance for every one of them: `references/net-key-schedules.md`.
 
 **Why the CC0 set is now redistributed here when it used to be fetched.** The check could not gate
 CI while it needed the network, and the only alternative to vendoring would have been to skip on

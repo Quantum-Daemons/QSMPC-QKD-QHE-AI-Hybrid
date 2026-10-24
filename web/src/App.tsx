@@ -6,14 +6,9 @@ import Orchestration from "./pages/Orchestration";
 import UseCases from "./pages/UseCases";
 import UseCasePage from "./pages/UseCasePage";
 import { USECASES } from "./lib/useCases";
+import NotFound from "./components/NotFound";
+import { NAV } from "./lib/nav";
 
-const NAV = [
-  { to: "/", label: "Overview", end: true },
-  { to: "/value", label: "Introduction & Value" },
-  { to: "/validations", label: "Validations" },
-  { to: "/orchestration", label: "E2E Orchestration" },
-  { to: "/usecases", label: "Use Cases" },
-];
 
 export default function App() {
   return (
@@ -44,7 +39,8 @@ export default function App() {
         </nav>
         <div style={{ marginTop: 28, fontSize: 11 }} className="muted">
           PQC-first hybrid · NIST FIPS 203/204<br />
-          CNSA 2.0 · HNDL / Q-Day aware
+          {/* Was "CNSA 2.0 · HNDL / Q-Day aware", which reads as a compliance badge. */}
+          Tracks CNSA 2.0 (defaults are not CNSA 2.0) · HNDL aware
         </div>
       </aside>
       {/* `tabIndex={-1}` so the skip link can actually MOVE focus here. Without it the browser
@@ -64,22 +60,17 @@ export default function App() {
           <Route path="/usecase/:id" element={<UseCasePage />} />
           {/* Without this, an unknown path rendered the sidebar next to an empty <main>, which reads
               as a broken page rather than a wrong address. */}
-          <Route path="*" element={<NotFound />} />
+          <Route path="*" element={<NotFoundPage />} />
         </Routes>
       </main>
     </div>
   );
 }
 
-function NotFound() {
+function NotFoundPage() {
   return (
-    <section className="page">
-      <h1>Page not found</h1>
-      <p className="muted">
-        That address does not match any page in this app. The use-case simulators live under
-        <code> /usecase/&lt;id&gt;</code>.
-      </p>
-      <p><Link to="/">Back to the overview</Link></p>
-    </section>
+    <NotFound title="Page not found"
+      lead={<>That address does not match any page in this app. The use-case simulators live under{" "}
+        <code>/usecase/&lt;id&gt;</code>.</>} />
   );
 }

@@ -7,15 +7,23 @@ below are the recommended future tracks (PoC milestones M3/M4).
 - **NIST FIPS 203 (ML-KEM)** - implemented in the hybrid KEM. yes
 - **NIST FIPS 204 (ML-DSA)** - implemented for message authentication. yes
 - **NIST FIPS 205 (SLH-DSA)** - add as a hash-based signature option (not in this liboqs build). []
-- **NSA CNSA 2.0** - 2027 procurement mandate; QKD non-recommended standalone.
-  `[UNVERIFIED - no primary NSA source is retrievable: nsa.gov and media.defense.gov return HTTP 403
-  to every automated fetch. Secondary sources also report a 2033 milestone this section omits.]`
-  For a *quotable* source on the QKD point, use **BSI TR-02102-1 v2026-01 section 2.1 "Use of Quantum-Safe Mechanisms"** (p.28): QKD
-  *"is currently not ready for use from a security point of view... the BSI does not recommend QKD
-  protocols at this time"*. The
-  architecture keeps QKD strictly as a PQC-hybrid add-on, on BSI's authority. **NSA is not a source
-  for this**: its CNSA 2.0 FAQ answers "No" to protecting an NSS with QKD and does not endorse a
-  hybrid add-on either. yes
+- **NSA CNSA 2.0** - national security systems (NSS) only: NSA *"does not mandate requirements on any
+  other entity outside of NSS"* (CNSA 2.0 and Quantum Computing FAQ, Ver. 2.2, October 2026). CNSSP 15
+  requires CNSA 2.0 algorithms in all new NSS acquisitions from **2027-01-01**; equipment that cannot
+  support them is phased out by **2030-12-31**; CNSA 2.0 is mandatory for all use by **2031-12-31**;
+  **2035** is the NSM-10 goal. A 2033 date appears only in the 2022 advisory's per-technology table,
+  not in CNSSP 15 or the FAQ. The required parameter sets are ML-KEM-1024, ML-DSA-87, AES-256 and
+  SHA-384/512; this repository's defaults (ML-KEM-768 + X25519, ML-DSA-65, HKDF-SHA256) are none of
+  them, so nothing here is CNSA 2.0 by default (ML-KEM-1024 and ML-DSA-87 are selectable). NSA's QKD
+  position is not "non-recommended standalone": the FAQ answers **"No"** to protecting an NSS with QKD,
+  in any configuration. Verified 2026-10-23 against FAQ Ver. 2.2 and CNSSP 15; nsa.gov still returns
+  HTTP 403 to scripts, so the FAQ was read from an archived copy of the PDF the NSA resource hub links.
+  On QKD, **BSI TR-02102-1 v2026-01 section 2.1 "Use of Quantum-Safe Mechanisms"** (pp.28-29; the QKD
+  paragraph is on p.29) says QKD *"is currently not ready for use from a security point of view... the
+  BSI does not recommend QKD protocols at this time"*. What BSI does recommend is a hybrid of a
+  quantum-safe and a classical key agreement (section 2.2), which is the ML-KEM + X25519 layer. Keeping
+  QKD as an optional, simulated add-on to that hybrid, never standalone, is **this project's** choice;
+  neither BSI nor NSA recommends it. yes
 
 ## Crypto-agility (done)
 Algorithms resolve through `CryptoRegistry` at runtime - ML-KEM-768 <-> -1024, QKD <->
@@ -113,20 +121,28 @@ Round 42.
   binds it. It is recorded because the demo is reachable from the EU and a roadmap with no EU
   milestone reads as parochial rather than scoped - which is what the Round 33 lead said, and was
   the one part of it that held.
-- **2026-09-21** - **FIPS 140-2 certificates move to the CMVP Historical List.** NIST's own wording:
-  *"FIPS 140-2 active modules can be used until this date for new systems. After this date, FIPS
-  140-2 validation certificates will be moved to the Historical List."* Federal agencies may then use
-  those modules only in EXISTING systems, not for new procurement. Verified at csrc.nist.gov 2026-08-06.
-  This is the nearest hard date in the whole table and it was missing from it. It does not bind this
+- **2026-09-21 (passed)** - **FIPS 140-2 certificates moved to the CMVP Historical List.** NIST's own
+  wording: *"FIPS 140-2 active modules can be used until this date for new systems. After this date,
+  FIPS 140-2 validation certificates will be moved to the Historical List."* Federal agencies may now
+  use those modules only in EXISTING systems; new systems need FIPS 140-3. Verified at csrc.nist.gov
+  2026-08-06 and again 2026-10-23, after the date. It does not bind this
   repository - nothing here is FIPS-validated and nothing claims to be - but it binds anyone
   procuring a module to run this kind of workload, so it belongs in a migration roadmap.
-- **2027** CNSA 2.0 new-procurement mandate -> be compliant before bids.
-- **2029** - Cloudflare commits its product suite to full PQ security *including PQ authentication*; Google sets 2029 as its PQC **migration** timeline (the weaker of the two commitments) -> supply-chain expectations.
+- **2027-01-01 / 2030-12-31 / 2031-12-31** - CNSA 2.0 under CNSSP 15, national security systems only:
+  new acquisitions, then phase-out of equipment that cannot support it, then all use. Not a target for
+  this repository's defaults, which are not CNSA 2.0 parameter sets.
+- **2029** - Cloudflare *targets* full PQ security for its product suite, *including PQ authentication*,
+  and calls its intermediate milestones changeable (blog, 2026-04-07); Google sets 2029 as its own PQC
+  **migration** timeline and prioritises PQC migration for authentication services (blog, 2026-03-25). Neither is a binding
+  commitment, and neither post ranks itself against the other -> supply-chain expectations.
 - **2030** deprecation of **112-bit-strength** RSA/ECC and **2035** disallowance of all quantum-vulnerable public-key algorithms, per **NIST IR 8547 ipd** (Nov 2024 - *Initial Public Draft*, not final, not binding). RSA-3072 / P-256 and above carry no 2030 milestone; plan field validation by 2027 Q1.
 - **2030-12-31 / 2031-12-31** - **EO 14412**, *Securing the Nation Against Advanced Cryptographic Attacks*
-  (signed 2026-06-22, 91 FR 38483): PQC key establishment on high-value assets by 2030-12-31 and digital
-  signatures by 2031-12-31, with a FAR rule putting contractors on the 2030 date. **National Security
-  Systems are excluded** and stay on CNSA 2.0. This is the binding US instrument.
+  (signed 2026-06-22, 91 FR 38483): PQC key establishment on high-value assets and high impact systems by
+  2030-12-31 and digital signatures by 2031-12-31 (section 4(b)). For contractors, section 6(c) directs
+  the FAR Council to publish a *proposed* rule within 180 days (about 2026-12-19) that would require
+  FIPS, including the PQC FIPS, by 2030-12-31; none had appeared in the Federal Register as of
+  2026-10-23. **National Security Systems are excluded** and stay on CNSA 2.0. This is the binding US
+  instrument for federal agencies.
 
   Note on the EO number, because secondary sources get it wrong: several write-ups call this **14409**.
   The Federal Register API returns **14412**, published 2026-06-25 at 91 FR 38483. The number above is
@@ -141,8 +157,8 @@ Round 42.
   and nothing below rests on it. EO 14412 remains the binding cryptographic instrument.
 - **2026-10-22 / phased to 2035** - **OMB Memorandum M-26-15**, *Execution of the Migration to
   Post-Quantum Cryptography* (2026-06-24), which is how EO 14412 is actually executed and is newer than
-  everything else in this list. Agency PQC Migration Plans are due to OMB and ONCD **within 120 days**
-  of issuance, so about **2026-10-22**, and Action One is to mitigate as much quantum risk as feasible
+  everything else in this list. Agency PQC Migration Plans were due to OMB and ONCD **within 120 days**
+  of issuance, so about **2026-10-22** (now passed), and Action One is to mitigate as much quantum risk as feasible
   by **2030-12-31**. Five phases: **1** 2026-2027 strategy and discovery, **2** 2027-2028 pilots, **3**
   2028-2030 prioritised migration and key establishment, **4** 2031 signature migration, **5** 2035
   full migration. Not applicable to national security systems.
@@ -179,7 +195,7 @@ Round 42.
 | **ETSI GS QKD 020** - REST-based Interoperable KMS API | V1.1.1, 2026-06-29 | First cross-vendor KMS-to-KMS spec. `pqc/transport.py` targets GS QKD **014** only; 014 + 020 is the current pair. |
 | **ETSI GS QKD 015 V2.1.1** - SDN control interface | Published 2022-04 | **Implemented in Round 18** (`qkd/sdn_controller.py`, mirrored in `web/src/lib/clientSdnController.ts`). Supplies the control plane the demo previously lacked, and its clause 1 scope statement is what settles that an MCP agent is an SAE rather than a controller. |
 | **ETSI GS QKD 014 V1.1.1** - key delivery API | Published 2019-02, **still the only published edition** | **Implemented in Round 18** (`qkd/kme.py`). An ed2 stable draft (v1.3.1) existed as of 2025-06 but is not published, so "QKD 014 compliant" in this repository means the 2019 document. The mandated mutual TLS is **not** implemented - see `threat-model.md`. |
-| **BSI TR-02102-1 v2026-01** | 2026-01-23 | The quotable basis for both "QKD never standalone" and the hybrid key-agreement recommendation - and it is fetchable, unlike NSA's pages. |
+| **BSI TR-02102-1 v2026-01** | 2026-01-23 | The quotable basis for the hybrid PQC + classical key-agreement recommendation (section 2.2) and for BSI not recommending QKD (section 2.1). It does not recommend QKD as an add-on either: "QKD never standalone" is this project's rule, not BSI's. |
 | **IACR ePrint 2026/935** - SoK: Private LLM Inference using Approximate HE | rev. 2026-06-03 | The citable ceiling: ~20 CKKS frameworks surveyed, largest demonstrated end-to-end model **8B parameters**, ~4 orders of magnitude slower than plaintext. Confirms nothing larger exists. |
 | **IACR ePrint 2026/1231** - Hybrid AKE for QKD networks without signatures | 2026-06-10 | The closest published construction to `hybrid_combiner_mode="its_toeplitz"`: KEM-only hybrid AKE with a conditional information-theoretic guarantee when the QKD leg is uncompromised. |
 | **arXiv:2601.18511v2** - Scaling up FHE-based PPML | v2 2026-06-17 | Best published absolute: **Llama-3-8B under CKKS at 20 s prefill / 18 s per output token on 8x RTX PRO 6000**. Quote this rather than hand-waving FHE cost - and quote the PAPER, not the SoK that summarises it: `references/REFERENCES.md` now carries the primary entry with the abstract verbatim. Note the eight GPUs; this project has one and its FHE default is CPU. |

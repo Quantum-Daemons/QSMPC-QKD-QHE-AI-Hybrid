@@ -15,9 +15,14 @@ module was the third copy, and its docstring is what a reader of this code sees 
 The browser row is different and is genuinely counted: 56 T-gates from an actual gate list. So the
 two rows of one table mean different things by "T-gates", which `BenchmarkPanel` now says.
 
-*information-theoretic* security model (QOTP perfect hiding), which the classical
-RLWE path cannot match. The Rate-1 QFHE ciphertext/plaintext ratio is also measured
-to contrast communication efficiency.
+security model of the scheme it simulates.
+
+CORRECTED 2026-10-23. This said the information-theoretic model "the classical RLWE path cannot match"
+and that the Rate-1 QFHE ratio is measured "to contrast communication efficiency". The one-time pad is
+information-theoretically hiding as a SCHEME, but this run's pad is numpy-generated and wrapped by
+ML-KEM-768 + X25519, so the run is computational, like the RLWE path. And the ratio below is in bytes of
+a simulated state vector, which no CKKS byte ratio can be compared with; classical FHE reaches rate 1 too
+(Gentry and Halevi, TCC 2019; Brakerski, Doettling, Garg and Malavolta, TCC 2019).
 """
 
 from __future__ import annotations
@@ -29,6 +34,17 @@ import numpy as np
 from ..qhe.private_inference import private_inference
 from ..qhe.qcnn import QCNN
 from .metrics import BenchResult
+
+#: The QSMPC-FHE row's security label, defined ONCE because it is read twice below and parsed for the
+#: substring "information-theoretic" by the security scorer
+#: (`tests/test_security_model_prose_is_not_a_silent_score_input.py`). It used to read
+#: "information-theoretic (QOTP perfect hiding)" with the backend "perfectly-secure QHE", and neither
+#: holds for a run of this code: the quantum one-time pad is information-theoretically hiding AS A
+#: SCHEME, given a uniform secret pad (Ambainis, Mosca, Tapp, de Wolf, FOCS 2000), but here the pad
+#: comes from numpy's default generator and travels under ML-KEM-768 + X25519, so the composite is
+#: computational (MLWE, FIPS 203). The substring is kept so no (unrendered) score moves.
+QSMPC_SECURITY_MODEL = (
+    "information-theoretic as a scheme (QOTP); not this run - numpy pad, ML-KEM-768 + X25519 wrap")
 
 
 def run_quantum(
@@ -84,13 +100,13 @@ def run_quantum(
     # 68-vs-96 gap the benchmark reported. The leakage bound is a LITERATURE figure (PRX 15 041056),
     # not a property of this run, so it is no longer asserted as one.
     sec = compute_security_score(
-        security_model="information-theoretic (QOTP perfect hiding)",
+        security_model=QSMPC_SECURITY_MODEL,
         pqc_hybrid=True, kem=kem or "ml-kem-768+x25519",
         qkd_key_bits=qkd_key_bits, qber=qber, leakage_bits_per_weight=None,
     )
     return BenchResult(
         path="QSMPC-FHE",
-        backend="qotp+qcnn (perfectly-secure QHE)",
+        backend="qotp+qcnn (state-vector simulation; QOTP pad numpy-generated)",
         workload=workload,
         latency_ms=round(dt / n * 1000, 3),
         throughput_ips=round(n / dt, 2),
@@ -103,7 +119,7 @@ def run_quantum(
         ciphertext_plaintext_ratio=round(rate, 4),
         t_gate_count=qc.t_count(),
         qubits=n_qubits,
-        security_model="information-theoretic (QOTP perfect hiding)",
+        security_model=QSMPC_SECURITY_MODEL,
         security_score=sec["total"],
         device="cpu-sim",
         extra={"samples": n, "qcnn_params": qc.n_params,
@@ -111,7 +127,7 @@ def run_quantum(
                # quantum analogue of the FHE-linear / MPC-non-linear split: Clifford gates are
                # the cheap "linear" layer, T-gates the expensive "non-linear" one. Unlike the
                # classical hybrid there is NO FHE↔MPC boundary — QOTP/Rate-1 QFHE evaluate both
-               # on the encrypted state (ct/pt≈1), and the QSMS/QOT path is the quantum secure-MPC.
+               # on the encrypted state, and the QSMS/QOT path is the quantum secure-MPC.
                "linear_analogue": "Clifford gates",
                "nonlinear_analogue": f"T-gates (×{qc.t_count()}, the non-linear cost)",
                "no_fhe_mpc_boundary": True,

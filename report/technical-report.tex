@@ -102,9 +102,10 @@ qualification on one.
 
 \subsection{Problem}
 Post-quantum migration is a procurement deadline before it is a research problem. NIST FIPS 203, 204
-and 205 have been final since August 2024; NIST IR 8547 deprecates RSA-2048 and ECC-256 by 2030 and
-disallows them after 2035; CNSA 2.0 requires quantum-resistant support in new national security
-systems acquisitions from 1 January 2027. Harvest-now-decrypt-later makes the confidentiality
+and 205 have been final since August 2024; NIST IR 8547, still an initial public draft, would deprecate
+112-bit-strength public-key algorithms such as RSA-2048 after 2030 and disallow all quantum-vulnerable
+ones, P-256 included, after 2035; and for national security systems only, CNSSP 15 requires CNSA 2.0
+algorithms in new acquisitions from 1 January 2027. Harvest-now-decrypt-later makes the confidentiality
 deadline earlier than the signature deadline for any data with a long secrecy lifetime.
 
 Separately, privacy-preserving computation has become tractable for \emph{small} models. Homomorphic
@@ -137,8 +138,8 @@ decryption but \emph{not} FHE computation, citing WASM threading and a 2\,GB mem
 system evaluates a real CKKS dot product and a real CKKS convolution in the tab.
 
 \textbf{The claim is therefore the composition rather than either half}: PQC key establishment, then
-QKD-derived key material, then secure multiparty computation, then homomorphic evaluation, then model
-inference --- chained end to end in one browser tab with no server-side compute. A search for an
+a simulated QKD link (it yields a key length, not key bytes), then secure multiparty computation, then
+homomorphic evaluation, then model inference --- chained end to end in one browser tab with no server-side compute. A search for an
 integrated browser system performing that whole chain returned nothing. Two caveats travel with the
 claim and are stated wherever it appears: the two MPC parties are notional, running over an in-memory
 transport within a single tab, so the protocol, the bytes and the wall-clock are real while the party
@@ -621,10 +622,12 @@ is a discipline rather than an infrastructure.
 \begin{enumerate}[label={[\arabic*]},leftmargin=*,itemsep=1.5pt]
   \item NIST. \emph{FIPS 203: Module-Lattice-Based Key-Encapsulation Mechanism Standard}. August 2024.
   \item NIST. \emph{FIPS 204: Module-Lattice-Based Digital Signature Standard}. August 2024.
-  \item NIST. \emph{IR 8547: Transition to Post-Quantum Cryptography Standards} --- RSA-2048 and
-        ECC-256 deprecated 2030, disallowed after 2035.
-  \item NSA. \emph{CNSA 2.0} --- quantum-resistant support required in new NSS acquisitions from
-        1 January 2027.
+  \item NIST. \emph{IR 8547 (Initial Public Draft): Transition to Post-Quantum Cryptography Standards}.
+        November 2024 --- 112-bit-strength algorithms such as RSA-2048 deprecated after 2030; all
+        quantum-vulnerable public-key algorithms, P-256 included, disallowed after 2035.
+  \item NSA. \emph{CNSA 2.0 and Quantum Computing FAQ}, Ver. 2.2, October 2026; and CNSS,
+        \emph{CNSSP 15}, December 2024 --- CNSA 2.0 algorithms required in new national security
+        system acquisitions from 1 January 2027 and in all NSS use by 31 December 2031.
   \item Regulation (EU) 2024/1689 (AI Act), Article 50; and Regulation (EU) 2026/1744 (Digital
         Omnibus on AI), in force 27 July 2026, introducing a four-month transitional period for
         providers who placed systems on the market before 2 August 2026.

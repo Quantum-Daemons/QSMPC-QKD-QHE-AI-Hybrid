@@ -59,7 +59,9 @@ const skrModel: Model = (p, prm, fEC = qkdCfg().error_correction_eff) => {
 };
 
 // E91 (entanglement-based, CHSH) SKR mirror of qkd/e91.py: a Werner-state visibility V (degraded by the
-// channel) gives S = 2*sqrt(2)*V and QBER = (1-V)/2; a Bell violation (S>2) is required for a key. Only
+// channel; with an eavesdropper the state is a Werner/intercept-resend mixture, not a Werner state) gives
+// S = 2*sqrt(2)*V and QBER = (1-V)/2; a Bell violation (S>2) is required for a key, though the rate is
+// already zero before S reaches 2 at the configured fEC. Only
 // basis_prob + pp_threshold apply here (the decoy intensities do not).
 const e91Skr: Model = (p, prm, fEC = qkdCfg().error_correction_eff) => {
   const eta = transmittance(p);
