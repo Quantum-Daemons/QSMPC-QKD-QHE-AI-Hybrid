@@ -2,10 +2,14 @@
 
 An entanglement-based alternative to prepare-and-measure BB84 (the OptiQKD / AML-QKD papers evaluate BB84,
 E91 and COW side by side): a shared entangled source distributes pairs, Alice and Bob each measure in a
-randomly chosen basis, a subset of the outcomes tests the CHSH inequality (S > 2 certifies genuine
-entanglement / no eavesdropper), and the matching-basis outcomes form the key. Modelled with a Werner state
+randomly chosen basis, a subset of the outcomes tests the CHSH inequality (S > 2 certifies entanglement;
+it does not by itself certify a key - a device-independent analysis of this noise model needs S > 2.456 at
+f = 1.16, Acin et al. 2007), and the matching-basis outcomes form the key. Modelled with a Werner state
 of visibility ``V`` degraded by channel loss + noise: the CHSH value is ``S = 2*sqrt(2)*V`` (Tsirelson bound
-scaled by V) and the intrinsic QBER is ``(1 - V)/2``.
+scaled by V) and the intrinsic QBER is ``(1 - V)/2``. With an eavesdropper the state is a MIXTURE of Werner
+pairs and intercept-resend pairs - not a Werner state, and separable once ``V'(3 - 2f) <= 1`` - whose QBER
+and CHSH value in the measured plane equal a Werner state's at ``V_eff``, so ``S = 2*sqrt(2)*(1 - 2Q)`` still
+holds (her disturbance is composed independently with the channel error, see ``channel.py``).
 
 Honest label: a simulation, not quantum hardware. Reuses :class:`~qsh.qkd.bb84.QKDResult` + ``_h2`` and
 :mod:`~qsh.qkd.channel` so the AI optimizer (:mod:`~qsh.qkd.optimize`) can treat BB84 and E91 uniformly.
@@ -35,7 +39,8 @@ def run_e91(n_pairs: int = 100_000, params: ChannelParams | None = None, *, visi
     effective ``V_eff``; ``S = 2*sqrt(2)*V_eff`` and ``QBER = (1 - V_eff)/2``. Matching-basis coincidences
     (ratio ``p^2 + (1-p)^2`` for basis bias ``p``) form the sifted key; the BBM92/GLLP secure fraction
     ``1 - H2(e) - f*H2(e)`` gives the SKR. A CHSH ``S <= 2`` (no Bell violation) or a QBER above
-    ``pp_threshold`` aborts with no secure key.
+    ``pp_threshold`` aborts with no secure key. The ``S <= 2`` test never DECIDES the key for any
+    ``f >= 0.664``: the rate is already zero from Q = 0.0981 (S = 2.27) at the configured f = 1.16.
     """
     params = params or ChannelParams()
     rng = np.random.default_rng(seed)

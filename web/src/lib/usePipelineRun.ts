@@ -176,9 +176,11 @@ export const makeDefaultParams = () => ({
   sat_pulses: webCfg().demo_sat_pulses,
   // The two fixed terms of the link budget, and the reason the eavesdrop check could never fire.
   // `channelLossDb` caps the diffraction term at the near field, so these floor total loss at 8 dB
-  // no matter how short the range: g >= 6.31, and C_s > 0 then needs h(QBER) < 1/(1+g) = 0.137
-  // while the misalignment floor of 0.025 alone gives 0.169. Every abort was therefore attributable
-  // to the budget rather than to Eve, at every setting the page offered. Exposing them lets a
+  // no matter how short the range - with the detector's 4.0 dB, g >= 15.8 - and at the default
+  // budget C_s is negative at every range (-3.70 at 0.1 km with no eavesdropper). Every abort was
+  // therefore attributable to the budget rather than to Eve. (Corrected 2026-10-24: this comment
+  // quoted g >= 6.31 and the pooled tolerance 1/(1+g), both from before detector efficiency entered
+  // g and the per-basis entropy replaced the pooled one.) Exposing them lets a
   // visitor select a LINK (the Qi et al. 2019 demonstration was 4.1 dB on fibre) rather than edit
   // physics; the defaults are the Micius-class downlink and are unchanged.
   sat_atmospheric_db: FREE_SPACE.freeSpace!.atmosphericDb,
