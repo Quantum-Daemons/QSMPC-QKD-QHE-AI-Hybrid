@@ -1,4 +1,6 @@
 import { Link } from "react-router-dom";
+import KeyPoints from "../components/KeyPoints";
+import StageBadge from "../components/StageBadge";
 import { DEMO_BANNER, isClientDemo } from "../lib/demoMode";
 import { USECASES } from "../lib/useCases";
 import { modelsFor, studentModel, teacherModel } from "../lib/config";
@@ -11,21 +13,28 @@ export default function UseCases() {
   return (
     <div>
       <h1 className="page-title">Industry Use Cases</h1>
-      <p className="page-sub">
-        Each use case has its own page: a live <b>two-party (Alice↔Bob) simulator</b> you Start / Pause /
-        Step / Stop / Restart, with that industry's benchmark (latency · accuracy · security posture ·
-        quantum advantage) and, where applicable, a signed XAI explanation. Finance / Medical / Genomics run a
-        private inference; Telecom and Satellite are QKD/QSDC paths. Each card names the model that
-        page actually runs, the corpus it was trained on and that corpus's licence, read from the
-        registry rather than written here.
-      </p>
-      <p className="page-sub" style={{ fontSize: 13 }}>
-        <b>Agentic AI · quantum-safe MCP is a cross-cutting layer integrated into every use case below</b> —
-        each page embeds an in-browser agent whose request/response is sealed + signed over a client-side
-        quantum-safe MCP channel (ML-KEM-768 + ML-DSA-65 + AES-256-GCM) as that industry's own MCP tool
-        (<code>score_transaction</code> / <code>query_cohort</code> / <code>pool_allele_counts</code> /
-        <code>inspect_qkd_telemetry</code> / <code>relay_mission_telemetry</code>), fed by that run's live metrics.
-      </p>
+      {/* Two paragraphs (123 words) became four points and a table drawn from the use-case data,
+          so the per-industry MCP tool and channel cannot drift from what each page runs. */}
+      <KeyPoints items={[
+        <>Each use case has its own page with a live <b>two-party (Alice↔Bob) simulator</b> you Start / Pause / Step / Stop / Restart.</>,
+        <>Each page shows that industry's benchmark (latency · accuracy · security posture) and, where applicable, a signed XAI explanation.</>,
+        <>Every card's model, corpus and licence is read from the registry, not written here.</>,
+        <><b>Agentic AI · quantum-safe MCP</b> runs on every page: an in-browser agent's request and response are sealed and signed (ML-KEM-768 + ML-DSA-65 + AES-256-GCM) as that industry's MCP tool, fed by the run's live metrics.</>,
+      ]} />
+      <table className="facts-table small" style={{ margin: "10px 0 16px", maxWidth: 860 }}>
+        <thead><tr><th>Use case</th><th>Agent's MCP tool</th><th>Private inference</th><th>Quantum channel</th></tr></thead>
+        <tbody>
+          {USECASES.map((u) => (
+            <tr key={u.id}>
+              <td>{u.nav}</td>
+              <td><code>{u.agenticTool}</code></td>
+              <td>{u.inference ? "CKKS + garbled-circuit 2PC" : "-"}</td>
+              <td>{u.id === "satellite_comms" ? "free-space BB84/E91 + QSDC test" : u.id === "telecom_ids"
+                ? "fibre BB84/E91 + QML-IDS" : "fibre BB84/E91"} <StageBadge kind="simulated" /></td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
       {DEMO && <div className="note" style={{ marginBottom: 12 }}>🖥️ {DEMO_BANNER}</div>}
 
       <div className="grid cols-2">
@@ -69,7 +78,6 @@ export default function UseCases() {
                   ? <>{pinned.length} model{pinned.length > 1 ? "s" : ""} published and pinned - verifiable in your browser</>
                   : <>weights not published: the source data's licence does not clearly permit redistributing them</>}
               </p>
-              <p className="muted" style={{ fontSize: 11 }}>{u.market}</p>
               <span className="btn" style={{ marginTop: 6, display: "inline-block" }}>Open simulator →</span>
             </Link>
           );

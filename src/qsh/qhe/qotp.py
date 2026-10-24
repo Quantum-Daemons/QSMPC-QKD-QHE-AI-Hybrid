@@ -4,8 +4,8 @@ A quantum state is encrypted by applying a random Pauli  X^a Z^b  to each qubit.
 Averaged over the uniformly-random key (a, b), any state becomes the maximally
 mixed state I/2^n -> information-theoretic ("perfect") security, independent of the
 server's compute power (Ortega & Martín-Delgado, arXiv:2602.12712, 2026 --
-``references/Reverse_Delegated_Training_and_Private_Inference_via_Perfectly-Secure_
-Quantum_Homomorphic_Encryption.pdf``).
+https://arxiv.org/abs/2602.12712; the PDF is not redistributed here - its arXiv licence grants
+third parties nothing, see ``DATA_LICENSES.md``).
 
 Clifford gates can be evaluated *homomorphically* by updating the Pauli keys (the
 Clifford group normalises the Pauli group); only T gates need a magic-state /

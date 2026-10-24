@@ -1,5 +1,6 @@
 import { useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
+import KeyPoints from "../components/KeyPoints";
 import OrchestrationGraph from "../components/OrchestrationGraph";
 import PipelineControls from "../components/PipelineControls";
 import RunMonitor from "../components/RunMonitor";
@@ -61,11 +62,13 @@ export default function Orchestration() {
   return (
     <div>
       <h1 className="page-title">E2E Orchestration</h1>
-      <p className="page-sub">
-        Run the full quantum-safe pipeline live for any use case. Crypto algorithms (KEM / QKD /
-        FHE / signature) are swappable at runtime — crypto-agility. Pause, step one stage at a
-        time, and export the animated run. (Per-industry pages add a two-party simulator + benchmark.)
-      </p>
+      {/* "Crypto algorithms (KEM / QKD / FHE / signature) are swappable at runtime" until Round 58:
+          the demo's FHE backend is fixed (node-seal), so FHE is swappable only in the full deployment. */}
+      <KeyPoints items={[
+        "Run the full quantum-safe pipeline live for any use case; pause, step one stage at a time, and export the animated run.",
+        "Swappable at run time: KEM, signature, key source and the QKD protocol (simulated). The FHE backend is selectable only in the full local deployment.",
+        "The per-industry pages add a two-party simulator and the benchmark.",
+      ]} />
       {DEMO && <div className="note" style={{ marginBottom: 12 }}>🖥️ {DEMO_BANNER}</div>}
       {/* The rejected-parameter notice. Silence here would be indistinguishable from the defect
           this replaced - the page would still show a use case the URL did not name, and the only

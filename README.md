@@ -3,15 +3,16 @@
 > An end-to-end orchestration **security layer** that chains **QKD -> QSMPC -> QHE/FHE ->
 > privacy-preserving AI** on a **PQC-first hybrid** foundation, with industry use cases
 > (finance / healthcare / genomics / telecom-defence / **satellite**), a **classical-vs-quantum
-> benchmark** (latency, accuracy, a **security posture table**, **quantum advantage**, and an
+> benchmark** (latency, accuracy, a **security posture table**, and an
 > **Alice <-> Bob** two-party E2E), and a researcher/business-facing **SPA** that runs **entirely
 > client-side** in public-demo mode.
 
 License: **Apache-2.0**, Python **3.12**, GPU: **NVIDIA RTX PRO 6000 Blackwell + CUDA 13**
 
 This is a **research / proof-of-concept**. Real implementations where tractable, honest
-simulation/scaffolds where not - every claim is tied to a primary source in
-[`references/`](references/REFERENCES.md).
+simulation/scaffolds where not - claims are cited to primary sources in
+[`references/`](references/REFERENCES.md) where one exists, and the corrections each fact-check made are
+recorded in [`docs/verification-log.md`](docs/verification-log.md).
 
 > **What is new here, and what is not.** This project's verification rule is that a novelty claim
 > must survive an adversarial search for prior art. Applied to its own headline claim the answer is
@@ -28,28 +29,27 @@ simulation/scaffolds where not - every claim is tied to a primary source in
 > computation**, citing WASM threading and the 2 GB memory ceiling. This demo evaluates a real CKKS
 > dot product and a real CKKS convolution in the tab.
 >
-> **So the claim is the composition, not either half:** PQC key establishment to QKD-derived key
-> material to secure multiparty computation to homomorphic evaluation to model inference, chained end
-> to end in one browser tab with zero server compute. A search for an integrated browser system doing
+> **So the claim is the composition, not either half:** PQC key establishment to a simulated QKD link
+> (it yields a key length, not key bytes) to secure multiparty computation to homomorphic evaluation to
+> model inference, chained end to end in one browser tab with zero server compute. A search for an integrated browser system doing
 > all of that returned nothing. Two caveats travel with it: the two MPC parties are notional - one
 > tab, an in-memory transport, real protocol and bytes and wall-clock but no genuine party separation
 > - and the quantum channel is simulated, because no browser API for QKD exists. And client-side is
 > not automatically private: WWW 2026's WAMO paper argues browser deployment moves a model into a
 > hostile environment, which is one reason the models here are public rather than treated as secrets.
 
-> **Positioning - quantum-safe, not quantum-advantage.** The value here is **quantum-safe / PQC**, a
-> regulation-driven, fast-growing market (NIST FIPS 203/204/205; NSA CNSA 2.0 procurement mandate 2027;
-> EU roadmap 2026/2030/2035; "harvest-now-decrypt-later"; Grand View Research sizes the PQC market at
-> ~$1.6 B in 2025 reaching ~$20.5 B by 2033, a 37.8 % CAGR over 2026-2033, and the vendor spread on the
-> base year is about 4x - see the market table on the Value page, which lists each house separately
-> rather than blending them). A general **quantum *advantage*** for these workloads is **not** claimed
+> **Positioning - quantum-safe, not quantum-advantage.** The value here is **quantum-safe / PQC**, and
+> what drives it is regulation (NIST FIPS 203/204/205; for national security systems only, CNSSP 15
+> requires CNSA 2.0 algorithms in new acquisitions from 2027 and in all use by 2031; US EO 14412 moves
+> federal high-value assets and high impact systems to PQC key establishment by 2030 and signatures by
+> 2031; EU roadmap 2026/2030/2035; "harvest-now-decrypt-later"). A general **quantum *advantage*** for these workloads is **not** claimed
 > as a market benefit - it is broadly unproven in 2026 (e.g. classical tensor-network simulation matching
-> annealing results), so the numeric "quantum advantage" stays a **research / education** metric in the
-> benchmark. For the QCNN specifically the evidence is sharper than "unproven": Bermejo, Braccia,
+> annealing results), and the numeric "quantum advantage" score the benchmark used to print is
+> **retired from every surface** (2026-10-23): its inputs measured different things on the two sides. For the QCNN specifically the evidence is sharper than "unproven": Bermejo, Braccia,
 > Rudolph, Holmes, Cincio and Cerezo show that randomly initialised QCNNs **can only act on
 > low-bodyness measurements of their input and are efficiently classically simulable** with Pauli
 > shadows, and argue that QCNN successes largely reflect benchmark simplicity
-> ([arXiv:2408.12739](https://arxiv.org/abs/2408.12739), rev. Feb 2026). That is the frame for this
+> (PRX Quantum 7, 020304, 2026; [arXiv:2408.12739](https://arxiv.org/abs/2408.12739)). That is the frame for this
 > repository's own measured result - its trained QCNN loses to logistic regression on the same split,
 > which is the expected outcome rather than a disappointing one, and both figures are printed side by
 > side on the page. Two circuit widths ship for telecom so the effect of the register size can be
@@ -77,10 +77,10 @@ Four workstreams (WS), unified by one pipeline and a crypto-agility registry:
 
 | WS | Theme | What's implemented |
 |----|-------|--------------------|
-| **WS1** | **AI-QKD** parameter optimization | BB84 **two-intensity decoy-state** simulation (Ma et al.'s Vacuum+Weak estimator with the vacuum yield modelled rather than measured - the paper's own two-intensity case, its section 3.5, bounds $`Y_0`$ instead) (+ a selectable **E91/CHSH** protocol), QBER/SKR telemetry, eavesdropper detection; a **published-reference decoy model** (`qkd/decoy_reference.py`) whose 13 tests assert Ma et al. PRA 72, 012326 (2005) values rather than this project's own - decoy reaches past 140 km where non-decoy dies near 40, and at the customary $`\mu = 0.1`$ a non-decoy link's tagged fraction exceeds 1 at **zero** distance, so it yields no key even back-to-back; a **QRNG** entropy source (state-vector quantum-measurement sim + SP 800-90B section 4.4 continuous health tests, an **SP 800-90B min-entropy estimate**, and a **Leftover-Hash-Lemma / seedless** Toeplitz extractor) that seeds the key material; a config-gated **leakage-resilient PQC+QKD key combiner**; and **OptiQKD** - a measured AI optimizer (scikit-learn surrogate + gradient-free search) tuning decoy (`mu_signal` / `mu_decoy`) + basis params to raise the secret-key rate vs default (with a convergence metric); the reference framework reports +14-25 % in simulation |
+| **WS1** | **AI-QKD** parameter optimization | BB84 **two-intensity decoy-state** simulation (Ma et al.'s Vacuum+Weak estimator with the vacuum yield modelled rather than measured - the paper's own two-intensity case, its section 3.5, bounds $`Y_0`$ instead) (+ a selectable **E91/CHSH** protocol), QBER/SKR telemetry, eavesdropper detection (intercept-resend's 0.25 f disturbance composed independently with the channel error, a + b - 2ab, in both languages); a **published-reference decoy model** (`qkd/decoy_reference.py`) whose 13 tests assert Ma et al. PRA 72, 012326 (2005) values rather than this project's own - decoy reaches past 140 km where non-decoy dies near 40, and at the customary $`\mu = 0.1`$ a non-decoy link's tagged fraction exceeds 1 at **zero** distance, so it yields no key even back-to-back; a **QRNG** entropy source (state-vector quantum-measurement sim + SP 800-90B section 4.4 continuous health tests, an **SP 800-90B min-entropy estimate**, and a **Leftover-Hash-Lemma / seedless** Toeplitz extractor) that seeds the key material; a config-gated **leakage-resilient PQC+QKD key combiner**; and **OptiQKD** - a measured AI optimizer (scikit-learn surrogate + gradient-free search) tuning decoy (`mu_signal` / `mu_decoy`) + basis params to raise the secret-key rate vs default (with a convergence metric); the reference framework reports +14-25 % in simulation |
 | **WS2** | **QML-IDS** intrusion detection | 8 classes = **7 QKD attack types + normal traffic**; RandomForest baseline + PennyLane variational quantum classifier. Scored on macro F1, not attack-vs-normal F1 |
 | **WS3** | **QSMPC x QKD** | Shamir + d-level QFT secure summation (faithful to the paper example), quantum oblivious transfer, quantum-safe PSI |
-| **WS4** | **QHE x AI** | Quantum one-time pad (perfect hiding), variational QCNN private inference (Clifford+T in the browser circuit; the Python module has no T gate), Rate-1 quantum **transport** (no `Eval`, so not QFHE); classical hybrid = CKKS **linear** layers (TenSEAL CPU / OpenFHE CPU / HEonGPU GPU - commercial-OK) + **MPyC** secret-sharing **non-linear** layers (ReLU/argmax) - incl. a **genuine FHE convolution** (im2col -> CKKS `dot_plain`) so the medical use case runs a real small CNN on **real MedMNIST images** under encryption |
+| **WS4** | **QHE x AI** | Quantum one-time pad (perfectly hiding as a scheme; the demo's pad is seeded), variational QCNN private inference (Clifford+T in the browser circuit; the Python module has no T gate), Rate-1 quantum **transport** (no `Eval`, so not QFHE); classical hybrid = CKKS **linear** layers (TenSEAL CPU / OpenFHE CPU / HEonGPU GPU - commercial-OK) + **MPyC** secret-sharing **non-linear** layers (ReLU/argmax) in the full deployment, an emp-wasm garbled-circuit 2PC between notional parties in the browser - incl. a **genuine FHE convolution** (im2col -> CKKS `dot_plain`) so the medical use case runs a real small CNN on **real MedMNIST images** under encryption |
 
 **Crypto-agility is the headline library strategy** - in the EU NIS Cooperation Group sense
 ([PQC Roadmap](https://digital-strategy.ec.europa.eu/en/library/coordinated-implementation-roadmap-transition-post-quantum-cryptography),
@@ -125,8 +125,8 @@ argmax - so its FHE/MPC figures are **genuinely measured client-side, zero VPS c
 | `finance_aml` | PQC -> QKD -> **PSI** (cross-bank blacklists) -> FHE fraud inference | finance / AML |
 | `medical_fl` | PQC -> QKD -> **federated training** + secure aggregation -> private diagnosis | healthcare |
 | `genomics` | PQC -> QKD -> **QSMS secure summation** (pooled allele counts) -> FHE | genomics |
-| `telecom_ids` | PQC -> QKD (w/ eavesdropper) -> **QML-IDS** attack detection | telecom / defence |
-| `satellite_comms` | PQC -> **free-space QKD** (BB84 downlink) -> **QSDC** direct telemetry (inline eavesdrop check) | satellite |
+| `telecom_ids` | PQC -> simulated QKD (optional eavesdropper) -> **QML-IDS** attack detection | telecom / defence |
+| `satellite_comms` | PQC -> simulated **free-space QKD** (BB84 downlink) -> **QSDC** test with an inline eavesdrop check (it cannot close at the default link budget, and the run says why) | satellite |
 
 **Maturity, stated in the same breath as the novelty.** CISA's Space Systems Critical Infrastructure
 Working Group (*Space Systems Security and Resilience Landscape: Zero Trust in the Space
@@ -144,7 +144,7 @@ Each use case has its **own page** (`/usecase/:id`) - a **live two-party simulat
 Pause / Step / Stop / Restart. A **single Run** drives both the animated E2E protocol **and** the
 benchmark: the benchmark is **assembled from that very run** (no separate "Run benchmark" button) -
 the MPC-FHE row is the run's **real measured FHE-linear + MPC-non-linear latency**, shown next to the
-QSMPC-FHE comparison, quantum advantage, security posture, and (on all five use-case pages) a signed
+QSMPC-FHE comparison, security posture, and (on all five use-case pages) a signed
 SHAP explanation. The two-party diagram makes the **MPC-FHE secret-sharing over a LAN <-> WAN <-> LAN** link
 explicit - linear layers cross as a **CKKS ciphertext**, non-linear layers as **secret-shares**. In
 the **public demo** (`?demo=client`) every use case runs **entirely in the browser** with **real,
@@ -433,17 +433,18 @@ the Blackwell box (TenSEAL CPU + MPyC, `linear` workload):
 | MPC-FHE | TenSEAL CKKS + MPyC (CPU) | medium | ~243 ms | ~215 ms | ~28 ms | ~4.5 KB | 1.0 | ~1483x | computational (RLWE) |
 | MPC-FHE | TenSEAL CKKS + MPyC (CPU) | large \* | ~1885 ms | ~1719 ms | ~165 ms | ~24.5 KB | 1.0 | - | computational (RLWE) |
 | MPC-FHE | HEonGPU CKKS (GPU sm_120) + MPyC | medium | batched | GPU | CPU | - | - | - | computational (RLWE) |
-| QSMPC-FHE | QOTP + QCNN (Clifford+T in the browser), no trained weights | - | ~4 ms | Clifford | T-gates x56 | n/a | n/a | **1.0 measured in QUBITS** (see note) | information-theoretic (QOTP) |
+| QSMPC-FHE | QOTP + QCNN (Clifford+T in the browser), no trained weights | - | ~4 ms | Clifford | T-gates x56 | n/a | n/a | - (see note) | information-theoretic as a scheme (QOTP); not this run (seeded pad) |
 
-**Note on the `1.0` in the ct/pt column, because this README publishes two different numbers for
-what looks like one quantity.** The row above says `1.0`; the WS4 table below says the measured
-Rate-1 ratio is 1.2769 at 8 qubits, 1.0693 at 10 and 1.0173 at 12. Both are correct and they measure
-different things. **`1.0` counts QUBITS**: under a QOTP the ciphertext is the same number of qubits as
-the plaintext, which is the whole point of a rate-1 scheme and is exactly 1.0 by construction, key
-excluded. **The 1.2769 family counts BYTES** of the serialised payload, which includes the roughly
-1135-byte encapsulated key - fixed in size, so it dominates a small state and fades as the state
-grows. Neither is the literature's 1.32x, which is a config constant feeding a static KPI and is not
-a measurement of this code. See [`docs/architecture.md`](docs/architecture.md).
+**Note on the dash in the QSMPC-FHE ct/pt cell.** Earlier revisions printed `1.0` here and 1.2769 in
+the WS4 table below, and a config constant of 1.32 fed an Overview card. None of the three can share a
+column with the CKKS byte ratio. `1.0` counts QUBITS only: a one-time pad maps $n$ qubits to $n$ qubits,
+but it also needs a $2n$-bit classical key, which `1.0` leaves out (Ambainis, Mosca, Tapp and de Wolf,
+FOCS 2000). The 1.2769 family (1.0693 at 10 qubits, 1.0173 at 12) divides by the BYTES of a classically
+simulated state vector of $2^n$ amplitudes, and a quantum ciphertext has no size in bytes. In the units of
+the Rate-1 QFHE paper, qubits plus bits (Chardouvelis, Doettling and Malavolta, TCC 2021, Def. 6.1), this
+module's 8-qubit KEM-wrapped transport is about 1135x, tending to 3 as $n$ grows. And 1.32 is not in
+that paper, which reports no concrete figure; the constant and the card are removed. See
+[`docs/architecture.md`](docs/architecture.md).
 
 The **Security** column used to publish `68 / 100` and `96 / 100`. Those are the retired composite,
 and that particular pair is the worst thing it produced: **16 of the 28 points separating them were
@@ -453,26 +454,31 @@ reports the security *model*, which is the part that was ever a property of the 
 
 \* **projected** from measured medium per-op cost, not run end-to-end. GPU FHE wins on **batched**
 workloads; for a tiny single-vector input the per-call kernel overhead can exceed CPU (raw encrypt
-throughput was ~700 ops/s GPU vs ~34 CPU). The headline: the quantum **Rate-1** path is ~10^3x more
-communication-compact than classical CKKS, with information-theoretic (vs computational) security -
-and the hybrid now shows *where* the classical cost goes (FHE dominates the linear layers; MPC adds
-the non-linear secure comparisons + a few KB of communication).
+throughput was ~700 ops/s GPU vs ~34 CPU). What the hybrid shows is *where* the classical cost goes
+(FHE dominates the linear layers; MPC adds the non-linear secure comparisons + a few KB of
+communication). **Withdrawn 2026-10-23:** this paragraph used to call the quantum Rate-1 path about
+$10^3$ times more compact than classical CKKS, with information-theoretic security. Neither half holds.
+The ratio compared a simulated state vector's bytes with a CKKS ciphertext at under 1% slot use (about
+12x at full packing; Cheon, Kim, Kim and Song, ASIACRYPT 2017); classical FHE reaches rate 1 as well
+(Gentry and Halevi, TCC 2019; Brakerski, Doettling, Garg and Malavolta, TCC 2019); and Rate-1 QFHE
+rests on quantum LWE, so its security is computational.
 
 **Three enriched dimensions** (Round 3):
-- **Security posture table** (replaced the 0-100 score in Round 22) - per-row facts, each either
-  checkable against a published standard or produced by the run, and labelled which: NIST category
-  and ciphertext/signature sizes from FIPS 203/204, QKD secure key bits, SKR, the QBER verdict taken
-  from `secure_key_bits > 0` rather than a threshold, and the GLLP tagged fraction showing what the
-  decoy states are buying. `qsh/benchmark/security.py` still computes the old composite for
+- **Security posture table** (replaced the 0-100 score in Round 22) - per-row facts, each checkable
+  against a published standard, measured by the run, or simulated by the run's analytic quantum-channel
+  model, and labelled which: NIST category and ciphertext/signature sizes from FIPS 203/204, and, as
+  simulated rows (no QKD device exists here), QKD secure key bits, SKR, the QBER verdict taken from
+  `secure_key_bits > 0` rather than a threshold, and, on BB84 runs, the GLLP tagged fraction showing
+  what the decoy states are buying (E91 uses none, so its table has no such row). `qsh/benchmark/security.py` still computes the old composite for
   backwards compatibility but nothing renders it. Why it was retired:
   `references/security-scoring-fact-check.md`.
-- **Quantum advantage (0-10)** - `qsh/benchmark/quantum_advantage.py`: weighted geometric mean of
-  communication-compactness (approx. 10^3x), latency, and the security jump -> a tiered score
-  (*dominant*). Recomputed 2026-08-09 from this table's own rows: **8.12 standalone**, uncapped. The
-  finance E2E run reports **10/10**, and that is a CLAMP, not a maximum - the raw composite measured
-  10.65, so the panel prints `raw 10.65 (clamped to 0-10)` beside the tier. A reader who sees 10 and
-  concludes the run sits exactly at the ceiling is being misled by the clamp, which is why the raw
-  value is printed. The earlier "9.2 on the finance E2E run" in this line was stale.
+- **Quantum advantage (0-10) - retired 2026-10-23, not rendered.** `qsh/benchmark/quantum_advantage.py`
+  is kept, as the 0-100 composite was, but no panel, log line, diagram label or agent prompt shows it.
+  Its three inputs did not measure the same thing on the two sides: a CKKS byte ratio divided by a qubit
+  ratio that omits the classical key; a real CKKS and garbled-circuit inference latency divided by an
+  8-qubit state-vector simulation of an untrained circuit (5794x, 8163x and 9610x across three runs of
+  one page); and a 1.5x multiplier for a security label the run does not achieve. Gate:
+  `tests/test_the_retired_comparisons_stay_retired.py`.
 - **Per-use-case two-party simulator** - each industry has its own page (`/usecase/:id`) with a
   **live two-party (Alice <-> Bob) sequence diagram** (`web/src/components/TwoPartyDiagram.tsx`) whose
   steps light up as that use case's pipeline runs - **Start / Pause / Resume / Step / Stop / Restart
@@ -482,8 +488,43 @@ the non-linear secure comparisons + a few KB of communication).
   exports a high-DPI PNG + a multi-second GIF. A standalone per-party-timing micro-benchmark also
   exists at `qsh/benchmark/alice_bob_e2e.py` (`POST /api/alice-bob`).
 
-The benchmark, security posture and quantum advantage are computed server-side **and** mirrored
+The benchmark and security posture are computed server-side **and** mirrored
 client-side (`web/src/lib/clientCompute.ts`) so the public demo shows identical numbers with no backend.
+In both, the QKD figures come from the simulated channel model.
+
+### What the pages show (Round 58)
+
+Every page leads with its key points; method and history are folded, never a caveat that qualifies a
+visible number.
+
+- **Overview** - an architecture diagram of the stages as they run in the browser, each badged real,
+  real protocol with notional parties, simulated, or simulated with a seeded pad. The simulated QKD link
+  is drawn off the key path, because nothing it produces reaches the browser's session key.
+- **Value** - the novelty sentence first, then a regulatory clock (a timeline by jurisdiction and a
+  table) in which every date carries who it binds and how firm it is: requirement, proposed rule,
+  draft, company target, deferred, or passed.
+- **Validations** - the PQC primitives; the simulated BB84 channel with a sweep of QBER and secure bits
+  against the eavesdropper fraction; the MCP agent call; and the network layer's key schedules,
+  computed in the tab:
+  - an ML-KEM-768 known-answer test against NIST ACVP cases (key generation, encapsulation, and
+    decapsulation of valid and modified ciphertexts);
+  - a WireGuard Noise_IKpsk2 handshake keyed by a preshared key from an in-tab ML-KEM-768 + X25519
+    hybrid - the Noise core is checked against the official cacophony vector, and the WireGuard framing
+    follows the whitepaper, for which no published vector exists;
+  - an IKEv2 key schedule - the RFC 7296 derivation checked against NIST CAVP SP 800-135 vectors, the
+    RFC 9370 ML-KEM-768 and RFC 8784 post-quantum preshared-key layers computed per the RFCs (they
+    have no official vectors). ML-KEM in IKEv2 is still an Internet-Draft in the RFC Editor queue.
+
+  Sources, commits and hashes: [`references/net-key-schedules.md`](references/net-key-schedules.md).
+  The tunnels themselves run in the companion network demo, https://pqc-qkd-hybrid.daemons.jp/
+  (WireGuard and strongSwan between containers; its QKD key servers are simulated too). Nothing here
+  connects to it, and no figure from it is quoted.
+- **Use-case pages** - model curves for the simulated channel, computed by the functions a run calls:
+  BB84's rate with and without decoy states and E91's CHSH value against fibre length (telecom), and
+  QSDC secrecy capacity against downlink range (satellite).
+- **3D views** (three.js, loaded only where drawn) - the QCNN's per-qubit reduced Bloch vectors through
+  the real circuit, and two illustrations, the one-time pad on one qubit and the downlink geometry,
+  each captioned as adding no information beyond a 2D drawing.
 
 ---
 
@@ -516,8 +557,8 @@ table in it is generated from the repository's own artefacts rather than transcr
   `nvidia-container-toolkit` + the `deploy.resources` GPU block is optional and faster). Ports are env-overridable
   (`WEB_PORT` / `API_PORT` / `GRAFANA_PORT`).
 - **Client-side build (implementation capability)**: the SPA also builds **fully client-side** - every
-  computation runs in the browser (real CKKS FHE + an emp-wasm garbled-circuit 2PC, ONNX inference, BB84 /
-  PSI / SHAP / QFL), with **zero `/api` compute**. In this mode the system needs **neither the backend
+  computation runs in the browser (real CKKS FHE + an emp-wasm garbled-circuit 2PC, ONNX inference, a
+  simulated BB84 channel, PSI / SHAP / QFL), with **zero `/api` compute**. In this mode the system needs **neither the backend
   FHE/MPC compute path nor the frontend FHE/MPC backend-selectors** - the client owns both - so it requires
   no GPU and no server-side ML. The same pages and buttons work in both modes.
 - **Monitoring**: see [`monitoring/README.md`](monitoring/README.md) (Prometheus + Grafana for the local
@@ -545,7 +586,7 @@ implementation maps to each, and where gaps remain.
 
 | Sub-problem | How QSH addresses it | Where |
 |---|---|---|
-| (1)/(e) huge compute + ciphertext/plaintext overhead | Benchmark *measures* ~1483x CKKS. For Rate-1 QFHE the ct/pt ratio is **measured and size-dependent** - 1.2769 at 8 qubits, 1.0693 at 10, 1.0173 at 12 - because the ~1135-byte encapsulated key is fixed while the state grows. The **1.32x** figure quoted elsewhere is the *literature* value in `config/defaults.py` feeding a static Overview KPI; it is **not** a measurement of this code, and an earlier revision of this row said the benchmark measured it. See `docs/architecture.md` | `benchmark/`, `qhe/rate1_qfhe.py` |
+| (1)/(e) huge compute + ciphertext/plaintext overhead | The benchmark measures the CKKS ciphertext/plaintext byte ratio for this configuration: about 1483x at roughly 34 of 4,096 slots, about 12x at full packing, so it measures slot utilisation rather than CKKS itself. The Rate-1 QFHE module reports a byte ratio of a SIMULATED state vector (1.2769 at 8 qubits, 1.0693 at 10, 1.0173 at 12), which cannot be compared with it; in the paper's own units, qubits plus bits, its 8-qubit KEM-wrapped transport is about 1135x. The 1.32 constant this row used to call the literature value is not in the paper and is removed. See `docs/architecture.md` | `benchmark/`, `qhe/rate1_qfhe.py` |
 | (2) bootstrapping bottleneck | **OpenFHE CKKS `EvalBootstrap`** (CPU) + **HEonGPU collective bootstrapping** (GPU) refresh ciphertext levels for deeper circuits - both commercial-OK | `fhe/backends.py` (`OpenFHEBackend(use_bootstrap=True)`) |
 | (3)/(a) quantum encoding / practical QHE | QOTP + a variational QCNN + Rate-1 QFHE at small scale. **Two different circuits, and only one is Clifford+T:** the BROWSER circuit (`web/src/lib/quantumSim.ts`) is built from H, CNOT and T and counts 56 real T gates, while the PYTHON module contains **no T gate at all** - it is `AngleEmbedding` plus CNOT/RY/RZ, and its `t_count()` is a labelled Solovay-Kitaev estimate of what a fault-tolerant deployment would cost, not a count of gates present. Earlier revisions called the Python module Clifford+T. | `qhe/qotp.py`, `qhe/qcnn.py`, `web/src/lib/quantumSim.ts` |
 | (b) QFL gradient leakage (arXiv:2508.15998) | Pairwise-mask secure aggregation + QOTP-delegated learning | `ai/federated.py` |
@@ -772,10 +813,14 @@ See [`docs/pqc-roadmap.md`](docs/pqc-roadmap.md).
   qOLE, and the **free-space satellite QKD + QSDC** path are **simulated** (analytic channel +
   information-structure models), not hardware-validated. QHE evaluation is exact for Clifford
   circuits; non-Clifford layers are costed as T-gates, not run fault-tolerantly.
-- **NSA stance** - NSA does **not** endorse QKD in any form for national security systems. Its CNSA 2.0 /
-  Quantum Computing FAQ answers *"Can I use a QKD system to protect my NSS from a quantum computer?"* with
-  **"No"**, and says it *"does not support the usage of QKD or QC"* for NSS. Presenting QKD as a hybrid
-  add-on is **this project's** design choice, taken from **BSI TR-02102-1 v2026-01 section 2.2**, not from NSA.
+- **NSA and BSI stance** - NSA does **not** endorse QKD in any form for national security systems. Its
+  CNSA 2.0 and Quantum Computing FAQ (Ver. 2.2, October 2026) answers *"Can I use a QKD system to protect
+  my national security system from a quantum computer?"* with **"No"**, and its Post-Quantum
+  Cybersecurity Resources page says NSA *"does not support the usage of QKD or QC to protect
+  communications in National Security Systems"*. BSI does not recommend QKD either: TR-02102-1 v2026-01
+  section 2.1 calls it *"currently not ready for use from a security point of view"*, and the hybrid it
+  recommends (section 2.2) is a quantum-safe plus a classical key agreement - the ML-KEM + X25519 layer
+  here. Offering QKD as an optional add-on to that hybrid is **this project's** design choice alone.
 - **GPU/vendor & licensing** - Blackwell+CUDA13 narrows the quantum-GPU stack to CUDA-Q/cuQuantum.
   The FHE stack is deliberately **commercial-OK** (TenSEAL Apache-2.0, OpenFHE BSD-2, HEonGPU Apache-2.0);
   **DESILO was removed** because its license is non-commercial. Multiple swappable backends avoid lock-in.
@@ -849,8 +894,9 @@ See [`docs/pqc-roadmap.md`](docs/pqc-roadmap.md).
   client-side" until Round 39, contradicting the passage above that already described the
   end-to-end path).
 - **Per-industry models - three tiers, and the gap between them is the measurement** - the
-  **crypto/protocol layer is real across all five industries** (PSI/QOT, QSMS secure-sum, BB84/QSDC,
-  MPyC MPC, CKKS FHE, federated secure-aggregation). The AI side is organised in tiers because
+  **classical crypto/protocol layer is real across all five industries** (PSI/QOT, QSMS secure-sum,
+  MPyC MPC, CKKS FHE, federated secure-aggregation); BB84 and QSDC are simulated (analytic channel
+  models), as "Simulation vs reality" under Concerns & recommendations says. The AI side is organised in tiers because
   homomorphic evaluation is cost-bounded **at the operating point this demo targets** - a single
   device, in a browser tab, running CKKS through `node-seal` (SEAL compiled to WASM, single-threaded).
   Park et al. ([arXiv:2601.18511v2](https://arxiv.org/abs/2601.18511v2)) run Llama-3-8B end to end
@@ -976,7 +1022,7 @@ See [`docs/pqc-roadmap.md`](docs/pqc-roadmap.md).
   **PaySim** transaction sample (CC-BY-SA-4.0) + the distilled CKKS-linear fraud model; and **satellite** scores
   **real NASA SMAP/MSL telemetry** (no licence stated by any provider - see DATA_LICENSES.md) with the real linear anomaly model - all tiny static JSON
   under `web/public/data/`, loaded by [`web/src/lib/realData.ts`](web/src/lib/realData.ts) and computed with the
-  real in-browser node-seal CKKS + secret-sharing MPC. Only **telecom** has no commercial-OK real attack dataset
+  real in-browser node-seal CKKS + an emp-wasm garbled-circuit 2PC (notional parties). Only **telecom** has no commercial-OK real attack dataset
   - the narrower and correct statement, since **5G-NIDD is CC BY 4.0 and commercially usable**, and this repository trains on it. What does not exist is a commercial-OK corpus of QKD-LAYER attacks, which is a different problem needing a physical QKD testbed under attack - so the QKD IDS uses representative synthetic features (logged as such in the run).
   The bundled sets are public / de-identified, so no real *personal* data leaves the browser - the privacy property
   is demonstrated on real, realistic inputs.

@@ -71,8 +71,11 @@ def build(config: dict | None = None) -> tuple[Pipeline, Context]:
                 "qkd_pulses": qkd_pulses,
                 "ids": config.get("ids", "classical"), **config},
     )
-    # model an active eavesdropper on the QKD link to exercise the IDS
-    ctx.config.setdefault("eve", True)
+    # No eavesdropper by default, as on the browser page. This set `config["eve"] = True` under a
+    # comment promising "an active eavesdropper on the QKD link to exercise the IDS" - but the QKD
+    # stage reads `qkd_eve`, and nothing read `eve`, so the link always ran clean. The IDS does not
+    # need the link to be attacked: it scores its own synthetic attack telemetry. Set `qkd_eve` to
+    # model an eavesdropper on the link itself.
     stages = [
         PQCHandshakeStage(),
         QKDKeyAgreementStage(),
