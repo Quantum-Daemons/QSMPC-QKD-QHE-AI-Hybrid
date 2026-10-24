@@ -45,6 +45,26 @@ export function qsdcSecrecyCapacity(e: number, g: number): number {
   return 1 - h2(e) - g * h2(Math.min(0.5, 2 * e));
 }
 
+/** A free-space link at the given range, fixed losses and eavesdropper fraction. */
+export function freeSpaceLink(o: { distanceKm: number; atmosphericDb: number; pointingDb: number;
+                                   eveFraction: number }): ChannelParams {
+  const fs = FREE_SPACE.freeSpace!;
+  return { ...FREE_SPACE, distanceKm: o.distanceKm, eveFraction: o.eveFraction,
+    freeSpace: { ...fs, atmosphericDb: o.atmosphericDb, pointingDb: o.pointingDb } };
+}
+
+/** ONE QSDC link evaluation - error rate, Eve's gain g (detector efficiency included, Qi et al.
+ *  2019) and secrecy capacity - shared by the satellite stage and every tooltip that quotes a C_s.
+ *  Four quoted figures had drifted: written under the pooled-entropy formula without detector
+ *  efficiency, they still printed (+0.4944, -0.6283, -14.6474, -5.2033) after both corrections.
+ *  A number computed here cannot disagree with what a run computes. */
+export function qsdcLink(ch: ChannelParams, etaD = qkdCfg().free_space_detector_efficiency) {
+  const lossDb = channelLossDb(ch) - 10 * Math.log10(etaD);
+  const g = 10 ** (lossDb / 10);
+  const e = intrinsicQber(ch);
+  return { e, g, lossDb, cs: qsdcSecrecyCapacity(e, g) };
+}
+
 export interface ChannelParams {
   distanceKm: number;
   /** Fibre only. A free-space link is not attenuated per kilometre - see `freeSpace` below. */
@@ -170,7 +190,8 @@ export function transmittance(p: ChannelParams): number {
  * Misalignment plus the eavesdropper's disturbance, and deliberately NOT the dark-count term -
  * `decoySecureFraction` adds the background back as `e0 * y0`, so including it here charges it
  * twice. `intrinsicQber` is the right quantity for the OBSERVED QBER a panel displays and the
- * wrong one for this bound; the two differ by exactly that background term.
+ * wrong one for this bound; the two differ by that background term (scaled by 1 - 0.5 f when an
+ * eavesdropper is present, since both compose her disturbance the same way).
  *
  * ROUND 47 GOT THIS HALF-RIGHT AND HAD TO COME BACK. It replaced `intrinsicQber` with the bare
  * misalignment, which removed the double charge and silently unhooked the EAVESDROPPER, because
@@ -181,14 +202,26 @@ export function transmittance(p: ChannelParams): number {
  *
  * Intercept-resend disturbs a detected signal photon at the textbook rate of 0.25 per intercepted
  * pulse, which is precisely what `e_det` denotes, so Eve belongs here and the background does not.
+ * Her flips are independent of misalignment, so the two are COMPOSED (added until 2026-10-24).
  */
 export function eDetForBound(p: ChannelParams): number {
-  return Math.min(0.5, p.misalignment + 0.25 * p.eveFraction);
+  return Math.min(0.5, composeIndependentErrors(p.misalignment, 0.25 * p.eveFraction));
 }
 
+/**
+ * Error rate after two INDEPENDENT bit-flip sources: a(1 - b) + b(1 - a) = a + b - 2ab. Two flips on
+ * the same bit cancel, so independent errors do not add; the linear sum used until 2026-10-24
+ * overcounted by 2ab (50 km, full intercept-resend: model QBER 0.2722 against 0.2649). Twin of
+ * `channel.py::compose_independent_errors`; both languages' two call sites use it.
+ */
+export function composeIndependentErrors(a: number, b: number): number {
+  return a + b - 2 * a * b;
+}
+
+/** Observed-QBER model: misalignment + dark-count share (kept a sum, as always), composed with Eve. */
 export function intrinsicQber(p: ChannelParams): number {
   const base = p.misalignment + (0.5 * p.darkCount) / Math.max(transmittance(p), 1e-9);
-  return Math.min(0.5, base + 0.25 * p.eveFraction);
+  return Math.min(0.5, composeIndependentErrors(base, 0.25 * p.eveFraction));
 }
 
 /**
@@ -402,7 +435,9 @@ export function bb84(nPulses: number, p: ChannelParams, seed = 0,
 // Entanglement-based E91 / CHSH QKD (mirror of qkd/e91.py) — a genuinely DIFFERENT physical model from
 // BB84: a shared Werner state of visibility V (degraded by the channel error) gives the CHSH parameter
 // S = 2*sqrt(2)*V (Tsirelson bound 2*sqrt(2) at V=1) and QBER = (1-V)/2; a key exists ONLY if the Bell
-// inequality is violated (S > 2). Returns the same shape as bb84() + the measured CHSH S, so selecting
+// inequality is violated (S > 2) - though that test never decides the key at fEC >= 0.664, because the
+// rate is zero first (S = 2.27 at 1.16). With an eavesdropper the state is a mixture of Werner and
+// intercept-resend pairs, not a Werner state; S = 2*sqrt(2)*(1 - 2Q) still holds in the measured plane. Returns the same shape as bb84() + the measured CHSH S, so selecting
 // "E91" in the Parameters panel visibly moves QBER / secure-key-bits independently of BB84.
 export function e91(nPulses: number, p: ChannelParams, seed = 0,
                     visibility = qkdCfg().e91_visibility,

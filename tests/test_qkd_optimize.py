@@ -73,11 +73,14 @@ def test_optimizer_reports_convergence():
     assert res.convergence_curve == sorted(res.convergence_curve)     # running-best SKR is non-decreasing
 
 
-def test_e91_bell_violation_gates_key():
+def test_e91_low_visibility_yields_no_key():
+    # Renamed from `test_e91_bell_violation_gates_key`. At V = 0.60 the model QBER is 0.21, so the
+    # 0.11 abort and the zero rate both kill the key before the S <= 2 gate is ever consulted - the
+    # test passed with that gate deleted, so it was not evidence about the gate.
     ch = ChannelParams(distance_km=50)
     good = run_e91(50_000, ch, visibility=0.97, seed=1)
     assert good.secret_key_rate > 0 and good.sifted_bits > 0
-    bad = run_e91(50_000, ch, visibility=0.60, seed=1)               # CHSH S <= 2 -> no Bell violation
+    bad = run_e91(50_000, ch, visibility=0.60, seed=1)
     assert bad.secret_key_rate == 0.0
 
 

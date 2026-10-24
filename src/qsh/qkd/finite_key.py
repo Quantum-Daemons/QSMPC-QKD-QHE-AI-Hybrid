@@ -194,9 +194,10 @@ def finite_key_length(n_pulses: int, channel: ChannelParams | None = None,
     # THE MISALIGNMENT, not `intrinsic_qber(channel)`. `_gain_and_error` adds the background back
     # as its own `0.5 * y0` term, so passing the observed QBER charges dark counts twice - the
     # identical defect this round found in `bb84.py` and `quantumSim.ts`, and it was written into
-    # this file first time through before that fix was made. Any eavesdropping is deliberately not
-    # folded in here either: `e_det` is a device property, and an intercept-resend fraction belongs
-    # in the observed statistics rather than in the detector model.
+    # this file first time through before that fix was made. Eavesdropping IS included: the line
+    # below has called `e_det_for_bound`, which composes the intercept-resend disturbance with the
+    # misalignment, since Round 47 - this comment said the opposite until 2026-10-24. Every caller
+    # passes Eve 0, so no figure depended on the discrepancy.
     e_det = e_det_for_bound(channel)
     y0 = 2.0 * channel.dark_count_prob
 
