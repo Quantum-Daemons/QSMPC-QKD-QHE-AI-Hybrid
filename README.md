@@ -254,9 +254,38 @@ version string here.
   (`mpyc-shamir` default; MP-SPDZ / hpmpc-gpu as heavyweight references). The linear layers stay under FHE - see
   the hybrid benchmark below.
 
+### Rust/WASM toolchain (prototypes only)
+Nothing the demo ships needs Rust. `prototypes/polytune-argmax/` does: it rebuilds the garbled-circuit
+argmax on Polytune so a replacement for the archived MPC tier can be measured (Round 63). It builds in
+the **official Rust container**, so the host needs only Docker:
+
+```bash
+prototypes/polytune-argmax/build.sh
+```
+
+The builder image is `rust:1.99.1-bookworm` pinned by digest, plus the `wasm32-unknown-unknown` target,
+`wasm-pack` 0.15.0 and `wasm-bindgen-cli` 0.2.129 (about 2.4 GB). The script runs the native test and
+`wasm-pack build` as the calling user, so the outputs are not root-owned, and keeps Cargo's cache in the
+prototype's gitignored `.cargo-home/`. A host build is also possible:
+
+```bash
+sudo dnf install rust-std-static-wasm32-unknown-unknown
+```
+
+```bash
+cargo install --locked wasm-pack
+```
+
+That works only for crates whose minimum Rust version the host compiler meets. Polytune needs 1.89 and
+this box's system Rust is 1.88, which is why the prototype uses the container.
+`prototypes/polytune-argmax/README.md` has the measurement steps and results.
+
 ### Languages
 Python-first, plus **TypeScript** for the browser tier. **C++** is used only via the optional GPU-MPC
-submodules (HEonGPU / hpmpc). Go was evaluated and not needed.
+submodules (HEonGPU / hpmpc). Go was evaluated and not needed. **Rust** appears only in `prototypes/`,
+which nothing in the demo imports; the client-side Rust decline recorded in the register concerned
+tfhe-rs (no FHE evaluation in its WASM build, and a licence that withholds patent rights) and still
+stands.
 
 **Julia: DECLINED 2026-08-12 (Round 33), and it should have been declined twenty-nine plans ago.** It was
 listed as "optional (defer)" in the first plan and this line said "optional and deferred" ever since. The

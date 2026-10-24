@@ -196,3 +196,8 @@ models/probe*/
 # dependency database and file list are per-machine build state and change on every run.
 report/*.fdb_latexmk
 report/*.fls
+
+# Prototypes build outside the web image (prototypes/*/build.sh); their outputs are never tracked.
+prototypes/*/target/
+prototypes/*/pkg/
+prototypes/*/.cargo-home/
