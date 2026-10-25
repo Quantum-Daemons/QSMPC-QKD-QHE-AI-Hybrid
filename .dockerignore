@@ -22,3 +22,11 @@ MONETIZATION*.md
 .pytest_cache/
 .ruff_cache/
 .mypy_cache/
+# Round 65: the image builds the MPC wasm itself (docker/Dockerfile.web, stage `wasm`), so neither its
+# Rust build outputs nor a locally generated copy of the package may reach the context; and nothing
+# under prototypes/ ships.
+wasm/qsh-mpc/target/
+wasm/qsh-mpc/.cargo-home/
+web/src/wasm/
+web/public/licenses/qsh-mpc.txt
+prototypes/

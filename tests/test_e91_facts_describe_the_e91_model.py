@@ -61,11 +61,12 @@ def _require_browser_or_skip() -> None:
 
 
 #: Packages in `clientCompute.ts`'s import graph that the facts table never calls. They are
-#: STUBBED, not bundled: node-seal is imported as a Vite `?url` wasm asset and the ML runtimes expect a
+#: STUBBED, not bundled: node-seal is imported as a Vite `?url` wasm asset, the MPC tier's wasm module
+#: (web/src/wasm/qsh_mpc, Round 65) is built rather than committed, and the ML runtimes expect a
 #: browser, so a plain bundle fails. A CommonJS Proxy stub satisfies any named import esbuild sees, and
 #: nothing in `securityFacts` reaches it - if something ever did, the call would return undefined and
 #: the assertions below would fail rather than pass.
-_STUB = r"^(node-seal|onnxruntime-web|@mlc-ai/web-llm|@huggingface/transformers|emp-wasm-engine|mpc-framework|summon-ts|gif\.js|html-to-image|papaparse)(/.*)?$|\?url$|\.wasm$"
+_STUB = r"^(node-seal|onnxruntime-web|@mlc-ai/web-llm|@huggingface/transformers|gif\.js|html-to-image|papaparse)(/.*)?$|\?url$|\.wasm$|/wasm/qsh_mpc/qsh_mpc\.js$"
 
 _BUILD = """
 const esbuild = require(%(esbuild)s);

@@ -143,7 +143,7 @@ Security 2025, arXiv:2412.15126), evaluate argmin/argmax over a **128-element ve
 comparison depth *"of up to 2 (constant)"*. That is a state-of-the-art result, not a naive baseline,
 and the constant depth blocks the obvious rebuttal that the cost is a depth artefact to be optimised
 away. Twelve seconds for one argmax **rules out a homomorphic argmax in a browser tab**, which is why
-the logits go out as secret shares to a summon-compiled comparison circuit (`web/src/lib/clientMPC.ts`,
+the logits go out as secret shares to a garbled comparison circuit (`web/src/lib/clientMPC.ts`,
 `src/qsh/mpc/secret_inference.py`) rather than staying under CKKS. The split is now a measured decision
 rather than a stated preference.
 
@@ -250,8 +250,9 @@ server, no cost-model estimate):
   rotate-and-add slot sum), and only the decrypted logits leave encryption. Reported FHE-linear ms,
   ciphertext bytes and the approx. 1e-9 approximation error are real `performance.now()` measurements.
 - **MPC** - `web/src/lib/clientMPC.ts` runs a real **garbled-circuit authenticated-garbling 2PC**
-  (`mpc-framework` + `emp-wasm-engine` + `summon-ts`, all MIT): the logits are additively secret-shared,
-  a summon-compiled argmax circuit privately reconstructs + compares them, and **both parties run loopback
+  (Polytune with a Garble-compiled circuit, MIT, built from `wasm/qsh-mpc` by the web image's Rust stage;
+  `mpc-framework` + `emp-wasm-engine` + `summon-ts` until Round 65): the logits are additively
+  secret-shared, the argmax circuit privately reconstructs + compares them, and **both parties run loopback
   in one tab** (zero VPS) - the reported MPC ms + real garbled-circuit communication bytes are measured.
 - **QFL** - Quantum Federated Learning runs on every run; it is not a toggle. It performs a real
   client-side FedAvg over the page's own bundled sample, so it is part of what the demo does rather

@@ -833,7 +833,7 @@ let _mpcWarmed = false;
 let _fheKeygenMs: number | null = null;
 
 // Run a GENUINE encrypted hybrid inference entirely in the browser: a small linear model evaluated under
-// REAL node-seal CKKS (clientFHE) for the linear layer + a REAL emp-wasm authenticated-garbling 2PC
+// REAL node-seal CKKS (clientFHE) for the linear layer + a REAL Polytune authenticated-garbling 2PC
 // (clientMPC) for the non-linear argmax, all measured. Returns null only if the real crypto is genuinely
 // unavailable here (e.g. a browser without WASM) — the caller then reports a clearly-labelled
 // representative figure as an honest last resort (logged with the cause, not silently masked).
@@ -882,7 +882,7 @@ export async function realClientHybrid(features: number[], u: () => number,
       _fheKeygenMs = performance.now() - tk;
       _fheWarmed = true;
     }     // one-time CKKS keygen
-    if (!_mpcWarmed) { await warmMPC(); _mpcWarmed = true; }     // one-time summon compile + emp-wasm init
+    if (!_mpcWarmed) { await warmMPC(); _mpcWarmed = true; }     // one-time Polytune wasm load + init
     const n = features.length;
     // ENCRYPT THE MODEL THE PAGE EXPLAINS.
     //
@@ -1045,7 +1045,7 @@ function mpcFheRow(usecase: string | undefined, workload: string, modelSize: str
   if (measured) {
     // The real run measures a small (n->2) model; scale that MEASURED per-op cost by the SELECTED architecture's
     // op count so the latency genuinely tracks lightweight/medium/large × linear/cnn/transformer (the unit cost
-    // is real node-seal CKKS / emp-wasm; only the op count is the chosen architecture's).
+    // is real node-seal CKKS / Polytune; only the op count is the chosen architecture's).
     // When a real encrypted convolution ran, its latency is MEASURED and nothing is scaled: the
     // whole point of running one is to stop multiplying a dot product by a cost model. The scaling
     // path below survives only for the linear workload, where the measured model really is an
@@ -1054,10 +1054,10 @@ function mpcFheRow(usecase: string | undefined, workload: string, modelSize: str
     fhe = measured.fheMs * scale; mpc = measured.mpcMs * scale; comm = measured.commBytes * scale;
     projected = !measured.conv && modelSize === "large";
     backend = measured.conv
-      ? `node-seal CKKS + emp-wasm 2PC (measured: real ${measured.conv.channels}-channel encrypted `
+      ? `node-seal CKKS + Polytune 2PC (measured: real ${measured.conv.channels}-channel encrypted `
         + `convolution, ${measured.conv.rotations} rotations over `
         + `${measured.conv.patchesPerCiphertext} packed patches)`
-      : "node-seal CKKS + emp-wasm 2PC (measured per-op, scaled to the selected architecture)";
+      : "node-seal CKKS + Polytune 2PC (measured per-op, scaled to the selected architecture)";
     // null propagates. Previously a failed size read became 0 and this printed "ct/pt 0" beside
     // rows carrying real ratios - an impossible value in a MEASURED column. The cost-model
     // default is NOT substituted here either: this branch is the measured one, and quietly
@@ -1093,7 +1093,7 @@ function mpcFheRow(usecase: string | undefined, workload: string, modelSize: str
     fhe_linear_ms: r2(fhe), mpc_nonlinear_ms: r2(mpc), mpc_comm_kb: r2(comm / 1024),
     t_gate_count: null, qubits: null,
     // "garbled-circuit 2PC", not "secret-sharing MPC". That label is right for the Python row (MPyC
-    // Shamir across hosts) and was copied to this one, where the non-linear layer is an emp-wasm
+    // Shamir across hosts) and was copied to this one, where the non-linear layer is a Polytune
     // authenticated-garbling 2PC whose INPUTS are additively shared - between notional parties in
     // one tab (clientMPC.ts). The benchmark table showed the Python mechanism on the browser row.
     security_model: "computational (RLWE) + garbled-circuit 2PC",
@@ -2692,7 +2692,7 @@ export function runClientPipeline(
         // Announce the one-time warm-up BEFORE it blocks. SEAL key generation (public + Galois keys at
         // the configured ring degree) runs synchronously inside WASM on the main thread, and it grows
         // with that degree - `clientFHE` records that this
-        // "made the first click feel like a hang"; summon compile and emp-wasm init follow. The tab
+        // "made the first click feel like a hang"; the Polytune wasm load follows. The tab
         // cannot repaint through any of it, so a visitor's first Run looked frozen with the badge on
         // `running`. The fix that was applied then was to make keygen cheaper; saying it is happening
         // costs one line and is what a visitor actually needs.
