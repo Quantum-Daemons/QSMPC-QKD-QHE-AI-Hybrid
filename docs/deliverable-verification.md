@@ -5208,6 +5208,16 @@ UNVERIFIED - needs confirmation: `QC2` with the input held fixed across seeds wa
 page, because the run log does not name the QCNN's input row. It holds by the function's signature, not
 by a live observation.
 
+**Walked on the public demo with this branch deployed** (eb1a11c, serving `index-C5xLCvSR.js`).
+- The Overview's WS1 card names which surrogate runs where, and it cites both gains as not comparable
+  with a run here.
+- With the optimiser on, the telecom run logs +78.4 percent and the satellite run +73.9 percent over
+  the defaults. Each log line now ends with the comparability sentence.
+- Round 69's per-use-case AI Act sentence is still on the finance page, so the stacking held.
+- All ten pages render with zero overflow at 1280 and 390 px.
+- The console carried only the two satellite messages that Round 69 recorded as proposals, once per
+  satellite run.
+
 BUSINESS DOC RECONCILED Round 70. The out-of-repo document is brought level with this round. Its content
 is not quoted here, in the checklist, or in any commit - only the fact of the reconciliation, which is
 what gate 16 reads.
