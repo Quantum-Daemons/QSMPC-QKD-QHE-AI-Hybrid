@@ -1737,3 +1737,42 @@ so each one names what was checked and where it stopped.
   `docs/pqc-roadmap.md` cited only EO 14412 / 91 FR 38483. Round 33 adds the cross-reference to that
   roadmap, stating only what was verified - title, document number, FR citation and date - because its
   text was never loaded and it therefore contributes no deadline.
+
+## Round 70 re-check, oldest-verified areas first, read at primary source 2026-10-25
+
+### New primary literature since August 2026, verified at the abstract or the body
+
+- **Al-Mohammed and Al-Ali, "Machine Learning for Specialized QKD Aspects: A Survey of Adaptive
+  Protocols, Free-Space Links, 6G Integration, and Steerability-Aware Security."** arXiv:2608.08280,
+  v1 2026-08-08, v2 2026-08-18 `[link]`
+  URL: https://arxiv.org/abs/2608.08280
+  Its section V-B reports deep-RL adaptive optimisation at SKR +15-20 percent and QBER -30-40 percent
+  under noisy conditions, citing Shingne et al. (DRL with a VAE). The abstract gives no figures, and the
+  numbers are in the body. This is consistent with AML-QKD v2's +14-25 percent above. Neither figure is
+  comparable with the browser's OptiQKD gain, which is measured over this demo's default parameters
+  (symmetric bases), and the page and the run log now say so.
+- **Laschet, Lendvay, Lorunser, James, Torresetti and Colombo, "Software Defined Networks Key Relay
+  for Large-Scale Quantum Key Distribution Networks."** arXiv:2608.17539, 2026-08-18 `[link]`
+  URL: https://arxiv.org/abs/2608.17539
+  The paper describes an SDN controller that aggregates link KPIs and selects relay paths by Dijkstra
+  or by max-min capacity with load balancing. For multiple domains it adds an oblivious multi-party
+  protocol, so providers need not disclose their networks. The demo's SDN panel builds one
+  trusted-relay chain when a span is exceeded and selects among no paths. The panel's "path
+  computation" is the control plane's role as the standards define it, not a claim of path
+  optimisation.
+
+### Standards and specifications, re-checked
+
+- **FIPS 206 (FN-DSA) and an HQC draft: still none.** The NIST PQC project page (last modified
+  2026-08-05) lists Falcon as "selected for ongoing standardization; that process is underway" and
+  HQC as selected, with no initial public draft of either. `docs/pqc-roadmap.md` holds.
+- **ETSI QKD.** GS QKD 014 V1.1.1 is still the only edition, GS QKD 015 is V2.1.1 and GS QKD 020 is
+  V1.1.1 (2026-06), as the August fact-check recorded. GR QKD 007 V1.2.1 (2026-01, vocabulary) is a
+  group report and changes no interface this project models.
+- **Model Context Protocol.** The current specification revision is **2026-07-28**
+  (`schema/2026-07-28/schema.ts`). It describes stateless, self-contained requests with per-request
+  capability negotiation, and opt-in extensions (Tasks, Skills over MCP, MCP Apps). The demo's client
+  mirror carries `tools/call` inside its quantum-safe envelope and depends on none of that. The Python
+  SDK's latest release is 2.3.0 (2026-10-02). `qsh/mcp/server.py` accepts both the 2.x `MCPServer` and
+  the 1.x `FastMCP` spelling, so `mcp>=1.2` remains correct.
+- **AML-QKD.** arXiv:2603.04192 is still at v2 (2026-06-01). The entry above holds.
