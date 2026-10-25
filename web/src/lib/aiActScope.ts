@@ -17,6 +17,13 @@
  *
  * Both dates come from the regulatory clock, which carries their source (Regulation (EU) 2026/1744),
  * so the two cannot drift apart.
+ *
+ * CONDITIONAL, BY DECISION (Round 69, before merge). Where the answer turns on who deploys the model
+ * or why, the sentence says so rather than picking one deployment. AML is not high-risk for a bank,
+ * but is under Annex III 6(e) when a law-enforcement authority uses it to profile people while
+ * detecting offences. A system used exclusively for defence or national security is outside the Act
+ * (Art. 2(3)), which matters on the "Telecom / Defense" page. Recital 55 is a recital, not an article,
+ * so its reading is attributed to it rather than stated as the rule. The page adds `AI_ACT_CAVEAT`.
  */
 import { CLOCK } from "./regulatoryClock";
 
@@ -39,8 +46,12 @@ export function longDate(iso: string): string {
   return `${d} ${MONTHS[m - 1]} ${y}`;
 }
 
+/** Printed after every sentence. */
+export const AI_ACT_CAVEAT = "A reading of the Act for this demonstration, not legal advice.";
+
 export interface AiActScope {
-  /** Whether the high-risk requirements, Art. 13 among them, would bind the model. */
+  /** Whether the high-risk requirements, Art. 13 among them, would bind the model in the deployment the
+   *  page demonstrates. Other deployments are in `text`. */
   highRisk: "yes" | "no" | "depends";
   /** The provisions that decide it. */
   basis: string;
@@ -55,40 +66,42 @@ export const AI_ACT_SCOPE: Record<string, AiActScope> = {
     highRisk: "yes",
     basis: "Art. 6(1) and Annex I: Regulation (EU) 2017/745 (MDR), Annex VIII Rule 11",
     from: ANNEX_I_DATE,
-    text: "high-risk if placed on the EU market as diagnostic software, which is a medical device of class "
+    text: "High-risk if placed on the EU market as diagnostic software, which is a medical device of class "
       + "IIa or higher (MDR Rule 11), so Art. 6(1) and Annex I apply, and Art. 13 with them from "
-      + `${longDate(ANNEX_I_DATE)}`,
+      + `${longDate(ANNEX_I_DATE)}.`,
   },
   genomics: {
     highRisk: "yes",
     basis: "Art. 6(1) and Annex I: Regulation (EU) 2017/746 (IVDR), Annex VIII Rule 3",
     from: ANNEX_I_DATE,
-    text: "high-risk if placed on the EU market to predict disease risk, which makes it an in-vitro "
+    text: "High-risk if placed on the EU market to predict disease risk, which makes it an in-vitro "
       + "diagnostic of class C (IVDR Rule 3, human genetic testing), so Art. 6(1) and Annex I apply, and "
-      + `Art. 13 with them from ${longDate(ANNEX_I_DATE)}`,
+      + `Art. 13 with them from ${longDate(ANNEX_I_DATE)}.`,
   },
   finance_aml: {
     highRisk: "no",
-    basis: "Annex III 5(b): creditworthiness and credit scoring of natural persons, fraud detection excepted",
+    basis: "Annex III 5(b) (creditworthiness, fraud detection excepted) for a bank; Annex III 6(e) for law enforcement",
     from: null,
-    text: "not high-risk on the Act's own terms: Annex III 5(b) covers the creditworthiness and credit "
-      + "scoring of natural persons, and anti-money-laundering monitoring evaluates transactions, not "
-      + "creditworthiness, so Art. 13 does not bind it",
+    text: "When a bank uses it for transaction monitoring, not high-risk: Annex III 5(b) covers the "
+      + "creditworthiness of natural persons, not money-laundering monitoring, so Art. 13 does not bind it. "
+      + "Used by or for a law-enforcement authority to profile people while detecting offences, it would "
+      + `be high-risk (Annex III 6(e)), with Art. 13 from ${longDate(ANNEX_III_DATE)}.`,
   },
   telecom_ids: {
     highRisk: "no",
-    basis: "Annex III 2 (safety components of critical digital infrastructure) and recital 55",
+    basis: "Annex III 2 (safety components of critical digital infrastructure) read with recital 55; Art. 2(3)",
     from: null,
-    text: "not high-risk on the Act's own terms: an intrusion detector used solely for cybersecurity is "
-      + "not a safety component of critical digital infrastructure (recital 55), so Annex III 2 does not "
-      + "reach it and Art. 13 does not bind it",
+    text: "As a tool used solely for cybersecurity, not high-risk on the reading recital 55 gives, since "
+      + "Annex III 2 covers safety components of critical digital infrastructure, so Art. 13 does not bind "
+      + "it. Used exclusively for defence or national security, it is outside the Act altogether (Art. 2(3)).",
   },
   satellite_comms: {
     highRisk: "depends",
-    basis: "no Annex I or Annex III category names telemetry anomaly detection; Annex III 2 only as a safety component",
+    basis: "no Annex I or Annex III category names telemetry anomaly detection; Annex III 2 only as a safety component; Art. 2(3)",
     from: ANNEX_III_DATE,
-    text: "not a category the Act lists: it would be high-risk only as a safety component of critical "
+    text: "Not a category the Act lists: it would be high-risk only as a safety component of critical "
       + "digital infrastructure (Annex III 2), which depends on how it is deployed, and then Art. 13 would "
-      + `apply from ${longDate(ANNEX_III_DATE)}`,
+      + `apply from ${longDate(ANNEX_III_DATE)}. Used exclusively for defence or national security, it is `
+      + "outside the Act (Art. 2(3)).",
   },
 };

@@ -16,9 +16,11 @@ it was right for none of them (Round 69, read at the primary sources):
 WHAT IS ASSERTED
 
 - Behaviourally, through aiActScope.ts bundled with the real regulatory clock: there is one entry per
-  use case; the two Annex I cases carry the clock's Annex I date and say so on the page; the two
-  that are not high-risk say Art. 13 does not bind them and carry no date; satellite is stated as
-  depending on deployment.
+  use case; the two Annex I cases carry the clock's Annex I date and say so on the page; finance and
+  telecom say Art. 13 does not bind them in the deployment shown, and name the deployment that changes
+  that (law-enforcement profiling, Annex III 6(e); defence-only use, outside the Act under
+  Art. 2(3)); satellite is stated as depending on deployment. Every sentence is followed by the
+  not-legal-advice caveat, by the user's decision before the merge.
 - The clock still dates the two deferrals as Regulation (EU) 2026/1744 set them.
 - The panel takes its sentence from the module, and no blanket Art. 13 date is hard-coded in it.
 """
@@ -54,7 +56,8 @@ def _scope() -> dict:
                         f"--outfile={bundle}", "--log-level=error"], cwd=WEB, check=True, capture_output=True)
         out = subprocess.run(["node", "--input-type=module", "-e",
                               f"const m = await import({json.dumps(bundle.as_uri())});"
-                              "console.log(JSON.stringify({ scope: m.AI_ACT_SCOPE, i: m.ANNEX_I_DATE, iii: m.ANNEX_III_DATE }));"],
+                              "console.log(JSON.stringify({ scope: m.AI_ACT_SCOPE, i: m.ANNEX_I_DATE, iii: m.ANNEX_III_DATE,"
+                              " caveat: m.AI_ACT_CAVEAT }));"],
                              check=True, capture_output=True, text=True)
         return json.loads(out.stdout)
 
@@ -72,11 +75,18 @@ def test_every_use_case_has_its_own_grounds_and_date() -> None:
     assert "IVDR" in scope["genomics"]["basis"] and "Rule 3" in scope["genomics"]["basis"]
     for uc, ground in (("finance_aml", "5(b)"), ("telecom_ids", "recital 55")):
         e = scope[uc]
-        assert e["highRisk"] == "no" and e["from"] is None, f"{uc} is not high-risk on the Act's terms"
+        assert e["highRisk"] == "no" and e["from"] is None, f"{uc} is not high-risk in the deployment shown"
         assert "does not bind" in e["text"] and ground in e["text"], e["text"]
-        assert not re.search(r"20\d\d", e["text"]), f"{uc} must not carry an application date"
+    fin = scope["finance_aml"]["text"]
+    assert "Annex III 6(e)" in fin and "2 December 2027" in fin, (
+        "finance must say that law-enforcement profiling would make it high-risk, and from when")
+    tel = scope["telecom_ids"]["text"]
+    assert "reading recital 55 gives" in tel, "a recital is a reading, not the rule; attribute it"
+    assert "Art. 2(3)" in tel and not re.search(r"20\d\d", tel), "telecom: defence-only use is outside the Act, no date"
     sat = scope["satellite_comms"]
     assert sat["highRisk"] == "depends" and "depends on how it is deployed" in sat["text"]
+    assert "Art. 2(3)" in sat["text"] and "2 December 2027" in sat["text"]
+    assert res["caveat"] == "A reading of the Act for this demonstration, not legal advice." 
 
 
 def test_the_clock_dates_the_deferrals_as_the_omnibus_set_them() -> None:
@@ -89,8 +99,8 @@ def test_the_clock_dates_the_deferrals_as_the_omnibus_set_them() -> None:
 def test_the_panel_takes_its_sentence_from_the_module() -> None:
     panel = (WEB / "src" / "components" / "ShapPanel.tsx").read_text()
     code = "\n".join(line for line in panel.splitlines() if not line.lstrip().startswith("//"))
-    assert 'import { AI_ACT_SCOPE } from "../lib/aiActScope";' in code
-    assert "{aiAct.text}" in code
+    assert 'import { AI_ACT_CAVEAT, AI_ACT_SCOPE } from "../lib/aiActScope";' in code
+    assert "{aiAct.text} {AI_ACT_CAVEAT}" in code, "every sentence carries the caveat on the page"
     assert not re.search(r"Art\. 13, applicable|2 Dec 2027|2027-12-02", code), (
         "a blanket Art. 13 date is back in the panel; it differs by use case")
     page = (WEB / "src" / "pages" / "UseCasePage.tsx").read_text()
