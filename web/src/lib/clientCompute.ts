@@ -784,8 +784,21 @@ export interface MeasuredHybrid {
   dense?: { rotations: number; multiplies: number; rotateMs: number };
 }
 
+/** Which half of the real in-browser hybrid failed, and why. Returned in place of `null` because the
+ *  two halves fail for different reasons and the run must say which. Until Round 68 every failure,
+ *  the garbled-circuit protocol's included, was reported as "node-seal did not load". An MPC failure
+ *  can be the protocol ABORTING - a MAC or commitment check failing, which is what malicious security
+ *  looks like from the honest party's side - and that must not read as a missing library. */
+export interface HybridFailure {
+  failed: "fhe" | "mpc";
+  reason: string;
+}
+
 export interface RealHybridRun extends MeasuredHybrid {
   prediction: number;
+  /** The index the same argmax gives in the clear on the same quantised logits (`clearOut` in
+   *  clientMPC.ts): the self-test the caller reports as `mpc_matches_clear`. */
+  mpcClearIndex: number;
   maxAbsError: number;
   /** The decrypted logits and the plaintext reference the CKKS path was measured against.
    *  Carried so every use case can report the same encrypted-verification figures telecom got in
@@ -875,7 +888,8 @@ export async function realClientHybrid(features: number[],
                                       usecase?: string,
                                       realModel?: { W: number[][]; b: number[] } | null,
                                       corpus?: number[][] | null,
-): Promise<RealHybridRun | null> {
+): Promise<RealHybridRun | HybridFailure> {
+  let half: HybridFailure["failed"] = "fhe";       // which half is running, for the failure report
   try {
     if (!_fheWarmed) {
       const tk = performance.now();
@@ -883,7 +897,7 @@ export async function realClientHybrid(features: number[],
       _fheKeygenMs = performance.now() - tk;
       _fheWarmed = true;
     }     // one-time CKKS keygen
-    if (!_mpcWarmed) { await warmMPC(); _mpcWarmed = true; }     // one-time Polytune wasm load + init
+    if (!_mpcWarmed) { half = "mpc"; await warmMPC(); _mpcWarmed = true; half = "fhe"; }  // one-time Polytune wasm load + init
     const n = features.length;
     // ENCRYPT THE MODEL THE PAGE EXPLAINS.
     //
@@ -906,7 +920,9 @@ export async function realClientHybrid(features: number[],
       ? W.map((_, j) => Number(realModel!.b?.[j] ?? 0))
       : [0, -0.05];
     const fhe = await encryptedLinear(W, b, features);           // REAL CKKS, measured
+    half = "mpc";
     const mpc = await secureArgmax(fhe.logits);                 // REAL garbled-circuit 2PC argmax, measured
+    half = "fhe";
 
     // The CNN workload now runs a REAL encrypted convolution instead of multiplying this dot
     // product's latency by a cost model. Shape comes from the trained student (`medical_cnn`),
@@ -1015,16 +1031,18 @@ export async function realClientHybrid(features: number[],
       };
     }
     return {
-      prediction: mpc.out[0], fheMs: fhe.fheMs + (conv?.convMs ?? 0), mpcMs: mpc.mpcMs,
+      prediction: mpc.out[0], mpcClearIndex: mpc.clearOut[0],
+      fheMs: fhe.fheMs + (conv?.convMs ?? 0), mpcMs: mpc.mpcMs,
       commBytes: mpc.commBytes, ctBytes: fhe.ctBytes, featDim: n,
       maxAbsError: fhe.maxAbsError, plainLogits: fhe.plainLogits, logits: fhe.logits, conv,
       dense: { rotations: fhe.rotations, multiplies: fhe.multiplies, rotateMs: fhe.rotateMs },
       encryptedRealModel: usingRealModel, batch,
     };
   } catch (e) {
-    // Surface the cause (no-fallback policy: a fixable defect must not hide behind the representative path).
-    console.warn("[realClientHybrid] real in-browser FHE/MPC unavailable:", e);
-    return null;
+    // Surface the cause (no-fallback policy: a fixable defect must not hide behind the representative
+    // path), and say WHICH half failed, so the run reports a protocol abort as one.
+    console.warn(`[realClientHybrid] the real in-browser ${half === "mpc" ? "garbled-circuit MPC" : "CKKS FHE"} failed:`, e);
+    return { failed: half, reason: e instanceof Error ? e.message : String(e) };
   }
 }
 
@@ -2718,7 +2736,7 @@ export function runClientPipeline(
         const corpus = realIn?.model?.W ? await realInputCorpus(usecase) : null;
         const real = await realClientHybrid(feats, usecase === "medical_fl", usecase,
                                             realIn?.model ?? null, corpus);
-        if (real) {
+        if (!("failed" in real)) {
           // A real encrypted convolution is not scaled by anything: its latency IS the measurement.
           const bscale = real.conv
             ? 1
@@ -3008,10 +3026,24 @@ export function runClientPipeline(
               // magnitude. The sibling emit fifteen lines below already says "client compute".
               + `plaintext reference ${clientMs} ms`);
           }
+          // The garbled circuit's answer, checked against the same argmax in the clear. Only this tab
+          // can run that check, because it holds both parties' shares; across two hosts nobody could.
+          // A disagreement is a broken integration, and it is reported as one.
+          const mpcAgrees = real.prediction === real.mpcClearIndex;
+          metric(stage, "mpc_matches_clear", mpcAgrees ? 1 : 0);
+          emit("log", stage, mpcAgrees
+            ? `garbled-circuit argmax checked in the clear: index ${real.prediction} both ways`
+            : `garbled-circuit argmax DISAGREES with the same argmax in the clear: ${real.prediction} `
+              + `against ${real.mpcClearIndex}. Treat this run's MPC result as unverified.`);
         } else {
-          // honest last resort: node-seal genuinely unavailable here (e.g. no WASM) — representative figure, logged
+          // Honest last resort, and it names the half that failed: node-seal not loading (no WASM,
+          // say), or the garbled-circuit protocol not completing, which includes it ABORTING on a
+          // failed check. Until Round 68 both were reported as the first.
           artifacts.fhe_prediction = inf.prediction;
-          const split = mpcFheRow(usecase, config.workload ?? "linear", config.model_size ?? "medium", null, secFromConfig(config, metrics));
+          const representative = mpcFheRow(usecase, config.workload ?? "linear", config.model_size ?? "medium", null, secFromConfig(config, metrics));
+          const cause = real.failed === "mpc"
+            ? `the garbled-circuit MPC did not run to completion (${real.reason})`
+            : `the in-browser CKKS computation failed (${real.reason})`;
           // A CONFIG CONSTANT MUST NOT BE PUBLISHED UNDER THE MEASURED METRIC'S KEY.
           //
           // This emitted `costPerOp().demo_max_abs_error` - the literal 4.6e-07 from
@@ -3027,13 +3059,16 @@ export function runClientPipeline(
           //
           // Renamed and given an explicit tier status, following the `published_model_status:
           // "failed"` convention this file already uses for the other unavailable-backend case.
-          metric(stage, "encrypted_tier", "unavailable: node-seal did not load in this browser");
+          metric(stage, "encrypted_tier", `failed: ${cause}`);
           metric(stage, "fhe_max_abs_error_representative", costPerOp().demo_max_abs_error);
-          metric(stage, "fhe_linear_ms", split.fhe_linear_ms);
-          metric(stage, "mpc_nonlinear_ms", split.mpc_nonlinear_ms);
-          metric(stage, "mpc_comm_kb", split.mpc_comm_kb);
-          emit("log", stage, `private inference: class=${inf.prediction}; in-browser CKKS unavailable here — `
-            + `representative split ${split.fhe_linear_ms}/${split.mpc_nonlinear_ms} ms, client compute ${clientMs} ms`);
+          // The same rule for the split: the measured branch fills `fhe_linear_ms`, `mpc_nonlinear_ms`
+          // and `mpc_comm_kb` from a real run, and until Round 68 this branch filled the same three
+          // keys from the cost model.
+          metric(stage, "fhe_linear_ms_representative", representative.fhe_linear_ms);
+          metric(stage, "mpc_nonlinear_ms_representative", representative.mpc_nonlinear_ms);
+          metric(stage, "mpc_comm_kb_representative", representative.mpc_comm_kb);
+          emit("log", stage, `private inference: class=${inf.prediction}; ${cause} - representative split `
+            + `${representative.fhe_linear_ms}/${representative.mpc_nonlinear_ms} ms, client compute ${clientMs} ms`);
         }
 
         // Inference backend selection (config.inference): "qcnn" routes the reported class through the
