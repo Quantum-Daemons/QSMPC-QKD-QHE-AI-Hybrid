@@ -271,7 +271,9 @@ statement of known limitations, not a conformance gap against any published requ
   comparison and what remains unverified. **Round 63 prototyped it** (`prototypes/polytune-argmax/`, not
   part of the build): two Polytune parties complete the demo's argmax in one tab, correctly, about six
   times faster than emp-wasm at 2 classes, while sending about five times the bytes - the cost that
-  would dominate on separate hosts, which was not timed. Every result carries a
+  would dominate on separate hosts, which was not timed. **Round 64 timed it**, between two tabs over
+  netem-shaped real TCP: at 2 classes Polytune still finished first on all 18 links (1.09 to 3.33
+  times faster), and at 10 classes emp-wasm did (1.47 and 2.75 times); the demo runs 2. Every result carries a
   `ProvenanceBadge` with one of exactly **four** states - `MEASURED (local WebGPU)`, `MEASURED (local
   WASM)`, `MEASURED (plain JS)`, `SIMULATED` - together with the runtime evidence for that claim (`adapter.info`,
   `crossOriginIsolated`, `ort.env.wasm.numThreads`, bytes transferred vs served from cache). A result

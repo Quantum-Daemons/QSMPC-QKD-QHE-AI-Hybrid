@@ -1,0 +1,2270 @@
+{
+ "party": 1,
+ "measuredAt": "2026-10-25T02:19:12.387Z",
+ "ua": "Chrome/152.0.7977.130",
+ "grid": [
+  {
+   "tag": "g0",
+   "n": 2,
+   "engines": [
+    "emp",
+    "polytune"
+   ],
+   "runs": 3,
+   "seed": 1000,
+   "bulkBytes": 2000000,
+   "link": {
+    "rttMs": 1,
+    "delayMs": 0.5,
+    "rateMbit": 10,
+    "lossPct": 0
+   }
+  },
+  {
+   "tag": "g1",
+   "n": 2,
+   "engines": [
+    "emp",
+    "polytune"
+   ],
+   "runs": 3,
+   "seed": 2000,
+   "bulkBytes": 2000000,
+   "link": {
+    "rttMs": 1,
+    "delayMs": 0.5,
+    "rateMbit": 10,
+    "lossPct": 0.1
+   }
+  },
+  {
+   "tag": "g2",
+   "n": 2,
+   "engines": [
+    "emp",
+    "polytune"
+   ],
+   "runs": 3,
+   "seed": 3000,
+   "bulkBytes": 2000000,
+   "link": {
+    "rttMs": 1,
+    "delayMs": 0.5,
+    "rateMbit": 10,
+    "lossPct": 1
+   }
+  },
+  {
+   "tag": "g3",
+   "n": 2,
+   "engines": [
+    "emp",
+    "polytune"
+   ],
+   "runs": 3,
+   "seed": 4000,
+   "bulkBytes": 8000000,
+   "link": {
+    "rttMs": 1,
+    "delayMs": 0.5,
+    "rateMbit": 100,
+    "lossPct": 0
+   }
+  },
+  {
+   "tag": "g4",
+   "n": 2,
+   "engines": [
+    "emp",
+    "polytune"
+   ],
+   "runs": 3,
+   "seed": 5000,
+   "bulkBytes": 8000000,
+   "link": {
+    "rttMs": 1,
+    "delayMs": 0.5,
+    "rateMbit": 100,
+    "lossPct": 0.1
+   }
+  },
+  {
+   "tag": "g5",
+   "n": 2,
+   "engines": [
+    "emp",
+    "polytune"
+   ],
+   "runs": 3,
+   "seed": 6000,
+   "bulkBytes": 8000000,
+   "link": {
+    "rttMs": 1,
+    "delayMs": 0.5,
+    "rateMbit": 100,
+    "lossPct": 1
+   }
+  },
+  {
+   "tag": "g6",
+   "n": 2,
+   "engines": [
+    "emp",
+    "polytune"
+   ],
+   "runs": 3,
+   "seed": 7000,
+   "bulkBytes": 2000000,
+   "link": {
+    "rttMs": 10,
+    "delayMs": 5,
+    "rateMbit": 10,
+    "lossPct": 0
+   }
+  },
+  {
+   "tag": "g7",
+   "n": 2,
+   "engines": [
+    "emp",
+    "polytune"
+   ],
+   "runs": 3,
+   "seed": 8000,
+   "bulkBytes": 2000000,
+   "link": {
+    "rttMs": 10,
+    "delayMs": 5,
+    "rateMbit": 10,
+    "lossPct": 0.1
+   }
+  },
+  {
+   "tag": "g8",
+   "n": 2,
+   "engines": [
+    "emp",
+    "polytune"
+   ],
+   "runs": 3,
+   "seed": 9000,
+   "bulkBytes": 2000000,
+   "link": {
+    "rttMs": 10,
+    "delayMs": 5,
+    "rateMbit": 10,
+    "lossPct": 1
+   }
+  },
+  {
+   "tag": "g9",
+   "n": 2,
+   "engines": [
+    "emp",
+    "polytune"
+   ],
+   "runs": 3,
+   "seed": 10000,
+   "bulkBytes": 8000000,
+   "link": {
+    "rttMs": 10,
+    "delayMs": 5,
+    "rateMbit": 100,
+    "lossPct": 0
+   }
+  },
+  {
+   "tag": "g10",
+   "n": 2,
+   "engines": [
+    "emp",
+    "polytune"
+   ],
+   "runs": 3,
+   "seed": 11000,
+   "bulkBytes": 8000000,
+   "link": {
+    "rttMs": 10,
+    "delayMs": 5,
+    "rateMbit": 100,
+    "lossPct": 0.1
+   }
+  },
+  {
+   "tag": "g11",
+   "n": 2,
+   "engines": [
+    "emp",
+    "polytune"
+   ],
+   "runs": 3,
+   "seed": 12000,
+   "bulkBytes": 8000000,
+   "link": {
+    "rttMs": 10,
+    "delayMs": 5,
+    "rateMbit": 100,
+    "lossPct": 1
+   }
+  },
+  {
+   "tag": "g12",
+   "n": 2,
+   "engines": [
+    "emp",
+    "polytune"
+   ],
+   "runs": 3,
+   "seed": 13000,
+   "bulkBytes": 2000000,
+   "link": {
+    "rttMs": 50,
+    "delayMs": 25,
+    "rateMbit": 10,
+    "lossPct": 0
+   }
+  },
+  {
+   "tag": "g13",
+   "n": 2,
+   "engines": [
+    "emp",
+    "polytune"
+   ],
+   "runs": 3,
+   "seed": 14000,
+   "bulkBytes": 2000000,
+   "link": {
+    "rttMs": 50,
+    "delayMs": 25,
+    "rateMbit": 10,
+    "lossPct": 0.1
+   }
+  },
+  {
+   "tag": "g14",
+   "n": 2,
+   "engines": [
+    "emp",
+    "polytune"
+   ],
+   "runs": 3,
+   "seed": 15000,
+   "bulkBytes": 2000000,
+   "link": {
+    "rttMs": 50,
+    "delayMs": 25,
+    "rateMbit": 10,
+    "lossPct": 1
+   }
+  },
+  {
+   "tag": "g15",
+   "n": 2,
+   "engines": [
+    "emp",
+    "polytune"
+   ],
+   "runs": 3,
+   "seed": 16000,
+   "bulkBytes": 8000000,
+   "link": {
+    "rttMs": 50,
+    "delayMs": 25,
+    "rateMbit": 100,
+    "lossPct": 0
+   }
+  },
+  {
+   "tag": "g16",
+   "n": 2,
+   "engines": [
+    "emp",
+    "polytune"
+   ],
+   "runs": 3,
+   "seed": 17000,
+   "bulkBytes": 8000000,
+   "link": {
+    "rttMs": 50,
+    "delayMs": 25,
+    "rateMbit": 100,
+    "lossPct": 0.1
+   }
+  },
+  {
+   "tag": "g17",
+   "n": 2,
+   "engines": [
+    "emp",
+    "polytune"
+   ],
+   "runs": 3,
+   "seed": 18000,
+   "bulkBytes": 8000000,
+   "link": {
+    "rttMs": 50,
+    "delayMs": 25,
+    "rateMbit": 100,
+    "lossPct": 1
+   }
+  },
+  {
+   "tag": "g18",
+   "n": 10,
+   "engines": [
+    "emp",
+    "polytune"
+   ],
+   "runs": 3,
+   "seed": 19000,
+   "bulkBytes": 8000000,
+   "link": {
+    "rttMs": 10,
+    "delayMs": 5,
+    "rateMbit": 100,
+    "lossPct": 0
+   }
+  },
+  {
+   "tag": "g19",
+   "n": 10,
+   "engines": [
+    "emp",
+    "polytune"
+   ],
+   "runs": 3,
+   "seed": 20000,
+   "bulkBytes": 2000000,
+   "link": {
+    "rttMs": 50,
+    "delayMs": 25,
+    "rateMbit": 10,
+    "lossPct": 0
+   }
+  }
+ ],
+ "results": [
+  {
+   "cfg": {
+    "tag": "g0",
+    "n": 2,
+    "engines": [
+     "emp",
+     "polytune"
+    ],
+    "runs": 3,
+    "seed": 1000,
+    "bulkBytes": 2000000,
+    "link": {
+     "rttMs": 1,
+     "delayMs": 0.5,
+     "rateMbit": 10,
+     "lossPct": 0
+    }
+   },
+   "party": 1,
+   "calib": {
+    "echoed": 15,
+    "received": 2000000
+   },
+   "runs": [
+    {
+     "engine": "emp-wasm",
+     "n": 2,
+     "party": 1,
+     "ms": 951.5899996757507,
+     "arg": 1,
+     "want": 1,
+     "correct": true,
+     "bytesOut": 118339,
+     "msgsOut": 22
+    },
+    {
+     "engine": "polytune",
+     "n": 2,
+     "party": 1,
+     "ms": 855.9949998855591,
+     "arg": 1,
+     "want": 1,
+     "correct": true,
+     "andOps": 400,
+     "bytesOut": 575226,
+     "msgsOut": 35
+    },
+    {
+     "engine": "emp-wasm",
+     "n": 2,
+     "party": 1,
+     "ms": 956.7449998855591,
+     "arg": 1,
+     "want": 1,
+     "correct": true,
+     "bytesOut": 118339,
+     "msgsOut": 22
+    },
+    {
+     "engine": "polytune",
+     "n": 2,
+     "party": 1,
+     "ms": 860.5750002861023,
+     "arg": 1,
+     "want": 1,
+     "correct": true,
+     "andOps": 400,
+     "bytesOut": 575226,
+     "msgsOut": 35
+    },
+    {
+     "engine": "emp-wasm",
+     "n": 2,
+     "party": 1,
+     "ms": 943.1199998855591,
+     "arg": 1,
+     "want": 1,
+     "correct": true,
+     "bytesOut": 118339,
+     "msgsOut": 22
+    },
+    {
+     "engine": "polytune",
+     "n": 2,
+     "party": 1,
+     "ms": 845.8349995613098,
+     "arg": 1,
+     "want": 1,
+     "correct": true,
+     "andOps": 400,
+     "bytesOut": 575226,
+     "msgsOut": 35
+    }
+   ],
+   "applied": null
+  },
+  {
+   "cfg": {
+    "tag": "g1",
+    "n": 2,
+    "engines": [
+     "emp",
+     "polytune"
+    ],
+    "runs": 3,
+    "seed": 2000,
+    "bulkBytes": 2000000,
+    "link": {
+     "rttMs": 1,
+     "delayMs": 0.5,
+     "rateMbit": 10,
+     "lossPct": 0.1
+    }
+   },
+   "party": 1,
+   "calib": {
+    "echoed": 15,
+    "received": 2000000
+   },
+   "runs": [
+    {
+     "engine": "emp-wasm",
+     "n": 2,
+     "party": 1,
+     "ms": 938.6799998283386,
+     "arg": 0,
+     "want": 0,
+     "correct": true,
+     "bytesOut": 118339,
+     "msgsOut": 22
+    },
+    {
+     "engine": "polytune",
+     "n": 2,
+     "party": 1,
+     "ms": 858.9749999046326,
+     "arg": 0,
+     "want": 0,
+     "correct": true,
+     "andOps": 400,
+     "bytesOut": 575226,
+     "msgsOut": 35
+    },
+    {
+     "engine": "emp-wasm",
+     "n": 2,
+     "party": 1,
+     "ms": 922.7649998664856,
+     "arg": 1,
+     "want": 1,
+     "correct": true,
+     "bytesOut": 118339,
+     "msgsOut": 22
+    },
+    {
+     "engine": "polytune",
+     "n": 2,
+     "party": 1,
+     "ms": 845.6399998664856,
+     "arg": 1,
+     "want": 1,
+     "correct": true,
+     "andOps": 400,
+     "bytesOut": 575226,
+     "msgsOut": 35
+    },
+    {
+     "engine": "emp-wasm",
+     "n": 2,
+     "party": 1,
+     "ms": 941.6750001907349,
+     "arg": 1,
+     "want": 1,
+     "correct": true,
+     "bytesOut": 118339,
+     "msgsOut": 22
+    },
+    {
+     "engine": "polytune",
+     "n": 2,
+     "party": 1,
+     "ms": 852.6300001144409,
+     "arg": 1,
+     "want": 1,
+     "correct": true,
+     "andOps": 400,
+     "bytesOut": 575226,
+     "msgsOut": 35
+    }
+   ],
+   "applied": null
+  },
+  {
+   "cfg": {
+    "tag": "g2",
+    "n": 2,
+    "engines": [
+     "emp",
+     "polytune"
+    ],
+    "runs": 3,
+    "seed": 3000,
+    "bulkBytes": 2000000,
+    "link": {
+     "rttMs": 1,
+     "delayMs": 0.5,
+     "rateMbit": 10,
+     "lossPct": 1
+    }
+   },
+   "party": 1,
+   "calib": {
+    "echoed": 15,
+    "received": 2000000
+   },
+   "runs": [
+    {
+     "engine": "emp-wasm",
+     "n": 2,
+     "party": 1,
+     "ms": 927.1149997711182,
+     "arg": 0,
+     "want": 0,
+     "correct": true,
+     "bytesOut": 118339,
+     "msgsOut": 22
+    },
+    {
+     "engine": "polytune",
+     "n": 2,
+     "party": 1,
+     "ms": 856.1500000953674,
+     "arg": 0,
+     "want": 0,
+     "correct": true,
+     "andOps": 400,
+     "bytesOut": 575226,
+     "msgsOut": 35
+    },
+    {
+     "engine": "emp-wasm",
+     "n": 2,
+     "party": 1,
+     "ms": 1139.7750000953674,
+     "arg": 0,
+     "want": 0,
+     "correct": true,
+     "bytesOut": 118339,
+     "msgsOut": 22
+    },
+    {
+     "engine": "polytune",
+     "n": 2,
+     "party": 1,
+     "ms": 1087.8050003051758,
+     "arg": 0,
+     "want": 0,
+     "correct": true,
+     "andOps": 400,
+     "bytesOut": 575226,
+     "msgsOut": 35
+    },
+    {
+     "engine": "emp-wasm",
+     "n": 2,
+     "party": 1,
+     "ms": 931.8550000190735,
+     "arg": 1,
+     "want": 1,
+     "correct": true,
+     "bytesOut": 118339,
+     "msgsOut": 22
+    },
+    {
+     "engine": "polytune",
+     "n": 2,
+     "party": 1,
+     "ms": 850.4800000190735,
+     "arg": 1,
+     "want": 1,
+     "correct": true,
+     "andOps": 400,
+     "bytesOut": 575226,
+     "msgsOut": 35
+    }
+   ],
+   "applied": null
+  },
+  {
+   "cfg": {
+    "tag": "g3",
+    "n": 2,
+    "engines": [
+     "emp",
+     "polytune"
+    ],
+    "runs": 3,
+    "seed": 4000,
+    "bulkBytes": 8000000,
+    "link": {
+     "rttMs": 1,
+     "delayMs": 0.5,
+     "rateMbit": 100,
+     "lossPct": 0
+    }
+   },
+   "party": 1,
+   "calib": {
+    "echoed": 15,
+    "received": 8000000
+   },
+   "runs": [
+    {
+     "engine": "emp-wasm",
+     "n": 2,
+     "party": 1,
+     "ms": 774.0249996185303,
+     "arg": 1,
+     "want": 1,
+     "correct": true,
+     "bytesOut": 118339,
+     "msgsOut": 22
+    },
+    {
+     "engine": "polytune",
+     "n": 2,
+     "party": 1,
+     "ms": 234.875,
+     "arg": 1,
+     "want": 1,
+     "correct": true,
+     "andOps": 400,
+     "bytesOut": 575226,
+     "msgsOut": 35
+    },
+    {
+     "engine": "emp-wasm",
+     "n": 2,
+     "party": 1,
+     "ms": 783.1500000953674,
+     "arg": 0,
+     "want": 0,
+     "correct": true,
+     "bytesOut": 118339,
+     "msgsOut": 22
+    },
+    {
+     "engine": "polytune",
+     "n": 2,
+     "party": 1,
+     "ms": 231.4800000190735,
+     "arg": 0,
+     "want": 0,
+     "correct": true,
+     "andOps": 400,
+     "bytesOut": 575226,
+     "msgsOut": 35
+    },
+    {
+     "engine": "emp-wasm",
+     "n": 2,
+     "party": 1,
+     "ms": 764.9400000572205,
+     "arg": 0,
+     "want": 0,
+     "correct": true,
+     "bytesOut": 118339,
+     "msgsOut": 22
+    },
+    {
+     "engine": "polytune",
+     "n": 2,
+     "party": 1,
+     "ms": 242.71999979019165,
+     "arg": 0,
+     "want": 0,
+     "correct": true,
+     "andOps": 400,
+     "bytesOut": 575226,
+     "msgsOut": 35
+    }
+   ],
+   "applied": null
+  },
+  {
+   "cfg": {
+    "tag": "g4",
+    "n": 2,
+    "engines": [
+     "emp",
+     "polytune"
+    ],
+    "runs": 3,
+    "seed": 5000,
+    "bulkBytes": 8000000,
+    "link": {
+     "rttMs": 1,
+     "delayMs": 0.5,
+     "rateMbit": 100,
+     "lossPct": 0.1
+    }
+   },
+   "party": 1,
+   "calib": {
+    "echoed": 15,
+    "received": 8000000
+   },
+   "runs": [
+    {
+     "engine": "emp-wasm",
+     "n": 2,
+     "party": 1,
+     "ms": 760.1300001144409,
+     "arg": 1,
+     "want": 1,
+     "correct": true,
+     "bytesOut": 118339,
+     "msgsOut": 22
+    },
+    {
+     "engine": "polytune",
+     "n": 2,
+     "party": 1,
+     "ms": 243.78999996185303,
+     "arg": 1,
+     "want": 1,
+     "correct": true,
+     "andOps": 400,
+     "bytesOut": 575226,
+     "msgsOut": 35
+    },
+    {
+     "engine": "emp-wasm",
+     "n": 2,
+     "party": 1,
+     "ms": 777.1300001144409,
+     "arg": 0,
+     "want": 0,
+     "correct": true,
+     "bytesOut": 118339,
+     "msgsOut": 22
+    },
+    {
+     "engine": "polytune",
+     "n": 2,
+     "party": 1,
+     "ms": 229.31500005722046,
+     "arg": 0,
+     "want": 0,
+     "correct": true,
+     "andOps": 400,
+     "bytesOut": 575226,
+     "msgsOut": 35
+    },
+    {
+     "engine": "emp-wasm",
+     "n": 2,
+     "party": 1,
+     "ms": 777.1199998855591,
+     "arg": 0,
+     "want": 0,
+     "correct": true,
+     "bytesOut": 118339,
+     "msgsOut": 22
+    },
+    {
+     "engine": "polytune",
+     "n": 2,
+     "party": 1,
+     "ms": 234.05999994277954,
+     "arg": 0,
+     "want": 0,
+     "correct": true,
+     "andOps": 400,
+     "bytesOut": 575226,
+     "msgsOut": 35
+    }
+   ],
+   "applied": null
+  },
+  {
+   "cfg": {
+    "tag": "g5",
+    "n": 2,
+    "engines": [
+     "emp",
+     "polytune"
+    ],
+    "runs": 3,
+    "seed": 6000,
+    "bulkBytes": 8000000,
+    "link": {
+     "rttMs": 1,
+     "delayMs": 0.5,
+     "rateMbit": 100,
+     "lossPct": 1
+    }
+   },
+   "party": 1,
+   "calib": {
+    "echoed": 15,
+    "received": 8000000
+   },
+   "runs": [
+    {
+     "engine": "emp-wasm",
+     "n": 2,
+     "party": 1,
+     "ms": 775.4449996948242,
+     "arg": 0,
+     "want": 0,
+     "correct": true,
+     "bytesOut": 118339,
+     "msgsOut": 22
+    },
+    {
+     "engine": "polytune",
+     "n": 2,
+     "party": 1,
+     "ms": 246.03000020980835,
+     "arg": 0,
+     "want": 0,
+     "correct": true,
+     "andOps": 400,
+     "bytesOut": 575226,
+     "msgsOut": 35
+    },
+    {
+     "engine": "emp-wasm",
+     "n": 2,
+     "party": 1,
+     "ms": 762.1150002479553,
+     "arg": 0,
+     "want": 0,
+     "correct": true,
+     "bytesOut": 118339,
+     "msgsOut": 22
+    },
+    {
+     "engine": "polytune",
+     "n": 2,
+     "party": 1,
+     "ms": 438.039999961853,
+     "arg": 0,
+     "want": 0,
+     "correct": true,
+     "andOps": 400,
+     "bytesOut": 575226,
+     "msgsOut": 35
+    },
+    {
+     "engine": "emp-wasm",
+     "n": 2,
+     "party": 1,
+     "ms": 754.914999961853,
+     "arg": 1,
+     "want": 1,
+     "correct": true,
+     "bytesOut": 118339,
+     "msgsOut": 22
+    },
+    {
+     "engine": "polytune",
+     "n": 2,
+     "party": 1,
+     "ms": 241.74499988555908,
+     "arg": 1,
+     "want": 1,
+     "correct": true,
+     "andOps": 400,
+     "bytesOut": 575226,
+     "msgsOut": 35
+    }
+   ],
+   "applied": null
+  },
+  {
+   "cfg": {
+    "tag": "g6",
+    "n": 2,
+    "engines": [
+     "emp",
+     "polytune"
+    ],
+    "runs": 3,
+    "seed": 7000,
+    "bulkBytes": 2000000,
+    "link": {
+     "rttMs": 10,
+     "delayMs": 5,
+     "rateMbit": 10,
+     "lossPct": 0
+    }
+   },
+   "party": 1,
+   "calib": {
+    "echoed": 15,
+    "received": 2000000
+   },
+   "runs": [
+    {
+     "engine": "emp-wasm",
+     "n": 2,
+     "party": 1,
+     "ms": 1149.5650000572205,
+     "arg": 0,
+     "want": 0,
+     "correct": true,
+     "bytesOut": 118339,
+     "msgsOut": 22
+    },
+    {
+     "engine": "polytune",
+     "n": 2,
+     "party": 1,
+     "ms": 1012.6100001335144,
+     "arg": 0,
+     "want": 0,
+     "correct": true,
+     "andOps": 400,
+     "bytesOut": 575226,
+     "msgsOut": 35
+    },
+    {
+     "engine": "emp-wasm",
+     "n": 2,
+     "party": 1,
+     "ms": 1134.8850002288818,
+     "arg": 0,
+     "want": 0,
+     "correct": true,
+     "bytesOut": 118339,
+     "msgsOut": 22
+    },
+    {
+     "engine": "polytune",
+     "n": 2,
+     "party": 1,
+     "ms": 1022.8949999809265,
+     "arg": 0,
+     "want": 0,
+     "correct": true,
+     "andOps": 400,
+     "bytesOut": 575226,
+     "msgsOut": 35
+    },
+    {
+     "engine": "emp-wasm",
+     "n": 2,
+     "party": 1,
+     "ms": 1146.5149998664856,
+     "arg": 0,
+     "want": 0,
+     "correct": true,
+     "bytesOut": 118339,
+     "msgsOut": 22
+    },
+    {
+     "engine": "polytune",
+     "n": 2,
+     "party": 1,
+     "ms": 1030.1350002288818,
+     "arg": 0,
+     "want": 0,
+     "correct": true,
+     "andOps": 400,
+     "bytesOut": 575226,
+     "msgsOut": 35
+    }
+   ],
+   "applied": null
+  },
+  {
+   "cfg": {
+    "tag": "g7",
+    "n": 2,
+    "engines": [
+     "emp",
+     "polytune"
+    ],
+    "runs": 3,
+    "seed": 8000,
+    "bulkBytes": 2000000,
+    "link": {
+     "rttMs": 10,
+     "delayMs": 5,
+     "rateMbit": 10,
+     "lossPct": 0.1
+    }
+   },
+   "party": 1,
+   "calib": {
+    "echoed": 15,
+    "received": 2000000
+   },
+   "runs": [
+    {
+     "engine": "emp-wasm",
+     "n": 2,
+     "party": 1,
+     "ms": 1147.2399997711182,
+     "arg": 1,
+     "want": 1,
+     "correct": true,
+     "bytesOut": 118339,
+     "msgsOut": 22
+    },
+    {
+     "engine": "polytune",
+     "n": 2,
+     "party": 1,
+     "ms": 1014.0349998474121,
+     "arg": 1,
+     "want": 1,
+     "correct": true,
+     "andOps": 400,
+     "bytesOut": 575226,
+     "msgsOut": 35
+    },
+    {
+     "engine": "emp-wasm",
+     "n": 2,
+     "party": 1,
+     "ms": 1125.534999847412,
+     "arg": 1,
+     "want": 1,
+     "correct": true,
+     "bytesOut": 118339,
+     "msgsOut": 22
+    },
+    {
+     "engine": "polytune",
+     "n": 2,
+     "party": 1,
+     "ms": 1018.8450002670288,
+     "arg": 1,
+     "want": 1,
+     "correct": true,
+     "andOps": 400,
+     "bytesOut": 575226,
+     "msgsOut": 35
+    },
+    {
+     "engine": "emp-wasm",
+     "n": 2,
+     "party": 1,
+     "ms": 1164.4400000572205,
+     "arg": 0,
+     "want": 0,
+     "correct": true,
+     "bytesOut": 118339,
+     "msgsOut": 22
+    },
+    {
+     "engine": "polytune",
+     "n": 2,
+     "party": 1,
+     "ms": 1019.5300002098083,
+     "arg": 0,
+     "want": 0,
+     "correct": true,
+     "andOps": 400,
+     "bytesOut": 575226,
+     "msgsOut": 35
+    }
+   ],
+   "applied": null
+  },
+  {
+   "cfg": {
+    "tag": "g8",
+    "n": 2,
+    "engines": [
+     "emp",
+     "polytune"
+    ],
+    "runs": 3,
+    "seed": 9000,
+    "bulkBytes": 2000000,
+    "link": {
+     "rttMs": 10,
+     "delayMs": 5,
+     "rateMbit": 10,
+     "lossPct": 1
+    }
+   },
+   "party": 1,
+   "calib": {
+    "echoed": 15,
+    "received": 2000000
+   },
+   "runs": [
+    {
+     "engine": "emp-wasm",
+     "n": 2,
+     "party": 1,
+     "ms": 1136.409999847412,
+     "arg": 1,
+     "want": 1,
+     "correct": true,
+     "bytesOut": 118339,
+     "msgsOut": 22
+    },
+    {
+     "engine": "polytune",
+     "n": 2,
+     "party": 1,
+     "ms": 1020.2699999809265,
+     "arg": 1,
+     "want": 1,
+     "correct": true,
+     "andOps": 400,
+     "bytesOut": 575226,
+     "msgsOut": 35
+    },
+    {
+     "engine": "emp-wasm",
+     "n": 2,
+     "party": 1,
+     "ms": 1388.1549997329712,
+     "arg": 0,
+     "want": 0,
+     "correct": true,
+     "bytesOut": 118339,
+     "msgsOut": 22
+    },
+    {
+     "engine": "polytune",
+     "n": 2,
+     "party": 1,
+     "ms": 1031.454999923706,
+     "arg": 0,
+     "want": 0,
+     "correct": true,
+     "andOps": 400,
+     "bytesOut": 575226,
+     "msgsOut": 35
+    },
+    {
+     "engine": "emp-wasm",
+     "n": 2,
+     "party": 1,
+     "ms": 1358.6100001335144,
+     "arg": 1,
+     "want": 1,
+     "correct": true,
+     "bytesOut": 118339,
+     "msgsOut": 22
+    },
+    {
+     "engine": "polytune",
+     "n": 2,
+     "party": 1,
+     "ms": 1058.3049998283386,
+     "arg": 1,
+     "want": 1,
+     "correct": true,
+     "andOps": 400,
+     "bytesOut": 575226,
+     "msgsOut": 35
+    }
+   ],
+   "applied": null
+  },
+  {
+   "cfg": {
+    "tag": "g9",
+    "n": 2,
+    "engines": [
+     "emp",
+     "polytune"
+    ],
+    "runs": 3,
+    "seed": 10000,
+    "bulkBytes": 8000000,
+    "link": {
+     "rttMs": 10,
+     "delayMs": 5,
+     "rateMbit": 100,
+     "lossPct": 0
+    }
+   },
+   "party": 1,
+   "calib": {
+    "echoed": 15,
+    "received": 8000000
+   },
+   "runs": [
+    {
+     "engine": "emp-wasm",
+     "n": 2,
+     "party": 1,
+     "ms": 974.085000038147,
+     "arg": 0,
+     "want": 0,
+     "correct": true,
+     "bytesOut": 118339,
+     "msgsOut": 22
+    },
+    {
+     "engine": "polytune",
+     "n": 2,
+     "party": 1,
+     "ms": 405.5700001716614,
+     "arg": 0,
+     "want": 0,
+     "correct": true,
+     "andOps": 400,
+     "bytesOut": 575226,
+     "msgsOut": 35
+    },
+    {
+     "engine": "emp-wasm",
+     "n": 2,
+     "party": 1,
+     "ms": 995.5099997520447,
+     "arg": 0,
+     "want": 0,
+     "correct": true,
+     "bytesOut": 118339,
+     "msgsOut": 22
+    },
+    {
+     "engine": "polytune",
+     "n": 2,
+     "party": 1,
+     "ms": 408.3250002861023,
+     "arg": 0,
+     "want": 0,
+     "correct": true,
+     "andOps": 400,
+     "bytesOut": 575226,
+     "msgsOut": 35
+    },
+    {
+     "engine": "emp-wasm",
+     "n": 2,
+     "party": 1,
+     "ms": 997.9000000953674,
+     "arg": 1,
+     "want": 1,
+     "correct": true,
+     "bytesOut": 118339,
+     "msgsOut": 22
+    },
+    {
+     "engine": "polytune",
+     "n": 2,
+     "party": 1,
+     "ms": 394.65500020980835,
+     "arg": 1,
+     "want": 1,
+     "correct": true,
+     "andOps": 400,
+     "bytesOut": 575226,
+     "msgsOut": 35
+    }
+   ],
+   "applied": null
+  },
+  {
+   "cfg": {
+    "tag": "g10",
+    "n": 2,
+    "engines": [
+     "emp",
+     "polytune"
+    ],
+    "runs": 3,
+    "seed": 11000,
+    "bulkBytes": 8000000,
+    "link": {
+     "rttMs": 10,
+     "delayMs": 5,
+     "rateMbit": 100,
+     "lossPct": 0.1
+    }
+   },
+   "party": 1,
+   "calib": {
+    "echoed": 15,
+    "received": 8000000
+   },
+   "runs": [
+    {
+     "engine": "emp-wasm",
+     "n": 2,
+     "party": 1,
+     "ms": 995.2099995613098,
+     "arg": 1,
+     "want": 1,
+     "correct": true,
+     "bytesOut": 118339,
+     "msgsOut": 22
+    },
+    {
+     "engine": "polytune",
+     "n": 2,
+     "party": 1,
+     "ms": 404.1949996948242,
+     "arg": 1,
+     "want": 1,
+     "correct": true,
+     "andOps": 400,
+     "bytesOut": 575226,
+     "msgsOut": 35
+    },
+    {
+     "engine": "emp-wasm",
+     "n": 2,
+     "party": 1,
+     "ms": 999.6149997711182,
+     "arg": 1,
+     "want": 1,
+     "correct": true,
+     "bytesOut": 118339,
+     "msgsOut": 22
+    },
+    {
+     "engine": "polytune",
+     "n": 2,
+     "party": 1,
+     "ms": 398.94999980926514,
+     "arg": 1,
+     "want": 1,
+     "correct": true,
+     "andOps": 400,
+     "bytesOut": 575226,
+     "msgsOut": 35
+    },
+    {
+     "engine": "emp-wasm",
+     "n": 2,
+     "party": 1,
+     "ms": 972.414999961853,
+     "arg": 1,
+     "want": 1,
+     "correct": true,
+     "bytesOut": 118339,
+     "msgsOut": 22
+    },
+    {
+     "engine": "polytune",
+     "n": 2,
+     "party": 1,
+     "ms": 410.1950001716614,
+     "arg": 1,
+     "want": 1,
+     "correct": true,
+     "andOps": 400,
+     "bytesOut": 575226,
+     "msgsOut": 35
+    }
+   ],
+   "applied": null
+  },
+  {
+   "cfg": {
+    "tag": "g11",
+    "n": 2,
+    "engines": [
+     "emp",
+     "polytune"
+    ],
+    "runs": 3,
+    "seed": 12000,
+    "bulkBytes": 8000000,
+    "link": {
+     "rttMs": 10,
+     "delayMs": 5,
+     "rateMbit": 100,
+     "lossPct": 1
+    }
+   },
+   "party": 1,
+   "calib": {
+    "echoed": 15,
+    "received": 8000000
+   },
+   "runs": [
+    {
+     "engine": "emp-wasm",
+     "n": 2,
+     "party": 1,
+     "ms": 993.1149997711182,
+     "arg": 1,
+     "want": 1,
+     "correct": true,
+     "bytesOut": 118339,
+     "msgsOut": 22
+    },
+    {
+     "engine": "polytune",
+     "n": 2,
+     "party": 1,
+     "ms": 409.2099995613098,
+     "arg": 1,
+     "want": 1,
+     "correct": true,
+     "andOps": 400,
+     "bytesOut": 575226,
+     "msgsOut": 35
+    },
+    {
+     "engine": "emp-wasm",
+     "n": 2,
+     "party": 1,
+     "ms": 984.5299997329712,
+     "arg": 0,
+     "want": 0,
+     "correct": true,
+     "bytesOut": 118339,
+     "msgsOut": 22
+    },
+    {
+     "engine": "polytune",
+     "n": 2,
+     "party": 1,
+     "ms": 409.34499979019165,
+     "arg": 0,
+     "want": 0,
+     "correct": true,
+     "andOps": 400,
+     "bytesOut": 575226,
+     "msgsOut": 35
+    },
+    {
+     "engine": "emp-wasm",
+     "n": 2,
+     "party": 1,
+     "ms": 1009.4050002098083,
+     "arg": 0,
+     "want": 0,
+     "correct": true,
+     "bytesOut": 118339,
+     "msgsOut": 22
+    },
+    {
+     "engine": "polytune",
+     "n": 2,
+     "party": 1,
+     "ms": 541.375,
+     "arg": 0,
+     "want": 0,
+     "correct": true,
+     "andOps": 400,
+     "bytesOut": 575226,
+     "msgsOut": 35
+    }
+   ],
+   "applied": null
+  },
+  {
+   "cfg": {
+    "tag": "g12",
+    "n": 2,
+    "engines": [
+     "emp",
+     "polytune"
+    ],
+    "runs": 3,
+    "seed": 13000,
+    "bulkBytes": 2000000,
+    "link": {
+     "rttMs": 50,
+     "delayMs": 25,
+     "rateMbit": 10,
+     "lossPct": 0
+    }
+   },
+   "party": 1,
+   "calib": {
+    "echoed": 15,
+    "received": 2000000
+   },
+   "runs": [
+    {
+     "engine": "emp-wasm",
+     "n": 2,
+     "party": 1,
+     "ms": 2039.164999961853,
+     "arg": 1,
+     "want": 1,
+     "correct": true,
+     "bytesOut": 118339,
+     "msgsOut": 22
+    },
+    {
+     "engine": "polytune",
+     "n": 2,
+     "party": 1,
+     "ms": 1825.5700001716614,
+     "arg": 1,
+     "want": 1,
+     "correct": true,
+     "andOps": 400,
+     "bytesOut": 575226,
+     "msgsOut": 35
+    },
+    {
+     "engine": "emp-wasm",
+     "n": 2,
+     "party": 1,
+     "ms": 2050.8849997520447,
+     "arg": 0,
+     "want": 0,
+     "correct": true,
+     "bytesOut": 118339,
+     "msgsOut": 22
+    },
+    {
+     "engine": "polytune",
+     "n": 2,
+     "party": 1,
+     "ms": 1836.3250002861023,
+     "arg": 0,
+     "want": 0,
+     "correct": true,
+     "andOps": 400,
+     "bytesOut": 575226,
+     "msgsOut": 35
+    },
+    {
+     "engine": "emp-wasm",
+     "n": 2,
+     "party": 1,
+     "ms": 2041.9800000190735,
+     "arg": 0,
+     "want": 0,
+     "correct": true,
+     "bytesOut": 118339,
+     "msgsOut": 22
+    },
+    {
+     "engine": "polytune",
+     "n": 2,
+     "party": 1,
+     "ms": 1831.9800000190735,
+     "arg": 0,
+     "want": 0,
+     "correct": true,
+     "andOps": 400,
+     "bytesOut": 575226,
+     "msgsOut": 35
+    }
+   ],
+   "applied": null
+  },
+  {
+   "cfg": {
+    "tag": "g13",
+    "n": 2,
+    "engines": [
+     "emp",
+     "polytune"
+    ],
+    "runs": 3,
+    "seed": 14000,
+    "bulkBytes": 2000000,
+    "link": {
+     "rttMs": 50,
+     "delayMs": 25,
+     "rateMbit": 10,
+     "lossPct": 0.1
+    }
+   },
+   "party": 1,
+   "calib": {
+    "echoed": 15,
+    "received": 2000000
+   },
+   "runs": [
+    {
+     "engine": "emp-wasm",
+     "n": 2,
+     "party": 1,
+     "ms": 2044.9499998092651,
+     "arg": 0,
+     "want": 0,
+     "correct": true,
+     "bytesOut": 118339,
+     "msgsOut": 22
+    },
+    {
+     "engine": "polytune",
+     "n": 2,
+     "party": 1,
+     "ms": 1831.1500000953674,
+     "arg": 0,
+     "want": 0,
+     "correct": true,
+     "andOps": 400,
+     "bytesOut": 575226,
+     "msgsOut": 35
+    },
+    {
+     "engine": "emp-wasm",
+     "n": 2,
+     "party": 1,
+     "ms": 2055.75,
+     "arg": 0,
+     "want": 0,
+     "correct": true,
+     "bytesOut": 118339,
+     "msgsOut": 22
+    },
+    {
+     "engine": "polytune",
+     "n": 2,
+     "party": 1,
+     "ms": 1831.9499998092651,
+     "arg": 0,
+     "want": 0,
+     "correct": true,
+     "andOps": 400,
+     "bytesOut": 575226,
+     "msgsOut": 35
+    },
+    {
+     "engine": "emp-wasm",
+     "n": 2,
+     "party": 1,
+     "ms": 2050.795000076294,
+     "arg": 0,
+     "want": 0,
+     "correct": true,
+     "bytesOut": 118339,
+     "msgsOut": 22
+    },
+    {
+     "engine": "polytune",
+     "n": 2,
+     "party": 1,
+     "ms": 2152.319999694824,
+     "arg": 0,
+     "want": 0,
+     "correct": true,
+     "andOps": 400,
+     "bytesOut": 575226,
+     "msgsOut": 35
+    }
+   ],
+   "applied": null
+  },
+  {
+   "cfg": {
+    "tag": "g14",
+    "n": 2,
+    "engines": [
+     "emp",
+     "polytune"
+    ],
+    "runs": 3,
+    "seed": 15000,
+    "bulkBytes": 2000000,
+    "link": {
+     "rttMs": 50,
+     "delayMs": 25,
+     "rateMbit": 10,
+     "lossPct": 1
+    }
+   },
+   "party": 1,
+   "calib": {
+    "echoed": 15,
+    "received": 2000000
+   },
+   "runs": [
+    {
+     "engine": "emp-wasm",
+     "n": 2,
+     "party": 1,
+     "ms": 2103.8949999809265,
+     "arg": 1,
+     "want": 1,
+     "correct": true,
+     "bytesOut": 118339,
+     "msgsOut": 22
+    },
+    {
+     "engine": "polytune",
+     "n": 2,
+     "party": 1,
+     "ms": 1875.5650000572205,
+     "arg": 1,
+     "want": 1,
+     "correct": true,
+     "andOps": 400,
+     "bytesOut": 575226,
+     "msgsOut": 35
+    },
+    {
+     "engine": "emp-wasm",
+     "n": 2,
+     "party": 1,
+     "ms": 2591.9649996757507,
+     "arg": 1,
+     "want": 1,
+     "correct": true,
+     "bytesOut": 118339,
+     "msgsOut": 22
+    },
+    {
+     "engine": "polytune",
+     "n": 2,
+     "party": 1,
+     "ms": 1874.1750001907349,
+     "arg": 1,
+     "want": 1,
+     "correct": true,
+     "andOps": 400,
+     "bytesOut": 575226,
+     "msgsOut": 35
+    },
+    {
+     "engine": "emp-wasm",
+     "n": 2,
+     "party": 1,
+     "ms": 2077.194999694824,
+     "arg": 0,
+     "want": 0,
+     "correct": true,
+     "bytesOut": 118339,
+     "msgsOut": 22
+    },
+    {
+     "engine": "polytune",
+     "n": 2,
+     "party": 1,
+     "ms": 1859.5699996948242,
+     "arg": 0,
+     "want": 0,
+     "correct": true,
+     "andOps": 400,
+     "bytesOut": 575226,
+     "msgsOut": 35
+    }
+   ],
+   "applied": null
+  },
+  {
+   "cfg": {
+    "tag": "g15",
+    "n": 2,
+    "engines": [
+     "emp",
+     "polytune"
+    ],
+    "runs": 3,
+    "seed": 16000,
+    "bulkBytes": 8000000,
+    "link": {
+     "rttMs": 50,
+     "delayMs": 25,
+     "rateMbit": 100,
+     "lossPct": 0
+    }
+   },
+   "party": 1,
+   "calib": {
+    "echoed": 15,
+    "received": 8000000
+   },
+   "runs": [
+    {
+     "engine": "emp-wasm",
+     "n": 2,
+     "party": 1,
+     "ms": 1937.2399997711182,
+     "arg": 1,
+     "want": 1,
+     "correct": true,
+     "bytesOut": 118339,
+     "msgsOut": 22
+    },
+    {
+     "engine": "polytune",
+     "n": 2,
+     "party": 1,
+     "ms": 1205.4850001335144,
+     "arg": 1,
+     "want": 1,
+     "correct": true,
+     "andOps": 400,
+     "bytesOut": 575226,
+     "msgsOut": 35
+    },
+    {
+     "engine": "emp-wasm",
+     "n": 2,
+     "party": 1,
+     "ms": 1942.9299998283386,
+     "arg": 0,
+     "want": 0,
+     "correct": true,
+     "bytesOut": 118339,
+     "msgsOut": 22
+    },
+    {
+     "engine": "polytune",
+     "n": 2,
+     "party": 1,
+     "ms": 1198.1100001335144,
+     "arg": 0,
+     "want": 0,
+     "correct": true,
+     "andOps": 400,
+     "bytesOut": 575226,
+     "msgsOut": 35
+    },
+    {
+     "engine": "emp-wasm",
+     "n": 2,
+     "party": 1,
+     "ms": 1915.1750001907349,
+     "arg": 0,
+     "want": 0,
+     "correct": true,
+     "bytesOut": 118339,
+     "msgsOut": 22
+    },
+    {
+     "engine": "polytune",
+     "n": 2,
+     "party": 1,
+     "ms": 1205.7350001335144,
+     "arg": 0,
+     "want": 0,
+     "correct": true,
+     "andOps": 400,
+     "bytesOut": 575226,
+     "msgsOut": 35
+    }
+   ],
+   "applied": null
+  },
+  {
+   "cfg": {
+    "tag": "g16",
+    "n": 2,
+    "engines": [
+     "emp",
+     "polytune"
+    ],
+    "runs": 3,
+    "seed": 17000,
+    "bulkBytes": 8000000,
+    "link": {
+     "rttMs": 50,
+     "delayMs": 25,
+     "rateMbit": 100,
+     "lossPct": 0.1
+    }
+   },
+   "party": 1,
+   "calib": {
+    "echoed": 15,
+    "received": 8000000
+   },
+   "runs": [
+    {
+     "engine": "emp-wasm",
+     "n": 2,
+     "party": 1,
+     "ms": 1920.7450003623962,
+     "arg": 0,
+     "want": 0,
+     "correct": true,
+     "bytesOut": 118339,
+     "msgsOut": 22
+    },
+    {
+     "engine": "polytune",
+     "n": 2,
+     "party": 1,
+     "ms": 1260.1550002098083,
+     "arg": 0,
+     "want": 0,
+     "correct": true,
+     "andOps": 400,
+     "bytesOut": 575226,
+     "msgsOut": 35
+    },
+    {
+     "engine": "emp-wasm",
+     "n": 2,
+     "party": 1,
+     "ms": 1925.6499996185303,
+     "arg": 0,
+     "want": 0,
+     "correct": true,
+     "bytesOut": 118339,
+     "msgsOut": 22
+    },
+    {
+     "engine": "polytune",
+     "n": 2,
+     "party": 1,
+     "ms": 1350.7350001335144,
+     "arg": 0,
+     "want": 0,
+     "correct": true,
+     "andOps": 400,
+     "bytesOut": 575226,
+     "msgsOut": 35
+    },
+    {
+     "engine": "emp-wasm",
+     "n": 2,
+     "party": 1,
+     "ms": 1925.3849997520447,
+     "arg": 0,
+     "want": 0,
+     "correct": true,
+     "bytesOut": 118339,
+     "msgsOut": 22
+    },
+    {
+     "engine": "polytune",
+     "n": 2,
+     "party": 1,
+     "ms": 1204.0099997520447,
+     "arg": 0,
+     "want": 0,
+     "correct": true,
+     "andOps": 400,
+     "bytesOut": 575226,
+     "msgsOut": 35
+    }
+   ],
+   "applied": null
+  },
+  {
+   "cfg": {
+    "tag": "g17",
+    "n": 2,
+    "engines": [
+     "emp",
+     "polytune"
+    ],
+    "runs": 3,
+    "seed": 18000,
+    "bulkBytes": 8000000,
+    "link": {
+     "rttMs": 50,
+     "delayMs": 25,
+     "rateMbit": 100,
+     "lossPct": 1
+    }
+   },
+   "party": 1,
+   "calib": {
+    "echoed": 15,
+    "received": 8000000
+   },
+   "runs": [
+    {
+     "engine": "emp-wasm",
+     "n": 2,
+     "party": 1,
+     "ms": 2126.444999694824,
+     "arg": 0,
+     "want": 0,
+     "correct": true,
+     "bytesOut": 118339,
+     "msgsOut": 22
+    },
+    {
+     "engine": "polytune",
+     "n": 2,
+     "party": 1,
+     "ms": 1283.2699999809265,
+     "arg": 0,
+     "want": 0,
+     "correct": true,
+     "andOps": 400,
+     "bytesOut": 575226,
+     "msgsOut": 35
+    },
+    {
+     "engine": "emp-wasm",
+     "n": 2,
+     "party": 1,
+     "ms": 1951.9449996948242,
+     "arg": 1,
+     "want": 1,
+     "correct": true,
+     "bytesOut": 118339,
+     "msgsOut": 22
+    },
+    {
+     "engine": "polytune",
+     "n": 2,
+     "party": 1,
+     "ms": 2022.7999997138977,
+     "arg": 1,
+     "want": 1,
+     "correct": true,
+     "andOps": 400,
+     "bytesOut": 575226,
+     "msgsOut": 35
+    },
+    {
+     "engine": "emp-wasm",
+     "n": 2,
+     "party": 1,
+     "ms": 2422.4000000953674,
+     "arg": 1,
+     "want": 1,
+     "correct": true,
+     "bytesOut": 118339,
+     "msgsOut": 22
+    },
+    {
+     "engine": "polytune",
+     "n": 2,
+     "party": 1,
+     "ms": 1518.039999961853,
+     "arg": 1,
+     "want": 1,
+     "correct": true,
+     "andOps": 400,
+     "bytesOut": 575226,
+     "msgsOut": 35
+    }
+   ],
+   "applied": null
+  },
+  {
+   "cfg": {
+    "tag": "g18",
+    "n": 10,
+    "engines": [
+     "emp",
+     "polytune"
+    ],
+    "runs": 3,
+    "seed": 19000,
+    "bulkBytes": 8000000,
+    "link": {
+     "rttMs": 10,
+     "delayMs": 5,
+     "rateMbit": 100,
+     "lossPct": 0
+    }
+   },
+   "party": 1,
+   "calib": {
+    "echoed": 15,
+    "received": 8000000
+   },
+   "runs": [
+    {
+     "engine": "emp-wasm",
+     "n": 10,
+     "party": 1,
+     "ms": 1152.7799997329712,
+     "arg": 0,
+     "want": 0,
+     "correct": true,
+     "bytesOut": 705593,
+     "msgsOut": 29
+    },
+    {
+     "engine": "polytune",
+     "n": 10,
+     "party": 1,
+     "ms": 1691.454999923706,
+     "arg": 0,
+     "want": 0,
+     "correct": true,
+     "andOps": 2997,
+     "bytesOut": 4082922,
+     "msgsOut": 99
+    },
+    {
+     "engine": "emp-wasm",
+     "n": 10,
+     "party": 1,
+     "ms": 1182.6400003433228,
+     "arg": 4,
+     "want": 4,
+     "correct": true,
+     "bytesOut": 705593,
+     "msgsOut": 29
+    },
+    {
+     "engine": "polytune",
+     "n": 10,
+     "party": 1,
+     "ms": 1698.130000114441,
+     "arg": 4,
+     "want": 4,
+     "correct": true,
+     "andOps": 2997,
+     "bytesOut": 4082922,
+     "msgsOut": 99
+    },
+    {
+     "engine": "emp-wasm",
+     "n": 10,
+     "party": 1,
+     "ms": 1138.715000152588,
+     "arg": 6,
+     "want": 6,
+     "correct": true,
+     "bytesOut": 705593,
+     "msgsOut": 29
+    },
+    {
+     "engine": "polytune",
+     "n": 10,
+     "party": 1,
+     "ms": 1709.659999847412,
+     "arg": 6,
+     "want": 6,
+     "correct": true,
+     "andOps": 2997,
+     "bytesOut": 4082922,
+     "msgsOut": 99
+    }
+   ],
+   "applied": null
+  },
+  {
+   "cfg": {
+    "tag": "g19",
+    "n": 10,
+    "engines": [
+     "emp",
+     "polytune"
+    ],
+    "runs": 3,
+    "seed": 20000,
+    "bulkBytes": 2000000,
+    "link": {
+     "rttMs": 50,
+     "delayMs": 25,
+     "rateMbit": 10,
+     "lossPct": 0
+    }
+   },
+   "party": 1,
+   "calib": {
+    "echoed": 15,
+    "received": 2000000
+   },
+   "runs": [
+    {
+     "engine": "emp-wasm",
+     "n": 10,
+     "party": 1,
+     "ms": 3012.694999694824,
+     "arg": 9,
+     "want": 9,
+     "correct": true,
+     "bytesOut": 705593,
+     "msgsOut": 29
+    },
+    {
+     "engine": "polytune",
+     "n": 10,
+     "party": 1,
+     "ms": 8352.35000038147,
+     "arg": 9,
+     "want": 9,
+     "correct": true,
+     "andOps": 2997,
+     "bytesOut": 4082922,
+     "msgsOut": 99
+    },
+    {
+     "engine": "emp-wasm",
+     "n": 10,
+     "party": 1,
+     "ms": 3010.6799998283386,
+     "arg": 7,
+     "want": 7,
+     "correct": true,
+     "bytesOut": 705593,
+     "msgsOut": 29
+    },
+    {
+     "engine": "polytune",
+     "n": 10,
+     "party": 1,
+     "ms": 8367.494999885559,
+     "arg": 7,
+     "want": 7,
+     "correct": true,
+     "andOps": 2997,
+     "bytesOut": 4082922,
+     "msgsOut": 99
+    },
+    {
+     "engine": "emp-wasm",
+     "n": 10,
+     "party": 1,
+     "ms": 3008.779999732971,
+     "arg": 5,
+     "want": 5,
+     "correct": true,
+     "bytesOut": 705593,
+     "msgsOut": 29
+    },
+    {
+     "engine": "polytune",
+     "n": 10,
+     "party": 1,
+     "ms": 8363.005000114441,
+     "arg": 5,
+     "want": 5,
+     "correct": true,
+     "andOps": 2997,
+     "bytesOut": 4082922,
+     "msgsOut": 99
+    }
+   ],
+   "applied": null
+  }
+ ],
+ "error": null
+}

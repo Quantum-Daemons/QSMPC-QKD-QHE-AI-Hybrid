@@ -158,6 +158,69 @@ pub async fn secure_argmax(a: Vec<i32>, b: Vec<i32>) -> Result<JsValue, JsValue>
     Ok(o.into())
 }
 
+// ---- One party per tab, over a transport the page provides (prototypes/net-bench) ----------------
+//
+// The network benchmark runs each party in its own tab and connects them through WebSocket relays that
+// netem shapes. The transport lives in JavaScript, as `globalThis.qshNet`, so that Polytune and
+// emp-wasm go over the IDENTICAL send and receive code and only the protocol differs. Resolved at
+// call time, so the in-tab `secure_argmax` above works without it.
+#[wasm_bindgen]
+extern "C" {
+    #[wasm_bindgen(js_namespace = qshNet, js_name = send)]
+    fn net_send(to: u32, data: &[u8]);
+    #[wasm_bindgen(js_namespace = qshNet, js_name = recv, catch)]
+    async fn net_recv(from: u32) -> Result<JsValue, JsValue>;
+}
+
+/// A `Channel` that hands every message to the page's transport.
+pub struct JsChannel;
+
+impl Channel for JsChannel {
+    type SendError = String;
+    type RecvError = String;
+
+    async fn send_bytes_to(&self, party: usize, data: Vec<u8>, _phase: &str) -> Result<(), String> {
+        net_send(party as u32, &data);
+        Ok(())
+    }
+
+    async fn recv_bytes_from(&self, party: usize, _phase: &str) -> Result<Vec<u8>, String> {
+        let v = net_recv(party as u32).await.map_err(|e| format!("recv from {party}: {e:?}"))?;
+        Ok(js_sys::Uint8Array::new(&v).to_vec())
+    }
+}
+
+/// This tab's half of the secure argmax: `party` 0 holds the `a` shares, party 1 the `b` shares.
+#[wasm_bindgen]
+pub async fn secure_argmax_party(party: u32, shares: Vec<i32>) -> Result<JsValue, JsValue> {
+    let n = shares.len();
+    if n < 2 || party > 1 {
+        return Err(JsValue::from_str("need party 0 or 1 and at least 2 shares"));
+    }
+    let code = argmax_source(n);
+    let t0 = Instant::now();
+    let prg = compile_with_options(&code, CompileOptions { circuit_kind: CircuitKind::Register, ..Default::default() })
+        .map_err(|e| JsValue::from_str(&e.prettify(&code)))?;
+    let circuit = prg.circuit.unwrap_register_ref();
+    let compile_ms = t0.elapsed().as_secs_f64() * 1e3;
+    let lit = Literal::Array(shares.iter().map(|&x| Literal::NumSigned(x as i64, SignedNumType::I32)).collect());
+    let bits = prg.literal_arg(party as usize, lit).map_err(|e| JsValue::from_str(&format!("input: {e}")))?.as_bits();
+    let t1 = Instant::now();
+    let out = mpc(&JsChannel, circuit, &bits, 0, party as usize, &[0, 1], None)
+        .await
+        .map_err(|e| JsValue::from_str(&format!("mpc: {e}")))?;
+    let mpc_ms = t1.elapsed().as_secs_f64() * 1e3;
+    let arg = match prg.parse_output(&out).map_err(|e| JsValue::from_str(&format!("output: {e}")))? {
+        Literal::NumUnsigned(v, UnsignedNumType::U8) => v as f64,
+        other => return Err(JsValue::from_str(&format!("expected a u8 index, got {other}"))),
+    };
+    let o = js_sys::Object::new();
+    for (k, v) in [("arg", arg), ("compileMs", compile_ms), ("mpcMs", mpc_ms), ("andOps", circuit.and_ops as f64)] {
+        js_sys::Reflect::set(&o, &JsValue::from_str(k), &JsValue::from_f64(v))?;
+    }
+    Ok(o.into())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

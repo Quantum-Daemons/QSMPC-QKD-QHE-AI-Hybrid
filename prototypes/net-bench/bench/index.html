@@ -1,0 +1,13 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<title>MPC network bench</title>
+<!-- One party of the network benchmark. Open ?party=0 on http://127.0.0.1:4320 and ?party=1 on
+     http://localhost:4320: different sites, so the browser gives the two parties separate processes,
+     as two hosts would have. Both tabs then call window.runConfig(cfg) with the same cfg. -->
+<body style="font-family: system-ui, sans-serif; margin: 16px">
+<h1 style="font-size: 18px">MPC network bench, party <span id="party"></span></h1>
+<pre id="out">loading</pre>
+<script type="module" src="/src/party.js"></script>
+</body>
+</html>

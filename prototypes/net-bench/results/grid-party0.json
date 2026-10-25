@@ -1,0 +1,2549 @@
+{
+ "party": 0,
+ "measuredAt": "2026-10-25T02:19:10.243Z",
+ "ua": "Chrome/152.0.7977.130",
+ "grid": [
+  {
+   "tag": "g0",
+   "n": 2,
+   "engines": [
+    "emp",
+    "polytune"
+   ],
+   "runs": 3,
+   "seed": 1000,
+   "bulkBytes": 2000000,
+   "link": {
+    "rttMs": 1,
+    "delayMs": 0.5,
+    "rateMbit": 10,
+    "lossPct": 0
+   }
+  },
+  {
+   "tag": "g1",
+   "n": 2,
+   "engines": [
+    "emp",
+    "polytune"
+   ],
+   "runs": 3,
+   "seed": 2000,
+   "bulkBytes": 2000000,
+   "link": {
+    "rttMs": 1,
+    "delayMs": 0.5,
+    "rateMbit": 10,
+    "lossPct": 0.1
+   }
+  },
+  {
+   "tag": "g2",
+   "n": 2,
+   "engines": [
+    "emp",
+    "polytune"
+   ],
+   "runs": 3,
+   "seed": 3000,
+   "bulkBytes": 2000000,
+   "link": {
+    "rttMs": 1,
+    "delayMs": 0.5,
+    "rateMbit": 10,
+    "lossPct": 1
+   }
+  },
+  {
+   "tag": "g3",
+   "n": 2,
+   "engines": [
+    "emp",
+    "polytune"
+   ],
+   "runs": 3,
+   "seed": 4000,
+   "bulkBytes": 8000000,
+   "link": {
+    "rttMs": 1,
+    "delayMs": 0.5,
+    "rateMbit": 100,
+    "lossPct": 0
+   }
+  },
+  {
+   "tag": "g4",
+   "n": 2,
+   "engines": [
+    "emp",
+    "polytune"
+   ],
+   "runs": 3,
+   "seed": 5000,
+   "bulkBytes": 8000000,
+   "link": {
+    "rttMs": 1,
+    "delayMs": 0.5,
+    "rateMbit": 100,
+    "lossPct": 0.1
+   }
+  },
+  {
+   "tag": "g5",
+   "n": 2,
+   "engines": [
+    "emp",
+    "polytune"
+   ],
+   "runs": 3,
+   "seed": 6000,
+   "bulkBytes": 8000000,
+   "link": {
+    "rttMs": 1,
+    "delayMs": 0.5,
+    "rateMbit": 100,
+    "lossPct": 1
+   }
+  },
+  {
+   "tag": "g6",
+   "n": 2,
+   "engines": [
+    "emp",
+    "polytune"
+   ],
+   "runs": 3,
+   "seed": 7000,
+   "bulkBytes": 2000000,
+   "link": {
+    "rttMs": 10,
+    "delayMs": 5,
+    "rateMbit": 10,
+    "lossPct": 0
+   }
+  },
+  {
+   "tag": "g7",
+   "n": 2,
+   "engines": [
+    "emp",
+    "polytune"
+   ],
+   "runs": 3,
+   "seed": 8000,
+   "bulkBytes": 2000000,
+   "link": {
+    "rttMs": 10,
+    "delayMs": 5,
+    "rateMbit": 10,
+    "lossPct": 0.1
+   }
+  },
+  {
+   "tag": "g8",
+   "n": 2,
+   "engines": [
+    "emp",
+    "polytune"
+   ],
+   "runs": 3,
+   "seed": 9000,
+   "bulkBytes": 2000000,
+   "link": {
+    "rttMs": 10,
+    "delayMs": 5,
+    "rateMbit": 10,
+    "lossPct": 1
+   }
+  },
+  {
+   "tag": "g9",
+   "n": 2,
+   "engines": [
+    "emp",
+    "polytune"
+   ],
+   "runs": 3,
+   "seed": 10000,
+   "bulkBytes": 8000000,
+   "link": {
+    "rttMs": 10,
+    "delayMs": 5,
+    "rateMbit": 100,
+    "lossPct": 0
+   }
+  },
+  {
+   "tag": "g10",
+   "n": 2,
+   "engines": [
+    "emp",
+    "polytune"
+   ],
+   "runs": 3,
+   "seed": 11000,
+   "bulkBytes": 8000000,
+   "link": {
+    "rttMs": 10,
+    "delayMs": 5,
+    "rateMbit": 100,
+    "lossPct": 0.1
+   }
+  },
+  {
+   "tag": "g11",
+   "n": 2,
+   "engines": [
+    "emp",
+    "polytune"
+   ],
+   "runs": 3,
+   "seed": 12000,
+   "bulkBytes": 8000000,
+   "link": {
+    "rttMs": 10,
+    "delayMs": 5,
+    "rateMbit": 100,
+    "lossPct": 1
+   }
+  },
+  {
+   "tag": "g12",
+   "n": 2,
+   "engines": [
+    "emp",
+    "polytune"
+   ],
+   "runs": 3,
+   "seed": 13000,
+   "bulkBytes": 2000000,
+   "link": {
+    "rttMs": 50,
+    "delayMs": 25,
+    "rateMbit": 10,
+    "lossPct": 0
+   }
+  },
+  {
+   "tag": "g13",
+   "n": 2,
+   "engines": [
+    "emp",
+    "polytune"
+   ],
+   "runs": 3,
+   "seed": 14000,
+   "bulkBytes": 2000000,
+   "link": {
+    "rttMs": 50,
+    "delayMs": 25,
+    "rateMbit": 10,
+    "lossPct": 0.1
+   }
+  },
+  {
+   "tag": "g14",
+   "n": 2,
+   "engines": [
+    "emp",
+    "polytune"
+   ],
+   "runs": 3,
+   "seed": 15000,
+   "bulkBytes": 2000000,
+   "link": {
+    "rttMs": 50,
+    "delayMs": 25,
+    "rateMbit": 10,
+    "lossPct": 1
+   }
+  },
+  {
+   "tag": "g15",
+   "n": 2,
+   "engines": [
+    "emp",
+    "polytune"
+   ],
+   "runs": 3,
+   "seed": 16000,
+   "bulkBytes": 8000000,
+   "link": {
+    "rttMs": 50,
+    "delayMs": 25,
+    "rateMbit": 100,
+    "lossPct": 0
+   }
+  },
+  {
+   "tag": "g16",
+   "n": 2,
+   "engines": [
+    "emp",
+    "polytune"
+   ],
+   "runs": 3,
+   "seed": 17000,
+   "bulkBytes": 8000000,
+   "link": {
+    "rttMs": 50,
+    "delayMs": 25,
+    "rateMbit": 100,
+    "lossPct": 0.1
+   }
+  },
+  {
+   "tag": "g17",
+   "n": 2,
+   "engines": [
+    "emp",
+    "polytune"
+   ],
+   "runs": 3,
+   "seed": 18000,
+   "bulkBytes": 8000000,
+   "link": {
+    "rttMs": 50,
+    "delayMs": 25,
+    "rateMbit": 100,
+    "lossPct": 1
+   }
+  },
+  {
+   "tag": "g18",
+   "n": 10,
+   "engines": [
+    "emp",
+    "polytune"
+   ],
+   "runs": 3,
+   "seed": 19000,
+   "bulkBytes": 8000000,
+   "link": {
+    "rttMs": 10,
+    "delayMs": 5,
+    "rateMbit": 100,
+    "lossPct": 0
+   }
+  },
+  {
+   "tag": "g19",
+   "n": 10,
+   "engines": [
+    "emp",
+    "polytune"
+   ],
+   "runs": 3,
+   "seed": 20000,
+   "bulkBytes": 2000000,
+   "link": {
+    "rttMs": 50,
+    "delayMs": 25,
+    "rateMbit": 10,
+    "lossPct": 0
+   }
+  }
+ ],
+ "results": [
+  {
+   "cfg": {
+    "tag": "g0",
+    "n": 2,
+    "engines": [
+     "emp",
+     "polytune"
+    ],
+    "runs": 3,
+    "seed": 1000,
+    "bulkBytes": 2000000,
+    "link": {
+     "rttMs": 1,
+     "delayMs": 0.5,
+     "rateMbit": 10,
+     "lossPct": 0
+    }
+   },
+   "party": 0,
+   "calib": {
+    "rttMs": 1.5899996757507324,
+    "rttMinMs": 1.429999828338623,
+    "rttMaxMs": 2.0899996757507324,
+    "bulkBytes": 2000000,
+    "bulkMs": 1681.8600001335144,
+    "goodputMbps": 9.517775932034855
+   },
+   "runs": [
+    {
+     "engine": "emp-wasm",
+     "n": 2,
+     "party": 0,
+     "ms": 952.8800001144409,
+     "arg": 1,
+     "want": 1,
+     "correct": true,
+     "bytesOut": 96522,
+     "msgsOut": 21
+    },
+    {
+     "engine": "polytune",
+     "n": 2,
+     "party": 0,
+     "ms": 853.7800002098083,
+     "arg": 1,
+     "want": 1,
+     "correct": true,
+     "andOps": 400,
+     "bytesOut": 443672,
+     "msgsOut": 34
+    },
+    {
+     "engine": "emp-wasm",
+     "n": 2,
+     "party": 0,
+     "ms": 958.6100001335144,
+     "arg": 1,
+     "want": 1,
+     "correct": true,
+     "bytesOut": 96522,
+     "msgsOut": 21
+    },
+    {
+     "engine": "polytune",
+     "n": 2,
+     "party": 0,
+     "ms": 858.6599998474121,
+     "arg": 1,
+     "want": 1,
+     "correct": true,
+     "andOps": 400,
+     "bytesOut": 443672,
+     "msgsOut": 34
+    },
+    {
+     "engine": "emp-wasm",
+     "n": 2,
+     "party": 0,
+     "ms": 945.8399996757507,
+     "arg": 1,
+     "want": 1,
+     "correct": true,
+     "bytesOut": 96522,
+     "msgsOut": 21
+    },
+    {
+     "engine": "polytune",
+     "n": 2,
+     "party": 0,
+     "ms": 844.170000076294,
+     "arg": 1,
+     "want": 1,
+     "correct": true,
+     "andOps": 400,
+     "bytesOut": 443672,
+     "msgsOut": 34
+    }
+   ],
+   "applied": {
+    "applied": {
+     "delay_ms": 0.5,
+     "rate_mbit": 10,
+     "loss_pct": 0
+    },
+    "tc": {
+     "qsh-netem-ab": "qdisc netem 8003: root refcnt 21 limit 1000 delay 500us rate 10Mbit seed 10789233941493139923",
+     "qsh-netem-ba": "qdisc netem 8004: root refcnt 21 limit 1000 delay 500us rate 10Mbit seed 11026619443681517432"
+    }
+   }
+  },
+  {
+   "cfg": {
+    "tag": "g1",
+    "n": 2,
+    "engines": [
+     "emp",
+     "polytune"
+    ],
+    "runs": 3,
+    "seed": 2000,
+    "bulkBytes": 2000000,
+    "link": {
+     "rttMs": 1,
+     "delayMs": 0.5,
+     "rateMbit": 10,
+     "lossPct": 0.1
+    }
+   },
+   "party": 0,
+   "calib": {
+    "rttMs": 1.489999771118164,
+    "rttMinMs": 1.3899998664855957,
+    "rttMaxMs": 2.1050000190734863,
+    "bulkBytes": 2000000,
+    "bulkMs": 1684.1449999809265,
+    "goodputMbps": 9.504574075735757
+   },
+   "runs": [
+    {
+     "engine": "emp-wasm",
+     "n": 2,
+     "party": 0,
+     "ms": 940.9049997329712,
+     "arg": 0,
+     "want": 0,
+     "correct": true,
+     "bytesOut": 96522,
+     "msgsOut": 21
+    },
+    {
+     "engine": "polytune",
+     "n": 2,
+     "party": 0,
+     "ms": 857.1599998474121,
+     "arg": 0,
+     "want": 0,
+     "correct": true,
+     "andOps": 400,
+     "bytesOut": 443672,
+     "msgsOut": 34
+    },
+    {
+     "engine": "emp-wasm",
+     "n": 2,
+     "party": 0,
+     "ms": 925.0499997138977,
+     "arg": 1,
+     "want": 1,
+     "correct": true,
+     "bytesOut": 96522,
+     "msgsOut": 21
+    },
+    {
+     "engine": "polytune",
+     "n": 2,
+     "party": 0,
+     "ms": 843.579999923706,
+     "arg": 1,
+     "want": 1,
+     "correct": true,
+     "andOps": 400,
+     "bytesOut": 443672,
+     "msgsOut": 34
+    },
+    {
+     "engine": "emp-wasm",
+     "n": 2,
+     "party": 0,
+     "ms": 943.8949999809265,
+     "arg": 1,
+     "want": 1,
+     "correct": true,
+     "bytesOut": 96522,
+     "msgsOut": 21
+    },
+    {
+     "engine": "polytune",
+     "n": 2,
+     "party": 0,
+     "ms": 850.8050003051758,
+     "arg": 1,
+     "want": 1,
+     "correct": true,
+     "andOps": 400,
+     "bytesOut": 443672,
+     "msgsOut": 34
+    }
+   ],
+   "applied": {
+    "applied": {
+     "delay_ms": 0.5,
+     "rate_mbit": 10,
+     "loss_pct": 0.1
+    },
+    "tc": {
+     "qsh-netem-ab": "qdisc netem 8003: root refcnt 21 limit 1000 delay 500us loss 0.1% rate 10Mbit seed 6428871255698747155",
+     "qsh-netem-ba": "qdisc netem 8004: root refcnt 21 limit 1000 delay 500us loss 0.1% rate 10Mbit seed 13375077526315701799"
+    }
+   }
+  },
+  {
+   "cfg": {
+    "tag": "g2",
+    "n": 2,
+    "engines": [
+     "emp",
+     "polytune"
+    ],
+    "runs": 3,
+    "seed": 3000,
+    "bulkBytes": 2000000,
+    "link": {
+     "rttMs": 1,
+     "delayMs": 0.5,
+     "rateMbit": 10,
+     "lossPct": 1
+    }
+   },
+   "party": 0,
+   "calib": {
+    "rttMs": 1.625,
+    "rttMinMs": 1.5,
+    "rttMaxMs": 3.200000286102295,
+    "bulkBytes": 2000000,
+    "bulkMs": 1679.8650002479553,
+    "goodputMbps": 9.529183868662349
+   },
+   "runs": [
+    {
+     "engine": "emp-wasm",
+     "n": 2,
+     "party": 0,
+     "ms": 928.8150000572205,
+     "arg": 0,
+     "want": 0,
+     "correct": true,
+     "bytesOut": 96522,
+     "msgsOut": 21
+    },
+    {
+     "engine": "polytune",
+     "n": 2,
+     "party": 0,
+     "ms": 854.2600002288818,
+     "arg": 0,
+     "want": 0,
+     "correct": true,
+     "andOps": 400,
+     "bytesOut": 443672,
+     "msgsOut": 34
+    },
+    {
+     "engine": "emp-wasm",
+     "n": 2,
+     "party": 0,
+     "ms": 1141.6950001716614,
+     "arg": 0,
+     "want": 0,
+     "correct": true,
+     "bytesOut": 96522,
+     "msgsOut": 21
+    },
+    {
+     "engine": "polytune",
+     "n": 2,
+     "party": 0,
+     "ms": 1086.2399997711182,
+     "arg": 0,
+     "want": 0,
+     "correct": true,
+     "andOps": 400,
+     "bytesOut": 443672,
+     "msgsOut": 34
+    },
+    {
+     "engine": "emp-wasm",
+     "n": 2,
+     "party": 0,
+     "ms": 934.6950001716614,
+     "arg": 1,
+     "want": 1,
+     "correct": true,
+     "bytesOut": 96522,
+     "msgsOut": 21
+    },
+    {
+     "engine": "polytune",
+     "n": 2,
+     "party": 0,
+     "ms": 846.1350002288818,
+     "arg": 1,
+     "want": 1,
+     "correct": true,
+     "andOps": 400,
+     "bytesOut": 443672,
+     "msgsOut": 34
+    }
+   ],
+   "applied": {
+    "applied": {
+     "delay_ms": 0.5,
+     "rate_mbit": 10,
+     "loss_pct": 1
+    },
+    "tc": {
+     "qsh-netem-ab": "qdisc netem 8003: root refcnt 21 limit 1000 delay 500us loss 1% rate 10Mbit seed 11448305164335848537",
+     "qsh-netem-ba": "qdisc netem 8004: root refcnt 21 limit 1000 delay 500us loss 1% rate 10Mbit seed 4708044340353231412"
+    }
+   }
+  },
+  {
+   "cfg": {
+    "tag": "g3",
+    "n": 2,
+    "engines": [
+     "emp",
+     "polytune"
+    ],
+    "runs": 3,
+    "seed": 4000,
+    "bulkBytes": 8000000,
+    "link": {
+     "rttMs": 1,
+     "delayMs": 0.5,
+     "rateMbit": 100,
+     "lossPct": 0
+    }
+   },
+   "party": 0,
+   "calib": {
+    "rttMs": 1.3249998092651367,
+    "rttMinMs": 1.2199997901916504,
+    "rttMaxMs": 1.875,
+    "bulkBytes": 8000000,
+    "bulkMs": 673.4850001335144,
+    "goodputMbps": 95.12167024472038
+   },
+   "runs": [
+    {
+     "engine": "emp-wasm",
+     "n": 2,
+     "party": 0,
+     "ms": 774.2849998474121,
+     "arg": 1,
+     "want": 1,
+     "correct": true,
+     "bytesOut": 96522,
+     "msgsOut": 21
+    },
+    {
+     "engine": "polytune",
+     "n": 2,
+     "party": 0,
+     "ms": 233.52500009536743,
+     "arg": 1,
+     "want": 1,
+     "correct": true,
+     "andOps": 400,
+     "bytesOut": 443672,
+     "msgsOut": 34
+    },
+    {
+     "engine": "emp-wasm",
+     "n": 2,
+     "party": 0,
+     "ms": 785.2249999046326,
+     "arg": 0,
+     "want": 0,
+     "correct": true,
+     "bytesOut": 96522,
+     "msgsOut": 21
+    },
+    {
+     "engine": "polytune",
+     "n": 2,
+     "party": 0,
+     "ms": 228.53500032424927,
+     "arg": 0,
+     "want": 0,
+     "correct": true,
+     "andOps": 400,
+     "bytesOut": 443672,
+     "msgsOut": 34
+    },
+    {
+     "engine": "emp-wasm",
+     "n": 2,
+     "party": 0,
+     "ms": 766.2800002098083,
+     "arg": 0,
+     "want": 0,
+     "correct": true,
+     "bytesOut": 96522,
+     "msgsOut": 21
+    },
+    {
+     "engine": "polytune",
+     "n": 2,
+     "party": 0,
+     "ms": 241.2300000190735,
+     "arg": 0,
+     "want": 0,
+     "correct": true,
+     "andOps": 400,
+     "bytesOut": 443672,
+     "msgsOut": 34
+    }
+   ],
+   "applied": {
+    "applied": {
+     "delay_ms": 0.5,
+     "rate_mbit": 100,
+     "loss_pct": 0
+    },
+    "tc": {
+     "qsh-netem-ab": "qdisc netem 8003: root refcnt 21 limit 1000 delay 500us rate 100Mbit seed 11683542543045364968",
+     "qsh-netem-ba": "qdisc netem 8004: root refcnt 21 limit 1000 delay 500us rate 100Mbit seed 13519165269750037313"
+    }
+   }
+  },
+  {
+   "cfg": {
+    "tag": "g4",
+    "n": 2,
+    "engines": [
+     "emp",
+     "polytune"
+    ],
+    "runs": 3,
+    "seed": 5000,
+    "bulkBytes": 8000000,
+    "link": {
+     "rttMs": 1,
+     "delayMs": 0.5,
+     "rateMbit": 100,
+     "lossPct": 0.1
+    }
+   },
+   "party": 0,
+   "calib": {
+    "rttMs": 1.2799997329711914,
+    "rttMinMs": 1.174999713897705,
+    "rttMaxMs": 3.6599998474121094,
+    "bulkBytes": 8000000,
+    "bulkMs": 710.2799997329712,
+    "goodputMbps": 90.18657349084212
+   },
+   "runs": [
+    {
+     "engine": "emp-wasm",
+     "n": 2,
+     "party": 0,
+     "ms": 760.8100004196167,
+     "arg": 1,
+     "want": 1,
+     "correct": true,
+     "bytesOut": 96522,
+     "msgsOut": 21
+    },
+    {
+     "engine": "polytune",
+     "n": 2,
+     "party": 0,
+     "ms": 242.75,
+     "arg": 1,
+     "want": 1,
+     "correct": true,
+     "andOps": 400,
+     "bytesOut": 443672,
+     "msgsOut": 34
+    },
+    {
+     "engine": "emp-wasm",
+     "n": 2,
+     "party": 0,
+     "ms": 778.5650000572205,
+     "arg": 0,
+     "want": 0,
+     "correct": true,
+     "bytesOut": 96522,
+     "msgsOut": 21
+    },
+    {
+     "engine": "polytune",
+     "n": 2,
+     "party": 0,
+     "ms": 227.96999979019165,
+     "arg": 0,
+     "want": 0,
+     "correct": true,
+     "andOps": 400,
+     "bytesOut": 443672,
+     "msgsOut": 34
+    },
+    {
+     "engine": "emp-wasm",
+     "n": 2,
+     "party": 0,
+     "ms": 778.539999961853,
+     "arg": 0,
+     "want": 0,
+     "correct": true,
+     "bytesOut": 96522,
+     "msgsOut": 21
+    },
+    {
+     "engine": "polytune",
+     "n": 2,
+     "party": 0,
+     "ms": 232.67000007629395,
+     "arg": 0,
+     "want": 0,
+     "correct": true,
+     "andOps": 400,
+     "bytesOut": 443672,
+     "msgsOut": 34
+    }
+   ],
+   "applied": {
+    "applied": {
+     "delay_ms": 0.5,
+     "rate_mbit": 100,
+     "loss_pct": 0.1
+    },
+    "tc": {
+     "qsh-netem-ab": "qdisc netem 8003: root refcnt 21 limit 1000 delay 500us loss 0.1% rate 100Mbit seed 5529348642041581698",
+     "qsh-netem-ba": "qdisc netem 8004: root refcnt 21 limit 1000 delay 500us loss 0.1% rate 100Mbit seed 10031296540484056553"
+    }
+   }
+  },
+  {
+   "cfg": {
+    "tag": "g5",
+    "n": 2,
+    "engines": [
+     "emp",
+     "polytune"
+    ],
+    "runs": 3,
+    "seed": 6000,
+    "bulkBytes": 8000000,
+    "link": {
+     "rttMs": 1,
+     "delayMs": 0.5,
+     "rateMbit": 100,
+     "lossPct": 1
+    }
+   },
+   "party": 0,
+   "calib": {
+    "rttMs": 1.315000057220459,
+    "rttMinMs": 1.255000114440918,
+    "rttMaxMs": 3.625,
+    "bulkBytes": 8000000,
+    "bulkMs": 673.4899997711182,
+    "goodputMbps": 95.12025656384421
+   },
+   "runs": [
+    {
+     "engine": "emp-wasm",
+     "n": 2,
+     "party": 0,
+     "ms": 776.2800002098083,
+     "arg": 0,
+     "want": 0,
+     "correct": true,
+     "bytesOut": 96522,
+     "msgsOut": 21
+    },
+    {
+     "engine": "polytune",
+     "n": 2,
+     "party": 0,
+     "ms": 243.76000022888184,
+     "arg": 0,
+     "want": 0,
+     "correct": true,
+     "andOps": 400,
+     "bytesOut": 443672,
+     "msgsOut": 34
+    },
+    {
+     "engine": "emp-wasm",
+     "n": 2,
+     "party": 0,
+     "ms": 763.6599998474121,
+     "arg": 0,
+     "want": 0,
+     "correct": true,
+     "bytesOut": 96522,
+     "msgsOut": 21
+    },
+    {
+     "engine": "polytune",
+     "n": 2,
+     "party": 0,
+     "ms": 436.164999961853,
+     "arg": 0,
+     "want": 0,
+     "correct": true,
+     "andOps": 400,
+     "bytesOut": 443672,
+     "msgsOut": 34
+    },
+    {
+     "engine": "emp-wasm",
+     "n": 2,
+     "party": 0,
+     "ms": 756.829999923706,
+     "arg": 1,
+     "want": 1,
+     "correct": true,
+     "bytesOut": 96522,
+     "msgsOut": 21
+    },
+    {
+     "engine": "polytune",
+     "n": 2,
+     "party": 0,
+     "ms": 238.20499992370605,
+     "arg": 1,
+     "want": 1,
+     "correct": true,
+     "andOps": 400,
+     "bytesOut": 443672,
+     "msgsOut": 34
+    }
+   ],
+   "applied": {
+    "applied": {
+     "delay_ms": 0.5,
+     "rate_mbit": 100,
+     "loss_pct": 1
+    },
+    "tc": {
+     "qsh-netem-ab": "qdisc netem 8003: root refcnt 21 limit 1000 delay 500us loss 1% rate 100Mbit seed 10278438364683280283",
+     "qsh-netem-ba": "qdisc netem 8004: root refcnt 21 limit 1000 delay 500us loss 1% rate 100Mbit seed 2642720605448115481"
+    }
+   }
+  },
+  {
+   "cfg": {
+    "tag": "g6",
+    "n": 2,
+    "engines": [
+     "emp",
+     "polytune"
+    ],
+    "runs": 3,
+    "seed": 7000,
+    "bulkBytes": 2000000,
+    "link": {
+     "rttMs": 10,
+     "delayMs": 5,
+     "rateMbit": 10,
+     "lossPct": 0
+    }
+   },
+   "party": 0,
+   "calib": {
+    "rttMs": 11.09499979019165,
+    "rttMinMs": 10.825000286102295,
+    "rttMaxMs": 12.739999771118164,
+    "bulkBytes": 2000000,
+    "bulkMs": 1701.9100003242493,
+    "goodputMbps": 9.431946294469636
+   },
+   "runs": [
+    {
+     "engine": "emp-wasm",
+     "n": 2,
+     "party": 0,
+     "ms": 1155.6099996566772,
+     "arg": 0,
+     "want": 0,
+     "correct": true,
+     "bytesOut": 96522,
+     "msgsOut": 21
+    },
+    {
+     "engine": "polytune",
+     "n": 2,
+     "party": 0,
+     "ms": 1005.5500001907349,
+     "arg": 0,
+     "want": 0,
+     "correct": true,
+     "andOps": 400,
+     "bytesOut": 443672,
+     "msgsOut": 34
+    },
+    {
+     "engine": "emp-wasm",
+     "n": 2,
+     "party": 0,
+     "ms": 1141.6100001335144,
+     "arg": 0,
+     "want": 0,
+     "correct": true,
+     "bytesOut": 96522,
+     "msgsOut": 21
+    },
+    {
+     "engine": "polytune",
+     "n": 2,
+     "party": 0,
+     "ms": 1015.9899997711182,
+     "arg": 0,
+     "want": 0,
+     "correct": true,
+     "andOps": 400,
+     "bytesOut": 443672,
+     "msgsOut": 34
+    },
+    {
+     "engine": "emp-wasm",
+     "n": 2,
+     "party": 0,
+     "ms": 1153.0249996185303,
+     "arg": 0,
+     "want": 0,
+     "correct": true,
+     "bytesOut": 96522,
+     "msgsOut": 21
+    },
+    {
+     "engine": "polytune",
+     "n": 2,
+     "party": 0,
+     "ms": 1023.2300000190735,
+     "arg": 0,
+     "want": 0,
+     "correct": true,
+     "andOps": 400,
+     "bytesOut": 443672,
+     "msgsOut": 34
+    }
+   ],
+   "applied": {
+    "applied": {
+     "delay_ms": 5,
+     "rate_mbit": 10,
+     "loss_pct": 0
+    },
+    "tc": {
+     "qsh-netem-ab": "qdisc netem 8003: root refcnt 21 limit 1000 delay 5ms rate 10Mbit seed 810504722634327184",
+     "qsh-netem-ba": "qdisc netem 8004: root refcnt 21 limit 1000 delay 5ms rate 10Mbit seed 16016090608544441919"
+    }
+   }
+  },
+  {
+   "cfg": {
+    "tag": "g7",
+    "n": 2,
+    "engines": [
+     "emp",
+     "polytune"
+    ],
+    "runs": 3,
+    "seed": 8000,
+    "bulkBytes": 2000000,
+    "link": {
+     "rttMs": 10,
+     "delayMs": 5,
+     "rateMbit": 10,
+     "lossPct": 0.1
+    }
+   },
+   "party": 0,
+   "calib": {
+    "rttMs": 11.014999866485596,
+    "rttMinMs": 10.835000038146973,
+    "rttMaxMs": 12.579999923706055,
+    "bulkBytes": 2000000,
+    "bulkMs": 1699.8949999809265,
+    "goodputMbps": 9.442940295268777
+   },
+   "runs": [
+    {
+     "engine": "emp-wasm",
+     "n": 2,
+     "party": 0,
+     "ms": 1153.079999923706,
+     "arg": 1,
+     "want": 1,
+     "correct": true,
+     "bytesOut": 96522,
+     "msgsOut": 21
+    },
+    {
+     "engine": "polytune",
+     "n": 2,
+     "party": 0,
+     "ms": 1007.75,
+     "arg": 1,
+     "want": 1,
+     "correct": true,
+     "andOps": 400,
+     "bytesOut": 443672,
+     "msgsOut": 34
+    },
+    {
+     "engine": "emp-wasm",
+     "n": 2,
+     "party": 0,
+     "ms": 1132.1550002098083,
+     "arg": 1,
+     "want": 1,
+     "correct": true,
+     "bytesOut": 96522,
+     "msgsOut": 21
+    },
+    {
+     "engine": "polytune",
+     "n": 2,
+     "party": 0,
+     "ms": 1012.5,
+     "arg": 1,
+     "want": 1,
+     "correct": true,
+     "andOps": 400,
+     "bytesOut": 443672,
+     "msgsOut": 34
+    },
+    {
+     "engine": "emp-wasm",
+     "n": 2,
+     "party": 0,
+     "ms": 1171.8600001335144,
+     "arg": 0,
+     "want": 0,
+     "correct": true,
+     "bytesOut": 96522,
+     "msgsOut": 21
+    },
+    {
+     "engine": "polytune",
+     "n": 2,
+     "party": 0,
+     "ms": 1012.7600002288818,
+     "arg": 0,
+     "want": 0,
+     "correct": true,
+     "andOps": 400,
+     "bytesOut": 443672,
+     "msgsOut": 34
+    }
+   ],
+   "applied": {
+    "applied": {
+     "delay_ms": 5,
+     "rate_mbit": 10,
+     "loss_pct": 0.1
+    },
+    "tc": {
+     "qsh-netem-ab": "qdisc netem 8003: root refcnt 21 limit 1000 delay 5ms loss 0.1% rate 10Mbit seed 16276000589735720555",
+     "qsh-netem-ba": "qdisc netem 8004: root refcnt 21 limit 1000 delay 5ms loss 0.1% rate 10Mbit seed 9632037853563999691"
+    }
+   }
+  },
+  {
+   "cfg": {
+    "tag": "g8",
+    "n": 2,
+    "engines": [
+     "emp",
+     "polytune"
+    ],
+    "runs": 3,
+    "seed": 9000,
+    "bulkBytes": 2000000,
+    "link": {
+     "rttMs": 10,
+     "delayMs": 5,
+     "rateMbit": 10,
+     "lossPct": 1
+    }
+   },
+   "party": 0,
+   "calib": {
+    "rttMs": 10.954999923706055,
+    "rttMinMs": 10.75,
+    "rttMaxMs": 11.575000286102295,
+    "bulkBytes": 2000000,
+    "bulkMs": 1706.5650000572205,
+    "goodputMbps": 9.40574779316349
+   },
+   "runs": [
+    {
+     "engine": "emp-wasm",
+     "n": 2,
+     "party": 0,
+     "ms": 1142.2649998664856,
+     "arg": 1,
+     "want": 1,
+     "correct": true,
+     "bytesOut": 96522,
+     "msgsOut": 21
+    },
+    {
+     "engine": "polytune",
+     "n": 2,
+     "party": 0,
+     "ms": 1013.4250001907349,
+     "arg": 1,
+     "want": 1,
+     "correct": true,
+     "andOps": 400,
+     "bytesOut": 443672,
+     "msgsOut": 34
+    },
+    {
+     "engine": "emp-wasm",
+     "n": 2,
+     "party": 0,
+     "ms": 1395.1849999427795,
+     "arg": 0,
+     "want": 0,
+     "correct": true,
+     "bytesOut": 96522,
+     "msgsOut": 21
+    },
+    {
+     "engine": "polytune",
+     "n": 2,
+     "party": 0,
+     "ms": 1016.0749998092651,
+     "arg": 0,
+     "want": 0,
+     "correct": true,
+     "andOps": 400,
+     "bytesOut": 443672,
+     "msgsOut": 34
+    },
+    {
+     "engine": "emp-wasm",
+     "n": 2,
+     "party": 0,
+     "ms": 1365.5100002288818,
+     "arg": 1,
+     "want": 1,
+     "correct": true,
+     "bytesOut": 96522,
+     "msgsOut": 21
+    },
+    {
+     "engine": "polytune",
+     "n": 2,
+     "party": 0,
+     "ms": 1051.7649998664856,
+     "arg": 1,
+     "want": 1,
+     "correct": true,
+     "andOps": 400,
+     "bytesOut": 443672,
+     "msgsOut": 34
+    }
+   ],
+   "applied": {
+    "applied": {
+     "delay_ms": 5,
+     "rate_mbit": 10,
+     "loss_pct": 1
+    },
+    "tc": {
+     "qsh-netem-ab": "qdisc netem 8003: root refcnt 21 limit 1000 delay 5ms loss 1% rate 10Mbit seed 7418250276992665239",
+     "qsh-netem-ba": "qdisc netem 8004: root refcnt 21 limit 1000 delay 5ms loss 1% rate 10Mbit seed 10664137345803626242"
+    }
+   }
+  },
+  {
+   "cfg": {
+    "tag": "g9",
+    "n": 2,
+    "engines": [
+     "emp",
+     "polytune"
+    ],
+    "runs": 3,
+    "seed": 10000,
+    "bulkBytes": 8000000,
+    "link": {
+     "rttMs": 10,
+     "delayMs": 5,
+     "rateMbit": 100,
+     "lossPct": 0
+    }
+   },
+   "party": 0,
+   "calib": {
+    "rttMs": 10.824999809265137,
+    "rttMinMs": 10.520000457763672,
+    "rttMaxMs": 11.329999923706055,
+    "bulkBytes": 8000000,
+    "bulkMs": 700.6300001144409,
+    "goodputMbps": 92.05752153920976
+   },
+   "runs": [
+    {
+     "engine": "emp-wasm",
+     "n": 2,
+     "party": 0,
+     "ms": 979.164999961853,
+     "arg": 0,
+     "want": 0,
+     "correct": true,
+     "bytesOut": 96522,
+     "msgsOut": 21
+    },
+    {
+     "engine": "polytune",
+     "n": 2,
+     "party": 0,
+     "ms": 399.289999961853,
+     "arg": 0,
+     "want": 0,
+     "correct": true,
+     "andOps": 400,
+     "bytesOut": 443672,
+     "msgsOut": 34
+    },
+    {
+     "engine": "emp-wasm",
+     "n": 2,
+     "party": 0,
+     "ms": 1001.4349999427795,
+     "arg": 0,
+     "want": 0,
+     "correct": true,
+     "bytesOut": 96522,
+     "msgsOut": 21
+    },
+    {
+     "engine": "polytune",
+     "n": 2,
+     "party": 0,
+     "ms": 402.34499979019165,
+     "arg": 0,
+     "want": 0,
+     "correct": true,
+     "andOps": 400,
+     "bytesOut": 443672,
+     "msgsOut": 34
+    },
+    {
+     "engine": "emp-wasm",
+     "n": 2,
+     "party": 0,
+     "ms": 1004.289999961853,
+     "arg": 1,
+     "want": 1,
+     "correct": true,
+     "bytesOut": 96522,
+     "msgsOut": 21
+    },
+    {
+     "engine": "polytune",
+     "n": 2,
+     "party": 0,
+     "ms": 388.49500036239624,
+     "arg": 1,
+     "want": 1,
+     "correct": true,
+     "andOps": 400,
+     "bytesOut": 443672,
+     "msgsOut": 34
+    }
+   ],
+   "applied": {
+    "applied": {
+     "delay_ms": 5,
+     "rate_mbit": 100,
+     "loss_pct": 0
+    },
+    "tc": {
+     "qsh-netem-ab": "qdisc netem 8003: root refcnt 21 limit 1000 delay 5ms rate 100Mbit seed 642075764246309127",
+     "qsh-netem-ba": "qdisc netem 8004: root refcnt 21 limit 1000 delay 5ms rate 100Mbit seed 12421358196124329850"
+    }
+   }
+  },
+  {
+   "cfg": {
+    "tag": "g10",
+    "n": 2,
+    "engines": [
+     "emp",
+     "polytune"
+    ],
+    "runs": 3,
+    "seed": 11000,
+    "bulkBytes": 8000000,
+    "link": {
+     "rttMs": 10,
+     "delayMs": 5,
+     "rateMbit": 100,
+     "lossPct": 0.1
+    }
+   },
+   "party": 0,
+   "calib": {
+    "rttMs": 11.005000114440918,
+    "rttMinMs": 10.704999923706055,
+    "rttMaxMs": 12.735000133514404,
+    "bulkBytes": 8000000,
+    "bulkMs": 700.5250000953674,
+    "goodputMbps": 92.08334981455607
+   },
+   "runs": [
+    {
+     "engine": "emp-wasm",
+     "n": 2,
+     "party": 0,
+     "ms": 1000.7200002670288,
+     "arg": 1,
+     "want": 1,
+     "correct": true,
+     "bytesOut": 96522,
+     "msgsOut": 21
+    },
+    {
+     "engine": "polytune",
+     "n": 2,
+     "party": 0,
+     "ms": 398.25,
+     "arg": 1,
+     "want": 1,
+     "correct": true,
+     "andOps": 400,
+     "bytesOut": 443672,
+     "msgsOut": 34
+    },
+    {
+     "engine": "emp-wasm",
+     "n": 2,
+     "party": 0,
+     "ms": 1006.1999998092651,
+     "arg": 1,
+     "want": 1,
+     "correct": true,
+     "bytesOut": 96522,
+     "msgsOut": 21
+    },
+    {
+     "engine": "polytune",
+     "n": 2,
+     "party": 0,
+     "ms": 393.3699998855591,
+     "arg": 1,
+     "want": 1,
+     "correct": true,
+     "andOps": 400,
+     "bytesOut": 443672,
+     "msgsOut": 34
+    },
+    {
+     "engine": "emp-wasm",
+     "n": 2,
+     "party": 0,
+     "ms": 978.4000000953674,
+     "arg": 1,
+     "want": 1,
+     "correct": true,
+     "bytesOut": 96522,
+     "msgsOut": 21
+    },
+    {
+     "engine": "polytune",
+     "n": 2,
+     "party": 0,
+     "ms": 404.31500005722046,
+     "arg": 1,
+     "want": 1,
+     "correct": true,
+     "andOps": 400,
+     "bytesOut": 443672,
+     "msgsOut": 34
+    }
+   ],
+   "applied": {
+    "applied": {
+     "delay_ms": 5,
+     "rate_mbit": 100,
+     "loss_pct": 0.1
+    },
+    "tc": {
+     "qsh-netem-ab": "qdisc netem 8003: root refcnt 21 limit 1000 delay 5ms loss 0.1% rate 100Mbit seed 3009626611135727422",
+     "qsh-netem-ba": "qdisc netem 8004: root refcnt 21 limit 1000 delay 5ms loss 0.1% rate 100Mbit seed 3701355897219721653"
+    }
+   }
+  },
+  {
+   "cfg": {
+    "tag": "g11",
+    "n": 2,
+    "engines": [
+     "emp",
+     "polytune"
+    ],
+    "runs": 3,
+    "seed": 12000,
+    "bulkBytes": 8000000,
+    "link": {
+     "rttMs": 10,
+     "delayMs": 5,
+     "rateMbit": 100,
+     "lossPct": 1
+    }
+   },
+   "party": 0,
+   "calib": {
+    "rttMs": 10.96999979019165,
+    "rttMinMs": 10.679999828338623,
+    "rttMaxMs": 224.41499996185303,
+    "bulkBytes": 8000000,
+    "bulkMs": 1897.619999885559,
+    "goodputMbps": 33.824225015827395
+   },
+   "runs": [
+    {
+     "engine": "emp-wasm",
+     "n": 2,
+     "party": 0,
+     "ms": 998.6950001716614,
+     "arg": 1,
+     "want": 1,
+     "correct": true,
+     "bytesOut": 96522,
+     "msgsOut": 21
+    },
+    {
+     "engine": "polytune",
+     "n": 2,
+     "party": 0,
+     "ms": 401.94000005722046,
+     "arg": 1,
+     "want": 1,
+     "correct": true,
+     "andOps": 400,
+     "bytesOut": 443672,
+     "msgsOut": 34
+    },
+    {
+     "engine": "emp-wasm",
+     "n": 2,
+     "party": 0,
+     "ms": 992.8249998092651,
+     "arg": 0,
+     "want": 0,
+     "correct": true,
+     "bytesOut": 96522,
+     "msgsOut": 21
+    },
+    {
+     "engine": "polytune",
+     "n": 2,
+     "party": 0,
+     "ms": 403.0800004005432,
+     "arg": 0,
+     "want": 0,
+     "correct": true,
+     "andOps": 400,
+     "bytesOut": 443672,
+     "msgsOut": 34
+    },
+    {
+     "engine": "emp-wasm",
+     "n": 2,
+     "party": 0,
+     "ms": 1015.5250000953674,
+     "arg": 0,
+     "want": 0,
+     "correct": true,
+     "bytesOut": 96522,
+     "msgsOut": 21
+    },
+    {
+     "engine": "polytune",
+     "n": 2,
+     "party": 0,
+     "ms": 534.8949999809265,
+     "arg": 0,
+     "want": 0,
+     "correct": true,
+     "andOps": 400,
+     "bytesOut": 443672,
+     "msgsOut": 34
+    }
+   ],
+   "applied": {
+    "applied": {
+     "delay_ms": 5,
+     "rate_mbit": 100,
+     "loss_pct": 1
+    },
+    "tc": {
+     "qsh-netem-ab": "qdisc netem 8003: root refcnt 21 limit 1000 delay 5ms loss 1% rate 100Mbit seed 13497136970400136730",
+     "qsh-netem-ba": "qdisc netem 8004: root refcnt 21 limit 1000 delay 5ms loss 1% rate 100Mbit seed 16908597393535871464"
+    }
+   }
+  },
+  {
+   "cfg": {
+    "tag": "g12",
+    "n": 2,
+    "engines": [
+     "emp",
+     "polytune"
+    ],
+    "runs": 3,
+    "seed": 13000,
+    "bulkBytes": 2000000,
+    "link": {
+     "rttMs": 50,
+     "delayMs": 25,
+     "rateMbit": 10,
+     "lossPct": 0
+    }
+   },
+   "party": 0,
+   "calib": {
+    "rttMs": 51.42999982833862,
+    "rttMinMs": 51.30999994277954,
+    "rttMaxMs": 51.87000036239624,
+    "bulkBytes": 2000000,
+    "bulkMs": 1797.6949996948242,
+    "goodputMbps": 9.029447286075783
+   },
+   "runs": [
+    {
+     "engine": "emp-wasm",
+     "n": 2,
+     "party": 0,
+     "ms": 2065.0250000953674,
+     "arg": 1,
+     "want": 1,
+     "correct": true,
+     "bytesOut": 96522,
+     "msgsOut": 21
+    },
+    {
+     "engine": "polytune",
+     "n": 2,
+     "party": 0,
+     "ms": 1798.9499998092651,
+     "arg": 1,
+     "want": 1,
+     "correct": true,
+     "andOps": 400,
+     "bytesOut": 443672,
+     "msgsOut": 34
+    },
+    {
+     "engine": "emp-wasm",
+     "n": 2,
+     "party": 0,
+     "ms": 2078.0700001716614,
+     "arg": 0,
+     "want": 0,
+     "correct": true,
+     "bytesOut": 96522,
+     "msgsOut": 21
+    },
+    {
+     "engine": "polytune",
+     "n": 2,
+     "party": 0,
+     "ms": 1809.5949997901917,
+     "arg": 0,
+     "want": 0,
+     "correct": true,
+     "andOps": 400,
+     "bytesOut": 443672,
+     "msgsOut": 34
+    },
+    {
+     "engine": "emp-wasm",
+     "n": 2,
+     "party": 0,
+     "ms": 2069.585000038147,
+     "arg": 0,
+     "want": 0,
+     "correct": true,
+     "bytesOut": 96522,
+     "msgsOut": 21
+    },
+    {
+     "engine": "polytune",
+     "n": 2,
+     "party": 0,
+     "ms": 1805.4349999427795,
+     "arg": 0,
+     "want": 0,
+     "correct": true,
+     "andOps": 400,
+     "bytesOut": 443672,
+     "msgsOut": 34
+    }
+   ],
+   "applied": {
+    "applied": {
+     "delay_ms": 25,
+     "rate_mbit": 10,
+     "loss_pct": 0
+    },
+    "tc": {
+     "qsh-netem-ab": "qdisc netem 8003: root refcnt 21 limit 1000 delay 25ms rate 10Mbit seed 1273661123851403857",
+     "qsh-netem-ba": "qdisc netem 8004: root refcnt 21 limit 1000 delay 25ms rate 10Mbit seed 2958925714852631924"
+    }
+   }
+  },
+  {
+   "cfg": {
+    "tag": "g13",
+    "n": 2,
+    "engines": [
+     "emp",
+     "polytune"
+    ],
+    "runs": 3,
+    "seed": 14000,
+    "bulkBytes": 2000000,
+    "link": {
+     "rttMs": 50,
+     "delayMs": 25,
+     "rateMbit": 10,
+     "lossPct": 0.1
+    }
+   },
+   "party": 0,
+   "calib": {
+    "rttMs": 51.28499984741211,
+    "rttMinMs": 51.15000009536743,
+    "rttMaxMs": 51.575000286102295,
+    "bulkBytes": 2000000,
+    "bulkMs": 1799.880000114441,
+    "goodputMbps": 9.0179584177879
+   },
+   "runs": [
+    {
+     "engine": "emp-wasm",
+     "n": 2,
+     "party": 0,
+     "ms": 2070.755000114441,
+     "arg": 0,
+     "want": 0,
+     "correct": true,
+     "bytesOut": 96522,
+     "msgsOut": 21
+    },
+    {
+     "engine": "polytune",
+     "n": 2,
+     "party": 0,
+     "ms": 1804.5,
+     "arg": 0,
+     "want": 0,
+     "correct": true,
+     "andOps": 400,
+     "bytesOut": 443672,
+     "msgsOut": 34
+    },
+    {
+     "engine": "emp-wasm",
+     "n": 2,
+     "party": 0,
+     "ms": 2082.6799998283386,
+     "arg": 0,
+     "want": 0,
+     "correct": true,
+     "bytesOut": 96522,
+     "msgsOut": 21
+    },
+    {
+     "engine": "polytune",
+     "n": 2,
+     "party": 0,
+     "ms": 1805.295000076294,
+     "arg": 0,
+     "want": 0,
+     "correct": true,
+     "andOps": 400,
+     "bytesOut": 443672,
+     "msgsOut": 34
+    },
+    {
+     "engine": "emp-wasm",
+     "n": 2,
+     "party": 0,
+     "ms": 2077.3899998664856,
+     "arg": 0,
+     "want": 0,
+     "correct": true,
+     "bytesOut": 96522,
+     "msgsOut": 21
+    },
+    {
+     "engine": "polytune",
+     "n": 2,
+     "party": 0,
+     "ms": 2125.380000114441,
+     "arg": 0,
+     "want": 0,
+     "correct": true,
+     "andOps": 400,
+     "bytesOut": 443672,
+     "msgsOut": 34
+    }
+   ],
+   "applied": {
+    "applied": {
+     "delay_ms": 25,
+     "rate_mbit": 10,
+     "loss_pct": 0.1
+    },
+    "tc": {
+     "qsh-netem-ab": "qdisc netem 8003: root refcnt 21 limit 1000 delay 25ms loss 0.1% rate 10Mbit seed 4999496834362696052",
+     "qsh-netem-ba": "qdisc netem 8004: root refcnt 21 limit 1000 delay 25ms loss 0.1% rate 10Mbit seed 2761814661840148292"
+    }
+   }
+  },
+  {
+   "cfg": {
+    "tag": "g14",
+    "n": 2,
+    "engines": [
+     "emp",
+     "polytune"
+    ],
+    "runs": 3,
+    "seed": 15000,
+    "bulkBytes": 2000000,
+    "link": {
+     "rttMs": 50,
+     "delayMs": 25,
+     "rateMbit": 10,
+     "lossPct": 1
+    }
+   },
+   "party": 0,
+   "calib": {
+    "rttMs": 51.735000133514404,
+    "rttMinMs": 51.389999866485596,
+    "rttMaxMs": 52.58500003814697,
+    "bulkBytes": 2000000,
+    "bulkMs": 2053.1449999809265,
+    "goodputMbps": 7.892358101284805
+   },
+   "runs": [
+    {
+     "engine": "emp-wasm",
+     "n": 2,
+     "party": 0,
+     "ms": 2128.545000076294,
+     "arg": 1,
+     "want": 1,
+     "correct": true,
+     "bytesOut": 96522,
+     "msgsOut": 21
+    },
+    {
+     "engine": "polytune",
+     "n": 2,
+     "party": 0,
+     "ms": 1848.5749998092651,
+     "arg": 1,
+     "want": 1,
+     "correct": true,
+     "andOps": 400,
+     "bytesOut": 443672,
+     "msgsOut": 34
+    },
+    {
+     "engine": "emp-wasm",
+     "n": 2,
+     "party": 0,
+     "ms": 2154.8100004196167,
+     "arg": 1,
+     "want": 1,
+     "correct": true,
+     "bytesOut": 96522,
+     "msgsOut": 21
+    },
+    {
+     "engine": "polytune",
+     "n": 2,
+     "party": 0,
+     "ms": 1847.3499999046326,
+     "arg": 1,
+     "want": 1,
+     "correct": true,
+     "andOps": 400,
+     "bytesOut": 443672,
+     "msgsOut": 34
+    },
+    {
+     "engine": "emp-wasm",
+     "n": 2,
+     "party": 0,
+     "ms": 2104.1050000190735,
+     "arg": 0,
+     "want": 0,
+     "correct": true,
+     "bytesOut": 96522,
+     "msgsOut": 21
+    },
+    {
+     "engine": "polytune",
+     "n": 2,
+     "party": 0,
+     "ms": 1833.0599999427795,
+     "arg": 0,
+     "want": 0,
+     "correct": true,
+     "andOps": 400,
+     "bytesOut": 443672,
+     "msgsOut": 34
+    }
+   ],
+   "applied": {
+    "applied": {
+     "delay_ms": 25,
+     "rate_mbit": 10,
+     "loss_pct": 1
+    },
+    "tc": {
+     "qsh-netem-ab": "qdisc netem 8003: root refcnt 21 limit 1000 delay 25ms loss 1% rate 10Mbit seed 9210570567803353619",
+     "qsh-netem-ba": "qdisc netem 8004: root refcnt 21 limit 1000 delay 25ms loss 1% rate 10Mbit seed 17752654774563783735"
+    }
+   }
+  },
+  {
+   "cfg": {
+    "tag": "g15",
+    "n": 2,
+    "engines": [
+     "emp",
+     "polytune"
+    ],
+    "runs": 3,
+    "seed": 16000,
+    "bulkBytes": 8000000,
+    "link": {
+     "rttMs": 50,
+     "delayMs": 25,
+     "rateMbit": 100,
+     "lossPct": 0
+    }
+   },
+   "party": 0,
+   "calib": {
+    "rttMs": 51.385000228881836,
+    "rttMinMs": 51.09999990463257,
+    "rttMaxMs": 51.640000343322754,
+    "bulkBytes": 8000000,
+    "bulkMs": 864.9800000190735,
+    "goodputMbps": 76.25515691258629
+   },
+   "runs": [
+    {
+     "engine": "emp-wasm",
+     "n": 2,
+     "party": 0,
+     "ms": 1963.0999999046326,
+     "arg": 1,
+     "want": 1,
+     "correct": true,
+     "bytesOut": 96522,
+     "msgsOut": 21
+    },
+    {
+     "engine": "polytune",
+     "n": 2,
+     "party": 0,
+     "ms": 1180.034999847412,
+     "arg": 1,
+     "want": 1,
+     "correct": true,
+     "andOps": 400,
+     "bytesOut": 443672,
+     "msgsOut": 34
+    },
+    {
+     "engine": "emp-wasm",
+     "n": 2,
+     "party": 0,
+     "ms": 1969.539999961853,
+     "arg": 0,
+     "want": 0,
+     "correct": true,
+     "bytesOut": 96522,
+     "msgsOut": 21
+    },
+    {
+     "engine": "polytune",
+     "n": 2,
+     "party": 0,
+     "ms": 1171.6999998092651,
+     "arg": 0,
+     "want": 0,
+     "correct": true,
+     "andOps": 400,
+     "bytesOut": 443672,
+     "msgsOut": 34
+    },
+    {
+     "engine": "emp-wasm",
+     "n": 2,
+     "party": 0,
+     "ms": 1941.0800004005432,
+     "arg": 0,
+     "want": 0,
+     "correct": true,
+     "bytesOut": 96522,
+     "msgsOut": 21
+    },
+    {
+     "engine": "polytune",
+     "n": 2,
+     "party": 0,
+     "ms": 1179.4349999427795,
+     "arg": 0,
+     "want": 0,
+     "correct": true,
+     "andOps": 400,
+     "bytesOut": 443672,
+     "msgsOut": 34
+    }
+   ],
+   "applied": {
+    "applied": {
+     "delay_ms": 25,
+     "rate_mbit": 100,
+     "loss_pct": 0
+    },
+    "tc": {
+     "qsh-netem-ab": "qdisc netem 8003: root refcnt 21 limit 1000 delay 25ms rate 100Mbit seed 12512356448153196691",
+     "qsh-netem-ba": "qdisc netem 8004: root refcnt 21 limit 1000 delay 25ms rate 100Mbit seed 18359703998705898703"
+    }
+   }
+  },
+  {
+   "cfg": {
+    "tag": "g16",
+    "n": 2,
+    "engines": [
+     "emp",
+     "polytune"
+    ],
+    "runs": 3,
+    "seed": 17000,
+    "bulkBytes": 8000000,
+    "link": {
+     "rttMs": 50,
+     "delayMs": 25,
+     "rateMbit": 100,
+     "lossPct": 0.1
+    }
+   },
+   "party": 0,
+   "calib": {
+    "rttMs": 51.34499979019165,
+    "rttMinMs": 51.13499975204468,
+    "rttMaxMs": 252.86500024795532,
+    "bulkBytes": 8000000,
+    "bulkMs": 865.8150000572205,
+    "goodputMbps": 76.17755319799885
+   },
+   "runs": [
+    {
+     "engine": "emp-wasm",
+     "n": 2,
+     "party": 0,
+     "ms": 1946.1999998092651,
+     "arg": 0,
+     "want": 0,
+     "correct": true,
+     "bytesOut": 96522,
+     "msgsOut": 21
+    },
+    {
+     "engine": "polytune",
+     "n": 2,
+     "party": 0,
+     "ms": 1233.625,
+     "arg": 0,
+     "want": 0,
+     "correct": true,
+     "andOps": 400,
+     "bytesOut": 443672,
+     "msgsOut": 34
+    },
+    {
+     "engine": "emp-wasm",
+     "n": 2,
+     "party": 0,
+     "ms": 1952.2999997138977,
+     "arg": 0,
+     "want": 0,
+     "correct": true,
+     "bytesOut": 96522,
+     "msgsOut": 21
+    },
+    {
+     "engine": "polytune",
+     "n": 2,
+     "party": 0,
+     "ms": 1324.0649995803833,
+     "arg": 0,
+     "want": 0,
+     "correct": true,
+     "andOps": 400,
+     "bytesOut": 443672,
+     "msgsOut": 34
+    },
+    {
+     "engine": "emp-wasm",
+     "n": 2,
+     "party": 0,
+     "ms": 1952.0699996948242,
+     "arg": 0,
+     "want": 0,
+     "correct": true,
+     "bytesOut": 96522,
+     "msgsOut": 21
+    },
+    {
+     "engine": "polytune",
+     "n": 2,
+     "party": 0,
+     "ms": 1177.244999885559,
+     "arg": 0,
+     "want": 0,
+     "correct": true,
+     "andOps": 400,
+     "bytesOut": 443672,
+     "msgsOut": 34
+    }
+   ],
+   "applied": {
+    "applied": {
+     "delay_ms": 25,
+     "rate_mbit": 100,
+     "loss_pct": 0.1
+    },
+    "tc": {
+     "qsh-netem-ab": "qdisc netem 8003: root refcnt 21 limit 1000 delay 25ms loss 0.1% rate 100Mbit seed 9667655490841087766",
+     "qsh-netem-ba": "qdisc netem 8004: root refcnt 21 limit 1000 delay 25ms loss 0.1% rate 100Mbit seed 16856845892106808485"
+    }
+   }
+  },
+  {
+   "cfg": {
+    "tag": "g17",
+    "n": 2,
+    "engines": [
+     "emp",
+     "polytune"
+    ],
+    "runs": 3,
+    "seed": 18000,
+    "bulkBytes": 8000000,
+    "link": {
+     "rttMs": 50,
+     "delayMs": 25,
+     "rateMbit": 100,
+     "lossPct": 1
+    }
+   },
+   "party": 0,
+   "calib": {
+    "rttMs": 51.40500020980835,
+    "rttMinMs": 51.22499990463257,
+    "rttMaxMs": 51.674999713897705,
+    "bulkBytes": 8000000,
+    "bulkMs": 6185.289999961853,
+    "goodputMbps": 10.390306169282658
+   },
+   "runs": [
+    {
+     "engine": "emp-wasm",
+     "n": 2,
+     "party": 0,
+     "ms": 2151.5700001716614,
+     "arg": 0,
+     "want": 0,
+     "correct": true,
+     "bytesOut": 96522,
+     "msgsOut": 21
+    },
+    {
+     "engine": "polytune",
+     "n": 2,
+     "party": 0,
+     "ms": 1256.545000076294,
+     "arg": 0,
+     "want": 0,
+     "correct": true,
+     "andOps": 400,
+     "bytesOut": 443672,
+     "msgsOut": 34
+    },
+    {
+     "engine": "emp-wasm",
+     "n": 2,
+     "party": 0,
+     "ms": 1978.5550003051758,
+     "arg": 1,
+     "want": 1,
+     "correct": true,
+     "bytesOut": 96522,
+     "msgsOut": 21
+    },
+    {
+     "engine": "polytune",
+     "n": 2,
+     "party": 0,
+     "ms": 1995.9350004196167,
+     "arg": 1,
+     "want": 1,
+     "correct": true,
+     "andOps": 400,
+     "bytesOut": 443672,
+     "msgsOut": 34
+    },
+    {
+     "engine": "emp-wasm",
+     "n": 2,
+     "party": 0,
+     "ms": 2449.0350003242493,
+     "arg": 1,
+     "want": 1,
+     "correct": true,
+     "bytesOut": 96522,
+     "msgsOut": 21
+    },
+    {
+     "engine": "polytune",
+     "n": 2,
+     "party": 0,
+     "ms": 1491.5150003433228,
+     "arg": 1,
+     "want": 1,
+     "correct": true,
+     "andOps": 400,
+     "bytesOut": 443672,
+     "msgsOut": 34
+    }
+   ],
+   "applied": {
+    "applied": {
+     "delay_ms": 25,
+     "rate_mbit": 100,
+     "loss_pct": 1
+    },
+    "tc": {
+     "qsh-netem-ab": "qdisc netem 8003: root refcnt 21 limit 1000 delay 25ms loss 1% rate 100Mbit seed 4944926264440244036",
+     "qsh-netem-ba": "qdisc netem 8004: root refcnt 21 limit 1000 delay 25ms loss 1% rate 100Mbit seed 10477449064703595892"
+    }
+   }
+  },
+  {
+   "cfg": {
+    "tag": "g18",
+    "n": 10,
+    "engines": [
+     "emp",
+     "polytune"
+    ],
+    "runs": 3,
+    "seed": 19000,
+    "bulkBytes": 8000000,
+    "link": {
+     "rttMs": 10,
+     "delayMs": 5,
+     "rateMbit": 100,
+     "lossPct": 0
+    }
+   },
+   "party": 0,
+   "calib": {
+    "rttMs": 10.925000190734863,
+    "rttMinMs": 10.579999923706055,
+    "rttMaxMs": 11.444999694824219,
+    "bulkBytes": 8000000,
+    "bulkMs": 699.6350002288818,
+    "goodputMbps": 92.19610397659154
+   },
+   "runs": [
+    {
+     "engine": "emp-wasm",
+     "n": 10,
+     "party": 0,
+     "ms": 1158.1400003433228,
+     "arg": 0,
+     "want": 0,
+     "correct": true,
+     "bytesOut": 536303,
+     "msgsOut": 26
+    },
+    {
+     "engine": "polytune",
+     "n": 10,
+     "party": 0,
+     "ms": 1685.085000038147,
+     "arg": 0,
+     "want": 0,
+     "correct": true,
+     "andOps": 2997,
+     "bytesOut": 3101783,
+     "msgsOut": 96
+    },
+    {
+     "engine": "emp-wasm",
+     "n": 10,
+     "party": 0,
+     "ms": 1189.090000152588,
+     "arg": 4,
+     "want": 4,
+     "correct": true,
+     "bytesOut": 536303,
+     "msgsOut": 26
+    },
+    {
+     "engine": "polytune",
+     "n": 10,
+     "party": 0,
+     "ms": 1691.840000152588,
+     "arg": 4,
+     "want": 4,
+     "correct": true,
+     "andOps": 2997,
+     "bytesOut": 3101783,
+     "msgsOut": 96
+    },
+    {
+     "engine": "emp-wasm",
+     "n": 10,
+     "party": 0,
+     "ms": 1144.9800000190735,
+     "arg": 6,
+     "want": 6,
+     "correct": true,
+     "bytesOut": 536303,
+     "msgsOut": 26
+    },
+    {
+     "engine": "polytune",
+     "n": 10,
+     "party": 0,
+     "ms": 1703.255000114441,
+     "arg": 6,
+     "want": 6,
+     "correct": true,
+     "andOps": 2997,
+     "bytesOut": 3101783,
+     "msgsOut": 96
+    }
+   ],
+   "applied": {
+    "applied": {
+     "delay_ms": 5,
+     "rate_mbit": 100,
+     "loss_pct": 0
+    },
+    "tc": {
+     "qsh-netem-ab": "qdisc netem 8003: root refcnt 21 limit 1000 delay 5ms rate 100Mbit seed 1307037788428973268",
+     "qsh-netem-ba": "qdisc netem 8004: root refcnt 21 limit 1000 delay 5ms rate 100Mbit seed 18248186175589482561"
+    }
+   }
+  },
+  {
+   "cfg": {
+    "tag": "g19",
+    "n": 10,
+    "engines": [
+     "emp",
+     "polytune"
+    ],
+    "runs": 3,
+    "seed": 20000,
+    "bulkBytes": 2000000,
+    "link": {
+     "rttMs": 50,
+     "delayMs": 25,
+     "rateMbit": 10,
+     "lossPct": 0
+    }
+   },
+   "party": 0,
+   "calib": {
+    "rttMs": 51.38000011444092,
+    "rttMinMs": 51.209999561309814,
+    "rttMaxMs": 51.69500017166138,
+    "bulkBytes": 2000000,
+    "bulkMs": 1801.2750000953674,
+    "goodputMbps": 9.011114646528469
+   },
+   "runs": [
+    {
+     "engine": "emp-wasm",
+     "n": 10,
+     "party": 0,
+     "ms": 3038.545000076294,
+     "arg": 9,
+     "want": 9,
+     "correct": true,
+     "bytesOut": 536303,
+     "msgsOut": 26
+    },
+    {
+     "engine": "polytune",
+     "n": 10,
+     "party": 0,
+     "ms": 8325.329999923706,
+     "arg": 9,
+     "want": 9,
+     "correct": true,
+     "andOps": 2997,
+     "bytesOut": 3101783,
+     "msgsOut": 96
+    },
+    {
+     "engine": "emp-wasm",
+     "n": 10,
+     "party": 0,
+     "ms": 3037.6449999809265,
+     "arg": 7,
+     "want": 7,
+     "correct": true,
+     "bytesOut": 536303,
+     "msgsOut": 26
+    },
+    {
+     "engine": "polytune",
+     "n": 10,
+     "party": 0,
+     "ms": 8340.369999885559,
+     "arg": 7,
+     "want": 7,
+     "correct": true,
+     "andOps": 2997,
+     "bytesOut": 3101783,
+     "msgsOut": 96
+    },
+    {
+     "engine": "emp-wasm",
+     "n": 10,
+     "party": 0,
+     "ms": 3036.3600001335144,
+     "arg": 5,
+     "want": 5,
+     "correct": true,
+     "bytesOut": 536303,
+     "msgsOut": 26
+    },
+    {
+     "engine": "polytune",
+     "n": 10,
+     "party": 0,
+     "ms": 8335.68499994278,
+     "arg": 5,
+     "want": 5,
+     "correct": true,
+     "andOps": 2997,
+     "bytesOut": 3101783,
+     "msgsOut": 96
+    }
+   ],
+   "applied": {
+    "applied": {
+     "delay_ms": 25,
+     "rate_mbit": 10,
+     "loss_pct": 0
+    },
+    "tc": {
+     "qsh-netem-ab": "qdisc netem 8003: root refcnt 21 limit 1000 delay 25ms rate 10Mbit seed 9102644111118784635",
+     "qsh-netem-ba": "qdisc netem 8004: root refcnt 21 limit 1000 delay 25ms rate 10Mbit seed 1833917097480563256"
+    }
+   }
+  }
+ ]
+}

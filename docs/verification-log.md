@@ -2959,3 +2959,22 @@ replicating its call against the same installed packages. That is what turns "si
 **Browser note.** The connected Chrome could no longer reach this machine's loopback, so the prototype
 and the emp-wasm baseline were both measured in the app's built-in browser, which keeps the two on one
 engine.
+
+### Round 64: a link that was shaped correctly and a payload that was not, and an answer that depends on N
+
+**Context.** The network measurement decided after Round 63, before any replacement.
+
+**Choosing the shaper by what it shapes.** The user-space proxy that was considered first terminates TCP
+at both ends, so the browsers would have measured a loopback connection with a proxy's buffer behind
+it. Congestion control - the thing the request asked to be represented - would not have run at all.
+netem on each relay's own interface shapes the segments the browsers' TCP actually sends, which is why
+the relays' TCP_INFO shows windows growing and RTT inflating under load.
+
+**The smoke test lied, and the qdisc counters caught it.** 297 Mbit/s through a 10 Mbit/s shaper is
+impossible, and the counters on the shaped interface showed why without guessing: almost nothing had
+crossed it. Compression, negotiated by default, had removed the payload. A calibration that measures a
+link has to send what the protocols send - random bytes - and a relay in a measurement must not
+transform what it forwards.
+
+**The headline needed its condition.** "Polytune is faster" is true at 2 classes on every link and false
+at 10. The demo only ever runs 2, which was checked in the models rather than assumed.
