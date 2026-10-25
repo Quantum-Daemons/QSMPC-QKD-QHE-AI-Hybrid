@@ -291,6 +291,7 @@ function UseCaseView({ usecase }: { usecase: string }) {
           surfacedBackend={artifacts?.primary_inference?.backend ?? null}
           isOfReportedClass={artifacts?.explanation_is_of_reported_class ?? null}
           hasTreeAttribution={hasTreeAttribution(usecase)}
+          usecase={usecase}
         />
       ) : null}
 
