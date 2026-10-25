@@ -4557,3 +4557,77 @@ integration and of Polytune's alpha API; the effect of `wasm-opt`, which was not
 BUSINESS DOC RECONCILED Round 63. The out-of-repo document is brought level with this round. Its content
 is not quoted here, in the checklist, or in any commit - only the fact of the reconciliation, which is
 what gate 16 reads.
+
+## Round 64: the two garbled-circuit engines, measured over a real, shaped network
+
+**Round 63 closed first.** PR #59 merged as 2977f69 and the demo was redeployed from main, serving the
+unchanged bundle (`index-BlGVcorX.js`).
+
+**Why this round exists.** Round 63 measured Polytune about six times faster than the shipped emp-wasm
+in one tab, but sending about five times the bytes, and recorded that the order might reverse between
+separate hosts. The decision recorded for this round was to measure that with real transport before
+anything is replaced: delay, bandwidth and loss applied to actual TCP connections, and verified by
+measurement rather than taken from the settings.
+
+**How.** `prototypes/net-bench/` runs each party in its own tab, on different sites (127.0.0.1 and
+localhost) so the browser gives them separate processes. The tabs exchange messages over WebSockets
+through two relay containers, one per direction, each shaped by netem on its own interface (one-way
+delay of half the round trip, the bandwidth cap, the loss, netem's default 1000-packet queue). Both
+engines use the same transport code. Each configuration is calibrated first, by an echo test and a bulk
+transfer of random bytes through the same relays, and the relays record the kernel's TCP_INFO per
+connection. Toxiproxy was considered and not used: it terminates TCP on both sides and shapes the byte
+stream in user space, so the browsers' TCP would have seen a near-zero-RTT link and congestion control
+would never have been exercised. netem shapes the segments themselves; the containers hold `NET_ADMIN`
+for their own namespaces only, every port binds to 127.0.0.1, and everything was removed afterwards.
+
+**The first smoke test was wrong, and the counters said so.** It reported 297 Mbit/s through a
+10 Mbit/s link. netem's own counters showed 7,720 bytes sent while the relay had forwarded 2 MB: the
+websockets library negotiates permessage-deflate by default, and the test's repeated-byte payload had
+compressed to nothing. The relay now disables compression, calibration sends random bytes, and the
+same test measured 9.03 Mbit/s, a 51.3 ms echo against the configured 50, and the congestion window
+growing to 114 segments while smoothed RTT rose from 25 ms to 130 ms as the queue filled.
+
+**Results** (Chrome 152, one machine; median of three runs, completion being the later of the two
+parties; all 120 runs returned the right index):
+
+| classes | RTT | Mbit/s | loss | emp-wasm | Polytune | faster |
+|---|---|---|---|---|---|---|
+| 2 | 1 ms | 10 | 0 to 1% | 935 to 953 ms | 853 to 856 ms | Polytune, 1.09 to 1.11x |
+| 2 | 1 ms | 100 | 0 to 1% | 764 to 779 ms | 234 to 246 ms | Polytune, 3.10 to 3.33x |
+| 2 | 10 ms | 10 | 0 to 1% | 1153 to 1366 ms | 1019 to 1031 ms | Polytune, 1.13 to 1.32x |
+| 2 | 10 ms | 100 | 0 to 1% | 999 to 1001 ms | 404 to 409 ms | Polytune, 2.44 to 2.48x |
+| 2 | 50 ms | 10 | 0 to 1% | 2070 to 2129 ms | 1832 to 1874 ms | Polytune, 1.13 to 1.14x |
+| 2 | 50 ms | 100 | 0 to 1% | 1952 to 2152 ms | 1205 to 1518 ms | Polytune, 1.42 to 1.63x |
+| 10 | 10 ms | 100 | 0 | 1158 ms | 1698 ms | emp-wasm, 1.47x |
+| 10 | 50 ms | 10 | 0 | 3038 ms | 8363 ms | emp-wasm, 2.75x |
+
+At 2 classes Polytune finished first on every link, despite its traffic (1,018,898 bytes in 69
+messages against 214,861 in 43). At 10 classes the order reverses, because Polytune's traffic grows with
+the circuit (7,184,705 bytes in 195 messages against 1,241,896 in 55). Calibration matched the settings
+within about 1.7 ms of RTT and at 90 to 95% of the shaped rate, except where real TCP limits it - 1% loss
+at 10 ms on 100 Mbit/s (33.8 Mbit/s) and at 50 ms (7.9 on 10, 10.4 on 100) - and slow start on the
+50 ms, 100 Mbit/s link (76 Mbit/s for an 8 MB transfer). Loss raised retransmissions (14 to 27 per
+three Polytune runs at 1%, 0 to 8 for emp-wasm, which sends fewer segments) without changing the order.
+
+**What it means for the demo.** Every secure argmax the demo runs is the 2-class case: the finance and
+medical models have two output rows, and genomics builds a two-row one-vs-rest margin from its PRS. On
+that workload Polytune was faster on all 18 links, as it was in one tab. A use case with many classes
+under MPC - the telecom student has 8 output rows, but telecom does not run the secure argmax - would
+favour emp-wasm.
+
+**On the page.** `/validations` gains a card with two bar charts (2 classes, no loss, 10 and 100 Mbit/s;
+Polytune hatched as well as coloured) and the full table, drawn from `web/src/lib/mpcNetBench.json`, a
+copy that `prototypes/net-bench/analyze.py --web` derives from `results/summary.json`.
+`tests/test_mpc_net_bench_copy_matches_the_record.py` regenerates the copy from the record and requires
+equality, and checks that every recorded run was correct; seeded with one edited figure, it fails.
+Checked in fixed-width frames, the card renders both charts with their titles and six bars each, at
+1280 px and at 390 px, with no horizontal page overflow; the table has its own scroller, because at
+some widths its ten columns widened the card.
+
+UNVERIFIED - needs confirmation: other machines, browsers and real wide-area paths; and the cost of the
+relay hop, which every message pays twice (sender to relay, relay to receiver) and a direct WebRTC path
+would not.
+
+BUSINESS DOC RECONCILED Round 64. The out-of-repo document is brought level with this round. Its content
+is not quoted here, in the checklist, or in any commit - only the fact of the reconciliation, which is
+what gate 16 reads.
