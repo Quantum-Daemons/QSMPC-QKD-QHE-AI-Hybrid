@@ -4628,6 +4628,11 @@ UNVERIFIED - needs confirmation: other machines, browsers and real wide-area pat
 relay hop, which every message pays twice (sender to relay, relay to receiver) and a direct WebRTC path
 would not.
 
+**Walked on the public demo with this branch deployed** (135de10, serving `index-C7imNzTk.js`, the
+file name the local build produced). The network card renders on `/validations` at 1280 px and 390 px
+with both charts (six bars each), the twenty-row table and the key points, and no horizontal page
+overflow; the other nine pages render their headings with no error boundary and no overflow.
+
 BUSINESS DOC RECONCILED Round 64. The out-of-repo document is brought level with this round. Its content
 is not quoted here, in the checklist, or in any commit - only the fact of the reconciliation, which is
 what gate 16 reads.
