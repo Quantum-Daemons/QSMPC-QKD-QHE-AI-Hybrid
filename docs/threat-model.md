@@ -316,6 +316,14 @@ statement of known limitations, not a conformance gap against any published requ
   6.4.5 in Round 62. The zod one, reached through the archived `mpc-framework`, left with that package
   in Round 65. `npm audit` now reports none, development tooling included; the register's Round 59 to
   65 sections carry the evidence.
+  **Kept at zero since Round 67, rather than measured at zero by hand.** `scripts/audit_deps.sh` runs
+  daily in `.github/workflows/audit.yml`, and whenever a manifest, a lockfile or the policy changes.
+  It runs npm audit over `web/`, and cargo-deny over the Rust crates compiled into the MPC wasm, which
+  had never been audited before. The cargo-deny policy (`wasm/qsh-mpc/deny.toml`) fails on every
+  RustSec advisory and on any source other than crates.io and the pinned Polytune repository. It
+  ignores one advisory: RUSTSEC-2025-0141, which says bincode 2.0.1 (pulled by Polytune) is
+  unmaintained. That advisory reports no vulnerability, and there is no safe upgrade. A vulnerability
+  in bincode would be a separate advisory, and it would fail the check.
 - **There is no `REMOTE` provenance.** The scheme has exactly four states - `MEASURED (local WebGPU)`,
   `MEASURED (local WASM)`, `MEASURED (plain JS)` and `SIMULATED`. `remote` was **removed from the type**
   in Round 24d, not merely left unset: nothing in `web/src` calls the ZeroGPU Space, that Space returns

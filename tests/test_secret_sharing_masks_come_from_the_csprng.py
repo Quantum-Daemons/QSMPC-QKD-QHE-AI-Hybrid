@@ -133,7 +133,7 @@ console.log(JSON.stringify({{ first, calls: globalThis.__mpcCalls }}));
     for c in calls:
         assert (c["aType"], c["bType"]) == ("Uint32Array", "Uint32Array"), (
             "the shares must reach the module as Uint32Array, the type its sharing mod 2^32 is defined on")
-        assert [(a + b) % 2**32 for a, b in zip(c["a"], c["b"])] == q, (
+        assert [(a + b) % 2**32 for a, b in zip(c["a"], c["b"], strict=True)] == q, (
             "a_k + b_k is not q_k mod 2^32: the shares do not reconstruct the quantised logits")
     masks = [x for c in calls for x in c["a"]]
     assert calls[0]["a"] != calls[1]["a"], "two calls drew the same masks: they are not fresh"
