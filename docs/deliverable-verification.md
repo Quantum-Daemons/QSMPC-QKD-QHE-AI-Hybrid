@@ -5009,6 +5009,20 @@ UNVERIFIED - needs confirmation:
 - how much #63 matters in a two-host deployment, which needs the attack's precondition checked against
   Polytune's OT use, not only the maintainers' view.
 
+**Walked on the public demo with this branch deployed** (96c515c, serving `index-BV0XWvvL.js`, the file
+name the local client-only build produced). Each pipeline reported `mpc_matches_clear` 1 and logged
+the index checked in the clear:
+- Medical: index 1, 136.08 ms over 922.48 KB. The three published models verified PASS, and the
+  summary signed.
+- Finance: index 0, 139.52 ms, PASS, signed.
+- Genomics: index 0. The secure sum was 235, the PRS -0.2332 and the class 0, all unchanged, over
+  30441.82 KB. It signed.
+- The module and its loader were fetched with 200.
+
+All ten pages render with zero horizontal overflow at 1280 and at 390 px, and the console showed no
+error. The failure paths were not exercised on the public demo, because that would mean breaking the
+deployed build. They were exercised locally, above.
+
 BUSINESS DOC RECONCILED Round 68. The out-of-repo document is brought level with this round. Its content
 is not quoted here, in the checklist, or in any commit - only the fact of the reconciliation, which is
 what gate 16 reads.
