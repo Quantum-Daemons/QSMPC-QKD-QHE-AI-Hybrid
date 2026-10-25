@@ -3041,3 +3041,29 @@ condition that reopens it. A new advisory, including a vulnerability in the same
 **Each failure path was made to fire before the success path was trusted.** That meant a removed
 ignore, a disallowed git source, and a scratch project locking a version with a known critical
 advisory. A green audit is evidence only once the same audit has been seen to go red.
+
+### Round 68: the library held up; the code around it did not
+
+**Context.** The follow-up chosen after Rounds 65 to 67: a security review of how the demo uses
+Polytune.
+
+**The library was read, not trusted.** The questions were the ones the demo's claim depends on:
+- whether a trusted dealer could be in the path;
+- where the randomness comes from;
+- what the statistical parameter is;
+- what is open upstream.
+Each answer is a line of Polytune's source at the pinned commit. The test pins that commit, so the
+answers stop being trusted the moment it moves.
+
+**The defect was in the failure path, again.** A fallback that printed a cost model under measured
+names had been fixed once, for one key. The fix and its gate named the key rather than the rule. The
+same branch kept doing it for three more keys, and it misattributed the failure as well. The gate now
+treats the cost model's row as what it is, and the old code fails it on exactly those lines.
+
+**A self-test the deployment could never have.** Two hosts could not compare the circuit's answer
+with the clear one, because neither holds both shares. This tab does, so it does. The check costs one
+loop, and a broken integration can no longer report a confident wrong index.
+
+**Failure paths were exercised by breaking the build, not by reading the code.** Removing one wasm
+file, then the other, showed what a visitor would see in each case, including that the missing file
+came back as HTML.

@@ -4930,3 +4930,85 @@ signed.
 BUSINESS DOC RECONCILED Round 67. The out-of-repo document is brought level with this round. Its content
 is not quoted here, in the checklist, or in any commit - only the fact of the reconciliation, which is
 what gate 16 reads.
+
+## Round 68: the Polytune integration reviewed
+
+**Round 67 closed first.** PR #63 merged as 8e496a9, and the demo was redeployed from main. It serves
+the same bundle (`index-8fBHAG75.js`). All ten pages were walked again at 1280 and 390 px. The medical
+pipeline took 133.85 ms over 922.48 KB, all three published models verified PASS, and the summary
+signed. The audit workflow's first run on main came from the merge's push:
+- npm printed "found 0 vulnerabilities";
+- cargo-deny printed "advisories ok, sources ok", in 3 minutes on a cold cache, because main cannot
+  read a pull request's cache;
+- the run saved a 68 MB cache on main for the scheduled runs.
+
+UNVERIFIED - needs confirmation: the first scheduled run has not happened yet.
+
+**Why this round exists.** Round 65 adopted a pre-release library for the tier the demo describes as
+malicious-secure, and nobody had reviewed how the demo uses it.
+
+**Polytune, at the pinned commit (47dc378).**
+- Preprocessing: `mpc()`, the only public entry, always runs it among the parties by OT extension.
+  The trusted-dealer mode is crate-private, so the demo cannot reach it.
+- Randomness: `rand`'s thread-local CSPRNG, seeded from the OS. On wasm32 that means
+  `crypto.getRandomValues`, through getrandom's `wasm_js` backend. Shared randomness comes from a
+  commit-then-reveal coin toss (`shared_rng`). The fixed seeds in its source are in tests.
+- Statistical security: the parameter is 40.
+- Upstream: no security advisory is published. Two security issues are open, and
+  `docs/threat-model.md` records what each means here.
+  - #63: the KOS15 consistency check rests on a lemma that was later proved false. The corrected
+    check is not yet ported to Polytune.
+  - #100: an AES-CTR PRG never repeats a block, which a birthday-bound test could notice.
+  Neither changes the demo, whose parties share one tab. Both qualify the claim for two hosts, as does
+  the pre-release status. README and `clientMPC.ts` now say so where they state the protocol's
+  security.
+
+**The integration: three findings, all fixed.**
+- **A failure was reported as the wrong one, with a cost model under measured keys.** Any failure of
+  the hybrid returned `null`, the caller printed "node-seal did not load", and it published the cost
+  model's split as `fhe_linear_ms`, `mpc_nonlinear_ms` and `mpc_comm_kb`, the keys the measured path
+  fills.
+  - It is the defect the comment beside it describes, which an earlier round fixed for one key, the
+    only one the gate listed.
+  - An MPC failure can be the protocol aborting on a failed MAC or commitment check, which is what
+    malicious security looks like from the honest side. That read as a missing library.
+  - Now `realClientHybrid` returns which half failed and why. The fallback puts that cause in
+    `encrypted_tier` and in its log line, and publishes the split only as `_representative` keys.
+- **Nothing checked the circuit's answer.** Both parties' shares are in this tab, so `clientMPC.ts`
+  now computes the same argmax in the clear, with the circuit's tie rule. Each run reports
+  `mpc_matches_clear` and says loudly if the two disagree.
+- **No bound on the input.** The index comes back as a u8. The crate now refuses more than 255
+  values before compiling, instead of failing inside generated Garble source. A crate test covers it.
+
+**Verified locally on the client-only build.**
+- Normal runs: the index checked in the clear on all three pages. Medical gave index 1. Finance gave
+  0, in 142.01 ms over 922.48 KB. Genomics gave 0, with secure sum 235, PRS -0.2332 and class 0, as
+  before.
+- With the MPC module's wasm removed from a copy of the build:
+  - `encrypted_tier` read "failed: the garbled-circuit MPC did not run to completion
+    (WebAssembly.instantiate(): expected magic word 00 61 73 6d, found 3c 21 64 6f @+0)". The missing
+    file was answered with the page's own HTML by the SPA fallback.
+  - The measured keys were absent, and the representative ones read 4320 ms, 576 ms and 90 KB.
+  - The summary still signed, and no page showed `NaN` or `undefined`.
+- With node-seal's wasm removed instead, it read "failed: the in-browser CKKS computation failed
+  (Aborted(CompileError: ...))".
+
+**The gates.**
+- New: `tests/test_the_polytune_integration_reports_what_happened.py`.
+  - Behaviourally, through `clientMPC.ts` with a stub module: the clear index is independent of the
+    module and breaks ties like the circuit, and a thrown protocol error reaches the caller.
+  - Statically: the failure report, the cause in the fallback, the self-test and the crate's bound.
+  - It also pins the reviewed Polytune commit, so moving it fails until this review is redone.
+  - It was seeded nine ways, and each seed fires.
+- Widened: `test_a_config_constant_never_wears_a_measurements_name.py` now lists the three split keys
+  and treats the cost model's row as a configuration read. Run against the Round 67 code, it fires on
+  exactly the three lines that were wrong.
+
+UNVERIFIED - needs confirmation:
+- whether any independent audit of Polytune exists;
+- how much #63 matters in a two-host deployment, which needs the attack's precondition checked against
+  Polytune's OT use, not only the maintainers' view.
+
+BUSINESS DOC RECONCILED Round 68. The out-of-repo document is brought level with this round. Its content
+is not quoted here, in the checklist, or in any commit - only the fact of the reconciliation, which is
+what gate 16 reads.

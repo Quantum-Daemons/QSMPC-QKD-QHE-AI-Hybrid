@@ -1,8 +1,10 @@
 // REAL in-browser 2-party MPC for the non-linear decision layer (argmax over the FHE logits), on
 // Polytune (sine-fdn, MIT): WRK17b multi-party authenticated garbling, secure against malicious
-// adversaries controlling all but one party. BOTH parties run inside this tab over an in-memory
-// channel, so there is ZERO server / ZERO VPS - yet the protocol, its messages and its wall-clock are
-// GENUINELY the real garbled-circuit computation (not a hand-rolled reconstruction, not a cost model).
+// adversaries controlling all but one party - the protocol's property, in a pre-release library whose
+// open upstream issues docs/threat-model.md assesses (Round 68). BOTH parties run inside this tab over
+// an in-memory channel, so there is ZERO server / ZERO VPS - yet the protocol, its messages and its
+// wall-clock are GENUINELY the real garbled-circuit computation (not a hand-rolled reconstruction, not
+// a cost model).
 // Each quantised logit is additively secret-shared modulo 2^32 (q_k = a_k + b_k mod 2^32), with a_k
 // uniform over 32 bits from the browser's CSPRNG, so each share on its own is uniform whatever the
 // logit. The circuit privately reconstructs and compares the values and outputs ONLY the argmax index.
@@ -34,6 +36,10 @@ export interface MPCResult {
   commBytes: number;    // REAL measured garbled-circuit communication, both directions
   mpcMs: number;        // REAL measured wall-clock of the protocol (module init cached via warmMPC)
   messages?: number;    // messages exchanged - over a network each one would cost a latency
+  /** The index the same computation gives IN THE CLEAR, on the same quantised values, with the same
+   *  tie rule (the first maximum). A self-test, available only because both parties are in this tab:
+   *  the caller compares it with `out` and reports a disagreement rather than trusting either one. */
+  clearOut: number[];
 }
 
 // Fixed-point parameters, unchanged from the emp-wasm version so results stay comparable. Logits
@@ -68,18 +74,23 @@ export async function warmMPC(): Promise<void> {
  */
 export async function secureArgmax(logits: number[]): Promise<MPCResult> {
   const n = logits.length;
-  if (n < 2) return { out: [0], compares: 0, commBytes: 0, mpcMs: 0, messages: 0 };
+  if (n < 2) return { out: [0], compares: 0, commBytes: 0, mpcMs: 0, messages: 0, clearOut: [0] };
   const m = await getModule();
 
   // quantise + share each logit: q_k = clamp(round((logit_k+OFFSET)*SCALE), 0, QMAX); a_k uniform
   // over 32 bits; b_k = q_k - a_k mod 2^32. The circuit computes a_k + b_k mod 2^32 = q_k privately.
   const a = randomWords(n);
   const b = new Uint32Array(n);
+  // `clear` is the same argmax in the clear, for the caller's self-test. Strictly greater, so the first
+  // maximum wins, as in the circuit.
+  let clear = 0, best = -1;
   for (let k = 0; k < n; k++) {
     const q = Math.min(QMAX, Math.max(0, Math.round((logits[k] + OFFSET) * SCALE)));
     b[k] = (q - a[k]) >>> 0;
+    if (q > best) { best = q; clear = k; }
   }
 
   const r = await m.secure_argmax(a, b) as { arg: number; mpcMs: number; bytes: number; messages: number };
-  return { out: [r.arg], compares: n - 1, commBytes: r.bytes, mpcMs: r.mpcMs, messages: r.messages };
+  return { out: [r.arg], compares: n - 1, commBytes: r.bytes, mpcMs: r.mpcMs, messages: r.messages,
+           clearOut: [clear] };
 }

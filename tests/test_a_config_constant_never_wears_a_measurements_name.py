@@ -45,10 +45,18 @@ MEASURED_KEYS = (
     "encrypted_batch_max_abs_error",
     "encrypted_student_ms",
     "published_inference_ms",
+    # Round 68: the fallback branch filled these three from the cost model's row for as long as the
+    # first key above was fixed, because only that key was listed here.
+    "fhe_linear_ms",
+    "mpc_nonlinear_ms",
+    "mpc_comm_kb",
 )
 
-#: Expressions that read configuration rather than measuring anything.
-CONFIG_READS = (r"costPerOp\(\)", r"cfg\(\)\.", r"qkdCfg\(\)\.", r"idsCfg\(\)\.")
+#: Expressions that read configuration rather than measuring anything. `representative.` and
+#: `split.` are the cost model's row (`mpcFheRow` with no measurement) under the names the fallback
+#: branch has used for it.
+CONFIG_READS = (r"costPerOp\(\)", r"cfg\(\)\.", r"qkdCfg\(\)\.", r"idsCfg\(\)\.",
+                r"\brepresentative\.", r"\bsplit\.")
 
 
 def test_no_measured_metric_key_is_emitted_from_a_config_read():
