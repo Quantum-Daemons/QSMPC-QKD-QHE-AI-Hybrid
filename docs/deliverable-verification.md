@@ -4914,6 +4914,19 @@ It was seeded nine ways, and each seed fires:
 UNVERIFIED - needs confirmation: the first scheduled run. GitHub starts scheduled workflows only from
 the default branch, so it can be observed only after this merges.
 
+**On GitHub, on this pull request.** The workflow ran because the pull request touches the files it
+watches.
+- The npm job printed "found 0 vulnerabilities" in 7 s.
+- The cargo-deny job printed "advisories ok, sources ok" in 3 minutes, most of it compiling cargo-deny
+  on a cold cache.
+- The two CI runs on the same head passed.
+
+**Walked on the public demo with this branch deployed** (db7d58f). It serves `index-8fBHAG75.js`, the
+same bundle as Round 66, as expected: nothing the image builds changed, and the policy file is outside
+its context. All ten pages render with zero horizontal overflow at 1280 and at 390 px. The medical
+pipeline took 135.73 ms over 922.48 KB, all three published models verified PASS, and the summary
+signed.
+
 BUSINESS DOC RECONCILED Round 67. The out-of-repo document is brought level with this round. Its content
 is not quoted here, in the checklist, or in any commit - only the fact of the reconciliation, which is
 what gate 16 reads.
