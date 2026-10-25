@@ -285,6 +285,27 @@ Polytune needs Rust 1.89 and this box's system Rust is 1.88, which is why the bu
 container. The measurements that led to the module are in `prototypes/polytune-argmax/` (in one tab)
 and `prototypes/net-bench/` (between two tabs over netem-shaped TCP).
 
+### Dependency advisories
+One script checks every locked dependency against the published advisories, and fails on any. Since
+Round 67, `.github/workflows/audit.yml` runs it daily, on demand, and whenever a manifest, a lockfile
+or the policy changes:
+
+```bash
+bash scripts/audit_deps.sh
+```
+
+- `web/`: `npm audit` at the lowest level, development tooling included.
+- `wasm/qsh-mpc/`: cargo-deny 0.20.2, run in the same pinned Rust image as the build. Every RustSec
+  advisory fails the check (vulnerability, unsound, unmaintained or yanked) unless
+  `wasm/qsh-mpc/deny.toml` ignores it with a reason. Only crates.io and the pinned Polytune repository
+  may supply crates. One advisory is ignored: RUSTSEC-2025-0141, which says bincode 2.0.1 (pulled by
+  Polytune) is unmaintained. That advisory reports no vulnerability, and there is no safe upgrade.
+
+`bash scripts/audit_deps.sh npm` runs only the npm check, and `bash scripts/audit_deps.sh rust` only the
+Rust one. The Rust check needs Docker, and caches cargo-deny in `wasm/qsh-mpc/.cargo-home/`. GitHub
+disables a public repository's scheduled workflows after 60 days without activity, so a long pause
+needs the workflow re-enabled in the Actions tab.
+
 ### Languages
 Python-first, plus **TypeScript** for the browser tier. **C++** is used only via the optional GPU-MPC
 submodules (HEonGPU / hpmpc). Go was evaluated and not needed. **Rust** builds the demo's MPC module

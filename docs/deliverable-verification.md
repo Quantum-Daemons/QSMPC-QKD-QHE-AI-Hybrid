@@ -4835,3 +4835,98 @@ The module (`qsh_mpc_bg-BLEWuLKJ.wasm`) and its loader were fetched with 200, an
 BUSINESS DOC RECONCILED Round 66. The out-of-repo document is brought level with this round. Its content
 is not quoted here, in the checklist, or in any commit - only the fact of the reconciliation, which is
 what gate 16 reads.
+
+## Round 67: every locked dependency checked against the advisories, daily
+
+**Round 66 closed first.** PR #62 merged as 5d34ca8, and the demo was redeployed from main. It serves
+the bundle the branch walk saw (`index-8fBHAG75.js`). All ten pages were walked again at 1280 and
+390 px. The medical pipeline took 137.7 ms over 922.48 KB, all three published models verified PASS,
+and the summary signed.
+
+**Why this round exists.** Rounds 59 to 65 brought npm audit from 16 flagged packages to 0,
+development tooling included, by hand: each round ran it and recorded the count. Nothing kept the
+count at 0. An advisory published against a package that is already locked changes nothing in the
+repository, so no push-triggered check can see it. And the 69 Rust crates compiled into the MPC wasm
+since Round 65 had never been audited at all.
+
+**What was added.**
+- `scripts/audit_deps.sh` runs both checks, or one of them (`npm`, `rust`).
+  - npm: `npm audit --audit-level=info` in `web/`, with development tooling included.
+  - Rust: cargo-deny 0.20.2, `check advisories sources`. It runs in the same digest-pinned
+    `rust:1.99.1-bookworm` image as the web image's wasm stage, as the calling user, with cargo-deny
+    and its advisory database cached in `wasm/qsh-mpc/.cargo-home/`. Nothing is installed on the host.
+- `wasm/qsh-mpc/deny.toml` sets the policy. Every RustSec advisory fails the check, whether it is a
+  vulnerability, unsound, unmaintained or yanked, unless it is ignored with a reason. Only crates.io
+  and the pinned Polytune repository may supply crates. Licences are left to `notices.py`, which
+  already refuses them at build time, so the rules are not kept in two formats.
+- `.github/workflows/audit.yml` runs the script, so the local and GitHub checks cannot drift apart:
+  - daily at 03:17 UTC, on demand, and on any push to main or pull request that touches a manifest, a
+    lockfile, the policy, the script or the workflow;
+  - with read-only permissions, and no third-party action;
+  - with the Rust job caching cargo-deny between runs.
+- `.dockerignore` keeps `deny.toml` out of the image's context, so editing the policy does not
+  invalidate the cached Rust stage.
+
+**What the first audit found.** npm: none. Rust: one advisory, and no vulnerability.
+- RUSTSEC-2025-0141 says bincode 2.0.1 is unmaintained. Its team stopped development after a
+  harassment incident, and the advisory lists no safe upgrade.
+- Polytune 0.2.0-alpha.4 pulls it in. Polytune's main branch is still at the commit pinned here
+  (47dc378), and it still depends on bincode.
+- The policy ignores this advisory, with its reason. It reopens when Polytune moves off bincode. A
+  vulnerability in bincode would be a separate advisory with its own ID, and it would fail the check.
+- With unmaintained advisories allowed, cargo-deny reports nothing: no vulnerable, unsound or yanked
+  crate.
+
+**Verified locally.**
+- `bash scripts/audit_deps.sh` passes. npm reports "found 0 vulnerabilities", and cargo-deny reports
+  "advisories ok, sources ok" with exit 0.
+- The first Rust run took 70 s, pulling the image and compiling cargo-deny. A cached run takes 1 s.
+- The failure paths were each made to fire:
+  - with the ignore removed: exit 1, on bincode;
+  - with no git source allowed: exit 8, "git source not explicitly allowed";
+  - with the npm check pointed at a scratch project that locks minimist 1.2.0: exit 1, one critical
+    advisory.
+
+**The gate.** `tests/test_dependency_advisories_are_checked_on_a_schedule.py` holds:
+- the workflow's daily schedule, its on-demand trigger, and the paths it watches on push and on pull
+  requests;
+- its read-only permissions, and both jobs running the script, with no audit action;
+- the script auditing development tooling at the lowest level, with cargo-deny pinned, in the wasm
+  stage's own image;
+- the policy's rules for every class of advisory and every source;
+- each ignored advisory carrying a reason, and also being listed in the test with the condition that
+  reopens it;
+- the policy staying out of the image.
+
+It was seeded nine ways, and each seed fires:
+- a weekly schedule;
+- a lockfile not watched on pull requests;
+- `--omit=dev`;
+- a different Rust image;
+- an unreviewed ignore;
+- a second git source;
+- a third-party action in place of the script;
+- the policy back in the image context;
+- unmaintained advisories counted only for direct dependencies.
+
+`B905` in the Round 66 test (a `zip` without `strict=`) was fixed on the way.
+
+UNVERIFIED - needs confirmation: the first scheduled run. GitHub starts scheduled workflows only from
+the default branch, so it can be observed only after this merges.
+
+**On GitHub, on this pull request.** The workflow ran because the pull request touches the files it
+watches.
+- The npm job printed "found 0 vulnerabilities" in 7 s.
+- The cargo-deny job printed "advisories ok, sources ok" in 3 minutes, most of it compiling cargo-deny
+  on a cold cache.
+- The two CI runs on the same head passed.
+
+**Walked on the public demo with this branch deployed** (db7d58f). It serves `index-8fBHAG75.js`, the
+same bundle as Round 66, as expected: nothing the image builds changed, and the policy file is outside
+its context. All ten pages render with zero horizontal overflow at 1280 and at 390 px. The medical
+pipeline took 135.73 ms over 922.48 KB, all three published models verified PASS, and the summary
+signed.
+
+BUSINESS DOC RECONCILED Round 67. The out-of-repo document is brought level with this round. Its content
+is not quoted here, in the checklist, or in any commit - only the fact of the reconciliation, which is
+what gate 16 reads.

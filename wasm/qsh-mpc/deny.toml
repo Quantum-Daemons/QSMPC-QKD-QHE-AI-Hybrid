@@ -1,0 +1,25 @@
+# cargo-deny policy for the qsh-mpc crate, the Rust compiled into the demo's MPC wasm (Round 67).
+# Run by scripts/audit_deps.sh, which .github/workflows/audit.yml runs daily and whenever a manifest,
+# a lockfile or this file changes.
+#
+# Licences are not checked here: notices.py already refuses, at build time, any crate outside its
+# permissive list, and a second list in a second format would be one more thing to keep in step.
+
+[advisories]
+# Every RustSec advisory against a crate in Cargo.lock fails the check - vulnerability, unsound,
+# unmaintained or yanked - unless it is listed under `ignore` with its reason. Each ignore is also
+# listed in tests/test_dependency_advisories_are_checked_on_a_schedule.py with the condition that
+# reopens it, so one cannot be added here without being reviewed there.
+version = 2
+yanked = "deny"
+unmaintained = "all"
+ignore = [
+    { id = "RUSTSEC-2025-0141", reason = "bincode 2.0.1 via polytune: unmaintained, with no vulnerability reported against it and no safe upgrade; polytune's main branch still depends on it" },
+]
+
+[sources]
+# crates.io, plus the one git dependency this crate declares on purpose (Polytune, pinned to a commit
+# in Cargo.toml). A new registry or git source fails the check until it is added here.
+unknown-registry = "deny"
+unknown-git = "deny"
+allow-git = ["https://github.com/sine-fdn/polytune"]
