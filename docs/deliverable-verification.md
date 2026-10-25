@@ -4669,7 +4669,10 @@ does not cover the whole closure. The Validations card links it.
 **Verified locally on the built bundle** (`index-Cpq7ooVo.js`): the medical pipeline's secret-shared
 non-linear stage took 139.17 ms (690 to 730 ms on emp-wasm) and its end-to-end encrypted inference
 742.66 ms (about 1300 ms before), exchanging 995.02 KB (1,018,898 bytes); every published model verified
-PASS and the summary signed. Finance: 116.59 ms, 995.02 KB. Genomics reports its MPC figures scaled by
+PASS and the summary signed. Finance: 116.59 ms, 995.02 KB. Measured side by side in the same browser,
+five runs each, finance's non-linear stage took 697.1 to 907.5 ms on the Round 64 build (emp-wasm,
+209.83 KB per run) and 115.8 to 141.0 ms on this one (995.02 KB). emp-wasm's first run was its fastest
+and Polytune's its slowest. Genomics reports its MPC figures scaled by
 the selected architecture's operation count (x33, labelled so on the page): 3920.9 ms and 32.8 MB,
 from a measured unit of 118.82 ms. That scaling is unchanged from before. The module and its loader
 were fetched with 200, and `/licenses/qsh-mpc.txt` is served as text/plain with 69 entries. The
