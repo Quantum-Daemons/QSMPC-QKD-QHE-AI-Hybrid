@@ -5095,6 +5095,25 @@ UNVERIFIED - needs confirmation: the classifications above are a reading of the 
 demonstration, not legal advice. In particular, whether a satellite telemetry detector would be a
 safety component depends on a deployment the demo does not have.
 
+**Walked on the public demo with this branch deployed** (eda3594, serving `index-ChP1tts5.js`, the file
+name the local client-only build produced).
+- On each of the five use-case pages, after a run, the line under the SHAP bars states that use case's
+  position: medical and genomics through Annex I from 2 August 2028, finance and telecom not
+  high-risk, and satellite depending on deployment.
+- The medical pipeline still checked its index in the clear.
+- All ten pages render with zero horizontal overflow at 1280 and at 390 px.
+
+**Two console messages, both older than this round**, were traced and recorded as proposals rather than
+fixed here:
+- A 404 for `eval_sample.json` at the pinned revision of `Daemons-Q/qsh-satellite-telemanom-ckks-student`.
+  The page already says so: "no published evaluation sample for satellite_comms.student, so its
+  recorded metric is NOT reproduced in this tab". The proposal is to publish the sample at a new
+  pinned revision, so that this student is checked like the others.
+- An onnxruntime warning on the satellite page: "Expected shape from model of {1,6} does not match
+  actual shape of {128,6}". The Telemanom export declares a batch of 1, and the page re-scores 128
+  rows at once. The result is unaffected, since verification passes at the recorded MAE. The proposal
+  is to re-export with a dynamic batch axis.
+
 BUSINESS DOC RECONCILED Round 69. The out-of-repo document is brought level with this round. Its content
 is not quoted here, in the checklist, or in any commit - only the fact of the reconciliation, which is
 what gate 16 reads.
