@@ -284,7 +284,35 @@ statement of known limitations, not a conformance gap against any published requ
   `wasm/qsh-mpc`, whose `cargo test` runs on every build, the public demo's included, and the three
   archived packages were removed. The residual risk moves with it: Polytune's latest release is a
   pre-release, so the crate is pinned to a commit, and a 10-class model under MPC would be slower than
-  it was. Every result carries a
+  it was.
+  **Round 68 reviewed the integration against that commit (47dc378).**
+  - What held:
+    - `mpc()`, Polytune's only public entry, always runs the preprocessing among the parties by OT
+      extension. Its trusted-dealer mode is crate-private, so no dealer is involved.
+    - Its randomness is `rand`'s thread-local CSPRNG, seeded from the OS, which on wasm32 means
+      `crypto.getRandomValues`. Shared randomness comes from a commit-then-reveal coin toss. The fixed
+      seeds in its source are in tests.
+    - The statistical security parameter is 40.
+  - What qualifies the claim: no security advisory is published for Polytune, but two issues are open.
+    - #63: the OT extension uses KOS15's original consistency check, whose supporting lemma the
+      SoftSpokenOT paper proved false. The attack it gives is impractical. Its practical attack needs
+      a case the maintainers believe Polytune does not have. The corrected check exists in libOTe and
+      CryProt, but not yet in Polytune.
+    - #100: AES in counter mode as a PRG never repeats a block, which a birthday-bound test could
+      notice. That is negligible at the output lengths here.
+  - What it means here: neither issue changes the demo, whose two parties share one tab. Both qualify
+    "malicious security" for a two-host deployment, as do the pre-release status and the absence of
+    any audit in the repository. UNVERIFIED - needs confirmation: whether an independent audit of
+    Polytune exists anywhere.
+  - What was fixed: the integration, not the library.
+    - A failure of either half of the hybrid is now reported as that half's failure, so a protocol
+      abort no longer reads as "node-seal did not load".
+    - The cost model's split is published only under `_representative` keys.
+    - Each run checks the circuit's index against the same argmax in the clear (`mpc_matches_clear`).
+    - The crate refuses more than 255 values before compiling.
+    - `tests/test_the_polytune_integration_reports_what_happened.py` fails if the Polytune commit
+      moves without this review being redone.
+  Every result carries a
   `ProvenanceBadge` with one of exactly **four** states - `MEASURED (local WebGPU)`, `MEASURED (local
   WASM)`, `MEASURED (plain JS)`, `SIMULATED` - together with the runtime evidence for that claim (`adapter.info`,
   `crossOriginIsolated`, `ort.env.wasm.numThreads`, bytes transferred vs served from cache). A result
