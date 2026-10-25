@@ -1,4 +1,5 @@
 import { useState } from "react";
+import MpcNetBench from "../components/MpcNetBench";
 import NetKeyCards from "../components/NetKeyCards";
 import NetworkPositioning from "../components/NetworkPositioning";
 import { EveSweepChart } from "../components/QkdCharts";
@@ -163,6 +164,13 @@ export default function Validations() {
             </tbody>
           </table>
         )}
+      </div>
+
+      {/* Recorded, not live (Round 64): the secure argmax under the shipped engine and its
+          replacement candidate, between two tabs over a shaped link. */}
+      <h2 style={{ marginTop: 28 }}>Secure argmax over a network: two garbled-circuit engines (measured)</h2>
+      <div className="card">
+        <MpcNetBench />
       </div>
 
       {/* The network layer's key schedules, computed in this tab (Round 58). The tunnels themselves
