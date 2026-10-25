@@ -5114,6 +5114,23 @@ fixed here:
   rows at once. The result is unaffected, since verification passes at the recorded MAE. The proposal
   is to re-export with a dynamic batch axis.
 
+**Revised before merge, by the user's decision.** The first version stated one deployment per use case.
+Where the answer turns on who uses the model, or why, the sentences now say so:
+- Finance is not high-risk when a bank monitors transactions. It would be high-risk under Annex III
+  6(e) when a law-enforcement authority uses it to profile people while detecting offences, with
+  Art. 13 from 2 December 2027.
+- Telecom is not high-risk as a cybersecurity tool, "on the reading recital 55 gives", because a
+  recital is a reading, not an article. Used exclusively for defence or national security, it is
+  outside the Act altogether (Art. 2(3)), which matters on a page titled "Telecom / Defense".
+- Satellite gained the same Art. 2(3) sentence.
+- Every sentence on the page now ends with "A reading of the Act for this demonstration, not legal
+  advice."
+Both added provisions were read at their sources: Art. 2(3) excludes systems used "exclusively for
+military, defence or national security purposes", and Annex III 6(e) covers profiling by or on behalf
+of law-enforcement authorities in detecting, investigating or prosecuting offences. The gate now
+holds both conditions, the attribution to the recital and the caveat, and it was seeded four more
+ways, each seed firing.
+
 BUSINESS DOC RECONCILED Round 69. The out-of-repo document is brought level with this round. Its content
 is not quoted here, in the checklist, or in any commit - only the fact of the reconciliation, which is
 what gate 16 reads.

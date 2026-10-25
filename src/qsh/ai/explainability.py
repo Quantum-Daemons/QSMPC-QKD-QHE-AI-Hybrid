@@ -7,9 +7,9 @@ preparation for a 2027/2028 obligation, not compliance with a current one.
 
 When it does apply, Article 13 obliges high-risk AI to be interpretable. Of this project's use cases,
 diagnostic and in-vitro diagnostic software would be high-risk through Annex I (MDR Rule 11, IVDR
-Rule 3), while AML monitoring is not (Annex III 5(b) covers creditworthiness) and an intrusion
-detector used solely for cybersecurity is not either (recital 55); `web/src/lib/aiActScope.ts` states
-each. An earlier revision of this paragraph listed "credit/AML" as high-risk. Finance and healthcare
+Rule 3), while AML monitoring by a bank is not (Annex III 5(b) covers creditworthiness; profiling by
+law enforcement would be, under 6(e)) and an intrusion detector used solely for cybersecurity is not
+either on recital 55's reading; `web/src/lib/aiActScope.ts` states each, with its conditions. An earlier revision of this paragraph listed "credit/AML" as high-risk. Finance and healthcare
 supervisors already expect **SHAP-style feature attributions** (+ counterfactuals)
 under instruments that are in force today: US SR 11-7 model risk management and GDPR Art. 22
 right-to-explanation. Those are the reasons to build it now.
