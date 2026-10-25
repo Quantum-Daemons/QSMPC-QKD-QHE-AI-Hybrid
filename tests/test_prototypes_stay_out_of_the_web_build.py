@@ -44,10 +44,15 @@ def test_nothing_under_web_refers_to_a_prototype() -> None:
 
 
 def test_the_web_image_does_not_build_prototypes() -> None:
+    # Until Round 65 this also forbade any Rust toolchain in the image. Round 65 adopted Polytune and
+    # gave the image a Rust stage on purpose - for wasm/qsh-mpc, the production crate, and nothing
+    # else. So the rule is now about WHAT it builds: never anything under prototypes/.
     dockerfile = (REPO / "docker" / "Dockerfile.web").read_text()
     assert "prototypes" not in dockerfile, "docker/Dockerfile.web copies or builds prototypes/"
-    assert not re.search(r"\b(cargo|wasm-pack|rustup)\b", dockerfile), (
-        "the web image invokes a Rust toolchain; the demo's build must not depend on one")
+    copies = re.findall(r"^COPY\s+(?!--from)(\S+)", dockerfile, re.M)
+    rust_sources = [c for c in copies if c.startswith("wasm/")]
+    assert rust_sources == ["wasm/qsh-mpc/"], (
+        f"the image's Rust stage copies {rust_sources}; it builds the production crate wasm/qsh-mpc only")
 
 
 def test_prototype_build_outputs_are_ignored() -> None:
