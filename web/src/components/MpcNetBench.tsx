@@ -12,8 +12,10 @@ import bench from "../lib/mpcNetBench.json";
  * measured on one machine, with the date, and says what the measurement does not cover.
  *
  * The engines: emp-wasm with mpc-framework and summon, which the demo shipped until Round 65 and which
- * is archived upstream, and Polytune with Garble, which replaced it on the strength of these numbers. Same function, same
- * inputs, same additive sharing as clientMPC.ts.
+ * is archived upstream, and Polytune with Garble, which replaced it on the strength of these numbers.
+ * Same function and inputs as clientMPC.ts, with the sharing it used until Round 66 (a mask bounded to
+ * 2^16 and an offset the circuit subtracted). The shipped circuit has shared modulo 2^32 since then,
+ * and the paragraph under the table gives its size.
  */
 
 const tick = { fill: "var(--muted)", fontSize: 11 };
@@ -102,7 +104,10 @@ export default function MpcNetBench() {
           from Rust crates under permissive licences whose own notices must travel with it, so they
           are served beside it and linked here. */}
       <p className="small" style={{ marginTop: 10 }}>
-        Since Round 65 the demo's secure argmax runs on Polytune. Its WebAssembly module is compiled from
+        Since Round 65 the demo's secure argmax runs on Polytune. Since Round 66 it shares each logit
+        modulo 2^32 with masks from the browser's CSPRNG, which also made the circuit smaller than the one
+        measured here: 367 AND gates against 400, and 944,619 bytes per run against 1,018,898. Its
+        WebAssembly module is compiled from
         Rust crates under MIT, Apache-2.0, BSD and similar licences, whose own licence files ship with the
         demo:{" "}
         <a href="/licenses/qsh-mpc.txt" target="_blank" rel="noopener noreferrer">third-party notices for

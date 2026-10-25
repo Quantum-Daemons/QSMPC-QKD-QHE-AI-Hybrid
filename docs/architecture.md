@@ -252,7 +252,8 @@ server, no cost-model estimate):
 - **MPC** - `web/src/lib/clientMPC.ts` runs a real **garbled-circuit authenticated-garbling 2PC**
   (Polytune with a Garble-compiled circuit, MIT, built from `wasm/qsh-mpc` by the web image's Rust stage;
   `mpc-framework` + `emp-wasm-engine` + `summon-ts` until Round 65): the logits are additively
-  secret-shared, the argmax circuit privately reconstructs + compares them, and **both parties run loopback
+  secret-shared modulo 2^32 with masks from the browser's CSPRNG (since Round 66), the argmax circuit
+  privately reconstructs + compares them, and **both parties run loopback
   in one tab** (zero VPS) - the reported MPC ms + real garbled-circuit communication bytes are measured.
 - **QFL** - Quantum Federated Learning runs on every run; it is not a toggle. It performs a real
   client-side FedAvg over the page's own bundled sample, so it is part of what the demo does rather

@@ -2996,3 +2996,30 @@ toolchain. The local and GitHub CI run the same stage, not a parallel recipe tha
 attach to the copyright line in each crate's own file, so the notices copy those files. The generator
 refuses rather than warns, because a build that ships a binary under unreviewed terms is not one to
 finish quietly.
+
+### Round 66: a mask is not an input, and a fix that must not move anything else
+
+**Context.** One of the follow-ups chosen after Round 65's report, before the dependency audit gate.
+
+**The demo's generator was doing two jobs.** A seeded generator is right for what a page should
+reproduce: which row is encrypted, the parties' secrets, the simulated channel. It is wrong for a mask,
+whose whole purpose is that the other party cannot predict it. The two jobs had shared one call, `u()`,
+since the masks were written. They were separated at the two places where nothing a run reports
+depends on the mask.
+
+**The fix was designed so that a comparison could prove it.** Taking the masks out of the stream would
+have shifted every later draw. Genomics would then encrypt a different row for the same seed, and a
+before-and-after run could no longer tell the change apart from noise. So the secure sum still
+advances the generator once per secret. The proof was a genomics run on each build: the seeded
+figures (the sum, the PRS, the class, the top driver) agree exactly. What differs is the CKKS noise on
+the tied rows, and it differs as much between two runs of one build.
+
+**A language that panics where a CPU wraps.** The obvious form, `a + b` in 32 bits, would have
+compiled and then panicked on most shares, because a uniform mask makes most sums cross 2^32. The
+compiler source settled it, and the crate's test now uses masks near `u32::MAX` so that the wrap is
+what it exercises.
+
+**The twin was found by asking where else.** Round 40 fixed the wording of one seeded mask, and the
+argmax's mask went unexamined because its line says `a[k]`, not "mask". The gate therefore scans for
+share material drawn from any seeded call, and every exception it allows must keep its disclosure, or
+the exception lapses.
