@@ -97,7 +97,8 @@ approach the EU roadmap recommends), **crypto-agility**
 Federated Learning** option (a PennyLane hybrid quantum-classical VQC over this repo's own FedAvg; in the
 browser it runs on every run rather than behind a toggle, over the page's own bundled sample), **explainable AI**
 (exact linear-SHAP attributions, ML-DSA-signed for a tamper-evident audit record - aimed at EU AI Act
-Art. 13, applicable 2 Dec 2027 for Annex III after the AI Omnibus deferral), an **E2E orchestration** engine with **Run / Pause / Resume / Step / Stop / Restart**
+Art. 13, which binds high-risk systems only: from 2 Dec 2027 for Annex III and 2 Aug 2028 for Annex I
+products after the AI Omnibus, and each use-case page states which, if either, would apply to it), an **E2E orchestration** engine with **Run / Pause / Resume / Step / Stop / Restart**
 controls, live WebSocket event streaming, config-driven parameters editable in the WebUI (a per-page
 **Parameters** panel - every QKD / QRNG / OptiQKD / IDS / data knob defaults from `config/defaults.py`
 and is editable per run, with reset-to-defaults; no hardcoded values), and
@@ -636,7 +637,7 @@ implementation maps to each, and where gaps remain.
 | HNDL-vulnerable HE / key exchange | PQC-first hybrid **ML-KEM + X25519** (+ optional QKD key material) | `pqc/hybrid_kem.py`, `pqc/transport.py` |
 | TTP assumption | TTP-free: QSMS (entangled state, no dealer), keyed-hash PSI over the quantum-safe channel, pairwise-mask secure aggregation | `qsmpc/`, `ai/federated.py` |
 | **Agentic-AI / MCP quantum-safe + private agent comms** | A **real MCP server** (SDK >=2.0 `MCPServer`, formerly FastMCP) (5 per-industry tools, full deployment) bound to a quantum-safe channel: two agents establish a PQC(+QKD) session, the caller sends an **ML-DSA-signed, AES-GCM-sealed** `tools/call`, the callee **dispatches the real tool** and returns the **signed result** (authenticated, confidential, HNDL-resistant, no TTP); also interops with the official filesystem MCP server | `pqc/mcp_bridge.py`, `mcp/server.py`, `/api/mcp/*` |
-| **Explainability / audit trail (XAI)** | Exact linear-SHAP feature attributions for each run's classification, **ML-DSA-signed** -> tamper-evident, regulator-facing explanation (EU AI Act Art. 13 - applicable 2 Dec 2027 for Annex III after the AI Omnibus deferral, not Aug 2026; GDPR Art. 22; SR 11-7); surfaced on all five use-case pages. On telecom and satellite, whose flows have no `private_inference` stage, the attribution is of the model that produced the reported class; on the other three it explains the bundled model beside the encrypted one, and the panel says which case applies | `ai/explainability.py`, `ExplainabilityStage` |
+| **Explainability / audit trail (XAI)** | Exact linear-SHAP feature attributions for each run's classification, **ML-DSA-signed** -> tamper-evident, regulator-facing explanation (EU AI Act Art. 13, for high-risk systems only - 2 Dec 2027 for Annex III and 2 Aug 2028 for Annex I after the AI Omnibus, not Aug 2026; medical and genomics would be Annex I products, finance AML and telecom IDS are not high-risk, satellite depends on deployment; GDPR Art. 22; SR 11-7); surfaced on all five use-case pages. On telecom and satellite, whose flows have no `private_inference` stage, the attribution is of the model that produced the reported class; on the other three it explains the bundled model beside the encrypted one, and the panel says which case applies | `ai/explainability.py`, `ExplainabilityStage` |
 
 **WS4 - QHExAI** (FHE 10^3-10^6x overhead; bootstrapping bottleneck; no quantum encoding; plus unsolved (a)-(f)):
 

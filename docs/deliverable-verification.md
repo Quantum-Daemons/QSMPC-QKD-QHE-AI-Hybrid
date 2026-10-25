@@ -4130,8 +4130,8 @@ Still open:
 
 | item | why it is a judgement | proposal |
 |---|---|---|
-| EU AI Act date on the medical line | it said Art. 13 applies from 2 Dec 2027 (Annex III); a diagnostic model is more likely an Annex I product (MDR), 2 Aug 2028 | removed with the market line; UNVERIFIED - needs confirmation which annex applies before restating it anywhere |
-| Honest perfectly-secure QHE expansion | about 15x per Ortega and Martin-Delgado | UNVERIFIED - needs confirmation against the paper before it is quoted |
+| EU AI Act date on the medical line | it said Art. 13 applies from 2 Dec 2027 (Annex III); a diagnostic model is more likely an Annex I product (MDR), 2 Aug 2028 | removed with the market line; UNVERIFIED - needs confirmation which annex applies before restating it anywhere. **RESOLVED Round 69:** Annex I, through the MDR (Rule 11, class IIa or higher), so 2 Aug 2028; the SHAP panel now states each use case's position |
+| Honest perfectly-secure QHE expansion | about 15x per Ortega and Martin-Delgado | UNVERIFIED - needs confirmation against the paper before it is quoted. **RESOLVED Round 69, not adopted:** the paper gives no such factor; its only 15 is a coefficient in a T-gate count |
 
 ### The concern worth stating above the others
 
@@ -5024,5 +5024,77 @@ error. The failure paths were not exercised on the public demo, because that wou
 deployed build. They were exercised locally, above.
 
 BUSINESS DOC RECONCILED Round 68. The out-of-repo document is brought level with this round. Its content
+is not quoted here, in the checklist, or in any commit - only the fact of the reconciliation, which is
+what gate 16 reads.
+
+## Round 69: the open items researched, and the AI Act stated per use case
+
+**Round 68 closed first.** PR #64 merged as d0cc4b7, and the demo was redeployed from main. It serves
+the bundle the branch walk saw (`index-BV0XWvvL.js`). The medical pipeline checked its index in the
+clear (`mpc_matches_clear` 1), took 132.06 ms over 922.48 KB, verified PASS and signed. All ten pages
+were walked again at 1280 and 390 px.
+
+**Why this round exists.** Three items had stayed UNVERIFIED across rounds:
+- which part of the EU AI Act a medical model falls under;
+- the "about 15x" expansion attributed to Ortega and Martin-Delgado;
+- whether official vectors now exist for the RFC 9370 and RFC 8784 layers.
+Each was read at its primary source in October 2026.
+
+**The AI Act.**
+- Regulation (EU) 2026/1744, the Digital Omnibus on AI, sets the high-risk requirements (Chapter III
+  Sections 1 to 3, Art. 13 among them) to apply from 2 December 2027 for Annex III systems and from
+  2 August 2028 for Annex I systems. It was published in the Official Journal on 24 July 2026 and
+  entered into force on 27 July 2026. The regulatory clock already carried both dates correctly.
+- Per use case, on the Act's own terms:
+  - **Medical** would be high-risk through Art. 6(1) and Annex I. Diagnostic software is a medical
+    device of class IIa or higher (MDR, Annex VIII Rule 11), so a notified body assesses it, and its
+    date is 2 August 2028.
+  - **Genomics** would be the same through the IVDR. Polygenic risk software is an in-vitro diagnostic
+    of class C (Rule 3, human genetic testing).
+  - **Finance** is not high-risk. Annex III 5(b) covers the creditworthiness and credit scoring of
+    natural persons, fraud detection excepted, and anti-money-laundering monitoring evaluates
+    transactions, not creditworthiness.
+  - **Telecom** is not high-risk. Recital 55 says a component used solely for cybersecurity is not a
+    safety component, so Annex III 2 does not reach an intrusion detector.
+  - **Satellite** is not a listed category. It would be high-risk only as a safety component of
+    critical digital infrastructure, which depends on deployment.
+- What was wrong: the SHAP panel printed "for EU AI Act Art. 13, applicable 2 Dec 2027" on all five
+  pages, and it was right for none of them. Four more copies of the same idea were found:
+  - two in README, which dated Art. 13 to the Annex III date only;
+  - two in Python docstrings (`ai/explainability.py`, `orchestration/stages.py`), which listed
+    "credit/AML" as high-risk.
+- What changed: `web/src/lib/aiActScope.ts` states each use case's position with its grounds, taking
+  both dates from the regulatory clock. The panel prints that sentence, and the README and the
+  docstrings now say the same.
+
+**The QHE factor.** Ortega, Fernandez and Martin-Delgado, "Implementing Semiclassical Szegedy Walks in
+Classical-Quantum Circuits for Homomorphic Encryption", J. Phys. Complexity 6, 025010 (2025)
+(arXiv:2412.01966), gives no expansion factor of about 15. The only 15 in it is a coefficient in a
+T-gate count, $L_{\tilde V} = 15n^2 - 43n + 14 + (2n-3)L_R$. The paper also restates the no-go result
+that perfect security in quantum fully homomorphic encryption costs exponential storage overhead (Yu,
+Perez-Delgado and Fitzsimons, Phys. Rev. A 90, 050303 (2014)). The proposal is closed, not adopted,
+and no public text quoted the figure.
+
+**The RFC vectors.** Still none, so the page's label "computed per spec - no official vectors" stands.
+- RFC 9370's appendix A gives message flows and formulas, with no byte values.
+- RFC 8784's one appendix is a rationale.
+- draft-ietf-ipsecme-ikev2-mlkem-09 (5 July 2026), which profiles RFC 9370 for ML-KEM, is in the RFC
+  Editor's queue and has no vectors either.
+
+**Verified locally.** All four AI Act gates pass, and the new gate was seeded five ways, each seed
+firing:
+- the blanket date back in the panel;
+- medical on the Annex III date;
+- AML called high-risk;
+- the clock moved;
+- the panel not told its use case.
+Its scan of tracked text fires on the two pre-fix docstrings. The README's old lines named Annex III
+beside the date, so the scan's rule does not flag them, and they were improved anyway.
+
+UNVERIFIED - needs confirmation: the classifications above are a reading of the Act for a
+demonstration, not legal advice. In particular, whether a satellite telemetry detector would be a
+safety component depends on a deployment the demo does not have.
+
+BUSINESS DOC RECONCILED Round 69. The out-of-repo document is brought level with this round. Its content
 is not quoted here, in the checklist, or in any commit - only the fact of the reconciliation, which is
 what gate 16 reads.

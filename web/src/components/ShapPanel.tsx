@@ -1,6 +1,8 @@
 // Signed SHAP feature-attribution chart for a use case's private-inference decision.
-// Reads the run's `explanation` artifact (exact linear SHAP, ML-DSA-signed). Aimed at EU AI Act
-// Art. 13, which applies from 2027-12-02 (Annex III) after the AI Omnibus deferral - not Aug 2026.
+// Reads the run's `explanation` artifact (exact linear SHAP, ML-DSA-signed). What EU AI Act Art. 13
+// would ask of THIS use case comes from `aiActScope.ts`: until Round 69 the panel printed "Art. 13,
+// applicable 2 Dec 2027" on every page, which was right for none of them - two use cases are not
+// high-risk at all, and the two that are reach it through Annex I, from 2 August 2028.
 // `surfacedBackend` is the backend the run actually used - `artifacts.primary_inference.backend`,
 // one of "qcnn-trained" or "ckks". It is deliberately NOT the `inference` control's value: selecting
 // QCNN on a use case that ships no trained weights falls back to CKKS, and gating this panel on the
@@ -11,14 +13,19 @@
 // unconditionally - so on the two pages where the attribution is of the reported decision, the panel
 // told the reader not to read it that way. It survived because the error points toward caution and so
 // reads as rigour. `clientCompute` sets the flag explicitly at each explanation site.
+import { AI_ACT_SCOPE } from "../lib/aiActScope";
+
 export default function ShapPanel({ explanation, provenance, baseline, publishedModel, surfacedBackend,
-  isOfReportedClass, hasTreeAttribution }: {
+  isOfReportedClass, hasTreeAttribution, usecase }: {
   explanation: any; provenance?: string | null; baseline?: string | null;
   publishedModel?: string | null; surfacedBackend?: string | null;
   isOfReportedClass?: boolean | null;
   /** Whether THIS page's model panel renders tree-ensemble attribution. True on telecom only. */
   hasTreeAttribution?: boolean | null;
+  /** The use case, for what the EU AI Act would ask of its model. */
+  usecase?: string;
 }) {
+  const aiAct = usecase ? AI_ACT_SCOPE[usecase] : undefined;
   const tops = explanation?.top_features as any[] | undefined;
   if (!tops?.length) return null;
   const max = Math.max(...tops.map((t) => Math.abs(t.contribution)), 1e-6);
@@ -96,8 +103,13 @@ export default function ShapPanel({ explanation, provenance, baseline, published
         </div>
       ))}
       <p className="muted" style={{ fontSize: 11, marginTop: 6 }}>
-        red = pushes toward the flagged class · blue = away · exact linear SHAP (for EU AI Act Art. 13, applicable 2 Dec 2027; ML-DSA-signed)
+        red = pushes toward the flagged class · blue = away · exact linear SHAP, ML-DSA-signed
       </p>
+      {aiAct ? (
+        <p className="muted" style={{ fontSize: 11, marginTop: 2 }}>
+          EU AI Act Art. 13 (transparency for high-risk systems): {aiAct.text}.
+        </p>
+      ) : null}
     </div>
   );
 }
