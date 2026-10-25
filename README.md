@@ -80,7 +80,7 @@ Four workstreams (WS), unified by one pipeline and a crypto-agility registry:
 | **WS1** | **AI-QKD** parameter optimization | BB84 **two-intensity decoy-state** simulation (Ma et al.'s Vacuum+Weak estimator with the vacuum yield modelled rather than measured - the paper's own two-intensity case, its section 3.5, bounds $`Y_0`$ instead) (+ a selectable **E91/CHSH** protocol), QBER/SKR telemetry, eavesdropper detection (intercept-resend's 0.25 f disturbance composed independently with the channel error, a + b - 2ab, in both languages); a **published-reference decoy model** (`qkd/decoy_reference.py`) whose 13 tests assert Ma et al. PRA 72, 012326 (2005) values rather than this project's own - decoy reaches past 140 km where non-decoy dies near 40, and at the customary $`\mu = 0.1`$ a non-decoy link's tagged fraction exceeds 1 at **zero** distance, so it yields no key even back-to-back; a **QRNG** entropy source (state-vector quantum-measurement sim + SP 800-90B section 4.4 continuous health tests, an **SP 800-90B min-entropy estimate**, and a **Leftover-Hash-Lemma / seedless** Toeplitz extractor) that seeds the key material; a config-gated **leakage-resilient PQC+QKD key combiner**; and **OptiQKD** - a measured AI optimizer (scikit-learn surrogate + gradient-free search) tuning decoy (`mu_signal` / `mu_decoy`) + basis params to raise the secret-key rate vs default (with a convergence metric); the reference framework reports +14-25 % in simulation |
 | **WS2** | **QML-IDS** intrusion detection | 8 classes = **7 QKD attack types + normal traffic**; RandomForest baseline + PennyLane variational quantum classifier. Scored on macro F1, not attack-vs-normal F1 |
 | **WS3** | **QSMPC x QKD** | Shamir + d-level QFT secure summation (faithful to the paper example), quantum oblivious transfer, quantum-safe PSI |
-| **WS4** | **QHE x AI** | Quantum one-time pad (perfectly hiding as a scheme; the demo's pad is seeded), variational QCNN private inference (Clifford+T in the browser circuit; the Python module has no T gate), Rate-1 quantum **transport** (no `Eval`, so not QFHE); classical hybrid = CKKS **linear** layers (TenSEAL CPU / OpenFHE CPU / HEonGPU GPU - commercial-OK) + **MPyC** secret-sharing **non-linear** layers (ReLU/argmax) in the full deployment, an emp-wasm garbled-circuit 2PC between notional parties in the browser - incl. a **genuine FHE convolution** (im2col -> CKKS `dot_plain`) so the medical use case runs a real small CNN on **real MedMNIST images** under encryption |
+| **WS4** | **QHE x AI** | Quantum one-time pad (perfectly hiding as a scheme; the demo's pad is seeded), variational QCNN private inference (Clifford+T in the browser circuit; the Python module has no T gate), Rate-1 quantum **transport** (no `Eval`, so not QFHE); classical hybrid = CKKS **linear** layers (TenSEAL CPU / OpenFHE CPU / HEonGPU GPU - commercial-OK) + **MPyC** secret-sharing **non-linear** layers (ReLU/argmax) in the full deployment, a Polytune garbled-circuit 2PC between notional parties in the browser - incl. a **genuine FHE convolution** (im2col -> CKKS `dot_plain`) so the medical use case runs a real small CNN on **real MedMNIST images** under encryption |
 
 **Crypto-agility is the headline library strategy** - in the EU NIS Cooperation Group sense
 ([PQC Roadmap](https://digital-strategy.ec.europa.eu/en/library/coordinated-implementation-roadmap-transition-post-quantum-cryptography),
@@ -116,7 +116,7 @@ quantum-safe transport so a `tools/call` returns a **signed real result** (plus 
 official filesystem MCP server); the public demo keeps the zero-server client mirror.
 
 The **public demo computes real privacy-preserving inference in the browser** - node-seal **CKKS**
-(a genuine homomorphic linear layer) + a real **emp-wasm garbled-circuit 2PC** for the non-linear
+(a genuine homomorphic linear layer) + a real **Polytune garbled-circuit 2PC** for the non-linear
 argmax - so its FHE/MPC figures are **genuinely measured client-side, zero VPS compute**.
 
 ### Industry use cases
@@ -149,7 +149,7 @@ QSMPC-FHE comparison, security posture, and (on all five use-case pages) a signe
 SHAP explanation. The two-party diagram makes the **MPC-FHE secret-sharing over a LAN <-> WAN <-> LAN** link
 explicit - linear layers cross as a **CKKS ciphertext**, non-linear layers as **secret-shares**. In
 the **public demo** (`?demo=client`) every use case runs **entirely in the browser** with **real,
-measured FHE/MPC** (node-seal CKKS + an emp-wasm garbled-circuit 2PC) and an optional in-browser
+measured FHE/MPC** (node-seal CKKS + a Polytune garbled-circuit 2PC) and an optional in-browser
 **Quantum Federated Learning** toggle - zero `/api` compute; the **full local** deployment adds the
 server-side PennyLane QFL + the real MCP server. See [`docs/architecture.md`](docs/architecture.md)
 for the full diagram.
@@ -254,19 +254,24 @@ version string here.
   (`mpyc-shamir` default; MP-SPDZ / hpmpc-gpu as heavyweight references). The linear layers stay under FHE - see
   the hybrid benchmark below.
 
-### Rust/WASM toolchain (prototypes only)
-Nothing the demo ships needs Rust. `prototypes/polytune-argmax/` does: it rebuilds the garbled-circuit
-argmax on Polytune so a replacement for the archived MPC tier can be measured (Round 63). It builds in
-the **official Rust container**, so the host needs only Docker:
+### Rust/WASM toolchain
+Since Round 65 the demo's garbled-circuit tier is a WebAssembly module built from Rust:
+`wasm/qsh-mpc/` (Polytune), loaded by `web/src/lib/clientMPC.ts` from `web/src/wasm/qsh_mpc/`. That
+directory is generated, never committed, so a fresh checkout builds it once before `npm run dev`:
 
 ```bash
-prototypes/polytune-argmax/build.sh
+scripts/build_wasm.sh
 ```
 
-The builder image is `rust:1.99.1-bookworm` pinned by digest, plus the `wasm32-unknown-unknown` target,
-`wasm-pack` 0.15.0 and `wasm-bindgen-cli` 0.2.129 (about 2.4 GB). The script runs the native test and
-`wasm-pack build` as the calling user, so the outputs are not root-owned, and keeps Cargo's cache in the
-prototype's gitignored `.cargo-home/`. A host build is also possible:
+It runs the Rust stage of `docker/Dockerfile.web` - the same one the demo image runs - so the host needs
+only Docker. The stage uses the official `rust:1.99.1-bookworm` image pinned by digest, adds the
+`wasm32-unknown-unknown` target, `wasm-pack` 0.15.0 and `wasm-bindgen-cli` 0.2.129, runs the crate's
+`cargo test`, builds the module, and writes third-party notices for the 69 crates compiled into it to
+`web/public/licenses/qsh-mpc.txt`, failing if any licence falls outside its permissive list.
+`CARGO_JOBS` sets the compile's parallelism (2 by default, as on the shared demo host). The tests run in
+every image build, the public demo's included.
+
+A host build also works for crates whose minimum Rust version the host compiler meets:
 
 ```bash
 sudo dnf install rust-std-static-wasm32-unknown-unknown
@@ -276,16 +281,16 @@ sudo dnf install rust-std-static-wasm32-unknown-unknown
 cargo install --locked wasm-pack
 ```
 
-That works only for crates whose minimum Rust version the host compiler meets. Polytune needs 1.89 and
-this box's system Rust is 1.88, which is why the prototype uses the container.
-`prototypes/polytune-argmax/README.md` has the measurement steps and results.
+Polytune needs Rust 1.89 and this box's system Rust is 1.88, which is why the build uses the
+container. The measurements that led to the module are in `prototypes/polytune-argmax/` (in one tab)
+and `prototypes/net-bench/` (between two tabs over netem-shaped TCP).
 
 ### Languages
 Python-first, plus **TypeScript** for the browser tier. **C++** is used only via the optional GPU-MPC
-submodules (HEonGPU / hpmpc). Go was evaluated and not needed. **Rust** appears only in `prototypes/`,
-which nothing in the demo imports; the client-side Rust decline recorded in the register concerned
-tfhe-rs (no FHE evaluation in its WASM build, and a licence that withholds patent rights) and still
-stands.
+submodules (HEonGPU / hpmpc). Go was evaluated and not needed. **Rust** builds the demo's MPC module
+(`wasm/qsh-mpc`, Polytune, MIT) and the measurement prototypes in `prototypes/`; the client-side Rust
+decline recorded in the register concerned tfhe-rs (no FHE evaluation in its WASM build, and a licence
+that withholds patent rights) and still stands.
 
 **Julia: DECLINED 2026-08-12 (Round 33), and it should have been declined twenty-nine plans ago.** It was
 listed as "optional (defer)" in the first plan and this line said "optional and deferred" ever since. The
@@ -302,7 +307,7 @@ never becomes due. Two reasons, both checkable:
   it and evaluate".
 - **There is no numerical gap for it to close.** The numerical work runs through numpy, torch and
   PennyLane, and the paths that dominate wall clock are already compiled native code - SEAL through
-  Emscripten (`node-seal`), torch's kernels, `emp-wasm`. Julia's argument is speed against interpreted
+  Emscripten (`node-seal`), torch's kernels, Polytune compiled from Rust. Julia's argument is speed against interpreted
   Python, and the hot loops here are not interpreted Python.
 
 **Reopening condition (both halves required, so it can actually fire):** a numerical kernel appears here
@@ -376,8 +381,8 @@ analysis and what it means for this demo: [`docs/deliverable-verification.md`](d
 and [`docs/threat-model.md`](docs/threat-model.md). **No CVE and no GHSA advisory
 exists for SEAL**, so the version is recorded as a fact and no vulnerability is claimed
 (SEAL -> WASM CKKS, MIT) +
-`mpc-framework`/`emp-wasm-engine`/`summon-ts` (garbled-circuit 2PC, MIT) for the demo's real in-browser
-FHE/MPC; `onnxruntime-web` (MIT) for the published industry models; `@huggingface/transformers` +
+`polytune` with `garble_lang` (sine-fdn, garbled-circuit 2PC, MIT; built from `wasm/qsh-mpc`, its
+third-party notices served at `/licenses/qsh-mpc.txt`) for the demo's real in-browser FHE/MPC; `onnxruntime-web` (MIT) for the published industry models; `@huggingface/transformers` +
 `@mlc-ai/web-llm` (Apache-2.0) for in-browser AI; `mcp` Python SDK (MIT) + the official
 `@modelcontextprotocol/server-filesystem` (MIT) for the real MCP server (full deployment). Full table
 + dataset licenses in [`DATA_LICENSES.md`](DATA_LICENSES.md).
@@ -587,7 +592,7 @@ table in it is generated from the repository's own artefacts rather than transcr
   `nvidia-container-toolkit` + the `deploy.resources` GPU block is optional and faster). Ports are env-overridable
   (`WEB_PORT` / `API_PORT` / `GRAFANA_PORT`).
 - **Client-side build (implementation capability)**: the SPA also builds **fully client-side** - every
-  computation runs in the browser (real CKKS FHE + an emp-wasm garbled-circuit 2PC, ONNX inference, a
+  computation runs in the browser (real CKKS FHE + a Polytune garbled-circuit 2PC, ONNX inference, a
   simulated BB84 channel, PSI / SHAP / QFL), with **zero `/api` compute**. In this mode the system needs **neither the backend
   FHE/MPC compute path nor the frontend FHE/MPC backend-selectors** - the client owns both - so it requires
   no GPU and no server-side ML. The same pages and buttons work in both modes.
@@ -632,7 +637,7 @@ than independent gaps:
 
 | residual | condition that closes it |
 |---|---|
-| **PQ-OPRF PSI + identifiable abort** | Name the browser-loadable library that supplies each, at the point where it is claimed. The non-linear 2PC layer is **already malicious-secure** - `emp-wasm` is authenticated garbling (`emp-ag2pc` / `emp-agmpc`, Wang-Ranellucci-Katz CCS 2017) - so what is missing is these two primitives specifically: a post-quantum OPRF for the PSI, which is a semi-honest keyed hash today, and **identifiable** abort, which authenticated garbling does not provide. |
+| **PQ-OPRF PSI + identifiable abort** | Name the browser-loadable library that supplies each, at the point where it is claimed. The non-linear 2PC layer is **already malicious-secure** - Polytune implements WRK17b multi-party authenticated garbling (Wang-Ranellucci-Katz, CCS 2017), secure against malicious adversaries controlling all but one party - so what is missing is these two primitives specifically: a post-quantum OPRF for the PSI, which is a semi-honest keyed hash today, and **identifiable** abort, which authenticated garbling does not provide. |
 | **Hardware QKD field test** | A boundary of the deliverable, not a gap in it: no QKD device exists here and there is no browser API for one. If a characterised link ever exists, the first thing published is the **measured QBER against `qkd/decoy_reference.py`'s prediction for the same link budget** - and that is also the round in which the 2026 finite-key proofs (arXiv:2606.29943, arXiv:2608.09674) replace Ma et al. (2005), because it is the round their device inputs exist. |
 | **Larger fault-tolerant QHE** | `t_count()` is a labelled Solovay-Kitaev **estimate** of a fault-tolerant deployment's cost. Replace it with an executed count when a backend exposing logical, error-corrected qubits is addressable from PennyLane. |
 | **Production bootstrapping throughput** | Downstream of the OpenFHE `EvalBootstrapSetup` SIGSEGV already recorded as a permanent workaround on this host distribution. Publish the figure when `make test-all` completes without the segfault, or when the HEonGPU collective-bootstrap path is benchmarked end to end. |
@@ -862,7 +867,7 @@ See [`docs/pqc-roadmap.md`](docs/pqc-roadmap.md).
   comparison row is a genuine in-browser state-vector simulation** (8-qubit, QOTP + Clifford+T QCNN): its
   latency is **measured** and its T-gate count is **counted from the circuit** - a *simulation*, not quantum
   hardware (no QPU); under QOTP the ciphertext is the same #qubits as the plaintext (ct/pt = 1). The classical
-  **MPC-FHE row is real measured crypto** (node-seal CKKS + emp-wasm 2PC) - so the demo shows measured, not
+  **MPC-FHE row is real measured crypto** (node-seal CKKS + Polytune 2PC) - so the demo shows measured, not
   estimated, numbers.
 - **In-browser AI (demo)** - the per-use-case Agentic-AI panel runs **small** models client-side (Transformers.js
   on onnxruntime-web; WebLLM on WebGPU). **Both the agent's Transformers.js models and the published ONNX
@@ -925,7 +930,7 @@ See [`docs/pqc-roadmap.md`](docs/pqc-roadmap.md).
   image at all**: `docker/docker-compose.demo.yml` has no `api` service, and `/api/*` and `/metrics`
   return 404. (Round 17 removed the slim image this line used to credit - it omits FHE by design, so
   every server-routed run failed on `tenseal`, while the page still said no computation was sent.) Its FHE/MPC is **genuinely real and measured in the browser**: **node-seal CKKS**
-  (a real homomorphic linear layer, ~1e-9 error) + a real **emp-wasm garbled-circuit 2PC** for the
+  (a real homomorphic linear layer, ~1e-9 error) + a real **Polytune garbled-circuit 2PC** for the
   non-linear argmax, both parties loopback in one tab (zero VPS). Federated learning is offered as an
   in-browser **Quantum Federated Learning** toggle (a real client-side FedAvg of a quantum-classical
   model); the full deployment runs the **PennyLane** QFL over this repo's own FedAvg + secure aggregation, plus server-side FHE inference (incl.
@@ -949,7 +954,7 @@ See [`docs/pqc-roadmap.md`](docs/pqc-roadmap.md).
 
   | tier | what it is | where it runs |
   |---|---|---|
-  | **T1 crypto** | the FHE/MPC-feasible student | real CKKS + MPyC server-side; node-seal CKKS + emp-wasm 2PC in-browser |
+  | **T1 crypto** | the FHE/MPC-feasible student | real CKKS + MPyC server-side; node-seal CKKS + Polytune 2PC in-browser |
   | **T2 industry** | the real literature model, trained here, published to the Hub | browser (**int8 ONNX where a quantised graph exists**; the two tree-ensemble models serve **fp32**, because their parameters live in node attributes and dynamic quantisation has nothing to quantise) and server (fp32 ONNX) |
   | **T3 large** | models too big to encrypt at all | WebGPU in-browser, or a hosted endpoint |
 
@@ -1063,7 +1068,7 @@ See [`docs/pqc-roadmap.md`](docs/pqc-roadmap.md).
   **PaySim** transaction sample (CC-BY-SA-4.0) + the distilled CKKS-linear fraud model; and **satellite** scores
   **real NASA SMAP/MSL telemetry** (no licence stated by any provider - see DATA_LICENSES.md) with the real linear anomaly model - all tiny static JSON
   under `web/public/data/`, loaded by [`web/src/lib/realData.ts`](web/src/lib/realData.ts) and computed with the
-  real in-browser node-seal CKKS + an emp-wasm garbled-circuit 2PC (notional parties). Only **telecom** has no commercial-OK real attack dataset
+  real in-browser node-seal CKKS + a Polytune garbled-circuit 2PC (notional parties). Only **telecom** has no commercial-OK real attack dataset
   - the narrower and correct statement, since **5G-NIDD is CC BY 4.0 and commercially usable**, and this repository trains on it. What does not exist is a commercial-OK corpus of QKD-LAYER attacks, which is a different problem needing a physical QKD testbed under attack - so the QKD IDS uses representative synthetic features (logged as such in the run).
   The bundled sets are public / de-identified, so no real *personal* data leaves the browser - the privacy property
   is demonstrated on real, realistic inputs.

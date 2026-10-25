@@ -11,8 +11,8 @@ import bench from "../lib/mpcNetBench.json";
  * shaped network (register, Round 64). RECORDED numbers, not a live run: the page shows what was
  * measured on one machine, with the date, and says what the measurement does not cover.
  *
- * The engines: emp-wasm with mpc-framework and summon, which the demo ships and which is archived
- * upstream, and Polytune with Garble, the maintained replacement candidate. Same function, same
+ * The engines: emp-wasm with mpc-framework and summon, which the demo shipped until Round 65 and which
+ * is archived upstream, and Polytune with Garble, which replaced it on the strength of these numbers. Same function, same
  * inputs, same additive sharing as clientMPC.ts.
  */
 
@@ -44,8 +44,8 @@ function RateChart({ rate }: { rate: number }) {
           <YAxis tick={tick} width={56} tickFormatter={(v: number) => `${v}`} unit=" ms" />
           <Tooltip formatter={(v: number) => ms(v)} />
           <Legend />
-          <Bar dataKey="emp" name="emp-wasm (shipped)" fill="var(--accent)" />
-          <Bar dataKey="polytune" name="Polytune (hatched)" fill={`url(#${hatch})`} />
+          <Bar dataKey="emp" name="emp-wasm (replaced)" fill="var(--accent)" />
+          <Bar dataKey="polytune" name="Polytune (now shipped, hatched)" fill={`url(#${hatch})`} />
         </BarChart>
       </ResponsiveContainer>
     </div>
@@ -98,6 +98,16 @@ export default function MpcNetBench() {
         </tbody>
       </table>
       </div>
+      {/* Round 65: Polytune replaced emp-wasm on the strength of these numbers. The module is built
+          from Rust crates under permissive licences whose own notices must travel with it, so they
+          are served beside it and linked here. */}
+      <p className="small" style={{ marginTop: 10 }}>
+        Since Round 65 the demo's secure argmax runs on Polytune. Its WebAssembly module is compiled from
+        Rust crates under MIT, Apache-2.0, BSD and similar licences, whose own licence files ship with the
+        demo:{" "}
+        <a href="/licenses/qsh-mpc.txt" target="_blank" rel="noopener noreferrer">third-party notices for
+          the MPC module</a>.
+      </p>
       <Details summary="How this was measured, and what it does not cover">
         <p>
           Each party ran in its own tab, on different sites (127.0.0.1 and localhost) so the browser gave

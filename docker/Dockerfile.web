@@ -1,4 +1,30 @@
-# Build the SPA, then serve the static bundle with Caddy (auto-HTTPS + COOP/COEP).
+# Build the MPC wasm, then the SPA, then serve the static bundle with Caddy (auto-HTTPS + COOP/COEP).
+
+# The garbled-circuit tier (wasm/qsh-mpc, on Polytune), Round 65: tested, built, and its third-party
+# notices collected. CARGO_JOBS limits the compile's parallelism because the demo host is shared; and
+# the layers above the COPY of wasm/qsh-mpc are cached, so a deploy that does not change the crate
+# does not recompile it. The base image is pinned by digest as well as by tag.
+FROM rust:1.99.1-bookworm@sha256:48b7f435b8fc6378ce43b44f15e3a47fd8919b2825f835c39bd4bd3da50af5b8 AS wasm
+ARG CARGO_JOBS=2
+ENV CARGO_BUILD_JOBS=${CARGO_JOBS}
+RUN rustup target add wasm32-unknown-unknown \
+ && cargo install --locked wasm-pack@0.15.0 \
+ && cargo install --locked wasm-bindgen-cli@0.2.129
+WORKDIR /src
+COPY wasm/qsh-mpc/ ./
+RUN cargo fetch --locked
+# The Rust tests run in every image build, the public demo's included: the module that ships is one
+# whose argmax was just checked against the plaintext argmax.
+RUN cargo test --release --locked
+RUN RUSTFLAGS='--cfg getrandom_backend="wasm_js"' wasm-pack build --target web --release \
+      --out-dir /out/qsh_mpc --out-name qsh_mpc -- --locked \
+ && rm -f /out/qsh_mpc/.gitignore /out/qsh_mpc/package.json /out/qsh_mpc/README.md \
+ && python3 notices.py /out/qsh-mpc-notices.txt
+
+# What scripts/build_wasm.sh exports for local builds and CI: the same files the image uses.
+FROM scratch AS wasm-out
+COPY --from=wasm /out/ /
+
 FROM node:22-alpine AS build
 WORKDIR /web
 # CLIENT_ONLY=1 bakes the client-side-compute demo into the bundle (no /api compute);
@@ -8,6 +34,8 @@ ENV VITE_CLIENT_ONLY=${CLIENT_ONLY}
 COPY web/package.json web/package-lock.json* ./
 RUN npm install
 COPY web/ ./
+COPY --from=wasm /out/qsh_mpc ./src/wasm/qsh_mpc
+COPY --from=wasm /out/qsh-mpc-notices.txt ./public/licenses/qsh-mpc.txt
 RUN npm run build
 
 FROM caddy:2-alpine
