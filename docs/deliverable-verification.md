@@ -4816,6 +4816,22 @@ UNVERIFIED - needs confirmation: that Garble's narrowing cast keeps the low bits
 compiler source and confirmed by the wrapping test cases, not by Garble's documentation, which does
 not state it.
 
+**Walked on the public demo with this branch deployed** (3e35a26, serving `index-8fBHAG75.js`, the file
+name the local client-only build produced). The deploy took about 4 minutes: the crate changed, so the
+Rust stage recompiled it and ran its `cargo test`, while the tool layers above it came from the cache.
+All ten pages render with zero horizontal overflow at 1280 and at 390 px. No page shows `NaN`,
+`undefined` or `[object Object]`, and the console showed no error.
+- Medical: 137.33 ms over 922.48 KB, and the encrypted tier took 726.22 ms. The published ResNet-18
+  ran on row 116 and predicted "normal", and the encrypted convolution returned class 1, all as before.
+  All three published models verified PASS, and the summary signed.
+- Genomics: the same seeded figures as the Round 65 build. The secure sum was 235 over Z_239 from 7
+  parties, the PRS -0.2332, the class 0, and the top driver unchanged. The scaled MPC traffic was
+  30441.82 KB, which is 33 times the 944,619-byte unit. It signed.
+- Finance: 135.98 and 114.28 ms over 922.48 KB, PASS, signed.
+
+The module (`qsh_mpc_bg-BLEWuLKJ.wasm`) and its loader were fetched with 200, and the notices are still
+69 entries. The Validations card shows the new circuit beside the measured one.
+
 BUSINESS DOC RECONCILED Round 66. The out-of-repo document is brought level with this round. Its content
 is not quoted here, in the checklist, or in any commit - only the fact of the reconciliation, which is
 what gate 16 reads.
