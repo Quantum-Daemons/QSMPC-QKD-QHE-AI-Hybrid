@@ -201,3 +201,6 @@ report/*.fls
 prototypes/*/target/
 prototypes/*/pkg/
 prototypes/*/.cargo-home/
+# ...except the network bench's record, which /validations draws from (through a checked copy)
+# and which is the evidence for it. The unanchored results/ rule above was meant for run outputs.
+!prototypes/net-bench/results/

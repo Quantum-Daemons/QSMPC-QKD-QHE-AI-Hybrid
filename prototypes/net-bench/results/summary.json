@@ -1,0 +1,1386 @@
+{
+ "measuredAt": "2026-10-25T02:19:10.243Z",
+ "browser": "Chrome/152.0.7977.130",
+ "configs": [
+  {
+   "tag": "g0",
+   "n": 2,
+   "link": {
+    "rttMs": 1,
+    "delayMs": 0.5,
+    "rateMbit": 10,
+    "lossPct": 0
+   },
+   "applied": {
+    "delay_ms": 0.5,
+    "rate_mbit": 10,
+    "loss_pct": 0
+   },
+   "calibration": {
+    "rttMs": 1.5899996757507324,
+    "rttMinMs": 1.429999828338623,
+    "rttMaxMs": 2.0899996757507324,
+    "goodputMbps": 9.517775932034855,
+    "bulkBytes": 2000000
+   },
+   "engines": {
+    "emp-wasm": {
+     "runs": 3,
+     "correct": 3,
+     "completion_ms": {
+      "median": 952.8800001144409,
+      "min": 945.8399996757507,
+      "max": 958.6100001335144,
+      "all": [
+       952.8800001144409,
+       958.6100001335144,
+       945.8399996757507
+      ]
+     },
+     "bytes": 214861,
+     "messages": 43,
+     "relay_tcp": {
+      "max_cwnd_segments": 43,
+      "srtt_ms_min": 0.611,
+      "srtt_ms_max": 10.93,
+      "retransmissions": 0
+     }
+    },
+    "polytune": {
+     "runs": 3,
+     "correct": 3,
+     "completion_ms": {
+      "median": 855.9949998855591,
+      "min": 845.8349995613098,
+      "max": 860.5750002861023,
+      "all": [
+       855.9949998855591,
+       860.5750002861023,
+       845.8349995613098
+      ]
+     },
+     "bytes": 1018898,
+     "messages": 69,
+     "relay_tcp": {
+      "max_cwnd_segments": 151,
+      "srtt_ms_min": 0.61,
+      "srtt_ms_max": 57.981,
+      "retransmissions": 0
+     }
+    }
+   },
+   "polytune_speedup": 1.11318407261939
+  },
+  {
+   "tag": "g1",
+   "n": 2,
+   "link": {
+    "rttMs": 1,
+    "delayMs": 0.5,
+    "rateMbit": 10,
+    "lossPct": 0.1
+   },
+   "applied": {
+    "delay_ms": 0.5,
+    "rate_mbit": 10,
+    "loss_pct": 0.1
+   },
+   "calibration": {
+    "rttMs": 1.489999771118164,
+    "rttMinMs": 1.3899998664855957,
+    "rttMaxMs": 2.1050000190734863,
+    "goodputMbps": 9.504574075735757,
+    "bulkBytes": 2000000
+   },
+   "engines": {
+    "emp-wasm": {
+     "runs": 3,
+     "correct": 3,
+     "completion_ms": {
+      "median": 940.9049997329712,
+      "min": 925.0499997138977,
+      "max": 943.8949999809265,
+      "all": [
+       940.9049997329712,
+       925.0499997138977,
+       943.8949999809265
+      ]
+     },
+     "bytes": 214861,
+     "messages": 43,
+     "relay_tcp": {
+      "max_cwnd_segments": 43,
+      "srtt_ms_min": 0.607,
+      "srtt_ms_max": 10.902,
+      "retransmissions": 0
+     }
+    },
+    "polytune": {
+     "runs": 3,
+     "correct": 3,
+     "completion_ms": {
+      "median": 852.6300001144409,
+      "min": 845.6399998664856,
+      "max": 858.9749999046326,
+      "all": [
+       858.9749999046326,
+       845.6399998664856,
+       852.6300001144409
+      ]
+     },
+     "bytes": 1018898,
+     "messages": 69,
+     "relay_tcp": {
+      "max_cwnd_segments": 151,
+      "srtt_ms_min": 0.604,
+      "srtt_ms_max": 58.053,
+      "retransmissions": 4
+     }
+    }
+   },
+   "polytune_speedup": 1.103532598673143
+  },
+  {
+   "tag": "g2",
+   "n": 2,
+   "link": {
+    "rttMs": 1,
+    "delayMs": 0.5,
+    "rateMbit": 10,
+    "lossPct": 1
+   },
+   "applied": {
+    "delay_ms": 0.5,
+    "rate_mbit": 10,
+    "loss_pct": 1
+   },
+   "calibration": {
+    "rttMs": 1.625,
+    "rttMinMs": 1.5,
+    "rttMaxMs": 3.200000286102295,
+    "goodputMbps": 9.529183868662349,
+    "bulkBytes": 2000000
+   },
+   "engines": {
+    "emp-wasm": {
+     "runs": 3,
+     "correct": 3,
+     "completion_ms": {
+      "median": 934.6950001716614,
+      "min": 928.8150000572205,
+      "max": 1141.6950001716614,
+      "all": [
+       928.8150000572205,
+       1141.6950001716614,
+       934.6950001716614
+      ]
+     },
+     "bytes": 214861,
+     "messages": 43,
+     "relay_tcp": {
+      "max_cwnd_segments": 43,
+      "srtt_ms_min": 0.611,
+      "srtt_ms_max": 10.709,
+      "retransmissions": 0
+     }
+    },
+    "polytune": {
+     "runs": 3,
+     "correct": 3,
+     "completion_ms": {
+      "median": 856.1500000953674,
+      "min": 850.4800000190735,
+      "max": 1087.8050003051758,
+      "all": [
+       856.1500000953674,
+       1087.8050003051758,
+       850.4800000190735
+      ]
+     },
+     "bytes": 1018898,
+     "messages": 69,
+     "relay_tcp": {
+      "max_cwnd_segments": 151,
+      "srtt_ms_min": 0.609,
+      "srtt_ms_max": 58.034,
+      "retransmissions": 17
+     }
+    }
+   },
+   "polytune_speedup": 1.0917421013461948
+  },
+  {
+   "tag": "g3",
+   "n": 2,
+   "link": {
+    "rttMs": 1,
+    "delayMs": 0.5,
+    "rateMbit": 100,
+    "lossPct": 0
+   },
+   "applied": {
+    "delay_ms": 0.5,
+    "rate_mbit": 100,
+    "loss_pct": 0
+   },
+   "calibration": {
+    "rttMs": 1.3249998092651367,
+    "rttMinMs": 1.2199997901916504,
+    "rttMaxMs": 1.875,
+    "goodputMbps": 95.12167024472038,
+    "bulkBytes": 8000000
+   },
+   "engines": {
+    "emp-wasm": {
+     "runs": 3,
+     "correct": 3,
+     "completion_ms": {
+      "median": 774.2849998474121,
+      "min": 766.2800002098083,
+      "max": 785.2249999046326,
+      "all": [
+       774.2849998474121,
+       785.2249999046326,
+       766.2800002098083
+      ]
+     },
+     "bytes": 214861,
+     "messages": 43,
+     "relay_tcp": {
+      "max_cwnd_segments": 30,
+      "srtt_ms_min": 0.512,
+      "srtt_ms_max": 1.363,
+      "retransmissions": 0
+     }
+    },
+    "polytune": {
+     "runs": 3,
+     "correct": 3,
+     "completion_ms": {
+      "median": 234.875,
+      "min": 231.4800000190735,
+      "max": 242.71999979019165,
+      "all": [
+       234.875,
+       231.4800000190735,
+       242.71999979019165
+      ]
+     },
+     "bytes": 1018898,
+     "messages": 69,
+     "relay_tcp": {
+      "max_cwnd_segments": 49,
+      "srtt_ms_min": 0.523,
+      "srtt_ms_max": 3.965,
+      "retransmissions": 0
+     }
+    }
+   },
+   "polytune_speedup": 3.296583288333846
+  },
+  {
+   "tag": "g4",
+   "n": 2,
+   "link": {
+    "rttMs": 1,
+    "delayMs": 0.5,
+    "rateMbit": 100,
+    "lossPct": 0.1
+   },
+   "applied": {
+    "delay_ms": 0.5,
+    "rate_mbit": 100,
+    "loss_pct": 0.1
+   },
+   "calibration": {
+    "rttMs": 1.2799997329711914,
+    "rttMinMs": 1.174999713897705,
+    "rttMaxMs": 3.6599998474121094,
+    "goodputMbps": 90.18657349084212,
+    "bulkBytes": 8000000
+   },
+   "engines": {
+    "emp-wasm": {
+     "runs": 3,
+     "correct": 3,
+     "completion_ms": {
+      "median": 778.539999961853,
+      "min": 760.8100004196167,
+      "max": 778.5650000572205,
+      "all": [
+       760.8100004196167,
+       778.5650000572205,
+       778.539999961853
+      ]
+     },
+     "bytes": 214861,
+     "messages": 43,
+     "relay_tcp": {
+      "max_cwnd_segments": 30,
+      "srtt_ms_min": 0.515,
+      "srtt_ms_max": 1.364,
+      "retransmissions": 0
+     }
+    },
+    "polytune": {
+     "runs": 3,
+     "correct": 3,
+     "completion_ms": {
+      "median": 234.05999994277954,
+      "min": 229.31500005722046,
+      "max": 243.78999996185303,
+      "all": [
+       243.78999996185303,
+       229.31500005722046,
+       234.05999994277954
+      ]
+     },
+     "bytes": 1018898,
+     "messages": 69,
+     "relay_tcp": {
+      "max_cwnd_segments": 49,
+      "srtt_ms_min": 0.523,
+      "srtt_ms_max": 3.947,
+      "retransmissions": 0
+     }
+    }
+   },
+   "polytune_speedup": 3.326241135401957
+  },
+  {
+   "tag": "g5",
+   "n": 2,
+   "link": {
+    "rttMs": 1,
+    "delayMs": 0.5,
+    "rateMbit": 100,
+    "lossPct": 1
+   },
+   "applied": {
+    "delay_ms": 0.5,
+    "rate_mbit": 100,
+    "loss_pct": 1
+   },
+   "calibration": {
+    "rttMs": 1.315000057220459,
+    "rttMinMs": 1.255000114440918,
+    "rttMaxMs": 3.625,
+    "goodputMbps": 95.12025656384421,
+    "bulkBytes": 8000000
+   },
+   "engines": {
+    "emp-wasm": {
+     "runs": 3,
+     "correct": 3,
+     "completion_ms": {
+      "median": 763.6599998474121,
+      "min": 756.829999923706,
+      "max": 776.2800002098083,
+      "all": [
+       776.2800002098083,
+       763.6599998474121,
+       756.829999923706
+      ]
+     },
+     "bytes": 214861,
+     "messages": 43,
+     "relay_tcp": {
+      "max_cwnd_segments": 30,
+      "srtt_ms_min": 0.514,
+      "srtt_ms_max": 1.364,
+      "retransmissions": 2
+     }
+    },
+    "polytune": {
+     "runs": 3,
+     "correct": 3,
+     "completion_ms": {
+      "median": 246.03000020980835,
+      "min": 241.74499988555908,
+      "max": 438.039999961853,
+      "all": [
+       246.03000020980835,
+       438.039999961853,
+       241.74499988555908
+      ]
+     },
+     "bytes": 1018898,
+     "messages": 69,
+     "relay_tcp": {
+      "max_cwnd_segments": 49,
+      "srtt_ms_min": 0.526,
+      "srtt_ms_max": 3.949,
+      "retransmissions": 27
+     }
+    }
+   },
+   "polytune_speedup": 3.1039304117228856
+  },
+  {
+   "tag": "g6",
+   "n": 2,
+   "link": {
+    "rttMs": 10,
+    "delayMs": 5,
+    "rateMbit": 10,
+    "lossPct": 0
+   },
+   "applied": {
+    "delay_ms": 5,
+    "rate_mbit": 10,
+    "loss_pct": 0
+   },
+   "calibration": {
+    "rttMs": 11.09499979019165,
+    "rttMinMs": 10.825000286102295,
+    "rttMaxMs": 12.739999771118164,
+    "goodputMbps": 9.431946294469636,
+    "bulkBytes": 2000000
+   },
+   "engines": {
+    "emp-wasm": {
+     "runs": 3,
+     "correct": 3,
+     "completion_ms": {
+      "median": 1153.0249996185303,
+      "min": 1141.6100001335144,
+      "max": 1155.6099996566772,
+      "all": [
+       1155.6099996566772,
+       1141.6100001335144,
+       1153.0249996185303
+      ]
+     },
+     "bytes": 214861,
+     "messages": 43,
+     "relay_tcp": {
+      "max_cwnd_segments": 43,
+      "srtt_ms_min": 5.116,
+      "srtt_ms_max": 15.467,
+      "retransmissions": 0
+     }
+    },
+    "polytune": {
+     "runs": 3,
+     "correct": 3,
+     "completion_ms": {
+      "median": 1022.8949999809265,
+      "min": 1012.6100001335144,
+      "max": 1030.1350002288818,
+      "all": [
+       1012.6100001335144,
+       1022.8949999809265,
+       1030.1350002288818
+      ]
+     },
+     "bytes": 1018898,
+     "messages": 69,
+     "relay_tcp": {
+      "max_cwnd_segments": 141,
+      "srtt_ms_min": 5.113,
+      "srtt_ms_max": 77.773,
+      "retransmissions": 0
+     }
+    }
+   },
+   "polytune_speedup": 1.1272173582235032
+  },
+  {
+   "tag": "g7",
+   "n": 2,
+   "link": {
+    "rttMs": 10,
+    "delayMs": 5,
+    "rateMbit": 10,
+    "lossPct": 0.1
+   },
+   "applied": {
+    "delay_ms": 5,
+    "rate_mbit": 10,
+    "loss_pct": 0.1
+   },
+   "calibration": {
+    "rttMs": 11.014999866485596,
+    "rttMinMs": 10.835000038146973,
+    "rttMaxMs": 12.579999923706055,
+    "goodputMbps": 9.442940295268777,
+    "bulkBytes": 2000000
+   },
+   "engines": {
+    "emp-wasm": {
+     "runs": 3,
+     "correct": 3,
+     "completion_ms": {
+      "median": 1153.079999923706,
+      "min": 1132.1550002098083,
+      "max": 1171.8600001335144,
+      "all": [
+       1153.079999923706,
+       1132.1550002098083,
+       1171.8600001335144
+      ]
+     },
+     "bytes": 214861,
+     "messages": 43,
+     "relay_tcp": {
+      "max_cwnd_segments": 43,
+      "srtt_ms_min": 5.118,
+      "srtt_ms_max": 15.461,
+      "retransmissions": 0
+     }
+    },
+    "polytune": {
+     "runs": 3,
+     "correct": 3,
+     "completion_ms": {
+      "median": 1018.8450002670288,
+      "min": 1014.0349998474121,
+      "max": 1019.5300002098083,
+      "all": [
+       1014.0349998474121,
+       1018.8450002670288,
+       1019.5300002098083
+      ]
+     },
+     "bytes": 1018898,
+     "messages": 69,
+     "relay_tcp": {
+      "max_cwnd_segments": 139,
+      "srtt_ms_min": 5.119,
+      "srtt_ms_max": 77.795,
+      "retransmissions": 5
+     }
+    }
+   },
+   "polytune_speedup": 1.1317521307181129
+  },
+  {
+   "tag": "g8",
+   "n": 2,
+   "link": {
+    "rttMs": 10,
+    "delayMs": 5,
+    "rateMbit": 10,
+    "lossPct": 1
+   },
+   "applied": {
+    "delay_ms": 5,
+    "rate_mbit": 10,
+    "loss_pct": 1
+   },
+   "calibration": {
+    "rttMs": 10.954999923706055,
+    "rttMinMs": 10.75,
+    "rttMaxMs": 11.575000286102295,
+    "goodputMbps": 9.40574779316349,
+    "bulkBytes": 2000000
+   },
+   "engines": {
+    "emp-wasm": {
+     "runs": 3,
+     "correct": 3,
+     "completion_ms": {
+      "median": 1365.5100002288818,
+      "min": 1142.2649998664856,
+      "max": 1395.1849999427795,
+      "all": [
+       1142.2649998664856,
+       1395.1849999427795,
+       1365.5100002288818
+      ]
+     },
+     "bytes": 214861,
+     "messages": 43,
+     "relay_tcp": {
+      "max_cwnd_segments": 43,
+      "srtt_ms_min": 5.113,
+      "srtt_ms_max": 15.467,
+      "retransmissions": 8
+     }
+    },
+    "polytune": {
+     "runs": 3,
+     "correct": 3,
+     "completion_ms": {
+      "median": 1031.454999923706,
+      "min": 1020.2699999809265,
+      "max": 1058.3049998283386,
+      "all": [
+       1020.2699999809265,
+       1031.454999923706,
+       1058.3049998283386
+      ]
+     },
+     "bytes": 1018898,
+     "messages": 69,
+     "relay_tcp": {
+      "max_cwnd_segments": 141,
+      "srtt_ms_min": 5.116,
+      "srtt_ms_max": 77.748,
+      "retransmissions": 19
+     }
+    }
+   },
+   "polytune_speedup": 1.3238677405508577
+  },
+  {
+   "tag": "g9",
+   "n": 2,
+   "link": {
+    "rttMs": 10,
+    "delayMs": 5,
+    "rateMbit": 100,
+    "lossPct": 0
+   },
+   "applied": {
+    "delay_ms": 5,
+    "rate_mbit": 100,
+    "loss_pct": 0
+   },
+   "calibration": {
+    "rttMs": 10.824999809265137,
+    "rttMinMs": 10.520000457763672,
+    "rttMaxMs": 11.329999923706055,
+    "goodputMbps": 92.05752153920976,
+    "bulkBytes": 8000000
+   },
+   "engines": {
+    "emp-wasm": {
+     "runs": 3,
+     "correct": 3,
+     "completion_ms": {
+      "median": 1001.4349999427795,
+      "min": 979.164999961853,
+      "max": 1004.289999961853,
+      "all": [
+       979.164999961853,
+       1001.4349999427795,
+       1004.289999961853
+      ]
+     },
+     "bytes": 214861,
+     "messages": 43,
+     "relay_tcp": {
+      "max_cwnd_segments": 46,
+      "srtt_ms_min": 5.019,
+      "srtt_ms_max": 5.825,
+      "retransmissions": 0
+     }
+    },
+    "polytune": {
+     "runs": 3,
+     "correct": 3,
+     "completion_ms": {
+      "median": 405.5700001716614,
+      "min": 394.65500020980835,
+      "max": 408.3250002861023,
+      "all": [
+       405.5700001716614,
+       408.3250002861023,
+       394.65500020980835
+      ]
+     },
+     "bytes": 1018898,
+     "messages": 69,
+     "relay_tcp": {
+      "max_cwnd_segments": 164,
+      "srtt_ms_min": 5.03,
+      "srtt_ms_max": 9.806,
+      "retransmissions": 0
+     }
+    }
+   },
+   "polytune_speedup": 2.469203835389483
+  },
+  {
+   "tag": "g10",
+   "n": 2,
+   "link": {
+    "rttMs": 10,
+    "delayMs": 5,
+    "rateMbit": 100,
+    "lossPct": 0.1
+   },
+   "applied": {
+    "delay_ms": 5,
+    "rate_mbit": 100,
+    "loss_pct": 0.1
+   },
+   "calibration": {
+    "rttMs": 11.005000114440918,
+    "rttMinMs": 10.704999923706055,
+    "rttMaxMs": 12.735000133514404,
+    "goodputMbps": 92.08334981455607,
+    "bulkBytes": 8000000
+   },
+   "engines": {
+    "emp-wasm": {
+     "runs": 3,
+     "correct": 3,
+     "completion_ms": {
+      "median": 1000.7200002670288,
+      "min": 978.4000000953674,
+      "max": 1006.1999998092651,
+      "all": [
+       1000.7200002670288,
+       1006.1999998092651,
+       978.4000000953674
+      ]
+     },
+     "bytes": 214861,
+     "messages": 43,
+     "relay_tcp": {
+      "max_cwnd_segments": 46,
+      "srtt_ms_min": 5.02,
+      "srtt_ms_max": 5.827,
+      "retransmissions": 2
+     }
+    },
+    "polytune": {
+     "runs": 3,
+     "correct": 3,
+     "completion_ms": {
+      "median": 404.1949996948242,
+      "min": 398.94999980926514,
+      "max": 410.1950001716614,
+      "all": [
+       404.1949996948242,
+       398.94999980926514,
+       410.1950001716614
+      ]
+     },
+     "bytes": 1018898,
+     "messages": 69,
+     "relay_tcp": {
+      "max_cwnd_segments": 164,
+      "srtt_ms_min": 5.028,
+      "srtt_ms_max": 9.451,
+      "retransmissions": 0
+     }
+    }
+   },
+   "polytune_speedup": 2.4758346862840797
+  },
+  {
+   "tag": "g11",
+   "n": 2,
+   "link": {
+    "rttMs": 10,
+    "delayMs": 5,
+    "rateMbit": 100,
+    "lossPct": 1
+   },
+   "applied": {
+    "delay_ms": 5,
+    "rate_mbit": 100,
+    "loss_pct": 1
+   },
+   "calibration": {
+    "rttMs": 10.96999979019165,
+    "rttMinMs": 10.679999828338623,
+    "rttMaxMs": 224.41499996185303,
+    "goodputMbps": 33.824225015827395,
+    "bulkBytes": 8000000
+   },
+   "engines": {
+    "emp-wasm": {
+     "runs": 3,
+     "correct": 3,
+     "completion_ms": {
+      "median": 998.6950001716614,
+      "min": 992.8249998092651,
+      "max": 1015.5250000953674,
+      "all": [
+       998.6950001716614,
+       992.8249998092651,
+       1015.5250000953674
+      ]
+     },
+     "bytes": 214861,
+     "messages": 43,
+     "relay_tcp": {
+      "max_cwnd_segments": 46,
+      "srtt_ms_min": 5.023,
+      "srtt_ms_max": 5.835,
+      "retransmissions": 2
+     }
+    },
+    "polytune": {
+     "runs": 3,
+     "correct": 3,
+     "completion_ms": {
+      "median": 409.34499979019165,
+      "min": 409.2099995613098,
+      "max": 541.375,
+      "all": [
+       409.2099995613098,
+       409.34499979019165,
+       541.375
+      ]
+     },
+     "bytes": 1018898,
+     "messages": 69,
+     "relay_tcp": {
+      "max_cwnd_segments": 164,
+      "srtt_ms_min": 5.03,
+      "srtt_ms_max": 9.289,
+      "retransmissions": 14
+     }
+    }
+   },
+   "polytune_speedup": 2.439739097053925
+  },
+  {
+   "tag": "g12",
+   "n": 2,
+   "link": {
+    "rttMs": 50,
+    "delayMs": 25,
+    "rateMbit": 10,
+    "lossPct": 0
+   },
+   "applied": {
+    "delay_ms": 25,
+    "rate_mbit": 10,
+    "loss_pct": 0
+   },
+   "calibration": {
+    "rttMs": 51.42999982833862,
+    "rttMinMs": 51.30999994277954,
+    "rttMaxMs": 51.87000036239624,
+    "goodputMbps": 9.029447286075783,
+    "bulkBytes": 2000000
+   },
+   "engines": {
+    "emp-wasm": {
+     "runs": 3,
+     "correct": 3,
+     "completion_ms": {
+      "median": 2069.585000038147,
+      "min": 2065.0250000953674,
+      "max": 2078.0700001716614,
+      "all": [
+       2065.0250000953674,
+       2078.0700001716614,
+       2069.585000038147
+      ]
+     },
+     "bytes": 214861,
+     "messages": 43,
+     "relay_tcp": {
+      "max_cwnd_segments": 43,
+      "srtt_ms_min": 25.12,
+      "srtt_ms_max": 35.807,
+      "retransmissions": 0
+     }
+    },
+    "polytune": {
+     "runs": 3,
+     "correct": 3,
+     "completion_ms": {
+      "median": 1831.9800000190735,
+      "min": 1825.5700001716614,
+      "max": 1836.3250002861023,
+      "all": [
+       1825.5700001716614,
+       1836.3250002861023,
+       1831.9800000190735
+      ]
+     },
+     "bytes": 1018898,
+     "messages": 69,
+     "relay_tcp": {
+      "max_cwnd_segments": 127,
+      "srtt_ms_min": 25.117,
+      "srtt_ms_max": 112.825,
+      "retransmissions": 0
+     }
+    }
+   },
+   "polytune_speedup": 1.129698468332951
+  },
+  {
+   "tag": "g13",
+   "n": 2,
+   "link": {
+    "rttMs": 50,
+    "delayMs": 25,
+    "rateMbit": 10,
+    "lossPct": 0.1
+   },
+   "applied": {
+    "delay_ms": 25,
+    "rate_mbit": 10,
+    "loss_pct": 0.1
+   },
+   "calibration": {
+    "rttMs": 51.28499984741211,
+    "rttMinMs": 51.15000009536743,
+    "rttMaxMs": 51.575000286102295,
+    "goodputMbps": 9.0179584177879,
+    "bulkBytes": 2000000
+   },
+   "engines": {
+    "emp-wasm": {
+     "runs": 3,
+     "correct": 3,
+     "completion_ms": {
+      "median": 2077.3899998664856,
+      "min": 2070.755000114441,
+      "max": 2082.6799998283386,
+      "all": [
+       2070.755000114441,
+       2082.6799998283386,
+       2077.3899998664856
+      ]
+     },
+     "bytes": 214861,
+     "messages": 43,
+     "relay_tcp": {
+      "max_cwnd_segments": 43,
+      "srtt_ms_min": 25.116,
+      "srtt_ms_max": 35.832,
+      "retransmissions": 0
+     }
+    },
+    "polytune": {
+     "runs": 3,
+     "correct": 3,
+     "completion_ms": {
+      "median": 1831.9499998092651,
+      "min": 1831.1500000953674,
+      "max": 2152.319999694824,
+      "all": [
+       1831.1500000953674,
+       1831.9499998092651,
+       2152.319999694824
+      ]
+     },
+     "bytes": 1018898,
+     "messages": 69,
+     "relay_tcp": {
+      "max_cwnd_segments": 127,
+      "srtt_ms_min": 25.114,
+      "srtt_ms_max": 112.878,
+      "retransmissions": 4
+     }
+    }
+   },
+   "polytune_speedup": 1.1339774557617701
+  },
+  {
+   "tag": "g14",
+   "n": 2,
+   "link": {
+    "rttMs": 50,
+    "delayMs": 25,
+    "rateMbit": 10,
+    "lossPct": 1
+   },
+   "applied": {
+    "delay_ms": 25,
+    "rate_mbit": 10,
+    "loss_pct": 1
+   },
+   "calibration": {
+    "rttMs": 51.735000133514404,
+    "rttMinMs": 51.389999866485596,
+    "rttMaxMs": 52.58500003814697,
+    "goodputMbps": 7.892358101284805,
+    "bulkBytes": 2000000
+   },
+   "engines": {
+    "emp-wasm": {
+     "runs": 3,
+     "correct": 3,
+     "completion_ms": {
+      "median": 2128.545000076294,
+      "min": 2104.1050000190735,
+      "max": 2591.9649996757507,
+      "all": [
+       2128.545000076294,
+       2591.9649996757507,
+       2104.1050000190735
+      ]
+     },
+     "bytes": 214861,
+     "messages": 43,
+     "relay_tcp": {
+      "max_cwnd_segments": 43,
+      "srtt_ms_min": 25.122,
+      "srtt_ms_max": 35.796,
+      "retransmissions": 6
+     }
+    },
+    "polytune": {
+     "runs": 3,
+     "correct": 3,
+     "completion_ms": {
+      "median": 1874.1750001907349,
+      "min": 1859.5699996948242,
+      "max": 1875.5650000572205,
+      "all": [
+       1875.5650000572205,
+       1874.1750001907349,
+       1859.5699996948242
+      ]
+     },
+     "bytes": 1018898,
+     "messages": 69,
+     "relay_tcp": {
+      "max_cwnd_segments": 127,
+      "srtt_ms_min": 25.116,
+      "srtt_ms_max": 112.73,
+      "retransmissions": 21
+     }
+    }
+   },
+   "polytune_speedup": 1.1357237183612372
+  },
+  {
+   "tag": "g15",
+   "n": 2,
+   "link": {
+    "rttMs": 50,
+    "delayMs": 25,
+    "rateMbit": 100,
+    "lossPct": 0
+   },
+   "applied": {
+    "delay_ms": 25,
+    "rate_mbit": 100,
+    "loss_pct": 0
+   },
+   "calibration": {
+    "rttMs": 51.385000228881836,
+    "rttMinMs": 51.09999990463257,
+    "rttMaxMs": 51.640000343322754,
+    "goodputMbps": 76.25515691258629,
+    "bulkBytes": 8000000
+   },
+   "engines": {
+    "emp-wasm": {
+     "runs": 3,
+     "correct": 3,
+     "completion_ms": {
+      "median": 1963.0999999046326,
+      "min": 1941.0800004005432,
+      "max": 1969.539999961853,
+      "all": [
+       1963.0999999046326,
+       1969.539999961853,
+       1941.0800004005432
+      ]
+     },
+     "bytes": 214861,
+     "messages": 43,
+     "relay_tcp": {
+      "max_cwnd_segments": 43,
+      "srtt_ms_min": 25.024,
+      "srtt_ms_max": 25.94,
+      "retransmissions": 0
+     }
+    },
+    "polytune": {
+     "runs": 3,
+     "correct": 3,
+     "completion_ms": {
+      "median": 1205.4850001335144,
+      "min": 1198.1100001335144,
+      "max": 1205.7350001335144,
+      "all": [
+       1205.4850001335144,
+       1198.1100001335144,
+       1205.7350001335144
+      ]
+     },
+     "bytes": 1018898,
+     "messages": 69,
+     "relay_tcp": {
+      "max_cwnd_segments": 203,
+      "srtt_ms_min": 25.021,
+      "srtt_ms_max": 31.363,
+      "retransmissions": 0
+     }
+    }
+   },
+   "polytune_speedup": 1.6284731868809714
+  },
+  {
+   "tag": "g16",
+   "n": 2,
+   "link": {
+    "rttMs": 50,
+    "delayMs": 25,
+    "rateMbit": 100,
+    "lossPct": 0.1
+   },
+   "applied": {
+    "delay_ms": 25,
+    "rate_mbit": 100,
+    "loss_pct": 0.1
+   },
+   "calibration": {
+    "rttMs": 51.34499979019165,
+    "rttMinMs": 51.13499975204468,
+    "rttMaxMs": 252.86500024795532,
+    "goodputMbps": 76.17755319799885,
+    "bulkBytes": 8000000
+   },
+   "engines": {
+    "emp-wasm": {
+     "runs": 3,
+     "correct": 3,
+     "completion_ms": {
+      "median": 1952.0699996948242,
+      "min": 1946.1999998092651,
+      "max": 1952.2999997138977,
+      "all": [
+       1946.1999998092651,
+       1952.2999997138977,
+       1952.0699996948242
+      ]
+     },
+     "bytes": 214861,
+     "messages": 43,
+     "relay_tcp": {
+      "max_cwnd_segments": 43,
+      "srtt_ms_min": 25.024,
+      "srtt_ms_max": 25.956,
+      "retransmissions": 0
+     }
+    },
+    "polytune": {
+     "runs": 3,
+     "correct": 3,
+     "completion_ms": {
+      "median": 1260.1550002098083,
+      "min": 1204.0099997520447,
+      "max": 1350.7350001335144,
+      "all": [
+       1260.1550002098083,
+       1350.7350001335144,
+       1204.0099997520447
+      ]
+     },
+     "bytes": 1018898,
+     "messages": 69,
+     "relay_tcp": {
+      "max_cwnd_segments": 203,
+      "srtt_ms_min": 25.031,
+      "srtt_ms_max": 31.361,
+      "retransmissions": 2
+     }
+    }
+   },
+   "polytune_speedup": 1.5490713438980253
+  },
+  {
+   "tag": "g17",
+   "n": 2,
+   "link": {
+    "rttMs": 50,
+    "delayMs": 25,
+    "rateMbit": 100,
+    "lossPct": 1
+   },
+   "applied": {
+    "delay_ms": 25,
+    "rate_mbit": 100,
+    "loss_pct": 1
+   },
+   "calibration": {
+    "rttMs": 51.40500020980835,
+    "rttMinMs": 51.22499990463257,
+    "rttMaxMs": 51.674999713897705,
+    "goodputMbps": 10.390306169282658,
+    "bulkBytes": 8000000
+   },
+   "engines": {
+    "emp-wasm": {
+     "runs": 3,
+     "correct": 3,
+     "completion_ms": {
+      "median": 2151.5700001716614,
+      "min": 1978.5550003051758,
+      "max": 2449.0350003242493,
+      "all": [
+       2151.5700001716614,
+       1978.5550003051758,
+       2449.0350003242493
+      ]
+     },
+     "bytes": 214861,
+     "messages": 43,
+     "relay_tcp": {
+      "max_cwnd_segments": 43,
+      "srtt_ms_min": 25.027,
+      "srtt_ms_max": 25.937,
+      "retransmissions": 7
+     }
+    },
+    "polytune": {
+     "runs": 3,
+     "correct": 3,
+     "completion_ms": {
+      "median": 1518.039999961853,
+      "min": 1283.2699999809265,
+      "max": 2022.7999997138977,
+      "all": [
+       1283.2699999809265,
+       2022.7999997138977,
+       1518.039999961853
+      ]
+     },
+     "bytes": 1018898,
+     "messages": 69,
+     "relay_tcp": {
+      "max_cwnd_segments": 203,
+      "srtt_ms_min": 25.033,
+      "srtt_ms_max": 31.363,
+      "retransmissions": 20
+     }
+    }
+   },
+   "polytune_speedup": 1.4173341942410795
+  },
+  {
+   "tag": "g18",
+   "n": 10,
+   "link": {
+    "rttMs": 10,
+    "delayMs": 5,
+    "rateMbit": 100,
+    "lossPct": 0
+   },
+   "applied": {
+    "delay_ms": 5,
+    "rate_mbit": 100,
+    "loss_pct": 0
+   },
+   "calibration": {
+    "rttMs": 10.925000190734863,
+    "rttMinMs": 10.579999923706055,
+    "rttMaxMs": 11.444999694824219,
+    "goodputMbps": 92.19610397659154,
+    "bulkBytes": 8000000
+   },
+   "engines": {
+    "emp-wasm": {
+     "runs": 3,
+     "correct": 3,
+     "completion_ms": {
+      "median": 1158.1400003433228,
+      "min": 1144.9800000190735,
+      "max": 1189.090000152588,
+      "all": [
+       1158.1400003433228,
+       1189.090000152588,
+       1144.9800000190735
+      ]
+     },
+     "bytes": 1241896,
+     "messages": 55,
+     "relay_tcp": {
+      "max_cwnd_segments": 257,
+      "srtt_ms_min": 5.02,
+      "srtt_ms_max": 9.686,
+      "retransmissions": 0
+     }
+    },
+    "polytune": {
+     "runs": 3,
+     "correct": 3,
+     "completion_ms": {
+      "median": 1698.130000114441,
+      "min": 1691.454999923706,
+      "max": 1709.659999847412,
+      "all": [
+       1691.454999923706,
+       1698.130000114441,
+       1709.659999847412
+      ]
+     },
+     "bytes": 7184705,
+     "messages": 195,
+     "relay_tcp": {
+      "max_cwnd_segments": 1032,
+      "srtt_ms_min": 5.029,
+      "srtt_ms_max": 44.969,
+      "retransmissions": 0
+     }
+    }
+   },
+   "polytune_speedup": 0.6820090336224394
+  },
+  {
+   "tag": "g19",
+   "n": 10,
+   "link": {
+    "rttMs": 50,
+    "delayMs": 25,
+    "rateMbit": 10,
+    "lossPct": 0
+   },
+   "applied": {
+    "delay_ms": 25,
+    "rate_mbit": 10,
+    "loss_pct": 0
+   },
+   "calibration": {
+    "rttMs": 51.38000011444092,
+    "rttMinMs": 51.209999561309814,
+    "rttMaxMs": 51.69500017166138,
+    "goodputMbps": 9.011114646528469,
+    "bulkBytes": 2000000
+   },
+   "engines": {
+    "emp-wasm": {
+     "runs": 3,
+     "correct": 3,
+     "completion_ms": {
+      "median": 3037.6449999809265,
+      "min": 3036.3600001335144,
+      "max": 3038.545000076294,
+      "all": [
+       3038.545000076294,
+       3037.6449999809265,
+       3036.3600001335144
+      ]
+     },
+     "bytes": 1241896,
+     "messages": 55,
+     "relay_tcp": {
+      "max_cwnd_segments": 93,
+      "srtt_ms_min": 25.116,
+      "srtt_ms_max": 106.736,
+      "retransmissions": 0
+     }
+    },
+    "polytune": {
+     "runs": 3,
+     "correct": 3,
+     "completion_ms": {
+      "median": 8363.005000114441,
+      "min": 8352.35000038147,
+      "max": 8367.494999885559,
+      "all": [
+       8352.35000038147,
+       8367.494999885559,
+       8363.005000114441
+      ]
+     },
+     "bytes": 7184705,
+     "messages": 195,
+     "relay_tcp": {
+      "max_cwnd_segments": 148,
+      "srtt_ms_min": 25.123,
+      "srtt_ms_max": 169.471,
+      "retransmissions": 0
+     }
+    }
+   },
+   "polytune_speedup": 0.3632241042471407
+  }
+ ]
+}
