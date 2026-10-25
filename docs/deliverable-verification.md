@@ -5129,7 +5129,9 @@ Both added provisions were read at their sources: Art. 2(3) excludes systems use
 military, defence or national security purposes", and Annex III 6(e) covers profiling by or on behalf
 of law-enforcement authorities in detecting, investigating or prosecuting offences. The gate now
 holds both conditions, the attribution to the recital and the caveat, and it was seeded four more
-ways, each seed firing.
+ways, each seed firing. Redeployed (6b76af4, `index-CXjkbFrg.js`) and walked: after a run, all five
+use-case pages print the revised sentence with its caveat. The medical index is still checked in the
+clear, and all ten pages render with zero overflow at 1280 and 390 px.
 
 BUSINESS DOC RECONCILED Round 69. The out-of-repo document is brought level with this round. Its content
 is not quoted here, in the checklist, or in any commit - only the fact of the reconciliation, which is
