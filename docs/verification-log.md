@@ -3023,3 +3023,21 @@ what it exercises.
 argmax's mask went unexamined because its line says `a[k]`, not "mask". The gate therefore scans for
 share material drawn from any seeded call, and every exception it allows must keep its disclosure, or
 the exception lapses.
+
+### Round 67: a count that was true on the day it was measured
+
+**Context.** The second follow-up chosen after Round 65's report.
+
+**Zero was a measurement, not a property.** Seven rounds recorded npm audit counts, and every one of
+them was true on its day. None of them says anything about the next day, because what changes the
+answer, a newly published advisory, happens outside the repository. A check that runs on push cannot
+see it. The only form that can is one that runs on a clock.
+
+**The first run against the Rust crates was the first audit they ever had.** It found one advisory,
+and the right response was neither to silence the class of advisory nor to leave the check red. The
+policy ignores that one advisory by its ID, and states the reason. The test repeats the ID with the
+condition that reopens it. A new advisory, including a vulnerability in the same crate, still fails.
+
+**Each failure path was made to fire before the success path was trusted.** That meant a removed
+ignore, a disallowed git source, and a scratch project locking a version with a known critical
+advisory. A green audit is evidence only once the same audit has been seen to go red.

@@ -27,6 +27,9 @@ MONETIZATION*.md
 # under prototypes/ ships.
 wasm/qsh-mpc/target/
 wasm/qsh-mpc/.cargo-home/
+# Round 67: the cargo-deny policy is read by scripts/audit_deps.sh, not by the image. Kept out so that
+# editing it does not invalidate the cached Rust stage.
+wasm/qsh-mpc/deny.toml
 web/src/wasm/
 web/public/licenses/qsh-mpc.txt
 prototypes/
