@@ -13,7 +13,7 @@
 // unconditionally - so on the two pages where the attribution is of the reported decision, the panel
 // told the reader not to read it that way. It survived because the error points toward caution and so
 // reads as rigour. `clientCompute` sets the flag explicitly at each explanation site.
-import { AI_ACT_SCOPE } from "../lib/aiActScope";
+import { AI_ACT_CAVEAT, AI_ACT_SCOPE } from "../lib/aiActScope";
 
 export default function ShapPanel({ explanation, provenance, baseline, publishedModel, surfacedBackend,
   isOfReportedClass, hasTreeAttribution, usecase }: {
@@ -107,7 +107,7 @@ export default function ShapPanel({ explanation, provenance, baseline, published
       </p>
       {aiAct ? (
         <p className="muted" style={{ fontSize: 11, marginTop: 2 }}>
-          EU AI Act Art. 13 (transparency for high-risk systems): {aiAct.text}.
+          EU AI Act Art. 13 (transparency for high-risk systems). {aiAct.text} {AI_ACT_CAVEAT}
         </p>
       ) : null}
     </div>
