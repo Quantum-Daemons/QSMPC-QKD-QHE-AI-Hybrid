@@ -98,7 +98,7 @@ def crypto_table() -> str:
         ("Signature", "ML-DSA-65", "FIPS 204; sig 3309 B"),
         ("FHE", f"CKKS, ring degree {fhe.poly_modulus_degree}",
          f"{fhe.poly_modulus_degree // 2} slots, one multiplicative level per dot product"),
-        ("MPC", "Garbled circuits (emp-wasm)", "non-linear layers: ReLU, argmax"),
+        ("MPC", "Garbled circuits (Polytune)", "non-linear layers: ReLU, argmax"),
         ("QKD", "BB84 two-intensity decoy", "GLLP tagged fraction"),
     ]
     return "\n".join(" & ".join([esc(a), r"\texttt{" + esc(b) + "}", esc(c)]) + r" \\" for a, b, c in rows)

@@ -1,0 +1,41 @@
+# The demo's garbled-circuit tier: the secure argmax of web/src/lib/clientMPC.ts on Polytune.
+# Built by the Rust stage of docker/Dockerfile.web (and scripts/build_wasm.sh, which runs that stage)
+# into web/src/wasm/qsh_mpc; tested there with `cargo test` before every build, deploys included.
+# Replaced mpc-framework + emp-wasm-engine + summon-ts in Round 65; prototypes/polytune-argmax is where
+# it was first measured.
+[package]
+name = "qsh-mpc"
+version = "0.1.0"
+edition = "2024"
+# Polytune's own minimum; the image's toolchain is newer (rust 1.99.1, pinned by digest).
+rust-version = "1.89"
+publish = false
+license = "MIT"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+# Pinned to a commit: Polytune's latest release is a pre-release (v0.2.0-alpha.4).
+polytune = { git = "https://github.com/sine-fdn/polytune", rev = "47dc37840a241ba0e27c1b2234059746a1ba05b7" }
+futures = { version = "0.3.34", default-features = false, features = ["std", "async-await", "executor"] }
+web-time = "1.1"
+wasm-bindgen = "=0.2.129"
+wasm-bindgen-futures = "0.4.79"
+js-sys = "0.3.106"
+
+# Required by Polytune on wasm32, together with RUSTFLAGS='--cfg getrandom_backend="wasm_js"'.
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+getrandom_0_2 = { package = "getrandom", version = "0.2.16", features = ["js"] }
+getrandom_0_3 = { package = "getrandom", version = "0.3", features = ["wasm_js"] }
+getrandom_0_4 = { package = "getrandom", version = "0.4", features = ["wasm_js"] }
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+
+# No wasm-opt: it would be downloaded at build time; the measurements in the register were taken
+# without it.
+[package.metadata.wasm-pack.profile.release]
+wasm-opt = false
