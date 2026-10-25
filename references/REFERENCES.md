@@ -706,7 +706,7 @@ in Round 17 are marked below.
 | `EdgarLopezPhD/PaySim` | cited only, never cloned or vendored | **GPL-3.0** for the simulator source; the Kaggle output dataset is separately CC-BY-SA-4.0 |
 | `openfhe` (OpenFHE 1.5.1, CKKS with bootstrapping) | `qsh/fhe/backends.py` (`OpenFHEBackend`) | BSD-2-Clause |
 | **`s0l0ist/node-seal`** (SEAL compiled to WASM, CKKS) | `web/src/lib/clientFHE.ts` - real in-browser FHE | MIT |
-| **`mpc-framework`, `emp-wasm-engine`, `summon-ts`** | `web/src/lib/clientMPC.ts` - real in-browser garbled-circuit 2PC | MIT |
+| **`polytune`, `garble_lang`** (sine-fdn) | `web/src/lib/clientMPC.ts` via `wasm/qsh-mpc` - real in-browser garbled-circuit 2PC (replaced `mpc-framework` + `emp-wasm-engine` + `summon-ts` in Round 65); dependency notices in `/licenses/qsh-mpc.txt` | MIT |
 | **`mcp`** (MCP Python SDK; the class is `MCPServer`, named `FastMCP` before v2.0.0) and the official `@modelcontextprotocol/server-filesystem` | `qsh/mcp/*` - real quantum-safe MCP server and interop | MIT |
 | **`onnxruntime-web`** | `web/src/lib/onnxInference.ts` - browser inference. The `webgpu` and `wasm` builds are separate bundles and the demo picks one by probing for a real adapter | MIT |
 | `PennyLane` | `qsh/ai/federated.py` - quantum federated learning (`kind="qfl"`), and `qsh/qml_ids/detector.py`. The FedAvg and secure-aggregation code is this repository's own; Flower is cited as prior art, not used as a dependency | Apache-2.0 |

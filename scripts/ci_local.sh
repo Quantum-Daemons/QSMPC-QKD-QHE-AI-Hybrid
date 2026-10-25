@@ -85,6 +85,11 @@ else
 fi
 
 step "8/17 web typecheck + build"
+# Round 65: the MPC tier's wasm is built first, by the web image's own Rust stage (scripts/build_wasm.sh),
+# which also runs the crate's `cargo test` and writes the third-party notices. Docker layer caching makes
+# this seconds when wasm/qsh-mpc has not changed. Without it tsc cannot resolve clientMPC.ts's import.
+bash scripts/build_wasm.sh >/tmp/ci_wasm.log 2>&1 \
+  && ok "MPC wasm built; its cargo test passed; notices written" || { bad "MPC wasm build (scripts/build_wasm.sh)"; tail -15 /tmp/ci_wasm.log; }
 ( cd web && npx tsc --noEmit >/tmp/ci_tsc.log 2>&1 ) \
   && ok "tsc --noEmit" || { bad "tsc --noEmit"; tail -15 /tmp/ci_tsc.log; }
 ( cd web && npm run build >/tmp/ci_build.log 2>&1 ) \
