@@ -30,7 +30,7 @@ export default function BenchmarkPanel(
 
   // Bars are labelled by PATH, not by backend.
   //
-  // `backend` is a descriptive sentence - "node-seal CKKS + emp-wasm 2PC (measured: real 4-channel
+  // `backend` is a descriptive sentence - "node-seal CKKS + Polytune 2PC (measured: real 4-channel
   // encrypted convolution, 16 rotations over 196 packed patches)" - and as a category label it is
   // unusable: the latency chart rendered three bars and exactly one readable axis label, the short
   // one, so two of the three bars could not be identified at all. `path` is short, distinct, and is
@@ -223,7 +223,7 @@ export default function BenchmarkPanel(
               )}
               <p className="muted" style={{ fontSize: 12, margin: "2px 0 10px" }}>
                 Linear layers (matmul/conv) run under CKKS/FHE{split.device === "gpu" ? " (GPU)" : ""}; non-linear
-                layers (ReLU/argmax) run under MPC — MPyC secret sharing on the server, and in the browser <code>emp-wasm-engine</code> garbled circuits (MPyC is pure Python and is not in the bundle). {split.backend}.
+                layers (ReLU/argmax) run under MPC — MPyC secret sharing on the server, and in the browser <code>Polytune</code> garbled circuits (MPyC is pure Python and is not in the bundle). {split.backend}.
               </p>
               <div className="grid cols-2">
                 <ResponsiveContainer width="100%" height={180}>

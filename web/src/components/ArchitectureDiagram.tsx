@@ -33,7 +33,7 @@ const BOXES: Box[] = [
   { id: "fl", x: 200, y: ROW2, w: 160, title: "Federated training",
     lines: ["finance, medical:", "FedAvg, pairwise masks"], kind: "real" },
   { id: "pi", x: 380, y: ROW2, w: 200, title: "Private inference",
-    lines: ["CKKS linear (node-seal)", "+ garbled-circuit 2PC", "non-linear (emp-wasm)"], kind: "notional" },
+    lines: ["CKKS linear (node-seal)", "+ garbled-circuit 2PC", "non-linear (Polytune)"], kind: "notional" },
   { id: "qhe", x: 600, y: ROW2, w: 180, title: "QHE comparison",
     lines: ["QOTP + 8-qubit QCNN", "state-vector simulation"], kind: "seeded" },
   { id: "sig", x: 800, y: ROW2, w: 170, title: "Signed result",
