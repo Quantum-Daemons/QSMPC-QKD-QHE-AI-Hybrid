@@ -57,8 +57,9 @@
 - The QKD hardware is modelled by simulation; real deployments must address device
   imperfections (the WS2 IDS targets exactly these).
 - The crypto/compute libraries are trusted as implemented (pin versions + review): server-side
-  TenSEAL / OpenFHE / HEonGPU / liboqs / MPyC; client-side **node-seal** (CKKS) + **emp-wasm /
-  mpc-framework** (garbled-circuit 2PC) for the in-browser demo; the **MCP Python SDK** (`MCPServer`, named `FastMCP` before v2.0.0) for
+  TenSEAL / OpenFHE / HEonGPU / liboqs / MPyC; client-side **node-seal** (CKKS) + **Polytune /
+  Garble** (garbled-circuit 2PC, Rust compiled to wasm from `wasm/qsh-mpc`, Round 65) for the in-browser
+  demo; the **MCP Python SDK** (`MCPServer`, named `FastMCP` before v2.0.0) for
   the full-deployment MCP server.
 - **MCP tool dispatch** (full deployment): the quantum-safe channel authenticates + seals the
   `tools/call` and its result (ML-DSA + AES-GCM), but the tool *logic* runs server-side and is trusted;
@@ -245,19 +246,21 @@ statement of known limitations, not a conformance gap against any published requ
   other two were claims about specific libraries, and they no longer describe what ships: TFHE-rs' WASM
   build does not support FHE computations, but the demo does not use TFHE-rs - it runs **node-seal**
   (Microsoft SEAL compiled to WASM) for real CKKS (`web/src/lib/clientFHE.ts`); and JIFF is indeed
-  unmaintained and the PSE MPC Framework sunset, but the demo runs **`mpc-framework` + `emp-wasm-engine`
-  + `summon-ts`** authenticated garbling (`web/src/lib/clientMPC.ts`). Both are real, measured, and
+  unmaintained and the PSE MPC Framework sunset, but the demo runs **Polytune** authenticated garbling
+  (`web/src/lib/clientMPC.ts`; it ran `mpc-framework` + `emp-wasm-engine` + `summon-ts` until Round 65).
+  Both are real, measured, and
   described as such in `architecture.md` and `crypto-agility.md` - this bullet contradicted them.
   Caveat that *does* apply to the MPC path: both "parties" share one JS heap, so the party separation
   is notional (stated at `clientMPC.ts:10-12`), and it is a demonstration of the protocol, not two
   mutually distrusting hosts.
-  **A SECOND CAVEAT, ADDED ROUND 55, AND IT IS A SUPPLY-CHAIN ONE.** The correction above replaced
+  **A SECOND CAVEAT, ADDED ROUND 55 AND RESOLVED IN ROUND 65, AND IT WAS A SUPPLY-CHAIN ONE.** The
+  correction above replaced
   "JIFF is unmaintained and the PSE MPC Framework sunset" with the three packages that actually ship -
   and all three of those are now themselves archived upstream. Verified at the GitHub API on
   2026-08-22: `emp-wasm` (archived, last push **2025-06-13**), `mpc-framework` (archived,
   **2025-07-22**) and `summon` (archived, **2025-07-09**), each present under both `voltrevo/*` and the
   `privacy-ethereum/*` org it moved to. So the whole garbled-circuit tier - `emp-wasm-engine ^0.5.4`,
-  `mpc-framework ^0.3.0`, `summon-ts ^0.6.2` - rests on code with no upstream maintainer and no
+  `mpc-framework ^0.3.0`, `summon-ts ^0.6.2` - rested on code with no upstream maintainer and no
   security-patch path. That does not make the protocol wrong or the measurements false, and nothing
   here is being withdrawn; it means the tier carries a risk the CKKS tier does not, since `node-seal`
   tracks Microsoft SEAL. Note the shape: the previous bullet was corrected by naming the maintained
@@ -273,7 +276,12 @@ statement of known limitations, not a conformance gap against any published requ
   times faster than emp-wasm at 2 classes, while sending about five times the bytes - the cost that
   would dominate on separate hosts, which was not timed. **Round 64 timed it**, between two tabs over
   netem-shaped real TCP: at 2 classes Polytune still finished first on all 18 links (1.09 to 3.33
-  times faster), and at 10 classes emp-wasm did (1.47 and 2.75 times); the demo runs 2. Every result carries a
+  times faster), and at 10 classes emp-wasm did (1.47 and 2.75 times); the demo runs 2. **Round 65
+  replaced the tier**: `clientMPC.ts` now runs Polytune, built by the web image's Rust stage from
+  `wasm/qsh-mpc`, whose `cargo test` runs on every build, the public demo's included, and the three
+  archived packages were removed. The residual risk moves with it: Polytune's latest release is a
+  pre-release, so the crate is pinned to a commit, and a 10-class model under MPC would be slower than
+  it was. Every result carries a
   `ProvenanceBadge` with one of exactly **four** states - `MEASURED (local WebGPU)`, `MEASURED (local
   WASM)`, `MEASURED (plain JS)`, `SIMULATED` - together with the runtime evidence for that claim (`adapter.info`,
   `crossOriginIsolated`, `ort.env.wasm.numThreads`, bytes transferred vs served from cache). A result
@@ -294,20 +302,17 @@ statement of known limitations, not a conformance gap against any published requ
   container that left `/api/run/*` writable by anonymous visitors while the page displayed "No computation
   is sent to a server". The container was removed and `/api` now 404s, but that exposure was recorded only
   in `architecture.md`; a threat model should carry it.
-- **One production dependency advisory stays open, assessed against what the demo ships (Rounds 59
-  and 61).** Round 59 found three. The two react-router ones (an open redirect through a link target
+- **No dependency advisory stays open (Rounds 59 to 65).** Round 59 found three production advisories
+  and two development-tooling ones. The two react-router ones (an open redirect through a link target
   built from attacker input, and constructor injection during server-side hydration) were fixed by the
   upgrade to react-router 7.18.4 in Round 61; before that they were unreachable, because the app builds
   no link target from input and renders a declarative `<BrowserRouter>` with no hydration.
   `tests/test_navigation_targets_are_not_built_from_input.py` still fails the day a link target is
   built from a query parameter, because that would be an open redirect under any router version. The
-  one that remains is zod's (memory exhaustion on an oversized array), reached through
-  `mpc-framework`, which is archived and will not release a fix; no zod code is in the built bundle.
-  The vite and esbuild advisories were dev-server issues, unreachable from the public image, which
-  serves static files from Caddy with no Vite process; Round 62 upgraded vite to 6.4.5 with esbuild
-  0.25.12, which fixes them, so `npm audit` including the development tooling now reports the same two
-  packages as the production audit. The open item is an assessment of reachability, not a fix, and the
-  register's Round 59, 61 and 62 sections carry the evidence.
+  vite and esbuild advisories, dev-server issues unreachable from the public image, were fixed by vite
+  6.4.5 in Round 62. The zod one, reached through the archived `mpc-framework`, left with that package
+  in Round 65. `npm audit` now reports none, development tooling included; the register's Round 59 to
+  65 sections carry the evidence.
 - **There is no `REMOTE` provenance.** The scheme has exactly four states - `MEASURED (local WebGPU)`,
   `MEASURED (local WASM)`, `MEASURED (plain JS)` and `SIMULATED`. `remote` was **removed from the type**
   in Round 24d, not merely left unset: nothing in `web/src` calls the ZeroGPU Space, that Space returns
