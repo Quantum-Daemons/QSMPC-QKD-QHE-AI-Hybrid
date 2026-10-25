@@ -4724,3 +4724,98 @@ new tab, and nothing in it overflows. The console showed no error.
 BUSINESS DOC RECONCILED Round 65. The out-of-repo document is brought level with this round. Its content
 is not quoted here, in the checklist, or in any commit - only the fact of the reconciliation, which is
 what gate 16 reads.
+
+## Round 66: secret-sharing masks from the CSPRNG, and the argmax shared modulo 2^32
+
+**Round 65 closed first.** PR #61 merged as 421eb7a, and the demo was redeployed from main. It serves
+the bundle the branch walk saw (`index-Cpq7ooVo.js`): nothing under `web/` changed after that walk, so
+the same hash was expected. All ten pages were walked again at 1280 and 390 px. The medical pipeline
+took 143.21 ms over 995.02 KB, all three published models verified PASS, and the summary signed.
+
+**What was wrong.** Both of the demo's secret-sharing masks came from the run's seeded generator:
+mulberry32, 32 bits of state, keyed on the seed the page shows.
+- The secure argmax in `clientMPC.ts`: `a_k = floor(u() * 2^16)` and `b_k = q_k - a_k + 2^16`. Anyone
+  with the seed could recompute every mask. A mask bounded to 2^16 also hides a value only
+  statistically: `b_k` for two logits up to 1024 apart differ in distribution by up to
+  1024 / 2^16 = 1/64.
+- The secure sum in `clientCompute.ts`: `mask = floor(u() * p)`. It could be recomputed in the same
+  way, and it was biased, because scaling a 32-bit output to `[0, p)` is uniform only when p divides
+  2^32, which no odd prime does.
+
+Nothing on a page claimed perfect hiding for either, and in one tab both parties are notional. The
+source comment did claim more than held: "neither party's circuit input reveals a logit". It is the
+same defect as the Round 40 finding about the QOTP mask, in a line that never contained the word
+"mask", which is how it stayed out of that sweep.
+
+**What changed.**
+- `web/src/lib/csprng.ts` (new) draws from `crypto.getRandomValues`. `randomWords(n)` gives uniform
+  32-bit words. `randomBelow(p)` gives a uniform value below p by rejection, with no modulo bias.
+- The argmax shares each quantised logit modulo 2^32: `a_k` is a uniform 32-bit word and
+  `b_k = q_k - a_k mod 2^32`, so each share alone is uniform whatever the logit. `secureArgmax` no
+  longer takes a generator.
+- Garble panics on integer overflow rather than wrapping (`push_panic_if(overflow, Overflow)` in its
+  compiler), so the circuit adds in 64 bits, where two 32-bit values cannot overflow, and casts back to
+  32. Its compiler keeps the low bits on a narrowing cast, which is the reduction mod 2^32. Dropping the
+  offset also shrank the circuit. At 2 classes it went from 400 AND gates and 1,018,898 bytes to 367
+  and 944,619 bytes. At 10 classes it went from 2,997 and 7,184,705 to 2,852 and 6,857,722. The message
+  counts (69 and 195) are unchanged. The crate's `#[ignore]` test `report_circuit_size` prints these.
+- The secure sum draws each mask with `randomBelow(p)` and still advances the run's generator once per
+  secret, as it did when it drew the masks. So a seed selects the same inputs downstream as before,
+  including the row `private_inference` encrypts. The argmax's draws were the run's last, so removing
+  them moves nothing.
+
+**Not changed, and why.** The QOTP demo key in `quantumSim.ts` stays on the seeded generator, as
+Round 40 decided: that key decides the circuit's output, so a CSPRNG key would make the page's class
+irreproducible, and the disclosure beside it says anyone with the seed can recompute it. The cost
+model's shares in `mpcNonlinear` run no protocol and say so ("representative, not cryptographic"). The
+Python side was checked: `qsmpc/shamir.py` draws its coefficients with `secrets.randbelow`. The masks
+in `secure_summation.py` are a simulator's measurement outcomes, not classical shares.
+`docs/threat-model.md`'s key table now lists all three browser sites with their sources.
+
+**Verified locally on the built bundle** (client-only, as the demo builds it):
+- **Seeded figures unchanged.** Genomics, which runs the secure sum before `private_inference`, was run
+  on the Round 65 build and on this one. They agree on every seeded figure: secure sum 235 over Z_239
+  from 7 parties, PRS -0.2332, class 0, and the same top SHAP driver. The encrypted-batch agreement
+  differs between them (0.87 and 0.93), and it differed as much across runs of this build alone
+  (0.93, 0.90, 0.83). CKKS draws its own encryption noise, and 7 of the 30 rows are ties that the
+  noise decides.
+- **Medical.** The published ResNet-18 ran on held-out row 116 and predicted "normal", and the
+  encrypted convolution returned class 1, both as in the Round 65 walk. Its MPC exchanged 922.48 KB
+  (944,619 bytes), all three published models verified PASS, and the summary signed.
+- **Finance.** 120.07 to 142.37 ms over three runs, against 115.8 to 141.0 ms on the Round 65 build:
+  the smaller circuit does not show in the time.
+- **Pages.** All ten pages have zero overflow at 390 px. The Validations card states the new circuit
+  beside the measured one.
+
+**The gate.** `tests/test_secret_sharing_masks_come_from_the_csprng.py` checks the change two ways.
+- Through the real modules bundled by esbuild:
+  - the argmax's shares reach the module as Uint32Array and reconstruct mod 2^32;
+  - they are fresh on every call and span the 32-bit range;
+  - a generator passed anyway does not reach them;
+  - `randomBelow` stays in range, is uniform for p = 3, and refuses moduli outside `[1, 2^32]`.
+- Statically:
+  - the secure sum uses `randomBelow` and keeps the stream;
+  - the circuit adds in 64 bits with no offset, and its test wraps;
+  - across `web/src`, no statement draws share or mask material from a seeded generator, except the two
+    waivers, each tied to its disclosure.
+
+It was seeded eight ways, and each seed fires:
+- Math.random masks bounded to 2^16;
+- the secure sum back on `u()`;
+- the stream advance removed;
+- the circuit offset restored;
+- the QOTP disclosure removed;
+- the rejection removed from `randomBelow`;
+- a new seeded "pad" in another module;
+- a generator parameter re-added to `secureArgmax`.
+
+The crate's own test now uses masks across the whole 32-bit range, including `u32::MAX`, so most of its
+pairs wrap.
+
+UNVERIFIED - needs confirmation: that Garble's narrowing cast keeps the low bits is read from its
+compiler source and confirmed by the wrapping test cases, not by Garble's documentation, which does
+not state it.
+
+BUSINESS DOC RECONCILED Round 66. The out-of-repo document is brought level with this round. Its content
+is not quoted here, in the checklist, or in any commit - only the fact of the reconciliation, which is
+what gate 16 reads.
