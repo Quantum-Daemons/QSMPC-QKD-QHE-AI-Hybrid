@@ -19,6 +19,7 @@ import { encryptedConv2d, encryptedLinear, encryptedLinearBatch, encryptedStuden
 import { clientTrainScoreIDS } from "./clientIDS";
 import { clientQFL } from "./clientQFL";
 import { secureArgmax, warmMPC } from "./clientMPC";
+import { randomBelow } from "./csprng";
 import { optimizeQKD } from "./clientOptiQKD";
 import { generateQuantumBits } from "./clientQRNG";
 import { bb84, channelLossDb, e91, FIBER, FREE_SPACE, h2, intrinsicQber, keyRateWithClock,
@@ -869,7 +870,7 @@ async function publishedStudentWeights(usecase: string | undefined): Promise<Cnn
   return out;
 }
 
-export async function realClientHybrid(features: number[], u: () => number,
+export async function realClientHybrid(features: number[],
                                       convolve = false,
                                       usecase?: string,
                                       realModel?: { W: number[][]; b: number[] } | null,
@@ -905,7 +906,7 @@ export async function realClientHybrid(features: number[], u: () => number,
       ? W.map((_, j) => Number(realModel!.b?.[j] ?? 0))
       : [0, -0.05];
     const fhe = await encryptedLinear(W, b, features);           // REAL CKKS, measured
-    const mpc = await secureArgmax(fhe.logits, u);              // REAL garbled-circuit 2PC argmax, measured
+    const mpc = await secureArgmax(fhe.logits);                 // REAL garbled-circuit 2PC argmax, measured
 
     // The CNN workload now runs a REAL encrypted convolution instead of multiplying this dot
     // product's latency by a cost model. Shape comes from the trained student (`medical_cnn`),
@@ -2415,7 +2416,17 @@ export function runClientPipeline(
               + `exceeds the ${MAX_FIELD_PRIME} ceiling and was clamped: past 2^53 the modular sum `
               + `stops being exact, and trial division at that size does not return`);
           }
-          const shares = secrets.map((s) => { const mask = Math.floor(u() * p); return [((s - mask) % p + p) % p, mask % p]; });
+          // Each mask is uniform over Z_p from the CSPRNG (csprng.ts). Until Round 66 it was
+          // floor(u() * p) from the run's seeded generator: anyone with the seed on the page could
+          // recompute it, and scaling a 32-bit output to [0, p) is biased unless p divides 2^32,
+          // which no odd prime does. The generator is still advanced once per secret, as it was when
+          // it drew the masks, so a seed selects the same inputs downstream as before - the row
+          // private_inference encrypts among them.
+          const shares = secrets.map((s) => {
+            u();
+            const mask = randomBelow(p);
+            return [((s - mask) % p + p) % p, mask];
+          });
           const total = shares.reduce((acc, [s0, s1]) => (acc + s0 + s1) % p, 0) % p;
           metric(stage, "secure_sum", total);
           metric(stage, "qsms_prime", p);
@@ -2705,7 +2716,7 @@ export function runClientPipeline(
         // The model the page REPORTS and EXPLAINS, handed to the path that encrypts it, plus the
         // corpus in the same feature space so the agreement figure covers more than one row.
         const corpus = realIn?.model?.W ? await realInputCorpus(usecase) : null;
-        const real = await realClientHybrid(feats, u, usecase === "medical_fl", usecase,
+        const real = await realClientHybrid(feats, usecase === "medical_fl", usecase,
                                             realIn?.model ?? null, corpus);
         if (real) {
           // A real encrypted convolution is not scaled by anything: its latency IS the measurement.
