@@ -131,6 +131,9 @@ _RETIRED = [
     ("The hybrid (PQC+QKD) channel protects it today", "QKD is simulated here"),
     ("slower WASM backend", "WASM is the default backend, and the faster one on the machine measured"),
     ("a WebGPU-capable browser", "on the machine measured, WebGPU was the backend that could not finish"),
+    # Round 70: the browser's OptiQKD runs coordinate ascent over the analytic decoy-state model;
+    # scikit-learn is the full deployment's surrogate.
+    ("OptiQKD</b> (scikit-learn surrogate", "the browser optimises the analytic decoy-state model"),
 ]
 
 
