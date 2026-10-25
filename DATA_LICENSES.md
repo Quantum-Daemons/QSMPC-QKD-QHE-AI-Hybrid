@@ -221,9 +221,11 @@ published baseline they are measured against - including where the model falls s
 
 ## 6. OSS libraries (commercial-OK)
 
-- **node-seal** (MIT) - Microsoft SEAL -> WASM, real in-browser CKKS. **mpc-framework** +
-  **emp-wasm-engine** + **summon-ts** (MIT) - real in-browser garbled-circuit 2PC for the non-linear
-  (argmax) layer, both parties loopback in one tab.
+- **node-seal** (MIT) - Microsoft SEAL -> WASM, real in-browser CKKS. **Polytune** + **Garble**
+  (sine-fdn, MIT) - real in-browser garbled-circuit 2PC for the non-linear (argmax) layer, both parties
+  loopback in one tab, compiled from `wasm/qsh-mpc` with 69 Rust crates whose licences are all permissive;
+  their own licence files are collected at build time into `/licenses/qsh-mpc.txt`, which ships with the
+  demo. `mpc-framework` + `emp-wasm-engine` + `summon-ts` filled this role until Round 65.
 - **onnxruntime-web** (MIT) - runs the published industry models in the browser.
 - **MCP Python SDK** (`mcp`, MIT) - the quantum-safe MCP server; the official
   **@modelcontextprotocol/server-filesystem** (MIT) for external-MCP interop.

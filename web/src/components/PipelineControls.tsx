@@ -105,7 +105,7 @@ export default function PipelineControls({ run }: { run: Run }) {
             Full: the server-side TenSEAL/OpenFHE/MPyC selectors stay (real crypto-agility). */}
         {demo ? (
           <span className="muted" style={{ fontSize: 13 }}
-            title="The demo computes FHE/MPC for real in your browser (node-seal CKKS + an emp-wasm garbled-circuit 2PC whose two parties share this tab) — there is no server backend to select.">
+            title="The demo computes FHE/MPC for real in your browser (node-seal CKKS + a Polytune garbled-circuit 2PC whose two parties share this tab) — there is no server backend to select.">
             FHE/MPC: <strong>node-seal CKKS + garbled-circuit 2PC</strong> · real protocol, in-browser, notional parties
           </span>
         ) : (

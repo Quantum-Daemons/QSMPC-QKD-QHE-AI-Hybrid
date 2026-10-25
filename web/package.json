@@ -24,10 +24,8 @@
     "@noble/post-quantum": "^0.7.0",
     "@types/gif.js": "^0.2.5",
     "@xyflow/react": "^12.3.5",
-    "emp-wasm-engine": "^0.5.4",
     "gif.js": "^0.2.0",
     "html-to-image": "^1.11.13",
-    "mpc-framework": "^0.3.0",
     "node-seal": "^7.0.0",
     "onnxruntime-web": "^1.27.0",
     "papaparse": "^5.4.1",
@@ -35,7 +33,6 @@
     "react-dom": "^18.3.1",
     "react-router": "~7.18.4",
     "recharts": "^2.13.3",
-    "summon-ts": "^0.6.2",
     "three": "^0.186.1"
   },
   "devDependencies": {

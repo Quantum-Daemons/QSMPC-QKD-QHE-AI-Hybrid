@@ -71,7 +71,7 @@ a new FHE backend) is **one `register(...)` call** - no stage code changes.
   (KEM / QKD / FHE (linear) / MPC (non-linear) / Signature); the choice is sent in the run config and
   threaded to the stages via `ctx.config`. In the **public demo** the FHE/MPC *backend* selectors are
   replaced by a "real, in-browser" badge - the demo runs genuine client-side **node-seal CKKS** +
-  **emp-wasm garbled-circuit 2PC** rather than the server-side TenSEAL/MPyC backends, so a backend
+  **Polytune garbled-circuit 2PC** rather than the server-side TenSEAL/MPyC backends, so a backend
   choice would be inert; KEM/QKD/Signature stay selectable (they run client-side via `@noble`). The
   **Parameters panel** additionally exposes `qkd.protocol` (BB84 <-> E91), the QRNG extractor + bits + epsilon, the
   OptiQKD budget, the QCNN qubit count, and the per-use-case data knobs; the **Agentic-AI, MCP panel**

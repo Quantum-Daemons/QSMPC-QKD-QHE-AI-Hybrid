@@ -2978,3 +2978,21 @@ transform what it forwards.
 
 **The headline needed its condition.** "Polytune is faster" is true at 2 classes on every link and false
 at 10. The demo only ever runs 2, which was checked in the models rather than assumed.
+
+### Round 65: replacing a dependency tier, and the gate that had to change its mind
+
+**Context.** The replacement decided after the measurements of Rounds 63 and 64.
+
+**A gate written to forbid exactly this.** Round 63's gate said the web image may not invoke a Rust
+toolchain, because a prototype was not to ship by accident. Round 65 ships Rust on purpose, and the
+honest edit was to keep the property that mattered - nothing from prototypes/ ships - and drop the
+proxy for it, rather than delete the test. Its new form names what the image may build.
+
+**Tests that run where the artefact is made.** The argmax's correctness test runs inside the image's
+build stage, so the module that reaches visitors is one that passed it minutes earlier on the same
+toolchain. The local and GitHub CI run the same stage, not a parallel recipe that could drift from it.
+
+**Notices quote, they do not summarise.** A licence identifier says which terms apply, but MIT and BSD
+attach to the copyright line in each crate's own file, so the notices copy those files. The generator
+refuses rather than warns, because a build that ships a binary under unreviewed terms is not one to
+finish quietly.

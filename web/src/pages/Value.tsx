@@ -44,7 +44,7 @@ export default function Value() {
         <table className="facts-table small">
           <thead><tr><th>Capability</th><th>What the search found</th><th>Verdict</th><th>In this demo</th></tr></thead>
           <tbody>
-            <tr><td>MPC in a browser</td><td>webSPDZ (IACR ePrint 2025/487) compiles MP-SPDZ to WASM over WebRTC/WebSockets and names JIFF and MPyC-Web as earlier engines</td><td>not new</td><td>a garbled-circuit 2PC (emp-wasm) re-implements a known idea</td></tr>
+            <tr><td>MPC in a browser</td><td>webSPDZ (IACR ePrint 2025/487) compiles MP-SPDZ to WASM over WebRTC/WebSockets and names JIFF and MPyC-Web as earlier engines</td><td>not new</td><td>a garbled-circuit 2PC (Polytune) re-implements a known idea</td></tr>
             <tr><td>FHE encrypt / decrypt in a browser</td><td>IACR ePrint 2026/515 treats client-side operations as encryption and decryption; Zama's TFHE-rs WASM API supports key generation, encryption and decryption</td><td>common</td><td>-</td></tr>
             <tr><td>FHE <i>evaluation</i> in a browser</td><td>none found; TFHE-rs WASM documents that it does <b>not</b> support FHE computation, citing WASM threading and the 2&nbsp;GB memory ceiling</td><td>unusual</td><td>node-seal evaluates a real CKKS dot product and convolution in the tab</td></tr>
           </tbody>

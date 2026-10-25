@@ -204,3 +204,10 @@ prototypes/*/.cargo-home/
 # ...except the network bench's record, which /validations draws from (through a checked copy)
 # and which is the evidence for it. The unanchored results/ rule above was meant for run outputs.
 !prototypes/net-bench/results/
+
+# Round 65: the MPC tier's wasm and its notices are BUILT (scripts/build_wasm.sh, or the image's
+# Rust stage), never committed; the crate's own build state stays local too.
+web/src/wasm/
+web/public/licenses/qsh-mpc.txt
+wasm/qsh-mpc/target/
+wasm/qsh-mpc/.cargo-home/
