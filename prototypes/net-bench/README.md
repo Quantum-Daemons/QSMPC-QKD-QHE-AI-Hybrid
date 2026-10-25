@@ -1,11 +1,11 @@
 # Network bench: the secure argmax under two engines, over a shaped link
 
 A measurement harness, not part of the demo. It runs the demo's 2-party secure argmax
-(`web/src/lib/clientMPC.ts`) under emp-wasm, which the demo ships, and under Polytune
-(`prototypes/polytune-argmax`), with the two parties in two browser tabs connected over real WebSockets
-through relays that netem shapes. The Validations page draws the recorded results from a copy,
-`web/src/lib/mpcNetBench.json`, which `tests/test_mpc_net_bench_copy_matches_the_record.py` holds
-equal to `results/summary.json`.
+(`web/src/lib/clientMPC.ts`, as it was before Round 66) under emp-wasm, which the demo shipped until
+Round 65, and under Polytune (`prototypes/polytune-argmax`), with the two parties in two browser tabs
+connected over real WebSockets through relays that netem shapes. The Validations page draws the
+recorded results from a copy, `web/src/lib/mpcNetBench.json`, which
+`tests/test_mpc_net_bench_copy_matches_the_record.py` holds equal to `results/summary.json`.
 
 ## How the link is built
 

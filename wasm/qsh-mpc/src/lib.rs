@@ -1,14 +1,20 @@
 //! The demo's secure argmax, on Polytune, with both parties in one browser tab.
 //!
-//! `web/src/lib/clientMPC.ts` hands this the two parties' additive shares of N logits
-//! (`q_k = a_k + b_k - BIG`) and gets back only the index of the largest, computed under Polytune's
-//! WRK17b multi-party authenticated garbling (secure against malicious adversaries controlling all
-//! but one party). Both parties run in this module over an in-memory channel: the party separation is
-//! notional, as it was under emp-wasm, while the protocol, its messages and its timing are real.
+//! `web/src/lib/clientMPC.ts` hands this the two parties' additive shares of N logits modulo 2^32
+//! (`q_k = a_k + b_k mod 2^32`, `a_k` uniform over 32 bits) and gets back only the index of the
+//! largest, computed under Polytune's WRK17b multi-party authenticated garbling (secure against
+//! malicious adversaries controlling all but one party). Both parties run in this module over an
+//! in-memory channel: the party separation is notional, as it was under emp-wasm, while the protocol,
+//! its messages and its timing are real.
 //!
-//! Replaced emp-wasm + mpc-framework + summon-ts in Round 65. The circuit uses Garble's 32-bit
-//! integers where the summon circuit used a 24-bit width, which costs some extra AND gates and changes
-//! nothing about the result (values stay below 2^17).
+//! Replaced emp-wasm + mpc-framework + summon-ts in Round 65.
+//!
+//! SHARING MODULO 2^32, ROUND 66. Until then the shares were `q_k = a_k + b_k - 2^16` with `a_k`
+//! bounded to 2^16, which hides a value only statistically (two values up to 1024 apart are
+//! distinguishable with advantage up to 1024 / 2^16 = 1/64). Modulo 2^32 each share alone is uniform
+//! whatever the value. Garble panics on integer overflow rather than wrapping, so the circuit adds in
+//! 64 bits, where two 32-bit values cannot overflow, and casts back to 32: a narrowing cast keeps the
+//! low bits, which is the reduction mod 2^32.
 
 use std::{cell::Cell, rc::Rc};
 
@@ -18,24 +24,21 @@ use polytune::{
     garble_lang::{
         CircuitKind, CompileOptions, compile_with_options,
         literal::Literal,
-        token::{SignedNumType, UnsignedNumType},
+        token::UnsignedNumType,
     },
     mpc,
 };
 use wasm_bindgen::prelude::*;
 use web_time::Instant;
 
-/// The additive-share mask, as in clientMPC.ts.
-pub const BIG: i64 = 1 << 16;
-
-/// Garble source for the argmax of `n` shared values, unrolled the way clientMPC.ts builds its
-/// summon circuit: `n - 1` comparisons, the index of the first maximum wins.
+/// Garble source for the argmax of `n` values shared modulo 2^32, unrolled: `n - 1` comparisons, the
+/// index of the first maximum wins.
 pub fn argmax_source(n: usize) -> String {
-    let mut s = format!("pub fn main(a: [i32; {n}], b: [i32; {n}]) -> u8 {{\n");
-    s += &format!("    let mut best: i32 = a[0usize] + b[0usize] - {BIG}i32;\n");
+    let mut s = format!("pub fn main(a: [u32; {n}], b: [u32; {n}]) -> u8 {{\n");
+    s += "    let mut best: u32 = ((a[0usize] as u64) + (b[0usize] as u64)) as u32;\n";
     s += "    let mut arg: u8 = 0u8;\n";
     for k in 1..n {
-        s += &format!("    let q{k}: i32 = a[{k}usize] + b[{k}usize] - {BIG}i32;\n");
+        s += &format!("    let q{k}: u32 = ((a[{k}usize] as u64) + (b[{k}usize] as u64)) as u32;\n");
         s += &format!("    if q{k} > best {{\n        best = q{k};\n        arg = {k}u8;\n    }}\n");
     }
     s += "    arg\n}\n";
@@ -106,7 +109,7 @@ pub struct Outcome {
 }
 
 /// Runs the secure argmax with party 0 holding `a` and party 1 holding `b`.
-pub async fn secure_argmax_shares(a: &[i32], b: &[i32]) -> Result<Outcome, String> {
+pub async fn secure_argmax_shares(a: &[u32], b: &[u32]) -> Result<Outcome, String> {
     if a.len() != b.len() || a.len() < 2 {
         return Err(format!("need two equal-length share vectors of at least 2, got {} and {}", a.len(), b.len()));
     }
@@ -117,7 +120,7 @@ pub async fn secure_argmax_shares(a: &[i32], b: &[i32]) -> Result<Outcome, Strin
     let circuit = prg.circuit.unwrap_register_ref();
     let compile_ms = t0.elapsed().as_secs_f64() * 1e3;
 
-    let lit = |v: &[i32]| Literal::Array(v.iter().map(|&x| Literal::NumSigned(x as i64, SignedNumType::I32)).collect());
+    let lit = |v: &[u32]| Literal::Array(v.iter().map(|&x| Literal::NumUnsigned(x as u64, UnsignedNumType::U32)).collect());
     let in0 = prg.literal_arg(0, lit(a)).map_err(|e| format!("party 0 input: {e}"))?.as_bits();
     let in1 = prg.literal_arg(1, lit(b)).map_err(|e| format!("party 1 input: {e}"))?.as_bits();
 
@@ -143,7 +146,7 @@ pub async fn secure_argmax_shares(a: &[i32], b: &[i32]) -> Result<Outcome, Strin
 
 /// Browser entry: the same shares clientMPC.ts would build, and the measured outcome.
 #[wasm_bindgen]
-pub async fn secure_argmax(a: Vec<i32>, b: Vec<i32>) -> Result<JsValue, JsValue> {
+pub async fn secure_argmax(a: Vec<u32>, b: Vec<u32>) -> Result<JsValue, JsValue> {
     let r = secure_argmax_shares(&a, &b).await.map_err(|e| JsValue::from_str(&e))?;
     let o = js_sys::Object::new();
     for (k, v) in [
@@ -163,25 +166,43 @@ pub async fn secure_argmax(a: Vec<i32>, b: Vec<i32>) -> Result<JsValue, JsValue>
 mod tests {
     use super::*;
 
-    /// The shares clientMPC.ts builds: q = clamp(round((logit + 8) * 64), 0, 1024), a uniform in
-    /// [0, BIG), b = q - a + BIG.
-    fn shares(q: &[i64], a: &[i64]) -> (Vec<i32>, Vec<i32>) {
-        (a.iter().map(|&x| x as i32).collect(), q.iter().zip(a).map(|(&q, &a)| (q - a + BIG) as i32).collect())
+    /// The shares clientMPC.ts builds: q = clamp(round((logit + 8) * 64), 0, 1024), a uniform over
+    /// 32 bits, b = q - a mod 2^32.
+    fn shares(q: &[u32], a: &[u32]) -> (Vec<u32>, Vec<u32>) {
+        (a.to_vec(), q.iter().zip(a).map(|(&q, &a)| q.wrapping_sub(a)).collect())
     }
 
+    /// Masks across the whole 32-bit range, so most pairs wrap: a + b exceeds 2^32 whenever a > q.
+    /// Taken in 32 bits, Garble would panic on exactly these; the test fails if the circuit does.
     #[test]
     fn matches_the_plaintext_argmax() {
-        let cases: [(&[i64], &[i64], u32); 4] = [
-            (&[300, 700], &[12_345, 60_001], 1),
-            (&[900, 100], &[0, 65_535], 0),
+        let cases: [(&[u32], &[u32], u32); 6] = [
+            (&[300, 700], &[12_345, 4_000_000_001], 1),
+            (&[900, 100], &[0, u32::MAX], 0),
             (&[512, 512], &[7, 9], 0),
-            (&[10, 1024, 400], &[1, 2, 3], 1),
+            (&[10, 1024, 400], &[1, 2_147_483_648, 3], 1),
+            (&[0, 1], &[u32::MAX, u32::MAX], 1),
+            (&[1024, 0, 1023], &[u32::MAX - 5, 3_141_592_653, 1], 0),
         ];
         for (q, a, want) in cases {
             let (sa, sb) = shares(q, a);
             let r = futures::executor::block_on(secure_argmax_shares(&sa, &sb)).expect("mpc runs");
             assert_eq!(r.arg, want, "q = {q:?}");
             assert!(r.bytes > 0);
+        }
+    }
+
+    /// The circuit size and traffic the register records, at the demo's 2 classes and at 10. Not part
+    /// of the build: `cargo test --release -- --ignored --nocapture`.
+    #[test]
+    #[ignore]
+    fn report_circuit_size() {
+        for n in [2usize, 10] {
+            let q: Vec<u32> = (0..n as u32).map(|k| (k * 97) % 1025).collect();
+            let a: Vec<u32> = (0..n as u32).map(|k| k.wrapping_mul(2_654_435_761)).collect();
+            let (sa, sb) = shares(&q, &a);
+            let r = futures::executor::block_on(secure_argmax_shares(&sa, &sb)).expect("mpc runs");
+            println!("n={n} and_ops={} bytes={} messages={}", r.and_ops, r.bytes, r.messages);
         }
     }
 }
