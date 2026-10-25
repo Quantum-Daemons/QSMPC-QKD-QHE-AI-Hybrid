@@ -113,6 +113,11 @@ pub async fn secure_argmax_shares(a: &[u32], b: &[u32]) -> Result<Outcome, Strin
     if a.len() != b.len() || a.len() < 2 {
         return Err(format!("need two equal-length share vectors of at least 2, got {} and {}", a.len(), b.len()));
     }
+    // The index comes back as a u8. Checked here, before anything is compiled, rather than left to
+    // fail as an out-of-range literal inside the generated Garble source (Round 68).
+    if a.len() > 255 {
+        return Err(format!("at most 255 values: the argmax index is a u8, got {}", a.len()));
+    }
     let code = argmax_source(a.len());
     let t0 = Instant::now();
     let prg = compile_with_options(&code, CompileOptions { circuit_kind: CircuitKind::Register, ..Default::default() })
@@ -190,6 +195,15 @@ mod tests {
             assert_eq!(r.arg, want, "q = {q:?}");
             assert!(r.bytes > 0);
         }
+    }
+
+    /// Inputs the circuit cannot take are refused before anything is compiled or sent.
+    #[test]
+    fn refuses_inputs_it_cannot_index() {
+        let run = |n: usize, m: usize| futures::executor::block_on(secure_argmax_shares(&vec![0; n], &vec![0; m]));
+        assert!(run(1, 1).unwrap_err().contains("at least 2"));
+        assert!(run(3, 2).unwrap_err().contains("equal-length"));
+        assert!(run(256, 256).unwrap_err().contains("at most 255"));
     }
 
     /// The circuit size and traffic the register records, at the demo's 2 classes and at 10. Not part
