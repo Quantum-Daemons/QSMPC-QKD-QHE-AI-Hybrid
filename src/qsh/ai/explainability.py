@@ -5,8 +5,12 @@ it is NOT yet in application: the AI Omnibus (Regulation (EU) 2026/1744, in forc
 Chapter III Sections 1-3 to 2027-12-02 (Annex III) and 2028-08-02 (Annex I). So treat this module as
 preparation for a 2027/2028 obligation, not compliance with a current one.
 
-When it does apply, Article 13 obliges high-risk AI (credit/AML, healthcare) to be interpretable, and
-finance/healthcare supervisors already expect **SHAP-style feature attributions** (+ counterfactuals)
+When it does apply, Article 13 obliges high-risk AI to be interpretable. Of this project's use cases,
+diagnostic and in-vitro diagnostic software would be high-risk through Annex I (MDR Rule 11, IVDR
+Rule 3), while AML monitoring is not (Annex III 5(b) covers creditworthiness) and an intrusion
+detector used solely for cybersecurity is not either (recital 55); `web/src/lib/aiActScope.ts` states
+each. An earlier revision of this paragraph listed "credit/AML" as high-risk. Finance and healthcare
+supervisors already expect **SHAP-style feature attributions** (+ counterfactuals)
 under instruments that are in force today: US SR 11-7 model risk management and GDPR Art. 22
 right-to-explanation. Those are the reasons to build it now.
 
