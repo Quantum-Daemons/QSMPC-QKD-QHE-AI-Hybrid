@@ -4699,6 +4699,25 @@ a first build on a clean host pulls the official image and compiles the tools, a
 the cached layers. And a pre-release dependency, pinned to a commit. A model with many classes under
 MPC would be slower than it was under emp-wasm.
 
+**Walked on the public demo with this branch deployed** (2a7183a, serving `index-Cpq7ooVo.js`, the file
+name the local build produced). This was the demo host's first build of the Rust stage. The whole
+deploy, from the fetch to the restart, took about 11.5 minutes. The deploy script prints each step's
+result, not its output, so the `cargo test` lines were not captured. The step still ran and passed:
+it is a `RUN` in the image's Rust stage, a failing test exits non-zero, and the script reported the
+image built. All ten pages render their headings with no error boundary and zero horizontal overflow,
+at 1280 and at 390 px, with no `NaN`, `undefined` or `[object Object]` on any of them.
+- Medical: the secret-shared non-linear stage took 139.96 ms over 995.02 KB. With CKKS (591.05 ms),
+  the encrypted tier took 731.01 ms. ResNet-18 ran on onnx-wasm in 31.33 ms, all three published
+  models verified PASS, and the summary signed.
+- Finance: 118.64 ms over 995.02 KB, PASS, signed.
+- Genomics: 4638.48 ms over 32.8 MB, labelled as the x33 architecture scale of a measured 140.56 ms
+  unit. It completed and signed. It has no published browser-tier model to verify, which is unchanged.
+
+The module and its loader were fetched with 200 on each run. `/licenses/qsh-mpc.txt` is served as
+text/plain with 69 entries, Polytune's MIT text among them. On `/validations` at 390 px the card shows
+"emp-wasm (replaced)" and "Polytune (now shipped, hatched)" in both charts and links the notices in a
+new tab, and nothing in it overflows. The console showed no error.
+
 BUSINESS DOC RECONCILED Round 65. The out-of-repo document is brought level with this round. Its content
 is not quoted here, in the checklist, or in any commit - only the fact of the reconciliation, which is
 what gate 16 reads.
