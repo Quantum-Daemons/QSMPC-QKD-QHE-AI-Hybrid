@@ -5386,6 +5386,32 @@ UNVERIFIED - needs confirmation: whether earlier event-wise figures would have r
 leak cannot be known now. Only one leak-free run exists, and with three events a second run could
 differ by a whole event.
 
+**Walked on the public demo with this branch deployed** (8920c56, serving `index-Dafzn7-a.js`):
+- **Finance.**
+  - Both models PASS on the rebuilt sample with |delta| 0. The teacher's line says it was classified
+    at its decision threshold, 0.3869.
+  - The verification card, the precision-recall caption and the overlay caption name the split; the
+    overlay reads AUC-PR 0.1269.
+  - The teacher's note says the order of the two models on this sample is not a ranking.
+  - The garbled-circuit argmax matched the clear one, and the run summary was signed.
+- **Satellite.**
+  - Telemanom PASSes on its test-window sample (MAE 0.02, |delta| 4.86e-17).
+  - The student's log line and its model panel both say it publishes no sample by design.
+  - The page made six Hub requests, none to the student's repository. The console shows no 404 and
+    no onnxruntime shape warning.
+- **Medical.** All three models PASS with |delta| 0, and the provenance carries the downgraded
+  licence wording.
+- **Telecom.** Both models PASS. Each line names the registry's split for the two samples this round
+  did not rebuild.
+- **All ten pages, at 1280 and 390 px.** No overflow, and no NaN, undefined or `[object Object]`. The
+  console carried only the browser's own "Failed to create WebGPU Context Provider" warnings, from a
+  machine without a usable adapter.
+
+UNVERIFIED - needs confirmation: the first scheduled run of the dependency-advisories workflow (Round
+67) was due at 03:17 UTC on 2026-10-26 and had not appeared by 07:30 UTC. The workflow is active on
+main and its trigger block is valid. GitHub documents that scheduled runs can be delayed or dropped
+under load, so this is recorded as not yet observed rather than as broken.
+
 BUSINESS DOC RECONCILED Round 71. The out-of-repo document is brought level with this round. Its content
 is not quoted here, in the checklist, or in any commit - only the fact of the reconciliation, which is
 what gate 16 reads.
