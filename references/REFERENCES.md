@@ -812,7 +812,9 @@ belongs in this file rather than only in a comment.
   on 2026-08-12. What the repository does with it: `metrics.py` reports **event-wise F-beta with its
   event count as the headline** and computes `point_adjusted_f1` **only as a companion, to show the
   inflation** - on the satellite run, `point_adjusted_f1` 0.993691 against `event_wise_f0_5` 0.454545
-  (`models/metrics.json`), which is the whole argument in two numbers from one run. That is
+  (`models/metrics.json`), which is the whole argument in two numbers from one run. (That run's; the
+  Round 71 retrain, without the whole-series z-score, scores 0 on both, because neither of its 2
+  flagged points falls inside one of the 3 scored events.) That is
   the practice both papers argue for, and it does not change with this correction; only the citation
   supporting it does. Added: 2026-08-12.
 - **Hundman et al., "Detecting Spacecraft Anomalies Using LSTMs and Nonparametric Dynamic

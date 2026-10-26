@@ -157,48 +157,30 @@ def windows(x: np.ndarray, seq_len: int, stride: int = 1):
     return xs, ys
 
 
-def main() -> int:
-    ap = argparse.ArgumentParser()
-    ap.add_argument("--resample", default="60s",
-                    help="resampling cadence; raw telemetry is ~15M irregular samples per channel")
-    ap.add_argument("--epochs", type=int, default=30)
-    ap.add_argument("--stride", type=int, default=10, help="window stride (10 keeps memory sane)")
-    ap.add_argument("--seed", type=int, default=42)
-    ap.add_argument("--out", type=Path, default=Path("models/satellite_telemanom"))
-    args = ap.parse_args()
+def preprocess(raw, resample: str):
+    """Resample, impute and z-score the raw channels exactly as training does.
 
-    import torch
-    from torch.utils.data import DataLoader, TensorDataset
-
-    started = time.time()
-    train.seed_everything(args.seed)
-
-    print("loading ESA-ADB Mission1 lightweight channels (41-46) ...")
-    raw = datasets.load_esa_channels()
-    print(f"  raw: {raw.shape[0]:,} rows x {raw.shape[1]} channels, "
-          f"{raw.index[0].date()} -> {raw.index[-1].date()}")
+    Returns ``(df, values, cut, mu, sigma)``: the resampled frame, its z-scored values, the index of
+    the first test row, and the constants fitted on the rows before it. A function rather than inline
+    code since Round 71, because `scripts/prep_model_inputs.py` builds the browser's evaluation
+    sample from it. Its own copy of these steps had drifted three ways: it back-filled, it fitted the
+    z-score on the whole series, and it drew windows from the whole timeline, training rows included,
+    while the page called them held-out.
+    """
     # Imputation, stated because TRIPOD+AI item 11 requires it and because one half of it was a
     # look-ahead. `ffill` carries the last OBSERVED value forward across a gap, which is the standard
     # choice for telemetry and uses only the past. `bfill` carries a FUTURE value backwards, and it
     # was here until Round 34 - so any leading gap, and any gap `ffill` could not close, was filled
     # with data recorded after it. Dropping the leading rows instead costs a bounded prefix and uses
     # no future information; `ffill` handles every interior gap, so nothing else changes.
-    df = raw.resample(args.resample).mean().ffill()
+    df = raw.resample(resample).mean().ffill()
     leading = int(df.isna().any(axis=1).cumprod().sum())     # rows before the first full observation
     if leading:
         df = df.iloc[leading:]
         print(f"  dropped {leading:,} leading row(s) with no prior observation to carry forward "
               f"(previously back-filled from the future)")
     df = df.dropna()
-    print(f"  resampled to {args.resample}: {df.shape[0]:,} rows (ffill only, no backward fill)")
-
-    labels = datasets.load_esa_labels()
-    mask = np.zeros(len(df), dtype=bool)
-    idx = df.index.tz_localize("UTC") if df.index.tz is None else df.index
-    for _, row in labels.iterrows():
-        mask |= (idx >= row["StartTime"]) & (idx <= row["EndTime"])
-    print(f"  {len(labels)} anomaly intervals -> {mask.sum():,} anomalous samples "
-          f"({100 * mask.mean():.3f}% of the timeline)")
+    print(f"  resampled to {resample}: {df.shape[0]:,} rows (ffill only, no backward fill)")
 
     values = df.to_numpy(dtype=np.float32)
     cut = int(len(values) * (1.0 - TEST_FRACTION))
@@ -213,6 +195,47 @@ def main() -> int:
     # one contaminated by construction.
     mu, sigma = values[:cut].mean(0), values[:cut].std(0) + 1e-8
     values = (values - mu) / sigma
+    return df, values, cut, mu, sigma
+
+
+def main() -> int:
+    ap = argparse.ArgumentParser()
+    # 300s, the published configuration. The default was 60s while the published model and its
+    # record said 300s, so a retrain with no flags would have produced a different model at the
+    # cadence Round 18 mistook for this one's (Round 71).
+    ap.add_argument("--resample", default="300s",
+                    help="resampling cadence; raw telemetry is ~15M irregular samples per channel")
+    ap.add_argument("--epochs", type=int, default=30)
+    ap.add_argument("--stride", type=int, default=10, help="window stride (10 keeps memory sane)")
+    ap.add_argument("--seed", type=int, default=42)
+    ap.add_argument("--out", type=Path, default=Path("models/satellite_telemanom"))
+    ap.add_argument("--export-only", action="store_true",
+                    help="re-export the checkpoint in --out to ONNX without retraining, gated against "
+                         "the held-out windows the original export saved as fixtures.npy")
+    args = ap.parse_args()
+    if args.export_only:
+        return _export_only(args.out)
+
+    import torch
+    from torch.utils.data import DataLoader, TensorDataset
+
+    started = time.time()
+    train.seed_everything(args.seed)
+
+    print("loading ESA-ADB Mission1 lightweight channels (41-46) ...")
+    raw = datasets.load_esa_channels()
+    print(f"  raw: {raw.shape[0]:,} rows x {raw.shape[1]} channels, "
+          f"{raw.index[0].date()} -> {raw.index[-1].date()}")
+    df, values, cut, mu, sigma = preprocess(raw, args.resample)
+
+    labels = datasets.load_esa_labels()
+    mask = np.zeros(len(df), dtype=bool)
+    idx = df.index.tz_localize("UTC") if df.index.tz is None else df.index
+    for _, row in labels.iterrows():
+        mask |= (idx >= row["StartTime"]) & (idx <= row["EndTime"])
+    print(f"  {len(labels)} anomaly intervals -> {mask.sum():,} anomalous samples "
+          f"({100 * mask.mean():.3f}% of the timeline)")
+
     print(f"  temporal split at {df.index[cut].date()}: train {cut:,} / test {len(values)-cut:,}"
           f"  (z-score fitted on the train window only)")
 
@@ -368,26 +391,33 @@ def main() -> int:
             "labels whose ESA-ADB "
             "Category is 'Anomaly' count as positives; the 690 annotated rare *nominal* events do not."
         ),
+        # COMPUTED FROM THIS RUN since Round 71. Both notes carried their counts as literals ("THREE
+        # labelled anomaly events", "flags 2 points out of 441,600"), true of the run that wrote
+        # them and of no retrain after it, and this record is what the satellite page prints.
         "baseline_gap_note": (
             "Read n_events_scored before comparing this to the baseline. The scored test window "
-            "holds THREE labelled anomaly events, not the 320 that n_anomaly_intervals counts over "
-            "the whole timeline - the annotated anomalies sit earlier in the mission, so a temporal "
-            "split leaves almost nothing to score. Both recorded values decompose uniquely on three "
-            "events: 0.714286 is tp=1 fp=0 fn=2 and 0.454545 is tp=1 fp=1 fn=2, so the 0.26 swing "
-            "between two identical-config runs is ONE extra false-alarm run. The detector flags 2 "
-            "points out of 441,600. Three protocol gaps to the citation remain open and are stated "
-            "rather than closed: ESA-ADB multiplies event precision by the time-level TNR (recorded "
-            "here as corrected_event_wise_f0_5), it splits each mission in half where this tests on "
-            "the last 30 percent, and its lightweight test partition holds 65 events against 3 "
-            "here. Workings: references/satellite-event-count-investigation.md."
+            f"holds {ev_counts['n_true_events']} labelled anomaly event(s), not the {len(labels)} "
+            "that n_anomaly_intervals counts over the whole timeline - the annotated anomalies sit "
+            "earlier in the mission, so a temporal split leaves almost nothing to score. This run "
+            f"decomposes as tp={ev_counts['tp']} fp={ev_counts['fp']} fn={ev_counts['fn']}, and the "
+            f"detector flags {int(pred.sum()):,} of {len(pred):,} points. The figure does not "
+            "reproduce across identical-config retrains: two earlier runs recorded 0.714286 "
+            "(tp=1 fp=0 fn=2) and 0.454545 (tp=1 fp=1 fn=2), one false-alarm run apart, both with "
+            "the whole-series z-score this script used until Round 34. Three protocol gaps to the "
+            "citation remain open and are stated rather than closed: ESA-ADB multiplies event "
+            "precision by the time-level TNR (recorded here as corrected_event_wise_f0_5), it "
+            "splits each mission in half where this tests on the last 30 percent, and its "
+            f"lightweight test partition holds 65 events against {ev_counts['n_true_events']} here. "
+            "Workings: references/satellite-event-count-investigation.md."
         ),
         "sample_size_note": (
             "Read n_events_scored before comparing this to published_lightweight_f0_5. The "
             "denominator of an event-wise metric is EVENTS, and a temporal split of this corpus "
-            "leaves very few of them in the scored window: 320 labelled intervals over the whole "
-            "timeline reduce to a handful inside the test window, because the annotated anomalies "
-            "are concentrated earlier in the mission. The recorded score is therefore a small-sample "
-            "figure and one event either way moves it by tenths - it is NOT comparable to a "
+            f"leaves very few of them in the scored window: {len(labels)} labelled intervals over "
+            f"the whole timeline reduce to {ev_counts['n_true_events']} inside the test window, "
+            "because the annotated anomalies are concentrated earlier in the mission. The "
+            "recorded score is therefore a small-sample figure and one event either way moves it "
+            "by tenths - it is NOT comparable to a "
             "published benchmark computed over the full annotated set, however similar the two "
             "decimals look. The number is reported as measured rather than reweighted, and the "
             "sample size is reported beside it so the comparison is not made silently."
@@ -399,6 +429,31 @@ def main() -> int:
     })
     train.record_metrics("satellite_comms.student", fidelity.as_metrics())
     print(f"\n  wrote {out} and models/metrics.json in {time.time()-started:.0f}s")
+    return 0
+
+
+def _export_only(out: Path) -> int:
+    """Re-export the published checkpoint without retraining it.
+
+    Added in Round 71 for the static output batch (see qsh.ai.inference.export_onnx). The weights do
+    not change, so neither do the metrics: only the `export` block is re-measured, and record_metrics
+    labels every other field as carried forward from the run that measured it. The gate is the
+    original one, against the same 256 held-out windows, which the training run saved as
+    fixtures.npy precisely so a later export can be checked against them.
+    """
+    from safetensors.torch import load_file
+
+    fixtures = np.load(out / "fixtures.npy")
+    model = TelemanomLSTM.build(int(fixtures.shape[2]))
+    model.load_state_dict(load_file(str(out / "model.safetensors")))
+    report = export.verify_and_quantize(model, fixtures, out, kind="torch")
+    print(f"  re-exported {out}: fp32 {report.fp32_bytes:,} B, int8 {report.int8_bytes:,} B, "
+          f"fp32 max abs error {report.fp32_max_abs_error:.3e} over {report.n_fixtures} fixtures")
+    train.record_metrics("satellite_comms.telemanom", {
+        "export": {"fp32_bytes": report.fp32_bytes, "int8_bytes": report.int8_bytes,
+                   "opset": report.opset},
+        "git_sha": train.git_sha(),
+    })
     return 0
 
 

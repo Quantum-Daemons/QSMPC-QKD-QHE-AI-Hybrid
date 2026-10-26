@@ -1,9 +1,9 @@
 {
   "key": "satellite_comms.telemanom",
-  "best_metric": -0.5161120295524597,
-  "best_epoch": 16,
-  "epochs_run": 23,
-  "git_sha": "d19e285-dirty",
+  "best_metric": -0.33067023754119873,
+  "best_epoch": 12,
+  "epochs_run": 19,
+  "git_sha": "5ba453e-dirty",
   "seed": 42,
   "n_parameters": 80486
 }
