@@ -476,7 +476,7 @@ function AttributionRows({ achieved }: { achieved: Record<string, unknown> }) {
  *
  * Every reason below is a different fact about the model and they must not be collapsed into a
  * single "unavailable": a model nobody trained, a model whose weights are licence-blocked, and a
- * model that is published but ships no held-out sample are three separate states, and flattening
+ * model that is published but ships no evaluation sample are three separate states, and flattening
  * them would hide which one applies.
  */
 function ModelRunner({ usecase, spec }: { usecase: string; spec: ModelSpec }) {
@@ -492,6 +492,14 @@ function ModelRunner({ usecase, spec }: { usecase: string; spec: ModelSpec }) {
 
   if (blocked) return <p className="muted small"><em>Cannot be run here: {blocked}.</em></p>;
 
+  // Published and runnable, but with nothing of its own to be re-scored on, by design. Until Round 71
+  // this fell through to the sentence below and promised a re-score the run then said it could not do.
+  if (spec.eval_sample_reason) {
+    return <p className="muted small">
+      Not re-scored in this tab: it publishes no evaluation sample, by design - {spec.eval_sample_reason}.
+    </p>;
+  }
+
   // The standalone "run this model" button was REMOVED in Round 24j. It called exactly what the
   // E2E orchestration now calls on every run - evaluatePublishedModel on the whole held-out sample
   // - so it had become a second, manual path to the same check, with its own state and its own
@@ -500,7 +508,8 @@ function ModelRunner({ usecase, spec }: { usecase: string; spec: ModelSpec }) {
   // part of the result rather than a button somebody has to know to press.
   return <p className="muted small">
     Verified during the pipeline run: press <strong>Start</strong> and this model is re-scored on its
-    published held-out sample in this tab, with the result reported in the run log.
+    published evaluation sample ({spec.eval_split ?? "split not declared"}) in this tab, with the
+    result reported in the run log.
   </p>;
 }
 

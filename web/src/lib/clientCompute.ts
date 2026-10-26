@@ -1802,8 +1802,9 @@ export function runClientPipeline(
       const fellBack = onnxBackendChoice === "webgpu" && p.backend !== "onnx-webgpu"
         ? " (WebGPU was selected; this browser has no usable adapter)" : "";
       emit("log", stage,
-        `published model ${p.modelKey} ran here on ${p.backend}${fellBack}: row ${p.rowIndex} of its own `
-        + `held-out sample, input ${p.inputShape.join("x")}, ${r2(p.latencyMs)} ms. ${outcome}`
+        `published model ${p.modelKey} ran here on ${p.backend}${fellBack}: row ${p.rowIndex} of its `
+        + `published evaluation sample (${p.split ?? "split not declared"}), input `
+        + `${p.inputShape.join("x")}, ${r2(p.latencyMs)} ms. ${outcome}`
         + `. Weights from ${p.repoId} at ${p.revision.slice(0, 12)}, ${p.provenance}`);
     } else if (pub.kind === "failed") {
       // Deliberately NOT substituted. A published model that exists and did not run is a reportable
@@ -1857,12 +1858,18 @@ export function runClientPipeline(
           }
           const delta = Math.abs(v.score - v.expected);
           const tag = isSelected ? "" : " (not the selected model)";
+          // The split is the registry's declaration for this model, not a word the log supplies:
+          // "held-out" was printed here for every model while two samples were drawn from the
+          // whole corpus, training rows included (Round 71).
+          const where = `${v.n} rows of its published evaluation sample (${v.split ?? "split not declared"})`
+            + (v.decisionThreshold != null
+              ? `, classified at its decision threshold ${v.decisionThreshold.toFixed(4)}` : "");
           emit("log", stage, v.matchesExpected
-            ? `verification PASS ${key}${tag}: re-scored all ${v.n} published held-out rows in this `
+            ? `verification PASS ${key}${tag}: re-scored all ${where} in this `
               + `tab and got ${v.metricName} ${r2(v.score)} against the recorded ${r2(v.expected)} `
               + `(|delta| ${delta.toExponential(2)}). The number this page prints was reproduced `
               + `here, not asserted.`
-            : `verification FAIL ${key}${tag}: re-scoring ${v.n} rows gave ${v.metricName} `
+            : `verification FAIL ${key}${tag}: re-scoring ${where} gave ${v.metricName} `
               + `${r2(v.score)} but the recorded figure is ${r2(v.expected)} (|delta| `
               + `${delta.toExponential(2)}, tolerance 0.05). Treat every number on this page for `
               + `${key} as unverified until this is explained.`);
@@ -1880,8 +1887,9 @@ export function runClientPipeline(
           // Distinct from a failure: some models publish no evaluation sample, and saying nothing
           // would let "not checked" read as "checked and fine".
           if (isSelected) metric(stage, "verification", "no-sample");
-          emit("log", stage, `no published evaluation sample for ${key}, so its recorded metric `
-            + `is NOT reproduced in this tab.`);
+          emit("log", stage, `no published evaluation sample for ${key}`
+            + (v?.noSampleReason ? `, by design: ${v.noSampleReason}` : "")
+            + `, so its recorded metric is NOT reproduced in this tab.`);
         }
       } catch (e) {
         if (isSelected) metric(stage, "verification", "ERROR");

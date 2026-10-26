@@ -17,6 +17,15 @@ An unstated choice moves finance's answer by a factor of eight. The number was n
 UNFALSIFIABLE, and a figure a reader cannot re-derive is one they have to take on trust - which is
 the thing this project's whole verification posture exists to avoid.
 
+ROUND 71: COMPUTED, AND THE BAND NARROWED. The finance points were redrawn from the held-out test
+window, and on them the three readings are 0.0621 / 0.1269 / 0.5777. A band of 0.08 around 0.1269
+then admitted the single-feature reading, so the gate could no longer tell which estimator produced
+the figure. Satellite's literal, 0.8492, was never this estimator's: it is the pair-selection figure,
+fitted on the train split, and 0.08 had admitted it as well. Both figures are now computed by
+`_separability` in the generator with exactly the estimator below, so they reproduce to the
+rounding, and the band is 0.01. Telecom keeps its own recorded estimator, a linear reader, which
+lands within 0.001.
+
 WHAT IS ASSERTED
 
 That each stated figure reproduces, on the shipped points, under a cross-validated two-feature
@@ -42,10 +51,13 @@ import pytest
 REPO = Path(__file__).resolve().parents[1]
 DATA = REPO / "web" / "public" / "data"
 
-#: Tolerance on the cross-validated reading. Wide enough for fold/seed variance, narrow enough that
-#: the in-sample and single-feature readings both fall outside it - checked by the anti-tautology
-#: test below rather than asserted.
-TOL = 0.08
+#: Tolerance on the cross-validated reading. The estimator is seeded and its folds are fixed, so
+#: what remains is the payload's 4-significant-figure rounding and telecom's different, recorded
+#: estimator (0.9915 against 0.9925). Narrow enough that the in-sample and single-feature readings
+#: fall outside it, which the anti-tautology test below checks rather than asserts. It was 0.08
+#: until Round 71, which admitted both a mislabelled literal and, on the redrawn finance rows, the
+#: single-feature reading.
+TOL = 0.01
 
 
 def _payloads():

@@ -759,9 +759,10 @@ See [`docs/pqc-roadmap.md`](docs/pqc-roadmap.md).
   distilled student, and the student is what CKKS actually evaluates: 33 parameters for finance
   against a 141,154-parameter teacher, 3,226 against 11,171,266 for medical, 49 against 80,486 for satellite.
   Until Round 19 only the teachers were published, so the encrypted tier - the part the project is
-  built to demonstrate - was the one part a visitor could not verify. All ten repos are public and
+  built to demonstrate - was the one part a visitor could not verify. All eleven repos are public and
   pinned, and the evaluation sample for each lives in that model's own repo at the same revision as
-  its weights.
+  its weights - except the satellite student's, which publishes none by design, because its metric
+  is defined over a timeline and cannot be re-scored from independent rows.
 
   *Both corrected figures were Round-19-era and outlived what they described.* The finance teacher
   read **138,312** until Round 40 - the count from before the eleven per-account causal aggregates
@@ -775,11 +776,19 @@ See [`docs/pqc-roadmap.md`](docs/pqc-roadmap.md).
 - **Retracted: the satellite forecaster is not worse than persistence.** Round 18 reported it as
   roughly 19-22x worse on next-step MAE. That was our measurement error: the probe resampled the
   telemetry at 60s while the published model is trained at 300s, and feeding a 300s model 60s data
-  is the whole of the explanation. Re-measured at the trained cadence the model is about **2.9x
-  better** than persistence - MAE 0.0314 against 0.0897 on the evaluation split, and 0.40x / 0.35x
-  / 0.38x on train / test / whole series. The evaluation-sample generator hardcoded the same 60s;
-  it now reads the cadence from the model record, because preprocessing has to come from the
+  is the whole of the explanation. Re-measured at the trained cadence the model was about **2.9x
+  better** than persistence - MAE 0.0314 against 0.0897 on the evaluation split. The model retrained
+  in Round 71, without the whole-series z-score described below, is about **3.1x better** over all
+  441,600 test windows: MAE 0.0250 against 0.0764. The evaluation-sample generator hardcoded the same
+  60s; it now reads the cadence from the model record, because preprocessing has to come from the
   artefact rather than a constant in a second file.
+- **Retrained in Round 71: the published forecaster still carried a leak the trainer no longer
+  had.** The trainer stopped fitting its z-score on the whole series in Round 34, test window
+  included, and the model was never retrained, so the weights on the Hub and their `feature_spec.json`
+  kept the whole-series constants. The retrained model flags 2 of 441,600 test points, as before,
+  and neither falls inside one of the 3 scored events, so event-wise F0.5 is **0** (tp=0 fp=2 fn=3)
+  and point-adjusted F1 falls from 0.9937 to 0 with it. That is the denominator problem below,
+  measured once more, not a new property of the model.
 - **CLOSED, and the explanation is the denominator.** This was carried as "the event-wise headline
   does not reproduce": retraining at the same configuration gave event-wise F0.5 of 0.4545 where the
   recorded figure was 0.7143. `references/satellite-event-count-investigation.md` closes it - the
@@ -787,8 +796,9 @@ See [`docs/pqc-roadmap.md`](docs/pqc-roadmap.md).
   score is 1 hit against 2 flags. One extra false alarm walks the metric down a fixed ladder:
   0.714 / 0.455 / 0.333 / 0.263 / 0.217 / 0.185 for 0 to 5 false-alarm runs. It reproduces exactly as
   well as a 3-event denominator permits, which is not very well, but it is not mysterious.
-  Point-adjusted F1 reproduces (0.9937 against 0.9945) for the same reason it is inflated: 441,600
-  points rather than 3 events. Still read the event-wise number as one draw from a wide distribution -
+  Point-adjusted F1 reproduced (0.9937 against 0.9945) for the same reason it is inflated: 441,600
+  points rather than 3 events - until the Round 71 retrain put neither flag inside an event and took
+  both figures to 0. Still read the event-wise number as one draw from a wide distribution -
   the general instability of overlap-based metrics is real (arXiv:2607.11969, 2026-07) - but the
   operative fact here is local and arithmetic.
 
@@ -827,6 +837,10 @@ See [`docs/pqc-roadmap.md`](docs/pqc-roadmap.md).
   | medical | **85.9%** | 85.9% | the entire official BreastMNIST test split, 156 rows | `onnx-webgpu` |
   | finance | **99.3%** | 99.3% | 8192 AMLworld rows at near-real 1-in-981 prevalence | `onnx-wasm` |
   | satellite | **MAE 0.0741** | 0.0741 | 128 ESA-ADB windows at the trained 300s cadence | `onnx-webgpu` |
+
+  These are Round 18's figures. Round 71 rebuilt the finance and satellite samples from their
+  held-out test windows - until then both had been drawn from the whole corpus, training rows
+  included - and the run log prints the current figures with the split each sample comes from.
 
   WebNN is probed by **building and executing a 2x2 matmul** - three cheaper checks all lied - and
   then deliberately left unused: with the flag the API works, but ORT's WebNN provider still cannot
@@ -1021,8 +1035,10 @@ See [`docs/pqc-roadmap.md`](docs/pqc-roadmap.md).
     switch from PRS77 to PRS313 - 29.3%/1.0% and 29.5x were the 77-variant score's - and they are
     recomputed on every training run, so read `by_super_population.*.frac_above_global_cut` in
     `models/metrics.json` rather than this sentence.)
-  - **satellite reports event-wise F-beta at beta=0.5, never point-adjusted F1.** On the same run the
-    point-adjusted figure is **0.994** against an honest **0.4545** - under point adjustment "even a
+  - **satellite reports event-wise F-beta at beta=0.5, never point-adjusted F1.** On the run before
+    the Round 71 retrain the point-adjusted figure was **0.994** against an honest **0.4545**, and on
+    the retrain both are 0 because neither of its 2 flags falls inside a scored event - under point
+    adjustment "even a
     random anomaly score can easily turn into a state-of-the-art TAD method" (Kim et al., AAAI 2022,
     arXiv:2109.05257). This sentence cited TSB-AD for "a uniform random score ranks 26th of 32
     detectors" until Round 33, a figure that could not be verified at source. A windowed isolation
