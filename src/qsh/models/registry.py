@@ -369,7 +369,7 @@ DS_ESA_ADB = DatasetSpec(
         # model card, so the un-re-verified figure was being published to the Hub in both
         # `satellite_telemanom` and `satellite_telemanom_student`. A withheld figure that stays
         # in the one copy that leaves the repository is not withheld.
-        "Missions are anonymised Mission1/2/3 — they are not named Sentinel anything. "
+        "Missions are anonymised Mission1/2/3 - they are not named Sentinel anything. "
         "Multi-year telemetry; the exact span is NOT stated by the Zenodo record, the paper or "
         "the upstream README, so it is withheld here rather than asserted - see DATA_LICENSES.md. "
         "1.19% annotated. Mission3 is excluded upstream for triviality. The CC BY 3.0 IGO term "

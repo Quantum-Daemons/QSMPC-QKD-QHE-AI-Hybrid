@@ -202,7 +202,7 @@ specs (`mpc/layers.py`: `ConvSpec`/`DenseSpec`/`PoolSpec`/`FlattenSpec`), so the
 runs a real MedMNIST-scale CNN under FHE-linear conv + MPC `secure_relu`/`secure_maxpool` (the dense
 MLP path is byte-identical via `normalize_layers`). FHE-feasible by design - MedMNIST-scale, not ResNet. The
 **QSMPC-FHE** quantum analogue is Clifford gates (linear) vs T-gates (non-linear), both evaluated on
-the encrypted state by QOTP/Rate-1 QFHE (no FHE <-> MPC boundary). **On ct/pt:** the QSMPC-FHE row's ct/pt is **not rendered** (a dash), on either transport. A one-time pad maps $n$ qubits to $n$ qubits plus a $2n$-bit classical key, so a qubit ratio of 1.0 leaves out the key, and the Python row's 1.2769 divides by the bytes of a classically simulated state vector; neither can share a column with the CKKS byte ratio. **Corrected 2026-10-23:** this paragraph called `cost_per_op.qsmpc_ct_pt_ratio = 1.32` the *literature* figure for Rate-1 QFHE. The paper (Chardouvelis, Doettling, Malavolta, TCC 2021) reports no concrete figure; the constant and the Overview card it fed are removed. The **lightweight / medium / large** model-size selector was removed in Round 20 along with
+the encrypted state by QOTP/Rate-1 QFHE (no FHE <-> MPC boundary). **On ct/pt:** the QSMPC-FHE row's ct/pt is **not rendered** (a dash), on either transport. A one-time pad maps $`n`$ qubits to $`n`$ qubits plus a $`2n`$-bit classical key, so a qubit ratio of 1.0 leaves out the key, and the Python row's 1.2769 divides by the bytes of a classically simulated state vector; neither can share a column with the CKKS byte ratio. **Corrected 2026-10-23:** this paragraph called `cost_per_op.qsmpc_ct_pt_ratio = 1.32` the *literature* figure for Rate-1 QFHE. The paper (Chardouvelis, Doettling, Malavolta, TCC 2021) reports no concrete figure; the constant and the Overview card it fed are removed. The **lightweight / medium / large** model-size selector was removed in Round 20 along with
 `tier_architectures`: it scaled invented MLPs rather than the models that exist. The benchmark now
 costs the student that actually runs.
 
@@ -252,7 +252,7 @@ server, no cost-model estimate):
 - **MPC** - `web/src/lib/clientMPC.ts` runs a real **garbled-circuit authenticated-garbling 2PC**
   (Polytune with a Garble-compiled circuit, MIT, built from `wasm/qsh-mpc` by the web image's Rust stage;
   `mpc-framework` + `emp-wasm-engine` + `summon-ts` until Round 65): the logits are additively
-  secret-shared modulo 2^32 with masks from the browser's CSPRNG (since Round 66), the argmax circuit
+  secret-shared modulo $`2^{32}`$ with masks from the browser's CSPRNG (since Round 66), the argmax circuit
   privately reconstructs + compares them, and **both parties run loopback
   in one tab** (zero VPS) - the reported MPC ms + real garbled-circuit communication bytes are measured.
 - **QFL** - Quantum Federated Learning runs on every run; it is not a toggle. It performs a real
