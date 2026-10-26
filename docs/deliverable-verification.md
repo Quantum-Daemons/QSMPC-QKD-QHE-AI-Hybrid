@@ -5415,3 +5415,84 @@ under load, so this is recorded as not yet observed rather than as broken.
 BUSINESS DOC RECONCILED Round 71. The out-of-repo document is brought level with this round. Its content
 is not quoted here, in the checklist, or in any commit - only the fact of the reconciliation, which is
 what gate 16 reads.
+
+## Round 72: the items carried as UNVERIFIED, read at their sources
+
+**Stacked on Round 71**, which is stacked on Rounds 70 and 69; all three are held by decision. The
+demo serves this branch while it is checked.
+
+**What was carried, and what each turned out to be.**
+- **An independent audit of Polytune (Round 68).**
+  - None is published. Two pull requests (#34, merged 2025-01-07, and #36) apply feedback "from our
+    security audit", but the auditor, the scope and the findings are not disclosed.
+  - There is no SECURITY.md and no advisory, and GitHub's private vulnerability reporting is off.
+  - #340 (2025-12-22) removed a fixed seed from the OT-extension sender's generator, which a
+    since-yanked pre-release had shipped. The pinned commit postdates it: its only fixed seeds are in
+    test code.
+- **How much upstream #63 matters on two hosts (Round 68).**
+  - It is a gap in the proof at Polytune's parameter of 128, not a practical break: the one attack
+    better than negligible needs a field size divisible by 20.
+  - Each party runs the OT extension in both directions, so on two hosts either one can play the
+    attacking receiver.
+  - What is at stake is the other party's global key ($\Delta$): its MAC key, and for the garbler its
+    free-XOR offset.
+- **A further question, found while reading #63's code.**
+  - The check's challenge is drawn from the pairwise stream agreed at the start of preprocessing,
+    before the receiver sends its matrix. KOS15 samples it after, and so did Polytune until commit
+    1f56564 (2024-11-06), whose own title says it reduced communication rounds.
+  - None of the published analyses covers the earlier ordering. Its consequences are not assessed
+    here.
+  - A comment asking the maintainers was drafted for #63, for the user to post, by decision.
+  - README and `clientMPC.ts` no longer say the layer "already runs a malicious-secure protocol"
+    without saying that the implementation's claim is open between hosts. The demo, with both parties
+    in one tab, is unaffected.
+- **Garble's narrowing cast (Round 66).** The documentation still does not say what it does. The
+  compiler keeps the low bits with no panic, both in `garble_lang` 0.7.0-alpha.1, the version this
+  build compiles, and at the latest commit. Its tests require the result to equal Rust's `as`.
+  Closed at the source.
+- **wasm-opt (Round 63).** Measured on the demo's crate.
+  - Binaryen 120 makes the module 20 percent smaller raw but only 4 percent gzipped (458,400 to
+    439,154 bytes).
+  - The argmax was right in 20 of 20 random cases, exchanged the same 944,619 bytes, and kept the same
+    median time.
+  - Binaryen 108, the version the build image's Debian release ships, produces a module that fails at
+    load.
+  - It stays off, and `wasm/qsh-mpc/Cargo.toml` records why.
+- **`QC2` with the input held fixed (Round 70).** The page cannot show it: the pipeline draws its
+  input row with the run's seeded generator, so a new seed is a new row. The property belongs to the
+  function, which takes no seed. A new gate runs the browser's module on all six shipped QCNN
+  artifacts twice, with different generators installed, and requires identical outputs. It fires when
+  hidden randomness is injected.
+- **Whether a satellite detector is high-risk (Round 69).** Read again at EUR-Lex.
+  - "Depends on how it is deployed" was right but hid why. Annex III 2 names critical digital
+    infrastructure, which recital 55 ties to point 8 of the CER Directive's annex, and space is a
+    separate sector there, as it is in NIS2.
+  - So a telemetry detector qualifies only if the satellite service is itself digital
+    infrastructure, and only as a safety component. Regulation (EU) 2026/1744 added Art. 6(1a), under
+    which a system used solely for performance or other non-safety purposes is not one.
+  - Art. 2(3) excludes military as well as defence and national-security use; the satellite and
+    telecom sentences had left military out.
+  - Both sentences and README's row are corrected, by decision, and the gate checks the new grounds.
+    Each new assertion was seeded and fires.
+- **BreastMNIST's upstream licence (carried since 2026-08-10).** Read at every source the BUSI
+  authors publish.
+  - The article's CC BY covers the article. The host page asks only for a citation, in every capture
+    from 2021 to 2026. The authors made no repository deposit.
+  - The article's supplements, fetched through Europe PMC's API, hold the Baheya Hospital ethics
+    committee's approval to publish the dataset publicly and the waiver of consent, and no licence.
+  - Every Kaggle mirror carries a licence its uploader chose, none of them an author.
+  - So the authors publish no licence, and MedMNIST's CC BY 4.0 is the only one anyone states. The
+    three repositories stay public on that basis, by decision.
+  - The registry, `DATA_LICENSES.md` and README now say so, and the three medical repos were
+    republished so that the Hub states it too: `medical_fl.resnet18` `a04fe6cdbc2b`,
+    `medical_fl.resnet50` `8026dd29ca08`, `medical_fl.student` `0f1e96a0f326`. All are public, and
+    every file is byte-identical to the local artefact.
+
+**Not resolvable in this round:**
+- timings over a real link and a wide-area path, which need a second host;
+- WebGPU on other GPU and OS combinations, which needs other hardware;
+- the first scheduled dependency audit, due again at 03:17 UTC on 2026-10-27.
+
+BUSINESS DOC RECONCILED Round 72. The out-of-repo document is brought level with this round. Its content
+is not quoted here, in the checklist, or in any commit - only the fact of the reconciliation, which is
+what gate 16 reads.
