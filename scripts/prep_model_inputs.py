@@ -95,7 +95,7 @@ N_SAMPLES = {"medical_fl": None, "finance_aml": 8192, "satellite_comms": 128,
 #: partition holds 289 ICMPFlood rows, so a floor of 200 is satisfiable for every class. The cost is
 #: real and is stated in the payload rather than hidden: the sample is not the corpus distribution,
 #: so its macro F1 is not the corpus macro F1. `build_finance_student` makes the same trade for the
-#: same reason and explains its own 19x prevalence gap rather than papering over it.
+#: same reason and states its own prevalence gap, computed, rather than papering over it.
 NIDD_MIN_PER_CLASS = 200
 
 
@@ -255,6 +255,20 @@ def _write(usecase: str, payload: dict) -> Path:
     from qsh.models import registry
 
     key = _MODEL_KEY[usecase]
+    split = registry.get(key).eval_split
+    if not split:
+        raise SystemExit(f"{key} declares no eval_split in the registry. Say which split this sample "
+                         "is drawn from before publishing it: the run log prints that sentence.")
+    # Written from the registry, after the provenance where a reader looks for where the rows came
+    # from, so the file and the page state the same split.
+    ordered: dict = {}
+    for k, v in payload.items():
+        if k == "split":
+            continue
+        ordered[k] = v
+        if k == "provenance":
+            ordered["split"] = split
+    payload = ordered
     out = REPO / registry.ARTIFACT_DIRS[key] / "eval_sample.json"
     out.parent.mkdir(parents=True, exist_ok=True)
     _warn_single_feature_leak(usecase, payload)
@@ -298,6 +312,22 @@ _MODEL_KEY = {
 }
 
 
+def _breastmnist_provenance(what: str) -> str:
+    """``what``, then the credit and the licence exactly as the registry states them.
+
+    From the registry, not a copy here, because the copies are how the Hub fell behind. The
+    2026-08-10 downgrade ("CC BY 4.0 asserted by MedMNIST; the upstream BUSI grant is NOT
+    verifiable") reached the registry, DATA_LICENSES.md and one of this file's two hardcoded
+    sentences, and no sample was rebuilt afterwards, so until Round 71 all three BreastMNIST samples
+    on the Hub - the ones a visitor's browser fetches and whose provenance the run log prints - still
+    said a flat "CC BY 4.0".
+    """
+    from qsh.models import registry
+
+    ds = registry.get("medical_fl.resnet18").dataset
+    return f"{what} {ds.attribution} Licence: {ds.licence}; see DATA_LICENSES.md."
+
+
 # --------------------------------------------------------------------------------------------- #
 #  medical_fl -- BreastMNIST 28x28, the corpus medical_fl.resnet18 was actually trained on
 # --------------------------------------------------------------------------------------------- #
@@ -328,17 +358,13 @@ def build_medical(rng: np.random.Generator) -> dict:
     pred = sess.run(None, {sess.get_inputs()[0].name: x})[0].argmax(1)
 
     return {
-        "provenance": (
-            # THE LICENCE STRING THAT SHIPS TO THE HUB, which is where the claim actually binds - this
-            # text lands in every published `eval_sample.json`. The 2026-08-10 downgrade reached
-            # `registry.py` and one row of `DATA_LICENSES.md` and not this hardcoded copy, so the
-            # un-downgraded wording was the one being redistributed.
-            "real MedMNIST v2 BreastMNIST test-split images (Yang et al., Scientific Data 10:41, "
-            "2023; CC BY 4.0 as asserted by MedMNIST - the upstream BUSI grant is NOT verifiable, "
-            "see DATA_LICENSES.md), derived from the Al-Dhabyani et al. BUSI ultrasound dataset. These "
-            "are the images medical_fl.resnet18 was trained and evaluated on -- unlike the Wisconsin "
-            "WDBC sample this page uses for the FHE/MPC pipeline, which is a different corpus."
-        ),
+        "provenance": _breastmnist_provenance(
+            "Real MedMNIST v2 BreastMNIST ultrasound images: the official test split, all 156, which "
+            "the BreastMNIST models here are evaluated on and never trained on, with one known "
+            "exception measured on the npz: test-split image 76 is a pixel-exact duplicate of "
+            "training image 115 under the opposite label.") + (
+            " Unlike the Wisconsin WDBC sample this page uses for the FHE/MPC pipeline, which is a "
+            "different corpus."),
         "input": {
             "shape": [1, 1, 28, 28], "dtype": "float32",
             # Applied by the browser verbatim. Omitting the second step scores 0.4615 instead of
@@ -364,93 +390,150 @@ def build_medical(rng: np.random.Generator) -> dict:
 #  finance_aml -- AMLworld HI-Small, the 32 engineered features finance_aml.gbm expects
 # --------------------------------------------------------------------------------------------- #
 def build_finance(rng: np.random.Generator) -> dict:
-    # Reuse the training script's own feature engineering rather than reimplementing 32 columns --
-    # a second implementation would drift from the model on the first edit.
-    from train.finance_aml import FEATURES, graph_features  # type: ignore
+    """A draw from the held-out temporal test window, featurised by the trainer's own functions.
 
-    from qsh.models import datasets as D
+    TEST WINDOW ONLY, AND THE TRAINER'S OWN FEATURES (Round 71). Until then this drew its 8,192 rows
+    from the whole corpus, so about 70 percent of them were rows the booster was fitted, tuned or
+    calibrated on, while the page logged "re-scored all 8192 published held-out rows". It also called
+    `graph_features(df)` with neither `fit_on` nor the causal aggregates, which computes the 11
+    per-account features over the whole timeline: the "whole-window static" arm that
+    `causal_account_features` documents as a leak, and not what the model was trained on. The rows
+    now come from `temporal_windows()` and the features from the same three calls `main()` makes for
+    its test rows, and two checks refuse to write a sample unless they reproduce the trainer's: the
+    512 fixtures the export gate saved, and the AUPRC the registry records over the whole window.
 
-    # load_amlworld normalises "Is Laundering" -> "label" (datasets.py:84-91); the training script
-    # reads that name too, so use it rather than the raw CSV header.
-    #
-    # READ THE WHOLE FILE. This used to be `nrows=400_000`, and that truncation put a near-perfect
-    # LABEL LEAK into the published evaluation sample. HI-Small is time-sorted for background
-    # traffic but IBM's injected laundering rows carry timestamps spanning the full period while
-    # sitting early in the file, so the first 400k rows are 99.97% hours 0-2 (344,209 / 33,144 /
-    # 22,472) with only ~175 rows across hours 3-23 - a large share of which are laundering.
-    # Sampling negatives uniformly from that head reproduces its shape exactly, so in the shipped
-    # sample negatives held only 3 distinct hour values (0,1,2) while positives spanned 22, and
-    # `hour_of_day >= 3` implied laundering at 100% precision.
-    #
-    # Measured on the shipped ONNX before this fix: minority F1 0.5100, falling to 0.4398 with
-    # `hour_of_day` permuted and 0.4479 with it zeroed - so 13.8% of the reported number came from
-    # an artefact of the truncation rather than from the model. Alone the feature scored AUC-PR
-    # 0.7104 against a 0.0192 base rate, a 37x lift.
-    #
-    # The source corpus is innocent: across all 5,078,345 rows both classes span all 24 hours and
-    # the laundering rate moves only 0.00028 -> 0.00174. The leak was created here, by reading the
-    # head of a sorted file, and it is fixed here by not doing that.
-    df = D.load_amlworld()
-    if "label" not in df:
-        raise SystemExit(f"AMLworld frame has no 'label' column; got {list(df.columns)[:12]}")
-    y_all = df["label"].to_numpy().astype(int)
+    READ THE WHOLE FILE. This used to be `nrows=400_000`, and that truncation put a near-perfect
+    LABEL LEAK into the published evaluation sample. HI-Small is time-sorted for background traffic
+    but IBM's injected laundering rows carry timestamps spanning the full period while sitting early
+    in the file, so the first 400k rows were 99.97% hours 0-2 and `hour_of_day >= 3` implied
+    laundering at 100% precision. Measured on the shipped ONNX before that fix: minority F1 0.5100,
+    falling to 0.4398 with `hour_of_day` permuted. The source corpus is innocent - both classes span
+    all 24 hours - and the leak was created here, by reading the head of a sorted file.
+    """
+    # Reuse the training script's own loader, split and feature engineering rather than
+    # reimplementing 32 columns -- a second implementation drifted from the model, as above.
+    from train.finance_aml import (  # type: ignore
+        FEATURES,
+        causal_account_features,
+        graph_features,
+        load_sorted,
+        temporal_windows,
+    )
 
-    feats = graph_features(df)
-    X_all = np.asarray(feats[list(FEATURES)].to_numpy(dtype=np.float32)
-                       if hasattr(feats, "columns") else feats, dtype=np.float32)
+    from qsh.models import metrics, registry
 
-    pos = np.flatnonzero(y_all == 1)
-    neg = np.flatnonzero(y_all == 0)
-    # 1-in-981 prevalence: a random draw would almost surely contain zero positives and the
-    # self-check would say nothing. Force a visible minority so the number means something.
+    df = load_sorted()
+    _, _, te, tr = temporal_windows(df)
+    # Exactly main()'s test features: one causal pass over the whole sorted frame (it leaks nothing,
+    # every value uses only strictly earlier rows), structural features from the rows before the test
+    # window.
+    x_te = graph_features(te, fit_on=tr, causal=causal_account_features(df))
+    y_te = te["label"].to_numpy().astype(int)
+
+    # CHECKED, NOT ASSUMED. The export gate saved 512 rows of the trainer's test features, drawn with
+    # the trainer's default seed; equal bytes mean equal features. The AUPRC over the whole window
+    # then ties these features to the recorded metric through the published graph itself.
+    out_dir = REPO / registry.ARTIFACT_DIRS["finance_aml.gbm"]
+    fixtures = np.load(out_dir / "fixtures.npy")
+    drawn = np.random.default_rng(42).choice(len(x_te), size=len(fixtures), replace=False)
+    if not np.array_equal(x_te[drawn], fixtures):
+        raise SystemExit("the test-window features computed here differ from the 512 the trainer's "
+                         "export gate saved, so they are not the features the model was scored on")
+    sess, graph = _session("finance_aml_gbm")
+    name = sess.get_inputs()[0].name
+    out = sess.run(None, {name: x_te.astype(np.float32)})
+    proba = next((o for o in out if getattr(o, "ndim", 0) == 2 and o.shape[1] > 1), out[0])
+    rec = registry.achieved("finance_aml.gbm") or {}
+    window_auprc = metrics.auprc(y_te, np.asarray(proba))
+    if abs(window_auprc - float(rec["auprc"])) > 1e-3:
+        raise SystemExit(f"the published graph scores AUPRC {window_auprc:.6f} over the test window "
+                         f"here against the recorded {rec['auprc']:.6f}")
+    print(f"    the {len(fixtures)} export fixtures are identical; AUPRC over all {len(y_te):,} test rows "
+          f"{window_auprc:.6f} against the recorded {float(rec['auprc']):.6f}")
+
+    pos = np.flatnonzero(y_te == 1)
+    neg = np.flatnonzero(y_te == 0)
+    # At the window's real rate an unenriched draw of 8,192 holds about a dozen positives, and every
+    # metric on it is noise. 2 percent keeps 164 positives for a stable interval while staying
+    # recognisably imbalanced. The share is a constant of this sample, so the registry's
+    # `eval_split` states it.
     want = N_SAMPLES["finance_aml"]
-    # 2% rather than `want // 4`. The quarter-share was written when the truncated read left only
-    # 149 positives to find, so it silently capped at 1.82% and produced a defensible balance by
-    # accident. Reading the whole corpus makes 5,177 positives reachable, at which point the same
-    # expression takes 2048 and ships a 25%-laundering sample - not a minority in any sense that
-    # matches AML, and an F1 at 25% prevalence is not comparable to one at 1.8%. The real rate is
-    # ~1 in 981; 2% keeps enough positives (164) for a stable interval while staying recognisably
-    # imbalanced, and keeps this metric comparable to the figure already published.
     POSITIVE_SHARE = 0.02
     take_pos = min(len(pos), max(1, round(want * POSITIVE_SHARE)))
     idx = np.concatenate([rng.choice(pos, take_pos, replace=False),
                           rng.choice(neg, want - take_pos, replace=False)])
     rng.shuffle(idx)
-    x, y = X_all[idx], y_all[idx]
-
     # Round BEFORE predicting. The payload ships 6-decimal values, so an expectation computed on
     # the unrounded array is an expectation for numbers the browser never sees. On a tree ensemble
-    # that shows up as split-boundary flips: the OPS-SAT model read 95.1% in-browser against a
-    # 96.6% expectation computed this way, inside tolerance but not a reproduction.
-    x = np.asarray(x, dtype=float).round(6)
-    sess, graph = _session("finance_aml_gbm")
-    out = sess.run(None, {sess.get_inputs()[0].name: x.astype(np.float32)})
+    # that shows up as split-boundary flips.
+    x = np.asarray(x_te[idx], dtype=float).round(6)
+    y = y_te[idx]
+    out = sess.run(None, {name: x.astype(np.float32)})
     scores = next((o for o in out if getattr(o, "ndim", 0) == 2 and o.shape[1] > 1), out[0])
-    pred = np.asarray(scores).argmax(1)
+    # At the operating point the trainer chose on the validation window and published beside the
+    # graph, which is how the browser classifies when the sample states one. Until Round 71 both
+    # scored the teacher at argmax, a threshold it is never operated at.
+    thr = float(json.loads((out_dir / "feature_spec.json").read_text())["decision_threshold"])
+    pred = (np.asarray(scores)[:, 1] >= thr).astype(int)
+    f1, all_pos, _ = _f1_over_baseline(y, pred)
 
+    # The page prints this teacher beside its CKKS student, scored on these same rows. Enrichment
+    # rewards whichever model flags more, so when the order of the two here is the reverse of their
+    # order over the whole window, the note says so with the numbers rather than leave a visitor to
+    # read the student as beating its teacher.
+    mean_s, scale_s = _student_scaler("finance_aml_student")
+    spred = _predict("finance_aml_student", ((x - mean_s) / scale_s).round(6))
+    s_f1 = float(metrics.minority_class_f1(y, spred))
+    s_win = float((registry.achieved("finance_aml.student") or {})["student_metric"])
+    t_win = float(rec["minority_class_f1"])
+    order = ""
+    if (s_f1 > f1) != (s_win > t_win):
+        order = (f" The CKKS student scores {s_f1:.4f} on these rows, "
+                 f"{'above' if s_f1 > f1 else 'below'} this teacher, and {s_win:.4f} over the whole "
+                 f"window, {'above' if s_win > t_win else 'below'} it: on these rows it flags "
+                 f"{int(spred.sum())} against the teacher's {int(pred.sum())}, and enrichment rewards "
+                 "whichever model flags more, so the order of the two on this sample is not a ranking.")
+
+    rate = float(y_te.mean())
+    spec = registry.get("finance_aml.gbm")
+    first, last = te["timestamp"].iloc[0], te["timestamp"].iloc[-1]
     return {
         "provenance": (
-            "IBM AMLworld HI-Small (Altman et al., Kaggle "
-            "ealtman2019/ibm-transactions-for-anti-money-laundering-aml, CDLA-Sharing-1.0). The "
-            "corpus is entirely SYNTHETIC by IBM's own statement -- generated by a multi-agent "
-            "virtual world, not real customer data. An earlier revision of this line opened with "
-            "the word 'real' and then said synthetic in its next sentence; what is real is the "
-            "provenance, not the transactions. These are unmodified rows of the published corpus, "
-            "carrying the engineered features finance_aml.gbm was actually trained on, unlike the "
-            "8-feature PaySim sample this page uses for the FHE/MPC pipeline."
+            f"IBM AMLworld HI-Small. {spec.dataset.attribution} The corpus is entirely SYNTHETIC by "
+            "IBM's own statement, generated by a multi-agent virtual world, not real customer data; "
+            "what is real is the provenance, not the transactions. "
+            f"These are {want:,} rows of the held-out temporal test window, the last 30 percent of "
+            f"the timeline ({first:%Y-%m-%d %H:%M} to {last:%Y-%m-%d %H:%M}), which the model was "
+            "not fitted, tuned or calibrated on. Their 32 features are computed by the training "
+            "script's own functions, exactly as it computes them for test rows: per-account "
+            "aggregates causal, so each row sees only earlier transactions, and structural features "
+            "from the rows before the test window. Checked when this file was built: the published "
+            f"graph scores AUPRC {window_auprc:.4f} over all {len(y_te):,} rows of that window, the "
+            "figure the registry records. Unlike the 8-feature PaySim sample this page uses for the "
+            "FHE/MPC pipeline."
         ),
         "input": {"shape": [1, len(FEATURES)], "dtype": "float32",
                   "preprocessing": [], "layout": "samples[i] is one row of the 32 features below"},
         "feature_names": list(FEATURES),
-        "samples": np.asarray(x, dtype=float).tolist(),  # already rounded above
+        "samples": x.tolist(),                           # already rounded above
         "labels": y.astype(int).tolist(),
         "expected": {
             "graph": graph,
             "accuracy": float((pred == y).mean()),
             "majority_baseline": float(max(np.bincount(y)) / len(y)),
             **declared_metric_expectation("finance_aml.gbm", y, pred),
-            "note": ("Stratified to contain positives -- AMLworld's real prevalence is ~1 in 981, "
-                     "so an unstratified draw would be all-negative and accuracy would be vacuous."),
+            # What flagging every row would score, which is what the browser compares rare-class F1
+            # against. Stated so the file and the page do not compute it twice.
+            "all_positive_f1": all_pos,
+            "decision_threshold": thr,
+            "note": (
+                f"Enriched to {take_pos} laundering rows of {want:,} ({take_pos / want:.1%}); the "
+                f"test window's own rate is {rate:.2%}, about 1 in {1 / rate:.0f}, so an unenriched "
+                f"draw would hold about {want * rate:.0f} and accuracy would be vacuous. Classified "
+                f"at the decision threshold {thr:.4f} the trainer chose on the validation window, as "
+                "the browser does. The registry's minority-class F1 of "
+                f"{float(rec['minority_class_f1']):.4f} is the same threshold over all "
+                f"{len(y_te):,} test rows at their real prevalence." + order),
         },
     }
 
@@ -459,71 +542,106 @@ def build_finance(rng: np.random.Generator) -> dict:
 #  satellite_comms -- ESA-ADB Mission1 channels 41-46, [1,250,6] windows
 # --------------------------------------------------------------------------------------------- #
 def build_satellite(rng: np.random.Generator) -> dict:
-    """ESA-ADB Mission1 channels 41-46, windowed exactly as scripts/train/satellite_telemanom.py does.
+    """Windows from the held-out test window, preprocessed by the trainer's own code.
 
     Telemanom is a FORECASTER, not a classifier: [1,250,6] in, [1,6] next-step prediction out. So the
     self-check here is forecast error against the true next values, not an accuracy. Reproducing the
     model's headline event-wise F0.5 would mean reimplementing non-parametric dynamic thresholding in
     the browser, which is a different and much larger claim than "the published graph executes here
     and predicts what it predicted offline".
+
+    TEST WINDOW ONLY, AND THE TRAINER'S OWN PREPROCESSING (Round 71). This builder kept its own copy
+    of the steps and it had drifted from the trainer three ways: it back-filled, it fitted the z-score
+    on the whole series, and it drew its windows from the whole timeline, so about 70 percent of them
+    were training windows while the page called them held-out. Its provenance said "Resampled to 60s"
+    while it resampled at 300s. It now calls the trainer's `preprocess()` and `windows()`, and refuses
+    to write a sample unless the constants it fits equal the ones the trainer published and its first
+    test windows equal the fixtures the export gate saved.
+
+    The cadence is read from the trainer's record rather than hardcoded. Hardcoding 60s while the
+    model was trained at 300s is how Round 18 came to report the forecaster as 19-22x worse than
+    persistence: it was being fed data at the wrong sampling rate.
     """
+    from train.satellite_telemanom import SEQ_LEN, preprocess, windows  # type: ignore
+
     from qsh.models import datasets as D
     from qsh.models import registry
 
-    seq, chans = 250, list(D.ESA_MISSION1_LIGHTWEIGHT)
-    # Mirror the training pipeline step for step; a different resample or normalisation would make
-    # the browser's numbers incomparable with the recorded ones for reasons nobody could see.
-    # Read the cadence the model was TRAINED at rather than hardcoding one. Hardcoding 60s here
-    # while the published model was trained at 300s is precisely how Round 18 came to report the
-    # forecaster as 19-22x worse than persistence: it was being fed data at the wrong sampling
-    # rate. At the correct cadence the same model is about 2.9x BETTER than persistence. The
-    # preprocessing has to come from the artefact, not from a constant in a second file.
-    resample = str(registry.achieved("satellite_comms.telemanom").get("resample") or "300s")
-    raw = D.load_esa_channels()
-    df = raw.resample(resample).mean().ffill().bfill()
-    values = df.to_numpy(dtype=np.float32)
-    mu, sigma = values.mean(0), values.std(0) + 1e-8
-    values = (values - mu) / sigma                       # train script lines 164-166
+    key = "satellite_comms.telemanom"
+    out_dir = REPO / registry.ARTIFACT_DIRS[key]
+    published = json.loads((out_dir / "feature_spec.json").read_text())
+    resample = str((registry.achieved(key) or {}).get("resample") or "")
+    chans = list(D.ESA_MISSION1_LIGHTWEIGHT)
+    if resample != published.get("resample") or chans != published.get("channels"):
+        raise SystemExit(f"the record's cadence {resample!r} and channels disagree with the "
+                         f"published feature_spec.json ({published.get('resample')!r})")
+    df, values, cut, mu, sigma = preprocess(D.load_esa_channels(), resample)
+    norm = published["normalisation"]
+    if not (np.allclose(mu, norm["mean"], rtol=0, atol=1e-6)
+            and np.allclose(sigma, norm["std"], rtol=0, atol=1e-6)):
+        raise SystemExit("the z-score constants fitted here differ from the ones the trainer published")
+    xte, yte = windows(values[cut:], SEQ_LEN, 1)
+    fixtures = np.load(out_dir / "fixtures.npy")
+    if not np.array_equal(xte[:len(fixtures)], fixtures):
+        raise SystemExit("the first test windows differ from the fixtures the export gate saved")
 
-    # 250x6 per window is 1500 floats, so keep this small -- the comparison against
-    # persistence is stable well below N_SAMPLES and the payload has to ship.
-    n_windows = N_SAMPLES["satellite_comms"]
-    starts = rng.choice(np.arange(0, len(values) - seq - 1), size=n_windows, replace=False)
-    x = np.stack([values[s:s + seq] for s in starts]).astype(np.float32)
-    y_next = np.stack([values[s + seq] for s in starts]).astype(np.float32)
-
-    # Measure the graph the BROWSER will fetch. browserModel() prefers int8 where one exists
-    # and is runnable, so measuring fp32 here published an expectation for a graph no visitor
-    # would ever run -- and nothing checked, until the graph assertion was added.
+    # The same graph over EVERY test window, so the note can say how this sample sits in the whole.
     sess, graph = _session("satellite_telemanom", prefer_int8=True)
-    pred = np.asarray(sess.run(None, {sess.get_inputs()[0].name: x})[0], dtype=np.float32)
-    mae = float(np.abs(pred - y_next).mean())
+    name = sess.get_inputs()[0].name
+    window_pred = np.concatenate([sess.run(None, {name: xte[i:i + 4096]})[0]
+                                  for i in range(0, len(xte), 4096)])
+    window_mae = float(np.abs(window_pred - yte).mean())
+    window_persistence = float(np.abs(xte[:, -1, :] - yte).mean())
+    print(f"    z-score constants equal the published ones; the {len(fixtures)} export fixtures are the "
+          f"first test windows; over all {len(xte):,} test windows MAE {window_mae:.6f} against "
+          f"persistence {window_persistence:.6f}")
+
+    # 250x6 per window is 1500 floats, so keep this small -- the comparison against persistence is
+    # stable well below N_SAMPLES and the payload has to ship. Sorted, so the rows read in time order.
+    n_windows = N_SAMPLES["satellite_comms"]
+    pick = np.sort(rng.choice(len(xte), size=n_windows, replace=False))
+    # Rounded BEFORE predicting, in float64 so the file carries 4 decimals rather than the float32
+    # expansion of them. The expectation used to be measured on the unrounded windows and so
+    # described numbers the browser never received (0.07415 recorded, 0.07416 on the shipped rows).
+    x64 = xte[pick].astype(np.float64).round(4)
+    t64 = yte[pick].astype(np.float64).round(4)
+    pred = np.asarray(sess.run(None, {name: x64.astype(np.float32)})[0], dtype=np.float64)
+    mae = float(np.abs(pred - t64).mean())
     # What predicting "no change from the last observed step" would score. A forecaster that cannot
     # beat persistence is not forecasting, and the browser should be able to see that too.
-    persistence_mae = float(np.abs(x[:, -1, :] - y_next).mean())
+    persistence_mae = float(np.abs(x64[:, -1, :] - t64).mean())
 
+    ds = registry.get(key).dataset
     return {
         "task": "forecast",
         "provenance": (
-            "real ESA Anomaly Dataset (ESA-ADB) Mission1 lightweight channels 41-46 "
-            "(Zenodo 12528696, CC BY 3.0 IGO). Missions are anonymised Mission1/2/3 -- they are not "
-            "named Sentinel anything. Resampled to 60s and z-scored exactly as the training script "
-            "does. These are the windows satellite_comms.telemanom was trained on, unlike the NASA "
-            "SMAP/MSL sample this page uses for the FHE/MPC pipeline."
+            f"Real ESA Anomaly Dataset (ESA-ADB) telemetry, Mission1 lightweight channels 41-46. "
+            f"{ds.attribution} Missions are anonymised Mission1/2/3; they are not named Sentinel "
+            f"anything. Resampled to {resample}, forward-filled, and z-scored with the mean and "
+            "standard deviation of the training window, by the training script's own preprocess(). "
+            # No dates: the sources do not state the mission's span and DATA_LICENSES.md withholds it,
+            # so the corpus index is not quoted as though it were a calendar.
+            f"These are {n_windows} of the {len(xte):,} windows in the held-out test window, the last "
+            f"30 percent of the {len(df):,}-step timeline, drawn at random and kept in time order; "
+            "the model trained on none of them. Unlike the NASA SMAP/MSL sample this page uses for "
+            "the FHE/MPC pipeline."
         ),
-        "input": {"shape": [1, seq, len(chans)], "dtype": "float32", "preprocessing": [],
-                  "layout": f"samples[i] is {seq} timesteps x {len(chans)} channels at {resample} "
+        "input": {"shape": [1, SEQ_LEN, len(chans)], "dtype": "float32", "preprocessing": [],
+                  "layout": f"samples[i] is {SEQ_LEN} timesteps x {len(chans)} channels at {resample} "
                             "cadence, row-major, already resampled and z-scored"},
         "channels": chans,
-        "samples": x.reshape(len(x), -1).round(4).tolist(),
-        "targets": y_next.round(4).tolist(),
+        "samples": x64.reshape(len(x64), -1).tolist(),
+        "targets": t64.tolist(),
         "expected": {
             "graph": graph,
             "mae": mae,
             "persistence_mae": persistence_mae,
-            "note": ("Mean absolute error of the next-step forecast, measured here with onnxruntime "
-                     "on exactly these windows. persistence_mae is what predicting no change would "
-                     "score, so a reader can tell whether the model is doing anything."),
+            "note": (
+                "Mean absolute error of the next-step forecast in z-score units, measured here with "
+                "onnxruntime on exactly these windows as shipped. persistence_mae is what predicting "
+                "no change would score, so a reader can tell whether the model is doing anything. "
+                f"Over all {len(xte):,} test windows the same graph scores {window_mae:.4f} against "
+                f"persistence {window_persistence:.4f}."),
         },
     }
 
@@ -895,10 +1013,9 @@ def declared_metric_expectation(key: str, y, pred) -> dict:
 def _f1_over_baseline(y: np.ndarray, pred: np.ndarray) -> tuple[float, float, float]:
     """Rare-class F1, the F1 of flagging everything, and the ratio between them.
 
-    The ratio is the part that survives a change of prevalence. Rare-class F1 does not: the finance
-    student scores 0.3337 on the enriched sample below and 0.0178 on the full corpus, a 19x gap that
-    is entirely an artefact of how many positives each contains. Against its own all-positive
-    baseline it is 9.3x on one and 8.7x on the other, which is the same model described twice.
+    Rare-class F1 does not survive a change of prevalence, and the ratio to the all-positive
+    baseline is the part that can. Whether it does is measured, not assumed: build_finance_student
+    states both on the enriched sample and on the whole test window, and says which way they came out.
     """
     from qsh.models import metrics
 
@@ -931,12 +1048,11 @@ def build_medical_student(rng: np.random.Generator) -> dict:
 
     return {
         "task": "classification",
-        "provenance": (
-            "MedMNIST v2 BreastMNIST test split (Yang et al., Scientific Data 10:41, 2023; "
-            "CC BY 4.0), derived from the Al-Dhabyani et al. BUSI ultrasound dataset. Normalised "
-            "and area-resized to 14x14 here, which is the resolution this student was distilled at "
-            "and the one its encrypted convolution runs on -- the ResNet-18 teacher on this same "
-            "page runs at 28x28, so the two are not interchangeable inputs."),
+        "provenance": _breastmnist_provenance(
+            "MedMNIST v2 BreastMNIST ultrasound images: the official test split, all 156.") + (
+            " Normalised and area-resized to 14x14 here, which is the resolution this student was "
+            "distilled at and the one its encrypted convolution runs on -- the ResNet-18 teacher on "
+            "this same page runs at 28x28, so the two are not interchangeable inputs."),
         "input": {"shape": [1, 1, 14, 14], "dtype": "float32", "preprocessing": [],
                   "layout": "samples[i] is one 14x14 image, row-major, already normalised"},
         # MedMNIST BreastMNIST: {0: malignant, 1: "normal, benign"}. onnxInference.ts renders
@@ -1014,13 +1130,14 @@ def build_finance_student(rng: np.random.Generator) -> dict:
     """The finance teacher's own 8192 rows, z-scored by the published scaler.
 
     Deliberately the SAME rows the gradient-boosting teacher's sample ships, so the two figures on
-    the page describe one row set and are comparable with each other.
+    the page describe one row set and are comparable with each other. Build the teacher's sample
+    first: this reads it.
 
-    This one does NOT reproduce the registry's recorded 0.0178, and the note says so. That figure is
-    measured on the full 1,523,504-row test split at AMLworld's real prevalence of about 1 in 981.
-    These 8192 rows are stratified to contain positives -- an unstratified draw would be all-negative
-    and every metric on it vacuous -- which lifts prevalence to 1.8 percent and rare-class F1 with
-    it. Shipping 0.3337 as though it were the corpus figure would overstate the model 19-fold.
+    This one does NOT reproduce the registry's recorded student figure, and the note says by how much
+    and why. That figure is measured on the whole test window at its real prevalence; these rows are
+    drawn from the same window but enriched to contain positives. The note used to carry its numbers
+    as literals ("about 19x", "roughly 8.7x"), and after a retrain they no longer described the
+    figures printed beside them: 0.3761 against 0.0614 is 6.1x, not 19x. They are computed now.
     """
     teacher = json.loads((REPO / "models" / "finance_aml_gbm" / "eval_sample.json").read_text())
     x = np.asarray(teacher["samples"], dtype=float)
@@ -1032,8 +1149,30 @@ def build_finance_student(rng: np.random.Generator) -> dict:
 
     from qsh.models import registry
 
-    corpus = (registry.achieved("finance_aml.student") or {}).get("student_metric")
-    corpus_n = (registry.achieved("finance_aml.student") or {}).get("n_eval")
+    rec = registry.achieved("finance_aml.student") or {}
+    corpus, corpus_n = float(rec["student_metric"]), int(rec["n_eval"])
+    # The teacher's record carries the test window's positive rate as the AUPRC baseline, which is
+    # what a coin-flip detector scores and so exactly the window's prevalence.
+    rate = float((registry.achieved("finance_aml.gbm") or {})["auprc_baseline"])
+    corpus_all_pos = 2 * rate / (1 + rate)
+    corpus_ratio = corpus / corpus_all_pos
+    here = float(np.mean(y == 1))
+    teacher_here = float(teacher["expected"]["minority_class_f1"])
+    teacher_window = float(rec["teacher_metric"])
+    # Said when it happens, because the page prints the two side by side.
+    inverted = (f1 > teacher_here) != (corpus > teacher_window)
+    order = (f" On these rows the student scores {'above' if f1 > teacher_here else 'below'} its "
+             f"teacher ({f1:.4f} against {teacher_here:.4f}) and over the whole window "
+             f"{'above' if corpus > teacher_window else 'below'} it ({corpus:.4f} against "
+             f"{teacher_window:.4f}): enrichment rewards whichever model flags more, so the order "
+             "of the two on this sample is not a ranking." if inverted else "")
+    survives = abs(ratio - corpus_ratio) <= 0.25 * corpus_ratio
+    tail = (f"What survives the change is the ratio to the all-positive baseline: {ratio:.1f}x here "
+            f"against {corpus_ratio:.1f}x on the whole window."
+            if survives else
+            f"Not even the ratio to the all-positive baseline survives it: {ratio:.1f}x here against "
+            f"{corpus_ratio:.1f}x on the whole window, so this sample checks that the browser "
+            "reproduces the graph, not how good the student is.")
 
     return {
         "task": "classification",
@@ -1051,16 +1190,17 @@ def build_finance_student(rng: np.random.Generator) -> dict:
             "all_positive_f1": all_pos,
             "note": (
                 f"{f1:.4f} on THESE rows, which is not the {corpus:.4f} the registry records for "
-                f"this student. That figure is measured on the full {corpus_n:,}-row test split at "
-                f"AMLworld's real prevalence of about 1 in 981; these 8192 rows are stratified to "
-                f"contain positives, because an unstratified draw of that corpus is all-negative "
-                f"and every metric on it is vacuous. Rare-class F1 rises with prevalence, so the "
-                f"two differ by about 19x and neither is wrong. What survives the change is the "
-                f"ratio to the all-positive baseline: {ratio:.1f}x here against roughly 8.7x on the "
-                f"full corpus. Read this number against the {all_pos:.4f} baseline beside it, not "
-                f"against the registry's."),
+                f"this student. That figure is measured on all {corpus_n:,} rows of the test window "
+                f"at its real prevalence of {rate:.2%}, about 1 in {1 / rate:.0f}; these {len(y):,} "
+                f"rows come from the same window but are enriched to {here:.1%} laundering, because "
+                f"an unenriched draw of this size would hold about {len(y) * rate:.0f} positives and "
+                f"every metric on it would be noise. Rare-class F1 rises with prevalence, so the two "
+                f"differ by {f1 / corpus:.1f}x and neither is wrong. " + tail + order
+                + f" Read this number against the {all_pos:.4f} baseline beside it, not against the "
+                "registry's."),
         },
     }
+
 
 BUILDERS = {"medical_fl": build_medical, "finance_aml": build_finance,
             "medical_student": build_medical_student,

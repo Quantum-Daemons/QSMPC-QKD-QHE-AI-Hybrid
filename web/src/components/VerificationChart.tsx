@@ -690,7 +690,8 @@ export function VerificationChart(
       <div className="chart-pair">
       <figure className="chart-figure">
         <figcaption className="muted small">
-          Per-class F1 for <code>{modelKey}</code>, {res.n} held-out rows scored in this tab.
+          Per-class F1 for <code>{modelKey}</code>, {res.n} rows of its published evaluation sample
+          ({res.split ?? "split not declared"}) scored in this tab.
           Weakest class: <strong>{worst.label}</strong> at {worst.f1.toFixed(3)} against an aggregate
           of {res.score?.toFixed(3)}. The aggregate is what would hide it.
         </figcaption>
@@ -725,7 +726,8 @@ export function VerificationChart(
       <div className="chart-pair">
         <figure className="chart-figure">
           <figcaption className="muted small">
-            Precision-recall for <code>{modelKey}</code> over {res.n} rows. The dashed line is what a
+            Precision-recall for <code>{modelKey}</code> over {res.n} rows of its published evaluation
+            sample ({res.split ?? "split not declared"}). The dashed line is what a
             random ranker achieves ({prevalence.toFixed(4)}) - PR rather than ROC because this
             baseline moves with prevalence and ROC's does not.
           </figcaption>

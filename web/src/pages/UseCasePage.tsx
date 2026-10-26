@@ -222,8 +222,9 @@ function UseCaseView({ usecase }: { usecase: string }) {
             )}
           </div>
           <p className="muted small" style={{ marginTop: -4 }}>
-            Re-scored in this tab on the model's own published held-out sample. Charts are drawn from
-            the same arrays the metric was computed on.
+            Re-scored in this tab on the model's own published evaluation sample
+            ({artifacts.verification.split ?? "split not declared"}). Charts are drawn from the same
+            arrays the metric was computed on.
           </p>
           {artifacts.verification.matchesExpected === false && (
             <div className="note" style={{ marginBottom: 10, borderColor: "var(--danger)", color: "var(--danger)" }}>

@@ -3101,3 +3101,31 @@ re-read at the latest versions. The code needed no change. What had gone stale w
 **A conclusion can outlive its numbers.** QC18's finding was correct when it was written and false
 now. Nothing tracked had repeated it, because it lived only in the checklist, which is the reason the
 checklist has to be re-read and not only re-run.
+
+### Round 71: a console message led to a sample, and the sample to the model
+
+**Context.** Fixing the two satellite console messages Round 70 had recorded as proposals.
+
+**The messages were symptoms, one level up.** The 404 asked for a sample the model publishes none of
+by design, and the shape warning came from an export traced on one row. Both fixes were small. What
+mattered was where the samples came from. Reading the generator to fix the second message showed
+that three samples were drawn from the whole corpus, while the log called every sample held-out.
+
+**A generator that copies the trainer drifts from it.** Both drifted copies were written as
+mirrors, with comments saying they followed the training script step for step. They are now calls
+into the trainer, plus two checks against artefacts the trainer had already saved: the export
+fixtures, and the published constants or the recorded metric. "The same preprocessing" became a
+check that can fail, and it did fail once, which is how the satellite leak was found.
+
+**A fix to the code is not a fix to the artefact.** Round 34 corrected the trainer's z-score. The
+model on the Hub was trained three days earlier and never retrained, so every figure recorded for it
+came from the leaky pipeline the trainer no longer ran. The same shape appeared twice more in this
+round:
+- the medical licence downgrade reached the registry, but no sample was rebuilt;
+- a withheld int8 graph was deleted locally and kept on the Hub.
+
+Each time the repository was right and the published copy was not.
+
+**The honest retrain scored zero.** It caught none of the three scored events, where the leaky runs
+had caught one. A second seed might catch one again, and choosing between seeds after seeing the
+results would be choosing a number. The run is recorded as measured, with its counts.

@@ -5221,3 +5221,171 @@ by a live observation.
 BUSINESS DOC RECONCILED Round 70. The out-of-repo document is brought level with this round. Its content
 is not quoted here, in the checklist, or in any commit - only the fact of the reconciliation, which is
 what gate 16 reads.
+
+## Round 71: the evaluation samples drawn from their held-out windows, and the satellite forecaster retrained
+
+**Stacked on Round 70**, which is stacked on Round 69, still open by decision. The demo serves this
+branch while it is checked.
+
+**What prompted it.** Round 70 recorded two console messages on every satellite run as proposals: a
+404 for the satellite CKKS student's `eval_sample.json`, and an onnxruntime shape warning from
+Telemanom. Following them led to the evaluation samples themselves, and then to the satellite model.
+
+**The two console messages.**
+- **The 404.** `satellite_comms.student` publishes no evaluation sample by design, since Round 21: its
+  metric, event-wise F0.5, is defined over contiguous runs of a timeline and cannot be re-scored from
+  independent rows. The browser asked the Hub for one anyway. The registry now carries the reason as
+  `eval_sample_reason`, the browser does not request the file, and the log says why it is absent.
+  Its model panel said it would be "re-scored on its published held-out sample" when you pressed
+  Start. It now says why it is not.
+- **The shape warning.** The Telemanom graph declared input `[batch, 250, 6]` and output `[1, 6]`.
+  torch>=2.9 exports through torch.export, which fixes any dimension whose example size is 0 or 1, and
+  the exporter traced on one row. The ResNets went through the same call and kept `[batch, 2]`, which
+  is why one row had looked safe. The exporter now traces on at least two rows and refuses a graph
+  whose output batch is still fixed. Re-exported from the same weights, the new graphs give
+  bit-identical outputs on the 256 export fixtures.
+
+**The samples were not all held out, though the log said they were.** It printed "re-scored all N
+published held-out rows" for every model. Three samples were drawn from the whole corpus, so about 70
+percent of their rows were training rows: the finance teacher's 8,192 rows, the CKKS student's (which
+reuses them), and Telemanom's 128 windows. Both generators had also kept their own copy of the
+trainer's preprocessing, and both copies had drifted:
+- **Finance.** The generator called `graph_features(df)` with neither `fit_on` nor the causal
+  aggregates. That computes the 11 per-account features over the whole timeline, the leaky form that
+  `causal_account_features` documents and the model was not trained on.
+- **Telemanom.** The generator back-filled, fitted its z-score on the whole series, and said
+  "Resampled to 60s" while resampling at 300s.
+
+Both samples now come from the test window, through the trainers' own functions (`load_sorted`,
+`temporal_windows`, `preprocess`, `windows`). Each refuses to write unless it reproduces the trainer.
+For finance: the 512 export fixtures are byte-identical, and AUPRC through the published graph over
+all 1,523,504 test rows is 0.123338 against the recorded 0.123341. For Telemanom: the published
+z-score constants match, and its first 256 test windows equal the fixtures.
+
+| sample | before | after |
+|---|---|---|
+| finance teacher, rare-class F1 | 0.5439 at argmax, whole corpus | 0.2032 at its threshold, test window |
+| finance CKKS student, rare-class F1 | 0.3761, whole corpus | 0.3132, test window |
+| Telemanom, next-step MAE (persistence) | 0.0741 (0.0965), whole timeline | 0.0240 (0.0794), test window |
+
+**Each model now says which split its sample is.** `eval_split` in the registry states it for every
+published model, the generator writes it into each sample it builds, and both run-log lines and all
+three captions print it. The four samples not rebuilt this round were already drawn from test splits:
+OPS-SAT's two from the benchmark's own test partition, telecom's two from the held-out quarter of the
+seed-42 split. Their files carry no `split` key, and the page prints the registry's declaration for
+them.
+
+**The finance teacher is now scored at its operating point.** The trainer chose a decision threshold
+of 0.3869 on the validation window and published it in `feature_spec.json`. The browser scored the
+teacher at argmax anyway. The sample now states the threshold, and both the whole-sample check and
+the one-row run classify at it. The student needs none, because its cut lives in its intercept.
+
+**On the same rows the student scores above its teacher, 0.3132 against 0.2032.** Over the whole
+window the order is reversed: 0.0614 against 0.1519. Enrichment to 2 percent laundering rewards
+whichever model flags more, and here the student flags 200 rows to the teacher's 23. Both notes now
+say that the order on this sample is not a ranking.
+
+**The student's note had outlived its numbers.** It said the two F1 figures "differ by about 19x"
+beside figures 6.1x apart, and gave "roughly 8.7x on the full corpus" for a ratio that is now 20.2x.
+Every figure in both finance notes is now computed. The ratio to the all-positive baseline does not
+survive the change of prevalence either (8.0x here against 20.2x), and the note says so.
+
+**The medical samples on the Hub still said a flat "CC BY 4.0".** On 2026-08-10 the registry and
+`DATA_LICENSES.md` downgraded that claim to "asserted by MedMNIST; the upstream BUSI grant is NOT
+verifiable". One of the generator's two hardcoded copies of the sentence was corrected, but no
+sample was rebuilt, so all three BreastMNIST samples kept the old wording, and the medical page's
+log printed it. The provenance now comes from the registry's attribution and licence. Rows and
+expected figures are unchanged.
+
+**The published satellite forecaster had kept a leak the trainer no longer had.** The weights on the
+Hub were trained on 2026-08-09 with the z-score fitted on the whole series, test window included: its
+`feature_spec.json` matched the whole-series mean and standard deviation to six decimals. Round 34
+fixed the trainer three days later, and the model was never retrained. **Retrained in this round, by
+decision:**
+- Next-step MAE over all 441,600 test windows is 0.0250, against 0.0764 for persistence: about 3.1x
+  better.
+- The detector still flags 2 points of 441,600, and neither falls inside one of the 3 scored events.
+  Event-wise F0.5 is therefore 0 (tp=0 fp=2 fn=3), where the two leaky runs had recorded 0.714286 and
+  0.454545.
+- Point-adjusted F1 falls from 0.9937 to 0 with it. One flagged point inside a long event had carried
+  all of it.
+- The CKKS student was re-distilled in the same run: agreement 0.9756, and both models score 0.
+- The isolation-forest baseline reproduces exactly (0.000248).
+
+Three events cannot rank detectors, so this is one more draw from the distribution the existing notes
+describe, now measured without the leak.
+
+In the same change:
+- The trainer's default cadence is now 300s; it was 60s, while the model and its record said 300s.
+- Its two notes compute their counts from the run they describe. They had said "THREE labelled
+  anomaly events" and "flags 2 points out of 441,600" as literals.
+
+**A stale artefact on the Hub.** ResNet-50's repo still served an int8 graph uploaded on 2026-08-09,
+quantised from weights that a later retrain replaced. That retrain's int8 missed the agreement gate
+(0.9865 against 0.99) and was withheld. The export report beside it said fp32 only was served.
+`upload_folder` never deletes, so the file had stayed at the head through six publishes. It is
+removed in this round's commit, by decision; earlier revisions keep it. `publish_hf.py` now refuses
+to publish while the head holds files the local folder does not produce, and `--delete-stale`
+removes exactly those files in the same commit.
+
+**Also found and fixed:**
+- **The finance 2D overlay was built from the old sample.** `web/public/data/finance/real_2d.json`
+  takes its points from the finance evaluation sample, so it plotted the whole-corpus rows and
+  called them "the exact held-out rows the browser scores". It is rebuilt from the new sample. The
+  chosen pair still reads best among the readable ones, at 0.1269 where it read 0.2302; the
+  unreadable winner reads 0.1400, where it read 0.3195.
+- **Two overlay figures did not reproduce under the estimator their gate states.**
+  - Satellite's literal, 0.8492, was its pair-selection figure, fitted on the train split; the
+    stated estimator gives 0.8057.
+  - The gate's band of 0.08 had admitted it. On the new finance rows the same band also admitted the
+    single-feature reading (0.0621 against 0.1269), which the band exists to exclude.
+  - Both figures are now computed in the generator with that estimator, and the band is 0.01.
+- **`record_metrics` lost the retired-pin marker.** When a model was recorded twice without a publish
+  in between (a re-export, then the retrain it led to), the second write dropped
+  `hf_revision_invalidated_by_retrain`. The page would then say "never pinned" for a model that had
+  been published. It now keeps the marker, with a test.
+- **README.** It said "All ten repos are public" against eleven published, and "the evaluation sample
+  for each" when one publishes none by design. Its own next paragraph warns that this sentence is
+  the copy that rots. It is corrected and now gated.
+- **`DATA_LICENSES.md`.** It dated MedMNIST v2 to *Nature Scientific Data* 2022; the paper is
+  *Scientific Data* 10:41 (2023).
+
+**Published and re-pinned** (seven repos, all public, every file at the pin byte-identical to the
+local artefact):
+
+| model | revision |
+|---|---|
+| `finance_aml.gbm` | `18e1155696cc` |
+| `finance_aml.student` | `f3b06875c573` |
+| `medical_fl.resnet18` | `7e8857738637` |
+| `medical_fl.resnet50` | `7642daf58202` |
+| `medical_fl.student` | `88b71bb37aa4` |
+| `satellite_comms.telemanom` | `93be9a22bab8` |
+| `satellite_comms.student` | `b18afd4ee268` |
+
+**Gates.** Three new files and two widened, seeded 15 ways, and each seed fires:
+- `tests/test_an_exported_graph_keeps_its_batch_axis.py`: a Telemanom-shaped LSTM exported from one
+  row keeps a symbolic output batch and matches torch at batch 5; the detector names a fixed batch and
+  stays quiet otherwise; and every local graph is consistent.
+- `tests/test_an_evaluation_sample_says_which_split_it_is.py`:
+  - every published model declares its split or why it has none;
+  - the page prints the split;
+  - `preprocess` fits its z-score on the training window and back-fills nothing, and
+    `temporal_windows` cuts the test window off the end (both on synthetic data, so CI runs them);
+  - both generators draw from the trainers' test output;
+  - each rebuilt sample states the registry's split, and the teacher's states its threshold;
+  - the finance notes quote the figures beside them;
+  - the README's repo count matches the registry.
+- `tests/test_publishing_leaves_no_stale_artefact.py`: through `publish()` with a fake Hub client, a
+  stale file stops the publish, `--delete-stale` removes exactly that file, and a dry run reports it.
+- `tests/test_model_pins.py`: two retrains in a row keep the retired pin.
+- `tests/test_the_separability_figure_reproduces.py`: the band narrowed from 0.08 to 0.01; it fires
+  on the old finance literal.
+
+UNVERIFIED - needs confirmation: whether earlier event-wise figures would have reproduced without the
+leak cannot be known now. Only one leak-free run exists, and with three events a second run could
+differ by a whole event.
+
+BUSINESS DOC RECONCILED Round 71. The out-of-repo document is brought level with this round. Its content
+is not quoted here, in the checklist, or in any commit - only the fact of the reconciliation, which is
+what gate 16 reads.

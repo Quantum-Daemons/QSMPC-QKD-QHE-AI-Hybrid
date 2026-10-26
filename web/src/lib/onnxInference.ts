@@ -471,6 +471,12 @@ export interface ModelInputFile {
      *  class F1 has to clear, and the reason 0.0178 needs a companion rather than a bare comparison
      *  against zero. */
     all_positive_f1?: number;
+    /** A binary model's operating point, P(positive) at or above which it flags, when the trainer
+     *  chose one other than 0.5. The finance teacher's was chosen on its validation window and
+     *  published in feature_spec.json, and until Round 71 the browser scored it at argmax anyway,
+     *  a threshold the model is never operated at. Its student needs none: its cut is in its
+     *  intercept. */
+    decision_threshold?: number;
   };
   classes?: Record<string, string>;
   feature_names?: string[];
@@ -479,6 +485,13 @@ export interface ModelInputFile {
 
 export interface ModelEvalResult {
   ran: boolean;
+  /** Set, with `ran` false, when the model publishes no sample by design (`eval_sample_reason`). */
+  noSampleReason?: string;
+  /** Which split the sample was drawn from, as the registry declares it per model (`eval_split`).
+   *  The run log says "held-out" through this and no other way. */
+  split?: string | null;
+  /** The operating point the rows were classified at, when the sample publishes one. */
+  decisionThreshold?: number | null;
   task: "classification" | "forecast";
   n: number;
   /** Accuracy, rare-class F1, or mean absolute error, depending on `metricName`. */
@@ -499,10 +512,10 @@ export interface ModelEvalResult {
   provenance: string;
   /** `expected.note` from the sample: why this figure is what it is.
    *
-   *  Rendered, not just carried. The finance student measures 0.3337 here and the registry table
-   *  eight lines above it prints 0.0178 for the same metric - a 19x gap that is entirely an artefact
-   *  of the sample being stratified to contain positives. Two numbers for one metric with no visible
-   *  explanation is worse than either alone. */
+   *  Rendered, not just carried. The finance student measures several times here what the registry
+   *  table above it prints for the same metric, a gap that is an artefact of the sample being
+   *  enriched with positives. Two numbers for one metric with no visible explanation is worse than
+   *  either alone. */
   note: string | null;
   error: string | null;
   /** Compact plot data, reduced HERE rather than by shipping thousands of raw scores into React
@@ -649,8 +662,14 @@ export async function evaluatePublishedModel(
     ? browserModels(usecase).find((m) => m.spec.key === modelKey) ?? null
     : browserModel(usecase);
   if (!target) return null;
+  base.split = target.spec.eval_split ?? null;
+  // A model that publishes no sample BY DESIGN is not asked for one: the request could only 404.
+  if (target.spec.eval_sample_reason) return { ...base, noSampleReason: target.spec.eval_sample_reason };
   const file = await evalSample(target.url);
   if (!file) return null;                           // no evaluation sample published for this model
+  const split = base.split;
+  const thr = file.expected.decision_threshold ?? null;
+  base.decisionThreshold = thr;
 
   // Check we are about to score the graph the expectation was measured on. expected.graph has been
   // published since Round 18 and never once compared against the artefact actually fetched -- and
@@ -729,7 +748,8 @@ export async function evaluatePublishedModel(
         baseline: file.expected.persistence_mae ?? persistenceMae,
         beatsBaseline: mae < (file.expected.persistence_mae ?? persistenceMae),
         matchesExpected: exp == null ? false : Math.abs(mae - exp) <= Math.max(tolerance, exp * 0.1),
-        backend: status.backend, bytes: status.bytes, provenance: file.provenance,
+        backend: status.backend, bytes: status.bytes, provenance: file.provenance, split,
+        decisionThreshold: thr,
         note: file.expected.note ?? null, error: null,
         plot: { kind: "forecast", series },
       };
@@ -743,7 +763,9 @@ export async function evaluatePublishedModel(
     for (let i = 0; i < n; i++) {
       let best = 0;
       for (let c = 1; c < width; c++) if (data[i * width + c] > data[i * width + best]) best = c;
-      const pred = width > 1 ? best : (data[i] > 0.5 ? 1 : 0);
+      // At the published operating point when there is one, so the figure is the model as operated.
+      const pred = thr != null && width === 2 ? (data[i * 2 + 1] >= thr ? 1 : 0)
+        : width > 1 ? best : (data[i] > (thr ?? 0.5) ? 1 : 0);
       preds[i] = pred;
       if (pred === labels[i]) correct++;
       if (labels[i] === 1) positives++;
@@ -833,7 +855,8 @@ export async function evaluatePublishedModel(
         baseline: allPositive,
         beatsBaseline: f1 > allPositive,
         matchesExpected: Math.abs(f1 - exp) <= tolerance,
-        backend: status.backend, bytes: status.bytes, provenance: file.provenance,
+        backend: status.backend, bytes: status.bytes, provenance: file.provenance, split,
+        decisionThreshold: thr,
         note: file.expected.note ?? null, error: null, plot,
       };
     }
@@ -864,7 +887,8 @@ export async function evaluatePublishedModel(
         baseline: chance,
         beatsBaseline: macro > chance,
         matchesExpected: Math.abs(macro - exp) <= tolerance,
-        backend: status.backend, bytes: status.bytes, provenance: file.provenance,
+        backend: status.backend, bytes: status.bytes, provenance: file.provenance, split,
+        decisionThreshold: thr,
         note: file.expected.note ?? null, error: null, plot,
       };
     }
@@ -876,7 +900,8 @@ export async function evaluatePublishedModel(
       ran: true, task, metricName: "accuracy", n, score: accuracy, expected: exp, baseline: majority,
       beatsBaseline: majority == null ? true : accuracy > majority,
       matchesExpected: exp == null ? false : Math.abs(accuracy - exp) <= tolerance,
-      backend: status.backend, bytes: status.bytes, provenance: file.provenance,
+      backend: status.backend, bytes: status.bytes, provenance: file.provenance, split,
+      decisionThreshold: thr,
       note: file.expected.note ?? null, error: null, plot,
     };
   } catch (e) {
@@ -927,6 +952,8 @@ export interface PublishedModelRun {
   /** Total including the fetch and session creation on a cold cache. */
   totalMs: number;
   provenance: string;
+  /** The registry's `eval_split`: which split the row's sample was drawn from. */
+  split: string | null;
 }
 
 export type PublishedRunOutcome =
@@ -962,6 +989,11 @@ export async function runPublishedModel(
   }
 
   const key = target.spec.key;
+  if (target.spec.eval_sample_reason) {
+    return { kind: "failed", modelKey: key,
+      error: `${key} publishes no evaluation sample by design (${target.spec.eval_sample_reason}), so `
+        + `there is no input from its own corpus to run it on` };
+  }
   let file: ModelInputFile | null;
   try {
     file = await evalSample(target.url);
@@ -1031,7 +1063,10 @@ export async function runPublishedModel(
       for (let c = 1; c < logits.length; c++) {
         if (logits[c] > logits[predictedClass]) predictedClass = c;
       }
-      if (logits.length === 1) predictedClass = logits[0] > 0.5 ? 1 : 0;
+      // The operating point the whole-sample verification uses, so the one row agrees with it.
+      const thr = file.expected.decision_threshold;
+      if (thr != null && logits.length === 2) predictedClass = logits[1] >= thr ? 1 : 0;
+      if (logits.length === 1) predictedClass = logits[0] > (thr ?? 0.5) ? 1 : 0;
     }
 
     return {
@@ -1058,6 +1093,7 @@ export async function runPublishedModel(
         latencyMs: Number(latencyMs.toFixed(2)),
         totalMs: Number((performance.now() - started).toFixed(2)),
         provenance: file.provenance,
+        split: target.spec.eval_split ?? null,
       },
     };
   } catch (e) {

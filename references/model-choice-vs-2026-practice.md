@@ -295,7 +295,9 @@ third is the one that matters.
 
 **And in-repo nothing demonstrates it either way.** `satellite_comms.student` scores event-wise F0.5
 **0.003234** against a teacher at **0.0** over 307,601 rows, on two labelled scoring units. Agreement of
-0.9987 between them is agreement about finding almost nothing, which the registry note already says. So
+0.9987 between them is agreement about finding almost nothing, which the registry note already says.
+(Round 71: retrained without the whole-series z-score, both now score 0.0 and agree on 0.9756 of rows,
+which strengthens the point rather than changing it.) So
 the linear tier here is not yet defensible on the merits in either direction, because no measurement on
 this corpus separates the two hypotheses - and the paper is external evidence about a different setup.
 The honest position is the cost one, which was the original argument and did not need improving.
