@@ -19,11 +19,12 @@ export default function NotFound({ title, lead }: { title: string; lead: ReactNo
       <p className="page-sub">{lead}</p>
       <div className="grid cols-2">
         <div className="card">
-          <h3>Pages</h3>
+          {/* h2, not h3: these are the page's sections (SC 1.3.1, Round 74). */}
+          <h2>Pages</h2>
           <ul>{NAV.map((n) => <li key={n.to} style={{ marginBottom: 4 }}><Link to={n.to}>{n.label}</Link></li>)}</ul>
         </div>
         <div className="card">
-          <h3>Use-case simulators</h3>
+          <h2>Use-case simulators</h2>
           <ul>
             {USECASES.map((u) => (
               <li key={u.id} style={{ marginBottom: 4 }}>

@@ -27,6 +27,7 @@ chart cannot copy the wrong neighbour.
 
 from __future__ import annotations
 
+import json
 import re
 from pathlib import Path
 
@@ -270,3 +271,206 @@ def test_a_shaped_scatter_does_not_animate_its_symbols() -> None:
         "`isAnimationActive={false}`, as RealDataScatter does. A shape channel that draws nothing is "
         "not an accessibility fix, it is a blank chart with a more detailed legend."
     )
+
+
+# --------------------------------------------------------------------------------------------- #
+#  SC 1.4.11 Non-text Contrast: every data mark reaches 3:1 against the card it is drawn on
+# --------------------------------------------------------------------------------------------- #
+
+#: Open since Round 34 and "still unmeasured as of 2026-08-15" in the checklist. Measured in Round 74
+#: with the colours resolved the way the browser resolves them - through CSS variables, constants,
+#: helper functions and the base fill of a hatch pattern - and one mark failed: the score
+#: histogram's negative class, #4a5568 at 2.26:1. The latency chart's legend swatch failed as well,
+#: at 1.23:1, which is the second check below.
+STYLES = REPO / "web" / "src" / "styles.css"
+MARKS = ("Bar", "Line", "Scatter", "Area", "Cell", "ReferenceLine")
+SERIES = ("Bar", "Line", "Scatter", "Area")
+NON_TEXT_MIN = 3.0
+
+_HEX = re.compile(r"#[0-9a-fA-F]{6}\b|#[0-9a-fA-F]{3}\b")
+
+
+def _tags(text: str, name: str) -> list[tuple[str, int]]:
+    """(attribute text, line) of each `<name ...>` tag, scanned brace-aware like `_scatter_tags`."""
+    out: list[tuple[str, int]] = []
+    i = 0
+    while (i := text.find(f"<{name}", i)) != -1:
+        if text[i + len(name) + 1].isalnum():          # <BarChart, not <Bar
+            i += 1
+            continue
+        j, depth = i + len(name) + 1, 0
+        while j < len(text):
+            c = text[j]
+            if c in "{(":
+                depth += 1
+            elif c in "})":
+                depth -= 1
+            elif c == ">" and depth == 0:
+                break
+            j += 1
+        out.append((text[i:j], text[:i].count("\n") + 1))
+        i = j + 1
+    return out
+
+
+def _root_colours() -> dict[str, str]:
+    root = re.search(r":root\s*\{([^}]*)\}", STYLES.read_text()).group(1)
+    return dict(re.findall(r"(--[\w-]+):\s*(#[0-9a-fA-F]{3,6})\b", root))
+
+
+def _contrast(a: str, b: str) -> float:
+    def lum(h: str) -> float:
+        h = h.lstrip("#")
+        h = "".join(c * 2 for c in h) if len(h) == 3 else h
+        lin = [(v / 12.92 if v <= 0.04045 else ((v + 0.055) / 1.055) ** 2.4)
+               for v in (int(h[k:k + 2], 16) / 255 for k in (0, 2, 4))]
+        return 0.2126 * lin[0] + 0.7152 * lin[1] + 0.0722 * lin[2]
+    hi, lo = sorted((lum(a), lum(b)), reverse=True)
+    return (hi + 0.05) / (lo + 0.05)
+
+
+def _colours(expr: str, text: str, seen: frozenset = frozenset()) -> set[str]:
+    """Every colour an attribute expression can evaluate to, resolved within its file."""
+    out: set[str] = set()
+    for m in re.finditer(r"url\(#([\w-]*)", expr):          # a pattern: its base fill
+        for pid, body in re.findall(r"<pattern id=(\"[^\"]*\"|\{[^}]*\})(.*?)</pattern>", text, re.S):
+            if pid.strip('"{}').startswith(m.group(1)) or pid.startswith("{"):
+                rect = re.search(r"<rect\b[^>]*fill=(\"[^\"]*\"|\{[^}]*\})", body)
+                if rect:
+                    out |= _colours(rect.group(1), text, seen)
+    plain = re.sub(r"url\([^)]*\)", "", expr)
+    out |= {h.lower() for h in _HEX.findall(plain)}
+    roots = _root_colours()
+    out |= {roots[v].lower() for v in re.findall(r"var\((--[\w-]+)\)", plain) if v in roots}
+    for ident in set(re.findall(r"\b([A-Za-z_]\w*)\b", plain)) - seen:
+        d = re.search(rf"^const {ident}\b[^=]*=(.*?);\s*$", text, re.S | re.M)
+        if d:
+            out |= _colours(d.group(1), text, seen | {ident})
+    return out
+
+
+def _marks() -> list[tuple[str, str, str, set[str]]]:
+    """(where, element, attribute expression, colours it resolves to) for every data mark."""
+    out = []
+    for path in sorted(COMPONENTS.glob("*.tsx")):
+        text = path.read_text()
+        for name in MARKS:
+            for attrs, line in _tags(text, name):
+                for m in re.finditer(r"\b(fill|stroke)=(\"[^\"]*\"|\{)", attrs):
+                    if m.group(2) == "{":                         # a braced expression
+                        j, depth = m.end(), 1
+                        while depth and j < len(attrs):
+                            depth += {"{": 1, "}": -1}.get(attrs[j], 0)
+                            j += 1
+                        expr = attrs[m.end():j - 1]
+                    else:
+                        expr = m.group(2)
+                    out.append((f"{path.name}:{line}", name, expr, _colours(expr, text)))
+    return out
+
+
+def test_every_data_mark_resolves_to_a_colour() -> None:
+    """A colour the scan cannot resolve is a mark it cannot check, so it fails rather than skips."""
+    marks = _marks()
+    unresolved = [f"{w} <{n} {e}>" for w, n, e, c in marks if not c and e.strip('"') != "none"]
+    assert not unresolved, "chart mark colours the contrast check cannot resolve:\n  " + "\n  ".join(
+        unresolved)
+    found = set().union(*(c for *_, c in marks))
+    # Named, not counted: the agreement scatter's disagreement red, the histogram's negative class
+    # (the mark that failed), a CSS variable, a constant and a helper function's literal.
+    assert {"#ff6b6b", "#717d92", "#36d399", "#f5a623", "#b072ff"} <= found, sorted(found)
+
+
+def _is_separator(colours: set[str]) -> bool:
+    """A stroke in the card's own colour draws a gap between segments, not a mark."""
+    return colours == {_root_colours()["--panel"].lower()}
+
+
+def test_every_data_mark_reaches_3_to_1_against_the_card() -> None:
+    card = _root_colours()["--panel"]
+    low = sorted({f"{w} <{n}> {c} at {_contrast(c, card):.2f}:1"
+                  for w, n, _, cs in _marks() if not _is_separator(cs)
+                  for c in cs if _contrast(c, card) < NON_TEXT_MIN})
+    assert not low, (
+        f"WCAG 2.2 SC 1.4.11 (AA): these marks fall below {NON_TEXT_MIN}:1 against the card "
+        f"({card}):\n  " + "\n  ".join(low))
+
+
+def test_stacked_segments_contrast_with_each_other_or_are_separated() -> None:
+    """Stacked segments meet each other as well as the card. WCAG's pie-chart example: adjacent
+    segments need 3:1 between them, or a border that contrasts with both. Round 74 lightened the
+    histogram's negative class to pass against the card and, in the same edit, took it to 1.10:1
+    against the hatch base it is stacked on (1.65:1 before). The card-coloured stroke separates them."""
+    card = _root_colours()["--panel"].lower()
+    bad = []
+    for path in sorted(COMPONENTS.glob("*.tsx")):
+        text = path.read_text()
+        stacks: dict[str, list[tuple[str, int]]] = {}
+        for attrs, line in _tags(text, "Bar"):
+            m = re.search(r"stackId=\"([^\"]+)\"", attrs)
+            if m:
+                stacks.setdefault(m.group(1), []).append((attrs, line))
+        for sid, bars in stacks.items():
+            fills, separated = [], True
+            for attrs, _ in bars:
+                f = re.search(r"\bfill=(\"[^\"]*\"|\{[^}]*\})", attrs)
+                st = re.search(r"\bstroke=(\"[^\"]*\"|\{[^}]*\})", attrs)
+                fills.append(_colours(f.group(1), text) if f else set())
+                separated &= bool(st) and _colours(st.group(1), text) == {card}
+            pairs = [(a, b) for i, fa in enumerate(fills) for fb in fills[i + 1:] for a in fa for b in fb]
+            if not separated and any(_contrast(a, b) < NON_TEXT_MIN for a, b in pairs):
+                worst = min(pairs, key=lambda ab: _contrast(*ab))
+                bad.append(f"{path.name}:{bars[0][1]} stack {sid!r}: {worst[0]} against {worst[1]} "
+                           f"at {_contrast(*worst):.2f}:1 and no card-coloured separator")
+    assert not bad, "stacked segments that meet each other below 3:1:\n  " + "\n  ".join(bad)
+
+
+def test_a_legend_only_names_series_that_carry_their_own_colour() -> None:
+    """A series coloured only through `<Cell>` children has no colour of its own, so its legend
+    swatch renders in the SVG default, black. The latency chart's did, at 1.23:1 against the card,
+    keying a single series and none of the per-bar colours. Removed in Round 74."""
+    bad = []
+    for path in sorted(COMPONENTS.glob("*.tsx")):
+        text = path.read_text()
+        for chart in re.finditer(r"<(\w+Chart)\b.*?</\1>", text, re.S):
+            if chart.group(1) not in RECHARTS or "<Legend" not in chart.group(0):
+                continue
+            for name in SERIES:
+                for attrs, line in _tags(chart.group(0), name):
+                    own = "stroke=" if name == "Line" else "fill="
+                    if own not in attrs:
+                        bad.append(f"{path.name}:{text[:chart.start()].count(chr(10)) + line} <{name}>")
+    assert not bad, ("a legend keys these series, which carry no colour of their own, so the swatch "
+                     "draws in black:\n  " + "\n  ".join(bad))
+
+
+# --------------------------------------------------------------------------------------------- #
+#  SC 1.4.13 Content on Hover or Focus: the tooltip
+# --------------------------------------------------------------------------------------------- #
+
+#: The recharts release whose tooltip was measured on the deploy, Round 74. Escape dismisses it
+#: (TooltipBoundingBox installs a document-level keydown listener, recharts PR #2925), so the
+#: checklist's "zero Escape handlers" counted this repository's source and not the library. What
+#: recharts lacks is a blur handler: its keyboard layer opens the tooltip on focus and leaves it
+#: open after Tab moves on. A different release must be measured again, not assumed.
+MEASURED_RECHARTS = "2.15.4"
+
+
+def test_the_tooltip_behaviour_was_measured_on_this_recharts() -> None:
+    lock = json.loads((REPO / "web" / "package-lock.json").read_text())
+    version = lock["packages"]["node_modules/recharts"]["version"]
+    assert version == MEASURED_RECHARTS, (
+        f"recharts is {version}; its tooltip was measured on {MEASURED_RECHARTS}. Re-measure on the "
+        "deploy with real key presses - Escape dismisses, Tab away closes - then update this pin.")
+    bbox = REPO / "web" / "node_modules" / "recharts" / "es6" / "component" / "TooltipBoundingBox.js"
+    if bbox.exists():                                   # present where the web build has run
+        assert "'Escape'" in bbox.read_text(), "the installed recharts no longer handles Escape"
+
+
+def test_a_tooltip_closes_when_its_chart_has_neither_hover_nor_focus() -> None:
+    css = STYLES.read_text()
+    assert re.search(
+        r"\.recharts-wrapper:not\(:hover\):not\(:focus-within\)\s+\.recharts-tooltip-wrapper\s*"
+        r"\{\s*visibility:\s*hidden\s*!important", css), (
+        "the rule that closes a chart's tooltip once the chart has neither hover nor focus is gone; "
+        "recharts leaves it open after Tab moves on, over the plot")

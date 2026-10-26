@@ -5,7 +5,7 @@
 // `compact` (telecom/satellite, no private inference) shows the security + advantage only.
 import { useRef } from "react";
 import {
-  Bar, BarChart, CartesianGrid, Cell, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis,
+  Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis,
 } from "recharts";
 import { downloadCSV, downloadJSON, downloadNodePNG } from "../lib/export";
 import Details from "./Details";
@@ -156,10 +156,10 @@ export default function BenchmarkPanel(
                     <YAxis scale="log" domain={[0.5, "auto"]} tick={{ fontSize: 11, fill: "#97a3b6" }} allowDataOverflow />
                     <Tooltip contentStyle={{ background: "#151c2c", border: "1px solid #243049" }} />
                     {/* WCAG 2.2 SC 1.4.1 (Level A). `colorFor` encoded the ciphertext PATH by fill
-                        alone, and the `<Legend />` on the latency chart covers only the single
-                        `latency` series, so it explains nothing about the per-bar colours. The x-axis
-                        `name` mitigates but does not cure it, because `name` is the workload rather
-                        than the path. QSMPC-FHE now carries a hatch as well as its colour. */}
+                        alone, and no legend explains the per-bar colours (the latency chart's, which
+                        named only its single series, was removed in Round 74). The x-axis `name`
+                        mitigates but does not cure it, because `name` is the workload rather than the
+                        path. QSMPC-FHE now carries a hatch as well as its colour. */}
                     <defs>
                       <pattern id="hatch-qsmpc" patternUnits="userSpaceOnUse" width="5" height="5"
                                patternTransform="rotate(45)">
@@ -186,12 +186,15 @@ export default function BenchmarkPanel(
                     <XAxis dataKey="name" tick={{ fontSize: 11, fill: "#97a3b6" }} />
                     <YAxis tick={{ fontSize: 11, fill: "#97a3b6" }} />
                     <Tooltip contentStyle={{ background: "#151c2c", border: "1px solid #243049" }} />
-                    <Legend />
-                    {/* WCAG 2.2 SC 1.4.1 (Level A). `colorFor` encoded the ciphertext PATH by fill
-                        alone, and the `<Legend />` on the latency chart covers only the single
-                        `latency` series, so it explains nothing about the per-bar colours. The x-axis
-                        `name` mitigates but does not cure it, because `name` is the workload rather
-                        than the path. QSMPC-FHE now carries a hatch as well as its colour. */}
+                    {/* No legend, since Round 74. It named the single `latency` series, explained
+                        nothing about the per-bar colours (the note below says so), and drew its swatch
+                        in the default black because the bars are coloured per cell: 1.23:1 against the
+                        card, an invisible key (WCAG 2.2 SC 1.4.11). The card title names the measure,
+                        as on the ratio chart beside it, which never had one.
+                        WCAG 2.2 SC 1.4.1 (Level A). `colorFor` encoded the ciphertext PATH by fill
+                        alone. The x-axis `name` mitigates but does not cure it, because `name` is the
+                        workload rather than the path. QSMPC-FHE now carries a hatch as well as its
+                        colour. */}
                     <defs>
                       <pattern id="hatch-qsmpc-lat" patternUnits="userSpaceOnUse" width="5" height="5"
                                patternTransform="rotate(45)">

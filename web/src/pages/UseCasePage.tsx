@@ -58,6 +58,12 @@ function UseCaseView({ usecase }: { usecase: string }) {
       </div>
       {DEMO && <div className="note" style={{ marginBottom: 12 }}>🖥️ {DEMO_BANNER}</div>}
 
+      {/* SECTION HEADINGS, for a screen reader's heading list (SC 1.3.1). Every card title on this
+          page is an h3, in this file and in the components it renders, so the outline went from
+          the page title straight to h3. Converting the card titles would change visual weight
+          everywhere; these four h2s group them instead, hidden because the cards already read as
+          sections to the eye. Round 74. */}
+      <h2 className="sr-only">Two-party simulator</h2>
       {/* Live two-party simulator: Start/Stop/Restart/Pause/Step drive the diagram animation */}
       <PipelineControls run={run} />
       {/* `overflowX: "auto"` because this div hand-rolls the LOOK of `.card` and not its behaviour.
@@ -128,6 +134,7 @@ function UseCaseView({ usecase }: { usecase: string }) {
         </div>
       )}
 
+      <h2 className="sr-only">Models and verification</h2>
       {/* What produced the inference on this page: the published ONNX model, the bundled real
           model, or placeholder weights. Read from the run's own metrics, not asserted. */}
       {/* BOTH inferences, because the run performs two and this panel used to name only one - the
@@ -296,6 +303,7 @@ function UseCaseView({ usecase }: { usecase: string }) {
         />
       ) : null}
 
+      <h2 className="sr-only">Benchmark</h2>
       {/* Unified benchmark: auto-filled from the single Run above (no separate "Run benchmark" button).
           The MPC-FHE row is the live run's measured FHE-linear/MPC-non-linear split. */}
       <BenchmarkPanel compact={!meta.inference} result={benchmark}
@@ -314,6 +322,7 @@ function UseCaseView({ usecase }: { usecase: string }) {
         </div>
       )}
 
+      <h2 className="sr-only">Agentic AI and the QKD control plane</h2>
       {/* Agentic AI · quantum-safe MCP — per-industry panel, fed by THIS run's live metrics (Round 10).
           The report frames MCP as a per-use-case cross-cutting layer; the same panel is kept standalone.
           It is an application-plane SAE: see the control-plane panel directly below, which is the

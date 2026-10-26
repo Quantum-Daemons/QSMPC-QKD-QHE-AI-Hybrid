@@ -5573,3 +5573,64 @@ restructures the file most readers see first, so it is left for the user's decis
 BUSINESS DOC RECONCILED Round 73. The out-of-repo document is brought level with this round. Its content
 is not quoted here, in the checklist, or in any commit - only the fact of the reconciliation, which is
 what gate 16 reads.
+
+## Round 74: accessibility re-measured - heading levels, non-text contrast and the chart tooltip
+
+**Stacked on Round 73**, all held by decision. This round changes the demo: two chart colours, a
+separator, one legend, the heading levels of four kinds of page, and one CSS rule.
+
+**Why this order.** The oldest-first audit, continued. The accessibility rows were last measured on
+2026-08-15. Two were open by declaration: 1.4.11 non-text contrast, never measured, and the skipped
+heading levels. 1.4.13 was carried as open with a stated reason.
+
+**1.4.11 Non-text Contrast, measured for the first time.**
+- Every chart mark's colour was resolved the way the browser resolves it (a CSS variable, a constant,
+  a helper function, a hatch pattern's base fill) and measured against the card it is drawn on,
+  `--panel` (#151c2c).
+- Two failures:
+  - the score histogram's negative class, #4a5568, at 2.26:1; now #717d92 at 4.09:1;
+  - the latency chart's legend swatch, drawn in black at 1.23:1, because the bars are coloured per
+    cell and the series has no colour of its own. The legend keyed only that one series and explained
+    none of the colours, so it was removed. The ratio chart beside it never had one.
+- **My first fix made a third.** The lighter negative class met the positive segment it is stacked on
+  at 1.10:1 (1.65:1 before). Stacked segments meet each other as well as the card, and no grey reaches
+  3:1 against the card, the hatch base and the hatch lines at once. A card-coloured stroke now
+  separates the two segments, as WCAG's own pie-chart example does with a border.
+- Against the grid colour every mark passes except the #c05621 threshold line, at 2.88:1. Recorded,
+  not changed: the two thin lines meet only where they cross, the Understanding document does not ask
+  for marks against gridlines, and lightening the colour would weaken the hatch texture it is also the
+  base of (2.82:1 to 2.56:1), which is the second channel for 1.4.1.
+
+**1.3.1 heading levels, closed with no visual change.**
+- The app titled every card with h3, in the pages and in the components they render, so
+  `/orchestration`, `/usecases`, every `/usecase/<id>` and the not-found page went from h1 to h3. The
+  not-found page was not on the checklist's list.
+- Hidden h2 section headings now group the cards: four on each use-case page (the simulator, models
+  and verification, the benchmark, agentic AI and the control plane) and two on `/orchestration`.
+  They use `.sr-only`, which keeps them in the accessibility tree.
+- On `/usecases` and the not-found page the cards are the page's sections, so their titles became h2,
+  styled as the h3 they replaced.
+
+**1.4.13 Content on Hover or Focus: the checklist was wrong in one place and silent in another.**
+- It recorded "zero Escape handlers", counted in this repository. recharts 2.15.4 has one: its tooltip
+  box listens for Escape on the document and hides (recharts PR #2925). Measured on the deploy with a
+  real key press.
+- What it missed: recharts' keyboard layer opens the tooltip on focus and on the arrow keys, and has
+  no blur handler, so tabbing out of a chart left its tooltip open over the plot. Measured on the
+  deploy with real key presses. A CSS rule now hides a tooltip whose chart has neither hover nor
+  focus, on devices that can hover.
+- Hoverable is not met in the strict sense: the tooltip ignores the pointer and follows it at a 10 px
+  offset, so it never disappears and can never itself be hovered. The remedies (pin on click, or a
+  fixed readout beside each chart) change how every chart behaves, so the choice goes to the user.
+
+**Gates.**
+- `tests/test_page_headings_do_not_skip_a_level.py` expands each page through the components it
+  renders, resolved through its imports, and fails on any skip. Seeded four ways, each fires.
+- `tests/test_chart_accessibility.py` gains six checks: every mark resolves to a colour; every mark
+  reaches 3:1 against the card; stacked segments reach 3:1 against each other or are separated; a
+  legend keys only series with a colour of their own; the recharts release the tooltip was measured
+  on; and the tooltip rule. Seeded six ways, each fires.
+
+BUSINESS DOC RECONCILED Round 74. The out-of-repo document is brought level with this round. Its content
+is not quoted here, in the checklist, or in any commit - only the fact of the reconciliation, which is
+what gate 16 reads.

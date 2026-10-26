@@ -53,7 +53,9 @@ export default function UseCases() {
           const depth = pinned.length > 0 ? "published" : teacher?.achieved ? "trained" : "scaffold";
           return (
             <Link key={u.id} to={`/usecase/${u.id}`} className="card" style={{ textDecoration: "none", color: "inherit", display: "block" }}>
-              <h3>{u.title}</h3>
+              {/* h2: each card is a section of this page, and an h3 here left the outline going
+                  from the page title straight to h3 (SC 1.3.1, Round 74). Styled as before. */}
+              <h2>{u.title}</h2>
               <div className="pill-row">
                 <span className={`tag ${depth === "scaffold" ? "scaffold" : "deep"}`}>{depth}</span>
                 <span className="tag">{u.industry}</span>
