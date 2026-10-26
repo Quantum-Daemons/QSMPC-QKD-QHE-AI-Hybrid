@@ -5493,6 +5493,18 @@ demo serves this branch while it is checked.
 - WebGPU on other GPU and OS combinations, which needs other hardware;
 - the first scheduled dependency audit, due again at 03:17 UTC on 2026-10-27.
 
+**Walked on the public demo with this branch deployed** (3083079, serving `index-PaBzXwGQ.js`):
+- **Medical.** The published-model line reads "the BUSI authors publish no licence", and the weights
+  come from the new pin (`a04fe6cdbc2b`). All three models PASS, and the garbled-circuit argmax
+  matched the clear one.
+- **Satellite.** The sentence under the SHAP bars gives the new grounds: critical digital
+  infrastructure, space as a separate sector, safety component, and military, defence or national
+  security. All three verified models PASS.
+- **Telecom.** The sentence names military, defence and national security under Art. 2(3). Both
+  models PASS.
+- **All ten pages, at 1280 and 390 px.** No overflow, and no NaN, undefined or `[object Object]`.
+  The console showed no error.
+
 BUSINESS DOC RECONCILED Round 72. The out-of-repo document is brought level with this round. Its content
 is not quoted here, in the checklist, or in any commit - only the fact of the reconciliation, which is
 what gate 16 reads.
