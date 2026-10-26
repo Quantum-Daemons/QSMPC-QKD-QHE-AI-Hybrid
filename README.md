@@ -494,12 +494,12 @@ the Blackwell box (TenSEAL CPU + MPyC, `linear` workload):
 
 **Note on the dash in the QSMPC-FHE ct/pt cell.** Earlier revisions printed `1.0` here and 1.2769 in
 the WS4 table below, and a config constant of 1.32 fed an Overview card. None of the three can share a
-column with the CKKS byte ratio. `1.0` counts QUBITS only: a one-time pad maps $n$ qubits to $n$ qubits,
-but it also needs a $2n$-bit classical key, which `1.0` leaves out (Ambainis, Mosca, Tapp and de Wolf,
+column with the CKKS byte ratio. `1.0` counts QUBITS only: a one-time pad maps $`n`$ qubits to $`n`$ qubits,
+but it also needs a $`2n`$-bit classical key, which `1.0` leaves out (Ambainis, Mosca, Tapp and de Wolf,
 FOCS 2000). The 1.2769 family (1.0693 at 10 qubits, 1.0173 at 12) divides by the BYTES of a classically
-simulated state vector of $2^n$ amplitudes, and a quantum ciphertext has no size in bytes. In the units of
+simulated state vector of $`2^n`$ amplitudes, and a quantum ciphertext has no size in bytes. In the units of
 the Rate-1 QFHE paper, qubits plus bits (Chardouvelis, Doettling and Malavolta, TCC 2021, Def. 6.1), this
-module's 8-qubit KEM-wrapped transport is about 1135x, tending to 3 as $n$ grows. And 1.32 is not in
+module's 8-qubit KEM-wrapped transport is about 1135x, tending to 3 as $`n`$ grows. And 1.32 is not in
 that paper, which reports no concrete figure; the constant and the card are removed. See
 [`docs/architecture.md`](docs/architecture.md).
 
@@ -514,7 +514,7 @@ workloads; for a tiny single-vector input the per-call kernel overhead can excee
 throughput was ~700 ops/s GPU vs ~34 CPU). What the hybrid shows is *where* the classical cost goes
 (FHE dominates the linear layers; MPC adds the non-linear secure comparisons + a few KB of
 communication). **Withdrawn 2026-10-23:** this paragraph used to call the quantum Rate-1 path about
-$10^3$ times more compact than classical CKKS, with information-theoretic security. Neither half holds.
+$`10^3`$ times more compact than classical CKKS, with information-theoretic security. Neither half holds.
 The ratio compared a simulated state vector's bytes with a CKKS ciphertext at under 1% slot use (about
 12x at full packing; Cheon, Kim, Kim and Song, ASIACRYPT 2017); classical FHE reaches rate 1 as well
 (Gentry and Halevi, TCC 2019; Brakerski, Doettling, Garg and Malavolta, TCC 2019); and Rate-1 QFHE
@@ -639,7 +639,7 @@ implementation maps to each, and where gaps remain.
 | **Agentic-AI / MCP quantum-safe + private agent comms** | A **real MCP server** (SDK >=2.0 `MCPServer`, formerly FastMCP) (5 per-industry tools, full deployment) bound to a quantum-safe channel: two agents establish a PQC(+QKD) session, the caller sends an **ML-DSA-signed, AES-GCM-sealed** `tools/call`, the callee **dispatches the real tool** and returns the **signed result** (authenticated, confidential, HNDL-resistant, no TTP); also interops with the official filesystem MCP server | `pqc/mcp_bridge.py`, `mcp/server.py`, `/api/mcp/*` |
 | **Explainability / audit trail (XAI)** | Exact linear-SHAP feature attributions for each run's classification, **ML-DSA-signed** -> tamper-evident, regulator-facing explanation (EU AI Act Art. 13, for high-risk systems only - 2 Dec 2027 for Annex III and 2 Aug 2028 for Annex I after the AI Omnibus, not Aug 2026; medical and genomics would be Annex I products; finance AML is not high-risk for a bank but would be for law-enforcement profiling (Annex III 6(e)); the telecom IDS is not as a cybersecurity tool and is outside the Act if used exclusively for military, defence or national security purposes (Art. 2(3)); satellite would be only if its service is itself critical digital infrastructure and the detector a safety component, since space is a separate sector under the CER and NIS2 directives; GDPR Art. 22; SR 11-7); surfaced on all five use-case pages. On telecom and satellite, whose flows have no `private_inference` stage, the attribution is of the model that produced the reported class; on the other three it explains the bundled model beside the encrypted one, and the panel says which case applies | `ai/explainability.py`, `ExplainabilityStage` |
 
-**WS4 - QHExAI** (FHE 10^3-10^6x overhead; bootstrapping bottleneck; no quantum encoding; plus unsolved (a)-(f)):
+**WS4 - QHExAI** (FHE $`10^3`$ to $`10^6`$x overhead; bootstrapping bottleneck; no quantum encoding; plus unsolved (a)-(f)):
 
 | Sub-problem | How QSH addresses it | Where |
 |---|---|---|
@@ -1035,7 +1035,7 @@ See [`docs/pqc-roadmap.md`](docs/pqc-roadmap.md).
     switch from PRS77 to PRS313 - 29.3%/1.0% and 29.5x were the 77-variant score's - and they are
     recomputed on every training run, so read `by_super_population.*.frac_above_global_cut` in
     `models/metrics.json` rather than this sentence.)
-  - **satellite reports event-wise F-beta at beta=0.5, never point-adjusted F1.** On the run before
+  - **satellite reports event-wise F-beta at $`\beta = 0.5`$, never point-adjusted F1.** On the run before
     the Round 71 retrain the point-adjusted figure was **0.994** against an honest **0.4545**, and on
     the retrain both are 0 because neither of its 2 flags falls inside a scored event - under point
     adjustment "even a
