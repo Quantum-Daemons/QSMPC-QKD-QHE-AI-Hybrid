@@ -1,7 +1,8 @@
 // REAL in-browser 2-party MPC for the non-linear decision layer (argmax over the FHE logits), on
 // Polytune (sine-fdn, MIT): WRK17b multi-party authenticated garbling, secure against malicious
 // adversaries controlling all but one party - the protocol's property, in a pre-release library whose
-// open upstream issues docs/threat-model.md assesses (Round 68). BOTH parties run inside this tab over
+// open upstream issues docs/threat-model.md assesses (Rounds 68 and 72; at the pinned commit nothing
+// here claims malicious security between hosts). BOTH parties run inside this tab over
 // an in-memory channel, so there is ZERO server / ZERO VPS - yet the protocol, its messages and its
 // wall-clock are GENUINELY the real garbled-circuit computation (not a hand-rolled reconstruction, not
 // a cost model).
