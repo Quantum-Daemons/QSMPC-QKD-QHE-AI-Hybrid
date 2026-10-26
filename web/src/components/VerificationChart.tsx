@@ -28,6 +28,9 @@ import Details from "./Details";
 
 const AXIS = { fontSize: 10, stroke: "#8a94a6" };
 const GRID = "#2a3040";
+/** The card every chart in this file is drawn on (`--panel`). Stroked around stacked segments
+ *  as a separator, so each segment meets this colour rather than its neighbour. */
+const CARD = "#151c2c";
 
 export interface EncryptedAgreementPlot {
   kind: "encrypted-agreement";
@@ -780,9 +783,18 @@ export function VerificationChart(
                     <line x1="0" y1="0" x2="0" y2="5" stroke="#f5c199" strokeWidth="1.6" />
                   </pattern>
                 </defs>
-                <Bar dataKey="negative" stackId="a" fill="#4a5568" name="true negative (solid)" />
-                <Bar dataKey="positive" stackId="a" fill="url(#hatch-positive)"
-                     name="true positive (hatched)" />
+                {/* WCAG 2.2 SC 1.4.11 (AA), measured in Round 74 against the card (#151c2c): the
+                    negative class was #4a5568 at 2.26:1, below the 3:1 a data mark needs. #717d92 is
+                    4.09:1 and still reads as the muted series beside the hatched positive one.
+                    The two segments are STACKED, so each also meets the other, and no grey reaches
+                    3:1 against the card, the hatch base (#c05621) and the hatch lines (#f5c199) at
+                    once: #717d92 is 1.10:1 against the base. The card-coloured stroke separates them,
+                    the way WCAG's own pie-chart example uses a border, so each segment meets the
+                    card at 3.72:1 or more. */}
+                <Bar dataKey="negative" stackId="a" fill="#717d92" stroke={CARD} strokeWidth={1}
+                     name="true negative (solid)" />
+                <Bar dataKey="positive" stackId="a" fill="url(#hatch-positive)" stroke={CARD}
+                     strokeWidth={1} name="true positive (hatched)" />
               </BarChart>
             </ResponsiveContainer>
           </figure>
