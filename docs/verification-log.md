@@ -3129,3 +3129,25 @@ Each time the repository was right and the published copy was not.
 **The honest retrain scored zero.** It caught none of the three scored events, where the leaky runs
 had caught one. A second seed might catch one again, and choosing between seeds after seeing the
 results would be choosing a number. The run is recorded as measured, with its counts.
+
+### Round 72: the carried items, each taken to its source
+
+**Context.** The items carried as UNVERIFIED, some of them since August. Three web questions went to
+parallel research agents, and two were settled locally. Every claim an agent made about code was then
+re-read in the source this build compiles before anything was written.
+
+**Most of them closed in the direction already stated.** Garble's cast keeps the low bits, as Round 66
+had read; wasm-opt would buy almost nothing on the wire; QC2 holds because the function takes no seed.
+
+**Two changed what the project says.**
+- **The BUSI images have no licence from their authors.** "Unverifiable" had meant that a grant might
+  exist somewhere unread. It does not exist anywhere the authors publish. The data was released
+  publicly with a hospital's approval and no terms, and the project now says that and stays public by
+  decision.
+- **The satellite AI Act sentence named the right test and missed why.** Space is not digital
+  infrastructure in the directive the Act points to.
+
+**One opened.** Reading the code behind #63 showed the OT-extension check's challenge fixed before the
+matrix it checks. Polytune's own history shows the ordering changed to save a round trip. Whether that
+matters is a cryptographic question this project cannot settle. So the public text stops short of
+claiming what it would need answered, and the question goes to the people who can answer it.

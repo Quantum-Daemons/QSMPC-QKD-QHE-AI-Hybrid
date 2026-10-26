@@ -180,7 +180,7 @@
       "opset": 18
     },
     "git_sha": "61b855e-dirty",
-    "hf_revision": "7e88577386372bd503ca071ce7e6f69419e15291",
+    "hf_revision": "a04fe6cdbc2b39e9e860ba736a880044f57bb466",
     "macro_f1": 0.8249158249158248,
     "n_parameters": 11171266,
     "resolution": 28,
@@ -199,7 +199,7 @@
       "opset": 18
     },
     "git_sha": "85209a9-dirty",
-    "hf_revision": "7642daf58202de98351f496ace6f40d7e5b2d05d",
+    "hf_revision": "8026dd29ca086839feceb8371fa9f44455a94f66",
     "macro_f1": 0.6492063492063492,
     "n_parameters": 23505858,
     "resolution": 28,
@@ -212,7 +212,7 @@
     "baseline_gap_note": "This scores far below the 0.901 ResNet-18 baseline. The reason is representational rather than cryptographic: 3,226 parameters over a 14x14 input is a REPRESENTATION choice, not a feasibility limit - and this note said 'a CKKS-feasibility budget' until Round 32, which overstated how forced it was. Kim et al. (arXiv:2506.15258) do HE chest-X-ray inference on a VQGAN latent at downsampling factor 8 rather than on pixels, so the alternative to downsampling 28->14 is re-representing the input. The browser already runs onnxruntime-web, so such an encoder would run locally in plaintext with no privacy loss. Recorded as the sixth falsifiable trigger in the additional-model decision in docs/deliverable-verification.md, not acted on - and note that f=8 on a 28x28 input gives 3.5x3.5, so the transfer is the open measurement rather than a citation. This sentence claimed the trigger existed for two rounds while the table held five rows and none of them was this one; the trigger was written, and the decision moved to a tracked file so the claim can be checked. Round 24 found it had been WORSE than that - a constant predictor, emitting one class for all 156 test images, with accuracy 0.730769 exactly equal to the majority-class rate and AUC 0.354, below random. It was invisible because the registry declared `auc` while the record stored `accuracy`, and because this student had neither protection its teacher already had: class-weighted loss and AUC-based model selection. Both were added. Read `n_classes_predicted` and `majority_class_rate` beside the score - an accuracy equal to the majority rate is the signature of a model that learned nothing. Workings: references/medical-student-collapse-investigation.md.",
     "both_scored_zero": false,
     "disagreement_on_positives": 0.149123,
-    "hf_revision": "88b71bb37aa42a2a64036281b5bc18c3d8737793",
+    "hf_revision": "0f1e96a0f32622e3af26693278207a378eaa87e0",
     "majority_class_rate": 0.730769,
     "metric_delta": 0.096154,
     "metric_delta_pp": 9.6154,

@@ -86,6 +86,14 @@ def test_every_use_case_has_its_own_grounds_and_date() -> None:
     sat = scope["satellite_comms"]
     assert sat["highRisk"] == "depends" and "depends on how it is deployed" in sat["text"]
     assert "Art. 2(3)" in sat["text"] and "2 December 2027" in sat["text"]
+    # Round 72, read at EUR-Lex: space is its own CER / NIS2 sector, so Annex III 2 reaches a telemetry
+    # detector only through the satellite service being digital infrastructure, and only as a safety
+    # component; and Art. 2(3) names military purposes, which both sentences had dropped.
+    assert "critical digital infrastructure" in sat["text"] and "separate sector" in sat["text"]
+    assert "safety component" in sat["text"] and "solely for cybersecurity or performance" in sat["text"]
+    for uc in ("telecom_ids", "satellite_comms"):
+        assert "military, defence or national security" in scope[uc]["text"], (
+            f"{uc}: Art. 2(3) excludes military, defence and national-security use; name all three")
     assert res["caveat"] == "A reading of the Act for this demonstration, not legal advice." 
 
 
