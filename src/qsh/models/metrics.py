@@ -175,8 +175,8 @@ def event_wise_counts(y_true, y_pred) -> dict:
     The event count is the point of this function. Event-wise F-beta divides by a number of labelled
     events, not samples, and there are far fewer of those than a sample count suggests: this
     project's ESA-ADB test window is 441,600 points and holds exactly **3** labelled events. The
-    recorded headline 0.4545 is precisely ``tp=1, fp=1, fn=2`` on those three. One event either way
-    moves it by more than 0.2.
+    headline recorded until the Round 71 retrain, 0.4545, was precisely ``tp=1, fp=1, fn=2`` on those
+    three, and the retrain's 0 is ``tp=0, fp=2, fn=3``. One event either way moves it by more than 0.2.
 
     A score over three events renders as the same kind of decimal as a benchmark computed over
     hundreds, so the count has to travel with the score or the comparison misleads silently. Note

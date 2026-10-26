@@ -135,6 +135,26 @@ def export_torch(model, example: np.ndarray, path: Path, *,
     return path
 
 
+def fixed_batch_outputs(path: str | Path) -> list[str]:
+    """Outputs that declare a FIXED leading dimension while the first input's is symbolic.
+
+    Empty when the batch axis survived export, and for a graph with a fixed input batch, where a
+    fixed output is consistent rather than a defect.
+    """
+    import onnx
+
+    graph = onnx.load(str(path), load_external_data=False).graph
+    dims = graph.input[0].type.tensor_type.shape.dim
+    if not dims or not dims[0].dim_param:
+        return []
+    out = []
+    for o in graph.output:
+        d = o.type.tensor_type.shape.dim
+        if d and not d[0].dim_param:
+            out.append(f"{o.name} {[x.dim_param or x.dim_value for x in d]}")
+    return out
+
+
 def export_sklearn(estimator, n_features: int, path: Path, *, input_name: str = "input") -> Path:
     """Export an sklearn estimator to fp32 ONNX."""
     from skl2onnx import to_onnx
@@ -373,6 +393,10 @@ def verify_and_quantize(source_model, fixtures: np.ndarray, out_dir: Path, *,
             skip_reason = f"int8 quantisation failed: {exc}"
             int8.unlink(missing_ok=True)
     if quantizable:
+        # The quantiser copies the fp32 graph's outputs, so this can only fire if the fp32 check in
+        # export_onnx was bypassed; it is the graph the browser downloads, so it is checked anyway.
+        if fixed_batch_outputs(int8):
+            raise RuntimeError(f"{int8}: output(s) {fixed_batch_outputs(int8)} declare a fixed batch")
         got8 = _run(int8, fixtures)
         same = _labels(got32) == _labels(got8)
         agreement = float(np.mean(same))

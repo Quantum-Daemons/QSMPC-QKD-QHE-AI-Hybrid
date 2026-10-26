@@ -567,7 +567,10 @@ the other. A licence commitment that only a human remembers to honour is not a c
   \item \textbf{Held-out samples travel with weights.} Each model ships an evaluation sample in its
         own repository at the same pinned commit, so the sample and the weights cannot drift apart,
         together with the expected metric measured on exactly those rows. The browser re-checks its
-        own result against that figure and reports a mismatch instead of rendering it.
+        own result against that figure and reports a mismatch instead of rendering it. The one
+        exception is the satellite student, whose event-wise metric cannot be re-scored from
+        independent rows. Every sample is drawn from its model's test partition or test window, and
+        the run log names which; three were drawn from the whole corpus until the latest round.
   \item \textbf{Preprocessing travels with the data.} Every sample carries an explicit preprocessing
         list applied verbatim by the consumer. This exists because an early evaluation scored a model
         at 0.4615 against a recorded 0.8782 by omitting one normalisation step --- below the

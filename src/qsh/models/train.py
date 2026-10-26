@@ -324,8 +324,13 @@ def record_metrics(key: str, payload: dict) -> None:
 
     payload = dict(payload)
     if "hf_revision" not in payload:
-        stale = (current.get(key) or {}).get("hf_revision")
-        if stale:
+        # The retired pin as well as a live one. Two records in a row with no publish between them
+        # (Round 71: a re-export, then the retrain it led to) used to lose the marker on the second,
+        # because it is run-scoped and only a live pin was looked for, so the page went from
+        # "retrained since it was published" to the "never pinned" a model nobody published gets.
+        prev = current.get(key) or {}
+        stale = prev.get("hf_revision") or prev.get("hf_revision_invalidated_by_retrain")
+        if stale and "hf_revision_invalidated_by_retrain" not in payload:
             payload["hf_revision_invalidated_by_retrain"] = stale
 
     previous = dict(current.get(key) or {})

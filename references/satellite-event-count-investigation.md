@@ -1,5 +1,12 @@
 # The satellite metric is computed over three events (Round 24, 2026-08-09)
 
+> **THE MODEL MEASURED HERE WAS RETRAINED IN ROUND 71 (2026-10-26).** Its weights had been trained with
+> a z-score fitted on the whole series, test window included, a leak the trainer lost in Round 34
+> without the model being retrained. The retrained model still flags 2 points of 441,600, and neither
+> falls inside one of the 3 scored events: event-wise F0.5 **0** (tp=0 fp=2 fn=3), point-adjusted F1
+> 0. The figures below are the leaky runs'. The argument is unchanged and the new run is one more
+> instance of it: with 3 events the metric moves in steps a single flag can take.
+
 > **THE COMPARATOR THIS INVESTIGATION ARGUES AGAINST WAS SUPERSEDED IN ROUND 24, AND THIS FILE STILL
 > OPENS ON IT. Banner added Round 55.**
 >

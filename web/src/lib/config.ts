@@ -77,6 +77,12 @@ export type ModelSpec = {
   architecture: string;
   params: number | null;
   runs_encrypted: boolean;
+  /** Set when the model publishes no browser evaluation sample ON PURPOSE, with the reason. The
+   *  browser then does not request one (Round 71: it fetched one from the Hub and logged a 404). */
+  eval_sample_reason?: string | null;
+  /** Which split the published evaluation sample was drawn from, and how (Round 71: the run log said
+   *  "held-out" for every model while two samples were drawn from the whole corpus). */
+  eval_split?: string | null;
   hf_repo_id: string | null;
   hf_revision: string | null;
   /** The sha that WAS pinned before a retrain superseded the published artefact. Distinguishes

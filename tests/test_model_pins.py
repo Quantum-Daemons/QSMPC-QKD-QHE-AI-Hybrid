@@ -100,6 +100,18 @@ def test_a_metric_absent_from_a_fresh_run_cannot_read_as_fresh(metrics_file):
         "which is the confusion the old delete-it rule was preventing")
 
 
+def test_two_retrains_in_a_row_keep_the_retired_pin(metrics_file):
+    """Round 71: a re-export and then a retrain, with no publish between, lost the marker."""
+    train.record_metrics("m", {"accuracy": 0.9, "hf_revision": SHA_A})
+    train.record_metrics("m", {"accuracy": 0.95})
+    train.record_metrics("m", {"accuracy": 0.96})
+
+    e = entry(metrics_file)
+    assert "hf_revision" not in e
+    assert e["hf_revision_invalidated_by_retrain"] == SHA_A, (
+        "the second retrain dropped the retired pin, so the model now reads as never published")
+
+
 def test_republishing_clears_the_demotion(metrics_file):
     train.record_metrics("m", {"accuracy": 0.9, "hf_revision": SHA_A})
     train.record_metrics("m", {"accuracy": 0.95})
