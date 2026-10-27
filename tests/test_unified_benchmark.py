@@ -51,11 +51,17 @@ def test_large_tier_is_projected():
 
 def test_medical_cnn_runs_genuine_conv():
     """Medical with ``dataset=medmnist`` runs a GENUINE convolution under FHE+MPC: the MPC-FHE row is
-    a real CNN (arch_class 'cnn'), the FHE-linear conv cost dominates, and the decision is faithful.
+    a real CNN (arch_class 'cnn'), the MPC ran every comparison the convolution's ReLU needs, and the
+    decision is faithful.
 
     Uses real MedMNIST when available; an offline CI box falls back to the logged synthetic-image set
     (the conv mechanism + assertions hold either way). A tiny 10x10 / 2-channel / 1-round config keeps
     the genuine encrypted run fast.
+
+    Until Round 75 this also asserted that the FHE time exceeded the MPC time. That held while the MPC
+    was one in-process party. With three real parties it is a property of the machine: 1,460 ms
+    against 475 ms on the 20-core development box, and 2,421 ms against 2,868 ms on a two-core CI
+    runner, where three party processes share two cores. It is asserted in work instead.
     """
     _, ctx = _run("medical_fl", {"dataset": "medmnist", "img_size": 10, "cnn_channels": 2,
                                  "medmnist_n": 64, "hospitals": 2, "rounds": 1, "seed": 0})
@@ -63,7 +69,9 @@ def test_medical_cnn_runs_genuine_conv():
     assert (row.get("extra") or {}).get("arch_class") == "cnn"
     assert "CNN" in row["model_arch"]
     assert row["fhe_linear_ms"] > 0 and row["mpc_nonlinear_ms"] > 0
-    assert row["fhe_linear_ms"] > row["mpc_nonlinear_ms"]    # genuine conv dominates the FHE cost
+    extra = row.get("extra") or {}
+    assert extra.get("avg_comparisons", 0) >= 2 * 10 * 10    # every conv output's ReLU ran under MPC
+    assert extra.get("client_learns") == "the class index"   # through the masked conversions
     assert row["accuracy"] == 1.0                            # decision matches plaintext (faithful)
     assert row["projected"] is False                         # medium tier runs for real (no fallback)
     assert ctx.data["image"].shape == (1, 10, 10)            # a real medical image was inferred
