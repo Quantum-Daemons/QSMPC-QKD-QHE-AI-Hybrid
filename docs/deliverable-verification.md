@@ -5900,3 +5900,76 @@ in 2b70f2d and were re-walked.
 BUSINESS DOC RECONCILED Round 75. The out-of-repo document is brought level with this round. Its content
 is not quoted here, in the checklist, or in any commit - only the fact of the reconciliation, which is
 what gate 16 reads.
+
+## Round 76: the fibre detector set, sourced, and the dead time that comes with a 1 GHz clock
+
+**Stacked on Round 75**, all held by decision. This round changes what the fibre pages compute: the
+detector set behind every fibre key rate, the clock the bit/s figures use, a dead-time correction
+those rates now carry, and the seed of the QRNG's seeded Toeplitz extractor.
+
+**Why this order.** By the user's choice after Round 75: the remaining fibre parameters, which the
+config called "modelling choices", and the seeded extractor's seed, both carried from the Round 75
+review.
+
+**The old set matched no source, and leaned one way.** Efficiency 0.25, 1e-5 dark counts per gate, a
+1.5 percent error floor, and a 100 MHz clock borrowed from a 2 km free-space paper. Against the 50 km
+experiment the config already cited for its block size (Lucamarini et al., Opt. Express 21, 24550
+(2013): 20.5 percent, 2.1e-5 per gate, QBER 4.26 percent, 1 GHz), the model detected 2.2x the paper's
+counts and its per-pulse rate was 3.1x the paper's BB84 rate. Read for comparison and not adopted:
+Lucamarini (three intensities; under this project's 1-decoy finite-key analysis its noise needs 7e8
+to 2e9 pulses for any key), Boaron et al. 2018 (421 km, ultra-low-loss fibre), Grunenfelder et al.
+2023 (64 Mbps at 2.5 GHz, which is the uncited "64 Mbps fibre demonstration" an old comment quoted)
+and Yuan et al. 2018 (InGaAs at 1 GHz).
+
+**By the user's decision the set is Rusca et al. 2018's**, the stated parameters of the paper whose
+1-decoy finite-key bound `qsh/qkd/finite_key.py` implements, and which a test already used to check
+it against that paper's Table I: efficiency 0.5, 1e-8 dark counts per gate, a 1 percent error floor,
+1 GHz, 0.2 dB/km. A simulation set (SNSPDs), not a measured link, and the page says so.
+`tests/test_the_fibre_set_is_rusca_2018.py` quotes the sentence beside each value.
+
+**The dead time is modelled, because at 1 GHz it is not a detail.** Their SNSPDs have a 100 ns dead
+time, corrected by their Eq. (B3), c = 1 / (1 + R P t_DT). `qkd/channel.py::dead_time_factor` and its
+browser twin implement the non-paralysable form, with two departures stated in the code: P is taken
+before the correction (as printed, (B3) is implicit), and it counts every click rather than (B3)'s
+Z-basis sum, because a detector is dead after any click; at this project's symmetric bases that is the
+conservative side. On the 50 km default the factor is 0.625: 37 percent of the detections go. Both
+languages' BB84 runs, the E91 runs, the finite-key counts and the browser optimiser's surrogate charge
+it, so the optimiser no longer sees a brighter signal as free. The downlink keeps none: Liao et al.
+state no dead time, and at its 1.7e3 detections per second it would cost under 0.1 percent.
+
+**What the fibre pages now show.** At 50 km: 2.853e-3 bit/pulse with the dead time (4.565e-3
+without), the QBER at the 1 percent floor, 57,068 secure bits in a 2e7-pulse block, 2.85 Mbit/s at
+1 GHz. The asymptotic bound reaches zero at 301.8 km (134.7 km on the old set). The finite-key
+threshold falls from 1.41e7 pulses to 5.88e6, so the shipped block clears it 3.4x, and Round 46's
+two-million-pulse block still carries no composable key (the single-photon bound is now positive,
+about 225 counts, and the key about -607 bits). The intensities did not move: the shipped pair is
+within 0.6 percent of this channel's own finite-key optimum (0.319 / 0.129).
+
+**Found on the way: Python's channel kept its own copy of the old set.** `ChannelParams` carried the
+literals 0.25, 1e-5 and 0.015 as defaults, and the fibre stage of `orchestration/stages.py` builds its
+channel from three config keys and lets the other two default. The browser reads config, so this
+round's change would have moved the browser and left the Python stage on the old detectors. The
+defaults are now read from the config, `FreeSpaceParams`' too, and a downlink built without a clock
+or a dead time takes its own rather than the fibre's. `config.yaml`, which shadows the dataclass,
+moves with it.
+
+**The seeded Toeplitz extractor's seed was a function of its source.** The Leftover Hash Lemma bounds
+the output for a seed independent of the raw bits. Python passed the run's seed to the extractor,
+whose `default_rng(seed)` re-drew the matrix from the state that had just drawn the raw bits. The
+browser continued the raw draw's generator, `Math.random` when unseeded. Both now take the matrix
+from `seed + 2`, or from the OS or browser CSPRNG when the run is unseeded.
+
+**Also corrected.** The fibre clock's comment and the Parameters panel credited the 100 MHz to the
+free-space paper; the satellite clock's comment still did after Round 75 had sourced it from Liao.
+The control-plane panel now names each link's own source.
+
+**Gates.** `tests/test_the_fibre_set_is_rusca_2018.py` (each value quoted; defaults from config; a
+downlink's own clock and dead time; the factor's form and its scaling with the clock; the rate the
+bound times the factor; the browser charging the same, to 1e-9). `tests/test_the_extractor_seed_is_its_own_stream.py`.
+Two tests that pinned the old channel's numbers are re-derived: the shipped-block claim and the
+distances at which the one-decoy bound falls below the known-Y0 estimate (now 200 to 280 km, where
+1e-8 dark counts start to matter).
+
+BUSINESS DOC RECONCILED Round 76. The out-of-repo document is brought level with this round. Its content
+is not quoted here, in the checklist, or in any commit - only the fact of the reconciliation, which is
+what gate 16 reads.

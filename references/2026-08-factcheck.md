@@ -278,3 +278,24 @@ edition approves, the Repetition Count Test and the Adaptive Proportion Test. Un
 edition those would no longer suffice on their own, and a physical QRNG would need health tests derived
 from its own noise model. The demo's source is a simulation, so nothing it reports changes. The
 paragraph above is left as written, and this note corrects it.
+
+## Round 76 (2026-10-27): the fibre detector set, sourced
+
+The figures above for the fibre channel (3.84e7 / 1.41e7 pulses, 0.002368 / 0.001977 bit/pulse, V = 0.97
+with e = 0.015200, `s^l_{Z,1}` = -216.53 at 2e6) describe the set shipped until Round 76: detector
+efficiency 0.25, 1e-5 dark counts per gate, a 1.5 percent error floor and a 100 MHz clock, which matched
+no published source. Checked against the 50 km experiment `QKDConfig` cites for its block size
+(Lucamarini et al., Opt. Express 21, 24550 (2013), arXiv:1310.0240: efficiency 20.5%, dark count
+2.1e-5 per gate, afterpulsing 5.25%, QBER 4.26% in Z, 0.63 Mbps BB84 and 1.09 Mbps for their efficient
+variant at 1 GHz), that set detected 2.2x the paper's counts and gave 3.1x its BB84 rate per pulse.
+
+By the user's decision the set is now Rusca et al.'s (Appl. Phys. Lett. 112, 171104 (2018),
+arXiv:1801.03443), read in the arXiv text: "a repetition rate of 1 GHz", SNSPDs with "a dead-time
+tau_DT = 100 ns, dark-count rate (DCR) of 10 Hz which correspond to pDC = 10^-8 and an efficiency
+(eta_det around 50%)", and "a typical value pErr of 1%". Their Appendix B gives the dead-time correction,
+Eq. (B3), now modelled. At 50 km: 2.853e-3 bit/pulse with the dead time (4.565e-3 without), QBER 1.0%,
+the finite-key threshold 5.88e6 pulses. Also read and not adopted: Boaron et al., PRL 121, 190502
+(2018), arXiv:1807.03222 (SNSPDs at 40-60%, DCR 0.1 Hz, 0.16 dB/km ultra-low-loss fibre, 252-421 km);
+Grunenfelder et al., Nat. Photon. 17, 422 (2023), arXiv:2210.16126 (64 Mbps over 10.0 km at 2.5 GHz,
+64-85% SNSPDs); Yuan et al., J. Lightwave Technol. 36, 3427 (2018), arXiv:1807.04484 (InGaAs, 31%,
+450 kHz combined dark count rate, 4.4% afterpulsing, 1 GHz).

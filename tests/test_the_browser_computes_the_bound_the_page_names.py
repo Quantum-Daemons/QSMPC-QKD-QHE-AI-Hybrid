@@ -183,7 +183,25 @@ def _python_decoy(eta: float, e_det: float) -> float:
     sift = 0.5                      # the browser draws bases uniformly, so p^2 + (1-p)^2 = 0.5
     skr, _e_mu, _e1 = _decoy_secure_fraction(
         eta, mu, nu, e_det, y0, float(c["error_correction_eff"]), sift)
-    return skr
+    return skr * _dead_time(eta)
+
+
+def _dead_time(eta: float) -> float:
+    """The dead-time factor both runs charge since Round 76 (Rusca et al. Eq. B3, the fibre clock).
+
+    The bound the page names is the one-decoy bound on dead-time-corrected gains, which is the bare
+    bound times this factor: every gain scales by it and the error rates do not.
+    """
+    import math
+
+    from qsh.qkd.channel import ChannelParams, dead_time_factor
+
+    c = _cfg()
+    mu = float(c["mu_signal"])
+    nu = min(max(1e-4, float(c["mu_decoy"])), mu * 0.9)
+    y0 = 2.0 * float(c["dark_count_prob"])
+    clicks = 0.5 * ((y0 + 1 - math.exp(-eta * mu)) + (y0 + 1 - math.exp(-eta * nu)))
+    return dead_time_factor(ChannelParams(), clicks)
 
 
 def _python_production_rate() -> float:
@@ -624,8 +642,8 @@ def test_the_decoy_bound_does_not_count_dark_counts_twice() -> None:
     mis = float(c["misalignment"])
     double_counted = mis + 0.5 * float(c["dark_count_prob"]) / max(eta, 1e-12)
 
-    right = _decoy_secure_fraction(eta, mu, nu, mis, y0, f_ec, 0.5)[0]
-    wrong = _decoy_secure_fraction(eta, mu, nu, double_counted, y0, f_ec, 0.5)[0]
+    right = _decoy_secure_fraction(eta, mu, nu, mis, y0, f_ec, 0.5)[0] * _dead_time(eta)
+    wrong = _decoy_secure_fraction(eta, mu, nu, double_counted, y0, f_ec, 0.5)[0] * _dead_time(eta)
     assert right > wrong > 0, (
         "the two readings of `e_det` are indistinguishable at this operating point, so this check "
         f"cannot tell them apart: misalignment-only {right}, double-counted {wrong}. Non-vacuity "

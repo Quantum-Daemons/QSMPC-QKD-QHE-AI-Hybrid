@@ -84,7 +84,7 @@ import math
 from dataclasses import dataclass, field
 
 from .bb84 import e_det_for_bound
-from .channel import ChannelParams
+from .channel import ChannelParams, dead_time_factor
 
 __all__ = [
     "FiniteKeyResult",
@@ -207,12 +207,18 @@ def finite_key_length(n_pulses: int, channel: ChannelParams | None = None,
     eps1 = eps2 = p.eps_sec / 20.0
 
     intensities = ((p.mu_signal, p.p_signal), (p.mu_decoy, 1.0 - p.p_signal))
+    # THE DEAD TIME (Rusca et al. Eq. (B2)-(B3)): every click, in either basis and at either
+    # intensity, leaves a detector recovering, so the correction is computed from all of them and
+    # scales each count below. Not modelled before Round 76, which the published-table test named as
+    # one reason this implementation and Table I differ.
+    c_dt = dead_time_factor(channel, sum(p_mu * _gain_and_error(eta, mu, e_det, y0)[0]
+                                         for mu, p_mu in intensities))
     per_basis: dict[str, dict] = {}
     for basis, p_basis in (("Z", p.p_z), ("X", 1.0 - p.p_z)):
         counts = {}
         for mu, p_mu in intensities:
             q, e = _gain_and_error(eta, mu, e_det, y0)
-            n = n_pulses * p_mu * p_basis * p_basis * q      # Alice and Bob both choose this basis
+            n = n_pulses * p_mu * p_basis * p_basis * c_dt * q   # Alice and Bob both choose this basis
             counts[mu] = (n, n * e)
         n_tot = sum(n for n, _ in counts.values())
         m_tot = sum(m for _, m in counts.values())
