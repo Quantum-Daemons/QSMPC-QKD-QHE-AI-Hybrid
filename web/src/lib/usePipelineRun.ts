@@ -182,7 +182,7 @@ export const makeDefaultParams = () => ({
   // quoted g >= 6.31 and the pooled tolerance 1/(1+g), both from before detector efficiency entered
   // g and the per-basis entropy replaced the pooled one.) Exposing them lets a
   // visitor select a LINK (the Qi et al. 2019 demonstration was 4.1 dB on fibre) rather than edit
-  // physics; the defaults are the Micius-class downlink and are unchanged.
+  // physics; the defaults are Liao et al. 2017's Micius downlink.
   sat_atmospheric_db: FREE_SPACE.freeSpace!.atmosphericDb,
   sat_pointing_db: FREE_SPACE.freeSpace!.pointingDb,
   // The two assumed source clocks, in MHz, one per channel. From config rather than a literal, so
