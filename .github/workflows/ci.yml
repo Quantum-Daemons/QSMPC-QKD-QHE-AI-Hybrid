@@ -238,6 +238,13 @@ jobs:
         working-directory: web
         run: npm run build
 
+      # A copied asset kept `//# sourceMappingURL=gif.worker.js.map` with no map beside it, so any
+      # open DevTools logged a 404 on every run and "console clean" could not be reached. Round 74.
+      # Reads the build output, not the config that is meant to prevent it.
+      - name: No built file names a source map the build does not ship
+        working-directory: web
+        run: npm run check:source-maps
+
       # FIPS 203 section 7.2 negative vectors (2,595 malformed encapsulation keys) plus FIPS 204
       # sizes and a sign/verify round trip. Reads the vendored CC0 snapshot in web/scripts/vectors,
       # so it needs no network -- which is the only reason it can gate. It was defined in

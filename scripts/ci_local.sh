@@ -97,6 +97,9 @@ bash scripts/build_wasm.sh >/tmp/ci_wasm.log 2>&1 \
   && ok "JSX text keeps its spaces" || { bad "JSX text loses a space at a line break"; tail -8 /tmp/ci_jsxsp.log; }
 ( cd web && npm run build >/tmp/ci_build.log 2>&1 ) \
   && ok "npm run build" || { bad "npm run build"; tail -15 /tmp/ci_build.log; }
+# Round 74: a copied worker named a source map the build did not ship; DevTools logged a 404 per run.
+( cd web && npm run --silent check:source-maps >/tmp/ci_srcmap.log 2>&1 ) \
+  && ok "no dangling source-map references in the build" || { bad "a built file names a source map that is not shipped"; tail -6 /tmp/ci_srcmap.log; }
 
 step "9/18 PQC conformance (FIPS 203 s7.2 negatives + FIPS 204 sizes)"
 # Offline by design: reads the vendored CC0 snapshot in web/scripts/vectors. It was ungated for
