@@ -1451,21 +1451,36 @@ to no publication.
   instances) have lower bias than estimators with bins of equal width."* So an equal-width ECE, which
   is the default in most tutorials, is the biased choice - a one-line design constraint on any future
   calibration reporting here.
+- **Van Calster, Nieboer, Vergouwe, De Cock, Pencina and Steyerberg, "A calibration hierarchy for risk
+  models was defined: from utopia to empirical data", *Journal of Clinical Epidemiology* 74 (2016)
+  167-176.** DOI 10.1016/j.jclinepi.2015.12.005 `[link]`
+  URL: https://doi.org/10.1016/j.jclinepi.2015.12.005
+  VERIFIED 2026-10-27 in the authors' accepted manuscript (KU Leuven Lirias), bibliographic data at
+  Crossref. It recommends at least 100 events and 100 non-events for the calibration intercept and
+  slope, and *"at least 200 events and 200 non-events to derive flexible calibration curves"*; with
+  less data such curves may be unstable and can be omitted. **This is the source of the floor that
+  checklist row `PP8` and `web/src/lib/calibration.ts` apply.** Until Round 74 the project attributed
+  the floor to Riley et al., the entry below, and a Round 51 chart drew curves below it regardless.
 - **Riley et al., "Minimum sample size for external validation of a clinical prediction model with a
   binary outcome", *Statistics in Medicine* 2021.** DOI 10.1002/sim.9025 `[link]`
   URL: https://doi.org/10.1002/sim.9025
   **METADATA-ONLY.** The Wiley full text was not loaded; the thresholds below are corroborated across
   secondary sources only and are recorded at that strength deliberately: **at least 100 events and 100
   non-events** for a performance estimate, and **at least 200 events** for a flexible calibration curve.
-  **This is the citation that rules OUT reliability diagrams on every page of this demo**, and the
-  measured counts are attributable rather than asserted: medical **42** malignant cases in the scored
+  **Corrected Round 74:** those two rules of thumb are Collins et al. (2016) and Van Calster et al.
+  (2016, the entry above). This paper argues that sample size should be calculated for the setting and
+  that the rules can be too few, so it supports the floor as a minimum and is not its source.
+  The paragraph below said this was "the citation that rules OUT reliability diagrams"; the ruling is
+  Van Calster's, and the measured counts are attributable rather than asserted: medical **42** malignant cases in the scored
   split (`src/qsh/models/distil.py:194`), finance **164** positives in the browser's evaluation sample
   (`scripts/prep_model_inputs.py:125`), satellite **113** anomalous segments (`anomaly_rate_test`
   0.213611 x `n_test_segments` 529, `models/satellite_opssat/README.md`), and genomics **no outcome
   label at all** - 1000 Genomes carries no case/control status, which is why the PRS AUROC there is
-  cited as external and never computed. So **no page clears the 200-event bar**, medical does not clear
-  even the 100-event bar, and a smooth calibration curve drawn on any of them would be a picture of
-  noise. The satellite figure above is the OPS-SAT segment model; the telemanom path is far worse
+  cited as external and never computed. So **no binary page clears the 200-event bar**, medical does
+  not clear even the 100-event bar, and a smooth calibration curve drawn on any of them would be a
+  picture of noise. (Telecom, measured Round 74: its top-label question - was the winning class right -
+  has 250 wrong and 16,129 right predictions on the NIDD sample, which clears it, and 8 wrong on the
+  QML sample, which does not.) The satellite figure above is the OPS-SAT segment model; the telemanom path is far worse
   (`n_events_scored` **3**, `models/metrics.json`), so the conclusion does not depend on which satellite
   model is meant. Recorded as the reason for an absence, which is the kind of decision this file exists to hold.
 - **Arp, Quiring, Pendlebury, Warnecke, Pierazzi, Wressnegger, Cavallaro and Rieck, "Dos and Don'ts of

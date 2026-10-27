@@ -331,8 +331,9 @@ At 2,321 events the two split the two proper scoring rules - isotonic takes Brie
   not the drift a genuinely smaller, earlier calibration window would also carry. The full-set row
   of each sweep is the only one free of that.
 - **Nothing here is measured on medical, satellite or telecom.** Those splits carry about 42 and 113
-  events and no calibrator is fitted on them at all. The Riley et al. floor for a flexible
-  reliability CURVE still binds there and this file does not touch it.
+  events and no calibrator is fitted on them at all. The floor for a flexible reliability CURVE
+  (Van Calster et al. 2016: 200 events and 200 non-events) still binds there and this file does not
+  touch it.
 - ~~**The `platt_logit` arm is not shipped.** It is a measurement of a one-line change, not the
   change.~~ **SUPERSEDED - it ships now.** Kept rather than deleted because it was a true and
   load-bearing caveat when this table was written: everything else in this section still limits what

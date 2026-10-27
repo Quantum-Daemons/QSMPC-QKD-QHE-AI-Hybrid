@@ -25,6 +25,7 @@ import {
 import type { ModelEvalResult } from "../lib/onnxInference";
 import { modelsFor } from "../lib/config";
 import Details from "./Details";
+import { ChartReadout, HINT_KEYBOARD, HINT_POINTER, ReadoutTooltip } from "./ChartReadout";
 
 const AXIS = { fontSize: 10, stroke: "#8a94a6" };
 const GRID = "#2a3040";
@@ -186,63 +187,64 @@ export function EncryptedAgreementChart({ plot }: { plot: EncryptedAgreementPlot
           twice the worst deviation; it is reported as a measurement, not as a verdict on the encryption.
         </Details>
       ) : null}
-      <ResponsiveContainer width="100%" height={200}>
-        {/* `title` as a PROP, the way every other chart in this file sets it. Written first as a
-            `<title>` child, which recharts does not forward - so the figure rendered with a null
-            accessible name, which is exactly the regression Round 34 recorded when six charts ended
-            up with empty titles. Verified on the deployed page, not assumed.
+      <ChartReadout hint={HINT_POINTER}>
+        <ResponsiveContainer width="100%" height={200}>
+          {/* `title` as a PROP, the way every other chart in this file sets it. Written first as a
+              `<title>` child, which recharts does not forward - so the figure rendered with a null
+              accessible name, which is exactly the regression Round 34 recorded when six charts ended
+              up with empty titles. Verified on the deployed page, not assumed.
 
-            `role="img"`, NOT `accessibilityLayer`. The first version used the latter, twenty lines
-            above the scatter that does not and the comment explaining why: `accessibilityLayer`
-            makes a ScatterChart focusable and gives it `role="application"` WITHOUT making its
-            points keyboard-reachable, because recharts steps an activeIndex along a categorical
-            axis and two numeric axes have none. `KB6` says an application role appears only where
-            the keyboard path passed, so this was an inert application role - a regression, in the
-            same commit that fixed the missing title. Fixing one accessibility defect while
-            introducing another is what happens when you verify the thing you changed instead of
-            re-reading the row that governs the element. */}
-        <ScatterChart role="img" title={name}
-                      margin={{ top: 6, right: 10, bottom: 4, left: -10 }}>
-          <CartesianGrid stroke={GRID} strokeDasharray="2 4" />
-          {/* Formatted, because the raw ticks rendered as `3.7326450091317454` - sixteen digits of a
-              logit, on both axes. */}
-          <XAxis type="number" dataKey="plain" name="plaintext" domain={[lo, hi]} tick={AXIS}
-                 tickFormatter={(v: number) => v.toFixed(2)}
-                 label={{ value: "plaintext score", position: "insideBottom", offset: -2, fill: "#8a94a6", fontSize: 10 }} />
-          <YAxis type="number" dataKey="enc" name="encrypted" domain={[lo, hi]} tick={AXIS}
-                 tickFormatter={(v: number) => v.toFixed(2)} />
-          <ReferenceLine segment={[{ x: lo, y: lo }, { x: hi, y: hi }]} stroke="#8a94a6"
-                         strokeDasharray="4 4" ifOverflow="extendDomain" />
-          <Tooltip contentStyle={{ background: "#161b26", border: `1px solid ${GRID}`, fontSize: 11 }}
-                   formatter={(v: number) => v.toFixed(6)} />
-          {/* SHAPE as well as fill - SC 1.4.1, and the one chart in this file that was missed when
-              the second channel was added to the others. `RealDataScatter` 170 lines below has
-              carried `shape="circle"` / `shape="triangle"` since that sweep; the histogram, the
-              forecast lines and the confusion bars all got a channel too. This one did not, and it
-              is the chart where colour carries the most: red here means the ENCRYPTED path
-              disagreed with plaintext, so a reader who cannot separate red from blue cannot see
-              which points are the disagreements - the single fact the chart exists to show.
-              The shape is named in the series name, so the legend, the tooltip and the figcaption
-              all say it, the way the confusion bars already say "(solid)" and "(hatched)". */}
-          {/* `isAnimationActive={false}` IS LOAD-BEARING, not tidiness, and leaving it off shipped
-              a blank chart to the deployed site. Adding `shape` moves recharts off its default
-              renderer onto `<Symbols>`, whose `size` is an ANIMATED prop; with animation left on,
-              all 30 symbols stayed at their `from` state and rendered `d="M0,0"` - present in the
-              DOM, correctly positioned, and zero-sized. The legend named two shapes above an empty
-              plot area, which is worse than the colour-only version it replaced.
-              `RealDataScatter` 170 lines below has carried `shape` AND `isAnimationActive={false}`
-              together since Round 34. Half of that pattern was copied. Found only by looking at the
-              deployed page - every gate was green, because a gate that reads the source sees the
-              `shape` prop it asked for and cannot see a path of length zero. */}
-          <Scatter name="agrees (circle)" data={plot.points.filter((p) => p.agree)}
-                   fill="#4f9dff" shape="circle" isAnimationActive={false} />
-          {mismatches > 0 && (
-            <Scatter name="argmax differs (cross)" data={plot.points.filter((p) => !p.agree)}
-                     fill="#ff6b6b" shape="cross" isAnimationActive={false} />
-          )}
-          {mismatches > 0 && <Legend wrapperStyle={{ fontSize: 10 }} />}
-        </ScatterChart>
-      </ResponsiveContainer>
+              `role="img"`, NOT `accessibilityLayer`. The first version used the latter, twenty lines
+              above the scatter that does not and the comment explaining why: `accessibilityLayer`
+              makes a ScatterChart focusable and gives it `role="application"` WITHOUT making its
+              points keyboard-reachable, because recharts steps an activeIndex along a categorical
+              axis and two numeric axes have none. `KB6` says an application role appears only where
+              the keyboard path passed, so this was an inert application role - a regression, in the
+              same commit that fixed the missing title. Fixing one accessibility defect while
+              introducing another is what happens when you verify the thing you changed instead of
+              re-reading the row that governs the element. */}
+          <ScatterChart role="img" title={name}
+                        margin={{ top: 6, right: 10, bottom: 4, left: -10 }}>
+            <CartesianGrid stroke={GRID} strokeDasharray="2 4" />
+            {/* Formatted, because the raw ticks rendered as `3.7326450091317454` - sixteen digits of a
+                logit, on both axes. */}
+            <XAxis type="number" dataKey="plain" name="plaintext" domain={[lo, hi]} tick={AXIS}
+                   tickFormatter={(v: number) => v.toFixed(2)}
+                   label={{ value: "plaintext score", position: "insideBottom", offset: -2, fill: "#8a94a6", fontSize: 10 }} />
+            <YAxis type="number" dataKey="enc" name="encrypted" domain={[lo, hi]} tick={AXIS}
+                   tickFormatter={(v: number) => v.toFixed(2)} />
+            <ReferenceLine segment={[{ x: lo, y: lo }, { x: hi, y: hi }]} stroke="#8a94a6"
+                           strokeDasharray="4 4" ifOverflow="extendDomain" />
+            <Tooltip content={<ReadoutTooltip />} formatter={(v: number) => v.toFixed(6)} />
+            {/* SHAPE as well as fill - SC 1.4.1, and the one chart in this file that was missed when
+                the second channel was added to the others. `RealDataScatter` 170 lines below has
+                carried `shape="circle"` / `shape="triangle"` since that sweep; the histogram, the
+                forecast lines and the confusion bars all got a channel too. This one did not, and it
+                is the chart where colour carries the most: red here means the ENCRYPTED path
+                disagreed with plaintext, so a reader who cannot separate red from blue cannot see
+                which points are the disagreements - the single fact the chart exists to show.
+                The shape is named in the series name, so the legend, the tooltip and the figcaption
+                all say it, the way the confusion bars already say "(solid)" and "(hatched)". */}
+            {/* `isAnimationActive={false}` IS LOAD-BEARING, not tidiness, and leaving it off shipped
+                a blank chart to the deployed site. Adding `shape` moves recharts off its default
+                renderer onto `<Symbols>`, whose `size` is an ANIMATED prop; with animation left on,
+                all 30 symbols stayed at their `from` state and rendered `d="M0,0"` - present in the
+                DOM, correctly positioned, and zero-sized. The legend named two shapes above an empty
+                plot area, which is worse than the colour-only version it replaced.
+                `RealDataScatter` 170 lines below has carried `shape` AND `isAnimationActive={false}`
+                together since Round 34. Half of that pattern was copied. Found only by looking at the
+                deployed page - every gate was green, because a gate that reads the source sees the
+                `shape` prop it asked for and cannot see a path of length zero. */}
+            <Scatter name="agrees (circle)" data={plot.points.filter((p) => p.agree)}
+                     fill="#4f9dff" shape="circle" isAnimationActive={false} />
+            {mismatches > 0 && (
+              <Scatter name="argmax differs (cross)" data={plot.points.filter((p) => !p.agree)}
+                       fill="#ff6b6b" shape="cross" isAnimationActive={false} />
+            )}
+            {mismatches > 0 && <Legend wrapperStyle={{ fontSize: 10 }} />}
+          </ScatterChart>
+        </ResponsiveContainer>
+      </ChartReadout>
     </figure>
   );
 }
@@ -395,44 +397,45 @@ export function RealDataScatter({ usecase, card = false }: { usecase: string; ca
       </figcaption>
       {/* Axis labels sit INSIDE the plot margin and the legend is given its own reserved height -
           at the default the x-axis title and the legend row landed on the same pixels. */}
-      <ResponsiveContainer width="100%" height={230}>
-        {/* `accessibilityLayer` makes this focusable and DOES NOT make its points keyboard
-            reachable. Measured on the deployed page, not inferred: focus the surface and press
-            ArrowRight - the line and bar charts below open their tooltip with real values, this one
-            does nothing. Recharts walks an activeIndex along a categorical axis, and a scatter with
-            two numeric axes has no such index to step through, so there is nothing for the arrow
-            keys to move between. Kept because focusability is still the prerequisite for any fix,
-            and because removing it would hide the gap rather than close it. The text alternative
-            for this chart is the figcaption above, which states what it shows, its licence and its
-            attribution; that is what a screen-reader user gets today. */}
-        <ScatterChart role="img"
-          title={`Scatter plot: ${data.y.label} against ${data.x.label}`}
-          margin={{ top: 6, right: 10, bottom: 30, left: -14 }}>
-          <CartesianGrid stroke={GRID} strokeDasharray="2 4" />
-          <XAxis type="number" dataKey="x" name={data.x.label} tick={AXIS}
-                 label={{ value: data.x.label, position: "insideBottom", offset: -20,
-                          fill: "#8a94a6", fontSize: 10 }} />
-          {/* Log scale is carried in the payload, not inferred here. A heavy-tailed axis - finance's
-              burst fan-out runs to 12,540 with a 95th percentile of 7,801 - renders every point on
-              the baseline unless it is compressed, and whether that is warranted is a property of
-              the DATA, so the generator that measured it is the thing that should decide. */}
-          <YAxis type="number" dataKey="y" name={data.y.label} tick={AXIS}
-                 scale={data.y.scale === "log" ? "log" : "auto"}
-                 domain={data.y.scale === "log" ? [0.9, "auto"] : undefined}
-                 allowDataOverflow={data.y.scale === "log"}
-                 label={{ value: data.y.label + (data.y.scale === "log" ? " (log)" : ""),
-                          angle: -90, position: "insideLeft",
-                          offset: 22, fill: "#8a94a6", fontSize: 10 }} />
-          <Tooltip cursor={{ strokeDasharray: "3 3" }}
-                   contentStyle={{ background: "#161b26", border: `1px solid ${GRID}`, fontSize: 11 }}
-                   formatter={(v: number) => v.toLocaleString()} />
-          <Legend verticalAlign="top" align="right" height={18} wrapperStyle={{ fontSize: 10 }} />
-          <Scatter name={data.class_names[0]} data={neg} fill="#8296b5" fillOpacity={0.75}
-                   shape="circle" isAnimationActive={false} />
-          <Scatter name={data.class_names[1]} data={pos} fill="#e07a3c" fillOpacity={0.85}
-                   shape="triangle" isAnimationActive={false} />
-        </ScatterChart>
-      </ResponsiveContainer>
+      <ChartReadout hint={HINT_POINTER}>
+        <ResponsiveContainer width="100%" height={230}>
+          {/* `accessibilityLayer` makes this focusable and DOES NOT make its points keyboard
+              reachable. Measured on the deployed page, not inferred: focus the surface and press
+              ArrowRight - the line and bar charts below open their tooltip with real values, this one
+              does nothing. Recharts walks an activeIndex along a categorical axis, and a scatter with
+              two numeric axes has no such index to step through, so there is nothing for the arrow
+              keys to move between. Kept because focusability is still the prerequisite for any fix,
+              and because removing it would hide the gap rather than close it. The text alternative
+              for this chart is the figcaption above, which states what it shows, its licence and its
+              attribution; that is what a screen-reader user gets today. */}
+          <ScatterChart role="img"
+            title={`Scatter plot: ${data.y.label} against ${data.x.label}`}
+            margin={{ top: 6, right: 10, bottom: 30, left: -14 }}>
+            <CartesianGrid stroke={GRID} strokeDasharray="2 4" />
+            <XAxis type="number" dataKey="x" name={data.x.label} tick={AXIS}
+                   label={{ value: data.x.label, position: "insideBottom", offset: -20,
+                            fill: "#8a94a6", fontSize: 10 }} />
+            {/* Log scale is carried in the payload, not inferred here. A heavy-tailed axis - finance's
+                burst fan-out runs to 12,540 with a 95th percentile of 7,801 - renders every point on
+                the baseline unless it is compressed, and whether that is warranted is a property of
+                the DATA, so the generator that measured it is the thing that should decide. */}
+            <YAxis type="number" dataKey="y" name={data.y.label} tick={AXIS}
+                   scale={data.y.scale === "log" ? "log" : "auto"}
+                   domain={data.y.scale === "log" ? [0.9, "auto"] : undefined}
+                   allowDataOverflow={data.y.scale === "log"}
+                   label={{ value: data.y.label + (data.y.scale === "log" ? " (log)" : ""),
+                            angle: -90, position: "insideLeft",
+                            offset: 22, fill: "#8a94a6", fontSize: 10 }} />
+            <Tooltip content={<ReadoutTooltip />} cursor={{ strokeDasharray: "3 3" }}
+                     formatter={(v: number) => v.toLocaleString()} />
+            <Legend verticalAlign="top" align="right" height={18} wrapperStyle={{ fontSize: 10 }} />
+            <Scatter name={data.class_names[0]} data={neg} fill="#8296b5" fillOpacity={0.75}
+                     shape="circle" isAnimationActive={false} />
+            <Scatter name={data.class_names[1]} data={pos} fill="#e07a3c" fillOpacity={0.85}
+                     shape="triangle" isAnimationActive={false} />
+          </ScatterChart>
+        </ResponsiveContainer>
+      </ChartReadout>
     </figure>
   );
 
@@ -483,22 +486,23 @@ export function AncestryStrataChart({ achieved }: { achieved: Record<string, unk
         {" "}driven by allele-frequency differences rather than by risk. This is a distribution shift,
         not an accuracy drop - the panel carries no case/control status, so no AUROC is computable.
       </figcaption>
-      <ResponsiveContainer width="100%" height={190}>
-        <BarChart accessibilityLayer title="Share flagged high-risk, by genetic-ancestry group"
-          data={rows} margin={{ top: 4, right: 8, bottom: 4, left: -18 }}>
-          <CartesianGrid stroke={GRID} strokeDasharray="2 4" />
-          <XAxis dataKey="label" tick={AXIS} interval={0} />
-          <YAxis tick={AXIS} tickFormatter={(v: number) => `${(v * 100).toFixed(0)}%`} />
-          <Tooltip contentStyle={{ background: "#161b26", border: `1px solid ${GRID}`, fontSize: 11 }}
-                   formatter={(v: number, name: string) =>
-                     name === "flagged" ? `${(v * 100).toFixed(2)}%` : v.toFixed(4)}
-                   labelFormatter={(l: string) =>
-                     `${l} — n=${rows.find((r) => r.label === l)?.n ?? 0}, `
-                     + `mean PRS ${rows.find((r) => r.label === l)?.mean.toFixed(4) ?? ""}`} />
-          <ReferenceLine y={pooled} stroke="#c05621" strokeDasharray="4 4" />
-          <Bar dataKey="frac" fill="#4f9dff" name="flagged" />
-        </BarChart>
-      </ResponsiveContainer>
+      <ChartReadout hint={HINT_KEYBOARD}>
+        <ResponsiveContainer width="100%" height={190}>
+          <BarChart accessibilityLayer title="Share flagged high-risk, by genetic-ancestry group"
+            data={rows} margin={{ top: 4, right: 8, bottom: 4, left: -18 }}>
+            <CartesianGrid stroke={GRID} strokeDasharray="2 4" />
+            <XAxis dataKey="label" tick={AXIS} interval={0} />
+            <YAxis tick={AXIS} tickFormatter={(v: number) => `${(v * 100).toFixed(0)}%`} />
+            <Tooltip content={<ReadoutTooltip />} formatter={(v: number, name: string) =>
+                       name === "flagged" ? `${(v * 100).toFixed(2)}%` : v.toFixed(4)}
+                     labelFormatter={(l: string) =>
+                       `${l} — n=${rows.find((r) => r.label === l)?.n ?? 0}, `
+                       + `mean PRS ${rows.find((r) => r.label === l)?.mean.toFixed(4) ?? ""}`} />
+            <ReferenceLine y={pooled} stroke="#c05621" strokeDasharray="4 4" />
+            <Bar dataKey="frac" fill="#4f9dff" name="flagged" />
+          </BarChart>
+        </ResponsiveContainer>
+      </ChartReadout>
     </figure>
   );
 }
@@ -518,8 +522,9 @@ export function AncestryStrataChart({ achieved }: { achieved: Record<string, unk
  *  badly. Probability against frequency is the same comparison in the form the data actually takes.
  */
 function ReliabilityChart(
-  { data, of, modelKey }: {
-    data: Array<{ p: number; observed: number; n: number }>; of: string; modelKey: string;
+  { data, of, from, modelKey }: {
+    data: Array<{ p: number; observed: number; n: number }>; of: string;
+    from?: "probabilities" | "logits"; modelKey: string;
   },
 ) {
   if (data.length < 2) return null;   // one bin is a point, and a point has no calibration to show
@@ -530,31 +535,38 @@ function ReliabilityChart(
       <figcaption className="muted small">
         Calibration of <code>{modelKey}</code>: mean {of} against the frequency actually observed in
         the same bin, over {res_n(data)} rows. The grey diagonal is perfect calibration. Widest
-        deviation {Math.abs(worst.observed - worst.p).toFixed(3)} at predicted {worst.p.toFixed(3)}
-        against observed {worst.observed.toFixed(3)} ({worst.n} rows). Bins are equal-WIDTH, so a
-        calibrator that collapses its output onto one value shows up as a single tall bin rather than
-        being spread across the axis.
+        deviation {Math.abs(worst.observed - worst.p).toFixed(3)} at predicted {worst.p.toFixed(3)}{" "}
+        {/* `{" "}` above: a line break after a value is dropped, and this read "0.644against" on the
+            deployed page until Round 74 (web/scripts/check_jsx_text_spaces.mjs). */}
+        against observed {worst.observed.toFixed(3)} ({worst.n} row{worst.n === 1 ? "" : "s"}). Bins
+        are equal-WIDTH, so a calibrator that collapses its output onto one value shows up as a single
+        tall bin rather than being spread across the axis.
+        {/* Said, because the model does not emit these numbers itself: the medical pages binned the
+            raw logits as probabilities until Round 74 (lib/calibration.ts). */}
+        {from === "logits" && <> The graph emits logits, so the probabilities binned here are their
+          softmax.</>}
       </figcaption>
-      <ResponsiveContainer width="100%" height={180}>
-        {/* `role="img"` and NOT `accessibilityLayer`, which is what the other scatters here do and
-            what `tests/test_chart_accessibility.py` enforces: on a ScatterChart the accessibility
-            layer sets role="application" with tabindex=0 and no keyboard path, because recharts
-            walks an activeIndex along a categorical axis and this chart has none. That takes a
-            screen-reader user out of browse mode and hands them a widget that ignores every key.
-            The figcaption above is the text alternative, and it carries the numbers. */}
-        <ScatterChart role="img" title={`Calibration of ${modelKey}`}
-          margin={{ top: 4, right: 8, bottom: 4, left: -18 }}>
-          <CartesianGrid stroke={GRID} strokeDasharray="2 4" />
-          <XAxis type="number" dataKey="p" domain={[0, 1]} tick={AXIS} name="predicted"
-                 tickFormatter={(v: number) => v.toFixed(1)} />
-          <YAxis type="number" dataKey="observed" domain={[0, 1]} tick={AXIS} name="observed" />
-          <Tooltip contentStyle={{ background: "#161b26", border: `1px solid ${GRID}`, fontSize: 11 }}
-                   formatter={(v: number) => Number(v).toFixed(4)} />
-          <ReferenceLine segment={[{ x: 0, y: 0 }, { x: 1, y: 1 }]} stroke="#8a94a6"
-                         strokeDasharray="4 4" />
-          <Scatter data={data} fill="#4f9dff" isAnimationActive={false} name="bin" />
-        </ScatterChart>
-      </ResponsiveContainer>
+      <ChartReadout hint={HINT_POINTER}>
+        <ResponsiveContainer width="100%" height={180}>
+          {/* `role="img"` and NOT `accessibilityLayer`, which is what the other scatters here do and
+              what `tests/test_chart_accessibility.py` enforces: on a ScatterChart the accessibility
+              layer sets role="application" with tabindex=0 and no keyboard path, because recharts
+              walks an activeIndex along a categorical axis and this chart has none. That takes a
+              screen-reader user out of browse mode and hands them a widget that ignores every key.
+              The figcaption above is the text alternative, and it carries the numbers. */}
+          <ScatterChart role="img" title={`Calibration of ${modelKey}`}
+            margin={{ top: 4, right: 8, bottom: 4, left: -18 }}>
+            <CartesianGrid stroke={GRID} strokeDasharray="2 4" />
+            <XAxis type="number" dataKey="p" domain={[0, 1]} tick={AXIS} name="predicted"
+                   tickFormatter={(v: number) => v.toFixed(1)} />
+            <YAxis type="number" dataKey="observed" domain={[0, 1]} tick={AXIS} name="observed" />
+            <Tooltip content={<ReadoutTooltip />} formatter={(v: number) => Number(v).toFixed(4)} />
+            <ReferenceLine segment={[{ x: 0, y: 0 }, { x: 1, y: 1 }]} stroke="#8a94a6"
+                           strokeDasharray="4 4" />
+            <Scatter data={data} fill="#4f9dff" isAnimationActive={false} name="bin" />
+          </ScatterChart>
+        </ResponsiveContainer>
+      </ChartReadout>
     </figure>
   );
 }
@@ -640,23 +652,24 @@ export function MeasuredAgainstPublished(
               because of that, and this project has twice shipped a plot where it was not true.</>}
         {source ? <> Baseline: {source}</> : null}
       </figcaption>
-      <ResponsiveContainer width="100%" height={150}>
-        <BarChart accessibilityLayer title={`${metric} measured against published for ${modelKey}`}
-          data={data} margin={{ top: 4, right: 8, bottom: 4, left: -18 }}>
-          <CartesianGrid stroke={GRID} strokeDasharray="2 4" />
-          <XAxis dataKey="who" tick={AXIS} />
-          <YAxis domain={[0, 1]} tick={AXIS} />
-          <Tooltip contentStyle={{ background: "#161b26", border: `1px solid ${GRID}`, fontSize: 11 }}
-                   formatter={(v: number) => v.toFixed(4)} />
-          <Bar dataKey="value" name={metric} isAnimationActive={false}>
-            {data.map((d) => (
-              <Cell key={d.who}
-                    fill={d.who === "this project" ? "#4f9dff"
-                        : d.who.startsWith("published") ? "#e6a23c" : "#8a94a6"} />
-            ))}
-          </Bar>
-        </BarChart>
-      </ResponsiveContainer>
+      <ChartReadout hint={HINT_KEYBOARD}>
+        <ResponsiveContainer width="100%" height={150}>
+          <BarChart accessibilityLayer title={`${metric} measured against published for ${modelKey}`}
+            data={data} margin={{ top: 4, right: 8, bottom: 4, left: -18 }}>
+            <CartesianGrid stroke={GRID} strokeDasharray="2 4" />
+            <XAxis dataKey="who" tick={AXIS} />
+            <YAxis domain={[0, 1]} tick={AXIS} />
+            <Tooltip content={<ReadoutTooltip />} formatter={(v: number) => v.toFixed(4)} />
+            <Bar dataKey="value" name={metric} isAnimationActive={false}>
+              {data.map((d) => (
+                <Cell key={d.who}
+                      fill={d.who === "this project" ? "#4f9dff"
+                          : d.who.startsWith("published") ? "#e6a23c" : "#8a94a6"} />
+              ))}
+            </Bar>
+          </BarChart>
+        </ResponsiveContainer>
+      </ChartReadout>
       {caveat ? (
         <p className="muted small" style={{ marginTop: 6 }}>
           <b>* not a like-for-like comparison.</b> {caveat}
@@ -698,21 +711,25 @@ export function VerificationChart(
           Weakest class: <strong>{worst.label}</strong> at {worst.f1.toFixed(3)} against an aggregate
           of {res.score?.toFixed(3)}. The aggregate is what would hide it.
         </figcaption>
-        <ResponsiveContainer width="100%" height={180}>
-          <BarChart accessibilityLayer title={`Per-class F1 for ${modelKey}`}
-            data={plot.perClass} margin={{ top: 4, right: 8, bottom: 4, left: -18 }}>
-            <CartesianGrid stroke={GRID} strokeDasharray="2 4" />
-            <XAxis dataKey="label" tick={AXIS} interval={0} angle={-25} textAnchor="end" height={54} />
-            <YAxis domain={[0, 1]} tick={AXIS} />
-            <Tooltip contentStyle={{ background: "#161b26", border: `1px solid ${GRID}`, fontSize: 11 }}
-                     formatter={(v: number) => v.toFixed(4)} />
-            <Bar dataKey="f1" fill="#4f9dff" name="F1" />
-          </BarChart>
-        </ResponsiveContainer>
+        <ChartReadout hint={HINT_KEYBOARD}>
+          <ResponsiveContainer width="100%" height={180}>
+            <BarChart accessibilityLayer title={`Per-class F1 for ${modelKey}`}
+              data={plot.perClass} margin={{ top: 4, right: 8, bottom: 4, left: -18 }}>
+              <CartesianGrid stroke={GRID} strokeDasharray="2 4" />
+              <XAxis dataKey="label" tick={AXIS} interval={0} angle={-25} textAnchor="end" height={54} />
+              <YAxis domain={[0, 1]} tick={AXIS} />
+              <Tooltip content={<ReadoutTooltip />} formatter={(v: number) => v.toFixed(4)} />
+              <Bar dataKey="f1" fill="#4f9dff" name="F1" />
+            </BarChart>
+          </ResponsiveContainer>
+        </ChartReadout>
       </figure>
       {plot.reliability?.length ? (
         <ReliabilityChart data={plot.reliability} of={plot.reliabilityOf ?? "predicted probability"}
+                          from={plot.reliabilityFrom}
                           modelKey={modelKey} />
+      ) : plot.reliabilityWithheld ? (
+        <p className="muted small">No calibration chart: {plot.reliabilityWithheld}.</p>
       ) : null}
       </div>
     );
@@ -734,21 +751,22 @@ export function VerificationChart(
             random ranker achieves ({prevalence.toFixed(4)}) - PR rather than ROC because this
             baseline moves with prevalence and ROC's does not.
           </figcaption>
-          <ResponsiveContainer width="100%" height={180}>
-            <LineChart accessibilityLayer title={`Precision-recall curve for ${modelKey}`}
-              data={plot.pr} margin={{ top: 4, right: 8, bottom: 4, left: -18 }}>
-              <CartesianGrid stroke={GRID} strokeDasharray="2 4" />
-              <XAxis dataKey="recall" type="number" domain={[0, 1]} tick={AXIS}
-                     tickFormatter={(v: number) => v.toFixed(1)} />
-              <YAxis domain={[0, 1]} tick={AXIS} />
-              <Tooltip contentStyle={{ background: "#161b26", border: `1px solid ${GRID}`, fontSize: 11 }}
-                       formatter={(v: number) => v.toFixed(4)}
-                       labelFormatter={(v: number) => `recall ${Number(v).toFixed(3)}`} />
-              <ReferenceLine y={prevalence} stroke="#c05621" strokeDasharray="4 4" />
-              <Line type="monotone" dataKey="precision" stroke="#4f9dff" dot={false} strokeWidth={1.8}
-                    isAnimationActive={false} name="precision" />
-            </LineChart>
-          </ResponsiveContainer>
+          <ChartReadout hint={HINT_KEYBOARD}>
+            <ResponsiveContainer width="100%" height={180}>
+              <LineChart accessibilityLayer title={`Precision-recall curve for ${modelKey}`}
+                data={plot.pr} margin={{ top: 4, right: 8, bottom: 4, left: -18 }}>
+                <CartesianGrid stroke={GRID} strokeDasharray="2 4" />
+                <XAxis dataKey="recall" type="number" domain={[0, 1]} tick={AXIS}
+                       tickFormatter={(v: number) => v.toFixed(1)} />
+                <YAxis domain={[0, 1]} tick={AXIS} />
+                <Tooltip content={<ReadoutTooltip />} formatter={(v: number) => v.toFixed(4)}
+                         labelFormatter={(v: number) => `recall ${Number(v).toFixed(3)}`} />
+                <ReferenceLine y={prevalence} stroke="#c05621" strokeDasharray="4 4" />
+                <Line type="monotone" dataKey="precision" stroke="#4f9dff" dot={false} strokeWidth={1.8}
+                      isAnimationActive={false} name="precision" />
+              </LineChart>
+            </ResponsiveContainer>
+          </ChartReadout>
         </figure>
 
         {plot.hist?.length ? (
@@ -757,51 +775,56 @@ export function VerificationChart(
               Score distribution by TRUE class. Overlap here is the reason the curve above looks the
               way it does - a metric says how well, this says why.
             </figcaption>
-            <ResponsiveContainer width="100%" height={180}>
-              <BarChart accessibilityLayer title="Score distribution by true class"
-                data={plot.hist} margin={{ top: 4, right: 8, bottom: 4, left: -18 }}>
-                <CartesianGrid stroke={GRID} strokeDasharray="2 4" />
-                <XAxis dataKey="bin" tick={AXIS} label={{ value: "score bin", position: "insideBottom",
-                       offset: -2, fill: "#8a94a6", fontSize: 10 }} />
-                <YAxis scale="log" domain={[0.7, "auto"]} allowDataOverflow tick={AXIS} />
-                <Tooltip contentStyle={{ background: "#161b26", border: `1px solid ${GRID}`, fontSize: 11 }} />
-                <Legend wrapperStyle={{ fontSize: 10 }} />
-                {/* WCAG 2.2 SC 1.4.1 (Use of Color, Level A): these two series were separated by fill
-                    alone until Round 34. Because they are STACKED they share an x position, so the axis
-                    cannot disambiguate them either - colour really was the only channel, and the legend
-                    swatches are colour too. A 45-degree hatch on the positive class is the second
-                    channel; the fill stays, so colour and pattern are redundant rather than either one
-                    being load-bearing. This is the same redundant-encoding approach the scatter chart
-                    above already uses via `shape="circle"` / `shape="triangle"`, applied to a chart type
-                    where Recharts offers no `shape` prop.
-                    Why this survived: the checklist scoped itself to "WCAG 2.2 AA, the four that this UI
-                    can actually fail" and 1.4.1 was not among the four, so no row looked for it. */}
-                <defs>
-                  <pattern id="hatch-positive" patternUnits="userSpaceOnUse" width="5" height="5"
-                           patternTransform="rotate(45)">
-                    <rect width="5" height="5" fill="#c05621" />
-                    <line x1="0" y1="0" x2="0" y2="5" stroke="#f5c199" strokeWidth="1.6" />
-                  </pattern>
-                </defs>
-                {/* WCAG 2.2 SC 1.4.11 (AA), measured in Round 74 against the card (#151c2c): the
-                    negative class was #4a5568 at 2.26:1, below the 3:1 a data mark needs. #717d92 is
-                    4.09:1 and still reads as the muted series beside the hatched positive one.
-                    The two segments are STACKED, so each also meets the other, and no grey reaches
-                    3:1 against the card, the hatch base (#c05621) and the hatch lines (#f5c199) at
-                    once: #717d92 is 1.10:1 against the base. The card-coloured stroke separates them,
-                    the way WCAG's own pie-chart example uses a border, so each segment meets the
-                    card at 3.72:1 or more. */}
-                <Bar dataKey="negative" stackId="a" fill="#717d92" stroke={CARD} strokeWidth={1}
-                     name="true negative (solid)" />
-                <Bar dataKey="positive" stackId="a" fill="url(#hatch-positive)" stroke={CARD}
-                     strokeWidth={1} name="true positive (hatched)" />
-              </BarChart>
-            </ResponsiveContainer>
+            <ChartReadout hint={HINT_KEYBOARD}>
+              <ResponsiveContainer width="100%" height={180}>
+                <BarChart accessibilityLayer title="Score distribution by true class"
+                  data={plot.hist} margin={{ top: 4, right: 8, bottom: 4, left: -18 }}>
+                  <CartesianGrid stroke={GRID} strokeDasharray="2 4" />
+                  <XAxis dataKey="bin" tick={AXIS} label={{ value: "score bin", position: "insideBottom",
+                         offset: -2, fill: "#8a94a6", fontSize: 10 }} />
+                  <YAxis scale="log" domain={[0.7, "auto"]} allowDataOverflow tick={AXIS} />
+                  <Tooltip content={<ReadoutTooltip labelName="score bin" />} />
+                  <Legend wrapperStyle={{ fontSize: 10 }} />
+                  {/* WCAG 2.2 SC 1.4.1 (Use of Color, Level A): these two series were separated by fill
+                      alone until Round 34. Because they are STACKED they share an x position, so the axis
+                      cannot disambiguate them either - colour really was the only channel, and the legend
+                      swatches are colour too. A 45-degree hatch on the positive class is the second
+                      channel; the fill stays, so colour and pattern are redundant rather than either one
+                      being load-bearing. This is the same redundant-encoding approach the scatter chart
+                      above already uses via `shape="circle"` / `shape="triangle"`, applied to a chart type
+                      where Recharts offers no `shape` prop.
+                      Why this survived: the checklist scoped itself to "WCAG 2.2 AA, the four that this UI
+                      can actually fail" and 1.4.1 was not among the four, so no row looked for it. */}
+                  <defs>
+                    <pattern id="hatch-positive" patternUnits="userSpaceOnUse" width="5" height="5"
+                             patternTransform="rotate(45)">
+                      <rect width="5" height="5" fill="#c05621" />
+                      <line x1="0" y1="0" x2="0" y2="5" stroke="#f5c199" strokeWidth="1.6" />
+                    </pattern>
+                  </defs>
+                  {/* WCAG 2.2 SC 1.4.11 (AA), measured in Round 74 against the card (#151c2c): the
+                      negative class was #4a5568 at 2.26:1, below the 3:1 a data mark needs. #717d92 is
+                      4.09:1 and still reads as the muted series beside the hatched positive one.
+                      The two segments are STACKED, so each also meets the other, and no grey reaches
+                      3:1 against the card, the hatch base (#c05621) and the hatch lines (#f5c199) at
+                      once: #717d92 is 1.10:1 against the base. The card-coloured stroke separates them,
+                      the way WCAG's own pie-chart example uses a border, so each segment meets the
+                      card at 3.72:1 or more. */}
+                  <Bar dataKey="negative" stackId="a" fill="#717d92" stroke={CARD} strokeWidth={1}
+                       name="true negative (solid)" />
+                  <Bar dataKey="positive" stackId="a" fill="url(#hatch-positive)" stroke={CARD}
+                       strokeWidth={1} name="true positive (hatched)" />
+                </BarChart>
+              </ResponsiveContainer>
+            </ChartReadout>
           </figure>
         ) : null}
         {plot.reliability?.length ? (
           <ReliabilityChart data={plot.reliability} of={plot.reliabilityOf ?? "p(positive)"}
+                            from={plot.reliabilityFrom}
                             modelKey={modelKey} />
+        ) : plot.reliabilityWithheld ? (
+          <p className="muted small">No calibration chart: {plot.reliabilityWithheld}.</p>
         ) : null}
       </div>
     );
@@ -816,25 +839,26 @@ export function VerificationChart(
           {res.baseline?.toFixed(4)}. The error's SHAPE matters: uniform drift is a miscalibrated
           model, a few large misses are missed events.
         </figcaption>
-        <ResponsiveContainer width="100%" height={190}>
-          <LineChart accessibilityLayer title="Forecast against actual, over time"
-            data={plot.series} margin={{ top: 4, right: 8, bottom: 4, left: -18 }}>
-            <CartesianGrid stroke={GRID} strokeDasharray="2 4" />
-            <XAxis dataKey="i" tick={AXIS} />
-            <YAxis tick={AXIS} />
-            <Tooltip contentStyle={{ background: "#161b26", border: `1px solid ${GRID}`, fontSize: 11 }}
-                     formatter={(v: number) => v.toFixed(4)} />
-            <Legend wrapperStyle={{ fontSize: 10 }} />
-            {/* SC 1.4.1 again: these two were `stroke` colour only. A 1.4 vs 1.6 strokeWidth
-                difference is not a perceivable second channel, so `predicted` is dashed. Dashing the
-                PREDICTION rather than the actual is deliberate - the dashed line reads as the derived
-                quantity, which is what it is. */}
-            <Line type="monotone" dataKey="actual" stroke="#8a94a6" dot={false} strokeWidth={1.4}
-                  isAnimationActive={false} name="actual (solid)" />
-            <Line type="monotone" dataKey="predicted" stroke="#4f9dff" dot={false} strokeWidth={1.6}
-                  strokeDasharray="5 3" isAnimationActive={false} name="predicted (dashed)" />
-          </LineChart>
-        </ResponsiveContainer>
+        <ChartReadout hint={HINT_KEYBOARD}>
+          <ResponsiveContainer width="100%" height={190}>
+            <LineChart accessibilityLayer title="Forecast against actual, over time"
+              data={plot.series} margin={{ top: 4, right: 8, bottom: 4, left: -18 }}>
+              <CartesianGrid stroke={GRID} strokeDasharray="2 4" />
+              <XAxis dataKey="i" tick={AXIS} />
+              <YAxis tick={AXIS} />
+              <Tooltip content={<ReadoutTooltip labelName="window" />} formatter={(v: number) => v.toFixed(4)} />
+              <Legend wrapperStyle={{ fontSize: 10 }} />
+              {/* SC 1.4.1 again: these two were `stroke` colour only. A 1.4 vs 1.6 strokeWidth
+                  difference is not a perceivable second channel, so `predicted` is dashed. Dashing the
+                  PREDICTION rather than the actual is deliberate - the dashed line reads as the derived
+                  quantity, which is what it is. */}
+              <Line type="monotone" dataKey="actual" stroke="#8a94a6" dot={false} strokeWidth={1.4}
+                    isAnimationActive={false} name="actual (solid)" />
+              <Line type="monotone" dataKey="predicted" stroke="#4f9dff" dot={false} strokeWidth={1.6}
+                    strokeDasharray="5 3" isAnimationActive={false} name="predicted (dashed)" />
+            </LineChart>
+          </ResponsiveContainer>
+        </ChartReadout>
       </figure>
     );
   }

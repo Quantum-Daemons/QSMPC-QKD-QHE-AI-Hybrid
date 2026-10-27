@@ -5,6 +5,7 @@ import {
 import Details from "./Details";
 import KeyPoints from "./KeyPoints";
 import bench from "../lib/mpcNetBench.json";
+import { ChartReadout, HINT_KEYBOARD, ReadoutTooltip } from "./ChartReadout";
 
 /**
  * The secure argmax under the two garbled-circuit engines, measured between two browser tabs over a
@@ -32,24 +33,26 @@ function RateChart({ rate }: { rate: number }) {
   return (
     <div style={{ flex: "1 1 280px", minWidth: 0 }}>
       <div className="small muted" style={{ marginBottom: 4 }}>{rate} Mbit/s each way, no loss</div>
-      <ResponsiveContainer width="100%" height={220}>
-        <BarChart data={rows} accessibilityLayer title={`Secure argmax completion time at ${rate} Mbit/s against round-trip time, emp-wasm and Polytune`} margin={{ top: 8, right: 8, bottom: 8, left: 4 }}>
-          {/* WCAG 2.2 SC 1.4.1: the two engines differ by a hatch as well as by colour. */}
-          <defs>
-            <pattern id={hatch} patternUnits="userSpaceOnUse" width="5" height="5" patternTransform="rotate(45)">
-              <rect width="5" height="5" fill="var(--accent-2)" />
-              <line x1="0" y1="0" x2="0" y2="5" stroke="var(--bg)" strokeWidth="1.4" />
-            </pattern>
-          </defs>
-          <CartesianGrid stroke="var(--border)" strokeDasharray="3 3" />
-          <XAxis dataKey="rtt" tick={tick} />
-          <YAxis tick={tick} width={56} tickFormatter={(v: number) => `${v}`} unit=" ms" />
-          <Tooltip formatter={(v: number) => ms(v)} />
-          <Legend />
-          <Bar dataKey="emp" name="emp-wasm (replaced)" fill="var(--accent)" />
-          <Bar dataKey="polytune" name="Polytune (now shipped, hatched)" fill={`url(#${hatch})`} />
-        </BarChart>
-      </ResponsiveContainer>
+      <ChartReadout hint={HINT_KEYBOARD}>
+        <ResponsiveContainer width="100%" height={220}>
+          <BarChart data={rows} accessibilityLayer title={`Secure argmax completion time at ${rate} Mbit/s against round-trip time, emp-wasm and Polytune`} margin={{ top: 8, right: 8, bottom: 8, left: 4 }}>
+            {/* WCAG 2.2 SC 1.4.1: the two engines differ by a hatch as well as by colour. */}
+            <defs>
+              <pattern id={hatch} patternUnits="userSpaceOnUse" width="5" height="5" patternTransform="rotate(45)">
+                <rect width="5" height="5" fill="var(--accent-2)" />
+                <line x1="0" y1="0" x2="0" y2="5" stroke="var(--bg)" strokeWidth="1.4" />
+              </pattern>
+            </defs>
+            <CartesianGrid stroke="var(--border)" strokeDasharray="3 3" />
+            <XAxis dataKey="rtt" tick={tick} />
+            <YAxis tick={tick} width={56} tickFormatter={(v: number) => `${v}`} unit=" ms" />
+            <Tooltip content={<ReadoutTooltip />} formatter={(v: number) => ms(v)} />
+            <Legend />
+            <Bar dataKey="emp" name="emp-wasm (replaced)" fill="var(--accent)" />
+            <Bar dataKey="polytune" name="Polytune (now shipped, hatched)" fill={`url(#${hatch})`} />
+          </BarChart>
+        </ResponsiveContainer>
+      </ChartReadout>
     </div>
   );
 }

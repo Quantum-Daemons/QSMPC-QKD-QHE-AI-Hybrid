@@ -18,7 +18,7 @@ step() { printf '\n=== %s ===\n' "$1"; }
 ok()   { printf '  PASS  %s\n' "$1"; }
 bad()  { printf '  FAIL  %s\n' "$1"; fail=1; }
 
-step "1/17 test suite (pytest -m 'not slow')"
+step "1/18 test suite (pytest -m 'not slow')"
 # QSH_REQUIRE_BROWSER_GATES=1 matches what ci.yml sets, and it is the whole point of running here:
 # the three cross-language gates are the only checks that can see a change reaching one language and
 # not the other, and their skip-when-esbuild-is-absent is exactly the hole a one-language fix ships
@@ -28,7 +28,7 @@ HF_HUB_OFFLINE=1 QSH_REQUIRE_BROWSER_GATES=1 "$PY" -m pytest -m "not slow" -q -p
     >/tmp/ci_pytest.log 2>&1 \
   && ok "tests" || { bad "tests"; tail -20 /tmp/ci_pytest.log; }
 
-step "2/17 config parity (defaults.py -> config.defaults.json)"
+step "2/18 config parity (defaults.py -> config.defaults.json)"
 # THE GENERATOR'S EXIT STATUS IS TESTED, because it decides what the diff below means.
 # This read `>/dev/null 2>&1` with the status discarded. Both generators write their artifact LAST,
 # so any exception before that leaves the committed file byte-identical and `git diff --quiet`
@@ -45,19 +45,19 @@ else
   bad "config.defaults.json is stale - commit the regenerated file"
 fi
 
-step "3/17 generated artifacts match their generator and their history"
+step "3/18 generated artifacts match their generator and their history"
 "$PY" scripts/check_generated_prose.py \
   && ok "prose matches generators; no recorded field vanished" \
   || bad "a prose field was hand-edited, or a measurement disappeared"
 
-step "4/17 lint, BLOCKING scope (this is the one that was red)"
+step "4/18 lint, BLOCKING scope (this is the one that was red)"
 "$PY" -m ruff check src/qsh/models scripts/train scripts/publish_hf.py scripts/data \
   && ok "ruff blocking scope" || bad "ruff blocking scope"
 
-step "5/17 no confidential files tracked"
+step "5/18 no confidential files tracked"
 make check-secrets >/dev/null 2>&1 && ok "no confidential files" || bad "confidential files tracked"
 
-step "6/17 no Japanese in public files"
+step "6/18 no Japanese in public files"
 # Scope is EVERY TRACKED FILE, with `grep -I` skipping binaries. It was a six-extension list
 # (*.py *.ts *.tsx *.md *.yml *.sh) until Round 34, and the comment above it claimed the Round 33 fix
 # had made "public mean exactly tracked". It had not: public meant tracked AND one of six extensions,
@@ -77,14 +77,14 @@ else
   ok "no Japanese in public files"
 fi
 
-step "7/17 no model artifacts committed"
+step "7/18 no model artifacts committed"
 if git ls-files | grep -E '\.(onnx|safetensors|pt|pth|h5|npy)$'; then
   bad "model artifacts committed - publish to the Hub instead"
 else
   ok "no model artifacts committed"
 fi
 
-step "8/17 web typecheck + build"
+step "8/18 web typecheck + build"
 # Round 65: the MPC tier's wasm is built first, by the web image's own Rust stage (scripts/build_wasm.sh),
 # which also runs the crate's `cargo test` and writes the third-party notices. Docker layer caching makes
 # this seconds when wasm/qsh-mpc has not changed. Without it tsc cannot resolve clientMPC.ts's import.
@@ -92,10 +92,13 @@ bash scripts/build_wasm.sh >/tmp/ci_wasm.log 2>&1 \
   && ok "MPC wasm built; its cargo test passed; notices written" || { bad "MPC wasm build (scripts/build_wasm.sh)"; tail -15 /tmp/ci_wasm.log; }
 ( cd web && npx tsc --noEmit >/tmp/ci_tsc.log 2>&1 ) \
   && ok "tsc --noEmit" || { bad "tsc --noEmit"; tail -15 /tmp/ci_tsc.log; }
+# Round 74: JSX drops a line break where it meets a value, and a caption read "0.644against".
+( cd web && npm run --silent check:jsx-spaces >/tmp/ci_jsxsp.log 2>&1 ) \
+  && ok "JSX text keeps its spaces" || { bad "JSX text loses a space at a line break"; tail -8 /tmp/ci_jsxsp.log; }
 ( cd web && npm run build >/tmp/ci_build.log 2>&1 ) \
   && ok "npm run build" || { bad "npm run build"; tail -15 /tmp/ci_build.log; }
 
-step "9/17 PQC conformance (FIPS 203 s7.2 negatives + FIPS 204 sizes)"
+step "9/18 PQC conformance (FIPS 203 s7.2 negatives + FIPS 204 sizes)"
 # Offline by design: reads the vendored CC0 snapshot in web/scripts/vectors. It was ungated for
 # several rounds because it used to fetch its vectors, and the only way to gate a network check is a
 # skip-on-failure fallback -- which for THIS check would be worse than not running it, since it
@@ -103,7 +106,7 @@ step "9/17 PQC conformance (FIPS 203 s7.2 negatives + FIPS 204 sizes)"
 ( cd web && npm run --silent check:pqc >/tmp/ci_pqc.log 2>&1 ) \
   && ok "PQC conformance" || { bad "PQC conformance"; tail -12 /tmp/ci_pqc.log; }
 
-step "10/17 QKD model plumbing and identities"
+step "10/18 QKD model plumbing and identities"
 # Separate from the build for the same reason the gate above is: a green typecheck says nothing about
 # whether config reaches the model. It did not - `error_correction_eff` had no reader in web/src and
 # the browser ran on a literal that happened to match. This mutates the live config and requires the
@@ -113,7 +116,7 @@ step "10/17 QKD model plumbing and identities"
 ( cd web && npm run --silent check:qkd >/tmp/ci_qkd.log 2>&1 ) \
   && ok "QKD plumbing" || { bad "QKD plumbing"; tail -12 /tmp/ci_qkd.log; }
 
-step "11/17 Federated secure aggregation"
+step "11/18 Federated secure aggregation"
 # The sharpest case of the same class. The diagram said "pairwise masking (demo keys)" and the DAG
 # said "(secure aggregation)" while clientQFL summed plaintext updates, with `secureAgg: true` a
 # literal on the return line. Every gate above stayed green throughout, because none of them can see
@@ -123,12 +126,12 @@ step "11/17 Federated secure aggregation"
 ( cd web && npm run --silent check:qfl >/tmp/ci_qfl.log 2>&1 ) \
   && ok "federated secure aggregation" || { bad "federated secure aggregation"; tail -12 /tmp/ci_qfl.log; }
 
-step "12/17 Hybrid-KEM combiner parity (Python vectors vs the browser module)"
+step "12/18 Hybrid-KEM combiner parity (Python vectors vs the browser module)"
 (cd web && npm run --silent check:combiner) \
   && ok "combiner parity" \
   || bad "backend and browser derive different session keys"
 
-step "13/17 combiner vectors regenerated from the Python side"
+step "13/18 combiner vectors regenerated from the Python side"
 # The gate above reproduces the COMMITTED vectors, so it stays green against stale bytes when Python
 # changed and nobody regenerated. This is the other direction - the mechanism gate 2 uses for
 # config.defaults.json.
@@ -163,7 +166,7 @@ if [ "$vec_fail" = "0" ]; then
   fi
 fi
 
-step "14/17 QCNN cost metrics at EVERY site that claims the backend"
+step "14/18 QCNN cost metrics at EVERY site that claims the backend"
 # Structural, not another careful read. The latency was added to the private_inference call site and
 # not to the qml_ids one, so telecom reported `primary_inference_backend = qcnn-trained` with no
 # latency while two checklist rows asserted it renders on every such page. tsc, the suite and all
@@ -176,7 +179,15 @@ step "14/17 QCNN cost metrics at EVERY site that claims the backend"
   && ok "qcnn cost metrics at every claiming site" \
   || { bad "a qcnn-trained site omits its cost metrics"; tail -6 /tmp/ci_qcnnm.log; }
 
-step "15/17 the local-only checklist gates are actually running"
+step "15/18 a model's output becomes a probability before it is binned as one"
+# The reliability chart binned column 1 of the raw output as P(positive). The medical models emit
+# logits, so every medical page drew a calibration chart of logits ("predicted -5.471") while tsc,
+# the build and the argmax verdict were green. Round 74.
+( cd web && npm run --silent check:calibration >/tmp/ci_calib.log 2>&1 ) \
+  && ok "outputs converted by their declared kind; non-probabilities refused" \
+  || { bad "a model output is binned as a probability without conversion"; tail -6 /tmp/ci_calib.log; }
+
+step "16/18 the local-only checklist gates are actually running"
 # THE GATE ON THE GATES. docs/browser-verification-checklist.md is gitignored by design - it must not
 # be published - so the four tests that read it (prefix legend, WS index, CI1 step numbering, prose
 # counts) SKIP in CI and in every clone. Measured on a fresh `git archive` checkout: four skips, and
@@ -216,7 +227,7 @@ else
   bad "docs/browser-verification-checklist.md is missing; four invariants now enforce nothing, here or in CI"
 fi
 
-step "16/17 the out-of-repo business document has been reconciled with this round"
+step "17/18 the out-of-repo business document has been reconciled with this round"
 # THE FILE EVERY DOCUMENT SWEEP MISSED, and for a structural reason rather than a lazy one:
 # the confidential business-recommendations document lives at the PARENT directory, outside this
 # repository (its filename is Japanese, so it is described here rather than written), so
@@ -257,7 +268,7 @@ else
 fi
 
 
-step "17/17 the OpenFHE bootstrap test CI runs and this script deselected"
+step "18/18 the OpenFHE bootstrap test CI runs and this script deselected"
 # THE ONLY BLOCKING CI JOB THIS SCRIPT HAD NO COUNTERPART FOR, and it exists because of a decision
 # whose own reopen condition has now been met.
 #

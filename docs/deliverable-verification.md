@@ -5574,10 +5574,12 @@ BUSINESS DOC RECONCILED Round 73. The out-of-repo document is brought level with
 is not quoted here, in the checklist, or in any commit - only the fact of the reconciliation, which is
 what gate 16 reads.
 
-## Round 74: accessibility re-measured - heading levels, non-text contrast and the chart tooltip
+## Round 74: accessibility re-measured, a readout in place of the tooltip, and the calibration chart corrected
 
 **Stacked on Round 73**, all held by decision. This round changes the demo: two chart colours, a
-separator, one legend, the heading levels of four kinds of page, and one CSS rule.
+separator, one legend, the heading levels of four kinds of page, a fixed readout under every chart
+in place of the floating tooltip, and a calibration chart that is now drawn only where the sample
+supports one and only from probabilities.
 
 **Why this order.** The oldest-first audit, continued. The accessibility rows were last measured on
 2026-08-15. Two were open by declaration: 1.4.11 non-text contrast, never measured, and the skipped
@@ -5617,19 +5619,67 @@ heading levels. 1.4.13 was carried as open with a stated reason.
   real key press.
 - What it missed: recharts' keyboard layer opens the tooltip on focus and on the arrow keys, and has
   no blur handler, so tabbing out of a chart left its tooltip open over the plot. Measured on the
-  deploy with real key presses. A CSS rule now hides a tooltip whose chart has neither hover nor
-  focus, on devices that can hover.
-- Hoverable is not met in the strict sense: the tooltip ignores the pointer and follows it at a 10 px
-  offset, so it never disappears and can never itself be hovered. The remedies (pin on click, or a
-  fixed readout beside each chart) change how every chart behaves, so the choice goes to the user.
+  deploy with real key presses.
+- Hoverable was not met: the tooltip ignores the pointer and follows it at a 10 px offset, so it never
+  disappears and can never itself be hovered. **By the user's decision every chart now writes into a
+  fixed line under it instead** (`web/src/components/ChartReadout.tsx`). A line in the page flow is not
+  hover content: it covers nothing, keeps the last point read, and as a polite live region announces
+  each point a keyboard user arrows to. Recharts still finds a `<Tooltip>` in every chart, because its
+  keyboard layer needs one; its content renders through a portal into the line, so the floating box
+  stays empty. Seventeen charts, converted by one brace-aware transform and checked by a gate.
+- The active highlight is cleared once a chart has neither hover nor focus, so Tab no longer leaves a
+  chart pointing at a category.
+- Measured on a local build with real key presses and a real pointer, before the deploy: arrowing the
+  precision-recall curve reads "recall 0.415: precision 0.5620"; hovering an agreement-scatter point
+  reads its plaintext and encrypted scores and keeps them after the pointer leaves; after Tab no
+  highlight is visible and no floating box has content.
+
+**Found while measuring the walk: a caption that read "0.644against".** The calibration caption wrapped
+its prose after a value, and JSX deletes a line break where it meets an expression. The source looked
+right, and tsc and the build were green. A parse of every component with the TypeScript compiler found
+one more instance (the sidebar brand, glued only in `textContent`). Both are fixed, and
+`web/scripts/check_jsx_text_spaces.mjs` now runs in CI and in `scripts/ci_local.sh`. It accepts a
+space kept inside the next node and `{" "}`, and it also catches a comment on its own line between
+two lines of prose, which glues the words on either side. Seeded three ways, each fires.
+
+**And behind that caption, two real defects in the calibration chart.**
+- **The medical pages plotted logits as probabilities.** The chart binned column 1 of the raw output
+  as P(positive). That holds for the scikit-learn exports, whose output is named `probabilities`. All
+  three medical models are PyTorch exports, whose output is named `logits`, ranging up to 114 on their
+  own samples (measured with onnxruntime at the pinned revisions). The deployed medical page said
+  "Widest deviation 5.701 at predicted -5.471". The verification verdict was unaffected, because it is
+  an argmax. Every published graph names its score output one of the two, so the browser now reads the
+  meaning from the name (`web/src/lib/calibration.ts`), applies a softmax to logits, refuses any other
+  name rather than guessing, and the binning throws on a value outside [0, 1]. The decision threshold
+  is read in two places, the whole-sample evaluation and the one-row run, and both now use the same
+  conversion. Measured offline, the three medical accuracies reproduce their recorded figures exactly.
+- **No chart should have been drawn there at all.** Checklist row `PP8`, `src/qsh/models/calibration.py`
+  and `references/REFERENCES.md` (2026-08-12) all say no page may draw a reliability diagram below
+  about 200 events. A Round 51 chart drew one on every binary page anyway, and nothing enforced the
+  rule. Counted on the samples the chart is drawn from: finance 164 events, medical 42, satellite 113,
+  telecom QML 8 wrong predictions. Only telecom NIDD (250 wrong, 16,129 right) clears it. **By the
+  user's decision the floor is now applied strictly**: below 200 events or 200 non-events the page
+  draws no curve and states the counts and the reason. The CORP figures in the Models panel remain.
+- **PP8 cited the wrong paper.** The 200-events-and-200-non-events rule for a flexible calibration
+  curve is Van Calster et al., J Clin Epidemiol 74 (2016) 167-176, verified in the authors' accepted
+  manuscript; Riley et al. (Stat Med 2021), which the project cited, argues such rules can be too few.
+  The citation is corrected in the checklist, `REFERENCES.md`, the Python calibration module, the
+  finance investigation, and the finance model's recorded note, in its generator and its records
+  together. That note also said the browser's 164-event sample was "the 2D overlay payload"; it is the
+  evaluation sample the chart was drawn from.
+- `web/scripts/check_calibration.mjs` asserts the conversion, the refusal, the floor at the published
+  counts, and that both readers of a graph use them. Seeded three ways, each fires. It runs in CI and
+  as a new step 15 of `scripts/ci_local.sh`.
 
 **Gates.**
 - `tests/test_page_headings_do_not_skip_a_level.py` expands each page through the components it
   renders, resolved through its imports, and fails on any skip. Seeded four ways, each fires.
-- `tests/test_chart_accessibility.py` gains six checks: every mark resolves to a colour; every mark
-  reaches 3:1 against the card; stacked segments reach 3:1 against each other or are separated; a
-  legend keys only series with a colour of their own; the recharts release the tooltip was measured
-  on; and the tooltip rule. Seeded six ways, each fires.
+- `tests/test_chart_accessibility.py` gains: every mark resolves to a colour; every mark reaches 3:1
+  against the card; stacked segments reach 3:1 against each other or are separated; a legend keys
+  only series with a colour of their own; every tooltip writes into a readout; every readout tooltip
+  has a readout; the highlight rule; and the recharts release the readout was measured on. Each is
+  seeded and fires.
+- `web/scripts/check_jsx_text_spaces.mjs` and `web/scripts/check_calibration.mjs`, above.
 
 BUSINESS DOC RECONCILED Round 74. The out-of-repo document is brought level with this round. Its content
 is not quoted here, in the checklist, or in any commit - only the fact of the reconciliation, which is
