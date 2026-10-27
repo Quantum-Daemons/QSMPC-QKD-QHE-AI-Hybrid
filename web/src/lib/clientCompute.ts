@@ -328,7 +328,7 @@ export function securityFacts(config: any, metrics: Record<string, any>): Securi
       // attributed its rate to decoy states - a countermeasure for the multi-photon pulses of an
       // attenuated laser, which entanglement-based QKD does not have and cannot use. One of a
       // sibling pair three lines apart was made protocol-aware and the other was not.
-      facts.push({ label: "Secret-key rate", value: `${skr} per pulse`, kind: "simulated",
+      facts.push({ label: "Secret-key rate", value: `${Number(skr.toPrecision(4))} per pulse`, kind: "simulated",
         source: isE91
           ? "device-dependent secure fraction 1 - h(e) - f h(e) on the MODEL error rate, not the "
             + "sampled QBER (Shor-Preskill form; entangled source: Ma, Fung & Lo, Phys. Rev. A 76, "
@@ -2072,10 +2072,11 @@ export function runClientPipeline(
         // RENAMED from `skr`. ETSI GS QKD 015's `skr` is bit/s and this number is bits per PULSE;
         // leaving one name on two dimensions inside the same signed payload is the defect this
         // round exists to remove, one namespace over.
-        // 1e6, matching `api.ts`. The pair split in Round 45: that file moved to six decimals with a
+        // 1e9, matching `api.ts`. The pair split in Round 45: that file moved to six decimals with a
         // comment saying "the control-plane panel shows 0.002355", and these two sites stayed at
-        // 1e5, so the panel showed 0.00235 and the comment described the other surface.
-        metric(stage, "skr_per_pulse", Math.round(res.secretKeyRate * 1e6) / 1e6);
+        // 1e5, so the panel showed 0.00235 and the comment described the other surface. Nine since
+        // Round 75: six held the satellite's 1.723e-5 to two figures, printed as 1.700e-5.
+        metric(stage, "skr_per_pulse", Math.round(res.secretKeyRate * 1e9) / 1e9);
         metric(stage, "secure_key_bits", res.secureKeyBits);
         // ACTUALLY REPORTED NOW. `secretKeyRateNonDecoy` was added in Round 45 with a JSDoc
         // saying "Reported beside `secretKeyRate`" and was read by nothing but its own test -
@@ -2084,7 +2085,7 @@ export function runClientPipeline(
         // the tagged fraction is 7.26 and no detection can be certified single-photon.
         if (res.secretKeyRateNonDecoy != null) {
           metric(stage, "skr_per_pulse_no_decoy",
-                 Math.round(res.secretKeyRateNonDecoy * 1e6) / 1e6);
+                 Math.round(res.secretKeyRateNonDecoy * 1e9) / 1e9);
         }
         // THE FOUR TOGETHER, on both QKD stages. The satellite twin below emitted no rate at all
         // while its own comment claimed "both report the same quantity" - a comment naming a
@@ -2158,10 +2159,11 @@ export function runClientPipeline(
         metric(stage, "qkd_eve_fraction", satChan.eveFraction);
         metric(stage, "qber", r2(res.qber));
         metric(stage, "channel_loss_db", res.channelLossDb);
-        // 1e6, matching `api.ts`. The pair split in Round 45: that file moved to six decimals with a
+        // 1e9, matching `api.ts`. The pair split in Round 45: that file moved to six decimals with a
         // comment saying "the control-plane panel shows 0.002355", and these two sites stayed at
-        // 1e5, so the panel showed 0.00235 and the comment described the other surface.
-        metric(stage, "skr_per_pulse", Math.round(res.secretKeyRate * 1e6) / 1e6);
+        // 1e5, so the panel showed 0.00235 and the comment described the other surface. Nine since
+        // Round 75: six held the satellite's 1.723e-5 to two figures, printed as 1.700e-5.
+        metric(stage, "skr_per_pulse", Math.round(res.secretKeyRate * 1e9) / 1e9);
         metric(stage, "secure_key_bits", res.secureKeyBits);
         // ACTUALLY REPORTED NOW. `secretKeyRateNonDecoy` was added in Round 45 with a JSDoc
         // saying "Reported beside `secretKeyRate`" and was read by nothing but its own test -
@@ -2170,7 +2172,7 @@ export function runClientPipeline(
         // the tagged fraction is 7.26 and no detection can be certified single-photon.
         if (res.secretKeyRateNonDecoy != null) {
           metric(stage, "skr_per_pulse_no_decoy",
-                 Math.round(res.secretKeyRateNonDecoy * 1e6) / 1e6);
+                 Math.round(res.secretKeyRateNonDecoy * 1e9) / 1e9);
         }
         // The same four as the fibre stage, from the FREE-SPACE clock key. The default value is the
         // same 100 MHz, but the provenance is not: on this page it is the anchor's own measured
@@ -2301,10 +2303,11 @@ export function runClientPipeline(
         // channel of carrying an eavesdropper on every single run.
         //
         // At the DEFAULT budget it still cannot close at any range: 5 dB atmospheric + 3 dB pointing
-        // plus the detector's 4.0 dB give g = 15.8 even at zero range, and C_s is -3.70 at 0.1 km
-        // with no eavesdropper. Only with the fixed losses below about 0.65 dB in total does a short
-        // link close (at 0 + 0 dB it closes out to about 173 km under Round 75's Micius budget, still
-        // well short of a LEO slant range). That is not a bug in this code, it is the finding: QSDC
+        // plus the detector's 3.0 dB give g = 12.6 even at zero range, and C_s is -1.01 at 0.1 km
+        // with no eavesdropper. Only with the fixed losses below about 4.8 dB in total does a short
+        // link close (at 0 + 0 dB it closes out to about 173 km), still well short of a LEO slant
+        // range. Recomputed under Round 75's Micius budget; it read 4.0 dB, g = 15.8, -3.70 and
+        // 0.65 dB, from the detector efficiency and error floor that budget replaced. That is not a bug in this code, it is the finding: QSDC
         // does not close over a LEO free-space downlink under the published criterion. Qi et al.
         // ran it over 1.5 km of fibre with a 4.1 dB back channel (g = 2.57); the default downlink's
         // g here is about 808 (29.1 dB of channel and detector; C_s about -123). (This comment said "at every setting this
@@ -2352,7 +2355,8 @@ export function runClientPipeline(
           ? `QSDC (simulated) delivered telemetry (secrecy ${secrecy.toFixed(4)} bit/carrier, g=${g.toFixed(1)})`
           : lossLimited
             ? `QSDC (simulated) NOT AVAILABLE on this link — secrecy capacity ${secrecy.toFixed(4)} bit/carrier `
-              + `at ${lossDb.toFixed(1)} dB including the detector (g=${g.toFixed(1)}), and it is still `
+              + `at ${lossDb.toFixed(1)} dB from Eve to Bob's detector, the channel less the station optics `
+              + `plus the detector (g=${g.toFixed(1)}), and it is still `
               + `${secrecyNoEve.toFixed(4)} with NO eavesdropper. The limit is the link budget, not `
               // The criterion as computed: C_s = 1 - h(e) - g h(e_x + e_z), with e_x + e_z = 2e here.
               // This line quoted "C_s > 0 requires h(QBER) < 1/(1+g)", the POOLED form that the
@@ -2361,7 +2365,8 @@ export function runClientPipeline(
               + `${(g * h2(Math.min(0.5, 2 * e))).toFixed(4)} at e = ${e.toFixed(4)}. `
               + `Telemetry falls back to the PQC session key.`
             : `QSDC (simulated) ABORTED: secrecy capacity ${secrecy.toFixed(4)} <= 0 at error ${e.toFixed(4)} `
-              + `with g=${g.toFixed(1)} (${lossDb.toFixed(1)} dB including the detector) — this link closes at `
+              + `with g=${g.toFixed(1)} (${lossDb.toFixed(1)} dB: the channel less the station optics, plus `
+              + `the detector) — this link closes at `
               + `${secrecyNoEve.toFixed(4)} without Eve, so the loss is attributable — telemetry withheld`);
         }   // end qsdc: everything below scores the BUNDLED corpus and runs on both profiles
         {

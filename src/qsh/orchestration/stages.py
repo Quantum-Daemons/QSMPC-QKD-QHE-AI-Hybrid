@@ -151,7 +151,9 @@ class QKDKeyAgreementStage(Stage):
         # satellite twin nine lines above all emit as 0.001977. A fix about one metric having two
         # spellings, itself spelled two ways, in a file whose own comment four lines up says "the fix
         # changed one language".
-        bus.metric("skr_per_pulse", round(result.secret_key_rate, 6), self.name)
+        # Nine decimals since Round 75, everywhere it is emitted: six held the satellite's
+        # 1.723e-5 to two significant figures (tests/test_one_metric_has_one_rounding.py).
+        bus.metric("skr_per_pulse", round(result.secret_key_rate, 9), self.name)
         bus.metric("secure_key_bits", result.secure_key_bits, self.name)
         ctx.metrics.update(qber=result.qber, skr_per_pulse=result.secret_key_rate)
         if result.secure_key_bits >= 256:
