@@ -5701,6 +5701,23 @@ two lines of prose, which glues the words on either side. Seeded three ways, eac
 - `web/scripts/check_jsx_text_spaces.mjs`, `web/scripts/check_calibration.mjs`,
   `web/scripts/check_no_dangling_source_maps.mjs` and `tests/test_a_missing_file_is_a_404.py`, above.
 
+**Walked on the deploy (3c55f7a, `index-BTFyF-rl.js`), in a fresh tab, after the four deploys of this
+round.**
+- Cross-origin isolated. No heading skip on any of the twelve page variants, before and after runs.
+- Five runs. PASS on finance, medical, telecom and satellite; genomics has no published classifier.
+- Calibration. Withheld with its counts on finance (164 and 8,028), medical (114 and 42) and telecom
+  QML (8 wrong, 592 right). Drawn for telecom NIDD: "Widest deviation 0.030 at predicted 0.502 against
+  observed 0.532 (528 rows)", the same two bins an offline onnxruntime run of the pinned graph gives.
+- Readouts. Real arrow keys on the BB84 chart wrote "Eve intercept fraction 0.2: QBER (sampled)
+  0.0634" and the key bits into the line; Tab cleared the highlight and kept the line; a real pointer
+  on an agreement-scatter point wrote its plaintext and encrypted scores and kept them when it left.
+  No floating box had content on any page.
+- No word ran into a value on any page after the runs.
+- Through the shared proxy: a missing chunk, data file, `favicon.ico` and `robots.txt` return 404;
+  app routes and an unknown route return the app.
+- Console: no errors; four "Failed to create WebGPU Context Provider" warnings, expected in a browser
+  without WebGPU. No horizontal overflow at the pane's 309 px or at 1280 px.
+
 BUSINESS DOC RECONCILED Round 74. The out-of-repo document is brought level with this round. Its content
 is not quoted here, in the checklist, or in any commit - only the fact of the reconciliation, which is
 what gate 16 reads.
