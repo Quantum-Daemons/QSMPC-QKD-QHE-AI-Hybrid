@@ -176,8 +176,9 @@ export const makeDefaultParams = () => ({
   sat_pulses: webCfg().demo_sat_pulses,
   // The two fixed terms of the link budget, and the reason the eavesdrop check could never fire.
   // `channelLossDb` caps the diffraction term at the near field, so these floor total loss at 8 dB
-  // no matter how short the range - with the detector's 4.0 dB, g >= 15.8 - and at the default
-  // budget C_s is negative at every range (-3.70 at 0.1 km with no eavesdropper). Every abort was
+  // no matter how short the range - with the detector's 3.0 dB, g >= 12.6 - and at the default
+  // budget C_s is negative at every range (-1.01 at 0.1 km with no eavesdropper; it read 15.8 and
+  // -3.70 before Round 75's Micius budget). Every abort was
   // therefore attributable to the budget rather than to Eve. (Corrected 2026-10-24: this comment
   // quoted g >= 6.31 and the pooled tolerance 1/(1+g), both from before detector efficiency entered
   // g and the per-basis entropy replaced the pooled one.) Exposing them lets a
