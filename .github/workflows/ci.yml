@@ -62,6 +62,12 @@ jobs:
           cache-dependency-path: web/package-lock.json
       - name: Install web dependencies (for the cross-language gates)
         working-directory: web
+        # onnxruntime-node (pulled in by @huggingface/transformers, never imported here) fetches CUDA
+        # binaries from api.nuget.org in its install script. That download timed out twice on one
+        # commit in Round 75 and failed both a Python and a web job. Nothing here runs CUDA; the
+        # package documents this switch, and its CPU binaries are bundled.
+        env:
+          ONNXRUNTIME_NODE_INSTALL: skip
         run: npm ci
 
       - name: Test suite
@@ -220,6 +226,8 @@ jobs:
 
       - name: Install
         working-directory: web
+        env:
+          ONNXRUNTIME_NODE_INSTALL: skip   # see the Python job's install step
         run: npm ci
 
       - name: Typecheck
