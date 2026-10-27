@@ -534,8 +534,8 @@ def main() -> int:
     # earlier note made: this calibration set is 710,969 cases, far past the ICML/UAI thresholds, and
     # on this split isotonic and Platt score within noise on Brier and log-loss. Isotonic loses on
     # what is not a proper scoring rule - it is only weakly monotone, and it cost 9.09% of AUPRC by
-    # collapsing 1,388,669 distinct scores to 138. No reliability DIAGRAM is drawn - Riley et al. put
-    # the floor for a flexible curve at about 200 events - but the CORP terms are SCALARS and
+    # collapsing 1,388,669 distinct scores to 138. No reliability DIAGRAM is drawn - Van Calster et al.
+    # (J Clin Epidemiol 2016) ask for 200 events and 200 non-events - but the CORP terms are SCALARS and
     # pool-adjacent-violators chooses no bin count, so they are reportable exactly where a curve is
     # not. Full workings: references/finance-calibration-isotonic-vs-platt.md.
     #
@@ -571,15 +571,16 @@ def main() -> int:
         "corp_raw": _r(cal.corp_decomposition(p_raw, yte)),
         "corp_calibrated": _r(cal.corp_decomposition(p_cal, yte)),
         "reliability_diagram_defensible_here": (
-            "YES on this split, and the first draft of this note said the opposite. Riley et al. "
-            "(Stat Med 2021) put the floor for a flexible calibration curve at about 200 events; this "
-            "test split carries 2,321. The 164-event figure this project quotes elsewhere is the 2D "
-            "OVERLAY payload (8,192 sampled rows at a 0.02 base rate), not the test split, and "
-            "carrying it over here would have declined a curve that the data supports - the same "
-            "wrong-denominator mistake this repository already documents under 'ask what the metric "
-            "was divided by'. The floor genuinely does bind on medical (about 42 events) and "
-            "satellite (about 113). The CORP terms below are reported regardless, because PAV picks "
-            "no bin count and so they are stable where a binned curve is not."),
+            "YES on the test split, which carries 2,321 events. Van Calster et al. (J Clin "
+            "Epidemiol 2016) ask for at least 200 events and 200 non-events before a flexible "
+            "calibration curve, and Riley et al. (Stat Med 2021) show that such rules of thumb can "
+            "still be too few. NO on the browser's evaluation sample: 8,192 rows from the same test "
+            "window at a 0.02 base rate, so 164 events, which is why the page draws no curve and "
+            "says so. Each number is right for its own denominator, and confusing the two is the "
+            "mistake this repository documents under 'ask what the metric was divided by'. The "
+            "floor also binds on medical (42 events) and satellite (113). The CORP terms below are "
+            "reported regardless, because PAV picks no bin count and so they are stable where a "
+            "binned curve is not."),
         "does_not_move_ranking": (
             "Platt is STRICTLY monotone, so AUC and AUC-PR are unchanged by construction: measured "
             "Round 49, both are identical to the uncalibrated values to ten decimals, and that held "

@@ -445,32 +445,68 @@ def test_a_legend_only_names_series_that_carry_their_own_colour() -> None:
 
 
 # --------------------------------------------------------------------------------------------- #
-#  SC 1.4.13 Content on Hover or Focus: the tooltip
+#  SC 1.4.13 Content on Hover or Focus: a fixed readout instead of a floating tooltip
 # --------------------------------------------------------------------------------------------- #
 
-#: The recharts release whose tooltip was measured on the deploy, Round 74. Escape dismisses it
-#: (TooltipBoundingBox installs a document-level keydown listener, recharts PR #2925), so the
-#: checklist's "zero Escape handlers" counted this repository's source and not the library. What
-#: recharts lacks is a blur handler: its keyboard layer opens the tooltip on focus and leaves it
-#: open after Tab moves on. A different release must be measured again, not assumed.
+#: Measured on the deploy in Round 74, with real key presses: recharts 2.15.4 dismisses its tooltip on
+#: Escape (TooltipBoundingBox listens on the document, recharts PR #2925), so the checklist's "zero
+#: Escape handlers" had counted this repository and not the library; and its keyboard layer has no
+#: blur handler, so Tab out of a chart left the tooltip open over the plot. Hoverable was not met: the
+#: tooltip follows the pointer and can never itself be hovered. By the user's decision every chart
+#: now writes into a fixed line under it (`ChartReadout`), which is not hover content at all.
+#:
+#: The readout depends on two recharts behaviours, so the release is pinned: the keyboard layer needs
+#: a `<Tooltip>` child to exist, and a custom `content` receives the Tooltip's `formatter` and
+#: `labelFormatter`. A different release must be measured again on the deploy, not assumed.
 MEASURED_RECHARTS = "2.15.4"
 
 
-def test_the_tooltip_behaviour_was_measured_on_this_recharts() -> None:
+def test_the_readout_was_measured_on_this_recharts() -> None:
     lock = json.loads((REPO / "web" / "package-lock.json").read_text())
     version = lock["packages"]["node_modules/recharts"]["version"]
     assert version == MEASURED_RECHARTS, (
-        f"recharts is {version}; its tooltip was measured on {MEASURED_RECHARTS}. Re-measure on the "
-        "deploy with real key presses - Escape dismisses, Tab away closes - then update this pin.")
-    bbox = REPO / "web" / "node_modules" / "recharts" / "es6" / "component" / "TooltipBoundingBox.js"
-    if bbox.exists():                                   # present where the web build has run
-        assert "'Escape'" in bbox.read_text(), "the installed recharts no longer handles Escape"
+        f"recharts is {version}; the chart readout was measured on {MEASURED_RECHARTS}. Re-measure on "
+        "the deploy - arrow keys still move the readout, formatted values still reach it - then update "
+        "this pin.")
 
 
-def test_a_tooltip_closes_when_its_chart_has_neither_hover_nor_focus() -> None:
+def _tooltip_sites() -> list[tuple[str, int, str, str]]:
+    """(file, line, the Tooltip tag, the text before it) for every recharts Tooltip in the UI."""
+    out = []
+    for path in sorted(COMPONENTS.glob("*.tsx")):
+        text = path.read_text()
+        if 'from "recharts"' not in text:
+            continue                  # ChartReadout.tsx names <Tooltip> in its documentation only
+        for attrs, line in _tags(text, "Tooltip"):
+            out.append((path.name, line, attrs, text[: text.find(attrs)]))
+    return out
+
+
+def test_every_chart_tooltip_writes_into_a_fixed_readout() -> None:
+    sites = _tooltip_sites()
+    assert len(sites) >= 15, f"only {len(sites)} Tooltip sites found - did the scan or the charts move?"
+    floating = [f"{f}:{ln}" for f, ln, tag, _ in sites if "content={<ReadoutTooltip" not in tag]
+    assert not floating, (
+        "these charts still draw a floating tooltip, which follows the pointer and can never itself be "
+        "hovered (WCAG 2.2 SC 1.4.13); give them content={<ReadoutTooltip />}:\n  " + "\n  ".join(floating))
+
+
+def test_every_readout_tooltip_has_a_readout_to_write_into() -> None:
+    """Outside a `ChartReadout` the content renders nothing at all - a chart whose values are
+    reachable nowhere, which is worse than the tooltip it replaced."""
+    orphans = []
+    for f, ln, tag, before in _tooltip_sites():
+        if "ReadoutTooltip" not in tag:
+            continue
+        if before.rfind("<ChartReadout") <= before.rfind("</ChartReadout>"):
+            orphans.append(f"{f}:{ln}")
+    assert not orphans, "ReadoutTooltip outside any ChartReadout:\n  " + "\n  ".join(orphans)
+
+
+def test_the_active_highlight_clears_when_the_chart_has_neither_hover_nor_focus() -> None:
     css = STYLES.read_text()
     assert re.search(
-        r"\.recharts-wrapper:not\(:hover\):not\(:focus-within\)\s+\.recharts-tooltip-wrapper\s*"
-        r"\{\s*visibility:\s*hidden\s*!important", css), (
-        "the rule that closes a chart's tooltip once the chart has neither hover nor focus is gone; "
-        "recharts leaves it open after Tab moves on, over the plot")
+        r"\.recharts-wrapper:not\(:hover\):not\(:focus-within\)\s+\.recharts-tooltip-cursor\s*"
+        r"\{\s*visibility:\s*hidden", css), (
+        "the rule that clears a chart's highlight once the chart has neither hover nor focus is gone; "
+        "recharts leaves it on the last category after Tab moves on")

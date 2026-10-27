@@ -3185,3 +3185,20 @@ gate now checks stacked segments against each other.
 
 **The heading item had been held open by the fixes that were considered.** Both changed visual
 weight. Hidden section headings change nothing on screen, and were available the whole time.
+
+**A caption typo led to the round's real finding.** "0.644against" was a JSX line break, and it was
+worth a gate on its own. On the medical page the same caption said "predicted -5.471", which no
+probability can be. The chart had been binning logits, and it should not have existed on any binary
+page, by a rule this project wrote down in three places and enforced in none. A rule recorded as
+prose was correct for two months while a chart contradicted it on every visit. The fix that mattered
+was the enforcement, not the conversion.
+
+**The citation was the second layer of the same thing.** The rule was right and its source was not:
+Riley et al. is the paper that says the rule of thumb can be too small, not the paper that sets it.
+It had been marked METADATA-ONLY from the start, which is accurate, and nobody had gone back.
+
+**One of my checks was wrong before the model was.** A first pass suggested the medical student
+predicted one class for everything. It did not: my script applied the ResNet preprocessing to the
+student, which takes no preprocessing. With each sample's own steps, all three accuracies reproduce
+their records exactly. Reading the preprocessing from the sample, as the browser does, is the only
+way to run these graphs.
