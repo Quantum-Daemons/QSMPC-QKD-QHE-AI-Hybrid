@@ -474,8 +474,9 @@ MedMNIST (`config['dataset']='medmnist'` / the CNN workload), the pipeline feder
 (one conv block 1 -> 4 ch 3x3, avg-pool, dense head at 14x14) and runs it under the hybrid as a **genuine FHE
 convolution** - im2col -> CKKS `dot_plain` per output channel (`src/qsh/fhe/conv.py`), with ReLU/max-pool
 under MPC (`secure_relu` / `secure_maxpool`). The convolution arithmetic happens on the **encrypted image**;
-the FHE-linear conv cost genuinely dominates (~4.5 s for one 14x14 image on CPU CKKS, decision faithful to
-plaintext). This is FHE-feasible by design - a MedMNIST-scale CNN, **not** ResNet/ViT (FHE cannot run SOTA
+on the Blackwell box the FHE-linear conv cost dominates (~4.6 s for one 14x14 image on CPU CKKS, against
+~2.0 s for the three MPC parties' 801 comparisons; decision faithful to plaintext). On a two-core machine
+the three party processes share the cores and the MPC half can be the larger. This is FHE-feasible by design - a MedMNIST-scale CNN, **not** ResNet/ViT (FHE cannot run SOTA
 CNNs/LLMs under encryption - a fundamental crypto-cost limit, sold honestly as a PoC).
 
 For the other industries the encrypted hybrid preserves the plaintext decision regardless of weights, so
