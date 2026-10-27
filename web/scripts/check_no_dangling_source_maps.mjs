@@ -3,12 +3,11 @@
 // WHY THIS EXISTS
 //
 // `gif.js/dist/gif.worker.js?url` is copied into the build verbatim, and it ends with
-// `//# sourceMappingURL=gif.worker.js.map`, a file that is not copied with it. The worker loads
-// when a run starts, so any open DevTools fetched the map and logged "Failed to load resource:
-// 404" on every run. That included the automation used to walk the deploy. Visitors were never
-// affected, but a "console clean" walk became impossible, and an error that is always there trains
-// a reader to ignore the console. Found in the Round 74 walk. `vite.config.ts` now drops such
-// comments, and this checks the output rather than the config.
+// `//# sourceMappingURL=gif.worker.js.map`, a file that is not copied with it. Any open DevTools
+// asks for it when the worker loads, at the start of every run. Visitors are not affected, but a
+// build that names files it does not ship is wrong in a way nothing else checks. Found in the
+// Round 74 walk. `vite.config.ts` now drops such comments, and this checks the output rather than
+// the config.
 //
 // Run after `npm run build`: node web/scripts/check_no_dangling_source_maps.mjs [distDir]
 // (npm run check:source-maps; CI gate, and step 8 of scripts/ci_local.sh)
