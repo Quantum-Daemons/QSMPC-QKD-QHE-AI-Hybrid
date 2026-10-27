@@ -53,6 +53,13 @@ class HealthReport:
     alpha: float
     min_entropy_per_bit: float = 0.0   # SP 800-90B most-common-value estimate: bits of min-entropy per output bit
     min_entropy_bits: float = 0.0      # = min_entropy_per_bit * n (total estimated min-entropy)
+    #: The ASSESSED min-entropy per sample the continuous-test cutoffs are computed from (section 4.4
+    #: "Given the assessed min-entropy H of a noise source"). Fixed for the source, never re-estimated
+    #: from the stream under test - see `health_suite`.
+    assessed_min_entropy_per_bit: float = 0.0
+    #: The stream's own estimate fell below the assessment. Reported, not gating: section 4.4 gates
+    #: on the two tests, and this is the measurement that says the assessment may no longer hold.
+    estimate_below_assessment: bool = False
     # --- SP 800-90B section 4.4 continuous health tests (the required ones) ---
     repetition_count_passed: bool = True
     repetition_count_cutoff: int = 0
@@ -90,15 +97,19 @@ def repetition_count_test(samples: np.ndarray, h: float, alpha: float = HEALTH_A
 
 def adaptive_proportion_cutoff(h: float, w: int = ADAPTIVE_PROPORTION_W,
                                alpha: float = HEALTH_ALPHA) -> int:
-    """SP 800-90B section 4.4.2 cutoff: the smallest C with ``Binom(W-1, 2^-H)`` tail <= alpha.
+    """SP 800-90B section 4.4.2 cutoff, exactly as the standard computes it (footnote 10):
+    ``C = 1 + CRITBINOM(W, 2^-H, 1 - alpha)``, the smallest k with ``BinomCDF(k; W, 2^-H) >= 1 -
+    alpha``, plus one.
 
-    Computed with the exact binomial survival function rather than the normal approximation, which
-    is inaccurate in the far tail where alpha = 2^-20 lives.
+    Until Round 75 this was ``1 + isf(alpha, W - 1, 2^-H)``: one trial fewer and the other tail
+    function, which landed one BELOW the standard at three of the five entropies of its Table 2 (940
+    for 941, 747 for 748, 663 for 664) - a test slightly stricter than specified. This form
+    reproduces all ten Table 2 values, binary and non-binary; `tests/test_qrng.py` asserts them.
     """
     from scipy.stats import binom
 
     p = 2.0 ** -max(h, 1e-9)
-    return int(min(w, 1 + binom.isf(alpha, w - 1, min(p, 1.0))))
+    return int(min(w, 1 + binom.ppf(1.0 - alpha, w, min(p, 1.0))))
 
 
 def adaptive_proportion_test(samples: np.ndarray, h: float, w: int = ADAPTIVE_PROPORTION_W,
@@ -173,7 +184,8 @@ def _min_entropy_mcv(bits: np.ndarray) -> float:
 
 
 def health_suite(bits, *, raw=None, alpha: float = 0.01, block_size: int = 128,
-                 health_alpha: float = HEALTH_ALPHA) -> HealthReport:
+                 health_alpha: float = HEALTH_ALPHA,
+                 assessed_h: float | None = None) -> HealthReport:
     """Run the SP 800-90B continuous health tests plus the SP 800-22 output checks.
 
     ``passed`` is gated on the **SP 800-90B** tests, because those are the ones the standard
@@ -188,6 +200,14 @@ def health_suite(bits, *, raw=None, alpha: float = 0.01, block_size: int = 128,
     ``raw`` is the pre-conditioning stream. The SP 800-90B tests and the min-entropy estimate run on
     it; SP 800-22 runs on ``bits``. Passing only ``bits`` measures the CONDITIONER, which is what
     this function did until Round 51 - see the note at the call site below.
+
+    ``assessed_h`` is the source's ASSESSED min-entropy per sample, and the two cutoffs are computed
+    from it. It defaults to the configured assessment (``qrng.min_entropy_per_raw_bit``, the same
+    figure that sizes the Toeplitz output). Until Round 75 the cutoffs came from the most-common-value
+    estimate of the very stream being tested, so a degrading source LOOSENED its own test: at
+    p(1) = 0.9 the estimate fell to about 0.15 bit, the adaptive-proportion cutoff rose to 969 of
+    1024, and the source passed. Section 4.4.2 says the test exists "to detect a large loss of
+    entropy", given "the source's assessed entropy per sample".
     """
     b = np.asarray(bits).astype(np.int64).ravel()
     # SP 800-22 answers a question about the OUTPUT stream, so it stays on `bits`.
@@ -210,16 +230,20 @@ def health_suite(bits, *, raw=None, alpha: float = 0.01, block_size: int = 128,
     # `raw` defaults to `bits` so existing callers keep their behaviour rather than silently changing
     # meaning; the entropy-source callers pass it explicitly.
     r = b if raw is None else np.asarray(raw).astype(np.int64).ravel()
-    h = _min_entropy_mcv(r)
+    h = _min_entropy_mcv(r)                       # a MEASUREMENT of this stream, reported
+    if assessed_h is None:
+        from ..config import get_config
+        assessed_h = float(get_config().qrng.min_entropy_per_raw_bit)
+    ha = float(assessed_h)                        # the ASSESSMENT the cutoffs are computed from
 
-    # SP 800-90B section 4.4 — the required continuous tests, on the raw stream.
-    rc_ok, rc_cutoff, rc_run = repetition_count_test(r, h, health_alpha)
-    ap_ok, ap_cutoff, ap_count = adaptive_proportion_test(r, h, ADAPTIVE_PROPORTION_W, health_alpha)
+    # SP 800-90B section 4.4 — the required continuous tests, on the raw stream, at the assessed H.
+    rc_ok, rc_cutoff, rc_run = repetition_count_test(r, ha, health_alpha)
+    ap_ok, ap_cutoff, ap_count = adaptive_proportion_test(r, ha, ADAPTIVE_PROPORTION_W, health_alpha)
     # Section 4.3 start-up: the same tests over the first >= 1024 samples, before any output is used.
     startup = r[:STARTUP_SAMPLES]
     startup_ok = bool(r.size < STARTUP_SAMPLES or (
-        repetition_count_test(startup, h, health_alpha)[0]
-        and adaptive_proportion_test(startup, h, ADAPTIVE_PROPORTION_W, health_alpha)[0]))
+        repetition_count_test(startup, ha, health_alpha)[0]
+        and adaptive_proportion_test(startup, ha, ADAPTIVE_PROPORTION_W, health_alpha)[0]))
 
     failures = []
     if not rc_ok:
@@ -235,6 +259,7 @@ def health_suite(bits, *, raw=None, alpha: float = 0.01, block_size: int = 128,
         monobit_p=mp, runs_p=rp, block_frequency_p=bp,
         passed=bool(rc_ok and ap_ok and startup_ok), alpha=alpha,
         min_entropy_per_bit=h, min_entropy_bits=h * float(b.size),
+        assessed_min_entropy_per_bit=ha, estimate_below_assessment=bool(h < ha),
         repetition_count_passed=rc_ok, repetition_count_cutoff=rc_cutoff,
         repetition_count_max_run=rc_run,
         adaptive_proportion_passed=ap_ok, adaptive_proportion_cutoff=ap_cutoff,

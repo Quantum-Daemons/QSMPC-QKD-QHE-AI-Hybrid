@@ -181,9 +181,27 @@ Round 42.
 - **HQC** was selected in **March 2025** as the code-based KEM backup to ML-KEM, with standardisation
   expected 2026-2027. It matters to this project specifically because the whole architecture is a
   crypto-agility registry: a second KEM family resting on a different hardness assumption is exactly
-  what that registry exists to make swappable. It is **not implemented** - liboqs carries HQC, this
-  repository's `CryptoRegistry` does not register it - and that is a deliberate gap rather than an
-  oversight, because a backup KEM is only worth wiring once its parameter sets are final.
+  what that registry exists to make swappable. It is **not implemented**, and that is a deliberate gap
+  rather than an oversight, because a backup KEM is only worth wiring once its parameter sets are
+  final. Re-checked 2026-10-27: NIST has published no HQC draft standard (CSRC lists none), and liboqs
+  **disables HQC by default since 0.13.0** after a "theoretical design flaw" advisory
+  (GHSA-3rxw-4v8q-9gq5, CVSS 3.7), pending an updated specification. The venv's liboqs 0.14.0 lists
+  HQC-128/192/256 and enables none of them. This line said "liboqs carries HQC" until Round 75, which
+  is true of the source tree and not of any default build.
+
+## Standards status re-checked 2026-10-27 (Round 75)
+
+Read at NIST's PQC news page and the pqc-forum on 2026-10-27.
+
+| Document | Status | Why it matters here |
+|---|---|---|
+| **NIST SP 800-227** - Recommendations for KEMs | **Final, 2025-09-18** | The combiner reference. This repository's HKDF combiner is a section 4.6.2 two-step KDF (equations 13-14) over the transcript section 4.6.3 binds; it is not that section's KeyCombineCCA_H. |
+| **FIPS 206** (FN-DSA) | **No draft.** 2026-09-28: NIST's FIPS 206 team posted a new plan to the pqc-forum - a single fixed-point signing procedure, validatable by known-answer tests | Nothing to wire yet; the signature registry stays ML-DSA. |
+| **HQC** (FIPS 207) | **No draft** as of 2026-10-27; liboqs disables it by default (see above) | The backup KEM stays unregistered. |
+| **NIST SP 800-230** (initial public draft) - additional SLH-DSA parameter sets for limited signature use | Released 2026-04-13, comments closed 2026-06-12 | Not used here; tracked because SLH-DSA is the hash-based fallback. |
+| **NIST SP 800-133 Rev. 3** (initial public draft) - key generation | Released 2026-04-17, comments closed 2026-06-16 | Governs how the demo's keys would have to be generated in an approved product. |
+| **NIST IR 8610** - additional signatures, round 2 status | 2026-05-14, nine candidates advanced to round 3 | The on-ramp; no algorithm to adopt yet. |
+| **NIST IR 8547** - transition to PQC | Still the initial public draft | The deprecation dates quoted above rest on a draft. |
 
 ## Standards added since the last revision (verified 2026-08-03)
 

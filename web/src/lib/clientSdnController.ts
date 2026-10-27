@@ -152,8 +152,8 @@ export function buildTopology(opts: {
    *  field - left `stored_key_count` computing `(eskr ?? 0) / 352` and advertising zero stored keys
    *  on every run for two rounds.
    *
-   *  Default 100 MHz, from arXiv:2607.24118v1 (CC BY 4.0), which reports 164.8 kbps at QBER ~3.3%
-   *  over a 2 km free-space channel. THE CLOCK IS BORROWED AND THE EXPERIMENT IS NOT: that paper's
+   *  Default 100 MHz, from arXiv:2607.24118 (CC BY 4.0), whose v2 (2026-10-16) reports an average
+   *  finite-key 110 kbps at QBER 3.28% over a 2 km free-space channel (v1: 164.8 kbps). THE CLOCK IS BORROWED AND THE EXPERIMENT IS NOT: that paper's
    *  channel is 2 km horizontal and this model's default is 50 km of fibre, so a derived bit/s here
    *  is this simulation's own number under an assumed clock, never a reproduction of that result.
    */

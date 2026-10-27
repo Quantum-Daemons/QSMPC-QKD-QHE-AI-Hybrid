@@ -5727,3 +5727,138 @@ round.**
 BUSINESS DOC RECONCILED Round 74. The out-of-repo document is brought level with this round. Its content
 is not quoted here, in the checklist, or in any commit - only the fact of the reconciliation, which is
 what gate 16 reads.
+
+## Round 75: the parameters read against their sources, and the MPC tier made real
+
+**Stacked on Round 74**, all held by decision. This round changes what the demo computes: the fibre
+key rate and the QBER shown beside it, every satellite channel figure, the QRNG health-test cutoffs,
+and, on the server tier, the MPC that the hybrid's non-linear half runs on.
+
+**Why this order.** By the user's choice after Round 74: each parameter, read at the source it cites.
+Three of the choices inside the round were the user's too: fix both fibre defects now, adopt a
+sourced Micius set, and make the MPC tier multi-party now, and then mask its conversions now.
+
+**PQC.**
+- **FIPS 203's input type checks were missing on the Python path.** Section 7.2 step 1 and section
+  7.3 step 1 require an encapsulation key of exactly 384k + 32 bytes and a ciphertext of exactly
+  32(d_u k + d_v) bytes, before the modulus check. liboqs-python copies an input into a buffer of the
+  expected size, so a short one is zero-padded and used: measured on liboqs-python 0.16 / liboqs
+  0.14, a 1183-byte key was encapsulated to and a 1087-byte ciphertext decapsulated. Both are now
+  refused before the call, and tests try each length one short and one long. `check:pqc` had covered
+  only the browser library, which rejects both.
+- C2SP's ML-KEM modulus vectors now also run through the Python path, for ML-KEM-512, -768 and -1024.
+- **The combiner's citation was wrong.** The construction is an SP 800-227 section 4.6.2 two-step KDF
+  (equations 13 and 14) over the transcript section 4.6.3 binds. It is not section 4.6.3's
+  KeyCombineCCA_H, a single SHA-3 hash over all seven inputs, which the docstrings in Python and the
+  browser had named.
+- **A nonce range that was disjoint by convention only.** Two channels that share a key are kept
+  apart by counter ranges, the responder starting at 2^40, and nothing stopped the caller from
+  reaching it; with GCM a repeated key and nonce leaks the authentication key (SP 800-38D section
+  8.2.1). Each channel now enforces its limit, and the caller's ends where the responder's begins.
+- "Matching the NSA hybrid recommendation" is gone from the transport: NSA publishes none, and CNSA
+  2.0 does not require hybrid products.
+- `docs/pqc-roadmap.md` gains a standards table read on 2026-10-27, and its HQC line is corrected:
+  liboqs disables HQC by default since 0.13.0 (GHSA-3rxw-4v8q-9gq5), and NIST has published no draft.
+
+**QRNG.**
+- **The health tests loosened themselves on a failing source.** SP 800-90B section 4.4 computes both
+  continuous-test cutoffs from the source's ASSESSED min-entropy. Both implementations took it from
+  the most-common-value estimate of the very stream under test, so at p(1) = 0.9 the estimate fell to
+  about 0.15 bit, the adaptive-proportion cutoff rose to 969 of 1024, and the source passed. The
+  cutoffs now come from the configured assessment, 0.9 bit, and the estimate is reported beside it,
+  with a flag when it falls below.
+- The adaptive-proportion cutoff now follows the standard's own formula, 1 + CRITBINOM(W, 2^-H,
+  1 - alpha). The old form landed one below it at three of Table 2's five entropies; all ten values
+  of the table now reproduce.
+- The seedless extractor's reported ceiling used Eq. 5, the bound for a uniform seed. Its seed is
+  itself a simulated weak source, so Giestinhas and Spiller's Eq. 7 applies: 5,898 bits where Eq. 5
+  said 7,309. The 4,096 bits delivered were inside both.
+
+**Fibre QKD, both defects fixed by the user's decision.**
+- The protocol sends a signal and one weak decoy, so the receiver never measures the vacuum yield.
+  Both implementations used Ma, Qi, Zhao and Lo's section 3.4 estimator, which needs it, and fed it
+  the model's own 2 x p_dark. They now use section 3.5's Eq. (41). The old figure was 1.3 percent high
+  at 50 km, 12.6 percent at 100 km and 40 percent at 120 km, and reached 140.9 km where the paper's
+  own one-decoy bound stops at 134.7.
+- The run showed one QBER and computed the rate from another: `intrinsic_qber` beside Eq. (11)'s
+  E_mu, 6 percent apart at 50 km and 2.8x at 140 km, and the abort test read the smaller. The QBER
+  shown is now E_mu, in both languages, and the browser optimiser's private copy of the algebra calls
+  the shared function.
+- The config's comparison with GYS now compares the vacuum yield like for like (11.8x, not 5.88x),
+  and the error-correction efficiency names its source: 1.16 is Cascade at 1 to 5 percent error
+  (Lutkenhaus, PRA 61, 052304), and 1.22 is Ma et al.'s choice for GYS, which states none. Park et
+  al.'s v2 (2026-10-16) reports 110 kbps at 3.28 percent where v1 said 164.8 kbps.
+
+**Satellite downlink: a sourced Micius set, by the user's decision.**
+- The set was called "Micius's published configuration" and was not: the 1.2 m aperture is Yin et
+  al.'s stations, not Liao's Xinglong (1 m); the budget had no receiver-optics term, Liao's "~16%",
+  about 8 dB; and the dark counts and error floor were 200x and more than 2x Micius's. Too little loss
+  and too much noise offset each other, and that produced the page's ~5.5 kbit/s at 800 km.
+- Each value is now Liao et al.'s (Nature 549, 43, 2017), and `tests/test_the_satellite_channel_is_sourced.py`
+  quotes the sentence beside each one. At 800 km: 34.0 dB of channel loss plus 3.0 dB of detector,
+  1.72 kbit/s, QBER 1.17 percent. Not fitted to it, the model gives a sifted 12.2 kbit/s at Micius's
+  own mu = 0.8 and 645 km, against Liao's ~12.
+- The QSDC gap leaves the station optics out, as Qi et al.'s did, and its thresholds are corrected to
+  0.0757 at 0 dB, 0.0286 at Qi's g = 2.57 and about 5.5e-6 on this downlink. The satellite stage now
+  reads its channel from the config; it carried literal copies of three of the values.
+
+**The MPC tier: real parties, then real masking.**
+- **It was one party.** The hybrid's non-linear half ran MPyC in-process with its command line
+  cleared, which leaves MPyC at m = 1, t = 0, k = 30. A degree-0 share is the value, so the "real
+  Shamir secure comparison" computed in the clear and sent nothing, and the communication column was
+  256 B per comparison multiplied out. **By the user's decision it is now three parties**, each its
+  own process over loopback TCP (`src/qsh/mpc/parties.py`), t = 1, k = 40. Measured: 15,120 B per
+  secure comparison across the three, the same on every run, 59x the old figure, and about 2.2 ms of
+  protocol time each. Each session also spends about 0.25 s starting processes, now reported apart
+  from the latency.
+- **Its first version hung 2 times in 60 sessions.** A listening port was drawn by binding port 0,
+  inside the kernel's ephemeral range, so an outgoing connection could take it first. Reproduced: 5
+  of 300 sessions, every one party 1 failing to bind base + 1, the even port connect() draws from.
+  Ports now come from below the range: 0 of 300. The waiting loop also stopped polling at the first
+  live party, so a dead one was seen only at the timeout; every party is now polled, a failure ends
+  the run at once, a lost port is retried, and sessions are serialised.
+- **The clocks were skewed.** A quarter of sessions measured about 90 ms more than the rest, one
+  connect-retry interval: a party's clock started when its own links were up. One exchange with
+  every party now precedes the clock.
+- **The conversions gave the key holder every intermediate.** `docs/architecture.md` said "the client
+  never holds a plaintext intermediate", the precondition of the weight-recovery attack it cites (IACR
+  eprint 2026/1527). The code decrypted each linear output in the clear, added the bias after
+  decryption, and opened each ReLU result to all parties. **By the user's decision the conversions are
+  now masked**, in the shape of Gazelle's and Delphi's: the server adds a fresh mask inside each
+  output's ciphertext, the MPC runs on the client's masked value plus the server's negated mask,
+  re-masks its result and opens it to the client alone, and the decision opens only the class index.
+  The helper inputs nothing.
+- **The masks hide statistically, and each run says how well.** CKKS is approximate, so the masks
+  are reals, uniform on plus or minus 2^30 from the OS CSPRNG. 30 bits is the most 64-bit fixed
+  point holds, and costs no precision measured through a CKKS round trip: 5e-7 at 2^30, against 8e-6
+  at 2^36 and 2e-4 at 2^40. A run reports the number of masked values, its largest, and the bound
+  n x B / 2^30 on what the key holder's view gives away: 9e-8 or less on the benchmark rows, about 2e-7
+  on the test CNNs. Every decision tested matches plaintext, on TenSEAL and OpenFHE. Semi-honest, and
+  a client and helper who pool their shares recover the server's masks; the architecture document
+  says so.
+- **What the counts and the cost model said.** The argmax over k classes was counted as k
+  comparisons; MPyC runs k - 1. The projection added a max-pool layer's per-window cost once per
+  layer, under a comment promising a scaling that never followed. The browser's cost-model row,
+  labelled "ckks + mpyc-shamir", charged 256 B and 1.6 ms per comparison from no stated source; it now
+  charges the measured 15,120 B and 2.2 ms, and the Python side's second copy of 256 is gone.
+- The README's benchmark table is re-measured with the masked tier (medium: 267 ms, 252 KB, where it
+  printed 243 ms and ~4.5 KB) and explains its MPC columns.
+
+**HE and QSMPC.** The HE cap comment now quotes Bossuat et al.'s 2024 table (IACR CiC 1(4), Table 5.2).
+The QSMPC stage's threshold was a literal, min(3, n), beside an unread config key; it reads the key.
+
+**Gates.**
+- `tests/test_mpc.py`: each party's job file holds only its own inputs; the key holder decrypts only
+  masked values (median above 2^20, against intermediates below 2); the parties' shares sum to the
+  true intermediate; each run reports the masks' bound; a mask too wide for the fixed point is
+  refused; ports come from below the ephemeral range; a party that cannot bind ends the run at once;
+  a lost port costs one more attempt; protocol time excludes start-up.
+- `tests/test_the_cost_model_is_the_mpc_tier_measured.py`: each masked secure operation sends, per
+  comparison, what the cost model charges, within 2 percent, at the shipped settings; the hybrid's
+  count, the projection's count and the bytes on the wire agree.
+- `tests/test_the_decoy_bound_is_the_one_decoy_bound.py`, `tests/test_the_satellite_channel_is_sourced.py`,
+  `tests/test_health_tests_use_the_assessed_entropy.py`, and new cases in `tests/test_pqc.py`.
+
+BUSINESS DOC RECONCILED Round 75. The out-of-repo document is brought level with this round. Its content
+is not quoted here, in the checklist, or in any commit - only the fact of the reconciliation, which is
+what gate 16 reads.

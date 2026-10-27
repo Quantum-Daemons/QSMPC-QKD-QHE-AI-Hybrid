@@ -43,7 +43,7 @@ function load() {
   const dir = mkdtempSync(join(tmpdir(), "qsh-qkd-"));
   const entry = join(dir, "entry.ts");
   writeFileSync(entry, `
-export { bb84, e91, FIBER, FREE_SPACE, intrinsicQber, eDetForBound, h2, transmittance, taggedFraction, channelLossDb, decoySecureFraction } from ${JSON.stringify(join(WEB, "src/lib/quantumSim"))};
+export { bb84, e91, FIBER, FREE_SPACE, intrinsicQber, eDetForBound, h2, transmittance, taggedFraction, channelLossDb, decoySecureFraction, qsdcLink } from ${JSON.stringify(join(WEB, "src/lib/quantumSim"))};
 export { optimizeQKD } from ${JSON.stringify(join(WEB, "src/lib/clientOptiQKD"))};
 export { repetitionCountCutoff, adaptiveProportionCutoff, generateQuantumBits, minEntropyMcv, toeplitzExtract } from ${JSON.stringify(join(WEB, "src/lib/clientQRNG"))};
 export { qkdCfg, qrngCfg } from ${JSON.stringify(join(WEB, "src/lib/config"))};
@@ -376,12 +376,24 @@ const cfg_qrng = m.qrngCfg();
   // to QK7's browser reading, and the assertion the Python side lacked while it was still applying
   // `distance_km * 0.035` to the same nominal link.
   const fsAt = (km) => m.channelLossDb({ ...m.FREE_SPACE, distanceKm: km });
-  check("free-space-800km-is-24.5dB", Math.abs(fsAt(800) - 24.48) < 0.01,
-    `800 km gives ${fsAt(800)} dB, not the 24.48 the diffraction model predicts`);
+  // Since Round 75 the budget carries the ground station's optics (Liao 2017: ~16%, 7.96 dB) and
+  // Xinglong's 1 m aperture: 18.06 dB of diffraction at 800 km + 5 + 3 + 7.96 = 34.02 dB. It read
+  // 24.48 with a 1.2 m aperture and no optics term.
+  const opticsDb = -10 * Math.log10(cfg.free_space_receiver_optics_efficiency);
+  check("free-space-800km-is-34.0dB", Math.abs(fsAt(800) - 34.02) < 0.01,
+    `800 km gives ${fsAt(800)} dB, not the 34.02 the diffraction model and the Micius budget predict`);
   check("free-space-has-a-fixed-floor",
-    near(fsAt(1), cfg.free_space_atmospheric_db + cfg.free_space_pointing_db, 1e-9),
+    near(fsAt(1), cfg.free_space_atmospheric_db + cfg.free_space_pointing_db + opticsDb, 1e-9),
     `at 1 km the loss is ${fsAt(1)} dB, not the ${cfg.free_space_atmospheric_db} + ` +
-    `${cfg.free_space_pointing_db} dB budget floor - the near-field cap is not being applied`);
+    `${cfg.free_space_pointing_db} + ${opticsDb.toFixed(2)} dB budget floor - the near-field cap ` +
+    `is not being applied`);
+  // The station's optics remove signal photons but are not Eve's: QSDC's g must leave them out.
+  {
+    const link = m.qsdcLink({ ...m.FREE_SPACE, distanceKm: 800 });
+    const expected = fsAt(800) - opticsDb - 10 * Math.log10(cfg.free_space_detector_efficiency);
+    check("qsdc-g-leaves-out-the-station-optics", near(link.lossDb, expected, 1e-9),
+      `QSDC's g is built from ${link.lossDb} dB, not the ${expected} dB of channel and detector`);
+  }
   check("free-space-is-not-linear-in-distance",
     fsAt(2000) - fsAt(1200) < fsAt(1200) - fsAt(400),
     `loss increments are not decreasing with range, so this is a linear law rather than an ` +

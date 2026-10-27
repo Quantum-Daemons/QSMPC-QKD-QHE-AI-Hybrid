@@ -28,6 +28,11 @@
 // IND-CCA-preserving property". So the CIPHERTEXTS carry the property; the encapsulation keys are
 // optional and bind the secret to party identities.
 //
+// What the construction IS: HKDF-SHA256 with K1 || K2 extracted and the separator and transcript
+// as info - SP 800-227 section 4.6.2's approved two-step form (equations 13 and 14). Section 4.6.3
+// supplies the transcript, not the function: its KeyCombineCCA_H is one SHA-3-family hash over all
+// seven inputs. Round 75.
+//
 // The separator carries the parameter set because 4.6.3 requires domain_sep to identify the
 // composite scheme including the "choice of parameter set", and `kemImpl()` genuinely switches to
 // ML-KEM-1024 on the category-5 path. It carries the output LENGTH because HKDF-Expand for L bytes

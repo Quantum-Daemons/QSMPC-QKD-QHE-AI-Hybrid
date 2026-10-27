@@ -3210,3 +3210,36 @@ a long-used tab, the exact trap checklist row RS16 describes. Checking whether t
 404 showed that nothing on the site could - every missing file came back as the app shell with a 200.
 The lesson is the order: reproduce in a clean context before explaining, and test the explanation's
 own premise before shipping it.
+
+### Round 75: parameters at their sources, and an MPC tier that was one party
+
+**Context.** By the user's choice: every channel and protocol parameter read at the source it cites.
+
+**Two wrong values can hide each other.** The satellite page's 5.5 kbit/s looked plausible for
+Micius. It was the product of a loss budget missing about 8 dB and a noise floor 200 times too high.
+Each value checked alone would have been caught; the total checked against intuition was not. The
+gate now quotes Liao's sentence beside each value, and the model reproduces a Micius measurement it
+was not fitted to.
+
+**A test that adapts to its input cannot detect a failing input.** The QRNG health tests computed
+their cutoffs from the entropy of the stream they were testing, so a biased source raised its own bar
+and passed. The standard says "assessed", and the word was the whole defect.
+
+**The bound used was not the protocol's.** The fibre rate used the vacuum-yield estimator for a
+protocol that never measures the vacuum. The docstring disclosed it and called the result "tighter",
+without the size. The size was 40 percent at 120 km.
+
+**The MPC claim was true of the library and false of the call.** MPyC is a real Shamir
+implementation. Run with its command line cleared, it was one party, and one party's share is the
+value. Nothing looked wrong because nothing was measured: the communication figure was a constant
+multiplied out. Making it three parties made the bytes real and exposed two harness defects at once,
+a port drawn from the range outgoing connections use and a wait loop that stopped watching after the
+first live party. The hang was reproduced before the cause was written down: 5 of 300, every one the
+same port parity.
+
+**Then the security claim beside it.** Reading the architecture document against the code showed a
+sentence the code had never made true: the client "never holds a plaintext intermediate". It held
+every one, because the conversions decrypted and the MPC opened its results to everyone. The user
+chose masking now over correcting the sentence. The masks are measured rather than asserted: each
+run reports its own statistical bound, and a test checks that what the key holder decrypts is a
+masked value and that the parties' shares add up to the real one.

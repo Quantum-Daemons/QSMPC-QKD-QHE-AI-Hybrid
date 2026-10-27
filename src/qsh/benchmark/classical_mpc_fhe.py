@@ -105,7 +105,7 @@ def run_hybrid(layers, X, y, *, backend_name: str = "tenseal", workload: str = "
                model_size: str = "medium", n_samples: int = 8,
                qkd_key_bits: int = 256) -> BenchResult:
     """The faithful MPC-FHE hybrid: linear layers under CKKS (FHE), non-linear (ReLU/argmax/maxpool)
-    under MPyC secret-sharing (MPC). Reports the per-stage split + estimated MPC communication.
+    under MPyC secret-sharing (MPC). Reports the per-stage split + the MPC communication the parties measured.
 
     ``layers`` may be a legacy list of ``(W, b)`` (a dense MLP) **or** a list of conv/dense specs
     (:mod:`qsh.mpc.layers`) for a genuine CNN; reuses :func:`qsh.mpc.hybrid_private_inference`.
@@ -116,17 +116,20 @@ def run_hybrid(layers, X, y, *, backend_name: str = "tenseal", workload: str = "
     specs = normalize_layers(layers)
     backend = get_backend(backend_name)
     n = min(n_samples, len(X))
-    fhe = mpc = comm = 0.0
-    correct = cmp_total = 0
+    fhe = mpc = comm = overhead = worst_sd = 0.0
+    correct = cmp_total = sessions = 0
     arch_class = "mlp"
     t0 = time.perf_counter()
     for i in range(n):
         r = hybrid_private_inference(layers, X[i], backend, use_mpc=True)
         fhe += r["fhe_linear_ms"]; mpc += r["mpc_nonlinear_ms"]
-        comm += r["mpc_comm_kb_estimated"]; cmp_total += r["mpc_comparisons"]
+        comm += r["mpc_comm_kb"]; cmp_total += r["mpc_comparisons"]     # MEASURED since Round 75
+        overhead += r["mpc_session_overhead_ms"]; sessions += r["mpc_sessions"]
+        worst_sd = max(worst_sd, r["mask_statistical_distance"])
         correct += int(r["decision_matches_plaintext"])
         arch_class = r.get("arch_class", arch_class)
-    dt = (time.perf_counter() - t0) * 1000
+    # Party start-up is the harness's cost, not the protocol's: it leaves the latency, and is reported.
+    dt = (time.perf_counter() - t0) * 1000 - overhead
     device = "gpu" if getattr(backend, "on_gpu", False) else "cpu"
     # Both benchmark rows run under ONE transport configuration, so both must be scored under it.
     # This call omitted qkd_key_bits while quantum_qsmpc_fhe.py passes 256. That was harmless only
@@ -148,6 +151,13 @@ def run_hybrid(layers, X, y, *, backend_name: str = "tenseal", workload: str = "
         fhe_linear_ms=round(fhe / n, 3), mpc_nonlinear_ms=round(mpc / n, 3),
         mpc_comm_kb=round(comm / n, 3), device=device,
         extra={"samples": n, "avg_comparisons": round(cmp_total / n, 1),
+               "mpc_parties": r.get("mpc_parties"), "mpc_threshold": r.get("mpc_threshold"),
+               "mpc_sec_param": r.get("mpc_sec_param"), "mpc_sessions": sessions,
+               "mpc_session_overhead_ms": round(overhead / n, 3),
+               # the conversions' masks: their size, and the worst sample's bound on what the key
+               # holder's view of one inference gives away (qsh/mpc/secret_inference.py)
+               "mask_bits": r.get("mask_bits"), "mask_statistical_distance_max": worst_sd,
+               "client_learns": r.get("client_learns"),
                "arch_class": arch_class,
                "linear_under": "FHE/CKKS", "nonlinear_under": "MPC/mpyc-shamir",
                "security_components": sec["components"]},

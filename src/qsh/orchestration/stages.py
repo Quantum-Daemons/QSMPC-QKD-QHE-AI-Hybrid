@@ -283,7 +283,11 @@ class QSMPCComputeStage(Stage):
             # admissible field depends on the party count (d prime, n <= d <= 2n). QSMS derives it.
             prime = ctx.config.get("prime") or get_config().qsmpc.prime
             n = max(len(secrets), 3)
-            res = QSMS(n=n, t=min(3, n), prime=prime).run(secrets, seed=ctx.config.get("seed"))
+            # The threshold from config (`qsmpc.threshold`), capped at the party count. It was the
+            # literal `min(3, n)` until Round 75 while the config key went unread; the shipped value
+            # is 3, so the default behaviour is unchanged and a changed config now reaches the run.
+            t = min(int(ctx.config.get("qsmpc_threshold") or get_config().qsmpc.threshold), n)
+            res = QSMS(n=n, t=t, prime=prime).run(secrets, seed=ctx.config.get("seed"))
             total = res.total
             ctx.artifacts["secure_sum"] = total
             # The modulus the sum ACTUALLY used, so a caller can reduce a ground truth into the same

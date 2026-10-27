@@ -1,9 +1,13 @@
 """Hybrid post-quantum key encapsulation: ML-KEM + X25519.
 
 Implements a *hybrid* construction (a classical ECDH combined with a NIST PQC KEM), the
-kind BSI TR-02102-1 v2026-01 section 2.2 recommends and NIST SP 800-227 section 4.6.3
-specifies a combiner for, so the session key is secure as long as *either* primitive
-holds. This is the report's "PQC-first hybrid" (FIPS 203 for the ML-KEM half). It is NOT
+kind BSI TR-02102-1 v2026-01 section 2.2 recommends, so the session key is secure as long as
+*either* primitive holds. The combiner is one NIST SP 800-227 section 4.6.2 approves: an
+SP 800-56C two-step KDF with both shared secrets extracted and the transcript in FixedInfo
+(equations 13 and 14), over the inputs section 4.6.3's IND-CCA-preserving combiner binds. It is
+not section 4.6.3's KeyCombineCCA_H itself, which is one SHA-3-family hash over all seven inputs,
+so that section's random-oracle proof applies by analogy rather than verbatim. This said section
+4.6.3 "specifies a combiner for" the construction until Round 75. This is the report's "PQC-first hybrid" (FIPS 203 for the ML-KEM half). It is NOT
 a CNSA 2.0 requirement, as this docstring used to say: NSA "will not require NSS
 developers to use hybrid certified products" (CNSA 2.0 FAQ Ver. 2.2), and the ML-KEM-768
 default is not a CNSA 2.0 parameter set (ML-KEM-1024 is selectable). It defends against
@@ -70,6 +74,23 @@ def _length_tag(length: int) -> bytes:
     return b"/L" + str(int(length)).encode()
 
 
+def _require_length(kem: oqs.KeyEncapsulation, field: str, value: bytes, what: str) -> None:
+    """FIPS 203's input "type check": a byte string of exactly the parameter set's length.
+
+    Section 7.2 step 1 (encapsulation key, 384k + 32 bytes) and section 7.3 step 1 (ciphertext,
+    32(d_u k + d_v) bytes) come BEFORE the modulus check, and liboqs-python does not perform them:
+    it copies the input into a buffer of the expected size, so a short input is zero-padded and
+    used. Measured in Round 75 on liboqs-python 0.16 / liboqs 0.14: a 1183-byte key was encapsulated
+    to and a 1087-byte ciphertext decapsulated to a key, where FIPS 203 requires both to be
+    rejected. (A long input was already refused, by the buffer copy.) `check:pqc` covered only the
+    browser library, which rejects both.
+    """
+    expected = kem.details[field]
+    if len(value) != expected:
+        raise ValueError(f"{what} is {len(value)} bytes; {kem.details['name']} requires exactly "
+                         f"{expected} (FIPS 203 input type check)")
+
+
 @dataclass
 class HybridPublicKey:
     """Recipient's public material (safe to publish)."""
@@ -114,6 +135,7 @@ class HybridKEMRecipient:
 
     def decapsulate(self, ct: HybridCiphertext, *, length: int = 32) -> bytes:
         """Recover the shared secret from a :class:`HybridCiphertext`."""
+        _require_length(self._kem, "length_ciphertext", ct.mlkem_ciphertext, "the ML-KEM ciphertext")
         ss_pq = self._kem.decap_secret(ct.mlkem_ciphertext)
         eph_pub = X25519PublicKey.from_public_bytes(ct.x25519_ephemeral_public)
         ss_classical = self._x_priv.exchange(eph_pub)
@@ -161,8 +183,13 @@ def encapsulate(pub: HybridPublicKey, *, length: int = 32) -> tuple[HybridCipher
 
     The domain separator moves to v2 with the change. Deriving a different key under an unchanged
     label is exactly what domain separation exists to prevent.
+
+    What the construction IS: HKDF-SHA256, Extract over K1 || K2 and Expand with the separator and
+    this transcript as info - section 4.6.2's two-step form, which that section approves. Section
+    4.6.3 supplies the transcript, not the function.
     """
     with oqs.KeyEncapsulation(pub.kem_name) as kem:
+        _require_length(kem, "length_public_key", pub.mlkem_public, "the ML-KEM encapsulation key")
         mlkem_ct, ss_pq = kem.encap_secret(pub.mlkem_public)
     eph = X25519PrivateKey.generate()
     eph_pub = eph.public_key().public_bytes_raw()
