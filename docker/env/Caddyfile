@@ -25,9 +25,19 @@
 	}
 
 	# Everything else -> SPA static files with history-API fallback
+	# Only an APP ROUTE falls back to the SPA shell. A path with a file extension is a file: served
+	# when it exists and a 404 when it does not. `try_files {path} /index.html` answered every missing
+	# path with index.html and a 200, so a missing chunk (a page loaded before a deploy asking for a
+	# hash that no longer exists), data file or licence came back as HTML. The browser then reported
+	# a MIME or JSON parse error instead of a 404, which hides what is missing. Round 74. Both
+	# Caddyfiles carry it.
 	handle {
 		root * /srv
-		try_files {path} /index.html
+		@route {
+			not path_regexp \.[A-Za-z0-9]+$
+			not file
+		}
+		rewrite @route /index.html
 		file_server
 	}
 }

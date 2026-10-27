@@ -5671,13 +5671,24 @@ two lines of prose, which glues the words on either side. Seeded three ways, eac
   counts, and that both readers of a graph use them. Seeded three ways, each fires. It runs in CI and
   as a new step 15 of `scripts/ci_local.sh`.
 
-**And the walk's console carried a 404 on every run, which no page request showed.** The GIF worker is
-copied into the build verbatim with `//# sourceMappingURL=gif.worker.js.map`, and the map is not
-copied. The worker loads when a run starts, so any open DevTools - including the automation used for
-these walks - fetched the map and logged the 404. Visitors without DevTools never requested it. A
-`vite.config.ts` hook drops such comments from emitted assets, the console is clean on the local
-build after a run, and `web/scripts/check_no_dangling_source_maps.mjs` reads the build output for any
-reference to a map that is not shipped. Seeded with the original comment, it fires.
+**A console 404 in the walk, a wrong first explanation, and the defect it led to.**
+- The live tab showed "Failed to load resource: 404" after a run, and no page request had failed. I
+  blamed the GIF worker, which the build copies verbatim with `//# sourceMappingURL=gif.worker.js.map`
+  while the map is not copied, and committed a fix on that basis (d10b0bf).
+- **The explanation was wrong.** The server answered that map path with index.html and a 200, so no
+  map request could have produced a 404. A fresh tab, through every page and all five runs, logged
+  no error at all: the 404 was an entry left in a long-used tab's history, which is exactly what
+  checklist row `RS16` warns about. Its source was not identified.
+- The dangling reference was real, and harmless. The hook that drops it and the build check stay.
+- **What the probe exposed is the real defect.** The container's Caddy answered every missing path,
+  including `/assets/`, with index.html and a 200, via `try_files {path} /index.html`. A page loaded
+  before a deploy that asks for a chunk hash that no longer exists, or a missing data file, got HTML
+  instead of a 404, so the browser reported a MIME or JSON parse error that hides what is missing.
+  Both Caddyfiles now fall back to the app shell only for an extensionless route. Measured on a local
+  container of the same image: routes, including unknown ones, still get the app; existing files keep
+  their types; a missing chunk, data file, `favicon.ico` and `robots.txt` return 404; the page stays
+  cross-origin isolated and a full run passes. `tests/test_a_missing_file_is_a_404.py` holds both
+  Caddyfiles to it.
 
 **Gates.**
 - `tests/test_page_headings_do_not_skip_a_level.py` expands each page through the components it
@@ -5687,8 +5698,8 @@ reference to a map that is not shipped. Seeded with the original comment, it fir
   only series with a colour of their own; every tooltip writes into a readout; every readout tooltip
   has a readout; the highlight rule; and the recharts release the readout was measured on. Each is
   seeded and fires.
-- `web/scripts/check_jsx_text_spaces.mjs`, `web/scripts/check_calibration.mjs` and
-  `web/scripts/check_no_dangling_source_maps.mjs`, above.
+- `web/scripts/check_jsx_text_spaces.mjs`, `web/scripts/check_calibration.mjs`,
+  `web/scripts/check_no_dangling_source_maps.mjs` and `tests/test_a_missing_file_is_a_404.py`, above.
 
 BUSINESS DOC RECONCILED Round 74. The out-of-repo document is brought level with this round. Its content
 is not quoted here, in the checklist, or in any commit - only the fact of the reconciliation, which is
