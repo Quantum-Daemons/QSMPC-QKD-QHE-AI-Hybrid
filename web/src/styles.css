@@ -260,18 +260,16 @@ hr { border: none; border-top: 1px solid var(--border); margin: 24px 0; }
   overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
 }
 
-/* A chart's tooltip shows only while that chart is hovered or holds focus. Recharts' keyboard
-   layer (`accessibilityLayer`) opens the tooltip on focus and on the arrow keys and has no blur
-   handler, so a keyboard visitor who tabbed on past a chart left its tooltip open over the plot.
-   Measured on the deploy with real key presses in Round 74: after Tab the tooltip stayed visible.
-   `!important` because recharts writes `visibility` inline. Only where the device can hover, so a
-   tap on a touch screen keeps working as before. Escape needs nothing here: recharts 2.15.4
-   dismisses its tooltip on Escape with a listener of its own. */
-@media (hover: hover) {
-  .recharts-wrapper:not(:hover):not(:focus-within) .recharts-tooltip-wrapper {
-    visibility: hidden !important;
-  }
-}
+/* Charts are read through a fixed line under each one (`ChartReadout`), not a floating tooltip:
+   WCAG 2.2 SC 1.4.13 asks that hover content can itself be hovered, and recharts' tooltip follows
+   the pointer, so it never can be. Round 74, by decision. min-height keeps the page from jumping
+   when the first point is read. */
+.chart-readout { min-height: 1.5em; margin: 4px 0 0; font-size: 11.5px; color: var(--text); line-height: 1.5; }
+/* The highlight on the active category shows only while its chart is hovered or holds focus.
+   Recharts' keyboard layer has no blur handler, so tabbing on past a chart left it highlighted -
+   and, before the readout, left its tooltip open over the plot (measured on the deploy with real
+   key presses in Round 74). The readout keeps the last point; the chart stops pointing at it. */
+.recharts-wrapper:not(:hover):not(:focus-within) .recharts-tooltip-cursor { visibility: hidden; }
 
 /* SC 2.4.1 Bypass Blocks, Level A. The sidebar carries eleven links - six sections plus five
    use-case simulators - and they are the first eleven tab stops on every page, on every navigation.
