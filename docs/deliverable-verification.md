@@ -5970,6 +5970,19 @@ Two tests that pinned the old channel's numbers are re-derived: the shipped-bloc
 distances at which the one-decoy bound falls below the known-Y0 estimate (now 200 to 280 km, where
 1e-8 dark counts start to matter).
 
+**Walked on the deploy (dd3ff5d, `index-CUM0_NPs.js`), in fresh tabs, after the two deploys of this
+round.**
+- Telecom, 50 km: QBER 0.0099, 57,068 secure bits, 2.853e-3 bit/pulse and 2,853,421 bit/s, the
+  figures `run_bb84` gives locally; the clock row names Rusca et al.'s 1 GHz as a simulation set.
+- **Found on the page: the rate's sources named the bound alone.** The secret-key-rate fact and the
+  control-plane panel cited Eq. (41) beside a figure that is that bound on dead-time-corrected gains.
+  Both now say so on the fibre pages, with Eq. (B3); the downlink shows no such note.
+- The clock is part of the model now, and the page shows it: Source rate 100 MHz gives 4.307e-3
+  bit/pulse, 430,676 bit/s and 86,135 secure bits, the factor going from 0.625 to 0.943 as predicted.
+- Satellite: unchanged at 1.723e-5 bit/pulse, 1,723 bit/s and 344 bits, its clock credited to Liao.
+- E91 on `/orchestration`: S = 2.69 at a model QBER of 0.0247, 2 sqrt(2) (1 - 2Q); 91,303 secure bits.
+- Cross-origin isolated; console: no errors, only "Failed to create WebGPU Context Provider".
+
 BUSINESS DOC RECONCILED Round 76. The out-of-repo document is brought level with this round. Its content
 is not quoted here, in the checklist, or in any commit - only the fact of the reconciliation, which is
 what gate 16 reads.
