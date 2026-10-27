@@ -142,7 +142,9 @@ class SatelliteQKDStage(Stage):
         # channel use, and `skr` is a spec field name meaning bit/s. The satellite twin is
         # renamed in the same change as the fibre one - fixing one and not the other is the
         # asymmetry this round found on the browser side and would otherwise repeat here.
-        bus.metric("skr_per_pulse", round(res.secret_key_rate, 6), self.name)
+        # Nine decimals since Round 75, at every site: six kept two significant figures of this
+        # downlink's 1.723e-5, and the control-plane panel printed it as 1.700e-5.
+        bus.metric("skr_per_pulse", round(res.secret_key_rate, 9), self.name)
         bus.metric("secure_key_bits", res.secure_key_bits, self.name)
         bus.metric("channel_loss_db", loss_db, self.name)
         # AND THIS LINE, which Round 44 did not rename while writing the comment above saying that
