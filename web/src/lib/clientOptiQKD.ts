@@ -4,7 +4,7 @@
 // convergence profile vs the default-parameter baseline on the SAME simulated channel — a simulation, not
 // deployed QKD. Search space + defaults + protocol come from config (config.defaults.json / /api/config).
 import { qkdCfg } from "./config";
-import { ChannelParams, eDetForBound, h2, intrinsicQber, transmittance } from "./quantumSim";
+import { ChannelParams, decoySecureFraction, eDetForBound, h2, intrinsicQber, transmittance } from "./quantumSim";
 
 export interface OptiQKDParams { muSignal: number; muDecoy: number; basisProb: number; ppThreshold: number; }
 export interface OptiQKDResult {
@@ -44,18 +44,12 @@ const skrModel: Model = (p, prm, fEC = qkdCfg().error_correction_eff) => {
   // same stage - `qkd_surrogate_skr_default` beside `skr_per_pulse`.
   const eDet = eDetForBound(p);
   const siftRatio = prm.basisProb ** 2 + (1 - prm.basisProb) ** 2;
-  const e0 = 0.5;
-  const qMu = y0 + 1 - Math.exp(-eta * mu);
-  const eMu = qMu > 0 ? (e0 * y0 + eDet * (1 - Math.exp(-eta * mu))) / qMu : 0.5;
-  if (eMu > prm.ppThreshold || qMu <= 0 || mu <= nu) return { skr: 0, qber: eMu };
-  const qNu = y0 + 1 - Math.exp(-eta * nu);
-  const eNu = qNu > 0 ? (e0 * y0 + eDet * (1 - Math.exp(-eta * nu))) / qNu : 0.5;
-  const y1 = Math.max(0, (mu / (mu * nu - nu * nu)) * (
-    qNu * Math.exp(nu) - (nu * nu) / (mu * mu) * qMu * Math.exp(mu) - (mu * mu - nu * nu) / (mu * mu) * y0));
-  const q1 = y1 * mu * Math.exp(-mu);
-  const e1 = y1 > 0 ? Math.min(0.5, Math.max(0, (eNu * qNu * Math.exp(nu) - e0 * y0) / (y1 * nu))) : 0.5;
-  const r = q1 * (1 - h2(e1)) - fEC * qMu * h2(eMu);           // GLLP single-photon rate per pulse
-  return { skr: Math.max(0, r) * siftRatio, qber: eMu };
+  // THE SHARED BOUND, not a fifth copy of its algebra. This file carried its own transcription and
+  // was, by its own comment above, the copy a fix once missed. Round 75 changed the estimator to
+  // Ma et al.'s one-decoy Eq. (41); calling `decoySecureFraction` is what makes that one change.
+  const { perPulse, eMu } = decoySecureFraction(eta, mu, nu, eDet, y0, fEC, siftRatio);
+  if (eMu > prm.ppThreshold) return { skr: 0, qber: eMu };
+  return { skr: perPulse, qber: eMu };
 };
 
 // E91 (entanglement-based, CHSH) SKR mirror of qkd/e91.py: a Werner-state visibility V (degraded by the

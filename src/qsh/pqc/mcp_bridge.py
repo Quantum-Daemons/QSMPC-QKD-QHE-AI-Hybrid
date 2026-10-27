@@ -80,6 +80,7 @@ def secure_agent_call(
     # 1. quantum-safe session (ML-KEM-768 + X25519, optionally mixed with a QKD key)
     ct, chan_caller = establish_initiator(callee.kem.public_key, qkd_key=qkd_key)
     chan_callee = establish_responder(callee.kem, ct, qkd_key=qkd_key)
+    chan_caller._limit = _RESPONDER_NONCE_BASE     # the caller may never reach the reply's range
 
     # 2. caller signs (ML-DSA) + seals (AES-GCM) an MCP tool call
     record = chan_caller.seal(_wrap(caller.signer, method, params), associated_data=b"mcp")

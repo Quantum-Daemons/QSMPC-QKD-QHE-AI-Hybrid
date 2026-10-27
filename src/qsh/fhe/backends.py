@@ -13,10 +13,11 @@ inference, the MPC-FHE benchmark) is backend-agnostic:
 DESILO's ``desilofhe`` was removed: its license is **non-commercial**
 (https://fhe.desilo.dev/latest/license/), incompatible with this project's commercial intent.
 
-Backends expose: ``encrypt(vector) -> ct``, ``decrypt(ct) -> vector``, ``add``, ``mul_plain``,
-``dot_plain`` (encrypted-vector · plaintext-vector). That is enough to evaluate the
-linear layers of a small CNN/Transformer under encryption (non-linearities are
-polynomial-approximated by the caller).
+Backends expose: ``encrypt(vector) -> ct``, ``decrypt(ct) -> vector``, ``add``, ``add_plain``
+(ciphertext + a plaintext scalar or vector), ``mul_plain``, ``dot_plain`` (encrypted-vector ·
+plaintext-vector). That is enough to evaluate the linear layers of a small CNN/Transformer under
+encryption, and ``add_plain`` is what lets the server add its bias and its mask inside the ciphertext
+before the key holder decrypts (the hybrid's masked conversions, ``qsh.mpc.secret_inference``).
 """
 
 from __future__ import annotations
@@ -32,6 +33,7 @@ class CKKSBackend(Protocol):
     def encrypt(self, vector): ...
     def decrypt(self, ct) -> list[float]: ...
     def add(self, ct_a, ct_b): ...
+    def add_plain(self, ct, plain): ...
     def mul_plain(self, ct, plain): ...
     def dot_plain(self, ct, plain_vec) -> object: ...
 
@@ -83,6 +85,10 @@ class TenSEALBackend:
 
     def add(self, ct_a, ct_b):
         return ct_a + ct_b
+
+    def add_plain(self, ct, plain):
+        """``ct`` plus a plaintext scalar (every slot) or a vector of ``ct``'s length."""
+        return ct + (float(plain) if isinstance(plain, (int, float)) else [float(v) for v in plain])
 
     def mul_plain(self, ct, plain):
         return ct * plain
@@ -215,6 +221,12 @@ class OpenFHEBackend:
 
     def add(self, ct_a, ct_b):
         return self._cc.EvalAdd(ct_a, ct_b)
+
+    def add_plain(self, ct, plain):
+        """``ct`` plus a plaintext scalar (every slot) or a packed vector."""
+        if isinstance(plain, (int, float)):
+            return self._cc.EvalAdd(ct, float(plain))
+        return self._cc.EvalAdd(ct, self._pack(plain))
 
     def mul_plain(self, ct, plain):
         return self._cc.EvalMult(ct, self._pack(plain))
