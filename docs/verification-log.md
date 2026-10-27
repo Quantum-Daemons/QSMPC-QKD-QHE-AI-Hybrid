@@ -3202,3 +3202,11 @@ predicted one class for everything. It did not: my script applied the ResNet pre
 student, which takes no preprocessing. With each sample's own steps, all three accuracies reproduce
 their records exactly. Reading the preprocessing from the sample, as the browser does, is the only
 way to run these graphs.
+
+**I committed a fix for the wrong cause, and the probe that disproved it found the real one.** A
+console 404 after a run looked like a debugger fetching a source map the build names and does not
+ship. I fixed that and deployed. A fresh tab then showed no error at all: the 404 was an old entry in
+a long-used tab, the exact trap checklist row RS16 describes. Checking whether the map path could
+404 showed that nothing on the site could - every missing file came back as the app shell with a 200.
+The lesson is the order: reproduce in a clean context before explaining, and test the explanation's
+own premise before shipping it.

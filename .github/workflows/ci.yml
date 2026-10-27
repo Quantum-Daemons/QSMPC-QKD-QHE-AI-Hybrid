@@ -238,9 +238,9 @@ jobs:
         working-directory: web
         run: npm run build
 
-      # A copied asset kept `//# sourceMappingURL=gif.worker.js.map` with no map beside it, so any
-      # open DevTools logged a 404 on every run and "console clean" could not be reached. Round 74.
-      # Reads the build output, not the config that is meant to prevent it.
+      # A copied asset kept `//# sourceMappingURL=gif.worker.js.map` with no map beside it, so the
+      # build named a file it does not ship. Round 74. Reads the build output, not the config that is
+      # meant to prevent it.
       - name: No built file names a source map the build does not ship
         working-directory: web
         run: npm run check:source-maps

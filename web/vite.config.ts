@@ -22,11 +22,11 @@ const crossOriginIsolation = {
 };
 
 // A copied asset keeps its `//# sourceMappingURL=` comment, and the map is not copied with it:
-// `gif.js/dist/gif.worker.js?url` arrives verbatim and names `gif.worker.js.map`. Any open DevTools,
-// and the automation used to walk the deploy, then fetches the map and logs "Failed to load
-// resource: 404" on every run, because the worker loads when a run starts. Visitors were never
-// affected, but it made "console clean" unattainable - found in the Round 74 walk. The comment is
-// dropped from emitted assets, so nothing points at a file that is not served.
+// `gif.js/dist/gif.worker.js?url` arrives verbatim and names `gif.worker.js.map`, a file the build
+// does not ship. Any open DevTools asks for it, and until Round 74 the server answered every missing
+// path with index.html, so it was handed HTML where a map belongs. Visitors are not affected. The
+// comment is dropped from emitted assets, so nothing names a file that is not served. (A console
+// 404 in the Round 74 walk was first blamed on this; it was not - see the register.)
 const dropDanglingSourceMapComments = {
   name: "drop-dangling-source-map-comments",
   generateBundle(_options: unknown, bundle: Record<string, any>) {
