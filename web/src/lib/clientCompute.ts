@@ -328,12 +328,19 @@ export function securityFacts(config: any, metrics: Record<string, any>): Securi
       // attributed its rate to decoy states - a countermeasure for the multi-photon pulses of an
       // attenuated laser, which entanglement-based QKD does not have and cannot use. One of a
       // sibling pair three lines apart was made protocol-aware and the other was not.
+      // The detectors' dead time is in the rate since Round 76 wherever the link has one (the fibre
+      // set's 100 ns; none is stated for the downlink), so the source says so.
+      const deadS = Number(sat ? qkdCfg().free_space_detector_dead_time_s : qkdCfg().detector_dead_time_s);
+      const deadNote = deadS > 0
+        ? `; gains corrected for the detectors' ${Math.round(deadS * 1e9)} ns dead time (Rusca et al., `
+          + "Appl. Phys. Lett. 112, 171104, 2018, Eq. B3)"
+        : "";
       facts.push({ label: "Secret-key rate", value: `${Number(skr.toPrecision(4))} per pulse`, kind: "simulated",
-        source: isE91
+        source: (isE91
           ? "device-dependent secure fraction 1 - h(e) - f h(e) on the MODEL error rate, not the "
             + "sampled QBER (Shor-Preskill form; entangled source: Ma, Fung & Lo, Phys. Rev. A 76, "
             + "012307, 2007); no decoy states. CHSH S is a consistency check, not a certificate"
-          : "two-intensity decoy-state bound, Ma, Qi, Zhao & Lo, Phys. Rev. A 72, 012326 (2005)" });
+          : "two-intensity decoy-state bound, Ma, Qi, Zhao & Lo, Phys. Rev. A 72, 012326 (2005)") + deadNote });
     }
     // BB84 ONLY. An E91 run showed this row too, warning that "the decoy states are what make this
     // link work at all" - on a protocol that uses none. The tagged fraction is a property of an
