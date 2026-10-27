@@ -4,7 +4,7 @@
 // convergence profile vs the default-parameter baseline on the SAME simulated channel — a simulation, not
 // deployed QKD. Search space + defaults + protocol come from config (config.defaults.json / /api/config).
 import { qkdCfg } from "./config";
-import { ChannelParams, decoySecureFraction, eDetForBound, h2, intrinsicQber, transmittance } from "./quantumSim";
+import { ChannelParams, deadTimeFactor, decoySecureFraction, eDetForBound, h2, intrinsicQber, transmittance } from "./quantumSim";
 
 export interface OptiQKDParams { muSignal: number; muDecoy: number; basisProb: number; ppThreshold: number; }
 export interface OptiQKDResult {
@@ -49,7 +49,10 @@ const skrModel: Model = (p, prm, fEC = qkdCfg().error_correction_eff) => {
   // Ma et al.'s one-decoy Eq. (41); calling `decoySecureFraction` is what makes that one change.
   const { perPulse, eMu } = decoySecureFraction(eta, mu, nu, eDet, y0, fEC, siftRatio);
   if (eMu > prm.ppThreshold) return { skr: 0, qber: eMu };
-  return { skr: perPulse, qber: eMu };
+  // The dead time, as `bb84()` charges it (Round 76). Without it the optimiser would chase a brighter
+  // signal into detectors that cannot keep up: at 1 GHz the factor falls as mu rises.
+  const cDt = deadTimeFactor(p, 0.5 * ((y0 + 1 - Math.exp(-eta * mu)) + (y0 + 1 - Math.exp(-eta * nu))));
+  return { skr: perPulse * cDt, qber: eMu };
 };
 
 // E91 (entanglement-based, CHSH) SKR mirror of qkd/e91.py: a Werner-state visibility V (degraded by the
@@ -74,7 +77,7 @@ const e91Skr: Model = (p, prm, fEC = qkdCfg().error_correction_eff) => {
   const siftRatio = prm.basisProb ** 2 + (1 - prm.basisProb) ** 2;
   if (s <= 2 || qber > prm.ppThreshold) return { skr: 0, qber };
   const secureFraction = Math.max(0, 1 - h2(qber) - fEC * h2(qber));
-  return { skr: secureFraction * eta * siftRatio, qber };
+  return { skr: secureFraction * deadTimeFactor(p, eta + 2 * p.darkCount) * eta * siftRatio, qber };
 };
 
 export function optimizeQKD(channel: ChannelParams, protocol?: string, nSamples?: number): OptiQKDResult {

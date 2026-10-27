@@ -105,6 +105,59 @@ Each carries whether it was reproduced locally or is recorded as reported-and-un
   low elevation. The 1.2 m aperture the repository used before is Yin et al., Science 356, 1140
   (2017)'s stations (METADATA-ONLY here), not Xinglong.
 
+- **Finite-key analysis for the 1-decoy state QKD protocol** - Rusca, Boaron, Grunenfelder, Martin
+  and Zbinden, *Appl. Phys. Lett.* **112**, 171104 (2018). arXiv:1801.03443 `[link]`
+  URL: https://arxiv.org/abs/1801.03443
+  VERIFIED 2026-10-27 in the arXiv text. Two roles here. Its finite-key bound is what
+  `src/qsh/qkd/finite_key.py` implements (Round 47), checked against its Table I. And since Round 76
+  its stated simulation parameters ARE the fibre channel, value by value: "a repetition rate of
+  1 GHz"; SNSPDs "which have a dead-time tau_DT = 100 ns, dark-count rate (DCR) of 10 Hz which
+  correspond to pDC = 10^-8 and an efficiency (eta_det around 50%)"; "a typical value pErr of 1%";
+  and Appendix B's dead-time correction, Eq. (B3), c_dt = 1 / (1 + R P t_DT), modelled in
+  `qkd/channel.py::dead_time_factor` counting every click where (B3) sums the Z-basis ones. A
+  simulation set rather than a measurement; the experiment that realised the protocol is the
+  Boaron entry below. Table I's distances follow 0.2 dB per km.
+
+- **Efficient decoy-state quantum key distribution with quantified security** - Lucamarini, Patel,
+  Dynes, Frohlich, Sharpe, Dixon, Yuan, Penty and Shields, *Opt. Express* **21**, 24550 (2013).
+  arXiv:1310.0240 `[link]`
+  URL: https://arxiv.org/abs/1310.0240
+  VERIFIED 2026-10-27 in the arXiv text. A MEASURED 50 km fibre link at 1 GHz with gated
+  self-differencing InGaAs detectors: "detection efficiency of 20.5%, dark count probability per gate
+  of 2.1x10^-5 and after pulse probability 5.25%", intensities 0.425 / 0.044 / 0.001 (two decoys),
+  QBER 4.26% in Z, and secure rates of 1.09 Mbps (efficient BB84) and 0.63 Mbps (standard) at 50 km.
+  Cited in `QKDConfig` for its smallest positive-key sample (1.4e5 counts). In Round 76 it was the
+  yardstick that showed the old fibre set was about 3x optimistic, and it was not adopted: it ran
+  three intensities, and under this project's 1-decoy finite-key analysis its noise needs 7e8 to 2e9
+  pulses for a key.
+
+- **Secure quantum key distribution over 421 km of optical fiber** - Boaron et al., *Phys. Rev. Lett.*
+  **121**, 190502 (2018). arXiv:1807.03222 `[link]`
+  URL: https://arxiv.org/abs/1807.03222
+  VERIFIED 2026-10-27 in the arXiv text. The experimental realisation of the 1-decoy protocol modelled
+  here, at 2.5 GHz: SNSPDs whose "maximum efficiencies ... are between 40 to 60%" at "a dark count rate
+  (DCR) of 0.1 Hz", ultra-low-loss fibre "of about 0.16 dB/km (0.17 dB/km including the connections
+  loss)", QBER in Z 0.4-0.7% from 252 to 355 km, and 6.5 bps over 405 km. Not adopted for the channel:
+  its distances and fibre are far from the 50 km standard-fibre default.
+
+- **Fast single-photon detectors and real-time key distillation enable high secret-key-rate quantum
+  key distribution systems** - Grunenfelder et al., *Nat. Photon.* **17**, 422 (2023).
+  arXiv:2210.16126 `[link]`
+  URL: https://arxiv.org/abs/2210.16126
+  VERIFIED 2026-10-27 in the arXiv text. 64 Mbps over 10.0 km and 3.0 Mbps over 102.4 km at 2.5 GHz,
+  simplified BB84 with one decoy, multi-pixel SNSPDs (64% efficiency at high count rates, 82% system
+  detection efficiency), QBER in Z 0.3-0.4%. The "2.5 GHz in the 64 Mbps fibre demonstration" an old
+  comment in `clientSdnController.ts` quoted without a source. Not adopted: ultra-low-loss fibre and
+  detectors well beyond the simulation set.
+
+- **10-Mb/s quantum key distribution** - Yuan et al., *J. Lightwave Technol.* **36**, 3427 (2018).
+  arXiv:1807.04484 `[link]`
+  URL: https://arxiv.org/abs/1807.04484
+  VERIFIED 2026-10-27 in the arXiv text. 13.72 Mb/s over 2 dB (10 km) at 1 GHz, InGaAs detectors with
+  "a detection efficiency of 31%, a combined dark count rate of 450 kHz and an afterpulsing probability
+  of 4.4%", QBER 3.07% of which afterpulsing contributes 2.2%, and a measured error-correction
+  efficiency of 1.32-1.36 at 3% QBER. Read as the InGaAs comparison in Round 76; not adopted.
+
 - **Information-Theoretic Solutions for Seedless QRNG Bootstrapping and Hybrid PQC-QKD Key
   Combination** - Giestinhas and Spiller, University of York, arXiv:2603.26907v2 [quant-ph], 2026
   `[R-local]`

@@ -4,6 +4,21 @@
 // hardware source is opt-in + online (never the default), matching the backend.
 import { rng } from "./quantumSim";
 import { qrngCfg } from "./config";
+import { randomWords } from "./csprng";
+
+/** `n` uniform bits for the Toeplitz matrix: from the CSPRNG, or, in a seeded run, from a stream of
+ *  their own (`seed + 2`, as `simulator.py` derives it). Round 76; see the seeded branch below. */
+function extractorSeedBits(n: number, seed: number | undefined): Uint8Array {
+  const out = new Uint8Array(n);
+  if (seed === undefined) {
+    const words = randomWords(Math.ceil(n / 32));
+    for (let i = 0; i < n; i++) out[i] = (words[i >>> 5] >>> (i & 31)) & 1;
+  } else {
+    const v = rng(seed + 2);
+    for (let i = 0; i < n; i++) out[i] = v() < 0.5 ? 1 : 0;
+  }
+  return out;
+}
 
 const SR2 = Math.SQRT1_2;
 // |+> = H|0> = [1/sqrt2, 1/sqrt2]; Born rule => P(measure |1>) = |amp_1|^2 = 0.5.
@@ -316,7 +331,12 @@ export function generateQuantumBits(nBits: number, opts: { source?: string; post
       proc = toeplitzExtract(raw, outLen, u, raw2);
       rawConsumed += raw2.length;
     } else {
-      proc = toeplitzExtract(raw, outLen, u);
+      // The extractor's seed from its own stream. It came from `u` until Round 76: the generator that
+      // had just drawn the raw bits, continued, so the matrix was a function of the source's own
+      // stream where the Leftover Hash Lemma needs a seed independent of it - and, unseeded, it was
+      // Math.random, which is not a CSPRNG.
+      const needT = Math.max(1, Math.min(outLen, raw.length)) + raw.length - 1;
+      proc = toeplitzExtract(raw, outLen, u, extractorSeedBits(needT, opts.seed));
     }
   } else {
     proc = raw;

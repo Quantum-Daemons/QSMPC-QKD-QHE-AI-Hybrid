@@ -1663,8 +1663,9 @@
   },
   "qkd": {
     "basis_prob": 0.5,
-    "dark_count_prob": 1e-05,
-    "detector_efficiency": 0.25,
+    "dark_count_prob": 1e-08,
+    "detector_dead_time_s": 1e-07,
+    "detector_efficiency": 0.5,
     "distance_km": 50.0,
     "e91_visibility": 0.97,
     "error_correction_eff": 1.16,
@@ -1673,6 +1674,7 @@
     "free_space_atmospheric_db": 5.0,
     "free_space_beam_divergence_urad": 10.0,
     "free_space_dark_count_prob": 5e-08,
+    "free_space_detector_dead_time_s": 0.0,
     "free_space_detector_efficiency": 0.5,
     "free_space_distance_km": 800.0,
     "free_space_misalignment": 0.011,
@@ -1680,7 +1682,7 @@
     "free_space_receiver_optics_efficiency": 0.16,
     "free_space_rx_aperture_m": 1.0,
     "free_space_source_rate_hz": 100000000.0,
-    "misalignment": 0.015,
+    "misalignment": 0.01,
     "mu_decoy": 0.1417,
     "mu_signal": 0.3416,
     "opt_basis_prob_max": 0.9,
@@ -1698,7 +1700,7 @@
     "pp_threshold": 0.11,
     "protocol": "bb84",
     "pulses": 20000000,
-    "source_rate_hz": 100000000.0
+    "source_rate_hz": 1000000000.0
   },
   "qrng": {
     "anu_opt_in": false,

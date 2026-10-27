@@ -8,9 +8,23 @@ SKR telemetry consumed by the AI optimizer.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 import numpy as np
+
+
+def _cfg(name: str):
+    """A default read from `QKDConfig` when the dataclass is built, not copied into this file.
+
+    These defaults were LITERALS - 0.25, 1e-5, 0.015 - equal to the config only because nobody had
+    changed it. `orchestration/stages.py` builds its fibre channel from three config keys and lets the
+    rest default, so a config change reached the browser (which reads config) and left the Python
+    stage on the literals. Round 76's change of detector set is what would have split them.
+    """
+    def read() -> float:
+        from ..config import get_config
+        return float(getattr(get_config().qkd, name))
+    return field(default_factory=read)
 
 
 @dataclass
@@ -18,29 +32,45 @@ class FreeSpaceParams:
     """Diffraction terms of a satellite downlink, for links that are not fibre.
 
     Mirrors ``FreeSpaceSpec`` in ``web/src/lib/quantumSim.ts``; both sets of defaults come from
-    ``QKDConfig.free_space_*``.
+    ``QKDConfig.free_space_*`` (Liao et al. 2017, value by value).
     """
 
-    beam_divergence_urad: float = 10.0    # far-field, near-diffraction-limited (Liao 2017)
-    rx_aperture_m: float = 1.0            # Xinglong's telescope (Liao 2017)
-    atmospheric_db: float = 5.0           # crossed once, near the ground - NOT per km
-    pointing_db: float = 3.0              # acquisition and tracking residual
+    beam_divergence_urad: float = _cfg("free_space_beam_divergence_urad")
+    rx_aperture_m: float = _cfg("free_space_rx_aperture_m")
+    atmospheric_db: float = _cfg("free_space_atmospheric_db")     # crossed once - NOT per km
+    pointing_db: float = _cfg("free_space_pointing_db")
     #: Receiving telescope plus fibre coupling, "~16%" in Liao 2017 - its own budget line since
     #: Round 75, which the model did not have.
-    receiver_optics_efficiency: float = 0.16
+    receiver_optics_efficiency: float = _cfg("free_space_receiver_optics_efficiency")
 
 
 @dataclass
 class ChannelParams:
-    """Physical channel + detector parameters."""
+    """Physical channel + detector parameters. Defaults are the fibre set in `QKDConfig`."""
 
-    distance_km: float = 50.0
-    fiber_loss_db_per_km: float = 0.2          # standard SMF-28 @1550nm
-    detector_efficiency: float = 0.25
-    dark_count_prob: float = 1e-5              # per gate
-    misalignment: float = 0.015               # baseline optical error (polarization drift)
+    distance_km: float = _cfg("distance_km")
+    fiber_loss_db_per_km: float = _cfg("fiber_loss_db_per_km")
+    detector_efficiency: float = _cfg("detector_efficiency")
+    dark_count_prob: float = _cfg("dark_count_prob")              # per gate, per detector
+    misalignment: float = _cfg("misalignment")                    # baseline optical error
     eve_intercept_fraction: float = 0.0       # 0..1 fraction of pulses Eve intercept-resends
     free_space: FreeSpaceParams | None = None  # set for a downlink; None keeps the fibre law
+    #: The source clock and the detectors' dead time, which together decide how many detections
+    #: arrive while a detector is still recovering (`dead_time_factor`). Left unset they take the
+    #: link's own: the fibre set's, or the downlink's when `free_space` is given - so a downlink built
+    #: without them does not inherit the fibre's 1 GHz and 100 ns.
+    source_rate_hz: float | None = None
+    dead_time_s: float | None = None
+
+    def __post_init__(self) -> None:
+        from ..config import get_config
+        q = get_config().qkd
+        downlink = self.free_space is not None
+        if self.source_rate_hz is None:
+            self.source_rate_hz = float(q.free_space_source_rate_hz if downlink else q.source_rate_hz)
+        if self.dead_time_s is None:
+            self.dead_time_s = float(q.free_space_detector_dead_time_s if downlink
+                                     else q.detector_dead_time_s)
 
     def loss_db(self) -> float:
         """One-way channel loss. Two physical regimes, and one law for both was a real error.
@@ -90,6 +120,32 @@ class ChannelParams:
     def transmittance(self) -> float:
         """End-to-end channel + detector transmittance (probability a pulse is detected)."""
         return self.detector_efficiency * 10 ** (-self.loss_db() / 10)
+
+
+def dead_time_factor(params: ChannelParams, click_prob: float) -> float:
+    """The fraction of detections a dead detector still registers, after Rusca et al. 2018 Eq. (B3).
+
+    ``c = 1 / (1 + R * D * t_DT)``, with ``R`` the source clock, ``t_DT`` the dead time and ``D`` the
+    probability per pulse that a given detector clicks, before the correction: the non-paralysable
+    dead-time model.
+
+    Where this departs from (B3) as printed, and why. Rusca et al. write ``D`` as the sum of their
+    Eq. (B2), which counts only detections where Alice and Bob both chose Z and which already
+    carries ``c``. Taken literally that makes (B3) implicit, and taking ``D`` before the correction
+    is the reading under which it is the standard formula. A detector is dead after ANY click,
+    though, matched basis or not, so ``D`` here counts every click: Bob has two detectors - the
+    model's background yield is ``2 * p_dark`` - each receiving half of them, so
+    ``D = click_prob / 2`` with ``click_prob`` the total detection probability per pulse at Bob,
+    averaged over what Alice sends. At this project's symmetric bases that charges twice the dead
+    time the Z-only sum would, the conservative side.
+
+    Signal and noise clicks are lost alike, so the QBER is unchanged and every gain, and with it the
+    key rate, is multiplied by ``c``.
+    """
+    rt = float(params.source_rate_hz) * float(params.dead_time_s)
+    if rt <= 0.0:
+        return 1.0
+    return 1.0 / (1.0 + rt * 0.5 * float(click_prob))
 
 
 def compose_independent_errors(a: float, b: float) -> float:

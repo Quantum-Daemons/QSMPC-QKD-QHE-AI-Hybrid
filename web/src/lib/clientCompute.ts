@@ -1425,6 +1425,7 @@ function satChannel(config: Record<string, any>, eveFraction?: number) {
       atmosphericDb: Number(config.sat_atmospheric_db ?? fs.atmosphericDb),
       pointingDb: Number(config.sat_pointing_db ?? fs.pointingDb),
     },
+    sourceRateHz: sourceRateHz(config?.sat_source_rate_mhz, Number(qkdCfg().free_space_source_rate_hz)),
   };
 }
 
@@ -2057,7 +2058,10 @@ export function runClientPipeline(
           detectorEff: Number(qkdCfg().detector_efficiency ?? FIBER.detectorEff),
           darkCount: Number(qkdCfg().dark_count_prob ?? FIBER.darkCount),
           misalignment: Number(config.qkd_misalignment ?? qkdCfg().misalignment),
-          eveFraction: Number(config.qkd_eve ?? qkdCfg().eve_intercept_fraction) };
+          eveFraction: Number(config.qkd_eve ?? qkdCfg().eve_intercept_fraction),
+          // The run's clock, the same value the bit/s below is computed from: with a dead time the
+          // per-pulse rate depends on it (Round 76), so the two cannot come from different places.
+          sourceRateHz: sourceRateHz(config?.qkd_source_rate_mhz, Number(qkdCfg().source_rate_hz)) };
         // config.qkd_protocol genuinely selects which physical QKD model runs (BB84 decoy-state vs E91/CHSH),
         // so switching it visibly moves QBER / SKR / secure-key-bits — independently of the OptiQKD toggle.
         const protocol = String(config.qkd_protocol ?? qkdCfg().protocol);
