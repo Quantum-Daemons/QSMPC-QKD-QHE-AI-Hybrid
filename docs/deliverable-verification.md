@@ -5671,6 +5671,14 @@ two lines of prose, which glues the words on either side. Seeded three ways, eac
   counts, and that both readers of a graph use them. Seeded three ways, each fires. It runs in CI and
   as a new step 15 of `scripts/ci_local.sh`.
 
+**And the walk's console carried a 404 on every run, which no page request showed.** The GIF worker is
+copied into the build verbatim with `//# sourceMappingURL=gif.worker.js.map`, and the map is not
+copied. The worker loads when a run starts, so any open DevTools - including the automation used for
+these walks - fetched the map and logged the 404. Visitors without DevTools never requested it. A
+`vite.config.ts` hook drops such comments from emitted assets, the console is clean on the local
+build after a run, and `web/scripts/check_no_dangling_source_maps.mjs` reads the build output for any
+reference to a map that is not shipped. Seeded with the original comment, it fires.
+
 **Gates.**
 - `tests/test_page_headings_do_not_skip_a_level.py` expands each page through the components it
   renders, resolved through its imports, and fails on any skip. Seeded four ways, each fires.
@@ -5679,7 +5687,8 @@ two lines of prose, which glues the words on either side. Seeded three ways, eac
   only series with a colour of their own; every tooltip writes into a readout; every readout tooltip
   has a readout; the highlight rule; and the recharts release the readout was measured on. Each is
   seeded and fires.
-- `web/scripts/check_jsx_text_spaces.mjs` and `web/scripts/check_calibration.mjs`, above.
+- `web/scripts/check_jsx_text_spaces.mjs`, `web/scripts/check_calibration.mjs` and
+  `web/scripts/check_no_dangling_source_maps.mjs`, above.
 
 BUSINESS DOC RECONCILED Round 74. The out-of-repo document is brought level with this round. Its content
 is not quoted here, in the checklist, or in any commit - only the fact of the reconciliation, which is
