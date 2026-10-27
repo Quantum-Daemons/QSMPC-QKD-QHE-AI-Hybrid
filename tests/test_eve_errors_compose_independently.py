@@ -93,7 +93,9 @@ def test_the_browser_matches_python_and_keeps_the_chsh_relation() -> None:
     assert got["eve1"] == pytest.approx(py, abs=1e-12), (got, py)
     # S = 2 sqrt(2) (1 - 2 e0) holds with an eavesdropper too, at the composed error rate.
     assert got["e91"]["s"] == pytest.approx(2 * math.sqrt(2) * (1 - 2 * got["e91"]["e0"]), abs=1e-12)
-    assert got["e91"]["e0"] == pytest.approx(0.264872, abs=5e-6), "the composed Eve=1 E91 error rate moved"
+    # 0.264775 on Round 76's Rusca detector set; 0.264872 on the set before it, whose dark counts
+    # added 2e-4 to the base error at this misalignment.
+    assert got["e91"]["e0"] == pytest.approx(0.264775, abs=5e-6), "the composed Eve=1 E91 error rate moved"
 
 
 def test_no_tooltip_quotes_a_secrecy_capacity_literal() -> None:

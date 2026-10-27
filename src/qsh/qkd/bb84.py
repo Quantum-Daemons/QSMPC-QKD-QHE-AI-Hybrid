@@ -59,7 +59,7 @@ from dataclasses import dataclass, field
 
 import numpy as np
 
-from .channel import ChannelParams, compose_independent_errors, intrinsic_qber
+from .channel import ChannelParams, compose_independent_errors, dead_time_factor, intrinsic_qber
 
 
 def e_det_for_bound(params: ChannelParams) -> float:
@@ -229,10 +229,16 @@ def run_bb84(
         alice_bases = (rng.random(n_pulses) >= p).astype(int)   # P(basis 0) = p
         bob_bases = (rng.random(n_pulses) >= p).astype(int)
         mu = max(1e-3, float(qkd_params.mu_signal))
+        nu = min(max(1e-4, float(qkd_params.mu_decoy)), mu * 0.9)      # decoy strictly weaker than the signal
         # The GAIN, background included: Q_mu = Y0 + 1 - exp(-eta mu), as `quantumSim.ts::bb84` counts
         # it. This omitted Y0 until Round 75, which matters where eta mu approaches 2 p_dark.
         q_mu = 2.0 * params.dark_count_prob + 1.0 - np.exp(-mu * eta)
-        detected = rng.random(n_pulses) < q_mu
+        q_nu = 2.0 * params.dark_count_prob + 1.0 - np.exp(-nu * eta)
+        # THE DEAD TIME, Rusca et al. 2018 Eq. (B3): a click finds its detector dead with a probability
+        # set by the clock and by how often the detectors click, signal and decoy sent equally often.
+        # Every gain and so the rate below scale by it; the QBER does not move. Round 76.
+        c_dt = dead_time_factor(params, 0.5 * (q_mu + q_nu))
+        detected = rng.random(n_pulses) < c_dt * q_mu
         sift = detected & (alice_bases == bob_bases)
         # the multiphoton (PNS) insecurity is accounted for analytically by the decoy-state single-photon
         # bound (see the secure-rate tail), NOT by inflating the physical QBER. The observed QBER is the
@@ -265,7 +271,6 @@ def run_bb84(
         # two-intensity decoy-state single-photon secure rate - mu_decoy genuinely tightens Y1/e1.
         # Ma et al. 2005 section 3.5, Eq. 41 (one decoy, Y0 unknown). `y0` below enters only the
         # observed gains, as the receiver would measure them; the estimate no longer assumes it.
-        nu = min(max(1e-4, float(qkd_params.mu_decoy)), mu * 0.9)      # decoy strictly weaker than the signal
         y0 = 2.0 * params.dark_count_prob                             # background yield (two detectors)
         sift_ratio = p * p + (1.0 - p) * (1.0 - p)                    # biased-basis reconciliation ratio
         # `params.misalignment + 0.25 * eve_intercept_fraction`, NOT `intrinsic_qber(params)` and
@@ -283,7 +288,7 @@ def run_bb84(
         #   mu = 0.5   / nu = 0.1     (in force while the double charge shipped):
         #       fibre 50 km      0.5673% low   (0.5705% raise)
         #       800 km downlink 15.9152% low  (18.9276% raise)
-        #   mu = 0.3416 / nu = 0.1417 (SHIPPED NOW, the finite-key optimum):
+        #   mu = 0.3416 / nu = 0.1417 (shipped; these figures are on the channel of Round 75):
         #       fibre 50 km      0.4984% low   (0.5009% raise)
         #       800 km downlink 13.6638% low  (15.8262% raise)
         #
@@ -300,6 +305,7 @@ def run_bb84(
         # exactly what `e_det` denotes, so Eve belongs here and the background does not.
         skr, _e_mu, _e1 = _decoy_secure_fraction(
             eta, mu, nu, e_det_for_bound(params), y0, error_correction_eff, sift_ratio)
+        skr *= c_dt                                                   # the gains it rests on, dead-time corrected
         secure_bits = int(max(0.0, skr) * n_pulses)
 
     return QKDResult(
