@@ -5701,6 +5701,12 @@ two lines of prose, which glues the words on either side. Seeded three ways, eac
 - `web/scripts/check_jsx_text_spaces.mjs`, `web/scripts/check_calibration.mjs`,
   `web/scripts/check_no_dangling_source_maps.mjs` and `tests/test_a_missing_file_is_a_404.py`, above.
 
+**Carried item closed: the scheduled dependency audit ran.** Its first scheduled run (Round 67, cron
+03:17 UTC) appeared at 09:01 UTC on 2026-10-26, 5 h 44 min late, a delay GitHub documents for scheduled
+runs under load. Both jobs passed against main at d0cc4b7: cargo-deny (advisories and sources) and npm
+audit. This answers the UNVERIFIED notes in the Round 68 and Round 72 sections; checklist row `NS23`
+now has the green scheduled run it asks for, observed.
+
 **Walked on the deploy (3c55f7a, `index-BTFyF-rl.js`), in a fresh tab, after the four deploys of this
 round.**
 - Cross-origin isolated. No heading skip on any of the twelve page variants, before and after runs.
