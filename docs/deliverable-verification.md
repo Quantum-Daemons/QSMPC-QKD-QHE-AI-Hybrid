@@ -5835,7 +5835,8 @@ sourced Micius set, and make the MPC tier multi-party now, and then mask its con
   n x B / 2^30 on what the key holder's view gives away: 9e-8 or less on the benchmark rows, about 2e-7
   on the test CNNs. Every decision tested matches plaintext, on TenSEAL and OpenFHE. Semi-honest, and
   a client and helper who pool their shares recover the server's masks; the architecture document
-  says so.
+  says so, and `docs/threat-model.md` now lists the tier among its trust assumptions, which it did
+  not name before.
 - **What the counts and the cost model said.** The argmax over k classes was counted as k
   comparisons; MPyC runs k - 1. The projection added a max-pool layer's per-window cost once per
   layer, under a comment promising a scaling that never followed. The browser's cost-model row,
