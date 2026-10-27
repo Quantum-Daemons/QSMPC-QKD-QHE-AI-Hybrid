@@ -126,7 +126,8 @@ and a helper. The conversions between the halves are masked, as Gazelle's and De
 real numbers, uniform on plus or minus 2^30 from the OS CSPRNG, where Gazelle and Delphi mask exactly
 over a ring. Behind such a mask a value of size B is B / 2^30 from any other in statistical distance,
 and every run reports the bound for its own view: the number of masked values times its largest
-one over 2^30, about 2e-7 on the test CNNs. Two further limits are part of the claim. It is
+one over 2^30: about 2e-7 on the test CNNs, and 1.4e-6 on the medical use case's 14x14 CNN, whose
+view has more than a thousand masked values. Two further limits are part of the claim. It is
 semi-honest with an honest majority: a client and helper who pool their Shamir shares recover the
 server's masks, and with them every intermediate. And the class index itself is an output, so
 label-only extraction from repeated queries stays possible; that is a different attack from this one.

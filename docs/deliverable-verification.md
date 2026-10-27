@@ -5860,6 +5860,14 @@ The QSMPC stage's threshold was a literal, min(3, n), beside an unread config ke
 - `tests/test_the_decoy_bound_is_the_one_decoy_bound.py`, `tests/test_the_satellite_channel_is_sourced.py`,
   `tests/test_health_tests_use_the_assessed_entropy.py`, and new cases in `tests/test_pqc.py`.
 
+**Found by CI: a timing assertion that measured the runner.** `test_medical_cnn_runs_genuine_conv`
+asserted that the convolution's FHE time exceeded the MPC time, true while the MPC was one in-process
+party. With three real parties it passed on the pull-request run and failed on the push run of the
+same commit: 2,421 ms against 2,868 ms on a two-core runner, where three party processes share two
+cores, against 1,460 ms and 475 ms on the 20-core development box. The test now asserts the work
+instead, every convolution output's ReLU run under MPC and the masked path taken, and the README's
+"the conv cost dominates" names the machine it was measured on (14x14: 4.6 s against 2.0 s).
+
 **Walked on the deploy (2b70f2d, `index-D7qL8NgB.js`), in fresh tabs, after the two deploys of this
 round.** The first deploy (892c43b) was walked too, and the page showed two defects; both are fixed
 in 2b70f2d and were re-walked.
