@@ -59,7 +59,10 @@ export function freeSpaceLink(o: { distanceKm: number; atmosphericDb: number; po
  *  efficiency, they still printed (+0.4944, -0.6283, -14.6474, -5.2033) after both corrections.
  *  A number computed here cannot disagree with what a run computes. */
 export function qsdcLink(ch: ChannelParams, etaD = qkdCfg().free_space_detector_efficiency) {
-  const lossDb = channelLossDb(ch) - 10 * Math.log10(etaD);
+  // The station's own optics are in `channelLossDb` (they remove signal photons) and NOT in Eve's
+  // gap g: Qi et al.'s g counted the back channel and the detector, not their ~13 dB of optical
+  // elements. Twin of `qsdc.py`; Round 75.
+  const lossDb = channelLossDb(ch) - receiverOpticsDb(ch) - 10 * Math.log10(etaD);
   const g = 10 ** (lossDb / 10);
   const e = intrinsicQber(ch);
   return { e, g, lossDb, cs: qsdcSecrecyCapacity(e, g) };
@@ -79,6 +82,9 @@ export interface ChannelParams {
     rxApertureM: number;
     atmosphericDb: number;
     pointingDb: number;
+    /** Receiving telescope plus fibre coupling (Liao 2017: ~16%). Optional so a hand-built channel
+     *  without it keeps the old budget; FREE_SPACE always carries it. Round 75. */
+    receiverOpticsEff?: number;
   };
 }
 
@@ -115,6 +121,7 @@ export const FREE_SPACE: ChannelParams = {
     rxApertureM: qkdCfg().free_space_rx_aperture_m,
     atmosphericDb: qkdCfg().free_space_atmospheric_db,
     pointingDb: qkdCfg().free_space_pointing_db,
+    receiverOpticsEff: qkdCfg().free_space_receiver_optics_efficiency,
   },
 };
 
@@ -129,8 +136,8 @@ export const FREE_SPACE: ChannelParams = {
  * linear one. The atmosphere adds a few fixed dB because a downlink crosses it once, near the ground,
  * rather than along the whole path.
  *
- * Modelling it as `distance * 0.035 dB/km` gave 28 dB at 800 km, which looked right next to the 27 dB
- * Micius reports, and then diverged badly: 42 dB at 1200 km where physics gives about 28, 70 against
+ * Modelling it as `distance * 0.035 dB/km` gave 28 dB at 800 km, which looked plausible (a figure of
+ * "27 dB Micius reports" sat here; Liao et al. state no total), and then diverged badly: 42 dB at 1200 km where physics gives about 28, 70 against
  * 32 at 2000 km, 175 against 40 at 5000. The Downlink control has no maximum, so the numbers stopped
  * meaning anything a short drag past the default.
  *
@@ -138,11 +145,11 @@ export const FREE_SPACE: ChannelParams = {
  *
  * A measured anchor at the short end, for the atmospheric term this model carries as a constant:
  * arXiv:2607.24118 (2026-07-27, PREPRINT - no journal_ref, no DOI as of 2026-08-13) runs
- * free-space decoy-state BB84 over a 2 km outdoor channel at 100 MHz and reports 164.8 kbps at
- * QBER ~3.3%, with active beam-wander correction by fast-steering mirrors. It does not calibrate
+ * free-space decoy-state BB84 over a 2 km outdoor channel at 100 MHz and reports (v2, 2026-10-16)
+ * an average finite-key 110 kbps at QBER 3.28% (v1: 164.8 kbps at ~3.3%), with active beam-wander correction by fast-steering mirrors. It does not calibrate
  * this model - a 2 km horizontal path and a ground-to-LEO slant range are different channels -
- * but it is the closest measured free-space QBER to the 2.85% this model gives at 800 km, and it
- * is the reason the misalignment floor here is 0.025 rather than a fibre-like 0.015.
+ * and it set the misalignment floor here (0.025) until Round 75. The floor is now Liao et al.'s own
+ * measured average QBER, 1.1%, with the rest of the Micius budget; see `QKDConfig.free_space_*`.
  */
 /**
  * The one multiplication that gives a bit/s, returned as a TRIPLE so no call site can emit a rate
@@ -170,6 +177,13 @@ export function keyRateWithClock(perPulse: number, pulses: number, fRepHz: numbe
   return { skrBitPerSec: perPulse * fRepHz, channelSeconds: pulses / fRepHz, sourceRateHz: fRepHz };
 }
 
+/** The ground station's optics (telescope + fibre coupling) in dB, 0 on fibre. Twin of
+ *  `channel.py::ChannelParams.receiver_optics_db`. */
+export function receiverOpticsDb(p: ChannelParams): number {
+  const eff = p.freeSpace?.receiverOpticsEff;
+  return eff != null ? -10 * Math.log10(Math.max(eff, 1e-12)) : 0;
+}
+
 export function channelLossDb(p: ChannelParams): number {
   if (!p.freeSpace) return p.distanceKm * p.lossDbPerKm;
   const fs = p.freeSpace;
@@ -177,7 +191,7 @@ export function channelLossDb(p: ChannelParams): number {
   // Capped at 1: inside the near field the receiver cannot capture more than the whole beam.
   const captured = Math.min(1, fs.rxApertureM / Math.max(beamDiameterM, 1e-9));
   const geometricDb = -20 * Math.log10(captured);
-  return geometricDb + fs.atmosphericDb + fs.pointingDb;
+  return geometricDb + fs.atmosphericDb + fs.pointingDb + receiverOpticsDb(p);
 }
 
 export function transmittance(p: ChannelParams): number {
@@ -292,8 +306,29 @@ export interface BB84Result {
 }
 
 /**
- * Two-intensity decoy-state secret key rate per pulse. Ma, Qi, Zhao & Lo, Phys. Rev. A 72, 012326
- * (2005), Eqs. 34-37 for the bounds and the GLLP rate that consumes them.
+ * The OBSERVED QBER of the signal states, E_mu (Ma, Qi, Zhao & Lo 2005, Eq. 11): the same E_mu
+ * `decoySecureFraction` puts into the rate, so the QBER a run shows, the abort test and the bound share
+ * one number. Twin of `bb84.py::signal_qber`. Until Round 75 the BB84 run showed `intrinsicQber`, whose
+ * background term `0.5 p_dark / eta` counts one detector and a whole photon per pulse: 6 percent low at
+ * 50 km, 1.5x at 100 km, 2.8x at 140 km.
+ */
+export function signalQber(p: ChannelParams, mu: number): number {
+  const eta = transmittance(p);
+  const y0 = 2 * p.darkCount;
+  const qMu = y0 + 1 - Math.exp(-eta * mu);
+  if (!(qMu > 0)) return 0.5;
+  return Math.min(0.5, (0.5 * y0 + eDetForBound(p) * (1 - Math.exp(-eta * mu))) / qMu);
+}
+
+/**
+ * Two-intensity (one-decoy) secret key rate per pulse: Ma, Qi, Zhao & Lo, Phys. Rev. A 72, 012326
+ * (2005), section 3.5, Eq. (41) for the bounds and the GLLP rate (Eq. 1) that consumes them.
+ *
+ * ROUND 75: Eq. (41), NOT Eqs. (34)-(37). The protocol sends a signal and ONE weak decoy, so the vacuum
+ * yield is never measured; section 3.5 lets Eve choose it and sets Y0 = 0 in the estimate. Until this
+ * round the estimate used section 3.4's Vacuum+Weak form with the model's Y0, which a receiver cannot
+ * know: 1.3 percent high at 50 km, 12.6 percent at 100 km, 40 percent at 120 km, and a maximum distance
+ * of 140.9 km against 134.7 km. The observed gains still carry the real background `y0`.
  *
  * PORTED, NOT DERIVED. This is a transcription of `_decoy_secure_fraction` in `src/qsh/qkd/bb84.py`,
  * which `tests/test_the_browser_computes_the_bound_the_page_names.py` asserts this against at full
@@ -324,12 +359,12 @@ export function decoySecureFraction(
   // pair is an operator error the panel should render as "no key", not a crash on a public page.
   if (mu <= nu || !(qNu > 0)) return { perPulse: 0, eMu, e1: 0.5 };
   const eNu = (e0 * y0 + eDet * (1 - Math.exp(-eta * nu))) / qNu;
+  // Eq. (41): one decoy, Y0 unknown, so the estimate takes Y0 = 0 (section 3.5).
   const y1 = Math.max(0, (mu / (mu * nu - nu * nu)) * (
-    qNu * Math.exp(nu) - ((nu * nu) / (mu * mu)) * qMu * Math.exp(mu)
-    - ((mu * mu - nu * nu) / (mu * mu)) * y0));
+    qNu * Math.exp(nu) - ((nu * nu) / (mu * mu)) * qMu * Math.exp(mu)));
   const q1 = y1 * mu * Math.exp(-mu);                 // secure single-photon gain
   const e1 = y1 > 0
-    ? Math.min(0.5, Math.max(0, (eNu * qNu * Math.exp(nu) - e0 * y0) / (y1 * nu)))
+    ? Math.min(0.5, Math.max(0, (eNu * qNu * Math.exp(nu)) / (y1 * nu)))
     : 0.5;
   const r = q1 * (1 - h2(e1)) - fEC * qMu * h2(eMu);
   return { perPulse: Math.max(0, r) * siftRatio, eMu, e1 };
@@ -373,7 +408,8 @@ export function bb84(nPulses: number, p: ChannelParams, seed = 0,
   const mu = Math.max(1e-3, cfg.mu_signal);
   const nu = Math.min(Math.max(1e-4, cfg.mu_decoy), mu * 0.9);  // strictly weaker than the signal
   const y0 = 2 * p.darkCount;                                   // background yield, two detectors
-  const eDet = intrinsicQber(p);
+  // The model's own signal QBER, the E_mu the bound uses (Round 75; it was `intrinsicQber`).
+  const eDet = signalQber(p, mu);
   // Detections come from the GAIN, not from eta: Q_mu = Y_0 + 1 - exp(-eta mu). This halves the
   // sifted count at the shipped defaults (0.0124 against 0.0250) and it is the correction, not a
   // regression - the previous figure counted one detection per transmitted photon.

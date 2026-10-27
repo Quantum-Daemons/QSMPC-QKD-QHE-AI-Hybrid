@@ -659,7 +659,11 @@ const tierDims = (size: string) => [demoFeatureDim(), ...(genericArchitecture()[
 const MPC_COMM_BYTES_PER_COMPARE = () => costPerOp().mpc_comm_bytes_per_cmp;
 const FHE_MS_PER_DOT = () => costPerOp().fhe_ms_per_dot;   // one CKKS encrypted linear dot per output neuron
 const MPC_MS_PER_CMP = () => costPerOp().mpc_ms_per_cmp;   // one secret-sharing secure comparison (ReLU/argmax)
-const tierOps = (dims: number[]) => dims.slice(1).reduce((a, x) => a + x, 0);  // output neurons = dots = comparisons
+const tierOps = (dims: number[]) => dims.slice(1).reduce((a, x) => a + x, 0);  // output neurons = CKKS dots
+// Secure comparisons: one per hidden ReLU output, and k - 1 for the argmax over the k logits. Counted
+// as one per output neuron until Round 75, when the charge per comparison became the MPyC tier's
+// measured 15,120 B and the extra comparison stopped being a rounding error.
+const tierCmps = (dims: number[]) => Math.max(0, tierOps(dims) - 1);
 
 function archDims(usecase: string | undefined, modelSize: string, workload: string) {
   const wm = workloadMultipliers()[workload] ?? workloadMultipliers().linear;
@@ -717,13 +721,15 @@ function benchScale(usecase: string | undefined, modelSize: string, workload: st
 
 // 2-party additive-secret-sharing non-linear (representative LAN sim): ReLU then (last layer) argmax.
 function mpcNonlinear(vec: number[], isLast: boolean, u: () => number) {
-  // additive share x = s0 + s1 with s0 pseudo-random; a real 2PC (MPyC on the server) computes
-  // ReLU/argmax via secure comparison on the shares — here we model the shares + count the
-  // communication, and reconstruct in-sim (representative, not cryptographic).
+  // additive share x = s0 + s1 with s0 pseudo-random; the full deployment's MPyC tier (three
+  // Shamir parties, t = 1) computes ReLU/argmax via secure comparison on the shares. Here we model
+  // the shares, charge that tier's measured bytes per comparison, and reconstruct in-sim
+  // (representative, not cryptographic).
   const shares = vec.map((x) => { const s0 = (u() * 2 - 1) * 4; return [s0, x - s0]; });
   const recon = shares.map(([a, b]) => a + b);
   const out = isLast ? [recon.indexOf(Math.max(...recon))] : recon.map((v) => Math.max(0, v));
-  return { out, compares: vec.length, commBytes: vec.length * MPC_COMM_BYTES_PER_COMPARE() };
+  const compares = isLast ? Math.max(0, vec.length - 1) : vec.length;
+  return { out, compares, commBytes: compares * MPC_COMM_BYTES_PER_COMPARE() };
 }
 
 function hybridForward(dims: number[], u: () => number) {
@@ -1090,8 +1096,8 @@ function mpcFheRow(usecase: string | undefined, workload: string, modelSize: str
     // `onnxBackend()` happened to report, which was never this row's - and is now flatly wrong,
     // because the only session on the page belongs to the published model running on a different
     // corpus. A modelled row does not get to borrow a measured row's backend.
-    const ops = tierOps(dims);
-    fhe = ops * cost.fhe_ms_per_dot; mpc = ops * cost.mpc_ms_per_cmp; comm = ops * cost.mpc_comm_bytes_per_cmp;
+    const ops = tierOps(dims), cmps = tierCmps(dims);
+    fhe = ops * cost.fhe_ms_per_dot; mpc = cmps * cost.mpc_ms_per_cmp; comm = cmps * cost.mpc_comm_bytes_per_cmp;
     backend = "ckks + mpyc-shamir (cost model, not measured)";
     ctpt = cost.demo_ct_pt_ratio; projected = modelSize === "large";
     device = "cpu";
@@ -1950,9 +1956,9 @@ export function runClientPipeline(
         const rec = kem.decapsulate(e.cipherText, bob.secretKey);
         const pqOk = e.sharedSecret.every((b, i) => b === rec[i]);
 
-        // Classical half: X25519 ECDH, then a concatenate-then-hash combiner over both secrets and
-        // the transcript. SHA3-256 rather than a bare XOR so neither half can be cancelled out by an
-        // attacker who controls the other.
+        // Classical half: X25519 ECDH, then HKDF-SHA256 over both secrets with the transcript in
+        // its info. A KDF rather than a bare XOR, so neither half can be cancelled out by an
+        // attacker who controls the other. (This said SHA3-256 until Round 75; nothing here uses it.)
         const bobX = x25519.utils.randomSecretKey(), aliceX = x25519.utils.randomSecretKey();
         const bobXPub = x25519.getPublicKey(bobX), aliceXPub = x25519.getPublicKey(aliceX);
         const xA = x25519.getSharedSecret(aliceX, bobXPub), xB = x25519.getSharedSecret(bobX, aliceXPub);
@@ -1991,7 +1997,7 @@ export function runClientPipeline(
           // The info string is DECODED FROM THE COMBINER, not typed here. It used to be typed,
           // and it printed a separator the run had not used - it omitted the length tag the
           // backend applies. A run log that states what the run did has to read it.
-          + `ephemeral public key, combined with HKDF-SHA256(pq_ss || x25519_ss), info="${new TextDecoder().decode(hybridCombinerInfo(kemLabel, 32)).replace(/\|$/, "")}" then transcript c1||c2||ek1||ek2, per NIST SP 800-227 s4.6.3 — byte-identical to the backend, asserted by check:combiner`);
+          + `ephemeral public key, combined with HKDF-SHA256(pq_ss || x25519_ss), info="${new TextDecoder().decode(hybridCombinerInfo(kemLabel, 32)).replace(/\|$/, "")}" then transcript c1||c2||ek1||ek2: a NIST SP 800-227 s4.6.2 two-step combiner over the s4.6.3 transcript — byte-identical to the backend, asserted by check:combiner`);
         // Quantum entropy source (simulated state-vector measurement, not hardware) — measured health + throughput.
         const qr = generateQuantumBits(Number(config.qrng_bits ?? qrngCfg().bits),
           { source: "sim", postProcessing: String(config.qrng_post ?? qrngCfg().post_processing),
@@ -1999,6 +2005,10 @@ export function runClientPipeline(
         metric(stage, "qrng_health_passed", qr.healthPassed ? 1 : 0);
         metric(stage, "qrng_throughput_kbps", r1(qr.throughputBitsPerSec / 1000));
         metric(stage, "qrng_min_entropy_per_bit", r2(qr.minEntropyPerBit));
+        // The ASSESSED entropy the cutoffs come from, beside the estimate of this run's stream: two
+        // different numbers since Round 75, when the cutoffs stopped being computed from the stream
+        // they test (SP 800-90B 4.4 fixes H for the source).
+        metric(stage, "qrng_assessed_min_entropy_per_bit", r2(qr.assessedMinEntropyPerBit));
         metric(stage, "qrng_bits_delivered", qr.nBits);
         metric(stage, "qrng_extraction_rate", r2(qr.extractionRate));
         // The leftover-hash-lemma ceiling. Reported on every run because it is the only observable
@@ -2026,7 +2036,9 @@ export function runClientPipeline(
         emit("log", stage, `QRNG (simulated quantum measurement): ${qr.nBits} bits, health `
           + `${qr.healthConclusive ? (qr.healthPassed ? "PASS" : "FAIL") : "INCONCLUSIVE"} per SP 800-90B 4.4 `
           + `(repetition-count ${qr.repetitionCountLongest}/${qr.repetitionCountCutoff}, `
-          + `adaptive-proportion ${qr.adaptiveProportionMax}/${qr.adaptiveProportionCutoff}); `
+          + `adaptive-proportion ${qr.adaptiveProportionMax}/${qr.adaptiveProportionCutoff}, cutoffs at the `
+          + `assessed ${qr.assessedMinEntropyPerBit} bit/sample; this stream's estimate `
+          + `${r2(qr.minEntropyPerBit)}${qr.estimateBelowAssessment ? ", BELOW the assessment" : ""}); `
           + `SP 800-22 reported not gating: ${qr.sp80022Passed ? "pass" : "fail"} (monobit p=${qr.monobitP.toFixed(3)}), `
           + `${r1(qr.throughputBitsPerSec / 1000)} kbit/s`);
         break;
@@ -2246,13 +2258,13 @@ export function runClientPipeline(
         // (2019), protocol step 2: "If the secrecy capacity C_s is zero, they conclude the channel
         // is insecure and terminate the process."
         //
-        //     C_s = 1 - h(e) - g*h(e_chk),   g = Q_Eve / Q_Bob = 10^(loss_dB / 10)
+        //     C_s = 1 - h(e) - g*h(e_x + e_z),   g = Q_Eve / Q_Bob = 10^(loss_dB / 10)   (Qi Eq. 8)
         //
-        // The scalar 0.11 used here before is the g = 1 (LOSS-FREE) root of that expression, which
+        // The scalar 0.11 used here before is the g = 1 (LOSS-FREE) root of the pooled form, which
         // is why it coincided exactly with the Shor-Preskill BB84 bound. Real links are lossy and g
-        // grows with loss, so the true threshold falls fast: Qi 2019 measured g = 2.57 at 4.1 dB,
-        // giving ~0.048. This page's own free-space downlink measures around 24.5 dB, where the
-        // threshold is ~0.0003 - so 0.11 was wrong here by three orders of magnitude, and wrong in
+        // grows with loss, so the true threshold falls fast: 0.0757 at 0 dB, 0.0286 at Qi 2019's
+        // g = 2.57, and about 5.5e-6 on this page's 800 km downlink (37.0 dB with the detector since
+        // Round 75's Micius budget) - so 0.11 was wrong by four orders of magnitude, and wrong in
         // the PERMISSIVE direction: it delivered telemetry over channels whose secrecy capacity was
         // already zero.
         //
@@ -2291,10 +2303,11 @@ export function runClientPipeline(
         // At the DEFAULT budget it still cannot close at any range: 5 dB atmospheric + 3 dB pointing
         // plus the detector's 4.0 dB give g = 15.8 even at zero range, and C_s is -3.70 at 0.1 km
         // with no eavesdropper. Only with the fixed losses below about 0.65 dB in total does a short
-        // link close (at 0 + 0 dB it closes out to about 129 km, still well short of a LEO slant
-        // range). That is not a bug in this code, it is the finding: QSDC does not close over a LEO
-        // free-space downlink under the published criterion. Qi et al. demonstrated it at 4.1 dB on
-        // FIBRE; the default downlink here is 24.5 dB. (This comment said "at every setting this
+        // link close (at 0 + 0 dB it closes out to about 173 km under Round 75's Micius budget, still
+        // well short of a LEO slant range). That is not a bug in this code, it is the finding: QSDC
+        // does not close over a LEO free-space downlink under the published criterion. Qi et al.
+        // ran it over 1.5 km of fibre with a 4.1 dB back channel (g = 2.57); the default downlink's
+        // g here is about 808 (29.1 dB of channel and detector; C_s about -123). (This comment said "at every setting this
         // demo offers" until 2026-10-24 - written before the Atmospheric and Pointing controls
         // existed, with a g that omitted detector efficiency.)
         const secrecyNoEve = (() => {

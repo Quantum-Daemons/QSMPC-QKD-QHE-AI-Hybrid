@@ -108,13 +108,13 @@ def quantum_secure_direct_comm(
     The abort criterion is **secrecy capacity**, not a fixed QBER. Qi et al., Light Sci. Appl. 8,
     22 (2019), protocol step 2: if ``Cs`` is zero the channel is insecure and the transfer stops.
 
-        Cs = 1 - h(e) - g h(e_chk),    g = Q_Eve / Q_Bob = 10^(loss_dB / 10)
+        Cs = 1 - h(e) - g h(e_x + e_z),    g = Q_Eve / Q_Bob = 10^(loss_dB / 10)   (Qi Eq. 8)
 
-    This replaces a ``threshold=0.11`` parameter that was the g = 1 (LOSS-FREE) root of the same
-    expression -- which is why it coincided exactly with the Shor-Preskill BB84 bound and looked
-    right. Real links are lossy and ``g`` grows with loss, so the true tolerance collapses: at the
-    24.5 dB of this project's own free-space downlink it is ~3e-4, three orders of magnitude below
-    0.11 and wrong in the PERMISSIVE direction. The browser path was corrected first; this is the
+    This replaces a ``threshold=0.11`` parameter that was the g = 1 (LOSS-FREE) root of the pooled
+    form -- which is why it coincided exactly with the Shor-Preskill BB84 bound and looked right.
+    Real links are lossy and ``g`` grows with loss, so the true tolerance collapses: on this
+    project's 800 km downlink (37.0 dB with the detector, Round 75's Micius budget) it is about
+    5.5e-6, against 0.0757 at 0 dB, and 0.11 was wrong in the PERMISSIVE direction. The browser path was corrected first; this is the
     reference implementation catching up, and until now the two disagreed about whether the same
     nominal link delivers.
     """
@@ -155,7 +155,14 @@ def quantum_secure_direct_comm(
     # 2.15 dB, leaving ~1.95 dB unaccounted, presumably return-path optics. A fully defensible `g`
     # would be an explicit return-path budget with its terms named, rather than channel loss plus
     # detector efficiency. This is the honest floor, not the final answer.
-    loss_db = params.loss_db() - 10.0 * math.log10(params.detector_efficiency)
+    # THE STATION'S OWN OPTICS ARE NOT EVE'S (Round 75). The Micius budget added a receiver-optics
+    # term (telescope + fibre coupling, ~16%, about 8 dB) to `loss_db`, where it belongs for the key
+    # rate. Qi et al. kept the equivalent out of g: their system lost "about 13 dB" in its optical
+    # elements, of 25.1 dB in total, while g's back channel was 4.1 dB with the detector. Charging it
+    # to Eve would make the QSDC link unable to close at ANY setting, including 1 km with no
+    # atmosphere, which is a statement about this demo's arithmetic and not about the protocol.
+    loss_db = (params.loss_db() - params.receiver_optics_db()
+               - 10.0 * math.log10(params.detector_efficiency))
     g = 10.0 ** (loss_db / 10.0)
 
     # THE ABORT IS DECIDED ON THE UPPER BOUND, NOT ON THE POINT ESTIMATE.

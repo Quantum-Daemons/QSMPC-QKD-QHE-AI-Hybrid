@@ -3,11 +3,11 @@
 A prepare-and-measure BB84 simulation: Alice encodes random bits in random bases,
 the :mod:`~qsh.qkd.channel` transports them with loss/noise/eavesdropping, Bob
 measures in random bases, the parties sift, estimate QBER, and an ASYMPTOTIC secret
-key rate (SKR) is computed - by a two-intensity decoy-state bound built on the
-Vacuum+Weak estimator of Ma, Qi, Zhao & Lo (2005), with the vacuum yield supplied
-by the channel model rather than measured (see `_decoy_secure_fraction`), when
-``qkd_params`` is supplied, and by the legacy non-decoy GLLP form
-when it is not.
+key rate (SKR) is computed - by the ONE-decoy bound of Ma, Qi, Zhao & Lo (2005),
+section 3.5, Eq. (41), which is what a signal + one weak decoy protocol can actually
+use (see `_decoy_secure_fraction`; until Round 75 it was their Vacuum+Weak estimator
+fed a vacuum yield the protocol never measures), when ``qkd_params`` is supplied, and
+by the legacy non-decoy GLLP form when it is not.
 
 Round 45 corrected the word "finite-key" here. Neither branch applies a finite-key
 correction: both are asymptotic bounds, paying no statistical penalty at all.
@@ -85,26 +85,45 @@ def _h2(x: float) -> float:
     return float(-x * np.log2(x) - (1 - x) * np.log2(1 - x))
 
 
+def signal_qber(params: ChannelParams, mu: float) -> float:
+    """The OBSERVED QBER of the signal states, ``E_mu`` (Ma, Qi, Zhao & Lo 2005, Eq. 11).
+
+    ``E_mu = (e0 Y0 + e_det (1 - exp(-eta mu))) / Q_mu`` with ``Q_mu = Y0 + 1 - exp(-eta mu)``,
+    ``Y0 = 2 p_dark`` (two detectors) and ``e0 = 1/2``. It is exactly the ``E_mu`` that
+    `_decoy_secure_fraction` puts into the rate, so the QBER a run reports, the abort test and the
+    bound now share one number. Until Round 75 the decoy path reported `intrinsic_qber`, whose
+    background term is ``0.5 p_dark / eta`` - one detector, and a whole photon per pulse where the
+    source sends mu - which read 6 percent low at 50 km, 1.5x low at 100 km and 2.8x low at 140 km.
+    `quantumSim.ts::signalQber` is the browser twin.
+    """
+    eta = params.transmittance()
+    y0 = 2.0 * params.dark_count_prob
+    q_mu = y0 + 1.0 - float(np.exp(-eta * mu))
+    if q_mu <= 0.0:
+        return 0.5
+    return float(min(0.5, (0.5 * y0 + e_det_for_bound(params) * (1.0 - float(np.exp(-eta * mu))))
+                     / q_mu))
+
+
 def _decoy_secure_fraction(eta: float, mu: float, nu: float, e_det: float, y0: float,
                            f_ec: float, sift_ratio: float) -> tuple[float, float, float]:
-    """Two-intensity decoy-state secret-key rate per pulse (Ma, Qi, Zhao & Lo 2005).
+    """Two-intensity (one-decoy) secret-key rate per pulse: Ma, Qi, Zhao & Lo 2005, section 3.5, Eq. (41).
 
-    WHICH PROTOCOL THIS IS, stated precisely because the citation alone implies a different one.
-    Eqs. (34)-(37) belong to the paper's section 3.4, **Vacuum+Weak decoy state** - THREE intensities
-    (signal, weak decoy, vacuum), where the vacuum decoy is what makes the bound tight: "from vacuum
-    decoy state, Eq. (33), Alice and Bob can estimate Y0 accurately". The paper's own TWO-intensity
-    treatment is section 3.5, One decoy state, and it handles the missing vacuum by BOUNDING Y0
-    rather than knowing it.
+    WHICH PROTOCOL THIS IS. The protocol sends a signal and ONE weak decoy, so the vacuum yield Y0 is
+    never measured. Section 3.5's "tighter bound" handles that by letting Eve choose Y0, and argues
+    "it is advantageous for Eve to pick Y0 to be zero"; Eq. (41) is section 3.4's estimator with Y0 = 0:
 
-    This implementation does neither exactly. It sends signal + one weak decoy - genuinely two
-    intensities - and supplies `y0` from the channel model (`2 * dark_count_prob`) instead of
-    measuring it with a vacuum decoy or bounding it. In a simulator that is legitimate and in fact
-    tighter than section 3.5, because the dark-count rate is known exactly rather than estimated;
-    on hardware it would not be available and the section 3.5 bound would be the honest choice.
+        Y1 >= mu / (mu nu - nu^2) * (Q_nu e^nu - Q_mu e^mu nu^2 / mu^2)
+        e1 <= E_nu Q_nu e^nu / (Y1 nu)
 
-    So: the estimator is section 3.4's, the intensity count is section 3.5's, and the vacuum yield is
-    the model's. Calling it "the two-intensity bound of Ma et al." is true about the intensity count
-    and misleading about the equations, which is why this paragraph exists.
+    The OBSERVED gains and error rates (Q_mu, Q_nu, E_mu, E_nu) still carry the channel's real
+    background `y0`, because those are what a receiver measures; only the estimate stops assuming it.
+
+    UNTIL ROUND 75 this used section 3.4's Vacuum+Weak estimator with `y0 = 2 * dark_count_prob`
+    supplied from the model - a vacuum yield the protocol has no way to learn. Its own docstring
+    said so and called the result "tighter than section 3.5" without saying by how much: measured at
+    the shipped intensities, 1.3 percent at 50 km, 12.6 percent at 100 km, 40 percent at 120 km, and a
+    maximum distance of 140.9 km against 134.7 km here.
 
     A signal (``mu``) + decoy (``nu``) intensity pair lower-bounds the single-photon yield ``Y1`` and
     upper-bounds the single-photon error ``e1``; the GLLP rate then keeps only the *secure* single-photon
@@ -120,12 +139,11 @@ def _decoy_secure_fraction(eta: float, mu: float, nu: float, e_det: float, y0: f
     if mu <= nu or q_nu <= 0.0:                          # decoy must be strictly weaker than the signal
         return 0.0, e_mu, 0.5
     e_nu = (e0 * y0 + e_det * (1.0 - float(np.exp(-eta * nu)))) / q_nu
-    # single-photon yield lower bound + error upper bound (Ma et al. 2005, Eqs. 34-37)
+    # single-photon yield lower bound + error upper bound, one decoy and Y0 unknown (Eq. 41)
     y1 = max(0.0, (mu / (mu * nu - nu * nu)) * (
-        q_nu * float(np.exp(nu)) - (nu * nu) / (mu * mu) * q_mu * float(np.exp(mu))
-        - (mu * mu - nu * nu) / (mu * mu) * y0))
+        q_nu * float(np.exp(nu)) - (nu * nu) / (mu * mu) * q_mu * float(np.exp(mu))))
     q1 = y1 * mu * float(np.exp(-mu))                    # secure single-photon gain
-    e1 = min(0.5, max(0.0, (e_nu * q_nu * float(np.exp(nu)) - e0 * y0) / (y1 * nu))) if y1 > 0.0 else 0.5
+    e1 = min(0.5, max(0.0, e_nu * q_nu * float(np.exp(nu)) / (y1 * nu))) if y1 > 0.0 else 0.5
     r = q1 * (1.0 - _h2(e1)) - f_ec * q_mu * _h2(e_mu)   # GLLP single-photon rate per pulse
     return max(0.0, r) * sift_ratio, e_mu, e1
 
@@ -211,11 +229,15 @@ def run_bb84(
         alice_bases = (rng.random(n_pulses) >= p).astype(int)   # P(basis 0) = p
         bob_bases = (rng.random(n_pulses) >= p).astype(int)
         mu = max(1e-3, float(qkd_params.mu_signal))
-        detected = rng.random(n_pulses) < (1.0 - np.exp(-mu * eta))   # P(>=1 photon detected), Poisson
+        # The GAIN, background included: Q_mu = Y0 + 1 - exp(-eta mu), as `quantumSim.ts::bb84` counts
+        # it. This omitted Y0 until Round 75, which matters where eta mu approaches 2 p_dark.
+        q_mu = 2.0 * params.dark_count_prob + 1.0 - np.exp(-mu * eta)
+        detected = rng.random(n_pulses) < q_mu
         sift = detected & (alice_bases == bob_bases)
-        # the multiphoton (PNS) insecurity is now accounted for analytically by the decoy-state single-photon
-        # bound (see the secure-rate tail), NOT by inflating the physical QBER -> measured QBER = true error.
-        qber_phys = intrinsic_qber(params)
+        # the multiphoton (PNS) insecurity is accounted for analytically by the decoy-state single-photon
+        # bound (see the secure-rate tail), NOT by inflating the physical QBER. The observed QBER is the
+        # model's own signal QBER E_mu - the same number the bound uses (Round 75; `signal_qber`).
+        qber_phys = signal_qber(params, mu)
         pp_threshold = float(qkd_params.pp_threshold)
 
     bob_bits = alice_bits.copy()
@@ -241,8 +263,8 @@ def run_bb84(
         secure_bits = int(secure_fraction * n_sift)
     else:
         # two-intensity decoy-state single-photon secure rate - mu_decoy genuinely tightens Y1/e1.
-        # Ma et al. 2005 Eqs. 34-37 (their section 3.4, Vacuum+Weak); `y0` below is MODELLED here, not
-        # measured from a vacuum decoy - see `_decoy_secure_fraction` for why that is not the same protocol.
+        # Ma et al. 2005 section 3.5, Eq. 41 (one decoy, Y0 unknown). `y0` below enters only the
+        # observed gains, as the receiver would measure them; the estimate no longer assumes it.
         nu = min(max(1e-4, float(qkd_params.mu_decoy)), mu * 0.9)      # decoy strictly weaker than the signal
         y0 = 2.0 * params.dark_count_prob                             # background yield (two detectors)
         sift_ratio = p * p + (1.0 - p) * (1.0 - p)                    # biased-basis reconciliation ratio
