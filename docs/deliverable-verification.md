@@ -5983,6 +5983,12 @@ round.**
 - E91 on `/orchestration`: S = 2.69 at a model QBER of 0.0247, 2 sqrt(2) (1 - 2Q); 91,303 secure bits.
 - Cross-origin isolated; console: no errors, only "Failed to create WebGPU Context Provider".
 
+**A CI fragility removed.** `npm ci` failed twice on one commit in Round 75, a Python job and a web
+job, both on `onnxruntime-node`'s install script timing out on api.nuget.org. The package is pulled in
+by `@huggingface/transformers`, nothing here imports it, and the download is only its CUDA binaries;
+its CPU ones are bundled. CI and the web image now set `ONNXRUNTIME_NODE_INSTALL=skip`, the switch the
+package documents.
+
 BUSINESS DOC RECONCILED Round 76. The out-of-repo document is brought level with this round. Its content
 is not quoted here, in the checklist, or in any commit - only the fact of the reconciliation, which is
 what gate 16 reads.
