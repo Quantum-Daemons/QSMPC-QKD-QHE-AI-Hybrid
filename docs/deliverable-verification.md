@@ -5859,6 +5859,35 @@ The QSMPC stage's threshold was a literal, min(3, n), beside an unread config ke
 - `tests/test_the_decoy_bound_is_the_one_decoy_bound.py`, `tests/test_the_satellite_channel_is_sourced.py`,
   `tests/test_health_tests_use_the_assessed_entropy.py`, and new cases in `tests/test_pqc.py`.
 
+**Walked on the deploy (2b70f2d, `index-D7qL8NgB.js`), in fresh tabs, after the two deploys of this
+round.** The first deploy (892c43b) was walked too, and the page showed two defects; both are fixed
+in 2b70f2d and were re-walked.
+- **Found on the page: the satellite's per-pulse rate had lost its digits.** Six sites, in both
+  languages, emitted it at six decimals, which held the downlink's 1.723e-5 to two significant
+  figures, so the control-plane panel printed "1.700e-5" beside a measured 1723 bit/s. Nine decimals
+  at every site now (the one-rounding gate holds them equal), and the display sites format to four
+  significant figures.
+- **Found on the page: the QSDC verdict named one loss and a g from another.** It read "at 34 dB channel
+  loss (g=807.63, detector included)", and 807.63 is 29.1 dB: since this round g leaves out the
+  station optics, as Qi et al.'s did. The label now says "the detector in, the station optics out", and
+  the log names the 29.1 dB for what it is. Two comments still quoted the old budget's g = 15.8, C_s
+  = -3.70 and 0.65 dB; recomputed, they are 12.6, -1.01 and about 4.8 dB.
+- Telecom (fibre, 50 km): "secure fraction per pulse 1.952e-3 bit/pulse, this run's one-decoy bound",
+  citing section 3.5, Eq. (41); the run's QBER 0.0160 and 39,033 secure bits; the local Python bound
+  gives 1.9517e-3 at E_mu 0.0161. `/validations` "Run BB84" reads 0.016, 0.001952 and 39,033.
+- Satellite (800 km): 1.723e-5 bit/pulse, 1723 bit/s, 344 secure bits, a sampled QBER of 0.0102
+  against the model's 0.0117; QSDC NOT AVAILABLE with C_s -123.39 and no eavesdropper, the link budget
+  named as the limit.
+- QRNG: "cutoffs at the assessed 0.9 bit/sample; this stream's estimate 0.97", repetition count 16 of
+  24 and adaptive proportion 545 of 625, the two cutoffs SP 800-90B gives at H = 0.9.
+- E91 on `/orchestration`: S = 2.66 at a model QBER of 0.0297, which is 2 sqrt(2) (1 - 2Q); 145,722
+  secure bits.
+- Finance and medical: the measured branch ran (node-seal CKKS with Polytune), 922.48 KB at two
+  classes as before, and the medical student's encrypted convolution ran on its published weights;
+  every published model's re-scoring PASSED.
+- Cross-origin isolated; no horizontal overflow; console: no errors, only "Failed to create WebGPU
+  Context Provider" warnings, expected in a browser without WebGPU.
+
 BUSINESS DOC RECONCILED Round 75. The out-of-repo document is brought level with this round. Its content
 is not quoted here, in the checklist, or in any commit - only the fact of the reconciliation, which is
 what gate 16 reads.

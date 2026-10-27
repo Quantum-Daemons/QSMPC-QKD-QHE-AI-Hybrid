@@ -3243,3 +3243,9 @@ every one, because the conversions decrypted and the MPC opened its results to e
 chose masking now over correcting the sentence. The masks are measured rather than asserted: each
 run reports its own statistical bound, and a test checks that what the key holder decrypts is a
 masked value and that the parties' shares add up to the real one.
+
+**The page found what the gates did not.** Both walk defects were consistent everywhere a test could
+see: one rounding at every site, one formula in both languages. The first was a precision chosen for
+one magnitude and wrong at another, and the second a label that was right until this round changed
+what its g leaves out. Reading the panel beside the metric it prints is still the check that finds
+these.
