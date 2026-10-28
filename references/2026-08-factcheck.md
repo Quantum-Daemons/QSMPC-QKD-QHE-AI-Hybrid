@@ -95,7 +95,7 @@ is self-consistent and the NAME is what misattributes it.
 
 **BOTH CONFIRMED Round 53, and the first is worse than reported.**
 
-*`f_ec = 1.22` is not Table 1.* Table 1's columns are lambda, alpha, e_detector, Y0, eta_Bob and
+*`f_ec = 1.22` is not Table 1.* Table 1's columns are $`\lambda`$, $`\alpha`$, $`e_{\mathrm{detector}}`$, $`Y_0`$, $`\eta_{\mathrm{Bob}}`$ and
 **f = 2MHz / 0.1MHz - a repetition rate**. 1.22 is from the prose: *"use f(e) = 1.22, which is the
 upper bound of f(e) in secure distance for this experiment"*. Four of the five defaults ARE Table 1;
 the docstring said all five were. A correct number under a wrong provenance - the harder kind to
@@ -105,7 +105,7 @@ notice, because nothing computed from it is wrong.
 al. say so in the text". The text says the reverse: Eq. (42), which is what Figure 2 plots, is
 introduced with **"where q = 1/2 with standard BB84"**.
 
-**And the reference values are not in the paper at all.** R/eta ~ 0.11 and R/eta^2 ~ 0.15 appear
+**And the reference values are not in the paper at all.** $`R/\eta \approx 0.11`$ and $`R/\eta^2 \approx 0.15`$ appear
 nowhere in its prose - searched. `tests/test_decoy_reference.py` passes `q_sift=1.0` to reach them,
 which doubles the rate; at the q the paper names for that figure this model gives 0.0568 and 0.0755.
 Three possibilities and the record does not pretend to know which: the values were read off the
