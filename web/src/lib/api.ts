@@ -96,10 +96,11 @@ export const api = {
     // could not see it, because an `undefined` React child renders as nothing at all rather than as
     // the token "undefined" - the one wrong value that leaves no trace on the page.
     //
-    // Six decimals rather than five: the decoy bound is ~4x smaller than the figure this used to
-    // round, and 1e5 would print 0.00235 where the control-plane panel shows 0.002355.
+    // Nine decimals, at every site that emits it: six (Round 45) kept two significant figures of
+    // the satellite downlink's 1.723e-5 under Round 75's Micius budget, and the panel printed
+    // 1.700e-5. Display sites format to four significant figures.
     return Promise.resolve({ qber: Math.round(r.qber * 1e4) / 1e4,
-      skr_per_pulse: Math.round(r.secretKeyRate * 1e6) / 1e6,
+      skr_per_pulse: Math.round(r.secretKeyRate * 1e9) / 1e9,
       secure_key_bits: r.secureKeyBits, eavesdropper_likely: r.qber > securityScoringCfg().qber_secure_threshold });
   },
   results: () => j<{ name: string; bytes: number }[]>("/api/results"),

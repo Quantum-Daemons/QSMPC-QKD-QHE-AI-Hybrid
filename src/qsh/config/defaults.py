@@ -120,7 +120,8 @@ class QKDConfig:
     #
     # DEFAULT: 100 MHz, from Park, Kim, Im, Jo, Kim, Choi & Ihn, "Quantum key distribution over a
     # 2 km free-space channel with a high secure key rate", arXiv:2607.24118v1 (2026-07-27), CC BY
-    # 4.0, which reports 164.8 kbps at QBER ~3.3% over 2 km at 100 MHz. It has an arXiv DataCite DOI
+    # 4.0, which reports (v2, 2026-10-16) an average finite-key rate of 110 kbps at QBER 3.28% over 2 km
+    # at 100 MHz - v1 said 164.8 kbps, superseded in Round 75. It has an arXiv DataCite DOI
     # and NO journal DOI. That paper's channel is a 2 km horizontal path and this model's default is
     # 50 km of fibre, so the CLOCK is borrowed and the rest of the experiment is not - the demo must
     # never present its derived bit/s as a reproduction of that result.
@@ -149,9 +150,15 @@ class QKDConfig:
     #                          here     GYS      ratio   favours the demo?
     #   fibre loss             0.2      0.21     0.95x   yes, less loss
     #   detector efficiency    0.25     0.045    5.56x   yes, a far better detector
-    #   dark count             1e-5     1.7e-6   5.88x   NO, more noise
+    #   dark count (Y0, total) 2e-5     1.7e-6   11.8x   NO, more noise
     #   misalignment           0.015    0.033    0.45x   yes, less error
-    #   error correction f_EC  1.16     1.22     0.95x   yes, better error correction
+    #   error correction f_EC  1.16     1.22*    0.95x   yes, better error correction
+    #
+    # Y0 is compared like for like since Round 75: 1e-5 here is PER DETECTOR and the model's Y0 is
+    # 2 x 1e-5, while GYS's 1.7e-6 is the total background yield - the row read 1e-5 against 1.7e-6,
+    # "5.88x". * GYS states no f: 1.22 is Ma et al.'s own choice for the GYS link ("the upper bound
+    # of f(e) in secure distance for this experiment"), and 1.16 is Cascade's efficiency at 1-5%
+    # error as tabulated by Lutkenhaus, PRA 61, 052304 (2000), arXiv:quant-ph/9910093.
     #
     # FOUR OF FIVE LEAN THE SAME WAY. None is wrong - a 2004 InGaAs APD is not what anyone would
     # model in 2026, and there is no single published detector efficiency to be right about. But the
@@ -162,7 +169,7 @@ class QKDConfig:
     dark_count_prob: float = 1e-5             # modelling choice; GYS 1.7e-6
     misalignment: float = 0.015               # modelling choice; GYS 0.033
     eve_intercept_fraction: float = 0.0       # demo control, not a device property
-    error_correction_eff: float = 1.16        # modelling choice; GYS 1.22 (Cascade/LDPC overhead)
+    error_correction_eff: float = 1.16        # Cascade at 1-5% error (Lutkenhaus 2000); Ma et al. use 1.22 for GYS
     # --- free-space (satellite downlink) channel ---
     #
     # These existed only as TypeScript literals in quantumSim.ts's FREE_SPACE, which every satellite
@@ -172,48 +179,66 @@ class QKDConfig:
     # numerically, so editing config.yaml moved the Python model and left the browser on the constant
     # with nothing to indicate it. Fibre lives in config; free space now does too.
     #
-    # Values are the ones the TS literals carried, so this is a move rather than a retune.
-    free_space_distance_km: float = 800.0      # ground-to-LEO slant range
-    free_space_detector_efficiency: float = 0.4
-    free_space_dark_count_prob: float = 1e-5
-    free_space_misalignment: float = 0.025     # pointing error dominates over optical misalignment
+    # MICIUS, SOURCED VALUE BY VALUE (Round 75). Until then the set was not "Micius's published
+    # configuration" as the comment said: the aperture was another station's, the loss budget had no
+    # receiver-optics term (7-8 dB too little loss at 800 km) and the noise was 17-35x Micius's, so the
+    # page's ~5.5 kbit/s came from two errors offsetting. Every figure below is now read in Liao et al.,
+    # Nature 549, 43 (2017), arXiv:1707.00542 - the Xinglong downlink - unless it says otherwise.
+    free_space_distance_km: float = 800.0      # inside Liao's 645-1200 km pass
+    free_space_detector_efficiency: float = 0.5           # "efficiency 50%"
+    # "The overall optical efficiency including the receiving telescope and the fiber coupling on the
+    # ground station is ~16%" - a separate budget line (about 8 dB) that the model did not have.
+    free_space_receiver_optics_efficiency: float = 0.16
+    # "dark counts <25 Hz", and photons are tagged "within a 2-ns time window": 25 x 2e-9 = 5e-8 per
+    # detector per pulse. It was 1e-5, 200x Micius's.
+    free_space_dark_count_prob: float = 5e-8
+    # Liao's measured QBER "with an average of 1.1%, consistent with the expected error rate due to
+    # background noise and polarization visibility". Used as the error floor because this model has no
+    # separate background-light term; the polarisation contrast alone (280:1) would be 0.36%. It was
+    # 0.025, justified by a 2 km horizontal ground link (arXiv:2607.24118), which is not this channel.
+    free_space_misalignment: float = 0.011
     #
     # A satellite downlink is NOT attenuated per kilometre. It was modelled that way here -
-    # `distance_km * 0.035`, a fibre law - which happened to give 28 dB at 800 km, close to the 27 dB
-    # Micius reports, and then diverged: 42 dB at 1200 km against a physical ~28, 70 against ~32 at
-    # 2000, 175 against ~40 at 5000. The Downlink control has no maximum, so anyone dragging it past
-    # about 1000 km was reading numbers with no physical meaning.
+    # `distance_km * 0.035`, a fibre law - which diverged from the physics past about 1000 km: 42 dB
+    # at 1200 km, 70 at 2000, 175 at 5000. The Downlink control has no maximum.
     #
     # The dominant term is DIFFRACTION, which scales as 1/r^2: the transmitted beam spreads to
-    # theta*r and the ground telescope captures (D_rx / (theta*r))^2 of it. Atmosphere contributes a
-    # fixed few dB rather than a per-km rate, because a downlink crosses it once near the ground -
-    # 3 to 8 dB at 1200 km in the literature, with pointing under 3 dB.
-    #
-    # Defaults are Micius's published configuration (Liao et al., Nature 549, 43 (2017);
-    # arXiv:1707.00542): ~10 urad far-field divergence, 1.2 m ground aperture.
-    free_space_beam_divergence_urad: float = 10.0   # far-field, near-diffraction-limited
-    free_space_rx_aperture_m: float = 1.2           # optical ground station telescope diameter
-    free_space_atmospheric_db: float = 5.0          # absorption + turbulence, whole path, not per km
-    free_space_pointing_db: float = 3.0             # acquisition/tracking residual
+    # theta*r and the ground telescope captures (D_rx / (theta*r))^2 of it. Liao: a "near-diffraction-
+    # limited far-field divergence of ~10 urad", "the beam diameter expands to about 10 m" at 1200 km,
+    # and "the diffraction loss is estimated to be 22 dB at 1200 km" - this law gives 21.6 dB there.
+    # Atmosphere and pointing are fixed per pass: "at 1200 km the loss due to atmospheric absorption
+    # and turbulence is in the range of 3 dB to 8 dB, and the loss due to pointing error is less than
+    # 3 dB". (A comment here said Micius "reports 27 dB" total; Liao states no total.)
+    free_space_beam_divergence_urad: float = 10.0   # Liao: ~10 urad far field
+    free_space_rx_aperture_m: float = 1.0           # Liao: Xinglong, "an aperture of 1 m" (1.2 m is Yin 2017's stations)
+    free_space_atmospheric_db: float = 5.0          # inside Liao's 3-8 dB, whole path, not per km
+    free_space_pointing_db: float = 3.0             # Liao's upper value, "less than 3 dB"
     # --- decoy-state / efficient-BB84 parameters the AI optimizer (qkd/optimize.py) tunes ---
     # THE INTENSITIES ARE NOW THE FINITE-KEY OPTIMUM, NOT THE ASYMPTOTIC ONE, and the difference
-    # is the point. mu ~ 0.5 is the textbook optimum for the ASYMPTOTIC decoy rate, and that is what
-    # these were. But the quantity that decides whether this demo distributes a key at all is the
+    # is the point. mu ~ 0.5 is the textbook optimum for the ASYMPTOTIC decoy rate ON THE GYS LINK
+    # (Ma et al.: 0.48 at f = 1.22), and that is what these were. This channel's own asymptotic
+    # optimum is elsewhere: mu = 0.665, nu = 0.055 under the one-decoy bound (row three below). But the quantity that decides whether this demo distributes a key at all is the
     # composable finite-key length, and its optimum is elsewhere: `finite_key.optimise_parameters`
     # searches exactly the variables Rusca et al. say they optimise - the intensities, their
     # probabilities, and the basis bias - by differential evolution, and lands here.
     #
     # Measured trade, at the shipped 50 km channel:
     #
-    #     mu=0.5,   nu=0.1     asymptotic 0.002368 bit/pulse   positive-key threshold 3.84e7 pulses
-    #     mu=0.342, nu=0.142   asymptotic 0.001977 bit/pulse   positive-key threshold 1.41e7 pulses
+    #     mu=0.5,   nu=0.1     asymptotic 0.002318 bit/pulse   positive-key threshold 3.84e7 pulses
+    #     mu=0.342, nu=0.142   asymptotic 0.001952 bit/pulse   positive-key threshold 1.41e7 pulses
+    #     mu=0.665, nu=0.055   asymptotic 0.002452 bit/pulse   (this channel's asymptotic optimum)
+    #
+    # The asymptotic column is Ma et al.'s one-decoy Eq. (41) since Round 75 (it read 0.002368 and
+    # 0.001977 under the Vacuum+Weak estimator with a modelled vacuum yield); the thresholds come from
+    # `finite_key.py` and did not move.
     #
     # BOTH ROWS AT p_signal = p_z = 0.5, the shipped setting, so the two are comparable. The 1.31e7
     # an earlier revision of this table printed is the optimiser's FULL solution, which also sets
     # p_signal = 0.3764 - not a config key here - and is therefore not what this build computes; see
     # the note on `pulses` above.
     #
-    # So the finite-key optimum costs 16.5% of the headline asymptotic rate and buys a 2.7x smaller
+    # So the finite-key optimum costs 15.8% of the mu=0.5 asymptotic rate - and 20.4% of this
+    # channel's asymptotic optimum, which the table did not show until Round 75 - and buys a 2.7x smaller
     # block (38,410,230 -> 14,055,773). That is worth taking, because the asymptotic rate was never
     # the binding constraint: at 3.84e7 pulses the Python Monte Carlo allocates ~2.0 GB, which is not
     # something to put behind an interactive endpoint, while 1.41e7 costs ~0.74 GB (measured 0.737 GB
@@ -221,7 +246,7 @@ class QKDConfig:
     #
     # Chosen by an optimiser, so the value is reproducible rather than tuned by hand:
     #   python -c "from qsh.qkd.finite_key import optimise_parameters; print(optimise_parameters()[0])"
-    mu_signal: float = 0.3416         # finite-key optimum; the asymptotic optimum is ~0.5
+    mu_signal: float = 0.3416         # finite-key optimum; the asymptotic optimum here is 0.665 (GYS: ~0.5)
     mu_decoy: float = 0.1417          # decoy mean photon number, optimised jointly with the signal
     basis_prob: float = 0.5           # P(Z basis) — biased-basis (efficient) BB84 raises the sift ratio
     #: QBER abort threshold, and it is a FIBRE-QKD post-processing figure - not a QSDC one.
@@ -231,11 +256,12 @@ class QKDConfig:
     #: true only for the LOSS-FREE case. The published QSDC criterion (Qi et al., Light Sci. Appl.
     #: 8, 22 (2019), step 2) is Cs > 0 with
     #:
-    #:     Cs = Q_Bob[1 - h(e) - g h(e_chk)],   g = Q_Eve/Q_Bob = 10^(loss_dB/10)
+    #:     Cs = Q_Bob[1 - h(e) - g h(e_x + e_z)],   g = Q_Eve/Q_Bob = 10^(loss_dB/10)  (Qi Eq. 8)
     #:
-    #: so the threshold FALLS with channel loss: 0.11 at 0 dB, ~0.048 at the 4.1 dB Qi et al.
-    #: actually measured, and ~0.0003 at the ~24.5 dB this project's own free-space downlink
-    #: reports. Using 0.11 on a lossy link is wrong in the PERMISSIVE direction - it passes a
+    #: so the threshold FALLS with channel loss: 0.0757 at 0 dB, 0.0286 at Qi et al.'s g = 2.57,
+    #: and about 5.5e-6 on this project's 800 km downlink (37.0 dB with the detector). Until Round 75
+    #: this read 0.11 / ~0.048 / ~0.0003 - the pooled h(e_chk) form, without the detector, on a
+    #: downlink budget that had no receiver optics. Using 0.11 on a lossy link is wrong in the PERMISSIVE direction - it passes a
     #: channel whose secrecy capacity is already zero. The satellite path therefore computes Cs
     #: directly (clientCompute qsdc_telemetry) rather than comparing against this constant.
     #:
@@ -340,7 +366,10 @@ class FHEConfig:
     #
     # Raising it again is one line HERE and one in config.yaml, once batched convolution exists to
     # spend the slots on. Security is not the constraint either way: coeff_mod_bit_sizes sums to 200
-    # bits and tc128 admits 218 at N=8192, 438 at N=16384.
+    # bits, under both the 2018 HE standard's 128-bit caps that SEAL's tc128 table encodes (218 at
+    # N=8192, 438 at N=16384) and the LOWER caps of the 2024 guidelines, Bossuat et al., IACR CiC
+    # 1(4), Table 5.2 (214 and 430 for ternary secrets; read Round 75). The library guard is the 2018
+    # table, so a chain between the two would pass it while missing the current guidance.
     poly_modulus_degree: int = 8192
     coeff_mod_bit_sizes: tuple[int, ...] = (60, 40, 40, 60)
     global_scale_bits: int = 40
@@ -444,7 +473,18 @@ class BenchmarkConfig:
     quantum_qubits: int = 8
     quantum_samples: int = 20
     hybrid_samples: int = 6            # MPC ReLU/argmax is per-sample; cap to keep the run responsive
-    mpc_comm_bytes_per_compare: int = 256   # wire bytes per secure comparison (was a literal in mpc/)
+    # THE MPyC TIER'S PARTIES, since Round 75 separate processes over loopback TCP (qsh/mpc/parties.py).
+    # It ran as ONE in-process party with MPyC's defaults (m = 1, t = 0, k = 30), so its Shamir
+    # shares were the values themselves, nothing crossed a wire, and the communication it reported
+    # was 256 B per comparison multiplied out. Measured at m = 3, t = 1, k = 40: 15,120 B, 59x that.
+    mpc_parties: int = 3                    # Shamir parties; honest majority needs t < m/2
+    mpc_threshold: int = 1                  # corrupted parties tolerated
+    mpc_sec_param: int = 40                 # statistical security, as the browser's Polytune tier uses
+    # The masks of the hybrid's FHE <-> MPC conversions (qsh/mpc/secret_inference.py), uniform on
+    # [-2^b, 2^b). A value of size B behind one is hidden to statistical distance B / 2^b, which each
+    # run reports. 30 is the most 64-bit fixed point holds (integer part 2^31) and costs no precision
+    # measured through a CKKS round trip: 5e-7 at 2^30 against 8e-6 at 2^36 and 2e-4 at 2^40.
+    mpc_mask_bits: int = 30
     # per-use-case architectures (web-grounded). lightweight === the trained linear model (faithful SHAP);
     # medium/large are representative hidden-layer shapes. The encrypted hybrid preserves the plaintext
     # decision for any weights, so the metric is FHE-linear/MPC-non-linear COST + fidelity, not task SOTA.
@@ -463,8 +503,13 @@ class BenchmarkConfig:
         "linear": [1.0, ""], "cnn": [2.0, " (CNN-class)"], "transformer": [3.0, " (Transformer-class)"]})
     # representative per-op cost surrogates for the CLIENT demo only (the full backend measures real
     # latency; plaintext-JS wall-clock can't reproduce CKKS cost, so the demo reports these).
+    # The two MPC figures are the MPyC tier's own, measured (Round 75, qsh/mpc/parties.py) because
+    # the row they fill is labelled "ckks + mpyc-shamir": 15,120 B per secure comparison across three
+    # parties at t = 1, k = 40, the same on every run, and 2.2 ms of protocol time on loopback without
+    # gmpy2. They were 256 B and 1.6 ms, from no stated source; the bytes were 59x low.
+    # tests/test_the_cost_model_is_the_mpc_tier_measured.py re-measures the bytes.
     cost_per_op: dict = field(default_factory=lambda: {
-        "fhe_ms_per_dot": 12.0, "mpc_ms_per_cmp": 1.6, "mpc_comm_bytes_per_cmp": 256,
+        "fhe_ms_per_dot": 12.0, "mpc_ms_per_cmp": 2.2, "mpc_comm_bytes_per_cmp": 15120,
         "demo_ct_pt_ratio": 1483.0, "demo_max_abs_error": 4.6e-7,
         # `qsmpc_ct_pt_ratio` (1.32) was REMOVED on 2026-10-23. Its only reader was a static Overview
         # card comparing it with `demo_ct_pt_ratio`, and it was described as the Rate-1 QFHE
@@ -630,7 +675,13 @@ class WebConfig:
     # less. The reason is physical and not a setting. The free-space rate is therefore asymptotic-only
     # in a stronger sense than the fibre one, and the register says so rather than the number
     # pretending otherwise.
-    demo_sat_pulses: int = 10_000_000   # free-space BB84 channel uses in the demo satellite run
+    #
+    # ROUND 75 RAISED IT TO 20e6. The sourced Micius budget (receiver optics, 1 m aperture, Micius's
+    # detectors) and the one-decoy bound take the downlink to 1.723e-5 bit/pulse: 172 secure bits at
+    # 10e6, under the 256 a key needs, so both the browser and the Python stage would have stopped
+    # mixing QKD into the satellite session. 20e6 gives 344, deterministically. The browser's bound is
+    # analytic and costs nothing per pulse; the Python Monte Carlo now runs at the fibre default's 2e7.
+    demo_sat_pulses: int = 20_000_000   # free-space BB84 channel uses in the demo satellite run
 
 
 @dataclass

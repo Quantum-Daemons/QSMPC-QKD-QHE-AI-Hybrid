@@ -69,15 +69,19 @@ from ...orchestration.stages import (
 # `ChannelParams.loss_db()` applies the diffraction law, so both implementations answer 24.48 dB for
 # the same nominal link instead of 24.48 and 28.0.
 _SAT_DEFAULTS = {
-    "sat_distance_km": 800.0,         # LEO slant range (Micius-class)
-    "sat_detector_efficiency": 0.4,   # SNSPD ground receiver
-    "sat_dark_count_prob": 1e-5,      # per gate (night-sky background)
-    "sat_misalignment": 0.025,        # atmospheric turbulence + pointing error
+    # None -> QKDConfig.free_space_*: these three were literal copies of the config (0.4, 1e-5,
+    # 0.025) until Round 75, so retuning the config moved the browser and left this stage behind.
+    # The values are Liao et al. 2017's Micius downlink; see `QKDConfig`.
+    "sat_distance_km": None,          # None -> QKDConfig.free_space_distance_km
+    "sat_detector_efficiency": None,  # None -> QKDConfig.free_space_detector_efficiency
+    "sat_dark_count_prob": None,      # None -> QKDConfig.free_space_dark_count_prob
+    "sat_misalignment": None,         # None -> QKDConfig.free_space_misalignment
     "sat_eve": 0.0,                   # intercept-resend fraction (0 = no eavesdropper)
     # 10e6, raised with the decoy-model switch: at 4e6 this downlink yielded 223 secure bits,
     # under the 256 the stage needs to derive a key, so satellite silently stopped mixing QKD.
     # Kept in step with `WebConfig.demo_sat_pulses`; see the note there for the finite-key residual.
-    "sat_pulses": 10_000_000,         # channel uses (free-space links need many)
+    # 20e6 since Round 75: the Micius budget gives 344 secure bits there and 172 at 10e6.
+    "sat_pulses": 20_000_000,         # channel uses (free-space links need many)
     "sat_opt_pulses": 200_000,        # pulses per OptiQKD evaluation (fewer than a full run, for speed)
     # The two fixed terms of the budget, exposed in the WebUI so the inline eavesdrop check can be
     # demonstrated: they floor total loss at 8 dB by default, which makes every abort attributable to
@@ -98,16 +102,17 @@ def _sat_channel(ctx: Context):
     g = lambda k: ctx.config.get(k, _SAT_DEFAULTS[k])  # noqa: E731
     pick = lambda k, fallback: float(fallback if g(k) is None else g(k))  # noqa: E731
     return ChannelParams(
-        distance_km=float(g("sat_distance_km")),
-        detector_efficiency=float(g("sat_detector_efficiency")),
-        dark_count_prob=float(g("sat_dark_count_prob")),
-        misalignment=float(g("sat_misalignment")),
+        distance_km=pick("sat_distance_km", qkd.free_space_distance_km),
+        detector_efficiency=pick("sat_detector_efficiency", qkd.free_space_detector_efficiency),
+        dark_count_prob=pick("sat_dark_count_prob", qkd.free_space_dark_count_prob),
+        misalignment=pick("sat_misalignment", qkd.free_space_misalignment),
         eve_intercept_fraction=float(g("sat_eve")),
         free_space=FreeSpaceParams(
             beam_divergence_urad=qkd.free_space_beam_divergence_urad,
             rx_aperture_m=qkd.free_space_rx_aperture_m,
             atmospheric_db=pick("sat_atmospheric_db", qkd.free_space_atmospheric_db),
             pointing_db=pick("sat_pointing_db", qkd.free_space_pointing_db),
+            receiver_optics_efficiency=qkd.free_space_receiver_optics_efficiency,
         ),
     )
 
@@ -137,7 +142,9 @@ class SatelliteQKDStage(Stage):
         # channel use, and `skr` is a spec field name meaning bit/s. The satellite twin is
         # renamed in the same change as the fibre one - fixing one and not the other is the
         # asymmetry this round found on the browser side and would otherwise repeat here.
-        bus.metric("skr_per_pulse", round(res.secret_key_rate, 6), self.name)
+        # Nine decimals since Round 75, at every site: six kept two significant figures of this
+        # downlink's 1.723e-5, and the control-plane panel printed it as 1.700e-5.
+        bus.metric("skr_per_pulse", round(res.secret_key_rate, 9), self.name)
         bus.metric("secure_key_bits", res.secure_key_bits, self.name)
         bus.metric("channel_loss_db", loss_db, self.name)
         # AND THIS LINE, which Round 44 did not rename while writing the comment above saying that

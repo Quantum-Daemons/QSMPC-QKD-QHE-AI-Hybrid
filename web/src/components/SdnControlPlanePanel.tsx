@@ -78,18 +78,22 @@ export default function SdnControlPlanePanel({
           <table className="facts-table small">
             <thead><tr><th>Factor</th><th>Value in this run</th><th>Where it comes from</th></tr></thead>
             <tbody>
-              <tr><td>secure fraction per pulse</td><td>this run&apos;s two-intensity decoy-state bound</td><td>Ma, Qi, Zhao &amp; Lo, <i>Phys. Rev. A</i> <b>72</b>, 012326 (2005); <b>asymptotic</b> - no finite-key correction, so the infinite-key limit of a lower bound</td></tr>
+              <tr><td>secure fraction per pulse</td><td><b>{secretKeyRatePerPulse > 0 ? secretKeyRatePerPulse.toExponential(3) : "0"}</b> bit/pulse, this run&apos;s one-decoy bound</td><td>Ma, Qi, Zhao &amp; Lo, <i>Phys. Rev. A</i> <b>72</b>, 012326 (2005), section 3.5, Eq. (41): a signal and one decoy, vacuum yield not assumed; <b>asymptotic</b> - no finite-key correction, so the infinite-key limit of a lower bound</td></tr>
               <tr><td>x source repetition rate</td><td><b>{(topo.source_rate_hz / 1e6).toLocaleString()} MHz</b></td><td>an assumption; default 100 MHz from arXiv:2607.24118 (2 km free-space link), whose own measured rate is not reproduced or claimed here</td></tr>
               <tr><td>channel time</td><td>{topo.channel_seconds != null ? `${(topo.channel_seconds * 1e3).toFixed(3)} ms` : "n/a"}</td><td>pulses divided by that rate</td></tr>
             </tbody>
           </table>
           <Details summary="How this compares with published systems">
             <p>
-              arXiv:2607.24118 (preprint, 2026-07-27, CC BY 4.0) reports 164.8 kbit/s at QBER ~3.3% - its
-              measurement over its own channel, not this one&apos;s. Li et al. (<i>Nat. Photon.</i>{" "}
-              <b>17</b>, 416-421, 2023) measured <b>22.2 Mb/s at 50 km</b> on a 2.5 GHz clock,{" "}
-              <b>8.88 x 10<sup>-3</sup> bit/pulse</b> with full composable finite-key security - 3.8x higher
-              per pulse than the figure above, so this bound is not a ceiling on what hardware can do.
+              arXiv:2607.24118 (preprint, v2 2026-10-16, CC BY 4.0) reports an average finite-key rate of
+              110 kbit/s at QBER 3.28% (v1 said 164.8 kbit/s) - its measurement over its own channel, not
+              this one&apos;s. Li et al. (<i>Nat. Photon.</i>{" "}
+              <b>17</b>, 416-421, 2023) measured <b>22.2 Mb/s at 50 km</b> of fibre on a 2.5 GHz clock,{" "}
+              <b>8.88 x 10<sup>-3</sup> bit/pulse</b> with full composable finite-key security
+              {secretKeyRatePerPulse > 0
+                ? <> - {(8.88e-3 / secretKeyRatePerPulse).toFixed(1)}x this run&apos;s figure per pulse
+                    {usecase === "satellite_comms" ? <> (a fibre link against this satellite downlink)</> : null}</>
+                : null}, so this bound is not a ceiling on what hardware can do.
             </p>
             <p>
               A round of this project previously called the same number &quot;a modelled upper bound, ~2.4x a

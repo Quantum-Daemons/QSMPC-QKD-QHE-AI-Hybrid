@@ -82,22 +82,40 @@ def conv2d_plaintext(x_chw, conv: ConvSpec) -> np.ndarray:
     return out.T.reshape(int(conv.weight.shape[0]), ho, wo)
 
 
-def fhe_conv2d(backend, x_chw, conv: ConvSpec) -> np.ndarray:
+def fhe_conv2d(backend, x_chw, conv: ConvSpec, *, server_share=None, mask=None) -> np.ndarray:
     """Genuine encrypted convolution → ``(out_ch, Hout, Wout)`` (decrypted result).
 
     For each im2col patch: encrypt it, then for each output channel compute
     ``decrypt(dot_plain(patch_ct, kernel[oc]))[0] + bias[oc]``. The convolution arithmetic
     happens on the ciphertext; only the per-output scalar is decrypted (exactly as the dense
     ``_fhe_linear`` decrypts each logit).
+
+    With ``mask`` (shape ``(out_ch, Hout, Wout)``) this is the hybrid's masked conversion: the key
+    holder encrypts ITS share ``x_chw``, the server adds ``server_share`` (same shape) inside each
+    patch's ciphertext, and the bias plus the server's mask go in before decryption, so what is
+    decrypted is ``conv(x) + mask`` and never ``conv(x)``.
     """
     patches, (ho, wo) = im2col_patches(x_chw, conv)
     K = flatten_kernels(conv)                              # (oc, plen)
     oc = int(conv.weight.shape[0])
     out = np.empty((patches.shape[0], oc), dtype=float)
+    if mask is None:
+        if server_share is not None:
+            raise ValueError("a server share without a mask would decrypt the unmasked value")
+        for p in range(patches.shape[0]):
+            ct = backend.encrypt(patches[p])              # encrypt the receptive field once
+            for j in range(oc):
+                out[p, j] = backend.decrypt(backend.dot_plain(ct, K[j]))[0] + float(conv.bias[j])
+        return out.T.reshape(oc, ho, wo)
+    m = np.asarray(mask, dtype=float).reshape(oc, ho * wo).T     # (patch, channel)
+    server = None if server_share is None else im2col_patches(server_share, conv)[0]
     for p in range(patches.shape[0]):
-        ct = backend.encrypt(patches[p])                  # encrypt the receptive field once
+        ct = backend.encrypt(patches[p])                  # the key holder encrypts its share
+        if server is not None:
+            ct = backend.add_plain(ct, server[p])         # the server adds its own
         for j in range(oc):
-            out[p, j] = backend.decrypt(backend.dot_plain(ct, K[j]))[0] + float(conv.bias[j])
+            masked = backend.add_plain(backend.dot_plain(ct, K[j]), float(conv.bias[j]) + float(m[p, j]))
+            out[p, j] = backend.decrypt(masked)[0]
     return out.T.reshape(oc, ho, wo)
 
 

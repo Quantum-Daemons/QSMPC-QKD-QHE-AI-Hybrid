@@ -13,8 +13,10 @@
 // ByteEncode12/ByteDecode12, so the round-trip check that detects an out-of-range coefficient was
 // a no-op. 0.6.1 rejects all 780.
 //
-// Vectors: C2SP/CCTV ML-KEM `modulus/`, CC0-1.0. Every value in [q, 2^12-1] at every position in
-// the key, tested individually.
+// Vectors: C2SP/CCTV ML-KEM `modulus/`, CC0-1.0. Each key carries ONE out-of-range coefficient;
+// across the set every value in [q, 2^12-1] and every position in the key appears, each tested
+// individually (780 keys for ML-KEM-768). That is not every value at every position, which this
+// comment claimed until Round 75.
 //
 // WHERE THE VECTORS COME FROM, and why that changed. They used to be fetched at run time so this
 // always tested the CURRENT published set. That benefit is kept as `--live`, but the default is now
@@ -146,7 +148,7 @@ for (const [name, kem, expectedCount, expectedSha, expectedCtLen] of SETS) {
   //
   // The ML-DSA block below already had exactly this discipline, and its own comment says why: a noble
   // 0.2.x -> 0.6.x argument-order change broke every signature while TypeScript and the production
-  // build stayed green. `web/package.json` pins `^0.6.1`, so the same class of break is in range for
+  // build stayed green. `web/package.json` allows `^0.7.0` (0.7.0 locked), so the same class of break is in range for
   // ML-KEM. The lesson reached one of the two primitives in this file - the one-of-several-twins
   // shape this project has now recorded eleven times.
   //

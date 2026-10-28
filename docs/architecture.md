@@ -111,16 +111,43 @@ model distinguishability. Shuffling plus noise, defended by an appeal to shuffle
 privacy, does not hold.
 
 **This repository sends the non-linear half as secret shares instead**, evaluated under MPyC secure
-comparison, so the client never holds a plaintext intermediate to query. That is slower and it buys
-something specific. **The attack paper does not analyse the MPC-evaluated case**, so the honest
-statement is not "we are immune" but "the attack's precondition - a client that observes plaintext
-intermediates - is absent here, and no one has published the MPC analogue." It is recorded as an open
-question rather than a resolved one.
+comparison among three parties: the client, who holds the CKKS key; the server, who holds the model;
+and a helper. The conversions between the halves are masked, as Gazelle's and Delphi's are
+(`src/qsh/mpc/secret_inference.py`):
+
+- the server adds a fresh random mask inside each linear output's ciphertext, so the client decrypts
+  the intermediate plus the mask and never the intermediate;
+- the MPC runs on the sum of the client's masked value and the server's negated mask, adds a second
+  server mask to its result, and opens that to the client alone, which the server then removes
+  inside the next ciphertext;
+- the final MPC opens the class index to the client and nothing else.
+
+**What the client sees is statistically hidden, not perfectly.** CKKS is approximate, so the masks are
+real numbers, uniform on plus or minus 2^30 from the OS CSPRNG, where Gazelle and Delphi mask exactly
+over a ring. Behind such a mask a value of size B is B / 2^30 from any other in statistical distance,
+and every run reports the bound for its own view: the number of masked values times its largest
+one over 2^30: about 2e-7 on the test CNNs, and 1.4e-6 on the medical use case's 14x14 CNN, whose
+view has more than a thousand masked values. Two further limits are part of the claim. It is
+semi-honest with an honest majority: a client and helper who pool their Shamir shares recover the
+server's masks, and with them every intermediate. And the class index itself is an output, so
+label-only extraction from repeated queries stays possible; that is a different attack from this one.
+
+**Until Round 75 this paragraph claimed the property without the code having it.** The conversions
+were decrypt-then-share and open-to-everyone: the client decrypted each linear output in the clear,
+added the bias itself, and every party received every ReLU result. The attack's precondition, a
+client that observes plaintext intermediates, was present while this document said it was absent.
+
+**The attack paper does not analyse the MPC-evaluated case**, so the honest statement is still not
+"we are immune" but "the attack's precondition is absent here, up to the masks' stated bound, and no
+one has published the MPC analogue." It is recorded as an open question rather than a resolved one.
+The browser tier is different and says so: its 2PC runs on logits the tab has decrypted, for a model
+that is published anyway (`web/src/lib/clientMPC.ts`).
 
 **This is a trip-wire, not just background.** If the non-linear path is ever changed to plaintext
-client offload for the latency win, eprint 2026/1527 becomes directly applicable and the model
-confidentiality claim must be withdrawn at the same time. Anyone making that change should read it
-first.
+client offload for the latency win, or the conversions lose their masks, eprint 2026/1527 becomes
+directly applicable and the model confidentiality claim must be withdrawn at the same time. Anyone
+making that change should read it first. `tests/test_mpc.py` fails if the key holder decrypts an
+unmasked value or a party other than the client receives a result.
 
 **A third option exists as of 2026, and it is named here rather than left implied away.** The split
 above rests on non-linearities being expensive under CKKS. Lin and Wu's **Tailor** (IACR ePrint

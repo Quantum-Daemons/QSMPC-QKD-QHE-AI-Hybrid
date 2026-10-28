@@ -381,10 +381,12 @@ export const USECASE_SPECS: Record<string, Spec> = {
           : Number(m["qsdc_link_budget_limited"]) === 1
             // "at 24.5 dB (g=701.06)" paired the CHANNEL loss with a g that includes the detector's
             // 4.0 dB (10^(24.5/10) is 282, not 701), while the run log printed the same g at 28.5 dB.
-            // Both now name the channel loss and say g carries the detector too. Round 58.
+            // Both now name the channel loss and say g carries the detector too. Round 58. Since
+            // Round 75 g also leaves out the station's optics, as Qi et al.'s did, so "34 dB" and
+            // g = 808 (29.1 dB) differ by more than the detector: the label says both.
             ? `QSDC NOT AVAILABLE · link-budget limited · C_s ${f(m, "qsdc_secrecy_capacity")} `
-              + `bit/carrier at ${f(m, "channel_loss_db")} dB channel loss (g=${f(m, "qsdc_eve_gain_g")}, `
-              + `detector included) · telemetry withheld, falls back to the PQC session key`
+              + `bit/carrier at ${f(m, "channel_loss_db")} dB channel loss (g=${f(m, "qsdc_eve_gain_g")}: `
+              + `the detector in, the station optics out) · telemetry withheld, falls back to the PQC session key`
             : `QSDC direct telemetry · secrecy ${f(m, "qsdc_secrecy_capacity")} bit/carrier`) },
       publishedStep("qsdc_telemetry"),
       QSMPC_COMPARE,

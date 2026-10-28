@@ -21,6 +21,12 @@ export interface QRNGResult {
   throughputBitsPerSec: number;
   simulated: boolean;
   minEntropyPerBit: number;   // SP 800-90B most-common-value estimate (bits of min-entropy per output bit)
+  /** The ASSESSED min-entropy per raw bit the two continuous-test cutoffs are computed from
+   *  (`qrng.min_entropy_per_raw_bit`). Section 4.4 fixes H for the source; it is never re-estimated
+   *  from the stream under test. */
+  assessedMinEntropyPerBit: number;
+  /** The stream's own estimate fell below the assessment. Reported, not gating. */
+  estimateBelowAssessment: boolean;
   extractionRate: number;     // output bits / raw bits consumed
   /** Bits the leftover hash lemma permits at this eps and this much raw min-entropy, or null for
    *  the von Neumann extractor, which does not consume eps at all.
@@ -158,6 +164,17 @@ function lhlOutputLength(minEntropyBits: number, epsilonLog2: number): number {
   return Math.max(1, Math.floor(minEntropyBits - 2 * -epsilonLog2 + 2));
 }
 
+/** Eq. 7 of Giestinhas & Spiller 2026: a weak Toeplitz seed of `seedH` bits per bit costs its
+ *  shortfall, `|seed| - H(seed)`, with `|seed| = out + n - 1`. Solved for the largest `out`. Twin of
+ *  `simulator.py::lhl_output_length_weak_seed`. Until Round 75 the seedless mode used Eq. 5 (a uniform
+ *  seed) and reported a ceiling of 7309 bits at n = 8208 where Eq. 7 allows 5898. */
+export function lhlOutputLengthWeakSeed(inputMinEntropyBits: number, nInput: number, seedH: number,
+                                        epsilonLog2: number): number {
+  const deficit = 1 - seedH;
+  const top = inputMinEntropyBits - deficit * (nInput - 1) - 2 * -epsilonLog2 + 2;
+  return Math.max(1, Math.floor(top / (1 + deficit)));
+}
+
 // Toeplitz-hash (universal-2) extractor: out = T @ bits (mod 2). T's defining bits come from an
 // independent second source (toeplitzBits -> the seedless two-source construction) or a PRG (u).
 export function toeplitzExtract(bits: Uint8Array, outLen: number, u: () => number, toeplitzBits?: Uint8Array): Uint8Array {
@@ -216,11 +233,14 @@ function repetitionCountTest(bits: Uint8Array, h: number) {
   return { passed: longest < cutoff, cutoff, longest };
 }
 
-/** section 4.4.2 cutoff: smallest C whose Binom(W-1, 2^-H) upper tail is <= alpha. Computed with an
- *  exact binomial survival function — the normal approximation is unusable this far into the tail. */
+/** section 4.4.2 cutoff exactly as the standard computes it (footnote 10): C = 1 + CRITBINOM(W, 2^-H,
+ *  1 - alpha), i.e. the smallest c with P[X >= c] <= alpha for X ~ Binom(W, 2^-H). Computed with an
+ *  exact binomial survival function - the normal approximation is unusable this far into the tail.
+ *  It used Binom(W - 1, .) until Round 75, one trial fewer than the standard, and landed one below its
+ *  Table 2 at three of five entropies; `check_qkd.mjs` now compares against the regenerated vectors. */
 export function adaptiveProportionCutoff(h: number, w = ADAPTIVE_PROPORTION_W, alpha = HEALTH_ALPHA): number {
   const p = Math.pow(2, -Math.max(h, 1e-9));
-  const n = w - 1;
+  const n = w;
   // survival: P[X >= c] computed by summing the pmf downward from c.
   let logPmf = n * Math.log1p(-Math.min(p, 1)); // pmf(0)
   let tail = 1.0, c = 0;
@@ -284,7 +304,11 @@ export function generateQuantumBits(nBits: number, opts: { source?: string; post
   if (post === "von_neumann") {
     proc = vonNeumann(raw);
   } else if (isExtract) {
-    const outLen = lhlOutputLength(minH * raw.length, epsLog2);
+    // The seedless mode's seed is a second simulated draw at the same assessed entropy, so Eq. 7
+    // charges its shortfall from uniform; Eq. 5 assumes a uniform seed.
+    const outLen = post === "seedless"
+      ? lhlOutputLengthWeakSeed(minH * raw.length, raw.length, minH, epsLog2)
+      : lhlOutputLength(minH * raw.length, epsLog2);
     lhlMaxBits = outLen;
     if (post === "seedless") {
       const u2 = opts.seed === undefined ? Math.random : rng(opts.seed + 1);
@@ -320,12 +344,16 @@ export function generateQuantumBits(nBits: number, opts: { source?: string; post
   // Round 51 fix reached the reference implementation and not the one every visitor executes, and
   // the demo is client-side only, so the wrong figure is the only figure anyone sees.
   //
-  // NOT changed: `healthPassed`. Sections 4.4.1 and 4.4.2 catch a source that has gone STUCK, not
-  // one that is merely skewed, so the verdict is correct either way and asserting otherwise would
-  // claim the standard says something it does not. What was wrong is the reported entropy.
+  // THE CUTOFFS COME FROM THE ASSESSED ENTROPY, NOT FROM `hMin`. Until Round 75 this fed `hMin` -
+  // the estimate of the stream under test - into both tests, and argued that sections 4.4.1 and 4.4.2
+  // only catch a source that has gone STUCK. That is half right: 4.4.1 is the stuck test, but 4.4.2
+  // "is designed to detect a large loss of entropy" given "the source's assessed entropy per sample".
+  // Re-estimating H from the failing stream raised the adaptive-proportion cutoff to 965 of 1024 at
+  // p(1) = 0.9, and a source emitting 90 percent ones passed. `minH` is the configured assessment, the
+  // same figure that sizes the Toeplitz output; `hMin` stays reported, as a measurement.
   const hMin = minEntropyMcv(raw);
-  const rct = repetitionCountTest(raw, hMin);
-  const apt = adaptiveProportionTest(raw, hMin);
+  const rct = repetitionCountTest(raw, minH);
+  const apt = adaptiveProportionTest(raw, minH);
   const sp80022Passed = mp >= alpha && rp >= alpha && bp >= alpha;
   // The adaptive-proportion window is the binding requirement: below it that test cannot run at all.
   // Judged on `raw`, because that is now the stream the adaptive-proportion test consumes. Judging
@@ -342,6 +370,7 @@ export function generateQuantumBits(nBits: number, opts: { source?: string; post
     monobitP: mp, runsP: rp, blockFreqP: bp,
     throughputBitsPerSec: (bits.length / dt) * 1000, simulated: true,
     minEntropyPerBit: hMin, extractionRate: bits.length / Math.max(1, rawConsumed),
+    assessedMinEntropyPerBit: minH, estimateBelowAssessment: hMin < minH,
     lhlMaxBits, requestedBits: nBits,
   };
 }

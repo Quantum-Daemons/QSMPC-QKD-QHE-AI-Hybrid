@@ -121,7 +121,7 @@ export default function Validations() {
                     `api.ts` emitting `skr`. The demo builds CLIENT_ONLY, so that branch is the only
                     one the public site executes and this cell rendered blank there. The sentence
                     remained true only of the branch nobody had looked at. */}
-                <tr><td>secret key rate (per pulse)</td><td>{qkd.skr_per_pulse}</td></tr>
+                <tr><td>secret key rate (per pulse)</td><td>{typeof qkd.skr_per_pulse === "number" ? Number(qkd.skr_per_pulse.toPrecision(4)) : qkd.skr_per_pulse}</td></tr>
                 <tr><td>secure key bits</td><td>{qkd.secure_key_bits}</td></tr>
                 <tr><td>eavesdropper?</td><td style={{ color: qkd.eavesdropper_likely ? "var(--danger)" : "var(--accent-2)" }}>{String(qkd.eavesdropper_likely)}</td></tr>
               </tbody>

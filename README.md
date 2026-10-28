@@ -77,7 +77,7 @@ Four workstreams (WS), unified by one pipeline and a crypto-agility registry:
 
 | WS | Theme | What's implemented |
 |----|-------|--------------------|
-| **WS1** | **AI-QKD** parameter optimization | BB84 **two-intensity decoy-state** simulation (Ma et al.'s Vacuum+Weak estimator with the vacuum yield modelled rather than measured - the paper's own two-intensity case, its section 3.5, bounds $`Y_0`$ instead) (+ a selectable **E91/CHSH** protocol), QBER/SKR telemetry, eavesdropper detection (intercept-resend's 0.25 f disturbance composed independently with the channel error, a + b - 2ab, in both languages); a **published-reference decoy model** (`qkd/decoy_reference.py`) whose 13 tests assert Ma et al. PRA 72, 012326 (2005) values rather than this project's own - decoy reaches past 140 km where non-decoy dies near 40, and at the customary $`\mu = 0.1`$ a non-decoy link's tagged fraction exceeds 1 at **zero** distance, so it yields no key even back-to-back; a **QRNG** entropy source (state-vector quantum-measurement sim + SP 800-90B section 4.4 continuous health tests, an **SP 800-90B min-entropy estimate**, and a **Leftover-Hash-Lemma / seedless** Toeplitz extractor) that seeds the key material; a config-gated **leakage-resilient PQC+QKD key combiner**; and **OptiQKD** - a measured AI optimizer (scikit-learn surrogate + gradient-free search) tuning decoy (`mu_signal` / `mu_decoy`) + basis params to raise the secret-key rate vs default (with a convergence metric); the reference framework reports +14-25 % in simulation |
+| **WS1** | **AI-QKD** parameter optimization | BB84 **two-intensity decoy-state** simulation (Ma et al.'s own one-decoy bound, section 3.5 Eq. 41, which leaves the vacuum yield $`Y_0`$ to Eve; until Round 75 it was their Vacuum+Weak estimator fed a modelled $`Y_0`$, 1.3% high at 50 km and 40% at 120 km) (+ a selectable **E91/CHSH** protocol), QBER/SKR telemetry, eavesdropper detection (intercept-resend's 0.25 f disturbance composed independently with the channel error, a + b - 2ab, in both languages); a **published-reference decoy model** (`qkd/decoy_reference.py`) whose 13 tests assert Ma et al. PRA 72, 012326 (2005) values rather than this project's own - decoy reaches past 140 km where non-decoy dies near 40, and at the customary $`\mu = 0.1`$ a non-decoy link's tagged fraction exceeds 1 at **zero** distance, so it yields no key even back-to-back; a **QRNG** entropy source (state-vector quantum-measurement sim + SP 800-90B section 4.4 continuous health tests, an **SP 800-90B min-entropy estimate**, and a **Leftover-Hash-Lemma / seedless** Toeplitz extractor) that seeds the key material; a config-gated **leakage-resilient PQC+QKD key combiner**; and **OptiQKD** - a measured AI optimizer (scikit-learn surrogate + gradient-free search) tuning decoy (`mu_signal` / `mu_decoy`) + basis params to raise the secret-key rate vs default (with a convergence metric); the reference framework reports +14-25 % in simulation |
 | **WS2** | **QML-IDS** intrusion detection | 8 classes = **7 QKD attack types + normal traffic**; RandomForest baseline + PennyLane variational quantum classifier. Scored on macro F1, not attack-vs-normal F1 |
 | **WS3** | **QSMPC x QKD** | Shamir + d-level QFT secure summation (faithful to the paper example), quantum oblivious transfer, quantum-safe PSI |
 | **WS4** | **QHE x AI** | Quantum one-time pad (perfectly hiding as a scheme; the demo's pad is seeded), variational QCNN private inference (Clifford+T in the browser circuit; the Python module has no T gate), Rate-1 quantum **transport** (no `Eval`, so not QFHE); classical hybrid = CKKS **linear** layers (TenSEAL CPU / OpenFHE CPU / HEonGPU GPU - commercial-OK) + **MPyC** secret-sharing **non-linear** layers (ReLU/argmax) in the full deployment, a Polytune garbled-circuit 2PC between notional parties in the browser - incl. a **genuine FHE convolution** (im2col -> CKKS `dot_plain`) so the medical use case runs a real small CNN on **real MedMNIST images** under encryption |
@@ -251,7 +251,8 @@ version string here.
 ### Non-linear MPC backend (the hybrid's other half)
 - **MPyC** (MIT, pure-Python, v0.11 2026, a pip dependency - the submodule was dropped in Round 17) - Shamir secret-sharing with secure
   comparison drives the **non-linear** layers (ReLU/argmax) on shares, the canonical CrypTen `ReLU([x]) =
-  [x], [x>0]` pattern. Wired in `src/qsh/mpc/secret_inference.py`; selectable as the `mpc` crypto-agility family
+  [x], [x>0]` pattern. Wired in `src/qsh/mpc/secret_inference.py` and run as three parties, each its own
+  process over loopback TCP (`src/qsh/mpc/parties.py`, t = 1, k = 40); selectable as the `mpc` crypto-agility family
   (`mpyc-shamir` default; MP-SPDZ / hpmpc-gpu as heavyweight references). The linear layers stay under FHE - see
   the hybrid benchmark below.
 
@@ -445,14 +446,19 @@ via the benchmark panel on each use-case simulator page).
 
 The classical path is a **genuine 2026-style MPC-FHE hybrid**, not CKKS-only. **Linear layers**
 (matmul / conv) run **under CKKS/FHE** (TenSEAL or OpenFHE on CPU; HEonGPU on the Blackwell GPU),
-while **non-linear layers** (ReLU, argmax) run **under secret-sharing MPC** - real Shamir
-secure-comparison via **MPyC** (`src/qsh/mpc/secret_inference.py`), with a CKKS <-> shares conversion at
-each boundary. This mirrors the Gazelle -> Delphi -> BOLT -> Bumblebee -> **BLB** line and EncFormer, so
-the benchmark reports the **FHE-linear vs MPC-non-linear latency split + MPC communication**, not a
-single CKKS number. The **QSMPC-FHE** quantum analogue is **Clifford gates (linear, cheap) vs T-gates
-(non-linear, expensive)** - but QOTP / Rate-1 QFHE evaluate *both* on the encrypted state (ct/pt approx.
-1.3), so there is **no FHE <-> MPC boundary**; the secure-comparison role is played by the QSMS/QOT
-quantum-MPC path.
+while **non-linear layers** (ReLU, argmax) run **under secret-sharing MPC** - Shamir secure
+comparison via **MPyC** among three parties, each its own process over loopback TCP
+(`src/qsh/mpc/parties.py`), with a **masked** CKKS <-> shares conversion at each boundary: the server
+masks each linear output inside the ciphertext before the key holder decrypts it, and the key holder
+receives only re-masked results and, at the end, the class index (`src/qsh/mpc/secret_inference.py`;
+the bound the masks give is reported per run, see `docs/architecture.md`). This mirrors the Gazelle ->
+Delphi -> BOLT -> Bumblebee -> **BLB** line and EncFormer, so the benchmark reports the **FHE-linear
+vs MPC-non-linear latency split + MPC communication**, not a single CKKS number. The **QSMPC-FHE**
+quantum analogue is **Clifford gates (linear, cheap) vs T-gates (non-linear, expensive)** - but QOTP /
+Rate-1 QFHE evaluate *both* on the encrypted state, so there is **no FHE <-> MPC boundary**; the
+secure-comparison role is played by the QSMS/QOT quantum-MPC path. (This paragraph quoted a ct/pt of
+about 1.3 for them, a figure the note under the benchmark table explains cannot share a column with
+CKKS's byte ratio.)
 
 ### Model-size tiers + per-use-case architectures
 
@@ -468,8 +474,9 @@ MedMNIST (`config['dataset']='medmnist'` / the CNN workload), the pipeline feder
 (one conv block 1 -> 4 ch 3x3, avg-pool, dense head at 14x14) and runs it under the hybrid as a **genuine FHE
 convolution** - im2col -> CKKS `dot_plain` per output channel (`src/qsh/fhe/conv.py`), with ReLU/max-pool
 under MPC (`secure_relu` / `secure_maxpool`). The convolution arithmetic happens on the **encrypted image**;
-the FHE-linear conv cost genuinely dominates (~4.5 s for one 14x14 image on CPU CKKS, decision faithful to
-plaintext). This is FHE-feasible by design - a MedMNIST-scale CNN, **not** ResNet/ViT (FHE cannot run SOTA
+on the Blackwell box the FHE-linear conv cost dominates (~4.6 s for one 14x14 image on CPU CKKS, against
+~2.0 s for the three MPC parties' 801 comparisons; decision faithful to plaintext). On a two-core machine
+the three party processes share the cores and the MPC half can be the larger. This is FHE-feasible by design - a MedMNIST-scale CNN, **not** ResNet/ViT (FHE cannot run SOTA
 CNNs/LLMs under encryption - a fundamental crypto-cost limit, sold honestly as a PoC).
 
 For the other industries the encrypted hybrid preserves the plaintext decision regardless of weights, so
@@ -481,16 +488,32 @@ architectures - a "tabular fraud MLP" at 18/850/9,538 parameters against a real 
 33 - so the sizes described models nothing had trained. What survives of the idea: **the measured
 path runs end to end for real**
 (CKKS-FHE linear + MPyC-MPC non-linear); **large is clearly labelled *projected*** - extrapolated from the
-measured medium per-op cost (MAC / comparison counts) so the page stays responsive. Representative results on
-the Blackwell box (TenSEAL CPU + MPyC, `linear` workload):
+measured medium per-op cost (MAC / comparison counts) so the page stays responsive. Results on the
+Blackwell box (TenSEAL CPU + MPyC, `linear` workload), measured 2026-10-27 with the MPyC tier as three
+parties and masked conversions:
 
 | Path | Backend | Size | Latency/inf | FHE-linear | MPC-non-linear | MPC comm | Acc | ct/pt | Security model |
 |------|---------|------|-------------|-----------|----------------|----------|-----|-------|----------------|
-| MPC-FHE | TenSEAL CKKS + MPyC (CPU) | lightweight | ~43 ms | ~39 ms | ~4 ms | ~0.5 KB | 1.0 | ~1483x | computational (RLWE) |
-| MPC-FHE | TenSEAL CKKS + MPyC (CPU) | medium | ~243 ms | ~215 ms | ~28 ms | ~4.5 KB | 1.0 | ~1483x | computational (RLWE) |
-| MPC-FHE | TenSEAL CKKS + MPyC (CPU) | large \* | ~1885 ms | ~1719 ms | ~165 ms | ~24.5 KB | 1.0 | - | computational (RLWE) |
+| MPC-FHE | TenSEAL CKKS + MPyC (CPU) | lightweight | ~41 ms | ~38 ms | ~3 ms | ~15 KB | 1.0 | ~1393x | computational (RLWE) |
+| MPC-FHE | TenSEAL CKKS + MPyC (CPU) | medium | ~267 ms | ~223 ms | ~43 ms | ~252 KB | 1.0 | ~1393x | computational (RLWE) |
+| MPC-FHE | TenSEAL CKKS + MPyC (CPU) | large \* | ~2006 ms | ~1759 ms | ~247 ms | ~1438 KB | 1.0 | - | computational (RLWE) |
 | MPC-FHE | HEonGPU CKKS (GPU sm_120) + MPyC | medium | batched | GPU | CPU | - | - | - | computational (RLWE) |
-| QSMPC-FHE | QOTP + QCNN (Clifford+T in the browser), no trained weights | - | ~4 ms | Clifford | T-gates x56 | n/a | n/a | - (see note) | information-theoretic as a scheme (QOTP); not this run (seeded pad) |
+| QSMPC-FHE | QOTP + QCNN (Clifford+T in the browser), no trained weights | - | ~3 ms | Clifford | T-gates x56 | n/a | n/a | - (see note) | information-theoretic as a scheme (QOTP); not this run (seeded pad) |
+
+**What the MPC columns measure, since Round 75.** The non-linear layers run under MPyC as three
+parties, each its own process, over loopback TCP: Shamir threshold t = 1, statistical security 40,
+64-bit fixed point. "MPC comm" is the bytes the three parties sent, about 15,120 per secure comparison
+and the same on every run. "MPC-non-linear" is the protocol's time on the parties' own clocks, about
+2.2 ms per comparison here. Each MPC session also spends about 0.25 s starting its processes, which
+parties standing between requests would not, so that time is left out of the latency and reported as
+`mpc_session_overhead_ms`. Loopback has no network delay, so a LAN or WAN adds a round trip per
+communication round. The key holder decrypts only masked values and receives the class index; each
+row's `mask_statistical_distance_max` bounds what its view of one inference gives away, 9e-8 or less
+here (`docs/architecture.md` states what the bound does and does not cover).
+
+Before Round 75 the tier ran as ONE in-process party, MPyC's defaults with its command line cleared:
+m = 1 and t = 0, where a share is the value itself. Nothing crossed a wire, and the ~0.5, ~4.5 and
+~24.5 KB this table printed were 256 B per comparison multiplied out. The measured figure is 59x that.
 
 **Note on the dash in the QSMPC-FHE ct/pt cell.** Earlier revisions printed `1.0` here and 1.2769 in
 the WS4 table below, and a config constant of 1.32 fed an Overview card. None of the three can share a
