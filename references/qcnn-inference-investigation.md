@@ -37,7 +37,7 @@ not the main one.
 
 **The circuit has no trained parameters, and scrambles.** Disabling the mask entirely barely moves
 the numbers - 0.0748 against 0.0761 - because seven fixed rounds of H, a CNOT ring and T on every
-qubit drive the state toward uniform regardless of the input. <Z0> lands within +/-0.21 of zero for
+qubit drive the state toward uniform regardless of the input. $`\langle Z_0\rangle`$ lands within $`\pm 0.21`$ of zero for
 every vector tested, and its sign is numerical noise. A correlation of -0.070 against the simplest
 possible summary of the input is the whole story: **the readout is independent of the data.**
 

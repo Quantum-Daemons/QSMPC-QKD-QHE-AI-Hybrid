@@ -4083,7 +4083,7 @@ session. Nothing was changed on the strength of a secondary write-up.
 
 | what | why it was not a measurement | where it reached a visitor |
 |---|---|---|
-| Overview card "~1.32 Rate-1 QFHE ciphertext/plaintext ratio vs ~1483x for classical CKKS", and the `qsmpc_ct_pt_ratio` constant behind it | 1.32 divided bytes of a CLASSICALLY SIMULATED $2^n$-amplitude state vector; a quantum ciphertext has no size in bytes. It is not in the paper it was attributed to: Chardouvelis, Doettling and Malavolta (TCC 2021) report no concrete figure, and their "rate 1" is an asymptotic limit under quantum LWE. 1483 was CKKS bytes over about 34 inputs, i.e. slot utilisation (about 12x at full packing; Cheon, Kim, Kim and Song, ASIACRYPT 2017). Classical FHE reaches rate 1 as well (Gentry and Halevi, TCC 2019; Brakerski, Doettling, Garg and Malavolta, TCC 2019) | the landing page |
+| Overview card "~1.32 Rate-1 QFHE ciphertext/plaintext ratio vs ~1483x for classical CKKS", and the `qsmpc_ct_pt_ratio` constant behind it | 1.32 divided bytes of a CLASSICALLY SIMULATED $`2^n`$-amplitude state vector; a quantum ciphertext has no size in bytes. It is not in the paper it was attributed to: Chardouvelis, Doettling and Malavolta (TCC 2021) report no concrete figure, and their "rate 1" is an asymptotic limit under quantum LWE. 1483 was CKKS bytes over about 34 inputs, i.e. slot utilisation (about 12x at full packing; Cheon, Kim, Kim and Song, ASIACRYPT 2017). Classical FHE reaches rate 1 as well (Gentry and Halevi, TCC 2019; Brakerski, Doettling, Garg and Malavolta, TCC 2019) | the landing page |
 | The 0-10 "quantum advantage" score, its tier, interpretation and log line | it divided the same mismatched byte and qubit ratios, divided a real CKKS plus garbled-circuit latency by an 8-qubit simulation, and multiplied by 1.5 for a security label the run does not achieve. Three runs printed 5794x, 8163x and 9610x "faster" | /orchestration log, every inference page's panel and log, a diagram label, the in-browser agent's prompt context, /usecases, README, and the Python stage metric. The Python module is kept and called from nowhere, as the composite was in Round 22 |
 | The QSMPC-FHE row's ct/pt cell | the last place the two ratios sat side by side | the benchmark table, now a dash |
 
@@ -5070,7 +5070,7 @@ Each was read at its primary source in October 2026.
 **The QHE factor.** Ortega, Fernandez and Martin-Delgado, "Implementing Semiclassical Szegedy Walks in
 Classical-Quantum Circuits for Homomorphic Encryption", J. Phys. Complexity 6, 025010 (2025)
 (arXiv:2412.01966), gives no expansion factor of about 15. The only 15 in it is a coefficient in a
-T-gate count, $L_{\tilde V} = 15n^2 - 43n + 14 + (2n-3)L_R$. The paper also restates the no-go result
+T-gate count, $`L_{\tilde V} = 15n^2 - 43n + 14 + (2n-3)L_R`$. The paper also restates the no-go result
 that perfect security in quantum fully homomorphic encryption costs exponential storage overhead (Yu,
 Perez-Delgado and Fitzsimons, Phys. Rev. A 90, 050303 (2014)). The proposal is closed, not adopted,
 and no public text quoted the figure.
@@ -5163,13 +5163,13 @@ verified between Rounds 47 and 58. This round walks them in that order, oldest f
   After a run, the private-inference scatter draws its 30 rows against the plaintext reference
   (`RD6`).
 - **QCNN.** The trained path takes no seed (`qcnnInferTrained(features, w)`), so `QC2` holds by
-  construction, and two runs at the same seed return the same class and $\langle Z_0\rangle$
-  ($-0.5460$). The page reports the held-out accuracy 0.8837 beside the logistic regression's 0.9535
+  construction, and two runs at the same seed return the same class and $`\langle Z_0\rangle`$
+  ($`-0.5460`$). The page reports the held-out accuracy 0.8837 beside the logistic regression's 0.9535
   on the same split. No newer peer-reviewed QCNN result on WDBC was found.
 - **PQC.** The NIST PQC page (last modified 2026-08-05) shows no FIPS 206 initial public draft and no
   HQC draft. The roadmap holds.
-- **QRNG.** The health-test cutoffs on the page match SP 800-90B's formulas at $H = 0.97$: the
-  repetition count is $C = 1 + \lceil 20/0.97 \rceil = 22$, and the adaptive proportion is 601.
+- **QRNG.** The health-test cutoffs on the page match SP 800-90B's formulas at $`H = 0.97`$: the
+  repetition count is $`C = 1 + \lceil 20/0.97 \rceil = 22`$, and the adaptive proportion is 601.
 - **SDN.** ETSI GS QKD 014/015/020 are unchanged. The panel claims the control plane's standard role,
   not path optimisation.
 - **Benchmark.** `PF1`, `PF3`, `PF4` and `PF5` hold on finance. The per-rotation cost is the timed
@@ -5187,7 +5187,7 @@ verified between Rounds 47 and 58. This round walks them in that order, oldest f
   is the full deployment's surrogate. The page now says which runs where, and the public-text gate
   retires the old phrase. It fires on the old Overview.
 - **OptiQKD's gain.** The +78.4 percent is over this demo's defaults, symmetric bases among them
-  ($p = 0.5$ gives a sifting efficiency of $0.5$; $p = 0.82$ alone raises it to about $0.705$). The
+  ($`p = 0.5`$ gives a sifting efficiency of $`0.5`$; $`p = 0.82`$ alone raises it to about $`0.705`$). The
   papers' gains are over tuned static operation. Both run logs (fibre and free-space) and the Overview
   now say the two are not comparable.
 - **SP 800-90B.** The August fact-check said "no revision in progress". NIST's own slides (Kelsey, ECW
@@ -5434,7 +5434,7 @@ demo serves this branch while it is checked.
     better than negligible needs a field size divisible by 20.
   - Each party runs the OT extension in both directions, so on two hosts either one can play the
     attacking receiver.
-  - What is at stake is the other party's global key ($\Delta$): its MAC key, and for the garbler its
+  - What is at stake is the other party's global key ($`\Delta`$): its MAC key, and for the garbler its
     free-XOR offset.
 - **A further question, found while reading #63's code.**
   - The check's challenge is drawn from the pairwise stream agreed at the start of preprocessing,
@@ -5506,5 +5506,70 @@ demo serves this branch while it is checked.
   The console showed no error.
 
 BUSINESS DOC RECONCILED Round 72. The out-of-repo document is brought level with this round. Its content
+is not quoted here, in the checklist, or in any commit - only the fact of the reconciliation, which is
+what gate 16 reads.
+
+## Round 73: mathematics in the house form, special symbols out of the documents, and a duplicate entry
+
+**Stacked on Round 72**, all held by decision. This round changes documentation, not the demo; the
+browser configuration regenerates unchanged.
+
+**Why this order.** It continues the oldest-first audit: MathJax and the documentation duplicate
+scan were last measured in Round 55.
+
+**The house form had drifted, in my own recent text first.**
+- Round 55 set display mathematics in `$$...$$` and inline in `` $`...`$ ``. Inside the backticks
+  Markdown leaves the content alone, while in a plain `$...$` it may first read `\{`, `\\` or a pair
+  of underscores as its own syntax.
+- Nothing enforced the form. The Round 70 and 72 sections of this register used plain inline math,
+  and so did README, `docs/architecture.md` and `references/REFERENCES.md`.
+- One site carried exactly the hazard: `L_{\tilde V} = 15n^2 - 43n + 14 + (2n-3)L_R`, two underscores
+  inside a plain span.
+- 22 plain sites are converted.
+
+**Mathematics typed as prose, found with the outcome-shaped scan that Round 55 introduced, run again.**
+- 30 pieces are converted, among them `modulo 2^32` (three places), `O(lambda^2)`, `R/eta ~ 0.11`,
+  `2^-138` and the column names of a paper's table.
+- Left as they are, deliberately:
+  - quotations, which keep their source's wording;
+  - version specifiers such as `>=2.0`, and a date filter;
+  - "alpha API", "machine-epsilon" and "F-beta", which are names, not mathematics;
+  - the model cards and the Space card, because Hugging Face does not render GitHub's backtick form
+    and would show it literally.
+
+**Special symbols, which the user asked the documents to avoid.**
+- Every tracked Markdown file is ASCII except two allowed cases, each recorded with its reason:
+  - the Space card's `emoji:` field, which Hugging Face shows as the Space icon;
+  - one quotation of the page's own text.
+- The em dash in the ESA dataset note reached both satellite model cards through the registry. The
+  note now uses a hyphen and the cards are regenerated locally. The Hub copies keep the dash until
+  those repos are next published.
+
+**The duplicate scan, re-run across the public documents** (README, `docs/` without the register,
+log and checklist, `references/`, `DATA_LICENSES.md`).
+- Five exact repeated lines over 60 characters. Four are a command repeated in two guides, an
+  ASCII-art border, and two tables sharing a header row.
+- The fifth was real: **the 2026-08 ML-for-QKD survey (arXiv:2608.08280) was entered twice in
+  `REFERENCES.md`.** The second entry was mine, added in Round 70 without finding the first, which had
+  cited the paper on 2026-08-12 for a different point. The Round 70 figures now live in the original
+  entry, and the Round 70 block points to it.
+- Five near-duplicate sentence pairs at a similarity of 0.86 or more, none consolidated:
+  - two are a bibliography entry beside the investigation it summarises;
+  - two quote the same source in two documents, each in its own context;
+  - one is README restating the threat model, which is README's job.
+
+**Proposed, not done:** README is 1,129 lines, and its "Concerns & recommendations" section is 451 of
+them, much of it the history of corrections the register already carries. Moving that history here,
+and leaving README the current position with a pointer, would shorten the main public document. It
+restructures the file most readers see first, so it is left for the user's decision.
+
+**Gate.** `tests/test_markdown_math_uses_the_house_style.py`, seeded three ways, each fires:
+- no plain inline math in any Markdown GitHub renders, skipping code blocks and code spans of any
+  length;
+- no GitHub-only math in the Markdown Hugging Face renders;
+- no non-ASCII character outside the two allowed cases, and the allow-list fails when an allowed case
+  disappears.
+
+BUSINESS DOC RECONCILED Round 73. The out-of-repo document is brought level with this round. Its content
 is not quoted here, in the checklist, or in any commit - only the fact of the reconciliation, which is
 what gate 16 reads.
