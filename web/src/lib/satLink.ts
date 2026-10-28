@@ -6,6 +6,7 @@
 import { profileValues, qkdCfg } from "./config";
 import { downlinkFromProfile, FREE_SPACE, inView, linkElevationDeg, sourceRateHz,
   type ChannelParams } from "./quantumSim";
+import { simulatePass } from "./satNetwork";
 
 /**
  * The free-space channel this run selected, in one place.
@@ -28,9 +29,12 @@ export function satChannel(config: Record<string, any>, eveFraction?: number): C
   const values = id === qkdCfg().free_space_profile ? null : profileValues("downlink", id);
   const base = values ? downlinkFromProfile(values) : FREE_SPACE;
   const fs = base.freeSpace!;
-  // Switching the vacuum off hands its share to the decoy, as `micius_2017_one_decoy` does.
-  const vacuum = config?.sat_vacuum_decoy == null ? Boolean(base.vacuumDecoy) : Boolean(config.sat_vacuum_decoy);
+  // Switching the vacuum off hands its share to the decoy, as `micius_2017_one_decoy` does. Switching
+  // it ON holds only where the profile leaves pulses for the vacuum (Round 79): a vacuum the source
+  // never sends cannot be measured, and Lim et al.'s finite-key bound refuses that source.
   const pSignal = Number(base.pSignal ?? 0.5);
+  const vacuum = (config?.sat_vacuum_decoy == null ? Boolean(base.vacuumDecoy) : Boolean(config.sat_vacuum_decoy))
+    && 1 - pSignal - Number(base.pDecoy ?? 0.5) > 1e-12;
   return {
     ...base,
     distanceKm: Number(config.sat_distance_km ?? base.distanceKm),
@@ -57,4 +61,34 @@ export function outOfView(ch: ChannelParams): string | null {
     : `at ${e.toFixed(1)} deg elevation, below the ${fs.minElevationDeg} deg minimum`;
   return `no link at ${Math.round(ch.distanceKm)} km: ${where} for a ${fs.orbitAltitudeKm} km orbit. `
     + "A station this far from the satellite needs a relay - the page's Network tab";
+}
+
+/**
+ * The block a run's composable key is computed on (Round 79): `copies` of a `unit` pooled into one -
+ * one pass peaking at the run's range by default, several passes, or seconds at that range. Expected
+ * counts are linear in the pulses, so the block's counts are the unit's times `copies`. Twin of
+ * `satellite_comms._Block` / `_sat_block`; the choice and its sources are on
+ * `QKDConfig.free_space_block`.
+ */
+export interface SatBlock {
+  kind: "pass" | "passes" | "seconds";
+  copies: number;
+  unitSeconds: number;
+  unit: [number, ChannelParams][];
+  maxElevationDeg: number | null;
+}
+
+export function satBlock(config: Record<string, any>, ch: ChannelParams): SatBlock {
+  const q = qkdCfg();
+  const kind = String(config?.sat_block ?? q.free_space_block);
+  if (kind === "seconds") {
+    const secs = Math.max(1e-3, Number(config?.sat_block_seconds ?? q.free_space_block_seconds));
+    return { kind, copies: secs, unitSeconds: 1, unit: [[Number(ch.sourceRateHz), ch]], maxElevationDeg: null };
+  }
+  if (kind !== "pass" && kind !== "passes") throw new Error(`sat_block ${kind}: one of pass, passes, seconds`);
+  const top = linkElevationDeg(ch) as number;
+  const one = simulatePass(ch, top);
+  const copies = kind === "pass" ? 1
+    : Math.max(1, Math.trunc(Number(config?.sat_block_passes ?? q.free_space_block_passes)));
+  return { kind, copies, unitSeconds: one.durationS, unit: one.segments, maxElevationDeg: top };
 }

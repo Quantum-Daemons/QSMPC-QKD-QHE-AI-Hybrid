@@ -22,7 +22,9 @@ import { secureArgmax, warmMPC } from "./clientMPC";
 import { randomBelow } from "./csprng";
 import { optimizeQKD } from "./clientOptiQKD";
 import { generateQuantumBits } from "./clientQRNG";
-import { outOfView, satChannel } from "./satLink";
+import { outOfView, satBlock, satChannel } from "./satLink";
+import { blockCounts, blocksForPositiveKey, FINITE_KEY_BOUNDS, finiteKeySourceOf, keyLength,
+  scaleCounts } from "./finiteKey";
 import { bb84, channelLossDb, e91, FIBER, h2, inView, intrinsicQber,
   keyRateWithClock, linkElevationDeg, qsdcLink, qsdcSecrecyCapacity, sourceOf, sourceRateHz, type ChannelParams,
   qcnnExpectation,
@@ -300,12 +302,26 @@ export function securityFacts(config: any, metrics: Record<string, any>): Securi
     // declared here, it did not reach the QBER row outside this branch.)
     // The warning is the point. A QKD profile that produced no key is the case the composite scored
     // 100 on, because nothing checked whether the channel actually delivered.
+    // THE SATELLITE'S KEY IS A BLOCK'S FINITE KEY (Round 79): `qkd_finite_key_bits` is present
+    // exactly when the run computed one, and the row then names the block and the bound rather than
+    // the asymptotic fraction it used to.
+    const finite = sat && metrics.qkd_finite_key_bits != null;
+    const blockKind = String(metrics.qkd_block ?? "");
+    const blockSecs = Number(metrics.qkd_block_s ?? 0);           // one decimal, as emitted
+    const blockWhat = blockKind === "seconds"
+      ? `${Number(metrics.qkd_block_copies)} s held at this range`
+      : `${blockKind === "passes" ? `${Number(metrics.qkd_block_copies)} passes pooled, each` : "one pass"} `
+        + `peaking at ${Number(metrics.sat_pass_max_elevation_deg)} deg elevation, ${blockSecs} s of link time`;
     facts.push({
       label: "QKD key material",
-      value: keyBits == null ? "not reported" : `${keyBits} secure bits`,
+      value: keyBits == null ? "not reported" : `${keyBits.toLocaleString("en-US")} secure bits`,
       kind: "simulated",
       source: isE91
         ? "E91 / CHSH run, device-dependent secure fraction on the model error rate"
+        : finite
+        ? `composable finite key over ${blockWhat}: ${metrics.qkd_finite_key_bound}, eps_sec `
+          + `${Number(metrics.qkd_eps_sec).toExponential(0)}; this run's own fraction of a second at the range `
+          + "measured the QBER and decides the abort"
         : `BB84 decoy-state run, ${sourceOf(runChannel).vacuum ? "vacuum + weak decoy" : "two-intensity"} secure fraction`,
       // THE BAND, NOT JUST THE ENDPOINT. This tested `keyBits === 0` while the behaviour it warns
       // about switches at 256 - the threshold `stages.py` and `:1233` below both use to decide
@@ -313,7 +329,11 @@ export function securityFacts(config: any, metrics: Record<string, any>): Securi
       // positive count, fired no warning, and silently fell back to PQC-only. Round 45's 4x
       // correction moved the entry to that band from 93 km to 63 km: three clicks of a control
       // whose step is 5 km.
-      warn: keyBits === 0
+      warn: keyBits === 0 && finite && metrics.qkd_block_units_for_key != null && Number(metrics.qkd_block_units_for_key) > 1
+        ? `this block carries NO composable key: the statistics of ${blockWhat} are too few for the `
+          + `bound. ${blockKind === "seconds" ? `${Number(metrics.qkd_block_units_for_key)} s at this range` : `${Number(metrics.qkd_block_units_for_key)} such passes pooled`} `
+          + "would carry one. The session rests on the PQC hybrid alone"
+        : keyBits === 0
         ? "the QKD profile is selected but this channel produced NO secure key: the session rests on "
           + "the PQC hybrid alone"
         // The last sentence used to read "The bits are real; there are not enough of them." The
@@ -2171,7 +2191,36 @@ export function runClientPipeline(
         // 1e5, so the panel showed 0.00235 and the comment described the other surface. Nine since
         // Round 75: six held the satellite's 1.723e-5 to two figures, printed as 1.700e-5.
         metric(stage, "skr_per_pulse", Math.round(res.secretKeyRate * 1e9) / 1e9);
-        metric(stage, "secure_key_bits", res.secureKeyBits);
+        // THE KEY IS THE BLOCK'S COMPOSABLE FINITE KEY (Round 79, the user's choice). The run above
+        // samples a fifth of a second at this range, which measures the QBER and decides the abort;
+        // the key is the finite-key bound on the counts of a block of link time - one pass peaking at
+        // this range by default (`satBlock`). Twin of `SatelliteQKDStage._block_key`. An entangled
+        // source has no decoy bound here, so E91 keeps the asymptotic count and says so.
+        let satKeyBits = res.secureKeyBits;
+        let satBlockNote = "(asymptotic: no finite-key bound is modelled for an entangled source)";
+        if (!satERes) {
+          const block = satBlock(config, satChan);
+          const fkSrc = finiteKeySourceOf(satChan, Number(config.sat_eps_sec ?? qkdCfg().free_space_eps_sec));
+          const [uz, ux] = blockCounts(block.unit, fkSrc);
+          const fk = keyLength(scaleCounts(uz, block.copies), scaleCounts(ux, block.copies), fkSrc);
+          const fkBits = Number.isFinite(fk.keyBits) && fk.keyBits > 0 ? Math.trunc(fk.keyBits) : 0;
+          const blockS = block.copies * block.unitSeconds;
+          metric(stage, "qkd_block", block.kind);
+          metric(stage, "qkd_block_copies", block.copies);
+          metric(stage, "qkd_block_s", r1(blockS));
+          metric(stage, "qkd_block_pulses",
+                 Number((block.copies * block.unit.reduce((a, [n]) => a + n, 0)).toPrecision(6)));
+          if (block.maxElevationDeg !== null) metric(stage, "sat_pass_max_elevation_deg", r2(block.maxElevationDeg));
+          metric(stage, "qkd_finite_key_bits", fkBits);
+          metric(stage, "qkd_finite_key_bound", fkSrc.vacuum ? FINITE_KEY_BOUNDS.vacuum : FINITE_KEY_BOUNDS.oneDecoy);
+          metric(stage, "qkd_eps_sec", fkSrc.epsSec);
+          metric(stage, "qkd_block_units_for_key", blocksForPositiveKey(uz, ux, fkSrc));
+          satKeyBits = res.aborted ? 0 : fkBits;
+          const what = block.kind === "pass" ? "one pass"
+            : block.kind === "passes" ? `${block.copies} passes pooled` : `${block.copies} s at this range`;
+          satBlockNote = `(finite key over ${what}, ${r1(blockS)} s of link time, eps_sec ${fkSrc.epsSec})`;
+        }
+        metric(stage, "secure_key_bits", satKeyBits);
         // ACTUALLY REPORTED NOW. `secretKeyRateNonDecoy` was added in Round 45 with a JSDoc
         // saying "Reported beside `secretKeyRate`" and was read by nothing but its own test -
         // an inert FIELD shipped in the same commit as the gate against inert CONTROLS. The
@@ -2199,8 +2248,8 @@ export function runClientPipeline(
         if (satERes) metric(stage, "e91_model_qber", Math.round(satERes.e0 * 1e4) / 1e4);
         (config as any)._satQber = res.qber;
         emit("log", stage, satERes
-          ? `free-space E91 (simulated, CHSH S=${r2(satERes.chshS)}): ${res.channelLossDb}dB loss, QBER=${res.qber.toFixed(4)}, ${res.secureKeyBits} bits`
-          : `free-space BB84 (simulated): ${res.channelLossDb}dB loss, QBER=${res.qber.toFixed(4)}, ${res.secureKeyBits} bits`);
+          ? `free-space E91 (simulated, CHSH S=${r2(satERes.chshS)}): ${res.channelLossDb}dB loss, QBER=${res.qber.toFixed(4)}, ${satKeyBits} bits ${satBlockNote}`
+          : `free-space BB84 (simulated): ${res.channelLossDb}dB loss, QBER=${res.qber.toFixed(4)}, ${satKeyBits} bits ${satBlockNote}`);
         // The fibre stage returns before its optimise block under the PQC-only profile; this one
         // had no such guard, so the same checkbox did work here and nothing there.
         if (config.qkd_optimize && String(config.qkd ?? "") !== "pqc-only") {

@@ -204,6 +204,12 @@ export const makeDefaultParams = () => ({
   sat_vacuum_decoy: FREE_SPACE.vacuumDecoy ? 1 : 0,
   // The optional turbulence coupling's field-stop radius (Round 78); 0 = off, the default profile's.
   sat_field_stop_urad: FREE_SPACE.freeSpace!.fieldStopUrad ?? 0,
+  // Round 79: the block the composable key is computed on - one pass peaking at the range, passes
+  // pooled, or seconds held at the range - and its security parameter. See QKDConfig.free_space_block.
+  sat_block: qkdCfg().free_space_block,
+  sat_block_passes: qkdCfg().free_space_block_passes,
+  sat_block_seconds: qkdCfg().free_space_block_seconds,
+  sat_eps_sec: qkdCfg().free_space_eps_sec,
 });
 
 export const DEFAULT_PARAMS = makeDefaultParams();

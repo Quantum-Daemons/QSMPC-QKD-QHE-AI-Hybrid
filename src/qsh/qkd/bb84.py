@@ -379,6 +379,23 @@ def derive_shared_key(result: QKDResult, n_bytes: int = 32, *, seed: int | None 
     return hashlib.shake_256(packed).digest(n_bytes)
 
 
+def derive_block_key(result: QKDResult, key_bits: int, n_bytes: int = 32) -> bytes:
+    """An n-byte key from a block whose composable length `key_bits` a finite-key bound set.
+
+    Round 79: the satellite's key is the finite-key length of a block of link time - a pass - which
+    no run simulates pulse by pulse. The run's sifted bits are the part of that block's raw key it
+    did sample, hashed as `derive_shared_key` hashes; the LENGTH the check holds them to is the
+    block's, because the bound, not the sample, says how much secret key the block carries.
+    """
+    import hashlib
+
+    if key_bits < n_bytes * 8:
+        raise ValueError(f"insufficient secure key: {key_bits} bits < {n_bytes * 8} requested")
+    if result.sifted_key.size == 0:
+        raise ValueError("the run sampled no sifted bits to stand in for the block's raw key")
+    return hashlib.shake_256(np.packbits(result.sifted_key).tobytes()).digest(n_bytes)
+
+
 def bb84_circuit_demo(n: int = 8, *, seed: int | None = None) -> dict:
     """Tiny Qiskit BB84 demo (no channel noise) showing sift + key agreement.
 

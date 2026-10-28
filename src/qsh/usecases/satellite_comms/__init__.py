@@ -48,6 +48,8 @@ Run:  ``python -m qsh.orchestration.pipeline --usecase satellite_comms``
 
 from __future__ import annotations
 
+from dataclasses import dataclass
+
 from ...orchestration.crypto_agility import CryptoRegistry
 from ...orchestration.events import EventBus
 from ...orchestration.pipeline import Pipeline
@@ -83,7 +85,10 @@ _SAT_DEFAULTS = {
     # 20e6 since Round 75: the Micius budget gave 344 secure bits there and 172 at 10e6. Round 77's
     # air-mass atmosphere and Micius's own 0.8 / 0.1 / vacuum source gave 671 at 20e6, and per pulse
     # sent (Round 78) that is 335 - still above the 256 a key needs, and 167 at 10e6, below it.
-    "sat_pulses": 20_000_000,         # channel uses (free-space links need many)
+    # SINCE ROUND 79 THE KEY IS NOT THIS BLOCK'S: it is the finite key of a block of link time (one
+    # pass by default, `sat_block` below), and these pulses are the run's sample at its range, which
+    # measures the QBER and decides the abort.
+    "sat_pulses": 20_000_000,         # sampled channel uses at the range (the QBER and the abort)
     "sat_opt_pulses": 200_000,        # pulses per OptiQKD evaluation (fewer than a full run, for speed)
     # The two fixed terms of the budget, exposed in the WebUI so the inline eavesdrop check can be
     # demonstrated: they floor total loss at 8 dB by default, which makes every abort attributable to
@@ -96,6 +101,13 @@ _SAT_DEFAULTS = {
     "sat_min_elevation_deg": None,    # None -> the profile's; no link below it (Liao: 10 degrees)
     "sat_vacuum_decoy": None,         # None -> the profile's; whether the vacuum state is sent
     "sat_field_stop_urad": None,      # None -> the profile's; 0 = no turbulence coupling (Round 78)
+    # Round 79: the block the composable key is computed on - one pass, passes pooled, or seconds at
+    # this range - and its security parameter. None -> QKDConfig.free_space_block*, where the choice
+    # and its sources are recorded.
+    "sat_block": None,
+    "sat_block_passes": None,
+    "sat_block_seconds": None,
+    "sat_eps_sec": None,
 }
 _DEFAULT_TELEMETRY = (
     "SAT-OK;orbit=LEO;alt=550km;batt=98%;temp=21C;payload=nominal;ts=T+00:42:17"
@@ -156,8 +168,12 @@ def _sat_source(ctx: Context):
 
     v = _sat_profile(ctx)
     flag = ctx.config.get("sat_vacuum_decoy", _SAT_DEFAULTS["sat_vacuum_decoy"])
-    vacuum = bool(v["vacuum_decoy"] if flag is None else flag)
     p_signal = float(v["p_signal"])
+    # A VACUUM THE SOURCE SENDS NO PULSES FOR CANNOT BE MEASURED (Round 79). Switching the vacuum on
+    # for a profile whose shares leave it none - `micius_2017_one_decoy`'s 50 / 50 - gave a source that
+    # never sent the vacuum and a bound that credited its measured yield; Lim et al.'s finite-key
+    # bound refuses that source outright. The switch now holds only where the profile sends the vacuum.
+    vacuum = bool(v["vacuum_decoy"] if flag is None else flag) and 1.0 - p_signal - float(v["p_decoy"]) > 1e-12
     p_decoy = float(v["p_decoy"]) if vacuum else 1.0 - p_signal
     return QKDParams(mu_signal=float(v["mu_signal"]), mu_decoy=float(v["mu_decoy"]),
                      vacuum_decoy=vacuum, p_signal=p_signal, p_decoy=p_decoy)
@@ -177,13 +193,76 @@ def _out_of_view(params) -> str | None:
             f"orbit. A station this far from the satellite needs a relay - the page's Network tab")
 
 
+@dataclass(frozen=True)
+class _Block:
+    """The block a run's composable key is computed on: `copies` of a `unit` pooled into one.
+
+    The unit is one pass for "pass" and "passes" and one second at the run's range for "seconds";
+    expected counts are linear in the pulses, so the block's counts are the unit's times `copies`,
+    exactly, and `blocks_for_positive_key` can ask how many units a key needs.
+    """
+
+    kind: str                       # "pass" | "passes" | "seconds"
+    copies: float                   # passes pooled, or seconds held; 1 for one pass
+    unit_seconds: float
+    unit: tuple                     # (pulses, channel) segments of one unit
+    max_elevation_deg: float | None
+
+    @property
+    def seconds(self) -> float:
+        return self.copies * self.unit_seconds
+
+    @property
+    def pulses(self) -> float:
+        return self.copies * sum(n for n, _ in self.unit)
+
+
+def _sat_block(ctx: Context, params) -> _Block:
+    """The run's block: one pass peaking at the run's range (default), several pooled, or seconds."""
+    from ...config import get_config
+    from ...qkd.satellite_pass import simulate_pass, top_of_pass_deg
+
+    q = get_config().qkd
+    kind = str(_cfg_or(ctx, "sat_block", q.free_space_block))
+    if kind == "seconds":
+        secs = max(1e-3, float(_cfg_or(ctx, "sat_block_seconds", q.free_space_block_seconds)))
+        return _Block(kind, secs, 1.0, ((params.source_rate_hz, params),), None)
+    if kind not in ("pass", "passes"):
+        raise ValueError(f"sat_block {kind!r}: one of 'pass', 'passes', 'seconds'")
+    top = top_of_pass_deg(params)
+    one = simulate_pass(params, top)
+    copies = 1 if kind == "pass" else max(1, int(_cfg_or(ctx, "sat_block_passes", q.free_space_block_passes)))
+    return _Block(kind, float(copies), one.duration_s, one.segments, top)
+
+
+def _cfg_or(ctx: Context, key: str, default):
+    """The run's value for `key`, or `default` when the run leaves it unset or None."""
+    v = ctx.config.get(key, _SAT_DEFAULTS[key])
+    return default if v is None else v
+
+
+def _sat_finite_key_params(ctx: Context, source):
+    """The finite-key bound for this run's source: Lim et al. 2014 when it sends the vacuum, Rusca et
+    al. 2018's 1-decoy one when it does not. The asymptotic bound's error-correction efficiency, and
+    the security parameter the run sets (Liao's 1e-9 by default)."""
+    from ...config import get_config
+    from ...qkd.finite_key import FiniteKeyParams, VacuumDecoyParams
+
+    eps = float(_cfg_or(ctx, "sat_eps_sec", get_config().qkd.free_space_eps_sec))
+    common = dict(mu_signal=source.mu_signal, mu_decoy=source.mu_decoy, p_signal=source.p_signal,
+                  p_z=source.basis_prob, eps_sec=eps, f_ec=get_config().qkd.error_correction_eff)
+    if source.vacuum_decoy:
+        return VacuumDecoyParams(p_decoy=source.p_decoy, **common)
+    return FiniteKeyParams(**common)
+
+
 class SatelliteQKDStage(Stage):
     """Free-space BB84 over the satellite downlink; derive + fold in the QKD key."""
 
     name = "satellite_qkd"
 
     def run(self, ctx: Context, bus: EventBus, reg: CryptoRegistry) -> None:
-        from ...qkd.bb84 import derive_shared_key, run_bb84
+        from ...qkd.bb84 import derive_block_key, run_bb84
         from ...qkd.channel import link_elevation_deg
 
         params = _sat_channel(ctx)
@@ -222,8 +301,9 @@ class SatelliteQKDStage(Stage):
         # Nine decimals since Round 75, at every site: six kept two significant figures of this
         # downlink's 1.723e-5, and the control-plane panel printed it as 1.700e-5.
         bus.metric("skr_per_pulse", round(res.secret_key_rate, 9), self.name)
-        bus.metric("secure_key_bits", res.secure_key_bits, self.name)
         bus.metric("channel_loss_db", loss_db, self.name)
+        key_bits, block_note = self._block_key(ctx, bus, params, source, res)
+        bus.metric("secure_key_bits", key_bits, self.name)
         # AND THIS LINE, which Round 44 did not rename while writing the comment above saying that
         # renaming one and not the other is the asymmetry it had just found. It repeated it three
         # lines down, in its own twin, under its own warning. The fibre twin at
@@ -232,7 +312,7 @@ class SatelliteQKDStage(Stage):
         # only for `secure_key_bits`/`qber` - but a per-pulse fraction sat in a key called `skr`,
         # which is the exact collision the round's title claimed to have removed.
         ctx.metrics.update(qber=res.qber, skr_per_pulse=res.secret_key_rate)
-        if res.secure_key_bits >= 256:
+        if key_bits >= 256:
             # Folded in, the same way `QKDKeyAgreementStage` does it - see the note there for why
             # this is a re-derivation rather than a stage reorder. This stage's docstring has said
             # "derive + fold in" since it was written while `qkd_key` had no reader at all: the PQC
@@ -241,7 +321,7 @@ class SatelliteQKDStage(Stage):
             from ...config import get_config
             from ...pqc.transport import _mix_qkd
 
-            qkd_key = derive_shared_key(res, 32)
+            qkd_key = derive_block_key(res, key_bits, 32)
             ctx.put("qkd_key", qkd_key)
             chans = [c for c in (ctx.data.get("channel_initiator"),
                                  ctx.data.get("channel_responder")) if c is not None]
@@ -251,17 +331,62 @@ class SatelliteQKDStage(Stage):
             if chans:
                 ctx.put("session_key", chans[0].session_key)
                 bus.metric("qkd_mixed", 1, self.name)
-                bus.log(f"satellite QKD key derived: {res.secure_key_bits} secure bits "
+                bus.log(f"satellite QKD key derived: {key_bits} secure bits {block_note} "
                         f"(QBER={res.qber:.4f}), folded into the session key via the {mode} "
                         f"combiner", self.name)
             else:
                 bus.metric("qkd_mixed", 0, self.name)
-                bus.log(f"satellite QKD key derived: {res.secure_key_bits} secure bits "
+                bus.log(f"satellite QKD key derived: {key_bits} secure bits {block_note} "
                         f"(QBER={res.qber:.4f}); no PQC channel to fold it into", self.name)
         else:
             bus.metric("qkd_mixed", 0, self.name)
-            bus.log(f"insufficient secure key ({res.secure_key_bits} bits) — "
+            bus.log(f"insufficient secure key ({key_bits} bits {block_note}) — "
                     f"link too lossy or eavesdropper present", self.name)
+
+    def _block_key(self, ctx: Context, bus: EventBus, params, source, res) -> tuple[int, str]:
+        """The block's composable key length, its metrics, and a phrase saying what the block was.
+
+        THE KEY IS THE BLOCK'S FINITE KEY SINCE ROUND 79 (the user's choice). The run above samples a
+        fifth of a second at this range, which measures the QBER and decides the abort; until this
+        round the key was the asymptotic bound times those pulses, 335 bits, a block no experiment
+        distils a key from. Now it is the finite-key bound on the counts of a block of link time -
+        one pass peaking at this range by default - and the sampled run's abort still applies to it.
+        """
+        import math
+
+        from ...qkd.finite_key import (
+            VacuumDecoyParams,
+            block_counts,
+            blocks_for_positive_key,
+            one_decoy_key_length,
+            vacuum_decoy_key_length,
+        )
+
+        block = _sat_block(ctx, params)
+        fk_params = _sat_finite_key_params(ctx, source)
+        vacuum = isinstance(fk_params, VacuumDecoyParams)
+        unit_z, unit_x = block_counts(block.unit, fk_params)
+        bound = vacuum_decoy_key_length if vacuum else one_decoy_key_length
+        fk = bound(unit_z.scaled(block.copies), unit_x.scaled(block.copies), fk_params)
+        fk_bits = int(fk.key_bits) if math.isfinite(fk.key_bits) and fk.key_bits > 0.0 else 0
+        aborted = res.secure_key_bits == 0 and res.qber > source.pp_threshold
+        bus.metric("qkd_block", block.kind, self.name)
+        bus.metric("qkd_block_copies", block.copies, self.name)
+        bus.metric("qkd_block_s", round(block.seconds, 1), self.name)
+        bus.metric("qkd_block_pulses", float(f"{block.pulses:.6g}"), self.name)
+        if block.max_elevation_deg is not None:
+            bus.metric("sat_pass_max_elevation_deg", round(block.max_elevation_deg, 2), self.name)
+        bus.metric("qkd_finite_key_bits", fk_bits, self.name)
+        bus.metric("qkd_finite_key_bound", "Lim et al. 2014 (vacuum + weak decoy)" if vacuum
+                   else "Rusca et al. 2018 (one decoy)", self.name)
+        bus.metric("qkd_eps_sec", fk_params.eps_sec, self.name)
+        bus.metric("qkd_block_units_for_key", blocks_for_positive_key(unit_z, unit_x, fk_params),
+                   self.name)
+        what = {"pass": "one pass", "passes": f"{block.copies:g} passes pooled",
+                "seconds": f"{block.copies:g} s at this range"}[block.kind]
+        note = (f"(finite key over {what}, {round(block.seconds, 1)} s of link time, "
+                f"eps_sec {fk_params.eps_sec:g})")
+        return (0 if aborted else fk_bits), note
 
 
 class QSDCStage(Stage):
