@@ -302,8 +302,32 @@ statement of known limitations, not a conformance gap against any published requ
       notice. That is negligible at the output lengths here.
   - What it means here: neither issue changes the demo, whose two parties share one tab. Both qualify
     "malicious security" for a two-host deployment, as do the pre-release status and the absence of
-    any audit in the repository. UNVERIFIED - needs confirmation: whether an independent audit of
-    Polytune exists anywhere.
+    any audit in the repository.
+  **Round 72 read further, at the pinned commit and in Polytune's history.**
+  - No independent audit is published. Two pull requests (#34, merged 2025-01-07, and #36) apply
+    feedback "from our security audit", but who audited, what was in scope and what was found are not
+    disclosed. There is no SECURITY.md and no published advisory, and private vulnerability reporting
+    is off.
+  - #340 (2025-12-22) removed a fixed seed from the OT-extension sender's generator, a seed that a
+    since-yanked pre-release had shipped. The pinned commit postdates it: its only fixed seeds are in
+    test code.
+  - #63, measured against the literature:
+    - It is a gap in the proof at Polytune's parameter of 128, not a practical break. The one
+      better-than-negligible attack (SoftSpokenOT, Appendix D) needs a field size divisible by 20.
+    - On two hosts either party can play the attacking receiver, because each runs the extension in
+      both directions. What is at stake is the other party's global key: its MAC key, and for the
+      garbler its free-XOR offset.
+  - A further question, ours and not yet answered:
+    - The correlation check's challenge is drawn from the pairwise stream agreed by a coin toss at the
+      start of preprocessing. That is before the receiver sends its matrix, so the receiver can
+      compute the challenge in advance.
+    - KOS15 samples the challenge after the matrix, and so did Polytune until commit 1f56564
+      (2024-11-06), which moved it to save communication rounds.
+    - None of the published analyses covers the earlier ordering. Its consequences are not assessed
+      here.
+    - A comment asking the maintainers was drafted for #63 on 2026-10-26.
+  - So nothing here claims malicious security for two hosts at this commit. The demo, with both
+    parties in one tab, is unaffected.
   - What was fixed: the integration, not the library.
     - A failure of either half of the hybrid is now reported as that half's failure, so a protocol
       abort no longer reads as "node-seal did not load".

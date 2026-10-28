@@ -70,7 +70,12 @@ gzipped for the chunk that carries emp-wasm and mpc-framework (summon not includ
 ## Not established here
 
 - Over a real network the ordering may reverse: bytes and round trips were counted, not timed on a link.
-- No security review of the prototype's integration, and none of Polytune's alpha API.
-- `wasm-opt` was not run, so the package size and speed are before that optimisation.
+- No security review of the prototype's integration, and none of Polytune's alpha API. (Round 68
+  reviewed the integration the demo ships and Polytune's preprocessing, randomness and open security
+  issues; see `docs/threat-model.md`.)
+- `wasm-opt` was not run, so the package size and speed are before that optimisation. (Measured in
+  Round 72 on the demo's crate: 20 percent smaller raw, 4 percent gzipped, the same speed. The
+  binaryen in the build image's Debian release breaks the module, so it stays off; see the comment in
+  `wasm/qsh-mpc/Cargo.toml`.)
 - What adopting it would take in the web build: a Rust and wasm-pack step, and a decision on whether
   the web image or a separate artefact carries it.
