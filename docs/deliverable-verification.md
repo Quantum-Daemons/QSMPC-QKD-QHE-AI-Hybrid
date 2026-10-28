@@ -6212,6 +6212,15 @@ Full suite and every web check green.
 the field-stop template loading 10 urad and running at 32.5 dB with QSDC's Eve gap still 27.3 dB;
 console clean.
 
+**Walked on the deploy (0544a16, `index-B_Yc3msc.js`), in Chrome.** Satellite at 800 km: 32.2 dB,
+335 bits, 1,678 bit/s, `qkd_decoy_states` "vacuum + one decoy", the facts row "per pulse sent" and the
+control plane naming the Vacuum+Weak bound with Eqs. (34) and (37); the Network tab's nights at -0.03
+dB and 2.4 dB, its other figures as before. Telecom at 50 km: 1.426711e-3 bit/pulse, 28,534 bits,
+1,426,711 bit/s, the one-decoy bound with the dead-time note, and the tooltip's ratio to Li et al.
+computed at 6.2x. E91: "none (entangled source)", the E91 fraction named, CHSH S 2.69. Console clean,
+no "Infinity" or "NaN". **Found on the page:** the E91 row still said "only the signal pulses carry
+key", a decoy clause on a protocol with none; it now says every pair counts.
+
 BUSINESS DOC RECONCILED Round 78. The out-of-repo document is brought level with this round. Its content
 is not quoted here, in the checklist, or in any commit - only the fact of the reconciliation, which is
 what gate 16 reads.
