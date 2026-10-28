@@ -6332,3 +6332,65 @@ eskr 1,070,011. No "Infinity" or "NaN", console clean.
 BUSINESS DOC RECONCILED Round 79. The out-of-repo document is brought level with this round. Its content
 is not quoted here, in the checklist, or in any commit - only the fact of the reconciliation, which is
 what gate 16 reads.
+
+## Round 80: every fibre key a finite key, and the factor of two that was the test's
+
+**On main.** Round 79 (PR #75) merged after its six checks passed, by the user's choice; the demo was
+returned to main (2f34c1b, `index-kIMQHozN.js`) and checked live. Two user choices then: the fibre
+key as a composable finite key at every fibre site, and its block decided by the published practice.
+
+**Every fibre site, one key.** `run_bb84` and `bb84()` now report as `secure_key_bits` the
+composable finite key of a block - Rusca et al.'s 1-decoy bound, or Lim et al.'s for a source that
+sends the vacuum - so the use-case pipelines, the two-party demo and its Validations page, the
+Python API and the benchmark cannot report different quantities. The per-pulse rate stays asymptotic
+and says so; E91 keeps its asymptotic count, labelled.
+
+**The block, decided by the practice: 1e7 key-basis detections.** A research pass read the fibre
+experiments and deployed systems: they fix the block as a count of key-basis bits, the
+privacy-amplification input, and let the time follow from the distance - Rusca et al.'s Table I uses
+1e7, Boaron et al. 2018 8.2e6 (cut tenfold at 405 km to keep a block under a day), Grunenfelder et
+al. 2020 8,149,248, Li et al. 2023 1e8 - while a fixed time is the minority (Lucamarini et al.'s 20
+min) and a pulse count mostly a theorist's convention. The default is n_Z = 1e7
+(`QKDConfig.finite_key_block*`), with seconds of link time and the run's own pulses offered, and
+controls on the page. On the shipped channel the block is 5.3 s at 50 km and 35 s at 100 km and
+carries about 5.1 Mbit at either, 0.68 of the asymptotic product. The old 2e7-pulse block, now an
+option, carries 9,811 bits at 50 km and none at 100 km, where two such blocks would.
+
+**Found by checking the default: the factor of two was the test's.** The research's check for the
+default was Table I's own block time. Ours came out 2.1 to 2.4 times the paper's at every row: the
+detection rate was half the paper's. Rusca et al.'s attenuation is "global" - "the detector and the
+internal losses of Bob's apparatus are included" - and this repository's two Table I tests had
+applied a 50 percent detector on top of it, 3 dB too much. With it applied once:
+- the 1-decoy bound reads 1.03 / 1.04 of Table I at 26 dB (n_Z 1e7 / 1e9), 0.96 / 0.97 at 46 dB and
+  0.80 / 0.84 at 56 dB; under the paper's own dead-time convention (its Eq. B3 sums the Z-basis
+  detections, where `dead_time_factor` charges each detector its own clicks) the 26 dB row is
+  reproduced to a few parts in a thousand;
+- the time to fill a block is within 10 percent (13.4 s against 14 s; 1,240 s against 20 min);
+- Lim et al.'s bound reads 0.91 / 0.96 and 0.86 / 0.90 of the 2-decoy rows;
+- Round 79's reading of (A16) is confirmed: with the decoy's errors bounding the vacuum the 26 dB
+  row reads 1.000, with the signal's 0.868.
+The "conservative by 2-3x" that `finite_key.py`, `bb84.py` and the config carried since Round 47, and
+Round 79's "within a factor of 2.5" in the README and the report, are corrected; the asserted bands
+are tightened to match (1-decoy within 5 percent at 26 and 46 dB, 25 percent at 56 dB; 2-decoy within
+20 percent and never above). The 64 dB row is not asserted: the dark counts set it there.
+
+**The asymptotic path, checked at the research's request.** It read our 1.427e-3 bit per pulse sent
+as low for 13 dB. It is the shipped p_Z = p_signal = 0.5: at p_Z = 0.9 the same code gives 2.34e-3,
+and Rusca et al. optimise both. Recorded in the config since Round 47; not a defect.
+
+**The page.** The key-material row names the block and the bound on both use-case pages; the
+control plane's channel time is the block's link time on fibre as on the satellite; the Validations
+row reads "secure key bits (composable finite key)" with its block, which the two-party payload now
+carries from both branches. `qkd_block_s` is emitted to four significant figures at every site: the
+satellite's one decimal would print a 20 ms fibre block as 0.0 s, and the rounding gate allows one
+rounding per name. `check_qkd.mjs`'s "rate times pulses is bits" identity, true until this round, is
+replaced by the block's finite key and the asymptotic product as its ceiling.
+
+**Gates.** `tests/test_the_fibre_key_is_a_finite_key.py` (both languages to the bit over 18 cases,
+every caller on one block, the stage's metrics, growth with the block); the rewritten
+`tests/test_finite_key_reproduces_the_published_table.py` (the paper's channel, its dead time, its
+block times); `tests/test_the_vacuum_decoy_bound_is_lim_2014.py` on the paper's channel.
+
+BUSINESS DOC RECONCILED Round 80. The out-of-repo document is brought level with this round. Its content
+is not quoted here, in the checklist, or in any commit - only the fact of the reconciliation, which is
+what gate 16 reads.

@@ -619,13 +619,26 @@ visible number.
   et al. 2022) and a time held at one range are offered beside it. The bound follows the source:
   Lim et al. (Phys. Rev. A 89, 022307, 2014) for a signal, a weak decoy and the vacuum, as Micius
   sent, and Rusca et al. 2018 for one decoy. Checked, with nothing fitted: Rusca et al.'s Table I
-  two-decoy rows within a factor of 2.5 and below them, the ratio of the two protocols within 15
-  percent; Liao's pass at 0.55 of its published 300,939 bits and Khmelev's session at 0.56 of a
+  two-decoy rows within 20 percent and below them, the ratio of the two protocols within 15
+  percent (Round 80: the factor of about 2 recorded before was a test channel applying the
+  detector twice); Liao's pass at 0.55 of its published 300,939 bits and Khmelev's session at 0.56 of a
   Chernoff-bound key, the same analysis gap twice; Jinan-1's four published passes within a factor
   of 2.5. Writing it found two errors in the one-decoy bound, both on the safe side: a constant
   transcribed as 2 to the 21st where both papers print 21 squared, and the vacuum bounded by the
   signal's errors where the decoy's are tighter. The fibre threshold moved from 5.88e6 to 4.78e6
   pulses.
+- **Fibre key block** (Round 80) - every fibre key is a composable finite key too: the use-case
+  pages, the two-party demo and Validations page, and the Python API report the same one, because
+  the model (`run_bb84` / `bb84()`) computes it. By default the block is a privacy-amplification
+  block of 1e7 key-basis detections, the size Rusca et al.'s Table I uses and the class the Geneva
+  systems run (Boaron et al. 2018; Grunenfelder et al. 2020); the pulses and time follow from the
+  distance - 5.3 s at 50 km, 35 s at 100 km, about 5.1 Mbit either way. Seconds of link time and
+  the run's own pulses are offered beside it. Checking that default found the reason this project
+  had recorded its finite-key code as about 2x below Rusca et al.'s table since Round 47: its tests
+  applied the detector on top of the paper's global attenuation, which already includes it. With
+  the attenuation applied once the table's 26 dB row is reproduced to a few parts in a thousand
+  under the paper's dead-time convention, and the 26 and 46 dB rows within 5 percent under this
+  project's; the time to fill a block within 10 percent. E91 keeps its asymptotic count, labelled.
 - **3D views** (three.js, loaded only where drawn) - the QCNN's per-qubit reduced Bloch vectors through
   the real circuit, an illustration of the one-time pad on one qubit, and the satellite geometry the
   model itself uses: the orbit, the elevation a slant range implies, the arc above the minimum
