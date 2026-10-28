@@ -152,10 +152,10 @@ tr:hover td { background: var(--bg-2); }
   font-size: 12px; line-height: 1.6;
 }
 .log .t { color: var(--muted); }
-.log .stage_start { color: var(--accent); }
-.log .metric { color: var(--accent-2); }
-.log .stage_error { color: var(--danger); }
-.log .pipeline_end { color: var(--accent-2); font-weight: 700; }
+.log .ev-stage_start { color: var(--accent); }
+.log .ev-metric { color: var(--accent-2); }
+.log .ev-stage_error { color: var(--danger); }
+.log .ev-pipeline_end { color: var(--accent-2); font-weight: 700; }
 .log .log-line { color: var(--text); }
 
 .badge-state { padding: 4px 12px; border-radius: 99px; font-size: 12px; font-weight: 700; }

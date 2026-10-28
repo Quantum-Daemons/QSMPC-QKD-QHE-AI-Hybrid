@@ -1,5 +1,6 @@
 % Technical report - QSMPC-QKD-QHE-AI-Hybrid
-% Build: xelatex -interaction=nonstopmode technical-report.tex  (twice, for the ToC)
+% Build: `make report` (build_data.py, then pdflatex twice, for the ToC). xelatex also builds it
+% with this preamble; the note below says why the fonts are lmodern rather than fontspec.
 % Tables, macros and figures under generated/ are produced by build_data.py and build_figures.py
 % from live artefacts, so no number in this document is transcribed by hand.
 \documentclass[11pt,a4paper]{article}
@@ -691,12 +692,46 @@ is a discipline rather than an infrastructure.
 \end{enumerate}
 \end{small}
 
+\appendix
+\section{Findings and recommendations: where they are kept}
+
+The repository's README is a summary since Round 80. The findings it had accumulated moved
+unchanged into Markdown documents beside the code, where they can be read, searched and compared
+from one revision to the next; this appendix says what each holds and which of them bear most on
+what this report claims.
+
+\begin{itemize}
+  \item \texttt{docs/findings.md} --- the challenges of the QSMPC and QHE workstreams, and every
+        concern and recommendation recorded so far: the published models the pipeline did not run
+        before Round 21, the security score retired in Round 22, the satellite forecaster's retracted
+        result and the leak behind it, the browser model tier, the boundaries of the public demo, and
+        the positions of NSA and BSI on QKD.
+  \item \texttt{docs/models-and-benchmarks.md} --- the datasets and their licences, the MPC-FHE
+        against QSMPC-FHE benchmark, the model tiers, and what each page shows, including the
+        satellite and fibre key blocks.
+  \item \texttt{docs/use-cases.md} --- what is and is not new, the positioning (quantum-safe, not
+        quantum-advantage), the four workstreams and the industry use cases.
+  \item \texttt{docs/development.md} --- the development environment, its GPU, FHE, MPC and
+        Rust/WASM tiers, the dependency advisories and the upstream submodules.
+  \item \texttt{docs/deliverable-verification.md} and \texttt{docs/verification-log.md} --- the
+        record of each round: what was checked, what was found, and what it taught.
+\end{itemize}
+
+Three findings change how the results above should be read. The 1-decoy bound reproduces Rusca et
+al.'s Table I within 5 percent at 26 and 46~dB once the paper's global attenuation, which already
+includes the detector, is applied once; the ``conservative by 2--3x'' carried since Round~47 came
+from two tests that applied a 50 percent detector on top of it. The satellite's finite key, at an
+error-correction efficiency of 1.16, is 0.55 of Liao et al.'s published key on the same pass and 0.56
+of Khmelev et al.'s on theirs; the same fraction on two passes points to the analysis (Hoeffding
+bounds here, Chernoff bounds there) rather than the channel. And the public demo's QKD yields a key
+length, not key bytes: its quantum channel is simulated.
+
 \vspace{4mm}
 \noindent\rule{\textwidth}{0.4pt}\\
 \begin{small}
 \textbf{Reproduction.} Revision \texttt{\gitsha}. Tables and figures regenerate with
 \texttt{python report/build\_data.py \&\& python report/build\_figures.py}; the document builds with
-\texttt{xelatex technical-report.tex}.
+\texttt{make report}, two \texttt{pdflatex} passes.
 \end{small}
 
 \end{document}
