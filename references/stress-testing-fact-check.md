@@ -38,7 +38,7 @@ three activities and section 8.11 double-click handling are protocol logic a bro
 | Source | What it prescribes | Usable here |
 |---|---|---|
 | NIST SP 800-227 (2025) | Only CAVP/CMVP conformance, and undercuts it: validation "does not guarantee correct functioning on all inputs". Refuses to give side-channel guidance. **But section 4.6.3 is directly on point for a hybrid**: the naive combiner `KDF(K1,K2)` "does not preserve IND-CCA security, regardless of the properties of the KDF"; the approved form binds the ciphertexts and encapsulation keys. | Yes - section 4.6.3 |
-| FIPS 203 section 7.2 / section 7.3 | Normative SHALL: encapsulation-key modulus round-trip check, decapsulation-key hash check. Table 1 decapsulation failure rates 2^-138.8 / 2^-164.8 / 2^-174.8. | Yes |
+| FIPS 203 section 7.2 / section 7.3 | Normative SHALL: encapsulation-key modulus round-trip check, decapsulation-key hash check. Table 1 decapsulation failure rates $`2^{-138}`$.8 / $`2^{-164}`$.8 / $`2^{-174}`$.8. | Yes |
 | NIST ACVP + C2SP/CCTV | NIST does publish negative vectors, at the algorithm-validation layer: ML-DSA sigVer's five disposition categories, and CCTV's `modulus/`, `strcmp/`, `unlucky/` sets. | Yes |
 | ISO/IEC 23837-1/-2:2023 | The only QKD adversarial test procedures that exist, and they deliberately contain no thresholds. | Form only |
 | ETSI GS QKD 010 | Gives the Trojan-horse relation $`\mu_{\text{out}} \le \mu_{\text{in}} \cdot r_{\text{rel}}`$ as **equation (8) inside clause 7.4**, then **MANDATES** privacy amplification without fixing one formula: clause 8 says the bound *"shall be used ... to determine the amount of privacy amplification that shall be applied"* and the adopter *"shall provide a security justification for how they calculate the amount"*. **CORRECTED Round 55** - this row previously said 010 "declines to specify the privacy amplification", which is a different and wrong claim, and cited "clause 8" for the relation, which is an equation number read as a clause number. **AND 010 IS NOT PUBLISHED**: ETSI work item 43375, reference `DGS/QKD-0010_ISTrojan`, is at **v0.6.2, status Drafting**, TB approval targeted 2026-12-02, and its public draft cover states *"Do not use as reference material. Do not cite this document other than as work in progress."* The "V1.1.1 (2023-04)" a search summary reported belongs to **GS QKD 016**, the Common Criteria Protection Profile. Clause content above is from the public v0.4.1; v0.6.2 is not public, so numbering may have moved. | No |
@@ -73,13 +73,13 @@ three activities and section 8.11 double-click handling are protocol logic a bro
 
 3. **Finite-key rate versus block size.** Two independent peer-reviewed sources ten years apart, both
    with complete parameter sets, and the recent one ships code.
-   Lim, Curty, Walenta, Xu, Zbinden, PRA 89, 022307 (2014): block size 10^4 still reaches 135 km.
+   Lim, Curty, Walenta, Xu, Zbinden, PRA 89, 022307 (2014): block size $`10^4`$ still reaches 135 km.
    Wiesemann et al., Quantum 10, 2037 (2026): $`N_Z = 10^7`$ reaches about 50 dB, ~250 km at 0.2 dB/km.
 
 4. **Decoy versus non-decoy under photon-number splitting.** Closed form, canonical, unusually sharp
    assertions. Ma, Qi, Zhao, Lo, PRA 72, 012326 (2005) with the GYS parameter set ($`\alpha`$ 0.21 dB/km,
    $`e_{\text{det}}`$ 3.3%, $`Y_0`$ 1.7e-6, $`\eta_{\text{Bob}}`$ 0.045, $`f_{EC}`$ 1.22): non-decoy $`R/\eta^2`$ approximately 0.15 flat,
-   decoy R/eta approximately 0.11 flat; non-decoy dies near 42 km, decoy survives past 140 km.
+   decoy $`R/\eta \approx 0.11`$ flat; non-decoy dies near 42 km, decoy survives past 140 km.
    The sharpest single claim: **with GYS parameters and $`\mu = 0.1`$ non-decoy, the tagged fraction
    exceeds 1 at zero distance** - no key even back-to-back.
 

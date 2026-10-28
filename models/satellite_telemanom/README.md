@@ -56,7 +56,7 @@ Read n_events_scored before comparing this to the baseline. The scored test wind
 - **Source**: https://zenodo.org/records/12528696 (licence read 2026-08-03)
 - **Attribution (CC-BY-3.0-IGO)**: Kotowski et al., 'European Space Agency Benchmark for Anomaly Detection in Satellite Telemetry', arXiv:2406.17826. Data: ESA Anomaly Dataset, Zenodo record 12528696, CC BY 3.0 IGO.
 
-Missions are anonymised Mission1/2/3 — they are not named Sentinel anything. Multi-year telemetry; the exact span is NOT stated by the Zenodo record, the paper or the upstream README, so it is withheld here rather than asserted - see DATA_LICENSES.md. 1.19% annotated. Mission3 is excluded upstream for triviality. The CC BY 3.0 IGO term appears on the Zenodo landing page but NOT in its REST metadata, which returns no licence at all - an API-only check reads this corpus as unlicensed.
+Missions are anonymised Mission1/2/3 - they are not named Sentinel anything. Multi-year telemetry; the exact span is NOT stated by the Zenodo record, the paper or the upstream README, so it is withheld here rather than asserted - see DATA_LICENSES.md. 1.19% annotated. Mission3 is excluded upstream for triviality. The CC BY 3.0 IGO term appears on the Zenodo landing page but NOT in its REST metadata, which returns no licence at all - an API-only check reads this corpus as unlicensed.
 
 ## Notes and limitations
 

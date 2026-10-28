@@ -36,7 +36,7 @@ also self-described work-in-progress with no multithreading, while OpenFHE itsel
 several minor versions.
 
 For scale, the nearest working system costs 40 s to 8.4 minutes per switch on native multithreaded
-CPU at ring degree 2^16, against this project's 8192.
+CPU at ring degree $`2^{16}`$, against this project's 8192.
 
 **ISO/IEC 28033-5** is titled *Mechanisms for scheme switching* and is the laggard of that series at
 Working Draft 20.60 (2025-08-16), while Part 3 (CKKS) is at FDIS 50.00. The standards process agrees
