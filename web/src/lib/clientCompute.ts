@@ -23,7 +23,7 @@ import { randomBelow } from "./csprng";
 import { optimizeQKD } from "./clientOptiQKD";
 import { generateQuantumBits } from "./clientQRNG";
 import { outOfView, satBlock, satChannel } from "./satLink";
-import { blockCounts, blocksForPositiveKey, FINITE_KEY_BOUNDS, finiteKeySourceOf, keyLength,
+import { blockCounts, blocksForPositiveKey, fibreBlockPulses, FINITE_KEY_BOUNDS, finiteKeySourceOf, keyLength,
   scaleCounts } from "./finiteKey";
 import { bb84, channelLossDb, e91, FIBER, h2, inView, intrinsicQber,
   keyRateWithClock, linkElevationDeg, qsdcLink, qsdcSecrecyCapacity, sourceOf, sourceRateHz, type ChannelParams,
@@ -302,16 +302,24 @@ export function securityFacts(config: any, metrics: Record<string, any>): Securi
     // declared here, it did not reach the QBER row outside this branch.)
     // The warning is the point. A QKD profile that produced no key is the case the composite scored
     // 100 on, because nothing checked whether the channel actually delivered.
-    // THE SATELLITE'S KEY IS A BLOCK'S FINITE KEY (Round 79): `qkd_finite_key_bits` is present
-    // exactly when the run computed one, and the row then names the block and the bound rather than
-    // the asymptotic fraction it used to.
-    const finite = sat && metrics.qkd_finite_key_bits != null;
+    // EVERY DECOY KEY IS A BLOCK'S FINITE KEY: the satellite's since Round 79, the fibre's since
+    // Round 80. `qkd_finite_key_bits` is present exactly when the run computed one, and the row then
+    // names the block and the bound rather than an asymptotic fraction.
+    const finite = metrics.qkd_finite_key_bits != null;
     const blockKind = String(metrics.qkd_block ?? "");
-    const blockSecs = Number(metrics.qkd_block_s ?? 0);           // one decimal, as emitted
-    const blockWhat = blockKind === "seconds"
-      ? `${Number(metrics.qkd_block_copies)} s held at this range`
-      : `${blockKind === "passes" ? `${Number(metrics.qkd_block_copies)} passes pooled, each` : "one pass"} `
-        + `peaking at ${Number(metrics.sat_pass_max_elevation_deg)} deg elevation, ${blockSecs} s of link time`;
+    const blockSecs = Number(metrics.qkd_block_s ?? 0);           // 4 significant figures, as emitted
+    const blockPulses = Number(metrics.qkd_block_pulses ?? 0).toExponential(2);
+    const blockWhat = sat
+      ? blockKind === "seconds"
+        ? `${Number(metrics.qkd_block_copies)} s held at this range`
+        : `${blockKind === "passes" ? `${Number(metrics.qkd_block_copies)} passes pooled, each` : "one pass"} `
+          + `peaking at ${Number(metrics.sat_pass_max_elevation_deg)} deg elevation, ${blockSecs} s of link time`
+      : blockKind === "pa_bits"
+        ? `a privacy-amplification block of ${Number(config?.qkd_block_pa_bits ?? qkdCfg().finite_key_block_pa_bits).toExponential(0)} `
+          + `key-basis detections: ${blockPulses} pulses, ${blockSecs} s at the assumed clock`
+        : blockKind === "seconds"
+        ? `${blockSecs} s of link time at the assumed clock, ${blockPulses} pulses`
+        : `this run's ${blockPulses} pulses, ${blockSecs} s at the assumed clock`;
     facts.push({
       label: "QKD key material",
       value: keyBits == null ? "not reported" : `${keyBits.toLocaleString("en-US")} secure bits`,
@@ -320,8 +328,9 @@ export function securityFacts(config: any, metrics: Record<string, any>): Securi
         ? "E91 / CHSH run, device-dependent secure fraction on the model error rate"
         : finite
         ? `composable finite key over ${blockWhat}: ${metrics.qkd_finite_key_bound}, eps_sec `
-          + `${Number(metrics.qkd_eps_sec).toExponential(0)}; this run's own fraction of a second at the range `
-          + "measured the QBER and decides the abort"
+          + `${Number(metrics.qkd_eps_sec).toExponential(0)}; `
+          + (sat ? "this run's own fraction of a second at the range measured the QBER and decides the abort"
+                 : "this run's own pulses measured the QBER and decide the abort")
         : `BB84 decoy-state run, ${sourceOf(runChannel).vacuum ? "vacuum + weak decoy" : "two-intensity"} secure fraction`,
       // THE BAND, NOT JUST THE ENDPOINT. This tested `keyBits === 0` while the behaviour it warns
       // about switches at 256 - the threshold `stages.py` and `:1233` below both use to decide
@@ -331,7 +340,9 @@ export function securityFacts(config: any, metrics: Record<string, any>): Securi
       // whose step is 5 km.
       warn: keyBits === 0 && finite && metrics.qkd_block_units_for_key != null && Number(metrics.qkd_block_units_for_key) > 1
         ? `this block carries NO composable key: the statistics of ${blockWhat} are too few for the `
-          + `bound. ${blockKind === "seconds" ? `${Number(metrics.qkd_block_units_for_key)} s at this range` : `${Number(metrics.qkd_block_units_for_key)} such passes pooled`} `
+          + `bound. ${!sat ? `A block ${Number(metrics.qkd_block_units_for_key)} times larger`
+            : blockKind === "seconds" ? `${Number(metrics.qkd_block_units_for_key)} s at this range`
+            : `${Number(metrics.qkd_block_units_for_key)} such passes pooled`} `
           + "would carry one. The session rests on the PQC hybrid alone"
         : keyBits === 0
         ? "the QKD profile is selected but this channel produced NO secure key: the session rests on "
@@ -2069,8 +2080,16 @@ export function runClientPipeline(
         // so switching it visibly moves QBER / SKR / secure-key-bits — independently of the OptiQKD toggle.
         const protocol = String(config.qkd_protocol ?? qkdCfg().protocol);
         const pulses = Number(config.qkd_pulses ?? qkdCfg().pulses);
+        // THE KEY'S BLOCK (Round 80, the user's choice): the run's controls, else the configured fibre
+        // block, resolved once and handed to the model so the key and the metrics describe one block.
+        // Twin of `QKDKeyAgreementStage`.
+        const fkSrc = finiteKeySourceOf(chan, Number(config.qkd_eps_sec ?? qkdCfg().finite_key_eps_sec));
+        const blockKind = String(config.qkd_block ?? qkdCfg().finite_key_block);
+        const blockPulses = fibreBlockPulses(chan, fkSrc, { kind: blockKind, runPulses: pulses,
+          seconds: Number(config.qkd_block_seconds ?? qkdCfg().finite_key_block_seconds),
+          paBits: Number(config.qkd_block_pa_bits ?? qkdCfg().finite_key_block_pa_bits) });
         const eRes = protocol === "e91" ? e91(pulses, chan, seed, qkdCfg().e91_visibility) : null;   // typed with chshS
-        const res = eRes ?? bb84(pulses, chan, seed);
+        const res = eRes ?? bb84(pulses, chan, seed, undefined, { blockPulses, epsSec: fkSrc.epsSec });
         // The eavesdropper fraction that actually ran. The telecom diagram labelled its QKD arrow
         // "(w/ eavesdropper)" unconditionally while `qkd_eve` defaults to 0.0, so a default run drew
         // an attack it did not simulate. Publishing the value lets the label read the run.
@@ -2087,6 +2106,19 @@ export function runClientPipeline(
         // 1e5, so the panel showed 0.00235 and the comment described the other surface. Nine since
         // Round 75: six held the satellite's 1.723e-5 to two figures, printed as 1.700e-5.
         metric(stage, "skr_per_pulse", Math.round(res.secretKeyRate * 1e9) / 1e9);
+        // The block the key is the composable finite key of (Round 80). E91 has no decoy bound and no
+        // block: its count stays the asymptotic one, and the facts row says so.
+        if (!eRes) {
+          metric(stage, "qkd_block", blockKind);
+          metric(stage, "qkd_block_pulses", Number(blockPulses.toPrecision(6)));
+          metric(stage, "qkd_block_s", Number((blockPulses / Number(chan.sourceRateHz)).toPrecision(4)));
+          metric(stage, "qkd_finite_key_bits", res.secureKeyBits);
+          metric(stage, "qkd_finite_key_bound", fkSrc.vacuum ? FINITE_KEY_BOUNDS.vacuum : FINITE_KEY_BOUNDS.oneDecoy);
+          metric(stage, "qkd_eps_sec", fkSrc.epsSec);
+          // How many of this block, pooled, a key needs: 1 when it carries one.
+          metric(stage, "qkd_block_units_for_key",
+                 blocksForPositiveKey(...blockCounts([[blockPulses, chan]], fkSrc), fkSrc));
+        }
         metric(stage, "secure_key_bits", res.secureKeyBits);
         // ACTUALLY REPORTED NOW. `secretKeyRateNonDecoy` was added in Round 45 with a JSDoc
         // saying "Reported beside `secretKeyRate`" and was read by nothing but its own test -
@@ -2207,7 +2239,7 @@ export function runClientPipeline(
           const blockS = block.copies * block.unitSeconds;
           metric(stage, "qkd_block", block.kind);
           metric(stage, "qkd_block_copies", block.copies);
-          metric(stage, "qkd_block_s", r1(blockS));
+          metric(stage, "qkd_block_s", Number(blockS.toPrecision(4)));   // 4 significant figures at every site
           metric(stage, "qkd_block_pulses",
                  Number((block.copies * block.unit.reduce((a, [n]) => a + n, 0)).toPrecision(6)));
           if (block.maxElevationDeg !== null) metric(stage, "sat_pass_max_elevation_deg", r2(block.maxElevationDeg));
@@ -2218,7 +2250,7 @@ export function runClientPipeline(
           satKeyBits = res.aborted ? 0 : fkBits;
           const what = block.kind === "pass" ? "one pass"
             : block.kind === "passes" ? `${block.copies} passes pooled` : `${block.copies} s at this range`;
-          satBlockNote = `(finite key over ${what}, ${r1(blockS)} s of link time, eps_sec ${fkSrc.epsSec})`;
+          satBlockNote = `(finite key over ${what}, ${Number(blockS.toPrecision(4))} s of link time, eps_sec ${fkSrc.epsSec})`;
         }
         metric(stage, "secure_key_bits", satKeyBits);
         // ACTUALLY REPORTED NOW. `secretKeyRateNonDecoy` was added in Round 45 with a JSDoc
