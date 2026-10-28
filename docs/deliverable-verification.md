@@ -6389,7 +6389,18 @@ replaced by the block's finite key and the asymptotic product as its ceiling.
 **Gates.** `tests/test_the_fibre_key_is_a_finite_key.py` (both languages to the bit over 18 cases,
 every caller on one block, the stage's metrics, growth with the block); the rewritten
 `tests/test_finite_key_reproduces_the_published_table.py` (the paper's channel, its dead time, its
-block times); `tests/test_the_vacuum_decoy_bound_is_lim_2014.py` on the paper's channel.
+block times); `tests/test_the_vacuum_decoy_bound_is_lim_2014.py` on the paper's channel. Full suite
+and all 18 local gates green.
+
+**Walked locally on a client-only build, then on the deploy (959ce41, `index-BksqMex-.js`), in
+Chrome.** Telecom at 50 km: "not yet run" before the run; then 5,184,652 bits, "composable finite key
+over a privacy-amplification block of 1e+7 key-basis detections: 5.33e+9 pulses, 5.334 s at the
+assumed clock: Rusca et al. 2018 (one decoy), eps_sec 1e-9", the rate unchanged at 1.427e-3 per pulse
+sent, the control plane at 5.3 s of channel time with eskr 1,183,712 and a budget of 3,888,489 bits.
+The run's own 2e7 pulses at 100 km (local build): 0 bits and "A block 2 times larger would carry
+one". Validations: "secure key bits (composable finite key) 5,184,652 over a block of 5.33e+9
+pulses", the telecom run's count. The satellite unchanged: 91,475 bits over 408.5 s. No "Infinity" or
+"NaN", console clean.
 
 BUSINESS DOC RECONCILED Round 80. The out-of-repo document is brought level with this round. Its content
 is not quoted here, in the checklist, or in any commit - only the fact of the reconciliation, which is
