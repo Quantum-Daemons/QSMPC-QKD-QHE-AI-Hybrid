@@ -243,6 +243,27 @@ def windowed_causal_features(full, *, window_h: float = BURST_WINDOW_H):
     return out
 
 
+def load_sorted(nrows: int | None = None):
+    """The corpus in the order every window below is cut from: by timestamp, renumbered.
+
+    Shared with `scripts/prep_model_inputs.py` since Round 71, with `temporal_windows`, so the
+    browser's evaluation sample is drawn from the same test rows the metrics were measured on. It had
+    been drawing from the whole corpus, training rows included.
+    """
+    return datasets.load_amlworld(nrows=nrows).sort_values("timestamp").reset_index(drop=True)
+
+
+def temporal_windows(df):
+    """``(fit, val, test, before_test)`` by position in the time-sorted frame.
+
+    `before_test` is everything ahead of the test window, which is what the graph aggregates of a
+    test row may use.
+    """
+    cut = int(len(df) * (1.0 - TEST_FRACTION))
+    val_cut = int(cut * (1.0 - VAL_FRACTION))
+    return df.iloc[:val_cut], df.iloc[val_cut:cut], df.iloc[cut:], df.iloc[:cut]
+
+
 def graph_features(df, *, fit_on=None, causal=None):
     """Graph feature preprocessing: per-account aggregates joined back onto each edge.
 
@@ -456,7 +477,7 @@ def main() -> int:
     train.seed_everything(args.seed)
 
     print(f"loading AMLworld HI-Small{f' (first {args.nrows:,} rows)' if args.nrows else ''} ...")
-    df = datasets.load_amlworld(nrows=args.nrows).sort_values("timestamp").reset_index(drop=True)
+    df = load_sorted(nrows=args.nrows)
     n_pos = int(df["label"].sum())
     print(f"  {len(df):,} transactions, {n_pos:,} laundering = 1 in {len(df)/max(n_pos,1):.0f}")
 
@@ -464,10 +485,7 @@ def main() -> int:
     # has not been fitted: picked on the fit window it lands around 0.98 (the booster separates its
     # own training data almost perfectly) and generalises to nothing. Picked on test it reports a
     # number nobody could achieve in deployment.
-    cut = int(len(df) * (1.0 - TEST_FRACTION))
-    val_cut = int(cut * (1.0 - VAL_FRACTION))
-    fit, val, te = df.iloc[:val_cut], df.iloc[val_cut:cut], df.iloc[cut:]
-    tr = df.iloc[:cut]          # graph aggregates may use everything before the test window
+    fit, val, te, tr = temporal_windows(df)
     print(f"  temporal windows -> fit {len(fit):,} ({int(fit['label'].sum())} pos) | "
           f"val {len(val):,} ({int(val['label'].sum())} pos) | "
           f"test {len(te):,} ({int(te['label'].sum())} pos)")

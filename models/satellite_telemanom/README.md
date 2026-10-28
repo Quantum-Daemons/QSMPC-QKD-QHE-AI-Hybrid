@@ -25,17 +25,18 @@ path runs a distilled student, not this model.
 | metric | value |
 |---|---|
 | `anomaly_sample_rate` | 0.0075528 |
-| `event_wise_f0_5` | 0.454545 |
-| `event_wise_fn` | 2 |
-| `event_wise_fp` | 1 |
-| `event_wise_tp` | 1 |
+| `corrected_event_wise_f0_5` | 0.0 |
+| `event_wise_f0_5` | 0.0 |
+| `event_wise_fn` | 3 |
+| `event_wise_fp` | 2 |
+| `event_wise_tp` | 0 |
 | `n_anomaly_intervals` | 320 |
 | `n_events_scored` | 3 |
 | `n_parameters` | 80486 |
-| `point_adjusted_f1` | 0.993691 |
+| `point_adjusted_f1` | 0.0 |
 | `published_full_channel_f0_5` | 0.061 |
 | `published_lightweight_f0_5` | 0.786 |
-| `wall_clock_s` | 43.2 |
+| `wall_clock_s` | 41.4 |
 | `windowed_iforest_event_wise_f0_5` | 0.000248 |
 
 ## Published baselines this is measured against
@@ -46,7 +47,7 @@ path runs a distilled student, not this model.
 
 ### Gap to the published baseline
 
-Read n_events_scored before comparing this to the baseline. The scored test window holds THREE labelled anomaly events, not the 320 that n_anomaly_intervals counts over the whole timeline - the annotated anomalies sit earlier in the mission, so a temporal split leaves almost nothing to score. Both recorded values decompose uniquely on three events: 0.714286 is tp=1 fp=0 fn=2 and 0.454545 is tp=1 fp=1 fn=2, so the 0.26 swing between two identical-config runs is ONE extra false-alarm run. The detector flags 2 points out of 441,600. Three protocol gaps to the citation remain open and are stated rather than closed: ESA-ADB multiplies event precision by the time-level TNR (recorded here as corrected_event_wise_f0_5), it splits each mission in half where this tests on the last 30 percent, and its lightweight test partition holds 65 events against 3 here. Workings: references/satellite-event-count-investigation.md.
+Read n_events_scored before comparing this to the baseline. The scored test window holds 3 labelled anomaly event(s), not the 320 that n_anomaly_intervals counts over the whole timeline - the annotated anomalies sit earlier in the mission, so a temporal split leaves almost nothing to score. This run decomposes as tp=0 fp=2 fn=3, and the detector flags 2 of 441,600 points. The figure does not reproduce across identical-config retrains: two earlier runs recorded 0.714286 (tp=1 fp=0 fn=2) and 0.454545 (tp=1 fp=1 fn=2), one false-alarm run apart, both with the whole-series z-score this script used until Round 34. Three protocol gaps to the citation remain open and are stated rather than closed: ESA-ADB multiplies event precision by the time-level TNR (recorded here as corrected_event_wise_f0_5), it splits each mission in half where this tests on the last 30 percent, and its lightweight test partition holds 65 events against 3 here. Workings: references/satellite-event-count-investigation.md.
 
 ## Training data
 
@@ -59,7 +60,7 @@ Missions are anonymised Mission1/2/3 — they are not named Sentinel anything. M
 
 ## Notes and limitations
 
-Report event-wise F0.5, never point-adjusted F1. Always run a trivial baseline alongside: windowed isolation forest wins the ESA-ADB Mission2 lightweight subset outright. RETRACTION, Round 19: a Round 18 note here claimed this forecaster was about 22x WORSE than persistence. That was a measurement error of ours, not a property of the model -- the probe resampled at 60s while the model is trained at 300s (see `resample` in the achieved record). Re-measured at the trained cadence, next-step MAE is 0.0314 on the evaluation split against 0.0897 for persistence, i.e. the model is about 2.9x BETTER; 0.40x / 0.35x / 0.38x on train / test / whole series. Preprocessing for any evaluation must be read from this record rather than hardcoded, which is now what scripts/prep_model_inputs.py does. SEPARATE AND STILL OPEN: event-wise F0.5 does not reproduce across identical-config retrains -- 0.4545 here against the 0.714286 recorded -- while point-adjusted F1 does (0.9937 vs 0.9945) and the isolation-forest baseline reproduces exactly (0.000248). Treat the event-wise figure as a single draw from a wide distribution, which is the instability arXiv:2607.11969 (2026-07) describes for overlap-based metrics.
+Report event-wise F0.5, never point-adjusted F1. Always run a trivial baseline alongside: windowed isolation forest wins the ESA-ADB Mission2 lightweight subset outright. RETRACTION, Round 19: a Round 18 note here claimed this forecaster was about 22x WORSE than persistence. That was a measurement error of ours, not a property of the model -- the probe resampled at 60s while the model is trained at 300s (see `resample` in the achieved record). Preprocessing for any evaluation must be read from this record rather than hardcoded, which is now what scripts/prep_model_inputs.py does. RETRAINED IN ROUND 71. The weights published until then were trained with a z-score fitted on the whole series, test window included: the trainer was fixed in Round 34 and the model was never retrained, so its feature_spec.json still carried whole-series constants. With the constants fitted on the training window, next-step MAE over all 441,600 test windows is 0.0250 against 0.0764 for persistence, about 3.1x better. The event-wise figure fell to 0 (tp=0 fp=2 fn=3): the detector still flags 2 points of 441,600 and neither lands in one of the 3 scored events, where the two leaky runs had caught one and recorded 0.714286 and 0.454545. Point-adjusted F1 fell with it, from 0.9937 to 0, which is how much one flagged point inside a long event carries under point adjustment; the isolation-forest baseline reproduces exactly (0.000248). Treat the event-wise figure as a single draw from a wide distribution, which is the instability arXiv:2607.11969 (2026-07) describes for overlap-based metrics: three events cannot rank detectors.
 
 ## Honest scope
 
