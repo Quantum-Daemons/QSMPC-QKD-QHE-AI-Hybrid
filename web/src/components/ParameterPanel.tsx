@@ -201,6 +201,14 @@ export default function ParameterPanel({ run }: { run: Run }) {
        + "each pass at 10 degrees and Sidhu et al. (arXiv:2602.11833, 2026) impose the same. Lower "
        + "it to see a longer pass through more air; past the horizon there is no link at any setting",
        89],
+      // Round 78, the user's choice. Off by default: Xinglong's field stop is unpublished.
+      ["Field stop (urad)", "sat_field_stop_urad", 1, 0,
+       "the receiver's field-stop radius for an optional turbulence coupling loss; 0 turns it off. As "
+       + "the satellite sinks, the seeing-limited image grows (r0 shrinks as sin(elevation)^(3/5), the "
+       + "image is 0.98 lambda / r0 across) and a small stop loses its edge. Relative to the zenith, "
+       + "because the station's measured optics already include the coupling there. Xinglong's stop is "
+       + "not published; at 10 urad and Xinglong's 1.7 arcsec seeing it adds 0.1 dB at 645 km and 1.2 "
+       + "dB at 1200 km. Zvenigorod's receiver accepts 25 urad, where it adds almost nothing", 200],
       // Its own key, not the fibre page's. `qkd_distance_km` vs `sat_distance_km` exists because a
       // previous round evaluated the free-space MODEL at the fibre page's PARAMETERS and produced a
       // number that moved, which is harder to catch than one that does not. A single shared source
@@ -373,7 +381,8 @@ export default function ParameterPanel({ run }: { run: Run }) {
                   setParams({ ...params, sat_profile: e.target.value,
                     sat_atmospheric_db: Number(v.atmospheric_db), sat_pointing_db: Number(v.pointing_db),
                     sat_min_elevation_deg: Number(v.min_elevation_deg), sat_vacuum_decoy: v.vacuum_decoy ? 1 : 0,
-                    sat_source_rate_mhz: Number(v.source_rate_hz) / 1e6 });
+                    sat_source_rate_mhz: Number(v.source_rate_hz) / 1e6,
+                    sat_field_stop_urad: Number(v.field_stop_urad ?? 0) });
                 }}>
                 {Object.values(profiles).map((pr) => <option key={pr.id} value={pr.id}>{pr.label}</option>)}
               </select>

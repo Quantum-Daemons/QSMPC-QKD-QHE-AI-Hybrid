@@ -143,6 +143,14 @@ export const LIAO_2017_PASS = {
   finalKeyBits: 300_939,
 };
 
+/** The sifted key rate in bit/s at one range, counted as Liao counted it (matching bases on signal
+ *  states): a pass's PEAK rate when the range is its shortest. Round 78, for the 23-pass check. */
+export function siftedRateAt(link: ChannelParams, rangeKm: number): number {
+  const ch = { ...link, distanceKm: rangeKm, freeSpace: { ...link.freeSpace!, minElevationDeg: 0 } };
+  const rate = bb84Rate(ch);
+  return 0.5 * rate.src.pSignal * rate.qMu * rate.cDt * geometry(link).rateHz;
+}
+
 /** That pass through this model: culminating at the elevation 645 km implies, counted while the
  *  range is under 1200 km. */
 export function liaoPass(link: ChannelParams): PassResult {

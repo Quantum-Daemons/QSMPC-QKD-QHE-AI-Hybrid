@@ -264,6 +264,18 @@ class QKDConfig:
     free_space_p_signal: float = 0.5
     free_space_p_decoy: float = 0.25                # the vacuum takes the remaining 0.25
     free_space_vacuum_decoy: bool = True
+    # OPTIONAL TURBULENCE COUPLING (Round 78, the user's choice; off by default). The seeing-limited
+    # image of the satellite grows as the satellite sinks, and a receiver whose field stop is small
+    # loses the part of it that falls outside. The image FWHM is 0.98 lambda / r0 and r0 grows as
+    # lambda^(6/5) and shrinks with the slant path as (cos zeta)^(3/5) (Liu et al., MNRAS / arXiv:1505.05436,
+    # Eqs. 1-2, at Xinglong's LAMOST site); the energy inside a stop of radius alpha is taken from a
+    # Gaussian with that FWHM. Applied relative to the zenith, because the measured ~16% optics
+    # already includes the coupling at the best seeing. Xinglong's field stop is not published (Liao et
+    # al. 2018 say only that it is small), so the stop is an assumption and 0 turns the term off. The
+    # seeing is Xinglong's 2014 DIMM median, "around 1.7''" (Zhang et al., arXiv:1601.08114).
+    free_space_field_stop_urad: float = 0.0     # field-stop radius at the receiver; 0 = off
+    free_space_seeing_arcsec: float = 1.7       # at 500 nm, the zenith
+    free_space_wavelength_nm: float = 848.6     # Liao: "laser pulses (848.6 nm, 100 MHz, 0.2 ns)"
     # The link these values describe, by profile id (src/qsh/config/profiles/downlink/), and the
     # inter-satellite terminal pair the Network tab's constellation starts from (profiles/isl/).
     # `tests/test_link_profiles_are_sourced.py` holds the default profile equal to the values above.

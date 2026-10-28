@@ -95,6 +95,7 @@ _SAT_DEFAULTS = {
     "sat_profile": None,
     "sat_min_elevation_deg": None,    # None -> the profile's; no link below it (Liao: 10 degrees)
     "sat_vacuum_decoy": None,         # None -> the profile's; whether the vacuum state is sent
+    "sat_field_stop_urad": None,      # None -> the profile's; 0 = no turbulence coupling (Round 78)
 }
 _DEFAULT_TELEMETRY = (
     "SAT-OK;orbit=LEO;alt=550km;batt=98%;temp=21C;payload=nominal;ts=T+00:42:17"
@@ -106,13 +107,14 @@ def _sat_profile(ctx: Context) -> dict:
     config.yaml can still retune them; any other is read from its JSON file. Twin of
     `clientCompute.ts::satProfile`."""
     from ...config import get_config
-    from ...config.profiles import REQUIRED, profile_values
+    from ...config.profiles import OPTIONAL, REQUIRED, profile_values
 
     qkd = get_config().qkd
     pid = ctx.config.get("sat_profile", _SAT_DEFAULTS["sat_profile"]) or qkd.free_space_profile
+    optional = {k: getattr(qkd, f"free_space_{k}") for k in OPTIONAL["downlink"]}
     if pid == qkd.free_space_profile:
-        return {k: getattr(qkd, f"free_space_{k}") for k in REQUIRED["downlink"]}
-    return profile_values("downlink", str(pid))
+        return {**optional, **{k: getattr(qkd, f"free_space_{k}") for k in REQUIRED["downlink"]}}
+    return {**optional, **profile_values("downlink", str(pid))}
 
 
 def _sat_channel(ctx: Context):
@@ -139,6 +141,9 @@ def _sat_channel(ctx: Context):
             orbit_altitude_km=float(v["orbit_altitude_km"]),
             station_altitude_km=float(v["station_altitude_km"]),
             min_elevation_deg=pick("sat_min_elevation_deg", v["min_elevation_deg"]),
+            field_stop_urad=pick("sat_field_stop_urad", v["field_stop_urad"]),
+            seeing_arcsec=float(v["seeing_arcsec"]),
+            wavelength_nm=float(v["wavelength_nm"]),
         ),
     )
 
