@@ -176,6 +176,7 @@ class QKDResult:
     sifted_key: np.ndarray        # Bob's sifted key (pre error-correction), for demos
     params: ChannelParams
     block_pulses: float | None = None   # the block `secure_key_bits` is the finite key of (Round 80)
+    chsh_s: float | None = None         # E91's CHSH S, which decides its key; None for BB84 (Round 80)
 
 
 def _qkd_cfg():

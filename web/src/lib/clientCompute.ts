@@ -36,7 +36,7 @@ import {
   runPublishedModel,
 } from "./onnxInference";
 import { realInput, realInputCorpus, realSatelliteAnomaly, realFederatedSet,
-  type RealInput } from "./realData";
+  type RealInput, realAlleleCounts } from "./realData";
 import { hybridCombine, hybridCombinerInfo, kemNameFor } from "./hybridCombiner";
 import { isClientDemo } from "./demoMode";
 
@@ -2546,8 +2546,22 @@ export function runClientPipeline(
           // cancel mod p on reconstruction — a smaller p genuinely wraps the sum (demonstrates the field).
           // Party count from config, so the browser and the backend describe the same computation
           // instead of the browser inventing 5 while the backend ran n_parties.
-          const nParties = Math.max(2, Number(qsmpcCfg().n_parties ?? 5));
-          const secrets = Array.from({ length: nParties }, () => Math.floor(u() * 100));
+          //
+          // Round 80: on genomics the secrets are the cohorts' real allele counts. They were
+          // `floor(u() * 100)` per party - stand-ins - while the page and its diagram said the cohorts
+          // pool allele counts. Now each of the backend's `genomics_biobanks` cohorts contributes its
+          // effect-allele count at PGS000004's first variant over the bundled 1000 Genomes slice, split
+          // as the backend splits it. Another use case set to "Secure sum" has no counts to pool and
+          // keeps the stand-ins, and its log and diagram say so.
+          const streamParties = Math.max(2, Number(qsmpcCfg().n_parties ?? 5));
+          const drawn = Array.from({ length: streamParties }, () => Math.floor(u() * 100));
+          const alleles = usecase === "genomics" ? await realAlleleCounts(Number(dataCfg().genomics_biobanks ?? 4)) : null;
+          if (usecase === "genomics" && !alleles) {
+            throw new Error("the genomics secure sum pools the cohorts' allele counts, and the bundled 1000 Genomes "
+              + "slice did not load; no stand-in is pooled under that name");
+          }
+          const secrets = alleles ? alleles.counts : drawn;
+          const nParties = secrets.length;
           const rawTotal = secrets.reduce((a, b) => a + b, 0);
           // Snapped, not trusted. The field is labelled "QSMS prime" and used to accept any
           // integer, so entering 100 shared additively over Z_100 -- which is not a field, while
@@ -2574,16 +2588,32 @@ export function runClientPipeline(
             const mask = randomBelow(p);
             return [((s - mask) % p + p) % p, mask];
           });
+          // Four cohorts advance the stream four times above; the seven stand-in draws used to advance
+          // it seven. The difference is taken here, so the row private_inference encrypts is unchanged.
+          for (let k = nParties; k < streamParties; k++) u();
           const total = shares.reduce((acc, [s0, s1]) => (acc + s0 + s1) % p, 0) % p;
           metric(stage, "secure_sum", total);
           metric(stage, "qsms_prime", p);
           metric(stage, "qsms_parties", nParties);
+          // What was pooled, and whether the shares reconstruct the plain total (they do unless a
+          // requested field is smaller than the total, which wraps it - by design, and said so).
+          metric(stage, "qsms_inputs", alleles ? "allele_counts" : "stand_ins");
+          metric(stage, "qsms_matches_plain_total", total === rawTotal ? 1 : 0);
+          if (alleles) {
+            metric(stage, "pooled_allele_count", total);
+            metric(stage, "qsms_variant", alleles.variant);
+          }
           // Named for what the BROWSER does. The Shamir + d-level QFT + GHZ construction runs in
           // the Python backend (qsh/qsmpc/secure_summation.py); this mirror is its classical
           // equivalent - additive shares over the same prime field - because there is no browser
           // API for qudit state preparation and there will not be one. Saying "GHZ" here would
           // describe a computation this tab did not perform.
-          emit("log", stage, `secure summation = ${total} over Z_${p} (${nParties} parties, additive `
+          emit("log", stage, `secure summation = ${total} over Z_${p} (${alleles
+              // The pooled count only: printing each cohort's count would publish exactly what the
+              // secure sum exists to keep private.
+              ? `${nParties} cohorts' effect-allele counts at ${alleles.variant}, over the ${alleles.individuals} `
+                + `bundled 1000 Genomes individuals; ${total === rawTotal ? "equal to" : "wrapped from"} the plain total`
+              : `${nParties} parties' stand-in values; this use case has no allele counts to pool`}; additive `
             + `shares mod p - the classical equivalent of the backend's Shamir + d-level QFT over a `
             + `GHZ state, which needs qudits no browser can prepare)`);
         } else {
