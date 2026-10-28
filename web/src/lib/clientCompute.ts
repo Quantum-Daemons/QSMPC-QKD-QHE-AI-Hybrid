@@ -2117,7 +2117,9 @@ export function runClientPipeline(
               + `${opt.bestSkr.toExponential(2)}, +${r1(opt.improvementPct as number)}% `
               + `(${tuned}; ${opt.nEvals} evals, converged in ${opt.convergenceEvals}). This is the `
               + `optimiser's own analytic model, NOT the decoy-state run above - do not compare it `
-              + `with that run's skr, which a different model produced.`);
+              + `with that run's skr, which a different model produced. The gain is over this demo's `
+              + `default parameters (symmetric bases), not over a tuned static link, so it is not `
+              + `comparable with published gains such as arXiv:2603.04192v2's +14-25%.`);
         }
         break;
       }
@@ -2189,7 +2191,9 @@ export function runClientPipeline(
             : `OptiQKD (free-space, coordinate ascent): surrogate SKR `
               + `${opt.baselineSkr.toExponential(2)} -> ${opt.bestSkr.toExponential(2)}, `
               + `+${r1(opt.improvementPct as number)}% vs default `
-              + `(${tunedSat}; ${opt.nEvals} evals, converged in ${opt.convergenceEvals} — simulated)`);
+              + `(${tunedSat}; ${opt.nEvals} evals, converged in ${opt.convergenceEvals} — simulated). `
+              + `The gain is over this demo's default parameters, not over a tuned static link, so it `
+              + `is not comparable with published gains such as arXiv:2603.04192v2's +14-25%.`);
         }
         break;
       }

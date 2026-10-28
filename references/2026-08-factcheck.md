@@ -257,3 +257,19 @@ moving:
 Three of seven fully closed, two partly, two open with a stated obstacle. The open ones are NOT
 re-conditioned to a later round, because moving a promise is not discharging it - they are recorded as
 requiring something this session could not obtain (a plotted figure, a paywalled portal, a paper).
+
+## Correction, 2026-10-25 (Round 70): "SP 800-90B ... no revision in progress" was too strong
+
+The "Confirmed at source" paragraph above says SP 800-90B "is still January 2018 with no revision in
+progress". The first half holds: no revision, draft or comment period is published. The second half is
+contradicted by NIST itself. In "Overview of SP 800-90" (John Kelsey, NIST and KU Leuven, ECW 2024,
+November 2024), slide 22 says the "next version of 90B will require stochastic models for physical
+noise sources", and slide 30, "Health Tests: Next version of 90B", lists "better requirements for
+health tests" and "no more 'safe harbor' by using our tests", basing tests instead on the parameters of
+the source's stochastic model and its failure modes.
+
+The consequence for this project is forward-looking. The demo's QRNG runs the two tests the 2018
+edition approves, the Repetition Count Test and the Adaptive Proportion Test. Under the announced next
+edition those would no longer suffice on their own, and a physical QRNG would need health tests derived
+from its own noise model. The demo's source is a simulation, so nothing it reports changes. The
+paragraph above is left as written, and this note corrects it.

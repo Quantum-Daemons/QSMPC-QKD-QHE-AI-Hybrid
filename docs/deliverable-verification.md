@@ -5136,3 +5136,88 @@ clear, and all ten pages render with zero overflow at 1280 and 390 px.
 BUSINESS DOC RECONCILED Round 69. The out-of-repo document is brought level with this round. Its content
 is not quoted here, in the checklist, or in any commit - only the fact of the reconciliation, which is
 what gate 16 reads.
+
+## Round 70: the areas verified longest ago, re-checked first
+
+**Round 69 is still open, by decision.** PR #65 waits for its wording to be revised further, and the
+demo serves its branch. This round is stacked on that branch, so the demo never loses Round 69's
+corrections while this one is checked. Its pull request targets that branch until #65 merges.
+
+**Why this order.** The standing request asks for every area to be re-checked against 2026-08+
+sources and on the public demo. Every area has a section in the checklist, but most were last
+verified between Rounds 47 and 58. This round walks them in that order, oldest first:
+- OptiQKD (Round 47);
+- the 2D overlays and the corpus licences (Round 56);
+- QCNN, PQC, QRNG, SDN and the benchmark (Round 58);
+- Agentic AI and MCP (Round 61).
+
+**What held, read at the source or run on the demo** (2026-10-25):
+- **OptiQKD.** arXiv:2603.04192 is still at v2 (AML-QKD, 2026-06-01, +14-25 percent), and the repo
+  quotes it correctly. On the demo, two runs with the optimiser on return bit-identical results
+  (`OQ1`): surrogate SKR 1.98e-3 to 3.53e-3, +78.4 percent, 50 evaluations, converged in 22, within
+  the `OQ3` ceiling of 2 + 8 x 6.
+- **Licences.** All eight corpora were re-read at their sources of record and are unchanged.
+  `DATA_LICENSES.md` now carries the list and the date.
+- **The 2D overlays.** They render on all five use-case pages: finance 8,192 points, genomics 307,
+  medical 569, satellite 529, telecom 3,200, each caption saying whether it is the training corpus.
+  After a run, the private-inference scatter draws its 30 rows against the plaintext reference
+  (`RD6`).
+- **QCNN.** The trained path takes no seed (`qcnnInferTrained(features, w)`), so `QC2` holds by
+  construction, and two runs at the same seed return the same class and $\langle Z_0\rangle$
+  ($-0.5460$). The page reports the held-out accuracy 0.8837 beside the logistic regression's 0.9535
+  on the same split. No newer peer-reviewed QCNN result on WDBC was found.
+- **PQC.** The NIST PQC page (last modified 2026-08-05) shows no FIPS 206 initial public draft and no
+  HQC draft. The roadmap holds.
+- **QRNG.** The health-test cutoffs on the page match SP 800-90B's formulas at $H = 0.97$: the
+  repetition count is $C = 1 + \lceil 20/0.97 \rceil = 22$, and the adaptive proportion is 601.
+- **SDN.** ETSI GS QKD 014/015/020 are unchanged. The panel claims the control plane's standard role,
+  not path optimisation.
+- **Benchmark.** `PF1`, `PF3`, `PF4` and `PF5` hold on finance. The per-rotation cost is the timed
+  rotations over their count: 11.69 ms over 3 rotations gives 3.897 ms, and 9.27 ms over 3 gives
+  3.09 ms. The keygen time shows on the first run in the tab and is absent on the second. node-seal
+  7.0.0 is still the latest release.
+- **Agentic AI and MCP.** The agent answers on WASM with the Art. 50(1) disclosure shown, the envelope
+  authenticated under ML-DSA-65, and the tampered copy rejected. MCP's specification is now revision
+  2026-07-28, which changes nothing the client mirror uses, and the server code accepts both SDK
+  spellings.
+
+**What did not hold, and was corrected:**
+- **OptiQKD's description.** The Overview said OptiQKD is a "scikit-learn surrogate + gradient-free
+  search", but in the browser it is coordinate ascent over the analytic decoy-state model; scikit-learn
+  is the full deployment's surrogate. The page now says which runs where, and the public-text gate
+  retires the old phrase. It fires on the old Overview.
+- **OptiQKD's gain.** The +78.4 percent is over this demo's defaults, symmetric bases among them
+  ($p = 0.5$ gives a sifting efficiency of $0.5$; $p = 0.82$ alone raises it to about $0.705$). The
+  papers' gains are over tuned static operation. Both run logs (fibre and free-space) and the Overview
+  now say the two are not comparable.
+- **SP 800-90B.** The August fact-check said "no revision in progress". NIST's own slides (Kelsey, ECW
+  2024) describe the next edition: stochastic models required, and no "safe harbor" for the two
+  approved health tests. The fact-check now carries the correction, and its consequence for a physical
+  QRNG.
+- **Checklist QC18 (local only).** It still quoted the pre-Round-46 circuit (median 0.9070, logistic
+  regression 0.9651), and drew from them a finding that no longer holds: 0.9535 is below the paper's
+  0.96155. It is updated, and no tracked text repeated it.
+
+**Added to the literature, at primary source:**
+- Al-Mohammed and Al-Ali's 2026-08 survey (arXiv:2608.08280), for ML-adaptive QKD gains;
+- Laschet et al. (arXiv:2608.17539, 2026-08-18), for SDN key relay;
+- the MCP revision and SDK version;
+- the standards re-check.
+
+UNVERIFIED - needs confirmation: `QC2` with the input held fixed across seeds was not observed on the
+page, because the run log does not name the QCNN's input row. It holds by the function's signature, not
+by a live observation.
+
+**Walked on the public demo with this branch deployed** (eb1a11c, serving `index-C5xLCvSR.js`).
+- The Overview's WS1 card names which surrogate runs where, and it cites both gains as not comparable
+  with a run here.
+- With the optimiser on, the telecom run logs +78.4 percent and the satellite run +73.9 percent over
+  the defaults. Each log line now ends with the comparability sentence.
+- Round 69's per-use-case AI Act sentence is still on the finance page, so the stacking held.
+- All ten pages render with zero overflow at 1280 and 390 px.
+- The console carried only the two satellite messages that Round 69 recorded as proposals, once per
+  satellite run.
+
+BUSINESS DOC RECONCILED Round 70. The out-of-repo document is brought level with this round. Its content
+is not quoted here, in the checklist, or in any commit - only the fact of the reconciliation, which is
+what gate 16 reads.

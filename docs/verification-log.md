@@ -3084,3 +3084,20 @@ without its annex, rather than the panel's exact words.
 confirmation. In the paper, the only 15 is a coefficient in a gate count. Keeping it UNVERIFIED, and not
 quoting it, was the right default, because the alternative would have published a number with no
 source.
+
+### Round 70: re-checking by age
+
+**Context.** The standing request's full sweep, ordered by how long ago each area was last verified,
+oldest first. It is stacked on Round 69, which stays open by decision.
+
+**Most of what was old was still right.** Seven areas were re-run on the demo, and their sources
+re-read at the latest versions. The code needed no change. What had gone stale was prose:
+- a description that named the full deployment's method for the browser's;
+- a gain that read as comparable with the literature's when its baseline was not;
+- a fact-check sentence that a standards body had contradicted in public;
+- a checklist row still quoting a circuit retired 24 rounds earlier, with a conclusion that the
+  retirement had reversed.
+
+**A conclusion can outlive its numbers.** QC18's finding was correct when it was written and false
+now. Nothing tracked had repeated it, because it lived only in the checklist, which is the reason the
+checklist has to be re-read and not only re-run.
