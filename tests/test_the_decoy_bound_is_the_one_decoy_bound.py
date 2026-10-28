@@ -19,7 +19,9 @@ WHAT IS ASSERTED
 
 - Python's `_decoy_secure_fraction` equals Eq. (41) written out here independently from the paper.
 - It is strictly below the section 3.4 known-Y0 estimate wherever the background matters, so a
-  revert to the old estimator fails.
+  revert to the old estimator fails. On Round 76's Rusca set (1e-8 dark counts per gate) that is
+  only past about 200 km: 0.7 percent at 200 km, 6.3 at 250, 26 at 280. The distances above are the
+  channel of Round 75.
 - The observed QBER the run reports is the bound's E_mu, in Python and in the browser.
 - The decoy algebra exists once per language: no other file carries its own transcription. The
   browser optimiser's private copy, the one a past fix missed, now calls the shared function.
@@ -91,7 +93,7 @@ def test_the_bound_is_eq_41(distance_km: float, eve: float) -> None:
 
 def test_the_bound_is_below_the_known_vacuum_yield_estimate() -> None:
     mu, nu, f = _shipped()
-    for distance_km, at_least in ((50.0, 1.005), (100.0, 1.10), (120.0, 1.30)):
+    for distance_km, at_least in ((200.0, 1.005), (250.0, 1.05), (280.0, 1.20)):
         p = ChannelParams(distance_km=distance_km)
         args = (p.transmittance(), mu, nu, e_det_for_bound(p), 2 * p.dark_count_prob, f, 0.5)
         ours, old = _decoy_secure_fraction(*args)[0], _known_y0(*args)
