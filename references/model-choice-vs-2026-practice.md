@@ -66,7 +66,7 @@ search behind it - the second time this round that reading has been forced.
 3. **Regulation.** *Scientific Reports*, 2 Jan 2026 (DOI 10.1038/s41598-025-34536-9) picks logistic
    regression explicitly *"to align with widely adopted interpretable credit-risk modelling
    practices"*, and uses CKKS via TenSEAL at **poly_modulus_degree 8192** with coefficient chain
-   [60,40,40,60] and scale 2^40 - the same parameters this project runs. It reports HE-federated
+   [60,40,40,60] and scale $`2^{40}`$ - the same parameters this project runs. It reports HE-federated
    accuracy ~90% against ~91% plaintext, with CKKS drift under 1%.
 
 ## Then why is the shipped encrypted model a 33-parameter linear student? Browser latency, and nothing else

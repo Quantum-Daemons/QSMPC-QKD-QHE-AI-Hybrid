@@ -313,10 +313,10 @@ papers. Where the two used to overlap, that file is the owner.
   `src/qsh/qhe/rate1_qfhe.py` (QOTP plus a KEM-masked key; no Eval).
 - **Classical rate-1 FHE, the counterpart the comparison above omitted** `[R]`
   Gentry and Halevi, "Compressible FHE with Applications to PIR", TCC 2019, LNCS 11892, pp. 438-464,
-  doi:10.1007/978-3-030-36033-7_17 (ePrint 2019/733): rate $1-\epsilon$ under (ring) LWE, with a
+  doi:10.1007/978-3-030-36033-7_17 (ePrint 2019/733): rate $`1-\epsilon`$ under (ring) LWE, with a
   concrete rate-4/9 PIR. Brakerski, Doettling, Garg and Malavolta, "Leveraging Linear Decryption:
   Rate-1 Fully-Homomorphic Encryption and Time-Lock Puzzles", TCC 2019, LNCS 11892, pp. 407-437,
-  doi:10.1007/978-3-030-36033-7_16 (ePrint 2019/720): rate $1-1/\lambda$ from LWE. Because classical
+  doi:10.1007/978-3-030-36033-7_16 (ePrint 2019/720): rate $`1-1/\lambda`$ from LWE. Because classical
   FHE also reaches rate 1 - and rate-1 QFHE is built on the second - a gap between a quantum and a
   classical ciphertext ratio is not a quantum advantage. Added: 2026-10-23.
 
@@ -364,7 +364,7 @@ Added 2026-08-11, verified at the arXiv abstract page.
   Added: 2026-08-11.
 - **Liu, Gong, Tian, Zhang, Zheng & Xu, "Efficient Quantum Fully Homomorphic Encryption."**
   arXiv:2604.23490 [quant-ph], v1 2026-04-26, v2 2026-06-21, 32 pp. Reduces the quantum gadget
-  from O(lambda^2) to O(lambda log^2 lambda) EPR pairs and moves every quantum resource to the
+  from $`O(\lambda^2)`$ to $`O(\lambda \log^2 \lambda)`$ EPR pairs and moves every quantum resource to the
   server, so the client performs only classical LWE key generation and Pauli-key encryption under
   classical FHE. **Reframes rather than contradicts** this repository's "rate-1 transport, no
   Eval" caveat: as of April 2026 the direction of travel is a fully classical client, which is
@@ -570,7 +570,7 @@ Added 2026-08-11. Both verified at the arXiv abstract page.
   identifying information loss outside the measurement light cone and correlated forward/backward
   blocks as further sources of gradient suppression. **Why it is cited here:** the untrained
   Clifford+T circuit this project removed from its inference path showed exactly the concentration
-  symptom - |<Z0>| within +/-0.21 of zero for every input tested, with sign set by numerical noise -
+  symptom - $`\lvert\langle Z_0\rangle\rvert`$ within $`\pm 0.21`$ of zero for every input tested, with sign set by numerical noise -
   and this paper names the mechanism and warns that fixing concentration alone would not have made it
   trainable. Added: 2026-08-11.
 
@@ -1260,7 +1260,7 @@ Where a source could not be loaded it is marked and no number is taken from it.
   Inference in One Hour."** arXiv:2607.23478, 2026-07-26 `[link]`
   URL: https://arxiv.org/abs/2607.23478
   Names **multiplicative depth as the dominant cost** of homomorphic transformer inference, with a
-  per-layer configuration space reaching ~10^84 for a 12-layer BERT/ViT and 10^225 for 32-layer LLaMA3,
+  per-layer configuration space reaching about $`10^{84}`$ for a 12-layer BERT/ViT and $`10^{225}`$ for 32-layer LLaMA3,
   and 35-50% of candidate configurations numerically invalid. This is a **primary source for the
   constraint `models/registry.py` asserts** in its T1 docstring, and Round 33 cited it there.
   This entry said the docstring "until now rested on a secondary systematisation (IACR 2026/935) plus
@@ -1617,7 +1617,7 @@ what a reviewer would expect a demo to say about the satellite page's timeline d
   to precisely the threshold case and `submodules/HEonGPU` ships N-out-of-N collective bootstrapping.
 - **Al-Mohammed and Al-Ali, "Machine Learning for Specialized QKD Aspects: A Survey of Adaptive
   Protocols, Free-Space Links, 6G Integration, and Steerability-Aware Security."** arXiv:2608.08280,
-  2026-08-08 `[link]`
+  v1 2026-08-08, v2 2026-08-18 `[link]`
   URL: https://arxiv.org/abs/2608.08280
   Names *"the boundary between ML-based decision support and security certification"* as an open
   challenge. Independent support for a line this repository already carries at
@@ -1625,6 +1625,11 @@ what a reviewer would expect a demo to say about the satellite page's timeline d
   attacks, never as a replacement for decoy-state accounting"* - which until now rested on a single 2026
   study cited there and on no statement about the certification boundary itself. A survey is weak
   evidence for a mechanism and adequate evidence for a boundary, which is all it is used for here.
+  **Read in the body in Round 70 (2026-10-25).** Its section V-B reports deep-RL adaptive optimisation
+  at SKR +15-20 percent and QBER -30-40 percent under noisy conditions, citing Shingne et al. (DRL with
+  a VAE); the abstract gives no figures. This is consistent with AML-QKD v2's +14-25 percent. Neither
+  figure is comparable with the browser's OptiQKD gain, which is measured over this demo's default
+  parameters (symmetric bases), and the page and the run log say so.
 - **Chen et al., "DYNAFIX: Dynamic Fixed-Point Encoding for Arbitrary-Range MPC."** IACR ePrint
   2026/1612, received 2026-08-05 `[link]`
   URL: https://eprint.iacr.org/2026/1612
@@ -1744,15 +1749,9 @@ so each one names what was checked and where it stopped.
 
 ### New primary literature since August 2026, verified at the abstract or the body
 
-- **Al-Mohammed and Al-Ali, "Machine Learning for Specialized QKD Aspects: A Survey of Adaptive
-  Protocols, Free-Space Links, 6G Integration, and Steerability-Aware Security."** arXiv:2608.08280,
-  v1 2026-08-08, v2 2026-08-18 `[link]`
-  URL: https://arxiv.org/abs/2608.08280
-  Its section V-B reports deep-RL adaptive optimisation at SKR +15-20 percent and QBER -30-40 percent
-  under noisy conditions, citing Shingne et al. (DRL with a VAE). The abstract gives no figures, and the
-  numbers are in the body. This is consistent with AML-QKD v2's +14-25 percent above. Neither figure is
-  comparable with the browser's OptiQKD gain, which is measured over this demo's default parameters
-  (symmetric bases), and the page and the run log now say so.
+- **arXiv:2608.08280** (Al-Mohammed and Al-Ali, the 2026-08 survey of ML for QKD) was already entered
+  above, first cited on 2026-08-12 for the certification boundary. Round 70 read its body, and its
+  section V-B figures are recorded in that entry rather than in a second one (merged in Round 73).
 - **Laschet, Lendvay, Lorunser, James, Torresetti and Colombo, "Software Defined Networks Key Relay
   for Large-Scale Quantum Key Distribution Networks."** arXiv:2608.17539, 2026-08-18 `[link]`
   URL: https://arxiv.org/abs/2608.17539

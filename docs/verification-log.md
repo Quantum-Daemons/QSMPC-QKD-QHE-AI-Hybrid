@@ -3151,3 +3151,15 @@ had read; wasm-opt would buy almost nothing on the wire; QC2 holds because the f
 matrix it checks. Polytune's own history shows the ordering changed to save a round trip. Whether that
 matters is a cryptographic question this project cannot settle. So the public text stops short of
 claiming what it would need answered, and the question goes to the people who can answer it.
+
+### Round 73: a style that nothing enforced, and a duplicate that was mine
+
+**Context.** The oldest-first audit, continued: the mathematics notation and the documentation
+duplicate scan, last measured in Round 55.
+
+**The drift started in my own recent rounds.** The register sections I wrote for Rounds 70 and 72
+used plain inline math, against a house style recorded in the same file. A convention that lives only
+in prose is followed by whoever happens to remember it. It is now a gate.
+
+**The duplicate was also mine.** The Round 70 re-check entered a survey that `REFERENCES.md` already
+cited, because the search before adding it looked for the claim and not for the paper.
