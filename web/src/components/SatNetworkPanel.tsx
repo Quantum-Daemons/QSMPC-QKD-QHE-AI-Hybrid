@@ -7,6 +7,7 @@ import {
 import { linkProfiles, profileValues, qkdCfg, validationSet } from "../lib/config";
 import { downlinkFromProfile } from "../lib/quantumSim";
 import { randomWords } from "../lib/csprng";
+import { blockCounts, blocksForPositiveKey, finiteKeySourceOf, keyLength } from "../lib/finiteKey";
 import { satChannel } from "../lib/satLink";
 import {
   LIAO_2017_PASS, LIAO_2018_STATIONS, groundDistanceKm, islFromProfile, liaoPass, rangeAtElevationKm,
@@ -50,7 +51,8 @@ export default function SatNetworkPanel({ params }: { params: Record<string, any
         only the signal pulses carry key - {fmt(100 * Number(link.pSignal ?? 0.5))}% of them on this profile -
         which is how a measured key is made. Simulated: no satellite is involved.
       </p>
-      <PassSection link={link} liao={liao} minEl={minEl} />
+      <PassSection link={link} liao={liao} minEl={minEl}
+        epsSec={Number(params.sat_eps_sec ?? qkdCfg().free_space_eps_sec)} />
       <NightsSection link={link} />
       <RelaySection link={link} defaultElevation={liao.maxElevationDeg} minEl={minEl} />
       <ConstellationSection orbitKm={orbitKm} minEl={minEl} />
@@ -58,9 +60,24 @@ export default function SatNetworkPanel({ params }: { params: Record<string, any
   );
 }
 
-function PassSection({ link, liao, minEl }: { link: ReturnType<typeof satChannel>; liao: ReturnType<typeof liaoPass>; minEl: number }) {
+function PassSection({ link, liao, minEl, epsSec }: { link: ReturnType<typeof satChannel>; liao: ReturnType<typeof liaoPass>;
+                                                      minEl: number; epsSec: number }) {
   const [top, setTop] = useState(Math.round(liao.maxElevationDeg * 10) / 10);
   const pass = useMemo(() => simulatePass(link, top, { stepS: 1 }), [link, top]);
+  // THE PASS'S COMPOSABLE FINITE KEY (Round 79): the bound the run's source supports - Lim et al.
+  // 2014 for Micius's vacuum + weak decoy - on the counts summed over the pass (`finiteKey.ts`).
+  const fkSrc = useMemo(() => finiteKeySourceOf(link, epsSec), [link, epsSec]);
+  const fin = useMemo(() => {
+    if (!pass.segments.length) return null;
+    const [z, x] = blockCounts(pass.segments, fkSrc);
+    return { key: keyLength(z, x, fkSrc).keyBits, passes: blocksForPositiveKey(z, x, fkSrc) };
+  }, [pass, fkSrc]);
+  // Liao's row at Liao's own failure probability, whatever the run sets.
+  const liaoFinite = useMemo(() => {
+    const src = finiteKeySourceOf(link, 1e-9);
+    return keyLength(...blockCounts(liao.segments, src), src).keyBits;
+  }, [link, liao]);
+  const bound = fkSrc.vacuum ? "Lim et al. 2014" : "Rusca et al. 2018";
   const rows = useMemo(() => pass.samples.filter((_, i) => i % 4 === 0).map((s) => ({
     t: Math.round(s.t), elevation: Math.round(s.elevationDeg * 10) / 10, rate: Math.round(s.keyRate),
   })), [pass]);
@@ -79,7 +96,11 @@ function PassSection({ link, liao, minEl }: { link: ReturnType<typeof satChannel
       <p className="small" style={{ margin: "4px 0" }}>
         {pass.durationS > 0
           ? <>Above {minEl} degrees this pass lasts <b>{fmt(pass.durationS)} s</b>, from {fmt(pass.maxRangeKm)} km
-            in to {fmt(pass.minRangeKm)} km at the top, and yields <b>{kbit(pass.keyBits)}</b> of asymptotic key.</>
+            in to {fmt(pass.minRangeKm)} km at the top, and yields <b>{kbit(pass.keyBits)}</b> of asymptotic key.{" "}
+            {fin && fin.key > 0
+              ? <>As one block its composable finite key is <b>{kbit(fin.key)}</b> ({bound}, eps_sec {epsSec.toExponential(0)}).</>
+              : <>As one block it carries <b>no composable key</b> ({bound}, eps_sec {epsSec.toExponential(0)}):{" "}
+                {fin?.passes ? <>{fin.passes} such passes pooled would.</> : <>not even 10,000 such passes pooled would.</>}</>}</>
           : <>A pass that never rises above {minEl} degrees makes no key.</>}
       </p>
       {pass.durationS > 0 && (
@@ -119,6 +140,7 @@ function PassSection({ link, liao, minEl }: { link: ReturnType<typeof satChannel
             <tr><td>Detections</td><td className="num">{fmt(liao.detections)}</td><td className="num">{fmt(LIAO_2017_PASS.detections)}</td><td className="num">{pct(liao.detections, LIAO_2017_PASS.detections)}</td></tr>
             <tr><td>Sifted key, signal states</td><td className="num">{fmt(liao.siftedBits)}</td><td className="num">{fmt(LIAO_2017_PASS.siftedBits)}</td><td className="num">{pct(liao.siftedBits, LIAO_2017_PASS.siftedBits)}</td></tr>
             <tr><td>Secret key</td><td className="num">{fmt(liao.keyBits)} (asymptotic)</td><td className="num">{fmt(LIAO_2017_PASS.finalKeyBits)} (finite-key)</td><td className="num">{pct(liao.keyBits, LIAO_2017_PASS.finalKeyBits)}</td></tr>
+            <tr><td>Secret key, finite</td><td className="num">{fmt(Math.max(0, liaoFinite))} ({bound})</td><td className="num">{fmt(LIAO_2017_PASS.finalKeyBits)} (finite-key)</td><td className="num">{pct(Math.max(0, liaoFinite), LIAO_2017_PASS.finalKeyBits)}</td></tr>
           </tbody>
         </table>
       </div>
@@ -132,8 +154,13 @@ function PassSection({ link, liao, minEl }: { link: ReturnType<typeof satChannel
           and began from about 15; this model uses one threshold for both ends.
         </p>
         <p>
-          The secret-key row compares unlike things on purpose, and says so: the model&apos;s asymptotic bound, per pulse
-          sent, against Liao&apos;s finite-key result with intensity fluctuations, which must be smaller. Vergoossen et al. (arXiv:1903.07845, Table 3) modelled the same pass at 521,513 secret bits
+          The first secret-key row compares unlike things on purpose, and says so: the model&apos;s asymptotic bound, per pulse
+          sent, against Liao&apos;s finite-key result with intensity fluctuations, which must be smaller. The second
+          (Round 79) is like for like in kind: the composable finite key of the model&apos;s counts over the same window,
+          by {bound}&apos;s bound at Liao&apos;s failure probability of 1e-9. Liao et al. do not name their analysis; they
+          allow for intensity fluctuations and correct errors with a Hamming code, neither modelled here, so the two
+          rows differ by the analysis as well as the model. On Khmelev et al.&apos;s Micius-Zvenigorod session the same
+          bound gives the same fraction, 0.56, of a key computed with Chernoff bounds. Vergoossen et al. (arXiv:1903.07845, Table 3) modelled the same pass at 521,513 secret bits
           (asymptotic) against 3,926,729 detections; their sifted count, 1,963,364, is exactly half their detections,
           so it counts every state where Liao counted signals.
         </p>

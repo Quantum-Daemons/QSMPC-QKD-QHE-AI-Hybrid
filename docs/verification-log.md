@@ -3318,3 +3318,34 @@ went in as an option, by the user's choice, labelled with the one value it has t
 **A calibration is honest when it names what it leaves to check.** Jinan-1 could not be a template
 without one fitted constant. Fitting it to a pass's level leaves that pass's shape untouched, and the
 shape is what matched; the template file says which value was fitted and to what.
+
+### Round 79: a bound built for the satellite found two errors in the fibre's
+
+**Context.** Two user choices: a finite-key length for the downlink with Lim et al.'s vacuum+weak
+analysis, and a block chosen by the published practice between seconds at the range and a whole pass.
+
+**Writing a sibling is an audit of the first.** Lim et al.'s equations sit beside Rusca et al.'s, and
+reading them side by side exposed two errors in the 1-decoy code three rounds of checks had passed: a
+constant taken from a PDF text extraction, where a superscript 2 on 21 reads as "212", and an
+unstated choice made the looser way. Both were on the safe side, so every claim survived; the
+figures moved, and the rendered page, not the extracted text, is now where a constant is read.
+
+**A ratio cancels what a level cannot.** Against Rusca's table both bounds read about half the
+published rates, the same factor for both, so it belongs to the channel model they share. The ratio of
+the two protocols cancels it and agrees with the paper within 15 percent; that is the check that says
+the new bound is the paper's.
+
+**The number that motivated the work did not survive it.** The case for the vacuum bound began as "the
+1-decoy bound finds no key on Liao's pass". After the two corrections it finds 152,598 bits, and the
+vacuum adds 8 percent. The documents now say that rather than the first version.
+
+**Changing what a number means moves everything that reads it.** The key budget became a pass's, and
+the control plane, which divides spent bits by channel time, went on dividing by the sampled fifth of
+a second; found by reading its consumers, not by a test. The cross-language test then caught a source
+the asymptotic bound had accepted since Round 77: the vacuum switched on where the profile sends no
+vacuum pulses.
+
+**Research decided the block; the user asked it to.** Every flown experiment computes its finite key
+over a pass or over blocks inside one orbit; none on seconds of a low-orbit pass. The default follows
+that, the alternatives stay, and the seconds option says how long a key would need rather than
+pretending a fifth of a second could carry one.

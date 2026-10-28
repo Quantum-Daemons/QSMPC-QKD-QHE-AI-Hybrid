@@ -88,6 +88,12 @@ export default function ParameterPanel({ run }: { run: Run }) {
         ? "No effect while QSMPC op is Secure sum - only the PSI branch sizes its sets from this."
       : key === "qkd_opt_samples" && !optiqkd
         ? "No effect while Optimize QKD is off - only the OptiQKD search reads this, and it is off by default."
+      : (key === "sat_block_passes" || key === "sat_block_seconds") && p.qkd_protocol === "e91"
+        ? "No effect on E91 - no finite-key bound is modelled for an entangled source, so its key stays asymptotic."
+      : key === "sat_block_passes" && p.sat_block !== "passes"
+        ? "No effect unless Key block is 'passes pooled' - the default block is one pass."
+      : key === "sat_block_seconds" && p.sat_block !== "seconds"
+        ? "No effect unless Key block is 'seconds at this range' - the default block is one pass."
       : null;
     const dim = inertBecause !== null;
     return (
@@ -209,6 +215,17 @@ export default function ParameterPanel({ run }: { run: Run }) {
        + "because the station's measured optics already include the coupling there. Xinglong's stop is "
        + "not published; at 10 urad and Xinglong's 1.7 arcsec seeing it adds 0.1 dB at 645 km and 1.2 "
        + "dB at 1200 km. Zvenigorod's receiver accepts 25 urad, where it adds almost nothing", 200],
+      // Round 79: the size of the key block, each read only by the Key block choice that uses it.
+      ["Passes pooled", "sat_block_passes", 1, 1,
+       "passes peaking at this range pooled into one key block, when Key block is 'passes pooled'. "
+       + "A pass too low or too short for a key of its own can carry one pooled: Sidhu et al. (npj "
+       + "Quantum Inf. 8, 18, 2022, Fig. 6) model systems with no key from one pass that make one "
+       + "from two, and the run reports how many passes this link needs", 1000],
+      ["Block seconds", "sat_block_seconds", 10, 1,
+       "seconds of link time held at this range, when Key block is 'seconds at this range'. A low "
+       + "orbit holds a range for seconds, not minutes, so this reads as a link that stays put - and "
+       + "no flown experiment computed a finite key on a few seconds of a pass. The run reports how "
+       + "many seconds a key would need", 100000],
       // Its own key, not the fibre page's. `qkd_distance_km` vs `sat_distance_km` exists because a
       // previous round evaluated the free-space MODEL at the fibre page's PARAMETERS and produced a
       // number that moved, which is harder to catch than one that does not. A single shared source
@@ -388,14 +405,52 @@ export default function ParameterPanel({ run }: { run: Run }) {
               </select>
             </div>);
             })()}
+            {/* THE KEY BLOCK (Round 79). The key is the finite-key length of a block of link time;
+                which block is the choice the published practice settles (QKDConfig.free_space_block). */}
+            {!fibreQkd && (() => {
+              const e91 = p.qkd_protocol === "e91";
+              const why = e91 ? "No effect on E91 - no finite-key bound is modelled for an entangled source, so its key stays asymptotic. " : "";
+              return (<>
+            <div style={{ minWidth: 200, flex: "2 1 200px" }}>
+              <label className="muted" htmlFor="pp-satblock" style={{ fontSize: 12, opacity: e91 ? 0.45 : 1 }}
+                title={why + "The block the composable key is computed on. One pass is the published practice: Micius (Liao et al. 2017, 2018), Tiangong-2 and the Micius-Zvenigorod session each computed a finite key over one pass, and Jinan-1 over fixed blocks inside one orbit. Pooling passes lets a pass too short for a key contribute to one (Sidhu et al. 2022). Seconds at this range is a link that holds its range, which a low orbit does not."}>Key block</label>
+              <select id="pp-satblock" name="sat_block" value={String(p.sat_block)} style={{ width: "100%", opacity: e91 ? 0.45 : 1 }}
+                aria-disabled={e91 ? true : undefined}
+                onChange={(e) => setParams({ ...params, sat_block: e.target.value })}>
+                <option value="pass">one pass peaking at this range</option>
+                <option value="passes">passes pooled</option>
+                <option value="seconds">seconds at this range</option>
+              </select>
+            </div>
+            <div style={{ minWidth: 140, flex: "1 1 140px" }}>
+              <label className="muted" htmlFor="pp-eps" style={{ fontSize: 12, opacity: e91 ? 0.45 : 1 }}
+                title={why + "The secrecy parameter of the finite-key bound: the probability the key is not secret. Liao et al. 2017 set the statistical failure probability to 1e-9; smaller is stricter and costs key."}>Security parameter</label>
+              <select id="pp-eps" name="sat_eps_sec" value={String(p.sat_eps_sec)} style={{ width: "100%", opacity: e91 ? 0.45 : 1 }}
+                aria-disabled={e91 ? true : undefined}
+                onChange={(e) => setParams({ ...params, sat_eps_sec: Number(e.target.value) })}>
+                {[1e-6, 1e-9, 1e-10].map((v) => (
+                  <option key={v} value={String(v)}>{v.toExponential(0)}{v === 1e-9 ? " (Liao et al. 2017)" : ""}</option>
+                ))}
+              </select>
+            </div></>);
+            })()}
             {!fibreQkd && (
             <div style={{ minWidth: 160, flex: "1 1 160px" }}>
               <label className="muted" htmlFor="pp-vacuum" style={{ fontSize: 12 }}
                 title="Micius sent a vacuum state as well as its decoy (50/25/25 per cent), so its receiver measures the vacuum yield and the bound is Ma et al. 2005's Vacuum+Weak estimate (Eqs. 34, 37). Without it the yield is left to Eve and the bound is the one-decoy Eq. (41), with the decoy taking the vacuum's share.">Decoy states</label>
-              <select id="pp-vacuum" name="sat_vacuum_decoy" value={String(p.sat_vacuum_decoy)} style={{ width: "100%" }}
+              {(() => {
+                // A profile whose shares leave no pulses for the vacuum cannot send it (Round 79):
+                // the option is offered disabled, with the reason, and the run treats it as off.
+                const v = profileValues("downlink", String(p.sat_profile));
+                const noVacuum = v ? 1 - Number(v.p_signal) - Number(v.p_decoy) <= 1e-12 : false;
+                return (
+              <select id="pp-vacuum" name="sat_vacuum_decoy" value={noVacuum ? "0" : String(p.sat_vacuum_decoy)} style={{ width: "100%" }}
                 onChange={(e) => setParams({ ...params, sat_vacuum_decoy: Number(e.target.value) })}>
-                <option value="1">vacuum + one decoy</option><option value="0">one decoy, no vacuum</option>
-              </select>
+                <option value="1" disabled={noVacuum}
+                  title={noVacuum ? "This profile sends signal and decoy only, so there is no vacuum to measure." : undefined}>vacuum + one decoy</option>
+                <option value="0">one decoy, no vacuum</option>
+              </select>);
+              })()}
             </div>)}
             <div style={{ minWidth: 120, flex: "1 1 120px" }}>
               <label className="muted" htmlFor="pp-proto" style={{ fontSize: 12 }}>QKD protocol</label>

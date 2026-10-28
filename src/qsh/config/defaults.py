@@ -281,6 +281,20 @@ class QKDConfig:
     # `tests/test_link_profiles_are_sourced.py` holds the default profile equal to the values above.
     free_space_profile: str = "micius_2017"
     isl_profile: str = "micius_type_2019"
+    # THE BLOCK A DOWNLINK'S KEY IS COMPUTED ON (Round 79, the user's choice, decided by the published
+    # practice; `qkd/satellite_pass.py`). "pass": one pass peaking at the run's range, from the minimum
+    # elevation up and back down - the block Micius (Liao et al. 2017, 2018), Tiangong-2 and the
+    # Zvenigorod session computed their keys on. "passes": that many passes pooled into one block,
+    # which turns a pass too short for a key into a key (Sidhu et al., npj Quantum Inf. 8, 18 (2022),
+    # Fig. 6). "seconds": that long at the run's range, the reading of a link that holds its range -
+    # a low orbit does for seconds, not minutes, so its default is short on purpose. The key is the
+    # finite-key length of the block's counts (`qkd/finite_key.py`): Lim et al. 2014 for a source that
+    # sends the vacuum, Rusca et al. 2018 for one decoy, at Liao's "statistical failure probability"
+    # of 1e-9.
+    free_space_block: str = "pass"
+    free_space_block_passes: int = 2
+    free_space_block_seconds: float = 10.0
+    free_space_eps_sec: float = 1e-9
     free_space_pointing_db: float = 3.0             # Liao's upper value, "less than 3 dB"; not scaled
     # --- decoy-state / efficient-BB84 parameters the AI optimizer (qkd/optimize.py) tunes ---
     # THE INTENSITIES ARE NOW THE FINITE-KEY OPTIMUM, NOT THE ASYMPTOTIC ONE, and the difference
@@ -293,36 +307,41 @@ class QKDConfig:
     #
     # Measured trade, at the shipped 50 km channel, ON THE RUSCA SET OF ROUND 76 with its dead time
     # (asymptotic: Ma et al.'s one-decoy Eq. (41) times the dead-time factor; thresholds:
-    # `finite_key.py`, both at p_signal = p_z = 0.5, the shipped setting):
+    # `finite_key.py` as corrected in Round 79, both at p_signal = p_z = 0.5, the shipped setting):
     #
-    #     mu=0.5,    nu=0.1      asymptotic 0.003183 bit/pulse   positive-key threshold 1.04e7 pulses
-    #     mu=0.342,  nu=0.142    asymptotic 0.002853 bit/pulse   positive-key threshold 5.88e6 pulses
-    #     mu=0.319,  nu=0.129    asymptotic 0.002832 bit/pulse   positive-key threshold 5.85e6 pulses
-    #     mu=0.51,   nu->0       asymptotic 0.003572 bit/pulse   no finite-key bound
+    #     mu=0.5,    nu=0.1      asymptotic 0.003183 bit/pulse   positive-key threshold 5.78e6 pulses
+    #     mu=0.342,  nu=0.142    asymptotic 0.002853 bit/pulse   positive-key threshold 4.78e6 pulses
+    #     mu=0.375,  nu=0.129    asymptotic 0.002968 bit/pulse   positive-key threshold 4.64e6 pulses
+    #     mu=0.51,   nu->0       asymptotic 0.003572 bit/pulse   threshold diverges (1.6e8 at nu = 0.01)
     #
     # THESE RATES ARE PER SIGNAL PULSE, the convention until Round 78. The pages now count per pulse
     # SENT (the user's choice): only the p_signal share of the pulses carries key, so at the shipped
     # p_signal = 0.5 each reads half - the shipped pair's 0.002853 is 0.001427 bit/pulse on the page,
     # 28,534 secure bits in the 2e7-pulse block. The comparison between rows does not change.
     #
-    # Row three is this channel's own finite-key optimum, and the shipped pair is within 0.6% of its
-    # threshold, so the intensities did not move with the detector set. Row four is the asymptotic
-    # optimum: a decoy that weak approximates a vacuum state and leaves the finite-key bound
-    # undefined. Without the dead time the shipped pair's asymptotic rate would read 0.004565.
+    # Row three is this channel's own finite-key optimum, and the shipped pair is within 3% of its
+    # threshold, so the intensities did not move with the detector set or with Round 79's two
+    # corrections to `finite_key.py` (the phase-error constant, and the decoy's errors bounding the
+    # vacuum; before them the rows read 1.04e7 / 5.88e6 / 5.85e6, row three at mu = 0.319, and the
+    # shipped pair was within 0.6%). Row four is the asymptotic optimum: a decoy that weak
+    # approximates a vacuum state, and the block the finite-key bound needs grows without limit as
+    # it does - 1.6e8 pulses at nu = 0.01, past 1e11 by nu = 1e-4. Without the dead time the shipped
+    # pair's asymptotic rate would read 0.004565.
     #
     # ON THE CHANNEL OF ROUND 75 (efficiency 0.25, dark 1e-5, error floor 1.5%, no dead time) the same
-    # rows read 0.002318 / 0.001952 bit/pulse with thresholds 3.84e7 / 1.41e7, and its asymptotic
+    # rows read 0.002318 / 0.001952 bit/pulse with thresholds 3.84e7 / 1.41e7 (before Round 79's
+    # corrections), and its asymptotic
     # optimum was mu = 0.665, nu = 0.055 at 0.002452. The finite-key optimum then cost 15.8% of the
     # mu=0.5 asymptotic rate and bought a 2.7x smaller block (38,410,230 -> 14,055,773); the Python
     # Monte Carlo allocates ~2.0 GB at 3.84e7 pulses against ~1.03 GB at the shipped 2e7.
     #
     # BOTH ROWS AT p_signal = p_z = 0.5. The optimiser's FULL solution also sets p_signal and p_z,
-    # which are not config keys here (5.02e6 pulses on the Rusca set, at p_signal = 0.316); see the
+    # which are not config keys here (3.10e6 pulses on the Rusca set, at p_signal = 0.168); see the
     # note on `pulses` above.
     #
     # Chosen by an optimiser, so the value is reproducible rather than tuned by hand:
     #   python -c "from qsh.qkd.finite_key import optimise_parameters; print(optimise_parameters()[0])"
-    mu_signal: float = 0.3416         # finite-key optimum (Round 47; within 0.6% on the Rusca set); GYS: ~0.5
+    mu_signal: float = 0.3416         # finite-key optimum (Round 47; within 3% on the Rusca set); GYS: ~0.5
     mu_decoy: float = 0.1417          # decoy mean photon number, optimised jointly with the signal
     basis_prob: float = 0.5           # P(Z basis) — biased-basis (efficient) BB84 raises the sift ratio
     #: QBER abort threshold, and it is a FIBRE-QKD post-processing figure - not a QSDC one.
@@ -744,13 +763,13 @@ class WebConfig:
     # 4e7 pulses on the 50 km FIBRE channel, so 2,440 sifted bits is short by well over an order of
     # magnitude rather than by the small factor implied here, and the 30e6-pulse fix was never a fix.
     #
-    # The free-space threshold is not quoted, because it has not been evaluated: `finite_key.py`
-    # takes a fibre `ChannelParams`, and the 800 km downlink's 24.48 dB budget is built elsewhere.
-    # Only the DIRECTION is safe to state, and it is the unhelpful one - a lossier link has a lower
-    # gain per pulse and a higher QBER at equal statistics, so it needs MORE than the fibre link, not
-    # less. The reason is physical and not a setting. The free-space rate is therefore asymptotic-only
-    # in a stronger sense than the fibre one, and the register says so rather than the number
-    # pretending otherwise.
+    # The free-space threshold was not quoted until Round 79, because it had not been evaluated. It
+    # has been now, and it settled what this block is for: at 800 km the downlink needs about 33 s of
+    # link time for a composable key at all (Lim et al. 2014's bound on Micius's source), against the
+    # fifth of a second this setting buys. So the satellite's KEY is no longer this block's. It is
+    # the finite-key length of a block of link time - one pass by default, `QKDConfig.free_space_block`
+    # - and this setting is the size of the run's sample at the range, which measures the QBER and
+    # decides the abort. The note below is the history of the key it used to set.
     #
     # ROUND 75 RAISED IT TO 20e6. The sourced Micius budget (receiver optics, 1 m aperture, Micius's
     # detectors) and the one-decoy bound take the downlink to 1.723e-5 bit/pulse: 172 secure bits at
@@ -762,7 +781,7 @@ class WebConfig:
     # Micius's own source with its vacuum state gave 3.356e-5 bit/pulse per SIGNAL pulse. Counted per
     # pulse SENT since Round 78 - Micius sends signals on half its pulses - that is 1.678e-5: 335
     # secure bits at 20e6, and 167 at 10e6, which would not clear the 256, so 20e6 stays.
-    demo_sat_pulses: int = 20_000_000   # free-space BB84 channel uses in the demo satellite run
+    demo_sat_pulses: int = 20_000_000   # the satellite run's sampled pulses at its range (Round 79: not the key's block)
 
 
 @dataclass
