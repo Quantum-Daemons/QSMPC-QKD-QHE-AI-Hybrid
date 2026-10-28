@@ -4,7 +4,9 @@ A minimal authenticated-encryption channel built on the hybrid KEM
 (:mod:`~qsh.pqc.hybrid_kem`). This is the report's "ML-KEM hybrid layer over MCP"
 (Gopher 2026) — the secure pipe over which orchestration stages and AI agents
 exchange data. A QKD-derived key can be mixed in for a defence-in-depth
-(PQC + QKD) session, matching the NSA hybrid recommendation.
+(PQC + QKD) session. NSA publishes no recommendation for this; CNSA 2.0 does not require hybrid
+products at all (see :mod:`~qsh.pqc.hybrid_kem`). This line said "matching the NSA hybrid
+recommendation" until Round 75.
 
 Key agreement (PQC, or PQC+QKD) -> AEAD record layer (AES-256-GCM).
 """
@@ -82,9 +84,15 @@ class SecureChannel:
 
     session_key: bytes
     _counter: int = 0
+    #: First counter value this channel may NOT use. Two channels that share a key are kept apart by
+    #: disjoint counter ranges (`mcp_bridge.py` starts the responder at 2**40), and a range is only
+    #: disjoint if it is enforced: GCM with a repeated (key, nonce) leaks the authentication key.
+    _limit: int = 1 << 96
 
     def seal(self, plaintext: bytes, associated_data: bytes = b"") -> bytes:
         """Encrypt+authenticate a record. Nonce = 12-byte big-endian counter."""
+        if self._counter >= self._limit:
+            raise RuntimeError(f"nonce range exhausted at {self._counter}: re-key before sealing again")
         nonce = self._counter.to_bytes(12, "big")
         self._counter += 1
         return nonce + AESGCM(self.session_key).encrypt(nonce, plaintext, associated_data)

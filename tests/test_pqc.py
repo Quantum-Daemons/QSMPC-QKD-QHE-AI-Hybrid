@@ -74,3 +74,64 @@ def test_its_combiner_deterministic_and_distinct():
     assert _mix_qkd_its(pqc, qkd) == _mix_qkd_its(pqc, qkd) and len(_mix_qkd_its(pqc, qkd)) == 32
     assert _mix_qkd(pqc, qkd, mode="hkdf") != _mix_qkd(pqc, qkd, mode="its_toeplitz")
     assert _mix_qkd(pqc, None) == pqc                                   # no QKD key -> passthrough
+
+
+# --------------------------------------------------------------------------------------------- #
+#  FIPS 203 input checks on the Python backend (Round 75)
+# --------------------------------------------------------------------------------------------- #
+# liboqs-python copies an input into a buffer of the expected size, so a SHORT key or ciphertext
+# was zero-padded and used: a 1183-byte encapsulation key was encapsulated to, and a 1087-byte
+# ciphertext decapsulated to a key. FIPS 203 sections 7.2 and 7.3 require both to be rejected
+# before anything else. `check:pqc` held only the browser library to this.
+
+import gzip  # noqa: E402
+from pathlib import Path  # noqa: E402
+
+from qsh.pqc.hybrid_kem import HybridCiphertext, HybridPublicKey  # noqa: E402
+
+VECTORS = Path(__file__).resolve().parents[1] / "web" / "scripts" / "vectors"
+
+
+@pytest.mark.parametrize("delta", [-1, +1])
+def test_encapsulate_refuses_a_key_of_the_wrong_length(delta: int) -> None:
+    with HybridKEMRecipient() as bob:
+        pub = bob.public_key
+        ek = pub.mlkem_public[:delta] if delta < 0 else pub.mlkem_public + b"\x00"
+        with pytest.raises(ValueError, match="type check"):
+            encapsulate(HybridPublicKey(pub.kem_name, ek, pub.x25519_public))
+
+
+@pytest.mark.parametrize("delta", [-1, +1])
+def test_decapsulate_refuses_a_ciphertext_of_the_wrong_length(delta: int) -> None:
+    with HybridKEMRecipient() as bob:
+        ct, _ = encapsulate(bob.public_key)
+        c1 = ct.mlkem_ciphertext[:delta] if delta < 0 else ct.mlkem_ciphertext + b"\x00"
+        with pytest.raises(ValueError, match="type check"):
+            bob.decapsulate(HybridCiphertext(c1, ct.x25519_ephemeral_public))
+
+
+@pytest.mark.parametrize("kem_name", ["ML-KEM-512", "ML-KEM-768", "ML-KEM-1024"])
+def test_encapsulate_refuses_every_c2sp_modulus_vector(kem_name: str) -> None:
+    """The same 2,595 malformed keys `check:pqc` gives the browser, through the Python path."""
+    keys = gzip.decompress((VECTORS / f"{kem_name}.txt.gz").read_bytes()).decode().split()
+    assert len(keys) > 500, f"only {len(keys)} vectors read for {kem_name}"
+    with HybridKEMRecipient(kem_name) as bob:
+        x_pub = bob.public_key.x25519_public
+        accepted = []
+        for i, hexkey in enumerate(keys):
+            try:
+                encapsulate(HybridPublicKey(kem_name, bytes.fromhex(hexkey), x_pub))
+                accepted.append(i)
+            except (RuntimeError, ValueError):
+                pass
+    assert not accepted, f"{kem_name}: {len(accepted)} malformed keys accepted, first {accepted[:5]}"
+
+
+def test_a_channel_refuses_to_seal_past_its_nonce_range() -> None:
+    """The MCP bridge keeps the caller below 2**40 so its nonces never meet the reply's."""
+    from qsh.pqc.mcp_bridge import _RESPONDER_NONCE_BASE
+    from qsh.pqc.transport import SecureChannel
+    chan = SecureChannel(b"K" * 32, _counter=_RESPONDER_NONCE_BASE - 1, _limit=_RESPONDER_NONCE_BASE)
+    chan.seal(b"last one allowed")
+    with pytest.raises(RuntimeError, match="nonce range exhausted"):
+        chan.seal(b"would reuse the responder's first nonce")

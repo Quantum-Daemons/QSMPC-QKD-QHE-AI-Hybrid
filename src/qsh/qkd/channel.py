@@ -21,10 +21,13 @@ class FreeSpaceParams:
     ``QKDConfig.free_space_*``.
     """
 
-    beam_divergence_urad: float = 10.0    # far-field, near-diffraction-limited
-    rx_aperture_m: float = 1.2            # optical ground station telescope diameter
+    beam_divergence_urad: float = 10.0    # far-field, near-diffraction-limited (Liao 2017)
+    rx_aperture_m: float = 1.0            # Xinglong's telescope (Liao 2017)
     atmospheric_db: float = 5.0           # crossed once, near the ground - NOT per km
     pointing_db: float = 3.0              # acquisition and tracking residual
+    #: Receiving telescope plus fibre coupling, "~16%" in Liao 2017 - its own budget line since
+    #: Round 75, which the model did not have.
+    receiver_optics_efficiency: float = 0.16
 
 
 @dataclass
@@ -54,7 +57,8 @@ class ChannelParams:
         WHY THIS EXISTS. The browser replaced the linear model in an earlier round and this file did
         not, so the same nominal 800 km downlink measured 24.48 dB there and 28.0 dB here
         (``sat_loss_db_per_km = 0.035``, the very rate ``quantumSim.channelLossDb``'s comment records
-        as rejected: it reads plausibly at 800 km beside the ~27 dB Micius reports and then diverges
+        as rejected: it reads plausibly at 800 km (beside a "~27 dB" this comment once credited to Micius; Liao et al.
+        state no total) and then diverges
         badly - 42 dB at 1200 km where physics gives about 28, 175 against 40 at 5000). Nothing
         surfaced the disagreement because BOTH sides clamped secrecy capacity to 0 on the abort path,
         so each reported "0" for what were really -51.58 and -138.93 bit/carrier. Reporting the sign
@@ -69,7 +73,19 @@ class ChannelParams:
         # Capped at 1: inside the near field the receiver cannot capture more than the whole beam.
         captured = min(1.0, fs.rx_aperture_m / max(beam_diameter_m, 1e-9))
         geometric_db = -20.0 * float(np.log10(captured))
-        return geometric_db + fs.atmospheric_db + fs.pointing_db
+        optics_db = -10.0 * float(np.log10(max(fs.receiver_optics_efficiency, 1e-12)))
+        return geometric_db + fs.atmospheric_db + fs.pointing_db + optics_db
+
+    def receiver_optics_db(self) -> float:
+        """The ground station's own optics (telescope + fibre coupling) in dB; 0 on fibre.
+
+        Part of `loss_db`, because it removes signal photons, and NOT part of QSDC's Eve-to-Bob gap
+        `g` (see `qsdc.py`): Qi et al.'s system lost about 13 dB in its optical elements, of a 25.1 dB
+        total, while their g counted 4.1 dB of back channel and detector.
+        """
+        if self.free_space is None:
+            return 0.0
+        return -10.0 * float(np.log10(max(self.free_space.receiver_optics_efficiency, 1e-12)))
 
     def transmittance(self) -> float:
         """End-to-end channel + detector transmittance (probability a pulse is detected)."""

@@ -61,6 +61,15 @@
   Garble** (garbled-circuit 2PC, Rust compiled to wasm from `wasm/qsh-mpc`, Round 65) for the in-browser
   demo; the **MCP Python SDK** (`MCPServer`, named `FastMCP` before v2.0.0) for
   the full-deployment MCP server.
+- **Server-tier MPC** (full deployment, `src/qsh/mpc/parties.py`): three MPyC parties, the client
+  who holds the CKKS key, the server who holds the model, and a helper; Shamir with t = 1, so
+  **semi-honest with an honest majority**. The conversions are masked (`src/qsh/mpc/secret_inference.py`),
+  so the key holder sees only masked intermediates and the class index, hidden statistically rather than
+  perfectly, with the bound reported per run. A client and helper who pool their shares recover the
+  server's masks and with them every intermediate. Here the three run on one host over loopback; a
+  deployment that relies on the honest majority needs them on three hosts under three operators.
+  Until Round 75 this tier was one in-process party, and its conversions showed every intermediate to
+  the key holder.
 - **MCP tool dispatch** (full deployment): the quantum-safe channel authenticates + seals the
   `tools/call` and its result (ML-DSA + AES-GCM), but the tool *logic* runs server-side and is trusted;
   the official filesystem MCP server is sandboxed to a use-case data dir. The public demo runs no

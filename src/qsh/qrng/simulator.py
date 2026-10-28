@@ -64,6 +64,25 @@ def lhl_output_length(min_entropy_bits: float, epsilon_log2: int) -> int:
     return max(1, int(np.floor(min_entropy_bits - 2.0 * float(-epsilon_log2) + 2.0)))
 
 
+def lhl_output_length_weak_seed(input_min_entropy_bits: float, n_input: int,
+                                seed_min_entropy_per_bit: float, epsilon_log2: int) -> int:
+    """Output length when the Toeplitz seed is itself a weak source (Giestinhas & Spiller 2026, Eq. 7):
+
+    ``out <= H_min(input) + H_min(seed) - |seed| - 2*log2(1/eps) + 2``.
+
+    The seed defines an ``out x n`` Toeplitz matrix, so ``|seed| = out + n - 1``, and a seed with
+    ``h`` bits of min-entropy per bit falls short of uniform by ``(1 - h)|seed|``. Solving for the
+    largest ``out``: ``out <= (H_in - (1 - h)(n - 1) - 2 log2(1/eps) + 2) / (2 - h)``.
+
+    Until Round 75 the seedless mode used Eq. 5, the bound for a UNIFORM seed, which at n = 8208 and
+    h = 0.9 put the ceiling at 7309 bits where Eq. 7 allows 5898. The 4096 bits actually delivered
+    were inside both; the reported ceiling was not.
+    """
+    deficit = 1.0 - float(seed_min_entropy_per_bit)
+    top = input_min_entropy_bits - deficit * (n_input - 1) - 2.0 * float(-epsilon_log2) + 2.0
+    return max(1, int(np.floor(top / (1.0 + deficit))))
+
+
 def toeplitz_extract(bits: np.ndarray, out_len: int, *, seed: int | None = None,
                      toeplitz_bits: np.ndarray | None = None) -> np.ndarray:
     """Toeplitz-hash (universal-2) randomness extractor: out = T @ bits (mod 2).
@@ -130,6 +149,10 @@ def generate_quantum_bits(n_bits: int = 4096, *, source: str = "sim",
         # output length from the Leftover-Hash-Lemma bound (no fixed m//2 rate); eps + min-entropy from config
         out_len = lhl_output_length(min_entropy_per_raw_bit * raw.size, epsilon_log2)
         if post_processing == "seedless":
+            # The seed is a second simulated |+> draw, assessed at the same entropy per bit, so Eq. 7
+            # charges its shortfall from uniform; Eq. 5 above assumes a uniform seed.
+            out_len = lhl_output_length_weak_seed(min_entropy_per_raw_bit * raw.size, int(raw.size),
+                                                  min_entropy_per_raw_bit, epsilon_log2)
             # a second, independent |+> draw defines the Toeplitz matrix (two-source construction). The seed
             # source is the simulator even when source='anu', so it stays offline.
             raw2 = measure_plus_qubits(out_len + raw.size - 1, seed=(None if seed is None else seed + 1))
@@ -146,6 +169,7 @@ def generate_quantum_bits(n_bits: int = 4096, *, source: str = "sim",
         raw_bits_consumed=raw_consumed,
         # `raw=raw` is load-bearing: SP 800-90B section 4.4 requires its continuous tests on the
         # PRE-CONDITIONING stream, and passing only `bits` measured the Toeplitz extractor.
-        health=health_suite(bits, raw=raw, alpha=health_alpha, block_size=health_block_size),
+        health=health_suite(bits, raw=raw, alpha=health_alpha, block_size=health_block_size,
+                            assessed_h=min_entropy_per_raw_bit),
         throughput_bits_per_s=float(bits.size) / dt, simulated=simulated,
         extraction_rate=float(bits.size) / max(1, raw_consumed))
