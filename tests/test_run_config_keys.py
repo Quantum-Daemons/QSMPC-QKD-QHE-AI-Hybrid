@@ -45,8 +45,9 @@ INTENTIONALLY_ABSENT = {
 
 
 def _read_keys() -> set[str]:
-    """Keys the run reads off its config object, from `config.x` / `config?.x`."""
-    text = COMPUTE.read_text()
+    """Keys the run reads off its config object, from `config.x` / `config?.x`, in the pipeline and in
+    the satellite link builder it calls (`satLink.ts`, moved out of the pipeline in Round 77)."""
+    text = COMPUTE.read_text() + "\n" + (COMPUTE.parent / "satLink.ts").read_text()
     # Strip line comments first: two of the matches in this file are prose about `config.federated`
     # and the `config.ts` module, not property reads, and a comment is not a dependency.
     code = "\n".join(re.sub(r"//.*$", "", ln) for ln in text.splitlines())

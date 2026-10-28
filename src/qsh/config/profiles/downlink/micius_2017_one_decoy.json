@@ -1,0 +1,94 @@
+{
+  "id": "micius_2017_one_decoy",
+  "kind": "downlink",
+  "label": "Micius to Xinglong (Liao 2017) without the vacuum state (one decoy)",
+  "source": "Liao et al., Nature 549, 43 (2017), arXiv:1707.00542",
+  "note": "The link as this project modelled it from Round 75 to Round 76: one decoy, no vacuum. It shows what the vacuum state is worth.",
+  "values": {
+    "orbit_altitude_km": {
+      "value": 500.0,
+      "quote": "successfully launched on 16th August 2016, from Jiuquan, China, orbiting at an altitude of ~500 km"
+    },
+    "station_altitude_km": {
+      "value": 0.89,
+      "quote": "Xinglong ground observatory station (near Beijing, 40 deg 23' 45.12'' N, 117 deg 34' 38.85'' E, altitude 890m)"
+    },
+    "beam_divergence_urad": {
+      "value": 10.0,
+      "quote": "sends the light beam with a near-diffraction-limited far-field divergence of ~10 urad"
+    },
+    "rx_aperture_m": {
+      "value": 1.0,
+      "quote": "a Ritchey-Chretien telescope with an aperture of 1 m and a focal length of 10 m (Fig. 1c) is used to receive the QKD photons"
+    },
+    "receiver_optics_efficiency": {
+      "value": 0.16,
+      "quote": "The overall optical efficiency including the receiving telescope and the fiber coupling on the ground station is ~16%"
+    },
+    "atmospheric_db": {
+      "value": 5.5,
+      "quote": "We estimate that at 1200 km the loss due to atmospheric absorption and turbulence is in the range of 3 dB to 8 dB",
+      "note": "The midpoint, scaled to other ranges by air mass (Round 77, the user's choice). Over the 19 December 2016 pass it gives 1 percent fewer detections than Liao counted (3,517,343 against 3,551,136)."
+    },
+    "atmospheric_ref_km": {
+      "value": 1200.0,
+      "quote": "at 1200 km the loss due to atmospheric absorption and turbulence is in the range of 3 dB to 8 dB"
+    },
+    "pointing_db": {
+      "value": 3.0,
+      "quote": "the loss due to pointing error is less than 3 dB",
+      "note": "The upper value; not scaled with elevation."
+    },
+    "detector_efficiency": {
+      "value": 0.5,
+      "quote": "four single-photon detectors (efficiency 50%, dark counts <25 Hz, timing jitter 350 ps)"
+    },
+    "dark_count_prob": {
+      "value": 5e-08,
+      "quote": "dark counts <25 Hz ... tag the received signal photons within a 2-ns time window",
+      "note": "25 per second times 2e-9 s, per detector per pulse."
+    },
+    "misalignment": {
+      "value": 0.011,
+      "quote": "the observed quantum bit error rate (QBER) with an average of 1.1%, consistent with the expected error rate due to background noise and polarization visibility",
+      "note": "Used as the error floor: this model has no separate background-light term."
+    },
+    "source_rate_hz": {
+      "value": 100000000.0,
+      "quote": "Eight fiber-based laser diodes ... emit laser pulses (848.6 nm, 100 MHz, 0.2 ns)"
+    },
+    "detector_dead_time_s": {
+      "value": 0.0,
+      "assumption": "Liao et al. state no dead time. At the downlink's ~1e4 detections per second a dead time under a microsecond costs under 1 percent, so none is modelled rather than one invented."
+    },
+    "mu_signal": {
+      "value": 0.8,
+      "quote": "the average photon number in the output of the telescope: mu_s=0.8, mu_1=0.1, mu_2=0"
+    },
+    "mu_decoy": {
+      "value": 0.1,
+      "quote": "the average photon number in the output of the telescope: mu_s=0.8, mu_1=0.1, mu_2=0"
+    },
+    "p_signal": {
+      "value": 0.5,
+      "quote": "a high mu_s, a moderate mu_1 and a zero mu_2 (vacuum), sent with probabilities of 50%, 25%, and 25%, respectively"
+    },
+    "p_decoy": {
+      "value": 0.5,
+      "assumption": "A what-if: no vacuum state is sent and the decoy takes its 25 percent, signal and decoy then sent equally often as on the fibre page."
+    },
+    "vacuum_decoy": {
+      "value": false,
+      "assumption": "A what-if: Micius sent a vacuum state; this profile does not, so the vacuum yield is never measured and the bound is Ma et al. 2005's one-decoy Eq. (41), with the yield left to Eve."
+    },
+    "min_elevation_deg": {
+      "value": 10.0,
+      "quote": "A single-orbit experiment ends when the satellite reaches 10 deg elevation angle in the other end",
+      "note": "Liao's passes start 'From about 15 deg elevation angle'; one threshold serves both ends here. Sidhu et al., arXiv:2602.11833 (2026), also impose 10 degrees."
+    },
+    "distance_km": {
+      "value": 800.0,
+      "assumption": "The page's default slant range, inside the 645-1200 km of the 19 December 2016 pass."
+    }
+  }
+}

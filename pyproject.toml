@@ -43,6 +43,10 @@ qsh = "qsh.cli:main"
 [tool.setuptools.packages.find]
 where = ["src"]
 
+[tool.setuptools.package-data]
+# The link profiles (Round 77) are data files, which packages.find alone leaves out of a wheel.
+"qsh.config.profiles" = ["downlink/*.json", "isl/*.json"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 # "src" for the qsh package; "." for the root-level `api` namespace package, which

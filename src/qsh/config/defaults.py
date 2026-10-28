@@ -216,13 +216,60 @@ class QKDConfig:
     # theta*r and the ground telescope captures (D_rx / (theta*r))^2 of it. Liao: a "near-diffraction-
     # limited far-field divergence of ~10 urad", "the beam diameter expands to about 10 m" at 1200 km,
     # and "the diffraction loss is estimated to be 22 dB at 1200 km" - this law gives 21.6 dB there.
-    # Atmosphere and pointing are fixed per pass: "at 1200 km the loss due to atmospheric absorption
-    # and turbulence is in the range of 3 dB to 8 dB, and the loss due to pointing error is less than
-    # 3 dB". (A comment here said Micius "reports 27 dB" total; Liao states no total.)
+    # Liao: "at 1200 km the loss due to atmospheric absorption and turbulence is in the range of 3 dB
+    # to 8 dB, and the loss due to pointing error is less than 3 dB". (A comment here said Micius
+    # "reports 27 dB" total; Liao states no total.)
     free_space_beam_divergence_urad: float = 10.0   # Liao: ~10 urad far field
     free_space_rx_aperture_m: float = 1.0           # Liao: Xinglong, "an aperture of 1 m" (1.2 m is Yin 2017's stations)
-    free_space_atmospheric_db: float = 5.0          # inside Liao's 3-8 dB, whole path, not per km
-    free_space_pointing_db: float = 3.0             # Liao's upper value, "less than 3 dB"
+    # THE ATMOSPHERE SCALES WITH ELEVATION (Round 77, the user's choice). It was a fixed 5 dB at every
+    # range, so the model's rate fell only by the inverse-square law along a pass. Liao's own pass did
+    # not: "The sifted key rate decrease from ~12 kbit/s at 645 km to ~1 kbit/s at 1200 km, because of
+    # the increase of both the physically separated distance and the effective thickness of the
+    # atmosphere near the earth at smaller elevation angles" - 10.8 dB, where the fixed model fell 5.4.
+    #
+    # Now the loss is this value at the reference slant range below, scaled by the optical air mass
+    # (Kasten & Young, Appl. Opt. 28, 4735 (1989)) at the elevation the slant range implies for the
+    # orbit and station below. Anchoring at a range makes the station's air-pressure correction
+    # cancel, since only the ratio of air masses enters.
+    #
+    # 5.5 dB IS THE MIDPOINT OF LIAO'S 3-8 dB, chosen by the user from a like-for-like comparison with
+    # the 19 December 2016 pass. Liao's sifted key counts SIGNAL states only - 1,671,072 of 3,551,136
+    # detections is 0.47057, and 0.5 x 0.4/0.425 for 50/25/25 states at 0.8/0.1/0 is 0.47059 - so the
+    # check counts the same way (`tests/test_the_satellite_channel_is_sourced.py`):
+    #
+    #   anchor   detections over the pass    sifted at 645 km      at 1200 km          645 -> 1200 km
+    #   5.5 dB   3,517,343  (-1.0%)          10,879 (-0.43 dB)     1,570 (+1.96 dB)    8.41 dB
+    #   8.0 dB   2,556,307  (-28.0%)          8,390 (-1.55 dB)       883 (-0.54 dB)    9.78 dB
+    #   Liao     3,551,136                   ~12 kbit/s             ~1 kbit/s          10.79 dB
+    #
+    # The 8 dB upper value ships as its own profile, `micius_2017_upper_atmosphere`. At the 800 km
+    # default (35.8 degrees, air mass 1.70) the atmosphere is 3.2 dB.
+    free_space_atmospheric_db: float = 5.5          # at the reference range; midpoint of Liao's 3-8 dB at 1200 km
+    free_space_atmospheric_ref_km: float = 1200.0   # the slant range Liao's 3-8 dB is stated at
+    free_space_orbit_altitude_km: float = 500.0     # Liao: Micius "orbiting at an altitude of ~500 km"
+    free_space_station_altitude_km: float = 0.89    # Liao: Xinglong, "altitude 890m"
+    # NO LINK BELOW THIS ELEVATION, and none beyond the horizon. Liao: "A single-orbit experiment ends
+    # when the satellite reaches 10 deg elevation angle in the other end"; Sidhu et al. (arXiv:2602.11833,
+    # 2026) impose the same 10 degrees. At 500 km it is a slant range of 1,692 km; the horizon is 2,571.
+    free_space_min_elevation_deg: float = 10.0
+    # MICIUS'S OWN SOURCE (Round 77, the user's choice), where the satellite ran the fibre page's
+    # finite-key optimum. Liao: "mu_s=0.8, mu_1=0.1, mu_2=0", "sent with probabilities of 50%, 25%,
+    # and 25%". Because the vacuum state is sent its yield is measured, so the bound is Ma et al.
+    # 2005's Vacuum+Weak estimate (Eqs. 34, 37) rather than the one-decoy Eq. (41) the fibre page
+    # runs; `micius_2017_one_decoy` is the same link without the vacuum. The probabilities set the
+    # mix of clicks (for the dead time) and the like-for-like pass counts; the asymptotic rate, as on
+    # the fibre page, is per pulse at the signal intensity.
+    free_space_mu_signal: float = 0.8
+    free_space_mu_decoy: float = 0.1
+    free_space_p_signal: float = 0.5
+    free_space_p_decoy: float = 0.25                # the vacuum takes the remaining 0.25
+    free_space_vacuum_decoy: bool = True
+    # The link these values describe, by profile id (src/qsh/config/profiles/downlink/), and the
+    # inter-satellite terminal pair the Network tab's constellation starts from (profiles/isl/).
+    # `tests/test_link_profiles_are_sourced.py` holds the default profile equal to the values above.
+    free_space_profile: str = "micius_2017"
+    isl_profile: str = "micius_type_2019"
+    free_space_pointing_db: float = 3.0             # Liao's upper value, "less than 3 dB"; not scaled
     # --- decoy-state / efficient-BB84 parameters the AI optimizer (qkd/optimize.py) tunes ---
     # THE INTENSITIES ARE NOW THE FINITE-KEY OPTIMUM, NOT THE ASYMPTOTIC ONE, and the difference
     # is the point. mu ~ 0.5 is the textbook optimum for the ASYMPTOTIC decoy rate ON THE GYS LINK
@@ -693,6 +740,10 @@ class WebConfig:
     # 10e6, under the 256 a key needs, so both the browser and the Python stage would have stopped
     # mixing QKD into the satellite session. 20e6 gives 344, deterministically. The browser's bound is
     # analytic and costs nothing per pulse; the Python Monte Carlo now runs at the fibre default's 2e7.
+    #
+    # ROUND 77 left it at 20e6 with more margin. The air-mass atmosphere (3.2 dB at 800 km, where 5 dB
+    # was fixed) and Micius's own source with its vacuum state give 3.356e-5 bit/pulse: 671 secure
+    # bits, or 335 at 10e6, which would now also clear the 256.
     demo_sat_pulses: int = 20_000_000   # free-space BB84 channel uses in the demo satellite run
 
 
