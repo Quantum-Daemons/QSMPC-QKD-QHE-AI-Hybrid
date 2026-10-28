@@ -6120,6 +6120,15 @@ isolated, with WebGL, so the 3D views were seen drawn for the first time.
   tubes, and the downlink drawn for the run's own station height, so its caption reads the run's
   35.8 degrees where it read 35.9 for a station at sea level.
 
+**Redeployed 6a0250d (`index-B9GhVkOm.js`) and walked again in Chrome.** The downlink view over the
+station, its caption at 35.8 degrees; the plane face-on with all ten satellites, the shadow band and
+the station's arc, and the links turning red at nine satellites; console clean.
+
+**GitHub Actions did not run this round.** Every job of both runs, on both pushed commits, was "not
+started because recent account payments have failed or your spending limit needs to be increased".
+That is the account owner's to clear, and the jobs never reached a step. Until it is, the record of CI
+for this round is `scripts/ci_local.sh`: all 18 blocking gates pass on 6a0250d.
+
 BUSINESS DOC RECONCILED Round 77. The out-of-repo document is brought level with this round. Its content
 is not quoted here, in the checklist, or in any commit - only the fact of the reconciliation, which is
 what gate 16 reads.
