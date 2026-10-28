@@ -88,6 +88,12 @@ export default function ParameterPanel({ run }: { run: Run }) {
         ? "No effect while QSMPC op is Secure sum - only the PSI branch sizes its sets from this."
       : key === "qkd_opt_samples" && !optiqkd
         ? "No effect while Optimize QKD is off - only the OptiQKD search reads this, and it is off by default."
+      : (key === "qkd_block_pa_bits" || key === "qkd_block_seconds") && p.qkd_protocol === "e91"
+        ? "No effect on E91 - no finite-key bound is modelled for an entangled source, so its key stays asymptotic."
+      : key === "qkd_block_pa_bits" && p.qkd_block !== "pa_bits"
+        ? "No effect unless Key block is 'privacy-amplification block' - the bits it sets are that block's size."
+      : key === "qkd_block_seconds" && p.qkd_block !== "seconds"
+        ? "No effect unless Key block is 'seconds of link time'."
       : (key === "sat_block_passes" || key === "sat_block_seconds") && p.qkd_protocol === "e91"
         ? "No effect on E91 - no finite-key bound is modelled for an entangled source, so its key stays asymptotic."
       : key === "sat_block_passes" && p.sat_block !== "passes"
@@ -127,11 +133,21 @@ export default function ParameterPanel({ run }: { run: Run }) {
   const groups: { title: string; fields: Field[] }[] = [];
   if (fibreQkd) groups.push(
     { title: "QKD channel", fields: [
-      ["QKD pulses", "qkd_pulses", 10000, 1, "channel uses for the BB84 run"],
+      ["QKD pulses", "qkd_pulses", 10000, 1,
+       "channel uses the BB84 run samples: they measure the QBER and decide the abort, and they are the "
+       + "key's block only when Key block is 'this run's pulses'"],
       ["Distance (km)", "qkd_distance_km", 5, 1, "fibre distance - raises loss + QBER"],
       // Both feed intrinsicQber. The misalignment cap of 0.5 is where the composed error saturates;
       // Eve alone reaches at most 0.25 (f = 1), composed independently with the channel's own error.
       ["Eve fraction", "qkd_eve", 0.05, 0, "intercept-resend fraction (0-1) - raises QBER", 1],
+      // Round 80: the size of the key's block, each read only by the Key block choice that uses it.
+      ["PA block (bits)", "qkd_block_pa_bits", 1000000, 1000,
+       "key-basis detections in the privacy-amplification block, when Key block is 'privacy-amplification "
+       + "block': the block finite-key analyses state, 1e7 in Rusca et al. 2018's Table I. The pulses it "
+       + "takes follow from the channel: about 5.3e9, 5.3 s at 1 GHz, at 50 km", 1e11],
+      ["Block seconds", "qkd_block_seconds", 1, 0.001,
+       "seconds of link time in the key's block, when Key block is 'seconds of link time', at the "
+       + "assumed clock", 1e6],
       ["Misalignment", "qkd_misalignment", 0.005, 0, "baseline optical error", 0.5],
       // THE CONTROL THE PANEL ALREADY CLAIMED EXISTED. `SdnControlPlanePanel` told the visitor twice
       // that skr/eskr "scale exactly with the Source rate control in the Parameters panel", and no
@@ -404,6 +420,35 @@ export default function ParameterPanel({ run }: { run: Run }) {
                 {Object.values(profiles).map((pr) => <option key={pr.id} value={pr.id}>{pr.label}</option>)}
               </select>
             </div>);
+            })()}
+            {/* THE FIBRE KEY'S BLOCK (Round 80): the same choice the satellite's Key block makes, for a
+                link that holds its distance. QKDConfig.finite_key_block records the default and why. */}
+            {fibreQkd && (() => {
+              const e91 = p.qkd_protocol === "e91";
+              const why = e91 ? "No effect on E91 - no finite-key bound is modelled for an entangled source, so its key stays asymptotic. " : "";
+              return (<>
+            <div style={{ minWidth: 200, flex: "2 1 200px" }}>
+              <label className="muted" htmlFor="pp-qkdblock" style={{ fontSize: 12, opacity: e91 ? 0.45 : 1 }}
+                title={why + "The block the composable key is computed on (Rusca et al. 2018's 1-decoy bound): a privacy-amplification block of key-basis detections, as finite-key analyses state it; a time of link at the assumed clock; or this run's own pulses."}>Key block</label>
+              <select id="pp-qkdblock" name="qkd_block" value={String(p.qkd_block)} style={{ width: "100%", opacity: e91 ? 0.45 : 1 }}
+                aria-disabled={e91 ? true : undefined}
+                onChange={(e) => setParams({ ...params, qkd_block: e.target.value })}>
+                <option value="pa_bits">privacy-amplification block</option>
+                <option value="seconds">seconds of link time</option>
+                <option value="pulses">this run&apos;s pulses</option>
+              </select>
+            </div>
+            <div style={{ minWidth: 140, flex: "1 1 140px" }}>
+              <label className="muted" htmlFor="pp-qkdeps" style={{ fontSize: 12, opacity: e91 ? 0.45 : 1 }}
+                title={why + "The secrecy parameter of the finite-key bound: the probability the key is not secret. Rusca et al. 2018 use 1e-9; smaller is stricter and costs key."}>Security parameter</label>
+              <select id="pp-qkdeps" name="qkd_eps_sec" value={String(p.qkd_eps_sec)} style={{ width: "100%", opacity: e91 ? 0.45 : 1 }}
+                aria-disabled={e91 ? true : undefined}
+                onChange={(e) => setParams({ ...params, qkd_eps_sec: Number(e.target.value) })}>
+                {[1e-6, 1e-9, 1e-10].map((v) => (
+                  <option key={v} value={String(v)}>{v.toExponential(0)}{v === 1e-9 ? " (Rusca et al. 2018)" : ""}</option>
+                ))}
+              </select>
+            </div></>);
             })()}
             {/* THE KEY BLOCK (Round 79). The key is the finite-key length of a block of link time;
                 which block is the choice the published practice settles (QKDConfig.free_space_block). */}

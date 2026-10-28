@@ -153,6 +153,11 @@ export const makeDefaultParams = () => ({
   // min/max rather than by reading either one alone.
   seed: 1,
   qkd_pulses: qkdCfg().pulses,
+  // Round 80: the fibre key's block and its security parameter. See QKDConfig.finite_key_block.
+  qkd_block: qkdCfg().finite_key_block,
+  qkd_block_pa_bits: qkdCfg().finite_key_block_pa_bits,
+  qkd_block_seconds: qkdCfg().finite_key_block_seconds,
+  qkd_eps_sec: qkdCfg().finite_key_eps_sec,
   qkd_distance_km: qkdCfg().distance_km,
   qkd_eve: qkdCfg().eve_intercept_fraction,
   qkd_misalignment: qkdCfg().misalignment,
