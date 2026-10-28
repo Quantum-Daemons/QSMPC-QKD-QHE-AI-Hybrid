@@ -340,13 +340,21 @@ ESA telemetry. The secrecy criterion is the one place where a familiar constant 
 misleading. A threshold of 0.11 reproduces the textbook loss-free case, and the deeper derivation
 gives a capacity
 \[
-  C_s \;=\; Q_{\text{Bob}}\bigl[\,1 - h(e) - g\,h(e_{\text{chk}})\bigr],
+  C_s \;=\; Q_{\text{Bob}}\bigl[\,1 - h(e) - g\,h(e_x + e_z)\bigr],
   \qquad g = 10^{\,\text{loss\_dB}/10},
 \]
-in which the loss term dominates. At this link's 24.5\,dB the admissible error rate falls from 0.11
-to roughly $3\times10^{-4}$ --- three orders of magnitude, and in the permissive direction, so the
-constant would have declared links secure that are not. The scalar was replaced by the computed
-capacity.
+in which the loss term dominates; $g$ counts the channel and the detector, not the station's optics.
+On the 800\,km downlink (32.2\,dB of channel loss, 27.3\,dB from Eve to Bob's detector, $g \approx 533$)
+the admissible error rate falls from 0.11 to about $6.5\times10^{-5}$ --- three orders of magnitude, and
+in the permissive direction, so the constant would have declared links secure that are not. The scalar
+was replaced by the computed capacity.
+
+The downlink itself is Micius's, read value by value from Liao et al.\ (2017), with the atmosphere
+scaled by air mass from 5.5\,dB at 1200\,km and no link below 10 degrees of elevation. Integrated over
+Liao's pass of 19 December 2016 and counted as the paper counts --- signal states only --- it gives the
+measured detections and sifted bits within 1\,percent. A second tab models what carries a key past the
+horizon: the trusted satellite relay Micius flew between Xinglong and Graz, and a plane of satellites
+linked to their neighbours.
 
 \section{Security model and its boundaries}
 
