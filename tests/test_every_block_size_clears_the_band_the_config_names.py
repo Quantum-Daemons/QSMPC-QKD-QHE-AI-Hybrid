@@ -27,9 +27,11 @@ reason, so the exception is visible instead of absent.
 
 WHAT IS DELIBERATELY NOT ASSERTED
 
-Not that the shipped rate is finite-key correct. No finite-key correction is applied anywhere in
-this project and the UI says so. What is asserted is the weaker, checkable thing the config comment
-actually claims: that the block being reported on is one that COULD carry a key.
+Not that the shipped rate is finite-key correct. No finite-key correction is applied to a RATE
+anywhere in this project and the UI says so; since Round 79 the satellite's KEY is a finite key, of a
+block of link time rather than of any block size named here. What is asserted is the weaker,
+checkable thing the config comment actually claims: that the block being reported on is one that
+COULD carry a key.
 """
 
 from __future__ import annotations
@@ -47,10 +49,12 @@ sys.path.insert(0, str(REPO / "src"))
 #: Python cost is tens of milliseconds.
 DECLARED_RESIDUALS = {
     "demo_sat_pulses": (
-        "free-space 800 km downlink, 24.48 dB loss. The shortfall is the link budget, not the "
-        "setting: clearing the threshold there needs a block far beyond anything this Monte Carlo "
-        "can allocate, and `config/defaults.py` records the residual beside the value rather than "
-        "engineering it away."
+        "not the key's block since Round 79. The satellite's key is the composable finite key of a "
+        "block of link time - one pass by default (`QKDConfig.free_space_block`), checked in "
+        "`tests/test_the_satellite_block_is_a_pass.py` - and this is the run's sample at its range, "
+        "which measures the QBER and decides the abort. At 800 km a key needs about 33 s of link "
+        "time, 3.3e9 pulses, which no per-pulse Monte Carlo allocates and no block of seconds at "
+        "one range of a low orbit holds."
     ),
     "optimize_n_pulses": (
         "not a published block. This is the per-EVALUATION sample the OptiQKD parameter search "
