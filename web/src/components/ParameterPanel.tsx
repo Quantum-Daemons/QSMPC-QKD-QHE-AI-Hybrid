@@ -5,7 +5,14 @@
 import {
   hasTrainedQcnn, qcnnWidths, readsInferenceBackend, runsFibreQkd, runsQsmpc, type usePipelineRun,
 } from "../lib/usePipelineRun";
-import { freeSpaceLink, qsdcLink } from "../lib/quantumSim";
+import { channelLossDb, freeSpaceLink, qsdcLink } from "../lib/quantumSim";
+
+/** The range-dependent part of the downlink budget - diffraction plus the receiver optics - in dB,
+ *  from the same `channelLossDb` a run uses, so the tooltip cannot quote a stale literal. It said
+ *  "16.5 dB" until Round 75, the diffraction term at the previous 1.2 m aperture. */
+function fixedFreeTermsDb(distanceKm: number): string {
+  return channelLossDb(freeSpaceLink({ distanceKm, atmosphericDb: 0, pointingDb: 0, eveFraction: 0 })).toFixed(1);
+}
 
 /** QSDC secrecy capacity at a stated link, signed to four places - the same `qsdcLink` the
  *  satellite stage runs, so a tooltip cannot quote a figure the page would not produce. */
@@ -139,19 +146,22 @@ export default function ParameterPanel({ run }: { run: Run }) {
       ["Pulses", "sat_pulses", 500000, 1, "channel uses for the free-space downlink"],
       // The two fixed dB that decided every abort this page has ever shown. `channelLossDb` caps the
       // diffraction term inside the near field, so these floor total loss at 8 dB at ANY range, and
-      // with the detector's 4.0 dB g >= 15.8: at the default budget C_s is negative at every range
-      // (corrected 2026-10-24; this read g >= 6.31 and a pooled tolerance, both superseded). So
+      // with the receiver optics (8.0 dB) and the detector (3.0 dB) g >= 79: at the default budget
+      // C_s is negative at every range (Round 75's Micius budget; it read g >= 15.8 with a 4.0 dB
+      // detector and no optics term, and before 2026-10-24 g >= 6.31 and a pooled tolerance). So
       // `qsdc_eavesdrop_detected` (= abort AND NOT link-limited) was 0
       // at every setting the page offered, the diagram's ABORTED branch was unreachable, and the
       // inline eavesdrop check named in the page subtitle could not be demonstrated. These select a
-      // LINK, not a physics: the defaults are the Micius-class downlink and are unchanged.
+      // LINK, not a physics: the defaults are Liao et al. 2017's Micius downlink.
       ["Atmospheric (dB)", "sat_atmospheric_db", 0.5, 0,
        "fixed atmospheric attenuation. A downlink crosses the atmosphere once, near the ground, so "
-       + "unlike fibre this does not scale with range. Default 5.0 dB is the Micius-class figure. "
-       + "Qi et al. (Light Sci. Appl. 8, 22, 2019) demonstrated QSDC over a 4.1 dB FIBRE link; "
-       + "lowering this and Pointing to a comparable TOTAL, at short range, is where secrecy "
-       + "capacity turns positive here. It is not enough on its own: at 800 km the diffraction term "
-       + `is 16.5 dB, so even a 3 dB budget leaves C_s at ${csAt(800, 1.5, 1.5, 0)}`, 20],
+       + "unlike fibre this does not scale with range. Default 5.0 dB, inside the 3-8 dB Liao et al. "
+       + "(Nature 549, 43, 2017) estimate for Micius at 1200 km. Qi et al. (Light Sci. Appl. 8, 22, "
+       + "2019) ran QSDC over 1.5 km of fibre with 25.1 dB of total system loss; what sets Eve's "
+       + "advantage there is the back channel, about 4.1 dB (g = 2.57), and secrecy capacity turns "
+       + "positive here only when g is comparably small. Lowering this and Pointing is not enough on "
+       + `its own: at 800 km diffraction and the receiver optics already take ${fixedFreeTermsDb(800)} dB, `
+       + `so even a 3 dB budget leaves C_s at ${csAt(800, 1.5, 1.5, 0)}`, 20],
       ["Pointing (dB)", "sat_pointing_db", 0.5, 0,
        "fixed pointing and tracking loss, likewise range-independent. With Atmospheric this is the "
        + "floor under total channel loss: the diffraction term falls to zero in the near field, "

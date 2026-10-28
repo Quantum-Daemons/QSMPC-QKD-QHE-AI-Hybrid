@@ -151,7 +151,9 @@ class QKDKeyAgreementStage(Stage):
         # satellite twin nine lines above all emit as 0.001977. A fix about one metric having two
         # spellings, itself spelled two ways, in a file whose own comment four lines up says "the fix
         # changed one language".
-        bus.metric("skr_per_pulse", round(result.secret_key_rate, 6), self.name)
+        # Nine decimals since Round 75, everywhere it is emitted: six held the satellite's
+        # 1.723e-5 to two significant figures (tests/test_one_metric_has_one_rounding.py).
+        bus.metric("skr_per_pulse", round(result.secret_key_rate, 9), self.name)
         bus.metric("secure_key_bits", result.secure_key_bits, self.name)
         ctx.metrics.update(qber=result.qber, skr_per_pulse=result.secret_key_rate)
         if result.secure_key_bits >= 256:
@@ -283,7 +285,11 @@ class QSMPCComputeStage(Stage):
             # admissible field depends on the party count (d prime, n <= d <= 2n). QSMS derives it.
             prime = ctx.config.get("prime") or get_config().qsmpc.prime
             n = max(len(secrets), 3)
-            res = QSMS(n=n, t=min(3, n), prime=prime).run(secrets, seed=ctx.config.get("seed"))
+            # The threshold from config (`qsmpc.threshold`), capped at the party count. It was the
+            # literal `min(3, n)` until Round 75 while the config key went unread; the shipped value
+            # is 3, so the default behaviour is unchanged and a changed config now reaches the run.
+            t = min(int(ctx.config.get("qsmpc_threshold") or get_config().qsmpc.threshold), n)
+            res = QSMS(n=n, t=t, prime=prime).run(secrets, seed=ctx.config.get("seed"))
             total = res.total
             ctx.artifacts["secure_sum"] = total
             # The modulus the sum ACTUALLY used, so a caller can reduce a ground truth into the same

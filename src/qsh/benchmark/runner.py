@@ -135,21 +135,40 @@ def _macs(layers):
 
 
 def _cmps(layers):
-    """Non-linear comparison count (MPC work), spec-aware: ReLU outputs + maxpool windows + argmax."""
-    from ..fhe.conv import out_hw
-    from ..mpc.layers import ConvSpec, DenseSpec, PoolSpec, normalize_layers
+    """Secure comparisons the hybrid runs, counted as ``hybrid_private_inference`` counts them: one per
+    ReLU output, ``size * size - 1`` per max-pool window, and ``classes - 1`` for the final argmax.
 
-    total = 0
+    The max-pool term used to be added once per pooling LAYER under a comment promising a scaling
+    by windows that never followed, and the final argmax counted one comparison per class.
+    """
+    from ..fhe.conv import out_hw
+    from ..mpc.layers import ConvSpec, DenseSpec, FlattenSpec, PoolSpec, normalize_layers
+
+    total, shape, logits = 0, None, None
     for s in normalize_layers(layers):
         if isinstance(s, ConvSpec):
+            ho, wo = out_hw(s)
+            shape = (int(s.weight.shape[0]), ho, wo)
             if s.activation == "relu":
-                ho, wo = out_hw(s)
-                total += int(s.weight.shape[0]) * ho * wo
+                total += shape[0] * ho * wo
         elif isinstance(s, DenseSpec):
-            total += int(s.weight.shape[0])             # ReLU / argmax comparisons ≈ output dim
-        elif isinstance(s, PoolSpec) and s.pool == "max":
-            total += int(s.size) * int(s.size) - 1      # per-window comparisons (scaled by windows below)
-    return max(total, 1)
+            n_out = int(s.weight.shape[0])
+            shape = (n_out,)
+            if s.activation == "relu":
+                total += n_out
+            else:
+                logits = n_out
+        elif isinstance(s, PoolSpec) and shape is not None and len(shape) == 3:
+            c, h, w = shape
+            ho, wo = (h - s.size) // s.stride + 1, (w - s.size) // s.stride + 1
+            if s.pool == "max":
+                total += c * ho * wo * (s.size * s.size - 1)
+            shape = (c, ho, wo)
+        elif isinstance(s, FlattenSpec) and shape is not None:
+            shape = (int(np.prod(shape)),)
+    if logits is None and shape is not None:          # no final dense: argmax over what is left
+        logits = int(np.prod(shape))
+    return max(total + max((logits or 0) - 1, 0), 1)
 
 
 def _project_large(med: BenchResult, med_layers, large_layers, workload: str) -> BenchResult:

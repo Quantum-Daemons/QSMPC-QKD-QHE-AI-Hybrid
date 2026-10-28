@@ -12,8 +12,8 @@
 //
 // Honest scope: in one browser the two "parties" necessarily share a JS heap and a thread, so the
 // party separation is notional (it must be, with zero VPS) - what is genuinely real is the
-// cryptographic protocol, the measured time and the real communication. The full deployment runs MPyC
-// across separate hosts.
+// cryptographic protocol, the measured time and the real communication. The full deployment's MPyC
+// tier runs three Shamir parties as separate processes, on one host over loopback TCP.
 //
 // REPLACED IN ROUND 65. This file ran mpc-framework + emp-wasm-engine + summon-ts until then: all three
 // archived upstream, and mpc-framework pulled the zod release carrying GHSA-mrhx-c7xc-m3w5 with no fix
