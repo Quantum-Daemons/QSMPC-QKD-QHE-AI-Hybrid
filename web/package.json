@@ -13,7 +13,10 @@
     "check:qfl": "node scripts/check_qfl.mjs",
     "check:combiner": "node scripts/check_hybrid_combiner.mjs",
     "check:qcnn-metrics": "node scripts/check_qcnn_metrics_at_every_site.mjs",
-    "check:netkeys": "node scripts/check_net_key_schedules.mjs"
+    "check:netkeys": "node scripts/check_net_key_schedules.mjs",
+    "check:jsx-spaces": "node scripts/check_jsx_text_spaces.mjs",
+    "check:calibration": "node scripts/check_calibration.mjs",
+    "check:source-maps": "node scripts/check_no_dangling_source_maps.mjs"
   },
   "dependencies": {
     "@huggingface/transformers": "^4.2.0",
