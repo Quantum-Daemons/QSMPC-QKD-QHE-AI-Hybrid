@@ -2010,3 +2010,56 @@ reason.
   pass and the data fall below it only on the falling half, which an elevation-only term cannot
   produce.
 
+
+## Round 79 additions: the satellite key block and its finite-key bound, verified at primary source
+
+Read 2026-10-28. The user chose a finite key for the downlink and asked the published practice to
+decide its block. What each source grounds is stated; where one was read and not adopted, so is the
+reason.
+
+- **Lim, Curty, Walenta, Xu and Zbinden, "Concise security bounds for practical decoy-state quantum
+  key distribution"**, Phys. Rev. A 89, 022307 (2014). arXiv:1311.7129 `[link]`
+  URL: https://arxiv.org/abs/1311.7129
+  VERIFIED in the arXiv text and, for the constant in Eq. (5), in the rendered page: Eqs. (1) to (5)
+  with eps_sec = 21 eps, the conditions mu1 > mu2 + mu3 and mu2 > mu3 >= 0, and gamma's factor
+  "21^2 / a^2". Implemented as `finite_key.vacuum_decoy_key_length` and `finiteKey.ts`, for a source
+  that sends a signal, a weak decoy and the vacuum.
+- **Rusca, Boaron, Grunenfelder, Martin and Zbinden, "Finite-key analysis for the 1-decoy state
+  QKD protocol"**, Appl. Phys. Lett. 112, 171104 (2018). arXiv:1801.03443 `[link]`
+  URL: https://arxiv.org/abs/1801.03443
+  RE-READ for this round: Table I's 2-decoy rows (236 kHz, 2,503, 197 and 14.1 Hz at n_Z = 1e7;
+  355 kHz, 3,881, 333 and 30.7 at 1e9), the vacuum held at mu3 = 1e-6 (Fig. 4), and the vacuum share
+  "always greater than 11%" at the optimum (Appendix C). Two findings about this repository's own
+  1-decoy implementation: (A21) prints 21 squared, which the code had as 2 to the 21st; and (A16)
+  bounds the vacuum by "the errors relative to one intensity" without naming it, where the code had
+  the signal's and the decoy's is tighter at every row.
+- **Liao et al. 2017** (Nature 549, 43), arXiv:1707.00542, re-read for its key: "mu_s=0.8, mu_1=0.1,
+  mu_2=0", "a hamming algorithm is used for error correction", "the intensity fluctuation for the
+  signal state and decoy state (<5%)", and a "secure final key of 300,939 bits when the statistical
+  failure probability is set to be 10-9". It does not name its finite-key analysis.
+- **Khmelev et al. 2023** (arXiv:2310.17476), re-read for its key: "utilize Chernoff bounds with a
+  failure probability of 10-9", "the secure final key is 629,000 bits", error correction at "an
+  inefficiency fec = 1.44", and 310,400 bits with detector-efficiency mismatch. The bound here on the
+  same session gives 0.56 of the 629,000 at f_EC 1.16 and 0.51 at their 1.44.
+- **Liao et al., "Space-to-ground quantum key distribution using a small-sized payload on Tiangong-2
+  space lab"**, Chin. Phys. Lett. 34, 090302 (2017). VERIFIED in the published text: one pass, "a
+  mean sifted key rate of 783 bps in 143 s", "112031 bits sifted key", "a 13,119 bit secure key".
+  Grounds that a flown downlink's finite key is computed over one pass.
+- **Sidhu, Brougham, McArthur, Pousa and Oi, "Finite key effects in satellite quantum key
+  distribution"**, npj Quantum Inf. 8, 18 (2022). arXiv:2012.07829 `[link]`
+  URL: https://arxiv.org/abs/2012.07829
+  VERIFIED in the arXiv text: "Systems with zero single-overpass SKL can generate positive key by
+  accumulating signals from several overpasses (Fig. 6)", with the M-pass key at least M times one
+  pass's. Grounds the pooled-passes block and its test.
+- **Bourgoin et al., "Experimental quantum key distribution with simulated ground-to-satellite
+  photon losses and processing limitations"**, Phys. Rev. A 92, 052339 (2015). arXiv:1512.05789
+  `[link]` URL: https://arxiv.org/abs/1512.05789
+  READ: per-pass finite keys, and three passes pooled where one made none. Cited as practice, not
+  checked against: its passes are a ground emulation.
+- **Li et al. 2025** (Jinan-1, arXiv:2408.10994), re-read for its blocks: error correction on
+  100-kbit packets and privacy amplification on 500-kbit blocks inside one orbit, the block keys
+  summed per orbit. Its Table 1's four passes used in Round 78 are now checked as finite keys.
+- **Orsucci et al. (DLR), arXiv:2404.05668 (2024)**; **Sidhu et al., Commun. Phys. (2023),
+  arXiv:2301.13209**; **Mannalath et al., arXiv:2605.29706 and arXiv:2607.17690 (2026)**. READ by the
+  round's research: single pass, pooled passes and sub-pass segments as the options a design weighs,
+  and pulse-count thresholds for a positive key. Not adopted as checks: they are models, not passes.
