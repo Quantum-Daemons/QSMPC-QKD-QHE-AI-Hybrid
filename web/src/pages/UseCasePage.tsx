@@ -136,7 +136,8 @@ function UseCaseView({ usecase }: { usecase: string }) {
                         <QsdcRangeChart channel={sat} />
                         <Details summary="Downlink geometry in 3D">
                           <Sat3D slantKm={sat.distanceKm} orbitKm={Number(sat.freeSpace!.orbitAltitudeKm)}
-                            minElevationDeg={Number(sat.freeSpace!.minElevationDeg)} />
+                            minElevationDeg={Number(sat.freeSpace!.minElevationDeg)}
+                            stationKm={Number(sat.freeSpace!.stationAltitudeKm ?? 0)} />
                         </Details>
                       </>
                     ) },
