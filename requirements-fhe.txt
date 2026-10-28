@@ -24,7 +24,13 @@ tenseal>=0.3.15
 #   that `import openfhe` is the thing actually failing: a libstdc++ story that is true history is
 #   not automatically the diagnosis for the next symptom.
 #   Measurements: docs/verification-log.md, "Round 34".
-openfhe>=1.5.1
+# PINNED BELOW 1.6 (2026-10-28). CI resolved `openfhe>=1.5.1` to the new 1.6.1, whose module has no
+#   `FHECKKSRNS` (qsh/fhe/backends.py calls FHECKKSRNS.GetBootstrapDepth on the bootstrap path), and
+#   the bootstrap test failed with AttributeError. The 1.6 wheel needs GLIBCXX_3.4.32, which the
+#   RHEL 9 development host does not have, so its API cannot be tested here; the 1.5 series is the
+#   one every bootstrap measurement in this repository was taken on. Lift the cap with a port of the
+#   bootstrap path that is tested on 1.6.
+openfhe>=1.5.1,<1.6
 #
 # mpyc: the NON-LINEAR half of the hybrid (ReLU/argmax under secret-sharing MPC). MIT, pure-Python,
 #   actively maintained (v0.11, released 2026-02-09). Installed from PyPI; the code is identical to
