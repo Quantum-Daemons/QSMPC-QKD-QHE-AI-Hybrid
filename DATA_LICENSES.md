@@ -20,6 +20,17 @@ been asked here.
 
 The project's own code is Apache-2.0. Everything below keeps its own licence.
 
+**Re-verified 2026-10-25 (Round 70), each at its source of record, and none has changed:**
+- WDBC is CC BY 4.0 (UCI, DOI 10.24432/C5DW2B).
+- OPS-SAT-AD is CC BY 4.0 (Zenodo). The DOI cited below now resolves to record 15108715, with the same
+  files and the same 2024-06-24 date.
+- The ESA Anomaly Dataset is CC BY 3.0 IGO (Zenodo).
+- AMLworld is CDLA-Sharing-1.0 (Kaggle, version 8, updated 2025-07-08).
+- PaySim is CC BY-SA 4.0 (Kaggle).
+- 5G-NIDD is CC BY 4.0, with open access (Fairdata Metax, modified 2025-08-14).
+- gnomAD is CC0, and its attribution is requested, not required.
+- MedMNIST BreastMNIST stays Unresolved, for the upstream reason given below.
+
 `src/qsh/models/registry.py` is the machine-readable version of this file: each model spec carries
 its dataset, licence, source URL, the date the licence text was last read, and a `publishable` flag
 that `scripts/publish_hf.py` enforces. The script **refuses** to create a public repo when that flag
