@@ -6593,6 +6593,23 @@ points to the analysis, as the appendix does.
 **Gates.** All 18 local gates on the final tree, the full suite among them; tsc, the JSX-spaces
 check and the web node checks; the new figure and protocol tests.
 
+**CI green on eed888b (six checks), then deployed from git and walked in Chrome at 1280 x 677
+(`index-DLwSRnva.js`).**
+- E2E Orchestration: two rows of five at 0.88 scale, nine edges at load, two seconds into a run and
+  after "done". In a tab Chrome had not yet shown, the first measurement read no edges and the default
+  scale - rendering is suspended there - and the graph drew both as soon as the tab was shown.
+- The sidebar collapses to a 64 px rail (links keep their full names), stays collapsed on the next
+  page, and the graph then draws at full scale with all nine edges. The choice was removed from the
+  browser afterwards. The only fixed-position elements on the page were the browser extension's own.
+- Genomics: "secure sum of allele counts over GF(29), pooled = 23", four cohorts, PRS -0.2332, class 0.
+- Telecom mid-run: the running step at 1, finished steps at 0.95, pending ones at 0.6; the sidebar
+  said "running, stage qml_ids"; the run ended at 5,184,652 bits. Validations: the secure-bits axis
+  reads 1.5M to 6M, and the same count.
+- Satellite: 91,475 bits; the QSDC label three lines, 154 to 630 of 780. No page showed `NaN`,
+  `undefined`, `Infinity` or `[object Object]`, and the console showed no error.
+On GitHub the branch's README opens each collapsed section to its diagram: the five use cases and the
+verification environment, each rendered at the column's width.
+
 BUSINESS DOC RECONCILED Round 80. The out-of-repo document is brought level with this round's second
 continuation. Its content is not quoted here, in the checklist, or in any commit - only the fact of
 the reconciliation, which is what gate 16 reads.
