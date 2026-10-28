@@ -76,9 +76,12 @@ def _browser(expr: str) -> dict:
         entry.write_text(
             f'import * as q from {json.dumps(str(WEB / "src/lib/quantumSim"))};\n'
             f"console.log(JSON.stringify({expr}));\n")
-        js = subprocess.run([str(ESBUILD), str(entry), "--bundle", "--platform=node", "--log-level=error"],
-                            cwd=WEB, check=True, capture_output=True, text=True).stdout
-        out = subprocess.run(["node", "-e", js], check=True, capture_output=True, text=True).stdout
+        # Bundled to a FILE, not handed to `node -e`: the bundle carries config.defaults.json, which
+        # passed Linux's 128 KiB single-argument limit when Round 77 added the link profiles to it.
+        bundle = Path(tmp) / "probe.cjs"
+        subprocess.run([str(ESBUILD), str(entry), "--bundle", "--platform=node", "--log-level=error",
+                        f"--outfile={bundle}"], cwd=WEB, check=True, capture_output=True, text=True)
+        out = subprocess.run(["node", str(bundle)], check=True, capture_output=True, text=True).stdout
         return json.loads(out.strip().splitlines()[-1])
 
 

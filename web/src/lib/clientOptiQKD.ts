@@ -4,7 +4,8 @@
 // convergence profile vs the default-parameter baseline on the SAME simulated channel — a simulation, not
 // deployed QKD. Search space + defaults + protocol come from config (config.defaults.json / /api/config).
 import { qkdCfg } from "./config";
-import { ChannelParams, deadTimeFactor, decoySecureFraction, eDetForBound, h2, intrinsicQber, transmittance } from "./quantumSim";
+import { ChannelParams, clickMix, deadTimeFactor, decoySecureFraction, eDetForBound, h2, intrinsicQber, sourceOf,
+  transmittance } from "./quantumSim";
 
 export interface OptiQKDParams { muSignal: number; muDecoy: number; basisProb: number; ppThreshold: number; }
 export interface OptiQKDResult {
@@ -47,11 +48,14 @@ const skrModel: Model = (p, prm, fEC = qkdCfg().error_correction_eff) => {
   // THE SHARED BOUND, not a fifth copy of its algebra. This file carried its own transcription and
   // was, by its own comment above, the copy a fix once missed. Round 75 changed the estimator to
   // Ma et al.'s one-decoy Eq. (41); calling `decoySecureFraction` is what makes that one change.
-  const { perPulse, eMu } = decoySecureFraction(eta, mu, nu, eDet, y0, fEC, siftRatio);
+  // The vacuum flag and the state mix are the LINK's (Round 77): the search tunes intensities, not
+  // whether the source sends a vacuum state, so a Micius run keeps its Vacuum+Weak bound.
+  const src = sourceOf(p);
+  const { perPulse, eMu } = decoySecureFraction(eta, mu, nu, eDet, y0, fEC, siftRatio, src.vacuum);
   if (eMu > prm.ppThreshold) return { skr: 0, qber: eMu };
   // The dead time, as `bb84()` charges it (Round 76). Without it the optimiser would chase a brighter
   // signal into detectors that cannot keep up: at 1 GHz the factor falls as mu rises.
-  const cDt = deadTimeFactor(p, 0.5 * ((y0 + 1 - Math.exp(-eta * mu)) + (y0 + 1 - Math.exp(-eta * nu))));
+  const cDt = deadTimeFactor(p, clickMix(src, y0 + 1 - Math.exp(-eta * mu), y0 + 1 - Math.exp(-eta * nu), y0));
   return { skr: perPulse * cDt, qber: eMu };
 };
 
@@ -91,7 +95,11 @@ export function optimizeQKD(channel: ChannelParams, protocol?: string, nSamples?
   const lo: OptiQKDParams = { muSignal: q.opt_mu_signal_min, muDecoy: q.opt_mu_decoy_min, basisProb: q.opt_basis_prob_min, ppThreshold: q.opt_pp_threshold_min };
   const hi: OptiQKDParams = { muSignal: q.opt_mu_signal_max, muDecoy: q.opt_mu_decoy_max, basisProb: q.opt_basis_prob_max, ppThreshold: q.opt_pp_threshold_max };
   const keys: (keyof OptiQKDParams)[] = ["muSignal", "muDecoy", "basisProb", "ppThreshold"];
-  const b0 = model(channel, { muSignal: q.mu_signal, muDecoy: q.mu_decoy, basisProb: q.basis_prob, ppThreshold: q.pp_threshold });
+  // The baseline is the link's OWN source: on the satellite, Micius's 0.8 / 0.1 (Round 77). It was the
+  // fibre page's finite-key optimum on every link, so the satellite's "improvement" was measured
+  // against intensities the satellite never ran. Twin of `optimize_qkd(baseline=...)`.
+  const own = sourceOf(channel);
+  const b0 = model(channel, { muSignal: own.mu, muDecoy: own.nu, basisProb: q.basis_prob, ppThreshold: q.pp_threshold });
   let nEvals = 1;
   const curve: number[] = [];                                  // running-best SKR after each evaluation
   const record = (v: number) => { curve.push(curve.length ? Math.max(curve[curve.length - 1], v) : v); };
