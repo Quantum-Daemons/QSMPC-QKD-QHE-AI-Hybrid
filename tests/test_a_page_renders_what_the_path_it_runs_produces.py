@@ -216,8 +216,11 @@ def test_the_panel_prose_and_its_tooltip_make_the_same_claim() -> None:
     happens to hover decides which one they believe.
     """
     src = PANEL.read_text()
-    tooltip = re.search(r"const RATE_CELL_TITLE\s*=\s*(.*?);\n", src, re.S)
-    assert tooltip, "RATE_CELL_TITLE is gone; the rate cells have lost their hover explanation"
+    # A function since Round 78, `rateCellTitle`, because its ratio to the measured rate is computed
+    # from the run; it was the constant RATE_CELL_TITLE, whose "3.8x" no run had matched since Round 76.
+    tooltip = re.search(r"function rateCellTitle\(.*?\{(.*?)\n\}", src, re.S)
+    assert tooltip, "rateCellTitle is gone; the rate cells have lost their hover explanation"
+    assert "title={rateCellTitle(" in src, "the rate cells no longer use the shared tooltip"
     claims_control = "control in the Parameters panel" in tooltip.group(1)
     prose_claims_control = "control in the Parameters panel" in src.replace(tooltip.group(1), "")
     assert claims_control == prose_claims_control, (

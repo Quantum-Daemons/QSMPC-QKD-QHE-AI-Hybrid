@@ -1973,3 +1973,40 @@ neither a quote nor a stated assumption.
   angle, its validation compares against a review's summary numbers, and it drops Liao's "at 1200 km"
   qualifier on the 3-8 dB.
 
+## Round 78 additions: the low-elevation question, verified at primary source
+
+Read 2026-10-28. What each grounds is stated; where a source was read and not adopted, so is the
+reason.
+
+- **Liao et al. 2017, Extended Data Table 2** (Nature 549, 43). VERIFIED in the published table
+  image. Every Micius pass over Xinglong from September 2016 to May 2017 - 23 rows of highest altitude
+  angle, shortest distance, peak and average sifted rate and QBER - now a validation set
+  (`src/qsh/config/validation/liao_2017_xinglong_passes.json`). The 19 December 2016 pass is listed at
+  47.79 deg and 645.08 km, which implies a 491.5 km orbit that night against the paper's "~500 km".
+- **Zhang et al., "Astronomical Observing Conditions at Xinglong Observatory from 2007 to 2014"**,
+  arXiv:1601.08114 (2016). `[link]` URL: https://arxiv.org/abs/1601.08114
+  VERIFIED in the arXiv text: the DIMM's 2014 "Mean and median seeing are around 1.9'' and 1.7''",
+  December's median 2.05''. Grounds `free_space_seeing_arcsec`.
+- **Liu, Giordano, Yao, Vernin, Chadid, Wang, Yin and Wang, "Optical Turbulence Characterization at
+  LAMOST Site: Observations and Models"**, arXiv:1505.05436 (MNRAS). `[link]`
+  URL: https://arxiv.org/abs/1505.05436
+  VERIFIED in the arXiv text: Eq. (1) r0 = 0.185 lambda^(6/5) (integral of Cn2 dh)^(-3/5) and Eq. (2)
+  epsilon0 = 0.98 lambda / r0, at LAMOST, which is at Xinglong. Grounds the optional turbulence
+  coupling (`channel.py::turbulence_coupling_db`); the slant path's sec(zeta) is this project's step.
+- **Lu et al., "Micius quantum experiments in space"**, Rev. Mod. Phys. 94, 035001 (2022),
+  arXiv:2208.10236, Eq. (9). VERIFIED in the arXiv text: the expected mispointing loss
+  w^2 / (w^2 + 4 sigma_p^2) for Gaussian jitter (after Toyoshima and Araki 1998). Grounds the Jinan-1
+  template's pointing loss.
+- **Li et al., "Microsatellite-based real-time quantum key distribution"** (Jinan-1), Nature 2025,
+  arXiv:2408.10994. Now a TEMPLATE (`jinan1_2022_jinan`), with its stated values quoted, its unstated
+  ones marked as assumptions from the sources above, and one constant - the station efficiency -
+  calibrated to its 25 September 2022 pass. Its Table 1 lists 21 passes (its title says 20).
+- **Vasylyev, Vogel and Moll, "Satellite-mediated quantum atmospheric links"**, Phys. Rev. A 99,
+  053830 (2019), arXiv:1901.07452; **Liorni, Kampermann and Bruss, "Satellite-based links for quantum
+  key distribution: beam effects and weather dependence"**, New J. Phys. 21, 093055 (2019),
+  arXiv:1906.08115. READ 2026-10-28. Not adopted: both put downlink beam wander and broadening well
+  under the residual in question.
+- **Khmelev et al. 2023**, Fig. 3a, re-read: the model the paper fits matches the rising half of its
+  pass and the data fall below it only on the falling half, which an elevation-only term cannot
+  produce.
+

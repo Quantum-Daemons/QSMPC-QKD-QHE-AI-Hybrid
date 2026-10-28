@@ -96,6 +96,11 @@ export interface ChannelParams {
     /** A link between two satellites (Round 77, `satNetwork.ts`): the same diffraction law, but no
      *  atmosphere and no elevation - its line of sight is checked by the constellation geometry. */
     interSatellite?: boolean;
+    /** The optional turbulence coupling (Round 78, `turbulenceCouplingDb`): field-stop radius in urad
+     *  (0 or unset = off), seeing at 500 nm and the zenith in arcsec, signal wavelength in nm. */
+    fieldStopUrad?: number;
+    seeingArcsec?: number;
+    wavelengthNm?: number;
   };
   /** The source clock and the detectors' dead time (Round 76), which `deadTimeFactor` combines. Left
    *  unset they take the link's own from config, as `ChannelParams.__post_init__` does in Python. */
@@ -175,6 +180,9 @@ export const FREE_SPACE: ChannelParams = {
     orbitAltitudeKm: qkdCfg().free_space_orbit_altitude_km,
     stationAltitudeKm: qkdCfg().free_space_station_altitude_km,
     minElevationDeg: qkdCfg().free_space_min_elevation_deg,
+    fieldStopUrad: qkdCfg().free_space_field_stop_urad,
+    seeingArcsec: qkdCfg().free_space_seeing_arcsec,
+    wavelengthNm: qkdCfg().free_space_wavelength_nm,
   },
   sourceRateHz: qkdCfg().free_space_source_rate_hz,
   deadTimeS: qkdCfg().free_space_detector_dead_time_s,
@@ -200,6 +208,10 @@ export function downlinkFromProfile(v: Record<string, any>): ChannelParams {
       receiverOpticsEff: Number(v.receiver_optics_efficiency),
       atmosphericRefKm: Number(v.atmospheric_ref_km), orbitAltitudeKm: Number(v.orbit_altitude_km),
       stationAltitudeKm: Number(v.station_altitude_km), minElevationDeg: Number(v.min_elevation_deg),
+      // Optional in a profile (Round 78): absent, the config's - which turns the coupling off.
+      fieldStopUrad: Number(v.field_stop_urad ?? qkdCfg().free_space_field_stop_urad),
+      seeingArcsec: Number(v.seeing_arcsec ?? qkdCfg().free_space_seeing_arcsec),
+      wavelengthNm: Number(v.wavelength_nm ?? qkdCfg().free_space_wavelength_nm),
     },
     sourceRateHz: Number(v.source_rate_hz), deadTimeS: Number(v.detector_dead_time_s),
     muSignal: Number(v.mu_signal), muDecoy: Number(v.mu_decoy),
@@ -282,11 +294,36 @@ export const sourceRateHz = (mhzFromControl: unknown, fallbackHz: number): numbe
   return Number.isFinite(mhz) && mhz > 0 ? mhz * 1e6 : fallbackHz;
 };
 
-/** The ground station's optics (telescope + fibre coupling) in dB, 0 on fibre. Twin of
- *  `channel.py::ChannelParams.receiver_optics_db`. */
+/** The ground station's optics (telescope + fibre coupling) in dB, 0 on fibre, with the optional
+ *  turbulence coupling (Round 78): it is lost at the station's field stop, so it counts as optics and
+ *  stays out of QSDC's Eve gap. Twin of `channel.py::ChannelParams.receiver_optics_db`. */
 export function receiverOpticsDb(p: ChannelParams): number {
   const eff = p.freeSpace?.receiverOpticsEff;
-  return eff != null ? -10 * Math.log10(Math.max(eff, 1e-12)) : 0;
+  const optics = eff != null ? -10 * Math.log10(Math.max(eff, 1e-12)) : 0;
+  return p.freeSpace && !p.freeSpace.interSatellite ? optics + turbulenceCouplingDb(p) : optics;
+}
+
+/** Energy of the seeing-limited image inside the field stop at an elevation (degrees). */
+function seeingFraction(fs: NonNullable<ChannelParams["freeSpace"]>, elevation: number): number {
+  const lamNm = fs.wavelengthNm ?? 848.6;
+  const r0at500 = (0.98 * 500e-9) / ((fs.seeingArcsec ?? 1.7) * Math.PI / 648000);   // epsilon = 0.98 lambda / r0
+  const r0 = r0at500 * (lamNm / 500) ** 1.2 * Math.sin((elevation * Math.PI) / 180) ** 0.6;
+  const fwhm = (0.98 * lamNm * 1e-9) / r0;
+  const alpha = (fs.fieldStopUrad ?? 0) * 1e-6;
+  return 1 - Math.exp(-4 * Math.LN2 * (alpha / fwhm) ** 2);
+}
+
+/** The extra loss when a seeing-limited image overfills the station's field stop, relative to the
+ *  zenith; 0 when the stop is 0 or unset (off, the default). r0 grows as lambda^(6/5) and shrinks as
+ *  sin(elevation)^(3/5) along the slant path, and the image FWHM is 0.98 lambda / r0 (Liu et al.,
+ *  arXiv:1505.05436, Eqs. 1-2); the stop's share is a Gaussian's with that FWHM, an approximation.
+ *  Round 78, the user's choice; twin of `channel.py::turbulence_coupling_db`. */
+export function turbulenceCouplingDb(p: ChannelParams): number {
+  const fs = p.freeSpace;
+  if (!fs || !(Number(fs.fieldStopUrad) > 0)) return 0;
+  const e = linkElevationDeg(p);
+  if (e === null) return 0;
+  return 10 * Math.log10(seeingFraction(fs, 90) / seeingFraction(fs, Math.max(e, 1e-3)));
 }
 
 /** Mean Earth radius in km (IUGG), for the pass geometry. Twin of `channel.py::EARTH_RADIUS_KM`. */
@@ -592,7 +629,12 @@ export function bb84Rate(p: ChannelParams, fEC = qkdCfg().error_correction_eff):
   // It takes `eDetForBound(p)`, NOT the sampled QBER and not the bare misalignment - see that
   // function for why the first charges dark counts twice and the second unhooks the eavesdropper.
   const bound = decoySecureFraction(eta, mu, nu, eDetForBound(p), y0, fEC, 0.5, src.vacuum);
-  return { perPulse: bound.perPulse * cDt, eMu: bound.eMu, e1: bound.e1, eta, qMu, qNu, y0, cDt, mu, nu, src };
+  // PER PULSE SENT (Round 78, the user's choice): the bound is per SIGNAL pulse and only the pSignal
+  // share of the pulses are signals - decoys and the vacuum carry no key. Until Round 78 every pulse
+  // counted at the signal intensity, which read twice what a source sending signals on half its pulses
+  // makes. Twin of `bb84.py`.
+  return { perPulse: bound.perPulse * cDt * src.pSignal, eMu: bound.eMu, e1: bound.e1, eta, qMu, qNu, y0,
+           cDt, mu, nu, src };
 }
 
 export function bb84(nPulses: number, p: ChannelParams, seed = 0,
@@ -600,9 +642,11 @@ export function bb84(nPulses: number, p: ChannelParams, seed = 0,
   const u = rng(seed + 1);
   const rate = bb84Rate(p, fEC);
   const { mu, qMu, cDt } = rate;
+  const pSignal = rate.src.pSignal;
   // The model's own signal QBER, the E_mu the bound uses (Round 75; it was `intrinsicQber`).
   const eDet = signalQber(p, mu);
-  const nSift = Math.max(0, Math.round(nPulses * cDt * qMu * 0.5)); // detected & bases match
+  // Signal pulses only (Round 78): sifted bits are the signal states', as Liao et al. count them.
+  const nSift = Math.max(0, Math.round(nPulses * pSignal * cDt * qMu * 0.5)); // a signal, detected, bases match
 
   // The MEASUREMENT still fluctuates: sampling noise on the observed QBER, binomial -> gaussian.
   const std = nSift > 0 ? Math.sqrt((eDet * (1 - eDet)) / nSift) : 0;
@@ -615,9 +659,11 @@ export function bb84(nPulses: number, p: ChannelParams, seed = 0,
 
   // The counterfactual, on the same channel: GLLP with the multi-photon fraction untagged. Kept
   // beside the bound because the assumption is invisible without it.
+  // Per pulse sent too, on the SAME pulse schedule (Round 78): the counterfactual removes the decoy
+  // certification, not the decoy pulses, so it stays at or below the decoy bound pulse for pulse.
   const delta = taggedFraction(mu, p);
   const untagged = 1 - delta;
-  const nonDecoy = delta >= 1 ? 0 : Math.max(0, 0.5 * cDt * qMu * (
+  const nonDecoy = delta >= 1 ? 0 : Math.max(0, pSignal * 0.5 * cDt * qMu * (
     untagged - fEC * h2(decoy.eMu) - untagged * h2(Math.min(0.5, decoy.eMu / untagged))));
 
   // POST-PROCESSING ABORT, mirroring `bb84.py`'s `if measured_qber > pp_threshold`. The browser had

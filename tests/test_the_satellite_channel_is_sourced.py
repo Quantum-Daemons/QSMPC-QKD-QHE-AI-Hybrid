@@ -165,8 +165,10 @@ def test_the_satellite_rate_is_the_vacuum_plus_weak_bound() -> None:
     run = run_bb84(200_000, c, seed=0, qkd_params=vac)
     bound = _decoy_secure_fraction(eta, 0.8, 0.1, e_det_for_bound(c), y0, f, 0.5, vacuum=True)[0]
     one = _decoy_secure_fraction(eta, 0.8, 0.1, e_det_for_bound(c), y0, f, 0.5)[0]
-    assert run.secret_key_rate == pytest.approx(bound, rel=1e-12)
-    assert run.secret_key_rate == pytest.approx(3.3559e-5, rel=1e-4)
+    # Per pulse SENT since Round 78: Micius sends its signal on half its pulses. It read 3.3559e-5
+    # per signal pulse.
+    assert run.secret_key_rate == pytest.approx(bound * vac.p_signal, rel=1e-12)
+    assert run.secret_key_rate == pytest.approx(1.6780e-5, rel=1e-4)
     # The measured vacuum yield can only tighten the estimate, and costs nothing with no background.
     assert bound > one
     assert (_decoy_secure_fraction(eta, 0.8, 0.1, 0.011, 0.0, f, 0.5, vacuum=True)[0]
