@@ -211,9 +211,11 @@ def test_the_readme_counts_the_published_repos_and_their_one_exception() -> None
     and it rotted again: "All ten repos" with eleven published, and "the evaluation sample for each"
     with one published by design without one."""
     words = {"ten": 10, "eleven": 11, "twelve": 12, "thirteen": 13, "fourteen": 14, "fifteen": 15}
-    readme = (REPO / "README.md").read_text()
+    # The sentence moved from the README to docs/findings.md in Round 80, with the findings it
+    # belongs to; the README now links there.
+    readme = (REPO / "docs" / "findings.md").read_text()
     m = re.search(r"All (\w+) repos are public and\s+pinned", readme)
-    assert m, "the README sentence counting the published repos moved; update this gate with it"
+    assert m, "the sentence counting the published repos moved; update this gate with it"
     assert words.get(m.group(1)) == len(_published()), (
         f"README says {m.group(1)} published repos, the registry has {len(_published())}")
     no_sample = [s.key for s in _published() if s.eval_sample_reason]

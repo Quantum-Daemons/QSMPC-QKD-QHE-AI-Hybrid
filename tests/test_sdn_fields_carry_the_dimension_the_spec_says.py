@@ -26,7 +26,8 @@ WHY NO RATE IS COMPUTED INSTEAD
 Bits per second needs a pulse repetition rate. `quantumSim.ts` computes
 `secretKeyRate = (secureFraction * nSift) / nPulses` - per pulse - and `pulses` is a count; there is
 no wall-clock model of the quantum channel anywhere. A repetition rate is a property of apparatus,
-and `README.md` states that no QKD device exists here, calling that "a boundary of the deliverable,
+and `docs/findings.md` (the README's text until Round 80) states that no QKD device exists here,
+calling that "a boundary of the deliverable,
 not a gap in it". Surveyed 2026-08-15: TNO-Quantum `communication.qkd_key_rate` (Apache-2.0) is
 per-pulse, QKDNetSim is GPL-2.0 and already excluded from the commercial-OK set, SeQUeNCe would
 still require asserting a clock. No library supplies a repetition rate because none can.

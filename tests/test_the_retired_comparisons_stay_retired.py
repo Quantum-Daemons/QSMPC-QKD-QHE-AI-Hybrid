@@ -137,7 +137,10 @@ def test_the_agent_prompt_follows_the_use_case() -> None:
 
 
 def test_the_readme_no_longer_makes_the_headline_claims() -> None:
-    readme = (REPO / "README.md").read_text()
+    # The README and the documents its long sections moved to in Round 80.
+    readme = "\n".join((REPO / f).read_text() for f in (
+        "README.md", "docs/use-cases.md", "docs/findings.md", "docs/models-and-benchmarks.md",
+        "docs/development.md"))
     for phrase in ("more\ncommunication-compact than classical CKKS", "more communication-compact than classical CKKS",
                    "information-theoretic (vs computational) security"):
         assert phrase not in readme, f"README makes the retired claim again: {phrase!r}"

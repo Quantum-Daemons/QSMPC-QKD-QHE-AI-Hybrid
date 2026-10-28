@@ -156,3 +156,43 @@ Applied once, at provisioning: a non-root sudo user inheriting the root `authori
 key-only with root login disabled; `ufw` denying inbound except SSH, HTTP and HTTPS (HTTP is required
 for the ACME challenge); `fail2ban`; unattended security upgrades; Docker Engine with the compose
 plugin from the official script.
+
+---
+
+> Moved here from the README in Round 80, by the user's request to keep the README to a summary; the text is unchanged apart from its link paths, and the README links here.
+
+## Deployment tiers, from the README
+
+Host-specific deployment - the port-collision workaround, the shared-proxy override and the
+public-demo profile - is in [`docs/deployment.md`](deployment.md). That file had **no inbound
+link from any tracked file** until Round 43, and it is the only document carrying the workaround, so
+a cloner hitting the collision had no way to find the answer that already existed.
+
+A generated 14-section technical report is at
+[`report/technical-report.pdf`](../report/technical-report.pdf); build it with `make report`. Every
+table in it is generated from the repository's own artefacts rather than transcribed.
+
+- **Full deployment (federated learning + inference)** - Docker image build -> server startup:
+  ```bash
+  git clone <repo> qsh && cd qsh
+  docker compose -f docker/docker-compose.yml build       # build the images (full AI tier + OpenFHE + Node/MCP)
+  docker images | grep -E 'docker-(api|web)'           # the freshly-built images
+  docker compose -f docker/docker-compose.yml up -d       # start: API (+AI tier) . SPA . Prometheus . Grafana
+  docker compose -f docker/docker-compose.yml ps         # all services healthy
+  # SPA http://localhost:8080  .  API http://localhost:8000/api/health  .  Grafana http://localhost:3000
+  # run a federated use case end-to-end (writes results/):
+  docker compose -f docker/docker-compose.yml exec api \
+    python -m qsh.orchestration.pipeline --usecase medical_fl --out results/
+  ```
+  The full `Dockerfile.api` (Debian-trixie) **bakes in the AI tier** (CPU torch + PennyLane + MedMNIST),
+  the **live OpenFHE** CKKS backend, and **Node/npx** for the real MCP server, so a federated `medical_fl` run +
+  the MCP server work out of the box. Fits a **6-core / 12 GB / 100 GB** box (CPU; GPU passthrough via host
+  `nvidia-container-toolkit` + the `deploy.resources` GPU block is optional and faster). Ports are env-overridable
+  (`WEB_PORT` / `API_PORT` / `GRAFANA_PORT`).
+- **Client-side build (implementation capability)**: the SPA also builds **fully client-side** - every
+  computation runs in the browser (real CKKS FHE + a Polytune garbled-circuit 2PC, ONNX inference, a
+  simulated BB84 channel, PSI / SHAP / QFL), with **zero `/api` compute**. In this mode the system needs **neither the backend
+  FHE/MPC compute path nor the frontend FHE/MPC backend-selectors** - the client owns both - so it requires
+  no GPU and no server-side ML. The same pages and buttons work in both modes.
+- **Monitoring**: see [`monitoring/README.md`](../monitoring/README.md) (Prometheus + Grafana for the local
+  full deployment; Zabbix dropped as redundant).

@@ -6405,3 +6405,93 @@ pulses", the telecom run's count. The satellite unchanged: 91,475 bits over 408.
 BUSINESS DOC RECONCILED Round 80. The out-of-repo document is brought level with this round. Its content
 is not quoted here, in the checklist, or in any commit - only the fact of the reconciliation, which is
 what gate 16 reads.
+
+## Round 80, continued: the README made a summary, and three defects its screenshots showed
+
+**The user held the merge of #76 until the README was reorganised.** It had grown to 1,200 lines.
+The user asked for the development environment, the run steps and the key points in order, Mermaid
+diagrams of the architecture and the workflow, the pages' figures, and the long records moved to
+split files under `docs/` or into the technical report. Two choices followed: both (the `docs/` files
+carry the full text, the report a short appendix pointing to them), and a screenshot of every page.
+
+**The README is a summary: 1,200 lines to 246.** It keeps the summary and the novelty sentence, and
+adds an at-a-glance table (what runs, real or simulated, what it is checked against), four Mermaid
+diagrams (the architecture, a run's stages, how the QKD key is derived, the development workflow), a
+sitemap with the routes, eleven screenshots, the quickstart, the layout and an index of the
+documents. The rest moved verbatim, link paths rewritten for the new directory, each file opening
+with a note that says so:
+- `docs/use-cases.md`: what is and is not new, the positioning, the four workstreams, the use cases.
+- `docs/development.md`: the quickstart's notes, the development environment, GPU, FHE, MPC,
+  Rust/WASM, the dependency advisories, the languages and the submodules.
+- `docs/models-and-benchmarks.md`: the datasets, the benchmark, the model tiers, what the pages show.
+- `docs/findings.md`: the WS3 and WS4 challenges, and every concern and recommendation.
+- `docs/deployment.md` gains the deployment tiers.
+The report gains an appendix that says where each record now lives and states the three findings
+that change how its results read.
+
+**What a move does to a gate.** Three tests read the README for a claim that has now moved. Reading
+only the README they would have kept passing on a file that no longer holds the claim, so they now
+read the moved files too: `test_an_evaluation_sample_says_which_split_it_is`,
+`test_a_licence_downgrade_reaches_every_copy` and `test_the_retired_comparisons_stay_retired`. Three
+more enumerate with `git ls-files` and could not see a new file until it was staged: document
+reachability, the Markdown house style and the AI Act scope. They were run again after `git add`.
+
+**Twelve pointers said "the README" for text that had moved.** Each now names the file that holds
+it: three in `docs/findings.md` and one in `docs/development.md` that called the file itself the
+README, `publish_hf.py` (twice), `synthetic.py`, two entries in `references/REFERENCES.md`,
+`references/satellite-event-count-investigation.md`, `clientSdnController.ts` and an SDN test's
+docstring. Two were wrong before the move: `synthetic.py` said the README pointed to Synthea, AMLSim
+and MOSTLY-AI, and it never had (Round 17 removed the two submodules); the findings said Al-Kuwari et
+al. were "cited elsewhere in this README", and the only other citation is in
+`references/REFERENCES.md`. Dated notes that quote an old README line number are history and stay.
+
+**Three defects the screenshots showed, each on the deploy (959ce41, `index-BksqMex-.js`).**
+- E2E Orchestration: after a run, six of the ten pipeline nodes were not drawn. React Flow v12 keeps
+  a node hidden until it has measured it. Each node now has an explicit width and height (190 x 100),
+  which it draws without measuring.
+- Satellite: the QSDC "not available" label was one line of 199 characters on the live run, wider
+  than the diagram: it ran from -107 to 891 in a drawing 780 units wide. It now wraps at its
+  separators, at most 110 characters a line, three lines on the default link.
+- The live event log, on every page that runs the pipeline: the event type was its label's class, so
+  a "log" event's label took `.log`, the log container's own rule. Measured live: 14 such labels,
+  each a 44 px box with 12 px padding, a border and the log's background, painted over the line above.
+  The class is now `ev-` plus the type. Measured after the fix: 22 "log" labels with no padding,
+  border or background, one line (17.5 px) tall, and the stage and metric colours unchanged.
+The screenshots were taken again after the fixes and each was opened and read.
+
+**The new summary text, checked against the code.** The at-a-glance table claimed NIST's ACVP cases
+for the PQC row as a whole; the cases are ML-KEM-768's only, and the row now says so. It called the
+fibre key "a composable finite key" for BB84 and E91; E91's is the asymptotic count, secure fraction
+times sifted bits, and the row now says so. Confirmed as written: eleven published models, each at a
+pinned revision and each runnable in the browser; Liao's pass within 1 percent (detections -0.9
+percent); 23 Micius nights; the QML detector's logistic-regression baseline on the same split; MCP
+results signed with ML-DSA-65; the three CI jobs; the Quickstart's files, port and arguments.
+
+**A count in this round's own log was wrong.** The log said seven rounds had recorded the Table I
+factor as this code's conservatism, and the report appendix's first draft took the number from it.
+The test that applied the detector twice was written in Round 47 (3c63ea8: `detector_efficiency`
+0.5 on the stated total attenuation), thirty-three rounds before. Both are corrected, and the
+appendix states the error-correction efficiency its Khmelev ratio needs: 0.56 at 1.16, 0.51 at their
+own 1.44.
+
+**The diagrams, measured at the width GitHub gives them.** GitHub scales a Mermaid diagram to its
+column, about 830 px beside the repository sidebar. Rendered with Mermaid 12.1.0 and measured, the
+first drafts of three were 1,795, 1,512 and 1,163 px wide, so the architecture would have shown at
+half size, about 7 px text. Each was laid out again (the browser's six parts as a grid, the run's
+stages in three steps, the workflow in two rows) and all five now draw at full size, 456 to 744 px.
+The workflow had also drawn the merge before the deploy; each branch is deployed and walked before
+it merges, and main again after, and it now says so. A dotted arrow drawn through a box's title,
+and an edge wrapped through it, were removed.
+
+**The report's build note named the other engine.** Its first line and its Reproduction note said
+`xelatex`; its preamble says the toolchain is pinned to `pdflatex` because `xelatex` once fell back
+to nullfont, and `make report` runs `pdflatex`. Both engines build the same sixteen pages today,
+with the same fonts and images, so nothing was broken; both notes now name `make report`.
+
+**Gates.** All 18 local gates, the full suite among them (937 passed, 7 skipped), on the tree
+before the diagrams were laid out again; the document gates again after it; `tsc`, the JSX-spaces
+check and a client-only build.
+
+BUSINESS DOC RECONCILED Round 80. The out-of-repo document is brought level with this round's
+continuation. Its content is not quoted here, in the checklist, or in any commit - only the fact of
+the reconciliation, which is what gate 16 reads.

@@ -399,6 +399,20 @@ export function hasTwoPartySpec(usecase: string): boolean {
   return usecase in USECASE_SPECS;
 }
 
+/** An arrow's label, wrapped at its " · " separators into lines that fit the 780-unit diagram -
+ *  about 110 characters at 11 units - and drawn upward from the arrow. Round 80: the README's
+ *  screenshots showed the satellite's QSDC label, about 190 characters, running off both ends. */
+function wrapLabel(text: string, max = 110): string[] {
+  const lines: string[] = [];
+  let cur = "";
+  for (const part of text.split(" · ")) {
+    const next = cur ? `${cur} · ${part}` : part;
+    if (next.length > max && cur) { lines.push(cur); cur = part; } else cur = next;
+  }
+  if (cur) lines.push(cur);
+  return lines;
+}
+
 const ALICE_X = 172;
 const BOB_X = 612;
 const MID = (ALICE_X + BOB_X) / 2;
@@ -547,8 +561,10 @@ export default function TwoPartyDiagram({
         const mStart = bidir ? (mpc ? "url(#tp-ml)" : "url(#tp-cl)") : undefined;
         return (
           <g key={i} opacity={op}>
-            <text x={MID} y={y - 9} textAnchor="middle" fontSize={11}
-              fill={failed ? "#ff8f6b" : isActive(s) ? "#ffffff" : "#c4cee0"}>{label}</text>
+            <text x={MID} y={y - 9 - (wrapLabel(label).length - 1) * 13} textAnchor="middle" fontSize={11}
+              fill={failed ? "#ff8f6b" : isActive(s) ? "#ffffff" : "#c4cee0"}>
+              {wrapLabel(label).map((ln, k) => <tspan key={k} x={MID} dy={k === 0 ? 0 : 13}>{ln}</tspan>)}
+            </text>
             <line x1={ALICE_X + 6} y1={y} x2={BOB_X - 6} y2={y} stroke={col}
               strokeWidth={isActive(s) ? 2.6 : 1.8} strokeDasharray={dash}
               markerEnd={mEnd} markerStart={mStart} />

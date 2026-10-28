@@ -134,6 +134,10 @@ export function flowFor(usecase: string) {
   return out;
 }
 
+/** Every node's box: wide enough for the longest caption at 12 px, tall enough for four lines and
+ *  a wrap. Fixed rather than measured; see `width` / `height` below. */
+const NODE_W = 190, NODE_H = 100;
+
 export default function OrchestrationGraph({
   usecase,
   activeStage,
@@ -226,9 +230,17 @@ export default function OrchestrationGraph({
         position: { x: 30 + i * 230, y: 80 },
         data: { label },
         className: cls,
+        // EXPLICIT DIMENSIONS (Round 80). These nodes are rebuilt as new objects on every stage
+        // change, and React Flow hides a node it has not measured until its size is observed again;
+        // a node whose box did not change size was never re-measured, so after a run most of the
+        // pipeline went invisible - on the live site, in a foreground tab, six of ten nodes. Found
+        // by the README's screenshots. A node with a width and height is drawn without measuring.
+        width: NODE_W,
+        height: NODE_H,
         style: {
-          whiteSpace: "pre-line", width: 190, textAlign: "center" as const,
-          fontSize: 12, lineHeight: 1.25, padding: "10px 8px",
+          whiteSpace: "pre-line", width: NODE_W, height: NODE_H, textAlign: "center" as const,
+          fontSize: 12, lineHeight: 1.25, padding: "10px 8px", boxSizing: "border-box" as const,
+          display: "flex", alignItems: "center", justifyContent: "center",
         },
         sourcePosition: "right" as any,
         targetPosition: "left" as any,

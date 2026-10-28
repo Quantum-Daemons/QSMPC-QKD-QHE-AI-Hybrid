@@ -464,7 +464,8 @@ matters.** WS4(c), circuit privacy against a malicious server, is met for Cliffo
 server holds the maximally-mixed state throughout and the client recovers the exact result by
 tracking the Pauli frame. WS4(f), hiding the server's circuit from the client, is NOT met and is
 in tension with the mechanism - the client must know the circuit to update its frame. The two are
-now separate rows in `README.md` rather than one row that could only ever read PARTIAL.
+now separate rows in `docs/findings.md` (the README's until Round 80) rather than one row that
+could only ever read PARTIAL.
 
 ## Prior art for the novelty claim, and the asymmetry it exposes (Round 30)
 
@@ -542,7 +543,8 @@ directly, not against another file in this repository. The architecture discussi
   Inference with Hybrid CKKS and MPC" (BLB).** arXiv:2508.19525, Aug 2025. Splits at operator rather
   than layer granularity and fuses adjacent linear operators to minimise CKKS<->MPC conversions; 21x
   communication reduction vs BOLT (S&P'24) and 2x vs BumbleBee (NDSS'25), with 13x and 1.8x latency
-  reductions under GPU acceleration. Already named in `README.md` and `docs/architecture.md` as the
+  reductions under GPU acceleration. Already named in `docs/models-and-benchmarks.md` (the README's text until Round 80) and
+  `docs/architecture.md` as the
   current end of the Gazelle -> Delphi -> BOLT -> Bumblebee line; recorded here with its numbers.
   Added: 2026-08-11.
 - **Juvekar, Vaikuntanathan & Chandrakasan, "GAZELLE: A Low Latency Framework for Secure Neural

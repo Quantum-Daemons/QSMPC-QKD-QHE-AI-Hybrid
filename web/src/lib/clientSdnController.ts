@@ -142,7 +142,7 @@ export function buildTopology(opts: {
   secretKeyRatePerPulse: number;
   /** Source repetition rate in Hz - THE ONE ASSUMED QUANTITY, and the reason a bit/s exists at all.
    *
-   *  Not measured and not measurable here: `README.md` records that no QKD device exists in this
+   *  Not measured and not measurable here: `docs/findings.md` records that no QKD device exists in this
    *  project, "a boundary of the deliverable, not a gap in it". A repetition rate is a property of a
    *  transmitter, stated in a paper's experimental section rather than derived from one, so the only
    *  honest ways to have a bit/s are to assume a clock openly or to publish none.

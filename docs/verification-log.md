@@ -3364,7 +3364,8 @@ the cross-language test holds the two models to the bit.
 fibre experiment uses, which was expected. It also handed back the paper's own block TIMES as a
 check, and ours came out twice as long at every row. A rate that is twice as slow everywhere is a
 channel, not a bound: the tests had applied the detector on top of an attenuation the paper defines
-as including it. Seven rounds had recorded the resulting factor as this code's conservatism.
+as including it. Thirty-three rounds, from the test's first commit in Round 47, had recorded the
+resulting factor as this code's conservatism.
 
 **An inference earns its keep when a later check can break it.** Round 79 chose the decoy's errors
 for (A16) from one sentence of the paper. On the paper's own channel and dead time that choice
@@ -3373,3 +3374,34 @@ reproduces Table I's 26 dB row to a few parts in a thousand, and the other choic
 **A rounding is part of a metric's meaning.** The satellite's block time at one decimal was fine for
 minutes of pass; the fibre's blocks run from milliseconds, and the rounding gate allows one rounding
 per name. Significant figures serve both.
+
+### Round 80, continued: a screenshot is a reading, and a move is an edit to every pointer
+
+**Context.** The user held the merge until the README was reorganised: a summary with diagrams and a
+screenshot of every page, the long records moved to split files and a short appendix in the report.
+
+**An image taken for a document is a check nobody had run.** Three defects were on the deploy and
+no gate looked for them: six of ten pipeline nodes undrawn after a run, a 199-character label wider
+than its diagram, and every "log" label in the event log drawn as a box over the line above. Each
+was found by opening an image to see whether it was fit to publish. Each test checked what a page
+says; none checked what it shows. The screenshots now get regenerated with the pages and read like
+any other output.
+
+**A class built from data shares a namespace with the layout.** The event type became a CSS class,
+and one type, "log", was also the name of the panel it is printed in. Nothing about either name was
+wrong; their meeting was. A prefix keeps data out of the layout's names.
+
+**Moving text is when a pointer's truth gets tested.** Twelve places said "the README" for text that
+left it, and two of them had been wrong before anything moved: one named tools the README never
+mentioned, one a citation it never held. A pointer nobody follows is never checked; a move forces
+it to be followed.
+
+**A gate that reads a file for a claim passes when the claim leaves the file.** Three tests read the
+README for content; after the move they would have kept passing on a README that no longer held it.
+Three more enumerate with `git ls-files` and could not see the new files until they were staged.
+Moving text means asking each gate where it looks.
+
+**A number copied from a summary carries the summary's error.** The log entry above said seven
+rounds; the report's draft appendix took the figure from it. The first commit of the test says
+thirty-three. When a record states a duration, check the commit that started it, not the sentence
+that remembered it.

@@ -274,7 +274,8 @@ def publish(spec: registry.ModelSpec, *, private: bool, dry_run: bool, api,
 def _refuse_transfer_learned_weights(key: str) -> None:
     """Refuse to publish weights derived from a corpus this project may not redistribute.
 
-    DATA_LICENSES.md and the README both state that `medical_fl.resnet18` is trained from random
+    DATA_LICENSES.md and docs/findings.md (the README's text until Round 80) both state that
+    `medical_fl.resnet18` is trained from random
     initialisation, because ImageNet's terms bind the Database to non-commercial research and say
     nothing about redistributing a model trained on it - so ImageNet-derived weights cannot be
     published here. `scripts/train/medical_breastmnist.py` implements that as `--from-scratch`.
@@ -298,7 +299,7 @@ def _refuse_transfer_learned_weights(key: str) -> None:
             f"REFUSING to publish {key}: its manifest records pretrained={pretrained!r}, so these "
             f"weights are derived from a corpus whose terms this project has not cleared for "
             f"redistribution (see DATA_LICENSES.md). Retrain with --from-scratch and republish. "
-            f"If the policy has genuinely changed, change DATA_LICENSES.md and the README in the "
+            f"If the policy has genuinely changed, change DATA_LICENSES.md and docs/findings.md in the "
             f"same commit -- do not let the artefact and the licence note disagree again."
         )
 
