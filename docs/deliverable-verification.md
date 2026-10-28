@@ -6319,6 +6319,16 @@ one pass with 408.5 s of channel time and eskr 1,622; 228,689 bits for two passe
 mask, a pass peaking at 11 degrees needing 10 passes pooled, the Liao row at 164,183; the one-decoy
 profile's vacuum option disabled; console clean.
 
+**Walked on the deploy (c4ae533, `index-kIMQHozN.js`), in Chrome.** Satellite at 800 km: "not yet run"
+before the run; then 91,475 bits, "composable finite key over one pass peaking at 35.84 deg
+elevation, 408.5 s of link time: Lim et al. 2014 (vacuum + weak decoy), eps_sec 1e-9", the per-pulse
+rate unchanged at 1.678e-5, the control plane at 408.5 s of channel time with skr 1,678, eskr 1,622
+and a budget of 68,606 bits. The security parameter at 1e-10: 87,815 bits. Two pooled passes:
+228,689 bits over 816.9 s. Ten seconds at the range: 0 bits and the 33 s warning. The Network tab:
+177.5 kbit for the pass from the mask, the Liao finite row at 164,183 (-45.4 percent); the one-decoy
+profile's vacuum option disabled. Telecom unchanged: 28,534 bits, 1.427e-3 per pulse sent, 20 ms,
+eskr 1,070,011. No "Infinity" or "NaN", console clean.
+
 BUSINESS DOC RECONCILED Round 79. The out-of-repo document is brought level with this round. Its content
 is not quoted here, in the checklist, or in any commit - only the fact of the reconciliation, which is
 what gate 16 reads.
