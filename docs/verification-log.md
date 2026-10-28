@@ -3299,3 +3299,22 @@ not mean what its label said.
 broke a test that scans the pipeline for the keys it reads, and a new component looked unrendered to
 a test that lists only tracked files. Both gates were right about what they could see; each was
 widened to see the new place rather than silenced.
+
+### Round 78: a convention changed for the user, and a recommendation withdrawn on the evidence
+
+**Context.** Three user choices: rates per pulse sent; a low-elevation loss term; Jinan-1 as a
+template, the last two only after verification.
+
+**A convention change finds what the old convention hid.** Halving every rate moved every pin, and
+re-deriving them surfaced a panel that had named one bound for three different protocols, and a
+ratio printed as a literal two detector sets ago.
+
+**I recommended a term the evidence did not support.** Round 77 framed the 2 dB residual as a
+missing elevation term and asked the user which term to add. The verification showed the clearest
+residual, Zvenigorod's, sits on one half of the pass only, and that the model's centre against all
+23 of Liao's nights is within a few hundredths of a dB with 2.4 dB of weather around it. The term
+went in as an option, by the user's choice, labelled with the one value it has to assume.
+
+**A calibration is honest when it names what it leaves to check.** Jinan-1 could not be a template
+without one fitted constant. Fitting it to a pass's level leaves that pass's shape untouched, and the
+shape is what matched; the template file says which value was fitted and to what.
