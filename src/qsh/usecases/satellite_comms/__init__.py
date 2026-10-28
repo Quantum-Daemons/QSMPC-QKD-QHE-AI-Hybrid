@@ -80,41 +80,95 @@ _SAT_DEFAULTS = {
     # 10e6, raised with the decoy-model switch: at 4e6 this downlink yielded 223 secure bits,
     # under the 256 the stage needs to derive a key, so satellite silently stopped mixing QKD.
     # Kept in step with `WebConfig.demo_sat_pulses`; see the note there for the finite-key residual.
-    # 20e6 since Round 75: the Micius budget gives 344 secure bits there and 172 at 10e6.
+    # 20e6 since Round 75: the Micius budget gave 344 secure bits there and 172 at 10e6. Round 77's
+    # air-mass atmosphere and Micius's own 0.8 / 0.1 / vacuum source give 671 at 20e6.
     "sat_pulses": 20_000_000,         # channel uses (free-space links need many)
     "sat_opt_pulses": 200_000,        # pulses per OptiQKD evaluation (fewer than a full run, for speed)
     # The two fixed terms of the budget, exposed in the WebUI so the inline eavesdrop check can be
     # demonstrated: they floor total loss at 8 dB by default, which makes every abort attributable to
     # the link rather than to Eve at every setting the page used to offer.
-    "sat_atmospheric_db": None,       # None -> QKDConfig.free_space_atmospheric_db
-    "sat_pointing_db": None,          # None -> QKDConfig.free_space_pointing_db
+    "sat_atmospheric_db": None,       # None -> the profile's atmospheric_db (at its reference range)
+    "sat_pointing_db": None,          # None -> the profile's pointing_db
+    # Round 77. The link a run models, by profile id (src/qsh/config/profiles/downlink/); its values
+    # are the base every key above overrides. None -> QKDConfig.free_space_profile, Micius 2017.
+    "sat_profile": None,
+    "sat_min_elevation_deg": None,    # None -> the profile's; no link below it (Liao: 10 degrees)
+    "sat_vacuum_decoy": None,         # None -> the profile's; whether the vacuum state is sent
 }
 _DEFAULT_TELEMETRY = (
     "SAT-OK;orbit=LEO;alt=550km;batt=98%;temp=21C;payload=nominal;ts=T+00:42:17"
 )
 
 
-def _sat_channel(ctx: Context):
+def _sat_profile(ctx: Context) -> dict:
+    """The selected downlink profile's values. The default profile's come from `QKDConfig`, so
+    config.yaml can still retune them; any other is read from its JSON file. Twin of
+    `clientCompute.ts::satProfile`."""
     from ...config import get_config
-    from ...qkd.channel import ChannelParams, FreeSpaceParams
+    from ...config.profiles import REQUIRED, profile_values
 
     qkd = get_config().qkd
+    pid = ctx.config.get("sat_profile", _SAT_DEFAULTS["sat_profile"]) or qkd.free_space_profile
+    if pid == qkd.free_space_profile:
+        return {k: getattr(qkd, f"free_space_{k}") for k in REQUIRED["downlink"]}
+    return profile_values("downlink", str(pid))
+
+
+def _sat_channel(ctx: Context):
+    from ...qkd.channel import ChannelParams, FreeSpaceParams
+
+    v = _sat_profile(ctx)
     g = lambda k: ctx.config.get(k, _SAT_DEFAULTS[k])  # noqa: E731
     pick = lambda k, fallback: float(fallback if g(k) is None else g(k))  # noqa: E731
     return ChannelParams(
-        distance_km=pick("sat_distance_km", qkd.free_space_distance_km),
-        detector_efficiency=pick("sat_detector_efficiency", qkd.free_space_detector_efficiency),
-        dark_count_prob=pick("sat_dark_count_prob", qkd.free_space_dark_count_prob),
-        misalignment=pick("sat_misalignment", qkd.free_space_misalignment),
+        distance_km=pick("sat_distance_km", v["distance_km"]),
+        detector_efficiency=pick("sat_detector_efficiency", v["detector_efficiency"]),
+        dark_count_prob=pick("sat_dark_count_prob", v["dark_count_prob"]),
+        misalignment=pick("sat_misalignment", v["misalignment"]),
         eve_intercept_fraction=float(g("sat_eve")),
+        source_rate_hz=float(v["source_rate_hz"]),
+        dead_time_s=float(v["detector_dead_time_s"]),
         free_space=FreeSpaceParams(
-            beam_divergence_urad=qkd.free_space_beam_divergence_urad,
-            rx_aperture_m=qkd.free_space_rx_aperture_m,
-            atmospheric_db=pick("sat_atmospheric_db", qkd.free_space_atmospheric_db),
-            pointing_db=pick("sat_pointing_db", qkd.free_space_pointing_db),
-            receiver_optics_efficiency=qkd.free_space_receiver_optics_efficiency,
+            beam_divergence_urad=float(v["beam_divergence_urad"]),
+            rx_aperture_m=float(v["rx_aperture_m"]),
+            atmospheric_db=pick("sat_atmospheric_db", v["atmospheric_db"]),
+            pointing_db=pick("sat_pointing_db", v["pointing_db"]),
+            receiver_optics_efficiency=float(v["receiver_optics_efficiency"]),
+            atmospheric_ref_km=float(v["atmospheric_ref_km"]),
+            orbit_altitude_km=float(v["orbit_altitude_km"]),
+            station_altitude_km=float(v["station_altitude_km"]),
+            min_elevation_deg=pick("sat_min_elevation_deg", v["min_elevation_deg"]),
         ),
     )
+
+
+def _sat_source(ctx: Context):
+    """The downlink source as `run_bb84` takes it: the profile's intensities, whether it sends the
+    vacuum state, and how often each state is sent. Micius: 0.8 / 0.1 / vacuum at 50 / 25 / 25.
+    Switching the vacuum off hands its share to the decoy, as `micius_2017_one_decoy` does."""
+    from ...qkd.bb84 import QKDParams
+
+    v = _sat_profile(ctx)
+    flag = ctx.config.get("sat_vacuum_decoy", _SAT_DEFAULTS["sat_vacuum_decoy"])
+    vacuum = bool(v["vacuum_decoy"] if flag is None else flag)
+    p_signal = float(v["p_signal"])
+    p_decoy = float(v["p_decoy"]) if vacuum else 1.0 - p_signal
+    return QKDParams(mu_signal=float(v["mu_signal"]), mu_decoy=float(v["mu_decoy"]),
+                     vacuum_decoy=vacuum, p_signal=p_signal, p_decoy=p_decoy)
+
+
+def _out_of_view(params) -> str | None:
+    """Why this downlink is not operated, or None when it is."""
+    from ...qkd.channel import in_view, link_elevation_deg
+
+    fs = params.free_space
+    if in_view(fs, params.distance_km):
+        return None
+    e = link_elevation_deg(fs, params.distance_km)
+    where = ("beyond the horizon" if e is None
+             else f"at {e:.1f} deg elevation, below the {fs.min_elevation_deg:g} deg minimum")
+    return (f"no link at {params.distance_km:.0f} km: {where} for a {fs.orbit_altitude_km:g} km "
+            f"orbit. A station this far from the satellite needs a relay - the page's Network tab")
 
 
 class SatelliteQKDStage(Stage):
@@ -123,20 +177,35 @@ class SatelliteQKDStage(Stage):
     name = "satellite_qkd"
 
     def run(self, ctx: Context, bus: EventBus, reg: CryptoRegistry) -> None:
-        from ...qkd.bb84 import QKDParams, derive_shared_key, run_bb84
+        from ...qkd.bb84 import derive_shared_key, run_bb84
+        from ...qkd.channel import link_elevation_deg
 
         params = _sat_channel(ctx)
         ctx.put("sat_channel", params)
+        source = _sat_source(ctx)
+        ctx.put("sat_qkd_params", source)
         n_pulses = int(ctx.config.get("sat_pulses", _SAT_DEFAULTS["sat_pulses"]))
+        elevation = link_elevation_deg(params.free_space, params.distance_km)
+        if elevation is not None:
+            bus.metric("sat_elevation_deg", round(elevation, 2), self.name)
+        why = _out_of_view(params)
+        bus.metric("sat_in_view", int(why is None), self.name)
+        if why is not None:
+            # Not an infinite loss on the page: a sentence saying why there is no link (Round 77).
+            bus.metric("skr_per_pulse", 0.0, self.name)
+            bus.metric("secure_key_bits", 0, self.name)
+            bus.metric("qkd_mixed", 0, self.name)
+            ctx.metrics.update(skr_per_pulse=0.0)
+            bus.log(f"free-space downlink: {why}", self.name)
+            return
         loss_db = round(params.loss_db(), 1)
         bus.log(f"free-space downlink: {params.distance_km:.0f} km, ~{loss_db} dB loss, "
                 f"eve={params.eve_intercept_fraction:.2f}", self.name)
-        # `qkd_params=QKDParams()`, for the same reason the registry entry now carries it: the
-        # default branch is the NON-decoy GLLP form, and this stage's own use case page labels its
-        # rate a decoy-state bound. This surface bypasses the crypto registry, so it does not
-        # inherit that fix and has to ask for the model by name.
-        res = run_bb84(n_pulses, params, seed=ctx.config.get("seed", 0),
-                       qkd_params=QKDParams())
+        # `qkd_params`, for the same reason the registry entry carries `QKDParams()`: the default
+        # branch is the NON-decoy GLLP form, and this stage's own use case page labels its rate a
+        # decoy-state bound. Since Round 77 it is the downlink's OWN source (`_sat_source`): Micius's
+        # 0.8 / 0.1 with the vacuum state, where it ran the fibre page's finite-key optimum.
+        res = run_bb84(n_pulses, params, seed=ctx.config.get("seed", 0), qkd_params=source)
         bus.metric("qber", round(res.qber, 5), self.name)
         # `skr_per_pulse`, for the same reason as `orchestration/stages.py`: this is bits per
         # channel use, and `skr` is a spec field name meaning bit/s. The satellite twin is
@@ -197,6 +266,14 @@ class QSDCStage(Stage):
 
         params = ctx.data.get("sat_channel")
         telemetry = str(ctx.config.get("telemetry", _DEFAULT_TELEMETRY)).encode()
+        why = _out_of_view(params) if params is not None and params.free_space is not None else None
+        if why is not None:
+            ctx.artifacts["telemetry_delivered"] = False
+            bus.metric("qsdc_link_budget_limited", 1, self.name)
+            bus.metric("qsdc_eavesdrop_detected", 0, self.name)
+            bus.log(f"QSDC NOT AVAILABLE: {why}. Telemetry falls back to the PQC session key.",
+                    self.name)
+            return
         res = quantum_secure_direct_comm(
             telemetry, params, seed=ctx.config.get("seed", 0))
 

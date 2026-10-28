@@ -160,6 +160,10 @@ def frontend_config() -> dict:
             "genomics_allele_max": c.data.genomics_allele_max,
         },
         "qkd": asdict(c.qkd),          # full QKD + OptiQKD knobs (editable in the WebUI Parameters panel)
+        # The link profiles (Round 77): every downlink and inter-satellite-link template, values with
+        # their quotes, so the page can offer them and say where each number comes from. A file added
+        # under src/qsh/config/profiles/ reaches the browser through here with no code change.
+        "link_profiles": _link_profiles(),
         "qrng": asdict(c.qrng),        # QRNG bits / source / post-processing / health alpha
         "ids": asdict(c.ids),          # QML-IDS sample sizes (incl. the in-browser demo IDS)
         "crypto": asdict(c.crypto),    # crypto-agility defaults incl. hybrid_combiner_mode (PQC+QKD combiner)
@@ -175,6 +179,12 @@ def frontend_config() -> dict:
         # the same claim previously existed in three places and they drifted.
         "demo_samples": _demo_samples(),
     }
+
+
+def _link_profiles() -> dict:
+    from .profiles import frontend_profiles
+
+    return frontend_profiles()
 
 
 def _demo_samples() -> dict:

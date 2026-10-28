@@ -194,6 +194,14 @@ export const makeDefaultParams = () => ({
   // to a channel it was not measured on.
   qkd_source_rate_mhz: qkdCfg().source_rate_hz / 1e6,
   sat_source_rate_mhz: qkdCfg().free_space_source_rate_hz / 1e6,
+  // Round 77: the link a satellite run models - a profile under src/qsh/config/profiles/downlink/,
+  // whose values every sat_* control overrides - the minimum elevation below which there is no link,
+  // and whether the source sends the vacuum state (1) or one decoy only (0). Choosing a profile in
+  // the Parameters panel loads its values into these controls. 1/0 rather than a boolean because the
+  // Python stage reads the key with `bool()`, and the string "0" would read as true.
+  sat_profile: qkdCfg().free_space_profile,
+  sat_min_elevation_deg: FREE_SPACE.freeSpace!.minElevationDeg!,
+  sat_vacuum_decoy: FREE_SPACE.vacuumDecoy ? 1 : 0,
 });
 
 export const DEFAULT_PARAMS = makeDefaultParams();
