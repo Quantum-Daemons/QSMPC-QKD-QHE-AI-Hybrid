@@ -288,6 +288,11 @@ class QKDConfig:
     #     mu=0.319,  nu=0.129    asymptotic 0.002832 bit/pulse   positive-key threshold 5.85e6 pulses
     #     mu=0.51,   nu->0       asymptotic 0.003572 bit/pulse   no finite-key bound
     #
+    # THESE RATES ARE PER SIGNAL PULSE, the convention until Round 78. The pages now count per pulse
+    # SENT (the user's choice): only the p_signal share of the pulses carries key, so at the shipped
+    # p_signal = 0.5 each reads half - the shipped pair's 0.002853 is 0.001427 bit/pulse on the page,
+    # 28,534 secure bits in the 2e7-pulse block. The comparison between rows does not change.
+    #
     # Row three is this channel's own finite-key optimum, and the shipped pair is within 0.6% of its
     # threshold, so the intensities did not move with the detector set. Row four is the asymptotic
     # optimum: a decoy that weak approximates a vacuum state and leaves the finite-key bound
@@ -741,9 +746,10 @@ class WebConfig:
     # mixing QKD into the satellite session. 20e6 gives 344, deterministically. The browser's bound is
     # analytic and costs nothing per pulse; the Python Monte Carlo now runs at the fibre default's 2e7.
     #
-    # ROUND 77 left it at 20e6 with more margin. The air-mass atmosphere (3.2 dB at 800 km, where 5 dB
-    # was fixed) and Micius's own source with its vacuum state give 3.356e-5 bit/pulse: 671 secure
-    # bits, or 335 at 10e6, which would now also clear the 256.
+    # ROUND 77 left it at 20e6. The air-mass atmosphere (3.2 dB at 800 km, where 5 dB was fixed) and
+    # Micius's own source with its vacuum state gave 3.356e-5 bit/pulse per SIGNAL pulse. Counted per
+    # pulse SENT since Round 78 - Micius sends signals on half its pulses - that is 1.678e-5: 335
+    # secure bits at 20e6, and 167 at 10e6, which would not clear the 256, so 20e6 stays.
     demo_sat_pulses: int = 20_000_000   # free-space BB84 channel uses in the demo satellite run
 
 

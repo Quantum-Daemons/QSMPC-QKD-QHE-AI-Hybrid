@@ -68,12 +68,12 @@ const ch10 = m.islChannel(isl, ring[1].neighbourKm);
 const cube = m.stringOfPearls(10, 500, m.islFromProfile("cubesat_naughton_2019"));
 const out = {
   periodS: m.orbitalPeriodS(500),
-  liao: { s: liao.durationS, det: liao.detections, sift: liao.siftedBits, key: liao.keyBits, sig: liao.signalKeyBits,
+  liao: { s: liao.durationS, det: liao.detections, sift: liao.siftedBits, key: liao.keyBits,
           top: liao.maxElevationDeg, edge: liao.windowElevationDeg },
   zv: { first: zvPass.samples[0].siftedRate, top: zvPass.samples[Math.floor(zvPass.samples.length / 2)].siftedRate },
   range10: m.rangeAtElevationKm(10, 500, 0.89), range0: m.rangeAtElevationKm(0, 500, 0.89),
   xg: m.groundDistanceKm(X, G), xn: m.groundDistanceKm(X, N), shared: m.sharedViewMaxKm(link),
-  relay: { key: relay.keyBits, a: relay.a.signalKeyBits, b: relay.b.signalKeyBits, wait: relay.waitH, sharedView: relay.sharedView },
+  relay: { key: relay.keyBits, a: relay.a.keyBits, b: relay.b.keyBits, wait: relay.waitH, sharedView: relay.sharedView },
   xor: { broadcast: Array.from(xor.broadcast), recovered: Array.from(xor.recovered) },
   ring: ring.map((c) => ({ n: c.n, d: c.neighbourKm, low: c.chordMinAltitudeKm, los: c.losOk, min: c.minSatellites,
                            loss: c.islLossDb, perPulse: c.islPerPulse, bps: c.islBitPerS, ecl: c.eclipseFraction,
@@ -113,9 +113,8 @@ def test_the_pass_is_liaos_counted_like_for_like(net) -> None:
     # The window Liao's figure shows: from 1200 km (19.8 degrees) to the 645 km top (48.9).
     assert (liao["top"], liao["edge"]) == pytest.approx((48.90, 19.76), abs=0.01)
     # The secret key is asymptotic and the measured one finite-key, so the model must exceed it -
-    # counted over signal pulses, by about half (462 kbit against 300,939 bits).
-    assert liao["sig"] == pytest.approx(0.5 * liao["key"], rel=1e-12)
-    assert 1.0 < liao["sig"] / 300_939 < 2.0
+    # per pulse sent, by about half (462 kbit against 300,939 bits).
+    assert 1.0 < liao["key"] / 300_939 < 2.0
 
 
 def test_the_zvenigorod_pass_is_checked_the_same_way(net) -> None:
@@ -169,7 +168,7 @@ def test_the_link_is_the_downlink_bound_without_an_atmosphere(net) -> None:
     expected = 20 * math.log10(10e-6 * ten["d"] * 1e3 / 0.3) + 3.0 - 10 * math.log10(0.16)
     assert ten["loss"] == pytest.approx(expected, rel=1e-9)
     assert ten["perPulse"] == pytest.approx(net["rate10"], rel=1e-12)
-    assert ten["bps"] == pytest.approx(net["rate10"] * 1e8 * 0.5, rel=1e-12)   # signal pulses only
+    assert ten["bps"] == pytest.approx(net["rate10"] * 1e8, rel=1e-12)   # per pulse sent (Round 78)
     assert ten["orbitS"] == pytest.approx(ten["pair"] * ten["period"], rel=1e-12)
     # CubeSat-class terminals (Naughton 2019) make no key at that spacing.
     assert net["cube"]["bps"] == 0.0 and net["cube"]["loss"] > ten["loss"]

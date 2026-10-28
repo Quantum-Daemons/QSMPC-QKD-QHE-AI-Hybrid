@@ -592,7 +592,12 @@ export function bb84Rate(p: ChannelParams, fEC = qkdCfg().error_correction_eff):
   // It takes `eDetForBound(p)`, NOT the sampled QBER and not the bare misalignment - see that
   // function for why the first charges dark counts twice and the second unhooks the eavesdropper.
   const bound = decoySecureFraction(eta, mu, nu, eDetForBound(p), y0, fEC, 0.5, src.vacuum);
-  return { perPulse: bound.perPulse * cDt, eMu: bound.eMu, e1: bound.e1, eta, qMu, qNu, y0, cDt, mu, nu, src };
+  // PER PULSE SENT (Round 78, the user's choice): the bound is per SIGNAL pulse and only the pSignal
+  // share of the pulses are signals - decoys and the vacuum carry no key. Until Round 78 every pulse
+  // counted at the signal intensity, which read twice what a source sending signals on half its pulses
+  // makes. Twin of `bb84.py`.
+  return { perPulse: bound.perPulse * cDt * src.pSignal, eMu: bound.eMu, e1: bound.e1, eta, qMu, qNu, y0,
+           cDt, mu, nu, src };
 }
 
 export function bb84(nPulses: number, p: ChannelParams, seed = 0,
@@ -600,9 +605,11 @@ export function bb84(nPulses: number, p: ChannelParams, seed = 0,
   const u = rng(seed + 1);
   const rate = bb84Rate(p, fEC);
   const { mu, qMu, cDt } = rate;
+  const pSignal = rate.src.pSignal;
   // The model's own signal QBER, the E_mu the bound uses (Round 75; it was `intrinsicQber`).
   const eDet = signalQber(p, mu);
-  const nSift = Math.max(0, Math.round(nPulses * cDt * qMu * 0.5)); // detected & bases match
+  // Signal pulses only (Round 78): sifted bits are the signal states', as Liao et al. count them.
+  const nSift = Math.max(0, Math.round(nPulses * pSignal * cDt * qMu * 0.5)); // a signal, detected, bases match
 
   // The MEASUREMENT still fluctuates: sampling noise on the observed QBER, binomial -> gaussian.
   const std = nSift > 0 ? Math.sqrt((eDet * (1 - eDet)) / nSift) : 0;
@@ -615,9 +622,11 @@ export function bb84(nPulses: number, p: ChannelParams, seed = 0,
 
   // The counterfactual, on the same channel: GLLP with the multi-photon fraction untagged. Kept
   // beside the bound because the assumption is invisible without it.
+  // Per pulse sent too, on the SAME pulse schedule (Round 78): the counterfactual removes the decoy
+  // certification, not the decoy pulses, so it stays at or below the decoy bound pulse for pulse.
   const delta = taggedFraction(mu, p);
   const untagged = 1 - delta;
-  const nonDecoy = delta >= 1 ? 0 : Math.max(0, 0.5 * cDt * qMu * (
+  const nonDecoy = delta >= 1 ? 0 : Math.max(0, pSignal * 0.5 * cDt * qMu * (
     untagged - fEC * h2(decoy.eMu) - untagged * h2(Math.min(0.5, decoy.eMu / untagged))));
 
   // POST-PROCESSING ABORT, mirroring `bb84.py`'s `if measured_qber > pp_threshold`. The browser had

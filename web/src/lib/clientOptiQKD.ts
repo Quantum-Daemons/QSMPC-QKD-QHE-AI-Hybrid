@@ -56,7 +56,8 @@ const skrModel: Model = (p, prm, fEC = qkdCfg().error_correction_eff) => {
   // The dead time, as `bb84()` charges it (Round 76). Without it the optimiser would chase a brighter
   // signal into detectors that cannot keep up: at 1 GHz the factor falls as mu rises.
   const cDt = deadTimeFactor(p, clickMix(src, y0 + 1 - Math.exp(-eta * mu), y0 + 1 - Math.exp(-eta * nu), y0));
-  return { skr: perPulse * cDt, qber: eMu };
+  // Per pulse sent (Round 78), as `bb84Rate` counts it: the signal share carries the key.
+  return { skr: perPulse * cDt * src.pSignal, qber: eMu };
 };
 
 // E91 (entanglement-based, CHSH) SKR mirror of qkd/e91.py: a Werner-state visibility V (degraded by the
