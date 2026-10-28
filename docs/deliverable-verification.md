@@ -6512,3 +6512,87 @@ all eleven screenshots.
 BUSINESS DOC RECONCILED Round 80. The out-of-repo document is brought level with this round's
 continuation. Its content is not quoted here, in the checklist, or in any commit - only the fact of
 the reconciliation, which is what gate 16 reads.
+
+## Round 80, continued: the diagrams during a run, the report's figures, and two pipelines brought into step
+
+**The user held the merge again.** The technical report had no architecture diagram of the
+verification environment or of the implementation workflow; neither the README nor the report had a
+flowchart of each use case's implementation; and during a run the E2E simulation diagrams on every
+tab showed text that could not be read, overlapped, or ran out of its box. The user pointed to the
+canvas of the PQC-QKD demo's /e2e page and asked for the sidebar to collapse if that was advisable.
+Choices: the orchestration graph readable now and a grouped canvas as a follow-up round; the run
+status in the sidebar; a sidebar that collapses, remembers, and starts collapsed on narrow windows;
+TikZ in the report and Mermaid in the README, held together by a test; the use-case flowcharts
+collapsible in the README, naming what implements each stage, in a new report section before the
+results.
+
+**Measured on the deploy (8773af6, Chrome, 1280 x 677) before the fixes.**
+- E2E Orchestration: ten stages in one row at 0.36 scale, captions about 4.7 px. And no edges at all:
+  0 of 9 at load, during a run and after it. Round 80's explicit node size kept the nodes drawn, but
+  a node object rebuilt without `measured` loses its handle positions in React Flow 12, and a node of
+  fixed size is never measured again, so every edge went. The nodes now carry `measured`.
+- Every use-case page, during a run: steps not yet run drawn at 0.26 opacity, about 1.9 : 1 against
+  the panel; a status chip fixed to the corner, over the diagram's lower rows, its legend and the
+  Metrics table; labels in boxes and bars never wrapped, the comparison bar's label edge to edge; the
+  telecom header's subtitle at the edge of its box.
+- Validations (from the README's screenshot): the BB84 chart's rotated "secure bits" axis title drawn
+  over its seven-digit tick labels.
+
+**The fixes, measured again in the browser.**
+- The graph wraps into rows chosen from its frame's width: two rows of five at 0.88 scale with the
+  sidebar open at 1280 px, full scale with it collapsed, rows of four at 1024 px. Stages are numbered,
+  edges carry arrowheads, a row ends in a wrap edge to the next, the zoom controls sit in a strip of
+  their own, and the page scrolls under the wheel. Nine edges at load, two seconds into a run and
+  after "done".
+- The two-party diagrams wrap every label by its width measured with the page's own font, in arrows,
+  boxes and bars, and a row grows by the lines its label needs; room for the step's mark is kept so a
+  tick arriving cannot re-wrap a row. Steps not yet run are drawn at 0.6, about 4.5 : 1. The party
+  headers are 236 units wide, with subtitles that wrap.
+- The run status moved into the sidebar, a live region always present, every in-flight state shown;
+  no fixed-position element remains at 901 px and above. On a phone the sidebar is a top bar that
+  scrolls away, so there the status box floats as the chip did.
+- The sidebar collapses to a 64 px rail of short labels (full names as accessible names and
+  tooltips), remembers the choice per browser, and starts collapsed from 901 to 1099 px.
+- The secure-bits axis prints compact ticks (4.5M).
+
+**The report and the README.** A new report section, "Implementation and verification architecture",
+holds seven TikZ figures: the verification environment, the implementation workflow, and the five
+use-case flowcharts. The README carries the same seven in Mermaid, the use cases and the environment
+in click-to-open sections; `tests/test_the_report_figures_match_the_readme.py` pairs them by a
+`figure:` key and requires the same labels in both. Each Mermaid diagram was rendered and measured
+first: all fit GitHub's README column at full size.
+
+**A survey of both pipelines for the flowcharts found what the pages did not say.** Checked in the
+code before anything was drawn:
+- The browser's genomics secure sum added `floor(u() * 100)` per party, stand-ins, while the page and
+  its diagram said the cohorts pool allele counts. By the user's choice it now pools the real counts:
+  the backend's four cohorts, split as the backend splits them, at PGS000004's first variant
+  (1:100880328:T) over the 30 bundled 1000 Genomes individuals: 23, over Z_29, equal to the plain
+  total. The seeded stream is consumed as before, so everything downstream is unchanged (PRS -0.2332,
+  class 0), and the log names the pooled count only, never a cohort's.
+- The full deployment ignored two settings the page offers, and by the user's choice both were fixed
+  in this round: the E91 protocol, which reached only OptiQKD, so both QKD stages ran BB84 whatever
+  was selected; and the PQC-only profile on satellite, under which the free-space QKD and QSDC stages
+  ran anyway, and under which OptiQKD tuned a disabled channel everywhere. Python now runs E91 on both
+  stages (an asymptotic key, mixed at 256 bits or more), and skips QKD, QSDC and OptiQKD under PQC-only.
+  `tests/test_the_full_deployment_runs_the_selected_protocol.py`, including the browser's E91 against
+  Python's on the same channel: the same CHSH S and expected QBER, the key within 3 percent.
+- The README's new QKD-key diagram said a key of 256 bits or more is folded into the session key.
+  Only the full deployment does that; the browser reports the key length and derives no key material,
+  by design. The diagram now branches on where the run executes.
+- Recorded, not changed: the browser logs a failed stage and continues where Python stops the run;
+  Python's QSDC test is a finite-sample bound where the browser's is asymptotic; Python's E91 also
+  aborts above a QBER of 0.11, which changes no outcome because the secure fraction is zero above
+  about 0.10. Two comments still described the 16- and 12-row federated samples of an earlier round;
+  they are 400 rows now, and the comments say so.
+
+**The report's satellite sentence** said the same gap on two passes "is the analysis and not the
+channel". It is an inference the next round's Chernoff-type bound exists to test; it now says the gap
+points to the analysis, as the appendix does.
+
+**Gates.** All 18 local gates on the final tree, the full suite among them; tsc, the JSX-spaces
+check and the web node checks; the new figure and protocol tests.
+
+BUSINESS DOC RECONCILED Round 80. The out-of-repo document is brought level with this round's second
+continuation. Its content is not quoted here, in the checklist, or in any commit - only the fact of
+the reconciliation, which is what gate 16 reads.

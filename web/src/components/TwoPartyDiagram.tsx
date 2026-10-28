@@ -125,7 +125,10 @@ const qsmpcKind = (dflt: "psi" | "sum") => (c: DiagramConfig): Kind =>
   qsmpcOpOf(c, dflt) === "sum" ? "mpc-bidir" : "c-bidir";
 const qsmpcLabel = (dflt: "psi" | "sum") => (m: M, c: DiagramConfig) =>
   qsmpcOpOf(c, dflt) === "sum"
-    ? `secure sum over GF(${f(m, "qsms_prime")}) · pooled = ${f(m, "secure_sum")}`
+    // What was pooled, from the run (Round 80): the cohorts' allele counts on genomics, stand-ins on
+    // a use case with none. The label used to say neither, beside cohort headers saying allele counts.
+    ? `secure sum of ${m["qsms_inputs"] === "allele_counts" ? "allele counts"
+        : m["qsms_inputs"] === "stand_ins" ? "stand-in values" : "inputs"} over GF(${f(m, "qsms_prime")}) · pooled = ${f(m, "secure_sum")}`
     : `keyed-hash PSI · shared flagged = ${f(m, "psi_intersection_size")}`;
 
 const f = (m: M, k: string, d = "—") => {
@@ -256,9 +259,9 @@ const publishedStep = (stageId: string): Step => ({
 const FEDERATED_STEP: Step = {
   stageId: "federated_training",
   kind: "c-bidir",
-  // The accuracy carries its denominator. The bundled federated samples are 16 rows (finance) and
-  // 12 (medical), so this is a 4-row and a 3-row score - "acc 0.25" alone reads as a model that is
-  // worse than chance rather than as one held-out row.
+  // The accuracy carries its denominator, read from the run. It was added when the bundled samples
+  // were 16 and 12 rows and a score rested on 4 or 3 held-out rows; they are 400 rows each now, an
+  // 80-row held-out split, and the denominator still says how much a score rests on.
   label: (m) => `federated train · ${f(m, "qfl_aggregation")} · acc `
     + `${f(m, "federated_baseline_accuracy")} untrained -> ${f(m, "federated_accuracy")} `
     + `on ${f(m, "federated_eval_rows")} held-out rows`,
@@ -399,15 +402,49 @@ export function hasTwoPartySpec(usecase: string): boolean {
   return usecase in USECASE_SPECS;
 }
 
-/** An arrow's label, wrapped at its " · " separators into lines that fit the 780-unit diagram -
- *  about 110 characters at 11 units - and drawn upward from the arrow. Round 80: the README's
- *  screenshots showed the satellite's QSDC label, about 190 characters, running off both ends. */
-function wrapLabel(text: string, max = 110): string[] {
+/** The page's font family, read once: the SVG inherits it, so measuring with it measures what is drawn. */
+let fontFamily: string | null = null;
+let measureCtx: CanvasRenderingContext2D | null | undefined;
+
+/** A label's width in diagram units at `size`, measured with the page's own font (Round 80).
+ *
+ *  The first wrap counted characters - about 110 at 11 units - and that is a guess about a font this
+ *  code does not choose: on the live site a label sized by count filled its bar edge to edge in one
+ *  browser and could spill in another. A canvas measures the real advance widths; the SVG's units
+ *  are its font size's pixels, so the number is in the same units the boxes are drawn in. Without a
+ *  canvas (a test bundle in Node) it falls back to a deliberately wide estimate. */
+function textWidth(text: string, size: number, weight = 400): number {
+  if (measureCtx === undefined) {
+    try { measureCtx = typeof document === "undefined" ? null : document.createElement("canvas").getContext("2d"); }
+    catch { measureCtx = null; }
+  }
+  if (!measureCtx) return text.length * size * 0.6;
+  fontFamily ??= getComputedStyle(document.documentElement).fontFamily || "system-ui, sans-serif";
+  measureCtx.font = `${weight} ${size}px ${fontFamily}`;
+  return measureCtx.measureText(text).width;
+}
+
+/** A label broken into lines no wider than `maxW`: at its " · " separators first, then at spaces
+ *  inside a part too long for a line on its own.
+ *
+ *  Round 80 began with arrows only, after the README's screenshots showed the satellite's QSDC label
+ *  - about 190 characters on one line - running off both ends of the diagram. Boxes and bars were
+ *  left unwrapped, and on the live site the comparison bar's label filled its bar edge to edge. */
+function wrapLabel(text: string, maxW: number, size = 11, weight = 400): string[] {
+  const fits = (t: string) => textWidth(t, size, weight) <= maxW;
   const lines: string[] = [];
   let cur = "";
   for (const part of text.split(" · ")) {
     const next = cur ? `${cur} · ${part}` : part;
-    if (next.length > max && cur) { lines.push(cur); cur = part; } else cur = next;
+    if (cur && !fits(next)) { lines.push(cur); cur = part; } else cur = next;
+    while (!fits(cur) && cur.includes(" ")) {
+      const words = cur.split(" ");
+      let head = words[0];
+      for (const w of words.slice(1)) { if (!fits(`${head} ${w}`)) break; head = `${head} ${w}`; }
+      if (head === cur) break;
+      lines.push(head);
+      cur = cur.slice(head.length + 1);
+    }
   }
   if (cur) lines.push(cur);
   return lines;
@@ -418,6 +455,13 @@ const BOB_X = 612;
 const MID = (ALICE_X + BOB_X) / 2;
 const ROW0 = 100;
 const ROW_H = 58;
+/** One extra line of an 11-unit label. */
+const LINE_H = 13;
+/** A party's header box; wider than the first 192 so "QKD Rx · link monitored for intrusion" fits. */
+const HEAD_W = 236;
+/** Room kept on a label's last line for the step's mark (a tick, a cross or the running arrow), so
+ *  the mark arriving mid-run cannot re-wrap the label and move every row below it. */
+const MARK_W = 16;
 
 export default function TwoPartyDiagram({
   usecase, activeStage, doneStages, metrics, config = {},
@@ -434,12 +478,34 @@ export default function TwoPartyDiagram({
   // Drop steps the selected profile does not run, rather than drawing them with an em-dash value.
   const steps = spec.steps.filter((st) => !st.hidden?.(config));
   const idle = activeStage == null && doneStages.size === 0;
+  // A step not yet run was drawn at 0.26: on the dark panel its label measured about 1.9 : 1 against
+  // the background, and on the live site those rows read as empty space during every run. At 0.6 the
+  // label is about 4.5 : 1, legible, and still clearly behind the running and finished steps.
   const opacity = (s: Step) =>
-    idle ? 1 : s.stageId === activeStage ? 1 : doneStages.has(s.stageId) ? 0.95 : 0.26;
+    idle ? 1 : s.stageId === activeStage ? 1 : doneStages.has(s.stageId) ? 0.95 : 0.6;
   const isActive = (s: Step) => !idle && s.stageId === activeStage;
   const isDone = (s: Step) => doneStages.has(s.stageId);
-  const bottomY = ROW0 + steps.length * ROW_H + 6;
-  const rowY = (i: number) => ROW0 + i * ROW_H;
+
+  // Every label is wrapped to its own box, and each row is as tall as its lines need (Round 80).
+  // Rows were a fixed 58 units apart, so any label of three lines reached into the row above.
+  const kindOf = (s: Step): Kind => (typeof s.kind === "function" ? s.kind(config) : s.kind);
+  const isBox = (k: Kind) => k === "compare" || k === "local-wide" || k === "local-a" || k === "local-b";
+  const rows = steps.map((s) => {
+    const kind = kindOf(s);
+    const maxW = (kind === "local-a" || kind === "local-b" ? 284 : isBox(kind) ? 632 : 700) - MARK_W;
+    const lines = wrapLabel(s.label(metrics, config), maxW, 11, kind === "compare" ? 600 : 400);
+    const extra = (lines.length - 1) * LINE_H;
+    // An arrow's label grows upwards from the arrow; a box grows evenly about its centre.
+    return { kind, lines, extraAbove: isBox(kind) ? extra / 2 : extra, extraBelow: isBox(kind) ? extra / 2 : 0 };
+  });
+  const subLines = [spec.a, spec.b].map((p) => wrapLabel(p.sub, HEAD_W - 14, 10.5));
+  const headExtra = (Math.max(...subLines.map((l) => l.length)) - 1) * 12;
+  const ys: number[] = [];
+  rows.forEach((r, i) => {
+    ys.push(i === 0 ? ROW0 + headExtra + r.extraAbove : ys[i - 1] + ROW_H + rows[i - 1].extraBelow + r.extraAbove);
+  });
+  const rowY = (i: number) => ys[i];
+  const bottomY = (ys.length ? ys[ys.length - 1] + rows[rows.length - 1].extraBelow : ROW0 + headExtra - ROW_H) + ROW_H + 6;
 
   return (
     <>
@@ -484,17 +550,19 @@ export default function TwoPartyDiagram({
       <text x={MID} y={18} textAnchor="middle" fontSize={10.5} fill="#6b7689">⟷ WAN ⟷</text>
 
       {/* lane headers */}
-      {[[spec.a, ALICE_X, "var(--accent)"], [spec.b, BOB_X, "var(--quantum)"]].map(([p, x, col]: any) => (
+      {[[spec.a, ALICE_X, "var(--accent)", subLines[0]], [spec.b, BOB_X, "var(--quantum)", subLines[1]]].map(([p, x, col, sub]: any) => (
         <g key={p.name}>
-          <rect x={x - 96} y={26} width={192} height={44} rx={9} fill="var(--panel)" stroke={col} strokeWidth={1.5} />
+          <rect x={x - HEAD_W / 2} y={26} width={HEAD_W} height={44 + headExtra} rx={9} fill="var(--panel)" stroke={col} strokeWidth={1.5} />
           <text x={x} y={48} textAnchor="middle" fontSize={16} fontWeight={700} fill={col}>{p.name}</text>
-          <text x={x} y={63} textAnchor="middle" fontSize={10.5} fill="#97a3b6">{p.sub}</text>
+          <text x={x} y={63} textAnchor="middle" fontSize={10.5} fill="#97a3b6">
+            {(sub as string[]).map((ln, k) => <tspan key={k} x={x} dy={k === 0 ? 0 : 12}>{ln}</tspan>)}
+          </text>
         </g>
       ))}
 
       {/* lifelines */}
       {[ALICE_X, BOB_X].map((x) => (
-        <line key={x} x1={x} y1={72} x2={x} y2={bottomY} stroke="#2a3650" strokeWidth={1.5} strokeDasharray="3 4" />
+        <line key={x} x1={x} y1={72 + headExtra} x2={x} y2={bottomY} stroke="#2a3650" strokeWidth={1.5} strokeDasharray="3 4" />
       ))}
 
       {/* protocol steps */}
@@ -504,19 +572,28 @@ export default function TwoPartyDiagram({
         // A finished step whose own `ok` says it failed must not carry the success tick.
         const failed = isDone(s) && s.ok ? !s.ok(metrics, config) : false;
         const mark = isDone(s) ? (failed ? " ✗" : " ✓") : isActive(s) ? " ▶" : "";
-        const label = s.label(metrics, config) + mark;
+        // The wrapped lines, with the mark on the last; the space for it was kept when wrapping.
+        const lines = rows[i].lines.map((ln, k, all) => (k === all.length - 1 ? ln + mark : ln));
+        const n = lines.length;
         // A step whose channel depends on the run resolves its kind here, so the arrow style and the
         // legend cannot disagree with the operation the label names.
-        const kind: Kind = typeof s.kind === "function" ? s.kind(config) : s.kind;
+        const kind: Kind = rows[i].kind;
+        /** Lines centred vertically on a box's middle at `y`. */
+        const boxText = (x: number, extra: Record<string, unknown>) => (
+          <text x={x} y={y + 4 - ((n - 1) * LINE_H) / 2} textAnchor="middle" fontSize={11} {...extra}>
+            {lines.map((ln, k) => <tspan key={k} x={x} dy={k === 0 ? 0 : LINE_H}>{ln}</tspan>)}
+          </text>
+        );
+        const grow = (n - 1) * LINE_H;
 
         // full-width QSMPC-FHE comparison bar (the quantum-secure alternative the benchmark scores)
         if (kind === "compare") {
           return (
             <g key={i} opacity={op}>
-              <rect x={64} y={y - 17} width={652} height={34} rx={8}
+              <rect x={64} y={y - 17 - grow / 2} width={652} height={34 + grow} rx={8}
                 fill={isActive(s) ? "#231a3a" : "var(--panel)"} stroke="var(--quantum)"
                 strokeWidth={isActive(s) ? 2.4 : 1.4} strokeDasharray="6 3" />
-              <text x={MID} y={y + 4} textAnchor="middle" fontSize={11} fill="var(--quantum)" fontWeight={600}>{label}</text>
+              {boxText(MID, { fill: "var(--quantum)", fontWeight: 600 })}
             </g>
           );
         }
@@ -532,10 +609,10 @@ export default function TwoPartyDiagram({
         if (kind === "local-wide") {
           return (
             <g key={i} opacity={op}>
-              <rect x={64} y={y - 16} width={652} height={32} rx={7}
+              <rect x={64} y={y - 16 - grow / 2} width={652} height={32 + grow} rx={7}
                 fill={isActive(s) ? "#1c2740" : "var(--panel)"} stroke="var(--accent)"
                 strokeWidth={isActive(s) ? 2.4 : 1.3} />
-              <text x={MID} y={y + 4} textAnchor="middle" fontSize={11} fill="#dfe7f3">{label}</text>
+              {boxText(MID, { fill: "#dfe7f3" })}
             </g>
           );
         }
@@ -545,9 +622,9 @@ export default function TwoPartyDiagram({
           const col = kind === "local-a" ? "var(--accent)" : "var(--quantum)";
           return (
             <g key={i} opacity={op}>
-              <rect x={cx - 150} y={y - 16} width={300} height={32} rx={7}
+              <rect x={cx - 150} y={y - 16 - grow / 2} width={300} height={32 + grow} rx={7}
                 fill={isActive(s) ? "#1c2740" : "var(--panel)"} stroke={col} strokeWidth={isActive(s) ? 2.4 : 1.3} />
-              <text x={cx} y={y + 4} textAnchor="middle" fontSize={11} fill="#dfe7f3">{label}</text>
+              {boxText(cx, { fill: "#dfe7f3" })}
             </g>
           );
         }
@@ -561,9 +638,9 @@ export default function TwoPartyDiagram({
         const mStart = bidir ? (mpc ? "url(#tp-ml)" : "url(#tp-cl)") : undefined;
         return (
           <g key={i} opacity={op}>
-            <text x={MID} y={y - 9 - (wrapLabel(label).length - 1) * 13} textAnchor="middle" fontSize={11}
+            <text x={MID} y={y - 9 - grow} textAnchor="middle" fontSize={11}
               fill={failed ? "#ff8f6b" : isActive(s) ? "#ffffff" : "#c4cee0"}>
-              {wrapLabel(label).map((ln, k) => <tspan key={k} x={MID} dy={k === 0 ? 0 : 13}>{ln}</tspan>)}
+              {lines.map((ln, k) => <tspan key={k} x={MID} dy={k === 0 ? 0 : LINE_H}>{ln}</tspan>)}
             </text>
             <line x1={ALICE_X + 6} y1={y} x2={BOB_X - 6} y2={y} stroke={col}
               strokeWidth={isActive(s) ? 2.6 : 1.8} strokeDasharray={dash}

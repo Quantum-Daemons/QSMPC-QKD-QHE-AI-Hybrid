@@ -412,28 +412,7 @@ function UseCaseView({ usecase }: { usecase: string }) {
         </div>
       </div>
 
-      {/* Run status, visible from anywhere on the page.
-          This page is about 7.3 viewport-heights tall and its whole point is watching a live run,
-          but the status badge lives in the controls card at the top and scrolls out of view almost
-          immediately. A visitor reading the benchmark or the posture table - which is where the
-          interesting output is - had no way to tell whether the run was still going, had finished,
-          or had stopped. Only the sidebar was sticky.
-
-          Rendered only while it carries information: during a run, and while paused. It disappears
-          on idle and once a completed run has been read, so it adds no permanent chrome to a page
-          that is already long. */}
-      {(run.running || run.paused) && (
-        <div role="status" aria-live="polite"
-          style={{
-            position: "fixed", right: 16, bottom: 16, zIndex: 50,
-            background: "var(--panel)", border: "1px solid var(--accent)", borderRadius: 10,
-            padding: "8px 14px", boxShadow: "0 4px 18px rgba(0,0,0,.45)",
-            display: "flex", alignItems: "center", gap: 10, fontSize: 12,
-          }}>
-          <span className={`badge-state ${run.state}`}>{run.state}</span>
-          {run.active ? <span className="muted"><code>{run.active}</code></span> : null}
-        </div>
-      )}
+      {/* The run's status is shown in the sidebar (lib/runStatus.ts) since Round 80. */}
     </div>
   );
 }

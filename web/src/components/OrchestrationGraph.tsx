@@ -1,10 +1,12 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Background,
   Controls,
   type Edge,
+  MarkerType,
   type Node,
   ReactFlow,
+  useReactFlow,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 
@@ -134,9 +136,39 @@ export function flowFor(usecase: string) {
   return out;
 }
 
-/** Every node's box: wide enough for the longest caption at 12 px, tall enough for four lines and
- *  a wrap. Fixed rather than measured; see `width` / `height` below. */
-const NODE_W = 190, NODE_H = 100;
+/** Every node's box: wide enough for a caption line at 13 px, tall enough for four lines (a number
+ *  and title, a two-line parenthetical, and the state). Fixed rather than measured; see `width` /
+ *  `height` below. */
+const NODE_W = 176, NODE_H = 100;
+const GAP_X = 40, GAP_Y = 56;
+/** Space between the graph and its frame, in screen pixels. */
+const PAD = 16;
+/** A strip below the stages for the zoom controls. In a corner over the graph they covered half of
+ *  the first stage of the second row, measured once the stages filled the frame. */
+const CONTROLS_H = 34;
+/** The smallest scale the stages are laid out for: 13 px captions stay at 11 px or more. */
+const MIN_SCALE = 0.85;
+
+/** Rows of stages for a frame `width` pixels wide (Round 80).
+ *
+ *  All stages used to sit in one row, and React Flow fitted that row to the frame: ten stages at
+ *  0.36 scale on a 1280 px window, captions about 4 px tall - measured on the live site during a
+ *  run. Instead the stages wrap into as few rows as keep them at MIN_SCALE or larger, balanced so
+ *  the last row is not a stub, and read left to right like lines of text. */
+export function stageGrid(n: number, width: number): { cols: number; rows: number } {
+  const fit = width > 0 ? Math.floor((width / MIN_SCALE - 2 * PAD + GAP_X) / (NODE_W + GAP_X)) : 5;
+  const rows = Math.ceil(n / Math.max(2, Math.min(n, fit)));
+  return { rows, cols: Math.ceil(n / rows) };
+}
+
+/** Applies the computed viewport. Inside <ReactFlow>, because that is where its store lives; the
+ *  graph sets its own scale rather than calling `fitView`, whose first fit can run before the frame
+ *  has a size (the README's screenshot capture had to press the fit button for that reason). */
+function ViewportSync({ x, y, zoom }: { x: number; y: number; zoom: number }) {
+  const rf = useReactFlow();
+  useEffect(() => { void rf.setViewport({ x, y, zoom }); }, [rf, x, y, zoom]);
+  return null;
+}
 
 export default function OrchestrationGraph({
   usecase,
@@ -214,8 +246,26 @@ export default function OrchestrationGraph({
   const stateOf = (id: string) =>
     activeStage === id ? "running" : doneStages.has(id) ? "done" : "not yet run";
 
+  // The frame's width, measured, so the rows follow it - including when the sidebar collapses.
+  const frameRef = useRef<HTMLDivElement | null>(null);
+  const [frameW, setFrameW] = useState(0);
+  useEffect(() => {
+    const el = frameRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(([e]) => setFrameW(Math.round(e.contentRect.width)));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+  const { cols, rows } = stageGrid(stages.length, frameW);
+  const graphW = cols * NODE_W + (cols - 1) * GAP_X;
+  const graphH = rows * NODE_H + (rows - 1) * GAP_Y;
+  const zoom = frameW > 0 ? Math.min(1, (frameW - 2 * PAD) / graphW) : MIN_SCALE;
+  const frameH = Math.round(graphH * zoom + 2 * PAD + CONTROLS_H);
+  const view = { x: Math.max(PAD, (frameW - graphW * zoom) / 2), y: PAD, zoom };
+
   const { nodes, edges } = useMemo(() => {
     const nodes: Node[] = stages.map((s, i) => {
+      const col = i % cols, row = Math.floor(i / cols);
       const cls =
         activeStage === s.id ? "node-active" : doneStages.has(s.id) ? "node-done" : "";
       // The state as TEXT on its own line, beside the colour rather than instead of it. `pre-line`
@@ -224,10 +274,11 @@ export default function OrchestrationGraph({
       // run" is left off: it is the resting state of every node before a run, and printing it on all
       // of them at once says nothing while making each node taller.
       const st = stateOf(s.id);
-      const label = retitle(s.id, s.label) + (st === "not yet run" ? "" : `\n[${st}]`);
+      // Numbered, because once the stages wrap the order has to be readable without the arrows.
+      const label = `${i + 1}. ${retitle(s.id, s.label)}` + (st === "not yet run" ? "" : `\n[${st}]`);
       return {
         id: s.id,
-        position: { x: 30 + i * 230, y: 80 },
+        position: { x: col * (NODE_W + GAP_X), y: row * (NODE_H + GAP_Y) },
         data: { label },
         className: cls,
         // EXPLICIT DIMENSIONS (Round 80). These nodes are rebuilt as new objects on every stage
@@ -237,19 +288,32 @@ export default function OrchestrationGraph({
         // by the README's screenshots. A node with a width and height is drawn without measuring.
         width: NODE_W,
         height: NODE_H,
+        // And `measured`, for the edges. React Flow keeps a node's handle positions across a rebuilt
+        // node object only when the object carries `measured`; without it they are dropped, and a
+        // node with a fixed size is never measured again - so from the first stage change of a run
+        // every edge vanished, all nine of them, and stayed gone after "done" (Round 80, measured in
+        // the browser while checking the wrapped rows).
+        measured: { width: NODE_W, height: NODE_H },
         style: {
           whiteSpace: "pre-line", width: NODE_W, height: NODE_H, textAlign: "center" as const,
-          fontSize: 12, lineHeight: 1.25, padding: "10px 8px", boxSizing: "border-box" as const,
+          fontSize: 13, lineHeight: 1.25, padding: "8px 8px", boxSizing: "border-box" as const,
           display: "flex", alignItems: "center", justifyContent: "center",
+          // A model id such as satellite_comms.telemanom has no space to break at.
+          overflowWrap: "anywhere" as const,
         },
-        sourcePosition: "right" as any,
-        targetPosition: "left" as any,
+        // The last stage of a row hands on downwards and the first of the next takes it from above,
+        // so the wrap reads as a line break rather than an edge across the whole graph.
+        sourcePosition: (col === cols - 1 && i < stages.length - 1 ? "bottom" : "right") as any,
+        targetPosition: (col === 0 && i > 0 ? "top" : "left") as any,
       };
     });
     const edges: Edge[] = stages.slice(1).map((s, i) => ({
       id: `${stages[i].id}->${s.id}`,
       source: stages[i].id,
       target: s.id,
+      // Arrowheads: with the stages in rows, direction is no longer implied by position alone.
+      type: (i + 1) % cols === 0 ? "smoothstep" : "straight",
+      markerEnd: { type: MarkerType.ArrowClosed, width: 16, height: 16 },
       animated: activeStage === s.id || activeStage === stages[i].id,
     }));
     return { nodes, edges };
@@ -258,7 +322,7 @@ export default function OrchestrationGraph({
     // React never rebuilt the nodes when it changed and the QKD node kept whatever it first drew.
     // Every field retitle() reads must be listed, metrics included - omitting one is precisely how
     // the protocol label stayed frozen while the wiring and the label function were both correct.
-  }, [stages, activeStage, doneStages, config.kem, config.qkd, config.sig, config.qkdProtocol,
+  }, [stages, cols, activeStage, doneStages, config.kem, config.qkd, config.sig, config.qkdProtocol,
       m.published_model, m.published_model_backend, m.published_model_status]);
 
   return (
@@ -274,15 +338,20 @@ export default function OrchestrationGraph({
         <li key={s.id}>{`${retitle(s.id, s.label).replace(/\n/g, " ")} - ${stateOf(s.id)}`}</li>
       ))}
     </ol>
-    <div style={{ height: 260, border: "1px solid var(--border)", borderRadius: 10, overflow: "hidden" }}
+    <div ref={frameRef}
+         style={{ height: frameH, border: "1px solid var(--border)", borderRadius: 10, overflow: "hidden" }}
          role="group"
          aria-label={`${usecase} pipeline stages; the same stages and their state are listed in text immediately before this figure`}>
-      <ReactFlow nodes={nodes} edges={edges} fitView fitViewOptions={{ padding: 0.15 }}
+      <ReactFlow nodes={nodes} edges={edges} defaultViewport={view}
         minZoom={0.3} maxZoom={2} proOptions={{ hideAttribution: true }}
         nodesDraggable={false} nodesConnectable={false} elementsSelectable={false}
-        panOnDrag zoomOnScroll>
+        panOnDrag zoomOnScroll={false} preventScrolling={false}>
+        {/* The wheel scrolls the page again: at 0.36 scale zooming was the only way to read a
+            caption, and it also stopped the page scrolling whenever the pointer crossed the graph.
+            Readable as laid out now; the zoom buttons remain. */}
+        <ViewportSync x={view.x} y={view.y} zoom={view.zoom} />
         <Background color="#243049" gap={18} />
-        <Controls showInteractive={false} />
+        <Controls showInteractive={false} position="bottom-right" orientation="horizontal" />
       </ReactFlow>
     </div>
     </>

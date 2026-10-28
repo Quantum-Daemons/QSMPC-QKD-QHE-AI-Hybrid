@@ -168,6 +168,36 @@ export async function realInput(usecase: string, u: () => number): Promise<RealI
 
 /** A real telemetry-anomaly verdict over a REAL NASA SMAP/MSL window + the real linear model (the
  *  satellite use case has no `private_inference` stage, so its anomaly score is surfaced at QSDC delivery). */
+/** Each cohort's effect-allele count at PGS000004's first variant, over the bundled 1000 Genomes
+ *  slice, split into `cohorts` contiguous groups - the split `np.array_split(dosages[:, 0], n)` makes
+ *  in qsh/usecases/genomics, where the first (len mod n) groups take one extra individual.
+ *
+ *  Round 80. The browser's secure sum added `floor(u() * 100)` per party - random stand-ins - while
+ *  the page and its diagram said the cohorts pool allele counts. These are the counts that sentence
+ *  describes, from genotypes the page already ships. `null` when the file cannot be read: the caller
+ *  refuses rather than pooling stand-ins under the allele-count name. */
+export async function realAlleleCounts(
+  cohorts: number,
+): Promise<{ counts: number[]; variant: string; individuals: number } | null> {
+  try {
+    const prs = await fetchJSON("/data/genomics/pgs000004_prs313.json");
+    const samples = prs.dosage_samples as number[][];
+    const keys = (prs.keys ?? prs.rsids) as string[] | undefined;
+    const column = samples.map((row) => row[0] ?? 0);
+    const n = Math.max(1, Math.min(Math.floor(cohorts), column.length));
+    const base = Math.floor(column.length / n), extra = column.length % n;
+    const counts: number[] = [];
+    for (let k = 0, at = 0; k < n; k++) {
+      const size = base + (k < extra ? 1 : 0);
+      counts.push(column.slice(at, at + size).reduce((a, b) => a + b, 0));
+      at += size;
+    }
+    return { counts, variant: keys?.[0] ?? "variant 0", individuals: column.length };
+  } catch {
+    return null;
+  }
+}
+
 export interface SatelliteAnomaly {
   provenance: string; anomalyScore: number; isAnomaly: boolean; channels: string[];
   /** The real linear model, the scored window and E[x] over the bundled windows.
