@@ -272,7 +272,11 @@ def run_bb84(
         # the rate below scale by it; the QBER does not move. Round 76.
         c_dt = dead_time_factor(params, click_mix(qkd_params, q_mu, q_nu,
                                                   2.0 * params.dark_count_prob))
-        detected = rng.random(n_pulses) < c_dt * q_mu
+        # SIGNAL PULSES ONLY carry key (Round 78): a pulse is a signal with probability p_signal and
+        # then detected with c_dt Q_mu, so the sifted bits are the signal states' - the way Liao et al.
+        # count theirs. Until Round 78 every pulse was drawn at the signal intensity.
+        p_signal = float(qkd_params.p_signal)
+        detected = rng.random(n_pulses) < p_signal * c_dt * q_mu
         sift = detected & (alice_bases == bob_bases)
         # the multiphoton (PNS) insecurity is accounted for analytically by the decoy-state single-photon
         # bound (see the secure-rate tail), NOT by inflating the physical QBER. The observed QBER is the
@@ -340,7 +344,12 @@ def run_bb84(
         skr, _e_mu, _e1 = _decoy_secure_fraction(
             eta, mu, nu, e_det_for_bound(params), y0, error_correction_eff, sift_ratio,
             vacuum=bool(qkd_params.vacuum_decoy))
-        skr *= c_dt                                                   # the gains it rests on, dead-time corrected
+        # PER PULSE SENT (Round 78, the user's choice): the bound is per SIGNAL pulse, and only the
+        # p_signal share of the pulses are signals - decoys and the vacuum carry no key. Until Round 78
+        # the rate counted every pulse at the signal intensity, the asymptotic convention, which read
+        # twice what a source sending signals on half its pulses can make. The gains it rests on are
+        # dead-time corrected.
+        skr *= c_dt * p_signal
         secure_bits = int(max(0.0, skr) * n_pulses)
 
     return QKDResult(

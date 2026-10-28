@@ -81,7 +81,8 @@ _SAT_DEFAULTS = {
     # under the 256 the stage needs to derive a key, so satellite silently stopped mixing QKD.
     # Kept in step with `WebConfig.demo_sat_pulses`; see the note there for the finite-key residual.
     # 20e6 since Round 75: the Micius budget gave 344 secure bits there and 172 at 10e6. Round 77's
-    # air-mass atmosphere and Micius's own 0.8 / 0.1 / vacuum source give 671 at 20e6.
+    # air-mass atmosphere and Micius's own 0.8 / 0.1 / vacuum source gave 671 at 20e6, and per pulse
+    # sent (Round 78) that is 335 - still above the 256 a key needs, and 167 at 10e6, below it.
     "sat_pulses": 20_000_000,         # channel uses (free-space links need many)
     "sat_opt_pulses": 200_000,        # pulses per OptiQKD evaluation (fewer than a full run, for speed)
     # The two fixed terms of the budget, exposed in the WebUI so the inline eavesdrop check can be
@@ -94,6 +95,7 @@ _SAT_DEFAULTS = {
     "sat_profile": None,
     "sat_min_elevation_deg": None,    # None -> the profile's; no link below it (Liao: 10 degrees)
     "sat_vacuum_decoy": None,         # None -> the profile's; whether the vacuum state is sent
+    "sat_field_stop_urad": None,      # None -> the profile's; 0 = no turbulence coupling (Round 78)
 }
 _DEFAULT_TELEMETRY = (
     "SAT-OK;orbit=LEO;alt=550km;batt=98%;temp=21C;payload=nominal;ts=T+00:42:17"
@@ -105,13 +107,14 @@ def _sat_profile(ctx: Context) -> dict:
     config.yaml can still retune them; any other is read from its JSON file. Twin of
     `clientCompute.ts::satProfile`."""
     from ...config import get_config
-    from ...config.profiles import REQUIRED, profile_values
+    from ...config.profiles import OPTIONAL, REQUIRED, profile_values
 
     qkd = get_config().qkd
     pid = ctx.config.get("sat_profile", _SAT_DEFAULTS["sat_profile"]) or qkd.free_space_profile
+    optional = {k: getattr(qkd, f"free_space_{k}") for k in OPTIONAL["downlink"]}
     if pid == qkd.free_space_profile:
-        return {k: getattr(qkd, f"free_space_{k}") for k in REQUIRED["downlink"]}
-    return profile_values("downlink", str(pid))
+        return {**optional, **{k: getattr(qkd, f"free_space_{k}") for k in REQUIRED["downlink"]}}
+    return {**optional, **profile_values("downlink", str(pid))}
 
 
 def _sat_channel(ctx: Context):
@@ -138,6 +141,9 @@ def _sat_channel(ctx: Context):
             orbit_altitude_km=float(v["orbit_altitude_km"]),
             station_altitude_km=float(v["station_altitude_km"]),
             min_elevation_deg=pick("sat_min_elevation_deg", v["min_elevation_deg"]),
+            field_stop_urad=pick("sat_field_stop_urad", v["field_stop_urad"]),
+            seeing_arcsec=float(v["seeing_arcsec"]),
+            wavelength_nm=float(v["wavelength_nm"]),
         ),
     )
 
@@ -207,6 +213,8 @@ class SatelliteQKDStage(Stage):
         # 0.8 / 0.1 with the vacuum state, where it ran the fibre page's finite-key optimum.
         res = run_bb84(n_pulses, params, seed=ctx.config.get("seed", 0), qkd_params=source)
         bus.metric("qber", round(res.qber, 5), self.name)
+        bus.metric("qkd_decoy_states", "vacuum + one decoy" if source.vacuum_decoy else "one decoy",
+                   self.name)
         # `skr_per_pulse`, for the same reason as `orchestration/stages.py`: this is bits per
         # channel use, and `skr` is a spec field name meaning bit/s. The satellite twin is
         # renamed in the same change as the fibre one - fixing one and not the other is the

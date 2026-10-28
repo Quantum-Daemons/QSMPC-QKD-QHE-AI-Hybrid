@@ -337,7 +337,7 @@ export function securityFacts(config: any, metrics: Record<string, any>): Securi
         ? `; gains corrected for the detectors' ${Math.round(deadS * 1e9)} ns dead time (Rusca et al., `
           + "Appl. Phys. Lett. 112, 171104, 2018, Eq. B3)"
         : "";
-      facts.push({ label: "Secret-key rate", value: `${Number(skr.toPrecision(4))} per pulse`, kind: "simulated",
+      facts.push({ label: "Secret-key rate", value: `${Number(skr.toPrecision(4))} per pulse sent`, kind: "simulated",
         source: (isE91
           ? "device-dependent secure fraction 1 - h(e) - f h(e) on the MODEL error rate, not the "
             + "sampled QBER (Shor-Preskill form; entangled source: Ma, Fung & Lo, Phys. Rev. A 76, "
@@ -2055,6 +2055,9 @@ export function runClientPipeline(
         // "(w/ eavesdropper)" unconditionally while `qkd_eve` defaults to 0.0, so a default run drew
         // an attack it did not simulate. Publishing the value lets the label read the run.
         metric(stage, "qkd_eve_fraction", chan.eveFraction);
+        // Which decoy states the rate rests on, so a panel names the bound that RAN (Round 78).
+        metric(stage, "qkd_decoy_states", eRes ? "none (entangled source)"
+          : sourceOf(chan).vacuum ? "vacuum + one decoy" : "one decoy");
         metric(stage, "qber", r2(res.qber));
         // RENAMED from `skr`. ETSI GS QKD 015's `skr` is bit/s and this number is bits per PULSE;
         // leaving one name on two dimensions inside the same signed payload is the defect this
@@ -2159,6 +2162,8 @@ export function runClientPipeline(
         // Same key the fibre stage uses: one QKD stage runs per use case, and both report the same
         // quantity. The diagram's eavesdropper tag reads it rather than asserting one.
         metric(stage, "qkd_eve_fraction", satChan.eveFraction);
+        metric(stage, "qkd_decoy_states", satERes ? "none (entangled source)"
+          : sourceOf(satChan).vacuum ? "vacuum + one decoy" : "one decoy");
         metric(stage, "qber", r2(res.qber));
         metric(stage, "channel_loss_db", res.channelLossDb);
         // 1e9, matching `api.ts`. The pair split in Round 45: that file moved to six decimals with a

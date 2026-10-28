@@ -442,7 +442,9 @@ const cfg_qrng = m.qrngCfg();
     const eMu = (0.5 * y0 + eDet * (1 - Math.exp(-eta * mu))) / qMu, eNu = (0.5 * y0 + eDet * (1 - Math.exp(-eta * nu))) / qNu;
     const y1 = (mu / (mu * nu - nu * nu)) * (qNu * Math.exp(nu) - (nu * nu / (mu * mu)) * qMu * Math.exp(mu) - ((mu * mu - nu * nu) / (mu * mu)) * y0);
     const e1 = Math.min(0.5, (eNu * qNu * Math.exp(nu) - 0.5 * y0) / (y1 * nu));
-    const byHand = 0.5 * Math.max(0, y1 * mu * Math.exp(-mu) * (1 - m.h2(e1)) - f * qMu * m.h2(eMu));
+    // Per pulse sent (Round 78): the bound per signal pulse, times the basis sift, times the share of
+    // pulses that are signals (Micius: 0.5).
+    const byHand = cfg.free_space_p_signal * 0.5 * Math.max(0, y1 * mu * Math.exp(-mu) * (1 - m.h2(e1)) - f * qMu * m.h2(eMu));
     const run = m.bb84(1_000_000, ch, 0).secretKeyRate;
     const oneDecoy = m.bb84(1_000_000, { ...ch, vacuumDecoy: false }, 0).secretKeyRate;
     const vac = m.decoySecureFraction(eta, mu, nu, eDet, 0, f, 0.5, true).perPulse;

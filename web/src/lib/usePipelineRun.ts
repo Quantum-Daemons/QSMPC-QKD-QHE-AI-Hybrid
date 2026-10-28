@@ -202,6 +202,8 @@ export const makeDefaultParams = () => ({
   sat_profile: qkdCfg().free_space_profile,
   sat_min_elevation_deg: FREE_SPACE.freeSpace!.minElevationDeg!,
   sat_vacuum_decoy: FREE_SPACE.vacuumDecoy ? 1 : 0,
+  // The optional turbulence coupling's field-stop radius (Round 78); 0 = off, the default profile's.
+  sat_field_stop_urad: FREE_SPACE.freeSpace!.fieldStopUrad ?? 0,
 });
 
 export const DEFAULT_PARAMS = makeDefaultParams();

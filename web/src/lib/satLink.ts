@@ -40,6 +40,7 @@ export function satChannel(config: Record<string, any>, eveFraction?: number): C
       atmosphericDb: Number(config.sat_atmospheric_db ?? fs.atmosphericDb),
       pointingDb: Number(config.sat_pointing_db ?? fs.pointingDb),
       minElevationDeg: Number(config.sat_min_elevation_deg ?? fs.minElevationDeg),
+      fieldStopUrad: Number(config.sat_field_stop_urad ?? fs.fieldStopUrad ?? 0),
     },
     sourceRateHz: sourceRateHz(config?.sat_source_rate_mhz, Number(base.sourceRateHz)),
     vacuumDecoy: vacuum,

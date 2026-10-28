@@ -47,6 +47,12 @@ export type LinkProfile = { id: string; kind: "downlink" | "isl"; label: string;
  *  src/qsh/config/profiles/ appears here after `scripts/export_config.py`, with no code change. */
 export const linkProfiles = (kind: "downlink" | "isl"): Record<string, LinkProfile> =>
   (((CONFIG as any).link_profiles ?? {})[kind] ?? {}) as Record<string, LinkProfile>;
+/** A published measurement set the models are checked against (Round 78):
+ *  `src/qsh/config/validation/<id>.json`, rows in the order its `columns` name. */
+export type ValidationSet = { id: string; source: string; note: string; columns: string[];
+  rows: (string | number)[][] };
+export const validationSet = (id: string): ValidationSet | null =>
+  (((CONFIG as any).validation ?? {})[id] ?? null) as ValidationSet | null;
 /** A profile's bare values, `{name: value}`; null for an unknown id. */
 export const profileValues = (kind: "downlink" | "isl", id: string): Record<string, any> | null => {
   const prof = linkProfiles(kind)[id];

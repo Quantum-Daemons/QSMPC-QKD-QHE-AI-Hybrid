@@ -607,8 +607,10 @@ visible number.
   2016 counted the way the paper counts it (detections and signal-state sifted bits within 1
   percent); a trusted satellite relay as Micius flew it between Xinglong and Graz (Liao et al.
   2018), with the XOR on real random keys; and a single plane of satellites linked to their
-  neighbours (Vergoossen et al. 2019), whose terminals load from templates. Simulated: no satellite
-  is involved, and the keys are asymptotic bounds.
+  neighbours (Vergoossen et al. 2019), whose terminals load from templates. The same tab draws the
+  model against all 23 Micius passes Liao et al. list: centred on them (median -0.03 dB), with the
+  nights scattering 2.4 dB around it. Simulated: no satellite is involved, and the keys are
+  asymptotic bounds. Every key rate on the site counts the pulses sent; only signal pulses carry key.
 - **3D views** (three.js, loaded only where drawn) - the QCNN's per-qubit reduced Bloch vectors through
   the real circuit, an illustration of the one-time pad on one qubit, and the satellite geometry the
   model itself uses: the orbit, the elevation a slant range implies, the arc above the minimum
@@ -1149,9 +1151,12 @@ See [`docs/pqc-roadmap.md`](docs/pqc-roadmap.md).
   under `src/qsh/config/profiles/`, every value with the source's words or a stated assumption
   (the loader refuses a value with neither). A new file appears in the page's profile selector
   after `python scripts/export_config.py`, with no code change. Shipped: Micius to Xinglong (Liao
-  2017) with the atmosphere at the midpoint or the upper end of the paper's 3-8 dB, and without its
-  vacuum state; Micius to Zvenigorod (Khmelev et al. 2023); Micius-type and CubeSat (Naughton et
-  al. 2019) inter-satellite terminals.
+  2017) with the atmosphere at the midpoint or the upper end of the paper's 3-8 dB, without its
+  vacuum state, and with an optional turbulence coupling at an assumed field stop; Micius to
+  Zvenigorod (Khmelev et al. 2023); the Jinan-1 microsatellite (Li et al. 2025), with its one
+  calibrated constant named in its file; Micius-type and CubeSat (Naughton et al. 2019)
+  inter-satellite terminals. Published measurements the models are checked against live beside
+  them, under `src/qsh/config/validation/`.
 - **Future tracks** - see [`docs/pqc-roadmap.md`](docs/pqc-roadmap.md): a NIST-aligned IDS
   against HNDL/Q-Day, hardware QKD field test, malicious-secure MPC, and the GPU FHE-at-scale
   path (HEonGPU + PIGEON/hpmpc).

@@ -20,11 +20,10 @@
 // Xinglong against the satellite's 7.6), weather, the Sun's beta angle beyond the one it is given,
 // and finite-key effects - the key is the asymptotic bound.
 //
-// TWO KEY FIGURES, ONE CONVENTION EACH. `keyRate` / `keyBits` are the Downlink tab's: the bound per
-// pulse at the signal intensity, every pulse counted, the asymptotic convention this project uses on
-// both QKD pages. `signalKeyBits` counts only the pulses that ARE signals - half of Micius's, which sent
-// "probabilities of 50%, 25%, and 25%" - and is the figure comparable with a measured key per pass.
-// The relay and the constellation are planning numbers, so they use the signal share.
+// ONE KEY CONVENTION, per pulse sent (Round 78, the user's choice). `bb84Rate` counts the key the
+// signal pulses carry - half of Micius's, which sent "probabilities of 50%, 25%, and 25%" - so a pass's
+// key is comparable with a measured one. In Round 77 this module carried a second, signal-share figure
+// beside the Downlink tab's every-pulse rate; the rate itself changed instead.
 
 import { linkProfiles, profileValues, qkdCfg } from "./config";
 import { bb84Rate, clickMix, EARTH_RADIUS_KM, elevationDeg, type ChannelParams } from "./quantumSim";
@@ -66,7 +65,7 @@ const geometry = (link: ChannelParams) => {
 
 export interface PassSample {
   t: number; rangeKm: number; elevationDeg: number;
-  /** bit/s: the asymptotic bound per pulse times the clock (the Downlink tab's rate at this range). */
+  /** bit/s: the asymptotic bound per pulse sent times the clock (the Downlink tab's rate at this range). */
   keyRate: number;
   /** bit/s of SIFTED key counted as Liao counted it: matching bases on SIGNAL states only. */
   siftedRate: number;
@@ -80,8 +79,6 @@ export interface PassResult {
   windowElevationDeg: number;
   durationS: number; minRangeKm: number; maxRangeKm: number;
   keyBits: number; siftedBits: number; detections: number;
-  /** `keyBits` times the share of pulses that are signals: the key a pass actually carries. */
-  signalKeyBits: number;
   samples: PassSample[];
 }
 
@@ -99,8 +96,7 @@ export function simulatePass(link: ChannelParams, maxElevation: number,
   const g = geometry(link);
   const window = Math.max(opts.windowElevationDeg ?? g.minElevation, g.minElevation);
   const empty: PassResult = { maxElevationDeg: maxElevation, windowElevationDeg: window, durationS: 0,
-    minRangeKm: NaN, maxRangeKm: NaN, keyBits: 0, siftedBits: 0, detections: 0, signalKeyBits: 0,
-    samples: [] };
+    minRangeKm: NaN, maxRangeKm: NaN, keyBits: 0, siftedBits: 0, detections: 0, samples: [] };
   if (!(maxElevation >= window) || maxElevation > 90) return empty;
   const a = EARTH_RADIUS_KM + g.stationKm, b = EARTH_RADIUS_KM + g.orbitKm;
   const w = (2 * Math.PI) / orbitalPeriodS(g.orbitKm);
@@ -110,7 +106,7 @@ export function simulatePass(link: ChannelParams, maxElevation: number,
   const n = Math.max(2, Math.ceil((2 * half) / (opts.stepS ?? 1)));
   const h = (2 * half) / n;
   const samples: PassSample[] = [];
-  let keyBits = 0, siftedBits = 0, detections = 0, pSignal = 0.5;
+  let keyBits = 0, siftedBits = 0, detections = 0;
   for (let i = 0; i <= n; i++) {
     const t = -half + i * h;
     const r = Math.sqrt(a * a + b * b - 2 * a * b * Math.cos(psi0) * Math.cos(w * t));
@@ -120,7 +116,6 @@ export function simulatePass(link: ChannelParams, maxElevation: number,
     // last-digit difference zero an end sample.
     const ch = { ...link, distanceKm: r, freeSpace: { ...link.freeSpace!, minElevationDeg: 0 } };
     const rate = bb84Rate(ch);
-    pSignal = rate.src.pSignal;
     const sample: PassSample = {
       t, rangeKm: r, elevationDeg: el,
       keyRate: rate.perPulse * g.rateHz,
@@ -136,7 +131,7 @@ export function simulatePass(link: ChannelParams, maxElevation: number,
   return { maxElevationDeg: maxElevation, windowElevationDeg: window, durationS: 2 * half,
     minRangeKm: rangeAtElevationKm(maxElevation, g.orbitKm, g.stationKm),
     maxRangeKm: rangeAtElevationKm(window, g.orbitKm, g.stationKm),
-    keyBits, siftedBits, detections, signalKeyBits: pSignal * keyBits, samples };
+    keyBits, siftedBits, detections, samples };
 }
 
 /** Liao et al. 2017's pass of 19 December 2016, as the paper states it: "the minimal (maximal)
@@ -147,6 +142,14 @@ export const LIAO_2017_PASS = {
   minRangeKm: 645, maxRangeKm: 1200, durationS: 273, detections: 3_551_136, siftedBits: 1_671_072,
   finalKeyBits: 300_939,
 };
+
+/** The sifted key rate in bit/s at one range, counted as Liao counted it (matching bases on signal
+ *  states): a pass's PEAK rate when the range is its shortest. Round 78, for the 23-pass check. */
+export function siftedRateAt(link: ChannelParams, rangeKm: number): number {
+  const ch = { ...link, distanceKm: rangeKm, freeSpace: { ...link.freeSpace!, minElevationDeg: 0 } };
+  const rate = bb84Rate(ch);
+  return 0.5 * rate.src.pSignal * rate.qMu * rate.cDt * geometry(link).rateHz;
+}
 
 /** That pass through this model: culminating at the elevation 645 km implies, counted while the
  *  range is under 1200 km. */
@@ -189,8 +192,7 @@ export function sharedViewMaxKm(link: ChannelParams): number {
 
 export interface RelayResult {
   a: PassResult; b: PassResult;
-  /** min(K_A, K_B) over each pass's signal-pulse key: the XOR pads one key with the other, so the
-   *  shorter one bounds it. */
+  /** min(K_A, K_B): the XOR pads one key with the other, so the shorter one bounds it. */
   keyBits: number;
   groundKm: number;
   /** Whether one satellite could see both stations at once - if so, no store-and-forward is needed. */
@@ -211,7 +213,7 @@ export function trustedRelay(link: ChannelParams, a: Station, b: Station, maxEle
                              maxElevB: number): RelayResult {
   const pa = simulatePass(atStation(link, a), maxElevA);
   const pb = simulatePass(atStation(link, b), maxElevB);
-  const keyBits = Math.min(pa.signalKeyBits, pb.signalKeyBits);
+  const keyBits = Math.min(pa.keyBits, pb.keyBits);
   const groundKm = groundDistanceKm(a, b);
   let dl = Math.abs(a.lonDeg - b.lonDeg) % 360;
   if (dl > 180) dl = 360 - dl;
@@ -294,9 +296,9 @@ export interface ConstellationResult {
   losOk: boolean;
   minSatellites: number;
   islLossDb: number;
-  /** The bound per pulse at the signal intensity (the Downlink tab's convention). */
+  /** The bound per pulse sent, as the Downlink tab's. */
   islPerPulse: number;
-  /** bit/s of key from the signal pulses: `islPerPulse` x the clock x the signal share. */
+  /** bit/s: `islPerPulse` times the clock. */
   islBitPerS: number;
   eclipseFraction: number; pairEclipseFraction: number;
   /** Seconds per orbit each neighbour link can run: in the pair's shared shadow, or always. */
@@ -326,7 +328,7 @@ export function stringOfPearls(n: number, altitudeKm: number, spec: IslSpec,
   const eclipseFraction = alpha / Math.PI;
   const pairEclipseFraction = Math.max(0, 2 * alpha - (2 * Math.PI) / n) / (2 * Math.PI);
   const islSecondsPerOrbit = losOk ? (spec.eclipseOnly ? pairEclipseFraction : 1) * periodS : 0;
-  const islBitPerS = losOk ? rate.perPulse * spec.sourceRateHz * spec.pSignal : 0;
+  const islBitPerS = losOk ? rate.perPulse * spec.sourceRateHz : 0;
   const islKeyPerOrbitBits = islBitPerS * islSecondsPerOrbit;
   return {
     n, altitudeKm, periodS, neighbourKm, chordMinAltitudeKm, losOk,

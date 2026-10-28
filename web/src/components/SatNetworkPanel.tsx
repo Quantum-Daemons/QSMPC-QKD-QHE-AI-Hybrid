@@ -1,14 +1,16 @@
 import { useMemo, useState } from "react";
 import {
-  CartesianGrid, Legend, Line, LineChart, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis,
+  CartesianGrid, ComposedChart, Legend, Line, LineChart, ReferenceLine, ResponsiveContainer, Scatter, Tooltip,
+  XAxis, YAxis,
 } from "recharts";
 
-import { linkProfiles, qkdCfg } from "../lib/config";
+import { linkProfiles, profileValues, qkdCfg, validationSet } from "../lib/config";
+import { downlinkFromProfile } from "../lib/quantumSim";
 import { randomWords } from "../lib/csprng";
 import { satChannel } from "../lib/satLink";
 import {
   LIAO_2017_PASS, LIAO_2018_STATIONS, groundDistanceKm, islFromProfile, liaoPass, rangeAtElevationKm,
-  sharedViewMaxKm, simulatePass, stringOfPearls, trustedRelay, xorRelay, type IslSpec,
+  sharedViewMaxKm, siftedRateAt, simulatePass, stringOfPearls, trustedRelay, xorRelay, type IslSpec,
 } from "../lib/satNetwork";
 import { ChartReadout, HINT_KEYBOARD, ReadoutTooltip } from "./ChartReadout";
 import { SatNetwork3D } from "./Lazy3D";
@@ -44,12 +46,12 @@ export default function SatNetworkPanel({ params }: { params: Record<string, any
         slant range of {fmt(rangeAtElevationKm(minEl, orbitKm, Number(fs.stationAltitudeKm)))} km and a
         footprint {fmt(sharedViewMaxKm(link))} km across. Past that, two published architectures carry a
         key further. Every figure here is the Downlink tab&apos;s own model and bound, integrated over the
-        geometry, for the profile and controls of this page&apos;s run. Keys on this tab count the signal
-        pulses only - {fmt(100 * Number(link.pSignal ?? 0.5))}% of them on this profile - which is how a
-        measured key is made; the Downlink tab&apos;s rate counts every pulse at the signal intensity, the
-        asymptotic convention, and so reads higher. Simulated: no satellite is involved.
+        geometry, for the profile and controls of this page&apos;s run. Every key counts the pulses sent:
+        only the signal pulses carry key - {fmt(100 * Number(link.pSignal ?? 0.5))}% of them on this profile -
+        which is how a measured key is made. Simulated: no satellite is involved.
       </p>
       <PassSection link={link} liao={liao} minEl={minEl} />
+      <NightsSection link={link} />
       <RelaySection link={link} defaultElevation={liao.maxElevationDeg} minEl={minEl} />
       <ConstellationSection orbitKm={orbitKm} minEl={minEl} />
     </div>
@@ -59,10 +61,9 @@ export default function SatNetworkPanel({ params }: { params: Record<string, any
 function PassSection({ link, liao, minEl }: { link: ReturnType<typeof satChannel>; liao: ReturnType<typeof liaoPass>; minEl: number }) {
   const [top, setTop] = useState(Math.round(liao.maxElevationDeg * 10) / 10);
   const pass = useMemo(() => simulatePass(link, top, { stepS: 1 }), [link, top]);
-  const pSignal = Number(link.pSignal ?? 0.5);
   const rows = useMemo(() => pass.samples.filter((_, i) => i % 4 === 0).map((s) => ({
-    t: Math.round(s.t), elevation: Math.round(s.elevationDeg * 10) / 10, rate: Math.round(pSignal * s.keyRate),
-  })), [pass, pSignal]);
+    t: Math.round(s.t), elevation: Math.round(s.elevationDeg * 10) / 10, rate: Math.round(s.keyRate),
+  })), [pass]);
   return (
     <section className="net-section" aria-label="One pass over one station">
       <h4 style={{ margin: "4px 0" }}>One pass over one station</h4>
@@ -78,15 +79,15 @@ function PassSection({ link, liao, minEl }: { link: ReturnType<typeof satChannel
       <p className="small" style={{ margin: "4px 0" }}>
         {pass.durationS > 0
           ? <>Above {minEl} degrees this pass lasts <b>{fmt(pass.durationS)} s</b>, from {fmt(pass.maxRangeKm)} km
-            in to {fmt(pass.minRangeKm)} km at the top, and yields <b>{kbit(pass.signalKeyBits)}</b> of asymptotic key.</>
+            in to {fmt(pass.minRangeKm)} km at the top, and yields <b>{kbit(pass.keyBits)}</b> of asymptotic key.</>
           : <>A pass that never rises above {minEl} degrees makes no key.</>}
       </p>
       {pass.durationS > 0 && (
         <figure className="chart-figure">
           <figcaption className="small muted">
             <b>Elevation and key rate through the pass (model).</b> The rate is the Downlink tab&apos;s bound at each
-            range over the signal pulses; it falls as the satellite sinks, because both the range and the air the beam
-            crosses grow. The dashed line is the minimum elevation.
+            range; it falls as the satellite sinks, because both the range and the air the beam crosses grow. The
+            dashed line is the minimum elevation.
           </figcaption>
           <ChartReadout hint={HINT_KEYBOARD}>
             <ResponsiveContainer width="100%" height={220}>
@@ -117,7 +118,7 @@ function PassSection({ link, liao, minEl }: { link: ReturnType<typeof satChannel
             <tr><td>Data window</td><td className="num">{fmt(liao.durationS, 1)} s</td><td className="num">{LIAO_2017_PASS.durationS} s</td><td className="num">{pct(liao.durationS, LIAO_2017_PASS.durationS)}</td></tr>
             <tr><td>Detections</td><td className="num">{fmt(liao.detections)}</td><td className="num">{fmt(LIAO_2017_PASS.detections)}</td><td className="num">{pct(liao.detections, LIAO_2017_PASS.detections)}</td></tr>
             <tr><td>Sifted key, signal states</td><td className="num">{fmt(liao.siftedBits)}</td><td className="num">{fmt(LIAO_2017_PASS.siftedBits)}</td><td className="num">{pct(liao.siftedBits, LIAO_2017_PASS.siftedBits)}</td></tr>
-            <tr><td>Secret key</td><td className="num">{fmt(liao.signalKeyBits)} (asymptotic)</td><td className="num">{fmt(LIAO_2017_PASS.finalKeyBits)} (finite-key)</td><td className="num">{pct(liao.signalKeyBits, LIAO_2017_PASS.finalKeyBits)}</td></tr>
+            <tr><td>Secret key</td><td className="num">{fmt(liao.keyBits)} (asymptotic)</td><td className="num">{fmt(LIAO_2017_PASS.finalKeyBits)} (finite-key)</td><td className="num">{pct(liao.keyBits, LIAO_2017_PASS.finalKeyBits)}</td></tr>
           </tbody>
         </table>
       </div>
@@ -131,13 +132,72 @@ function PassSection({ link, liao, minEl }: { link: ReturnType<typeof satChannel
           and began from about 15; this model uses one threshold for both ends.
         </p>
         <p>
-          The secret-key row compares unlike things on purpose, and says so: the model&apos;s asymptotic bound over the
-          signal half of the pulses, against Liao&apos;s finite-key result with intensity fluctuations, which must be
-          smaller. Vergoossen et al. (arXiv:1903.07845, Table 3) modelled the same pass at 521,513 secret bits
+          The secret-key row compares unlike things on purpose, and says so: the model&apos;s asymptotic bound, per pulse
+          sent, against Liao&apos;s finite-key result with intensity fluctuations, which must be smaller. Vergoossen et al. (arXiv:1903.07845, Table 3) modelled the same pass at 521,513 secret bits
           (asymptotic) against 3,926,729 detections; their sifted count, 1,963,364, is exactly half their detections,
           so it counts every state where Liao counted signals.
         </p>
       </Details>
+    </section>
+  );
+}
+
+/** Every measured Micius pass against the model (Round 78): Liao et al. 2017's Extended Data Table 2,
+ *  each night's peak sifted rate at its shortest range, beside the model's at that range for this
+ *  run's link and for the 8 dB upper-value profile. */
+function NightsSection({ link }: { link: ReturnType<typeof satChannel> }) {
+  const set = validationSet("liao_2017_xinglong_passes");
+  const upper = useMemo(() => {
+    const v = profileValues("downlink", "micius_2017_upper_atmosphere");
+    return v ? downlinkFromProfile(v) : null;
+  }, []);
+  const { points, curve, stats } = useMemo(() => {
+    if (!set) return { points: [], curve: [], stats: null };
+    const col = (name: string) => set.columns.indexOf(name);
+    const iD = col("date"), iKm = col("shortest_distance_km"), iPk = col("peak_sifted_khz");
+    const pts = set.rows.map((r) => ({ km: Number(r[iKm]), measured: Number(r[iPk]), date: String(r[iD]) }));
+    const ratios = pts.map((p) => 10 * Math.log10(p.measured / (siftedRateAt(link, p.km) / 1000)));
+    const sorted = [...ratios].sort((a, b) => a - b);
+    const median = sorted[Math.floor(sorted.length / 2)];
+    const mean = ratios.reduce((a, b) => a + b, 0) / ratios.length;
+    const sd = Math.sqrt(ratios.reduce((a, b) => a + (b - mean) ** 2, 0) / ratios.length);
+    const c: { km: number; model: number; upper?: number }[] = [];
+    for (let km = 480; km <= 1060; km += 20) {
+      c.push({ km, model: siftedRateAt(link, km) / 1000, upper: upper ? siftedRateAt(upper, km) / 1000 : undefined });
+    }
+    return { points: pts, curve: c, stats: { median, sd, above: ratios.filter((x) => x > 0).length, n: ratios.length } };
+  }, [set, link, upper]);
+  if (!set || !stats) return null;
+  return (
+    <section className="net-section" aria-label="Every measured Micius pass against the model">
+      <h4 style={{ margin: "4px 0" }}>Every measured Micius pass against the model</h4>
+      <p className="small" style={{ margin: "4px 0" }}>
+        Liao et al. list {stats.n} passes over Xinglong. At each one&apos;s shortest range this run&apos;s link predicts
+        the peak sifted rate with a median difference of <b>{fmt(stats.median, 2)} dB</b> (measured over model), and the
+        nights scatter around it by <b>{fmt(stats.sd, 1)} dB</b> (standard deviation): {stats.above} of {stats.n} measured
+        peaks sit above the model. Weather moves a pass more than any loss term this model leaves out.
+      </p>
+      <figure className="chart-figure">
+        <figcaption className="small muted">
+          <b>Peak sifted rate against shortest range (log scale).</b> Points: the {stats.n} measured passes
+          (Liao et al., Nature 549, 43, 2017, Extended Data Table 2). Lines: this run&apos;s link, and the 8 dB upper-value
+          profile, at each range.
+        </figcaption>
+        <ChartReadout hint={HINT_KEYBOARD}>
+          <ResponsiveContainer width="100%" height={240}>
+            <ComposedChart accessibilityLayer title="Measured Micius peak sifted rates against the model's, by shortest range" margin={{ top: 8, right: 16, bottom: 18, left: 4 }}>
+              <CartesianGrid stroke="var(--border)" strokeDasharray="3 3" />
+              <XAxis dataKey="km" type="number" domain={[480, 1060]} tick={tick} label={{ value: "shortest range of the pass (km)", position: "insideBottom", offset: -8, fill: "var(--muted)", fontSize: 11 }} />
+              <YAxis type="number" scale="log" domain={[1, 50]} allowDataOverflow tick={tick} ticks={[1, 2, 5, 10, 20, 50]} />
+              <Tooltip content={<ReadoutTooltip labelName="km" />} formatter={(v: number) => `${v.toFixed(1)} kbit/s`} />
+              <Legend verticalAlign="top" wrapperStyle={{ fontSize: 11 }} />
+              <Line data={curve} dataKey="model" name="this run's link" stroke="var(--accent)" dot={false} strokeWidth={2} isAnimationActive={false} />
+              {upper && <Line data={curve} dataKey="upper" name="8 dB upper value" stroke="var(--accent-2)" strokeDasharray="5 4" dot={false} strokeWidth={2} isAnimationActive={false} />}
+              <Scatter data={points} dataKey="measured" name="measured peak, one night each" fill="var(--warn)" isAnimationActive={false} />
+            </ComposedChart>
+          </ResponsiveContainer>
+        </ChartReadout>
+      </figure>
     </section>
   );
 }
@@ -183,8 +243,8 @@ function RelaySection({ link, defaultElevation, minEl }: { link: ReturnType<type
               <td className="small muted">{aId === bId ? "the same station" : relay.sharedView
                 ? `within one satellite's ${fmt(sharedViewMaxKm(link))} km footprint: both can be in view at once`
                 : `wider than one satellite's ${fmt(sharedViewMaxKm(link))} km footprint: the key has to be carried`}</td></tr>
-            <tr><td>Key with A, one pass</td><td className="num">{kbit(relay.a.signalKeyBits)}</td><td className="small muted">{fmt(relay.a.durationS)} s above the minimum elevation; asymptotic</td></tr>
-            <tr><td>Key with B, one pass</td><td className="num">{kbit(relay.b.signalKeyBits)}</td><td className="small muted">{fmt(relay.b.durationS)} s</td></tr>
+            <tr><td>Key with A, one pass</td><td className="num">{kbit(relay.a.keyBits)}</td><td className="small muted">{fmt(relay.a.durationS)} s above the minimum elevation; asymptotic</td></tr>
+            <tr><td>Key with B, one pass</td><td className="num">{kbit(relay.b.keyBits)}</td><td className="small muted">{fmt(relay.b.durationS)} s</td></tr>
             <tr><td>Relayed key A to B</td><td className="num"><b>{kbit(relay.keyBits)}</b></td><td className="small muted">the shorter of the two: one key pads the other</td></tr>
             <tr><td>Second key exists after</td><td className="num">{fmt(relay.waitH, 1)} h</td><td className="small muted">a sun-synchronous orbit passes each station at the same local time, so the longitude difference sets the wait</td></tr>
             <tr><td>Pass pairs for Liao&apos;s 100 kB</td><td className="num">{Number.isFinite(relay.passPairsFor100kB) ? relay.passPairsFor100kB : "-"}</td><td className="small muted">&quot;we establish a 100 kB secure key between Xinglong and Graz&quot;</td></tr>
@@ -292,7 +352,7 @@ function ConstellationSection({ orbitKm, minEl }: { orbitKm: number; minEl: numb
             <tr><td>Line of sight passes above the ground at</td><td className="num">{fmt(c.chordMinAltitudeKm)} km</td>
               <td className="small muted">{c.losOk ? `clear of the ${fmt(spec.clearanceKm)} km the profile requires` : `below the ${fmt(spec.clearanceKm)} km the profile requires: no link. The plane needs at least ${c.minSatellites} satellites`}</td></tr>
             <tr><td>Link loss</td><td className="num">{Number.isFinite(c.islLossDb) ? `${fmt(c.islLossDb, 1)} dB` : "-"}</td><td className="small muted">diffraction, pointing and receiver optics; no atmosphere above the clearance height</td></tr>
-            <tr><td>Key rate per link</td><td className="num">{fmt(c.islBitPerS, 1)} bit/s</td><td className="small muted">the Downlink tab&apos;s bound over this channel, signal pulses only</td></tr>
+            <tr><td>Key rate per link</td><td className="num">{fmt(c.islBitPerS, 1)} bit/s</td><td className="small muted">the Downlink tab&apos;s bound over this channel, per pulse sent</td></tr>
             <tr><td>Time per orbit a link runs</td><td className="num">{fmt(c.islSecondsPerOrbit / 60, 1)} min</td><td className="small muted">{eclipseOnly ? `both neighbours in shadow; one satellite is in shadow ${fmt(100 * c.eclipseFraction, 1)}% of its ${fmt(c.periodS / 60, 1)} min orbit` : "always: the shadow condition is off"}</td></tr>
             <tr><td>Key per link per day</td><td className="num"><b>{kbit(c.islKeyPerDayBits)}</b></td><td className="small muted">{fmt(c.islKeyPerOrbitBits / 1000, 1)} kbit per orbit</td></tr>
             <tr><td>Trusted nodes across the ring</td><td className="num">{c.hopsAcross + 1}</td><td className="small muted">a key carried to the opposite satellite crosses {c.hopsAcross} links, and every satellite on the way holds it</td></tr>
