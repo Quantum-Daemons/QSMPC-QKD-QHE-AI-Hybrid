@@ -94,6 +94,186 @@ flowchart TB
 | `telecom_ids` | telecom, defence | simulated QKD with an optional eavesdropper, a QML intrusion detector |
 | `satellite_comms` | satellite | free-space QKD over a Micius downlink, QSDC with an inline eavesdrop check |
 
+Each use case's implementation, stage by stage: what runs it in the browser, and where the full
+deployment differs. Open a section to see its flowchart.
+
+<details>
+<summary>Finance: cross-bank anti-money laundering</summary>
+
+<!-- figure: uc-finance_aml -->
+```mermaid
+flowchart TB
+  D["Data: PaySim simulator sample, 400 transactions, synthetic"]
+  H["PQC handshake: ML-KEM-768 + X25519, HKDF-SHA256"]
+  K["QKD: simulated BB84 decoy-state, or E91, over fibre"]
+  Q{"Key possible? BB84: QBER at most 0.11; E91: CHSH S above 2"}
+  N["No QKD key: the session rests on PQC"]
+  L["Key length: BB84 finite key of a 1e7-bit block, E91 asymptotic; the full deployment mixes 256 bits or more into the session key"]
+  P["PSI: HMAC-SHA256 keyed by the session key, over two banks' account lists"]
+  FL["Federated training, in the browser: 4 clients, 6 rounds of FedAvg, pairwise masks"]
+  I["Private inference: CKKS linear layer (node-seal), garbled-circuit argmax (Polytune)"]
+  M["Published model: finance_aml.gbm on ONNX Runtime Web"]
+  X["Explainability (full deployment)"]
+  C["QSMPC-FHE comparison: QOTP and QCNN, T-gates counted"]
+  S["Result signed with ML-DSA-65"]
+  D --> H
+  H --> K
+  K --> Q
+  Q -->|no| N
+  Q -->|yes| L
+  N --> P
+  L --> P
+  P --> FL
+  FL --> I
+  I --> M
+  I -.-> X
+  X -.-> C
+  M --> C
+  C --> S
+  classDef full stroke-dasharray: 5 3
+  class X full
+```
+
+</details>
+
+<details>
+<summary>Healthcare: federated training and private diagnosis</summary>
+
+<!-- figure: uc-medical_fl -->
+```mermaid
+flowchart TB
+  D["Data: Wisconsin breast-cancer measurements, 400 rows, real"]
+  H["PQC handshake: ML-KEM-768 + X25519, HKDF-SHA256"]
+  K["QKD: simulated BB84 decoy-state, or E91, over fibre"]
+  Q{"Key possible? BB84: QBER at most 0.11; E91: CHSH S above 2"}
+  N["No QKD key: the session rests on PQC"]
+  L["Key length: BB84 finite key of a 1e7-bit block, E91 asymptotic; the full deployment mixes 256 bits or more into the session key"]
+  FL["Federated training: 4 hospitals, 6 rounds of FedAvg, pairwise masks"]
+  I["Private inference: CKKS linear layer and an encrypted 4x14x14 CNN (node-seal), garbled-circuit argmax"]
+  M["Published model: medical_fl.resnet18 on a BreastMNIST image, ONNX Runtime Web"]
+  X["Explainability (full deployment)"]
+  C["QSMPC-FHE comparison: QOTP and QCNN, T-gates counted"]
+  S["Result signed with ML-DSA-65"]
+  D --> H
+  H --> K
+  K --> Q
+  Q -->|no| N
+  Q -->|yes| L
+  N --> FL
+  L --> FL
+  FL --> I
+  I --> M
+  I -.-> X
+  X -.-> C
+  M --> C
+  C --> S
+  classDef full stroke-dasharray: 5 3
+  class X full
+```
+
+</details>
+
+<details>
+<summary>Genomics: pooled allele counts</summary>
+
+<!-- figure: uc-genomics -->
+```mermaid
+flowchart TB
+  D["Data: 30 real 1000 Genomes individuals, PGS000004 weights over 313 variants"]
+  H["PQC handshake: ML-KEM-768 + X25519, HKDF-SHA256"]
+  K["QKD: simulated BB84 decoy-state, or E91, over fibre"]
+  Q{"Key possible? BB84: QBER at most 0.11; E91: CHSH S above 2"}
+  N["No QKD key: the session rests on PQC"]
+  L["Key length: BB84 finite key of a 1e7-bit block, E91 asymptotic; the full deployment mixes 256 bits or more into the session key"]
+  P["Secure sum of 4 cohorts' allele counts at one variant: additive shares mod p in the browser, QSMS over a GHZ state in the full deployment"]
+  I["Private inference: CKKS polygenic risk score (node-seal), garbled-circuit argmax"]
+  M["Published model: none registered for genomics"]
+  X["Explainability (full deployment)"]
+  C["QSMPC-FHE comparison: QOTP and QCNN, T-gates counted"]
+  S["Result signed with ML-DSA-65"]
+  D --> H
+  H --> K
+  K --> Q
+  Q -->|no| N
+  Q -->|yes| L
+  N --> P
+  L --> P
+  P --> I
+  I --> M
+  I -.-> X
+  X -.-> C
+  M --> C
+  C --> S
+  classDef full stroke-dasharray: 5 3
+  class X full
+```
+
+</details>
+
+<details>
+<summary>Telecom and defence: intrusion detection on a QKD link</summary>
+
+<!-- figure: uc-telecom_ids -->
+```mermaid
+flowchart TB
+  D["Data: synthetic QKD-attack telemetry, 7 attacks and normal"]
+  H["PQC handshake: ML-KEM-768 + X25519, HKDF-SHA256"]
+  K["QKD: simulated BB84 decoy-state, or E91, with an optional intercept-resend eavesdropper; OptiQKD tunes it when switched on"]
+  Q{"Key possible? BB84: QBER at most 0.11; E91: CHSH S above 2"}
+  N["Eavesdropper or noise: no QKD key, the session rests on PQC"]
+  L["Key length: BB84 finite key of a 1e7-bit block, E91 asymptotic; the full deployment mixes 256 bits or more into the session key"]
+  IDS["QML-IDS: 8-class detector trained in the browser, scored by macro-F1"]
+  M["Published model: telecom_ids.qml on ONNX Runtime Web, and a CKKS check of the student"]
+  C["QSMPC-FHE comparison: QOTP and QCNN, T-gates counted"]
+  S["Result signed with ML-DSA-65"]
+  D --> H
+  H --> K
+  K --> Q
+  Q -->|no| N
+  Q -->|yes| L
+  N --> IDS
+  L --> IDS
+  IDS --> M
+  M --> C
+  C --> S
+```
+
+</details>
+
+<details>
+<summary>Satellite: free-space QKD and direct telemetry</summary>
+
+<!-- figure: uc-satellite_comms -->
+```mermaid
+flowchart TB
+  D["Data: NASA SMAP and MSL telemetry windows, real"]
+  H["PQC handshake: ML-KEM-768 + X25519, HKDF-SHA256"]
+  V{"Satellite in view, 10 degrees or more?"}
+  NV["Out of view: no QKD key and no QSDC; the anomaly score still runs"]
+  K["Free-space QKD: Micius downlink, BB84 with a vacuum state, or E91; OptiQKD tunes it when switched on"]
+  L["Key length: BB84 finite key of one pass, Lim et al. 2014, E91 asymptotic; the full deployment mixes 256 bits or more"]
+  QD{"QSDC: secrecy capacity positive?"}
+  NA["QSDC aborts: link budget too small, or an eavesdropper detected; nothing is sent over the quantum channel"]
+  T["Telemetry sent directly over the quantum channel"]
+  A["Anomaly score and the published model, satellite_comms.telemanom, in the browser; the full deployment also checks delivered telemetry under CKKS"]
+  C["QSMPC-FHE comparison: QOTP and QCNN, T-gates counted"]
+  S["Result signed with ML-DSA-65"]
+  D --> H
+  H --> V
+  V -->|no| NV
+  V -->|yes| K
+  K --> L
+  L --> QD
+  QD -->|no| NA
+  QD -->|yes| T
+  NA --> A
+  T --> A
+  A --> C
+  C --> S
+```
+
+</details>
+
 ### The QKD key
 
 ```mermaid
@@ -102,10 +282,16 @@ flowchart TD
   G --> A["Asymptotic decoy bound: the rate per pulse sent"]
   G --> BL["Counts of a block: 1e7 key-basis bits on fibre, one pass from a satellite"]
   BL --> F["Composable finite key: Rusca et al. 2018, or Lim et al. 2014 with a vacuum state"]
-  F --> T{"256 bits or more?"}
-  T -->|yes| X["Folded into the PQC session key"]
+  F --> W{"Where does the run execute?"}
+  W -->|"in the browser, the public demo"| BR["A key length only: the session rests on PQC"]
+  W -->|"full deployment"| T{"256 bits or more?"}
+  T -->|yes| X["Mixed into the session key: HKDF-SHA256"]
   T -->|no| P["The session rests on PQC alone"]
 ```
+
+The browser simulates the channel and reports the key length it would carry, but derives no key
+material from it, so the public demo's session key is always the PQC one. The full deployment
+derives a 256-bit QKD key from the simulated sifted bits and mixes it into the session key.
 
 ---
 
@@ -187,18 +373,51 @@ part is written in: [`docs/development.md`](docs/development.md).
 
 ### Development workflow
 
+<!-- figure: workflow -->
 ```mermaid
 flowchart TB
-  subgraph B1["Before the merge"]
+  subgraph W1["1. Build"]
     direction LR
-    L["Local: Python 3.12 venv, pytest, scripts/ci_local.sh"] --> PR["Pull request: GitHub Actions CI"] --> DB["The branch on the demo: Docker, deployed from git"] --> LB["Live check in a browser"]
+    RS["Research: primary sources in references/"] --> IM["Implement: Python and TypeScript, one config"] --> LG["Local gates: pytest, scripts/ci_local.sh"]
   end
-  subgraph B2["After the merge"]
+  subgraph W2["2. Before the merge"]
+    direction LR
+    PR["Pull request: GitHub Actions CI"] --> DB["The branch on the demo: Docker, deployed from git"] --> LB["Live check in a browser"] --> RC["Records: register, log, report"]
+  end
+  subgraph W3["3. After the merge"]
     direction LR
     MG["Merge to main"] --> DM["Main on the demo again"] --> LM["Live check again"]
   end
-  B1 --> B2
+  W1 --> W2 --> W3
 ```
+
+<details>
+<summary>The verification environment: what runs where</summary>
+
+<!-- figure: verification-environment -->
+```mermaid
+flowchart TB
+  subgraph LOC["Local workstation"]
+    direction LR
+    PY["Python 3.12 venv: pytest suite, cross-language tests"] --> CL["scripts/ci_local.sh: 18 gates"]
+    WEB["Web checks: tsc, vite build, node checks"] --> CL
+    CL --> REP["make report: the technical report"]
+    SHOT["Headless Chrome: README screenshots"]
+  end
+  subgraph GH["GitHub"]
+    direction LR
+    PR["Pull request"] --> ACT["GitHub Actions: Python, web typecheck and build, repository guards"]
+    AUD["Audit workflow: npm audit, cargo-deny"]
+  end
+  subgraph DEMO["Demo host"]
+    direction LR
+    DOCK["Docker image built from git: scripts/deploy_demo.sh"] --> PROXY["Behind a shared reverse proxy"]
+  end
+  LIVE["Live check in a browser: bundle, pages, console"] --> REC["Records: register, log, technical report"]
+  LOC --> GH --> DEMO --> LIVE
+```
+
+</details>
 
 Every round is recorded in [`docs/deliverable-verification.md`](docs/deliverable-verification.md)
 (what was checked and found) and [`docs/verification-log.md`](docs/verification-log.md) (what it
