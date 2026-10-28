@@ -122,9 +122,10 @@ export default function ParameterPanel({ run }: { run: Run }) {
       ["Source rate (MHz)", "qkd_source_rate_mhz", 10, 1,
        "ASSUMED source repetition rate. No QKD hardware exists in this project and nothing here "
        + "measures a clock, so bit/s figures are this run's per-pulse bound multiplied by whatever "
-       + "you set here. Default 100 MHz is the rate reported by arXiv:2607.24118 for a 2 km "
-       + "free-space link - carried over, not measured on fibre. Moving this moves skr, eskr and "
-       + "the channel time together"]] });
+       + "you set here. Default 1 GHz is the clock Rusca et al. 2018 state for the detector set "
+       + "this page uses, a simulation set rather than a measured link. Their 100 ns dead time "
+       + "makes the per-pulse bound depend on it as well: moving this moves the bound, skr, eskr "
+       + "and the channel time together"]] });
   // The satellite channel, which `satellite_qkd` and `qsdc_telemetry` have always read and nothing
   // ever rendered. Without these the QSDC abort threshold could not be reached from the UI: Eve was
   // pinned at 0, so free-space QBER stayed near 0.033 against a 0.11 abort threshold.
@@ -171,9 +172,8 @@ export default function ParameterPanel({ run }: { run: Run }) {
       // number that moved, which is harder to catch than one that does not. A single shared source
       // rate would rebuild exactly that.
       ["Source rate (MHz)", "sat_source_rate_mhz", 10, 1,
-       "ASSUMED source repetition rate for the downlink. Its default is the 100 MHz of "
-       + "arXiv:2607.24118, whose own link is free-space - so unlike the fibre page this is the "
-       + "anchor's own configuration rather than a figure carried across channel types. Still an "
+       "ASSUMED source repetition rate for the downlink. Its default is the Micius source's "
+       + "100 MHz (Liao et al. 2017), the link the rest of this channel is taken from. Still an "
        + "assumption: no clock is measured anywhere in this project"]] });
   // "QSDC abort at QBER" (qsdc_threshold) was REMOVED here. Once the abort criterion became
   // secrecy capacity - Cs = 1 - h(e) - g*h(e), Qi et al. 2019 - nothing read config.qsdc_threshold,

@@ -86,6 +86,10 @@ export interface ChannelParams {
      *  without it keeps the old budget; FREE_SPACE always carries it. Round 75. */
     receiverOpticsEff?: number;
   };
+  /** The source clock and the detectors' dead time (Round 76), which `deadTimeFactor` combines. Left
+   *  unset they take the link's own from config, as `ChannelParams.__post_init__` does in Python. */
+  sourceRateHz?: number;
+  deadTimeS?: number;
 }
 
 // Both channels come from config, not from literals here.
@@ -107,6 +111,8 @@ export const FIBER: ChannelParams = {
   darkCount: qkdCfg().dark_count_prob,
   misalignment: qkdCfg().misalignment,
   eveFraction: 0,
+  sourceRateHz: qkdCfg().source_rate_hz,
+  deadTimeS: qkdCfg().detector_dead_time_s,
 };
 
 export const FREE_SPACE: ChannelParams = {
@@ -123,7 +129,24 @@ export const FREE_SPACE: ChannelParams = {
     pointingDb: qkdCfg().free_space_pointing_db,
     receiverOpticsEff: qkdCfg().free_space_receiver_optics_efficiency,
   },
+  sourceRateHz: qkdCfg().free_space_source_rate_hz,
+  deadTimeS: qkdCfg().free_space_detector_dead_time_s,
 };
+
+/**
+ * The fraction of detections a dead detector still registers, after Rusca et al. 2018 Eq. (B3):
+ * `c = 1 / (1 + R D t_DT)`, the non-paralysable model, with `D` the per-pulse click probability of
+ * one of Bob's two detectors before the correction, `clickProb / 2`. Every click counts, in either
+ * basis, which is where this departs from (B3)'s Z-only sum. Twin of `channel.py::dead_time_factor`;
+ * Round 76, when the fibre clock became 1 GHz and the dead time began to matter.
+ */
+export function deadTimeFactor(p: ChannelParams, clickProb: number): number {
+  const q = qkdCfg();
+  const rate = p.sourceRateHz ?? (p.freeSpace ? q.free_space_source_rate_hz : q.source_rate_hz);
+  const dead = p.deadTimeS ?? (p.freeSpace ? q.free_space_detector_dead_time_s : q.detector_dead_time_s);
+  const rt = Number(rate) * Number(dead);
+  return rt > 0 ? 1 / (1 + rt * 0.5 * clickProb) : 1;
+}
 
 /**
  * Channel loss in dB. Two different physical regimes, and using one law for both was a real error.
@@ -414,7 +437,10 @@ export function bb84(nPulses: number, p: ChannelParams, seed = 0,
   // sifted count at the shipped defaults (0.0124 against 0.0250) and it is the correction, not a
   // regression - the previous figure counted one detection per transmitted photon.
   const qMu = y0 + 1 - Math.exp(-eta * mu);
-  const nSift = Math.max(0, Math.round(nPulses * qMu * 0.5)); // detected & bases match
+  // THE DEAD TIME (Round 76): signal and decoy sent equally often, every click counted. It scales
+  // the detections and the rate alike and leaves the QBER where it is. Twin of `bb84.py`.
+  const cDt = deadTimeFactor(p, 0.5 * (qMu + (y0 + 1 - Math.exp(-eta * nu))));
+  const nSift = Math.max(0, Math.round(nPulses * cDt * qMu * 0.5)); // detected & bases match
 
   // The MEASUREMENT still fluctuates: sampling noise on the observed QBER, binomial -> gaussian.
   const std = nSift > 0 ? Math.sqrt((eDet * (1 - eDet)) / nSift) : 0;
@@ -426,13 +452,14 @@ export function bb84(nPulses: number, p: ChannelParams, seed = 0,
   //
   // It takes `eDetForBound(p)`, NOT `eDet` and not the bare misalignment - see that function for
   // why the first charges dark counts twice and the second unhooks the eavesdropper.
-  const decoy = decoySecureFraction(eta, mu, nu, eDetForBound(p), y0, fEC, 0.5);
+  const bound = decoySecureFraction(eta, mu, nu, eDetForBound(p), y0, fEC, 0.5);
+  const decoy = { ...bound, perPulse: bound.perPulse * cDt };   // the gains it rests on, dead-time corrected
 
   // The counterfactual, on the same channel: GLLP with the multi-photon fraction untagged. Kept
   // beside the bound because the assumption is invisible without it.
   const delta = taggedFraction(mu, p);
   const untagged = 1 - delta;
-  const nonDecoy = delta >= 1 ? 0 : Math.max(0, 0.5 * qMu * (
+  const nonDecoy = delta >= 1 ? 0 : Math.max(0, 0.5 * cDt * qMu * (
     untagged - fEC * h2(decoy.eMu) - untagged * h2(Math.min(0.5, decoy.eMu / untagged))));
 
   // POST-PROCESSING ABORT, mirroring `bb84.py`'s `if measured_qber > pp_threshold`. The browser had
@@ -496,7 +523,9 @@ export function e91(nPulses: number, p: ChannelParams, seed = 0,
   // (lossy arm)". Round 46 considered squaring this for a two-arm source and did NOT, for the
   // reason this whole round exists: changing the physics in one language is how the two drift.
   // The modelling choice is Python's, it is documented there, and the browser mirrors it.
-  const nPairs = Math.max(0, Math.round(nPulses * T * 0.5));                   // coincidence detections (key basis)
+  // The dead time charges E91's detectors as it does BB84's (Round 76), twin of `e91.py`.
+  const cDt = deadTimeFactor(p, T + 2 * p.darkCount);
+  const nPairs = Math.max(0, Math.round(nPulses * cDt * T * 0.5));             // coincidence detections (key basis)
   const std = nPairs > 0 ? Math.sqrt((e0 * (1 - e0)) / nPairs) : 0;
   const qber = Math.min(0.5, Math.max(0, e0 + std * gauss(u)));
   // THE BOUND TAKES `e0`, NOT `qber` - the model error rate, not this session's draw. Round 45 made
