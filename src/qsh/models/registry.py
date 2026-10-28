@@ -173,6 +173,18 @@ class ModelSpec:
     # pinned". See train.record_metrics for why a retrain must not carry its old pin forward.
     hf_revision_stale: str | None = None
     runs_encrypted: bool = False
+    # Non-empty when the model publishes NO browser evaluation sample on purpose, and this is why.
+    # The browser reads it and does not request `eval_sample.json`, which until Round 71 it fetched
+    # from the Hub on every satellite run and logged as a 404 - an absence decided in Round 21 that
+    # read in the console like a missing file.
+    eval_sample_reason: str = ""
+    # Which split the published evaluation sample was drawn from, and how, in the words the run log
+    # prints. Declared per model since Round 71, because the log said "held-out" for every model
+    # while two samples were drawn from the whole corpus, training rows included: the finance
+    # teacher's 8,192 rows (and so the student's, which reuses them) and Telemanom's 128 windows.
+    # scripts/prep_model_inputs.py writes this into the sample it builds, so the file and the page
+    # say the same thing.
+    eval_split: str = ""
     notes: str = ""
 
     @property
@@ -811,6 +823,9 @@ _SPECS: tuple[ModelSpec, ...] = (
         metric=M_AML,
         artifacts=_ONNX_FP32_ONLY,   # tree ensemble: no int8 graph exists to serve
         hf_repo="qsh-finance-aml-gbm",
+        eval_split=(
+            "a draw from the held-out temporal test window, the last 30 percent of the timeline, "
+            "enriched to 2 percent laundering"),
         notes="Stateless at inference, so this is the browser-tier finance model.",
     ),
     ModelSpec(
@@ -825,6 +840,9 @@ _SPECS: tuple[ModelSpec, ...] = (
         runs_encrypted=True,
         artifacts=_STUDENT_ARTIFACTS,
         hf_repo="qsh-finance-aml-ckks-student",
+        eval_split=(
+            "the rows of finance_aml.gbm's sample, a draw from the held-out temporal test window, "
+            "the last 30 percent of the timeline, enriched to 2 percent laundering"),
         notes="Runs under real CKKS. crypto_fidelity is measured against the teacher every run.",
     ),
     # ---------------- medical / federated ----------------
@@ -839,6 +857,7 @@ _SPECS: tuple[ModelSpec, ...] = (
         metric=M_BREASTMNIST,
         artifacts=_ONNX_PAIR,
         hf_repo="qsh-medical-breastmnist-resnet18",
+        eval_split="the official BreastMNIST test split, whole",
         notes="The small tier: fits the browser comfortably and has a clean published baseline.",
     ),
     ModelSpec(
@@ -852,6 +871,7 @@ _SPECS: tuple[ModelSpec, ...] = (
         metric=M_BREASTMNIST_R50,
         artifacts=_ONNX_PAIR,
         hf_repo="qsh-medical-breastmnist-resnet50",
+        eval_split="the official BreastMNIST test split, whole, the same rows as medical_fl.resnet18",
         notes=(
             "Trained to test a published claim rather than to win one. MedMNIST v2 reports ResNet-50 "
             "at AUC 0.857 against ResNet-18's 0.901 on this corpus, so the expected outcome is that "
@@ -875,6 +895,7 @@ _SPECS: tuple[ModelSpec, ...] = (
         runs_encrypted=True,
         artifacts=_STUDENT_ARTIFACTS_TORCH,
         hf_repo="qsh-medical-breastmnist-ckks-student",
+        eval_split="the official BreastMNIST test split, whole, at 14x14",
         notes="Genuine encrypted convolution: im2col + CKKS dot_plain, ReLU/max-pool under MPC.",
     ),
     # ---------------- genomics ----------------
@@ -922,22 +943,30 @@ _SPECS: tuple[ModelSpec, ...] = (
         metric=M_ESA,
         artifacts=_ONNX_PAIR,
         hf_repo="qsh-satellite-telemanom-esa",
+        eval_split=(
+            "windows drawn at random from the held-out temporal test window, the last 30 percent "
+            "of the resampled timeline"),
         notes=(
             "Report event-wise F0.5, never point-adjusted F1. Always run a trivial baseline alongside: "
             "windowed isolation forest wins the ESA-ADB Mission2 lightweight subset outright. "
             "RETRACTION, Round 19: a Round 18 note here claimed this forecaster was about 22x WORSE "
             "than persistence. That was a measurement error of ours, not a property of the model -- "
             "the probe resampled at 60s while the model is trained at 300s (see `resample` in the "
-            "achieved record). Re-measured at the trained cadence, next-step MAE is 0.0314 on the "
-            "evaluation split against 0.0897 for persistence, i.e. the model is about 2.9x BETTER; "
-            "0.40x / 0.35x / 0.38x on train / test / whole series. Preprocessing for any evaluation "
-            "must be read from this record rather than hardcoded, which is now what "
-            "scripts/prep_model_inputs.py does. "
-            "SEPARATE AND STILL OPEN: event-wise F0.5 does not reproduce across identical-config "
-            "retrains -- 0.4545 here against the 0.714286 recorded -- while point-adjusted F1 does "
-            "(0.9937 vs 0.9945) and the isolation-forest baseline reproduces exactly (0.000248). "
-            "Treat the event-wise figure as a single draw from a wide distribution, which is the "
-            "instability arXiv:2607.11969 (2026-07) describes for overlap-based metrics."
+            "achieved record). Preprocessing for any evaluation must be read from this record "
+            "rather than hardcoded, which is now what scripts/prep_model_inputs.py does. "
+            "RETRAINED IN ROUND 71. The weights published until then were trained with a z-score "
+            "fitted on the whole series, test window included: the trainer was fixed in Round 34 "
+            "and the model was never retrained, so its feature_spec.json still carried whole-series "
+            "constants. With the constants fitted on the training window, next-step MAE over all "
+            "441,600 test windows is 0.0250 against 0.0764 for persistence, about 3.1x better. The "
+            "event-wise figure fell to 0 (tp=0 fp=2 fn=3): the detector still flags 2 points of "
+            "441,600 and neither lands in one of the 3 scored events, where the two leaky runs had "
+            "caught one and recorded 0.714286 and 0.454545. Point-adjusted F1 fell with it, from "
+            "0.9937 to 0, which is how much one flagged point inside a long event carries under "
+            "point adjustment; the isolation-forest baseline reproduces exactly (0.000248). Treat "
+            "the event-wise figure as a single draw from a wide distribution, which is the "
+            "instability arXiv:2607.11969 (2026-07) describes for overlap-based metrics: three "
+            "events cannot rank detectors."
         ),
     ),
     ModelSpec(
@@ -952,6 +981,9 @@ _SPECS: tuple[ModelSpec, ...] = (
         artifacts=_STUDENT_ARTIFACTS,
         hf_repo="qsh-satellite-telemanom-ckks-student",
         runs_encrypted=True,
+        eval_sample_reason=(
+            "its metric, event-wise F0.5, is defined over contiguous runs of a timeline and cannot "
+            "be re-scored from independent rows, which is what the browser evaluator scores"),
         notes=(
             "The one published model with no browser evaluation sample, and the reason is the "
             "metric rather than the weights. Round 21 gave the other three students samples; this "
@@ -962,9 +994,9 @@ _SPECS: tuple[ModelSpec, ...] = (
             "It needs no scaler, unlike the other three: scripts/train/satellite_telemanom.py fits "
             "it on raw `flat_te` (the last 8 timesteps x 6 channels), so the absent `input` block "
             "in its weights.json is correct rather than the omission it looks like. "
-            "Worth reading alongside its numbers: the teacher scores 0.0 event-wise F0.5 on this "
-            "split and the student 0.0032, so agreement of 0.9987 is agreement about finding almost "
-            "nothing."),
+            "Worth reading alongside its numbers: since the Round 71 retrain the teacher and the "
+            "student both score 0.0 event-wise F0.5 on this split, so their agreement is agreement "
+            "about finding nothing, and there is no fidelity claim to make."),
     ),
     ModelSpec(
         usecase="satellite_comms",
@@ -977,6 +1009,7 @@ _SPECS: tuple[ModelSpec, ...] = (
         metric=M_OPSSAT,
         artifacts=_ONNX_PAIR,
         hf_repo="qsh-satellite-opssat-ad",
+        eval_split="the benchmark's own test partition, whole",
         notes=(
             "Segment CLASSIFICATION on real OPS-SAT telemetry, which is a different task from the "
             "Telemanom forecaster above: this one is scored against the 30 algorithms published "
@@ -997,6 +1030,7 @@ _SPECS: tuple[ModelSpec, ...] = (
         artifacts=_STUDENT_ARTIFACTS,
         hf_repo="qsh-satellite-opssat-ckks-student",
         runs_encrypted=True,
+        eval_split="the benchmark's own test partition, whole",
         notes=("19 columns is small enough to evaluate under CKKS as a single packed dot product, "
                "so the encrypted tier here runs on the published feature set rather than on a "
                "reduction of it - and it had room to spare. The student now fits over the QUADRATIC "
@@ -1047,6 +1081,7 @@ _SPECS: tuple[ModelSpec, ...] = (
         artifacts=(ArtifactSpec("onnx/model.onnx", "onnx", "fp32", "both"),
                    ArtifactSpec("feature_spec.json", "json", "none", "both")),
         hf_repo="qsh-telecom-qml-ids",
+        eval_split="the held-out quarter of the seed-42 stratified split, whole",
         notes="Shown as an architecture comparison against a random forest on identical data.",
     ),
     ModelSpec(
@@ -1064,6 +1099,7 @@ _SPECS: tuple[ModelSpec, ...] = (
         # point the browser -- which prefers int8 -- at a file that 404s at the pinned revision.
         artifacts=_ONNX_FP32_ONLY,
         hf_repo="qsh-telecom-5g-nidd-gbm",
+        eval_split="a per-class-floored draw from the held-out quarter of the seed-42 stratified split",
         notes=(
             "NETWORK-LAYER flow classification on real 5G traffic. This is a DIFFERENT TASK from "
             "the QKD-layer attack classifier on this same page, with zero overlap in label space "
@@ -1277,6 +1313,8 @@ def frontend_models() -> dict:
             "architecture": s.architecture,
             "params": s.params,
             "runs_encrypted": s.runs_encrypted,
+            "eval_sample_reason": s.eval_sample_reason or None,
+            "eval_split": s.eval_split or None,
             "hf_repo_id": s.hf_repo_id,
             "hf_revision": s.hf_revision,
             "hf_revision_stale": s.hf_revision_stale,

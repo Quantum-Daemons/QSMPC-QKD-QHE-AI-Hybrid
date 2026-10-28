@@ -26,13 +26,13 @@ that teacher rather than against the published literature.
 
 | metric | value |
 |---|---|
-| `agreement` | 0.998677 |
-| `disagreement_on_positives` | 0.142857 |
-| `metric_delta` | -0.003234 |
-| `metric_delta_pp` | -0.3234 |
+| `agreement` | 0.975641 |
+| `disagreement_on_positives` | 0.0 |
+| `metric_delta` | 0.0 |
+| `metric_delta_pp` | 0.0 |
 | `n_eval` | 307601 |
 | `n_scoring_units` | 2 |
-| `student_metric` | 0.003234 |
+| `student_metric` | 0.0 |
 | `student_params` | 49 |
 | `teacher_metric` | 0.0 |
 | `teacher_params` | 80486 |
@@ -54,7 +54,7 @@ Missions are anonymised Mission1/2/3 — they are not named Sentinel anything. M
 
 ## Notes and limitations
 
-The one published model with no browser evaluation sample, and the reason is the metric rather than the weights. Round 21 gave the other three students samples; this one is scored on event-wise F0.5, which is defined over contiguous runs of a timeline and cannot be computed from a shuffled set of independent rows -- which is exactly what the browser evaluator scores. Shipping a per-row metric instead would verify a number nobody published for it. It needs no scaler, unlike the other three: scripts/train/satellite_telemanom.py fits it on raw `flat_te` (the last 8 timesteps x 6 channels), so the absent `input` block in its weights.json is correct rather than the omission it looks like. Worth reading alongside its numbers: the teacher scores 0.0 event-wise F0.5 on this split and the student 0.0032, so agreement of 0.9987 is agreement about finding almost nothing.
+The one published model with no browser evaluation sample, and the reason is the metric rather than the weights. Round 21 gave the other three students samples; this one is scored on event-wise F0.5, which is defined over contiguous runs of a timeline and cannot be computed from a shuffled set of independent rows -- which is exactly what the browser evaluator scores. Shipping a per-row metric instead would verify a number nobody published for it. It needs no scaler, unlike the other three: scripts/train/satellite_telemanom.py fits it on raw `flat_te` (the last 8 timesteps x 6 channels), so the absent `input` block in its weights.json is correct rather than the omission it looks like. Worth reading alongside its numbers: since the Round 71 retrain the teacher and the student both score 0.0 event-wise F0.5 on this split, so their agreement is agreement about finding nothing, and there is no fidelity claim to make.
 
 ## Honest scope
 

@@ -60,6 +60,31 @@ def _base_rate(labels) -> float:
     return float(sum(labels) / max(1, len(labels)))
 
 
+def _separability(points) -> float:
+    """Joint two-feature AUC-PR over the SHIPPED points: a 5-fold cross-validated random forest,
+    200 trees, seed 0 - the estimator tests/test_the_separability_figure_reproduces.py states.
+
+    Computed rather than written in since Round 71. Finance's literal stopped describing its points
+    when they were redrawn from the held-out test window (0.2302 stated, 0.1269 on the new rows), and
+    satellite's had never been this estimator's (0.8492 stated, 0.8057 measured); a tolerance of 0.08
+    had admitted both, and on the new finance rows it would also have admitted the single-feature
+    reading the band exists to exclude.
+    """
+    from sklearn.ensemble import RandomForestClassifier
+    from sklearn.metrics import average_precision_score
+    from sklearn.model_selection import cross_val_predict
+
+    pts = np.asarray(points, dtype=float)
+    x, y = pts[:, :2], pts[:, 2].astype(int)
+    rf = RandomForestClassifier(n_estimators=200, random_state=0, n_jobs=-1)
+    return _round(average_precision_score(
+        y, cross_val_predict(rf, x, y, cv=5, method="predict_proba")[:, 1]))
+
+
+#: How the computed figure is described wherever a payload quotes it.
+SEPARABILITY_ESTIMATOR = "5-fold cross-validated two-feature random forest over these points"
+
+
 def satellite() -> dict:
     """OPS-SAT-AD test segments in the 2D projection that actually separates.
 
@@ -67,6 +92,10 @@ def satellite() -> dict:
     random forest on the benchmark's own train/test split; `n_peaks` x `diff2_peaks` won at
     AUC-PR 0.8492 against a 0.2136 base rate. Runners-up were n_peaks x diff_peaks (0.8208) and
     len x diff2_peaks (0.8014). Recorded here so the choice is checkable rather than asserted.
+
+    Those are the SELECTION figures, fitted on the train split and scored on test. The payload's
+    `separability_auc_pr` is a different estimator, the one every payload uses (`_separability`), and
+    until Round 71 it carried the selection figure under that estimator's name.
     """
     src = REPO / "data-full" / "raw" / "opssat" / "dataset.csv"
     if not src.exists():
@@ -75,6 +104,7 @@ def satellite() -> dict:
     df = pd.read_csv(src)
     te = df[df.train == 0]
     pts = [[_round(r.n_peaks), _round(r.diff2_peaks), int(r.anomaly)] for r in te.itertuples()]
+    sep, base = _separability(pts), _round(float(te.anomaly.mean()))
     return {
         "usecase": "satellite_comms",
         "corpus_is_synthetic": False,
@@ -89,11 +119,12 @@ def satellite() -> dict:
         "x": {"key": "n_peaks", "label": "peaks in segment"},
         "y": {"key": "diff2_peaks", "label": "peaks in 2nd difference"},
         "class_names": ["nominal", "anomalous"],
-        "separability_auc_pr": 0.8492,
-        "base_rate": _round(float(te.anomaly.mean())),
+        "separability_auc_pr": sep,
+        "base_rate": base,
         "note": "Chosen by scoring all 171 feature pairs on the benchmark split, not by eye. "
-                "AUC-PR 0.8492 against a base rate of 0.2136 - the classes genuinely separate in "
-                "this projection, which is what makes the model's decisions worth drawing on it.",
+                f"AUC-PR {sep} ({SEPARABILITY_ESTIMATOR}) against a base rate of {base} - the "
+                "classes genuinely separate in this projection, which is what makes the model's "
+                "decisions worth drawing on it.",
         "points": pts,
     }
 
@@ -159,17 +190,19 @@ def finance() -> dict:
     8192 points rendered as a few bands hard against the origin plus a lone outlier. A tree does not
     care how values are spaced; an eye does. Measured alternatives:
 
-        format_risk x src_bank_diversity     0.3195   unreadable (6 values, uneven)
-        src_fan_out_ratio x src_burst_fanout 0.2302   readable with a log y-axis   <- chosen
-        src_fan_out_ratio x dst_fan_in_ratio 0.0764   readable, barely separates
+        format_risk x src_bank_diversity     0.1400   unreadable (6 values, uneven)
+        src_fan_out_ratio x src_burst_fanout 0.1269   readable with a log y-axis   <- chosen
+        src_fan_out_ratio x dst_fan_in_ratio 0.1179   readable, barely separates
 
-    So this ships the middle one: the best lift-over-base-rate of the readable pairs, 848 and 37 distinct values,
-    and `src_burst_fanout` log-scaled because its 95th percentile is 7,801 against a maximum of
-    12,540. Class medians differ visibly on both axes - fan-out ratio 0.4865 for laundering against
-    0.0943 for legitimate.
+    Re-measured in Round 71 on the held-out rows the sample is now drawn from, with the causal
+    per-account features the model was trained on; on the old whole-corpus rows the three read
+    0.3195, 0.2302 and 0.0764 and the choice was the same. So this ships the middle one: the best of
+    the readable pairs, 1,656 and 40 distinct values, and `src_burst_fanout` log-scaled because its
+    95th percentile is 7,801 against a maximum of 12,538. Class medians differ visibly on both axes -
+    fan-out ratio 0.3333 for laundering against 0.1111 for legitimate.
 
-    0.23 is a low number and that is the honest picture: AML in two dimensions is hard, which is
-    consistent with this project's documented gap against published GFP+XGBoost rather than in
+    About 0.13 is a low number and that is the honest picture: AML in two dimensions is hard, which
+    is consistent with this project's documented gap against published GFP+XGBoost rather than in
     tension with it. A plot that made it look easy would be the misleading one.
 
     LICENCE NOTE: AMLworld is CDLA-Sharing-1.0, which is SHARE-ALIKE. This slice is a derived
@@ -186,12 +219,19 @@ def finance() -> dict:
     rows = d["samples"]
     labels = d["labels"]
     pts = [[_round(r[xi]), _round(r[yi]), int(t)] for r, t in zip(rows, labels, strict=True)]
+    sep, base = _separability(pts), _round(_base_rate(labels))
+    # The unreadable winner, scored the same way on the same rows, so the note's comparison is
+    # computed too.
+    fi, bi = names.index("format_risk"), names.index("src_bank_diversity")
+    rival = _separability([[_round(r[fi]), _round(r[bi]), int(t)]
+                           for r, t in zip(rows, labels, strict=True)])
     return {
         "usecase": "finance_aml",
         "corpus_is_synthetic": True,
         "is_training_corpus": True,
-        "provenance": "IBM AMLworld HI-Small - the exact held-out rows the browser scores, in the "
-                      "32-feature graph space the teacher consumes. Raw transaction fields are "
+        "provenance": "IBM AMLworld HI-Small - the exact rows the browser scores, a draw from the "
+                      "held-out temporal test window, in the 32-feature graph space the teacher "
+                      "consumes. Raw transaction fields are "
                       "deliberately not used: amount against time shows no separation and would "
                       "imply the task is impossible, when the signal is in the graph structure.",
         "licence": "CDLA-Sharing-1.0 (SHARE-ALIKE - this derived slice carries the same terms)",
@@ -202,30 +242,15 @@ def finance() -> dict:
         "x": {"key": "src_fan_out_ratio", "label": "source fan-out ratio"},
         "y": {"key": "src_burst_fanout", "label": "source burst fan-out", "scale": "log"},
         "class_names": ["legitimate", "laundering"],
-        # THE ESTIMATOR, stated because the number is a literal and without it the figure is
-        # unfalsifiable. Joint TWO-feature AUC-PR over the shipped points, 5-fold cross-validated
-        # random forest (200 trees, seed 0) - the same procedure for every payload carrying this
-        # field. Measured spread on these exact rows, which is why it matters:
-        #
-        #     single-feature rank AUC-PR   0.0566
-        #     RF 2D, 5-fold CV             0.2016   <- what this literal reports
-        #     RF 2D, in-sample             0.4378
-        #
-        # An unstated choice moves the answer by a factor of eight, and both alternatives are what a
-        # re-deriver would plausibly try first. `tests/test_the_separability_figure_reproduces.py`
-        # pins it and its band is checked to EXCLUDE the other two readings.
-        "separability_auc_pr": 0.2302,
-        "base_rate": _round(_base_rate(labels)),
-        # Both figures below are DERIVED from the same labels the base_rate field is derived from.
-        # They were hardcoded as "a 0.0173 base rate is a 13.3x lift" and went stale when the corpus
-        # was resampled: the computed field moved to 0.020020 and the sentence did not, so
-        # VerificationChart.tsx rendered two different base rates in one figcaption. A number quoted in
-        # prose beside the same number computed in a field is a duplicate, and this is which copy drifts.
-        "note": f"AUC-PR 0.2302 against a {_round(_base_rate(labels))} base rate is a "
-                f"{0.2302 / max(_base_rate(labels), 1e-12):.1f}x lift and still a LOW number. "
+        # COMPUTED by `_separability`, the estimator the reproduction gate states; it was a literal
+        # until Round 71 and went stale when the rows were redrawn from the test window.
+        "separability_auc_pr": sep,
+        "base_rate": base,
+        "note": f"AUC-PR {sep} ({SEPARABILITY_ESTIMATOR}) against a {base} base rate is a "
+                f"{sep / max(base, 1e-12):.1f}x lift and still a LOW number. "
                 "That is the honest picture - two features do not solve AML, and a projection that "
                 "looked easy would be the misleading one. NOT the highest-scoring pair available "
-                "(format_risk x src_bank_diversity reaches 0.3195) because that one has six "
+                f"(format_risk x src_bank_diversity reaches {rival}) because that one has six "
                 "distinct values and renders as bands against the origin: separability and "
                 "readability are different criteria and this chart needs both.",
         "points": pts,

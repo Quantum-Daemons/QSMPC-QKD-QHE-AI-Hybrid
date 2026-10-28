@@ -173,7 +173,20 @@ def _pipeline_tag(spec: registry.ModelSpec) -> str:
     return "tabular-classification"
 
 
-def publish(spec: registry.ModelSpec, *, private: bool, dry_run: bool, api) -> str | None:
+def stale_remote_files(remote: set[str], local: set[str]) -> list[str]:
+    """Files at the repo head that this upload would leave behind: on the Hub, not in the folder.
+
+    `upload_folder` adds and replaces and never deletes, so a file the local directory stopped
+    producing stays at the head of the repo indefinitely. Round 71 found one: ResNet-50's repo still
+    served an int8 graph quantised on 2026-08-09 from weights since replaced, while the
+    export_report.json beside it said int8 had been withheld and fp32 only was served. The browser
+    reads the report and never fetched it; anyone downloading from the Hub got another model's int8.
+    """
+    return sorted(remote - local - {".gitattributes"})
+
+
+def publish(spec: registry.ModelSpec, *, private: bool, dry_run: bool, api,
+            delete_stale: bool = False) -> str | None:
     if not spec.hf_repo:
         print(f"  {spec.key}: no hf_repo in the registry - skipping (publication intentionally withheld)")
         return None
@@ -211,6 +224,22 @@ def publish(spec: registry.ModelSpec, *, private: bool, dry_run: bool, api) -> s
         print(f"      [excluded] {p.relative_to(local)}  (matches the deny list; stays local)")
     print(f"      total to upload {total/1e6:.2f} MB")
 
+    # Checked BEFORE any upload, dry runs included, so a stale file is reported rather than shipped.
+    try:
+        remote = set(api.list_repo_files(spec.hf_repo_id, repo_type="model"))
+    except Exception:                                  # noqa: BLE001 - a repo not created yet
+        remote = set()
+    stale = stale_remote_files(remote, {str(p.relative_to(local)) for p in files})
+    for f in stale:
+        print(f"      [stale on the Hub] {f}  (not produced locally; "
+              f"{'deleted in this commit' if delete_stale else 'left in place'})")
+    if stale and not delete_stale and not dry_run:
+        raise SystemExit(
+            f"refusing to publish {spec.key}: the head of {spec.hf_repo_id} holds {stale}, which this "
+            "folder no longer produces, and upload_folder would leave them beside the new artefacts. "
+            "Re-run with --delete-stale to remove them in the same commit (earlier revisions keep "
+            "them), or restore them locally if they are meant to stay.")
+
     if dry_run:
         return None
 
@@ -233,6 +262,8 @@ def publish(spec: registry.ModelSpec, *, private: bool, dry_run: bool, api) -> s
         repo_id=spec.hf_repo_id,
         repo_type="model",
         ignore_patterns=list(DENY),
+        # Exact paths, never a wildcard: only what the check above named and printed is removed.
+        delete_patterns=stale if delete_stale and stale else None,
         commit_message=f"{spec.label}: artefacts + measured metrics",
     )
     info = api.model_info(spec.hf_repo_id)
@@ -277,6 +308,8 @@ def main() -> int:
     ap.add_argument("--key", action="append", help="model key(s); default = everything trained")
     ap.add_argument("--public", action="store_true", help="publish publicly (irreversible grant)")
     ap.add_argument("--dry-run", action="store_true")
+    ap.add_argument("--delete-stale", action="store_true",
+                    help="remove files at the repo head that the local folder no longer produces")
     args = ap.parse_args()
 
     os.environ.setdefault("HF_XET_HIGH_PERFORMANCE", "1")
@@ -297,7 +330,8 @@ def main() -> int:
 
     revisions = {}
     for key in keys:
-        sha = publish(registry.get(key), private=not args.public, dry_run=args.dry_run, api=api)
+        sha = publish(registry.get(key), private=not args.public, dry_run=args.dry_run, api=api,
+                      delete_stale=args.delete_stale)
         if sha:
             revisions[key] = sha
 
