@@ -87,10 +87,12 @@ on this one, at 0.00965987 uncalibrated), ECE(20) 0.00183223 -> 0.00078864, CORP
 1.1782e-05. AUROC and AUPRC are unchanged to ten decimals, as they must be for any strictly monotone
 map. The output support is [1.680e-07, 0.988628] rather than [0.00090148, 0.695715].
 
-Separately: no page here may draw a reliability DIAGRAM. Riley et al. (Stat Med 2021,
-doi:10.1002/sim.9025) put the floor for a flexible calibration curve at about 200 events; nothing
-here clears it and medical does not clear 100. That rule is already recorded in the project and this
-module does not relax it.
+Separately: no page here may draw a reliability DIAGRAM. Van Calster et al. (J Clin Epidemiol 2016,
+doi:10.1016/j.jclinepi.2015.12.005) ask for at least 200 events and 200 non-events before a flexible
+calibration curve, and Riley et al. (Stat Med 2021, doi:10.1002/sim.9025) show such rules of thumb
+can still be too few; no sample the browser scores clears it and medical does not clear 100. That
+rule is already recorded in the project and this module does not relax it. The browser enforces it
+since Round 74 (web/src/lib/calibration.ts); a chart added in Round 51 had ignored it.
 
 But "no diagram" is not "no calibration", and that is the gap this closes. The CORP decomposition
 (Dimitriadis, Gneiting and Jordan, arXiv:2008.03033, PNAS 118 e2016191118) yields SCALAR miscalibration
@@ -325,10 +327,10 @@ def corp_decomposition(probs: np.ndarray, labels: np.ndarray) -> dict:
 def wilson_interval(successes: int, n: int, *, z: float = 1.959963985) -> tuple[float, float]:
     """Wilson score interval for a proportion. Defensible at the sample sizes here.
 
-    Riley's >=200-events floor rules out a flexible calibration CURVE. It does not rule out an
-    interval on a proportion, and this project prints accuracies to seven decimals against a measured
-    seed standard deviation of about 0.02 - five of those digits are noise, and an interval is the
-    honest replacement.
+    The 200-events floor (Van Calster et al. 2016) rules out a flexible calibration CURVE. It does
+    not rule out an interval on a proportion, and this project prints accuracies to seven decimals
+    against a measured seed standard deviation of about 0.02 - five of those digits are noise, and
+    an interval is the honest replacement.
     """
     if n <= 0:
         raise ValueError("n must be positive")

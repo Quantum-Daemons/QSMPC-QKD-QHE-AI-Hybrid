@@ -3163,3 +3163,50 @@ in prose is followed by whoever happens to remember it. It is now a gate.
 
 **The duplicate was also mine.** The Round 70 re-check entered a survey that `REFERENCES.md` already
 cited, because the search before adding it looked for the claim and not for the paper.
+
+### Round 74: a count that looked at the wrong code, and a fix that made a failure
+
+**Context.** The oldest-first audit, continued: the accessibility rows, last measured on 2026-08-15.
+
+**The Escape handler was there all along.** The checklist had counted handlers in this repository and
+found none, so it recorded the tooltip as not dismissible. The handler lives in recharts. A count of
+the code that is ours answers a question about our code; the criterion is about what the page does.
+Pressing the key on the deployed page answered it in one step, and in the same step showed the defect
+nobody had looked for: the tooltip stays open after Tab moves on.
+
+**A scripted focus is not a key press.** `element.focus()` did not open a chart's tooltip, and a real
+ArrowRight did. The first reading, made with scripted events, would have recorded the keyboard path
+as broken.
+
+**My contrast fix measured one neighbour and broke another.** The histogram's negative class was
+lightened until it passed against the card, and that took it to 1.10:1 against the stacked segment it
+sits on. I found it only because the record needed the numbers against every adjacent colour. The
+gate now checks stacked segments against each other.
+
+**The heading item had been held open by the fixes that were considered.** Both changed visual
+weight. Hidden section headings change nothing on screen, and were available the whole time.
+
+**A caption typo led to the round's real finding.** "0.644against" was a JSX line break, and it was
+worth a gate on its own. On the medical page the same caption said "predicted -5.471", which no
+probability can be. The chart had been binning logits, and it should not have existed on any binary
+page, by a rule this project wrote down in three places and enforced in none. A rule recorded as
+prose was correct for two months while a chart contradicted it on every visit. The fix that mattered
+was the enforcement, not the conversion.
+
+**The citation was the second layer of the same thing.** The rule was right and its source was not:
+Riley et al. is the paper that says the rule of thumb can be too small, not the paper that sets it.
+It had been marked METADATA-ONLY from the start, which is accurate, and nobody had gone back.
+
+**One of my checks was wrong before the model was.** A first pass suggested the medical student
+predicted one class for everything. It did not: my script applied the ResNet preprocessing to the
+student, which takes no preprocessing. With each sample's own steps, all three accuracies reproduce
+their records exactly. Reading the preprocessing from the sample, as the browser does, is the only
+way to run these graphs.
+
+**I committed a fix for the wrong cause, and the probe that disproved it found the real one.** A
+console 404 after a run looked like a debugger fetching a source map the build names and does not
+ship. I fixed that and deployed. A fresh tab then showed no error at all: the 404 was an old entry in
+a long-used tab, the exact trap checklist row RS16 describes. Checking whether the map path could
+404 showed that nothing on the site could - every missing file came back as the app shell with a 200.
+The lesson is the order: reproduce in a clean context before explaining, and test the explanation's
+own premise before shipping it.

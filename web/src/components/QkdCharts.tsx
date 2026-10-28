@@ -6,6 +6,7 @@ import {
 import { api } from "../lib/api";
 import { qkdCfg, securityScoringCfg } from "../lib/config";
 import { bb84, e91, FIBER, FREE_SPACE, freeSpaceLink, h2, qsdcLink } from "../lib/quantumSim";
+import { ChartReadout, HINT_KEYBOARD, ReadoutTooltip } from "./ChartReadout";
 
 /**
  * Model curves for the simulated quantum channel - what the page's single-run numbers look like across
@@ -39,19 +40,21 @@ export function EveSweepChart({ distanceKm }: { distanceKm: number }) {
         threshold, and the secure key reaches zero, as the intercept-resend fraction grows. Her disturbance
         is composed with the channel's own error, not added to it.
       </figcaption>
-      <ResponsiveContainer width="100%" height={240}>
-        <LineChart data={rows} accessibilityLayer title="QBER and secure key bits against the eavesdropper fraction, simulated BB84" margin={{ top: 8, right: 16, bottom: 18, left: 4 }}>
-          {grid}
-          <XAxis dataKey="eve" tick={tick} label={{ value: "Eve intercept fraction", position: "insideBottom", offset: -8, fill: "var(--muted)", fontSize: 11 }} />
-          <YAxis yAxisId="q" tick={tick} domain={[0, 0.3]} label={{ value: "QBER", angle: -90, position: "insideLeft", fill: "var(--muted)", fontSize: 11 }} />
-          <YAxis yAxisId="b" orientation="right" tick={tick} label={{ value: "secure bits", angle: 90, position: "insideRight", fill: "var(--muted)", fontSize: 11 }} />
-          <Tooltip contentStyle={{ background: "var(--panel)", border: "1px solid var(--border)" }} />
-          <Legend verticalAlign="top" wrapperStyle={{ fontSize: 11 }} />
-          <ReferenceLine yAxisId="q" y={threshold} stroke="var(--danger)" strokeDasharray="4 3" label={{ value: `abort ${threshold}`, fill: "var(--danger)", fontSize: 10, position: "insideTopRight" }} />
-          <Line yAxisId="q" type="monotone" dataKey="qber" name="QBER (sampled)" stroke="var(--warn)" dot strokeWidth={2} isAnimationActive={false} />
-          <Line yAxisId="b" type="monotone" dataKey="bits" name="secure key bits" stroke="var(--accent-2)" dot strokeWidth={2} isAnimationActive={false} />
-        </LineChart>
-      </ResponsiveContainer>
+      <ChartReadout hint={HINT_KEYBOARD}>
+        <ResponsiveContainer width="100%" height={240}>
+          <LineChart data={rows} accessibilityLayer title="QBER and secure key bits against the eavesdropper fraction, simulated BB84" margin={{ top: 8, right: 16, bottom: 18, left: 4 }}>
+            {grid}
+            <XAxis dataKey="eve" tick={tick} label={{ value: "Eve intercept fraction", position: "insideBottom", offset: -8, fill: "var(--muted)", fontSize: 11 }} />
+            <YAxis yAxisId="q" tick={tick} domain={[0, 0.3]} label={{ value: "QBER", angle: -90, position: "insideLeft", fill: "var(--muted)", fontSize: 11 }} />
+            <YAxis yAxisId="b" orientation="right" tick={tick} label={{ value: "secure bits", angle: 90, position: "insideRight", fill: "var(--muted)", fontSize: 11 }} />
+            <Tooltip content={<ReadoutTooltip labelName="Eve intercept fraction" />} />
+            <Legend verticalAlign="top" wrapperStyle={{ fontSize: 11 }} />
+            <ReferenceLine yAxisId="q" y={threshold} stroke="var(--danger)" strokeDasharray="4 3" label={{ value: `abort ${threshold}`, fill: "var(--danger)", fontSize: 10, position: "insideTopRight" }} />
+            <Line yAxisId="q" type="monotone" dataKey="qber" name="QBER (sampled)" stroke="var(--warn)" dot strokeWidth={2} isAnimationActive={false} />
+            <Line yAxisId="b" type="monotone" dataKey="bits" name="secure key bits" stroke="var(--accent-2)" dot strokeWidth={2} isAnimationActive={false} />
+          </LineChart>
+        </ResponsiveContainer>
+      </ChartReadout>
     </figure>
   );
 }
@@ -90,17 +93,19 @@ export function FibreDistanceCharts({ misalignment, eve }: { misalignment: numbe
             multi-photon fraction exceeds the detection probability - so no second curve appears: the decoy
             states carry the whole link.</>}
         </figcaption>
-        <ResponsiveContainer width="100%" height={230}>
-          <LineChart data={rows} accessibilityLayer title="BB84 secret-key rate per pulse against fibre length, with and without decoy states" margin={{ top: 8, right: 12, bottom: 18, left: 4 }}>
-            {grid}
-            <XAxis dataKey="km" tick={tick} label={{ value: "fibre (km)", position: "insideBottom", offset: -8, fill: "var(--muted)", fontSize: 11 }} />
-            <YAxis tick={tick} scale="log" domain={[1e-6, 1e-1]} allowDataOverflow tickFormatter={(v: number) => v.toExponential(0)} />
-            <Tooltip contentStyle={{ background: "var(--panel)", border: "1px solid var(--border)" }} formatter={(v: number) => v.toExponential(3)} />
-            <Legend verticalAlign="top" wrapperStyle={{ fontSize: 11 }} />
-            <Line type="monotone" dataKey="decoy" name="decoy-state bound" stroke="var(--accent-2)" dot={false} strokeWidth={2} isAnimationActive={false} />
-            <Line type="monotone" dataKey="nodecoy" name="without decoy states" stroke="var(--warn)" dot={false} strokeWidth={2} strokeDasharray="5 4" isAnimationActive={false} />
-          </LineChart>
-        </ResponsiveContainer>
+        <ChartReadout hint={HINT_KEYBOARD}>
+          <ResponsiveContainer width="100%" height={230}>
+            <LineChart data={rows} accessibilityLayer title="BB84 secret-key rate per pulse against fibre length, with and without decoy states" margin={{ top: 8, right: 12, bottom: 18, left: 4 }}>
+              {grid}
+              <XAxis dataKey="km" tick={tick} label={{ value: "fibre (km)", position: "insideBottom", offset: -8, fill: "var(--muted)", fontSize: 11 }} />
+              <YAxis tick={tick} scale="log" domain={[1e-6, 1e-1]} allowDataOverflow tickFormatter={(v: number) => v.toExponential(0)} />
+              <Tooltip content={<ReadoutTooltip labelName="fibre (km)" />} formatter={(v: number) => v.toExponential(3)} />
+              <Legend verticalAlign="top" wrapperStyle={{ fontSize: 11 }} />
+              <Line type="monotone" dataKey="decoy" name="decoy-state bound" stroke="var(--accent-2)" dot={false} strokeWidth={2} isAnimationActive={false} />
+              <Line type="monotone" dataKey="nodecoy" name="without decoy states" stroke="var(--warn)" dot={false} strokeWidth={2} strokeDasharray="5 4" isAnimationActive={false} />
+            </LineChart>
+          </ResponsiveContainer>
+        </ChartReadout>
       </figure>
       <figure className="chart-figure">
         <figcaption className="small muted">
@@ -108,19 +113,21 @@ export function FibreDistanceCharts({ misalignment, eve }: { misalignment: numbe
           rate is already zero below S = {sDd.toFixed(3)}, and a device-independent analysis at the same
           f = {fEC} would need S &gt; {sDi.toFixed(3)}.
         </figcaption>
-        <ResponsiveContainer width="100%" height={230}>
-          <LineChart data={rows} accessibilityLayer title="E91 CHSH value against fibre length, with the S = 2, zero-key and device-independent thresholds" margin={{ top: 8, right: 12, bottom: 18, left: 4 }}>
-            {grid}
-            <XAxis dataKey="km" tick={tick} label={{ value: "fibre (km)", position: "insideBottom", offset: -8, fill: "var(--muted)", fontSize: 11 }} />
-            <YAxis tick={tick} domain={[1.8, 2.9]} />
-            <Tooltip contentStyle={{ background: "var(--panel)", border: "1px solid var(--border)" }} />
-            <ReferenceLine y={2 * Math.SQRT2} stroke="var(--muted)" strokeDasharray="2 3" label={{ value: "Tsirelson 2.828", fill: "var(--muted)", fontSize: 10, position: "insideTopLeft" }} />
-            <ReferenceLine y={sDi} stroke="var(--accent)" strokeDasharray="4 3" label={{ value: `device-independent ${sDi.toFixed(3)}`, fill: "var(--accent)", fontSize: 10, position: "insideTopLeft" }} />
-            <ReferenceLine y={sDd} stroke="var(--warn)" strokeDasharray="4 3" label={{ value: `zero key ${sDd.toFixed(3)}`, fill: "var(--warn)", fontSize: 10, position: "insideTopLeft" }} />
-            <ReferenceLine y={2} stroke="var(--danger)" strokeDasharray="4 3" label={{ value: "S = 2", fill: "var(--danger)", fontSize: 10, position: "insideBottomLeft" }} />
-            <Line type="monotone" dataKey="s" name="CHSH S" stroke="var(--quantum)" dot={false} strokeWidth={2} isAnimationActive={false} />
-          </LineChart>
-        </ResponsiveContainer>
+        <ChartReadout hint={HINT_KEYBOARD}>
+          <ResponsiveContainer width="100%" height={230}>
+            <LineChart data={rows} accessibilityLayer title="E91 CHSH value against fibre length, with the S = 2, zero-key and device-independent thresholds" margin={{ top: 8, right: 12, bottom: 18, left: 4 }}>
+              {grid}
+              <XAxis dataKey="km" tick={tick} label={{ value: "fibre (km)", position: "insideBottom", offset: -8, fill: "var(--muted)", fontSize: 11 }} />
+              <YAxis tick={tick} domain={[1.8, 2.9]} />
+              <Tooltip content={<ReadoutTooltip labelName="fibre (km)" />} />
+              <ReferenceLine y={2 * Math.SQRT2} stroke="var(--muted)" strokeDasharray="2 3" label={{ value: "Tsirelson 2.828", fill: "var(--muted)", fontSize: 10, position: "insideTopLeft" }} />
+              <ReferenceLine y={sDi} stroke="var(--accent)" strokeDasharray="4 3" label={{ value: `device-independent ${sDi.toFixed(3)}`, fill: "var(--accent)", fontSize: 10, position: "insideTopLeft" }} />
+              <ReferenceLine y={sDd} stroke="var(--warn)" strokeDasharray="4 3" label={{ value: `zero key ${sDd.toFixed(3)}`, fill: "var(--warn)", fontSize: 10, position: "insideTopLeft" }} />
+              <ReferenceLine y={2} stroke="var(--danger)" strokeDasharray="4 3" label={{ value: "S = 2", fill: "var(--danger)", fontSize: 10, position: "insideBottomLeft" }} />
+              <Line type="monotone" dataKey="s" name="CHSH S" stroke="var(--quantum)" dot={false} strokeWidth={2} isAnimationActive={false} />
+            </LineChart>
+          </ResponsiveContainer>
+        </ChartReadout>
       </figure>
     </div>
   );
@@ -147,20 +154,22 @@ export function QsdcRangeChart({ eve, atmosphericDb, pointingDb }: { eve: number
         and no LEO slant range is short enough. The axis is zoomed to the zero crossing; values below -6
         run off the bottom.
       </figcaption>
-      <ResponsiveContainer width="100%" height={240}>
-        <LineChart data={rows} accessibilityLayer title="QSDC secrecy capacity against downlink range, at this page's budget and with zero fixed loss" margin={{ top: 8, right: 16, bottom: 18, left: 4 }}>
-          {grid}
-          <XAxis dataKey="km" tick={tick} label={{ value: "slant range (km)", position: "insideBottom", offset: -8, fill: "var(--muted)", fontSize: 11 }} />
-          {/* Zoomed to the zero crossing, where the finding is: values below -6 run off the bottom. */}
-          <YAxis tick={tick} domain={[-6, 0.5]} allowDataOverflow />
-          <Tooltip contentStyle={{ background: "var(--panel)", border: "1px solid var(--border)" }} formatter={(v: number) => v.toFixed(4)} />
-          <Legend verticalAlign="top" wrapperStyle={{ fontSize: 11 }} />
-          <ReferenceLine y={0} stroke="var(--danger)" strokeDasharray="4 3" label={{ value: "C_s = 0", fill: "var(--danger)", fontSize: 10, position: "insideTopRight" }} />
-          {eve > 0 && <Line type="monotone" dataKey="run" name={`this budget, Eve ${eve}`} stroke="var(--warn)" dot={false} strokeWidth={2} isAnimationActive={false} />}
-          <Line type="monotone" dataKey="clean" name="this budget, no eavesdropper" stroke="var(--accent)" dot={false} strokeWidth={2} isAnimationActive={false} />
-          <Line type="monotone" dataKey="zero" name="0 + 0 dB fixed loss, no eavesdropper" stroke="var(--accent-2)" dot={false} strokeWidth={2} strokeDasharray="5 4" isAnimationActive={false} />
-        </LineChart>
-      </ResponsiveContainer>
+      <ChartReadout hint={HINT_KEYBOARD}>
+        <ResponsiveContainer width="100%" height={240}>
+          <LineChart data={rows} accessibilityLayer title="QSDC secrecy capacity against downlink range, at this page's budget and with zero fixed loss" margin={{ top: 8, right: 16, bottom: 18, left: 4 }}>
+            {grid}
+            <XAxis dataKey="km" tick={tick} label={{ value: "slant range (km)", position: "insideBottom", offset: -8, fill: "var(--muted)", fontSize: 11 }} />
+            {/* Zoomed to the zero crossing, where the finding is: values below -6 run off the bottom. */}
+            <YAxis tick={tick} domain={[-6, 0.5]} allowDataOverflow />
+            <Tooltip content={<ReadoutTooltip labelName="slant range (km)" />} formatter={(v: number) => v.toFixed(4)} />
+            <Legend verticalAlign="top" wrapperStyle={{ fontSize: 11 }} />
+            <ReferenceLine y={0} stroke="var(--danger)" strokeDasharray="4 3" label={{ value: "C_s = 0", fill: "var(--danger)", fontSize: 10, position: "insideTopRight" }} />
+            {eve > 0 && <Line type="monotone" dataKey="run" name={`this budget, Eve ${eve}`} stroke="var(--warn)" dot={false} strokeWidth={2} isAnimationActive={false} />}
+            <Line type="monotone" dataKey="clean" name="this budget, no eavesdropper" stroke="var(--accent)" dot={false} strokeWidth={2} isAnimationActive={false} />
+            <Line type="monotone" dataKey="zero" name="0 + 0 dB fixed loss, no eavesdropper" stroke="var(--accent-2)" dot={false} strokeWidth={2} strokeDasharray="5 4" isAnimationActive={false} />
+          </LineChart>
+        </ResponsiveContainer>
+      </ChartReadout>
     </figure>
   );
 }

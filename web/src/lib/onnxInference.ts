@@ -57,6 +57,7 @@ function loadOrt(useWebGPU: boolean): Promise<typeof OrtTypes> {
 }
 
 import { modelsFor, type ModelSpec, webCfg } from "./config";
+import { calibrationWithheld, outputKind, reliabilityBins, toProbabilities } from "./calibration";
 
 /** WASM unless a caller passes "webgpu": the visitor's selection, never the adapter's existence. */
 export const DEFAULT_ONNX_BACKEND = webCfg().onnx_default_backend as OnnxBackend;
@@ -548,6 +549,11 @@ export interface ModelEvalResult {
     reliability?: Array<{ p: number; observed: number; n: number }>;
     /** What `reliability` bins: "p(positive)" for binary, "winning-class confidence" otherwise. */
     reliabilityOf?: string;
+    /** "logits" when the graph emits logits and the binned probabilities are their softmax (or
+     *  sigmoid), so the caption can say so; "probabilities" when the graph emits them itself. */
+    reliabilityFrom?: "probabilities" | "logits";
+    /** Why no reliability chart is drawn, when the graph's output does not say what it is. */
+    reliabilityWithheld?: string;
   };
 }
 
@@ -614,35 +620,6 @@ function applyPreprocessing(v: number, steps: string[]): number {
  * a missing normalisation step silently turned 0.8782 into 0.4615 with no error anywhere; this is
  * the guard against shipping that class of mistake to a visitor.
  */
-/** Equal-WIDTH probability bins: mean predicted probability against observed frequency.
- *
- * Equal-width rather than equal-frequency (deciles) on purpose. Equal-frequency bins hide exactly
- * the failure this plot exists to show: when a calibrator collapses most of its output onto one
- * value - which is what Round 50 found `fit_platt` doing, returning 0.00090148 for nine of finance's
- * ten deciles - equal-frequency binning spreads that constant across ten x-positions and draws a
- * plausible curve. Equal-width binning puts every one of those rows in a single bin and the collapse
- * is the thing you see.
- *
- * Empty bins are dropped rather than plotted at zero: a bin with no rows has no observed frequency,
- * and drawing 0 there would read as "predicted high, observed never".
- */
-function reliabilityBins(
-  n: number, prob: (i: number) => number, hit: (i: number) => boolean, bins = 12,
-): Array<{ p: number; observed: number; n: number }> {
-  const sum = new Float64Array(bins), obs = new Float64Array(bins), cnt = new Int32Array(bins);
-  for (let i = 0; i < n; i++) {
-    const p = prob(i);
-    if (!Number.isFinite(p)) continue;
-    const b = Math.min(bins - 1, Math.max(0, Math.floor(p * bins)));
-    sum[b] += p; cnt[b] += 1; if (hit(i)) obs[b] += 1;
-  }
-  const out: Array<{ p: number; observed: number; n: number }> = [];
-  for (let b = 0; b < bins; b++) {
-    if (cnt[b] > 0) out.push({ p: sum[b] / cnt[b], observed: obs[b] / cnt[b], n: cnt[b] });
-  }
-  return out;
-}
-
 export async function evaluatePublishedModel(
   usecase: string, tolerance = 0.05, modelKey?: string, backend: OnnxBackend = DEFAULT_ONNX_BACKEND,
 ): Promise<ModelEvalResult | null> {
@@ -714,8 +691,9 @@ export async function evaluatePublishedModel(
     const t = new ortRuntime!.Tensor("float32", flat, [n, ...dims]);
     const out = await session.run({ [session.inputNames[0]]: t });
     const outputs = session.outputNames.map((k) => out[k]);
-    const scores = outputs.find((o) => o && o.type === "float32" && (o.dims?.length ?? 0) >= 2)
-      ?? outputs[0];
+    const found = outputs.findIndex((o) => o && o.type === "float32" && (o.dims?.length ?? 0) >= 2);
+    const scores = outputs[found >= 0 ? found : 0];
+    const scoresName = session.outputNames[found >= 0 ? found : 0];
     const data = scores.data as Float32Array;
     const width = Math.max(1, Math.floor(data.length / n));
 
@@ -756,6 +734,15 @@ export async function evaluatePublishedModel(
     }
 
     const labels = file.labels ?? [];
+    // What the scores ARE, from the graph's own output name (calibration.ts). Probabilities are
+    // needed by the decision threshold and the reliability chart; the argmax, the ranking and the
+    // histogram are the same on logits and need neither.
+    const kind = outputKind(scoresName);
+    const prob = kind ? toProbabilities(data, n, width, kind) : null;
+    if (thr != null && !prob) {
+      throw new Error(`the graph's score output is named "${scoresName}", which says neither `
+        + `probabilities nor logits, so the decision threshold ${thr} cannot be applied to it`);
+    }
     // Retained rather than consumed in place: macro F1 needs a second pass over the predictions,
     // and recomputing the argmax there would be a second chance to compute it differently.
     const preds = new Int32Array(n);
@@ -764,8 +751,8 @@ export async function evaluatePublishedModel(
       let best = 0;
       for (let c = 1; c < width; c++) if (data[i * width + c] > data[i * width + best]) best = c;
       // At the published operating point when there is one, so the figure is the model as operated.
-      const pred = thr != null && width === 2 ? (data[i * 2 + 1] >= thr ? 1 : 0)
-        : width > 1 ? best : (data[i] > (thr ?? 0.5) ? 1 : 0);
+      const pred = thr != null && width === 2 ? (prob![i * 2 + 1] >= thr ? 1 : 0)
+        : width > 1 ? best : ((prob ? prob[i] : data[i]) > (thr ?? 0.5) ? 1 : 0);
       preds[i] = pred;
       if (pred === labels[i]) correct++;
       if (labels[i] === 1) positives++;
@@ -805,14 +792,20 @@ export async function evaluatePublishedModel(
       }
       // Reliability. `positiveScore` is a DIFFERENCE when the graph emits per-class scores, and a
       // difference is not a probability - binning it against an observed frequency would compare two
-      // different things on one axis, which is the defect this round already found in the companion
-      // caption and in the baseline-on-a-foreign-axis question. So take the probability directly:
-      // column 1 is P(positive) for a two-column classifier output, and the single column already is
-      // one when the graph emits a lone sigmoid.
-      const pPos = (i: number) => (width > 1 ? data[i * width + 1] : data[i]);
-      plot = { kind: "pr-curve", pr, hist,
-               reliability: reliabilityBins(n, pPos, (i) => labels[i] === 1),
-               reliabilityOf: "p(positive)" };
+      // different things on one axis. So take the probability: column 1 of `prob`, which is the
+      // graph's own output when it emits probabilities and their softmax when it emits logits. Until
+      // Round 74 this read column 1 of the raw output, and the medical pages binned logits.
+      // PP8: no curve below 200 events or 200 non-events (calibration.ts). Every binary sample
+      // published today is below it, so this draws nothing and says why.
+      const withheld = !prob
+        ? `the graph's score output is named "${scoresName}", which says neither probabilities nor logits`
+        : calibrationWithheld(positives, n - positives, "positives", "negatives");
+      plot = withheld || !prob
+        ? { kind: "pr-curve", pr, hist, reliabilityWithheld: withheld ?? undefined }
+        : { kind: "pr-curve", pr, hist,
+            reliability: reliabilityBins(n, (i) => (width > 1 ? prob[i * width + 1] : prob[i]),
+                                         (i) => labels[i] === 1),
+            reliabilityOf: "p(positive)", reliabilityFrom: kind! };
     } else {
       const perClass: Array<{ label: string; f1: number }> = [];
       for (let c = 0; c < nClasses; c++) {
@@ -830,13 +823,19 @@ export async function evaluatePublishedModel(
       // of a different quantity, so it is labelled differently where it renders rather than being
       // silently pooled with the binary case.
       const conf = (i: number) => {
-        let m = data[i * width];
-        for (let c = 1; c < width; c++) if (data[i * width + c] > m) m = data[i * width + c];
+        let m = prob![i * width];
+        for (let c = 1; c < width; c++) if (prob![i * width + c] > m) m = prob![i * width + c];
         return m;
       };
-      plot = { kind: "per-class-f1", perClass,
-               reliability: reliabilityBins(n, conf, (i) => preds[i] === labels[i]),
-               reliabilityOf: "winning-class confidence" };
+      // PP8 for the winning-class question: its events are the wrong predictions.
+      const withheld = !prob
+        ? `the graph's score output is named "${scoresName}", which says neither probabilities nor logits`
+        : calibrationWithheld(n - correct, correct, "wrong predictions", "right ones");
+      plot = withheld || !prob
+        ? { kind: "per-class-f1", perClass, reliabilityWithheld: withheld ?? undefined }
+        : { kind: "per-class-f1", perClass,
+            reliability: reliabilityBins(n, conf, (i) => preds[i] === labels[i]),
+            reliabilityOf: "winning-class confidence", reliabilityFrom: kind! };
     }
 
     // Score on the metric the model was PUBLISHED with. Three of the four distilled students record
@@ -1039,8 +1038,9 @@ export async function runPublishedModel(
     const latencyMs = performance.now() - ran;
 
     const outputs = session.outputNames.map((k) => out[k]);
-    const scores = outputs.find((o) => o && o.type === "float32" && (o.dims?.length ?? 0) >= 2)
-      ?? outputs[0];
+    const found = outputs.findIndex((o) => o && o.type === "float32" && (o.dims?.length ?? 0) >= 2);
+    const scores = outputs[found >= 0 ? found : 0];
+    const scoresKind = outputKind(session.outputNames[found >= 0 ? found : 0]);
     const logits = Array.from(scores.data as Float32Array);
     const task = file.task ?? "classification";
 
@@ -1063,10 +1063,16 @@ export async function runPublishedModel(
       for (let c = 1; c < logits.length; c++) {
         if (logits[c] > logits[predictedClass]) predictedClass = c;
       }
-      // The operating point the whole-sample verification uses, so the one row agrees with it.
+      // The operating point the whole-sample verification uses, applied to the same probabilities
+      // (calibration.ts), so the one row agrees with it whether the graph emits logits or not.
       const thr = file.expected.decision_threshold;
-      if (thr != null && logits.length === 2) predictedClass = logits[1] >= thr ? 1 : 0;
-      if (logits.length === 1) predictedClass = logits[0] > (thr ?? 0.5) ? 1 : 0;
+      const p = scoresKind ? toProbabilities(logits, 1, logits.length, scoresKind) : null;
+      if (thr != null && !p) {
+        throw new Error("the graph's score output says neither probabilities nor logits, so the "
+          + `decision threshold ${thr} cannot be applied to it`);
+      }
+      if (thr != null && logits.length === 2) predictedClass = p![1] >= thr ? 1 : 0;
+      if (logits.length === 1) predictedClass = (p ? p[0] : logits[0]) > (thr ?? 0.5) ? 1 : 0;
     }
 
     return {

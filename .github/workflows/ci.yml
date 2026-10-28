@@ -226,9 +226,24 @@ jobs:
         working-directory: web
         run: npx tsc --noEmit
 
+      # A line break in JSX text is dropped where it meets a value or an inline element, so wrapped
+      # prose renders glued: the calibration caption read "at predicted 0.644against observed" on the
+      # deployed page, with tsc and the build green. Round 74. Parsed with the TypeScript compiler,
+      # so `{" "}` and a space kept inside the next node are both recognised.
+      - name: JSX text keeps its spaces at line breaks
+        working-directory: web
+        run: npm run check:jsx-spaces
+
       - name: Build
         working-directory: web
         run: npm run build
+
+      # A copied asset kept `//# sourceMappingURL=gif.worker.js.map` with no map beside it, so the
+      # build named a file it does not ship. Round 74. Reads the build output, not the config that is
+      # meant to prevent it.
+      - name: No built file names a source map the build does not ship
+        working-directory: web
+        run: npm run check:source-maps
 
       # FIPS 203 section 7.2 negative vectors (2,595 malformed encapsulation keys) plus FIPS 204
       # sizes and a sign/verify round trip. Reads the vendored CC0 snapshot in web/scripts/vectors,
@@ -283,6 +298,15 @@ jobs:
       - name: QCNN cost metrics at every site claiming the backend
         working-directory: web
         run: npm run check:qcnn-metrics
+
+      # The reliability chart binned the raw output as P(positive), and the three medical models
+      # emit logits: every medical page drew a calibration chart of logits reporting "predicted
+      # -5.471", while tsc, the build and the argmax verdict stayed green. Round 74. Asserts the
+      # conversion, that the binning refuses a non-probability, and that both readers of a graph
+      # take its meaning from the output's name.
+      - name: A model's output becomes a probability before it is binned as one
+        working-directory: web
+        run: npm run check:calibration
 
       # The "combiner vectors are regenerated" check is deliberately NOT in this job. It runs
       # `python`, this job installs only Node, and it failed with ModuleNotFoundError the first time

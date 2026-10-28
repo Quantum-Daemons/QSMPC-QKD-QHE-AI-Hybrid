@@ -19,7 +19,7 @@ export default function App() {
       <a className="skip-link" href="#main">Skip to main content</a>
       <aside className="sidebar">
         <div className="brand">
-          QSH
+          QSH{" "}
           <small>Quantum-Safe Hybrid<br />QKD · QSMPC · QHE/FHE · AI</small>
         </div>
         <nav className="nav">

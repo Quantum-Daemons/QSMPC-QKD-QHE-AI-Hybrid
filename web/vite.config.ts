@@ -21,13 +21,33 @@ const crossOriginIsolation = {
   },
 };
 
+// A copied asset keeps its `//# sourceMappingURL=` comment, and the map is not copied with it:
+// `gif.js/dist/gif.worker.js?url` arrives verbatim and names `gif.worker.js.map`, a file the build
+// does not ship. Any open DevTools asks for it, and until Round 74 the server answered every missing
+// path with index.html, so it was handed HTML where a map belongs. Visitors are not affected. The
+// comment is dropped from emitted assets, so nothing names a file that is not served. (A console
+// 404 in the Round 74 walk was first blamed on this; it was not - see the register.)
+const dropDanglingSourceMapComments = {
+  name: "drop-dangling-source-map-comments",
+  generateBundle(_options: unknown, bundle: Record<string, any>) {
+    for (const file of Object.values(bundle)) {
+      if (file.type === "asset" && /\.(m?js)$/.test(file.fileName)) {
+        const text = typeof file.source === "string" ? file.source : new TextDecoder().decode(file.source);
+        if (/\/\/# sourceMappingURL=/.test(text)) {
+          file.source = text.replace(/\n?\/\/# sourceMappingURL=\S+\s*$/, "\n");
+        }
+      }
+    }
+  },
+};
+
 // Dev server port + API proxy target are env-driven (VITE_DEV_PORT / VITE_API_TARGET) with the
 // historical defaults, so they are no longer hard-coded literals.
 const DEV_PORT = Number(process.env.VITE_DEV_PORT ?? 5173);
 const API_TARGET = process.env.VITE_API_TARGET ?? "http://127.0.0.1:8000";
 
 export default defineConfig({
-  plugins: [react(), crossOriginIsolation],
+  plugins: [react(), crossOriginIsolation, dropDanglingSourceMapComments],
   server: {
     port: DEV_PORT,
     proxy: {

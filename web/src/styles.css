@@ -101,7 +101,10 @@ label.is-disabled input { cursor: not-allowed; }
      which is why an audit has to measure against the VIEWPORT, not the containing element. */
   overflow-x: auto;
 }
-.card h3 { margin: 0 0 8px; font-size: 15px; }
+/* A card's title looks the same at whichever level the page outline needs it. The cards on
+   /usecases and the not-found page are the page's own sections, so their titles are h2; every
+   other card title is an h3 under a section. Round 74, SC 1.3.1. */
+.card h2, .card h3 { margin: 0 0 8px; font-size: 15px; }
 .card p { color: var(--muted); font-size: 13.5px; margin: 6px 0; line-height: 1.5; }
 .kpi { font-size: 26px; font-weight: 700; }
 .kpi.q { color: var(--quantum); }
@@ -256,6 +259,17 @@ hr { border: none; border-top: 1px solid var(--border); margin: 24px 0; }
   position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
   overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
 }
+
+/* Charts are read through a fixed line under each one (`ChartReadout`), not a floating tooltip:
+   WCAG 2.2 SC 1.4.13 asks that hover content can itself be hovered, and recharts' tooltip follows
+   the pointer, so it never can be. Round 74, by decision. min-height keeps the page from jumping
+   when the first point is read. */
+.chart-readout { min-height: 1.5em; margin: 4px 0 0; font-size: 11.5px; color: var(--text); line-height: 1.5; }
+/* The highlight on the active category shows only while its chart is hovered or holds focus.
+   Recharts' keyboard layer has no blur handler, so tabbing on past a chart left it highlighted -
+   and, before the readout, left its tooltip open over the plot (measured on the deploy with real
+   key presses in Round 74). The readout keeps the last point; the chart stops pointing at it. */
+.recharts-wrapper:not(:hover):not(:focus-within) .recharts-tooltip-cursor { visibility: hidden; }
 
 /* SC 2.4.1 Bypass Blocks, Level A. The sidebar carries eleven links - six sections plus five
    use-case simulators - and they are the first eleven tab stops on every page, on every navigation.
