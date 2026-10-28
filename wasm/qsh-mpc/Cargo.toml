@@ -37,5 +37,15 @@ codegen-units = 1
 
 # No wasm-opt: it would be downloaded at build time; the measurements in the register were taken
 # without it.
+#
+# MEASURED in Round 72, on the module this builds (1,449,864 bytes, 458,400 gzipped):
+# - Binaryen 120 at -O3 gives 1,158,845 bytes, 439,154 gzipped: 20 percent smaller raw, 4 percent
+#   on the wire.
+# - The argmax is unchanged: the right index in 20 of 20 random cases, the same 944,619 bytes
+#   exchanged, the same median time (about 121 ms in Node).
+# - Binaryen 108, the version this image's Debian release ships, produces a module that fails at
+#   load: its externref table can no longer grow, and wasm-bindgen's initialisation grows it.
+# About 19 KB on the wire does not pay for a downloaded tool, or for a version floor the image's
+# own package does not meet.
 [package.metadata.wasm-pack.profile.release]
 wasm-opt = false
