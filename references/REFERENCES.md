@@ -99,11 +99,22 @@ Each carries whether it was reproduced locally or is recorded as reported-and-un
   "overall optical efficiency including the receiving telescope and the fiber coupling ... ~16%"; a
   100 MHz source; QBER "with an average of 1.1%"; sifted rates "from ~12 kbit/s at 645 km to ~1
   kbit/s at 1200 km"; a final key of about 1.1 kbit/s with finite-key analysis. Micius ran THREE
-  intensities (0.8, 0.1 and a vacuum), where this model runs one decoy. Cross-check after Round 75:
-  at Micius's 0.8 signal intensity the model's sifted rate at 645 km is 12.2 kbit/s; at 1200 km it is
-  3.5 against the measured ~1, because the model holds the atmosphere constant while it thickens at
-  low elevation. The 1.2 m aperture the repository used before is Yin et al., Science 356, 1140
-  (2017)'s stations (METADATA-ONLY here), not Xinglong.
+  intensities, "mu_s=0.8, mu_1=0.1, mu_2=0", "sent with probabilities of 50%, 25%, and 25%", and since
+  Round 77 so does the satellite model, with the vacuum yield measured (Ma et al. 2005, Eqs. 34 and
+  37). The atmosphere now scales with air mass from an anchor at 1200 km (the midpoint, 5.5 dB, by the
+  user's choice), and no link is operated below "10 deg elevation angle", where "A single-orbit
+  experiment ends".
+  ROUND 77 CORRECTED THE CROSS-CHECK. Round 75 compared the "~12 kbit/s at 645 km" with half of every
+  detection at mu = 0.8, as if every pulse were a signal, and found 12.2. Liao counted signal states
+  only: 1,671,072 sifted of 3,551,136 detections is 0.47057, against 0.47059 for signal-only
+  sifting at 50 / 25 / 25 and 0.5 for all states. Counted that way, the model of Round 75 was 2.9 dB
+  low at 645 km and 2.5 dB high at 1200 km. The model of Round 77 integrates the whole pass of 19
+  December 2016 (a 500 km circular orbit, closest approach 645 km, the data window under 1200 km)
+  to 276.5 s against 273 s, 3,519,419 detections (-0.9%) and 1,655,574 sifted bits (-0.9%); the
+  end rates read -0.4 dB at 645 km and +2.0 dB at 1200 km, so the model falls 8.4 dB over the pass
+  where Liao's rate fell 10.8. Asserted in `tests/test_the_satellite_channel_is_sourced.py`. The 1.2 m
+  aperture the repository used before is Yin et al., Science 356, 1140 (2017)'s stations
+  (METADATA-ONLY here), not Xinglong.
 
 - **Finite-key analysis for the 1-decoy state QKD protocol** - Rusca, Boaron, Grunenfelder, Martin
   and Zbinden, *Appl. Phys. Lett.* **112**, 171104 (2018). arXiv:1801.03443 `[link]`
@@ -1884,3 +1895,81 @@ so each one names what was checked and where it stopped.
   SDK's latest release is 2.3.0 (2026-10-02). `qsh/mcp/server.py` accepts both the 2.x `MCPServer` and
   the 1.x `FastMCP` spelling, so `mcp>=1.2` remains correct.
 - **AML-QKD.** arXiv:2603.04192 is still at v2 (2026-06-01). The entry above holds.
+
+## Round 77 additions: the satellite pass, the network beyond the horizon, and the link templates
+
+Read at primary source on 2026-10-28 (arXiv full texts, plus the published text of Naughton et al.
+on UNSWorks). Each value a template carries is quoted in its JSON file under
+`src/qsh/config/profiles/`, and `tests/test_link_profiles_are_sourced.py` refuses a value with
+neither a quote nor a stated assumption.
+
+- **Kasten and Young, "Revised optical air mass tables and approximation formula"**, Appl. Opt. 28,
+  4735 (1989). METADATA-ONLY `[doi]` The formula `1 / (sin(g) + 0.50572 (g + 6.07995)^-1.6364)` the
+  downlink's atmosphere scales by (`channel.py::air_mass`, `quantumSim.ts::airMass`). Bourgoin et al.
+  (below) show the same scaling reproduces a MODTRAN elevation curve.
+- **Liao et al., "Satellite-Relayed Intercontinental Quantum Network"**, Phys. Rev. Lett. 120,
+  030501 (2018). arXiv:1801.04418 `[link]` URL: https://arxiv.org/abs/1801.04418
+  VERIFIED 2026-10-28 in the arXiv text. The trusted relay the Network tab models: Micius "performs
+  bitwise exclusive OR operations between the two keys and relays the result to one of the ground
+  stations", "a secret key is created between China and Europe at locations separated by 7600 km";
+  the stations' coordinates and altitudes; "circles Earth every 94 minutes"; "passes over the three
+  ground stations allowing for a downlink for a duration of ~300 s". Per-pass final keys of 61 to 398
+  kb, each station's listed total 400 to 833 kb (the text's "final key length ranging from 400 kb to
+  833 kb" is those totals, not a per-pass figure); "we establish a 100 kB secure key between Xinglong
+  and Graz", more than Xinglong's listed 400 kb, so it drew on passes the table does not list. The
+  model reproduces the distances from the coordinates within 1 percent (7,621 and 2,524 km against
+  7,600 and 2,500).
+- **Vergoossen, Loarte, Bedington, Kuiper and Ling, "Satellite constellations for trusted node QKD
+  networks"**, arXiv:1903.07845 (2019). `[link]`
+  URL: https://arxiv.org/abs/1903.07845
+  VERIFIED 2026-10-28 in the arXiv text. The constellation the Network tab models: "a
+  string-of-pearls configuration of satellites in the same plane (intra-planar ISL)", "Satellites
+  have one Micius-type Earth-pointing terminal, and where specified another terminal available for
+  inter-satellite links", QKD "only during passes where both the satellite and the ground station are
+  in eclipse", and inter-satellite links giving "a 20-100% increase in message size". Its Table 3
+  models Liao's 19 December pass (3,926,729 detections, 1,963,364 sifted, 521,513 secret bits); its
+  sifted count is exactly half its detections, so it counts every state where Liao counted signals.
+  It states no ISL distance, loss, aperture or divergence; the Micius-type terminal values are Liao
+  2017's.
+- **Khmelev et al., "Eurasian-Scale Experimental Satellite-based Quantum Key Distribution with
+  Detector Efficiency Mismatch Analysis"** (the Micius pass over Zvenigorod), arXiv:2310.17476
+  (2023). `[link]` URL: https://arxiv.org/abs/2310.17476
+  VERIFIED 2026-10-28 in the arXiv text. The template `micius_2022_zvenigorod`: a 600 mm telescope
+  with obstruction 0.73 at 198 m, an atmospheric extinction coefficient "kappa = 0.22 +/- 0.04, which
+  corresponds to clear weather conditions" (0.88 dB at the zenith, magnitudes per air mass), channel
+  efficiencies of 21, 35, 37 and 19 percent, detectors of about 60 percent, 290 +/- 60 background
+  clicks per second, operating elevations "from 20 deg to 90 deg". Its measured sifted rate, on
+  signal states, "changes from around 20.7 kbit/s at 600 km to 2.9 kbit/s at 1,100 km": this model
+  gives -0.3 dB at 600 km and +1.75 dB at 1,100 km. The paper attributes its own model's misfit to
+  "additional losses induced by pointing errors"; on both Micius passes checked here the measured
+  rate falls about 2 dB further than diffraction and air mass predict.
+- **Naughton et al., "Design considerations for an optical link supporting intersatellite quantum key
+  distribution"**, Opt. Eng. 58(1), 016106 (2019), doi:10.1117/1.OE.58.1.016106. VERIFIED 2026-10-28
+  in the published text (UNSWorks, CC BY-NC-ND). The template `cubesat_naughton_2019`: "80-mm diameter
+  optical terminals", "a clear aperture of 80 mm and a 13% obscuration", "an assumed average optical
+  transmission factor of 0.7", and a divergence of "6.1 urad at the 1/e2 intensity values ... half of
+  the full beam angular dimension" for a link of "satellite separations up to around 400 km". Its own
+  link is entanglement-based; the template runs Micius's decoy source, and says so.
+- **Sidhu, McCarthy, Paterson and Oi**, arXiv:2602.11833 (2026). `[link]`
+  URL: https://arxiv.org/abs/2602.11833
+  VERIFIED 2026-10-28 in the arXiv text: a "minimum elevation of theta_min = 10 deg for both links to
+  account for local restrictions", the same cut as Liao 2017's and the default here. Its MODTRAN
+  atmosphere at 785 nm is 0.73 dB at the zenith.
+- **Bourgoin et al., "A comprehensive design and performance analysis of LEO satellite quantum
+  communication"**, New J. Phys. 15, 023006 (2013). arXiv:1211.2733 `[link]`
+  URL: https://arxiv.org/abs/1211.2733
+  VERIFIED 2026-10-28 from its figure: a MODTRAN zenith loss of about 3.2 dB at 830 nm (rural
+  aerosols, 5 km visibility) whose elevation curve equals the zenith transmittance raised to the
+  Kasten-Young air mass. Not a template: a hazy-sky atmosphere, about three times the clear-sky
+  values above.
+- **Li et al., "Microsatellite-based real-time quantum key distribution"** (Jinan-1), Nature (2025),
+  arXiv:2408.10994. `[link]` URL: https://arxiv.org/abs/2408.10994
+  READ 2026-10-28. Not a template yet: it states no dark counts, atmosphere, pointing loss or
+  satellite optics efficiency, and fitting them to its own pass would make that pass a circular
+  check. Its divergence is a "full angle at 1/e2 of maximum" (9 to 10 urad), a Gaussian convention 3
+  dB away from this model's top-hat law.
+- **Gandara Gandara et al., "Atmospheric channel model for QKD over satellite megaconstellations"**,
+  arXiv:2610.27856 (2026-10-20). READ 2026-10-28. Not adopted: its elevation axis behaves as a zenith
+  angle, its validation compares against a review's summary numbers, and it drops Liao's "at 1200 km"
+  qualifier on the 3-8 dB.
+

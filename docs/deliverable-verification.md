@@ -5992,3 +5992,111 @@ package documents.
 BUSINESS DOC RECONCILED Round 76. The out-of-repo document is brought level with this round. Its content
 is not quoted here, in the checklist, or in any commit - only the fact of the reconciliation, which is
 what gate 16 reads.
+
+## Round 77: the satellite atmosphere, the pass, and the network beyond the horizon
+
+**Stacked on Round 76**, all held by decision. This round changes what the satellite page computes:
+the atmosphere now scales with elevation, there is no link below a minimum elevation or past the
+horizon, the satellite runs Micius's own source, every link is a sourced template, and a Network tab
+models what carries a key past the horizon.
+
+**Why this order.** By the user's choice after Round 76: the satellite atmosphere, which the config
+held at a fixed 5 dB at every range while Liao et al.'s own pass fell "because of the increase of both
+the physically separated distance and the effective thickness of the atmosphere near the earth at
+smaller elevation angles".
+
+**The atmosphere scales by air mass.** The loss is a value at a reference slant range (Liao's 3-8 dB
+is stated at 1200 km), scaled by the Kasten and Young (1989) air mass at the elevation the range
+implies for the orbit (500 km) and the station (890 m). Anchoring at a range makes the station's
+pressure correction cancel. Implemented in both languages (`channel.py::atmospheric_loss_db`,
+`quantumSim.ts::atmosphericLossDb`).
+
+**The check it replaced was not like-for-like, and the anchor changed because of it.** Round 75
+compared Liao's "~12 kbit/s at 645 km" with half of every detection at mu = 0.8, as if every pulse
+were a signal, and found 12.2. Liao sent "probabilities of 50%, 25%, and 25%" and counted signal
+states only: 1,671,072 sifted of 3,551,136 detections is 0.47057, against 0.47059 for signal-only
+sifting and 0.5 for all states. The user had chosen the 8 dB upper value on the old comparison; shown
+the corrected one, the user chose the 5.5 dB midpoint as the default and kept 8 dB as a template.
+
+    anchor   detections over the pass    sifted at 645 km      at 1200 km          645 -> 1200 km
+    5.5 dB   3,519,419  (-0.9%)          10,881 (-0.43 dB)     1,572 (+1.96 dB)    8.41 dB
+    8.0 dB   2,558,442  (-28.0%)          8,392 (-1.55 dB)       885 (-0.54 dB)    9.78 dB
+    Liao     3,551,136                   ~12 kbit/s             ~1 kbit/s          10.79 dB
+
+Neither anchor fits both the pass total and its slope. A second Micius pass says the same: over
+Zvenigorod (Khmelev et al. 2023) the model gives -0.3 dB at 600 km and +1.75 dB at 1,100 km. On both,
+the measured rate falls about 2 dB further than diffraction and air mass predict; Khmelev et al.
+attribute their own misfit to pointing. The model carries no such term, and the page and the tests
+state the shortfall rather than tune it away.
+
+**No link below the minimum elevation, and none past the horizon.** Liao: "A single-orbit experiment
+ends when the satellite reaches 10 deg elevation angle"; Sidhu et al. (2026) impose the same 10
+degrees. At 500 km that is a slant range of 1,692 km; the horizon is 2,571. The cut is a control. A
+run out of view says why instead of printing an infinite loss, in both stages and both languages.
+
+**Micius's own source.** The satellite ran the fibre page's finite-key optimum (0.3416 / 0.1417). It
+now runs Liao's "mu_s=0.8, mu_1=0.1, mu_2=0" at 50 / 25 / 25. Because the vacuum state is sent its
+yield is measured, so the bound is Ma et al. 2005's Vacuum+Weak estimate (Eqs. 34 and 37) - the form
+this project used for every link until Round 75, right exactly when the vacuum is sent - and the
+one-decoy Eq. (41) remains for links that send none. At 800 km: 32.21 dB, 3.3559e-5 bit/pulse
+(one decoy: 3.3205e-5), 671 secure bits in the 2e7-pulse block (344 before).
+
+**Every link is a template, by the user's request.** One JSON file per link under
+`src/qsh/config/profiles/` (`downlink/`, `isl/`), every value with the source's words or a stated
+assumption, refused at load otherwise; exported to the browser and offered by the Parameters panel,
+which loads a profile's values into the controls. Shipped: Micius to Xinglong at the midpoint, at the
+upper value, and without its vacuum; Micius to Zvenigorod with its fitted 0.88 dB clear-sky zenith
+atmosphere; Micius-type inter-satellite terminals and Naughton et al.'s 80 mm CubeSat terminals (with
+Micius's source, stated). Read and not adopted: Jinan-1 (no dark counts, atmosphere or pointing
+stated, so its own pass would be a circular check) and Gandara Gandara et al. 2026 (an elevation
+axis that behaves as a zenith angle).
+
+**The Network tab (the user's choice of two tabs).** Three models on the Downlink tab's own bound:
+- A pass over one station, integrated along a circular orbit, checked against Liao's 19 December
+  2016 pass counted the way Liao counted it: 276.5 s against 273, 3,519,418 detections (-0.9%),
+  1,655,574 sifted bits (-0.9%), and 462 kbit of asymptotic key over the signal pulses against
+  Liao's finite-key 300,939.
+- The trusted relay Micius flew (Liao et al. 2018): the paper's coordinates give 7,621 km Xinglong to
+  Graz (stated 7,600) and 2,524 to Nanshan (2,500); one satellite's footprint at 10 degrees is 3,122
+  km, so the key has to be carried; the relayed key is the shorter of the two; a sun-synchronous orbit
+  makes the wait the longitude difference, 6.8 hours; the XOR runs on real random keys.
+- A string-of-pearls plane (Vergoossen et al. 2019): neighbour distance, the line of sight's height
+  above the ground (10 satellites at 500 km are the fewest that clear 100 km), the shared shadow at a
+  beta angle, and a link running the same bound with no atmosphere. With Micius-type terminals a
+  10-satellite plane makes 42 kbit per link per day; the CubeSat terminals make none at that spacing.
+Keys on this tab count the signal pulses, the figure comparable with a measured key; the Downlink
+tab's rate keeps the project's asymptotic convention, every pulse at the signal intensity.
+
+**Found on the way.**
+- A downlink built as `ChannelParams(distance_km=..., free_space=FreeSpaceParams())` took the FIBRE
+  detectors (1e-8 dark counts against Liao's 5e-8); three tests built one. The range and detectors
+  now resolve per link, as the clock and dead time already did.
+- The Python optimiser's baseline and the browser's both used the fibre's intensities on the
+  satellite. Both now start from the link's own source and keep its vacuum flag.
+- Liao et al. 2018's "final key length ranging from 400 kb to 833 kb" is each station's total over
+  its listed passes, not a per-pass figure (61 to 398 kb per pass).
+- The downlink's 3D view said "the model uses slant range alone"; it now draws the model's own
+  orbit, elevation and minimum-elevation arc. The range chart drew the default link whatever profile
+  was selected; it now draws the run's.
+- One test handed a bundle to `node -e`; the bundle passed Linux's 128 KiB single-argument limit
+  once the profiles were added to the browser config. It writes a file now.
+
+**Gates.** `tests/test_the_satellite_channel_is_sourced.py` (rewritten: Liao's values quoted, the
+air-mass budget, the cut, the stage reading the profile, the Vacuum+Weak rate, Liao's signal-state
+counting, the pass like-for-like, the upper-value template), `tests/test_link_profiles_are_sourced.py`
+(every value sourced, the default equal to the config, the baked export current, both languages
+building the same link and rate from every downlink profile),
+`tests/test_satellite_network_is_checked.py` (the browser's network model against Liao 2017, Khmelev
+2023, Liao 2018 and closed-form geometry). `web/scripts/check_qkd.mjs` gains the cut and the
+Vacuum+Weak rate rebuilt by hand. Full suite green; every web check and the build green.
+
+**Walked locally on a client-only build** (the deploy walk follows). Satellite at 800 km: 35.84
+degrees, 32.2 dB, 3.3559e-5 bit/pulse, 3,356 bit/s, 671 bits, the bound named as Vacuum+Weak; at
+1700 km: 9.89 degrees, no link, both stages explaining it and the tagged-fraction row withheld, no
+"Infinity" or "NaN" on the page; the Zvenigorod profile loads 0.88 / 0 / 20 into the controls and
+runs at 30.9 dB and 1,151 bits; the Network tab's tables match the model to the bit; the XOR demo
+recovers K_B; console clean. The preview browser has no WebGL, so the 3D fallback was seen there.
+
+BUSINESS DOC RECONCILED Round 77. The out-of-repo document is brought level with this round. Its content
+is not quoted here, in the checklist, or in any commit - only the fact of the reconciliation, which is
+what gate 16 reads.

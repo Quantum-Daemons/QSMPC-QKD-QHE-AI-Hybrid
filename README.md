@@ -602,9 +602,17 @@ visible number.
 - **Use-case pages** - model curves for the simulated channel, computed by the functions a run calls:
   BB84's rate with and without decoy states and E91's CHSH value against fibre length (telecom), and
   QSDC secrecy capacity against downlink range (satellite).
+- **Satellite network** (the satellite card's Network tab) - what carries a key past the horizon a
+  downlink cannot see over. A pass model, checked against Liao et al. 2017's pass of 19 December
+  2016 counted the way the paper counts it (detections and signal-state sifted bits within 1
+  percent); a trusted satellite relay as Micius flew it between Xinglong and Graz (Liao et al.
+  2018), with the XOR on real random keys; and a single plane of satellites linked to their
+  neighbours (Vergoossen et al. 2019), whose terminals load from templates. Simulated: no satellite
+  is involved, and the keys are asymptotic bounds.
 - **3D views** (three.js, loaded only where drawn) - the QCNN's per-qubit reduced Bloch vectors through
-  the real circuit, and two illustrations, the one-time pad on one qubit and the downlink geometry,
-  each captioned as adding no information beyond a 2D drawing.
+  the real circuit, an illustration of the one-time pad on one qubit, and the satellite geometry the
+  model itself uses: the orbit, the elevation a slant range implies, the arc above the minimum
+  elevation, and a constellation's spacing, line-of-sight clearance and shadow.
 
 ---
 
@@ -1137,6 +1145,13 @@ See [`docs/pqc-roadmap.md`](docs/pqc-roadmap.md).
   security/advantage weights and demo data sizes live in one place (`src/qsh/config/defaults.py`),
   served at `/api/config` and baked into `web/src/lib/config.defaults.json` (regenerate via
   `python scripts/export_config.py`), so the demo's numbers cannot drift from the backend.
+- **Link templates** - each satellite downlink and inter-satellite terminal pair is one JSON file
+  under `src/qsh/config/profiles/`, every value with the source's words or a stated assumption
+  (the loader refuses a value with neither). A new file appears in the page's profile selector
+  after `python scripts/export_config.py`, with no code change. Shipped: Micius to Xinglong (Liao
+  2017) with the atmosphere at the midpoint or the upper end of the paper's 3-8 dB, and without its
+  vacuum state; Micius to Zvenigorod (Khmelev et al. 2023); Micius-type and CubeSat (Naughton et
+  al. 2019) inter-satellite terminals.
 - **Future tracks** - see [`docs/pqc-roadmap.md`](docs/pqc-roadmap.md): a NIST-aligned IDS
   against HNDL/Q-Day, hardware QKD field test, malicious-secure MPC, and the GPU FHE-at-scale
   path (HEonGPU + PIGEON/hpmpc).
