@@ -392,6 +392,7 @@ function UseCaseView({ usecase }: { usecase: string }) {
         secretKeyRatePerPulse={Number(metrics.skr_per_pulse ?? 0)}
         sourceRateHz={Number(metrics.source_rate_hz ?? 0)}
         pulses={Number(metrics.qkd_pulses ?? 0)}
+        decoyStates={metrics.qkd_decoy_states as string | undefined}
         qkdEnabled={run.qkd !== "pqc-only"} />
 
       <div className="note" style={{ marginTop: 16, fontSize: 12 }}>

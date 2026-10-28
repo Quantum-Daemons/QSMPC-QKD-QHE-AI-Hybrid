@@ -81,7 +81,8 @@ _SAT_DEFAULTS = {
     # under the 256 the stage needs to derive a key, so satellite silently stopped mixing QKD.
     # Kept in step with `WebConfig.demo_sat_pulses`; see the note there for the finite-key residual.
     # 20e6 since Round 75: the Micius budget gave 344 secure bits there and 172 at 10e6. Round 77's
-    # air-mass atmosphere and Micius's own 0.8 / 0.1 / vacuum source give 671 at 20e6.
+    # air-mass atmosphere and Micius's own 0.8 / 0.1 / vacuum source gave 671 at 20e6, and per pulse
+    # sent (Round 78) that is 335 - still above the 256 a key needs, and 167 at 10e6, below it.
     "sat_pulses": 20_000_000,         # channel uses (free-space links need many)
     "sat_opt_pulses": 200_000,        # pulses per OptiQKD evaluation (fewer than a full run, for speed)
     # The two fixed terms of the budget, exposed in the WebUI so the inline eavesdrop check can be
@@ -207,6 +208,8 @@ class SatelliteQKDStage(Stage):
         # 0.8 / 0.1 with the vacuum state, where it ran the fibre page's finite-key optimum.
         res = run_bb84(n_pulses, params, seed=ctx.config.get("seed", 0), qkd_params=source)
         bus.metric("qber", round(res.qber, 5), self.name)
+        bus.metric("qkd_decoy_states", "vacuum + one decoy" if source.vacuum_decoy else "one decoy",
+                   self.name)
         # `skr_per_pulse`, for the same reason as `orchestration/stages.py`: this is bits per
         # channel use, and `skr` is a spec field name meaning bit/s. The satellite twin is
         # renamed in the same change as the fibre one - fixing one and not the other is the

@@ -10,19 +10,40 @@ import {
 } from "../lib/clientSdnController";
 import Details from "./Details";
 
-/** One wording, used by both rate cells, so the caveat cannot drift between two columns. */
-const RATE_CELL_TITLE =
-  "bit/s - this run's two-intensity decoy-state bound per pulse (Ma, Qi, Zhao & Lo, Phys. Rev. A 72, "
-  + "012326, 2005) multiplied by an ASSUMED source repetition rate. ASYMPTOTIC: no finite-key "
-  + "correction is applied anywhere in this project. It is the infinite-key limit of a LOWER bound, "
-  + "not a ceiling on real hardware - Li et al. (Nat. Photon. 17, 416-421, 2023) measured 22.2 Mb/s "
-  + "at 50 km on a 2.5 GHz clock, 8.88e-3 bit/pulse, which is 3.8x HIGHER than this figure and "
-  + "carries full composable finite-key security. No QKD hardware exists in this project and nothing "
-  + "here measures a clock: the rate scales exactly with the Source rate (MHz) control in the Parameters panel.";
+/** The bound a run's rate rests on, from the decoy states it reported (`qkd_decoy_states`, Round 78).
+ *  The table named the one-decoy Eq. (41) on every run, including the satellite's Vacuum+Weak runs
+ *  since Round 77 and E91 runs, which have no decoy states at all. */
+function boundOf(decoyStates: string | undefined): { short: string; source: string } {
+  if (decoyStates === "vacuum + one decoy") {
+    return { short: "vacuum + weak decoy-state bound",
+      source: "section 3.4, Eqs. (34) and (37): a signal, one decoy and the vacuum state, whose yield is measured" };
+  }
+  if (decoyStates?.startsWith("none")) {
+    return { short: "E91 secure fraction (device-dependent; no decoy states)",
+      source: "an entangled source has no decoy states: 1 - h(e) - f h(e) on the model error rate" };
+  }
+  return { short: "one-decoy bound", source: "section 3.5, Eq. (41): a signal and one decoy, vacuum yield not assumed" };
+}
+
+/** One wording, used by both rate cells, so the caveat cannot drift between two columns. The ratio
+ *  to Li et al.'s measured rate is computed: it was a literal, "3.8x", which no run had matched since
+ *  Round 76's detector set. */
+function rateCellTitle(perPulse: number, decoyStates: string | undefined): string {
+  const ratio = perPulse > 0 ? `${(8.88e-3 / perPulse).toFixed(1)}x this run's figure per pulse` : "above this run's figure";
+  return `bit/s - this run's ${boundOf(decoyStates).short} per pulse sent (Ma, Qi, Zhao & Lo, Phys. Rev. A 72, `
+    + "012326, 2005) multiplied by an ASSUMED source repetition rate. ASYMPTOTIC: no finite-key "
+    + "correction is applied anywhere in this project. It is the infinite-key limit of a LOWER bound, "
+    + "not a ceiling on real hardware - Li et al. (Nat. Photon. 17, 416-421, 2023) measured 22.2 Mb/s "
+    + `at 50 km on a 2.5 GHz clock, 8.88e-3 bit/pulse, ${ratio}, with full composable finite-key `
+    + "security. No QKD hardware exists in this project and nothing here measures a clock: the rate "
+    + "scales exactly with the Source rate (MHz) control in the Parameters panel.";
+}
 export default function SdnControlPlanePanel({
   usecase, distanceKm, keyBudgetBits, qkdEnabled, maxSpanKm,
-  secretKeyRatePerPulse, sourceRateHz, pulses,
+  secretKeyRatePerPulse, sourceRateHz, pulses, decoyStates,
 }: {
+  /** The decoy states the run's rate rests on (`metrics.qkd_decoy_states`). */
+  decoyStates?: string;
   usecase: string;
   distanceKm: number;
   /** Longest single quantum span before a trusted relay is required. Infinity for a downlink,
@@ -78,7 +99,7 @@ export default function SdnControlPlanePanel({
           <table className="facts-table small">
             <thead><tr><th>Factor</th><th>Value in this run</th><th>Where it comes from</th></tr></thead>
             <tbody>
-              <tr><td>secure fraction per pulse</td><td><b>{secretKeyRatePerPulse > 0 ? secretKeyRatePerPulse.toExponential(3) : "0"}</b> bit/pulse, this run&apos;s one-decoy bound{usecase === "satellite_comms" ? null : <>, on gains corrected for the detectors&apos; dead time</>}</td><td>Ma, Qi, Zhao &amp; Lo, <i>Phys. Rev. A</i> <b>72</b>, 012326 (2005), section 3.5, Eq. (41): a signal and one decoy, vacuum yield not assumed; <b>asymptotic</b> - no finite-key correction, so the infinite-key limit of a lower bound{usecase === "satellite_comms" ? null : <>. The dead-time factor is Rusca et al. 2018&apos;s Eq. (B3), counting every click</>}</td></tr>
+              <tr><td>secure fraction per pulse sent</td><td><b>{secretKeyRatePerPulse > 0 ? secretKeyRatePerPulse.toExponential(3) : "0"}</b> bit/pulse, this run&apos;s {boundOf(decoyStates).short}{usecase === "satellite_comms" ? null : <>, on gains corrected for the detectors&apos; dead time</>}; only the signal pulses carry key</td><td>Ma, Qi, Zhao &amp; Lo, <i>Phys. Rev. A</i> <b>72</b>, 012326 (2005), {boundOf(decoyStates).source}; <b>asymptotic</b> - no finite-key correction, so the infinite-key limit of a lower bound{usecase === "satellite_comms" ? null : <>. The dead-time factor is Rusca et al. 2018&apos;s Eq. (B3), counting every click</>}</td></tr>
               <tr><td>x source repetition rate</td><td><b>{(topo.source_rate_hz / 1e6).toLocaleString()} MHz</b></td><td>{usecase === "satellite_comms"
                 ? <>an assumption; default 100 MHz, the Micius source&apos;s (Liao et al., <i>Nature</i> <b>549</b>, 43, 2017), whose measured rate is not reproduced or claimed here</>
                 : <>an assumption; default 1 GHz, the clock Rusca et al. (<i>Appl. Phys. Lett.</i> <b>112</b>, 171104, 2018) state for this page&apos;s detector set - a simulation set, not a measured link. With their 100 ns dead time the per-pulse rate depends on it too</>}</td></tr>
@@ -158,10 +179,10 @@ export default function SdnControlPlanePanel({
                   {l.virt_next_hop.length ? ` → ${l.virt_next_hop.join(" → ")} → ` : " → "}
                   {l.qkdl_remote_qkdn_id}
                 </td>
-                <td className="num" title={RATE_CELL_TITLE}>
+                <td className="num" title={rateCellTitle(secretKeyRatePerPulse, decoyStates)}>
                   {l.skr == null ? <span className="muted">n/a</span> : Math.round(l.skr).toLocaleString()}
                 </td>
-                <td className="num" title={RATE_CELL_TITLE}>
+                <td className="num" title={rateCellTitle(secretKeyRatePerPulse, decoyStates)}>
                   {eskr == null ? <span className="muted">n/a</span> : Math.round(eskr).toLocaleString()}
                 </td>
                 <td className="num">{l.key_budget_bits.toLocaleString()} bit</td>
