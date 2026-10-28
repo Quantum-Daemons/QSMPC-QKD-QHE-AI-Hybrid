@@ -1,0 +1,74 @@
+{
+  "id": "cubesat_naughton_2019",
+  "kind": "isl",
+  "label": "CubeSat terminals, 80 mm (Naughton 2019), with Micius's source",
+  "source": "Naughton et al., Opt. Eng. 58(1), 016106 (2019), doi:10.1117/1.OE.58.1.016106: terminals designed for an inter-satellite link between two 6U CubeSats",
+  "note": "A terminal pair sized for a 6U CubeSat, designed for 'satellite separations up to around 400 km' and, with its tracking design, 'likely ... 100 to 150 km'. Their link is entanglement-based; this model runs decoy BB84, so the source is Micius's (an assumption). It shows what small terminals cost at the spacing of a plane.",
+  "values": {
+    "tx_divergence_urad": {
+      "value": 8.63,
+      "assumption": "Naughton: 'The beam divergence (lambda = 760 nm) is 6.1 urad at the 1/e2 intensity values ... The beam divergence is half of the full beam angular dimension', so 12.2 urad full. A Gaussian beam puts 2 (D / theta r)^2 on its axis, which this model's top-hat law gives at 12.2 / sqrt(2) urad"
+    },
+    "rx_aperture_m": {
+      "value": 0.0746,
+      "assumption": "Naughton: 'a clear aperture of 80 mm and a 13% obscuration produced by the secondary mirror'; read as 13 percent of the area, the conservative reading, an equivalent 0.08 x sqrt(0.87) m"
+    },
+    "receiver_optics_efficiency": {
+      "value": 0.7,
+      "quote": "with an assumed average optical transmission factor of 0.7",
+      "note": "The receiving side's; the transmitting side's is inside the source intensity, which Liao 2017 gives at the output of the telescope."
+    },
+    "pointing_db": {
+      "value": 3.0,
+      "assumption": "Naughton models pointing as beam jitter rather than a fixed loss; Liao 2017's downlink bound, less than 3 dB, is used"
+    },
+    "detector_efficiency": {
+      "value": 0.5,
+      "assumption": "Not stated for their APDs; Xinglong's, efficiency 50% (Liao 2017)"
+    },
+    "dark_count_prob": {
+      "value": 5e-08,
+      "assumption": "Not stated as a rate; Xinglong's (Liao 2017). Naughton cools the APDs to suppress dark counts"
+    },
+    "misalignment": {
+      "value": 0.011,
+      "assumption": "Liao 2017's measured average QBER, 1.1%, carried over"
+    },
+    "source_rate_hz": {
+      "value": 100000000.0,
+      "assumption": "Micius's 100 MHz decoy source (Liao 2017); Naughton's own source is entangled pairs, which this model does not run"
+    },
+    "detector_dead_time_s": {
+      "value": 0.0,
+      "assumption": "Not stated"
+    },
+    "mu_signal": {
+      "value": 0.8,
+      "assumption": "Micius's signal (Liao 2017)"
+    },
+    "mu_decoy": {
+      "value": 0.1,
+      "assumption": "Micius's decoy (Liao 2017)"
+    },
+    "p_signal": {
+      "value": 0.5,
+      "assumption": "Micius's 50 / 25 / 25 (Liao 2017)"
+    },
+    "p_decoy": {
+      "value": 0.25,
+      "assumption": "Micius's 50 / 25 / 25 (Liao 2017)"
+    },
+    "vacuum_decoy": {
+      "value": true,
+      "assumption": "Micius's vacuum state (Liao 2017)"
+    },
+    "clearance_km": {
+      "value": 100.0,
+      "assumption": "As for the Micius-type profile: the line of sight passes at least 100 km above the ground"
+    },
+    "eclipse_only": {
+      "value": true,
+      "assumption": "As Vergoossen et al. assume for every terminal; Naughton's link budget treats stray light separately"
+    }
+  }
+}

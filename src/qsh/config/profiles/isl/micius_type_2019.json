@@ -1,0 +1,75 @@
+{
+  "id": "micius_type_2019",
+  "kind": "isl",
+  "label": "Micius-type terminals on both satellites (Vergoossen 2019)",
+  "source": "Vergoossen et al., arXiv:1903.07845 (2019); terminal values from Liao et al., Nature 549, 43 (2017), arXiv:1707.00542",
+  "note": "Vergoossen et al.: 'Satellites have one Micius-type Earth-pointing terminal, and where specified another terminal available for inter-satellite links.' No quantum inter-satellite link has flown, so the receiving end borrows Xinglong's detectors and optics.",
+  "values": {
+    "tx_divergence_urad": {
+      "value": 10.0,
+      "quote": "Micius sends the light beam with a near-diffraction-limited far-field divergence of ~10 urad (Liao 2017)"
+    },
+    "rx_aperture_m": {
+      "value": 0.3,
+      "quote": "we use a 300-mm aperture Cassegrain telescope in the satellite (Liao 2017)",
+      "note": "The receiving satellite's terminal is taken to be the same telescope."
+    },
+    "receiver_optics_efficiency": {
+      "value": 0.16,
+      "assumption": "No quantum ISL receiver has flown; Xinglong's telescope plus fibre coupling, ~16% (Liao 2017), is used."
+    },
+    "pointing_db": {
+      "value": 3.0,
+      "assumption": "No quantum ISL has flown; Liao 2017's downlink bound, less than 3 dB, is used."
+    },
+    "detector_efficiency": {
+      "value": 0.5,
+      "assumption": "Xinglong's detectors, efficiency 50% (Liao 2017), on the receiving satellite."
+    },
+    "dark_count_prob": {
+      "value": 5e-08,
+      "assumption": "Xinglong's dark counts, <25 Hz in a 2 ns window (Liao 2017). Optimistic in orbit, where radiation raises a detector's dark counts over a mission."
+    },
+    "misalignment": {
+      "value": 0.011,
+      "assumption": "Liao 2017's measured average QBER, 1.1%, carried over as the error floor."
+    },
+    "source_rate_hz": {
+      "value": 100000000.0,
+      "quote": "emit laser pulses (848.6 nm, 100 MHz, 0.2 ns) (Liao 2017)"
+    },
+    "detector_dead_time_s": {
+      "value": 0.0,
+      "assumption": "None stated for Micius's detectors."
+    },
+    "mu_signal": {
+      "value": 0.8,
+      "quote": "mu_s=0.8, mu_1=0.1, mu_2=0 (Liao 2017)"
+    },
+    "mu_decoy": {
+      "value": 0.1,
+      "quote": "mu_s=0.8, mu_1=0.1, mu_2=0 (Liao 2017)"
+    },
+    "p_signal": {
+      "value": 0.5,
+      "quote": "sent with probabilities of 50%, 25%, and 25%, respectively (Liao 2017)"
+    },
+    "p_decoy": {
+      "value": 0.25,
+      "quote": "sent with probabilities of 50%, 25%, and 25%, respectively (Liao 2017)"
+    },
+    "vacuum_decoy": {
+      "value": true,
+      "quote": "Here we adopt a 3-intensity protocol using three levels of mu (Liao 2017)"
+    },
+    "clearance_km": {
+      "value": 100.0,
+      "assumption": "The line of sight between neighbours must pass at least 100 km above the ground, clear of the dense atmosphere; an ISL is then modelled with no atmospheric loss."
+    },
+    "eclipse_only": {
+      "value": true,
+      "quote": "The terminals are assumed to only be able to perform QKD at night so the model is configured to perform QKD only during passes where both the satellite and the ground station are in eclipse (Vergoossen 2019)",
+      "note": "For a link between two satellites, both satellites must be in Earth's shadow."
+    }
+  }
+}

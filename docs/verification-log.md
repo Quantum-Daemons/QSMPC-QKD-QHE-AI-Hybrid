@@ -3270,3 +3270,32 @@ optimiser had to learn it too, or it would have chased brighter pulses into satu
 **The literal was still in Python.** The browser read config; Python's channel defaulted two of its
 five values from literals, and the fibre stage relied on them. The same defect class as the satellite
 literals of Round 75, one dataclass over, and found only because this round changed the values.
+
+### Round 77: a check that counted differently, and a horizon the model had no answer to
+
+**Context.** The satellite atmosphere, then the minimum elevation, the satellite's own source, link
+templates, and what carries a key past the horizon - each by the user's choice.
+
+**A validation can agree for the wrong reason.** Round 75's "within 10 percent of Liao at 645 km"
+counted every pulse as a signal; Liao counted signals only, which are half of them. The agreement was
+the factor of two cancelling a model that was 2.9 dB low there. The tell was available all along: the
+paper's own ratio of sifted to detected bits, 0.47057, is the signal-only figure to four places.
+
+**A recommendation inherits the error in its evidence.** The 8 dB anchor was recommended on that
+comparison and chosen on it. Corrected, the evidence pointed elsewhere, so the question went back to
+the user with the new numbers rather than the old choice being kept as settled.
+
+**Two measured passes are worth more than one fitted one.** Neither anchor fits both Liao's pass
+total and its slope, and a second, independent Micius pass (Zvenigorod) shows the same 2 dB shortfall
+in slope. That makes it a property of the model - a missing elevation-dependent term - rather than of
+one night's weather, and it is stated as such instead of being absorbed into a fitted constant.
+
+**A template is only as good as its weakest value.** The loader refuses a number with neither a
+quote nor a stated assumption. Two candidates failed that standard in substance rather than form:
+Jinan-1 would have needed its pass fitted to check its pass, and a 2026 atmosphere paper's axis did
+not mean what its label said.
+
+**Moving code moves what the gates can see.** Moving the satellite link builder out of the pipeline
+broke a test that scans the pipeline for the keys it reads, and a new component looked unrendered to
+a test that lists only tracked files. Both gates were right about what they could see; each was
+widened to see the new place rather than silenced.

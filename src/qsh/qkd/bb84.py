@@ -106,8 +106,21 @@ def signal_qber(params: ChannelParams, mu: float) -> float:
 
 
 def _decoy_secure_fraction(eta: float, mu: float, nu: float, e_det: float, y0: float,
-                           f_ec: float, sift_ratio: float) -> tuple[float, float, float]:
-    """Two-intensity (one-decoy) secret-key rate per pulse: Ma, Qi, Zhao & Lo 2005, section 3.5, Eq. (41).
+                           f_ec: float, sift_ratio: float, vacuum: bool = False
+                           ) -> tuple[float, float, float]:
+    """Decoy-state secret-key rate per pulse: Ma, Qi, Zhao & Lo 2005, one decoy (section 3.5, Eq. 41)
+    or, with ``vacuum``, a vacuum state as well (section 3.4, Eqs. 34 and 37).
+
+    ``vacuum=True`` IS FOR A SOURCE THAT SENDS THE VACUUM (Round 77). Micius did - "a high mu_s, a
+    moderate mu_1 and a zero mu_2 (vacuum), sent with probabilities of 50%, 25%, and 25%" (Liao et
+    al. 2017) - so its receiver measures the vacuum yield Y0, and section 3.4's Vacuum+Weak estimate
+    may use it::
+
+        Y1 >= mu / (mu nu - nu^2) * (Q_nu e^nu - Q_mu e^mu nu^2 / mu^2 - (mu^2 - nu^2) / mu^2 * Y0)
+        e1 <= (E_nu Q_nu e^nu - e0 Y0) / (Y1 nu)
+
+    It is the estimator this function ran until Round 75 for every link, when it was replaced on the
+    grounds below; it is right exactly when the vacuum is sent, and the one-decoy form when it is not.
 
     WHICH PROTOCOL THIS IS. The protocol sends a signal and ONE weak decoy, so the vacuum yield Y0 is
     never measured. Section 3.5's "tighter bound" handles that by letting Eve choose Y0, and argues
@@ -139,11 +152,15 @@ def _decoy_secure_fraction(eta: float, mu: float, nu: float, e_det: float, y0: f
     if mu <= nu or q_nu <= 0.0:                          # decoy must be strictly weaker than the signal
         return 0.0, e_mu, 0.5
     e_nu = (e0 * y0 + e_det * (1.0 - float(np.exp(-eta * nu)))) / q_nu
-    # single-photon yield lower bound + error upper bound, one decoy and Y0 unknown (Eq. 41)
+    # single-photon yield lower bound + error upper bound: one decoy and Y0 left to Eve (Eq. 41), or
+    # the measured vacuum yield (Eqs. 34, 37) when the vacuum state is sent
+    y0_known = y0 if vacuum else 0.0
     y1 = max(0.0, (mu / (mu * nu - nu * nu)) * (
-        q_nu * float(np.exp(nu)) - (nu * nu) / (mu * mu) * q_mu * float(np.exp(mu))))
+        q_nu * float(np.exp(nu)) - (nu * nu) / (mu * mu) * q_mu * float(np.exp(mu))
+        - (mu * mu - nu * nu) / (mu * mu) * y0_known))
     q1 = y1 * mu * float(np.exp(-mu))                    # secure single-photon gain
-    e1 = min(0.5, max(0.0, e_nu * q_nu * float(np.exp(nu)) / (y1 * nu))) if y1 > 0.0 else 0.5
+    e1 = (min(0.5, max(0.0, (e_nu * q_nu * float(np.exp(nu)) - e0 * y0_known) / (y1 * nu)))
+          if y1 > 0.0 else 0.5)
     r = q1 * (1.0 - _h2(e1)) - f_ec * q_mu * _h2(e_mu)   # GLLP single-photon rate per pulse
     return max(0.0, r) * sift_ratio, e_mu, e1
 
@@ -189,6 +206,21 @@ class QKDParams:
     mu_decoy: float = field(default_factory=lambda: _qkd_cfg().mu_decoy)
     basis_prob: float = 0.5
     pp_threshold: float = field(default_factory=lambda: _qkd_cfg().pp_threshold)
+    #: Whether the source also sends the vacuum state, which lets the bound use the measured vacuum
+    #: yield (`_decoy_secure_fraction`), and how often it sends signal and decoy (the vacuum takes the
+    #: rest). The probabilities set the mix of clicks the dead time sees; the asymptotic rate is per
+    #: pulse at the signal intensity, as before. Defaults: the fibre's one decoy, sent as often as the
+    #: signal. `satellite_comms` passes the downlink profile's (Micius: 0.5 / 0.25, vacuum). Round 77.
+    vacuum_decoy: bool = False
+    p_signal: float = 0.5
+    p_decoy: float = 0.5
+
+
+def click_mix(qkd_params: QKDParams, q_mu: float, q_nu: float, y0: float) -> float:
+    """Bob's detection probability per pulse, averaged over what Alice sends: signal, decoy and (the
+    remaining share) vacuum. `quantumSim.ts::clickMix` is the twin."""
+    p_s, p_d = float(qkd_params.p_signal), float(qkd_params.p_decoy)
+    return p_s * q_mu + p_d * q_nu + max(0.0, 1.0 - p_s - p_d) * y0
 
 
 def run_bb84(
@@ -235,9 +267,11 @@ def run_bb84(
         q_mu = 2.0 * params.dark_count_prob + 1.0 - np.exp(-mu * eta)
         q_nu = 2.0 * params.dark_count_prob + 1.0 - np.exp(-nu * eta)
         # THE DEAD TIME, Rusca et al. 2018 Eq. (B3): a click finds its detector dead with a probability
-        # set by the clock and by how often the detectors click, signal and decoy sent equally often.
-        # Every gain and so the rate below scale by it; the QBER does not move. Round 76.
-        c_dt = dead_time_factor(params, 0.5 * (q_mu + q_nu))
+        # set by the clock and by how often the detectors click, averaged over the states Alice sends
+        # (signal and decoy equally often on fibre; Round 77 added the vacuum's share). Every gain and so
+        # the rate below scale by it; the QBER does not move. Round 76.
+        c_dt = dead_time_factor(params, click_mix(qkd_params, q_mu, q_nu,
+                                                  2.0 * params.dark_count_prob))
         detected = rng.random(n_pulses) < c_dt * q_mu
         sift = detected & (alice_bases == bob_bases)
         # the multiphoton (PNS) insecurity is accounted for analytically by the decoy-state single-photon
@@ -304,7 +338,8 @@ def run_bb84(
         # Intercept-resend disturbs a detected signal photon at the textbook rate of 0.25, which is
         # exactly what `e_det` denotes, so Eve belongs here and the background does not.
         skr, _e_mu, _e1 = _decoy_secure_fraction(
-            eta, mu, nu, e_det_for_bound(params), y0, error_correction_eff, sift_ratio)
+            eta, mu, nu, e_det_for_bound(params), y0, error_correction_eff, sift_ratio,
+            vacuum=bool(qkd_params.vacuum_decoy))
         skr *= c_dt                                                   # the gains it rests on, dead-time corrected
         secure_bits = int(max(0.0, skr) * n_pulses)
 

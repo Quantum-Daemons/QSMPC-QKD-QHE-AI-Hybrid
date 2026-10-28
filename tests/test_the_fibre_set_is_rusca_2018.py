@@ -79,6 +79,10 @@ def test_a_downlink_keeps_its_own_clock_and_dead_time() -> None:
     d = ChannelParams(distance_km=800.0, free_space=FreeSpaceParams())
     assert d.source_rate_hz == pytest.approx(q.free_space_source_rate_hz)
     assert d.dead_time_s == pytest.approx(q.free_space_detector_dead_time_s)
+    # And its own detectors (Round 77): they were the fibre set's on any channel built like this one.
+    for name in ("detector_efficiency", "dark_count_prob", "misalignment"):
+        assert getattr(d, name) == pytest.approx(getattr(q, f"free_space_{name}")), name
+    assert ChannelParams(free_space=FreeSpaceParams()).distance_km == pytest.approx(q.free_space_distance_km)
     assert dead_time_factor(d, 0.5) == 1.0          # Liao et al. state none, so none is modelled
 
 

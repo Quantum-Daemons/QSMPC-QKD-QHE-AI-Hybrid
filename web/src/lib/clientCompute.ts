@@ -11,8 +11,8 @@ import { hkdf } from "@noble/hashes/hkdf.js";
 import { sha256 } from "@noble/hashes/sha2.js";
 import {
   benchCfg, costPerOp, dataCfg, demoFeatureDim, genericArchitecture, idsCfg, medicalCnn, qkdCfg, qrngCfg,
-  demoSample, federatedCfg, fheCfg, qsmpcCfg, quantumAdvantageCfg, securityScoringCfg, studentModel, tierArchitectures, webCfg,
-  workloadMultipliers,
+  demoSample, federatedCfg, fheCfg, qsmpcCfg, quantumAdvantageCfg, securityScoringCfg, studentModel,
+  tierArchitectures, webCfg, workloadMultipliers,
 } from "./config";
 import { encryptedConv2d, encryptedLinear, encryptedLinearBatch, encryptedStudentInference, warmFHE,
   type CnnStudentWeights } from "./clientFHE";
@@ -22,8 +22,9 @@ import { secureArgmax, warmMPC } from "./clientMPC";
 import { randomBelow } from "./csprng";
 import { optimizeQKD } from "./clientOptiQKD";
 import { generateQuantumBits } from "./clientQRNG";
-import { bb84, channelLossDb, e91, FIBER, FREE_SPACE, h2, intrinsicQber, keyRateWithClock,
-  qsdcLink, qsdcSecrecyCapacity,
+import { outOfView, satChannel } from "./satLink";
+import { bb84, channelLossDb, e91, FIBER, h2, inView, intrinsicQber,
+  keyRateWithClock, linkElevationDeg, qsdcLink, qsdcSecrecyCapacity, sourceOf, sourceRateHz, type ChannelParams,
   qcnnExpectation,
   qcnnInferTrained, qotpQcnnInfer, rng, taggedFraction,
   type QcnnWeights } from "./quantumSim";
@@ -66,10 +67,6 @@ const r2 = (x: number) => Math.round(x * 100) / 100;
  * see. Passing `config?.qkd_source_rate_mhz` at the call site keeps the conversion in one place and
  * keeps the read where a reader - and a checker - can find it.
  */
-const sourceRateHz = (mhzFromControl: unknown, fallbackHz: number): number => {
-  const mhz = Number(mhzFromControl);
-  return Number.isFinite(mhz) && mhz > 0 ? mhz * 1e6 : fallbackHz;
-};
 const argmax = (a: number[]) => a.reduce((bi, v, i, arr) => (v > arr[bi] ? i : bi), 0);
 /** Gap between the top two scores - what a top-1 decision actually had to lose. `Infinity` for a
  *  single-class row, so a degenerate model never reads as "decided by a tie". */
@@ -266,15 +263,20 @@ export function securityFacts(config: any, metrics: Record<string, any>): Securi
   // E91 caption read them, so they are built once. See the decoy row for why the parameter reads have
   // to follow the use case.
   const sat = config?.usecase === "satellite_comms";
-  const chan = sat ? FREE_SPACE : FIBER;
   const eveFrac = Number((sat ? config?.sat_eve : config?.qkd_eve) ?? 0);
-  const runChannel = { ...chan,
-    distanceKm: Number((sat ? config?.sat_distance_km : config?.qkd_distance_km) ?? chan.distanceKm),
+  // The satellite's is the run's own channel, profile and all (Round 77), through the one builder
+  // both satellite stages use.
+  const runChannel: ChannelParams = sat ? satChannel(config ?? {}) : { ...FIBER,
+    distanceKm: Number(config?.qkd_distance_km ?? FIBER.distanceKm),
     // No misalignment control is rendered on the satellite page, so the free-space channel's own
-    // 0.025 is the honest value there. Reading `qkd_misalignment` unconditionally would have
-    // substituted the fibre page's 0.015 - always, since that key is never absent.
-    misalignment: Number((sat ? undefined : config?.qkd_misalignment) ?? chan.misalignment),
+    // floor is the honest value there. Reading `qkd_misalignment` unconditionally would have
+    // substituted the fibre page's - always, since that key is never absent.
+    misalignment: Number(config?.qkd_misalignment ?? FIBER.misalignment),
     eveFraction: eveFrac };
+  // Which decoy bound this run's rate is, by the source it modelled: Micius sends a vacuum state.
+  const boundName = sourceOf(runChannel).vacuum
+    ? "vacuum + weak decoy-state bound (Ma, Qi, Zhao & Lo, Phys. Rev. A 72, 012326, 2005, Eqs. 34 and 37)"
+    : "two-intensity decoy-state bound (Ma, Qi, Zhao & Lo, Phys. Rev. A 72, 012326, 2005, Eq. 41)";
 
   const facts: SecurityFact[] = [
     { label: "KEM", value: `${kem} - NIST Category ${cat}`, kind: "standard",
@@ -304,7 +306,7 @@ export function securityFacts(config: any, metrics: Record<string, any>): Securi
       kind: "simulated",
       source: isE91
         ? "E91 / CHSH run, device-dependent secure fraction on the model error rate"
-        : "BB84 decoy-state run, two-intensity secure fraction",
+        : `BB84 decoy-state run, ${sourceOf(runChannel).vacuum ? "vacuum + weak decoy" : "two-intensity"} secure fraction`,
       // THE BAND, NOT JUST THE ENDPOINT. This tested `keyBits === 0` while the behaviour it warns
       // about switches at 256 - the threshold `stages.py` and `:1233` below both use to decide
       // whether QKD is folded into the session at all. So a run producing 1..255 bits showed a
@@ -340,14 +342,15 @@ export function securityFacts(config: any, metrics: Record<string, any>): Securi
           ? "device-dependent secure fraction 1 - h(e) - f h(e) on the MODEL error rate, not the "
             + "sampled QBER (Shor-Preskill form; entangled source: Ma, Fung & Lo, Phys. Rev. A 76, "
             + "012307, 2007); no decoy states. CHSH S is a consistency check, not a certificate"
-          : "two-intensity decoy-state bound, Ma, Qi, Zhao & Lo, Phys. Rev. A 72, 012326 (2005)") + deadNote });
+          : boundName) + deadNote });
     }
     // BB84 ONLY. An E91 run showed this row too, warning that "the decoy states are what make this
     // link work at all" - on a protocol that uses none. The tagged fraction is a property of an
     // attenuated laser's multi-photon pulses; an entangled source's security analysis needs no decoy
     // states (Ma, Fung & Lo, Phys. Rev. A 76, 012307, 2007). Found on the deployed demo, 2026-10-24,
     // after a gate written the same day had asserted the row's presence on E91 runs.
-    if (!isE91) {
+    // Not out of view either (Round 77): with no link there is no detection to tag.
+    if (!isE91 && inView(runChannel)) {
       // What the decoy states are actually buying on THIS channel.
       //
       // ROUND 45 CORRECTED THIS COMMENT AND THE MODEL UNDER IT. It used to say "the runtime model is
@@ -358,7 +361,8 @@ export function securityFacts(config: any, metrics: Record<string, any>): Securi
       // describes the code for the first time. Delta >= 1 still means no detection could be certified
       // single-photon and the same hardware would yield nothing without decoys - and on this link it
       // is 7.26, so the counterfactual really is zero rather than merely smaller.
-      const mu = qkdCfg().mu_signal;
+      // The run's own signal intensity: Micius's 0.8 on the satellite since Round 77.
+      const mu = sourceOf(runChannel).mu;
       // The channel model AND the parameters fed to it both have to follow the use case.
       //
       // Round 29 fixed half of this. It emitted `usecase` so the MODEL switched to free-space on the
@@ -423,8 +427,7 @@ export function securityFacts(config: any, metrics: Record<string, any>): Securi
           + "model reports key a device-independent analysis would not certify. The S > 2 test never "
           + `decides the key here: the rate is already zero below S = ${sDd}`
         : skr != null
-        ? "this run's two-intensity decoy-state bound (Ma, Qi, Zhao & Lo, Phys. Rev. A 72, 012326); "
-          + `post-processing aborts above ${s.qber_secure_threshold}`
+        ? `this run's ${boundName}; post-processing aborts above ${s.qber_secure_threshold}`
         : `no rate reported by this run; post-processing threshold ${s.qber_secure_threshold}`,
       warn: dead
         ? (isE91 ? "the device-dependent E91 rate yields no secure key at this error rate"
@@ -1409,33 +1412,6 @@ export async function clientAliceBob(seed = 0, nShared = 8) {
 // --------------------------------------------------------------------------- //
 // ---- Quantum Federated Learning (QFL) — client-side mirror (demo) ------------------------------
 
-/**
- * The free-space channel this run selected, in one place.
- *
- * `satellite_qkd` and `qsdc_telemetry` each spread `FREE_SPACE` and overrode a subset of its fields
- * inline - four sites, three different subsets. `channelLossDb` was called WITHOUT `sat_eve` (right,
- * loss does not depend on Eve) and `intrinsicQber` WITH it (also right), which is exactly the kind
- * of distinction that survives only while one person holds all four sites in their head. Adding the
- * two link-budget keys would have made it eight overrides across four sites.
- *
- * `eveFraction` stays an explicit argument because the two callers genuinely differ: the counterfactual
- * that decides `link_budget_limited` re-evaluates the SAME link with Eve removed.
- */
-function satChannel(config: Record<string, any>, eveFraction?: number) {
-  const fs = FREE_SPACE.freeSpace!;
-  return {
-    ...FREE_SPACE,
-    distanceKm: Number(config.sat_distance_km ?? FREE_SPACE.distanceKm),
-    eveFraction: eveFraction ?? Number(config.sat_eve ?? FREE_SPACE.eveFraction),
-    freeSpace: {
-      ...fs,
-      atmosphericDb: Number(config.sat_atmospheric_db ?? fs.atmosphericDb),
-      pointingDb: Number(config.sat_pointing_db ?? fs.pointingDb),
-    },
-    sourceRateHz: sourceRateHz(config?.sat_source_rate_mhz, Number(qkdCfg().free_space_source_rate_hz)),
-  };
-}
-
 export interface ClientEvent {
   type: string; stage: string; message: string; data: Record<string, any>; t: number;
 }
@@ -2163,6 +2139,21 @@ export function runClientPipeline(
         const satChan = satChannel(config);
         const satProtocol = String(config.qkd_protocol ?? qkdCfg().protocol);
         const satPulses = Number(config.sat_pulses ?? webCfg().demo_sat_pulses);
+        // The pass geometry (Round 77): the elevation this range implies, and no run at all when the
+        // satellite is out of view - a sentence, not an infinite loss.
+        {
+          const elev = linkElevationDeg(satChan);
+          if (elev !== null) metric(stage, "sat_elevation_deg", r2(elev));
+          const why = outOfView(satChan);
+          metric(stage, "sat_in_view", why === null ? 1 : 0);
+          if (why !== null) {
+            metric(stage, "skr_per_pulse", 0);
+            metric(stage, "secure_key_bits", 0);
+            metric(stage, "qkd_eve_fraction", satChan.eveFraction);
+            emit("log", stage, `free-space downlink: ${why}`);
+            break;
+          }
+        }
         const satERes = satProtocol === "e91" ? e91(satPulses, satChan, seed, qkdCfg().e91_visibility) : null;
         const res = satERes ?? bb84(satPulses, satChan, seed);
         // Same key the fibre stage uses: one QKD stage runs per use case, and both report the same
@@ -2261,6 +2252,17 @@ export function runClientPipeline(
         }
         metric(stage, "inference_provenance", "simulated");
         metric(stage, "inference_backend", "analytic free-space channel model (quantumSim)");
+        {
+          // Out of view: there is no quantum channel to carry the telemetry (Round 77).
+          const why = outOfView(satChannel(config));
+          if (why !== null) {
+            metric(stage, "qsdc_link_budget_limited", 1);
+            metric(stage, "qsdc_eavesdrop_detected", 0);
+            artifacts.telemetry_delivered = false;
+            emit("log", stage, `QSDC (simulated) NOT AVAILABLE: ${why}. Telemetry falls back to the PQC session key.`);
+            break qsdc;
+          }
+        }
         // Same channel the satellite_qkd stage above built, distance included. Reading only sat_eve
         // here meant the downlink range moved the QKD QBER but not the QSDC error rate, so one
         // control produced two inconsistent pictures of the same link.
