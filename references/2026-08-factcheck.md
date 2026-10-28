@@ -91,6 +91,11 @@ state" - signal plus two decoys, three intensities. The repo implements signal +
 supplies `Y0` analytically (`bb84.py:224`) instead of measuring a vacuum decoy, so the implementation
 is self-consistent and the NAME is what misattributes it.
 
+**Round 75 went further than the naming.** A modelled `Y0` is information the two-intensity protocol
+cannot have, and it made the bound 1.3% high at 50 km and 40% at 120 km (maximum distance 140.9 km
+against 134.7). Both implementations now use the paper's own one-decoy bound, section 3.5 Eq. (41),
+which sets `Y0 = 0` in the estimate; `tests/test_the_decoy_bound_is_the_one_decoy_bound.py`.
+
 ### 4. `decoy_reference.py` attributes two things to Ma et al. that are not there
 
 **BOTH CONFIRMED Round 53, and the first is worse than reported.**

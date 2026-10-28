@@ -68,21 +68,42 @@ Each carries whether it was reproduced locally or is recorded as reported-and-un
   **v1 only. It has an arXiv DataCite DOI (10.48550/arXiv.2607.24118) and NO journal DOI** - which
   is not the same thing as "no DOI", the phrasing a code comment used until Round 44. Every arXiv
   paper carries a DataCite DOI; what is absent here is peer review.
-  Reports, verbatim from the abstract: a **100 MHz** repetition rate, **164.8 kbps** secure key rate
-  and QBER of **approximately 3.3 %** over a 2 km outdoor free-space channel, with active beam-wander
-  correction by fast-steering mirrors.
+  Reports, verbatim from the v1 abstract: a **100 MHz** repetition rate, **164.8 kbps** secure key
+  rate and QBER of **approximately 3.3 %** over a 2 km outdoor free-space channel, with active
+  beam-wander correction by fast-steering mirrors.
+  **v2 (2026-10-16), read 2026-10-27:** an **average finite-key** secure key rate of **110 kbps** at an
+  average QBER of **3.28 %**, same link and clock. The code, the config and the control-plane panel
+  quote v2 since Round 75.
   **What it grounds, and only this:** the `source_rate_hz` / `free_space_source_rate_hz` defaults in
   `src/qsh/config/defaults.py`. Round 44 made the source repetition rate an explicit, operator-set
   assumption so ETSI GS QKD 015's `skr`/`eskr` could carry the bit/s the spec defines them as, and
-  this paper's 100 MHz is the default that assumption starts from. It also anchors the 0.025
-  misalignment floor in the free-space channel model.
+  this paper's 100 MHz is the default that assumption starts from. It anchored the free-space
+  misalignment floor (0.025) until Round 75; a 2 km horizontal ground link is not a satellite
+  downlink, and the floor now comes from Liao et al. 2017's measured QBER (the entry below).
   **Explicit negative, because a borrowed clock invites a borrowed result.** No other number from
-  this paper is used. Its 164.8 kbps is quoted on the control-plane panel purely as the nearest
+  this paper is used. Its rate (v2: 110 kbps) is quoted on the control-plane panel purely as the nearest
   measured figure this repository cites, labelled as belonging to a different channel - a 2 km
   horizontal path, not this model's 50 km of fibre or its ground-to-LEO slant range - and it is
   **neither reproduced nor claimed** anywhere in this project. A preprint is a weaker source than a
   refereed one and the demo's own bit/s is a simulation under an assumed clock; both facts travel
   with the number wherever it is shown.
+
+- **Satellite-to-ground quantum key distribution** - Liao et al., *Nature* **549**, 43-47 (2017).
+  arXiv:1707.00542 `[link]`
+  URL: https://arxiv.org/abs/1707.00542
+  VERIFIED 2026-10-27 in the arXiv text. The source of the satellite page's channel since Round 75,
+  value by value: the 300 mm satellite telescope's "near-diffraction-limited far-field divergence of
+  ~10 urad"; Xinglong's receiving telescope "with an aperture of 1 m"; "diffraction loss ... 22 dB at
+  1200 km"; atmosphere "3 dB to 8 dB" and pointing "less than 3 dB" at 1200 km; detectors
+  "efficiency 50%, dark counts <25 Hz" with a "2-ns time window" (so 5e-8 per detector per pulse); an
+  "overall optical efficiency including the receiving telescope and the fiber coupling ... ~16%"; a
+  100 MHz source; QBER "with an average of 1.1%"; sifted rates "from ~12 kbit/s at 645 km to ~1
+  kbit/s at 1200 km"; a final key of about 1.1 kbit/s with finite-key analysis. Micius ran THREE
+  intensities (0.8, 0.1 and a vacuum), where this model runs one decoy. Cross-check after Round 75:
+  at Micius's 0.8 signal intensity the model's sifted rate at 645 km is 12.2 kbit/s; at 1200 km it is
+  3.5 against the measured ~1, because the model holds the atmosphere constant while it thickens at
+  low elevation. The 1.2 m aperture the repository used before is Yin et al., Science 356, 1140
+  (2017)'s stations (METADATA-ONLY here), not Xinglong.
 
 - **Information-Theoretic Solutions for Seedless QRNG Bootstrapping and Hybrid PQC-QKD Key
   Combination** - Giestinhas and Spiller, University of York, arXiv:2603.26907v2 [quant-ph], 2026
@@ -445,11 +466,14 @@ directly, not against another file in this repository. The architecture discussi
   permutation-invariant summary of a linear layer exactly and achieves perfect model
   distinguishability, needing `d+1` queries for a `d`-input layer - 5,712 for all linear layers of a
   ResNet-20. Breaks the shuffling-plus-noise defence that a plaintext-offload design depends on.
-  **Carried as a trip-wire:** this repository sends the non-linear half as secret shares, so no
-  plaintext intermediate exists to query, but the paper does not analyse the MPC-evaluated case - so
-  the correct claim is that the attack's precondition is absent here, NOT that the MPC variant has
-  been shown secure. If the non-linear path is ever moved to plaintext client offload, this applies
-  directly. Added: 2026-08-11.
+  **Carried as a trip-wire:** this repository sends the non-linear half as secret shares, through
+  masked conversions since Round 75, so the key holder decrypts only masked intermediates; the paper
+  does not analyse the MPC-evaluated case - so the correct claim is that the attack's precondition is
+  absent here, up to the masks' stated statistical bound, NOT that the MPC variant has been shown
+  secure. **Until Round 75 this entry said "no plaintext intermediate exists to query" while the
+  conversions decrypted every linear output in the clear and opened every ReLU result to all
+  parties**, so the precondition was present. If the non-linear path is ever moved to plaintext client
+  offload, or the masks are removed, this applies directly. Added: 2026-08-11.
 - **Xu, Lu, Yu, Yi, Lin, Wang & Li, "Breaking the Layer Barrier: Remodeling Private Transformer
   Inference with Hybrid CKKS and MPC" (BLB).** arXiv:2508.19525, Aug 2025. Splits at operator rather
   than layer granularity and fuses adjacent linear operators to minimise CKKS<->MPC conversions; 21x
@@ -457,6 +481,17 @@ directly, not against another file in this repository. The architecture discussi
   reductions under GPU acceleration. Already named in `README.md` and `docs/architecture.md` as the
   current end of the Gazelle -> Delphi -> BOLT -> Bumblebee line; recorded here with its numbers.
   Added: 2026-08-11.
+- **Juvekar, Vaikuntanathan & Chandrakasan, "GAZELLE: A Low Latency Framework for Secure Neural
+  Network Inference."** arXiv:1801.05507; USENIX Security 2018. Its "encryption switching protocols"
+  convert between homomorphic and garbled-circuit encodings at each layer boundary by masking: the
+  server adds a random mask to the encrypted linear output before the client decrypts it, exactly,
+  over the scheme's plaintext ring. The shape `src/qsh/mpc/secret_inference.py` follows since Round
+  75, with real-valued masks because CKKS is approximate. Added: 2026-10-27.
+- **Mishra, Lehmkuhl, Srinivasan, Zheng & Popa, "Delphi: A Cryptographic Inference Service for Neural
+  Networks."** IACR ePrint 2020/050; USENIX Security 2020. Inference between two parties "without
+  revealing either party's data", with linear layers on additive secret shares prepared under
+  homomorphic encryption and ReLU in garbled circuits; neither party holds an intermediate in the
+  clear. Cited for the same conversions. Added: 2026-10-27.
 
 **FHE maturity in 2026, for calibration rather than as a citation to lean on.** Surveys and vendor
 retrospectives converge on roughly 100x-1000x overhead against plaintext, with what actually ships
@@ -701,7 +736,7 @@ in Round 17 are marked below.
 | `tenseal` | `qsh/fhe/*`, benchmark | **Apache-2.0**, confirmed from the installed package metadata; an earlier revision of this table listed it under BSD-2/MIT |
 | `Alisah-Ozcan/HEonGPU`, `chart21/hpmpc` (PIGEON), `kanav99/shark` | `qsh/benchmark/*`, our own glue | Apache-2.0 / MIT |
 | `data61/MP-SPDZ` | benchmark CPU MPC baseline, reference only | CSIRO, **not a blanket commercial grant** |
-| `lschoe/mpyc` | `qsh/mpc/secret_inference.py` - non-linear MPC (ReLU, argmax on shares). A normal PyPI dependency in `requirements-fhe.txt`; the submodule was dropped in Round 17 and nothing is vendored | MIT |
+| `lschoe/mpyc` | `qsh/mpc/secret_inference.py` - non-linear MPC (ReLU, argmax, max-pool on shares), run as three party processes by `qsh/mpc/parties.py` since Round 75. A normal PyPI dependency in `requirements-fhe.txt`; the submodule was dropped in Round 17 and nothing is vendored | MIT |
 | `IBM/AMLSim`, `synthetichealth/synthea` | **cited only, not used.** Round 17 removed both submodules as unreferenced; `qsh/data/synthetic.py` mentions them in prose only and no code path calls them | Apache-2.0 |
 | `EdgarLopezPhD/PaySim` | cited only, never cloned or vendored | **GPL-3.0** for the simulator source; the Kaggle output dataset is separately CC-BY-SA-4.0 |
 | `openfhe` (OpenFHE 1.5.1, CKKS with bootstrapping) | `qsh/fhe/backends.py` (`OpenFHEBackend`) | BSD-2-Clause |
@@ -977,14 +1012,18 @@ was wrong, because $`C_s = 1 - 2h(e)`$ is the **loss-free** case.
 The published criterion is $`C_s > 0`$, and $`C_s`$ depends on channel loss:
 
 $$
-C_s \;=\; Q_{\text{Bob}}\bigl[\,1 - h(e) - g\,h(e_{\text{chk}})\bigr],
+C_s \;=\; Q_{\text{Bob}}\bigl[\,1 - h(e) - g\,h(e_x + e_z)\bigr],
 \qquad
 g \;=\; \frac{Q_{\text{Eve}}}{Q_{\text{Bob}}} \;=\; 10^{\,\text{loss\_dB}/10}
 $$
 
-So the tolerable error rate falls fast as the link gets lossier: 0.110 at 0 dB, **0.048 at the 4.1 dB
-Qi et al. measured on a real 1.5 km fibre link ($`g = 2.57`$)**, and ~0.0003 at the ~24.5 dB this
-project's own free-space downlink reports. Applying 0.11 to a lossy channel is wrong in the
+That is Qi et al.'s Eq. 8, with $`g`$ counting "the efficiency of the detector and channel loss" of the
+back channel. The code computes it with $`e_x = e_z = e`$. So the tolerable error rate falls fast as
+the link gets lossier: **0.0757 at 0 dB, 0.0286 at Qi et al.'s own $`g = 2.57`$** (their back
+channel's 4.1 dB, in a 1.5 km fibre system whose total loss was 25.1 dB), and about $`5.5 \times
+10^{-6}`$ on this project's 800 km downlink, 37.0 dB with the detector ($`g \approx 5{,}000`$).
+These replaced, in Round 75, figures computed with a pooled $`h(e_{\text{chk}})`$ and no detector
+term (0.110 / 0.048 / ~0.0003), and a downlink of 24.5 dB that had no receiver-optics loss. Applying 0.11 to a lossy channel is wrong in the
 **permissive** direction - it delivers over a channel whose secrecy capacity is already zero. The
 satellite path now computes $`C_s`$ directly.
 
