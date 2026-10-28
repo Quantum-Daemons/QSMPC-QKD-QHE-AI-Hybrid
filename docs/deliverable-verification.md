@@ -6219,7 +6219,9 @@ dB and 2.4 dB, its other figures as before. Telecom at 50 km: 1.426711e-3 bit/pu
 1,426,711 bit/s, the one-decoy bound with the dead-time note, and the tooltip's ratio to Li et al.
 computed at 6.2x. E91: "none (entangled source)", the E91 fraction named, CHSH S 2.69. Console clean,
 no "Infinity" or "NaN". **Found on the page:** the E91 row still said "only the signal pulses carry
-key", a decoy clause on a protocol with none; it now says every pair counts.
+key", a decoy clause on a protocol with none, and its source cell cited the decoy-state paper (Ma,
+Qi, Zhao & Lo 2005) for it. It now says every pair counts and cites Ma, Fung & Lo, Phys. Rev. A 76,
+012307 (2007), as the facts row already did; each bound carries its own paper.
 
 BUSINESS DOC RECONCILED Round 78. The out-of-repo document is brought level with this round. Its content
 is not quoted here, in the checklist, or in any commit - only the fact of the reconciliation, which is
