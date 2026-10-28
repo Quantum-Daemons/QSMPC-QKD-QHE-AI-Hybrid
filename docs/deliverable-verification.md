@@ -4130,8 +4130,8 @@ Still open:
 
 | item | why it is a judgement | proposal |
 |---|---|---|
-| EU AI Act date on the medical line | it said Art. 13 applies from 2 Dec 2027 (Annex III); a diagnostic model is more likely an Annex I product (MDR), 2 Aug 2028 | removed with the market line; UNVERIFIED - needs confirmation which annex applies before restating it anywhere |
-| Honest perfectly-secure QHE expansion | about 15x per Ortega and Martin-Delgado | UNVERIFIED - needs confirmation against the paper before it is quoted |
+| EU AI Act date on the medical line | it said Art. 13 applies from 2 Dec 2027 (Annex III); a diagnostic model is more likely an Annex I product (MDR), 2 Aug 2028 | removed with the market line; UNVERIFIED - needs confirmation which annex applies before restating it anywhere. **RESOLVED Round 69:** Annex I, through the MDR (Rule 11, class IIa or higher), so 2 Aug 2028; the SHAP panel now states each use case's position |
+| Honest perfectly-secure QHE expansion | about 15x per Ortega and Martin-Delgado | UNVERIFIED - needs confirmation against the paper before it is quoted. **RESOLVED Round 69, not adopted:** the paper gives no such factor; its only 15 is a coefficient in a T-gate count |
 
 ### The concern worth stating above the others
 
@@ -5024,5 +5024,115 @@ error. The failure paths were not exercised on the public demo, because that wou
 deployed build. They were exercised locally, above.
 
 BUSINESS DOC RECONCILED Round 68. The out-of-repo document is brought level with this round. Its content
+is not quoted here, in the checklist, or in any commit - only the fact of the reconciliation, which is
+what gate 16 reads.
+
+## Round 69: the open items researched, and the AI Act stated per use case
+
+**Round 68 closed first.** PR #64 merged as d0cc4b7, and the demo was redeployed from main. It serves
+the bundle the branch walk saw (`index-BV0XWvvL.js`). The medical pipeline checked its index in the
+clear (`mpc_matches_clear` 1), took 132.06 ms over 922.48 KB, verified PASS and signed. All ten pages
+were walked again at 1280 and 390 px.
+
+**Why this round exists.** Three items had stayed UNVERIFIED across rounds:
+- which part of the EU AI Act a medical model falls under;
+- the "about 15x" expansion attributed to Ortega and Martin-Delgado;
+- whether official vectors now exist for the RFC 9370 and RFC 8784 layers.
+Each was read at its primary source in October 2026.
+
+**The AI Act.**
+- Regulation (EU) 2026/1744, the Digital Omnibus on AI, sets the high-risk requirements (Chapter III
+  Sections 1 to 3, Art. 13 among them) to apply from 2 December 2027 for Annex III systems and from
+  2 August 2028 for Annex I systems. It was published in the Official Journal on 24 July 2026 and
+  entered into force on 27 July 2026. The regulatory clock already carried both dates correctly.
+- Per use case, on the Act's own terms:
+  - **Medical** would be high-risk through Art. 6(1) and Annex I. Diagnostic software is a medical
+    device of class IIa or higher (MDR, Annex VIII Rule 11), so a notified body assesses it, and its
+    date is 2 August 2028.
+  - **Genomics** would be the same through the IVDR. Polygenic risk software is an in-vitro diagnostic
+    of class C (Rule 3, human genetic testing).
+  - **Finance** is not high-risk. Annex III 5(b) covers the creditworthiness and credit scoring of
+    natural persons, fraud detection excepted, and anti-money-laundering monitoring evaluates
+    transactions, not creditworthiness.
+  - **Telecom** is not high-risk. Recital 55 says a component used solely for cybersecurity is not a
+    safety component, so Annex III 2 does not reach an intrusion detector.
+  - **Satellite** is not a listed category. It would be high-risk only as a safety component of
+    critical digital infrastructure, which depends on deployment.
+- What was wrong: the SHAP panel printed "for EU AI Act Art. 13, applicable 2 Dec 2027" on all five
+  pages, and it was right for none of them. Four more copies of the same idea were found:
+  - two in README, which dated Art. 13 to the Annex III date only;
+  - two in Python docstrings (`ai/explainability.py`, `orchestration/stages.py`), which listed
+    "credit/AML" as high-risk.
+- What changed: `web/src/lib/aiActScope.ts` states each use case's position with its grounds, taking
+  both dates from the regulatory clock. The panel prints that sentence, and the README and the
+  docstrings now say the same.
+
+**The QHE factor.** Ortega, Fernandez and Martin-Delgado, "Implementing Semiclassical Szegedy Walks in
+Classical-Quantum Circuits for Homomorphic Encryption", J. Phys. Complexity 6, 025010 (2025)
+(arXiv:2412.01966), gives no expansion factor of about 15. The only 15 in it is a coefficient in a
+T-gate count, $L_{\tilde V} = 15n^2 - 43n + 14 + (2n-3)L_R$. The paper also restates the no-go result
+that perfect security in quantum fully homomorphic encryption costs exponential storage overhead (Yu,
+Perez-Delgado and Fitzsimons, Phys. Rev. A 90, 050303 (2014)). The proposal is closed, not adopted,
+and no public text quoted the figure.
+
+**The RFC vectors.** Still none, so the page's label "computed per spec - no official vectors" stands.
+- RFC 9370's appendix A gives message flows and formulas, with no byte values.
+- RFC 8784's one appendix is a rationale.
+- draft-ietf-ipsecme-ikev2-mlkem-09 (5 July 2026), which profiles RFC 9370 for ML-KEM, is in the RFC
+  Editor's queue and has no vectors either.
+
+**Verified locally.** All four AI Act gates pass, and the new gate was seeded five ways, each seed
+firing:
+- the blanket date back in the panel;
+- medical on the Annex III date;
+- AML called high-risk;
+- the clock moved;
+- the panel not told its use case.
+Its scan of tracked text fires on the two pre-fix docstrings. The README's old lines named Annex III
+beside the date, so the scan's rule does not flag them, and they were improved anyway.
+
+UNVERIFIED - needs confirmation: the classifications above are a reading of the Act for a
+demonstration, not legal advice. In particular, whether a satellite telemetry detector would be a
+safety component depends on a deployment the demo does not have.
+
+**Walked on the public demo with this branch deployed** (eda3594, serving `index-ChP1tts5.js`, the file
+name the local client-only build produced).
+- On each of the five use-case pages, after a run, the line under the SHAP bars states that use case's
+  position: medical and genomics through Annex I from 2 August 2028, finance and telecom not
+  high-risk, and satellite depending on deployment.
+- The medical pipeline still checked its index in the clear.
+- All ten pages render with zero horizontal overflow at 1280 and at 390 px.
+
+**Two console messages, both older than this round**, were traced and recorded as proposals rather than
+fixed here:
+- A 404 for `eval_sample.json` at the pinned revision of `Daemons-Q/qsh-satellite-telemanom-ckks-student`.
+  The page already says so: "no published evaluation sample for satellite_comms.student, so its
+  recorded metric is NOT reproduced in this tab". The proposal is to publish the sample at a new
+  pinned revision, so that this student is checked like the others.
+- An onnxruntime warning on the satellite page: "Expected shape from model of {1,6} does not match
+  actual shape of {128,6}". The Telemanom export declares a batch of 1, and the page re-scores 128
+  rows at once. The result is unaffected, since verification passes at the recorded MAE. The proposal
+  is to re-export with a dynamic batch axis.
+
+**Revised before merge, by the user's decision.** The first version stated one deployment per use case.
+Where the answer turns on who uses the model, or why, the sentences now say so:
+- Finance is not high-risk when a bank monitors transactions. It would be high-risk under Annex III
+  6(e) when a law-enforcement authority uses it to profile people while detecting offences, with
+  Art. 13 from 2 December 2027.
+- Telecom is not high-risk as a cybersecurity tool, "on the reading recital 55 gives", because a
+  recital is a reading, not an article. Used exclusively for defence or national security, it is
+  outside the Act altogether (Art. 2(3)), which matters on a page titled "Telecom / Defense".
+- Satellite gained the same Art. 2(3) sentence.
+- Every sentence on the page now ends with "A reading of the Act for this demonstration, not legal
+  advice."
+Both added provisions were read at their sources: Art. 2(3) excludes systems used "exclusively for
+military, defence or national security purposes", and Annex III 6(e) covers profiling by or on behalf
+of law-enforcement authorities in detecting, investigating or prosecuting offences. The gate now
+holds both conditions, the attribution to the recital and the caveat, and it was seeded four more
+ways, each seed firing. Redeployed (6b76af4, `index-CXjkbFrg.js`) and walked: after a run, all five
+use-case pages print the revised sentence with its caveat. The medical index is still checked in the
+clear, and all ten pages render with zero overflow at 1280 and 390 px.
+
+BUSINESS DOC RECONCILED Round 69. The out-of-repo document is brought level with this round. Its content
 is not quoted here, in the checklist, or in any commit - only the fact of the reconciliation, which is
 what gate 16 reads.
