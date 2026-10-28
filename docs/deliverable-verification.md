@@ -6132,3 +6132,97 @@ for this round is `scripts/ci_local.sh`: all 18 blocking gates pass on 6a0250d.
 BUSINESS DOC RECONCILED Round 77. The out-of-repo document is brought level with this round. Its content
 is not quoted here, in the checklist, or in any commit - only the fact of the reconciliation, which is
 what gate 16 reads.
+
+## Round 78: rates per pulse sent, the model against every Micius night, and two options verified first
+
+**Stacked on Round 77**, all held by decision. Three user choices after Round 77: count every rate
+per pulse SENT; verify a sourced loss term that grows at low elevation; verify Jinan-1 as a template;
+add each only if it holds up.
+
+**Per pulse sent.** The decoy bound is per SIGNAL pulse, and both sources here send their signal on
+half their pulses, so every rate read twice what such a source makes. Both languages' BB84 now
+multiply by the signal share and sift signal pulses only (as Liao et al. count theirs); the non-decoy
+counterfactual stays on the same pulse schedule, so it remains at or below the decoy bound. Fibre at
+50 km: 1.4267e-3 bit/pulse, 28,534 bits in the block, 1.43 Mbit/s at 1 GHz (2.853e-3 per signal
+pulse). Satellite at 800 km: 1.678e-5 bit/pulse, 335 bits. The Network tab's separate signal-share
+figure folded into the one convention. The 8 dB upper-value profile now makes 239 bits, below the 256
+a session key needs; the Jinan-1 profile 211 in the 2e7-pulse block, which is 32 ms at its 625 MHz.
+
+**Found with it: the control-plane panel named the wrong bound.** It printed the one-decoy Eq. (41)
+on every run - the satellite's Vacuum+Weak runs since Round 77 and E91 runs, which have no decoy
+states - and its tooltip compared the run with Li et al.'s measured 8.88e-3 bit/pulse by a literal
+"3.8x" no run had matched since Round 76. Both QKD stages in both languages now report the decoy
+states they ran (`qkd_decoy_states`), and the panel names that bound and computes the ratio (6.2x on
+fibre at 50 km).
+
+**The low-elevation term, verified: not added as a default.** A research pass ranked seven candidate
+terms with their sources. None closes the gap on both measured passes:
+- Khmelev et al.'s own figure shows the model fitting the whole rising half of the Zvenigorod pass and
+  missing only the falling half (about 1.6 dB low by the end, 1.2 dB at 29 degrees where the rising
+  half fits) - so that residual is not elevation;
+- Liao's own figures put the fall from 645 to 1200 km at 9.1 to 11.5 dB, not a firm 10.8, so the gap
+  there is 0.7 to 3.1 dB;
+- downlink beam wander and scintillation are negligible (Liorni et al. 2019, Vasylyev et al. 2019,
+  Lu et al. 2022 say so), pointing loss is constant in the far field, and single-mode coupling does not
+  apply to these multimode receivers.
+
+**The model against all 23 Micius nights.** Liao et al.'s Extended Data Table 2 lists every pass over
+Xinglong with its shortest range and peak sifted rate. At each shortest range the default link's
+peak is centred on them - median -0.03 dB, standard deviation 2.4 dB, 11 of 23 above - and the 8 dB
+profile sits 0.9 dB conservative (14 of 23 above). Nights at nearly the same geometry differ by 2.5
+dB (645 km: 14.1 kHz; 642 km: 7.9 kHz). The table ships as a validation set,
+`src/qsh/config/validation/`, read by `tests/test_the_model_sits_among_micius_nights.py` and drawn on
+the Network tab against the model.
+
+**The optional turbulence coupling, by the user's choice.** The best-sourced term: the seeing-limited
+image of the satellite, 0.98 lambda / r0 across, with r0 shrinking as sin(elevation)^(3/5) (Wang et
+al., arXiv:1505.05436, Eqs. 1-2, at Xinglong's LAMOST site), overfilling the receiver's field stop.
+Applied relative to the zenith, because the measured 16 percent optics already include the coupling
+there, and counted as station optics, so QSDC's Eve gap leaves it out. Xinglong's 2014 DIMM median
+seeing is 1.7 arcsec (Zhang et al., arXiv:1601.08114); its field stop is unpublished, so the
+`micius_2017_field_stop` template assumes 10 urad, which steepens Liao's pass from 8.4 to 9.6 dB.
+Off by default (0), in both languages, with a control.
+
+**Jinan-1, verified: a template with one calibrated constant.** Li et al. (Nature 2025) state the
+orbit, the 280 mm station, the 9-10 urad Gaussian divergence (6.72 urad in this model's top-hat law),
+625 MHz, 0.8 / 0.1 / 0.001 at 50 / 25 / 25, 60 percent detectors and a 49 percent indoor efficiency,
+but not the atmosphere, pointing loss, background or transmit optics; those come from other sources
+(Khmelev's 0.88 dB clear sky; Lu et al.'s pointing formula on its tracking error; the pass's own
+off-signal counts) and are marked. Built from those values the model over-predicts the 25 September
+2022 pass's peak count rate by 3.67 dB, so the station efficiency is calibrated to it (0.168). What
+the pass then checks independently is the fall with elevation: 6.90 dB predicted against 6.62
+measured to 13.9 degrees, 8.65 against 8.51 to 11.0. On four Jinan passes the model's asymptotic key
+exceeds every published finite key, by 2.9x to 5.1x; the paper's sifted packets are a quarter of
+its detections and it does not say which states they count, so part of that factor may be protocol.
+
+**Kept as it is: Liao's own diffraction budget.** Liao's measured far field (Extended Data Fig. 5c, a
+9 x 11 urad Gaussian) would give about 3 dB less diffraction than the 22 dB at 1200 km the paper
+budgets and this model uses; adopting it would need an atmosphere outside Liao's own 3-8 dB to keep the
+nights centred. Recorded rather than adopted, by the user's choice.
+
+**Gates.** `tests/test_the_model_sits_among_micius_nights.py` (the 23 nights in both languages, the
+coupling term's closed form and twin, the field-stop template's slope, Jinan-1's calibration, slope
+and keys); the convention's identities in `tests/test_the_fibre_set_is_rusca_2018.py`,
+`tests/test_the_browser_computes_the_bound_the_page_names.py`,
+`tests/test_the_satellite_channel_is_sourced.py` and `tests/test_satellite_network_is_checked.py`.
+Full suite and every web check green.
+
+**Walked locally on a client-only build in Chrome.** The Network tab's nights chart (median -0.03 dB,
+2.4 dB, 11 of 23); Jinan-1 loading 0.88 / 0.809 / 10 / 625 MHz and running at 35.7 dB and 6,620 bit/s;
+the field-stop template loading 10 urad and running at 32.5 dB with QSDC's Eve gap still 27.3 dB;
+console clean.
+
+**Walked on the deploy (0544a16, `index-B_Yc3msc.js`), in Chrome.** Satellite at 800 km: 32.2 dB,
+335 bits, 1,678 bit/s, `qkd_decoy_states` "vacuum + one decoy", the facts row "per pulse sent" and the
+control plane naming the Vacuum+Weak bound with Eqs. (34) and (37); the Network tab's nights at -0.03
+dB and 2.4 dB, its other figures as before. Telecom at 50 km: 1.426711e-3 bit/pulse, 28,534 bits,
+1,426,711 bit/s, the one-decoy bound with the dead-time note, and the tooltip's ratio to Li et al.
+computed at 6.2x. E91: "none (entangled source)", the E91 fraction named, CHSH S 2.69. Console clean,
+no "Infinity" or "NaN". **Found on the page:** the E91 row still said "only the signal pulses carry
+key", a decoy clause on a protocol with none, and its source cell cited the decoy-state paper (Ma,
+Qi, Zhao & Lo 2005) for it. It now says every pair counts and cites Ma, Fung & Lo, Phys. Rev. A 76,
+012307 (2007), as the facts row already did; each bound carries its own paper.
+
+BUSINESS DOC RECONCILED Round 78. The out-of-repo document is brought level with this round. Its content
+is not quoted here, in the checklist, or in any commit - only the fact of the reconciliation, which is
+what gate 16 reads.
