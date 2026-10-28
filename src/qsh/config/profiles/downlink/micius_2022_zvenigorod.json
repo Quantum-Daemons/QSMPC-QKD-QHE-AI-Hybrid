@@ -1,0 +1,92 @@
+{
+  "id": "micius_2022_zvenigorod",
+  "kind": "downlink",
+  "label": "Micius to Zvenigorod (Khmelev 2023), measured clear-sky atmosphere",
+  "source": "Khmelev et al., arXiv:2310.17476 (2023), the Micius pass over Zvenigorod of 1 March 2022",
+  "note": "A second Micius link with its own measured pass: a 600 mm station, an atmosphere fitted to the counts (0.88 dB at the zenith) and no pointing term, as the paper's model has none. Checked in tests/test_satellite_network_is_checked.py against its sifted rates at 600 and 1,100 km.",
+  "values": {
+    "orbit_altitude_km": {
+      "value": 500.0,
+      "quote": "Micius orbiting at an altitude of ~500 km (Liao et al. 2017; the paper uses TLE data for the same satellite)"
+    },
+    "station_altitude_km": {
+      "value": 0.198,
+      "quote": "placed at the Zvenigorod observatory (Moscow region, 55 deg 42' N, 36 deg 45' E, altitude of 198 m)"
+    },
+    "beam_divergence_urad": {
+      "value": 10.0,
+      "quote": "Table I: gamma (Rad) 10^-5, in eta = eps D_T^2 / (gamma d)^2 ... the same law this model uses"
+    },
+    "rx_aperture_m": {
+      "value": 0.5126,
+      "assumption": "Table III: a 600 mm telescope with obstruction (eps) 0.73, which multiplies D_T^2 in their Eq. (2); folded in here as an equivalent clear aperture of 0.6 x sqrt(0.73) m"
+    },
+    "receiver_optics_efficiency": {
+      "value": 0.28,
+      "assumption": "Table II fits 21, 35, 37 and 19 percent for the four polarisation channels and the model averages the four; their mean is used"
+    },
+    "atmospheric_db": {
+      "value": 0.88,
+      "quote": "the atmospheric extinction coefficient kappa = 0.22 +/- 0.04, which corresponds to clear weather conditions",
+      "note": "kappa is in magnitudes per air mass (their Eq. 2, 10^(-0.4 kappa csc(theta))), so 0.4 x 0.22 x 10 = 0.88 dB at the zenith."
+    },
+    "atmospheric_ref_km": {
+      "value": 499.8,
+      "assumption": "kappa is a zenith figure: 499.8 km is the zenith range for a 500 km orbit over a 198 m station, which this model maps to 90 degrees"
+    },
+    "pointing_db": {
+      "value": 0.0,
+      "quote": "it might be explained by additional losses induced by pointing errors between the Micius satellite and the Zvenigorod ground station",
+      "note": "Their model carries no pointing term and names pointing as the likely missing loss; none is added here, so this profile reads high where pointing matters."
+    },
+    "detector_efficiency": {
+      "value": 0.6,
+      "quote": "Table III: Detector efficiency (eta_det) ~60%"
+    },
+    "dark_count_prob": {
+      "value": 2.9e-07,
+      "assumption": "Appendix B: night-sky and dark counts of 290 +/- 60 clicks per second over the four detectors, which the 2 ns filter reduces about five times (their Y0 = N / (5 f)); 2 p_dark = 290 / (5 x 1e8). The sunlight the satellite reflects (their T eta(t)) has no term in this model"
+    },
+    "misalignment": {
+      "value": 0.0091,
+      "quote": "the QBER for a source of signal states are 0.93%, 0.95%, 0.87%, and 0.89%",
+      "note": "Their mean, used as the error floor as Liao's 1.1% is."
+    },
+    "source_rate_hz": {
+      "value": 100000000.0,
+      "quote": "Table I: f (Hz) 10^8"
+    },
+    "detector_dead_time_s": {
+      "value": 0.0,
+      "assumption": "Not stated; at these count rates a dead time under a microsecond costs under 1 percent"
+    },
+    "mu_signal": {
+      "value": 0.8,
+      "quote": "Table I: mu 0.8, nu 0.1, p_s 0.5, p_d 0.25, p_v 0.25"
+    },
+    "mu_decoy": {
+      "value": 0.1,
+      "quote": "Table I: mu 0.8, nu 0.1, p_s 0.5, p_d 0.25, p_v 0.25"
+    },
+    "p_signal": {
+      "value": 0.5,
+      "quote": "Table I: p_s 0.5, p_d 0.25, p_v 0.25"
+    },
+    "p_decoy": {
+      "value": 0.25,
+      "quote": "Table I: p_s 0.5, p_d 0.25, p_v 0.25"
+    },
+    "vacuum_decoy": {
+      "value": true,
+      "quote": "vacuum lambda=0 coherent states and p_alpha in {p_s, p_d, p_v}"
+    },
+    "min_elevation_deg": {
+      "value": 20.0,
+      "quote": "The operating elevation angles of the Zvenigorod ground station ranges from 20 deg to 90 deg above the horizon"
+    },
+    "distance_km": {
+      "value": 800.0,
+      "assumption": "The page's default slant range, inside the pass's 600 to 1,100 km"
+    }
+  }
+}

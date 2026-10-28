@@ -16,7 +16,7 @@ Methods (config-selectable via ``qkd.optimize_method``):
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 import numpy as np
 
@@ -94,11 +94,17 @@ def evaluate_params(qkd_params: QKDParams, channel: ChannelParams, *, n_pulses: 
 
 def optimize_qkd(channel: ChannelParams | None = None, *, method: str | None = None,
                  n_samples: int | None = None, seed: int = 0, space: dict | None = None,
-                 n_pulses: int | None = None, protocol: str | None = None) -> OptimizeResult:
+                 n_pulses: int | None = None, protocol: str | None = None,
+                 baseline: QKDParams | None = None) -> OptimizeResult:
     """Tune QKD parameters to maximise SKR; return the measured improvement vs the default baseline.
 
     ``protocol`` (``None`` -> config) selects the physical model: ``"bb84"`` tunes the decoy-state +
     biased-basis parameters; ``"e91"`` tunes the entanglement-based (CHSH) basis bias + threshold.
+
+    ``baseline`` is the link's own source (``None`` -> the fibre config's ``QKDParams()``). Every
+    candidate starts from it, so what the search does not tune - whether a vacuum state is sent, how
+    often each state is - stays the link's. The satellite passes Micius's (Round 77); it was measured
+    against the fibre's intensities until then.
     """
     from ..config import get_config
 
@@ -107,6 +113,7 @@ def optimize_qkd(channel: ChannelParams | None = None, *, method: str | None = N
         distance_km=q.distance_km, fiber_loss_db_per_km=q.fiber_loss_db_per_km,
         detector_efficiency=q.detector_efficiency, dark_count_prob=q.dark_count_prob,
         misalignment=q.misalignment, eve_intercept_fraction=q.eve_intercept_fraction)
+    base = baseline or QKDParams()
     method = method or q.optimize_method
     protocol = protocol or getattr(q, "protocol", "bb84")
     n_samples = int(n_samples or q.optimize_n_samples)
@@ -124,7 +131,7 @@ def optimize_qkd(channel: ChannelParams | None = None, *, method: str | None = N
         # build QKDParams from whatever tunables the search space carries (mu_signal, mu_decoy, basis_prob,
         # pp_threshold) -> adding a dimension to the space needs no change here
         d = {k: float(v) for k, v in zip(keys, vec)}
-        return QKDParams(**{k: v for k, v in d.items() if k in QKDParams.__dataclass_fields__})
+        return replace(base, **{k: v for k, v in d.items() if k in QKDParams.__dataclass_fields__})
 
     def score(vec: np.ndarray) -> float:
         skr, _ = evaluate_params(make_params(vec), channel, n_pulses=n_pulses, seed=ev_seed, ecc=ecc,
@@ -132,7 +139,7 @@ def optimize_qkd(channel: ChannelParams | None = None, *, method: str | None = N
         return skr
 
     baseline_skr, baseline_qber = evaluate_params(
-        QKDParams(), channel, n_pulses=n_pulses, seed=ev_seed, ecc=ecc, protocol=protocol)
+        base, channel, n_pulses=n_pulses, seed=ev_seed, ecc=ecc, protocol=protocol)
     n_evals = 1
 
     # --- global search: sample + surrogate argmax (surrogate/gp) or midpoint start (coordinate) ---
