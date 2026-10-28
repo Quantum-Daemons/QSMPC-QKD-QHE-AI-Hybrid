@@ -13,6 +13,9 @@ import ShapPanel from "../components/ShapPanel";
 import TwoPartyDiagram, { USECASE_SPECS } from "../components/TwoPartyDiagram";
 import { Qcnn3D, Qotp3D, Sat3D } from "../components/Lazy3D";
 import { FibreDistanceCharts, QsdcRangeChart } from "../components/QkdCharts";
+import SatNetworkPanel from "../components/SatNetworkPanel";
+import Tabs from "../components/Tabs";
+import { satChannel } from "../lib/satLink";
 import Details from "../components/Details";
 import NotFound from "../components/NotFound";
 import KeyPoints from "../components/KeyPoints";
@@ -121,14 +124,28 @@ function UseCaseView({ usecase }: { usecase: string }) {
         <div className="card">
           <h3>Simulated quantum channel across its range <StageBadge kind="simulated" /></h3>
           {usecase === "satellite_comms"
-            ? <>
-                <QsdcRangeChart eve={Number(run.params.sat_eve ?? FREE_SPACE.eveFraction)}
-                  atmosphericDb={Number(run.params.sat_atmospheric_db ?? FREE_SPACE.freeSpace!.atmosphericDb)}
-                  pointingDb={Number(run.params.sat_pointing_db ?? FREE_SPACE.freeSpace!.pointingDb)} />
-                <Details summary="Downlink geometry in 3D (an illustration)">
-                  <Sat3D slantKm={Number(run.params.sat_distance_km ?? FREE_SPACE.distanceKm)} />
-                </Details>
-              </>
+            ? (() => {
+                // The run's own link - profile, minimum elevation and the rest - for every view below.
+                const sat = satChannel(run.params as Record<string, any>);
+                // Two tabs since Round 77: one downlink across its range, and what carries a key past
+                // the horizon that downlink cannot see over.
+                return (
+                  <Tabs label="Satellite channel views" tabs={[
+                    { id: "downlink", title: "Downlink", content: () => (
+                      <>
+                        <QsdcRangeChart channel={sat} />
+                        <Details summary="Downlink geometry in 3D">
+                          <Sat3D slantKm={sat.distanceKm} orbitKm={Number(sat.freeSpace!.orbitAltitudeKm)}
+                            minElevationDeg={Number(sat.freeSpace!.minElevationDeg)} />
+                        </Details>
+                      </>
+                    ) },
+                    { id: "network", title: "Network", content: () => (
+                      <SatNetworkPanel params={run.params as Record<string, any>} />
+                    ) },
+                  ]} />
+                );
+              })()
             : <FibreDistanceCharts misalignment={Number(run.params.qkd_misalignment ?? FIBER.misalignment)}
                 eve={Number(run.params.qkd_eve ?? 0)} />}
         </div>

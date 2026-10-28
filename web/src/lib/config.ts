@@ -38,6 +38,21 @@ export const securityScoringCfg = () => CONFIG.security_scoring;
 export const quantumAdvantageCfg = () => CONFIG.quantum_advantage;
 export const dataCfg = () => CONFIG.data;
 export const qkdCfg = () => CONFIG.qkd;
+/** One link profile (Round 77): `src/qsh/config/profiles/<kind>/<id>.json`, values with their sources.
+ *  Every value carries exactly one of `quote` (the source states it) or `assumption`. */
+export type ProfileValue = { value: number | boolean; quote?: string; assumption?: string; note?: string };
+export type LinkProfile = { id: string; kind: "downlink" | "isl"; label: string; source: string;
+  note?: string; values: Record<string, ProfileValue> };
+/** The downlink and inter-satellite-link profiles, by id. A JSON file added under
+ *  src/qsh/config/profiles/ appears here after `scripts/export_config.py`, with no code change. */
+export const linkProfiles = (kind: "downlink" | "isl"): Record<string, LinkProfile> =>
+  (((CONFIG as any).link_profiles ?? {})[kind] ?? {}) as Record<string, LinkProfile>;
+/** A profile's bare values, `{name: value}`; null for an unknown id. */
+export const profileValues = (kind: "downlink" | "isl", id: string): Record<string, any> | null => {
+  const prof = linkProfiles(kind)[id];
+  if (!prof) return null;
+  return Object.fromEntries(Object.entries(prof.values).map(([k, e]) => [k, e.value]));
+};
 export const qrngCfg = () => CONFIG.qrng;
 export const idsCfg = () => CONFIG.ids;
 export const cryptoCfg = () => CONFIG.crypto;   // crypto-agility defaults incl. hybrid_combiner_mode
