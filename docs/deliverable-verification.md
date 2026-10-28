@@ -5573,3 +5573,157 @@ restructures the file most readers see first, so it is left for the user's decis
 BUSINESS DOC RECONCILED Round 73. The out-of-repo document is brought level with this round. Its content
 is not quoted here, in the checklist, or in any commit - only the fact of the reconciliation, which is
 what gate 16 reads.
+
+## Round 74: accessibility re-measured, a readout in place of the tooltip, and the calibration chart corrected
+
+**Stacked on Round 73**, all held by decision. This round changes the demo: two chart colours, a
+separator, one legend, the heading levels of four kinds of page, a fixed readout under every chart
+in place of the floating tooltip, and a calibration chart that is now drawn only where the sample
+supports one and only from probabilities.
+
+**Why this order.** The oldest-first audit, continued. The accessibility rows were last measured on
+2026-08-15. Two were open by declaration: 1.4.11 non-text contrast, never measured, and the skipped
+heading levels. 1.4.13 was carried as open with a stated reason.
+
+**1.4.11 Non-text Contrast, measured for the first time.**
+- Every chart mark's colour was resolved the way the browser resolves it (a CSS variable, a constant,
+  a helper function, a hatch pattern's base fill) and measured against the card it is drawn on,
+  `--panel` (#151c2c).
+- Two failures:
+  - the score histogram's negative class, #4a5568, at 2.26:1; now #717d92 at 4.09:1;
+  - the latency chart's legend swatch, drawn in black at 1.23:1, because the bars are coloured per
+    cell and the series has no colour of its own. The legend keyed only that one series and explained
+    none of the colours, so it was removed. The ratio chart beside it never had one.
+- **My first fix made a third.** The lighter negative class met the positive segment it is stacked on
+  at 1.10:1 (1.65:1 before). Stacked segments meet each other as well as the card, and no grey reaches
+  3:1 against the card, the hatch base and the hatch lines at once. A card-coloured stroke now
+  separates the two segments, as WCAG's own pie-chart example does with a border.
+- Against the grid colour every mark passes except the #c05621 threshold line, at 2.88:1. Recorded,
+  not changed: the two thin lines meet only where they cross, the Understanding document does not ask
+  for marks against gridlines, and lightening the colour would weaken the hatch texture it is also the
+  base of (2.82:1 to 2.56:1), which is the second channel for 1.4.1.
+
+**1.3.1 heading levels, closed with no visual change.**
+- The app titled every card with h3, in the pages and in the components they render, so
+  `/orchestration`, `/usecases`, every `/usecase/<id>` and the not-found page went from h1 to h3. The
+  not-found page was not on the checklist's list.
+- Hidden h2 section headings now group the cards: four on each use-case page (the simulator, models
+  and verification, the benchmark, agentic AI and the control plane) and two on `/orchestration`.
+  They use `.sr-only`, which keeps them in the accessibility tree.
+- On `/usecases` and the not-found page the cards are the page's sections, so their titles became h2,
+  styled as the h3 they replaced.
+
+**1.4.13 Content on Hover or Focus: the checklist was wrong in one place and silent in another.**
+- It recorded "zero Escape handlers", counted in this repository. recharts 2.15.4 has one: its tooltip
+  box listens for Escape on the document and hides (recharts PR #2925). Measured on the deploy with a
+  real key press.
+- What it missed: recharts' keyboard layer opens the tooltip on focus and on the arrow keys, and has
+  no blur handler, so tabbing out of a chart left its tooltip open over the plot. Measured on the
+  deploy with real key presses.
+- Hoverable was not met: the tooltip ignores the pointer and follows it at a 10 px offset, so it never
+  disappears and can never itself be hovered. **By the user's decision every chart now writes into a
+  fixed line under it instead** (`web/src/components/ChartReadout.tsx`). A line in the page flow is not
+  hover content: it covers nothing, keeps the last point read, and as a polite live region announces
+  each point a keyboard user arrows to. Recharts still finds a `<Tooltip>` in every chart, because its
+  keyboard layer needs one; its content renders through a portal into the line, so the floating box
+  stays empty. Seventeen charts, converted by one brace-aware transform and checked by a gate.
+- The active highlight is cleared once a chart has neither hover nor focus, so Tab no longer leaves a
+  chart pointing at a category.
+- Measured on a local build with real key presses and a real pointer, before the deploy: arrowing the
+  precision-recall curve reads "recall 0.415: precision 0.5620"; hovering an agreement-scatter point
+  reads its plaintext and encrypted scores and keeps them after the pointer leaves; after Tab no
+  highlight is visible and no floating box has content.
+
+**Found while measuring the walk: a caption that read "0.644against".** The calibration caption wrapped
+its prose after a value, and JSX deletes a line break where it meets an expression. The source looked
+right, and tsc and the build were green. A parse of every component with the TypeScript compiler found
+one more instance (the sidebar brand, glued only in `textContent`). Both are fixed, and
+`web/scripts/check_jsx_text_spaces.mjs` now runs in CI and in `scripts/ci_local.sh`. It accepts a
+space kept inside the next node and `{" "}`, and it also catches a comment on its own line between
+two lines of prose, which glues the words on either side. Seeded three ways, each fires.
+
+**And behind that caption, two real defects in the calibration chart.**
+- **The medical pages plotted logits as probabilities.** The chart binned column 1 of the raw output
+  as P(positive). That holds for the scikit-learn exports, whose output is named `probabilities`. All
+  three medical models are PyTorch exports, whose output is named `logits`, ranging up to 114 on their
+  own samples (measured with onnxruntime at the pinned revisions). The deployed medical page said
+  "Widest deviation 5.701 at predicted -5.471". The verification verdict was unaffected, because it is
+  an argmax. Every published graph names its score output one of the two, so the browser now reads the
+  meaning from the name (`web/src/lib/calibration.ts`), applies a softmax to logits, refuses any other
+  name rather than guessing, and the binning throws on a value outside [0, 1]. The decision threshold
+  is read in two places, the whole-sample evaluation and the one-row run, and both now use the same
+  conversion. Measured offline, the three medical accuracies reproduce their recorded figures exactly.
+- **No chart should have been drawn there at all.** Checklist row `PP8`, `src/qsh/models/calibration.py`
+  and `references/REFERENCES.md` (2026-08-12) all say no page may draw a reliability diagram below
+  about 200 events. A Round 51 chart drew one on every binary page anyway, and nothing enforced the
+  rule. Counted on the samples the chart is drawn from: finance 164 events, medical 42, satellite 113,
+  telecom QML 8 wrong predictions. Only telecom NIDD (250 wrong, 16,129 right) clears it. **By the
+  user's decision the floor is now applied strictly**: below 200 events or 200 non-events the page
+  draws no curve and states the counts and the reason. The CORP figures in the Models panel remain.
+- **PP8 cited the wrong paper.** The 200-events-and-200-non-events rule for a flexible calibration
+  curve is Van Calster et al., J Clin Epidemiol 74 (2016) 167-176, verified in the authors' accepted
+  manuscript; Riley et al. (Stat Med 2021), which the project cited, argues such rules can be too few.
+  The citation is corrected in the checklist, `REFERENCES.md`, the Python calibration module, the
+  finance investigation, and the finance model's recorded note, in its generator and its records
+  together. That note also said the browser's 164-event sample was "the 2D overlay payload"; it is the
+  evaluation sample the chart was drawn from.
+- `web/scripts/check_calibration.mjs` asserts the conversion, the refusal, the floor at the published
+  counts, and that both readers of a graph use them. Seeded three ways, each fires. It runs in CI and
+  as a new step 15 of `scripts/ci_local.sh`.
+
+**A console 404 in the walk, a wrong first explanation, and the defect it led to.**
+- The live tab showed "Failed to load resource: 404" after a run, and no page request had failed. I
+  blamed the GIF worker, which the build copies verbatim with `//# sourceMappingURL=gif.worker.js.map`
+  while the map is not copied, and committed a fix on that basis (d10b0bf).
+- **The explanation was wrong.** The server answered that map path with index.html and a 200, so no
+  map request could have produced a 404. A fresh tab, through every page and all five runs, logged
+  no error at all: the 404 was an entry left in a long-used tab's history, which is exactly what
+  checklist row `RS16` warns about. Its source was not identified.
+- The dangling reference was real, and harmless. The hook that drops it and the build check stay.
+- **What the probe exposed is the real defect.** The container's Caddy answered every missing path,
+  including `/assets/`, with index.html and a 200, via `try_files {path} /index.html`. A page loaded
+  before a deploy that asks for a chunk hash that no longer exists, or a missing data file, got HTML
+  instead of a 404, so the browser reported a MIME or JSON parse error that hides what is missing.
+  Both Caddyfiles now fall back to the app shell only for an extensionless route. Measured on a local
+  container of the same image: routes, including unknown ones, still get the app; existing files keep
+  their types; a missing chunk, data file, `favicon.ico` and `robots.txt` return 404; the page stays
+  cross-origin isolated and a full run passes. `tests/test_a_missing_file_is_a_404.py` holds both
+  Caddyfiles to it.
+
+**Gates.**
+- `tests/test_page_headings_do_not_skip_a_level.py` expands each page through the components it
+  renders, resolved through its imports, and fails on any skip. Seeded four ways, each fires.
+- `tests/test_chart_accessibility.py` gains: every mark resolves to a colour; every mark reaches 3:1
+  against the card; stacked segments reach 3:1 against each other or are separated; a legend keys
+  only series with a colour of their own; every tooltip writes into a readout; every readout tooltip
+  has a readout; the highlight rule; and the recharts release the readout was measured on. Each is
+  seeded and fires.
+- `web/scripts/check_jsx_text_spaces.mjs`, `web/scripts/check_calibration.mjs`,
+  `web/scripts/check_no_dangling_source_maps.mjs` and `tests/test_a_missing_file_is_a_404.py`, above.
+
+**Carried item closed: the scheduled dependency audit ran.** Its first scheduled run (Round 67, cron
+03:17 UTC) appeared at 09:01 UTC on 2026-10-26, 5 h 44 min late, a delay GitHub documents for scheduled
+runs under load. Both jobs passed against main at d0cc4b7: cargo-deny (advisories and sources) and npm
+audit. This answers the UNVERIFIED notes in the Round 68 and Round 72 sections; checklist row `NS23`
+now has the green scheduled run it asks for, observed.
+
+**Walked on the deploy (3c55f7a, `index-BTFyF-rl.js`), in a fresh tab, after the four deploys of this
+round.**
+- Cross-origin isolated. No heading skip on any of the twelve page variants, before and after runs.
+- Five runs. PASS on finance, medical, telecom and satellite; genomics has no published classifier.
+- Calibration. Withheld with its counts on finance (164 and 8,028), medical (114 and 42) and telecom
+  QML (8 wrong, 592 right). Drawn for telecom NIDD: "Widest deviation 0.030 at predicted 0.502 against
+  observed 0.532 (528 rows)", the same two bins an offline onnxruntime run of the pinned graph gives.
+- Readouts. Real arrow keys on the BB84 chart wrote "Eve intercept fraction 0.2: QBER (sampled)
+  0.0634" and the key bits into the line; Tab cleared the highlight and kept the line; a real pointer
+  on an agreement-scatter point wrote its plaintext and encrypted scores and kept them when it left.
+  No floating box had content on any page.
+- No word ran into a value on any page after the runs.
+- Through the shared proxy: a missing chunk, data file, `favicon.ico` and `robots.txt` return 404;
+  app routes and an unknown route return the app.
+- Console: no errors; four "Failed to create WebGPU Context Provider" warnings, expected in a browser
+  without WebGPU. No horizontal overflow at the pane's 309 px or at 1280 px.
+
+BUSINESS DOC RECONCILED Round 74. The out-of-repo document is brought level with this round. Its content
+is not quoted here, in the checklist, or in any commit - only the fact of the reconciliation, which is
+what gate 16 reads.

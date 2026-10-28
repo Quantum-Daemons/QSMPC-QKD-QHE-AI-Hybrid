@@ -82,6 +82,10 @@ export default function Orchestration() {
         </div>
       )}
 
+      {/* Two hidden section headings (SC 1.3.1): the card titles below are h3, here and in the
+          components, so the outline went from the page title straight to h3. The use-case pages
+          carry the same fix. Round 74. */}
+      <h2 className="sr-only">Run the pipeline</h2>
       <div className="card" style={{ marginBottom: 16 }}>
         <div className="btn-row">
           <label className="muted" htmlFor="sel-usecase">Use case</label>
@@ -112,6 +116,7 @@ export default function Orchestration() {
                     qkdProtocol: String(run.params.qkd_protocol ?? "") }} />
       </div>
 
+      <h2 className="sr-only">Results of this run</h2>
       <RunMonitor events={events} metrics={metrics} signature={signature} logRef={logRef} />
 
       {/* The standing requirement is a 2D plot OF PRIVATE INFERENCE against the plaintext reference.

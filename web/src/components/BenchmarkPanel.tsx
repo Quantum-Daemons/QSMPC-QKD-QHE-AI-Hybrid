@@ -5,10 +5,11 @@
 // `compact` (telecom/satellite, no private inference) shows the security + advantage only.
 import { useRef } from "react";
 import {
-  Bar, BarChart, CartesianGrid, Cell, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis,
+  Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis,
 } from "recharts";
 import { downloadCSV, downloadJSON, downloadNodePNG } from "../lib/export";
 import Details from "./Details";
+import { ChartReadout, HINT_KEYBOARD, ReadoutTooltip } from "./ChartReadout";
 
 const colorFor = (path: string) => (path === "QSMPC-FHE" ? "#b072ff" : "#4f9dff");
 /** Bar fill: the same colour as `colorFor`, plus a hatch on QSMPC-FHE so the path is not encoded by
@@ -148,28 +149,30 @@ export default function BenchmarkPanel(
                   Depends on how many of the 4,096 slots are used (about 12x when all are filled). The quantum
                   row is not plotted: a quantum ciphertext has no size in bytes.
                 </p>
-                <ResponsiveContainer width="100%" height={220}>
-                  <BarChart accessibilityLayer title="Ciphertext to plaintext size ratio, log scale"
-                            data={ratioData}>
-                    <CartesianGrid stroke="#243049" />
-                    <XAxis dataKey="name" tick={{ fontSize: 11, fill: "#97a3b6" }} />
-                    <YAxis scale="log" domain={[0.5, "auto"]} tick={{ fontSize: 11, fill: "#97a3b6" }} allowDataOverflow />
-                    <Tooltip contentStyle={{ background: "#151c2c", border: "1px solid #243049" }} />
-                    {/* WCAG 2.2 SC 1.4.1 (Level A). `colorFor` encoded the ciphertext PATH by fill
-                        alone, and the `<Legend />` on the latency chart covers only the single
-                        `latency` series, so it explains nothing about the per-bar colours. The x-axis
-                        `name` mitigates but does not cure it, because `name` is the workload rather
-                        than the path. QSMPC-FHE now carries a hatch as well as its colour. */}
-                    <defs>
-                      <pattern id="hatch-qsmpc" patternUnits="userSpaceOnUse" width="5" height="5"
-                               patternTransform="rotate(45)">
-                        <rect width="5" height="5" fill="#b072ff" />
-                        <line x1="0" y1="0" x2="0" y2="5" stroke="#e5d0ff" strokeWidth="1.6" />
-                      </pattern>
-                    </defs>
-                    <Bar dataKey="ratio">{ratioData.map((d, i) => <Cell key={i} fill={fillFor(d.path)} />)}</Bar>
-                  </BarChart>
-                </ResponsiveContainer>
+                <ChartReadout hint={HINT_KEYBOARD}>
+                  <ResponsiveContainer width="100%" height={220}>
+                    <BarChart accessibilityLayer title="Ciphertext to plaintext size ratio, log scale"
+                              data={ratioData}>
+                      <CartesianGrid stroke="#243049" />
+                      <XAxis dataKey="name" tick={{ fontSize: 11, fill: "#97a3b6" }} />
+                      <YAxis scale="log" domain={[0.5, "auto"]} tick={{ fontSize: 11, fill: "#97a3b6" }} allowDataOverflow />
+                      <Tooltip content={<ReadoutTooltip />} />
+                      {/* WCAG 2.2 SC 1.4.1 (Level A). `colorFor` encoded the ciphertext PATH by fill
+                          alone, and no legend explains the per-bar colours (the latency chart's, which
+                          named only its single series, was removed in Round 74). The x-axis `name`
+                          mitigates but does not cure it, because `name` is the workload rather than the
+                          path. QSMPC-FHE now carries a hatch as well as its colour. */}
+                      <defs>
+                        <pattern id="hatch-qsmpc" patternUnits="userSpaceOnUse" width="5" height="5"
+                                 patternTransform="rotate(45)">
+                          <rect width="5" height="5" fill="#b072ff" />
+                          <line x1="0" y1="0" x2="0" y2="5" stroke="#e5d0ff" strokeWidth="1.6" />
+                        </pattern>
+                      </defs>
+                      <Bar dataKey="ratio" name="ciphertext / plaintext" unit="x">{ratioData.map((d, i) => <Cell key={i} fill={fillFor(d.path)} />)}</Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </ChartReadout>
               </div>
               <div className="card">
                 <h3>Latency per inference (ms)</h3>
@@ -179,29 +182,34 @@ export default function BenchmarkPanel(
                   Different computations, not a speed comparison: MPC-FHE runs a real CKKS and garbled-circuit
                   inference; QSMPC-FHE simulates an untrained 8-qubit circuit on random input.
                 </p>
-                <ResponsiveContainer width="100%" height={220}>
-                  <BarChart accessibilityLayer title="Latency per inference, milliseconds"
-                            data={latData}>
-                    <CartesianGrid stroke="#243049" />
-                    <XAxis dataKey="name" tick={{ fontSize: 11, fill: "#97a3b6" }} />
-                    <YAxis tick={{ fontSize: 11, fill: "#97a3b6" }} />
-                    <Tooltip contentStyle={{ background: "#151c2c", border: "1px solid #243049" }} />
-                    <Legend />
-                    {/* WCAG 2.2 SC 1.4.1 (Level A). `colorFor` encoded the ciphertext PATH by fill
-                        alone, and the `<Legend />` on the latency chart covers only the single
-                        `latency` series, so it explains nothing about the per-bar colours. The x-axis
-                        `name` mitigates but does not cure it, because `name` is the workload rather
-                        than the path. QSMPC-FHE now carries a hatch as well as its colour. */}
-                    <defs>
-                      <pattern id="hatch-qsmpc-lat" patternUnits="userSpaceOnUse" width="5" height="5"
-                               patternTransform="rotate(45)">
-                        <rect width="5" height="5" fill="#b072ff" />
-                        <line x1="0" y1="0" x2="0" y2="5" stroke="#e5d0ff" strokeWidth="1.6" />
-                      </pattern>
-                    </defs>
-                    <Bar dataKey="latency">{latData.map((d, i) => <Cell key={i} fill={fillFor(d.path, "-lat")} />)}</Bar>
-                  </BarChart>
-                </ResponsiveContainer>
+                <ChartReadout hint={HINT_KEYBOARD}>
+                  <ResponsiveContainer width="100%" height={220}>
+                    <BarChart accessibilityLayer title="Latency per inference, milliseconds"
+                              data={latData}>
+                      <CartesianGrid stroke="#243049" />
+                      <XAxis dataKey="name" tick={{ fontSize: 11, fill: "#97a3b6" }} />
+                      <YAxis tick={{ fontSize: 11, fill: "#97a3b6" }} />
+                      <Tooltip content={<ReadoutTooltip />} />
+                      {/* No legend, since Round 74. It named the single `latency` series, explained
+                          nothing about the per-bar colours (the note below says so), and drew its swatch
+                          in the default black because the bars are coloured per cell: 1.23:1 against the
+                          card, an invisible key (WCAG 2.2 SC 1.4.11). The card title names the measure,
+                          as on the ratio chart beside it, which never had one.
+                          WCAG 2.2 SC 1.4.1 (Level A). `colorFor` encoded the ciphertext PATH by fill
+                          alone. The x-axis `name` mitigates but does not cure it, because `name` is the
+                          workload rather than the path. QSMPC-FHE now carries a hatch as well as its
+                          colour. */}
+                      <defs>
+                        <pattern id="hatch-qsmpc-lat" patternUnits="userSpaceOnUse" width="5" height="5"
+                                 patternTransform="rotate(45)">
+                          <rect width="5" height="5" fill="#b072ff" />
+                          <line x1="0" y1="0" x2="0" y2="5" stroke="#e5d0ff" strokeWidth="1.6" />
+                        </pattern>
+                      </defs>
+                      <Bar dataKey="latency" name="latency" unit=" ms">{latData.map((d, i) => <Cell key={i} fill={fillFor(d.path, "-lat")} />)}</Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </ChartReadout>
               </div>
             </div>
           )}
@@ -226,16 +234,18 @@ export default function BenchmarkPanel(
                 layers (ReLU/argmax) run under MPC — MPyC secret sharing on the server, and in the browser <code>Polytune</code> garbled circuits (MPyC is pure Python and is not in the bundle). {split.backend}.
               </p>
               <div className="grid cols-2">
-                <ResponsiveContainer width="100%" height={180}>
-                  <BarChart accessibilityLayer title="Time split: linear layers under FHE against non-linear under MPC"
-                            data={splitData}>
-                    <CartesianGrid stroke="#243049" />
-                    <XAxis dataKey="name" tick={{ fontSize: 11, fill: "#97a3b6" }} />
-                    <YAxis tick={{ fontSize: 11, fill: "#97a3b6" }} label={{ value: "ms", angle: -90, position: "insideLeft", fill: "#97a3b6", fontSize: 11 }} />
-                    <Tooltip contentStyle={{ background: "#151c2c", border: "1px solid #243049" }} />
-                    <Bar dataKey="ms">{splitData.map((d, i) => <Cell key={i} fill={d.kind === "fhe" ? FHE_COLOR : MPC_COLOR} />)}</Bar>
-                  </BarChart>
-                </ResponsiveContainer>
+                <ChartReadout hint={HINT_KEYBOARD}>
+                  <ResponsiveContainer width="100%" height={180}>
+                    <BarChart accessibilityLayer title="Time split: linear layers under FHE against non-linear under MPC"
+                              data={splitData}>
+                      <CartesianGrid stroke="#243049" />
+                      <XAxis dataKey="name" tick={{ fontSize: 11, fill: "#97a3b6" }} />
+                      <YAxis tick={{ fontSize: 11, fill: "#97a3b6" }} label={{ value: "ms", angle: -90, position: "insideLeft", fill: "#97a3b6", fontSize: 11 }} />
+                      <Tooltip content={<ReadoutTooltip />} />
+                      <Bar dataKey="ms" name="time" unit=" ms">{splitData.map((d, i) => <Cell key={i} fill={d.kind === "fhe" ? FHE_COLOR : MPC_COLOR} />)}</Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </ChartReadout>
                 <div style={{ display: "flex", flexDirection: "column", justifyContent: "center", gap: 10 }}>
                   <div><span style={{ color: FHE_COLOR }}>■</span> FHE-linear: <b>{split.fhe_linear_ms} ms</b></div>
                   <div><span style={{ color: MPC_COLOR }}>■</span> MPC-non-linear: <b>{split.mpc_nonlinear_ms} ms</b></div>
