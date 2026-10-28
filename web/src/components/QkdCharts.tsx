@@ -5,7 +5,8 @@ import {
 
 import { api } from "../lib/api";
 import { qkdCfg, securityScoringCfg } from "../lib/config";
-import { bb84, e91, FIBER, FREE_SPACE, freeSpaceLink, h2, qsdcLink } from "../lib/quantumSim";
+import { bb84, e91, FIBER, h2, qsdcLink, type ChannelParams } from "../lib/quantumSim";
+import { rangeAtElevationKm } from "../lib/satNetwork";
 import { ChartReadout, HINT_KEYBOARD, ReadoutTooltip } from "./ChartReadout";
 
 /**
@@ -134,29 +135,37 @@ export function FibreDistanceCharts({ misalignment, eve }: { misalignment: numbe
 }
 
 /** QSDC secrecy capacity against downlink range - the satellite page's headline finding as a curve. */
-export function QsdcRangeChart({ eve, atmosphericDb, pointingDb }: { eve: number; atmosphericDb: number; pointingDb: number }) {
+export function QsdcRangeChart({ channel }: { channel: ChannelParams }) {
+  // The RUN's link (Round 77): its profile, budget, minimum elevation and eavesdropper, with only the
+  // range swept. It took the atmosphere and pointing as numbers and rebuilt the default link around
+  // them, so a non-default profile would have drawn the wrong satellite.
+  const fs = channel.freeSpace!;
+  const maxKm = rangeAtElevationKm(Number(fs.minElevationDeg ?? 10), Number(fs.orbitAltitudeKm ?? 500),
+                                   Number(fs.stationAltitudeKm ?? 0));
   const rows = useMemo(() => {
     const out: { km: number; run: number; clean: number; zero: number }[] = [];
-    for (const km of [1, 25, 50, 100, 150, 200, 300, 400, 500, 600, 800, 1000, 1200, 1500]) {
-      const cs = (e: number, a: number, p: number) =>
-        qsdcLink(freeSpaceLink({ distanceKm: km, atmosphericDb: a, pointingDb: p, eveFraction: e })).cs;
-      out.push({ km, run: cs(eve, atmosphericDb, pointingDb), clean: cs(0, atmosphericDb, pointingDb), zero: cs(0, 0, 0) });
+    const kms = [1, 25, 50, 100, 150, 200, 300, 400, 500, 600, 800, 1000, 1200, 1500, Math.floor(maxKm)]
+      .filter((km, i, a) => km <= maxKm && a.indexOf(km) === i);
+    for (const km of kms) {
+      const at = (e: number, zeroBudget = false) => qsdcLink({ ...channel, distanceKm: km, eveFraction: e,
+        freeSpace: zeroBudget ? { ...fs, atmosphericDb: 0, pointingDb: 0 } : fs }).cs;
+      out.push({ km, run: at(channel.eveFraction), clean: at(0), zero: at(0, true) });
     }
     return out;
-  }, [eve, atmosphericDb, pointingDb]);
-  const fs = FREE_SPACE.freeSpace!;
+  }, [channel, fs, maxKm]);
+  const eve = channel.eveFraction;
   return (
     <figure className="chart-figure">
       <figcaption className="small muted">
-        <b>QSDC secrecy capacity against downlink range (model).</b> Delivery needs C_s &gt; 0. With this
-        page's link budget ({atmosphericDb} + {pointingDb} dB; default {fs.atmosphericDb} + {fs.pointingDb})
-        it stays negative at every range; only with the fixed losses set near zero does a short link close,
-        and no LEO slant range is short enough. The axis is zoomed to the zero crossing; values below -6
-        run off the bottom.
+        <b>QSDC secrecy capacity against downlink range (model).</b> Delivery needs C_s &gt; 0. With this run&apos;s link
+        ({fs.atmosphericDb} dB of atmosphere at {fs.atmosphericRefKm} km, scaled by air mass, and {fs.pointingDb} dB of
+        pointing) it stays negative at every range; only with both set near zero does a short link close, and no LEO
+        slant range is short enough. The curve stops at {Math.floor(maxKm)} km, where the satellite sinks below
+        {" "}{fs.minElevationDeg} degrees. The axis is zoomed to the zero crossing; values below -6 run off the bottom.
       </figcaption>
       <ChartReadout hint={HINT_KEYBOARD}>
         <ResponsiveContainer width="100%" height={240}>
-          <LineChart data={rows} accessibilityLayer title="QSDC secrecy capacity against downlink range, at this page's budget and with zero fixed loss" margin={{ top: 8, right: 16, bottom: 18, left: 4 }}>
+          <LineChart data={rows} accessibilityLayer title="QSDC secrecy capacity against downlink range, at this run's link and with zero atmosphere and pointing" margin={{ top: 8, right: 16, bottom: 18, left: 4 }}>
             {grid}
             <XAxis dataKey="km" tick={tick} label={{ value: "slant range (km)", position: "insideBottom", offset: -8, fill: "var(--muted)", fontSize: 11 }} />
             {/* Zoomed to the zero crossing, where the finding is: values below -6 run off the bottom. */}
@@ -164,9 +173,9 @@ export function QsdcRangeChart({ eve, atmosphericDb, pointingDb }: { eve: number
             <Tooltip content={<ReadoutTooltip labelName="slant range (km)" />} formatter={(v: number) => v.toFixed(4)} />
             <Legend verticalAlign="top" wrapperStyle={{ fontSize: 11 }} />
             <ReferenceLine y={0} stroke="var(--danger)" strokeDasharray="4 3" label={{ value: "C_s = 0", fill: "var(--danger)", fontSize: 10, position: "insideTopRight" }} />
-            {eve > 0 && <Line type="monotone" dataKey="run" name={`this budget, Eve ${eve}`} stroke="var(--warn)" dot={false} strokeWidth={2} isAnimationActive={false} />}
-            <Line type="monotone" dataKey="clean" name="this budget, no eavesdropper" stroke="var(--accent)" dot={false} strokeWidth={2} isAnimationActive={false} />
-            <Line type="monotone" dataKey="zero" name="0 + 0 dB fixed loss, no eavesdropper" stroke="var(--accent-2)" dot={false} strokeWidth={2} strokeDasharray="5 4" isAnimationActive={false} />
+            {eve > 0 && <Line type="monotone" dataKey="run" name={`this link, Eve ${eve}`} stroke="var(--warn)" dot={false} strokeWidth={2} isAnimationActive={false} />}
+            <Line type="monotone" dataKey="clean" name="this link, no eavesdropper" stroke="var(--accent)" dot={false} strokeWidth={2} isAnimationActive={false} />
+            <Line type="monotone" dataKey="zero" name="0 dB atmosphere and pointing, no eavesdropper" stroke="var(--accent-2)" dot={false} strokeWidth={2} strokeDasharray="5 4" isAnimationActive={false} />
           </LineChart>
         </ResponsiveContainer>
       </ChartReadout>

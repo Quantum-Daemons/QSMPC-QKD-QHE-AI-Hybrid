@@ -226,7 +226,9 @@ class OptiQKDStage(Stage):
                            n_samples=int(ctx.config.get("qkd_opt_samples", cfg.optimize_n_samples)),
                            n_pulses=int(ctx.config.get("qkd_opt_pulses", cfg.optimize_n_pulses)),
                            protocol=ctx.config.get("qkd_protocol", cfg.protocol),
-                           seed=ctx.config.get("seed", 0))
+                           seed=ctx.config.get("seed", 0),
+                           # the satellite's own source (Micius's 0.8 / 0.1, vacuum), when it ran
+                           baseline=ctx.data.get("sat_qkd_params"))
         bus.metric("qkd_skr_improvement_pct", round(res.improvement_pct, 1), self.name)
         bus.metric("qkd_optimized_skr", round(res.best_skr, 6), self.name)
         bus.metric("qkd_baseline_skr", round(res.baseline_skr, 6), self.name)

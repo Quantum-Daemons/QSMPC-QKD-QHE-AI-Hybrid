@@ -43,7 +43,7 @@ function load() {
   const dir = mkdtempSync(join(tmpdir(), "qsh-qkd-"));
   const entry = join(dir, "entry.ts");
   writeFileSync(entry, `
-export { bb84, e91, FIBER, FREE_SPACE, intrinsicQber, eDetForBound, h2, transmittance, taggedFraction, channelLossDb, decoySecureFraction, qsdcLink } from ${JSON.stringify(join(WEB, "src/lib/quantumSim"))};
+export { bb84, e91, FIBER, FREE_SPACE, intrinsicQber, eDetForBound, h2, transmittance, taggedFraction, channelLossDb, atmosphericLossDb, freeSpaceLink, decoySecureFraction, qsdcLink, inView } from ${JSON.stringify(join(WEB, "src/lib/quantumSim"))};
 export { optimizeQKD } from ${JSON.stringify(join(WEB, "src/lib/clientOptiQKD"))};
 export { repetitionCountCutoff, adaptiveProportionCutoff, generateQuantumBits, minEntropyMcv, toeplitzExtract } from ${JSON.stringify(join(WEB, "src/lib/clientQRNG"))};
 export { qkdCfg, qrngCfg } from ${JSON.stringify(join(WEB, "src/lib/config"))};
@@ -377,16 +377,35 @@ const cfg_qrng = m.qrngCfg();
   // `distance_km * 0.035` to the same nominal link.
   const fsAt = (km) => m.channelLossDb({ ...m.FREE_SPACE, distanceKm: km });
   // Since Round 75 the budget carries the ground station's optics (Liao 2017: ~16%, 7.96 dB) and
-  // Xinglong's 1 m aperture: 18.06 dB of diffraction at 800 km + 5 + 3 + 7.96 = 34.02 dB. It read
-  // 24.48 with a 1.2 m aperture and no optics term.
+  // Xinglong's 1 m aperture; since Round 77 the atmosphere scales with air mass, anchored at
+  // `free_space_atmospheric_db` at 1200 km. Computed here independently of the module: the elevation
+  // from the pass geometry, the air mass from Kasten & Young (1989), then 18.06 dB of diffraction at
+  // 800 km + 3.19 + 3 + 7.96 = 32.21 dB with the 5.5 dB midpoint anchor the user chose. It read 33.66
+  // with the 8 dB upper value and 34.02 with a fixed 5 dB.
   const opticsDb = -10 * Math.log10(cfg.free_space_receiver_optics_efficiency);
-  check("free-space-800km-is-34.0dB", Math.abs(fsAt(800) - 34.02) < 0.01,
-    `800 km gives ${fsAt(800)} dB, not the 34.02 the diffraction model and the Micius budget predict`);
-  check("free-space-has-a-fixed-floor",
-    near(fsAt(1), cfg.free_space_atmospheric_db + cfg.free_space_pointing_db + opticsDb, 1e-9),
-    `at 1 km the loss is ${fsAt(1)} dB, not the ${cfg.free_space_atmospheric_db} + ` +
-    `${cfg.free_space_pointing_db} + ${opticsDb.toFixed(2)} dB budget floor - the near-field cap ` +
-    `is not being applied`);
+  const RE = 6371.0;
+  const elev = (r) => {
+    const a = RE + cfg.free_space_station_altitude_km, b = RE + cfg.free_space_orbit_altitude_km;
+    const sv = (b * b - a * a - r * r) / (2 * a * r);
+    return sv < 0 ? null : (Math.asin(Math.min(1, sv)) * 180) / Math.PI;
+  };
+  const am = (g) => 1 / (Math.sin((g * Math.PI) / 180) + 0.50572 * (g + 6.07995) ** -1.6364);
+  const atmAt = (r) => cfg.free_space_atmospheric_db * am(elev(r)) / am(elev(cfg.free_space_atmospheric_ref_km));
+  const diffraction800 = 20 * Math.log10((cfg.free_space_beam_divergence_urad * 1e-6 * 800e3) / cfg.free_space_rx_aperture_m);
+  const expected800 = diffraction800 + atmAt(800) + cfg.free_space_pointing_db + opticsDb;
+  check("free-space-800km-is-the-air-mass-budget", near(fsAt(800), expected800, 1e-9) && Math.abs(fsAt(800) - 32.21) < 0.01,
+    `800 km gives ${fsAt(800)} dB, not the ${expected800} the diffraction law, the air-mass atmosphere and the Micius budget predict`);
+  check("free-space-atmosphere-is-anchored-and-scaled",
+    near(m.atmosphericLossDb({ ...m.FREE_SPACE, distanceKm: cfg.free_space_atmospheric_ref_km }), cfg.free_space_atmospheric_db, 1e-12)
+      && m.atmosphericLossDb({ ...m.FREE_SPACE, distanceKm: 645 }) < m.atmosphericLossDb({ ...m.FREE_SPACE, distanceKm: 1200 })
+      && m.atmosphericLossDb({ ...m.FREE_SPACE, distanceKm: 2600 }) === Infinity,
+    "the atmosphere is not the anchor at 1200 km, thinner at 645 km and infinite past the 2,571 km horizon");
+  // The floor: inside the near field the diffraction term is capped at zero, and a range shorter than
+  // the orbit takes the zenith air mass, so 1 km costs the zenith atmosphere + pointing + optics.
+  check("free-space-floor-is-the-zenith-budget",
+    near(fsAt(1), cfg.free_space_atmospheric_db * am(90) / am(elev(cfg.free_space_atmospheric_ref_km)) + cfg.free_space_pointing_db + opticsDb, 1e-9),
+    `at 1 km the loss is ${fsAt(1)} dB, not the zenith atmosphere + ${cfg.free_space_pointing_db} + ` +
+    `${opticsDb.toFixed(2)} dB floor - the near-field cap or the zenith clamp is not being applied`);
   // The station's optics remove signal photons but are not Eve's: QSDC's g must leave them out.
   {
     const link = m.qsdcLink({ ...m.FREE_SPACE, distanceKm: 800 });
@@ -394,11 +413,44 @@ const cfg_qrng = m.qrngCfg();
     check("qsdc-g-leaves-out-the-station-optics", near(link.lossDb, expected, 1e-9),
       `QSDC's g is built from ${link.lossDb} dB, not the ${expected} dB of channel and detector`);
   }
+  // The DIFFRACTION term is inverse-square, so its increments fall with range; with the air-mass
+  // atmosphere the total no longer does (it rises steeply near the horizon), so the law is checked on
+  // the diffraction term alone.
+  const geoAt = (km) => m.channelLossDb(m.freeSpaceLink({ distanceKm: km, atmosphericDb: 0, pointingDb: 0, eveFraction: 0 }));
+  // Equal steps of 600 km, all above the 10 degree minimum (1,692 km at a 500 km orbit).
   check("free-space-is-not-linear-in-distance",
-    fsAt(2000) - fsAt(1200) < fsAt(1200) - fsAt(400),
-    `loss increments are not decreasing with range, so this is a linear law rather than an ` +
-    `inverse-square one: 400->1200 gives ${fsAt(1200) - fsAt(400)}, 1200->2000 gives ` +
-    `${fsAt(2000) - fsAt(1200)}`);
+    geoAt(1600) - geoAt(1000) < geoAt(1000) - geoAt(400),
+    `diffraction increments are not decreasing with range, so this is a linear law rather than an ` +
+    `inverse-square one: 400->1000 gives ${geoAt(1000) - geoAt(400)}, 1000->1600 gives ` +
+    `${geoAt(1600) - geoAt(1000)}`);
+  // NO LINK BELOW THE MINIMUM ELEVATION (Round 77): 10 degrees at a 500 km orbit is a slant range of
+  // 1,692.4 km, so 1,690 km is a link and 1,700 km is not, and neither is a range past the horizon.
+  check("free-space-has-no-link-below-the-minimum-elevation",
+    Number.isFinite(fsAt(1690)) && fsAt(1700) === Infinity && fsAt(3000) === Infinity
+      && m.inView({ ...m.FREE_SPACE, distanceKm: 1690 }) && !m.inView({ ...m.FREE_SPACE, distanceKm: 1700 })
+      && Math.abs(elev(1692.4) - cfg.free_space_min_elevation_deg) < 0.01,
+    `1690 km gives ${fsAt(1690)} dB and 1700 km ${fsAt(1700)}: the ${cfg.free_space_min_elevation_deg} deg cut is not where the geometry puts it`);
+  // THE SATELLITE RUNS MICIUS'S OWN SOURCE (Round 77): 0.8 / 0.1 with a vacuum state, so the bound is
+  // the Vacuum+Weak estimate. Rebuilt here from Eqs. 34 and 37 of Ma et al. 2005: with the measured
+  // vacuum yield subtracted, Y1's lower bound rises and e1's upper bound falls, so the rate is at
+  // least the one-decoy rate, and the two agree when there is no background.
+  {
+    const ch = { ...m.FREE_SPACE, distanceKm: 800 };
+    const eta = m.transmittance(ch), y0 = 2 * ch.darkCount, mu = cfg.free_space_mu_signal, nu = cfg.free_space_mu_decoy;
+    const eDet = m.eDetForBound(ch), f = cfg.error_correction_eff;
+    const qMu = y0 + 1 - Math.exp(-eta * mu), qNu = y0 + 1 - Math.exp(-eta * nu);
+    const eMu = (0.5 * y0 + eDet * (1 - Math.exp(-eta * mu))) / qMu, eNu = (0.5 * y0 + eDet * (1 - Math.exp(-eta * nu))) / qNu;
+    const y1 = (mu / (mu * nu - nu * nu)) * (qNu * Math.exp(nu) - (nu * nu / (mu * mu)) * qMu * Math.exp(mu) - ((mu * mu - nu * nu) / (mu * mu)) * y0);
+    const e1 = Math.min(0.5, (eNu * qNu * Math.exp(nu) - 0.5 * y0) / (y1 * nu));
+    const byHand = 0.5 * Math.max(0, y1 * mu * Math.exp(-mu) * (1 - m.h2(e1)) - f * qMu * m.h2(eMu));
+    const run = m.bb84(1_000_000, ch, 0).secretKeyRate;
+    const oneDecoy = m.bb84(1_000_000, { ...ch, vacuumDecoy: false }, 0).secretKeyRate;
+    const vac = m.decoySecureFraction(eta, mu, nu, eDet, 0, f, 0.5, true).perPulse;
+    const one = m.decoySecureFraction(eta, mu, nu, eDet, 0, f, 0.5, false).perPulse;
+    check("satellite-runs-micius-vacuum-plus-weak",
+      near(run, byHand, 1e-12) && run >= oneDecoy && near(vac, one, 1e-15) && ch.muSignal === 0.8 && ch.vacuumDecoy === true,
+      `800 km downlink: bb84 ${run} against ${byHand} rebuilt from Eqs. 34 and 37 (one decoy: ${oneDecoy})`);
+  }
 }
 
 rmSync(dir, { recursive: true, force: true });

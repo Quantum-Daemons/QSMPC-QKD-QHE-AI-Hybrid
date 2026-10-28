@@ -114,7 +114,9 @@ def test_satellite_clean_downlink_yields_key_but_qsdc_cannot_close():
     # is not negative at all. It also hid a 3.5 dB disagreement between this model and the browser's:
     # both sides reported "0" while computing -138.93 and -51.58 on the same nominal downlink.
     assert r["qsdc_secrecy_capacity"] < -50.0
-    assert r["channel_loss_db"] == 34.0         # diffraction + 5 atmospheric + 3 pointing + 8 receiver optics
+    # diffraction 18.1 + atmosphere 3.2 (5.5 dB at 1200 km, scaled by air mass to 35.8 degrees)
+    # + 3 pointing + 8.0 receiver optics; it was 34.0 with a fixed 5 dB atmosphere
+    assert r["channel_loss_db"] == 32.2
     assert r["eavesdrop_detected"] is False     # nothing is attacking it -- do not say otherwise
 
 
@@ -141,7 +143,7 @@ def test_qsdc_aborts_on_secrecy_capacity_and_attributes_the_cause():
     # linear rate the browser had already rejected (it reads plausibly at 800 km beside the ~27 dB
     # Micius reports and diverges badly with range), so the two implementations disagreed by 3.5 dB
     # about the same nominal link while both reported secrecy capacity as a clamped "0".
-    leo = ChannelParams(distance_km=800, free_space=FreeSpaceParams())    # 34.02 dB with the station optics
+    leo = ChannelParams(distance_km=800, free_space=FreeSpaceParams())    # 32.21 dB with the station optics
     clean = quantum_secure_direct_comm(msg, leo, seed=0)
     assert clean.delivered is None                      # not physical at this loss
     assert clean.link_budget_limited is True
@@ -198,8 +200,9 @@ def test_the_satellite_eavesdrop_check_is_reachable_from_the_use_case():
     """The page's headline feature, demonstrated through the pipeline rather than a hand-built channel.
 
     ``qsdc_eavesdrop_detected`` is ``abort and not link_budget_limited and not statistics_limited``,
-    and this test exists because that metric was 0 by construction for many rounds: the fixed 5 dB
-    atmospheric and 3 dB pointing terms floored total loss at 8 dB even at zero range, so the diagram's
+    and this test exists because that metric was 0 by construction for many rounds: the 5 dB
+    atmospheric and 3 dB pointing terms (fixed until Round 77; the atmosphere now scales by air mass
+    and is 1.9 dB at the zenith) floored total loss at 8 dB even at zero range, so the diagram's
     ABORTED branch was unreachable and a full-strength eavesdropper still drew a completion tick.
 
     REWRITTEN IN ROUND 55, AND THE PREVIOUS VERSION'S REASONING WAS WRONG IN A WAY WORTH KEEPING.
