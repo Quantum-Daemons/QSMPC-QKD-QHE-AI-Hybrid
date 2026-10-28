@@ -3067,3 +3067,20 @@ loop, and a broken integration can no longer report a confident wrong index.
 **Failure paths were exercised by breaking the build, not by reading the code.** Removing one wasm
 file, then the other, showed what a visitor would see in each case, including that the missing file
 came back as HTML.
+
+### Round 69: three open items, each closed by a primary source, one of them in a direction nobody expected
+
+**Context.** The follow-up chosen after Round 68: the items carried as UNVERIFIED across rounds.
+
+**The question was smaller than the defect.** It asked which annex the medical model falls under. The
+answer, Annex I and 2 August 2028, showed that the panel's sentence was wrong on every page, not only
+on the medical one. Two of the pages describe systems the Act does not treat as high-risk at all.
+
+**The copies again.** The panel's claim had four siblings: two README lines and two Python docstrings.
+The gate scans tracked text for the family, which is a high-risk claim about AML, or an Art. 13 date
+without its annex, rather than the panel's exact words.
+
+**A figure that dissolved on reading.** The "about 15x" was carried for rounds as a number awaiting
+confirmation. In the paper, the only 15 is a coefficient in a gate count. Keeping it UNVERIFIED, and not
+quoting it, was the right default, because the alternative would have published a number with no
+source.
