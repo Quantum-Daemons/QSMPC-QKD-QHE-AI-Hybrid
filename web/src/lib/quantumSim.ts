@@ -85,11 +85,54 @@ export interface ChannelParams {
     /** Receiving telescope plus fibre coupling (Liao 2017: ~16%). Optional so a hand-built channel
      *  without it keeps the old budget; FREE_SPACE always carries it. Round 75. */
     receiverOpticsEff?: number;
+    /** `atmosphericDb` is the loss AT this slant range, scaled by air mass to others (Round 77);
+     *  the orbit and station heights set the elevation a range implies. Optional: a hand-built
+     *  channel without them takes the config's. */
+    atmosphericRefKm?: number;
+    orbitAltitudeKm?: number;
+    stationAltitudeKm?: number;
+    /** No link below this elevation, none beyond the horizon (`inView`). Round 77. */
+    minElevationDeg?: number;
+    /** A link between two satellites (Round 77, `satNetwork.ts`): the same diffraction law, but no
+     *  atmosphere and no elevation - its line of sight is checked by the constellation geometry. */
+    interSatellite?: boolean;
   };
   /** The source clock and the detectors' dead time (Round 76), which `deadTimeFactor` combines. Left
    *  unset they take the link's own from config, as `ChannelParams.__post_init__` does in Python. */
   sourceRateHz?: number;
   deadTimeS?: number;
+  /** THE LINK'S OWN SOURCE (Round 77): intensities, how often signal and decoy are sent (the vacuum
+   *  takes the rest) and whether a vacuum state is sent at all. Unset, they are the fibre page's -
+   *  config `mu_signal` / `mu_decoy`, one decoy sent as often as the signal - so a hand-built fibre
+   *  channel is unchanged. FREE_SPACE carries Micius's. Python keeps these in `QKDParams`; see
+   *  `sourceOf`. */
+  muSignal?: number;
+  muDecoy?: number;
+  pSignal?: number;
+  pDecoy?: number;
+  vacuumDecoy?: boolean;
+}
+
+/** The source a channel's BB84 runs: its own fields, else the fibre config's one-decoy defaults. Twin
+ *  of the `QKDParams` the Python stages build (`satellite_comms._sat_source` for the downlink). */
+export function sourceOf(p: ChannelParams): { mu: number; nu: number; pSignal: number; pDecoy: number;
+                                               vacuum: boolean } {
+  const cfg = qkdCfg();
+  const mu = Math.max(1e-3, p.muSignal ?? cfg.mu_signal);
+  return {
+    mu,
+    nu: Math.min(Math.max(1e-4, p.muDecoy ?? cfg.mu_decoy), mu * 0.9),   // strictly weaker than the signal
+    pSignal: p.pSignal ?? 0.5,
+    pDecoy: p.pDecoy ?? 0.5,
+    vacuum: p.vacuumDecoy ?? false,
+  };
+}
+
+/** Bob's detection probability per pulse averaged over what Alice sends - signal, decoy and the
+ *  vacuum's remaining share - which is what the dead time sees. Twin of `bb84.py::click_mix`. */
+export function clickMix(src: { pSignal: number; pDecoy: number }, qMu: number, qNu: number,
+                         y0: number): number {
+  return src.pSignal * qMu + src.pDecoy * qNu + Math.max(0, 1 - src.pSignal - src.pDecoy) * y0;
 }
 
 // Both channels come from config, not from literals here.
@@ -128,10 +171,41 @@ export const FREE_SPACE: ChannelParams = {
     atmosphericDb: qkdCfg().free_space_atmospheric_db,
     pointingDb: qkdCfg().free_space_pointing_db,
     receiverOpticsEff: qkdCfg().free_space_receiver_optics_efficiency,
+    atmosphericRefKm: qkdCfg().free_space_atmospheric_ref_km,
+    orbitAltitudeKm: qkdCfg().free_space_orbit_altitude_km,
+    stationAltitudeKm: qkdCfg().free_space_station_altitude_km,
+    minElevationDeg: qkdCfg().free_space_min_elevation_deg,
   },
   sourceRateHz: qkdCfg().free_space_source_rate_hz,
   deadTimeS: qkdCfg().free_space_detector_dead_time_s,
+  // Micius's own source since Round 77: 0.8 / 0.1 with a vacuum state, at 50 / 25 / 25 (Liao 2017).
+  muSignal: qkdCfg().free_space_mu_signal,
+  muDecoy: qkdCfg().free_space_mu_decoy,
+  pSignal: qkdCfg().free_space_p_signal,
+  pDecoy: qkdCfg().free_space_p_decoy,
+  vacuumDecoy: qkdCfg().free_space_vacuum_decoy,
 };
+
+/** A downlink channel built from a link profile's values (`profileValues("downlink", id)`), the
+ *  browser twin of `satellite_comms._sat_channel` reading a profile. FREE_SPACE is this for the
+ *  default profile. */
+export function downlinkFromProfile(v: Record<string, any>): ChannelParams {
+  return {
+    distanceKm: Number(v.distance_km), lossDbPerKm: 0,
+    detectorEff: Number(v.detector_efficiency), darkCount: Number(v.dark_count_prob),
+    misalignment: Number(v.misalignment), eveFraction: 0,
+    freeSpace: {
+      beamDivergenceUrad: Number(v.beam_divergence_urad), rxApertureM: Number(v.rx_aperture_m),
+      atmosphericDb: Number(v.atmospheric_db), pointingDb: Number(v.pointing_db),
+      receiverOpticsEff: Number(v.receiver_optics_efficiency),
+      atmosphericRefKm: Number(v.atmospheric_ref_km), orbitAltitudeKm: Number(v.orbit_altitude_km),
+      stationAltitudeKm: Number(v.station_altitude_km), minElevationDeg: Number(v.min_elevation_deg),
+    },
+    sourceRateHz: Number(v.source_rate_hz), deadTimeS: Number(v.detector_dead_time_s),
+    muSignal: Number(v.mu_signal), muDecoy: Number(v.mu_decoy),
+    pSignal: Number(v.p_signal), pDecoy: Number(v.p_decoy), vacuumDecoy: Boolean(v.vacuum_decoy),
+  };
+}
 
 /**
  * The fraction of detections a dead detector still registers, after Rusca et al. 2018 Eq. (B3):
@@ -200,6 +274,14 @@ export function keyRateWithClock(perPulse: number, pulses: number, fRepHz: numbe
   return { skrBitPerSec: perPulse * fRepHz, channelSeconds: pulses / fRepHz, sourceRateHz: fRepHz };
 }
 
+/** A source clock from a Parameters-panel control in MHz, or the link's own when the control is unset,
+ *  zero, negative or not a number. Moved here from clientCompute.ts in Round 77 so the satellite link
+ *  builder (`satLink.ts`) and the pipeline share one conversion. */
+export const sourceRateHz = (mhzFromControl: unknown, fallbackHz: number): number => {
+  const mhz = Number(mhzFromControl);
+  return Number.isFinite(mhz) && mhz > 0 ? mhz * 1e6 : fallbackHz;
+};
+
 /** The ground station's optics (telescope + fibre coupling) in dB, 0 on fibre. Twin of
  *  `channel.py::ChannelParams.receiver_optics_db`. */
 export function receiverOpticsDb(p: ChannelParams): number {
@@ -207,14 +289,69 @@ export function receiverOpticsDb(p: ChannelParams): number {
   return eff != null ? -10 * Math.log10(Math.max(eff, 1e-12)) : 0;
 }
 
+/** Mean Earth radius in km (IUGG), for the pass geometry. Twin of `channel.py::EARTH_RADIUS_KM`. */
+export const EARTH_RADIUS_KM = 6371.0;
+
+/** Elevation in degrees at which a satellite `orbitKm` up is `slantKm` from a station `stationKm`
+ *  up; null beyond the horizon; 90 for a range shorter than the satellite's height. Twin of
+ *  `channel.py::elevation_deg`, Round 77. */
+export function elevationDeg(slantKm: number, orbitKm: number, stationKm = 0): number | null {
+  const a = EARTH_RADIUS_KM + stationKm, b = EARTH_RADIUS_KM + orbitKm, r = slantKm;
+  if (r <= 0) return 90;
+  const s = (b * b - a * a - r * r) / (2 * a * r);
+  if (s < 0) return null;
+  return (Math.asin(Math.min(1, s)) * 180) / Math.PI;
+}
+
+/** Relative optical air mass, Kasten & Young, Appl. Opt. 28, 4735 (1989). Twin of `air_mass`. */
+export function airMass(elevation: number): number {
+  return 1 / (Math.sin((elevation * Math.PI) / 180) + 0.50572 * (elevation + 6.07995) ** -1.6364);
+}
+
+/** The downlink's atmosphere at the link's slant range: `atmosphericDb` at the reference range times
+ *  the ratio of air masses, Infinity beyond the horizon. Twin of `channel.py::atmospheric_loss_db`. */
+export function atmosphericLossDb(p: ChannelParams): number {
+  const fs = p.freeSpace!;
+  const q = qkdCfg();
+  const orbit = fs.orbitAltitudeKm ?? q.free_space_orbit_altitude_km;
+  const station = fs.stationAltitudeKm ?? q.free_space_station_altitude_km;
+  const here = elevationDeg(p.distanceKm, orbit, station);
+  if (here === null) return Infinity;
+  const ref = elevationDeg(fs.atmosphericRefKm ?? q.free_space_atmospheric_ref_km, orbit, station);
+  if (ref === null) throw new Error("the atmosphere's reference range is beyond the horizon");
+  return fs.atmosphericDb * airMass(here) / airMass(ref);
+}
+
+/** The elevation a downlink's slant range implies for its orbit and station, null beyond the
+ *  horizon. Twin of `channel.py::link_elevation_deg`. */
+export function linkElevationDeg(p: ChannelParams): number | null {
+  const fs = p.freeSpace!;
+  const q = qkdCfg();
+  return elevationDeg(p.distanceKm, fs.orbitAltitudeKm ?? q.free_space_orbit_altitude_km,
+                      fs.stationAltitudeKm ?? q.free_space_station_altitude_km);
+}
+
+/** Whether a downlink is operated: in line of sight and at or above its minimum elevation. Always
+ *  true on fibre. Twin of `channel.py::in_view`. */
+export function inView(p: ChannelParams): boolean {
+  if (!p.freeSpace || p.freeSpace.interSatellite) return true;
+  const e = linkElevationDeg(p);
+  const min = p.freeSpace.minElevationDeg ?? qkdCfg().free_space_min_elevation_deg;
+  return e !== null && e >= min - 1e-9;
+}
+
 export function channelLossDb(p: ChannelParams): number {
   if (!p.freeSpace) return p.distanceKm * p.lossDbPerKm;
   const fs = p.freeSpace;
+  // No link below the minimum elevation or beyond the horizon (Round 77): zero transmittance, so no
+  // key. The stages check `inView` first and say why rather than print an infinite loss.
+  if (!inView(p)) return Infinity;
   const beamDiameterM = (fs.beamDivergenceUrad * 1e-6) * (p.distanceKm * 1e3);
   // Capped at 1: inside the near field the receiver cannot capture more than the whole beam.
   const captured = Math.min(1, fs.rxApertureM / Math.max(beamDiameterM, 1e-9));
   const geometricDb = -20 * Math.log10(captured);
-  return geometricDb + fs.atmosphericDb + fs.pointingDb + receiverOpticsDb(p);
+  const atmosphereDb = fs.interSatellite ? 0 : atmosphericLossDb(p);
+  return geometricDb + atmosphereDb + fs.pointingDb + receiverOpticsDb(p);
 }
 
 export function transmittance(p: ChannelParams): number {
@@ -371,6 +508,7 @@ export function signalQber(p: ChannelParams, mu: number): number {
  */
 export function decoySecureFraction(
   eta: number, mu: number, nu: number, eDet: number, y0: number, fEC: number, siftRatio: number,
+  vacuum = false,
 ): { perPulse: number; eMu: number; e1: number } {
   const e0 = 0.5;                                     // a dark count is uncorrelated: wrong half the time
   const qMu = y0 + 1 - Math.exp(-eta * mu);           // overall signal gain
@@ -382,12 +520,16 @@ export function decoySecureFraction(
   // pair is an operator error the panel should render as "no key", not a crash on a public page.
   if (mu <= nu || !(qNu > 0)) return { perPulse: 0, eMu, e1: 0.5 };
   const eNu = (e0 * y0 + eDet * (1 - Math.exp(-eta * nu))) / qNu;
-  // Eq. (41): one decoy, Y0 unknown, so the estimate takes Y0 = 0 (section 3.5).
+  // Eq. (41): one decoy, Y0 unknown, so the estimate takes Y0 = 0 (section 3.5). With `vacuum` the
+  // source also sends the vacuum state, its yield is measured, and section 3.4's Vacuum+Weak estimate
+  // (Eqs. 34, 37) uses it: Micius's 3-intensity protocol (Round 77). Twin of `_decoy_secure_fraction`.
+  const y0Known = vacuum ? y0 : 0;
   const y1 = Math.max(0, (mu / (mu * nu - nu * nu)) * (
-    qNu * Math.exp(nu) - ((nu * nu) / (mu * mu)) * qMu * Math.exp(mu)));
+    qNu * Math.exp(nu) - ((nu * nu) / (mu * mu)) * qMu * Math.exp(mu)
+    - ((mu * mu - nu * nu) / (mu * mu)) * y0Known));
   const q1 = y1 * mu * Math.exp(-mu);                 // secure single-photon gain
   const e1 = y1 > 0
-    ? Math.min(0.5, Math.max(0, (eNu * qNu * Math.exp(nu)) / (y1 * nu)))
+    ? Math.min(0.5, Math.max(0, (eNu * qNu * Math.exp(nu) - e0 * y0Known) / (y1 * nu)))
     : 0.5;
   const r = q1 * (1 - h2(e1)) - fEC * qMu * h2(eMu);
   return { perPulse: Math.max(0, r) * siftRatio, eMu, e1 };
@@ -423,23 +565,43 @@ export function decoySecureFraction(
 // literal, agreeing only because the two numbers happened to match. A default expression is
 // evaluated at CALL time, so reading config here wires every call site at once; threading a
 // parameter through the six of them is what would risk a half-wire.
-export function bb84(nPulses: number, p: ChannelParams, seed = 0,
-                     fEC = qkdCfg().error_correction_eff): BB84Result {
-  const u = rng(seed + 1);
+/**
+ * The DETERMINISTIC half of `bb84()`: the gains and the per-pulse bound of a channel, with no sampled
+ * QBER and no abort test. `bb84()` is this plus a finite run's measurement; the satellite pass model
+ * (`satNetwork.ts`) integrates it over thousands of ranges, where a Monte Carlo per step would be
+ * noise. Factored out in Round 77 so the two cannot compose the bound differently.
+ */
+export function bb84Rate(p: ChannelParams, fEC = qkdCfg().error_correction_eff): {
+  perPulse: number; eMu: number; e1: number; eta: number; qMu: number; qNu: number; y0: number;
+  cDt: number; mu: number; nu: number; src: ReturnType<typeof sourceOf>;
+} {
   const eta = transmittance(p);
-  const cfg = qkdCfg();
-  const mu = Math.max(1e-3, cfg.mu_signal);
-  const nu = Math.min(Math.max(1e-4, cfg.mu_decoy), mu * 0.9);  // strictly weaker than the signal
+  // The link's own source (Round 77): Micius's on the downlink, the fibre config's otherwise.
+  const src = sourceOf(p);
+  const { mu, nu } = src;
   const y0 = 2 * p.darkCount;                                   // background yield, two detectors
-  // The model's own signal QBER, the E_mu the bound uses (Round 75; it was `intrinsicQber`).
-  const eDet = signalQber(p, mu);
   // Detections come from the GAIN, not from eta: Q_mu = Y_0 + 1 - exp(-eta mu). This halves the
   // sifted count at the shipped defaults (0.0124 against 0.0250) and it is the correction, not a
   // regression - the previous figure counted one detection per transmitted photon.
   const qMu = y0 + 1 - Math.exp(-eta * mu);
-  // THE DEAD TIME (Round 76): signal and decoy sent equally often, every click counted. It scales
-  // the detections and the rate alike and leaves the QBER where it is. Twin of `bb84.py`.
-  const cDt = deadTimeFactor(p, 0.5 * (qMu + (y0 + 1 - Math.exp(-eta * nu))));
+  const qNu = y0 + 1 - Math.exp(-eta * nu);
+  // THE DEAD TIME (Round 76): every click counted, over the states the source sends (signal and
+  // decoy equally often on fibre). It scales the detections and the rate alike and leaves the QBER
+  // where it is. Twin of `bb84.py`.
+  const cDt = deadTimeFactor(p, clickMix(src, qMu, qNu, y0));
+  // It takes `eDetForBound(p)`, NOT the sampled QBER and not the bare misalignment - see that
+  // function for why the first charges dark counts twice and the second unhooks the eavesdropper.
+  const bound = decoySecureFraction(eta, mu, nu, eDetForBound(p), y0, fEC, 0.5, src.vacuum);
+  return { perPulse: bound.perPulse * cDt, eMu: bound.eMu, e1: bound.e1, eta, qMu, qNu, y0, cDt, mu, nu, src };
+}
+
+export function bb84(nPulses: number, p: ChannelParams, seed = 0,
+                     fEC = qkdCfg().error_correction_eff): BB84Result {
+  const u = rng(seed + 1);
+  const rate = bb84Rate(p, fEC);
+  const { mu, qMu, cDt } = rate;
+  // The model's own signal QBER, the E_mu the bound uses (Round 75; it was `intrinsicQber`).
+  const eDet = signalQber(p, mu);
   const nSift = Math.max(0, Math.round(nPulses * cDt * qMu * 0.5)); // detected & bases match
 
   // The MEASUREMENT still fluctuates: sampling noise on the observed QBER, binomial -> gaussian.
@@ -449,11 +611,7 @@ export function bb84(nPulses: number, p: ChannelParams, seed = 0,
   // The BOUND does not. It is a function of the channel, so it is identical across seeds while the
   // QBER above varies. Deriving it from the sampled QBER is what made the public figure move
   // between page loads: five seeds gave five different "bounds", 0.008992 to 0.009577.
-  //
-  // It takes `eDetForBound(p)`, NOT `eDet` and not the bare misalignment - see that function for
-  // why the first charges dark counts twice and the second unhooks the eavesdropper.
-  const bound = decoySecureFraction(eta, mu, nu, eDetForBound(p), y0, fEC, 0.5);
-  const decoy = { ...bound, perPulse: bound.perPulse * cDt };   // the gains it rests on, dead-time corrected
+  const decoy = rate;                                           // dead-time corrected (`bb84Rate`)
 
   // The counterfactual, on the same channel: GLLP with the multi-photon fraction untagged. Kept
   // beside the bound because the assumption is invisible without it.

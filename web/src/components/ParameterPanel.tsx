@@ -5,7 +5,23 @@
 import {
   hasTrainedQcnn, qcnnWidths, readsInferenceBackend, runsFibreQkd, runsQsmpc, type usePipelineRun,
 } from "../lib/usePipelineRun";
-import { channelLossDb, freeSpaceLink, qsdcLink } from "../lib/quantumSim";
+import { atmosphericLossDb, channelLossDb, FREE_SPACE, freeSpaceLink, qsdcLink } from "../lib/quantumSim";
+import { linkProfiles, profileValues } from "../lib/config";
+import { rangeAtElevationKm } from "../lib/satNetwork";
+
+/** The downlink's atmosphere at a slant range for a given anchor, from the model a run uses, so the
+ *  tooltip cannot quote a stale figure. Round 77. */
+function atmosphereDbAt(distanceKm: number, anchorDb: number): string {
+  return atmosphericLossDb({ ...FREE_SPACE, distanceKm,
+    freeSpace: { ...FREE_SPACE.freeSpace!, atmosphericDb: anchorDb } }).toFixed(1);
+}
+
+/** The slant range at which the satellite sinks to an elevation, for the default orbit and station:
+ *  the network model's own `rangeAtElevationKm`, not a second copy of it. */
+function rangeAtElevation(elevationDeg: number): number {
+  const fs = FREE_SPACE.freeSpace!;
+  return rangeAtElevationKm(elevationDeg, Number(fs.orbitAltitudeKm), Number(fs.stationAltitudeKm ?? 0));
+}
 
 /** The range-dependent part of the downlink budget - diffraction plus the receiver optics - in dB,
  *  from the same `channelLossDb` a run uses, so the tooltip cannot quote a stale literal. It said
@@ -131,7 +147,13 @@ export default function ParameterPanel({ run }: { run: Run }) {
   // pinned at 0, so free-space QBER stayed near 0.033 against a 0.11 abort threshold.
   if (!fibreQkd) groups.push(
     { title: "Free-space channel", fields: [
-      ["Downlink (km)", "sat_distance_km", 50, 1, "ground-to-LEO slant range - raises loss + QBER"],
+      ["Downlink (km)", "sat_distance_km", 50, 1,
+       "ground-to-LEO slant range - raises loss + QBER, and lowers the satellite: at the "
+       + `${FREE_SPACE.freeSpace!.orbitAltitudeKm} km orbit the range implies the elevation. Past `
+       + `${Math.round(rangeAtElevation(Number(p.sat_min_elevation_deg ?? 10)))} km the satellite is below the `
+       + `minimum elevation, and past the horizon (${Math.round(rangeAtElevation(0))} km) there is no line `
+       + "of sight: the run says so, and the Network tab on the satellite card shows how a relay "
+       + "satellite or a constellation bridges it"],
       ["Eve fraction", "sat_eve", 0.05, 0,
        // COMPUTED, not quoted. These figures were literals (+0.4944, -0.6283) written under the
        // pooled-entropy formula without detector efficiency, and at 1 km with 2.0 + 1.0 dB the
@@ -155,18 +177,30 @@ export default function ParameterPanel({ run }: { run: Run }) {
       // inline eavesdrop check named in the page subtitle could not be demonstrated. These select a
       // LINK, not a physics: the defaults are Liao et al. 2017's Micius downlink.
       ["Atmospheric (dB)", "sat_atmospheric_db", 0.5, 0,
-       "fixed atmospheric attenuation. A downlink crosses the atmosphere once, near the ground, so "
-       + "unlike fibre this does not scale with range. Default 5.0 dB, inside the 3-8 dB Liao et al. "
-       + "(Nature 549, 43, 2017) estimate for Micius at 1200 km. Qi et al. (Light Sci. Appl. 8, 22, "
+       "the atmosphere at 1200 km, where Liao et al. (Nature 549, 43, 2017) estimate 3 to 8 dB for "
+       + "Micius; the default is the 5.5 dB midpoint, and the 8 dB upper value is its own Downlink "
+       + "profile. A downlink crosses the atmosphere once, near the ground, so this does not scale "
+       + "with kilometres: it scales with the air mass of the elevation the range implies (Kasten "
+       + `& Young 1989). At this value that is ${atmosphereDbAt(800, Number(p.sat_atmospheric_db ?? 5.5))} dB at `
+       + `800 km and ${atmosphereDbAt(1, Number(p.sat_atmospheric_db ?? 5.5))} dB at the zenith. `
+       + "Over Liao's 19 December 2016 pass the midpoint gives 1% fewer detections than were "
+       + "counted. Qi et al. (Light Sci. Appl. 8, 22, "
        + "2019) ran QSDC over 1.5 km of fibre with 25.1 dB of total system loss; what sets Eve's "
        + "advantage there is the back channel, about 4.1 dB (g = 2.57), and secrecy capacity turns "
        + "positive here only when g is comparably small. Lowering this and Pointing is not enough on "
        + `its own: at 800 km diffraction and the receiver optics already take ${fixedFreeTermsDb(800)} dB, `
        + `so even a 3 dB budget leaves C_s at ${csAt(800, 1.5, 1.5, 0)}`, 20],
       ["Pointing (dB)", "sat_pointing_db", 0.5, 0,
-       "fixed pointing and tracking loss, likewise range-independent. With Atmospheric this is the "
-       + "floor under total channel loss: the diffraction term falls to zero in the near field, "
-       + "these two do not", 20],
+       "fixed pointing and tracking loss (Liao et al. 2017: less than 3 dB), not scaled with "
+       + "elevation. With the zenith atmosphere it is the floor under total channel loss: the "
+       + "diffraction term falls to zero in the near field, these two do not", 20],
+      // Round 77. Liao: "A single-orbit experiment ends when the satellite reaches 10 deg elevation
+      // angle"; Sidhu et al. (arXiv:2602.11833, 2026) impose the same 10 degrees.
+      ["Min elevation (deg)", "sat_min_elevation_deg", 1, 0,
+       "no link below this elevation: the run reports no key and says why. Liao et al. (2017) end "
+       + "each pass at 10 degrees and Sidhu et al. (arXiv:2602.11833, 2026) impose the same. Lower "
+       + "it to see a longer pass through more air; past the horizon there is no link at any setting",
+       89],
       // Its own key, not the fibre page's. `qkd_distance_km` vs `sat_distance_km` exists because a
       // previous round evaluated the free-space MODEL at the fibre page's PARAMETERS and produced a
       // number that moved, which is harder to catch than one that does not. A single shared source
@@ -321,6 +355,39 @@ export default function ParameterPanel({ run }: { run: Run }) {
                 <option value="von_neumann">von Neumann</option><option value="toeplitz">Toeplitz (LHL)</option><option value="seedless">seedless (2-source)</option>
               </select>
             </div>
+            {/* THE LINK, BY PROFILE (Round 77). Each option is a JSON file under
+                src/qsh/config/profiles/downlink/, values with their sources; choosing one loads its
+                values into the controls above, which then override it. A new file is a new option,
+                with no code change. */}
+            {!fibreQkd && (() => {
+              const profiles = linkProfiles("downlink");
+              const chosen = profiles[String(p.sat_profile)];
+              return (
+            <div style={{ minWidth: 220, flex: "2 1 220px" }}>
+              <label className="muted" htmlFor="pp-satprofile" style={{ fontSize: 12 }}
+                title={chosen ? `${chosen.source}. ${chosen.note ?? ""}` : undefined}>Downlink profile</label>
+              <select id="pp-satprofile" name="sat_profile" value={String(p.sat_profile)} style={{ width: "100%" }}
+                onChange={(e) => {
+                  const v = profileValues("downlink", e.target.value);
+                  if (!v) return;
+                  setParams({ ...params, sat_profile: e.target.value,
+                    sat_atmospheric_db: Number(v.atmospheric_db), sat_pointing_db: Number(v.pointing_db),
+                    sat_min_elevation_deg: Number(v.min_elevation_deg), sat_vacuum_decoy: v.vacuum_decoy ? 1 : 0,
+                    sat_source_rate_mhz: Number(v.source_rate_hz) / 1e6 });
+                }}>
+                {Object.values(profiles).map((pr) => <option key={pr.id} value={pr.id}>{pr.label}</option>)}
+              </select>
+            </div>);
+            })()}
+            {!fibreQkd && (
+            <div style={{ minWidth: 160, flex: "1 1 160px" }}>
+              <label className="muted" htmlFor="pp-vacuum" style={{ fontSize: 12 }}
+                title="Micius sent a vacuum state as well as its decoy (50/25/25 per cent), so its receiver measures the vacuum yield and the bound is Ma et al. 2005's Vacuum+Weak estimate (Eqs. 34, 37). Without it the yield is left to Eve and the bound is the one-decoy Eq. (41), with the decoy taking the vacuum's share.">Decoy states</label>
+              <select id="pp-vacuum" name="sat_vacuum_decoy" value={String(p.sat_vacuum_decoy)} style={{ width: "100%" }}
+                onChange={(e) => setParams({ ...params, sat_vacuum_decoy: Number(e.target.value) })}>
+                <option value="1">vacuum + one decoy</option><option value="0">one decoy, no vacuum</option>
+              </select>
+            </div>)}
             <div style={{ minWidth: 120, flex: "1 1 120px" }}>
               <label className="muted" htmlFor="pp-proto" style={{ fontSize: 12 }}>QKD protocol</label>
               <select id="pp-proto" name="qkd_protocol" value={p.qkd_protocol as string} style={{ width: "100%" }}

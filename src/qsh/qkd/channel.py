@@ -37,22 +37,88 @@ class FreeSpaceParams:
 
     beam_divergence_urad: float = _cfg("free_space_beam_divergence_urad")
     rx_aperture_m: float = _cfg("free_space_rx_aperture_m")
-    atmospheric_db: float = _cfg("free_space_atmospheric_db")     # crossed once - NOT per km
+    #: The atmosphere AT `atmospheric_ref_km`, scaled to other ranges by the air mass of the elevation
+    #: each implies (`atmospheric_loss_db`). Crossed once, near the ground - NOT per km. Round 77.
+    atmospheric_db: float = _cfg("free_space_atmospheric_db")
     pointing_db: float = _cfg("free_space_pointing_db")
     #: Receiving telescope plus fibre coupling, "~16%" in Liao 2017 - its own budget line since
     #: Round 75, which the model did not have.
     receiver_optics_efficiency: float = _cfg("free_space_receiver_optics_efficiency")
+    atmospheric_ref_km: float = _cfg("free_space_atmospheric_ref_km")
+    orbit_altitude_km: float = _cfg("free_space_orbit_altitude_km")
+    station_altitude_km: float = _cfg("free_space_station_altitude_km")
+    #: No link is operated below this elevation (Liao 2017 and Sidhu 2026: 10 degrees), and none
+    #: exists beyond the horizon: `loss_db` is infinite there. Round 77.
+    min_elevation_deg: float = _cfg("free_space_min_elevation_deg")
+
+
+#: Mean Earth radius in km (IUGG), for the pass geometry.
+EARTH_RADIUS_KM = 6371.0
+
+
+def elevation_deg(slant_km: float, orbit_km: float, station_km: float = 0.0) -> float | None:
+    """The elevation at which a satellite `orbit_km` up is `slant_km` from a station `station_km` up.
+
+    From (R + h)^2 = (R + g)^2 + r^2 + 2 (R + g) r sin(theta). None beyond the horizon, where no slant
+    range that long has a line of sight; 90 degrees for a range shorter than the satellite's height,
+    which no pass reaches, so a short what-if range takes the zenith air mass.
+    """
+    a, b, r = EARTH_RADIUS_KM + station_km, EARTH_RADIUS_KM + orbit_km, float(slant_km)
+    if r <= 0.0:
+        return 90.0
+    s = (b * b - a * a - r * r) / (2.0 * a * r)
+    if s < 0.0:
+        return None
+    return float(np.degrees(np.arcsin(min(1.0, s))))
+
+
+def air_mass(elevation: float) -> float:
+    """Relative optical air mass at an elevation in degrees: Kasten & Young, Appl. Opt. 28, 4735 (1989),
+    ``1 / (sin(g) + 0.50572 (g + 6.07995)^-1.6364)``, valid down to the horizon."""
+    g = float(elevation)
+    return 1.0 / (float(np.sin(np.radians(g))) + 0.50572 * (g + 6.07995) ** -1.6364)
+
+
+def link_elevation_deg(fs: FreeSpaceParams, slant_km: float) -> float | None:
+    """The elevation this downlink's slant range implies, or None beyond the horizon."""
+    return elevation_deg(slant_km, fs.orbit_altitude_km, fs.station_altitude_km)
+
+
+def in_view(fs: FreeSpaceParams, slant_km: float) -> bool:
+    """Whether a downlink at `slant_km` is operated: in line of sight and at or above the minimum
+    elevation. Twin of `quantumSim.ts::inView`."""
+    e = link_elevation_deg(fs, slant_km)
+    return e is not None and e >= fs.min_elevation_deg - 1e-9
+
+
+def atmospheric_loss_db(fs: FreeSpaceParams, slant_km: float) -> float:
+    """The downlink's atmosphere at `slant_km`: `atmospheric_db` at the reference range, times the
+    ratio of the air masses there and here. Infinite beyond the horizon. Round 77; twin of
+    `quantumSim.ts::atmosphericLossDb`.
+    """
+    here = elevation_deg(slant_km, fs.orbit_altitude_km, fs.station_altitude_km)
+    if here is None:
+        return float("inf")
+    ref = elevation_deg(fs.atmospheric_ref_km, fs.orbit_altitude_km, fs.station_altitude_km)
+    if ref is None:
+        raise ValueError(f"the reference range {fs.atmospheric_ref_km} km is beyond the horizon")
+    return float(fs.atmospheric_db) * air_mass(here) / air_mass(ref)
 
 
 @dataclass
 class ChannelParams:
     """Physical channel + detector parameters. Defaults are the fibre set in `QKDConfig`."""
 
-    distance_km: float = _cfg("distance_km")
+    #: Left unset, the range and the detector set take the LINK's own from config: the fibre set's,
+    #: or the downlink's (`free_space_*`) when `free_space` is given (Round 77). They were the fibre's
+    #: on every channel, so `ChannelParams(distance_km=800, free_space=FreeSpaceParams())` ran
+    #: Micius's optics behind the fibre's detectors - 1e-8 dark counts where Liao's are 5e-8 - and the
+    #: test suite had three such channels.
+    distance_km: float | None = None
     fiber_loss_db_per_km: float = _cfg("fiber_loss_db_per_km")
-    detector_efficiency: float = _cfg("detector_efficiency")
-    dark_count_prob: float = _cfg("dark_count_prob")              # per gate, per detector
-    misalignment: float = _cfg("misalignment")                    # baseline optical error
+    detector_efficiency: float | None = None
+    dark_count_prob: float | None = None                          # per gate, per detector
+    misalignment: float | None = None                             # baseline optical error
     eve_intercept_fraction: float = 0.0       # 0..1 fraction of pulses Eve intercept-resends
     free_space: FreeSpaceParams | None = None  # set for a downlink; None keeps the fibre law
     #: The source clock and the detectors' dead time, which together decide how many detections
@@ -66,6 +132,9 @@ class ChannelParams:
         from ..config import get_config
         q = get_config().qkd
         downlink = self.free_space is not None
+        for name in ("distance_km", "detector_efficiency", "dark_count_prob", "misalignment"):
+            if getattr(self, name) is None:
+                setattr(self, name, float(getattr(q, f"free_space_{name}" if downlink else name)))
         if self.source_rate_hz is None:
             self.source_rate_hz = float(q.free_space_source_rate_hz if downlink else q.source_rate_hz)
         if self.dead_time_s is None:
@@ -99,12 +168,16 @@ class ChannelParams:
         if self.free_space is None:
             return self.distance_km * self.fiber_loss_db_per_km
         fs = self.free_space
+        # No link below the minimum elevation or beyond the horizon (Round 77): the transmittance is
+        # zero, so the rate is, and the stages say why rather than print an infinite loss.
+        if not in_view(fs, self.distance_km):
+            return float("inf")
         beam_diameter_m = (fs.beam_divergence_urad * 1e-6) * (self.distance_km * 1e3)
         # Capped at 1: inside the near field the receiver cannot capture more than the whole beam.
         captured = min(1.0, fs.rx_aperture_m / max(beam_diameter_m, 1e-9))
         geometric_db = -20.0 * float(np.log10(captured))
         optics_db = -10.0 * float(np.log10(max(fs.receiver_optics_efficiency, 1e-12)))
-        return geometric_db + fs.atmospheric_db + fs.pointing_db + optics_db
+        return geometric_db + atmospheric_loss_db(fs, self.distance_km) + fs.pointing_db + optics_db
 
     def receiver_optics_db(self) -> float:
         """The ground station's own optics (telescope + fibre coupling) in dB; 0 on fibre.
