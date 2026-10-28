@@ -25,7 +25,7 @@ const SHOTS = [
   { name: "overview", path: "/" },
   { name: "value", path: "/value" },
   { name: "validations", path: "/validations", click: ["Run ML-KEM", "Run BB84"] },
-  { name: "orchestration", path: "/orchestration", run: true, fitFlow: true },
+  { name: "orchestration", path: "/orchestration", run: true },
   { name: "usecases", path: "/usecases" },
   { name: "usecase-finance", path: "/usecase/finance_aml", run: true },
   { name: "usecase-medical", path: "/usecase/medical_fl", run: true },
@@ -84,12 +84,8 @@ async function shoot(s, shot) {
     }
     await sleep(1500);
   }
-  if (shot.fitFlow) {
-    // The pipeline graph fits itself on mount; in a headless window that fit can run before the
-    // container has its size, so the graph's own fit-view control is pressed once the run is done.
-    await evaluate(s, `document.querySelector('.react-flow__controls-fitview')?.click()`);
-    await sleep(1500);
-  }
+  // No fit-view press for the pipeline graph: since Round 80 it sets its own scale from its frame's
+  // width, and pressing the control would swap that for React Flow's default fit.
   if (shot.scrollTo) {
     await evaluate(s, `(() => { const h = [...document.querySelectorAll('h2,h3,h4')].find(e => e.textContent.trim().startsWith(${JSON.stringify(shot.scrollTo)}));
                                if (h) window.scrollTo(0, Math.max(0, h.getBoundingClientRect().top + window.scrollY - 24)); })()`);

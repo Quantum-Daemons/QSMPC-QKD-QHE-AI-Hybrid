@@ -3405,3 +3405,32 @@ Moving text means asking each gate where it looks.
 rounds; the report's draft appendix took the figure from it. The first commit of the test says
 thirty-three. When a record states a duration, check the commit that started it, not the sentence
 that remembered it.
+
+### Round 80, continued again: drawing the flowcharts was an audit
+
+**Context.** The user held the merge for diagrams of the verification environment, the workflow and
+each use case, in the report and the README, and for the pages' diagrams, which misbehaved during a
+run.
+
+**Look during the run, not after it.** Every defect the user saw showed while a run was in flight:
+dimmed steps that read as empty, a status chip over the diagram, placeholder rows marked as running.
+The after-the-run screenshots this round had already been taken and read showed none of it.
+
+**Fixing that a thing shows is not fixing its parts.** The explicit node size of the first
+continuation made the pipeline graph's nodes draw again; its edges had gone with the same cause and
+nobody counted them. On the deploy the graph had no edges at all. A check that names the parts - nine
+edges, at load, mid-run and after - is the one that would have caught it.
+
+**A diagram of what implements each stage has to be read out of the code, both codes.** Asking, stage
+by stage, what runs this in the browser and what in Python found a genomics sum over stand-ins under
+a page that said allele counts, a Python pipeline that ignored two settings the page offers, and a
+diagram written this very round that put a key into the session where the browser puts none.
+Drawing the flowchart was the audit; the drawing came last.
+
+**A width is measured in the font that draws it.** Wrapping by character count guesses at a font the
+page does not choose. Measuring with the page's own font, and keeping room for the mark a step gains,
+is what keeps a label inside its box in a browser the author never opened.
+
+**Two copies of a figure need a test, or they are two figures.** The user chose TikZ and Mermaid over
+a shared renderer; the test pairs them by key and compares every label, so either copy changing alone
+fails.

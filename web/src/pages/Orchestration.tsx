@@ -186,26 +186,7 @@ export default function Orchestration() {
         </div>
       </div>
 
-      {/* Run status, announced and visible from anywhere on the page.
-          The identical block has been on `UseCasePage` since Round 39 and this page never got one,
-          although this is the page whose entire subject is watching a pipeline advance: the state
-          badge lives in the controls card at the top and scrolls out of view, and the DAG's own
-          progress was - until this round - encoded in colour alone. So a visitor reading the lower
-          half of the page had no announcement of a stage change and no non-colour signal either.
-          `role="status"` with `aria-live="polite"` announces without stealing focus. Rendered only
-          while it says something: during a run and while paused. */}
-      {(run.running || run.paused) && (
-        <div role="status" aria-live="polite"
-          style={{
-            position: "fixed", right: 16, bottom: 16, zIndex: 50,
-            background: "var(--panel)", border: "1px solid var(--accent)", borderRadius: 10,
-            padding: "8px 14px", boxShadow: "0 4px 18px rgba(0,0,0,.45)",
-            display: "flex", alignItems: "center", gap: 10, fontSize: 12,
-          }}>
-          <span className={`badge-state ${run.state}`}>{run.state}</span>
-          {run.active ? <span className="muted"><code>{run.active}</code></span> : null}
-        </div>
-      )}
+      {/* The run's status is shown in the sidebar (lib/runStatus.ts) since Round 80. */}
     </div>
   );
 }
