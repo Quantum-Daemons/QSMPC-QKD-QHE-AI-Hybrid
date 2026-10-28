@@ -15,10 +15,14 @@ export default function RunMonitor({
         <h3>Live event log</h3>
         <div className="log" ref={logRef as React.RefObject<HTMLDivElement>}>
           {events.length === 0 && <span className="muted">Press ▶ Start to stream events…</span>}
+          {/* `ev-` before the event type. The bare type was the class until Round 80, and a "log"
+              event's label took `.log`, this container's own rule: a bordered, padded box on an
+              inline span, painted over the lines above and below it, and most of a run's events
+              are "log". A prefix keeps any event type from naming a layout class. */}
           {events.map((e, i) => (
             <div key={i} className="log-line">
               <span className="t">[{e.t?.toFixed?.(3)}s]</span>{" "}
-              <span className={e.type}>{e.type}</span>{" "}
+              <span className={`ev-${e.type}`}>{e.type}</span>{" "}
               <span className="muted">{e.stage}</span> {e.message}
             </div>
           ))}
