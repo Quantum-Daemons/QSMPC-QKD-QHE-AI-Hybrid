@@ -356,6 +356,16 @@ measured detections and sifted bits within 1\,percent. A second tab models what 
 horizon: the trusted satellite relay Micius flew between Xinglong and Graz, and a plane of satellites
 linked to their neighbours.
 
+The key is the composable finite key of one pass peaking at the page's range, the block every flown
+experiment found computes its key on: Lim et al.'s (2014) bound for a source that sends the vacuum,
+on the pass's counts summed second by second. On Liao's pass at their failure probability of
+$10^{-9}$ it gives 164,183 bits, 0.55 of the 300,939 they report; on the Micius--Zvenigorod session
+it gives 0.56 of a key computed with Chernoff bounds, the same gap on a second pass, so it is the
+analysis and not the channel. The same bound reproduces Rusca et al.'s (2018) two-decoy figures to
+within a factor of 2.5, always below them, and their ratio to the one-decoy figures within
+15\,percent. Pooling passes, or a time held at one range, are offered beside it; at 800\,km a key
+needs about 33\,s of link time, which one range of a low orbit does not hold.
+
 \section{Security model and its boundaries}
 
 \subsection{What is real and what is simulated}

@@ -17,8 +17,9 @@
 // 2017's own pass of 19 December 2016 (tests/test_satellite_network_is_checked.py).
 //
 // What it leaves out, and says so on the page: Earth's rotation during a pass (about 0.35 km/s at
-// Xinglong against the satellite's 7.6), weather, the Sun's beta angle beyond the one it is given,
-// and finite-key effects - the key is the asymptotic bound.
+// Xinglong against the satellite's 7.6), weather, and the Sun's beta angle beyond the one it is given.
+// The rates, and the relay's and the constellation's keys, are the asymptotic bound; a pass's
+// composable finite key (Round 79) is `finiteKey.ts` on the counts its `segments` sum.
 //
 // ONE KEY CONVENTION, per pulse sent (Round 78, the user's choice). `bb84Rate` counts the key the
 // signal pulses carry - half of Micius's, which sent "probabilities of 50%, 25%, and 25%" - so a pass's
@@ -80,6 +81,9 @@ export interface PassResult {
   durationS: number; minRangeKm: number; maxRangeKm: number;
   keyBits: number; siftedBits: number; detections: number;
   samples: PassSample[];
+  /** (pulses, channel) per sample, trapezoid-weighted: what a finite-key bound counts over the pass
+   *  (Round 79, `finiteKey.ts::blockCounts`). Twin of `satellite_pass.py::Pass.segments`. */
+  segments: [number, ChannelParams][];
 }
 
 /**
@@ -96,7 +100,7 @@ export function simulatePass(link: ChannelParams, maxElevation: number,
   const g = geometry(link);
   const window = Math.max(opts.windowElevationDeg ?? g.minElevation, g.minElevation);
   const empty: PassResult = { maxElevationDeg: maxElevation, windowElevationDeg: window, durationS: 0,
-    minRangeKm: NaN, maxRangeKm: NaN, keyBits: 0, siftedBits: 0, detections: 0, samples: [] };
+    minRangeKm: NaN, maxRangeKm: NaN, keyBits: 0, siftedBits: 0, detections: 0, samples: [], segments: [] };
   if (!(maxElevation >= window) || maxElevation > 90) return empty;
   const a = EARTH_RADIUS_KM + g.stationKm, b = EARTH_RADIUS_KM + g.orbitKm;
   const w = (2 * Math.PI) / orbitalPeriodS(g.orbitKm);
@@ -106,6 +110,7 @@ export function simulatePass(link: ChannelParams, maxElevation: number,
   const n = Math.max(2, Math.ceil((2 * half) / (opts.stepS ?? 1)));
   const h = (2 * half) / n;
   const samples: PassSample[] = [];
+  const segments: [number, ChannelParams][] = [];
   let keyBits = 0, siftedBits = 0, detections = 0;
   for (let i = 0; i <= n; i++) {
     const t = -half + i * h;
@@ -124,6 +129,7 @@ export function simulatePass(link: ChannelParams, maxElevation: number,
     };
     samples.push(sample);
     const wt = i === 0 || i === n ? 0.5 * h : h;
+    segments.push([wt * g.rateHz, ch]);
     keyBits += wt * sample.keyRate;
     siftedBits += wt * sample.siftedRate;
     detections += wt * sample.detectionRate;
@@ -131,7 +137,7 @@ export function simulatePass(link: ChannelParams, maxElevation: number,
   return { maxElevationDeg: maxElevation, windowElevationDeg: window, durationS: 2 * half,
     minRangeKm: rangeAtElevationKm(maxElevation, g.orbitKm, g.stationKm),
     maxRangeKm: rangeAtElevationKm(window, g.orbitKm, g.stationKm),
-    keyBits, siftedBits, detections, samples };
+    keyBits, siftedBits, detections, samples, segments };
 }
 
 /** Liao et al. 2017's pass of 19 December 2016, as the paper states it: "the minimal (maximal)
