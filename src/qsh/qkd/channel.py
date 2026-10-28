@@ -50,6 +50,12 @@ class FreeSpaceParams:
     #: No link is operated below this elevation (Liao 2017 and Sidhu 2026: 10 degrees), and none
     #: exists beyond the horizon: `loss_db` is infinite there. Round 77.
     min_elevation_deg: float = _cfg("free_space_min_elevation_deg")
+    #: The optional turbulence coupling (Round 78; `turbulence_coupling_db`): the receiver's
+    #: field-stop radius in urad (0 = off), the site's seeing at 500 nm and the zenith, and the
+    #: signal wavelength.
+    field_stop_urad: float = _cfg("free_space_field_stop_urad")
+    seeing_arcsec: float = _cfg("free_space_seeing_arcsec")
+    wavelength_nm: float = _cfg("free_space_wavelength_nm")
 
 
 #: Mean Earth radius in km (IUGG), for the pass geometry.
@@ -89,6 +95,35 @@ def in_view(fs: FreeSpaceParams, slant_km: float) -> bool:
     elevation. Twin of `quantumSim.ts::inView`."""
     e = link_elevation_deg(fs, slant_km)
     return e is not None and e >= fs.min_elevation_deg - 1e-9
+
+
+def _seeing_fraction(fs: FreeSpaceParams, elevation: float) -> float:
+    """Energy of the seeing-limited image inside the field stop at an elevation in degrees."""
+    lam = fs.wavelength_nm * 1e-9
+    r0_500 = 0.98 * 500e-9 / (fs.seeing_arcsec * np.pi / 648000.0)          # epsilon = 0.98 lambda / r0
+    r0 = r0_500 * (fs.wavelength_nm / 500.0) ** 1.2 * float(np.sin(np.radians(elevation))) ** 0.6
+    fwhm = 0.98 * lam / r0
+    alpha = fs.field_stop_urad * 1e-6
+    return 1.0 - float(np.exp(-4.0 * np.log(2.0) * (alpha / fwhm) ** 2))
+
+
+def turbulence_coupling_db(fs: FreeSpaceParams, slant_km: float) -> float:
+    """The extra loss at a slant range from a seeing-limited image overfilling the field stop,
+    relative to the zenith; 0 when the field stop is 0 (off, the default). Round 78, the user's
+    choice; twin of `quantumSim.ts::turbulenceCouplingDb`.
+
+    r0 = 0.185 lambda^(6/5) (integral of Cn2 along the path)^(-3/5) and epsilon = 0.98 lambda / r0
+    (Liu et al., arXiv:1505.05436, Eqs. 1-2); along a slant path the integral grows as sec(zeta), so
+    r0 scales as (cos zeta)^(3/5) = sin(elevation)^(3/5). The fraction inside a stop of radius alpha is
+    a Gaussian's with the seeing FWHM, 1 - exp(-4 ln 2 (alpha / FWHM)^2) - an approximation of the
+    long-exposure image, stated as one.
+    """
+    if fs.field_stop_urad <= 0.0:
+        return 0.0
+    e = link_elevation_deg(fs, slant_km)
+    if e is None:
+        return 0.0
+    return 10.0 * float(np.log10(_seeing_fraction(fs, 90.0) / _seeing_fraction(fs, max(e, 1e-3))))
 
 
 def atmospheric_loss_db(fs: FreeSpaceParams, slant_km: float) -> float:
@@ -176,8 +211,8 @@ class ChannelParams:
         # Capped at 1: inside the near field the receiver cannot capture more than the whole beam.
         captured = min(1.0, fs.rx_aperture_m / max(beam_diameter_m, 1e-9))
         geometric_db = -20.0 * float(np.log10(captured))
-        optics_db = -10.0 * float(np.log10(max(fs.receiver_optics_efficiency, 1e-12)))
-        return geometric_db + atmospheric_loss_db(fs, self.distance_km) + fs.pointing_db + optics_db
+        return (geometric_db + atmospheric_loss_db(fs, self.distance_km) + fs.pointing_db
+                + self.receiver_optics_db())
 
     def receiver_optics_db(self) -> float:
         """The ground station's own optics (telescope + fibre coupling) in dB; 0 on fibre.
@@ -188,7 +223,10 @@ class ChannelParams:
         """
         if self.free_space is None:
             return 0.0
-        return -10.0 * float(np.log10(max(self.free_space.receiver_optics_efficiency, 1e-12)))
+        # The optional turbulence coupling is the station's too (Round 78): it is lost at the field
+        # stop, after the channel, so it counts as optics here and stays out of QSDC's Eve gap.
+        return (-10.0 * float(np.log10(max(self.free_space.receiver_optics_efficiency, 1e-12)))
+                + turbulence_coupling_db(self.free_space, self.distance_km))
 
     def transmittance(self) -> float:
         """End-to-end channel + detector transmittance (probability a pulse is detected)."""
