@@ -17,7 +17,7 @@ export function Qcnn3D(props: { features: number[]; seed: number }) {
 export function Qotp3D(props: { x: number }) {
   return <Suspense fallback={loading}><QotpScene {...props} /></Suspense>;
 }
-export function Sat3D(props: { slantKm: number; orbitKm: number; minElevationDeg: number }) {
+export function Sat3D(props: { slantKm: number; orbitKm: number; minElevationDeg: number; stationKm?: number }) {
   return <Suspense fallback={loading}><SatScene {...props} /></Suspense>;
 }
 export function SatNetwork3D(props: { orbitKm: number; n: number; clearanceKm: number; minElevationDeg: number;

@@ -6097,6 +6097,29 @@ degrees, 32.2 dB, 3.3559e-5 bit/pulse, 3,356 bit/s, 671 bits, the bound named as
 runs at 30.9 dB and 1,151 bits; the Network tab's tables match the model to the bit; the XOR demo
 recovers K_B; console clean. The preview browser has no WebGL, so the 3D fallback was seen there.
 
+
+**Walked on the deploy (5df3198, `index-3ryXaOPV.js`), in a fresh Chrome tab** - cross-origin
+isolated, with WebGL, so the 3D views were seen drawn for the first time.
+- Satellite at 800 km: 35.84 degrees, 32.2 dB, QBER 0.0104, 671 secure bits, 3,356 bit/s, the rate's
+  source named as the Vacuum+Weak bound, a tagged fraction of 795.62 at mu 0.8, and QSDC not
+  available at 27.3 dB from Eve to Bob's detector - the figures `run_bb84` gives locally.
+- 1700 km: "no link at 1700 km: at 9.9 deg elevation, below the 10 deg minimum", 0 bits, no
+  "Infinity" or "NaN" anywhere; Min elevation 5 brings the link back at 46.1 dB and 22 bits.
+- Decoy states "one decoy, no vacuum": 664 bits and 3,320 bit/s, the source naming Eq. (41).
+- The Zvenigorod profile loads 0.88 / 0 / 20 and the vacuum into the controls and runs at 30.9 dB,
+  35.91 degrees and 1,151 bits; choosing Micius again loads 5.5 / 3 / 10.
+- The Network tab, as locally: the Liao table +1.3 / -0.9 / -0.9 percent and 462,290 asymptotic bits
+  against 300,939; the relay at 7,621 km, 493.7 kbit and 6.8 hours, two pass pairs for 100 kB; the
+  XOR demo recovering K_B on fresh keys; the plane at 4,247 km, 164 km, 54.0 dB, 1.8 bit/s and 42.3
+  kbit a day; the CubeSat terminals loading 0.0746 m and 8.63 urad and making no key.
+- Telecom unchanged: 2.853421e-3 bit/pulse, 57,068 bits, 2,853,421 bit/s. Console: no errors.
+- **Found on the page: both 3D views were framed for a whole Earth.** The downlink's pass was a sliver
+  at the top of the sphere, and the constellation's ring was seen edge-on with half of it behind the
+  Earth, its shadow and visible arcs too dark to find. Both now have face-on cameras (the downlink
+  over the station, the plane through a long lens, which is nearly orthographic), the arcs drawn as
+  tubes, and the downlink drawn for the run's own station height, so its caption reads the run's
+  35.8 degrees where it read 35.9 for a station at sea level.
+
 BUSINESS DOC RECONCILED Round 77. The out-of-repo document is brought level with this round. Its content
 is not quoted here, in the checklist, or in any commit - only the fact of the reconciliation, which is
 what gate 16 reads.

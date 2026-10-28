@@ -30,9 +30,14 @@ function webglAvailable(): boolean {
   } catch { return false; }
 }
 
+/** Where the camera starts and what it orbits. The default frames a unit sphere from a corner; the
+ *  satellite views pass their own, because the part of their geometry that matters is a few percent of
+ *  the Earth's radius above it (Round 77, seen on the deployed page). */
+type View = { position: [number, number, number]; target: [number, number, number]; fov?: number };
+
 /** A canvas with a renderer, a camera and orbit controls; `build` adds the objects and may return a
  *  per-frame update. Renders on demand (controls change, resize) rather than in a loop. */
-function useScene(build: (scene: THREE.Scene) => void, deps: unknown[]) {
+function useScene(build: (scene: THREE.Scene) => void, deps: unknown[], view?: View) {
   const mount = useRef<HTMLDivElement>(null);
   const [failed, setFailed] = useState(false);
   useEffect(() => {
@@ -46,9 +51,13 @@ function useScene(build: (scene: THREE.Scene) => void, deps: unknown[]) {
     el.appendChild(renderer.domElement);
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(40, width / height, 0.01, 100);
-    camera.position.set(2.6, 1.8, 2.6);
+    camera.position.set(...(view?.position ?? [2.6, 1.8, 2.6]));
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = false;
+    if (view) {
+      if (view.fov) { camera.fov = view.fov; camera.updateProjectionMatrix(); }
+      controls.target.set(...view.target); controls.update();
+    }
     scene.add(new THREE.AmbientLight(0xffffff, 0.9));
     const dir = new THREE.DirectionalLight(0xffffff, 0.8); dir.position.set(3, 4, 2); scene.add(dir);
     build(scene);
@@ -184,6 +193,17 @@ export function QotpScene({ x }: { x: number }) {
   );
 }
 
+/** An arc as a thin tube, for the arcs a reader has to find: WebGL draws every line one pixel wide. */
+function tubeArc(radius: number, a0: number, a1: number, color: number, thickness: number): THREE.Mesh {
+  const pts: THREE.Vector3[] = [];
+  for (let i = 0; i <= 64; i++) {
+    const a = a0 + ((a1 - a0) * i) / 64;
+    pts.push(new THREE.Vector3(radius * Math.sin(a), radius * Math.cos(a), 0));
+  }
+  return new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 96, thickness, 6, false),
+    new THREE.MeshBasicMaterial({ color }));
+}
+
 /** A circle of `radius` in the x-y plane (the drawing's orbit plane), from angle a0 to a1 (radians,
  *  measured from +y, the station's zenith). */
 function arc(radius: number, a0: number, a1: number, color: number, width = 1, segments = 96): THREE.Line {
@@ -201,17 +221,20 @@ function arc(radius: number, a0: number, a1: number, color: number, width = 1, s
  * altitude fix the elevation, the air mass the atmosphere scales by, and whether there is a link at
  * all, so the drawing is the geometry the run computed with rather than an illustration of a range.
  */
-export function SatScene({ slantKm, orbitKm, minElevationDeg }: { slantKm: number; orbitKm: number; minElevationDeg: number }) {
-  // The model's own geometry (`elevationDeg`, `centralAngleRad`), drawn for a station at sea level.
+export function SatScene({ slantKm, orbitKm, minElevationDeg, stationKm = 0 }: {
+  slantKm: number; orbitKm: number; minElevationDeg: number; stationKm?: number;
+}) {
+  // The model's own geometry (`elevationDeg`, `centralAngleRad`) for the run's station, so the caption
+  // reads the elevation the run reports. The station's few hundred metres are not drawn.
   const R = EARTH_RADIUS_KM;
   const b = R + orbitKm;
-  const elOrNull = elevationDeg(slantKm, orbitKm, 0);
+  const elOrNull = elevationDeg(slantKm, orbitKm, stationKm);
   const visible = elOrNull !== null;
   const elDeg = elOrNull ?? 0;
   const inView = visible && elDeg >= minElevationDeg - 1e-9;
   // Central angles (from the station's zenith) of the satellite and of the minimum-elevation edge.
-  const psiSat = visible ? centralAngleRad(elDeg, orbitKm) : Math.acos(R / b) + 0.15;
-  const psiMin = centralAngleRad(minElevationDeg, orbitKm);
+  const psiSat = visible ? centralAngleRad(elDeg, orbitKm, stationKm) : Math.acos(R / b) + 0.15;
+  const psiMin = centralAngleRad(minElevationDeg, orbitKm, stationKm);
   const { mount, failed } = useScene((scene) => {
     const s = 1 / R;                                         // scene units: Earth radius = 1
     const earth = new THREE.Mesh(new THREE.SphereGeometry(1, 48, 24),
@@ -219,19 +242,22 @@ export function SatScene({ slantKm, orbitKm, minElevationDeg }: { slantKm: numbe
     scene.add(earth);
     const r = b * s;
     scene.add(arc(r, -Math.PI, Math.PI, 0x5b6b8c));                 // the orbit
-    scene.add(arc(r, -psiMin, psiMin, 0x36d399, 2));                 // where the station sees it above the minimum
+    scene.add(tubeArc(r, -psiMin, psiMin, 0x36d399, 0.0035));        // where the station sees it above the minimum
     const gs = new THREE.Vector3(0, 1, 0);                           // ground station at the drawing's "north pole"
     const sat = new THREE.Vector3(r * Math.sin(psiSat), r * Math.cos(psiSat), 0);
     const dot = (p: THREE.Vector3, color: number, rad: number) => {
       const m = new THREE.Mesh(new THREE.SphereGeometry(rad, 16, 8), new THREE.MeshStandardMaterial({ color }));
       m.position.copy(p); scene.add(m);
     };
-    dot(gs, 0x36d399, 0.025); dot(sat, inView ? 0xf6b73c : 0xf56565, 0.03);
+    dot(gs, 0x36d399, 0.012); dot(sat, inView ? 0xf6b73c : 0xf56565, 0.015);
     if (visible) {
       scene.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints([gs, sat]),
-        new THREE.LineDashedMaterial({ color: 0xb072ff, dashSize: 0.02, gapSize: 0.015 })).computeLineDistances());
+        new THREE.LineBasicMaterial({ color: 0xb072ff })));
     }
-  }, [slantKm, orbitKm, minElevationDeg]);
+  }, [slantKm, orbitKm, minElevationDeg, stationKm],
+  // Face-on to the orbit plane, over the station: the orbit is 8 percent of the Earth's radius up, so
+  // a whole-Earth view left the pass a sliver at the top of the sphere.
+  { position: [0.12, 1.08, 0.78], target: [0, 1.03, 0] });
   return (
     <figure className="chart-figure" style={{ margin: 0 }}>
       <figcaption className="small muted">
@@ -272,11 +298,12 @@ export function SatNetworkScene({ orbitKm, n, clearanceKm, minElevationDeg, shad
       new THREE.MeshBasicMaterial({ color: 0x97a3b6, wireframe: true, transparent: true, opacity: 0.12 })));
     const r = b * s;
     scene.add(arc(r, -Math.PI, Math.PI, 0x5b6b8c));
-    // Earth's shadow on the plane, centred opposite the Sun (drawn to the -y side, the station's night).
-    if (alpha > 0) scene.add(arc(r * 1.01, Math.PI - alpha, Math.PI + alpha, 0x0b1020, 3));
+    // Earth's shadow on the plane, centred opposite the Sun (drawn to the -y side, the station's
+    // night), as a band just outside the orbit.
+    if (alpha > 0) scene.add(tubeArc(r * 1.035, Math.PI - alpha, Math.PI + alpha, 0x7c8aa8, 0.008));
     // A station on the night side and the arc of the orbit it sees above the minimum elevation.
     const gs = new THREE.Vector3(0, -1, 0);
-    scene.add(arc(r * 1.02, Math.PI - psiMin, Math.PI + psiMin, 0x36d399, 2));
+    scene.add(tubeArc(r, Math.PI - psiMin, Math.PI + psiMin, 0x36d399, 0.006));
     const m = new THREE.Mesh(new THREE.SphereGeometry(0.025, 16, 8), new THREE.MeshStandardMaterial({ color: 0x36d399 }));
     m.position.copy(gs); scene.add(m);
     const sats: THREE.Vector3[] = [];
@@ -291,13 +318,18 @@ export function SatNetworkScene({ orbitKm, n, clearanceKm, minElevationDeg, shad
       scene.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints([p, q]),
         new THREE.LineBasicMaterial({ color: losOk ? 0xb072ff : 0xf56565 })));
     });
-  }, [orbitKm, n, clearanceKm, minElevationDeg, shadowHalfAngleDeg]);
+  }, [orbitKm, n, clearanceKm, minElevationDeg, shadowHalfAngleDeg],
+  // Face-on to the plane, so every satellite, link, the shadow and the station's arc are in view; from
+  // the default corner the ring was edge-on and half of it behind the Earth.
+  // A long lens from farther out, near-orthographic: at 500 km the ring is 8 percent outside the
+  // Earth, and a close perspective camera hid its far side behind the limb.
+  { position: [0.3, 0.2, 8.5], target: [0, 0, 0], fov: 17 });
   return (
     <figure className="chart-figure" style={{ margin: 0 }}>
       <figcaption className="small muted">
         <b>One plane of {n} satellites at {orbitKm} km.</b> Neighbour links pass {Math.round(chordLow)} km above the
         ground at their lowest, {losOk ? <>clear of the {clearanceKm} km shell (purple)</> : <>below the {clearanceKm} km shell, so they are blocked (red)</>};
-        {" "}the arc a station sees above {minElevationDeg} degrees (green); and Earth&apos;s shadow on the orbit (dark),
+        {" "}the arc a station sees above {minElevationDeg} degrees (green); and Earth&apos;s shadow on the orbit (grey band),
         where a link that needs darkness can run. The station&apos;s place and the Sun&apos;s direction are chosen for the
         drawing; the radii, spacing, clearance and arcs are the model&apos;s.
       </figcaption>
