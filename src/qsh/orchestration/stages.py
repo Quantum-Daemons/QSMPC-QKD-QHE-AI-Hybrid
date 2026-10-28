@@ -531,8 +531,8 @@ class ExplainabilityStage(Stage):
     """Explainable AI: exact linear-SHAP feature attributions for the private-inference result.
 
     Satisfies the report's XAI / audit-trail requirement and prepares for EU AI Act Art. 13 transparency
-    (applicable 2027-12-02 for Annex III after the AI Omnibus deferral, not Aug 2026)
-    obligation (high-risk credit/AML + healthcare). Faithful (exact for the linear model) and
+    (high-risk systems only: 2027-12-02 for Annex III, 2028-08-02 for Annex I products such as
+    diagnostic software, after the AI Omnibus deferral, not Aug 2026). Faithful (exact for the linear model) and
     cheap; the attributions are written to ``ctx.artifacts["explanation"]`` so the downstream
     :class:`SignatureStage` ML-DSA-signs them -> a tamper-evident, regulator-facing explanation.
     Skips cleanly when the use case has no linear model to explain (e.g. secure-sum, IDS, QSDC).
