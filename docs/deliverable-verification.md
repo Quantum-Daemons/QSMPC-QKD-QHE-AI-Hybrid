@@ -6492,6 +6492,23 @@ with the same fonts and images, so nothing was broken; both notes now name `make
 before the diagrams were laid out again; the document gates again after it; `tsc`, the JSX-spaces
 check and a client-only build.
 
+**CI green on 8773af6 (six checks), then deployed from git and walked in Chrome
+(`index-CO2HFevZ.js`, replacing `index-BksqMex-.js`).** Measured on the live pages, the same way the
+three defects were measured before the fix:
+- E2E Orchestration after a finance run reached "done": ten nodes, all drawn, each 190 x 100; none
+  hidden. The event log's 22 "log" labels have no padding, border or background and are one line
+  (18 px); no span carries the class `log`.
+- Satellite: the QSDC label is three lines (40, 98 and 55 characters) from 154 to 630 in the
+  780-unit drawing, where it had been one line from -107 to 891. The key is 91,475 bits, unchanged;
+  the Network tab opens on "One pass over one station".
+- Telecom: 5,184,652 bits over a block of 5,334,030,000 pulses, unchanged; Validations reads the same
+  count over 5.33e+9 pulses.
+- Finance and medical runs end "done" and PASS with plain log labels; the Overview, Value (the
+  novelty sentence intact), Use cases and Genomics pages render. No page shows `NaN`, `undefined`,
+  `Infinity` or `[object Object]`, and the console showed no error through a fresh load and a run.
+On GitHub the branch's README draws all five diagrams at full size in an 846 px column and loads
+all eleven screenshots.
+
 BUSINESS DOC RECONCILED Round 80. The out-of-repo document is brought level with this round's
 continuation. Its content is not quoted here, in the checklist, or in any commit - only the fact of
 the reconciliation, which is what gate 16 reads.
