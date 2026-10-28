@@ -11,9 +11,10 @@ WHAT IS ASSERTED
 
 - Against Rusca et al.'s Table I (arXiv:1801.03443), whose 2-decoy rows are Lim et al.'s analysis on
   Rusca's detector model: optimised over the variables Rusca et al. say they optimise, with mu3 =
-  1e-6 as their Fig. 4 states, the bound comes out within a factor of 5 of the 26 dB and 46 dB rows
-  and always below them, at both block sizes the table gives - the same band, for the same reasons,
-  as the 1-decoy bound's own test (`test_finite_key_reproduces_the_published_table.py`).
+  1e-6 as their Fig. 4 states, the bound comes out within 20 percent below the 26 dB and 46 dB rows
+  at both block sizes the table gives, and never above. (Round 79 wrote "within a factor of 5":
+  until Round 80 this file and the 1-decoy one applied the detector on top of the paper's global
+  attenuation, which already includes it, 3 dB too much; see that file.)
 - What the shared channel model cannot explain away: the RATIO of the two protocols, which cancels
   it. Rusca et al.'s headline is that the 1-decoy protocol wins at these losses; here it wins too,
   by a ratio within 15% of the paper's at all four cells. And the optimiser keeps more than 11% of
@@ -54,7 +55,8 @@ TABLE_I = {
     26: (100, {1e7: (243_000.0, 236_000.0), 1e9: (357_000.0, 355_000.0)}),
     46: (200, {1e7: (2627.0, 2503.0), 1e9: (3970.0, 3881.0)}),
 }
-PAPER_DEVICE = dict(detector_efficiency=0.5, dark_count_prob=1e-8, misalignment=0.01)
+#: The detector inside the global attenuation, as the paper defines it (Round 80).
+PAPER_DEVICE = dict(detector_efficiency=1.0, dark_count_prob=1e-8, misalignment=0.01)
 LIAO_FINAL_KEY = 300_939
 
 
@@ -106,13 +108,13 @@ def optimised() -> dict:
 
 @pytest.mark.parametrize("att", sorted(TABLE_I))
 @pytest.mark.parametrize("n_z", (1e7, 1e9))
-def test_the_two_decoy_rows_within_a_factor_of_five_and_below(optimised, att, n_z) -> None:
+def test_the_two_decoy_rows_within_twenty_percent_and_below(optimised, att, n_z) -> None:
     published = TABLE_I[att][1][n_z][1]
     ratio = optimised[att, n_z]["two"] / published
-    assert 0.2 <= ratio <= 1.0, (
+    assert 0.8 <= ratio <= 1.0, (
         f"{att} dB, n_Z = {n_z:.0e}: {optimised[att, n_z]['two']:,.1f} Hz against the paper's "
         f"{published:,.1f} Hz, a ratio of {ratio:.3f}. Above 1 claims more key than the published "
-        "analysis, the serious failure; below 0.2 is too far to be called the same bound.")
+        "analysis, the serious failure; below 0.8 has drifted from the bound the paper evaluates.")
 
 
 @pytest.mark.parametrize("att", sorted(TABLE_I))
