@@ -3349,3 +3349,27 @@ vacuum pulses.
 over a pass or over blocks inside one orbit; none on seconds of a low-orbit pass. The default follows
 that, the alternatives stay, and the seconds option says how long a key would need rather than
 pretending a fifth of a second could carry one.
+
+### Round 80: a check for the new default found an old error in the old tests
+
+**Context.** Two user choices: every fibre key a composable finite key, at every site; its block
+decided by the published practice.
+
+**Put the change where every caller already looks.** The fibre key had five readers in two
+languages. Changing each would have invited the one-site-short defect this project has recorded
+many times; changing the model they all call - `run_bb84`, `bb84()` - left them nothing to miss, and
+the cross-language test holds the two models to the bit.
+
+**The research's check was more useful than its recommendation.** It recommended the block every
+fibre experiment uses, which was expected. It also handed back the paper's own block TIMES as a
+check, and ours came out twice as long at every row. A rate that is twice as slow everywhere is a
+channel, not a bound: the tests had applied the detector on top of an attenuation the paper defines
+as including it. Seven rounds had recorded the resulting factor as this code's conservatism.
+
+**An inference earns its keep when a later check can break it.** Round 79 chose the decoy's errors
+for (A16) from one sentence of the paper. On the paper's own channel and dead time that choice
+reproduces Table I's 26 dB row to a few parts in a thousand, and the other choice reads 13 percent low.
+
+**A rounding is part of a metric's meaning.** The satellite's block time at one decimal was fine for
+minutes of pass; the fibre's blocks run from milliseconds, and the rounding gate allows one rounding
+per name. Significant figures serve both.
