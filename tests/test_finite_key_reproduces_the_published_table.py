@@ -11,9 +11,10 @@ WHAT IS ASSERTED, AND AT WHAT ACCURACY
 
 The paper's Table I gives the 1-decoy secret key rate at fixed privacy-amplification block sizes
 for four attenuations, assuming a 1 GHz source. Reproducing it exactly is not possible from the
-paper alone: Table I is quoted at parameters the authors OPTIMISED and did not print, their
-detector model includes a 100 ns dead time this project does not model, and their split of the
-security budget across the individual epsilons in Eq. (A24) is not stated. Measured against that
+paper alone: Table I is quoted at parameters the authors OPTIMISED and did not print, and their
+split of the security budget across the individual epsilons in Eq. (A24) is not stated. Their
+detector model's 100 ns dead time is modelled here since Round 76 (`qkd.channel.dead_time_factor`),
+counting every click rather than their Z-basis sum; until then this file listed it as a third reason. Measured against that
 table, with the intensities and basis bias optimised here the way the paper says it optimises
 them, this implementation comes out **conservative by a factor of about 2 at 26 dB and 46 dB**,
 and by more at higher loss.
@@ -25,9 +26,8 @@ assert agreement to a digit:
   - MONOTONICITY in block size and in loss;
   - the SIGN at this project's own operating point, which is the claim the repository makes.
 
-The last one is why the accuracy caveat does not weaken the finding. At the shipped block the
-single-photon lower bound `s^l_{Z,1}` is NEGATIVE - the bound is undefined, not merely small - and
-no factor-of-three optimism turns a negative count positive.
+The last one is why the accuracy caveat does not weaken the finding: Round 46's two-million-pulse
+block carries no composable key on the shipped fibre, by a margin no factor of a few closes.
 """
 
 from __future__ import annotations
@@ -116,9 +116,11 @@ def test_the_key_grows_with_the_block_and_shrinks_with_loss() -> None:
 def test_the_shipped_block_carries_no_composable_key() -> None:
     """THE CLAIM THE REPOSITORY MAKES, at this project's own operating point.
 
-    Robust to the accuracy caveat above: `s^l_{Z,1}` is NEGATIVE at the shipped block, so there is
-    no single-photon bound to be conservative or optimistic about. This is the assertion that
-    replaced "the positive-key threshold is ~5e3 to 1.1e4 sifted bits".
+    Round 46 shipped 2,000,000 pulses. On the channel of that time the single-photon lower bound
+    `s^l_{Z,1}` was NEGATIVE there - undefined, not merely small. On Round 76's Rusca set it is
+    positive (about 225 counts) and the key is still negative (about -607 bits): the block carries no
+    composable key either way, now because the finite-size terms outweigh it. The threshold moved
+    from 1.41e7 pulses to 5.88e6, and the shipped 2e7 clears it 3.4x.
     """
     from qsh.config import get_config
 
@@ -127,20 +129,18 @@ def test_the_shipped_block_carries_no_composable_key() -> None:
                        detector_efficiency=q.detector_efficiency,
                        dark_count_prob=q.dark_count_prob, misalignment=q.misalignment)
     at_two_million = finite_key_length(2_000_000, ch)
-    assert at_two_million.s_z1 < 0, (
-        f"the single-photon lower bound at 2e6 pulses is {at_two_million.s_z1:.1f}, no longer "
-        "negative. The claim that this block carries no composable key rested on that sign; "
-        "re-derive the threshold before quoting the old sentence."
-    )
-    assert at_two_million.key_bits <= 0, "a block the bound calls undefined reported a key"
+    assert at_two_million.key_bits <= 0, (
+        f"2e6 pulses now yield {at_two_million.key_bits:.1f} bits of composable key; the claim that "
+        "Round 46's block carried none needs re-deriving before it is quoted again")
 
     threshold = minimum_pulses_for_positive_key(ch)
     assert threshold is not None, "no block size up to 1e11 pulses yields a key on the shipped fibre"
-    assert 5e6 <= threshold <= 2e8, (
-        f"the computed threshold moved to {threshold:,} pulses. The repository quotes this as an "
-        "order-of-magnitude figure (~1e7 to 1e8 pulses); a value outside that range means the "
-        "documented number needs re-deriving, not that this bound should be widened."
+    assert 2e6 <= threshold <= 2e8, (
+        f"the computed threshold moved to {threshold:,} pulses. The repository quotes it as an "
+        "order-of-magnitude figure (about 6e6 pulses on the Rusca set); a value outside this range "
+        "means the documented number needs re-deriving, not that this bound should be widened."
     )
+    assert q.pulses >= 2 * threshold, f"the shipped {q.pulses:,} pulses no longer clear {threshold:,} twice"
 
 
 def test_the_refuted_band_is_refuted() -> None:

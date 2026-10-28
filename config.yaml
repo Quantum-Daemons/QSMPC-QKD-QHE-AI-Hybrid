@@ -20,10 +20,13 @@ qkd:
   # raising the dataclass moved nothing until this line changed too.
   pulses: 20000000
   distance_km: 50.0
+  # The detector set is Rusca et al. 2018's since Round 76 (QKDConfig carries the sources). It was
+  # 0.25 / 1.0e-5 / 0.015 here and in the dataclass; the 1 GHz clock and the 100 ns dead time that
+  # came with it are dataclass defaults this file does not repeat.
   fiber_loss_db_per_km: 0.2
-  detector_efficiency: 0.25
-  dark_count_prob: 1.0e-5
-  misalignment: 0.015
+  detector_efficiency: 0.5
+  dark_count_prob: 1.0e-8
+  misalignment: 0.01
   eve_intercept_fraction: 0.0
   error_correction_eff: 1.16
 

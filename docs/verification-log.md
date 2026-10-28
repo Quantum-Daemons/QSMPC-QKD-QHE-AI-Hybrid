@@ -3249,3 +3249,24 @@ see: one rounding at every site, one formula in both languages. The first was a 
 one magnitude and wrong at another, and the second a label that was right until this round changed
 what its g leaves out. Reading the panel beside the metric it prints is still the check that finds
 these.
+
+### Round 76: a set nobody had sourced, and the term it was missing
+
+**Context.** The fibre detector values, which the config had labelled modelling choices since Round 35.
+
+**A label is not a source.** "Modelling choice" was honest and still left the model 3x a measured
+link's rate. The comparison that showed it needed a paper this file already cited for a different
+number, cited since Round 47 for its block size; the measurement had been in the file for nearly
+thirty rounds.
+
+**The right source was the one already implemented.** Of five papers read, the one whose equations
+`finite_key.py` runs states a complete parameter set, and a test was already evaluating the code at
+exactly those values. Adopting it made the shipped channel and the validated channel the same thing.
+
+**A clock is part of the detector model.** Moving to 1 GHz without a dead time would have multiplied
+the bit/s by ten for free. The paper's own dead-time term cut the 50 km detections by a third, and the
+optimiser had to learn it too, or it would have chased brighter pulses into saturated detectors.
+
+**The literal was still in Python.** The browser read config; Python's channel defaulted two of its
+five values from literals, and the fibre stage relied on them. The same defect class as the satellite
+literals of Round 75, one dataclass over, and found only because this round changed the values.

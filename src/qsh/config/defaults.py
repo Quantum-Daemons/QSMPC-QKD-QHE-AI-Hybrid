@@ -118,56 +118,66 @@ class QKDConfig:
     # an INPUT to key-rate analysis, stated in a paper's experimental section, not an output of it -
     # which is why asserting one openly is the fix rather than a compromise.
     #
-    # DEFAULT: 100 MHz, from Park, Kim, Im, Jo, Kim, Choi & Ihn, "Quantum key distribution over a
-    # 2 km free-space channel with a high secure key rate", arXiv:2607.24118v1 (2026-07-27), CC BY
-    # 4.0, which reports (v2, 2026-10-16) an average finite-key rate of 110 kbps at QBER 3.28% over 2 km
-    # at 100 MHz - v1 said 164.8 kbps, superseded in Round 75. It has an arXiv DataCite DOI
-    # and NO journal DOI. That paper's channel is a 2 km horizontal path and this model's default is
-    # 50 km of fibre, so the CLOCK is borrowed and the rest of the experiment is not - the demo must
-    # never present its derived bit/s as a reproduction of that result.
-    source_rate_hz: float = 100_000_000.0
-    # THE SAME CLOCK, ON A DIFFERENT LINK, AND THE PROVENANCE IS NOT THE SAME - which is why this is
-    # a second key and not a shared one. arXiv:2607.24118's 100 MHz was measured on a FREE-SPACE
-    # link, so for the satellite page the default is the anchor's own configuration. For fibre it is
-    # that free-space clock carried over, which is an assumption about different apparatus. One key
-    # could carry only one of those two sentences, and every other channel quantity in this dataclass
-    # is already paired for the same reason (`misalignment` / `free_space_misalignment`).
+    # DEFAULT: 1 GHz since Round 76, Rusca, Boaron, Grunenfelder, Martin & Zbinden, Appl. Phys. Lett.
+    # 112, 171104 (2018), arXiv:1801.03443: "We consider a system working at a repetition rate of
+    # 1 GHz". It moved with the rest of the fibre set below, which is that paper's: the clock is part
+    # of the detector model now, because the dead time turns a detection rate into lost detections.
     #
-    # A "2.5 GHz in the 64 Mbps fibre demonstration" figure sat in `clientSdnController.ts` for
-    # several rounds with NO citation anywhere in this repository - nobody could say which
-    # demonstration it named - and it was doing argumentative work in the rationale for not
-    # computing a rate at all. It was removed rather than promoted to this default. If a fibre
-    # demonstration with a stated repetition rate ever enters `references/REFERENCES.md`, the fibre
-    # default moves to it in the same change.
+    # Until Round 76 it was 100 MHz, borrowed from Park, Kim, Im, Jo, Kim, Choi & Ihn,
+    # arXiv:2607.24118 - a 2 km FREE-SPACE link - with the warning that the clock was borrowed and the
+    # rest of that experiment was not. This comment also said the fibre default would move "if a fibre
+    # demonstration with a stated repetition rate ever enters" the references; Lucamarini et al. 2013
+    # (1 GHz over 50 km of fibre) had been cited in this file for the block size all along.
+    source_rate_hz: float = 1_000_000_000.0
+    # The downlink's clock, Liao et al.'s own: "laser pulses (848.6 nm, 100 MHz, 0.2 ns)" (Nature 549,
+    # 43, 2017), quoted in tests/test_the_satellite_channel_is_sourced.py. This comment credited
+    # arXiv:2607.24118's 2 km link until Round 76, after Round 75 had already sourced the value from
+    # Liao. A second key, because the two links' clocks have different sources.
+    #
+    # A "2.5 GHz in the 64 Mbps fibre demonstration" figure once sat in `clientSdnController.ts` with
+    # no citation. It is Grunenfelder et al., Nature Photonics 17, 422 (2023), arXiv:2210.16126: 64 Mbps
+    # over 10.0 km at 2.5 GHz, from the same group as the fibre set below, on ultra-low-loss fibre with
+    # 64-85% efficient multi-pixel SNSPDs. Not adopted: its detectors and fibre are not the model's.
     free_space_source_rate_hz: float = 100_000_000.0
-    # MODELLING CHOICES, and each one departs from a reference this repository already cites and
-    # tests against: the GYS set in `qkd/decoy_reference.py` (Gobby, Yuan & Shields, APL 84, 3762
-    # (2004), as tabulated in Ma et al., PRA 72, 012326 (2005)), asserted by
-    # `tests/test_decoy_reference.py`. They were bare values with no source comment until Round 35,
-    # which read as "nobody knows where these came from" when the truth is that a cited alternative
-    # sits two modules away and these deliberately differ from it.
+    # THE DETECTORS' DEAD TIME, in seconds, the term that makes a GHz clock honest. Rusca et al.:
+    # SNSPDs "which have a dead-time tau_DT = 100 ns", with the correction c_dt = 1 / (1 + R P t_DT) of
+    # their Eq. (B3) (`qsh.qkd.channel.dead_time_factor`). At 1 GHz on the 50 km default it removes
+    # 37% of the detections (c_dt = 0.625). This project modelled no dead time before Round 76; with
+    # the old set at 100 MHz the same 100 ns would have cost 2.9%.
+    detector_dead_time_s: float = 100e-9
+    # Liao et al. state none for the downlink. At its ~1.7e3 detections per second a dead time under a
+    # microsecond costs under 0.1%, so none is modelled rather than one invented.
+    free_space_detector_dead_time_s: float = 0.0
+    # THE FIBRE SET IS RUSCA ET AL. 2018's (Round 76, the user's choice): the stated parameters of the
+    # paper whose 1-decoy finite-key analysis `qsh/qkd/finite_key.py` implements, and which
+    # `tests/test_finite_key_reproduces_the_published_table.py` already used to check it against that
+    # paper's Table I. It is a SIMULATION set - SNSPDs, as the paper models them - not a measured link,
+    # and the page says so. Each value is quoted in tests/test_the_fibre_set_is_rusca_2018.py.
     #
-    #                          here     GYS      ratio   favours the demo?
-    #   fibre loss             0.2      0.21     0.95x   yes, less loss
-    #   detector efficiency    0.25     0.045    5.56x   yes, a far better detector
-    #   dark count (Y0, total) 2e-5     1.7e-6   11.8x   NO, more noise
-    #   misalignment           0.015    0.033    0.45x   yes, less error
-    #   error correction f_EC  1.16     1.22*    0.95x   yes, better error correction
+    #                          here      Rusca 2018   was (Round 75)   GYS 2004 (Ma et al. 2005)
+    #   detector efficiency    0.5       ~50%         0.25             0.045
+    #   dark count per gate    1e-8      1e-8         1e-5             Y0 1.7e-6 (total)
+    #   error floor            1%        pErr 1%      1.5%             3.3%
+    #   dead time              100 ns    100 ns       none             -
+    #   repetition rate        1 GHz     1 GHz        100 MHz          2 MHz
+    #   fibre loss             0.2 dB/km 0.2 dB/km*   0.2              0.21
+    #   error correction f_EC  1.16      -            1.16             1.22**
     #
-    # Y0 is compared like for like since Round 75: 1e-5 here is PER DETECTOR and the model's Y0 is
-    # 2 x 1e-5, while GYS's 1.7e-6 is the total background yield - the row read 1e-5 against 1.7e-6,
-    # "5.88x". * GYS states no f: 1.22 is Ma et al.'s own choice for the GYS link ("the upper bound
-    # of f(e) in secure distance for this experiment"), and 1.16 is Cascade's efficiency at 1-5%
-    # error as tabulated by Lutkenhaus, PRA 61, 052304 (2000), arXiv:quant-ph/9910093.
+    # * Table I's distances follow 0.2 dB/km. ** GYS states no f: 1.22 is Ma et al.'s own choice for
+    # the GYS link ("the upper bound of f(e) in secure distance for this experiment"); 1.16 is
+    # Cascade's efficiency at 1-5% error as tabulated by Lutkenhaus, PRA 61, 052304 (2000),
+    # arXiv:quant-ph/9910093, and Rusca et al. state none.
     #
-    # FOUR OF FIVE LEAN THE SAME WAY. None is wrong - a 2004 InGaAs APD is not what anyone would
-    # model in 2026, and there is no single published detector efficiency to be right about. But the
-    # direction is systematic and a reader comparing this demo's key rates against the published
-    # curves should know it before they do.
-    fiber_loss_db_per_km: float = 0.2         # modelling choice; GYS 0.21
-    detector_efficiency: float = 0.25         # modelling choice; GYS 0.045
-    dark_count_prob: float = 1e-5             # modelling choice; GYS 1.7e-6
-    misalignment: float = 0.015               # modelling choice; GYS 0.033
+    # WHAT THE OLD SET WAS. "Modelling choices" matching no experiment: against the measured 50 km
+    # link this file cites for its block size (Lucamarini et al., Opt. Express 21, 24550 (2013):
+    # efficiency 20.5%, dark count 2.1e-5 per gate, QBER 4.26%, 1 GHz), the model detected 2.2x that
+    # paper's counts and its rate was 3.1x the paper's BB84 rate. Lucamarini's set was not adopted:
+    # it was measured with three intensities, and under this project's 1-decoy finite-key analysis,
+    # with the error floor set to reproduce its 4.26% QBER, it needs 7e8 to 2e9 pulses for any key.
+    fiber_loss_db_per_km: float = 0.2         # Rusca 2018's Table I distances; GYS 0.21
+    detector_efficiency: float = 0.5          # Rusca 2018: "an efficiency (eta_det around 50%)"
+    dark_count_prob: float = 1e-8             # Rusca 2018: "DCR of 10 Hz which correspond to pDC = 1e-8"
+    misalignment: float = 0.01                # Rusca 2018: "We choose a typical value pErr of 1%"
     eve_intercept_fraction: float = 0.0       # demo control, not a device property
     error_correction_eff: float = 1.16        # Cascade at 1-5% error (Lutkenhaus 2000); Ma et al. use 1.22 for GYS
     # --- free-space (satellite downlink) channel ---
@@ -217,36 +227,38 @@ class QKDConfig:
     # THE INTENSITIES ARE NOW THE FINITE-KEY OPTIMUM, NOT THE ASYMPTOTIC ONE, and the difference
     # is the point. mu ~ 0.5 is the textbook optimum for the ASYMPTOTIC decoy rate ON THE GYS LINK
     # (Ma et al.: 0.48 at f = 1.22), and that is what these were. This channel's own asymptotic
-    # optimum is elsewhere: mu = 0.665, nu = 0.055 under the one-decoy bound (row three below). But the quantity that decides whether this demo distributes a key at all is the
-    # composable finite-key length, and its optimum is elsewhere: `finite_key.optimise_parameters`
+    # optimum is elsewhere again (row four below). But the quantity that decides whether this demo
+    # distributes a key at all is the composable finite-key length, and its optimum is elsewhere: `finite_key.optimise_parameters`
     # searches exactly the variables Rusca et al. say they optimise - the intensities, their
     # probabilities, and the basis bias - by differential evolution, and lands here.
     #
-    # Measured trade, at the shipped 50 km channel:
+    # Measured trade, at the shipped 50 km channel, ON THE RUSCA SET OF ROUND 76 with its dead time
+    # (asymptotic: Ma et al.'s one-decoy Eq. (41) times the dead-time factor; thresholds:
+    # `finite_key.py`, both at p_signal = p_z = 0.5, the shipped setting):
     #
-    #     mu=0.5,   nu=0.1     asymptotic 0.002318 bit/pulse   positive-key threshold 3.84e7 pulses
-    #     mu=0.342, nu=0.142   asymptotic 0.001952 bit/pulse   positive-key threshold 1.41e7 pulses
-    #     mu=0.665, nu=0.055   asymptotic 0.002452 bit/pulse   (this channel's asymptotic optimum)
+    #     mu=0.5,    nu=0.1      asymptotic 0.003183 bit/pulse   positive-key threshold 1.04e7 pulses
+    #     mu=0.342,  nu=0.142    asymptotic 0.002853 bit/pulse   positive-key threshold 5.88e6 pulses
+    #     mu=0.319,  nu=0.129    asymptotic 0.002832 bit/pulse   positive-key threshold 5.85e6 pulses
+    #     mu=0.51,   nu->0       asymptotic 0.003572 bit/pulse   no finite-key bound
     #
-    # The asymptotic column is Ma et al.'s one-decoy Eq. (41) since Round 75 (it read 0.002368 and
-    # 0.001977 under the Vacuum+Weak estimator with a modelled vacuum yield); the thresholds come from
-    # `finite_key.py` and did not move.
+    # Row three is this channel's own finite-key optimum, and the shipped pair is within 0.6% of its
+    # threshold, so the intensities did not move with the detector set. Row four is the asymptotic
+    # optimum: a decoy that weak approximates a vacuum state and leaves the finite-key bound
+    # undefined. Without the dead time the shipped pair's asymptotic rate would read 0.004565.
     #
-    # BOTH ROWS AT p_signal = p_z = 0.5, the shipped setting, so the two are comparable. The 1.31e7
-    # an earlier revision of this table printed is the optimiser's FULL solution, which also sets
-    # p_signal = 0.3764 - not a config key here - and is therefore not what this build computes; see
-    # the note on `pulses` above.
+    # ON THE CHANNEL OF ROUND 75 (efficiency 0.25, dark 1e-5, error floor 1.5%, no dead time) the same
+    # rows read 0.002318 / 0.001952 bit/pulse with thresholds 3.84e7 / 1.41e7, and its asymptotic
+    # optimum was mu = 0.665, nu = 0.055 at 0.002452. The finite-key optimum then cost 15.8% of the
+    # mu=0.5 asymptotic rate and bought a 2.7x smaller block (38,410,230 -> 14,055,773); the Python
+    # Monte Carlo allocates ~2.0 GB at 3.84e7 pulses against ~1.03 GB at the shipped 2e7.
     #
-    # So the finite-key optimum costs 15.8% of the mu=0.5 asymptotic rate - and 20.4% of this
-    # channel's asymptotic optimum, which the table did not show until Round 75 - and buys a 2.7x smaller
-    # block (38,410,230 -> 14,055,773). That is worth taking, because the asymptotic rate was never
-    # the binding constraint: at 3.84e7 pulses the Python Monte Carlo allocates ~2.0 GB, which is not
-    # something to put behind an interactive endpoint, while 1.41e7 costs ~0.74 GB (measured 0.737 GB
-    # peak RSS at 14,055,773 pulses, against 1.033 GB at 2e7).
+    # BOTH ROWS AT p_signal = p_z = 0.5. The optimiser's FULL solution also sets p_signal and p_z,
+    # which are not config keys here (5.02e6 pulses on the Rusca set, at p_signal = 0.316); see the
+    # note on `pulses` above.
     #
     # Chosen by an optimiser, so the value is reproducible rather than tuned by hand:
     #   python -c "from qsh.qkd.finite_key import optimise_parameters; print(optimise_parameters()[0])"
-    mu_signal: float = 0.3416         # finite-key optimum; the asymptotic optimum here is 0.665 (GYS: ~0.5)
+    mu_signal: float = 0.3416         # finite-key optimum (Round 47; within 0.6% on the Rusca set); GYS: ~0.5
     mu_decoy: float = 0.1417          # decoy mean photon number, optimised jointly with the signal
     basis_prob: float = 0.5           # P(Z basis) — biased-basis (efficient) BB84 raises the sift ratio
     #: QBER abort threshold, and it is a FIBRE-QKD post-processing figure - not a QSDC one.

@@ -159,7 +159,12 @@ def generate_quantum_bits(n_bits: int = 4096, *, source: str = "sim",
             proc = toeplitz_extract(raw, out_len=out_len, toeplitz_bits=raw2)
             raw_consumed += int(raw2.size)
         else:
-            proc = toeplitz_extract(raw, out_len=out_len, seed=seed)
+            # The extractor's seed from a stream of its own: `seed + 2`, as the browser derives it, or
+            # fresh OS entropy when the run is unseeded. Until Round 76 this passed `seed` itself, so
+            # `default_rng(seed)` re-drew the Toeplitz matrix from the very state that had just drawn
+            # the raw bits - a seed that is a function of the source, where the Leftover Hash Lemma
+            # needs one independent of it.
+            proc = toeplitz_extract(raw, out_len=out_len, seed=None if seed is None else seed + 2)
     else:
         proc = raw
     bits = proc[:n_bits]

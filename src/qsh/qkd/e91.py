@@ -20,7 +20,7 @@ from __future__ import annotations
 import numpy as np
 
 from .bb84 import QKDResult, _h2
-from .channel import ChannelParams, intrinsic_qber
+from .channel import ChannelParams, dead_time_factor, intrinsic_qber
 
 _TSIRELSON = 2.0 * np.sqrt(2.0)   # maximum CHSH value (a fixed physical constant, not a tunable)
 
@@ -55,18 +55,24 @@ def run_e91(n_pairs: int = 100_000, params: ChannelParams | None = None, *, visi
     # [0, 1/2] of QBER.
     #
     # Checked by composing the two error sources independently instead, which needs no visibility
-    # algebra at all: q = q_V + e - 2*q_V*e. At the shipped 50 km channel, V = 0.97 and e = 0.015200:
+    # algebra at all: q = q_V + e - 2*q_V*e. At the 50 km channel shipped until Round 76, V = 0.97 and
+    # e = 0.015200:
     #
     #     shipped   (1 - V(1-e))/2   = 0.022372
     #     this form (1 - V(1-2e))/2  = 0.029744
     #     independent composition    = 0.029744   <- identical, to 0.000%
+    #
+    # (Under Round 76's Rusca set e = 0.010000 and the two forms give 0.019850 and 0.024700.)
     #
     # The agreement is exact rather than first-order, which is what makes this a correction and not a
     # modelling preference.
     v_eff = float(np.clip(visibility * (1.0 - 2.0 * intrinsic_qber(params)), 0.0, 1.0))
     s = chsh_s(v_eff)
     qber = float(min(0.5, (1.0 - v_eff) / 2.0))
-    detected = rng.random(n_pairs) < eta                                   # coincidence detection (lossy arm)
+    # The dead time charges E91's detectors as it does BB84's (Round 76): a pair is detected with the
+    # arm's transmittance, and the click finds the detector live with probability c_dt.
+    c_dt = dead_time_factor(params, eta + 2.0 * params.dark_count_prob)
+    detected = rng.random(n_pairs) < c_dt * eta                            # coincidence detection (lossy arm)
     same_basis = rng.random(n_pairs) < (p * p + (1.0 - p) * (1.0 - p))     # matching-basis sift
     sift = detected & same_basis
     n_sift = int(np.count_nonzero(sift))

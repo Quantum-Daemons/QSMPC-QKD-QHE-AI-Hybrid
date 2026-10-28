@@ -32,6 +32,9 @@ WORKDIR /web
 ARG CLIENT_ONLY=
 ENV VITE_CLIENT_ONLY=${CLIENT_ONLY}
 COPY web/package.json web/package-lock.json* ./
+# onnxruntime-node, a dependency of @huggingface/transformers that the bundle never imports, would
+# download CUDA binaries from api.nuget.org here; skipped, as in CI (Round 76).
+ENV ONNXRUNTIME_NODE_INSTALL=skip
 RUN npm install
 COPY web/ ./
 COPY --from=wasm /out/qsh_mpc ./src/wasm/qsh_mpc

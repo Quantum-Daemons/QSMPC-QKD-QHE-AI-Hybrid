@@ -78,8 +78,10 @@ export default function SdnControlPlanePanel({
           <table className="facts-table small">
             <thead><tr><th>Factor</th><th>Value in this run</th><th>Where it comes from</th></tr></thead>
             <tbody>
-              <tr><td>secure fraction per pulse</td><td><b>{secretKeyRatePerPulse > 0 ? secretKeyRatePerPulse.toExponential(3) : "0"}</b> bit/pulse, this run&apos;s one-decoy bound</td><td>Ma, Qi, Zhao &amp; Lo, <i>Phys. Rev. A</i> <b>72</b>, 012326 (2005), section 3.5, Eq. (41): a signal and one decoy, vacuum yield not assumed; <b>asymptotic</b> - no finite-key correction, so the infinite-key limit of a lower bound</td></tr>
-              <tr><td>x source repetition rate</td><td><b>{(topo.source_rate_hz / 1e6).toLocaleString()} MHz</b></td><td>an assumption; default 100 MHz from arXiv:2607.24118 (2 km free-space link), whose own measured rate is not reproduced or claimed here</td></tr>
+              <tr><td>secure fraction per pulse</td><td><b>{secretKeyRatePerPulse > 0 ? secretKeyRatePerPulse.toExponential(3) : "0"}</b> bit/pulse, this run&apos;s one-decoy bound{usecase === "satellite_comms" ? null : <>, on gains corrected for the detectors&apos; dead time</>}</td><td>Ma, Qi, Zhao &amp; Lo, <i>Phys. Rev. A</i> <b>72</b>, 012326 (2005), section 3.5, Eq. (41): a signal and one decoy, vacuum yield not assumed; <b>asymptotic</b> - no finite-key correction, so the infinite-key limit of a lower bound{usecase === "satellite_comms" ? null : <>. The dead-time factor is Rusca et al. 2018&apos;s Eq. (B3), counting every click</>}</td></tr>
+              <tr><td>x source repetition rate</td><td><b>{(topo.source_rate_hz / 1e6).toLocaleString()} MHz</b></td><td>{usecase === "satellite_comms"
+                ? <>an assumption; default 100 MHz, the Micius source&apos;s (Liao et al., <i>Nature</i> <b>549</b>, 43, 2017), whose measured rate is not reproduced or claimed here</>
+                : <>an assumption; default 1 GHz, the clock Rusca et al. (<i>Appl. Phys. Lett.</i> <b>112</b>, 171104, 2018) state for this page&apos;s detector set - a simulation set, not a measured link. With their 100 ns dead time the per-pulse rate depends on it too</>}</td></tr>
               <tr><td>channel time</td><td>{topo.channel_seconds != null ? `${(topo.channel_seconds * 1e3).toFixed(3)} ms` : "n/a"}</td><td>pulses divided by that rate</td></tr>
             </tbody>
           </table>
