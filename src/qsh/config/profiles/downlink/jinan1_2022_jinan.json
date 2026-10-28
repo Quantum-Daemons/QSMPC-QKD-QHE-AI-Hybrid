@@ -1,0 +1,89 @@
+{
+  "id": "jinan1_2022_jinan",
+  "kind": "downlink",
+  "label": "Jinan-1 microsatellite to Jinan (Li et al. 2025), one constant calibrated",
+  "source": "Li et al., 'Microsatellite-based real-time quantum key distribution', Nature (2025), arXiv:2408.10994",
+  "note": "A 23 kg microsatellite with a 200 mm telescope and a 280 mm portable station. The paper does not state its atmosphere, pointing loss, background or transmit optics, so those are assumptions from other sources, and ONE constant - the station efficiency - is calibrated to the 25 September 2022 pass's peak count rate. What that pass then checks independently is the fall with elevation: 6.9 dB predicted against 6.6 measured to 13.9 degrees.",
+  "values": {
+    "orbit_altitude_km": {
+      "value": 500.0,
+      "quote": "into a 500-km Sun-synchronous orbit on July 27, 2022"
+    },
+    "station_altitude_km": {
+      "value": 0.071,
+      "assumption": "Not stated. 71 m is the SRTM 30 m ground elevation at the paper's Jinan coordinates (36 deg 40' 38'' N, 117 deg 7' 21'' E); the portable station's rooftop height is not known."
+    },
+    "beam_divergence_urad": {
+      "value": 6.718,
+      "assumption": "The paper: 'The measured divergence angle (full angle at 1/e2 maximum) is 9 ~ 10 urad'. A Gaussian beam puts 2 (D / theta r)^2 on its axis, which this model's top-hat law gives at 9.5 / sqrt(2) urad."
+    },
+    "rx_aperture_m": {
+      "value": 0.28,
+      "quote": "a satellite-borne 200-mm telescope, which is used in conjunction with the ground station's 280-mm aperture telescope"
+    },
+    "receiver_optics_efficiency": {
+      "value": 0.1683,
+      "assumption": "CALIBRATED, this template's one fitted constant. The paper states 'The overall efficiency of the OGS, as determined by indoor testing, is approximately 49%' and '~80% gating efficiency for quantum photons' (0.392 together). With only stated values the model over-predicts the 25 September 2022 pass's peak count rate (Fig. 4b, about 4.07e4 per second at 823 km, read from the figure, less 650 of background) by 3.67 dB; this carries that loss - outdoor coupling, the satellite's transmit optics and anything else unstated."
+    },
+    "atmospheric_db": {
+      "value": 0.88,
+      "assumption": "Not stated. Khmelev et al. 2023's clear-sky fit for Micius over Zvenigorod (kappa = 0.22 magnitudes per air mass, 0.88 dB at the zenith) at the same 850 nm band; Jinan is an urban site, so it may read low."
+    },
+    "atmospheric_ref_km": {
+      "value": 499.9,
+      "assumption": "The zenith range for a 500 km orbit over a 71 m station, which this model maps to 90 degrees: the 0.88 dB is a zenith figure."
+    },
+    "pointing_db": {
+      "value": 0.809,
+      "assumption": "Derived. The satellite's 'tracking precision (root mean square) of 0.55 ~ 1.6 urad' at its midpoint, against a 4.75 urad beam radius (half the 9.5 urad full angle), in Lu et al., Rev. Mod. Phys. 94, 035001 (2022), Eq. (9): w^2 / (w^2 + 4 sigma^2)."
+    },
+    "detector_efficiency": {
+      "value": 0.6,
+      "quote": "detected by four single-photon detectors (SPDs) with efficiencies of ~ 60%"
+    },
+    "dark_count_prob": {
+      "value": 2.6e-07,
+      "assumption": "Not stated. The 25 September 2022 pass's counts before and after the link (Fig. 4b) read about 650 per second over the four detectors; at 625 MHz, and halved by the 800 ps gate that 'can suppress the background noise by 3 dB', 2 p_dark = 650 / 625e6 / 2."
+    },
+    "misalignment": {
+      "value": 0.005,
+      "assumption": "The paper's normalized QBER 'fluctuates between zero and 1.0% during the whole orbit'; its midpoint is the error floor. The pass's measured average, 1.01%, includes the background this model adds."
+    },
+    "source_rate_hz": {
+      "value": 625000000.0,
+      "quote": "emit consecutive short optical pulses at a repetition frequency of 625 MHz"
+    },
+    "detector_dead_time_s": {
+      "value": 0.0,
+      "assumption": "Not stated; at these count rates a dead time of tens of nanoseconds costs about a tenth of a percent."
+    },
+    "mu_signal": {
+      "value": 0.8,
+      "quote": "average photon numbers of approximately 0.8, 0.1, and 0.001"
+    },
+    "mu_decoy": {
+      "value": 0.1,
+      "quote": "average photon numbers of approximately 0.8, 0.1, and 0.001"
+    },
+    "p_signal": {
+      "value": 0.5,
+      "quote": "signal state, decoy state, and vacuum state with respective ratios of 0.5, 0.25, and 0.25"
+    },
+    "p_decoy": {
+      "value": 0.25,
+      "quote": "signal state, decoy state, and vacuum state with respective ratios of 0.5, 0.25, and 0.25"
+    },
+    "vacuum_decoy": {
+      "value": true,
+      "assumption": "The third state's mean photon number is 0.001, not 0; this model treats it as the vacuum."
+    },
+    "min_elevation_deg": {
+      "value": 10.0,
+      "quote": "When the satellite reaches an elevation angle of 10~15 deg from the horizon, the optical link is firmly established, marking the beginning of QKD"
+    },
+    "distance_km": {
+      "value": 823.0,
+      "assumption": "The 25 September 2022 pass's closest range, read from Fig. 4b (about 823 km, at the 34.1 deg its Table 1 gives)."
+    }
+  }
+}

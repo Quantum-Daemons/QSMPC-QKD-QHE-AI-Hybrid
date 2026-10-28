@@ -135,6 +135,9 @@ class QKDKeyAgreementStage(Stage):
         # is larger than either, and narrowing to match the API would LOSE a digit. Recorded so the
         # asymmetry is a decision rather than an oversight, unlike the one below.
         bus.metric("qber", round(result.qber, 5), self.name)
+        # The decoy states the rate rests on (Round 78), as the browser's twin reports them: the
+        # registry's `bb84-decoy` sends a signal and one decoy.
+        bus.metric("qkd_decoy_states", "one decoy", self.name)
         # `skr_per_pulse`, NOT `skr`. `QKDResult.secret_key_rate` is documented at `bb84.py:64` as
         # "bits of secure key per channel use" - a dimensionless per-pulse fraction - while ETSI
         # GS QKD 015 defines a field called `skr` as a RATE in bit/s. Round 44 removed that collision

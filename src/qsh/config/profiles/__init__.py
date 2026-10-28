@@ -48,6 +48,12 @@ REQUIRED: dict[str, tuple[str, ...]] = {
         "clearance_km", "eclipse_only",
     ),
 }
+#: Values a profile MAY state; absent, the config's default applies (Round 78: the optional
+#: turbulence coupling, off unless a profile sets a field stop).
+OPTIONAL: dict[str, tuple[str, ...]] = {
+    "downlink": ("field_stop_urad", "seeing_arcsec", "wavelength_nm"),
+    "isl": (),
+}
 #: Values that are switches rather than quantities.
 BOOLEAN = frozenset({"vacuum_decoy", "eclipse_only"})
 
@@ -69,7 +75,7 @@ def _check(path: Path, data: dict, kind: str) -> dict:
     missing = [k for k in REQUIRED[kind] if k not in values]
     if missing:
         raise ProfileError(f"{where}: missing {', '.join(missing)}")
-    unknown = [k for k in values if k not in REQUIRED[kind]]
+    unknown = [k for k in values if k not in REQUIRED[kind] and k not in OPTIONAL[kind]]
     if unknown:
         raise ProfileError(f"{where}: unknown {', '.join(unknown)}")
     for name, entry in values.items():

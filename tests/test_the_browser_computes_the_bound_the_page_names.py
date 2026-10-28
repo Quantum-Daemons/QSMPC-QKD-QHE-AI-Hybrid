@@ -183,7 +183,15 @@ def _python_decoy(eta: float, e_det: float) -> float:
     sift = 0.5                      # the browser draws bases uniformly, so p^2 + (1-p)^2 = 0.5
     skr, _e_mu, _e1 = _decoy_secure_fraction(
         eta, mu, nu, e_det, y0, float(c["error_correction_eff"]), sift)
-    return skr * _dead_time(eta)
+    # Per pulse SENT since Round 78: the bound is per signal pulse, and the fibre source sends its
+    # signal on half its pulses (`QKDParams().p_signal`).
+    return skr * _dead_time(eta) * _p_signal()
+
+
+def _p_signal() -> float:
+    from qsh.qkd.bb84 import QKDParams
+
+    return float(QKDParams().p_signal)
 
 
 def _dead_time(eta: float) -> float:
@@ -642,8 +650,8 @@ def test_the_decoy_bound_does_not_count_dark_counts_twice() -> None:
     mis = float(c["misalignment"])
     double_counted = mis + 0.5 * float(c["dark_count_prob"]) / max(eta, 1e-12)
 
-    right = _decoy_secure_fraction(eta, mu, nu, mis, y0, f_ec, 0.5)[0] * _dead_time(eta)
-    wrong = _decoy_secure_fraction(eta, mu, nu, double_counted, y0, f_ec, 0.5)[0] * _dead_time(eta)
+    right = _decoy_secure_fraction(eta, mu, nu, mis, y0, f_ec, 0.5)[0] * _dead_time(eta) * _p_signal()
+    wrong = _decoy_secure_fraction(eta, mu, nu, double_counted, y0, f_ec, 0.5)[0] * _dead_time(eta) * _p_signal()
     assert right > wrong > 0, (
         "the two readings of `e_det` are indistinguishable at this operating point, so this check "
         f"cannot tell them apart: misalignment-only {right}, double-counted {wrong}. Non-vacuity "

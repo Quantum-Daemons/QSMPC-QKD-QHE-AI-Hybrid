@@ -114,9 +114,13 @@ def test_the_bb84_rate_is_the_bound_times_the_factor() -> None:
     mu, nu, q_mu, q_nu = _gains(c)
     bound = _decoy_secure_fraction(c.transmittance(), mu, nu, e_det_for_bound(c), 2 * c.dark_count_prob,
                                    get_config().qkd.error_correction_eff, 0.5)[0]
-    run = run_bb84(200_000, c, seed=0, qkd_params=QKDParams(mu_signal=mu, mu_decoy=nu))
-    assert run.secret_key_rate == pytest.approx(bound * dead_time_factor(c, 0.5 * (q_mu + q_nu)), rel=1e-12)
-    assert run.secret_key_rate == pytest.approx(2.853e-3, rel=1e-3)
+    qp = QKDParams(mu_signal=mu, mu_decoy=nu)
+    run = run_bb84(200_000, c, seed=0, qkd_params=qp)
+    # Per pulse SENT since Round 78: the signal share (0.5 on fibre) carries the key. It read
+    # 2.853e-3 per signal pulse.
+    assert run.secret_key_rate == pytest.approx(
+        bound * dead_time_factor(c, 0.5 * (q_mu + q_nu)) * qp.p_signal, rel=1e-12)
+    assert run.secret_key_rate == pytest.approx(1.4267e-3, rel=1e-3)
 
 
 def test_the_browser_charges_the_same_dead_time() -> None:
