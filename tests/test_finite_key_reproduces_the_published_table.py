@@ -118,9 +118,10 @@ def test_the_shipped_block_carries_no_composable_key() -> None:
 
     Round 46 shipped 2,000,000 pulses. On the channel of that time the single-photon lower bound
     `s^l_{Z,1}` was NEGATIVE there - undefined, not merely small. On Round 76's Rusca set it is
-    positive (about 225 counts) and the key is still negative (about -607 bits): the block carries no
-    composable key either way, now because the finite-size terms outweigh it. The threshold moved
-    from 1.41e7 pulses to 5.88e6, and the shipped 2e7 clears it 3.4x.
+    positive (about 440 counts since Round 79's two corrections, 225 before) and the key is still
+    negative (about -607 bits): the block carries no composable key either way, now because the
+    finite-size terms outweigh it. The threshold moved from 1.41e7 pulses to 5.88e6 with the Rusca
+    set and to 4.78e6 with Round 79's corrections, and the shipped 2e7 clears it 4.2x.
     """
     from qsh.config import get_config
 
@@ -137,7 +138,7 @@ def test_the_shipped_block_carries_no_composable_key() -> None:
     assert threshold is not None, "no block size up to 1e11 pulses yields a key on the shipped fibre"
     assert 2e6 <= threshold <= 2e8, (
         f"the computed threshold moved to {threshold:,} pulses. The repository quotes it as an "
-        "order-of-magnitude figure (about 6e6 pulses on the Rusca set); a value outside this range "
+        "order-of-magnitude figure (about 5e6 pulses on the Rusca set); a value outside this range "
         "means the documented number needs re-deriving, not that this bound should be widened."
     )
     assert q.pulses >= 2 * threshold, f"the shipped {q.pulses:,} pulses no longer clear {threshold:,} twice"

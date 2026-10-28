@@ -609,8 +609,23 @@ visible number.
   2018), with the XOR on real random keys; and a single plane of satellites linked to their
   neighbours (Vergoossen et al. 2019), whose terminals load from templates. The same tab draws the
   model against all 23 Micius passes Liao et al. list: centred on them (median -0.03 dB), with the
-  nights scattering 2.4 dB around it. Simulated: no satellite is involved, and the keys are
-  asymptotic bounds. Every key rate on the site counts the pulses sent; only signal pulses carry key.
+  nights scattering 2.4 dB around it. Simulated: no satellite is involved. A pass's key is also
+  shown as a composable finite key (below); the relay's and the constellation's keys are asymptotic
+  bounds. Every key rate on the site counts the pulses sent; only signal pulses carry key.
+- **Satellite key block** (Round 79) - the satellite card's key is the composable finite key of a
+  block of link time, not the asymptotic bound times a fixed pulse count. By default the block is
+  one pass peaking at the page's range, the block Micius (Liao et al. 2017, 2018), Tiangong-2 and
+  the Micius-Zvenigorod session (Khmelev et al. 2023) computed their keys on; pooled passes (Sidhu
+  et al. 2022) and a time held at one range are offered beside it. The bound follows the source:
+  Lim et al. (Phys. Rev. A 89, 022307, 2014) for a signal, a weak decoy and the vacuum, as Micius
+  sent, and Rusca et al. 2018 for one decoy. Checked, with nothing fitted: Rusca et al.'s Table I
+  two-decoy rows within a factor of 2.5 and below them, the ratio of the two protocols within 15
+  percent; Liao's pass at 0.55 of its published 300,939 bits and Khmelev's session at 0.56 of a
+  Chernoff-bound key, the same analysis gap twice; Jinan-1's four published passes within a factor
+  of 2.5. Writing it found two errors in the one-decoy bound, both on the safe side: a constant
+  transcribed as 2 to the 21st where both papers print 21 squared, and the vacuum bounded by the
+  signal's errors where the decoy's are tighter. The fibre threshold moved from 5.88e6 to 4.78e6
+  pulses.
 - **3D views** (three.js, loaded only where drawn) - the QCNN's per-qubit reduced Bloch vectors through
   the real circuit, an illustration of the one-time pad on one qubit, and the satellite geometry the
   model itself uses: the orbit, the elevation a slant range implies, the arc above the minimum

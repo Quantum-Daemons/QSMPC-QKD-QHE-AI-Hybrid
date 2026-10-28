@@ -71,27 +71,55 @@ EQUATIONS, by number in arXiv:1801.03443v2
                                                   - ((mu1^2 - mu2^2)/mu1^2)(s^u_{Z,0}/tau0) ]
   (A16) s^u_{Z,0} = 2 tau0 [ (e^k/p_k)(m_{Z,k} + delta(m_Z, eps)) + delta(n_Z, eps) ]
   (A19) s^l_{Z,0} = tau0/(mu1 - mu2) ( mu1 n^-_{Z,mu2} - mu2 n^+_{Z,mu1} )
-  (A21) gamma(a,b,c,d) = sqrt( (c+d)(1-b)b/(c d ln2) * log2( (c+d)/(c d (1-b) b) * 2^21/a^2 ) )
+  (A21) gamma(a,b,c,d) = sqrt( (c+d)(1-b)b/(c d ln2) * log2( (c+d)/(c d (1-b) b) * 21^2/a^2 ) )
   (A22) v^u_{X,1} = tau1/(mu1 - mu2) ( m^+_{X,mu1} - m^-_{X,mu2} )
   (A23) phi^u_Z = v^u_{X,1}/s^l_{X,1} + gamma(eps_sec, v^u_{X,1}/s^l_{X,1}, s^l_{Z,1}, s^l_{X,1})
 
 `a = 6, b = 19` in (1) are the paper's own constants for the 1-decoy protocol.
+
+TWO CORRECTIONS IN ROUND 79, both in the safe direction before and after:
+
+  - THE CONSTANT IN (A21) IS 21 SQUARED, and this file had 2 to the 21st. Both papers print it as a
+    superscript 2 on 21 (Rusca et al. (A21); Lim et al. Eq. (5), whose supplement derives it as
+    1/eps^2 with eps_sec = 21 eps), and a text extraction of either PDF reads "212", which is how
+    2 ** 21 got in. It sat inside a log2 and inflated gamma by about a tenth.
+  - (A16) BOUNDS THE VACUUM BY "the errors relative to one intensity" and does not say which. This
+    file used the signal's, with no reason recorded; it now uses the decoy's, the tighter bound at
+    every row of Table I (see the comment at that line).
+
+Together they move the threshold on the shipped fibre from 5.88e6 pulses to 4.78e6, and this file
+from 0.45 / 0.39 / 0.16 of Table I at 26 / 46 / 56 dB to 0.53 / 0.47 / 0.26, still below it; the
+2e6-pulse block still carries no key. The figures above at 3.84e7 pulses are the pre-Round-76
+channel's and are left as the record of Round 47.
+
+THE VACUUM+WEAK PROTOCOL (Round 79) is the second half of this module: Lim, Curty, Walenta, Xu and
+Zbinden, Phys. Rev. A 89, 022307 (2014), arXiv:1311.7129, the analysis Rusca et al. compare against
+and the protocol Micius ran (signal, weak decoy and vacuum). See `VacuumDecoyParams`.
 """
 
 from __future__ import annotations
 
 import math
+from collections.abc import Iterable
 from dataclasses import dataclass, field
 
 from .bb84 import e_det_for_bound
 from .channel import ChannelParams, dead_time_factor
 
 __all__ = [
+    "DecoyCounts",
     "FiniteKeyResult",
     "FiniteKeyParams",
+    "VacuumDecoyParams",
+    "block_counts",
+    "blocks_for_positive_key",
+    "expected_counts",
     "finite_key_length",
+    "finite_key_over",
     "minimum_pulses_for_positive_key",
+    "one_decoy_key_length",
     "optimise_parameters",
+    "vacuum_decoy_key_length",
 ]
 
 
@@ -136,6 +164,11 @@ class FiniteKeyParams:
     eps_cor: float = 1e-15         # the paper's own value
     f_ec: float = 1.16             # error-correction leakage factor
 
+    @property
+    def intensities(self) -> tuple[tuple[float, float], ...]:
+        """(mu, p) for the signal and the decoy, the order `DecoyCounts` keeps."""
+        return ((self.mu_signal, self.p_signal), (self.mu_decoy, 1.0 - self.p_signal))
+
 
 @dataclass(frozen=True)
 class FiniteKeyResult:
@@ -167,6 +200,16 @@ def _tau(n: int, p: FiniteKeyParams) -> float:
                for mu, prob in ((p.mu_signal, p.p_signal), (p.mu_decoy, 1.0 - p.p_signal)))
 
 
+def _gamma(a: float, b: float, c: float, d: float) -> float:
+    """The sampling correction to the phase error rate: Rusca et al. (A21), Lim et al. Eq. (5).
+
+    One function for both protocols, so the constant cannot differ between them again: 21 squared,
+    as both papers print it (see the module docstring for the 2 ** 21 it replaced).
+    """
+    return math.sqrt((c + d) * (1.0 - b) * b / (c * d * math.log(2))
+                     * math.log2((c + d) / (c * d * (1.0 - b) * b) * 21 ** 2 / a ** 2))
+
+
 def _gain_and_error(eta: float, mu: float, e_det: float, y0: float) -> tuple[float, float]:
     """Observed gain Q_mu and error rate E_mu for a weak coherent pulse of intensity mu.
 
@@ -180,6 +223,124 @@ def _gain_and_error(eta: float, mu: float, e_det: float, y0: float) -> tuple[flo
     return q, min(0.5, e)
 
 
+@dataclass(frozen=True)
+class DecoyCounts:
+    """Detections `n` and errors `m` in one basis, per intensity, in the order of the parameters'
+    `intensities`: signal and decoy for the 1-decoy protocol, then the vacuum for Lim et al.'s."""
+
+    n: tuple[float, ...]
+    m: tuple[float, ...]
+
+    def __add__(self, other: DecoyCounts) -> DecoyCounts:
+        return DecoyCounts(tuple(a + b for a, b in zip(self.n, other.n, strict=True)),
+                           tuple(a + b for a, b in zip(self.m, other.m, strict=True)))
+
+    @property
+    def detections(self) -> float:
+        return sum(self.n)
+
+    @property
+    def errors(self) -> float:
+        return sum(self.m)
+
+    def scaled(self, k: float) -> DecoyCounts:
+        """The counts of `k` such blocks: expected counts are linear in the pulses sent."""
+        return DecoyCounts(tuple(k * v for v in self.n), tuple(k * v for v in self.m))
+
+
+def expected_counts(n_pulses: float, channel: ChannelParams,
+                    params: FiniteKeyParams | VacuumDecoyParams) -> tuple[DecoyCounts, DecoyCounts]:
+    """The expected (key basis Z, test basis X) counts from `n_pulses` channel uses on one channel.
+
+    One counting for both protocols, so the two bounds always see the same channel: each
+    intensity's gain and error from `_gain_and_error`, both parties in a basis with probability p_B
+    squared, and the dead-time factor from every click. Linear in `n_pulses`, which is what lets a
+    pass be summed segment by segment (`finite_key_over`).
+    """
+    eta = channel.transmittance()
+    # THE MISALIGNMENT, not `intrinsic_qber(channel)`. `_gain_and_error` adds the background back
+    # as its own `0.5 * y0` term, so passing the observed QBER charges dark counts twice - the
+    # identical defect Round 47 found in `bb84.py` and `quantumSim.ts`, and it was written into
+    # this file first time through before that fix was made. Eavesdropping IS included:
+    # `e_det_for_bound` composes the intercept-resend disturbance with the misalignment, and has
+    # since Round 47 - a comment here said the opposite until 2026-10-24. Every caller passes Eve 0,
+    # so no figure depended on the discrepancy.
+    e_det, y0 = e_det_for_bound(channel), 2.0 * channel.dark_count_prob
+    gains = [_gain_and_error(eta, mu, e_det, y0) for mu, _ in params.intensities]
+    # THE DEAD TIME (Rusca et al. Eq. (B2)-(B3)): every click, in either basis and at any
+    # intensity, leaves a detector recovering, so the correction is computed from all of them and
+    # scales each count. Not modelled before Round 76, which the published-table test named as one
+    # reason this implementation and Table I differ.
+    c_dt = dead_time_factor(channel, sum(p_k * q for (_, p_k), (q, _) in
+                                         zip(params.intensities, gains, strict=True)))
+    out = []
+    for p_b in (params.p_z, 1.0 - params.p_z):
+        n = tuple(n_pulses * p_k * p_b * p_b * c_dt * q   # Alice and Bob both choose this basis
+                  for (_, p_k), (q, _) in zip(params.intensities, gains, strict=True))
+        out.append(DecoyCounts(n, tuple(n_k * e for n_k, (_, e) in zip(n, gains, strict=True))))
+    return out[0], out[1]
+
+
+def one_decoy_key_length(z: DecoyCounts, x: DecoyCounts,
+                         params: FiniteKeyParams | None = None) -> FiniteKeyResult:
+    """Rusca et al.'s composable key length from the key-basis counts `z` and test-basis counts `x`.
+
+    Non-positive means no key; -inf means no single-photon bound exists at all.
+    """
+    p = params or FiniteKeyParams()
+    # The security budget is split across the statistical terms. eps_sec/20 for each of the
+    # Hoeffding corrections is the conservative reading of Eq. (A24), which sums 6*eps1 + 4*eps2
+    # among other terms; taking each individual epsilon at eps_sec/20 keeps the sum below eps_sec.
+    eps1 = eps2 = p.eps_sec / 20.0
+    mu1, mu2 = p.mu_signal, p.mu_decoy
+    p1, p2 = p.p_signal, 1.0 - p.p_signal
+    t0, t1 = _tau(0, p), _tau(1, p)
+    per_basis: dict[str, dict] = {}
+    for basis, c in (("Z", z), ("X", x)):
+        n_tot, m_tot = c.detections, c.errors
+        d_n, d_m = _delta(n_tot, eps1), _delta(m_tot, eps2)
+        n_plus_1 = math.exp(mu1) / p1 * (c.n[0] + d_n)
+        n_minus_2 = math.exp(mu2) / p2 * (c.n[1] - d_n)
+        m_plus_1 = math.exp(mu1) / p1 * (c.m[0] + d_m)
+        m_minus_2 = math.exp(mu2) / p2 * (c.m[1] - d_m)
+        # (A19), CLAMPED AT ZERO. This clamp is load-bearing: without it a negative vacuum count
+        # propagates through the `- ((mu1^2-mu2^2)/mu1^2)(s^u_{Z,0}/tau0)` term of Eq. (4) with the
+        # wrong sign and INFLATES the single-photon bound, moving the computed threshold by a
+        # factor of several. A count of events cannot be negative.
+        s0 = max(0.0, t0 / (mu1 - mu2) * (mu1 * n_minus_2 - mu2 * n_plus_1))
+        # (A16) bounds the vacuum by "the errors relative to one intensity" and does not say which.
+        # THE DECOY'S, since Round 79; the signal's before, with no reason recorded. The paper says
+        # the approach it chose "proved to give the best SKR", and the decoy's bound is the tighter
+        # one at every row of Table I and on the shipped fibre: it moved this file from 0.45 / 0.39 /
+        # 0.16 of the table at 26 / 46 / 56 dB to 0.53 / 0.47 / 0.26, still below it. It is fixed
+        # here rather than picked per block, so the concentration inequalities Eq. (A24) counts are
+        # the same four.
+        s0_upper = 2.0 * t0 * (math.exp(mu2) / p2 * (c.m[1] + d_m) + d_n)           # (A16)
+        s1 = (t1 * mu1 / (mu2 * (mu1 - mu2))) * (                                   # (4)
+            n_minus_2 - (mu2 ** 2 / mu1 ** 2) * n_plus_1
+            - ((mu1 ** 2 - mu2 ** 2) / mu1 ** 2) * (s0_upper / t0))
+        v1_upper = t1 / (mu1 - mu2) * (m_plus_1 - m_minus_2)                        # (A22)
+        per_basis[basis] = dict(n=n_tot, m=m_tot, s0=s0, s1=s1, v1=v1_upper,
+                                qber=(m_tot / n_tot if n_tot > 0 else 0.5))
+
+    z_, x_ = per_basis["Z"], per_basis["X"]
+    n_z, n_x, qber = z_["n"], x_["n"], z_["qber"]
+    lambda_ec = p.f_ec * n_z * _h2(qber)
+
+    if z_["s1"] <= 0.0 or x_["s1"] <= 0.0:
+        # No positive lower bound on single-photon events exists, so Eq. (1) has no meaning here.
+        # Reported as -inf rather than 0 so a caller cannot mistake "no bound" for "a small key".
+        return FiniteKeyResult(float("-inf"), n_z, n_x, n_z + n_x, z_["s0"], z_["s1"],
+                               float("nan"), lambda_ec, qber)
+
+    b = min(0.5, max(0.0, x_["v1"] / x_["s1"]))
+    phi = 0.0 if b <= 0.0 else min(0.5, b + _gamma(p.eps_sec, b, z_["s1"], x_["s1"]))  # (A23)
+
+    key = (z_["s0"] + z_["s1"] * (1.0 - _h2(phi)) - lambda_ec                         # (1)
+           - 6.0 * math.log2(19.0 / p.eps_sec) - math.log2(2.0 / p.eps_cor))
+    return FiniteKeyResult(key, n_z, n_x, n_z + n_x, z_["s0"], z_["s1"], phi, lambda_ec, qber)
+
+
 def finite_key_length(n_pulses: int, channel: ChannelParams | None = None,
                       params: FiniteKeyParams | None = None) -> FiniteKeyResult:
     """The composable secret key length in bits, or a non-positive number if none exists.
@@ -190,84 +351,7 @@ def finite_key_length(n_pulses: int, channel: ChannelParams | None = None,
     """
     channel = channel or ChannelParams()
     p = params or FiniteKeyParams()
-    eta = channel.transmittance()
-    # THE MISALIGNMENT, not `intrinsic_qber(channel)`. `_gain_and_error` adds the background back
-    # as its own `0.5 * y0` term, so passing the observed QBER charges dark counts twice - the
-    # identical defect this round found in `bb84.py` and `quantumSim.ts`, and it was written into
-    # this file first time through before that fix was made. Eavesdropping IS included: the line
-    # below has called `e_det_for_bound`, which composes the intercept-resend disturbance with the
-    # misalignment, since Round 47 - this comment said the opposite until 2026-10-24. Every caller
-    # passes Eve 0, so no figure depended on the discrepancy.
-    e_det = e_det_for_bound(channel)
-    y0 = 2.0 * channel.dark_count_prob
-
-    # The security budget is split across the statistical terms. eps_sec/20 for each of the
-    # Hoeffding corrections is the conservative reading of Eq. (A24), which sums 6*eps1 + 4*eps2
-    # among other terms; taking each individual epsilon at eps_sec/20 keeps the sum below eps_sec.
-    eps1 = eps2 = p.eps_sec / 20.0
-
-    intensities = ((p.mu_signal, p.p_signal), (p.mu_decoy, 1.0 - p.p_signal))
-    # THE DEAD TIME (Rusca et al. Eq. (B2)-(B3)): every click, in either basis and at either
-    # intensity, leaves a detector recovering, so the correction is computed from all of them and
-    # scales each count below. Not modelled before Round 76, which the published-table test named as
-    # one reason this implementation and Table I differ.
-    c_dt = dead_time_factor(channel, sum(p_mu * _gain_and_error(eta, mu, e_det, y0)[0]
-                                         for mu, p_mu in intensities))
-    per_basis: dict[str, dict] = {}
-    for basis, p_basis in (("Z", p.p_z), ("X", 1.0 - p.p_z)):
-        counts = {}
-        for mu, p_mu in intensities:
-            q, e = _gain_and_error(eta, mu, e_det, y0)
-            n = n_pulses * p_mu * p_basis * p_basis * c_dt * q   # Alice and Bob both choose this basis
-            counts[mu] = (n, n * e)
-        n_tot = sum(n for n, _ in counts.values())
-        m_tot = sum(m for _, m in counts.values())
-        d_n, d_m = _delta(n_tot, eps1), _delta(m_tot, eps2)
-
-        mu1, mu2 = p.mu_signal, p.mu_decoy
-        p1, p2 = p.p_signal, 1.0 - p.p_signal
-        n_plus_1 = math.exp(mu1) / p1 * (counts[mu1][0] + d_n)
-        n_minus_2 = math.exp(mu2) / p2 * (counts[mu2][0] - d_n)
-        m_plus_1 = math.exp(mu1) / p1 * (counts[mu1][1] + d_m)
-        m_minus_2 = math.exp(mu2) / p2 * (counts[mu2][1] - d_m)
-
-        t0, t1 = _tau(0, p), _tau(1, p)
-        # (A19), CLAMPED AT ZERO. This clamp is load-bearing: without it a negative vacuum count
-        # propagates through the `- ((mu1^2-mu2^2)/mu1^2)(s^u_{Z,0}/tau0)` term of Eq. (4) with the
-        # wrong sign and INFLATES the single-photon bound, moving the computed threshold by a
-        # factor of several. A count of events cannot be negative.
-        s0 = max(0.0, t0 / (mu1 - mu2) * (mu1 * n_minus_2 - mu2 * n_plus_1))
-        s0_upper = 2.0 * t0 * (math.exp(mu1) / p1 * (counts[mu1][1] + d_m) + d_n)   # (A16)
-        s1 = (t1 * mu1 / (mu2 * (mu1 - mu2))) * (                                   # (4)
-            n_minus_2 - (mu2 ** 2 / mu1 ** 2) * n_plus_1
-            - ((mu1 ** 2 - mu2 ** 2) / mu1 ** 2) * (s0_upper / t0))
-        v1_upper = t1 / (mu1 - mu2) * (m_plus_1 - m_minus_2)                        # (A22)
-        per_basis[basis] = dict(n=n_tot, m=m_tot, s0=s0, s1=s1, v1=v1_upper,
-                                qber=(m_tot / n_tot if n_tot > 0 else 0.5))
-
-    z, x = per_basis["Z"], per_basis["X"]
-    n_z, n_x, qber = z["n"], x["n"], z["qber"]
-    lambda_ec = p.f_ec * n_z * _h2(qber)
-
-    if z["s1"] <= 0.0 or x["s1"] <= 0.0:
-        # No positive lower bound on single-photon events exists, so Eq. (1) has no meaning here.
-        # Reported as -inf rather than 0 so a caller cannot mistake "no bound" for "a small key".
-        return FiniteKeyResult(float("-inf"), n_z, n_x, n_z + n_x, z["s0"], z["s1"],
-                               float("nan"), lambda_ec, qber)
-
-    b = min(0.5, max(0.0, x["v1"] / x["s1"]))
-    if b <= 0.0:
-        phi = 0.0
-    else:
-        c, d = z["s1"], x["s1"]
-        gamma = math.sqrt((c + d) * (1.0 - b) * b / (c * d * math.log(2))               # (A21)
-                          * math.log2((c + d) / (c * d * (1.0 - b) * b)
-                                      * (2 ** 21) / p.eps_sec ** 2))
-        phi = min(0.5, b + gamma)
-
-    key = (z["s0"] + z["s1"] * (1.0 - _h2(phi)) - lambda_ec                             # (1)
-           - 6.0 * math.log2(19.0 / p.eps_sec) - math.log2(2.0 / p.eps_cor))
-    return FiniteKeyResult(key, n_z, n_x, n_z + n_x, z["s0"], z["s1"], phi, lambda_ec, qber)
+    return one_decoy_key_length(*expected_counts(n_pulses, channel, p), p)
 
 
 def minimum_pulses_for_positive_key(channel: ChannelParams | None = None,
@@ -338,3 +422,184 @@ def optimise_parameters(channel: ChannelParams | None = None,
                            p_signal=float(p_signal), p_z=float(p_z),
                            eps_sec=base.eps_sec, eps_cor=base.eps_cor, f_ec=base.f_ec)
     return best, minimum_pulses_for_positive_key(channel, best)
+
+
+# --- The vacuum+weak protocol: Lim et al. 2014 -----------------------------------------------------
+#
+# WHY THIS EXISTS (Round 79, the user's choice). The 1-decoy analysis above is not the protocol
+# Micius ran. Micius sent a VACUUM state as well - "mu_s=0.8, mu_1=0.1, mu_2=0", "sent with
+# probabilities of 50%, 25%, and 25%" (Liao et al., Nature 549, 43 (2017)) - and the 1-decoy bound
+# has no use for the vacuum's quarter of the pulses. Lim et al.'s analysis uses all three
+# intensities, and it is the one Rusca et al.'s Table I sets the 1-decoy bound against, so it is
+# checked against that table's 2-decoy rows the way the 1-decoy bound is checked against its own.
+#
+# On Liao's 19 December 2016 pass (the model's counts; `tests/test_the_vacuum_decoy_bound_is_lim_2014.py`)
+# it finds 164,183 bits, where the paper reports 300,939. The 1-decoy bound on the same pulses, the
+# vacuum's quarter unused, finds 152,598 - and found NONE (-7,172) before this round's two
+# corrections to it, which is what first suggested the vacuum was needed. It was not needed for a
+# key; it adds about 8% to it, in line with Rusca et al.'s own finding that the two analyses are
+# close at these losses.
+#
+# EQUATIONS, by number in arXiv:1311.7129v2, written with Z as the key basis and X as the test basis
+# (Rusca et al.'s naming; Lim et al. key on X), and eps = eps_sec / 21:
+#
+#   (1)  l = s_Z0 + s_Z1 (1 - h(phi_Z)) - leak_EC - 6 log2(21/eps_sec) - log2(2/eps_cor)
+#        n^pm_{B,k} = (e^k / p_k)(n_{B,k} pm sqrt(n_B / 2 ln(1/eps))), and m^pm_{B,k} alike
+#   (2)  s_B0 >= tau0 (mu2 n^-_{B,mu3} - mu3 n^+_{B,mu2}) / (mu2 - mu3)
+#   (3)  s_B1 >= tau1 mu1 [n^-_{B,mu2} - n^+_{B,mu3} - (mu2^2 - mu3^2)/mu1^2 (n^+_{B,mu1} - s_B0/tau0)]
+#                / (mu1 (mu2 - mu3) - mu2^2 + mu3^2)
+#   (4)  v_X1 <= tau1 (m^+_{X,mu2} - m^-_{X,mu3}) / (mu2 - mu3)
+#   (5)  phi_Z <= v_X1/s_X1 + gamma(eps_sec, v_X1/s_X1, s_X1, s_Z1)
+#
+# leak_EC = f_EC n_Z h(m_Z / n_Z), Lim et al.'s own model. They require mu1 > mu2 + mu3 and
+# mu2 > mu3 >= 0, and the vacuum here is mu3 = 0 exactly, where (2) is tau0 n^-_{B,mu3}.
+#
+# THE BOUND TAKES COUNTS, NOT A CHANNEL. A satellite pass is not one channel - the loss changes by
+# about ten decibels between the top of Liao's pass and its end - and the bound never needed one:
+# it needs the detections and errors per basis and per intensity, which over a pass are SUMS over
+# its seconds. `expected_counts` gives them for one channel, `DecoyCounts` adds, and
+# `finite_key_over` runs either bound on a list of (pulses, channel) segments taken as one block.
+# A block at one range is the one-segment case.
+
+
+@dataclass(frozen=True)
+class VacuumDecoyParams:
+    """Alice's three intensities and their probabilities, the basis bias and the security budget.
+
+    The defaults are Micius's source as Liao et al. state it, read from the config, which carries it
+    as `free_space_*`; p_z = 0.5 because Micius chose bases passively, at a beam splitter. eps_sec =
+    1e-9 is Liao's "statistical failure probability"; eps_cor and f_EC are Lim et al.'s values.
+    """
+
+    mu_signal: float = field(default_factory=lambda: _qkd_cfg().free_space_mu_signal)
+    mu_decoy: float = field(default_factory=lambda: _qkd_cfg().free_space_mu_decoy)
+    mu_vacuum: float = 0.0
+    p_signal: float = field(default_factory=lambda: _qkd_cfg().free_space_p_signal)
+    p_decoy: float = field(default_factory=lambda: _qkd_cfg().free_space_p_decoy)
+    p_z: float = 0.5
+    eps_sec: float = 1e-9
+    eps_cor: float = 1e-15
+    f_ec: float = 1.16
+
+    def __post_init__(self) -> None:
+        mu1, mu2, mu3 = self.mu_signal, self.mu_decoy, self.mu_vacuum
+        if not (mu1 > mu2 + mu3 and mu2 > mu3 >= 0.0):
+            raise ValueError(f"Lim et al. need mu1 > mu2 + mu3 and mu2 > mu3 >= 0, not {mu1}, {mu2}, {mu3}")
+        if min(self.p_signal, self.p_decoy, self.p_vacuum) <= 0.0:
+            raise ValueError(f"every intensity needs a share of the pulses, not {self.intensities}")
+
+    @property
+    def p_vacuum(self) -> float:
+        return 1.0 - self.p_signal - self.p_decoy
+
+    @property
+    def intensities(self) -> tuple[tuple[float, float], ...]:
+        """(mu, p) for the signal, the decoy and the vacuum, the order `DecoyCounts` keeps."""
+        return ((self.mu_signal, self.p_signal), (self.mu_decoy, self.p_decoy),
+                (self.mu_vacuum, self.p_vacuum))
+
+    def tau(self, n: int) -> float:
+        """The probability that Alice sends an n-photon state, summed over the three intensities."""
+        return sum(p * math.exp(-mu) * mu ** n / math.factorial(n) for mu, p in self.intensities)
+
+
+def _events(c: DecoyCounts, p: VacuumDecoyParams, eps: float) -> tuple[float, float]:
+    """Lower bounds on the vacuum and single-photon events in one basis, Eqs. (2) and (3).
+
+    The vacuum bound is clamped at zero, which only removes a bound weaker than the trivial one: a
+    count of events cannot be negative, and (3) increases with s_B0, so the clamp keeps (3) valid.
+    """
+    (mu1, p1), (mu2, p2), (mu3, p3) = p.intensities
+    d = _delta(c.detections, eps)
+
+    def lo(k: int) -> float:
+        mu, p_k = p.intensities[k]
+        return math.exp(mu) / p_k * (c.n[k] - d)
+
+    def hi(k: int) -> float:
+        mu, p_k = p.intensities[k]
+        return math.exp(mu) / p_k * (c.n[k] + d)
+
+    t0, t1 = p.tau(0), p.tau(1)
+    s0 = max(0.0, t0 * (mu2 * lo(2) - mu3 * hi(1)) / (mu2 - mu3))                       # (2)
+    s1 = (t1 * mu1 * (lo(1) - hi(2) - (mu2 ** 2 - mu3 ** 2) / mu1 ** 2 * (hi(0) - s0 / t0))  # (3)
+          / (mu1 * (mu2 - mu3) - mu2 ** 2 + mu3 ** 2))
+    return s0, s1
+
+
+def vacuum_decoy_key_length(z: DecoyCounts, x: DecoyCounts,
+                            params: VacuumDecoyParams | None = None) -> FiniteKeyResult:
+    """Lim et al.'s composable key length from the key-basis counts `z` and test-basis counts `x`.
+
+    Non-positive means no key; -inf means no single-photon bound exists at all, as in
+    `finite_key_length`, so a caller cannot read "no bound" as "a small key".
+    """
+    p = params or VacuumDecoyParams()
+    eps = p.eps_sec / 21.0
+    s_z0, s_z1 = _events(z, p, eps)
+    _, s_x1 = _events(x, p, eps)
+    n_z, n_x = z.detections, x.detections
+    qber = z.errors / n_z if n_z > 0 else 0.5
+    lambda_ec = p.f_ec * n_z * _h2(qber)
+    if s_z1 <= 0.0 or s_x1 <= 0.0:
+        return FiniteKeyResult(float("-inf"), n_z, n_x, n_z + n_x, s_z0, s_z1, float("nan"),
+                               lambda_ec, qber)
+    (_, _), (mu2, p2), (mu3, p3) = p.intensities
+    dm = _delta(x.errors, eps)
+    v_x1 = p.tau(1) * (math.exp(mu2) / p2 * (x.m[1] + dm)                               # (4)
+                       - math.exp(mu3) / p3 * (x.m[2] - dm)) / (mu2 - mu3)
+    b = min(0.5, max(0.0, v_x1 / s_x1))
+    phi = 0.0 if b <= 0.0 else min(0.5, b + _gamma(p.eps_sec, b, s_x1, s_z1))            # (5)
+    key = (s_z0 + s_z1 * (1.0 - _h2(phi)) - lambda_ec                                    # (1)
+           - 6.0 * math.log2(21.0 / p.eps_sec) - math.log2(2.0 / p.eps_cor))
+    return FiniteKeyResult(key, n_z, n_x, n_z + n_x, s_z0, s_z1, phi, lambda_ec, qber)
+
+
+def _bound(params: FiniteKeyParams | VacuumDecoyParams):
+    return vacuum_decoy_key_length if isinstance(params, VacuumDecoyParams) else one_decoy_key_length
+
+
+def block_counts(segments: Iterable[tuple[float, ChannelParams]],
+                 params: FiniteKeyParams | VacuumDecoyParams) -> tuple[DecoyCounts, DecoyCounts]:
+    """The expected (Z, X) counts of several (pulses, channel) segments, summed."""
+    z = x = None
+    for n_pulses, channel in segments:
+        dz, dx = expected_counts(n_pulses, channel, params)
+        z, x = (dz, dx) if z is None else (z + dz, x + dx)
+    if z is None:
+        raise ValueError("no segments: a block needs at least one")
+    return z, x
+
+
+def blocks_for_positive_key(z: DecoyCounts, x: DecoyCounts,
+                            params: FiniteKeyParams | VacuumDecoyParams, *, hi: int = 10_000) -> int | None:
+    """The fewest copies of this block, pooled into one, that carry a positive key, or None if `hi`
+    copies do not. For a pass, how many passes; for one second at a range, how many seconds.
+
+    Bisection on a monotone quantity, as `minimum_pulses_for_positive_key`: pooled counts only
+    tighten every statistical correction relative to the counts they correct.
+    """
+    bound = _bound(params)
+    if bound(z, x, params).key_bits > 0.0:
+        return 1
+    if bound(z.scaled(hi), x.scaled(hi), params).key_bits <= 0.0:
+        return None
+    lo, top = 1, hi
+    while top - lo > 1:
+        mid = (lo + top) // 2
+        if bound(z.scaled(mid), x.scaled(mid), params).key_bits > 0.0:
+            top = mid
+        else:
+            lo = mid
+    return top
+
+
+def finite_key_over(segments: Iterable[tuple[float, ChannelParams]],
+                    params: FiniteKeyParams | VacuumDecoyParams | None = None) -> FiniteKeyResult:
+    """Either bound on several (pulses, channel) segments taken as ONE block: a pass, or part of one.
+
+    The bound follows the source: Lim et al.'s for `VacuumDecoyParams` (the default, Micius's
+    source), Rusca et al.'s 1-decoy one for `FiniteKeyParams`.
+    """
+    p = params or VacuumDecoyParams()
+    return _bound(p)(*block_counts(segments, p), p)

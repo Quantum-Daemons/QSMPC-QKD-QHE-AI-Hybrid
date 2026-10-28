@@ -33,11 +33,14 @@ function boundOf(decoyStates: string | undefined): { short: string; paper: strin
  *  to Li et al.'s measured rate is computed: it was a literal, "3.8x", which no run had matched since
  *  Round 76's detector set. */
 function rateCellTitle(perPulse: number, decoyStates: string | undefined): string {
+  // Before any run there is no bound to name: `decoyStates` is the run's own metric.
+  if (decoyStates === undefined) return "bit/s - not yet run";
   const ratio = perPulse > 0 ? `${(8.88e-3 / perPulse).toFixed(1)}x this run's figure per pulse` : "above this run's figure";
   const b = boundOf(decoyStates);
   return `bit/s - this run's ${b.short} per pulse sent (${b.paper}) multiplied by an ASSUMED source `
     + "repetition rate. ASYMPTOTIC: no finite-key "
-    + "correction is applied anywhere in this project. It is the infinite-key limit of a LOWER bound, "
+    + "correction is applied to this rate (the satellite's key budget is a block's finite key since "
+    + "Round 79; the rate is not). It is the infinite-key limit of a LOWER bound, "
     + "not a ceiling on real hardware - Li et al. (Nat. Photon. 17, 416-421, 2023) measured 22.2 Mb/s "
     + `at 50 km on a 2.5 GHz clock, 8.88e-3 bit/pulse, ${ratio}, with full composable finite-key `
     + "security. No QKD hardware exists in this project and nothing here measures a clock: the rate "
@@ -104,11 +107,19 @@ export default function SdnControlPlanePanel({
           <table className="facts-table small">
             <thead><tr><th>Factor</th><th>Value in this run</th><th>Where it comes from</th></tr></thead>
             <tbody>
-              <tr><td>secure fraction per pulse sent</td><td><b>{secretKeyRatePerPulse > 0 ? secretKeyRatePerPulse.toExponential(3) : "0"}</b> bit/pulse, this run&apos;s {boundOf(decoyStates).short}{usecase === "satellite_comms" ? null : <>, on gains corrected for the detectors&apos; dead time</>}{decoyStates?.startsWith("none") ? <>; every pair counts</> : <>; only the signal pulses carry key</>}</td><td>{boundOf(decoyStates).paper}, {boundOf(decoyStates).source}; <b>asymptotic</b> - no finite-key correction, so the infinite-key limit of a lower bound{usecase === "satellite_comms" ? null : <>. The dead-time factor is Rusca et al. 2018&apos;s Eq. (B3), counting every click</>}</td></tr>
+              {/* BEFORE A RUN there is no bound to name. `decoyStates` is the run's own metric, and the
+                  row read "0 bit/pulse, this run's one-decoy bound" on a page that had not run and
+                  whose default source sends the vacuum (found live in Round 79). */}
+              {decoyStates === undefined
+                ? <tr><td>secure fraction per pulse sent</td><td>not yet run</td><td>the decoy-state bound the run&apos;s source supports, named once a run has chosen it</td></tr>
+                : <tr><td>secure fraction per pulse sent</td><td><b>{secretKeyRatePerPulse > 0 ? secretKeyRatePerPulse.toExponential(3) : "0"}</b> bit/pulse, this run&apos;s {boundOf(decoyStates).short}{usecase === "satellite_comms" ? null : <>, on gains corrected for the detectors&apos; dead time</>}{decoyStates.startsWith("none") ? <>; every pair counts</> : <>; only the signal pulses carry key</>}</td><td>{boundOf(decoyStates).paper}, {boundOf(decoyStates).source}; <b>asymptotic</b> - no finite-key correction, so the infinite-key limit of a lower bound{usecase === "satellite_comms" ? null : <>. The dead-time factor is Rusca et al. 2018&apos;s Eq. (B3), counting every click</>}</td></tr>}
               <tr><td>x source repetition rate</td><td><b>{(topo.source_rate_hz / 1e6).toLocaleString()} MHz</b></td><td>{usecase === "satellite_comms"
                 ? <>an assumption; default 100 MHz, the Micius source&apos;s (Liao et al., <i>Nature</i> <b>549</b>, 43, 2017), whose measured rate is not reproduced or claimed here</>
                 : <>an assumption; default 1 GHz, the clock Rusca et al. (<i>Appl. Phys. Lett.</i> <b>112</b>, 171104, 2018) state for this page&apos;s detector set - a simulation set, not a measured link. With their 100 ns dead time the per-pulse rate depends on it too</>}</td></tr>
-              <tr><td>channel time</td><td>{topo.channel_seconds != null ? `${(topo.channel_seconds * 1e3).toFixed(3)} ms` : "n/a"}</td><td>pulses divided by that rate</td></tr>
+              <tr><td>channel time</td><td>{topo.channel_seconds == null ? "n/a"
+                : topo.channel_seconds >= 1 ? `${topo.channel_seconds.toFixed(1)} s` : `${(topo.channel_seconds * 1e3).toFixed(3)} ms`}</td><td>{usecase === "satellite_comms"
+                ? <>the key block&apos;s pulses divided by that rate - one pass by default (Round 79), so the key budget below, the block&apos;s composable finite key, is spent over the pass&apos;s link time</>
+                : <>pulses divided by that rate</>}</td></tr>
             </tbody>
           </table>
           <Details summary="How this compares with published systems">

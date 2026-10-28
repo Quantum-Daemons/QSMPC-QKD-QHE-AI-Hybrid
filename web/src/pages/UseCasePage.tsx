@@ -391,7 +391,11 @@ function UseCaseView({ usecase }: { usecase: string }) {
         // visitor can edit the params after a run without re-running.
         secretKeyRatePerPulse={Number(metrics.skr_per_pulse ?? 0)}
         sourceRateHz={Number(metrics.source_rate_hz ?? 0)}
-        pulses={Number(metrics.qkd_pulses ?? 0)}
+        // THE BLOCK'S PULSES on the satellite (Round 79): the key budget above is the finite key of
+        // a block of link time, a pass by default, so the channel time the panel divides consumed
+        // bits by must be that block's. The sampled run's own 2e7 pulses would put a pass's budget
+        // over a fifth of a second and drive eskr to zero.
+        pulses={Number(metrics.qkd_block_pulses ?? metrics.qkd_pulses ?? 0)}
         decoyStates={metrics.qkd_decoy_states as string | undefined}
         qkdEnabled={run.qkd !== "pqc-only"} />
 

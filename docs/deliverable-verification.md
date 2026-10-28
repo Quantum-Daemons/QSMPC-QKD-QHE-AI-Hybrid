@@ -6175,7 +6175,7 @@ dB (645 km: 14.1 kHz; 642 km: 7.9 kHz). The table ships as a validation set,
 the Network tab against the model.
 
 **The optional turbulence coupling, by the user's choice.** The best-sourced term: the seeing-limited
-image of the satellite, 0.98 lambda / r0 across, with r0 shrinking as sin(elevation)^(3/5) (Wang et
+image of the satellite, 0.98 lambda / r0 across, with r0 shrinking as sin(elevation)^(3/5) (Liu et
 al., arXiv:1505.05436, Eqs. 1-2, at Xinglong's LAMOST site), overfilling the receiver's field stop.
 Applied relative to the zenith, because the measured 16 percent optics already include the coupling
 there, and counted as station optics, so QSDC's Eve gap leaves it out. Xinglong's 2014 DIMM median
@@ -6224,5 +6224,111 @@ Qi, Zhao & Lo 2005) for it. It now says every pair counts and cites Ma, Fung & L
 012307 (2007), as the facts row already did; each bound carries its own paper.
 
 BUSINESS DOC RECONCILED Round 78. The out-of-repo document is brought level with this round. Its content
+is not quoted here, in the checklist, or in any commit - only the fact of the reconciliation, which is
+what gate 16 reads.
+
+## Round 79: the satellite's key as a finite key over a pass, and two errors in the one-decoy bound
+
+**On main.** Rounds 65 to 78 (PRs #65 to #74) merged in order, each after its own CI passed, by the
+user's choice; the demo was returned to main (016d346, `index-Di40bz55.js`) and checked live: 335
+bits, 1.678e-5 per pulse sent and the Vacuum+Weak bound named on the satellite page. Two user choices
+then: a finite-key length for the downlink with Lim et al.'s vacuum+weak analysis, validated against
+published figures and checked on Liao's pass without fitting; and a block chosen by the published
+practice between seconds at the page's range and a whole pass, with other options allowed.
+
+**The block, decided by the practice: one pass.** A research pass read the flown experiments. Each
+computes its finite key over one pass - Micius (Liao et al. 2017: 273 s, 300,939 bits at 1e-9; 2018,
+each pass separately), Tiangong-2 (143 s, 13,119 bits), the Micius-Zvenigorod session (629,000 bits
+with Chernoff bounds) - or over fixed blocks inside one orbit summed per orbit (Jinan-1, Li et al.
+2025: 500-kbit privacy-amplification blocks). None computes one on seconds of a low-orbit pass. So the
+default block is one pass peaking at the page's range, from the 10 degree mask up and back down;
+pooled passes (Sidhu et al. 2022: a system with no key from one pass makes one from several, and M
+pooled passes carry at least M times one pass's key) and a time held at one range are offered beside
+it, with the security parameter (`QKDConfig.free_space_block*`, controls on the page).
+
+**The bound: Lim et al. 2014, for the source Micius flew.** `finite_key.vacuum_decoy_key_length` and
+its twin `finiteKey.ts` implement Eqs. (1) to (5) on COUNTS, so a pass whose loss changes by ten dB
+from its top to its edge is the sum of its seconds; `qkd/satellite_pass.py` is the browser's
+`simulatePass` step for step. A source without the vacuum keeps Rusca et al.'s 1-decoy bound. Checked
+against Rusca et al.'s Table I 2-decoy rows, optimised over the variables they optimise with mu3 =
+1e-6: 0.47 and 0.41 of the 26 and 46 dB rows at n_Z = 1e7, 0.49 and 0.44 at 1e9, always below; the
+ratio of the two protocols, which cancels the shared channel model, within 15 percent of the paper's
+at all four cells, the 1-decoy protocol winning as in the paper; and the optimum's vacuum share above
+the 11 percent Rusca et al. report.
+
+**Found by writing it: two errors in the one-decoy bound, both on the safe side.**
+- The phase-error constant in (A21) is 21 squared in both papers' rendered pages; the code had 2 to
+  the 21st, from a text extraction that reads "212". It sat inside a log2 and inflated gamma by about
+  a tenth.
+- (A16) bounds the vacuum by "the errors relative to one intensity" without naming it. The code used
+  the signal's, with no reason recorded; the decoy's is tighter at every row of Table I and on the
+  shipped fibre, and the paper says its choice "proved to give the best SKR". Adopted as a fixed
+  choice, so the concentration inequalities its budget counts are unchanged; the choice is an
+  inference from that sentence, and recorded as one.
+- Together: the 1-decoy reproduction of Table I moved from 0.45 / 0.39 / 0.16 at 26 / 46 / 56 dB to
+  0.53 / 0.47 / 0.26; the shipped fibre's positive-key threshold from 5.88e6 pulses to 4.78e6, which
+  the 2e7 block clears 4.2x; the two-parameter optimum to mu 0.375, nu 0.129 at 4.64e6, with the
+  shipped pair within 3 percent, so the intensities stay; the full optimum to 3.10e6 at p_signal
+  0.168. The 2e6-pulse block still carries no key. A 60-case snapshot of the bound was identical
+  before and after the refactor to counts.
+
+**Checked on flown passes, with nothing fitted.**
+- Liao's 19 December 2016 pass at 1e-9: 164,183 bits, 0.55 of the published 300,939. Liao et al. do
+  not name their analysis; they allow for intensity fluctuations below 5 percent and correct errors
+  with a Hamming code, neither modelled.
+- Khmelev et al.'s Zvenigorod session: 354,672 bits, 0.56 of their 629,000 at f_EC 1.16, and 0.51 at
+  their own stated 1.44. The same fraction on two passes puts the gap in the analysis (Hoeffding
+  here, Chernoff there), not the channel.
+- Jinan-1's four published passes: the finite key is 1.14 to 2.38 times the published one, 1.14 on
+  the pass whose count rate fixed the profile's one calibrated constant; the other windows are not
+  published.
+- The motivating number did not survive the fix: before the two corrections the 1-decoy bound found
+  no key on Liao's pass (-7,172 bits); after them it finds 152,598 with the vacuum's quarter unused,
+  and the vacuum adds 8 percent. The documents say that.
+
+**The page.** The satellite's key material is the block's finite key: 91,475 bits for a pass peaking
+at 800 km (35.84 degrees, 408.5 s), mixed into the session; the sampled fifth of a second at the
+range still measures the QBER and decides the abort, and the per-pulse rate is unchanged. Two pooled
+passes: 228,689 bits. Ten seconds at 800 km: none, with the warning that 33 s would carry a key. The
+Network tab gives each pass's finite key and the Liao table a finite row (-45.4 percent). E91 keeps
+its asymptotic key and dims the block controls with the reason.
+
+**Found along the way.**
+- The control plane divided a pass-sized key budget by the sampled run's 0.2 s, which drove eskr to
+  zero; it now takes the block's pulses, 408.5 s of channel time, and eskr reads 1,622 bit/s.
+- Before any run its per-pulse row read "this run's one-decoy bound" on a page whose source sends the
+  vacuum (found live on main); it now reads "not yet run", and the rate tooltip no longer says no
+  finite-key correction is applied anywhere.
+- Switching the vacuum ON for the one-decoy profile gave a source that sent no vacuum pulses and a
+  bound that credited their measured yield, accepted silently since Round 77 and found by the new
+  cross-language test; the switch now holds only where the profile sends the vacuum, and the option
+  is disabled there with its reason.
+- Round 78's entry above credited the LAMOST turbulence relations to "Wang et al."; corrected to Liu
+  et al., as the code and references already had it.
+
+**Gates.** `tests/test_the_vacuum_decoy_bound_is_lim_2014.py` (Table I's 2-decoy rows, the protocol
+ratio, the vacuum share, Liao's pass against both bounds, pooling, the 21 squared constant);
+`tests/test_the_satellite_block_is_a_pass.py` (both languages' block, bound and pass to 1e-9 over
+every profile, both decoy settings and every block kind; the stage's key; pooling; seconds; the
+abort; Khmelev's and Jinan-1's passes); the moved figures in
+`tests/test_finite_key_reproduces_the_published_table.py`. Full suite green.
+
+**Walked locally on a client-only build in Chrome.** The controls and their dimming; 91,475 bits over
+one pass with 408.5 s of channel time and eskr 1,622; 228,689 bits for two passes; 0 bits and the
+33 s warning for ten seconds; the Network tab's 177.5 kbit finite key for Liao's geometry from the
+mask, a pass peaking at 11 degrees needing 10 passes pooled, the Liao row at 164,183; the one-decoy
+profile's vacuum option disabled; console clean.
+
+**Walked on the deploy (c4ae533, `index-kIMQHozN.js`), in Chrome.** Satellite at 800 km: "not yet run"
+before the run; then 91,475 bits, "composable finite key over one pass peaking at 35.84 deg
+elevation, 408.5 s of link time: Lim et al. 2014 (vacuum + weak decoy), eps_sec 1e-9", the per-pulse
+rate unchanged at 1.678e-5, the control plane at 408.5 s of channel time with skr 1,678, eskr 1,622
+and a budget of 68,606 bits. The security parameter at 1e-10: 87,815 bits. Two pooled passes:
+228,689 bits over 816.9 s. Ten seconds at the range: 0 bits and the 33 s warning. The Network tab:
+177.5 kbit for the pass from the mask, the Liao finite row at 164,183 (-45.4 percent); the one-decoy
+profile's vacuum option disabled. Telecom unchanged: 28,534 bits, 1.427e-3 per pulse sent, 20 ms,
+eskr 1,070,011. No "Infinity" or "NaN", console clean.
+
+BUSINESS DOC RECONCILED Round 79. The out-of-repo document is brought level with this round. Its content
 is not quoted here, in the checklist, or in any commit - only the fact of the reconciliation, which is
 what gate 16 reads.
