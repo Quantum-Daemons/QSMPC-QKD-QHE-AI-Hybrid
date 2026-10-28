@@ -38,20 +38,22 @@ decoy bound is checked against Ma et al.'s published curves there, and the finit
 checked against Rusca et al.'s published Table I here, in
 `tests/test_finite_key_reproduces_the_published_table.py`.
 
-HOW ACCURATE THIS IS, and it is not accurate enough to quote to two figures
+HOW ACCURATE THIS IS
 
-Checked against that Table I - secret key rate at n_Z = 1e7 for 26 / 46 / 56 / 64 dB - this
-implementation comes out CONSERVATIVE by roughly a factor of 2-3 at moderate loss, and by more at
-high loss, even after optimising the intensities, their probabilities and the basis bias the way the
-paper says it optimises them. The gap is in the safe direction, but it is a gap: the threshold
-computed here is an UPPER bound on the block size really required, not the block size really
-required. So it is quoted everywhere as an order of magnitude - "~1e5 sifted bits, about 4e7 pulses"
-- and never as 1.436e5.
+Until Round 80 this paragraph said the implementation came out CONSERVATIVE by a factor of 2-3
+against Rusca et al.'s Table I. The factor was the test's, not the bound's: it applied a 50 percent
+detector on top of the paper's attenuation, which is "global" - "the detector and the internal
+losses of Bob's apparatus are included" - so its channel had 3 dB more loss than the paper's. With
+the attenuation applied once, Table I's 26 dB row is reproduced to a few parts in a thousand under
+the paper's own dead-time convention, the 26 and 46 dB rows sit within 5 percent under this
+project's, and the 56 dB row within 25 percent below
+(`tests/test_finite_key_reproduces_the_published_table.py`). Thresholds are still quoted to one or
+two figures, since the paper's own optimisation and epsilon split are not printed.
 
-Three claims are robust to that factor and are the only ones the repository makes:
+Three claims never depended on that accuracy:
 
   (a) the shipped 2e6-pulse block carries no composable key, because `s^l_{Z,1}` is NEGATIVE there
-      and a factor of 2-3 cannot rescue a negative count;
+      and no factor can rescue a negative count;
   (b) the "~5e3 to 1.1e4" band was far too small, by an order of magnitude at minimum;
   (c) the citation was wrong regardless of any numerics, since the paper contains no such threshold.
 
@@ -88,8 +90,10 @@ TWO CORRECTIONS IN ROUND 79, both in the safe direction before and after:
     every row of Table I (see the comment at that line).
 
 Together they move the threshold on the shipped fibre from 5.88e6 pulses to 4.78e6, and this file
-from 0.45 / 0.39 / 0.16 of Table I at 26 / 46 / 56 dB to 0.53 / 0.47 / 0.26, still below it; the
-2e6-pulse block still carries no key. The figures above at 3.84e7 pulses are the pre-Round-76
+from 0.45 / 0.39 / 0.16 of Table I at 26 / 46 / 56 dB to 0.53 / 0.47 / 0.26 - on the test channel of
+that time, which Round 80 found applied the detector twice; on the paper's channel the same code
+reads 1.03 / 0.96 / 0.80, and 1.00 at 26 dB under the paper's dead time. The 2e6-pulse block still
+carries no key. The figures above at 3.84e7 pulses are the pre-Round-76
 channel's and are left as the record of Round 47.
 
 THE VACUUM+WEAK PROTOCOL (Round 79) is the second half of this module: Lim, Curty, Walenta, Xu and
@@ -114,11 +118,13 @@ __all__ = [
     "block_counts",
     "blocks_for_positive_key",
     "expected_counts",
+    "fibre_block_pulses",
     "finite_key_length",
     "finite_key_over",
     "minimum_pulses_for_positive_key",
     "one_decoy_key_length",
     "optimise_parameters",
+    "params_for_source",
     "vacuum_decoy_key_length",
 ]
 
@@ -311,10 +317,11 @@ def one_decoy_key_length(z: DecoyCounts, x: DecoyCounts,
         # (A16) bounds the vacuum by "the errors relative to one intensity" and does not say which.
         # THE DECOY'S, since Round 79; the signal's before, with no reason recorded. The paper says
         # the approach it chose "proved to give the best SKR", and the decoy's bound is the tighter
-        # one at every row of Table I and on the shipped fibre: it moved this file from 0.45 / 0.39 /
-        # 0.16 of the table at 26 / 46 / 56 dB to 0.53 / 0.47 / 0.26, still below it. It is fixed
-        # here rather than picked per block, so the concentration inequalities Eq. (A24) counts are
-        # the same four.
+        # one at every row of Table I and on the shipped fibre. Round 80 settled it on the paper's own
+        # channel and dead-time convention: with the decoy's errors Table I's 26 dB row is reproduced
+        # to a few parts in a thousand, with the signal's it reads 13 percent low. It is fixed here
+        # rather than picked per block, so the concentration inequalities Eq. (A24) counts are the
+        # same four.
         s0_upper = 2.0 * t0 * (math.exp(mu2) / p2 * (c.m[1] + d_m) + d_n)           # (A16)
         s1 = (t1 * mu1 / (mu2 * (mu1 - mu2))) * (                                   # (4)
             n_minus_2 - (mu2 ** 2 / mu1 ** 2) * n_plus_1
@@ -553,6 +560,43 @@ def vacuum_decoy_key_length(z: DecoyCounts, x: DecoyCounts,
     key = (s_z0 + s_z1 * (1.0 - _h2(phi)) - lambda_ec                                    # (1)
            - 6.0 * math.log2(21.0 / p.eps_sec) - math.log2(2.0 / p.eps_cor))
     return FiniteKeyResult(key, n_z, n_x, n_z + n_x, s_z0, s_z1, phi, lambda_ec, qber)
+
+
+def params_for_source(source, *, eps_sec: float = 1e-9,
+                      f_ec: float | None = None) -> FiniteKeyParams | VacuumDecoyParams:
+    """The finite-key bound a BB84 source supports, with its own intensities and shares.
+
+    `source` is a `bb84.QKDParams`. Lim et al. 2014 when it sends the vacuum, Rusca et al. 2018's
+    1-decoy bound when it does not; the basis bias is the source's, and f_EC defaults to the config's
+    error-correction efficiency, the one the asymptotic rate uses. Round 80: one place decides it for
+    every caller, fibre and satellite.
+    """
+    f = _qkd_cfg().error_correction_eff if f_ec is None else float(f_ec)
+    common = dict(mu_signal=float(source.mu_signal), mu_decoy=float(source.mu_decoy),
+                  p_signal=float(source.p_signal), p_z=float(source.basis_prob), eps_sec=float(eps_sec),
+                  f_ec=f)
+    if source.vacuum_decoy:
+        return VacuumDecoyParams(p_decoy=float(source.p_decoy), **common)
+    return FiniteKeyParams(**common)
+
+
+def fibre_block_pulses(channel: ChannelParams, params: FiniteKeyParams | VacuumDecoyParams, *,
+                       kind: str, run_pulses: float, seconds: float, pa_bits: float) -> float:
+    """The channel uses in a fibre key's block (Round 80), by the block's definition.
+
+    "pulses": the run's own; "seconds": that long at the channel's clock; "pa_bits": as many as it
+    takes for the key basis to collect `pa_bits` detections, the privacy-amplification block size
+    finite-key analyses state (Rusca et al.'s n_Z). Expected counts are linear in the pulses, so the
+    last is a division, exact.
+    """
+    if kind == "pulses":
+        return float(run_pulses)
+    if kind == "seconds":
+        return float(seconds) * float(channel.source_rate_hz)
+    if kind == "pa_bits":
+        per_pulse = expected_counts(1.0, channel, params)[0].detections
+        return float(pa_bits) / per_pulse if per_pulse > 0.0 else math.inf
+    raise ValueError(f"block kind {kind!r}: one of 'pulses', 'seconds', 'pa_bits'")
 
 
 def _bound(params: FiniteKeyParams | VacuumDecoyParams):

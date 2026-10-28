@@ -80,6 +80,9 @@ def qkd_demo(distance_km: float = 50.0, eve: float = 0.0) -> dict:
         # to two significant figures.
         "skr_per_pulse": round(r.secret_key_rate, 9),
         "secure_key_bits": r.secure_key_bits,
+        # The block that count is the composable finite key of (Round 80), so the page can say so;
+        # six significant figures, as the browser's twin emits it.
+        "block_pulses": float(f"{r.block_pulses:.6g}"),
         # Config, not a literal. This was 0.08 while the browser used
         # security_scoring.qber_secure_threshold (0.11), so full mode and demo mode returned
         # OPPOSITE eavesdropper verdicts for any QBER in the 0.08-0.11 band.

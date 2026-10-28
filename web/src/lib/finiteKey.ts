@@ -66,9 +66,10 @@ function gainAndError(eta: number, mu: number, eDet: number, y0: number): [numbe
 
 /** The bound's source for a channel: its own intensities and shares (Micius's on the downlink),
  *  both parties choosing a basis at even odds as Micius's passive beam splitter did. */
-export function finiteKeySourceOf(ch: ChannelParams, epsSec = 1e-9): FiniteKeySource {
+export function finiteKeySourceOf(ch: ChannelParams, epsSec = 1e-9,
+                                  fEC = qkdCfg().error_correction_eff): FiniteKeySource {
   const s = sourceOf(ch);
-  const common = { pZ: 0.5, epsSec, epsCor: 1e-15, fEC: qkdCfg().error_correction_eff };
+  const common = { pZ: 0.5, epsSec, epsCor: 1e-15, fEC };
   return s.vacuum
     ? { ...common, vacuum: true, intensities: [[s.mu, s.pSignal], [s.nu, s.pDecoy], [0, 1 - s.pSignal - s.pDecoy]] }
     : { ...common, vacuum: false, intensities: [[s.mu, s.pSignal], [s.nu, 1 - s.pSignal]] };
@@ -85,6 +86,20 @@ export function expectedCounts(nPulses: number, ch: ChannelParams, src: FiniteKe
     return { n, m: n.map((nk, i) => nk * gains[i][1]) };
   };
   return [basis(src.pZ), basis(1 - src.pZ)];
+}
+
+/** The channel uses in a fibre key's block (Round 80): the run's own pulses, that many seconds at
+ *  the clock, or as many as the key basis needs to collect `paBits` detections. Twin of
+ *  `finite_key.py::fibre_block_pulses`. */
+export function fibreBlockPulses(ch: ChannelParams, src: FiniteKeySource,
+                                 b: { kind: string; runPulses: number; seconds: number; paBits: number }): number {
+  if (b.kind === "pulses") return b.runPulses;
+  if (b.kind === "seconds") return b.seconds * Number(ch.sourceRateHz);
+  if (b.kind === "pa_bits") {
+    const perPulse = sum(expectedCounts(1, ch, src)[0].n);
+    return perPulse > 0 ? b.paBits / perPulse : Infinity;
+  }
+  throw new Error(`block kind ${b.kind}: one of pulses, seconds, pa_bits`);
 }
 
 export const addCounts = (a: DecoyCounts, b: DecoyCounts): DecoyCounts =>
