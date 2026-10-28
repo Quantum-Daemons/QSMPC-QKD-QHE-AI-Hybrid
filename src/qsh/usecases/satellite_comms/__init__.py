@@ -246,14 +246,10 @@ def _sat_finite_key_params(ctx: Context, source):
     al. 2018's 1-decoy one when it does not. The asymptotic bound's error-correction efficiency, and
     the security parameter the run sets (Liao's 1e-9 by default)."""
     from ...config import get_config
-    from ...qkd.finite_key import FiniteKeyParams, VacuumDecoyParams
+    from ...qkd.finite_key import params_for_source
 
-    eps = float(_cfg_or(ctx, "sat_eps_sec", get_config().qkd.free_space_eps_sec))
-    common = dict(mu_signal=source.mu_signal, mu_decoy=source.mu_decoy, p_signal=source.p_signal,
-                  p_z=source.basis_prob, eps_sec=eps, f_ec=get_config().qkd.error_correction_eff)
-    if source.vacuum_decoy:
-        return VacuumDecoyParams(p_decoy=source.p_decoy, **common)
-    return FiniteKeyParams(**common)
+    return params_for_source(source, eps_sec=float(_cfg_or(ctx, "sat_eps_sec",
+                                                           get_config().qkd.free_space_eps_sec)))
 
 
 class SatelliteQKDStage(Stage):
@@ -372,7 +368,9 @@ class SatelliteQKDStage(Stage):
         aborted = res.secure_key_bits == 0 and res.qber > source.pp_threshold
         bus.metric("qkd_block", block.kind, self.name)
         bus.metric("qkd_block_copies", block.copies, self.name)
-        bus.metric("qkd_block_s", round(block.seconds, 1), self.name)
+        # FOUR SIGNIFICANT FIGURES, at every site that emits it (Round 80): the fibre's blocks run from
+        # milliseconds to minutes, where one decimal would print a 20 ms block as 0.0 s.
+        bus.metric("qkd_block_s", float(f"{block.seconds:.4g}"), self.name)
         bus.metric("qkd_block_pulses", float(f"{block.pulses:.6g}"), self.name)
         if block.max_elevation_deg is not None:
             bus.metric("sat_pass_max_elevation_deg", round(block.max_elevation_deg, 2), self.name)
@@ -384,7 +382,7 @@ class SatelliteQKDStage(Stage):
                    self.name)
         what = {"pass": "one pass", "passes": f"{block.copies:g} passes pooled",
                 "seconds": f"{block.copies:g} s at this range"}[block.kind]
-        note = (f"(finite key over {what}, {round(block.seconds, 1)} s of link time, "
+        note = (f"(finite key over {what}, {float(f'{block.seconds:.4g}')} s of link time, "
                 f"eps_sec {fk_params.eps_sec:g})")
         return (0 if aborted else fk_bits), note
 

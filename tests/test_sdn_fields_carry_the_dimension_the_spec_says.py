@@ -17,7 +17,9 @@ the wrong dimension was not a display slip, it was the data model.
 The checklist already carried the sentence that condemns this, about these same two quantities:
 *"`secure_key_bits` must equal `skr` times the pulse count, NOT `skr` itself ... Dimensional
 mismatch is the check: if two quantities must be equal, they must first have the same units."* It
-was written about a different pair of surfaces and nothing applied it here.
+was written about a different pair of surfaces and nothing applied it here. (Since Round 80 the two
+are no longer EQUAL - `secure_key_bits` is a block's composable finite key, below `skr` times the
+pulses - and the dimensional point stands: one is bits, the other bits per pulse.)
 
 WHY NO RATE IS COMPUTED INSTEAD
 

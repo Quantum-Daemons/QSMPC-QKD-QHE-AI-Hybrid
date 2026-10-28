@@ -37,12 +37,12 @@ counts" as "the smallest sample size providing a positive rate" at 50 km, which
 agrees with the computed figure and always did.
 
 Quoted as an order of magnitude on purpose. Checked against Rusca et al.'s
-published Table I, our implementation is CONSERVATIVE by roughly 2-3x at moderate
-loss and more at high loss, so its threshold is an upper bound on what is required.
-What that uncertainty does not touch: at Round 46's 2,000,000 pulses (12,442 sifted
-bits) the single-photon lower bound ``s^l_{Z,1}`` is NEGATIVE, so no composable key
-existed there at any parameter setting, and a factor of 2-3 cannot rescue a
-negative count. The raise from 200,000 to 2,000,000 therefore rested on a threshold
+published Table I it reproduces the 26 dB row under the paper's dead-time convention
+and the 46 dB row within 5 percent (Round 80; the "2-3x conservative" recorded until
+then was a test channel that applied the detector twice). What no accuracy question
+touches: at Round 46's 2,000,000 pulses (12,442 sifted bits) the single-photon lower
+bound ``s^l_{Z,1}`` is NEGATIVE, so no composable key existed there at any parameter
+setting, and no factor can rescue a negative count. The raise from 200,000 to 2,000,000 therefore rested on a threshold
 that did not survive checking. ``QKDConfig.pulses`` carries the current block size
 and the margin it is sized for; what THIS module reports either way is the
 asymptotic decoy bound, a different quantity, labelled as one.
@@ -172,9 +172,10 @@ class QKDResult:
     sifted_bits: int
     qber: float
     secret_key_rate: float        # bits of secure key per channel use
-    secure_key_bits: int          # finite secure key length after EC + PA
+    secure_key_bits: int          # composable finite key of the run's block (decoy path, Round 80)
     sifted_key: np.ndarray        # Bob's sifted key (pre error-correction), for demos
     params: ChannelParams
+    block_pulses: float | None = None   # the block `secure_key_bits` is the finite key of (Round 80)
 
 
 def _qkd_cfg():
@@ -231,12 +232,19 @@ def run_bb84(
     seed: int | None = None,
     qkd_params: QKDParams | None = None,
     entropy: str | None = None,           # "qrng" -> seed the basis/bit choices from the quantum RNG
+    block_pulses: float | None = None,    # the block the finite key is computed on; None -> n_pulses
+    eps_sec: float | None = None,         # its security parameter; None -> QKDConfig.finite_key_eps_sec
 ) -> QKDResult:
     """Simulate a decoy-state BB84 session over ``n_pulses`` channel uses.
 
     ``qkd_params`` (a :class:`QKDParams`) turns on the decoy-state + efficient-BB84 model the AI optimizer
     tunes; ``None`` keeps the original uniform-basis behaviour byte-for-byte. ``entropy="qrng"`` derives the
     RNG seed from the (simulated) quantum RNG so the basis/bit choices have a genuine quantum entropy root.
+
+    On the decoy path ``secure_key_bits`` is the COMPOSABLE FINITE KEY of a block of ``block_pulses``
+    channel uses on this channel (Round 80): the bound the source supports, Rusca et al. 2018's for one
+    decoy and Lim et al. 2014's for a source that sends the vacuum, on the block's expected counts.
+    ``secret_key_rate`` stays the asymptotic bound per pulse sent.
     """
     params = params or ChannelParams()
     if entropy == "qrng":
@@ -305,6 +313,7 @@ def run_bb84(
         )
         skr = secure_fraction * (n_sift / n_pulses)
         secure_bits = int(secure_fraction * n_sift)
+        block_used = None                 # no decoy bound, so no finite-key block: the legacy count
     else:
         # two-intensity decoy-state single-photon secure rate - mu_decoy genuinely tightens Y1/e1.
         # Ma et al. 2005 section 3.5, Eq. 41 (one decoy, Y0 unknown). `y0` below enters only the
@@ -350,7 +359,12 @@ def run_bb84(
         # twice what a source sending signals on half its pulses can make. The gains it rests on are
         # dead-time corrected.
         skr *= c_dt * p_signal
-        secure_bits = int(max(0.0, skr) * n_pulses)
+        # THE KEY IS A COMPOSABLE FINITE KEY (Round 80, the user's choice, every fibre site). It was
+        # the asymptotic bound times the pulses - 28,534 bits for the 2e7-pulse block at 50 km - which
+        # no finite block distils: the same block's composable key, by the bound the source supports,
+        # is 9,811. The rate above stays asymptotic and says so; this count is the key.
+        secure_bits, block_used = _block_key_bits(params, qkd_params, error_correction_eff, n_pulses,
+                                                  block_pulses, eps_sec)
 
     return QKDResult(
         sifted_bits=n_sift,
@@ -359,7 +373,33 @@ def run_bb84(
         secure_key_bits=secure_bits,
         sifted_key=bob_bits[sifted_idx],
         params=params,
+        block_pulses=block_used,
     )
+
+
+def _block_key_bits(channel: ChannelParams, source: QKDParams, f_ec: float, n_pulses: int,
+                    block_pulses: float | None, eps_sec: float | None) -> tuple[int, float]:
+    """The composable finite key, in whole bits, of a block on `channel`, and the block's pulses.
+
+    The block is `block_pulses` when the caller names one. Otherwise a FIBRE channel takes the
+    configured fibre block (`QKDConfig.finite_key_block*`) and a downlink the run's own pulses - its
+    stage computes the key of a pass itself.
+    """
+    import math
+
+    from .finite_key import fibre_block_pulses, finite_key_over, params_for_source
+
+    q = _qkd_cfg()
+    fk = params_for_source(source, eps_sec=q.finite_key_eps_sec if eps_sec is None else float(eps_sec),
+                           f_ec=f_ec)
+    if block_pulses is None:
+        block_pulses = (float(n_pulses) if channel.free_space is not None else
+                        fibre_block_pulses(channel, fk, kind=q.finite_key_block, run_pulses=n_pulses,
+                                           seconds=q.finite_key_block_seconds,
+                                           pa_bits=q.finite_key_block_pa_bits))
+    r = finite_key_over([(float(block_pulses), channel)], fk)
+    bits = int(r.key_bits) if math.isfinite(r.key_bits) and r.key_bits > 0.0 else 0
+    return bits, float(block_pulses)
 
 
 def derive_shared_key(result: QKDResult, n_bytes: int = 32, *, seed: int | None = None) -> bytes:

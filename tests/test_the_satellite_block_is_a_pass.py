@@ -164,7 +164,8 @@ def test_pooling_beats_the_same_passes_one_at_a_time() -> None:
     """Sidhu et al. 2022: the key of M pooled passes is at least M times one pass's."""
     one, three = _run({})["secure_key_bits"], _run({"sat_block": "passes", "sat_block_passes": 3})
     assert three["secure_key_bits"] > 3 * one
-    assert three["qkd_block_s"] == pytest.approx(3 * _run({})["qkd_block_s"], abs=0.2)
+    # Four significant figures each (Round 80), so 1225 against 3 x 408.5.
+    assert three["qkd_block_s"] == pytest.approx(3 * _run({})["qkd_block_s"], rel=1e-3)
 
 
 def test_seconds_at_a_range_carry_no_key_where_a_pass_does() -> None:
