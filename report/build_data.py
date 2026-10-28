@@ -150,6 +150,14 @@ def findings_table() -> str:
          "it degraded correctly only because JSON parsing then threw and a catch swallowed it"),
         ("Label true of another artefact", "Clifford+T named a Python module containing zero T gates",
          "the same label IS accurate for the browser circuit, which counts 56 of them"),
+        ("Held-out by assertion",
+         "three published evaluation samples were drawn from the whole corpus, training rows included",
+         "the log called every sample held-out; redrawn from the test window the finance teacher's "
+         "rare-class F1 fell 0.5439 to 0.2032"),
+        ("Fix that missed the artefact",
+         "a z-score leak fixed in the trainer, and the published weights never retrained",
+         "their constants still matched the whole series; retrained, event-wise F0.5 fell to 0 on "
+         "3 events"),
     ]
     findings_table.rows = rows
     return "\n".join(" & ".join([r"\textbf{" + a + "}", b, c]) + r" \\" for a, b, c in rows)
