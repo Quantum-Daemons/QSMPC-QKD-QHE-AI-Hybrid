@@ -1,4 +1,5 @@
-// The five use cases' stages, as the architecture canvas draws them (Round 80).
+// The five use cases' stages, as the architecture canvas draws them (Round 80), and since Round 81
+// the generic demo's, which the E2E page's canvas draws.
 //
 // Moved here from `components/TwoPartyDiagram.tsx` when the owner chose an animated architecture
 // canvas over the sequence diagram that file drew. The labels, the `ok` verdicts and the `hidden`
@@ -62,6 +63,9 @@ export interface Spec {
   /** The side whose input the private inference protects: it encrypts and decrypts, the other side
    *  evaluates. Finance's input is Bank B's transaction, scored by Bank A's fraud model. */
   inferenceClient?: "a" | "b";
+  /** How the two sides meet, the first sentence of the canvas's caption. One sentence served all
+   *  five until Round 81, and it put the satellite and its ground station "over a WAN". */
+  meet: (c: DiagramConfig) => string;
 }
 
 // The protocol names used to be hardcoded here, so selecting ml-kem-1024 still drew "ML-KEM-768",
@@ -277,11 +281,16 @@ const FEDERATED_STEP: Step = {
     + `on ${f(m, "federated_eval_rows")} held-out rows`,
 };
 
+/** The caption's first sentence for parties that compute together over a network. */
+const overWan = (who: string) => () =>
+  `No trusted third party and no raw data shared: ${who} meet over a WAN under the session key.`;
+
 export const USECASE_SPECS: Record<string, Spec> = {
   finance_aml: {
     a: { name: "Bank A", sub: "blacklist + fraud model · LAN" },
     b: { name: "Bank B", sub: "candidate accounts · LAN" },
     inferenceClient: "b",
+    meet: overWan("Bank A and Bank B"),
     steps: [
       { stageId: "pqc_handshake", kind: "c-bidir", label: (_m, c) => `PQC handshake — ${kemName(c)}` },
       { stageId: "qkd_key_agreement", kind: "q-arrow", label: (m, c) => `${qkdName(c)} · QBER ${f(m, "qber")}${optiTag(m, c)}`, hidden: pqcOnly, ok: qkdOk },
@@ -306,6 +315,7 @@ export const USECASE_SPECS: Record<string, Spec> = {
     a: { name: "Hospitals", sub: "patient data (never leaves) · LAN" },
     b: { name: "Aggregator", sub: "global model · LAN" },
     inferenceClient: "a",
+    meet: overWan("the hospitals and the aggregator"),
     steps: [
       { stageId: "pqc_handshake", kind: "c-bidir", label: (_m, c) => `PQC handshake — ${kemName(c)}` },
       { stageId: "qkd_key_agreement", kind: "q-arrow", label: (m, c) => `${qkdName(c)} · QBER ${f(m, "qber")}${optiTag(m, c)}`, hidden: pqcOnly, ok: qkdOk },
@@ -323,6 +333,7 @@ export const USECASE_SPECS: Record<string, Spec> = {
     a: { name: "Cohorts", sub: "allele counts (never leave) · LAN" },
     b: { name: "Analysis site", sub: "pooled count, PRS model · LAN" },
     inferenceClient: "a",
+    meet: overWan("the cohorts and the analysis site"),
     steps: [
       { stageId: "pqc_handshake", kind: "c-bidir", label: (_m, c) => `PQC handshake — ${kemName(c)}` },
       { stageId: "qkd_key_agreement", kind: "q-arrow", label: (m, c) => `${qkdName(c)} · QBER ${f(m, "qber")}${optiTag(m, c)}`, hidden: pqcOnly, ok: qkdOk },
@@ -345,6 +356,10 @@ export const USECASE_SPECS: Record<string, Spec> = {
     // either way: this page's subject is watching the link for intrusion, and whether anyone is on
     // it is what the run decides. The arrow says which.
     b: { name: "Remote site", sub: "QKD Rx · link monitored for intrusion" },
+    // Not "no raw data shared ... over a WAN": nothing here is computed jointly. The carrier's IDS
+    // reads its own link's telemetry, and what crosses to the remote site is the key and the record.
+    meet: (c) => `The carrier and the remote site share a fibre link${pqcOnly(c) ? "" : " with QKD on it"}, `
+      + "which the carrier watches for intrusion: the IDS classifies the link's telemetry at the carrier.",
     steps: [
       { stageId: "pqc_handshake", kind: "c-bidir", label: (_m, c) => `PQC handshake — ${kemName(c)}` },
       // "(w/ eavesdropper)" used to be unconditional here while `qkd_eve` defaults to 0.0, so the
@@ -366,6 +381,13 @@ export const USECASE_SPECS: Record<string, Spec> = {
     // called the ground station "telemetry uplink"; the canvas draws them the way they run.
     a: { name: "Ground station", sub: "telescope and detectors · receives the downlink" },
     b: { name: "LEO satellite", sub: "QKD source, telemetry · free-space downlink" },
+    // A satellite and its ground station do not meet over a WAN, and the telemetry IS the data that
+    // crosses: the caption said both until Round 81.
+    meet: (c) => pqcOnly(c)
+      ? "The LEO satellite sends its telemetry down to the ground station under the PQC session key."
+      : "The LEO satellite and the ground station meet over a free-space downlink while the satellite is in view: "
+        + "the key comes down the quantum channel, and the telemetry by QSDC where the link can carry it, "
+        + "else under the PQC session key.",
     steps: [
       { stageId: "pqc_handshake", kind: "c-bidir", label: (_m, c) => `PQC handshake — ${kemName(c)}` },
       { stageId: "satellite_qkd", kind: "q-arrow", label: (m, c) => `free-space ${qkdName(c)}${eveTag(m)} (${f(m, "channel_loss_db")} dB) · QBER ${f(m, "qber")}${optiTag(m, c)}`,
@@ -420,6 +442,25 @@ export const USECASE_SPECS: Record<string, Spec> = {
               + `the detector in, the station optics out) · telemetry withheld, falls back to the PQC session key`
             : `QSDC direct telemetry · secrecy ${f(m, "qsdc_secrecy_capacity")} bit/carrier`) },
       publishedStep("qsdc_telemetry"),
+      QSMPC_COMPARE,
+      { stageId: "sign_result", kind: "c-bidir", label: (_m, c) => `${sigName(c)}-signed audit record` },
+    ],
+  },
+  // The E2E page's generic flow (Round 81), so that page's canvas has something to draw for every
+  // entry in its selector. Its stages are clientCompute's `demo` flow: a keyed-hash PSI over two
+  // generated account lists, then the MPC-FHE inference on synthetic features. No industry, so no
+  // industry's names: the parties say what each holds.
+  demo: {
+    a: { name: "Party A", sub: "generic · a list, the input" },
+    b: { name: "Party B", sub: "generic · a list, the model" },
+    inferenceClient: "a",
+    meet: overWan("Party A and Party B"),
+    steps: [
+      { stageId: "pqc_handshake", kind: "c-bidir", label: (_m, c) => `PQC handshake — ${kemName(c)}` },
+      { stageId: "qkd_key_agreement", kind: "q-arrow", label: (m, c) => `${qkdName(c)} · QBER ${f(m, "qber")}${optiTag(m, c)}`, hidden: pqcOnly, ok: qkdOk },
+      { stageId: "qsmpc_compute", kind: qsmpcKind("psi"), label: qsmpcLabel("psi") },
+      ...HYBRID_INFERENCE,
+      publishedStep("private_inference"),
       QSMPC_COMPARE,
       { stageId: "sign_result", kind: "c-bidir", label: (_m, c) => `${sigName(c)}-signed audit record` },
     ],
@@ -510,3 +551,36 @@ export const visibleSteps = (usecase: string, c: DiagramConfig): Step[] =>
 
 /** A step's drawing kind under this configuration. */
 export const kindOf = (s: Step, c: DiagramConfig): Kind => (typeof s.kind === "function" ? s.kind(c) : s.kind);
+
+/** Whether a step reads the PQC session key. The keyed-hash PSI and the federated masks' seed are
+ *  the only two readers of `_sessionKey` in clientCompute, so the canvas's key bus runs to them. */
+export const consumesSessionKey = (step: Step, row: CanvasRow): boolean =>
+  step.stageId === "federated_training" || (step.stageId === "qsmpc_compute" && row.channel === "classical");
+
+/** The kinds of lane a run with this configuration draws, and whether it draws the key bus: what the
+ *  canvas's legend may list. The legend listed all five on every use case until Round 81, so the
+ *  telecom and satellite canvases explained CKKS, MPC and key lanes neither has. */
+export function drawnChannels(usecase: string, c: DiagramConfig = {}, m: M = {}): { lanes: Channel[]; keyBus: boolean } {
+  const rows = visibleSteps(usecase, c).map((s) => ({ s, row: canvasRow(usecase, s, kindOf(s, c), m, c) }));
+  const drawn = new Set(rows.filter(({ row }) => !row.wide && row.channel !== "none"
+    && (row.many || (row.a && row.b && row.flow))).map(({ row }) => row.channel));
+  return {
+    lanes: (["classical", "quantum", "fhe", "mpc"] as Channel[]).filter((ch) => drawn.has(ch)),
+    keyBus: rows.some(({ s }) => s.stageId === "pqc_handshake") && rows.some(({ s, row }) => consumesSessionKey(s, row)),
+  };
+}
+
+/** The canvas's caption: how the parties meet, the inference split where the run performs one, and
+ *  what is simulated. One text served every use case until Round 81, and on telecom and satellite it
+ *  described an MPC-FHE inference neither run performs. */
+export function captionOf(usecase: string, c: DiagramConfig = {}): string {
+  const spec = USECASE_SPECS[usecase];
+  if (!spec) return "";
+  const infers = visibleSteps(usecase, c).some((s) => s.stageId === "private_inference");
+  return [
+    spec.meet(c),
+    infers ? "MPC-FHE hybrid: linear layers under CKKS, the non-linear argmax as MPC, scored against QSMPC-FHE." : "",
+    pqcOnly(c) ? "This profile has no quantum channel, and the proof of concept runs in this tab."
+      : "The quantum channel is simulated, and the proof of concept runs in this tab.",
+  ].filter(Boolean).join(" ");
+}
