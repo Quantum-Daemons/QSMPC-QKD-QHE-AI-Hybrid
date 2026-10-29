@@ -7163,6 +7163,25 @@ user chose to test that.
 - **Liao, Khmelev, Jinan-1 and the held range** are checked under both statistics.
 - **The browser twin** agrees with Python to 1e-9 on every profile and block, under the default.
 
+**CI green on 508447d (six checks), then deployed (`index-BwItQgIl.js`, the bundle a local
+client-only build of the same commit produced) and walked in the user's Chrome.**
+- **Satellite.** The Parameters panel offers "Finite-key statistics" with its three options, the
+  tighter of the two selected.
+  - The pass peaking at 800 km carries 139,200 bits, and the run reports `qkd_fk_deviation` tighter.
+    The key's facts row reads "Lim et al. 2014 (vacuum + weak decoy), eps_sec 1e-9, the tighter of
+    Chernoff and Hoeffding per count".
+  - Switched to Hoeffding and restarted, the same pass reads 91,475 bits, and the facts row says
+    "Hoeffding, as published". The selection was then restored.
+- **The Network tab.** Liao's pass as one block is 241.1 kbit, named with its statistics, and the
+  comparison row reads 226,056 against Liao's 300,939, -24.9 percent.
+- **Telecom.** 5,214,327 secure bits for the 1e7 block under the default.
+- **Storage, console and tab.** Nothing was stored, the console was clean, and the tab was closed.
+- **The page scan against the deploy.** All thirteen views passed in both fonts.
+
+**The README's screenshots were taken from the deploy and compared.** The satellite Network tab, the
+one page whose content this round changed, is committed. The rest are as they were: four came out
+byte-identical, and the others differ only in measured timings.
+
 BUSINESS DOC RECONCILED Round 82. The out-of-repo document is brought level with this round. Its content
 is not quoted here, in the checklist, or in any commit - only the fact of the reconciliation, which is
 what gate 16 reads.
