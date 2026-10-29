@@ -7057,3 +7057,112 @@ client-only build produced) and walked in the user's Chrome.**
 BUSINESS DOC RECONCILED Round 81. The out-of-repo document is brought level with this round. Its content
 is not quoted here, in the checklist, or in any commit - only the fact of the reconciliation, which is
 what gate 16 reads.
+
+## Round 82: the finite key's statistics, and a third error in the one-decoy bound
+
+**Round 81 closed on `main` first.**
+- **Merge.** CI was green on 72f5bea (six checks), and the user approved merging after CI. PR #77
+  merged as 7f82ae3, a merge commit whose tree is identical to 72f5bea's.
+- **Deploy.** `deploy_demo.sh --return-to-main` put the box on `main` at 7f82ae3, serving
+  `index-aqLCns1S.js`, the bundle walked on the branch.
+- **Walked in the user's Chrome.** The E2E tabs ran to 9 of 9, and the satellite legend and caption
+  read as on the branch. The console was clean, nothing was stored, and the tab was closed.
+- **The README on `main`** serves its eleven screenshots byte for byte.
+
+**The question this round tested.** Round 79 found the model's satellite key 0.55 of Liao et al.
+2017's published key on the same pass and 0.56 of Khmelev et al. 2023's on theirs. It read the same
+fraction twice as the gap being the analysis: Hoeffding statistics here, Chernoff bounds there. The
+user chose to test that.
+
+**The papers, read on the rendered pages.**
+- **Khmelev et al.** cite Zhang, Zhao, Razavi and Ma, Phys. Rev. A 95, 012333 (2017), for their
+  Chernoff bounds.
+- **Yin, Zhou, Gu, Xie, Lu and Chen, Sci. Rep. 10, 14312 (2020)**, give closed forms for the
+  expectation of a sum of independent Bernoulli variables from its observed value, with
+  beta = ln(1/eps):
+  - Eq. (9): `x + beta + sqrt(2 beta x + beta^2)`;
+  - Eq. (10): `x - beta/2 - sqrt(2 beta x + beta^2/4)`.
+- **Yin et al. on Zhang et al.** They call Zhang et al.'s inverse solution not rigorous, because it
+  puts the observed value where the bound needs the expectation. On these passes the two differ by
+  under 0.3 percent of the key.
+
+**What was measured, and what it found.**
+- **Neither statistics is tighter everywhere.** Chernoff's deviation, about sqrt(2 beta x), beats
+  Hoeffding's sqrt(n beta / 2) on the basis total only for a count under a quarter of its basis.
+  - The satellite's weak decoy (6 percent of detections) and vacuum gain.
+  - The fibre's 1-decoy signal and decoy, about 70 and 30 percent, lose. Chernoff alone moved the
+    fibre's threshold from 5.35e6 pulses to 5.71e6.
+- **The user's choices.** First: Chernoff by default for both protocols. Then, shown that evidence:
+  the tighter of the two per count, each at eps/2, kept. That is a union bound, so each concentration
+  step still fails with probability at most eps, and the budgets (Lim's 21 terms, Rusca's (A24)) are
+  unchanged.
+- **The tighter of the two is the tightest of the three on every block measured.**
+
+  | Block | Hoeffding | Chernoff | Tighter (default) |
+  |---|---|---|---|
+  | Fibre threshold (pulses) | 5.35e6 | 5.71e6 | 3.60e6 |
+  | Fibre key at the default n_Z = 1e7 (bits) | 5,174,318 | 5,189,863 | 5,214,327 |
+  | Liao's pass, share of the published key | 0.546 | 0.751 | 0.751 |
+  | Khmelev's session, share of the published key | 0.564 | 0.692 | 0.692 |
+
+- **The inference, tested.**
+  - The statistics account for about half of each gap.
+  - The two fractions part, 0.75 and 0.69, so what remains is not one shared cause. It is not
+    error correction: Khmelev's f_EC of 1.44 would lower this side's key, not raise it.
+  - Jinan-1's four passes move from 1.14 to 2.38 times their published keys to 1.35 to 2.62. Those
+    keys were computed on 500-kbit blocks, which a whole pass's key exceeds.
+- **A pass and a held range.** The default 800 km pass carries 139,200 bits (91,475 under
+  Hoeffding). Ten seconds held at that range carry 1,657 bits, and a key needs 7 s, where Hoeffding
+  needed 33.
+
+**A third transcription error in the one-decoy bound, found reading (A16) at 300 dpi.**
+- **What the paper prints.** `s^u_{Z,0} = 2 ( tau0 (e^k/p_k)(m_{Z,k} + delta(m_Z)) + delta(n_Z) )`,
+  with tau0 on the error term only, as (A13)-(A15) derive it.
+- **What the code had.** tau0 outside the whole bracket, in Python and in the browser twin. That
+  scaled delta(n_Z) down by about a fifth: too small a vacuum bound, too large a single-photon
+  bound, so the unsafe direction, unlike the two errors Round 79 found.
+- **What correcting it moved, under Hoeffding.**
+  - The fibre threshold: 4.78e6 to 5.35e6 pulses.
+  - The 1-decoy bound on Liao's pulses: 152,598 to 140,400 bits, so the vacuum adds 17 percent, not 8.
+  - Rusca's Table I: the 26 dB row under the paper's dead time reads 1.5 percent below, where it
+    matched to a few parts in a thousand; the 46 dB row at n_Z = 1e7 reads 5.5 percent below.
+- **The table may have been computed the old way.** The bound follows the printed form, the safe
+  one, and the test's bands say what it gives.
+- **A test that recomputes it.** `test_a16_is_as_the_paper_prints_it` recomputes the single-photon
+  bound from the counts by (A16)-(A17) as printed, independently, and shows the old placement gives a
+  different one.
+
+**The intensities stayed.**
+- Under the default statistics, the shipped pair (0.3416, 0.1417) is 9 percent above the
+  two-parameter optimum: mu 0.399, nu 0.098, at 3.31e6.
+- Under Hoeffding it is 2.3 percent above.
+- The shipped 2e7 block clears either threshold, 5.6x and 3.7x. Moving the pair would move every
+  asymptotic figure the pages and documents quote, so it is recorded and offered, not done.
+
+**Where it shows.**
+- **One control, "Finite-key statistics", for the fibre and the satellite.** Its run parameter is
+  `fk_deviation` and its config key `QKDConfig.finite_key_deviation`.
+- **The run names its statistics.** Both pipelines emit `qkd_fk_deviation`. The key's facts row and
+  the satellite note name the statistics, and the Network tab's finite key does too.
+- **The Network tab's comparison paragraph** said the bound gives "the same fraction, 0.56" on
+  Khmelev's session. It now gives both statistics' figures.
+- **The report, the README, the models document and the references** carry the new figures and
+  both papers.
+
+**Gates.**
+- **`tests/test_the_finite_key_statistics_are_yin_2020s.py`, new:**
+  - the closed forms, at one point by hand;
+  - that they hold: 20,000 draws of sums of Bernoulli variables with unequal probabilities, at
+    three means, miss the expectation in under eps of draws each way;
+  - where each statistics wins;
+  - the default;
+  - the tighter of the two never worse than either alone;
+  - (A16) as printed.
+- **Rusca's Table I and Lim's two-decoy rows** are checked under the Hoeffding statistics they were
+  computed with.
+- **Liao, Khmelev, Jinan-1 and the held range** are checked under both statistics.
+- **The browser twin** agrees with Python to 1e-9 on every profile and block, under the default.
+
+BUSINESS DOC RECONCILED Round 82. The out-of-repo document is brought level with this round. Its content
+is not quoted here, in the checklist, or in any commit - only the fact of the reconciliation, which is
+what gate 16 reads.

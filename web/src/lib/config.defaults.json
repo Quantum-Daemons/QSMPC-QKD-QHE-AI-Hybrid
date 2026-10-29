@@ -2402,6 +2402,7 @@
     "finite_key_block": "pa_bits",
     "finite_key_block_pa_bits": 10000000.0,
     "finite_key_block_seconds": 1.0,
+    "finite_key_deviation": "tighter",
     "finite_key_eps_sec": 1e-09,
     "free_space_atmospheric_db": 5.5,
     "free_space_atmospheric_ref_km": 1200.0,

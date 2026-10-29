@@ -448,7 +448,9 @@ export default function ParameterPanel({ run }: { run: Run }) {
                   <option key={v} value={String(v)}>{v.toExponential(0)}{v === 1e-9 ? " (Rusca et al. 2018)" : ""}</option>
                 ))}
               </select>
-            </div></>);
+            </div>
+            <StatisticsSelect id="pp-qkdstat" value={String(p.fk_deviation)} dim={e91} why={why}
+              onChange={(v) => setParams({ ...params, fk_deviation: v })} /></>);
             })()}
             {/* THE KEY BLOCK (Round 79). The key is the finite-key length of a block of link time;
                 which block is the choice the published practice settles (QKDConfig.free_space_block). */}
@@ -477,7 +479,9 @@ export default function ParameterPanel({ run }: { run: Run }) {
                   <option key={v} value={String(v)}>{v.toExponential(0)}{v === 1e-9 ? " (Liao et al. 2017)" : ""}</option>
                 ))}
               </select>
-            </div></>);
+            </div>
+            <StatisticsSelect id="pp-satstat" value={String(p.fk_deviation)} dim={e91} why={why}
+              onChange={(v) => setParams({ ...params, fk_deviation: v })} /></>);
             })()}
             {!fibreQkd && (
             <div style={{ minWidth: 160, flex: "1 1 160px" }}>
@@ -507,6 +511,25 @@ export default function ParameterPanel({ run }: { run: Run }) {
           </>
         ))}
       </div>
+    </div>
+  );
+}
+
+/** The statistics of every finite key (Round 82, the user's choice), one control for the fibre and
+ *  the satellite: `QKDConfig.finite_key_deviation`. */
+function StatisticsSelect({ id, value, dim, why, onChange }: {
+  id: string; value: string; dim: boolean; why: string; onChange: (v: string) => void;
+}) {
+  return (
+    <div style={{ minWidth: 180, flex: "1 1 180px" }}>
+      <label className="muted" htmlFor={id} style={{ fontSize: 12, opacity: dim ? 0.45 : 1 }}
+        title={why + "How each count's expectation is bounded from what was observed. The published bounds (Lim et al. 2014, Rusca et al. 2018) move every count by the Hoeffding deviation of its basis total; Yin et al. 2020's variant of the Chernoff bound moves each by its own, far less for the small decoy and vacuum counts and more for counts over a quarter of their basis. The default bounds each both ways at half the failure probability and keeps the tighter: a union bound, the same security budget."}>Finite-key statistics</label>
+      <select id={id} name="fk_deviation" value={value} style={{ width: "100%", opacity: dim ? 0.45 : 1 }}
+        aria-disabled={dim ? true : undefined} onChange={(e) => onChange(e.target.value)}>
+        <option value="tighter">tighter of the two</option>
+        <option value="chernoff">Chernoff (Yin 2020)</option>
+        <option value="hoeffding">Hoeffding (published)</option>
+      </select>
     </div>
   );
 }
