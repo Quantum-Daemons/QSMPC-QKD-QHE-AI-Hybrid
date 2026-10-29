@@ -114,6 +114,10 @@ code, .mono { font-family: ui-monospace, "SFMono-Regular", Menlo, monospace; }
   .mini-table, table { display: block; overflow-x: auto; max-width: 100%; }
 }
 
+/* A slider at width 100% keeps Chrome's default 2 px side margins, so it is 4 px wider than the box
+ * it sits in: the QCNN figure measured 4 px too wide for that reason (Round 80). */
+input[type="range"] { margin-left: 0; margin-right: 0; }
+
 /* WCAG 2.2 SC 2.5.8 Target Size (Minimum) is 24x24 CSS px. The browser default checkbox is 13x13,
  * and no rule here overrode it, so every toggle on the page failed. Sized rather than merely
  * padded, so the hit area and the visible control agree. */
@@ -178,7 +182,7 @@ select, input {
 }
 
 table { width: 100%; border-collapse: collapse; font-size: 13px; }
-th, td { text-align: left; padding: 9px 10px; border-bottom: 1px solid var(--border); }
+th, td { text-align: left; padding: 9px var(--cell-pad-x, 10px); border-bottom: 1px solid var(--border); }
 th { color: var(--muted); font-weight: 600; }
 tr:hover td { background: var(--bg-2); }
 
@@ -342,7 +346,9 @@ hr { border: none; border-top: 1px solid var(--border); margin: 24px 0; }
 .stage-badge.notional { color: var(--accent); border-color: var(--accent); }
 .stage-badge.simulated { color: var(--quantum); border-color: var(--quantum); }
 .stage-badge.seeded { color: var(--warn); border-color: var(--warn); }
-.facts-table th, .facts-table td { padding: 7px 8px; vertical-align: top; }
+/* A wide table may narrow its cells with --cell-pad-x (Round 80: the QCNN table's nine columns, the
+   benchmark's eleven). */
+.facts-table th, .facts-table td { padding: 7px var(--cell-pad-x, 8px); vertical-align: top; }
 .facts-table td:first-child { white-space: nowrap; font-weight: 600; }
 .lead { font-size: 15px; line-height: 1.6; color: var(--text); max-width: 860px; }
 .figure-note { font-size: 11.5px; color: var(--muted); margin-top: 6px; }

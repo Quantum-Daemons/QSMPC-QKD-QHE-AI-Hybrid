@@ -1,5 +1,15 @@
 // Live event log + metrics table + ML-DSA signature note. Shared by Orchestration + use-case pages.
+import { Fragment } from "react";
+
 import type { PipelineEvent } from "../lib/api";
+
+/** A metric's name, breakable after each underscore (Round 80). The longest, such as
+ *  "encrypted_tier_within_operational_window", are 268 px of unbroken text, and with them the table
+ *  was 5 px wider than its card, which scrolled sideways. `<wbr>`, not a zero-width space, so a
+ *  name copied from the table is the name. */
+const breakable = (k: string) => k.split("_").map((part, i, all) => (
+  <Fragment key={i}>{part}{i < all.length - 1 && <>_<wbr /></>}</Fragment>
+));
 
 export default function RunMonitor({
   events, metrics, signature, logRef,
@@ -33,7 +43,8 @@ export default function RunMonitor({
         <table>
           <tbody>
             {Object.entries(metrics).map(([k, v]) => (
-              <tr key={k}><td className="muted">{k}</td><td className="mono">{String(v)}</td></tr>
+              <tr key={k}><td className="muted">{breakable(k)}</td>
+                <td className="mono" style={{ overflowWrap: "anywhere" }}>{String(v)}</td></tr>
             ))}
             {/* `colSpan={2}`. Every other row in this table has two cells; this one had one, so a
                 screen reader announced a row with a missing second column - it reads as data that

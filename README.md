@@ -348,7 +348,9 @@ flowchart LR
 
 The images are taken from a local client-only build by
 [`web/scripts/capture_screenshots.mjs`](web/scripts/capture_screenshots.mjs), so they can be
-regenerated with each change.
+regenerated with each change. Every page is also scanned after its run, locally and in CI, for text
+over text, out of its box or cut off by its chart, and for content wider than its box
+([`web/scripts/check_text_overlap.mjs`](web/scripts/check_text_overlap.mjs)).
 
 ---
 
@@ -400,13 +402,13 @@ flowchart TB
   subgraph LOC["Local workstation"]
     direction LR
     PY["Python 3.12 venv: pytest suite, cross-language tests"] --> CL["scripts/ci_local.sh: 18 gates"]
-    WEB["Web checks: tsc, vite build, node checks"] --> CL
-    CL --> REP["make report: the technical report"]
+    WEB["Web checks: tsc, vite build, node checks, text layout"] --> CL
+    CL --> REP["make report: the technical report, layout checked"]
     SHOT["Headless Chrome: README screenshots"]
   end
   subgraph GH["GitHub"]
     direction LR
-    PR["Pull request"] --> ACT["GitHub Actions: Python, web typecheck and build, repository guards"]
+    PR["Pull request"] --> ACT["GitHub Actions: Python, web typecheck, build and text layout, repository guards"]
     AUD["Audit workflow: npm audit, cargo-deny"]
   end
   subgraph DEMO["Demo host"]
@@ -422,7 +424,8 @@ flowchart TB
 Every round is recorded in [`docs/deliverable-verification.md`](docs/deliverable-verification.md)
 (what was checked and found) and [`docs/verification-log.md`](docs/verification-log.md) (what it
 taught); `make report` rebuilds the technical report,
-[`report/technical-report.pdf`](report/technical-report.pdf).
+[`report/technical-report.pdf`](report/technical-report.pdf), and fails on a figure with overlapping
+text or a line set wider than its box.
 
 ---
 
