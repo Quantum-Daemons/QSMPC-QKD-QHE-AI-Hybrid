@@ -66,14 +66,20 @@ export async function downloadSVGasPNG(svg: SVGSVGElement, filename = "chart.png
 }
 
 // Records frames of a DOM node and encodes a high-quality animated GIF.
-// Used to capture the orchestration DAG animating through its stages.
+// Used to capture the run's figure animating through its stages.
+//
+// The node is looked up at each capture (Round 81). The E2E page shows its figure in tabs, and only
+// the shown tab is in the document, so a node fixed when the run started was detached as soon as the
+// visitor switched views. Each frame is of the figure on show, and a frame is skipped while none is.
 export class FrameRecorder {
   private frames: HTMLCanvasElement[] = [];
-  constructor(private node: HTMLElement) {}
+  constructor(private node: () => HTMLElement | null) {}
 
   async capture(): Promise<void> {
+    const node = this.node();
+    if (!node || !node.isConnected || node.offsetWidth === 0) return;
     // pixelRatio 1.5 keeps GIF size sane while staying crisp
-    const canvas = await toCanvas(this.node, { pixelRatio: 1.5, backgroundColor: "#0a0e1a", cacheBust: true });
+    const canvas = await toCanvas(node, { pixelRatio: 1.5, backgroundColor: "#0a0e1a", cacheBust: true });
     this.frames.push(canvas);
   }
 
@@ -83,13 +89,27 @@ export class FrameRecorder {
 
   async encodeGIF(filename = "orchestration.gif", delayMs = 600): Promise<void> {
     if (this.frames.length === 0) return;
-    const w = this.frames[0].width;
-    const h = this.frames[0].height;
+    // As large as the largest frame, each frame drawn at its top left: a GIF has one size, and the
+    // two E2E views differ in height, so a run that switched views mid-way has frames of both.
+    const w = Math.max(...this.frames.map((f) => f.width));
+    const h = Math.max(...this.frames.map((f) => f.height));
     const gif = new GIF({ workers: 2, quality: 1, width: w, height: h, workerScript: gifWorkerUrl });
-    for (const f of this.frames) gif.addFrame(f, { delay: delayMs, copy: true });
+    for (const f of this.frames) gif.addFrame(f.width === w && f.height === h ? f : padded(f, w, h), { delay: delayMs, copy: true });
     await new Promise<void>((resolve) => {
       gif.on("finished", (blob: Blob) => { downloadBlob(blob, filename); resolve(); });
       gif.render();
     });
   }
+}
+
+/** A frame on a w x h canvas of the page background, at the top left. */
+function padded(frame: HTMLCanvasElement, w: number, h: number): HTMLCanvasElement {
+  const c = document.createElement("canvas");
+  c.width = w;
+  c.height = h;
+  const ctx = c.getContext("2d")!;
+  ctx.fillStyle = "#0a0e1a";
+  ctx.fillRect(0, 0, w, h);
+  ctx.drawImage(frame, 0, 0);
+  return c;
 }

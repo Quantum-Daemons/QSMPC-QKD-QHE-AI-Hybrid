@@ -18,7 +18,14 @@
  *      finance, the hospital's and the cohort's data on medical and genomics;
  *   5. a PQC-only profile draws no quantum lane: the key stages are dropped, and the satellite's
  *      telemetry, which the browser then sends under the session key with QSDC skipped, is drawn
- *      as the classical exchange it is. Both figures drew a quantum QSDC arrow there until Round 80.
+ *      as the classical exchange it is. Both figures drew a quantum QSDC arrow there until Round 80;
+ *   6. the legend lists the lanes the canvas draws and no others, and the key bus exactly where a
+ *      stage reads the session key (the PSI, the federated masks). Until Round 81 it listed all five
+ *      everywhere, so telecom and satellite explained CKKS, MPC and key lanes neither draws;
+ *   7. the caption says what the run does: the MPC-FHE sentence only where a private inference
+ *      runs, no WAN between a satellite and its ground station, and no simulated quantum channel
+ *      under a profile that has none. One caption served all five until Round 81;
+ *   8. every use case the E2E page's selector offers has a canvas, the generic demo included.
  *
  * HOW IT LOADS THE TS: esbuild bundles the module to a temp ESM file, as check_calibration.mjs does.
  *
@@ -37,8 +44,9 @@ const check = (name, ok, detail) => { if (!ok) failures.push(`${name}: ${detail}
 
 const dir = mkdtempSync(join(tmpdir(), "qsh-canvas-"));
 const entry = join(dir, "entry.ts");
-writeFileSync(entry, `export { USECASE_SPECS, canvasRow, visibleSteps, kindOf } from ${JSON.stringify(MODULE)};\n`
-  + `export { appConfig } from ${JSON.stringify(join(WEB, "src/lib/config"))};\n`);
+writeFileSync(entry, `export { USECASE_SPECS, canvasRow, visibleSteps, kindOf, drawnChannels, captionOf } from ${JSON.stringify(MODULE)};\n`
+  + `export { appConfig } from ${JSON.stringify(join(WEB, "src/lib/config"))};\n`
+  + `export { USECASES } from ${JSON.stringify(join(WEB, "src/lib/useCases"))};\n`);
 const out = join(dir, "bundle.mjs");
 execFileSync("npx", ["esbuild", entry, "--bundle", "--format=esm", "--platform=node",
                      `--outfile=${out}`, "--log-level=error"], { cwd: WEB, stdio: "pipe" });
@@ -105,10 +113,47 @@ for (const usecase of Object.keys(m.USECASE_SPECS)) {
   check("pqc-only", q.length === 0, `${usecase} still draws ${q.map((r) => r.s.stageId).join(", ")} under a PQC-only profile`);
 }
 
+// 6. The legend: the lanes drawn, and the key bus where the session key is read.
+const legend = (usecase, config = {}) => m.drawnChannels(usecase, config);
+for (const usecase of ["telecom_ids", "satellite_comms"]) {
+  const l = legend(usecase);
+  check("legend", !l.lanes.includes("fhe") && !l.lanes.includes("mpc") && !l.keyBus,
+    `${usecase}'s legend lists ${[...l.lanes, ...(l.keyBus ? ["key bus"] : [])].join(", ")}; it draws no CKKS, MPC or key lane`);
+}
+for (const usecase of Object.keys(m.USECASE_SPECS)) {
+  const l = legend(usecase);
+  const readsKey = rowsOf(usecase).some(({ s, row }) => s.stageId === "federated_training"
+    || (s.stageId === "qsmpc_compute" && row.channel === "classical"));
+  check("legend", l.keyBus === readsKey,
+    `${usecase}'s legend ${l.keyBus ? "lists" : "omits"} the key bus, and ${readsKey ? "a" : "no"} stage reads the session key`);
+  check("legend", !legend(usecase, { qkd: "pqc-only" }).lanes.includes("quantum"),
+    `${usecase}'s legend lists a quantum lane under a PQC-only profile`);
+}
+check("legend", legend("genomics").keyBus === false && legend("genomics", { qsmpcOp: "psi" }).keyBus === true,
+  "genomics' key bus does not follow its QSMPC op: none for the secure sum, one for the PSI");
+
+// 7. The caption.
+for (const usecase of Object.keys(m.USECASE_SPECS)) {
+  const infers = rowsOf(usecase).some(({ s }) => s.stageId === "private_inference");
+  const cap = m.captionOf(usecase);
+  check("caption", /MPC-FHE hybrid/.test(cap) === infers,
+    `${usecase}'s caption ${infers ? "omits" : "claims"} the MPC-FHE inference, which its run ${infers ? "performs" : "does not perform"}`);
+  check("caption", !/quantum channel is simulated/.test(m.captionOf(usecase, { qkd: "pqc-only" })),
+    `${usecase}'s caption describes a simulated quantum channel under a PQC-only profile`);
+}
+check("caption", !/WAN/.test(m.captionOf("satellite_comms")) && !/WAN/.test(m.captionOf("satellite_comms", { qkd: "pqc-only" })),
+  "the satellite's caption puts it and its ground station on a WAN");
+
+// 8. A canvas for every entry in the E2E page's selector (pages/Orchestration.tsx: the use cases,
+//    then the generic demo).
+for (const id of [...m.USECASES.map((u) => u.id), "demo"])
+  check("e2e", id in m.USECASE_SPECS, `the E2E selector offers ${id}, and the canvas has no spec for it`);
+
 if (failures.length) {
   console.error("check:use-case-canvas FAILED");
   for (const f of failures) console.error(`  - ${f}`);
   process.exit(1);
 }
 console.log(`check:use-case-canvas OK  ${Object.keys(m.USECASE_SPECS).length} use cases: every stage placed, the downlink `
-  + "drawn down, the run's parties counted, the inference client on its side, no quantum lane under PQC-only");
+  + "drawn down, the run's parties counted, the inference client on its side, no quantum lane under PQC-only, "
+  + "a legend of the lanes drawn, a caption of what runs, a canvas for every E2E selector entry");
