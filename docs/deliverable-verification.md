@@ -7032,6 +7032,28 @@ canvas draws, in `src/lib/useCaseFlows.ts`:
 - **The GIF export after a mid-run switch to Stage order and back** encodes to a GIF89a of
   1417 x 1864 (checked in the page, without downloading anything).
 
+**CI green on fdee674 (six checks), then deployed (`index-aqLCns1S.js`, the bundle the local
+client-only build produced) and walked in the user's Chrome.**
+- **The E2E page.** It opens on the Architecture tab, with a "Two views of the run" key point and an
+  "Architecture (PNG, hi-DPI)" button. A finance run reached 9 of 9 stages. Switched to Stage order
+  mid-run, the graph showed the stage then running, and the canvas carried on after switching back.
+- **The demo.** `?usecase=demo` drew Party A and Party B with their roles and ran 8 of 8 stages, none
+  failed, with the five-entry legend its PSI earns.
+- **Telecom and satellite.** Each legend reads "classical" and "quantum", with captions of their own.
+  Satellite under PQC-only reads "classical" alone and says the profile has no quantum channel.
+- **Genomics.** The legend carries four entries, with no key bus.
+- **Storage.** Nothing was stored: local storage was empty, and the key source was back to its
+  default after a reload.
+- **Console and tab.** The console was clean on every page, and the tab was closed.
+- **The page scan against the deploy.** All thirteen views passed in both fonts at 1280 x 720.
+
+**The README's screenshots were taken from the deploy after the walk, and read.**
+- **Changed by this round, committed:** the E2E page, now on its Architecture tab, and the
+  genomics, telecom and satellite pages, whose legends and captions changed.
+- **Left as they were:**
+  - finance, medical and validations, which differ only in measured timings;
+  - four pages that came out byte-identical.
+
 BUSINESS DOC RECONCILED Round 81. The out-of-repo document is brought level with this round. Its content
 is not quoted here, in the checklist, or in any commit - only the fact of the reconciliation, which is
 what gate 16 reads.
