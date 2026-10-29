@@ -21,7 +21,7 @@ import {
 import "@xyflow/react/dist/style.css";
 
 import {
-  USECASE_SPECS, canvasRow, kindOf, pqcOnly, qkdName, visibleSteps,
+  USECASE_SPECS, canvasRow, captionOf, consumesSessionKey, drawnChannels, kindOf, qkdName, visibleSteps,
   type CanvasRow, type Channel, type DiagramConfig, type Flow, type Step,
 } from "../lib/useCaseFlows";
 
@@ -53,6 +53,10 @@ const COLOR: Record<Channel, string> = {
 const FAILED = "#ff8f6b", PENDING = "#46506a", KEY = "#36d399";
 const DASH: Partial<Record<Channel, string>> = { quantum: "7 4", mpc: "3 3" };
 const MARK: Record<Status, string> = { idle: "", pending: "", running: "running", done: "done", failed: "failed" };
+const LEGEND: Record<Channel, string> = {
+  classical: "classical, under the session key", quantum: "quantum, simulated", fhe: "CKKS ciphertext",
+  mpc: "MPC secret shares", none: "",
+};
 
 /** A step's label shortened for its lane: its first two parts, or its first when two run long. The
  *  stage list under the canvas carries all of it. */
@@ -230,7 +234,7 @@ function build(usecase: string, steps: Step[], status: (s: Step) => Status, metr
       nodes.push(sized<WideData>({ id: `${id}note`, type: "wide",
         position: { x: COMP_X_A, y: y + h + 4 }, data: { text: `each ${row.many.noun}: ${row.a ?? ""}`, status: st, variant: "note" },
         draggable: false, selectable: false }, COMP_W, 34));
-      if (step.stageId === "federated_training") keyUsers.push({ a: `${id}m0`, b: `${id}b`, status: st });
+      if (consumesSessionKey(step, row)) keyUsers.push({ a: `${id}m0`, b: `${id}b`, status: st });
       y += h + 38 + ROW_GAP;
       return;
     }
@@ -259,7 +263,7 @@ function build(usecase: string, steps: Step[], status: (s: Step) => Status, metr
         data: { text: `Eve · intercept-resend ${eve}` }, draggable: false, selectable: false }, 210, 24));
     }
     if (step.stageId === "pqc_handshake") pqc = { a: row.a ? `${id}a` : undefined, b: row.b ? `${id}b` : undefined };
-    if (step.stageId === "qsmpc_compute" && row.channel === "classical") keyUsers.push({ a: `${id}a`, b: `${id}b`, status: st });
+    if (consumesSessionKey(step, row)) keyUsers.push({ a: `${id}a`, b: `${id}b`, status: st });
     y += COMP_H + ROW_GAP;
   });
 
@@ -340,6 +344,7 @@ export default function UseCaseCanvas({
     () => build(usecase, steps, status, metrics, config, motion),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [usecase, steps, activeStage, doneStages, metrics, config, motion]);
+  const legend = useMemo(() => drawnChannels(usecase, config, metrics), [usecase, config, metrics]);
   if (!spec) return null;
 
   const zoom = Math.max(MIN_SCALE, Math.min(1, (frameW ?? W) / W));
@@ -371,12 +376,12 @@ export default function UseCaseCanvas({
           </ReactFlowProvider>}
         </div>
       </div>
+      {/* Only what this canvas draws (drawnChannels). */}
       <div className="ucc-legend" aria-label="Channels">
-        <span><i className="ucc-sw ucc-sw-classical" /> classical, under the session key</span>
-        {!pqcOnly(config) && <span><i className="ucc-sw ucc-sw-quantum" /> quantum, simulated ({qkdName(config)})</span>}
-        <span><i className="ucc-sw ucc-sw-fhe" /> CKKS ciphertext</span>
-        <span><i className="ucc-sw ucc-sw-mpc" /> MPC secret shares</span>
-        <span><i className="ucc-sw ucc-sw-key" /> session key to its consumers</span>
+        {legend.lanes.map((ch) => (
+          <span key={ch}><i className={`ucc-sw ucc-sw-${ch}`} /> {ch === "quantum" ? `quantum, simulated (${qkdName(config)})` : LEGEND[ch]}</span>
+        ))}
+        {legend.keyBus && <span><i className="ucc-sw ucc-sw-key" /> session key to its consumers</span>}
       </div>
       {/* Every stage's label in full, with the run's values: the sequence diagram's labels, which the
           canvas shortens to fit its lanes. */}
@@ -392,11 +397,7 @@ export default function UseCaseCanvas({
           );
         })}
       </ol>
-      <figcaption className="figure-note">
-        No trusted third party and no raw data shared: {spec.a.name} and {spec.b.name} meet over a WAN under
-        the session key. MPC-FHE hybrid: linear layers under CKKS, the non-linear argmax as MPC, scored
-        against QSMPC-FHE. The quantum channel is simulated, and the proof of concept runs in this tab.
-      </figcaption>
+      <figcaption className="figure-note">{captionOf(usecase, config)}</figcaption>
     </figure>
   );
 }

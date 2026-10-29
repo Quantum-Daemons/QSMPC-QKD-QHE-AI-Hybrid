@@ -5,19 +5,25 @@ import { useId, useRef, useState, type KeyboardEvent, type ReactNode } from "rea
  * `tabpanel`, arrow keys moving between tabs (Home and End to the ends), focus following selection.
  * Added in Round 77 for the satellite card, whose Downlink and Network views no longer fit one panel.
  * Inactive panels are not rendered, so a heavy view (a 3D scene, a pass integration) costs nothing
- * until its tab is opened.
+ * until its tab is opened. `onChange` tells the page which tab is shown: the E2E page's export button
+ * names the figure it will save (Round 81).
  */
-export default function Tabs({ tabs, label, initial = 0 }: {
+export default function Tabs({ tabs, label, initial = 0, onChange }: {
   tabs: { id: string; title: string; content: () => ReactNode }[];
   label: string;
   initial?: number;
+  onChange?: (id: string) => void;
 }) {
   const [active, setActive] = useState(initial);
   const base = useId();
   const refs = useRef<(HTMLButtonElement | null)[]>([]);
+  const select = (i: number) => {
+    setActive(i);
+    onChange?.(tabs[i].id);
+  };
   const move = (i: number) => {
     const next = (i + tabs.length) % tabs.length;
-    setActive(next);
+    select(next);
     refs.current[next]?.focus();
   };
   const onKey = (e: KeyboardEvent<HTMLButtonElement>, i: number) => {
@@ -33,7 +39,7 @@ export default function Tabs({ tabs, label, initial = 0 }: {
           <button key={t.id} type="button" role="tab" id={`${base}-tab-${t.id}`}
             aria-selected={i === active} aria-controls={`${base}-panel-${t.id}`} tabIndex={i === active ? 0 : -1}
             className={`tab${i === active ? " tab-active" : ""}`} ref={(el) => { refs.current[i] = el; }}
-            onClick={() => setActive(i)} onKeyDown={(e) => onKey(e, i)}>
+            onClick={() => select(i)} onKeyDown={(e) => onKey(e, i)}>
             {t.title}
           </button>
         ))}
