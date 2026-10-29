@@ -2,7 +2,7 @@
 // the per-use-case pages. Encapsulates: crypto-agility options, advanced params, the
 // Start/Stepwise/Pause/Resume/Step/Stop/Restart controls, the demo (client-side) vs backend
 // (WS) transport branch, the live event stream, metrics, signature, and GIF/PNG frame capture.
-import { useEffect, useRef, useState, type RefObject } from "react";
+import { useEffect, useMemo, useRef, useState, type RefObject } from "react";
 import { api, type PipelineEvent, streamRun } from "./api";
 import { benchCfg, dataCfg, idsCfg, qkdCfg, qrngCfg, webCfg } from "./config";
 import { FREE_SPACE } from "./quantumSim";
@@ -11,6 +11,7 @@ import { isClientDemo } from "./demoMode";
 import { setRunStatus } from "./runStatus";
 
 import { downloadCSV, downloadJSON, downloadNodePNG, FrameRecorder } from "./export";
+import type { DiagramConfig } from "./useCaseFlows";
 
 /**
  * Whether a use case runs the stage that reads a given control.
@@ -222,8 +223,9 @@ export const DEFAULT_PARAMS = makeDefaultParams();
 
 export type PipelineParams = ReturnType<typeof makeDefaultParams>;
 
-// `recordRef` is the DOM node captured for the animated-GIF export (the DAG on the
-// Orchestration page, the two-party diagram on a use-case page).
+// `recordRef` is the DOM node captured for the animated-GIF and PNG exports: the figure on show on
+// the Orchestration page (its architecture canvas or its stage-order graph), the canvas on a
+// use-case page. Read at each capture, since the E2E page swaps the figure under it.
 export function usePipelineRun(usecase: string, recordRef: RefObject<HTMLElement | null>) {
   const [opts, setOpts] = useState<{ families: Record<string, string[]>; defaults: Record<string, string> }>(
     { families: { kem: [], qkd: [], fhe: [], mpc: [], sig: [] }, defaults: {} },
@@ -375,7 +377,7 @@ export function usePipelineRun(usecase: string, recordRef: RefObject<HTMLElement
     setEvents([]); setActive(null); setDone(new Set()); setMetrics({}); setSignature(null);
     setArtifacts({}); setBenchmark(null); setState("idle"); setRunId(null);
     stageStartRef.current = {}; stageMsRef.current = {};
-    recorderRef.current = recordRef.current ? new FrameRecorder(recordRef.current) : null;
+    recorderRef.current = new FrameRecorder(() => recordRef.current);
   };
 
   // assemble the unified benchmark from the finished run (prefer the server-assembled
@@ -482,6 +484,17 @@ export function usePipelineRun(usecase: string, recordRef: RefObject<HTMLElement
   // run. Published here, once, so neither page can forget it; every in-flight state is shown,
   // "pausing" and "stopping" included, which the chip's exact-match test left out.
   const inFlight = !["idle", "done", "stopped", "error"].includes(state);
+
+  // What the run's figures draw from: the crypto-agility selections, and the Parameters-panel
+  // choices that change what crosses a lane. One object for both pages' canvases (Round 81): the
+  // protocol and the QSMPC op live in params, not in the family selects, and passing only the family
+  // is what once let an E91 run draw a BB84 arrow.
+  const diagramConfig: DiagramConfig = useMemo(() => ({
+    kem, qkd, sig, optiqkd, workload,
+    qkdProtocol: String(params.qkd_protocol ?? ""),
+    qsmpcOp: String(params.qsmpc_op ?? ""),
+    inference: String(params.inference ?? ""),
+  }), [kem, qkd, sig, optiqkd, workload, params]);
   useEffect(() => {
     setRunStatus(inFlight ? { state, active } : null);
   }, [inFlight, state, active]);
@@ -492,7 +505,7 @@ export function usePipelineRun(usecase: string, recordRef: RefObject<HTMLElement
     workload, setWorkload, qfl, setQfl, optiqkd, setOptiqkd,
     publishedModel, setPublishedModel, onnxBackend, setOnnxBackend,
     params, setParams, resetParams,
-    runId, state, events, active, done, metrics, signature, artifacts, benchmark,
+    runId, state, events, active, done, metrics, signature, artifacts, benchmark, diagramConfig,
     gifBusy, logRef, captureFrame,
     start, startStepwise, pause, resume, step, stop,
     downloadGif, downloadPng, downloadEvents, downloadMetricsCsv,
