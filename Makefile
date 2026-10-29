@@ -105,13 +105,23 @@ check-secrets: ## Assert confidential notes and the checklist are NOT tracked
 	  || (echo "FAIL: a file with a Japanese name is tracked - the confidential strategy notes are named this way!" && exit 1)
 	@! git ls-files | grep -q 'browser-verification-checklist' && echo "OK: verification checklist untracked" || (echo "FAIL: the browser verification checklist is tracked - it must never be published!" && exit 1)
 
-report: ## Regenerate the report's tables and rebuild the PDF
+report: ## Regenerate the report's tables and figures and rebuild the PDF
 	# Two pdflatex passes: the first resolves \input and writes the .aux, the second the ToC and
 	# cross-references. Run this LAST in a round - anything that edits the checklist moves
 	# \nchecklistrows and \nchecklistlines, and a PDF built before that edit is stale on arrival.
+	# The figures are drawn here too (Round 80): nothing ran build_figures.py but a hand, and the
+	# baselines figure had shown numbers from August for two months. It refuses to write a figure
+	# with overlapping text.
 	$(PY) report/build_data.py
+	$(PY) report/build_figures.py
 	cd report && pdflatex -interaction=nonstopmode technical-report.tex >/dev/null
 	cd report && pdflatex -interaction=nonstopmode technical-report.tex >/dev/null
+	@# A line set wider than its box is printed past a margin or over the next column. Nine were in
+	@# the log - a table printed off the page among them - and a warning nobody reads gates nothing.
+	@if grep -qF 'Overfull \hbox' report/technical-report.log; then \
+		grep -F -A1 'Overfull \hbox' report/technical-report.log; \
+		echo "FAIL: the report sets text wider than its box (above); fix each before shipping the PDF"; \
+		exit 1; fi
 	@echo "  report/technical-report.pdf rebuilt"
 
 clean: ## Remove caches and build artifacts

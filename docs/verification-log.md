@@ -3434,3 +3434,48 @@ is what keeps a label inside its box in a browser the author never opened.
 **Two copies of a figure need a test, or they are two figures.** The user chose TikZ and Mermaid over
 a shared renderer; the test pairs them by key and compares every label, so either copy changing alone
 fails.
+
+### Round 80, continued a third time: a warning nobody reads, and a font nobody tried
+
+**Context.** The user held the merge for text over lines in the report's Figure 1 and a label at the
+edge of its box in Figure 2. The user asked for the same faults to be looked for everywhere, and for
+the look to become a re-check.
+
+**A warning nobody reads gates nothing.** The LaTeX log said "Overfull \hbox" nine times, a table 393
+pt off the page among them, for as long as the report has been built. The build exited zero and its
+output went to /dev/null. A warning becomes a check only when something fails on it, and
+`make report` now fails on this one.
+
+**A figure no command draws is a figure from the day someone last drew it.** The baselines figure
+carried August's numbers for two months because only a hand ran its script. Now the build draws it,
+and its inputs are in the staleness gate. Current figures are something the build guarantees, not
+something a reader assumes.
+
+**The first font is a sample of one.** The scan passed every page in the font this workstation
+resolves `system-ui` to. In DejaVu Sans, the default on the CI runner and on many Linux desktops,
+three labels failed. One was on a chart fixed earlier this same round by widening an axis. Widening a
+box to fit one font moves the failure to the next font. Taking the unit off the tick, and keeping
+margins sized for the widest common font, removed the dependence. Running the gate in two fonts,
+locally and on the runner, is cheaper than guessing the visitor's.
+
+**A check with no rule for a shape cannot see text over it.** The scan compared text with text and
+text with its box. A title running into a badge dot was neither. Measuring the boxes' spare room
+directly found it, and the scan did not. The scan gained the rule, and was then run on the build that
+had the fault, where it reported it. When a measurement outside a gate finds what the gate missed,
+the gate gets the rule and is seeded with that fault.
+
+**A seed that never reaches the rule tests a different rule.** The first seeds for the Mermaid
+diamond check shrank whole shapes, so the bounding-box rule fired first and the diamond rule never
+ran. The CSS transform also replaced each diamond's own translate. Only narrowing a diamond by its
+points, its text still inside the bounding box, exercised the rule the seed was for.
+
+**A new rule is run first on the fault that prompted it.** The box-clearance rule passed every page,
+including the label it was written for. It read a computed stroke width of "1.6px" with a unary plus,
+got NaN, and so treated every box as unstroked. A rule that finds nothing on its own motivating case
+is broken until shown otherwise.
+
+**A failure path makes claims too.** When the request for a sample failed, the code returned the
+value it used for "the Hub has none", and the page then reported the Hub's answer to a question it
+never received. Scanning with the network cut was meant to keep CI offline, and it was the first run
+that exercised that path. Run the pages once without the network: every message they print then
+should be about the failed request, and none about the thing it failed to fetch.

@@ -55,6 +55,11 @@ INPUTS = [
     "report/technical-report.tex",
     "report/build_data.py",
     "report/build_figures.py",
+    # What the tables and figures are drawn FROM (Round 80). The baselines figure showed August's
+    # numbers for two months while metrics.json moved on: the PDF was newer than every file listed
+    # here, so nothing was stale by this test's own definition.
+    "models/metrics.json",
+    "src/qsh/models/registry.py",
 ]
 
 

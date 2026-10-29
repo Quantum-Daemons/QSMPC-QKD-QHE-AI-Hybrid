@@ -84,7 +84,7 @@ else
   ok "no model artifacts committed"
 fi
 
-step "8/18 web typecheck + build"
+step "8/18 web typecheck, build and text layout"
 # Round 65: the MPC tier's wasm is built first, by the web image's own Rust stage (scripts/build_wasm.sh),
 # which also runs the crate's `cargo test` and writes the third-party notices. Docker layer caching makes
 # this seconds when wasm/qsh-mpc has not changed. Without it tsc cannot resolve clientMPC.ts's import.
@@ -100,6 +100,24 @@ bash scripts/build_wasm.sh >/tmp/ci_wasm.log 2>&1 \
 # Round 74: a copied worker named a source map the build did not ship.
 ( cd web && npm run --silent check:source-maps >/tmp/ci_srcmap.log 2>&1 ) \
   && ok "no dangling source-map references in the build" || { bad "a built file names a source map that is not shipped"; tail -6 /tmp/ci_srcmap.log; }
+# Round 80: text drawn over text, out of the box it labels, or clipped by its chart, and HTML tables
+# wider than their box, on every page after a run. The user found labels overflowing and overlapping
+# in the run diagrams, and looking further found an axis title over its ticks, a class name cut off
+# below its chart and titles cut off above theirs; no gate measured any of it. A client-only build,
+# served on its own port, scanned in a headless Chrome in this machine's font, then torn down. The CI
+# web job runs the same scan in the runner's font, DejaVu Sans, which is wider.
+SCAN_OUT=$(mktemp -d)
+if ( cd web && VITE_CLIENT_ONLY=1 npx vite build --outDir "$SCAN_OUT" >/tmp/ci_scanbuild.log 2>&1 ); then
+  ( cd web && exec npx vite preview --outDir "$SCAN_OUT" --port 4182 --strictPort >/tmp/ci_preview.log 2>&1 ) &
+  for _ in $(seq 1 30); do curl -sf -o /dev/null http://localhost:4182/ && break; sleep 1; done
+  ( cd web && node scripts/check_text_overlap.mjs http://localhost:4182 1280 720 >/tmp/ci_textlayout.log 2>&1 ) \
+    && ok "no text over text, out of its box or clipped, and no table wider than its box, on any page" \
+    || { bad "text layout (web/scripts/check_text_overlap.mjs)"; grep -E "FAIL|^ +\[" /tmp/ci_textlayout.log | head -20; }
+  pkill -f "vite preview --outDir $SCAN_OUT" 2>/dev/null
+else
+  bad "client-only build for the text-layout scan"; tail -8 /tmp/ci_scanbuild.log
+fi
+rm -rf "$SCAN_OUT"
 
 step "9/18 PQC conformance (FIPS 203 s7.2 negatives + FIPS 204 sizes)"
 # Offline by design: reads the vendored CC0 snapshot in web/scripts/vectors. It was ungated for
