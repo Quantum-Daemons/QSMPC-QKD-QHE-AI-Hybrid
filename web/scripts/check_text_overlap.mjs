@@ -7,6 +7,7 @@
 // scrolls through so lazily drawn charts render, and then measures, in the page:
 //   - inside every SVG, any two text elements whose boxes overlap;
 //   - any text that runs past its own SVG, so the SVG clips it;
+//   - any text with a line or curve drawn through it (only what a clip-path leaves drawn counts);
 //   - any text that runs out of the box it labels (a <rect> and a <text> in one <g>), or into a dot
 //     drawn in that box;
 //   - any pipeline-graph node whose content overflows it;
@@ -126,6 +127,46 @@ const MEASURE = `(() => {
         const within = a.l >= b.left && a.r <= b.right && a.t >= b.top && a.b <= b.bottom;
         if (near && !within) { out.push(\`[\${where}] text \${name(t)} touches or crosses the edge of a box\`); break; }
       }
+    }
+    // Text with a line drawn through it (Round 80): the report's Figure 1 had labels on its curve,
+    // and the Value page's dashed "today" line ran through six dated labels, which no rule here
+    // compared with a line. Every drawn line and path counts except a chart's own grid, axes and
+    // legend. Only what is drawn counts: a curve clipped to its plot area by a clip-path is sampled
+    // inside that clip only. A label with a wide enough halo (a stroke painted under its fill, in the
+    // background's colour) masks the line where it crosses, so it is not reported.
+    const SKIP = ".recharts-cartesian-grid, .recharts-cartesian-axis, .recharts-polar-grid, .recharts-polar-angle-axis, "
+      + ".recharts-polar-radius-axis, .recharts-legend-wrapper, .recharts-tooltip-wrapper, defs, marker, clipPath";
+    const svgCtm = svg.getScreenCTM();
+    const clipOf = (e) => {
+      const ref = e.closest("[clip-path]")?.getAttribute("clip-path")?.match(/url\\(#([^)"']+)\\)/)?.[1];
+      const rect = ref ? document.getElementById(ref)?.querySelector("rect") : null;
+      if (!rect || !svgCtm) return null;
+      const n = (a) => parseFloat(rect.getAttribute(a) ?? "0");
+      const [x0, y0, x1, y1] = [n("x"), n("y"), n("x") + n("width"), n("y") + n("height")];
+      const tr = (x, y) => [svgCtm.a * x + svgCtm.c * y + svgCtm.e, svgCtm.b * x + svgCtm.d * y + svgCtm.f];
+      const [[ax, ay], [bx, by]] = [tr(x0, y0), tr(x1, y1)];
+      return { l: Math.min(ax, bx), r: Math.max(ax, bx), t: Math.min(ay, by), b: Math.max(ay, by) };
+    };
+    const strokes = [...svg.querySelectorAll("line, path, polyline")].filter((e) => !e.closest(SKIP) && visible(e)
+      && getComputedStyle(e).stroke !== "none" && parseFloat(getComputedStyle(e).strokeWidth) > 0 && e.getTotalLength)
+      .map((e) => {
+        const m = e.getScreenCTM(), clip = clipOf(e), P = [];
+        for (let s = 0, L = e.getTotalLength(); s <= L; s += 1.5) {
+          const q = e.getPointAtLength(s);
+          const x = m.a * q.x + m.c * q.y + m.e, y = m.b * q.x + m.d * q.y + m.f;
+          if (!clip || (x >= clip.l && x <= clip.r && y >= clip.t && y <= clip.b)) P.push([x, y]);
+        }
+        return { e, P };
+      });
+    for (const { t, r } of texts) {
+      const cs = getComputedStyle(t);
+      // At least half the font size wide: a narrower halo masks the line under the letters and still
+      // shows it in the space between two words, which a four-unit halo at ten units did.
+      if ((cs.paintOrder || "").trim().startsWith("stroke") && cs.stroke !== "none"
+          && parseFloat(cs.strokeWidth) >= 0.5 * parseFloat(cs.fontSize)) continue;
+      const b = { l: r.left + r.width * 0.02, r: r.right - r.width * 0.02, t: r.top + r.height * 0.22, b: r.bottom - r.height * 0.22 };
+      const crossing = strokes.find(({ P }) => P.some(([x, y]) => x > b.l && x < b.r && y > b.t && y < b.b));
+      if (crossing) out.push(\`[\${where}] text \${name(t)} has a \${crossing.e.tagName} drawn through it\`);
     }
     for (const g of svg.querySelectorAll("g")) {
       const rects = [...g.children].filter((c) => c.tagName === "rect");

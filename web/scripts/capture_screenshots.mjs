@@ -6,8 +6,10 @@
 //   VITE_CLIENT_ONLY=1 npx vite build --outDir /tmp/qsh-shots && npx vite preview --outDir /tmp/qsh-shots --port 4180 &
 //   node scripts/capture_screenshots.mjs http://localhost:4180 ../docs/images
 //
-// Always against localhost: a headless capture has no address bar, and the build it serves is the
-// one in this checkout, so an image shows exactly what the commit beside it renders.
+// Against a client-only build of this checkout, or against the deployed site once it is walked
+// (Round 80: the owner asked for the README's images to be taken after the pages were checked
+// working). A headless capture has no address bar, so no image shows where it was taken, and the
+// deploy serves the bundle the commit beside the images builds.
 
 import { spawn } from "node:child_process";
 import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
@@ -24,7 +26,9 @@ const WIDTH = 1366, HEIGHT = 1500;
 const SHOTS = [
   { name: "overview", path: "/" },
   { name: "value", path: "/value" },
-  { name: "validations", path: "/validations", click: ["Run ML-KEM", "Run BB84"] },
+  // All four of the page's runs (Round 80): with two, the README showed the ML-DSA and handshake
+  // cards empty, as if they produced nothing.
+  { name: "validations", path: "/validations", click: ["Run ML-KEM", "Run ML-DSA", "Run handshake", "Run BB84"] },
   { name: "orchestration", path: "/orchestration", run: true },
   { name: "usecases", path: "/usecases" },
   { name: "usecase-finance", path: "/usecase/finance_aml", run: true },

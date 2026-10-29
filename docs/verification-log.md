@@ -3500,3 +3500,18 @@ cause. Measure before fixing a layout fault: a plausible mechanism can stand in 
 **An attribute is not a style.** SVG markers take their colour as an attribute, where a CSS variable
 does not resolve. The theme's colours had to be written as literals where they become attributes.
 
+### Round 80, continued a fifth time: read every image the README shows
+
+**Context.** The owner held the merge again: the README's screenshots looked stale, and the owner
+asked for them to be taken after a walk and checked for bugs.
+
+**An image is a test result only when someone reads it.** The eleven images had been regenerated,
+committed and served for two rounds. Reading them one by one found five faults in pages that every
+gate had passed: an unthemed control, an irregular axis, a line through six labels, two empty cards,
+and a wrong word. Each was visible at a glance, and none had been looked for.
+
+**A rule that sees geometry must see what is drawn.** The first version of the line rule reported a
+curve over a tick label where the curve is clipped and never drawn. A second version accepted any
+halo, and passed a build where the line still showed between two words. A rule earns its place only
+when it is right on the cases it was written for, and seeding both ways is how that is shown.
+
