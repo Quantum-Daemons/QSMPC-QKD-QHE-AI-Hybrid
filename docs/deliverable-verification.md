@@ -6941,3 +6941,20 @@ repository's front page shows no screenshots until it merges.
 - Seeded on the build before the fix, it reports the six clock labels. On the four-unit halo it
   reports them again; a first version that accepted any halo of 2 units had passed that build while
   the line still showed between words.
+
+**CI green on fe87591 (eight checks), then deployed (`index-BvQcfVom.js`, the bundle the local build
+produced) and walked in the user's Chrome.**
+- **The clock.** Its labels carry the six-unit halo in the panel's colour, the markers are drawn
+  above them, and the line rule, run in the page, finds nothing.
+- **Validations:** all four cards show their results.
+- **The E2E graph:** dark zoom controls with light icons, and no connection dots.
+- **The pass chart:** its time axis reads -180 to 180 by 60.
+- **Overall:** the console was clean, the tab was closed, and no sidebar preference was stored.
+
+**The README's eleven screenshots were then taken from the deploy and read one by one, with no
+further fault.** The overview and use-cases images came out byte-identical to the last capture,
+their pages unchanged.
+
+BUSINESS DOC RECONCILED Round 80. The out-of-repo document is brought level with this round's fifth
+continuation. Its content is not quoted here, in the checklist, or in any commit - only the fact of
+the reconciliation, which is what gate 16 reads.
