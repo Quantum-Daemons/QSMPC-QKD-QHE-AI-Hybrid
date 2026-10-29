@@ -4,7 +4,7 @@
 > privacy-preserving AI** on a **PQC-first hybrid** foundation, with industry use cases
 > (finance / healthcare / genomics / telecom-defence / **satellite**), a **classical-vs-quantum
 > benchmark** (latency, accuracy, a **security posture table**, and an
-> **Alice <-> Bob** two-party E2E), and a researcher/business-facing **SPA** that runs **entirely
+> animated **architecture simulator** per use case), and a researcher/business-facing **SPA** that runs **entirely
 > client-side** in public-demo mode.
 
 License: **Apache-2.0**, Python **3.12**, GPU: **NVIDIA RTX PRO 6000 Blackwell + CUDA 13**
@@ -317,7 +317,7 @@ flowchart LR
 | Validations | `/validations` | the PQC primitives, a BB84 run with an eavesdropper, NIST ACVP cases, network key schedules, an MCP agent call, all in the browser |
 | E2E Orchestration | `/orchestration` | the pipeline of any use case, run live: start, pause, step, stop |
 | Use cases | `/usecases` | the five industry use cases |
-| A use case | `/usecase/<id>` | a two-party simulator, the run's metrics and security facts, the benchmark, the models, an MCP panel; the satellite page adds the Network tab |
+| A use case | `/usecase/<id>` | an animated architecture simulator, the run's metrics and security facts, the benchmark, the models, an MCP panel; the satellite page adds the Network tab |
 
 <table>
 <tr>

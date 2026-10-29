@@ -250,7 +250,7 @@ ML-KEM-768/ML-DSA-65 + WebCrypto HKDF/AES-256-GCM), with a **per-industry MCP to
 `query_cohort` / `pool_allele_counts` / `inspect_qkd_telemetry` / `relay_mission_telemetry`) and the live
 run's metrics composed into the prompt. Everything fails soft (WebGPU selected without a usable adapter
 -> Transformers.js WASM, and the result says so; the MCP envelope always runs). Each use-case page
-unifies a **live two-party (Alice <-> Bob) sequence diagram** (driven by the running pipeline's
+unifies a **live architecture canvas** (each party's components and a lane per stage, driven by the running pipeline's
 stages - Start/Pause/Step/Stop/Restart), that industry's benchmark, and a signed SHAP explanation
 (all five use-case pages). **One Run drives both** (Round 7): the live pipeline runs, and the
 `QuantumComparisonStage` assembles the benchmark **from that run** into `ctx.artifacts["benchmark_result"]`

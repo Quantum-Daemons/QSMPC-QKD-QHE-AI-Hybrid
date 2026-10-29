@@ -10,21 +10,29 @@
 //   - an edge label over a node;
 //   - an edge drawn through a node's text.
 //
-// Mermaid is not a dependency of this project, so its browser bundle is passed in:
-//   npm install --no-save --prefix /tmp/mmd mermaid@12
-//   node scripts/check_readme_mermaid.mjs ../README.md /tmp/mmd/node_modules/mermaid/dist/mermaid.min.js
+// Each diagram must also draw at full size in GitHub's README column, about 830 px beside the
+// repository sidebar: a wider one is scaled down, text and all (checklist DC14).
+//
+// A CI gate since Round 80, at the owner's choice: Mermaid is a dev dependency for this check alone
+// (it is never imported by the app), and the web job and scripts/ci_local.sh step 8 run
+//   npm run check:readme-mermaid
+// which is `node scripts/check_readme_mermaid.mjs [README.md] [mermaid.min.js]`, both defaulted.
 //
 // Exit 1 lists every finding. Mermaid sizes a node to its text in the font it measures with, which
 // is not GitHub's, so look at each diagram on GitHub as well.
 import { spawn } from "node:child_process";
-import { copyFileSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { copyFileSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import http from "node:http";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 
-const [readme, bundle] = process.argv.slice(2);
-if (!readme || !bundle) {
-  console.error("usage: node scripts/check_readme_mermaid.mjs <README.md> <mermaid.min.js>");
+const WEB = resolve(dirname(fileURLToPath(import.meta.url)), "..");
+const readme = process.argv[2] ?? join(WEB, "..", "README.md");
+const bundle = process.argv[3] ?? join(WEB, "node_modules", "mermaid", "dist", "mermaid.min.js");
+const COLUMN_PX = 830;
+if (!existsSync(bundle)) {
+  console.error(`no Mermaid bundle at ${bundle}: run \`npm ci\` in web/ (mermaid is a dev dependency)`);
   process.exit(2);
 }
 const CHROME = process.env.CHROME ?? "google-chrome";
@@ -107,6 +115,8 @@ const MEASURE = `(() => {
           out.push(name + ": an edge runs through the text of " + JSON.stringify(n.label));
     }
     const vb = svg.viewBox.baseVal;
+    if (vb.width > ${COLUMN_PX})
+      out.push(name + ": " + Math.round(vb.width) + " px wide, so GitHub's ${COLUMN_PX} px column draws it scaled down");
     sizes.push(name + ": " + Math.round(vb.width) + " x " + Math.round(vb.height) + ", " + nodes.length + " nodes");
   });
   return { out: [...new Set(out)], sizes };
@@ -115,7 +125,8 @@ const MEASURE = `(() => {
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const profile = mkdtempSync(join(tmpdir(), "qsh-mermaid-chrome-"));
 const chrome = spawn(CHROME, ["--headless=new", `--remote-debugging-port=${PORT}`, `--user-data-dir=${profile}`,
-  "--window-size=900,900", "--no-first-run", "about:blank"], { stdio: "ignore" });
+  "--window-size=900,900", "--no-first-run", ...(process.env.CI ? ["--no-sandbox"] : []), "about:blank"],
+  { stdio: "ignore" });   // unsandboxed on a CI runner, as check_text_overlap.mjs explains
 let result = { out: [], sizes: [] }, failed = [];
 try {
   let target;
@@ -151,4 +162,4 @@ if (findings.length || result.sizes.length !== blocks.length) {
   if (result.sizes.length !== blocks.length) console.log(`  FAIL measured ${result.sizes.length} of ${blocks.length} diagrams`);
   process.exit(1);
 }
-console.log("PASS  no label out of its node, over another, or crossed by an edge");
+console.log(`PASS  no label out of its node, over another, or crossed by an edge; every diagram fits ${COLUMN_PX} px`);

@@ -118,6 +118,10 @@ else
   bad "client-only build for the text-layout scan"; tail -8 /tmp/ci_scanbuild.log
 fi
 rm -rf "$SCAN_OUT"
+# Round 80, by the owner's choice: the README's Mermaid diagrams, laid out and fitting GitHub's column.
+( cd web && npm run --silent check:readme-mermaid >/tmp/ci_mermaid.log 2>&1 ) \
+  && ok "README diagrams: no label out of its node, over another or crossed; each fits 830 px" \
+  || { bad "README diagram layout (web/scripts/check_readme_mermaid.mjs)"; grep -E "FAIL" /tmp/ci_mermaid.log | head -12; }
 
 step "9/18 PQC conformance (FIPS 203 s7.2 negatives + FIPS 204 sizes)"
 # Offline by design: reads the vendored CC0 snapshot in web/scripts/vectors. It was ungated for
