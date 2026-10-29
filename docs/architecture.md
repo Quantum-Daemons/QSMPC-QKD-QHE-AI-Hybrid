@@ -235,7 +235,9 @@ costs the student that actually runs.
 
 ## SPA shape
 Overview, Introduction & Value, Validations, E2E Orchestration (generic "run any pipeline"), Use Cases
-index, and **5 per-use-case simulator pages** (`/usecase/:id`).
+index, and **5 per-use-case simulator pages** (`/usecase/:id`). The E2E page shows its run in two tabs
+(Round 81): the use-case pages' architecture canvas, for any use case or the generic demo, and the
+stage-order graph, the one figure that also places the stages only the full deployment runs.
 
 **Agentic AI, MCP** is a **cross-cutting per-use-case layer** (`web/src/components/AgenticAIPanel.tsx`) - a
 reusable panel **embedded in every use-case page**, not a standalone page (the report frames MCP as the AI

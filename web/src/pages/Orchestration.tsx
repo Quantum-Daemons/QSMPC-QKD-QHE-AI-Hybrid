@@ -4,6 +4,8 @@ import KeyPoints from "../components/KeyPoints";
 import OrchestrationGraph from "../components/OrchestrationGraph";
 import PipelineControls from "../components/PipelineControls";
 import RunMonitor from "../components/RunMonitor";
+import Tabs from "../components/Tabs";
+import UseCaseCanvas from "../components/UseCaseCanvas";
 import { EncryptedAgreementChart, NoEncryptedComparison, RealDataScatter } from "../components/VerificationChart";
 import type { EncryptedAgreementPlot } from "../components/VerificationChart";
 import { DEMO_BANNER, isClientDemo } from "../lib/demoMode";
@@ -53,6 +55,8 @@ export default function Orchestration() {
   // visitor who changes it does not have their choice reverted by a stale query string on re-render.
   const initial = useMemo(() => usecaseFromQuery(searchParams.get("usecase")), []);
   const [usecase, setUsecase] = useState(initial.id);
+  // The figure on show: the architecture canvas, or the stage-order graph. The exports take this one.
+  const [view, setView] = useState("architecture");
   const graphRef = useRef<HTMLDivElement>(null);
   const run = usePipelineRun(usecase, graphRef);
   const hasRun = run.events.length > 0;
@@ -67,7 +71,7 @@ export default function Orchestration() {
       <KeyPoints items={[
         "Run the full quantum-safe pipeline live for any use case; pause, step one stage at a time, and export the animated run.",
         "Swappable at run time: KEM, signature, key source and the QKD protocol (simulated). The FHE backend is selectable only in the full local deployment.",
-        "The per-industry pages add an architecture simulator, each party's components and the stage lanes between them, and the benchmark.",
+        "Two views of the run: its architecture, each party's components and the lanes between them as the stages run, and its stage order, with the stages only the full deployment runs. The per-industry pages add the models and the benchmark.",
       ]} />
       {DEMO && <div className="note" style={{ marginBottom: 12 }}>🖥️ {DEMO_BANNER}</div>}
       {/* The rejected-parameter notice. Silence here would be indistinguishable from the defect
@@ -107,13 +111,30 @@ export default function Orchestration() {
 
       <PipelineControls run={run} />
 
-      <div style={{ marginTop: 16 }} ref={graphRef}>
-        {/* metrics, so the inference node names the published model that ran. Without it this graph
-            described the same run differently from the diagram on the use-case pages. */}
-        <OrchestrationGraph usecase={usecase} activeStage={active} doneStages={done}
-          metrics={metrics}
-          config={{ kem: run.kem, qkd: run.qkd, sig: run.sig,
-                    qkdProtocol: String(run.params.qkd_protocol ?? "") }} />
+      {/* Two views of one run, in tabs (Round 81, the owner's choice). The architecture canvas is the
+          use-case pages' own, drawn for the selected use case and the generic demo alike; the
+          stage-order graph is the only figure that also places the stages the full deployment adds
+          (Explainability, OptiQKD, Telemetry anomaly), dim on this demo. `graphRef` is on whichever
+          is shown, and the recorder looks it up at each frame. */}
+      <div style={{ marginTop: 16 }}>
+        <Tabs label="Views of the run" onChange={setView} tabs={[
+          { id: "architecture", title: "Architecture", content: () => (
+            // The look of `.card` and its horizontal scroll, as on the use-case pages (see the
+            // comment there): below the canvas's smallest scale the frame scrolls.
+            <div ref={graphRef} style={{ background: "var(--panel)", borderRadius: 10, padding: 8, overflowX: "auto" }}>
+              <UseCaseCanvas usecase={usecase} activeStage={active} doneStages={done} metrics={metrics}
+                config={run.diagramConfig} />
+            </div>
+          ) },
+          { id: "stages", title: "Stage order", content: () => (
+            <div ref={graphRef}>
+              {/* metrics, so the inference node names the published model that ran. Without it this
+                  graph described the same run differently from the diagram on the use-case pages. */}
+              <OrchestrationGraph usecase={usecase} activeStage={active} doneStages={done}
+                metrics={metrics} config={run.diagramConfig} />
+            </div>
+          ) },
+        ]} />
       </div>
 
       <h2 className="sr-only">Results of this run</h2>
@@ -170,7 +191,7 @@ export default function Orchestration() {
         {!hasRun && (
           <p className="muted small" style={{ marginTop: -4 }}>
             Run the orchestration first - the export buttons below stay unavailable until a run has
-            produced events. The DAG image can be exported at any time.
+            produced events. The figure on show can be saved as an image at any time.
           </p>
         )}
         <div className="btn-row">
@@ -178,7 +199,10 @@ export default function Orchestration() {
             disabled={!hasRun} title={hasRun ? undefined : "Run the orchestration first"}>⬇ Events (JSON)</button>
           <button className="btn ghost" onClick={() => downloadMetricsCsv(`${usecase}-metrics.csv`)}
             disabled={!hasRun} title={hasRun ? undefined : "Run the orchestration first"}>⬇ Metrics (CSV)</button>
-          <button className="btn ghost" onClick={() => downloadPng(`${usecase}-dag.png`)}>⬇ DAG (PNG, hi-DPI)</button>
+          <button className="btn ghost"
+            onClick={() => downloadPng(`${usecase}-${view === "stages" ? "stage-order" : "architecture"}.png`)}>
+            ⬇ {view === "stages" ? "Stage order" : "Architecture"} (PNG, hi-DPI)
+          </button>
           <button className="btn ghost" onClick={() => downloadGif(`${usecase}-orchestration.gif`)}
             disabled={gifBusy || !hasRun} title={hasRun ? undefined : "Run the orchestration first"}>
             {gifBusy ? "Encoding…" : "⬇ Animation (GIF)"}

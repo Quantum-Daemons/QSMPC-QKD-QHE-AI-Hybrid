@@ -155,7 +155,10 @@ rests on quantum LWE, so its security is computational.
   the analysis site, carrier <-> remote site with Eve on the link when the run sets her, ground station
   <- LEO satellite on the downlink), grounded in `references/` (Zhang QOT npj 2026, Li&Deng
   QHE-FL, Sutradhar QSMS). Labels fill from live metrics (QBER / PSI / federated acc / QSDC secrecy);
-  exports a high-DPI PNG + a multi-second GIF. A standalone per-party-timing micro-benchmark also
+  exports a high-DPI PNG + a multi-second GIF. The legend lists only the lanes a canvas draws and the
+  caption only what its run does (Round 81: telecom and satellite had listed CKKS, MPC and key lanes
+  and an MPC-FHE inference they do not have). The E2E Orchestration page draws the same canvas, for
+  the generic demo too, in an Architecture tab beside the stage-order graph. A standalone per-party-timing micro-benchmark also
   exists at `qsh/benchmark/alice_bob_e2e.py` (`POST /api/alice-bob`).
 
 The benchmark and security posture are computed server-side **and** mirrored

@@ -6958,3 +6958,80 @@ their pages unchanged.
 BUSINESS DOC RECONCILED Round 80. The out-of-repo document is brought level with this round's fifth
 continuation. Its content is not quoted here, in the checklist, or in any commit - only the fact of
 the reconciliation, which is what gate 16 reads.
+
+## Round 81: the E2E page drawn as its architecture, and a canvas that said more than it drew
+
+**Round 80 closed on `main` first.** The user approved the merge once CI was green on 16b3ea8.
+- **Merge.** Eight checks were green; PR #76 merged as 2fc7d92, a merge commit like those before it.
+  Its tree is identical to 16b3ea8's.
+- **Deploy.** `deploy_demo.sh --return-to-main` put the box on `main` at 2fc7d92, serving
+  `index-BvQcfVom.js`, the bundle that was walked before the merge, and the public URL answered 200.
+- **Walked in the user's Chrome**, in a fresh tab with the bundle hash checked.
+  - All five use-case canvases ran to "done". The satellite's QSDC stage reports "not available,
+    link-budget limited", which is the run's own verdict at 32.2 dB.
+  - The Network tab's pass chart reads -180 to 180 by 60.
+  - The clock's labels carry their halo.
+  - Validations ran all four cards.
+  - The E2E page ran to "done".
+  - The console was clean, the tab was closed, and no sidebar preference was stored.
+- **The README on `main` shows its screenshots.** All eleven images served for `main` match the
+  committed files by SHA-256, and GitHub's rendered README loaded all eleven at 1366 x 1500.
+- **The page scan, against the live site.** In the local font and in the CI runner's DejaVu Sans,
+  at 1280 x 720, eleven views passed.
+
+**The user's choices for this round.** Tabs: "Architecture" and "Stage order" on the E2E page. The
+generic demo drawn between Party A and Party B.
+
+**What the walk found: the canvas said more than it drew.** On telecom and satellite:
+- The legend listed CKKS ciphertext, MPC shares and the session-key bus, though neither canvas
+  draws any of them.
+- The caption described an MPC-FHE inference ("linear layers under CKKS, the non-linear argmax as
+  MPC") that neither run performs.
+- On satellite, the caption put the satellite and its ground station "over a WAN".
+- Under a PQC-only profile, every caption still said "the quantum channel is simulated".
+
+One legend and one caption had served all five use cases. Both are now built from the rows the
+canvas draws, in `src/lib/useCaseFlows.ts`:
+- `drawnChannels` gives the lanes drawn, and gives the key bus exactly where a stage reads the
+  session key. Only the keyed-hash PSI and the federated masks read `_sessionKey` in
+  `clientCompute`.
+- `captionOf` writes each spec's own sentence on how the parties meet, adds the MPC-FHE sentence
+  only where a private inference runs, and says when a profile has no quantum channel.
+- Genomics' legend loses the key bus as a result. Its secure sum does not read the session key, and
+  the canvas never drew one there.
+
+**The E2E page.**
+- **The tabs.** The canvas of the use-case pages is shown in an Architecture tab, for the selected
+  use case. The stage-order graph is kept in a Stage order tab: it is the one figure that also
+  places the stages only the full deployment runs (Explainability, OptiQKD, Telemetry anomaly).
+- **The generic demo.** It has a spec: Party A holds a list and the input, and Party B holds a list
+  and the model. Its stages are `clientCompute`'s `demo` flow: a keyed-hash PSI, then the MPC-FHE
+  inference on synthetic features. `/usecase/demo` stays an unknown page, because a page needs a
+  page entry as well as a spec.
+- **The exports follow the view on show.** The PNG button names the figure it saves
+  (`<usecase>-architecture.png` or `<usecase>-stage-order.png`). The GIF recorder looks up its node
+  at each frame, since only the shown tab is in the document. Frames of different heights are
+  padded to the largest.
+- **One config for both canvases.** The use-case page and the E2E page draw from the same
+  config object, `diagramConfig` in `usePipelineRun`.
+
+**Gates.**
+- **`check:use-case-canvas` now covers six canvases and three more facts:**
+  - the legend lists only the lanes drawn;
+  - the caption claims only what the run does;
+  - every entry in the E2E selector has a canvas.
+- **Seeded four ways, each read red with its own message:**
+  - the MPC-FHE sentence on every caption;
+  - a legend of all five lanes;
+  - the satellite back on a WAN;
+  - the demo's spec removed.
+- **The Python suite pins the first seed:** `test_the_check_fails_on_the_one_caption_for_all`.
+- **The page scan covers thirteen views**, adding the E2E page's Stage order tab and the demo's
+  canvas. They pass on a local client-only build in both fonts at 1280 x 720, and at 390 x 844 and
+  768 x 1024.
+- **The GIF export after a mid-run switch to Stage order and back** encodes to a GIF89a of
+  1417 x 1864 (checked in the page, without downloading anything).
+
+BUSINESS DOC RECONCILED Round 81. The out-of-repo document is brought level with this round. Its content
+is not quoted here, in the checklist, or in any commit - only the fact of the reconciliation, which is
+what gate 16 reads.

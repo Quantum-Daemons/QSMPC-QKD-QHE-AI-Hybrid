@@ -38,7 +38,9 @@ export default function UseCasePage() {
   // An unrecognised id used to render Finance under Finance's title while the address bar still
   // said something else, so a stale or mistyped link presented one industry's data as another's.
   // The route matches, so App's catch-all NotFound never fires; this page has to say so itself.
-  if (!id || !(id in USECASE_SPECS)) return <UnknownUseCase id={id} />;
+  // A page needs a canvas spec AND a page entry: the generic demo has the first since Round 81 (the E2E
+  // page draws it) and no page of its own, so `/usecase/demo` stays unknown rather than half-drawn.
+  if (!id || !(id in USECASE_SPECS) || !(id in USECASE_META)) return <UnknownUseCase id={id} />;
   return <UseCaseView usecase={id} />;
 }
 
@@ -82,14 +84,9 @@ function UseCaseView({ usecase }: { usecase: string }) {
           exactly ONE genuine cause once nav-internal scrollers are discounted - this SVG. */}
       <div ref={diagramRef} style={{ marginTop: 16, background: "var(--panel)", borderRadius: 10,
                                      padding: 8, overflowX: "auto" }}>
-        {/* The protocol and the QSMPC op live in params, not in the crypto-agility family selects.
-            Passing only the family is what let an E91 run draw a BB84 arrow. */}
+        {/* The run's own config object (usePipelineRun), the one the E2E page's canvas reads too. */}
         <UseCaseCanvas usecase={usecase} activeStage={active} doneStages={done} metrics={metrics}
-          config={{ kem: run.kem, qkd: run.qkd, sig: run.sig,
-                    qkdProtocol: String(run.params.qkd_protocol ?? ""),
-                    qsmpcOp: String(run.params.qsmpc_op ?? ""),
-                    optiqkd: run.optiqkd, workload: run.workload,
-                    inference: String(run.params.inference ?? "") }} />
+          config={run.diagramConfig} />
       </div>
       {/* THE REASON, VISIBLE - the same fix as `Orchestration.tsx`'s export row and for the same
           reason. `disabled` removes a button from the tab order, so a reason living only in `title`

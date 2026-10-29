@@ -11,10 +11,16 @@ does what and which way the data goes, and the old figure had three of those fac
 - under a PQC-only profile both figures drew a quantum QSDC arrow, though the browser skips QSDC
   there and sends the telemetry under the session key.
 
+Round 81 found the canvas's text saying more than its drawing: on telecom and satellite the legend
+explained CKKS, MPC and key lanes neither canvas draws, and the caption described an MPC-FHE
+inference neither run performs, and put the satellite and its ground station "over a WAN". The
+legend and the caption are now built from the same rows (`drawnChannels`, `captionOf`).
+
 `web/scripts/check_use_case_canvas.mjs` asserts those facts on `canvasRow` (src/lib/useCaseFlows.ts),
 the one place the canvas reads them from, through the real module bundled by esbuild. This file runs
 it from the Python suite, where CI sets `QSH_REQUIRE_BROWSER_GATES=1`, so the check cannot pass by
-being skipped. The seeded negative restores the old drawing's direction for the satellite's key.
+being skipped. The seeded negatives restore the old drawing's direction for the satellite's key, and
+the one caption every use case shared.
 """
 
 from __future__ import annotations
@@ -74,3 +80,20 @@ def test_the_check_fails_on_the_old_drawings_uplink() -> None:
     out = r.stdout + r.stderr
     assert r.returncode == 1, f"the uplink passed the check:\n{out}"
     assert "the satellite's QKD key is drawn ab" in out, out
+
+
+def test_the_check_fails_on_the_one_caption_for_all() -> None:
+    """The seeded negative for Round 81: the MPC-FHE sentence on every canvas, as it was."""
+    _require_browser_or_skip()
+    src = MODULE.read_text()
+    conditional = '    infers ? "MPC-FHE hybrid:'
+    assert src.count(conditional) == 1, "the caption's inference sentence moved; re-derive this seed"
+    seeded = MODULE.with_name("zz_seeded_useCaseFlows.ts")
+    try:
+        seeded.write_text(src.replace(conditional, '    true ? "MPC-FHE hybrid:'))
+        r = _run(seeded)
+    finally:
+        seeded.unlink(missing_ok=True)
+    out = r.stdout + r.stderr
+    assert r.returncode == 1, f"the shared caption passed the check:\n{out}"
+    assert "telecom_ids's caption claims the MPC-FHE inference" in out, out

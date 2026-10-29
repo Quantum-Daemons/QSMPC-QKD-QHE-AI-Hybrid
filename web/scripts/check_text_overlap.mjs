@@ -34,7 +34,10 @@ const PORT = Number(process.env.CDP_PORT ?? 9355);   // set it to run two scans 
 const PAGES = [
   { path: "/" }, { path: "/value" },
   { path: "/validations", click: ["Run ML-KEM", "Run ML-DSA", "Run handshake", "Run BB84"] },
-  { path: "/orchestration", run: true }, { path: "/usecases" },
+  // The E2E page's two views (Round 81): the architecture canvas by default, the stage order on its
+  // tab, and the canvas of the generic demo, which no use-case page draws.
+  { path: "/orchestration", run: true }, { path: "/orchestration", run: true, tab: "Stage order" },
+  { path: "/orchestration?usecase=demo", run: true }, { path: "/usecases" },
   { path: "/usecase/finance_aml", run: true }, { path: "/usecase/medical_fl", run: true },
   { path: "/usecase/genomics", run: true }, { path: "/usecase/telecom_ids", run: true },
   { path: "/usecase/satellite_comms", run: true },
