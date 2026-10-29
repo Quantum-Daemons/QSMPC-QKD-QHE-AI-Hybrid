@@ -3515,3 +3515,23 @@ curve over a tick label where the curve is clipped and never drawn. A second ver
 halo, and passed a build where the line still showed between two words. A rule earns its place only
 when it is right on the cases it was written for, and seeding both ways is how that is shown.
 
+
+### Round 81: a legend is a claim about the figure above it
+
+**Context.** Round 80 merged and was walked on `main`. The owner chose tabs for the E2E page's two
+views and a Party A and Party B canvas for its generic demo.
+
+**One text for five figures is five claims, and two were false.** The canvas's legend and caption
+were written once, for the use cases that compute together, and shown under all five:
+- the telecom and satellite canvases explained lanes they do not draw;
+- their captions described an inference their runs do not perform;
+- the satellite's caption put it on a WAN.
+
+Every check had asked whether the drawing was right; none asked whether the words under it were.
+Building the legend and the caption from the rows the canvas draws makes them follow the drawing,
+and the check now compares them with it.
+
+**A node fixed at the start of a run is a guess about the rest of it.** The GIF recorder held the
+element it was given when the run began. With the figure in tabs, a switch of view detached that
+element, and every later frame would have been of nothing. The recorder now looks up its element at
+each frame, and pads frames of different sizes, so a run that changed views still encodes.

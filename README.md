@@ -315,7 +315,7 @@ flowchart LR
 | Overview | `/` | the architecture at a glance, the four workstreams, what is real and what is simulated |
 | Introduction and Value | `/value` | what is and is not new, the prior art checked, and why now: the regulatory clock |
 | Validations | `/validations` | the PQC primitives, a BB84 run with an eavesdropper, NIST ACVP cases, network key schedules, an MCP agent call, all in the browser |
-| E2E Orchestration | `/orchestration` | the pipeline of any use case, run live: start, pause, step, stop |
+| E2E Orchestration | `/orchestration` | the pipeline of any use case or the generic demo, run live (start, pause, step, stop), in two tabs: the architecture canvas, and the stage order with the stages only the full deployment adds |
 | Use cases | `/usecases` | the five industry use cases |
 | A use case | `/usecase/<id>` | an animated architecture simulator, the run's metrics and security facts, the benchmark, the models, an MCP panel; the satellite page adds the Network tab |
 
@@ -326,7 +326,7 @@ flowchart LR
 </tr>
 <tr>
 <td><img src="docs/images/validations.jpg" alt="Validations page after an ML-KEM and a BB84 run" width="420"><br>Validations, after an ML-KEM and a BB84 run</td>
-<td><img src="docs/images/orchestration.jpg" alt="E2E Orchestration page after a run" width="420"><br>E2E Orchestration, after a run</td>
+<td><img src="docs/images/orchestration.jpg" alt="E2E Orchestration page after a run, Architecture tab" width="420"><br>E2E Orchestration, after a run</td>
 </tr>
 <tr>
 <td><img src="docs/images/usecases.jpg" alt="Use cases index" width="420"><br>Use cases</td>

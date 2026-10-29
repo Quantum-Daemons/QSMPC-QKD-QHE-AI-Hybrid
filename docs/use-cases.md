@@ -141,7 +141,9 @@ benchmark: the benchmark is **assembled from that very run** (no separate "Run b
 the MPC-FHE row is the run's **real measured FHE-linear + MPC-non-linear latency**, shown next to the
 QSMPC-FHE comparison, security posture, and (on all five use-case pages) a signed
 SHAP explanation. The architecture canvas makes the **MPC-FHE secret-sharing over a LAN <-> WAN <-> LAN** link
-explicit - linear layers cross as a **CKKS ciphertext**, non-linear layers as **secret-shares**. In
+explicit - linear layers cross as a **CKKS ciphertext**, non-linear layers as **secret-shares**. Since
+Round 81 the **E2E Orchestration** page draws the same canvas for any use case, and for its generic
+demo between Party A and Party B, in an Architecture tab beside the stage-order graph. In
 the **public demo** (`?demo=client`) every use case runs **entirely in the browser** with **real,
 measured FHE/MPC** (node-seal CKKS + a Polytune garbled-circuit 2PC) and an optional in-browser
 **Quantum Federated Learning** toggle - zero `/api` compute; the **full local** deployment adds the
