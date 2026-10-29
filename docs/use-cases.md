@@ -135,12 +135,12 @@ could fly. CISA attributes the QKD caution to NSA's published position; nsa.gov 
 machine-retrievable during verification, so cite CISA for the assessment and not NSA. Details and the
 five motivations to avoid: [`references/satellite-motivation-fact-check.md`](../references/satellite-motivation-fact-check.md).
 
-Each use case has its **own page** (`/usecase/:id`) - a **live two-party simulator** you Start /
+Each use case has its **own page** (`/usecase/:id`) - a **live architecture simulator** you Start /
 Pause / Step / Stop / Restart. A **single Run** drives both the animated E2E protocol **and** the
 benchmark: the benchmark is **assembled from that very run** (no separate "Run benchmark" button) -
 the MPC-FHE row is the run's **real measured FHE-linear + MPC-non-linear latency**, shown next to the
 QSMPC-FHE comparison, security posture, and (on all five use-case pages) a signed
-SHAP explanation. The two-party diagram makes the **MPC-FHE secret-sharing over a LAN <-> WAN <-> LAN** link
+SHAP explanation. The architecture canvas makes the **MPC-FHE secret-sharing over a LAN <-> WAN <-> LAN** link
 explicit - linear layers cross as a **CKKS ciphertext**, non-linear layers as **secret-shares**. In
 the **public demo** (`?demo=client`) every use case runs **entirely in the browser** with **real,
 measured FHE/MPC** (node-seal CKKS + a Polytune garbled-circuit 2PC) and an optional in-browser

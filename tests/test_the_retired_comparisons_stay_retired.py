@@ -91,7 +91,8 @@ def test_no_surface_renders_logs_or_prompts_with_the_score() -> None:
                                  r"quantum advantage \$\{"],
         "components/BenchmarkPanel.tsx": [r"\bresult\?\.advantage\b", r"\badvantage\.(score|tier|interpretation)\b"],
         "components/AgenticAIPanel.tsx": [r"\bbenchmark\?\.advantage\b", r"quantum advantage \$\{"],
-        "components/TwoPartyDiagram.tsx": [r'"quantum_advantage_score"'],
+        "lib/useCaseFlows.ts": [r'"quantum_advantage_score"'],
+        "components/UseCaseCanvas.tsx": [r'"quantum_advantage_score"'],
         "pages/UseCases.tsx": [r"quantum\s+advantage"],
     }
     found = []

@@ -160,6 +160,24 @@ const MEASURE = `(() => {
       }
     }
   }
+  // An edge's label (the use-case canvas's lane labels, Round 80) is HTML outside every node, so the
+  // node rule above cannot see it: it must not lie partly over a node, nor over another label. A node
+  // that wholly contains a label (a background region) is not an overlap.
+  for (const flow of document.querySelectorAll(".react-flow")) {
+    const labels = [...flow.querySelectorAll(".react-flow__edgelabel-renderer > *")]
+      .filter((l) => l.textContent.trim() && visible(l)).map((l) => ({ l, r: l.getBoundingClientRect() }));
+    const nodeBoxes = [...flow.querySelectorAll(".react-flow__node")].map((n) => ({ n, r: n.getBoundingClientRect() }));
+    for (let i = 0; i < labels.length; i++) {
+      const a = labels[i], s = shrink(a.r, 0.02, 0.15);
+      for (const { n, r } of nodeBoxes) {
+        const within = a.r.left >= r.left && a.r.right <= r.right && a.r.top >= r.top && a.r.bottom <= r.bottom;
+        if (!within && hit(s, { l: r.left, r: r.right, t: r.top, b: r.bottom }))
+          out.push(\`[graph] edge label \${name(a.l)} lies over the node \${name(n)}\`);
+      }
+      for (let j = i + 1; j < labels.length; j++)
+        if (hit(s, shrink(labels[j].r, 0.02, 0.15))) out.push(\`[graph] edge label \${name(a.l)} overlaps \${name(labels[j].l)}\`);
+    }
+  }
   // HTML wider than its box. A scroller may scroll - a wide table or diagram on a phone scrolls in its
   // card by design - but by a few pixels it is a margin or a rounding, not content, and the reader
   // gets a scrollbar for nothing: one unbroken metric name made the Metrics card scroll by 5.
