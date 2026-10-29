@@ -10,7 +10,8 @@ import { ProvenanceBadge, type Provenance } from "../components/ProvenanceBadge"
 import PipelineControls from "../components/PipelineControls";
 import RunMonitor from "../components/RunMonitor";
 import ShapPanel from "../components/ShapPanel";
-import TwoPartyDiagram, { USECASE_SPECS } from "../components/TwoPartyDiagram";
+import UseCaseCanvas from "../components/UseCaseCanvas";
+import { USECASE_SPECS } from "../lib/useCaseFlows";
 import { Qcnn3D, Qotp3D, Sat3D } from "../components/Lazy3D";
 import { FibreDistanceCharts, QsdcRangeChart } from "../components/QkdCharts";
 import SatNetworkPanel from "../components/SatNetworkPanel";
@@ -66,13 +67,13 @@ function UseCaseView({ usecase }: { usecase: string }) {
           the page title straight to h3. Converting the card titles would change visual weight
           everywhere; these four h2s group them instead, hidden because the cards already read as
           sections to the eye. Round 74. */}
-      <h2 className="sr-only">Two-party simulator</h2>
-      {/* Live two-party simulator: Start/Stop/Restart/Pause/Step drive the diagram animation */}
+      <h2 className="sr-only">Architecture simulator</h2>
+      {/* Live architecture simulator: Start/Stop/Restart/Pause/Step drive the canvas animation */}
       <PipelineControls run={run} />
       {/* `overflowX: "auto"` because this div hand-rolls the LOOK of `.card` and not its behaviour.
           `.card` carries `overflow-x: auto`, and its comment records the mobile audit that put it
           there - at 390px the document was 1326px wide, 936px of horizontal page scroll, "from two
-          diagram SVGs (990px, 930px)" among others. `TwoPartyDiagram`'s SVG sets `minWidth: 680`
+          diagram SVGs (990px, 930px)" among others. The two-party diagram then here set `minWidth: 680`
           DELIBERATELY, so it scrolls inside its container rather than shrinking to ~4.5px labels,
           and its comment says that is "what `.card { overflow-x: auto }` already provides". It was
           right about the rule and wrong about this element: copying the panel background, radius and
@@ -83,7 +84,7 @@ function UseCaseView({ usecase }: { usecase: string }) {
                                      padding: 8, overflowX: "auto" }}>
         {/* The protocol and the QSMPC op live in params, not in the crypto-agility family selects.
             Passing only the family is what let an E91 run draw a BB84 arrow. */}
-        <TwoPartyDiagram usecase={usecase} activeStage={active} doneStages={done} metrics={metrics}
+        <UseCaseCanvas usecase={usecase} activeStage={active} doneStages={done} metrics={metrics}
           config={{ kem: run.kem, qkd: run.qkd, sig: run.sig,
                     qkdProtocol: String(run.params.qkd_protocol ?? ""),
                     qsmpcOp: String(run.params.qsmpc_op ?? ""),
@@ -102,7 +103,7 @@ function UseCaseView({ usecase }: { usecase: string }) {
         </p>
       )}
       <div className="btn-row" style={{ marginTop: 10 }}>
-        <button className="btn ghost" onClick={() => downloadPng(`${usecase}-two-party.png`)}>⬇ Diagram (PNG)</button>
+        <button className="btn ghost" onClick={() => downloadPng(`${usecase}-architecture.png`)}>⬇ Diagram (PNG)</button>
         <button className="btn ghost" onClick={() => downloadGif(`${usecase}-simulator.gif`)}
           disabled={gifBusy || !hasRun} title={hasRun ? undefined : "Run the simulator first"}>
           {gifBusy ? "Encoding…" : "⬇ Animation (GIF)"}
@@ -412,28 +413,7 @@ function UseCaseView({ usecase }: { usecase: string }) {
         </div>
       </div>
 
-      {/* Run status, visible from anywhere on the page.
-          This page is about 7.3 viewport-heights tall and its whole point is watching a live run,
-          but the status badge lives in the controls card at the top and scrolls out of view almost
-          immediately. A visitor reading the benchmark or the posture table - which is where the
-          interesting output is - had no way to tell whether the run was still going, had finished,
-          or had stopped. Only the sidebar was sticky.
-
-          Rendered only while it carries information: during a run, and while paused. It disappears
-          on idle and once a completed run has been read, so it adds no permanent chrome to a page
-          that is already long. */}
-      {(run.running || run.paused) && (
-        <div role="status" aria-live="polite"
-          style={{
-            position: "fixed", right: 16, bottom: 16, zIndex: 50,
-            background: "var(--panel)", border: "1px solid var(--accent)", borderRadius: 10,
-            padding: "8px 14px", boxShadow: "0 4px 18px rgba(0,0,0,.45)",
-            display: "flex", alignItems: "center", gap: 10, fontSize: 12,
-          }}>
-          <span className={`badge-state ${run.state}`}>{run.state}</span>
-          {run.active ? <span className="muted"><code>{run.active}</code></span> : null}
-        </div>
-      )}
+      {/* The run's status is shown in the sidebar (lib/runStatus.ts) since Round 80. */}
     </div>
   );
 }

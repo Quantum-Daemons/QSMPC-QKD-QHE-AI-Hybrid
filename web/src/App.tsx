@@ -6,38 +6,110 @@ import Orchestration from "./pages/Orchestration";
 import UseCases from "./pages/UseCases";
 import UseCasePage from "./pages/UseCasePage";
 import { USECASES } from "./lib/useCases";
+import { useEffect, useState } from "react";
 import NotFound from "./components/NotFound";
-import { NAV } from "./lib/nav";
+import { NAV, shortNav } from "./lib/nav";
+import { useRunStatus } from "./lib/runStatus";
 
+
+/** Where the visitor's choice to collapse the sidebar is kept. Per browser and per viewer only: a
+ *  convenience, so a blocked or cleared storage just means the default applies again. */
+const SIDEBAR_KEY = "qsh.sidebar";
+/** Below this width the sidebar starts collapsed when the visitor has not chosen. At 1280 px the
+ *  expanded sidebar takes 240 px, and the run pages' diagrams are the widest things on them. */
+const NARROW_PX = 1100;
+/** Below this width there is no rail: the sidebar is a top bar (styles.css, the 900 px query), so
+ *  its links keep their full labels and the run status its full text. */
+const RAIL_MIN_PX = 901;
+
+function readSidebarPref(): "collapsed" | "expanded" | null {
+  try {
+    const v = window.localStorage.getItem(SIDEBAR_KEY);
+    return v === "collapsed" || v === "expanded" ? v : null;
+  } catch { return null; }
+}
+
+function useSidebar() {
+  const [pref, setPref] = useState(readSidebarPref);
+  const [width, setWidth] = useState(() => window.innerWidth);
+  useEffect(() => {
+    const onResize = () => setWidth(window.innerWidth);
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
+  const collapsed = width >= RAIL_MIN_PX && (pref ? pref === "collapsed" : width < NARROW_PX);
+  const toggle = () => {
+    const next = collapsed ? "expanded" : "collapsed";
+    setPref(next);
+    try { window.localStorage.setItem(SIDEBAR_KEY, next); } catch { /* this visit still toggles */ }
+  };
+  return { collapsed, toggle };
+}
+
+/** The live run's state, in the sidebar since Round 80 (see lib/runStatus.ts). The `role="status"`
+ *  element is always rendered, empty while nothing runs, so assistive technology already knows the
+ *  region when its first announcement arrives. */
+function RunStatusBox({ collapsed }: { collapsed: boolean }) {
+  const st = useRunStatus();
+  return (
+    <div className="run-status" role="status" aria-live="polite">
+      {st && (
+        <div className="run-status-box" title={st.active ? `${st.state} - ${st.active}` : st.state}>
+          <span className={`badge-state ${st.state}`}>{collapsed ? st.state.slice(0, 3) : st.state}</span>
+          {collapsed
+            ? <span className="sr-only">{st.state}{st.active ? `, stage ${st.active}` : ""}</span>
+            : st.active ? <code className="run-stage">{st.active}</code> : null}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function App() {
+  const { collapsed, toggle } = useSidebar();
   return (
-    <div className="app">
+    <div className={`app${collapsed ? " nav-collapsed" : ""}`}>
       {/* SC 2.4.1 Bypass Blocks, Level A. Must be the FIRST focusable element in the document, or it
           is not a bypass - it would sit behind the block it exists to skip. The `<main id="main">`
           below is the target; the id is added there for this and is used nowhere else. */}
       <a className="skip-link" href="#main">Skip to main content</a>
       <aside className="sidebar">
-        <div className="brand">
-          QSH{" "}
-          <small>Quantum-Safe Hybrid<br />QKD · QSMPC · QHE/FHE · AI</small>
+        <div className="sidebar-head">
+          <div className="brand">
+            QSH{" "}
+            <small>Quantum-Safe Hybrid<br />QKD · QSMPC · QHE/FHE · AI</small>
+          </div>
+          <button type="button" className="sidebar-toggle" onClick={toggle}
+            aria-expanded={!collapsed} aria-controls="sidebar-nav"
+            aria-label={collapsed ? "Expand the navigation" : "Collapse the navigation"}
+            title={collapsed ? "Expand the navigation" : "Collapse the navigation"}>
+            <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true">
+              <path d={collapsed ? "M5 2 L10 7 L5 12" : "M9 2 L4 7 L9 12"} fill="none" stroke="currentColor"
+                strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </button>
         </div>
-        <nav className="nav">
+        {/* Collapsed, each link shows a short label and keeps its full name as its accessible name
+            and tooltip, so the rail reads the same to a screen reader as the expanded list. */}
+        <nav className="nav" id="sidebar-nav">
           {NAV.map((n) => (
             <NavLink key={n.to} to={n.to} end={n.end}
+              aria-label={collapsed ? n.label : undefined} title={collapsed ? n.label : undefined}
               className={({ isActive }) => (isActive ? "active" : "")}>
-              {n.label}
+              {collapsed ? <span className="nav-short" aria-hidden="true">{n.short}</span> : n.label}
             </NavLink>
           ))}
           <div className="nav-group">Use-case simulators</div>
           {USECASES.map((u) => (
             <NavLink key={u.id} to={`/usecase/${u.id}`}
+              aria-label={collapsed ? u.nav : undefined} title={collapsed ? u.nav : undefined}
               className={({ isActive }) => (isActive ? "active sub" : "sub")}>
-              {u.nav}
+              {collapsed ? <span className="nav-short" aria-hidden="true">{shortNav(u.nav)}</span> : u.nav}
             </NavLink>
           ))}
         </nav>
-        <div style={{ marginTop: 28, fontSize: 11 }} className="muted">
+        <RunStatusBox collapsed={collapsed} />
+        <div style={{ marginTop: 28, fontSize: 11 }} className="muted sidebar-note">
           PQC-first hybrid · NIST FIPS 203/204<br />
           {/* Was "CNSA 2.0 · HNDL / Q-Day aware", which reads as a compliance badge. */}
           Tracks CNSA 2.0 (defaults are not CNSA 2.0) · HNDL aware

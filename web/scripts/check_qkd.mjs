@@ -43,7 +43,7 @@ function load() {
   const dir = mkdtempSync(join(tmpdir(), "qsh-qkd-"));
   const entry = join(dir, "entry.ts");
   writeFileSync(entry, `
-export { bb84, e91, FIBER, FREE_SPACE, intrinsicQber, eDetForBound, h2, transmittance, taggedFraction, channelLossDb, atmosphericLossDb, freeSpaceLink, decoySecureFraction, qsdcLink, inView } from ${JSON.stringify(join(WEB, "src/lib/quantumSim"))};
+export { bb84, blockKeyBits, e91, FIBER, FREE_SPACE, intrinsicQber, eDetForBound, h2, transmittance, taggedFraction, channelLossDb, atmosphericLossDb, freeSpaceLink, decoySecureFraction, qsdcLink, inView } from ${JSON.stringify(join(WEB, "src/lib/quantumSim"))};
 export { optimizeQKD } from ${JSON.stringify(join(WEB, "src/lib/clientOptiQKD"))};
 export { repetitionCountCutoff, adaptiveProportionCutoff, generateQuantumBits, minEntropyMcv, toeplitzExtract } from ${JSON.stringify(join(WEB, "src/lib/clientQRNG"))};
 export { qkdCfg, qrngCfg } from ${JSON.stringify(join(WEB, "src/lib/config"))};
@@ -169,11 +169,22 @@ const cfg_qrng = m.qrngCfg();
   check("chsh-tsirelson", e.chshS <= 2 * Math.SQRT2 + 1e-12,
     `S=${e.chshS} exceeds the Tsirelson bound ${2 * Math.SQRT2}`);
 
-  // skr is a per-pulse RATE and secureKeyBits a TOTAL. Dimensional tie, to the floor applied.
-  const b = m.bb84(200_000, chan, 1);
-  check("skr-times-pulses-is-bits",
-    Math.abs(b.secretKeyRate * 200_000 - b.secureKeyBits) <= 1,
-    `skr*pulses=${b.secretKeyRate * 200_000} against secureKeyBits=${b.secureKeyBits}`);
+  // skr is a per-pulse RATE and secureKeyBits a TOTAL - and since Round 80 the total is the block's
+  // COMPOSABLE FINITE KEY, not the rate times the pulses. Tied two ways: to the bound it names, and
+  // below the asymptotic product it can never exceed.
+  // The block is the one the result names - the configured fibre block unless a caller names one.
+  const b = m.bb84(20_000_000, chan, 1);
+  check("bits-are-the-blocks-finite-key",
+    b.blockPulses > 0 && b.secureKeyBits === m.blockKeyBits(chan, cfg.error_correction_eff, b.blockPulses),
+    `secureKeyBits=${b.secureKeyBits} against blockKeyBits=${m.blockKeyBits(chan, cfg.error_correction_eff, b.blockPulses)} over ${b.blockPulses} pulses`);
+  check("finite-key-below-asymptotic",
+    b.secureKeyBits > 0 && b.secureKeyBits < b.secretKeyRate * b.blockPulses,
+    `secureKeyBits=${b.secureKeyBits} against skr*blockPulses=${b.secretKeyRate * b.blockPulses}`);
+  // And a named block is honoured: the run's own 2e7 pulses.
+  const own = m.bb84(20_000_000, chan, 1, undefined, { blockPulses: 20_000_000 });
+  check("a-named-block-is-honoured",
+    own.blockPulses === 20_000_000 && own.secureKeyBits === m.blockKeyBits(chan, cfg.error_correction_eff, 20_000_000),
+    `blockPulses=${own.blockPulses}, secureKeyBits=${own.secureKeyBits}`);
 
   // h2 at its maximum. Cheap, and catches a broken entropy helper before anything downstream.
   check("h2-max", near(m.h2(0.5), 1), `h2(0.5)=${m.h2(0.5)}`);

@@ -122,7 +122,10 @@ export default function Validations() {
                     one the public site executes and this cell rendered blank there. The sentence
                     remained true only of the branch nobody had looked at. */}
                 <tr><td>secret key rate (per pulse)</td><td>{typeof qkd.skr_per_pulse === "number" ? Number(qkd.skr_per_pulse.toPrecision(4)) : qkd.skr_per_pulse}</td></tr>
-                <tr><td>secure key bits</td><td>{qkd.secure_key_bits}</td></tr>
+                {/* A composable finite key since Round 80, of the block named beside it - not the rate
+                    times the pulses, which no finite block distils. */}
+                <tr><td>secure key bits (composable finite key)</td><td>{typeof qkd.secure_key_bits === "number" ? qkd.secure_key_bits.toLocaleString("en-US") : qkd.secure_key_bits}{typeof qkd.block_pulses === "number" && qkd.block_pulses > 0
+                  ? <span className="muted small"> over a block of {qkd.block_pulses.toExponential(2)} pulses</span> : null}</td></tr>
                 <tr><td>eavesdropper?</td><td style={{ color: qkd.eavesdropper_likely ? "var(--danger)" : "var(--accent-2)" }}>{String(qkd.eavesdropper_likely)}</td></tr>
               </tbody>
             </table>

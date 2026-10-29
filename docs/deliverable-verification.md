@@ -6332,3 +6332,629 @@ eskr 1,070,011. No "Infinity" or "NaN", console clean.
 BUSINESS DOC RECONCILED Round 79. The out-of-repo document is brought level with this round. Its content
 is not quoted here, in the checklist, or in any commit - only the fact of the reconciliation, which is
 what gate 16 reads.
+
+## Round 80: every fibre key a finite key, and the factor of two that was the test's
+
+**On main.** Round 79 (PR #75) merged after its six checks passed, by the user's choice; the demo was
+returned to main (2f34c1b, `index-kIMQHozN.js`) and checked live. Two user choices then: the fibre
+key as a composable finite key at every fibre site, and its block decided by the published practice.
+
+**Every fibre site, one key.** `run_bb84` and `bb84()` now report as `secure_key_bits` the
+composable finite key of a block - Rusca et al.'s 1-decoy bound, or Lim et al.'s for a source that
+sends the vacuum - so the use-case pipelines, the two-party demo and its Validations page, the
+Python API and the benchmark cannot report different quantities. The per-pulse rate stays asymptotic
+and says so; E91 keeps its asymptotic count, labelled.
+
+**The block, decided by the practice: 1e7 key-basis detections.** A research pass read the fibre
+experiments and deployed systems: they fix the block as a count of key-basis bits, the
+privacy-amplification input, and let the time follow from the distance - Rusca et al.'s Table I uses
+1e7, Boaron et al. 2018 8.2e6 (cut tenfold at 405 km to keep a block under a day), Grunenfelder et
+al. 2020 8,149,248, Li et al. 2023 1e8 - while a fixed time is the minority (Lucamarini et al.'s 20
+min) and a pulse count mostly a theorist's convention. The default is n_Z = 1e7
+(`QKDConfig.finite_key_block*`), with seconds of link time and the run's own pulses offered, and
+controls on the page. On the shipped channel the block is 5.3 s at 50 km and 35 s at 100 km and
+carries about 5.1 Mbit at either, 0.68 of the asymptotic product. The old 2e7-pulse block, now an
+option, carries 9,811 bits at 50 km and none at 100 km, where two such blocks would.
+
+**Found by checking the default: the factor of two was the test's.** The research's check for the
+default was Table I's own block time. Ours came out 2.1 to 2.4 times the paper's at every row: the
+detection rate was half the paper's. Rusca et al.'s attenuation is "global" - "the detector and the
+internal losses of Bob's apparatus are included" - and this repository's two Table I tests had
+applied a 50 percent detector on top of it, 3 dB too much. With it applied once:
+- the 1-decoy bound reads 1.03 / 1.04 of Table I at 26 dB (n_Z 1e7 / 1e9), 0.96 / 0.97 at 46 dB and
+  0.80 / 0.84 at 56 dB; under the paper's own dead-time convention (its Eq. B3 sums the Z-basis
+  detections, where `dead_time_factor` charges each detector its own clicks) the 26 dB row is
+  reproduced to a few parts in a thousand;
+- the time to fill a block is within 10 percent (13.4 s against 14 s; 1,240 s against 20 min);
+- Lim et al.'s bound reads 0.91 / 0.96 and 0.86 / 0.90 of the 2-decoy rows;
+- Round 79's reading of (A16) is confirmed: with the decoy's errors bounding the vacuum the 26 dB
+  row reads 1.000, with the signal's 0.868.
+The "conservative by 2-3x" that `finite_key.py`, `bb84.py` and the config carried since Round 47, and
+Round 79's "within a factor of 2.5" in the README and the report, are corrected; the asserted bands
+are tightened to match (1-decoy within 5 percent at 26 and 46 dB, 25 percent at 56 dB; 2-decoy within
+20 percent and never above). The 64 dB row is not asserted: the dark counts set it there.
+
+**The asymptotic path, checked at the research's request.** It read our 1.427e-3 bit per pulse sent
+as low for 13 dB. It is the shipped p_Z = p_signal = 0.5: at p_Z = 0.9 the same code gives 2.34e-3,
+and Rusca et al. optimise both. Recorded in the config since Round 47; not a defect.
+
+**The page.** The key-material row names the block and the bound on both use-case pages; the
+control plane's channel time is the block's link time on fibre as on the satellite; the Validations
+row reads "secure key bits (composable finite key)" with its block, which the two-party payload now
+carries from both branches. `qkd_block_s` is emitted to four significant figures at every site: the
+satellite's one decimal would print a 20 ms fibre block as 0.0 s, and the rounding gate allows one
+rounding per name. `check_qkd.mjs`'s "rate times pulses is bits" identity, true until this round, is
+replaced by the block's finite key and the asymptotic product as its ceiling.
+
+**Gates.** `tests/test_the_fibre_key_is_a_finite_key.py` (both languages to the bit over 18 cases,
+every caller on one block, the stage's metrics, growth with the block); the rewritten
+`tests/test_finite_key_reproduces_the_published_table.py` (the paper's channel, its dead time, its
+block times); `tests/test_the_vacuum_decoy_bound_is_lim_2014.py` on the paper's channel. Full suite
+and all 18 local gates green.
+
+**Walked locally on a client-only build, then on the deploy (959ce41, `index-BksqMex-.js`), in
+Chrome.** Telecom at 50 km: "not yet run" before the run; then 5,184,652 bits, "composable finite key
+over a privacy-amplification block of 1e+7 key-basis detections: 5.33e+9 pulses, 5.334 s at the
+assumed clock: Rusca et al. 2018 (one decoy), eps_sec 1e-9", the rate unchanged at 1.427e-3 per pulse
+sent, the control plane at 5.3 s of channel time with eskr 1,183,712 and a budget of 3,888,489 bits.
+The run's own 2e7 pulses at 100 km (local build): 0 bits and "A block 2 times larger would carry
+one". Validations: "secure key bits (composable finite key) 5,184,652 over a block of 5.33e+9
+pulses", the telecom run's count. The satellite unchanged: 91,475 bits over 408.5 s. No "Infinity" or
+"NaN", console clean.
+
+BUSINESS DOC RECONCILED Round 80. The out-of-repo document is brought level with this round. Its content
+is not quoted here, in the checklist, or in any commit - only the fact of the reconciliation, which is
+what gate 16 reads.
+
+## Round 80, continued: the README made a summary, and three defects its screenshots showed
+
+**The user held the merge of #76 until the README was reorganised.** It had grown to 1,200 lines.
+The user asked for the development environment, the run steps and the key points in order, Mermaid
+diagrams of the architecture and the workflow, the pages' figures, and the long records moved to
+split files under `docs/` or into the technical report. Two choices followed: both (the `docs/` files
+carry the full text, the report a short appendix pointing to them), and a screenshot of every page.
+
+**The README is a summary: 1,200 lines to 246.** It keeps the summary and the novelty sentence, and
+adds an at-a-glance table (what runs, real or simulated, what it is checked against), four Mermaid
+diagrams (the architecture, a run's stages, how the QKD key is derived, the development workflow), a
+sitemap with the routes, eleven screenshots, the quickstart, the layout and an index of the
+documents. The rest moved verbatim, link paths rewritten for the new directory, each file opening
+with a note that says so:
+- `docs/use-cases.md`: what is and is not new, the positioning, the four workstreams, the use cases.
+- `docs/development.md`: the quickstart's notes, the development environment, GPU, FHE, MPC,
+  Rust/WASM, the dependency advisories, the languages and the submodules.
+- `docs/models-and-benchmarks.md`: the datasets, the benchmark, the model tiers, what the pages show.
+- `docs/findings.md`: the WS3 and WS4 challenges, and every concern and recommendation.
+- `docs/deployment.md` gains the deployment tiers.
+The report gains an appendix that says where each record now lives and states the three findings
+that change how its results read.
+
+**What a move does to a gate.** Three tests read the README for a claim that has now moved. Reading
+only the README they would have kept passing on a file that no longer holds the claim, so they now
+read the moved files too: `test_an_evaluation_sample_says_which_split_it_is`,
+`test_a_licence_downgrade_reaches_every_copy` and `test_the_retired_comparisons_stay_retired`. Three
+more enumerate with `git ls-files` and could not see a new file until it was staged: document
+reachability, the Markdown house style and the AI Act scope. They were run again after `git add`.
+
+**Twelve pointers said "the README" for text that had moved.** Each now names the file that holds
+it: three in `docs/findings.md` and one in `docs/development.md` that called the file itself the
+README, `publish_hf.py` (twice), `synthetic.py`, two entries in `references/REFERENCES.md`,
+`references/satellite-event-count-investigation.md`, `clientSdnController.ts` and an SDN test's
+docstring. Two were wrong before the move: `synthetic.py` said the README pointed to Synthea, AMLSim
+and MOSTLY-AI, and it never had (Round 17 removed the two submodules); the findings said Al-Kuwari et
+al. were "cited elsewhere in this README", and the only other citation is in
+`references/REFERENCES.md`. Dated notes that quote an old README line number are history and stay.
+
+**Three defects the screenshots showed, each on the deploy (959ce41, `index-BksqMex-.js`).**
+- E2E Orchestration: after a run, six of the ten pipeline nodes were not drawn. React Flow v12 keeps
+  a node hidden until it has measured it. Each node now has an explicit width and height (190 x 100),
+  which it draws without measuring.
+- Satellite: the QSDC "not available" label was one line of 199 characters on the live run, wider
+  than the diagram: it ran from -107 to 891 in a drawing 780 units wide. It now wraps at its
+  separators, at most 110 characters a line, three lines on the default link.
+- The live event log, on every page that runs the pipeline: the event type was its label's class, so
+  a "log" event's label took `.log`, the log container's own rule. Measured live: 14 such labels,
+  each a 44 px box with 12 px padding, a border and the log's background, painted over the line above.
+  The class is now `ev-` plus the type. Measured after the fix: 22 "log" labels with no padding,
+  border or background, one line (17.5 px) tall, and the stage and metric colours unchanged.
+The screenshots were taken again after the fixes and each was opened and read.
+
+**The new summary text, checked against the code.** The at-a-glance table claimed NIST's ACVP cases
+for the PQC row as a whole; the cases are ML-KEM-768's only, and the row now says so. It called the
+fibre key "a composable finite key" for BB84 and E91; E91's is the asymptotic count, secure fraction
+times sifted bits, and the row now says so. Confirmed as written: eleven published models, each at a
+pinned revision and each runnable in the browser; Liao's pass within 1 percent (detections -0.9
+percent); 23 Micius nights; the QML detector's logistic-regression baseline on the same split; MCP
+results signed with ML-DSA-65; the three CI jobs; the Quickstart's files, port and arguments.
+
+**A count in this round's own log was wrong.** The log said seven rounds had recorded the Table I
+factor as this code's conservatism, and the report appendix's first draft took the number from it.
+The test that applied the detector twice was written in Round 47 (3c63ea8: `detector_efficiency`
+0.5 on the stated total attenuation), thirty-three rounds before. Both are corrected, and the
+appendix states the error-correction efficiency its Khmelev ratio needs: 0.56 at 1.16, 0.51 at their
+own 1.44.
+
+**The diagrams, measured at the width GitHub gives them.** GitHub scales a Mermaid diagram to its
+column, about 830 px beside the repository sidebar. Rendered with Mermaid 12.1.0 and measured, the
+first drafts of three were 1,795, 1,512 and 1,163 px wide, so the architecture would have shown at
+half size, about 7 px text. Each was laid out again (the browser's six parts as a grid, the run's
+stages in three steps, the workflow in two rows) and all five now draw at full size, 456 to 744 px.
+The workflow had also drawn the merge before the deploy; each branch is deployed and walked before
+it merges, and main again after, and it now says so. A dotted arrow drawn through a box's title,
+and an edge wrapped through it, were removed.
+
+**The report's build note named the other engine.** Its first line and its Reproduction note said
+`xelatex`; its preamble says the toolchain is pinned to `pdflatex` because `xelatex` once fell back
+to nullfont, and `make report` runs `pdflatex`. Both engines build the same sixteen pages today,
+with the same fonts and images, so nothing was broken; both notes now name `make report`.
+
+**Gates.** All 18 local gates, the full suite among them (937 passed, 7 skipped), on the tree
+before the diagrams were laid out again; the document gates again after it; `tsc`, the JSX-spaces
+check and a client-only build.
+
+**CI green on 8773af6 (six checks), then deployed from git and walked in Chrome
+(`index-CO2HFevZ.js`, replacing `index-BksqMex-.js`).** Measured on the live pages, the same way the
+three defects were measured before the fix:
+- E2E Orchestration after a finance run reached "done": ten nodes, all drawn, each 190 x 100; none
+  hidden. The event log's 22 "log" labels have no padding, border or background and are one line
+  (18 px); no span carries the class `log`.
+- Satellite: the QSDC label is three lines (40, 98 and 55 characters) from 154 to 630 in the
+  780-unit drawing, where it had been one line from -107 to 891. The key is 91,475 bits, unchanged;
+  the Network tab opens on "One pass over one station".
+- Telecom: 5,184,652 bits over a block of 5,334,030,000 pulses, unchanged; Validations reads the same
+  count over 5.33e+9 pulses.
+- Finance and medical runs end "done" and PASS with plain log labels; the Overview, Value (the
+  novelty sentence intact), Use cases and Genomics pages render. No page shows `NaN`, `undefined`,
+  `Infinity` or `[object Object]`, and the console showed no error through a fresh load and a run.
+On GitHub the branch's README draws all five diagrams at full size in an 846 px column and loads
+all eleven screenshots.
+
+BUSINESS DOC RECONCILED Round 80. The out-of-repo document is brought level with this round's
+continuation. Its content is not quoted here, in the checklist, or in any commit - only the fact of
+the reconciliation, which is what gate 16 reads.
+
+## Round 80, continued: the diagrams during a run, the report's figures, and two pipelines brought into step
+
+**The user held the merge again.** The technical report had no architecture diagram of the
+verification environment or of the implementation workflow; neither the README nor the report had a
+flowchart of each use case's implementation; and during a run the E2E simulation diagrams on every
+tab showed text that could not be read, overlapped, or ran out of its box. The user pointed to the
+canvas of the PQC-QKD demo's /e2e page and asked for the sidebar to collapse if that was advisable.
+Choices: the orchestration graph readable now and a grouped canvas as a follow-up round; the run
+status in the sidebar; a sidebar that collapses, remembers, and starts collapsed on narrow windows;
+TikZ in the report and Mermaid in the README, held together by a test; the use-case flowcharts
+collapsible in the README, naming what implements each stage, in a new report section before the
+results.
+
+**Measured on the deploy (8773af6, Chrome, 1280 x 677) before the fixes.**
+- E2E Orchestration: ten stages in one row at 0.36 scale, captions about 4.7 px. And no edges at all:
+  0 of 9 at load, during a run and after it. Round 80's explicit node size kept the nodes drawn, but
+  a node object rebuilt without `measured` loses its handle positions in React Flow 12, and a node of
+  fixed size is never measured again, so every edge went. The nodes now carry `measured`.
+- Every use-case page, during a run: steps not yet run drawn at 0.26 opacity, about 1.9 : 1 against
+  the panel; a status chip fixed to the corner, over the diagram's lower rows, its legend and the
+  Metrics table; labels in boxes and bars never wrapped, the comparison bar's label edge to edge; the
+  telecom header's subtitle at the edge of its box.
+- Validations (from the README's screenshot): the BB84 chart's rotated "secure bits" axis title drawn
+  over its seven-digit tick labels.
+
+**The fixes, measured again in the browser.**
+- The graph wraps into rows chosen from its frame's width: two rows of five at 0.88 scale with the
+  sidebar open at 1280 px, full scale with it collapsed, rows of four at 1024 px. Stages are numbered,
+  edges carry arrowheads, a row ends in a wrap edge to the next, the zoom controls sit in a strip of
+  their own, and the page scrolls under the wheel. Nine edges at load, two seconds into a run and
+  after "done".
+- The two-party diagrams wrap every label by its width measured with the page's own font, in arrows,
+  boxes and bars, and a row grows by the lines its label needs; room for the step's mark is kept so a
+  tick arriving cannot re-wrap a row. Steps not yet run are drawn at 0.6, about 4.5 : 1. The party
+  headers are 236 units wide, with subtitles that wrap.
+- The run status moved into the sidebar, a live region always present, every in-flight state shown;
+  no fixed-position element remains at 901 px and above. On a phone the sidebar is a top bar that
+  scrolls away, so there the status box floats as the chip did.
+- The sidebar collapses to a 64 px rail of short labels (full names as accessible names and
+  tooltips), remembers the choice per browser, and starts collapsed from 901 to 1099 px.
+- The secure-bits axis prints compact ticks (4.5M).
+
+**The report and the README.** A new report section, "Implementation and verification architecture",
+holds seven TikZ figures: the verification environment, the implementation workflow, and the five
+use-case flowcharts. The README carries the same seven in Mermaid, the use cases and the environment
+in click-to-open sections; `tests/test_the_report_figures_match_the_readme.py` pairs them by a
+`figure:` key and requires the same labels in both. Each Mermaid diagram was rendered and measured
+first: all fit GitHub's README column at full size.
+
+**A survey of both pipelines for the flowcharts found what the pages did not say.** Checked in the
+code before anything was drawn:
+- The browser's genomics secure sum added `floor(u() * 100)` per party, stand-ins, while the page and
+  its diagram said the cohorts pool allele counts. By the user's choice it now pools the real counts:
+  the backend's four cohorts, split as the backend splits them, at PGS000004's first variant
+  (1:100880328:T) over the 30 bundled 1000 Genomes individuals: 23, over Z_29, equal to the plain
+  total. The seeded stream is consumed as before, so everything downstream is unchanged (PRS -0.2332,
+  class 0), and the log names the pooled count only, never a cohort's.
+- The full deployment ignored two settings the page offers, and by the user's choice both were fixed
+  in this round: the E91 protocol, which reached only OptiQKD, so both QKD stages ran BB84 whatever
+  was selected; and the PQC-only profile on satellite, under which the free-space QKD and QSDC stages
+  ran anyway, and under which OptiQKD tuned a disabled channel everywhere. Python now runs E91 on both
+  stages (an asymptotic key, mixed at 256 bits or more), and skips QKD, QSDC and OptiQKD under PQC-only.
+  `tests/test_the_full_deployment_runs_the_selected_protocol.py`, including the browser's E91 against
+  Python's on the same channel: the same CHSH S and expected QBER, the key within 3 percent.
+- The README's new QKD-key diagram said a key of 256 bits or more is folded into the session key.
+  Only the full deployment does that; the browser reports the key length and derives no key material,
+  by design. The diagram now branches on where the run executes.
+- Recorded, not changed: the browser logs a failed stage and continues where Python stops the run;
+  Python's QSDC test is a finite-sample bound where the browser's is asymptotic; Python's E91 also
+  aborts above a QBER of 0.11, which changes no outcome because the secure fraction is zero above
+  about 0.10. Two comments still described the 16- and 12-row federated samples of an earlier round;
+  they are 400 rows now, and the comments say so.
+
+**The report's satellite sentence** said the same gap on two passes "is the analysis and not the
+channel". It is an inference the next round's Chernoff-type bound exists to test; it now says the gap
+points to the analysis, as the appendix does.
+
+**Gates.** All 18 local gates on the final tree, the full suite among them; tsc, the JSX-spaces
+check and the web node checks; the new figure and protocol tests.
+
+**CI green on eed888b (six checks), then deployed from git and walked in Chrome at 1280 x 677
+(`index-DLwSRnva.js`).**
+- E2E Orchestration: two rows of five at 0.88 scale, nine edges at load, two seconds into a run and
+  after "done". In a tab Chrome had not yet shown, the first measurement read no edges and the default
+  scale - rendering is suspended there - and the graph drew both as soon as the tab was shown.
+- The sidebar collapses to a 64 px rail (links keep their full names), stays collapsed on the next
+  page, and the graph then draws at full scale with all nine edges. The choice was removed from the
+  browser afterwards. The only fixed-position elements on the page were the browser extension's own.
+- Genomics: "secure sum of allele counts over GF(29), pooled = 23", four cohorts, PRS -0.2332, class 0.
+- Telecom mid-run: the running step at 1, finished steps at 0.95, pending ones at 0.6; the sidebar
+  said "running, stage qml_ids"; the run ended at 5,184,652 bits. Validations: the secure-bits axis
+  reads 1.5M to 6M, and the same count.
+- Satellite: 91,475 bits; the QSDC label three lines, 154 to 630 of 780. No page showed `NaN`,
+  `undefined`, `Infinity` or `[object Object]`, and the console showed no error.
+On GitHub the branch's README opens each collapsed section to its diagram: the five use cases and the
+verification environment, each rendered at the column's width.
+
+BUSINESS DOC RECONCILED Round 80. The out-of-repo document is brought level with this round's second
+continuation. Its content is not quoted here, in the checklist, or in any commit - only the fact of
+the reconciliation, which is what gate 16 reads.
+
+## Round 80, continued: the report's figures and tables laid out, and a scan of every page's text
+
+**The user held the merge a third time.** In the technical report, Figure 1's graphs had text over
+their lines, and in Figure 2 `scripts/ci_local.sh:` ran to the edge of its box. The user asked for both
+to be fixed, for every other figure and table in the pages and documents to be checked for the same,
+and for the re-check to become a checklist row or a gate.
+
+**What looking further found in the report.** The committed PDF (3eba542), rebuilt to read its log,
+carried nine "Overfull \hbox" warnings, each a line set wider than its box. Nothing read the log.
+- The models table, 393 pt wider than the text: its Dataset column printed off the page.
+- The scope box, 209 pt: the rule and the paragraph after it set as one line.
+- The licences table, 40 pt: `BTS1_BTS2_fields_preserved.csv` over the next column.
+- 28 pt in `quantum_beats_classical: false`; 3 pt in Figure 2's `scripts/ci_local.sh` box, the one
+  the user saw; four more of 1 to 20 pt in the abstract, the appendix's file list and the
+  reproduction note.
+
+The baselines figure also showed numbers from 13 August. Nothing ran `report/build_figures.py` but a
+hand, and the figure drew the satellite forecaster at 0.45 where `models/metrics.json` has said 0.0
+since.
+
+**The fixes in the report.**
+- Figure 1, right: the three labels moved off the curve and out from under the title, each on a
+  leader line. Left: "max margin" above its point on a leader, the legend lower left.
+- Figure 2: the box is 36 mm, with room either side of its label. The figure now also names the gates
+  added below.
+- The baselines figure is redrawn from the current metrics. Its labels are two lines (the use case,
+  then the model), and a measured zero is printed where its bar would be.
+- Tables and text:
+  - The models table runs at full width, its keys and file names breakable at "." and "_".
+  - The licences and findings tables use ragged-right columns.
+  - Underscores are breakable in running text.
+  - A blank line now precedes the scope box's rule.
+- The build now logs no overfull warnings.
+
+**Gates for the report.**
+- `report/build_figures.py` checks every figure before writing it, on the renderer. It looks for any
+  two pieces of text that overlap: titles, axis labels, the tick labels drawn, annotations and legend
+  entries. It also looks for any drawn line through a label, the title or the legend. It refuses to
+  write a figure with a finding, and `make report` runs it.
+- `make report` fails on any "Overfull \hbox" in the LaTeX log.
+- `tests/test_the_report_is_laid_out_without_overlaps.py` checks three things:
+  - the figures pass the check;
+  - the check catches Figure 1's right panel exactly as published: a label under the title and two
+    on the curve;
+  - the Makefile keeps both gates.
+
+  CI has no LaTeX, so the overfull half runs locally, and the test holds the Makefile to it.
+- The staleness gate counts `models/metrics.json` and the registry as inputs of the PDF, so a figure
+  drawn from old metrics fails it.
+
+**The same look over the pages: a scan.** `web/scripts/check_text_overlap.mjs` drives a headless
+Chrome over eleven views. It runs each page's pipeline and scrolls through so that lazily drawn charts
+render. Then it measures:
+- text over text in every SVG, rotated labels by their true outline;
+- text past its SVG on any edge;
+- text out of the box it labels, or into a dot drawn in that box;
+- pipeline-graph text out of its node.
+
+Its first run found four faults, none seen before:
+- Validations, network panel: "ML-KEM-768 (RFC 9370) + PPK (RFC 8784)" ran out of its box. It now
+  reads "ML-KEM-768 + PPK (RFC 9370, 8784)".
+- Validations, MPC benchmark: "2200 ms" wrapped onto two lines, and the top tick was cut off above the
+  chart.
+- The real-data scatter on the use-case pages:
+  - Recharts anchors a rotated y title at its start, so titles ran out of the top of the 230 px charts
+    (" (log)" was cut);
+  - "10000" ran under the title.
+
+  The titles are now centred on their axes, and the log ticks are compact (1k, 10k).
+- The per-class F1 chart: "photon_number_splitting", drawn at -25 degrees, ran below the chart and
+  lost its first letter. The chart now uses horizontal bars, with the names level down the side.
+
+**In another font, three more.** The pages use the visitor's `system-ui`. On this workstation that
+resolves to Noto Sans. GitHub's Ubuntu runners, and many Linux desktops, resolve it to DejaVu Sans,
+about a tenth wider. Under DejaVu the scan found three more faults:
+- the Overview diagram's "bundled sample rows" ran out of its box;
+- two titles there, "QKD link (BB84 decoy / E91)" and "Federated training", ran into their badge dots;
+- the MPC ticks wrapped again at the 66 px the first fix had given them.
+
+The scan had no rule for text over a dot until then. The boxes are now widened with room for DejaVu.
+The MPC ticks are plain numbers, with the unit in the line above each chart, so their width no longer
+depends on the font.
+
+**Two more rules, and what they found.** The regenerated Overview screenshot showed "count only - not
+mixed in" against the QKD box's border. The scan compared a label only with the box it sits in, and
+this label sits in none: it touched the border by 1 px here, and crossed it by about ten in DejaVu.
+- **Label clearance.** A label now keeps 2 px clear of any stroked box it is not inside. The QKD box
+  moved 30 units right.
+- **Wide HTML.** The scan had measured SVG text only. It now also flags:
+  - on a desktop, a box that scrolls sideways by 16 px or less, which is a margin or a word that
+    will not break, not content;
+  - content wider than a box that does not scroll;
+  - a page that scrolls sideways.
+
+  Some scrolling is by design and is not reported. On a phone every table and wide diagram scrolls
+  in its own box. A data table of seven or more columns scrolls on a desktop too, once the window is
+  narrower than it. A first version that reported those flagged six tables at 390 px for scrolling
+  4 to 15 px, and would have made the gate depend on how many digits a number has.
+
+The HTML rules found the Metrics card scrolling sideways by 3 to 5 px after a run, on up to five
+pages; the widths depend on the run's values. The longest metric names, such as
+"encrypted_tier_within_operational_window", are 268 px of unbroken text. Names now break after each
+underscore, using `<wbr>` so a copied name is unchanged; values break anywhere. The two sliders' default 2 px side margins, which pushed them into their cards' padding,
+are removed once in CSS for every slider. The benchmark's eleven-column table, 5 px too wide for its
+card at 1280 px in DejaVu, has narrower cells.
+
+**The clearance rule's first version matched no box.** It read the stroke width as `+"1.6px"`, which
+is NaN. Run first on the label that prompted it, it found nothing, and that is how the bug showed.
+
+**Scanning with the network cut found a false statement.** CI is offline by design, so the CI scan
+lets the page reach localhost only. The published models' evaluation samples come from the Hugging
+Face Hub, so their stage fails there, and the rest of the run goes on. Probing that run, the finance
+page logged that `finance_aml.gbm` "is published and pinned but ships no eval_sample.json at that
+revision", and the verification logged "no published evaluation sample". The sample is published.
+The fetch returned `null` for a 404 and for every failure alike (offline, a timeout, an outage, a
+rate limit), and the page read `null` as the Hub's answer. The `null` was cached, so a visitor whose
+first request timed out was told the same for the rest of the session.
+
+Now only a 404 reads as "no sample", and only the Hub's answers are cached. A failed request is
+reported as one, with its reason and the sentence "This says nothing about whether the model
+publishes one", and the next run asks again. `web/scripts/check_sample_fetch.mjs` replaces `fetch`
+with each kind of failure, through the real module, and checks both readers. It runs from
+`tests/test_a_failed_fetch_is_not_an_absent_sample.py`, so CI runs it. Seeded, the module before the
+fix fails it on all four kinds.
+
+**Gates for the pages.** After the fixes the scan passes in both fonts at three sizes: 1280 x 720,
+1024 x 700 and 390 x 800. It runs in three places:
+- `scripts/ci_local.sh` step 8, on a client-only build, in the local font;
+- the CI web job, on the runner, in DejaVu Sans, offline (`SCAN_OFFLINE=1`: localhost only);
+- `npm run check:text-layout`.
+
+It was seeded on the builds before each fix:
+- under DejaVu, it reports that build's five findings, the two dots among them;
+- with the later rules, it reports the label, and the Metrics card on five pages.
+
+**The README's diagrams, measured the same way.** `web/scripts/check_readme_mermaid.mjs` renders every
+Mermaid block with Mermaid 12 in a headless Chrome and measures it. It finds a label out of its node
+(a decision by its diamond, not its bounding box), a label over another, an edge label over a node,
+and an edge through a node's text. All eleven README diagrams pass.
+
+It was seeded both ways:
+- shapes shrunk to 70 percent gave 99 findings;
+- diamonds narrowed by their points gave findings of the diamond rule, with the text still inside
+  each bounding box.
+
+Mermaid is not a dependency of this project, so its bundle is passed in. This check is a checklist
+row, not a CI gate.
+
+Figure 2's README twin names the new gates, as the report's figure does, and the label test holds the
+two equal. The eleven screenshots were regenerated from this tree.
+
+The local gates' first run on this tree failed one test. The dead-component gate read the new
+axis-title helper, a capitalised inner function passed to Recharts and never written as a tag, as a
+component nobody renders. It is now an anonymous render function, with the same output.
+
+**CI green on effe07d (eight checks), then deployed from git and walked (`index-DtxjSoAc.js`).**
+- **CI.** The web job ran the scan on the runner, offline: all eleven views passed. The Python job
+  ran the two new tests.
+- **The scan against the deploy.** No findings in the local font (Noto Sans CJK JP) at 1280 and
+  390 px, nor in DejaVu Sans at 1280 px. The scan now prints the font it measured, so "the runner's
+  font" is read from a run rather than assumed.
+- **Overview and Validations, in the user's Chrome** (1280 x 677; `system-ui` as wide as Noto Sans
+  CJK JP). The scan's own measurement, run in the page after each page's run, found nothing on
+  either page.
+  - Overview: "count only - not mixed in" clears the QKD box by 27 px.
+  - Validations: the MPC charts read "median time in ms" with ticks from 0 to 2200, and the IPsec
+    lane reads "ML-KEM-768 + PPK (RFC 9370, 8784)". The secure-bits axis reads 1.5M to 6M.
+- **Finance.** The run ended done, PASS. The Metrics and Detailed results cards do not scroll, and
+  both published models were re-scored with verification PASS.
+- **A failed sample fetch, on the deploy.** With requests to the Hub refused in the page, the log
+  said the sample "could not be fetched", gave the reason, and said this is no evidence that the
+  model publishes none. There was no "ships no eval_sample.json". With the network restored, the
+  next run fetched the sample and both verifications passed, so the failure was not cached.
+- **Telecom.** The run ended done, PASS, with every per-class name whole, "photon_number_splitting"
+  among them.
+- **Overall.** No page scrolled sideways, and the console showed no errors. The tab was closed, and
+  no sidebar preference was stored.
+
+BUSINESS DOC RECONCILED Round 80. The out-of-repo document is brought level with this round's third
+continuation. Its content is not quoted here, in the checklist, or in any commit - only the fact of
+the reconciliation, which is what gate 16 reads.
+
+## Round 80, continued: the use-case pages drawn as their architecture, animated by the run
+
+**The user held the merge a fourth time.** The E2E page's graph was confirmed. The user asked for the
+same kind of animation on the five use-case pages, where it was hard to see how a stage moves inside
+each party, and which way its arrows go. The user also chose to make the README diagram check a CI
+gate. Choices:
+- **Layout:** swimlanes. Each party is a column of components, with a lane per stage between them.
+- **The sequence diagram:** replaced, its labels moved to the canvas and a stage list.
+- **Parties:** the run's real ones.
+- **Animation:** flowing dashes, as on the E2E graph, plus a token travelling the way the data goes.
+
+**What was built** (`web/src/components/UseCaseCanvas.tsx`, on React Flow like the E2E graph):
+- **Running stage:** its components glow, its lane's dashes flow, and a token travels the way the
+  data goes, both ways for an exchange.
+- **Finished stage:** marked done. One whose run failed, such as a key agreement left with no key
+  bits, is marked failed in red.
+- **Status line:** names every row that runs: private inference is the FHE lane, the MPC lane and the
+  published model at once.
+- **Stage list under the canvas:** each stage's full label with the run's values. These are the
+  sequence diagram's labels, unchanged, in `web/src/lib/useCaseFlows.ts`. Every rule they carry
+  survives: the observed inference backend, the three QSDC states, the eavesdropper read from the
+  run, and the quantum lane dropped under PQC-only.
+- **The session key:** runs down a bus from the handshake to its two consumers in the code, the PSI's
+  HMAC key and the seed of the federated masks.
+- **Many-party stages:** every party the run has, from its own counts (`qfl_clients`,
+  `qsms_parties`) or else the configuration's: four hospitals, four federated clients, four cohorts.
+- **Eve:** drawn on the quantum lane when the run sets her, with the fraction it reports.
+- **Reduced motion:** with prefers-reduced-motion there are no tokens, the dashes stand still and the
+  glow does not pulse. Measured in a run: eight tokens and moving dashes against none.
+- **Exports:** the PNG and the GIF export the canvas. Both were downloaded from a run, the PNG was
+  opened, and no error was logged.
+
+**Drawing where each stage runs found three facts the old figure had wrong:**
+- **Satellite direction.** The satellite's key and its QSDC telemetry were drawn ground to satellite,
+  and the ground station was labelled "telemetry uplink". The code models a downlink (Liao et al.
+  2017's Micius), satellite to ground, for both. They are now drawn down the link.
+- **Party counts.** Genomics drew two cohorts for a secure sum the run makes over four, and medical
+  drew one hospital for four.
+- **PQC-only satellite.** Under a PQC-only profile on satellite, both figures drew a quantum QSDC
+  arrow with an em-dash secrecy. The browser skips QSDC there and sends the telemetry under the PQC
+  session key: the channel the run had said did not exist, a defect class fixed in both pipelines
+  earlier this round. The lane is now classical, and its label says QSDC was skipped.
+
+**Building the canvas found four faults of its own, each measured before it was fixed:**
+- **Hidden arrowheads.** Every lane began and ended 11 units inside its boxes, which hid the
+  arrowheads. A timing fault was suspected first; measuring showed a global `.react-flow__node`
+  rule, written for the E2E graph, padding every node by 12 plus a border.
+- **Marker colours.** SVG markers take their colour as an attribute, where `var()` does not resolve,
+  so the arrowheads drew as bars.
+- **Crossing lanes.** Parties drawn two to a line would route one lane through its neighbour.
+- **Badges.** The status badges sat on the box borders, half outside, which the scan reports as text
+  out of its node. They now sit inside.
+
+**Gates.**
+- `web/scripts/check_use_case_canvas.mjs` runs from `tests/test_the_use_case_canvas_draws_what_runs.py`
+  in the Python suite, which CI runs. It checks:
+  - every stage has a home on the canvas;
+  - the satellite's key and telemetry come down the link;
+  - the parties are the run's;
+  - the inference client is the side whose input it protects (Bank B on finance);
+  - no quantum lane appears under PQC-only.
+
+  Seeded with the old drawing's uplink, it fails.
+- The text-layout scan gained a rule for edge labels: a label must not lie over a node or another
+  label. Seeded by moving a lane label onto a box in the page, it reports both.
+- **The README's diagrams are a CI gate, at the owner's choice.** Mermaid 12.2.0 is a dev dependency
+  for this check alone, and the app never imports it; `npm audit` reports 0 vulnerabilities. The
+  web job and `scripts/ci_local.sh` step 8 run `npm run check:readme-mermaid`.
+
+  The check also gained the width rule it had printed and never enforced: every diagram must fit
+  GitHub's 830 px column. Seeded at 600 px, it reports the four wider diagrams. All eleven pass.
+
+**CI green on a8a6daf (eight checks), then deployed from git and walked (`index-CN1DlNlf.js`, the
+same bundle the local build produced).**
+- **CI.** On the runner, offline and in DejaVu Sans, the scan passed on all eleven views with the
+  canvas on all five pages. The README diagram gate passed on all eleven diagrams, each within 830 px.
+- **In the user's Chrome** (1280 x 677), every use case was run, and the scan's measurement run in
+  the page found nothing:
+
+  | Use case | Stages | Parties drawn | Session-key bus |
+  |---|---|---|---|
+  | finance | 9 of 9 done | four clients | 4 edges (PSI and federated, both sides) |
+  | medical | 8 of 8 done | four hospitals | 2 edges |
+  | genomics | 8 of 8 done | four cohorts | none (no consumer) |
+  | telecom | 6 of 6 done | the two sites | none |
+  | satellite | done | the two sites | none |
+
+  - Mid-run on finance, the private-inference rows glowed with their lanes flowing, and the sidebar
+    read "running private_inference".
+  - On satellite, both quantum lanes carry their arrowhead at the ground station alone: downlinks.
+    The QSDC row's two boxes were marked failed, link-budget limited.
+  - The console showed no error, no page printed `NaN` or `undefined`, the tab was closed, and no
+    sidebar preference was stored.
+- **Exports from the deploy.** A headless run of the deployed medical page exported its PNG and its
+  GIF. The GIF's nine frames step from idle through the running private inference to 7 of 8 done.
+- **The scan against the deploy:** no findings in the local font at 1280 and 390 px, nor in DejaVu
+  Sans at 1280 px.
+
+BUSINESS DOC RECONCILED Round 80. The out-of-repo document is brought level with this round's fourth
+continuation. Its content is not quoted here, in the checklist, or in any commit - only the fact of
+the reconciliation, which is what gate 16 reads.
+
+## Round 80, continued: the README's screenshots taken again, and what looking at them found
+
+**The user held the merge a fifth time.** The user asked for the screenshots of each SPA page in the
+README to be re-taken after checking the pages work, and for any bugs the captures show to be
+reported and fixed. The user also chose the next round: the architecture canvas on the E2E page.
+
+**Why the images may have looked stale.** The branch served all eleven images byte for byte as
+committed: each `raw.githubusercontent.com` copy was compared with the local file by SHA-256. On
+`main` none of them exists. The README with screenshots arrives with this pull request, so the
+repository's front page shows no screenshots until it merges.
+
+**What looking at each capture found, all fixed:**
+- **E2E Orchestration.** The graph's zoom controls drew as near-white squares with near-invisible
+  icons: React Flow's default light theme on the dark panel. The graph's connection handles showed
+  as dots on every node. The controls are themed, and the handles are not drawn on any graph; their
+  positions still anchor the edges.
+- **Satellite, Network tab.** The pass chart's time axis read -214, -198 ... -102, -90 ... -6, 1, 9:
+  steps of 16, then 12, then 8. It was a category axis over samples not evenly spaced in time. It is
+  now numeric, with ticks at a round step (-180 to 180 by 60 on Liao's pass).
+- **Introduction and Value.** The regulatory clock's dashed "today" line ran through six dated
+  labels: "FIPS 140-2 historical", "agency plans due", "FAR rule proposed", "new NSS acquisitions",
+  "AI Act Art. 50" and "EU first steps". This is the class of fault the user found in the report's
+  Figure 1, and no rule compared text with a line.
+  - The labels now carry a halo: their outline painted first, in the panel's colour.
+  - A four-unit halo masked the line under the letters but still showed it in the space between two
+    words, so the halo is six units.
+  - The markers are drawn after the labels, so a halo cannot clip one.
+- **Validations.** The capture clicked two of the page's four runs, so the README showed the ML-DSA
+  and handshake cards empty. It now runs all four.
+- **Medical canvas wording.** The CKKS evaluator said "evaluates the linear layer" while medical
+  runs an encrypted CNN, convolution and dense layers. It now says "linear layers", which is true of
+  both.
+
+**A new rule in the scan: text with a line through it.**
+- Every drawn line, path and polyline is sampled against every label, except a chart's own grid,
+  axes and legend.
+- Only what is drawn counts. A curve clipped to its plot area by a clip-path is sampled inside the
+  clip alone; the first version reported the QSDC chart's tick "500" under a curve that is never
+  drawn there.
+- A label with a halo at least half its font size wide is not reported.
+- Seeded on the build before the fix, it reports the six clock labels. On the four-unit halo it
+  reports them again; a first version that accepted any halo of 2 units had passed that build while
+  the line still showed between words.
+
+**CI green on fe87591 (eight checks), then deployed (`index-BvQcfVom.js`, the bundle the local build
+produced) and walked in the user's Chrome.**
+- **The clock.** Its labels carry the six-unit halo in the panel's colour, the markers are drawn
+  above them, and the line rule, run in the page, finds nothing.
+- **Validations:** all four cards show their results.
+- **The E2E graph:** dark zoom controls with light icons, and no connection dots.
+- **The pass chart:** its time axis reads -180 to 180 by 60.
+- **Overall:** the console was clean, the tab was closed, and no sidebar preference was stored.
+
+**The README's eleven screenshots were then taken from the deploy and read one by one, with no
+further fault.** The overview and use-cases images came out byte-identical to the last capture,
+their pages unchanged.
+
+BUSINESS DOC RECONCILED Round 80. The out-of-repo document is brought level with this round's fifth
+continuation. Its content is not quoted here, in the checklist, or in any commit - only the fact of
+the reconciliation, which is what gate 16 reads.

@@ -81,6 +81,17 @@ function PassSection({ link, liao, minEl, epsSec }: { link: ReturnType<typeof sa
   const rows = useMemo(() => pass.samples.filter((_, i) => i % 4 === 0).map((s) => ({
     t: Math.round(s.t), elevation: Math.round(s.elevationDeg * 10) / 10, rate: Math.round(s.keyRate),
   })), [pass]);
+  // Time ticks at round steps (Round 80, seen in the README's screenshot). The axis was a category axis
+  // over the samples, which are not evenly spaced in time, so its labels read -214, -198 ... -102,
+  // -90 ... -6, 1, 9: steps of 16, then 12, then 8. A numeric axis with ticks at a round step instead.
+  const timeTicks = useMemo(() => {
+    if (rows.length < 2) return undefined;
+    const lo = rows[0].t, hi = rows[rows.length - 1].t;
+    const step = [30, 60, 100, 120, 200, 300].find((k) => (hi - lo) / k <= 10) ?? 600;
+    const out: number[] = [];
+    for (let v = Math.ceil(lo / step) * step; v <= hi; v += step) out.push(v);
+    return out;
+  }, [rows]);
   return (
     <section className="net-section" aria-label="One pass over one station">
       <h4 style={{ margin: "4px 0" }}>One pass over one station</h4>
@@ -114,7 +125,8 @@ function PassSection({ link, liao, minEl, epsSec }: { link: ReturnType<typeof sa
             <ResponsiveContainer width="100%" height={220}>
               <LineChart data={rows} accessibilityLayer title="Elevation and key rate against time through one pass" margin={{ top: 8, right: 8, bottom: 18, left: 4 }}>
                 <CartesianGrid stroke="var(--border)" strokeDasharray="3 3" />
-                <XAxis dataKey="t" tick={tick} label={{ value: "seconds from the top of the pass", position: "insideBottom", offset: -8, fill: "var(--muted)", fontSize: 11 }} />
+                <XAxis dataKey="t" type="number" domain={["dataMin", "dataMax"]} ticks={timeTicks} tick={tick}
+                  label={{ value: "seconds from the top of the pass", position: "insideBottom", offset: -8, fill: "var(--muted)", fontSize: 11 }} />
                 <YAxis yAxisId="el" tick={tick} domain={[0, 90]} />
                 <YAxis yAxisId="rate" orientation="right" tick={tick} />
                 <Tooltip content={<ReadoutTooltip labelName="t (s)" />} />

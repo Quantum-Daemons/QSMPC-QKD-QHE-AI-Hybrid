@@ -1,17 +1,20 @@
-// Per-use-case TWO-PARTY (Alice↔Bob) MPC-FHE secret-sharing sequence diagram — driven LIVE by the
-// running pipeline. Each party sits on its own LAN; they collaborate over a WAN without a trusted
-// third party and without sharing raw data. A step lights up when its stageId is the pipeline's
-// active stage and is marked done once the stage completes — so Start/Stop/Restart/Pause/Step on the
-// page drive this diagram as a simulator. The MPC-FHE private inference is shown as its two halves:
-// FHE-linear (a CKKS ciphertext crosses the WAN) + MPC-non-linear (secret-shares exchanged for
-// ReLU/argmax). A final full-width "QSMPC-FHE comparison" bar shows the quantum-secure path that the
-// benchmark evaluates against (the `quantum_comparison` stage), so the advantage/security numbers are
-// clearly produced by an actual run. Grounded in references/ (Zhang QOT npj 2026, Li&Deng QHE-FL,
-// Sutradhar QSMS, EncFormer linear-FHE/non-linear-MPC split). PoC runs LAN/local.
+// The five use cases' stages, as the architecture canvas draws them (Round 80).
+//
+// Moved here from `components/TwoPartyDiagram.tsx` when the owner chose an animated architecture
+// canvas over the sequence diagram that file drew. The labels, the `ok` verdicts and the `hidden`
+// rules are that diagram's, unchanged: each encodes a defect found and fixed in an earlier round (the
+// observed inference backend rather than the control, the three QSDC states, the eavesdropper tag
+// read from the run, the quantum channel dropped under a PQC-only profile), and the canvas shows
+// every one of them, in its stage list and on its channels. What is new is where each step happens:
+// `canvasRow` below says which component on which side runs it, and which way its exchange goes.
+// Grounded in references/ (Zhang QOT npj 2026, Li and Deng QHE-FL, Sutradhar QSMS, the EncFormer
+// linear-FHE / non-linear-MPC split).
 
-type Kind = "local-a" | "local-b" | "local-wide" | "q-arrow" | "c-arrow" | "c-bidir"
+import { appConfig } from "./config";
+
+export type Kind = "local-a" | "local-b" | "local-wide" | "q-arrow" | "c-arrow" | "c-bidir"
   | "fhe-arrow" | "mpc-bidir" | "compare";
-type M = Record<string, any>;
+export type M = Record<string, any>;
 /** The crypto-agility selections for the run being drawn.
  *
  *  `qkd` and `qkdProtocol` are different things, and conflating them is what kept the E91 selection
@@ -36,7 +39,7 @@ export interface DiagramConfig {
   /** `` | `ckks` | `qcnn`. Which inference backend the run surfaces as primary. */
   inference?: string;
 }
-interface Step {
+export interface Step {
   stageId: string;
   /** Fixed, or derived from the config when the operation itself changes the channel's nature. */
   kind: Kind | ((c: DiagramConfig) => Kind);
@@ -52,7 +55,14 @@ interface Step {
    */
   ok?: (m: M, c: DiagramConfig) => boolean;
 }
-interface Spec { a: { name: string; sub: string }; b: { name: string; sub: string }; steps: Step[] }
+/** A party, as the canvas heads its column. */
+export interface Party { name: string; sub: string }
+export interface Spec {
+  a: Party; b: Party; steps: Step[];
+  /** The side whose input the private inference protects: it encrypts and decrypts, the other side
+   *  evaluates. Finance's input is Bank B's transaction, scored by Bank A's fraud model. */
+  inferenceClient?: "a" | "b";
+}
 
 // The protocol names used to be hardcoded here, so selecting ml-kem-1024 still drew "ML-KEM-768",
 // selecting e91 still drew "BB84", and selecting pqc-only still drew a quantum arrow with an
@@ -61,12 +71,12 @@ const KEM_LABEL: Record<string, string> = {
   "ml-kem-768+x25519": "ML-KEM-768 + X25519",
   "ml-kem-1024+x25519": "ML-KEM-1024 + X25519",
 };
-const kemName = (c: DiagramConfig) =>
+export const kemName = (c: DiagramConfig) =>
   KEM_LABEL[String(c.kem ?? "")] ?? (c.kem ? String(c.kem).toUpperCase() : "hybrid KEM");
 const sigName = (c: DiagramConfig) => (c.sig ? String(c.sig).toUpperCase() : "ML-DSA");
 // The protocol wins over the family. `clientCompute` branches on `qkd_protocol`, so that is what the
 // visitor actually ran; the family only decides whether a quantum channel exists at all.
-const qkdName = (c: DiagramConfig) => {
+export const qkdName = (c: DiagramConfig) => {
   const p = String(c.qkdProtocol ?? "");
   if (p === "e91") return "E91 (entanglement / CHSH)";
   if (p === "bb84") return "BB84 decoy-state";
@@ -74,7 +84,7 @@ const qkdName = (c: DiagramConfig) => {
   if (q.startsWith("bb84")) return q.includes("decoy") ? "BB84 decoy-state" : "BB84";
   return q || "QKD";
 };
-const pqcOnly = (c: DiagramConfig) => String(c.qkd ?? "") === "pqc-only";
+export const pqcOnly = (c: DiagramConfig) => String(c.qkd ?? "") === "pqc-only";
 
 /** The OptiQKD suffix for a QKD arrow: the measured improvement once a run has produced one,
  *  otherwise just that tuning is enabled. Reads the run's metrics rather than restating the
@@ -125,7 +135,10 @@ const qsmpcKind = (dflt: "psi" | "sum") => (c: DiagramConfig): Kind =>
   qsmpcOpOf(c, dflt) === "sum" ? "mpc-bidir" : "c-bidir";
 const qsmpcLabel = (dflt: "psi" | "sum") => (m: M, c: DiagramConfig) =>
   qsmpcOpOf(c, dflt) === "sum"
-    ? `secure sum over GF(${f(m, "qsms_prime")}) · pooled = ${f(m, "secure_sum")}`
+    // What was pooled, from the run (Round 80): the cohorts' allele counts on genomics, stand-ins on
+    // a use case with none. The label used to say neither, beside cohort headers saying allele counts.
+    ? `secure sum of ${m["qsms_inputs"] === "allele_counts" ? "allele counts"
+        : m["qsms_inputs"] === "stand_ins" ? "stand-in values" : "inputs"} over GF(${f(m, "qsms_prime")}) · pooled = ${f(m, "secure_sum")}`
     : `keyed-hash PSI · shared flagged = ${f(m, "psi_intersection_size")}`;
 
 const f = (m: M, k: string, d = "—") => {
@@ -256,9 +269,9 @@ const publishedStep = (stageId: string): Step => ({
 const FEDERATED_STEP: Step = {
   stageId: "federated_training",
   kind: "c-bidir",
-  // The accuracy carries its denominator. The bundled federated samples are 16 rows (finance) and
-  // 12 (medical), so this is a 4-row and a 3-row score - "acc 0.25" alone reads as a model that is
-  // worse than chance rather than as one held-out row.
+  // The accuracy carries its denominator, read from the run. It was added when the bundled samples
+  // were 16 and 12 rows and a score rested on 4 or 3 held-out rows; they are 400 rows each now, an
+  // 80-row held-out split, and the denominator still says how much a score rests on.
   label: (m) => `federated train · ${f(m, "qfl_aggregation")} · acc `
     + `${f(m, "federated_baseline_accuracy")} untrained -> ${f(m, "federated_accuracy")} `
     + `on ${f(m, "federated_eval_rows")} held-out rows`,
@@ -268,6 +281,7 @@ export const USECASE_SPECS: Record<string, Spec> = {
   finance_aml: {
     a: { name: "Bank A", sub: "blacklist + fraud model · LAN" },
     b: { name: "Bank B", sub: "candidate accounts · LAN" },
+    inferenceClient: "b",
     steps: [
       { stageId: "pqc_handshake", kind: "c-bidir", label: (_m, c) => `PQC handshake — ${kemName(c)}` },
       { stageId: "qkd_key_agreement", kind: "q-arrow", label: (m, c) => `${qkdName(c)} · QBER ${f(m, "qber")}${optiTag(m, c)}`, hidden: pqcOnly, ok: qkdOk },
@@ -287,8 +301,11 @@ export const USECASE_SPECS: Record<string, Spec> = {
     ],
   },
   medical_fl: {
-    a: { name: "Hospital", sub: "patient data (never leaves) · LAN" },
+    // Plural since the canvas (Round 80): the federated stage runs four hospitals, and the canvas
+    // draws all four; one of them is the endpoint of the two-party stages.
+    a: { name: "Hospitals", sub: "patient data (never leaves) · LAN" },
     b: { name: "Aggregator", sub: "global model · LAN" },
+    inferenceClient: "a",
     steps: [
       { stageId: "pqc_handshake", kind: "c-bidir", label: (_m, c) => `PQC handshake — ${kemName(c)}` },
       { stageId: "qkd_key_agreement", kind: "q-arrow", label: (m, c) => `${qkdName(c)} · QBER ${f(m, "qber")}${optiTag(m, c)}`, hidden: pqcOnly, ok: qkdOk },
@@ -300,8 +317,12 @@ export const USECASE_SPECS: Record<string, Spec> = {
     ],
   },
   genomics: {
-    a: { name: "Cohort 1", sub: "allele counts · LAN" },
-    b: { name: "Cohort 2", sub: "allele counts · LAN" },
+    // "Cohort 1" and "Cohort 2" until the canvas (Round 80), while the secure sum pooled four
+    // cohorts. The canvas draws the four, and the other side is where the pooled count and the PRS
+    // model are: the two-party stages run between a cohort and that site.
+    a: { name: "Cohorts", sub: "allele counts (never leave) · LAN" },
+    b: { name: "Analysis site", sub: "pooled count, PRS model · LAN" },
+    inferenceClient: "a",
     steps: [
       { stageId: "pqc_handshake", kind: "c-bidir", label: (_m, c) => `PQC handshake — ${kemName(c)}` },
       { stageId: "qkd_key_agreement", kind: "q-arrow", label: (m, c) => `${qkdName(c)} · QBER ${f(m, "qber")}${optiTag(m, c)}`, hidden: pqcOnly, ok: qkdOk },
@@ -340,8 +361,11 @@ export const USECASE_SPECS: Record<string, Spec> = {
     ],
   },
   satellite_comms: {
-    a: { name: "Ground station", sub: "telemetry uplink · LAN" },
-    b: { name: "LEO satellite", sub: "free-space downlink" },
+    // The link is a DOWNLINK (Liao et al. 2017's Micius), satellite to ground, for the key and for
+    // the telemetry QSDC carries. The sequence diagram drew both arrows ground to satellite and
+    // called the ground station "telemetry uplink"; the canvas draws them the way they run.
+    a: { name: "Ground station", sub: "telescope and detectors · receives the downlink" },
+    b: { name: "LEO satellite", sub: "QKD source, telemetry · free-space downlink" },
     steps: [
       { stageId: "pqc_handshake", kind: "c-bidir", label: (_m, c) => `PQC handshake — ${kemName(c)}` },
       { stageId: "satellite_qkd", kind: "q-arrow", label: (m, c) => `free-space ${qkdName(c)}${eveTag(m)} (${f(m, "channel_loss_db")} dB) · QBER ${f(m, "qber")}${optiTag(m, c)}`,
@@ -367,11 +391,18 @@ export const USECASE_SPECS: Record<string, Spec> = {
       // carry it; withheld because of an attack this link would not have suffered on its own.
       // `ok` marks the two withheld states completed-but-failed, so the tick stops reading as a
       // verdict on a delivery that did not happen.
+      // Under a PQC-only profile the browser SKIPS QSDC (clientCompute's `qsdc:` block): there is no
+      // quantum channel to carry the telemetry, so it travels under the PQC session key. Both figures
+      // still drew a quantum arrow there, labelled with an em-dash secrecy, which is the channel the
+      // run had just said did not exist (Round 80, found drawing the canvas). The kind follows the
+      // profile, as the QSMPC step's does, and the label says what happened.
       { stageId: "qsdc_telemetry",
-        kind: "q-arrow",
+        kind: (c) => (pqcOnly(c) ? "c-arrow" : "q-arrow"),
         ok: (m) => Number(m["qsdc_link_budget_limited"]) !== 1
           && Number(m["qsdc_eavesdrop_detected"]) !== 1,
-        label: (m) => (Number(m["qsdc_eavesdrop_detected"]) === 1
+        label: (m, c) => pqcOnly(c)
+          ? "telemetry under the PQC session key · QSDC skipped: a PQC-only profile has no quantum channel"
+          : (Number(m["qsdc_eavesdrop_detected"]) === 1
           // "over threshold" was accurate while the abort compared a scalar QBER. It no longer
           // does: the criterion is secrecy capacity Cs <= 0, and Cs depends on channel loss via
           // g = Q_Eve/Q_Bob, so an error rate WELL under the old 0.11 can still abort. Naming
@@ -395,188 +426,87 @@ export const USECASE_SPECS: Record<string, Spec> = {
   },
 };
 
-export function hasTwoPartySpec(usecase: string): boolean {
-  return usecase in USECASE_SPECS;
+/** Which way an exchange goes on the canvas: side A to side B, B to A, or both ways. */
+export type Flow = "ab" | "ba" | "both";
+/** What crosses: a classical message under the session key, photons (simulated), a CKKS
+ *  ciphertext, or MPC secret shares. */
+export type Channel = "classical" | "quantum" | "fhe" | "mpc" | "none";
+
+/** Where a step happens on the architecture canvas. */
+export interface CanvasRow {
+  /** The component on each side that does the step, or absent where that side does nothing. */
+  a?: string;
+  b?: string;
+  flow?: Flow;
+  channel: Channel;
+  /** Many parties on side A, each exchanging with side B: their noun and how many the run has. */
+  many?: { noun: string; count: number };
+  /** Not an exchange between the sides: the published model run in this tab, the comparison. */
+  wide?: boolean;
 }
 
-const ALICE_X = 172;
-const BOB_X = 612;
-const MID = (ALICE_X + BOB_X) / 2;
-const ROW0 = 100;
-const ROW_H = 58;
+/** How many parties a many-party stage has: the run's own count once it reports one, else the
+ *  configured count it will run with. Never a number of this file's choosing. */
+const runCount = (m: M, metric: string, configured: number): number => {
+  const v = Number(m[metric]);
+  return Number.isFinite(v) && v >= 2 ? v : configured;
+};
 
-export default function TwoPartyDiagram({
-  usecase, activeStage, doneStages, metrics, config = {},
-}: {
-  usecase: string;
-  activeStage: string | null;
-  doneStages: Set<string>;
-  metrics: Record<string, any>;
-  /** Crypto-agility selections, so the arrows name what actually ran. */
-  config?: DiagramConfig;
-}) {
-  const spec = USECASE_SPECS[usecase];
-  if (!spec) return null;
-  // Drop steps the selected profile does not run, rather than drawing them with an em-dash value.
-  const steps = spec.steps.filter((st) => !st.hidden?.(config));
-  const idle = activeStage == null && doneStages.size === 0;
-  const opacity = (s: Step) =>
-    idle ? 1 : s.stageId === activeStage ? 1 : doneStages.has(s.stageId) ? 0.95 : 0.26;
-  const isActive = (s: Step) => !idle && s.stageId === activeStage;
-  const isDone = (s: Step) => doneStages.has(s.stageId);
-  const bottomY = ROW0 + steps.length * ROW_H + 6;
-  const rowY = (i: number) => ROW0 + i * ROW_H;
-
-  return (
-    <>
-    {/* TEXT EQUIVALENT. The SVG below is one `role="img"`, which collapses its entire subtree for
-        assistive technology - so everything this file calls the most-looked-at part of the page was
-        unavailable: the QBER, the secure-key verdict, the secure-sum or PSI result, the QSDC abort
-        reason, the published-model row and the advantage score. None of it appears in text anywhere
-        else on the page either, so it was not duplicated elsewhere; it was simply unreachable.
-        The list below is generated from the SAME `label(metrics, config)` calls the diagram draws, so
-        it cannot drift from what is on screen, and it carries the per-step state that the diagram
-        encodes only as opacity and a check mark. */}
-    <ol className="sr-only">
-      {steps.map((s, i) => (
-        <li key={i}>
-          {`${s.label(metrics, config)} - ${
-            isActive(s) ? "in progress" : isDone(s) ? "complete" : "not yet run"}`}
-        </li>
-      ))}
-    </ol>
-    <svg viewBox={`0 0 780 ${bottomY + 78}`} width="100%" xmlns="http://www.w3.org/2000/svg"
-      // minWidth so it SCROLLS inside its card rather than shrinking, which is what `.card
-      // { overflow-x: auto }` already provides for every table. With `width: 100%` and no minimum the
-      // SVG never overflows: at a 360 px content width the 780-unit viewBox scales to ~0.44 and the
-      // 11-unit step labels render at about 4.5 px. Illegible is worse than off-screen, because
-      // off-screen can be scrolled to.
-      style={{ fontFamily: "inherit", minWidth: 680 }} role="img"
-      aria-label={`${usecase} two-party diagram; the same content is listed in text immediately before this figure`}>
-      <defs>
-        <marker id="tp-c" markerWidth="9" markerHeight="9" refX="7" refY="3.2" orient="auto">
-          <path d="M0,0 L8,3.2 L0,6.4 Z" fill="var(--accent)" /></marker>
-        <marker id="tp-cl" markerWidth="9" markerHeight="9" refX="1" refY="3.2" orient="auto">
-          <path d="M8,0 L0,3.2 L8,6.4 Z" fill="var(--accent)" /></marker>
-        <marker id="tp-q" markerWidth="9" markerHeight="9" refX="7" refY="3.2" orient="auto">
-          <path d="M0,0 L8,3.2 L0,6.4 Z" fill="var(--quantum)" /></marker>
-        <marker id="tp-m" markerWidth="9" markerHeight="9" refX="7" refY="3.2" orient="auto">
-          <path d="M0,0 L8,3.2 L0,6.4 Z" fill="#f5a623" /></marker>
-        <marker id="tp-ml" markerWidth="9" markerHeight="9" refX="1" refY="3.2" orient="auto">
-          <path d="M8,0 L0,3.2 L8,6.4 Z" fill="#f5a623" /></marker>
-      </defs>
-
-      {/* WAN band between the two LANs (kept above + clear of the party boxes) */}
-      <text x={MID} y={18} textAnchor="middle" fontSize={10.5} fill="#6b7689">⟷ WAN ⟷</text>
-
-      {/* lane headers */}
-      {[[spec.a, ALICE_X, "var(--accent)"], [spec.b, BOB_X, "var(--quantum)"]].map(([p, x, col]: any) => (
-        <g key={p.name}>
-          <rect x={x - 96} y={26} width={192} height={44} rx={9} fill="var(--panel)" stroke={col} strokeWidth={1.5} />
-          <text x={x} y={48} textAnchor="middle" fontSize={16} fontWeight={700} fill={col}>{p.name}</text>
-          <text x={x} y={63} textAnchor="middle" fontSize={10.5} fill="#97a3b6">{p.sub}</text>
-        </g>
-      ))}
-
-      {/* lifelines */}
-      {[ALICE_X, BOB_X].map((x) => (
-        <line key={x} x1={x} y1={72} x2={x} y2={bottomY} stroke="#2a3650" strokeWidth={1.5} strokeDasharray="3 4" />
-      ))}
-
-      {/* protocol steps */}
-      {steps.map((s, i) => {
-        const y = rowY(i);
-        const op = opacity(s);
-        // A finished step whose own `ok` says it failed must not carry the success tick.
-        const failed = isDone(s) && s.ok ? !s.ok(metrics, config) : false;
-        const mark = isDone(s) ? (failed ? " ✗" : " ✓") : isActive(s) ? " ▶" : "";
-        const label = s.label(metrics, config) + mark;
-        // A step whose channel depends on the run resolves its kind here, so the arrow style and the
-        // legend cannot disagree with the operation the label names.
-        const kind: Kind = typeof s.kind === "function" ? s.kind(config) : s.kind;
-
-        // full-width QSMPC-FHE comparison bar (the quantum-secure alternative the benchmark scores)
-        if (kind === "compare") {
-          return (
-            <g key={i} opacity={op}>
-              <rect x={64} y={y - 17} width={652} height={34} rx={8}
-                fill={isActive(s) ? "#231a3a" : "var(--panel)"} stroke="var(--quantum)"
-                strokeWidth={isActive(s) ? 2.4 : 1.4} strokeDasharray="6 3" />
-              <text x={MID} y={y + 4} textAnchor="middle" fontSize={11} fill="var(--quantum)" fontWeight={600}>{label}</text>
-            </g>
-          );
-        }
-        // A local computation whose label is too long for a party-sized box.
-        //
-        // `local-a` is a fixed 300-unit box centred on a party. The published-model step names a
-        // model, a 12-char revision, an execution provider, an input shape, a latency and an
-        // outcome - about 460 units at this font - so it spilled ~80 units past each edge of its
-        // box, and the left end ran off the viewBox entirely: the label rendered as
-        // "te_comms.opssat_student @ ..." with "published satelli" clipped away. Same width and
-        // position as the comparison bar, which is why that one has always fitted; the styling
-        // stays local (solid stroke, accent colour) because nothing here crosses the wire.
-        if (kind === "local-wide") {
-          return (
-            <g key={i} opacity={op}>
-              <rect x={64} y={y - 16} width={652} height={32} rx={7}
-                fill={isActive(s) ? "#1c2740" : "var(--panel)"} stroke="var(--accent)"
-                strokeWidth={isActive(s) ? 2.4 : 1.3} />
-              <text x={MID} y={y + 4} textAnchor="middle" fontSize={11} fill="#dfe7f3">{label}</text>
-            </g>
-          );
-        }
-        // local computation box at one party
-        if (kind === "local-a" || kind === "local-b") {
-          const cx = kind === "local-a" ? ALICE_X : BOB_X;
-          const col = kind === "local-a" ? "var(--accent)" : "var(--quantum)";
-          return (
-            <g key={i} opacity={op}>
-              <rect x={cx - 150} y={y - 16} width={300} height={32} rx={7}
-                fill={isActive(s) ? "#1c2740" : "var(--panel)"} stroke={col} strokeWidth={isActive(s) ? 2.4 : 1.3} />
-              <text x={cx} y={y + 4} textAnchor="middle" fontSize={11} fill="#dfe7f3">{label}</text>
-            </g>
-          );
-        }
-        // message arrow between the two parties (classical / quantum / FHE ciphertext / MPC shares)
-        const quantum = kind === "q-arrow";
-        const mpc = kind === "mpc-bidir";
-        const bidir = kind === "c-bidir" || kind === "mpc-bidir";
-        const col = quantum ? "var(--quantum)" : mpc ? "#f5a623" : "var(--accent)";  // fhe-arrow = accent
-        const dash = quantum ? "5 3" : mpc ? "2 2" : undefined;
-        const mEnd = quantum ? "url(#tp-q)" : mpc ? "url(#tp-m)" : "url(#tp-c)";
-        const mStart = bidir ? (mpc ? "url(#tp-ml)" : "url(#tp-cl)") : undefined;
-        return (
-          <g key={i} opacity={op}>
-            <text x={MID} y={y - 9} textAnchor="middle" fontSize={11}
-              fill={failed ? "#ff8f6b" : isActive(s) ? "#ffffff" : "#c4cee0"}>{label}</text>
-            <line x1={ALICE_X + 6} y1={y} x2={BOB_X - 6} y2={y} stroke={col}
-              strokeWidth={isActive(s) ? 2.6 : 1.8} strokeDasharray={dash}
-              markerEnd={mEnd} markerStart={mStart} />
-          </g>
-        );
-      })}
-
-      {/* channel legend — moved to the BOTTOM so it never overlaps the party boxes */}
-      <g transform={`translate(70, ${bottomY + 18})`} fontSize={10} fill="#97a3b6">
-        <line x1={0} y1={-3} x2={22} y2={-3} stroke="var(--accent)" strokeWidth={2} markerEnd="url(#tp-c)" />
-        <text x={27} y={1}>classical / FHE ct</text>
-        {/* The legend has to agree with the arrows: under a PQC-only profile no quantum channel is
-            drawn, so advertising one in the key was the same hardcoding one level down. */}
-        {!pqcOnly(config) && (<>
-          <line x1={200} y1={-3} x2={222} y2={-3} stroke="var(--quantum)" strokeWidth={2} strokeDasharray="4 3" markerEnd="url(#tp-q)" />
-          <text x={227} y={1}>quantum, simulated ({qkdName(config)})</text>
-        </>)}
-        <line x1={430} y1={-3} x2={452} y2={-3} stroke="#f5a623" strokeWidth={2} strokeDasharray="2 2" markerEnd="url(#tp-m)" markerStart="url(#tp-ml)" />
-        <text x={457} y={1}>MPC secret-shares</text>
-      </g>
-
-      <text x={MID} y={bottomY + 46} textAnchor="middle" fontSize={11} fill="#97a3b6">
-        no trusted third party · no raw data shared · {spec.a.name} (LAN) ↔ WAN ↔ {spec.b.name}
-      </text>
-      <text x={MID} y={bottomY + 62} textAnchor="middle" fontSize={10} fill="#6b7689">
-        MPC-FHE hybrid: linear → FHE (CKKS ciphertext) · non-linear → MPC (secret-shares) · vs QSMPC-FHE · PoC runs LAN/local
-      </text>
-    </svg>
-    </>
-  );
+/**
+ * Which component on which side runs a step, and which way its exchange goes.
+ *
+ * Read from what the code does, stage by stage: the session key consumers are the PSI and the
+ * federated masks; the CKKS client encrypts its input and decrypts the scores while the model's
+ * holder evaluates the linear layer; the argmax runs as two-party MPC over additive shares between
+ * notional parties in this one tab; the satellite's key and telemetry come DOWN the link.
+ */
+export function canvasRow(usecase: string, step: Step, kind: Kind, m: M, c: DiagramConfig = {}): CanvasRow {
+  if (kind === "local-wide" || kind === "compare") return { wide: true, channel: "none" };
+  const client = USECASE_SPECS[usecase]?.inferenceClient ?? "a";
+  const sides = (clientSide: string, serverSide: string) =>
+    (client === "a" ? { a: clientSide, b: serverSide } : { a: serverSide, b: clientSide });
+  const cfg = appConfig() as any;
+  switch (step.stageId) {
+    case "pqc_handshake":
+      return { a: "PQC: encapsulates (initiator)", b: "PQC: decapsulates (responder)", flow: "both", channel: "classical" };
+    case "qkd_key_agreement":
+      return { a: "QKD source: prepares the states", b: "QKD detectors: measure and sift", flow: "ab", channel: "quantum" };
+    case "satellite_qkd":
+      return { a: "QKD receiver: telescope and detectors", b: "QKD source on board", flow: "ba", channel: "quantum" };
+    case "qsdc_telemetry":
+      return pqcOnly(c)
+        ? { a: "receives the telemetry", b: "sends the telemetry", flow: "ba", channel: "classical" }
+        : { a: "QSDC receiver: decodes the telemetry", b: "QSDC sender: encodes the telemetry", flow: "ba", channel: "quantum" };
+    case "qsmpc_compute":
+      // `mpc-bidir` is the secure SUM (qsmpcKind): every party splits its value into two additive
+      // shares mod p, and the shares, never a value, are summed.
+      return kind === "mpc-bidir"
+        ? { a: "splits its value into two shares mod p", b: "sums the shares mod p", flow: "ab", channel: "mpc",
+            many: { noun: usecase === "genomics" ? "cohort" : "party",
+                    count: runCount(m, "qsms_parties", usecase === "genomics" ? Number(cfg.data?.genomics_biobanks ?? 4)
+                      : Number(cfg.qsmpc?.n_parties ?? 5)) } }
+        : { a: "PSI: HMAC tags of its list", b: "PSI: HMAC tags of its list", flow: "both", channel: "classical" };
+    case "federated_training":
+      return { a: "trains locally, masks its update", b: "FedAvg: sums the masked updates", flow: "both", channel: "classical",
+               many: { noun: usecase === "medical_fl" ? "hospital" : "client",
+                       count: runCount(m, "qfl_clients", Number(cfg.federated?.hospitals ?? 4)) } };
+    case "private_inference":
+      if (kind === "fhe-arrow")
+        return { ...sides("CKKS: encrypts the input, decrypts the scores", "CKKS: evaluates the linear layers"), flow: "both", channel: "fhe" };
+      return { ...sides("MPC argmax: holds shares a", "MPC argmax: holds shares b"), flow: "both", channel: "mpc" };
+    case "qml_ids":
+      return { a: "QML-IDS: classifies the link telemetry", channel: "none" };
+    case "sign_result":
+      return { a: "signs the record", b: "verifies the signature", flow: "ab", channel: "classical" };
+  }
+  return kind === "local-a" ? { a: "runs locally", channel: "none" }
+    : kind === "local-b" ? { b: "runs locally", channel: "none" }
+    : { wide: true, channel: "none" };
 }
+
+/** The steps a run with this configuration draws, in order. */
+export const visibleSteps = (usecase: string, c: DiagramConfig): Step[] =>
+  (USECASE_SPECS[usecase]?.steps ?? []).filter((st) => !st.hidden?.(c));
+
+/** A step's drawing kind under this configuration. */
+export const kindOf = (s: Step, c: DiagramConfig): Kind => (typeof s.kind === "function" ? s.kind(c) : s.kind);

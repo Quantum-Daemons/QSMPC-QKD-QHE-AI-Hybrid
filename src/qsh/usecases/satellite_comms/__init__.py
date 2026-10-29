@@ -246,14 +246,10 @@ def _sat_finite_key_params(ctx: Context, source):
     al. 2018's 1-decoy one when it does not. The asymptotic bound's error-correction efficiency, and
     the security parameter the run sets (Liao's 1e-9 by default)."""
     from ...config import get_config
-    from ...qkd.finite_key import FiniteKeyParams, VacuumDecoyParams
+    from ...qkd.finite_key import params_for_source
 
-    eps = float(_cfg_or(ctx, "sat_eps_sec", get_config().qkd.free_space_eps_sec))
-    common = dict(mu_signal=source.mu_signal, mu_decoy=source.mu_decoy, p_signal=source.p_signal,
-                  p_z=source.basis_prob, eps_sec=eps, f_ec=get_config().qkd.error_correction_eff)
-    if source.vacuum_decoy:
-        return VacuumDecoyParams(p_decoy=source.p_decoy, **common)
-    return FiniteKeyParams(**common)
+    return params_for_source(source, eps_sec=float(_cfg_or(ctx, "sat_eps_sec",
+                                                           get_config().qkd.free_space_eps_sec)))
 
 
 class SatelliteQKDStage(Stage):
@@ -262,9 +258,16 @@ class SatelliteQKDStage(Stage):
     name = "satellite_qkd"
 
     def run(self, ctx: Context, bus: EventBus, reg: CryptoRegistry) -> None:
-        from ...qkd.bb84 import derive_block_key, run_bb84
+        from ...config import get_config
+        from ...qkd.bb84 import derive_block_key, derive_shared_key, run_bb84
         from ...qkd.channel import link_elevation_deg
 
+        # The PQC-only profile has no quantum channel (Round 80). The fibre stage has skipped there for
+        # many rounds and the browser's twin of this stage does; this one ran the downlink anyway and
+        # reported a key for a channel the profile says is not there.
+        if ctx.config.get("qkd", reg.default("qkd")) == "pqc-only":
+            bus.log("free-space QKD disabled (PQC-only profile)", self.name)
+            return
         params = _sat_channel(ctx)
         ctx.put("sat_channel", params)
         source = _sat_source(ctx)
@@ -290,10 +293,22 @@ class SatelliteQKDStage(Stage):
         # branch is the NON-decoy GLLP form, and this stage's own use case page labels its rate a
         # decoy-state bound. Since Round 77 it is the downlink's OWN source (`_sat_source`): Micius's
         # 0.8 / 0.1 with the vacuum state, where it ran the fibre page's finite-key optimum.
-        res = run_bb84(n_pulses, params, seed=ctx.config.get("seed", 0), qkd_params=source)
+        # The protocol the page selected (Round 80): this stage ran BB84 whatever `qkd_protocol` said,
+        # while the browser's twin ran E91. E91 has no decoy bound and no pass block here, so its key
+        # is the asymptotic count, as in the browser.
+        protocol = str(ctx.config.get("qkd_protocol", get_config().qkd.protocol))
+        if protocol == "e91":
+            from ...qkd.e91 import run_e91
+
+            res = run_e91(n_pulses, params, visibility=get_config().qkd.e91_visibility,
+                          seed=ctx.config.get("seed", 0))
+        else:
+            res = run_bb84(n_pulses, params, seed=ctx.config.get("seed", 0), qkd_params=source)
         bus.metric("qber", round(res.qber, 5), self.name)
-        bus.metric("qkd_decoy_states", "vacuum + one decoy" if source.vacuum_decoy else "one decoy",
-                   self.name)
+        bus.metric("qkd_decoy_states", "none (entangled source)" if protocol == "e91"
+                   else "vacuum + one decoy" if source.vacuum_decoy else "one decoy", self.name)
+        if res.chsh_s is not None:
+            bus.metric("chsh_s", round(res.chsh_s, 2), self.name)
         # `skr_per_pulse`, for the same reason as `orchestration/stages.py`: this is bits per
         # channel use, and `skr` is a spec field name meaning bit/s. The satellite twin is
         # renamed in the same change as the fibre one - fixing one and not the other is the
@@ -302,7 +317,11 @@ class SatelliteQKDStage(Stage):
         # downlink's 1.723e-5, and the control-plane panel printed it as 1.700e-5.
         bus.metric("skr_per_pulse", round(res.secret_key_rate, 9), self.name)
         bus.metric("channel_loss_db", loss_db, self.name)
-        key_bits, block_note = self._block_key(ctx, bus, params, source, res)
+        if protocol == "e91":
+            key_bits = res.secure_key_bits
+            block_note = "(asymptotic: no finite-key bound is modelled for an entangled source)"
+        else:
+            key_bits, block_note = self._block_key(ctx, bus, params, source, res)
         bus.metric("secure_key_bits", key_bits, self.name)
         # AND THIS LINE, which Round 44 did not rename while writing the comment above saying that
         # renaming one and not the other is the asymmetry it had just found. It repeated it three
@@ -318,10 +337,9 @@ class SatelliteQKDStage(Stage):
             # "derive + fold in" since it was written while `qkd_key` had no reader at all: the PQC
             # handshake runs before it and reads a key that is not there yet. Fixing one pipeline
             # and not the other would leave the same defect in one language, twice.
-            from ...config import get_config
             from ...pqc.transport import _mix_qkd
 
-            qkd_key = derive_block_key(res, key_bits, 32)
+            qkd_key = derive_shared_key(res, 32) if protocol == "e91" else derive_block_key(res, key_bits, 32)
             ctx.put("qkd_key", qkd_key)
             chans = [c for c in (ctx.data.get("channel_initiator"),
                                  ctx.data.get("channel_responder")) if c is not None]
@@ -372,7 +390,9 @@ class SatelliteQKDStage(Stage):
         aborted = res.secure_key_bits == 0 and res.qber > source.pp_threshold
         bus.metric("qkd_block", block.kind, self.name)
         bus.metric("qkd_block_copies", block.copies, self.name)
-        bus.metric("qkd_block_s", round(block.seconds, 1), self.name)
+        # FOUR SIGNIFICANT FIGURES, at every site that emits it (Round 80): the fibre's blocks run from
+        # milliseconds to minutes, where one decimal would print a 20 ms block as 0.0 s.
+        bus.metric("qkd_block_s", float(f"{block.seconds:.4g}"), self.name)
         bus.metric("qkd_block_pulses", float(f"{block.pulses:.6g}"), self.name)
         if block.max_elevation_deg is not None:
             bus.metric("sat_pass_max_elevation_deg", round(block.max_elevation_deg, 2), self.name)
@@ -384,7 +404,7 @@ class SatelliteQKDStage(Stage):
                    self.name)
         what = {"pass": "one pass", "passes": f"{block.copies:g} passes pooled",
                 "seconds": f"{block.copies:g} s at this range"}[block.kind]
-        note = (f"(finite key over {what}, {round(block.seconds, 1)} s of link time, "
+        note = (f"(finite key over {what}, {float(f'{block.seconds:.4g}')} s of link time, "
                 f"eps_sec {fk_params.eps_sec:g})")
         return (0 if aborted else fk_bits), note
 
@@ -397,6 +417,15 @@ class QSDCStage(Stage):
     def run(self, ctx: Context, bus: EventBus, reg: CryptoRegistry) -> None:
         from ...qkd.qsdc import quantum_secure_direct_comm
 
+        # Under the PQC-only profile there is no quantum channel to carry the message (Round 80): the
+        # free-space stage stops before it stores one, and the browser's twin skips here with the
+        # sentence below.
+        if ctx.config.get("qkd", reg.default("qkd")) == "pqc-only":
+            ctx.artifacts["telemetry_delivered"] = False
+            bus.log("QSDC direct telemetry skipped (PQC-only profile): QSDC carries the message on the "
+                    "quantum channel itself, so with no quantum channel there is nothing to send it "
+                    "over. The payload travels under the PQC session key instead.", self.name)
+            return
         params = ctx.data.get("sat_channel")
         telemetry = str(ctx.config.get("telemetry", _DEFAULT_TELEMETRY)).encode()
         why = _out_of_view(params) if params is not None and params.free_space is not None else None
@@ -461,7 +490,7 @@ class TelemetryAnomalyStage(Stage):
         model = ctx.data.get("anomaly_model")
         x = ctx.data.get("features")
         if model is None or x is None or not ctx.artifacts.get("telemetry_delivered"):
-            bus.log("no delivered telemetry to score (link aborted) — anomaly check skipped", self.name)
+            bus.log("no delivered telemetry to score (QSDC delivered none) — anomaly check skipped", self.name)
             return
         backend = reg.get("fhe", ctx.config.get("fhe"))()
         out = encrypted_linear_inference(model, np.asarray(x), backend)

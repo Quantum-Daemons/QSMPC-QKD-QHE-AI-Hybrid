@@ -7,7 +7,7 @@ import { modelsFor, studentModel, teacherModel } from "../lib/config";
 
 const DEMO = isClientDemo();
 
-// Use Cases index — each card links to a dedicated per-use-case page (a live two-party
+// Use Cases index — each card links to a dedicated per-use-case page (a live architecture
 // simulator + that use case's benchmark + XAI). The Benchmark + per-case run UIs are unified there.
 export default function UseCases() {
   return (
@@ -16,7 +16,7 @@ export default function UseCases() {
       {/* Two paragraphs (123 words) became four points and a table drawn from the use-case data,
           so the per-industry MCP tool and channel cannot drift from what each page runs. */}
       <KeyPoints items={[
-        <>Each use case has its own page with a live <b>two-party (Alice↔Bob) simulator</b> you Start / Pause / Step / Stop / Restart.</>,
+        <>Each use case has its own page with a live <b>architecture simulator</b>: each party's components, a lane per stage between them, animated as the run goes. Start / Pause / Step / Stop / Restart drive it.</>,
         <>Each page shows that industry's benchmark (latency · accuracy · security posture) and, where applicable, a signed XAI explanation.</>,
         <>Every card's model, corpus and licence is read from the registry, not written here.</>,
         <><b>Agentic AI · quantum-safe MCP</b> runs on every page: an in-browser agent's request and response are sealed and signed (ML-KEM-768 + ML-DSA-65 + AES-256-GCM) as that industry's MCP tool, fed by the run's live metrics.</>,

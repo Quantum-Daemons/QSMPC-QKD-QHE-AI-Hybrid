@@ -32,7 +32,7 @@ function RateChart({ rate }: { rate: number }) {
   const hatch = `mpcbench-hatch-${rate}`;
   return (
     <div style={{ flex: "1 1 280px", minWidth: 0 }}>
-      <div className="small muted" style={{ marginBottom: 4 }}>{rate} Mbit/s each way, no loss</div>
+      <div className="small muted" style={{ marginBottom: 4 }}>{rate} Mbit/s each way, no loss; median time in ms</div>
       <ChartReadout hint={HINT_KEYBOARD}>
         <ResponsiveContainer width="100%" height={220}>
           <BarChart data={rows} accessibilityLayer title={`Secure argmax completion time at ${rate} Mbit/s against round-trip time, emp-wasm and Polytune`} margin={{ top: 8, right: 8, bottom: 8, left: 4 }}>
@@ -45,7 +45,10 @@ function RateChart({ rate }: { rate: number }) {
             </defs>
             <CartesianGrid stroke="var(--border)" strokeDasharray="3 3" />
             <XAxis dataKey="rtt" tick={tick} />
-            <YAxis tick={tick} width={56} tickFormatter={(v: number) => `${v}`} unit=" ms" />
+            {/* Plain numbers, the unit in the line above (Round 80). With " ms" on every tick Recharts
+                wrapped "2200 ms" onto two lines at a 56 px axis and the top tick was cut off above the
+                chart; 66 px held in one font and not in DejaVu Sans, the Linux default. */}
+            <YAxis tick={tick} width={52} tickFormatter={(v: number) => `${v}`} />
             <Tooltip content={<ReadoutTooltip />} formatter={(v: number) => ms(v)} />
             <Legend />
             <Bar dataKey="emp" name="emp-wasm (replaced)" fill="var(--accent)" />
