@@ -199,6 +199,22 @@ const MEASURE = `(() => {
   return [...new Set(out)];
 })()`;
 
+/** Runs in the page: the family whose width matches `system-ui` on three strings, or the width. */
+const FONT_PROBE = `(() => {
+  const c = document.createElement("canvas").getContext("2d");
+  const probe = ["The quick brown fox 2200 ms", "encrypted_tier_within_operational_window", "WMWMWM iiiill 0123456789"];
+  const widths = (f) => probe.map((t) => { c.font = "13px " + f; return c.measureText(t).width; });
+  const want = widths("system-ui");
+  const families = ["DejaVu Sans", "Noto Sans", "Noto Sans CJK JP", "Liberation Sans", "Ubuntu", "Cantarell",
+    "Segoe UI", "Roboto", "Helvetica", "Arial", "Verdana", "FreeSans", "Nimbus Sans"];
+  const eq = (a, b) => a.every((w, i) => Math.abs(w - b[i]) < 0.01);
+  // A family that is not installed falls back, and would match whatever the fallback matches; it is
+  // installed when it measures the same with a monospace fallback as with a serif one.
+  const installed = (f) => eq(widths(\`"\${f}", monospace\`), widths(\`"\${f}", serif\`));
+  const same = families.filter((f) => installed(f) && eq(widths(\`"\${f}"\`), want));
+  return same.length ? same.join(" / ") : "an unlisted family (" + want.map((w) => w.toFixed(1)).join(", ") + " px)";
+})()`;
+
 async function check(s, page) {
   await s.send("Page.navigate", { url: `${BASE}${page.path}` });
   await sleep(3500);
@@ -243,6 +259,10 @@ try {
   await s.send("Emulation.setDeviceMetricsOverride", { width: WIDTH, height: HEIGHT, deviceScaleFactor: 1, mobile: false });
   console.log(`checking text layout on ${PAGES.length} views of ${BASE} at ${WIDTH} x ${HEIGHT}`
     + (process.env.SCAN_OFFLINE ? ", offline (localhost only)" : ""));
+  // Which font the pages are measured in. The page asks for `system-ui`, and what that resolves to is
+  // the machine's choice, so the scan says which installed family it measured as wide as: a claim
+  // about "the runner's font" is then read from the run, not assumed.
+  console.log(`page font: system-ui measures as ${await ev(s, FONT_PROBE)}`);
   for (const page of PAGES) {
     const found = await check(s, page);
     const label = `${page.path}${page.tab ? ` [${page.tab}]` : ""}`;

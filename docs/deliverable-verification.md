@@ -6768,3 +6768,30 @@ two equal. The eleven screenshots were regenerated from this tree.
 The local gates' first run on this tree failed one test. The dead-component gate read the new
 axis-title helper, a capitalised inner function passed to Recharts and never written as a tag, as a
 component nobody renders. It is now an anonymous render function, with the same output.
+
+**CI green on effe07d (eight checks), then deployed from git and walked (`index-DtxjSoAc.js`).**
+- **CI.** The web job ran the scan on the runner, offline: all eleven views passed. The Python job
+  ran the two new tests.
+- **The scan against the deploy.** No findings in the local font (Noto Sans CJK JP) at 1280 and
+  390 px, nor in DejaVu Sans at 1280 px. The scan now prints the font it measured, so "the runner's
+  font" is read from a run rather than assumed.
+- **Overview and Validations, in the user's Chrome** (1280 x 677; `system-ui` as wide as Noto Sans
+  CJK JP). The scan's own measurement, run in the page after each page's run, found nothing on
+  either page.
+  - Overview: "count only - not mixed in" clears the QKD box by 27 px.
+  - Validations: the MPC charts read "median time in ms" with ticks from 0 to 2200, and the IPsec
+    lane reads "ML-KEM-768 + PPK (RFC 9370, 8784)". The secure-bits axis reads 1.5M to 6M.
+- **Finance.** The run ended done, PASS. The Metrics and Detailed results cards do not scroll, and
+  both published models were re-scored with verification PASS.
+- **A failed sample fetch, on the deploy.** With requests to the Hub refused in the page, the log
+  said the sample "could not be fetched", gave the reason, and said this is no evidence that the
+  model publishes none. There was no "ships no eval_sample.json". With the network restored, the
+  next run fetched the sample and both verifications passed, so the failure was not cached.
+- **Telecom.** The run ended done, PASS, with every per-class name whole, "photon_number_splitting"
+  among them.
+- **Overall.** No page scrolled sideways, and the console showed no errors. The tab was closed, and
+  no sidebar preference was stored.
+
+BUSINESS DOC RECONCILED Round 80. The out-of-repo document is brought level with this round's third
+continuation. Its content is not quoted here, in the checklist, or in any commit - only the fact of
+the reconciliation, which is what gate 16 reads.
