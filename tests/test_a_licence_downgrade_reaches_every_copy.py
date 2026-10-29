@@ -159,23 +159,26 @@ def test_the_readme_table_carries_the_qualifier_too():
     SCOPED to the row whose dataset cell names the corpus, for the reason recorded in the docstring
     above: a whole-file scan for the corpus name fires on passing mentions and gets switched off.
     """
-    text = README.read_text()
+    # The README and the documents its long sections moved to in Round 80 - the dataset table is in
+    # docs/models-and-benchmarks.md now - so the move did not take the rows out of scope.
     bad = []
-    for i, line in enumerate(text.splitlines(), 1):
-        cells = [c.strip() for c in line.split("|")]
-        if len(cells) < 4:
-            continue
-        # A row that NAMES a hedged corpus and STATES a licence in the same cell.
-        for name, lic in _registry_licences().items():
-            if not _hedged(lic):
-                continue
-            token = next((t for c, t in CORPUS_TOKENS.items() if c.lower() in name.lower()), None)
-            if token is None:
-                continue
-            for cell in cells:
-                if token in cell and re.search(r"CC[ -]?BY|CDLA", cell, re.I) and not _hedged(cell):
-                    bad.append(f"README.md:{i} - names {token} and states its licence unqualified: "
-                               f"{cell[:80]!r}")
+    for path in (README, *(REPO / "docs" / n for n in ("models-and-benchmarks.md", "use-cases.md",
+                                                         "findings.md", "development.md"))):
+      for i, line in enumerate(path.read_text().splitlines(), 1):
+          cells = [c.strip() for c in line.split("|")]
+          if len(cells) < 4:
+              continue
+          # A row that NAMES a hedged corpus and STATES a licence in the same cell.
+          for name, lic in _registry_licences().items():
+              if not _hedged(lic):
+                  continue
+              token = next((t for c, t in CORPUS_TOKENS.items() if c.lower() in name.lower()), None)
+              if token is None:
+                  continue
+              for cell in cells:
+                  if token in cell and re.search(r"CC[ -]?BY|CDLA", cell, re.I) and not _hedged(cell):
+                      bad.append(f"{path.name}:{i} - names {token} and states its licence unqualified: "
+                                 f"{cell[:80]!r}")
     assert not bad, (
         "README states a hedged licence without its qualifier:\n  " + "\n  ".join(bad)
         + "\n\nThe registry qualifies it and README is where most readers look first. Note the "

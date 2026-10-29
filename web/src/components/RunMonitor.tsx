@@ -1,5 +1,15 @@
 // Live event log + metrics table + ML-DSA signature note. Shared by Orchestration + use-case pages.
+import { Fragment } from "react";
+
 import type { PipelineEvent } from "../lib/api";
+
+/** A metric's name, breakable after each underscore (Round 80). The longest, such as
+ *  "encrypted_tier_within_operational_window", are 268 px of unbroken text, and with them the table
+ *  was 5 px wider than its card, which scrolled sideways. `<wbr>`, not a zero-width space, so a
+ *  name copied from the table is the name. */
+const breakable = (k: string) => k.split("_").map((part, i, all) => (
+  <Fragment key={i}>{part}{i < all.length - 1 && <>_<wbr /></>}</Fragment>
+));
 
 export default function RunMonitor({
   events, metrics, signature, logRef,
@@ -15,10 +25,14 @@ export default function RunMonitor({
         <h3>Live event log</h3>
         <div className="log" ref={logRef as React.RefObject<HTMLDivElement>}>
           {events.length === 0 && <span className="muted">Press ▶ Start to stream events…</span>}
+          {/* `ev-` before the event type. The bare type was the class until Round 80, and a "log"
+              event's label took `.log`, this container's own rule: a bordered, padded box on an
+              inline span, painted over the lines above and below it, and most of a run's events
+              are "log". A prefix keeps any event type from naming a layout class. */}
           {events.map((e, i) => (
             <div key={i} className="log-line">
               <span className="t">[{e.t?.toFixed?.(3)}s]</span>{" "}
-              <span className={e.type}>{e.type}</span>{" "}
+              <span className={`ev-${e.type}`}>{e.type}</span>{" "}
               <span className="muted">{e.stage}</span> {e.message}
             </div>
           ))}
@@ -29,7 +43,8 @@ export default function RunMonitor({
         <table>
           <tbody>
             {Object.entries(metrics).map(([k, v]) => (
-              <tr key={k}><td className="muted">{k}</td><td className="mono">{String(v)}</td></tr>
+              <tr key={k}><td className="muted">{breakable(k)}</td>
+                <td className="mono" style={{ overflowWrap: "anywhere" }}>{String(v)}</td></tr>
             ))}
             {/* `colSpan={2}`. Every other row in this table has two cells; this one had one, so a
                 screen reader announced a row with a missing second column - it reads as data that

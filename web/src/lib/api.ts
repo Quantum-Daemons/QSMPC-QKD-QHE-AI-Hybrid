@@ -101,7 +101,10 @@ export const api = {
     // 1.700e-5. Display sites format to four significant figures.
     return Promise.resolve({ qber: Math.round(r.qber * 1e4) / 1e4,
       skr_per_pulse: Math.round(r.secretKeyRate * 1e9) / 1e9,
-      secure_key_bits: r.secureKeyBits, eavesdropper_likely: r.qber > securityScoringCfg().qber_secure_threshold });
+      secure_key_bits: r.secureKeyBits,
+      // The block that count is the composable finite key of (Round 80); the server branch sends it too.
+      block_pulses: Number((r.blockPulses ?? 0).toPrecision(6)),
+      eavesdropper_likely: r.qber > securityScoringCfg().qber_secure_threshold });
   },
   results: () => j<{ name: string; bytes: number }[]>("/api/results"),
   downloadUrl: (name: string) => `/api/download/${encodeURIComponent(name)}`,
