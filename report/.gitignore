@@ -4,3 +4,11 @@
 *.log
 *.out
 *.toc
+# And the files latexmk and the DVI path write, with the build directory itself (2026-10-29). Two of
+# them were tracked under out/ and carried an absolute local path: the patterns above did not cover
+# them, and `report/*.fls` in the top-level .gitignore does not match report/out/.
+*.fls
+*.fdb_latexmk
+*.dvi
+*.synctex.gz
+out/
