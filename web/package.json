@@ -18,7 +18,9 @@
     "check:calibration": "node scripts/check_calibration.mjs",
     "check:source-maps": "node scripts/check_no_dangling_source_maps.mjs",
     "check:text-layout": "node scripts/check_text_overlap.mjs",
-    "check:sample-fetch": "node scripts/check_sample_fetch.mjs"
+    "check:sample-fetch": "node scripts/check_sample_fetch.mjs",
+    "check:readme-mermaid": "node scripts/check_readme_mermaid.mjs",
+    "check:use-case-canvas": "node scripts/check_use_case_canvas.mjs"
   },
   "dependencies": {
     "@huggingface/transformers": "^4.2.0",
@@ -46,6 +48,7 @@
     "@types/react-dom": "^18.3.1",
     "@types/three": "^0.186.0",
     "@vitejs/plugin-react": "^4.7.0",
+    "mermaid": "^12.2.0",
     "typescript": "^5.6.3",
     "vite": "~6.4.5"
   }

@@ -371,3 +371,82 @@ hr { border: none; border-top: 1px solid var(--border); margin: 24px 0; }
 .net-table { overflow-x: auto; }
 .net-table td.num, .net-table th.num { text-align: right; font-variant-numeric: tabular-nums; }
 .xor-demo { font-family: ui-monospace, Menlo, monospace; font-size: 12px; overflow-wrap: anywhere; line-height: 1.6; }
+
+/* The use-case architecture canvas (Round 80, components/UseCaseCanvas.tsx). Each party is a column
+   of components and each stage a lane between them; the running stage glows and its lane flows. */
+.ucc-status { font-size: 13px; color: var(--text); margin: 2px 4px 8px; min-height: 18px; }
+.ucc-frame { overflow-x: auto; overflow-y: hidden; }
+.ucc-frame .react-flow { background: transparent; }
+/* The global `.react-flow__node` rule above pads and borders every node for the E2E graph. Here the
+   node is only a frame for the component inside it: padded, the component sat 13 units inside its
+   node, and with it every lane's end, under the box that hid its arrowhead. */
+.ucc .react-flow__node { padding: 0; border: none; border-radius: 0; background: transparent; font-size: inherit; }
+/* The lanes attach at handles; the canvas is not editable, so the handles are not drawn. */
+.ucc .react-flow__handle { opacity: 0; pointer-events: none; }
+.ucc-party { width: 100%; box-sizing: border-box; border: 1px dashed #3a4459; border-radius: 12px;
+  background: rgba(255, 255, 255, 0.015); padding: 10px 14px; }
+.ucc-party-name { font-weight: 700; font-size: 15px; color: var(--text); }
+.ucc-party-sub { font-size: 11.5px; color: var(--muted); margin-top: 3px; line-height: 1.3; }
+.ucc-comp, .ucc-wide, .ucc-mini {
+  width: 100%; height: 100%; box-sizing: border-box; position: relative; display: flex; align-items: center;
+  border: 1.5px solid #3a4459; border-radius: 8px; background: var(--bg-2); color: var(--text);
+  font-size: 12.5px; line-height: 1.3; padding: 6px 10px; overflow-wrap: anywhere;
+  transition: border-color 0.25s, box-shadow 0.25s, opacity 0.25s;
+}
+.ucc-wide { justify-content: center; text-align: center; border-style: dashed; }
+.ucc-mini { font-size: 12px; padding: 4px 10px; }
+/* A note under a group of parties, and the label of a step one side runs alone: text, not boxes. */
+.ucc-note, .ucc-local { width: 100%; height: 100%; box-sizing: border-box; display: flex; align-items: center;
+  font-size: 11.5px; line-height: 1.3; color: var(--muted); overflow-wrap: anywhere; }
+.ucc-local { justify-content: center; text-align: center; font-size: 12px; color: #c4cee0; }
+/* A stage not yet run reads at 0.6, about 4.5 : 1 on the panel (the sequence diagram's measure). */
+.ucc-comp.ucc-pending, .ucc-wide.ucc-pending, .ucc-mini.ucc-pending, .ucc-local.ucc-pending,
+.ucc-note.ucc-pending { opacity: 0.6; }
+.ucc-comp.ucc-running, .ucc-wide.ucc-running, .ucc-mini.ucc-running {
+  border-color: #ffffff; box-shadow: 0 0 0 2px var(--accent), 0 0 16px rgba(79, 157, 255, 0.55);
+  animation: ucc-pulse 1.4s ease-in-out infinite;
+}
+.ucc-local.ucc-running { color: #ffffff; }
+.ucc-comp.ucc-done, .ucc-wide.ucc-done, .ucc-mini.ucc-done { border-color: var(--accent-2); }
+.ucc-comp.ucc-failed, .ucc-wide.ucc-failed, .ucc-mini.ucc-failed { border-color: #ff8f6b; }
+@keyframes ucc-pulse { 50% { box-shadow: 0 0 0 2px var(--accent), 0 0 4px rgba(79, 157, 255, 0.25); } }
+/* Room on the right for the stage's badge, which sits inside the box: on its border, half of it was
+   outside the box, text out of its node by the scan's rule. */
+.ucc-comp .ucc-comp-text { padding-right: 52px; }
+.ucc-wide .ucc-comp-text { padding: 0 56px; }
+.ucc-badge { position: absolute; top: 5px; right: 6px; font-size: 10px; line-height: 14px; padding: 0 6px;
+  border-radius: 8px; background: var(--panel); border: 1px solid; }
+.ucc-badge-running { color: #ffffff; border-color: var(--accent); }
+.ucc-badge-done { color: var(--accent-2); border-color: var(--accent-2); }
+.ucc-badge-failed { color: #ff8f6b; border-color: #ff8f6b; }
+.ucc-lane-label { position: absolute; text-align: center; font-size: 11.5px; line-height: 1.3; color: #c4cee0;
+  padding: 1px 6px; border-radius: 6px; background: rgba(15, 20, 30, 0.82); pointer-events: none;
+  box-sizing: border-box; overflow-wrap: anywhere; }
+.ucc-lane-label.ucc-running { color: #ffffff; }
+.ucc-lane-label.ucc-pending { opacity: 0.75; }
+.ucc-lane-label.ucc-failed { color: #ff8f6b; }
+.ucc-eve { width: 100%; height: 100%; box-sizing: border-box; display: flex; align-items: center;
+  justify-content: center; font-size: 11px; color: #ff8f6b; border: 1px solid #ff8f6b; border-radius: 12px;
+  background: var(--panel); }
+.ucc-legend { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 12px; color: var(--muted); margin: 10px 4px 6px; }
+.ucc-sw { display: inline-block; width: 22px; height: 0; border-top: 2px solid; vertical-align: middle; margin-right: 5px; }
+.ucc-sw-classical { border-color: var(--accent); }
+.ucc-sw-quantum { border-color: var(--quantum); border-top-style: dashed; }
+.ucc-sw-fhe { border-color: #22d3ee; }
+.ucc-sw-mpc { border-color: #f5a623; border-top-style: dotted; }
+.ucc-sw-key { border-color: var(--accent-2); border-top-style: dotted; }
+.ucc-stages { list-style: none; margin: 6px 0 4px; padding: 0; display: grid; gap: 3px; }
+.ucc-stage { display: flex; gap: 10px; align-items: baseline; font-size: 12.5px; line-height: 1.4;
+  padding: 4px 8px; border-radius: 6px; }
+.ucc-stage.ucc-pending { color: var(--muted); }
+.ucc-stage.ucc-running { background: rgba(79, 157, 255, 0.12); color: #ffffff; }
+.ucc-stage.ucc-failed { color: #ff8f6b; }
+.ucc-stage-n { color: var(--muted); min-width: 1.6em; text-align: right; font-variant-numeric: tabular-nums; }
+.ucc-stage-text { flex: 1; overflow-wrap: anywhere; }
+.ucc-stage .ucc-badge { position: static; flex: none; }
+/* The visitor asked for less motion: the dashes stand still, the tokens are not drawn
+   (UseCaseCanvas reads the same query) and the glow does not pulse. */
+@media (prefers-reduced-motion: reduce) {
+  .ucc .react-flow__edge.animated path { animation: none; }
+  .ucc-comp.ucc-running, .ucc-wide.ucc-running, .ucc-mini.ucc-running { animation: none; }
+}
