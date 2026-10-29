@@ -6613,3 +6613,158 @@ verification environment, each rendered at the column's width.
 BUSINESS DOC RECONCILED Round 80. The out-of-repo document is brought level with this round's second
 continuation. Its content is not quoted here, in the checklist, or in any commit - only the fact of
 the reconciliation, which is what gate 16 reads.
+
+## Round 80, continued: the report's figures and tables laid out, and a scan of every page's text
+
+**The user held the merge a third time.** In the technical report, Figure 1's graphs had text over
+their lines, and in Figure 2 `scripts/ci_local.sh:` ran to the edge of its box. The user asked for both
+to be fixed, for every other figure and table in the pages and documents to be checked for the same,
+and for the re-check to become a checklist row or a gate.
+
+**What looking further found in the report.** The committed PDF (3eba542), rebuilt to read its log,
+carried nine "Overfull \hbox" warnings, each a line set wider than its box. Nothing read the log.
+- The models table, 393 pt wider than the text: its Dataset column printed off the page.
+- The scope box, 209 pt: the rule and the paragraph after it set as one line.
+- The licences table, 40 pt: `BTS1_BTS2_fields_preserved.csv` over the next column.
+- 28 pt in `quantum_beats_classical: false`; 3 pt in Figure 2's `scripts/ci_local.sh` box, the one
+  the user saw; four more of 1 to 20 pt in the abstract, the appendix's file list and the
+  reproduction note.
+
+The baselines figure also showed numbers from 13 August. Nothing ran `report/build_figures.py` but a
+hand, and the figure drew the satellite forecaster at 0.45 where `models/metrics.json` has said 0.0
+since.
+
+**The fixes in the report.**
+- Figure 1, right: the three labels moved off the curve and out from under the title, each on a
+  leader line. Left: "max margin" above its point on a leader, the legend lower left.
+- Figure 2: the box is 36 mm, with room either side of its label. The figure now also names the gates
+  added below.
+- The baselines figure is redrawn from the current metrics. Its labels are two lines (the use case,
+  then the model), and a measured zero is printed where its bar would be.
+- Tables and text:
+  - The models table runs at full width, its keys and file names breakable at "." and "_".
+  - The licences and findings tables use ragged-right columns.
+  - Underscores are breakable in running text.
+  - A blank line now precedes the scope box's rule.
+- The build now logs no overfull warnings.
+
+**Gates for the report.**
+- `report/build_figures.py` checks every figure before writing it, on the renderer. It looks for any
+  two pieces of text that overlap: titles, axis labels, the tick labels drawn, annotations and legend
+  entries. It also looks for any drawn line through a label, the title or the legend. It refuses to
+  write a figure with a finding, and `make report` runs it.
+- `make report` fails on any "Overfull \hbox" in the LaTeX log.
+- `tests/test_the_report_is_laid_out_without_overlaps.py` checks three things:
+  - the figures pass the check;
+  - the check catches Figure 1's right panel exactly as published: a label under the title and two
+    on the curve;
+  - the Makefile keeps both gates.
+
+  CI has no LaTeX, so the overfull half runs locally, and the test holds the Makefile to it.
+- The staleness gate counts `models/metrics.json` and the registry as inputs of the PDF, so a figure
+  drawn from old metrics fails it.
+
+**The same look over the pages: a scan.** `web/scripts/check_text_overlap.mjs` drives a headless
+Chrome over eleven views. It runs each page's pipeline and scrolls through so that lazily drawn charts
+render. Then it measures:
+- text over text in every SVG, rotated labels by their true outline;
+- text past its SVG on any edge;
+- text out of the box it labels, or into a dot drawn in that box;
+- pipeline-graph text out of its node.
+
+Its first run found four faults, none seen before:
+- Validations, network panel: "ML-KEM-768 (RFC 9370) + PPK (RFC 8784)" ran out of its box. It now
+  reads "ML-KEM-768 + PPK (RFC 9370, 8784)".
+- Validations, MPC benchmark: "2200 ms" wrapped onto two lines, and the top tick was cut off above the
+  chart.
+- The real-data scatter on the use-case pages:
+  - Recharts anchors a rotated y title at its start, so titles ran out of the top of the 230 px charts
+    (" (log)" was cut);
+  - "10000" ran under the title.
+
+  The titles are now centred on their axes, and the log ticks are compact (1k, 10k).
+- The per-class F1 chart: "photon_number_splitting", drawn at -25 degrees, ran below the chart and
+  lost its first letter. The chart now uses horizontal bars, with the names level down the side.
+
+**In another font, three more.** The pages use the visitor's `system-ui`. On this workstation that
+resolves to Noto Sans. GitHub's Ubuntu runners, and many Linux desktops, resolve it to DejaVu Sans,
+about a tenth wider. Under DejaVu the scan found three more faults:
+- the Overview diagram's "bundled sample rows" ran out of its box;
+- two titles there, "QKD link (BB84 decoy / E91)" and "Federated training", ran into their badge dots;
+- the MPC ticks wrapped again at the 66 px the first fix had given them.
+
+The scan had no rule for text over a dot until then. The boxes are now widened with room for DejaVu.
+The MPC ticks are plain numbers, with the unit in the line above each chart, so their width no longer
+depends on the font.
+
+**Two more rules, and what they found.** The regenerated Overview screenshot showed "count only - not
+mixed in" against the QKD box's border. The scan compared a label only with the box it sits in, and
+this label sits in none: it touched the border by 1 px here, and crossed it by about ten in DejaVu.
+- **Label clearance.** A label now keeps 2 px clear of any stroked box it is not inside. The QKD box
+  moved 30 units right.
+- **Wide HTML.** The scan had measured SVG text only. It now also flags:
+  - on a desktop, a box that scrolls sideways by 16 px or less, which is a margin or a word that
+    will not break, not content;
+  - content wider than a box that does not scroll;
+  - a page that scrolls sideways.
+
+  Some scrolling is by design and is not reported. On a phone every table and wide diagram scrolls
+  in its own box. A data table of seven or more columns scrolls on a desktop too, once the window is
+  narrower than it. A first version that reported those flagged six tables at 390 px for scrolling
+  4 to 15 px, and would have made the gate depend on how many digits a number has.
+
+The HTML rules found the Metrics card scrolling sideways by 3 to 5 px after a run, on up to five
+pages; the widths depend on the run's values. The longest metric names, such as
+"encrypted_tier_within_operational_window", are 268 px of unbroken text. Names now break after each
+underscore, using `<wbr>` so a copied name is unchanged; values break anywhere. The two sliders' default 2 px side margins, which pushed them into their cards' padding,
+are removed once in CSS for every slider. The benchmark's eleven-column table, 5 px too wide for its
+card at 1280 px in DejaVu, has narrower cells.
+
+**The clearance rule's first version matched no box.** It read the stroke width as `+"1.6px"`, which
+is NaN. Run first on the label that prompted it, it found nothing, and that is how the bug showed.
+
+**Scanning with the network cut found a false statement.** CI is offline by design, so the CI scan
+lets the page reach localhost only. The published models' evaluation samples come from the Hugging
+Face Hub, so their stage fails there, and the rest of the run goes on. Probing that run, the finance
+page logged that `finance_aml.gbm` "is published and pinned but ships no eval_sample.json at that
+revision", and the verification logged "no published evaluation sample". The sample is published.
+The fetch returned `null` for a 404 and for every failure alike (offline, a timeout, an outage, a
+rate limit), and the page read `null` as the Hub's answer. The `null` was cached, so a visitor whose
+first request timed out was told the same for the rest of the session.
+
+Now only a 404 reads as "no sample", and only the Hub's answers are cached. A failed request is
+reported as one, with its reason and the sentence "This says nothing about whether the model
+publishes one", and the next run asks again. `web/scripts/check_sample_fetch.mjs` replaces `fetch`
+with each kind of failure, through the real module, and checks both readers. It runs from
+`tests/test_a_failed_fetch_is_not_an_absent_sample.py`, so CI runs it. Seeded, the module before the
+fix fails it on all four kinds.
+
+**Gates for the pages.** After the fixes the scan passes in both fonts at three sizes: 1280 x 720,
+1024 x 700 and 390 x 800. It runs in three places:
+- `scripts/ci_local.sh` step 8, on a client-only build, in the local font;
+- the CI web job, on the runner, in DejaVu Sans, offline (`SCAN_OFFLINE=1`: localhost only);
+- `npm run check:text-layout`.
+
+It was seeded on the builds before each fix:
+- under DejaVu, it reports that build's five findings, the two dots among them;
+- with the later rules, it reports the label, and the Metrics card on five pages.
+
+**The README's diagrams, measured the same way.** `web/scripts/check_readme_mermaid.mjs` renders every
+Mermaid block with Mermaid 12 in a headless Chrome and measures it. It finds a label out of its node
+(a decision by its diamond, not its bounding box), a label over another, an edge label over a node,
+and an edge through a node's text. All eleven README diagrams pass.
+
+It was seeded both ways:
+- shapes shrunk to 70 percent gave 99 findings;
+- diamonds narrowed by their points gave findings of the diamond rule, with the text still inside
+  each bounding box.
+
+Mermaid is not a dependency of this project, so its bundle is passed in. This check is a checklist
+row, not a CI gate.
+
+Figure 2's README twin names the new gates, as the report's figure does, and the label test holds the
+two equal. The eleven screenshots were regenerated from this tree.
+
+The local gates' first run on this tree failed one test. The dead-component gate read the new
+axis-title helper, a capitalised inner function passed to Recharts and never written as a tag, as a
+component nobody renders. It is now an anonymous render function, with the same output.

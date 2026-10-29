@@ -16,7 +16,9 @@
     "check:netkeys": "node scripts/check_net_key_schedules.mjs",
     "check:jsx-spaces": "node scripts/check_jsx_text_spaces.mjs",
     "check:calibration": "node scripts/check_calibration.mjs",
-    "check:source-maps": "node scripts/check_no_dangling_source_maps.mjs"
+    "check:source-maps": "node scripts/check_no_dangling_source_maps.mjs",
+    "check:text-layout": "node scripts/check_text_overlap.mjs",
+    "check:sample-fetch": "node scripts/check_sample_fetch.mjs"
   },
   "dependencies": {
     "@huggingface/transformers": "^4.2.0",

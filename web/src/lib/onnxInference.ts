@@ -557,13 +557,25 @@ export interface ModelEvalResult {
   };
 }
 
+/** What fetching one model's evaluation sample found.
+ *
+ *  "absent" is the Hub's own answer, a 404: no sample at that revision. "error" is ours: offline, a
+ *  timeout, an outage, a rate limit, a body that would not parse. It says nothing about the model.
+ *  Until Round 80 both were `null`. An unreachable Hub therefore made the page state that the
+ *  published model "ships no eval_sample.json at that revision", and the cached null kept saying it
+ *  for the rest of the session. Found by scanning the pages with the network cut. */
+type SampleFetch =
+  | { kind: "ok"; file: ModelInputFile }
+  | { kind: "absent" }
+  | { kind: "error"; reason: string };
+
 /** The evaluation sample for one model, memoised per URL.
  *
- *  Two callers now want it -- the Models panel's Run button and the orchestration's inference stage
- *  -- and before this cache existed the panel refetched several megabytes on every click. `null` is
- *  cached too: "this model publishes no sample" is a stable answer, not a transient failure, and
- *  re-asking costs a round trip to be told the same thing. */
-const _sampleCache = new Map<string, Promise<ModelInputFile | null>>();
+ *  Two callers want it, the orchestration's inference stage and its verification. Before this cache
+ *  existed the sample, several megabytes, was fetched again on every use. The Hub's answers are
+ *  kept, a 404 included: re-asking would cost a round trip to be told the same thing. A failed
+ *  request is not kept, so the next run asks again. */
+const _sampleCache = new Map<string, Promise<SampleFetch>>();
 
 /** The sample lives beside the weights at the SAME pinned commit, so the two cannot drift apart. */
 function sampleUrlFor(modelUrl: string): string {
@@ -580,23 +592,36 @@ function sampleUrlFor(modelUrl: string): string {
   return modelUrl.replace(/\/onnx\/[^/]+$/, "/eval_sample.json");
 }
 
-function evalSample(modelUrl: string): Promise<ModelInputFile | null> {
+function evalSample(modelUrl: string): Promise<SampleFetch> {
   const url = sampleUrlFor(modelUrl);
   let hit = _sampleCache.get(url);
   if (!hit) {
-    hit = (async () => {
+    hit = (async (): Promise<SampleFetch> => {
+      let res: Response;
       try {
-        const res = await fetch(url, { mode: "cors", signal: AbortSignal.timeout(HF_FETCH_TIMEOUT_MS) });
-        if (!res.ok) return null;              // no evaluation sample published for this model
-        return (await res.json()) as ModelInputFile;
-      } catch {
-        return null;
+        res = await fetch(url, { mode: "cors", signal: AbortSignal.timeout(HF_FETCH_TIMEOUT_MS) });
+      } catch (e) {
+        return { kind: "error", reason: (e as Error)?.name === "TimeoutError"
+          ? `the Hugging Face Hub did not answer within ${HF_FETCH_TIMEOUT_MS / 1000} s`
+          : `the request to the Hugging Face Hub failed: ${(e as Error)?.message ?? String(e)}` };
+      }
+      if (res.status === 404) return { kind: "absent" };   // the Hub's answer: none at this revision
+      if (!res.ok) return { kind: "error", reason: `the Hugging Face Hub answered HTTP ${res.status}` };
+      try {
+        return { kind: "ok", file: (await res.json()) as ModelInputFile };
+      } catch (e) {
+        return { kind: "error", reason: `the sample did not parse: ${(e as Error)?.message ?? String(e)}` };
       }
     })();
     _sampleCache.set(url, hit);
+    void hit.then((r) => { if (r.kind === "error") _sampleCache.delete(url); });
   }
   return hit;
 }
+
+/** Said wherever a sample could not be fetched, so a failed request never reads as a fact about
+ *  the model. */
+const notEvidence = "This says nothing about whether the model publishes one.";
 
 /** Apply the preprocessing recorded WITH the data, never a locally-guessed equivalent. */
 function applyPreprocessing(v: number, steps: string[]): number {
@@ -642,8 +667,12 @@ export async function evaluatePublishedModel(
   base.split = target.spec.eval_split ?? null;
   // A model that publishes no sample BY DESIGN is not asked for one: the request could only 404.
   if (target.spec.eval_sample_reason) return { ...base, noSampleReason: target.spec.eval_sample_reason };
-  const file = await evalSample(target.url);
-  if (!file) return null;                           // no evaluation sample published for this model
+  const got = await evalSample(target.url);
+  if (got.kind === "absent") return null;           // the Hub has no evaluation sample for this model
+  if (got.kind === "error") {
+    return { ...base, error: `its evaluation sample could not be fetched: ${got.reason}. ${notEvidence}` };
+  }
+  const file = got.file;
   const split = base.split;
   const thr = file.expected.decision_threshold ?? null;
   base.decisionThreshold = thr;
@@ -993,17 +1022,23 @@ export async function runPublishedModel(
       error: `${key} publishes no evaluation sample by design (${target.spec.eval_sample_reason}), so `
         + `there is no input from its own corpus to run it on` };
   }
-  let file: ModelInputFile | null;
+  let got: SampleFetch;
   try {
-    file = await evalSample(target.url);
+    got = await evalSample(target.url);
   } catch (e) {
     return { kind: "failed", modelKey: key, error: e instanceof Error ? e.message : String(e) };
   }
-  if (!file) {
+  if (got.kind === "error") {
+    return { kind: "failed", modelKey: key,
+      error: `the evaluation sample for ${key} could not be fetched (${got.reason}), so there is no `
+        + `input from its own corpus to run it on. ${notEvidence}` };
+  }
+  if (got.kind === "absent") {
     return { kind: "failed", modelKey: key,
       error: `${key} is published and pinned but ships no eval_sample.json at that revision, so there `
         + `is no input from its own corpus to run it on` };
   }
+  const file = got.file;
 
   // Same identity check the evaluation path makes: score the graph the sample was measured on.
   const fetchedGraph = target.url.split("/").pop() ?? "";

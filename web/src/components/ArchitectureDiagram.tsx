@@ -22,21 +22,26 @@ const H = 92;
 const ROW1 = 34;
 const ROW2 = 212;
 
+// Widths with room for the widest common sans-serif (Round 80). The page font is the visitor's
+// `system-ui`; in DejaVu Sans, the Linux default, "bundled sample rows" ran out of a 130-unit box and
+// two titles ran into their badge dots, with every box fitting in the narrower font this was drawn in.
+// The QKD box sits at 670 so "count only - not mixed in" clears its border; at 640 it touched it.
+
 const BOXES: Box[] = [
-  { id: "data", x: 10, y: ROW1, w: 130, title: "Your data", lines: ["bundled sample rows", "never leave the tab"], kind: "real" },
+  { id: "data", x: 10, y: ROW1, w: 150, title: "Your data", lines: ["bundled sample rows", "never leave the tab"], kind: "real" },
   { id: "pqc", x: 180, y: ROW1, w: 220, title: "PQC handshake",
     lines: ["ML-KEM-768 + X25519", "HKDF combiner (SP 800-227)", "-> 256-bit session key"], kind: "real" },
-  { id: "qkd", x: 640, y: ROW1, w: 230, title: "QKD link (BB84 decoy / E91)",
+  { id: "qkd", x: 670, y: ROW1, w: 250, title: "QKD link (BB84 decoy / E91)",
     lines: ["analytic channel model", "yields a key LENGTH,", "not key bytes"], kind: "simulated" },
   { id: "qsmpc", x: 10, y: ROW2, w: 170, title: "QSMPC",
     lines: ["PSI: HMAC under the", "session key; secure sum:", "additive shares"], kind: "real" },
-  { id: "fl", x: 200, y: ROW2, w: 160, title: "Federated training",
+  { id: "fl", x: 200, y: ROW2, w: 176, title: "Federated training",
     lines: ["finance, medical:", "FedAvg, pairwise masks"], kind: "real" },
-  { id: "pi", x: 380, y: ROW2, w: 200, title: "Private inference",
+  { id: "pi", x: 396, y: ROW2, w: 180, title: "Private inference",
     lines: ["CKKS linear (node-seal)", "+ garbled-circuit 2PC", "non-linear (Polytune)"], kind: "notional" },
-  { id: "qhe", x: 600, y: ROW2, w: 180, title: "QHE comparison",
+  { id: "qhe", x: 596, y: ROW2, w: 180, title: "QHE comparison",
     lines: ["QOTP + 8-qubit QCNN", "state-vector simulation"], kind: "seeded" },
-  { id: "sig", x: 800, y: ROW2, w: 170, title: "Signed result",
+  { id: "sig", x: 796, y: ROW2, w: 170, title: "Signed result",
     lines: ["ML-DSA-65 signature", "over the result"], kind: "real" },
 ];
 
@@ -79,17 +84,17 @@ export default function ArchitectureDiagram() {
           </marker>
         </defs>
         {/* main key path, row 1 */}
-        <line x1={140} y1={ROW1 + H / 2} x2={178} y2={ROW1 + H / 2} stroke="var(--muted)" strokeWidth={1.4} markerEnd={arrow} />
+        <line x1={160} y1={ROW1 + H / 2} x2={178} y2={ROW1 + H / 2} stroke="var(--muted)" strokeWidth={1.4} markerEnd={arrow} />
         {/* session key down to row 2 */}
         <path d={`M400,${ROW1 + H / 2} L470,${ROW1 + H / 2} L470,${ROW2 - 40} L95,${ROW2 - 40} L95,${ROW2 - 2}`}
           fill="none" stroke="var(--accent-2)" strokeWidth={1.6} markerEnd={arrow} />
         <text x={478} y={ROW1 + H / 2 + 50} fontSize={11} fill="var(--accent-2)">session key</text>
         {/* QKD: dashed, ends in a cross before the key path */}
-        <line x1={638} y1={ROW1 + H / 2} x2={520} y2={ROW1 + H / 2} stroke="var(--quantum)" strokeWidth={1.4} strokeDasharray="5 4" />
+        <line x1={668} y1={ROW1 + H / 2} x2={520} y2={ROW1 + H / 2} stroke="var(--quantum)" strokeWidth={1.4} strokeDasharray="5 4" />
         <text x={500} y={ROW1 + H / 2 + 5} fontSize={16} fontWeight={700} fill="var(--quantum)">x</text>
         <text x={520} y={ROW1 + H / 2 - 10} fontSize={10.5} fill="var(--quantum)">count only - not mixed in</text>
         {/* row 2 chain */}
-        {[[180, 198], [360, 378], [580, 598], [780, 798]].map(([a, b], i) => (
+        {[[180, 198], [376, 394], [576, 594], [776, 794]].map(([a, b], i) => (
           <line key={i} x1={a} y1={ROW2 + H / 2} x2={b} y2={ROW2 + H / 2} stroke="var(--muted)" strokeWidth={1.4} markerEnd={arrow} />
         ))}
         {BOXES.map((b) => <SvgBox key={b.id} b={b} />)}
