@@ -6897,3 +6897,47 @@ same bundle the local build produced).**
 BUSINESS DOC RECONCILED Round 80. The out-of-repo document is brought level with this round's fourth
 continuation. Its content is not quoted here, in the checklist, or in any commit - only the fact of
 the reconciliation, which is what gate 16 reads.
+
+## Round 80, continued: the README's screenshots taken again, and what looking at them found
+
+**The user held the merge a fifth time.** The user asked for the screenshots of each SPA page in the
+README to be re-taken after checking the pages work, and for any bugs the captures show to be
+reported and fixed. The user also chose the next round: the architecture canvas on the E2E page.
+
+**Why the images may have looked stale.** The branch served all eleven images byte for byte as
+committed: each `raw.githubusercontent.com` copy was compared with the local file by SHA-256. On
+`main` none of them exists. The README with screenshots arrives with this pull request, so the
+repository's front page shows no screenshots until it merges.
+
+**What looking at each capture found, all fixed:**
+- **E2E Orchestration.** The graph's zoom controls drew as near-white squares with near-invisible
+  icons: React Flow's default light theme on the dark panel. The graph's connection handles showed
+  as dots on every node. The controls are themed, and the handles are not drawn on any graph; their
+  positions still anchor the edges.
+- **Satellite, Network tab.** The pass chart's time axis read -214, -198 ... -102, -90 ... -6, 1, 9:
+  steps of 16, then 12, then 8. It was a category axis over samples not evenly spaced in time. It is
+  now numeric, with ticks at a round step (-180 to 180 by 60 on Liao's pass).
+- **Introduction and Value.** The regulatory clock's dashed "today" line ran through six dated
+  labels: "FIPS 140-2 historical", "agency plans due", "FAR rule proposed", "new NSS acquisitions",
+  "AI Act Art. 50" and "EU first steps". This is the class of fault the user found in the report's
+  Figure 1, and no rule compared text with a line.
+  - The labels now carry a halo: their outline painted first, in the panel's colour.
+  - A four-unit halo masked the line under the letters but still showed it in the space between two
+    words, so the halo is six units.
+  - The markers are drawn after the labels, so a halo cannot clip one.
+- **Validations.** The capture clicked two of the page's four runs, so the README showed the ML-DSA
+  and handshake cards empty. It now runs all four.
+- **Medical canvas wording.** The CKKS evaluator said "evaluates the linear layer" while medical
+  runs an encrypted CNN, convolution and dense layers. It now says "linear layers", which is true of
+  both.
+
+**A new rule in the scan: text with a line through it.**
+- Every drawn line, path and polyline is sampled against every label, except a chart's own grid,
+  axes and legend.
+- Only what is drawn counts. A curve clipped to its plot area by a clip-path is sampled inside the
+  clip alone; the first version reported the QSDC chart's tick "500" under a curve that is never
+  drawn there.
+- A label with a halo at least half its font size wide is not reported.
+- Seeded on the build before the fix, it reports the six clock labels. On the four-unit halo it
+  reports them again; a first version that accepted any halo of 2 units had passed that build while
+  the line still showed between words.

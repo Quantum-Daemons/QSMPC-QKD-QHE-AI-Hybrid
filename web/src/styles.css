@@ -248,6 +248,15 @@ tr:hover td { background: var(--bg-2); }
   background: var(--bg-2); color: var(--text); padding: 8px 12px;
 }
 .node-active { box-shadow: 0 0 0 2px var(--accent), 0 0 18px rgba(79,157,255,0.5); }
+/* React Flow's zoom controls in the theme (Round 80, seen in the README's screenshot): its default
+   light buttons drew as near-white squares with near-invisible icons on the dark panel. */
+.react-flow__controls { box-shadow: none; }
+.react-flow__controls-button { background: var(--bg-2); border: 1px solid var(--border); color: var(--text); fill: var(--text); }
+.react-flow__controls-button:hover { background: var(--panel); }
+.react-flow__controls-button svg { fill: var(--text); }
+/* The graphs are not editable, so their connection handles are not drawn (their positions still
+   anchor the edges); on the E2E graph they showed as dots on every node's border. */
+.react-flow__handle { opacity: 0; pointer-events: none; }
 .node-done { border-color: var(--accent-2) !important; }
 .pill-row { display: flex; gap: 8px; flex-wrap: wrap; margin: 8px 0; }
 .muted { color: var(--muted); }
@@ -381,8 +390,6 @@ hr { border: none; border-top: 1px solid var(--border); margin: 24px 0; }
    node is only a frame for the component inside it: padded, the component sat 13 units inside its
    node, and with it every lane's end, under the box that hid its arrowhead. */
 .ucc .react-flow__node { padding: 0; border: none; border-radius: 0; background: transparent; font-size: inherit; }
-/* The lanes attach at handles; the canvas is not editable, so the handles are not drawn. */
-.ucc .react-flow__handle { opacity: 0; pointer-events: none; }
 .ucc-party { width: 100%; box-sizing: border-box; border: 1px dashed #3a4459; border-radius: 12px;
   background: rgba(255, 255, 255, 0.015); padding: 10px 14px; }
 .ucc-party-name { font-weight: 700; font-size: 15px; color: var(--text); }
