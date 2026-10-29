@@ -14,6 +14,8 @@
 \usepackage[margin=2.4cm]{geometry}
 \usepackage{booktabs}
 \usepackage{longtable}
+\usepackage{array}
+\usepackage{tabularx}
 \usepackage{graphicx}
 \usepackage{xcolor}
 \usepackage{amsmath}
@@ -24,6 +26,9 @@
 \usepackage{tikz}
 \usetikzlibrary{positioning,arrows.meta,fit,backgrounds,calc}
 \usepackage{placeins}
+% A little extra stretch before a line is set overfull (Round 80): `make report` now fails on any
+% Overfull hbox, and a justified line short of a break by a point or two is not a reason to fail.
+\setlength{\emergencystretch}{1.5em}
 
 \definecolor{accent}{HTML}{2B6CB0}
 \definecolor{warn}{HTML}{C05621}
@@ -98,6 +103,7 @@ where tractable, explicitly labelled simulation where not. Licence Apache-2.0. T
 measurements produced by the code at revision \texttt{\gitsha}; every table is generated from the
 repository's own artefacts at build time rather than transcribed.
 \end{small}
+
 \noindent\rule{\textwidth}{0.4pt}
 
 \tableofcontents
@@ -174,7 +180,7 @@ reasons the models here are published openly rather than treated as secrets.
 \subsection{What this system is not}
 It does not claim quantum \emph{advantage}. The measured quantum-kernel and variational classifiers
 lose to a RandomForest baseline on the same data, and the registry records
-\texttt{quantum\_beats\_classical: false} rather than omitting the comparison. The value proposition
+\texttt{quantum\_\allowbreak{}beats\_\allowbreak{}classical: false} rather than omitting the comparison. The value proposition
 is quantum-\emph{safety}, which is regulation-driven and dated.
 
 \section{System architecture}
@@ -403,11 +409,11 @@ the two copies identical, figure by figure.
 \begin{figure}[htbp]\centering
 % figure: verification-environment
 \begin{tikzpicture}
-  \node[stage=34mm] (py) at (0,0) {Python 3.12 venv: pytest suite, cross-language tests};
-  \node[stage=34mm] (web) at (0,-1.25) {Web checks: tsc, vite build, node checks};
-  \node[stage=28mm] (cl) at (4.2,-0.62) {\texttt{scripts/ci\_local.sh}: 18 gates};
-  \node[stage=28mm] (rep) at (7.6,-0.62) {make report: the technical report};
-  \node[stage=28mm] (shot) at (11.0,-0.62) {Headless Chrome: README screenshots};
+  \node[stage=38mm] (py) at (0,0) {Python 3.12 venv: pytest suite, cross-language tests};
+  \node[stage=38mm] (web) at (0,-1.25) {Web checks: tsc, vite build, node checks, text layout};
+  \node[stage=36mm] (cl) at (4.4,-0.62) {\texttt{scripts/ci\_local.sh}: 18 gates};
+  \node[stage=28mm] (rep) at (8.3,-0.62) {make report: the technical report, layout checked};
+  \node[stage=28mm] (shot) at (11.6,-0.62) {Headless Chrome: README screenshots};
   \draw[go] (py) -- (cl);
   \draw[go] (web) -- (cl);
   \draw[go] (cl) -- (rep);
@@ -416,7 +422,7 @@ the two copies identical, figure by figure.
   \end{scope}
 
   \node[stage=24mm] (pr) at (0,-3.1) {Pull request};
-  \node[stage=46mm] (act) at (4.8,-3.1) {GitHub Actions: Python, web typecheck and build, repository guards};
+  \node[stage=46mm] (act) at (4.8,-3.1) {GitHub Actions: Python, web typecheck, build and text layout, repository guards};
   \node[stage=34mm] (aud) at (10.3,-3.1) {Audit workflow: npm audit, cargo-deny};
   \draw[go] (pr) -- (act);
   \begin{scope}[on background layer]
@@ -449,7 +455,7 @@ records close it. The demo host's address is deliberately not given.}
 \begin{tikzpicture}
   \node[stage=30mm] (rs) at (0,0) {Research: primary sources in \texttt{references/}};
   \node[stage=30mm] (im) at (3.8,0) {Implement: Python and TypeScript, one config};
-  \node[stage=30mm] (lg) at (7.6,0) {Local gates: pytest, \texttt{scripts/ci\_local.sh}};
+  \node[stage=36mm] (lg) at (7.9,0) {Local gates: pytest, \texttt{scripts/ci\_local.sh}};
   \draw[go] (rs) -- (im);
   \draw[go] (im) -- (lg);
   \begin{scope}[on background layer]
@@ -1009,9 +1015,10 @@ length, not key bytes: its quantum channel is simulated.
 \vspace{4mm}
 \noindent\rule{\textwidth}{0.4pt}\\
 \begin{small}
-\textbf{Reproduction.} Revision \texttt{\gitsha}. Tables and figures regenerate with
-\texttt{python report/build\_data.py \&\& python report/build\_figures.py}; the document builds with
-\texttt{make report}, two \texttt{pdflatex} passes.
+\textbf{Reproduction.} Revision \texttt{\gitsha}. \texttt{make report} regenerates the tables
+(\texttt{report/build\_data.py}) and the figures (\texttt{report/build\_figures.py}, which checks them
+for overlapping text), then builds the document with two \texttt{pdflatex} passes and fails on any
+line set wider than its box.
 \end{small}
 
 \end{document}
