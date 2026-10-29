@@ -3349,3 +3349,169 @@ vacuum pulses.
 over a pass or over blocks inside one orbit; none on seconds of a low-orbit pass. The default follows
 that, the alternatives stay, and the seconds option says how long a key would need rather than
 pretending a fifth of a second could carry one.
+
+### Round 80: a check for the new default found an old error in the old tests
+
+**Context.** Two user choices: every fibre key a composable finite key, at every site; its block
+decided by the published practice.
+
+**Put the change where every caller already looks.** The fibre key had five readers in two
+languages. Changing each would have invited the one-site-short defect this project has recorded
+many times; changing the model they all call - `run_bb84`, `bb84()` - left them nothing to miss, and
+the cross-language test holds the two models to the bit.
+
+**The research's check was more useful than its recommendation.** It recommended the block every
+fibre experiment uses, which was expected. It also handed back the paper's own block TIMES as a
+check, and ours came out twice as long at every row. A rate that is twice as slow everywhere is a
+channel, not a bound: the tests had applied the detector on top of an attenuation the paper defines
+as including it. Thirty-three rounds, from the test's first commit in Round 47, had recorded the
+resulting factor as this code's conservatism.
+
+**An inference earns its keep when a later check can break it.** Round 79 chose the decoy's errors
+for (A16) from one sentence of the paper. On the paper's own channel and dead time that choice
+reproduces Table I's 26 dB row to a few parts in a thousand, and the other choice reads 13 percent low.
+
+**A rounding is part of a metric's meaning.** The satellite's block time at one decimal was fine for
+minutes of pass; the fibre's blocks run from milliseconds, and the rounding gate allows one rounding
+per name. Significant figures serve both.
+
+### Round 80, continued: a screenshot is a reading, and a move is an edit to every pointer
+
+**Context.** The user held the merge until the README was reorganised: a summary with diagrams and a
+screenshot of every page, the long records moved to split files and a short appendix in the report.
+
+**An image taken for a document is a check nobody had run.** Three defects were on the deploy and
+no gate looked for them: six of ten pipeline nodes undrawn after a run, a 199-character label wider
+than its diagram, and every "log" label in the event log drawn as a box over the line above. Each
+was found by opening an image to see whether it was fit to publish. Each test checked what a page
+says; none checked what it shows. The screenshots now get regenerated with the pages and read like
+any other output.
+
+**A class built from data shares a namespace with the layout.** The event type became a CSS class,
+and one type, "log", was also the name of the panel it is printed in. Nothing about either name was
+wrong; their meeting was. A prefix keeps data out of the layout's names.
+
+**Moving text is when a pointer's truth gets tested.** Twelve places said "the README" for text that
+left it, and two of them had been wrong before anything moved: one named tools the README never
+mentioned, one a citation it never held. A pointer nobody follows is never checked; a move forces
+it to be followed.
+
+**A gate that reads a file for a claim passes when the claim leaves the file.** Three tests read the
+README for content; after the move they would have kept passing on a README that no longer held it.
+Three more enumerate with `git ls-files` and could not see the new files until they were staged.
+Moving text means asking each gate where it looks.
+
+**A number copied from a summary carries the summary's error.** The log entry above said seven
+rounds; the report's draft appendix took the figure from it. The first commit of the test says
+thirty-three. When a record states a duration, check the commit that started it, not the sentence
+that remembered it.
+
+### Round 80, continued again: drawing the flowcharts was an audit
+
+**Context.** The user held the merge for diagrams of the verification environment, the workflow and
+each use case, in the report and the README, and for the pages' diagrams, which misbehaved during a
+run.
+
+**Look during the run, not after it.** Every defect the user saw showed while a run was in flight:
+dimmed steps that read as empty, a status chip over the diagram, placeholder rows marked as running.
+The after-the-run screenshots this round had already been taken and read showed none of it.
+
+**Fixing that a thing shows is not fixing its parts.** The explicit node size of the first
+continuation made the pipeline graph's nodes draw again; its edges had gone with the same cause and
+nobody counted them. On the deploy the graph had no edges at all. A check that names the parts - nine
+edges, at load, mid-run and after - is the one that would have caught it.
+
+**A diagram of what implements each stage has to be read out of the code, both codes.** Asking, stage
+by stage, what runs this in the browser and what in Python found a genomics sum over stand-ins under
+a page that said allele counts, a Python pipeline that ignored two settings the page offers, and a
+diagram written this very round that put a key into the session where the browser puts none.
+Drawing the flowchart was the audit; the drawing came last.
+
+**A width is measured in the font that draws it.** Wrapping by character count guesses at a font the
+page does not choose. Measuring with the page's own font, and keeping room for the mark a step gains,
+is what keeps a label inside its box in a browser the author never opened.
+
+**Two copies of a figure need a test, or they are two figures.** The user chose TikZ and Mermaid over
+a shared renderer; the test pairs them by key and compares every label, so either copy changing alone
+fails.
+
+### Round 80, continued a third time: a warning nobody reads, and a font nobody tried
+
+**Context.** The user held the merge for text over lines in the report's Figure 1 and a label at the
+edge of its box in Figure 2. The user asked for the same faults to be looked for everywhere, and for
+the look to become a re-check.
+
+**A warning nobody reads gates nothing.** The LaTeX log said "Overfull \hbox" nine times, a table 393
+pt off the page among them, for as long as the report has been built. The build exited zero and its
+output went to /dev/null. A warning becomes a check only when something fails on it, and
+`make report` now fails on this one.
+
+**A figure no command draws is a figure from the day someone last drew it.** The baselines figure
+carried August's numbers for two months because only a hand ran its script. Now the build draws it,
+and its inputs are in the staleness gate. Current figures are something the build guarantees, not
+something a reader assumes.
+
+**The first font is a sample of one.** The scan passed every page in the font this workstation
+resolves `system-ui` to. In DejaVu Sans, the default on the CI runner and on many Linux desktops,
+three labels failed. One was on a chart fixed earlier this same round by widening an axis. Widening a
+box to fit one font moves the failure to the next font. Taking the unit off the tick, and keeping
+margins sized for the widest common font, removed the dependence. Running the gate in two fonts,
+locally and on the runner, is cheaper than guessing the visitor's.
+
+**A check with no rule for a shape cannot see text over it.** The scan compared text with text and
+text with its box. A title running into a badge dot was neither. Measuring the boxes' spare room
+directly found it, and the scan did not. The scan gained the rule, and was then run on the build that
+had the fault, where it reported it. When a measurement outside a gate finds what the gate missed,
+the gate gets the rule and is seeded with that fault.
+
+**A seed that never reaches the rule tests a different rule.** The first seeds for the Mermaid
+diamond check shrank whole shapes, so the bounding-box rule fired first and the diamond rule never
+ran. The CSS transform also replaced each diamond's own translate. Only narrowing a diamond by its
+points, its text still inside the bounding box, exercised the rule the seed was for.
+
+**A new rule is run first on the fault that prompted it.** The box-clearance rule passed every page,
+including the label it was written for. It read a computed stroke width of "1.6px" with a unary plus,
+got NaN, and so treated every box as unstroked. A rule that finds nothing on its own motivating case
+is broken until shown otherwise.
+
+**A failure path makes claims too.** When the request for a sample failed, the code returned the
+value it used for "the Hub has none", and the page then reported the Hub's answer to a question it
+never received. Scanning with the network cut was meant to keep CI offline, and it was the first run
+that exercised that path. Run the pages once without the network: every message they print then
+should be about the failed request, and none about the thing it failed to fetch.
+
+### Round 80, continued a fourth time: a drawing of where things run is a claim about the code
+
+**Context.** The owner asked for the E2E graph's kind of animation on the five use-case pages, and
+chose swimlanes, the run's real parties, and replacing the sequence diagram.
+
+**Drawing where a stage runs is an audit of its direction.** The sequence diagram had drawn the
+satellite's key and telemetry going up for as long as it existed. Nobody misread the code; the
+drawing never asked which way the link goes. A canvas has to put the source on one side, so it had to
+ask, and the answer was in the satellite module's first line. A figure that only lists steps can
+hide a fact that one placing them cannot.
+
+**A rule written for one graph reaches every graph.** The global `.react-flow__node` rule padded the
+E2E graph's nodes, and silently padded every node of the new canvas. Every lane ended inside its
+boxes and every arrowhead was hidden. The first explanation, a measurement taken at the wrong scale,
+was plausible and wrong. Measuring the node, the box and the handle took one probe and named the
+cause. Measure before fixing a layout fault: a plausible mechanism can stand in for the real one.
+
+**An attribute is not a style.** SVG markers take their colour as an attribute, where a CSS variable
+does not resolve. The theme's colours had to be written as literals where they become attributes.
+
+### Round 80, continued a fifth time: read every image the README shows
+
+**Context.** The owner held the merge again: the README's screenshots looked stale, and the owner
+asked for them to be taken after a walk and checked for bugs.
+
+**An image is a test result only when someone reads it.** The eleven images had been regenerated,
+committed and served for two rounds. Reading them one by one found five faults in pages that every
+gate had passed: an unthemed control, an irregular axis, a line through six labels, two empty cards,
+and a wrong word. Each was visible at a glance, and none had been looked for.
+
+**A rule that sees geometry must see what is drawn.** The first version of the line rule reported a
+curve over a tick label where the curve is clipped and never drawn. A second version accepted any
+halo, and passed a build where the line still showed between two words. A rule earns its place only
+when it is right on the cases it was written for, and seeding both ways is how that is shown.
+

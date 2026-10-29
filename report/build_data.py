@@ -29,6 +29,13 @@ def esc(s: str) -> str:
     return s
 
 
+def brk(s: str) -> str:
+    """`esc`, and a line may break after each underscore: a file name such as
+    BTS1_BTS2_fields_preserved.csv is one unbreakable word otherwise, and it ran out of its column
+    into the next one (Round 80, found reading the rendered table)."""
+    return esc(s).replace(r"\_", r"\_\allowbreak{}")
+
+
 def fmt(v, nd=4):
     return f"{v:.{nd}f}" if isinstance(v, float) else ("--" if v is None else str(v))
 
@@ -62,8 +69,10 @@ def model_table(specs=None) -> str:
         got = a.get(s.metric.name, a.get("student_metric"))
         tier = {"t1_crypto": "T1", "t2_industry": "T2", "t3_large": "T3"}.get(s.tier, s.tier)
         rows.append(" & ".join([
-            r"\texttt{" + esc(s.key) + "}", tier, esc(s.metric.display),
-            fmt(got), fmt(s.metric.baseline), esc(s.dataset.name),
+            # Breakable after the dot and each underscore, so the keys wrap in their column instead
+            # of taking the width the Metric and Dataset columns need.
+            r"\texttt{" + brk(s.key).replace(".", r".\allowbreak{}") + "}", tier, esc(s.metric.display),
+            fmt(got), fmt(s.metric.baseline), brk(s.dataset.name),
         ]) + r" \\")
     return "\n".join(rows)
 
@@ -79,7 +88,7 @@ def licence_table(specs=None) -> str:
     for s in specs if specs is not None else registry._SPECS:
         seen.setdefault(s.dataset.name, s.dataset.licence)
     return "\n".join(
-        " & ".join([esc(name), esc(lic)]) + r" \\" for name, lic in sorted(seen.items())
+        " & ".join([brk(name), esc(lic)]) + r" \\" for name, lic in sorted(seen.items())
     )
 
 
@@ -300,7 +309,7 @@ def macros() -> str:
 
 
 def wrap(body: str, *, cols: str, header: str, caption: str, size: str = r"\small",
-         longtable: bool = False) -> str:
+         longtable: bool = False, full_width: bool = False) -> str:
     """Emit a COMPLETE table environment rather than bare rows.
 
     ``\\input`` inside a ``tabular`` does not work: TeX ends the file inside an alignment cell, so
@@ -315,17 +324,24 @@ def wrap(body: str, *, cols: str, header: str, caption: str, size: str = r"\smal
             r"\caption{" + caption + r"}\\", r"\toprule", header + r" \\", r"\midrule",
             r"\endfirsthead", r"\toprule", header + r" \\", r"\midrule", r"\endhead",
             body, r"\bottomrule", r"\end{longtable}}"])
+    # `full_width`: a `tabularx` as wide as the text, whose X columns wrap. The models table was a
+    # plain `tabular` of six `l` columns, 393 pt wider than the text: its Dataset column was printed
+    # off the page, and the build said so only as a warning nobody read (Round 80).
+    env = (r"\begin{tabularx}{\textwidth}{" + cols + "}", r"\end{tabularx}") if full_width else (
+        r"\begin{tabular}{" + cols + "}", r"\end{tabular}")
     return "\n".join([
         r"\begin{table}[htbp]\centering" + size,
-        r"\caption{" + caption + "}", r"\begin{tabular}{" + cols + "}", r"\toprule",
+        r"\caption{" + caption + "}", env[0], r"\toprule",
         header + r" \\", r"\midrule", body, r"\bottomrule",
-        r"\end{tabular}", r"\end{table}"])
+        env[1], r"\end{table}"])
 
 
 findings_table()  # populate .rows so the caption below can count them
 
 TABLES = {
-    "models.tex": dict(fn=model_table, cols="llllll",
+    "models.tex": dict(fn=model_table, full_width=True,
+        cols=r"@{}>{\raggedright\arraybackslash}p{3.3cm} c >{\raggedright\arraybackslash}X r r "
+             r">{\raggedright\arraybackslash}X@{}",
         header=r"\textbf{Model} & \textbf{Tier} & \textbf{Metric} & \textbf{Measured} & "
                r"\textbf{Baseline} & \textbf{Dataset}",
         caption="Published models: measured value against the baseline each is compared to. "
@@ -333,7 +349,8 @@ TABLES = {
                 "model is declared in the registry but not trained in this build, which is "
                 "reported rather than hidden. Dataset licences are given in full in the next "
                 "table; this column names the corpus so the licence is never abbreviated."),
-    "licences.tex": dict(fn=licence_table, cols=r"p{4.2cm}p{9.5cm}",
+    "licences.tex": dict(fn=licence_table,
+        cols=r">{\raggedright\arraybackslash}p{4.2cm}>{\raggedright\arraybackslash}p{9.5cm}",
         header=r"\textbf{Dataset} & \textbf{Licence, in full}",
         caption="Dataset licences, quoted whole. An earlier revision printed this column inside the "
                 "models table through split(\";\")[0][:22], which removed the qualifier from three "
@@ -342,7 +359,9 @@ TABLES = {
     "crypto.tex": dict(fn=crypto_table, cols="lll",
         header=r"\textbf{Layer} & \textbf{Primitive} & \textbf{Note}",
         caption="Cryptographic parameters as configured"),
-    "findings.tex": dict(fn=findings_table, cols="p{2.5cm}p{5.2cm}p{6.2cm}", longtable=True,
+    "findings.tex": dict(fn=findings_table, longtable=True,
+        cols=r">{\raggedright\arraybackslash}p{2.5cm}>{\raggedright\arraybackslash}p{5.2cm}"
+             r">{\raggedright\arraybackslash}p{6.2cm}",
         size=r"\scriptsize",
         header=r"\textbf{Class} & \textbf{What it was} & \textbf{Why nothing caught it}",
         caption=f"{len(findings_table.rows)} classes of silent defect, all found in a working "

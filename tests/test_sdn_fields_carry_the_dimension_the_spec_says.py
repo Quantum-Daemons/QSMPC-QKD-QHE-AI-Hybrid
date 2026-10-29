@@ -17,14 +17,17 @@ the wrong dimension was not a display slip, it was the data model.
 The checklist already carried the sentence that condemns this, about these same two quantities:
 *"`secure_key_bits` must equal `skr` times the pulse count, NOT `skr` itself ... Dimensional
 mismatch is the check: if two quantities must be equal, they must first have the same units."* It
-was written about a different pair of surfaces and nothing applied it here.
+was written about a different pair of surfaces and nothing applied it here. (Since Round 80 the two
+are no longer EQUAL - `secure_key_bits` is a block's composable finite key, below `skr` times the
+pulses - and the dimensional point stands: one is bits, the other bits per pulse.)
 
 WHY NO RATE IS COMPUTED INSTEAD
 
 Bits per second needs a pulse repetition rate. `quantumSim.ts` computes
 `secretKeyRate = (secureFraction * nSift) / nPulses` - per pulse - and `pulses` is a count; there is
 no wall-clock model of the quantum channel anywhere. A repetition rate is a property of apparatus,
-and `README.md` states that no QKD device exists here, calling that "a boundary of the deliverable,
+and `docs/findings.md` (the README's text until Round 80) states that no QKD device exists here,
+calling that "a boundary of the deliverable,
 not a gap in it". Surveyed 2026-08-15: TNO-Quantum `communication.qkd_key_rate` (Apache-2.0) is
 per-pulse, QKDNetSim is GPL-2.0 and already excluded from the commercial-OK set, SeQUeNCe would
 still require asserting a clock. No library supplies a repetition rate because none can.

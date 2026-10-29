@@ -38,12 +38,14 @@ export default function NetworkPositioning() {
         <rect x={10} y={140} width={940} height={96} rx={10} fill="var(--bg-2)" stroke="var(--accent)" />
         <text x={24} y={162} fontSize={13} fontWeight={700} fill="var(--text)">Network layer - the companion network demo, between containers</text>
         {[["WireGuard hop tunnel", "PSK = HKDF(QKD || PQC-HPKE)"], ["WireGuard data tunnel", "PSK from Rosenpass"],
-          ["IPsec / IKEv2 lane", "ML-KEM-768 (RFC 9370) + PPK (RFC 8784)"], ["QKD key servers", "simulated BB84, ETSI GS QKD 014"]].map(([a, b], i) => (
+          ["IPsec / IKEv2 lane", "ML-KEM-768 + PPK (RFC 9370, 8784)"], ["QKD key servers", "simulated BB84, ETSI GS QKD 014"]].map(([a, b], i) => (
           <g key={a}>
             <rect x={24 + i * 230} y={174} width={214} height={50} rx={8} fill="var(--panel)"
               stroke={i === 3 ? "var(--quantum)" : "var(--border)"} strokeDasharray={i === 3 ? "5 4" : undefined} />
             <text x={34 + i * 230} y={194} fontSize={12} fontWeight={600} fill="var(--text)">{a}</text>
-            <text x={34 + i * 230} y={212} fontSize={11} fill="var(--muted)">{b}</text>
+            {/* 10 units (Round 80): at 11 the IPsec line, then "ML-KEM-768 (RFC 9370) + PPK (RFC
+                8784)", ran out of its 214-unit box. */}
+            <text x={34 + i * 230} y={212} fontSize={10} fill="var(--muted)">{b}</text>
           </g>
         ))}
         <text x={480} y={128} fontSize={11} textAnchor="middle" fill="var(--muted)">

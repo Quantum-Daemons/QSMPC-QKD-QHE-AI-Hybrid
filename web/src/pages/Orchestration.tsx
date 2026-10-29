@@ -46,7 +46,7 @@ function usecaseFromQuery(raw: string | null): { id: string; rejected: string | 
 }
 
 // Generic "run any pipeline" view. The per-use-case pages (/usecase/:id) fix the use case
-// and add the two-party simulator diagram + benchmark + XAI; this page keeps the selector.
+// and add the architecture simulator canvas + benchmark + XAI; this page keeps the selector.
 export default function Orchestration() {
   const [searchParams] = useSearchParams();
   // Read ONCE, as the initial value. The selector below is the source of truth afterwards, so a
@@ -67,7 +67,7 @@ export default function Orchestration() {
       <KeyPoints items={[
         "Run the full quantum-safe pipeline live for any use case; pause, step one stage at a time, and export the animated run.",
         "Swappable at run time: KEM, signature, key source and the QKD protocol (simulated). The FHE backend is selectable only in the full local deployment.",
-        "The per-industry pages add a two-party simulator and the benchmark.",
+        "The per-industry pages add an architecture simulator, each party's components and the stage lanes between them, and the benchmark.",
       ]} />
       {DEMO && <div className="note" style={{ marginBottom: 12 }}>🖥️ {DEMO_BANNER}</div>}
       {/* The rejected-parameter notice. Silence here would be indistinguishable from the defect
@@ -109,7 +109,7 @@ export default function Orchestration() {
 
       <div style={{ marginTop: 16 }} ref={graphRef}>
         {/* metrics, so the inference node names the published model that ran. Without it this graph
-            described the same run differently from the two-party diagram on the use-case pages. */}
+            described the same run differently from the diagram on the use-case pages. */}
         <OrchestrationGraph usecase={usecase} activeStage={active} doneStages={done}
           metrics={metrics}
           config={{ kem: run.kem, qkd: run.qkd, sig: run.sig,
@@ -186,26 +186,7 @@ export default function Orchestration() {
         </div>
       </div>
 
-      {/* Run status, announced and visible from anywhere on the page.
-          The identical block has been on `UseCasePage` since Round 39 and this page never got one,
-          although this is the page whose entire subject is watching a pipeline advance: the state
-          badge lives in the controls card at the top and scrolls out of view, and the DAG's own
-          progress was - until this round - encoded in colour alone. So a visitor reading the lower
-          half of the page had no announcement of a stage change and no non-colour signal either.
-          `role="status"` with `aria-live="polite"` announces without stealing focus. Rendered only
-          while it says something: during a run and while paused. */}
-      {(run.running || run.paused) && (
-        <div role="status" aria-live="polite"
-          style={{
-            position: "fixed", right: 16, bottom: 16, zIndex: 50,
-            background: "var(--panel)", border: "1px solid var(--accent)", borderRadius: 10,
-            padding: "8px 14px", boxShadow: "0 4px 18px rgba(0,0,0,.45)",
-            display: "flex", alignItems: "center", gap: 10, fontSize: 12,
-          }}>
-          <span className={`badge-state ${run.state}`}>{run.state}</span>
-          {run.active ? <span className="muted"><code>{run.active}</code></span> : null}
-        </div>
-      )}
+      {/* The run's status is shown in the sidebar (lib/runStatus.ts) since Round 80. */}
     </div>
   );
 }

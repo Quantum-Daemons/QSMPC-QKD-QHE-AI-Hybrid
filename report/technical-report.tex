@@ -1,5 +1,6 @@
 % Technical report - QSMPC-QKD-QHE-AI-Hybrid
-% Build: xelatex -interaction=nonstopmode technical-report.tex  (twice, for the ToC)
+% Build: `make report` (build_data.py, then pdflatex twice, for the ToC). xelatex also builds it
+% with this preamble; the note below says why the fonts are lmodern rather than fontspec.
 % Tables, macros and figures under generated/ are produced by build_data.py and build_figures.py
 % from live artefacts, so no number in this document is transcribed by hand.
 \documentclass[11pt,a4paper]{article}
@@ -13,6 +14,8 @@
 \usepackage[margin=2.4cm]{geometry}
 \usepackage{booktabs}
 \usepackage{longtable}
+\usepackage{array}
+\usepackage{tabularx}
 \usepackage{graphicx}
 \usepackage{xcolor}
 \usepackage{amsmath}
@@ -20,9 +23,34 @@
 \usepackage{enumitem}
 \usepackage{fancyhdr}
 \usepackage[hidelinks]{hyperref}
+\usepackage{tikz}
+\usetikzlibrary{positioning,arrows.meta,fit,backgrounds,calc}
+\usepackage{placeins}
+% A little extra stretch before a line is set overfull (Round 80): `make report` now fails on any
+% Overfull hbox, and a justified line short of a break by a point or two is not a reason to fail.
+\setlength{\emergencystretch}{1.5em}
 
 \definecolor{accent}{HTML}{2B6CB0}
 \definecolor{warn}{HTML}{C05621}
+% The architecture figures (Round 80). One set of styles, so the seven read as a set. Each figure's
+% labels are the README's Mermaid labels for the same figure, word for word:
+% tests/test_the_report_figures_match_the_readme.py pairs them by their `figure:` key.
+\tikzset{
+  % A box breaks lines between words only: "pri-mary" and "Type-Script" in a 30 mm box read as typos.
+  nohyphen/.style={execute at begin node={\hyphenpenalty=10000\exhyphenpenalty=10000}},
+  stage/.style={draw=accent, rounded corners=2pt, fill=accent!7, align=center, font=\scriptsize,
+    inner sep=3pt, minimum height=7mm, text width=#1, nohyphen},
+  stage/.default=27mm,
+  check/.style={draw=warn, rounded corners=2pt, fill=warn!9, align=center, font=\scriptsize,
+    inner sep=3pt, minimum height=7mm, text width=#1, nohyphen},
+  check/.default=27mm,
+  fullonly/.style={stage=#1, dashed, fill=black!3},
+  fullonly/.default=27mm,
+  region/.style={draw=black!40, dashed, rounded corners=4pt, inner sep=5pt},
+  regionlabel/.style={font=\scriptsize\bfseries, text=black!65, anchor=south west, inner sep=1pt},
+  go/.style={-{Stealth[length=4pt]}, semithick, draw=black!70},
+  edgelabel/.style={font=\scriptsize, text=black!70, fill=white, inner sep=1pt},
+}
 \captionsetup{font=small,labelfont={bf,color=accent}}
 \setlist{itemsep=1pt,topsep=3pt}
 
@@ -75,6 +103,7 @@ where tractable, explicitly labelled simulation where not. Licence Apache-2.0. T
 measurements produced by the code at revision \texttt{\gitsha}; every table is generated from the
 repository's own artefacts at build time rather than transcribed.
 \end{small}
+
 \noindent\rule{\textwidth}{0.4pt}
 
 \tableofcontents
@@ -151,7 +180,7 @@ reasons the models here are published openly rather than treated as secrets.
 \subsection{What this system is not}
 It does not claim quantum \emph{advantage}. The measured quantum-kernel and variational classifiers
 lose to a RandomForest baseline on the same data, and the registry records
-\texttt{quantum\_beats\_classical: false} rather than omitting the comparison. The value proposition
+\texttt{quantum\_\allowbreak{}beats\_\allowbreak{}classical: false} rather than omitting the comparison. The value proposition
 is quantum-\emph{safety}, which is regulation-driven and dated.
 
 \section{System architecture}
@@ -360,11 +389,270 @@ The key is the composable finite key of one pass peaking at the page's range, th
 experiment found computes its key on: Lim et al.'s (2014) bound for a source that sends the vacuum,
 on the pass's counts summed second by second. On Liao's pass at their failure probability of
 $10^{-9}$ it gives 164,183 bits, 0.55 of the 300,939 they report; on the Micius--Zvenigorod session
-it gives 0.56 of a key computed with Chernoff bounds, the same gap on a second pass, so it is the
-analysis and not the channel. The same bound reproduces Rusca et al.'s (2018) two-decoy figures to
-within a factor of 2.5, always below them, and their ratio to the one-decoy figures within
-15\,percent. Pooling passes, or a time held at one range, are offered beside it; at 800\,km a key
+it gives 0.56 of a key computed with Chernoff bounds, the same gap on a second pass, which points
+to the analysis rather than the channel. The same bound reproduces Rusca et al.'s (2018) two-decoy figures to
+within 20\,percent, always below them, and their ratio to the one-decoy figures within
+15\,percent; their one-decoy 26\,dB row is reproduced to a few parts in a thousand under the
+paper's own dead-time convention. Pooling passes, or a time held at one range, are offered beside it; at 800\,km a key
 needs about 33\,s of link time, which one range of a low orbit does not hold.
+
+\section{Implementation and verification architecture}\label{sec:arch}
+
+This section shows how the system is built and checked before the results say what it measured.
+Figure~\ref{fig:verification-environment} is the verification environment: what runs on a
+workstation, on GitHub and on the demo host, and the live check that closes every change.
+Figure~\ref{fig:workflow} is the order a change goes through them. Figures~\ref{fig:uc-finance_aml}
+to~\ref{fig:uc-satellite_comms} then follow each use case through its stages, naming what implements
+each stage. The README carries the same figures as Mermaid diagrams, and a test holds the labels of
+the two copies identical, figure by figure.
+
+\begin{figure}[htbp]\centering
+% figure: verification-environment
+\begin{tikzpicture}
+  \node[stage=38mm] (py) at (0,0) {Python 3.12 venv: pytest suite, cross-language tests};
+  \node[stage=38mm] (web) at (0,-1.25) {Web checks: tsc, vite build, node checks, text layout};
+  \node[stage=36mm] (cl) at (4.4,-0.62) {\texttt{scripts/ci\_local.sh}: 18 gates};
+  \node[stage=28mm] (rep) at (8.3,-0.62) {make report: the technical report, layout checked};
+  \node[stage=28mm] (shot) at (11.6,-0.62) {Headless Chrome: README screenshots};
+  \draw[go] (py) -- (cl);
+  \draw[go] (web) -- (cl);
+  \draw[go] (cl) -- (rep);
+  \begin{scope}[on background layer]
+    \node[region, fit=(py)(web)(cl)(rep)(shot), label={[regionlabel]north west:Local workstation}] (loc) {};
+  \end{scope}
+
+  \node[stage=24mm] (pr) at (0,-3.1) {Pull request};
+  \node[stage=46mm] (act) at (4.8,-3.1) {GitHub Actions: Python, web typecheck, build and text layout, repository guards};
+  \node[stage=34mm] (aud) at (10.3,-3.1) {Audit workflow: npm audit, cargo-deny};
+  \draw[go] (pr) -- (act);
+  \begin{scope}[on background layer]
+    \node[region, fit=(pr)(act)(aud), label={[regionlabel]north west:GitHub}] (gh) {};
+  \end{scope}
+
+  \node[stage=46mm] (dock) at (1.0,-5.1) {Docker image built from git: \texttt{scripts/deploy\_demo.sh}};
+  \node[stage=34mm] (proxy) at (6.4,-5.1) {Behind a shared reverse proxy};
+  \draw[go] (dock) -- (proxy);
+  \begin{scope}[on background layer]
+    \node[region, fit=(dock)(proxy), label={[regionlabel]north west:Demo host}] (demo) {};
+  \end{scope}
+
+  \node[check=46mm] (live) at (1.0,-7.0) {Live check in a browser: bundle, pages, console};
+  \node[stage=38mm] (rec) at (6.6,-7.0) {Records: register, log, technical report};
+  \draw[go] (live) -- (rec);
+
+  \draw[go] (loc.south -| pr.north) -- (gh.north -| pr.north);
+  \draw[go] (gh.south -| dock.north) -- (demo.north -| dock.north);
+  \draw[go] (demo.south -| live.north) -- (live.north);
+\end{tikzpicture}
+\caption{The verification environment. Every change runs the local gates, then GitHub Actions,
+then is deployed from git to the demo host and checked in a browser on the deployed site; the
+records close it. The demo host's address is deliberately not given.}
+\label{fig:verification-environment}
+\end{figure}
+
+\begin{figure}[htbp]\centering
+% figure: workflow
+\begin{tikzpicture}
+  \node[stage=30mm] (rs) at (0,0) {Research: primary sources in \texttt{references/}};
+  \node[stage=30mm] (im) at (3.8,0) {Implement: Python and TypeScript, one config};
+  \node[stage=36mm] (lg) at (7.9,0) {Local gates: pytest, \texttt{scripts/ci\_local.sh}};
+  \draw[go] (rs) -- (im);
+  \draw[go] (im) -- (lg);
+  \begin{scope}[on background layer]
+    \node[region, fit=(rs)(im)(lg), label={[regionlabel]north west:1. Build}] (w1) {};
+  \end{scope}
+
+  \node[stage=28mm] (pr) at (0,-2.1) {Pull request: GitHub Actions CI};
+  \node[stage=30mm] (db) at (3.8,-2.1) {The branch on the demo: Docker, deployed from git};
+  \node[check=26mm] (lb) at (7.5,-2.1) {Live check in a browser};
+  \node[stage=28mm] (rc) at (11.0,-2.1) {Records: register, log, report};
+  \draw[go] (pr) -- (db);
+  \draw[go] (db) -- (lb);
+  \draw[go] (lb) -- (rc);
+  \begin{scope}[on background layer]
+    \node[region, fit=(pr)(db)(lb)(rc), label={[regionlabel]north west:2. Before the merge}] (w2) {};
+  \end{scope}
+
+  \node[check=24mm] (mg) at (0,-4.2) {Merge to main};
+  \node[stage=28mm] (dm) at (3.8,-4.2) {Main on the demo again};
+  \node[check=26mm] (lm) at (7.5,-4.2) {Live check again};
+  \draw[go] (mg) -- (dm);
+  \draw[go] (dm) -- (lm);
+  \begin{scope}[on background layer]
+    \node[region, fit=(mg)(dm)(lm), label={[regionlabel]north west:3. After the merge}] (w3) {};
+  \end{scope}
+
+  % Between the rows through the second column: the first carries each row's label.
+  \draw[go] (w1.south -| im.north) -- (w2.north -| db.north);
+  \draw[go] (w2.south -| db.north) -- (w3.north -| dm.north);
+\end{tikzpicture}
+\caption{The implementation workflow. A branch is deployed and checked live before it merges, and
+main is deployed and checked again after; the merge itself is the owner's decision.}
+\label{fig:workflow}
+\end{figure}
+
+\begin{figure}[htbp]\centering
+% figure: uc-finance_aml
+\begin{tikzpicture}
+  \node[stage=52mm] (D) {Data: PaySim simulator sample, 400 transactions, synthetic};
+  \node[stage=52mm, below=6mm of D] (H) {PQC handshake: ML-KEM-768 + X25519, HKDF-SHA256};
+  \node[stage=52mm, below=6mm of H] (K) {QKD: simulated BB84 decoy-state, or E91, over fibre};
+  \node[check=52mm, below=6mm of K] (Q) {Key possible? BB84: QBER at most 0.11; E91: CHSH S above 2};
+  \node[stage=52mm, below=6mm of Q] (L) {Key length: BB84 finite key of a 1e7-bit block, E91 asymptotic; the full deployment mixes 256 bits or more into the session key};
+  \node[stage=52mm, below=6mm of L] (P) {PSI: HMAC-SHA256 keyed by the session key, over two banks' account lists};
+  \node[stage=52mm, below=6mm of P] (FL) {Federated training, in the browser: 4 clients, 6 rounds of FedAvg, pairwise masks};
+  \node[stage=52mm, below=6mm of FL] (I) {Private inference: CKKS linear layer (node-seal), garbled-circuit argmax (Polytune)};
+  \node[stage=52mm, below=6mm of I] (M) {Published model: finance\_aml.gbm on ONNX Runtime Web};
+  \node[stage=52mm, below=6mm of M] (C) {QSMPC-FHE comparison: QOTP and QCNN, T-gates counted};
+  \node[stage=52mm, below=6mm of C] (S) {Result signed with ML-DSA-65};
+  \node[stage=40mm, right=12mm of L] (N) {No QKD key: the session rests on PQC};
+  \node[fullonly=40mm, right=12mm of M] (X) {Explainability (full deployment)};
+  \draw[go] (D) -- (H);
+  \draw[go] (H) -- (K);
+  \draw[go] (K) -- (Q);
+  \draw[go] (Q.east) -| node[edgelabel, pos=0.35] {no} (N.north);
+  \draw[go] (Q) -- node[edgelabel, pos=0.35] {yes} (L);
+  \draw[go] (N.south) |- (P.east);
+  \draw[go] (L) -- (P);
+  \draw[go] (P) -- (FL);
+  \draw[go] (FL) -- (I);
+  \draw[go] (I) -- (M);
+  \draw[go, dashed] (I.east) -| (X.north);
+  \draw[go, dashed] (X.south) |- (C.east);
+  \draw[go] (M) -- (C);
+  \draw[go] (C) -- (S);
+\end{tikzpicture}
+\caption{Finance: cross-bank anti-money laundering: the stages in the order the browser runs them, and what implements each. Dashed boxes run only in the full deployment.}
+\label{fig:uc-finance_aml}
+\end{figure}
+
+\begin{figure}[htbp]\centering
+% figure: uc-medical_fl
+\begin{tikzpicture}
+  \node[stage=52mm] (D) {Data: Wisconsin breast-cancer measurements, 400 rows, real};
+  \node[stage=52mm, below=6mm of D] (H) {PQC handshake: ML-KEM-768 + X25519, HKDF-SHA256};
+  \node[stage=52mm, below=6mm of H] (K) {QKD: simulated BB84 decoy-state, or E91, over fibre};
+  \node[check=52mm, below=6mm of K] (Q) {Key possible? BB84: QBER at most 0.11; E91: CHSH S above 2};
+  \node[stage=52mm, below=6mm of Q] (L) {Key length: BB84 finite key of a 1e7-bit block, E91 asymptotic; the full deployment mixes 256 bits or more into the session key};
+  \node[stage=52mm, below=6mm of L] (FL) {Federated training: 4 hospitals, 6 rounds of FedAvg, pairwise masks};
+  \node[stage=52mm, below=6mm of FL] (I) {Private inference: CKKS linear layer and an encrypted 4x14x14 CNN (node-seal), garbled-circuit argmax};
+  \node[stage=52mm, below=6mm of I] (M) {Published model: medical\_fl.resnet18 on a BreastMNIST image, ONNX Runtime Web};
+  \node[stage=52mm, below=6mm of M] (C) {QSMPC-FHE comparison: QOTP and QCNN, T-gates counted};
+  \node[stage=52mm, below=6mm of C] (S) {Result signed with ML-DSA-65};
+  \node[stage=40mm, right=12mm of L] (N) {No QKD key: the session rests on PQC};
+  \node[fullonly=40mm, right=12mm of M] (X) {Explainability (full deployment)};
+  \draw[go] (D) -- (H);
+  \draw[go] (H) -- (K);
+  \draw[go] (K) -- (Q);
+  \draw[go] (Q.east) -| node[edgelabel, pos=0.35] {no} (N.north);
+  \draw[go] (Q) -- node[edgelabel, pos=0.35] {yes} (L);
+  \draw[go] (N.south) |- (FL.east);
+  \draw[go] (L) -- (FL);
+  \draw[go] (FL) -- (I);
+  \draw[go] (I) -- (M);
+  \draw[go, dashed] (I.east) -| (X.north);
+  \draw[go, dashed] (X.south) |- (C.east);
+  \draw[go] (M) -- (C);
+  \draw[go] (C) -- (S);
+\end{tikzpicture}
+\caption{Healthcare: federated training and private diagnosis: the stages in the order the browser runs them, and what implements each. Dashed boxes run only in the full deployment.}
+\label{fig:uc-medical_fl}
+\end{figure}
+
+\begin{figure}[htbp]\centering
+% figure: uc-genomics
+\begin{tikzpicture}
+  \node[stage=52mm] (D) {Data: 30 real 1000 Genomes individuals, PGS000004 weights over 313 variants};
+  \node[stage=52mm, below=6mm of D] (H) {PQC handshake: ML-KEM-768 + X25519, HKDF-SHA256};
+  \node[stage=52mm, below=6mm of H] (K) {QKD: simulated BB84 decoy-state, or E91, over fibre};
+  \node[check=52mm, below=6mm of K] (Q) {Key possible? BB84: QBER at most 0.11; E91: CHSH S above 2};
+  \node[stage=52mm, below=6mm of Q] (L) {Key length: BB84 finite key of a 1e7-bit block, E91 asymptotic; the full deployment mixes 256 bits or more into the session key};
+  \node[stage=52mm, below=6mm of L] (P) {Secure sum of 4 cohorts' allele counts at one variant: additive shares mod p in the browser, QSMS over a GHZ state in the full deployment};
+  \node[stage=52mm, below=6mm of P] (I) {Private inference: CKKS polygenic risk score (node-seal), garbled-circuit argmax};
+  \node[stage=52mm, below=6mm of I] (M) {Published model: none registered for genomics};
+  \node[stage=52mm, below=6mm of M] (C) {QSMPC-FHE comparison: QOTP and QCNN, T-gates counted};
+  \node[stage=52mm, below=6mm of C] (S) {Result signed with ML-DSA-65};
+  \node[stage=40mm, right=12mm of L] (N) {No QKD key: the session rests on PQC};
+  \node[fullonly=40mm, right=12mm of M] (X) {Explainability (full deployment)};
+  \draw[go] (D) -- (H);
+  \draw[go] (H) -- (K);
+  \draw[go] (K) -- (Q);
+  \draw[go] (Q.east) -| node[edgelabel, pos=0.35] {no} (N.north);
+  \draw[go] (Q) -- node[edgelabel, pos=0.35] {yes} (L);
+  \draw[go] (N.south) |- (P.east);
+  \draw[go] (L) -- (P);
+  \draw[go] (P) -- (I);
+  \draw[go] (I) -- (M);
+  \draw[go, dashed] (I.east) -| (X.north);
+  \draw[go, dashed] (X.south) |- (C.east);
+  \draw[go] (M) -- (C);
+  \draw[go] (C) -- (S);
+\end{tikzpicture}
+\caption{Genomics: pooled allele counts: the stages in the order the browser runs them, and what implements each. Dashed boxes run only in the full deployment.}
+\label{fig:uc-genomics}
+\end{figure}
+
+\begin{figure}[htbp]\centering
+% figure: uc-telecom_ids
+\begin{tikzpicture}
+  \node[stage=52mm] (D) {Data: synthetic QKD-attack telemetry, 7 attacks and normal};
+  \node[stage=52mm, below=6mm of D] (H) {PQC handshake: ML-KEM-768 + X25519, HKDF-SHA256};
+  \node[stage=52mm, below=6mm of H] (K) {QKD: simulated BB84 decoy-state, or E91, with an optional intercept-resend eavesdropper; OptiQKD tunes it when switched on};
+  \node[check=52mm, below=6mm of K] (Q) {Key possible? BB84: QBER at most 0.11; E91: CHSH S above 2};
+  \node[stage=52mm, below=6mm of Q] (L) {Key length: BB84 finite key of a 1e7-bit block, E91 asymptotic; the full deployment mixes 256 bits or more into the session key};
+  \node[stage=52mm, below=6mm of L] (IDS) {QML-IDS: 8-class detector trained in the browser, scored by macro-F1};
+  \node[stage=52mm, below=6mm of IDS] (M) {Published model: telecom\_ids.qml on ONNX Runtime Web, and a CKKS check of the student};
+  \node[stage=52mm, below=6mm of M] (C) {QSMPC-FHE comparison: QOTP and QCNN, T-gates counted};
+  \node[stage=52mm, below=6mm of C] (S) {Result signed with ML-DSA-65};
+  \node[stage=40mm, right=12mm of L] (N) {Eavesdropper or noise: no QKD key, the session rests on PQC};
+  \draw[go] (D) -- (H);
+  \draw[go] (H) -- (K);
+  \draw[go] (K) -- (Q);
+  \draw[go] (Q.east) -| node[edgelabel, pos=0.35] {no} (N.north);
+  \draw[go] (Q) -- node[edgelabel, pos=0.35] {yes} (L);
+  \draw[go] (N.south) |- (IDS.east);
+  \draw[go] (L) -- (IDS);
+  \draw[go] (IDS) -- (M);
+  \draw[go] (M) -- (C);
+  \draw[go] (C) -- (S);
+\end{tikzpicture}
+\caption{Telecom and defence: intrusion detection on a QKD link: the stages in the order the browser runs them, and what implements each.}
+\label{fig:uc-telecom_ids}
+\end{figure}
+
+\begin{figure}[htbp]\centering
+% figure: uc-satellite_comms
+\begin{tikzpicture}
+  \node[stage=52mm] (D) {Data: NASA SMAP and MSL telemetry windows, real};
+  \node[stage=52mm, below=6mm of D] (H) {PQC handshake: ML-KEM-768 + X25519, HKDF-SHA256};
+  \node[check=52mm, below=6mm of H] (V) {Satellite in view, 10 degrees or more?};
+  \node[stage=52mm, below=6mm of V] (K) {Free-space QKD: Micius downlink, BB84 with a vacuum state, or E91; OptiQKD tunes it when switched on};
+  \node[stage=52mm, below=6mm of K] (L) {Key length: BB84 finite key of one pass, Lim et al. 2014, E91 asymptotic; the full deployment mixes 256 bits or more};
+  \node[check=52mm, below=6mm of L] (QD) {QSDC: secrecy capacity positive?};
+  \node[stage=52mm, below=6mm of QD] (T) {Telemetry sent directly over the quantum channel};
+  \node[stage=52mm, below=6mm of T] (A) {Anomaly score and the published model, satellite\_comms.telemanom, in the browser; the full deployment also checks delivered telemetry under CKKS};
+  \node[stage=52mm, below=6mm of A] (C) {QSMPC-FHE comparison: QOTP and QCNN, T-gates counted};
+  \node[stage=52mm, below=6mm of C] (S) {Result signed with ML-DSA-65};
+  \node[stage=40mm, right=12mm of V] (NV) {Out of view: no QKD key and no QSDC; the anomaly score still runs};
+  \node[stage=40mm, right=12mm of QD] (NA) {QSDC aborts: link budget too small, or an eavesdropper detected; nothing is sent over the quantum channel};
+  \draw[go] (D) -- (H);
+  \draw[go] (H) -- (V);
+  \draw[go] (V) -- node[edgelabel, pos=0.35] {no} (NV);
+  \draw[go] (V) -- node[edgelabel, pos=0.35] {yes} (K);
+  \draw[go] (K) -- (L);
+  \draw[go] (L) -- (QD);
+  \draw[go] (QD) -- node[edgelabel, pos=0.35] {no} (NA);
+  \draw[go] (QD) -- node[edgelabel, pos=0.35] {yes} (T);
+  \draw[go] (NA.south) |- (A.east);
+  \draw[go] (T) -- (A);
+  \draw[go] (A) -- (C);
+  \draw[go] (C) -- (S);
+\end{tikzpicture}
+\caption{Satellite: free-space QKD and direct telemetry: the stages in the order the browser runs them, and what implements each.}
+\label{fig:uc-satellite_comms}
+\end{figure}
+
+\FloatBarrier
 
 \section{Security model and its boundaries}
 
@@ -690,12 +978,47 @@ is a discipline rather than an infrastructure.
 \end{enumerate}
 \end{small}
 
+\appendix
+\section{Findings and recommendations: where they are kept}
+
+The repository's README is a summary since Round 80. The findings it had accumulated moved
+unchanged into Markdown documents beside the code, where they can be read, searched and compared
+from one revision to the next; this appendix says what each holds and which of them bear most on
+what this report claims.
+
+\begin{itemize}
+  \item \texttt{docs/findings.md} --- the challenges of the QSMPC and QHE workstreams, and every
+        concern and recommendation recorded so far: the published models the pipeline did not run
+        before Round 21, the security score retired in Round 22, the satellite forecaster's retracted
+        result and the leak behind it, the browser model tier, the boundaries of the public demo, and
+        the positions of NSA and BSI on QKD.
+  \item \texttt{docs/models-and-benchmarks.md} --- the datasets and their licences, the MPC-FHE
+        against QSMPC-FHE benchmark, the model tiers, and what each page shows, including the
+        satellite and fibre key blocks.
+  \item \texttt{docs/use-cases.md} --- what is and is not new, the positioning (quantum-safe, not
+        quantum-advantage), the four workstreams and the industry use cases.
+  \item \texttt{docs/development.md} --- the development environment, its GPU, FHE, MPC and
+        Rust/WASM tiers, the dependency advisories and the upstream submodules.
+  \item \texttt{docs/deliverable-verification.md} and \texttt{docs/verification-log.md} --- the
+        record of each round: what was checked, what was found, and what it taught.
+\end{itemize}
+
+Three findings change how the results above should be read. The 1-decoy bound reproduces Rusca et
+al.'s Table I within 5 percent at 26 and 46~dB once the paper's global attenuation, which already
+includes the detector, is applied once; the ``conservative by 2--3x'' carried since Round~47 came
+from two tests that applied a 50 percent detector on top of it. The satellite's finite key, at an
+error-correction efficiency of 1.16, is 0.55 of Liao et al.'s published key on the same pass and 0.56
+of Khmelev et al.'s on theirs; the same fraction on two passes points to the analysis (Hoeffding
+bounds here, Chernoff bounds there) rather than the channel. And the public demo's QKD yields a key
+length, not key bytes: its quantum channel is simulated.
+
 \vspace{4mm}
 \noindent\rule{\textwidth}{0.4pt}\\
 \begin{small}
-\textbf{Reproduction.} Revision \texttt{\gitsha}. Tables and figures regenerate with
-\texttt{python report/build\_data.py \&\& python report/build\_figures.py}; the document builds with
-\texttt{xelatex technical-report.tex}.
+\textbf{Reproduction.} Revision \texttt{\gitsha}. \texttt{make report} regenerates the tables
+(\texttt{report/build\_data.py}) and the figures (\texttt{report/build\_figures.py}, which checks them
+for overlapping text), then builds the document with two \texttt{pdflatex} passes and fails on any
+line set wider than its box.
 \end{small}
 
 \end{document}

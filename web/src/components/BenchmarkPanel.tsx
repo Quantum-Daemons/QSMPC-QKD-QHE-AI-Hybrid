@@ -301,7 +301,9 @@ export default function BenchmarkPanel(
           {!compact && (
             <div className="card" style={{ marginTop: 14 }}>
               <h3>Detailed results</h3>
-              <table>
+              {/* Narrower cells (Round 80): in DejaVu Sans the eleven columns were 5 px wider than the
+                  card at 1280 px, which scrolled sideways for them. Narrower windows scroll it by design. */}
+              <table style={{ ["--cell-pad-x" as string]: "6px" }}>
                 {/* The last column was headed "model" and rendered `security_model`, so the table
                     had no model column at all while appearing to have one. Both are shown now, and
                     the model one matters here: these rows are not all the same model. */}

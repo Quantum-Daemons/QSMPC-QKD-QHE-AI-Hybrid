@@ -316,6 +316,30 @@ jobs:
         working-directory: web
         run: npm run check:calibration
 
+      # Text over text, out of the box it labels, into a dot or against a border, or clipped by its
+      # chart, and HTML wider than its box, on every page after each page's run. Round 80: the user
+      # found labels overflowing the run diagrams, and the first scan found more on the pages. The
+      # page font is `system-ui`, which this runner resolves to DejaVu Sans, about a tenth wider than
+      # the font the pages were drawn in: labels that fit locally did not fit in it. That is why this
+      # runs here as well as in scripts/ci_local.sh, which scans in the local font. Google Chrome is
+      # on the runner. Offline, as this workflow is: the page may reach localhost only, so the
+      # published models' stage fails and the scan measures every page without their results.
+      - name: Text layout on every page, in the runner's font
+        working-directory: web
+        run: |
+          VITE_CLIENT_ONLY=1 npx vite build --outDir /tmp/qsh-scan >/tmp/qsh-scan-build.log 2>&1 \
+            || { tail -20 /tmp/qsh-scan-build.log; exit 1; }
+          npx vite preview --outDir /tmp/qsh-scan --port 4182 --strictPort >/tmp/qsh-preview.log 2>&1 &
+          for _ in $(seq 1 30); do curl -sf -o /dev/null http://localhost:4182/ && break; sleep 1; done
+          SCAN_OFFLINE=1 node scripts/check_text_overlap.mjs http://localhost:4182 1280 720
+
+      # The README's eleven Mermaid diagrams, rendered and measured: no label out of its node, over
+      # another or crossed by an edge, and each fits GitHub's README column. A checklist row run by
+      # hand until Round 80, when the owner chose a gate; Mermaid is a dev dependency for it alone.
+      - name: README diagrams laid out
+        working-directory: web
+        run: npm run check:readme-mermaid
+
       # The "combiner vectors are regenerated" check is deliberately NOT in this job. It runs
       # `python`, this job installs only Node, and it failed with ModuleNotFoundError the first time
       # it ever executed - added in the same round as the parity gate above and never observed to
