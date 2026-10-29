@@ -145,7 +145,10 @@ export function QcnnScene({ features, seed }: { features: number[]; seed: number
       <label className="small muted" htmlFor="qcnn-stage">Stage: <b>{current.label}</b></label>
       <input id="qcnn-stage" type="range" min={0} max={snaps.length - 1} step={1} value={stage}
         onChange={(e) => setStage(Number(e.target.value))} style={{ width: "100%" }} aria-label="Circuit stage" />
-      <table className="facts-table small">
+      {/* Its own scroller, with narrower cells (Round 80), so nine columns never widen the card. The
+          figure measured 4 px too wide at 1280 px; that was the slider above (see styles.css). */}
+      <div style={{ overflowX: "auto", maxWidth: "100%" }}>
+      <table className="facts-table small" style={{ ["--cell-pad-x" as string]: "5px" }}>
         <thead><tr><th>stage</th>{current.v.map((_, q) => <th key={q}>|r| q{q}</th>)}</tr></thead>
         <tbody>
           {snaps.map((s) => (
@@ -156,6 +159,7 @@ export function QcnnScene({ features, seed }: { features: number[]; seed: number
           ))}
         </tbody>
       </table>
+      </div>
     </figure>
   );
 }

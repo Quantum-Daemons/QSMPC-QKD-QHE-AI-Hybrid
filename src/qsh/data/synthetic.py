@@ -3,8 +3,9 @@
 Used when real datasets are unavailable or carry usage/re-identification
 restrictions. The transaction generator follows the AMLSim/PaySim spirit (a small
 fraction of structured fraud); the genotype generator emits plausible SNP matrices
-with a phenotype signal. For higher-fidelity synthesis the README points to
-Synthea (EHR), IBM AMLSim (AML graphs) and MOSTLY-AI (tabular).
+with a phenotype signal. Higher-fidelity generators exist - Synthea (EHR), IBM AMLSim
+(AML graphs), MOSTLY-AI (tabular) - and none is used here: Round 17 removed the AMLSim and
+Synthea submodules, which nothing imported (docs/development.md).
 """
 
 from __future__ import annotations

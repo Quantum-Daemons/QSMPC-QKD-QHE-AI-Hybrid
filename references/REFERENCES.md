@@ -464,7 +464,8 @@ matters.** WS4(c), circuit privacy against a malicious server, is met for Cliffo
 server holds the maximally-mixed state throughout and the client recovers the exact result by
 tracking the Pauli frame. WS4(f), hiding the server's circuit from the client, is NOT met and is
 in tension with the mechanism - the client must know the circuit to update its frame. The two are
-now separate rows in `README.md` rather than one row that could only ever read PARTIAL.
+now separate rows in `docs/findings.md` (the README's until Round 80) rather than one row that
+could only ever read PARTIAL.
 
 ## Prior art for the novelty claim, and the asymmetry it exposes (Round 30)
 
@@ -542,7 +543,8 @@ directly, not against another file in this repository. The architecture discussi
   Inference with Hybrid CKKS and MPC" (BLB).** arXiv:2508.19525, Aug 2025. Splits at operator rather
   than layer granularity and fuses adjacent linear operators to minimise CKKS<->MPC conversions; 21x
   communication reduction vs BOLT (S&P'24) and 2x vs BumbleBee (NDSS'25), with 13x and 1.8x latency
-  reductions under GPU acceleration. Already named in `README.md` and `docs/architecture.md` as the
+  reductions under GPU acceleration. Already named in `docs/models-and-benchmarks.md` (the README's text until Round 80) and
+  `docs/architecture.md` as the
   current end of the Gazelle -> Delphi -> BOLT -> Bumblebee line; recorded here with its numbers.
   Added: 2026-08-11.
 - **Juvekar, Vaikuntanathan & Chandrakasan, "GAZELLE: A Low Latency Framework for Secure Neural
@@ -2063,3 +2065,39 @@ reason.
   arXiv:2301.13209**; **Mannalath et al., arXiv:2605.29706 and arXiv:2607.17690 (2026)**. READ by the
   round's research: single pass, pooled passes and sub-pass segments as the options a design weighs,
   and pulse-count thresholds for a positive key. Not adopted as checks: they are models, not passes.
+
+## Round 80 additions: the fibre key's block, verified at primary source
+
+Read 2026-10-28. The user chose a finite key at every fibre site and asked the published practice to
+decide its block. What each source grounds is stated.
+
+- **Rusca et al. 2018** (arXiv:1801.03443), re-read for its channel and its blocks: n_Z, the Z-basis
+  detections, "defines the privacy amplification (PA) block size"; Table I's 1e7 and 1e9 rows with the
+  time each block takes (14 s at 26 dB, 20 min at 46 dB, for 1e7); and "the detector and the internal
+  losses of Bob's apparatus are included in the global attenuation". The last is the finding of the
+  round: this repository's two Table I tests had applied a 50 percent detector on top of it.
+- **Boaron et al., "Secure quantum key distribution over 421 km of optical fiber"**, Phys. Rev. Lett.
+  121, 190502 (2018). arXiv:1807.03222 `[link]` URL: https://arxiv.org/abs/1807.03222
+  VERIFIED in the arXiv text: privacy-amplification blocks of 8.2e6 bits to 302 km, and at 405 and
+  421 km reduced "by more than a factor of ten" to keep the acquisition "shorter than one day".
+- **Grunenfelder et al., "Performance and security of 5 GHz repetition rate polarization-based quantum
+  key distribution"**, Appl. Phys. Lett. 117, 144003 (2020). arXiv:2007.15447 `[link]`
+  URL: https://arxiv.org/abs/2007.15447
+  VERIFIED in the arXiv text: "one privacy amplification block consists of 4192 error correction
+  blocks" of 1944 bits, 8,149,248 bits, at eps_sec 1e-9 and eps_cor 1e-15.
+- **Li et al., "High-rate quantum key distribution exceeding 110 Mb/s"**, Nat. Photon. 17, 416 (2023).
+  arXiv:2307.02364 `[link]` URL: https://arxiv.org/abs/2307.02364
+  VERIFIED in the arXiv text and supplement: the 1-decoy protocol "within a realistic finite-key size
+  (nZ <= 10^8)", Rusca et al.'s bound, and a block time of 1.58 s at 50 km.
+- **Lucamarini et al.**, Opt. Express 21, 24550 (2013), arXiv:1310.0240, and IEEE JSTQE (2015),
+  arXiv:1503.07335. READ by the round's research: a fixed 20 minute acquisition, the minority choice,
+  and the smallest positive samples (1.4e5 counts; 1.6e4 sifted bits).
+- **Yuan et al. (Toshiba)**, J. Lightwave Technol. 36, 3427 (2018), arXiv:1807.04484; **the Cambridge
+  network** (npj Quantum Inf. 2019); **the Tokyo QKD Network** (arXiv:1103.3566); **SECOQC** (New J.
+  Phys. 2009); **SwissQuantum** (arXiv:1203.4940). READ by the round's research: deployed systems fix
+  the block as bits (1e6 to 1e8) and let the time follow; none fixes it as a pulse count.
+- **Lim et al. 2014** re-read: the "post-processing block size" is n_X, a count of key-basis
+  detections, evaluated at 1e4 to 1e9.
+- **ETSI GS QKD 005 (2010) and GS QKD 016 V2.1.1 (2024)**, read by the round's research: the block
+  size must be specified; neither gives a value. A search-engine summary claiming ETSI recommends 1e8
+  or more is not supported by either document.

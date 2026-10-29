@@ -17,7 +17,7 @@
 > the registry, the README, both model cards, `config.defaults.json`, `report/build_data.py` and the
 > trainer have all carried since Round 24.
 >
-> `README.md` links here in the present tense, so a reader arrives at a page whose opening sentence
+> `docs/findings.md` (the README until Round 80) links here in the present tense, so a reader arrives at a page whose opening sentence
 > contradicts every other surface. **The denominator argument below is unaffected and is the reason
 > this file exists** - three scored events against ESA-ADB's 29 is the point, and it holds against
 > either comparator. Only the number in the opening paragraph is retired. 0.786 legitimately survives

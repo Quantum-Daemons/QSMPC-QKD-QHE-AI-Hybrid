@@ -128,7 +128,39 @@ class QKDKeyAgreementStage(Stage):
         # optionally seed BB84's basis/bit choices from the (simulated) quantum RNG
         qrng_on = bool(ctx.config.get("qrng_enabled", get_config().qrng.enabled))
         extra = {"entropy": "qrng"} if qrng_on else {}
-        result = provider(n_pulses=n_pulses, params=params, seed=ctx.config.get("seed", 0), **extra)
+        # THE KEY'S BLOCK (Round 80, the user's choice): the run's own controls, else the configured
+        # fibre block (`QKDConfig.finite_key_block*`), resolved once here and handed to the model so
+        # the key and the metrics below describe the same block.
+        from ..qkd.bb84 import QKDParams
+        from ..qkd.finite_key import (
+            block_counts,
+            blocks_for_positive_key,
+            fibre_block_pulses,
+            params_for_source,
+        )
+
+        def _cfg(key, default):
+            v = ctx.config.get(key)
+            return default if v is None else v
+
+        block_kind = str(_cfg("qkd_block", cfg.finite_key_block))
+        eps_sec = float(_cfg("qkd_eps_sec", cfg.finite_key_eps_sec))
+        block_pulses = fibre_block_pulses(
+            params, params_for_source(QKDParams(), eps_sec=eps_sec), kind=block_kind, run_pulses=n_pulses,
+            seconds=float(_cfg("qkd_block_seconds", cfg.finite_key_block_seconds)),
+            pa_bits=float(_cfg("qkd_block_pa_bits", cfg.finite_key_block_pa_bits)))
+        # THE PROTOCOL THE PAGE SELECTED (Round 80). `qkd_protocol` reached only the OptiQKD stage, so
+        # choosing E91 on the full deployment still ran BB84 here while the browser ran E91: one
+        # control, two protocols, depending on which transport served the page. E91 has no decoy
+        # bound and no block, so its key is the asymptotic count, as in the browser.
+        protocol = str(_cfg("qkd_protocol", cfg.protocol))
+        if protocol == "e91":
+            from ..qkd.e91 import run_e91
+
+            result = run_e91(n_pulses, params, visibility=cfg.e91_visibility, seed=ctx.config.get("seed", 0))
+        else:
+            result = provider(n_pulses=n_pulses, params=params, seed=ctx.config.get("seed", 0),
+                              block_pulses=block_pulses, eps_sec=eps_sec, **extra)
         # Five decimals here and four in `api/inference_service.py:79`, for the same metric name on
         # the same panel. Left AT five deliberately rather than narrowed: a displayed QBER of
         # 0.01578 against 0.0158 is a presentation difference on a quantity whose own sampling noise
@@ -137,7 +169,10 @@ class QKDKeyAgreementStage(Stage):
         bus.metric("qber", round(result.qber, 5), self.name)
         # The decoy states the rate rests on (Round 78), as the browser's twin reports them: the
         # registry's `bb84-decoy` sends a signal and one decoy.
-        bus.metric("qkd_decoy_states", "one decoy", self.name)
+        bus.metric("qkd_decoy_states", "none (entangled source)" if protocol == "e91" else "one decoy",
+                   self.name)
+        if result.chsh_s is not None:
+            bus.metric("chsh_s", round(result.chsh_s, 2), self.name)
         # `skr_per_pulse`, NOT `skr`. `QKDResult.secret_key_rate` is documented at `bb84.py:64` as
         # "bits of secure key per channel use" - a dimensionless per-pulse fraction - while ETSI
         # GS QKD 015 defines a field called `skr` as a RATE in bit/s. Round 44 removed that collision
@@ -157,6 +192,18 @@ class QKDKeyAgreementStage(Stage):
         # Nine decimals since Round 75, everywhere it is emitted: six held the satellite's
         # 1.723e-5 to two significant figures (tests/test_one_metric_has_one_rounding.py).
         bus.metric("skr_per_pulse", round(result.secret_key_rate, 9), self.name)
+        # The block the key is the composable finite key of (Round 80), as the browser's twin and the
+        # satellite stage report theirs.
+        if protocol != "e91":
+            bus.metric("qkd_block", block_kind, self.name)
+            bus.metric("qkd_block_pulses", float(f"{result.block_pulses:.6g}"), self.name)
+            bus.metric("qkd_block_s", float(f"{result.block_pulses / params.source_rate_hz:.4g}"), self.name)
+            bus.metric("qkd_finite_key_bits", result.secure_key_bits, self.name)
+            bus.metric("qkd_finite_key_bound", "Rusca et al. 2018 (one decoy)", self.name)
+            bus.metric("qkd_eps_sec", eps_sec, self.name)
+            fk = params_for_source(QKDParams(), eps_sec=eps_sec)
+            bus.metric("qkd_block_units_for_key",
+                       blocks_for_positive_key(*block_counts([(result.block_pulses, params)], fk), fk), self.name)
         bus.metric("secure_key_bits", result.secure_key_bits, self.name)
         ctx.metrics.update(qber=result.qber, skr_per_pulse=result.secret_key_rate)
         if result.secure_key_bits >= 256:
@@ -214,6 +261,12 @@ class OptiQKDStage(Stage):
 
         cfg = get_config().qkd
         if not ctx.config.get("qkd_optimize", cfg.optimize_enabled):
+            return
+        # No quantum channel under the PQC-only profile, so nothing to tune (Round 80). The browser has
+        # skipped OptiQKD there since it was written; this stage optimised a channel the run had
+        # just said did not exist.
+        if ctx.config.get("qkd", reg.default("qkd")) == "pqc-only":
+            bus.log("OptiQKD skipped (PQC-only profile): there is no quantum channel to tune", self.name)
             return
         from ..qkd.channel import ChannelParams
         from ..qkd.optimize import optimize_qkd

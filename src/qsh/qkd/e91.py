@@ -78,8 +78,9 @@ def run_e91(n_pairs: int = 100_000, params: ChannelParams | None = None, *, visi
     n_sift = int(np.count_nonzero(sift))
     key = (rng.random(max(n_sift, 0)) < 0.5).astype(int)                   # the sifted key bits (for demos)
     if s <= 2.0 or qber > pp_threshold or n_sift == 0:
-        return QKDResult(n_sift, qber, 0.0, 0, key, params)                # no Bell violation / aborted
+        return QKDResult(n_sift, qber, 0.0, 0, key, params, chsh_s=s)      # no Bell violation / aborted
     secure_fraction = max(0.0, 1.0 - _h2(qber) - error_correction_eff * _h2(qber))
     skr = secure_fraction * (n_sift / n_pairs)
     return QKDResult(sifted_bits=n_sift, qber=qber, secret_key_rate=skr,
-                     secure_key_bits=int(secure_fraction * n_sift), sifted_key=key, params=params)
+                     secure_key_bits=int(secure_fraction * n_sift), sifted_key=key, params=params,
+                     chsh_s=s)

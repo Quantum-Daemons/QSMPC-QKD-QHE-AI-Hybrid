@@ -40,7 +40,9 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parents[1]
 RUNHOOK = REPO / "web" / "src" / "lib" / "usePipelineRun.ts"
 REALDATA = REPO / "web" / "src" / "lib" / "realData.ts"
-DIAGRAM = REPO / "web" / "src" / "components" / "TwoPartyDiagram.tsx"
+# The step table the use-case canvas draws; it lived in components/TwoPartyDiagram.tsx until the
+# canvas replaced that diagram (Round 80), and its shape is unchanged.
+DIAGRAM = REPO / "web" / "src" / "lib" / "useCaseFlows.ts"
 GRAPH = REPO / "web" / "src" / "components" / "OrchestrationGraph.tsx"
 
 
@@ -118,7 +120,7 @@ def test_every_federated_use_case_has_a_render_target() -> None:
     )
     assert not missing_diagram and not missing_graph, (
         "a use case runs federated_training with nowhere to draw it.\n"
-        f"  no step in TwoPartyDiagram USECASE_SPECS: {missing_diagram or 'none'}\n"
+        f"  no step in useCaseFlows USECASE_SPECS:      {missing_diagram or 'none'}\n"
         f"  no node in OrchestrationGraph FLOWS:      {missing_graph or 'none'}\n"
         "OrchestrationGraph falls back to `default` for an unknown key, and `default` has no "
         "federated node - so a missing key here is silent on the page, not an error."

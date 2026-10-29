@@ -8,6 +8,7 @@ import { benchCfg, dataCfg, idsCfg, qkdCfg, qrngCfg, webCfg } from "./config";
 import { FREE_SPACE } from "./quantumSim";
 import { assembleBenchmark, clientFlow, type PipelineControl, runClientPipeline } from "./clientCompute";
 import { isClientDemo } from "./demoMode";
+import { setRunStatus } from "./runStatus";
 
 import { downloadCSV, downloadJSON, downloadNodePNG, FrameRecorder } from "./export";
 
@@ -153,6 +154,11 @@ export const makeDefaultParams = () => ({
   // min/max rather than by reading either one alone.
   seed: 1,
   qkd_pulses: qkdCfg().pulses,
+  // Round 80: the fibre key's block and its security parameter. See QKDConfig.finite_key_block.
+  qkd_block: qkdCfg().finite_key_block,
+  qkd_block_pa_bits: qkdCfg().finite_key_block_pa_bits,
+  qkd_block_seconds: qkdCfg().finite_key_block_seconds,
+  qkd_eps_sec: qkdCfg().finite_key_eps_sec,
   qkd_distance_km: qkdCfg().distance_km,
   qkd_eve: qkdCfg().eve_intercept_fraction,
   qkd_misalignment: qkdCfg().misalignment,
@@ -471,6 +477,16 @@ export function usePipelineRun(usecase: string, recordRef: RefObject<HTMLElement
   const downloadMetricsCsv = (filename: string) =>
     downloadCSV(Object.entries(metrics).map(([metric, value]) => ({ metric, value })), filename);
 
+  // The run's state for the sidebar (Round 80). Both run pages drew it as a chip fixed to the
+  // bottom-right corner, which sat over the diagram, its legend and the Metrics table during every
+  // run. Published here, once, so neither page can forget it; every in-flight state is shown,
+  // "pausing" and "stopping" included, which the chip's exact-match test left out.
+  const inFlight = !["idle", "done", "stopped", "error"].includes(state);
+  useEffect(() => {
+    setRunStatus(inFlight ? { state, active } : null);
+  }, [inFlight, state, active]);
+  useEffect(() => () => setRunStatus(null), []);
+
   return {
     usecase, opts, kem, setKem, qkd, setQkd, fhe, setFhe, mpc, setMpc, sig, setSig,
     workload, setWorkload, qfl, setQfl, optiqkd, setOptiqkd,
@@ -485,6 +501,6 @@ export function usePipelineRun(usecase: string, recordRef: RefObject<HTMLElement
     // neither - which would have re-enabled Start and the published-model select mid-run. Button
     // enablement asks "is a run in flight", which is a different question from "is it producing
     // output right now", and conflating the two is what made the two new states unsafe to add.
-    inFlight: !["idle", "done", "stopped", "error"].includes(state),
+    inFlight,
   };
 }

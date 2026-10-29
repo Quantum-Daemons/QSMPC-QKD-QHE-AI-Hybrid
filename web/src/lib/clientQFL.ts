@@ -230,13 +230,11 @@ export function clientQFL(
   // MEASURED, not asserted: C(K,2) is the number of masks that actually had to cancel. With one
   // client there are none, and the string says so rather than claiming a property of an empty set.
   const pairs = (K * (K - 1)) / 2;
-  // The DENOMINATOR travels with the accuracy, because on the bundled samples it is 4 rows (finance,
-  // 16 total) and 3 rows (medical, 12). A "0.25" with no denominator reads as a model performing
-  // worse than chance; a "0.25 on 4 rows" reads as one held-out row, which is what it is. Both pages'
-  // round accuracies are also CONSTANT across all six rounds on those samples - at that size the
-  // decision on every held-out row is fixed before training moves the head. Enlarging and scaling the
-  // bundled federated samples is the real fix and is tracked separately; reporting a bare fraction as
-  // an accuracy was the part that had to stop immediately.
+  // The DENOMINATOR travels with the accuracy. It was added when the bundled samples were 16 rows
+  // (finance) and 12 (medical), so a score was over 4 or 3 held-out rows and "0.25" alone read as a
+  // model worse than chance. The samples have since been enlarged to 400 rows each, so the held-out
+  // split is 80 rows (Round 80 corrected this note, which still described the small samples); the
+  // denominator stays, because a fraction without one says nothing about how much it rests on.
   return { roundAcc, finalAcc: roundAcc[roundAcc.length - 1], clients: K, rounds, pairs,
     evalRows: te.length, baselineAcc,
     aggregation: pairs > 0

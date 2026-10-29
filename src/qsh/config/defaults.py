@@ -52,17 +52,14 @@ class QKDConfig:
     # with the corrected threshold, which is the only thing it was ever evidence for.
     #
     # HOW ACCURATE OUR OWN THRESHOLD IS, stated wherever it is quoted because a computed number
-    # deserves its error bar. Validated against Rusca et al.'s published Table I - secret key rate at
-    # n_Z = 1e7 for 26 / 46 / 56 / 64 dB - this implementation is CONSERVATIVE by roughly a factor of
-    # 2-3 at moderate loss and by more at high loss, even after optimising the intensities and the
-    # basis bias the way the paper describes. The threshold it computes is therefore an UPPER bound
-    # on what is really required, and it is quoted as an order of magnitude ("~1e5 sifted bits, about
-    # 4e7 pulses") rather than to two figures it has not earned. Three claims survive that
-    # uncertainty untouched: Round 46's 2_000_000-pulse block carried no composable key, because a
-    # factor of 2-3 cannot rescue a NEGATIVE single-photon count; the band stated here was far too
-    # small; and the citation was wrong regardless of any numerics. The margin at the CURRENT block
-    # size is the one place the 2-3x matters, which is why it is sized below rather than taken at the
-    # threshold.
+    # deserves its error bar. Validated against Rusca et al.'s published Table I: since Round 80 the
+    # 26 dB row is reproduced under the paper's dead-time convention and the 26 / 46 dB rows sit
+    # within 5 percent under this project's. Until then this comment said "CONSERVATIVE by roughly a
+    # factor of 2-3"; that factor was a test channel applying the detector on top of the paper's
+    # global attenuation, which already includes it. Three claims never depended on it: Round 46's
+    # 2_000_000-pulse block carried no composable key, because no factor can rescue a NEGATIVE
+    # single-photon count; the band stated here was far too small; and the citation was wrong
+    # regardless of any numerics. The threshold is still quoted to one or two figures.
     #
     # WHY IT IS 20_000_000, against a threshold this repository now COMPUTES rather than cites.
     #
@@ -180,6 +177,27 @@ class QKDConfig:
     misalignment: float = 0.01                # Rusca 2018: "We choose a typical value pErr of 1%"
     eve_intercept_fraction: float = 0.0       # demo control, not a device property
     error_correction_eff: float = 1.16        # Cascade at 1-5% error (Lutkenhaus 2000); Ma et al. use 1.22 for GYS
+    # THE SECURITY PARAMETER OF EVERY FIBRE KEY (Round 80, the user's choice): `secure_key_bits` is the
+    # composable finite key of a block, by Rusca et al. 2018's 1-decoy bound (`qkd/finite_key.py`),
+    # at the paper's own eps_sec. The satellite's is `free_space_eps_sec`, Liao's 1e-9.
+    finite_key_eps_sec: float = 1e-9
+    # THE BLOCK A FIBRE KEY IS COMPUTED ON (Round 80, the user's choice, decided by the published
+    # practice): "pa_bits", as many pulses as it takes the key basis to collect that many detections -
+    # the privacy-amplification block, n_Z, that finite-key analyses state and fibre systems run on;
+    # "seconds", that long at the clock; "pulses", the run's own. Every fibre caller of `run_bb84` /
+    # `bb84()` takes it unless a run names its own (`qkd/finite_key.py::fibre_block_pulses`).
+    #
+    # n_Z = 1e7 by default. Fibre experiments and deployed systems fix the block as a count of
+    # key-basis bits and let the acquisition time follow from the distance: Rusca et al. 2018's own
+    # Table I uses 1e7 (14 s at 26 dB, 20 min at 46 dB, at their optimised settings), the Geneva systems
+    # their detector set comes from run about 8.2e6 (Boaron et al. 2018; Grunenfelder et al. 2020),
+    # and Li et al. 2023 1e8 out to 101 km. A fixed time (Lucamarini et al.'s 20 min) and a pulse count
+    # are the minority, and a pulse count mostly a theorist's convention. On this channel the 1e7
+    # block is 5.3 s at 50 km and 35 s at 100 km, and carries about 5.1 Mbit at either: the key per
+    # block barely moves with distance, the time to fill it does.
+    finite_key_block: str = "pa_bits"
+    finite_key_block_seconds: float = 1.0
+    finite_key_block_pa_bits: float = 1e7
     # --- free-space (satellite downlink) channel ---
     #
     # These existed only as TypeScript literals in quantumSim.ts's FREE_SPACE, which every satellite
@@ -317,7 +335,9 @@ class QKDConfig:
     # THESE RATES ARE PER SIGNAL PULSE, the convention until Round 78. The pages now count per pulse
     # SENT (the user's choice): only the p_signal share of the pulses carries key, so at the shipped
     # p_signal = 0.5 each reads half - the shipped pair's 0.002853 is 0.001427 bit/pulse on the page,
-    # 28,534 secure bits in the 2e7-pulse block. The comparison between rows does not change.
+    # 28,534 bits in the 2e7-pulse block asymptotically. The comparison between rows does not change.
+    # Since Round 80 the page's KEY is not that product: it is the block's composable finite key
+    # (`finite_key_block` below), 9,811 bits for the same 2e7 pulses.
     #
     # Row three is this channel's own finite-key optimum, and the shipped pair is within 3% of its
     # threshold, so the intensities did not move with the detector set or with Round 79's two

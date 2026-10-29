@@ -119,7 +119,7 @@ export default function SdnControlPlanePanel({
               <tr><td>channel time</td><td>{topo.channel_seconds == null ? "n/a"
                 : topo.channel_seconds >= 1 ? `${topo.channel_seconds.toFixed(1)} s` : `${(topo.channel_seconds * 1e3).toFixed(3)} ms`}</td><td>{usecase === "satellite_comms"
                 ? <>the key block&apos;s pulses divided by that rate - one pass by default (Round 79), so the key budget below, the block&apos;s composable finite key, is spent over the pass&apos;s link time</>
-                : <>pulses divided by that rate</>}</td></tr>
+                : <>the key block&apos;s pulses divided by that rate (Round 80), so the key budget below, the block&apos;s composable finite key, is spent over the block&apos;s link time</>}</td></tr>
             </tbody>
           </table>
           <Details summary="How this compares with published systems">

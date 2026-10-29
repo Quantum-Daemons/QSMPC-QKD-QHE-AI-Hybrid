@@ -12,6 +12,13 @@ const LANE_GAP = 54;   // labels alternate above/below; 40 stacked neighbouring 
 const laneY = (l: Lane) => 34 + LANES.indexOf(l) * LANE_GAP;
 const AXIS_Y = laneY("Companies") + 34;
 
+/** A halo: the label's outline painted first, in the panel's colour, under its fill. The dashed
+ *  "today" line runs through the dates nearest it, six labels in Round 80, and a label with no
+ *  background shows the line between its letters. Six units wide so it also spans the space between
+ *  two words, where a four-unit halo still let the line show; the markers are drawn after the labels,
+ *  so a halo never clips one. */
+const HALO = { paintOrder: "stroke", stroke: "var(--panel)", strokeWidth: 6, strokeLinejoin: "round" } as const;
+
 const COLOR: Record<Firmness, string> = {
   "in force": "var(--accent-2)", requirement: "var(--accent-2)", proposed: "var(--accent)",
   draft: "var(--warn)", deferred: "var(--warn)", target: "var(--quantum)", passed: "var(--muted)",
@@ -44,21 +51,24 @@ export default function RegulatoryClock() {
           {tNow > T0 && tNow < T1 && (
             <g>
               <line x1={x(tNow)} y1={14} x2={x(tNow)} y2={AXIS_Y} stroke="var(--text)" strokeDasharray="3 3" opacity={0.6} />
-              <text x={x(tNow) + 4} y={12} fontSize={10} fill="var(--text)">today</text>
+              <text x={x(tNow) + 4} y={12} fontSize={10} fill="var(--text)" style={HALO}>today</text>
             </g>
           )}
+          {/* Labels first, then the markers over them, so a label's halo cannot clip a marker. */}
           {CLOCK.map((r, i) => {
             const k = r.lane;
             const n = (seen[k] = (seen[k] ?? -1) + 1);
             const above = n % 2 === 0;
+            return (
+              <text key={`l${i}`} x={x(r.t)} y={laneY(k) + (above ? -9 : 17)} fontSize={10} textAnchor="middle"
+                fill={COLOR[r.firmness]} style={HALO}>{r.short}</text>
+            );
+          })}
+          {CLOCK.map((r, i) => {
             const hollow = r.firmness === "draft" || r.firmness === "deferred" || r.firmness === "target";
             return (
-              <g key={i}>
-                <circle cx={x(r.t)} cy={laneY(k)} r={5.5} fill={hollow ? "var(--bg)" : COLOR[r.firmness]}
-                  stroke={COLOR[r.firmness]} strokeWidth={2} />
-                <text x={x(r.t)} y={laneY(k) + (above ? -9 : 17)} fontSize={10} textAnchor="middle"
-                  fill={COLOR[r.firmness]}>{r.short}</text>
-              </g>
+              <circle key={`m${i}`} cx={x(r.t)} cy={laneY(r.lane)} r={5.5} fill={hollow ? "var(--bg)" : COLOR[r.firmness]}
+                stroke={COLOR[r.firmness]} strokeWidth={2} />
             );
           })}
         </svg>

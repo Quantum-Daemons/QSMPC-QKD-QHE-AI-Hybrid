@@ -17,6 +17,9 @@ import { ChartReadout, HINT_KEYBOARD, ReadoutTooltip } from "./ChartReadout";
  */
 
 const tick = { fill: "var(--muted)", fontSize: 11 };
+/** A count for an axis tick: 4.5M, 120k, 950. */
+const compactCount = (v: number) =>
+  Math.abs(v) >= 1e6 ? `${+(v / 1e6).toFixed(1)}M` : Math.abs(v) >= 1e3 ? `${+(v / 1e3).toFixed(0)}k` : String(v);
 const grid = <CartesianGrid stroke="var(--border)" strokeDasharray="3 3" />;
 
 /** QBER and secure key bits against the eavesdropper's intercept-resend fraction (the /validations slider). */
@@ -47,7 +50,11 @@ export function EveSweepChart({ distanceKm }: { distanceKm: number }) {
             {grid}
             <XAxis dataKey="eve" tick={tick} label={{ value: "Eve intercept fraction", position: "insideBottom", offset: -8, fill: "var(--muted)", fontSize: 11 }} />
             <YAxis yAxisId="q" tick={tick} domain={[0, 0.3]} label={{ value: "QBER", angle: -90, position: "insideLeft", fill: "var(--muted)", fontSize: 11 }} />
-            <YAxis yAxisId="b" orientation="right" tick={tick} label={{ value: "secure bits", angle: 90, position: "insideRight", fill: "var(--muted)", fontSize: 11 }} />
+            {/* Compact ticks (Round 80): "4500000" filled the axis's 60 px, and the rotated title at its
+                edge was drawn over the tick labels - seen in the README's screenshot of this page. The
+                readout and the tooltip keep the full count. */}
+            <YAxis yAxisId="b" orientation="right" tick={tick} tickFormatter={compactCount}
+              label={{ value: "secure bits", angle: 90, position: "insideRight", fill: "var(--muted)", fontSize: 11 }} />
             <Tooltip content={<ReadoutTooltip labelName="Eve intercept fraction" />} />
             <Legend verticalAlign="top" wrapperStyle={{ fontSize: 11 }} />
             <ReferenceLine yAxisId="q" y={threshold} stroke="var(--danger)" strokeDasharray="4 3" label={{ value: `abort ${threshold}`, fill: "var(--danger)", fontSize: 10, position: "insideTopRight" }} />

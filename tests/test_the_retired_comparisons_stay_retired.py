@@ -91,7 +91,8 @@ def test_no_surface_renders_logs_or_prompts_with_the_score() -> None:
                                  r"quantum advantage \$\{"],
         "components/BenchmarkPanel.tsx": [r"\bresult\?\.advantage\b", r"\badvantage\.(score|tier|interpretation)\b"],
         "components/AgenticAIPanel.tsx": [r"\bbenchmark\?\.advantage\b", r"quantum advantage \$\{"],
-        "components/TwoPartyDiagram.tsx": [r'"quantum_advantage_score"'],
+        "lib/useCaseFlows.ts": [r'"quantum_advantage_score"'],
+        "components/UseCaseCanvas.tsx": [r'"quantum_advantage_score"'],
         "pages/UseCases.tsx": [r"quantum\s+advantage"],
     }
     found = []
@@ -137,7 +138,10 @@ def test_the_agent_prompt_follows_the_use_case() -> None:
 
 
 def test_the_readme_no_longer_makes_the_headline_claims() -> None:
-    readme = (REPO / "README.md").read_text()
+    # The README and the documents its long sections moved to in Round 80.
+    readme = "\n".join((REPO / f).read_text() for f in (
+        "README.md", "docs/use-cases.md", "docs/findings.md", "docs/models-and-benchmarks.md",
+        "docs/development.md"))
     for phrase in ("more\ncommunication-compact than classical CKKS", "more communication-compact than classical CKKS",
                    "information-theoretic (vs computational) security"):
         assert phrase not in readme, f"README makes the retired claim again: {phrase!r}"

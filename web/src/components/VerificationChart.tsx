@@ -28,6 +28,29 @@ import Details from "./Details";
 import { ChartReadout, HINT_KEYBOARD, HINT_POINTER, ReadoutTooltip } from "./ChartReadout";
 
 const AXIS = { fontSize: 10, stroke: "#8a94a6" };
+/** A y-axis title centred on the axis (Round 80). Recharts anchors a rotated `insideLeft` title at
+ *  its START, at the axis middle, so the title runs upward by its whole length, and on these 230 px
+ *  charts every title longer than about 100 px left the chart at the top - " (log)" was cut off
+ *  "source burst fan-out (log)", and a `textAnchor` in the label props is overridden. */
+const yAxisTitle = (text: string, dx: number) =>
+  // A render function for Recharts' `label`, not a named component: it is passed, never written as a
+  // tag, and tests/test_nothing_is_computed_and_then_rendered_nowhere.py reads a capitalised
+  // function nobody writes as a tag as dead.
+  ({ viewBox }: { viewBox?: { x: number; y: number; height: number } }) => {
+    if (!viewBox) return null;
+    const x = viewBox.x + dx, y = viewBox.y + viewBox.height / 2;
+    return (
+      // `central`, so the rotated glyphs sit evenly either side of x: on the alphabetic baseline their
+      // bodies hung 11 px to one side and the first letters' tops left the chart by 3 px.
+      <text x={x} y={y} transform={`rotate(-90, ${x}, ${y})`} textAnchor="middle" dominantBaseline="central"
+        fill="#8a94a6" fontSize={10}>
+        {text}
+      </text>
+    );
+  };
+/** A tick on a log axis: 1, 10, 100, 1k, 10k. */
+const compactTick = (v: number) =>
+  v >= 1e6 ? `${+(v / 1e6).toFixed(1)}M` : v >= 1e3 ? `${+(v / 1e3).toFixed(1)}k` : String(+v.toFixed(2));
 const GRID = "#2a3040";
 /** The card every chart in this file is drawn on (`--panel`). Stroked around stacked segments
  *  as a separator, so each segment meets this colour rather than its neighbour. */
@@ -419,13 +442,13 @@ export function RealDataScatter({ usecase, card = false }: { usecase: string; ca
                 burst fan-out runs to 12,540 with a 95th percentile of 7,801 - renders every point on
                 the baseline unless it is compressed, and whether that is warranted is a property of
                 the DATA, so the generator that measured it is the thing that should decide. */}
+            {/* Compact log ticks (Round 80): "10000" ran under the rotated axis title. */}
             <YAxis type="number" dataKey="y" name={data.y.label} tick={AXIS}
+                   tickFormatter={data.y.scale === "log" ? compactTick : undefined}
                    scale={data.y.scale === "log" ? "log" : "auto"}
                    domain={data.y.scale === "log" ? [0.9, "auto"] : undefined}
                    allowDataOverflow={data.y.scale === "log"}
-                   label={{ value: data.y.label + (data.y.scale === "log" ? " (log)" : ""),
-                            angle: -90, position: "insideLeft",
-                            offset: 22, fill: "#8a94a6", fontSize: 10 }} />
+                   label={yAxisTitle(data.y.label + (data.y.scale === "log" ? " (log)" : ""), 24)} />
             <Tooltip content={<ReadoutTooltip />} cursor={{ strokeDasharray: "3 3" }}
                      formatter={(v: number) => v.toLocaleString()} />
             <Legend verticalAlign="top" align="right" height={18} wrapperStyle={{ fontSize: 10 }} />
@@ -712,12 +735,15 @@ export function VerificationChart(
           of {res.score?.toFixed(3)}. The aggregate is what would hide it.
         </figcaption>
         <ChartReadout hint={HINT_KEYBOARD}>
-          <ResponsiveContainer width="100%" height={180}>
-            <BarChart accessibilityLayer title={`Per-class F1 for ${modelKey}`}
-              data={plot.perClass} margin={{ top: 4, right: 8, bottom: 4, left: -18 }}>
+          {/* Horizontal bars (Round 80). The class names were x-axis ticks at -25 degrees: the longest,
+              "photon_number_splitting", ran below the chart and lost its first letter, and the eight
+              sat edge to edge. Laid out down the side they read level, whatever their length. */}
+          <ResponsiveContainer width="100%" height={Math.max(120, 26 * plot.perClass.length + 34)}>
+            <BarChart accessibilityLayer title={`Per-class F1 for ${modelKey}`} layout="vertical"
+              data={plot.perClass} margin={{ top: 4, right: 12, bottom: 4, left: 4 }}>
               <CartesianGrid stroke={GRID} strokeDasharray="2 4" />
-              <XAxis dataKey="label" tick={AXIS} interval={0} angle={-25} textAnchor="end" height={54} />
-              <YAxis domain={[0, 1]} tick={AXIS} />
+              <XAxis type="number" domain={[0, 1]} tick={AXIS} />
+              <YAxis type="category" dataKey="label" tick={AXIS} interval={0} width={150} />
               <Tooltip content={<ReadoutTooltip />} formatter={(v: number) => v.toFixed(4)} />
               <Bar dataKey="f1" fill="#4f9dff" name="F1" />
             </BarChart>
