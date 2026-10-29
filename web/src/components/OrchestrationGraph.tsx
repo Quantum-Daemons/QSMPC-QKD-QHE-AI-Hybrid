@@ -68,7 +68,7 @@ const FLOWS: Record<string, { id: string; label: string }[]> = {
   // had no key here, so it fell to `default` - which has no such node either - and the stage lit
   // nothing. Node labels are static here (this graph has no metrics), so this one names the
   // algorithm rather than a security property: `clientQFL` aggregates plaintext updates, and
-  // "(secure aggregation)" claimed a guarantee no code provided. TwoPartyDiagram carries the
+  // "(secure aggregation)" claimed a guarantee no code provided. The use-case canvas (useCaseFlows) carries the
   // measured `qfl_aggregation` string for the run-specific version.
   finance_aml: [
     { id: "data", label: "Banks' Data" },
@@ -96,7 +96,7 @@ const FLOWS: Record<string, { id: string; label: string }[]> = {
     { id: "pqc_handshake", label: "PQC Handshake" },
     // "(w/ Eve)" was here unconditionally while `qkd_eve` defaults to 0.0. Node labels in this graph
     // are static - it has no metrics - so the honest form is to name the stage and let
-    // TwoPartyDiagram, which does read metrics, carry the run-specific eavesdropper tag.
+    // use-case canvas, which does read metrics, carry the run-specific eavesdropper tag.
     { id: "qkd_key_agreement", label: "QKD Key" },
     { id: "qml_ids", label: "QML-IDS\n(attack detection)" },
     { id: "quantum_comparison", label: "QSMPC-FHE\n(quantum comparison)" },
@@ -327,7 +327,7 @@ export default function OrchestrationGraph({
 
   return (
     <>
-    {/* TEXT EQUIVALENT, the same pattern and for the same reason as `TwoPartyDiagram`'s `sr-only`
+    {/* TEXT EQUIVALENT, the same pattern and for the same reason as the old two-party diagram's `sr-only`
         list. React Flow renders each stage as a `<div>` whose only state signal is a CSS class, so
         the pipeline's shape, its stage captions and its progress were all unreachable in text. The
         list is built from the SAME `retitle()` and `stateOf()` calls the nodes use, so it cannot

@@ -6795,3 +6795,75 @@ component nobody renders. It is now an anonymous render function, with the same 
 BUSINESS DOC RECONCILED Round 80. The out-of-repo document is brought level with this round's third
 continuation. Its content is not quoted here, in the checklist, or in any commit - only the fact of
 the reconciliation, which is what gate 16 reads.
+
+## Round 80, continued: the use-case pages drawn as their architecture, animated by the run
+
+**The user held the merge a fourth time.** The E2E page's graph was confirmed. The user asked for the
+same kind of animation on the five use-case pages, where it was hard to see how a stage moves inside
+each party, and which way its arrows go. The user also chose to make the README diagram check a CI
+gate. Choices:
+- **Layout:** swimlanes. Each party is a column of components, with a lane per stage between them.
+- **The sequence diagram:** replaced, its labels moved to the canvas and a stage list.
+- **Parties:** the run's real ones.
+- **Animation:** flowing dashes, as on the E2E graph, plus a token travelling the way the data goes.
+
+**What was built** (`web/src/components/UseCaseCanvas.tsx`, on React Flow like the E2E graph):
+- **Running stage:** its components glow, its lane's dashes flow, and a token travels the way the
+  data goes, both ways for an exchange.
+- **Finished stage:** marked done. One whose run failed, such as a key agreement left with no key
+  bits, is marked failed in red.
+- **Status line:** names every row that runs: private inference is the FHE lane, the MPC lane and the
+  published model at once.
+- **Stage list under the canvas:** each stage's full label with the run's values. These are the
+  sequence diagram's labels, unchanged, in `web/src/lib/useCaseFlows.ts`. Every rule they carry
+  survives: the observed inference backend, the three QSDC states, the eavesdropper read from the
+  run, and the quantum lane dropped under PQC-only.
+- **The session key:** runs down a bus from the handshake to its two consumers in the code, the PSI's
+  HMAC key and the seed of the federated masks.
+- **Many-party stages:** every party the run has, from its own counts (`qfl_clients`,
+  `qsms_parties`) or else the configuration's: four hospitals, four federated clients, four cohorts.
+- **Eve:** drawn on the quantum lane when the run sets her, with the fraction it reports.
+- **Reduced motion:** with prefers-reduced-motion there are no tokens, the dashes stand still and the
+  glow does not pulse. Measured in a run: eight tokens and moving dashes against none.
+- **Exports:** the PNG and the GIF export the canvas. Both were downloaded from a run, the PNG was
+  opened, and no error was logged.
+
+**Drawing where each stage runs found three facts the old figure had wrong:**
+- **Satellite direction.** The satellite's key and its QSDC telemetry were drawn ground to satellite,
+  and the ground station was labelled "telemetry uplink". The code models a downlink (Liao et al.
+  2017's Micius), satellite to ground, for both. They are now drawn down the link.
+- **Party counts.** Genomics drew two cohorts for a secure sum the run makes over four, and medical
+  drew one hospital for four.
+- **PQC-only satellite.** Under a PQC-only profile on satellite, both figures drew a quantum QSDC
+  arrow with an em-dash secrecy. The browser skips QSDC there and sends the telemetry under the PQC
+  session key: the channel the run had said did not exist, a defect class fixed in both pipelines
+  earlier this round. The lane is now classical, and its label says QSDC was skipped.
+
+**Building the canvas found four faults of its own, each measured before it was fixed:**
+- **Hidden arrowheads.** Every lane began and ended 11 units inside its boxes, which hid the
+  arrowheads. A timing fault was suspected first; measuring showed a global `.react-flow__node`
+  rule, written for the E2E graph, padding every node by 12 plus a border.
+- **Marker colours.** SVG markers take their colour as an attribute, where `var()` does not resolve,
+  so the arrowheads drew as bars.
+- **Crossing lanes.** Parties drawn two to a line would route one lane through its neighbour.
+- **Badges.** The status badges sat on the box borders, half outside, which the scan reports as text
+  out of its node. They now sit inside.
+
+**Gates.**
+- `web/scripts/check_use_case_canvas.mjs` runs from `tests/test_the_use_case_canvas_draws_what_runs.py`
+  in the Python suite, which CI runs. It checks:
+  - every stage has a home on the canvas;
+  - the satellite's key and telemetry come down the link;
+  - the parties are the run's;
+  - the inference client is the side whose input it protects (Bank B on finance);
+  - no quantum lane appears under PQC-only.
+
+  Seeded with the old drawing's uplink, it fails.
+- The text-layout scan gained a rule for edge labels: a label must not lie over a node or another
+  label. Seeded by moving a lane label onto a box in the page, it reports both.
+- **The README's diagrams are a CI gate, at the owner's choice.** Mermaid 12.2.0 is a dev dependency
+  for this check alone, and the app never imports it; `npm audit` reports 0 vulnerabilities. The
+  web job and `scripts/ci_local.sh` step 8 run `npm run check:readme-mermaid`.
+
+  The check also gained the width rule it had printed and never enforced: every diagram must fit
+  GitHub's 830 px column. Seeded at 600 px, it reports the four wider diagrams. All eleven pass.

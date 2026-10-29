@@ -145,11 +145,15 @@ rests on quantum LWE, so its security is computational.
   8-qubit state-vector simulation of an untrained circuit (5794x, 8163x and 9610x across three runs of
   one page); and a 1.5x multiplier for a security label the run does not achieve. Gate:
   `tests/test_the_retired_comparisons_stay_retired.py`.
-- **Per-use-case two-party simulator** - each industry has its own page (`/usecase/:id`) with a
-  **live two-party (Alice <-> Bob) sequence diagram** (`web/src/components/TwoPartyDiagram.tsx`) whose
-  steps light up as that use case's pipeline runs - **Start / Pause / Resume / Step / Stop / Restart
-  drive it**. Parties are use-case-specific (Bank A <-> Bank B, Hospital <-> Aggregator, Cohort <-> Cohort,
-  Carrier <-> Eve, Ground-station <-> LEO-satellite), grounded in `references/` (Zhang QOT npj 2026, Li&Deng
+- **Per-use-case architecture simulator** - each industry has its own page (`/usecase/:id`) with a
+  **live architecture canvas** (`web/src/components/UseCaseCanvas.tsx`, its stages in
+  `web/src/lib/useCaseFlows.ts`): each party is a column of components and each stage a lane between
+  them, whose components glow and whose lane flows, a token travelling in the data's direction, as
+  that use case's pipeline runs - **Start / Pause / Resume / Step / Stop / Restart drive it**. It
+  replaced a two-party sequence diagram in Round 80. Parties are use-case-specific and are the run's
+  (Bank A <-> Bank B with four federated clients, four hospitals <-> the aggregator, four cohorts <->
+  the analysis site, carrier <-> remote site with Eve on the link when the run sets her, ground station
+  <- LEO satellite on the downlink), grounded in `references/` (Zhang QOT npj 2026, Li&Deng
   QHE-FL, Sutradhar QSMS). Labels fill from live metrics (QBER / PSI / federated acc / QSDC secrecy);
   exports a high-DPI PNG + a multi-second GIF. A standalone per-party-timing micro-benchmark also
   exists at `qsh/benchmark/alice_bob_e2e.py` (`POST /api/alice-bob`).

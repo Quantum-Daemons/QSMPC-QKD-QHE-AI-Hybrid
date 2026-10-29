@@ -46,7 +46,7 @@ function usecaseFromQuery(raw: string | null): { id: string; rejected: string | 
 }
 
 // Generic "run any pipeline" view. The per-use-case pages (/usecase/:id) fix the use case
-// and add the two-party simulator diagram + benchmark + XAI; this page keeps the selector.
+// and add the architecture simulator canvas + benchmark + XAI; this page keeps the selector.
 export default function Orchestration() {
   const [searchParams] = useSearchParams();
   // Read ONCE, as the initial value. The selector below is the source of truth afterwards, so a
@@ -67,7 +67,7 @@ export default function Orchestration() {
       <KeyPoints items={[
         "Run the full quantum-safe pipeline live for any use case; pause, step one stage at a time, and export the animated run.",
         "Swappable at run time: KEM, signature, key source and the QKD protocol (simulated). The FHE backend is selectable only in the full local deployment.",
-        "The per-industry pages add a two-party simulator and the benchmark.",
+        "The per-industry pages add an architecture simulator, each party's components and the stage lanes between them, and the benchmark.",
       ]} />
       {DEMO && <div className="note" style={{ marginBottom: 12 }}>🖥️ {DEMO_BANNER}</div>}
       {/* The rejected-parameter notice. Silence here would be indistinguishable from the defect
@@ -109,7 +109,7 @@ export default function Orchestration() {
 
       <div style={{ marginTop: 16 }} ref={graphRef}>
         {/* metrics, so the inference node names the published model that ran. Without it this graph
-            described the same run differently from the two-party diagram on the use-case pages. */}
+            described the same run differently from the diagram on the use-case pages. */}
         <OrchestrationGraph usecase={usecase} activeStage={active} doneStages={done}
           metrics={metrics}
           config={{ kem: run.kem, qkd: run.qkd, sig: run.sig,

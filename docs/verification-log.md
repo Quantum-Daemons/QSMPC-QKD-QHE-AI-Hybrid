@@ -3479,3 +3479,24 @@ value it used for "the Hub has none", and the page then reported the Hub's answe
 never received. Scanning with the network cut was meant to keep CI offline, and it was the first run
 that exercised that path. Run the pages once without the network: every message they print then
 should be about the failed request, and none about the thing it failed to fetch.
+
+### Round 80, continued a fourth time: a drawing of where things run is a claim about the code
+
+**Context.** The owner asked for the E2E graph's kind of animation on the five use-case pages, and
+chose swimlanes, the run's real parties, and replacing the sequence diagram.
+
+**Drawing where a stage runs is an audit of its direction.** The sequence diagram had drawn the
+satellite's key and telemetry going up for as long as it existed. Nobody misread the code; the
+drawing never asked which way the link goes. A canvas has to put the source on one side, so it had to
+ask, and the answer was in the satellite module's first line. A figure that only lists steps can
+hide a fact that one placing them cannot.
+
+**A rule written for one graph reaches every graph.** The global `.react-flow__node` rule padded the
+E2E graph's nodes, and silently padded every node of the new canvas. Every lane ended inside its
+boxes and every arrowhead was hidden. The first explanation, a measurement taken at the wrong scale,
+was plausible and wrong. Measuring the node, the box and the handle took one probe and named the
+cause. Measure before fixing a layout fault: a plausible mechanism can stand in for the real one.
+
+**An attribute is not a style.** SVG markers take their colour as an attribute, where a CSS variable
+does not resolve. The theme's colours had to be written as literals where they become attributes.
+
