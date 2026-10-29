@@ -44,9 +44,10 @@ Until Round 80 this paragraph said the implementation came out CONSERVATIVE by a
 against Rusca et al.'s Table I. The factor was the test's, not the bound's: it applied a 50 percent
 detector on top of the paper's attenuation, which is "global" - "the detector and the internal
 losses of Bob's apparatus are included" - so its channel had 3 dB more loss than the paper's. With
-the attenuation applied once, Table I's 26 dB row is reproduced to a few parts in a thousand under
-the paper's own dead-time convention, the 26 and 46 dB rows sit within 5 percent under this
-project's, and the 56 dB row within 25 percent below
+the attenuation applied once, and (A16) as the paper prints it since Round 82, Table I's 26 dB row is
+reproduced to within 2 percent below under the paper's own dead-time convention, the 26 dB row within
+5 percent and the 46 dB row within 7 percent under this project's, and the 56 dB row within 25 percent
+below, all under the published Hoeffding statistics
 (`tests/test_finite_key_reproduces_the_published_table.py`). Thresholds are still quoted to one or
 two figures, since the paper's own optimisation and epsilon split are not printed.
 
@@ -71,7 +72,7 @@ EQUATIONS, by number in arXiv:1801.03443v2
   (3)   n^pm_{Z,k} = (e^k / p_k)(n_{Z,k} pm delta(n_Z, eps1))
   (4)   s^l_{Z,1} = tau1 mu1 / (mu2(mu1 - mu2)) [ n^-_{Z,mu2} - (mu2^2/mu1^2) n^+_{Z,mu1}
                                                   - ((mu1^2 - mu2^2)/mu1^2)(s^u_{Z,0}/tau0) ]
-  (A16) s^u_{Z,0} = 2 tau0 [ (e^k/p_k)(m_{Z,k} + delta(m_Z, eps)) + delta(n_Z, eps) ]
+  (A16) s^u_{Z,0} = 2 ( tau0 (e^k/p_k)(m_{Z,k} + delta(m_Z, eps)) + delta(n_Z, eps) )
   (A19) s^l_{Z,0} = tau0/(mu1 - mu2) ( mu1 n^-_{Z,mu2} - mu2 n^+_{Z,mu1} )
   (A21) gamma(a,b,c,d) = sqrt( (c+d)(1-b)b/(c d ln2) * log2( (c+d)/(c d (1-b) b) * 21^2/a^2 ) )
   (A22) v^u_{X,1} = tau1/(mu1 - mu2) ( m^+_{X,mu1} - m^-_{X,mu2} )
@@ -99,6 +100,39 @@ channel's and are left as the record of Round 47.
 THE VACUUM+WEAK PROTOCOL (Round 79) is the second half of this module: Lim, Curty, Walenta, Xu and
 Zbinden, Phys. Rev. A 89, 022307 (2014), arXiv:1311.7129, the analysis Rusca et al. compare against
 and the protocol Micius ran (signal, weak decoy and vacuum). See `VacuumDecoyParams`.
+
+THE STATISTICS, THE TIGHTER OF TWO BY DEFAULT (Round 82, the user's choice). Both papers bound each count's
+expectation by the Hoeffding deviation of the basis TOTAL, delta(n_B, eps) = sqrt(n_B/2 ln(1/eps)),
+whatever the count: the vacuum's few hundred detections are moved by the same three thousand as the
+signal's eight hundred thousand on Liao's pass. Yin, Zhou, Gu, Xie, Lu and Chen, Sci. Rep. 10, 14312
+(2020), arXiv:2002.06530, give a variant of the Chernoff bound for exactly this use - the expected
+value of a sum of independent Bernoulli variables from its OBSERVED value - in closed form, read on
+the rendered page:
+
+  (9)   x* <= x + beta + sqrt(2 beta x + beta^2)
+  (10)  x* >= x - beta/2 - sqrt(2 beta x + beta^2/4),        beta = ln(1/eps)
+
+Each replaces one one-sided Hoeffding use, at the same eps, so the security budgets (Lim's 21 terms,
+Rusca's (A24)) are unchanged. Zhang, Zhao, Razavi and Ma, Phys. Rev. A 95, 012333 (2017), whose
+Chernoff bounds Khmelev et al. 2023 used, invert the multiplicative bound with the observed value in
+place of the expectation, which Yin et al. call not rigorous; on these passes the two differ by under
+0.3 percent.
+
+NEITHER IS TIGHTER EVERYWHERE. Chernoff's deviation, about sqrt(2 beta x), beats Hoeffding's
+sqrt(n beta / 2) only for a count x under a quarter of its basis total n. The satellite's weak decoy
+(6 percent of detections) and vacuum gain; the fibre's 1-decoy signal and decoy, about 70 and 30
+percent, lose, and Chernoff alone moved the fibre's threshold from 5.35e6 pulses to 5.71e6. So the
+default, `deviation="tighter"`, bounds every count both ways at eps/2 each and keeps the tighter: a
+union bound, the failure probability of each use still at most eps, so the budgets are unchanged.
+It is the tightest of the three on every block measured. "chernoff" and "hoeffding" alone remain;
+"hoeffding" is the published form, which Rusca's Table I was computed with and is checked against.
+
+AND A THIRD TRANSCRIPTION ERROR, in (A16), found reading it again for this (Round 82): tau0 multiplies
+the error term only, 2 (tau0 (e^k/p_k)(m_{Z,k} + delta) + delta(n_Z)), as the paper prints it and as
+its (A13)-(A15) derive it; this file had tau0 outside the bracket, scaling delta(n_Z) down by about a
+fifth. That made the vacuum's upper bound too small and the single-photon bound too large: the unsafe
+direction, unlike the two Round 79 found. Corrected, the shipped fibre's threshold under Hoeffding is
+5.35e6 pulses, not 4.78e6; under the default statistics it is 3.60e6.
 """
 
 from __future__ import annotations
@@ -111,6 +145,8 @@ from .bb84 import e_det_for_bound
 from .channel import ChannelParams, dead_time_factor
 
 __all__ = [
+    "DEVIATIONS",
+    "DEVIATION_LABELS",
     "DecoyCounts",
     "FiniteKeyResult",
     "FiniteKeyParams",
@@ -169,6 +205,12 @@ class FiniteKeyParams:
     eps_sec: float = 1e-9          # the paper's own value
     eps_cor: float = 1e-15         # the paper's own value
     f_ec: float = 1.16             # error-correction leakage factor
+    # The statistics (Round 82): "chernoff" or "hoeffding", the paper's own. See the module docstring.
+    deviation: str = field(default_factory=lambda: _qkd_cfg().finite_key_deviation)
+
+    def __post_init__(self) -> None:
+        if self.deviation not in DEVIATIONS:
+            raise ValueError(f"deviation {self.deviation!r}: one of {DEVIATIONS}")
 
     @property
     def intensities(self) -> tuple[tuple[float, float], ...]:
@@ -198,6 +240,62 @@ class FiniteKeyResult:
 def _delta(x: float, eps: float) -> float:
     """Hoeffding correction, Eq. (3). Guarded at zero because a count cannot be negative."""
     return math.sqrt(max(x, 0.0) / 2.0 * math.log(1.0 / eps))
+
+
+#: The statistics a finite key can use; `QKDConfig.finite_key_deviation` picks one.
+DEVIATIONS = ("tighter", "chernoff", "hoeffding")
+#: How each is named where a key is reported, so a page says which statistics its number rests on.
+DEVIATION_LABELS = {
+    "tighter": "the tighter of Chernoff and Hoeffding per count",
+    "chernoff": "Chernoff-type bounds, Yin et al. 2020",
+    "hoeffding": "Hoeffding, as published",
+}
+
+
+def _chernoff_upper(x: float, eps: float) -> float:
+    """The largest expectation consistent with an observed count `x`: Yin et al. 2020 Eq. (9)."""
+    b, x = math.log(1.0 / eps), max(x, 0.0)
+    return x + b + math.sqrt(2.0 * b * x + b * b)
+
+
+def _chernoff_lower(x: float, eps: float) -> float:
+    """The smallest expectation consistent with an observed count `x`: Yin et al. 2020 Eq. (10),
+    floored at zero as the paper requires - an expected count cannot be negative."""
+    b, x = math.log(1.0 / eps), max(x, 0.0)
+    return max(0.0, x - b / 2.0 - math.sqrt(2.0 * b * x + b * b / 4.0))
+
+
+def _bounds(counts: tuple[float, ...], eps: float, deviation: str) -> tuple[list[float], list[float]]:
+    """Lower and upper bounds on each count's expectation, at failure probability `eps` each.
+
+    "hoeffding": the published form, each count moved by the deviation of the basis TOTAL (Lim et
+    al.'s n^pm, Rusca et al.'s (3) and (A4)). "chernoff": each count by its own, Yin et al.'s Eqs.
+    (9) and (10). "tighter": both at eps/2, the tighter kept - a union bound, so each still fails
+    with probability at most eps.
+    """
+    if deviation == "hoeffding":
+        d = _delta(sum(counts), eps)
+        return [c - d for c in counts], [c + d for c in counts]
+    if deviation == "chernoff":
+        return [_chernoff_lower(c, eps) for c in counts], [_chernoff_upper(c, eps) for c in counts]
+    if deviation == "tighter":
+        h_lo, h_hi = _bounds(counts, eps / 2.0, "hoeffding")
+        c_lo, c_hi = _bounds(counts, eps / 2.0, "chernoff")
+        return ([max(a, b) for a, b in zip(h_lo, c_lo, strict=True)],
+                [min(a, b) for a, b in zip(h_hi, c_hi, strict=True)])
+    raise ValueError(f"deviation {deviation!r}: one of {DEVIATIONS}")
+
+
+def _vacuum_errors_expectation(v0: float, n_tot: float, eps: float, deviation: str) -> float:
+    """An upper bound on the expected vacuum errors, given `v0` bounding the errors themselves:
+    Rusca et al.'s (A13) step, delta(s_{Z,0}) <= delta(n_Z) under Hoeffding, Yin et al.'s Eq. (9)
+    under Chernoff - increasing in its argument, so the bound on the errors may stand in for them -
+    and the tighter of the two at eps/2 each."""
+    if deviation == "hoeffding":
+        return v0 + _delta(n_tot, eps)
+    if deviation == "chernoff":
+        return _chernoff_upper(v0, eps)
+    return min(v0 + _delta(n_tot, eps / 2.0), _chernoff_upper(v0, eps / 2.0))
 
 
 def _tau(n: int, p: FiniteKeyParams) -> float:
@@ -304,11 +402,12 @@ def one_decoy_key_length(z: DecoyCounts, x: DecoyCounts,
     per_basis: dict[str, dict] = {}
     for basis, c in (("Z", z), ("X", x)):
         n_tot, m_tot = c.detections, c.errors
-        d_n, d_m = _delta(n_tot, eps1), _delta(m_tot, eps2)
-        n_plus_1 = math.exp(mu1) / p1 * (c.n[0] + d_n)
-        n_minus_2 = math.exp(mu2) / p2 * (c.n[1] - d_n)
-        m_plus_1 = math.exp(mu1) / p1 * (c.m[0] + d_m)
-        m_minus_2 = math.exp(mu2) / p2 * (c.m[1] - d_m)
+        n_lo, n_hi = _bounds(c.n, eps1, p.deviation)
+        m_lo, m_hi = _bounds(c.m, eps2, p.deviation)
+        n_plus_1 = math.exp(mu1) / p1 * n_hi[0]
+        n_minus_2 = math.exp(mu2) / p2 * n_lo[1]
+        m_plus_1 = math.exp(mu1) / p1 * m_hi[0]
+        m_minus_2 = math.exp(mu2) / p2 * m_lo[1]
         # (A19), CLAMPED AT ZERO. This clamp is load-bearing: without it a negative vacuum count
         # propagates through the `- ((mu1^2-mu2^2)/mu1^2)(s^u_{Z,0}/tau0)` term of Eq. (4) with the
         # wrong sign and INFLATES the single-photon bound, moving the computed threshold by a
@@ -319,10 +418,16 @@ def one_decoy_key_length(z: DecoyCounts, x: DecoyCounts,
         # the approach it chose "proved to give the best SKR", and the decoy's bound is the tighter
         # one at every row of Table I and on the shipped fibre. Round 80 settled it on the paper's own
         # channel and dead-time convention: with the decoy's errors Table I's 26 dB row is reproduced
-        # to a few parts in a thousand, with the signal's it reads 13 percent low. It is fixed here
+        # to within 2 percent (since Round 82's correction below), with the signal's it reads 13
+        # percent low. It is fixed here
         # rather than picked per block, so the concentration inequalities Eq. (A24) counts are the
         # same four.
-        s0_upper = 2.0 * t0 * (math.exp(mu2) / p2 * (c.m[1] + d_m) + d_n)           # (A16)
+        #
+        # tau0 MULTIPLIES THE ERRORS ONLY (Round 82): the vacuum's errors are at most tau0 (e^k/p_k)
+        # m*_{Z,k} by (A15), and their expectation, half the vacuum events by (A12), exceeds them by
+        # at most delta(s_{Z,0}) <= delta(n_Z) by (A13). This line had tau0 on the delta too.
+        v0 = t0 * math.exp(mu2) / p2 * m_hi[1]                                    # (A15), the decoy's
+        s0_upper = 2.0 * _vacuum_errors_expectation(v0, n_tot, eps1, p.deviation)  # (A16)
         s1 = (t1 * mu1 / (mu2 * (mu1 - mu2))) * (                                   # (4)
             n_minus_2 - (mu2 ** 2 / mu1 ** 2) * n_plus_1
             - ((mu1 ** 2 - mu2 ** 2) / mu1 ** 2) * (s0_upper / t0))
@@ -413,7 +518,8 @@ def optimise_parameters(channel: ChannelParams | None = None,
         mu2 = mu1 * ratio                      # parameterised as a RATIO so mu2 < mu1 by construction
         cand = FiniteKeyParams(mu_signal=float(mu1), mu_decoy=float(mu2),
                                p_signal=float(p_signal), p_z=float(p_z),
-                               eps_sec=base.eps_sec, eps_cor=base.eps_cor, f_ec=base.f_ec)
+                               eps_sec=base.eps_sec, eps_cor=base.eps_cor, f_ec=base.f_ec,
+                               deviation=base.deviation)
         n = minimum_pulses_for_positive_key(channel, cand)
         return penalty if n is None else float(n)
 
@@ -427,7 +533,8 @@ def optimise_parameters(channel: ChannelParams | None = None,
     mu1, ratio, p_signal, p_z = res.x
     best = FiniteKeyParams(mu_signal=float(mu1), mu_decoy=float(mu1 * ratio),
                            p_signal=float(p_signal), p_z=float(p_z),
-                           eps_sec=base.eps_sec, eps_cor=base.eps_cor, f_ec=base.f_ec)
+                           eps_sec=base.eps_sec, eps_cor=base.eps_cor, f_ec=base.f_ec,
+                           deviation=base.deviation)
     return best, minimum_pulses_for_positive_key(channel, best)
 
 
@@ -441,11 +548,11 @@ def optimise_parameters(channel: ChannelParams | None = None,
 # checked against that table's 2-decoy rows the way the 1-decoy bound is checked against its own.
 #
 # On Liao's 19 December 2016 pass (the model's counts; `tests/test_the_vacuum_decoy_bound_is_lim_2014.py`)
-# it finds 164,183 bits, where the paper reports 300,939. The 1-decoy bound on the same pulses, the
-# vacuum's quarter unused, finds 152,598 - and found NONE (-7,172) before this round's two
-# corrections to it, which is what first suggested the vacuum was needed. It was not needed for a
-# key; it adds about 8% to it, in line with Rusca et al.'s own finding that the two analyses are
-# close at these losses.
+# it finds 164,183 bits under the published Hoeffding statistics, where the paper reports 300,939, and
+# 226,056 under the default since Round 82. The 1-decoy bound on the same pulses, the vacuum's quarter
+# unused, finds 140,400 under Hoeffding - 152,598 before Round 82 corrected its (A16), and NONE
+# (-7,172) before Round 79's two corrections, which is what first suggested the vacuum was needed. It
+# was not needed for a key; it adds 17 percent to it under Hoeffding and 21 under the default.
 #
 # EQUATIONS, by number in arXiv:1311.7129v2, written with Z as the key basis and X as the test basis
 # (Rusca et al.'s naming; Lim et al. key on X), and eps = eps_sec / 21:
@@ -487,8 +594,11 @@ class VacuumDecoyParams:
     eps_sec: float = 1e-9
     eps_cor: float = 1e-15
     f_ec: float = 1.16
+    deviation: str = field(default_factory=lambda: _qkd_cfg().finite_key_deviation)
 
     def __post_init__(self) -> None:
+        if self.deviation not in DEVIATIONS:
+            raise ValueError(f"deviation {self.deviation!r}: one of {DEVIATIONS}")
         mu1, mu2, mu3 = self.mu_signal, self.mu_decoy, self.mu_vacuum
         if not (mu1 > mu2 + mu3 and mu2 > mu3 >= 0.0):
             raise ValueError(f"Lim et al. need mu1 > mu2 + mu3 and mu2 > mu3 >= 0, not {mu1}, {mu2}, {mu3}")
@@ -517,15 +627,15 @@ def _events(c: DecoyCounts, p: VacuumDecoyParams, eps: float) -> tuple[float, fl
     count of events cannot be negative, and (3) increases with s_B0, so the clamp keeps (3) valid.
     """
     (mu1, p1), (mu2, p2), (mu3, p3) = p.intensities
-    d = _delta(c.detections, eps)
+    n_lo, n_hi = _bounds(c.n, eps, p.deviation)
 
     def lo(k: int) -> float:
         mu, p_k = p.intensities[k]
-        return math.exp(mu) / p_k * (c.n[k] - d)
+        return math.exp(mu) / p_k * n_lo[k]
 
     def hi(k: int) -> float:
         mu, p_k = p.intensities[k]
-        return math.exp(mu) / p_k * (c.n[k] + d)
+        return math.exp(mu) / p_k * n_hi[k]
 
     t0, t1 = p.tau(0), p.tau(1)
     s0 = max(0.0, t0 * (mu2 * lo(2) - mu3 * hi(1)) / (mu2 - mu3))                       # (2)
@@ -552,9 +662,9 @@ def vacuum_decoy_key_length(z: DecoyCounts, x: DecoyCounts,
         return FiniteKeyResult(float("-inf"), n_z, n_x, n_z + n_x, s_z0, s_z1, float("nan"),
                                lambda_ec, qber)
     (_, _), (mu2, p2), (mu3, p3) = p.intensities
-    dm = _delta(x.errors, eps)
-    v_x1 = p.tau(1) * (math.exp(mu2) / p2 * (x.m[1] + dm)                               # (4)
-                       - math.exp(mu3) / p3 * (x.m[2] - dm)) / (mu2 - mu3)
+    m_lo, m_hi = _bounds(x.m, eps, p.deviation)
+    v_x1 = p.tau(1) * (math.exp(mu2) / p2 * m_hi[1]                                     # (4)
+                       - math.exp(mu3) / p3 * m_lo[2]) / (mu2 - mu3)
     b = min(0.5, max(0.0, v_x1 / s_x1))
     phi = 0.0 if b <= 0.0 else min(0.5, b + _gamma(p.eps_sec, b, s_x1, s_z1))            # (5)
     key = (s_z0 + s_z1 * (1.0 - _h2(phi)) - lambda_ec                                    # (1)
@@ -562,19 +672,19 @@ def vacuum_decoy_key_length(z: DecoyCounts, x: DecoyCounts,
     return FiniteKeyResult(key, n_z, n_x, n_z + n_x, s_z0, s_z1, phi, lambda_ec, qber)
 
 
-def params_for_source(source, *, eps_sec: float = 1e-9,
-                      f_ec: float | None = None) -> FiniteKeyParams | VacuumDecoyParams:
+def params_for_source(source, *, eps_sec: float = 1e-9, f_ec: float | None = None,
+                      deviation: str | None = None) -> FiniteKeyParams | VacuumDecoyParams:
     """The finite-key bound a BB84 source supports, with its own intensities and shares.
 
     `source` is a `bb84.QKDParams`. Lim et al. 2014 when it sends the vacuum, Rusca et al. 2018's
     1-decoy bound when it does not; the basis bias is the source's, and f_EC defaults to the config's
     error-correction efficiency, the one the asymptotic rate uses. Round 80: one place decides it for
-    every caller, fibre and satellite.
+    every caller, fibre and satellite. The statistics are the config's unless `deviation` names one.
     """
     f = _qkd_cfg().error_correction_eff if f_ec is None else float(f_ec)
     common = dict(mu_signal=float(source.mu_signal), mu_decoy=float(source.mu_decoy),
                   p_signal=float(source.p_signal), p_z=float(source.basis_prob), eps_sec=float(eps_sec),
-                  f_ec=f)
+                  f_ec=f, deviation=str(deviation or _qkd_cfg().finite_key_deviation))
     if source.vacuum_decoy:
         return VacuumDecoyParams(p_decoy=float(source.p_decoy), **common)
     return FiniteKeyParams(**common)
