@@ -6867,3 +6867,33 @@ gate. Choices:
 
   The check also gained the width rule it had printed and never enforced: every diagram must fit
   GitHub's 830 px column. Seeded at 600 px, it reports the four wider diagrams. All eleven pass.
+
+**CI green on a8a6daf (eight checks), then deployed from git and walked (`index-CN1DlNlf.js`, the
+same bundle the local build produced).**
+- **CI.** On the runner, offline and in DejaVu Sans, the scan passed on all eleven views with the
+  canvas on all five pages. The README diagram gate passed on all eleven diagrams, each within 830 px.
+- **In the user's Chrome** (1280 x 677), every use case was run, and the scan's measurement run in
+  the page found nothing:
+
+  | Use case | Stages | Parties drawn | Session-key bus |
+  |---|---|---|---|
+  | finance | 9 of 9 done | four clients | 4 edges (PSI and federated, both sides) |
+  | medical | 8 of 8 done | four hospitals | 2 edges |
+  | genomics | 8 of 8 done | four cohorts | none (no consumer) |
+  | telecom | 6 of 6 done | the two sites | none |
+  | satellite | done | the two sites | none |
+
+  - Mid-run on finance, the private-inference rows glowed with their lanes flowing, and the sidebar
+    read "running private_inference".
+  - On satellite, both quantum lanes carry their arrowhead at the ground station alone: downlinks.
+    The QSDC row's two boxes were marked failed, link-budget limited.
+  - The console showed no error, no page printed `NaN` or `undefined`, the tab was closed, and no
+    sidebar preference was stored.
+- **Exports from the deploy.** A headless run of the deployed medical page exported its PNG and its
+  GIF. The GIF's nine frames step from idle through the running private inference to 7 of 8 done.
+- **The scan against the deploy:** no findings in the local font at 1280 and 390 px, nor in DejaVu
+  Sans at 1280 px.
+
+BUSINESS DOC RECONCILED Round 80. The out-of-repo document is brought level with this round's fourth
+continuation. Its content is not quoted here, in the checklist, or in any commit - only the fact of
+the reconciliation, which is what gate 16 reads.
