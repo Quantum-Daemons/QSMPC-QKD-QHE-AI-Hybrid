@@ -492,7 +492,7 @@ export function canvasRow(usecase: string, step: Step, kind: Kind, m: M, c: Diag
                        count: runCount(m, "qfl_clients", Number(cfg.federated?.hospitals ?? 4)) } };
     case "private_inference":
       if (kind === "fhe-arrow")
-        return { ...sides("CKKS: encrypts the input, decrypts the scores", "CKKS: evaluates the linear layer"), flow: "both", channel: "fhe" };
+        return { ...sides("CKKS: encrypts the input, decrypts the scores", "CKKS: evaluates the linear layers"), flow: "both", channel: "fhe" };
       return { ...sides("MPC argmax: holds shares a", "MPC argmax: holds shares b"), flow: "both", channel: "mpc" };
     case "qml_ids":
       return { a: "QML-IDS: classifies the link telemetry", channel: "none" };
