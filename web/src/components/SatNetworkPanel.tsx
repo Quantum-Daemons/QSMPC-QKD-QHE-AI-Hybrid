@@ -7,7 +7,7 @@ import {
 import { linkProfiles, profileValues, qkdCfg, validationSet } from "../lib/config";
 import { downlinkFromProfile } from "../lib/quantumSim";
 import { randomWords } from "../lib/csprng";
-import { blockCounts, blocksForPositiveKey, finiteKeySourceOf, keyLength } from "../lib/finiteKey";
+import { blockCounts, blocksForPositiveKey, DEVIATION_LABELS, finiteKeySourceOf, keyLength, type Deviation } from "../lib/finiteKey";
 import { satChannel } from "../lib/satLink";
 import {
   LIAO_2017_PASS, LIAO_2018_STATIONS, groundDistanceKm, islFromProfile, liaoPass, rangeAtElevationKm,
@@ -52,7 +52,8 @@ export default function SatNetworkPanel({ params }: { params: Record<string, any
         which is how a measured key is made. Simulated: no satellite is involved.
       </p>
       <PassSection link={link} liao={liao} minEl={minEl}
-        epsSec={Number(params.sat_eps_sec ?? qkdCfg().free_space_eps_sec)} />
+        epsSec={Number(params.sat_eps_sec ?? qkdCfg().free_space_eps_sec)}
+        deviation={String(params.fk_deviation ?? qkdCfg().finite_key_deviation) as Deviation} />
       <NightsSection link={link} />
       <RelaySection link={link} defaultElevation={liao.maxElevationDeg} minEl={minEl} />
       <ConstellationSection orbitKm={orbitKm} minEl={minEl} />
@@ -60,13 +61,14 @@ export default function SatNetworkPanel({ params }: { params: Record<string, any
   );
 }
 
-function PassSection({ link, liao, minEl, epsSec }: { link: ReturnType<typeof satChannel>; liao: ReturnType<typeof liaoPass>;
-                                                      minEl: number; epsSec: number }) {
+function PassSection({ link, liao, minEl, epsSec, deviation }: { link: ReturnType<typeof satChannel>;
+                                                                 liao: ReturnType<typeof liaoPass>; minEl: number;
+                                                                 epsSec: number; deviation: Deviation }) {
   const [top, setTop] = useState(Math.round(liao.maxElevationDeg * 10) / 10);
   const pass = useMemo(() => simulatePass(link, top, { stepS: 1 }), [link, top]);
   // THE PASS'S COMPOSABLE FINITE KEY (Round 79): the bound the run's source supports - Lim et al.
   // 2014 for Micius's vacuum + weak decoy - on the counts summed over the pass (`finiteKey.ts`).
-  const fkSrc = useMemo(() => finiteKeySourceOf(link, epsSec), [link, epsSec]);
+  const fkSrc = useMemo(() => finiteKeySourceOf(link, epsSec, undefined, deviation), [link, epsSec, deviation]);
   const fin = useMemo(() => {
     if (!pass.segments.length) return null;
     const [z, x] = blockCounts(pass.segments, fkSrc);
@@ -74,10 +76,11 @@ function PassSection({ link, liao, minEl, epsSec }: { link: ReturnType<typeof sa
   }, [pass, fkSrc]);
   // Liao's row at Liao's own failure probability, whatever the run sets.
   const liaoFinite = useMemo(() => {
-    const src = finiteKeySourceOf(link, 1e-9);
+    const src = finiteKeySourceOf(link, 1e-9, undefined, deviation);
     return keyLength(...blockCounts(liao.segments, src), src).keyBits;
-  }, [link, liao]);
-  const bound = fkSrc.vacuum ? "Lim et al. 2014" : "Rusca et al. 2018";
+  }, [link, liao, deviation]);
+  // The bound and its statistics (Round 82), so the key says which analysis it is.
+  const bound = `${fkSrc.vacuum ? "Lim et al. 2014" : "Rusca et al. 2018"}; ${DEVIATION_LABELS[fkSrc.deviation]}`;
   const rows = useMemo(() => pass.samples.filter((_, i) => i % 4 === 0).map((s) => ({
     t: Math.round(s.t), elevation: Math.round(s.elevationDeg * 10) / 10, rate: Math.round(s.keyRate),
   })), [pass]);
@@ -171,8 +174,10 @@ function PassSection({ link, liao, minEl, epsSec }: { link: ReturnType<typeof sa
           (Round 79) is like for like in kind: the composable finite key of the model&apos;s counts over the same window,
           by {bound}&apos;s bound at Liao&apos;s failure probability of 1e-9. Liao et al. do not name their analysis; they
           allow for intensity fluctuations and correct errors with a Hamming code, neither modelled here, so the two
-          rows differ by the analysis as well as the model. On Khmelev et al.&apos;s Micius-Zvenigorod session the same
-          bound gives the same fraction, 0.56, of a key computed with Chernoff bounds. Vergoossen et al. (arXiv:1903.07845, Table 3) modelled the same pass at 521,513 secret bits
+          rows differ by the analysis as well as the model. The statistics account for about half of it (Round 82): with
+          Hoeffding&apos;s deviation on the basis total, as Lim et al. published it, this row reads 0.55 of Liao&apos;s key, and
+          0.56 of Khmelev et al.&apos;s Micius-Zvenigorod session, a key computed with Chernoff bounds; with each count&apos;s own
+          Chernoff-type bound (Yin et al. 2020), or the tighter of the two, the default, 0.75 and 0.69. Vergoossen et al. (arXiv:1903.07845, Table 3) modelled the same pass at 521,513 secret bits
           (asymptotic) against 3,926,729 detections; their sifted count, 1,963,364, is exactly half their detections,
           so it counts every state where Liao counted signals.
         </p>

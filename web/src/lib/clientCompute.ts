@@ -23,8 +23,8 @@ import { randomBelow } from "./csprng";
 import { optimizeQKD } from "./clientOptiQKD";
 import { generateQuantumBits } from "./clientQRNG";
 import { outOfView, satBlock, satChannel } from "./satLink";
-import { blockCounts, blocksForPositiveKey, fibreBlockPulses, FINITE_KEY_BOUNDS, finiteKeySourceOf, keyLength,
-  scaleCounts } from "./finiteKey";
+import { blockCounts, blocksForPositiveKey, DEVIATION_LABELS, fibreBlockPulses, FINITE_KEY_BOUNDS, finiteKeySourceOf,
+  keyLength, scaleCounts, type Deviation } from "./finiteKey";
 import { bb84, channelLossDb, e91, FIBER, h2, inView, intrinsicQber,
   keyRateWithClock, linkElevationDeg, qsdcLink, qsdcSecrecyCapacity, sourceOf, sourceRateHz, type ChannelParams,
   qcnnExpectation,
@@ -328,7 +328,10 @@ export function securityFacts(config: any, metrics: Record<string, any>): Securi
         ? "E91 / CHSH run, device-dependent secure fraction on the model error rate"
         : finite
         ? `composable finite key over ${blockWhat}: ${metrics.qkd_finite_key_bound}, eps_sec `
-          + `${Number(metrics.qkd_eps_sec).toExponential(0)}; `
+          + `${Number(metrics.qkd_eps_sec).toExponential(0)}`
+          // Which statistics (Round 82): a key is one analysis's number, and the page says which.
+          + (metrics.qkd_fk_deviation ? `, ${DEVIATION_LABELS[metrics.qkd_fk_deviation as Deviation] ?? metrics.qkd_fk_deviation}` : "")
+          + "; "
           + (sat ? "this run's own fraction of a second at the range measured the QBER and decides the abort"
                  : "this run's own pulses measured the QBER and decide the abort")
         : `BB84 decoy-state run, ${sourceOf(runChannel).vacuum ? "vacuum + weak decoy" : "two-intensity"} secure fraction`,
@@ -2083,13 +2086,16 @@ export function runClientPipeline(
         // THE KEY'S BLOCK (Round 80, the user's choice): the run's controls, else the configured fibre
         // block, resolved once and handed to the model so the key and the metrics describe one block.
         // Twin of `QKDKeyAgreementStage`.
-        const fkSrc = finiteKeySourceOf(chan, Number(config.qkd_eps_sec ?? qkdCfg().finite_key_eps_sec));
+        // The statistics (Round 82), one control for the fibre and the satellite alike.
+        const fkSrc = finiteKeySourceOf(chan, Number(config.qkd_eps_sec ?? qkdCfg().finite_key_eps_sec), undefined,
+                                        String(config.fk_deviation ?? qkdCfg().finite_key_deviation) as Deviation);
         const blockKind = String(config.qkd_block ?? qkdCfg().finite_key_block);
         const blockPulses = fibreBlockPulses(chan, fkSrc, { kind: blockKind, runPulses: pulses,
           seconds: Number(config.qkd_block_seconds ?? qkdCfg().finite_key_block_seconds),
           paBits: Number(config.qkd_block_pa_bits ?? qkdCfg().finite_key_block_pa_bits) });
         const eRes = protocol === "e91" ? e91(pulses, chan, seed, qkdCfg().e91_visibility) : null;   // typed with chshS
-        const res = eRes ?? bb84(pulses, chan, seed, undefined, { blockPulses, epsSec: fkSrc.epsSec });
+        const res = eRes ?? bb84(pulses, chan, seed, undefined, { blockPulses, epsSec: fkSrc.epsSec,
+                                                                   deviation: fkSrc.deviation });
         // The eavesdropper fraction that actually ran. The telecom diagram labelled its QKD arrow
         // "(w/ eavesdropper)" unconditionally while `qkd_eve` defaults to 0.0, so a default run drew
         // an attack it did not simulate. Publishing the value lets the label read the run.
@@ -2115,6 +2121,7 @@ export function runClientPipeline(
           metric(stage, "qkd_finite_key_bits", res.secureKeyBits);
           metric(stage, "qkd_finite_key_bound", fkSrc.vacuum ? FINITE_KEY_BOUNDS.vacuum : FINITE_KEY_BOUNDS.oneDecoy);
           metric(stage, "qkd_eps_sec", fkSrc.epsSec);
+          metric(stage, "qkd_fk_deviation", fkSrc.deviation);
           // How many of this block, pooled, a key needs: 1 when it carries one.
           metric(stage, "qkd_block_units_for_key",
                  blocksForPositiveKey(...blockCounts([[blockPulses, chan]], fkSrc), fkSrc));
@@ -2232,7 +2239,8 @@ export function runClientPipeline(
         let satBlockNote = "(asymptotic: no finite-key bound is modelled for an entangled source)";
         if (!satERes) {
           const block = satBlock(config, satChan);
-          const fkSrc = finiteKeySourceOf(satChan, Number(config.sat_eps_sec ?? qkdCfg().free_space_eps_sec));
+          const fkSrc = finiteKeySourceOf(satChan, Number(config.sat_eps_sec ?? qkdCfg().free_space_eps_sec), undefined,
+                                          String(config.fk_deviation ?? qkdCfg().finite_key_deviation) as Deviation);
           const [uz, ux] = blockCounts(block.unit, fkSrc);
           const fk = keyLength(scaleCounts(uz, block.copies), scaleCounts(ux, block.copies), fkSrc);
           const fkBits = Number.isFinite(fk.keyBits) && fk.keyBits > 0 ? Math.trunc(fk.keyBits) : 0;
@@ -2246,11 +2254,13 @@ export function runClientPipeline(
           metric(stage, "qkd_finite_key_bits", fkBits);
           metric(stage, "qkd_finite_key_bound", fkSrc.vacuum ? FINITE_KEY_BOUNDS.vacuum : FINITE_KEY_BOUNDS.oneDecoy);
           metric(stage, "qkd_eps_sec", fkSrc.epsSec);
+          metric(stage, "qkd_fk_deviation", fkSrc.deviation);
           metric(stage, "qkd_block_units_for_key", blocksForPositiveKey(uz, ux, fkSrc));
           satKeyBits = res.aborted ? 0 : fkBits;
           const what = block.kind === "pass" ? "one pass"
             : block.kind === "passes" ? `${block.copies} passes pooled` : `${block.copies} s at this range`;
-          satBlockNote = `(finite key over ${what}, ${Number(blockS.toPrecision(4))} s of link time, eps_sec ${fkSrc.epsSec})`;
+          satBlockNote = `(finite key over ${what}, ${Number(blockS.toPrecision(4))} s of link time, eps_sec ${fkSrc.epsSec}, `
+            + `${DEVIATION_LABELS[fkSrc.deviation]})`;
         }
         metric(stage, "secure_key_bits", satKeyBits);
         // ACTUALLY REPORTED NOW. `secretKeyRateNonDecoy` was added in Round 45 with a JSDoc

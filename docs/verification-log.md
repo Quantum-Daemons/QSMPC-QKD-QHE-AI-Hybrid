@@ -3535,3 +3535,25 @@ and the check now compares them with it.
 element it was given when the run began. With the figure in tabs, a switch of view detached that
 element, and every later frame would have been of nothing. The recorder now looks up its element at
 each frame, and pads frames of different sizes, so a run that changed views still encodes.
+
+### Round 82: a test of an inference, and a third reading of one equation
+
+**Context.** Round 79 read the same fraction on two flown passes, 0.55 and 0.56, as the gap being
+the analysis. The owner chose to test it with a Chernoff-type bound.
+
+**A recommendation can be right for one case and wrong for the next.** The first measurement, on the
+satellite, showed Chernoff far tighter, and the owner chose it for both protocols on that evidence.
+Measured on the fibre, it was looser: its advantage depends on a count's share of its basis, which
+the satellite's small decoy and vacuum have and the fibre's counts do not. The question went back
+with the numbers, and the answer was the tighter of the two. A choice made on one case's evidence is
+worth re-asking when the second case disagrees.
+
+**A coincidence is a weak test of a cause.** The same fraction twice looked like one cause. Changing
+the cause it named moved both fractions, by different amounts, and they parted. So half of the gap
+was the statistics, and the rest is not shared.
+
+**An equation read three times found three errors.** Round 79 read Rusca et al.'s appendix and found
+a constant transcribed as 2 to the 21st and an unnamed choice of errors. Reading (A16) again at 300 dpi
+for this round found tau0 on a term the paper prints outside it. That one erred in the unsafe
+direction, and it had matched the paper's own table better than the printed form does. Agreement with
+a published number is not evidence that a formula is the published one.

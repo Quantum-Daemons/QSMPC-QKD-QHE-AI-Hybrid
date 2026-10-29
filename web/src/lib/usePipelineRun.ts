@@ -160,6 +160,8 @@ export const makeDefaultParams = () => ({
   qkd_block_pa_bits: qkdCfg().finite_key_block_pa_bits,
   qkd_block_seconds: qkdCfg().finite_key_block_seconds,
   qkd_eps_sec: qkdCfg().finite_key_eps_sec,
+  // Round 82: the statistics of every finite key, fibre and satellite. See QKDConfig.finite_key_deviation.
+  fk_deviation: qkdCfg().finite_key_deviation,
   qkd_distance_km: qkdCfg().distance_km,
   qkd_eve: qkdCfg().eve_intercept_fraction,
   qkd_misalignment: qkdCfg().misalignment,
