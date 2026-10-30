@@ -108,8 +108,9 @@ _SAT_DEFAULTS = {
     "sat_block_passes": None,
     "sat_block_seconds": None,
     "sat_eps_sec": None,
-    # Round 82: the statistics, shared with the fibre. None -> QKDConfig.finite_key_deviation.
-    "fk_deviation": None,
+    # The satellite's own statistics (the #78 fix): None -> QKDConfig.free_space_finite_key_deviation,
+    # Chernoff, not the fibre's union of two, which a pass's small counts make the looser choice.
+    "sat_fk_deviation": None,
 }
 _DEFAULT_TELEMETRY = (
     "SAT-OK;orbit=LEO;alt=550km;batt=98%;temp=21C;payload=nominal;ts=T+00:42:17"
@@ -252,7 +253,7 @@ def _sat_finite_key_params(ctx: Context, source):
 
     q = get_config().qkd
     return params_for_source(source, eps_sec=float(_cfg_or(ctx, "sat_eps_sec", q.free_space_eps_sec)),
-                             deviation=str(_cfg_or(ctx, "fk_deviation", q.finite_key_deviation)))
+                             deviation=str(_cfg_or(ctx, "sat_fk_deviation", q.free_space_finite_key_deviation)))
 
 
 class SatelliteQKDStage(Stage):

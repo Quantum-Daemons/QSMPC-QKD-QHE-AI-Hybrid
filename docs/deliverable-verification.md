@@ -7096,7 +7096,12 @@ user chose to test that.
   the tighter of the two per count, each at eps/2, kept. That is a union bound, so each concentration
   step still fails with probability at most eps, and the budgets (Lim's 21 terms, Rusca's (A24)) are
   unchanged.
-- **The tighter of the two is the tightest of the three on every block measured.**
+- **The tighter of the two is the tightest of the three on the fibre; on a satellite pass it is not.**
+  CORRECTED by the fix commit (2026-10-30): this line said "on every block measured", and the table below
+  rounds the satellite rows to three places, where Chernoff alone and the union look equal. Unrounded,
+  Chernoff alone gives more key on both satellite blocks: Liao's pass 226,073 bits against 226,056 and
+  the default pass 139,251 against 139,201. On a pass Chernoff already wins nearly every count, so
+  halving eps costs more than choosing per count gains.
 
   | Block | Hoeffding | Chernoff | Tighter (default) |
   |---|---|---|---|
@@ -7106,13 +7111,14 @@ user chose to test that.
   | Khmelev's session, share of the published key | 0.564 | 0.692 | 0.692 |
 
 - **The inference, tested.**
-  - The statistics account for about half of each gap.
+  - The statistics close 45 percent of the gap to Liao's key and 29 percent of the gap to
+    Khmelev's (this said "about half of each gap" until the fix commit; true for Liao only).
   - The two fractions part, 0.75 and 0.69, so what remains is not one shared cause. It is not
     error correction: Khmelev's f_EC of 1.44 would lower this side's key, not raise it.
   - Jinan-1's four passes move from 1.14 to 2.38 times their published keys to 1.35 to 2.62. Those
     keys were computed on 500-kbit blocks, which a whole pass's key exceeds.
-- **A pass and a held range.** The default 800 km pass carries 139,200 bits (91,475 under
-  Hoeffding). Ten seconds held at that range carry 1,657 bits, and a key needs 7 s, where Hoeffding
+- **A pass and a held range.** The default 800 km pass carries 139,200 bits under the union, 139,251
+  under Chernoff, the satellite's default since the fix commit (91,475 under Hoeffding). Ten seconds held at that range carry 1,657 bits, and a key needs 7 s, where Hoeffding
   needed 33.
 
 **A third transcription error in the one-decoy bound, found reading (A16) at 300 dpi.**
@@ -7181,6 +7187,23 @@ client-only build of the same commit produced) and walked in the user's Chrome.*
 **The README's screenshots were taken from the deploy and compared.** The satellite Network tab, the
 one page whose content this round changed, is committed. The rest are as they were: four came out
 byte-identical, and the others differ only in measured timings.
+
+**The fix commit, after the owner's review (2026-10-30).** A fact-check of the deployed pages found three
+faults in this round's own changes, and the owner chose the fix:
+- **A sentence the template garbled.** The Network tab read "by Lim et al. 2014; the tighter of Chernoff
+  and Hoeffding per count's bound": the bound's name and its statistics were joined into one string and
+  used as a noun. They are two values now, named apart.
+- **"The tightest of the three on every block measured"** held on the fibre only (above, corrected in
+  place). On both satellite blocks Chernoff alone gives more key than the union, because a pass's counts
+  are nearly all small and halving eps is then pure cost.
+- **"About half of each gap"** was true for Liao's pass (45 percent) and not for Khmelev's session
+  (29 percent), on the page, in the report and in a test name. The test now asserts each gap's own share.
+- **The satellite's own default, the owner's choice.** `QKDConfig.free_space_finite_key_deviation` =
+  "chernoff", read by the satellite stage in both languages and by a control of its own on the satellite
+  page (`sat_fk_deviation`); the fibre keeps "tighter". The satellite's default pass now carries 139,251
+  bits (139,201 under the union) and Liao's pass 226,073 (226,056). The cross-language test caught the
+  first draft of this: its TypeScript harness called the bound without statistics, which falls back to
+  the fibre's default, so the two languages parted until the harness named the satellite's.
 
 BUSINESS DOC RECONCILED Round 82. The out-of-repo document is brought level with this round. Its content
 is not quoted here, in the checklist, or in any commit - only the fact of the reconciliation, which is

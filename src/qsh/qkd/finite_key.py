@@ -101,7 +101,7 @@ THE VACUUM+WEAK PROTOCOL (Round 79) is the second half of this module: Lim, Curt
 Zbinden, Phys. Rev. A 89, 022307 (2014), arXiv:1311.7129, the analysis Rusca et al. compare against
 and the protocol Micius ran (signal, weak decoy and vacuum). See `VacuumDecoyParams`.
 
-THE STATISTICS, THE TIGHTER OF TWO BY DEFAULT (Round 82, the user's choice). Both papers bound each count's
+THE STATISTICS, A DEFAULT PER LINK (Round 82 and its fix, the user's choices). Both papers bound each count's
 expectation by the Hoeffding deviation of the basis TOTAL, delta(n_B, eps) = sqrt(n_B/2 ln(1/eps)),
 whatever the count: the vacuum's few hundred detections are moved by the same three thousand as the
 signal's eight hundred thousand on Liao's pass. Yin, Zhou, Gu, Xie, Lu and Chen, Sci. Rep. 10, 14312
@@ -122,10 +122,15 @@ NEITHER IS TIGHTER EVERYWHERE. Chernoff's deviation, about sqrt(2 beta x), beats
 sqrt(n beta / 2) only for a count x under a quarter of its basis total n. The satellite's weak decoy
 (6 percent of detections) and vacuum gain; the fibre's 1-decoy signal and decoy, about 70 and 30
 percent, lose, and Chernoff alone moved the fibre's threshold from 5.35e6 pulses to 5.71e6. So the
-default, `deviation="tighter"`, bounds every count both ways at eps/2 each and keeps the tighter: a
-union bound, the failure probability of each use still at most eps, so the budgets are unchanged.
-It is the tightest of the three on every block measured. "chernoff" and "hoeffding" alone remain;
-"hoeffding" is the published form, which Rusca's Table I was computed with and is checked against.
+fibre's default, `deviation="tighter"`, bounds every count both ways at eps/2 each and keeps the
+tighter: a union bound, the failure probability of each use still at most eps, so the budgets are
+unchanged. On the fibre it is the tightest of the three (threshold 3.60e6 pulses). On a satellite pass
+it is NOT: Chernoff already wins nearly every count there, so halving eps costs more than choosing per
+count gains (Liao's pass 226,073 bits under Chernoff against 226,056; the default pass 139,251 against
+139,201). Round 82 said "the tightest of the three on every block measured"; the fix gives the satellite
+its own default, `QKDConfig.free_space_finite_key_deviation` = "chernoff". The class defaults below are
+the fibre's; the satellite's callers name their statistics. "hoeffding" is the published form, which
+Rusca's Table I was computed with and is checked against.
 
 AND A THIRD TRANSCRIPTION ERROR, in (A16), found reading it again for this (Round 82): tau0 multiplies
 the error term only, 2 (tau0 (e^k/p_k)(m_{Z,k} + delta) + delta(n_Z)), as the paper prints it and as
@@ -549,10 +554,11 @@ def optimise_parameters(channel: ChannelParams | None = None,
 #
 # On Liao's 19 December 2016 pass (the model's counts; `tests/test_the_vacuum_decoy_bound_is_lim_2014.py`)
 # it finds 164,183 bits under the published Hoeffding statistics, where the paper reports 300,939, and
-# 226,056 under the default since Round 82. The 1-decoy bound on the same pulses, the vacuum's quarter
+# 226,073 under Chernoff, the satellite's default since the #78 fix (226,056 under the fibre's union of
+# two). The 1-decoy bound on the same pulses, the vacuum's quarter
 # unused, finds 140,400 under Hoeffding - 152,598 before Round 82 corrected its (A16), and NONE
 # (-7,172) before Round 79's two corrections, which is what first suggested the vacuum was needed. It
-# was not needed for a key; it adds 17 percent to it under Hoeffding and 21 under the default.
+# was not needed for a key; it adds 17 percent to it under Hoeffding and 22 under Chernoff.
 #
 # EQUATIONS, by number in arXiv:1311.7129v2, written with Z as the key basis and X as the test basis
 # (Rusca et al.'s naming; Lim et al. key on X), and eps = eps_sec / 21:
