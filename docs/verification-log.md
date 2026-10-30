@@ -3560,6 +3560,12 @@ Chernoff alone was 17 bits ahead on Liao's pass. The fix gave the satellite its 
 cross-language test only checks what both sides are asked: its harness called the bound without
 naming the statistics, so it compared the fibre's default to the satellite's until it was told.
 
+**A walk of the controls finds what a walk of the text cannot.** The fix's deploy passed every
+content check, and a headless pass that pressed every button found five faults the text walks had read
+past: an export that drops columns because its header comes from the first row, a 3D view rebuilt on
+every render, and three disabled-or-enabled states that say nothing visible. Pressing is a different test
+from reading, and each needs its own row.
+
 **An equation read three times found three errors.** Round 79 read Rusca et al.'s appendix and found
 a constant transcribed as 2 to the 21st and an unnamed choice of errors. Reading (A16) again at 300 dpi
 for this round found tau0 on a term the paper prints outside it. That one erred in the unsafe
