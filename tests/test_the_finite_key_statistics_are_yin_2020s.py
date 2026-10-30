@@ -98,18 +98,23 @@ def test_chernoff_wins_for_a_small_share_and_hoeffding_for_a_large() -> None:
     assert _delta(n, eps) == pytest.approx(math.sqrt(2 * math.log(1 / eps) * n / 4), rel=1e-12)
 
 
-def test_the_default_is_the_tighter_of_the_two() -> None:
+def test_each_link_has_its_own_default() -> None:
+    """The fibre's union of two, the satellite's Chernoff (the #78 fix): each the best on its own link,
+    which the next test measures."""
     q = get_config().qkd
     assert q.finite_key_deviation == "tighter" and DEVIATIONS[0] == "tighter"
+    assert q.free_space_finite_key_deviation == "chernoff"
     assert FiniteKeyParams().deviation == VacuumDecoyParams().deviation == "tighter"
     with pytest.raises(ValueError):
         FiniteKeyParams(deviation="gaussian")
 
 
-def test_the_tighter_statistics_is_never_worse_than_either_alone() -> None:
-    """Halving eps costs each bound a little (beta grows by ln 2), so 'never worse' means within that
-    price of the better alone; on the fibre's threshold it is far better than both, since there the
-    signal is best bounded by Hoeffding and the vacuum's errors by Chernoff."""
+def test_the_union_wins_on_the_fibre_and_chernoff_on_a_pass() -> None:
+    """Halving eps costs each bound a little (beta grows by ln 2). On the fibre's threshold the union is
+    far better than both, since there the signal is best bounded by Hoeffding and the vacuum's errors by
+    Chernoff. On Liao's pass Chernoff already wins nearly every count, so the halving is pure cost: the
+    union comes out a few bits BELOW Chernoff alone, which is why the satellite's default is Chernoff
+    (the #78 fix; Round 82 had called the union the tightest on every block)."""
     ch = ChannelParams()
     thresholds = {d: minimum_pulses_for_positive_key(ch, FiniteKeyParams(deviation=d)) for d in DEVIATIONS}
     assert thresholds["tighter"] < 0.8 * min(thresholds["chernoff"], thresholds["hoeffding"]), thresholds
@@ -129,7 +134,7 @@ def test_the_tighter_statistics_is_never_worse_than_either_alone() -> None:
 
     seg = _liao_pass(1000)
     liao = {d: finite_key_over(seg, VacuumDecoyParams(deviation=d)).key_bits for d in DEVIATIONS}
-    assert liao["tighter"] >= 0.995 * max(liao["chernoff"], liao["hoeffding"]), liao
+    assert liao["chernoff"] > liao["tighter"] >= 0.995 * liao["chernoff"], liao
     assert liao["chernoff"] > 1.3 * liao["hoeffding"], liao
 
 

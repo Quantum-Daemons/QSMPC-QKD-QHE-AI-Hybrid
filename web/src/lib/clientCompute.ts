@@ -2239,8 +2239,9 @@ export function runClientPipeline(
         let satBlockNote = "(asymptotic: no finite-key bound is modelled for an entangled source)";
         if (!satERes) {
           const block = satBlock(config, satChan);
+          // The satellite's own statistics (the #78 fix): Chernoff by default, not the fibre's union of two.
           const fkSrc = finiteKeySourceOf(satChan, Number(config.sat_eps_sec ?? qkdCfg().free_space_eps_sec), undefined,
-                                          String(config.fk_deviation ?? qkdCfg().finite_key_deviation) as Deviation);
+                                          String(config.sat_fk_deviation ?? qkdCfg().free_space_finite_key_deviation) as Deviation);
           const [uz, ux] = blockCounts(block.unit, fkSrc);
           const fk = keyLength(scaleCounts(uz, block.copies), scaleCounts(ux, block.copies), fkSrc);
           const fkBits = Number.isFinite(fk.keyBits) && fk.keyBits > 0 ? Math.trunc(fk.keyBits) : 0;

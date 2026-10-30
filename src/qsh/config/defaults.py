@@ -198,16 +198,21 @@ class QKDConfig:
     finite_key_block: str = "pa_bits"
     finite_key_block_seconds: float = 1.0
     finite_key_block_pa_bits: float = 1e7
-    # THE STATISTICS OF EVERY FINITE KEY, fibre and satellite (Round 82, the user's choice):
-    # "tighter", each count bounded both by Yin et al. 2020's variant of the Chernoff bound (Sci. Rep.
-    # 10, 14312, Eqs. (9)-(10)) and by the Hoeffding deviation on the basis total that Lim et al. 2014
-    # and Rusca et al. 2018 published, at eps/2 each, the tighter kept (a union bound); or either
-    # alone, "chernoff" or "hoeffding". Chernoff is far tighter for the small counts - the satellite's
-    # decoy and vacuum, which decide its single-photon bound: on Liao et al. 2017's pass the key goes
-    # from 0.55 to 0.75 of the published 300,939 bits - and looser for counts over a quarter of their
-    # basis, as the fibre's are; the tighter of the two is the tightest of the three on every block
-    # measured. Hoeffding still checks Rusca's Table I, which was computed with it.
+    # THE STATISTICS OF THE FIBRE'S FINITE KEY (Round 82, the user's choice): "tighter", each count
+    # bounded both by Yin et al. 2020's variant of the Chernoff bound (Sci. Rep. 10, 14312,
+    # Eqs. (9)-(10)) and by the Hoeffding deviation on the basis total that Lim et al. 2014 and Rusca
+    # et al. 2018 published, at eps/2 each, the tighter kept (a union bound); or either alone,
+    # "chernoff" or "hoeffding". Chernoff is far tighter for the small counts and looser for counts over
+    # a quarter of their basis, as the fibre's 1-decoy signal and decoy are, so on the fibre the union
+    # wins: threshold 3.60e6 pulses against 5.35e6 (Hoeffding) and 5.71e6 (Chernoff). Hoeffding still
+    # checks Rusca's Table I, which was computed with it.
     finite_key_deviation: str = "tighter"
+    # THE SATELLITE'S (the #78 fix, the user's choice, 2026-10-30). On a pass Chernoff already wins
+    # nearly every count, so splitting eps between the two bounds costs more than choosing per count
+    # gains: Liao et al. 2017's pass carries 226,073 bits under Chernoff against 226,056 under the
+    # union, and the default pass 139,251 against 139,201. Round 82's register called the union "the
+    # tightest of the three on every block measured", which held on the fibre only.
+    free_space_finite_key_deviation: str = "chernoff"
     # --- free-space (satellite downlink) channel ---
     #
     # These existed only as TypeScript literals in quantumSim.ts's FREE_SPACE, which every satellite

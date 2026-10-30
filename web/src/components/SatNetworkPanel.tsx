@@ -53,7 +53,7 @@ export default function SatNetworkPanel({ params }: { params: Record<string, any
       </p>
       <PassSection link={link} liao={liao} minEl={minEl}
         epsSec={Number(params.sat_eps_sec ?? qkdCfg().free_space_eps_sec)}
-        deviation={String(params.fk_deviation ?? qkdCfg().finite_key_deviation) as Deviation} />
+        deviation={String(params.sat_fk_deviation ?? qkdCfg().free_space_finite_key_deviation) as Deviation} />
       <NightsSection link={link} />
       <RelaySection link={link} defaultElevation={liao.maxElevationDeg} minEl={minEl} />
       <ConstellationSection orbitKm={orbitKm} minEl={minEl} />
@@ -80,7 +80,11 @@ function PassSection({ link, liao, minEl, epsSec, deviation }: { link: ReturnTyp
     return keyLength(...blockCounts(liao.segments, src), src).keyBits;
   }, [link, liao, deviation]);
   // The bound and its statistics (Round 82), so the key says which analysis it is.
-  const bound = `${fkSrc.vacuum ? "Lim et al. 2014" : "Rusca et al. 2018"}; ${DEVIATION_LABELS[fkSrc.deviation]}`;
+  // Its two halves are named apart because one sentence below needs the bound as a noun: joined, they read
+  // "by Lim et al. 2014; the tighter of Chernoff and Hoeffding per count's bound" (found live, Round 82 walk).
+  const boundName = fkSrc.vacuum ? "Lim et al. 2014" : "Rusca et al. 2018";
+  const statsLabel = DEVIATION_LABELS[fkSrc.deviation];
+  const bound = `${boundName}; ${statsLabel}`;
   const rows = useMemo(() => pass.samples.filter((_, i) => i % 4 === 0).map((s) => ({
     t: Math.round(s.t), elevation: Math.round(s.elevationDeg * 10) / 10, rate: Math.round(s.keyRate),
   })), [pass]);
@@ -172,12 +176,13 @@ function PassSection({ link, liao, minEl, epsSec, deviation }: { link: ReturnTyp
           The first secret-key row compares unlike things on purpose, and says so: the model&apos;s asymptotic bound, per pulse
           sent, against Liao&apos;s finite-key result with intensity fluctuations, which must be smaller. The second
           (Round 79) is like for like in kind: the composable finite key of the model&apos;s counts over the same window,
-          by {bound}&apos;s bound at Liao&apos;s failure probability of 1e-9. Liao et al. do not name their analysis; they
+          by {boundName}&apos;s bound with {statsLabel}, at Liao&apos;s failure probability of 1e-9. Liao et al. do not name their analysis; they
           allow for intensity fluctuations and correct errors with a Hamming code, neither modelled here, so the two
-          rows differ by the analysis as well as the model. The statistics account for about half of it (Round 82): with
+          rows differ by the analysis as well as the model. The statistics close part of it (Round 82): with
           Hoeffding&apos;s deviation on the basis total, as Lim et al. published it, this row reads 0.55 of Liao&apos;s key, and
           0.56 of Khmelev et al.&apos;s Micius-Zvenigorod session, a key computed with Chernoff bounds; with each count&apos;s own
-          Chernoff-type bound (Yin et al. 2020), or the tighter of the two, the default, 0.75 and 0.69. Vergoossen et al. (arXiv:1903.07845, Table 3) modelled the same pass at 521,513 secret bits
+          Chernoff-type bound (Yin et al. 2020), this page&apos;s default, 0.75 and 0.69: 45 percent of the gap to Liao&apos;s key
+          and 29 percent of the gap to Khmelev&apos;s, so the statistics are not most of either. Vergoossen et al. (arXiv:1903.07845, Table 3) modelled the same pass at 521,513 secret bits
           (asymptotic) against 3,926,729 detections; their sifted count, 1,963,364, is exactly half their detections,
           so it counts every state where Liao counted signals.
         </p>
