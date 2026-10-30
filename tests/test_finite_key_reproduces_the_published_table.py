@@ -24,11 +24,22 @@ With the attenuation applied once:
 
   - UNDER THE PAPER'S OWN DEAD-TIME CONVENTION - their Eq. (B3) sums the Z-basis detections, where
     `channel.dead_time_factor` charges each detector its own clicks - the 26 dB row is reproduced to
-    a few parts in a thousand. That also settles Round 79's reading of (A16): with the signal's
-    errors bounding the vacuum the same row reads 13 percent low.
-  - UNDER THIS PROJECT'S CONVENTION the 26 dB and 46 dB rows sit within 5 percent at both block sizes
-    (the 26 dB one 3 percent above: at the paper's optimised basis bias, near 0.9, the Z-basis sum
-    charges more dead time than per-detector clicks do), and the 56 dB row within 25 percent below.
+    within 2 percent below. That also settles Round 79's reading of (A16): with the signal's errors
+    bounding the vacuum the same row reads 13 percent low.
+  - UNDER THIS PROJECT'S CONVENTION the 26 dB row sits within 5 percent at both block sizes (3
+    percent above: at the paper's optimised basis bias, near 0.9, the Z-basis sum charges more dead
+    time than per-detector clicks do), the 46 dB row within 7 percent below, and the 56 dB row within
+    25 percent below.
+
+ROUND 82 CORRECTED (A16), and the reproduction moved by it. The paper prints tau0 on the vacuum's
+error term only, 2 (tau0 (e^k/p_k)(m_{Z,k} + delta) + delta(n_Z)), which its (A13)-(A15) derive;
+this implementation had tau0 on delta(n_Z) too, a smaller vacuum bound and so a LARGER key. With it
+the 26 dB row read to a few parts in a thousand and the 46 dB row within 5 percent; as printed they
+read 1.5 and 5.5 percent below. The table may have been computed the way this file had it. The bound
+follows the printed form, the safe one, and the bands say what it gives.
+
+THE STATISTICS ARE HOEFFDING here (Round 82): Table I was computed with the published deviation, so
+the bound is held to it under the same, whatever `QKDConfig.finite_key_deviation` defaults to.
   - The TIME to fill a block, Rusca et al.'s Eq. (B7), within 10 percent of the table's 14 s and
     20 min.
   - The 64 dB row is not asserted: there the dark counts set the key, and this model's background
@@ -89,7 +100,7 @@ def _best(att_db: float, n_z: float, *, papers_dead_time: bool = False) -> tuple
     def run(v):
         mu1, ratio, p1, p_z = v
         ch = _paper_channel(att_db, dist, 100e-9 * 2 * p_z * p_z if papers_dead_time else None)
-        p = FiniteKeyParams(mu_signal=mu1, mu_decoy=mu1 * ratio, p_signal=p1, p_z=p_z)
+        p = FiniteKeyParams(mu_signal=mu1, mu_decoy=mu1 * ratio, p_signal=p1, p_z=p_z, deviation="hoeffding")
         pulses = n_z / (finite_key_length(10 ** 9, ch, p).n_z / 1e9)
         k = finite_key_length(pulses, ch, p).key_bits
         return (k / pulses * ch.source_rate_hz if math.isfinite(k) else -1e30), pulses / ch.source_rate_hz
@@ -101,11 +112,12 @@ def _best(att_db: float, n_z: float, *, papers_dead_time: bool = False) -> tuple
 
 
 def test_the_26_db_row_under_the_papers_dead_time() -> None:
+    """Within 2 percent below since Round 82 put tau0 where (A16) prints it; see the docstring."""
     skr, _ = _best(26, 1e7, papers_dead_time=True)
-    assert skr / 243_000.0 == pytest.approx(1.0, abs=0.01), f"{skr:,.0f} Hz against 243,000"
+    assert 0.98 <= skr / 243_000.0 <= 1.0, f"{skr:,.0f} Hz against 243,000"
 
 
-@pytest.mark.parametrize("att,band", [(26, (0.95, 1.05)), (46, (0.95, 1.05)), (56, (0.75, 1.0))])
+@pytest.mark.parametrize("att,band", [(26, (0.95, 1.05)), (46, (0.93, 1.05)), (56, (0.75, 1.0))])
 @pytest.mark.parametrize("n_z", (1e7, 1e9))
 def test_table_i_under_this_projects_dead_time(att, band, n_z) -> None:
     published = PAPER_TABLE_I[att][1][n_z][0]
@@ -145,7 +157,9 @@ def test_the_shipped_block_carries_no_composable_key() -> None:
     positive (about 440 counts since Round 79's two corrections, 225 before) and the key is still
     negative (about -607 bits): the block carries no composable key either way, now because the
     finite-size terms outweigh it. The threshold moved from 1.41e7 pulses to 5.88e6 with the Rusca
-    set and to 4.78e6 with Round 79's corrections, and the shipped 2e7 clears it 4.2x.
+    set and to 4.78e6 with Round 79's corrections; Round 82's correction to (A16) put it at 5.35e6
+    under Hoeffding, and its default statistics at 3.60e6, which the shipped 2e7 clears 5.6x. The 2e6
+    block still carries no key under either.
     """
     from qsh.config import get_config
 

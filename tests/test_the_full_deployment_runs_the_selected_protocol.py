@@ -64,7 +64,11 @@ def test_e91_runs_on_the_fibre_stage_when_selected() -> None:
 def test_bb84_stays_the_default_and_unchanged() -> None:
     m = _telecom({})
     assert m["qkd_decoy_states"] == "one decoy" and "chsh_s" not in m
-    assert m["secure_key_bits"] == m["qkd_finite_key_bits"] == 5_184_652
+    # 5,184,652 until Round 82: the default statistics became the tighter of Chernoff and Hoeffding
+    # per count (5,214,327), and (A16) took tau0 off delta(n_Z), which alone gives 5,174,318.
+    assert m["secure_key_bits"] == m["qkd_finite_key_bits"] == 5_214_327
+    assert m["qkd_fk_deviation"] == "tighter"
+    assert _telecom({"fk_deviation": "hoeffding"})["secure_key_bits"] == 5_174_318
     assert m["qkd_block"] == get_config().qkd.finite_key_block
 
 

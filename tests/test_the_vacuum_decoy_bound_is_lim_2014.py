@@ -27,6 +27,12 @@ WHAT IS ASSERTED
 - The algebra: a block split into segments on one channel is the same block; the phase-error
   constant is 21 squared, as both papers print it; the source defaults are the config's Micius
   source; the intensity conditions Lim et al. state are enforced.
+
+THE TABLE I COMPARISONS RUN UNDER HOEFFDING (Round 82). Both protocols' rows were computed with the
+published Hoeffding statistics, so the bound is held to them under the same; the fibre pages default to
+the tighter of Chernoff and Hoeffding per count (`QKDConfig.finite_key_deviation`) and the satellite to
+Chernoff (`QKDConfig.free_space_finite_key_deviation`, the #78 fix), and Liao's pass is checked under all
+three.
 """
 
 from __future__ import annotations
@@ -69,7 +75,7 @@ def _two_decoy_hz(v, ch: ChannelParams, n_z: float) -> float:
     mu1, ratio, p1, p2_share, p_z = v
     try:
         p = VacuumDecoyParams(mu_signal=mu1, mu_decoy=mu1 * ratio, mu_vacuum=1e-6, p_signal=p1,
-                              p_decoy=(1 - p1) * p2_share, p_z=p_z)
+                              p_decoy=(1 - p1) * p2_share, p_z=p_z, deviation="hoeffding")
     except ValueError:
         return -1e30
     pulses = n_z / expected_counts(1.0, ch, p)[0].detections     # Rusca et al. Eq. (B7)
@@ -79,7 +85,7 @@ def _two_decoy_hz(v, ch: ChannelParams, n_z: float) -> float:
 
 def _one_decoy_hz(v, ch: ChannelParams, n_z: float) -> float:
     mu1, ratio, p1, p_z = v
-    p = FiniteKeyParams(mu_signal=mu1, mu_decoy=mu1 * ratio, p_signal=p1, p_z=p_z)
+    p = FiniteKeyParams(mu_signal=mu1, mu_decoy=mu1 * ratio, p_signal=p1, p_z=p_z, deviation="hoeffding")
     pulses = n_z / (finite_key_length(10 ** 9, ch, p).n_z / 1e9)
     r = finite_key_length(pulses, ch, p)
     return r.key_bits / pulses * ch.source_rate_hz if math.isfinite(r.key_bits) else -1e30
@@ -152,22 +158,28 @@ def _liao_pass(n: int = 4000) -> list[tuple[float, ChannelParams]]:
     return out
 
 
-def test_liaos_pass_carries_a_key_below_the_papers() -> None:
+@pytest.mark.parametrize("deviation,share,vacuum_gain",
+                         [("hoeffding", 0.546, 1.169), ("chernoff", 0.751, 1.222), ("tighter", 0.751, 1.207)])
+def test_liaos_pass_carries_a_key_below_the_papers(deviation, share, vacuum_gain) -> None:
+    """Under the published statistics and under the default (Round 82). The vacuum's gain over the
+    1-decoy bound on the same pulses read 1.076 until Round 82's correction to (A16), which lowered
+    the 1-decoy bound."""
     segments = _liao_pass()
-    r = finite_key_over(segments)
+    r = finite_key_over(segments, VacuumDecoyParams(deviation=deviation))
     assert 0.4 < r.key_bits / LIAO_FINAL_KEY < 1.0, (
         f"{r.key_bits:,.0f} bits against Liao's {LIAO_FINAL_KEY:,}. Liao et al. do not name their "
         "analysis; they state the failure probability (1e-9), an intensity fluctuation (<5%) and a "
         "Hamming code, none of which is fitted here.")
+    assert r.key_bits / LIAO_FINAL_KEY == pytest.approx(share, abs=0.01)
     assert r.qber == pytest.approx(0.0114, abs=0.002)         # Liao: "an average of 1.1%"
     # The 1-decoy bound on the same pulses: the signal and decoy shares only, the vacuum's unused.
     q = get_config().qkd
     used = q.free_space_p_signal + q.free_space_p_decoy
     one = finite_key_over([(n * used, ch) for n, ch in segments],
                           FiniteKeyParams(mu_signal=q.free_space_mu_signal, mu_decoy=q.free_space_mu_decoy,
-                                          p_signal=q.free_space_p_signal / used, p_z=0.5))
+                                          p_signal=q.free_space_p_signal / used, p_z=0.5, deviation=deviation))
     assert 0.0 < one.key_bits < r.key_bits, (one.key_bits, r.key_bits)
-    assert r.key_bits / one.key_bits == pytest.approx(1.076, abs=0.02)
+    assert r.key_bits / one.key_bits == pytest.approx(vacuum_gain, abs=0.02)
 
 
 def test_a_block_split_on_one_channel_is_the_same_block() -> None:
