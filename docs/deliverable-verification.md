@@ -511,7 +511,8 @@ exactly what the README already does, and the rule looked current because nothin
 **Current status, so it is not reconstructed from the history below.** WS4(c) is **MET for Clifford
 circuits**: a random Clifford word over {H, S, CNOT} is evaluated on the QOTP-encrypted state, the
 client tracks the Pauli frame through the same word, and the plaintext result is recovered at fidelity
-1.0, verified to depth 30 across seeds - `qhe/qcnn.py::qotp_clifford_random_circuit_demo`, with the frame
+1.0, verified at depths 8, 12, 20 and 30, one seed each (`tests/test_qhe_fhe.py`; this said "to depth
+30 across seeds" until 2026-10-30) - `qhe/qcnn.py::qotp_clifford_random_circuit_demo`, with the frame
 rules in `qhe/qotp.py::update_key_h/s/cnot`. WS4(f) remains **NOT met**, and is a decision rather than a
 backlog item, because it is in tension with the mechanism instead of merely unimplemented - see the
 bullet in "What this project cannot verify". The Round 28 text is kept in full below, because it is the
@@ -1081,9 +1082,9 @@ above, with the Round 28 text kept as history.
   agency self-assessment, a central-bank sector index, two vendor indices, a maturity model, and Mosca's
   x + y > z inequality - and every one of them scores an **organisation's migration programme**, where
   this project's surface is one run of a cryptographic pipeline. Reopening condition recorded there.
-- **Julia: DECLINED**, in [`README.md`](../README.md). No in-browser path exists and no numerical gap
-  exists for it to close. Reopening condition recorded there, and it requires both halves so it can
-  actually fire.
+- **Julia: DECLINED**, in [`docs/development.md`](development.md) since Round 80 (in the README before
+  that; pointer corrected 2026-10-30). No in-browser path exists and no numerical gap exists for it
+  to close. Reopening condition recorded there, and it requires both halves so it can actually fire.
 
 ## Rounds 34-36, and the three rounds this register was not written in
 
@@ -3393,7 +3394,10 @@ backlog gate was written to catch and did not:
   *Reopens if* the QOT path ever runs against real optics rather than a simulation, because then the
   bench layout stops being someone else's picture and starts describing this project's own apparatus;
   or if `TwoPartyDiagram.tsx` stops filling from live metrics, since the whole argument for declining
-  is that the diagram which exists is the measured one.
+  is that the diagram which exists is the measured one. [2026-10-30: `TwoPartyDiagram.tsx` was
+  replaced in Round 80 by the use-case canvas (`web/src/components/UseCaseCanvas.tsx`, labels in
+  `web/src/lib/useCaseFlows.ts`), so the second condition names a file that no longer exists and
+  cannot fire as written. Which diagram it should watch is the owner's to restate.]
 - *GitHub / Google Drive MCP interop.* Deferred with the reason "needs OAuth creds and outward-facing
   accounts that cannot be provisioned in an automated build", which is still true. **Declined**:
   filesystem MCP interop already demonstrates that the quantum-safe channel carries a real third-party
@@ -4106,7 +4110,7 @@ session. Nothing was changed on the strength of a secondary write-up.
 | CNSA 2.0 eligibility | "position bids for CNSA 2.0 / FIPS-aligned procurement"; a sidebar badge; "be compliant before bids" | the defaults are not CNSA 2.0 parameter sets (ML-KEM-1024 and ML-DSA-87 are selectable); nothing here is FIPS 140-3 or NIAP validated | FAQ Ver. 2.2 |
 | Cloudflare / Google 2029 | "Cloudflare commits"; Google's the "weaker" commitment | both are targets; neither post ranks itself against the other | Cloudflare blog 2026-04-07; Google blog 2026-03-25 |
 | EO 14412 | high-value assets only; "a FAR rule putting contractors on the 2030 date" | high-value assets AND high impact systems (section 4(b)); section 6(c) directs a PROPOSED FAR rule within 180 days, none in the Federal Register as of 2026-10-23 | 91 FR 38483 |
-| NIST IR 8547 (report) | "deprecates RSA-2048 and ECC-256 by 2030" | initial public draft; 112-bit strength deprecated after 2030, P-256 only disallowed after 2035 | NIST IR 8547 ipd, Table 2 |
+| NIST IR 8547 (report) | "deprecates RSA-2048 and ECC-256 by 2030" | initial public draft; 112-bit strength deprecated after 2030, P-256 only disallowed after 2035. [2026-10-30: superseded. IR 8547 final (October 2026) deprecates all quantum-vulnerable public-key algorithms, P-256 included, after 2030; Round 83.] | NIST IR 8547 ipd, Table 2 |
 | FIPS 140-2, M-26-15 | future tense | past: certificates historical since 2026-09-21; agency plans were due about 2026-10-22 | CMVP; M-26-15 |
 | QCNN simulability citation | arXiv preprint | PRX Quantum 7, 020304 (2026) | arXiv journal reference |
 | E91 decoy-state row (found on the deployed branch) | an E91 run showed "Decoy-state necessity" and its warning that "the decoy states are what make this link work at all" - and the gate written earlier this round ASSERTED four QKD rows for both protocols, so it codified the defect | BB84 only; the E91 test now checks the whole table, not three selected rows | Ma, Fung and Lo, Phys. Rev. A 76, 012307 (2007): an entangled source needs no decoy states |
@@ -7099,9 +7103,10 @@ user chose to test that.
 - **The tighter of the two is the tightest of the three on the fibre; on a satellite pass it is not.**
   CORRECTED by the fix commit (2026-10-30): this line said "on every block measured", and the table below
   rounds the satellite rows to three places, where Chernoff alone and the union look equal. Unrounded,
-  Chernoff alone gives more key on both satellite blocks: Liao's pass 226,073 bits against 226,056 and
-  the default pass 139,251 against 139,201. On a pass Chernoff already wins nearly every count, so
-  halving eps costs more than choosing per count gains.
+  Chernoff alone gives more key on both satellite blocks: Liao's pass 226,072 bits against 226,056 and
+  the default pass 139,251 against 139,200 (CORRECTED in Round 83: this read 226,073 and 139,201, one bit
+  high each; both languages compute 226,072.49 and 139,200, and the page shows those). On a pass
+  Chernoff already wins nearly every count, so halving eps costs more than choosing per count gains.
 
   | Block | Hoeffding | Chernoff | Tighter (default) |
   |---|---|---|---|
@@ -7201,9 +7206,10 @@ faults in this round's own changes, and the owner chose the fix:
 - **The satellite's own default, the owner's choice.** `QKDConfig.free_space_finite_key_deviation` =
   "chernoff", read by the satellite stage in both languages and by a control of its own on the satellite
   page (`sat_fk_deviation`); the fibre keeps "tighter". The satellite's default pass now carries 139,251
-  bits (139,201 under the union) and Liao's pass 226,073 (226,056). The cross-language test caught the
-  first draft of this: its TypeScript harness called the bound without statistics, which falls back to
-  the fibre's default, so the two languages parted until the harness named the satellite's.
+  bits (139,200 under the union) and Liao's pass 226,072 (226,056; CORRECTED in Round 83 from 139,201 and
+  226,073). The cross-language test caught the first draft of this: its TypeScript harness called the
+  bound without statistics, which falls back to the fibre's default, so the two languages parted until
+  the harness named the satellite's.
 - **Walked on the deploy** (6098112, bundle `index-CxvMKHsC.js`, CI green on both runs after one rerun of a
   GitHub-side failure to resolve `actions/checkout@v4`, which ran no test). Satellite: its own control,
   `sat_fk_deviation`, defaults to Chernoff and says so; a run completes 6 of 6 stages with 139,251 secure
@@ -7220,3 +7226,255 @@ faults in this round's own changes, and the owner chose the fix:
 BUSINESS DOC RECONCILED Round 82. The out-of-repo document is brought level with this round. Its content
 is not quoted here, in the checklist, or in any commit - only the fact of the reconciliation, which is
 what gate 16 reads.
+
+## Round 83 - overclaims, licences and IR 8547 final (2026-10-30 to 2026-10-31)
+
+**Status.** Drafted in a scratch copy on 2026-10-30 and landed on 2026-10-31 on the branch
+`round83-overclaims`, cut from `main` at 10409fd, where PR #78's statistics fix and PR #79's
+confidentiality guards had already merged. The draft was reconciled with both before it landed. The
+deploy, the walk and the merge are recorded here when they happen.
+
+**Why this round exists.** The audits of 2026-10-30 (five page fact-checks, a review of private
+inference against current research and the shipped licences, a QCNN review, a documents audit and a
+re-check of the 2026-10-06 items) found public text that claims more than the code does. This round
+changes words only: labels, docstrings, comments and documented facts. Where a fix needs a change of
+behaviour, the words now say what the code does today and the change is listed below as deferred.
+
+**The history was rewritten on 2026-10-29.**
+- Paths were removed from the whole history, and author and committer identities were normalised.
+- The old commits stay reachable through GitHub's pull refs, which a history rewrite does not
+  change.
+- 84 own-repository commit ids cited in this register and in `docs/verification-log.md` no longer
+  resolve on `main`. They are left as written; each maps to its rewritten commit through the
+  rewrite's commit map, which is kept outside the repository. Hugging Face revisions and upstream
+  pins are not repository commits and are unaffected.
+
+**The user's decisions of 2026-10-30.**
+- **Finite-key statistics.** Chernoff alone on the satellite, and the tighter of the two on the
+  fibre, as a fix commit on PR #78. That is a change of behaviour, outside this round's edits. It
+  rests on the correction to Round 82 below: on the satellite blocks the union bound loses to
+  Chernoff alone. Done: the fix commit (6098112) merged with PR #78 on 2026-10-30.
+- **The companion site.** Its URL is dropped; the site is named, not linked. Done in PR #79.
+- **NIST IR 8547.** Brought to its final text in this round.
+- **QCNN.** Option 1 plus option 2T, and the half-angle encoding results, are deferred to the
+  defects round. Option 1 describes the binary circuits as tree-tensor-network classifiers with
+  QCNN-style shared filters and pooling. Option 2T rebuilds the telecom circuits on Hur et al.'s
+  SU(4) block over overlapping bonds, at both widths, and republishes both artefacts. This round
+  states only the facts below, which hold today.
+- **SMAP/MSL.** Handled in this round's licences part. No source states the registry's label "US
+  Government work (17 U.S.C. 105)": the upstream LICENSE claims Caltech copyright, and JPL is
+  managed by Caltech.
+
+**The user's decisions of 2026-10-31.** Republish every Hugging Face artefact this round's wording
+reaches, with the four evaluation samples whose generator wording changed and will not change
+again; Telemanom's sample waits for Round 84, which changes the sentence it would carry. On
+5G-NIDD the republish also carries the corrected `export_report.json` (`opset` null rather than 0,
+fixed in the repository two rounds ago and never republished).
+
+**Corrected, by theme, with the evidence.**
+
+- **Standards.** NIST IR 8547 is final: October 2026, announced 2026-10-27, doi:10.6028/NIST.IR.8547
+  (Moody, Perlner, Regenscheid, Robinson and Cooper). Read in the final PDF on 2026-10-30:
+  - Tables 2 and 4 mark every quantum-vulnerable signature and key-establishment scheme (ECDSA and
+    RSA at 112 bits or more, EdDSA at 128 or more; finite-field and elliptic-curve DH and MQV, and
+    RSA, at 112 or more) "Deprecated after 2030" and "Disallowed after 2035", so P-256 and RSA-3072
+    are deprecated after 2030 as well;
+  - it replaces SP 800-57 Part 1's projected disallowance of 112-bit schemes on 2031-01-01;
+  - its section 4 leaves the earlier EO 14412 and OMB M-26-15 deadlines for high value assets and
+    high impact systems in place.
+
+  Carried by the report's problem statement and its reference, by the references (a new standards
+  entry, the EO 14412 entry, and superseded notes on three dated entries) and by this register's
+  Round 58 row. Also re-read: the CNSA 2.0 FAQ Ver. 2.2 is the same PDF, byte for byte, at both
+  addresses in use, and NSA's sentence that it "does not support the usage of QKD or QC" is on its
+  QKD and QC page (archived copies, read 2026-10-30; nsa.gov refuses scripts).
+- **Keys, and "information-theoretic".** Nothing in this project is information-theoretically secure
+  as run.
+  - In the browser no QKD bit reaches any key: the session key comes from the PQC handshake alone.
+  - The MCP "QKD-domain" input is a fixed 32-byte constant, in the browser and in the full
+    deployment's API.
+  - The Toeplitz+QLHL combiner's seed is SHAKE-256 of its own inputs (`src/qsh/pqc/transport.py`),
+    where Giestinhas and Spiller (arXiv:2603.26907) need a seed uncorrelated with the input.
+  - Only the full deployment's own QKD path folds 256 or more QKD bits into its key, by HKDF-SHA256.
+- **The quantum channel is simulated, said where the report did not.** Its satellite subsection now
+  opens on a simulated downlink and ends "figures of the channel model, not of a link". Its table of
+  what is real and what is simulated gains E91/CHSH, the satellite downlink, the QRNG source and the
+  QOTP and QCNN circuits, and QSDC moves from "computed" to "simulated". The QRNG's "quantum
+  measurement" is a Born-rule draw from a seeded pseudo-random generator in both tiers, unless the
+  full deployment opts into its online hardware source.
+- **Privacy claims that do not hold as implemented.**
+  - PSI: an HMAC of both lists under the one session key both banks hold. Over a small identifier
+    space either bank can hash every candidate and read the other's list, the naive-hashing failure
+    of Pinkas, Schneider and Zohner (USENIX Security 2014, section 1.1). What holds: no third party
+    sees either list, and the channel is protected by the PQC session. A production PSI would use an
+    OPRF-based protocol.
+  - Federated masks: in the browser every pair's mask is an HKDF output of the one session key,
+    which the aggregator holds; in Python the default pair keys are public constants. The masks
+    cancel exactly and hide nothing from a holder of the session key, where Bonawitz et al.
+    (arXiv:1611.04482) derive each pair's mask from a key agreement between that pair.
+  - Medical CKKS: each layer is decrypted in the client, ReLU and pooling run in plaintext, and the
+    CNN's argmax is taken in the clear; the garbled-circuit argmax runs on the WDBC logistic
+    regression.
+  - Python secret inference: the bias plus mask is a scalar that TenSEAL broadcasts to every CKKS
+    slot, so slot differences expose each product and the client recovers the weight row in one
+    query. Confirmed locally on 2026-10-30; `tests/test_mpc.py` reads slot 0 only. Until the fix,
+    the text says the masking protects slot 0 only and the conversion is not model-private.
+  - Genomics: the CKKS step is a sign test on 8 of the 313 PGS000004 variants (weights split into
+    minus and plus half, bias 0). PGS000004's method is hard-thresholding stepwise forward
+    regression at p below 1e-5, not genome-wide significance.
+  - Satellite: no homomorphic or MPC stage runs on the page; its anomaly score is a plaintext dot
+    product over a telemetry window.
+- **Models.**
+  - The published `telecom_ids.qml` is a 200-tree RandomForest in ONNX. The quantum-kernel SVC
+    (0.832) and the QNN (0.467) are not run by the page, and the SVC's fidelity kernel equals the
+    classical product kernel $`\prod_i \cos^2((x_i - x'_i)/2)`$, to 2.2e-16 on 200 random pairs.
+  - The trained QCNNs are trees of two-qubit blocks on disjoint pairs: a chain of 2x2 density-matrix
+    maps reproduces all six shipped artefacts to 1.6e-6. Bermejo et al. (PRX Quantum 7, 020304,
+    2026) apply through Sec. IV.B, classical data in a product angle embedding, which the published
+    PDF shows fully classically simulable at 8 qubits; the references had cited the
+    random-initialisation result of Sec. III.A instead, as the reason logistic regression wins. That
+    is measured, not predicted: logistic regression beats every QCNN on the same split (paired
+    McNemar p = 0.012 on finance, 0.031 on medical, 3.7e-57 on telecom; QCNN review, 2026-10-30).
+  - Nothing on the QCNN path is encrypted, so no "QHE" label belongs on it, and genomics and
+    satellite run only the untrained QOTP and Clifford+T comparison circuit, which is not a QCNN.
+- **Numbers and wording.**
+  - "Exactly": the OPS-SAT student's and teacher's AUC-PR are 0.968055 and 0.968107, equal to four
+    decimal places.
+  - The encrypted students have 33 to 3,226 parameters; 20 was the retired linear OPS-SAT student.
+  - "Held-out": finance's and medical's 400 plotted rows are the demo model's own fitting rows;
+    telecom's "600 held-out (300/class)" is 600 of 2,400 rows, about 75 per class; "3200 held-out"
+    is the whole corpus.
+  - The 1-10 s "interactive window" has no source, and the code tests only that a run takes at most
+    10 s; a 0.13 s run is below the window, not inside it.
+  - Satellite event-wise F0.5 is 0 since the Round 71 retrain (tp 0, fp 2, fn 3); 0.714 and 0.455
+    were the two leaky runs before it.
+  - The free-space QSDC threshold at 800 km is about 6.5e-5, with g = 532.66 from 27.26 dB: the
+    channel's 32.21 dB less the station's 7.96 dB of optics, plus the detector's 3.01 dB, recomputed
+    in `channel.py`. The 37.0 dB, g about 5,000 and 5.5e-6 the references still carried were Round
+    75's.
+  - The GFP paper's "more than 30%" and "up to 4%" are F1 points in its Table 5, not relative
+    shares: on HI-Small, multi-hop patterns add 1.3 to 5.8 points.
+  - HEonGPU is a build-gated reference adapter with no Python API and no measured run here; CROSS is
+    not in the repository.
+  - Art. 50: Regulation 2026/1744 keeps Art. 50(1) applying from 2 August 2026, with a grace period
+    to 2 December 2026 for Art. 50(2) systems already on the market, and Chapter VII has applied
+    since 2 August 2025. Whether this demo was on the market before 2 August 2026 is not recorded,
+    so the report no longer says the transitional provision applies to it.
+  - Citations: the WDBC credit is UCI's (Wolberg, Mangasarian, Street and Street, 1993); Ortega and
+    Martin-Delgado use teleportation-based QHE with no classical FHE, and their 0.967 is a binary
+    MNIST task whose encrypted inference is shown on five samples; arXiv:2607.11969 tests best-of-N
+    inflation of the metrics that replaced point adjustment and names no event-wise F-score, so it
+    does not support the satellite card's "instability" sentence; Wang, Fok and Thing's 99.61 and
+    99.71 percent are malicious-against-benign accuracies.
+- **Novelty.** Homomorphic evaluation in a browser exists: node-seal, which this demo uses,
+  evaluates in the browser and is benchmarked in three, and Attrapadung et al. (AsiaCCS 2018)
+  shipped two-level homomorphic encryption in WebAssembly. What the searches support is narrower: no
+  peer-reviewed 2025-26 report of encrypted neural-network inference in a browser tab. The
+  composition sentence is unchanged; the paragraph before it now says this, in the report and in the
+  references.
+- **This register's own Round 82 text.** Both lines are annotated where they stand, and the report
+  and the log are corrected to match.
+  - "The tighter of the two is the tightest of the three on every block measured" is false on the
+    satellite blocks. Each statistic runs at eps/2 inside the union bound, so Chernoff alone gives
+    slightly more key there: 226,072 against 226,056 bits on Liao's pass (recomputed 2026-10-30),
+    139,251 against 139,200 on the 800 km pass. The user's satellite decision above rests on this.
+  - "The statistics account for about half of each gap" is 45 percent of the gap on Liao's pass and
+    29 percent on Khmelev's session. The satellite page's copy of that sentence, the bound named
+    beside it and the same phrase in `tests/test_the_satellite_block_is_a_pass.py` were corrected by
+    the PR #78 fix commit (6098112), which changed the satellite default they describe.
+  - Two counts in that fix commit were one bit high: Liao's pass under Chernoff as 226,073 bits, and
+    the default pass under the union as 139,201, in the configuration's comment, the bound's module
+    docstring and a comment beside it, `docs/models-and-benchmarks.md`, the report and two lines of
+    the Round 82 fix block above. Both languages compute 226,072.49 (the 4,000-step oracle,
+    226,072.54) and 139,200, and the page shows 226,072 and 139,200. All are corrected, and the
+    Round 82 lines are annotated where they stand.
+- **Earlier rows.** The Round 58 IR 8547 row carries a superseded note. The WS4(c) status says the
+  random Clifford words are verified at depths 8, 12, 20 and 30, one seed each
+  (`tests/test_qhe_fhe.py`), not "to depth 30 across seeds". The Julia decision's pointer names
+  `docs/development.md`, where Round 80 moved it, and the declined QOT-figure item notes that its
+  reopen condition names `TwoPartyDiagram.tsx`, which Round 80 replaced.
+
+**References added**, each read at its primary source on 2026-10-30 (`references/REFERENCES.md`,
+"Round 83 additions", and its standards list):
+- Huang, Maeng and Suh, arXiv:2604.00169 (ISPASS 2026), cited by the use-case pages with no entry;
+- Yugay, Cui, Pei and Zaytsev, arXiv:2602.00672, cited by
+  `references/model-choice-vs-2026-practice.md` with no entry;
+- Pinkas, Schneider and Zohner (USENIX Security 2014), Bonawitz et al. (arXiv:1611.04482; IACR
+  ePrint 2017/281) and Attrapadung et al. (AsiaCCS 2018), which ground the PSI, aggregation and
+  novelty corrections;
+- NIST IR 8547 final.
+
+**Deferred to the defects round**, because each needs a change of behaviour:
+- masks in every CKKS slot of the server tier's conversion (ring-uniform, with noise flooding), and
+  a test that decodes all slots;
+- a key agreed per pair for the federated masks, in both tiers;
+- an OPRF-based PSI;
+- QCNN option 1 plus 2T and the half-angle encoding, with retraining and republishing;
+- the full deployment's `/api/benchmark`, which still computes and returns the retired advantage
+  score;
+- in the browser, `explanation_is_of_reported_class` set from the backend that surfaced the class
+  (it is always false today, which is wrong on the CKKS path), and the signed record's `fhe` and
+  `mpc` fields naming what each flow ran rather than the in-browser backends on every use case;
+- the full deployment's QCNN verdict sentence, a literal that is true of the two artefacts that path
+  loads today, computed from the artefact;
+- the data files the licence check found short (`DATA_LICENSES.md` sections 2, 2b and 2c): the
+  SMAP/MSL sample served without a grant, the medical overlay's "cannot be redistributed" text, the
+  licence links, change notices and credits the shipped files and Hub cards lack, gnomAD's
+  no-re-identification condition, the 1000 Genomes citation, and a stated licence for the data and
+  weights generated here.
+
+**Regenerated, and republished.** `models/metrics.json` carries the three prose fields whose trainer
+wording changed (`finance_aml.gbm.baseline_gap_note`, `telecom_ids.qml.framing`,
+`telecom_ids.nidd.baseline_gap_note`), written from the trainers' own literals with no retrain, and
+`web/src/lib/config.defaults.json` and the report's licence table are regenerated from them. Four
+evaluation samples are regenerated from their corpora by `scripts/prep_model_inputs.py`, and only
+their wording changed: finance's teacher and student (`provenance` and `split`), the OPS-SAT teacher
+(`expected.note`, and the `split` key it now carries) and telecom's QML model (`provenance`, and
+`split`). A regenerated sample invalidates its pin, so on 2026-10-31, with the owner's approval,
+`scripts/publish_hf.py --public` republished all 11 published models with cards regenerated from
+the registry, and re-pinned each:
+- the four with new samples: `finance_aml.gbm` 2df9186, `finance_aml.student` 64a1775,
+  `satellite_comms.opssat` 4882460, `telecom_ids.qml` 2173185;
+- the seven whose cards lagged this round's wording, the card the only file changed:
+  `medical_fl.resnet18` 1102412, `medical_fl.resnet50` fda4caf, `medical_fl.student` d8a1d54,
+  `satellite_comms.opssat_student` a248ee5, `satellite_comms.telemanom` cf55d9d,
+  `satellite_comms.student` bbdaf67, and `telecom_ids.nidd` f07f067, which also carries its
+  corrected `export_report.json`.
+
+Each commit's changed files were listed from the Hub's tree at the old and new revisions, and they
+are exactly the files named above. Every pinned card returns 200 and hashes to the local file; every
+pinned sample returns 200, except `satellite_comms.student`'s, which the registry declares absent
+(`eval_sample_reason`), as it was at the old pin. All 11 repositories are still public: the script
+sets visibility on every run, so a republish without `--public` would have made them private.
+`tests/test_an_evaluation_sample_says_which_split_it_is.py` no longer lists the two rebuilt samples
+among those built before Round 71.
+
+**Still waiting on a regeneration.**
+- Telemanom's sample: its `provenance` names the SMAP/MSL sample the page's anomaly step scores,
+  which Round 84 replaces, so it is regenerated and republished once, in that round.
+- `web/public/data/satellite/telemetry.json`. Its generator (`scripts/prep_real_kaggle_data.py`)
+  needs the Kaggle download, which is not on this machine, so its `provenance` field was set to the
+  generator's own constant, `SAT_PROVENANCE`, which is what the generator writes. That constant was
+  first asserted equal to the registry's, and no other field changed. Round 84 deletes the file,
+  and the header of `data/satellite/smap_msl_telemetry.tsv` goes with it.
+- The `real_2d.json` overlays' provenance, attribution and licence texts
+  (`scripts/prep_real_data_2d.py`), including the medical text `DATA_LICENSES.md` section 2b names.
+
+The six QCNN weight files' `note` still omits the CUDA-only caveat the trainer now states, until the
+next retrain.
+
+**Changed in the README and the report together.** The report's flowcharts are held equal to the
+README's by `tests/test_the_report_figures_match_the_readme.py`, so these nodes changed in both:
+- "Key possible? ... E91: CHSH S above 2" now ends "E91: key rate above 0" on the four use cases
+  with a fibre QKD stage: the device-dependent rate reaches zero at S = 2.27 at the shipped
+  error-correction efficiency of 1.16, before S falls to 2, so the rate decides;
+- the satellite's QKD node now reads "Free-space QKD, simulated: a model of the Micius downlink", and
+  its telemetry node "Telemetry sent directly over the simulated quantum channel";
+- the QSMPC-FHE comparison node on genomics and satellite names the "untrained QOTP and Clifford+T
+  circuit" instead of "QOTP and QCNN";
+- genomics' private-inference node names the "CKKS sign test on 8 of the 313 variants" instead of a
+  polygenic risk score.
+
+BUSINESS DOC RECONCILED Round 83. The out-of-repo document is brought level with this round. Its content
+is not quoted here, in the checklist, or in any commit - only the fact of the reconciliation, which is
+what gate 17 reads.

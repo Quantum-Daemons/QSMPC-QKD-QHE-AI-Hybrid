@@ -11,7 +11,9 @@ License: **Apache-2.0**, Python **3.12**, GPU: **NVIDIA RTX PRO 6000 Blackwell +
 
 This is a **research / proof-of-concept**: real implementations where tractable, honest simulation
 where not. Claims are cited to primary sources in [`references/`](references/REFERENCES.md), and
-every correction a check has made is recorded in [`docs/verification-log.md`](docs/verification-log.md).
+the corrections the checks have made are recorded in
+[`docs/deliverable-verification.md`](docs/deliverable-verification.md) and
+[`docs/verification-log.md`](docs/verification-log.md).
 
 **So the claim is the composition, not either half:** PQC key establishment to a simulated QKD link
 (it yields a key length, not key bytes) to secure multiparty computation to homomorphic evaluation to
@@ -31,8 +33,8 @@ and is not new, the positioning (quantum-safe, not quantum-advantage) and the fo
 | QKD from a satellite | Micius downlink; the key is the finite key of one pass; a trusted relay and a constellation | simulated | Liao et al. 2017's pass (detections within 1 percent; the key 0.75 of theirs), 23 measured Micius nights, Lim et al. 2014 |
 | QRNG | quantum-measurement simulation with SP 800-90B health tests and seeded or seedless extraction | simulated source, real tests | NIST SP 800-90B |
 | Private inference | CKKS linear layers (node-seal) and a garbled-circuit 2PC for the non-linear part (Polytune) | real protocols, notional parties | plaintext against CKKS on the same inputs |
-| QSMPC | private set intersection and secure summation; quantum forms in the full deployment | real in the browser, simulated quantum forms | the plaintext result |
-| QHE and QML | quantum one-time pad, a Clifford+T QCNN, a QML intrusion detector | simulated circuits | a logistic-regression baseline on the same split |
+| QSMPC | a keyed-hash set intersection (it does not hide either bank's list from the other) and secure summation; quantum forms in the full deployment | computed in the browser with both parties in one tab (notional parties), simulated quantum forms | the plaintext result |
+| QHE and QML | quantum one-time pad, an untrained Clifford+T comparison circuit, trained QCNNs (not encrypted), a QML intrusion detector | simulated circuits | the QCNNs against a logistic-regression baseline on the same split |
 | Models | eleven published models, run with ONNX Runtime in the browser | real inference | per-model metrics and model cards |
 | Agentic AI | a small language model in the browser over a quantum-safe MCP channel | real | signed tool results |
 
@@ -89,10 +91,10 @@ flowchart TB
 | Use case | Industry | Its own stages |
 |---|---|---|
 | `finance_aml` | finance, AML | PSI over cross-bank blacklists, federated training, FHE fraud inference |
-| `medical_fl` | healthcare | federated training with secure aggregation, private diagnosis on MedMNIST images |
+| `medical_fl` | healthcare | federated training with pairwise masks (they do not hide updates from the aggregator), private diagnosis: the encrypted CNN reads a tabular (WDBC) row tiled to the image size in the browser, and MedMNIST images only in the full deployment |
 | `genomics` | genomics | secure summation of pooled allele counts, FHE |
 | `telecom_ids` | telecom, defence | simulated QKD with an optional eavesdropper, a QML intrusion detector |
-| `satellite_comms` | satellite | free-space QKD over a Micius downlink, QSDC with an inline eavesdrop check |
+| `satellite_comms` | satellite | simulated free-space QKD over a model of the Micius downlink, and a QSDC feasibility check with an inline eavesdrop check |
 
 Each use case's implementation, stage by stage: what runs it in the browser, and where the full
 deployment differs. Open a section to see its flowchart.
@@ -106,7 +108,7 @@ flowchart TB
   D["Data: PaySim simulator sample, 400 transactions, synthetic"]
   H["PQC handshake: ML-KEM-768 + X25519, HKDF-SHA256"]
   K["QKD: simulated BB84 decoy-state, or E91, over fibre"]
-  Q{"Key possible? BB84: QBER at most 0.11; E91: CHSH S above 2"}
+  Q{"Key possible? BB84: QBER at most 0.11; E91: key rate above 0"}
   N["No QKD key: the session rests on PQC"]
   L["Key length: BB84 finite key of a 1e7-bit block, E91 asymptotic; the full deployment mixes 256 bits or more into the session key"]
   P["PSI: HMAC-SHA256 keyed by the session key, over two banks' account lists"]
@@ -145,7 +147,7 @@ flowchart TB
   D["Data: Wisconsin breast-cancer measurements, 400 rows, real"]
   H["PQC handshake: ML-KEM-768 + X25519, HKDF-SHA256"]
   K["QKD: simulated BB84 decoy-state, or E91, over fibre"]
-  Q{"Key possible? BB84: QBER at most 0.11; E91: CHSH S above 2"}
+  Q{"Key possible? BB84: QBER at most 0.11; E91: key rate above 0"}
   N["No QKD key: the session rests on PQC"]
   L["Key length: BB84 finite key of a 1e7-bit block, E91 asymptotic; the full deployment mixes 256 bits or more into the session key"]
   FL["Federated training: 4 hospitals, 6 rounds of FedAvg, pairwise masks"]
@@ -182,14 +184,14 @@ flowchart TB
   D["Data: 30 real 1000 Genomes individuals, PGS000004 weights over 313 variants"]
   H["PQC handshake: ML-KEM-768 + X25519, HKDF-SHA256"]
   K["QKD: simulated BB84 decoy-state, or E91, over fibre"]
-  Q{"Key possible? BB84: QBER at most 0.11; E91: CHSH S above 2"}
+  Q{"Key possible? BB84: QBER at most 0.11; E91: key rate above 0"}
   N["No QKD key: the session rests on PQC"]
   L["Key length: BB84 finite key of a 1e7-bit block, E91 asymptotic; the full deployment mixes 256 bits or more into the session key"]
   P["Secure sum of 4 cohorts' allele counts at one variant: additive shares mod p in the browser, QSMS over a GHZ state in the full deployment"]
-  I["Private inference: CKKS polygenic risk score (node-seal), garbled-circuit argmax"]
+  I["Private inference: CKKS sign test on 8 of the 313 variants (node-seal), garbled-circuit argmax"]
   M["Published model: none registered for genomics"]
   X["Explainability (full deployment)"]
-  C["QSMPC-FHE comparison: QOTP and QCNN, T-gates counted"]
+  C["QSMPC-FHE comparison: untrained QOTP and Clifford+T circuit, T-gates counted"]
   S["Result signed with ML-DSA-65"]
   D --> H
   H --> K
@@ -219,7 +221,7 @@ flowchart TB
   D["Data: synthetic QKD-attack telemetry, 7 attacks and normal"]
   H["PQC handshake: ML-KEM-768 + X25519, HKDF-SHA256"]
   K["QKD: simulated BB84 decoy-state, or E91, with an optional intercept-resend eavesdropper; OptiQKD tunes it when switched on"]
-  Q{"Key possible? BB84: QBER at most 0.11; E91: CHSH S above 2"}
+  Q{"Key possible? BB84: QBER at most 0.11; E91: key rate above 0"}
   N["Eavesdropper or noise: no QKD key, the session rests on PQC"]
   L["Key length: BB84 finite key of a 1e7-bit block, E91 asymptotic; the full deployment mixes 256 bits or more into the session key"]
   IDS["QML-IDS: 8-class detector trained in the browser, scored by macro-F1"]
@@ -250,13 +252,13 @@ flowchart TB
   H["PQC handshake: ML-KEM-768 + X25519, HKDF-SHA256"]
   V{"Satellite in view, 10 degrees or more?"}
   NV["Out of view: no QKD key and no QSDC; the anomaly score still runs"]
-  K["Free-space QKD: Micius downlink, BB84 with a vacuum state, or E91; OptiQKD tunes it when switched on"]
+  K["Free-space QKD, simulated: a model of the Micius downlink, BB84 with a vacuum state, or E91; OptiQKD tunes it when switched on"]
   L["Key length: BB84 finite key of one pass, Lim et al. 2014, E91 asymptotic; the full deployment mixes 256 bits or more"]
   QD{"QSDC: secrecy capacity positive?"}
   NA["QSDC aborts: link budget too small, or an eavesdropper detected; nothing is sent over the quantum channel"]
-  T["Telemetry sent directly over the quantum channel"]
+  T["Telemetry sent directly over the simulated quantum channel"]
   A["Anomaly score and the published model, satellite_comms.telemanom, in the browser; the full deployment also checks delivered telemetry under CKKS"]
-  C["QSMPC-FHE comparison: QOTP and QCNN, T-gates counted"]
+  C["QSMPC-FHE comparison: untrained QOTP and Clifford+T circuit, T-gates counted"]
   S["Result signed with ML-DSA-65"]
   D --> H
   H --> V
@@ -346,11 +348,11 @@ flowchart LR
 </tr>
 </table>
 
-The images are taken from a local client-only build by
-[`web/scripts/capture_screenshots.mjs`](web/scripts/capture_screenshots.mjs), so they can be
-regenerated with each change. Every page is also scanned after its run, locally and in CI, for text
-over text, out of its box or cut off by its chart, and for content wider than its box
-([`web/scripts/check_text_overlap.mjs`](web/scripts/check_text_overlap.mjs)).
+The images are captured from the deployed demo, after its pages are checked, by
+[`web/scripts/capture_screenshots.mjs`](web/scripts/capture_screenshots.mjs), which also runs against
+a local client-only build, so they can be regenerated with each change. Every page is also scanned
+after its run, locally and in CI, for text over text, out of its box or cut off by its chart, and for
+content wider than its box ([`web/scripts/check_text_overlap.mjs`](web/scripts/check_text_overlap.mjs)).
 
 ---
 
@@ -433,7 +435,7 @@ text or a line set wider than its box.
 
 ```
 src/qsh/      the qsh package: orchestration, pqc, qkd, qml_ids, qsmpc, qhe, config, models, qrng,
-              fhe, mpc, ai, mcp (real MCP server, SDK >=2.0), usecases, benchmark, data, monitoring
+              fhe, mpc, ai, mcp (real MCP server, MCP Python SDK), usecases, benchmark, data, monitoring
 api/          FastAPI backend (REST, WebSocket, downloads, /metrics)
 web/          React + Vite + TS SPA, and web/scripts/ checks and the screenshot capture
 docker/       Dockerfiles, compose (full and client-only builds), Caddyfile

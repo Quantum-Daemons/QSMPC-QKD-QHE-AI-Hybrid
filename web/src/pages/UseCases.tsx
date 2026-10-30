@@ -19,7 +19,7 @@ export default function UseCases() {
         <>Each use case has its own page with a live <b>architecture simulator</b>: each party's components, a lane per stage between them, animated as the run goes. Start / Pause / Step / Stop / Restart drive it.</>,
         <>Each page shows that industry's benchmark (latency · accuracy · security posture) and, where applicable, a signed XAI explanation.</>,
         <>Every card's model, corpus and licence is read from the registry, not written here.</>,
-        <><b>Agentic AI · quantum-safe MCP</b> runs on every page: an in-browser agent's request and response are sealed and signed (ML-KEM-768 + ML-DSA-65 + AES-256-GCM) as that industry's MCP tool, fed by the run's live metrics.</>,
+        <><b>Agentic AI - quantum-safe MCP</b> runs on every page: an in-browser agent&apos;s request and response are sealed and signed (ML-KEM-768 + X25519, ML-DSA-65, AES-256-GCM) in a JSON-RPC envelope named after that industry&apos;s MCP tool, fed by the run&apos;s live metrics. No tool is executed.</>,
       ]} />
       <table className="facts-table small" style={{ margin: "10px 0 16px", maxWidth: 860 }}>
         <thead><tr><th>Use case</th><th>Agent's MCP tool</th><th>Private inference</th><th>Quantum channel</th></tr></thead>
@@ -50,7 +50,9 @@ export default function UseCases() {
           const studentParams = (student?.achieved as { student_params?: number } | undefined)?.student_params;
           // "scaffold" used to be hardcoded to !inference, which understated telecom and satellite:
           // both now carry trained, published, pinned models. Earn it from registry state instead.
-          const depth = pinned.length > 0 ? "published" : teacher?.achieved ? "trained" : "scaffold";
+          // "measured", not "trained": the one unpublished model with recorded results is genomics'
+          // PRS, whose weights are PGS000004's published ones, measured here and trained by no one.
+          const depth = pinned.length > 0 ? "published" : teacher?.achieved ? "measured" : "scaffold";
           return (
             <Link key={u.id} to={`/usecase/${u.id}`} className="card" style={{ textDecoration: "none", color: "inherit", display: "block" }}>
               {/* h2: each card is a section of this page, and an h3 here left the outline going

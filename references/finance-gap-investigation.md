@@ -15,8 +15,13 @@ Short answer: **partly wrong, and it hid a real defect that is worth fixing.**
 
 **Cause 2 cannot carry the weight it was given.** The GFP paper (arXiv:2402.08593) decomposes its own
 contribution: fan-in/fan-out features improve minority-class F1 by "more than 30%" over basic
-transaction features, and multi-hop cycle and scatter-gather features add "up to 4%" on top. Four
-percent relative cannot explain a 7.8x gap, and this project already implements fan-in/fan-out.
+transaction features, and multi-hop cycle and scatter-gather features add "up to 4%" on top. Both
+are F1 points, not relative shares (its Table 5 is in percent, read 2026-10-30): on HI-Small with
+XGBoost at batch size 128, basic features score 19.75, fan-in/fan-out take it to 56.88 and
+multi-hop patterns to 58.60, and across its HI-Small columns multi-hop adds 1.3 to 5.8 points. A
+gain of that size cannot explain a 7.8x gap, and this project already implements fan-in/fan-out, as
+per-account aggregates. (This paragraph called the multi-hop gain "four percent relative" until
+2026-10-30.)
 
 **Cause 1 is real but was never specific.** It named a licence, not a mechanism.
 
@@ -26,7 +31,7 @@ percent relative cannot explain a 7.8x gap, and this project already implements 
 |---|---|---|
 | The decision threshold (0.928426) is badly chosen | F1 = 0.6323 needs precision ~0.63 held to recall ~0.63, i.e. AUPRC >= ~0.40. Measured AUPRC is **0.0732** | **Ruled out.** Unreachable at ANY threshold - it is a ranking gap, not a tuning gap |
 | Accounts unseen in training get zeroed graph features | Measured over the real temporal split: source unseen **0.24%**, destination unseen **0.17%**, either side **0.39%** | **Ruled out.** Too rare to matter |
-| 10-hop cycles truncated to 4 hops | GFP paper caps multi-hop contribution at ~4% relative | **Ruled out as a main cause** |
+| 10-hop cycles truncated to 4 hops | GFP paper's Table 5: multi-hop patterns add 1.3 to 5.8 F1 points on HI-Small (1.7 for XGBoost at batch 128) | **Ruled out as a main cause** |
 
 ## What was found instead: a train/test feature asymmetry
 

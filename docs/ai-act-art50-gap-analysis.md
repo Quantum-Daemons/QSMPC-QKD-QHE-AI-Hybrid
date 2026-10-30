@@ -4,7 +4,8 @@ Non-signatories to the Commission's Code of Practice are "expected to demonstrat
 complied through other adequate means" and "should carry out a gap analysis that compares the
 measures they have implemented with the measures set out by a code of practice that is assessed as
 adequate" (Guidelines on Article 50, C(2026) 5054 final, 20 July 2026, point 148). This is that
-document. It is short by design: the analysis is short.
+document. It is short by design: the analysis is short. The Article 50 section of
+[`docs/pqc-roadmap.md`](pqc-roadmap.md) points here and carries no analysis of its own.
 
 ## The instruments
 

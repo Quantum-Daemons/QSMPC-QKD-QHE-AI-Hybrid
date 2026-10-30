@@ -12,9 +12,11 @@ import StageBadge, { type StageKind } from "./StageBadge";
  * a mixing step the code does not perform.
  *
  * Badges follow the truth table checked against the code in the Round 58 survey: QRNG is a simulated
- * state-vector source whose SP 800-90B health tests are really computed; PSI and secure sum are
- * classical and real; the garbled-circuit 2PC is a real protocol between notional parties; the
- * quantum one-time pad uses a seeded mask.
+ * state-vector source whose SP 800-90B health tests are really computed; PSI, secure sum and the
+ * federated masking are classical, real protocols whose parties all run in this one tab, so they are
+ * badged "notional" like the garbled-circuit 2PC; the quantum one-time pad uses a seeded mask. Every
+ * federated mask is derived from the one PQC session key, which the aggregator also holds, so the
+ * masks cancel exactly and hide nothing from it; the PSI's HMAC key is held by both banks.
  */
 type Box = { x: number; y: number; w: number; title: string; lines: string[]; kind: StageKind; id: string };
 
@@ -34,13 +36,13 @@ const BOXES: Box[] = [
   { id: "qkd", x: 670, y: ROW1, w: 250, title: "QKD link (BB84 decoy / E91)",
     lines: ["analytic channel model", "yields a key LENGTH,", "not key bytes"], kind: "simulated" },
   { id: "qsmpc", x: 10, y: ROW2, w: 170, title: "QSMPC",
-    lines: ["PSI: HMAC under the", "session key; secure sum:", "additive shares"], kind: "real" },
+    lines: ["PSI: HMAC under a key", "both sides hold; secure", "sum: additive shares"], kind: "notional" },
   { id: "fl", x: 200, y: ROW2, w: 176, title: "Federated training",
-    lines: ["finance, medical:", "FedAvg, pairwise masks"], kind: "real" },
+    lines: ["finance, medical:", "FedAvg; every mask from", "the one session key"], kind: "notional" },
   { id: "pi", x: 396, y: ROW2, w: 180, title: "Private inference",
-    lines: ["CKKS linear (node-seal)", "+ garbled-circuit 2PC", "non-linear (Polytune)"], kind: "notional" },
+    lines: ["CKKS linear (node-seal)", "+ garbled-circuit 2PC", "argmax (Polytune)"], kind: "notional" },
   { id: "qhe", x: 596, y: ROW2, w: 180, title: "QHE comparison",
-    lines: ["QOTP + 8-qubit QCNN", "state-vector simulation"], kind: "seeded" },
+    lines: ["QOTP + Clifford+T", "circuit, untrained,", "state-vector simulation"], kind: "seeded" },
   { id: "sig", x: 796, y: ROW2, w: 170, title: "Signed result",
     lines: ["ML-DSA-65 signature", "over the result"], kind: "real" },
 ];
@@ -73,10 +75,11 @@ export default function ArchitectureDiagram() {
         <desc id="arch-desc">
           Your data feeds a real PQC handshake (ML-KEM-768 plus X25519) that produces the session key.
           A simulated QKD link sits off the key path: it yields a key length and no key bytes, and
-          nothing from it is mixed into the session key. The session key feeds QSMPC, federated
-          training on the finance and medical pages, and private inference (real CKKS plus a
-          garbled-circuit protocol between notional parties); a simulated QHE comparison with a seeded
-          pad runs beside it; the result is signed with ML-DSA-65.
+          nothing from it is mixed into the session key. The session key feeds QSMPC and federated
+          training on the finance and medical pages, whose parties all run in this tab; private
+          inference is real CKKS plus a garbled-circuit argmax between notional parties; an untrained
+          QOTP plus Clifford+T comparison circuit with a seeded pad, simulated, runs beside it; the
+          result is signed with ML-DSA-65.
         </desc>
         <defs>
           <marker id="arch-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">

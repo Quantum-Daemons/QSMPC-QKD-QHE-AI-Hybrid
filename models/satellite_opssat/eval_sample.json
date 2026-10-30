@@ -1,5 +1,6 @@
 {
  "provenance": "OPS-SAT-AD (Ruszczak et al., 'The OPS-SAT benchmark for detecting anomalies in satellite telemetry', Scientific Data 12, 2025; Zenodo 10.5281/zenodo.12588359, CC BY 4.0). Real telemetry from ESA's OPS-SAT CubeSat, which reentered in May 2024. These are the 19 precomputed per-segment features of the benchmark's own TEST partition, entire and unsampled, so the figure below is the one the dataset's 30 published baselines are quoted against. Not comparable with the Telemanom model on this same page: that one forecasts continuous ESA-ADB series, this one classifies pre-segmented fragments.",
+ "split": "the benchmark's own test partition, whole",
  "input": {
   "shape": [
    1,
@@ -11677,6 +11678,6 @@
   "accuracy": 0.9508506616257089,
   "majority_baseline": 0.7863894139886578,
   "declared_metric_not_verifiable": "auc_pr",
-  "note": "The whole published test split, so this reproduces the benchmark's own partition rather than a resample of it."
+  "note": "The whole published test split, so this reproduces the benchmark's own partition rather than a resample of it. The accuracy above is the exported ONNX graph's own on these rows; the model card's metrics come from the scikit-learn model before export, which predicts differently on a few of these rows, so the two accuracies differ."
  }
 }

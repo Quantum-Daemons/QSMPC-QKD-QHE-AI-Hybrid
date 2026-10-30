@@ -1,20 +1,27 @@
-r"""Quantum Convolutional Neural Network (QCNN) + QHE private inference (WS4).
+r"""A small QCNN-style PennyLane circuit, and a correct QOTP homomorphic demo on Clifford circuits (WS4).
 
-The model is the standard MERA-style QCNN (Cong et al.) built in PennyLane:
-alternating two-qubit "convolution" unitaries and "pooling" that halves the qubit
-count, ending in a single measured qubit -> binary classifier. This mirrors the QCNN
-used by Ortega & Martín-Delgado (arXiv:2602.12712, 2026) for perfectly-secure
-delegated training / private inference.
+The circuit: AngleEmbedding (RY), then per level each wire pair (a, b) gets CNOT(a, b), RY(a),
+RY(b), RZ(b) with its OWN three parameters (21 at 8 qubits); every other wire is dropped from the
+next level with no pooling rotation; <Z> on wire 0. Its blocks act only on disjoint pairs and a
+dropped wire is never touched again, so it is a binary TREE of two-qubit blocks (a tree tensor
+network), classically simulable in linear time. It is not a MERA (MERA adds disentanglers on the
+bonds between blocks), not the overlapping, weight-shared convolution of Cong et al., and not the
+circuit of Ortega and Martin-Delgado (arXiv:2602.12712), whose QCNN uses SO(4) convolution and
+pooling units with amplitude encoding and is evaluated under a QOTP with teleportation gadgets.
+Here the parameters are drawn from N(0, 0.1) and never trained, and the circuit is evaluated in
+plaintext.
 
 Two things are provided:
-  * :class:`QCNN` -- a trainable PennyLane classifier (the application model).
+  * :class:`QCNN` -- the untrained PennyLane circuit above (not a classifier; see
+    :mod:`qsh.qhe.private_inference` for what its probability does).
   * :func:`qotp_clifford_homomorphic_demo` -- a *correct* QHE demonstration on
     Clifford circuits: the server evaluates on the QOTP-encrypted state and the
     client decrypts by tracking Pauli-key updates, recovering the exact result
     while the server only ever sees the maximally-mixed (hidden) state.
 
-Non-Clifford layers (the trainable rotations) require T-gate magic-state
-corrections in a full deployment; their cost is reported by :meth:`QCNN.t_count`.
+Non-Clifford layers (the trainable rotations) would require T-gate magic-state
+corrections to run under a QOTP; :meth:`QCNN.t_count` reports an ESTIMATED Solovay-Kitaev budget
+for that, not a count of gates the circuit contains (it contains no T gate).
 """
 
 from __future__ import annotations
@@ -32,7 +39,7 @@ class QCNNConfig:
 
 
 class QCNN:
-    """A small MERA-style QCNN binary classifier (PennyLane)."""
+    """A small QCNN-style PennyLane circuit: a tree of two-qubit blocks, untrained (module docstring)."""
 
     def __init__(self, n_qubits: int = 8, seed: int | None = None) -> None:
         import pennylane as qml

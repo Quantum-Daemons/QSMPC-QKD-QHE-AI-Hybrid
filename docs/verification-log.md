@@ -9,6 +9,11 @@ when it was checked, with the bundle hash and date so a claim can be traced to a
 Nothing here is deleted when it ages - a superseded measurement is evidence about how a number
 moved, which is exactly what the next round needs when a figure looks wrong.
 
+**Since Round 56 the deploy walks, with their bundles and measured values, are written in the round
+register, [`deliverable-verification.md`](deliverable-verification.md), and this file holds what
+each round taught.** Noted 2026-10-30, when the technical report's pointer was brought in line with
+that practice.
+
 ## Ordering: it is not chronological, and reading it as chronological will mislead you
 
 **Stated explicitly in Round 33, because the file had drifted into three different orders and nothing
@@ -3546,7 +3551,9 @@ satellite, showed Chernoff far tighter, and the owner chose it for both protocol
 Measured on the fibre, it was looser: its advantage depends on a count's share of its basis, which
 the satellite's small decoy and vacuum have and the fibre's counts do not. The question went back
 with the numbers, and the answer was the tighter of the two. A choice made on one case's evidence is
-worth re-asking when the second case disagrees.
+worth re-asking when the second case disagrees. [2026-10-30: re-asked once more, on the finding that
+the union bound loses to Chernoff alone on the satellite blocks: Chernoff on the satellite and the
+tighter of the two on the fibre. Register, Round 83.]
 
 **A coincidence is a weak test of a cause.** The same fraction twice looked like one cause. Changing
 the cause it named moved both fractions, by different amounts, and they parted. The statistics
@@ -3571,3 +3578,30 @@ a constant transcribed as 2 to the 21st and an unnamed choice of errors. Reading
 for this round found tau0 on a term the paper prints outside it. That one erred in the unsafe
 direction, and it had matched the paper's own table better than the printed form does. Agreement with
 a published number is not evidence that a formula is the published one.
+
+### Round 83: a label is a claim about the code under it (DRAFT, 2026-10-30)
+
+**Context.** Five page fact-checks, a review of private inference against current research, a QCNN
+review and a documents audit found public text that claimed more than the code does. The register's
+Round 83 entry lists each correction with its evidence; this entry keeps what they taught. Nothing
+here was measured on the deployed site yet: the walk is recorded in the register when it happens.
+
+**A name carries a property, and the property has to be checked in the code.** "Secure
+aggregation", "private set intersection", "information-theoretic", "QHE" and "held-out" each named a
+property the construction under it does not have: masks derived from a key the aggregator holds, a
+hash both parties can compute, a seed drawn from the extractor's own input, a circuit that is never
+encrypted, a model's own fitting rows. None of them was found by reading the label again. Each was
+found by reading the code beneath it.
+
+**A test that reads one slot proves one slot.** The masked conversion's test decrypted slot 0 and
+passed while the other slots held the weights. When a property is about a whole ciphertext, the test
+has to decode the whole ciphertext.
+
+**A union bound is safe, not best.** Taking the tighter of two bounds, each at half the failure
+probability, never fails more often than allowed, but it can give less key than the better of the
+two alone at the full probability, and on the satellite blocks it did. Round 82 called it the tightest of the
+three without measuring that on every block.
+
+**A record can overclaim as easily as a page.** This file and the register said the statistics
+explained about half of each gap. They explained 45 percent of one and 29 percent of the other. A
+fraction that fits one case is not a summary of two.

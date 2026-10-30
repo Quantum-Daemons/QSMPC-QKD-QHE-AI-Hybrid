@@ -513,22 +513,28 @@ export interface EncryptedStudentResult extends ConvResult {
 }
 
 /**
- * Evaluate the PUBLISHED medical student end to end under CKKS.
+ * Evaluate the PUBLISHED medical student LAYER BY LAYER under CKKS - not end to end.
+ *
+ * Each layer's linear part runs under CKKS; its output is DECRYPTED in the client, the conv's ReLU
+ * and the average pool run in plaintext, and the next dense layer re-encrypts the clear activation.
+ * The student's final argmax is taken in the clear (`argmax(v)` below); the garbled-circuit argmax
+ * elsewhere on the page runs on the bundled WDBC logistic regression, not on this network.
  *
  * Until this existed the encrypted convolution ran on the student's SHAPE with a synthetic kernel
  * pattern. It was a genuine homomorphic convolution and an honest cost model, but it was not this
- * model's inference - so `crypto_fidelity`, the project's headline metric, stayed a number measured
- * offline that a visitor could not check. Feeding the real weights makes the encrypted path compute
- * the published prediction.
+ * model's inference - so the encrypted-against-plaintext agreement of this model could not be
+ * checked in a browser. Feeding the real weights makes the encrypted layers compute the published
+ * prediction. (`crypto_fidelity`, the student against its teacher, stays an offline training
+ * figure either way.)
  *
  * The layer order comes from the weights file rather than from an assumption here: conv, the conv's
  * own activation, average pool, flatten, then each dense with its recorded activation. Omitting the
  * conv's ReLU still reproduces every argmax on the test split while shifting the logits by ~0.15,
  * which is exactly why the file states each activation instead of leaving it to be inferred.
  *
- * ReLU is applied in the clear here. That is the project's stated hybrid - linear layers under FHE,
- * non-linear under MPC - and the argmax genuinely runs under garbled circuits in `clientMPC`; the
- * intermediate ReLU is not yet routed through it, and that gap is reported rather than papered over.
+ * ReLU and pooling are applied in the clear here. The project's stated hybrid is linear layers under
+ * FHE and non-linear under MPC; for this student neither the ReLU, the pool nor the argmax is routed
+ * through `clientMPC`, and that gap is reported rather than papered over.
  */
 export async function encryptedStudentInference(
   w: CnnStudentWeights, image: number[][],

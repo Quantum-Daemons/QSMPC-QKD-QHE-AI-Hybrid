@@ -45,7 +45,8 @@ Each carries whether it was reproduced locally or is recorded as reported-and-un
   Kaldari and Al-Kuwari, Qatar Center for Quantum Computing (HBKU), **arXiv:2603.04192** [quant-ph]
   `[R-local]`
   URL: https://arxiv.org/abs/2603.04192
-  Added: not committed (17 MB, `.gitignore:14`); claim re-verified 2026-08-04
+  Added: not committed (17 MB, `.gitignore` rules `references/OptiQKD_*.pdf` and
+  `references/AML-QKD_*.pdf`); claim re-verified 2026-08-04
   **v1** (4 Mar 2026) was titled *OptiQKD: A Machine Learning-Optimized Framework for Real-Time
   Parameter Tuning in Quantum Key Distribution*; **v2** (1 Jun 2026) retitled it AML-QKD.
   This is one paper in two versions, not two papers. An earlier revision of this file listed it
@@ -173,7 +174,8 @@ Each carries whether it was reproduced locally or is recorded as reported-and-un
   Combination** - Giestinhas and Spiller, University of York, arXiv:2603.26907v2 [quant-ph], 2026
   `[R-local]`
   URL: https://arxiv.org/abs/2603.26907
-  Added: not committed (`.gitignore:15`); claim re-verified 2026-08-04
+  Added: not committed (`.gitignore` rule
+  `references/Information-Theoretic_Solutions_for_Seedless_QRNG_*.pdf`); claim re-verified 2026-08-04
   Licence CC BY 4.0.
   Quantum Leftover Hash Lemma strong (Toeplitz, universal-2) extractors: (1) seedless QRNG
   bootstrapping from two independent entropy sources; (2) a QLHL-extractor **alternative** to XOR
@@ -184,8 +186,15 @@ Each carries whether it was reproduced locally or is recorded as reported-and-un
   retains quantifiable min-entropy. PQC keys are modelled as HILL (computational) min-entropy.
   Grounds the Round 16 QRNG and transport upgrade: `src/qsh/qrng/simulator.py` (LHL-bounded Toeplitz
   output plus seedless two-source extractor), `src/qsh/qrng/health.py` (SP 800-90B min-entropy
-  estimate), and the config-gated ITS combiner in `src/qsh/pqc/transport.py` (`_mix_qkd_its`,
-  `hybrid_combiner_mode="its_toeplitz"`).
+  estimate), and the config-gated Toeplitz+QLHL combiner in `src/qsh/pqc/transport.py` (`_mix_qkd_its`,
+  `hybrid_combiner_mode="its_toeplitz"`). **As implemented that combiner is computational, not
+  information-theoretic.** Its Toeplitz seed is SHAKE-256 of a label and of the same two keys it
+  extracts from (`transport.py`, `tseed`), while the paper names the absence of correlation between
+  input and seed as a necessary condition for its leftover hash lemma, so the seed and the input here
+  are fully correlated. And the QKD-domain input it is given in the browser and by the full
+  deployment's MCP endpoints is a fixed 32-byte constant, which carries no entropy at all; only the
+  full deployment's own QKD path folds 256 or more QKD bits into its key, by HKDF-SHA256. Corrected
+  2026-10-30: this line called it "the config-gated ITS combiner".
 
 ---
 
@@ -240,7 +249,11 @@ docstring.
   Added: no PDF bundled; recorded 2026-08-15 with the 5G-NIDD licence withdrawal below
   **The published comparison point on 5G-NIDD**, which is this paper's sole dataset. On the standard
   split it reports classical CNN 99.61 percent, QCNN-AnE 99.62 percent, QCNN-AmE 99.65 percent,
-  Quan-ConvCNN 99.71 percent and QuanvolutionNN 98.67 percent accuracy. Two things have to be said
+  Quan-ConvCNN 99.71 percent and QuanvolutionNN 98.67 percent accuracy. **These are accuracies at
+  telling malicious from benign traffic, not at telling the attack types apart**: the paper's Table II
+  labels each traffic type malicious or benign, and its unseen-attack experiment scores a test set
+  that is all malicious (read in the arXiv text 2026-10-30). So the 9-class accuracy of
+  `telecom_ids.nidd` is not comparable with them. Two things have to be said
   before that ordering is quoted as a quantum win. The models are **hybrid quantum-classical CNNs,
   not pure Cong-style QCNNs**, so the name does not mean here what it means in the QCNN section
   below; and the authors' own claimed advantage is on **generalisation to unseen attacks**, not on
@@ -268,6 +281,13 @@ takes a small fraction of the run the quantum pair needs - `wall_clock_s` in
 same machine, so the absolute seconds are load-dependent and only the order of magnitude is a
 claim. `quantum_beats_classical` is recorded as `False` in `models/metrics.json`, which is the
 field this project would have to falsify to claim otherwise.
+
+Two facts about what runs, checked 2026-10-30. The published `telecom_ids.qml` artefact, the model
+the telecom page runs and verifies, is the RandomForest: a 200-tree ONNX tree ensemble with a 7-wide
+input. The quantum-kernel SVC and the QNN are trained offline and are not run by the page. And the
+SVC's fidelity kernel embeds one input and un-embeds the other with no entangling gate, so it equals
+the classical product kernel $`\prod_i \cos^2((x_i - x'_i)/2)`$ (to 2.2e-16 on 200 random pairs,
+PennyLane 0.45.1): its 0.8316 is the score of a kernel a laptop evaluates in closed form.
 
 That last sentence was briefly false. Round 33 re-ran `telecom_ids.py` **without** `--quantum` to
 add the CKKS student, and `record_metrics` replaces a record rather than merging it, so all eight
@@ -336,9 +356,18 @@ papers. Where the two used to overlap, that file is the owner.
   URL: https://www.nature.com/articles/s41534-026-01219-w (npj QI 12, 76, 2026)
   Preprint: https://arxiv.org/abs/2411.04558
   Added: 2026-06-27
-  File: `Experimental_secure_multiparty_computation_from_quantum_oblivious_transfer_with_bit_commitment.pdf`
+  File: none in the repository since Round 45 (CC BY-NC-ND 4.0, excluded; `DATA_LICENSES.md`
+  section 8)
   Decoy-state BB84 plus SHA-256 commitment QOT, giving private set intersection on bank-blacklist
-  data. Implemented in simulation in `src/qsh/qsmpc/qot.py` and the Finance AML/PSI use case.
+  data. `src/qsh/qsmpc/qot.py` simulates the 1-of-2 QOT primitive. **The finance use case does not
+  use it, and its set intersection does not keep the two lists private from each other.** It is an
+  HMAC-SHA256 of both lists under the one session key both banks hold (`private_set_intersection` in
+  `qot.py`, `keyedHashPSI` in the browser), so over a small identifier space either bank can hash
+  every candidate identifier and read the other's list: the naive-hashing failure Pinkas, Schneider
+  and Zohner describe (Round 83 additions, below). What holds is narrower: no third party sees
+  either list, and the channel is protected by the PQC session. A production PSI would use an
+  OPRF-based protocol. Corrected 2026-10-30: this line said the use case implemented the paper's
+  construction in simulation.
 
 - **Quantum-secure multiparty deep learning** - Sulimany, Vadlamani, Hamerly, Iyengar and
   Englund, Physical Review X 15, 041056, published 24 Dec 2025 `[R]`
@@ -348,14 +377,16 @@ papers. Where the two used to overlap, that file is the owner.
   Added: 2026-06-27
   File: `Quantum-Secure_Multiparty_Deep_Learning.pdf`
   Photonic coherent linear-algebra inference; Holevo and Cramer-Rao leakage bounds (0.1 bit per
-  weight, MNIST above 95 percent). The leakage-bound analysis is reimplemented in `src/qsh/qsmpc/`
-  as security metrics.
+  weight, MNIST above 95 percent). Nothing in this repository implements the leakage analysis: its
+  0.1 bit per weight is quoted as a literature constant in the retired security score
+  (`src/qsh/benchmark/security.py`). Corrected 2026-10-30: this line said the analysis was
+  reimplemented in `src/qsh/qsmpc/` as security metrics.
 
 - **Quantum-Safe Multi-Party Computation for Distributed AI Datasets** - Gopher Security blog, 2026
   `[link]`
   URL: https://gopher.security/blog
   Added: 2026-06-27
-  File: `Quantum-Safe_Multi-Party_Computation_for_Distributed_AI_Datasets....pdf`
+  File: none in the repository since Round 45 (no grant found; `DATA_LICENSES.md` section 8)
   A vendor blog post, not peer-reviewed, and weighted accordingly. qOLE and qMPSI plus PQC (ML-KEM)
   hybrid transport plus an MCP delegate-and-verify narrative. Informs `src/qsh/pqc/transport.py` and
   the end-to-end orchestration framing.
@@ -368,20 +399,29 @@ papers. Where the two used to overlap, that file is the owner.
   Encryption** - Ortega and Martin-Delgado, arXiv:2602.12712, 2026 `[link]`
   URL: https://arxiv.org/abs/2602.12712
   Added: 2026-06-27
-  File: `Reverse_Delegated_Training_and_Private_Inference_via_Perfectly-Secure_Quantum_Homomorphic_Encryption.pdf`
-  QOTP plus classical FHE hybrid, Clifford+T QCNN, Pauli-gate concealment for circuit privacy,
-  MNIST 96.7 percent - those are the PAPER's properties, and two of them this repository does not
-  reproduce. **Relationship to this repository:** `src/qsh/qhe/qcnn.py` is an *independent and
-  PARTIAL* implementation of the paper's construction. It is not Clifford+T: the module builds
-  `AngleEmbedding` plus CNOT/RY/RZ and contains no T gate, with `t_count()` returning a labelled
-  Solovay-Kitaev estimate rather than a count. Pauli-gate concealment for CIRCUIT privacy is also not
-  reproduced - `qotp.py` conceals a state, not a computation, because propagating the Pauli frame
-  through the circuit breaks at T, which is the difficulty the paper exists to address. The browser
-  circuit in `web/src/lib/quantumSim.ts` is the one that is genuinely Clifford+T, and it counts its
-  T gates. It does not import, vendor or wrap the authors'
-  reference code at `OrtegaSA/CQC-QHE-repo`; an earlier version of this line claimed code reuse that
-  never existed, and the submodule was removed in Round 17. Cited as the source of the construction,
-  which is the accurate relationship.
+  File: none in the repository since Round 45 (arXiv's default licence grants third parties nothing;
+  `DATA_LICENSES.md` section 8)
+  Read in the arXiv text (v1, 13 Feb 2026) on 2026-10-30: QOTP encryption with a
+  teleportation-based, non-interactive evaluation of T gates, and no classical FHE, on QCNNs
+  decomposed into Clifford+T. Two scenarios: reverse delegated training on MNIST digits 0 and 1
+  reduced to two principal components (test accuracy 0.967 after decryption, 0.496 before), and
+  private inference with an eight-qubit network trained in plaintext with PennyLane on 16x16 MNIST
+  images of a binary task (accuracy 0.967), whose encrypted inference is shown on five test samples.
+  Pauli-gate concealment gives "probabilistic model protection" of the server's circuit. Those are
+  the PAPER's properties, and two of them (Clifford+T in Python, and circuit concealment) this
+  repository does not reproduce. Corrected 2026-10-30: this line read "QOTP plus classical FHE
+  hybrid ... MNIST 96.7 percent", which named a classical FHE the paper does not use and read as
+  encrypted inference on full MNIST. **Relationship to this repository:** `src/qsh/qhe/qcnn.py` is an
+  *independent and PARTIAL* implementation of the paper's construction. It is not Clifford+T: the
+  module builds `AngleEmbedding` plus CNOT/RY/RZ and contains no T gate, with `t_count()` returning
+  a labelled Solovay-Kitaev estimate rather than a count. Pauli-gate concealment for CIRCUIT privacy
+  is also not reproduced - `qotp.py` conceals a state, not a computation, because propagating the
+  Pauli frame through the circuit breaks at T, which is the difficulty the paper exists to address.
+  The browser circuit in `web/src/lib/quantumSim.ts` is the one that is genuinely Clifford+T, and it
+  counts its T gates. It does not import, vendor or wrap the authors' reference code at
+  `OrtegaSA/CQC-QHE-repo`; an earlier version of this line claimed code reuse that never existed,
+  and the submodule was removed in Round 17. Cited as the source of the construction, which is the
+  accurate relationship.
 
 - **Rate-1 Quantum Fully Homomorphic Encryption** - Chardouvelis, Dottling and Malavolta, IACR
   ePrint 2020/1454 (TCC 2021) `[R]`
@@ -393,8 +433,11 @@ papers. Where the two used to overlap, that file is the owner.
   reached by moving the Pauli key into the rate-1 classical FHE of Brakerski, Doettling, Garg and
   Malavolta (TCC 2019). Malicious circuit privacy, under quantum LWE - computational, not
   information-theoretic. **The paper reports no concrete ratio**: the 1.32 this repository once called
-  its "literature value" is not in it, and that constant, the Overview card it fed and the
-  quantum-advantage score built on the same comparison were removed on 2026-10-23. Informs
+  its "literature value" is not in it. That constant and the Overview card it fed were removed on
+  2026-10-23, and the quantum-advantage score built on the same comparison was retired from display
+  then; the full deployment's `/api/benchmark` still computes and returns it (`api/main.py`,
+  `src/qsh/benchmark/quantum_advantage.py`), and no page shows it. Corrected 2026-10-30: this said
+  the score was removed. Informs
   `src/qsh/qhe/rate1_qfhe.py` (QOTP plus a KEM-masked key; no Eval).
 - **Classical rate-1 FHE, the counterpart the comparison above omitted** `[R]`
   Gentry and Halevi, "Compressible FHE with Applications to PIR", TCC 2019, LNCS 11892, pp. 438-464,
@@ -417,7 +460,8 @@ papers. Where the two used to overlap, that file is the owner.
   Xiao (NUS and A*STAR), arXiv:2604.09975 [cs.CR], 11 Apr 2026 `[link]`
   URL: https://arxiv.org/abs/2604.09975
   Added: 2026-06-27
-  File: `EncFormer_Secure_and_Efficient_Transformer_Inference_over_Encrypted_Data.pdf`
+  File: none in the repository since Round 45 (arXiv's default licence grants third parties nothing;
+  `DATA_LICENSES.md` section 8)
   **Manuscript submitted to IEEE TDSC: not accepted, not peer-reviewed.** Hybrid CKKS plus
   two-party computation, not FHE-only, and the text contains no TFHE, no quantization and no
   polynomial-softmax method; an earlier revision of this entry attributed all three to it and dated
@@ -469,10 +513,11 @@ could only ever read PARTIAL.
 
 ## Prior art for the novelty claim, and the asymmetry it exposes (Round 30)
 
-Added 2026-08-11. Checklist rule M4 requires a novelty claim to survive an adversarial prior-art
-search. Run against this project's own headline claim, the search returned prior art for one half
-and nothing for the other. Both are recorded, because reporting only the second would be the
-omission this file exists to prevent.
+Added 2026-08-11. This project's verification rule requires a novelty claim to survive an
+adversarial prior-art search. Run against this project's own headline claim, the search returned
+prior art for one half and, read correctly, for the other too (the negative results below were
+narrowed on 2026-10-30); it found nothing for the whole chain. All of it is recorded, because
+reporting only the absence would be the omission this file exists to prevent.
 
 - **Buchsteiner, Koch, Rotaru & Rechberger, "webSPDZ: Versatile MPC on the Web."** IACR ePrint
   2025/487, received 2025-03-14. Compiles MP-SPDZ's C++ backend to WebAssembly with Emscripten and
@@ -505,13 +550,18 @@ omission this file exists to prevent.
   retrieved (ACM DL refuses automated fetches), so nothing beyond title, authors, venue and date
   is asserted here.** Added: 2026-08-11.
 
-**The negative results, stated as findings rather than left as absence.** No peer-reviewed
-2025-2026 paper was located that performs CKKS homomorphic *evaluation* of a neural network inside
-a browser tab with no server compute; every browser-FHE artefact found is encrypt-in-browser,
-evaluate-on-server. No WebGPU-accelerated homomorphic-encryption or MPC paper was located for
-2025-2026 either, which is consistent with the note in `web/src/lib/clientFHE.ts` that no
-commercial-OK WebGPU FHE exists in 2026. Absence of evidence is recorded as absence of evidence:
-the searches and their dates are here so the next round can re-run them rather than re-reason.
+**The negative results, stated as findings rather than left as absence.** No peer-reviewed 2025-2026
+paper was located that performs CKKS homomorphic *evaluation* of a neural network inside a browser
+tab with no server compute. That is the whole negative, and it is narrower than this paragraph used
+to state it ("every browser-FHE artefact found is encrypt-in-browser, evaluate-on-server", corrected
+2026-10-30): homomorphic evaluation in a browser exists. node-seal, the WebAssembly build of SEAL
+this demo uses, evaluates in the browser, and its own `BENCHMARK.md` (Round 31 additions, below)
+times evaluation operations such as `EvaluateRotate` in Chrome, Firefox and Safari; and Attrapadung
+et al. (AsiaCCS 2018; Round 83 additions, below) shipped two-level homomorphic encryption compiled
+to WebAssembly for browsers. No WebGPU-accelerated homomorphic-encryption or MPC paper was located
+for 2025-2026 either, which is consistent with the note in `web/src/lib/clientFHE.ts` that no
+commercial-OK WebGPU FHE exists in 2026. Absence of evidence is recorded as absence of evidence: the
+searches and their dates are here so the next round can re-run them rather than re-reason.
 
 ## Hybrid FHE/MPC private inference: the 2026 state of the art, and an attack on the nearest design
 
@@ -531,14 +581,23 @@ directly, not against another file in this repository. The architecture discussi
   permutation-invariant summary of a linear layer exactly and achieves perfect model
   distinguishability, needing `d+1` queries for a `d`-input layer - 5,712 for all linear layers of a
   ResNet-20. Breaks the shuffling-plus-noise defence that a plaintext-offload design depends on.
-  **Carried as a trip-wire:** this repository sends the non-linear half as secret shares, through
-  masked conversions since Round 75, so the key holder decrypts only masked intermediates; the paper
-  does not analyse the MPC-evaluated case - so the correct claim is that the attack's precondition is
-  absent here, up to the masks' stated statistical bound, NOT that the MPC variant has been shown
-  secure. **Until Round 75 this entry said "no plaintext intermediate exists to query" while the
-  conversions decrypted every linear output in the clear and opened every ReLU result to all
-  parties**, so the precondition was present. If the non-linear path is ever moved to plaintext client
-  offload, or the masks are removed, this applies directly. Added: 2026-08-11.
+  **Carried as a trip-wire, and in the full deployment's server tier the trip-wire is crossed.** This
+  repository sends the non-linear half as secret shares, through masked conversions since Round 75,
+  meant to let the key holder decrypt only masked intermediates. With the TenSEAL backend the mask
+  covers slot 0 only: `src/qsh/mpc/secret_inference.py` adds the bias plus the mask as a scalar to
+  `ct.dot(w)`, TenSEAL broadcasts that scalar to every CKKS slot, and the dot product's rotation sum
+  leaves partial sums of the products in the other slots. Decoding the whole plaintext with the
+  client's own secret key, slot differences cancel the mask and expose each product, so the client
+  recovers the unmasked output and the whole weight row in ONE query (confirmed locally 2026-10-30;
+  `tests/test_mpc.py` reads slot 0 only, which is why it passes). So the attack's precondition is
+  present there, at one query rather than d+1: until the fix the next round carries, the conversion
+  is not model-private, and nothing here shows the MPC variant secure. The public demo has no server
+  and its models are public, so it is not affected. Corrected 2026-10-30: this said the precondition
+  was absent, up to the masks' stated statistical bound. **Until Round 75 this entry said "no
+  plaintext intermediate exists to query" while the conversions decrypted every linear output in the
+  clear and opened every ReLU result to all parties**, so the precondition was present then too. If
+  the non-linear path is ever moved to plaintext client offload, this applies directly. Added:
+  2026-08-11.
 - **Xu, Lu, Yu, Yi, Lin, Wang & Li, "Breaking the Layer Barrier: Remodeling Private Transformer
   Inference with Hybrid CKKS and MPC" (BLB).** arXiv:2508.19525, Aug 2025. Splits at operator rather
   than layer granularity and fuses adjacent linear operators to minimise CKKS<->MPC conversions; 21x
@@ -552,7 +611,9 @@ directly, not against another file in this repository. The architecture discussi
   convert between homomorphic and garbled-circuit encodings at each layer boundary by masking: the
   server adds a random mask to the encrypted linear output before the client decrypts it, exactly,
   over the scheme's plaintext ring. The shape `src/qsh/mpc/secret_inference.py` follows since Round
-  75, with real-valued masks because CKKS is approximate. Added: 2026-10-27.
+  75, with real-valued masks because CKKS is approximate. As implemented the mask is one scalar per
+  output and protects slot 0 only (the Kim and Lee entry above), where GAZELLE's mask is a random
+  element of the plaintext ring. Added: 2026-10-27; the slot-0 limit added 2026-10-30.
 - **Mishra, Lehmkuhl, Srinivasan, Zheng & Popa, "Delphi: A Cryptographic Inference Service for Neural
   Networks."** IACR ePrint 2020/050; USENIX Security 2020. Inference between two parties "without
   revealing either party's data", with linear layers on additive secret shares prepared under
@@ -563,8 +624,12 @@ directly, not against another file in this repository. The architecture discussi
 retrospectives converge on roughly 100x-1000x overhead against plaintext, with what actually ships
 being narrow: small-model inference - logistic regression, trees, small networks - completing in
 seconds under CKKS. That is the honest frame for this project's T1 tier. The distilled students here
-are small **because that is what runs under encryption today**, not because a larger model was
-attempted and abandoned, and the measured teacher-student gaps are reported rather than hidden.
+are small **because that is what runs under encryption in one browser tab, on single-threaded
+WebAssembly**, not because a larger model was attempted and abandoned, and the measured
+teacher-student gaps are reported rather than hidden. On servers much larger models run under
+encryption: Park et al. (Round 31 additions, below) summarise 128 encrypted tokens of Llama-3-8B in
+20 s on eight GPUs. Corrected 2026-10-30: this said "because that is what runs under encryption
+today", which those server results contradict.
 
 ## Collaborative AML under FHE: the nearest published work to this repository's finance use case
 
@@ -618,11 +683,23 @@ Added 2026-08-11. Both verified at the arXiv abstract page.
   initialised QCNNs can only operate on the information in **low-bodyness measurements** of their
   input states, and their behaviour is efficiently classically simulable by an algorithm equipped
   with Pauli shadows. The authors argue QCNN successes largely reflect benchmark simplicity, and that
-  non-trivial datasets are a necessary ingredient for progress in QML. **Why it is cited here:** this
-  repository's trained QCNN loses to logistic regression on the identical split (medical accuracy
-  **0.883721** vs **0.953488**; finance minority-class F1 **0.735294** vs **0.865672**). This paper is
-  the reason that is the expected result rather than a failure of implementation, and it is quoted in
-  both QCNN model cards. The 8-class telecom circuit added in Round 34 lands the same way - macro F1
+  non-trivial datasets are a necessary ingredient for progress in QML. **Why it is cited here, and
+  the section that applies.** This repository's QCNNs take classical data in a product angle
+  embedding, one RY per feature, which is the case of the paper's Sec. IV.B, "Classical datasets"
+  (pp. 020304-10 and -11, Table I; Sec. IV.2 in the arXiv HTML): with a tensor-product embedding the
+  whole model is classically simulable with no quantum device, shown at n = 8 qubits on pairs of
+  MNIST, Fashion-MNIST, EuroSAT and GTSRB classes, and the authors conclude that QCNN-based QML for
+  classical data "appears to be an ill-motivated task" (read in the published PDF 2026-10-30). The
+  trained circuits here are moreover trees of two-qubit blocks on disjoint pairs, which a chain of
+  small density-matrix maps reproduces exactly at any width (all six shipped artefacts to 1.6e-6,
+  checked 2026-10-30), and at 7 to 9 qubits the state vector is a few hundred amplitudes anyway.
+  **The paper does not predict that logistic regression beats the circuit; that is measured here.**
+  The trained QCNN loses to logistic regression on the identical split (medical accuracy
+  **0.883721** vs **0.953488**; finance minority-class F1 **0.735294** vs **0.865672**), and Bowles
+  et al. (next entry) report the same direction across 160 datasets. Corrected 2026-10-30: this said
+  the paper "is the reason that is the expected result", resting on its random-initialisation result
+  (Sec. III.A), which assumes independent random gates that the trained circuits do not have. The
+  QCNN model cards quote it. The 8-class telecom circuit added in Round 34 lands the same way - macro F1
   **0.510963** against a multinomial logistic regression at **0.976447** on the identical split, with
   all 8 classes predicted - which matters because it is a *different* readout (a 3-qubit basis
   marginal rather than a single $`\langle Z_0 \rangle`$ expectation) and a different task shape, and it did not change
@@ -683,7 +760,12 @@ Added 2026-08-11. Both verified at the arXiv abstract page.
   Added: 2026-06-27
   File: `Quantum_Delegated_and_Federated_Learning_via_Quantum_Homomorphic_Encryption.pdf`
   QOTP-encrypted delegated and federated learning; informs the `src/qsh/ai/federated.py` privacy
-  layer.
+  layer. **What that layer's pairwise masks do, stated 2026-10-30.** In the browser every pair's mask
+  is an HKDF output of the one PQC session key, which the aggregator also holds; in Python the
+  default pair keys are public constants, `sha256(f"pair-{i}-{j}")`. The masks cancel exactly in the sum
+  and hide nothing from a holder of the session key, so they are not secure aggregation in the sense
+  of Bonawitz et al. (Round 83 additions, below), where each pair's mask comes from a key agreement
+  between that pair alone.
 
 - **Quantum Federated Learning: A Comprehensive Survey** - Nguyen, Uddin, Shaon, Rahman, Dobre and
   Niyato, arXiv:2508.15998, 21 Aug 2025 `[R]`
@@ -748,21 +830,43 @@ Added in Round 18 and previously recorded only in source docstrings.
 - NIST **SP 800-90B** - entropy sources, including the clause 4.4 continuous health tests
   (Repetition Count, Adaptive Proportion) that `src/qsh/qrng/health.py` implements.
   URL: https://csrc.nist.gov/pubs/sp/800/90/b/final
-- NSA **CNSA 2.0** - national security systems only (*"NSA does not mandate requirements on any other
-  entity outside of NSS"*). Under CNSSP 15, CNSA 2.0 algorithms are required in all new NSS acquisitions
-  from 2027-01-01, equipment that cannot support them is phased out by 2030-12-31, and CNSA 2.0 is
-  mandatory for all use by 2031-12-31. On QKD, the CNSA 2.0 and Quantum Computing FAQ (Ver. 2.2, October
-  2026) answers **"No"** to using it to protect a National Security System, and on hybrids it says NSA
-  *"will not require NSS developers to use hybrid certified products"*. The sentence that NSA *"does not
-  support the usage of QKD or QC to protect communications in National Security Systems"* is from NSA's
-  Post-Quantum Cybersecurity Resources page, not the FAQ (it was attributed to the FAQ until
-  2026-10-24). NSA does **not** recommend a PQC-hybrid QKD add-on, and neither does BSI: TR-02102-1
-  v2026-01 recommends a quantum-safe plus classical hybrid (section 2.2) and does not recommend QKD
-  (section 2.1). The optional QKD add-on in this repository is the project's own choice.
+- NIST **IR 8547**, *Transition to Post-Quantum Cryptography Standards*, **final, October 2026**
+  (announced 2026-10-27), Moody, Perlner, Regenscheid, Robinson and Cooper, doi:10.6028/NIST.IR.8547.
+  It follows the initial public draft of 2024-11-12.
+  URL: https://csrc.nist.gov/pubs/ir/8547/final (PDF:
+  https://nvlpubs.nist.gov/nistpubs/ir/2026/NIST.IR.8547.pdf)
+  VERIFIED in the final PDF 2026-10-30. Table 2 (quantum-vulnerable signatures: ECDSA and RSA at 112
+  bits of classical security or more, EdDSA at 128 or more) and Table 4 (key establishment:
+  finite-field and elliptic-curve DH and MQV, and RSA, at 112 bits or more) read *"Deprecated after
+  2030"* and *"Disallowed after 2035"*, so RSA-3072 and P-256 are deprecated after 2030 as well, which
+  the draft did not do. Section 4: *"NIST will deprecate quantum-vulnerable public-key cryptography
+  after 2030 and disallow its use under NIST standards and guidelines after 2035"*, and the window
+  *"does not alter the earlier deadlines"* that EO 14412 and OMB M-26-15 set for high value assets and
+  high impact systems (PQC key establishment by 2030-12-31, signatures by 2031-12-31). It replaces SP
+  800-57 Part 1's projected disallowance of 112-bit public-key schemes on 2031-01-01. Deprecated means
+  the algorithm may still be used at a risk the data owner must examine.
+- NSA **CNSA 2.0** - national security systems only (*"NSA does not mandate requirements on any
+  other entity outside of NSS"*). Under CNSSP 15, CNSA 2.0 algorithms are required in all new NSS
+  acquisitions from 2027-01-01, equipment that cannot support them is phased out by 2030-12-31, and
+  CNSA 2.0 is mandatory for all use by 2031-12-31. On QKD, the CNSA 2.0 and Quantum Computing FAQ
+  (Ver. 2.2, October 2026) answers **"No"** to using it to protect a National Security System, and
+  on hybrids it says NSA *"will not require NSS developers to use hybrid certified products"*. The
+  sentence that NSA *"does not support the usage of QKD or QC to protect communications in National
+  Security Systems"* is not in the FAQ (it was attributed to the FAQ until 2026-10-24). It is on
+  NSA's "Quantum Key Distribution (QKD) and Quantum Cryptography (QC)" page, and the archived copy
+  of the Post-Quantum Cybersecurity Resources address carries the same text (Wayback copies of
+  2026-10-16 and 2026-10-20, read 2026-10-30, because nsa.gov returns HTTP 403 to scripts). NSA does
+  **not** recommend a PQC-hybrid QKD add-on, and neither does BSI: TR-02102-1 v2026-01 recommends a
+  quantum-safe plus classical hybrid (section 2.2) and does not recommend QKD (section 2.1). The
+  optional QKD add-on in this repository is the project's own choice.
   URL (FAQ Ver. 2.2): https://media.defense.gov/2022/Sep/07/2003071836/-1/-1/0/CSI_CNSA_2.0__FAQ_v2.2.PDF
   (linked from https://www.nsa.gov/Cybersecurity/Post-Quantum-Cryptography-Resource-Hub/; nsa.gov
-  returns HTTP 403 to scripts, so the 2026-10-23 check read an archived copy)
+  returns HTTP 403 to scripts, so the 2026-10-23 check read an archived copy). The same PDF, byte for
+  byte (U/OO/6072712-26, October 2026), is also served at
+  https://media.defense.gov/2022/Sep/07/2003071836/-1/-1/0/CSI_CNSA_2.0_FAQ_.PDF, the address search
+  indexes list (Wayback copies of 2026-10-20 and 2026-10-23, compared 2026-10-30).
   URL (resources page): https://www.nsa.gov/Cybersecurity/Post-Quantum-Cybersecurity-Resources/
+  URL (QKD and QC page): https://www.nsa.gov/Cybersecurity/Quantum-Key-Distribution-QKD-and-Quantum-Cryptography-QC/
   The URL this entry used to give, `nsa.gov/Cybersecurity/Post-Quantum-Cryptography-FAQs/`, could not be
   confirmed (UNVERIFIED - needs confirmation) and is no longer cited.
 - **BSI TR-02102-1**, version 2026-01.
@@ -770,7 +874,8 @@ Added in Round 18 and previously recorded only in source docstrings.
 - **HNDL** (Harvest Now, Decrypt Later) and Q-Day acceleration - Gidney, arXiv:2505.15917, 2025.
   URL: https://arxiv.org/abs/2505.15917
 - **The Business of Quantum Technologies** - copyrighted book, `[R-local]`, deliberately not
-  redistributed (`.gitignore:11`). Background for the private business notes only; no technical claim in this
+  redistributed (`.gitignore` rule `references/The Business of Quantum Technologies.pdf`). Background
+  for the private business notes only; no technical claim in this
   repository rests on it.
 
 ---
@@ -800,8 +905,8 @@ in Round 17 are marked below.
 | `open-quantum-safe/liboqs` and `liboqs-python` | `qsh/pqc/*` | MIT |
 | `openfheorg/openfhe-development`, `microsoft/SEAL` | `qsh/fhe/*`, benchmark | BSD-2 / MIT |
 | `tenseal` | `qsh/fhe/*`, benchmark | **Apache-2.0**, confirmed from the installed package metadata; an earlier revision of this table listed it under BSD-2/MIT |
-| `Alisah-Ozcan/HEonGPU`, `chart21/hpmpc` (PIGEON), `kanav99/shark` | `qsh/benchmark/*`, our own glue | Apache-2.0 / MIT |
-| `data61/MP-SPDZ` | benchmark CPU MPC baseline, reference only | CSIRO, **not a blanket commercial grant** |
+| `Alisah-Ozcan/HEonGPU`, `chart21/hpmpc` (PIGEON) | git submodules. `qsh/benchmark/gpu_mpc_adapter.py` drives them only when they are built, and `qsh/fhe/backends.py`'s HEonGPU backend is a build-gated reference adapter that raises, since HEonGPU has no Python API; no HEonGPU run is measured in this repository. `kanav99/shark`, listed here until 2026-10-30, was removed in Round 17 and nothing uses it | Apache-2.0 / MIT |
+| `data61/MP-SPDZ` | not in the repository (its submodule was removed in Round 17, unreferenced); cited as a CPU MPC reference only | BSD-3-Clause, per CSIRO's grant (the correction above); its bundled third-party components carry their own terms |
 | `lschoe/mpyc` | `qsh/mpc/secret_inference.py` - non-linear MPC (ReLU, argmax, max-pool on shares), run as three party processes by `qsh/mpc/parties.py` since Round 75. A normal PyPI dependency in `requirements-fhe.txt`; the submodule was dropped in Round 17 and nothing is vendored | MIT |
 | `IBM/AMLSim`, `synthetichealth/synthea` | **cited only, not used.** Round 17 removed both submodules as unreferenced; `qsh/data/synthetic.py` mentions them in prose only and no code path calls them | Apache-2.0 |
 | `EdgarLopezPhD/PaySim` | cited only, never cloned or vendored | **GPL-3.0** for the simulator source; the Kaggle output dataset is separately CC-BY-SA-4.0 |
@@ -876,6 +981,10 @@ belongs in this file rather than only in a comment.
 > load-bearing - it was the whole stated reason for a metric choice - so it is replaced by a verbatim
 > one rather than softened. Verified 2026-08-12.
 >
+> **Resolved, checked 2026-10-30: none of the places listed below quotes the number as a finding any
+> more.** Some no longer carry it, and the rest record its withdrawal. The paragraph is kept as it
+> was written.
+>
 > **The withdrawn number is quoted in seven places outside this file and they are NOT yet fixed.**
 > Listed so the cleanup is a task rather than a discovery, because a correction that lands in the
 > provenance file only is the weakest possible version of it: `README.md:823`;
@@ -927,8 +1036,10 @@ belongs in this file rather than only in a comment.
   EMSS 2016.** The bundled finance demo sample; a SIMULATOR, not real transactions. Added: 2026-08-07.
 - **Sharafaldin, Habibi Lashkari & Ghorbani, "Toward Generating a New Intrusion Detection Dataset and
   Intrusion Traffic Characterization", ICISSP 2018.** CIC-IDS2017. Added: 2026-08-07.
-- **Wolberg, Street & Mangasarian, "Breast Cancer Wisconsin (Diagnostic)", UCI ML Repository (1995).**
-  DOI 10.24432/C5DW2B. Relicensed by UCI to CC BY 4.0, so attribution is due. Added: 2026-08-07.
+- **Wolberg, Mangasarian, Street & Street, "Breast Cancer Wisconsin (Diagnostic)", UCI Machine
+  Learning Repository (1993).** DOI 10.24432/C5DW2B. Relicensed by UCI to CC BY 4.0, so attribution
+  is due. Added: 2026-08-07. Corrected 2026-10-30 to the creators, order and year the UCI page asks
+  to be cited with; this entry read "Wolberg, Street & Mangasarian ... (1995)".
 - **Kermany et al., "Identifying Medical Diagnoses and Treatable Diseases by Image-Based Deep
   Learning", *Cell* 172(5) (2018).** DOI 10.1016/j.cell.2018.02.010. The chest X-ray source behind
   PneumoniaMNIST. Added: 2026-08-07.
@@ -953,17 +1064,28 @@ belongs in this file rather than only in a comment.
   roughly **four orders of magnitude**. The 20% is the figure that matters most here, because the
   plaintext-versus-CKKS agreement this demo prints IS a model-fidelity claim, and this is the survey
   saying most published work does not make one.
-- **arXiv:2607.11969** - instability of overlap-based anomaly metrics. Quoted in the satellite model
-  card and baked into `config.defaults.json`; the reason the event-wise F0.5 non-reproduction is
-  reported as metric instability rather than as a training failure. Added: 2026-08-07.
+- **Lyu, "Did We Actually Fix It? An Independent Adversarial Stress-Test of Post-Point-Adjustment
+  Evaluation Metrics for Time-Series Anomaly Detection", arXiv:2607.11969** (v1 2026-07-12, v2
+  2026-07-19). Quoted in the satellite model card and baked into `config.defaults.json` as the
+  reason the event-wise F0.5 non-reproduction is reported as metric instability rather than as a
+  training failure. Added: 2026-08-07. **Read at the abstract 2026-10-30, it does not support that
+  use.** Its subject is no-skill detectors gaming the metrics that replaced point adjustment (PA%K,
+  range-based and affiliation precision and recall, VUS): under one honest run none is gameable on
+  its six benchmarks, and under best-of-N reporting affiliation-F1 and every ROC-based metric inflate
+  steeply while the PR-based metrics and PA%K stay near-flat. The event-wise F-score this project
+  reports is not among the metrics it names. The local reason is enough on its own: three scored
+  events cannot rank detectors (`satellite-event-count-investigation.md`).
 - **EO 14412, "Securing the Nation Against Advanced Cryptographic Attacks"**, signed 2026-06-22,
   91 FR 38483. PQC key establishment on high-value assets and high impact systems by 2030-12-31,
   digital signatures by 2031-12-31 (section 4(b)); section 6(c) directs the FAR Council to publish a
   *proposed* rule within 180 days (about 2026-12-19) that would put covered contractors on FIPS,
-  including the PQC FIPS, by 2030-12-31 - none in the Federal Register as of 2026-10-23 (this entry
+  including the PQC FIPS, by 2030-12-31 - none in the Federal Register as of 2026-10-30 (this entry
   used to describe that rule as if it existed); National Security Systems excluded and remaining on
-  CNSA 2.0. The binding US instrument, against NIST IR 8547 which is still a draft.
-  Added: 2026-08-07.
+  CNSA 2.0. The binding US instrument for those systems. NIST IR 8547, final since October 2026
+  (doi:10.6028/NIST.IR.8547, External standards above), sets NIST's own schedule - quantum-vulnerable
+  public-key algorithms deprecated after 2030 and disallowed after 2035 - and leaves these earlier
+  dates in place. Added: 2026-08-07; the IR 8547 sentence corrected 2026-10-30 (it called IR 8547
+  "still a draft").
 
 ## Security scoring: sources evaluated and DECLINED (Round 22)
 
@@ -1086,10 +1208,15 @@ $$
 That is Qi et al.'s Eq. 8, with $`g`$ counting "the efficiency of the detector and channel loss" of the
 back channel. The code computes it with $`e_x = e_z = e`$. So the tolerable error rate falls fast as
 the link gets lossier: **0.0757 at 0 dB, 0.0286 at Qi et al.'s own $`g = 2.57`$** (their back
-channel's 4.1 dB, in a 1.5 km fibre system whose total loss was 25.1 dB), and about $`5.5 \times
-10^{-6}`$ on this project's 800 km downlink, 37.0 dB with the detector ($`g \approx 5{,}000`$).
-These replaced, in Round 75, figures computed with a pooled $`h(e_{\text{chk}})`$ and no detector
-term (0.110 / 0.048 / ~0.0003), and a downlink of 24.5 dB that had no receiver-optics loss. Applying 0.11 to a lossy channel is wrong in the
+channel's 4.1 dB, in a 1.5 km fibre system whose total loss was 25.1 dB), and about $`6.5 \times
+10^{-5}`$ on this project's 800 km downlink, where $`g \approx 533`$: Eve's gap counts 27.3 dB, the
+channel's 32.2 dB (18.1 dB of diffraction, 3.2 dB of atmosphere, 3.0 dB of pointing and 8.0 dB of
+station optics) less the station's optics, plus the detector's 3.0 dB (recomputed 2026-10-30 in
+`channel.py`). Those are the channel's figures since Round 77, which scaled the atmosphere by air
+mass. Until 2026-10-30 this entry carried Round 75's: 37.0 dB with the detector, $`g \approx 5{,}000`$
+and about $`5.5 \times 10^{-6}`$. Round 75's had in turn replaced figures computed with a pooled
+$`h(e_{\text{chk}})`$ and no detector term (0.110 / 0.048 / ~0.0003), and a downlink of 24.5 dB
+that had no receiver-optics loss. Applying 0.11 to a lossy channel is wrong in the
 **permissive** direction - it delivers over a channel whose secrecy capacity is already zero. The
 satellite path now computes $`C_s`$ directly.
 
@@ -1163,7 +1290,10 @@ established is worth keeping, because otherwise it gets re-litigated every round
   - **"Agencies must align their plans with NIST Internal Report (IR) 8547 ... or successor
     document."** This sharpens rather than contradicts the roadmap's line that IR 8547 "is still a
     draft, not binding": the draft is now normatively referenced by a binding memorandum. Both facts
-    have to be stated together, because either alone misleads.
+    have to be stated together, because either alone misleads. [Superseded 2026-10-27: NIST
+    published IR 8547 final, doi:10.6028/NIST.IR.8547, which deprecates all quantum-vulnerable
+    public-key algorithms after 2030 and disallows them after 2035; the memorandum now points at a
+    final document.]
   - Does not apply to national security systems, consistent with what this repository already records
     about EO 14412.
 - **Two citation checks recorded so they are not repeated.** Secondary sources (Wiz,
@@ -1172,6 +1302,8 @@ established is worth keeping, because otherwise it gets re-litigated every round
   published 2026-06-25, **91 FR 38483**. This repository's number and FR citation are correct and the
   blogs are wrong. Separately, **NIST IR 8547 is confirmed still at Initial Public Draft** (published
   2024-11-12, comments closed 2025-01-10, no second draft and no final), so the roadmap's claim holds.
+  [Superseded 2026-10-27: NIST published IR 8547 final, doi:10.6028/NIST.IR.8547, which deprecates
+  all quantum-vulnerable public-key algorithms after 2030 and disallows them after 2035.]
 
 ### QKD security proofs that supersede this repository's baseline
 
@@ -1366,7 +1498,8 @@ Where a source could not be loaded it is marked and no number is taken from it.
   URL: https://arxiv.org/abs/2607.23478
   Names **multiplicative depth as the dominant cost** of homomorphic transformer inference, with a
   per-layer configuration space reaching about $`10^{84}`$ for a 12-layer BERT/ViT and $`10^{225}`$ for 32-layer LLaMA3,
-  and 35-50% of candidate configurations numerically invalid. This is a **primary source for the
+  and 35-50% of candidate configurations numerically invalid. These figures are v1's (2026-07-26);
+  v2 (2026-08-27) is a revised text, so quote them with their version. This is a **primary source for the
   constraint `models/registry.py` asserts** in its T1 docstring, and Round 33 cited it there.
   This entry said the docstring "until now rested on a secondary systematisation (IACR 2026/935) plus
   Park et al.", which was wrong in both halves: Round 31 had already removed the 2026/935 citation
@@ -1481,7 +1614,9 @@ makes**, in the direction of understating what is possible.
   post-quantum cryptography **once**, as a question for comment: "should we account for that risk
   through post-quantum cryptography?" No date, no timeline - not a migration instrument.
 - **NIST IR 8547 re-verified still at Initial Public Draft** (published 2024-11-12, comments closed
-  2025-01-10, no second draft, no final). `docs/pqc-roadmap.md` holds. FIPS 206 IPD and an HQC draft:
+  2025-01-10, no second draft, no final). `docs/pqc-roadmap.md` holds. [Superseded 2026-10-27: NIST
+  published IR 8547 final, doi:10.6028/NIST.IR.8547, which deprecates all quantum-vulnerable
+  public-key algorithms after 2030 and disallows them after 2035.] FIPS 206 IPD and an HQC draft:
   **NOT FOUND** - no June/July/August 2026 item for either on csrc.nist.gov/News.
 - **A second quantum executive order was published the same day as EO 14412 and is cited nowhere here.**
   "Ushering in the Next Frontier of Quantum Innovation", Federal Register document 2026-12910,
@@ -1496,11 +1631,20 @@ makes**, in the direction of understating what is possible.
   (homomorphic OR "secure multiparty" OR garbled OR "private inference"), newest first, returns nothing
   in-browser; a separate (WebGPU OR WebAssembly) sweep across cs.CR/cs.LG/cs.DC finds nothing evaluating
   ciphertext in a tab. The composition novelty claim rests on this and it continues to hold.
+  [Corrected 2026-10-30: the heading was too broad when written. webSPDZ, which this bullet names, is
+  MPC in a browser; node-seal, which this demo uses, evaluates homomorphically in the browser and
+  benchmarks it there; and Attrapadung et al. (AsiaCCS 2018; Round 83 additions, below) shipped
+  two-level homomorphic encryption in WebAssembly. What these searches support is narrower: no
+  peer-reviewed 2025-26 report of CKKS neural-network inference evaluated in a browser tab.]
 - **No encrypted-inference work specific to AML or to satellite telemetry.** Searches for (homomorphic OR
   secure inference OR privacy-preserving) against (money laundering OR fraud detection) surface only
   federated work in 2026; the same against (satellite OR telemetry OR spacecraft) surfaces no encrypted
   telemetry anomaly detection at all. So the encrypted tiers on those two pages are demonstrations rather
   than reproductions of anyone's deployment, which is what they should be described as.
+  [Corrected 2026-10-30: wrong for AML when written. This file's own entry for Effendi and
+  Chattopadhyay (SPACE 2024), added the same day, is encrypted collaborative-AML inference under TFHE.
+  The satellite half still holds as far as the searches reached, and on the satellite page nothing
+  runs under encryption at all: its anomaly score is a plaintext computation in the tab.]
 
 ## Round 33 additions, verified at primary source 2026-08-12
 
@@ -1564,7 +1708,8 @@ to no publication.
   Crossref. It recommends at least 100 events and 100 non-events for the calibration intercept and
   slope, and *"at least 200 events and 200 non-events to derive flexible calibration curves"*; with
   less data such curves may be unstable and can be omitted. **This is the source of the floor that
-  checklist row `PP8` and `web/src/lib/calibration.ts` apply.** Until Round 74 the project attributed
+  `web/src/lib/calibration.ts` and a row of the private verification checklist apply.** Until Round
+  74 the project attributed
   the floor to Riley et al., the entry below, and a Round 51 chart drew curves below it regardless.
 - **Riley et al., "Minimum sample size for external validation of a clinical prediction model with a
   binary outcome", *Statistics in Medicine* 2021.** DOI 10.1002/sim.9025 `[link]`
@@ -2125,3 +2270,63 @@ decide its block. What each source grounds is stated.
 - **ETSI GS QKD 005 (2010) and GS QKD 016 V2.1.1 (2024)**, read by the round's research: the block
   size must be specified; neither gives a value. A search-engine summary claiming ETSI recommends 1e8
   or more is not supported by either document.
+
+## Round 83 additions: sources cited without an entry, and the sources this round's corrections rest on
+
+Read 2026-10-30 at the primary source each entry names. The first two were cited elsewhere in the
+repository with no entry here; the other three ground corrections made on that date in this file and
+in the technical report.
+
+- **Huang, Maeng and Suh, "Beyond Latency: A System-Level Characterization of MPC and FHE for
+  PPML"**, arXiv:2604.00169 [cs.CR], v1 2026-03-31, v2 2026-04-21, whose comment says it carries minor
+  corrections to the ISPASS 2026 accepted paper `[link]`
+  URL: https://arxiv.org/abs/2604.00169
+  Read at the abstract. One characterisation of two MPC variants (arithmetic/binary sharing
+  conversion, and function secret sharing) and FHE for private inference on CNN and Transformer
+  models, across LAN and WAN settings, model sizes, batch sizes and input lengths, measuring energy
+  and monetary cost as well as performance, with offline and online computation and communication
+  counted. Cited for system-level cost by the use-case pages' footnote
+  (`web/src/pages/UseCasePage.tsx`, under a shortened title), with no entry here until now. No number
+  on the page or here is taken from it.
+- **Yugay, Cui, Pei and Zaytsev, "Strong Linear Baselines Strike Back: Closed-Form Linear Models as
+  Gaussian Process Conditional Density Estimators for TSAD"**, arXiv:2602.00672 [cs.LG], 2026-01-31
+  `[link]`
+  URL: https://arxiv.org/abs/2602.00672
+  Read at the abstract: an autoregressive anomaly score with the closed-form OLS solution
+  *"consistently matches or outperforms state-of-the-art deep detectors"*, read as a finite-history
+  Gaussian process conditional density, and the authors ask future work to include strong linear
+  baselines and to build benchmarks that show where deep models help. Discussed, and an earlier
+  misreading of it corrected, in [`model-choice-vs-2026-practice.md`](model-choice-vs-2026-practice.md),
+  with no entry here until now. It concerns an unsupervised score fitted on the series itself, not a
+  student distilled from a teacher, so it does not by itself support the satellite's linear tier.
+- **Pinkas, Schneider and Zohner, "Faster Private Set Intersection Based on OT Extension"**, 23rd
+  USENIX Security Symposium, San Diego, 2014 `[link]`
+  URL: https://www.usenix.org/system/files/conference/usenixsecurity14/sec14-paper-pinkas.pdf
+  Read in the proceedings PDF. Section 1.1: the naive solution, in which both parties hash their
+  inputs and compare the hashes, *"is insecure if the input domain is not large or does not have high
+  entropy"*, because one party can hash every likely item and compare. A keyed hash whose key both
+  parties hold is the same construction between those two parties, which is why the finance
+  use case's keyed-hash intersection does not keep the banks' lists private from each other (WS3,
+  the Zhang et al. entry). It grounds that correction; nothing here implements its protocol.
+- **Bonawitz, Ivanov, Kreuter, Marcedone, McMahan, Patel, Ramage, Segal and Seth, "Practical Secure
+  Aggregation for Federated Learning on User-Held Data"**, arXiv:1611.04482 (2016-11-14, NIPS 2016
+  workshop on Private Multi-Party Machine Learning);
+  full version "Practical Secure Aggregation for Privacy Preserving Machine Learning", IACR ePrint
+  2017/281 `[link]`
+  URL: https://arxiv.org/abs/1611.04482
+  Read in the arXiv text. Each pair of users agrees a secret by Diffie-Hellman key agreement and
+  expands it with a PRG into a mask, uniform over $`[0, R)^k`$ with the sum taken mod $`R`$, so the
+  masked inputs *"appear uniformly random to the server"* up to their sum. Cited because this
+  project's pairwise masks come from one shared session key instead (the QFL section): they cancel
+  as these do and hide nothing from that key's holder. The ePrint listing was read for the full
+  version's title and authors; its PDF refused automated access.
+- **Attrapadung, Hanaoka, Mitsunari, Sakai, Shimizu and Teruya, "Efficient Two-level Homomorphic
+  Encryption in Prime-order Bilinear Groups and A Fast Implementation in WebAssembly"**, ACM AsiaCCS
+  2018, DOI 10.1145/3196494.3196552 `[link]`
+  URL: https://github.com/herumi/she-wasm (the authors' library, which gives this citation)
+  Read at the library's README: lifted-ElGamal encryption that *"can add two ciphertexts many times,
+  and can multiply two ciphertexts once"*, compiled to WebAssembly for Node.js and browsers, under a
+  BSD-3-Clause licence. The ACM page was not opened. Cited as prior art for homomorphic evaluation in
+  a browser, which this project's novelty statement had said its search did not find. Two-level HE is
+  not fully homomorphic, and neither is this demo's levelled CKKS without bootstrapping, so the
+  comparison is like for like.

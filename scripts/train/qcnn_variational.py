@@ -506,7 +506,11 @@ def main() -> int:
     entangle = not a.no_entangle
     torch.manual_seed(a.seed)
     # Only bites on the CPU fallback: with a capable GPU present this trains on CUDA, so the thread
-    # count governs nothing here. It is set anyway so a CPU host gets the same guarantee.
+    # count governs nothing here. It is set anyway, but it does NOT give a CPU host the same
+    # guarantee: a single-thread CPU retrain (2026-10-30) reproduced the four binary artifacts'
+    # metrics with theta up to about 5e-05 away, and did not reproduce the two telecom artifacts
+    # (macro F1 0.5151 and 0.5433 against the recorded 0.510963 and 0.541894). Bit-for-bit
+    # regeneration holds on CUDA.
     #
     # Kept as a record of a wrong turn, because the wrong answer looked right twice. The 8-class
     # artifact would not regenerate - the same seeded command gave macro F1 0.809846 on some runs
@@ -525,9 +529,14 @@ def main() -> int:
     # selection now happens on a validation split the reported number never sees.
     n = len(y)
     cut, vcut = int(0.7 * n), int(0.85 * n)
-    # TRAIN IN THE SPACE THE BROWSER ACTUALLY SUPPLIES. The bundled medical sample is
-    # StandardScaler over the full corpus - verified, L1 distance 0.0002 against a recomputed
-    # z-score - so it is z-scores that arrive at inference time, not raw units. A first version of
+    # TRAIN IN THE SPACE THE BROWSER ACTUALLY SUPPLIES. The bundled medical sample carries
+    # z-scores, so it is z-scores that arrive at inference time, not raw units. NOT THE SAME
+    # CONSTANTS, though: since Round 34 the bundle is StandardScaler fitted on the UNSHUFFLED first
+    # 70 percent of the cohort (qsh.data.loaders.load_breast_cancer; `scaling` in
+    # web/public/data/medical/breast_cancer_sample.json), while this script standardises with the
+    # moments of its own SHUFFLED training split, and the browser ignores the artifact's
+    # feature_mean/feature_std for `zscore` input. A 2026-10-30 check found 2 of 86 held-out
+    # classes change between the two scalings. A first version of
     # this script fitted a min-max scaler on raw WDBC (area 143..2501); feeding it z-scores pinned
     # seven of eight features to -1 and produced <Z0> = 0.0098, a degenerate state that made the
     # TRAINED path exactly as meaningless as the untrained one it replaced. Same class of mistake as
@@ -538,8 +547,9 @@ def main() -> int:
     # WHICH SPACE DOES THE BROWSER SUPPLY? It differs per use case, and getting it wrong is how the
     # first trained model became as meaningless as the untrained one it replaced.
     #
-    #   medical  the bundled sample is StandardScaler output (verified, L1 0.0002), so z-scores
-    #            arrive at inference time and the browser must NOT rescale.
+    #   medical  the bundled sample is StandardScaler output, so z-scores arrive at inference time
+    #            and the browser must NOT rescale - but with the bundle's constants, not this
+    #            script's (see the note above).
     #   finance  the bundled sample is RAW and mixed-scale - `amount` is log 0..17.7, `amount_zscore`
     #            is already a z-score, five columns are binary 0/1 - and all 16 bundled rows are found
     #            in this tsv within 1e-3, so the browser supplies exactly these units. It therefore
@@ -804,12 +814,13 @@ def main() -> int:
                                 f"--layers {a.layers} --epochs {a.epochs} --seed {a.seed} "
                                 f"--threads {a.threads} --qubits {nq}",
                      "note": ("--seed drives the numpy split permutation and torch parameter "
-                              "init. Re-running this command regenerates this file: five "
-                              "consecutive runs gave identical metrics and identical theta to nine "
-                              "decimal places. That is true only since the multiclass readout "
-                              "stopped using index_add_, whose CUDA atomicAdd made the same seeded "
-                              "command land on macro F1 0.809846 or 0.807781 depending on the "
-                              "run.")},
+                              "init. Re-running this command on a CUDA device regenerates this "
+                              "file: five consecutive runs gave identical metrics and identical "
+                              "theta to nine decimal places. That is true only since the multiclass "
+                              "readout stopped using index_add_, whose CUDA atomicAdd made the same "
+                              "seeded command land on macro F1 0.809846 or 0.807781 depending on "
+                              "the run. On a CPU it is not guaranteed: CPU and CUDA kernels differ "
+                              "in float rounding, and a long multiclass run amplifies that.")},
         "test_accuracy": round(qcnn_acc, 6),
         "classical_lr_accuracy": round(float(lr_acc), 6),
         "majority_baseline": round(float(major), 6),

@@ -40,9 +40,10 @@ export function EveSweepChart({ distanceKm }: { distanceKm: number }) {
   return (
     <figure className="chart-figure">
       <figcaption className="small muted">
-        <b>Model output (simulated BB84 at {distanceKm} km):</b> the observed QBER crosses the {threshold} abort
-        threshold, and the secure key reaches zero, as the intercept-resend fraction grows. Her disturbance
-        is composed with the channel's own error, not added to it.
+        <b>Model output (simulated BB84 at {distanceKm} km):</b> as the intercept-resend fraction grows the
+        secure key reaches zero first, and the observed QBER crosses the {threshold} abort threshold later:
+        the decoy-state bound runs out of key below the textbook threshold. Her disturbance is composed
+        with the channel's own error, not added to it.
       </figcaption>
       <ChartReadout hint={HINT_KEYBOARD}>
         <ResponsiveContainer width="100%" height={240}>

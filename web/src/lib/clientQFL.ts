@@ -1,9 +1,16 @@
 /**
- * Quantum Federated Learning in the browser, and its secure aggregation.
+ * Federated learning in the browser ("Quantum Federated Learning" in the stage names), and its
+ * masked aggregation.
  *
- * SPLIT OUT OF `clientCompute.ts` so it can be exercised on its own. The security property this
- * module provides - that the aggregator recovers the weighted mean from MASKED shares alone - is
- * worth an executable check, and `clientCompute` transitively reaches `clientFHE`, which imports the
+ * NOTHING QUANTUM IS COMPUTED HERE. The "quantum feature map" is `qcnnExpectation`, the closed form
+ * tanh(mean(sin(x_i + 0.5 i))) - no circuit and no state vector - and the model is a 4-weight
+ * logistic head over three such features and a bias.
+ *
+ * SPLIT OUT OF `clientCompute.ts` so it can be exercised on its own. The property this module
+ * provides - that the aggregator recovers the weighted mean from MASKED shares, the masks cancelling
+ * exactly - is worth an executable check. It is not a privacy property here: every mask is derived
+ * from the one PQC session key, which the aggregator also holds, so the masks hide nothing from it
+ * (see `qflPairMask`). And `clientCompute` transitively reaches `clientFHE`, which imports the
  * SEAL wasm through a Vite-only `?url` specifier that no plain bundler resolves. Keeping federated
  * aggregation here means `npm run check:qfl` loads the real code rather than a re-implementation of
  * it. It is also a distinct concern from a 2,000-line stage dispatcher.
@@ -16,12 +23,11 @@ import { qcnnExpectation, rng } from "./quantumSim";
 
 const r2 = (x: number) => Math.round(x * 100) / 100;
 
-// A GENUINELY-computed, in-browser FedAvg of a HYBRID quantum-classical model: a fixed quantum
-// feature map (the quantumSim QCNN expectation) feeds a classical logistic head that is federated
-// across K simulated clients with size-weighted FedAvg — mirroring the full deployment's
-// Flower + PennyLane HybridQNN. Round accuracy is REALLY computed on a held-out split (not a canned
-// constant). Honest scope: a small simulated VQC feature map + a federated classical head (not
-// fault-tolerant QFL); the full path also trains the VQC weights.
+// A GENUINELY-computed, in-browser FedAvg of a classical model: a fixed feature map
+// (`qcnnExpectation`, a closed-form function despite its name, not a simulated circuit) feeds a
+// logistic head that is federated across K simulated clients with size-weighted FedAvg. The full
+// deployment's Flower + PennyLane HybridQNN trains a real variational circuit; this does not.
+// Round accuracy is REALLY computed on a held-out split (not a canned constant).
 //
 // This comment used to end "under quantum-safe secure aggregation", and the diagram said "pairwise
 // masking (demo keys)". Neither was true of this function: it summed plaintext updates. `aggregation`
@@ -33,7 +39,7 @@ export interface QFLResult {
   pairs: number;
   /** Held-out rows `finalAcc` was measured on. Reported because it is small enough to matter. */
   evalRows: number;
-  /** What the same held-out rows score with untrained weights - the constant predictor. */
+  /** What the same held-out rows score with untrained weights - the constant all-class-0 predictor. */
   baselineAcc: number;
 }
 
@@ -68,6 +74,11 @@ const qflMaxShare = (clients: number) => 2 ** 31 / Math.max(1, clients);
  * HKDF-SHA256 from the run's PQC session key, with the pair and round in the info string - the same
  * primitive and the same domain-separation style the hybrid handshake uses. Deriving per round is
  * what stops a mask from being reused across updates of the same weights.
+ *
+ * EVERY PAIR'S MASK COMES FROM THE ONE SESSION KEY, and the aggregator (the handshake's responder)
+ * holds that key, so it can recompute every mask and unmask each client's update: the masks cancel
+ * exactly and hide nothing from a session-key holder. Bonawitz et al. derive each pair's seed by a
+ * key agreement between that pair alone, which is what this does not do.
  */
 function qflPairMask(sessionKey: Uint8Array, u: number, v: number, round: number, P: number): number[] {
   const info = new TextEncoder().encode(`qsh/qfl-pairwise-mask/v1|${u}|${v}|r${round}`);
@@ -77,7 +88,8 @@ function qflPairMask(sessionKey: Uint8Array, u: number, v: number, round: number
 }
 
 /**
- * Size-weighted FedAvg under pairwise additive masking. Bonawitz et al., CCS 2017.
+ * Size-weighted FedAvg under pairwise additive masking, the masking step of Bonawitz et al., CCS
+ * 2017, without its pairwise key agreement: all masks derive from the one session key.
  *
  * Each client weights its own update, quantises it, and adds `+mask(u,v)` for every peer above it
  * and `-mask(u,v)` for every peer below. The aggregator sees only masked shares; summing them
@@ -89,8 +101,9 @@ function qflPairMask(sessionKey: Uint8Array, u: number, v: number, round: number
  *
  * Honest scope: the demo runs all K clients in one tab, so this demonstrates that the aggregate is
  * recoverable from masked shares alone - it is not a threat model in which the shares are held by
- * mutually distrusting parties. There is no dropout-recovery secret sharing (Bonawitz section 4),
- * so a client that vanished mid-round would leave its masks uncancelled.
+ * mutually distrusting parties, and with one key behind every mask it could not be one. There is no
+ * dropout-recovery secret sharing (Bonawitz section 4), so a client that vanished mid-round would
+ * leave its masks uncancelled.
  *
  * What a complete version adds, and the citation for it: arXiv:2607.28191 (2026-07-30, PREPRINT - no
  * journal_ref and no DOI as of 2026-08-13) implements exactly this scheme on Flower with threshold
@@ -168,7 +181,7 @@ export function clientQFL(
     }
   }
   const N = X.length;
-  // quantum feature map: the QCNN expectation on a few deterministic views of x → 3 quantum features
+  // feature map: `qcnnExpectation` (closed form, no circuit) on three deterministic views of x
   const phi = (x: number[]) => [
     qcnnExpectation(x).z,
     qcnnExpectation(x.map((v) => v + 0.7)).z,
@@ -204,8 +217,9 @@ export function clientQFL(
     for (const id of te) if ((sigmoid(dot(w, phi(X[id]))) > 0.5 ? 1 : 0) === Y[id]) c++;
     return c / te.length;
   };
-  // What the SAME held-out rows score before any training: w = 0 gives sigmoid(0) = 0.5, so every
-  // row is predicted 1 and this is the constant-predictor rate. Reported because "accuracy 0.74"
+  // What the SAME held-out rows score before any training: w = 0 gives sigmoid(0) = 0.5, which is
+  // not above 0.5, so every row is predicted 0 and this is the all-class-0 rate - not the majority
+  // rate wherever class 1 is the majority of the held-out rows. Reported because "accuracy 0.74"
   // says nothing on its own about whether the federated rounds did anything, and the round-by-round
   // series cannot say either once the problem is well conditioned enough to converge in one round.
   // It is the `C` (constant predictor) discipline this project already applies to its other models.
@@ -216,7 +230,7 @@ export function clientQFL(
   // Both flows that reach this stage run `pqc_handshake` first, so the key is always there.
   const sessionKey = opts?.sessionKey;
   if (!sessionKey || sessionKey.length === 0) {
-    throw new Error("clientQFL needs the PQC session key: secure aggregation has no plaintext mode");
+    throw new Error("clientQFL needs the PQC session key: the masked aggregation has no plaintext mode");
   }
   let w = new Array(P).fill(0);
   const tot = tr.length;
@@ -238,6 +252,6 @@ export function clientQFL(
   return { roundAcc, finalAcc: roundAcc[roundAcc.length - 1], clients: K, rounds, pairs,
     evalRows: te.length, baselineAcc,
     aggregation: pairs > 0
-      ? `size-weighted FedAvg + ${pairs} pairwise masks (Bonawitz CCS 2017), fixed-point mod 2^32`
+      ? `size-weighted FedAvg + ${pairs} pairwise masks, all derived from the one session key, fixed-point mod 2^32`
       : "size-weighted FedAvg, 1 client - no pair to mask" };
 }

@@ -91,8 +91,10 @@ export interface EncryptedAgreementPlot {
  * visitor as a scalar taken over a SINGLE row: `encrypted_top1_mismatches` could only be 0 or 1, and
  * `encrypted_scores_compared` counted classes rather than rows.
  *
- * Each point is one held-out row: its decrypted winning score against the plaintext score for the
- * same row and class. Agreement is the `y = x` line, so a deviation is visible as distance from it
+ * Each point is one row of the page's corpus - the held-out split on telecom, but on finance and
+ * medical the bundled 400 rows the demo's linear model was fitted on, so NOT held out there - with its
+ * decrypted winning score against the plaintext score for the same row and class. Agreement is the
+ * `y = x` line, so a deviation is visible as distance from it
  * rather than as a number someone has to interpret. Points are coloured by whether the encrypted
  * argmax matched the plaintext argmax - the integer convention arXiv:2605.22237 Table IX reports and
  * expects to be zero.
@@ -106,7 +108,7 @@ export function EncryptedAgreementChart({ plot }: { plot: EncryptedAgreementPlot
   const worst = Math.max(...plot.points.map((p) => Math.abs(p.enc - p.plain)));
   const lo = Math.min(...plot.points.flatMap((p) => [p.enc, p.plain]));
   const hi = Math.max(...plot.points.flatMap((p) => [p.enc, p.plain]));
-  const name = `Encrypted score against plaintext score, ${plot.rows} held-out rows`;
+  const name = `Encrypted score against plaintext score, ${plot.rows} rows`;
   return (
     <figure className="chart-figure">
       {/* A strip of the four numbers the caption below qualifies, for a reader scanning the page. The
@@ -122,8 +124,10 @@ export function EncryptedAgreementChart({ plot }: { plot: EncryptedAgreementPlot
       </table>
       <figcaption className="muted small">
         <strong>Private inference against the plaintext reference.</strong> Each point is one of{" "}
-        {plot.rows} held-out rows scored under CKKS in this tab, plotted against the same row&apos;s
-        plaintext score. The diagonal is exact agreement. Top-1 mismatches:{" "}
+        {plot.rows} rows of this page&apos;s corpus scored under CKKS in this tab, plotted against the same
+        row&apos;s plaintext score (on telecom the held-out split; on finance and medical the bundled rows
+        the demo&apos;s linear model was fitted on, so they test encryption, not generalisation). The
+        diagonal is exact agreement. Top-1 mismatches:{" "}
         <strong>{mismatches}</strong> of {plot.rows}. All {plot.rows} rows travelled in a single
         ciphertext, so they cost the homomorphic work of one.
         {/* THE CIPHERTEXT CAP, restored.
@@ -372,7 +376,9 @@ export function RealDataScatter({ usecase, card = false }: { usecase: string; ca
       <figcaption className="muted small">
         {data.is_training_corpus ? (
           <>
-            <strong>The corpus this model actually trains on</strong>, held-out split,{" "}
+            {/* No "held-out split" here: finance's 8,192 rows are its test window, but telecom's
+                3,200 are the whole generated corpus, training rows included. */}
+            <strong>From the corpus this model actually trains on</strong>:{" "}
             {data.points.length} {data.corpus_is_synthetic ? "simulated" : "real"} points. This is a
             genuine train-versus-inference comparison rather than a lookalike{data.corpus_is_synthetic
               ? " - though the rows are simulator output, so nothing here is a claim about a live system"
@@ -612,7 +618,8 @@ export function NoEncryptedComparison({ usecase }: { usecase?: string }) {
         <code> encrypted_agreement_plot</code>, which only a stage that scores rows under CKKS emits
         {usecase === "satellite_comms"
           ? <> - <code>satellite_comms</code> runs telemetry analysis and has no such stage</>
-          : <> - this use case has no such stage in its flow</>}
+          : <> - this use case either has no such stage, or, like the generic demo, has no bundled
+              corpus for it to score</>}
         , and a stopped or failed run has not reached one. Nothing is missing; there is nothing to
         plot.
       </p>
@@ -667,12 +674,14 @@ export function MeasuredAgainstPublished(
   return (
     <figure className="chart-figure">
       <figcaption className="muted small">
-        <code>{metric}</code> for <code>{modelKey}</code>: measured here against the published figure.
+        <code>{metric}</code> for <code>{modelKey}</code>: this project&apos;s recorded figure, from
+        training rather than from this tab, against the published one.
         {caveat
           ? <> The two bars share a metric <b>name</b> and are <b>not</b> the same measurement. Read
               the note under the chart before comparing their heights.</>
           : <> Both bars are the same metric on the same axis - the comparison is only meaningful
-              because of that, and this project has twice shipped a plot where it was not true.</>}
+              because of that, and this project has twice shipped a plot where it was not true. The
+              splits and protocols behind the two can still differ; the baseline&apos;s source says how.</>}
         {source ? <> Baseline: {source}</> : null}
       </figcaption>
       <ChartReadout hint={HINT_KEYBOARD}>
@@ -837,9 +846,9 @@ export function VerificationChart(
                       the way WCAG's own pie-chart example uses a border, so each segment meets the
                       card at 3.72:1 or more. */}
                   <Bar dataKey="negative" stackId="a" fill="#717d92" stroke={CARD} strokeWidth={1}
-                       name="true negative (solid)" />
+                       name="true class 0 (solid)" />
                   <Bar dataKey="positive" stackId="a" fill="url(#hatch-positive)" stroke={CARD}
-                       strokeWidth={1} name="true positive (hatched)" />
+                       strokeWidth={1} name="true class 1 (hatched)" />
                 </BarChart>
               </ResponsiveContainer>
             </ChartReadout>

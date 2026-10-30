@@ -13,14 +13,16 @@ tags:
 
 # CKKS-linear OPS-SAT segment student
 
-logistic regression over 18 published per-segment features + `sampling`
+logistic regression over the quadratic expansion (209 terms) of the 18 published per-segment features + `sampling`
 
 Part of [QSMPC-QKD-QHE-AI-Hybrid](https://github.com/thedaemon-wizard/QSMPC-QKD-QHE-AI-Hybrid),
 a quantum-safe orchestration demo.
-This is the **encrypted-tier** model for the `satellite_comms` use case: it is a
-distilled student small enough to evaluate under real CKKS, and the demo runs it
-that way. It is not the plaintext teacher, and its numbers should be read against
-that teacher rather than against the published literature.
+This is the **encrypted-tier** model for the `satellite_comms` use case: a
+distilled student small enough to evaluate under CKKS. Whether the public demo
+encrypts THIS model differs by use case; the notes below say what actually runs.
+It is not the plaintext teacher, and its numbers should be read against that
+teacher rather than against the published literature. Its agreement with the
+teacher was measured offline, in plaintext.
 
 ## Measured performance
 
@@ -49,12 +51,13 @@ that teacher rather than against the published literature.
 - **Dataset**: OPS-SAT-AD
 - **Licence**: CC-BY-4.0
 - **Source**: https://doi.org/10.5281/zenodo.12588358 (licence read 2026-08-05)
+- **Attribution (CC-BY-4.0)**: Ruszczak, Kotowski, Evans & Nalepa, 'The OPS-SAT benchmark for detecting anomalies in satellite telemetry', Scientific Data 12, 710 (2025), doi:10.1038/s41597-025-05035-3, CC BY 4.0.
 
-2,123 annotated telemetry segments across 9 channels from ESA's OPS-SAT CubeSat, 20.4% anomalous, with 18 published per-segment features plus a `sampling` metadata column, and the benchmark's own train/test split. Ruszczak et al., Scientific Data 12 (2025). CC BY 4.0 and 507 KB, so unlike every other corpus here the DATA can be redistributed as well as the weights. A different task from ESA-ADB: segment classification, not forecasting, so its score is not comparable with the Telemanom model's and neither is the other's baseline.
+2,123 annotated telemetry segments across 9 channels from ESA's OPS-SAT CubeSat, 20.4% anomalous, with 18 published per-segment features plus a `sampling` metadata column, and the benchmark's own train/test split. That split is stratified random, not temporal, so scores on it do not measure generalisation over time. Ruszczak et al., Scientific Data 12 (2025). CC BY 4.0, which permits redistributing the data with credit; the per-segment feature table is about 507 KB, the raw segment file much larger. A different task from ESA-ADB: segment classification, not forecasting, so its score is not comparable with the Telemanom model's and neither is the other's baseline.
 
 ## Notes and limitations
 
-19 columns is small enough to evaluate under CKKS as a single packed dot product, so the encrypted tier here runs on the published feature set rather than on a reduction of it - and it had room to spare. The student now fits over the QUADRATIC expansion of those features, 209 terms, still one packed dot product at unchanged multiplicative depth, because the expansion is a function of the plaintext input and is computed before encryption. A degree-8192 ring has 4096 slots, so the cipher was never the binding constraint here - the feature map was. Measured: minority-class F1 0.8649 -> 0.9043, AUC-PR 0.9275 -> 0.9681, the latter matching the teacher exactly.
+19 columns is small enough to evaluate under CKKS as a single packed dot product, so the encrypted tier here runs on the published feature set rather than on a reduction of it - and it had room to spare. The student now fits over the QUADRATIC expansion of those features, 209 terms, still one packed dot product at unchanged multiplicative depth, because the expansion is a function of the plaintext input and is computed before encryption. The ring carries orders of magnitude more slots than this feature map needs, so the cipher was never the binding constraint here - the feature map was. Measured: minority-class F1 0.8649 -> 0.9043, AUC-PR 0.9275 -> 0.9681 (0.968055 against the teacher's 0.968107, equal at four decimals). No code path here evaluates this student under CKKS today: the satellite page has no private-inference stage, and the browser re-scores the published ONNX graph in plaintext.
 
 ## Honest scope
 

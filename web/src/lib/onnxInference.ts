@@ -828,7 +828,7 @@ export async function evaluatePublishedModel(
       // published today is below it, so this draws nothing and says why.
       const withheld = !prob
         ? `the graph's score output is named "${scoresName}", which says neither probabilities nor logits`
-        : calibrationWithheld(positives, n - positives, "positives", "negatives");
+        : calibrationWithheld(positives, n - positives, "rows of class 1", "of class 0");
       plot = withheld || !prob
         ? { kind: "pr-curve", pr, hist, reliabilityWithheld: withheld ?? undefined }
         : { kind: "pr-curve", pr, hist,

@@ -182,7 +182,7 @@ export default function ParameterPanel({ run }: { run: Run }) {
        // current model gives -0.5984 with NO eavesdropper - so the tooltip described a delivery
        // that setting cannot produce. `csAt` runs the same function the satellite stage runs.
        "intercept-resend fraction (0-1). On the DEFAULT 800 km downlink this link is already "
-       + "loss-limited at Eve=0 - its secrecy capacity is negative before she arrives - so raising "
+       + "loss-limited at Eve=0 - its secrecy-capacity bound is negative before she arrives - so raising "
        + "this cannot flip the abort from link-limited to attributable. It takes BOTH a short range "
        + `and a near-zero budget: at 1 km with 0 + 0 dB the clean link carries C_s = ${csAt(1, 0, 0, 0)} `
        + `bit/carrier, and Eve at 0.40 drives it to ${csAt(1, 0, 0, 0.4)} - an abort this link would NOT `
@@ -208,7 +208,7 @@ export default function ParameterPanel({ run }: { run: Run }) {
        + "Over Liao's 19 December 2016 pass the midpoint gives 1% fewer detections than were "
        + "counted. Qi et al. (Light Sci. Appl. 8, 22, "
        + "2019) ran QSDC over 1.5 km of fibre with 25.1 dB of total system loss; what sets Eve's "
-       + "advantage there is the back channel, about 4.1 dB (g = 2.57), and secrecy capacity turns "
+       + "advantage there is the back channel, about 4.1 dB (g = 2.57), and the secrecy-capacity bound turns "
        + "positive here only when g is comparably small. Lowering this and Pointing is not enough on "
        + `its own: at 800 km diffraction and the receiver optics already take ${fixedFreeTermsDb(800)} dB, `
        + `so even a 3 dB budget leaves C_s at ${csAt(800, 1.5, 1.5, 0)}`, 20],
@@ -284,8 +284,9 @@ export default function ParameterPanel({ run }: { run: Run }) {
       // because there the width drives the untrained fallback and the benchmark row, where any value
       // is meaningful.
       ...(hasTrainedQcnn(usecase) ? [] : [
-      ["QCNN qubits", "qubits", 1, 2,
-       "state-vector QCNN qubit count - capped at 14: the simulator is exact, so cost is 2^n", 14] as Field]),
+      ["Comparison qubits", "qubits", 1, 2,
+       "qubits of the untrained QOTP + Clifford+T comparison circuit behind the QSMPC-FHE row - not a "
+       + "QCNN and not a classifier; capped at 14: the simulator is exact, so cost is 2^n", 14] as Field]),
       // min 1, not 0. quantumSim's rng() does `(seed >>> 0) || 1`, so seed 0 and seed 1 produced
       // byte-identical runs everywhere: the field's own minimum was a duplicate of the value one
       // step above it, and anyone comparing "seed 0" with "seed 1" was comparing a run with itself.
@@ -344,7 +345,9 @@ export default function ParameterPanel({ run }: { run: Run }) {
                     private-inference stage but has no `qcnn_weights.json`, so selecting QCNN there
                     fell back to CKKS while two panels announced a quantum circuit had decided - a
                     control that changes nothing, which this project removes rather than explains. */}
-                {hasTrainedQcnn(usecase) && <option value="qcnn">QCNN (QHE)</option>}
+                {/* "QCNN (QHE)" until 2026-10-30: the trained circuit applies no QOTP and no
+                    homomorphic step - it runs on the plaintext features in this tab. */}
+                {hasTrainedQcnn(usecase) && <option value="qcnn">QCNN (trained, not encrypted)</option>}
               </select>
             </div>)}
             {/* QCNN WIDTH, offered as the widths that actually ship rather than as 2..14.
@@ -358,7 +361,7 @@ export default function ParameterPanel({ run }: { run: Run }) {
             {hasTrainedQcnn(usecase) && qcnnWidths(usecase).length > 0 && (
             <div style={{ minWidth: 120, flex: "1 1 120px" }}>
               <label className="muted" htmlFor="pp-qubits" style={{ fontSize: 12 }}
-                title="Wires in the trained QCNN. Only widths with a shipped circuit are offered: a width with no artifact would silently load a different one.">QCNN qubits</label>
+                title="Wires in the trained QCNN, which runs unencrypted and, built from two-qubit blocks on disjoint pairs, is classically simulable. Only widths with a shipped circuit are offered: a width with no artifact would silently load a different one. Telecom's 7 and 8 are different trained circuits; on finance and medical the ninth wire carries no feature and is never convolved, so 9 wires gives the same classes as 8.">QCNN qubits</label>
               <select id="pp-qubits" name="qubits" value={String(p.qubits)} style={{ width: "100%" }}
                 onChange={(e) => setParams({ ...params, qubits: Number(e.target.value) })}>
                 {qcnnWidths(usecase).map((w) => (

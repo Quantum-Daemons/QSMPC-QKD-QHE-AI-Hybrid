@@ -41,11 +41,11 @@ import "@xyflow/react/dist/style.css";
 // were wrong in the same direction and neither could see the other. An ordered artefact needs an
 // ordered check - that is the whole finding.
 const BACKEND_EXTRA: Record<string, { id: string; label: string; before: string }[]> = {
-  default: [{ id: "explainability", label: "Explainability\n(full deployment)", before: "quantum_comparison" }],
-  finance_aml: [{ id: "explainability", label: "Explainability\n(full deployment)", before: "quantum_comparison" }],
-  genomics: [{ id: "explainability", label: "Explainability\n(full deployment)", before: "quantum_comparison" }],
-  demo: [{ id: "explainability", label: "Explainability\n(full deployment)", before: "quantum_comparison" }],
-  medical_fl: [{ id: "explainability", label: "Explainability\n(full deployment)", before: "quantum_comparison" }],
+  default: [{ id: "explainability", label: "Explainability\n(full deployment; the\ndemo explains inside\nPrivate Inference)", before: "quantum_comparison" }],
+  finance_aml: [{ id: "explainability", label: "Explainability\n(full deployment; the\ndemo explains inside\nPrivate Inference)", before: "quantum_comparison" }],
+  genomics: [{ id: "explainability", label: "Explainability\n(full deployment; the\ndemo explains inside\nPrivate Inference)", before: "quantum_comparison" }],
+  demo: [{ id: "explainability", label: "Explainability\n(full deployment; the\ndemo explains inside\nPrivate Inference)", before: "quantum_comparison" }],
+  medical_fl: [{ id: "explainability", label: "Explainability\n(full deployment; the\ndemo explains inside\nPrivate Inference)", before: "quantum_comparison" }],
   telecom_ids: [{ id: "qkd_optimize", label: "OptiQKD\n(full deployment)", before: "qml_ids" }],
   satellite_comms: [
     { id: "qkd_optimize", label: "OptiQKD\n(full deployment)", before: "qsdc_telemetry" },
@@ -59,25 +59,26 @@ const FLOWS: Record<string, { id: string; label: string }[]> = {
     { id: "pqc_handshake", label: "PQC Handshake\n(ML-KEM + X25519)" },
     { id: "qkd_key_agreement", label: "QKD Key" },
     { id: "qsmpc_compute", label: "QSMPC\n(PSI / secure sum)" },
-    { id: "private_inference", label: "QHE/FHE\nPrivate Inference" },
-    { id: "quantum_comparison", label: "QSMPC-FHE\n(quantum comparison)" },
+    { id: "private_inference", label: "Private Inference\n(CKKS + 2PC argmax)" },
+    { id: "quantum_comparison", label: "QSMPC-FHE\n(untrained QOTP +\nClifford+T circuit)" },
     { id: "result", label: "Result\n+ artifacts" },
     { id: "sign_result", label: "Sign Result\n(ML-DSA)" },
   ],
   // Finance is in FEDERATED_USECASES, so a `federated_training` stage is injected into its run. It
   // had no key here, so it fell to `default` - which has no such node either - and the stage lit
   // nothing. Node labels are static here (this graph has no metrics), so this one names the
-  // algorithm rather than a security property: `clientQFL` aggregates plaintext updates, and
-  // "(secure aggregation)" claimed a guarantee no code provided. The use-case canvas (useCaseFlows) carries the
+  // algorithm rather than a security property: `clientQFL` masks the updates, but every mask is
+  // derived from the one PQC session key, which the aggregator also holds, so "(secure aggregation)"
+  // would claim a guarantee the code does not provide. The use-case canvas (useCaseFlows) carries the
   // measured `qfl_aggregation` string for the run-specific version.
   finance_aml: [
     { id: "data", label: "Banks' Data" },
     { id: "pqc_handshake", label: "PQC Handshake\n(ML-KEM + X25519)" },
     { id: "qkd_key_agreement", label: "QKD Key" },
-    { id: "qsmpc_compute", label: "QSMPC\n(PSI)" },
+    { id: "qsmpc_compute", label: "QSMPC\n(keyed-hash PSI)" },
     { id: "federated_training", label: "Federated Training\n(size-weighted FedAvg, demo)" },
-    { id: "private_inference", label: "QHE/FHE\nPrivate Inference" },
-    { id: "quantum_comparison", label: "QSMPC-FHE\n(quantum comparison)" },
+    { id: "private_inference", label: "Private Inference\n(CKKS + 2PC argmax)" },
+    { id: "quantum_comparison", label: "QSMPC-FHE\n(untrained QOTP +\nClifford+T circuit)" },
     { id: "result", label: "Result\n+ artifacts" },
     { id: "sign_result", label: "Sign Result\n(ML-DSA)" },
   ],
@@ -87,7 +88,7 @@ const FLOWS: Record<string, { id: string; label: string }[]> = {
     { id: "qkd_key_agreement", label: "QKD Key" },
     { id: "federated_training", label: "Federated Training\n(size-weighted FedAvg, demo)" },
     { id: "private_inference", label: "Private Inference" },
-    { id: "quantum_comparison", label: "QSMPC-FHE\n(quantum comparison)" },
+    { id: "quantum_comparison", label: "QSMPC-FHE\n(untrained QOTP +\nClifford+T circuit)" },
     { id: "result", label: "Result" },
     { id: "sign_result", label: "Sign Result\n(ML-DSA)" },
   ],
@@ -99,7 +100,7 @@ const FLOWS: Record<string, { id: string; label: string }[]> = {
     // use-case canvas, which does read metrics, carry the run-specific eavesdropper tag.
     { id: "qkd_key_agreement", label: "QKD Key" },
     { id: "qml_ids", label: "QML-IDS\n(attack detection)" },
-    { id: "quantum_comparison", label: "QSMPC-FHE\n(quantum comparison)" },
+    { id: "quantum_comparison", label: "QSMPC-FHE\n(untrained QOTP +\nClifford+T circuit)" },
     { id: "result", label: "Result" },
     { id: "sign_result", label: "Sign Result\n(ML-DSA)" },
   ],
@@ -107,8 +108,8 @@ const FLOWS: Record<string, { id: string; label: string }[]> = {
     { id: "data", label: "Mission Telemetry" },
     { id: "pqc_handshake", label: "PQC Handshake" },
     { id: "satellite_qkd", label: "Free-space QKD" },
-    { id: "qsdc_telemetry", label: "QSDC\n(simulated; direct + eavesdrop check)" },
-    { id: "quantum_comparison", label: "QSMPC-FHE\n(quantum comparison)" },
+    { id: "qsdc_telemetry", label: "QSDC\n(simulated; analytic\nsecrecy test)" },
+    { id: "quantum_comparison", label: "QSMPC-FHE\n(untrained QOTP +\nClifford+T circuit)" },
     { id: "result", label: "Result" },
     { id: "sign_result", label: "Sign Result\n(ML-DSA)" },
   ],
@@ -228,7 +229,9 @@ export default function OrchestrationGraph({
       if (!model) return label;
       if (m.published_model_status === "failed") return `${head}\n(${model}: did not run)`;
       const be = m.published_model_backend ? String(m.published_model_backend).replace("onnx-", "") : "";
-      return `${head}\n(${model}${be ? ` on ${be}` : ""})`;
+      // "plaintext": the published model is an unencrypted ONNX run on its own corpus. On finance this
+      // node read "QHE/FHE (finance_aml.gbm on wasm)" while CKKS evaluated the page's 8-feature model.
+      return `${head}\n(${model}${be ? ` on ${be}` : ""}, plaintext)`;
     }
     return label;
   };

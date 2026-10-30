@@ -2,7 +2,8 @@
 % Build: `make report` (build_data.py, then pdflatex twice, for the ToC). xelatex also builds it
 % with this preamble; the note below says why the fonts are lmodern rather than fontspec.
 % Tables, macros and figures under generated/ are produced by build_data.py and build_figures.py
-% from live artefacts, so no number in this document is transcribed by hand.
+% from live artefacts, so no number in those is transcribed by hand. Numbers quoted in the prose
+% below are typed from the records and can drift; they are not generated.
 \documentclass[11pt,a4paper]{article}
 
 % pdflatex + lmodern rather than fontspec: Latin Modern is not installed as a system font here,
@@ -77,10 +78,11 @@
 \noindent
 This report describes a research proof-of-concept that chains post-quantum key establishment,
 quantum key distribution simulation, secure multiparty computation and CKKS homomorphic encryption
-into a single orchestration layer, and evaluates privacy-preserving machine learning across
-\nusecases{} industry use cases. The public demonstrator performs its homomorphic linear algebra and
-its garbled-circuit non-linearities \emph{in the browser}, so its cryptographic timings are measured
-client-side rather than asserted. \npublished{} models are published with pinned revisions.
+into a single orchestration layer, and evaluates machine learning across \nusecases{} industry use
+cases, four of them with a privacy-preserving computation. The public demonstrator performs its
+homomorphic linear algebra and its garbled-circuit non-linearities \emph{in the browser}, so its
+cryptographic timings are measured client-side rather than asserted. \npublished{} models are
+published with pinned revisions.
 
 The contribution we consider most transferable is not the architecture but the verification
 methodology. Over several rounds it produced \ndefectclasses{} distinct classes of silent defect --- a
@@ -112,12 +114,13 @@ repository's own artefacts at build time rather than transcribed.
 \section{Summary}
 This report documents a research proof-of-concept and, more usefully, the verification methodology
 applied to it. The system chains post-quantum key establishment, a quantum-key-distribution
-simulation, secure multiparty computation and CKKS homomorphic encryption, and runs privacy-preserving
-inference for \nusecases{} industry use cases entirely in the visitor's browser. \npublished{} models
-are published at pinned revisions.
+simulation, secure multiparty computation and CKKS homomorphic encryption, and runs \nusecases{}
+industry use cases entirely in the visitor's browser, four of them with a homomorphic or
+secret-shared step; the satellite page's anomaly score runs in plaintext. \npublished{} models are
+published at pinned revisions.
 
-Headline results: the encrypted tier reproduces its plaintext teacher exactly on one use case
-(AUC-PR 0.9681 for both) and falls well short on another (AUC 0.7882 against 0.9147), so no single
+Headline results: the encrypted tier matches its plaintext teacher to four decimal places on one use
+case (AUC-PR 0.9681 for both) and falls well short on another (AUC 0.7882 against 0.9147), so no single
 ``encryption costs $X$'' figure would be honest. \ndefectclasses{} classes of silent defect were
 found in a system with green tests, and four previously published conclusions were retracted after
 further measurement. Structure follows ANSI/NISO Z39.18-2005 (R2010) --- Summary, Introduction; Methods,
@@ -131,18 +134,22 @@ qualification on one.
 
 \subsection{Problem}
 Post-quantum migration is a procurement deadline before it is a research problem. NIST FIPS 203, 204
-and 205 have been final since August 2024; NIST IR 8547, still an initial public draft, would deprecate
-112-bit-strength public-key algorithms such as RSA-2048 after 2030 and disallow all quantum-vulnerable
-ones, P-256 included, after 2035; and for national security systems only, CNSSP 15 requires CNSA 2.0
-algorithms in new acquisitions from 1 January 2027. Harvest-now-decrypt-later makes the confidentiality
-deadline earlier than the signature deadline for any data with a long secrecy lifetime.
+and 205 have been final since August 2024; NIST IR 8547, final since October 2026, deprecates every
+quantum-vulnerable public-key algorithm, RSA-2048, RSA-3072 and P-256 included, after 2030 and
+disallows them under NIST standards and guidelines after 2035, while the earlier deadlines of EO 14412
+for federal high value assets and high impact systems stand; and for national security systems only,
+CNSSP 15 requires CNSA 2.0 algorithms in new acquisitions from 1 January 2027.
+Harvest-now-decrypt-later makes the confidentiality deadline earlier than the signature deadline for
+any data with a long secrecy lifetime.
 
-Separately, privacy-preserving computation has become tractable for \emph{small} models. Homomorphic
-evaluation remains cost-bounded --- a recent systematisation puts private LLM inference at roughly
-four orders of magnitude slower than plaintext, and reports that only about 20\% of surveyed systems
-are model-preserving. So a project that wants both a genuine industry model and genuine encryption
-has two honest options: shrink the model until it fits the cipher, or state plainly that the
-cryptographic demonstration runs on something smaller than the headline model.
+Separately, privacy-preserving computation has become tractable for \emph{small} models on a single
+device, and for large ones on GPU servers: Park et al.\ (arXiv:2601.18511) summarise 128 encrypted
+tokens of Llama-3-8B in 20\,s on eight GPUs. Homomorphic evaluation remains cost-bounded: a recent
+systematisation puts private LLM inference at roughly four orders of magnitude slower than plaintext,
+and reports that only about 20\% of surveyed systems are model-preserving. So a project that wants
+both a genuine industry model and genuine encryption in one browser tab has two honest options:
+shrink the model until it fits the cipher, or state plainly that the cryptographic demonstration runs
+on something smaller than the headline model.
 
 \subsection{What this system is}
 This project takes the second option and makes the cost measurable. Each use case carries two model
@@ -152,19 +159,24 @@ reported as a first-class metric rather than elided.
 
 \subsection{What is new here, and what is not}
 This project's own verification rule is that a novelty claim must survive an adversarial search for
-prior art. Applied to its headline claim the answer is asymmetric, and reporting only the flattering
-half would be the kind of omission the rest of this document exists to avoid.
+prior art. Applied to its headline claim, the search found prior art for each half and none for the
+whole, and reporting only the flattering part would be the kind of omission the rest of this document
+exists to avoid.
 
 \textbf{MPC in a browser is not new.} webSPDZ (IACR ePrint 2025/487) compiles MP-SPDZ to WebAssembly
 and communicates over WebRTC or WebSockets, and it names JIFF and MPyC-Web as earlier browser MPC
 engines. The garbled-circuit half of this system re-implements a known idea.
 
-\textbf{Homomorphic \emph{evaluation} in a browser is where the search returned nothing.} Every
-artefact located encrypts client-side and evaluates server-side. IACR ePrint 2026/515 defines
-``client-side operations'' as encryption and decryption while \emph{users offload large computations to
-servers}; Zama's TFHE-rs WebAssembly API documents support for key generation, encryption and
-decryption but \emph{not} FHE computation, citing WASM threading and a 2\,GB memory ceiling. This
-system evaluates a real CKKS dot product and a real CKKS convolution in the tab.
+\textbf{Homomorphic \emph{evaluation} in a browser is not new either.} node-seal, the WebAssembly
+build of Microsoft SEAL that this system uses, evaluates in the browser, and its own benchmark times
+evaluation operations in Chrome, Firefox and Safari; Attrapadung et al.\ (AsiaCCS 2018) shipped
+two-level homomorphic encryption compiled to WebAssembly. What the search did not find is narrower: a
+peer-reviewed 2025-26 report of encrypted neural-network inference evaluated in a browser tab. The
+field's default division of labour is the opposite one. IACR ePrint 2026/515 defines ``client-side
+operations'' as encryption and decryption while \emph{users offload large computations to servers};
+Zama's TFHE-rs WebAssembly API documents support for key generation, encryption and decryption but
+\emph{not} FHE computation, citing WASM threading and a 2\,GB memory ceiling. This system evaluates a
+real CKKS dot product and a real CKKS convolution in the tab.
 
 \textbf{The claim is therefore the composition rather than either half}: PQC key establishment, then
 a simulated QKD link (it yields a key length, not key bytes), then secure multiparty computation, then
@@ -180,8 +192,12 @@ reasons the models here are published openly rather than treated as secrets.
 \subsection{What this system is not}
 It does not claim quantum \emph{advantage}. The measured quantum-kernel and variational classifiers
 lose to a RandomForest baseline on the same data, and the registry records
-\texttt{quantum\_\allowbreak{}beats\_\allowbreak{}classical: false} rather than omitting the comparison. The value proposition
-is quantum-\emph{safety}, which is regulation-driven and dated.
+\texttt{quantum\_\allowbreak{}beats\_\allowbreak{}classical: false} rather than omitting the comparison. The trained QCNNs
+are trees of two-qubit blocks on 7 to 9 qubits, which a classical computer simulates exactly; they
+sit in the regime Bermejo et al.\ show to be classically simulable for classical data in a product
+angle embedding (PRX Quantum 7, 020304, 2026, Sec.~IV.B). Nothing on their path is encrypted, and
+logistic regression beats each of them on the same split. The value proposition is
+quantum-\emph{safety}, which is regulation-driven and dated.
 
 \section{System architecture}
 
@@ -189,14 +205,19 @@ is quantum-\emph{safety}, which is regulation-driven and dated.
 Four workstreams share one pipeline and a crypto-agility registry:
 \begin{itemize}
   \item \textbf{WS1 --- AI-QKD.} BB84 two-intensity decoy-state simulation with GLLP tagged-fraction
-        accounting, a selectable E91/CHSH protocol, a quantum-measurement QRNG with SP~800-90B
-        continuous health tests and a Leftover-Hash-Lemma extractor.
+        accounting, a selectable E91/CHSH protocol, a simulated quantum-measurement QRNG
+        (Born-rule draws from a pseudo-random generator by default, with an opt-in online hardware
+        source in Python) with SP~800-90B continuous health tests and a Leftover-Hash-Lemma
+        extractor.
   \item \textbf{WS2 --- QML intrusion detection.} Eight classes (seven QKD attack types plus normal
         traffic), scored on macro F1 rather than attack-versus-normal F1.
-  \item \textbf{WS3 --- QSMPC.} Shamir secret sharing with $d$-level QFT secure summation, quantum
-        oblivious transfer, quantum-safe private set intersection.
+  \item \textbf{WS3 --- QSMPC.} Shamir secret sharing with $d$-level QFT secure summation, a
+        simulated quantum oblivious transfer, and a keyed-hash set intersection over the
+        PQC-protected channel, which does not hide the two parties' lists from each other (see the
+        finance use case).
   \item \textbf{WS4 --- QHE and AI.} CKKS linear layers with MPC non-linearities, including a genuine
-        homomorphic convolution (im2col into \texttt{dot\_plain}).
+        homomorphic convolution (im2col into \texttt{dot\_plain}); in the browser the convolutional
+        model's ReLU and pooling run in plaintext between its encrypted layers.
 \end{itemize}
 
 \subsection{Crypto-agility as an architectural property}
@@ -314,10 +335,15 @@ pipeline over five CSV files would show nothing about the cryptography.
 
 \subsection{Finance: anti-money-laundering with cross-institution set intersection}
 Two institutions need to know whether a counterparty appears on both watchlists without disclosing
-either list, so the privacy primitive is quantum-safe private set intersection, and the inference is
-a fraud score computed under CKKS. The corpus is IBM AMLworld HI-Small: 5{,}078{,}345 transactions
-at one laundering event in 981, evaluated on a strictly temporal split with the decision threshold
-tuned on a third window the model was never fitted on.
+either list. The demonstrator's set intersection is an HMAC of both lists under the one session key
+both banks hold, so over a small identifier space either bank can hash every candidate identifier and
+recover the other's list: the naive-hashing failure Pinkas, Schneider and Zohner describe (USENIX
+Security 2014). What holds is that no third party sees either list and that the channel is protected
+by the PQC session; a production deployment would use an OPRF-based PSI. The encrypted inference in
+the browser is a logistic fraud score under CKKS, over eight features of the bundled PaySim sample.
+The published teacher and student are trained on IBM AMLworld HI-Small: 5{,}078{,}345 transactions at
+one laundering event in 981, evaluated on a strictly temporal split with the decision threshold tuned
+on a third window the model was never fitted on.
 
 The gap to the published baseline is the largest in the project and its cause is architectural
 rather than a tuning failure. The reference implementation computes per-transaction subgraph
@@ -325,9 +351,10 @@ patterns over a dynamically updated graph; this project computes per-account sca
 degree is one number per account; the reference feature is a pattern match in that transaction's own
 neighbourhood at the moment it arrives. An earlier note attributed the gap to a proprietary licence
 and to truncated multi-hop reachability. The licence is real but was never the mechanism, and the
-reachability claim did not survive arithmetic: the source paper decomposes its own contribution and
-caps multi-hop cycle features at about 4\% relative, against more than 30\% for fan-in/fan-out,
-which this project already implements.
+reachability claim did not survive the source's own ablation: its Table~5 (HI-Small, XGBoost, batch
+size 128) gains 37 F1 points from fan-in and fan-out patterns over basic features, 19.75 to 56.88,
+and 1.7 more from multi-hop cycle and scatter-gather patterns, to 58.60. This project already
+computes fan-in and fan-out, as per-account aggregates.
 
 Investigating that gap found a genuine defect. Per-account aggregates were computed over the whole
 training window, so a training row's feature included activity that happened after it while test
@@ -336,10 +363,15 @@ strictly earlier edges --- raised minority-class F1 from 0.0808 to 0.1519. Leaka
 rather than argued: every feature is bit-identical whether or not later rows exist.
 
 \subsection{Healthcare: federated training with encrypted diagnosis}
-Hospitals train jointly without pooling records, so the primitive is secure aggregation over
-federated updates, and the inference is a genuine homomorphic convolution --- im2col into a CKKS
-\texttt{dot\_plain}, with ReLU and argmax evaluated under MPC. This is the only use case where the
-encrypted path evaluates a convolutional model rather than a linear one.
+Hospitals train jointly without pooling records, so the primitive is masked aggregation of federated
+updates: pairwise masks that cancel exactly in the sum. In this demonstrator every mask is derived
+from the one PQC session key, which the aggregator also holds, so the masks hide nothing from it;
+Bonawitz et al.'s secure aggregation derives each pair's mask from a key agreement between that pair
+alone (arXiv:1611.04482). The inference includes a genuine homomorphic convolution, im2col into CKKS
+dot products. In the browser each layer is decrypted in the client between steps: ReLU and pooling
+run there in plaintext, and the convolutional model's argmax is taken in the clear, while the
+garbled-circuit argmax runs on the Wisconsin logistic regression. This is the only use case where the
+encrypted path evaluates a convolutional layer rather than a linear model alone.
 
 It is also where the most serious defects were found, and all of them were in the \emph{measurement}
 rather than the cryptography: a constant-class predictor, an inverted diagnostic label map, and a
@@ -348,8 +380,10 @@ student reaches AUC 0.7882 against its teacher's 0.9147, with accuracy above the
 and both classes predicted.
 
 \subsection{Genomics: pooled allele counts by secure summation}
-Research sites contribute allele counts without revealing per-site genotypes, using $d$-level QFT
-secure summation. This use case deliberately reports \emph{no} AUROC: the reference panel carries no
+Research sites contribute allele counts without revealing per-site genotypes: additive secret shares
+in the browser, $d$-level QFT secure summation in the full deployment. The encrypted step is a sign
+test on 8 of the 313 PGS000004 variants, not the whole polygenic score, which the tab computes in
+plaintext. This use case deliberately reports \emph{no} AUROC: the reference panel carries no
 case/control status, so the quantity is undefined, and printing a plausible number for it would be
 the single most tempting error available here. What is computable from real genotypes is the
 ancestry portability gap, and that is reported instead, because it is the clinically important
@@ -361,13 +395,18 @@ attack-versus-normal F1 would let a detector that recognises one common attack l
 a classical RandomForest and quantum classifiers are trained on identical data, and the classical
 baseline wins: macro F1 0.9866 against 0.8316 for the quantum-kernel SVC and 0.4667 for the
 variational classifier. The registry records \texttt{quantum\_beats\_classical: false}. Reporting
-this is the point of running both.
+this is the point of running both. The published \texttt{telecom\_ids.qml} artefact, the model the
+page runs and verifies, is that RandomForest, exported to ONNX; the two quantum classifiers are
+trained offline and not run by the page, and the SVC's fidelity kernel equals the classical product
+kernel $\prod_i \cos^2\bigl((x_i - x'_i)/2\bigr)$.
 
 \subsection{Satellite: free-space QKD with direct telemetry}
-A downlink under real loss, with an inline eavesdropper check, and anomaly detection over multi-year
-ESA telemetry. The secrecy criterion is the one place where a familiar constant proved actively
-misleading. A threshold of 0.11 reproduces the textbook loss-free case, and the deeper derivation
-gives a capacity
+A simulated downlink under Micius's published loss; a QSDC check that computes the secrecy capacity
+of the modelled link with and without an eavesdropper; and anomaly detection in plaintext in the
+tab, a linear score over NASA SMAP and MSL telemetry windows beside the published forecaster trained
+on multi-year ESA telemetry. No homomorphic or MPC stage runs on this page. The secrecy criterion is
+the one place where a familiar constant proved actively misleading. A threshold of 0.11 reproduces
+the textbook loss-free case, and the deeper derivation gives a capacity
 \[
   C_s \;=\; Q_{\text{Bob}}\bigl[\,1 - h(e) - g\,h(e_x + e_z)\bigr],
   \qquad g = 10^{\,\text{loss\_dB}/10},
@@ -378,7 +417,7 @@ the admissible error rate falls from 0.11 to about $6.5\times10^{-5}$ --- three 
 in the permissive direction, so the constant would have declared links secure that are not. The scalar
 was replaced by the computed capacity.
 
-The downlink itself is Micius's, read value by value from Liao et al.\ (2017), with the atmosphere
+The modelled downlink is Micius's, read value by value from Liao et al.\ (2017), with the atmosphere
 scaled by air mass from 5.5\,dB at 1200\,km and no link below 10 degrees of elevation. Integrated over
 Liao's pass of 19 December 2016 and counted as the paper counts --- signal states only --- it gives the
 measured detections and sifted bits within 1\,percent. A second tab models what carries a key past the
@@ -390,16 +429,19 @@ experiment found computes its key on: Lim et al.'s (2014) bound for a source tha
 on the pass's counts summed second by second, with each count's expectation bounded by Yin et al.'s
 (2020) Chernoff-type bound, which on a pass gives slightly more key than the union of it and the
 published Hoeffding deviation that the fibre uses. On Liao's pass at
-their failure probability of $10^{-9}$ it gives 226,073 bits, 0.75 of the 300,939 they report, and
+their failure probability of $10^{-9}$ it gives 226,072 bits, 0.75 of the 300,939 they report, and
 164,183 bits, 0.55, with Hoeffding's deviation alone, as Lim et al.\ published it. On the
-Micius--Zvenigorod session, whose key was computed with Chernoff bounds, it gives 0.69 of it, and
+Micius--Zvenigorod session, whose key was computed with Chernoff bounds, it gives 0.69 of the 629,000
+bits Khmelev et al.\ report before their detector-mismatch analysis, and
 0.56 with Hoeffding's: the statistics close 45\,percent of the first gap and 29\,percent of the
 second, and the two fractions part, so the rest is not one shared cause. With the Hoeffding statistics the papers used, the same
 bound reproduces Rusca et al.'s (2018) two-decoy figures to within 20\,percent, always below them,
 and their ratio to the one-decoy figures within 15\,percent; their one-decoy 26\,dB row is
 reproduced to within 2\,percent under the paper's own dead-time convention. Pooling passes, or a
 time held at one range, are offered beside it; at 800\,km a key needs about 7\,s of link time held
-at that range, and 33\,s with Hoeffding's deviation alone.
+at that range with the tighter of the two, and 33\,s with Hoeffding's deviation alone. These are
+figures of the channel model, not of a link: no satellite, ground station or quantum channel is
+involved.
 
 \section{Implementation and verification architecture}\label{sec:arch}
 
@@ -502,7 +544,7 @@ main is deployed and checked again after; the merge itself is the owner's decisi
   \node[stage=52mm] (D) {Data: PaySim simulator sample, 400 transactions, synthetic};
   \node[stage=52mm, below=6mm of D] (H) {PQC handshake: ML-KEM-768 + X25519, HKDF-SHA256};
   \node[stage=52mm, below=6mm of H] (K) {QKD: simulated BB84 decoy-state, or E91, over fibre};
-  \node[check=52mm, below=6mm of K] (Q) {Key possible? BB84: QBER at most 0.11; E91: CHSH S above 2};
+  \node[check=52mm, below=6mm of K] (Q) {Key possible? BB84: QBER at most 0.11; E91: key rate above 0};
   \node[stage=52mm, below=6mm of Q] (L) {Key length: BB84 finite key of a 1e7-bit block, E91 asymptotic; the full deployment mixes 256 bits or more into the session key};
   \node[stage=52mm, below=6mm of L] (P) {PSI: HMAC-SHA256 keyed by the session key, over two banks' account lists};
   \node[stage=52mm, below=6mm of P] (FL) {Federated training, in the browser: 4 clients, 6 rounds of FedAvg, pairwise masks};
@@ -537,7 +579,7 @@ main is deployed and checked again after; the merge itself is the owner's decisi
   \node[stage=52mm] (D) {Data: Wisconsin breast-cancer measurements, 400 rows, real};
   \node[stage=52mm, below=6mm of D] (H) {PQC handshake: ML-KEM-768 + X25519, HKDF-SHA256};
   \node[stage=52mm, below=6mm of H] (K) {QKD: simulated BB84 decoy-state, or E91, over fibre};
-  \node[check=52mm, below=6mm of K] (Q) {Key possible? BB84: QBER at most 0.11; E91: CHSH S above 2};
+  \node[check=52mm, below=6mm of K] (Q) {Key possible? BB84: QBER at most 0.11; E91: key rate above 0};
   \node[stage=52mm, below=6mm of Q] (L) {Key length: BB84 finite key of a 1e7-bit block, E91 asymptotic; the full deployment mixes 256 bits or more into the session key};
   \node[stage=52mm, below=6mm of L] (FL) {Federated training: 4 hospitals, 6 rounds of FedAvg, pairwise masks};
   \node[stage=52mm, below=6mm of FL] (I) {Private inference: CKKS linear layer and an encrypted 4x14x14 CNN (node-seal), garbled-circuit argmax};
@@ -570,12 +612,12 @@ main is deployed and checked again after; the merge itself is the owner's decisi
   \node[stage=52mm] (D) {Data: 30 real 1000 Genomes individuals, PGS000004 weights over 313 variants};
   \node[stage=52mm, below=6mm of D] (H) {PQC handshake: ML-KEM-768 + X25519, HKDF-SHA256};
   \node[stage=52mm, below=6mm of H] (K) {QKD: simulated BB84 decoy-state, or E91, over fibre};
-  \node[check=52mm, below=6mm of K] (Q) {Key possible? BB84: QBER at most 0.11; E91: CHSH S above 2};
+  \node[check=52mm, below=6mm of K] (Q) {Key possible? BB84: QBER at most 0.11; E91: key rate above 0};
   \node[stage=52mm, below=6mm of Q] (L) {Key length: BB84 finite key of a 1e7-bit block, E91 asymptotic; the full deployment mixes 256 bits or more into the session key};
   \node[stage=52mm, below=6mm of L] (P) {Secure sum of 4 cohorts' allele counts at one variant: additive shares mod p in the browser, QSMS over a GHZ state in the full deployment};
-  \node[stage=52mm, below=6mm of P] (I) {Private inference: CKKS polygenic risk score (node-seal), garbled-circuit argmax};
+  \node[stage=52mm, below=6mm of P] (I) {Private inference: CKKS sign test on 8 of the 313 variants (node-seal), garbled-circuit argmax};
   \node[stage=52mm, below=6mm of I] (M) {Published model: none registered for genomics};
-  \node[stage=52mm, below=6mm of M] (C) {QSMPC-FHE comparison: QOTP and QCNN, T-gates counted};
+  \node[stage=52mm, below=6mm of M] (C) {QSMPC-FHE comparison: untrained QOTP and Clifford+T circuit, T-gates counted};
   \node[stage=52mm, below=6mm of C] (S) {Result signed with ML-DSA-65};
   \node[stage=40mm, right=12mm of L] (N) {No QKD key: the session rests on PQC};
   \node[fullonly=40mm, right=12mm of M] (X) {Explainability (full deployment)};
@@ -603,7 +645,7 @@ main is deployed and checked again after; the merge itself is the owner's decisi
   \node[stage=52mm] (D) {Data: synthetic QKD-attack telemetry, 7 attacks and normal};
   \node[stage=52mm, below=6mm of D] (H) {PQC handshake: ML-KEM-768 + X25519, HKDF-SHA256};
   \node[stage=52mm, below=6mm of H] (K) {QKD: simulated BB84 decoy-state, or E91, with an optional intercept-resend eavesdropper; OptiQKD tunes it when switched on};
-  \node[check=52mm, below=6mm of K] (Q) {Key possible? BB84: QBER at most 0.11; E91: CHSH S above 2};
+  \node[check=52mm, below=6mm of K] (Q) {Key possible? BB84: QBER at most 0.11; E91: key rate above 0};
   \node[stage=52mm, below=6mm of Q] (L) {Key length: BB84 finite key of a 1e7-bit block, E91 asymptotic; the full deployment mixes 256 bits or more into the session key};
   \node[stage=52mm, below=6mm of L] (IDS) {QML-IDS: 8-class detector trained in the browser, scored by macro-F1};
   \node[stage=52mm, below=6mm of IDS] (M) {Published model: telecom\_ids.qml on ONNX Runtime Web, and a CKKS check of the student};
@@ -631,12 +673,12 @@ main is deployed and checked again after; the merge itself is the owner's decisi
   \node[stage=52mm] (D) {Data: NASA SMAP and MSL telemetry windows, real};
   \node[stage=52mm, below=6mm of D] (H) {PQC handshake: ML-KEM-768 + X25519, HKDF-SHA256};
   \node[check=52mm, below=6mm of H] (V) {Satellite in view, 10 degrees or more?};
-  \node[stage=52mm, below=6mm of V] (K) {Free-space QKD: Micius downlink, BB84 with a vacuum state, or E91; OptiQKD tunes it when switched on};
+  \node[stage=52mm, below=6mm of V] (K) {Free-space QKD, simulated: a model of the Micius downlink, BB84 with a vacuum state, or E91; OptiQKD tunes it when switched on};
   \node[stage=52mm, below=6mm of K] (L) {Key length: BB84 finite key of one pass, Lim et al. 2014, E91 asymptotic; the full deployment mixes 256 bits or more};
   \node[check=52mm, below=6mm of L] (QD) {QSDC: secrecy capacity positive?};
-  \node[stage=52mm, below=6mm of QD] (T) {Telemetry sent directly over the quantum channel};
+  \node[stage=52mm, below=6mm of QD] (T) {Telemetry sent directly over the simulated quantum channel};
   \node[stage=52mm, below=6mm of T] (A) {Anomaly score and the published model, satellite\_comms.telemanom, in the browser; the full deployment also checks delivered telemetry under CKKS};
-  \node[stage=52mm, below=6mm of A] (C) {QSMPC-FHE comparison: QOTP and QCNN, T-gates counted};
+  \node[stage=52mm, below=6mm of A] (C) {QSMPC-FHE comparison: untrained QOTP and Clifford+T circuit, T-gates counted};
   \node[stage=52mm, below=6mm of C] (S) {Result signed with ML-DSA-65};
   \node[stage=40mm, right=12mm of V] (NV) {Out of view: no QKD key and no QSDC; the anomaly score still runs};
   \node[stage=40mm, right=12mm of QD] (NA) {QSDC aborts: link budget too small, or an eavesdropper detected; nothing is sent over the quantum channel};
@@ -672,9 +714,13 @@ The distinction is load-bearing and is stated per component rather than in aggre
 ML-KEM-768 + X25519 & real & library implementation, conformance-tested \\
 ML-DSA-65 signatures & real & round-trip and tamper vectors \\
 CKKS linear layers & real & node-seal, measured in the browser \\
-Garbled-circuit argmax & real & Polytune 2PC, measured in the browser \\
+Garbled-circuit argmax & real & Polytune 2PC, notional parties in one tab \\
 BB84 decoy-state & \emph{simulated} & channel model, not hardware \\
-QSDC secrecy capacity & \emph{computed} & closed form, loss-dependent \\
+E91 / CHSH & \emph{simulated} & channel model, not hardware \\
+Satellite downlink & \emph{simulated} & Micius's loss, Lim et al.\ (2014) finite key \\
+QSDC secrecy capacity & \emph{simulated} & closed form on the modelled loss \\
+QRNG source & \emph{simulated} & seeded pseudo-random draws, real health tests \\
+QOTP and QCNN circuits & \emph{simulated} & state vector, classically simulable \\
 \bottomrule
 \end{tabular}
 \end{center}
@@ -741,10 +787,13 @@ like-for-like and are discussed below rather than presented as parity.}
 \begin{itemize}
   \item \textbf{Satellite event-wise $F_{0.5}$ is computed over three labelled events.} The corpus
         contains 320 annotated intervals over the full timeline, but the annotated anomalies are
-        concentrated early and a temporal split leaves three inside the scored window. Both recorded
-        values decompose uniquely on three events, and the difference between two identical-configuration
-        runs is exactly one extra false-alarm run. The reference partition holds 65 events. The
-        number is reported with its denominator attached.
+        concentrated early and a temporal split leaves three inside the scored window. The current
+        forecaster, retrained in Round 71 with its normalisation fitted on the training window
+        alone, scores 0: it flags 2 points and neither falls inside a scored event (tp 0, fp 2,
+        fn 3). The two runs before it, trained with a whole-series normalisation that leaked the
+        test window, scored 0.714 and 0.455, which decompose uniquely on three events and differ by
+        exactly one extra false-alarm run. The reference partition holds 65 events. The number is
+        reported with its denominator attached.
   \item \textbf{The reference metric is corrected; ours was not.} The benchmark multiplies event
         precision by the time-level true-negative rate, which is why most of its baselines read
         below 0.001. Both values are now computed.
@@ -754,10 +803,12 @@ like-for-like and are discussed below rather than presented as parity.}
 \end{itemize}
 
 \subsection{The encrypted tier's cost}
-The distilled students are 20 to 3{,}226 parameters. For the medical use case the encrypted student
+The distilled students are 33 to 3{,}226 parameters. For the medical use case the encrypted student
 reaches AUC 0.7882 against its teacher's 0.9147; for OPS-SAT the encrypted student matches its
-teacher's AUC-PR exactly at 0.9681. The gap is therefore strongly task-dependent, and reporting a
-single ``encryption costs $X$ percentage points'' figure across use cases would be misleading.
+teacher's AUC-PR to four decimal places, 0.9681 (0.968055 against 0.968107). Both figures score the
+student in plaintext, offline; how often CKKS noise flips a decision is measured separately, in the
+browser, on every run. The gap is therefore strongly task-dependent, and reporting a single
+``encryption costs $X$ percentage points'' figure across use cases would be misleading.
 
 \section{What we got wrong, and how it was found}
 \label{sec:wrong}
@@ -843,9 +894,11 @@ Four published conclusions were withdrawn after further measurement:
         \texttt{is\_available() == True} and then raises at the first kernel launch, so
         availability is not a capability check.
   \item \textbf{A regulatory date ``correction'' that was itself wrong.} A recorded compliance date
-        was rewritten as stale. Checking the Official Journal text showed the original date was
-        correct for this system, because a four-month transitional provision applies to systems
-        placed on the market before the general application date.
+        was rewritten as stale. Checking the Official Journal text showed the rewrite was premature:
+        a four-month transitional provision gives Article 50(2) systems placed on the market before
+        2 August 2026 until 2 December 2026. Whether this demonstrator was placed on the market
+        before that date is not recorded in the repository, so which of the two dates binds it is
+        not established.
 \end{enumerate}
 The common shape is that each retracted claim was \emph{plausible and unverified}, and each was
 caught by measuring the thing directly rather than by reasoning about it further.
@@ -862,9 +915,10 @@ practice excepts text shorter than 200 tokens. The system generates 96 or 160 to
 runtime. Three standing conditions would reopen that analysis and are recorded.
 
 \subsection{Data licensing, and a divergence it exposed}
-Training corpora are not redistributed; only small derived evaluation samples are, with per-corpus
-licences recorded. One instructive failure: two documents stated that a model was trained from
-random initialisation \emph{because} pretrained weights carried unresolved redistribution terms,
+Training corpora are not redistributed whole; samples drawn from them are, in some cases a whole test
+split, with per-corpus licences recorded. One instructive failure: two documents stated that a model
+was trained from random initialisation \emph{because} pretrained weights carried unresolved
+redistribution terms,
 while the artefact published to the model hub recorded exactly those pretrained weights. The
 licence-safe path had been a non-default flag. It is now the default, and the publication script
 refuses any model whose manifest records a pretrained source --- verified to fire on one and pass on
@@ -881,13 +935,14 @@ the other. A licence commitment that only a human remembers to honour is not a c
         own result against that figure and reports a mismatch instead of rendering it. The one
         exception is the satellite student, whose event-wise metric cannot be re-scored from
         independent rows. Every sample is drawn from its model's test partition or test window, and
-        the run log names which; three were drawn from the whole corpus until the latest round.
+        the run log names which; three were drawn from the whole corpus until Round 71.
   \item \textbf{Preprocessing travels with the data.} Every sample carries an explicit preprocessing
         list applied verbatim by the consumer. This exists because an early evaluation scored a model
         at 0.4615 against a recorded 0.8782 by omitting one normalisation step --- below the
         majority-class baseline, with no error anywhere.
   \item \textbf{This document.} All tables and figures are generated from the repository's artefacts
-        at build time. No figure in this report was transcribed by hand.
+        at build time, so none was transcribed by hand. The numbers quoted in the prose are typed
+        from the records and are not generated.
 \end{itemize}
 
 \section{Limitations and further work}
@@ -910,10 +965,11 @@ the other. A licence commitment that only a human remembers to honour is not a c
         is indexed and every one of its \nchecklistrows{} rows has a unique identifier, but its size
         is itself a finding about how much of this work is institutional memory rather than
         automation. It is maintained outside the repository because it accumulated the deploy
-        procedure and the internal failure history alongside the checks; the observable outcomes it
-        gates are published in \texttt{docs/verification-log.md}. An earlier revision of this line
-        said 1{,}800 lines, which was stale by six hundred --- the count is now generated, like every
-        other number here.
+        procedure and the internal failure history alongside the checks. The observable outcomes it
+        gates are published in the round register, \texttt{docs/deliverable-verification.md}, which
+        has carried the deploy walks since Round 56, and their lessons in
+        \texttt{docs/verification-log.md}. An earlier revision of this line said 1{,}800 lines,
+        which was stale by six hundred; the count is now generated, like the tables' numbers.
 \end{itemize}
 
 \section{Conclusion}
@@ -936,15 +992,17 @@ is a discipline rather than an infrastructure.
 \begin{enumerate}[label={[\arabic*]},leftmargin=*,itemsep=1.5pt]
   \item NIST. \emph{FIPS 203: Module-Lattice-Based Key-Encapsulation Mechanism Standard}. August 2024.
   \item NIST. \emph{FIPS 204: Module-Lattice-Based Digital Signature Standard}. August 2024.
-  \item NIST. \emph{IR 8547 (Initial Public Draft): Transition to Post-Quantum Cryptography Standards}.
-        November 2024 --- 112-bit-strength algorithms such as RSA-2048 deprecated after 2030; all
-        quantum-vulnerable public-key algorithms, P-256 included, disallowed after 2035.
+  \item D. Moody, R. Perlner, A. Regenscheid, A. Robinson and D. Cooper (NIST). \emph{IR 8547:
+        Transition to Post-Quantum Cryptography Standards}. October 2026, doi:10.6028/NIST.IR.8547;
+        follows the November 2024 initial public draft. Quantum-vulnerable public-key algorithms
+        deprecated after 2030 and disallowed after 2035 (Tables 2 and 4).
   \item NSA. \emph{CNSA 2.0 and Quantum Computing FAQ}, Ver. 2.2, October 2026; and CNSS,
         \emph{CNSSP 15}, December 2024 --- CNSA 2.0 algorithms required in new national security
         system acquisitions from 1 January 2027 and in all NSS use by 31 December 2031.
   \item Regulation (EU) 2024/1689 (AI Act), Article 50; and Regulation (EU) 2026/1744 (Digital
-        Omnibus on AI), in force 27 July 2026, introducing a four-month transitional period for
-        providers who placed systems on the market before 2 August 2026.
+        Omnibus on AI), in force 27 July 2026. Article 50(1) applies from 2 August 2026; Article
+        50(2) systems placed on the market before that date have a transitional period to
+        2 December 2026.
   \item B. Van Calster \emph{et al.} (STRATOS TG6). ``Evaluation of performance measures in
         predictive artificial intelligence models to support medical decisions.''
         \emph{The Lancet Digital Health} 7(12):100916, December 2025.

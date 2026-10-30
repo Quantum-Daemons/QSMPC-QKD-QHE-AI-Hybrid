@@ -39,7 +39,11 @@ THE LEAK COUNTERFACTUAL, kept from the previous round because it is still the ho
     was read as evidence that the published 99.6-99.7% figures leaned on row counters, on the
     grounds that nothing else could close a 24-point gap. Something else could: 0.9829 is reachable
     on this corpus with every identifier and every host fingerprint dropped. The counterfactual
-    still shows what a row counter is worth; it never showed what the papers did.
+    still shows what a row counter is worth; it never showed what the papers did. Nor does the
+    refit settle the question the other way: the dataset paper's 9-class baselines (Samarakoon et
+    al., arXiv:2212.01298) rank `Seq` and `Offset` among their top-10 inputs and Wang, Fok & Thing
+    use `Offset`, so whether published figures lean on identifiers stays open. Wang, Fok & Thing's
+    99.61% / 99.71% are also BINARY accuracies.
 
 WHAT IS MEASURED, and why the usual reading is inverted here
     macro F1 across all 9 classes as the headline, with aggregate accuracy beside it. On every other
@@ -76,7 +80,7 @@ KEY = "telecom_ids.nidd"
 #: `ast.literal_eval`. An f-string here is reported UNCHECKABLE and silently leaves the only gate
 #: that compares a generator against the artifact it wrote. The pattern - define the constant here,
 #: restate it as a literal inside the `record_metrics` dict - is the one at
-#: `scripts/train/telecom_ids.py:280-282`; the `**record` entry has no static key and is skipped.
+#: `scripts/train/telecom_ids.py:283-285`; the `**record` entry has no static key and is skipped.
 
 FRAMING = (
     "Real 5G network traffic, 9 attack classes, 47 flow-statistic features. This is a "
@@ -129,23 +133,25 @@ SAMPLE_SIZE_NOTE = (
 BASELINE_GAP_NOTE = (
     "There is no baseline number to have a gap to, and that is a deliberate registry decision "
     "rather than a missing measurement: the two figures usually quoted for this corpus (99.61% for "
-    "a CNN, 99.71% for a hybrid quantum-classical Quan-ConvCNN, Wang/Fok/Thing) are ACCURACIES, "
-    "and this model is judged on macro F1, so putting them in `baseline` would render an accuracy "
-    "beside a macro F1 as though the two were the same scale. "
-    "WHAT THE GAP ACTUALLY IS, now that it has been measured properly. This model scores about "
-    "0.9829 accuracy with every row identifier and every host fingerprint dropped, so it sits about "
-    "1.3 points below those published accuracies rather than the 24 points it sat below them last "
-    "round. Against the 9-class multiclass figure that is directly comparable in task - BiTAD, "
-    "Future Internet 17(11) 482, accuracy 0.9047 - it is above, though on its own split rather than "
-    "a shared one, so that is an anchor and not a head-to-head. "
-    "THE CORRECTION THAT MATTERS. Round 49 recorded that restoring the corpus's integer row "
-    "counters reproduces the published range and implied the published range was therefore "
-    "explained by them. The first half is still measured true here and is recorded every run as "
-    "`leak_counterfactual_accuracy`. The second half does not follow and is withdrawn: 0.9829 is "
-    "reachable on this corpus with no identifiers at all, using one additional flow statistic "
-    "(`IdleTime`) that Combined.csv does not carry, so most of the gap Round 49 attributed to "
-    "leakage was its own choice of export. What the counterfactual shows is what a row counter is "
-    "worth, which is a statement about this corpus and not about anyone's paper."
+    "a classical CNN, 99.71% for a hybrid quantum-classical Quan-ConvCNN, Wang/Fok/Thing) are "
+    "ACCURACIES on the BINARY benign-versus-malicious task, and this model is judged on 9-class "
+    "macro F1, so putting them in `baseline` would render an accuracy beside a macro F1 as though "
+    "the two were the same scale. "
+    "WHAT THE COMPARISON CAN AND CANNOT SAY. This model scores about 0.9829 9-class accuracy with "
+    "every row identifier and every host fingerprint dropped. Set beside binary accuracies, the "
+    "1.3-point difference is not a gap on one task. The 9-class anchors are the dataset paper's "
+    "random forest at 99.48% accuracy on its top-10 features (Samarakoon et al., "
+    "arXiv:2212.01298) and BiTAD (Future Internet 17(11) 482) at 0.9047; this model sits between "
+    "them, on its own stratified random split rather than a shared one, so each is an anchor and "
+    "not a head-to-head. "
+    "WHAT THE COUNTERFACTUAL SHOWS. Restoring the corpus's integer row counters takes accuracy to "
+    "about 0.9997, recorded every run as `leak_counterfactual_accuracy`: that is what a row counter "
+    "is worth on this corpus. It does not show what the published figures used, because 0.9829 is "
+    "reachable here with no identifiers at all, using one additional flow statistic (`IdleTime`) "
+    "that Combined.csv does not carry. Whether the published figures lean on identifiers is OPEN: "
+    "the dataset paper's top-10 inputs include the sequence number `Seq` and `Offset`, "
+    "Wang/Fok/Thing's inputs include `Offset`, both columns are dropped here, and no published "
+    "ablation settles it."
 )
 
 
