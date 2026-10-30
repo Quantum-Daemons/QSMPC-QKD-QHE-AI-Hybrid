@@ -1,18 +1,32 @@
-"""Federated learning with quantum-safe secure aggregation.
+"""Federated learning with pairwise-mask aggregation (the masking structure of secure aggregation).
 
 Implements FedAvg across N virtual sites (hospitals / banks) where raw data never
-leaves a client, plus *secure aggregation*: each pair of clients shares a
-pseudo-random mask seeded from a PQC/QKD key; masks cancel in the sum, so the server
-recovers only the aggregate update and never an individual client's gradients
-(defends the gradient-leakage risk noted in the QFL survey and Li-Deng 2024).
+leaves a client, plus pairwise masking: each pair of clients adds and subtracts the same
+pseudo-random mask, derived from a per-pair key and the round. The masks cancel EXACTLY in the
+sum, so the aggregate is right. What they HIDE depends entirely on who holds the pair keys, and in
+this repository the answer is: nothing from a key holder.
+
+  * Python (this module): no caller supplies keys, so ``SecureAggregator`` derives every pair key
+    from a PUBLIC constant, ``sha256("pair-i-j")``. Anyone can recompute every mask and unmask any
+    client's update. The masks are also bounded reals in [-1, 1) added in float64, not uniform
+    values over a finite ring, so even secret keys would hide an update only partially, not
+    perfectly.
+  * Browser (``web/src/lib/clientQFL.ts``): every pair's mask is an HKDF output of the ONE PQC
+    session key, which the aggregator also holds, so the aggregator can unmask every update.
+
+Bonawitz et al. (CCS 2017) derive each pair's seed by a key agreement between the two clients of
+that pair, which is what makes the masks hide individual updates from the server; that is not
+implemented here. So this module does NOT defend the gradient-leakage risk noted in the QFL survey
+and Li-Deng: it demonstrates that masks cancel.
 
 This is the local "full implementation" FL path, kept framework-light so it stays robust across
 Flower releases.
 
-Scope, stated plainly: secure aggregation hides an *individual client's* update from the
-aggregator. It does not bound what the trained model itself leaks, and FedAvg on its own is not a
-privacy guarantee — gradient inversion against a shared model is an established attack. A claim of
-formal privacy would need a stated DP-SGD budget, which this path does not provide.
+Scope, stated plainly: even a correct secure aggregation hides only an *individual client's* update
+from the aggregator. It does not bound what the aggregate or the trained model leaks, and FedAvg on
+its own is not a privacy guarantee - gradient inversion against a shared model is an established
+attack. A claim of formal privacy would need a stated DP-SGD budget, which this path does not
+provide.
 
 An earlier version of this docstring advertised an ``as_flower_client`` adapter exposing a Flower
 ``NumPyClient``. No such function was ever implemented, so the reference is removed rather than left
@@ -53,7 +67,7 @@ def partition(X: np.ndarray, y: np.ndarray, n_clients: int, *, iid: bool = True,
 
 
 # --------------------------------------------------------------------------- #
-#  Secure aggregation (pairwise masks from PQC/QKD keys)
+#  Pairwise masks (from caller-supplied pair keys; by default a public constant)
 # --------------------------------------------------------------------------- #
 def _mask(seed_key: bytes, shape: tuple[int, ...], round_index: int) -> np.ndarray:
     """Deterministic pseudo-random mask from a shared key and ROUND (SHAKE-256 seeded).
@@ -80,10 +94,12 @@ def _mask(seed_key: bytes, shape: tuple[int, ...], round_index: int) -> np.ndarr
 
 @dataclass
 class SecureAggregator:
-    """Sum client updates without revealing any single client's update.
+    """Sum pairwise-masked client updates; the masks cancel exactly in the sum.
 
     Pairwise keys ``keys[(i,j)]`` (i<j) seed antisymmetric masks: client i adds the
-    mask, client j subtracts it. Summing all masked updates cancels every mask.
+    mask, client j subtracts it. Summing all masked updates cancels every mask. An individual
+    update is hidden only from someone who cannot derive the pair keys, and with the default keys
+    (a public constant, below) that is nobody.
     """
 
     n_clients: int
@@ -94,8 +110,11 @@ class SecureAggregator:
             # DEMO ONLY, and not a privacy guarantee: these pairwise keys are derived from a
             # public constant, so anyone can recompute every mask and unmask an individual
             # update. The masks are real and they cancel exactly; what is absent is the secrecy
-            # of the key material. In deployment the keys come from the QKD/PQC layer, which is
-            # what makes the scheme hiding. See docs/threat-model.md.
+            # of the key material. No caller in this repository passes `keys` (federated_train
+            # below does not), so this branch is the one that runs. Hiding needs each pair's key
+            # agreed between the two clients of that pair (Bonawitz et al.); a key every party and
+            # the aggregator share, like the browser's session key, would not hide anything from
+            # the aggregator either. See docs/threat-model.md.
             for i in range(self.n_clients):
                 for j in range(i + 1, self.n_clients):
                     self.keys[(i, j)] = hashlib.sha256(f"pair-{i}-{j}".encode()).digest()
@@ -178,7 +197,8 @@ def federated_train(
     seed: int = 0,
     return_model: bool = False,
 ) -> FederatedResult:
-    """Run FedAvg across ``parts`` with optional quantum-safe secure aggregation.
+    """Run FedAvg across ``parts`` with optional pairwise masking (public demo keys; see the module
+    docstring for what that does and does not hide).
 
     With ``return_model=True`` returns ``(FederatedResult, global_model)`` so callers (e.g. the
     medical CNN use case) can run a genuine private inference with the federated-trained weights.

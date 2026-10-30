@@ -160,13 +160,19 @@ def benchmark(workload: str = "linear", samples: int = 20, model_size: str = "me
 
     results = run_benchmark(workload, out_dir=RESULTS_DIR, n_samples=samples,
                             include_openfhe=True, model_size=model_size)
+    # `advantage` is the RETIRED composite score (qsh.benchmark.quantum_advantage): its inputs are
+    # not comparable and no page shows it. Returning None here, as the browser does, is deferred.
     return {"workload": workload, "model_size": model_size,
             "results": [r.to_row() for r in results], "advantage": compute_advantage(results)}
 
 
 @app.post("/api/alice-bob")
 def alice_bob(body: RunConfig | None = None) -> dict:
-    """Two-party Alice<->Bob E2E: PQC handshake -> QKD -> QOT/PSI -> private inference."""
+    """Two-party Alice<->Bob E2E: PQC handshake, simulated QKD, keyed-hash PSI, private inference.
+
+    The PSI is a classical keyed hash under a key both parties hold, not the QOT primitive, and it
+    keeps the sets from third parties, not from each other (see qsh.qsmpc.qot).
+    """
     from qsh.benchmark.alice_bob_e2e import run_alice_bob_e2e
 
     cfg = body.config if body else {}
@@ -195,7 +201,11 @@ def demo_qkd(distance_km: float = 50.0, eve: float = 0.0) -> dict:
 
 @app.get("/api/demo/mcp")
 def demo_mcp(qkd: bool = False) -> dict:
-    """Quantum-safe MCP agent-to-agent call (PQC+QKD session, ML-DSA-signed, AEAD)."""
+    """Quantum-safe MCP agent-to-agent call (PQC session, ML-DSA-signed, AEAD).
+
+    ``qkd=true`` mixes in a FIXED 32-byte QKD-domain constant, ``b"q" * 32``, not a QKD key: it
+    exercises the combiner and adds no entropy.
+    """
     from qsh.pqc.mcp_bridge import mcp_demo
 
     qkd_key = (b"q" * 32) if qkd else None
@@ -225,7 +235,9 @@ def mcp_tools() -> dict:
 
 @app.post("/api/mcp/call")
 def mcp_call(req: McpCallReq) -> dict:
-    """Invoke a real MCP tool over the quantum-safe channel (PQC+QKD+ML-DSA+AEAD) → signed real result."""
+    """Invoke a real MCP tool over the quantum-safe channel (PQC + ML-DSA + AEAD) and return the
+    signed real result. ``qkd=true`` mixes in the fixed QKD-domain constant ``b"q" * 32``, not a
+    QKD key."""
     from qsh.pqc.mcp_bridge import Agent, secure_agent_call
 
     qkd_key = (b"q" * 32) if req.qkd else None
@@ -240,7 +252,8 @@ def mcp_call(req: McpCallReq) -> dict:
 
 @app.post("/api/mcp/filesystem")
 def mcp_filesystem(req: McpFsReq) -> dict:
-    """Interop: call the OFFICIAL filesystem MCP server (Node) + carry its result over the quantum-safe layer."""
+    """Interop: call the OFFICIAL filesystem MCP server (Node) + carry its result over the quantum-safe
+    layer (PQC session; ``qkd=true`` mixes in the fixed constant ``b"q" * 32``, not a QKD key)."""
     from qsh.mcp.fs_interop import node_available, secure_filesystem_interop
 
     if not node_available():

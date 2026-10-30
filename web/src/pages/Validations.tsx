@@ -39,8 +39,14 @@ export default function Validations() {
       <h2>Post-quantum cryptography</h2>
       <div className="grid cols-2">
         <div className="card">
-          <h3>ML-KEM-768 key encapsulation</h3>
-          <p>FIPS 203 hybrid KEM half. Generates keys, encapsulates, decapsulates — no server.</p>
+          <h3>ML-KEM-768 + X25519 hybrid key encapsulation</h3>
+          {/* The sizes below are the HYBRID's - ML-KEM-768's 1184 B key and 1088 B ciphertext (FIPS 203)
+              plus X25519's 32 B each - because `mlkemDemo()` runs the hybrid. The handshake card below
+              runs the same function and splits the ciphertext into its two halves. */}
+          <p>The session key's hybrid KEM: ML-KEM-768 (FIPS 203) plus X25519. Generates keys, encapsulates,
+            decapsulates - no server. The sizes are the hybrid&apos;s (ML-KEM-768 alone: 1184 B public key,
+            1088 B ciphertext, plus 32 B each for X25519); the handshake card below runs the same
+            computation and splits the ciphertext.</p>
           <button className="btn" onClick={() => setKem(mlkemDemo())}>Run ML-KEM</button>
           {kem && (
             <table style={{ marginTop: 12 }}>
@@ -97,7 +103,8 @@ export default function Validations() {
       <div className="grid cols-1">
         <div className="card">
           <h3>BB84 QKD with eavesdropper</h3>
-          <p>Slide the intercept-resend fraction; watch QBER rise above the security threshold.</p>
+          <p>Slide the intercept-resend fraction; watch the QBER rise and the finite key fall to zero, which
+            happens before the QBER reaches the 0.11 abort threshold that sets the &quot;eavesdropper?&quot; flag.</p>
           <label className="muted" style={{ fontSize: 13 }} htmlFor="eve-range">Eve intercept fraction: {eve.toFixed(2)}</label>
           <input id="eve-range" name="eve" aria-label="Eve intercept fraction"
             type="range" min={0} max={1} step={0.1} value={eve}
@@ -121,7 +128,7 @@ export default function Validations() {
                     `api.ts` emitting `skr`. The demo builds CLIENT_ONLY, so that branch is the only
                     one the public site executes and this cell rendered blank there. The sentence
                     remained true only of the branch nobody had looked at. */}
-                <tr><td>secret key rate (per pulse)</td><td>{typeof qkd.skr_per_pulse === "number" ? Number(qkd.skr_per_pulse.toPrecision(4)) : qkd.skr_per_pulse}</td></tr>
+                <tr><td>secret key rate (per pulse, asymptotic)</td><td>{typeof qkd.skr_per_pulse === "number" ? Number(qkd.skr_per_pulse.toPrecision(4)) : qkd.skr_per_pulse}</td></tr>
                 {/* A composable finite key since Round 80, of the block named beside it - not the rate
                     times the pulses, which no finite block distils. */}
                 <tr><td>secure key bits (composable finite key)</td><td>{typeof qkd.secure_key_bits === "number" ? qkd.secure_key_bits.toLocaleString("en-US") : qkd.secure_key_bits}{typeof qkd.block_pulses === "number" && qkd.block_pulses > 0
@@ -140,10 +147,11 @@ export default function Validations() {
         <p>
           {/* "optionally QKD-mixed" described a FIXED 32-byte constant (0x71 x 32, the backend's
               b"q"*32) as QKD key material. The QKD models here return counts, never key bytes. */}
-          Two AI agents establish a PQC (ML-KEM-768 + X25519) session - optionally mixed with a fixed
-          QKD-domain constant, not a QKD key - and
-          exchange an <b>ML-DSA-signed</b>, AES-256-GCM-sealed MCP tool call — closing the report's gap
-          of quantum-resistant + private agent↔data-silo communication (no trusted third party).
+          Two endpoints in this tab, each holding its own keys, establish a PQC (ML-KEM-768 + X25519)
+          session - optionally mixed with a fixed QKD-domain constant, not a QKD key - and exchange an{" "}
+          <b>ML-DSA-signed</b>, AES-256-GCM-sealed MCP-style call: a fixed <code>query_cohort</code>{" "}
+          request, which the other endpoint opens and verifies. No model and no tool runs; what is shown
+          is the sealed, signed channel.
         </p>
         <div className="btn-row">
           <label className="muted">
@@ -176,9 +184,10 @@ export default function Validations() {
         <MpcNetBench />
       </div>
 
-      {/* The network layer's key schedules, computed in this tab (Round 58). The tunnels themselves
-          run in the companion network demo; nothing here connects to it. */}
-      <h2 style={{ marginTop: 28 }}>Network-layer key schedules (computed in your tab)</h2>
+      {/* Handshakes of the network layer's kinds, computed in this tab with this page's own keys
+          (Round 58). The tunnels themselves run in the companion network demo; nothing here connects
+          to it, and the in-tab WireGuard PSK is not either of the PSKs its lanes use. */}
+      <h2 style={{ marginTop: 28 }}>Network-layer key schedules (computed in your tab, with its own keys)</h2>
       <div className="card">
         <NetworkPositioning />
       </div>

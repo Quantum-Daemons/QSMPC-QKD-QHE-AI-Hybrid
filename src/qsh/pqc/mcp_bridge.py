@@ -7,8 +7,10 @@ simultaneously" (Security Boulevard 2026.02).
 Two agents establish a **PQC (+optional QKD) hybrid session** (:mod:`~qsh.pqc.transport`)
 and exchange **ML-DSA-signed**, **AES-256-GCM-sealed** MCP-style tool-call messages.
 This gives, in one protocol: confidentiality (AEAD over a quantum-safe key),
-authenticity/non-repudiation (post-quantum signature), and HNDL resistance (ML-KEM +
-optional QKD key material) for agent↔silo traffic — with no trusted third party.
+authenticity/non-repudiation (post-quantum signature), and HNDL resistance (ML-KEM) for
+agent-to-silo traffic, with no trusted third party. The optional ``qkd_key`` is whatever the
+caller passes: the full-deployment API passes the fixed constant ``b"q" * 32``, which adds no
+entropy, so in practice the session's strength is ML-KEM-768 + X25519's.
 """
 
 from __future__ import annotations
@@ -69,8 +71,9 @@ def secure_agent_call(
     caller: Agent, callee: Agent, method: str, params: dict, *,
     qkd_key: bytes | None = None, dispatch: bool = True,
 ) -> dict:
-    """Caller sends a signed tool call to callee over a PQC+QKD session; callee verifies, **dispatches
-    the real MCP tool**, and seals the genuine result back — quantum-safe, authenticated agent↔silo comms
+    """Caller sends a signed tool call to callee over a PQC session (``qkd_key`` mixed in if
+    given); callee verifies, **dispatches the real MCP tool**, and seals the genuine result back:
+    quantum-safe, authenticated agent-to-silo comms
     that actually runs a tool end-to-end (not just a handshake).
 
     With ``dispatch=True`` and ``method == "tools/call"``, the callee runs the named tool from the real

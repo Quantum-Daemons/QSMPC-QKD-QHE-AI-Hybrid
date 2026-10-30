@@ -66,11 +66,14 @@ export default function PipelineControls({ run }: { run: Run }) {
   // visitor could leave this on "bb84-decoy", set the parameter to E91, and watch E91 run under a
   // label saying BB84 - two controls that look like duplicates, one of which is lying.
   //
-  // This control is a PROFILE switch: whether a quantum channel contributes key material at all.
-  // Naming it that removes both the apparent duplication and the real inconsistency, and needs no
-  // change to the registry, the config schema or the backend.
+  // This control is a PROFILE switch: whether the simulated quantum channel runs at all. In the
+  // browser it never contributes key material either way - `bb84()` / `e91()` return a key LENGTH and
+  // the session key is written by the PQC handshake alone - and in the full deployment a run that
+  // clears 256 secure bits folds the simulated channel's key in. Naming it that removes both the
+  // apparent duplication and the real inconsistency, and needs no change to the registry, the config
+  // schema or the backend.
   const DISPLAY: Record<string, string> = {
-    "bb84-decoy": "QKD + PQC hybrid",
+    "bb84-decoy": "PQC + simulated QKD stage",
     "pqc-only": "PQC only (no quantum channel)",
   };
 
@@ -91,22 +94,24 @@ export default function PipelineControls({ run }: { run: Run }) {
     <div className="card">
       <div className="btn-row">
         {sel("KEM", "sel-kem", "kem", kem, setKem)}
-        {/* The resolved protocol, rendered as visible text. This select is a PROFILE switch - whether a
-            quantum channel contributes key material - while the thing that chooses BB84 versus E91 is
+        {/* The resolved protocol, rendered as visible text. This select is a PROFILE switch - whether the
+            simulated quantum channel runs - while the thing that chooses BB84 versus E91 is
             `qkd_protocol`, inside the COLLAPSED Parameters panel. Both facts were explained at length in
             comments here and in the diagram, and on screen the distinction existed only as a `title`
             tooltip. A visitor reading "QKD + PQC hybrid" had no way to know a second, hidden control
             decides which protocol runs. */}
         {sel("Key source", "sel-qkd", "qkd", qkd, setQkd,
-          "Whether a quantum channel contributes key material at all. WHICH protocol is "
-          + "simulated - BB84 decoy-state or E91/CHSH - is a separate setting, "
+          "Whether the simulated quantum channel runs at all. In this browser it contributes no key "
+          + "material either way: the QKD stage yields a key length, and the session key comes from the "
+          + "PQC handshake alone (the full deployment folds 256 or more simulated QKD bits in). WHICH "
+          + "protocol is simulated - BB84 decoy-state or E91/CHSH - is a separate setting, "
           + "`qkd.protocol` in the Parameters panel below.")}
         {/* Demo: FHE/MPC run for real in the browser → a static badge, not inert backend dropdowns.
             Full: the server-side TenSEAL/OpenFHE/MPyC selectors stay (real crypto-agility). */}
         {demo ? (
           <span className="muted" style={{ fontSize: 13 }}
-            title="The demo computes FHE/MPC for real in your browser (node-seal CKKS + a Polytune garbled-circuit 2PC whose two parties share this tab) — there is no server backend to select.">
-            FHE/MPC: <strong>node-seal CKKS + garbled-circuit 2PC</strong> · real protocol, in-browser, notional parties
+            title="Where a page has a private-inference stage (finance, medical, genomics), the demo computes FHE/MPC for real in your browser (node-seal CKKS + a Polytune garbled-circuit 2PC whose two parties share this tab); telecom runs a CKKS check of its student and no MPC, and satellite runs neither. There is no server backend to select.">
+            FHE/MPC, where a page runs them: <strong>node-seal CKKS + garbled-circuit 2PC</strong> - real protocol, in-browser, notional parties
           </span>
         ) : (
           <>
@@ -162,13 +167,16 @@ export default function PipelineControls({ run }: { run: Run }) {
       </div>
       <div className="btn-row" style={{ marginTop: 8 }}>
         {/* The Workload selector is gone. It offered Linear against CNN, and once the CNN path
-            began evaluating the PUBLISHED student's own weights end to end under CKKS, Linear was
+            began evaluating the PUBLISHED student's own weights under CKKS (layer by layer, decrypted
+            between layers), Linear was
             the only fabricated option left: an 8-feature dot product with a hand-written weight
             pattern that matched no trained model. Medical now always runs its real student. The
             internal `workload` value is retained because the benchmark cost model still reads it
             for the use cases whose students genuinely ARE linear. */}
-        {/* Quantum Federated Learning toggle — runs a real client-side FedAvg of a quantum-classical
-            model (full deployment = Flower + PennyLane HybridQNN under quantum-safe secure aggregation). */}
+        {/* Federated learning ("Quantum Federated Learning" by name) runs a real client-side FedAvg of
+            a logistic head over a closed-form feature map - no circuit - with every pairwise mask from
+            the one session key (the full deployment's Flower + PennyLane HybridQNN trains a real
+            variational circuit; its default pair keys are a public constant). */}
         {/* AI-QKD parameter optimization (OptiQKD, WS1) — measured gradient-free SKR maximization. */}
         <label className={`muted${optiqkdDisabled ? " is-disabled" : ""}`} htmlFor="sel-optiqkd"
           title={optiqkdDisabled

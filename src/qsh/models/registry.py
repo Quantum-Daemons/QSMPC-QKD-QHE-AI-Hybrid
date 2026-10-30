@@ -12,11 +12,12 @@ Every use case has up to three model tiers, and the *relationship between them* 
                    2026: Park et al. (arXiv:2601.18511v2, 2026-06-17) run Llama-3-8B end to end under
                    CKKS, 128 encrypted tokens in 20 s for summarisation and 18 s/token generation - on
                    **eight** NVIDIA RTX PRO 6000 GPUs. This project owns one of that GPU model and its
-                   FHE default is TenSEAL on CPU, so the result is ten orders of magnitude outside the
-                   artifact that has to run. A 33-parameter logistic regression is not a compromise
-                   here; it is the class of model that closes at this operating point. State the
-                   operating point, not a prediction about the field - the scoped claim is falsifiable
-                   and the unscoped one was already false.
+                   FHE default is TenSEAL on CPU, while the artifact that has to run is one
+                   single-threaded WASM tab, so that result sits far outside this operating point;
+                   no measurement here puts a number on the gap. A 33-parameter logistic regression
+                   is not a compromise here; it is the class of model that closes at this operating
+                   point. State the operating point, not a prediction about the field - the scoped
+                   claim is falsifiable and the unscoped one was already false.
 
                    AND IT DOES NOT HOLD FOR EVERY USE CASE. Round 32 found the citation that falsifies
                    it for genomics specifically: Knight et al., Cell Reports Methods 6(1):101271
@@ -50,10 +51,19 @@ Every use case has up to three model tiers, and the *relationship between them* 
   T3 ``large``     models too big to run under encryption at all — served remotely or in-browser
                    via WebGPU, and labelled as plaintext.
 
-The measured quantity that ties T1 to T2 is ``crypto_fidelity``: how often the encrypted student
-agrees with the plaintext teacher on a held-out split, and how much task metric that costs. That
-number is the honest answer to "what does the privacy actually cost", and it is measured per run
-rather than asserted.
+Two measured numbers tie T1 to T2, and they come from different places.
+
+  * OFFLINE, at training time: ``crypto_fidelity`` (``agreement`` and the metric delta recorded in
+    ``models/metrics.json``) is how often the student reproduces the plaintext teacher's decision
+    on a held-out split, and how much task metric that costs. Both predictions are computed in
+    plaintext, so this measures the distillation, not the encryption.
+  * PER RUN, in the browser: ``encrypted_agreement`` is how often the CKKS evaluation of the model
+    the page encrypts reproduces that same model's plaintext top-1 decision over the rows it scores.
+    That is what CKKS noise costs. It is not student against teacher.
+
+Neither number bounds what private inference costs in general. A metric lost to the student is the
+cost of the student this project chose (exact encrypted tree-ensemble inference exists), not of
+encryption itself.
 
 Two kinds of number live here and they must not be confused:
 
@@ -276,11 +286,15 @@ DS_BREASTMNIST = DatasetSpec(
     # The second sentence is not decoration: the licence note above records that the upstream grant
     # is what is actually unverifiable, so naming BUSI is what lets a reader check that for
     # themselves rather than take this project's word for it.
+    # MedMNIST asks for BOTH papers to be cited (its README's citation section): v2 and the v1
+    # conference paper.
     attribution=(
         "Yang, Shi, Wei, Liu, Zhao, Ke, Pfister & Ni, 'MedMNIST v2 - A large-scale lightweight "
         "benchmark for 2D and 3D biomedical image classification', Scientific Data 10:41 (2023), "
-        "CC BY 4.0. BreastMNIST is derived from Al-Dhabyani, Gomaa, Khaled & Fahmy, 'Dataset of "
-        "breast ultrasound images', Data in Brief 28:104863 (2020)."
+        "and Yang, Shi & Ni, 'MedMNIST Classification Decathlon: A Lightweight AutoML Benchmark "
+        "for Medical Image Analysis', IEEE ISBI 2021; CC BY 4.0. BreastMNIST is derived from "
+        "Al-Dhabyani, Gomaa, Khaled & Fahmy, 'Dataset of breast ultrasound images', Data in Brief "
+        "28:104863 (2020)."
     ),
 )
 DS_PGS_CATALOG = DatasetSpec(
@@ -325,14 +339,17 @@ DS_OPSSAT_AD = DatasetSpec(
     notes=(
         "2,123 annotated telemetry segments across 9 channels from ESA's OPS-SAT CubeSat, 20.4% "
         "anomalous, with 18 published per-segment features plus a `sampling` metadata column, and the benchmark's own train/test "
-        "split. Ruszczak et al., Scientific Data 12 (2025). CC BY 4.0 and 507 KB, so unlike every "
-        "other corpus here the DATA can be redistributed as well as the weights. A different task "
+        "split. That split is stratified random, not temporal, so scores on it do not measure "
+        "generalisation over time. Ruszczak et al., Scientific Data 12 (2025). CC BY 4.0, which "
+        "permits redistributing the data with credit; the per-segment feature table is about "
+        "507 KB, the raw segment file much larger. A different task "
         "from ESA-ADB: segment classification, not forecasting, so its score is not comparable "
         "with the Telemanom model's and neither is the other's baseline."
     ),
-    # This is the one corpus whose DATA is redistributed here -- the whole published test partition
-    # ships inside two HF repos as eval_sample.json -- so the CC BY credit is a condition on this
-    # project's own distribution, not only a courtesy to a reader.
+    # Its DATA is redistributed here -- the whole published test partition ships inside two HF repos
+    # as eval_sample.json -- so the CC BY credit is a condition on this project's own distribution,
+    # not only a courtesy to a reader. It is not the only such corpus: WDBC, PaySim, AMLworld,
+    # ESA-ADB, 5G-NIDD, BreastMNIST and gnomAD rows ship too.
     attribution=(
         "Ruszczak, Kotowski, Evans & Nalepa, 'The OPS-SAT benchmark for detecting anomalies in "
         "satellite telemetry', Scientific Data 12, 710 (2025), doi:10.1038/s41597-025-05035-3, "
@@ -355,35 +372,43 @@ DS_ESA_ADB = DatasetSpec(
     # `references/REFERENCES.md` records why citing the paper for the benchmark and the Zenodo DOI for
     # the data is not an inconsistency. Thirteen places in this repository once credited OPS-SAT-AD to
     # "Kotowski et al."; the DOI and the Zenodo id are the reliable discriminators, not the surname.
+    # The benchmark README asks for the DMLR journal version to be cited; the Zenodo record names
+    # its own three creators, in this order.
     attribution=(
-        "Kotowski et al., 'European Space Agency Benchmark for Anomaly Detection in Satellite "
-        "Telemetry', arXiv:2406.17826. Data: ESA Anomaly Dataset, Zenodo record 12528696, "
-        "CC BY 3.0 IGO."
+        "Kotowski et al., 'European Space Agency Dataset and Benchmark for Real-World Anomaly "
+        "Detection in Spacecraft Time Series', Journal of Data-centric Machine Learning Research "
+        "(DMLR), 2026 (earlier version: arXiv:2406.17826). Data: De Canio, Kotowski & Haskamp, "
+        "'ESA Anomaly Dataset', Zenodo record 12528696 (2024), CC BY 3.0 IGO."
     ),
     notes=(
-        # THE SPAN IS WITHHELD, NOT ASSERTED. `DATA_LICENSES.md` records the two figures this
-        # project has carried for the same corpus - 14 years there, 17.5 here - and that neither
-        # was re-verifiable: the Zenodo record, the arXiv:2406.17826 abstract and the kplabs-pl
-        # ESA-ADB README all decline to state it. That file withheld the number; this one kept
-        # asserting it, and `scripts/publish_hf.py` copies `DatasetSpec.notes` verbatim into the
-        # model card, so the un-re-verified figure was being published to the Hub in both
-        # `satellite_telemanom` and `satellite_telemanom_student`. A withheld figure that stays
-        # in the one copy that leaves the repository is not withheld.
+        # THE SPAN IS SOURCED. Table 1 of arXiv:2406.17826v2 gives the anonymised durations:
+        # Mission1 14 years, Mission2 3.5, both 17.5 - so the 17.5 once carried here was the two
+        # missions' total, not Mission1's. `scripts/publish_hf.py` copies `DatasetSpec.notes`
+        # verbatim into the model card, so this sentence reaches the Hub.
         "Missions are anonymised Mission1/2/3 - they are not named Sentinel anything. "
-        "Multi-year telemetry; the exact span is NOT stated by the Zenodo record, the paper or "
-        "the upstream README, so it is withheld here rather than asserted - see DATA_LICENSES.md. "
-        "1.19% annotated. Mission3 is excluded upstream for triviality. The CC BY 3.0 IGO term "
+        "Mission1 holds 14 years of telemetry and Mission2 3.5 (anonymised durations, "
+        "arXiv:2406.17826v2 Table 1; the paper sizes the corpus by data points instead, because "
+        "sampling rates vary and the timeline is anonymised). "
+        "1.19% of points annotated across Mission1 and Mission2 (1.80% in Mission1). "
+        "Mission3 is excluded upstream for triviality. The CC BY 3.0 IGO term "
         "appears on the Zenodo landing page but NOT in its REST metadata, which returns no licence "
         "at all - an API-only check reads this corpus as unlicensed."
     ),
 )
 DS_SMAP_MSL = DatasetSpec(
     name="NASA SMAP/MSL spacecraft telemetry (Telemanom)",
-    licence="US Government work (17 U.S.C. 105)",
+    licence="no licence granted for the data",
     url="https://github.com/khundman/telemanom",
-    licence_checked="2026-08-03",
+    licence_checked="2026-10-30",
+    # `publishable` gates derived weights, and no published model trains on this corpus. Whether a
+    # sample whose data carries no licence should stay bundled at all is an open decision.
     publishable=True,
     notes=(
+        "NO SOURCE GRANTS A LICENCE FOR THIS DATA. The Telemanom repository's LICENSE.txt reads "
+        "'Copyright (c) 2018, California Institute of Technology' and grants BSD-style terms for "
+        "its software; it says nothing about the data. Nor is the data shown to be a US "
+        "Government work: 17 U.S.C. 105 covers works prepared by federal officers or employees, "
+        "and JPL is a NASA centre operated by Caltech. "
         "Retained as the bundled browser sample. Kept for continuity, but ESA-ADB is the model "
         "dataset: SMAP/MSL is evaluated almost universally with point-adjusted F1, which TSB-AD "
         "(NeurIPS 2024) shows a uniform random score can beat."
@@ -429,8 +454,8 @@ DS_WDBC = DatasetSpec(
     # The note directly above has said "attribution is still required" since Round 21 while there
     # was no field to put it in, so the requirement was recorded and not discharged. This is it.
     attribution=(
-        "Wolberg, Street & Mangasarian, 'Breast Cancer Wisconsin (Diagnostic)', UCI Machine "
-        "Learning Repository (1995), doi:10.24432/C5DW2B, CC BY 4.0."
+        "Wolberg, Mangasarian, Street & Street, 'Breast Cancer Wisconsin (Diagnostic)', UCI "
+        "Machine Learning Repository (1993), doi:10.24432/C5DW2B, CC BY 4.0."
     ),
 )
 
@@ -473,8 +498,12 @@ DS_5G_NIDD = DatasetSpec(
         "inter-packet-time column and every jitter column. They are empty, not weak. "
         "THE ROW IDENTIFIERS REMAIN A FINDING, with a narrower claim than Round 49 made. "
         "`Unnamed: 0` is the CSV's own index and restoring it alone takes accuracy from 0.9829 to "
-        "0.9997. That is what a row counter is worth on this corpus. It is NOT the explanation for "
-        "the published 99.6-99.7% figures - see the ModelSpec below, which withdraws that."
+        "0.9997. That is what a row counter is worth on this corpus. Whether published figures "
+        "lean on such columns is an OPEN question: the dataset paper's 9-class baselines "
+        "(Samarakoon et al., arXiv:2212.01298) rank the Argus sequence number `Seq` and `Offset` "
+        "among their top-10 inputs, and Wang, Fok & Thing's 28 inputs include `Offset`, both "
+        "columns this project drops as row identifiers; no published ablation settles it. See "
+        "M_NIDD's baseline_source below."
     ),
     # Taken VERBATIM from the Metax record's own `bibliographic_citation`, not assembled here. An
     # assembled credit line is a place to guess an author list; the depositors published the form
@@ -516,9 +545,10 @@ BUNDLED_DEMO_SAMPLES: dict[str, tuple[str, DatasetSpec]] = {
         DS_PGS_CATALOG,
     ),
     "satellite_comms": (
-        "real NASA SMAP/MSL spacecraft telemetry (Telemanom / NASA JPL). No provider states a "
-        "licence; 17 U.S.C. 105 removes US copyright domestically but is not a grant — see "
-        "DATA_LICENSES.md.",
+        "real NASA SMAP/MSL spacecraft telemetry (Telemanom / NASA JPL). No source grants a "
+        "licence for the data: the Telemanom LICENSE is a Caltech copyright covering its "
+        "software, and JPL is operated by Caltech, so the data is not shown to be a US Government "
+        "work under 17 U.S.C. 105 either - see DATA_LICENSES.md.",
         DS_SMAP_MSL,
     ),
 }
@@ -531,16 +561,21 @@ DEMO_SAMPLE_FILES: dict[str, str] = {
     "satellite_comms": "web/public/data/satellite/telemetry.json",
 }
 
+#: `licence` says what is true today: NO licence is granted. "Generated by this repository" says
+#: where the rows come from, not what anyone may do with them, and that phrase used to stand in
+#: this field - and so in the public Hub card's licence name - as if it were a grant.
 DS_QKD_ATTACK_SYNTH = DatasetSpec(
     name="QKD attack telemetry (synthetic, methodology-grounded)",
-    licence="generated by this repository",
+    licence="no licence granted; synthetic rows generated by this repository's own code",
     url="https://arxiv.org/abs/2509.14282",
-    licence_checked="2026-08-03",
+    licence_checked="2026-10-30",
     publishable=True,
     notes=(
         "8 classes = 7 attack types + normal, per Al-Kuwari et al. (IET Quantum Communication 7(1), "
-        "e70028, 2026). No commercial-OK real QKD-attack capture exists; this is labelled synthetic "
-        "everywhere it is reported."
+        "e70028, 2026). The class list follows the paper; the 7 features and their signature "
+        "values are this project's own design. No commercial-OK real QKD-attack capture exists; "
+        "this is labelled synthetic everywhere it is reported. No licence is granted for these "
+        "rows or for the weights trained on them."
     ),
 )
 
@@ -552,14 +587,23 @@ M_AML = MetricSpec(
     name="minority_class_f1",
     display="minority-class F1 (laundering)",
     baseline=0.6323,
-    baseline_source="GFP+XGBoost, IBM AMLworld HI-Small, NeurIPS 2023 D&B (63.23 +/- 0.17)",
+    # The protocol differs from this project's, and the sentence says so because the comparison
+    # caveat field is not set for this metric (setting it changes how the chart renders).
+    baseline_source=(
+        "GFP+XGBoost, IBM AMLworld HI-Small, NeurIPS 2023 D&B (63.23 +/- 0.17). Same metric and "
+        "corpus, different protocol: that figure uses a 60/20/20 split by transaction order and "
+        "IBM's Graph Feature Preprocessor updated over the test window; this project tests on the "
+        "last 30 percent of transactions (fit 56, validation 14) with its own graph features, "
+        "whose structural block is fitted on the training window."),
+    # 0.7401 is MEGA-PNA's row and NOT the table's best: the same Table 2 prints MEGA-GenAgg at
+    # 74.88 and MEGA(PNA)-GIN at 74.69. The text below says so; moving the number is a data change.
     ceiling=0.7401,
     ceiling_source=(
         "MEGA-PNA, arXiv:2412.00241v2 Table 2 'Minority-class F1 scores (%) on AML edge "
-        "classification task', AML Small HI (74.01 +/- 1.55). PREPRINT - no venue confirmed, which is "
-        "why it is named as such. It replaces Multi-PNA+EU (AAAI-24, 68.16 +/- 2.65): that row is in "
-        "the SAME table with two better ones above it (MEGA-GIN 70.83, MEGA-PNA 74.01) and has not "
-        "been the ceiling since December 2024. Verified by reading the table, not the abstract."),
+        "classification task', AML Small HI (74.01 +/- 1.55); the paper's v3 is accepted for "
+        "publication in TMLR (2026). It is not the table's highest row: the same table prints "
+        "MEGA-GenAgg at 74.88 +/- 0.38 and MEGA(PNA)-GIN at 74.69 +/- 0.50, and Multi-PNA (68.16 "
+        "+/- 2.65) below all three."),
     companion="auprc",
 )
 M_BREASTMNIST_R50 = MetricSpec(
@@ -570,7 +614,8 @@ M_BREASTMNIST_R50 = MetricSpec(
                      "(AUC 0.857 / ACC 0.812). Note this is BELOW the ResNet-18 baseline of 0.901 "
                      "on the same corpus and the same 100-epoch Adam regime: on 780 images the "
                      "deeper network loses. That is the published finding, and it is why this model "
-                     "exists here - to reproduce it rather than to win."),
+                     "exists here - to test it rather than to win, under a training regime that "
+                     "differs from the paper's (see the model's notes)."),
     ceiling=0.919,
     ceiling_source="Google AutoML Vision, MedMNIST v2 (AUC 0.919)",
     companion="accuracy",
@@ -606,7 +651,11 @@ M_PRS = MetricSpec(
     ceiling=0.668,
     ceiling_source=(
         "Highest AUROC among PGS000004's OWN Catalog performance records: 0.668 (PPM012913, n=302,425, "
-        "European). Measured across all 28 AUROC records for this score on 2026-08-11, not taken from a "
+        "European). NOT THE BARE SCORE: that record evaluates PGS000004 combined with the iCARE-Lit "
+        "classical risk factors (age at menarche, parity, BMI, family history and others) for "
+        "5-year absolute risk (Hurson et al., Int J Epidemiol 2022), so a weighted dot product "
+        "alone is not expected to reach it. "
+        "Measured across all 28 AUROC records for this score on 2026-08-11, not taken from a "
         "range quoted elsewhere - a first attempt at this line read the first page of results only and "
         "put the ceiling at 0.6573, which is a real record but not the maximum. European records span "
         "0.5877-0.668 over 22 entries; the largest cohort is PPM012918 at n=5,328,392 with 0.665. "
@@ -643,14 +692,17 @@ M_ESA = MetricSpec(
         "cited Table 2's 0.786 instead. That number is real and correctly attributed, but Table 2 "
         "scores ALL EVENTS excluding communication gaps, i.e. anomalies PLUS annotated rare nominal "
         "events, so it was the wrong comparator and the lenient one. Verified against the paper "
-        "(arXiv:2406.17826 v2) in Round 24. THREE protocol differences remain and none of them are "
+        "(arXiv:2406.17826 v2) in Round 24. FOUR protocol differences remain and none of them are "
         "closed by changing the number: (1) ESA-ADB's metric multiplies event precision by the "
         "TIME-LEVEL true-negative rate, which is why most of its baselines read <0.001 - this "
         "project records that corrected value as `corrected_event_wise_f0_5` beside the uncorrected "
         "one; (2) ESA-ADB splits each mission in half, this project tests on the last 30 percent; "
         "(3) ESA-ADB's Mission1 lightweight test partition holds 65 annotated events of which 29 are "
-        "anomalies, against 3 in the window scored here. So this remains an indicative target, and "
-        "the sample-size gap is roughly tenfold."
+        "anomalies, against 3 in the window scored here; (4) ESA-ADB resamples Mission1 at "
+        "0.033 Hz, about one sample per 30 s, chosen from the dominant rate of channels 41-46, "
+        "while this model resamples to 300 s, so its 250-step window spans about 20.8 hours "
+        "where the benchmark's would span about 2.1, and short events can vanish. So this remains "
+        "an indicative target, and the sample-size gap is roughly tenfold."
     ),
     ceiling=None,
     ceiling_source="",
@@ -663,11 +715,12 @@ M_ESA = MetricSpec(
         "The two bars are event-wise F0.5 under the same overlap rule, and that is where the "
         "agreement stops. This project's scored window contains THREE labelled anomaly events; "
         "ESA-ADB's Mission1 lightweight test partition contains 29, roughly a tenfold difference in "
-        "the denominator - at three events, one extra false alarm moves the score by 0.26, which is "
-        "larger than most of the gap being read off this chart. The splits differ too (last 30 "
-        "percent here, half the mission there), and ESA-ADB multiplies event precision by the "
-        "time-level true-negative rate, which this figure does not. Treat 0.968 as an indicative "
-        "target, not as a score this bar was competing against."
+        "the denominator. None of the three is caught here (tp 0, fp 2, fn 3), so the score is 0 "
+        "and another false alarm cannot lower it; catching one event with the same two false alarms "
+        "would lift it to 0.33. The splits differ too (last 30 percent here, half the mission "
+        "there), so does the resampling (300 s here, about 30 s there), and ESA-ADB multiplies "
+        "event precision by the time-level true-negative rate, which this figure does not. Treat "
+        "0.968 as an indicative target, not as a score this bar was competing against."
     ),
 )
 M_IDS = MetricSpec(
@@ -726,23 +779,24 @@ M_NIDD = MetricSpec(
     baseline=None,
     baseline_source=(
         "Two published figures on 5G-NIDD are usually quoted - Wang, Fok & Thing report 99.61% "
-        "accuracy for a CNN and 99.71% for a hybrid quantum-classical Quan-ConvCNN - and BOTH are "
-        "accuracies, which is why no number appears in `baseline`. Three caveats. (1) Those are "
-        "hybrid quantum-classical results with a 0.10-point spread, and the authors' own claim is "
-        "about generalisation to UNSEEN attacks rather than about the headline; "
+        "accuracy for a classical CNN and 99.71% for a hybrid quantum-classical Quan-ConvCNN - and "
+        "BOTH are accuracies on the BINARY benign-versus-malicious task, while this model is scored "
+        "on 9 classes, which is why no number appears in `baseline`. The 9-class anchors are the "
+        "dataset paper's random forest at 99.48% accuracy on its top-10 features (Samarakoon et "
+        "al., arXiv:2212.01298) and BiTAD (Future Internet 17(11):482) at 90.47%. Caveats. (1) The Wang, Fok & Thing authors' own claim is about "
+        "generalisation to UNSEEN attacks rather than about the headline; "
         "`references/REFERENCES.md` WS2 records this. (2) Accuracy is the wrong comparator on a "
         "corpus whose two majority classes are 39.3% and 37.6% of the rows. (3) MEASURED HERE: an "
         "identical gradient-boosted model reaches accuracy 0.9997 with the corpus's integer row "
-        "counters restored, so the published range is reproducible from row identifiers alone. "
-        "ROUND 50 CORRECTED WHAT THAT THIRD POINT WAS TAKEN TO MEAN. It was written when this model "
-        "scored 0.7610 and read as evidence that the published figures probably leaned on those "
-        "counters, on the unstated premise that nothing else could close a 24-point gap. Something "
-        "else could. Refitted on the corpus's 113-column export with every identifier and every "
-        "host fingerprint dropped, the same configuration scores 0.9829 - about 1.3 points below "
-        "the published accuracies rather than 24 - and the column that closes the gap is one flow "
-        "statistic, `IdleTime`, which the 52-column export does not carry. The leak measurement "
-        "stands as a fact about row counters. The insinuation about the papers does not, and is "
-        "withdrawn. These figures are an anchor and not a target that has been beaten or missed."
+        "counters restored, and 0.9829 with every identifier and every host fingerprint dropped; "
+        "the column that lifts it from the 0.7608 of the 52-column export is one flow statistic, "
+        "`IdleTime`, which that export does not carry. (4) Whether published figures lean on row "
+        "identifiers is OPEN: those top-10 inputs include the Argus sequence number `Seq` and "
+        "`Offset`, Wang, Fok & Thing's inputs include `Offset`, both columns are dropped here as "
+        "identifiers, and no published ablation settles it. (5) This model's "
+        "figures come from a stratified random split, which flatters: when Wang, Fok & Thing train "
+        "on one base station and test on the other, their accuracies fall from above 98% to about "
+        "78-82%. These figures are an anchor and not a target that has been beaten or missed."
     ),
     companion="aggregate_accuracy",
 )
@@ -812,27 +866,37 @@ _SPECS: tuple[ModelSpec, ...] = (
         # was never trained, and `hf_repo_id` is surfaced by the CLI and by frontend_config.
         hf_repo=None,
         notes=(
-            "Reference architecture only - never trained or published here. Message-passing needs the "
-            "graph neighbourhood at inference, so every tier ships the stateless gradient-boosting "
-            "variant instead. Kept as a spec because it is the published state of the art this "
-            "project's GBM is measured against, not because an artifact exists."
+            "Reference architecture only - never trained or published here. Message passing needs "
+            "each account's graph neighbourhood at scoring time, which this demo's browser tier does "
+            "not hold, so every tier ships the gradient-boosting model, which scores one precomputed "
+            "feature row per transaction. That is a choice for this operating point, not an "
+            "impossibility: Bilgi et al. (arXiv:2610.18054, preprint) run a 2-layer GNN under CKKS "
+            "on AMLworld HI-Small at 5.31 s per inference on one GPU, with the graph structure "
+            "visible to the server. Kept as a spec for the architecture it names. It is no longer "
+            "the best published figure on this split: the MEGA rows above it are (see the ceiling)."
         ),
     ),
     ModelSpec(
         usecase="finance_aml",
         tier="t2_industry",
         key="finance_aml.gbm",
-        label="Graph-feature-preprocessed gradient boosting",
-        architecture="GFP (graph features) + XGBoost",
+        label="Graph-feature gradient boosting",
+        # NOT IBM's Graph Feature Preprocessor (GFP): that ships in `snapml` under a proprietary
+        # licence and is excluded here. scripts/train/finance_aml.py reimplements graph features.
+        architecture=("per-account and structural graph features computed by this project "
+                      "(not IBM's Graph Feature Preprocessor) + XGBoost"),
         params=None,
         dataset=DS_AMLWORLD,
         metric=M_AML,
         artifacts=_ONNX_FP32_ONLY,   # tree ensemble: no int8 graph exists to serve
         hf_repo="qsh-finance-aml-gbm",
         eval_split=(
-            "a draw from the held-out temporal test window, the last 30 percent of the timeline, "
-            "enriched to 2 percent laundering"),
-        notes="Stateless at inference, so this is the browser-tier finance model.",
+            "a draw from the held-out temporal test window, the last 30 percent of the "
+            "transactions in time order, enriched to 2 percent laundering"),
+        notes=("The browser-tier finance model: it scores one feature row per transaction with no "
+               "message passing at scoring time. That row is not stateless - its per-account and "
+               "structural features are computed from the account's earlier transactions - so a "
+               "deployment needs that history to score a new transaction."),
     ),
     ModelSpec(
         usecase="finance_aml",
@@ -848,8 +912,17 @@ _SPECS: tuple[ModelSpec, ...] = (
         hf_repo="qsh-finance-aml-ckks-student",
         eval_split=(
             "the rows of finance_aml.gbm's sample, a draw from the held-out temporal test window, "
-            "the last 30 percent of the timeline, enriched to 2 percent laundering"),
-        notes="Runs under real CKKS. crypto_fidelity is measured against the teacher every run.",
+            "the last 30 percent of the transactions in time order, enriched to 2 percent "
+            "laundering"),
+        # `runs_encrypted=True` describes what this student was built for, not what any code path
+        # runs today; see the notes.
+        notes=("Built to run under CKKS, but no code path here encrypts THIS model. The public "
+               "page's CKKS step evaluates the 8-feature linear model bundled with the PaySim "
+               "sample and re-scores this 33-parameter AMLworld student in plaintext ONNX; the "
+               "full deployment's finance pipeline encrypts its own PaySim-trained surrogate. Its "
+               "agreement with the teacher (`agreement`) is measured offline, at training time, in "
+               "plaintext; each browser run measures `encrypted_agreement`, CKKS against plaintext "
+               "for the model it encrypts."),
     ),
     # ---------------- medical / federated ----------------
     ModelSpec(
@@ -864,7 +937,11 @@ _SPECS: tuple[ModelSpec, ...] = (
         artifacts=_ONNX_PAIR,
         hf_repo="qsh-medical-breastmnist-resnet18",
         eval_split="the official BreastMNIST test split, whole",
-        notes="The small tier: fits the browser comfortably and has a clean published baseline.",
+        notes=("The small tier: fits the browser comfortably and has a clean published baseline. "
+               "Its training regime is not the baseline's: torchvision's 7x7 stride-2 stem with "
+               "max-pool, early-stopped at 39 of at most 60 epochs at lr 3e-4 (manifest.json), "
+               "where MedMNIST v2's 28-px ResNets use a 3x3 stride-1 stem without max-pool and 100 "
+               "epochs at lr 1e-3. Close, not like for like."),
     ),
     ModelSpec(
         usecase="medical_fl",
@@ -881,7 +958,10 @@ _SPECS: tuple[ModelSpec, ...] = (
         notes=(
             "Trained to test a published claim rather than to win one. MedMNIST v2 reports ResNet-50 "
             "at AUC 0.857 against ResNet-18's 0.901 on this corpus, so the expected outcome is that "
-            "the larger model scores LOWER, and it is reported either way. It replaces a DenseNet-121 "
+            "the larger model scores LOWER, and it is reported either way. The regime here is not "
+            "the published one: torchvision's 7x7 stride-2 stem with max-pool, early-stopped at 27 "
+            "of at most 60 epochs at lr 3e-4, against MedMNIST v2's 3x3 stride-1 stem without "
+            "max-pool and 100 epochs at lr 1e-3. It replaces a DenseNet-121 "
             "entry that named a dataset with no loader, no fetch command and no artefact directory, "
             "and linked a Hugging Face repo that did not exist. Architectures benchmarked only "
             "ImageNet-pretrained (AlexNet, VGG16, DenseNet-121, EfficientNet-B4 in MedMNIST+) are "
@@ -902,7 +982,13 @@ _SPECS: tuple[ModelSpec, ...] = (
         artifacts=_STUDENT_ARTIFACTS_TORCH,
         hf_repo="qsh-medical-breastmnist-ckks-student",
         eval_split="the official BreastMNIST test split, whole, at 14x14",
-        notes="Genuine encrypted convolution: im2col + CKKS dot_plain, ReLU/max-pool under MPC.",
+        notes=("Genuine encrypted convolution (im2col + CKKS dot_plain), but not end to end under "
+               "CKKS. In the browser each layer's output is decrypted, ReLU and average pooling run "
+               "in plaintext in the client, and the class is the argmax of decrypted logits; the "
+               "page's MPC argmax runs on the WDBC logistic regression, not on this CNN. The full "
+               "deployment's hybrid path, which runs a federated CNN of this shape rather than these "
+               "weights, keeps ReLU on secret shares (MPyC) and pools each share locally; its masked "
+               "conversion protects only CKKS slot 0 (see qsh.mpc.secret_inference)."),
     ),
     # ---------------- genomics ----------------
     ModelSpec(
@@ -910,7 +996,10 @@ _SPECS: tuple[ModelSpec, ...] = (
         tier="t2_industry",
         key="genomics.prs",
         label="Polygenic risk score (published effect weights)",
-        architecture="per-SNP effect-weight vector; genome-wide-significance thresholding (P<5e-8)",
+        # PGS000004's development method per the PGS Catalog REST record (method_name and
+        # method_params), read 2026-10-30. Genome-wide significance (P<5e-8) is PGS000001's.
+        architecture=("per-variant effect-weight vector over 313 variants (PGS000004: "
+                      "hard-thresholding stepwise forward regression, p < 1e-5)"),
         params=None,
         dataset=DS_PGS_CATALOG,
         metric=M_PRS,
@@ -918,6 +1007,9 @@ _SPECS: tuple[ModelSpec, ...] = (
         hf_repo=None,          # publication blocked pending the per-score licence audit
         runs_encrypted=True,   # a dot product: the rare case that is both clinical standard and FHE-native
         notes=(
+            "WHAT RUNS UNDER CKKS DIFFERS BY TIER. The browser's CKKS step is a sign test on the 8 "
+            "largest-effect of the 313 variants (W = [-w/2, +w/2], b = 0), not the 313-variant "
+            "score; the full deployment evaluates all 313 against a 75th-percentile cut. "
             "Not a neural network, and presenting a genomic foundation model as a PRS method would be "
             "the most obvious credibility hole available. Evaluation must be stratified by genetic "
             "ancestry, and what is measured here is a distribution shift, NOT an AUROC drop: an "
@@ -954,7 +1046,9 @@ _SPECS: tuple[ModelSpec, ...] = (
             "of the resampled timeline"),
         notes=(
             "Report event-wise F0.5, never point-adjusted F1. Always run a trivial baseline alongside: "
-            "windowed isolation forest wins the ESA-ADB Mission2 lightweight subset outright. "
+            "a windowed isolation forest scores highest on the ESA-ADB Mission2 lightweight subset "
+            "in the paper's Table 2 (all events, 0.949), though not in Supplementary Table 9 "
+            "(anomalies only, 0.000). "
             "RETRACTION, Round 19: a Round 18 note here claimed this forecaster was about 22x WORSE "
             "than persistence. That was a measurement error of ours, not a property of the model -- "
             "the probe resampled at 60s while the model is trained at 300s (see `resample` in the "
@@ -970,9 +1064,9 @@ _SPECS: tuple[ModelSpec, ...] = (
             "caught one and recorded 0.714286 and 0.454545. Point-adjusted F1 fell with it, from "
             "0.9937 to 0, which is how much one flagged point inside a long event carries under "
             "point adjustment; the isolation-forest baseline reproduces exactly (0.000248). Treat "
-            "the event-wise figure as a single draw from a wide distribution, which is the "
-            "instability arXiv:2607.11969 (2026-07) describes for overlap-based metrics: three "
-            "events cannot rank detectors."
+            "the event-wise figure as a single draw from a wide distribution: three events cannot "
+            "rank detectors. With 0 of 3 events detected, the exact (Clopper-Pearson) 95% interval "
+            "for recall runs from 0 to 0.71."
         ),
     ),
     ModelSpec(
@@ -1002,7 +1096,9 @@ _SPECS: tuple[ModelSpec, ...] = (
             "in its weights.json is correct rather than the omission it looks like. "
             "Worth reading alongside its numbers: since the Round 71 retrain the teacher and the "
             "student both score 0.0 event-wise F0.5 on this split, so their agreement is agreement "
-            "about finding nothing, and there is no fidelity claim to make."),
+            "about finding nothing, and there is no fidelity claim to make. No code path here "
+            "evaluates this student under CKKS today: the satellite page has no private-inference "
+            "stage, and the full deployment's telemetry stage encrypts its own SMAP/MSL model."),
     ),
     ModelSpec(
         usecase="satellite_comms",
@@ -1020,8 +1116,12 @@ _SPECS: tuple[ModelSpec, ...] = (
             "Segment CLASSIFICATION on real OPS-SAT telemetry, which is a different task from the "
             "Telemanom forecaster above: this one is scored against the 30 algorithms published "
             "with the dataset, not against persistence, and the two numbers must not be read as a "
-            "comparison. Chosen because its corpus is CC BY 4.0 and 507 KB - the one case in this "
-            "project where the data itself can be redistributed alongside the weights."
+            "comparison. Chosen because its corpus is CC BY 4.0 and small, so the whole test "
+            "partition can be redistributed alongside the weights. The benchmark's split is "
+            "stratified random, so these scores do not measure generalisation over time. The "
+            "card's metrics are the scikit-learn model's before export; the published ONNX graph "
+            "scores accuracy 0.9509 on the same 529 test segments against 0.9660 recorded here, "
+            "so the browser's re-score reproduces the graph, not the card."
         ),
     ),
     ModelSpec(
@@ -1029,7 +1129,8 @@ _SPECS: tuple[ModelSpec, ...] = (
         tier="t1_crypto",
         key="satellite_comms.opssat_student",
         label="CKKS-linear OPS-SAT segment student",
-        architecture="logistic regression over 18 published per-segment features + `sampling`",
+        architecture=("logistic regression over the quadratic expansion (209 terms) of the 18 "
+                      "published per-segment features + `sampling`"),
         params=None,
         dataset=DS_OPSSAT_AD,
         metric=M_OPSSAT,
@@ -1045,8 +1146,10 @@ _SPECS: tuple[ModelSpec, ...] = (
                "and is computed before encryption. The ring carries orders of magnitude more slots "
                "than this feature map needs, so the cipher was never the binding constraint "
                "here - the feature map was. Measured: "
-               "minority-class F1 0.8649 -> 0.9043, AUC-PR 0.9275 -> 0.9681, the latter matching "
-               "the teacher exactly."),
+               "minority-class F1 0.8649 -> 0.9043, AUC-PR 0.9275 -> 0.9681 (0.968055 against the "
+               "teacher's 0.968107, equal at four decimals). No code path here evaluates this "
+               "student under CKKS today: the satellite page has no private-inference stage, and "
+               "the browser re-scores the published ONNX graph in plaintext."),
     ),
     # ---------------- telecom / defence ----------------
     ModelSpec(
@@ -1075,8 +1178,17 @@ _SPECS: tuple[ModelSpec, ...] = (
         usecase="telecom_ids",
         tier="t2_industry",
         key="telecom_ids.qml",
-        label="Quantum-kernel SVC + variational QNN",
-        architecture="PCA -> angle embedding -> StronglyEntanglingLayers; fidelity quantum kernel",
+        # The key keeps its name; the label says what the published artefact IS. The ONNX graph on
+        # the Hub, and the one the browser runs and verifies, is the 200-tree random forest
+        # (scripts/train/telecom_ids.py exports `rf`). The two quantum models are trained offline
+        # and recorded in models/metrics.json; no page runs them.
+        label="Random-forest QKD-attack classifier, with quantum-kernel SVC and QNN comparisons",
+        architecture=("published ONNX: a 200-tree scikit-learn random forest over 7 telemetry "
+                      "features. Offline comparisons, not in the ONNX: a quantum-kernel SVC (PCA "
+                      "-> angle embedding; its fidelity kernel is exactly the classical product "
+                      "kernel prod cos^2((x_i - x'_i)/2)) and a variational QNN "
+                      "(StronglyEntanglingLayers, 25 parameters)"),
+        # 25 is the QNN's parameter count, not the forest's.
         params=25,
         dataset=DS_QKD_ATTACK_SYNTH,
         metric=M_QML_IDS,
@@ -1088,7 +1200,11 @@ _SPECS: tuple[ModelSpec, ...] = (
                    ArtifactSpec("feature_spec.json", "json", "none", "both")),
         hf_repo="qsh-telecom-qml-ids",
         eval_split="the held-out quarter of the seed-42 stratified split, whole",
-        notes="Shown as an architecture comparison against a random forest on identical data.",
+        notes=("The published model and its headline accuracy are the random forest's. The "
+               "quantum-kernel SVC (macro F1 0.832) and the variational QNN (0.467) are an "
+               "architecture comparison recorded at training time on identical data; neither runs "
+               "on the page. The SVC's kernel uses no entangling gate, so it is computable "
+               "classically in closed form."),
     ),
     ModelSpec(
         usecase="telecom_ids",
@@ -1131,10 +1247,10 @@ _SPECS: tuple[ModelSpec, ...] = (
             "one direction: UDPFlood predicted as Benign. "
             "THE LEAK COUNTERFACTUAL IS STILL RECORDED EVERY RUN and its claim is now narrower. "
             "Restoring the corpus's integer row identifiers takes accuracy to about 0.9997, the "
-            "same shape of result Engelen et al. (WTMC 2021) produced for CIC-IDS2017. Round 49 "
-            "read that as an explanation for the published 99.6-99.7% figures; it is not, because "
-            "0.9829 is reachable here with no identifiers at all -- see M_NIDD's baseline_source, "
-            "which withdraws that reading."
+            "same shape of result Engelen et al. (WTMC 2021) produced for CIC-IDS2017. That shows "
+            "what a row counter is worth on this corpus. It does not show what the published "
+            "figures used, and 0.9829 is reachable here with no identifiers at all; whether those "
+            "figures lean on identifiers stays open -- see M_NIDD's baseline_source."
         ),
     ),
     #: Telecom's T1 tier, added in Round 33. Until then `runs_encrypted=True` held on five specs and
@@ -1150,7 +1266,11 @@ _SPECS: tuple[ModelSpec, ...] = (
     #: `runs_encrypted=True` is true of the MODEL: `clientCompute.runEncryptedTelecomStudent`
     #: evaluates these 8 dot products under real CKKS in the tab. It does NOT claim the argmax is
     #: encrypted - all 8 scores are decrypted and the maximum is taken in the clear, because CKKS
-    #: has no native comparison. The weights file and the run log both say so.
+    #: has no native comparison. The weights file and the run log both say so. With these public,
+    #: bundled weights that exposes nothing; in a client-server deployment, raw scores of a linear
+    #: model would let the key holder recover it with about as many queries as it has parameters per
+    #: class (Tramer et al., USENIX Security 2016), so a private model would need signs only or an MPC
+    #: argmax.
     ModelSpec(
         usecase="telecom_ids",
         tier="t1_crypto",
@@ -1164,7 +1284,8 @@ _SPECS: tuple[ModelSpec, ...] = (
         artifacts=(),
         hf_repo=None,
         notes=(
-            "Distilled from telecom_ids.qml's PROBABILITIES, not its argmax: on 8 classes the argmax "
+            "Distilled from the random forest published as telecom_ids.qml, from its PROBABILITIES, "
+            "not its argmax: on 8 classes the argmax "
             "discards exactly the minority-class signal macro F1 is computed from, and hard-label "
             "distillation is a defect this project has already made once. Read n_classes_predicted "
             "before macro_f1 - a linear student that stops emitting a class scores 0 on it by "

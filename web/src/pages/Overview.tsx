@@ -53,14 +53,14 @@ export default function Overview() {
             a seeded, non-cryptographic generator, and on the Python path it is wrapped by
             ML-KEM-768 + X25519, which makes the composite computational (MLWE, FIPS 203). */}
         <div className="card"><div className="kpi q">2</div><p>security models compared: computational (RLWE, MLWE) vs information-theoretic <i>as a scheme</i> (quantum one-time pad). This demo seeds the pad, so no run here is information-theoretically secure.</p></div>
-        {/* Both are TARGETS, not commitments. Cloudflare (blog "Cloudflare targets 2029 for full
+        {/* Both are a TARGET and a TIMELINE, not commitments. Cloudflare (blog "Cloudflare targets 2029 for full
             post-quantum security", 2026-04-07): "We now target 2029 to be fully post-quantum (PQ)
             secure including, crucially, post-quantum authentication", with intermediate milestones
             "subject to change". Google (2026-03-25): "We're setting a timeline for post-quantum
             cryptography migration to 2029". CNSA 2.0 binds national security systems only, and what
             CNSSP 15 requires from 2027 is CNSA 2.0 algorithms in new acquisitions (NSA CNSA 2.0 FAQ
             Ver. 2.2, Oct 2026) - "quantum-resistant" was looser than the rule. */}
-        <div className="card"><div className="kpi c">2029</div><p>Cloudflare target for full PQC including authentication; Google targets PQC migration by the same year. For national security systems, CNSA 2.0 algorithms are required in new acquisitions from 2027</p></div>
+        <div className="card"><div className="kpi c">2029</div><p>Cloudflare target for full PQC including authentication; Google has set 2029 as its PQC migration timeline. For national security systems, CNSA 2.0 algorithms are required in new acquisitions from 2027</p></div>
         {/* The novelty, stated where a first-time visitor reads it. Everything else on this page is
             context that other projects share; this is the part that is unusual, and it was legible
             only from the banner - which did not render here. */}
@@ -77,8 +77,8 @@ export default function Overview() {
             BSI's". BSI's hybrid (TR-02102-1 v2026-01 section 2.2) is PQC + CLASSICAL key agreement and
             does not mention QKD; section 2.1 does not recommend QKD at all. So the QKD add-on is this
             project's choice alone, and only the ML-KEM + X25519 layer follows BSI. */}
-        <b>Research PoC.</b> Quantum-channel results (QKD distance/QBER gains, photonic inference,
-        full qOLE) are <b>simulated</b>, not hardware-validated. QKD appears only as an optional add-on
+        <b>Research PoC.</b> Quantum-channel results (QKD distance and QBER, QSDC) are <b>simulated</b>,
+        not hardware-validated; photonic inference and full qOLE are not implemented here. QKD appears only as an optional add-on
         to the PQC hybrid, never standalone, and that is this project's choice, not a recommendation:{" "}
         <b>BSI TR-02102-1 v2026-01</b> states that QKD "is currently not ready for use from a security
         point of view" and does not recommend it (section 2.1). What BSI recommends is hybrid key
@@ -102,13 +102,13 @@ export default function Overview() {
               <td><StageBadge kind="simulated" /> channel; the optimiser and the health tests really run. OptiQKD's reference framework reports +14–25% in simulation (arXiv:2603.04192v2)</td></tr>
             <tr><td>WS2 · QML-IDS</td>
               <td>Seven QKD attack types plus normal traffic - eight classes; classical RF baseline against a PennyLane variational quantum classifier</td>
-              <td>Synthetic telemetry; an architecture comparison rather than a performance claim</td></tr>
+              <td>Synthetic telemetry. The page runs a softmax and the random forest published as telecom_ids.qml; the quantum-kernel SVC and the QNN are offline figures, not run here, and the SVC&apos;s fidelity kernel equals a classical product kernel</td></tr>
             <tr><td>WS3 · QSMPC × QKD</td>
               <td>Shamir + d-level QFT secure summation, quantum oblivious transfer, quantum-safe private set intersection</td>
-              <td><StageBadge kind="real" /> classical PSI (HMAC under the session key) and additive-share secure sum in the browser; the QFT and QOT forms run in the full deployment, simulated</td></tr>
+              <td><StageBadge kind="notional" /> classical PSI and additive-share secure sum, all parties in this tab. The PSI is an HMAC under a session key both banks hold, so over a small ID space either bank could recover the other&apos;s list; a production PSI would use an OPRF-based protocol. The QFT and QOT forms run in the full deployment, simulated</td></tr>
             <tr><td>WS4 · QHE × AI</td>
-              <td>Quantum one-time pad, Clifford+T QCNN private inference, Rate-1 QFHE; classical CKKS for comparison</td>
-              <td><StageBadge kind="real" /> node-seal CKKS, and a QOTP + QCNN state-vector comparison <StageBadge kind="seeded" />; TenSEAL / OpenFHE / HEonGPU in the full deployment</td></tr>
+              <td>Quantum one-time pad, a QCNN classifier, Rate-1 QFHE transport; classical CKKS for comparison</td>
+              <td><StageBadge kind="real" /> node-seal CKKS; an untrained QOTP + Clifford+T comparison circuit <StageBadge kind="seeded" /> that predicts nothing; on finance, medical and telecom an optional trained QCNN that runs unencrypted. Neither circuit is a private inference. TenSEAL / OpenFHE in the full deployment; HEonGPU is a build-gated adapter with no measured run</td></tr>
           </tbody>
         </table>
         <Details summary="The four workstreams in full">
@@ -124,7 +124,7 @@ export default function Overview() {
             <h3>WS2 · QML-IDS — intrusion detection</h3>
             {/* The dataset is 8 classes = 7 attack types + normal traffic, per Al-Kuwari et al.
                 (IET Quantum Communication 7(1), e70028, 2026). "Eight attack scenarios" miscounts it. */}
-            <p>Seven QKD attack types plus normal traffic — eight classes in total (intercept-resend, PNS, Trojan, detector blinding…). Classical RF baseline + PennyLane variational quantum classifier, shown as an architecture comparison rather than a performance claim.</p>
+            <p>Seven QKD attack types plus normal traffic - eight classes in total (intercept-resend, PNS, Trojan, detector blinding and others). Classical RF baseline + PennyLane variational quantum classifier, shown as an architecture comparison rather than a performance claim. The browser runs a softmax and the published random forest; the quantum-kernel SVC and the QNN figures come from the full deployment's offline training, and the SVC&apos;s fidelity kernel equals the classical product kernel prod cos^2.</p>
           </div>
           <div className="card">
             <h3>WS3 · QSMPC × QKD</h3>
@@ -132,7 +132,7 @@ export default function Overview() {
           </div>
           <div className="card">
             <h3>WS4 · QHE × AI</h3>
-            <p>Quantum one-time pad (perfectly hiding as a scheme; the demo applies the mask with a seeded key, so its structure and cost are measured and its secrecy is not), Clifford+T QCNN private inference, and Rate-1 QFHE. Classical CKKS (TenSEAL CPU / OpenFHE CPU / HEonGPU GPU) for comparison.</p>
+            <p>Quantum one-time pad (perfectly hiding as a scheme; the demo applies the mask with a seeded key, so its structure and cost are measured and its secrecy is not). Two separate circuits, and neither is a private inference: an untrained QOTP + Clifford+T comparison circuit whose pad is never undone, so its output follows the key rather than the input; and, on finance, medical and telecom, a trained QCNN classifier that runs unencrypted. The trained circuit is built from two-qubit blocks on disjoint pairs (a tree, for the binary heads) on 7 to 9 qubits, so it is classically simulable (Bermejo et al., PRX Quantum 7, 020304, 2026), and logistic regression beats it on every use case. Rate-1 QFHE is implemented as transport only: a QOTP under a KEM, with no homomorphic evaluation. Classical CKKS (TenSEAL CPU / OpenFHE CPU) for comparison; HEonGPU is a build-gated adapter with no measured run here.</p>
           </div>
         </div>
         </Details>
@@ -148,11 +148,11 @@ export default function Overview() {
           <tbody>
             <tr><td>KEM</td><td>ML-KEM-768 + X25519; ML-KEM-1024 + X25519</td><td>run controls, every run page</td></tr>
             <tr><td>Signature</td><td>ML-DSA-65; ML-DSA-87</td><td>run controls</td></tr>
-            <tr><td>Key source</td><td>QKD (simulated) + PQC hybrid; PQC only</td><td>run controls</td></tr>
+            <tr><td>Key source</td><td>PQC + simulated QKD stage, whose session key in the browser still comes from the PQC handshake alone (the QKD stage yields a count, no key bytes); PQC only</td><td>run controls</td></tr>
             <tr><td>QKD protocol</td><td>BB84 decoy-state; E91/CHSH - both simulated</td><td>Parameters panel</td></tr>
             <tr><td>QRNG extractor</td><td>von Neumann; Toeplitz (LHL); seedless two-source</td><td>Parameters panel</td></tr>
-            <tr><td>PQC+QKD combiner</td><td>HKDF (dual-PRF); Toeplitz + QLHL (information-theoretic, leakage-resilient)</td><td>the agent panel's MCP channel on the use-case pages; browser pipeline runs mix no QKD key</td></tr>
-            <tr><td>FHE / MPC backend</td><td>browser: node-seal CKKS + garbled-circuit 2PC (fixed); full deployment: TenSEAL, OpenFHE, HEonGPU and MPyC</td><td>run controls in the full deployment only</td></tr>
+            <tr><td>PQC+QKD combiner</td><td>HKDF (dual-PRF); a Toeplitz + QLHL extractor seeded with SHAKE-256 of its own inputs, so computational, not information-theoretic (the QLHL needs a seed independent of the input; Giestinhas and Spiller, arXiv:2603.26907). In the browser the QKD input is a fixed 32-byte constant</td><td>the agent panel's MCP channel on the use-case pages; browser pipeline runs mix no QKD key</td></tr>
+            <tr><td>FHE / MPC backend</td><td>browser: node-seal CKKS + garbled-circuit 2PC (fixed); full deployment: TenSEAL or OpenFHE, with MPyC (the MPC selector's other options are not wired, so MPyC always runs); HEonGPU is a build-gated adapter, not a selectable backend</td><td>run controls in the full deployment only</td></tr>
           </tbody>
         </table>
         <p>Selection is operator-driven; there is no in-band cipher-suite negotiation. Open the{" "}

@@ -484,7 +484,7 @@ function ModelRunner({ usecase, spec }: { usecase: string; spec: ModelSpec }) {
   const fetchable = browserModels(usecase).some((m) => m.spec.key === spec.key);
   const blocked =
     !spec.achieved ? "never trained in this build, so there is nothing to run - the baseline above is the target, not a result"
-    : !spec.hf_repo_id ? "deliberately unpublished: the source data's licence does not clearly permit redistributing derived weights"
+    : !spec.hf_repo_id ? "not published on Hugging Face, so this panel has no pinned artefact to fetch. For some models the reason is the source data's licence; telecom's student instead ships bundled with the page, and the pipeline run uses it"
     : spec.hf_revision_stale ? "retrained since it was last published, so the pinned artefact no longer matches the metrics above and the pin was retired rather than pointed at stale weights"
     : !spec.hf_revision ? "published but not pinned to a commit, and the browser will not fetch an unpinned model"
     : !fetchable ? "published, but it ships no browser-runnable ONNX graph at that revision"
@@ -551,7 +551,10 @@ export function ModelPanel({ usecase }: { usecase: string }) {
           <div className="model-head">
             <strong>{spec.label}</strong>
             <span className="tag">{TIER_LABEL[spec.tier] ?? spec.tier}</span>
-            {spec.runs_encrypted ? <span className="tag">runs under CKKS</span> : null}
+            {/* "CKKS-evaluable", not "runs under CKKS": the satellite students run under CKKS only in
+                the Python deployment (no FHE stage runs on that page), and finance's CKKS run scores
+                the page's bundled PaySim model rather than this student. */}
+            {spec.runs_encrypted ? <span className="tag">CKKS-evaluable</span> : null}
           </div>
           <p className="muted small">{spec.architecture}</p>
 

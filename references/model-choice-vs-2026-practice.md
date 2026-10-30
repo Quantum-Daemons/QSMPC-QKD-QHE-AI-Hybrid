@@ -384,7 +384,7 @@ than silently updated, because the point of the paragraph is what the count was 
 closed, and rewriting it to six would erase the finding it exists to record.
 
 **And the student beat its teacher, which the argument below does not allow for.** Distilled from the
-random forest (`distil_linear_student(rf, ...)`, `scripts/train/telecom_ids.py:285`), the 64-parameter
+random forest (`distil_linear_student(rf, ...)`, `scripts/train/telecom_ids.py:288`), the 64-parameter
 CKKS-linear student scores macro F1 **0.988329** against the forest's **0.986629**, at 0.995
 agreement. A student exceeding its teacher is not impossible - soft-target distillation regularises,
 and 0.0017 on 600 held-out rows is well inside the noise this project records elsewhere for

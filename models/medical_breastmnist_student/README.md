@@ -17,10 +17,12 @@ tags:
 
 Part of [QSMPC-QKD-QHE-AI-Hybrid](https://github.com/thedaemon-wizard/QSMPC-QKD-QHE-AI-Hybrid),
 a quantum-safe orchestration demo.
-This is the **encrypted-tier** model for the `medical_fl` use case: it is a
-distilled student small enough to evaluate under real CKKS, and the demo runs it
-that way. It is not the plaintext teacher, and its numbers should be read against
-that teacher rather than against the published literature.
+This is the **encrypted-tier** model for the `medical_fl` use case: a
+distilled student small enough to evaluate under CKKS. Whether the public demo
+encrypts THIS model differs by use case; the notes below say what actually runs.
+It is not the plaintext teacher, and its numbers should be read against that
+teacher rather than against the published literature. Its agreement with the
+teacher was measured offline, in plaintext.
 
 ## Measured performance
 
@@ -55,13 +57,13 @@ This scores far below the 0.901 ResNet-18 baseline. The reason is representation
 - **Dataset**: MedMNIST v2 BreastMNIST
 - **Licence**: CC-BY-4.0 asserted by MedMNIST; the BUSI authors publish no licence
 - **Source**: https://medmnist.com/ (licence read 2026-10-26)
-- **Attribution (CC-BY-4.0 asserted by MedMNIST; the BUSI authors publish no licence)**: Yang, Shi, Wei, Liu, Zhao, Ke, Pfister & Ni, 'MedMNIST v2 - A large-scale lightweight benchmark for 2D and 3D biomedical image classification', Scientific Data 10:41 (2023), CC BY 4.0. BreastMNIST is derived from Al-Dhabyani, Gomaa, Khaled & Fahmy, 'Dataset of breast ultrasound images', Data in Brief 28:104863 (2020).
+- **Attribution (CC-BY-4.0 asserted by MedMNIST; the BUSI authors publish no licence)**: Yang, Shi, Wei, Liu, Zhao, Ke, Pfister & Ni, 'MedMNIST v2 - A large-scale lightweight benchmark for 2D and 3D biomedical image classification', Scientific Data 10:41 (2023), and Yang, Shi & Ni, 'MedMNIST Classification Decathlon: A Lightweight AutoML Benchmark for Medical Image Analysis', IEEE ISBI 2021; CC BY 4.0. BreastMNIST is derived from Al-Dhabyani, Gomaa, Khaled & Fahmy, 'Dataset of breast ultrasound images', Data in Brief 28:104863 (2020).
 
 780 images at 28x28. The tiny tier; also the source of the FHE-feasible T1 student. TWO problems, both upstream of MedMNIST, both checked 2026-08-10. LICENCE: MedMNIST licenses ITSELF CC BY 4.0, but BreastMNIST is a resize of BUSI (Al-Dhabyani et al., Data in Brief 28:104863, 2020) and the CC BY there attaches to the ARTICLE - PMC carries 'This is an open access article under the CC BY license' and states no separate licence for the data, while the dataset host (scholar.cu.edu.eg) asks only 'If you use this dataset, please cite'. A citation request is not a grant. CHECKED AGAIN 2026-10-26 at every source the authors publish: the host page asks the same in every capture from 2021 to 2026; the article's supplements hold the Baheya Hospital ethics committee's approval to publish the dataset publicly and the waiver of consent, and no licence; the authors made no repository deposit; and every Kaggle mirror carries a licence its uploader chose, none of them an author. So the BUSI authors publish no licence: the data was released publicly with no terms, and the only licence anyone states is MedMNIST's CC BY 4.0 for its derived dataset. The three HF repos stay public on that basis, by decision (2026-10-26). That differs from CIC-IDS2017, declined, and ImageNet, dropped: their providers state conflicting or restrictive terms, and BUSI's state none. CONTAMINATION: Pawlowska, Karwat & Zolek (Letter to the Editor, Data in Brief 48:109247, 2023-05-19) found 235 duplicates (~19% of 780), >=8 images in BOTH benign and malignant, 70 axilla images that are not breast tissue, and warn of train/test leakage. MEASURED HERE on the actual npz rather than assumed: at 28x28 exactly ONE pair survives as a pixel-exact duplicate - train[115] label=0 (MALIGNANT) and test[76] label=1 (BENIGN). The same image, trained as malignant and scored as benign. That is 1 of 156 test images, 0.64%, which the model cannot get right and which no amount of training fixes. Loosening to RMSE<=0.05 finds 216 near-duplicate pairs, 120 crossing a split boundary and 6 both crossing AND contradicting - but those are threshold-dependent and the exact pair is the only hard number. So the letter's 19% does NOT wholesale survive downsampling; a real floor on this benchmark does.
 
 ## Notes and limitations
 
-Genuine encrypted convolution: im2col + CKKS dot_plain, ReLU/max-pool under MPC.
+Genuine encrypted convolution (im2col + CKKS dot_plain), but not end to end under CKKS. In the browser each layer's output is decrypted, ReLU and average pooling run in plaintext in the client, and the class is the argmax of decrypted logits; the page's MPC argmax runs on the WDBC logistic regression, not on this CNN. The full deployment's hybrid path, which runs a federated CNN of this shape rather than these weights, keeps ReLU on secret shares (MPyC) and pools each share locally; its masked conversion protects only CKKS slot 0 (see qsh.mpc.secret_inference).
 
 ## Honest scope
 

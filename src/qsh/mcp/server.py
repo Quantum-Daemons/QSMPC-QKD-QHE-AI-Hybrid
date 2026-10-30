@@ -5,7 +5,8 @@ re-run). The same functions are exposed three ways:
   * as a real **MCP** server (``build_server`` -> serve over stdio / Streamable-HTTP for any MCP
     client) — the "real MCP server" the report asks for;
   * via :func:`list_tools` / :func:`dispatch_tool` for the **quantum-safe** in-process binding, where
-    :func:`qsh.pqc.mcp_bridge.secure_agent_call` runs a ``tools/call`` end-to-end under PQC+QKD+ML-DSA+AEAD
+    :func:`qsh.pqc.mcp_bridge.secure_agent_call` runs a ``tools/call`` end-to-end under PQC + ML-DSA + AEAD
+    (optionally mixed with a caller-supplied key; the API's is a fixed constant, not a QKD key)
     and returns the REAL tool result.
 
 The public demo does NOT use this — it keeps the client-side ``clientMcp.ts`` mirror (zero VPS).

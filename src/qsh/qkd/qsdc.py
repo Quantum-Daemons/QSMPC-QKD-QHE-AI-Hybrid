@@ -9,7 +9,9 @@ learns nothing about the message (it was never sent on a compromised channel).
 
 This is the natural primitive for **satellite communications**: a free-space downlink where
 re-keying round-trips are expensive, so sending the message directly (with an inline
-eavesdrop check) is attractive. We simulate the *information structure* faithfully on a
+eavesdrop check) is attractive - though DL04-family QSDC is itself two-way, and only the
+downlink leg is modelled here (see :func:`quantum_secure_direct_comm`). We simulate the
+*information structure* on a
 :class:`~qsh.qkd.channel.ChannelParams` link; a real system adds decoy states, frame error
 correction (LDPC) and privacy amplification.
 """
@@ -113,10 +115,17 @@ def quantum_secure_direct_comm(
     This replaces a ``threshold=0.11`` parameter that was the g = 1 (LOSS-FREE) root of the pooled
     form -- which is why it coincided exactly with the Shor-Preskill BB84 bound and looked right.
     Real links are lossy and ``g`` grows with loss, so the true tolerance collapses: on this
-    project's 800 km downlink (37.0 dB with the detector, Round 75's Micius budget) it is about
-    5.5e-6, against 0.0757 at 0 dB, and 0.11 was wrong in the PERMISSIVE direction. The browser path was corrected first; this is the
-    reference implementation catching up, and until now the two disagreed about whether the same
-    nominal link delivers.
+    project's default 800 km downlink, g is computed from 27.26 dB (the downlink's 32.21 dB, less
+    the station's 7.96 dB of receiver optics, plus 3.01 dB for the detector's eta_d = 0.5), so
+    g = 532.66 and the tolerance is about 6.5e-5, against 0.0757 at 0 dB; 0.11 was wrong in the
+    PERMISSIVE direction. The browser path was corrected first; this is the reference
+    implementation catching up, and until then the two disagreed about whether the same nominal
+    link delivers.
+
+    ONE LEG IS MODELLED. Qi et al.'s protocol, like DL04, is two-way: the receiver first sends the
+    carriers to the sender, who encodes the message on them and sends them back. Here the satellite
+    is the sender, so the ground station would first need an uplink. ``g`` is computed from the
+    downlink, the return leg that Qi et al.'s ``g`` describes; the uplink leg is not modelled.
     """
     params = params or ChannelParams()
     rng = np.random.default_rng(seed)
@@ -142,14 +151,14 @@ def quantum_secure_direct_comm(
     # Omitting eta_d makes g too SMALL, which understates I(A:E) and OVERSTATES secrecy capacity - an
     # optimistic-security error, the same direction as the two this project has already corrected.
     #
-    # Measured on the shipped configuration, and the factor is NOT one number:
+    # Recomputed on the shipped configuration (2026-10-30). The factor is 1/eta_d, so it follows each
+    # channel's detector:
     #
-    #     fibre 50 km   eta_d 0.25   g 10.00 -> 40.00    4.00x   QBER tolerance 0.011551 -> 0.002405
-    #     downlink      eta_d 0.40   g 280.43 -> 701.06  2.50x   tolerance 2.669e-4 -> 9.635e-5
+    #     fibre 50 km   eta_d 0.50   g 10.00 -> 20.00    2.00x   QBER tolerance 0.006069 -> 0.002713
+    #     downlink      eta_d 0.50   g 266.33 -> 532.66  2.00x   tolerance 1.416e-4 -> 6.538e-5
     #
-    # The 4.0x quoted in the sweep is exactly 1/0.25 from this repo's own default - it is NOT Qi's
-    # number, whose SNSPDs at 70% would give 1.43x. On the satellite downlink, which is the path QSDC
-    # actually serves here, the factor is 2.5x. Quoting a single "4.0x" would be wrong for satellite.
+    # Both defaults now share eta_d = 0.5, so both factors are 2.0x. It is NOT Qi's number, whose
+    # SNSPDs at 70% would give 1.43x, and an earlier "4.0x" was 1/0.25 from an older default.
     #
     # CAVEAT CARRIED: Qi et al. do not itemise their 4.1 dB - the components they state sum to
     # 2.15 dB, leaving ~1.95 dB unaccounted, presumably return-path optics. A fully defensible `g`
@@ -180,8 +189,9 @@ def quantum_secure_direct_comm(
     # That is the correct answer and it is worth stating plainly rather than tuning around: at 29
     # check carriers with ZERO observed errors, epsilon = 1e-9 certifies only e < 0.701, and
     # h(0.701) is near 1, so C_s is deeply negative. There is no epsilon that rescues it - even a
-    # laughable eps = 1e-2 certifies only e < 0.331. Certifying the fibre tolerance of 2.405e-3 needs
-    # about 1.8e6 check carriers; the satellite tolerance of 9.635e-5 needs about 1.1e9. Qi et al.'s
+    # laughable eps = 1e-2 certifies only e < 0.331. With zero observed errors and a long message,
+    # certifying the fibre tolerance of 2.713e-3 needs about 1.4e6 check carriers; the satellite
+    # tolerance of 6.54e-5 needs about 2.4e9 (recomputed 2026-10-30 for today's defaults). Qi et al.'s
     # own experiment runs blocks of 1,312 x 830 = 1,088,960 pulses, which is the regime this bound
     # says is required - so the arithmetic is not an artefact of being too strict, it is what the
     # published experiments already do.

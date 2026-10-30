@@ -14,13 +14,18 @@ obvious candidates. What each use case can and cannot do, checked 2026-08-10:
 
   satellite  OPS-SAT-AD, CC-BY-4.0. Redistributable, AND it is the corpus the shipped model is
              actually trained on - so this is a genuine train-vs-inference comparison rather than a
-             lookalike. Note the page currently bundles SMAP/MSL for its anomaly demo, which is NOT
-             redistributable: 17 U.S.C. 105 removes US copyright domestically and is not a grant,
-             and it is territorial. The redistributable corpus was not the one being shipped.
-  medical    BreastMNIST/BUSI CANNOT be used - the CC BY there attaches to the article, not the
-             data, and the host asks only to be cited. WDBC (CC-BY-4.0, already bundled) is used
-             instead and is labelled as a DIFFERENT COHORT AND MODALITY, because it is: cell-nucleus
-             morphometry, not ultrasound. Overlaying it on the same axes would be a lie.
+             lookalike. Note the page currently bundles SMAP/MSL for its anomaly demo, for which no
+             source grants a data licence: the Telemanom LICENSE is a Caltech copyright covering its
+             software, and JPL is operated by Caltech, so the data is not shown to be a US
+             Government work under 17 U.S.C. 105 either. The redistributable corpus was not the one
+             being shipped.
+  medical    (checked 2026-08-10; superseded 2026-10-26) BreastMNIST/BUSI was judged unusable here
+             because the BUSI CC BY attaches to the article, not the data. Since 2026-10-26 this
+             project redistributes BreastMNIST on MedMNIST's CC BY 4.0, by recorded decision (the
+             BUSI authors state no licence; see the registry and DATA_LICENSES.md). This slice still
+             uses WDBC (CC-BY-4.0, already bundled), labelled as a DIFFERENT COHORT AND MODALITY,
+             because it is: cell-nucleus morphometry, not ultrasound. Overlaying it on the same axes
+             would be a lie.
   genomics   1000 Genomes carries no blanket grant (IGSR says so itself), so the training corpus
              cannot ship. gnomAD v4.1 allele frequencies are CC0 and stand in as a reference
              population - again a substitute, not the training data, and labelled as one.
@@ -134,9 +139,10 @@ def medical() -> dict:
 
     This is deliberately not presented as the training data. BreastMNIST is 28x28 ultrasound;
     WDBC is 30 morphometric measurements of cell nuclei from fine-needle aspirates. They share a
-    disease and nothing else. It is here because it is the only breast-cancer corpus in this repo
-    with a licence that survives redistribution, and because showing a real, separable clinical
-    corpus is still more informative than showing none.
+    disease and nothing else. It was chosen when it was the only breast-cancer corpus in this repo
+    judged redistributable (BreastMNIST has since been redistributed on MedMNIST's CC BY 4.0, by
+    decision), and because showing a real, separable clinical corpus is still more informative than
+    showing none.
     """
     try:
         from sklearn.datasets import load_breast_cancer
@@ -153,13 +159,14 @@ def medical() -> dict:
         "corpus_is_synthetic": False,
         "is_training_corpus": False,
         "provenance": "Wisconsin Diagnostic Breast Cancer (WDBC). NOT the model's training corpus - "
-                      "the model trains on BreastMNIST ultrasound, and BreastMNIST cannot be "
-                      "redistributed here because its CC BY attaches to the source ARTICLE rather "
-                      "than to the data. This is a different cohort AND a different modality: "
+                      "the model trains on BreastMNIST ultrasound, which this project "
+                      "redistributes elsewhere on MedMNIST's CC BY 4.0 (the BUSI authors state no "
+                      "licence of their own). This is a different cohort AND a different modality: "
                       "cell-nucleus morphometry from fine-needle aspirates.",
         "licence": "CC-BY-4.0",
-        "attribution": "Wolberg, Mangasarian, Street & Street, UCI Machine Learning Repository, "
-                       "DOI 10.24432/C5DW2B. Ships in scikit-learn.",
+        "attribution": "Wolberg, Mangasarian, Street & Street, 'Breast Cancer Wisconsin "
+                       "(Diagnostic)', UCI Machine Learning Repository (1993), DOI "
+                       "10.24432/C5DW2B. Ships in scikit-learn.",
         "x": {"key": "mean radius", "label": "mean nucleus radius"},
         "y": {"key": "mean texture", "label": "mean nucleus texture"},
         "class_names": ["benign", "malignant"],
@@ -262,8 +269,9 @@ def genomics() -> dict:
 
     NOT the training corpus, and the panel says so. The page scores real 1000 Genomes genotypes, but
     IGSR grants no blanket redistribution licence - it states that itself - so the training data
-    cannot ship. gnomAD v4 is CC0, the strongest available position: no attribution obligation, no
-    share-alike, no field-of-use limit.
+    cannot ship. gnomAD v4's primary data is CC0: no attribution obligation and no share-alike. Its
+    terms attach one condition, recorded here: users agree not to attempt to reidentify
+    participants (gnomAD Data License and Reidentification Policy, read 2026-10-30).
 
     WHY THIS PROJECTION. The page already shows one globally-set high-risk cut flagging 16.2% of AFR
     against 2.8% of EUR. That chart STATES the disparity. This one EXPLAINS it: each point is one of
@@ -307,9 +315,10 @@ def genomics() -> dict:
         "is_training_corpus": False,
         "provenance": "gnomAD v4 allele frequencies for the 313 variants of PGS000004 - the page "
                       "scores 1000 Genomes genotypes, which carry no blanket redistribution "
-                      "licence, so a CC0 reference population stands in. Each point is one variant "
-                      "of the score itself, so this is the same modality from a different cohort, "
-                      "not a different measurement.",
+                      "licence, so a CC0 reference population stands in (gnomAD's terms also have "
+                      "every user agree not to attempt to reidentify participants). Each point is "
+                      "one variant of the score itself, so this is the same modality from a "
+                      "different cohort, not a different measurement.",
         "licence": "CC0-1.0",
         "attribution": "Genome Aggregation Database (gnomAD) v4, Broad Institute. CC0 - no "
                        "attribution is required; it is given because the data is worth crediting.",
@@ -378,11 +387,14 @@ def telecom() -> dict:
         "corpus_is_synthetic": True,
         "is_training_corpus": True,
         "provenance": "SYNTHETIC QKD-session telemetry generated by qsh.qml_ids.attacks, the same "
-                      "call the shipped QCNN trains on, at seed 0. Class structure follows "
-                      "Al-Kuwari et al. (arXiv:2509.14282). No commercial-OK real QKD-attack "
+                      "call the shipped QCNN trains on, at seed 0: all 3,200 rows of that corpus, "
+                      "training rows included, not a held-out split. Class structure follows "
+                      "Al-Kuwari et al. (arXiv:2509.14282); the 7 features and their values are "
+                      "this project's own. No commercial-OK real QKD-attack "
                       "corpus exists, which is why this is generated rather than collected - and "
                       "why no number here is a performance claim about a real link.",
-        "licence": "Generated by this repository - no third-party terms attach",
+        "licence": ("No licence granted: generated by this repository's own code, so no "
+                    "third-party terms attach, but none are granted either"),
         "attribution": "Class structure per Al-Kuwari et al., arXiv:2509.14282. The rows "
                        "themselves are produced by this repository's own generator.",
         "x": {"key": "qber_std", "label": "QBER standard deviation"},

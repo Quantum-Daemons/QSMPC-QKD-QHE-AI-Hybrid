@@ -1,6 +1,8 @@
-// Client-side QRNG mirror of src/qsh/qrng/ — a genuine state-vector quantum-measurement simulation
-// entirely in the browser, with the same SP 800-22-style health checks and MEASURED throughput.
-// Honest label: a SIMULATED quantum measurement (state-vector), not quantum hardware. The optional ANU
+// Client-side QRNG mirror of src/qsh/qrng/ - a SIMULATED quantum measurement entirely in the browser:
+// each |+> qubit's Z outcome is a Bernoulli(0.5) draw from `u` (the run-seeded mulberry32 stream in a
+// pipeline run, Math.random otherwise), so it is a pseudorandom stand-in for measurement, with no state
+// vector evolved and no hardware. The SP 800-90B 4.4 health tests and a 3-test SP 800-22 subset run on
+// it for real, with MEASURED throughput. No key or downstream stage uses its bits. The optional ANU
 // hardware source is opt-in + online (never the default), matching the backend.
 import { rng } from "./quantumSim";
 import { qrngCfg } from "./config";
@@ -82,7 +84,8 @@ function erfc(x: number): number {
   return x >= 0 ? y : 2 - y;
 }
 
-// Prepare n |+> qubits and measure each in the Z basis (Born-rule sampling); genuine 50/50 outcomes.
+// "Prepare n |+> qubits and measure each in the Z basis": the Born rule gives P(1) = 0.5, so this is a
+// Bernoulli(0.5) draw from `u` - a seeded PRNG in a seeded run. No state vector is evolved.
 function measurePlus(n: number, u: () => number): Uint8Array {
   const b = new Uint8Array(n);
   for (let i = 0; i < n; i++) b[i] = u() < PROB_ONE ? 1 : 0;
@@ -214,8 +217,12 @@ export function toeplitzExtract(bits: Uint8Array, outLen: number, u: () => numbe
 }
 
 // Generate nBits post-processed quantum-random bits + a health report (incl. a min-entropy estimate) +
-// MEASURED throughput + extraction rate. The information-theoretic extractor ("toeplitz"/"seedless") sizes
-// its output by the Leftover-Hash-Lemma bound (no fixed rate); eps + min-entropy come from config.
+// MEASURED throughput + extraction rate. The Leftover-Hash-Lemma extractor ("toeplitz"/"seedless") sizes
+// its output by the LHL bound (no fixed rate); eps + min-entropy come from config. The LHL guarantee
+// needs a uniform seed independent of the raw bits; in a seeded run the Toeplitz seed is the run
+// generator's own `seed + 2` stream, so the guarantee is the formula's, not this run's.
+// `extractionRate` is delivered bits over raw bits DRAWN, and von Neumann draws a fixed 5x over-supply,
+// so it reads about 0.2 where von Neumann's own yield is about 0.25.
 
 // ---------------------------------------------------------------------------------------------
 // SP 800-90B section 4.4 continuous health tests.

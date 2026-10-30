@@ -112,7 +112,7 @@ export default function App() {
         <div style={{ marginTop: 28, fontSize: 11 }} className="muted sidebar-note">
           PQC-first hybrid · NIST FIPS 203/204<br />
           {/* Was "CNSA 2.0 · HNDL / Q-Day aware", which reads as a compliance badge. */}
-          Tracks CNSA 2.0 (defaults are not CNSA 2.0) · HNDL aware
+          Tracks CNSA 2.0 (no configuration here is CNSA 2.0) - HNDL aware
         </div>
       </aside>
       {/* `tabIndex={-1}` so the skip link can actually MOVE focus here. Without it the browser

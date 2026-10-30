@@ -78,10 +78,16 @@ def model_card(spec: registry.ModelSpec, achieved: dict | None) -> str:
         "Part of [QSMPC-QKD-QHE-AI-Hybrid](https://github.com/thedaemon-wizard/QSMPC-QKD-QHE-AI-Hybrid),",
         "a quantum-safe orchestration demo."]
     if spec.runs_encrypted:
-        body += [f"This is the **encrypted-tier** model for the `{spec.usecase}` use case: it is a",
-                 "distilled student small enough to evaluate under real CKKS, and the demo runs it",
-                 "that way. It is not the plaintext teacher, and its numbers should be read against",
-                 "that teacher rather than against the published literature."]
+        # "and the demo runs it that way" was true of some students only: the public page encrypts
+        # the medical CNN student and the bundled telecom student, but encrypts a bundled PaySim
+        # model instead of the finance student and has no private-inference stage on satellite.
+        # The registry notes say what runs, per model, and the card points at them.
+        body += [f"This is the **encrypted-tier** model for the `{spec.usecase}` use case: a",
+                 "distilled student small enough to evaluate under CKKS. Whether the public demo",
+                 "encrypts THIS model differs by use case; the notes below say what actually runs.",
+                 "It is not the plaintext teacher, and its numbers should be read against that",
+                 "teacher rather than against the published literature. Its agreement with the",
+                 "teacher was measured offline, in plaintext."]
     else:
         body += [f"This is the **plaintext** model for the `{spec.usecase}` use case; the encrypted",
                  "path runs a distilled student, not this model."]
