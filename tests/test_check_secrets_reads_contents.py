@@ -63,3 +63,19 @@ def test_a_deploy_value_from_the_env_file_fails_and_is_not_printed(tmp_path: Pat
               env_demo=f"QSH_DEMO_URL=https://{box}\nQSH_DEMO_SSH=deployer@{box}\n")
     assert r.returncode == 1 and "value from .env.demo appears in tracked files: docs/c.md" in r.stdout, r.stdout
     assert box not in r.stdout and "deployer" not in r.stdout, r.stdout
+
+
+def test_a_sibling_host_on_the_demo_domain_fails_and_is_not_printed(tmp_path: Path) -> None:
+    """A page once linked a sibling site under the demo's own registered domain, and the sibling resolved
+    to the demo's address (2026-10-30): the domain names the box even when the demo's host does not appear."""
+    r = _repo(tmp_path, {"web/src/x.tsx": "const NETWORK = 'https://sibling.example.test/';\n"},
+              env_demo="QSH_DEMO_URL=https://demo-box.example.test\nQSH_DEMO_SSH=deployer@demo-box.example.test\n")
+    assert r.returncode == 1 and "value from .env.demo appears in tracked files: web/src/x.tsx" in r.stdout, r.stdout
+    assert "example.test" not in r.stdout and "sibling" not in r.stdout, r.stdout
+
+
+def test_a_generic_second_level_does_not_widen_the_domain(tmp_path: Path) -> None:
+    """Under co.jp the registered domain is three labels: another company's co.jp site is not the demo's."""
+    r = _repo(tmp_path, {"docs/e.md": "Compare https://other.co.jp/ for context.\n"},
+              env_demo="QSH_DEMO_URL=https://demo.ourfirm.co.jp\nQSH_DEMO_SSH=deployer@demo.ourfirm.co.jp\n")
+    assert r.returncode == 0, r.stdout
