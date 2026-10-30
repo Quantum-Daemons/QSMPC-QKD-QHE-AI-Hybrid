@@ -177,7 +177,7 @@ def test_the_python_producers_are_in_the_same_closed_set() -> None:
     unexpected = sorted(found - EXPECTED.keys())
     assert not unexpected, (
         f"Python produces security-model strings not declared here: {unexpected}\n"
-        "They are parsed for `information-theoretic` at security.py:48 and quantum_advantage.py:41, "
+        "They are parsed for `information-theoretic` at security.py:48 and quantum_advantage.py:51, "
         "so each silently selects a score branch. Declare it with the class you intend."
     )
 
@@ -185,7 +185,7 @@ def test_the_python_producers_are_in_the_same_closed_set() -> None:
 def test_every_parse_site_is_pinned() -> None:
     """A fourth site existed and nothing named it.
 
-    `quantum_advantage.py:41` is the Python twin of `clientCompute.ts:342`. Round 40's version
+    `quantum_advantage.py:51` is the Python twin of `clientCompute.ts:342`. Round 40's version
     asserted the token in `security.py` alone, so the two PYTHON scorers could have diverged from
     each other with every gate green.
     """

@@ -28,7 +28,16 @@ from .hybrid_kem import (
 
 
 def _mix_qkd_its(pqc_key: bytes, qkd_key: bytes) -> bytes:
-    """Information-theoretic leakage-resilient hybrid combiner (Giestinhas & Spiller, arXiv:2603.26907).
+    """Toeplitz + QLHL hybrid combiner after Giestinhas & Spiller (arXiv:2603.26907), computationally
+    seeded, so NOT information-theoretic as implemented.
+
+    WHY IT IS COMPUTATIONAL HERE. The Toeplitz seed below is SHAKE-256 of a label and of the same two
+    keys it extracts from, so seed and input are fully correlated. The paper names a seed
+    independent of the input, conditioned on any adversary, as a necessary condition for its quantum
+    leftover hash lemma, so its leakage-resilience property is not established for this code, and
+    the security of the output rests on SHAKE-256 and the inputs, like HKDF's. In the browser and in
+    the full-deployment MCP endpoints the QKD input is a fixed 32-byte constant, which carries no
+    entropy at all.
 
     NOT "secure-if-either": plain XOR already gives that, and the paper never uses the phrase. It
     explicitly declines to claim superiority over XOR, saying strong seeded extractors "present
@@ -36,12 +45,12 @@ def _mix_qkd_its(pqc_key: bytes, qkd_key: bytes) -> bytes:
     one input key are compromised, the remaining key material retains quantifiable min-entropy —
     bought at the cost of longer keys and worse computational complexity.
 
-    A modified-Toeplitz + Leftover-Hash-Lemma strong extractor over ``pqc_key || qkd_key``: the 256-bit
-    output retains the min-entropy of WHICHEVER input stays uncompromised (the QKD side is information-
-    theoretic, the PQC side computational) -- unlike a naive XOR/concatenation, which leaks linearly. The
-    Toeplitz matrix is derived from both keys via SHAKE-256 (a computationally-seeded strong extractor; a
-    fully information-theoretic variant would use an independent public seed, paper Sec. 6). Deterministic,
-    so initiator and responder derive the same key. Returns 32 bytes.
+    A modified-Toeplitz + Leftover-Hash-Lemma extractor over ``pqc_key || qkd_key``. WITH AN
+    INDEPENDENT SEED, the paper's construction lets the 256-bit output retain the min-entropy of
+    whichever input stays uncompromised; this code does not have one. The Toeplitz matrix is derived
+    from both keys via SHAKE-256 (a computationally-seeded extractor; the information-theoretic
+    variant would use an independent public seed, paper Sec. 6). Deterministic, so initiator and
+    responder derive the same key. Returns 32 bytes.
     """
     import hashlib
 
@@ -49,7 +58,7 @@ def _mix_qkd_its(pqc_key: bytes, qkd_key: bytes) -> bytes:
 
     from ..qrng.simulator import toeplitz_extract
 
-    combined = np.unpackbits(np.frombuffer(pqc_key + qkd_key, dtype=np.uint8))   # info-theoretic input material
+    combined = np.unpackbits(np.frombuffer(pqc_key + qkd_key, dtype=np.uint8))   # the extractor's input bits
     out_bits = 256                                                              # 32-byte AES-256 session key
     need_t = out_bits + combined.size - 1
     tseed = hashlib.shake_256(b"qsh/its-combiner/v1\x00" + pqc_key + qkd_key).digest((need_t + 7) // 8)
@@ -63,7 +72,8 @@ def _mix_qkd(session_key: bytes, qkd_key: bytes | None, *, mode: str | None = No
 
     ``mode`` selects the combiner (``None`` -> from config): ``"hkdf"`` = HKDF-SHA256, a dual-PRF KDF
     (secure if EITHER input is a secret high-entropy value, under the HMAC dual-PRF assumption);
-    ``"its_toeplitz"`` = the information-theoretic leakage-resilient Toeplitz+QLHL combiner (:func:`_mix_qkd_its`).
+    ``"its_toeplitz"`` = the Toeplitz+QLHL combiner (:func:`_mix_qkd_its`), seeded with SHAKE-256 of
+    its own inputs, so computational as implemented, not information-theoretic.
     """
     if not qkd_key:
         return session_key

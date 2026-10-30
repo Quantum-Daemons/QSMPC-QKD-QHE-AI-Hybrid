@@ -9,8 +9,9 @@ import { centralAngleRad } from "../lib/satNetwork";
  * The 3D views, loaded only on the pages that draw them (see `Lazy3D.tsx`) - three.js is the largest
  * dependency here and most pages never need it.
  *
- * EACH VIEW SAYS WHAT ITS DEPTH CARRIES. The QCNN view plots the reduced Bloch vectors the circuit
- * actually produces: T gates move them off the x-z plane and entanglement shortens them, which a 2D plot
+ * EACH VIEW SAYS WHAT ITS DEPTH CARRIES. The comparison-circuit view (`QcnnScene`, an untrained QOTP +
+ * Clifford+T circuit, not the trained QCNN) plots the reduced Bloch vectors the circuit actually
+ * produces: T gates move them off the x-z plane and entanglement shortens them, which a 2D plot
  * of the encoding plane cannot show. The one-time-pad sphere is an illustration: the pad's four states
  * lie on one circle. The satellite views draw the model's own geometry since Round 77 - the orbit, the
  * elevation a range implies, the minimum-elevation arc, the constellation's spacing and shadow - where
@@ -114,7 +115,8 @@ function Fallback({ what, instead = "the table below carries the same numbers" }
 
 const QUBIT_COLORS = [0xb072ff, 0x4f9dff, 0x36d399, 0xf6b73c, 0xf56565, 0xe6edf6, 0x97a3b6, 0xff7ad9];
 
-/** The QCNN's per-qubit reduced Bloch vectors through the real circuit - the 3D view with content. */
+/** The comparison circuit's per-qubit reduced Bloch vectors through the real circuit - the 3D view with
+ *  content. Named for the QCNN in code; it is the untrained QOTP + Clifford+T circuit, not a QCNN. */
 export function QcnnScene({ features, seed }: { features: number[]; seed: number }) {
   const snaps = useMemo(() => {
     const out: { label: string; v: [number, number, number][] }[] = [];
@@ -135,13 +137,15 @@ export function QcnnScene({ features, seed }: { features: number[]; seed: number
   return (
     <figure className="chart-figure" style={{ margin: 0 }}>
       <figcaption className="small muted">
-        <b>Inside the QCNN (state-vector simulation, 8 qubits): one arrow per qubit.</b> After encoding and the
-        pad every arrow has length 1 and lies in the x-z plane; through the Clifford+T rounds the T gates move
-        them off that plane (a y component appears) and entanglement shortens them. This is the circuit the
-        QSMPC-FHE row runs, on one illustrative input; its pad is seeded.
+        <b>Inside the QSMPC-FHE comparison circuit (an untrained QOTP + Clifford+T circuit, state-vector
+        simulation, 8 qubits): one arrow per qubit.</b> After encoding and the pad every arrow has length 1
+        and lies in the x-z plane; through the Clifford+T rounds the T gates move them off that plane (a y
+        component appears) and entanglement shortens them. This is the circuit the QSMPC-FHE row runs, drawn
+        at 8 qubits on one illustrative input; its pad is seeded and never undone, so it predicts nothing. It
+        is not the trained QCNN that can decide a page&apos;s class, which runs unencrypted and is not drawn here.
       </figcaption>
       <div ref={mount} role="img" aria-label={`Reduced Bloch vectors of 8 qubits, ${current.label}`} style={{ width: "100%", minHeight: failed ? 0 : 300 }} />
-      {failed && <Fallback what="the QCNN state" />}
+      {failed && <Fallback what="the comparison circuit's state" />}
       <label className="small muted" htmlFor="qcnn-stage">Stage: <b>{current.label}</b></label>
       <input id="qcnn-stage" type="range" min={0} max={snaps.length - 1} step={1} value={stage}
         onChange={(e) => setStage(Number(e.target.value))} style={{ width: "100%" }} aria-label="Circuit stage" />

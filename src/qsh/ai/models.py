@@ -111,7 +111,8 @@ class HybridQNN(nn.Module):
     The VQC reuses the qml_ids ansatz; PennyLane's **torch** interface (``diff_method="backprop"`` on
     ``default.qubit``) makes the whole network — including the quantum weights — backprop-trainable, so
     the existing FedAvg loop (torch SGD) federates the quantum parameters too, averaged across sites
-    under quantum-safe secure aggregation. Honest scope: a small simulated VQC (not fault-tolerant QFL).
+    with pairwise masks whose default pair keys are a public constant (see :mod:`qsh.ai.federated`).
+    Honest scope: a small simulated VQC (not fault-tolerant QFL).
 
     ``pennylane`` is imported lazily so the base model factory has no hard quantum dependency.
     """

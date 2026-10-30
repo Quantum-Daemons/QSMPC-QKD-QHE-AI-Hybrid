@@ -20,7 +20,7 @@ const AXIS_Y = laneY("Companies") + 34;
 const HALO = { paintOrder: "stroke", stroke: "var(--panel)", strokeWidth: 6, strokeLinejoin: "round" } as const;
 
 const COLOR: Record<Firmness, string> = {
-  "in force": "var(--accent-2)", requirement: "var(--accent-2)", proposed: "var(--accent)",
+  "in force": "var(--accent-2)", requirement: "var(--accent-2)", ordered: "var(--accent)",
   draft: "var(--warn)", deferred: "var(--warn)", target: "var(--quantum)", passed: "var(--muted)",
 };
 
@@ -74,8 +74,8 @@ export default function RegulatoryClock() {
         </svg>
         <figcaption className="figure-note">
           Filled = in force or a binding requirement for the stated scope; hollow = draft, target or
-          deferred; grey = passed; blue = a rule only proposed so far. Each marker is one row of the
-          table below.
+          deferred; grey = passed; blue = a rule ordered but not yet proposed. Each marker is one row
+          of the table below.
         </figcaption>
       </figure>
       <table className="facts-table small" style={{ marginTop: 10 }}>

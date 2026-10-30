@@ -14,22 +14,27 @@
   and Quantum Computing FAQ (Ver. 2.2, October 2026) answers "No" to using QKD to protect a national
   security system.
 - **Honest-but-curious compute server** (delegated AI): would read inputs/model. Mitigation:
-  QHE (QOTP perfect hiding) for the quantum path; CKKS for the classical path; secure
-  aggregation hides per-client gradients in federated learning -- **but see the residual risk below:
-  as shipped it is never keyed, so this mitigation is not currently in force.**
+  QHE (QOTP, perfectly hiding as a scheme; the demo's pad is seeded) for the quantum path; CKKS for
+  the classical path, whose masked HE-to-MPC conversion protects slot 0 only (see Trust assumptions);
+  secure aggregation is meant to hide per-client updates in federated learning -- **but it hides
+  nothing here, so this mitigation is not in force:** in the browser every pairwise mask is an HKDF
+  output of the one PQC session key, which the aggregator also holds, and in Python the default pair
+  keys are a public constant (residual risk below).
 - **Malicious MPC participant**: injects bad inputs / aborts. Mitigation: identifiable-abort
-  pattern (scaffold) and QOT test rounds; PSI reveals only the intersection.
+  pattern (scaffold) and QOT test rounds. The keyed-hash PSI does **not** reveal only the
+  intersection: both banks hold the HMAC key, so over a small ID space either one can hash every
+  candidate ID and recover the other's list (residual risk below).
 - **QKD link attacker**: intercept-resend, PNS, Trojan-horse, detector-blinding, RNG
   manipulation. Mitigation: QBER monitoring + two-intensity decoy-state single-photon bounds; QRNG
   health + **SP 800-90B min-entropy** and section 4.4 continuous health checks guard the entropy source; the
-  config-gated **leakage-resilient PQC+QKD combiner**. Note the property carefully: `src/qsh/pqc/transport.py`
-  explicitly declines the "secure-if-either" framing this line used to use, because plain XOR already gives
-  that and the cited paper never claims superiority over XOR. What it does claim is narrower -- if the
+  config-gated **Toeplitz+QLHL PQC+QKD combiner** (`its_toeplitz`). Note the property carefully: `src/qsh/pqc/transport.py`
+  explicitly declines the "secure-if-either" framing, because plain XOR already gives
+  that and the cited paper never claims superiority over XOR. What the paper claims is narrower -- if the
   combined output AND one input key are compromised, the remaining key material retains quantifiable
-  min-entropy. Further, the `its_toeplitz` extractor's seed is `SHAKE-256` over the same two keys it
-  extracts from (`transport.py:53`), and the Leftover Hash Lemma needs a seed independent of the source --
-  so as implemented it is a **computationally-seeded** extractor, not an unconditionally
-  information-theoretic one. The docstring says so; the label "ITS" does not; + QML-IDS (WS2) classifying 7 attack types against normal traffic (8 classes).
+  min-entropy -- and that claim needs a seed independent of the input. Here the extractor's seed is
+  `SHAKE-256` over the same two keys it extracts from (`transport.py:64`), so as implemented it is a
+  **computationally-seeded** extractor, not an information-theoretic or leakage-resilient one, and its
+  QKD input is a fixed constant on the MCP channel. The docstring says so; the label "ITS" does not; + QML-IDS (WS2) classifying 7 attack types against normal traffic (8 classes).
 - **Classical control-plane adversary against the QKD stack** - recorded 2026-08-12 as a **GAP**,
   because until then this document had no such adversary at all. Every QKD adversary above attacks the
   quantum channel or the network crypto; none attacks the **classical procedure text** that drives the
@@ -57,19 +62,20 @@
 - The QKD hardware is modelled by simulation; real deployments must address device
   imperfections (the WS2 IDS targets exactly these).
 - The crypto/compute libraries are trusted as implemented (pin versions + review): server-side
-  TenSEAL / OpenFHE / HEonGPU / liboqs / MPyC; client-side **node-seal** (CKKS) + **Polytune /
+  TenSEAL / OpenFHE / liboqs / MPyC (and HEonGPU, if its build-gated adapter is ever wired); client-side **node-seal** (CKKS) + **Polytune /
   Garble** (garbled-circuit 2PC, Rust compiled to wasm from `wasm/qsh-mpc`, Round 65) for the in-browser
   demo; the **MCP Python SDK** (`MCPServer`, named `FastMCP` before v2.0.0) for
   the full-deployment MCP server.
 - **Server-tier MPC** (full deployment, `src/qsh/mpc/parties.py`): three MPyC parties, the client
   who holds the CKKS key, the server who holds the model, and a helper; Shamir with t = 1, so
   **semi-honest with an honest majority**. The conversions are masked (`src/qsh/mpc/secret_inference.py`),
-  so the key holder sees only masked intermediates and the class index, hidden statistically rather than
-  perfectly, with the bound reported per run. A client and helper who pool their shares recover the
-  server's masks and with them every intermediate. Here the three run on one host over loopback; a
-  deployment that relies on the honest majority needs them on three hosts under three operators.
-  Until Round 75 this tier was one in-process party, and its conversions showed every intermediate to
-  the key holder.
+  but the mask is a scalar added to every CKKS slot, so it protects slot 0 only: a key holder who
+  decodes every slot of one masked dot product recovers the unmasked output and the layer's weights
+  (confirmed with the TenSEAL backend). Until that is fixed the conversion is **not model-private**;
+  slot 0 alone is hidden statistically rather than perfectly, with the bound reported per run. A
+  client and helper who pool their shares recover the server's masks and with them every
+  intermediate. Here the three run on one host over loopback; a deployment that relies on the honest
+  majority needs them on three hosts under three operators.
 - **MCP tool dispatch** (full deployment): the quantum-safe channel authenticates + seals the
   `tools/call` and its result (ML-DSA + AES-GCM), but the tool *logic* runs server-side and is trusted;
   the official filesystem MCP server is sandboxed to a use-case data dir. The public demo runs no
@@ -78,14 +84,15 @@
 ## Key management (what each key is, and what it is not)
 
 Enumerated because "key management is out of scope" reads as *not yet built*, when in fact several
-keys exist and one of them is publicly recomputable.
+keys exist and some of them are recomputable by a party they were meant to hide from.
 
 | Key | Lifetime | Where it lives | Caveat |
 |---|---|---|---|
 | Hybrid KEM (ML-KEM-768 + X25519) | Per session, ephemeral | Process / tab memory | Both halves genuinely computed on both sides. Never persisted, never escrowed. |
-| QKD-derived key material | Per run, opt-in | Memory | Simulated channel - no QKD hardware is involved anywhere in this project. |
+| QKD-derived key material | Per run, full deployment only | Memory | Simulated channel - no QKD hardware is involved anywhere in this project. The full deployment folds 256 or more simulated sifted bits into the session key by HKDF-SHA256; the browser derives no key from QKD, and the MCP "QKD-domain" input is a fixed 32-byte constant. The Toeplitz seed is SHAKE-256 of the inputs, so no key here is information-theoretically secure. |
 | ML-DSA signing keypair | Per run, discarded | Generated inside the signature stage | The demo now records the public half and the exact signed payload; the **backend** path still discards the public key and keeps only a 12-byte signature prefix, so a full-mode run's signature is not third-party verifiable. |
-| Secure-aggregation pairwise masks | Per aggregation | Derived from `sha256(f"pair-{i}-{j}")` | **A public constant.** Anyone can recompute every mask. Wiring the PQC/QKD layer in is what would make this hiding; nothing does that yet. |
+| Secure-aggregation pairwise masks (browser, `clientQFL.ts`) | Per round | HKDF-SHA256 of the run's one PQC session key, with the pair and round in the info string | **The aggregator holds that key**, so it can derive every mask and unmask each update. The masks cancel exactly and hide nothing from a session-key holder. Bonawitz et al. derive each pair's seed by a pairwise key agreement, which is what would make this hiding. |
+| Secure-aggregation pairwise masks (Python, `federated.py`) | Per round | Derived from `sha256(f"pair-{i}-{j}")` by default | **A public constant.** Anyone can recompute every mask. Nothing passes other keys to `SecureAggregator`. |
 | Browser secure-argmax share masks (`clientMPC.ts`) | Per run | `crypto.getRandomValues`, 32 bits per logit; shares modulo $`2^{32}`$ (since Round 66) | Each share alone is uniform whatever the logit. Until Round 66 the mask came from the run's seeded generator (mulberry32 on the seed the page shows) and was bounded to $`2^{16}`$, so it was recomputable and only statistically hiding (distance up to 1/64). Both parties are in one tab, so this is a property of the sharing, not of two hosts. |
 | Browser secure-sum masks (`clientCompute.ts`) | Per run | `crypto.getRandomValues`, uniform over $`\mathbb{Z}_p`$ by rejection (since Round 66) | Until Round 66 `floor(u() * p)` from the same seeded generator: recomputable, and biased because no odd prime divides $`2^{32}`$. |
 | QOTP demo key (`quantumSim.ts`) | Per run | The run's seeded generator | **Disclosed in place since Round 40, not changed.** The pad is perfectly hiding as a scheme, but this key decides the circuit's output, so it stays reproducible and anyone with the seed can recompute it. |
@@ -223,8 +230,9 @@ quote above scopes the attack to exactly that case: Zhang, Zhou, Han, Liu and Hu
 Threshold Decryption from LWE with Polynomial Modulus" (IACR ePrint 2026/1627, received 2026-08-06),
 treats adaptive corruption and leakage from **decryption queries** using *"a refined polynomial noise
 flooding technique based on a detailed min-entropy analysis"*. It matters here rather than in general
-because `submodules/HEonGPU` ships N-out-of-N collective bootstrapping, so the threshold case is
-reachable from this project's own dependency set rather than hypothetical.
+because `submodules/HEonGPU` ships N-out-of-N collective bootstrapping, so the threshold case is one
+dependency away rather than hypothetical. Nothing here builds or calls it today: `HeongpuBackend` is a
+build-gated reference adapter, and HEonGPU exposes no Python API.
 
 **No standard requires testing for this.** The HomomorphicEncryption.org standard contains no
 testing or conformance clause and states that CKKS "is not described in this standard"; ISO/IEC 28033 is not published, and the part that matters here is **Part 3** - mechanisms for arithmetic on approximate numbers, i.e. CKKS - which reached **FDIS stage 50.00 on 2026-06-11** (Part 1 general: DIS 40.60, 2025-12-11; Part 4: FDIS 50.00; Part 5: WD 20.60). Part 1 scopes correctness out. Naming "Parts 1-4 at DIS" was imprecise in both directions: Part 3 is further along than DIS and is the CKKS part, so this claim has a shelf life of months and carries a date for that reason. Checked 2026-08-10. So this section is a
@@ -236,20 +244,30 @@ statement of known limitations, not a conformance gap against any published requ
 - Production key management / HSM integration (crypto-agility hooks are provided).
 
 ## Residual risk & honest limitations
-- Quantum-channel results (QKD distance/QBER gains, photonic inference, full qOLE) are
-  **simulated**, not hardware-validated.
-- The QHE homomorphic evaluation is exact for Clifford circuits with key tracking;
-  non-Clifford (trainable) layers require magic-state/T-gate corrections in a real device
-  (their cost is reported as a T-count, not executed fault-tolerantly here).
-- PSI is semi-honest keyed-hash over the quantum-safe channel; a malicious-secure OPRF
-  PSI is future work.
-- **Federated averaging is not a privacy guarantee -- and as shipped it hides nothing.** The
-  pairwise-mask secure aggregation in `qsh/ai/federated.py` is intended to hide an *individual client's*
-  update from the aggregator, and that is all it would claim. **It does not currently achieve even that:**
-  `SecureAggregator` is only ever constructed with no keys (`federated.py:175`, `tests/test_ai.py:26`), and
-  the default pairwise keys are `sha256(f"pair-{i}-{j}")` -- derived from a public constant, so anyone can
-  recompute every mask and unmask any individual update. The masks are real; the secrecy is not. Wiring the
-  PQC/QKD layer into the aggregator is what would make the scheme hiding, and nothing does that yet. It does not bound what the trained model itself leaks: gradient inversion against a shared
+- Quantum-channel results (QKD distance/QBER gains) and the QSMPC-FHE comparison row are
+  **simulated**, not hardware-validated; photonic inference and qOLE are not implemented at all.
+- The QHE homomorphic evaluation is exact for Clifford circuits with key tracking (the Python
+  demo); non-Clifford (trainable) layers require magic-state/T-gate corrections in a real device
+  (their cost is reported as a T-count, not executed fault-tolerantly here). The browser's
+  comparison circuit applies its T gates to the padded state and never corrects or decrypts it, and
+  the trained QCNN that predicts runs unmasked.
+- PSI is a keyed hash over the quantum-safe channel: both banks HMAC their lists under one session
+  key they both hold, so no third party sees the lists, but over a small ID space either bank can
+  hash every candidate ID and recover the other's list (Pinkas, Schneider and Zohner, USENIX
+  Security 2014, on hash-based PSI for low-entropy domains). It keeps neither list private from the
+  other bank; a production PSI would use an OPRF-based protocol, and a malicious-secure OPRF PSI is
+  future work.
+- **Federated averaging is not a privacy guarantee -- and as shipped the secure aggregation hides
+  nothing from the aggregator.** Pairwise-mask secure aggregation is intended to hide an *individual
+  client's* update from the aggregator, and that is all it would claim. **Neither tier achieves even
+  that.** In the browser (`web/src/lib/clientQFL.ts`) every pairwise mask is an HKDF output of the one
+  PQC session key, which the aggregator also holds, so it can derive every mask. In Python
+  (`qsh/ai/federated.py`) `SecureAggregator` is only ever constructed with no keys (`federated.py:219`,
+  `tests/test_ai.py:26`), and the default pairwise keys are `sha256(f"pair-{i}-{j}")` -- derived from
+  a public constant, so anyone can recompute every mask and unmask any individual update. The masks
+  are real and cancel exactly; the secrecy is not. What would make the scheme hiding is a pairwise
+  key agreement between each pair of clients, as Bonawitz et al. (CCS 2017) specify, with masks the
+  aggregator cannot derive. It does not bound what the trained model itself leaks: gradient inversion against a shared
   model is an established attack. A formal claim would require a stated DP-SGD budget, which this
   path does not provide, so none is made.
 - **Not everything the demo displays was computed.** **One** thing cannot be done in a browser at all
@@ -263,7 +281,7 @@ statement of known limitations, not a conformance gap against any published requ
   Both are real, measured, and
   described as such in `architecture.md` and `crypto-agility.md` - this bullet contradicted them.
   Caveat that *does* apply to the MPC path: both "parties" share one JS heap, so the party separation
-  is notional (stated at `clientMPC.ts:10-12`), and it is a demonstration of the protocol, not two
+  is notional (stated at `clientMPC.ts:13-15`), and it is a demonstration of the protocol, not two
   mutually distrusting hosts.
   **A SECOND CAVEAT, ADDED ROUND 55 AND RESOLVED IN ROUND 65, AND IT WAS A SUPPLY-CHAIN ONE.** The
   correction above replaced
@@ -277,9 +295,8 @@ statement of known limitations, not a conformance gap against any published requ
   here is being withdrawn; it means the tier carries a risk the CKKS tier does not, since `node-seal`
   tracks Microsoft SEAL. Note the shape: the previous bullet was corrected by naming the maintained
   replacements for two sunset dependencies, and the replacements have since been sunset in turn - a
-  correction can go stale in the same way the claim it fixed did. `RS21` in the browser checklist runs
-  exactly this query for submodules; it did not cover npm dependencies, which is why this went a year
-  unnoticed. **Replacements were researched in Round 60, and nothing has been adopted.** The closest fit
+  correction can go stale in the same way the claim it fixed did. The project's archived-upstream
+  query covered submodules and not npm dependencies, which is why this went a year unnoticed. **Replacements were researched in Round 60, and nothing has been adopted.** The closest fit
   is `sine-fdn/polytune` with the Garble language (MIT, maintained, WRK17b multi-party authenticated
   garbling against malicious adversaries), at the cost of a Rust and wasm-pack build step and an alpha
   API; mpz would be a downgrade to semi-honest security. The register's Round 60 section carries the
@@ -394,11 +411,11 @@ statement of known limitations, not a conformance gap against any published requ
   same document. `measured-js` was added in Round 21: the bundled distilled model is a hand-written
   loop over plain JS numbers with no wasm module and no GPU, and it had been reporting
   `measured-wasm` - a claim wrong in the flattering direction.
-- **The headline comparison row is simulated.** The QSMPC-FHE row that drives the quantum-advantage
-  score is an 8-qubit state-vector simulation. The simulated-vs-hardware caveat above covers QKD,
-  photonic inference and qOLE, but not this row - it should. (The 0-100 security score this bullet
-  used to cite was retired in Round 22 and is no longer computed for display; see
-  `../references/security-scoring-fact-check.md`.)
+- **The headline comparison row is simulated.** The QSMPC-FHE row is a state-vector simulation
+  (8 qubits by default) of an untrained QOTP + Clifford+T circuit, and the simulated-vs-hardware caveat above
+  covers it. The quantum-advantage score once derived from it is retired from display (the full
+  deployment's `/api/benchmark` still returns it), and so is the 0-100 security score; see
+  `../references/security-scoring-fact-check.md`.
 
 ## Genomics: this system protects the computation, and the computation is not where the leak is
 
@@ -420,12 +437,14 @@ a mixture from roughly 50,000 SNPs.
 frequencies against 53.4% using binary yes/no responses** - so publishing the counts this pipeline
 computes raises reconstruction risk by about 17 points over publishing mere presence.
 
-**A single released score can be enough.** A Feb 2026 preprint (DOI 10.64898/2026.02.16.706191)
-reconstructs genotypes from polygenic risk scores by solving a subset-sum problem: of 4,723 PGS
-Catalog models, at least 447 would be vulnerable if patient-level scores were shared, and a typical
-27-locus PRS uniquely identifies 95% of individuals in a 450,000-participant cohort. Recovery then
-re-identifies the individual *or a genetic relative* in a genealogy database at near 100% accuracy.
-Non-European ancestries are at greater risk, because GWAS panels are less diverse.
+**A single released score can be enough, for a small score.** A Feb 2026 preprint (Nikitin and
+Gursoy, DOI 10.64898/2026.02.16.706191) reconstructs genotypes from polygenic risk scores by solving
+a subset-sum problem: of 4,723 PGS Catalog models, at least 447 would be vulnerable if patient-level
+scores were shared, and a typical 27-locus PRS uniquely identifies 95% of individuals in a
+450,000-participant cohort. The recovery covers scores of up to about 50 variants and the
+vulnerability assessment about 80, so PGS000004's 313 variants sit outside the recovery regime,
+though a high-precision individual score still carries uniqueness and linkage risk. Non-European
+ancestries are at greater risk, because GWAS panels are less diverse.
 
 ### What this means here, stated precisely
 
@@ -438,7 +457,9 @@ Nor does anyone else in deployed crypto-genomics: SF-GWAS (Nature Genetics, Feb 
 SECRET-GWAS, privateQTL and the CKKS polygenic-score system HEPRS (Cell Reports Methods, Jan 2026)
 all decrypt and release plaintext statistics with no output noise. SF-GWAS argues explicitly that DP
 is impractical at GWAS scale because releasing statistics for many variants would require
-substantial noise. So this is a field-wide gap rather than an oversight peculiar to this project -
+substantial noise; that view is now contested, since GOPHER (Nandi, Neel and Cho, arXiv:2512.04225)
+releases complete genome-wide statistics at $`\epsilon = 3`$, reporting r = 0.85 to 0.86 in its own
+evaluation. So this is a field-wide gap rather than an oversight peculiar to this project -
 which is a reason to state it, not a reason to be quiet about it.
 
 ### The honest claim, and the one to avoid

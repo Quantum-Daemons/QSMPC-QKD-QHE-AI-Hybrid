@@ -44,8 +44,8 @@ export default function ShapPanel({ explanation, provenance, baseline, published
         {baseline ? <> · reference point: {baseline}</> : null}
         {publishedModel ? (
           <> · <b>{publishedModel}</b> also ran this page, on its own corpus, and has <b>no</b> SHAP
-          here: exact linear SHAP applies to the linear student, not to a ResNet, a tree ensemble or a
-          fixed quantum circuit.</>
+          here: exact linear SHAP applies only to a linear model, not to a neural network (a ResNet or
+          an LSTM), a tree ensemble or a quantum circuit.</>
         ) : null}
         {/* The tree-ensemble attribution exists on ONE page, and getting this gate right took two
             attempts worth recording.
@@ -82,15 +82,17 @@ export default function ShapPanel({ explanation, provenance, baseline, published
         </p>
       ) : (
         <p className="muted small" style={{ marginTop: -2 }}>
-          These bars explain the <b>bundled linear model</b>. The <b>class this page reports</b> came
-          from a different computation — so read the bars as "what drives this model on this input",
-          not as an attribution of the reported class.
+          These bars explain the <b>bundled linear model</b> on this input. On the default CKKS path the
+          class this page reports is that same model&apos;s decision, computed under CKKS with a
+          garbled-circuit argmax; if the trained QCNN surfaced the class instead, the note below says so,
+          and the bars are then not an attribution of it.
         </p>
       )}
       {surfacedBackend === "qcnn-trained" && (
         <div className="note" style={{ marginBottom: 8, borderColor: "var(--warn)", color: "var(--warn)" }}>
-          ⚠ The class this page surfaces came from the <b>trained QCNN</b> circuit. These bars
-          describe the bundled linear model, which is a different decision.
+          ⚠ The class this page surfaces came from the <b>trained QCNN</b> circuit, which runs
+          unencrypted and, built from two-qubit blocks on disjoint pairs of a few qubits, is classically
+          simulable. These bars describe the bundled linear model, which is a different decision.
         </div>
       )}
       {tops.map((t, i) => (

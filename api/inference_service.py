@@ -54,7 +54,7 @@ def pqc_handshake_demo() -> dict:
 
 
 def qkd_demo(distance_km: float = 50.0, eve: float = 0.0) -> dict:
-    """Run a small BB84 session; return QBER/SKR (and Eve detection)."""
+    """Run a small SIMULATED BB84 session (no quantum channel); return QBER/SKR (and Eve detection)."""
     from qsh.qkd.bb84 import QKDParams, run_bb84
     from qsh.qkd.channel import ChannelParams
 

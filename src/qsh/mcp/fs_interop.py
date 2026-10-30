@@ -2,7 +2,8 @@
 
 Connects to the OFFICIAL ``@modelcontextprotocol/server-filesystem`` (Node, via ``npx``) using the MCP
 Python SDK's stdio client, invokes a real tool (e.g. ``list_directory``), and then carries the genuine
-result through the project's quantum-safe channel (PQC+QKD+ML-DSA+AEAD) via
+result through the project's quantum-safe channel (PQC + ML-DSA + AEAD, optionally mixed with a
+caller-supplied key; the API passes a fixed 32-byte constant, not a QKD key) via
 :func:`qsh.pqc.mcp_bridge.secure_carry`. This proves interop with a real third-party MCP server while
 keeping the transport quantum-safe — no trusted third party, no plaintext on the wire.
 
@@ -50,7 +51,8 @@ def secure_filesystem_interop(directory: str = ".", tool: str = "list_directory"
     """Call the official filesystem MCP server, then carry the real result over the quantum-safe channel.
 
     Returns the external server's tool list + result, plus the quantum-safe envelope report
-    (authenticated / tamper_rejected / sealed_bytes) proving the result rode the PQC+QKD+ML-DSA layer.
+    (authenticated / tamper_rejected / sealed_bytes) showing the result rode the PQC + ML-DSA layer
+    (with ``qkd_key`` mixed in when one is given).
     """
     if not node_available():
         raise RuntimeError("npx (Node) not available — the filesystem-MCP interop needs Node")
