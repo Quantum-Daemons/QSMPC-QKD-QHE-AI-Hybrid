@@ -214,12 +214,26 @@ visible number.
   sent, and Rusca et al. 2018 for one decoy. Checked, with nothing fitted: Rusca et al.'s Table I
   two-decoy rows within 20 percent and below them, the ratio of the two protocols within 15
   percent (Round 80: the factor of about 2 recorded before was a test channel applying the
-  detector twice); Liao's pass at 0.55 of its published 300,939 bits and Khmelev's session at 0.56 of a
-  Chernoff-bound key, the same analysis gap twice; Jinan-1's four published passes within a factor
-  of 2.5. Writing it found two errors in the one-decoy bound, both on the safe side: a constant
-  transcribed as 2 to the 21st where both papers print 21 squared, and the vacuum bounded by the
-  signal's errors where the decoy's are tighter. The fibre threshold moved from 5.88e6 to 4.78e6
-  pulses.
+  detector twice); under the published Hoeffding statistics, Liao's pass at 0.55 of its published
+  300,939 bits and Khmelev's session at 0.56 of a Chernoff-bound key, the same fraction twice;
+  Jinan-1's four published passes within a factor of 2.5. Writing it found two errors in the
+  one-decoy bound, both on the safe side: a constant transcribed as 2 to the 21st where both papers
+  print 21 squared, and the vacuum bounded by the signal's errors where the decoy's are tighter.
+- **Finite-key statistics** (Round 82) - on the fibre each count's expectation is bounded by the
+  tighter of Yin et al. 2020's Chernoff-type bound (Sci. Rep. 10, 14312, Eqs. (9)-(10)) and the
+  published Hoeffding deviation on the basis total, at half the failure probability each: a union
+  bound, so the security budget is unchanged. On the satellite the default is Chernoff alone, because
+  there the halving costs more than the per-count choice gains (Liao's pass 226,073 bits against
+  226,056). Neither alone is tighter everywhere: Chernoff wins for a count under
+  a quarter of its basis (the satellite's decoy and vacuum), Hoeffding for a larger one (the fibre's
+  signal and decoy). Chernoff or Hoeffding alone can be chosen on the page. On Liao's pass the key
+  rises from 0.55 to 0.75 of the published one, on Khmelev's session from 0.56 to 0.69: the
+  statistics close 45 percent of the first gap and 29 percent of the second, and the two fractions
+  part, so the rest is not one shared cause. Jinan-1's passes move to 1.35 to 2.62 times their published keys, computed on
+  500-kbit blocks. Reading Rusca et al.'s (A16) again found a third transcription error in the
+  one-decoy bound, this one in the unsafe direction: tau0 multiplied delta(n_Z) as well as the error
+  term, which the paper does not print. Corrected, the fibre's threshold under Hoeffding is 5.35e6
+  pulses (it read 4.78e6), and under the default 3.60e6.
 - **Fibre key block** (Round 80) - every fibre key is a composable finite key too: the use-case
   pages, the two-party demo and Validations page, and the Python API report the same one, because
   the model (`run_bb84` / `bb84()`) computes it. By default the block is a privacy-amplification
@@ -229,9 +243,11 @@ visible number.
   the run's own pulses are offered beside it. Checking that default found the reason this project
   had recorded its finite-key code as about 2x below Rusca et al.'s table since Round 47: its tests
   applied the detector on top of the paper's global attenuation, which already includes it. With
-  the attenuation applied once the table's 26 dB row is reproduced to a few parts in a thousand
-  under the paper's dead-time convention, and the 26 and 46 dB rows within 5 percent under this
-  project's; the time to fill a block within 10 percent. E91 keeps its asymptotic count, labelled.
+  the attenuation applied once the table's 26 dB row is reproduced to within 2 percent under the
+  paper's dead-time convention, the 26 dB row within 5 percent and the 46 dB row within 7 percent
+  under this project's (Round 82: (A16) as printed puts them on the safe side; Table I is checked
+  under the Hoeffding statistics it was computed with); the time to fill a block within 10 percent.
+  E91 keeps its asymptotic count, labelled.
 - **3D views** (three.js, loaded only where drawn) - the QCNN's per-qubit reduced Bloch vectors through
   the real circuit, an illustration of the one-time pad on one qubit, and the satellite geometry the
   model itself uses: the orbit, the elevation a slant range implies, the arc above the minimum
