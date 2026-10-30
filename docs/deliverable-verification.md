@@ -7204,6 +7204,18 @@ faults in this round's own changes, and the owner chose the fix:
   bits (139,201 under the union) and Liao's pass 226,073 (226,056). The cross-language test caught the
   first draft of this: its TypeScript harness called the bound without statistics, which falls back to
   the fibre's default, so the two languages parted until the harness named the satellite's.
+- **Walked on the deploy** (6098112, bundle `index-CxvMKHsC.js`, CI green on both runs after one rerun of a
+  GitHub-side failure to resolve `actions/checkout@v4`, which ran no test). Satellite: its own control,
+  `sat_fk_deviation`, defaults to Chernoff and says so; a run completes 6 of 6 stages with 139,251 secure
+  bits and `qkd_fk_deviation` chernoff; the Network tab's sentence and the 45 and 29 percent read as
+  written, and Liao's row 226,072 bits (-24.9%). Telecom (fibre): 5,214,327 bits, "tighter", unchanged.
+  Console clean, nothing stored, tab closed.
+- **Every export and UI function, in a headless browser** (downloads into a scratch folder, not the
+  owner's browser): 329 checks pass on 11 routes, 68 files of the right type and values. 21 fail, from five
+  causes, none from this fix: the known bare "metric" log lines; the benchmark CSV header built from the
+  first row only, which drops fields later rows carry (the JSON keeps them); the agent's download giving its
+  disabled reason only on hover; the Validations download enabled before any run; and the 3D view rebuilt
+  on every render during a run (20 to 26 WebGL contexts per Start). All five are rows for the defects round.
 
 BUSINESS DOC RECONCILED Round 82. The out-of-repo document is brought level with this round. Its content
 is not quoted here, in the checklist, or in any commit - only the fact of the reconciliation, which is
