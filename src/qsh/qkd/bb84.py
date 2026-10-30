@@ -235,6 +235,7 @@ def run_bb84(
     entropy: str | None = None,           # "qrng" -> seed the basis/bit choices from the quantum RNG
     block_pulses: float | None = None,    # the block the finite key is computed on; None -> n_pulses
     eps_sec: float | None = None,         # its security parameter; None -> QKDConfig.finite_key_eps_sec
+    deviation: str | None = None,         # its statistics; None -> QKDConfig.finite_key_deviation
 ) -> QKDResult:
     """Simulate a decoy-state BB84 session over ``n_pulses`` channel uses.
 
@@ -365,7 +366,7 @@ def run_bb84(
         # no finite block distils: the same block's composable key, by the bound the source supports,
         # is 9,811. The rate above stays asymptotic and says so; this count is the key.
         secure_bits, block_used = _block_key_bits(params, qkd_params, error_correction_eff, n_pulses,
-                                                  block_pulses, eps_sec)
+                                                  block_pulses, eps_sec, deviation)
 
     return QKDResult(
         sifted_bits=n_sift,
@@ -379,7 +380,8 @@ def run_bb84(
 
 
 def _block_key_bits(channel: ChannelParams, source: QKDParams, f_ec: float, n_pulses: int,
-                    block_pulses: float | None, eps_sec: float | None) -> tuple[int, float]:
+                    block_pulses: float | None, eps_sec: float | None,
+                    deviation: str | None = None) -> tuple[int, float]:
     """The composable finite key, in whole bits, of a block on `channel`, and the block's pulses.
 
     The block is `block_pulses` when the caller names one. Otherwise a FIBRE channel takes the
@@ -392,7 +394,7 @@ def _block_key_bits(channel: ChannelParams, source: QKDParams, f_ec: float, n_pu
 
     q = _qkd_cfg()
     fk = params_for_source(source, eps_sec=q.finite_key_eps_sec if eps_sec is None else float(eps_sec),
-                           f_ec=f_ec)
+                           f_ec=f_ec, deviation=deviation)
     if block_pulses is None:
         block_pulses = (float(n_pulses) if channel.free_space is not None else
                         fibre_block_pulses(channel, fk, kind=q.finite_key_block, run_pulses=n_pulses,

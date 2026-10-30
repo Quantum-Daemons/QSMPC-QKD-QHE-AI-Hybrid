@@ -145,8 +145,11 @@ class QKDKeyAgreementStage(Stage):
 
         block_kind = str(_cfg("qkd_block", cfg.finite_key_block))
         eps_sec = float(_cfg("qkd_eps_sec", cfg.finite_key_eps_sec))
+        # The statistics (Round 82), one control for the fibre and the satellite alike.
+        deviation = str(_cfg("fk_deviation", cfg.finite_key_deviation))
         block_pulses = fibre_block_pulses(
-            params, params_for_source(QKDParams(), eps_sec=eps_sec), kind=block_kind, run_pulses=n_pulses,
+            params, params_for_source(QKDParams(), eps_sec=eps_sec, deviation=deviation), kind=block_kind,
+            run_pulses=n_pulses,
             seconds=float(_cfg("qkd_block_seconds", cfg.finite_key_block_seconds)),
             pa_bits=float(_cfg("qkd_block_pa_bits", cfg.finite_key_block_pa_bits)))
         # THE PROTOCOL THE PAGE SELECTED (Round 80). `qkd_protocol` reached only the OptiQKD stage, so
@@ -160,7 +163,7 @@ class QKDKeyAgreementStage(Stage):
             result = run_e91(n_pulses, params, visibility=cfg.e91_visibility, seed=ctx.config.get("seed", 0))
         else:
             result = provider(n_pulses=n_pulses, params=params, seed=ctx.config.get("seed", 0),
-                              block_pulses=block_pulses, eps_sec=eps_sec, **extra)
+                              block_pulses=block_pulses, eps_sec=eps_sec, deviation=deviation, **extra)
         # Five decimals here and four in `api/inference_service.py:79`, for the same metric name on
         # the same panel. Left AT five deliberately rather than narrowed: a displayed QBER of
         # 0.01578 against 0.0158 is a presentation difference on a quantity whose own sampling noise
@@ -201,7 +204,8 @@ class QKDKeyAgreementStage(Stage):
             bus.metric("qkd_finite_key_bits", result.secure_key_bits, self.name)
             bus.metric("qkd_finite_key_bound", "Rusca et al. 2018 (one decoy)", self.name)
             bus.metric("qkd_eps_sec", eps_sec, self.name)
-            fk = params_for_source(QKDParams(), eps_sec=eps_sec)
+            bus.metric("qkd_fk_deviation", deviation, self.name)
+            fk = params_for_source(QKDParams(), eps_sec=eps_sec, deviation=deviation)
             bus.metric("qkd_block_units_for_key",
                        blocks_for_positive_key(*block_counts([(result.block_pulses, params)], fk), fk), self.name)
         bus.metric("secure_key_bits", result.secure_key_bits, self.name)

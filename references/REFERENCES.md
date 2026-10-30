@@ -2034,7 +2034,12 @@ reason.
   "always greater than 11%" at the optimum (Appendix C). Two findings about this repository's own
   1-decoy implementation: (A21) prints 21 squared, which the code had as 2 to the 21st; and (A16)
   bounds the vacuum by "the errors relative to one intensity" without naming it, where the code had
-  the signal's and the decoy's is tighter at every row.
+  the signal's and the decoy's is tighter at every row. RE-READ in Round 82, on the rendered page at
+  300 dpi: (A16) puts tau0 on the error term only, s^u_{Z,0} = 2 (tau0 (e^k/p_k)(m_{Z,k} +
+  delta(m_Z, eps1)) + delta(n_Z, eps1)), as (A13)-(A15) derive it; the code had tau0 on delta(n_Z)
+  too, which understated the vacuum and overstated the key. With the printed form the 26 dB row reads
+  1.5 percent below the table under the paper's dead-time convention, where the old form matched it
+  to a few parts in a thousand: the table may have been computed the old way.
 - **Liao et al. 2017** (Nature 549, 43), arXiv:1707.00542, re-read for its key: "mu_s=0.8, mu_1=0.1,
   mu_2=0", "a hamming algorithm is used for error correction", "the intensity fluctuation for the
   signal state and decoy state (<5%)", and a "secure final key of 300,939 bits when the statistical
@@ -2042,7 +2047,26 @@ reason.
 - **Khmelev et al. 2023** (arXiv:2310.17476), re-read for its key: "utilize Chernoff bounds with a
   failure probability of 10-9", "the secure final key is 629,000 bits", error correction at "an
   inefficiency fec = 1.44", and 310,400 bits with detector-efficiency mismatch. The bound here on the
-  same session gives 0.56 of the 629,000 at f_EC 1.16 and 0.51 at their 1.44.
+  same session gives 0.56 of the 629,000 at f_EC 1.16 and 0.51 at their 1.44, under the published
+  Hoeffding statistics; 0.69 under this project's default since Round 82. Its Chernoff bounds cite
+  Zhang et al. 2017 (its ref. [46]), below.
+- **Yin, Zhou, Gu, Xie, Lu and Chen, "Tight security bounds for decoy-state quantum key
+  distribution"**, Sci. Rep. 10, 14312 (2020). arXiv:2002.06530 `[link]`
+  URL: https://arxiv.org/abs/2002.06530
+  VERIFIED on the rendered pages (Round 82): for a sum of independent Bernoulli variables with
+  probabilities not necessarily equal, the expectation x* from the observed value x, with failure
+  probability eps and beta = ln(1/eps), is at most x + beta + sqrt(2 beta x + beta^2), Eq. (9), and at
+  least x - beta/2 - sqrt(2 beta x + beta^2/4), Eq. (10), floored at zero; closed forms slightly looser
+  than the roots of their Eqs. (7)-(8). Their Appendix B calls the inverse-solution Chernoff method of
+  Zhang et al. 2017 not rigorous, since it puts the observed value where the bound needs the
+  expectation. Grounds `finite_key.py::_chernoff_upper` / `_chernoff_lower`, checked in
+  `tests/test_the_finite_key_statistics_are_yin_2020s.py` by drawing sums and counting misses.
+- **Zhang, Zhao, Razavi and Ma, "Improved key-rate bounds for practical decoy-state quantum-key-
+  distribution systems"**, Phys. Rev. A 95, 012333 (2017). arXiv:1611.02524 `[link]`
+  URL: https://arxiv.org/abs/1611.02524
+  The Chernoff bounds Khmelev et al. 2023 used. Not implemented: on Liao's pass and Khmelev's session
+  its analytic form, as Yin et al.'s Appendix B gives it, differs from Yin et al.'s by under 0.3
+  percent of the key, and Yin et al. question its rigour.
 - **Liao et al., "Space-to-ground quantum key distribution using a small-sized payload on Tiangong-2
   space lab"**, Chin. Phys. Lett. 34, 090302 (2017). VERIFIED in the published text: one pass, "a
   mean sifted key rate of 783 bps in 143 s", "112031 bits sifted key", "a 13,119 bit secure key".

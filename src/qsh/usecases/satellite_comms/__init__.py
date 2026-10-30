@@ -108,6 +108,9 @@ _SAT_DEFAULTS = {
     "sat_block_passes": None,
     "sat_block_seconds": None,
     "sat_eps_sec": None,
+    # The satellite's own statistics (the #78 fix): None -> QKDConfig.free_space_finite_key_deviation,
+    # Chernoff, not the fibre's union of two, which a pass's small counts make the looser choice.
+    "sat_fk_deviation": None,
 }
 _DEFAULT_TELEMETRY = (
     "SAT-OK;orbit=LEO;alt=550km;batt=98%;temp=21C;payload=nominal;ts=T+00:42:17"
@@ -248,8 +251,9 @@ def _sat_finite_key_params(ctx: Context, source):
     from ...config import get_config
     from ...qkd.finite_key import params_for_source
 
-    return params_for_source(source, eps_sec=float(_cfg_or(ctx, "sat_eps_sec",
-                                                           get_config().qkd.free_space_eps_sec)))
+    q = get_config().qkd
+    return params_for_source(source, eps_sec=float(_cfg_or(ctx, "sat_eps_sec", q.free_space_eps_sec)),
+                             deviation=str(_cfg_or(ctx, "sat_fk_deviation", q.free_space_finite_key_deviation)))
 
 
 class SatelliteQKDStage(Stage):
@@ -373,6 +377,7 @@ class SatelliteQKDStage(Stage):
         import math
 
         from ...qkd.finite_key import (
+            DEVIATION_LABELS,
             VacuumDecoyParams,
             block_counts,
             blocks_for_positive_key,
@@ -400,12 +405,13 @@ class SatelliteQKDStage(Stage):
         bus.metric("qkd_finite_key_bound", "Lim et al. 2014 (vacuum + weak decoy)" if vacuum
                    else "Rusca et al. 2018 (one decoy)", self.name)
         bus.metric("qkd_eps_sec", fk_params.eps_sec, self.name)
+        bus.metric("qkd_fk_deviation", fk_params.deviation, self.name)
         bus.metric("qkd_block_units_for_key", blocks_for_positive_key(unit_z, unit_x, fk_params),
                    self.name)
         what = {"pass": "one pass", "passes": f"{block.copies:g} passes pooled",
                 "seconds": f"{block.copies:g} s at this range"}[block.kind]
         note = (f"(finite key over {what}, {float(f'{block.seconds:.4g}')} s of link time, "
-                f"eps_sec {fk_params.eps_sec:g})")
+                f"eps_sec {fk_params.eps_sec:g}, {DEVIATION_LABELS[fk_params.deviation]})")
         return (0 if aborted else fk_bits), note
 
 

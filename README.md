@@ -27,8 +27,8 @@ and is not new, the positioning (quantum-safe, not quantum-advantage) and the fo
 | Area | What runs | Real or simulated | What it is checked against |
 |---|---|---|---|
 | Post-quantum cryptography | ML-KEM-768 + X25519 hybrid key agreement, ML-DSA-65 signatures | real, in the browser and in Python | FIPS 203 and FIPS 204; NIST's ACVP cases for ML-KEM-768 |
-| QKD on fibre | BB84 decoy-state and E91; the BB84 key is a composable finite key over a privacy-amplification block of 1e7 key-basis bits, E91's stays asymptotic | simulated channel, real bounds | Ma et al. 2005; Rusca et al. 2018 Table I (26 dB row reproduced) |
-| QKD from a satellite | Micius downlink; the key is the finite key of one pass; a trusted relay and a constellation | simulated | Liao et al. 2017's pass (detections within 1 percent), 23 measured Micius nights, Lim et al. 2014 |
+| QKD on fibre | BB84 decoy-state and E91; the BB84 key is a composable finite key over a privacy-amplification block of 1e7 key-basis bits, E91's stays asymptotic | simulated channel, real bounds | Ma et al. 2005; Rusca et al. 2018 Table I (26 dB row within 2 percent); Yin et al. 2020's Chernoff-type statistics |
+| QKD from a satellite | Micius downlink; the key is the finite key of one pass; a trusted relay and a constellation | simulated | Liao et al. 2017's pass (detections within 1 percent; the key 0.75 of theirs), 23 measured Micius nights, Lim et al. 2014 |
 | QRNG | quantum-measurement simulation with SP 800-90B health tests and seeded or seedless extraction | simulated source, real tests | NIST SP 800-90B |
 | Private inference | CKKS linear layers (node-seal) and a garbled-circuit 2PC for the non-linear part (Polytune) | real protocols, notional parties | plaintext against CKKS on the same inputs |
 | QSMPC | private set intersection and secure summation; quantum forms in the full deployment | real in the browser, simulated quantum forms | the plaintext result |
