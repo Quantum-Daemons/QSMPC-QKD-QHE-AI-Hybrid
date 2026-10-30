@@ -97,13 +97,8 @@ docker-demo: ## Lightweight public-demo stack (VPS profile)
 # The browser verification checklist had no gate at all, only .gitignore:33 - and .gitignore's own HAZARD
 # note records that an ignored file is not protected from a branch switch, which is how a round of edits
 # was lost in Round 29. A path that must never be published is worth one line here.
-check-secrets: ## Assert confidential notes and the checklist are NOT tracked
-	@! git ls-files | grep -qi 'MONETIZATION' && echo "OK: MONETIZATION notes untracked" || (echo "FAIL: a MONETIZATION file is tracked!" && exit 1)
-	@! git ls-files | grep -q '\.docx$$' && echo "OK: report .docx untracked" || (echo "FAIL: a .docx is tracked!" && exit 1)
-	@! git ls-files -z | tr '\0' '\n' | grep -qP '[\x{3040}-\x{309F}\x{30A0}-\x{30FF}\x{4E00}-\x{9FFF}]' \
-	  && echo "OK: no CJK-named file tracked" \
-	  || (echo "FAIL: a file with a Japanese name is tracked - the confidential strategy notes are named this way!" && exit 1)
-	@! git ls-files | grep -q 'browser-verification-checklist' && echo "OK: verification checklist untracked" || (echo "FAIL: the browser verification checklist is tracked - it must never be published!" && exit 1)
+check-secrets: ## Assert confidential notes, the checklist and deploy details are NOT published (names and contents)
+	@bash scripts/check_secrets.sh
 
 report: ## Regenerate the report's tables and figures and rebuild the PDF
 	# Two pdflatex passes: the first resolves \input and writes the .aux, the second the ToC and
