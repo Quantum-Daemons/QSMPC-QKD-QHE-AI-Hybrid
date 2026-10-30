@@ -189,7 +189,7 @@ visible number.
     have no official vectors). ML-KEM in IKEv2 is still an Internet-Draft in the RFC Editor queue.
 
   Sources, commits and hashes: [`references/net-key-schedules.md`](../references/net-key-schedules.md).
-  The tunnels themselves run in the companion network demo, https://pqc-qkd-hybrid.daemons.jp/
+  The tunnels themselves run in the companion network demo, pqc-qkd-HybridNetwork
   (WireGuard and strongSwan between containers; its QKD key servers are simulated too). Nothing here
   connects to it, and no figure from it is quoted.
 - **Use-case pages** - model curves for the simulated channel, computed by the functions a run calls:

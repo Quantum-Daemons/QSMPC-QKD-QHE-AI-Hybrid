@@ -38,10 +38,17 @@ named=$(git grep -Il 'MONETIZATION' -- . ':!.gitignore' ':!.dockerignore' ':!.gi
 if [ -n "$named" ]; then bad "the private notes are named in: $(echo $named)"; else ok "private notes named only by the guards"; fi
 
 # The deploy target, from the per-machine env file. QSH_DEMO_PROVIDER is optional.
+# Also the host's REGISTERED DOMAIN (2026-10-30): a sibling site under the same domain was linked from a
+# page, and it resolved to the demo's own address, so naming the domain anywhere names the box. Two labels,
+# or three under a generic second level (co.jp, ac.uk, com.au ...), so the check never widens to a TLD.
 if [ -f .env.demo ]; then
   vals=$( (set -a; . ./.env.demo >/dev/null 2>&1; set +a
            url=${QSH_DEMO_URL:-}; h=${url#*://}; h=${h%%/*}; h=${h%%:*}
-           printf '%s\n%s\n%s\n' "$h" "${QSH_DEMO_SSH%%@*}" "${QSH_DEMO_PROVIDER:-}") )
+           IFS=. read -r -a lab <<< "$h"; n=${#lab[@]}; d=""
+           if [ "$n" -ge 3 ] && [[ ${lab[n-2]} =~ ^(co|ac|go|or|ne|com|net|org|gov|edu)$ ]]; then
+             d="${lab[n-3]}.${lab[n-2]}.${lab[n-1]}"
+           elif [ "$n" -ge 2 ]; then d="${lab[n-2]}.${lab[n-1]}"; fi
+           printf '%s\n%s\n%s\n%s\n' "$h" "${QSH_DEMO_SSH%%@*}" "${QSH_DEMO_PROVIDER:-}" "$d") )
   leaked=""
   while IFS= read -r v; do
     [ ${#v} -ge 4 ] || continue

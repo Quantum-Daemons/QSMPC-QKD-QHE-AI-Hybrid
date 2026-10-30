@@ -8,7 +8,7 @@
  * simulator behind ETSI GS QKD 014), which the caption says. The key schedules this page computes in
  * the browser are the network layer's MATH, not its tunnels: no packet leaves the tab.
  */
-const NETWORK_DEMO = "https://pqc-qkd-hybrid.daemons.jp/";
+// The companion demo is named, not linked (the owner's choice, 2026-10-30).
 
 export default function NetworkPositioning() {
   return (
@@ -53,8 +53,7 @@ export default function NetworkPositioning() {
         </text>
       </svg>
       <figcaption className="figure-note">
-        The network layer runs for real in the companion demo at{" "}
-        <a href={NETWORK_DEMO} target="_blank" rel="noopener noreferrer">pqc-qkd-hybrid.daemons.jp</a>{" "}
+        The network layer runs for real in the companion pqc-qkd-HybridNetwork demo
         (WireGuard and strongSwan between containers; its QKD key servers are simulated too). Nothing on this
         page connects to it, and no figure from it is quoted here.
       </figcaption>
