@@ -6,7 +6,7 @@ import {
   hasTrainedQcnn, qcnnWidths, readsInferenceBackend, runsFibreQkd, runsQsmpc, type usePipelineRun,
 } from "../lib/usePipelineRun";
 import { atmosphericLossDb, channelLossDb, FREE_SPACE, freeSpaceLink, qsdcLink } from "../lib/quantumSim";
-import { linkProfiles, profileValues } from "../lib/config";
+import { linkProfiles, profileValues, qkdCfg } from "../lib/config";
 import { rangeAtElevationKm } from "../lib/satNetwork";
 
 /** The downlink's atmosphere at a slant range for a given anchor, from the model a run uses, so the
@@ -448,7 +448,10 @@ export default function ParameterPanel({ run }: { run: Run }) {
                   <option key={v} value={String(v)}>{v.toExponential(0)}{v === 1e-9 ? " (Rusca et al. 2018)" : ""}</option>
                 ))}
               </select>
-            </div></>);
+            </div>
+            <StatisticsSelect id="pp-qkdstat" name="fk_deviation" value={String(p.fk_deviation)} dim={e91} why={why}
+              dflt={qkdCfg().finite_key_deviation}
+              onChange={(v) => setParams({ ...params, fk_deviation: v })} /></>);
             })()}
             {/* THE KEY BLOCK (Round 79). The key is the finite-key length of a block of link time;
                 which block is the choice the published practice settles (QKDConfig.free_space_block). */}
@@ -477,7 +480,10 @@ export default function ParameterPanel({ run }: { run: Run }) {
                   <option key={v} value={String(v)}>{v.toExponential(0)}{v === 1e-9 ? " (Liao et al. 2017)" : ""}</option>
                 ))}
               </select>
-            </div></>);
+            </div>
+            <StatisticsSelect id="pp-satstat" name="sat_fk_deviation" value={String(p.sat_fk_deviation)} dim={e91} why={why}
+              dflt={qkdCfg().free_space_finite_key_deviation}
+              onChange={(v) => setParams({ ...params, sat_fk_deviation: v })} /></>);
             })()}
             {!fibreQkd && (
             <div style={{ minWidth: 160, flex: "1 1 160px" }}>
@@ -507,6 +513,27 @@ export default function ParameterPanel({ run }: { run: Run }) {
           </>
         ))}
       </div>
+    </div>
+  );
+}
+
+/** The statistics of a finite key (Round 82, the user's choice). One control per link since the #78 fix: the
+ *  fibre's defaults to `QKDConfig.finite_key_deviation` (the union of two) and the satellite's to
+ *  `QKDConfig.free_space_finite_key_deviation` (Chernoff), because a pass's small counts make the union the
+ *  looser choice there. `dflt` names this link's default in the tooltip. */
+function StatisticsSelect({ id, name, value, dim, why, dflt, onChange }: {
+  id: string; name: string; value: string; dim: boolean; why: string; dflt: string; onChange: (v: string) => void;
+}) {
+  return (
+    <div style={{ minWidth: 180, flex: "1 1 180px" }}>
+      <label className="muted" htmlFor={id} style={{ fontSize: 12, opacity: dim ? 0.45 : 1 }}
+        title={why + "How each count's expectation is bounded from what was observed. The published bounds (Lim et al. 2014, Rusca et al. 2018) move every count by the Hoeffding deviation of its basis total; Yin et al. 2020's variant of the Chernoff bound moves each by its own, far less for the small decoy and vacuum counts and more for counts over a quarter of their basis. 'Tighter of the two' bounds each both ways at half the failure probability and keeps the tighter: a union bound, the same security budget. It wins on the fibre; on a satellite pass Chernoff alone gives slightly more key, so each link has its own default (here: " + (dflt === "tighter" ? "tighter of the two" : dflt === "chernoff" ? "Chernoff" : "Hoeffding") + ")."}>Finite-key statistics</label>
+      <select id={id} name={name} value={value} style={{ width: "100%", opacity: dim ? 0.45 : 1 }}
+        aria-disabled={dim ? true : undefined} onChange={(e) => onChange(e.target.value)}>
+        <option value="tighter">tighter of the two</option>
+        <option value="chernoff">Chernoff (Yin 2020)</option>
+        <option value="hoeffding">Hoeffding (published)</option>
+      </select>
     </div>
   );
 }

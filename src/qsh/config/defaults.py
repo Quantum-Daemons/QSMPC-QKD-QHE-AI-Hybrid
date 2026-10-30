@@ -198,6 +198,21 @@ class QKDConfig:
     finite_key_block: str = "pa_bits"
     finite_key_block_seconds: float = 1.0
     finite_key_block_pa_bits: float = 1e7
+    # THE STATISTICS OF THE FIBRE'S FINITE KEY (Round 82, the user's choice): "tighter", each count
+    # bounded both by Yin et al. 2020's variant of the Chernoff bound (Sci. Rep. 10, 14312,
+    # Eqs. (9)-(10)) and by the Hoeffding deviation on the basis total that Lim et al. 2014 and Rusca
+    # et al. 2018 published, at eps/2 each, the tighter kept (a union bound); or either alone,
+    # "chernoff" or "hoeffding". Chernoff is far tighter for the small counts and looser for counts over
+    # a quarter of their basis, as the fibre's 1-decoy signal and decoy are, so on the fibre the union
+    # wins: threshold 3.60e6 pulses against 5.35e6 (Hoeffding) and 5.71e6 (Chernoff). Hoeffding still
+    # checks Rusca's Table I, which was computed with it.
+    finite_key_deviation: str = "tighter"
+    # THE SATELLITE'S (the #78 fix, the user's choice, 2026-10-30). On a pass Chernoff already wins
+    # nearly every count, so splitting eps between the two bounds costs more than choosing per count
+    # gains: Liao et al. 2017's pass carries 226,073 bits under Chernoff against 226,056 under the
+    # union, and the default pass 139,251 against 139,201. Round 82's register called the union "the
+    # tightest of the three on every block measured", which held on the fibre only.
+    free_space_finite_key_deviation: str = "chernoff"
     # --- free-space (satellite downlink) channel ---
     #
     # These existed only as TypeScript literals in quantumSim.ts's FREE_SPACE, which every satellite
@@ -325,19 +340,28 @@ class QKDConfig:
     #
     # Measured trade, at the shipped 50 km channel, ON THE RUSCA SET OF ROUND 76 with its dead time
     # (asymptotic: Ma et al.'s one-decoy Eq. (41) times the dead-time factor; thresholds:
-    # `finite_key.py` as corrected in Round 79, both at p_signal = p_z = 0.5, the shipped setting):
+    # `finite_key.py` as corrected in Round 82, both at p_signal = p_z = 0.5, the shipped setting;
+    # under the default statistics, the tighter of Chernoff and Hoeffding, and in brackets under
+    # Hoeffding alone, as Rusca et al. published it):
     #
-    #     mu=0.5,    nu=0.1      asymptotic 0.003183 bit/pulse   positive-key threshold 5.78e6 pulses
-    #     mu=0.342,  nu=0.142    asymptotic 0.002853 bit/pulse   positive-key threshold 4.78e6 pulses
-    #     mu=0.375,  nu=0.129    asymptotic 0.002968 bit/pulse   positive-key threshold 4.64e6 pulses
-    #     mu=0.51,   nu->0       asymptotic 0.003572 bit/pulse   threshold diverges (1.6e8 at nu = 0.01)
+    #     mu=0.5,    nu=0.1      asymptotic 0.003183 bit/pulse   threshold 3.43e6 pulses (6.92e6)
+    #     mu=0.342,  nu=0.142    asymptotic 0.002853 bit/pulse   threshold 3.60e6 pulses (5.35e6)
+    #     mu=0.375,  nu=0.129    asymptotic 0.002968 bit/pulse   threshold 3.37e6 pulses (5.27e6)
+    #     mu=0.51,   nu->0       asymptotic 0.003572 bit/pulse   threshold diverges (1.7e7 at nu = 0.01)
+    #
+    # ROUND 82 MOVED THE OPTIMUM AND THE PAIR STAYED. Under the default statistics the two-parameter
+    # optimum is mu = 0.399, nu = 0.098 at 3.31e6, and the shipped pair is 9 percent above it; under
+    # Hoeffding alone it is mu = 0.336, nu = 0.119 at 5.23e6, the pair 2.3 percent above. Kept: the
+    # shipped 2e7 block clears either threshold, 5.6x and 3.7x, and moving the pair would move every
+    # asymptotic figure the pages and documents quote.
     #
     # THESE RATES ARE PER SIGNAL PULSE, the convention until Round 78. The pages now count per pulse
     # SENT (the user's choice): only the p_signal share of the pulses carries key, so at the shipped
     # p_signal = 0.5 each reads half - the shipped pair's 0.002853 is 0.001427 bit/pulse on the page,
     # 28,534 bits in the 2e7-pulse block asymptotically. The comparison between rows does not change.
     # Since Round 80 the page's KEY is not that product: it is the block's composable finite key
-    # (`finite_key_block` below), 9,811 bits for the same 2e7 pulses.
+    # (`finite_key_block` below), 11,314 bits for the same 2e7 pulses since Round 82 (9,217 under
+    # Hoeffding alone; 9,811 before (A16) was corrected).
     #
     # Row three is this channel's own finite-key optimum, and the shipped pair is within 3% of its
     # threshold, so the intensities did not move with the detector set or with Round 79's two
@@ -356,8 +380,8 @@ class QKDConfig:
     # Monte Carlo allocates ~2.0 GB at 3.84e7 pulses against ~1.03 GB at the shipped 2e7.
     #
     # BOTH ROWS AT p_signal = p_z = 0.5. The optimiser's FULL solution also sets p_signal and p_z,
-    # which are not config keys here (3.10e6 pulses on the Rusca set, at p_signal = 0.168); see the
-    # note on `pulses` above.
+    # which are not config keys here (2.36e6 pulses on the Rusca set under the default statistics, at
+    # p_signal = 0.198; 3.35e6 under Hoeffding, at 0.150); see the note on `pulses` above.
     #
     # Chosen by an optimiser, so the value is reproducible rather than tuned by hand:
     #   python -c "from qsh.qkd.finite_key import optimise_parameters; print(optimise_parameters()[0])"

@@ -5,7 +5,7 @@ import { qkdCfg } from "./config";
 // A cycle, and a safe one: finiteKey.ts reads this module's channel functions only when called,
 // and nothing here runs at import time. Round 80 put the finite key in `bb84()` so that every
 // caller - the pipelines, the two-party demo, the charts - reports the same composable key.
-import { expectedCounts, fibreBlockPulses, finiteKeySourceOf, keyLength } from "./finiteKey";
+import { expectedCounts, fibreBlockPulses, finiteKeySourceOf, keyLength, type Deviation } from "./finiteKey";
 
 // Deterministic seeded RNG (mulberry32) so demo runs are reproducible per seed.
 export function rng(seed: number): () => number {
@@ -648,9 +648,9 @@ export function bb84Rate(p: ChannelParams, fEC = qkdCfg().error_correction_eff):
  *  `bb84.py::_block_key_bits`: the block is `blockPulses` when named; otherwise a fibre channel takes
  *  the configured fibre block (`QKDConfig.finite_key_block*`) and a downlink the run's own pulses. */
 export function blockKey(p: ChannelParams, fEC: number, nPulses: number, blockPulses?: number,
-                         epsSec?: number): { bits: number; blockPulses: number } {
+                         epsSec?: number, deviation?: Deviation): { bits: number; blockPulses: number } {
   const q = qkdCfg();
-  const src = finiteKeySourceOf(p, epsSec ?? q.finite_key_eps_sec, fEC);
+  const src = finiteKeySourceOf(p, epsSec ?? q.finite_key_eps_sec, fEC, deviation);
   const block = blockPulses ?? (p.freeSpace ? nPulses : fibreBlockPulses(p, src, {
     kind: String(q.finite_key_block), runPulses: nPulses, seconds: Number(q.finite_key_block_seconds),
     paBits: Number(q.finite_key_block_pa_bits) }));
@@ -659,13 +659,14 @@ export function blockKey(p: ChannelParams, fEC: number, nPulses: number, blockPu
 }
 
 /** `blockKey`'s bits for a named block. */
-export function blockKeyBits(p: ChannelParams, fEC: number, blockPulses: number, epsSec?: number): number {
-  return blockKey(p, fEC, blockPulses, blockPulses, epsSec).bits;
+export function blockKeyBits(p: ChannelParams, fEC: number, blockPulses: number, epsSec?: number,
+                             deviation?: Deviation): number {
+  return blockKey(p, fEC, blockPulses, blockPulses, epsSec, deviation).bits;
 }
 
 export function bb84(nPulses: number, p: ChannelParams, seed = 0,
                      fEC = qkdCfg().error_correction_eff,
-                     opts: { blockPulses?: number; epsSec?: number } = {}): BB84Result {
+                     opts: { blockPulses?: number; epsSec?: number; deviation?: Deviation } = {}): BB84Result {
   const u = rng(seed + 1);
   const rate = bb84Rate(p, fEC);
   const { mu, qMu, cDt } = rate;
@@ -719,7 +720,7 @@ export function bb84(nPulses: number, p: ChannelParams, seed = 0,
     // Python path computes it: the bound the source supports - Rusca et al. 2018 for one decoy, Lim et
     // al. 2014 for a source that sends the vacuum - on the expected counts of `blockPulses` channel
     // uses (default: this run's). It was the rate times the pulses, which no finite block distils.
-    ...(() => { const k = blockKey(p, fEC, nPulses, opts.blockPulses, opts.epsSec);
+    ...(() => { const k = blockKey(p, fEC, nPulses, opts.blockPulses, opts.epsSec, opts.deviation);
                 return { secureKeyBits: k.bits, blockPulses: k.blockPulses }; })(),
     // channelLossDb(), not the linear product: with the free-space model selected `lossDbPerKm`
     // is 0, so recomputing it here would have REPORTED 0 dB on the satellite page while the
