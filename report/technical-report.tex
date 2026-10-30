@@ -387,13 +387,14 @@ linked to their neighbours.
 
 The key is the composable finite key of one pass peaking at the page's range, the block every flown
 experiment found computes its key on: Lim et al.'s (2014) bound for a source that sends the vacuum,
-on the pass's counts summed second by second, with each count's expectation bounded by the tighter
-of Yin et al.'s (2020) Chernoff-type bound and the published Hoeffding deviation. On Liao's pass at
-their failure probability of $10^{-9}$ it gives 226,056 bits, 0.75 of the 300,939 they report, and
+on the pass's counts summed second by second, with each count's expectation bounded by Yin et al.'s
+(2020) Chernoff-type bound, which on a pass gives slightly more key than the union of it and the
+published Hoeffding deviation that the fibre uses. On Liao's pass at
+their failure probability of $10^{-9}$ it gives 226,073 bits, 0.75 of the 300,939 they report, and
 164,183 bits, 0.55, with Hoeffding's deviation alone, as Lim et al.\ published it. On the
 Micius--Zvenigorod session, whose key was computed with Chernoff bounds, it gives 0.69 of it, and
-0.56 with Hoeffding's: the statistics account for about half of each gap, and the two fractions
-part, so the rest is not one shared cause. With the Hoeffding statistics the papers used, the same
+0.56 with Hoeffding's: the statistics close 45\,percent of the first gap and 29\,percent of the
+second, and the two fractions part, so the rest is not one shared cause. With the Hoeffding statistics the papers used, the same
 bound reproduces Rusca et al.'s (2018) two-decoy figures to within 20\,percent, always below them,
 and their ratio to the one-decoy figures within 15\,percent; their one-decoy 26\,dB row is
 reproduced to within 2\,percent under the paper's own dead-time convention. Pooling passes, or a
@@ -1015,8 +1016,8 @@ transcription error in that bound, $\tau_0$ on $\delta(n_Z)$ in (A16), which the
 and which had overstated the key. The satellite's finite key, at an error-correction efficiency of
 1.16, was 0.55 of Liao et al.'s published key on the same pass and 0.56 of Khmelev et al.'s on
 theirs under the published Hoeffding statistics; with Chernoff-type statistics, Khmelev's own kind,
-it is 0.75 and 0.69, so about half of each gap is the statistics, and the rest is not one shared
-cause. And the public demo's QKD yields a key length, not key bytes: its quantum channel is simulated.
+it is 0.75 and 0.69, so the statistics close 45\,percent of the first gap and 29\,percent of the
+second, and the rest is not one shared cause. And the public demo's QKD yields a key length, not key bytes: its quantum channel is simulated.
 
 \vspace{4mm}
 \noindent\rule{\textwidth}{0.4pt}\\

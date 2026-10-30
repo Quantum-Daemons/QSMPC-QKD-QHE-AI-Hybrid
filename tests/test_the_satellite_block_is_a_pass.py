@@ -21,9 +21,10 @@ WHAT IS ASSERTED
 - Against flown passes, with nothing fitted, under each statistics (Round 82). Under Hoeffding, as
   Lim et al. 2014 published it: Liao's 19 December 2016 pass at 1e-9 reads 0.55 of the published
   300,939 bits, and Khmelev et al.'s Micius-Zvenigorod session the same fraction, 0.56, of its
-  629,000 bits (computed with Chernoff bounds). Under the default, the tighter of Chernoff and
-  Hoeffding per count, they read 0.75 and 0.69: the statistics account for about half of the gap, and
-  the two fractions part, so the rest is not one shared cause. Jinan-1's four published passes (Li et
+  629,000 bits (computed with Chernoff bounds). Under Chernoff-type bounds per count, the satellite's
+  default since the #78 fix, they read 0.75 and 0.69: the statistics close 45 percent of the gap to
+  Liao's key and 29 percent of the gap to Khmelev's, and the two fractions part, so the rest is not one
+  shared cause (Round 82 said "about half of the gap", true for Liao only). Jinan-1's four published passes (Li et
   al. 2025, Table 1): within a factor of 2.5 under Hoeffding, and within 25% on the pass whose count
   rate fixed the profile's one calibrated constant; within a factor of 3 under the default, whose
   whole-pass key Jinan-1's 500-kbit blocks cannot reach.
@@ -89,7 +90,8 @@ def browser() -> dict:
         entry.write_text(
             f"export * from {json.dumps(str(WEB / 'src/lib/finiteKey'))};\n"
             f"export {{ satChannel, satBlock }} from {json.dumps(str(WEB / 'src/lib/satLink'))};\n"
-            f"export {{ liaoPass }} from {json.dumps(str(WEB / 'src/lib/satNetwork'))};\n")
+            f"export {{ liaoPass }} from {json.dumps(str(WEB / 'src/lib/satNetwork'))};\n"
+            f"export {{ qkdCfg }} from {json.dumps(str(WEB / 'src/lib/config'))};\n")
         subprocess.run([str(ESBUILD), str(entry), "--bundle", "--format=esm", "--platform=node",
                         f"--outfile={bundle}", "--log-level=error"], cwd=WEB, check=True, capture_output=True)
         runner.write_text(f"import * as m from {json.dumps(bundle.as_uri())};\n" + f"""
@@ -97,7 +99,10 @@ const cases = {json.dumps([c for c, _ in CASES])};
 const out = cases.map((cfg) => {{
   const ch = m.satChannel(cfg);
   const block = m.satBlock(cfg, ch);
-  const src = m.finiteKeySourceOf(ch, Number(cfg.sat_eps_sec ?? 1e-9));
+  // The satellite's own statistics, as the page's stage passes them (the #78 fix): without them the
+  // bound falls back to the fibre's default and the two languages part.
+  const src = m.finiteKeySourceOf(ch, Number(cfg.sat_eps_sec ?? 1e-9), undefined,
+                                  cfg.sat_fk_deviation ?? m.qkdCfg().free_space_finite_key_deviation);
   const [z, x] = m.blockCounts(block.unit, src);
   const r = m.keyLength(m.scaleCounts(z, block.copies), m.scaleCounts(x, block.copies), src);
   return {{ key: Number.isFinite(r.keyBits) ? r.keyBits : null, units: m.blocksForPositiveKey(z, x, src),
@@ -106,7 +111,7 @@ const out = cases.map((cfg) => {{
 }});
 const link = m.satChannel({{}});
 const liao = m.liaoPass(link);
-const src = m.finiteKeySourceOf(link, 1e-9);
+const src = m.finiteKeySourceOf(link, 1e-9, undefined, m.qkdCfg().free_space_finite_key_deviation);
 const lk = m.keyLength(...m.blockCounts(liao.segments, src), src);
 console.log(JSON.stringify({{ cases: out, liao: {{ key: lk.keyBits, s: liao.durationS }} }}));
 """)
@@ -143,11 +148,16 @@ def test_the_python_pass_is_liaos_and_the_test_oracles(browser) -> None:
     fs = ch.free_space
     liao = simulate_pass(ch, link_elevation_deg(fs, 645.0), window_elevation_deg=link_elevation_deg(fs, 1200.0),
                          step_s=0.25)
-    key = finite_key_over(liao.segments).key_bits
+    # The satellite's own default statistics (the #78 fix), which the browser's stage passes too; the bare
+    # class default is the fibre's.
+    from qsh.config import get_config
+
+    sat = VacuumDecoyParams(deviation=get_config().qkd.free_space_finite_key_deviation)
+    key = finite_key_over(liao.segments, sat).key_bits
     assert liao.duration_s == pytest.approx(browser["liao"]["s"], rel=1e-12)
     assert key == pytest.approx(browser["liao"]["key"], rel=1e-9)
-    assert key == pytest.approx(finite_key_over(_liao_pass()).key_bits, rel=1e-3)
-    assert 0.7 < key / 300_939 < 0.8                     # the default statistics (Round 82)
+    assert key == pytest.approx(finite_key_over(_liao_pass(), sat).key_bits, rel=1e-3)
+    assert 0.7 < key / 300_939 < 0.8                     # the satellite's default statistics
     published = finite_key_over(liao.segments, VacuumDecoyParams(deviation="hoeffding")).key_bits
     assert 0.5 < published / 300_939 < 0.6               # Hoeffding, as Lim et al. published it
 
@@ -180,13 +190,13 @@ def test_seconds_at_a_range_carry_far_less_than_a_pass() -> None:
     statistics they carry no key and a key needs 33; under the default, which bounds the small counts
     by their own Chernoff deviation (Round 82), they carry about a hundredth of the pass's and a key
     needs 7."""
-    m = _run({"sat_block": "seconds", "fk_deviation": "hoeffding"})
+    m = _run({"sat_block": "seconds", "sat_fk_deviation": "hoeffding"})
     assert m["qkd_block_s"] == 10.0 and m["secure_key_bits"] == 0 and m["qkd_mixed"] == 0
     assert m["qkd_block_units_for_key"] == 33          # seconds at 800 km before the bound turns
     assert _run({"sat_block": "seconds", "sat_block_seconds": 33,
-                 "fk_deviation": "hoeffding"})["secure_key_bits"] > 0
+                 "sat_fk_deviation": "hoeffding"})["secure_key_bits"] > 0
     d, whole = _run({"sat_block": "seconds"}), _run({})["secure_key_bits"]
-    assert d["qkd_fk_deviation"] == "tighter" and d["qkd_block_units_for_key"] == 7
+    assert d["qkd_fk_deviation"] == "chernoff" and d["qkd_block_units_for_key"] == 7
     assert 0 < d["secure_key_bits"] < 0.02 * whole, (d["secure_key_bits"], whole)
 
 
@@ -196,21 +206,22 @@ def test_the_sampled_abort_still_decides() -> None:
 
 
 def _pass_key(profile: str, top: float, window: float | None = None, deviation: str | None = None) -> float:
-    ctx = Context(usecase="satellite_comms", config={"sat_profile": profile, "fk_deviation": deviation})
+    ctx = Context(usecase="satellite_comms", config={"sat_profile": profile, "sat_fk_deviation": deviation})
     ch, src = _sat_channel(ctx), _sat_source(ctx)
     p = simulate_pass(ch, top, window_elevation_deg=window)
     return finite_key_over(p.segments, _sat_finite_key_params(ctx, src)).key_bits
 
 
-def test_the_statistics_account_for_about_half_of_both_gaps() -> None:
+def test_the_statistics_close_45_and_29_percent_of_the_two_gaps() -> None:
     """Khmelev et al. (arXiv:2310.17476): 629,000 bits at 1e-9 with Chernoff bounds (Zhang et al.
     2017's), over the session whose sifted rate fell from 20.7 kbit/s at 600 km to 2.9 at 1,100 km;
     Liao et al. 2017's pass, 300,939 bits by an analysis the paper does not name.
 
     Under Hoeffding the model's key is the same fraction of both, 0.55 and 0.56, which Round 79 read as
     the gap being the analysis. Round 82 tested that with Chernoff-type statistics, Khmelev's own kind:
-    both rise, to 0.75 and 0.69 - about half of each gap - and part, so what remains is not one shared
-    cause."""
+    both rise, to 0.75 and 0.69 - 45 percent of the gap to Liao's key and 29 percent of the gap to
+    Khmelev's - and part, so what remains is not one shared cause. Round 82 wrote "about half of each
+    gap" and asserted a band wide enough to hold both; the band is now each gap's own."""
     ch = _sat_channel(Context(usecase="satellite_comms", config={"sat_profile": "micius_2022_zvenigorod"}))
     fs = ch.free_space
     ch0 = _sat_channel(Context(usecase="satellite_comms", config={}))
@@ -224,13 +235,12 @@ def test_the_statistics_account_for_about_half_of_both_gaps() -> None:
         ratios[dev] = (kh, li)
     kh, li = ratios["hoeffding"]
     assert kh == pytest.approx(0.564, abs=0.02) and abs(kh - li) < 0.05, ratios
-    kh, li = ratios["tighter"]
+    kh, li = ratios["chernoff"]
     assert kh == pytest.approx(0.692, abs=0.02) and li == pytest.approx(0.751, abs=0.02), ratios
-    assert ratios["chernoff"][0] == pytest.approx(kh, abs=0.01) and ratios["chernoff"][1] == pytest.approx(li, abs=0.01)
-    # About half of each gap, and the two no longer the same fraction.
-    for i in (0, 1):
-        closed = (ratios["tighter"][i] - ratios["hoeffding"][i]) / (1 - ratios["hoeffding"][i])
-        assert 0.25 < closed < 0.6, ratios
+    assert ratios["tighter"][0] == pytest.approx(kh, abs=0.01) and ratios["tighter"][1] == pytest.approx(li, abs=0.01)
+    # Khmelev's gap closes 29 percent, Liao's 45, and the two no longer the same fraction.
+    closed = [(ratios["chernoff"][i] - ratios["hoeffding"][i]) / (1 - ratios["hoeffding"][i]) for i in (0, 1)]
+    assert closed[0] == pytest.approx(0.29, abs=0.03) and closed[1] == pytest.approx(0.45, abs=0.03), closed
     assert abs(kh - li) > 0.05, ratios
 
 
@@ -247,5 +257,5 @@ def test_jinan1_passes_are_within_a_factor_of_two_and_a_half() -> None:
     assert ratios["25 Sep"] == pytest.approx(1.0, abs=0.25), ratios
     # The default statistics (Round 82) only add key here, and the whole pass's key stays within a
     # factor of 3 of the published one, computed on 500-kbit blocks inside the orbit.
-    tighter = {d: _pass_key("jinan1_2022_jinan", top) / fin for d, (top, fin) in JINAN_PASSES.items()}
-    assert all(ratios[d] <= tighter[d] < 3.0 for d in ratios), (ratios, tighter)
+    default = {d: _pass_key("jinan1_2022_jinan", top) / fin for d, (top, fin) in JINAN_PASSES.items()}
+    assert all(ratios[d] <= default[d] < 3.0 for d in ratios), (ratios, default)

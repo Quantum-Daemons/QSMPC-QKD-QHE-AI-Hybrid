@@ -29,9 +29,10 @@ WHAT IS ASSERTED
   source; the intensity conditions Lim et al. state are enforced.
 
 THE TABLE I COMPARISONS RUN UNDER HOEFFDING (Round 82). Both protocols' rows were computed with the
-published Hoeffding statistics, so the bound is held to them under the same; the pages default to the
-tighter of Chernoff and Hoeffding per count (`QKDConfig.finite_key_deviation`), which Liao's pass is
-checked under too.
+published Hoeffding statistics, so the bound is held to them under the same; the fibre pages default to
+the tighter of Chernoff and Hoeffding per count (`QKDConfig.finite_key_deviation`) and the satellite to
+Chernoff (`QKDConfig.free_space_finite_key_deviation`, the #78 fix), and Liao's pass is checked under all
+three.
 """
 
 from __future__ import annotations
@@ -157,7 +158,8 @@ def _liao_pass(n: int = 4000) -> list[tuple[float, ChannelParams]]:
     return out
 
 
-@pytest.mark.parametrize("deviation,share,vacuum_gain", [("hoeffding", 0.546, 1.169), ("tighter", 0.751, 1.207)])
+@pytest.mark.parametrize("deviation,share,vacuum_gain",
+                         [("hoeffding", 0.546, 1.169), ("chernoff", 0.751, 1.222), ("tighter", 0.751, 1.207)])
 def test_liaos_pass_carries_a_key_below_the_papers(deviation, share, vacuum_gain) -> None:
     """Under the published statistics and under the default (Round 82). The vacuum's gain over the
     1-decoy bound on the same pulses read 1.076 until Round 82's correction to (A16), which lowered

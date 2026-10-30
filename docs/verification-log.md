@@ -3549,8 +3549,16 @@ with the numbers, and the answer was the tighter of the two. A choice made on on
 worth re-asking when the second case disagrees.
 
 **A coincidence is a weak test of a cause.** The same fraction twice looked like one cause. Changing
-the cause it named moved both fractions, by different amounts, and they parted. So half of the gap
-was the statistics, and the rest is not shared.
+the cause it named moved both fractions, by different amounts, and they parted. The statistics
+closed 45 percent of one gap and 29 percent of the other, and the rest is not shared. (This said
+"half of the gap" until the fix commit: a band wide enough to hold both numbers had been asserted
+instead of either.)
+
+**A table rounded to the third place can hide the claim it is quoted for.** "The tightest of the
+three on every block measured" sat above a table whose satellite rows read 0.751 and 0.751; unrounded,
+Chernoff alone was 17 bits ahead on Liao's pass. The fix gave the satellite its own default. And a
+cross-language test only checks what both sides are asked: its harness called the bound without
+naming the statistics, so it compared the fibre's default to the satellite's until it was told.
 
 **An equation read three times found three errors.** Round 79 read Rusca et al.'s appendix and found
 a constant transcribed as 2 to the 21st and an unnamed choice of errors. Reading (A16) again at 300 dpi

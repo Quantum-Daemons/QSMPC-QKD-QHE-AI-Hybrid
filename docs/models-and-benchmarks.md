@@ -219,15 +219,17 @@ visible number.
   Jinan-1's four published passes within a factor of 2.5. Writing it found two errors in the
   one-decoy bound, both on the safe side: a constant transcribed as 2 to the 21st where both papers
   print 21 squared, and the vacuum bounded by the signal's errors where the decoy's are tighter.
-- **Finite-key statistics** (Round 82) - each count's expectation is bounded by the tighter of Yin
-  et al. 2020's Chernoff-type bound (Sci. Rep. 10, 14312, Eqs. (9)-(10)) and the published Hoeffding
-  deviation on the basis total, at half the failure probability each: a union bound, so the
-  security budget is unchanged. Neither alone is tighter everywhere: Chernoff wins for a count under
+- **Finite-key statistics** (Round 82) - on the fibre each count's expectation is bounded by the
+  tighter of Yin et al. 2020's Chernoff-type bound (Sci. Rep. 10, 14312, Eqs. (9)-(10)) and the
+  published Hoeffding deviation on the basis total, at half the failure probability each: a union
+  bound, so the security budget is unchanged. On the satellite the default is Chernoff alone, because
+  there the halving costs more than the per-count choice gains (Liao's pass 226,073 bits against
+  226,056). Neither alone is tighter everywhere: Chernoff wins for a count under
   a quarter of its basis (the satellite's decoy and vacuum), Hoeffding for a larger one (the fibre's
   signal and decoy). Chernoff or Hoeffding alone can be chosen on the page. On Liao's pass the key
   rises from 0.55 to 0.75 of the published one, on Khmelev's session from 0.56 to 0.69: the
-  statistics account for about half of each gap, and the two fractions part, so the rest is not one
-  shared cause. Jinan-1's passes move to 1.35 to 2.62 times their published keys, computed on
+  statistics close 45 percent of the first gap and 29 percent of the second, and the two fractions
+  part, so the rest is not one shared cause. Jinan-1's passes move to 1.35 to 2.62 times their published keys, computed on
   500-kbit blocks. Reading Rusca et al.'s (A16) again found a third transcription error in the
   one-decoy bound, this one in the unsafe direction: tau0 multiplied delta(n_Z) as well as the error
   term, which the paper does not print. Corrected, the fibre's threshold under Hoeffding is 5.35e6
