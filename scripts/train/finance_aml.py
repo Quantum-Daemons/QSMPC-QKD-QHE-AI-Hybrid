@@ -1,8 +1,10 @@
 #!/usr/bin/env python
 """Train the finance / AML models on the full IBM AMLworld HI-Small corpus.
 
-    T2 teacher   graph-feature-preprocessed gradient boosting (GFP + XGBoost)
-    T1 student   logistic regression distilled from the teacher, evaluated under real CKKS
+    T2 teacher   graph-feature gradient boosting (this project's own graph features + XGBoost;
+                 IBM's Graph Feature Preprocessor itself is excluded, see FEATURES below)
+    T1 student   logistic regression distilled from the teacher, built for CKKS (no code path
+                 encrypts it today; the public page encrypts the bundled PaySim model instead)
 
 Dataset: 5,078,345 transactions, 5,177 labelled laundering — 1 in 981. That ratio is the whole
 reason this script reports what it reports. Accuracy is 99.9% for a model that predicts "clean"
@@ -10,7 +12,9 @@ unconditionally, so the headline is minority-class F1 with AUPRC beside it, and 
 (about 0.001) is printed so the lift is legible.
 
 Baseline to beat: GFP+XGBoost minority-class F1 63.23 +/- 0.17 (NeurIPS 2023 D&B).
-SOTA to match:    Multi-PNA+EU 68.16 +/- 2.65 (AAAI-24, vol. 38 no. 10, pp. 11838-11846).
+Best published:   MEGA-GenAgg 74.88 +/- 0.38 (arXiv:2412.00241v2 Table 2; v3 accepted in TMLR
+                  2026); the registry's ceiling is that table's MEGA-PNA row, 74.01. Multi-PNA+EU
+                  (AAAI-24, 68.16 +/- 2.65) is no longer the state of the art.
 
 The split is temporal, not random. Transactions are a time series and a random split leaks the
 future into the past through the per-account aggregates, which inflates every number.
@@ -34,7 +38,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "src"))
 from qsh.models import datasets, distil, export, metrics, train  # noqa: E402
 from qsh.models.registry import get as get_spec  # noqa: E402
 
-#: Fraction of the timeline held out for testing. The paper's own protocol is temporal.
+#: Fraction of the TRANSACTIONS, in time order, held out for testing (the last 30 percent of rows,
+#: which spans a larger share of the calendar). The paper's own protocol is temporal too, but
+#: 60/20/20 by transaction index, against 56/14/30 here once VAL_FRACTION is applied.
 TEST_FRACTION = 0.30
 
 #: Slice of the *training* window reserved for early stopping and for choosing the decision
@@ -75,9 +81,10 @@ FEATURES = [
 #:
 #: Do NOT reach for this constant to close the gap to the published baseline. Raising it is the
 #: obvious-looking move and the measurement says it is nearly worthless: the GFP paper
-#: (arXiv:2402.08593) decomposes its own contribution and caps multi-hop cycle and scatter-gather
-#: features at about 4% relative, against more than 30% for fan-in/fan-out, which is already
-#: implemented here. The gap is architectural — per-transaction subgraph patterns versus per-account
+#: (arXiv:2402.08593) decomposes its own contribution, and its Table 5 (HI-Small, XGBoost, batch
+#: 128) moves minority F1 from 19.75 to 56.88 with fan-in/fan-out, which is already implemented
+#: here, then only to 58.60 with multi-hop patterns ("up to 4%" in its text means F1 points, not a
+#: relative gain). The gap is architectural - per-transaction subgraph patterns versus per-account
 #: scalar aggregates — and no value of this constant addresses that.
 MAX_CYCLE_HOPS = 4
 
@@ -602,7 +609,7 @@ def main() -> int:
     print(f"    CORP DSC  {_c['corp_raw']['dsc']:.6f}   (discrimination; a monotone map cannot change it)")
 
     spec = get_spec("finance_aml.gbm")
-    print("\n  teacher (GFP + XGBoost)")
+    print("\n  teacher (own graph features + XGBoost)")
     for k, v in teacher_metrics.items():
         print(f"    {k:22s} {v:.6f}" if isinstance(v, float) else f"    {k:22s} {v}")
     print(f"    published baseline     {spec.metric.baseline}  ({spec.metric.baseline_source})")
@@ -710,9 +717,11 @@ def main() -> int:
             "and it is reimplementable without `snapml`, simply at more cost than renaming "
             f"aggregates. Reachability is computed to {MAX_CYCLE_HOPS} hops against injected CYCLE "
             "attempts of up to 10; that was previously recorded as a main cause and is NOT one - the "
-            "GFP paper (arXiv:2402.08593) decomposes its own contribution and caps multi-hop cycle "
-            "and scatter-gather features at about 4% relative, while fan-in/fan-out, which is "
-            "reimplemented here, carries more than 30%. The evaluation is strictly inductive and "
+            "GFP paper (arXiv:2402.08593) decomposes its own contribution, and its Table 5 "
+            "(HI-Small, XGBoost, batch 128) gives fan-in/fan-out, which is reimplemented here, 37 "
+            "F1 points (19.75 to 56.88) and multi-hop cycle and scatter-gather patterns 1.7 more "
+            "(to 58.60; 'up to 4%' in its text is F1 points, not a relative gain). The evaluation "
+            "is strictly inductive and "
             "temporally split. Per-account aggregates are causal (each row sees only edges strictly "
             "before it); the structural block - cycle closure, scatter-gather, bank diversity, burst "
             "degree - is still fitted on the training window, because recomputing sparse "

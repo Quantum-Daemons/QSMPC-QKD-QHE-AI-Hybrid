@@ -1,8 +1,10 @@
-"""Quantum QSMPC-FHE private-inference benchmark path.
+"""Quantum QSMPC-FHE comparison row (simulated; not a private inference).
 
-Evaluates the quantum path: a QHE-protected QCNN private inference (QOTP + a parameterised
-RY/RZ/CNOT circuit), recording latency, an ESTIMATED T-gate budget, qubit overhead and -- crucially
--- the
+Evaluates the quantum path: an untrained PennyLane QCNN-style circuit (parameterised RY/RZ/CNOT)
+run in PLAINTEXT, beside a separate QOTP hiding check on a tiny fixed state - nothing is evaluated
+homomorphically and nothing is decrypted (see :func:`qsh.qhe.private_inference.private_inference`).
+It records latency, an ESTIMATED T-gate budget, qubit overhead and the security model of the
+scheme it simulates.
 
 CORRECTED ROUND 55, AND THE CORRECTION HAD ALREADY BEEN MADE ELSEWHERE. This said "Clifford+T QCNN"
 and "T-gate count". `qsh/qhe/qcnn.py` builds no T gates at all - the circuit is RY/RZ rotations and
@@ -14,8 +16,6 @@ module was the third copy, and its docstring is what a reader of this code sees 
 
 The browser row is different and is genuinely counted: 56 T-gates from an actual gate list. So the
 two rows of one table mean different things by "T-gates", which `BenchmarkPanel` now says.
-
-security model of the scheme it simulates.
 
 CORRECTED 2026-10-23. This said the information-theoretic model "the classical RLWE path cannot match"
 and that the Rate-1 QFHE ratio is measured "to contrast communication efficiency". The one-time pad is
@@ -59,7 +59,8 @@ def run_quantum(
     qkd_key_bits: int | None = None,
     qber: float | None = None,
 ) -> BenchResult:
-    """Benchmark QHE private inference of a QCNN over ``n_samples``.
+    """Benchmark the untrained QCNN-style circuit over ``n_samples``, evaluated in plaintext beside a
+    QOTP hiding check (no homomorphic evaluation; see the module docstring).
 
     ``kem`` / ``qkd_key_bits`` / ``qber`` describe the TRANSPORT the caller ran under. They are
     parameters rather than literals because this function has no QKD channel in it - nothing here
@@ -124,10 +125,12 @@ def run_quantum(
         device="cpu-sim",
         extra={"samples": n, "qcnn_params": qc.n_params,
                "input_hidden": bool(rep.input_hidden) if rep else None,
-               # quantum analogue of the FHE-linear / MPC-non-linear split: Clifford gates are
-               # the cheap "linear" layer, T-gates the expensive "non-linear" one. Unlike the
-               # classical hybrid there is NO FHE↔MPC boundary — QOTP/Rate-1 QFHE evaluate both
-               # on the encrypted state, and the QSMS/QOT path is the quantum secure-MPC.
+               # The ANALOGY this row draws, not what this run does: in a QHE scheme Clifford
+               # gates would be the cheap "linear" layer and T-gates the expensive "non-linear"
+               # one, with no FHE-to-MPC boundary because both act on the encrypted state. Here
+               # nothing is evaluated on an encrypted state (the circuit runs in plaintext beside
+               # a QOTP hiding check), the T figure is a Solovay-Kitaev ESTIMATE, and the finance
+               # pipeline's PSI is a classical keyed hash, not QOT-based secure MPC.
                "linear_analogue": "Clifford gates",
                "nonlinear_analogue": f"T-gates (×{qc.t_count()}, the non-linear cost)",
                "no_fhe_mpc_boundary": True,

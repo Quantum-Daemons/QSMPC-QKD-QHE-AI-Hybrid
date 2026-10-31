@@ -59,6 +59,13 @@ export function freeSpaceLink(o: { distanceKm: number; atmosphericDb: number; po
 
 /** ONE QSDC link evaluation - error rate, Eve's gain g (detector efficiency included, Qi et al.
  *  2019) and secrecy capacity - shared by the satellite stage and every tooltip that quotes a C_s.
+ *
+ *  ONE DIRECTION ONLY. Qi et al.'s DL04 protocol is two-way (the receiver sends states, the sender
+ *  encodes and returns them), so a satellite sender would also need an uplink; this models the one
+ *  downlink. An uplink would add loss, which only strengthens the finding that QSDC cannot close here.
+ *  `cs` is the bound expression of Eq. (8), signed: a capacity cannot be negative, and a negative
+ *  value means the bound certifies none.
+ *
  *  Four quoted figures had drifted: written under the pooled-entropy formula without detector
  *  efficiency, they still printed (+0.4944, -0.6283, -14.6474, -5.2033) after both corrections.
  *  A number computed here cannot disagree with what a run computes. */
@@ -787,8 +794,8 @@ export function e91(nPulses: number, p: ChannelParams, seed = 0,
   };
 }
 
-// Tiny single-qubit-style expectation used to give the QFL quantum feature map a real number:
-// a bounded non-linear readout of the feature vector (decision-consistent, not trained).
+// NOT A CIRCUIT, despite the name: the closed form tanh(mean_i sin(x_i + 0.5 i)), with no state vector
+// and nothing quantum simulated. The federated stage (clientQFL) uses it as a fixed classical feature map.
 export function qcnnExpectation(features: number[]): { z: number; cls: number } {
   let acc = 0;
   for (let i = 0; i < features.length; i++) acc += Math.sin(features[i] + i * 0.5);
@@ -796,13 +803,15 @@ export function qcnnExpectation(features: number[]): { z: number; cls: number } 
   return { z, cls: z >= 0 ? 1 : 0 };
 }
 
-// ---- Genuine state-vector QOTP + Clifford+T QCNN private inference (the QSMPC-FHE quantum path) -------
-// A REAL 8-qubit state-vector simulation (256 complex amplitudes): angle-encode the features, apply a
-// **QOTP** random-Pauli mask (the server then computes on a maximally-mixed, perfectly-hidden state), run
-// a **Clifford+T** convolution/entangle QCNN, and read out ⟨Z₀⟩. The returned `latencyMs` is the REAL
-// wall-clock of the simulation and `tGates` is **counted from the gate list** — so the demo's QSMPC-FHE
-// row reports measured/counted values, not a cost model. Honest scope: a state-vector SIMULATION, not
-// quantum hardware (no real QPU); under QOTP the ciphertext is the same #qubits as the plaintext ⇒ ct/pt = 1.
+// ---- The QOTP + Clifford+T COMPARISON circuit (the QSMPC-FHE row) - untrained, not a QCNN, no inference --
+// A state-vector simulation of nQubits qubits (2^n amplitudes, 8 by default): RY angle encoding, an X/Z
+// pad drawn from a seeded mulberry32 (not a uniform secret key, so the state is hidden only as a
+// scheme), then 7 fixed rounds of H, a CNOT ring and T on every qubit, and <Z0>. There are no trained
+// parameters, no pooling and no register reduction, and the pad is never undone, so <Z0> follows the
+// key rather than the input. The returned `latencyMs` is the REAL wall-clock of the simulation and
+// `tGates` is COUNTED from the gate list, so the QSMPC-FHE row reports measured/counted values, not a
+// cost model. A state-vector SIMULATION, not quantum hardware. A QOTP ciphertext is n qubits plus a
+// 2n-bit classical key, so no ct/pt of 1 is claimed for it.
 const SR2 = Math.SQRT1_2;
 
 export interface QcnnResult {
@@ -817,15 +826,21 @@ export interface QcnnResult {
 // sign of <Z0> is numerical noise. It was nonetheless surfaced as `primary_inference_class`.
 // Workings: references/qcnn-inference-investigation.md.
 //
-// This is the predictor: the same state-vector machinery with TRAINABLE RY angles, weights fitted
-// offline by scripts/train/qcnn_variational.py and shipped as JSON. Two deliberate differences:
+// This is the predictor: weights fitted offline by scripts/train/qcnn_variational.py and shipped as
+// JSON. The circuit is a TREE of two-qubit blocks - one shared RY,RZ-CNOT-RZ,RY filter on DISJOINT pairs,
+// a CRY pool per pair, then per-survivor RZ and RY, with a CNOT ring over the survivors where more than
+// one survives (telecom's multiclass head) - so after every pooling stage the survivors are a
+// product of one-qubit mixed states and the whole circuit is classically simulable in linear time at any width
+// (Grant et al. 2018's tree tensor network; Bermejo et al., PRX Quantum 7, 020304, 2026). It runs
+// UNENCRYPTED on the plaintext features. Two deliberate differences from `qotpQcnnInfer`:
 //
 //   * No QOTP mask on this path. Undoing a Pauli frame through Clifford+T is not implemented here -
 //     `T X T†` is not Pauli, which is the difficulty Ortega & Martin-Delgado's scheme addresses - so
 //     hiding and prediction are kept separate rather than claiming a correction that does not exist.
-//     `qotpQcnnInfer` remains the hiding + T-count demonstration and still reports both honestly.
-//   * Features are min-max scaled with the TRAINING ranges, shipped in the weights. RY(x*pi) needs a
-//     bounded angle; an unscaled WDBC "mean area" of 2500 wraps the Bloch sphere many times.
+//     `qotpQcnnInfer` remains the pad-structure + T-count demonstration and still reports both honestly.
+//   * Features are standardised with the TRAINING split's mean and std shipped in the weights (or arrive
+//     as z-scores) and encoded as RY(tanh(z) * pi), a bounded angle: an unscaled WDBC "mean area" of 2500
+//     would wrap the Bloch sphere many times.
 /** A trained QCNN's weights.
  *
  * `scale` and `bias` are SCALARS for the binary head and ARRAYS for the multiclass one. They were
@@ -1138,9 +1153,10 @@ export function qotpQcnnInfer(features: number[], seed = 0, nQubits = 8,
   // QOTP mask STRUCTURE, applied with a demo key. The quantum one-time pad is perfectly hiding when
   // its key bits are uniform AND secret; `u()` is mulberry32 (32 bits of state, non-cryptographic)
   // seeded from a value the visitor can see - the run seed on the inference path, a loop index on
-  // the benchmark path - so anyone can recompute this mask. The gates applied are real and the
-  // ciphertext really is the same width as the plaintext, which is what the ct/pt = 1 row reports;
-  // what is absent is the secrecy of the key material.
+  // the benchmark path - so anyone can recompute this mask. The gates applied are real; the masked
+  // state has the plaintext's n qubits, but a QOTP ciphertext also carries a 2n-bit key, which is why
+  // the benchmark row withholds a ct/pt ratio. What is absent is the secrecy of the key material,
+  // and the pad is never undone, so the readout below follows the key, not the input.
   //
   // This is the disclosure `SecureAggregator.__post_init__` in `src/qsh/ai/federated.py` already
   // makes about its pairwise keys, for the same reason: naming a scheme's information-theoretic
@@ -1148,10 +1164,10 @@ export function qotpQcnnInfer(features: number[], seed = 0, nQubits = 8,
   // this line read "QOTP perfect-hiding mask" with no qualification.
   for (let q = 0; q < nQubits; q++) { if (u() < 0.5) X(q); if (u() < 0.5) Z(q); }
   onSnapshot?.("padded", re, im);
-  for (let round = 0; round < 7; round++) {                                   // Clifford+T QCNN (7 conv rounds)
+  for (let round = 0; round < 7; round++) {                                   // 7 fixed Clifford+T rounds (untrained; not a QCNN)
     for (let q = 0; q < nQubits; q++) H(q);
     for (let q = 0; q < nQubits; q++) CNOT(q, (q + 1) % nQubits);
-    for (let q = 0; q < nQubits; q++) T(q);                                  // 8 T/round × 7 = 56 counted
+    for (let q = 0; q < nQubits; q++) T(q);                                  // n T per round, 7n counted (56 at 8 qubits)
     onSnapshot?.(`round ${round + 1}`, re, im);
   }
   let exp = 0;                                                               // ⟨Z₀⟩

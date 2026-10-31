@@ -1,8 +1,6 @@
 # Deployment runbook
 
-The canonical deploy procedure for the public demo. Before Round 22 this existed only inside two
-gitignored documents, restated in two languages, so the commands drifted between them and none of it
-would have survived losing them. This file is now the single source.
+The canonical deploy procedure for the public demo, and its single source.
 
 Three things below are not obvious, were each learned by breaking a live deploy, and are the reason
 this file exists rather than a README paragraph: `!reset` on the ports list, the shared-Caddy
@@ -10,14 +8,12 @@ network, and clone-verify before touching the live tree.
 
 ## Run it, do not follow it: `scripts/deploy_demo.sh`
 
-The sequence below is also a script, and the script is the preferred form because one step of it has
-been skipped in **six consecutive rounds**. `DP7` requires the box to be returned to `main` once the
-round's PR merges; that moment is always after the session which ran the checklist has ended, so the
-only person who could discharge it was never present when it came due. Round 39 rewrote the row's
-wording and left that structure, and it failed a sixth time.
+The sequence below is also a script, and the script is the preferred form because its last step,
+returning the demo host to `main` once the round's PR merges, comes due after the session that ran
+the deploy has ended, and as a manual step it was skipped for many rounds.
 
     bash scripts/deploy_demo.sh <branch>          # deploy, then verify the PUBLIC url
-    bash scripts/deploy_demo.sh --return-to-main  # after the merge: this is what discharges DP7
+    bash scripts/deploy_demo.sh --return-to-main  # after the merge: return the demo host to main
 
 It asserts rather than assumes: the build's exit status is captured, the container's networks are
 checked against the shared-proxy requirement (the 502 trap below), the public URL must answer 200,
@@ -140,7 +136,7 @@ re-served the cached bundle, so a working fix looked broken. The failure is asym
 makes a good fix look bad, you change it again, and the second change is the one that ships
 unverified.
 
-Full browser acceptance criteria live in the project's browser verification checklist, which is maintained privately and is not part of this repository - it carries the deploy procedure and the internal failure history. The observable outcomes it gates are recorded in `verification-log.md`, which IS published.
+Full browser acceptance criteria live in the project's browser verification checklist, which is maintained privately and is not part of this repository - it carries the acceptance criteria and the internal failure history. The deploy procedure is this file and `scripts/deploy_demo.sh`. What each deploy walk measured is recorded in `deliverable-verification.md`, and the lessons in `verification-log.md`; both ARE published.
 
 ## When TLS or the proxy misbehaves
 
@@ -159,14 +155,10 @@ plugin from the official script.
 
 ---
 
-> Moved here from the README in Round 80, by the user's request to keep the README to a summary; the text is unchanged apart from its link paths, and the README links here.
-
-## Deployment tiers, from the README
+## Deployment tiers
 
 Host-specific deployment - the port-collision workaround, the shared-proxy override and the
-public-demo profile - is in [`docs/deployment.md`](deployment.md). That file had **no inbound
-link from any tracked file** until Round 43, and it is the only document carrying the workaround, so
-a cloner hitting the collision had no way to find the answer that already existed.
+public-demo profile - is in the sections above.
 
 A generated 14-section technical report is at
 [`report/technical-report.pdf`](../report/technical-report.pdf); build it with `make report`. Every

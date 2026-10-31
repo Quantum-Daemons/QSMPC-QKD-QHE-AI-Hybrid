@@ -6,7 +6,12 @@
  * neither connects to the network demo nor imports any figure from it - that repository commits no
  * latency or throughput benchmark, so there is none to quote. Its QKD is simulated too (a BB84
  * simulator behind ETSI GS QKD 014), which the caption says. The key schedules this page computes in
- * the browser are the network layer's MATH, not its tunnels: no packet leaves the tab.
+ * the browser are handshakes of the same kinds (WireGuard Noise_IKpsk2, IKEv2 with ML-KEM and a PPK)
+ * keyed with this page's own material, not the network demo's tunnels: no packet leaves the tab, and
+ * the in-tab WireGuard PSK comes from an in-tab ML-KEM-768 + X25519 hybrid, unlike either WireGuard
+ * lane drawn below.
+ *
+ * The companion is named but not linked: the page carries no address for it.
  */
 // The companion demo is named, not linked (the owner's choice, 2026-10-30).
 
@@ -20,7 +25,8 @@ export default function NetworkPositioning() {
           Top: this demo, in one browser tab: a PQC hybrid session key protects an MCP agent channel and
           the private computation. Bottom: the companion network demo, between containers: WireGuard tunnels
           keyed from QKD plus a PQC agreement, and an IKEv2 lane with ML-KEM and a post-quantum preshared
-          key. Both simulate QKD. This page computes the bottom layer's key schedules in the browser.
+          key. Both simulate QKD. The cards below run handshakes of the bottom layer's kinds in the
+          browser, keyed with this page's own material.
         </desc>
         {/* application layer */}
         <rect x={10} y={14} width={940} height={96} rx={10} fill="var(--bg-2)" stroke="var(--accent-2)" />
@@ -49,7 +55,7 @@ export default function NetworkPositioning() {
           </g>
         ))}
         <text x={480} y={128} fontSize={11} textAnchor="middle" fill="var(--muted)">
-          same hybrid idea, two layers - this page computes the lower layer&apos;s key schedules in the browser; no packet leaves the tab
+          same hybrid idea, two layers - the cards below run the lower layer&apos;s handshakes with their own keys; no packet leaves the tab
         </text>
       </svg>
       <figcaption className="figure-note">

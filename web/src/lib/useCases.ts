@@ -19,14 +19,14 @@ export interface UseCaseMeta {
 export const USECASES: UseCaseMeta[] = [
   {
     id: "finance_aml", title: "Finance — cross-bank AML / PSI", nav: "Finance — AML", industry: "finance",
-    blurb: "Two banks find shared flagged accounts via quantum-safe PSI, then privately score a transaction — without revealing their blacklists.",
+    blurb: "Two banks find shared flagged accounts with a keyed-hash PSI over a PQC-protected channel, then score a transaction under CKKS. No third party sees either list, but both banks hold the HMAC key, so over a small ID space either could recover the other's list; a production PSI would use an OPRF-based protocol. The scored rows are PaySim simulator output whose AML-style feature names relabel PaySim columns (device_risk is PaySim's origin-balance-inconsistency flag).",
     inference: true,
     agenticTool: "score_transaction",
     agenticPrompt: "In one sentence, why must an AML agent that scores a transaction across two banks run over a quantum-safe MCP channel rather than sharing the blacklists?",
   },
   {
     id: "medical_fl", title: "Medical — federated learning + private inference", nav: "Medical — FL", industry: "healthcare",
-    blurb: "Hospitals train a shared diagnostic model with secure aggregation (no patient data leaves), then a clinician runs a private, signed-explained diagnosis.",
+    blurb: "Hospitals train a shared model with FedAvg under pairwise masks that cancel exactly (no patient row leaves a hospital), then a clinician runs a CKKS-evaluated diagnosis with a signed explanation. Every mask derives from the one session key, which the aggregator also holds, so the masks hide nothing from it in this demo. The federation runs over the bundled Wisconsin breast-cancer rows; the published models are BreastMNIST image models trained centrally.",
     inference: true,
     agenticTool: "query_cohort",
     // Was "... need a quantum-safe (PQC + QKD) channel under HIPAA?". HIPAA names no PQC or QKD
@@ -36,7 +36,7 @@ export const USECASES: UseCaseMeta[] = [
   },
   {
     id: "genomics", title: "Genomics — confidential analysis", nav: "Genomics", industry: "genomics",
-    blurb: "Cohorts pool allele counts by secure summation over a prime field, then run a private phenotype inference — no cohort exposes raw genotypes. The reference backend runs the Sutradhar (t,n)-threshold quantum secure summation (d-level QFT over a t-qudit GHZ state); the in-browser demo computes the classical equivalent, and the page labels the quantum channel SIMULATED.",
+    blurb: "Cohorts pool allele counts by secure summation over a prime field, then run a CKKS sign test on a partial polygenic score (8 of the 313 PGS000004 variants) - no cohort's genotypes are sent in the clear. The reference backend runs the Sutradhar (t,n)-threshold quantum secure summation (d-level QFT over a t-qudit GHZ state); the in-browser demo computes the classical equivalent, and the page labels the quantum channel SIMULATED.",
     inference: true,
     agenticTool: "pool_allele_counts",
     agenticPrompt: "In one sentence, why is pooling allele counts via quantum secure summation over a quantum-safe MCP channel safer than sharing raw genotypes between biobanks?",
@@ -50,7 +50,7 @@ export const USECASES: UseCaseMeta[] = [
   },
   {
     id: "satellite_comms", title: "Satellite — free-space QKD + QSDC", nav: "Satellite", industry: "satellite",
-    blurb: "A ground station and a LEO satellite run a simulated free-space BB84 downlink, then test whether Quantum Secure Direct Communication could carry mission telemetry over it, with an inline eavesdrop check. With the default link budget it cannot close at any range under the published secrecy criterion, and the run says why.",
+    blurb: "A ground station and a LEO satellite run a simulated free-space BB84 downlink, then test whether Quantum Secure Direct Communication could carry mission telemetry over it, by an analytic secrecy-capacity test that includes the eavesdropper (no check carriers are sampled). With the default link budget it cannot close at any range under the published secrecy criterion, and the run says why. The telemetry anomaly check runs in plaintext; no FHE or MPC stage runs on this page.",
     inference: false,
     agenticTool: "relay_mission_telemetry",
     // Was "why relay satellite mission telemetry via QSDC ... instead of classical encryption". This

@@ -108,7 +108,7 @@ function PassSection({ link, liao, minEl, epsSec, deviation }: { link: ReturnTyp
             onChange={(e) => setTop(Math.min(90, Math.max(minEl, Number(e.target.value) || minEl)))} />
         </label>
         <button className="btn ghost" style={{ fontSize: 12 }} onClick={() => setTop(Math.round(liao.maxElevationDeg * 10) / 10)}>
-          Liao&apos;s 19 Dec 2016 pass ({fmt(liao.maxElevationDeg, 1)} deg)
+          Liao&apos;s 19 Dec 2016 pass ({fmt(liao.maxElevationDeg, 1)} deg in this model; the paper&apos;s table: 47.79)
         </button>
       </div>
       <p className="small" style={{ margin: "4px 0" }}>
@@ -292,11 +292,11 @@ function RelaySection({ link, defaultElevation, minEl }: { link: ReturnType<type
               <td className="small muted">{aId === bId ? "the same station" : relay.sharedView
                 ? `within one satellite's ${fmt(sharedViewMaxKm(link))} km footprint: both can be in view at once`
                 : `wider than one satellite's ${fmt(sharedViewMaxKm(link))} km footprint: the key has to be carried`}</td></tr>
-            <tr><td>Key with A, one pass</td><td className="num">{kbit(relay.a.keyBits)}</td><td className="small muted">{fmt(relay.a.durationS)} s above the minimum elevation; asymptotic</td></tr>
+            <tr><td>Key with A, one pass</td><td className="num">{kbit(relay.a.keyBits)}</td><td className="small muted">{fmt(relay.a.durationS)} s above the minimum elevation; asymptotic, at the pass elevation rounded to a whole degree, so it can differ slightly from the one-pass figure above</td></tr>
             <tr><td>Key with B, one pass</td><td className="num">{kbit(relay.b.keyBits)}</td><td className="small muted">{fmt(relay.b.durationS)} s</td></tr>
             <tr><td>Relayed key A to B</td><td className="num"><b>{kbit(relay.keyBits)}</b></td><td className="small muted">the shorter of the two: one key pads the other</td></tr>
             <tr><td>Second key exists after</td><td className="num">{fmt(relay.waitH, 1)} h</td><td className="small muted">a sun-synchronous orbit passes each station at the same local time, so the longitude difference sets the wait</td></tr>
-            <tr><td>Pass pairs for Liao&apos;s 100 kB</td><td className="num">{Number.isFinite(relay.passPairsFor100kB) ? relay.passPairsFor100kB : "-"}</td><td className="small muted">&quot;we establish a 100 kB secure key between Xinglong and Graz&quot;</td></tr>
+            <tr><td>Pass pairs for Liao&apos;s 100 kB, at the asymptotic key</td><td className="num">{Number.isFinite(relay.passPairsFor100kB) ? relay.passPairsFor100kB : "-"}</td><td className="small muted">&quot;we establish a 100 kB secure key between Xinglong and Graz&quot;; the one-pass finite key is smaller, so it would need more</td></tr>
           </tbody>
         </table>
       </div>
@@ -369,7 +369,8 @@ function ConstellationSection({ orbitKm, minEl }: { orbitKm: number; minEl: numb
       <p className="small muted" style={{ margin: "4px 0" }}>
         A &quot;string-of-pearls configuration of satellites in the same plane&quot; (Vergoossen et al., arXiv:1903.07845),
         each linked by a quantum channel to the satellites ahead and behind, keys passed from one to the next, every
-        satellite a trusted node. Operated in Earth&apos;s shadow only, as that paper assumes. No quantum inter-satellite
+        satellite a trusted node. Operated in Earth&apos;s shadow only by default - this page&apos;s assumption for the
+        inter-satellite links, since Vergoossen et al. state the eclipse condition for satellite-to-ground passes. No quantum inter-satellite
         link has flown; the terminals are a profile, so a design can be loaded and compared.
       </p>
       <div className="net-controls">

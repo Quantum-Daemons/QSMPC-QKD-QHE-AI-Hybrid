@@ -1,6 +1,6 @@
 ---
 license: other
-license_name: generated-by-this-repository
+license_name: no-licence-granted
 library_name: onnx
 pipeline_tag: tabular-classification
 tags:
@@ -11,9 +11,9 @@ tags:
   - onnxruntime-web
 ---
 
-# Quantum-kernel SVC + variational QNN
+# Random-forest QKD-attack classifier, with quantum-kernel SVC and QNN comparisons
 
-PCA -> angle embedding -> StronglyEntanglingLayers; fidelity quantum kernel
+published ONNX: a 200-tree scikit-learn random forest over 7 telemetry features. Offline comparisons, not in the ONNX: a quantum-kernel SVC (PCA -> angle embedding; its fidelity kernel is exactly the classical product kernel prod cos^2((x_i - x'_i)/2)) and a variational QNN (StronglyEntanglingLayers, 25 parameters)
 
 Part of [QSMPC-QKD-QHE-AI-Hybrid](https://github.com/thedaemon-wizard/QSMPC-QKD-QHE-AI-Hybrid),
 a quantum-safe orchestration demo.
@@ -40,20 +40,20 @@ path runs a distilled student, not this model.
 ## Published baselines this is measured against
 
 - **Target metric**: macro F1 (synthetic QKD-attack telemetry)
-- **Baseline**: Architecture showcase, not a performance claim. On THIS project's synthetic telemetry neither quantum model beats the classical random forest (RF macro F1 0.987 vs variational QNN 0.467). Published results are MIXED, not uniformly below a random forest -- an earlier revision of this note claimed they were, and the very paper cited here contradicts it: Al-Kuwari et al. (arXiv:2509.14282) Table VIII reports a hybrid QLSTM at 94.7% accuracy / 94.7% F1 against their own random-forest baseline on the same generated data. What remains well-founded is caution about evaluation quality rather than a universal ranking: arXiv:2512.05069 was withdrawn by its own authors for evaluation that was 'insufficient to fully support the conclusions'. That single withdrawal is thin support for a field-wide claim, so the anchor is now a survey: Kaissar, Bou Nassif & Bouridane, Future Internet 18(5):234 (2026-04-27, CC BY 4.0, DOI 10.3390/fi18050234), systematic to January 2026, finds that 'most current approaches rely on simulated quantum environments and legacy datasets, while evaluation practices remain inconsistent across studies' - active but methodologically early, which is a different and better-founded statement than 'worse than a random forest'. The Al-Kuwari paper is now peer-reviewed: IET Quantum Communication 7(1), DOI 10.1049/qtc2.70028 (2026-02-23). And the strongest 2026 result on this exact problem is CLASSICAL, which corroborates the framing here: IACR ePrint 2026/1282 reaches 96.9% recall / 97.6% precision with physics-aware temporal features plus XGBoost, against 17.3% recall for static QBER thresholding.
+- **Baseline**: Architecture showcase, not a performance claim. On THIS project's synthetic telemetry neither quantum model beats the classical random forest (RF macro F1 0.987 vs variational QNN 0.467). Published results are MIXED, not uniformly below a random forest -- an earlier revision of this note claimed they were, and the very paper cited here contradicts it: Al-Kuwari et al. (arXiv:2509.14282) Table VIII reports a hybrid QLSTM at 94.7% accuracy / 94.7% F1 against their own random-forest baseline on the same generated data. What remains well-founded is caution about evaluation quality rather than a universal ranking: arXiv:2512.05069 was withdrawn by its own authors for evaluation that was 'insufficient to fully support the conclusions'. That single withdrawal is thin support for a field-wide claim, so the anchor is now a survey: Kaissar, Bou Nassif & Bouridane, Future Internet 18(5):234 (2026-04-27, CC BY 4.0, DOI 10.3390/fi18050234), systematic to January 2026, finds that 'most current approaches rely on simulated quantum environments and legacy datasets, while evaluation practices remain inconsistent across studies' - active but methodologically early, which is a different and better-founded statement than 'worse than a random forest'. The Al-Kuwari paper is now peer-reviewed: IET Quantum Communication 7(1), DOI 10.1049/qtc2.70028 (2026-02-23). And the nearest strong 2026 result is CLASSICAL, which corroborates the framing here - but it is a DIFFERENT problem and Round 46 stopped calling it the same one. IACR ePrint 2026/1282 reaches 96.9% recall / 97.6% precision with physics-aware temporal features plus XGBoost against 17.3% for static QBER thresholding - but its abstract, read at source, is entanglement-based BBM92, a 24-dimensional feature space over 30-second sliding windows, binary detection of blended sub-threshold attacks on simulated FSO telemetry. This model classifies 8 BB84 attack TYPES from per-session physical observables. Neither the protocol, the label space nor the feature space matches, so it is an anchor, not a baseline.
 - **Companion metric shown alongside**: `classical_rf_macro_f1` - reported together because the aggregate figure can look healthy while the class that matters is not.
 
 ## Training data
 
 - **Dataset**: QKD attack telemetry (synthetic, methodology-grounded)
-- **Licence**: generated by this repository
-- **Source**: https://arxiv.org/abs/2509.14282 (licence read 2026-08-03)
+- **Licence**: no licence granted; synthetic rows generated by this repository's own code
+- **Source**: https://arxiv.org/abs/2509.14282 (licence read 2026-10-30)
 
-8 classes = 7 attack types + normal, per Al-Kuwari et al. (IET Quantum Communication 7(1), e70028, 2026). No commercial-OK real QKD-attack capture exists; this is labelled synthetic everywhere it is reported.
+8 classes = 7 attack types + normal, per Al-Kuwari et al. (IET Quantum Communication 7(1), e70028, 2026). The class list follows the paper; the 7 features and their signature values are this project's own design. No commercial-OK real QKD-attack capture exists; this is labelled synthetic everywhere it is reported. No licence is granted for these rows or for the weights trained on them.
 
 ## Notes and limitations
 
-Shown as an architecture comparison against a random forest on identical data.
+The published model and its headline accuracy are the random forest's. The quantum-kernel SVC (macro F1 0.832) and the variational QNN (0.467) are an architecture comparison recorded at training time on identical data; neither runs on the page. The SVC's kernel uses no entangling gate, so it is computable classically in closed form.
 
 ## Honest scope
 

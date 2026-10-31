@@ -1,8 +1,9 @@
-// Client-side quantum-safe MCP channel — a zero-server mirror of src/qsh/pqc/mcp_bridge.py (+
-// transport.py). Two in-browser agents establish an ML-KEM-768 session (optionally mixed with a QKD
-// key via HKDF-SHA256), then exchange an ML-DSA-65-signed, AES-256-GCM-sealed MCP-style JSON-RPC tool
-// call: confidentiality + post-quantum authenticity + tamper rejection, no trusted third party. This
-// realises the report's "MCP + quantum-safe layer for agentic AI" entirely in the browser. Reuses
+// Client-side quantum-safe MCP channel - a zero-server mirror of src/qsh/pqc/mcp_bridge.py (+
+// transport.py). Two endpoints, both in this tab and each with its own keys, establish an ML-KEM-768
+// + X25519 session (optionally mixed with a FIXED 32-byte QKD-domain constant, never a QKD key: none
+// exists in the browser), then exchange an ML-DSA-65-signed, AES-256-GCM-sealed MCP-style JSON-RPC
+// message: confidentiality + post-quantum authenticity + tamper rejection. The message is a fixed
+// request or the in-browser model's text in a JSON-RPC envelope; no tool is executed. Reuses
 // @noble/post-quantum (same as crypto.ts) + WebCrypto; used by the Agentic-AI page and the demo-mode
 // Validations mirror so the public demo runs the MCP demo with zero server compute.
 import { shake256 } from "@noble/hashes/sha3.js";
@@ -36,10 +37,12 @@ const packBits = (bits: Uint8Array): Uint8Array => {
 async function sha256(bytes: Uint8Array): Promise<Uint8Array> {
   return new Uint8Array(await crypto.subtle.digest("SHA-256", ab(bytes)));
 }
-// Information-theoretic leakage-resilient combiner. A BYTE-FOR-BYTE mirror of
-// `transport._mix_qkd_its` (Giestinhas & Spiller 2026): a modified-Toeplitz + Leftover-Hash-Lemma
-// strong extractor over pqc||qkd whose 256-bit output keeps the min-entropy of WHICHEVER input stays
-// uncompromised — unlike HKDF (computational) or a naive XOR/concat.
+// The Toeplitz + QLHL combiner, AS IMPLEMENTED COMPUTATIONAL. A BYTE-FOR-BYTE mirror of
+// `transport._mix_qkd_its`, after Giestinhas & Spiller (arXiv:2603.26907): a modified-Toeplitz +
+// Leftover-Hash-Lemma extractor over pqc||qkd. The paper's leakage-resilience property needs a seed
+// independent of the input; here the Toeplitz seed is SHAKE-256 of the same pqc and qkd it extracts
+// from, so that precondition fails and the output is computational, like HKDF, not
+// information-theoretic. The demo's qkd input is a fixed constant as well (see `clientMcpDemo`).
 //
 // "Mirror" is a MEASURED claim here, not an aspiration. Until Round 39 this seeded its Toeplitz
 // matrix from a SHA-256 counter chain, under a comment explaining that "WebCrypto has no SHAKE-256".
@@ -59,7 +62,7 @@ async function sha256(bytes: Uint8Array): Promise<Uint8Array> {
 // through THIS function. The alternative was a re-implementation in the gate, which would have
 // agreed with itself while this module drifted - the precise failure the gate exists to catch.
 export async function itsCombine(pqc: Uint8Array, qkd: Uint8Array): Promise<Uint8Array> {
-  const combined = bitsOf(concat(pqc, qkd));                 // info-theoretic input material
+  const combined = bitsOf(concat(pqc, qkd));                 // the extractor's input
   const outBits = 256;                                       // 32-byte AES-256 session key
   const needT = outBits + combined.length - 1;
   const tbytes = shake256(
@@ -172,7 +175,8 @@ function mcpTranscript(
 
 // mirror transport._mix_qkd + AESGCM(session_key). ``combiner`` selects the PQC+QKD key combiner
 // (crypto.hybrid_combiner_mode): "hkdf" = HKDF-SHA256 dual-PRF (holds if either input does, computationally);
-// "its_toeplitz" = the information-theoretic Toeplitz+QLHL leakage-resilient combiner (itsCombine).
+// "its_toeplitz" = the Toeplitz+QLHL combiner (itsCombine), seeded from its own inputs and so
+// computational too.
 // Returns the CryptoKey + the raw derived bytes (for a non-secret fingerprint that proves the combiner ran).
 // EXPORTED so the DEFAULT combiner branch can be checked across languages, exactly as `itsCombine`
 // above already is. It was module-private, which is the whole reason the non-default ITS path had two
@@ -186,7 +190,7 @@ export async function deriveAeadKey(
   let keyBytes = sharedSecret;
   if (qkdKey && qkdKey.length) {
     if (combiner === "its_toeplitz") {
-      keyBytes = await itsCombine(sharedSecret, qkdKey);      // ITS extractor, leakage-resilient
+      keyBytes = await itsCombine(sharedSecret, qkdKey);      // Toeplitz+QLHL, computationally seeded
     } else {
       const base = await crypto.subtle.importKey("raw", ab(sharedSecret), "HKDF", false, ["deriveBits"]);
       const bits = await crypto.subtle.deriveBits(
@@ -286,9 +290,10 @@ export async function clientMcpDemo(qkdMixed = false, combiner = "hkdf"): Promis
 }
 
 // Wrap an arbitrary payload (e.g. the in-browser AI {prompt, answer}) through the quantum-safe MCP
-// channel, so the Agentic-AI panel proves the AI exchange is signed + sealed + tamper-evident. The
-// ``toolName`` is the per-industry MCP tool the agent "calls" (finance → score_transaction, medical →
-// query_cohort, …) so each use-case page shows its own delegate-and-verify tool call.
+// channel, so the Agentic-AI panel shows the AI exchange signed + sealed + tamper-evident. The
+// ``toolName`` only NAMES the JSON-RPC envelope after the industry's MCP tool (finance:
+// score_transaction, medical: query_cohort, and so on); no tool is executed, the arguments are the
+// model's prompt and text.
 export async function clientSecureWrap(
   payload: object, qkdKey?: Uint8Array, toolName = "ai_inference", combiner = "hkdf",
 ): Promise<McpResult & { echoedPayload: any }> {

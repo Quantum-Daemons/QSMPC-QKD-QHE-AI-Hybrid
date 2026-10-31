@@ -11,9 +11,9 @@ tags:
   - onnxruntime-web
 ---
 
-# Graph-feature-preprocessed gradient boosting
+# Graph-feature gradient boosting
 
-GFP (graph features) + XGBoost
+per-account and structural graph features computed by this project (not IBM's Graph Feature Preprocessor) + XGBoost
 
 Part of [QSMPC-QKD-QHE-AI-Hybrid](https://github.com/thedaemon-wizard/QSMPC-QKD-QHE-AI-Hybrid),
 a quantum-safe orchestration demo.
@@ -38,13 +38,13 @@ path runs a distilled student, not this model.
 ## Published baselines this is measured against
 
 - **Target metric**: minority-class F1 (laundering)
-- **Baseline to beat**: 0.6323 - GFP+XGBoost, IBM AMLworld HI-Small, NeurIPS 2023 D&B (63.23 +/- 0.17)
-- **Published ceiling**: 0.7401 - MEGA-PNA, arXiv:2412.00241v2 Table 2 'Minority-class F1 scores (%) on AML edge classification task', AML Small HI (74.01 +/- 1.55). PREPRINT - no venue confirmed, which is why it is named as such. It replaces Multi-PNA+EU (AAAI-24, 68.16 +/- 2.65): that row is in the SAME table with two better ones above it (MEGA-GIN 70.83, MEGA-PNA 74.01) and has not been the ceiling since December 2024. Verified by reading the table, not the abstract.
+- **Baseline to beat**: 0.6323 - GFP+XGBoost, IBM AMLworld HI-Small, NeurIPS 2023 D&B (63.23 +/- 0.17). Same metric and corpus, different protocol: that figure uses a 60/20/20 split by transaction order and IBM's Graph Feature Preprocessor updated over the test window; this project tests on the last 30 percent of transactions (fit 56, validation 14) with its own graph features, whose structural block is fitted on the training window.
+- **Published ceiling**: 0.7401 - MEGA-PNA, arXiv:2412.00241v2 Table 2 'Minority-class F1 scores (%) on AML edge classification task', AML Small HI (74.01 +/- 1.55); the paper's v3 is accepted for publication in TMLR (2026). It is not the table's highest row: the same table prints MEGA-GenAgg at 74.88 +/- 0.38 and MEGA(PNA)-GIN at 74.69 +/- 0.50, and Multi-PNA (68.16 +/- 2.65) below all three.
 - **Companion metric shown alongside**: `auprc` - reported together because the aggregate figure can look healthy while the class that matters is not.
 
 ### Gap to the published baseline
 
-This reaches minority-class F1 well below the published 0.6323 (GFP+XGBoost, AMLworld HI-Small, NeurIPS 2023 D&B). The cause is a feature ARCHITECTURE difference, not a tuning one: the gap is unreachable at any threshold, because measured AUPRC is far below what that F1 requires. IBM's Graph Feature Preprocessor computes per-transaction subgraph patterns over a dynamically updated graph; this project computes per-account scalar aggregates. A degree is one number per account, whereas a GFP feature is a pattern match in that transaction's own neighbourhood at the moment it arrives. GFP ships in `snapml` under a Proprietary licence and is excluded by this project's commercial-OK-only rule, but the licence is not itself the cause - the architecture is, and it is reimplementable without `snapml`, simply at more cost than renaming aggregates. Reachability is computed to 4 hops against injected CYCLE attempts of up to 10; that was previously recorded as a main cause and is NOT one - the GFP paper (arXiv:2402.08593) decomposes its own contribution and caps multi-hop cycle and scatter-gather features at about 4% relative, while fan-in/fan-out, which is reimplemented here, carries more than 30%. The evaluation is strictly inductive and temporally split. Per-account aggregates are causal (each row sees only edges strictly before it); the structural block - cycle closure, scatter-gather, bank diversity, burst degree - is still fitted on the training window, because recomputing sparse reachability at every timestep is not tractable here. Reported as measured; not adjusted to close the gap. Full workings: references/finance-gap-investigation.md.
+This reaches minority-class F1 well below the published 0.6323 (GFP+XGBoost, AMLworld HI-Small, NeurIPS 2023 D&B). The cause is a feature ARCHITECTURE difference, not a tuning one: the gap is unreachable at any threshold, because measured AUPRC is far below what that F1 requires. IBM's Graph Feature Preprocessor computes per-transaction subgraph patterns over a dynamically updated graph; this project computes per-account scalar aggregates. A degree is one number per account, whereas a GFP feature is a pattern match in that transaction's own neighbourhood at the moment it arrives. GFP ships in `snapml` under a Proprietary licence and is excluded by this project's commercial-OK-only rule, but the licence is not itself the cause - the architecture is, and it is reimplementable without `snapml`, simply at more cost than renaming aggregates. Reachability is computed to 4 hops against injected CYCLE attempts of up to 10; that was previously recorded as a main cause and is NOT one - the GFP paper (arXiv:2402.08593) decomposes its own contribution, and its Table 5 (HI-Small, XGBoost, batch 128) gives fan-in/fan-out, which is reimplemented here, 37 F1 points (19.75 to 56.88) and multi-hop cycle and scatter-gather patterns 1.7 more (to 58.60; 'up to 4%' in its text is F1 points, not a relative gain). The evaluation is strictly inductive and temporally split. Per-account aggregates are causal (each row sees only edges strictly before it); the structural block - cycle closure, scatter-gather, bank diversity, burst degree - is still fitted on the training window, because recomputing sparse reachability at every timestep is not tractable here. Reported as measured; not adjusted to close the gap. Full workings: references/finance-gap-investigation.md.
 
 ## Training data
 
@@ -57,7 +57,7 @@ This reaches minority-class F1 well below the published 0.6323 (GFP+XGBoost, AML
 
 ## Notes and limitations
 
-Stateless at inference, so this is the browser-tier finance model.
+The browser-tier finance model: it scores one feature row per transaction with no message passing at scoring time. That row is not stateless - its per-account and structural features are computed from the account's earlier transactions - so a deployment needs that history to score a new transaction.
 
 ## Honest scope
 

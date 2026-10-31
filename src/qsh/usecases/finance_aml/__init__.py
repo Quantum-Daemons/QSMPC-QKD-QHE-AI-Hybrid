@@ -1,8 +1,14 @@
 """Finance AML / cross-bank fraud detection use case (deep).
 
-Two banks want to find accounts that *both* have flagged as suspicious, without
-revealing their full blacklists, then privately score a transaction against a shared
-fraud model -- all over a PQC+QKD-secured channel.
+Two banks want to find accounts that *both* have flagged as suspicious, then privately
+score a transaction against a shared fraud model -- over a PQC channel with simulated QKD
+key material folded in.
+
+What the matching does NOT do is keep the lists private from each other: it is a keyed-hash
+PSI under a session key both banks hold, so over this small ID space either bank can hash
+every candidate ID and recover the other's list (see :func:`qsh.qsmpc.qot.private_set_intersection`).
+What holds is that no third party on the channel sees either list. A production PSI would use an
+OPRF-based protocol.
 
 Maps to: QSMPC×QKD (private set intersection) + QHE/FHE (private inference) on a
 PQC-first hybrid transport. Data: synthetic PaySim/AMLSim-style transactions

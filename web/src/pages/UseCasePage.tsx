@@ -352,7 +352,7 @@ function UseCaseView({ usecase }: { usecase: string }) {
           {/* 167 words became four points; the history of the removed selector moved into a fold. */}
           <KeyPoints items={[
             "Federated learning runs on every run here - a real client-side FedAvg over the page's own bundled Wisconsin sample, with no toggle.",
-            <><b>The encrypted path evaluates the published student itself</b>: all 3,226 parameters, from its pinned Hugging Face revision, end to end under CKKS - conv, average pool and both dense layers.</>,
+            <><b>The encrypted path evaluates the published student itself</b>: all 3,226 parameters, from its pinned Hugging Face revision. CKKS evaluates the convolution and both dense layers; the client decrypts after each layer, applies ReLU and average pooling in plaintext, and takes the CNN&apos;s argmax in the clear. The garbled-circuit argmax runs on the bundled Wisconsin logistic regression, not on the CNN.</>,
             "The run reports the total rotations it performed, because key-switching - one per rotation - is what dominates CKKS inference cost.",
             "Nothing is multiplied by a cost model; if the weights cannot be fetched, the run says so rather than substituting invented ones.",
           ]} />
@@ -404,7 +404,9 @@ function UseCaseView({ usecase }: { usecase: string }) {
         computes entirely in the browser (no server compute); the full deployment adds the server-side backends and
         the real MCP server. PoC runs LAN/local; the diagram illustrates the WAN two-party deployment.
         <div className="muted" style={{ marginTop: 6, fontSize: 11 }}>
-          Hybrid split grounded in <i>EncFormer</i> (linear→FHE, non-linear→MPC) · system-level cost per
+          Hybrid split, on the pages that run one (finance, medical, genomics), grounded in{" "}
+          <i>EncFormer</i> (linear layers to FHE, non-linear to MPC; in this tab only the argmax runs as
+          MPC) - system-level cost per
           <i> "Beyond Latency: MPC &amp; FHE for PPML"</i> (arXiv 2604.00169, 2026) · two-party QOT per
           <i> Zhang et al.</i> (npj Quantum Information 2026). See <code>references/</code>.
         </div>

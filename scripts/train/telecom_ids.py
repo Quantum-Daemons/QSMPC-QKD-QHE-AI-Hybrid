@@ -75,10 +75,13 @@ CLASSICAL_RF_ATTRIBUTION_NOTE = (
     )
 
 FRAMING = (
-        "Architecture comparison, not a performance claim. The data is synthetic because no "
-        "commercial-OK real attack corpus exists. Every published QML-IDS figure we could verify "
-        "sits below a random forest on the same data, and arXiv:2512.05069 was withdrawn by its own "
-        "authors for insufficient evaluation. Per-class F1 is the headline; aggregate accuracy is "
+        "Architecture comparison, not a performance claim. The published model is the random "
+        "forest; the quantum-kernel SVC and the variational QNN are recorded beside it and not "
+        "published. The data is synthetic because no commercial-OK real QKD-attack corpus exists. "
+        "Published QML-IDS results are mixed rather than uniformly below a random forest: "
+        "Al-Kuwari et al. (arXiv:2509.14282) report a hybrid QLSTM at 94.7% against their own "
+        "random forest, while arXiv:2512.05069 was withdrawn by its own authors for insufficient "
+        "evaluation. Per-class F1 is the headline; aggregate accuracy is "
         "shown beside it because Engelen et al. (WTMC 2021) demonstrated it stays at 0.99 across a "
         "label correction that moved Bot F1 from 0.60 to 0.99."
     )

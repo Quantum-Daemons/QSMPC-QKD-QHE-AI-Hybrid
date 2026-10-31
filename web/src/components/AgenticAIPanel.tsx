@@ -134,8 +134,9 @@ export default function AgenticAIPanel({
         <>
           <h3 style={{ marginTop: 0 }}>Agentic AI · quantum-safe MCP</h3>
           <p className="muted" style={{ fontSize: 12, marginTop: -4 }}>
-            A small LLM runs <b>in your browser</b>; its request + response are sealed and signed over a
-            client-side quantum-safe MCP channel as a <code>{mcpToolName}</code> tool call for this {usecase} use case.
+            A small LLM runs <b>in your browser</b>; its request and response are sealed and signed over a
+            client-side quantum-safe MCP channel, in a JSON-RPC envelope named after this {usecase} use
+            case&apos;s <code>{mcpToolName}</code> tool. No tool is executed.
             {ctxLine ? " The live run's metrics are folded into the prompt." : " Run the simulator above to feed it live metrics."}
           </p>
         </>
@@ -217,14 +218,14 @@ export default function AgenticAIPanel({
               + "b'q'*32), not this run's key: the BB84/E91 simulation is analytic and yields secure-bit "
               + "COUNTS rather than key bytes. What it demonstrates is the PQC+QKD combiner path and "
               + "that the derived-key fingerprint below changes when a second input is mixed in."}>
-            <input type="checkbox" checked={mcpQkd} onChange={(e) => setMcpQkd(e.target.checked)} /> mix QKD-domain key
+            <input type="checkbox" checked={mcpQkd} onChange={(e) => setMcpQkd(e.target.checked)} /> mix fixed QKD-domain constant
           </label>
           <label className="muted" htmlFor={`ai-combiner-${usecase ?? "std"}`}>Combiner</label>
           <select id={`ai-combiner-${usecase ?? "std"}`} value={combiner} disabled={!mcpQkd}
             onChange={(e) => setCombiner(e.target.value)}
-            title="PQC+QKD key combiner (crypto.hybrid_combiner_mode). HKDF = dual-PRF: the session key holds if either input does, under computational assumptions. Toeplitz+QLHL = a modified-Toeplitz strong extractor. Its leakage-resilience property — if the combined output AND one input key leak, the other retains quantifiable min-entropy — holds only under the paper's stated precondition that the input and seed are conditionally independent given any unbounded adversary (Giestinhas & Spiller, arXiv:2603.26907, Lemma 2). That precondition is assumed here, not established, so the guarantee is conditional — at the cost of longer keys (arXiv:2603.26907). Applies when 'mix QKD key' is on; the derived-key fingerprint below changes with the choice.">
+            title="PQC+QKD key combiner (crypto.hybrid_combiner_mode). HKDF = dual-PRF: the session key holds if either input does, under computational assumptions. Toeplitz+QLHL = a modified-Toeplitz strong extractor. Its leakage-resilience property (if the combined output AND one input key leak, the other retains quantifiable min-entropy) needs a seed independent of the input (Giestinhas & Spiller, arXiv:2603.26907, Lemma 2). Here the seed is SHAKE-256 of the inputs themselves, so that condition fails and the combiner is computational, like HKDF. Applies when 'mix fixed QKD-domain constant' is on; the derived-key fingerprint below changes with the choice.">
             <option value="hkdf">HKDF (dual-PRF)</option>
-            <option value="its_toeplitz">Toeplitz+QLHL (ITS · leakage-resilient)</option>
+            <option value="its_toeplitz">Toeplitz+QLHL (computationally seeded)</option>
           </select>
         </div>
         {ctxLine && <div className="note" style={{ marginTop: 10, fontSize: 12 }}>🔗 {ctxLine}</div>}
@@ -265,14 +266,15 @@ export default function AgenticAIPanel({
           <div className="card">
             <h3>Quantum-safe MCP envelope</h3>
             <p className="muted" style={{ fontSize: 12 }}>
-              The AI request + response wrapped as a signed, sealed MCP tool call (no trusted third party).
+              The AI request and response wrapped as a signed, sealed MCP-style message in a JSON-RPC
+              envelope named after the tool; both endpoints run in this tab and no tool is executed.
             </p>
             {mcp && (
               <table style={{ marginTop: 8 }}>
                 <tbody>
                   <tr><td>session</td><td className="mono">{mcp.session}</td></tr>
                   <tr><td>tool</td><td className="mono">{mcpToolName}</td></tr>
-                  <tr><td>KEM / QKD-mixed</td><td>{mcp.kem} / {String(mcp.qkd_mixed)}</td></tr>
+                  <tr><td>KEM / QKD-domain constant mixed</td><td>{mcp.kem} / {String(mcp.qkd_mixed)}</td></tr>
                   <tr><td>PQC+QKD combiner</td><td className="mono">{mcp.combiner}</td></tr>
                   <tr><td>derived key fingerprint</td><td className="mono">{mcp.session_key_fp}</td></tr>
                   <tr><td>method</td><td className="mono">{mcp.method}</td></tr>
