@@ -38,7 +38,7 @@ const out = join(dir, "bundle.mjs");
 await esbuild.build({
   stdin: {
     contents: `export { qsmsField, QSMS_STAND_IN_MAX } from ${JSON.stringify(join(WEB, "src/lib/clientCompute"))};\n`
-      + `export { realAlleleCounts } from ${JSON.stringify(join(WEB, "src/lib/realData"))};\n`,
+      + `export { realAlleleCounts, PRS_PAYLOAD_PATH } from ${JSON.stringify(join(WEB, "src/lib/realData"))};\n`,
     resolveDir: WEB, loader: "ts",
   },
   bundle: true, format: "esm", platform: "node", outfile: out, logLevel: "error",
@@ -69,7 +69,7 @@ if (typeof m.qsmsField === "function") {
 }
 
 // 2. The real slice: counts are allele counts, the bound is true, and the sum is exact.
-const prs = JSON.parse(readFileSync(join(WEB, "public/data/genomics/pgs000004_prs313.json"), "utf8"));
+const prs = JSON.parse(readFileSync(join(WEB, "public", m.PRS_PAYLOAD_PATH.replace(/^\/+/, "")), "utf8"));
 const column = prs.dosage_samples.map((row) => row[0]);
 check("dosages", column.every((v) => v === 0 || v === 1 || v === 2),
   "a dosage at the pooled variant is not 0, 1 or 2, so twice the cohort is not a bound on the count");

@@ -3,16 +3,15 @@
 ## Datasets
 
 Bundled samples are real measurements or simulator output. Every one the browser serves carries a
-licence that permits redistribution except the genomics payload: its 1000 Genomes dosage slice has
-no licence at all (IGSR grants no blanket licence; it ships under the cell budget of
-[DATA_LICENSES.md](../DATA_LICENSES.md) section 4), and the source paper of its PGS000004 weights is
-published under CC BY-NC-ND 4.0, whose bearing on the weights is under review. The NASA SMAP/MSL file
-the full deployment still reads has no licence at any source (below). The synthetic
+licence that permits redistribution except the genomics payload's 1000 Genomes dosage slice, which
+has no licence instrument at all (IGSR's disclaimer; it ships under the cell budget of
+[DATA_LICENSES.md](../DATA_LICENSES.md) section 4); its PGS000072 weights are CC BY 4.0 (Graff et al.,
+Nat Commun 12:970, 2021). The synthetic
 generators are an offline-CI fallback only (logged as such, never a silent substitute):
 - **Finance/AML** (demo sample): **PaySim simulator output** (Kaggle `ealaxi/paysim1`, CC-BY-SA-4.0) -> eight AML-named columns, of which the demo's linear model reads four (amount, cross_border, night_tx, new_payee) and none built from PaySim's balance columns, which the dataset's description says must not be used for fraud detection. PaySim is a *simulator*: these are synthetic transactions from aggregated real mobile-money logs, not real transactions. The **training** corpus is IBM AMLworld HI-Small (CDLA-Sharing-1.0), 5,078,345 transactions at 1 laundering in 981. **AMLworld is synthetic too** - IBM generates it with a multi-agent virtual-world model and states "Everything is synthetic"; the NeurIPS 2023 D&B paper is titled *Realistic Synthetic Financial Transactions for Anti-Money Laundering Models*. It is used because it is calibrated to real transaction statistics and its CDLA-Sharing terms permit publishing derived weights - **not** because it is real data. No commercial-OK corpus of real laundering transactions exists.
 - **Medical**: MedMNIST v2 BreastMNIST for the trained models (CC BY 4.0 asserted by MedMNIST; the BUSI authors publish no licence - see [DATA_LICENSES.md](../DATA_LICENSES.md)), MedMNIST v2 PneumoniaMNIST as the full deployment's use-case default (CC BY 4.0), Wisconsin breast-cancer (bundled demo sample; UCI, CC BY 4.0 - attribution required). MedMNIST states that its data "is NOT intended for clinical use", and nothing here is either.
-- **Genomics**: **real 1000 Genomes** phase-3 genotypes (Ensembl/IGSR - open *access*, but IGSR grants **no blanket licence**: "rights claimed on pieces of data vary") + **real PGS-Catalog** PGS000004 / PRS313 weights (**per-score licence**, EMBL-EBI terms by default). Neither is cleared for redistribution as commercial-OK; see [DATA_LICENSES.md](../DATA_LICENSES.md).
-- **Satellite**: the browser demo scores **real OPS-SAT-AD** telemetry segments (ESA OPS-SAT; Ruszczak et al., Scientific Data 2025; CC BY 4.0) since Round 84, with a demo anomaly regression fitted on 370 test-partition segments and verdicts drawn from the other 159. The **real NASA SMAP/MSL** spacecraft telemetry it served before (Telemanom; Hundman et al. 2018; NASA JPL) has **no licence granted by any provider** (checked at each source on 2026-10-30), so it is no longer served; the full deployment's loader still reads its TSV from the repository, which `DATA_LICENSES.md` records as an open change. Telemanom's `LICENSE.txt` is a Caltech copyright assertion covering the *code*; the Kaggle mirror is labelled "Data files (c) Original Authors". 17 U.S.C. 105 removes US copyright only, covers works of federal employees (JPL staff are Caltech employees), and is not a grant. Bundled demo sample only - the satellite **training** corpus is ESA-ADB (CC BY 3.0 IGO). See [DATA_LICENSES.md](../DATA_LICENSES.md).
+- **Genomics**: **real 1000 Genomes** phase-3 genotypes, read through the Ensembl REST API (open *access*, but IGSR attaches **no licence instrument**: "rights claimed on pieces of data vary"; cite The 1000 Genomes Project Consortium, Nature 526:68-74, 2015) + the **real PGS-Catalog** PGS000072 weights (Graff et al., Nat Commun 12:970, 2021, **CC BY 4.0**; 183 of the 187 variants have a 1000 Genomes genotype and are scored, the other 4 are left out). The weights are cleared for redistribution with credit; the genotypes are shipped as a slice under the cell budget, not under a licence. See [DATA_LICENSES.md](../DATA_LICENSES.md).
+- **Satellite**: the browser demo scores **real OPS-SAT-AD** telemetry segments (ESA OPS-SAT; Ruszczak et al., Scientific Data 2025; CC BY 4.0) since Round 84, with a demo anomaly regression fitted on 370 test-partition segments and verdicts drawn from the other 159. The **real NASA SMAP/MSL** spacecraft telemetry it served before (Telemanom; Hundman et al. 2018; NASA JPL) has **no licence granted by any provider** (checked at each source on 2026-10-30), so it is neither served nor kept in the repository; the full deployment's CKKS telemetry stage scores the same OPS-SAT-AD segments with the same demo regression as the browser. Telemanom's `LICENSE.txt` is a Caltech copyright assertion covering the *code*; the Kaggle mirror is labelled "Data files (c) Original Authors". 17 U.S.C. 105 removes US copyright only, covers works of federal employees (JPL staff are Caltech employees), and is not a grant. Bundled demo sample only - the satellite **training** corpus is ESA-ADB (CC BY 3.0 IGO). See [DATA_LICENSES.md](../DATA_LICENSES.md).
 - **Telecom/defense**: literature-grounded synthetic QKD-attack telemetry (no commercial-OK real corpus of **QKD-layer** attacks exists - producing one needs a physical QKD testbed under attack).
 
 Loaders + generators: `qsh.data.loaders` / `qsh.data.synthetic`.
@@ -25,8 +24,8 @@ On each use-case page the benchmark is **unified with the live simulator**: a si
 executes the E2E pipeline and the benchmark is **assembled from that run** - the MPC-FHE row carries the
 run's measured FHE-linear + MPC-non-linear cost, alongside the QSMPC-FHE comparison row (the backend
 `QuantumComparisonStage` writes the comparison into the ML-DSA-signed summary). On finance and medical
-the latency is reported as measured; genomics has no encrypted student, so its row scales the measured
-per-operation cost to the op count of a cost-model architecture, and the row's label says so. The
+the latency is reported as measured; genomics has no encrypted student, and its row prices the
+weighted sum that runs, at scale 1 and at every model size, and the row's label says so. The
 retired quantum-advantage score is displayed nowhere; only the full deployment's `/api/benchmark`
 response still carries it. The CLI below runs the same comparison standalone.
 
@@ -68,9 +67,10 @@ boundary** on that side; the secure-comparison role is played by the QSMS/QOT qu
 The benchmark's architecture is **per use case**, not a single generic shape
 (`qsh.benchmark.runner.usecase_arch_layers` / `usecase_arch_specs`, mirrored client-side). Its
 lightweight row is the trained linear model; its medium and large rows cost representative hidden-layer
-shapes from `config.tier_architectures`, labelled "tabular fraud MLP" for finance and "genomic risk
-MLP" for genomics, and **no use case trains such an MLP**: finance's encrypted student is a
-33-parameter logistic regression and genomics runs a linear polygenic score. **Medical** is the
+shapes from `config.tier_architectures`, labelled "tabular fraud MLP" for finance, and **no use case
+trains such an MLP**: finance's encrypted student is a 33-parameter logistic regression. Genomics
+has no hidden layer at any size, because what runs is one weighted sum over its scored variants.
+**Medical** is the
 exception, a **genuine small CNN**: in the browser it reads a tabular (WDBC) row tiled to the image
 size, run on the published student's own weights under CKKS, and real MedMNIST images only in the
 full deployment. The pages have **no workload selector**;

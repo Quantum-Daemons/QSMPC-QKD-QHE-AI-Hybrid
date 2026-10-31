@@ -1060,13 +1060,20 @@ belongs in this file rather than only in a comment.
 - **Kermany et al., "Identifying Medical Diagnoses and Treatable Diseases by Image-Based Deep
   Learning", *Cell* 172(5) (2018).** DOI 10.1016/j.cell.2018.02.010. The chest X-ray source behind
   PneumoniaMNIST. Added: 2026-08-07.
-- **Mavaddat et al., "Polygenic Risk Scores for Prediction of Breast Cancer", *AJHG* 104(1) (2019).**
-  DOI 10.1016/j.ajhg.2018.11.002. The paper behind **PGS000004 (PRS313)**, which the genomics use case
-  has scored since Round 31. Its external baseline is now **AUROC 0.633 [0.624, 0.641]** from PGS Catalog
-  **PPM001647** (Jia et al., JNCI Cancer Spectrum 2020, doi:10.1093/jncics/pkaa021, n=400,812 Europeans),
-  cited and explicitly not measured here. The retired PGS000001 baseline was PPM017270's Harrell C-index
-  0.628 - a different quantity on a different scale, which is one reason the switch was worth making.
-  Added: 2026-08-07, revised 2026-08-11.
+- **Mavaddat et al., "Polygenic Risk Scores for Prediction of Breast Cancer and Breast Cancer Subtypes",
+  *AJHG* 104(1) (2019).**
+  DOI 10.1016/j.ajhg.2018.11.002. The paper behind **PGS000004 (PRS313)**, which the genomics use case does not
+  score: the article is CC BY-NC-ND 4.0 and the weights appear only in its supplementary data.
+- **Graff et al., "Cross-cancer evaluation of polygenic risk scores for 16 cancer types in two large
+  cohorts", *Nat Commun* 12:970 (2021).** DOI 10.1038/s41467-021-21288-z, CC BY 4.0. The paper behind
+  **PGS000072**, the breast-cancer score the genomics use case scores (187 variants; the score sums
+  risk-allele counts times the log odds ratio from each source GWAS). Its external baseline is **AUROC
+  0.637** from PGS Catalog **PPM002038** (Kachuri et al., *Nat Commun* 11:6084, 2020,
+  doi:10.1038/s41467-020-19600-4; n=216,273 UK Biobank women, with covariates, 162 of the 187 SNPs, AUC
+  at 5 years), cited and explicitly not measured here. Added: 2026-10-31.
+- **Lambert, Wingfield et al., "Enhancing the Polygenic Score Catalog with tools for score calculation
+  and ancestry normalization", *Nat Genet* 56:1989-1994 (2024).** DOI 10.1038/s41588-024-01937-x. The
+  citation the PGS Catalog's REST `/rest/info` asks for. Added: 2026-10-31.
 - **Al Badawi, Alexandru, Polyakov and Vaikuntanathan, "SoK: Private LLM Inference using Approximate
   Homomorphic Encryption", IACR ePrint 2026/935**, revised 2026-10-23 (its third revision). Quoted in `models/distil.py` on
   why distillation is the practical route to FHE-feasible inference. Added: 2026-08-07, corrected
@@ -1590,10 +1597,10 @@ makes**, in the direction of understating what is possible.
   Open-source HEPRS; three-party model (clinician / model developer / evaluator); tested on a
   schizophrenia model with **110,000 SNPs**; encrypted and plaintext PRSs "agree closely"; **"practical
   to use on a single CPU"**.
-  **This is the citation that scopes the registry's T1 argument.** `genomics.prs` is 313 variants, and
+  **This is the citation that scopes the registry's T1 argument.** `genomics.prs` scores 183 variants, and
   `registry.py` explains T1 smallness by homomorphic cost. For this use case that is the wrong reason:
-  HEPRS runs roughly 350x more variants on one CPU, so the score is small because **PGS000004 has 313
-  variants** - a property of Mavaddat et al. 2018, not of CKKS. The cost argument still holds for
+  HEPRS runs roughly 600x more variants on one CPU, so the score is small because **PGS000072 has 187
+  variants** - a property of Graff et al. 2021, not of CKKS. The cost argument still holds for
   finance, medical and satellite, where the model is not a bare dot product.
 - **Provatas, Galanopoulos and Georgakopoulos-Soares, "bioETH-PRS: Confidential Polygenic Risk Scoring
   without a Trusted Evaluator via Fully Homomorphic Encryption on a Programmable Blockchain."**

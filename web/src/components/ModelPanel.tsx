@@ -603,7 +603,10 @@ export function ModelPanel({ usecase }: { usecase: string }) {
           <p className="muted small">
             <strong>Data:</strong> {spec.dataset.name} — {spec.dataset.licence}{" "}
             <a href={spec.dataset.url} target="_blank" rel="noreferrer noopener">source</a>
-            {!spec.dataset.publishable && " · weights not published (licence)"}
+            {/* Genomics' weights are served, not withheld: the payload ships them under this licence. */}
+            {usecase === "genomics" && !spec.hf_repo_id
+              ? " · not on the Hugging Face Hub: the published effect weights are served with this page"
+              : !spec.dataset.publishable && " · weights not published (licence)"}
           </p>
           {/* The CC BY credit, rendered rather than merely recorded. Four corpora here carry the
               condition and this line is where a visitor meets it; the same string also goes into

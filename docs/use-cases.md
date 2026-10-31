@@ -158,7 +158,7 @@ Each use case has its **own page** (`/usecase/:id`) - a **live architecture simu
 Pause / Step / Stop / Restart. A **single Run** drives both the animated E2E protocol **and** the
 benchmark: the benchmark is **assembled from that very run** (no separate "Run benchmark" button) -
 the MPC-FHE row is built from the run's **measured FHE-linear + MPC-non-linear cost** (scaled to a
-cost-model architecture on genomics, which has no encrypted student, and labelled so), shown next to
+cost-model architecture except on genomics, which prices its own weighted sum at every model size), shown next to
 the QSMPC-FHE comparison, security posture, and (on all five use-case pages) a signed
 SHAP explanation. The architecture canvas makes the **MPC-FHE secret-sharing over a LAN <-> WAN <-> LAN** link
 explicit - linear layers cross as a **CKKS ciphertext**, non-linear layers as **secret-shares**. The

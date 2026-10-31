@@ -23,7 +23,8 @@ the rows the PUBLISHED model was never fitted on, in the form the browser needs 
              eval_sample.json` already ships. The partition's train half is not on this machine, so
              the demo regression is fitted on 370 of the 529 test segments and the verdict is drawn
              from the other 159; it is a demo model, NOT `satellite_comms.opssat` or its student,
-             and the payload says so.
+             and the payload says so. The full deployment's CKKS telemetry stage scores the same
+             file, from a byte-identical copy this function also writes to data/satellite/.
 
 Nothing here is downloaded. Every input is a file this repository already tracks, or the
 repository's own generator.
@@ -274,6 +275,12 @@ def satellite() -> None:
                               "script. Not comparable with the benchmark's published figures, which "
                               "are fitted on the train partition and scored on all 529.")},
     })
+    # The full deployment's CKKS twin (`qsh.data.loaders.load_opssat_segments`) reads the same bytes from
+    # data/, which the API image ships and web/public/ is not; tests/test_r84_satpy_opssat_ckks.py holds
+    # the two copies byte-identical.
+    copy = REPO / "data" / "satellite" / "opssat_segments.json"
+    copy.write_bytes((WEB / "satellite" / "opssat_segments.json").read_bytes())
+    print(f"  wrote {copy.relative_to(REPO)} (copy of web/public/data/satellite/opssat_segments.json)")
 
 
 def main() -> int:

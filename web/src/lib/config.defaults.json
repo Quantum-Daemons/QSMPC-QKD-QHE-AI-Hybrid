@@ -51,16 +51,11 @@
       },
       "genomics": {
         "hidden": {
-          "large": [
-            256,
-            128
-          ],
+          "large": [],
           "lightweight": [],
-          "medium": [
-            64
-          ]
+          "medium": []
         },
-        "label": "genomic risk MLP"
+        "label": "polygenic score: one weighted sum over its variants, not a neural network"
       },
       "medical_fl": {
         "hidden": {
@@ -119,10 +114,10 @@
       "url": "https://www.kaggle.com/datasets/ealaxi/paysim1"
     },
     "genomics": {
-      "licence": "per-score; EMBL-EBI Terms of Use by default",
-      "licence_checked": "2026-08-03",
-      "provenance": "real 1000 Genomes phase-3 genotypes + published PGS000004 (PRS313) weights (PGS Catalog: per-score licence, EMBL-EBI terms by default; IGSR grants no blanket licence). 30 of 2,504 individuals ship in the browser payload - DATA_LICENSES section 4 justifies a slice of that size, not the full matrix. Variants keyed by chr:pos:effect_allele because PGS000004 publishes no rsIDs.",
-      "url": "https://www.pgscatalog.org/downloads/"
+      "licence": "CC-BY-4.0 (the score's source publication, Graff et al. 2021); the PGS Catalog record adds the EMBL-EBI Terms of Use",
+      "licence_checked": "2026-10-31",
+      "provenance": "real 1000 Genomes phase-3 genotypes (no licence instrument: open-consent data, per IGSR's disclaimer; The 1000 Genomes Project Consortium, Nature 526:68-74, 2015) + the published PGS000072 effect weights (PGS Catalog; Graff et al., Nat Commun 12:970, 2021, CC BY 4.0). 183 of its 187 variants are scored: the 4 that Ensembl's 1000 Genomes records do not resolve are left out, not filled in. 30 of 2,504 individuals ship in the browser payload - DATA_LICENSES section 4 justifies a slice of that size, not the full matrix.",
+      "url": "https://www.pgscatalog.org/score/PGS000072/"
     },
     "medical_fl": {
       "licence": "CC-BY-4.0",
@@ -132,9 +127,9 @@
     },
     "satellite_comms": {
       "licence": "CC-BY-4.0",
-      "licence_checked": "2026-08-05",
+      "licence_checked": "2026-10-31",
       "provenance": "real OPS-SAT-AD telemetry segments (ESA OPS-SAT CubeSat; Zenodo 10.5281/zenodo.12588358, CC-BY-4.0): 19 precomputed per-segment features of the benchmark's test partition. The demo's anomaly regression is fitted here on 370 of those 529 segments and the verdict is drawn from the other 159; it is not the published satellite_comms.opssat model.",
-      "url": "https://doi.org/10.5281/zenodo.12588358"
+      "url": "https://doi.org/10.5281/zenodo.12588359"
     }
   },
   "federated": {
@@ -177,10 +172,10 @@
         "kind": "downlink",
         "label": "Jinan-1 microsatellite to Jinan (Li et al. 2025), one constant calibrated",
         "note": "A 23 kg microsatellite with a 200 mm telescope and a 280 mm portable station. The paper does not state its atmosphere, pointing loss, background or transmit optics, so those are assumptions from other sources, and ONE constant - the station efficiency - is calibrated to the 25 September 2022 pass's peak count rate. What that pass then checks independently is the fall with elevation: 6.9 dB predicted against 6.6 measured to 13.9 degrees.",
-        "source": "Li et al., 'Microsatellite-based real-time quantum key distribution', Nature (2025), arXiv:2408.10994",
+        "source": "Li et al., 'Microsatellite-based real-time quantum key distribution', Nature 640, 47 (2025), arXiv:2408.10994. The pass figures used here (Fig. 4b, Table 1) are the preprint's, arXiv:2408.10994v1; the version of record reports up to 1.07 million bits in a single pass, where v1 said 0.59 million, and moves its per-pass results to Extended Data",
         "values": {
           "atmospheric_db": {
-            "assumption": "Not stated. Khmelev et al. 2023's clear-sky fit for Micius over Zvenigorod (kappa = 0.22 magnitudes per air mass, 0.88 dB at the zenith) at the same 850 nm band; Jinan is an urban site, so it may read low.",
+            "assumption": "Not stated. Khmelev et al. 2024's clear-sky fit for Micius over Zvenigorod (kappa = 0.22 magnitudes per air mass, 0.88 dB at the zenith) at the same 850 nm band; Jinan is an urban site, so it may read low.",
             "value": 0.88
           },
           "atmospheric_ref_km": {
@@ -269,7 +264,7 @@
         "source": "Liao et al., Nature 549, 43 (2017), arXiv:1707.00542",
         "values": {
           "atmospheric_db": {
-            "note": "The midpoint, scaled to other ranges by air mass (Round 77, the user's choice). Over the 19 December 2016 pass it gives 1 percent fewer detections than Liao counted (3,517,343 against 3,551,136).",
+            "note": "The midpoint, scaled to other ranges by air mass (Round 77, the user's choice). Over the 19 December 2016 pass it gives 0.9 percent fewer detections than Liao counted (3,519,418 against 3,551,136).",
             "quote": "We estimate that at 1200 km the loss due to atmospheric absorption and turbulence is in the range of 3 dB to 8 dB",
             "value": 5.5
           },
@@ -364,7 +359,7 @@
         "source": "Liao et al., Nature 549, 43 (2017), arXiv:1707.00542; seeing from Zhang et al., arXiv:1601.08114 (2016); turbulence relations from Liu et al., arXiv:1505.05436",
         "values": {
           "atmospheric_db": {
-            "note": "The midpoint, scaled to other ranges by air mass (Round 77, the user's choice). Over the 19 December 2016 pass it gives 1 percent fewer detections than Liao counted (3,517,343 against 3,551,136).",
+            "note": "The midpoint, scaled to other ranges by air mass (Round 77, the user's choice). Over the 19 December 2016 pass the default link gives 0.9 percent fewer detections than Liao counted (3,519,418 against 3,551,136); this profile's field stop loses more as the satellite sinks, and it counts 3,306,372.",
             "quote": "We estimate that at 1200 km the loss due to atmospheric absorption and turbulence is in the range of 3 dB to 8 dB",
             "value": 5.5
           },
@@ -394,7 +389,7 @@
             "value": 800.0
           },
           "field_stop_urad": {
-            "assumption": "Xinglong's field stop is not published - Liao et al. 2018 say only that the decoders are 'designed with a small field-of-view'. 10 urad is the radius at which this term begins to matter; Zvenigorod's receiver accepts 25 urad (Khmelev et al. 2023), where it adds almost nothing.",
+            "assumption": "Xinglong's field stop is not published - Liao et al. 2018 say only that the decoders are 'designed with a small field-of-view'. 10 urad is the radius at which this term begins to matter; Zvenigorod's receiver accepts 25 urad (Khmelev et al. 2024), where it adds almost nothing.",
             "value": 10.0
           },
           "min_elevation_deg": {
@@ -472,7 +467,7 @@
         "source": "Liao et al., Nature 549, 43 (2017), arXiv:1707.00542",
         "values": {
           "atmospheric_db": {
-            "note": "The midpoint, scaled to other ranges by air mass (Round 77, the user's choice). Over the 19 December 2016 pass it gives 1 percent fewer detections than Liao counted (3,517,343 against 3,551,136).",
+            "note": "The midpoint, scaled to other ranges by air mass (Round 77, the user's choice). Over the 19 December 2016 pass the default link gives 0.9 percent fewer detections than Liao counted (3,519,418 against 3,551,136); this profile, its decoy sent in the vacuum's place, counts 3,726,306.",
             "quote": "We estimate that at 1200 km the loss due to atmospheric absorption and turbulence is in the range of 3 dB to 8 dB",
             "value": 5.5
           },
@@ -656,9 +651,9 @@
       "micius_2022_zvenigorod": {
         "id": "micius_2022_zvenigorod",
         "kind": "downlink",
-        "label": "Micius to Zvenigorod (Khmelev 2023), measured clear-sky atmosphere",
+        "label": "Micius to Zvenigorod (Khmelev 2024), measured clear-sky atmosphere",
         "note": "A second Micius link with its own measured pass: a 600 mm station, an atmosphere fitted to the counts (0.88 dB at the zenith) and no pointing term, as the paper's model has none. Checked in tests/test_satellite_network_is_checked.py against its sifted rates at 600 and 1,100 km.",
-        "source": "Khmelev et al., arXiv:2310.17476 (2023), the Micius pass over Zvenigorod of 1 March 2022",
+        "source": "Khmelev et al., Opt. Express 32(7), 11964 (2024), arXiv:2310.17476, the Micius pass over Zvenigorod of 1 March 2022",
         "values": {
           "atmospheric_db": {
             "note": "kappa is in magnitudes per air mass (their Eq. 2, 10^(-0.4 kappa csc(theta))), so 0.4 x 0.22 x 10 = 0.88 dB at the zenith.",
@@ -824,9 +819,9 @@
       "micius_type_2019": {
         "id": "micius_type_2019",
         "kind": "isl",
-        "label": "Micius-type terminals on both satellites (Vergoossen 2019)",
+        "label": "Micius-type terminals on both satellites (Vergoossen 2020)",
         "note": "Vergoossen et al.: 'Satellites have one Micius-type Earth-pointing terminal, and where specified another terminal available for inter-satellite links.' No quantum inter-satellite link has flown, so the receiving end borrows Xinglong's detectors and optics.",
-        "source": "Vergoossen et al., arXiv:1903.07845 (2019); terminal values from Liao et al., Nature 549, 43 (2017), arXiv:1707.00542",
+        "source": "Vergoossen et al., Acta Astronautica 173, 164 (2020), arXiv:1903.07845; terminal values from Liao et al., Nature 549, 43 (2017), arXiv:1707.00542",
         "values": {
           "clearance_km": {
             "assumption": "The line of sight between neighbours must pass at least 100 km above the ground, clear of the dense atmosphere; an ISL is then modelled with no atmospheric loss.",
@@ -922,14 +917,14 @@
         "metric": {
           "baseline": 0.6323,
           "baseline_source": "GFP+XGBoost, IBM AMLworld HI-Small, NeurIPS 2023 D&B (63.23 +/- 0.17). Same metric and corpus, different protocol: that figure uses a 60/20/20 split by transaction order and IBM's Graph Feature Preprocessor updated over the test window; this project tests on the last 30 percent of transactions (fit 56, validation 14) with its own graph features, whose structural block is fitted on the training window.",
-          "ceiling": 0.7401,
-          "ceiling_source": "MEGA-PNA, arXiv:2412.00241v2 Table 2 'Minority-class F1 scores (%) on AML edge classification task', AML Small HI (74.01 +/- 1.55); the paper's v3 is accepted for publication in TMLR (2026). It is not the table's highest row: the same table prints MEGA-GenAgg at 74.88 +/- 0.38 and MEGA(PNA)-GIN at 74.69 +/- 0.50, and Multi-PNA (68.16 +/- 2.65) below all three.",
+          "ceiling": 0.7581,
+          "ceiling_source": "Multi-FraudGT, the best AML Small HI row of Table 16 ('Minority class F1 scores (%) for six AML datasets') in Bilgi and Atasu, 'MEGA: Message Passing Neural Networks for Multigraphs with EdGe Attributes', TMLR (08/2026), arXiv:2412.00241v3: 75.81 +/- 0.75. In the same column the paper's own MEGA-PNA scores 74.01 +/- 1.55 and MEGA-GenAgg 74.48 +/- 0.84, and Multi-PNA 67.35 +/- 2.89; Small HI is the one AML dataset of the six where Multi-FraudGT is ahead of MEGA-PNA.",
           "companion": "auprc",
           "comparison_caveat": "",
           "display": "minority-class F1 (laundering)",
           "name": "minority_class_f1"
         },
-        "notes": "Reference architecture only - never trained or published here. Message passing needs each account's graph neighbourhood at scoring time, which this demo's browser tier does not hold, so every tier ships the gradient-boosting model, which scores one precomputed feature row per transaction. That is a choice for this operating point, not an impossibility: Bilgi et al. (arXiv:2610.18054, preprint) run a 2-layer GNN under CKKS on AMLworld HI-Small at 5.31 s per inference on one GPU, with the graph structure visible to the server. Kept as a spec for the architecture it names. It is no longer the best published figure on this split: the MEGA rows above it are (see the ceiling).",
+        "notes": "Reference architecture only - never trained or published here. Message passing needs each account's graph neighbourhood at scoring time, which this demo's browser tier does not hold, so every tier ships the gradient-boosting model, which scores one precomputed feature row per transaction. That is a choice for this operating point, not an impossibility: Bilgi et al. (arXiv:2610.18054, preprint) run a 2-layer GNN under CKKS on AMLworld HI-Small at 5.31 s per inference on one GPU, with the graph structure visible to the server. Kept as a spec for the architecture it names. It is not the best published figure on this split: the published version of MEGA (TMLR, see the ceiling) re-runs Multi-PNA at 67.35 +/- 2.89 on Small HI, below FraudGT, Multi-FraudGT and every MEGA variant in its table.",
         "onnx_domains": [],
         "params": null,
         "runs_encrypted": false,
@@ -1043,14 +1038,14 @@
         "metric": {
           "baseline": 0.6323,
           "baseline_source": "GFP+XGBoost, IBM AMLworld HI-Small, NeurIPS 2023 D&B (63.23 +/- 0.17). Same metric and corpus, different protocol: that figure uses a 60/20/20 split by transaction order and IBM's Graph Feature Preprocessor updated over the test window; this project tests on the last 30 percent of transactions (fit 56, validation 14) with its own graph features, whose structural block is fitted on the training window.",
-          "ceiling": 0.7401,
-          "ceiling_source": "MEGA-PNA, arXiv:2412.00241v2 Table 2 'Minority-class F1 scores (%) on AML edge classification task', AML Small HI (74.01 +/- 1.55); the paper's v3 is accepted for publication in TMLR (2026). It is not the table's highest row: the same table prints MEGA-GenAgg at 74.88 +/- 0.38 and MEGA(PNA)-GIN at 74.69 +/- 0.50, and Multi-PNA (68.16 +/- 2.65) below all three.",
+          "ceiling": 0.7581,
+          "ceiling_source": "Multi-FraudGT, the best AML Small HI row of Table 16 ('Minority class F1 scores (%) for six AML datasets') in Bilgi and Atasu, 'MEGA: Message Passing Neural Networks for Multigraphs with EdGe Attributes', TMLR (08/2026), arXiv:2412.00241v3: 75.81 +/- 0.75. In the same column the paper's own MEGA-PNA scores 74.01 +/- 1.55 and MEGA-GenAgg 74.48 +/- 0.84, and Multi-PNA 67.35 +/- 2.89; Small HI is the one AML dataset of the six where Multi-FraudGT is ahead of MEGA-PNA.",
           "companion": "auprc",
           "comparison_caveat": "",
           "display": "minority-class F1 (laundering)",
           "name": "minority_class_f1"
         },
-        "notes": "The browser-tier finance model: it scores one feature row per transaction with no message passing at scoring time. That row is not stateless - its per-account and structural features are computed from the account's earlier transactions - so a deployment needs that history to score a new transaction.",
+        "notes": "The browser-tier finance model: it scores one feature row per transaction with no message passing at scoring time. That row is not stateless - its per-account and structural features are computed from the account's earlier transactions - so a deployment needs that history to score a new transaction. It is not evaluated under encryption: the public page encrypts finance_aml.student, distilled from this model, on the 8,192 test-window rows of this model's sample, and a four-feature PaySim surrogate for its one-row CKKS step.",
         "onnx_domains": [
           "ai.onnx.ml"
         ],
@@ -1113,14 +1108,14 @@
         "metric": {
           "baseline": 0.6323,
           "baseline_source": "GFP+XGBoost, IBM AMLworld HI-Small, NeurIPS 2023 D&B (63.23 +/- 0.17). Same metric and corpus, different protocol: that figure uses a 60/20/20 split by transaction order and IBM's Graph Feature Preprocessor updated over the test window; this project tests on the last 30 percent of transactions (fit 56, validation 14) with its own graph features, whose structural block is fitted on the training window.",
-          "ceiling": 0.7401,
-          "ceiling_source": "MEGA-PNA, arXiv:2412.00241v2 Table 2 'Minority-class F1 scores (%) on AML edge classification task', AML Small HI (74.01 +/- 1.55); the paper's v3 is accepted for publication in TMLR (2026). It is not the table's highest row: the same table prints MEGA-GenAgg at 74.88 +/- 0.38 and MEGA(PNA)-GIN at 74.69 +/- 0.50, and Multi-PNA (68.16 +/- 2.65) below all three.",
+          "ceiling": 0.7581,
+          "ceiling_source": "Multi-FraudGT, the best AML Small HI row of Table 16 ('Minority class F1 scores (%) for six AML datasets') in Bilgi and Atasu, 'MEGA: Message Passing Neural Networks for Multigraphs with EdGe Attributes', TMLR (08/2026), arXiv:2412.00241v3: 75.81 +/- 0.75. In the same column the paper's own MEGA-PNA scores 74.01 +/- 1.55 and MEGA-GenAgg 74.48 +/- 0.84, and Multi-PNA 67.35 +/- 2.89; Small HI is the one AML dataset of the six where Multi-FraudGT is ahead of MEGA-PNA.",
           "companion": "auprc",
           "comparison_caveat": "",
           "display": "minority-class F1 (laundering)",
           "name": "minority_class_f1"
         },
-        "notes": "Encrypted on the public page since Round 84: its private-inference figure scores this 33-parameter AMLworld student under CKKS on the 8,192 test-window rows of finance_aml.gbm's sample (64 ciphertexts), against the same model in plaintext. The page's one-row CKKS step, its MPC argmax, the reported class and the SHAP bars still use the 8-feature linear model bundled with the PaySim sample, and the full deployment's finance pipeline encrypts its own PaySim-trained surrogate. Its agreement with the teacher (`agreement`) is measured offline, at training time, in plaintext; each browser run measures `encrypted_agreement`, CKKS against plaintext for the model it encrypts.",
+        "notes": "Encrypted on the public page since Round 84: its private-inference figure scores this 33-parameter AMLworld student under CKKS on the 8,192 test-window rows of finance_aml.gbm's sample (64 ciphertexts), against the same model in plaintext. The page's one-row CKKS step, its MPC argmax, the reported class and the SHAP bars still use the four-feature linear model bundled with the PaySim sample (log amount, a TRANSFER or CASH_OUT flag, a night-hour flag and a first-seen-payee flag; no feature built from PaySim's balance columns), and the full deployment's finance pipeline encrypts its own PaySim-trained surrogate over the same four. Its agreement with the teacher (`agreement`) is measured offline, at training time, in plaintext; each browser run measures `encrypted_agreement`, CKKS against plaintext for the model it encrypts.",
         "onnx_domains": [
           "ai.onnx.ml"
         ],
@@ -1132,14 +1127,14 @@
     "genomics": [
       {
         "achieved": {
-          "dataset": "PGS Catalog scoring files",
-          "git_sha": "cc4a151-dirty",
+          "dataset": "PGS Catalog score PGS000072",
+          "git_sha": "dfa93b1-dirty",
           "licence_audit": {
             "checked": "read from the bundled scoring file at run time",
             "declares_restriction": false,
             "declares_terms": true,
             "header": [
-              "# PGS000004 (PRS313_BC) - breast-cancer Polygenic Risk Score, 313 variants, GRCh37. Source: PGS Catalog (https://www.pgscatalog.org/score/PGS000004/), harmonised hmPOS file. LICENCE: per score - PGS000004 carries the Catalog's default terms (EMBL-EBI Terms of Use), NOT CC-BY 4.0; cite Mavaddat et al. Am J Hum Genet 2018 (doi:10.1016/j.ajhg.2018.11.002) and observe any restrictions set by the score authors. Same posture as PGS000001. NO rsID COLUMN: the Catalog publishes none for this score (hm_rsID empty for all 313, hm_source=Author-reported), so downstream tooling keys on chr:pos plus allele match. See DATA_LICENSES.md.",
+              "# PGS000072 (CC_Breast) - breast-cancer polygenic score, 187 variants, GRCh37, weights ln(OR). Source: PGS Catalog scoring file https://ftp.ebi.ac.uk/pub/databases/spot/pgs/scores/PGS000072/ScoringFiles/PGS000072.txt.gz, downloaded 2026-10-31 (Last-Modified 2026-04-13; sha256 of the .gz 10dd9c64df7c21a29f8be4f3efd33e503e1f6247f2b5b98e97c5e870ed4cd748, of the text after this line f3626961a7efdb38197ac733e124be1eefb368c73e1447e8da0f12e11db24dde). Score publication: Graff RE et al., Cross-cancer evaluation of polygenic risk scores for 16 cancer types in two large cohorts, Nat Commun 12, 970 (2021), doi:10.1038/s41467-021-21288-z, licensed CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/; Crossref and Europe PMC, read 2026-10-31); the #citation line below names its bioRxiv preprint, for which Crossref and Europe PMC record no licence. Cite the PGS Catalog as Lambert, Wingfield et al., Nat Genet 56:1989-1994 (2024), doi:10.1038/s41588-024-01937-x. Change: this line was added; every line after it is the Catalog's file, unchanged. See DATA_LICENSES.md.",
               "###PGS CATALOG SCORING FILE - see https://www.pgscatalog.org/downloads/#dl_ftp_scoring for additional information",
               "#format_version=2.0"
             ],
@@ -1149,56 +1144,56 @@
           "measured": {
             "by_super_population": {
               "AFR": {
-                "frac_above_global_cut": 0.161876,
-                "mean": 0.207404,
+                "frac_above_global_cut": 0.02118,
+                "mean": 20.374579,
                 "n": 661,
-                "p90": 0.8989,
-                "sd": 0.554294
+                "p90": 21.693418,
+                "sd": 1.042049
               },
               "AMR": {
-                "frac_above_global_cut": 0.083573,
-                "mean": -0.072606,
+                "frac_above_global_cut": 0.017291,
+                "mean": 20.133905,
                 "n": 347,
-                "p90": 0.71352,
-                "sd": 0.65686
+                "p90": 21.711376,
+                "sd": 1.283454
               },
               "EAS": {
-                "frac_above_global_cut": 0.14881,
-                "mean": 0.163061,
+                "frac_above_global_cut": 0.390873,
+                "mean": 22.252985,
                 "n": 504,
-                "p90": 0.8645,
-                "sd": 0.567598
+                "p90": 24.103023,
+                "sd": 1.440805
               },
               "EUR": {
-                "frac_above_global_cut": 0.027833,
-                "mean": -0.368675,
+                "frac_above_global_cut": 0.039761,
+                "mean": 19.816252,
                 "n": 503,
-                "p90": 0.41544,
-                "sd": 0.592581
+                "p90": 21.612154,
+                "sd": 1.468938
               },
               "SAS": {
-                "frac_above_global_cut": 0.05317,
-                "mean": -0.259791,
+                "frac_above_global_cut": 0.02863,
+                "mean": 20.341618,
                 "n": 489,
-                "p90": 0.5101,
-                "sd": 0.599757
+                "p90": 21.870458,
+                "sd": 1.211468
               }
             },
-            "global_high_risk_cut": 0.75367,
+            "global_high_risk_cut": 22.641088,
             "n_samples": 2504,
-            "n_variants": 313,
-            "score_mean": -0.047284,
-            "score_sd": 0.634203
+            "n_variants": 183,
+            "score_mean": 20.600716,
+            "score_sd": 1.54361
           },
           "not_measured": {
             "auroc": null,
-            "published_auroc_eur": 0.633,
-            "published_source": "PGS Catalog PPM001647 for PGS000004 (PRS313): AUROC 0.633 (95% CI 0.624-0.641), n=400,812 Europeans - 4,340 cases and 396,472 controls - from Jia et al., JNCI Cancer Spectrum 2020 (doi:10.1093/jncics/pkaa021). Verified at the Catalog REST record 2026-08-11. TWO CAVEATS THAT MAKE THIS A CITATION AND NOT A TARGET, both from the record itself: the model is fitted WITH COVARIATES - 'family history of cancer (in first-degree relatives), genotyping array' - which a bare weighted dot product does not have; and the cohort was 'missing 25 variants (8%) based on availability of variants in the cohort', so the published figure is for 288 of the 313 variants, not all of them. This replaced PGS000001's C-index 0.628 (PPM017270) when the score changed. That figure was a Harrell's C-index over censored follow-up, not an AUROC, and the two are not directly comparable - a C-index is computed over time-to-event pairs and an AUROC over a fixed case/control split. PGS000004 publishes a genuine AUROC, so the switch also removes that comparability problem rather than only changing the number.",
-            "reason": "1000 Genomes is a reference panel with no breast-cancer case/control status. AUROC requires a phenotyped cohort, so the published figure is carried as a citation, not as a measurement from this run: 0.633 (AUROC (European ancestry))."
+            "published_auroc_eur": 0.637,
+            "published_source": "PGS Catalog PPM002038 for PGS000072: AUROC 0.637 (no confidence interval recorded), incident breast cancer in n=216,273 European-ancestry women in UK Biobank - 4,760 cases and 211,513 controls - from Kachuri et al., Nat Commun 11:6084 (2020), doi:10.1038/s41467-020-19600-4. A CITATION AND NOT A TARGET, for three reasons the record itself gives: the model is fitted WITH COVARIATES (age at assessment, family history of breast cancer, genotyping array, PCs 1-15, parity, age at menarche, body mass index, menopausal status, hormone replacement therapy, oral contraceptive use, alcohol intake, and body mass index by menopausal status), which a bare weighted dot product does not have; it used 'only 162 of the original 187 SNPs'; and it is an AUC at 5 years. It is the only AUROC among the score's three Catalog performance records; the other two report an odds ratio per standard deviation of 1.26 (95% CI 1.24-1.28; PPM000192, GERA and UK Biobank, n=237,549, Graff et al. 2021) and a hazard ratio of 1.26 (1.20-1.32; PPM017165, post-menopausal breast cancer, UK Biobank, n=1,990; Byrne et al., Int J Epidemiol 52:817-826, 2023).",
+            "reason": "1000 Genomes is a reference panel with no breast-cancer case/control status. AUROC requires a phenotyped cohort, so the published figure is carried as a citation, not as a measurement from this run: 0.637 (AUROC (European ancestry))."
           },
-          "wall_clock_s": 1.5
+          "wall_clock_s": 0.6
         },
-        "architecture": "per-variant effect-weight vector over 313 variants (PGS000004: hard-thresholding stepwise forward regression, p < 1e-5)",
+        "architecture": "per-variant effect-weight vector over 183 of PGS000072's 187 variants (genome-wide significant variants: P < 5e-8, MAF > 1%, LD-thinned at r2 > 0.3; weights are log odds ratios)",
         "artifacts": [
           {
             "browser_runnable": false,
@@ -1210,11 +1205,11 @@
         ],
         "browser_runnable": false,
         "dataset": {
-          "attribution": "",
-          "licence": "per-score; EMBL-EBI Terms of Use by default",
-          "name": "PGS Catalog scoring files",
-          "publishable": false,
-          "url": "https://www.pgscatalog.org/downloads/"
+          "attribution": "Score: Graff RE, Cavazos TB, Thai KK et al., 'Cross-cancer evaluation of polygenic risk scores for 16 cancer types in two large cohorts', Nat Commun 12:970 (2021), doi:10.1038/s41467-021-21288-z, CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/); its weights as the PGS Catalog distributes them (PGS000072). PGS Catalog: Lambert, Wingfield et al., 'Enhancing the Polygenic Score Catalog with tools for score calculation and ancestry normalization', Nat Genet 56:1989-1994 (2024), doi:10.1038/s41588-024-01937-x. Genotypes: The 1000 Genomes Project Consortium, 'A global reference for human genetic variation', Nature 526:68-74 (2015), doi:10.1038/nature15393. Changes: 183 of the 187 variants are scored, with their weights unchanged; the 4 that Ensembl's 1000 Genomes phase 3 records do not resolve are left out (DATA_LICENSES.md section 4).",
+          "licence": "CC-BY-4.0 (the score's source publication, Graff et al. 2021); the PGS Catalog record adds the EMBL-EBI Terms of Use",
+          "name": "PGS Catalog score PGS000072",
+          "publishable": true,
+          "url": "https://www.pgscatalog.org/score/PGS000072/"
         },
         "eval_sample_reason": null,
         "eval_split": null,
@@ -1224,16 +1219,16 @@
         "key": "genomics.prs",
         "label": "Polygenic risk score (published effect weights)",
         "metric": {
-          "baseline": 0.633,
-          "baseline_source": "PGS Catalog PPM001647 for PGS000004 (PRS313): AUROC 0.633 (95% CI 0.624-0.641), n=400,812 Europeans - 4,340 cases and 396,472 controls - from Jia et al., JNCI Cancer Spectrum 2020 (doi:10.1093/jncics/pkaa021). Verified at the Catalog REST record 2026-08-11. TWO CAVEATS THAT MAKE THIS A CITATION AND NOT A TARGET, both from the record itself: the model is fitted WITH COVARIATES - 'family history of cancer (in first-degree relatives), genotyping array' - which a bare weighted dot product does not have; and the cohort was 'missing 25 variants (8%) based on availability of variants in the cohort', so the published figure is for 288 of the 313 variants, not all of them. This replaced PGS000001's C-index 0.628 (PPM017270) when the score changed. That figure was a Harrell's C-index over censored follow-up, not an AUROC, and the two are not directly comparable - a C-index is computed over time-to-event pairs and an AUROC over a fixed case/control split. PGS000004 publishes a genuine AUROC, so the switch also removes that comparability problem rather than only changing the number.",
-          "ceiling": 0.668,
-          "ceiling_source": "Highest AUROC among PGS000004's OWN Catalog performance records: 0.668 (PPM012913, n=302,425, European). NOT THE BARE SCORE: that record evaluates PGS000004 combined with the iCARE-Lit classical risk factors (age at menarche, parity, BMI, family history and others) for 5-year absolute risk (Hurson et al., Int J Epidemiol 2022), so a weighted dot product alone is not expected to reach it. Measured across all 28 AUROC records for this score on 2026-08-11, not taken from a range quoted elsewhere - a first attempt at this line read the first page of results only and put the ceiling at 0.6573, which is a real record but not the maximum. European records span 0.5877-0.668 over 22 entries; the largest cohort is PPM012918 at n=5,328,392 with 0.665. The previous ceiling of 0.69 was chosen against a C-index scale, so it was never a bound on an AUROC for this score even though it happens to sit close to one. WORTH READING BESIDE THIS USE CASE'S FINDING: the lowest of the 28 is 0.55 (PPM005171, n=3,801, 'African unspecified'), against 0.5877-0.668 for European samples. The published record set shows the same ancestry gap this page demonstrates by a different route.",
+          "baseline": 0.637,
+          "baseline_source": "PGS Catalog PPM002038 for PGS000072: AUROC 0.637 (no confidence interval recorded), incident breast cancer in n=216,273 European-ancestry women in UK Biobank - 4,760 cases and 211,513 controls - from Kachuri et al., Nat Commun 11:6084 (2020), doi:10.1038/s41467-020-19600-4. A CITATION AND NOT A TARGET, for three reasons the record itself gives: the model is fitted WITH COVARIATES (age at assessment, family history of breast cancer, genotyping array, PCs 1-15, parity, age at menarche, body mass index, menopausal status, hormone replacement therapy, oral contraceptive use, alcohol intake, and body mass index by menopausal status), which a bare weighted dot product does not have; it used 'only 162 of the original 187 SNPs'; and it is an AUC at 5 years. It is the only AUROC among the score's three Catalog performance records; the other two report an odds ratio per standard deviation of 1.26 (95% CI 1.24-1.28; PPM000192, GERA and UK Biobank, n=237,549, Graff et al. 2021) and a hazard ratio of 1.26 (1.20-1.32; PPM017165, post-menopausal breast cancer, UK Biobank, n=1,990; Byrne et al., Int J Epidemiol 52:817-826, 2023).",
+          "ceiling": 0.637,
+          "ceiling_source": "The highest AUROC among PGS000072's own three Catalog performance records, and the only one: PPM002038, 0.637, with the covariates the baseline source lists (read 2026-10-31). All three are in European-ancestry samples, so the Catalog holds no figure for this score in any other ancestry: the ancestry gap this page shows is measured from genotypes, not read from a published AUROC.",
           "companion": "",
           "comparison_caveat": "",
           "display": "AUROC (European ancestry)",
           "name": "auroc_eur"
         },
-        "notes": "WHAT RUNS UNDER CKKS DIFFERS BY TIER. The browser's CKKS step is a sign test on the 8 largest-effect of the 313 variants (W = [-w/2, +w/2], b = 0), not the 313-variant score; the full deployment evaluates all 313 against a 75th-percentile cut. Not a neural network, and presenting a genomic foundation model as a PRS method would be the most obvious credibility hole available. Evaluation must be stratified by genetic ancestry, and what is measured here is a distribution shift, NOT an AUROC drop: an earlier revision of this note called it an AUROC drop, but 1000 Genomes is a reference panel carrying no breast-cancer case/control status, so no AUROC is computable from it and genomics_prs.py records auroc=null rather than inventing one. PGS000004 (PRS313) is Mavaddat et al. (AJHG 2018), 313 variants - not PRS-CS or LDpred2, which are Bayesian-shrinkage methods this score does not use. An earlier architecture string named that family and contradicted this project's own training script. Until Round 31 this page ran PGS000001, the 77-variant Mavaddat 2015 score selected by genome-wide significance (P<5e-8); the switch is recorded because the variant count and the baseline both changed with it. The finding is the by_super_population.*.frac_above_global_cut rows listed above: one globally-set high-risk cut flags a far larger share of AFR than of EUR, a gap driven by allele-frequency differences rather than by risk. Read those rows, not this sentence - they are recomputed on every training run, so no figure quoted in prose here can drift away from them. The published European AUROC baseline comes from a phenotyped cohort that is access-controlled, which is why it cannot be reproduced on this page.",
+        "notes": "WHAT RUNS UNDER CKKS: the full score, in both tiers. One person's effect-allele dosages at every variant are encrypted together in one CKKS ciphertext; the effect weights stay in plaintext and are applied by one multiply-plain; rotate-and-add sums the products into one slot, and the decrypted score is compared with a cut, the 90th percentile of the plaintext score over the bundled panel (the browser's 30 individuals, or the individuals the Python loader reads), by linear interpolation between order statistics. A demo cut, not a clinical threshold. Both tiers also score every panel individual encrypted and report the largest score deviation and how often the high-risk flag agrees with the plaintext one. Not a neural network, and presenting a genomic foundation model as a PRS method would be the most obvious credibility hole available. Evaluation must be stratified by genetic ancestry, and what is measured here is a distribution shift, NOT an AUROC drop: 1000 Genomes is a reference panel carrying no breast-cancer case/control status, so no AUROC is computable from it and genomics_prs.py records auroc=null rather than inventing one. PGS000072 is the breast-cancer score of Graff et al. (Nat Commun 12:970, 2021; CC BY 4.0): 187 genome-wide significant variants weighted by their log odds ratios. 183 of them have a 1000 Genomes phase 3 genotype for every one of the 2,504 individuals and are scored; the other 4 are left out, never filled in, and the dosage files and the payload name each with its reason. The finding is the by_super_population.*.frac_above_global_cut rows listed above: one globally-set high-risk cut flags a far larger share of one ancestry group than of another, a gap driven by allele-frequency differences rather than by risk. Read those rows, not this sentence - they are recomputed on every training run, so no figure quoted in prose here can drift away from them. The published European AUROC comes from a phenotyped UK Biobank cohort, which is why it cannot be reproduced on this page.",
         "onnx_domains": [],
         "params": null,
         "runs_encrypted": true,
@@ -1317,7 +1312,7 @@
           "display": "AUC",
           "name": "auc"
         },
-        "notes": "The small tier: fits the browser comfortably and has a clean published baseline. Its training regime is not the baseline's: torchvision's 7x7 stride-2 stem with max-pool, early-stopped at 39 of at most 60 epochs at lr 3e-4 (manifest.json), where MedMNIST v2's 28-px ResNets use a 3x3 stride-1 stem without max-pool and 100 epochs at lr 1e-3. Close, not like for like.",
+        "notes": "The small tier: fits the browser comfortably and has a clean published baseline. Its training regime is not the baseline's: torchvision's 7x7 stride-2 stem with max-pool, early-stopped at 39 of at most 60 epochs at lr 3e-4 (manifest.json), where MedMNIST v2's 28-px ResNets use a 3x3 stride-1 stem without max-pool and 100 epochs at lr 1e-3. Close, not like for like. It is the teacher medical_fl.student is distilled from. MedMNIST states that its dataset is NOT intended for clinical use, and neither is this model.",
         "onnx_domains": [
           "ai.onnx"
         ],
@@ -1386,7 +1381,7 @@
         "label": "ResNet-50 on BreastMNIST (published comparison)",
         "metric": {
           "baseline": 0.857,
-          "baseline_source": "ResNet-50 @28px, MedMNIST v2, Yang et al., Scientific Data 10:41 (2023) (AUC 0.857 / ACC 0.812). Note this is BELOW the ResNet-18 baseline of 0.901 on the same corpus and the same 100-epoch Adam regime: on 780 images the deeper network loses. That is the published finding, and it is why this model exists here - to test it rather than to win, under a training regime that differs from the paper's (see the model's notes).",
+          "baseline_source": "ResNet-50 @28px, MedMNIST v2, Yang et al., Scientific Data 10:41 (2023) (AUC 0.857 / ACC 0.812). The benchmark table lists it BELOW ResNet-18 @28px (0.901) on the same corpus: one figure per model, with no conclusion drawn about depth. This model checks that ordering under a training regime that differs from the table's (see the model's notes).",
           "ceiling": 0.919,
           "ceiling_source": "Google AutoML Vision, MedMNIST v2 (AUC 0.919)",
           "companion": "accuracy",
@@ -1394,7 +1389,7 @@
           "display": "AUC",
           "name": "auc"
         },
-        "notes": "Trained to test a published claim rather than to win one. MedMNIST v2 reports ResNet-50 at AUC 0.857 against ResNet-18's 0.901 on this corpus, so the expected outcome is that the larger model scores LOWER, and it is reported either way. The regime here is not the published one: torchvision's 7x7 stride-2 stem with max-pool, early-stopped at 27 of at most 60 epochs at lr 3e-4, against MedMNIST v2's 3x3 stride-1 stem without max-pool and 100 epochs at lr 1e-3. It replaces a DenseNet-121 entry that named a dataset with no loader, no fetch command and no artefact directory, and linked a Hugging Face repo that did not exist. Architectures benchmarked only ImageNet-pretrained (AlexNet, VGG16, DenseNet-121, EfficientNet-B4 in MedMNIST+) are deliberately absent: this project dropped ImageNet weights over redistribution terms, so their published numbers are not comparable to a from-scratch run.",
+        "notes": "Trained to check an ordering in MedMNIST v2's benchmark table rather than to win: the table lists ResNet-50 at AUC 0.857 against ResNet-18's 0.901 on this corpus, and this model's result is reported whichever way it falls. The regime here is not the table's: torchvision's 7x7 stride-2 stem with max-pool, early-stopped at 27 of at most 60 epochs at lr 3e-4, against MedMNIST v2's 3x3 stride-1 stem without max-pool and 100 epochs at lr 1e-3. It replaces a DenseNet-121 entry that named a dataset with no loader, no fetch command and no artefact directory, and linked a Hugging Face repo that did not exist. Architectures benchmarked only ImageNet-pretrained (AlexNet, VGG16, DenseNet-121, EfficientNet-B4 in MedMNIST+) are deliberately absent: this project dropped ImageNet weights over redistribution terms, so their published numbers are not comparable to a from-scratch run. No student is distilled from this model: the page's encrypted tier runs medical_fl.student, distilled from medical_fl.resnet18. MedMNIST states that its dataset is NOT intended for clinical use, and neither is this model.",
         "onnx_domains": [
           "ai.onnx"
         ],
@@ -1476,7 +1471,7 @@
           "display": "AUC",
           "name": "auc"
         },
-        "notes": "Genuine encrypted convolution (im2col + CKKS dot_plain), but not end to end under CKKS. In the browser each layer's output is decrypted, ReLU and average pooling run in plaintext in the client, and the class is the argmax of decrypted logits; the page's MPC argmax runs on the WDBC logistic regression, not on this CNN. The full deployment's hybrid path, which runs a federated CNN of this shape rather than these weights, keeps ReLU on secret shares (MPyC) and pools each share locally; its masked conversion masks every CKKS slot the client can decode, and each run bounds the client's whole view (see qsh.mpc.secret_inference).",
+        "notes": "Genuine encrypted convolution (im2col + CKKS dot_plain), but not end to end under CKKS. In the browser each layer's output is decrypted, ReLU and average pooling run in plaintext in the client, and the class is the argmax of decrypted logits; the page's MPC argmax runs on the WDBC logistic regression, not on this CNN, and on logits the client has already decrypted. The full deployment's hybrid path, which runs a federated CNN of this shape rather than these weights, keeps ReLU on secret shares (MPyC) and pools each share locally; its masked conversion masks every CKKS slot the client can decode, and each run bounds the client's whole view (see qsh.mpc.secret_inference). In the browser each layer's bias is added under encryption and every slot but its outputs is masked and flooded before the client decrypts, so the client decrypts the layer outputs and nothing else. MedMNIST states that its dataset is NOT intended for clinical use, and neither is this model.",
         "onnx_domains": [
           "ai.onnx"
         ],
@@ -1641,7 +1636,7 @@
           "display": "event-wise F0.5",
           "name": "event_wise_f0_5"
         },
-        "notes": "The one published model with no browser evaluation sample, and the reason is the metric rather than the weights. Round 21 gave the other three students samples; this one is scored on event-wise F0.5, which is defined over contiguous runs of a timeline and cannot be computed from a shuffled set of independent rows -- which is exactly what the browser evaluator scores. Shipping a per-row metric instead would verify a number nobody published for it. It needs no scaler, unlike the other three: scripts/train/satellite_telemanom.py fits it on raw `flat_te` (the last 8 timesteps x 6 channels), so the absent `input` block in its weights.json is correct rather than the omission it looks like. Worth reading alongside its numbers: since the Round 71 retrain the teacher and the student both score 0.0 event-wise F0.5 on this split, so their agreement is agreement about finding nothing, and there is no fidelity claim to make. No code path here evaluates this student under CKKS today: the satellite page has no private-inference stage, and the full deployment's telemetry stage encrypts its own SMAP/MSL model.",
+        "notes": "The one published model with no browser evaluation sample, and the reason is the metric rather than the weights. Round 21 gave the other three students samples; this one is scored on event-wise F0.5, which is defined over contiguous runs of a timeline and cannot be computed from a shuffled set of independent rows -- which is exactly what the browser evaluator scores. Shipping a per-row metric instead would verify a number nobody published for it. It needs no scaler, unlike the other three: scripts/train/satellite_telemanom.py fits it on raw `flat_te` (the last 8 timesteps x 6 channels), so the absent `input` block in its weights.json is correct rather than the omission it looks like. Worth reading alongside its numbers: since the Round 71 retrain the teacher and the student both score 0.0 event-wise F0.5 on this split, so their agreement is agreement about finding nothing, and there is no fidelity claim to make. No code path here evaluates this student under CKKS today: the satellite page has no private-inference stage, and the full deployment's telemetry stage encrypts the OPS-SAT-AD demo regression the browser scores in plaintext.",
         "onnx_domains": [
           "ai.onnx.ml"
         ],
@@ -1702,7 +1697,7 @@
           "licence": "CC-BY-4.0",
           "name": "OPS-SAT-AD",
           "publishable": true,
-          "url": "https://doi.org/10.5281/zenodo.12588358"
+          "url": "https://doi.org/10.5281/zenodo.12588359"
         },
         "eval_sample_reason": null,
         "eval_split": "the benchmark's own test partition, whole",
@@ -1774,7 +1769,7 @@
           "licence": "CC-BY-4.0",
           "name": "OPS-SAT-AD",
           "publishable": true,
-          "url": "https://doi.org/10.5281/zenodo.12588358"
+          "url": "https://doi.org/10.5281/zenodo.12588359"
         },
         "eval_sample_reason": null,
         "eval_split": "the benchmark's own test partition, whole",
@@ -2077,7 +2072,7 @@
           },
           "framing": "Real 5G network traffic, 9 attack classes, 47 flow-statistic features. This is a NETWORK-LAYER model and a different task from the QKD-layer classifier on the same page - no shared labels, no shared features, so the two scores are not a comparison. IT IS FITTED ON THE FIELDS-PRESERVED EXPORT (113 columns) AND WAS FITTED ON Combined.csv (52) UNTIL ROUND 50, which is the single most important thing to know about the numbers here: the same rows and the same classes, but the narrow export omits `IdleTime` and that one column is worth 22 points of accuracy. `idle_time_ablation` re-measures this every run by refitting without it, and the result reproduces what this model used to score. Two controls are recorded beside the headline and both are worth more than the headline. `idle_time_ablation` says the old weakness was a choice of export, not a property of the corpus. `leak_counterfactual_accuracy` says that restoring four integer row counters takes accuracy to about 0.9997, which is not a better model but a leak.",
           "git_sha": "c89ff94-dirty",
-          "hf_revision": "f07f0672b82858b11d4498b3a030f1554088ecaf",
+          "hf_revision_invalidated_by_retrain": "f07f0672b82858b11d4498b3a030f1554088ecaf",
           "idle_time_ablation": {
             "what_this_means": "Removing `IdleTime` ALONE costs essentially the same accuracy as removing all six columns Combined.csv omits, and both land on the score this model published while it was fitted on Combined.csv. The other five - `Dir`, `Flgs`, `TcpOpt`, `sVlan`, `dVlan` - are worth 0.0006 accuracy between them. So the model's former weakness was one absent flow statistic, not the corpus and not the method. THAT IS REDUNDANCY AND NOT EMPTINESS, stated because the shorter version would be false. Two of those five are individually strong - `Dir` scores one-vs-rest AUC 0.9811 on ICMPFlood and `TcpOpt` 0.9433 on SlowrateDoS, both above the 0.90 threshold `single_feature_leak_check` uses, and both appear in its flagged list. What the ablation shows is that the other 41 columns already carry what they carry. `IdleTime` IS NOT AN IDENTIFIER and the distinction is the same one `leak_counterfactual_*` exists to draw: it takes 17 distinct integer values over 1,215,890 rows, so it cannot encode a row position, and it separates `SlowrateDoS` - an attack defined by holding a connection idle - at one-vs-rest AUC 0.9574. A row counter that scores that well describes where a row sits in a file. This describes what the traffic did.",
             "without_all_six_columns_combined_lacks": {
@@ -2307,8 +2302,8 @@
         "eval_sample_reason": null,
         "eval_split": "a per-class-floored draw from the held-out quarter of the seed-42 stratified split",
         "hf_repo_id": "Daemons-Q/qsh-telecom-5g-nidd-gbm",
-        "hf_revision": "f07f0672b82858b11d4498b3a030f1554088ecaf",
-        "hf_revision_stale": null,
+        "hf_revision": null,
+        "hf_revision_stale": "f07f0672b82858b11d4498b3a030f1554088ecaf",
         "key": "telecom_ids.nidd",
         "label": "5G-NIDD network-attack classifier (9 classes)",
         "metric": {
@@ -2321,7 +2316,7 @@
           "display": "macro F1 across 9 network-attack classes",
           "name": "macro_f1"
         },
-        "notes": "NETWORK-LAYER flow classification on real 5G traffic. This is a DIFFERENT TASK from the QKD-layer attack classifier on this same page, with zero overlap in label space or feature space, so neither score is the other's baseline. REFITTED IN ROUND 50 ON A WIDER EXPORT OF THE SAME CORPUS, which is the fact that explains every number here. It trained on `Combined.csv` (52 columns) and scored accuracy 0.7608; it now trains on `BTS1_BTS2_fields_preserved.csv` (113 columns) and scores about 0.9829. The rows are identical and the method is unchanged. One column does all of it: `IdleTime`, a flow statistic the narrow export omits. Removing it alone from the wide fit returns the model to 0.7616, and that ablation is re-measured on every run as `idle_time_ablation`. It is not an identifier - 17 distinct integer values over 1.2 million rows - and it separates SlowrateDoS, an attack defined by idling, at one-vs-rest AUC 0.9574. READ THE TWO NUMBERS THE OTHER WAY ROUND FROM EVERYWHERE ELSE IN THIS PROJECT - STILL. Every other model here reports an aggregate that flatters and a per-class figure that does not. On this corpus macro F1 is the OPTIMISTIC number and aggregate accuracy the pessimistic one, and the refit shrank that inversion without removing it: the gap was 0.1655 (0.9263 macro F1 against 0.7608 accuracy) and is about 0.0121 (0.9950 against 0.9829). The mechanism is the same one as before, not a new one - Benign and UDPFlood are 39.3% and 37.6% of the rows and remain the only pair that confuses, so accuracy is dominated by them while the macro average is carried by seven classes at 0.9999 or better. The residual error is 1.71% of the test split against 23.92% before, and it is one direction: UDPFlood predicted as Benign. THE LEAK COUNTERFACTUAL IS STILL RECORDED EVERY RUN and its claim is now narrower. Restoring the corpus's integer row identifiers takes accuracy to about 0.9997, the same shape of result Engelen et al. (WTMC 2021) produced for CIC-IDS2017. That shows what a row counter is worth on this corpus. It does not show what the published figures used, and 0.9829 is reachable here with no identifiers at all; whether those figures lean on identifiers stays open -- see M_NIDD's baseline_source.",
+        "notes": "NETWORK-LAYER flow classification on real 5G traffic. This is a DIFFERENT TASK from the QKD-layer attack classifier on this same page, with zero overlap in label space or feature space, so neither score is the other's baseline. REFITTED IN ROUND 50 ON A WIDER EXPORT OF THE SAME CORPUS, which is the fact that explains every number here. It trained on `Combined.csv` (52 columns) and scored accuracy 0.7608; it now trains on `BTS1_BTS2_fields_preserved.csv` (113 columns) and scores about 0.9829. The rows are identical and the method is unchanged. One column does all of it: `IdleTime`, a flow statistic the narrow export omits. Removing it alone from the wide fit returns the model to 0.7616, and that ablation is re-measured on every run as `idle_time_ablation`. It is not an identifier - 17 distinct integer values over 1.2 million rows - and it separates SlowrateDoS, an attack defined by idling, at one-vs-rest AUC 0.9574. READ THE TWO NUMBERS THE OTHER WAY ROUND FROM EVERYWHERE ELSE IN THIS PROJECT - STILL. Every other model here reports an aggregate that flatters and a per-class figure that does not. On this corpus macro F1 is the OPTIMISTIC number and aggregate accuracy the pessimistic one, and the refit shrank that inversion without removing it: the gap was 0.1655 (0.9263 macro F1 against 0.7608 accuracy) and is about 0.0121 (0.9950 against 0.9829). The mechanism is the same one as before, not a new one - Benign and UDPFlood are 39.3% and 37.6% of the rows and remain the only pair that confuses, so accuracy is dominated by them while the macro average is carried by seven classes at 0.9999 or better. The residual error is 1.71% of the test split against 23.92% before, and it is one direction: UDPFlood predicted as Benign. THE LEAK COUNTERFACTUAL IS STILL RECORDED EVERY RUN and its claim is now narrower. Restoring the corpus's integer row identifiers takes accuracy to about 0.9997, the same shape of result Engelen et al. (WTMC 2021) produced for CIC-IDS2017. That shows what a row counter is worth on this corpus. It does not show what the published figures used, and 0.9829 is reachable here with no identifiers at all; whether those figures lean on identifiers stays open -- see M_NIDD's baseline_source. NO STUDENT IS DISTILLED FROM THIS MODEL: the page's encrypted tier runs telecom_ids.student, distilled from the QKD-attack random forest (telecom_ids.qml).",
         "onnx_domains": [
           "ai.onnx.ml"
         ],

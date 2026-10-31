@@ -8,11 +8,10 @@ and audit83/datasets-licences-2d.md findings 10, 12, 15 and 17)
     property the page disclaims; realData.ts called genomics "commercial-OK".
   - Three texts said no per-sample genotype is, or may be, published, while the browser payload
     serves 30 people's dosages.
-  - The PGS000004 ceiling read 0.668 over 28 records; the Catalog now holds 32 AUROC records, the
-    highest 0.70 (Shang et al. 2024, added 2026-08-26), European 0.5877-0.70 over 23 (read at the
-    REST API on 2026-10-31).
-  - The gnomAD overlay plotted three variants whose lookup hit another record (frequencies of 0.0003,
-    0.068 and 0 against published 0.370, 0.776 and 0.038) and one at the other allele's frequency.
+  - The ceiling was not the Catalog's own maximum for the score in use; for PGS000072 it is the one
+    AUROC among its three Catalog performance records (PPM002038, 0.637; read 2026-10-31).
+  - The gnomAD overlay plotted variants whose coordinate lookup hit another record. It now reads each
+    variant by rsID from the same Ensembl record the dosages come from, for the allele they count.
 
 WHAT IS ASSERTED: each of those is gone, the overlay is exactly what its generator writes, and every
 point it keeps is the score's effect allele, checked against the frequency the score publishes.
@@ -29,7 +28,7 @@ import pytest
 
 REPO = Path(__file__).resolve().parents[1]
 OVERLAY = REPO / "web" / "public" / "data" / "genomics" / "real_2d.json"
-PAYLOAD = REPO / "web" / "public" / "data" / "genomics" / "pgs000004_prs313.json"
+PAYLOAD = REPO / "web" / "public" / "data" / "genomics" / "pgs000072_breast_cancer.json"
 
 
 def _module(path: Path, name: str):
@@ -61,32 +60,24 @@ def test_the_overlay_carries_gnomads_terms_and_link() -> None:
 
 def test_every_plotted_point_is_the_scores_effect_allele() -> None:
     p2d = _module(REPO / "scripts" / "prep_real_data_2d.py", "prep_real_data_2d_points")
-    cache = json.loads((REPO / "data" / "genomics" / "gnomad_af_prs313.json").read_text())
-    published = p2d._effect_allele_frequencies(REPO / "data" / "genomics" / "pgs000004_breast_cancer.tsv")
-    pts = {tuple(p[:2]) for p in json.loads(OVERLAY.read_text())["points"]}
-    r = p2d._round
-    # The three lookups that landed on another record, and the reference-allele variant unflipped.
-    for key in ("10:38523626:A", "1:110198129:C", "2:217955896:G"):
-        rec = cache[key]
-        assert (r(rec["afr"]), r(rec["nfe"])) not in pts, f"{key} is still plotted from a mismatched record"
-    flip = cache["9:136146597:T"]
-    assert flip["effect_is_alt"] is False
-    assert (r(flip["afr"]), r(flip["nfe"])) not in pts, "9:136146597:T is plotted at the other allele's frequency"
-    assert (r(1 - flip["afr"]), r(1 - flip["nfe"])) in pts
-    # Every kept record agrees with the frequency the score publishes for its effect allele.
-    kept = 0
-    for key, rec in cache.items():
-        if not rec:
-            continue
-        afr = rec["afr"] if rec["effect_is_alt"] else 1 - rec["afr"]
-        nfe = rec["nfe"] if rec["effect_is_alt"] else 1 - rec["nfe"]
-        if (r(afr), r(nfe)) in pts:
-            kept += 1
-            assert abs(nfe - published[key]) <= p2d.GNOMAD_AF_TOLERANCE, key
-    assert kept == len(pts)
+    cache = json.loads((REPO / "data" / "genomics" / "gnomad_af_pgs000072.json").read_text())
+    payload = json.loads(PAYLOAD.read_text())
     d = json.loads(OVERLAY.read_text())
-    assert d["y"]["label"].endswith("gnomAD nfe") and d["x"]["label"].endswith("gnomAD afr")
-    assert "non-Finnish European (nfe)" in d["modifications"] and f"{len(pts)} of the score's" in d["modifications"]
+    r = p2d._round
+    expected = []
+    for key in payload["keys"]:
+        rec = cache.get(key)
+        if not rec or rec.get(p2d.GNOMAD_X) is None or rec.get(p2d.GNOMAD_Y) is None:
+            continue
+        # One record, one allele: gnomAD's European frequency agrees with 1000 Genomes' for it.
+        if abs(rec[p2d.GNOMAD_Y] - rec["g1k_eur"]) <= p2d.GNOMAD_AF_TOLERANCE:
+            expected.append((r(rec[p2d.GNOMAD_X]), r(rec[p2d.GNOMAD_Y])))
+    assert sorted(tuple(pt[:2]) for pt in d["points"]) == sorted(expected)
+    # Every variant the cache resolves is a scored one, and none the dosages leave out is plotted.
+    unscored = {u["key"] for u in payload["variants_unscored"]}
+    assert all(cache[k] is None for k in unscored) and not unscored & set(payload["keys"])
+    assert d["y"]["label"].endswith("gnomAD nfe") and d["x"]["label"].endswith("gnomAD eas")
+    assert "non-Finnish European (nfe)" in d["modifications"] and f"{len(d['points'])} of the score's" in d["modifications"]
 
 
 def test_the_genotype_texts_say_what_is_served() -> None:
@@ -105,15 +96,14 @@ def test_the_genotype_texts_say_what_is_served() -> None:
 def test_the_ceiling_is_the_catalogs_current_maximum() -> None:
     from qsh.models.registry import M_PRS
 
-    assert M_PRS.ceiling == 0.70
-    src = M_PRS.ceiling_source
-    for fact in ("PPM038141", "all 32 AUROC records", "0.5877-0.70 over 23 entries", "PPM005171",
-                 "PPM005174", "doi:10.1016/j.xhgg.2024.100302", "2026-08-26", "0.6573 (PPM000650"):
-        assert fact in src, f"{fact!r} missing from the ceiling source"
-    for stale in ("0.668 (PPM012913", "28 AUROC", "over 22 entries"):
-        assert stale not in src
-    for path in ("scripts/train/genomics_prs.py", "scripts/prep_real_data_2d.py"):
-        assert "28 Catalog AUROC" not in (REPO / path).read_text(), path
+    assert M_PRS.baseline == M_PRS.ceiling == 0.637
+    for fact in ("PPM002038", "the only one", "own three Catalog performance records", "read 2026-10-31"):
+        assert fact in M_PRS.ceiling_source, f"{fact!r} missing from the ceiling source"
+    for fact in ("PPM002038", "only 162 of the original 187 SNPs", "AUC at 5 years", "WITH COVARIATES",
+                 "doi:10.1038/s41467-020-19600-4"):
+        assert fact in M_PRS.baseline_source, f"{fact!r} missing from the baseline source"
+    for stale in ("PGS000004", "PPM001647", "PPM038141", "0.633"):
+        assert stale not in M_PRS.baseline_source + M_PRS.ceiling_source, stale
 
 
 def test_the_registry_says_the_full_score_runs() -> None:
@@ -147,7 +137,7 @@ def test_the_page_text_says_what_runs() -> None:
 def test_no_source_line_calls_genomics_commercial_ok() -> None:
     ts = (REPO / "web" / "src" / "lib" / "realData.ts").read_text()
     assert "backed by a commercial-OK dataset (medical, genomics)" not in ts
-    assert "genomics, whose terms are under review" in ts
+    assert "genomics, whose PGS000072 weights are CC BY 4.0" in ts
     cc = (REPO / "web" / "src" / "lib" / "clientCompute.ts").read_text()
     assert "Use REAL commercial-OK data" not in cc
     py = (REPO / "src" / "qsh" / "usecases" / "genomics" / "__init__.py").read_text()

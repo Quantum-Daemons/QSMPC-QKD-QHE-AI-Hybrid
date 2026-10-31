@@ -79,7 +79,7 @@ export default function UseCases() {
           // "scaffold" used to be hardcoded to !inference, which understated telecom and satellite:
           // both now carry trained, published, pinned models. Earn it from registry state instead.
           // "measured", not "trained": the one unpublished model with recorded results is genomics'
-          // PRS, whose weights are PGS000004's published ones, measured here and trained by no one.
+          // PRS, whose weights are PGS000072's published ones, measured here and trained by no one.
           const depth = pinned.length > 0 ? "published" : teacher?.achieved ? "measured" : "scaffold";
           return (
             <Link key={u.id} to={`/usecase/${u.id}`} className="card" style={{ textDecoration: "none", color: "inherit", display: "block" }}>
@@ -117,7 +117,11 @@ export default function UseCases() {
               <p className="muted" style={{ fontSize: 11 }}>
                 {pinned.length > 0
                   ? <>{pinned.length} model{pinned.length > 1 ? "s" : ""} published and pinned - verifiable in your browser</>
-                  : <>weights not published: the source data's licence does not clearly permit redistributing them</>}
+                  : u.id === "genomics"
+                    // Served, not withheld: the payload ships the score's published weights, under
+                    // the licence the Data line above prints.
+                    ? <>not on the Hugging Face Hub: the score's published effect weights are served with this page, under the licence above</>
+                    : <>weights not published: the source data's licence does not clearly permit redistributing them</>}
               </p>
               <span className="btn" style={{ marginTop: 6, display: "inline-block" }}>Open simulator →</span>
             </Link>

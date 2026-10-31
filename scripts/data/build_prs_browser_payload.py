@@ -1,31 +1,24 @@
 #!/usr/bin/env python3
 """Generate the genomics browser payload from the scoring file and the local genotypes.
 
-WHY THIS SCRIPT EXISTS AT ALL. ``web/public/data/genomics/pgs000001_prs.json`` had **three readers
-and zero writers**: `realData.ts` fetches it, `prep_real_data_2d.py` reads it, `fetch_gnomad_af.py`
-takes its rsID list, and nothing produced it. It was a hand-built committed artifact. So "regenerate
-the payload for PRS313" was not a regeneration - the generator had to be written, and until it was,
-the only way to change the browser's view of this use case was to edit a JSON blob by hand and hope
-it stayed consistent with the Python pipeline that computes the same score.
-
-That is not a hypothetical risk on this file. The same shape - a generated-looking artifact corrected
-by hand while its producer kept emitting the old value - is what put the eight ATTACK CLASS names into
-telecom's published ``feature_spec.json`` under a note reading "Generated from the source, not written
-by hand".
+The payload is a GENERATED file with readers in `realData.ts`, `prep_real_data_2d.py` and the tests;
+an earlier payload was hand-built with three readers and no writer, and a hand edit to a
+generated-looking file is how a stale value outlives its source. Regenerate it, do not edit it.
 
 THE REDISTRIBUTION BUDGET IS A HARD CONSTRAINT, NOT A DEFAULT.
-    1000 Genomes genotypes come from IGSR, which grants no blanket licence and says so: "restrictions
-    on different pieces of data within IGSR and rights claimed on pieces of data vary". What
-    ``DATA_LICENSES.md`` section 4 justifies shipping is a small slice, and the PRS313 dosage matrix is
-    2,504 x 313 - about 24x that. So this script subsamples to ``--individuals`` (default 30, the
-    number section 4 argues for) and writes that number plus the total available into the payload's
-    provenance, so the page can say what it is showing and what it is not.
+    1000 Genomes phase 3 genotypes carry no licence instrument: IGSR's disclaimer says rights "vary"
+    by data component, and the data are open-consent. What ``DATA_LICENSES.md`` section 4 justifies
+    shipping is a small slice, so this script ships ``--individuals`` of the 2,504 (default 30) and
+    writes that number plus the total available into the payload, so the page can say what it is
+    showing and what it is not. The full matrix stays local and gitignored; nothing here uploads it.
 
-    The full matrix stays local and gitignored. Nothing here uploads it.
+THE CREDITS TRAVEL WITH THE FILE. The weights are PGS000072's, from Graff et al., Nat Commun 12:970
+(2021), licensed CC BY 4.0, which asks for credit, a link to the licence and a note of changes; the
+PGS Catalog asks to be cited by the paper its REST `/rest/info` names; IGSR asks for the 1000 Genomes
+consortium paper. The payload carries all three, the licence link and the changes.
 
 Usage:
-    .venv/bin/python scripts/data/build_prs_browser_payload.py --score breast_cancer_prs313
-    .venv/bin/python scripts/data/build_prs_browser_payload.py --score breast_cancer      # PRS77
+    .venv/bin/python scripts/data/build_prs_browser_payload.py
 """
 from __future__ import annotations
 
@@ -39,21 +32,27 @@ import numpy as np
 REPO = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO / "src"))
 
-from qsh.data.loaders import _PRS_FILES, load_genomic_prs, load_prs  # noqa: E402
-from qsh.models.registry import BUNDLED_DEMO_SAMPLES, DEMO_SAMPLE_FILES  # noqa: E402
+from qsh.data.loaders import (  # noqa: E402
+    _PRS_FILES,
+    ACTIVE_PRS,
+    load_genomic_prs,
+    load_prs,
+    unscored_variants,
+)
+from qsh.models.registry import (  # noqa: E402
+    BUNDLED_DEMO_SAMPLES,
+    DEMO_SAMPLE_FILES,
+    DS_1000G,
+    DS_PGS_CATALOG,
+)
 
 
 def _registry_provenance(payload_name: str) -> str:
     """The provenance text for the genomics demo sample, from the one place that owns it.
 
-    Refuses to hand that text to a payload the registry is not describing. `BUNDLED_DEMO_SAMPLES`
-    documents the CURRENT demo sample, so generating the retired score's payload and stamping this
-    string on it would put a "published PGS000004 weights" claim on a file holding 77 PGS000001
-    weights - a licence and provenance claim that is simply false, and `test_demo_provenance` would not
-    catch it because that test only checks the file the registry points AT.
-
-    This is the same failure the string exists to prevent, one level up: not two copies drifting, but
-    one copy applied to the wrong artifact.
+    Refuses to hand that text to a payload the registry is not describing: `BUNDLED_DEMO_SAMPLES`
+    documents the CURRENT demo sample, so stamping it on another score's file would state a false
+    provenance, and `test_demo_provenance` only checks the file the registry points AT.
     """
     registered = Path(DEMO_SAMPLE_FILES["genomics"]).name
     if payload_name != registered:
@@ -65,74 +64,56 @@ def _registry_provenance(payload_name: str) -> str:
         )
     return BUNDLED_DEMO_SAMPLES["genomics"][0]
 
+
 WEB = REPO / "web" / "public" / "data" / "genomics"
 
-#: Payload filename per score. Kept explicit rather than derived so that switching the browser from
-#: one score to the other is a visible one-line change in `realData.ts`, not a silent consequence of
-#: renaming something here.
+#: Payload filename per score. Explicit, so switching the browser to another score is a visible change
+#: in the registry's `DEMO_SAMPLE_FILES`, which this name must match.
 _PAYLOAD = {
-    # PRS77 is not a browser payload any more: the file was moved to data/genomics/ in Round 32 because
-    # nothing in the browser read it and Vite was serving genotype data for no demo benefit. The entry
-    # stays so `--score breast_cancer` names a path rather than raising KeyError, and the provenance
-    # guard below refuses to write it - which is the honest state, since the registry describes the
-    # PRS313 payload and stamping its text on a 77-variant file would state a false provenance.
-    "breast_cancer": "pgs000001_prs.json",
-    "breast_cancer_prs313": "pgs000004_prs313.json",
+    "breast_cancer_pgs000072": "pgs000072_breast_cancer.json",
 }
 
 _META = {
-    "breast_cancer": {
-        "name": "PGS000001 (PRS77_BC, breast cancer)",
-        "score_id": "PGS000001",
-        "citation": "Mavaddat et al. JNCI 2015",
-        "keyed_by": "rsID",
-    },
-    "breast_cancer_prs313": {
-        "name": "PGS000004 (PRS313_BC, breast cancer)",
-        "score_id": "PGS000004",
-        "citation": "Mavaddat et al. Am J Hum Genet 2018 (doi:10.1016/j.ajhg.2018.11.002)",
-        # Not a stylistic choice: the Catalog publishes no rsID for any of the 313 variants
-        # (hm_rsID empty, hm_source=Author-reported), 28% of the positions carry several rsIDs and
-        # about 15% resolve to none, so keying on one would score a different variant's genotypes.
-        "keyed_by": "chr:pos:effect_allele (GRCh37) - PGS000004 publishes no rsIDs",
+    "breast_cancer_pgs000072": {
+        "name": "PGS000072 (CC_Breast, breast cancer)",
+        "score_id": "PGS000072",
+        "keyed_by": "rsID, as the scoring file gives it",
     },
 }
+
+CC_BY_4 = "https://creativecommons.org/licenses/by/4.0/"
 
 
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--score", choices=sorted(_PRS_FILES), default="breast_cancer_prs313")
+    ap.add_argument("--score", choices=sorted(_PAYLOAD), default=ACTIVE_PRS)
     ap.add_argument("--individuals", type=int, default=30,
                     help="how many genotype rows to ship; DATA_LICENSES section 4 justifies 30")
-    ap.add_argument("--top", type=int, default=8, help="SNPs surfaced as SHAP features")
     ap.add_argument("--seed", type=int, default=0)
     args = ap.parse_args()
 
-    keys, eff_alleles, weights = load_prs(args.score)
-    # Load the FULL matrix, then subsample - so the population baseline the browser shows is computed
-    # over everyone available, not over the 30 rows that happen to ship. Those are different numbers
-    # and the second one would be a worse estimate presented as the same thing.
-    dosages, w, joined_keys, eff, _freq = load_genomic_prs(
-        n_individuals=10_000, seed=args.seed, name=args.score)
-    assert joined_keys == keys, "the loader reordered the variants relative to the scoring file"
+    published_keys, _eff, _w = load_prs(args.score)
+    # Load the FULL matrix, then subsample, so the population baseline the browser shows is computed
+    # over everyone available, not over the 30 rows that happen to ship.
+    dosages, w, keys, eff, _freq = load_genomic_prs(n_individuals=10_000, seed=args.seed, name=args.score)
+    dosage_path = REPO / "data" / "genomics" / _PRS_FILES[args.score][1]
+    if not dosage_path.exists():
+        raise SystemExit(f"{dosage_path.name} is absent: run scripts/data/fetch_g1k_dosages.py first. "
+                         "The committed slice is not a population, so it cannot stand in here.")
+    samples = [ln.split("\t")[0] for ln in dosage_path.read_text().splitlines()
+               if ln.strip() and not ln.startswith("#")][1:]
+    unscored = unscored_variants(dosage_path)
+    assert [k for k in published_keys if k not in unscored] == list(keys), \
+        "the loader's variants are not the scoring file's minus the declared #unscored ones"
     n_available = int(dosages.shape[0])
+    assert len(samples) == n_available
 
+    # The same draw over the same sorted 2,504-sample panel selects the same individuals for any
+    # score, and `sample_ids` lets a reader check each row against IGSR.
     rng = np.random.default_rng(args.seed)
-    take = rng.choice(n_available, size=min(args.individuals, n_available), replace=False)
-    shipped = dosages[np.sort(take)].astype(int)
-
-    # Top-N by |weight|: the same rule `realData.ts` falls back to, computed here so the payload is
-    # self-describing and the browser does not have to re-derive it.
-    #
-    # Order is |weight| DESCENDING and must stay that way. `realData.ts` maps this list positionally
-    # onto the SHAP feature names and values, so the order is the order the bars are labelled in.
-    # Sorting it numerically instead - which the first version of this script did - keeps the same set
-    # and silently reorders the chart, putting the weakest of the eight first. The hand-built payload
-    # this replaces was ordered by descending |weight|, and a round-trip against it is what caught the
-    # difference: rsids, effect_alleles and weights matched exactly, top8_idx did not.
-    order = np.argsort(-np.abs(np.asarray(w)))[: args.top]
-    top_idx = [int(i) for i in order]
+    take = np.sort(rng.choice(n_available, size=min(args.individuals, n_available), replace=False))
+    shipped = dosages[take].astype(int)
 
     meta = _META[args.score]
     payload_name = _PAYLOAD[args.score]
@@ -141,36 +122,42 @@ def main() -> int:
         "score_id": meta["score_id"],
         "keys": list(keys),
         "keyed_by": meta["keyed_by"],
-        "effect_alleles": list(eff_alleles),
-        "weights": [round(float(x), 6) for x in w],
-        "top8_idx": top_idx,
+        "effect_alleles": list(eff),
+        # Full precision, as the scoring file publishes them: rounding would be a change to the work
+        # that CC BY 4.0 asks to be noted, and the Python tier scores the file's own values.
+        "weights": [float(x) for x in w],
+        "variants_published": len(published_keys),
+        # Score variants with no 1000 Genomes genotype column, each with the fetcher's reason. They are
+        # left out of the score, never filled in.
+        "variants_unscored": [{"key": k, "reason": unscored[k]} for k in published_keys if k in unscored],
         "dosage_samples": [[int(v) for v in row] for row in shipped],
+        "sample_ids": [samples[i] for i in take],
         "n_individuals_shipped": int(shipped.shape[0]),
         "n_individuals_available": n_available,
-        # Computed over ALL available individuals, not the shipped slice. `realData.ts` uses this as
-        # the SHAP reference point, and the zero vector - "an individual carrying no effect allele
-        # anywhere" - is not a typical genome and at several of these loci is not present at all.
+        # Over ALL available individuals, not the shipped slice: `realData.ts` uses it as the SHAP
+        # reference point, and the zero vector is not a typical genome.
         "population_mean_dosage": [round(float(x), 6) for x in dosages.mean(axis=0)],
-        # THE REGISTRY OWNS THIS STRING, and composing a second one here is the bug
-        # `tests/test_demo_provenance.py` exists to catch: it asserts the shipped JSON's provenance is
-        # `BUNDLED_DEMO_SAMPLES[usecase][0]` verbatim, because a licence claim on a public page that
-        # disagrees with the machine-readable record has been wrong four times on this project. The
-        # first version of this generator wrote its own wording and the test caught it immediately.
+        "licence": "CC-BY-4.0 (the effect weights); none (the 1000 Genomes genotypes)",
+        "licence_url": CC_BY_4,
+        "attribution": DS_PGS_CATALOG.attribution,
+        "genotypes_attribution": DS_1000G.attribution,
+        "modifications": (f"The {len(keys)} of PGS000072's {len(published_keys)} published variants that "
+                          f"Ensembl's 1000 Genomes phase 3 records resolve are scored, with their weights "
+                          f"unchanged; the other {len(unscored)} are listed in variants_unscored and left "
+                          f"out. The dosages are effect-allele counts from 1000 Genomes phase 3 genotypes "
+                          f"read through the Ensembl REST API; {int(shipped.shape[0])} of {n_available} "
+                          f"individuals are included."),
+        # THE REGISTRY OWNS THIS STRING: `tests/test_demo_provenance.py` asserts the shipped JSON's
+        # provenance is `BUNDLED_DEMO_SAMPLES[usecase][0]` verbatim.
         "provenance": _registry_provenance(payload_name),
     }
-    # PRS77 keeps an `rsids` field because two existing readers name it. PRS313 has no rsIDs to put
-    # there, and inventing the field with position keys in it would let a reader treat a coordinate as
-    # an identifier - which is the exact confusion this score's lack of rsIDs causes.
-    if args.score == "breast_cancer":
-        payload["rsids"] = list(keys)
 
     out = WEB / payload_name
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(payload, indent=1) + "\n")
     print(f"wrote {out.relative_to(REPO)}")
-    print(f"  {len(keys)} variants, keyed by {meta['keyed_by']}")
+    print(f"  {len(keys)} of {len(published_keys)} variants scored, keyed by {meta['keyed_by']}")
     print(f"  {shipped.shape[0]} of {n_available} individuals shipped ({out.stat().st_size/1024:.1f} KB)")
-    print(f"  top-{args.top} by |weight|: {top_idx}")
     return 0
 
 

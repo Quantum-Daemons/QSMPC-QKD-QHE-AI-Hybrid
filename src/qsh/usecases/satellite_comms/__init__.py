@@ -6,9 +6,9 @@ WHY THIS USE CASE EXISTS, since the line above describes a mechanism and not a p
     satellite telemetry data are often strictly confidential, we can share these synthetic data
     easily with our research partners" (CEAS Space Journal, 2025). ESA anonymised missions,
     channels, telecommands and units and scaled the timeline by an undisclosed factor purely to
-    publish the benchmark this file consumes. And in 2015 a Space Data Association chairman asked
-    for secure computation in plain English: "we still protect our assets without having to know
-    what their assets are doing."
+    publish ESA-ADB, the benchmark the use case's published forecaster is trained on. And in 2015 a
+    Space Data Association chairman asked for secure computation in plain English: "we still
+    protect our assets without having to know what their assets are doing."
 
     The architectural seam is specific. CCSDS 355.0-B-2 gives confidentiality "over a space link"
     and terminates at the ground station, so telemetry is plaintext for the whole ground segment -
@@ -42,7 +42,8 @@ and only the downlink leg is modelled; see :mod:`qsh.qkd.qsdc`). Telemetry QSDC 
 sealed in the AES-256-GCM session for an auditable, signed record. At the 74 bytes the demo sends
 by default, the check carriers certify no error rate a link could close at, so QSDC withholds them
 at every link setting, as link-limited or as statistics-limited, and they travel under the PQC
-session key. A CKKS anomaly check scores a window of the bundled telemetry either way.
+session key. A CKKS anomaly check scores a bundled OPS-SAT-AD telemetry segment (CC BY 4.0) with the
+browser's demo regression either way.
 
 Maps to: WS1 (AI-QKD, here over a free-space channel) + the report's QSDC / QT-QSS section.
 Free-space channel and the QSDC threshold are config-driven (WebUI-adjustable via ``config``).
@@ -498,69 +499,125 @@ class QSDCStage(Stage):
 
 
 class TelemetryAnomalyStage(Stage):
-    """Private satellite-telemetry anomaly detection under CKKS, on a window of the bundled telemetry.
+    """Private satellite-telemetry anomaly detection under CKKS, on one bundled OPS-SAT-AD segment.
 
-    An FHE-friendly linear anomaly detector - trained in the pipeline on the bundled NASA SMAP/MSL
-    windows (``_anomaly_model``), not one of the published satellite students - scores one of those
-    windows encrypted and returns a signed nominal/anomaly verdict, so a relay/ground partner can flag
-    faults without seeing the raw telemetry. It scores the bundled window, not the payload QSDC
-    carries, so it runs whether or not QSDC delivered, as the browser's plaintext twin does; gated on
-    a delivery, it could not run, since QSDC withholds the demo's telemetry at every setting. Full
-    deployment only: the public satellite page has no FHE or MPC stage, and scores its telemetry in
-    plaintext.
+    The model and the rows are the browser's (Round 84): the demo logistic regression in the bundled
+    OPS-SAT-AD payload (``qsh.data.loaders.load_opssat_segments``, CC BY 4.0), fitted on 370 segments
+    of the benchmark's test partition, and one of the other 159, which it was not fitted on. CKKS (the
+    run's ``fhe`` backend, TenSEAL by default) evaluates the logits on the encrypted segment and
+    returns a signed nominal/anomaly verdict, so a relay or ground partner could flag faults without
+    seeing the telemetry; the stage reports how far the decrypted logits are from the plaintext ones
+    and whether the verdict is the plaintext one. The SHAP reference point is the payload's E[x] over
+    the fitting segments, as in the browser. It is a demo model, not the published
+    ``satellite_comms.opssat`` models, and the log says so in the payload's words.
+
+    It scores the bundled segment, not the payload QSDC carries: it runs whether or not QSDC delivered,
+    as the browser's plaintext twin does; gated on a delivery, it could not run, since QSDC withholds
+    the demo's telemetry at every setting. Full deployment only: the public satellite page has no FHE
+    or MPC stage, and scores the same segments in plaintext.
     """
 
     name = "telemetry_anomaly"
 
     def run(self, ctx: Context, bus: EventBus, reg: CryptoRegistry) -> None:
+        import math
+
         import numpy as np
 
         from ...ai.explainability import explain_linear_model
-        from ...fhe.ckks_inference import encrypted_linear_inference
+        from ...fhe.ckks_inference import LinearModel, encrypted_linear_inference
 
-        model = ctx.data.get("anomaly_model")
-        x = ctx.data.get("features")
-        if model is None or x is None:
-            bus.log("no anomaly model or telemetry window to score - anomaly check skipped", self.name)
+        p = ctx.data.get("telemetry_segments")
+        if p is None:
+            why = ctx.data.get("telemetry_unavailable", "no telemetry segment to score")
+            bus.log(f"anomaly check skipped: {why}", self.name)
             return
+        k = int(ctx.data["telemetry_segment"])
+        x, row, label = p.segments[k], int(p.row_index[k]), int(p.labels[k])
+        model = LinearModel(p.weight, p.bias)
         backend = reg.get("fhe", ctx.config.get("fhe"))()
-        out = encrypted_linear_inference(model, np.asarray(x), backend)
-        ctx.artifacts["telemetry_anomaly"] = int(out["prediction"])
-        bus.metric("telemetry_anomaly_detected", int(out["prediction"]), self.name)
-        names = ctx.data.get("feature_names")
-        exp = explain_linear_model(model, np.asarray(x), baseline=ctx.data.get("explain_baseline"),
-                                   feature_names=names, top_k=3)
+        out = encrypted_linear_inference(model, x, backend)
+        enc, plain = np.asarray(out["logits"]), np.asarray(out["plain_logits"])
+        verdict = int(out["prediction"])
+        matches = verdict == int(np.argmax(plain))
+        err = float(out["max_abs_error"])
+        plain_margin = float(plain[1] - plain[0])
+        # The browser's score, sigmoid((W1 - W0) . x + (b1 - b0)) (`realSatelliteAnomaly`), here of the
+        # DECRYPTED margin; in the tanh form, which equals it and cannot overflow.
+        sigmoid = lambda v: 0.5 * (1.0 + math.tanh(0.5 * v))  # noqa: E731
+        score = sigmoid(float(enc[1] - enc[0]))
+        bus.metric("telemetry_anomaly_dataset", "OPS-SAT-AD", self.name)
+        bus.metric("telemetry_anomaly_segment", row, self.name)
+        bus.metric("telemetry_anomaly_label", label, self.name)
+        bus.metric("telemetry_anomaly_score", round(score, 4), self.name)
+        bus.metric("telemetry_anomaly_detected", verdict, self.name)
+        bus.metric("telemetry_anomaly_ckks_max_abs_error", float(f"{err:.3g}"), self.name)
+        bus.metric("telemetry_anomaly_ckks_matches_plaintext", int(matches), self.name)
+        ctx.artifacts["telemetry_anomaly"] = verdict
+        # The CC BY 4.0 credit travels with the signed record of the segment it describes.
+        ctx.artifacts["telemetry_anomaly_case"] = {
+            "dataset": "OPS-SAT-AD", "segment_row": row, "segment_position": k, "label": label,
+            "score": round(score, 4), "plaintext_score": round(sigmoid(plain_margin), 4),
+            "ckks_backend": out["backend"], "ckks_max_abs_error": err, "matches_plaintext": matches,
+            "model": p.model_note, "provenance": p.provenance, "licence": p.licence,
+            "licence_url": p.licence_url, "attribution": p.attribution,
+        }
+        exp = explain_linear_model(model, x, baseline=p.baseline, feature_names=list(p.names), top_k=3)
         ctx.artifacts["explanation"] = {
             "method": exp.method, "prediction": exp.prediction,
-            "top_features": [{"feature": t["feature"], "contribution": round(float(t["contribution"]), 6)}
-                             for t in exp.top],
+            "base_value": round(exp.base_value, 6), "margin": round(exp.margin, 6),
+            "top_features": [{"feature": t["feature"], "value": round(float(t["value"]), 6),
+                              "contribution": round(float(t["contribution"]), 6)} for t in exp.top],
+            "efficiency_gap": round(exp.efficiency_gap(), 9),
+            "baseline": p.baseline_note,
         }
-        bus.log(f"private telemetry anomaly detection (CKKS) on a window of the bundled SMAP/MSL "
-                f"telemetry, not the QSDC payload: {'ANOMALY' if out['prediction'] else 'nominal'} "
-                f"(err {out['max_abs_error']:.2e})", self.name)
+        # What the page's SHAP panel reads beside the bars, set as the browser's twin sets them: the
+        # model they explain, the reference point, and that this model produced the verdict, which holds
+        # here too, since this pipeline has no other inference stage. Without them a full-deployment
+        # run fell to the panel's default text, a garbled-circuit argmax this stage does not have.
+        ctx.artifacts["explanation_provenance"] = "demo OPS-SAT-AD regression (not the published model)"
+        ctx.artifacts["explanation_baseline"] = p.baseline_note
+        ctx.artifacts["explanation_is_of_reported_class"] = True
+        if not matches:
+            check = (f"the verdict DIFFERS from the plaintext one (plaintext margin {plain_margin:.4f}, "
+                     f"CKKS error {err:.1e})")
+        elif err < abs(plain_margin):
+            check = (f"the decrypted logits are within {err:.1e} of the plaintext ones, below the "
+                     f"margin's {abs(plain_margin):.4f}, so the verdict is the plaintext one")
+        else:
+            check = (f"the decrypted logits are within {err:.1e} of the plaintext ones, not below the "
+                     f"margin's {abs(plain_margin):.4f}; the verdict matches the plaintext one on this run")
+        bus.log(f"private telemetry anomaly detection (CKKS, {out['backend']}) on OPS-SAT-AD segment "
+                f"{row} of the benchmark's test partition ({p.licence}), a bundled segment held out from "
+                f"the demo regression and labelled {'anomalous' if label else 'nominal'}, not the QSDC "
+                f"payload: {'ANOMALY' if verdict else 'nominal'} (score {score:.4f}); {check}. "
+                f"Model: {p.model_note}", self.name)
 
 
-def _anomaly_model(seed: int = 0):
-    """Train the FHE-friendly linear telemetry-anomaly classifier + pick an anomalous window to score."""
+def _telemetry_segment(config: dict):
+    """The bundled OPS-SAT-AD payload and the position of the held-out segment this run scores.
+
+    ``telemetry_segment`` pins a position among the payload's held-out segments. Without it the
+    position is drawn by the browser's rule in ``realSatelliteAnomaly``, k = floor(u n) mod n, on this
+    run's own generator seeded with the run's seed: the two languages draw from the same 159 segments
+    and score them with the same model, but not, in general, the same segment, since the browser's u
+    comes from its run's shared stream.
+    """
     import numpy as np
-    from sklearn.linear_model import LogisticRegression
 
-    from ...data.loaders import load_satellite_telemetry
-    from ...fhe.ckks_inference import LinearModel
+    from ...data.loaders import load_opssat_segments
 
-    X, y, names = load_satellite_telemetry(n_windows=600, seed=seed)
-    clf = LogisticRegression(max_iter=500, class_weight="balanced").fit(X, y)
-    w = np.vstack([np.zeros_like(clf.coef_[0]), clf.coef_[0]])
-    b = np.array([0.0, float(clf.intercept_[0])])
-    anom = X[(y == 1) & (clf.predict(X) == 1)]
-    window = (anom[0] if len(anom) else X[y == 1][0]).astype(float)
-    win, ch = 8, len(names)
-    feat_names = [f"{names[c]}[t{tt}]" for c in range(ch) for tt in range(win)]
-    # E[x] over the telemetry windows. Real NASA SMAP/MSL channels are NOT zero-mean, so a zero
-    # baseline made ranks 2 and 3 of the reported top-3 spurious - the attribution was measured
-    # against a spacecraft state that never occurs.
-    baseline = X.mean(axis=0).astype(float)
-    return LinearModel(w.astype(float), b), window, feat_names, baseline
+    p = load_opssat_segments()
+    n = len(p.segments)
+    pinned = config.get("telemetry_segment")
+    if pinned is None:
+        k = int(np.random.default_rng(config.get("seed", 0)).random() * n) % n
+    else:
+        k = int(pinned)
+        if not 0 <= k < n:
+            raise ValueError(f"telemetry_segment {pinned!r}: the payload holds {n} held-out segments, "
+                             f"positions 0 to {n - 1}")
+    return p, k
 
 
 def build(config: dict | None = None) -> tuple[Pipeline, Context]:
@@ -569,11 +626,16 @@ def build(config: dict | None = None) -> tuple[Pipeline, Context]:
         usecase="satellite_comms",
         config={"qkd": config.get("qkd", "bb84-decoy"), "inference": "ckks", **config},
     )
-    model, window, feat_names, baseline = _anomaly_model(config.get("seed", 0))
-    ctx.data["anomaly_model"] = model
-    ctx.data["features"] = window
-    ctx.data["feature_names"] = feat_names
-    ctx.data["explain_baseline"] = baseline
+    try:
+        segments, k = _telemetry_segment(config)
+    except FileNotFoundError as exc:
+        # Said by the stage, which then skips: no made-up rows stand in for the payload.
+        ctx.data["telemetry_unavailable"] = f"the bundled OPS-SAT-AD payload is missing ({exc})"
+    else:
+        ctx.data["telemetry_segments"] = segments
+        ctx.data["telemetry_segment"] = k
+        # Also the row the QSMPC-FHE comparison encodes (`QuantumComparisonStage` reads `features`).
+        ctx.data["features"] = segments.segments[k]
     ctx.config.setdefault("qkd_opt_pulses", _SAT_DEFAULTS["sat_opt_pulses"])   # free-space link needs more pulses
     stages = [
         PQCHandshakeStage(),
@@ -600,6 +662,7 @@ def run_demo(config: dict | None = None) -> dict:
         "qsdc_secrecy_capacity": m.get("qsdc_secrecy_capacity"),
         "eavesdrop_detected": bool(m.get("qsdc_eavesdrop_detected")),
         "telemetry_anomaly": ctx.artifacts.get("telemetry_anomaly"),   # private CKKS anomaly verdict (1=anomaly)
+        "telemetry_anomaly_case": ctx.artifacts.get("telemetry_anomaly_case"),   # which OPS-SAT-AD segment
         "explanation": ctx.artifacts.get("explanation"),
         "metrics": m,
     }

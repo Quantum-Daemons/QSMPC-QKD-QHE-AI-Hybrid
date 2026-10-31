@@ -20,21 +20,19 @@ from pathlib import Path
 
 import pytest
 
-from qsh.data.loaders import _PRS_FILES, load_genomic_prs, load_prs
+from qsh.data.loaders import _PRS_FILES, load_genomic_prs, load_prs, unscored_variants
 
 REPO = Path(__file__).resolve().parents[1]
 
 #: Scores whose dosages are available as REAL genotypes on any checkout, full file or committed slice.
 #:
-#: Named for what it means. It used to be `SCORES_WITH_REAL_DOSAGES`, computed from `.exists()` on the
-#: full file only - so PRS313 was in the list on a maintainer's machine, where the gitignored 2,504-row
-#: matrix is present, and out of it in CI. Both runs printed green while testing different things, and
-#: the path that mattered was the one CI skipped.
+#: Computed from the file the loader will read, full matrix or committed slice. A list computed from
+#: the full file only would hold the active score on a maintainer's machine, where the gitignored
+#: 2,504-row matrix is present, and not in CI: both runs green while testing different things.
 #:
-#: PRS313's full matrix is deliberately not in the repository: `DATA_LICENSES` section 4 justifies
-#: about 30,800 genotype cells and 2,504 x 313 is 24x that. A 97 x 313 slice at the same cell budget IS
-#: committed, so this list is now the same in both places and the assertions below mean the same thing
-#: wherever they run.
+#: The active score's full matrix is deliberately not in the repository (`DATA_LICENSES` section 4
+#: justifies about 30,800 genotype cells per file); its 97-individual slice IS committed, so this list
+#: is the same in both places and the assertions below mean the same thing wherever they run.
 def _dosage_path(name: str) -> Path | None:
     """The file `load_genomic_prs` will actually read: full matrix, else the committed slice."""
     _, dosage_file = _PRS_FILES[name]
@@ -85,10 +83,8 @@ def test_dosages_are_real_not_sampled(name: str) -> None:
         f"{handler.messages[0][:160]}"
     )
     assert dosages.shape[1] == len(weights) == len(keys) == len(eff)
-    # Not a hardcoded 400. PRS77 ships 400 individuals and PRS313 ships a 97-row slice at the same
-    # genotype-cell budget, so the count is read from the file the loader will use. A literal 400 here
-    # asserted a property of one score's bundled file and failed on the other for a reason that had
-    # nothing to do with whether the genotypes were real - which is what this test is about.
+    # Not a hardcoded 400. PRS77 ships 400 individuals and the active score a 97-row slice, so the
+    # count is read from the file the loader will use.
     expected = min(400, _n_individuals(name))
     assert dosages.shape[0] == expected, (
         f"asked for 400 individuals and got {dosages.shape[0]}; {_dosage_path(name).name} holds "
@@ -105,25 +101,30 @@ def test_every_score_variant_has_a_dosage_column(name: str) -> None:
     """
     keys, _, weights = load_prs(name)
     assert len(keys) == len(weights)
-    # Both bundled scores are joined against their own dosage file; a mismatch raises inside
-    # load_genomic_prs and is caught by the test above. Here, just assert the shapes agree.
+    # Joined against its own dosage file; an undeclared gap raises inside load_genomic_prs and is
+    # caught by the test above. A variant may be absent only where the file declares it #unscored,
+    # and then it is absent from the result rather than filled in.
+    declared = unscored_variants(_dosage_path(name))
+    header = next(ln for ln in _dosage_path(name).read_text().splitlines()
+                  if ln.strip() and not ln.startswith("#")).split("\t")
+    assert set(declared) == {k for k in keys if k not in header}, (
+        "a variant is missing from the dosage file without a #unscored declaration, or declared and present")
     dosages, w, joined_keys, _, _ = load_genomic_prs(n_individuals=50, seed=0, name=name)
-    assert joined_keys == keys, "the join reordered or dropped variants relative to the score file"
+    assert joined_keys == [k for k in keys if k not in declared], (
+        "the join reordered variants, or dropped one the dosage file does not declare #unscored")
+    assert dosages.shape[1] == len(w) == len(joined_keys)
 
 
-def test_the_two_bundled_scores_are_keyed_differently_on_purpose() -> None:
-    """PRS77 is keyed by rsID; PRS313 by chr:pos:effect_allele, because it publishes no rsIDs.
+def test_both_bundled_scores_are_keyed_by_the_rsids_they_publish() -> None:
+    """PRS77 (77 SNPs) and PGS000072 (187 variants) both publish rsIDs, and the join uses them.
 
-    Pinned because the natural "tidy-up" is to make both look the same, and doing that to PRS313 means
-    inventing identifiers: 28% of its positions carry several rsIDs and about 15% cannot be resolved
-    at all, so a guess would score a different variant's genotypes.
+    The scoring file's own rsID is the key, not the current name Ensembl may have merged it into, so
+    the dosage columns are named exactly as the score names its variants.
     """
     rs_keys, _, _ = load_prs("breast_cancer")
-    pos_keys, _, _ = load_prs("breast_cancer_prs313")
-    assert all(k.startswith("rs") for k in rs_keys)
-    assert len(rs_keys) == 77
-    assert all(k.count(":") == 2 and not k.startswith("rs") for k in pos_keys)
-    assert len(pos_keys) == 313
+    keys, _, _ = load_prs("breast_cancer_pgs000072")
+    assert all(k.startswith("rs") for k in rs_keys) and len(rs_keys) == 77
+    assert all(k.startswith("rs") for k in keys) and len(keys) == len(set(keys)) == 187
 
 
 def test_at_least_one_score_has_committed_dosages() -> None:

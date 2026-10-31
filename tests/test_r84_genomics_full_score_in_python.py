@@ -2,11 +2,12 @@
 
 WHY THIS EXISTS (Round 84, scratchpad audit83/page-finance-genomics.md, findings 1, 2, 8, 13, 14)
 
-The Python tier always evaluated all 313 variants, but against the 75th percentile of its cohort under
-the label "the clinical risk cut", which no source supports, and it reported agreement over ONE row,
-the top scorer, whose flag cannot come out "no". The secure sum's field is the inputs' range since
-the Round 84 draft; on the maintainer's full panel the four cohorts carry 75, 78, 94 and 76 effect
-alleles (323), which the paper's GF(5) had returned as 3, and that case is pinned here. The MCP
+The Python tier always evaluated every scored variant, but against the 75th percentile of its cohort
+under the label "the clinical risk cut", which no source supports, and it reported agreement over ONE
+row, the top scorer, whose flag cannot come out "no". The secure sum's field is the inputs' range since
+the Round 84 draft; at the score's first variant the full panel's first 400 people split into cohorts
+carrying 141, 131, 138 and 118 effect alleles (528), which the paper's GF(5) returns as 3, and that
+case is pinned here. The MCP
 allele-pooling tool named a "d-qudit GHZ secure summation" that its 2^31-1 field never simulates, and
 returned a reduced count for inputs that sum past it. The benchmark row priced a "genomic risk MLP".
 
@@ -17,7 +18,7 @@ WHAT IS ASSERTED
   - every panel individual is scored under CKKS, with every score within 1e-6 of the clear and the
     high-risk flag agreeing on every row, and the flag comes out both ways;
   - the packed SEAL path and the one-row-per-ciphertext fallback compute the same scores;
-  - the 323 case pools to 323, in the stage and through `build`, and a field that cannot hold it
+  - the 528 case pools to 528, in the stage and through `build`, and a field that cannot hold it
     is refused;
   - the MCP tool names what ran and refuses counts that could wrap;
   - the genomics benchmark row has no hidden layer at any size.
@@ -32,7 +33,11 @@ import numpy as np
 import pytest
 
 REPO = Path(__file__).resolve().parents[1]
-COUNTS_323 = [75, 78, 94, 76]
+#: PGS000072's first scored variant (rs616488), the full 2,504-sample panel's first 400 people in
+#: four contiguous cohorts (`np.array_split`), as `genomics.build` splits them. Measured 2026-10-31 on
+#: the local matrix scripts/data/fetch_g1k_dosages.py writes; CI builds a cohort to these counts.
+COUNTS_FULL_PANEL = [141, 131, 138, 118]
+TOTAL_FULL_PANEL = 528
 
 
 @pytest.fixture(scope="module")
@@ -101,7 +106,8 @@ def test_every_panel_individual_is_scored_and_the_flag_agrees(demo: dict) -> Non
 def test_the_log_says_what_is_encrypted_and_what_is_decrypted(demo: dict) -> None:
     line = next((m for m in demo["logs"] if m.startswith("full polygenic score under CKKS")), None)
     assert line, "the Python run does not describe its full-score evaluation"
-    for part in ("Encrypted: each person's 313 effect-allele dosages", "In plaintext:",
+    _, w = _cohort()
+    for part in (f"Encrypted: each person's {len(w)} effect-allele dosages", "In plaintext:",
                  "Decrypted: the result ciphertext", "90th percentile of the plaintext score"):
         assert part in line, f"{part!r} missing from: {line}"
     assert not any("sign test" in m for m in demo["logs"])
@@ -137,15 +143,16 @@ def test_the_packed_path_and_the_fallback_agree() -> None:
     assert np.allclose(single["encrypted"], x @ w, atol=1e-4)
 
 
-def test_the_full_panel_case_pools_to_323() -> None:
+def test_the_full_panel_case_pools_unreduced() -> None:
     from qsh.qsmpc.secure_summation import QSMS, field_for_total
 
-    # The defect, as arithmetic: the paper's field for four parties is GF(5), and 323 mod 5 is 3.
-    assert QSMS(n=4, t=3).run(COUNTS_323, seed=0).total == 3
+    assert sum(COUNTS_FULL_PANEL) == TOTAL_FULL_PANEL
+    # The defect, as arithmetic: the paper's field for four parties is GF(5), and 528 mod 5 is 3.
+    assert QSMS(n=4, t=3).run(COUNTS_FULL_PANEL, seed=0).total == TOTAL_FULL_PANEL % 5 == 3
     p = field_for_total(2 * 400, 4)
     assert p == 809
     for seed in range(5):
-        assert QSMS(n=4, t=3, prime=p).run(COUNTS_323, seed=seed).total == 323
+        assert QSMS(n=4, t=3, prime=p).run(COUNTS_FULL_PANEL, seed=seed).total == TOTAL_FULL_PANEL
 
 
 def test_the_full_panel_case_through_build_and_the_stage(monkeypatch) -> None:
@@ -156,10 +163,10 @@ def test_the_full_panel_case_through_build_and_the_stage(monkeypatch) -> None:
     from qsh.orchestration.stages import QSMPCComputeStage
     from qsh.usecases import genomics
 
-    keys, eff, w = loaders.load_prs("breast_cancer_prs313")
+    keys, eff, w = loaders.load_prs(loaders.ACTIVE_PRS)
     rng = np.random.default_rng(84)
     x = rng.integers(0, 3, size=(400, len(w))).astype(float)
-    for k, total in enumerate(COUNTS_323):                 # 100 people per cohort, `total` alleles
+    for k, total in enumerate(COUNTS_FULL_PANEL):          # 100 people per cohort, `total` alleles
         col = np.zeros(100)
         col[: total // 2] = 2
         col[total // 2: total // 2 + total % 2] = 1
@@ -167,10 +174,10 @@ def test_the_full_panel_case_through_build_and_the_stage(monkeypatch) -> None:
     monkeypatch.setattr(loaders, "load_genomic_prs",
                         lambda **_kw: (x, np.asarray(w, dtype=float), keys, eff, x.mean(axis=0) / 2))
     _, ctx = genomics.build({"seed": 1})
-    assert ctx.data["secrets"] == COUNTS_323 and ctx.config["prime"] == 809
+    assert ctx.data["secrets"] == COUNTS_FULL_PANEL and ctx.config["prime"] == 809
     ctx.data["session_key"] = b"\x02" * 32
     QSMPCComputeStage().run(ctx, EventBus(), CryptoRegistry())
-    assert ctx.artifacts["secure_sum"] == 323 == ctx.data["_ground_truth_total"]
+    assert ctx.artifacts["secure_sum"] == TOTAL_FULL_PANEL == ctx.data["_ground_truth_total"]
     with pytest.raises(ValueError, match="would wrap"):
         genomics.build({"seed": 1, "prime": 797})            # prime, and below the 800 the cohort can reach
 
@@ -178,8 +185,8 @@ def test_the_full_panel_case_through_build_and_the_stage(monkeypatch) -> None:
 def test_the_mcp_tool_names_what_ran_and_cannot_wrap() -> None:
     from qsh.mcp.server import pool_allele_counts
 
-    r = pool_allele_counts(COUNTS_323)
-    assert r["pooled_allele_count"] == 323
+    r = pool_allele_counts(COUNTS_FULL_PANEL)
+    assert r["pooled_allele_count"] == TOTAL_FULL_PANEL
     assert r["ghz_statevector_simulated"] is False
     assert "analytic sampler" in r["method"] and "GHZ statevector simulated" not in r["method"], r["method"]
     for bad in ([-1, 4], [2**31, 1]):
@@ -193,6 +200,7 @@ def test_the_genomics_benchmark_row_is_not_an_mlp() -> None:
 
     arch = get_config().benchmark.tier_architectures["genomics"]
     assert "MLP" not in arch["label"] and all(h == [] for h in arch["hidden"].values()), arch
+    _, w = _cohort()
     for size in ("medium", "large"):
-        layers, label, params = usecase_arch_layers("genomics", size, n_in=313)
-        assert [lw.shape for lw, _ in layers] == [(2, 313)] and "MLP" not in label
+        layers, label, params = usecase_arch_layers("genomics", size, n_in=len(w))
+        assert [lw.shape for lw, _ in layers] == [(2, len(w))] and "MLP" not in label

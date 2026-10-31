@@ -102,14 +102,14 @@
     "teacher_scored_zero": false
   },
   "genomics.prs": {
-    "dataset": "PGS Catalog scoring files",
-    "git_sha": "cc4a151-dirty",
+    "dataset": "PGS Catalog score PGS000072",
+    "git_sha": "dfa93b1-dirty",
     "licence_audit": {
       "checked": "read from the bundled scoring file at run time",
       "declares_restriction": false,
       "declares_terms": true,
       "header": [
-        "# PGS000004 (PRS313_BC) - breast-cancer Polygenic Risk Score, 313 variants, GRCh37. Source: PGS Catalog (https://www.pgscatalog.org/score/PGS000004/), harmonised hmPOS file. LICENCE: per score - PGS000004 carries the Catalog's default terms (EMBL-EBI Terms of Use), NOT CC-BY 4.0; cite Mavaddat et al. Am J Hum Genet 2018 (doi:10.1016/j.ajhg.2018.11.002) and observe any restrictions set by the score authors. Same posture as PGS000001. NO rsID COLUMN: the Catalog publishes none for this score (hm_rsID empty for all 313, hm_source=Author-reported), so downstream tooling keys on chr:pos plus allele match. See DATA_LICENSES.md.",
+        "# PGS000072 (CC_Breast) - breast-cancer polygenic score, 187 variants, GRCh37, weights ln(OR). Source: PGS Catalog scoring file https://ftp.ebi.ac.uk/pub/databases/spot/pgs/scores/PGS000072/ScoringFiles/PGS000072.txt.gz, downloaded 2026-10-31 (Last-Modified 2026-04-13; sha256 of the .gz 10dd9c64df7c21a29f8be4f3efd33e503e1f6247f2b5b98e97c5e870ed4cd748, of the text after this line f3626961a7efdb38197ac733e124be1eefb368c73e1447e8da0f12e11db24dde). Score publication: Graff RE et al., Cross-cancer evaluation of polygenic risk scores for 16 cancer types in two large cohorts, Nat Commun 12, 970 (2021), doi:10.1038/s41467-021-21288-z, licensed CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/; Crossref and Europe PMC, read 2026-10-31); the #citation line below names its bioRxiv preprint, for which Crossref and Europe PMC record no licence. Cite the PGS Catalog as Lambert, Wingfield et al., Nat Genet 56:1989-1994 (2024), doi:10.1038/s41588-024-01937-x. Change: this line was added; every line after it is the Catalog's file, unchanged. See DATA_LICENSES.md.",
         "###PGS CATALOG SCORING FILE - see https://www.pgscatalog.org/downloads/#dl_ftp_scoring for additional information",
         "#format_version=2.0"
       ],
@@ -119,54 +119,54 @@
     "measured": {
       "by_super_population": {
         "AFR": {
-          "frac_above_global_cut": 0.161876,
-          "mean": 0.207404,
+          "frac_above_global_cut": 0.02118,
+          "mean": 20.374579,
           "n": 661,
-          "p90": 0.8989,
-          "sd": 0.554294
+          "p90": 21.693418,
+          "sd": 1.042049
         },
         "AMR": {
-          "frac_above_global_cut": 0.083573,
-          "mean": -0.072606,
+          "frac_above_global_cut": 0.017291,
+          "mean": 20.133905,
           "n": 347,
-          "p90": 0.71352,
-          "sd": 0.65686
+          "p90": 21.711376,
+          "sd": 1.283454
         },
         "EAS": {
-          "frac_above_global_cut": 0.14881,
-          "mean": 0.163061,
+          "frac_above_global_cut": 0.390873,
+          "mean": 22.252985,
           "n": 504,
-          "p90": 0.8645,
-          "sd": 0.567598
+          "p90": 24.103023,
+          "sd": 1.440805
         },
         "EUR": {
-          "frac_above_global_cut": 0.027833,
-          "mean": -0.368675,
+          "frac_above_global_cut": 0.039761,
+          "mean": 19.816252,
           "n": 503,
-          "p90": 0.41544,
-          "sd": 0.592581
+          "p90": 21.612154,
+          "sd": 1.468938
         },
         "SAS": {
-          "frac_above_global_cut": 0.05317,
-          "mean": -0.259791,
+          "frac_above_global_cut": 0.02863,
+          "mean": 20.341618,
           "n": 489,
-          "p90": 0.5101,
-          "sd": 0.599757
+          "p90": 21.870458,
+          "sd": 1.211468
         }
       },
-      "global_high_risk_cut": 0.75367,
+      "global_high_risk_cut": 22.641088,
       "n_samples": 2504,
-      "n_variants": 313,
-      "score_mean": -0.047284,
-      "score_sd": 0.634203
+      "n_variants": 183,
+      "score_mean": 20.600716,
+      "score_sd": 1.54361
     },
     "not_measured": {
       "auroc": null,
-      "published_auroc_eur": 0.633,
-      "published_source": "PGS Catalog PPM001647 for PGS000004 (PRS313): AUROC 0.633 (95% CI 0.624-0.641), n=400,812 Europeans - 4,340 cases and 396,472 controls - from Jia et al., JNCI Cancer Spectrum 2020 (doi:10.1093/jncics/pkaa021). Verified at the Catalog REST record 2026-08-11. TWO CAVEATS THAT MAKE THIS A CITATION AND NOT A TARGET, both from the record itself: the model is fitted WITH COVARIATES - 'family history of cancer (in first-degree relatives), genotyping array' - which a bare weighted dot product does not have; and the cohort was 'missing 25 variants (8%) based on availability of variants in the cohort', so the published figure is for 288 of the 313 variants, not all of them. This replaced PGS000001's C-index 0.628 (PPM017270) when the score changed. That figure was a Harrell's C-index over censored follow-up, not an AUROC, and the two are not directly comparable - a C-index is computed over time-to-event pairs and an AUROC over a fixed case/control split. PGS000004 publishes a genuine AUROC, so the switch also removes that comparability problem rather than only changing the number.",
-      "reason": "1000 Genomes is a reference panel with no breast-cancer case/control status. AUROC requires a phenotyped cohort, so the published figure is carried as a citation, not as a measurement from this run: 0.633 (AUROC (European ancestry))."
+      "published_auroc_eur": 0.637,
+      "published_source": "PGS Catalog PPM002038 for PGS000072: AUROC 0.637 (no confidence interval recorded), incident breast cancer in n=216,273 European-ancestry women in UK Biobank - 4,760 cases and 211,513 controls - from Kachuri et al., Nat Commun 11:6084 (2020), doi:10.1038/s41467-020-19600-4. A CITATION AND NOT A TARGET, for three reasons the record itself gives: the model is fitted WITH COVARIATES (age at assessment, family history of breast cancer, genotyping array, PCs 1-15, parity, age at menarche, body mass index, menopausal status, hormone replacement therapy, oral contraceptive use, alcohol intake, and body mass index by menopausal status), which a bare weighted dot product does not have; it used 'only 162 of the original 187 SNPs'; and it is an AUC at 5 years. It is the only AUROC among the score's three Catalog performance records; the other two report an odds ratio per standard deviation of 1.26 (95% CI 1.24-1.28; PPM000192, GERA and UK Biobank, n=237,549, Graff et al. 2021) and a hazard ratio of 1.26 (1.20-1.32; PPM017165, post-menopausal breast cancer, UK Biobank, n=1,990; Byrne et al., Int J Epidemiol 52:817-826, 2023).",
+      "reason": "1000 Genomes is a reference panel with no breast-cancer case/control status. AUROC requires a phenotyped cohort, so the published figure is carried as a citation, not as a measurement from this run: 0.637 (AUROC (European ancestry))."
     },
-    "wall_clock_s": 1.5
+    "wall_clock_s": 0.6
   },
   "medical_fl.resnet18": {
     "accuracy": 0.8653846153846154,

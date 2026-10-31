@@ -2,7 +2,7 @@
 
 WHY THIS EXISTS (Round 84, scratchpad audit83/page-finance-genomics.md, findings 1, 2, 8)
 
-The page's CKKS step was a sign test on 8 of PGS000004's 313 variants (W = [-w/2, +w/2], b = 0). The
+The page's CKKS step was a sign test on 8 of the then score's (PGS000004's) 313 variants (W = [-w/2, +w/2], b = 0). The
 four positive-weight variants among those eight carry dosage 0 in all 30 bundled individuals, so the
 partial score was at most 0 on every row: 23 negative, 7 exactly 0, and the encrypted "class" was
 "not high risk" or a tie that CKKS noise decided. Over the 2,504-sample panel it agreed with the
@@ -43,7 +43,7 @@ import pytest
 
 REPO = Path(__file__).resolve().parents[1]
 WEB = REPO / "web"
-PAYLOAD = WEB / "public" / "data" / "genomics" / "pgs000004_prs313.json"
+PAYLOAD = WEB / "public" / "data" / "genomics" / "pgs000072_breast_cancer.json"
 
 HARNESS = r"""
 import { createRequire } from "node:module";

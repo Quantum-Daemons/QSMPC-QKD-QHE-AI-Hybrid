@@ -408,7 +408,7 @@ See [`docs/pqc-roadmap.md`](pqc-roadmap.md).
   |---|---|---|---|---|
   | **finance** | XGBoost over this project's own graph features (fan-in/fan-out and causal per-account aggregates over the transaction multigraph; IBM's Graph Feature Preprocessor is not used) | IBM **AMLworld HI-Small**, 5,078,345 transactions, 1 laundering in 981 (CDLA-Sharing-1.0) | minority-class F1 **0.1519**, AUPRC **0.1233** vs a 0.0015 prevalence baseline (the test window's positive rate; the corpus's is 1 in 981) | 0.632 (NeurIPS 2023 D&B) - see the gap note below |
   | **medical** | **ResNet-18** trained from random initialisation (no ImageNet weights, so no ImageNet terms attach) | MedMNIST v2 **BreastMNIST** (CC BY 4.0 **asserted by MedMNIST**; the BUSI authors **publish no licence** - see [DATA_LICENSES.md](../DATA_LICENSES.md)) | AUC **0.9147** | 0.901 (Yang et al., Scientific Data 10:41, 2023) |
-  | **genomics** | published **PRS** effect-weight vector - not a neural network | PGS Catalog **PGS000004 (PRS313)** over **2,504 real 1000 Genomes samples** | ancestry portability, below | AUROC 0.633 [0.624, 0.641] - *external citation, not measurable here: a reference panel carries no phenotype. Fitted WITH covariates a dot product does not have, and 8% of variants were missing in that cohort, so it is a citation and not a target* |
+  | **genomics** | published **PRS** effect-weight vector - not a neural network | PGS Catalog **PGS000072** (Graff et al. 2021, CC BY 4.0; 183 of its 187 variants scored) over **2,504 real 1000 Genomes samples** | ancestry portability, below | AUROC 0.637 - *external citation, not measurable here: a reference panel carries no phenotype. Fitted WITH covariates a dot product does not have, on 162 of the 187 variants and at 5 years, so it is a citation and not a target* |
   | **satellite** | **Telemanom** 2xLSTM(80), seq 250, non-parametric dynamic threshold + pruning | **ESA-ADB Mission1** lightweight channels 41-46, multi-year real telemetry (CC-BY-3.0-IGO) | event-wise F0.5 **0** over just **3 events** (tp=0 fp=2 fn=3) | 0.968 (ESA-ADB Supp. Table 9, anomalies only) |
   | **telecom** | RF baseline + quantum-kernel SVC + variational QNN | literature-grounded synthetic QKD-attack telemetry (7 attack types + normal) | macro F1 - **RF 0.987**, quantum-kernel SVC **0.832**, variational QNN **0.467** | no trustworthy single number exists - see below |
 
@@ -431,15 +431,15 @@ See [`docs/pqc-roadmap.md`](pqc-roadmap.md).
     truncation test rather than argued. Workings:
     [`references/finance-gap-investigation.md`](../references/finance-gap-investigation.md).
   - **genomics cannot produce an AUROC here, so it does not print one.** 1000 Genomes is a reference
-    panel with no case/control status; the published AUROC comes from an access-controlled phenotyped
-    cohort (PPM001647, n=400,812). What *is* computable from real genotypes is the portability failure,
+    panel with no case/control status; the published AUROC comes from a phenotyped UK Biobank
+    cohort (PPM002038, n=216,273). What *is* computable from real genotypes is the portability failure,
     and it is stark:
-    **a single global 90th-percentile "high risk" threshold flags 16.2% of African-ancestry samples
-    and 2.8% of European - a 5.8x difference driven entirely by ancestry, with no phenotype
-    involved.** That is the clinically important finding, not a footnote. (The figures moved with the
-    switch from PRS77 to PRS313 - 29.3%/1.0% and 29.5x were the 77-variant score's - and they are
-    recomputed on every training run, so read `by_super_population.*.frac_above_global_cut` in
-    `models/metrics.json` rather than this sentence.)
+    **a single global 90th-percentile "high risk" threshold flags 39.1% of East Asian-ancestry samples
+    against 4.0% of European and 1.7% to 2.9% of the other three super-populations - driven entirely
+    by ancestry, with no phenotype involved.** That is the clinically important finding, not a
+    footnote. The figures are recomputed on every training run, so read
+    `by_super_population.*.frac_above_global_cut` in `models/metrics.json` rather than this
+    sentence.
   - **satellite reports event-wise F-beta at $`\beta = 0.5`$, never point-adjusted F1.** On the run before
     the Round 71 retrain the point-adjusted figure was **0.994** against an honest **0.4545**, and on
     the retrain both are 0 because neither of its 2 flags falls inside a scored event - under point
@@ -509,10 +509,10 @@ See [`docs/pqc-roadmap.md`](pqc-roadmap.md).
   publish publicly at all when the registry marks the training data non-publishable.
 
 - **Public-demo data (real or simulator output, and one payload without a licence grant)** - the client-side demo loads
-  real or simulated datasets, mirroring the full deployment. Every one carries a licence that permits redistribution except the genomics payload: its 1000 Genomes dosage slice has no licence (IGSR grants no blanket licence; it ships under the cell budget of DATA_LICENSES.md section 4), and the source paper of its PGS000004 weights is published under CC BY-NC-ND 4.0, whose bearing on the weights is under review. **medical** uses a real Wisconsin
+  real or simulated datasets, mirroring the full deployment. Every one carries a licence that permits redistribution except the genomics payload's 1000 Genomes dosage slice, which has no licence instrument (IGSR's disclaimer; it ships under the cell budget of DATA_LICENSES.md section 4); the payload's PGS000072 weights are CC BY 4.0, with the credits that licence asks for. **medical** uses a real Wisconsin
   Diagnostic Breast-Cancer sample (UCI dataset 17 via sklearn, **CC BY 4.0 - attribution required**) + a real logistic-regression model;
-  **genomics** uses the real PGS-Catalog PGS000004 / PRS313 PRS weights (313 variants; **licensed per score** - PGS000004 carries the Catalog's default terms, *not* a blanket CC-BY grant) over real 1000 Genomes
-  genotypes -> a plaintext in-browser **Polygenic Risk Score** over all 313 variants with per-SNP signed SHAP, while its CKKS step is a sign test on the 8 largest-weight variants (weights $`[-w/2, w/2]`$, bias 0); **finance** uses a
+  **genomics** uses the real PGS-Catalog PGS000072 weights (Graff et al., Nat Commun 12:970, 2021, **CC BY 4.0**; 183 of its 187 variants have a 1000 Genomes genotype and are scored) over real 1000 Genomes
+  genotypes -> a **Polygenic Risk Score** over those 183 variants with per-SNP signed SHAP, and its CKKS step evaluates that full score: all 183 dosages in one ciphertext, the plaintext weights applied by one multiply-plain and a rotation sum, the decrypted score compared with the 90th percentile of the score over the 30 bundled individuals; **finance** uses a
   **PaySim** simulator sample (synthetic transactions, CC-BY-SA-4.0) + a linear surrogate over four of its columns (none built from PaySim's balance columns), which is what the finance page's one-row CKKS step evaluates (the 33-parameter AMLworld student is encrypted on 8,192 held-out test-window rows for the agreement figure since Round 84); and **satellite** scores
   **real OPS-SAT-AD telemetry segments** (CC BY 4.0, since Round 84; the NASA SMAP/MSL windows before them had no licence from any provider - see DATA_LICENSES.md) with a plaintext demo anomaly regression - all tiny static JSON
   under `web/public/data/`, loaded by [`web/src/lib/realData.ts`](../web/src/lib/realData.ts). The finance, medical and genomics pages compute with the

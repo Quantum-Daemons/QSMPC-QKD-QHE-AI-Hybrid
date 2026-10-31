@@ -1,11 +1,16 @@
-"""Dataset loaders for the finance / medical / genomics use cases.
+"""Dataset loaders for the finance / medical / genomics / satellite use cases.
 
 Prefers free public data (MedMNIST CC-BY, scikit-learn bundled sets); falls back to
 synthetic generators (:mod:`~qsh.data.synthetic`) when a download is unavailable or a
-dataset has usage restrictions. All loaders return NumPy arrays ``(X, y)``.
+dataset has usage restrictions. The array loaders return NumPy arrays ``(X, y)``; the
+satellite payload, which carries its own model, comes back as :class:`OpsSatSegments`
+and has no synthetic fallback.
 """
 
 from __future__ import annotations
+
+from dataclasses import dataclass
+from pathlib import Path
 
 import numpy as np
 
@@ -122,70 +127,75 @@ def load_finance_fraud(n: int = 4000, fraud_rate: float = 0.05, seed: int = 0
 
 def load_genomic(n: int = 1000, n_snps: int = 64, seed: int = 0
                  ) -> tuple[np.ndarray, np.ndarray]:
-    """Synthetic SNP genotype matrix + phenotype labels.
+    """Synthetic SNP genotype matrix + phenotype labels, for the generic benchmark only.
 
-    Real demos can substitute 1000 Genomes (CC-BY) / OpenSNP (CC0); we generate
-    synthetic genotypes to avoid re-identification risk in the public demo.
+    The genomics use case does not come through here: it scores real 1000 Genomes phase 3 genotypes
+    through `load_genomic_prs`. Those carry no licence instrument (IGSR's disclaimer; open-consent
+    data), so they are not CC BY, and openSNP is not a source here (DATA_LICENSES.md section 4).
     """
     from .synthetic import synthetic_genotypes
 
     return synthetic_genotypes(n=n, n_snps=n_snps, seed=seed)
 
 
-# Bundled real Polygenic Risk Scores (PGS Catalog; licence is PER SCORE, not blanket CC-BY - see
-# DATA_LICENSES). Each is a real published per-SNP effect-weight table → the model is a genuine linear
-# PRS = Σ weight_i · dosage_i, which runs as an exact CKKS dot-product (the published
+# Bundled real Polygenic Risk Scores (PGS Catalog; the licence is the score publication's, per score -
+# see DATA_LICENSES). Each is a real published per-variant effect-weight table, so the model is a genuine
+# linear PRS = sum_i weight_i * dosage_i, which runs as one approximate CKKS dot product (the published
 # "HE-applied-to-PRS" pattern; FHE-native, no surrogate).
-#: name -> (scoring file, dosage file). Two scores are bundled and they are keyed DIFFERENTLY, which is
-#: the whole reason this is a mapping rather than a filename.
+#: name -> (scoring file, dosage file).
 #:
-#: `breast_cancer_prs313` is PGS000004 / PRS313_BC (Mavaddat 2018, 313 variants) and is **ACTIVE** - what
-#: the pipeline, the browser payload, the trainer and the registry all score. The score in force is
-#: `DataConfig.genomics_prs_score`, not a default written into any call site.
+#: `breast_cancer_pgs000072` is PGS000072 (CC_Breast; Graff et al., Nat Commun 12:970, 2021, CC BY 4.0;
+#: 187 variants, keyed by rsID) and is **ACTIVE** - what the pipeline, the browser payload, the trainer
+#: and the registry all score. The score in force is `DataConfig.genomics_prs_score`, not a default
+#: written into any call site.
 #:
-#: `breast_cancer` is PGS000001 / PRS77_BC, keyed by rsID, and is **RETIRED** - kept because its dosage
-#: file is the one small enough to commit in full, so it is what CI exercises for the rsID-keyed code
-#: path, and because retiring the data along with the score would delete the evidence for the switch.
+#: `breast_cancer` is PGS000001 / PRS77_BC, keyed by rsID, and is **RETIRED**: kept because its
+#: 400-individual dosage file is committed in full and CI exercises it.
 #:
-#: WHAT THIS COMMENT USED TO SAY, AND WHY IT IS WORTH RECORDING. It said PRS77 "is what both the Python
-#: pipeline and the browser payload currently score" and that PRS313 was "STAGED, NOT ACTIVE ... a use
-#: case scoring PRS313 in Python while showing PRS77 in the browser would be worse than either alone."
-#: Round 31 switched four surfaces and missed the pipeline, so for one round the shipped state was the
-#: exact inverse of that sentence - PRS313 in the browser, PRS77 in Python - and the sentence was still
-#: here arguing against it. A comment that describes an intention outlives the intention; this one now
-#: names the config field instead, so the answer is looked up rather than remembered.
-#:
-#: PGS000004 publishes NO rsIDs - all 313 harmonised rows have an empty `hm_rsID` with
-#: `hm_source=Author-reported` - so it is keyed by `chr:pos:effect_allele` and joined to genotypes by
-#: allele match against the phase-3 VCF. Reverse-mapping to rsIDs was measured and rejected: 70% of its
-#: positions carry one rsID, 28% carry several, allele matching resolves about half of those, and the
-#: remaining ~15% would have had to be guessed - which would score a DIFFERENT variant's genotypes
-#: while every number on the page still looked reasonable.
-#: The score in force. Every current caller passes ``name`` explicitly, so this default is not
-#: exercised today - which is exactly why it was still pointing at the RETIRED score after Round 31.
-#: A dead default is a trap for the next caller, not a harmless leftover.
+#: A score variant may lack a dosage column only where the dosage file declares it `#unscored`, with
+#: the reason (`unscored_variants`); the score is then evaluated over the variants that have one, never
+#: with a filled-in value. PGS000072's file declares the variants Ensembl's 1000 Genomes records do not
+#: resolve (scripts/data/fetch_g1k_dosages.py).
 #:
 #: Kept as a literal rather than read from ``DataConfig`` so these loaders stay pure functions with no
 #: config dependency; ``tests/test_prs_pipeline_parity.py`` asserts the two agree, so there is one
 #: authority and a check rather than two authorities and a hope.
-ACTIVE_PRS = "breast_cancer_prs313"
+ACTIVE_PRS = "breast_cancer_pgs000072"
 
 _PRS_FILES = {
     "breast_cancer": ("pgs000001_breast_cancer.tsv", "g1k_dosages.tsv"),
-    "breast_cancer_prs313": ("pgs000004_breast_cancer.tsv", "g1k_dosages_prs313.tsv"),
+    "breast_cancer_pgs000072": ("pgs000072_breast_cancer.tsv", "g1k_dosages_pgs000072.tsv"),
 }
 
 
+def unscored_variants(dosage_path) -> dict[str, str]:
+    """``key -> reason`` for every variant a dosage file declares ``#unscored``.
+
+    The fetcher writes one ``#unscored<TAB>key<TAB>reason`` line per score variant it could not
+    resolve to a 1000 Genomes genotype, and leaves the column out. Reading the declaration rather
+    than inferring it from an absent column is what keeps a dropped variant from being silent: any
+    absence the file does not declare still raises.
+    """
+    from pathlib import Path
+
+    out: dict[str, str] = {}
+    for line in Path(dosage_path).read_text().splitlines():
+        if line.startswith("#unscored\t"):
+            _, key, reason = line.split("\t", 2)
+            out[key] = reason
+    return out
+
+
 def load_prs(name: str = ACTIVE_PRS) -> tuple[list[str], list[str], np.ndarray]:
-    """Load a real PGS-Catalog Polygenic Risk Score → ``(keys, effect_alleles, effect_weights)``.
+    """Load a real PGS-Catalog Polygenic Risk Score -> ``(keys, effect_alleles, effect_weights)``.
 
-    The weights are the real published effect sizes (PGS000004 = a 313-variant breast-cancer PRS,
-    Mavaddat et al. 2018). Bundled under ``data/genomics/`` so it runs offline; the licence is per score,
-    not blanket CC-BY, and attribution requirements are in DATA_LICENSES.
+    The weights are the real published effect sizes, every variant of the published score (PGS000072:
+    187 breast-cancer variants, Graff et al., Nat Commun 12:970, 2021, CC BY 4.0). Bundled under
+    ``data/genomics/`` so it runs offline; the attribution each score's licence asks for is in
+    DATA_LICENSES. ``load_genomic_prs`` returns the variants that have a genotype column.
 
-    ``keys`` are rsIDs for a score that publishes them and ``chr:pos:effect_allele`` for one that does
-    not. The first return value was called ``rsids`` until Round 32, which was true of PGS000001 and
-    false of the score now in force.
+    ``keys`` are rsIDs for a score that publishes them (both bundled scores do) and
+    ``chr:pos:effect_allele`` for one that does not.
     """
     from pathlib import Path
 
@@ -223,77 +233,96 @@ def load_prs(name: str = ACTIVE_PRS) -> tuple[list[str], list[str], np.ndarray]:
     return keys, eff, np.asarray(weights, dtype=float)
 
 
-def load_satellite_telemetry(n_windows: int = 600, n_channels: int = 6, window: int = 8,
-                             anomaly_rate: float = 0.15, seed: int = 0):
-    """**Real NASA SMAP/MSL** spacecraft telemetry -> multi-channel windows + real anomaly labels.
+#: The satellite anomaly demo's payload: real OPS-SAT-AD telemetry segments (CC BY 4.0) and the demo
+#: regression that scores them. Since Round 84 it replaces the NASA SMAP/MSL TSV this module read
+#: before, for which no provider grants a data licence (DATA_LICENSES.md section 2).
+#:
+#: A byte-identical copy of `web/public/data/satellite/opssat_segments.json`, the file the browser's
+#: plaintext twin fetches, so the two languages score one model on one set of rows. The copy lives
+#: under `data/` because the full deployment's API image ships `data/` and not `web/public/`
+#: (docker/Dockerfile.api, .dockerignore); tests/test_r84_satpy_opssat_ckks.py fails the moment the
+#: two copies differ by a byte.
+OPSSAT_SEGMENTS = Path(__file__).resolve().parents[3] / "data" / "satellite" / "opssat_segments.json"
 
-    Reads the bundled real sample ``data/satellite/smap_msl_telemetry.tsv`` — ``n_channels`` real NASA
-    telemetry channels (col 0 of each Telemanom test stream) + the real labeled-anomaly flag per timestep
-    (Telemanom; Hundman et al. 2018, NASA JPL). **No source grants a licence** for this telemetry: the
-    Telemanom LICENSE is a Caltech copyright covering its software, and JPL is operated by Caltech, so
-    the data is not shown to be a US Government work under 17 U.S.C. 105 either; see
-    DATA_LICENSES.md. Sliding length-``window`` windows are stacked **channel-major** to match the
-    synthetic layout + the use case's ``feature_names``.
-    A window is anomalous if any of its real timesteps is. Returns ``(X (N, C·W) float32, y (N,) ∈ {0,1},
-    channel_names)``. Offline-CI fallback (only if the bundled file is absent): an ESA-ADB-style synthetic
-    generator, **logged as NOT real** — never a silent substitute (no-easy-fallback policy).
+
+@dataclass(frozen=True, eq=False)
+class OpsSatSegments:
+    """The OPS-SAT-AD anomaly-demo payload, checked: the demo regression and the segments it scores.
+
+    `scripts/data/build_heldout_payloads.py` writes it from the benchmark's test partition
+    (`models/satellite_opssat/eval_sample.json`, 529 segments): a logistic regression over the 19
+    published per-segment features, fitted with its scaler on 370 of the segments, and the other 159,
+    z-scored with the fitting constants, which neither the regression nor its scaler saw. A demo model,
+    not the published `satellite_comms.opssat` models; `model_note` says so in the payload's words.
     """
-    from pathlib import Path
 
-    path = Path(__file__).resolve().parents[3] / "data" / "satellite" / "smap_msl_telemetry.tsv"
-    try:
-        rows = [ln for ln in path.read_text().splitlines() if ln.strip() and not ln.startswith("#")]
-        header = rows[0].split("\t")                              # C channel names + "anomaly"
-        names = header[:-1][:n_channels]
-        c = len(names)
-        arr = np.asarray([[float(v) for v in ln.split("\t")] for ln in rows[1:]], dtype=np.float32)
-        telem, anom = arr[:, :c], arr[:, -1].astype(int)         # (L, C) real telemetry, (L,) real labels
-        n = max(0, len(telem) - window + 1)
-        if n == 0:
-            raise ValueError("bundled telemetry shorter than the window")
-        X = np.zeros((n, c * window), dtype=np.float32)
-        y = np.zeros(n, dtype=np.int64)
-        for i in range(n):
-            X[i] = np.concatenate([telem[i:i + window, j] for j in range(c)])   # channel-major
-            y[i] = int(anom[i:i + window].max())
-        if n_windows and n > n_windows:
-            X, y = X[:n_windows], y[:n_windows]
-        return X, y, names
-    except Exception as exc:                                     # pragma: no cover - offline-CI fallback only
-        import logging
+    names: tuple[str, ...]       # the 19 per-segment features, in column order
+    weight: np.ndarray           # (2, 19); class 0's row is zero, so the margin is the class-1 logit
+    bias: np.ndarray             # (2,)
+    segments: np.ndarray         # (159, 19) held-out segments in the regression's z-space
+    labels: np.ndarray           # (159,) the benchmark's labels, 1 = anomalous
+    row_index: np.ndarray        # (159,) each segment's row in the 529-segment test partition
+    baseline: np.ndarray         # (19,) E[x] over the fitting segments: the SHAP reference point
+    baseline_note: str
+    model_note: str
+    provenance: str
+    licence: str
+    licence_url: str
+    attribution: str
 
-        logging.getLogger("qsh").warning(
-            "Real NASA SMAP/MSL telemetry unavailable (%s) -> SYNTHETIC ESA-ADB-style generator (offline/CI "
-            "fallback, NOT real data; the bundled data/satellite/smap_msl_telemetry.tsv supplies real NASA "
-            "telemetry in production).", exc)
-        rng = np.random.default_rng(seed)
-        names = ["battery_v", "temp_c", "payload_w", "attitude_err", "solar_a", "downlink_snr"][:n_channels]
-        t = np.arange(window)
-        X = np.zeros((n_windows, n_channels * window), dtype=np.float32)
-        y = np.zeros(n_windows, dtype=np.int64)
-        for i in range(n_windows):
-            is_anom = rng.random() < anomaly_rate
-            chans = []
-            for ci in range(n_channels):
-                base = np.sin(2 * np.pi * (t + rng.random() * window) / window) * (0.5 + 0.4 * ci)
-                base = base + rng.normal(0, 0.05, window)
-                if is_anom and rng.random() < 0.6:               # inject a spike / level-shift
-                    base[rng.integers(0, window)] += rng.choice([-1.0, 1.0]) * rng.uniform(1.5, 3.0)
-                chans.append(base)
-            X[i] = np.concatenate(chans)
-            y[i] = int(is_anom)
-        return X, y, names
+
+def load_opssat_segments(path: Path | None = None) -> OpsSatSegments:
+    """The bundled OPS-SAT-AD anomaly-demo payload (CC BY 4.0), with its parts checked against each other.
+
+    There is no synthetic fallback. The payload is a tracked file in every checkout and in the API
+    image, so a missing one is a packaging error: ``FileNotFoundError`` reaches the caller, which says
+    so, rather than made-up rows being scored under the OPS-SAT-AD name. Parts whose shapes disagree
+    raise ``ValueError``.
+    """
+    import json
+
+    p = OPSSAT_SEGMENTS if path is None else Path(path)
+    d = json.loads(p.read_text())
+    names = tuple(str(v) for v in d["names"])
+    m = len(names)
+    W = np.asarray(d["model"]["W"], dtype=float)
+    b = np.asarray(d["model"]["b"], dtype=float)
+    X = np.asarray(d["segments"], dtype=float)
+    y = np.asarray(d["labels"], dtype=np.int64)
+    rows = np.asarray(d["row_index"], dtype=np.int64)
+    base = np.asarray(d["baseline"], dtype=float)
+    problems = []
+    if d.get("feature_space") != "zscore":
+        problems.append(f"feature_space {d.get('feature_space')!r}, not the regression's 'zscore'")
+    if W.shape != (2, m) or b.shape != (2,):
+        problems.append(f"model W {W.shape} and b {b.shape} for {m} features")
+    if X.ndim != 2 or X.shape[1] != m or not len(X):
+        problems.append(f"segments {X.shape} for {m} features")
+    if y.shape != (len(X),) or rows.shape != (len(X),) or not set(y.tolist()) <= {0, 1}:
+        problems.append(f"{y.shape} labels and {rows.shape} row indices for {len(X)} segments")
+    if base.shape != (m,):
+        problems.append(f"baseline {base.shape} for {m} features")
+    if problems:
+        raise ValueError(f"{p.name} is malformed: " + "; ".join(problems))
+    return OpsSatSegments(
+        names=names, weight=W, bias=b, segments=X, labels=y, row_index=rows, baseline=base,
+        baseline_note=str(d.get("baseline_note", "")), model_note=str(d.get("real_model", "")),
+        provenance=str(d["provenance"]), licence=str(d["licence"]),
+        licence_url=str(d.get("licence_url") or ""), attribution=str(d.get("attribution", "")))
 
 
 def load_genomic_prs(n_individuals: int = 400, seed: int = 0, name: str = ACTIVE_PRS):
     """Real PRS model + a cohort of **real 1000 Genomes** genotype dosages.
 
-    Returns ``(dosages (N, M) ∈ {0,1,2}, weights (M,), rsids, effect_alleles, freq (M,))``. The PRS
-    **weights are real** (PGS Catalog, licence per score) AND the genotype dosages are **real 1000 Genomes phase-3**
-    effect-allele counts for exactly these SNPs (fetched once from the Ensembl REST API over IGSR / 1000
-    Genomes — open, no-auth, commercial-OK — and bundled as ``data/genomics/g1k_dosages.tsv``). The PRS is
-    therefore a genuine score over real human genotypes. Offline-CI fallback (only if the bundled real file
-    is absent): Hardy-Weinberg sampling, **logged as NOT real** — never a silent substitute.
+    Returns ``(dosages (N, M) in {0,1,2}, weights (M,), keys, effect_alleles, freq (M,))`` over the M
+    score variants the dosage file has a column for; a variant it declares ``#unscored`` is left out
+    of all five, and any other missing column raises. The PRS **weights are real** (PGS Catalog; the
+    licence is the score publication's) AND the dosages are **real 1000 Genomes phase-3** effect-allele
+    counts at exactly these variants, fetched from the Ensembl REST API's genotype endpoint by
+    ``scripts/data/fetch_g1k_dosages.py`` (1000 Genomes phase 3 carries no licence instrument: IGSR's
+    disclaimer, open-consent data; cite The 1000 Genomes Project Consortium, Nature 526:68-74, 2015).
+    The PRS is therefore a genuine score over real human genotypes. Offline-CI fallback (only if no
+    dosage file is present): Hardy-Weinberg sampling, **logged as NOT real** - never a silent substitute.
     """
     from pathlib import Path
 
@@ -303,16 +332,16 @@ def load_genomic_prs(n_individuals: int = 400, seed: int = 0, name: str = ACTIVE
     root = Path(__file__).resolve().parents[3] / "data" / "genomics"
     g1k = root / dosage_file
     if not g1k.exists():
-        # A COMMITTED SLICE OF REAL GENOTYPES, not a synthetic substitute. PRS313's full 2,504-row
-        # matrix is gitignored because DATA_LICENSES section 4 justifies about 30,800 genotype cells
-        # and the full matrix is 24x that. So on a fresh clone and in CI the file above is simply
-        # absent, and the `except Exception` below would return Hardy-Weinberg samples - the documented
-        # fallback, correctly loud, but it meant the PRS313 path (now the default for both the browser
-        # and the trainer) had ZERO CI coverage while a maintainer's run reported green.
+        # A COMMITTED SLICE OF REAL GENOTYPES, not a synthetic substitute. The active score's full
+        # 2,504-row matrix is gitignored because DATA_LICENSES section 4 justifies about 30,800
+        # genotype cells per file and the full matrix is far more. So on a fresh clone and in CI the
+        # file above is absent, and the `except Exception` below would return Hardy-Weinberg samples -
+        # the documented fallback, correctly loud, but it would leave the active score's path without
+        # CI coverage while a maintainer's run reported green.
         #
-        # The slice holds the same cell budget in a different shape - 97 individuals x 313 variants
-        # against 400 x 77 for PRS77 - so CI reads real genotypes and the redistribution argument is
-        # unchanged. Tried only when the full file is missing, so a maintainer still gets all 2,504.
+        # The slice is 97 individuals (48 AFR, 49 EUR) at every scored variant, inside that budget, so
+        # CI reads real genotypes. Tried only when the full file is missing, so a maintainer still
+        # gets all 2,504.
         slice_file = root / f"{Path(dosage_file).stem}_slice.tsv"
         if slice_file.exists():
             g1k = slice_file
@@ -320,10 +349,16 @@ def load_genomic_prs(n_individuals: int = 400, seed: int = 0, name: str = ACTIVE
         rows = [ln for ln in g1k.read_text().splitlines() if ln.strip() and not ln.startswith("#")]
         header = rows[0].split("\t")
         col = {name: j for j, name in enumerate(header)}
-        missing = [k for k in rsids if k not in col]
+        declared = unscored_variants(g1k)
+        missing = [k for k in rsids if k not in col and k not in declared]
         if missing:
             raise KeyError(f"{g1k.name} has no column for {len(missing)} of {len(rsids)} score "
-                           f"variants, e.g. {missing[:3]}")
+                           f"variants and does not declare them #unscored, e.g. {missing[:3]}")
+        both = [k for k in declared if k in col]
+        if both:
+            raise KeyError(f"{g1k.name} declares {both[:3]} #unscored and also carries a column for them")
+        keep = [i for i, k in enumerate(rsids) if k in col]
+        rsids, eff, weights = [rsids[i] for i in keep], [eff[i] for i in keep], weights[keep]
         idx = [col[k] for k in rsids]        # align real columns to the score's variant order, by NAME
         dosages = np.asarray(
             [[int(ln.split("\t")[j]) for j in idx] for ln in rows[1:]], dtype=float)
@@ -335,7 +370,7 @@ def load_genomic_prs(n_individuals: int = 400, seed: int = 0, name: str = ACTIVE
         import logging
         logging.getLogger("qsh").warning(
             "Real 1000G dosages unavailable (%s) -> Hardy-Weinberg sampling (offline/CI fallback, NOT real "
-            "genotypes; the bundled data/genomics/g1k_dosages.tsv supplies real data in production).", exc)
+            "genotypes; the score's committed dosage slice under data/genomics/ supplies real data).", exc)
         rng = np.random.default_rng(seed)
         freq = rng.uniform(0.1, 0.5, m)
         dosages = rng.binomial(2, freq, size=(n_individuals, m)).astype(float)

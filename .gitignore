@@ -177,6 +177,9 @@ data/genomics/g1k_dosages_full.tsv
 # would silently widen that scope, so it stays local; a tracked artefact for PRS313 would need its own
 # entry in section 4 and a subset matching the justification's shape.
 data/genomics/g1k_dosages_prs313.tsv
+# The active score's 2,504-individual matrix (PGS000072), the same reasoning: the committed artefact is
+# its 97-individual slice, written beside it by scripts/data/fetch_g1k_dosages.py.
+data/genomics/g1k_dosages_pgs000072.tsv
 # pysam caches remote tabix indexes in the CWD, so a dosage fetch leaves ALL.chr*.tbi in the repo root.
 *.vcf.gz.tbi
 

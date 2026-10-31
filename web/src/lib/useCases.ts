@@ -40,10 +40,10 @@ export const USECASES: UseCaseMeta[] = [
   },
   {
     id: "genomics", title: "Genomics — confidential analysis", nav: "Genomics", industry: "genomics",
-    // Round 84. The blurb named "a CKKS sign test on a partial polygenic score (8 of the 313 PGS000004
-    // variants)", a test that could only answer "not high risk" on the bundled rows, and called the
-    // browser's sum "the classical equivalent" of a GHZ simulation the backend does not run at its field.
-    blurb: "Cohorts pool allele counts by secure summation over a prime field large enough for any total they can reach, then one person's full PGS000004 polygenic score is evaluated under CKKS: their effect-allele dosages at every variant in one ciphertext, multiplied by the plaintext weights and summed by rotation, and the decrypted score compared with the 90th percentile of the score over the bundled 1000 Genomes individuals. The Python backend runs Sutradhar's (t,n)-threshold secure summation (Shamir shares, d-level QFT); at a field that large it samples the protocol's outcomes analytically rather than simulating the GHZ state. This tab adds two additive shares per cohort in one step, and the page labels the quantum channel SIMULATED.",
+    // Round 84. The blurb says what runs: the full score under CKKS (not a sign test on a few
+    // variants), and the browser's sum as additive shares (not "the classical equivalent" of a GHZ
+    // simulation the backend does not run at its field). PGS000072's counts come from the payload.
+    blurb: "Cohorts pool allele counts by secure summation over a prime field large enough for any total they can reach, then one person's full PGS000072 polygenic score, over the 183 of its 187 variants with a 1000 Genomes genotype, is evaluated under CKKS: their effect-allele dosages at every variant in one ciphertext, multiplied by the plaintext weights and summed by rotation, and the decrypted score compared with the 90th percentile of the score over the bundled 1000 Genomes individuals. The Python backend runs Sutradhar's (t,n)-threshold secure summation (Shamir shares, d-level QFT); at a field that large it samples the protocol's outcomes analytically rather than simulating the GHZ state. This tab adds two additive shares per cohort in one step, and the page labels the quantum channel SIMULATED.",
     inference: true,
     agenticTool: "pool_allele_counts",
     // Neutral (Round 84): the old question asked why the quantum secure sum "is safer", a property

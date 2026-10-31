@@ -339,9 +339,9 @@ cost - genomics and the generic demo - and labels it so):
   `clientMcp.ts` mirror, so the VPS takes **zero per-user MCP load**.
 - **Per-industry real data/models** - finance: an XGBoost teacher on AMLworld, distilled to a
   33-parameter CKKS-linear student (the browser's CKKS step runs a linear surrogate over four columns
-  of the PaySim demo sample); medical: a MedMNIST CNN; **genomics: the PGS-Catalog polygenic risk score**,
-  whose full deployment computes the PRS dot product under CKKS while the browser's CKKS step is a sign
-  test on the 8 largest-weight of its 313 variants; telecom: synthetic QKD-attack data, where the
+  of the PaySim demo sample); medical: a MedMNIST CNN; **genomics: the PGS-Catalog polygenic risk score**
+  PGS000072, whose full 183-variant dot product runs under CKKS in the browser and in the full
+  deployment, against a 90th-percentile cut over the bundled panel; telecom: synthetic QKD-attack data, where the
   published `telecom_ids.qml` ONNX is a random forest and the quantum-kernel SVC runs only offline
   (its fidelity kernel equals the classical product kernel); satellite: ESA-ADB telemetry for the
   trained models, with a CKKS anomaly score in the full deployment only (the browser's satellite page

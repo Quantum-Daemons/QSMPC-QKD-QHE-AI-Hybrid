@@ -1,6 +1,6 @@
 // Datasets shipped to the CLIENT-SIDE demo (web/public/data/), so the demo scores real inputs with
 // real models rather than sampling noise — matching the FULL deployment. Coverage: medical (Wisconsin
-// breast-cancer, real measurements), genomics (published PGS000004 weights over real 1000 Genomes
+// breast-cancer, real measurements), genomics (published PGS000072 weights over real 1000 Genomes
 // genotypes), finance (PaySim SIMULATOR output, i.e. synthetic rows) and satellite (real OPS-SAT-AD
 // telemetry segments since Round 84; the NASA SMAP/MSL windows it replaced carry no data licence from
 // any provider and are no longer served). Only telecom stays fully synthetic - no network-attack corpus with an
@@ -9,8 +9,9 @@
 // fetched and cached once.
 //
 // These are BUNDLED SAMPLES, not the corpora the published models were trained on, and they are not
-// uniformly commercial-OK: the genomics payload's terms are under review (its effect weights and 30
-// individuals' dosages are served here, and neither goes to the Hub). Licensing prose lives in
+// uniformly commercial-OK: the genomics payload's PGS000072 effect weights are CC BY 4.0, while its 30
+// individuals' 1000 Genomes dosages carry no licence instrument (IGSR's disclaimer); both are served
+// here and neither goes to the Hub. Licensing prose lives in
 // DATA_LICENSES.md and the machine-readable authority is
 // src/qsh/models/registry.py (BUNDLED_DEMO_SAMPLES), which is what the demo actually prints via
 // config.demoSample(). No licence summary is restated here on purpose: the one that used to sit at
@@ -94,8 +95,8 @@ async function fetchJSON(url: string): Promise<any> {
 
 /**
  * Returns REAL input + a REAL model where a real sample ships: medical (WDBC, CC BY 4.0), finance
- * (PaySim simulator rows) and genomics, whose terms are under review (IGSR grants no blanket licence,
- * and the PGS000004 weights' terms are being settled; DATA_LICENSES.md sections 4 and 5). `null` for
+ * (PaySim simulator rows) and genomics, whose PGS000072 weights are CC BY 4.0 and whose 1000 Genomes
+ * genotypes carry no licence instrument (DATA_LICENSES.md sections 4 and 5). `null` for
  * everything else (the caller keeps its synthetic features and logs that honestly).
  * `u` is the pipeline's seeded RNG so a run is deterministic.
  */
@@ -121,16 +122,14 @@ export async function realInput(usecase: string, u: () => number): Promise<RealI
                provenance: ds.provenance, model: ds.model, baseline: columnMeans(rows, 8) };
     }
     if (usecase === "genomics") {
-      // REAL PGS-Catalog PGS000004 (PRS313) effect weights + REAL 1000 Genomes phase-3 genotypes
-      // (Ensembl / IGSR, which grants NO blanket licence; PGS scoring files are licensed per score).
-      // No synthetic sampling; real genotypes throughout.
+      // REAL PGS-Catalog PGS000072 effect weights (Graff et al., Nat Commun 12:970, 2021, CC BY 4.0)
+      // + REAL 1000 Genomes phase-3 genotypes (read through Ensembl; IGSR attaches no licence
+      // instrument). No synthetic sampling; real genotypes throughout.
       //
-      // THE FULL SCORE (Round 84). The row is the person's dosage at EVERY variant and the model is
-      // the published weights in the two-logit form W = [0, w], b = [0, -cut], so CKKS evaluates the
-      // whole score in one ciphertext and the class is "score above the cut". It was the top 8 of the
-      // variants by |weight| as W = [-w/2, +w/2], b = 0, a sign test on a partial score: the four
-      // positive-weight variants among those eight carry dosage 0 in every bundled individual, so the
-      // test could only answer "not high risk" (or a tie that encryption noise decided).
+      // THE FULL SCORE (Round 84). The row is the person's dosage at EVERY scored variant and the
+      // model is the published weights in the two-logit form W = [0, w], b = [0, -cut], so CKKS
+      // evaluates the whole score in one ciphertext and the class is "score above the cut". A sign
+      // test on a few large-weight variants, which this replaced, cannot answer for the score.
       // The cut comes from the bundled panel alone - see `prsPanel`.
       const p = await prsPanel();
       const k = Math.floor(u() * p.rows.length) % p.rows.length;   // a REAL 1000G individual
@@ -185,7 +184,7 @@ export async function realInput(usecase: string, u: () => number): Promise<RealI
   return null;   // telecom (+ any load failure) → synthetic, logged by the caller
 }
 
-/** Each cohort's effect-allele count at PGS000004's first variant, over the bundled 1000 Genomes
+/** Each cohort's effect-allele count at the score's first variant, over the bundled 1000 Genomes
  *  slice, split into `cohorts` contiguous groups - the split `np.array_split(dosages[:, 0], n)` makes
  *  in qsh/usecases/genomics, where the first (len mod n) groups take one extra individual.
  *
@@ -197,7 +196,7 @@ export async function realAlleleCounts(
   cohorts: number,
 ): Promise<{ counts: number[]; variant: string; individuals: number } | null> {
   try {
-    const prs = await fetchJSON("/data/genomics/pgs000004_prs313.json");
+    const prs = await fetchJSON(PRS_PAYLOAD_PATH);
     const samples = prs.dosage_samples as number[][];
     const keys = (prs.keys ?? prs.rsids) as string[] | undefined;
     const column = samples.map((row) => row[0] ?? 0);
@@ -214,6 +213,10 @@ export async function realAlleleCounts(
     return null;
   }
 }
+
+/** The genomics payload: PGS000072's scored variants, 30 1000 Genomes individuals, and their credits.
+ *  Generated by `scripts/data/build_prs_browser_payload.py`; the registry's `DEMO_SAMPLE_FILES` names it. */
+export const PRS_PAYLOAD_PATH = "/data/genomics/pgs000072_breast_cancer.json";
 
 /** The percentile of the full score the genomics page calls high risk (Round 84).
  *
@@ -242,7 +245,7 @@ export function percentileLinear(values: number[], percentile: number): number {
 export interface PrsPanel {
   scoreId: string;
   provenance: string;
-  /** Variant identifiers in the scoring file's order (`chr:pos:effect_allele` for PGS000004). */
+  /** Variant identifiers in the scoring file's order (rsIDs for PGS000072). */
   keys: string[];
   weights: number[];
   /** Every bundled individual's effect-allele dosage at every variant, in `keys` order. */
@@ -266,16 +269,14 @@ export interface PrsPanel {
  *  another score is a different payload, not a code change. Throws on a payload whose rows do not
  *  match its weights, rather than scoring a person on the wrong variants.
  *
- *  The payload is GENERATED by `scripts/data/build_prs_browser_payload.py` (PRS313 since Round 31);
- *  it used to be a hand-built file with three readers and no writer. Only 30 of the 2,504
- *  individuals ship: IGSR grants no blanket redistribution licence, and DATA_LICENSES section 4
- *  justifies a slice of that size, not the full matrix. */
+ *  The payload is GENERATED by `scripts/data/build_prs_browser_payload.py`. Only 30 of the 2,504
+ *  individuals ship: IGSR attaches no licence instrument to the genotypes, and DATA_LICENSES section 4
+ *  justifies a slice of that size, not the full matrix. Its `variants_unscored` lists the score's
+ *  variants with no 1000 Genomes genotype, which the weights and rows leave out. */
 export async function prsPanel(): Promise<PrsPanel> {
-  const prs = await fetchJSON("/data/genomics/pgs000004_prs313.json");
+  const prs = await fetchJSON(PRS_PAYLOAD_PATH);
   const weights = (prs.weights as number[] | undefined) ?? [];
-  // `keys` on PRS313, `rsids` on PRS77. PGS000004 publishes NO rsID for any of its variants, so its
-  // identifiers are `chr:pos:effect_allele`; 28% of those positions carry several rsIDs and about 15%
-  // resolve to none, so inventing one would label a different variant's genotypes.
+  // `keys` (the scoring file's identifiers; rsIDs for PGS000072), or `rsids` in an older payload.
   const keys = ((prs.keys ?? prs.rsids) as string[] | undefined) ?? [];
   const rows = (prs.dosage_samples as number[][] | undefined) ?? [];
   const m = weights.length;
@@ -404,7 +405,7 @@ export async function realFederatedSet(
  * surrogate's fitting rows, and its private-inference figure is now the published AMLworld student on
  * its held-out test window (`heldOutCorpus`), which is a different model in a different feature
  * space and so cannot come through this 8-feature path. Genomics keeps its 30 reference-panel
- * individuals, which PGS000004 was not fitted on either.
+ * individuals, which PGS000072 was not fitted on either.
  */
 export async function realInputCorpus(usecase: string): Promise<number[][] | null> {
   try {

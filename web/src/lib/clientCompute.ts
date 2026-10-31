@@ -2741,7 +2741,7 @@ export function runClientPipeline(
           // Round 80: on genomics the secrets are the cohorts' real allele counts. They were
           // `floor(u() * 100)` per party - stand-ins - while the page and its diagram said the cohorts
           // pool allele counts. Now each of the backend's `genomics_biobanks` cohorts contributes its
-          // effect-allele count at PGS000004's first variant over the bundled 1000 Genomes slice, split
+          // effect-allele count at the score's first variant over the bundled 1000 Genomes slice, split
           // as the backend splits it. Another use case set to "Secure sum" has no counts to pool and
           // keeps the stand-ins, and its log and diagram say so.
           const streamParties = Math.max(2, Number(qsmpcCfg().n_parties ?? 5));
@@ -2764,7 +2764,7 @@ export function runClientPipeline(
           const p = qsmsField(maxTotal, askedPrime);
           // A FIELD THAT CANNOT HOLD THE TOTAL IS REFUSED (Round 84), as `genomics.build` refuses it in
           // Python. A requested p at or below the largest total these inputs can reach returned that
-          // total reduced mod p under the "pooled count" name - GF(11) turns 23 alleles into 1. The
+          // total reduced mod p under the "pooled count" name - GF(11) turns 42 alleles into 9. The
           // stream advances as a completed run's does, so the row private_inference encrypts is unmoved.
           if (p <= maxTotal) {
             for (let k = 0, later = nParties + Math.max(0, streamParties - nParties); k < later; k++) u();
@@ -3187,7 +3187,7 @@ export function runClientPipeline(
               flipBoundFactor: bt.flipBoundFactor, medianAbsError: bt.medianAbsError,
               noisyScores: bt.noisyScores, scoreKind: bt.scoreKind,
               rowsAre: usecase === "genomics"
-                ? "external reference-panel individuals (1000 Genomes genotypes; PGS000004 was not "
+                ? "external reference-panel individuals (1000 Genomes genotypes; PGS000072 was not "
                   + "fitted on them, and there is no split), whose decision logit on both axes is the "
                   + "full score minus the cut"
                 : undefined,
@@ -3241,7 +3241,8 @@ export function runClientPipeline(
             emit("log", stage, `full polygenic score under CKKS. Encrypted: this person's ${real.featDim} `
               + `effect-allele dosages, together in one CKKS ciphertext (${real.featDim} of its ${slots} `
               + `slots, the rest zero). In plaintext: the ${real.featDim} effect weights, applied by `
-              + `${muls} multiply-plain (class 0's all-zero row needs none); ${rot} rotate-and-add steps`
+              + `multiply-plain (${muls} multiply-plain in all, the output mask's included; class 0's `
+              + `all-zero row adds none); ${rot} rotate-and-add steps`
               + `${rot > 0 ? ` (1 to ${2 ** (rot - 1)})` : ""} `
               + `then sum the products into slot 0. Decrypted: the result ciphertext, read at slot 0, `
               + `which holds the score ${encScore.toFixed(6)} (in the clear ${plainScore.toFixed(6)}, `

@@ -456,7 +456,7 @@ Gursoy, DOI 10.64898/2026.02.16.706191) reconstructs genotypes from polygenic ri
 a subset-sum problem: of 4,723 PGS Catalog models, at least 447 would be vulnerable if patient-level
 scores were shared, and a typical 27-locus PRS uniquely identifies 95% of individuals in a
 450,000-participant cohort. The recovery covers scores of up to about 50 variants and the
-vulnerability assessment about 80, so PGS000004's 313 variants sit outside the recovery regime,
+vulnerability assessment about 80, so PGS000072's 183 scored variants sit outside the recovery regime,
 though a high-precision individual score still carries uniqueness and linkage risk. Non-European
 ancestries are at greater risk, because GWAS panels are less diverse.
 

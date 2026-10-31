@@ -80,14 +80,17 @@ def test_the_ckks_telemetry_check_runs_whatever_qsdc_did(cfg) -> None:
     assert m["telemetry_anomaly_detected"] in (0, 1) and art["telemetry_anomaly"] == m["telemetry_anomaly_detected"]
     assert art["explanation"]["method"] and len(art["explanation"]["top_features"]) == 3
     log = " ".join(logs["telemetry_anomaly"])
-    assert "(CKKS) on a window of the bundled SMAP/MSL telemetry, not the QSDC payload" in log
+    # A bundled OPS-SAT-AD segment since the satpy change of Round 84 (tests/test_r84_satpy_*), where it
+    # was a window of the SMAP/MSL TSV, which is gone.
+    assert "on OPS-SAT-AD segment" in log and "not the QSDC payload" in log and "SMAP" not in log
     assert "skipped" not in log
 
 
 def test_the_docstrings_describe_the_stage_that_runs() -> None:
     doc = satellite_comms.TelemetryAnomalyStage.__doc__
     assert "runs whether or not QSDC delivered" in doc and "After QSDC delivers" not in doc
-    assert "withholds them" in satellite_comms.__doc__ and "A CKKS anomaly check scores a window" in satellite_comms.__doc__
+    assert "withholds them" in satellite_comms.__doc__
+    assert "A CKKS anomaly check scores a bundled OPS-SAT-AD telemetry segment" in satellite_comms.__doc__
 
 
 @pytest.fixture(scope="module")

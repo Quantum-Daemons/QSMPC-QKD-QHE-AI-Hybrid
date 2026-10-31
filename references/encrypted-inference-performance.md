@@ -43,13 +43,16 @@ degree 8192, coefficient modulus `[60, 40, 40, 60]` (200 bits), one multiplicati
 | medical | published CNN student, convolution | 16 | 67.81 | 4.24 |
 | medical | published CNN student, dense layers | 136 | 421.40 | 3.10 |
 | telecom | 8-class softmax student, batched over 512 rows | 24 | 76.0 (derived) | 3.17 |
-| genomics | PGS000004 effect weights as `[-w/2, +w/2]` | 6 | 19.07 | 3.18 |
+| genomics | PGS000004 sign test, effect weights as `[-w/2, +w/2]` (retired in Round 84) | 6 | 19.07 | 3.18 |
 
 Five independent models, four use cases, dense and convolutional paths, single-row and 512-row
 batches: **3.10 to 4.39 ms per rotation**. That is the behaviour a rotation at a fixed
 ring degree should show, and it is why this is the portable figure. (The telecom rotate-ms cell is
 its reported per-rotation figure times its rotation count rather than a separately displayed total;
 the per-rotation value itself is measured.)
+
+The genomics row is the sign test the page ran until Round 84. The page now scores PGS000072's 183
+variants in full; the row stays because a rotation's cost does not depend on which model asked for it.
 
 At ring degree 16384 with the same coefficient modulus, the same finance measurement gives **6.73 ms
 per rotation** - 2.17x, for a doubled ring.

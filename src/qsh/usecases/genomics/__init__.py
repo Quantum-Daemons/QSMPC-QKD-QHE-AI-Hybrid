@@ -3,24 +3,21 @@
 Several biobanks pool a SNP's allele counts without revealing per-cohort counts (QSMS secure
 summation, over a field that holds every total the counts can reach), then a clinician evaluates a
 **polygenic risk score (PRS)** over an *encrypted* genotype vector. The model is a **real published
-PRS** (PGS Catalog PGS000004, a 313-variant breast-cancer score; Mavaddat et al., Am J Hum Genet
-104:21-34, 2019, epub 2018): ``PRS = sum_i effect_weight_i * dosage_i``. That is a *linear* model, so
-CKKS evaluates the whole score as one approximate dot product, with no surrogate: a person's dosages
-at every variant in one ciphertext, multiplied by the plaintext weights, summed by rotation, and the
-decrypted score compared with a high-risk cut. Per-SNP SHAP shows which loci drive the score.
+PRS** (PGS Catalog PGS000072, the 187-variant breast-cancer score of Graff et al., Nat Commun 12:970,
+2021, CC BY 4.0): ``PRS = sum_i effect_weight_i * dosage_i``, over the 183 variants that have a 1000
+Genomes phase 3 genotype (the other four are declared ``#unscored`` by the dosage files and left out,
+never filled in). That is a *linear* model, so CKKS evaluates the whole score as one approximate dot
+product, with no surrogate: a person's dosages at every scored variant in one ciphertext, multiplied by
+the plaintext weights, summed by rotation, and the decrypted score compared with a high-risk cut.
+Per-SNP SHAP shows which loci drive the score.
 
-THE CUT IS STATED, NOT BORROWED (Round 84). It is the ``HIGH_RISK_PERCENTILE``-th percentile of the
-plaintext score over the individuals this run's loader read (numpy's default linear interpolation
-between order statistics, the scored person included), so it comes from the bundled panel alone. It
-was the 75th percentile, labelled "the clinical risk cut", which no source this project read
-supports. The browser computes the same percentile the same way over the 30 individuals it bundles.
+THE CUT IS STATED, NOT BORROWED. It is the ``HIGH_RISK_PERCENTILE``-th percentile of the plaintext
+score over the individuals this run's loader read (numpy's default linear interpolation between order
+statistics, the scored person included), so it comes from the bundled panel alone. A demo cut, not a
+clinical threshold. The browser computes the same percentile the same way over the 30 individuals it
+bundles.
 
-Three claims in this docstring were stale as of Round 32 and are worth naming, because each was wrong
-in a different way. It said **PGS000001, a 77-SNP score** - the score moved to PGS000004 (313 variants)
-in Round 31 everywhere except one line, which is the defect that round fixed. It said the score is
-**CC-BY** - `models/registry.py` corrects that: PGS Catalog licences are per score and PGS000001
-carries the Catalog default terms, not CC-BY. And it said dosages are **sampled under Hardy-Weinberg**
-- they are real 1000 Genomes phase-3 effect-allele counts, and Hardy-Weinberg sampling is now only the
+The dosages are real 1000 Genomes phase-3 effect-allele counts; Hardy-Weinberg sampling is only the
 loudly-logged offline fallback.
 
 Maps to: QSMPC x QKD (secure summation) + QHE/FHE (private inference).
@@ -203,11 +200,11 @@ def build(config: dict | None = None) -> tuple[Pipeline, Context]:
     per_cohort = [int(s.sum()) for s in splits]
 
     # THE FIELD, FROM WHAT THE COUNTS CAN REACH (Round 84). QSMS's own default is the paper's
-    # d in [n, 2n], GF(5) for four cohorts, and the pooled count wrapped in it: on the full panel's
-    # first 400 people the cohorts carry 75, 78, 94 and 76 effect alleles, 323 in all, and GF(5)
-    # returned 3. Each person carries at most two copies of the effect allele, so the pool can reach
-    # twice the cohort size. That bound is public; the sum is not, and choosing the field from it
-    # would leak.
+    # d in [n, 2n], GF(5) for four cohorts, and the pooled count wraps in it: at the score's first
+    # variant (rs616488) the full panel's first 400 people split into cohorts carrying 141, 131, 138
+    # and 118 effect alleles, 528 in all, which GF(5) returns as 3. Each person carries at most two
+    # copies of the effect allele, so the pool can reach twice the cohort size. That bound is public;
+    # the sum is not, and choosing the field from it would leak.
     from ...qsmpc.secure_summation import field_for_total
     from ...qsmpc.shamir import is_probable_prime
 
@@ -253,8 +250,8 @@ def run_demo(config: dict | None = None) -> dict:
     return {
         "pooled_allele_count": ctx.artifacts.get("secure_sum"),
         # UNREDUCED (Round 84). This was reduced mod the field the sum used, so a wrapped sum
-        # matched a wrapped truth: 0 == 0 for 45 alleles in GF(5). The field now exceeds every
-        # total the counts can reach, so the two agree only if the protocol is right.
+        # matched a wrapped truth: the committed slice's 153 alleles read 3 == 3 in GF(5). The field
+        # now exceeds every total the counts can reach, so the two agree only if the protocol is right.
         "ground_truth_total": ctx.data["_ground_truth_total"],
         # Which field ran and why it is not the paper's: a count above 2n needs d > 2n, and d**t
         # then passes the statevector bound, so the run used the analytic sampler.

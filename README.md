@@ -175,14 +175,14 @@ flowchart TB
 <!-- figure: uc-genomics -->
 ```mermaid
 flowchart TB
-  D["Data: 30 real 1000 Genomes individuals, PGS000004 weights over 313 variants"]
+  D["Data: 30 real 1000 Genomes individuals, PGS000072 weights over 183 of its 187 variants"]
   H["PQC handshake: ML-KEM-768 + X25519, HKDF-SHA256"]
   K["QKD: simulated BB84 decoy-state, or E91, over fibre"]
   Q{"Key possible? BB84 and E91: secure key bits above 0"}
   N["No QKD key: the session rests on PQC"]
   L["Key length: BB84 finite key of a 1e7-bit block, E91 asymptotic; the full deployment mixes 256 bits or more into the session key"]
-  P["Secure sum of 4 cohorts' allele counts at one variant: additive shares mod p in the browser, QSMS over a GHZ state in the full deployment"]
-  I["Private inference: CKKS sign test on 8 of the 313 variants (node-seal), garbled-circuit argmax"]
+  P["Secure sum of 4 cohorts' allele counts at one variant, in a field above any total they can reach: additive shares mod p in the browser, QSMS with analytically sampled outcomes in the full deployment"]
+  I["Private inference: the full 183-variant score under CKKS (node-seal), then the 90th-percentile cut by a garbled-circuit argmax"]
   X["Explainability: exact linear SHAP, signed"]
   M["Published model: none registered for genomics"]
   C["QSMPC-FHE comparison: untrained QOTP and Clifford+T circuit, T-gates counted"]

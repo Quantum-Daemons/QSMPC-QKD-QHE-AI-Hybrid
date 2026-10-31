@@ -118,8 +118,8 @@ class QSMS:
             # inside the paper's admissible field. For n=7 it gives d=11, which is the value the
             # paper's own worked example uses. It holds only totals below d: a caller whose secrets
             # can sum past it must pass ``field_for_total`` (genomics' allele counts do, Round 84;
-            # GF(5) for four cohorts turned the full panel's pooled 323 into 3, and the committed
-            # slice's 45 into 0).
+            # GF(5) for four cohorts turns the full panel's pooled 528 into 3, and the committed
+            # slice's 153 into 3).
             self.prime = next_prime(self.n + 1)
         if not is_probable_prime(self.prime):
             raise ValueError("prime must be prime")
