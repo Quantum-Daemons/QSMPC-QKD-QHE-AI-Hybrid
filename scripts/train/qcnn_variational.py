@@ -40,6 +40,31 @@ sys.path.insert(0, str(REPO / "src"))
 
 N_QUBITS = 8
 
+#: The circuits this trainer builds, by the name an artifact records in `circuit.name`. Both share
+#: the encoding, `layer_plan`, the pooling pattern (survivor `a` of each pair, orphan into the first
+#: survivor), the per-survivor F block and both heads; they differ in the convolution and the pool.
+#:
+#:   tree     one shared 8-angle filter on DISJOINT pairs only and a CRY pool per pair. After every
+#:            pooling stage the survivors are a product of one-qubit states, so the circuit is a tree
+#:            tensor network (Grant et al. 2018), classically simulable in linear time at any width.
+#:            Finance and medical ship it.
+#:   hur-su4  Hur, Kim and Park's 15-angle SU(4) block (their circuit 9, Quantum Machine Intelligence
+#:            4, 3, 2022) on EVERY nearest-neighbour bond of the active register - the boundary bond
+#:            first, then the even bonds, then the odd ones - and their pooling: RZ on the kept wire
+#:            when the discarded wire is 1, RX when it is 0. Telecom ships it at 7 and 8 wires: the
+#:            pre-registered experiment of 2026-10-30 measured +0.42 / +0.39 macro F1 over the tree
+#:            there, and only +0.04 / +0.02 for the same block on disjoint pairs, so the gain is the
+#:            overlap. It is no longer a tree, and it is still simulated exactly on 2^n amplitudes.
+ARCHS = ("tree", "hur-su4")
+
+#: Index tensors per (kind, width, wires, device). SPEED ONLY. Building them with boolean-mask
+#: indexing on every gate forces a device-to-host synchronisation per gate on CUDA, which made a
+#: 400-epoch SU(4) run several times slower than it needs to be. The cached tensors come from the same
+#: expressions, so every gate indexes the same values in the same order and every result is
+#: bit-identical - checked by regenerating the shipped finance artifact at seed 0 with the cache in
+#: place (theta, scale and bias max |diff| 0).
+_INDEX: dict = {}
+
 
 def _pair_index(nq: int, q: int, device) -> tuple[torch.Tensor, torch.Tensor]:
     """Flat indices (i with bit q clear, i with bit q set).
@@ -50,11 +75,27 @@ def _pair_index(nq: int, q: int, device) -> tuple[torch.Tensor, torch.Tensor]:
     self-consistent, just not the circuit documented - and only a parity check against an
     independent reimplementation caught it, at differences up to 0.73 on a value bounded in [-1, 1].
     """
-    N = 1 << nq
-    i = torch.arange(N, device=device)
-    bit = 1 << q
-    i0 = i[(i & bit) == 0]
-    return i0, i0 | bit
+    key = ("pair", nq, q, str(device))
+    if key not in _INDEX:
+        N = 1 << nq
+        i = torch.arange(N, device=device)
+        bit = 1 << q
+        i0 = i[(i & bit) == 0]
+        _INDEX[key] = (i0, i0 | bit)
+    return _INDEX[key]
+
+
+def _control_index(nq: int, ctl: int, tgt: int, device) -> tuple[torch.Tensor, torch.Tensor]:
+    """Flat indices (control set and target clear, the same with the target set): the pairs a
+    controlled one-qubit gate mixes. Cached for the reason `_INDEX` gives."""
+    key = ("ctl", nq, ctl, tgt, str(device))
+    if key not in _INDEX:
+        N = 1 << nq
+        i = torch.arange(N, device=device)
+        cb, tb = 1 << ctl, 1 << tgt
+        sel = ((i & cb) != 0) & ((i & tb) == 0)
+        _INDEX[key] = (i[sel], i[sel] | tb)
+    return _INDEX[key]
 
 
 def apply_1q(state: torch.Tensor, q: int, m: torch.Tensor, nq: int) -> torch.Tensor:
@@ -69,14 +110,30 @@ def apply_1q(state: torch.Tensor, q: int, m: torch.Tensor, nq: int) -> torch.Ten
 
 
 def apply_cnot(state: torch.Tensor, ctl: int, tgt: int, nq: int) -> torch.Tensor:
-    N = 1 << nq
-    i = torch.arange(N, device=state.device)
-    cb, tb = 1 << ctl, 1 << tgt
-    sel = ((i & cb) != 0) & ((i & tb) == 0)
-    src, dst = i[sel], i[sel] | tb
+    src, dst = _control_index(nq, ctl, tgt, state.device)
     out = state.clone()
     out[:, src] = state[:, dst]
     out[:, dst] = state[:, src]
+    return out
+
+
+def apply_x(state: torch.Tensor, q: int, nq: int) -> torch.Tensor:
+    """Pauli X on `q`: swap the amplitude pairs `_pair_index` names."""
+    i0, i1 = _pair_index(nq, q, state.device)
+    out = state.clone()
+    out[:, i0] = state[:, i1]
+    out[:, i1] = state[:, i0]
+    return out
+
+
+def apply_controlled(state: torch.Tensor, ctl: int, tgt: int, m: torch.Tensor,
+                     nq: int) -> torch.Tensor:
+    """Apply the 2x2 gate `m` to `tgt` on the branches where `ctl` is |1>."""
+    i0, i1 = _control_index(nq, ctl, tgt, state.device)
+    a, b = state[:, i0], state[:, i1]
+    out = state.clone()
+    out[:, i0] = m[0, 0] * a + m[0, 1] * b
+    out[:, i1] = m[1, 0] * a + m[1, 1] * b
     return out
 
 
@@ -95,6 +152,14 @@ def _rz(th: torch.Tensor, cdt) -> torch.Tensor:
     return torch.stack([torch.stack([p, zc]), torch.stack([zc, q])]).to(cdt)
 
 
+def _rx(th: torch.Tensor, cdt) -> torch.Tensor:
+    """[[cos, -i sin], [-i sin, cos]] of th/2: the X-axis rotation Hur et al.'s pooling applies."""
+    c, s = torch.cos(th / 2), torch.sin(th / 2)
+    z = torch.zeros((), dtype=th.dtype, device=th.device)
+    cc, ms = torch.complex(c, z), torch.complex(z, -s)
+    return torch.stack([torch.stack([cc, ms]), torch.stack([ms, cc])]).to(cdt)
+
+
 def apply_cry(state: torch.Tensor, ctl: int, tgt: int, th: torch.Tensor,
               nq: int) -> torch.Tensor:
     """Controlled-RY: rotate `tgt` only on the branches where `ctl` is |1>.
@@ -106,17 +171,65 @@ def apply_cry(state: torch.Tensor, ctl: int, tgt: int, th: torch.Tensor,
     controlled rotation followed by simply never touching the control qubit again. The conditioning
     is unitary instead of classical; the register reduction and the information flow are the same.
     """
-    N = 1 << nq
-    i = torch.arange(N, device=state.device)
-    cb, tb = 1 << ctl, 1 << tgt
-    sel0 = ((i & cb) != 0) & ((i & tb) == 0)     # control set, target clear
-    src, dst = i[sel0], i[sel0] | tb
+    src, dst = _control_index(nq, ctl, tgt, state.device)     # control set, target clear / set
     c, s = torch.cos(th / 2), torch.sin(th / 2)
     a, b = state[:, src], state[:, dst]
     out = state.clone()
     out[:, src] = c.to(state.dtype) * a - s.to(state.dtype) * b
     out[:, dst] = s.to(state.dtype) * a + c.to(state.dtype) * b
     return out
+
+
+# ---- the `hur-su4` circuit: Hur, Kim and Park (QMI 4, 3, 2022), ported gate for gate from the
+# ---- script of the pre-registered experiment that chose it (2026-10-30). At seed 0 the two give
+# ---- the same theta, outputs and gradients to max |diff| 0, on the CPU and on CUDA. -----------------
+def su4_bonds(active: list[int]) -> list[tuple[int, int]]:
+    """EVERY nearest-neighbour bond of the active register, in Hur et al.'s order: the boundary bond
+    (first, last), then the even bonds, then the odd ones. Two wires have one bond.
+
+    The odd bonds are the point. On disjoint pairs alone each survivor depends only on its own
+    feature pair, and the same SU(4) block there gained +0.04 / +0.02 macro F1 on telecom against
+    +0.42 / +0.39 with every bond covered (five seeds, c = 1).
+    """
+    m = len(active)
+    if m < 2:
+        return []
+    if m == 2:
+        return [(active[0], active[1])]
+    even = [(active[i], active[i + 1]) for i in range(0, m - 1, 2)]
+    odd = [(active[i], active[i + 1]) for i in range(1, m - 1, 2)]
+    return [(active[0], active[m - 1])] + even + odd
+
+
+def _u3(state: torch.Tensor, q: int, t, p, lam, nq: int, cdt) -> torch.Tensor:
+    """PennyLane's U3(theta=t, phi=p, delta=lam) up to a global phase: RZ(lam), then RY(t), then RZ(p)."""
+    state = apply_1q(state, q, _rz(lam, cdt), nq)
+    state = apply_1q(state, q, _ry(t, cdt), nq)
+    return apply_1q(state, q, _rz(p, cdt), nq)
+
+
+def su4_block(state: torch.Tensor, a: int, b: int, w: torch.Tensor, nq: int, cdt) -> torch.Tensor:
+    """Hur et al.'s circuit 9, the Vatan-Williams form of a general two-qubit unitary: 15 angles,
+    3 CNOTs. U3 on each wire, CNOT(a, b), RY(a) RZ(b), CNOT(b, a), RY(a), CNOT(a, b), U3 on each."""
+    state = _u3(state, a, w[0], w[1], w[2], nq, cdt)
+    state = _u3(state, b, w[3], w[4], w[5], nq, cdt)
+    state = apply_cnot(state, a, b, nq)
+    state = apply_1q(state, a, _ry(w[6], cdt), nq)
+    state = apply_1q(state, b, _rz(w[7], cdt), nq)
+    state = apply_cnot(state, b, a, nq)
+    state = apply_1q(state, a, _ry(w[8], cdt), nq)
+    state = apply_cnot(state, a, b, nq)
+    state = _u3(state, a, w[9], w[10], w[11], nq, cdt)
+    return _u3(state, b, w[12], w[13], w[14], nq, cdt)
+
+
+def su4_pool(state: torch.Tensor, ctl: int, tgt: int, p: torch.Tensor, nq: int, cdt) -> torch.Tensor:
+    """Hur et al.'s pooling (their Fig. 3 and code: CRZ, X on the control, CRX): RZ(p[0]) on the
+    kept wire `tgt` where the discarded wire `ctl` is 1, RX(p[1]) where it is 0. As with the tree's
+    CRY, the control is then never touched again, which is the unitary form of measuring it."""
+    state = apply_controlled(state, ctl, tgt, _rz(p[0], cdt), nq)
+    state = apply_x(state, ctl, nq)
+    return apply_controlled(state, ctl, tgt, _rx(p[1], cdt), nq)
 
 
 def layer_plan(nq: int = N_QUBITS, readout_qubits: int = 0, layers: int = 1) -> list[dict]:
@@ -173,8 +286,18 @@ def readout_wires(nq: int = N_QUBITS, readout_qubits: int = 0, layers: int = 1) 
     return surv[:readout_qubits]
 
 
-def param_shapes(nq: int = N_QUBITS, readout_qubits: int = 0, layers: int = 1) -> dict:
+def _check_arch(arch: str) -> None:
+    if arch not in ARCHS:
+        raise ValueError(f"unknown QCNN circuit {arch!r}; this trainer builds {list(ARCHS)}")
+
+
+def param_shapes(nq: int = N_QUBITS, readout_qubits: int = 0, layers: int = 1,
+                 arch: str = "tree") -> dict:
     """Named parameter blocks and their shapes.
+
+    `arch="hur-su4"` changes the per-round filter from 8 angles to the SU(4) block's 15 and the
+    per-stage pool from one angle to two (RZ and RX); the block NAMES, the stage axis and the F
+    block are the same, so every sharing argument below holds for both circuits.
 
     NO AXIS IS THE QUBIT COUNT. That is the whole difference from what this file used to do: the
     old `theta` was `(layers, nq)`, one independent angle per wire, which is per-position weights -
@@ -205,10 +328,14 @@ def param_shapes(nq: int = N_QUBITS, readout_qubits: int = 0, layers: int = 1) -
     # survivors at both 8 and 16 qubits. A block of `(survivors, 2)` is therefore constant in the
     # register width, and the per-doubling increment stays constant.
     surv = len(surviving_wires(nq, readout_qubits, layers))
+    _check_arch(arch)
+    if arch == "hur-su4":
+        return {"conv": (stages, layers, 15), "pool": (stages, 2), "fc": (surv, 2)}
     return {"conv": (stages, layers, 8), "pool": (stages,), "fc": (surv, 2)}
 
 
-def param_count(nq: int = N_QUBITS, readout_qubits: int = 0, layers: int = 1) -> int:
+def param_count(nq: int = N_QUBITS, readout_qubits: int = 0, layers: int = 1,
+                arch: str = "tree") -> int:
     """Total trainable scalars. O(log N) in the register width, by construction.
 
     Each doubling of `nq` adds exactly one pool stage, hence `2 * layers + 1` parameters - a
@@ -218,29 +345,51 @@ def param_count(nq: int = N_QUBITS, readout_qubits: int = 0, layers: int = 1) ->
     """
     import math as _m
 
-    return int(sum(_m.prod(s) if s else 1 for s in param_shapes(nq, readout_qubits, layers).values()))
+    return int(sum(_m.prod(s) if s else 1
+                   for s in param_shapes(nq, readout_qubits, layers, arch).values()))
 
 
 def init_params(nq: int = N_QUBITS, readout_qubits: int = 0, layers: int = 1,
-                seed: int = 0) -> torch.Tensor:
-    """Flat parameter vector, small-angle initialised."""
+                seed: int = 0, arch: str = "tree") -> torch.Tensor:
+    """Flat parameter vector, small-angle initialised. One recipe for both circuits, so a seed means
+    the same draw whichever is trained - only the vector's length differs."""
     g = torch.Generator().manual_seed(seed)
-    return (torch.randn(param_count(nq, readout_qubits, layers), generator=g) * 0.1).requires_grad_(True)
+    return (torch.randn(param_count(nq, readout_qubits, layers, arch), generator=g) * 0.1
+            ).requires_grad_(True)
 
 
-def _unpack(theta: torch.Tensor, nq: int, readout_qubits: int, layers: int):
-    shapes = param_shapes(nq, readout_qubits, layers)
+def _unpack(theta: torch.Tensor, nq: int, readout_qubits: int, layers: int, arch: str = "tree"):
+    """conv, then pool, then fc, flat in that order - the layout every implementation reads."""
+    shapes = param_shapes(nq, readout_qubits, layers, arch)
     n_conv = shapes["conv"][0] * shapes["conv"][1] * shapes["conv"][2]
-    n_pool = shapes["pool"][0]
+    n_pool = shapes["pool"][0] * (shapes["pool"][1] if len(shapes["pool"]) > 1 else 1)
+    # SHORT OR LONG, REFUSED HERE. A short vector reshaped silently into the fc block is how the
+    # binary artifacts came to return class 0 from NaN in the browser; the trainer must not be the
+    # one implementation that accepts a layout the others reject.
+    want = n_conv + n_pool + shapes["fc"][0] * shapes["fc"][1]
+    if theta.numel() != want:
+        raise ValueError(f"theta carries {theta.numel()} angles; the {arch} circuit at nq={nq}, "
+                         f"layers={layers}, readout={readout_qubits} needs {want}")
     conv = theta[:n_conv].reshape(shapes["conv"])
     pool = theta[n_conv:n_conv + n_pool]
+    if arch == "hur-su4":
+        pool = pool.reshape(shapes["pool"])          # (stages, 2): RZ angle, RX angle
     fc = theta[n_conv + n_pool:].reshape(shapes["fc"])
     return conv, pool, fc
 
 
 def circuit(x: torch.Tensor, theta: torch.Tensor, nq: int = N_QUBITS,
-            readout_qubits: int = 0, entangle: bool = True, layers: int = 1) -> torch.Tensor:
+            readout_qubits: int = 0, entangle: bool = True, layers: int = 1,
+            arch: str = "tree", trace: list | None = None) -> torch.Tensor:
     """(batch, nq) features + a FLAT shared-weight vector -> a readout. State FLAT as (batch, 2**nq).
+
+    `x` is the ENCODED input: the angle on wire q is `x[q] * pi`. The caller supplies
+    `c * tanh(z)`, with c the artifact's `encoding_scale` (1 unless the artifact says otherwise), so
+    this function is the same circuit at every scale.
+
+    `arch` picks the convolution and the pool (see `ARCHS`); everything else below is shared.
+    `trace`, if a list, receives `(stage, survivors, state)` after every pooling stage - read-only,
+    for the structural check that tells a tree from a circuit that is not one.
 
     `theta` is no longer `(layers, nq)`. It is the flat concatenation of the conv, pool and
     fully-connected blocks that `param_shapes()` describes, none of whose axes is the qubit count -
@@ -278,6 +427,12 @@ def circuit(x: torch.Tensor, theta: torch.Tensor, nq: int = N_QUBITS,
     permutation, so a spot check on the obvious ones passes. ``tests/test_qcnn_multiclass_readout.py``
     covers all eight individually for that reason.
     """
+    _check_arch(arch)
+    if arch == "hur-su4" and not entangle:
+        # The ablation flag removes the tree filter's CNOT and the F ring. The SU(4) block has no
+        # CNOT-free form that is still that block, so a "no entanglement" SU(4) run would be a third
+        # circuit under the second one's name.
+        raise ValueError("entangle=False is an ablation of the tree circuit only")
     b = x.shape[0]
     dev, cdt = x.device, torch.complex64
     state = torch.zeros((b, 1 << nq), dtype=cdt, device=dev)
@@ -303,16 +458,22 @@ def circuit(x: torch.Tensor, theta: torch.Tensor, nq: int = N_QUBITS,
     #
     # Reference architecture: Hur, Kim & Park, "Quantum convolutional neural network for classical
     # data classification", Quantum Machine Intelligence 4, 3 (2022), arXiv:2108.00661.
-    conv, pool, fc = _unpack(theta, nq, readout_qubits, layers)
+    conv, pool, fc = _unpack(theta, nq, readout_qubits, layers, arch)
     cdt = torch.complex64
     active = list(range(nq))
     stage = 0
     for step in layer_plan(nq, readout_qubits, layers):
         if step["kind"] == "conv":
-            # ONE FILTER, APPLIED AT EVERY POSITION. `conv[stage, round]` carries two angles shared
+            # ONE FILTER, APPLIED AT EVERY POSITION. `conv[stage, round]` carries the angles shared
             # by every pair in this stage - that sharing is what the word "convolution" denotes.
             r = step.get("_round", 0)
             w = conv[stage, r]
+            if arch == "hur-su4":
+                # Every nearest-neighbour bond, so neighbouring pairs are coupled before pooling and
+                # the survivors are no longer a product state: this is what stops it being a tree.
+                for a, b in su4_bonds(active):
+                    state = su4_block(state, a, b, w, nq, cdt)
+                continue
             # strict=False on purpose: an ODD register leaves an orphan, which is
             # dropped here and pooled into the first survivor below.
             for a, b in zip(active[0::2], active[1::2], strict=False):
@@ -334,6 +495,17 @@ def circuit(x: torch.Tensor, theta: torch.Tensor, nq: int = N_QUBITS,
                     state = apply_1q(state, wire, _ry(w[iy], cdt), nq)
         elif step["kind"] == "pool":
             pairs = list(zip(active[0::2], active[1::2], strict=False))
+            if arch == "hur-su4":
+                # Same pairs, same orphan rule, same survivors; only the conditioned gate differs.
+                for a, b in pairs:
+                    state = su4_pool(state, b, a, pool[stage], nq, cdt)
+                if len(active) % 2 == 1:
+                    state = su4_pool(state, active[-1], active[0], pool[stage], nq, cdt)
+                active = [a for a, _ in pairs]
+                stage += 1
+                if trace is not None:
+                    trace.append((stage, list(active), state.detach().clone()))
+                continue
             for a, b in pairs:
                 state = apply_cry(state, b, a, pool[stage], nq)   # condition survivor a on b
             # AN ODD REGISTER HAS AN ORPHAN, and it must not simply survive. `active[0::2]` kept it
@@ -350,6 +522,8 @@ def circuit(x: torch.Tensor, theta: torch.Tensor, nq: int = N_QUBITS,
                 state = apply_cry(state, active[-1], active[0], pool[stage], nq)
             active = [a for a, _ in pairs]
             stage += 1
+            if trace is not None:
+                trace.append((stage, list(active), state.detach().clone()))
         else:                                                      # fully connected on survivors
             # A UNITARY ON THE REDUCED REGISTER, so each survivor carries its OWN angles. Sharing
             # one scalar across every survivor - what this did until Round 47 - makes F a single
@@ -432,6 +606,17 @@ def circuit(x: torch.Tensor, theta: torch.Tensor, nq: int = N_QUBITS,
     return (p * sign).sum(1)
 
 
+def shuffled_split(n: int, seed: int) -> tuple[np.ndarray, int, int]:
+    """(permutation, train cut, validation cut) of `n` rows: 70 / 15 / 15 after a seeded shuffle.
+
+    ONE DEFINITION, used by `main()` and by every test that needs the held-out rows, because a test
+    that re-derives the split is a second implementation of it - the shape of defect this project has
+    shipped more often than any other.
+    """
+    perm = np.random.default_rng(seed).permutation(n)
+    return perm, int(0.7 * n), int(0.85 * n)
+
+
 def load(usecase: str):
     if usecase == "medical":
         from sklearn.datasets import load_breast_cancer
@@ -475,6 +660,38 @@ def load(usecase: str):
     raise SystemExit(f"no loader for {usecase!r}")
 
 
+#: What each circuit is, in the words an artifact ships with it (`circuit` in weights.json).
+CIRCUIT_TEXT = {
+    "tree": {
+        "bonds": "the disjoint pairs (0,1), (2,3), ... of the active register only",
+        "block": ("8 shared angles per round: RY and RZ on each wire, CNOT(a, b), then RZ and RY on "
+                  "each wire"),
+        "pooling": ("CRY from the discarded wire onto its kept partner, 1 shared angle per stage; "
+                    "an odd register's last wire is pooled into the first"),
+        "simulability": ("a tree of two-qubit blocks: after every pooling stage the survivors are "
+                         "a product of one-qubit states, so it is classically simulable in linear "
+                         "time at any width"),
+    },
+    "hur-su4": {
+        "bonds": ("every nearest-neighbour bond of the active register: the boundary bond (first, "
+                  "last), then the even bonds, then the odd bonds"),
+        "block": ("SU(4), 15 shared angles per round and 3 CNOTs (Hur, Kim and Park, circuit 9): "
+                  "U3 on each wire, CNOT(a, b), RY(a) and RZ(b), CNOT(b, a), RY(a), CNOT(a, b), U3 "
+                  "on each wire, with U3(t, p, l) = RZ(p) RY(t) RZ(l)"),
+        "pooling": ("RZ(p0) on the kept wire where the discarded wire is 1, then X on the "
+                    "discarded wire, then RX(p1) on the kept wire where it is now 1; 2 shared angles "
+                    "per stage; an odd register's last wire is pooled into the first"),
+        "simulability": ("not a tree: neighbouring pairs are coupled before pooling, so the "
+                         "survivors are entangled. Simulated exactly on 2^n amplitudes (n = 7 or "
+                         "8), so classically simulable at this size, and classical data in a "
+                         "product angle encoding is the regime Bermejo et al. (PRX Quantum 7, "
+                         "020304, 2026, Sec. IV.B) find fully classically simulable"),
+        "reference": ("Hur, Kim and Park, Quantum convolutional neural network for classical data "
+                      "classification, Quantum Machine Intelligence 4, 3 (2022), arXiv:2108.00661"),
+    },
+}
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--usecase", default="medical")
@@ -495,7 +712,30 @@ def main() -> int:
     #: file from an ablation run cannot be mistaken for a shipped one.
     ap.add_argument("--no-entangle", action="store_true",
                     help="drop the CNOT ring: identical parameters, no entanglement (ablation)")
+    ap.add_argument("--arch", choices=ARCHS, default="tree",
+                    help="tree: the 8-angle filter on disjoint pairs; hur-su4: Hur et al.'s SU(4) "
+                         "block on every nearest-neighbour bond")
+    # THE ANGLE SCALE c IN RY(c * pi * tanh(z)). At c = 1 the two tails of a feature fold onto one
+    # state - RY(-pi)|0> and RY(pi)|0> are the same ray - so a z of -3 and a z of +3 encode almost
+    # identically (fidelity 0.94 to 0.996 on every medical feature at its 1st and 99th percentiles).
+    # c = 0.5 keeps the tails apart (fidelity at most 0.015 there). Pre-registered over five seeds,
+    # 2026-10-30: c = 0.5 against c = 1 gained +0.042 medical accuracy and +0.050 / +0.051 telecom
+    # macro F1 at 8 / 7 wires, better on 5 of 5 seeds each; finance did not gain at 0.5, and 0.75
+    # failed its confirmatory run on fresh seeds, so finance stays at 1. Recorded in the artifact
+    # as `encoding_scale`, which every inference path multiplies the angle by.
+    ap.add_argument("--encoding-scale", type=float, default=1.0,
+                    help="c in RY(c * pi * tanh(z)); 0 < c <= 1 (default 1)")
+    #: Exploration only: write the artifact somewhere other than the models/ directory it ships
+    #: from, so a check run cannot overwrite a published file. Never part of a recorded command.
+    ap.add_argument("--out", default=None, help="output directory (default models/qcnn_<usecase>[_qN])")
     a = ap.parse_args()
+    c_enc = float(a.encoding_scale)
+    # Bounded away from both ends on purpose: c = 0 encodes nothing, and c > 1 lets |angle| pass pi,
+    # which re-folds the tails this scale exists to keep apart.
+    if not (0.0 < c_enc <= 1.0):
+        raise SystemExit(f"--encoding-scale must be in (0, 1], got {c_enc}")
+    if a.arch == "hur-su4" and a.no_entangle:
+        raise SystemExit("--no-entangle is an ablation of the tree circuit only")
 
     X, y, names, prov = load(a.usecase)
     # SEED TORCH TOO. `--seed` drove only the numpy split permutation, while the parameter init came
@@ -521,44 +761,48 @@ def main() -> int:
     # Both false leads shared a premise worth naming: they assumed the training ran on the CPU,
     # which nothing had checked.
     torch.set_num_threads(a.threads)
-    rng = np.random.default_rng(a.seed)
-    perm = rng.permutation(len(y))
+    perm, cut, vcut = shuffled_split(len(y), a.seed)
     X, y = X[perm], y[perm]
     # THREE-WAY SPLIT. An earlier version selected the best epoch on the same rows it then reported,
     # which is test-set leakage and makes every published figure optimistic by construction. Epoch
     # selection now happens on a validation split the reported number never sees.
     n = len(y)
-    cut, vcut = int(0.7 * n), int(0.85 * n)
-    # TRAIN IN THE SPACE THE BROWSER ACTUALLY SUPPLIES. The bundled medical sample carries
-    # z-scores, so it is z-scores that arrive at inference time, not raw units. NOT THE SAME
-    # CONSTANTS, though: since Round 34 the bundle is StandardScaler fitted on the UNSHUFFLED first
-    # 70 percent of the cohort (qsh.data.loaders.load_breast_cancer; `scaling` in
-    # web/public/data/medical/breast_cancer_sample.json), while this script standardises with the
-    # moments of its own SHUFFLED training split, and the browser ignores the artifact's
-    # feature_mean/feature_std for `zscore` input. A 2026-10-30 check found 2 of 86 held-out
-    # classes change between the two scalings. A first version of
+    # TRAIN IN THE SPACE THE CALLER SUPPLIES, AND STANDARDISE WITH THESE CONSTANTS AND NO OTHERS.
+    #
+    # ROUND 84 MADE MEDICAL `raw`, like finance and telecom. It was `zscore`: the bundled medical
+    # sample carries z-scores, and they were fed to the circuit as they came. Same units, DIFFERENT
+    # CONSTANTS - the bundle standardised with its own StandardScaler (the unshuffled first 70
+    # percent of the cohort, via qsh.data.loaders.load_breast_cancer, when this was found), while
+    # this script standardises with the moments of its own SHUFFLED training split. A 2026-10-30
+    # check found 2 of 86 held-out classes changed between the two. The bundle's scaler is the
+    # bundle's to change, and it is changed for reasons of its own (its held-out split), so shipping
+    # a copy of it in this artifact would only move the drift; never sending the model anything but
+    # raw units removes it. So every
+    # caller now hands over raw WDBC values and every inference path standardises them with
+    # feature_mean / feature_std below - the trainer's own - exactly as it does for finance.
+    #
+    # A first version of
     # this script fitted a min-max scaler on raw WDBC (area 143..2501); feeding it z-scores pinned
     # seven of eight features to -1 and produced <Z0> = 0.0098, a degenerate state that made the
     # TRAINED path exactly as meaningless as the untrained one it replaced. Same class of mistake as
     # the ResNet preprocessing bug already recorded in prep_model_inputs.py.
     #
     # z-scores are unbounded - WDBC spans [-3.11, 6.05] - and RY(z*pi) would wrap the Bloch sphere
-    # several times, so the encoding is RY(tanh(z)*pi): bounded, smooth, and order-preserving.
+    # several times, so the encoding is RY(c*tanh(z)*pi): bounded, smooth, and order-preserving.
     # WHICH SPACE DOES THE BROWSER SUPPLY? It differs per use case, and getting it wrong is how the
     # first trained model became as meaningless as the untrained one it replaced.
     #
-    #   medical  the bundled sample is StandardScaler output, so z-scores arrive at inference time
-    #            and the browser must NOT rescale - but with the bundle's constants, not this
-    #            script's (see the note above).
+    #   medical  raw WDBC units since Round 84 (see above); the bundle must ship the rows in that
+    #            space, keyed `raw`, as finance's does.
     #   finance  the bundled sample is RAW and mixed-scale - `amount` is log 0..17.7, `amount_zscore`
     #            is already a z-score, five columns are binary 0/1 - and all 16 bundled rows are found
     #            in this tsv within 1e-3, so the browser supplies exactly these units. It therefore
     #            MUST standardise, with the moments fitted here and shipped alongside.
     #
-    # Either way the encoding is RY(tanh(z)*pi): bounded, smooth, order-preserving. tanh on a raw
+    # Either way the encoding is RY(c*tanh(z)*pi): bounded, smooth, order-preserving. tanh on a raw
     # log-amount of 14 would saturate at 1.0 and throw the column away, which is why standardising
     # first is not optional for finance.
-    INPUT_SPACE = {"medical": "zscore", "finance": "raw", "telecom": "raw"}[a.usecase]
+    INPUT_SPACE = {"medical": "raw", "finance": "raw", "telecom": "raw"}[a.usecase]
     mu, sd = X[:cut].mean(0), X[:cut].std(0)
     sd = np.where(sd == 0, 1.0, sd)
     Xs = np.tanh((X - mu) / sd)
@@ -574,7 +818,13 @@ def main() -> int:
     elif Xs.shape[1] > nq:
         raise SystemExit(f"{Xs.shape[1]} features exceeds {nq} wires")
     dev = "cuda" if torch.cuda.is_available() and torch.cuda.get_device_capability(0)[0] >= 7 else "cpu"
-    xt = torch.tensor(Xs, dtype=torch.float32, device=dev)
+    # THE ENCODING SCALE goes in through the INPUT, so `circuit()` is one function at every scale:
+    # it computes RY(pi * x), and x = c * tanh(z) gives RY(c * pi * tanh(z)). At c = 1 nothing is
+    # multiplied, so the tensor is byte for byte the one every c = 1 artifact was trained on. The
+    # pad wires stay 0 at every c. The logistic-regression baseline below is fitted on the UNSCALED
+    # tanh features, so it is the same comparator at every c.
+    Xin = Xs if c_enc == 1.0 else c_enc * Xs
+    xt = torch.tensor(Xin, dtype=torch.float32, device=dev)
     yt = torch.tensor(y, dtype=torch.float32, device=dev)
     tr, va, te = slice(0, cut), slice(cut, vcut), slice(vcut, n)
     print(f"{a.usecase}: {n} rows, {int(y.sum())} positive; train {cut} / val {vcut-cut} / "
@@ -602,7 +852,8 @@ def main() -> int:
     # FLAT and SHARED. Was `(a.layers, nq)` - one independent angle per wire, which is precisely
     # the per-position weighting a convolution replaces with one filter. `param_count` is O(log nq).
     theta = torch.nn.Parameter(
-        init_params(nq, readout_qubits=readout_q or 0, layers=a.layers, seed=a.seed).to(dev))
+        init_params(nq, readout_qubits=readout_q or 0, layers=a.layers, seed=a.seed,
+                    arch=a.arch).to(dev))
     # Per-class scale and bias. They were SCALARS, which is the other half of why the old readout was
     # binary: one expectation through one affine map is one logit however many classes the labels have.
     scale = torch.nn.Parameter(torch.full((n_out,), 4.0, device=dev) if readout_q
@@ -613,17 +864,19 @@ def main() -> int:
     lossf = torch.nn.CrossEntropyLoss() if readout_q else torch.nn.BCEWithLogitsLoss()
     print(f"  head: {'multiclass' if readout_q else 'binary'}, {n_classes} classes, "
           f"{readout_q or 0} measured qubit(s), {int(theta.numel()) + 2 * n_out} parameters")
-    best, best_state = 0.0, None
+    best, best_state, best_ep = 0.0, None, None
     for ep in range(a.epochs):
         opt.zero_grad()
-        z = circuit(xt[tr], theta, nq, readout_qubits=readout_q, entangle=entangle, layers=a.layers)
+        z = circuit(xt[tr], theta, nq, readout_qubits=readout_q, entangle=entangle, layers=a.layers,
+                    arch=a.arch)
         loss = (lossf(z * scale + bias, yt[tr].long()) if readout_q
                 else lossf(z * scale + bias, yt[tr]))
         loss.backward()
         opt.step()
         if ep % 10 == 0 or ep == a.epochs - 1:
             with torch.no_grad():
-                zt = circuit(xt[va], theta, nq, readout_qubits=readout_q, entangle=entangle, layers=a.layers)
+                zt = circuit(xt[va], theta, nq, readout_qubits=readout_q, entangle=entangle,
+                             layers=a.layers, arch=a.arch)
                 logits = zt * scale + bias
                 pred = (logits.argmax(1).float() if readout_q else (logits > 0).float())
                 acc = (pred == yt[va]).float().mean().item()
@@ -653,11 +906,12 @@ def main() -> int:
                     prev = float(yt[va].mean())
                     score = f1 if min(prev, 1 - prev) < 0.25 else acc
                 if score > best:
-                    best = score
+                    best, best_ep = score, ep
                     best_state = (theta.detach().cpu().numpy().copy(),
                                   scale.detach().cpu().numpy().copy(),
                                   bias.detach().cpu().numpy().copy())
-            print(f"  epoch {ep:3d} loss {loss.item():.4f} VAL acc {acc:.4f} VAL minority-F1 {f1:.4f}")
+            print(f"  epoch {ep:3d} loss {loss.item():.4f} VAL acc {acc:.4f} "
+                  f"VAL {'macro' if readout_q else 'minority'}-F1 {f1:.4f}")
 
     # Classical baselines on the identical split - the number that decides whether this ships.
     #
@@ -688,7 +942,8 @@ def main() -> int:
         th_t = torch.tensor(best_state[0], dtype=torch.float32, device=dev)
         sc_t = torch.tensor(best_state[1], dtype=torch.float32, device=dev)
         bi_t = torch.tensor(best_state[2], dtype=torch.float32, device=dev)
-        z_all = circuit(xt[te], th_t, nq, readout_qubits=readout_q, entangle=entangle, layers=a.layers)
+        z_all = circuit(xt[te], th_t, nq, readout_qubits=readout_q, entangle=entangle,
+                        layers=a.layers, arch=a.arch)
         logits_all = z_all * sc_t + bi_t
         qcnn_pred = ((logits_all.argmax(1) if readout_q else (logits_all > 0))
                      .int().cpu().numpy())
@@ -735,8 +990,12 @@ def main() -> int:
               f"majority baseline would flatter it and is NOT the headline.")
     verdict = ("BEATS" if (qcnn_f1 if imbalanced else qcnn_acc) > (all_pos_f1 if imbalanced else major)
                else "DOES NOT beat")
+    # THREE outcomes, not two. Medical at c = 0.5, seed 0 ties logistic regression exactly (82 of 86
+    # each), and the two-way form printed "classical LR is behind" for it.
+    _lr_h = lr_f1 if (imbalanced or readout_q) else lr_acc
+    _q_h = qcnn_f1 if (imbalanced or readout_q) else qcnn_acc
     print(f"  verdict: QCNN {verdict} its baseline; classical LR is "
-          f"{'ahead' if (lr_f1 if imbalanced else lr_acc) > (qcnn_f1 if imbalanced else qcnn_acc) else 'behind'}")
+          f"{'ahead' if _lr_h > _q_h else 'level with it' if _lr_h == _q_h else 'behind'}")
 
     th, sc, bi = best_state
     # THE DIRECTORY IS A FUNCTION OF THE WIDTH, because the artifact is.
@@ -756,8 +1015,16 @@ def main() -> int:
     # `_q{nq}` is the directory Round 40 created by hand, so nothing moves: the naming that already
     # exists becomes the naming the trainer produces.
     suffix = "" if nq == N_QUBITS else f"_q{nq}"
-    out = REPO / "models" / f"qcnn_{a.usecase}{suffix}"
+    out = Path(a.out) if a.out else REPO / "models" / f"qcnn_{a.usecase}{suffix}"
     out.mkdir(parents=True, exist_ok=True)
+    # The flags that change the weights, and only those - `--out` moves the file, not the model.
+    # `--arch` and `--encoding-scale` are written out even at their defaults so the command an
+    # artifact carries does not depend on what a later revision chooses as the default.
+    command = (f"python scripts/train/qcnn_variational.py --usecase {a.usecase} "
+               f"--layers {a.layers} --epochs {a.epochs} --seed {a.seed} "
+               f"--threads {a.threads} --qubits {nq} --arch {a.arch} --encoding-scale {c_enc:g}"
+               + (" --no-entangle" if not entangle else ""))
+    shapes = param_shapes(nq, readout_q, a.layers, a.arch)
     (out / "weights.json").write_text(json.dumps({
         "usecase": a.usecase, "n_qubits": nq, "layers": a.layers,
         # How many wires actually carry data. It equalled n_qubits until telecom brought 7
@@ -793,7 +1060,14 @@ def main() -> int:
                              "[0,4,2,6,1,5,3,7], of which four are fixed points."}),
         "class_names": (class_labels if readout_q else None),
         "feature_names": names, "input_space": INPUT_SPACE, "encoding": "tanh",
+        # RY(encoding_scale * pi * tanh(z)). Every inference path multiplies the angle by this,
+        # defaulting to 1 when an older artifact carries no such field.
+        "encoding_scale": c_enc,
         "feature_mean": mu.tolist(), "feature_std": sd.tolist(),
+        # WHICH CIRCUIT, as data, because the browser runs two and must not guess. A consumer that
+        # meets a name it does not implement refuses rather than running the tree on SU(4) angles.
+        "circuit": {"name": a.arch, **CIRCUIT_TEXT[a.arch],
+                    "param_shapes": {k: list(v) for k, v in shapes.items()}},
         "provenance": prov,
         # THE INVOCATION, recorded because it was not. `layers: 6` was in the file, so the
         # architecture was recoverable, but `epochs` and `seed` were not - and the defaults do not
@@ -807,20 +1081,29 @@ def main() -> int:
         # THE ARTIFACT RECORDS ITS OWN ARCHITECTURE. Without it a retrained card and a stale
         # weights file are indistinguishable, which is the failure this round's plan named:
         # "renaming the label and shipping weights from the old circuit".
-        "training": {"architecture": "qcnn-cong-hur",
+        # `qcnn-tree` was `qcnn-cong-hur` until Round 84 - the label models/qcnn_finance still
+        # carries for the same disjoint-pair circuit. It named two papers whose convolutions cover
+        # every neighbouring bond, which the tree does not; `qcnn-hur-su4` is the circuit that does.
+        "training": {"architecture": {"tree": "qcnn-tree", "hur-su4": "qcnn-hur-su4"}[a.arch],
                      "layers": a.layers, "epochs": a.epochs, "seed": a.seed, "qubits": nq,
-                     "threads": a.threads, "entangle": entangle,
-                     "command": f"python scripts/train/qcnn_variational.py --usecase {a.usecase} "
-                                f"--layers {a.layers} --epochs {a.epochs} --seed {a.seed} "
-                                f"--threads {a.threads} --qubits {nq}",
+                     "threads": a.threads, "entangle": entangle, "encoding_scale": c_enc,
+                     # THE DEVICE, because a seed alone does not reproduce a run: the two telecom
+                     # artifacts of Round 47 regenerate bit for bit on CUDA and not on a CPU.
+                     "device": dev,
+                     "device_name": (torch.cuda.get_device_name(0) if dev == "cuda" else "cpu"),
+                     "torch": torch.__version__,
+                     "best_epoch": best_ep, "best_val_score": round(float(best), 6),
+                     "command": command,
                      "note": ("--seed drives the numpy split permutation and torch parameter "
-                              "init. Re-running this command on a CUDA device regenerates this "
-                              "file: five consecutive runs gave identical metrics and identical "
-                              "theta to nine decimal places. That is true only since the multiclass "
-                              "readout stopped using index_add_, whose CUDA atomicAdd made the same "
-                              "seeded command land on macro F1 0.809846 or 0.807781 depending on "
-                              "the run. On a CPU it is not guaranteed: CPU and CUDA kernels differ "
-                              "in float rounding, and a long multiclass run amplifies that.")},
+                              "init. Re-running this command on a CUDA device regenerates theta, "
+                              "scale, bias and every metric bit for bit: five consecutive runs of "
+                              "each Round 47 artifact, and two independent runs of each Round 84 "
+                              "one (the pre-registered experiment and the retrain), max |diff| 0. "
+                              "That is true only since the multiclass readout stopped using "
+                              "index_add_, whose CUDA atomicAdd made the same seeded command land "
+                              "on macro F1 0.809846 or 0.807781 depending on the run. On a CPU it "
+                              "is not guaranteed: CPU and CUDA kernels differ in float rounding, "
+                              "and a long multiclass run amplifies that.")},
         "test_accuracy": round(qcnn_acc, 6),
         "classical_lr_accuracy": round(float(lr_acc), 6),
         "majority_baseline": round(float(major), 6),
@@ -877,7 +1160,8 @@ def main() -> int:
                  "not hardware; the classical baseline above is reported so no quantum advantage is "
                  "implied."),
     }, indent=1) + "\n")
-    print(f"  wrote {(out / 'weights.json').relative_to(REPO)}")
+    shown = out / "weights.json"
+    print(f"  wrote {shown.relative_to(REPO) if shown.is_relative_to(REPO) else shown}")
     return 0
 
 

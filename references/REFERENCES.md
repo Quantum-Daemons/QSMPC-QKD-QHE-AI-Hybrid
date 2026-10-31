@@ -581,19 +581,22 @@ directly, not against another file in this repository. The architecture discussi
   permutation-invariant summary of a linear layer exactly and achieves perfect model
   distinguishability, needing `d+1` queries for a `d`-input layer - 5,712 for all linear layers of a
   ResNet-20. Breaks the shuffling-plus-noise defence that a plaintext-offload design depends on.
-  **Carried as a trip-wire, and in the full deployment's server tier the trip-wire is crossed.** This
+  **Carried as a trip-wire; in the full deployment's server tier it was crossed until Round 84.** This
   repository sends the non-linear half as secret shares, through masked conversions since Round 75,
   meant to let the key holder decrypt only masked intermediates. With the TenSEAL backend the mask
-  covers slot 0 only: `src/qsh/mpc/secret_inference.py` adds the bias plus the mask as a scalar to
+  covered slot 0 only: `src/qsh/mpc/secret_inference.py` added the bias plus the mask as a scalar to
   `ct.dot(w)`, TenSEAL broadcasts that scalar to every CKKS slot, and the dot product's rotation sum
   leaves partial sums of the products in the other slots. Decoding the whole plaintext with the
-  client's own secret key, slot differences cancel the mask and expose each product, so the client
-  recovers the unmasked output and the whole weight row in ONE query (confirmed locally 2026-10-30;
-  `tests/test_mpc.py` reads slot 0 only, which is why it passes). So the attack's precondition is
-  present there, at one query rather than d+1: until the fix the next round carries, the conversion
-  is not model-private, and nothing here shows the MPC variant secure. The public demo has no server
-  and its models are public, so it is not affected. Corrected 2026-10-30: this said the precondition
-  was absent, up to the masks' stated statistical bound. **Until Round 75 this entry said "no
+  client's own secret key, slot differences cancelled the mask and exposed each product, so the
+  client recovered the unmasked output and the whole weight row in ONE query (confirmed locally
+  2026-10-30; `tests/test_mpc.py` read slot 0 only, which is why it passed). Since Round 84 every
+  slot the client can decode is masked independently, real and imaginary parts, by a vector encrypted
+  under its key (`src/qsh/fhe/masking.py`), and `tests/test_r84_c1_slot_masking.py` decodes every
+  slot and finds no product; what the client decodes is bounded per run by
+  `view_statistical_distance`, statistically rather than perfectly, and semi-honest with an honest
+  majority. On OpenFHE the imaginary parts are not flooded, and such runs say so. The public demo
+  has no server and its models are public, so it was never affected. Corrected 2026-10-30: this
+  said the precondition was absent, up to the masks' stated statistical bound. **Until Round 75 this entry said "no
   plaintext intermediate exists to query" while the conversions decrypted every linear output in the
   clear and opened every ReLU result to all parties**, so the precondition was present then too. If
   the non-linear path is ever moved to plaintext client offload, this applies directly. Added:
@@ -611,9 +614,10 @@ directly, not against another file in this repository. The architecture discussi
   convert between homomorphic and garbled-circuit encodings at each layer boundary by masking: the
   server adds a random mask to the encrypted linear output before the client decrypts it, exactly,
   over the scheme's plaintext ring. The shape `src/qsh/mpc/secret_inference.py` follows since Round
-  75, with real-valued masks because CKKS is approximate. As implemented the mask is one scalar per
-  output and protects slot 0 only (the Kim and Lee entry above), where GAZELLE's mask is a random
-  element of the plaintext ring. Added: 2026-10-27; the slot-0 limit added 2026-10-30.
+  75, with real-valued masks because CKKS is approximate. Until Round 84 the mask was one scalar per
+  output and protected slot 0 only (the Kim and Lee entry above); since then it is independent in
+  every slot, which is closer to GAZELLE's random element of the plaintext ring, though statistical
+  rather than exact. Added: 2026-10-27; the slot-0 limit added 2026-10-30, and its fix in Round 84.
 - **Mishra, Lehmkuhl, Srinivasan, Zheng & Popa, "Delphi: A Cryptographic Inference Service for Neural
   Networks."** IACR ePrint 2020/050; USENIX Security 2020. Inference between two parties "without
   revealing either party's data", with linear layers on additive secret shares prepared under
@@ -690,18 +694,23 @@ Added 2026-08-11. Both verified at the arXiv abstract page.
   whole model is classically simulable with no quantum device, shown at n = 8 qubits on pairs of
   MNIST, Fashion-MNIST, EuroSAT and GTSRB classes, and the authors conclude that QCNN-based QML for
   classical data "appears to be an ill-motivated task" (read in the published PDF 2026-10-30). The
-  trained circuits here are moreover trees of two-qubit blocks on disjoint pairs, which a chain of
-  small density-matrix maps reproduces exactly at any width (all six shipped artefacts to 1.6e-6,
-  checked 2026-10-30), and at 7 to 9 qubits the state vector is a few hundred amplitudes anyway.
+  finance and medical circuits here are moreover trees of two-qubit blocks on disjoint pairs, which a
+  chain of small density-matrix maps reproduces exactly at any width (all six artefacts shipped
+  before Round 84 to 1.6e-6, checked 2026-10-30); telecom's circuit since Round 84 is Hur, Kim and
+  Park's SU(4) block on every neighbouring pair, which is not a tree, and at 7 or 8 qubits the state
+  vector is a few hundred amplitudes anyway.
   **The paper does not predict that logistic regression beats the circuit; that is measured here.**
-  The trained QCNN loses to logistic regression on the identical split (medical accuracy
-  **0.883721** vs **0.953488**; finance minority-class F1 **0.735294** vs **0.865672**), and Bowles
+  The trained QCNN loses to or ties logistic regression on the identical split (finance
+  minority-class F1 **0.735294** vs **0.865672**; medical accuracy **0.883721** vs **0.953488**
+  until Round 84, and since its retrain at c = 0.5 a tie, **0.953488** each at the shipped seed, with
+  logistic regression ahead by 0.0186 over five seeds), and Bowles
   et al. (next entry) report the same direction across 160 datasets. Corrected 2026-10-30: this said
   the paper "is the reason that is the expected result", resting on its random-initialisation result
   (Sec. III.A), which assumes independent random gates that the trained circuits do not have. The
   QCNN model cards quote it. The 8-class telecom circuit added in Round 34 lands the same way - macro F1
   **0.510963** against a multinomial logistic regression at **0.976447** on the identical split, with
-  all 8 classes predicted - which matters because it is a *different* readout (a 3-qubit basis
+  all 8 classes predicted (the Round 84 SU(4) circuit narrows that to **0.944439** at 8 wires and
+  **0.967932** at 7, still behind) - which matters because it is a *different* readout (a 3-qubit basis
   marginal rather than a single $`\langle Z_0 \rangle`$ expectation) and a different task shape, and it did not change
   the direction of the result. **The figures in this bullet were 0.7326, 0.7143 and 0.8098 until
   Round 47, and then 0.860465, 0.84058 and 0.458324 for part of Round 47 itself**: measured first on

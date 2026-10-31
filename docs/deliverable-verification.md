@@ -5835,7 +5835,8 @@ sourced Micius set, and make the MPC tier multi-party now, and then mask its con
 - **The masks hide statistically, and each run says how well.** CKKS is approximate, so the masks
   are reals, uniform on plus or minus 2^30 from the OS CSPRNG. 30 bits is the most 64-bit fixed
   point holds, and costs no precision measured through a CKKS round trip: 5e-7 at 2^30, against 8e-6
-  at 2^36 and 2e-4 at 2^40. A run reports the number of masked values, its largest, and the bound
+  at 2^36 and 2e-4 at 2^40 (Round 84, with every slot masked, 400 draws, worst case: 8.8e-7 at 2^30,
+  3.8e-5 at 2^36 and 6.3e-4 at 2^40, so 2^30 is the cheapest rather than free). A run reports the number of masked values, its largest, and the bound
   n x B / 2^30 on what the key holder's view gives away: 9e-8 or less on the benchmark rows, about 2e-7
   on the test CNNs. Every decision tested matches plaintext, on TenSEAL and OpenFHE. Semi-honest, and
   a client and helper who pool their shares recover the server's masks; the architecture document
@@ -7321,6 +7322,8 @@ fixed in the repository two rounds ago and never republished).
     slot, so slot differences expose each product and the client recovers the weight row in one
     query. Confirmed locally on 2026-10-30; `tests/test_mpc.py` reads slot 0 only. Until the fix,
     the text says the masking protects slot 0 only and the conversion is not model-private.
+    Fixed in Round 84: every slot is masked independently (`src/qsh/fhe/masking.py`), and
+    `tests/test_r84_c1_slot_masking.py` decodes all slots with the client's key.
   - Genomics: the CKKS step is a sign test on 8 of the 313 PGS000004 variants (weights split into
     minus and plus half, bias 0). PGS000004's method is hard-thresholding stepwise forward
     regression at p below 1e-5, not genome-wide significance.

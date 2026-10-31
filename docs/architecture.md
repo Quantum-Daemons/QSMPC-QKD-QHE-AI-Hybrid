@@ -119,43 +119,55 @@ comparison among three parties: the client, who holds the CKKS key; the server, 
 and a helper. The conversions between the halves are masked, as Gazelle's and Delphi's are
 (`src/qsh/mpc/secret_inference.py`):
 
-- the server adds a fresh random mask inside each linear output's ciphertext, so the value the client
-  reads in slot 0 is the intermediate plus the mask;
+- the server masks every slot of each linear output's ciphertext before the client decrypts it:
+  slot 0's real part gets a fresh random mask, every other real part and every imaginary part an
+  independent one, so the value the client reads in slot 0 is the intermediate plus the mask and
+  the other slots show masks;
 - the MPC runs on the sum of the client's masked value and the server's negated mask, adds a second
   server mask to its result, and opens that to the client alone, which the server then removes
   inside the next ciphertext;
 - the final MPC opens the class index to the client and nothing else.
 
-**As implemented, the masking protects slot 0 only, so the conversion is not model-private.** The
-bias and the mask are added as one scalar, which CKKS adds to every slot. A key holder who decodes
-all slots of one masked dot product reads the bare mask in the zero-padded slots and partial sums
-of the products in the low slots, so one query recovers the unmasked output and the layer's whole
+**Until Round 84 the masking protected slot 0 only, and the conversion was not model-private.** The
+bias and the mask were added as one scalar, which CKKS adds to every slot. A key holder who decoded
+all slots of one masked dot product read the bare mask in the zero-padded slots and partial sums of
+the products in the low slots, so one query recovered the unmasked output and the layer's whole
 weight row (confirmed locally with the TenSEAL backend: the output to 1.4e-6, the weights to 3.3e-6).
-The fix is a mask that is
-independent in every slot, or zeroing every slot but the output before masking; until it lands, the
-statements below hold for slot 0 alone.
+The fix is a mask independent in every slot, real and imaginary parts, from the OS CSPRNG, added as
+a vector encrypted under the client's key, which also re-randomises the ciphertext
+(`src/qsh/fhe/masking.py`, used by the dense layer and the convolution alike).
+`tests/test_r84_c1_slot_masking.py` decodes every slot with the client's own key and checks that no
+linear combination of them predicts a product. On OpenFHE the context is real-typed, so the
+imaginary parts cannot be flooded there; such runs say so in `masked_slots` and report no margin.
 
-**What slot 0 shows is statistically hidden, not perfectly.** CKKS is approximate, so the masks are
-real numbers, uniform on plus or minus 2^30 from the OS CSPRNG, where Gazelle and Delphi mask exactly
-over a ring. Behind such a mask a value of size B is B / 2^30 from any other in statistical distance,
-and every run reports the bound for its own view: the number of masked values times its largest
-one over 2^30: about 2e-7 on the test CNNs, and 1.4e-6 on the medical use case's 14x14 CNN, whose
-view has more than a thousand masked values. Two further limits are part of the claim. It is
+**What the client decodes is statistically hidden, not perfectly.** CKKS is approximate, so the
+masks are real numbers, uniform on plus or minus 2^30 from the OS CSPRNG, where Gazelle and Delphi
+mask exactly over a ring. Behind such a mask a value of size B is B / 2^30 from any other in
+statistical distance, and every run reports two bounds. `mask_statistical_distance` covers the
+values that enter and leave the MPC through slot 0, the number of them times the largest over 2^30
+(about 2e-7 on the test CNNs and 1.4e-6 on the medical use case's 14x14 CNN, recorded before Round
+84). `view_statistical_distance` covers the client's whole view, every real and imaginary part of
+every slot it decrypts plus each value the MPC opens, each one's content over 2^30: about 2e-7 on an
+8-4-2 MLP, measured 2026-10-30. The masks on the other slots double as the noise flood over the
+CKKS error, and each run reports the flood's margin over the error it measured
+(`flood_margin_bits`, about 50). Two further limits are part of the claim. It is
 semi-honest with an honest majority: a client and helper who pool their Shamir shares recover the
 server's masks, and with them every intermediate. And the class index itself is an output, so
 label-only extraction from repeated queries stays possible; that is a different attack from this one.
 
-**The attack paper does not analyse the MPC-evaluated case**, but its precondition, a client that
-observes plaintext intermediates, is present here through the unmasked slots. Until the masking
-covers every slot, the model confidentiality claim is withdrawn.
+**The attack paper does not analyse the MPC-evaluated case**, and its precondition, a client that
+observes plaintext intermediates, was present here through the unmasked slots until Round 84. With
+every slot masked, what the client decodes is bounded per run by `view_statistical_distance`; the
+claim is the semi-honest, honest-majority one above, and the class index remains an output.
 The browser tier is different and says so: its 2PC runs on logits the tab has decrypted, for a model
 that is published anyway (`web/src/lib/clientMPC.ts`).
 
 **This is a trip-wire, not just background.** If the non-linear path is ever changed to plaintext
 client offload for the latency win, or the conversions lose their masks, eprint 2026/1527 becomes
 directly applicable. Anyone making that change should read it first. `tests/test_mpc.py` fails if the
-key holder's decrypted slot 0 is unmasked or a party other than the client receives a result; it does
-not decode the other slots, which is why it passes with the leak above.
+key holder's decrypted slot 0 is unmasked or a party other than the client receives a result, and
+`tests/test_r84_c1_slot_masking.py` fails if any other slot the key holder decodes carries a product
+of the weights; the first decodes slot 0 only, which is why it passed with the leak above.
 
 **A third option exists as of 2026, and it is named here rather than left implied away.** The split
 above rests on non-linearities being expensive under CKKS. Lin and Wu's **Tailor** (IACR ePrint

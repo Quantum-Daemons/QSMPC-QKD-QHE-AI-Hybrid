@@ -332,15 +332,17 @@ def test_the_extractor_fails_a_card_that_states_a_number_its_artifact_does_not()
 
     assert not [w for _, w in _claims(text) if not _matches(w, pool)], "precondition: card is green"
 
-    tampered = text.replace("| `macro_f1` (this circuit) | 0.510963 |",
-                            "| `macro_f1` (this circuit) | 0.614583 |")
+    # Round 84: the telecom artifact moved to the SU(4) circuit, so the row carries 0.944439 and the
+    # retired figure restored here is the tree's 0.510963 (it was 0.614583 against 0.510963 before).
+    tampered = text.replace("| `macro_f1` (this circuit) | 0.944439 |",
+                            "| `macro_f1` (this circuit) | 0.510963 |")
     assert tampered != text, (
         "the row this control tampers with is no longer in the card verbatim. Point it at whatever "
         "row now carries the headline; a negative control that edits nothing proves nothing."
     )
     caught = [w for _, w in _claims(tampered) if not _matches(w, pool)]
-    assert caught == ["0.614583"], (
-        f"restoring the retired headline 0.614583 to the telecom card was not caught: {caught}. "
+    assert caught == ["0.510963"], (
+        f"restoring the retired headline 0.510963 to the telecom card was not caught: {caught}. "
         "The extractor is not reading the measured table, so its green result on the real card "
         "means nothing."
     )

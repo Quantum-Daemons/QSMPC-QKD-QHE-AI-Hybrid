@@ -987,8 +987,10 @@ export interface PublishedModelRun {
 export type PublishedRunOutcome =
   /** The published model ran. */
   | { kind: "ran"; run: PublishedModelRun }
-  /** No published, pinned, browser-tier model exists for this use case. A legitimate state. */
-  | { kind: "unavailable"; reason: string }
+  /** No published, pinned, browser-tier model exists for this use case. A legitimate state. `withheld`
+   *  names the registered models held back because their pin is stale (a retrain invalidated it and no
+   *  republish has re-pinned it yet), so "none registered" is never said of a use case that has one. */
+  | { kind: "unavailable"; reason: string; withheld: string[] }
   /** One exists and did not run. Never silently substituted -- the caller must surface this. */
   | { kind: "failed"; modelKey: string; error: string };
 
@@ -1012,7 +1014,10 @@ export async function runPublishedModel(
     ? browserModels(usecase).find((m) => m.spec.key === opts.modelKey) ?? null
     : browserModel(usecase);
   if (!target) {
-    return { kind: "unavailable", reason: status.error
+    const withheld = modelsFor(usecase)
+      .filter((m) => m.hf_repo_id && !m.hf_revision && m.hf_revision_stale)
+      .map((m) => m.key);
+    return { kind: "unavailable", withheld, reason: status.error
       ?? `no published, pinned, browser-tier ONNX model is registered for "${usecase}"` };
   }
 

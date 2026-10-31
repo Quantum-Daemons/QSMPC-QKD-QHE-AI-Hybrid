@@ -16,7 +16,7 @@
 //                 0.60 -> 0.99.
 //
 // recharts is already a dependency (BenchmarkPanel), so this costs no bundle growth.
-import { useEffect, useState } from "react";
+import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import {
   Bar, BarChart, CartesianGrid, Cell, Legend, Line, LineChart, ReferenceLine,
   ResponsiveContainer, Scatter, ScatterChart, Tooltip, XAxis, YAxis,
@@ -56,9 +56,19 @@ const GRID = "#2a3040";
  *  as a separator, so each segment meets this colour rather than its neighbour. */
 const CARD = "#151c2c";
 
+/** One axis of a 2-D data plane, as the payloads name it. */
+type PlaneAxis = { key: string; label: string; scale?: "log" };
+
+/** One plotted row. `x`/`y` place it on the corpus overlay's plane where the rows have one, and the
+ *  three class indices let a panel say where the encrypted decisions are right and wrong. */
+export interface AgreementPoint {
+  enc: number; plain: number; agree: boolean;
+  x?: number; y?: number; label?: number; encCls?: number; plainCls?: number;
+}
+
 export interface EncryptedAgreementPlot {
   kind: "encrypted-agreement";
-  points: { enc: number; plain: number; agree: boolean }[];
+  points: AgreementPoint[];
   rows: number;
   /** Rows the split offered. Larger than `rows` means the ciphertext could not hold them all. */
   rowsOffered?: number;
@@ -80,7 +90,99 @@ export interface EncryptedAgreementPlot {
   undecidableRows?: number;
   decidableRows?: number;
   agreementOverDecidable?: number | null;
+  /** WHAT THE ROWS ARE TO THE MODEL (Round 84). `true`: none was used to fit it, and `fitNote`
+      names the rows that were. `false`: they are its fitting rows, so the figure tests the
+      encryption and not generalisation. Absent: the producer did not say, and the caption claims
+      neither. The caption once hardcoded "held-out" over finance's and medical's fitting rows. */
+  heldOut?: boolean;
+  fitNote?: string;
+  /** The split, in the payload's words. */
+  split?: string;
+  /** For rows that are neither a fit nor a held-out split: genomics' external reference panel. */
+  rowsAre?: string;
+  corpus?: string;
+  modelKey?: string | null;
+  modelLabel?: string;
+  /** The rows' licence with its link and change note: CC BY 4.0 s.3(a)(1) and CDLA-Sharing s.3.1(b)
+      and s.3.3 ask for both whenever the data is shared, and this figure shares it. */
+  licence?: { name: string; url: string | null; attribution: string; modifications: string };
+  /** More than one when the split outgrew a ciphertext and the caller paid for every row. */
+  ciphertexts?: number;
+  rowsPerCiphertext?: number;
+  fheMs?: number;
+  msPerCiphertext?: number | null;
+  /** Median deviation over the `noisyScores` class scores that were encrypted (a bias-only class is
+      exact and is left out, or it would halve the median). */
+  medianAbsError?: number | null;
+  noisyScores?: number;
+  /** Smallest non-zero plaintext margin. With `flipBoundFactor` it decides whether a flip was
+      possible at all: none was when the margin exceeds the worst deviation times the factor (2 when
+      every class score is encrypted, 1 when only one is). */
+  smallestMargin?: number | null;
+  flipBoundFactor?: 1 | 2;
+  /** "logit": a two-class model's class-1-minus-class-0 logit on both axes. "winning-score": the
+      encrypted top-1 class's score, the multiclass convention. */
+  scoreKind?: "logit" | "winning-score";
+  classNames?: string[];
+  /** The corpus overlay's plane, where the points carry `x`/`y` on it. */
+  plane?: { x: PlaneAxis; y: PlaneAxis } | null;
+  /** Against the TRUE labels, over the scored rows. */
+  accuracy?: { encrypted: number | null; plaintext: number | null } | null;
 }
+
+/**
+ * Takes every plotted mark out of the accessibility tree, so a chart is ONE image with one name.
+ *
+ * WHY THIS IS DOM WORK (UX39). Recharts 2.15 renders each scatter symbol as `<g role="img">` with no
+ * name and no prop to change it (`Scatter.renderSymbolsStatically` hardcodes the role after every
+ * passed prop). Finance drew 8,192 of them, each an unnamed image to a screen reader and a failure
+ * of Lighthouse's `svg-img-alt`. The chart's `<svg role="img">` with its `title` is the one name, and
+ * the figcaption beside it - tied by `aria-describedby` - is the text alternative.
+ *
+ * An observer rather than one pass: a resize gives the symbols new keys (recharts keys them on their
+ * pixel position), so React mounts fresh nodes with the role back on them.
+ */
+function MarksHidden({ children }: { children: ReactNode }) {
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const root = ref.current;
+    if (!root) return;
+    const hide = () => {
+      root.querySelectorAll(".recharts-scatter-symbol[role]").forEach((el) => {
+        el.removeAttribute("role");
+        el.setAttribute("aria-hidden", "true");
+      });
+    };
+    hide();
+    // childList only: the attribute writes above must not re-trigger the observer.
+    const mo = new MutationObserver(hide);
+    mo.observe(root, { childList: true, subtree: true });
+    return () => mo.disconnect();
+  }, []);
+  return <div ref={ref}>{children}</div>;
+}
+
+/** The licence as CC BY 4.0 and CDLA-Sharing ask for it: name, a link to its text, the change note. */
+function LicenceLine(
+  { licence }: { licence: { name: string; url: string | null; attribution: string; modifications: string } },
+) {
+  return (
+    <>
+      {licence.url
+        ? <a href={licence.url} target="_blank" rel="noopener noreferrer">{licence.name}</a>
+        : <em>{licence.name}</em>}
+      {licence.attribution ? <> - {sentence(licence.attribution)}</> : null}
+      {licence.modifications ? <> Changes: {sentence(licence.modifications)}</> : null}
+    </>
+  );
+}
+
+const exp2 = (v: number) => v.toExponential(2);
+/** A payload phrase printed as a sentence: the files end some notes with a full stop and not others. */
+const sentence = (t: string) => (/[.!?]$/.test(t.trim()) ? t.trim() : `${t.trim()}.`);
+/** -log2(e) floored, the bits OpenFHE and HElib print; null where an error >= 1 has none. */
+const bitsOf = (e: number | null | undefined) =>
+  (e != null && e > 0 && e < 1 ? Math.floor(-Math.log2(e)) : null);
 
 /**
  * The one figure this project's central claim needs, and the one it never drew.
@@ -91,53 +193,103 @@ export interface EncryptedAgreementPlot {
  * visitor as a scalar taken over a SINGLE row: `encrypted_top1_mismatches` could only be 0 or 1, and
  * `encrypted_scores_compared` counted classes rather than rows.
  *
- * Each point is one row of the page's corpus - the held-out split on telecom, but on finance and
- * medical the bundled 400 rows the demo's linear model was fitted on, so NOT held out there - with its
- * decrypted winning score against the plaintext score for the same row and class. Agreement is the
- * `y = x` line, so a deviation is visible as distance from it
- * rather than as a number someone has to interpret. Points are coloured by whether the encrypted
- * argmax matched the plaintext argmax - the integer convention arXiv:2605.22237 Table IX reports and
- * expects to be zero.
+ * Each point is one row, encrypted score against plaintext score for the same row and class.
+ * Agreement is the `y = x` line, so a deviation is visible as distance from it rather than as a
+ * number someone has to interpret. Points are marked by whether the encrypted argmax matched the
+ * plaintext argmax - the integer convention arXiv:2605.22237 Table IX reports and expects to be zero.
  *
- * The rows come from one CKKS ciphertext: `encryptedLinearBatch` packs them at the reduction's own
- * stride, so N rows cost the same homomorphic work as one.
+ * WHICH ROWS, SAID BY THE PRODUCER (Round 84). The caption used to describe the rows itself, per use
+ * case, and called finance's and medical's 400 rows "held-out" while the plotted model had been
+ * fitted on exactly those rows. The rows' relation to the model now travels in the plot (`heldOut`,
+ * `fitNote`, `rowsAre`) and the caption prints only what it is told; finance and medical now encrypt
+ * rows their model was never fitted on, through `encryptedHeldOutAgreement`.
  */
 export function EncryptedAgreementChart({ plot }: { plot: EncryptedAgreementPlot }) {
+  const captionId = useId();
   if (!plot?.points?.length) return null;
-  const mismatches = plot.points.filter((p) => !p.agree).length;
-  const worst = Math.max(...plot.points.map((p) => Math.abs(p.enc - p.plain)));
-  const lo = Math.min(...plot.points.flatMap((p) => [p.enc, p.plain]));
-  const hi = Math.max(...plot.points.flatMap((p) => [p.enc, p.plain]));
-  const name = `Encrypted score against plaintext score, ${plot.rows} rows`;
+  let mismatches = 0, worst = 0, lo = Infinity, hi = -Infinity;
+  // Loops, not `Math.max(...)` spreads: finance hands over 8,192 points.
+  for (const p of plot.points) {
+    if (!p.agree) mismatches++;
+    worst = Math.max(worst, Math.abs(p.enc - p.plain));
+    lo = Math.min(lo, p.enc, p.plain);
+    hi = Math.max(hi, p.enc, p.plain);
+  }
+  const logit = plot.scoreKind === "logit";
+  const who = plot.modelKey ? <code>{plot.modelKey}</code> : <>{plot.modelLabel ?? "the model"}</>;
+  const name = `Encrypted score against plaintext score, ${plot.rows}`
+    + `${plot.heldOut ? " held-out" : ""} rows`;
+  const factor = plot.flipBoundFactor ?? 2;
+  const noFlipPossible = plot.smallestMargin != null && typeof plot.maxAbsError === "number"
+    && plot.smallestMargin > factor * plot.maxAbsError;
+  const medianBits = bitsOf(plot.medianAbsError), worstBits = bitsOf(plot.maxAbsError ?? worst);
   return (
     <figure className="chart-figure">
-      {/* A strip of the four numbers the caption below qualifies, for a reader scanning the page. The
+      {/* A strip of the numbers the caption below qualifies, for a reader scanning the page. The
           caption keeps every denominator and caveat beside the figure (checklist UX6); only the
           meaning of a flipped row's margin is folded. Round 58. */}
       <table className="facts-table small" style={{ marginBottom: 6 }}>
         <tbody><tr>
           <td>rows scored</td><td>{plot.rows}{plot.rowsOffered != null && plot.rowsOffered > plot.rows ? ` of ${plot.rowsOffered}` : ""}</td>
+          {plot.ciphertexts != null ? <><td>ciphertexts</td><td>{plot.ciphertexts}</td></> : null}
           <td>top-1 mismatches</td><td>{mismatches}</td>
           <td>plaintext ties</td><td>{plot.undecidableRows ?? "not reported"}</td>
-          <td>worst deviation</td><td>{worst.toExponential(2)}</td>
+          <td>worst deviation</td><td>{exp2(plot.maxAbsError ?? worst)}</td>
+          {plot.medianAbsError != null ? <><td>median deviation</td><td>{exp2(plot.medianAbsError)}</td></> : null}
+          {plot.smallestMargin != null ? <><td>smallest margin</td><td>{exp2(plot.smallestMargin)}</td></> : null}
         </tr></tbody>
       </table>
-      <figcaption className="muted small">
-        <strong>Private inference against the plaintext reference.</strong> Each point is one of{" "}
-        {plot.rows} rows of this page&apos;s corpus scored under CKKS in this tab, plotted against the same
-        row&apos;s plaintext score (on telecom the held-out split; on finance and medical the bundled rows
-        the demo&apos;s linear model was fitted on, so they test encryption, not generalisation). The
-        diagonal is exact agreement. Top-1 mismatches:{" "}
-        <strong>{mismatches}</strong> of {plot.rows}. All {plot.rows} rows travelled in a single
-        ciphertext, so they cost the homomorphic work of one.
+      <figcaption id={captionId} className="muted small">
+        <strong>Private inference against the plaintext reference.</strong>{" "}
+        {plot.heldOut === true ? (
+          <>
+            Each point is one of <strong>{plot.rows} held-out rows</strong>
+            {plot.corpus ? <> of {plot.corpus}</> : null}, scored under CKKS in this tab with{" "}
+            {plot.modelLabel ?? "the model"}{plot.modelKey ? <> (<code>{plot.modelKey}</code>)</> : null}{" "}
+            and plotted against the same row&apos;s plaintext score. <strong>None of these rows was
+            used to fit the plotted model</strong>{plot.fitNote ? <>: {sentence(plot.fitNote)}</> : "."}
+            {plot.split ? <> Split: {sentence(plot.split)}</> : null}
+          </>
+        ) : plot.heldOut === false ? (
+          <>
+            Each point is one of {plot.rows} rows <strong>{who} was fitted on</strong>, scored under
+            CKKS in this tab against the same row&apos;s plaintext score, so the figure tests the
+            encryption, not generalisation.
+          </>
+        ) : plot.rowsAre ? (
+          <>
+            Each point is one of {plot.rows} {plot.rowsAre}, scored under CKKS in this tab and plotted
+            against the same row&apos;s plaintext score.
+          </>
+        ) : (
+          <>
+            Each point is one of {plot.rows} rows scored under CKKS in this tab, plotted against the
+            same row&apos;s plaintext score.
+          </>
+        )}{" "}
+        {logit
+          ? <>Both axes are the decision logit, class 1 minus class 0; the diagonal is exact agreement
+              and a flip would sit where the two signs differ.</>
+          : <>Both axes are the score of the class the encrypted model ranks first; the diagonal is
+              exact agreement.</>}{" "}
+        Top-1 mismatches: <strong>{mismatches}</strong> of {plot.rows}.{" "}
+        {plot.ciphertexts != null && plot.ciphertexts > 1 ? (
+          <>
+            The rows travelled in <strong>{plot.ciphertexts} ciphertexts</strong> of up to{" "}
+            {plot.rowsPerCiphertext ?? "?"} rows each{typeof plot.fheMs === "number"
+              ? <>, {plot.fheMs.toFixed(0)} ms of encrypted work in all</> : null}{plot.msPerCiphertext != null
+              ? <> ({plot.msPerCiphertext.toFixed(1)} ms per ciphertext)</> : null}: scoring every row
+            of the split costs one ciphertext per {plot.rowsPerCiphertext ?? "?"} rows.
+          </>
+        ) : (
+          <>All {plot.rows} rows travelled in a single ciphertext, so they cost the homomorphic work of one.</>
+        )}
         {/* THE CIPHERTEXT CAP, restored.
             `5d20d88` put this in the caption precisely so a reader could not take the agreement for
             the whole split, and `2393c79` - the commit that removed the tie verdict from this same
             sentence - deleted it as collateral: the removed block's closing `) : null}` was merged
             with the tie block's, so the cap clause went out with the verdict. `rowsOffered` was left
-            declared and set by four producers and read by nothing, which no type check can see.
-            Telecom is the page it matters on: 512 of 600 rows are scored, and without this the
-            figure reports agreement 1.00 over a denominator it does not name. */}
+            declared and set by four producers and read by nothing, which no type check can see. */}
         {plot.rowsOffered != null && plot.rowsOffered > plot.rows ? (
           <>
             {" "}The split holds <strong>{plot.rowsOffered}</strong> rows; one ciphertext fits{" "}
@@ -148,65 +300,70 @@ export function EncryptedAgreementChart({ plot }: { plot: EncryptedAgreementPlot
         {/* AT ZERO TOO. Gated on `> 0` first, which put the disclosure on genomics and hid it on
             telecom - and telecom's zero is the informative case: it is what makes that page's 1.00
             a different claim from genomics' 1.00. Suppressing a count because it is zero is the
-            same conditional-disclosure defect this sentence exists to fix, one level down, and it
-            is the third surface this round on which that gate had to be removed. */}
+            same conditional-disclosure defect this sentence exists to fix, one level down. */}
         {plot.undecidableRows != null ? (
           plot.undecidableRows > 0 ? (
             <>
               {" "}<strong>{plot.undecidableRows} of those {plot.rows} rows are scored identically
               across classes by the plaintext model itself</strong>, so its own top-1 there comes
-              from argmax tie-breaking and the encrypted outcome is decided by encryption noise —
+              from argmax tie-breaking and the encrypted outcome is decided by encryption noise -
               they carry no signal either way, and the count above moves between runs because of
               them. Over the {plot.decidableRows} rows the model does decide, the encrypted score
               agrees with the plaintext one{" "}
-              {/* A PROPORTION NEEDS ITS DENOMINATOR NAMED. This rendered as a bare `0.98` - the one
-                  number on the page a practitioner would quote, printed as a dimensionless decimal
-                  that reads equally well as a score, a probability or a ratio. `UX5`'s own worked
-                  example is "the encrypted score agrees with the plaintext one 98.3% of the time",
-                  and it was the sentence right beside the figure that did not say it.
-                  One decimal place, not two: `toFixed(2)` on a fraction gave two significant
-                  figures, so 0.9825 and 0.9849 both printed 0.98 over a few hundred rows. */}
+              {/* A PROPORTION NEEDS ITS DENOMINATOR NAMED (UX5), at one decimal place: `toFixed(2)`
+                  on a fraction printed 0.9825 and 0.9849 both as 0.98. */}
               <strong>{plot.agreementOverDecidable != null
                 ? `${(plot.agreementOverDecidable * 100).toFixed(1)}% of the time`
                 : "by an amount that was not computed"}</strong>.
             </>
           ) : (
             <>
-              {" "}<strong>None</strong> of these {plot.rows} rows is a tie in the plaintext model —
-              it separates every one of them — so the figure above is over rows that carry a real
+              {" "}<strong>None</strong> of these {plot.rows} rows is a tie in the plaintext model -
+              it separates every one of them - so the figure above is over rows that carry a real
               decision, and the agreement is not diluted by any coin toss.
             </>
           )
         ) : null}
         {/* SCOPE, stated because the first version of this caption did not state it and was read
-            wrong as a result. One point is plotted per row - the WINNING class only - so `worst`
-            is a maximum over `rows` deviations. The metric row beside this figure
-            (`encrypted_batch_max_abs_error`) is the maximum over `rows * classes`, a strictly
-            larger set. On finance those two read 1.80e-8 and 2.47e-8: both correct, 37% apart,
-            and the caption used to print the smaller one immediately after the phrase
-            "(800 class scores)". A number whose scope is narrower than the sentence around it. */}
-        {" "}Worst deviation among the {plot.rows} plotted winning-class scores:{" "}
-        {worst.toExponential(2)}
+            wrong as a result. One point is plotted per row, so `worst` is a maximum over `rows`
+            deviations; `maxAbsError` is the maximum over `rows * classes`, a strictly larger set.
+            On finance those two once read 1.80e-8 and 2.47e-8: both correct, 37% apart. */}
+        {" "}Worst deviation among the {plot.rows} plotted scores: {exp2(worst)}
         {typeof plot.maxAbsError === "number" ? (
-          <> · across all {plot.rows * plot.classes} class scores, including the losing ones this
-          figure does not plot: {plot.maxAbsError.toExponential(2)}</>
-        ) : null}.
-        {/* What a mismatch MEANS - stated, not adjudicated.
-            Two earlier versions computed a tie/not-tie verdict here, first from the deviation and
-            then from the score range. Both are unfalsifiable: a flip happens exactly when the noise
-            exceeds the margin, so margin <= 2 x deviation always, and dividing by a score range of
-            order 1 leaves it three orders below any threshold worth setting. The verdict restated a
-            theorem while looking like a measurement.
-            The number that actually varies, and that separates this page from telecom's, is the
-            count of rows the plaintext model scores identically - reported above, unconditionally. */}
+          <>; across all {plot.rows * plot.classes} class scores, including the ones this figure
+          does not plot: {exp2(plot.maxAbsError)}</>
+        ) : null}
+        {worstBits != null ? <> (about {worstBits} bits)</> : null}.
+        {plot.medianAbsError != null ? (
+          <> Median over the {plot.noisyScores ?? "encrypted"} class scores that went through CKKS:{" "}
+            {exp2(plot.medianAbsError)}{medianBits != null ? <> (about {medianBits} bits)</> : null}.</>
+        ) : null}
+        {/* THE NO-FLIP SENTENCE ONLY WHEN IT IS TRUE. A flip at a margin below twice the deviation
+            is always possible, so the sentence is stated only when the inequality excludes it, and
+            otherwise the closest row is reported as within reach. Factor 1 where only one class
+            score is encrypted (the bias-only class 0 of finance and medical is exact). */}
+        {plot.smallestMargin != null && typeof plot.maxAbsError === "number" ? (
+          noFlipPossible ? (
+            <> No decided row could have flipped: the smallest plaintext margin, {exp2(plot.smallestMargin)},
+              is above {factor === 2 ? "twice " : ""}the worst deviation.</>
+          ) : (
+            <> The smallest plaintext margin, {exp2(plot.smallestMargin)}, is within{" "}
+              {factor === 2 ? "twice " : ""}the worst deviation, so the closest rows could have flipped.</>
+          )
+        ) : null}
+        {/* What a mismatch MEANS - stated, not adjudicated. Two earlier versions computed a
+            tie/not-tie verdict here; both restated the theorem that a flip happens exactly when the
+            noise exceeds the margin. The count of rows the model scores IDENTICALLY is the number
+            that varies, and it is reported above, unconditionally. */}
         {mismatches > 0 && typeof plot.flipMarginMax === "number" ? (
           <>
             {" "}Widest margin the plaintext model held at those {mismatches} flipped rows:{" "}
             {plot.flipMarginMax === 0
-              ? <><strong>exactly zero</strong> — it does not distinguish those samples at all.</>
-              : <>{plot.flipMarginMax.toExponential(2)}.</>}
+              ? <><strong>exactly zero</strong> - it does not distinguish those samples at all.</>
+              : <>{exp2(plot.flipMarginMax)}.</>}
           </>
         ) : null}
+        {plot.licence ? <> Rows: <LicenceLine licence={plot.licence} /></> : null}
       </figcaption>
       {mismatches > 0 && typeof plot.flipMarginMax === "number" && plot.flipMarginMax > 0 ? (
         <Details summary="What a flipped row's margin means">
@@ -215,53 +372,35 @@ export function EncryptedAgreementChart({ plot }: { plot: EncryptedAgreementPlot
         </Details>
       ) : null}
       <ChartReadout hint={HINT_POINTER}>
+        <MarksHidden>
         <ResponsiveContainer width="100%" height={200}>
-          {/* `title` as a PROP, the way every other chart in this file sets it. Written first as a
-              `<title>` child, which recharts does not forward - so the figure rendered with a null
-              accessible name, which is exactly the regression Round 34 recorded when six charts ended
-              up with empty titles. Verified on the deployed page, not assumed.
-
-              `role="img"`, NOT `accessibilityLayer`. The first version used the latter, twenty lines
-              above the scatter that does not and the comment explaining why: `accessibilityLayer`
-              makes a ScatterChart focusable and gives it `role="application"` WITHOUT making its
-              points keyboard-reachable, because recharts steps an activeIndex along a categorical
-              axis and two numeric axes have none. `KB6` says an application role appears only where
-              the keyboard path passed, so this was an inert application role - a regression, in the
-              same commit that fixed the missing title. Fixing one accessibility defect while
-              introducing another is what happens when you verify the thing you changed instead of
-              re-reading the row that governs the element. */}
-          <ScatterChart role="img" title={name}
-                        margin={{ top: 6, right: 10, bottom: 4, left: -10 }}>
+          {/* `title` as a PROP, the way every other chart in this file sets it: recharts does not
+              forward a `<title>` child, so the figure rendered with a null accessible name. And
+              `role="img"`, NOT `accessibilityLayer`: on a ScatterChart that sets role="application"
+              without a keyboard path, because recharts steps an activeIndex along a categorical
+              axis and two numeric axes have none (`KB6`). The figcaption is the text alternative. */}
+          <ScatterChart role="img" title={name} aria-describedby={captionId}
+                        margin={{ top: 6, right: 10, bottom: 14, left: 4 }}>
             <CartesianGrid stroke={GRID} strokeDasharray="2 4" />
             {/* Formatted, because the raw ticks rendered as `3.7326450091317454` - sixteen digits of a
-                logit, on both axes. */}
+                logit, on both axes. Both axes TITLED (PI9): the y axis is the decrypted one. */}
             <XAxis type="number" dataKey="plain" name="plaintext" domain={[lo, hi]} tick={AXIS}
                    tickFormatter={(v: number) => v.toFixed(2)}
-                   label={{ value: "plaintext score", position: "insideBottom", offset: -2, fill: "#8a94a6", fontSize: 10 }} />
+                   label={{ value: logit ? "plaintext logit" : "plaintext score", position: "insideBottom",
+                            offset: -10, fill: "#8a94a6", fontSize: 10 }} />
             <YAxis type="number" dataKey="enc" name="encrypted" domain={[lo, hi]} tick={AXIS}
-                   tickFormatter={(v: number) => v.toFixed(2)} />
+                   tickFormatter={(v: number) => v.toFixed(2)}
+                   label={yAxisTitle(logit ? "encrypted logit (decrypted)" : "encrypted score (decrypted)", 14)} />
             <ReferenceLine segment={[{ x: lo, y: lo }, { x: hi, y: hi }]} stroke="#8a94a6"
                            strokeDasharray="4 4" ifOverflow="extendDomain" />
             <Tooltip content={<ReadoutTooltip />} formatter={(v: number) => v.toFixed(6)} />
-            {/* SHAPE as well as fill - SC 1.4.1, and the one chart in this file that was missed when
-                the second channel was added to the others. `RealDataScatter` 170 lines below has
-                carried `shape="circle"` / `shape="triangle"` since that sweep; the histogram, the
-                forecast lines and the confusion bars all got a channel too. This one did not, and it
-                is the chart where colour carries the most: red here means the ENCRYPTED path
-                disagreed with plaintext, so a reader who cannot separate red from blue cannot see
-                which points are the disagreements - the single fact the chart exists to show.
-                The shape is named in the series name, so the legend, the tooltip and the figcaption
-                all say it, the way the confusion bars already say "(solid)" and "(hatched)". */}
-            {/* `isAnimationActive={false}` IS LOAD-BEARING, not tidiness, and leaving it off shipped
-                a blank chart to the deployed site. Adding `shape` moves recharts off its default
-                renderer onto `<Symbols>`, whose `size` is an ANIMATED prop; with animation left on,
-                all 30 symbols stayed at their `from` state and rendered `d="M0,0"` - present in the
-                DOM, correctly positioned, and zero-sized. The legend named two shapes above an empty
-                plot area, which is worse than the colour-only version it replaced.
-                `RealDataScatter` 170 lines below has carried `shape` AND `isAnimationActive={false}`
-                together since Round 34. Half of that pattern was copied. Found only by looking at the
-                deployed page - every gate was green, because a gate that reads the source sees the
-                `shape` prop it asked for and cannot see a path of length zero. */}
+            {/* SHAPE as well as fill (SC 1.4.1): red here means the ENCRYPTED path disagreed with
+                plaintext, and a reader who cannot separate red from blue must still see which points
+                are the disagreements. The shape is named in the series name, so the legend, the
+                tooltip and the figcaption all say it.
+                `isAnimationActive={false}` IS LOAD-BEARING: `shape` moves recharts onto `<Symbols>`,
+                whose `size` animates, and with animation on every symbol stayed at `d="M0,0"` -
+                present, positioned, invisible. Found only on the deployed page. */}
             <Scatter name="agrees (circle)" data={plot.points.filter((p) => p.agree)}
                      fill="#4f9dff" shape="circle" isAnimationActive={false} />
             {mismatches > 0 && (
@@ -271,6 +410,122 @@ export function EncryptedAgreementChart({ plot }: { plot: EncryptedAgreementPlot
             {mismatches > 0 && <Legend wrapperStyle={{ fontSize: 10 }} />}
           </ScatterChart>
         </ResponsiveContainer>
+        </MarksHidden>
+      </ChartReadout>
+      {plot.plane ? <DecisionPlane plot={plot} plane={plot.plane} /> : null}
+    </figure>
+  );
+}
+
+/**
+ * Where on the corpus the ENCRYPTED decisions fall, on the overlay's own plane (Round 84).
+ *
+ * The agreement scatter above says whether encryption changed a decision; it cannot say whether the
+ * decision was right, or where the wrong ones sit. This draws the same held-out rows on the two
+ * features the corpus overlay uses, each marked by its outcome against the TRUE class - so the
+ * overlay's "how separable is this corpus" and the model's "where does it fail" can be read against
+ * each other. The counts table below it is the text alternative.
+ *
+ * One series per outcome, each its own shape and colour, so no outcome is told apart by colour alone
+ * (SC 1.4.1). Flips are drawn last, on top.
+ */
+function DecisionPlane({ plot, plane }: { plot: EncryptedAgreementPlot; plane: { x: PlaneAxis; y: PlaneAxis } }) {
+  const captionId = useId(), tableId = useId();
+  const pts = plot.points.filter((p) => typeof p.x === "number" && typeof p.y === "number"
+    && typeof p.label === "number" && typeof p.encCls === "number");
+  if (!pts.length) return null;
+  const names = plot.classNames ?? [];
+  const nameOf = (c: number) => names[c] ?? `class ${c}`;
+  const logY = plane.y.scale === "log";
+  // A row at or below zero has no place on a log axis. Counted and said, not silently clipped.
+  const offAxis = logY ? pts.filter((p) => (p.y as number) <= 0).length : 0;
+  const drawn = logY ? pts.filter((p) => (p.y as number) > 0) : pts;
+  const xy = (p: AgreementPoint) => ({ x: p.x as number, y: p.y as number });
+  const flips = pts.filter((p) => !p.agree);
+  const binary = plot.classes === 2;
+  // Outcome groups. Binary: true class by encrypted decision, four groups. Multiclass: right or wrong.
+  const cell = (t: number, d: number) => drawn.filter((p) => p.label === t && p.encCls === d).map(xy);
+  const right = drawn.filter((p) => p.label === p.encCls).map(xy);
+  const wrong = drawn.filter((p) => p.label !== p.encCls).map(xy);
+  const count = (f: (p: AgreementPoint) => boolean) => pts.filter(f).length;
+  return (
+    <figure className="chart-figure" style={{ marginTop: 10 }}>
+      <figcaption id={captionId} className="muted small">
+        <strong>Where the encrypted decisions fall.</strong> The same {pts.length} rows on{" "}
+        {plane.x.label} against {plane.y.label}, the plane of this use case&apos;s corpus overlay, each
+        marked by the ENCRYPTED decision against its true class.{plot.heldOut
+          ? " A correct decision on a row the model never saw is evidence about the model." : ""} A
+        cross is a row where encryption changed the decision ({flips.length} here).{offAxis > 0 ? <> {offAxis} rows with a {plane.y.label} of 0 cannot
+          sit on the log axis; they are in the counts below but not drawn.</> : null}
+        {!binary && plot.accuracy?.encrypted != null ? (
+          <> Encrypted top-1 matches the true class on {(plot.accuracy.encrypted * 100).toFixed(1)}% of
+            the rows{plot.accuracy.plaintext != null
+              ? <>, plaintext on {(plot.accuracy.plaintext * 100).toFixed(1)}%</> : null}.</>
+        ) : null}
+      </figcaption>
+      <table id={tableId} className="facts-table small" style={{ marginBottom: 6 }}>
+        {binary ? (
+          <tbody>
+            <tr><th scope="col">true class</th><th scope="col">called {nameOf(0)}</th>
+                <th scope="col">called {nameOf(1)}</th></tr>
+            {[0, 1].map((t) => (
+              <tr key={t}><th scope="row">{nameOf(t)}</th>
+                <td>{count((p) => p.label === t && p.encCls === 0)}</td>
+                <td>{count((p) => p.label === t && p.encCls === 1)}</td></tr>
+            ))}
+          </tbody>
+        ) : (
+          <tbody><tr>
+            <td>class right</td><td>{count((p) => p.label === p.encCls)}</td>
+            <td>class wrong</td><td>{count((p) => p.label !== p.encCls)}</td>
+            <td>encryption changed the class</td><td>{flips.length}</td>
+          </tr></tbody>
+        )}
+      </table>
+      <ChartReadout hint={HINT_POINTER}>
+        <MarksHidden>
+        <ResponsiveContainer width="100%" height={230}>
+          <ScatterChart role="img" title={`Encrypted decisions on ${plane.y.label} against ${plane.x.label}`}
+            aria-describedby={`${captionId} ${tableId}`} margin={{ top: 6, right: 10, bottom: 30, left: -14 }}>
+            <CartesianGrid stroke={GRID} strokeDasharray="2 4" />
+            <XAxis type="number" dataKey="x" name={plane.x.label} tick={AXIS}
+                   label={{ value: plane.x.label, position: "insideBottom", offset: -20,
+                            fill: "#8a94a6", fontSize: 10 }} />
+            <YAxis type="number" dataKey="y" name={plane.y.label} tick={AXIS}
+                   tickFormatter={logY ? compactTick : undefined}
+                   scale={logY ? "log" : "auto"} domain={logY ? [0.9, "auto"] : undefined}
+                   allowDataOverflow={logY}
+                   label={yAxisTitle(plane.y.label + (logY ? " (log)" : ""), 24)} />
+            <Tooltip content={<ReadoutTooltip />} formatter={(v: number) => v.toLocaleString()} />
+            <Legend verticalAlign="top" align="right" height={30} wrapperStyle={{ fontSize: 10 }} />
+            {/* Literal fills, one per outcome: the contrast gate resolves a colour only from a
+                literal or a top-level constant, and an unresolvable mark fails it. */}
+            {binary ? (
+              <>
+                <Scatter name={`${nameOf(0)}, called ${nameOf(0)} (circle)`} data={cell(0, 0)}
+                         fill="#8296b5" shape="circle" isAnimationActive={false} />
+                <Scatter name={`${nameOf(0)}, called ${nameOf(1)} (diamond)`} data={cell(0, 1)}
+                         fill="#f5a623" shape="diamond" isAnimationActive={false} />
+                <Scatter name={`${nameOf(1)}, called ${nameOf(1)} (triangle)`} data={cell(1, 1)}
+                         fill="#e07a3c" shape="triangle" isAnimationActive={false} />
+                <Scatter name={`${nameOf(1)}, called ${nameOf(0)} (square)`} data={cell(1, 0)}
+                         fill="#b072ff" shape="square" isAnimationActive={false} />
+              </>
+            ) : (
+              <>
+                <Scatter name="class right (circle)" data={right}
+                         fill="#8296b5" shape="circle" isAnimationActive={false} />
+                <Scatter name="class wrong (triangle)" data={wrong}
+                         fill="#e07a3c" shape="triangle" isAnimationActive={false} />
+              </>
+            )}
+            {flips.length > 0 && (
+              <Scatter name="encryption changed the decision (cross)" data={flips.filter((p) => !logY || (p.y as number) > 0).map(xy)}
+                       fill="#ff6b6b" shape="cross" isAnimationActive={false} />
+            )}
+          </ScatterChart>
+        </ResponsiveContainer>
+        </MarksHidden>
       </ChartReadout>
     </figure>
   );
@@ -280,18 +535,21 @@ export function EncryptedAgreementChart({ plot }: { plot: EncryptedAgreementPlot
 //
 // A score on its own cannot distinguish a good model on easy data from a mediocre model on hard
 // data - the reader has no way to see how separable the classes were to begin with. This draws the
-// actual corpus so that question is answerable by looking.
+// actual corpus so that question is answerable by looking. It draws TRUE classes only: no model's
+// decision is on it, and the caption no longer says otherwise (it called itself "a genuine
+// train-versus-inference comparison" while drawing no inference). Where a page encrypts these rows,
+// the private-inference card draws the encrypted decisions on this same plane.
 //
-// Two honesty constraints are built in rather than left to the caption writer:
+// What the payload states, rather than the caption guessing:
 //
-//   1. `is_training_corpus` is carried in the data file and rendered differently. For satellite it
-//      is TRUE - OPS-SAT-AD is genuinely what the shipped model trains on, so this is a real
-//      train-versus-inference comparison. For medical it is FALSE and the panel says so loudly:
-//      BreastMNIST cannot be redistributed (its CC BY attaches to the source article, not the
-//      data), so WDBC stands in, and WDBC is a different cohort AND a different modality.
-//   2. Substitute corpora are never drawn on the model's own axes. There is no shared feature
-//      space between 28x28 ultrasound and cell-nucleus morphometry, so overlaying them would
-//      assert a correspondence that does not exist.
+//   1. `is_training_corpus`: whether this is the corpus the Models card's published models train on
+//      (finance, satellite, telecom) or a substitute (medical's WDBC beside BreastMNIST models,
+//      genomics' gnomAD frequencies). `models` names which models, so "this model" is never vague.
+//   2. `split_note`: which rows these are relative to those models' fits - held out, or the whole
+//      corpus. Telecom's overlay was all 3,200 generated rows, 70 percent of them a QCNN's training
+//      rows, under a caption reading "held-out split".
+//   3. `licence`, `licence_url`, `modifications`: CC BY 4.0 s.3(a)(1) and CDLA-Sharing s.3.1(b) and
+//      s.3.3 ask for the licence's link and a note of the changes, not only its name (RD23).
 //
 // Regenerated by scripts/prep_real_data_2d.py; licence and attribution travel inside the payload
 // so they cannot drift away from the points they describe.
@@ -306,11 +564,21 @@ type Real2D = {
   corpus_is_synthetic?: boolean;
   provenance: string;
   licence: string;
+  /** Link to the licence text; null where nothing is licensed (the generated telecom corpus). */
+  licence_url?: string | null;
   attribution: string;
-  x: { key: string; label: string; scale?: "log" };
-  y: { key: string; label: string; scale?: "log" };
+  /** What was changed from the source, as CC BY 4.0 and CDLA-Sharing ask to be noted. */
+  modifications?: string;
+  /** Registry keys of the published models this corpus belongs to; empty for a substitute. */
+  models?: string[];
+  /** Which rows these are relative to those models' fits. */
+  split_note?: string;
+  x: PlaneAxis;
+  y: PlaneAxis;
   class_names: [string, string];
   separability_auc_pr?: number;
+  /** The estimator behind `separability_auc_pr`, named per payload. */
+  separability_method?: string;
   base_rate: number;
   note: string;
   points: Array<[number, number, number]>;
@@ -344,6 +612,7 @@ const REAL_2D_PATH: Record<string, string> = {
  */
 export function RealDataScatter({ usecase, card = false }: { usecase: string; card?: boolean }) {
   const [data, setData] = useState<Real2D | null>(null);
+  const captionId = useId();
   useEffect(() => {
     const rel = REAL_2D_PATH[usecase];
     if (!rel) { setData(null); return; }
@@ -366,6 +635,13 @@ export function RealDataScatter({ usecase, card = false }: { usecase: string; ca
   if (!data?.points?.length) return null;
   const neg = data.points.filter((p) => p[2] === 0).map((p) => ({ x: p[0], y: p[1] }));
   const pos = data.points.filter((p) => p[2] === 1).map((p) => ({ x: p[0], y: p[1] }));
+  const logY = data.y.scale === "log";
+  // A zero has no place on a log axis; finance has 26. Said, not silently clipped.
+  const offAxis = logY ? data.points.filter((p) => p[1] <= 0).length : 0;
+  const kind = data.corpus_is_synthetic ? "simulated" : "real";
+  const models = data.models?.length
+    ? <>{data.models.map((m, i) => <span key={m}>{i ? ", " : ""}<code>{m}</code></span>)}</>
+    : null;
 
   // Built as a value and wrapped at the end, NOT with a wrapper component declared here: a component
   // defined during render has a new identity on every render, so React would unmount and remount the
@@ -373,16 +649,15 @@ export function RealDataScatter({ usecase, card = false }: { usecase: string; ca
   // the thing it frames.
   const figure = (
     <figure className="chart-figure">
-      <figcaption className="muted small">
+      <figcaption id={captionId} className="muted small">
         {data.is_training_corpus ? (
           <>
-            {/* No "held-out split" here: finance's 8,192 rows are its test window, but telecom's
-                3,200 are the whole generated corpus, training rows included. */}
-            <strong>From the corpus this model actually trains on</strong>:{" "}
-            {data.points.length} {data.corpus_is_synthetic ? "simulated" : "real"} points. This is a
-            genuine train-versus-inference comparison rather than a lookalike{data.corpus_is_synthetic
-              ? " - though the rows are simulator output, so nothing here is a claim about a live system"
-              : ""}.
+            <strong>The corpus {models ?? "this page's published models"}{" "}
+            {data.models && data.models.length > 1 ? "train" : "trains"} on</strong>:{" "}
+            {data.points.length} {kind} points, coloured by TRUE class - no model&apos;s decision is
+            drawn here{data.corpus_is_synthetic
+              ? ", and the rows are simulator output, so nothing here is a claim about a live system"
+              : ""}. {data.provenance}
           </>
         ) : (
           <>
@@ -390,55 +665,45 @@ export function RealDataScatter({ usecase, card = false }: { usecase: string; ca
                 payload. Medical's substitute is a different MODALITY (morphometry vs ultrasound);
                 genomics' is the same modality from a different COHORT. Hardcoding one phrase here
                 made the genomics caption claim a modality difference that does not exist. */}
-            <strong>NOT this model's training corpus</strong>, {data.points.length}{" "}
-            {data.corpus_is_synthetic ? "simulated" : "real"} points - shown beside the
-            model's scores, deliberately not on the same axes. {data.provenance}
+            <strong>NOT the published models&apos; training corpus</strong>: {data.points.length}{" "}
+            {kind} points, coloured by TRUE class. {data.provenance}
           </>
         )}{" "}
-        {/* THE NUMBERS, NOT A VERDICT ON THEM - and this is the third time this component has had to
-            learn that; the first two are in the comments above.
-            It used to append "so the model's decisions are being drawn on data that is genuinely
-            separable - chosen by scoring every feature pair, not by eye." Both halves fail on at
-            least one payload that renders it:
-            - "genuinely separable" is contradicted four lines below by `note`, which the SAME
-              figcaption prints. Finance's note says 0.2302 against a 0.02002 base rate "is a 11.5x
-              lift and still a LOW number... two features do not solve AML"; telecom's says the lift
-              is only 1.13x.
-            - "not by eye" is false for finance and the generator says so in its own words. The
-              AUC-PR winner is `format_risk x src_bank_diversity` at 0.3195 and was REJECTED as
-              unreadable - "A tree does not care how values are spaced; an eye does" - so the
-              shipped pair was chosen on readability among the separable ones. That is a defensible
-              choice, honestly recorded, and the opposite of what the caption claimed.
-            Written for satellite when it was the only payload carrying the field, then inherited by
-            finance and telecom. `note` already carries the interpretation for all three, which is
-            the remedy this component used twice before: keep the derived numbers here, let the
-            payload speak for itself. */}
+        {data.split_note ? <>{data.split_note}{" "}</> : null}
+        {/* THE NUMBERS, NOT A VERDICT ON THEM. This used to append "so the model's decisions are
+            being drawn on data that is genuinely separable - chosen by scoring every feature pair,
+            not by eye", and both halves failed on a payload that rendered it: finance's own note calls
+            its figure a LOW number, and finance's pair was chosen for readability among the
+            separable ones. The estimator is named per payload, because telecom's figure once came
+            from a different one under the same sentence. */}
         {data.separability_auc_pr != null && (
-          <>The two classes separate in this projection at AUC-PR {data.separability_auc_pr.toFixed(4)} against a
+          <>The two classes separate in this projection at AUC-PR {data.separability_auc_pr.toFixed(4)}
+          {data.separability_method ? <> ({data.separability_method})</> : null} against a
           base rate of {data.base_rate.toFixed(4)} - a {(data.separability_auc_pr / data.base_rate).toFixed(2)}x
           lift. Read the note below for what that means on this corpus. </>
         )}
+        {offAxis > 0 ? <>{offAxis} points with a {data.y.label} of 0 cannot sit on the log axis and
+          are not drawn. </> : null}
         {/* `note` carries the finding - what the chart actually shows, computed by the generator
             from the same points. It was written and then not rendered, which is the quietest way to
             lose the most useful sentence in the payload. */}
         {data.note && <><br /><strong>What it shows:</strong> {data.note}<br /></>}
-        <em>{data.licence}</em> - {data.attribution}
+        <LicenceLine licence={{ name: data.licence, url: data.licence_url ?? null,
+                                attribution: data.attribution, modifications: data.modifications ?? "" }} />
       </figcaption>
       {/* Axis labels sit INSIDE the plot margin and the legend is given its own reserved height -
           at the default the x-axis title and the legend row landed on the same pixels. */}
       <ChartReadout hint={HINT_POINTER}>
+        <MarksHidden>
         <ResponsiveContainer width="100%" height={230}>
-          {/* `accessibilityLayer` makes this focusable and DOES NOT make its points keyboard
-              reachable. Measured on the deployed page, not inferred: focus the surface and press
-              ArrowRight - the line and bar charts below open their tooltip with real values, this one
-              does nothing. Recharts walks an activeIndex along a categorical axis, and a scatter with
-              two numeric axes has no such index to step through, so there is nothing for the arrow
-              keys to move between. Kept because focusability is still the prerequisite for any fix,
-              and because removing it would hide the gap rather than close it. The text alternative
-              for this chart is the figcaption above, which states what it shows, its licence and its
-              attribution; that is what a screen-reader user gets today. */}
+          {/* `role="img"` with a title, NOT `accessibilityLayer`: on a scatter the layer makes the
+              surface focusable without making its points keyboard reachable, because recharts walks
+              an activeIndex along a categorical axis and two numeric axes have none (measured on the
+              deployed page). The figcaption above, tied by `aria-describedby`, is the text
+              alternative: what is drawn, how many, its licence, link and changes. */}
           <ScatterChart role="img"
             title={`Scatter plot: ${data.y.label} against ${data.x.label}`}
+            aria-describedby={captionId}
             margin={{ top: 6, right: 10, bottom: 30, left: -14 }}>
             <CartesianGrid stroke={GRID} strokeDasharray="2 4" />
             <XAxis type="number" dataKey="x" name={data.x.label} tick={AXIS}
@@ -450,11 +715,11 @@ export function RealDataScatter({ usecase, card = false }: { usecase: string; ca
                 the DATA, so the generator that measured it is the thing that should decide. */}
             {/* Compact log ticks (Round 80): "10000" ran under the rotated axis title. */}
             <YAxis type="number" dataKey="y" name={data.y.label} tick={AXIS}
-                   tickFormatter={data.y.scale === "log" ? compactTick : undefined}
-                   scale={data.y.scale === "log" ? "log" : "auto"}
-                   domain={data.y.scale === "log" ? [0.9, "auto"] : undefined}
-                   allowDataOverflow={data.y.scale === "log"}
-                   label={yAxisTitle(data.y.label + (data.y.scale === "log" ? " (log)" : ""), 24)} />
+                   tickFormatter={logY ? compactTick : undefined}
+                   scale={logY ? "log" : "auto"}
+                   domain={logY ? [0.9, "auto"] : undefined}
+                   allowDataOverflow={logY}
+                   label={yAxisTitle(data.y.label + (logY ? " (log)" : ""), 24)} />
             <Tooltip content={<ReadoutTooltip />} cursor={{ strokeDasharray: "3 3" }}
                      formatter={(v: number) => v.toLocaleString()} />
             <Legend verticalAlign="top" align="right" height={18} wrapperStyle={{ fontSize: 10 }} />
@@ -464,6 +729,7 @@ export function RealDataScatter({ usecase, card = false }: { usecase: string; ca
                      shape="triangle" isAnimationActive={false} />
           </ScatterChart>
         </ResponsiveContainer>
+        </MarksHidden>
       </ChartReadout>
     </figure>
   );
@@ -556,12 +822,13 @@ function ReliabilityChart(
     from?: "probabilities" | "logits"; modelKey: string;
   },
 ) {
+  const captionId = useId();          // before the early return: a hook must run on every render
   if (data.length < 2) return null;   // one bin is a point, and a point has no calibration to show
   const worst = data.reduce((a, b) =>
     Math.abs(b.observed - b.p) > Math.abs(a.observed - a.p) ? b : a);
   return (
     <figure className="chart-figure">
-      <figcaption className="muted small">
+      <figcaption id={captionId} className="muted small">
         Calibration of <code>{modelKey}</code>: mean {of} against the frequency actually observed in
         the same bin, over {res_n(data)} rows. The grey diagonal is perfect calibration. Widest
         deviation {Math.abs(worst.observed - worst.p).toFixed(3)} at predicted {worst.p.toFixed(3)}{" "}
@@ -576,6 +843,7 @@ function ReliabilityChart(
           softmax.</>}
       </figcaption>
       <ChartReadout hint={HINT_POINTER}>
+        <MarksHidden>
         <ResponsiveContainer width="100%" height={180}>
           {/* `role="img"` and NOT `accessibilityLayer`, which is what the other scatters here do and
               what `tests/test_chart_accessibility.py` enforces: on a ScatterChart the accessibility
@@ -583,7 +851,7 @@ function ReliabilityChart(
               walks an activeIndex along a categorical axis and this chart has none. That takes a
               screen-reader user out of browse mode and hands them a widget that ignores every key.
               The figcaption above is the text alternative, and it carries the numbers. */}
-          <ScatterChart role="img" title={`Calibration of ${modelKey}`}
+          <ScatterChart role="img" title={`Calibration of ${modelKey}`} aria-describedby={captionId}
             margin={{ top: 4, right: 8, bottom: 4, left: -18 }}>
             <CartesianGrid stroke={GRID} strokeDasharray="2 4" />
             <XAxis type="number" dataKey="p" domain={[0, 1]} tick={AXIS} name="predicted"
@@ -595,6 +863,7 @@ function ReliabilityChart(
             <Scatter data={data} fill="#4f9dff" isAnimationActive={false} name="bin" />
           </ScatterChart>
         </ResponsiveContainer>
+        </MarksHidden>
       </ChartReadout>
     </figure>
   );

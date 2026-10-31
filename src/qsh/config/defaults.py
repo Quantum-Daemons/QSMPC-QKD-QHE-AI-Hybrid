@@ -621,9 +621,11 @@ class BenchmarkConfig:
     mpc_threshold: int = 1                  # corrupted parties tolerated
     mpc_sec_param: int = 40                 # statistical security, as the browser's Polytune tier uses
     # The masks of the hybrid's FHE <-> MPC conversions (qsh/mpc/secret_inference.py), uniform on
-    # [-2^b, 2^b). A value of size B behind one is hidden to statistical distance B / 2^b, which each
-    # run reports. 30 is the most 64-bit fixed point holds (integer part 2^31) and costs no precision
-    # measured through a CKKS round trip: 5e-7 at 2^30 against 8e-6 at 2^36 and 2e-4 at 2^40.
+    # [-2^b, 2^b), in EVERY slot the client decodes since Round 84. A value of size B behind one is
+    # hidden to statistical distance B / 2^b, which each run reports. 30 is the most 64-bit fixed
+    # point holds (integer part 2^31), and it is also the cheapest in precision: measured through the
+    # conversion with every slot masked (400 draws, worst case), 8.8e-7 at 2^30 against 3.8e-5 at
+    # 2^36 and 6.3e-4 at 2^40. (Round 75's scalar mask, slot 0 only: 5e-7, 8e-6 and 2e-4.)
     mpc_mask_bits: int = 30
     # per-use-case architectures (web-grounded). lightweight === the trained linear model (faithful SHAP);
     # medium/large are representative hidden-layer shapes. The encrypted hybrid preserves the plaintext
@@ -829,6 +831,12 @@ class WebConfig:
     # pulse SENT since Round 78 - Micius sends signals on half its pulses - that is 1.678e-5: 335
     # secure bits at 20e6, and 167 at 10e6, which would not clear the 256, so 20e6 stays.
     demo_sat_pulses: int = 20_000_000   # the satellite run's sampled pulses at its range (Round 79: not the key's block)
+    # The share of a run's secure key bits the control-plane panel allocates to the MCP agent's SAE,
+    # to show the budget drawing down: an ILLUSTRATIVE demand, not a measured one, and browser-only
+    # (the Python SdnController allocates nothing). Config since Round 84, after a bare `* 0.25` in
+    # the panel; `SAE_DEMO_ALLOCATION_FRACTION` in web/src/lib/clientSdnController.ts is its default
+    # for a served config that predates the key, and the panel prints the value it used.
+    sdn_sae_allocation_fraction: float = 0.25
 
 
 @dataclass

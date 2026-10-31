@@ -13,39 +13,55 @@ parties in separate processes over loopback TCP (:mod:`qsh.mpc.parties`): thresh
 statistical security 40, and the bytes on the wire MEASURED. A real deployment runs one party per
 host, so these timings are loopback figures.
 
-THE CONVERSIONS ARE MASKED IN SLOT 0 ONLY, AND THE CONVERSION IS NOT MODEL-PRIVATE. The roles: a
-CLIENT, who holds the CKKS key and the input; a SERVER, who holds the model; a HELPER, the third
-Shamir party.
-- FHE to MPC: the server evaluates ``W h + b`` on the client's ciphertext and adds a fresh mask ``r``
-  INSIDE the ciphertext, and the decrypt call returns slot 0, ``z + r``. The MPC runs on the sum of
-  the client's ``z + r`` and the server's ``-r``. WHAT THAT DOES NOT HIDE, confirmed locally on the
-  TenSEAL backend: ``_fhe_linear`` adds ``b + r`` as a SCALAR, which TenSEAL adds to EVERY slot, and
-  ``ct.dot`` leaves running partial sums of the products ``x_i * w_i`` in the other slots. The
-  client holds the secret key, so it can decode the whole plaintext: differences between slots
-  cancel ``r`` and give ``z`` and each product ``x_i * w_i``, and since the client knows ``x`` it
-  recovers the server's weight row from ONE query. So the statement "the client decrypts ``z + r``
-  and never ``z``" holds for slot 0 only. The fix (independent uniform masks in every slot, or a
-  one-hot selector before masking, plus noise flooding, and a test that decodes all slots) is not
-  made here; ``tests/test_mpc.py`` checks slot 0 only. The convolution path adds its mask the same
-  way and has not been checked slot by slot.
+THE CONVERSIONS ARE MASKED IN EVERY SLOT (Round 84). The roles: a CLIENT, who holds the CKKS key
+and the input; a SERVER, who holds the model; a HELPER, the third Shamir party.
+- FHE to MPC: the server evaluates ``W h`` on the client's ciphertext, and before the client
+  decrypts it, masks EVERY slot (:func:`qsh.fhe.masking.masked_decrypt`): slot 0's real part gets
+  the bias and a fresh mask ``r``, every other real part and every imaginary part an independent
+  mask of the same width that the server keeps. The client's share is slot 0, ``z + r``; the MPC
+  runs on it and the server's ``-r``.
 - MPC to FHE: the MPC adds a second server mask ``s`` to its result and opens ``a + s`` to the client
   alone. The client encrypts that, and the server adds ``-s`` inside the ciphertext before the next
-  layer, so neither party holds ``a`` in the clear; the next linear layer's ciphertext then carries
-  the same slot leak as above.
-- The decision: the MPC opens the class index to the client, and nothing else; the CKKS slots
-  around it are the gap described above.
+  layer, so neither party holds ``a`` in the clear.
+- The decision: the MPC opens the class index to the client, and nothing else.
 Linear steps between non-linear ones (average pooling, flattening) run on each party's share
 locally, which an additive sharing allows. This is the shape of Gazelle's and Delphi's conversions;
 they mask exactly over a ring, and this one masks over the reals because CKKS is approximate.
 
-What real masks give, IN SLOT 0: ``r`` is uniform on ``[-2^b, 2^b)`` from the OS CSPRNG,
-``b = mpc_mask_bits``. Seen through it, two candidate values within ``B`` of zero are ``B / 2^b``
-apart in statistical distance, per value, and the slot-0 view of a run at most ``n`` times that for
-``n`` masked values. Each run reports ``n``, its largest ``|value|`` and that bound; the bound says
-nothing about the other CKKS slots, which leak as described above. Statistical, not perfect, and
-smaller than the MPC's own 2^-40 for the shipped b = 30: the mask must fit 64-bit fixed point (its
-integer part holds 2^31), and larger masks cost precision (measured: 5e-7 at 2^30, 8e-6 at 2^36,
-2e-4 at 2^40 through a CKKS round trip on TenSEAL).
+WHY EVERY SLOT. Until Round 84 the bias and ``r`` went in as one SCALAR, which CKKS adds to every
+slot, and ``ct.dot`` leaves running partial sums of the products ``x_i * w_i`` in the other slots
+(on TenSEAL; OpenFHE's sum leaves ``z`` in every slot). The client holds the secret key and can
+decode all of them: slot ``k`` minus slot ``k + 1`` cancelled ``r`` and was ``x_k * w_k`` exactly,
+so the client recovered the server's weight row from ONE query (confirmed locally on TenSEAL).
+``tests/test_r84_c1_slot_masking.py`` decodes every slot with the client's key and checks that no
+linear combination of them predicts a product any more, on the dense and the convolution paths.
+
+NOISE FLOODING. The masks on the other slots double as the flood. Besides the partial sums the
+slots carry the CKKS error, which depends on the computation, and the imaginary parts carry nothing
+else; a uniform mask of half-width ``2^b`` hides an error ``e`` up to ``|e| / 2^b``. Each run measures
+the largest error the imaginary parts show (``ckks_error_max``, about 1.4e-6 at ``b = 30``, most of
+it the decoder's rounding at the masks' magnitude) and reports the flood's margin over it
+(``flood_margin_bits``, 49 measured), against the MPC's own 2^-40. The mask vector goes in
+ENCRYPTED under the client's public key, which also re-randomises the ciphertext: a plaintext
+addition changes only the first component, so the second would reach the client exactly as the
+server's arithmetic on the weights left it. On OpenFHE the context is REAL-typed and its decoder
+reads the imaginary parts as the error, so they cannot be flooded there; such runs say so in
+``masked_slots`` and report no margin. The ring components outside OpenFHE's 128-slot batch are
+not masked either. The guarantee below is TenSEAL's, the configured backend.
+
+What real masks give: ``r`` is uniform on ``[-2^b, 2^b)`` from the OS CSPRNG, ``b =
+mpc_mask_bits``. Seen through it, two candidate values within ``B`` of zero are ``B / 2^b`` apart in
+statistical distance, per value. Each run reports two bounds of that form. ``mask_statistical_distance``
+covers the ``n`` values that enter the MPC from slot 0 and leave it masked, at most ``n * B / 2^b``.
+``view_statistical_distance`` covers the client's whole view: every real and imaginary part of all
+4096 slots of each ciphertext it decrypts plus each value the MPC opens, each coordinate's content
+over ``2^b``, measured by the harness, which knows the masks. It is larger, because on TenSEAL the
+partial sums of ``n`` products occupy ``2n - 1`` slots (measured for n = 8, 9, 18, 32). Statistical, not
+perfect, and weaker than the MPC's own 2^-40 for the shipped b = 30: the mask must fit 64-bit
+fixed point (its integer part holds 2^31), and larger masks cost precision. Measured with every
+slot masked, through the conversion on TenSEAL (400 draws each, worst case): 8.8e-7 at 2^30, 3.8e-5
+at 2^36, 6.3e-4 at 2^40 (Round 75's scalar mask gave 5e-7, 8e-6 and 2e-4). Masking every slot costs
+3.2 ms per output on top of the 3.6 ms dot product, against 0.4 ms for the scalar.
 
 UNTIL ROUND 75 the conversions were decrypt-then-share and open-to-everyone: the client decrypted
 each linear output in the clear, party 0 secret-shared it, and every party received each ReLU
@@ -58,7 +74,6 @@ Before that the MPC itself was ONE in-process party (m = 1, t = 0), where a shar
 from __future__ import annotations
 
 import logging
-import os
 import time
 
 import numpy as np
@@ -96,9 +111,8 @@ def _mask_bits(bits: int) -> int:
 
 def _masks(shape, bits: int) -> np.ndarray:
     """Masks uniform on [-2^bits, 2^bits), from the OS CSPRNG: the client must not predict them."""
-    n = int(np.prod(shape))
-    u = (np.frombuffer(os.urandom(8 * n), dtype=np.uint64) >> np.uint64(11)).astype(np.float64) / 2.0 ** 53
-    return ((2.0 * u - 1.0) * 2.0 ** bits).reshape(shape)
+    from ..fhe.masking import uniform_masks
+    return uniform_masks(shape, bits)
 
 
 def _secure(op: str, *, stats: list | None = None, bits: int = 64, **job):
@@ -159,24 +173,27 @@ def secure_maxpool(planes, pool, *, server_share=None, out_mask=None, bits: int 
     return pooled, len(windows) * max(size * size - 1, 0)
 
 
-def _fhe_linear(backend, x, W, b, *, server_share=None, mask=None):
+def _fhe_linear(backend, x, W, b, *, server_share=None, mask=None, view=None, mask_bits: int | None = None):
     """One linear layer ``W·x + b`` under CKKS on ``backend``.
 
     Unmasked (``mask=None``): encrypt, dot, decrypt, then add the bias - the plaintext fallback.
     Masked: the key holder encrypts its share ``x``, the server adds ``server_share`` and then, per
-    output, the bias and its mask inside the ciphertext, so slot 0 decrypts to
-    ``W @ (x + share) + b + mask``. The bias and mask go in as one SCALAR, which the backend adds
-    to every slot, so the other slots still let the key holder recover the unmasked value and the
-    weights (module docstring). Slot 0 is the only slot this masks.
+    output, masks EVERY slot of the dot product's ciphertext before the key holder decrypts it
+    (:func:`qsh.fhe.masking.masked_decrypt`): slot 0's real part gets the bias and ``mask``, so it
+    decrypts to ``W @ (x + share) + b + mask``, and every other real and imaginary part an
+    independent mask the server keeps. ``view`` accumulates what those decodes hold, for the bound.
     """
     ct = backend.encrypt(np.asarray(x, dtype=float))
     if mask is None:
         if server_share is not None:
             raise ValueError("a server share without a mask would decrypt the unmasked value")
         return [backend.decrypt(backend.dot_plain(ct, W[j]))[0] + float(b[j]) for j in range(W.shape[0])]
+    from ..fhe.masking import masked_decrypt
+
+    bits = _mask_bits(64) if mask_bits is None else int(mask_bits)
     if server_share is not None:
         ct = backend.add_plain(ct, np.asarray(server_share, dtype=float))
-    return [backend.decrypt(backend.add_plain(backend.dot_plain(ct, W[j]), float(b[j]) + float(mask[j])))[0]
+    return [masked_decrypt(backend, backend.dot_plain(ct, W[j]), float(b[j]) + float(mask[j]), bits, view)
             for j in range(W.shape[0])]
 
 
@@ -197,11 +214,10 @@ def hybrid_private_inference(layers, x, backend, *, use_mpc: bool = True) -> dic
     With ``use_mpc=False`` the non-linear ops run in plaintext after an unmasked decryption: the
     fallback, with no privacy from the key holder.
 
-    The harness plays all three roles in one process, so it can also reconstruct the logits and the
-    largest masked value, reported to check fidelity and the masks' bound. The MPC opens only the
-    class index to the client, but the client can see more than that: each masked linear output
-    is masked in CKKS slot 0 only, and decoding the other slots with its key gives it the unmasked
-    outputs and the weights (module docstring).
+    The harness plays all three roles in one process, so it can also reconstruct the logits, the
+    largest masked value and the content of every slot the client decodes, reported to check
+    fidelity and the masks' bounds (module docstring). The MPC opens only the class index to the
+    client, and every slot of every ciphertext the client decrypts is masked.
     """
     from .layers import ConvSpec, normalize_layers, plaintext_forward
 
@@ -235,20 +251,31 @@ def hybrid_private_inference(layers, x, backend, *, use_mpc: bool = True) -> dic
         "mpc_sec_param": k if use_mpc else 0,
         "mpc_comparisons": run["n_compare"],
         "mpc_engine": f"mpyc-shamir, {m} parties (t={t}), loopback TCP" if use_mpc else "plaintext-fallback",
-        # What the MPC OPENS to the client. Not everything the client can learn: the CKKS slots
-        # beyond slot 0 are unmasked (module docstring). The string is kept as-is until that is
-        # fixed, because tests and the benchmark row read it.
+        # What the client learns: the class index, which the MPC opens, and up to the statistical
+        # distance below nothing else, now that every slot it can decode is masked (Round 84).
         "client_learns": "the class index" if use_mpc else "every intermediate value",
         "n_layers": len(specs),
         "arch_class": arch_class,
     }
     if use_mpc:
-        b, n, top = run["mask_bits"], run["masked_values"], run["max_abs_masked"]
+        b, n, top, view = run["mask_bits"], run["masked_values"], run["max_abs_masked"], run["view"]
         out.update({
             "mask_bits": b, "masked_values": n, "max_abs_masked_value": round(top, 6),
-            # per value B / 2^b; the slot-0 view of the run at most n times that. Not a bound on
-            # the other CKKS slots, which are unmasked (module docstring).
+            # per value B / 2^b; the run at most n times that, over the n values that enter the MPC
+            # from slot 0 and come back out of it - the shares themselves.
             "mask_statistical_distance": float(n * top / 2.0 ** b),
+            # THE CLIENT'S WHOLE VIEW (Round 84): every real and imaginary part of every slot of
+            # every ciphertext it decrypts, plus what the MPC opens to it, each one's content over
+            # 2^b. Larger than the line above because the other slots hold partial sums.
+            "masked_slots": ("every slot, real and imaginary parts" if view.imaginary_flooded
+                             else "every slot, real parts only (imaginary parts not flooded on this backend)"),
+            "view_values": view.values,
+            "view_statistical_distance": float(view.l1 / 2.0 ** b),
+            # The flood's target: the largest CKKS error the imaginary parts showed, and how far
+            # below the masks' 2^b it sits, in bits (module docstring, "noise flooding").
+            "ckks_error_max": view.err_max if view.imaginary_flooded else None,
+            "flood_margin_bits": (round(b - float(np.log2(view.err_max)), 1)
+                                  if view.imaginary_flooded and view.err_max > 0 else None),
         })
     return out
 
@@ -297,6 +324,7 @@ def _plain_forward(specs, x, backend, arch_class: str) -> dict:
 def _masked_forward(specs, x, backend, arch_class: str, *, bits: int = 64) -> dict:
     """The protocol of the module docstring. ``hc`` is the client's share, ``hs`` the server's."""
     from ..fhe.conv import avgpool2d, fhe_conv2d, out_hw
+    from ..fhe.masking import ClientView
     from .layers import ConvSpec, DenseSpec, FlattenSpec, PoolSpec
 
     mb = _mask_bits(bits)
@@ -308,12 +336,16 @@ def _masked_forward(specs, x, backend, arch_class: str, *, bits: int = 64) -> di
     n_compare = masked = 0
     top = 0.0                                       # the simulator's largest |masked value|
     runs: list = []
+    view = ClientView()                             # every coordinate the client decodes or is opened
 
-    def track(value) -> None:
+    def track(value, *, opened: bool = False) -> None:
         nonlocal masked, top
         v = np.asarray(value, dtype=float)
         masked += int(v.size)
         top = max(top, float(np.max(np.abs(v))) if v.size else 0.0)
+        if opened:                                  # an MPC output: one masked value each, no slots
+            view.values += int(v.size)
+            view.l1 += float(np.abs(v).sum())
 
     def relu(y, r, shape):
         """MPC ReLU on (y, -r); the client gets a + s, the server keeps -s."""
@@ -323,7 +355,7 @@ def _masked_forward(specs, x, backend, arch_class: str, *, bits: int = 64) -> di
         a_plus_s = np.asarray(secure_relu(y, server_share=-r, out_mask=s_out, bits=bits, stats=runs))
         mpc_ms += (time.perf_counter() - t) * 1000
         n_compare += int(np.prod(shape))
-        track(a_plus_s.reshape(shape) - s_out)      # the ReLU output, masked on its way back
+        track(a_plus_s.reshape(shape) - s_out, opened=True)   # the ReLU output, masked on its way back
         return a_plus_s.reshape(shape), -s_out
 
     for s in specs:
@@ -333,7 +365,8 @@ def _masked_forward(specs, x, backend, arch_class: str, *, bits: int = 64) -> di
             s_in = None if hs is None else hs.ravel()[:n_in]
             r = _masks((n_out,), mb)
             t = time.perf_counter()
-            y = np.asarray(_fhe_linear(backend, c_in, s.weight, s.bias, server_share=s_in, mask=r))
+            y = np.asarray(_fhe_linear(backend, c_in, s.weight, s.bias, server_share=s_in, mask=r,
+                                       view=view, mask_bits=mb))
             fhe_ms += (time.perf_counter() - t) * 1000
             track(y - r)                            # the linear output, masked on its way out
             if s.activation == "relu":
@@ -345,7 +378,7 @@ def _masked_forward(specs, x, backend, arch_class: str, *, bits: int = 64) -> di
             shape = (int(s.weight.shape[0]), ho, wo)
             r = _masks(shape, mb)
             t = time.perf_counter()
-            y = fhe_conv2d(backend, hc.reshape(s.in_shape), s, mask=r,
+            y = fhe_conv2d(backend, hc.reshape(s.in_shape), s, mask=r, view=view, mask_bits=mb,
                            server_share=None if hs is None else hs.reshape(s.in_shape))
             fhe_ms += (time.perf_counter() - t) * 1000
             track(y - r)
@@ -362,7 +395,7 @@ def _masked_forward(specs, x, backend, arch_class: str, *, bits: int = 64) -> di
                 pooled, nc = secure_maxpool(hc, s, server_share=hs, out_mask=s_out, bits=bits, stats=runs)
                 mpc_ms += (time.perf_counter() - t) * 1000
                 n_compare += nc
-                track(pooled - s_out)
+                track(pooled - s_out, opened=True)
                 hc, hs = pooled, -s_out
             else:                                   # linear: each party pools its own share
                 t = time.perf_counter()
@@ -382,4 +415,4 @@ def _masked_forward(specs, x, backend, arch_class: str, *, bits: int = 64) -> di
     logits = c_logits if s_logits is None else c_logits + s_logits    # the simulator's view only
     return {"prediction": pred, "logits": logits, "fhe_ms": fhe_ms, "mpc_wall_ms": mpc_ms,
             "n_compare": n_compare, "runs": runs, "mask_bits": mb, "masked_values": masked,
-            "max_abs_masked": top}
+            "max_abs_masked": top, "view": view}

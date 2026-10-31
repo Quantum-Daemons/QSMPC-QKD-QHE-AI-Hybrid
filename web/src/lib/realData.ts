@@ -1,8 +1,9 @@
 // Datasets shipped to the CLIENT-SIDE demo (web/public/data/), so the demo scores real inputs with
 // real models rather than sampling noise — matching the FULL deployment. Coverage: medical (Wisconsin
 // breast-cancer, real measurements), genomics (published PGS000004 weights over real 1000 Genomes
-// genotypes), finance (PaySim SIMULATOR output, i.e. synthetic rows) and satellite (real NASA
-// SMAP/MSL telemetry). Only telecom stays fully synthetic — no network-attack corpus with an
+// genotypes), finance (PaySim SIMULATOR output, i.e. synthetic rows) and satellite (real OPS-SAT-AD
+// telemetry segments since Round 84; the NASA SMAP/MSL windows it replaced carry no data licence from
+// any provider and are no longer served). Only telecom stays fully synthetic - no network-attack corpus with an
 // affirmative commercial grant exists (UNSW-NB15 needs the authors' agreement; CIC-IDS2017 states no
 // licence at all) — and the demo logs that rather than quietly substituting. Tiny static JSON,
 // fetched and cached once.
@@ -15,6 +16,11 @@
 // this line got four of five wrong (WDBC is CC BY 4.0, not public domain; PGS is per-score, not
 // blanket CC-BY; IGSR grants no blanket licence; no provider states one for SMAP/MSL) and shipped
 // that way. A stale copy reads as authoritative, which is worse than a pointer.
+//
+// THE HELD-OUT ROWS ARE A SEPARATE THING (Round 84, `heldOutCorpus` at the bottom). The samples
+// above feed the page's one-row explanation and the federated demo. What the private-inference figure
+// encrypts is a published model on rows it was never fitted on, each with its own payload naming the
+// split, the licence and its link.
 
 /** One row in every space the payload declares, keyed by that space's own name.
  *
@@ -94,11 +100,22 @@ export async function realInput(usecase: string, u: () => number): Promise<RealI
   try {
     if (usecase === "medical_fl") {
       // REAL Wisconsin Diagnostic Breast Cancer sample + a REAL logistic-regression model (8 features).
+      // The row comes from `heldout` where the payload has one (Round 84): the class the page reports
+      // and the bars explaining it are then a prediction on a row the regression never saw. The
+      // SHAP reference point stays E[x] over the FITTING rows, the population the model was fitted
+      // to, which is what a baseline is supposed to describe.
       const ds = await fetchJSON("/data/medical/breast_cancer_sample.json");
       const rows = ds.samples as number[][];
-      const row = rows[Math.floor(u() * rows.length) % rows.length];
-      return { values: row.slice(0, 8), names: ds.names, provenance: ds.provenance, model: ds.model,
-               baseline: columnMeans(rows, 8) };
+      // The held-out block in the shape `rowBySpace` reads, so the row arrives in EVERY space the
+      // file ships (the medical QCNN declares `raw`; the regression and SHAP use `zscore`).
+      const src = (ds.heldout?.samples as number[][] | undefined)?.length
+        ? { samples: ds.heldout.samples, samples_by_space: ds.heldout.samples_by_space,
+            feature_space: ds.feature_space }
+        : ds;
+      const k = Math.floor(u() * src.samples.length) % src.samples.length;
+      const row = (src.samples as number[][])[k];
+      return { values: row.slice(0, 8), bySpace: rowBySpace(src, k, 8), names: ds.names,
+               provenance: ds.provenance, model: ds.model, baseline: columnMeans(rows, 8) };
     }
     if (usecase === "genomics") {
       // REAL PGS-Catalog PGS000004 (PRS313) effect weights + REAL 1000 Genomes phase-3 genotypes
@@ -172,9 +189,6 @@ export async function realInput(usecase: string, u: () => number): Promise<RealI
   return null;   // telecom (+ any load failure) → synthetic, logged by the caller
 }
 
-/** A real telemetry-anomaly verdict over a REAL NASA SMAP/MSL window + the real linear model, scored IN
- *  PLAINTEXT - a JS dot product, with no FHE or MPC (the satellite use case has no `private_inference`
- *  stage, so its anomaly score is surfaced at QSDC delivery; the CKKS version runs only in Python). */
 /** Each cohort's effect-allele count at PGS000004's first variant, over the bundled 1000 Genomes
  *  slice, split into `cohorts` contiguous groups - the split `np.array_split(dosages[:, 0], n)` makes
  *  in qsh/usecases/genomics, where the first (len mod n) groups take one extra individual.
@@ -205,34 +219,66 @@ export async function realAlleleCounts(
   }
 }
 
+/** The OPS-SAT-AD segments the satellite page scores, and the file they come from. */
+export const SATELLITE_SEGMENTS_PATH = "/data/satellite/opssat_segments.json";
+
 export interface SatelliteAnomaly {
-  provenance: string; anomalyScore: number; isAnomaly: boolean; channels: string[];
-  /** The real linear model, the scored window and E[x] over the bundled windows.
+  provenance: string; anomalyScore: number; isAnomaly: boolean;
+  /** Telemetry channel names where the payload has them. OPS-SAT-AD's precomputed segment
+   *  features carry no channel column, so this is empty there rather than invented. */
+  channels: string[];
+  /** The real linear model, the scored segment and the SHAP reference point.
    *  Returned so the run can compute exact linear SHAP for satellite the same way the three
-   *  inference use cases do. The model here IS linear (a 2xN margin over a NASA telemetry window),
+   *  inference use cases do. The model here IS linear (a 2xN margin over one segment's features),
    *  so the method applies unchanged - no new or invented attribution is involved. */
   model: { W: number[][]; b: number[] };
   window: number[];
   baseline: number[];
   featureNames: string[];
+  /** What the reference point is, in words, from the payload: the mean of the FITTING segments. */
+  baselineNote: string;
+  /** What the model is, from the payload, so the run cannot describe it as anything else. */
+  modelNote: string;
+  /** The segment's true label (1 = anomalous): it is a held-out row with a known answer. */
+  trueLabel: number | null;
+  licence: string;
+  licenceUrl: string | null;
 }
 
+/**
+ * A plaintext anomaly verdict over ONE held-out OPS-SAT-AD segment, with the payload's own linear
+ * model - a JS dot product, no FHE or MPC (the satellite flow has no `private_inference` stage).
+ *
+ * Round 84 replaced the NASA SMAP/MSL windows this read. No provider grants a licence for that data
+ * (the Telemanom licence is Caltech's and covers code; JPL staff are Caltech employees, so 17 U.S.C.
+ * 105 does not reach it), and DATA_LICENSES.md's rule is that silence is not permission. OPS-SAT-AD is
+ * CC BY 4.0. The segments shipped are the 159 the regression was NOT fitted on, so the verdict is a
+ * prediction on an unseen segment; the regression is a demo model fitted on 370 other test-partition
+ * segments, not the published OPS-SAT models, and `modelNote` says so wherever it is printed.
+ */
 export async function realSatelliteAnomaly(u: () => number): Promise<SatelliteAnomaly | null> {
   try {
-    const ds = await fetchJSON("/data/satellite/telemetry.json");
-    const windows = ds.windows as number[][];
-    const w = windows[Math.floor(u() * windows.length) % windows.length];   // a REAL NASA telemetry window
+    const ds = await fetchJSON(SATELLITE_SEGMENTS_PATH);
+    const segments = ds.segments as number[][];
+    const k = Math.floor(u() * segments.length) % segments.length;
+    const w = segments[k];                                          // a REAL held-out OPS-SAT segment
     const W = ds.model.W as number[][]; const b = ds.model.b as number[];
-    const margin = w.reduce((a, v, i) => a + (W[1][i] - W[0][i]) * v, 0) + (b[1] - b[0]);  // real linear model
+    const margin = w.reduce((a, v, i) => a + (W[1][i] - W[0][i]) * v, 0) + (b[1] - b[0]);
     const score = 1 / (1 + Math.exp(-margin));
     const names = (ds.names as string[] | undefined) ?? w.map((_, i) => `f${i}`);
     return { provenance: ds.provenance, anomalyScore: Number(score.toFixed(4)),
-             isAnomaly: score > 0.5, channels: ds.channel_names,
+             isAnomaly: score > 0.5, channels: (ds.channel_names as string[] | undefined) ?? [],
              model: { W, b }, window: w,
-             // E[x] over the bundled windows, matching the reference point the other use cases use.
-             baseline: columnMeans(windows, w.length), featureNames: names };
+             // The payload's own reference point (the fitting segments' mean), never an average of
+             // the held-out rows being explained.
+             baseline: (ds.baseline as number[] | undefined) ?? new Array(w.length).fill(0),
+             featureNames: names,
+             baselineNote: String(ds.baseline_note ?? "mean of the fitting segments"),
+             modelNote: String(ds.real_model ?? ""),
+             trueLabel: Number.isInteger(ds.labels?.[k]) ? ds.labels[k] : null,
+             licence: String(ds.licence ?? ""), licenceUrl: (ds.licence_url as string | undefined) ?? null };
   } catch (e) {
-    console.warn("[realData] satellite real telemetry unavailable → representative:", e);
+    console.warn("[realData] satellite OPS-SAT segments unavailable -> representative:", e);
     return null;
   }
 }
@@ -276,17 +322,19 @@ export async function realFederatedSet(
  *
  * Returns `null` where the page has no corpus of its own, rather than an empty array, so a caller
  * cannot mistake "no corpus" for "a corpus with nothing in it".
+ *
+ * ROUND 84: NEVER THE MODEL'S FITTING ROWS. Medical returns the 171 rows held out from the bundled
+ * regression, not the 398 it was fitted on. Finance returns null: its 400 PaySim rows are the
+ * surrogate's fitting rows, and its private-inference figure is now the published AMLworld student on
+ * its held-out test window (`heldOutCorpus`), which is a different model in a different feature
+ * space and so cannot come through this 8-feature path. Genomics keeps its 30 reference-panel
+ * individuals, which PGS000004 was not fitted on either.
  */
 export async function realInputCorpus(usecase: string): Promise<number[][] | null> {
   try {
     if (usecase === "medical_fl") {
       const ds = await fetchJSON("/data/medical/breast_cancer_sample.json");
-      const rows = ds.samples as number[][] | undefined;
-      return rows?.length ? rows.map((r) => r.slice(0, 8)) : null;
-    }
-    if (usecase === "finance_aml") {
-      const ds = await fetchJSON("/data/finance/paysim_sample.json");
-      const rows = ds.samples as number[][] | undefined;
+      const rows = ds.heldout?.samples as number[][] | undefined;
       return rows?.length ? rows.map((r) => r.slice(0, 8)) : null;
     }
     if (usecase === "genomics") {
@@ -301,6 +349,145 @@ export async function realInputCorpus(usecase: string): Promise<number[][] | nul
     }
   } catch (e) {
     console.warn("[realData] corpus unavailable:", e);
+  }
+  return null;
+}
+
+/** One axis of an overlay plane, named as `real_2d.json` names it. */
+export interface PlaneAxis { key: string; label: string; scale?: "log" }
+
+/** Who may use the rows and on what terms, as the payload states it. `url` is null only where no
+ *  licence is granted at all (the generated telecom corpus): there is then nothing to link to. */
+export interface DataLicence { name: string; url: string | null; attribution: string; modifications: string }
+
+/**
+ * A published model and rows it was NEVER fitted on, ready to be encrypted (Round 84).
+ *
+ * The private-inference figure's job is to show what the encrypted model does on data it has not
+ * seen. Each field below exists because the figure once said something false without it: `fitNote`
+ * because finance and medical called the model's own fitting rows "held-out"; `plane` because the
+ * overlay beside the figure drew a different corpus from the one encrypted; `licence.url` and
+ * `licence.modifications` because CC BY 4.0 and CDLA-Sharing ask for a link and a change notice,
+ * not a name.
+ */
+export interface HeldOutCorpus {
+  usecase: string;
+  /** The registry key of the scored model; null for medical's bundled regression, which has none. */
+  modelKey: string | null;
+  /** The model in a phrase, for the caption. */
+  modelLabel: string;
+  /** In the K-logit form the batch evaluates. A single-logit model gets an all-zero class-0 row, so
+   *  its argmax is the sign of the logit and that row costs no homomorphic work. */
+  model: { W: number[][]; b: number[] };
+  /** The rows, preprocessed exactly as the model's own file declares. */
+  rows: number[][];
+  labels: number[];
+  classNames: string[];
+  /** The same rows on the overlay's plane, in the overlay's units, index-aligned with `rows`. */
+  plane: { x: PlaneAxis; y: PlaneAxis; points: [number, number][] } | null;
+  corpus: string;
+  /** What the rows are: the split, in a phrase. */
+  split: string;
+  /** Which rows the model WAS fitted on, so the caption can say these are not them. */
+  fitNote: string;
+  licence: DataLicence;
+  /** The plaintext figures the payload's builder computed, for the run to reproduce. */
+  expected: Record<string, unknown> | null;
+}
+
+/** Apply the preprocessing a weights file declares, step by step, refusing an unknown step. */
+function preprocess(row: number[], steps: string[], mean: number[], scale: number[]): number[] {
+  return row.map((v, i) => {
+    let x = v;
+    for (const step of steps) {
+      if (step === "subtract mean") x -= mean[i] ?? 0;
+      else if (step === "divide by scale") x /= scale[i] || 1;
+      // The same refusal `onnxInference.applyPreprocessing` makes: a guessed transform turns a
+      // published model into a different one that still produces plausible numbers.
+      else throw new Error(`unknown preprocessing step "${step}" - refusing to guess`);
+    }
+    return x;
+  });
+}
+
+/** The x/y columns of the plane, from the rows themselves (finance, telecom: raw columns). */
+function planeFromColumns(rows: number[][], names: string[], plane: { x: PlaneAxis; y: PlaneAxis }) {
+  const xi = names.indexOf(plane.x.key), yi = names.indexOf(plane.y.key);
+  if (xi < 0 || yi < 0) return null;
+  return { x: plane.x, y: plane.y, points: rows.map((r) => [r[xi], r[yi]] as [number, number]) };
+}
+
+function licenceOf(ds: any): DataLicence {
+  return { name: String(ds.licence ?? ""), url: (ds.licence_url as string | null | undefined) ?? null,
+           attribution: String(ds.attribution ?? ""), modifications: String(ds.modifications ?? "") };
+}
+
+/** A published student and its held-out rows from the two payloads `build_heldout_payloads.py`
+ *  writes: the rows file names its weights file, so the pair cannot be mismatched by a caller. */
+async function publishedStudentHeldOut(usecase: string, path: string): Promise<HeldOutCorpus | null> {
+  const ds = await fetchJSON(path);
+  const w = await fetchJSON(`/${String(ds.weights).replace(/^\/+/, "")}`);
+  const names = ds.feature_names as string[];
+  const raw = ds.samples as number[][];
+  if (!raw?.length || !Array.isArray(w?.W)) return null;
+  if (w.n_features !== names.length || raw[0].length !== names.length) {
+    throw new Error(`${path}: ${raw[0].length} columns for a ${w.n_features}-feature model`);
+  }
+  const rows = raw.map((r) => preprocess(r, w.input?.preprocessing ?? [], w.input?.mean ?? [],
+                                         w.input?.scale ?? []));
+  const W = w.W as number[][], b = (w.b as number[]) ?? [];
+  // One logit (finance): give class 0 an all-zero row, so argmax over [0, z] is the sign of z.
+  const model = W.length === 1
+    ? { W: [new Array(W[0].length).fill(0), W[0]], b: [0, b[0] ?? 0] }
+    : { W, b };
+  return {
+    usecase, modelKey: String(ds.model_key ?? w.student_key ?? ""),
+    modelLabel: `the published ${w.n_parameters}-parameter CKKS-linear student`,
+    model, rows, labels: (ds.labels as number[]).map((v) => Number(v) | 0),
+    classNames: (ds.class_names as string[]) ?? model.W.map((_, j) => `class ${j}`),
+    plane: ds.plane ? planeFromColumns(raw, names, ds.plane) : null,
+    corpus: String(ds.corpus ?? ""), split: String(ds.split ?? ""), fitNote: String(ds.fit_note ?? ""),
+    licence: licenceOf(ds), expected: (ds.expected as Record<string, unknown>) ?? null,
+  };
+}
+
+/**
+ * The private-inference figure's rows for a use case: a model and rows it was never fitted on.
+ *
+ *   finance_aml  the published 33-parameter AMLworld student (`finance_aml.student`) on the 8,192
+ *                test-window rows `finance/real_2d.json` draws, through its own z-scoring.
+ *   medical_fl   the page's bundled WDBC regression on the 171 rows held out from its fit.
+ *   telecom_ids  the published 64-parameter student (`telecom_ids.student`) on the 600 rows of its
+ *                own held-out quarter.
+ *
+ * `null` for every other use case: genomics' 30 reference-panel individuals are external rather than
+ * a held-out split and keep their own path; satellite has no encrypted student it can evaluate here.
+ */
+export async function heldOutCorpus(usecase: string): Promise<HeldOutCorpus | null> {
+  try {
+    if (usecase === "finance_aml") return await publishedStudentHeldOut(usecase, "/data/finance/student_heldout.json");
+    if (usecase === "telecom_ids") return await publishedStudentHeldOut(usecase, "/data/telecom/student_heldout.json");
+    if (usecase === "medical_fl") {
+      const ds = await fetchJSON("/data/medical/breast_cancer_sample.json");
+      const h = ds.heldout;
+      if (!h?.samples?.length) return null;
+      const plane = ds.plane && Array.isArray(h.plane) && h.plane.length === h.samples.length
+        ? { x: ds.plane.x as PlaneAxis, y: ds.plane.y as PlaneAxis, points: h.plane as [number, number][] }
+        : null;
+      return {
+        usecase, modelKey: null,
+        modelLabel: `the page's bundled ${(ds.names as string[]).length}-feature WDBC logistic regression`,
+        model: ds.model, rows: (h.samples as number[][]).map((r) => r.slice(0, 8)),
+        labels: (h.labels as number[]).map((v) => Number(v) | 0),
+        classNames: (ds.class_names as string[]) ?? ["class 0", "class 1"],
+        plane, corpus: "Wisconsin Diagnostic Breast Cancer (WDBC, UCI dataset 17)",
+        split: String(h.split ?? h.note ?? ""), fitNote: String(ds.fit_note ?? ds.real_model ?? ""),
+        licence: licenceOf(ds),
+        expected: typeof h.plaintext_accuracy === "number" ? { plaintext_accuracy: h.plaintext_accuracy } : null,
+      };
+    }
+  } catch (e) {
+    console.warn("[realData] held-out corpus unavailable:", e);
   }
   return null;
 }

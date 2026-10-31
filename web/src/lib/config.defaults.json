@@ -131,10 +131,10 @@
       "url": "https://archive.ics.uci.edu/dataset/17/breast+cancer+wisconsin+diagnostic"
     },
     "satellite_comms": {
-      "licence": "no licence granted for the data",
-      "licence_checked": "2026-10-30",
-      "provenance": "real NASA SMAP/MSL spacecraft telemetry (Telemanom / NASA JPL). No source grants a licence for the data: the Telemanom LICENSE is a Caltech copyright covering its software, and JPL is operated by Caltech, so the data is not shown to be a US Government work under 17 U.S.C. 105 either - see DATA_LICENSES.md.",
-      "url": "https://github.com/khundman/telemanom"
+      "licence": "CC-BY-4.0",
+      "licence_checked": "2026-08-05",
+      "provenance": "real OPS-SAT-AD telemetry segments (ESA OPS-SAT CubeSat; Zenodo 10.5281/zenodo.12588358, CC-BY-4.0): 19 precomputed per-segment features of the benchmark's test partition. The demo's anomaly regression is fitted here on 370 of those 529 segments and the verdict is drawn from the other 159; it is not the published satellite_comms.opssat model.",
+      "url": "https://doi.org/10.5281/zenodo.12588358"
     }
   },
   "federated": {
@@ -1120,7 +1120,7 @@
           "display": "minority-class F1 (laundering)",
           "name": "minority_class_f1"
         },
-        "notes": "Built to run under CKKS, but no code path here encrypts THIS model. The public page's CKKS step evaluates the 8-feature linear model bundled with the PaySim sample and re-scores this 33-parameter AMLworld student in plaintext ONNX; the full deployment's finance pipeline encrypts its own PaySim-trained surrogate. Its agreement with the teacher (`agreement`) is measured offline, at training time, in plaintext; each browser run measures `encrypted_agreement`, CKKS against plaintext for the model it encrypts.",
+        "notes": "Encrypted on the public page since Round 84: its private-inference figure scores this 33-parameter AMLworld student under CKKS on the 8,192 test-window rows of finance_aml.gbm's sample (64 ciphertexts), against the same model in plaintext. The page's one-row CKKS step, its MPC argmax, the reported class and the SHAP bars still use the 8-feature linear model bundled with the PaySim sample, and the full deployment's finance pipeline encrypts its own PaySim-trained surrogate. Its agreement with the teacher (`agreement`) is measured offline, at training time, in plaintext; each browser run measures `encrypted_agreement`, CKKS against plaintext for the model it encrypts.",
         "onnx_domains": [
           "ai.onnx.ml"
         ],
@@ -1476,7 +1476,7 @@
           "display": "AUC",
           "name": "auc"
         },
-        "notes": "Genuine encrypted convolution (im2col + CKKS dot_plain), but not end to end under CKKS. In the browser each layer's output is decrypted, ReLU and average pooling run in plaintext in the client, and the class is the argmax of decrypted logits; the page's MPC argmax runs on the WDBC logistic regression, not on this CNN. The full deployment's hybrid path, which runs a federated CNN of this shape rather than these weights, keeps ReLU on secret shares (MPyC) and pools each share locally; its masked conversion protects only CKKS slot 0 (see qsh.mpc.secret_inference).",
+        "notes": "Genuine encrypted convolution (im2col + CKKS dot_plain), but not end to end under CKKS. In the browser each layer's output is decrypted, ReLU and average pooling run in plaintext in the client, and the class is the argmax of decrypted logits; the page's MPC argmax runs on the WDBC logistic regression, not on this CNN. The full deployment's hybrid path, which runs a federated CNN of this shape rather than these weights, keeps ReLU on secret shares (MPyC) and pools each share locally; its masked conversion masks every CKKS slot the client can decode, and each run bounds the client's whole view (see qsh.mpc.secret_inference).",
         "onnx_domains": [
           "ai.onnx"
         ],
@@ -2710,6 +2710,7 @@
     "demo_alice_bob_pulses": 20000000,
     "demo_sat_pulses": 20000000,
     "onnx_default_backend": "wasm",
+    "sdn_sae_allocation_fraction": 0.25,
     "tfjs_default_device": "wasm",
     "tfjs_max_new_tokens": 96,
     "tfjs_models": [

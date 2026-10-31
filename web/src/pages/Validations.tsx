@@ -193,11 +193,34 @@ export default function Validations() {
       </div>
       <NetKeyCards />
 
-      <div className="btn-row" style={{ marginTop: 20 }}>
-        <button className="btn ghost" onClick={() => downloadJSON({ kem, sig, pqc, qkd, mcp }, "qsh-validations.json")}>
+      <ResultsDownload results={{ kem, sig, pqc, qkd, mcp }} />
+    </div>
+  );
+}
+
+/**
+ * The page's export, unavailable until something has run - with the reason on the page, as the
+ * use-case and E2E pages give theirs (Round 84). It was enabled from the first paint and saved
+ * `{kem, sig, pqc, qkd, mcp}` all null. `disabled` takes a button out of the tab order, so the
+ * reason is a visible line and not only a tooltip.
+ */
+export function ResultsDownload({ results }: { results: Record<string, unknown> }) {
+  const ran = Object.keys(results).filter((k) => results[k] != null);
+  return (
+    <>
+      {ran.length === 0 && (
+        <p className="muted small" style={{ marginTop: 20, marginBottom: 0 }}>
+          Run at least one of the validations above first - the download holds their results, and there
+          are none yet.
+        </p>
+      )}
+      <div className="btn-row" style={{ marginTop: ran.length ? 20 : 10 }}>
+        <button className="btn ghost" disabled={ran.length === 0}
+          title={ran.length ? undefined : "Run a validation first"}
+          onClick={() => downloadJSON({ ...results, ran }, "qsh-validations.json")}>
           ⬇ Download results (JSON)
         </button>
       </div>
-    </div>
+    </>
   );
 }

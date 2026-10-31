@@ -1,264 +1,185 @@
 # Variational QCNN - telecom
 
-> **Round 47 retrained this artifact a SECOND time, after finding two classes of parameter that
-> could not move the readout at any input.** Both were carried by the optimiser and counted in the
-> parameter count. The fully-connected block's per-survivor RZ was applied AFTER the RY, and the only
-> operations after that block are a CNOT ring - a basis permutation - and `|amplitude|^2`, which
-> discards phase; a diagonal gate applied last cannot move a computational-basis readout. The 8th
-> conv angle of each stage's final layer round is an `rz` on the wire pooling is about to discard,
-> whose only later interaction is as the CONTROL of a CRY - diagonal in that wire's basis - and then
-> marginalisation at readout; that was 1 of this circuit's 48 conv angles, carried since Round 46.
+> **Round 84 rebuilt this artifact on a different circuit and a different encoding**, both chosen by
+> pre-registered five-seed experiments (2026-10-30) before any of them was run on this file:
 >
-> **The fix was ORDERING, not deletion.** RZ before RY in both places, so the phases RZ writes are
-> mixed back into amplitudes by the RY that follows. RE-MEASURED on the weights shipped here, with
-> the procedure stated because an earlier revision of this banner quoted figures with no seed and no
-> inputs: reconstruct the pre-fix gate order from
-> `git show 8017538^:scripts/train/qcnn_variational.py`, feed `x = tanh(randn(8, n_qubits) * 0.7)` at
-> `torch.Generator().manual_seed(0)`, add 1.234 rad to every fc RZ angle and take `max |delta|` of
-> `circuit()`. Under the pre-fix order that moves this circuit's readout by **5.96e-08**, which is
-> 2^-24, a float32 ULP, against **1.77e-01** for the RY angles beside them. Under the shipped order
-> the same RZ perturbation moves it by **2.28e-01**. The `2.6e-01` and `1.4e-01` an earlier revision
-> printed here are withdrawn: they carried no recipe, and the weights they were taken on were
-> replaced by this retrain.
-> `tests/test_the_qcnn_has_the_structure_the_name_claims.py::test_every_trainable_parameter_reaches_the_readout`
-> now perturbs EVERY parameter at five (width, readout, layers) configurations and fails if any one
-> of them cannot move the output.
+> * **the circuit**: Hur, Kim and Park's 15-angle SU(4) block on EVERY nearest-neighbour bond, with
+>   their pooling, replacing the 8-angle filter on disjoint pairs. On disjoint pairs each surviving
+>   wire saw only its own feature pair, and that, not the block, was the limit: the same SU(4) block
+>   on disjoint pairs gained +0.04 macro F1, on every bond +0.42 (five seeds, c = 1);
+> * **the encoding**: RY(c * pi * tanh(z)) with c = 0.5 instead of 1. At c = 1 a feature's two tails
+>   fold onto one state, RY(-pi)|0> and RY(pi)|0> being the same ray; c = 0.5 gained +0.050 macro F1
+>   on top of the circuit, better on 5 of 5 seeds.
 >
-> Current headline `macro_f1` = **0.510963**. **This number has moved four times and three of the
-> four earlier figures are still quoted somewhere**, so the whole trajectory is stated once, below,
-> under its own heading. Every earlier banner on this card is superseded rather than deleted.
+> Current headline `macro_f1` = **0.944439**, against 0.510963 for the tree this replaces. Logistic
+> regression on the identical split still scores **0.976447** and is still ahead, on this seed and on
+> every one of the five. Everything this card said about the tree is kept below, marked superseded.
 
 NOT PUBLISHED TO HUGGING FACE, AND NOT IN THE MODEL REGISTRY. This is a browser-side demonstration
 circuit for the `telecom_ids` page of
 [QSMPC-QKD-QHE-AI-Hybrid](https://github.com/thedaemon-wizard/QSMPC-QKD-QHE-AI-Hybrid). It carries no
 `hf_repo` and no pinned revision.
 
-**This card was missing for several rounds while the finance and medical ones existed** - and this is
-the most complicated of the three circuits, the only multiclass one, and the only one shipping a
-readout convention as data. An artefact with real influence on a page and no documentation is the
-defect Round 28 wrote the other two cards to fix; this one was not caught because the check was "do
-the QCNN directories have cards" answered by looking at two of them.
-
 ## What it is
 
-**6** conv rounds of a SHARED two-qubit filter (RY,RZ - CNOT - RZ,RY), then ONE pooling stage by a
-rotation on the survivor conditioned on its partner, on **8 qubits**, reducing the register 8 -> 4;
-then a fully-connected block on the four survivors [0, 2, 4, 6]. 7 features are encoded as
-`RY(tanh(z) * pi)` on wires 0-6. **Wire 7 carries no data**: `RY(tanh(0) * pi)` is the identity, and
-the browser reaches the same state through `features[q] ?? 0`, so the two agree by construction rather
-than by coincidence. `n_features: 7` records that so a test can assert it.
+**`circuit.name`: `hur-su4`.** One convolution stage of **6** rounds on **8 qubits**. Each round
+applies ONE shared two-qubit block to every nearest-neighbour bond of the register, in Hur et al.'s
+order: the boundary bond (0, 7), the even bonds (0,1) (2,3) (4,5) (6,7), the odd bonds (1,2) (3,4)
+(5,6). The block is their circuit 9, the Vatan-Williams form of a general two-qubit unitary: U3 on
+each wire, CNOT(a, b), RY(a) and RZ(b), CNOT(b, a), RY(a), CNOT(a, b), U3 on each wire - 15 angles
+and 3 CNOTs. Then ONE pooling stage, also theirs: RZ on the kept wire where its discarded partner is
+1, an X on the partner, RX on the kept wire where the partner is now 1 - so RZ when it was 1 and RX
+when it was 0, two shared angles - leaving the survivors [0, 2, 4, 6]. Then the project's own
+fully-connected block, RZ then RY on each survivor and a CNOT ring over the four.
 
-`theta` is **57** scalars and none of its axes is the qubit count: 48 conv (1 stage x 6 rounds x 8
-angles in the shared filter), 1 pool angle, and 8 in the fully-connected block. The count did not
-change in the second Round 47 retrain: the dead-parameter fix reordered gates and deleted nothing.
-What changed is how many of the 57 the readout can see. **5 of 57 were analytically dead** - the four
-fully-connected RZ angles, one per survivor, and `theta[47]`, the 8th angle of the last conv round -
-and all 57 are reachable now. The 7-wire sibling had 4 of 55 dead, one fewer because it pools to
-three survivors rather than four.
+7 features are encoded as `RY(0.5 * pi * tanh(z))` on wires 0-6, z standardised with the training
+split's moments shipped here (`input_space: "raw"`, `encoding_scale: 0.5`). **Wire 7 carries no
+data**: it stays in |0>, and every inference path leaves wires past `n_features` there.
 
-**The fully-connected block is NOT shared, and must not be.** Until Round 47 it was a single scalar
-RY angle applied identically to every survivor, which makes F a global rotation that cannot
-distinguish the wires the class index is read from. Cong, Choi & Lukin ask for "a unitary F on the
-remaining qubits"; weight sharing is what makes a CONVOLUTION a convolution and is a property of the
-conv layers only. F is now RZ+RY per survivor - 4 survivors x 2 angles = 8 parameters. This stays
-O(log N) because the SURVIVOR COUNT IS BOUNDED, not because the block is shared: `layer_plan` stops
-pooling while `active // 2 >= readout_qubits`, so the register reaching F holds 4 survivors at 8
-qubits and 4 again at 16.
+`theta` is **100** scalars - 90 conv (1 stage x 6 rounds x 15), 2 pool, 8 fully-connected (4 survivors
+x 2) - plus 8 scales and 8 biases, 116 trainable in all, against 73 for the tree. None of its axes is
+the qubit count: the block is shared by every bond, which is what makes it a convolution. All 100
+angles reach the readout (`tests/test_r84_c2_encoding_and_circuit.py` perturbs each one).
 
-The readout is **not** the `<Z_0>` scalar the other two circuits use. It is a **basis marginal** over
-three wires: `readout_qubits: 3`, `bit_order: "lsb_first"`, `wires: [0, 2, 4]`,
-`class_index: "c = sum_j bit(wires[j]) << j"`.
+**It is no longer a tree, and that is checked rather than asserted.** After pooling, the four
+survivors of a tree of two-qubit blocks are a product of one-qubit states; here, on 24 held-out rows,
+their reduced state is up to 0.57 in trace distance from the product of its marginals, against below
+1e-6 for the tree's layout. What it still is: a simulation, exact on the 2^8 = 256 amplitudes it
+runs on, and therefore **classically simulable at this size**. Classical data in a product angle
+encoding at 8 qubits is the regime Bermejo et al. (PRX Quantum 7, 020304, 2026, Sec. IV.B) find
+fully classically simulable, so nothing here suggests a quantum advantage, and nothing is claimed.
 
-**Those wires are the survivors, and until Round 47 they were not.** The class index was binned by
-`i & (k - 1)`, which reads bits 0..m-1, and wire q is bit q - so a 3-qubit readout read wires 0, 1
-and 2 while pooling had left [0, 2, 4, 6]. Wire 1 is the pooling CONTROL of the pair (0, 1): it is
-conditioned into wire 0 and then never touched again, so one bit of every class index was supplied by
-a wire frozen at its pre-pooling value, which the second half of the circuit does not see. The
-convention ships **as data** because reading the bits the other way permutes the classes by
-`[0,4,2,6,1,5,3,7]` - four fixed points, and identical aggregate metrics either way. A permuted class
-map with the same macro F1 is exactly the kind of error no aggregate number can surface, so
-`tests/test_qcnn_multiclass_readout.py` asserts the convention rather than trusting it.
+The readout is unchanged from the tree: a **basis marginal** over the first three survivors,
+`readout_qubits: 3`, `bit_order: "lsb_first"`, `wires: [0, 2, 4]`,
+`class_index: "c = sum_j bit(wires[j]) << j"`. Four wires survive and three are read; wire 6 is
+rotated and entangled and does not carry a bit of the class index. The convention ships as data
+because reading the bits the other way permutes the classes by `[0,4,2,6,1,5,3,7]` while leaving
+every aggregate metric identical.
 
-Note that four wires survive and three are read. The fully-connected block acts on all four; wire 6
-is rotated and entangled and then does not carry a bit of the class index, because 8 classes need
-three bits and pooling is stopped before the register falls below that.
-
-`scale` and `bias` are 8-element arrays here, not scalars. `src/qsh/qhe/qcnn_trained.py` reads
-`float(weights["scale"])` and therefore **cannot consume this artifact** - the Python reimplementation
-supports the two binary use cases only. The parity check that found a crossed CNOT ring in the trainer
-does not cover this circuit.
+`scale` and `bias` are 8-element arrays. `src/qsh/qhe/qcnn_trained.py` implements the binary tree
+only and refuses this artifact by name; the trainer and `web/src/lib/quantumSim.ts` implement this
+circuit, and they agree to 1.0e-06 on all 480 held-out rows, with the same class on every one.
 
 ## Measured performance
 
-Held-out split, **480 test rows** against 2,240 training rows, 8 balanced classes. The headline
-metric is **macro F1**, because an aggregate over 8 classes is what hides a broken one. 3200 rows
-split 70 / 15 / 15 gives 2240 train, 480 validation, 480 test; every figure below is computed on
-those 480 test rows only. An earlier revision of this card said 960, which was validation PLUS test:
-the trainer recorded `n_test` as everything after the training cut. The metrics were always computed
-on the 480-row slice, so only the row count was wrong.
+Held-out split, **480 test rows** against 2,240 training rows, 8 balanced classes, seed 0. The
+headline metric is **macro F1**, because an aggregate over 8 classes is what hides a broken one.
 
 | quantity | value |
 |---|---|
-| `macro_f1` (this circuit) | 0.510963 |
-| accuracy (companion, not the headline) | 0.554167 |
+| `macro_f1` (this circuit) | 0.944439 |
+| accuracy (companion, not the headline) | 0.945833 |
 | logistic regression, identical split, macro F1 | 0.976447 |
 | logistic regression accuracy | 0.977083 |
 | uniform-random macro F1 floor | 0.125 |
 | constant-predictor macro F1 floor | 0.027778 |
 | majority-class accuracy floor | 0.152083 |
 | classes predicted | 8 |
+| encoding scale c | 0.5 |
+| checkpoint epoch, chosen on the validation rows | 399 |
 | n_train / n_val / n_test | 2240 / 480 / 480 |
 
-**The classical baseline is ahead by 0.465484 of macro F1 - 47 points.** Reported here, and the page
-says the same thing. Randomly initialised QCNNs operate only on low-bodyness measurements of their
-input and are efficiently classically simulable (Bermejo et al., PRX Quantum 7, 020304 (2026),
-DOI 10.1103/8qt9-72ts; arXiv:2408.12739), so a classical model winning on 7 tabular features is the
-expected result rather than an anomaly. The circuit still clears both of its floors, which is the
-only thing the macro number establishes.
-
-Per class, from this run, and the spread is the point - the aggregate is 0.510963 while one class is
-above 0.90 and one is at exactly 0.0:
+Per class, from this run:
 
 | class | F1 |
 |---|---|
-| detector_blinding | 0.903226 |
-| wavelength_trojan | 0.745763 |
-| photon_number_splitting | 0.605042 |
-| trojan_horse | 0.591549 |
-| intercept_resend | 0.571429 |
-| rng_manipulation | 0.442623 |
-| normal | 0.22807 |
-| combined | 0.0 |
+| detector_blinding | 1.0 |
+| intercept_resend | 0.992126 |
+| photon_number_splitting | 0.990291 |
+| normal | 0.989899 |
+| rng_manipulation | 0.983607 |
+| combined | 0.96063 |
+| trojan_horse | 0.857143 |
+| wavelength_trojan | 0.781818 |
 
-`combined` scores exactly 0.0 while `n_classes_predicted` is 8, so the label is still emitted and
-never lands on a true row - the same failure the 7-wire sibling has on `wavelength_trojan`, on a
-different class. An aggregate of 0.510963 with a zero underneath it is why the headline is macro F1
-and why the per-class table is printed beside it.
+Every class is now found: the lowest is `wavelength_trojan` at 0.781818, where the tree scored
+`combined` at exactly 0.0 and `normal` at 0.22807.
 
-The card two rewrites ago printed a SEVEN-row table for EIGHT classes, with `rng_manipulation` given
-as "~0.80" - an approximation next to six-decimal siblings. The table above is the full eight rows of
-`per_class_f1` in this directory's `weights.json`.
+## Against logistic regression
 
-**Seed position:** unmeasured on this circuit. The three-seed spread this card published one rewrite
-ago - 0.4583 / 0.4185 / 0.4553 at seeds 0, 1, 2, with seed 0 the highest of the three - was measured
-BEFORE the dead parameters were made live and is SUPERSEDED; it is kept in the sweep table below as
-the evidence that the loss was not a capacity limit, not as a range that still applies. No sweep has
-been run on the current circuit, so the headline is one draw. The seed is deliberately not re-picked:
-choosing one on test performance is test-set selection, which
-`references/qcnn-entanglement-ablation.md` refuses.
+**The classical baseline is ahead by 0.032008 of macro F1.** On the 480 held-out rows logistic
+regression is right where this circuit is wrong on 15 rows and never the other way round (exact
+McNemar p = 6.1e-05), and its per-class F1 is at least this circuit's on every class
+(`trojan_horse` 0.928 and `wavelength_trojan` 0.917431 against 0.857143 and 0.781818). Over five seeds
+it wins on all five, by 0.0242 on average (two-level bootstrap 95% interval [-0.0352, -0.0136] for
+the circuit minus LR). The page prints both numbers side by side and computes which is ahead rather
+than asserting it.
 
-## This headline has moved four times, and here are all four
+**Seed position:** seed 0 scores 0.9444, tied lowest of the five seeds the pre-registered experiment
+ran on this exact configuration (0.9444, 0.9444, 0.9613, 0.9503, 0.9684; mean 0.9537, sd 0.0107).
+The figure above is therefore at the low end of its spread, not a median. The seed was fixed before
+the experiment and is deliberately not re-picked: choosing one by test performance is test-set
+selection, which `references/qcnn-entanglement-ablation.md` refuses.
 
-Stated once, plainly, because three of the four are still quoted somewhere and each of them is wrong
-as a baseline for a different reason.
+## Five seeds, from the pre-registered experiments (not this file)
+
+These are the runs that chose this circuit and this scale; seed 0 of the bold row IS this artifact
+(theta, scale and bias equal to max |diff| 0). Not recorded in `weights.json`, so not checked by the
+model-card gate; the experiment's scripts and criteria are kept with the round's working files.
+
+| configuration, 8 wires | seed 0 | seed 1 | seed 2 | seed 3 | seed 4 | mean |
+|---|---|---|---|---|---|---|
+| tree, c = 1 (shipped until Round 84) | 0.5110 | 0.4645 | 0.4774 | 0.4835 | 0.4865 | 0.4846 |
+| SU(4) on disjoint pairs only, c = 1 (control) | 0.5391 | 0.4863 | 0.5770 | 0.5304 | 0.5030 | 0.5272 |
+| SU(4) on every bond, c = 1 | 0.9183 | 0.9111 | 0.8989 | 0.9052 | 0.8872 | 0.9041 |
+| **SU(4) on every bond, c = 0.5 (this artifact)** | **0.9444** | 0.9444 | 0.9613 | 0.9503 | 0.9684 | **0.9537** |
+| logistic regression | 0.9764 | 0.9736 | 0.9789 | 0.9837 | 0.9771 | 0.9780 |
+
+Two separate effects, and the control is what separates them: the bigger block on the same disjoint
+pairs moved the mean by +0.043, covering every bond with it moved it by +0.420, and the half angle
+then added +0.050 (two-level 95% interval [+0.029, +0.072], better on 5 of 5 seeds).
+
+## Browser cost
+
+One inference of this circuit in `quantumSim.ts` takes **0.27 ms** median (p95 0.35 ms) in node 22 on
+the development machine, against 0.07 ms for the binary tree circuits; the 7-wire sibling takes
+0.12 ms. One QCNN inference runs per page run, so the page stays interactive. The page reports its own
+measurement as `qcnn_inference_ms`.
+
+## Superseded: the tree circuit this card described until Round 84
+
+The artifact here until Round 84 was the disjoint-pair tree - 6 rounds of an 8-angle filter on (0,1)
+(2,3) (4,5) (6,7), a CRY pool, the same fully-connected block and readout, `RY(tanh(z) * pi)` - and
+its headline moved four times. Kept so a figure found in an older document can be placed:
 
 | figure | what it was measured on |
 |---|---|
-| 0.809846 | the RETIRED hardware-efficient ansatz - RY on every wire plus a CNOT ring - replaced in Round 46. A different circuit. **Never this one's baseline.** |
-| 0.614583 | published as this circuit's macro F1 by an earlier card rewrite. It was the ACCURACY of that run, not an F1 at all. |
-| 0.458324 | the real QCNN, after the readout was corrected to bin over the SURVIVING wires. The first figure on this row that is a macro F1 of this architecture. |
-| **0.510963** | **current.** The same circuit after the analytically dead parameters were made live. |
+| 0.809846 | the RETIRED hardware-efficient ansatz (RY on every wire and a CNOT ring) replaced in Round 46: a different circuit |
+| 0.614583 | published as the tree's macro F1 by one card rewrite; it was the ACCURACY of that run |
+| 0.458324 | the tree after the readout was corrected to bin over the SURVIVING wires |
+| 0.510963 | the tree after its analytically dead parameters were made live (Round 47); shipped until Round 84 |
 
-The first row is the one to watch for. It belongs to a circuit this repository deleted, it is the
-largest of the four, and it is the one a reader reaching for "what did telecom score" is most likely
-to find in an older document. `references/qcnn-width-ablation.md` and
-`references/qcnn-entanglement-ablation.md` both carry supersession banners saying so.
-
-## Why it fell, what the dead parameters gave back, and what never came back
-
-The defective readout was handing the classifier a fourth feature dimension it was not entitled to.
-Wire 1 was frozen at its pre-pooling value, so its bit encoded the register BEFORE pooling mixed it
-away - information the architecture is supposed to have discarded. Removing it removed real
-discriminative signal, and the honest reading is that part of that 0.614583 was never the QCNN's to
-claim.
-
-Making the five dead parameters live gave back **+0.053** of macro F1, from 0.458324 to 0.510963.
-That is the largest of the three GAINS the same fix produced across the six artifacts, and it is not
-the largest effect: the finance circuit REGRESSED by 0.105 under the identical change, twice the size
-of this gain and the largest single move of the four. Measured from the artifacts at each commit:
-telecom macro F1 +0.052639, telecom-q7 macro F1 +0.041442, medical minority F1 +0.031250, finance
-minority F1 -0.105286. An earlier revision of this paragraph called +0.053 "the largest of the four
-effects", which the finance figure in its own next clause contradicts. See the table on
-`models/qcnn_finance/README.md`. What the +0.053 does establish is that the parameters were
-worth something once a gradient could reach them, which is the point of the fix; what it does not
-establish is that this architecture is competitive, because the classical baseline is still 47 points
-ahead.
-
-Before the dead parameters were found, four configurations were run to see whether the loss from the
-readout correction could be recovered by capacity or by width. **None of them did.** Macro F1,
-corrected readout throughout, and **every cell below was measured with the dead parameters still
-dead** - these are superseded as current figures and kept as the capacity evidence:
-
-| configuration | seed 0 | seed 1 | seed 2 |
-|---|---|---|---|
-| 8 wires, 6 layers | 0.4547 | 0.4567 | 0.4826 |
-| 8 wires, 10 layers | 0.4448 | 0.4614 | 0.4732 |
-| 12 wires, 6 layers | 0.4362 | - | - |
-| 8 wires, 6 layers, per-survivor FC (shipped at the time) | 0.4583 | 0.4185 | 0.4553 |
-
-Ten runs across four configurations did not find the missing **0.110876**, which is the evidence that
-the drop was the readout defect and not a capacity limit: more layers did not recover it, more wires
-did not recover it, and a strictly more expressive fully-connected block did not recover it - the
-best cell above, 0.4826, is still 0.0866 short. That gap is macro F1 against macro F1: the
-pre-correction run's macro F1 was **0.5692**, recorded in
-`git show 4ee258e:models/qcnn_telecom/weights.json` beside its 0.614583 accuracy, so the baseline
-was never missing from the record. An
-earlier revision of this card printed the gap as 0.156, which is 0.614583 minus 0.458324 - the
-ACCURACY minus a macro F1, exactly the two metrics the table three paragraphs above warns are
-different - and that figure is withdrawn. The dead-parameter fix then recovered 0.052639 of the
-0.110876, which is nearly half rather than the third the inflated denominator implied, by making the
-parameters that were already there reachable - consistent with the same reading, since it added no
-capacity either.
-
-These ten figures come from a sweep and not from this artifact, so they are not in `weights.json`
-and the model-card gate does not check them. The shipped row is no longer the shipped configuration:
-its seed 0 of 0.4583 is the PREVIOUS artifact's headline, superseded by the 0.510963 above.
-
-## The width conclusion has reversed
-
-`references/qcnn-width-ablation.md` concluded that 8 wires beat 7 on telecom by +0.0786 macro F1.
-With the corrected circuit the sign has flipped, and the second retrain raised both widths and left
-the sign intact while NARROWING the gap: 7 wires scores **0.541894** and 8 wires scores **0.510963**,
-so the narrower circuit leads by 0.030931. At the previous retrain the same pair read 0.500452
-against 0.458324, a lead of 0.042128, so the reversal has now survived a change that moved both
-sides - on a margin that closed by 0.011197 rather than opening. An earlier revision of this
-paragraph said the gap grew, which the two figures it quotes contradict. Both figures are still
-single-seed, so this retires the old direction rather than settling the new one - see
-`models/qcnn_telecom_q7/README.md` for the other side of the pair and the width ablation file for the
-superseded numbers, which are marked and not deleted.
-
-The mechanism is consistent with the readout defect: at 7 wires pooling leaves exactly three
-survivors [0, 2, 4] and all three are read, so no surviving wire goes unread and no discarded wire
-was ever readable. The 8-wire circuit is the one that had a spare pre-pooling bit to leak.
+Two of the tree's lessons carry over unchanged. Its readout once binned over wires 0..m-1, which
+included wire 1, a pooling control frozen before the fully-connected block ran; the survivor readout
+above is that fix. And it once carried 5 of 57 analytically dead angles - RZ gates applied where only
+a diagonal use or the readout followed - fixed by ordering, RZ before RY; the dead-parameter test now
+covers this circuit's layouts too. The capacity sweep Round 47 ran on the tree (10 runs, 8 and 12
+wires, 6 and 10 layers, none recovering the loss) measured the tree, and the overlap experiment is
+the answer it pointed at: the loss was the disjoint-pair layout, not the parameter count.
 
 ## Reproducibility
 
-    python scripts/train/qcnn_variational.py --usecase telecom --layers 6 --epochs 400 --seed 0 --threads 1 --qubits 8
+    python scripts/train/qcnn_variational.py --usecase telecom --layers 6 --epochs 400 --seed 0 --threads 1 --qubits 8 --arch hur-su4 --encoding-scale 0.5
 
-That command is recorded inside `weights.json` and regenerates this file: five consecutive runs gave
-identical metrics and identical `theta` to nine decimal places. That is true only since the multiclass
-readout stopped using `index_add_`, whose CUDA `atomicAdd` made the same seeded command land on macro
-F1 0.809846 or 0.807781 depending on the run - both figures belong to a retired circuit and are kept
-here, as they are in the artifact's own `training.note`, only to record why the reproducibility claim
-is now safe to make.
-
-The previous card justified the epoch and layer counts with a defaults-versus-full-command comparison
-(0.4998 and 0.6443 against 0.8098). Those three figures were measured on the retired circuit and have
-NOT been re-run against this one, so they are superseded and are not restated as current.
+Recorded inside `weights.json` with the device it ran on (`training.device` cuda,
+`training.device_name`). On CUDA it regenerates `theta`, `scale`, `bias` and every metric bit for
+bit: two independent runs - the pre-registered experiment's and the retrain that wrote this file -
+agree to max |diff| 0. On a CPU it is not guaranteed: CPU and CUDA kernels round differently, and a
+400-epoch multiclass run amplifies that; the tree this replaces reproduced its metrics only on CUDA.
 
 ## Data and licence
 
-**SYNTHETIC.** QKD-attack telemetry generated by `qsh.qml_ids.attacks`, class structure per Al-Kuwari
-et al. (arXiv:2509.14282): 8 classes = 7 attack types + normal traffic. No commercial-OK corpus of
-real QKD attack captures exists, which is why this is generated rather than collected, and why the
-provenance string says so on the page.
+**SYNTHETIC.** QKD-attack telemetry generated by `qsh.qml_ids.attacks`: the class list follows
+Al-Kuwari et al. (arXiv:2509.14282), 8 classes = 7 attack types + normal traffic; the 7 features and
+their signature values are this project's synthetic design. No commercial-OK corpus of real QKD
+attack captures exists, which is why this is generated rather than collected.
 
 Generated by this repository - no third-party terms attach.
 
 ## Scope
 
-Simulated state-vector evaluation, not quantum hardware. The circuit demonstrates that the
-private-inference selector surfaces a class from trained parameters on a multiclass task; it is not
-offered as a competitive intrusion detector, and the logistic regression beside it is the one the page
-actually reports. Nothing on this card is a claim of quantum advantage: classical logistic regression
-wins on this use case by 47 points of macro F1, and it wins on the other two as well.
+Simulated state-vector evaluation, not quantum hardware. The circuit demonstrates that the page's
+inference selector surfaces a class from trained parameters on a multiclass task; it runs
+unencrypted, it is not offered as a competitive intrusion detector, and nothing on this card is a
+claim of quantum advantage: classical logistic regression wins on this use case on every seed, and on
+synthetic data, so no figure here is a claim about a real link.

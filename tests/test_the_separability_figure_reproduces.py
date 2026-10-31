@@ -114,11 +114,14 @@ def test_the_band_excludes_the_two_readings_a_re_deriver_would_try(name):
                  (("in-sample", insample), ("single-feature", single))
                  if abs(val - stated) <= TOL]
     if name == "telecom":
+        # The readings are computed, not quoted: the quoted ones went stale when Round 84 changed the
+        # overlay from the whole corpus to the 600 held-out rows.
         pytest.skip(
-            "telecom's readings are 0.9798 / 0.9915 / 0.9925 / 1.0000 - all four inside any usable "
-            "band, because the corpus is near-perfectly separable in this projection. The estimator "
-            "is genuinely undetermined here and no tolerance can fix that; it is recorded rather "
-            "than asserted, and the other two payloads carry the discrimination.")
+            f"telecom's readings are stated {stated:.4f}, cross-validated {_cv:.4f}, in-sample "
+            f"{insample:.4f} and single-feature {single:.4f} - all inside any usable band, because the "
+            "points are near-perfectly separable in this projection. The estimator is genuinely "
+            "undetermined here and no tolerance can fix that; it is recorded rather than asserted, and "
+            "the other payloads carry the discrimination.")
     assert not ambiguous, (
         f"{name}: the tolerance {TOL} also admits {', '.join(ambiguous)} against the stated {stated}, "
         "so this gate cannot tell which estimator produced the literal. Narrow the band or record "

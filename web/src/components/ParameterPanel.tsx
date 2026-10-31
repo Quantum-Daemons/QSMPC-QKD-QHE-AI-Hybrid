@@ -356,18 +356,27 @@ export default function ParameterPanel({ run }: { run: Run }) {
                 then reported `qcnn_qubits` as the width that RAN, so the control and the metric
                 disagreed and nothing on the page said which was which.
                 The floor is the feature count - a wire carries a feature or is padded - so telecom
-                (7 features) offers 7 and 8 while finance and medical (8 features) offer 8 and 9.
+                (7 features) offers 7 and 8. Finance and medical offered 8 and 9 until Round 84, and
+                their ninth wire carried no feature and was never convolved, so 9 gave the same class
+                as 8 on every row: a second option that changes nothing is the inert-control defect,
+                so a use case with ONE trained width names it rather than offering a choice.
                 `qcnnWidths` is gated against the files on disk in both directions. */}
-            {hasTrainedQcnn(usecase) && qcnnWidths(usecase).length > 0 && (
+            {hasTrainedQcnn(usecase) && qcnnWidths(usecase).length > 1 && (
             <div style={{ minWidth: 120, flex: "1 1 120px" }}>
               <label className="muted" htmlFor="pp-qubits" style={{ fontSize: 12 }}
-                title="Wires in the trained QCNN, which runs unencrypted and, built from two-qubit blocks on disjoint pairs, is classically simulable. Only widths with a shipped circuit are offered: a width with no artifact would silently load a different one. Telecom's 7 and 8 are different trained circuits; on finance and medical the ninth wire carries no feature and is never convolved, so 9 wires gives the same classes as 8.">QCNN qubits</label>
+                title="Wires in the trained QCNN, which runs unencrypted and is simulated exactly on 2^n amplitudes, so it is classically simulable at this size. Only widths with a shipped circuit are offered: a width with no artifact would silently load a different one. Telecom's 7 and 8 are different trained circuits, each with Hur, Kim and Park's two-qubit block on every neighbouring pair of wires.">QCNN qubits</label>
               <select id="pp-qubits" name="qubits" value={String(p.qubits)} style={{ width: "100%" }}
                 onChange={(e) => setParams({ ...params, qubits: Number(e.target.value) })}>
                 {qcnnWidths(usecase).map((w) => (
                   <option key={w} value={w}>{w} wires</option>
                 ))}
               </select>
+            </div>)}
+            {hasTrainedQcnn(usecase) && qcnnWidths(usecase).length === 1 && (
+            <div style={{ minWidth: 120, flex: "1 1 120px" }}>
+              <span className="muted" style={{ fontSize: 12 }}
+                title="One trained width ships for this use case. A ninth wire was offered until Round 84; it carried no feature and gave the same class as 8 wires on every row, so it was removed rather than left as a choice that changes nothing. The circuit runs unencrypted and is simulated exactly on 2^n amplitudes, so it is classically simulable at this size.">QCNN qubits</span>
+              <div style={{ fontSize: 13, padding: "3px 0" }}>{qcnnWidths(usecase)[0]} wires (the one trained width)</div>
             </div>)}
             {/* Only the secure-sum path reads it, and only genomics/finance run that path. The old
                 label promised a prime and accepted any integer: additive sharing over Z_100 is not

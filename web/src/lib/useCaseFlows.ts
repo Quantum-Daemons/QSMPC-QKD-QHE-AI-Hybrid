@@ -248,7 +248,8 @@ const publishedStep = (stageId: string): Step => ({
   kind: "local-wide",
   label: (m) => {
     const status = m["published_model_status"];
-    if (status === "unavailable") return "published model · none registered for this use case";
+    if (status === "none") return "published model · none registered for this use case";
+    if (status === "withheld") return "published model · withheld until re-pinned on the Hub";
     const key = m["published_model"];
     if (status === "failed") return `published model ${key} · DID NOT RUN (no substitute shown)`;
     if (key == null) return "published model · —";

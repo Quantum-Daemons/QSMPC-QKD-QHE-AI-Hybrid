@@ -62,11 +62,25 @@ def build(config: dict | None = None) -> tuple[Pipeline, Context]:
     splits = np.array_split(dosages[:, 0], n_biobanks)
     per_cohort = [int(s.sum()) for s in splits]
 
+    # THE FIELD, FROM WHAT THE COUNTS CAN REACH (Round 84). QSMS's own default is the paper's
+    # d in [n, 2n], GF(5) for four cohorts, and the pooled count wrapped in it: 45 effect alleles
+    # came back as 0, and the "ground truth" beside it was reduced mod 5 too, so the two agreed.
+    # Each person carries at most two copies of the effect allele, so the pool can reach twice the
+    # cohort size. That bound is public; the sum is not, and choosing the field from it would leak.
+    from ...qsmpc.secure_summation import field_for_total
+    from ...qsmpc.shamir import is_probable_prime
+
+    max_total = 2 * int(dosages.shape[0])
+    n_parties = max(len(per_cohort), 3)                 # the parties the QSMPC stage runs
+    pinned = config.get("prime", cfg.qsmpc.prime)
+    prime = int(pinned) if pinned else field_for_total(max_total, n_parties)
+    if not is_probable_prime(prime) or prime <= max_total:
+        raise ValueError(f"QSMS field {prime} cannot hold the pooled allele count, which can reach "
+                         f"{max_total} for {dosages.shape[0]} people: the sum would wrap mod the field")
+
     ctx = Context(
         usecase="genomics",
-        config={"qsmpc_op": "sum", "inference": "ckks", "seed": seed,
-                # None => QSMS derives a prime in [n, 2n] as the construction requires.
-                "prime": config.get("prime", cfg.qsmpc.prime), **config},
+        config={"qsmpc_op": "sum", "inference": "ckks", "seed": seed, **config, "prime": prime},
     )
     ctx.data["secrets"] = per_cohort
     ctx.data["linear_model"] = LinearModel(w2.astype(float), b2)
@@ -79,6 +93,8 @@ def build(config: dict | None = None) -> tuple[Pipeline, Context]:
     ctx.data["_prs"] = {"name": prs_name, "n_snps": len(weights), "threshold": round(threshold, 4),
                         "subject_score": round(float(subject @ weights), 4)}
     ctx.data["_ground_truth_total"] = sum(per_cohort)
+    ctx.data["_qsms_field"] = {"prime": prime, "max_possible_total": max_total, "parties": n_parties,
+                               "field_within_paper_bound": bool(n_parties <= prime <= 2 * n_parties)}
     return Pipeline(name="genomics", stages=standard_stages()), ctx
 
 
@@ -88,10 +104,14 @@ def run_demo(config: dict | None = None) -> dict:
     m = pipe.bus.metrics()
     return {
         "pooled_allele_count": ctx.artifacts.get("secure_sum"),
-        # Reduce into the field the sum actually used, which QSMS derives from the party count.
-        # Reading ctx.config["prime"] assumed a pinned modulus and returned None once the config
-        # stopped pinning one -- and a pinned 4099 was outside the paper's admissible field anyway.
-        "ground_truth_total": ctx.data["_ground_truth_total"] % ctx.artifacts["qsms_prime"],
+        # UNREDUCED (Round 84). This was reduced mod the field the sum used, so a wrapped sum
+        # matched a wrapped truth: 0 == 0 for 45 alleles in GF(5). The field now exceeds every
+        # total the counts can reach, so the two agree only if the protocol is right.
+        "ground_truth_total": ctx.data["_ground_truth_total"],
+        # Which field ran and why it is not the paper's: a count above 2n needs d > 2n, and d**t
+        # then passes the statevector bound, so the run used the analytic sampler.
+        "qsms_field": {**ctx.data["_qsms_field"],
+                       "honest_statevector": ctx.artifacts.get("qsms_honest_statevector")},
         "prs": ctx.data.get("_prs"),
         # Canonical key, not one backend's - see stages.py. Reading `fhe_prediction`
         # alone meant a QCNN run computed a class and this surfaced None.

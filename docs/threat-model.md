@@ -15,7 +15,8 @@
   security system.
 - **Honest-but-curious compute server** (delegated AI): would read inputs/model. Mitigation:
   QHE (QOTP, perfectly hiding as a scheme; the demo's pad is seeded) for the quantum path; CKKS for
-  the classical path, whose masked HE-to-MPC conversion protects slot 0 only (see Trust assumptions);
+  the classical path, whose masked HE-to-MPC conversion masks every slot the key holder can decode
+  since Round 84 (see Trust assumptions);
   secure aggregation is meant to hide per-client updates in federated learning -- **but it hides
   nothing here, so this mitigation is not in force:** in the browser every pairwise mask is an HKDF
   output of the one PQC session key, which the aggregator also holds, and in Python the default pair
@@ -68,11 +69,12 @@
   the full-deployment MCP server.
 - **Server-tier MPC** (full deployment, `src/qsh/mpc/parties.py`): three MPyC parties, the client
   who holds the CKKS key, the server who holds the model, and a helper; Shamir with t = 1, so
-  **semi-honest with an honest majority**. The conversions are masked (`src/qsh/mpc/secret_inference.py`),
-  but the mask is a scalar added to every CKKS slot, so it protects slot 0 only: a key holder who
-  decodes every slot of one masked dot product recovers the unmasked output and the layer's weights
-  (confirmed with the TenSEAL backend). Until that is fixed the conversion is **not model-private**;
-  slot 0 alone is hidden statistically rather than perfectly, with the bound reported per run. A
+  **semi-honest with an honest majority**. The conversions are masked in every CKKS slot the key
+  holder can decode (`src/qsh/mpc/secret_inference.py`, Round 84). Until then the mask was a scalar
+  added to every slot, and a key holder who decoded every slot of one masked dot product recovered
+  the unmasked output and the layer's weights (confirmed with the TenSEAL backend). The whole view
+  is hidden statistically rather than perfectly, with its bound (`view_statistical_distance`)
+  reported per run; on OpenFHE the imaginary parts are not flooded, and the run says so. A
   client and helper who pool their shares recover the server's masks and with them every
   intermediate. Here the three run on one host over loopback; a deployment that relies on the honest
   majority needs them on three hosts under three operators.

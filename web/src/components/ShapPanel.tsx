@@ -91,8 +91,8 @@ export default function ShapPanel({ explanation, provenance, baseline, published
       {surfacedBackend === "qcnn-trained" && (
         <div className="note" style={{ marginBottom: 8, borderColor: "var(--warn)", color: "var(--warn)" }}>
           ⚠ The class this page surfaces came from the <b>trained QCNN</b> circuit, which runs
-          unencrypted and, built from two-qubit blocks on disjoint pairs of a few qubits, is classically
-          simulable. These bars describe the bundled linear model, which is a different decision.
+          unencrypted and is simulated exactly on a few qubits, so it is classically simulable at this
+          size. These bars describe the bundled linear model, which is a different decision.
         </div>
       )}
       {tops.map((t, i) => (

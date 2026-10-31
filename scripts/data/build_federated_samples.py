@@ -52,7 +52,7 @@ import numpy as np
 REPO = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO / "src"))
 
-from qsh.models.registry import BUNDLED_DEMO_SAMPLES, DEMO_SAMPLE_FILES  # noqa: E402
+from qsh.models.registry import BUNDLED_DEMO_SAMPLES, DEMO_SAMPLE_FILES, DS_WDBC  # noqa: E402
 
 #: The eight AML features, in the order `finance_aml` and the published weights expect.
 FIN_NAMES = ["amount", "velocity_24h", "cross_border", "night_tx",
@@ -67,6 +67,25 @@ MED_NAMES = ["mean_radius", "mean_texture", "mean_perimeter", "mean_area", "mean
 #: is that the constants applied to the redistributed rows were not computed from every one of them,
 #: which is the same discipline - and the same fraction - as `loaders.load_breast_cancer`.
 SCALER_FIT_FRACTION = 0.7
+
+#: WHY THE MEDICAL FILE NOW SPLITS (Round 84). The private-inference figure named its 400 medical
+#: rows "held-out" while the regression it plotted had been fitted on exactly those 400 (this file's
+#: own `real_model` said "fitted on the rows shipped here"). Two evaluations of one model on its
+#: fitting rows do measure the encryption, but the word invited reading the figure as generalisation.
+#:
+#: The split is the loader's own: `loaders.load_breast_cancer` fits its scaler on the first
+#: SCALER_FIT_FRACTION of the 569 rows, int(569 * 0.7) = 398, and the regression is fitted on those
+#: same 398. The other 171 touched neither, so the figure can call them held out and be right, and
+#: the z-scores stay the loader's - which the medical QCNN artifact and the Python medical_fl
+#: pipeline both assume. A stratified random split was tried first and rejected for that reason: it
+#: needs its own scaler, and every consumer that maps these z-scores back to raw units with the
+#: loader's constants would then decode the wrong cell measurements. The cost is balance: the held-out
+#: tail is 22.8 percent malignant against 43.5 in the fitting rows (37.3 overall), stated in the file.
+
+#: Licence text the CC BY 4.0 credit asks to accompany the data (section 3(a)(1)(C)): the licence's
+#: URI. Written into the file, not only the page, because the file is what gets copied.
+CC_BY_4 = "https://creativecommons.org/licenses/by/4.0/"
+CC_BY_SA_4 = "https://creativecommons.org/licenses/by-sa/4.0/"
 
 
 def _stratified(y: np.ndarray, n: int, rng: np.random.Generator) -> np.ndarray:
@@ -155,6 +174,20 @@ def build_finance(n: int, seed: int) -> dict:
     student = LogisticRegression(max_iter=500, class_weight="balanced").fit(Xs, teacher.predict(Xs))
     return {
         "provenance": BUNDLED_DEMO_SAMPLES["finance_aml"][0],
+        # What CC BY-SA 4.0 asks to travel with Adapted Material (sections 3(a)(1) and 3(b)): the
+        # creator, the licence's URI and a note of the changes. The file named the licence in prose
+        # only, and a copy of the file is what a reuser actually holds.
+        "licence": "CC-BY-SA-4.0",
+        "licence_url": CC_BY_SA_4,
+        "attribution": ("E. A. Lopez-Rojas, A. Elmir and S. Axelsson, 'PaySim: A financial mobile "
+                        "money simulator for fraud detection', 28th European Modeling and "
+                        "Simulation Symposium (EMSS), Larnaca, Cyprus, 2016. Data: Kaggle "
+                        "ealaxi/paysim1."),
+        "modifications": (f"{n} rows drawn class-balanced from the bundled data/finance/"
+                          "paysim_sample.tsv (itself a fraud-enriched subset of the Kaggle file); "
+                          "eight columns under AML-style names; standardised and rounded to 5 "
+                          "decimals, with the unstandardised values kept in samples_by_space.raw. "
+                          "Adapted Material, shared under CC BY-SA 4.0."),
         "names": FIN_NAMES,
         "samples": [[round(float(v), 5) for v in r] for r in Xs],
         # THE SAME ROWS IN THE SPACE THE QCNN ARTIFACT DECLARES, and the reason both are needed.
@@ -192,48 +225,135 @@ def build_finance(n: int, seed: int) -> dict:
 
 
 def build_medical(n: int, seed: int) -> dict:
+    """WDBC split ONCE into the rows the bundled regression is fitted on and the rows it is not.
+
+    `samples` / `labels` are the 398 fitting rows: the federated demo trains on them (it holds out
+    its own share, as before) and the SHAP reference point is their mean. `heldout` is the other
+    171, which touched neither the regression nor the scaler, and they are what the browser scores
+    under CKKS for the private-inference figure. `n` and `seed` are ignored here: the split is the
+    loader's fixed prefix (see SCALER_FIT_FRACTION), over the whole cohort.
+
+    THE CLASS IS RECODED TO 1 = MALIGNANT. scikit-learn ships 0 = malignant; `real_2d.json` and the
+    medical QCNN both use 1 = malignant, so one page carried two encodings and an overlay drawing
+    this file's rows beside the other would have swapped the colours of the two diagnoses.
+    """
     from sklearn.datasets import load_breast_cancer as _lbc
     from sklearn.linear_model import LogisticRegression
 
     from qsh.data.loaders import load_breast_cancer
 
-    # Already standardised, and standardised the leakage-aware way: `load_breast_cancer` fits its
-    # scaler on the first 70 % of rows. Reusing it keeps one definition of "the medical features".
-    X_all, y_all = load_breast_cancer(scaler_fit_fraction=SCALER_FIT_FRACTION)
-    feature_names = [name.replace(" ", "_") for name in _lbc().feature_names]
+    del n, seed                                # see the docstring: a fixed split of the cohort
+    ds = _lbc()
+    # The loader's z-scores, one definition of "the medical features": its scaler is fitted on
+    # rows [0, cut) only, which is the fitting side of this split by construction.
+    X_all, _ = load_breast_cancer(scaler_fit_fraction=SCALER_FIT_FRACTION)
+    cut = max(1, int(len(ds.data) * SCALER_FIT_FRACTION))
+    feature_names = [name.replace(" ", "_") for name in ds.feature_names]
     idx = [feature_names.index(name) for name in MED_NAMES]
+    Z = np.asarray(X_all, dtype=np.float64)[:, idx]
+    y_all = (np.asarray(ds.target) == 0).astype(int)          # 1 = malignant
+    fit_idx, held_idx = np.arange(cut), np.arange(cut, len(y_all))
+    # The claim the figure prints, checked rather than assumed: refit the loader's scaler on the
+    # fitting rows alone and it must reproduce every shipped z-score, held-out rows included.
+    mu, sd = ds.data[:cut, idx].mean(axis=0), ds.data[:cut, idx].std(axis=0)
+    assert float(np.abs((ds.data[:, idx] - mu) / sd - Z).max()) < 1e-4, (
+        "load_breast_cancer no longer fits its scaler on the first rows only; the held-out rows "
+        "would be scaled by constants they contributed to")
 
-    rng = np.random.default_rng(seed)
-    pick = _stratified(np.asarray(y_all), n, rng)
-    X, y = np.asarray(X_all)[np.ix_(pick, idx)], np.asarray(y_all)[pick]
-    student = LogisticRegression(max_iter=500, class_weight="balanced").fit(X, y)
+    student = LogisticRegression(max_iter=500, class_weight="balanced").fit(Z[fit_idx], y_all[fit_idx])
+    # The overlay's own plane, in its own units, so the browser can draw the held-out rows where
+    # `real_2d.json` draws them without a second copy of the scaler.
+    names = list(ds.feature_names)
+    xi, yi = names.index("mean radius"), names.index("mean texture")
+
+    def plane(rows: np.ndarray) -> list[list[float]]:
+        return [[float(f"{ds.data[i, xi]:.4g}"), float(f"{ds.data[i, yi]:.4g}")] for i in rows]
+
+    def zs(rows: np.ndarray) -> list[list[float]]:
+        return [[round(float(v), 5) for v in Z[i]] for i in rows]
+
+    # THE SAME ROWS IN SOURCE UNITS (Round 84, for the QCNN owner's note C2-for-integrator.md 1). The
+    # medical QCNN now declares `input_space: "raw"` and standardises with its own trainer's
+    # constants, and this file's z-scores are made with a different scaler, so it must be fed raw
+    # values by name. `.6g` is lossless for WDBC, whose values carry at most 4 significant figures.
+    X_raw = np.asarray(ds.data, dtype=np.float64)[:, idx]
+
+    def raw(rows: np.ndarray) -> list[list[float]]:
+        return [[float(f"{v:.6g}") for v in X_raw[i]] for i in rows]
+
+    held_pred = (Z[held_idx] @ student.coef_[0] + student.intercept_[0] > 0).astype(int)
+    share = lambda rows: round(float(y_all[rows].mean()), 4)   # noqa: E731
     return {
         "provenance": BUNDLED_DEMO_SAMPLES["medical_fl"][0],
+        # What CC BY 4.0 asks to travel with shared data (section 3(a)(1)): the creator as the
+        # provider asks, the licence's URI and a note of the changes. The registry's credit, not a
+        # second copy of it: one string, in the order and year UCI asks for.
+        "licence": "CC-BY-4.0",
+        "licence_url": CC_BY_4,
+        "attribution": DS_WDBC.attribution,
+        "modifications": (f"Eight of the 30 columns, standardised with constants fitted on the first "
+                          f"{cut} rows (scikit-learn order) and rounded to 5 decimals; class recoded "
+                          f"to 1 = malignant (the source codes 0 = malignant); split into those {cut} "
+                          f"rows and the last {len(held_idx)}. samples_by_space.raw keeps the eight "
+                          "columns in source units, and heldout.plane mean radius and mean texture, "
+                          "rounded to 4 significant figures."),
         "names": MED_NAMES,
-        "samples": [[round(float(v), 5) for v in r] for r in X],
+        "class_names": ["benign", "malignant"],
+        "samples": zs(fit_idx),
         # The space `samples` is in, named rather than implied. The browser keys its per-space row
         # map on this, so an artifact asks for the space it was trained on BY NAME.
         "feature_space": "zscore",
-        "labels": [int(v) for v in y],
+        "samples_by_space": {"raw": raw(fit_idx)},
+        "labels": [int(v) for v in y_all[fit_idx]],
         "model": {"W": [[0.0] * 8, [float(w) for w in student.coef_[0]]],
                   "b": [0.0, float(student.intercept_[0])]},
-        "real_model": ("logistic regression over the eight shipped WDBC columns, fitted on the rows "
-                       "shipped here"),
+        "real_model": (f"logistic regression over the eight shipped WDBC columns, fitted on the "
+                       f"{cut} rows in `samples`; the {len(held_idx)} rows in `heldout` were not "
+                       "used to fit it or its scaler"),
+        # Page-facing, read by the private-inference figure's caption: what the model WAS fitted on.
+        "fit_note": (f"the regression and its scaler were fitted on rows 0 to {cut - 1} of the "
+                     f"569-row cohort, and these are rows {cut} to {len(y_all) - 1}."),
         "scaling": (f"StandardScaler fitted on the first {SCALER_FIT_FRACTION:.0%} of the full 569-row "
-                    "cohort by qsh.data.loaders.load_breast_cancer, which is where this file's "
-                    "feature definition comes from."),
-        "eda": _eda(X, MED_NAMES),
+                    f"cohort (rows 0 to {cut - 1}) by qsh.data.loaders.load_breast_cancer, which is "
+                    "where this file's feature definition comes from; those are exactly the rows in "
+                    "`samples`, so no held-out row contributed to the constants."),
+        "heldout": {
+            "n": int(len(held_idx)),
+            "note": (f"Rows {cut} to {len(y_all) - 1} of the 569-row cohort in scikit-learn's order, "
+                     f"which the regression in `model` was never fitted on and its scaler never saw. "
+                     f"{share(held_idx):.1%} malignant, against {share(fit_idx):.1%} in the fitting "
+                     "rows: WDBC's order is not perfectly exchangeable, and the split is the loader's "
+                     "fixed prefix rather than a stratified draw. The browser scores these rows "
+                     "under CKKS."),
+            "split": (f"the last {len(held_idx)} of the 569 rows in scikit-learn's order, "
+                      f"{share(held_idx):.1%} malignant against {share(fit_idx):.1%} in the fitting "
+                      "rows (a fixed prefix split, not a stratified draw)"),
+            "samples": zs(held_idx),
+            "samples_by_space": {"raw": raw(held_idx)},
+            "labels": [int(v) for v in y_all[held_idx]],
+            "row_index": [int(i) for i in held_idx],
+            "plane": plane(held_idx),
+            "plaintext_accuracy": round(float((held_pred == y_all[held_idx]).mean()), 6),
+        },
+        "plane": {"x": {"key": "mean radius", "label": "mean nucleus radius"},
+                  "y": {"key": "mean texture", "label": "mean nucleus texture"}},
+        "eda": _eda(Z[fit_idx], MED_NAMES),
     }
 
 
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--rows", type=int, default=400,
-                    help="rows per file (default 400 -> a 20%% holdout is 80 rows)")
+                    help="finance rows (default 400 -> a 20%% holdout is 80 rows); medical always "
+                         "splits the whole 569-row cohort 398 / 171")
     ap.add_argument("--seed", type=int, default=0)
+    ap.add_argument("--only", choices=["finance_aml", "medical_fl"], default=None,
+                    help="rebuild one file and leave the other untouched")
     args = ap.parse_args()
 
     for usecase, build in (("finance_aml", build_finance), ("medical_fl", build_medical)):
+        if args.only and usecase != args.only:
+            continue
         payload = build(args.rows, args.seed)
         out = REPO / DEMO_SAMPLE_FILES[usecase]
         out.parent.mkdir(parents=True, exist_ok=True)

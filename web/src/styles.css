@@ -16,7 +16,10 @@
 
 * { box-sizing: border-box; }
 body { margin: 0; background: var(--bg); color: var(--text); }
-a { color: var(--accent); text-decoration: none; }
+/* A link inside running text is told apart without colour (SC 1.4.1, checklist UX37): #4f9dff in
+   #97a3b6 text is 1.08:1, so colour alone said nothing. Underlined by default; the navigation and
+   the link-shaped cards, which are not running text, opt out below and in place. */
+a { color: var(--accent); text-decoration: underline; text-underline-offset: 0.15em; }
 h1, h2, h3 { line-height: 1.2; }
 code, .mono { font-family: ui-monospace, "SFMono-Regular", Menlo, monospace; }
 
@@ -59,13 +62,16 @@ code, .mono { font-family: ui-monospace, "SFMono-Regular", Menlo, monospace; }
 .nav { margin-top: 24px; display: flex; flex-direction: column; gap: 4px; }
 .nav a {
   padding: 9px 12px; border-radius: 8px; color: var(--muted); font-size: 14px;
-  display: flex; align-items: center; gap: 8px;
+  display: flex; align-items: center; gap: 8px; text-decoration: none;
 }
 .nav a:hover { background: var(--panel); color: var(--text); }
 .nav a.active { background: var(--accent); color: #03070f; font-weight: 600; }
+/* No opacity (checklist UX36): at 0.7 the label was #6d7687 on #0a0e1a, 4.2:1 at 10 px, under the
+   4.5:1 that SC 1.4.3 asks of text this small. Full --muted is 6.96:1 on the sidebar's --bg-2 and
+   7.55:1 on --bg; the uppercase, letter-spaced 10 px still sets it apart from the links. */
 .nav .nav-group {
   margin: 14px 0 4px; padding: 0 12px; font-size: 10px; letter-spacing: 0.08em;
-  text-transform: uppercase; color: var(--muted); opacity: 0.7;
+  text-transform: uppercase; color: var(--muted);
 }
 .nav a.sub { padding-left: 22px; font-size: 13px; }
 .nav a.sub.active { background: var(--quantum); }
@@ -275,15 +281,18 @@ hr { border: none; border-top: 1px solid var(--border); margin: 24px 0; }
 .model-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 4px; }
 .small { font-size: 12px; }
 .mini-table { width: 100%; border-collapse: collapse; margin: 8px 0; font-size: 12px; }
-.mini-table td { padding: 3px 8px 3px 0; border-bottom: 1px solid var(--border); }
-.mini-table td.num { text-align: right; font-variant-numeric: tabular-nums; width: 120px; }
-.mini-table tr.metric-headline td { font-weight: 700; color: var(--accent-2); }
+.mini-table td, .mini-table th { padding: 3px 8px 3px 0; border-bottom: 1px solid var(--border); }
+.mini-table td.num, .mini-table th.num { text-align: right; font-variant-numeric: tabular-nums; width: 120px; }
+/* A row header is the key column of a key-value table (SC 1.3.1, checklist UX38), so it keeps the
+   look the plain cell had: the semantics change, the table does not. */
+.mini-table th[scope="row"] { color: inherit; font-weight: inherit; }
+.mini-table tr.metric-headline td, .mini-table tr.metric-headline th { font-weight: 700; color: var(--accent-2); }
 /* 0.85, not 0.62. Measured: `--muted` on `--panel` is 6.67:1 at full opacity, 3.41:1 at 0.62 - below
    the 4.5:1 AA floor at this 12px size - and 5.20:1 at 0.85. Every non-warning row of the security
    posture table carries this class, so only the FAILURES were legible in the table this project
    offers as the replacement for its retired 0-100 composite. Still dimmer than the headline metric,
    which is the whole intent. */
-.mini-table tr.metric-companion td { opacity: 0.85; }
+.mini-table tr.metric-companion td, .mini-table tr.metric-companion th { opacity: 0.85; }
 
 /* Verification charts. Two side by side on a wide screen, stacked on a phone: a precision-recall
    curve and its score histogram are a pair and lose most of their meaning apart. */

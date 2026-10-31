@@ -20,6 +20,10 @@
 // asset reference, so Vite emits + hashes it normally and returns the served URL.
 import sealWasmUrl from "/node_modules/node-seal/dist/seal_throws.wasm?url";
 import { fheCfg } from "./config";
+// Types only, erased at build: the figure's own schema, so the producer below is checked against the
+// component that draws it rather than against a copy that could drift.
+import type { EncryptedAgreementPlot } from "../components/VerificationChart";
+import type { HeldOutCorpus } from "./realData";
 
 let _ctx: Promise<SealCtx> | null = null;
 
@@ -133,9 +137,18 @@ export interface FHEBatchResult {
   rows: number;
   /** Rows the caller handed over. Larger than `rows` means the cap dropped the difference. */
   rowsOffered: number;
-  /** Rows that fit in one ciphertext at this feature width. The batch is capped at it. */
+  /** Rows that fit in one ciphertext at this feature width. The batch is capped at
+   *  `rowsPerCiphertext * maxCiphertexts`. */
   rowsPerCiphertext: number;
+  /** Ciphertexts actually filled: 1 unless the caller raised `maxCiphertexts`, 0 for no rows. */
+  ciphertexts: number;
+  /** Wall-clock of the encrypted work only, summed over the ciphertexts. The yields between
+   *  ciphertexts are outside it, so this is not inflated by the page repainting. */
   fheMs: number;
+  /** `fheMs / ciphertexts`, null with no ciphertext. The unit that stays comparable when the row
+   *  count grows: the total for 64 ciphertexts is not a slower CKKS, it is 64 of them. */
+  msPerCiphertext: number | null;
+  /** Size of ONE input ciphertext; every chunk is encrypted at the same ring and scale. */
   ctBytes: number | null;
   maxAbsError: number;
   rotations: number;
@@ -145,6 +158,74 @@ export interface FHEBatchResult {
    *  `rotations` does not give a per-rotation cost - it gave 158 ms against a true ~3 ms. This is
    *  the measured quantity, and it is the unit published CKKS primitive benchmarks report. */
   rotateMs: number;
+}
+
+/** How far a batch may go past one ciphertext. */
+export interface BatchOptions {
+  /** Ciphertexts this call may fill. 1, the default, is the original cap: every existing caller
+   *  keeps the homomorphic work of a single encryption. A caller that must score a whole held-out
+   *  split raises it, and the result reports `ciphertexts` and `msPerCiphertext` so the extra cost
+   *  is a number on the page, not a factor hidden inside one total. */
+  maxCiphertexts?: number;
+}
+
+/** Let the page repaint between ciphertexts. SEAL runs synchronously on the main thread, and 64
+ *  back-to-back ciphertexts (finance's 8,192 rows) would freeze the tab for the whole batch. */
+const yieldToPage = () => new Promise<void>((resolve) => setTimeout(resolve, 0));
+
+/** One ciphertext's worth of the stride-packed linear layer. `rows.length` is at most
+ *  `slots / sumWidth`; the caller chunks. Returns per-class decrypted scores and its own counters. */
+async function batchCiphertext(
+  c: SealCtx, W: number[][], b: number[], rows: number[][], n: number, sumWidth: number,
+) {
+  const { seal, encoder, encryptor, decryptor, evaluator, galois, slots, scale } = c;
+  const t0 = performance.now();
+  const xPad = new Float64Array(slots);
+  rows.forEach((row, r) => {
+    for (let i = 0; i < n; i++) xPad[r * sumWidth + i] = row[i] ?? 0;
+  });
+  const ptX = seal.PlainText ? seal.PlainText() : new seal.Plaintext();
+  encoder.encode(xPad, scale, ptX);
+  const ctX = new seal.Ciphertext();
+  encryptor.encrypt(ptX, ctX);
+  let ctBytes: number | null = null;
+  try { ctBytes = ctX.saveToArray(seal.ComprModeType.none).length; } catch { ctBytes = null; }
+
+  const perClass: number[][] = [];
+  let rotations = 0, multiplies = 0, rotateMs = 0;   // see `encryptedLinear` for why rotations are timed
+  for (let j = 0; j < W.length; j++) {
+    if (W[j].every((v) => v === 0)) {
+      perClass.push(rows.map(() => b[j] ?? 0));      // all-zero row: the logit is the bias
+      continue;
+    }
+    const wPad = new Float64Array(slots);
+    for (let r = 0; r < rows.length; r++) {
+      for (let i = 0; i < n; i++) wPad[r * sumWidth + i] = W[j][i] ?? 0;   // TILED at the same stride
+    }
+    const ptW = new seal.Plaintext();
+    encoder.encode(wPad, scale, ptW);
+    let acc = new seal.Ciphertext();
+    evaluator.multiplyPlain(ctX, ptW, acc);
+    multiplies++;
+    for (let s = 1; s < sumWidth; s <<= 1) {
+      const rot = new seal.Ciphertext();
+      const tr = performance.now();
+      evaluator.rotateVector(acc, s, galois, rot);
+      rotateMs += performance.now() - tr;
+      const nxt = new seal.Ciphertext();
+      evaluator.add(acc, rot, nxt);
+      acc = nxt;
+      rotations++;
+    }
+    const out = new seal.Plaintext();
+    decryptor.decrypt(acc, out);
+    const dec = encoder.decodeFloat64(out);
+    perClass.push(rows.map((_, r) => dec[r * sumWidth] + (b[j] ?? 0)));
+  }
+  return {
+    logits: rows.map((_, r) => perClass.map((cls) => cls[r])),
+    ms: performance.now() - t0, ctBytes, rotations, multiplies, rotateMs,
+  };
 }
 
 /**
@@ -166,17 +247,22 @@ export interface FHEBatchResult {
  *
  * Verified before it was written: the stride-packed reduction recovers each row's dot product exactly,
  * checked against the plaintext value in plain JS with the same rotation semantics.
+ *
+ * MORE THAN ONE CIPHERTEXT ONLY ON REQUEST (Round 84). A held-out split can outgrow one ciphertext:
+ * finance's 8,192 test-window rows at width 32 need 64. `maxCiphertexts` lets a caller fill that
+ * many, one after another with the same keys, and the result says how many it filled and what each
+ * cost. The default stays 1, so no existing caller's homomorphic work changes.
  */
 export async function encryptedLinearBatch(
-  W: number[][], b: number[], rows: number[][],
+  W: number[][], b: number[], rows: number[][], opts: BatchOptions = {},
 ): Promise<FHEBatchResult> {
   const c = await getCtx();
-  const { seal, encoder, encryptor, decryptor, evaluator, galois, slots, scale } = c;
   const n = rows[0]?.length ?? 0;
   const sumWidth = 1 << Math.ceil(Math.log2(Math.max(n, 2)));
-  const rowsPerCiphertext = Math.max(1, Math.floor(slots / sumWidth));
-  // Capped rather than chunked. Chunking would multiply the homomorphic cost by the number of chunks
-  // and hide that behind one number.
+  const rowsPerCiphertext = Math.max(1, Math.floor(c.slots / sumWidth));
+  const maxCiphertexts = Math.max(1, Math.floor(opts.maxCiphertexts ?? 1));
+  // Capped rather than chunked silently. Filling more ciphertexts multiplies the homomorphic cost, so
+  // it happens only when the caller asks, and `ciphertexts` / `msPerCiphertext` carry the multiple.
   //
   // `rowsOffered` is returned BECAUSE the cap is silent otherwise. Written first without it, and the
   // first run scored 512 of a 600-row held-out split: 88 rows dropped, an agreement of 1.0 reported
@@ -184,60 +270,148 @@ export async function encryptedLinearBatch(
   // split. The comment here even claimed "a cap is visible, and the caller reports how many rows it
   // asked for" - it was not, and the caller could not, because this function did not tell it.
   const rowsOffered = rows.length;
-  const used = rows.slice(0, rowsPerCiphertext);
+  const used = rows.slice(0, rowsPerCiphertext * maxCiphertexts);
 
-  const t0 = performance.now();
-  const xPad = new Float64Array(slots);
-  used.forEach((row, r) => {
-    for (let i = 0; i < n; i++) xPad[r * sumWidth + i] = row[i] ?? 0;
-  });
-  const ptX = seal.PlainText ? seal.PlainText() : new seal.Plaintext();
-  encoder.encode(xPad, scale, ptX);
-  const ctX = new seal.Ciphertext();
-  encryptor.encrypt(ptX, ctX);
+  const logits: number[][] = [];
+  let fheMs = 0, rotations = 0, multiplies = 0, rotateMs = 0, ciphertexts = 0;
   let ctBytes: number | null = null;
-  try { ctBytes = ctX.saveToArray(seal.ComprModeType.none).length; } catch { ctBytes = null; }
-
-  const perClass: number[][] = [];
-  let rotations = 0, multiplies = 0, rotateMs = 0;   // see `encryptedLinear` for why rotations are timed
-  for (let j = 0; j < W.length; j++) {
-    if (W[j].every((v) => v === 0)) {
-      perClass.push(used.map(() => b[j] ?? 0));      // all-zero row: the logit is the bias
-      continue;
-    }
-    const wPad = new Float64Array(slots);
-    for (let r = 0; r < used.length; r++) {
-      for (let i = 0; i < n; i++) wPad[r * sumWidth + i] = W[j][i] ?? 0;   // TILED at the same stride
-    }
-    const ptW = new seal.Plaintext();
-    encoder.encode(wPad, scale, ptW);
-    let acc = new seal.Ciphertext();
-    evaluator.multiplyPlain(ctX, ptW, acc);
-    multiplies++;
-    for (let s = 1; s < sumWidth; s <<= 1) {
-      const rot = new seal.Ciphertext();
-      const tr = performance.now();
-      evaluator.rotateVector(acc, s, galois, rot);
-      rotateMs += performance.now() - tr;
-      const nxt = new seal.Ciphertext();
-      evaluator.add(acc, rot, nxt);
-      acc = nxt;
-      rotations++;
-    }
-    const out = new seal.Plaintext();
-    decryptor.decrypt(acc, out);
-    const dec = encoder.decodeFloat64(out);
-    perClass.push(used.map((_, r) => dec[r * sumWidth] + (b[j] ?? 0)));
+  for (let start = 0; start < used.length; start += rowsPerCiphertext) {
+    if (ciphertexts > 0) await yieldToPage();          // outside the timed region, see `fheMs`
+    const part = await batchCiphertext(c, W, b, used.slice(start, start + rowsPerCiphertext), n, sumWidth);
+    for (const row of part.logits) logits.push(row);
+    fheMs += part.ms; rotations += part.rotations; multiplies += part.multiplies;
+    rotateMs += part.rotateMs;
+    ctBytes ??= part.ctBytes;
+    ciphertexts++;
   }
-  const fheMs = performance.now() - t0;
 
-  const logits = used.map((_, r) => perClass.map((cls) => cls[r]));
   const plainLogits = used.map((row) =>
     W.map((wr, j) => wr.reduce((a, w, i) => a + w * (row[i] ?? 0), 0) + (b[j] ?? 0)));
-  const maxAbsError = Math.max(
-    0, ...logits.flatMap((row, r) => row.map((v, j) => Math.abs(v - plainLogits[r][j]))));
-  return { logits, plainLogits, rows: used.length, rowsOffered, rowsPerCiphertext, fheMs, ctBytes,
+  // A loop, not `Math.max(...spread)`: 8,192 rows x 2 classes is past what an argument list holds
+  // in some engines, and a RangeError here would read as a CKKS failure.
+  let maxAbsError = 0;
+  logits.forEach((row, r) => row.forEach((v, j) => {
+    maxAbsError = Math.max(maxAbsError, Math.abs(v - plainLogits[r][j]));
+  }));
+  return { logits, plainLogits, rows: used.length, rowsOffered, rowsPerCiphertext, ciphertexts,
+           fheMs, msPerCiphertext: ciphertexts > 0 ? fheMs / ciphertexts : null, ctBytes,
            maxAbsError, rotations, multiplies, rotateMs };
+}
+
+/** Plaintext top-1 minus top-2: how far a row is from changing class. 0 is a tie. */
+function topTwoGap(row: number[]): number {
+  let a = -Infinity, b = -Infinity;
+  for (const v of row) { if (v > a) { b = a; a = v; } else if (v > b) b = v; }
+  return Number.isFinite(b) ? a - b : Infinity;
+}
+
+/** -log2(error) floored: the bits OpenFHE and HElib report. No bits exist for an error >= 1. */
+const bitsOf = (e: number | null) => (e != null && e > 0 && e < 1 ? Math.floor(-Math.log2(e)) : null);
+
+/** Everything a run publishes about one held-out encrypted evaluation, and the figure itself. */
+export interface HeldOutAgreement {
+  plot: EncryptedAgreementPlot;
+  batch: FHEBatchResult;
+  mismatches: number;
+  /** Rows the plaintext model scores identically across its top two classes. */
+  tieRows: number;
+  decidable: number;
+  flippedDecidable: number;
+  flipMarginMax: number;
+  /** Smallest non-zero plaintext top-1 margin: the closest any decided row came to a flip. */
+  smallestMargin: number | null;
+  /** Median |encrypted - plaintext| over the scores that went through CKKS (not the bias-only class). */
+  medianAbsError: number | null;
+  precisionBits: number | null;
+  medianPrecisionBits: number | null;
+  /** True only when no decided row COULD have flipped: smallest margin above the worst deviation,
+   *  times two when every class score is encrypted (two deviations can meet), once when only one is. */
+  flipImpossible: boolean;
+  /** Against the TRUE labels, over the scored rows. */
+  encryptedAccuracy: number | null;
+  plaintextAccuracy: number | null;
+}
+
+/**
+ * Score a published model on its held-out rows under CKKS, every row, and build the figure (Round 84).
+ *
+ * This is the path the finance, medical and telecom pages encrypt through. It fills as many
+ * ciphertexts as the rows need - 64 for finance's 8,192 at width 32 - because a denominator smaller
+ * than the split it names was the defect the cap disclosure exists for; the cost travels with it as
+ * `ciphertexts` and `msPerCiphertext`.
+ *
+ * WHAT IS PLOTTED. A two-class model plots its decision logit (class 1 minus class 0), encrypted
+ * against plaintext, so every row sits somewhere informative and a flip is a point in the wrong
+ * quadrant. Plotting the winning class's score instead put every row the model calls class 0 at
+ * exactly (0, 0) for the bias-only class-0 row, which is most of the finance page. A multiclass model
+ * plots the encrypted top-1 class's score, the convention the figure already used.
+ */
+export async function encryptedHeldOutAgreement(held: HeldOutCorpus): Promise<HeldOutAgreement> {
+  const c = await getCtx();
+  const n = held.rows[0]?.length ?? 0;
+  const sumWidth = 1 << Math.ceil(Math.log2(Math.max(n, 2)));
+  const perCt = Math.max(1, Math.floor(c.slots / sumWidth));
+  const { W, b } = held.model;
+  const batch = await encryptedLinearBatch(W, b, held.rows, {
+    maxCiphertexts: Math.ceil(held.rows.length / perCt),
+  });
+  const argmaxOf = (r: number[]) => r.reduce((bi, v, i, arr) => (v > arr[bi] ? i : bi), 0);
+  const encCls = batch.logits.map(argmaxOf), plainCls = batch.plainLogits.map(argmaxOf);
+  const margins = batch.plainLogits.map(topTwoGap);
+  const flipped = encCls.map((_, i) => i).filter((i) => encCls[i] !== plainCls[i]);
+  const tieRows = margins.filter((m) => m === 0).length;
+  const decidable = batch.rows - tieRows;
+  const flippedDecidable = flipped.filter((i) => margins[i] !== 0).length;
+  let flipMarginMax = 0;
+  for (const i of flipped) flipMarginMax = Math.max(flipMarginMax, margins[i]);
+  let smallestMargin: number | null = null;
+  for (const m of margins) if (m > 0 && (smallestMargin == null || m < smallestMargin)) smallestMargin = m;
+
+  // The deviations of the scores that were ENCRYPTED. A bias-only class (finance's and medical's
+  // class 0) is exact by construction, and counting its zeros would halve the median.
+  const noisy = W.map((row, j) => (row.some((v) => v !== 0) ? j : -1)).filter((j) => j >= 0);
+  const devs: number[] = [];
+  batch.logits.forEach((row, r) => noisy.forEach((j) => devs.push(Math.abs(row[j] - batch.plainLogits[r][j]))));
+  devs.sort((x, y) => x - y);
+  const medianAbsError = devs.length
+    ? (devs.length % 2 ? devs[(devs.length - 1) / 2] : (devs[devs.length / 2 - 1] + devs[devs.length / 2]) / 2)
+    : null;
+  const flipBoundFactor: 1 | 2 = noisy.length <= 1 ? 1 : 2;
+  const flipImpossible = smallestMargin != null && smallestMargin > flipBoundFactor * batch.maxAbsError;
+
+  const labels = held.labels.slice(0, batch.rows);
+  const acc = (cls: number[]) => (labels.length
+    ? cls.reduce((a, v, i) => a + (v === labels[i] ? 1 : 0), 0) / labels.length : null);
+  const binary = W.length === 2;
+  const pts = held.plane?.points;
+  const plot: EncryptedAgreementPlot = {
+    kind: "encrypted-agreement",
+    points: batch.logits.map((row, i) => ({
+      enc: binary ? row[1] - row[0] : row[encCls[i]],
+      plain: binary ? batch.plainLogits[i][1] - batch.plainLogits[i][0] : batch.plainLogits[i][encCls[i]],
+      agree: encCls[i] === plainCls[i],
+      label: labels[i], encCls: encCls[i], plainCls: plainCls[i],
+      ...(pts?.[i] ? { x: pts[i][0], y: pts[i][1] } : {}),
+    })),
+    rows: batch.rows, rowsOffered: batch.rowsOffered, classes: W.length,
+    maxAbsError: batch.maxAbsError, flipMarginMax,
+    undecidableRows: tieRows, decidableRows: decidable,
+    agreementOverDecidable: decidable > 0 ? 1 - flippedDecidable / decidable : null,
+    heldOut: true, fitNote: held.fitNote, split: held.split, corpus: held.corpus,
+    modelKey: held.modelKey, modelLabel: held.modelLabel, licence: held.licence,
+    ciphertexts: batch.ciphertexts, rowsPerCiphertext: batch.rowsPerCiphertext, fheMs: batch.fheMs,
+    msPerCiphertext: batch.msPerCiphertext, medianAbsError, noisyScores: devs.length,
+    smallestMargin, flipBoundFactor, scoreKind: binary ? "logit" : "winning-score",
+    classNames: held.classNames,
+    plane: held.plane ? { x: held.plane.x, y: held.plane.y } : null,
+    accuracy: { encrypted: acc(encCls), plaintext: acc(plainCls) },
+  };
+  return {
+    plot, batch, mismatches: flipped.length, tieRows, decidable, flippedDecidable, flipMarginMax,
+    smallestMargin, medianAbsError, precisionBits: bitsOf(batch.maxAbsError),
+    medianPrecisionBits: bitsOf(medianAbsError), flipImpossible,
+    encryptedAccuracy: acc(encCls), plaintextAccuracy: acc(plainCls),
+  };
 }
 
 /**

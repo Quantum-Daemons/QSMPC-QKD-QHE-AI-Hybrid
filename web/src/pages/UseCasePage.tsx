@@ -13,6 +13,11 @@ import ShapPanel from "../components/ShapPanel";
 import UseCaseCanvas from "../components/UseCaseCanvas";
 import { USECASE_SPECS } from "../lib/useCaseFlows";
 import { Qcnn3D, Qotp3D, Sat3D } from "../components/Lazy3D";
+
+/** The 3D view's illustrative input, at module scope: an inline array literal is a new object on every
+ *  render, and the page re-renders on every pipeline event, so the view rebuilt its WebGL renderer
+ *  20 to 26 times per run until the browser refused new contexts. */
+const QCNN3D_FEATURES = [0.3, -0.5, 0.8, 0.1, -0.9, 0.6, -0.2, 0.4];
 import { FibreDistanceCharts, QsdcRangeChart } from "../components/QkdCharts";
 import SatNetworkPanel from "../components/SatNetworkPanel";
 import Tabs from "../components/Tabs";
@@ -249,6 +254,7 @@ function UseCaseView({ usecase }: { usecase: string }) {
             ({artifacts.verification.split ?? "split not declared"}). Charts are drawn from the same
             arrays the metric was computed on.
           </p>
+          <ReproducedFigure usecase={usecase} verification={artifacts.verification as Record<string, unknown>} />
           {artifacts.verification.matchesExpected === false && (
             <div className="note" style={{ marginBottom: 10, borderColor: "var(--danger)", color: "var(--danger)" }}>
               ⚠ This tab measured <b>{Number(artifacts.verification.score).toFixed(4)}</b> where{" "}
@@ -331,7 +337,7 @@ function UseCaseView({ usecase }: { usecase: string }) {
       {meta.inference && (
         <div className="card" style={{ marginTop: 14 }}>
           <h3>Inside the QSMPC-FHE comparison <StageBadge kind="seeded" /></h3>
-          <Qcnn3D features={[0.3, -0.5, 0.8, 0.1, -0.9, 0.6, -0.2, 0.4]} seed={1} />
+          <Qcnn3D features={QCNN3D_FEATURES} seed={1} />
           <Details summary="The quantum one-time pad on one qubit, in 3D (an illustration)">
             <Qotp3D x={0.3} />
           </Details>
@@ -388,12 +394,17 @@ function UseCaseView({ usecase }: { usecase: string }) {
         // From the RUN's own metrics, not from the params. The panel must render what ran, and a
         // visitor can edit the params after a run without re-running.
         secretKeyRatePerPulse={Number(metrics.skr_per_pulse ?? 0)}
-        sourceRateHz={Number(metrics.source_rate_hz ?? 0)}
+        // No rate before a run, not a rate of 0: `?? 0` printed "0 MHz" on an idle page while a run
+        // reports 100 MHz (Round 84). The panel says "not yet run" instead.
+        sourceRateHz={metrics.source_rate_hz != null ? Number(metrics.source_rate_hz) : null}
         // THE BLOCK'S PULSES on the satellite (Round 79): the key budget above is the finite key of
         // a block of link time, a pass by default, so the channel time the panel divides consumed
         // bits by must be that block's. The sampled run's own 2e7 pulses would put a pass's budget
         // over a fifth of a second and drive eskr to zero.
         pulses={Number(metrics.qkd_block_pulses ?? metrics.qkd_pulses ?? 0)}
+        // And the run's own figure for that time, so the panel prints the metric rather than a
+        // second computation of it under the same name (Round 84).
+        channelSeconds={metrics.channel_time_s != null ? Number(metrics.channel_time_s) : null}
         decoyStates={metrics.qkd_decoy_states as string | undefined}
         qkdEnabled={run.qkd !== "pqc-only"} />
 
@@ -422,6 +433,45 @@ function UseCaseView({ usecase }: { usecase: string }) {
  *  Deliberately not a redirect to Finance. Substituting a working page for a wrong address hides
  *  the error at exactly the moment it matters — the visitor reads real numbers and a real dataset
  *  provenance line belonging to an industry they did not ask for. */
+/**
+ * Which figure the verification reproduces, when the model card above prints a different one for
+ * the same metric (Round 84). The tab re-scores the PUBLISHED graph and checks it against that
+ * graph's own recorded figure; the card's figures come from the training run. On OPS-SAT the two
+ * are 0.9509 and 0.9660 on the same 529 rows - the scikit-learn model before export decides
+ * differently on 8 of them - and the page showed the second while reproducing the first, with
+ * nothing to say which was which (scratchpad audit82/factcheck-satellite.md, A3). Nothing is
+ * retrained to make them agree: both figures are real, and this says which one ran here.
+ */
+export function ReproducedFigure({ usecase, verification }: { usecase: string; verification: Record<string, unknown> }) {
+  const spec = modelsFor(usecase).find((m) => m.key === String(verification.modelKey ?? ""));
+  const metric = String(verification.metricName ?? "");
+  const expected = typeof verification.expected === "number" ? verification.expected : null;
+  const n = Number(verification.n ?? 0);
+  const rec = (spec?.achieved ?? {}) as Record<string, unknown>;
+  const card = typeof rec[metric] === "number" ? (rec[metric] as number) : null;
+  // Different only if they differ by at least half a row: rounding is not a second figure.
+  if (!spec || expected == null || card == null || !(n > 0) || Math.abs(card - expected) < 0.5 / n) return null;
+  const cardRows = [rec.n_test_segments, rec.n_test, rec.n_eval].find((v): v is number => typeof v === "number") ?? null;
+  const netRows = metric === "accuracy" ? Math.round(Math.abs(card - expected) * n) : null;
+  return (
+    <p className="small" style={{ marginTop: 4 }}>
+      <b>Which figure this reproduces.</b> This tab runs the published ONNX graph and checks it against{" "}
+      <b>{expected.toFixed(4)}</b>, that graph&apos;s own <code>{metric}</code> on these {n.toLocaleString()} rows,
+      recorded when the sample was built. The model card above prints <b>{card.toFixed(4)}</b> for{" "}
+      <code>{metric}</code>:{" "}
+      {cardRows === n
+        ? <>the same {n.toLocaleString()} rows, scored in training by the model before its export to ONNX; the
+            published graph run here decides differently on {netRows != null ? <>a net {netRows} of them</> : <>some of them</>}.
+            Both figures stand: this run verifies the graph the page runs, and nothing was retrained to make them agree.</>
+        : cardRows != null
+          ? <>scored over {cardRows.toLocaleString()} rows where this sample has {n.toLocaleString()}, so the two are
+              not scored on the same rows, which on its own can explain the gap.</>
+          : <>the card does not record how many rows that figure was scored on, so the two cannot be
+              reconciled from this page.</>}
+    </p>
+  );
+}
+
 function UnknownUseCase({ id }: { id?: string }) {
   return (
     <NotFound title="No such use case"

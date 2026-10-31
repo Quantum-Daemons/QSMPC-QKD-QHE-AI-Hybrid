@@ -89,10 +89,15 @@ export const hasTrainedQcnn = (usecase: string) => QCNN_USECASES.has(usecase);
  * Kept beside `QCNN_USECASES` and gated the same way - `tests/test_qcnn_usecases.py` compares this
  * against `web/public/data/<dir>/qcnn_weights*.json` in BOTH directions, so adding a width without
  * declaring it, or declaring one without shipping it, fails in CI rather than on the site.
+ *
+ * ROUND 84 REMOVED 9 FROM FINANCE AND MEDICAL. Their ninth wire carried no feature and was pooled
+ * into wire 0 without ever being convolved, so 8 and 9 wires gave identical classes on every bundled
+ * row and identical metrics at five of five seeds: a choice that changed nothing. Telecom keeps both
+ * of its widths because they are different trained circuits whose classes differ.
  */
 export const QCNN_WIDTHS: Record<string, number[]> = {
-  finance_aml: [8, 9],
-  medical_fl: [8, 9],
+  finance_aml: [8],
+  medical_fl: [8],
   telecom_ids: [7, 8],
 };
 export const qcnnWidths = (usecase: string) => QCNN_WIDTHS[usecase] ?? [];

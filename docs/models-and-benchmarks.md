@@ -2,13 +2,14 @@
 
 ## Datasets
 
-Bundled samples are real measurements or simulator output, and all but one carry a licence that
-permits redistribution - the NASA SMAP/MSL sample has none at any source (below). The synthetic
+Bundled samples are real measurements or simulator output, and every one the browser serves carries
+a licence that permits redistribution since Round 84; the NASA SMAP/MSL file the full deployment
+still reads has none at any source (below). The synthetic
 generators are an offline-CI fallback only (logged as such, never a silent substitute):
 - **Finance/AML** (demo sample): **PaySim simulator output** (Kaggle `ealaxi/paysim1`, CC-BY-SA-4.0) -> the 8 AML features. PaySim is a *simulator*: these are synthetic transactions from aggregated real mobile-money logs, not real transactions. The **training** corpus is IBM AMLworld HI-Small (CDLA-Sharing-1.0), 5,078,345 transactions at 1 laundering in 981. **AMLworld is synthetic too** - IBM generates it with a multi-agent virtual-world model and states "Everything is synthetic"; the NeurIPS 2023 D&B paper is titled *Realistic Synthetic Financial Transactions for Anti-Money Laundering Models*. It is used because it is calibrated to real transaction statistics and its CDLA-Sharing terms permit publishing derived weights - **not** because it is real data. No commercial-OK corpus of real laundering transactions exists.
 - **Medical**: MedMNIST v2 BreastMNIST for the trained models (CC BY 4.0 asserted by MedMNIST; the BUSI authors publish no licence - see [DATA_LICENSES.md](../DATA_LICENSES.md)), MedMNIST v2 PneumoniaMNIST as the full deployment's use-case default (CC BY 4.0), Wisconsin breast-cancer (bundled demo sample; UCI, CC BY 4.0 - attribution required).
 - **Genomics**: **real 1000 Genomes** phase-3 genotypes (Ensembl/IGSR - open *access*, but IGSR grants **no blanket licence**: "rights claimed on pieces of data vary") + **real PGS-Catalog** PGS000004 / PRS313 weights (**per-score licence**, EMBL-EBI terms by default). Neither is cleared for redistribution as commercial-OK; see [DATA_LICENSES.md](../DATA_LICENSES.md).
-- **Satellite**: **real NASA SMAP/MSL** spacecraft telemetry (Telemanom; Hundman et al. 2018; NASA JPL) - **no licence is granted by any provider** (checked at each source on 2026-10-30), so the demo serves it without a grant, which `DATA_LICENSES.md` records as an open change. Telemanom's `LICENSE.txt` is a Caltech copyright assertion covering the *code*; the Kaggle mirror is labelled "Data files (c) Original Authors". 17 U.S.C. 105 removes US copyright only, covers works of federal employees (JPL staff are Caltech employees), and is not a grant. Bundled demo sample only - the satellite **training** corpus is ESA-ADB (CC BY 3.0 IGO). See [DATA_LICENSES.md](../DATA_LICENSES.md).
+- **Satellite**: the browser demo scores **real OPS-SAT-AD** telemetry segments (ESA OPS-SAT; Ruszczak et al., Scientific Data 2025; CC BY 4.0) since Round 84, with a demo anomaly regression fitted on 370 test-partition segments and verdicts drawn from the other 159. The **real NASA SMAP/MSL** spacecraft telemetry it served before (Telemanom; Hundman et al. 2018; NASA JPL) has **no licence granted by any provider** (checked at each source on 2026-10-30), so it is no longer served; the full deployment's loader still reads its TSV from the repository, which `DATA_LICENSES.md` records as an open change. Telemanom's `LICENSE.txt` is a Caltech copyright assertion covering the *code*; the Kaggle mirror is labelled "Data files (c) Original Authors". 17 U.S.C. 105 removes US copyright only, covers works of federal employees (JPL staff are Caltech employees), and is not a grant. Bundled demo sample only - the satellite **training** corpus is ESA-ADB (CC BY 3.0 IGO). See [DATA_LICENSES.md](../DATA_LICENSES.md).
 - **Telecom/defense**: literature-grounded synthetic QKD-attack telemetry (no commercial-OK real corpus of **QKD-layer** attacks exists - producing one needs a physical QKD testbed under attack).
 
 Loaders + generators: `qsh.data.loaders` / `qsh.data.synthetic`.
@@ -40,12 +41,17 @@ comparison via **MPyC** among three parties, each its own process over loopback 
 (`src/qsh/mpc/parties.py`), with a **masked** CKKS <-> shares conversion at each boundary: the server
 adds a mask to each linear output inside the ciphertext before the key holder decrypts it, and the
 MPC opens re-masked results and, at the end, the class index to the key holder
-(`src/qsh/mpc/secret_inference.py`). **The masking protects slot 0 only:** the bias and mask are a
-scalar added to every CKKS slot, so a key holder who decodes all slots of one masked dot product
-reads the bare mask in the zero-padded slots and partial sums of the products in the low ones, and
-recovers the unmasked output and the layer's weights (confirmed with the TenSEAL backend). Until
-that is fixed the conversion is not model-private, and the per-run bound (see `docs/architecture.md`)
-covers slot 0 alone. This mirrors the Gazelle ->
+(`src/qsh/mpc/secret_inference.py`). **Since Round 84 the masking covers every CKKS slot the key
+holder can decode:** slot 0's real part carries the bias plus the mask shared into the MPC, every
+other real part and every imaginary part an independent uniform mask of half-width 2^30, and the
+mask vector goes in encrypted under the client's key. Until then the bias and mask were one scalar
+added to every slot, so a key holder who decoded all slots of one masked dot product read partial
+sums of the products and recovered the unmasked output and the layer's weights (confirmed with the
+TenSEAL backend); `tests/test_r84_c1_slot_masking.py` decodes every slot with the client's key and
+finds nothing that predicts a product. Each run bounds the whole decode with
+`view_statistical_distance` (about 2e-7 for an 8-4-2 MLP, see `docs/architecture.md`); on OpenFHE,
+whose context is real-typed, the imaginary parts are not flooded and the run says so in
+`masked_slots`. This mirrors the Gazelle ->
 Delphi -> BOLT -> Bumblebee -> **BLB** line and EncFormer, so the benchmark reports the **FHE-linear
 vs MPC-non-linear latency split + MPC communication**, not a single CKKS number. The **QSMPC-FHE**
 quantum analogue is **Clifford gates (linear, cheap) vs T-gates (non-linear, expensive)**: the Python
@@ -113,10 +119,12 @@ and the same on every run. "MPC-non-linear" is the protocol's time on the partie
 2.2 ms per comparison here. Each MPC session also spends about 0.25 s starting its processes, which
 parties standing between requests would not, so that time is left out of the latency and reported as
 `mpc_session_overhead_ms`. Loopback has no network delay, so a LAN or WAN adds a round trip per
-communication round. The key holder's decrypted slot 0 is masked and it receives the class index;
-each row's `mask_statistical_distance_max`, 9e-8 or less here, bounds what that slot gives away over
-one inference. It does not cover the other CKKS slots, which expose the unmasked output and the
-weights as stated above (`docs/architecture.md` states what the bound does and does not cover).
+communication round. Every slot the key holder decrypts is masked and it receives the class index;
+each row's `view_statistical_distance_max` bounds what its whole view of one inference gives away,
+and `mask_statistical_distance_max` (9e-8 or less in the rows recorded before Round 84) covers only
+the values that enter and leave the MPC through slot 0 (`docs/architecture.md` states what the
+bounds do and do not cover). Masking every slot adds about 3.2 ms per linear output to the 3.6 ms
+dot product, so an FHE-linear latency recorded before Round 84 is lower than a run gives now.
 
 **Note on the dash in the QSMPC-FHE ct/pt cell.** A ratio of `1.0`, the 1.2769 family that the WS4
 table in [`docs/findings.md`](findings.md) quotes, and a removed config constant of 1.32 all fail to

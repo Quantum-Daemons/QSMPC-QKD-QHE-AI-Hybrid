@@ -47,14 +47,20 @@ recorded in [`docs/deliverable-verification.md`](deliverable-verification.md) an
 > low-bodyness measurements of their input and are efficiently classically simulable** with Pauli
 > shadows, and argue that QCNN successes largely reflect benchmark simplicity
 > (PRX Quantum 7, 020304, 2026; [arXiv:2408.12739](https://arxiv.org/abs/2408.12739)). The trained
-> QCNNs here are simulable for a more direct reason: their blocks act on disjoint pairs of wires over
-> a product angle encoding, so each is, up to its small final readout block, a tree of two-qubit
-> blocks that a classical computer evaluates exactly, the regime of that paper's Section IV.B, "Classical datasets". Nothing on the QCNN path is encrypted, so
-> it is not homomorphic evaluation either. On the same split, logistic regression beats every trained
-> QCNN, and both figures are printed side by side on the page. Two circuit widths ship for telecom so
-> the effect of the register size can be read rather than assumed: the eighth wire encodes no
-> feature, and across five seeds seven wires beat eight on four (mean macro F1 0.5309 against 0.4846,
-> paired p = 0.059), so the padding wire buys nothing measurable and may cost something
+> QCNNs here are simulable for a more direct reason. Finance's and medical's blocks act on disjoint
+> pairs of wires over a product angle encoding, so each is, up to its small final readout block, a
+> tree of two-qubit blocks that a classical computer evaluates exactly, the regime of that paper's
+> Section IV.B, "Classical datasets". Telecom's circuit, since Round 84, is Hur, Kim and Park's SU(4)
+> block on every neighbouring pair, which is not a tree: its survivors are entangled. It is simulated
+> exactly on 2^n amplitudes at 7 or 8 wires, so it is classically simulable at this size, and
+> classical data in a product angle encoding is still that section's regime. Nothing on the QCNN
+> path is encrypted, so it is not homomorphic evaluation either. On the same split, logistic
+> regression beats or ties every trained QCNN: it ties medical at the shipped seed (accuracy 0.9535
+> each, the same class on all 86 held-out rows) and leads it by 0.0186 over five seeds, and both
+> figures are printed side by side on the page. Two circuit widths ship for telecom so the effect of
+> the register size can be read rather than assumed: the eighth wire encodes no feature, and on the
+> SU(4) circuit seven wires beat eight on five of five seeds (mean macro F1 0.9705 against 0.9537,
+> paired p = 0.041), so the padding wire buys nothing and measurably costs something
 > ([`references/qcnn-width-ablation.md`](../references/qcnn-width-ablation.md)). Relatedly, Li, Wu, Li and Yung separate observable concentration from loss of
 > parameter sensitivity and show that **avoiding concentration is necessary but not sufficient for
 > trainability** ([arXiv:2603.18479](https://arxiv.org/abs/2603.18479), Mar 2026, rev. Jun 2026); the

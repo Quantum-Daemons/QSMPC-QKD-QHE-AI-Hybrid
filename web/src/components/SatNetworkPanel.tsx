@@ -55,7 +55,9 @@ export default function SatNetworkPanel({ params }: { params: Record<string, any
         epsSec={Number(params.sat_eps_sec ?? qkdCfg().free_space_eps_sec)}
         deviation={String(params.sat_fk_deviation ?? qkdCfg().free_space_finite_key_deviation) as Deviation} />
       <NightsSection link={link} />
-      <RelaySection link={link} defaultElevation={liao.maxElevationDeg} minEl={minEl} />
+      <RelaySection link={link} defaultElevation={liao.maxElevationDeg} minEl={minEl}
+        epsSec={Number(params.sat_eps_sec ?? qkdCfg().free_space_eps_sec)}
+        deviation={String(params.fk_deviation ?? qkdCfg().finite_key_deviation) as Deviation} />
       <ConstellationSection orbitKm={orbitKm} minEl={minEl} />
     </div>
   );
@@ -251,7 +253,23 @@ function NightsSection({ link }: { link: ReturnType<typeof satChannel> }) {
   );
 }
 
-function RelaySection({ link, defaultElevation, minEl }: { link: ReturnType<typeof satChannel>; defaultElevation: number; minEl: number }) {
+/** The relay at the page's own composable finite key: each pass a block of its own, as the one-pass
+ *  figure above is, under the run's bound and eps_sec. Exported for web/scripts/check_relay_pass_pairs.mjs. */
+export function relayFiniteKey(relay: ReturnType<typeof trustedRelay>, fkSrc: ReturnType<typeof finiteKeySourceOf>) {
+  const one = (pass: typeof relay.a) => {
+    if (!pass.segments.length) return 0;
+    const bits = keyLength(...blockCounts(pass.segments, fkSrc), fkSrc).keyBits;
+    return Number.isFinite(bits) && bits > 0 ? bits : 0;
+  };
+  const a = one(relay.a), b = one(relay.b);
+  const keyBits = Math.min(a, b);
+  // Liao et al.'s "100 kB" is 800,000 bits; a pass pair adds one relayed key of the shorter length.
+  return { a, b, keyBits, passPairsFor100kB: keyBits > 0 ? Math.ceil(800_000 / keyBits) : Infinity };
+}
+
+function RelaySection({ link, defaultElevation, minEl, epsSec, deviation }: {
+  link: ReturnType<typeof satChannel>; defaultElevation: number; minEl: number; epsSec: number; deviation: Deviation;
+}) {
   const [aId, setA] = useState("xinglong");
   const [bId, setB] = useState("graz");
   const [elA, setElA] = useState(Math.round(defaultElevation));
@@ -259,6 +277,12 @@ function RelaySection({ link, defaultElevation, minEl }: { link: ReturnType<type
   const [keys, setKeys] = useState<{ a: Uint8Array; b: Uint8Array } | null>(null);
   const a = LIAO_2018_STATIONS.find((s) => s.id === aId)!, b = LIAO_2018_STATIONS.find((s) => s.id === bId)!;
   const relay = useMemo(() => trustedRelay(link, a, b, elA, elB), [link, a, b, elA, elB]);
+  // THE PAGE'S OWN KEY (Round 84). The pass pairs were counted at the ASYMPTOTIC key, 2 at the
+  // defaults, while the pass section above gives each pass's composable finite key, 241.4 kbit:
+  // 4 pairs at the figure the page itself stands behind.
+  const fkSrc = useMemo(() => finiteKeySourceOf(link, epsSec, undefined, deviation), [link, epsSec, deviation]);
+  const fin = useMemo(() => relayFiniteKey(relay, fkSrc), [relay, fkSrc]);
+  const bound = `${fkSrc.vacuum ? "Lim et al. 2014" : "Rusca et al. 2018"}; ${DEVIATION_LABELS[fkSrc.deviation]}`;
   const demo = keys ? xorRelay(keys.a, keys.b) : null;
   const station = (value: string, set: (v: string) => void, label: string) => (
     <label>{label}
@@ -292,11 +316,11 @@ function RelaySection({ link, defaultElevation, minEl }: { link: ReturnType<type
               <td className="small muted">{aId === bId ? "the same station" : relay.sharedView
                 ? `within one satellite's ${fmt(sharedViewMaxKm(link))} km footprint: both can be in view at once`
                 : `wider than one satellite's ${fmt(sharedViewMaxKm(link))} km footprint: the key has to be carried`}</td></tr>
-            <tr><td>Key with A, one pass</td><td className="num">{kbit(relay.a.keyBits)}</td><td className="small muted">{fmt(relay.a.durationS)} s above the minimum elevation; asymptotic, at the pass elevation rounded to a whole degree, so it can differ slightly from the one-pass figure above</td></tr>
-            <tr><td>Key with B, one pass</td><td className="num">{kbit(relay.b.keyBits)}</td><td className="small muted">{fmt(relay.b.durationS)} s</td></tr>
-            <tr><td>Relayed key A to B</td><td className="num"><b>{kbit(relay.keyBits)}</b></td><td className="small muted">the shorter of the two: one key pads the other</td></tr>
+            <tr><td>Key with A, one pass</td><td className="num">{kbit(relay.a.keyBits)}</td><td className="small muted">{fmt(relay.a.durationS)} s above the minimum elevation; asymptotic, at the pass elevation rounded to a whole degree, so it can differ slightly from the one-pass figure above. As one block its composable finite key is {kbit(fin.a)}</td></tr>
+            <tr><td>Key with B, one pass</td><td className="num">{kbit(relay.b.keyBits)}</td><td className="small muted">{fmt(relay.b.durationS)} s; as one block, {kbit(fin.b)}</td></tr>
+            <tr><td>Relayed key A to B</td><td className="num"><b>{kbit(relay.keyBits)}</b></td><td className="small muted">the shorter of the two: one key pads the other. At the finite keys, {kbit(fin.keyBits)}</td></tr>
             <tr><td>Second key exists after</td><td className="num">{fmt(relay.waitH, 1)} h</td><td className="small muted">a sun-synchronous orbit passes each station at the same local time, so the longitude difference sets the wait</td></tr>
-            <tr><td>Pass pairs for Liao&apos;s 100 kB, at the asymptotic key</td><td className="num">{Number.isFinite(relay.passPairsFor100kB) ? relay.passPairsFor100kB : "-"}</td><td className="small muted">&quot;we establish a 100 kB secure key between Xinglong and Graz&quot;; the one-pass finite key is smaller, so it would need more</td></tr>
+            <tr><td>Pass pairs for Liao&apos;s 100 kB</td><td className="num"><b>{Number.isFinite(fin.passPairsFor100kB) ? fin.passPairsFor100kB : "-"}</b></td><td className="small muted">&quot;we establish a 100 kB secure key between Xinglong and Graz&quot;: 800,000 bits over the relayed finite key per pass pair, each pass a block of its own ({bound}, eps_sec {epsSec.toExponential(0)}). The asymptotic key would need {Number.isFinite(relay.passPairsFor100kB) ? relay.passPairsFor100kB : "-"}, which no finite block distils</td></tr>
           </tbody>
         </table>
       </div>

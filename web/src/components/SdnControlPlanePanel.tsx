@@ -6,8 +6,9 @@
 // of error this project keeps finding: a label asserting something the architecture does not do.
 import { useMemo } from "react";
 import {
-  allocate, buildTopology, kmeStatus, linkEskr, linkTrustNote, type SdnTopology,
+  allocate, buildTopology, kmeStatus, linkEskr, linkTrustNote, SAE_DEMO_ALLOCATION_FRACTION, type SdnTopology,
 } from "../lib/clientSdnController";
+import { webCfg } from "../lib/config";
 import Details from "./Details";
 
 /** The bound a run's rate rests on, from the decoy states it reported (`qkd_decoy_states`, Round 78).
@@ -48,7 +49,7 @@ function rateCellTitle(perPulse: number, decoyStates: string | undefined): strin
 }
 export default function SdnControlPlanePanel({
   usecase, distanceKm, keyBudgetBits, qkdEnabled, maxSpanKm,
-  secretKeyRatePerPulse, sourceRateHz, pulses, decoyStates,
+  secretKeyRatePerPulse, sourceRateHz, pulses, channelSeconds, decoyStates,
 }: {
   /** The decoy states the run's rate rests on (`metrics.qkd_decoy_states`). */
   decoyStates?: string;
@@ -64,26 +65,35 @@ export default function SdnControlPlanePanel({
   /** Bits of secret key per PULSE, as the run reported it (`metrics.skr_per_pulse`). */
   secretKeyRatePerPulse: number;
   /** The ASSUMED source repetition rate in Hz that the run used. Comes from the run's own metric,
-   *  not from the params, for the same reason `keyBudgetBits` does: the panel must show what RAN. */
-  sourceRateHz: number;
-  /** Channel uses this run made. */
+   *  not from the params, for the same reason `keyBudgetBits` does: the panel must show what RAN.
+   *  `null` before a run, which the rate row says rather than printing 0 MHz (Round 84). */
+  sourceRateHz: number | null;
+  /** Channel uses the key was distilled from: the key block's, else the run's. */
   pulses: number;
+  /** The run's `channel_time_s`, the key block's link time, printed as the run reported it. */
+  channelSeconds?: number | null;
 }) {
+  // The project config's value (`web.sdn_sae_allocation_fraction`, src/qsh/config/defaults.py), read
+  // at render because a served /api/config replaces the baked one after load; the named default
+  // covers a served config that predates the key. One value feeds the allocation and the sentence.
+  const allocationFraction = webCfg().sdn_sae_allocation_fraction ?? SAE_DEMO_ALLOCATION_FRACTION;
   const topo: SdnTopology = useMemo(() => {
     const t = buildTopology({ usecase, distanceKm, keyBudgetBits, qkdEnabled, maxSpanKm,
-                              secretKeyRatePerPulse, sourceRateHz, pulses });
-    // Draw down a FIXED 25% slice - an illustrative allocation to the MCP agent, not a measured
-    // demand - so the remaining budget is visibly finite; the note under the link table says so,
-    // because the 75% left in "key budget" is otherwise unexplained. This said "so eskr differs
-    // from skr" while both fields held the same session total - the sentence described a
-    // difference between two copies of one number.
-    if (t.apps.length) allocate(t, t.apps[0].app_id, Math.round(keyBudgetBits * 0.25));
+                              secretKeyRatePerPulse, sourceRateHz, pulses, channelSeconds });
+    // Draw down a FIXED slice, `allocationFraction` of the budget - an illustrative allocation to
+    // the MCP agent, not a measured demand - so the remaining budget is visibly finite. The note
+    // under the link table prints the fraction and the arithmetic from the same value, because the
+    // gap between the run's secure bits and "key budget" is otherwise unexplained (it was a bare
+    // `* 0.25` until Round 84).
+    if (t.apps.length) allocate(t, t.apps[0].app_id, Math.round(keyBudgetBits * allocationFraction));
     return t;
     // Every value the topology reads must be listed, or the panel keeps a stale one. This is
     // the dependency-array class the DAG's node labels already hit: threaded in, used, and
     // omitted here, so React never rebuilt and the label stayed frozen.
   }, [usecase, distanceKm, keyBudgetBits, qkdEnabled, maxSpanKm,
-      secretKeyRatePerPulse, sourceRateHz, pulses]);
+      secretKeyRatePerPulse, sourceRateHz, pulses, channelSeconds, allocationFraction]);
+  const allocatedBits = topo.apps[0]?.consumed_bits ?? 0;
+  const allocationPct = `${Math.round(allocationFraction * 100)}%`;
 
   const kme = kmeStatus(topo);
   const ext = (kme.status_extension ?? {}) as Record<string, string>;
@@ -96,7 +106,9 @@ export default function SdnControlPlanePanel({
           repository cites belongs to a different channel. Saying so beside the table is cheaper than
           hoping nobody makes the comparison - and this project's own rule is that a figure a reader
           would quote must carry its caveat in the same visual block, not thirty lines below. */}
-      {topo.source_rate_hz != null && (
+      {/* Shown whenever a quantum channel is configured, run or not, so an idle page names the
+          factors and says "not yet run" for the run's own values instead of printing 0 MHz. */}
+      {qkdEnabled && (
         <div style={{ marginTop: 0 }}>
           {/* 214 words became a table of how the number is built, with the comparison to published
               systems and the correction history in a fold. What stays visible is the assumption itself,
@@ -115,13 +127,15 @@ export default function SdnControlPlanePanel({
               {decoyStates === undefined
                 ? <tr><td>secure fraction per pulse sent</td><td>not yet run</td><td>the decoy-state bound the run&apos;s source supports, named once a run has chosen it</td></tr>
                 : <tr><td>secure fraction per pulse sent</td><td><b>{secretKeyRatePerPulse > 0 ? secretKeyRatePerPulse.toExponential(3) : "0"}</b> bit/pulse, this run&apos;s {boundOf(decoyStates).short}{usecase === "satellite_comms" ? null : <>, on gains corrected for the detectors&apos; dead time</>}{decoyStates.startsWith("none") ? <>; every pair counts</> : <>; only the signal pulses carry key</>}</td><td>{boundOf(decoyStates).paper}, {boundOf(decoyStates).source}; <b>asymptotic</b> - no finite-key correction, so the infinite-key limit of a lower bound{usecase === "satellite_comms" ? null : <>. The dead-time factor is Rusca et al. 2018&apos;s Eq. (B3), counting every click</>}</td></tr>}
-              <tr><td>x source repetition rate</td><td><b>{(topo.source_rate_hz / 1e6).toLocaleString()} MHz</b></td><td>{usecase === "satellite_comms"
+              <tr><td>x source repetition rate</td><td>{topo.source_rate_hz == null ? "not yet run"
+                : <b>{(topo.source_rate_hz / 1e6).toLocaleString()} MHz</b>}</td><td>{usecase === "satellite_comms"
                 ? <>an assumption; default 100 MHz, the Micius source&apos;s (Liao et al., <i>Nature</i> <b>549</b>, 43, 2017), whose measured rate is not reproduced or claimed here</>
                 : <>an assumption; default 1 GHz, the clock Rusca et al. (<i>Appl. Phys. Lett.</i> <b>112</b>, 171104, 2018) state for this page&apos;s detector set - a simulation set, not a measured link. With their 100 ns dead time the per-pulse rate depends on it too</>}</td></tr>
-              <tr><td>channel time of the key block</td><td>{topo.channel_seconds == null ? "n/a"
+              <tr><td>channel time of the key block</td><td>{topo.channel_seconds == null ? (topo.source_rate_hz == null ? "not yet run" : "n/a")
                 : topo.channel_seconds >= 1 ? `${topo.channel_seconds.toFixed(1)} s` : `${(topo.channel_seconds * 1e3).toFixed(3)} ms`}</td><td>{usecase === "satellite_comms"
-                ? <>the key block&apos;s pulses divided by that rate - one pass by default (Round 79), so the key budget below, the block&apos;s composable finite key, is spent over the pass&apos;s link time</>
-                : <>the key block&apos;s pulses divided by that rate (Round 80), so the key budget below, the block&apos;s composable finite key, is spent over the block&apos;s link time</>}</td></tr>
+                ? <>the run&apos;s <code>channel_time_s</code>: the key block&apos;s pulses divided by that rate - one pass by default (Round 79), so the key budget below, the block&apos;s composable finite key, is spent over the pass&apos;s link time</>
+                : <>the run&apos;s <code>channel_time_s</code>: the key block&apos;s pulses divided by that rate (Round 80), so the key budget below, the block&apos;s composable finite key, is spent over the block&apos;s link time</>}.
+                {" "}The sampled run&apos;s own pulses take <code>run_channel_time_s</code>, a different and shorter time</td></tr>
             </tbody>
           </table>
           <Details summary="How this compares with published systems">
@@ -211,8 +225,12 @@ export default function SdnControlPlanePanel({
           </tbody>
         </table>
         <p className="muted small" style={{ marginTop: 6 }}>
-          key budget: the run&apos;s secure bits less a fixed 25% that this panel allocates to the MCP
-          agent to show the budget drawing down - an illustrative allocation, not a measured demand.
+          key budget: the run&apos;s secure bits less a fixed {allocationPct} (<code>web.sdn_sae_allocation_fraction</code> in
+          the project config) that this panel allocates to the MCP agent to show the budget drawing
+          down - an illustrative allocation, not a measured demand.{keyBudgetBits > 0
+            ? <> Here {keyBudgetBits.toLocaleString()} secure bits less {allocatedBits.toLocaleString()} allocated
+                leaves {(keyBudgetBits - allocatedBits).toLocaleString()} bit.</>
+            : null}
         </p>
         </>
       )}
@@ -231,11 +249,12 @@ export default function SdnControlPlanePanel({
         Key delivery <span className="muted" style={{ fontWeight: 400 }}>(GS QKD 014)</span>
       </h4>
       <table className="mini-table">
+        <thead><tr><th scope="col">GS QKD 014 status field</th><th scope="col" className="num">value</th></tr></thead>
         <tbody>
           {[["source_KME_ID", kme.source_KME_ID], ["master_SAE_ID", kme.master_SAE_ID],
             ["slave_SAE_ID", kme.slave_SAE_ID], ["key_size", kme.key_size],
             ["stored_key_count", kme.stored_key_count]].map(([k, v]) => (
-            <tr key={String(k)}><td><code>{String(k)}</code></td>
+            <tr key={String(k)}><th scope="row"><code>{String(k)}</code></th>
               <td className="num">{String(v)}</td></tr>
           ))}
         </tbody>

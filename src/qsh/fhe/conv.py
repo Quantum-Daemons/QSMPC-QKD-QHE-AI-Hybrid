@@ -82,18 +82,21 @@ def conv2d_plaintext(x_chw, conv: ConvSpec) -> np.ndarray:
     return out.T.reshape(int(conv.weight.shape[0]), ho, wo)
 
 
-def fhe_conv2d(backend, x_chw, conv: ConvSpec, *, server_share=None, mask=None) -> np.ndarray:
+def fhe_conv2d(backend, x_chw, conv: ConvSpec, *, server_share=None, mask=None,
+               view=None, mask_bits: int | None = None) -> np.ndarray:
     """Genuine encrypted convolution → ``(out_ch, Hout, Wout)`` (decrypted result).
 
     For each im2col patch: encrypt it, then for each output channel compute
     ``decrypt(dot_plain(patch_ct, kernel[oc]))[0] + bias[oc]``. The convolution arithmetic
-    happens on the ciphertext; only the per-output scalar is decrypted (exactly as the dense
-    ``_fhe_linear`` decrypts each logit).
+    happens on the ciphertext; only the per-output scalar is read (exactly as the dense
+    ``_fhe_linear`` reads each logit).
 
     With ``mask`` (shape ``(out_ch, Hout, Wout)``) this is the hybrid's masked conversion: the key
     holder encrypts ITS share ``x_chw``, the server adds ``server_share`` (same shape) inside each
-    patch's ciphertext, and the bias plus the server's mask go in before decryption, so what is
-    decrypted is ``conv(x) + mask`` and never ``conv(x)``.
+    patch's ciphertext, and before decryption the server masks EVERY slot (:mod:`qsh.fhe.masking`):
+    slot 0 gets the bias plus ``mask``, every other real and imaginary part an independent mask. Slot
+    0 then decrypts to ``conv(x) + mask``, and the other slots, which hold the rotation-sum's partial
+    sums of the patch's products, no longer cancel to them (Round 84; ``view`` accumulates the bound).
     """
     patches, (ho, wo) = im2col_patches(x_chw, conv)
     K = flatten_kernels(conv)                              # (oc, plen)
@@ -107,6 +110,10 @@ def fhe_conv2d(backend, x_chw, conv: ConvSpec, *, server_share=None, mask=None) 
             for j in range(oc):
                 out[p, j] = backend.decrypt(backend.dot_plain(ct, K[j]))[0] + float(conv.bias[j])
         return out.T.reshape(oc, ho, wo)
+    from ..mpc.secret_inference import _mask_bits
+    from .masking import masked_decrypt
+
+    bits = _mask_bits(64) if mask_bits is None else int(mask_bits)
     m = np.asarray(mask, dtype=float).reshape(oc, ho * wo).T     # (patch, channel)
     server = None if server_share is None else im2col_patches(server_share, conv)[0]
     for p in range(patches.shape[0]):
@@ -114,8 +121,8 @@ def fhe_conv2d(backend, x_chw, conv: ConvSpec, *, server_share=None, mask=None) 
         if server is not None:
             ct = backend.add_plain(ct, server[p])         # the server adds its own
         for j in range(oc):
-            masked = backend.add_plain(backend.dot_plain(ct, K[j]), float(conv.bias[j]) + float(m[p, j]))
-            out[p, j] = backend.decrypt(masked)[0]
+            out[p, j] = masked_decrypt(backend, backend.dot_plain(ct, K[j]),
+                                       float(conv.bias[j]) + float(m[p, j]), bits, view)
     return out.T.reshape(oc, ho, wo)
 
 

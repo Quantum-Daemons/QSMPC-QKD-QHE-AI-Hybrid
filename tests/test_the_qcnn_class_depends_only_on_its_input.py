@@ -74,8 +74,12 @@ def _run() -> list[dict]:
 
 
 def test_every_shipped_artifact_is_found() -> None:
-    """Anti-tautology: an empty glob would make the comparison below vacuous."""
-    assert len(ARTIFACTS) >= 6, f"only {len(ARTIFACTS)} QCNN artifacts found"
+    """Anti-tautology: an empty glob would make the comparison below vacuous.
+
+    Four since Round 84, which removed the two 9-wire artifacts (finance and medical): their ninth
+    wire carried no feature and gave the same classes as 8. The floor was six while they shipped.
+    """
+    assert len(ARTIFACTS) >= 4, f"only {len(ARTIFACTS)} QCNN artifacts found"
 
 
 def test_the_answer_is_the_same_whatever_the_randomness() -> None:

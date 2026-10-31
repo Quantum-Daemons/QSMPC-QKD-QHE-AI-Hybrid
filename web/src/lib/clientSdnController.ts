@@ -88,15 +88,27 @@ export interface SdnTopology {
   links: QkdLink[];
   apps: QkdApplication[];
   notifications: string[];
-  /** Seconds of quantum channel this run implies: pulses / source rate. `null` when no clock was
-   *  supplied or no quantum channel ran. `linkEskr` needs it and refuses to guess, which is why it
-   *  lives on the topology rather than being recomputed per link by a caller that may not have it. */
+  /** Seconds of quantum channel the KEY was distilled from: the run's `channel_time_s`, which is
+   *  the key block's pulses over the source rate (Round 84). `null` when no clock was supplied or no
+   *  quantum channel ran. `linkEskr` needs it and refuses to guess, which is why it lives on the
+   *  topology rather than being recomputed per link by a caller that may not have it. */
   channel_seconds: number | null;
   /** The ASSUMED source repetition rate, Hz, carried so every consumer can state what the bit/s
-   *  figures rest on without reaching back into config. */
+   *  figures rest on without reaching back into config. `null` before a run as well as on the
+   *  PQC-only profile: a rate of 0 Hz printed as "0 MHz" on an idle page (Round 84). */
   source_rate_hz: number | null;
   simulated: true;
 }
+
+/**
+ * The share of the run's key budget the panel allocates to the MCP agent's SAE, to show the budget
+ * drawing down: an ILLUSTRATIVE demand, not a measured one. A named value since Round 84 - it was a
+ * bare `* 0.25` in the panel, and the 25% gap between the run's secure bits and the "key budget"
+ * column was explained only by a sentence that could drift from it. The value the panel uses and
+ * prints is the project config's `web.sdn_sae_allocation_fraction`; this is its default, for a
+ * served config that predates that key, and must equal it (`check_control_plane.mjs`).
+ */
+export const SAE_DEMO_ALLOCATION_FRACTION = 0.25;
 
 const trustNote = (l: QkdLink): string =>
   l.qkdl_type === "VIRT" && l.virt_next_hop.length
@@ -156,27 +168,37 @@ export function buildTopology(opts: {
    *  finite-key 110 kbps at QBER 3.28% over a 2 km free-space channel (v1: 164.8 kbps). THE CLOCK IS BORROWED AND THE EXPERIMENT IS NOT: that paper's
    *  channel is 2 km horizontal and this model's default is 50 km of fibre, so a derived bit/s here
    *  is this simulation's own number under an assumed clock, never a reproduction of that result.
+   *
+   *  `null` before a run: the rate is the run's own metric, and there is none yet (Round 84).
    */
-  sourceRateHz: number;
-  /** Channel uses this run made. With `sourceRateHz` it gives the channel time; on its own it is
-   *  the count the per-pulse models already work in. */
+  sourceRateHz: number | null;
+  /** Channel uses the key was distilled from: the key block's pulses (`qkd_block_pulses`), else
+   *  the run's. With `sourceRateHz` it gives the channel time when `channelSeconds` is absent. */
   pulses: number;
+  /** The run's own `channel_time_s`, the key block's pulses over the rate. Taken as given when
+   *  present, so the panel prints the run's figure rather than a second computation of it: the
+   *  run's metric and this panel's "channel time" were two quantities under one name until
+   *  Round 84 (0.02 s of sampled pulses against 5.3 s of key block on fibre). */
+  channelSeconds?: number | null;
   qkdEnabled: boolean;
   saeId?: string;
   /** Longest single quantum span before a trusted relay is required, km. */
   maxSpanKm?: number;
 }): SdnTopology {
-  const { usecase, distanceKm, keyBudgetBits, qkdEnabled, secretKeyRatePerPulse, sourceRateHz } = opts;
+  const { usecase, distanceKm, keyBudgetBits, qkdEnabled, secretKeyRatePerPulse } = opts;
+  const sourceRateHz = Number(opts.sourceRateHz ?? 0);
   // THE ONE MULTIPLICATION THIS ROUND IS ABOUT: bits/pulse x pulses/s = bit/s, which is what ETSI
   // GS QKD 015 defines `skr` to be. `eskr` is the same rate after the applications' expected
   // consumption; both are DERIVED and neither is ever decremented. `key_budget_bits` remains the
   // ledger. A rate that falls as bits are spent would be Round 42's defect returning in a correct
   // unit, which is the single most likely way this change ships its own bug.
   const skr = qkdEnabled && sourceRateHz > 0 ? secretKeyRatePerPulse * sourceRateHz : null;
-  // pulses / (pulses per second) = seconds. The channel time this run implies, and the denominator
-  // that turns consumed BITS into a consumption RATE inside `linkEskr`. Guarded so a zero or absent
-  // clock yields null rather than Infinity - an infinite rate would render, and would be believed.
-  const channelSeconds = qkdEnabled && sourceRateHz > 0 ? opts.pulses / sourceRateHz : null;
+  // pulses / (pulses per second) = seconds. The channel time the key implies, and the denominator
+  // that turns consumed BITS into a consumption RATE inside `linkEskr`; the run's own figure when it
+  // supplies one. Guarded so a zero or absent clock yields null rather than Infinity - an infinite
+  // rate would render, and would be believed.
+  const channelSeconds = !qkdEnabled || !(sourceRateHz > 0) ? null
+    : opts.channelSeconds != null && opts.channelSeconds > 0 ? opts.channelSeconds : opts.pulses / sourceRateHz;
   const maxSpan = opts.maxSpanKm ?? 80;
   const saeId = opts.saeId ?? "sae-mcp-agent";
 
@@ -234,7 +256,7 @@ export function buildTopology(opts: {
     + "It requests keys and issues intents; it does not control the quantum layer.");
 
   return { spec: "ETSI GS QKD 015 V2.1.1 (2022-04)", nodes, links, apps, notifications,
-    channel_seconds: channelSeconds, source_rate_hz: sourceRateHz, simulated: true };
+    channel_seconds: channelSeconds, source_rate_hz: sourceRateHz > 0 ? sourceRateHz : null, simulated: true };
 }
 
 /**

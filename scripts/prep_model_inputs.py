@@ -11,7 +11,8 @@ for that page was trained on a different corpus with a different input entirely:
     page        bundled pipeline sample              published model expects
     finance     PaySim, 8 engineered features        AMLworld, 32 graph/temporal features
     medical     Wisconsin WDBC, 8 tabular features   BreastMNIST, [1,1,28,28] images
-    satellite   NASA SMAP/MSL, 6ch x 8 steps         ESA-ADB ch 41-46, [1,250,6] windows
+    satellite   OPS-SAT-AD, 19 segment features      ESA-ADB ch 41-46, [1,250,6] windows
+                (NASA SMAP/MSL, 6ch x 8 steps, until Round 84: no data licence at any source)
 
 So the fix is not a tensor reshape. Each published model needs a real sample drawn from the
 distribution it was actually trained on. This script writes those, next to -- not instead of -- the
@@ -627,9 +628,9 @@ def build_satellite(rng: np.random.Generator) -> dict:
             # anonymised 14 years), so the corpus index is not quoted as though it were a calendar.
             f"These are {n_windows} of the {len(xte):,} windows in the held-out test window, the last "
             f"30 percent of the {len(df):,}-step timeline, drawn at random and kept in time order; "
-            "the model trained on none of them. This is not the NASA SMAP/MSL sample that the "
-            "page's telemetry-anomaly step scores; that step is a plaintext dot product, and no FHE "
-            "or MPC stage runs on the satellite page."
+            "the model trained on none of them. The page's telemetry-anomaly step scores OPS-SAT-AD "
+            "segments, not these windows; that step is a plaintext dot product, and no FHE or MPC "
+            "stage runs on the satellite page."
         ),
         "input": {"shape": [1, SEQ_LEN, len(chans)], "dtype": "float32", "preprocessing": [],
                   "layout": f"samples[i] is {SEQ_LEN} timesteps x {len(chans)} channels at {resample} "

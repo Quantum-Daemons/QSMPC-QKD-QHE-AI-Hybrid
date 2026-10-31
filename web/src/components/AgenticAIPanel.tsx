@@ -335,6 +335,13 @@ export default function AgenticAIPanel({
           ⬇ Download results (JSON)
         </button>
       </div>
+      {!run && (
+        // Visible, not only a tooltip: a title attribute is invisible on touch screens and to most
+        // keyboard users, which is what the simulator exports above already avoid.
+        <p className="muted small" style={{ marginTop: 6, marginBottom: 0 }}>
+          Run the in-browser agent first - there is no result to download yet.
+        </p>
+      )}
     </div>
   );
 }

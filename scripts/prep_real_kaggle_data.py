@@ -7,7 +7,12 @@ SMAP/MSL with no licence granted for the data, see below):
 
   data/finance/paysim_sample.tsv                  PaySim simulator output (synthetic) -> the 8 AML features + label
   data/satellite/smap_msl_telemetry.tsv           real NASA SMAP/MSL telemetry (6 channels) + anomaly label
-  web/public/data/satellite/telemetry.json        demo: real telemetry windows + a real anomaly model
+
+`web/public/data/satellite/telemetry.json` is NOT written here any more (Round 84). It put SMAP/MSL
+windows on the public site, and no source grants a licence for that data (below). The browser's
+satellite anomaly demo now scores OPS-SAT-AD segments, CC BY 4.0, built by
+`scripts/data/build_heldout_payloads.py` from a file the repository already tracks. Writing the old
+file from here would quietly restore an unlicensed public copy whenever someone refreshed the TSV.
 
 `web/public/data/finance/paysim_sample.json` is NOT written here any more. It is built by
 `scripts/data/build_federated_samples.py` from the TSV this script produces, alongside the medical
@@ -36,7 +41,6 @@ from __future__ import annotations
 
 import argparse
 import ast
-import json
 import sys
 from pathlib import Path
 
@@ -50,10 +54,13 @@ FIN_NAMES = ["amount", "velocity_24h", "cross_border", "night_tx",
 #: strings locally is how this script previously re-introduced a licence claim that had already been
 #: corrected everywhere else.
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
-from qsh.models.registry import BUNDLED_DEMO_SAMPLES  # noqa: E402
+from qsh.models.registry import BUNDLED_DEMO_SAMPLES, DS_SMAP_MSL  # noqa: E402
 
 FIN_PROVENANCE = BUNDLED_DEMO_SAMPLES["finance_aml"][0]
-SAT_PROVENANCE = BUNDLED_DEMO_SAMPLES["satellite_comms"][0]
+#: The TSV's header names SMAP/MSL by its own registry record, not by the satellite DEMO SAMPLE's
+#: text: the demo sample is OPS-SAT-AD since Round 84, and borrowing its provenance here would label
+#: NASA telemetry as OPS-SAT data.
+SAT_PROVENANCE = f"{DS_SMAP_MSL.name}: {DS_SMAP_MSL.licence} - see DATA_LICENSES.md section 2."
 
 
 def _paysim_features(df):
@@ -138,16 +145,13 @@ def prep_finance(src: Path, repo: Path, n: int = 4000, fraud_rate: float = 0.05,
           "after this, which builds it from the TSV above together with the medical sample")
 
 
-def prep_satellite(src: Path, repo: Path, n_channels: int = 6, length: int = 900, window: int = 8,
-                   anchor: int = 350, max_anom: int = 150, seed: int = 0):
+def prep_satellite(src: Path, repo: Path, n_channels: int = 6, length: int = 900,
+                   anchor: int = 350, max_anom: int = 150):
     import csv as _csv
-
-    from sklearn.linear_model import LogisticRegression
 
     nasa = src / "nasa"
     labels_csv = nasa / "labeled_anomalies.csv"
     test_dir = nasa / "data" / "data" / "test"
-    rng = np.random.default_rng(seed)
 
     # Pick channels whose FIRST labeled anomaly is short (a point/contextual event, <= max_anom long) so the
     # window stays mostly nominal, and anchor every channel's anomaly to the SAME local index so the OR across
@@ -192,32 +196,9 @@ def prep_satellite(src: Path, repo: Path, n_channels: int = 6, length: int = 900
             f.write("\t".join(f"{telem[i, c]:.5f}" for c in range(len(names))) + f"\t{int(anom[i])}\n")
     print(f"[satellite] wrote {out_tsv} ({out_tsv.stat().st_size} B)")
 
-    # build windows (channel-major, matching the backend loader) -> train a real linear anomaly model for the demo
-    C, W = len(names), window
-    N = length - W + 1
-    Xw = np.zeros((N, C * W), dtype=float)
-    yw = np.zeros(N, dtype=int)
-    for i in range(N):
-        Xw[i] = np.concatenate([telem[i:i + W, c] for c in range(C)])
-        yw[i] = int(anom[i:i + W].max())
-    clf = LogisticRegression(max_iter=500, class_weight="balanced").fit(Xw, yw)
-    W2 = [list(map(float, np.zeros(C * W))), list(map(float, clf.coef_[0]))]
-    b2 = [0.0, float(clf.intercept_[0])]
-    feat_names = [f"{names[c]}[t{t}]" for c in range(C) for t in range(W)]
-    demo_idx = np.concatenate([np.where(yw == 1)[0][:8], np.where(yw == 0)[0][:8]])
-    rng.shuffle(demo_idx)
-    demo = {
-        "provenance": SAT_PROVENANCE, "channel_names": names, "names": feat_names,
-        "windows": [[round(float(v), 5) for v in Xw[i]] for i in demo_idx],
-        "labels": [int(yw[i]) for i in demo_idx],
-        "model": {"W": W2, "b": b2},
-        "real_model": "linear telemetry-anomaly classifier (logistic) over real NASA channels, run under CKKS",
-    }
-    out_json = repo / "web" / "public" / "data" / "satellite" / "telemetry.json"
-    out_json.parent.mkdir(parents=True, exist_ok=True)
-    out_json.write_text(json.dumps(demo))
-    print(f"[satellite] wrote {out_json} ({out_json.stat().st_size} B); anomaly_train_acc="
-          f"{(clf.predict(Xw)==yw).mean():.3f}")
+    # No browser payload from here: see the module docstring. The TSV above is what the Python
+    # deployment's loader reads; whether it may stay in the repository at all is the same licence
+    # question, recorded in DATA_LICENSES.md section 2.
 
 
 def main():

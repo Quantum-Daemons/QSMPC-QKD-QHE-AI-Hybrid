@@ -144,7 +144,7 @@ flowchart TB
 <!-- figure: uc-medical_fl -->
 ```mermaid
 flowchart TB
-  D["Data: Wisconsin breast-cancer measurements, 400 rows, real"]
+  D["Data: Wisconsin breast-cancer measurements, 569 rows, real"]
   H["PQC handshake: ML-KEM-768 + X25519, HKDF-SHA256"]
   K["QKD: simulated BB84 decoy-state, or E91, over fibre"]
   Q{"Key possible? BB84: QBER at most 0.11; E91: key rate above 0"}
@@ -248,7 +248,7 @@ flowchart TB
 <!-- figure: uc-satellite_comms -->
 ```mermaid
 flowchart TB
-  D["Data: NASA SMAP and MSL telemetry windows, real"]
+  D["Data: OPS-SAT-AD telemetry segments, real"]
   H["PQC handshake: ML-KEM-768 + X25519, HKDF-SHA256"]
   V{"Satellite in view, 10 degrees or more?"}
   NV["Out of view: no QKD key and no QSDC; the anomaly score still runs"]

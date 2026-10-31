@@ -84,6 +84,9 @@ function useScene(build: (scene: THREE.Scene) => void, deps: unknown[], view?: V
         if (Array.isArray(mat)) mat.forEach((x) => x.dispose()); else mat?.dispose?.();
       });
       renderer.dispose();
+      // dispose() frees three.js resources but leaves the WebGL context to the garbage collector, and
+      // browsers cap live contexts (about 16): a scene rebuilt by its stage slider would hit the cap.
+      renderer.forceContextLoss();
       el.removeChild(renderer.domElement);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps

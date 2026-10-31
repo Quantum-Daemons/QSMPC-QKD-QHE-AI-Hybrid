@@ -364,11 +364,17 @@ class QSMPCComputeStage(Stage):
             # it is a property of this run, not of the code.
             ctx.artifacts["qsms_prime"] = res.modulus
             ctx.artifacts["qsms_honest_statevector"] = res.honest_statevector
+            # Whether the field sits inside the paper's n <= d <= 2n (Round 84): the field now comes
+            # from the largest total the inputs can reach, which usually puts it outside, and the
+            # run then takes the analytic sampler. A property of this run, recorded beside the prime.
+            ctx.artifacts["qsms_field_within_paper_bound"] = res.field_within_paper_bound
             bus.metric("secure_sum", total, self.name)
             bus.metric("qsms_prime", res.modulus, self.name)
             bus.metric("qsms_honest_statevector", int(res.honest_statevector), self.name)
+            # `t` as configured and capped two lines up; this printed the retired literal `min(3, n)`
+            # after Round 75 made the threshold a config read, so a changed config misreported itself.
             bus.log(f"QSMS secure summation = {total} over GF({res.modulus}) with {len(secrets)} "
-                    f"parties, t={min(3, n)}"
+                    f"parties, t={t}"
                     + (" (exact d-qudit GHZ statevector)" if res.honest_statevector
                        else " (analytic sampler: d**t exceeds the statevector bound)"), self.name)
 
@@ -472,6 +478,12 @@ class PrivateInferenceStage(Stage):
 
             qubits = int(ctx.config.get("qubits", get_config().qhe.n_qubits))
             x = ctx.data.get("features", np.zeros(qubits))
+            # THE ARTIFACT'S COLUMNS IN ITS OWN UNITS where the use case supplies them (Round 84).
+            # `features` is the CKKS model's row: for medical the 30-column z-score row, whose first 8
+            # columns are not the 8 the QCNN was trained on (mean compactness where it expects worst
+            # radius) and are not in the raw units the artifact declares. `medical_fl.build` stores
+            # the patient's raw values in the artifact's `feature_names` order as `qcnn_features`.
+            x_qcnn = ctx.data.get("qcnn_features", x)
 
             # TRAINED circuit where weights exist. The untrained QCNN is not a classifier: measured
             # over 200 random UNIFORM[0,1) inputs at 4 and 8 qubits `predict_proba` peaks at 0.239
@@ -492,17 +504,22 @@ class PrivateInferenceStage(Stage):
                 # `web/scripts/check_qcnn_metrics_at_every_site.mjs` - written to stop exactly that -
                 # read only the TypeScript file. That gate now reads this one too.
                 _t0 = time.perf_counter()
-                expectation, cls, _logit = qcnn_infer(x, weights)
+                expectation, cls, _logit = qcnn_infer(x_qcnn, weights)
                 _qcnn_ms = (time.perf_counter() - _t0) * 1000.0
                 bus.metric("qcnn_inference_ms", round(_qcnn_ms, 2), self.name)
                 bus.metric("qcnn_qubits", int(weights.get("n_qubits", 0)), self.name)
+                # The artifact's own class index, and the same class in the use case's convention: a
+                # use case whose labels count the other way declares the map (medical, Round 84), so
+                # `private_prediction` means the same thing whichever backend produced it.
+                to_case = ctx.data.get("qcnn_class_to_case") or {}
+                case_cls = int(to_case.get(int(cls), cls))
                 ctx.artifacts["qhe_prediction"] = cls
                 ctx.artifacts["qhe_backend"] = "qcnn-trained"
                 # Canonical key. medical_fl read only `fhe_prediction`, which the CKKS branch
                 # sets, so selecting QCNN computed a class and the page surfaced None for its
                 # headline diagnosis. Both branches now write `private_prediction` and name the
                 # backend beside it, so a summary cannot read one path and miss the other.
-                ctx.artifacts["private_prediction"] = cls
+                ctx.artifacts["private_prediction"] = case_cls
                 ctx.artifacts["private_prediction_backend"] = "qcnn-trained"
                 bus.metric("qhe_expectation_z0", round(expectation, 4), self.name)
                 # Three regimes, mirroring `headline_metric` in the artifact and the browser path
@@ -542,17 +559,23 @@ class PrivateInferenceStage(Stage):
                         f"reported for this run.", self.name)
                 else:
                     bus.metric("qhe_headline_metric", round(float(mine), 4), self.name)
+                    # COMPUTED, three-way, as the browser's twin is (Round 84). It was a literal
+                    # "the classical model is ahead", true of every artifact until medical's
+                    # retrain TIED logistic regression at the shipped seed (0.953488 each).
+                    if theirs > mine:
+                        verdict = "the classical model is ahead"
+                    elif theirs == mine:
+                        verdict = "the circuit and logistic regression are level on this split"
+                    else:
+                        verdict = "the circuit is ahead here"
                     # The width/rounds pair, NOT a parameter count: `layers x n_qubits` (24 for
-                    # finance) is not how many angles the artifact trains (77 for finance). The
-                    # verdict sentence is literal and true of every artifact this path loads today
-                    # (finance and medical); making it computed is deferred.
+                    # finance) is not how many angles the artifact trains (77 for finance).
                     bus.log(
                         f"QCNN inference (trained, NOT encrypted): class={cls} "
                         f"(<Z0>={expectation:.4f}; {weights['n_qubits']} wires, {weights['layers']} "
                         f"conv rounds per stage). Held-out {label} {mine:.4f} against a baseline of "
-                        f"{base:.4f} and logistic regression at {theirs:.4f} on the same split - the "
-                        f"classical model is ahead, and this reports it rather than implying "
-                        f"advantage.",
+                        f"{base:.4f} and logistic regression at {theirs:.4f} on the same split - "
+                        f"{verdict}, and this reports it rather than implying advantage.",
                         self.name)
             else:
                 # No trained circuit here: report the QOTP hiding demonstration, which this module

@@ -42,6 +42,16 @@ PUBLIC = REPO / "web" / "public" / "data"
 #: does not follow the `split("_")[0]` rule, and the exception lives in one place in the TS too.
 USECASE_DIR = {"telecom": "telecom", "finance": "finance", "medical": "medical"}
 
+#: Keys `qcnnInferTrained` READS to decide which circuit to run and how to encode, shipped whenever
+#: the trained artifact has them, whatever the existing copy's key set.
+#:
+#: Round 84 found why the intersection alone is not enough: it keeps the deliberate trimming, and it
+#: also keeps OUT every key a retrain introduces. `circuit` and `encoding_scale` arrived with the
+#: SU(4) telecom circuit and the half-angle encoding; intersected away, the browser
+#: would have run the tree at c = 1 on SU(4) angles - a 100-angle vector, refused by its length
+#: check today, but `encoding_scale` alone has no such guard and would have shipped silently wrong.
+BROWSER_KEYS = ("circuit", "encoding_scale", "input_space", "n_features")
+
 
 def _pairs() -> list[tuple[Path, Path]]:
     """(trained artifact, shipped copy) for every `models/qcnn_*` that has a browser destination.
@@ -86,8 +96,10 @@ def main() -> int:
                 dest.write_text(json.dumps(trained, indent=1) + "\n")
             continue
         shipped = json.loads(dest.read_text())
-        # The intersection, so the deliberate trimming survives a retrain.
+        # The intersection, so the deliberate trimming survives a retrain - plus every key the
+        # browser reads, so a retrain that introduces one is not trimmed out with the bookkeeping.
         merged = {k: trained[k] for k in shipped if k in trained}
+        merged.update({k: trained[k] for k in BROWSER_KEYS if k in trained})
         dropped = [k for k in shipped if k not in trained]
         if dropped:
             print(f"note: {dest.relative_to(REPO)} has keys the trained artifact lacks, kept as-is: "
@@ -99,6 +111,20 @@ def main() -> int:
             stale.append(f"{dest.relative_to(REPO)}: {len(changed)} key(s) differ -> {changed[:6]}")
             if not a.check:
                 dest.write_text(json.dumps(merged, indent=1) + "\n")
+
+    # THE OTHER DIRECTION. A served file with no trained artifact behind it is a width nobody can
+    # reproduce - which is what the 9-wire finance and medical copies would have become when Round 84
+    # deleted models/qcnn_*_q9. Reported and failed in both modes, never deleted here: removing a
+    # served file is a decision about what the site offers, so it is made with `git rm`, by a person.
+    destinations = {dest for _, dest in pairs}
+    orphans = [p for p in sorted(PUBLIC.glob("*/qcnn_weights*.json")) if p not in destinations]
+    for served in orphans:
+        stale.append(f"{served.relative_to(REPO)} has no models/qcnn_* artifact behind it")
+    if orphans and not a.check:
+        print("served QCNN weights with no trained artifact (remove them with git rm, and their width "
+              "from QCNN_WIDTHS):\n  " + "\n  ".join(str(p.relative_to(REPO)) for p in orphans),
+              file=sys.stderr)
+        return 1
 
     if a.check:
         if stale:

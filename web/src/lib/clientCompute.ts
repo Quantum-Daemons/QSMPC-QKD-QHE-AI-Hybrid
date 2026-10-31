@@ -14,8 +14,8 @@ import {
   demoSample, federatedCfg, fheCfg, qsmpcCfg, quantumAdvantageCfg, securityScoringCfg, studentModel,
   tierArchitectures, webCfg, workloadMultipliers,
 } from "./config";
-import { encryptedConv2d, encryptedLinear, encryptedLinearBatch, encryptedStudentInference, warmFHE,
-  type CnnStudentWeights } from "./clientFHE";
+import { encryptedConv2d, encryptedHeldOutAgreement, encryptedLinear, encryptedLinearBatch,
+  encryptedStudentInference, warmFHE, type CnnStudentWeights } from "./clientFHE";
 import { clientTrainScoreIDS } from "./clientIDS";
 import { clientQFL } from "./clientQFL";
 import { secureArgmax, warmMPC } from "./clientMPC";
@@ -35,8 +35,8 @@ import {
   browserModels, DEFAULT_ONNX_BACKEND, evaluatePublishedModel, type OnnxBackend, onnxStatus,
   runPublishedModel,
 } from "./onnxInference";
-import { realInput, realInputCorpus, realSatelliteAnomaly, realFederatedSet,
-  type RealInput, realAlleleCounts } from "./realData";
+import { heldOutCorpus, realInput, realInputCorpus, realSatelliteAnomaly, realFederatedSet,
+  type HeldOutCorpus, type RealInput, realAlleleCounts } from "./realData";
 import { hybridCombine, hybridCombinerInfo, kemNameFor } from "./hybridCombiner";
 import { isClientDemo } from "./demoMode";
 
@@ -76,8 +76,20 @@ const decisionMargin = (row: number[]) => {
   const s = [...row].sort((x, y) => y - x);
   return s.length > 1 ? s[0] - s[1] : Infinity;
 };
+/**
+ * What makes a trained QCNN classically simulable, in the artifact's own words (`circuit.simulability`,
+ * Round 84), with the reference added where the artifact does not carry it. The two QCNN log lines
+ * were literals - "two-qubit blocks on disjoint pairs" on telecom, "a tree of two-qubit blocks" on
+ * finance and medical - and telecom's SU(4) circuit on every neighbouring pair is neither. Finance's
+ * artifact predates the field, and is the tree.
+ */
+const qcnnSimulability = (w: QcnnWeights) => {
+  const said = w.circuit?.simulability ?? "a tree of two-qubit blocks, so classically simulable by construction";
+  return /Bermejo/.test(said) ? said : `${said} - Bermejo et al., PRX Quantum 7, 020304, 2026`;
+};
 const sleep = (ms: number) => new Promise((res) => setTimeout(res, ms));
-// small prime utilities for the QSMS secure-sum field Z_p (config.prime; 0 = auto-select a prime > the total)
+// small prime utilities for the QSMS secure-sum field Z_p (config.prime; 0 = auto-select a prime above the
+// largest total the inputs can reach, `qsmsField`)
 /**
  * The largest field modulus this browser mirror will accept.
  *
@@ -114,6 +126,21 @@ const nextPrime = (n: number) => {
   while (p <= MAX_FIELD_PRIME && !isPrime(p)) p++;
   return p > MAX_FIELD_PRIME ? MAX_FIELD_PRIME : p;
 };
+
+/** The largest stand-in a party draws when a use case has no counts to pool: `floor(u() * 100)`. */
+export const QSMS_STAND_IN_MAX = 99;
+
+/**
+ * The secure sum's field: the requested prime when one is set, else the smallest prime above the
+ * largest total the inputs CAN reach (Round 84). Twin of `secure_summation.py::field_for_total`.
+ *
+ * It took `rawTotal + 1`, the ANSWER: the prime then pinned the total to the gap below it (23 to
+ * 28 for GF(29) on genomics) and `qsms_matches_plain_total` was true by construction. The bound
+ * is public - two effect alleles per person, or the stand-ins' range per party - and the sum is not.
+ */
+export function qsmsField(maxTotal: number, askedPrime: number): number {
+  return askedPrime > 1 ? nextPrime(Math.floor(askedPrime)) : nextPrime(Math.floor(maxTotal) + 1);
+}
 
 // --------------------------------------------------------------------------- //
 //  Security score (mirror of qsh/benchmark/security.py)
@@ -1607,6 +1634,73 @@ export function runClientPipeline(
    * disagreed, the ONNX tier failed on all five use cases, and the run reported the bundled linear
    * model under a MEASURED badge.
    */
+  /** The private-inference figure for a page with held-out rows (Round 84, PI7-PI9).
+   *
+   * A PUBLISHED model on rows it was never fitted on, every row: finance's AMLworld student on its
+   * 8,192 test-window rows (64 ciphertexts), medical's WDBC regression on its 171 held-out rows,
+   * telecom's student on its own 600-row held-out quarter. The figure used to call finance's and
+   * medical's FITTING rows held-out, on finance for a PaySim surrogate the page does not name. */
+  async function emitHeldOutAgreement(stage: string, held: HeldOutCorpus) {
+    const ho = await encryptedHeldOutAgreement(held);
+    const bt = ho.batch;
+    metric(stage, "encrypted_model", held.modelKey ?? held.modelLabel);
+    metric(stage, "encrypted_rows_held_out", true);
+    metric(stage, "encrypted_corpus", held.corpus);
+    metric(stage, "encrypted_rows_scored", bt.rows);
+    metric(stage, "encrypted_rows_available", bt.rowsOffered);
+    metric(stage, "encrypted_rows_dropped_by_cap", bt.rowsOffered - bt.rows);
+    metric(stage, "encrypted_rows_per_ciphertext", bt.rowsPerCiphertext);
+    metric(stage, "encrypted_ciphertexts", bt.ciphertexts);
+    metric(stage, "encrypted_batch_ms", r2(bt.fheMs));
+    metric(stage, "encrypted_ms_per_ciphertext", bt.msPerCiphertext != null ? r2(bt.msPerCiphertext) : null);
+    metric(stage, "fhe_batch_rotations", bt.rotations);
+    // ITS OWN KEY, not `fhe_ms_per_rotation`. On finance and medical the single-row dense layer
+    // below reports that key from its own timed rotations, and the two measurements differ by a
+    // few tenths of a millisecond, so sharing one name tripped `metric_overwritten` on every run.
+    // Telecom, which has no dense figure, also reports this one under the shared key at its call.
+    if (bt.rotations > 0) {
+      metric(stage, "fhe_batch_ms_per_rotation", Math.round((bt.rotateMs / bt.rotations) * 1000) / 1000);
+    }
+    metric(stage, "encrypted_batch_max_abs_error", bt.maxAbsError);
+    metric(stage, "encrypted_batch_precision_bits", ho.precisionBits);
+    metric(stage, "encrypted_batch_median_abs_error", ho.medianAbsError);
+    metric(stage, "encrypted_batch_median_precision_bits", ho.medianPrecisionBits);
+    metric(stage, "encrypted_smallest_plaintext_margin", ho.smallestMargin);
+    metric(stage, "encrypted_flip_possible", !ho.flipImpossible);
+    metric(stage, "encrypted_top1_mismatches_batch", ho.mismatches);
+    metric(stage, "encrypted_scores_compared_batch", bt.rows * held.model.W.length);
+    // The rate and its three companions, together and unconditionally (see the parity test).
+    metric(stage, "encrypted_agreement", r2(1 - ho.mismatches / Math.max(1, bt.rows)));
+    metric(stage, "encrypted_agreement_rows", bt.rows);
+    metric(stage, "encrypted_undecidable_rows", ho.tieRows);
+    metric(stage, "encrypted_decidable_rows", ho.decidable);
+    metric(stage, "encrypted_agreement_over_decidable",
+      ho.decidable > 0 ? r2(1 - ho.flippedDecidable / ho.decidable) : null);
+    if (ho.mismatches > 0) metric(stage, "encrypted_flip_margin_max", ho.flipMarginMax);
+    if (ho.encryptedAccuracy != null) metric(stage, "encrypted_accuracy_vs_labels", ho.encryptedAccuracy);
+    artifacts.encrypted_agreement_plot = ho.plot;
+    emit("log", stage, `encrypted tier over ${bt.rows} HELD-OUT rows of ${held.corpus}, none used to `
+      + `fit ${held.modelKey ?? held.modelLabel}: ${bt.ciphertexts} ciphertext(s) of up to `
+      + `${bt.rowsPerCiphertext} rows, ${r2(bt.fheMs)} ms`
+      + (bt.msPerCiphertext != null ? ` (${r2(bt.msPerCiphertext)} ms each)` : "")
+      + `. Top-1 mismatches vs plaintext: ${ho.mismatches} of ${bt.rows}. Max abs error `
+      + `${bt.maxAbsError.toExponential(3)}`
+      + (ho.precisionBits !== null ? ` (about ${ho.precisionBits} bits, MAX not mean)` : "")
+      + (ho.medianAbsError != null ? `, median ${ho.medianAbsError.toExponential(3)}` : "")
+      + `. ${ho.tieRows} of the ${bt.rows} rows are scored identically across classes by the `
+      + `plaintext model itself; over the ${ho.decidable} it does decide, agreement is `
+      + (ho.decidable > 0 ? r2(1 - ho.flippedDecidable / ho.decidable) : "not computable")
+      + (ho.smallestMargin != null
+        ? `. Smallest plaintext margin ${ho.smallestMargin.toExponential(3)}: `
+          + (ho.flipImpossible ? "no decided row could have flipped" : "a flip was possible on the closest rows")
+        : "")
+      + (ho.mismatches > 0
+        ? `. Widest plaintext margin among the ${ho.mismatches} flipped row(s): `
+          + `${ho.flipMarginMax.toExponential(3)}` : "")
+      + `. Rows: ${held.licence.name}${held.licence.url ? ` (${held.licence.url})` : ""}.`);
+    return ho;
+  }
+
   /** Evaluate the published telecom student's 8 class scores under REAL CKKS, in this tab.
    *
    * This is the verification figure for telecom's encrypted tier, and the numbers it reports are the
@@ -1628,9 +1722,7 @@ export function runClientPipeline(
    * this repo already implements would demonstrate an architecture rather than establish a security
    * property, because both MPC parties share one JS heap - `docs/threat-model.md` records that.
    */
-  async function runEncryptedTelecomStudent(
-    stage: string, raw: number[] | undefined, testSample?: { X: number[][]; y: number[] },
-  ) {
+  async function runEncryptedTelecomStudent(stage: string, raw: number[] | undefined) {
     try {
       const r = await fetch(`${import.meta.env.BASE_URL}data/telecom/student_weights.json`);
       if (!r.ok) { emit("log", stage, `encrypted tier: weights unavailable (HTTP ${r.status})`); return; }
@@ -1684,103 +1776,23 @@ export function runClientPipeline(
       // `encrypted_top1_mismatches` and `encrypted_scores_compared` used to be emitted here from the
       // single row: the mismatch count could only be 0 or 1, and "scores compared" counted CLASSES.
       // A single agreement is not evidence that encrypted inference reproduces plaintext. The batch
-      // costs no extra homomorphic work - `encryptedLinearBatch` packs the rows at the reduction's
-      // own stride, so one multiply-plain and log2(width) rotations per class serve every row.
-      if (testSample?.X?.length) {
-        const rowsZ = testSample.X.map((row) =>
-          row.map((v, i) => (v - (mean[i] ?? 0)) / (scale[i] || 1)));
-        const batch = await encryptedLinearBatch(w.W, w.b, rowsZ);
-        const encCls2 = batch.logits.map(argmax);
-        const plainCls2 = batch.plainLogits.map(argmax);
-        const mism = encCls2.reduce((a, c, i) => a + (c === plainCls2[i] ? 0 : 1), 0);
-        // Same margin test as the finance/genomics figure, so a mismatch means the same thing on
-        // every page that draws this chart. An 8-class student can tie too, and a count reported
-        // without the margin reads as a precision failure on whichever page happens to hit one.
-        const flipped2 = encCls2.map((_, i) => i).filter((i) => encCls2[i] !== plainCls2[i]);
-        const flipMarginMax2 = flipped2.length
-          ? Math.max(...flipped2.map((i) => decisionMargin(batch.plainLogits[i]))) : 0;
-        // No tie/not-tie verdict here either - see the note at the finance/genomics twin.
-        // The undecidable-row disclosure, on THIS path too.
-        //
-        // It was added to the finance/genomics/medical batch and not here, which made the fix for a
-        // conditional disclosure itself conditional - on which of the two code paths a reader
-        // happened to be looking at. Telecom's 8-class softmax over z-scored features is far less
-        // likely to produce exact ties than genomics' [-w/2, +w/2] model, but "unlikely" is not
-        // something a reader can see, and the count is what lets them stop guessing.
-        const tieRows2 = batch.plainLogits.filter((row) => decisionMargin(row) === 0).length;
-        const decidable2 = batch.rows - tieRows2;
-        const flippedDecidable2 =
-          flipped2.filter((i) => decisionMargin(batch.plainLogits[i]) !== 0).length;
-        const bits2 = batch.maxAbsError > 0 && batch.maxAbsError < 1
-          ? Math.floor(-Math.log2(batch.maxAbsError)) : null;
-        metric(stage, "encrypted_top1_mismatches", mism);
-        metric(stage, "encrypted_scores_compared", batch.rows * w.W.length);
-        metric(stage, "encrypted_rows_scored", batch.rows);
-        // The denominator, and the gap. `encrypted_agreement` is over `rows_scored`, not over the
-        // whole split, and those differ whenever the split outgrows one ciphertext.
-        metric(stage, "encrypted_rows_available", batch.rowsOffered);
-        metric(stage, "encrypted_rows_dropped_by_cap", batch.rowsOffered - batch.rows);
-        metric(stage, "encrypted_rows_per_ciphertext", batch.rowsPerCiphertext);
-        metric(stage, "encrypted_batch_ms", r2(batch.fheMs));
-        // Per-rotation cost on this page too, so the comparable unit exists for every use case that
-        // runs an encrypted tier rather than only for the ones with a `private_inference` stage.
-        metric(stage, "fhe_batch_rotations", batch.rotations);
-        if (batch.rotations > 0) {
-          metric(stage, "fhe_ms_per_rotation",
-            Math.round((batch.rotateMs / batch.rotations) * 1000) / 1000);
+      // packs the rows at the reduction's own stride, so one multiply-plain and log2(width)
+      // rotations per class serve every row of a ciphertext.
+      // THE STUDENT'S OWN HELD-OUT ROWS (Round 84), not the rows the tab's JS mirror of the
+      // generator drew: the 600 of generate(n_per_class=300, seed=42) the trainer held out, which the
+      // student was evaluated on and never fitted on. Every row is scored (two ciphertexts at width
+      // 8), so the 88-row cap disclosure no longer applies here.
+      const held = await heldOutCorpus("telecom_ids");
+      if (held) {
+        const bt = (await emitHeldOutAgreement(stage, held)).batch;
+        // The per-rotation cost under the key every encrypted page reports (PF1): this page's only
+        // timed rotations are the batch's.
+        if (bt.rotations > 0) {
+          metric(stage, "fhe_ms_per_rotation", Math.round((bt.rotateMs / bt.rotations) * 1000) / 1000);
         }
-        metric(stage, "encrypted_batch_max_abs_error", batch.maxAbsError);
-        metric(stage, "encrypted_batch_precision_bits", bits2);
-        // The agreement figure follows Concrete-ML's "Similarity"; the mismatch COUNT follows
-        // arXiv:2605.22237 Table IX, which reports it as an integer expected to be zero. Both
-        // conventions are already used for the single-row path; this is the same pair over N rows.
-        metric(stage, "encrypted_agreement", r2(1 - mism / Math.max(1, batch.rows)));
-        metric(stage, "encrypted_agreement_rows", batch.rows);
-        metric(stage, "encrypted_undecidable_rows", tieRows2);
-        metric(stage, "encrypted_decidable_rows", decidable2);
-        metric(stage, "encrypted_agreement_over_decidable",
-          decidable2 > 0 ? r2(1 - flippedDecidable2 / decidable2) : null);
-        if (mism > 0) {
-          metric(stage, "encrypted_flip_margin_max", flipMarginMax2);
-        }
-        artifacts.encrypted_agreement_plot = {
-          kind: "encrypted-agreement",
-          rowsOffered: batch.rowsOffered,
-          points: batch.logits.map((row, i) => ({
-            enc: row[encCls2[i]], plain: batch.plainLogits[i][encCls2[i]],
-            agree: encCls2[i] === plainCls2[i],
-          })),
-          rows: batch.rows, classes: w.W.length,
-          // Over all rows x classes. `points` carries the winning class only, so the caption cannot
-          // derive this from what it plots - and printing the plotted maximum beside a class-score
-          // count is how the finance caption came to understate the deviation by 37%.
-          maxAbsError: batch.maxAbsError,
-          flipMarginMax: flipMarginMax2,
-          undecidableRows: tieRows2, decidableRows: decidable2,
-          agreementOverDecidable: decidable2 > 0 ? r2(1 - flippedDecidable2 / decidable2) : null,
-        };
-        emit("log", stage, `encrypted tier over the HELD-OUT SPLIT: ${batch.rows} of `
-          + `${batch.rowsOffered} rows x ${w.W.length} classes = ${batch.rows * w.W.length} scores in `
-          + `one ciphertext (${batch.rowsPerCiphertext} rows fit at this feature width), `
-          + `${r2(batch.fheMs)} ms total`
-          + (batch.rowsOffered > batch.rows
-            ? `. ${batch.rowsOffered - batch.rows} rows did NOT fit and were not scored, so the `
-              + `agreement below is over ${batch.rows}, not over the whole split`
-            : "") + `. `
-          + `Top-1 mismatches vs plaintext: ${mism} of ${batch.rows}. Max abs error `
-          + `${batch.maxAbsError.toExponential(3)}`
-          + (bits2 !== null ? ` (about ${bits2} bits, MAX not mean)` : "")
-          // The undecidable count on the LOG too. It reached this path's metrics and the chart
-          // caption and not this sentence, which is the third surface and the third time in one
-          // round that a disclosure landed on some of them. Printed even at zero, because "0 of 512"
-          // is the fact that makes this page's 1.00 a different claim from genomics' 1.00.
-          + `. ${tieRows2} of the ${batch.rows} rows are scored identically across classes by the `
-          + `plaintext model itself; over the ${decidable2} it does decide, agreement is `
-          + (decidable2 > 0 ? r2(1 - flippedDecidable2 / decidable2) : "not computable")
-          + (flipped2.length > 0
-            ? `. Widest plaintext margin among the ${flipped2.length} flipped row(s): `
-              + `${flipMarginMax2.toExponential(3)}`
-            : "") + ".");
+      } else {
+        emit("log", stage, "encrypted tier: the student's held-out rows "
+          + "(data/telecom/student_heldout.json) could not be read, so no agreement figure is drawn");
       }
       emit("log", stage, `the ARGMAX is NOT encrypted: all ${w.W.length} class scores are decrypted `
         + `and the maximum taken in the clear, because CKKS has no native comparison. That is the `
@@ -1853,8 +1865,17 @@ export function runClientPipeline(
       // Recorded as a metric, not only logged: the diagram has to tell "this use case has no
       // published model" apart from "the run has not reached this stage yet", and both otherwise
       // render as an empty field.
-      metric(stage, "published_model_status", "unavailable");
-      emit("log", stage, `no published model for this use case: ${pub.reason}`);
+      // Two different facts, so two values: "none" when no model is registered for this use case,
+      // "withheld" when one is registered and held back until a republish re-pins it. One value,
+      // "unavailable", used to cover both, and it read as "exists but unreachable" for the first.
+      if (pub.withheld.length) {
+        metric(stage, "published_model_status", "withheld");
+        emit("log", stage, `published model ${pub.withheld.join(", ")} withheld: its Hub pin is stale `
+          + `(retrained since it was last published), so it is not run until a republish re-pins it`);
+      } else {
+        metric(stage, "published_model_status", "none");
+        emit("log", stage, `no published model for this use case: ${pub.reason}`);
+      }
     }
 
     // ---- Verification, DURING the run rather than beside it ---------------------------------
@@ -2130,10 +2151,12 @@ export function runClientPipeline(
         metric(stage, "skr_per_pulse", Math.round(res.secretKeyRate * 1e9) / 1e9);
         // The block the key is the composable finite key of (Round 80). E91 has no decoy bound and no
         // block: its count stays the asymptotic one, and the facts row says so.
+        // The key block's link time, kept for `channel_time_s` below: one number at both sites.
+        const fibreBlockS = eRes ? null : Number((blockPulses / Number(chan.sourceRateHz)).toPrecision(4));
         if (!eRes) {
           metric(stage, "qkd_block", blockKind);
           metric(stage, "qkd_block_pulses", Number(blockPulses.toPrecision(6)));
-          metric(stage, "qkd_block_s", Number((blockPulses / Number(chan.sourceRateHz)).toPrecision(4)));
+          metric(stage, "qkd_block_s", fibreBlockS);
           metric(stage, "qkd_finite_key_bits", res.secureKeyBits);
           metric(stage, "qkd_finite_key_bound", fkSrc.vacuum ? FINITE_KEY_BOUNDS.vacuum : FINITE_KEY_BOUNDS.oneDecoy);
           metric(stage, "qkd_eps_sec", fkSrc.epsSec);
@@ -2152,15 +2175,24 @@ export function runClientPipeline(
           metric(stage, "skr_per_pulse_no_decoy",
                  Math.round(res.secretKeyRateNonDecoy * 1e9) / 1e9);
         }
-        // THE FOUR TOGETHER, on both QKD stages. The satellite twin below emitted no rate at all
-        // while its own comment claimed "both report the same quantity" - a comment naming a
+        // THE CLOCK METRICS TOGETHER, on both QKD stages. The satellite twin below emitted no rate at
+        // all while its own comment claimed "both report the same quantity" - a comment naming a
         // boundary and describing one side of it.
+        //
+        // TWO CHANNEL TIMES, NAMED APART (Round 84). `channel_time_s` was the sampled run's pulses
+        // over the clock, 0.02 s, while the control-plane panel's "channel time" was the key block's,
+        // 5.3 s: one name, two quantities, one page. The name now carries the KEY's time - the block's
+        // when there is one, since the finite key and the budget are the block's - which is the
+        // figure the panel shows; the sampled run's own time is `run_channel_time_s`. E91 has no
+        // block, so its key and its run share one time.
         {
           const clk = keyRateWithClock(res.secretKeyRate, pulses,
                                        sourceRateHz(config?.qkd_source_rate_mhz,
                                                     Number(qkdCfg().source_rate_hz)));
           if (clk.skrBitPerSec != null) metric(stage, "skr_bit_s", Math.round(clk.skrBitPerSec));
-          if (clk.channelSeconds != null) metric(stage, "channel_time_s", clk.channelSeconds);
+          const keySeconds = fibreBlockS ?? clk.channelSeconds;
+          if (keySeconds != null) metric(stage, "channel_time_s", keySeconds);
+          if (clk.channelSeconds != null) metric(stage, "run_channel_time_s", clk.channelSeconds);
           metric(stage, "source_rate_hz", clk.sourceRateHz);
           metric(stage, "qkd_pulses", pulses);
         }
@@ -2254,6 +2286,7 @@ export function runClientPipeline(
         // this range by default (`satBlock`). Twin of `SatelliteQKDStage._block_key`. An entangled
         // source has no decoy bound here, so E91 keeps the asymptotic count and says so.
         let satKeyBits = res.secureKeyBits;
+        let satBlockS: number | null = null;      // the key block's link time, for `channel_time_s`
         let satBlockNote = "(asymptotic: no finite-key bound is modelled for an entangled source)";
         if (!satERes) {
           const block = satBlock(config, satChan);
@@ -2266,7 +2299,8 @@ export function runClientPipeline(
           const blockS = block.copies * block.unitSeconds;
           metric(stage, "qkd_block", block.kind);
           metric(stage, "qkd_block_copies", block.copies);
-          metric(stage, "qkd_block_s", Number(blockS.toPrecision(4)));   // 4 significant figures at every site
+          satBlockS = Number(blockS.toPrecision(4));
+          metric(stage, "qkd_block_s", satBlockS);   // 4 significant figures at every site
           metric(stage, "qkd_block_pulses",
                  Number((block.copies * block.unit.reduce((a, [n]) => a + n, 0)).toPrecision(6)));
           if (block.maxElevationDeg !== null) metric(stage, "sat_pass_max_elevation_deg", r2(block.maxElevationDeg));
@@ -2300,7 +2334,10 @@ export function runClientPipeline(
                                        sourceRateHz(config?.sat_source_rate_mhz,
                                                     Number(qkdCfg().free_space_source_rate_hz)));
           if (clk.skrBitPerSec != null) metric(stage, "skr_bit_s", Math.round(clk.skrBitPerSec));
-          if (clk.channelSeconds != null) metric(stage, "channel_time_s", clk.channelSeconds);
+          // The key's time and the sampled run's, named apart as on the fibre stage (Round 84).
+          const keySeconds = satBlockS ?? clk.channelSeconds;
+          if (keySeconds != null) metric(stage, "channel_time_s", keySeconds);
+          if (clk.channelSeconds != null) metric(stage, "run_channel_time_s", clk.channelSeconds);
           metric(stage, "source_rate_hz", clk.sourceRateHz);
           metric(stage, "qkd_pulses", satPulses);
         }
@@ -2367,7 +2404,7 @@ export function runClientPipeline(
         }
         metric(stage, "inference_provenance", "simulated");
         // The badge this feeds names the QSDC channel model. The page's telemetry anomaly verdict
-        // further down comes from a plaintext linear model over the bundled NASA telemetry, not from
+        // further down comes from a plaintext linear model over bundled OPS-SAT-AD segments, not from
         // this model and not under FHE or MPC: no FHE or MPC stage runs on the satellite page.
         metric(stage, "inference_backend", "analytic free-space channel model (quantumSim); the anomaly verdict is a plaintext linear model");
         {
@@ -2502,13 +2539,14 @@ export function runClientPipeline(
               + `${secrecyNoEve.toFixed(4)} without Eve, so the loss is attributable — telemetry withheld`);
         }   // end qsdc: everything below scores the BUNDLED corpus and runs on both profiles
         {
-          // REAL NASA SMAP/MSL telemetry + the real linear anomaly model, scored in-browser IN
-          // PLAINTEXT - a JS dot product, with no FHE or MPC (the CKKS version runs only in the
-          // Python deployment). The satellite flow has no private_inference stage, so this is where
-          // the anomaly verdict is surfaced.
+          // REAL OPS-SAT-AD telemetry segments (CC BY 4.0) + a demo linear anomaly regression, scored
+          // in-browser IN PLAINTEXT - a JS dot product, with no FHE or MPC (the CKKS version runs only
+          // in the Python deployment). The satellite flow has no private_inference stage, so this is
+          // where the anomaly verdict is surfaced. The SMAP/MSL windows this read until Round 84 had
+          // no data licence from any provider and are no longer served.
           //
           // OUTSIDE the delivery branch, for exactly the reason the published-model block below was
-          // moved out: this step scores a window of the BUNDLED corpus, not the telemetry the channel
+          // moved out: this step scores a segment of the BUNDLED corpus, not the telemetry the channel
           // just delivered, so it has no dependency on whether QSDC aborted.
           //
           // Gating it was not a harmless over-caution, because QSDC essentially never delivers here.
@@ -2522,17 +2560,21 @@ export function runClientPipeline(
           if (anom) {
             artifacts.telemetry_anomaly = anom.isAnomaly;
             metric(stage, "telemetry_anomaly_score", anom.anomalyScore);
+            // The verdict says which model and which row produced it: the segment is a held-out row
+            // with a known label, and the regression is a demo model, not the published one.
             emit("log", stage, `telemetry anomaly detection, in plaintext (${anom.provenance}): `
-              + `${anom.isAnomaly ? "ANOMALY" : "nominal"} (score ${anom.anomalyScore})`);
+              + `${anom.isAnomaly ? "ANOMALY" : "nominal"} (score ${anom.anomalyScore})`
+              + (anom.trueLabel != null ? `; the segment is labelled ${anom.trueLabel ? "anomalous" : "nominal"}` : "")
+              + `. Model: ${anom.modelNote}`);
             // Satellite had NO attribution in the browser, while the Python pipeline has computed
             // one since Round 18 that nothing rendered. The model here is genuinely linear - a 2xN
-            // margin over a NASA telemetry window - so exact linear SHAP applies unchanged and no
-            // new method is introduced. Reference point is E[x] over the bundled windows, the same
-            // choice the three inference use cases make.
+            // margin over one OPS-SAT segment's 19 features - so exact linear SHAP applies unchanged
+            // and no new method is introduced. Reference point is the payload's E[x] over the segments
+            // the regression was fitted on, never the held-out rows being explained.
             artifacts.explanation = linearShap(
               anom.model.W, anom.model.b, anom.window, anom.featureNames, 5, anom.baseline);
-            artifacts.explanation_provenance = "real bundled telemetry model";
-            artifacts.explanation_baseline = "mean of the bundled NASA telemetry windows";
+            artifacts.explanation_provenance = "demo OPS-SAT-AD regression (not the published model)";
+            artifacts.explanation_baseline = anom.baselineNote;
             // This page has NO private_inference stage, so the model explained here is the model
             // that produced the verdict the page reports - the bars ARE an attribution of it.
             // Declared as a flag rather than inferred from `primary_inference` being absent: that
@@ -2576,11 +2618,10 @@ export function runClientPipeline(
         const op = config.qsmpc_op || (usecase === "genomics" ? "sum" : "psi");
         if (op === "sum") {
           // QSMS additive secret-sharing over a prime field Z_p (config.prime; 0/auto = the smallest prime
-          // above the ACTUAL total, `nextPrime(rawTotal + 1)` below - not above the largest possible one).
-          // So on auto the sum is preserved by construction, `qsms_matches_plain_total` cannot fail, and
-          // p itself narrows the total to the gap below it. Choosing p from the answer is a behaviour to
-          // change (a bound from the inputs' ranges), not a property. Each party masks its secret; the
-          // masks cancel mod p on reconstruction - a smaller requested p genuinely wraps the sum.
+          // above the LARGEST total the inputs can reach, `qsmsField` - Round 84; it was the smallest
+          // prime above the actual total, which made the match below true by construction and let p
+          // narrow the total to the gap beneath it). Each party masks its secret; the masks cancel
+          // mod p on reconstruction - a requested p below the total genuinely wraps the sum.
           // In this tab one step sums both shares of every party, so it shows the arithmetic, not a
           // separation between share holders.
           // Party count from config, so the browser and the backend describe the same computation
@@ -2593,7 +2634,7 @@ export function runClientPipeline(
           // as the backend splits it. Another use case set to "Secure sum" has no counts to pool and
           // keeps the stand-ins, and its log and diagram say so.
           const streamParties = Math.max(2, Number(qsmpcCfg().n_parties ?? 5));
-          const drawn = Array.from({ length: streamParties }, () => Math.floor(u() * 100));
+          const drawn = Array.from({ length: streamParties }, () => Math.floor(u() * (QSMS_STAND_IN_MAX + 1)));
           const alleles = usecase === "genomics" ? await realAlleleCounts(Number(dataCfg().genomics_biobanks ?? 4)) : null;
           if (usecase === "genomics" && !alleles) {
             throw new Error("the genomics secure sum pools the cohorts' allele counts, and the bundled 1000 Genomes "
@@ -2606,9 +2647,10 @@ export function runClientPipeline(
           // integer, so entering 100 shared additively over Z_100 -- which is not a field, while
           // the log still printed "over Z_100" as though it were.
           const askedPrime = Number(config.prime);
-          const p = askedPrime > 1
-            ? nextPrime(Math.floor(askedPrime))
-            : nextPrime(rawTotal + 1);
+          // The largest total these inputs can reach, which is public: each person carries at most
+          // two copies of the effect allele, and a stand-in is at most QSMS_STAND_IN_MAX per party.
+          const maxTotal = alleles ? 2 * alleles.individuals : QSMS_STAND_IN_MAX * nParties;
+          const p = qsmsField(maxTotal, askedPrime);
           // Say so when the request was not honoured. A clamp that reports nothing is how a run ends
           // up computing over a different field than the panel above it displays.
           if (askedPrime > MAX_FIELD_PRIME || (askedPrime > 1 && !Number.isFinite(askedPrime))) {
@@ -2634,8 +2676,11 @@ export function runClientPipeline(
           metric(stage, "secure_sum", total);
           metric(stage, "qsms_prime", p);
           metric(stage, "qsms_parties", nParties);
-          // What was pooled, and whether the shares reconstruct the plain total (they do unless a
-          // requested field is smaller than the total, which wraps it - by design, and said so).
+          // The bound the field was chosen from, so a reader can check p > it without the inputs.
+          metric(stage, "qsms_max_total", maxTotal);
+          // What was pooled, and whether the shares reconstruct the plain total. On auto they do
+          // because p exceeds every total the inputs can reach, which is a property of the protocol
+          // and the bound, not of having read the answer; a requested p below the total wraps it.
           metric(stage, "qsms_inputs", alleles ? "allele_counts" : "stand_ins");
           metric(stage, "qsms_matches_plain_total", total === rawTotal ? 1 : 0);
           if (alleles) {
@@ -2651,7 +2696,7 @@ export function runClientPipeline(
               // The pooled count only: printing each cohort's count would publish exactly what the
               // secure sum exists to keep private.
               ? `${nParties} cohorts' effect-allele counts at ${alleles.variant}, over the ${alleles.individuals} `
-                + `bundled 1000 Genomes individuals; ${total === rawTotal ? "equal to the plain total (by construction when the field is auto: p is the next prime above it)" : "wrapped from the plain total"}`
+                + `bundled 1000 Genomes individuals; ${total === rawTotal ? `equal to the plain total (p is the next prime above ${maxTotal}, the most ${alleles.individuals} people can carry)` : "wrapped from the plain total"}`
               : `${nParties} parties' stand-in values; this use case has no allele counts to pool`}; additive `
             + `shares mod p - the classical equivalent of the backend's Shamir + d-level QFT over a `
             + `GHZ state, which needs qudits no browser can prepare)`);
@@ -2827,7 +2872,7 @@ export function runClientPipeline(
         // honest description of what a dual-path comparison establishes. It is empirical fidelity,
         // not cryptographic integrity: verifiable-FHE proofs establish that a server ran the
         // circuit it was asked to run, and this establishes something different and complementary.
-        await runEncryptedTelecomStudent(stage, ids.explain?.xRaw, ids.testSample);
+        await runEncryptedTelecomStudent(stage, ids.explain?.xRaw);
 
         // The 8-class QCNN, where the visitor selected it. This lives here rather than in
         // `private_inference` because telecom has no such stage - and putting the weights on disk and
@@ -2868,20 +2913,20 @@ export function runClientPipeline(
               + `${w.readout?.bit_order} - reading those bits in another order permutes the class map `
               + `while leaving every aggregate metric identical, which is why the convention ships in `
               + `the weights. The circuit runs UNENCRYPTED, simulated exactly on a state vector in this `
-              + `tab; one stage of two-qubit blocks on disjoint pairs, then a ring over the few survivors, `
-              + `so it is classically simulable by construction (Bermejo et al., PRX Quantum 7, 020304, 2026).`);
+              + `tab; ${qcnnSimulability(w)}.`);
             // The verdict is COMPUTED, not asserted. This read `and it LOSES:` as a literal, guarded
             // only on the field being PRESENT - no comparison was ever performed, so a retrained
             // artifact that put the circuit ahead would have gone on printing that it lost. The
             // numbers were right beside the sentence the whole time.
+            // THREE-WAY (Round 84): a tie printed WINS, because only `mine < theirs` was tested.
             const mine = w.test_macro_f1, theirs = w.classical_lr_macro_f1;
             if (typeof mine === "number" && typeof theirs === "number") {
-              const behind = mine < theirs;
-              emit("log", stage, `and it ${behind ? "LOSES" : "WINS"}: macro F1 ${mine} against a `
-                + `classical logistic regression at ${theirs} on the same split, with `
+              const behind = mine < theirs, level = mine === theirs;
+              emit("log", stage, `and it ${behind ? "LOSES" : level ? "TIES" : "WINS"}: macro F1 ${mine} `
+                + `against a classical logistic regression at ${theirs} on the same split, with `
                 + `${w.n_classes_predicted ?? "?"} of ${w.readout?.n_classes ?? 2} classes predicted. `
                 + `Reported because it is the measured result, not because it flatters`
-                + (behind ? "." : " - and if this ever reads WINS, check the split before believing it."));
+                + (behind || level ? "." : " - and if this ever reads WINS, check the split before believing it."));
             } else if (typeof mine === "number" || w.per_class_f1) {
               // One number without the other cannot support a verdict, so it does not state one.
               emit("log", stage, `held-out macro F1 ${mine ?? "n/a"}; no classical comparator ships in `
@@ -2946,7 +2991,12 @@ export function runClientPipeline(
         }
         // The model the page REPORTS and EXPLAINS, handed to the path that encrypts it, plus the
         // corpus in the same feature space so the agreement figure covers more than one row.
-        const corpus = realIn?.model?.W ? await realInputCorpus(usecase) : null;
+        // THE FIGURE'S ROWS ARE HELD OUT (Round 84). Finance and medical have a held-out corpus and
+        // are scored by `emitHeldOutAgreement` below; only a page without one (genomics, whose 30
+        // reference-panel individuals are external rather than a split) still feeds rows to the batch
+        // inside `realClientHybrid`. Passing both would encrypt medical's rows twice.
+        const held = await heldOutCorpus(usecase);
+        const corpus = !held && realIn?.model?.W ? await realInputCorpus(usecase) : null;
         const real = await realClientHybrid(feats, usecase === "medical_fl", usecase,
                                             realIn?.model ?? null, corpus);
         if (!("failed" in real)) {
@@ -2994,6 +3044,10 @@ export function runClientPipeline(
               undecidableRows: bt.tieRows, decidableRows: bt.decidable,
               agreementOverDecidable: bt.decidable > 0
                 ? r2(1 - bt.flippedDecidable / bt.decidable) : null,
+              rowsAre: usecase === "genomics"
+                ? "external reference-panel individuals (1000 Genomes genotypes; PGS000004 was not "
+                  + "fitted on them, and there is no split)"
+                : undefined,
             };
             emit("log", stage, `encrypted tier over the page's own corpus: ${bt.rows} of `
               + `${bt.rowsOffered} rows in one ciphertext (${bt.rowsPerCiphertext} fit at this `
@@ -3017,6 +3071,7 @@ export function runClientPipeline(
                 ? `. ${bt.rowsOffered - bt.rows} rows did not fit and were not scored, so the `
                   + `agreement is over ${bt.rows}` : "") + ".");
           }
+          const ho = held ? await emitHeldOutAgreement(stage, held) : null;
           artifacts._measured_hybrid = { fheMs: real.fheMs, mpcMs: real.mpcMs, commBytes: real.commBytes,
             ctBytes: real.ctBytes, featDim: real.featDim, conv: real.conv, dense: real.dense };
           metric(stage, "fhe_max_abs_error", r2(real.maxAbsError) || real.maxAbsError);
@@ -3056,7 +3111,9 @@ export function runClientPipeline(
             // been fixed for - and three review passes and the author had all walked past it.
             // Over one row the tie count is 0 or 1 and the rate is 0 or 1; stating them is what
             // stops a page without a corpus looking like a page that measured something.
-            if (!real.batch) {
+            // Not when the held-out figure ran either: its `encrypted_agreement` is over every
+            // held-out row, and this one-row 0-or-1 would overwrite it under the same key.
+            if (!real.batch && !ho) {
               const single = decisionMargin(real.plainLogits) === 0 ? 1 : 0;
               metric(stage, "encrypted_agreement", mism === 0 ? 1 : 0);
               metric(stage, "encrypted_agreement_rows", 1);
@@ -3301,31 +3358,39 @@ export function runClientPipeline(
           // for 100% of inputs, mean |<Z0>| 0.076, correlation with mean(feature) -0.070. It stays as
           // the QOTP pad-structure + T-count demonstration, which is what it can honestly support.
           const w = await loadQcnnWeights(usecase, qubitsOf(config));
-          if (w) {
+          // THE SPACE THE ARTIFACT DECLARES, not whatever `feats` happens to be in. `feats` is
+          // `realIn.values`, which is StandardScaler output because the CKKS tier and the SHAP
+          // panel are fitted there. A QCNN artifact declaring `input_space: "raw"` standardises
+          // its input again, so handing it `feats` charged the transform twice and flattened the
+          // wire: measured at tanh sd 3.3e-05 on `amount`, with 101 of 400 rows - 25.25% - given
+          // a different class than the same rows correctly fed. (17.25% appeared here for one
+          // round; that figure is a different comparison - two encoders over one array, rather
+          // than one encoder over two - and describes a fix that was not the one made.)
+          //
+          // BY NAME, with no default branch. `w.input_space` names the units the circuit was
+          // trained on; the sample ships its rows keyed by the space each is in. A boolean
+          // `=== "raw" ? a : b` would send an artifact retrained into a third space to whichever
+          // array the else-branch happens to name - which is exactly how this shipped. `feats` is
+          // used only when no real sample exists at all; a sample that lacks the declared space is
+          // REFUSED below rather than fed (Round 84: the `?? feats` that followed this lookup fed
+          // z-scores to medical's raw-input model while its bundle shipped no raw rows). The pairing
+          // is asserted in tests/test_the_encoder_receives_the_space_the_artifact_declares.py.
+          const qcnnFeats = w ? (realIn?.bySpace?.[w.input_space] ?? (realIn ? undefined : feats)) : undefined;
+          if (w && !qcnnFeats) {
+            const cls = artifacts.fhe_prediction ?? inf.prediction;
+            artifacts.primary_inference = { backend: "ckks", class: cls };
+            metric(stage, "primary_inference_class", cls);
+            metric(stage, "primary_inference_backend", "ckks");
+            emit("log", stage, `QCNN selected, but the bundled sample ships no rows in the space the `
+              + `trained QCNN declares (${w.input_space}); not running it. Reporting the CKKS class.`);
+          } else if (w && qcnnFeats) {
             // MEASURED, on the same footing as the CKKS tier's `fhe_ms_per_rotation`. The QCNN was
             // reported by accuracy alone while every encrypted figure carried a latency, so the two
             // inference paths on one page could not be compared on cost at all. State-vector
             // simulation is 2^n work in the qubit count, which is the number that makes the figure
             // interpretable, so it travels with it - as `PF2` requires of the encrypted tier.
-            // THE SPACE THE ARTIFACT DECLARES, not whatever `feats` happens to be in. `feats` is
-            // `realIn.values`, which is StandardScaler output because the CKKS tier and the SHAP
-            // panel are fitted there. A QCNN artifact declaring `input_space: "raw"` standardises
-            // its input again, so handing it `feats` charged the transform twice and flattened the
-            // wire: measured at tanh sd 3.3e-05 on `amount`, with 101 of 400 rows - 25.25% - given
-            // a different class than the same rows correctly fed. (17.25% appeared here for one
-            // round; that figure is a different comparison - two encoders over one array, rather
-            // than one encoder over two - and describes a fix that was not the one made.)
-            //
-            // Falls back to `feats` only when the artifact does NOT declare `raw`, so a future
-            // artifact in a third space cannot silently pick up the wrong array; the pairing is
-            // asserted in tests/test_the_encoder_receives_the_space_the_artifact_declares.py.
-            // BY NAME, with no default branch. `w.input_space` names the units the circuit was
-            // trained on; the sample ships its rows keyed by the space each is in. A boolean
-            // `=== "raw" ? a : b` would send an artifact retrained into a third space to whichever
-            // array the else-branch happens to name - which is exactly how this shipped.
-            const qcnnFeats = realIn?.bySpace?.[w.input_space] ?? (realIn ? undefined : feats);
             const t0 = performance.now();
-            const qc = qcnnInferTrained((qcnnFeats ?? feats).slice(0, w.n_qubits), w);
+            const qc = qcnnInferTrained(qcnnFeats.slice(0, w.n_qubits), w);
             const qcnnMs = performance.now() - t0;
             artifacts.primary_inference = { backend: "qcnn-trained", class: qc.cls,
                                             qubits: qc.qubits, expectation: r2(qc.expectation) };
@@ -3352,8 +3417,13 @@ export function runClientPipeline(
             // COMPUTED, like its twin in `qml_ids`. "the classical model is ahead" was unconditional
             // text over two numbers read from a file, so a retrained artifact that reversed the
             // ordering would have kept asserting it.
+            // THREE-WAY (Round 84): medical's circuit TIES logistic regression at the shipped seed
+            // (0.953488 each, the same class on all 86 held-out rows), which the two-way form
+            // printed as "the circuit is ahead here". LR's five-seed lead is on the model card.
             const ahead = typeof mine === "number" && typeof theirs === "number"
-              ? (theirs > mine ? "the classical model is ahead" : "the circuit is ahead here")
+              ? (theirs > mine ? "the classical model is ahead"
+                : theirs === mine ? "the circuit and logistic regression are level on this split"
+                : "the circuit is ahead here")
               : "no comparator ships in this artifact, so no verdict is stated";
             // `w.theta.length`, NOT `layers x n_qubits`. That product is the RETIRED
             // hardware-efficient ansatz's parameter count - one angle per wire per layer - and it
@@ -3365,8 +3435,7 @@ export function runClientPipeline(
             emit("log", stage, `inference backend = QCNN (TRAINED, NOT encrypted): class=${qc.cls} `
               + `(<Z0>=${qc.expectation.toFixed(4)}, ${w.theta.length} trained angles - shared conv filters `
               + `plus pooling and final rotations - over ${w.n_qubits} wires, ${w.layers} conv rounds per stage, `
-              + `simulated exactly on a state vector; a tree of two-qubit blocks, so classically simulable `
-              + `by construction - Bermejo et al., PRX Quantum 7, 020304, 2026). `
+              + `simulated exactly on a state vector; ${qcnnSimulability(w)}). `
               + `Held-out ${label} ${(mine ?? 0).toFixed(4)} against a baseline of `
               + `${(base ?? 0).toFixed(4)} and logistic regression at ${(theirs ?? 0).toFixed(4)} on `
               + `the same split - ${ahead}, and this reports what was measured rather than what would `

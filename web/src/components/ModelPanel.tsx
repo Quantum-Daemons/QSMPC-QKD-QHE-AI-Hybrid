@@ -149,8 +149,17 @@ function MetricRows({ spec }: { spec: ModelSpec }) {
   // paragraph. The number a visitor would quote was the hardest one on the page to find, which is
   // exactly backwards. Rendered as its own row, labelled as external, so it is visible AND cannot be
   // mistaken for something this run produced.
-  const baselineOrphaned =
-    spec.metric.baseline != null && !numeric.some(([k]) => k === spec.metric.name);
+  //
+  // A distillation record stores the declared metric as `student_metric` (and `teacher_metric`),
+  // naming it in `metric_name`, so a test for a key spelled `minority_class_f1` found none and the
+  // finance student's card printed "published baseline, NOT measured here" two rows above the
+  // measured `student minority_class_f1` (Round 84). The row that measures the declared metric is
+  // its own key if present, else the student's when the record says that is what it measured.
+  const declaredKey: string | null = numeric.some(([k]) => k === spec.metric.name) ? spec.metric.name
+    : recordedMetric === spec.metric.name
+      ? (["student_metric", "teacher_metric"].find((k) => numeric.some(([kk]) => kk === k)) ?? null)
+      : null;
+  const baselineOrphaned = spec.metric.baseline != null && declaredKey == null;
 
   // THE VERDICT, which is the one field that states what the comparison concluded and the one that
   // never reached the page. `quantum_beats_classical` is a BOOLEAN, and the walk above keeps
@@ -190,10 +199,13 @@ function MetricRows({ spec }: { spec: ModelSpec }) {
 
   return (
     <table className="mini-table">
+      {/* Column headers and a row header per metric (SC 1.3.1, checklist UX38): the key column of a
+          key-value table named nothing, so a screen reader announced bare numbers. */}
+      <thead><tr><th scope="col">metric</th><th scope="col" className="num">value</th><th scope="col">reading</th></tr></thead>
       <tbody>
         {baselineOrphaned && (
           <tr className="metric-companion">
-            <td><code>{spec.metric.name}</code></td>
+            <th scope="row"><code>{spec.metric.name}</code></th>
             <td className="num">{fmt(spec.metric.baseline as number)}</td>
             <td className="muted small">
               <strong>published baseline, NOT measured here</strong>
@@ -203,21 +215,21 @@ function MetricRows({ spec }: { spec: ModelSpec }) {
           </tr>
         )}
         {headline.map(([k, v]) => (
-          <tr key={k} className={k === spec.metric.name ? "metric-headline" : undefined}>
+          <tr key={k} className={k === declaredKey ? "metric-headline" : undefined}>
             {/* `student_metric` / `teacher_metric` are opaque names: they say which model, never
                 which quantity. The record knows, so print it. */}
-            <td><code>{k === "student_metric" || k === "teacher_metric"
-              ? `${k.split("_")[0]} ${recordedMetric ?? "metric"}` : k}</code></td>
+            <th scope="row"><code>{k === "student_metric" || k === "teacher_metric"
+              ? `${k.split("_")[0]} ${recordedMetric ?? "metric"}` : k}</code></th>
             <td className="num">{fmt(v)}</td>
             <td className="muted small">
-              {k === spec.metric.name && spec.metric.baseline != null
+              {k === declaredKey && spec.metric.baseline != null
                 ? `baseline ${spec.metric.baseline}${spec.metric.ceiling != null
                     ? ` · ceiling ${spec.metric.ceiling}` : ""}`
                 : ""}
               {/* The sample size belongs on the row that shows the baseline, because that row is
                   where the comparison actually gets made. An event-wise score over 3 events and a
                   benchmark over hundreds render as the same kind of decimal. */}
-              {k === spec.metric.name && scoredOver != null && (
+              {k === declaredKey && scoredOver != null && (
                 <> · <strong>over {scoredOver} {scoredUnit}</strong>
                   {scoredOver < 10 && " — too few to compare with the baseline"}</>
               )}
@@ -262,7 +274,7 @@ function MetricRows({ spec }: { spec: ModelSpec }) {
           // has anything to compare, which is all of them. `spec.metric.name` is the one row the
           // registry says this model is judged on, and it is what the baseline is rendered against
           // two rows up, so it is the right thing for the companion to be read against too.
-          const declared = headline.find(([k]) => k === spec.metric.name);
+          const declared = headline.find(([k]) => k === declaredKey);
           const h = declared ? Number(declared[1]) : NaN;
           const c = Number(v);
           const known = Number.isFinite(h) && Number.isFinite(c);
@@ -299,7 +311,7 @@ function MetricRows({ spec }: { spec: ModelSpec }) {
           const caption = `companion — ${relation}${hasNote && known ? "; see how to read these, below" : ""}`;
           return (
             <tr key={k} className="metric-companion">
-              <td><code>{k}</code></td>
+              <th scope="row"><code>{k}</code></th>
               <td className="num">{fmt(v)}</td>
               <td className="muted small">{caption}</td>
             </tr>
@@ -307,7 +319,7 @@ function MetricRows({ spec }: { spec: ModelSpec }) {
         })}
         {verdict && (
           <tr className={verdict.agrees ? "metric-companion" : undefined}>
-            <td><code>quantum_beats_classical</code></td>
+            <th scope="row"><code>quantum_beats_classical</code></th>
             <td className="num">{String(verdict.derived)}</td>
             <td className="muted small">
               {verdict.derived
@@ -372,6 +384,7 @@ function CalibrationRows({ achieved }: { achieved: Record<string, unknown> }) {
         the held-out test split
       </div>
       <table className="mini-table">
+        <thead><tr><th scope="col">term</th><th scope="col">raw to calibrated</th></tr></thead>
         <tbody>
           {/* The two floats are meaningless without the argument they were fitted against: the map
               is linear in whatever it is handed, so the same a and b describe a different function
@@ -379,16 +392,16 @@ function CalibrationRows({ achieved }: { achieved: Record<string, unknown> }) {
               for exactly this reason, and rendering one form for both is the defect the flag exists
               to prevent. The published `formula` string is NOT rendered instead - it is symbolic in
               a and b, and this row is the only place in the app where the fitted floats appear. */}
-          <tr><td>map</td><td className="mono">{c.on_logit
+          <tr><th scope="row">map</th><td className="mono">{c.on_logit
             ? `p = 1 / (1 + exp(${f(c.a, 4)}·logit(clip(s, ${c.logit_clip_eps}, 1 - ${c.logit_clip_eps})) + ${f(c.b, 4)})), logit(q) = log(q / (1 - q))`
             : `p = 1 / (1 + exp(${f(c.a, 4)}·s + ${f(c.b, 4)}))`}</td></tr>
-          <tr><td>Brier</td>
+          <tr><th scope="row">Brier</th>
               <td className="mono">{f(c.brier_raw)} → {f(c.brier_calibrated)}</td></tr>
-          <tr><td>CORP miscalibration (MCB)</td>
+          <tr><th scope="row">CORP miscalibration (MCB)</th>
               <td className="mono">{f(c.corp_raw?.mcb, 7)} → {f(c.corp_calibrated?.mcb, 7)}</td></tr>
-          <tr><td>CORP discrimination (DSC)</td>
+          <tr><th scope="row">CORP discrimination (DSC)</th>
               <td className="mono">{f(c.corp_raw?.dsc, 7)} <span className="muted">unchanged</span></td></tr>
-          <tr><td>log-loss</td>
+          <tr><th scope="row">log-loss</th>
               <td className="mono" style={worse ? { color: "var(--warn)" } : undefined}>
                 {f(c.log_loss_raw)} → {f(c.log_loss_calibrated)}{worse ? " (worse)" : ""}</td></tr>
         </tbody>
@@ -438,6 +451,8 @@ function AttributionRows({ achieved }: { achieved: Record<string, unknown> }) {
         (held-out split), with impurity importance beside it
       </div>
       <table className="mini-table">
+        <thead><tr><th scope="col">feature</th><th scope="col" className="num">permutation importance</th>
+          <th scope="col"><span className="sr-only">relative size</span></th><th scope="col">impurity importance</th></tr></thead>
         <tbody>
           {rows.map((f) => {
             // Within one std of zero is not a small effect, it is no measured effect, and it has to
@@ -445,7 +460,7 @@ function AttributionRows({ achieved }: { achieved: Record<string, unknown> }) {
             const indistinct = std ? Math.abs(perm[f]) <= std[f] : false;
             return (
               <tr key={f}>
-                <td><code>{f}</code></td>
+                <th scope="row"><code>{f}</code></th>
                 <td className="num">
                   {perm[f] >= 0 ? "+" : ""}{perm[f].toFixed(4)}
                   {std ? <span className="muted"> ± {std[f].toFixed(4)}</span> : null}
@@ -506,10 +521,16 @@ function ModelRunner({ usecase, spec }: { usecase: string; spec: ModelSpec }) {
   // chance to disagree. The run verifies every published model for this use case, not only the
   // selected one, so nothing is lost by deleting it: start the pipeline and the verification is
   // part of the result rather than a button somebody has to know to press.
+  // WHICH FIGURE (Round 84): the re-score checks the published graph against that graph's own
+  // recorded figure, and the figures above come from the training run. They can differ - OPS-SAT's
+  // card prints 0.9660 where the graph scores 0.9509 on the same rows - and the run's verification
+  // card names both when they do.
   return <p className="muted small">
     Verified during the pipeline run: press <strong>Start</strong> and this model is re-scored on its
     published evaluation sample ({spec.eval_split ?? "split not declared"}) in this tab, with the
-    result reported in the run log.
+    result reported in the run log. The re-score checks the published ONNX graph against that graph&apos;s
+    own recorded figure; the figures above come from the training run, and where the two differ the
+    verification card says which is which.
   </p>;
 }
 

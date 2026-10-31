@@ -155,31 +155,29 @@ path is now a function of the width, so a `--qubits` run cannot overwrite a sibl
 then every width wrote `models/qcnn_<usecase>`, which is why running the telecom 7-wire line would
 have destroyed the 8-wire file the demo serves.
 
-## A second width ships, and it is now provably inert
+## The second width was removed in Round 84, because it was provably inert
 
-`models/qcnn_finance_q9` carries a 9-wire circuit - one wire more than the 8 features, so one
-unencoded pad. **Every recorded metric is identical between the two widths**: minority-class F1
-0.735294, accuracy 0.97, and the same floors, prevalence and split sizes, to all six digits the
-artifacts record. The same is true of the medical pair, so the pad-wire result is now measured twice
-and in the same direction - and it has now survived two retrains that moved the values, which is a
-stronger statement than surviving one.
+`models/qcnn_finance_q9` carried a 9-wire circuit - one wire more than the 8 features, so one
+unencoded pad. **Every recorded metric was identical between the two widths** (minority-class F1
+0.735294, accuracy 0.97, the same floors, prevalence and split sizes, to all six digits the artifacts
+recorded), on the medical pair too, and at five of five seeds; the class agreed on every bundled row.
+A shared filter has no per-wire angles for a data-free wire to claim, and pooling folded the pad into
+wire 0 without ever convolving it. An option that changes nothing is the inert-control defect, so
+Round 84 deleted the 9-wire artifacts and offers this width only; the page names it rather than
+offering a choice of one.
 
-The mechanism is the shared filter. One two-qubit filter is applied at every position, so there are
-no per-wire angles for a data-free wire to claim; a pad in |0> contributes nothing the filter can
-allocate capacity to. The pre-Round-46 ansatz gave every wire its own trainable angles, which is
-exactly why the same comparison produced a spread worth ablating back then - it was measuring the
-ansatz's spurious per-wire capacity rather than a property of the data.
+7 wires is not available either: this use case encodes 8 features and `qcnn_variational.py` refuses a
+run with fewer wires than features. See
+[`references/qcnn-width-ablation.md`](../../references/qcnn-width-ablation.md) for the record.
 
-**The trained parameter vectors are now near-identical too, and that is a consequence of the
-dead-parameter fix.** Before it, 4 of 77 angles differed between the two widths by more than 1e-4 -
-`theta[23]`, `theta[47]`, `theta[71]` and `theta[76]`, which are exactly the four the `<Z0>` readout
-could not see. They carried no gradient signal, so they drifted on numerical noise while no published
-number moved with them. With the ordering corrected those four are reachable and no longer drift:
-**zero of 77 angles now differ by more than 1e-4**, the largest disagreement anywhere in the vector
-is 1.1e-05, and `scale` and `bias` agree to 4.8e-07 and 6.0e-07. A pad wire changes nothing the
-optimiser can use, and now it changes almost nothing at all.
+## Unchanged in Round 84, and why
 
-7 wires is not available here: this use case encodes 8 features and `qcnn_variational.py` refuses a
-run with fewer wires than features. Telecom can be narrowed because it carries 7. See
-[`references/qcnn-width-ablation.md`](../../references/qcnn-width-ablation.md) for all three, and
-note that its telecom finding is now superseded in the opposite direction.
+The half-angle experiment of 2026-10-30 tested RY(c * pi * tanh(z)) at c = 0.5 and 0.75 here as on
+medical and telecom. At c = 0.5 finance did not gain (-0.002 minority-class F1 over five seeds; one
+seed under-trains at 120 epochs), and the promising c = 0.75 arm (+0.083, exploratory) failed its
+pre-registered confirmatory run on fresh seeds 5 to 9 (+0.035, interval [-0.009, +0.080]). So this
+artifact stays at c = 1 and is byte for byte the one shipped before: it carries no `encoding_scale`
+field, which every inference path reads as 1, and its `training.architecture` still reads
+`qcnn-cong-hur` - the label the trainer used for this same disjoint-pair tree until Round 84, now
+`qcnn-tree`. The overlap experiment found coupling neighbouring pairs worse here (-0.053, worse on 5
+of 5 seeds), so it keeps the tree too.
