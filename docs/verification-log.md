@@ -3579,12 +3579,12 @@ for this round found tau0 on a term the paper prints outside it. That one erred 
 direction, and it had matched the paper's own table better than the printed form does. Agreement with
 a published number is not evidence that a formula is the published one.
 
-### Round 83: a label is a claim about the code under it (DRAFT, 2026-10-30)
+### Round 83: a label is a claim about the code under it (2026-10-30 to 2026-10-31)
 
 **Context.** Five page fact-checks, a review of private inference against current research, a QCNN
 review and a documents audit found public text that claimed more than the code does. The register's
-Round 83 entry lists each correction with its evidence; this entry keeps what they taught. Nothing
-here was measured on the deployed site yet: the walk is recorded in the register when it happens.
+Round 83 entry lists each correction with its evidence, and the walk of the deployed branch on
+2026-10-31; this entry keeps what they taught.
 
 **A name carries a property, and the property has to be checked in the code.** "Secure
 aggregation", "private set intersection", "information-theoretic", "QHE" and "held-out" each named a
@@ -3605,3 +3605,14 @@ three without measuring that on every block.
 **A record can overclaim as easily as a page.** This file and the register said the statistics
 explained about half of each gap. They explained 45 percent of one and 29 percent of the other. A
 fraction that fits one case is not a summary of two.
+
+**A text the browser fetches is checked where the browser fetches it.** The generator's sentence
+claiming an FHE/MPC pipeline on the satellite page was corrected in the repository, and the walk
+still found it in the satellite run log: the page prints the evaluation sample's provenance from the
+Hub, at the pinned revision, and that sample had not been republished. A correction reaches a
+visitor only through the artefact the page loads.
+
+**A count copied is a count to recompute.** The fix commit wrote Liao's pass as 226,073 bits and the
+default pass as 139,201, and the two figures were copied into six places, each one bit high. Both
+languages compute 226,072.49 and 139,200, and the page showed 226,072 and 139,200 throughout. The
+copies agreed with each other, which is why no copy looked wrong.
