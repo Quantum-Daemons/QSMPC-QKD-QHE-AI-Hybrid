@@ -141,6 +141,7 @@ def conv_cost(conv: ConvSpec) -> dict:
         "encrypts": ho * wo,                              # one ciphertext per patch
         "dot_plain": ho * wo * oc,                        # one dot per (patch, out-channel)
         "macs": ho * wo * oc * ic * kh * kw,
+        "rotate_and_sums": ho * wo * oc,   # one per dot_plain: TenSEAL's dot needs rotation keys
         "out_shape": (oc, ho, wo),
     }
 

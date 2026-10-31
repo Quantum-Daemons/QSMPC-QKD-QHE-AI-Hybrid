@@ -79,6 +79,13 @@ Measured with the scopes separated, medical page, one run:
 
 The two stages sum to the total exactly - 96.60 + 490.23 = 586.83 - so nothing is unattributed.
 
+Since Round 84 (2026-10-31) the dense layers are packed one ciphertext per layer: 12 rotations instead of 136,
+and the student 28 instead of 152. Measured in Node 22 with node-seal, base and packed code interleaved in one
+process (not Chrome; a browser re-measure is wanted): dense layers 53.9 ms against 490.0 ms row at a time, the
+whole student 126.8 ms against 554.2 ms. Each layer's bias is now added under encryption and every non-output
+slot is masked and flooded before decryption, at about 2 ms per decryption. The tables above are the
+row-at-a-time measurements they were made with.
+
 So key-switching dominates everywhere, at 57% to 86% depending on how much non-rotation work the
 stage carries, and the per-rotation cost is 3.10-4.39 ms across every stage measured. The page now reports
 `fhe_conv_ms` (the convolution), `fhe_encrypted_student_ms` (the total),

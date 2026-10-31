@@ -41,8 +41,8 @@ const BOXES: Box[] = [
     lines: ["finance, medical:", "FedAvg; every mask from", "the one session key"], kind: "notional" },
   { id: "pi", x: 396, y: ROW2, w: 180, title: "Private inference",
     lines: ["CKKS linear (node-seal)", "+ garbled-circuit 2PC", "argmax (Polytune)"], kind: "notional" },
-  { id: "qhe", x: 596, y: ROW2, w: 180, title: "QHE comparison",
-    lines: ["QOTP + Clifford+T", "circuit, untrained,", "state-vector simulation"], kind: "seeded" },
+  { id: "qhe", x: 596, y: ROW2, w: 180, title: "QSMPC-FHE",
+    lines: ["comparison, an untrained", "QOTP + Clifford+T circuit,", "state-vector simulation"], kind: "seeded" },
   { id: "sig", x: 796, y: ROW2, w: 170, title: "Signed result",
     lines: ["ML-DSA-65 signature", "over the result"], kind: "real" },
 ];
@@ -77,8 +77,8 @@ export default function ArchitectureDiagram() {
           A simulated QKD link sits off the key path: it yields a key length and no key bytes, and
           nothing from it is mixed into the session key. The session key feeds QSMPC and federated
           training on the finance and medical pages, whose parties all run in this tab; private
-          inference is real CKKS plus a garbled-circuit argmax between notional parties; an untrained
-          QOTP plus Clifford+T comparison circuit with a seeded pad, simulated, runs beside it; the
+          inference is real CKKS plus a garbled-circuit argmax between notional parties; the QSMPC-FHE
+          comparison, an untrained QOTP plus Clifford+T circuit with a seeded pad, simulated, runs beside it; the
           result is signed with ML-DSA-65.
         </desc>
         <defs>

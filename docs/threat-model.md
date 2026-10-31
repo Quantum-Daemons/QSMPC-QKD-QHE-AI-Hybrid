@@ -10,7 +10,11 @@
   rather than on a hardness assumption; here the quantum channel is simulated, so the add-on
   contributes none of that security. **BSI TR-02102-1 v2026-01** section 2.1 says QKD *"is currently
   not ready for use from a security point of view"* and does not recommend it; the hybrid BSI does
-  recommend (section 2.2) is quantum-safe plus classical, the ML-KEM + X25519 layer. NSA's CNSA 2.0
+  recommend (section 2.2) is quantum-safe plus classical, which is the shape of the ML-KEM + X25519
+  layer; BSI recommends its ML-KEM half (TR-02102-1 Table 2.7) but not X25519, which is neither among
+  BSI's recommended curves (the Brainpool curves, Table B.3) nor among its TLS 1.3 groups
+  (TR-02102-2 v2026-01, Table 10), and for TLS BSI intends to recommend SecP256r1MLKEM768 and
+  SecP384r1MLKEM1024 (TR-02102-2 section 3.4.2). NSA's CNSA 2.0
   and Quantum Computing FAQ (Ver. 2.2, October 2026) answers "No" to using QKD to protect a national
   security system.
 - **Honest-but-curious compute server** (delegated AI): would read inputs/model. Mitigation:

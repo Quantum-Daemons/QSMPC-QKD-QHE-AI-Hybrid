@@ -120,7 +120,7 @@ def test_the_replacement_is_opssat_segments_the_demo_model_never_saw() -> None:
     d = json.loads((PUBLIC / "satellite" / "opssat_segments.json").read_text())
     assert d["licence"] == "CC-BY-4.0" and NEEDS_LINK["CC-BY-4.0"] in d["licence_url"]
     assert "OPS-SAT" in d["provenance"] and "SMAP" not in d["provenance"]
-    assert "zenodo.12588358" in d["attribution"] and d["modifications"]
+    assert "zenodo.12588359" in d["attribution"] and d["modifications"]
     src = json.loads((REPO / "models" / "satellite_opssat" / "eval_sample.json").read_text())
     X, y = np.array(src["samples"], dtype=float), np.array(src["labels"])
     held = np.array(d["row_index"])

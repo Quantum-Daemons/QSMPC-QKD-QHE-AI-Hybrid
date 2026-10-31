@@ -51,7 +51,7 @@ export const USECASES: UseCaseMeta[] = [
     agenticPrompt: "In one sentence, what does a secure sum of per-cohort allele counts hide, and from whom?",
   },
   {
-    id: "telecom_ids", title: "Telecom / Defense — QKD + QML-IDS", nav: "Telecom / Defense", industry: "telecom",
+    id: "telecom_ids", title: "Telecom / Defense — QKD + IDS", nav: "Telecom / Defense", industry: "telecom",
     blurb: "A carrier runs a simulated QKD link, with an optional eavesdropper (the Eve control), beside an intrusion detector over the eight classes of Al-Kuwari et al. 2026 (seven QKD attacks and normal traffic). In this tab the detector is a softmax trained and scored on synthetic telemetry it generates, so neither the link's QBER nor the Eve control reaches it; the published model is a random forest, and the quantum classifiers (QSVC, QNN) are trained offline.",
     inference: false,
     agenticTool: "inspect_qkd_telemetry",

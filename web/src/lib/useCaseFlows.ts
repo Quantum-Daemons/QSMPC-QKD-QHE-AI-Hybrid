@@ -405,7 +405,7 @@ export const USECASE_SPECS: Record<string, Spec> = {
       { stageId: "qkd_key_agreement", kind: "q-arrow",
         label: (m, c) => `${qkdName(c)}${eveTag(m)} · QBER ${f(m, "qber")}${optiTag(m, c)}`,
         hidden: pqcOnly, ok: qkdOk },
-      { stageId: "qml_ids", kind: "local-a", label: (m) => `QML-IDS stage: softmax attack detection · macro-F1 ${f(m, "ids_macro_f1")}` },
+      { stageId: "qml_ids", kind: "local-a", label: (m) => `IDS stage: classical softmax attack detection · macro-F1 ${f(m, "ids_macro_f1")}` },
       publishedStep("qml_ids"),
       QSMPC_COMPARE,
       { stageId: "sign_result", kind: "c-bidir", label: (_m, c) => `${sigName(c)}-signed audit record` },
@@ -626,7 +626,7 @@ export function captionOf(usecase: string, c: DiagramConfig = {}): string {
   const infers = visibleSteps(usecase, c).some((s) => s.stageId === "private_inference");
   return [
     spec.meet(c),
-    infers ? "MPC-FHE hybrid: linear layers under CKKS, decrypted by the client, and the argmax as two-party MPC; the QSMPC-FHE bar is a simulated comparison circuit beside it, not a score." : "",
+    infers ? "MPC-FHE hybrid: linear layers under CKKS, biases included, decrypted by the client, and the argmax as two-party MPC over the scores the client has decrypted, both parties in this tab; the QSMPC-FHE bar is a simulated comparison circuit beside it, not a score." : "",
     pqcOnly(c) ? "This profile has no quantum channel, and the proof of concept runs in this tab."
       : "The quantum channel is simulated, and the proof of concept runs in this tab.",
   ].filter(Boolean).join(" ");

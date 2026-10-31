@@ -91,11 +91,12 @@ def test_the_rate_fields_are_derived_and_cannot_be_written() -> None:
     c.register_application(QkdApplication(
         app_id="sae-1", server_app_id="orchestrator", backing_qkdl_id=["qkdl-ab"]))
     c.allocate("sae-1", 400)
-    # 400 bits over 2 s is 200 bit/s of consumption, so the effective rate falls by 200 - not by 400.
-    # A rate decremented by a bit count is exactly the dimensional error this file now guards.
+    # 400 bits over 2 s is 200 bit/s of the application's consumption, reported as
+    # expected_consumption, not 400 (a rate decremented by a bit count is the dimensional error this
+    # file guards). eskr is the rate after INTERNAL consumption, none of which is modelled (Round 84).
     assert link.consumed_bits == 400
     assert link.expected_consumption == 200.0
-    assert link.eskr == 800.0
+    assert link.eskr == 1000.0
 
     for attr, value in (("eskr", 1.0), ("expected_consumption", 1.0)):
         with pytest.raises(AttributeError):

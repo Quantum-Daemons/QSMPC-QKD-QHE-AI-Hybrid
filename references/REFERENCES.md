@@ -2084,8 +2084,9 @@ neither a quote nor a stated assumption.
   model reproduces the distances from the coordinates within 1 percent (7,621 and 2,524 km against
   7,600 and 2,500).
 - **Vergoossen, Loarte, Bedington, Kuiper and Ling, "Satellite constellations for trusted node QKD
-  networks"**, arXiv:1903.07845 (2019). `[link]`
-  URL: https://arxiv.org/abs/1903.07845
+  networks"**, arXiv:1903.07845 (2019); published as "Modelling of satellite constellations for
+  trusted node QKD networks", Acta Astronautica 173, 164-171 (2020), doi:10.1016/j.actaastro.2020.02.010.
+  `[link]` URL: https://arxiv.org/abs/1903.07845
   VERIFIED 2026-10-28 in the arXiv text. The constellation the Network tab models: "a
   string-of-pearls configuration of satellites in the same plane (intra-planar ISL)", "Satellites
   have one Micius-type Earth-pointing terminal, and where specified another terminal available for
@@ -2097,7 +2098,8 @@ neither a quote nor a stated assumption.
   2017's.
 - **Khmelev et al., "Eurasian-Scale Experimental Satellite-based Quantum Key Distribution with
   Detector Efficiency Mismatch Analysis"** (the Micius pass over Zvenigorod), arXiv:2310.17476
-  (2023). `[link]` URL: https://arxiv.org/abs/2310.17476
+  (2023); published in Opt. Express 32(7), 11964 (2024), doi:10.1364/OE.511772 (abstract: "a total
+  final key length of 310 kbits"). `[link]` URL: https://arxiv.org/abs/2310.17476
   VERIFIED 2026-10-28 in the arXiv text. The template `micius_2022_zvenigorod`: a 600 mm telescope
   with obstruction 0.73 at 198 m, an atmospheric extinction coefficient "kappa = 0.22 +/- 0.04, which
   corresponds to clear weather conditions" (0.88 dB at the zenith, magnitudes per air mass), channel
@@ -2126,8 +2128,9 @@ neither a quote nor a stated assumption.
   aerosols, 5 km visibility) whose elevation curve equals the zenith transmittance raised to the
   Kasten-Young air mass. Not a template: a hazy-sky atmosphere, about three times the clear-sky
   values above.
-- **Li et al., "Microsatellite-based real-time quantum key distribution"** (Jinan-1), Nature (2025),
-  arXiv:2408.10994. `[link]` URL: https://arxiv.org/abs/2408.10994
+- **Li et al., "Microsatellite-based real-time quantum key distribution"** (Jinan-1), Nature 640, 47-54 (2025),
+  arXiv:2408.10994; the Table 1 used here is arXiv v1's (the version of record reports up to 1.07
+  million bits in one pass and moves the per-pass results to Extended Data, not read). `[link]` URL: https://arxiv.org/abs/2408.10994
   READ 2026-10-28. Not a template yet: it states no dark counts, atmosphere, pointing loss or
   satellite optics efficiency, and fitting them to its own pass would make that pass a circular
   check. Its divergence is a "full angle at 1/e2 of maximum" (9 to 10 urad), a Gaussian convention 3
@@ -2211,9 +2214,11 @@ reason.
   failure probability is set to be 10-9". It does not name its finite-key analysis.
 - **Khmelev et al. 2023** (arXiv:2310.17476), re-read for its key: "utilize Chernoff bounds with a
   failure probability of 10-9", "the secure final key is 629,000 bits", error correction at "an
-  inefficiency fec = 1.44", and 310,400 bits with detector-efficiency mismatch. The bound here on the
-  same session gives 0.56 of the 629,000 at f_EC 1.16 and 0.51 at their 1.44, under the published
-  Hoeffding statistics; 0.69 under this project's default since Round 82. Its Chernoff bounds cite
+  inefficiency fec = 1.44", and 310,400 bits with detector-efficiency mismatch, the key "finally
+  shared". Their Eq. (7) is applied "to the divided data among two bases X and Z": "both bases are
+  used for key generation". The bound here on the same session, keyed on the Z basis, gives 0.56 of
+  the 629,000 under Hoeffding and 0.69 under Chernoff; keyed on both bases (Round 84), 868,462 bits
+  under Chernoff, 2.80 of the final 310,400. Its Chernoff bounds cite
   Zhang et al. 2017 (its ref. [46]), below.
 - **Yin, Zhou, Gu, Xie, Lu and Chen, "Tight security bounds for decoy-state quantum key
   distribution"**, Sci. Rep. 10, 14312 (2020). arXiv:2002.06530 `[link]`

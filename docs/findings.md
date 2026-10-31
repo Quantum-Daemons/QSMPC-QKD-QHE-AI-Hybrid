@@ -118,13 +118,15 @@ See [`docs/pqc-roadmap.md`](pqc-roadmap.md).
   and neither number is the other's baseline.
 - **The encrypted path evaluates the published medical student itself, one layer at a time.** All
   3,226 parameters of it, fetched from its own pinned Hugging Face revision. The convolution (im2col
-  patches packed into a single ciphertext) and both dense layers run under CKKS; between them the
-  client decrypts each layer's output and applies ReLU and average pooling in plaintext, and the
-  CNN's argmax is taken in the clear (the garbled-circuit argmax on the medical page runs on the
-  WDBC logistic regression, not on this CNN). The run
-  reports **152 counted rotations** - the quantity the 2026 literature identifies as the cost driver
-  - rather than a latency multiplier standing in for it, and states whether the published weights
-  drove the computation or only their shape did. If the fetch fails, no weights are invented.
+  patches packed into a single ciphertext) and both dense layers (each layer's rows packed into one
+  ciphertext) run under CKKS, each layer's bias added under encryption and every slot but its outputs
+  masked and flooded; between layers the client decrypts the outputs and applies ReLU and average
+  pooling in plaintext, and the CNN's argmax is taken in the clear (the garbled-circuit argmax on the
+  medical page runs on the WDBC logistic regression, not on this CNN, over logits the client has
+  already decrypted). The run reports **28 counted rotations** - the quantity the 2026 literature
+  identifies as the cost driver - rather than a latency multiplier standing in for it, and says when
+  the published weights could not be fetched, in which case the encrypted student does not run and
+  no weights are invented.
   The **Workload selector is gone**: it offered Linear against CNN, and once CNN ran the real
   student, Linear was the only fabricated option left - an 8-feature dot product with a hand-written
   weight pattern matching no trained model. For finance, satellite and OPS-SAT the students genuinely
@@ -136,7 +138,7 @@ See [`docs/pqc-roadmap.md`](pqc-roadmap.md).
 - **`finance_aml.gnn` is a decision, not a backlog item, and the reason is the encrypted path, not
   model strength.** On AMLworld HI-Small the published GNNs are the stronger models: the registry
   records GFP + XGBoost at minority-class F1 63.23 (Altman et al., NeurIPS 2023 D&B) against
-  Multi-PNA+EU at 68.16 (AAAI 2024) and MEGA-PNA at 74.01 (arXiv:2412.00241v2, a preprint), and the
+  Multi-PNA+EU at 68.16 (AAAI 2024) and, in MEGA's published table (TMLR 08/2026, arXiv:2412.00241v3, Table 16), MEGA-PNA at 74.01 and Multi-FraudGT at 75.81, and the
   XGBoost shipped here, without IBM's preprocessor, scores 15.19. The decision rests on the FHE
   path: arXiv:2411.02926v2 ran this comparison under FHE and the **GNN pipeline never compiled** -
   it failed on ONNX operator support in Concrete ML - while the XGBoost pipeline completed at an
@@ -148,7 +150,7 @@ See [`docs/pqc-roadmap.md`](pqc-roadmap.md).
   distilled student sized for CKKS: 33 parameters for finance against a 141,154-parameter teacher,
   3,226 against 11,171,266 for medical, 49 against 80,486 for satellite. In the browser, CKKS
   evaluates the medical student and the telecom student; the finance page's CKKS step runs a linear
-  surrogate over the 8-feature PaySim demo sample rather than the 33-parameter AMLworld student, and
+  surrogate over four columns of the PaySim demo sample rather than the 33-parameter AMLworld student, and
   the satellite page runs no CKKS step at all (the full deployment's Python pipeline scores
   satellite telemetry under CKKS). All eleven repos are public and
   pinned, and the evaluation sample for each lives in that model's own repo at the same revision as
@@ -366,8 +368,9 @@ See [`docs/pqc-roadmap.md`](pqc-roadmap.md).
   `tanh(mean(sin(x_i + 0.5 i)))`, so despite the "Quantum Federated Learning" label nothing quantum
   is computed in that stage; the full deployment runs the **PennyLane** QFL over this repo's own FedAvg + secure aggregation (whose default pair keys are a public constant), plus server-side FHE inference (incl.
   the medical CNN under real encrypted convolution). In the browser, node-seal CKKS evaluates the
-  published medical student's convolution and both dense layers, 152 counted rotations, and the
-  client decrypts between layers to apply ReLU and average pooling in plaintext.
+  published medical student's convolution and both dense layers, 28 counted rotations, each layer's
+  bias added under encryption, and the client decrypts each layer's outputs between layers to apply
+  ReLU and average pooling in plaintext.
 - **Per-industry models - three tiers, and the gap between them is the measurement** - the
   **classical crypto/protocol layer is real wherever a use case's flow runs it** (PSI/QOT, QSMS
   secure-sum, MPyC MPC, CKKS FHE, federated secure-aggregation; the satellite page runs none of these
@@ -509,7 +512,7 @@ See [`docs/pqc-roadmap.md`](pqc-roadmap.md).
   Diagnostic Breast-Cancer sample (UCI dataset 17 via sklearn, **CC BY 4.0 - attribution required**) + a real logistic-regression model;
   **genomics** uses the real PGS-Catalog PGS000004 / PRS313 PRS weights (313 variants; **licensed per score** - PGS000004 carries the Catalog's default terms, *not* a blanket CC-BY grant) over real 1000 Genomes
   genotypes -> a plaintext in-browser **Polygenic Risk Score** over all 313 variants with per-SNP signed SHAP, while its CKKS step is a sign test on the 8 largest-weight variants (weights $`[-w/2, w/2]`$, bias 0); **finance** uses a
-  **PaySim** simulator sample (synthetic transactions, CC-BY-SA-4.0) + a linear surrogate over its 8 features, which is what the finance page's one-row CKKS step evaluates (the 33-parameter AMLworld student is encrypted on 8,192 held-out test-window rows for the agreement figure since Round 84); and **satellite** scores
+  **PaySim** simulator sample (synthetic transactions, CC-BY-SA-4.0) + a linear surrogate over four of its columns (none built from PaySim's balance columns), which is what the finance page's one-row CKKS step evaluates (the 33-parameter AMLworld student is encrypted on 8,192 held-out test-window rows for the agreement figure since Round 84); and **satellite** scores
   **real OPS-SAT-AD telemetry segments** (CC BY 4.0, since Round 84; the NASA SMAP/MSL windows before them had no licence from any provider - see DATA_LICENSES.md) with a plaintext demo anomaly regression - all tiny static JSON
   under `web/public/data/`, loaded by [`web/src/lib/realData.ts`](../web/src/lib/realData.ts). The finance, medical and genomics pages compute with the
   real in-browser node-seal CKKS + a Polytune garbled-circuit 2PC (notional parties); the satellite page runs neither. Only **telecom** has no commercial-OK real attack dataset

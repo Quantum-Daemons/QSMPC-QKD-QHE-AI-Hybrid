@@ -158,7 +158,7 @@ def main() -> int:
     ap.add_argument("--arch", choices=sorted(ARCHS), default="resnet18",
                     help="MedMNIST v2 publishes a 28px baseline for both: ResNet-18 AUC 0.901, "
                          "ResNet-50 AUC 0.857. Training the deeper one is expected to score LOWER "
-                         "on this 780-image corpus, which is the published finding, not a failure.")
+                         "on this 780-image corpus, which MedMNIST v2's table lists, not a failure.")
     ap.add_argument("--out", type=Path, default=None)
     args = ap.parse_args()
 

@@ -2,7 +2,7 @@
 
 Default = a local state-vector quantum-measurement simulation (honest: simulated, not hardware),
 with SP 800-22-style health checks + von Neumann / Toeplitz post-processing. Optional real-hardware
-source = the ANU QRNG API (opt-in, online). Feeds the BB84 entropy via :func:`quantum_seed`.
+source = the ANU QRNG API (opt-in, online, an API key read from QSH_ANU_API_KEY). Feeds the BB84 entropy via :func:`quantum_seed`.
 """
 
 from .entropy_source import quantum_seed

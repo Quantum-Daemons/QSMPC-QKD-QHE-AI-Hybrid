@@ -190,8 +190,9 @@ export default function ParameterPanel({ run }: { run: Run }) {
        + "detects her at that fraction at any range", 1],
       ["Pulses", "sat_pulses", 500000, 1, "channel uses for the free-space downlink"],
       // The two fixed dB that decided every abort this page has ever shown. `channelLossDb` caps the
-      // diffraction term inside the near field, so these floor total loss at 8 dB at ANY range, and
-      // with the receiver optics (8.0 dB) and the detector (3.0 dB) g >= 79: at the default budget
+      // diffraction term inside the near field. At the defaults the floor is 4.9 dB at the zenith (1.87
+      // dB of air and 3 dB of pointing), and with the detector g = 6.14 at zero range (Round 84; this
+      // read "8 dB at ANY range ... g >= 79", from an older budget): at the default budget
       // C_s is negative at every range (Round 75's Micius budget; it read g >= 15.8 with a 4.0 dB
       // detector and no optics term, and before 2026-10-24 g >= 6.31 and a pooled tolerance). So
       // `qsdc_eavesdrop_detected` (= abort AND NOT link-limited) was 0

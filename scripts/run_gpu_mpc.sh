@@ -38,9 +38,9 @@ import json, sys
 lat = float(sys.argv[1]); workload = sys.argv[2]; rot = float(sys.argv[3]); wall = float(sys.argv[4])
 print(json.dumps([{
     "backend": "HEonGPU CKKS (GPU sm_120)",
-    "workload": workload,
+    "workload": f"one HEonGPU multiply, not an inference ({workload})",
     "latency_ms": round(lat, 6),          # one HE multiply, not an inference
-    "throughput_ips": round(1000.0/lat, 1) if lat > 0 else 0.0,
+    "throughput_ips": None,               # not an inference rate (Round 84)
     "accuracy": None,
     "device": "gpu",
     "extra": {"he_multiply_ms": lat, "he_rotate_ms": rot, "benchmark_wall_ms": wall,
@@ -50,7 +50,7 @@ PY
 )"
   rm -f "$log"
 else
-  echo "!! HEonGPU benchmark binary not found — build it with scripts/build_gpu_mpc.sh"
+  echo "!! HEonGPU benchmark binary not found - build it with scripts/build_gpu_mpc.sh"
 fi
 
 # PIGEON/hpmpc presence (GPU secret-sharing MPC) - record availability.

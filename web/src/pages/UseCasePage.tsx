@@ -358,9 +358,10 @@ function UseCaseView({ usecase }: { usecase: string }) {
           {/* 167 words became four points; the history of the removed selector moved into a fold. */}
           <KeyPoints items={[
             "Federated learning runs on every run here - a real client-side FedAvg over the page's own bundled Wisconsin sample, with no toggle.",
-            <><b>The encrypted path evaluates the published student itself</b>: all 3,226 parameters, from its pinned Hugging Face revision. CKKS evaluates the convolution and both dense layers; the client decrypts after each layer, applies ReLU and average pooling in plaintext, and takes the CNN&apos;s argmax in the clear. The garbled-circuit argmax runs on the bundled Wisconsin logistic regression, not on the CNN.</>,
+            <><b>The encrypted path evaluates the published student itself</b>: all 3,226 parameters, from its pinned Hugging Face revision. CKKS evaluates the convolution and both dense layers, each layer&apos;s bias added under encryption and every slot but its outputs masked and flooded, so the client decrypts each layer&apos;s outputs and nothing else; it decrypts after every layer, applies ReLU and average pooling in plaintext, and takes the CNN&apos;s argmax in the clear. The garbled-circuit argmax runs on the bundled Wisconsin logistic regression, not on the CNN, over logits the client has already decrypted, so in this tab it hides nothing from the key holder.</>,
             "The run reports the total rotations it performed, because key-switching - one per rotation - is what dominates CKKS inference cost.",
             "Nothing is multiplied by a cost model; if the weights cannot be fetched, the run says so rather than substituting invented ones.",
+            "MedMNIST, the source of the published models' images, is not intended for clinical use, and nothing on this page is a diagnosis.",
           ]} />
           <Details summary="Why there is no Workload selector">
             It offered Linear against CNN, and once CNN began running the real student, Linear was the

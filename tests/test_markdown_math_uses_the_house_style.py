@@ -36,8 +36,6 @@ HF_RENDERED = ("models/", "spaces/")
 
 #: (file, character) -> why it stays.
 ALLOWED_NON_ASCII = {
-    ("spaces/qsh-inference/README.md", "\U0001F510"):
-        "the Space's `emoji:` field in its YAML header, which Hugging Face renders as the Space icon",
     ("docs/verification-log.md", "\u2014"):
         "quotes the page's own text, which uses an em dash",
 }

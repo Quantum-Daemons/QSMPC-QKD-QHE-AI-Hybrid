@@ -99,7 +99,7 @@ const FLOWS: Record<string, { id: string; label: string }[]> = {
     // are static - it has no metrics - so the honest form is to name the stage and let
     // use-case canvas, which does read metrics, carry the run-specific eavesdropper tag.
     { id: "qkd_key_agreement", label: "QKD Key" },
-    { id: "qml_ids", label: "QML-IDS\n(attack detection)" },
+    { id: "qml_ids", label: "IDS (attack detection;\nclassical by default)" },
     { id: "quantum_comparison", label: "QSMPC-FHE\n(untrained QOTP +\nClifford+T circuit)" },
     { id: "result", label: "Result" },
     { id: "sign_result", label: "Sign Result\n(ML-DSA)" },

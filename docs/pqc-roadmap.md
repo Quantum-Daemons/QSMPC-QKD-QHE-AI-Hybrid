@@ -23,9 +23,12 @@ below are the recommended future tracks (PoC milestones M3/M4).
   On QKD, **BSI TR-02102-1 v2026-01 section 2.1 "Use of Quantum-Safe Mechanisms"** (pp.28-29; the QKD
   paragraph is on p.29) says QKD *"is currently not ready for use from a security point of view... the
   BSI does not recommend QKD protocols at this time"*. What BSI does recommend is a hybrid of a
-  quantum-safe and a classical key agreement (section 2.2), which is the ML-KEM + X25519 layer. Keeping
-  QKD as an optional, simulated add-on to that hybrid, never standalone, is **this project's** choice;
-  neither BSI nor NSA recommends it. yes
+  quantum-safe and a classical key agreement (section 2.2). The ML-KEM + X25519 layer has that shape,
+  but only its ML-KEM half is BSI-recommended (Table 2.7): X25519 is neither among BSI's recommended
+  curves (Table B.3 lists only the Brainpool curves) nor among its TLS 1.3 groups (TR-02102-2 v2026-01,
+  Table 10), and for TLS BSI intends to recommend SecP256r1MLKEM768 and SecP384r1MLKEM1024 once their
+  RFC is adopted (TR-02102-2 section 3.4.2). Keeping QKD as an optional, simulated add-on to that
+  hybrid, never standalone, is **this project's** choice; neither BSI nor NSA recommends it.
 
 ## Crypto-agility (done)
 Algorithms resolve through `CryptoRegistry` at runtime - ML-KEM-768 <-> -1024, QKD <->

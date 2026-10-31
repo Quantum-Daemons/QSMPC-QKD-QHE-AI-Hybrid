@@ -28,7 +28,7 @@ recorded in [`docs/deliverable-verification.md`](deliverable-verification.md) an
 >
 > **So the claim is the composition, not either half:** PQC key establishment to a simulated QKD link
 > (it yields a key length, not key bytes) to secure multiparty computation to homomorphic evaluation to
-> model inference, chained end to end in one browser tab with zero server compute. A search for an integrated browser system doing
+> model inference, chained end to end in one browser tab with zero server compute, in the client-only build the public demo ships. A search for an integrated browser system doing
 > all of that returned nothing. Two caveats travel with it: the two MPC parties are notional - one
 > tab, an in-memory transport, real protocol and bytes and wall-clock but no genuine party separation
 > - and the quantum channel is simulated, because no browser API for QKD exists. And client-side is

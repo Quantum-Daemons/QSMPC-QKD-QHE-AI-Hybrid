@@ -58,7 +58,7 @@ const el = Math.round(m.net.liaoPass(link).maxElevationDeg);
 const station = (id) => m.net.LIAO_2018_STATIONS.find((s) => s.id === id);
 const relay = m.net.trustedRelay(link, station("xinglong"), station("graz"), el, el);
 const cfg = m.qkdCfg();
-const fkSrc = m.fk.finiteKeySourceOf(link, Number(cfg.free_space_eps_sec), undefined, String(cfg.finite_key_deviation));
+const fkSrc = m.fk.finiteKeySourceOf(link, Number(cfg.free_space_eps_sec), undefined, String(cfg.free_space_finite_key_deviation));
 const finite = (pass) => m.fk.keyLength(...m.fk.blockCounts(pass.segments, fkSrc), fkSrc).keyBits;
 const perPair = Math.min(finite(relay.a), finite(relay.b));
 const pairs = Math.ceil(800_000 / perPair);

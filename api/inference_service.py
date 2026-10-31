@@ -20,16 +20,30 @@ def _fraud_model():
 
     from qsh.data.loaders import load_finance_fraud
 
+    from qsh.models.registry import PAYSIM_MODEL_FEATURES, PAYSIM_SAMPLE_COLUMNS
+
     X, y = load_finance_fraud(n=3000, seed=0)
+    # The four columns the page's model reads (Round 84): device_risk and geo_mismatch are built from
+    # PaySim's balance columns, which the dataset's description says must not be used for fraud detection.
+    X = X[:, [PAYSIM_SAMPLE_COLUMNS.index(n) for n in PAYSIM_MODEL_FEATURES]]
     return LogisticRegression(max_iter=500).fit(X, y)
 
 
 def predict_fraud(features: list[float]) -> dict:
-    """Score a transaction feature vector with the trained fraud model."""
+    """Score a transaction with the trained fraud model.
+
+    Takes the model's four columns, or all eight sample columns (the four are then selected by name).
+    Any other width is refused: padding or truncating, as this did before Round 84, would silently read
+    the wrong columns now that the model takes four of the eight."""
+    from qsh.models.registry import PAYSIM_MODEL_FEATURES, PAYSIM_SAMPLE_COLUMNS
+
     clf = _fraud_model()
-    x = np.asarray(features, dtype=float).reshape(1, -1)[:, : clf.coef_.shape[1]]
-    if x.shape[1] < clf.coef_.shape[1]:
-        x = np.pad(x, ((0, 0), (0, clf.coef_.shape[1] - x.shape[1])))
+    x = np.asarray(features, dtype=float).reshape(1, -1)
+    if x.shape[1] == len(PAYSIM_SAMPLE_COLUMNS):
+        x = x[:, [PAYSIM_SAMPLE_COLUMNS.index(n) for n in PAYSIM_MODEL_FEATURES]]
+    elif x.shape[1] != len(PAYSIM_MODEL_FEATURES):
+        raise ValueError(f"expected {len(PAYSIM_MODEL_FEATURES)} features ({', '.join(PAYSIM_MODEL_FEATURES)}) "
+                         f"or all {len(PAYSIM_SAMPLE_COLUMNS)} sample columns, got {x.shape[1]}")
     proba = float(clf.predict_proba(x)[0, 1])
     return {"fraud_probability": round(proba, 4), "prediction": int(proba >= 0.5)}
 

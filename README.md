@@ -17,7 +17,7 @@ the corrections the checks have made are recorded in
 
 **So the claim is the composition, not either half:** PQC key establishment to a simulated QKD link
 (it yields a key length, not key bytes) to secure multiparty computation to homomorphic evaluation to
-model inference, chained end to end in one browser tab with zero server compute. The two MPC parties
+model inference, chained end to end in one browser tab with zero server compute, in the client-only build the public demo ships. The two MPC parties
 are notional and the quantum channel is simulated, because no browser API for QKD exists. What is
 and is not new, the positioning (quantum-safe, not quantum-advantage) and the four workstreams:
 [`docs/use-cases.md`](docs/use-cases.md).
@@ -248,9 +248,9 @@ flowchart TB
   K["Free-space QKD, simulated: a model of the Micius downlink, BB84 with a vacuum state, or E91; OptiQKD tunes it when switched on"]
   L["Key length: BB84 finite key of one pass, Lim et al. 2014, E91 asymptotic; the full deployment mixes 256 bits or more"]
   QD{"QSDC: secrecy capacity positive?"}
-  NA["QSDC aborts: link budget too small, or an eavesdropper detected; nothing is sent over the quantum channel"]
+  NA["QSDC aborts: link budget too small, an eavesdropper detected, or, in the full deployment, too few check carriers to certify an error rate; nothing is sent over the quantum channel"]
   T["Telemetry sent directly over the simulated quantum channel"]
-  A["Anomaly score and the published model, satellite_comms.telemanom, in the browser; the full deployment also checks delivered telemetry under CKKS"]
+  A["Anomaly score and the published model, satellite_comms.telemanom, in the browser; the full deployment also scores a bundled OPS-SAT-AD segment under CKKS, whatever QSDC did"]
   X["Explainability: exact linear SHAP, signed"]
   C["QSMPC-FHE comparison: untrained QOTP and Clifford+T circuit, T-gates counted"]
   S["Result signed with ML-DSA-65"]

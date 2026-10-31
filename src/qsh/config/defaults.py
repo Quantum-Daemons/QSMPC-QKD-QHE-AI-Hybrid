@@ -160,7 +160,9 @@ class QKDConfig:
     #   fibre loss             0.2 dB/km 0.2 dB/km*   0.2              0.21
     #   error correction f_EC  1.16      -            1.16             1.22**
     #
-    # * Table I's distances follow 0.2 dB/km. ** GYS states no f: 1.22 is Ma et al.'s own choice for
+    # * Table I's distances follow 0.2 dB/km plus 6 dB of receiver loss (26 dB at 100 km, 46 dB at
+    # 200 km): "the detector and the internal losses of Bob's apparatus are included in the global
+    # attenuation". This model adds only its detectors' 3 dB, so its 50 km is their 35 km. ** GYS states no f: 1.22 is Ma et al.'s own choice for
     # the GYS link ("the upper bound of f(e) in secure distance for this experiment"); 1.16 is
     # Cascade's efficiency at 1-5% error as tabulated by Lutkenhaus, PRA 61, 052304 (2000),
     # arXiv:quant-ph/9910093, and Rusca et al. state none.
@@ -171,7 +173,7 @@ class QKDConfig:
     # paper's counts and its rate was 3.1x the paper's BB84 rate. Lucamarini's set was not adopted:
     # it was measured with three intensities, and under this project's 1-decoy finite-key analysis,
     # with the error floor set to reproduce its 4.26% QBER, it needs 7e8 to 2e9 pulses for any key.
-    fiber_loss_db_per_km: float = 0.2         # Rusca 2018's Table I distances; GYS 0.21
+    fiber_loss_db_per_km: float = 0.2         # Rusca 2018's fibre (Table I adds 6 dB of receiver loss); GYS 0.21
     detector_efficiency: float = 0.5          # Rusca 2018: "an efficiency (eta_det around 50%)"
     dark_count_prob: float = 1e-8             # Rusca 2018: "DCR of 10 Hz which correspond to pDC = 1e-8"
     misalignment: float = 0.01                # Rusca 2018: "We choose a typical value pErr of 1%"
@@ -193,7 +195,7 @@ class QKDConfig:
     # their detector set comes from run about 8.2e6 (Boaron et al. 2018; Grunenfelder et al. 2020),
     # and Li et al. 2023 1e8 out to 101 km. A fixed time (Lucamarini et al.'s 20 min) and a pulse count
     # are the minority, and a pulse count mostly a theorist's convention. On this channel the 1e7
-    # block is 5.3 s at 50 km and 35 s at 100 km, and carries about 5.1 Mbit at either: the key per
+    # block is 5.3 s at 50 km and 35 s at 100 km, and carries 5,214,327 bits at 50 km and 5,156,039 at 100 km, about 5.2 Mbit at either: the key per
     # block barely moves with distance, the time to fill it does.
     finite_key_block: str = "pa_bits"
     finite_key_block_seconds: float = 1.0
@@ -271,8 +273,8 @@ class QKDConfig:
     # check counts the same way (`tests/test_the_satellite_channel_is_sourced.py`):
     #
     #   anchor   detections over the pass    sifted at 645 km      at 1200 km          645 -> 1200 km
-    #   5.5 dB   3,517,343  (-1.0%)          10,879 (-0.43 dB)     1,570 (+1.96 dB)    8.41 dB
-    #   8.0 dB   2,556,307  (-28.0%)          8,390 (-1.55 dB)       883 (-0.54 dB)    9.78 dB
+    #   5.5 dB   3,519,418  (-0.9%)          10,881 (-0.42 dB)     1,572 (+1.96 dB)    8.40 dB
+    #   8.0 dB   2,558,442  (-28.0%)          8,392 (-1.55 dB)       885 (-0.53 dB)    9.77 dB
     #   Liao     3,551,136                   ~12 kbit/s             ~1 kbit/s          10.79 dB
     #
     # The 8 dB upper value ships as its own profile, `micius_2017_upper_atmosphere`. At the 800 km
@@ -448,10 +450,10 @@ class QKDConfig:
 @dataclass
 class QRNGConfig:
     """Quantum random-number generator (entropy source). Default = a local state-vector
-    quantum-measurement simulation (honest: simulated, not hardware); optional ANU QRNG API is opt-in."""
+    quantum-measurement simulation (honest: simulated, not hardware); optional ANU QRNG API is opt-in and needs an API key read from QSH_ANU_API_KEY."""
     enabled: bool = False             # off by default -> BB84 entropy unchanged unless opted in
     bits: int = 4096
-    source: str = "sim"               # "sim" (offline default) | "anu" (opt-in, online hardware)
+    source: str = "sim"               # "sim" (offline default) | "anu" (opt-in, online hardware, key in QSH_ANU_API_KEY)
     post_processing: str = "von_neumann"   # "von_neumann" | "toeplitz" | "seedless" | "none"
     anu_opt_in: bool = False          # must be True to allow the online ANU source (subject to ANU terms)
     health_alpha: float = 0.01        # SP800-22 significance level

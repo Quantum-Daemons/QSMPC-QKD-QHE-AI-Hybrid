@@ -44,7 +44,7 @@ function hybridPsk(): Uint8Array {
  * IKEv2 module and its CAVP vectors into the page bundle, where they load on click; the copy is held
  * equal to the module's by tests/test_r84_pages_claims.py, so a re-check updates both or fails.
  */
-const MLKEM_STATUS_CHECKED = "2026-10-24";
+const MLKEM_STATUS_CHECKED = "2026-10-31";
 
 const ok = (b: boolean | null | undefined) => (
   <span style={{ color: b ? "var(--accent-2)" : b === false ? "var(--danger)" : "var(--muted)" }}>{b == null ? "n/a" : String(b)}</span>

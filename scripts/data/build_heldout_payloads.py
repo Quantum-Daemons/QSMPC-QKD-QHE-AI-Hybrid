@@ -56,7 +56,7 @@ CDLA_SHARING_1 = "https://cdla.dev/sharing-1-0/"
 #: this order (read at source 2026-10-30, recorded in the plots-2d audit).
 OPSSAT_RECORD = ("Data: Ruszczak, B., Kotowski, K., Nalepa, J. & Evans, D., 'OPSSAT-AD - anomaly "
                  "detection dataset for satellite telemetry', Zenodo (2024), "
-                 "doi:10.5281/zenodo.12588358.")
+                 "doi:10.5281/zenodo.12588359 (version 1).")
 
 #: The satellite demo sample's provenance. The registry's `BUNDLED_DEMO_SAMPLES["satellite_comms"]`
 #: still names SMAP/MSL, and `tests/test_demo_provenance.py` holds the shipped file to that text; the
@@ -64,7 +64,7 @@ OPSSAT_RECORD = ("Data: Ruszczak, B., Kotowski, K., Nalepa, J. & Evans, D., 'OPS
 #: here, not read from the registry, because reading it would write the SMAP/MSL text into an
 #: OPS-SAT file until that note is applied.
 SATELLITE_PROVENANCE = (
-    "real OPS-SAT-AD telemetry segments (ESA OPS-SAT CubeSat; Zenodo 10.5281/zenodo.12588358, "
+    "real OPS-SAT-AD telemetry segments (ESA OPS-SAT CubeSat; Zenodo 10.5281/zenodo.12588359, version 1, "
     "CC-BY-4.0): 19 precomputed per-segment features of the benchmark's test partition. The demo's "
     "anomaly regression is fitted here on 370 of those 529 segments and the verdict is drawn from "
     "the other 159; it is not the published satellite_comms.opssat model.")

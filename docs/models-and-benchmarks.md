@@ -9,7 +9,7 @@ no licence at all (IGSR grants no blanket licence; it ships under the cell budge
 published under CC BY-NC-ND 4.0, whose bearing on the weights is under review. The NASA SMAP/MSL file
 the full deployment still reads has no licence at any source (below). The synthetic
 generators are an offline-CI fallback only (logged as such, never a silent substitute):
-- **Finance/AML** (demo sample): **PaySim simulator output** (Kaggle `ealaxi/paysim1`, CC-BY-SA-4.0) -> the 8 AML features. PaySim is a *simulator*: these are synthetic transactions from aggregated real mobile-money logs, not real transactions. The **training** corpus is IBM AMLworld HI-Small (CDLA-Sharing-1.0), 5,078,345 transactions at 1 laundering in 981. **AMLworld is synthetic too** - IBM generates it with a multi-agent virtual-world model and states "Everything is synthetic"; the NeurIPS 2023 D&B paper is titled *Realistic Synthetic Financial Transactions for Anti-Money Laundering Models*. It is used because it is calibrated to real transaction statistics and its CDLA-Sharing terms permit publishing derived weights - **not** because it is real data. No commercial-OK corpus of real laundering transactions exists.
+- **Finance/AML** (demo sample): **PaySim simulator output** (Kaggle `ealaxi/paysim1`, CC-BY-SA-4.0) -> eight AML-named columns, of which the demo's linear model reads four (amount, cross_border, night_tx, new_payee) and none built from PaySim's balance columns, which the dataset's description says must not be used for fraud detection. PaySim is a *simulator*: these are synthetic transactions from aggregated real mobile-money logs, not real transactions. The **training** corpus is IBM AMLworld HI-Small (CDLA-Sharing-1.0), 5,078,345 transactions at 1 laundering in 981. **AMLworld is synthetic too** - IBM generates it with a multi-agent virtual-world model and states "Everything is synthetic"; the NeurIPS 2023 D&B paper is titled *Realistic Synthetic Financial Transactions for Anti-Money Laundering Models*. It is used because it is calibrated to real transaction statistics and its CDLA-Sharing terms permit publishing derived weights - **not** because it is real data. No commercial-OK corpus of real laundering transactions exists.
 - **Medical**: MedMNIST v2 BreastMNIST for the trained models (CC BY 4.0 asserted by MedMNIST; the BUSI authors publish no licence - see [DATA_LICENSES.md](../DATA_LICENSES.md)), MedMNIST v2 PneumoniaMNIST as the full deployment's use-case default (CC BY 4.0), Wisconsin breast-cancer (bundled demo sample; UCI, CC BY 4.0 - attribution required). MedMNIST states that its data "is NOT intended for clinical use", and nothing here is either.
 - **Genomics**: **real 1000 Genomes** phase-3 genotypes (Ensembl/IGSR - open *access*, but IGSR grants **no blanket licence**: "rights claimed on pieces of data vary") + **real PGS-Catalog** PGS000004 / PRS313 weights (**per-score licence**, EMBL-EBI terms by default). Neither is cleared for redistribution as commercial-OK; see [DATA_LICENSES.md](../DATA_LICENSES.md).
 - **Satellite**: the browser demo scores **real OPS-SAT-AD** telemetry segments (ESA OPS-SAT; Ruszczak et al., Scientific Data 2025; CC BY 4.0) since Round 84, with a demo anomaly regression fitted on 370 test-partition segments and verdicts drawn from the other 159. The **real NASA SMAP/MSL** spacecraft telemetry it served before (Telemanom; Hundman et al. 2018; NASA JPL) has **no licence granted by any provider** (checked at each source on 2026-10-30), so it is no longer served; the full deployment's loader still reads its TSV from the repository, which `DATA_LICENSES.md` records as an open change. Telemanom's `LICENSE.txt` is a Caltech copyright assertion covering the *code*; the Kaggle mirror is labelled "Data files (c) Original Authors". 17 U.S.C. 105 removes US copyright only, covers works of federal employees (JPL staff are Caltech employees), and is not a grant. Bundled demo sample only - the satellite **training** corpus is ESA-ADB (CC BY 3.0 IGO). See [DATA_LICENSES.md](../DATA_LICENSES.md).
@@ -210,7 +210,7 @@ visible number.
   - an ML-KEM-768 known-answer test against NIST ACVP cases (key generation, encapsulation, and
     decapsulation of valid and modified ciphertexts);
   - a WireGuard Noise_IKpsk2 handshake keyed by a preshared key from an in-tab ML-KEM-768 + X25519
-    hybrid - the Noise core is checked against the official cacophony vector, and the WireGuard framing
+    hybrid - the Noise core is checked against the vector cacophony publishes (a Haskell implementation's vector file, listed on the Noise wiki), and the WireGuard framing
     follows the whitepaper, for which no published vector exists;
   - an IKEv2 key schedule - the RFC 7296 derivation checked against NIST CAVP SP 800-135 vectors, the
     RFC 9370 ML-KEM-768 and RFC 8784 post-quantum preshared-key layers computed per the RFCs (they
@@ -228,7 +228,7 @@ visible number.
   2016 counted the way the paper counts it (detections and signal-state sifted bits within 1
   percent); a trusted satellite relay as Micius flew it between Xinglong and Graz (Liao et al.
   2018), with the XOR on real random keys; and a single plane of satellites linked to their
-  neighbours (Vergoossen et al. 2019), whose terminals load from templates. The same tab draws the
+  neighbours (Vergoossen et al. 2020), whose terminals load from templates. The same tab draws the
   model against all 23 Micius passes Liao et al. list: centred on them (median -0.03 dB), with the
   nights scattering 2.4 dB around it. Simulated: no satellite is involved. A pass's key is also
   shown as a composable finite key (below); the relay's and the constellation's keys are asymptotic
@@ -236,7 +236,7 @@ visible number.
 - **Satellite key block** (Round 79) - the satellite card's key is the composable finite key of a
   block of link time, not the asymptotic bound times a fixed pulse count. By default the block is
   one pass peaking at the page's range, the block Micius (Liao et al. 2017, 2018), Tiangong-2 and
-  the Micius-Zvenigorod session (Khmelev et al. 2023) computed their keys on; pooled passes (Sidhu
+  the Micius-Zvenigorod session (Khmelev et al. 2024) computed their keys on; pooled passes (Sidhu
   et al. 2022) and a time held at one range are offered beside it. The bound follows the source:
   Lim et al. (Phys. Rev. A 89, 022307, 2014) for a signal, a weak decoy and the vacuum, as Micius
   sent, and Rusca et al. 2018 for one decoy. Checked, with nothing fitted: Rusca et al.'s Table I
@@ -246,10 +246,6 @@ visible number.
   one-decoy bound, both on the safe side: a constant transcribed as $`2^{21}`$ where both papers
   print $`21^2`$, and the vacuum bounded by the signal's errors where the decoy's are tighter.
 
-  <!-- INTEGRATOR: the satellite figures in the next item (226,072 bits; 0.55 and 0.75 of Liao's key;
-  0.56 and 0.69 of Khmelev's; Jinan-1 within a factor of 2.5, then 1.35 to 2.62) were recomputed
-  from the base commit de1111c on 2026-10-31. Re-check them after the satellite agent's two-basis
-  change lands, then delete this comment. -->
 - **Finite-key statistics** (Round 82) - on the fibre each count's expectation is bounded by the
   tighter of Yin et al. 2020's Chernoff-type bound (Sci. Rep. 10, 14312, Eqs. (9)-(10)) and the
   published Hoeffding deviation on the basis total, at half the failure probability each: a union
@@ -257,13 +253,19 @@ visible number.
   there the halving costs more than the per-count choice gains (Liao's pass 226,072 bits against
   226,056). Neither alone is tighter everywhere: Chernoff wins for a count under
   a quarter of its basis (the satellite's decoy and vacuum), Hoeffding for a larger one (the fibre's
-  signal and decoy). Chernoff or Hoeffding alone can be chosen on the page. Against the flown keys:
-  with Hoeffding's deviation alone, as Lim et al. published it, Liao's pass carries 0.55 of its
-  published 300,939 bits and Khmelev's session 0.56 of its published 629,000, a key computed with
-  Chernoff bounds; with the satellite's default the two rise to 0.75 (226,072 bits) and 0.69. The
-  statistics close 45 percent of the first gap and 29 percent of the second, and the two fractions
-  part, so the rest is not one shared cause. On Jinan-1's four published passes the model's
-  whole-pass key is within a factor of 2.5 of the published key under Hoeffding, and 1.35 to 2.62
+  signal and decoy). Chernoff or Hoeffding alone can be chosen on the page. Against the flown keys,
+  which both papers key on both bases (Liao et al. distil theirs from all 1,671,072 matching-basis
+  signal detections; Khmelev et al. apply their Eq. (7) to the data divided between X and Z): keyed
+  on the Z basis alone, as Lim et al.'s protocol does, Liao's pass carries 0.55 of its published
+  300,939 bits under Hoeffding's deviation and 0.75 (226,072 bits) under the satellite's default
+  Chernoff statistics; keyed on both bases, with the failure probability split between them, it
+  carries 1.08 (325,556 bits) and 1.50 (450,923 bits). Khmelev et al.'s final key is 310,400 bits
+  (629,000 before their detector-mismatch analysis, at an error-correction efficiency of 1.44
+  against 1.16 here): the model gives 1.40 of it on one basis and 2.80 (868,462 bits) on both. So
+  the drop from the pass's asymptotic key (462,290 bits) to the one-basis finite key is mostly the
+  basis convention, 95 percent of it under Chernoff and 54 percent under Hoeffding, not the
+  statistics; keyed as the flights keyed theirs, the model exceeds both published keys. On
+  Jinan-1's four published passes the model's one-basis whole-pass key is within a factor of 2.5 of the published key under Hoeffding, and 1.35 to 2.62
   times it under the default; Jinan-1 computes its keys on 500-kbit blocks inside a pass, which a
   whole-pass key is not held to. Reading Rusca et al.'s (A16) again found
   a third transcription error in the one-decoy bound, this one in the unsafe direction:

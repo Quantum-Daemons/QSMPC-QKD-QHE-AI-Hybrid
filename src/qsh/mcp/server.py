@@ -41,7 +41,8 @@ _HAVE_MCP = _MCP_SERVER_CLS is not None
 # --------------------------------------------------------------------------- #
 def score_transaction(amount: float = 0.0, old_balance: float = 0.0,
                       new_balance: float = 0.0, transfer: bool = True) -> dict:
-    """Finance/AML: a bounded fraud score for one transaction (the CKKS-linear surrogate's signal)."""
+    """Finance/AML: a fixed rule-of-thumb fraud score for one transaction (account draining and the
+    amount-to-balance ratio). It is not the page's CKKS-linear surrogate, which reads no balance field."""
     drained = old_balance > 0 and new_balance == 0 and amount > 0
     ratio = amount / (old_balance + 1.0)
     z = 2.5 * ratio + (1.5 if drained else 0.0) + (0.5 if transfer else 0.0) - 2.0
