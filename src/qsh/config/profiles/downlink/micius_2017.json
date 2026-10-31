@@ -28,7 +28,7 @@
     "atmospheric_db": {
       "value": 5.5,
       "quote": "We estimate that at 1200 km the loss due to atmospheric absorption and turbulence is in the range of 3 dB to 8 dB",
-      "note": "The midpoint, scaled to other ranges by air mass (Round 77, the user's choice). Over the 19 December 2016 pass it gives 1 percent fewer detections than Liao counted (3,517,343 against 3,551,136)."
+      "note": "The midpoint, scaled to other ranges by air mass (Round 77, the user's choice). Over the 19 December 2016 pass it gives 0.9 percent fewer detections than Liao counted (3,519,418 against 3,551,136)."
     },
     "atmospheric_ref_km": {
       "value": 1200.0,

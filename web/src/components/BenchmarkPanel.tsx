@@ -45,6 +45,18 @@ export default function BenchmarkPanel(
   const ratioData = rows.filter((r) => ctpt(r) != null)
     .map((r) => ({ name: r.path, ratio: ctpt(r), path: r.path }));
   const latData = rows.map((r) => ({ name: r.path, latency: r.latency_ms, path: r.path }));
+  // THE "accuracy" FIELD IS AGREEMENT, and the column says so. No browser row fills it (`accuracy:
+  // null` on every row clientCompute.ts assembles). The full deployment's MPC-FHE row fills it in
+  // `classical_mpc_fhe.run_hybrid` as `correct / n`, where `correct` counts
+  // `decision_matches_plaintext` over `extra.samples` inputs - the run's own one input in a live
+  // run - so it is how often the encrypted path decided as the plaintext model did, not accuracy
+  // against labels. The projected tier copies the medium tier's.
+  const agreement = (r: any): string | null => {
+    if (r.accuracy == null) return null;
+    const n = typeof r.extra?.samples === "number" ? r.extra.samples : null;
+    if (n != null) return `${Math.round(r.accuracy * n)} of ${n}`;
+    return r.projected ? `${r.accuracy} (medium tier's)` : String(r.accuracy);
+  };
   // hybrid split — the MPC-FHE row carries the linear-FHE vs non-linear-MPC breakdown
   const split = rows.find((r) => r.fhe_linear_ms != null && r.mpc_nonlinear_ms != null);
   const splitData = split
@@ -70,10 +82,13 @@ export default function BenchmarkPanel(
         </div>
       </div>
 
+      {/* No "accuracy" in this promise: every browser row carries `accuracy: null`, so the browser
+          never fills one, and the full deployment's MPC-FHE figure is agreement with the plaintext
+          decision, which the table below labels as such. */}
       {rows.length === 0 && (
         <p className="muted" style={{ margin: "8px 0 0" }}>
-          Press <b>▶ Start</b> above — the benchmark fills in from that live run (computation time, accuracy,
-          the security posture facts{compact ? "" : " and the FHE-linear / MPC-non-linear split"}). One run,
+          Press <b>▶ Start</b> above - the benchmark fills in from that live run (computation time, the
+          security posture facts{compact ? "" : " and the FHE-linear / MPC-non-linear split"}). One run,
           one result.
         </p>
       )}
@@ -311,7 +326,7 @@ export default function BenchmarkPanel(
                 {/* The last column was headed "model" and rendered `security_model`, so the table
                     had no model column at all while appearing to have one. Both are shown now, and
                     the model one matters here: these rows are not all the same model. */}
-                <thead><tr><th>path</th><th>model</th><th>backend</th><th>size</th><th>latency ms</th><th>FHE-lin ms</th><th>MPC-nl ms</th><th>comm KiB</th><th>accuracy</th><th>ct/pt</th><th>security model</th></tr></thead>
+                <thead><tr><th>path</th><th>model</th><th>backend</th><th>size</th><th>latency ms</th><th>FHE-lin ms</th><th>MPC-nl ms</th><th>comm KiB</th><th>matches plaintext</th><th>ct/pt</th><th>security model</th></tr></thead>
                 <tbody>
                   {rows.map((r, i) => (
                     <tr key={i}>
@@ -323,7 +338,7 @@ export default function BenchmarkPanel(
                       <td style={{ color: FHE_COLOR }}>{r.fhe_linear_ms ?? "—"}</td>
                       <td style={{ color: MPC_COLOR }}>{r.mpc_nonlinear_ms ?? "—"}</td>
                       <td>{r.mpc_comm_kb ?? "—"}</td>
-                      <td>{r.accuracy ?? "—"}</td><td>{ctpt(r) ?? "—"}</td>
+                      <td>{agreement(r) ?? "—"}</td><td>{ctpt(r) ?? "—"}</td>
                       <td style={{ fontSize: 11 }}>{r.security_model}</td>
                     </tr>
                   ))}
@@ -332,6 +347,12 @@ export default function BenchmarkPanel(
               {rows.some((r) => r.projected) && (
                 <p className="muted" style={{ fontSize: 11, margin: "6px 0 0" }}>
                   * large tier is projected from measured medium-tier per-op cost (MACs / comparison counts), not run end-to-end.
+                </p>
+              )}
+              {rows.some((r) => agreement(r) != null) && (
+                <p className="muted" style={{ fontSize: 11, margin: "6px 0 0" }}>
+                  &quot;matches plaintext&quot; counts the inputs on which the encrypted path reached the same
+                  decision as the plaintext model; it is agreement, not accuracy against true labels.
                 </p>
               )}
               {rows.some((r) => r.path === "plaintext") && (

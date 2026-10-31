@@ -4,7 +4,7 @@ WHY THIS EXISTS (Round 79, the user's choice). The satellite stage reported the 
 times a fixed 2e7 pulses - a fifth of a second of Micius's 100 MHz clock - as its key. The user asked
 for the block to be sized by link time, with a finite-key length, and for the published practice to
 choose between seconds at the page's range and a whole pass. Every flown experiment found computes
-its finite key over one pass (Liao et al. 2017 and 2018; Tiangong-2; Khmelev et al. 2023) or over
+its finite key over one pass (Liao et al. 2017 and 2018; Tiangong-2; Khmelev et al. 2024) or over
 fixed blocks inside one orbit (Li et al. 2025, Jinan-1); none computes one on seconds of a low-orbit
 pass. So the default block is one pass peaking at the page's range, with passes pooled and seconds at
 the range offered beside it (`QKDConfig.free_space_block`).
@@ -13,21 +13,24 @@ WHAT IS ASSERTED
 
 - The Python pass (`qkd/satellite_pass.py`) is the browser's (`satNetwork.ts::simulatePass`): the
   same duration and the same finite key over it, for every downlink profile, both decoy settings and
-  every block kind; and the browser's bound (`finiteKey.ts`) is Python's to 1e-9.
+  every block kind, on one key basis and on both (Round 84); and the browser's bound (`finiteKey.ts`)
+  is Python's to 1e-9.
 - The stage's key IS the block's finite key: one pass by default; zero under the sampled run's abort;
   pooling passes carries more than the same passes one at a time; ten seconds at 800 km carry a
   hundredth of a pass's key at most - none under the published Hoeffding statistics - and the run
   says how many seconds a key needs.
-- Against flown passes, with nothing fitted, under each statistics (Round 82). Under Hoeffding, as
-  Lim et al. 2014 published it: Liao's 19 December 2016 pass at 1e-9 reads 0.55 of the published
-  300,939 bits, and Khmelev et al.'s Micius-Zvenigorod session the same fraction, 0.56, of its
-  629,000 bits (computed with Chernoff bounds). Under Chernoff-type bounds per count, the satellite's
-  default since the #78 fix, they read 0.75 and 0.69: the statistics close 45 percent of the gap to
-  Liao's key and 29 percent of the gap to Khmelev's, and the two fractions part, so the rest is not one
-  shared cause (Round 82 said "about half of the gap", true for Liao only). Jinan-1's four published passes (Li et
-  al. 2025, Table 1): within a factor of 2.5 under Hoeffding, and within 25% on the pass whose count
-  rate fixed the profile's one calibrated constant; within a factor of 3 under the default, whose
-  whole-pass key Jinan-1's 500-kbit blocks cannot reach.
+- Against flown passes, with nothing fitted, under each statistics and each key basis (Round 84).
+  Lim et al. 2014's protocol keys the Z basis only; the published keys came from both bases (Liao et
+  al. 2017's from every sifted bit; Khmelev et al. 2024: "both bases are used for key generation").
+  Under Chernoff-type statistics, the satellite's default, Liao's 19 December 2016 pass at 1e-9 reads
+  0.75 of the published 300,939 bits on one basis and 1.50 on both, and the both-bases key is within 3
+  percent of the asymptotic figure: the drop from the asymptotic row to the one-basis row is 95 percent
+  the basis convention, not the statistics (54 percent under Hoeffding, which reads 0.55 and 1.08).
+  Khmelev et al.'s Micius-Zvenigorod session reads 1.40 and 2.80 of its final 310,400 bits, which
+  subtract a detector-efficiency mismatch the model does not have (629,000 bits before it). Jinan-1's
+  four passes (arXiv:2408.10994v1, Table 1): within a factor of 2.5 under Hoeffding, and within 25% on
+  the pass whose count rate fixed the profile's one calibrated constant; within a factor of 3 under
+  the default, whose whole-pass key the preprint's 500-kbit blocks cannot reach.
 """
 
 from __future__ import annotations
@@ -36,6 +39,7 @@ import json
 import math
 import subprocess
 import tempfile
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
@@ -43,7 +47,13 @@ import pytest
 from qsh.config.profiles import load_profiles
 from qsh.orchestration.stages import Context
 from qsh.qkd.channel import link_elevation_deg
-from qsh.qkd.finite_key import VacuumDecoyParams, block_counts, blocks_for_positive_key, finite_key_over
+from qsh.qkd.finite_key import (
+    VacuumDecoyParams,
+    block_counts,
+    blocks_for_positive_key,
+    finite_key_over,
+    key_length,
+)
 from qsh.qkd.satellite_pass import simulate_pass
 from qsh.usecases import satellite_comms
 from qsh.usecases.satellite_comms import (
@@ -76,7 +86,10 @@ def _python(cfg: dict) -> dict:
     p = _sat_finite_key_params(ctx, src)
     z, x = block_counts(block.unit, p)
     r = finite_key_over(((n * block.copies, c) for n, c in block.unit), p)
-    return dict(key=r.key_bits, units=blocks_for_positive_key(z, x, p), seconds=block.seconds,
+    # Both key bases (Round 84), on the same block.
+    both = key_length(z.scaled(block.copies), x.scaled(block.copies), replace(p, key_basis="both"))
+    return dict(key=r.key_bits, both=both.key_bits, both_bases=both.basis_keys,
+                units=blocks_for_positive_key(z, x, p), seconds=block.seconds,
                 pulses=block.pulses, top=block.max_elevation_deg)
 
 
@@ -90,7 +103,8 @@ def browser() -> dict:
         entry.write_text(
             f"export * from {json.dumps(str(WEB / 'src/lib/finiteKey'))};\n"
             f"export {{ satChannel, satBlock }} from {json.dumps(str(WEB / 'src/lib/satLink'))};\n"
-            f"export {{ liaoPass }} from {json.dumps(str(WEB / 'src/lib/satNetwork'))};\n"
+            f"export {{ liaoPass, simulatePass }} from {json.dumps(str(WEB / 'src/lib/satNetwork'))};\n"
+            f"export {{ elevationDeg }} from {json.dumps(str(WEB / 'src/lib/quantumSim'))};\n"
             f"export {{ qkdCfg }} from {json.dumps(str(WEB / 'src/lib/config'))};\n")
         subprocess.run([str(ESBUILD), str(entry), "--bundle", "--format=esm", "--platform=node",
                         f"--outfile={bundle}", "--log-level=error"], cwd=WEB, check=True, capture_output=True)
@@ -105,15 +119,33 @@ const out = cases.map((cfg) => {{
                                   cfg.sat_fk_deviation ?? m.qkdCfg().free_space_finite_key_deviation);
   const [z, x] = m.blockCounts(block.unit, src);
   const r = m.keyLength(m.scaleCounts(z, block.copies), m.scaleCounts(x, block.copies), src);
-  return {{ key: Number.isFinite(r.keyBits) ? r.keyBits : null, units: m.blocksForPositiveKey(z, x, src),
+  // Both key bases (Round 84): the same block, the source's own option.
+  const b = m.keyLength(m.scaleCounts(z, block.copies), m.scaleCounts(x, block.copies), {{ ...src, keyBasis: "both" }});
+  const fin = (v) => (Number.isFinite(v) ? v : null);
+  return {{ key: fin(r.keyBits), both: fin(b.keyBits), bothBases: (b.basisKeys ?? []).map(fin),
+           units: m.blocksForPositiveKey(z, x, src),
            seconds: block.copies * block.unitSeconds,
            pulses: block.copies * block.unit.reduce((a, [n]) => a + n, 0), top: block.maxElevationDeg }};
 }});
 const link = m.satChannel({{}});
 const liao = m.liaoPass(link);
+const keys = (ch, segs, dev) => {{
+  const one = m.finiteKeySourceOf(ch, 1e-9, undefined, dev);
+  const both = m.finiteKeySourceOf(ch, 1e-9, undefined, dev, "both");
+  const [z, x] = m.blockCounts(segs, one);
+  return {{ one: m.keyLength(z, x, one).keyBits, both: m.keyLength(z, x, both).keyBits }};
+}};
 const src = m.finiteKeySourceOf(link, 1e-9, undefined, m.qkdCfg().free_space_finite_key_deviation);
 const lk = m.keyLength(...m.blockCounts(liao.segments, src), src);
-console.log(JSON.stringify({{ cases: out, liao: {{ key: lk.keyBits, s: liao.durationS }} }}));
+// Khmelev et al.'s session on its own profile: 600 km at the top, the window at 1,100 km.
+const zv = m.satChannel({{ sat_profile: "micius_2022_zvenigorod", sat_eve: 0 }});
+const zfs = zv.freeSpace;
+const kh = m.simulatePass(zv, m.elevationDeg(600, zfs.orbitAltitudeKm, zfs.stationAltitudeKm),
+  {{ windowElevationDeg: m.elevationDeg(1100, zfs.orbitAltitudeKm, zfs.stationAltitudeKm) }});
+const devs = ["chernoff", "hoeffding", "tighter"];
+console.log(JSON.stringify({{ cases: out, liao: {{ key: lk.keyBits, s: liao.durationS, asym: liao.keyBits,
+  keys: Object.fromEntries(devs.map((d) => [d, keys(link, liao.segments, d)])) }},
+  khmelev: {{ s: kh.durationS, keys: Object.fromEntries(devs.map((d) => [d, keys(zv, kh.segments, d)])) }} }}));
 """)
         return json.loads(subprocess.run(["node", str(runner)], check=True, capture_output=True,
                                          text=True).stdout)
@@ -130,6 +162,12 @@ def test_both_languages_compute_the_same_block_key(browser, i) -> None:
         assert js["key"] == pytest.approx(py["key"], rel=1e-9, abs=1e-6), label
     else:
         assert js["key"] is None, label
+    # Both key bases (Round 84): the same sum, and the same two keys under it.
+    for got, want in [(js["both"], py["both"])] + list(zip(js["bothBases"], py["both_bases"], strict=True)):
+        if math.isfinite(want):
+            assert got == pytest.approx(want, rel=1e-9, abs=1e-6), label
+        else:
+            assert got is None, label
     if py["top"] is None:
         assert js["top"] is None
     else:
@@ -212,39 +250,76 @@ def _pass_key(profile: str, top: float, window: float | None = None, deviation: 
     return finite_key_over(p.segments, _sat_finite_key_params(ctx, src)).key_bits
 
 
-def test_the_statistics_close_45_and_29_percent_of_the_two_gaps() -> None:
-    """Khmelev et al. (arXiv:2310.17476): 629,000 bits at 1e-9 with Chernoff bounds (Zhang et al.
-    2017's), over the session whose sifted rate fell from 20.7 kbit/s at 600 km to 2.9 at 1,100 km;
-    Liao et al. 2017's pass, 300,939 bits by an analysis the paper does not name.
+#: The published keys the Network tab sets the model beside. Liao et al., Nature 549, 43 (2017): the
+#: pass of 19 December 2016. Khmelev et al., Opt. Express 32(7), 11964 (2024), the Micius-Zvenigorod
+#: session of 1 March 2022, quoted from arXiv:2310.17476v1: the final key, after the detector-
+#: efficiency-mismatch analysis (the abstract's "310 kbits"), and the key before that analysis, both
+#: with Chernoff bounds at 1e-9 and error correction at f_EC 1.44.
+LIAO_FINAL, KHMELEV_FINAL, KHMELEV_BEFORE_MISMATCH = 300_939, 310_400, 629_000
 
-    Under Hoeffding the model's key is the same fraction of both, 0.55 and 0.56, which Round 79 read as
-    the gap being the analysis. Round 82 tested that with Chernoff-type statistics, Khmelev's own kind:
-    both rise, to 0.75 and 0.69 - 45 percent of the gap to Liao's key and 29 percent of the gap to
-    Khmelev's - and part, so what remains is not one shared cause. Round 82 wrote "about half of each
-    gap" and asserted a band wide enough to hold both; the band is now each gap's own."""
-    ch = _sat_channel(Context(usecase="satellite_comms", config={"sat_profile": "micius_2022_zvenigorod"}))
-    fs = ch.free_space
+#: (one basis, both bases) as fractions of Liao's key and of Khmelev et al.'s final key, per statistics.
+PUBLISHED_FRACTIONS = {"chernoff": ((0.751, 1.498), (1.402, 2.798)),
+                       "hoeffding": ((0.546, 1.082), (1.143, 2.273))}
+
+
+def _two_keys(cfg: dict, segments, deviation: str) -> tuple[float, float]:
+    """The pass's key on one basis and on both, under the profile's own source and the run's bound."""
+    ctx = Context(usecase="satellite_comms", config={**cfg, "sat_fk_deviation": deviation})
+    p = _sat_finite_key_params(ctx, _sat_source(ctx))
+    z, x = block_counts(segments, p)
+    return key_length(z, x, p).key_bits, key_length(z, x, replace(p, key_basis="both")).key_bits
+
+
+def test_the_published_keys_were_counted_on_both_bases(browser) -> None:
+    """Liao et al. 2017 and Khmelev et al. 2024 keyed both bases; Lim et al.'s protocol keys one.
+
+    Round 82 read the one-basis key's fractions of the published keys - 0.75 of Liao's and 0.69 of
+    Khmelev's 629,000 under Chernoff, 0.55 and 0.56 under Hoeffding - as gaps the statistics partly
+    closed. The fractions stand; the reading did not. The asymptotic row keys every sifted signal
+    detection in both bases, so the step from it to the one-basis finite key is mostly the basis
+    convention: 95 percent under Chernoff, 54 under Hoeffding. Counted as the papers counted, the
+    model's key exceeds both published keys, and what remains between them is the analysis: Liao et
+    al. name none, allow for intensity fluctuations and correct errors with a Hamming code; Khmelev et
+    al. correct at f_EC 1.44 against 1.16 here and subtract a detector-efficiency mismatch this model
+    does not have. Both languages give the same keys."""
     ch0 = _sat_channel(Context(usecase="satellite_comms", config={}))
     liao = simulate_pass(ch0, link_elevation_deg(ch0.free_space, 645.0),
                          window_elevation_deg=link_elevation_deg(ch0.free_space, 1200.0), step_s=0.25)
-    ratios = {}
-    for dev in ("hoeffding", "chernoff", "tighter"):
-        kh = _pass_key("micius_2022_zvenigorod", link_elevation_deg(fs, 600.0), link_elevation_deg(fs, 1100.0),
-                       dev) / 629_000
-        li = finite_key_over(liao.segments, VacuumDecoyParams(deviation=dev)).key_bits / 300_939
-        ratios[dev] = (kh, li)
-    kh, li = ratios["hoeffding"]
-    assert kh == pytest.approx(0.564, abs=0.02) and abs(kh - li) < 0.05, ratios
-    kh, li = ratios["chernoff"]
-    assert kh == pytest.approx(0.692, abs=0.02) and li == pytest.approx(0.751, abs=0.02), ratios
-    assert ratios["tighter"][0] == pytest.approx(kh, abs=0.01) and ratios["tighter"][1] == pytest.approx(li, abs=0.01)
-    # Khmelev's gap closes 29 percent, Liao's 45, and the two no longer the same fraction.
-    closed = [(ratios["chernoff"][i] - ratios["hoeffding"][i]) / (1 - ratios["hoeffding"][i]) for i in (0, 1)]
-    assert closed[0] == pytest.approx(0.29, abs=0.03) and closed[1] == pytest.approx(0.45, abs=0.03), closed
-    assert abs(kh - li) > 0.05, ratios
+    zv = _sat_channel(Context(usecase="satellite_comms", config={"sat_profile": "micius_2022_zvenigorod"}))
+    kh = simulate_pass(zv, link_elevation_deg(zv.free_space, 600.0),
+                       window_elevation_deg=link_elevation_deg(zv.free_space, 1100.0))
+    assert kh.duration_s == pytest.approx(browser["khmelev"]["s"], rel=1e-12)
+    asym = browser["liao"]["asym"]                       # the Network tab's asymptotic row
+    keys = {}
+    for dev in ("chernoff", "hoeffding", "tighter"):
+        keys[dev] = (_two_keys({}, liao.segments, dev),
+                     _two_keys({"sat_profile": "micius_2022_zvenigorod"}, kh.segments, dev))
+        (l1, l2), (k1, k2) = keys[dev]
+        for got, want in ((browser["liao"]["keys"][dev], (l1, l2)), (browser["khmelev"]["keys"][dev], (k1, k2))):
+            assert (got["one"], got["both"]) == pytest.approx(want, rel=1e-9), dev
+        # Each basis at half the budget: twice the one-basis key, less the price of halving eps.
+        assert 1.98 < l2 / l1 < 2.0 and 1.98 < k2 / k1 < 2.0, (dev, l2 / l1, k2 / k1)
+    for dev, ((lo, lb), (ko, kb)) in PUBLISHED_FRACTIONS.items():
+        (l1, l2), (k1, k2) = keys[dev]
+        assert (l1 / LIAO_FINAL, l2 / LIAO_FINAL) == pytest.approx((lo, lb), abs=0.01), dev
+        assert (k1 / KHMELEV_FINAL, k2 / KHMELEV_FINAL) == pytest.approx((ko, kb), abs=0.01), dev
+        # The published keys sit between the two conventions: above one basis, below both.
+        assert l1 < LIAO_FINAL < l2 and k1 < KHMELEV_BEFORE_MISMATCH < k2, dev
+    (l1, l2), (k1, _) = keys["chernoff"]
+    assert k1 / KHMELEV_BEFORE_MISMATCH == pytest.approx(0.692, abs=0.01)
+    # The drop from the asymptotic row to the one-basis key is mostly the basis convention.
+    assert (l2 - l1) / (asym - l1) == pytest.approx(0.952, abs=0.01)
+    assert 0.97 < l2 / asym < 1.0
+    (h1, h2), _ = keys["hoeffding"]
+    assert (h2 - h1) / (asym - h1) == pytest.approx(0.541, abs=0.01)
+    # The union of two statistics reads as Chernoff on a pass, as it does on one basis.
+    assert keys["tighter"][0][1] == pytest.approx(l2, rel=1e-3)
+    assert keys["tighter"][1][1] == pytest.approx(keys["chernoff"][1][1], rel=1e-3)
 
 
-#: Li et al., Nature 2025 (Jinan-1), Table 1: highest elevation and final key per pass.
+#: Li et al. (Jinan-1), arXiv:2408.10994v1, Table 1: highest elevation and final key per pass. The
+#: version of record (Nature 640, 47 (2025)) reports up to 1.07 Mbit in a single pass and moves the
+#: per-pass results to its Extended Data; these are the preprint's.
 JINAN_PASSES = {"20 Sep": (41.8, 330_240), "25 Sep": (34.1, 406_784), "28 Sep": (77.7, 571_392),
                 "29 Sep": (52.7, 436_096)}
 

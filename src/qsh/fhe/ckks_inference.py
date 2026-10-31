@@ -1,11 +1,12 @@
-"""Encrypted (CKKS) inference for a small linear / MLP classifier.
+"""Encrypted (CKKS) inference for a linear classifier, one layer ``W x + b``.
 
-The client encrypts its feature vector once; the server evaluates the network's
-linear layers homomorphically on the ciphertext (matrix-vector products + bias) and
-returns encrypted logits the client decrypts. Non-linear activations are handled by
-low-degree polynomial approximation (square activation here, a standard FHE-friendly
-choice). This is the classical "MPC-FHE" private-inference path benchmarked against
-the quantum QSMPC-FHE path.
+The client encrypts its feature vector once; for each output row ``w_j`` the evaluator computes
+the encrypted dot product ``<w_j, x>`` with ``dot_plain`` (a ciphertext-plaintext multiply and a
+rotate-and-sum), the result is decrypted, and the bias ``b_j`` is added in the clear. Nothing else is
+evaluated: there is no activation here, polynomial or otherwise, and the argmax over the decrypted
+logits is taken in plaintext. The hybrid that also evaluates non-linear layers, under MPC, is
+:mod:`qsh.mpc.secret_inference`. This is the linear CKKS path the classical MPC-FHE benchmark
+(:mod:`qsh.benchmark.classical_mpc_fhe`) runs against the quantum QSMPC-FHE path.
 """
 
 from __future__ import annotations

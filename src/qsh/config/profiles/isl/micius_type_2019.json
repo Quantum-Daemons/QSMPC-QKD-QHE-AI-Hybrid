@@ -1,8 +1,8 @@
 {
   "id": "micius_type_2019",
   "kind": "isl",
-  "label": "Micius-type terminals on both satellites (Vergoossen 2019)",
-  "source": "Vergoossen et al., arXiv:1903.07845 (2019); terminal values from Liao et al., Nature 549, 43 (2017), arXiv:1707.00542",
+  "label": "Micius-type terminals on both satellites (Vergoossen 2020)",
+  "source": "Vergoossen et al., Acta Astronautica 173, 164 (2020), arXiv:1903.07845; terminal values from Liao et al., Nature 549, 43 (2017), arXiv:1707.00542",
   "note": "Vergoossen et al.: 'Satellites have one Micius-type Earth-pointing terminal, and where specified another terminal available for inter-satellite links.' No quantum inter-satellite link has flown, so the receiving end borrows Xinglong's detectors and optics.",
   "values": {
     "tx_divergence_urad": {

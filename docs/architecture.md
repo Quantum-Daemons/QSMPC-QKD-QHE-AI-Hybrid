@@ -85,11 +85,12 @@ PQCHandshake > QKDKeyAgreement > QSMPCCompute > PrivateInference > Result
 ```
 
 Each stage resolves its algorithm from the `CryptoRegistry` (crypto-agility), so the
-same chain runs PQC-only or PQC+QKD, TenSEAL or OpenFHE (linear-FHE), MPyC or MP-SPDZ
-(non-linear-MPC), ML-KEM-768 or -1024 - **selected by the operator from configuration and
-pinned into the run config before the run starts, never negotiated in-band between parties**
-(see [`crypto-agility.md`](crypto-agility.md)). Use cases swap in their own
-data and extra stages (`FederatedTrainingStage` for medical, `QMLIDSStage` for telecom).
+same chain runs PQC-only or PQC+QKD, TenSEAL or OpenFHE (linear-FHE), ML-KEM-768 or -1024 -
+**selected by the operator from configuration and pinned into the run config before the run
+starts, never negotiated in-band between parties** (see [`crypto-agility.md`](crypto-agility.md)).
+The non-linear MPC half is always MPyC: the registry's `mpc` family also lists MP-SPDZ and
+hpmpc, but as named references, not engines, and no stage reads the `mpc` choice. Use cases swap
+in their own data and extra stages (`FederatedTrainingStage` for medical, `QMLIDSStage` for telecom).
 
 ## Faithful hybrid private inference (linear -> FHE, non-linear -> MPC)
 
@@ -141,15 +142,15 @@ linear combination of them predicts a product. On OpenFHE the context is real-ty
 imaginary parts cannot be flooded there; such runs say so in `masked_slots` and report no margin.
 
 **What the client decodes is statistically hidden, not perfectly.** CKKS is approximate, so the
-masks are real numbers, uniform on plus or minus 2^30 from the OS CSPRNG, where Gazelle and Delphi
-mask exactly over a ring. Behind such a mask a value of size B is B / 2^30 from any other in
-statistical distance, and every run reports two bounds. `mask_statistical_distance` covers the
-values that enter and leave the MPC through slot 0, the number of them times the largest over 2^30
-(about 2e-7 on the test CNNs and 1.4e-6 on the medical use case's 14x14 CNN, recorded before Round
-84). `view_statistical_distance` covers the client's whole view, every real and imaginary part of
-every slot it decrypts plus each value the MPC opens, each one's content over 2^30: about 2e-7 on an
-8-4-2 MLP, measured 2026-10-30. The masks on the other slots double as the noise flood over the
-CKKS error, and each run reports the flood's margin over the error it measured
+masks are real numbers, uniform on $`[-2^{30}, 2^{30})`$ from the OS CSPRNG, where Gazelle and Delphi
+mask exactly over a ring. Behind such a mask a value of size $`B`$ is $`B / 2^{30}`$ from any other
+in statistical distance, and every run reports two bounds. `mask_statistical_distance` covers the
+values that enter and leave the MPC through slot 0, the number of them times the largest over
+$`2^{30}`$ (about 2e-7 on the test CNNs and 1.4e-6 on the medical use case's 14x14 CNN, recorded
+before Round 84). `view_statistical_distance` covers the client's whole view, every real and
+imaginary part of every slot it decrypts plus each value the MPC opens, each one's content over
+$`2^{30}`$: about 2e-7 on an 8-4-2 MLP, measured 2026-10-30. The masks on the other slots double as
+the noise flood over the CKKS error, and each run reports the flood's margin over the error it measured
 (`flood_margin_bits`, about 50). Two further limits are part of the claim. It is
 semi-honest with an honest majority: a client and helper who pool their Shamir shares recover the
 server's masks, and with them every intermediate. And the class index itself is an output, so
@@ -245,11 +246,16 @@ implements it with TenSEAL/OpenFHE for the linear half and **MPyC** (Shamir shar
 the benchmark reports the FHE-linear vs MPC-non-linear latency split + MPC communication. The linear
 half includes a **genuine FHE convolution** (`fhe/conv.py`): im2col turns the encrypted image into
 receptive-field patches and each output `(channel, position)` is one `dot_plain(patch_ct, kernel)` +
-bias - the same CKKS primitive as a dense layer, no rotations. The engine dispatches on tagged layer
-specs (`mpc/layers.py`: `ConvSpec`/`DenseSpec`/`PoolSpec`/`FlattenSpec`), so the **medical** use case
-runs a real MedMNIST-scale CNN under FHE-linear conv + MPC `secure_relu`, with its average pool on each
-party's share locally (`secure_maxpool` serves max-pool layers; the dense
-MLP path is byte-identical via `normalize_layers`), subject to the slot-0-only masking above.
+bias - the same CKKS primitive as a dense layer, and like it not rotation-free: `dot_plain` is a
+ciphertext-plaintext multiply followed by a rotate-and-sum over the slots, so the context carries
+rotation (Galois) keys, and TenSEAL refuses the dot product without them. The server encrypts one
+patch per ciphertext, so it runs one rotate-and-sum per (patch, output channel); the browser packs
+every patch into one ciphertext and reduces each output channel with $`\log_2`$ of the block size
+in rotations, 16 for the medical student's four 3x3 kernels (`web/src/lib/clientFHE.ts`). The engine
+dispatches on tagged layer specs (`mpc/layers.py`: `ConvSpec`/`DenseSpec`/`PoolSpec`/`FlattenSpec`),
+so the **medical** use case runs a real MedMNIST-scale CNN under FHE-linear conv + MPC `secure_relu`,
+with its average pool on each party's share locally (`secure_maxpool` serves max-pool layers; the
+dense MLP path is byte-identical via `normalize_layers`), with every slot masked as above.
 FHE-feasible by design at this demo's operating point - MedMNIST-scale, not ResNet. The
 **QSMPC-FHE** quantum analogue is Clifford gates (linear) vs T-gates (non-linear), with no FHE <-> MPC
 boundary: the Python QOTP demo evaluates Clifford gates on the encrypted state with Pauli key updates,
@@ -303,7 +309,7 @@ The public demo's encrypted compute is **genuinely real and measured in the brow
 the benchmark row scales a measured per-operation cost only where there is no encrypted student to
 cost - genomics and the generic demo - and labels it so):
 - **FHE** - `web/src/lib/clientFHE.ts` runs **node-seal** (Microsoft SEAL -> WASM, MIT) **CKKS**: the
-  feature vector is encrypted, the linear layer `W, x+b` is evaluated homomorphically (multiply-plain +
+  feature vector is encrypted, the linear layer $`Wx + b`$ is evaluated homomorphically (multiply-plain +
   rotate-and-add slot sum), and only the decrypted logits leave encryption. Reported FHE-linear ms,
   ciphertext bytes and the approx. 1e-9 approximation error are real `performance.now()` measurements.
 - **MPC** - `web/src/lib/clientMPC.ts` runs a real **garbled-circuit authenticated-garbling 2PC**
@@ -362,7 +368,7 @@ and the three `/api/demo/*` endpoints. The dense+conv hybrid dispatch is unified
   FHE (TenSEAL / OpenFHE; HEonGPU is a build-gated reference adapter with no Python API and no measured
   run here), GPU quantum sim (CUDA-Q / lightning.gpu), the real MCP server, Prometheus + Grafana.
 - **Client-side build** (no GPU, no server-side ML): the static SPA runs **all** heavy compute in the
-  browser (WASM/WebGPU PQC via @noble, **real CKKS FHE + garbled-circuit MPC**, ONNX inference, in-browser
+  browser (PQC via @noble in plain JavaScript, **real CKKS FHE + garbled-circuit MPC**, ONNX inference, in-browser
   AI, JS BB84/PSI/SHAP/QFL, the client MCP mirror) - it makes **zero `/api` compute calls** (Validations'
   PQC/QKD/MCP are client-mirrored). It ships **no backend at all**. A slim
   API image (core+api, no FHE/torch) used to run beside it as a `?demo=full` fallback. Two separate

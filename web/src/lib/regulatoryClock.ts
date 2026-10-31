@@ -10,6 +10,17 @@
  * Every row was read at its primary source on 2026-10-23/24, and the IR 8547, FAR, FIPS 140-2 and
  * Art. 50 rows again on 2026-10-30 - see `docs/pqc-roadmap.md` and the Round 58 table in
  * `docs/deliverable-verification.md` for the documents and sections.
+ *
+ * Read at whitehouse.gov on 2026-10-31 (Round 84): EO 14412 sec. 4(b) does not bind agencies by
+ * itself - it directs the Director of OMB to "issue guidance requiring each agency to" move HVAs and
+ * high impact systems to PQC key establishment by December 31, 2030 and to PQC signatures by
+ * December 31, 2031 - and OMB M-26-15 (2026-06-24) is that guidance (Phase 3, 2028-2030; Phase 4,
+ * 2031), so both rows name the two. The TLS 1.3 row is M-26-15 sec. 4: "Consistent with Executive
+ * Order 14306, agencies must support Transport Layer Security (TLS) protocol version 1.3 or a
+ * successor version as soon as practicable, but not later than January 2, 2030." EO 14306 (June 6,
+ * 2025), sec. 2(d), rewrote EO 14144 sec. 4(f): its (ii) has the Director of NSA issue that
+ * requirement for national security systems and the Director of OMB for the rest, and M-26-15
+ * "does not apply to national security systems".
  */
 export type Firmness = "in force" | "requirement" | "ordered" | "draft" | "target" | "passed" | "deferred";
 
@@ -50,15 +61,17 @@ export const CLOCK: ClockRow[] = [
     what: "high-risk obligations for AI embedded in regulated products (deferred)", firmness: "deferred" },
   { lane: "Companies", short: "2029 targets", when: "2029", t: 2029.5, instrument: "Cloudflare / Google", binds: "their own products",
     what: "Cloudflare targets full PQ security including authentication; Google sets its PQC migration timeline", firmness: "target" },
+  { lane: "US federal", short: "TLS 1.3 support", when: "2030-01-02", t: 2030.0, instrument: "OMB M-26-15, sec. 4, under EO 14306 (EO 14144 sec. 4(f)(ii) as amended)", binds: "US federal agencies, not NSS (for NSS, EO 14306 has NSA issue the requirement)",
+    what: "agencies support TLS 1.3 or a successor version as soon as practicable, and not later than this date", firmness: "requirement" },
   { lane: "NIST", short: "deprecate RSA/ECC", when: "after 2030", t: 2030.5, instrument: "NIST IR 8547 (final, Oct 2026), Tables 2 and 4", binds: "use under NIST standards and guidelines",
     what: "all quantum-vulnerable public-key algorithms (RSA, ECDSA and EdDSA signatures; finite-field and elliptic-curve DH and MQV; RSA key establishment) deprecated: usable at the data owner's risk. The earlier EO 14412 / OMB M-26-15 dates for high value assets and high impact systems still apply", firmness: "requirement" },
-  { lane: "US federal", short: "PQC key establishment", when: "2030-12-31", t: 2031.0, instrument: "EO 14412, sec. 4(b)", binds: "US federal high-value assets and high impact systems (not NSS)",
+  { lane: "US federal", short: "PQC key establishment", when: "2030-12-31", t: 2031.0, instrument: "EO 14412, sec. 4(b), via OMB M-26-15 (Phase 3)", binds: "US federal high-value assets and high impact systems (not NSS)",
     what: "PQC key establishment", firmness: "requirement" },
   { lane: "US NSS", short: "phase-out", when: "2030-12-31", t: 2031.0, instrument: "CNSSP 15 (CNSA 2.0)", binds: "US national security systems ONLY",
     what: "equipment that cannot support CNSA 2.0 phased out", firmness: "requirement" },
   { lane: "EU", short: "high-risk done", when: "2030-12-31", t: 2031.0, instrument: "EU NIS CG PQC roadmap v1.1", binds: "EU Member States",
     what: "transition completed for high-risk use cases", firmness: "target" },
-  { lane: "US federal", short: "PQC signatures", when: "2031-12-31", t: 2032.0, instrument: "EO 14412, sec. 4(b)", binds: "US federal high-value assets and high impact systems (not NSS)",
+  { lane: "US federal", short: "PQC signatures", when: "2031-12-31", t: 2032.0, instrument: "EO 14412, sec. 4(b), via OMB M-26-15 (Phase 4)", binds: "US federal high-value assets and high impact systems (not NSS)",
     what: "PQC digital signatures", firmness: "requirement" },
   { lane: "US NSS", short: "all NSS use", when: "2031-12-31", t: 2032.0, instrument: "CNSSP 15 (CNSA 2.0)", binds: "US national security systems ONLY",
     what: "CNSA 2.0 mandatory for all use", firmness: "requirement" },

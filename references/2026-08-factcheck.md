@@ -291,8 +291,8 @@ variant at 1 GHz), that set detected 2.2x the paper's counts and gave 3.1x its B
 
 By the user's decision the set is now Rusca et al.'s (Appl. Phys. Lett. 112, 171104 (2018),
 arXiv:1801.03443), read in the arXiv text: "a repetition rate of 1 GHz", SNSPDs with "a dead-time
-tau_DT = 100 ns, dark-count rate (DCR) of 10 Hz which correspond to pDC = 10^-8 and an efficiency
-(eta_det around 50%)", and "a typical value pErr of 1%". Their Appendix B gives the dead-time correction,
+$`\tau_{DT}`$ = 100 ns, dark-count rate (DCR) of 10 Hz which correspond to $`p_{DC} = 10^{-8}`$ and
+an efficiency ($`\eta_{det}`$ around 50%)", and "a typical value $`p_{Err}`$ of 1%". Their Appendix B gives the dead-time correction,
 Eq. (B3), now modelled. At 50 km: 2.853e-3 bit/pulse with the dead time (4.565e-3 without), QBER 1.0%,
 the finite-key threshold 5.88e6 pulses. Also read and not adopted: Boaron et al., PRL 121, 190502
 (2018), arXiv:1807.03222 (SNSPDs at 40-60%, DCR 0.1 Hz, 0.16 dB/km ultra-low-loss fibre, 252-421 km);

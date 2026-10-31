@@ -5,8 +5,9 @@ WHY THIS EXISTS (Round 79, the user's choice). The satellite stage reported its 
 count. The user asked for the block to be sized by link time and for a finite-key length, and asked
 for the published practice to decide between seconds at the page's range and a whole pass. Every
 flown experiment found computes its finite key over one pass (Micius: Liao et al. 2017 and 2018;
-Tiangong-2; Micius to Zvenigorod, Khmelev et al. 2023) or over fixed blocks inside one orbit summed
-per orbit (Jinan-1, Li et al. 2025); none computes one on a few seconds of a low-orbit pass. So the
+Tiangong-2; Micius to Zvenigorod, Khmelev et al., Opt. Express 32, 11964 (2024)) or over fixed blocks
+inside one orbit summed per orbit (Jinan-1: the 500-kbit privacy-amplification packages of Li et al.,
+arXiv:2408.10994v1; Nature 640, 47 (2025)); none computes one on a few seconds of a low-orbit pass. So the
 default block is a whole pass, peaking at the range the page sets; pooling several passes (Sidhu et
 al., npj Quantum Inf. 8, 18 (2022), Fig. 6; Bourgoin et al., Phys. Rev. A 92, 052339 (2015)) and a
 fixed time at one range are offered beside it.

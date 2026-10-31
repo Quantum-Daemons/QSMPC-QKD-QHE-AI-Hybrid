@@ -24,9 +24,10 @@ WHAT IS MEASURED
     threshold therefore selects wildly different fractions of each population, and that is directly
     computable from real genotypes without any phenotype. Published context, now about the very score
     in use: PRS313's AUROC drops from 0.64 (European) to 0.58 (South Asian) and 0.57 (African) in UK
-    Biobank (EJHG, 2026-01-13), and PGS000004's own 28 Catalog AUROC records span 0.55 for an
-    African-ancestry sample against 0.5877-0.668 for European ones. The stratification measured below
-    reaches the same conclusion from allele frequencies alone.
+    Biobank (EJHG, 2026-01-13), and PGS000004's own 32 Catalog AUROC records (read 2026-10-31) reach
+    0.55 for an African-ancestry and a Hispanic or Latin American sample against 0.5877-0.70 for
+    European ones. The stratification measured below reaches the same conclusion from allele
+    frequencies alone.
 
 Usage:
     python scripts/train/genomics_prs.py
@@ -51,6 +52,13 @@ from qsh.models.registry import get as get_spec  # noqa: E402
 #: The percentile a clinical PRS commonly uses as its "high risk" cut. Applied globally on purpose,
 #: because applying one threshold to everyone is what actually happens and what breaks.
 HIGH_RISK_PERCENTILE = 90.0
+
+#: What `weights.json` says about genotypes. It said none "may be published" while the browser payload
+#: served 30 people's dosages; this file still carries none, and the sentence now says where they are.
+WEIGHTS_NOTE = ("Effect weights only: this file carries no per-sample genotype. Per-sample effect-allele "
+                "dosages are redistributed elsewhere, in the slices DATA_LICENSES.md section 4 lists "
+                "(30 individuals in the browser payload), under the IGSR disclaimer: IGSR grants no "
+                "blanket licence and rights vary by data component.")
 
 
 def load_dosages(path: Path, keys: list[str]) -> tuple[list[str], list[str], np.ndarray]:
@@ -278,8 +286,7 @@ def main() -> int:
         "high_risk_percentile": HIGH_RISK_PERCENTILE,
         "global_cut": cut,
         "licence_audit": licence,
-        "note": ("Effect weights only. No per-sample genotype is included, and none may be published: "
-                 "IGSR disclaims blanket openness and rights vary by data component."),
+        "note": WEIGHTS_NOTE,
     }, indent=2) + "\n")
 
     train.record_metrics("genomics.prs", {

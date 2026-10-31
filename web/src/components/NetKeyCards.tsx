@@ -7,12 +7,15 @@ import Details from "./Details";
 import StageBadge from "./StageBadge";
 
 /**
- * Three network-layer computations, run in the visitor's tab and held to official vectors where any
- * exist (`web/src/lib/netkeys/`, `references/net-key-schedules.md`).
+ * Three network-layer computations, run in the visitor's tab and held to published vectors where any
+ * exist - NIST's for ML-KEM and the IKEv2 PRFs, an implementation's for Noise
+ * (`web/src/lib/netkeys/`, `references/net-key-schedules.md`).
  *
  * WHAT EACH ONE IS. The ML-KEM known-answer test checks this page's PQC library against NIST's own
- * ACVP cases. The WireGuard handshake is the Noise_IKpsk2 core (checked against the official cacophony
- * vector on every run) framed per the whitepaper, between two peers in this tab, keyed with a PSK taken
+ * ACVP cases. The WireGuard handshake is the Noise_IKpsk2 core (checked on every run against the
+ * vector cacophony publishes - a Haskell implementation's vector file, which the Noise wiki lists;
+ * the Noise specification itself publishes none, so "official" overstated it) framed per the
+ * whitepaper, between two peers in this tab, keyed with a PSK taken
  * from an in-tab ML-KEM-768 + X25519 hybrid through the SAME combiner as the session key. The IKEv2
  * schedule is RFC 7296 key derivation (checked against NIST CAVP) extended by RFC 9370 and RFC 8784,
  * which have no official vectors and are labelled computed-per-spec. No packet leaves the tab; the
@@ -33,6 +36,15 @@ function hybridPsk(): Uint8Array {
   return hybridCombine(sharedSecret, xs,
     { c1: cipherText, c2: aliceXPub, ek1: bob.publicKey, ek2: x25519.getPublicKey(bobX) }, "ML-KEM-768", 32);
 }
+
+/**
+ * The date the IKEv2 ML-KEM status line was checked: `MLKEM_IKEV2_STATUS.checked` in
+ * `lib/netkeys/ikev2.ts`, which records the date "so a page never states it as timeless" - and this
+ * card stated it with no date. Copied rather than imported because a static import would pull the
+ * IKEv2 module and its CAVP vectors into the page bundle, where they load on click; the copy is held
+ * equal to the module's by tests/test_r84_pages_claims.py, so a re-check updates both or fails.
+ */
+const MLKEM_STATUS_CHECKED = "2026-10-24";
 
 const ok = (b: boolean | null | undefined) => (
   <span style={{ color: b ? "var(--accent-2)" : b === false ? "var(--danger)" : "var(--muted)" }}>{b == null ? "n/a" : String(b)}</span>
@@ -81,7 +93,7 @@ export default function NetKeyCards() {
         <KeyPointsInline items={[
           "Both peers run in this tab; the cryptography is real, the network is not.",
           "The 32-byte preshared key comes from a fresh ML-KEM-768 + X25519 hybrid through the session key's own combiner - not either PSK the network demo's WireGuard lanes use (HKDF of QKD and PQC-HPKE; Rosenpass).",
-          "The Noise core is checked against the official cacophony vector on every run; the WireGuard framing follows the whitepaper and has no published vector.",
+          "The Noise core is checked on every run against the vector cacophony publishes (a Haskell implementation of Noise, whose vector file the Noise wiki lists); the WireGuard framing follows the whitepaper and has no published vector.",
         ]} />
         <button className="btn" disabled={busy === "wg"}
           onClick={() => run("wg", async () => setWg((await import("../lib/netkeys/wireguard")).wireguardHandshake({ psk: hybridPsk(), seed: "qsh-validations" })))}>
@@ -108,7 +120,7 @@ export default function NetKeyCards() {
         <KeyPointsInline items={[
           "IKE_SA_INIT on ECP-256, then an IKE_INTERMEDIATE ML-KEM-768 exchange, then a post-quantum preshared key; both peers derive every key and the page compares them.",
           "The RFC 7296 derivation is checked against NIST CAVP SP 800-135 vectors; the RFC 9370 and RFC 8784 layers have no official vectors and are computed per the RFCs.",
-          "ML-KEM in IKEv2 is not yet an RFC: draft-ietf-ipsecme-ikev2-mlkem is in the RFC Editor queue (IANA key exchange method 36).",
+          `As checked on ${MLKEM_STATUS_CHECKED}, ML-KEM in IKEv2 is not yet an RFC: draft-ietf-ipsecme-ikev2-mlkem is in the RFC Editor queue (IANA key exchange method 36).`,
         ]} />
         <button className="btn" disabled={busy === "ike"}
           onClick={() => run("ike", async () => {

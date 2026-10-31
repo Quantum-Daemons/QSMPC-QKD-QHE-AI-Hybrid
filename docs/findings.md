@@ -295,8 +295,8 @@ See [`docs/pqc-roadmap.md`](pqc-roadmap.md).
   **QSMPC-FHE (quantum) comparison row is a genuine in-browser state-vector simulation** of an untrained
   QOTP + Clifford+T circuit (8 qubits by default, not a trained QCNN): its latency is **measured** and its
   T-gate count is **counted from the circuit** - a *simulation*, not quantum hardware (no QPU). Its ct/pt
-  is not rendered: a one-time pad maps n qubits to n qubits plus a 2n-bit classical key, so a qubit
-  ratio cannot share a column with a CKKS byte ratio. The classical **MPC-FHE row is real measured
+  is not rendered: a one-time pad maps $`n`$ qubits to $`n`$ qubits plus a $`2n`$-bit classical key,
+  so a qubit ratio cannot share a column with a CKKS byte ratio. The classical **MPC-FHE row is real measured
   crypto** (node-seal CKKS + Polytune 2PC) on the pages whose flow runs it.
 - **In-browser AI (demo)** - the per-use-case Agentic-AI panel runs **small** models client-side (Transformers.js
   on onnxruntime-web; WebLLM on WebGPU). **Both the agent's Transformers.js models and the published ONNX
@@ -402,7 +402,7 @@ See [`docs/pqc-roadmap.md`](pqc-roadmap.md).
 
   | vertical | T2 model | data | measured | published baseline |
   |---|---|---|---|---|
-  | **finance** | XGBoost over this project's own graph features (fan-in/fan-out and causal per-account aggregates over the transaction multigraph; IBM's Graph Feature Preprocessor is not used) | IBM **AMLworld HI-Small**, 5,078,345 transactions, 1 laundering in 981 (CDLA-Sharing-1.0) | minority-class F1 **0.1519**, AUPRC **0.1233** vs a 0.0015 prevalence baseline | 0.632 (NeurIPS 2023 D&B) - see the gap note below |
+  | **finance** | XGBoost over this project's own graph features (fan-in/fan-out and causal per-account aggregates over the transaction multigraph; IBM's Graph Feature Preprocessor is not used) | IBM **AMLworld HI-Small**, 5,078,345 transactions, 1 laundering in 981 (CDLA-Sharing-1.0) | minority-class F1 **0.1519**, AUPRC **0.1233** vs a 0.0015 prevalence baseline (the test window's positive rate; the corpus's is 1 in 981) | 0.632 (NeurIPS 2023 D&B) - see the gap note below |
   | **medical** | **ResNet-18** trained from random initialisation (no ImageNet weights, so no ImageNet terms attach) | MedMNIST v2 **BreastMNIST** (CC BY 4.0 **asserted by MedMNIST**; the BUSI authors **publish no licence** - see [DATA_LICENSES.md](../DATA_LICENSES.md)) | AUC **0.9147** | 0.901 (Yang et al., Scientific Data 10:41, 2023) |
   | **genomics** | published **PRS** effect-weight vector - not a neural network | PGS Catalog **PGS000004 (PRS313)** over **2,504 real 1000 Genomes samples** | ancestry portability, below | AUROC 0.633 [0.624, 0.641] - *external citation, not measurable here: a reference panel carries no phenotype. Fitted WITH covariates a dot product does not have, and 8% of variants were missing in that cohort, so it is a citation and not a target* |
   | **satellite** | **Telemanom** 2xLSTM(80), seq 250, non-parametric dynamic threshold + pruning | **ESA-ADB Mission1** lightweight channels 41-46, multi-year real telemetry (CC-BY-3.0-IGO) | event-wise F0.5 **0** over just **3 events** (tp=0 fp=2 fn=3) | 0.968 (ESA-ADB Supp. Table 9, anomalies only) |
@@ -504,8 +504,8 @@ See [`docs/pqc-roadmap.md`](pqc-roadmap.md).
   **private** because the Hub's public-repo grant is "perpetual, irrevocable", and it refuses to
   publish publicly at all when the registry marks the training data non-publishable.
 
-- **Public-demo data (real or simulator output, and one sample with no licence)** - the client-side demo loads
-  real or simulated datasets, mirroring the full deployment; every one carries a licence that permits redistribution since the satellite sample moved to OPS-SAT-AD in Round 84: **medical** uses a real Wisconsin
+- **Public-demo data (real or simulator output, and one payload without a licence grant)** - the client-side demo loads
+  real or simulated datasets, mirroring the full deployment. Every one carries a licence that permits redistribution except the genomics payload: its 1000 Genomes dosage slice has no licence (IGSR grants no blanket licence; it ships under the cell budget of DATA_LICENSES.md section 4), and the source paper of its PGS000004 weights is published under CC BY-NC-ND 4.0, whose bearing on the weights is under review. **medical** uses a real Wisconsin
   Diagnostic Breast-Cancer sample (UCI dataset 17 via sklearn, **CC BY 4.0 - attribution required**) + a real logistic-regression model;
   **genomics** uses the real PGS-Catalog PGS000004 / PRS313 PRS weights (313 variants; **licensed per score** - PGS000004 carries the Catalog's default terms, *not* a blanket CC-BY grant) over real 1000 Genomes
   genotypes -> a plaintext in-browser **Polygenic Risk Score** over all 313 variants with per-SNP signed SHAP, while its CKKS step is a sign test on the 8 largest-weight variants (weights $`[-w/2, w/2]`$, bias 0); **finance** uses a

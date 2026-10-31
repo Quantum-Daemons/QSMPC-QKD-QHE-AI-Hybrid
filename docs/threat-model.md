@@ -62,11 +62,17 @@
 - Endpoints (clients) are honest and hold their own secret keys.
 - The QKD hardware is modelled by simulation; real deployments must address device
   imperfections (the WS2 IDS targets exactly these).
-- The crypto/compute libraries are trusted as implemented (pin versions + review): server-side
+- The crypto/compute libraries are trusted as implemented, after review: server-side
   TenSEAL / OpenFHE / liboqs / MPyC (and HEonGPU, if its build-gated adapter is ever wired); client-side **node-seal** (CKKS) + **Polytune /
   Garble** (garbled-circuit 2PC, Rust compiled to wasm from `wasm/qsh-mpc`, Round 65) for the in-browser
   demo; the **MCP Python SDK** (`MCPServer`, named `FastMCP` before v2.0.0) for
-  the full-deployment MCP server.
+  the full-deployment MCP server. Only some of them are pinned. The browser's npm packages and the
+  Rust crates are fixed by lockfiles (`web/package-lock.json`, `wasm/qsh-mpc/Cargo.lock`), Polytune by
+  commit, and the image's liboqs C library by tag (0.16.0). The Python packages are version floors
+  (OpenFHE is also capped below 1.6) with no lockfile, so a fresh image can resolve newer releases
+  than the ones measured here: TenSEAL
+  0.3.16, which this repository's environment runs, bundles Microsoft SEAL 4.1.1, and TenSEAL 0.3.17
+  and later, which its floor admits, bundle SEAL 4.3.3.
 - **Server-tier MPC** (full deployment, `src/qsh/mpc/parties.py`): three MPyC parties, the client
   who holds the CKKS key, the server who holds the model, and a helper; Shamir with t = 1, so
   **semi-honest with an honest majority**. The conversions are masked in every CKKS slot the key
@@ -294,11 +300,13 @@ statement of known limitations, not a conformance gap against any published requ
   `privacy-ethereum/*` org it moved to. So the whole garbled-circuit tier - `emp-wasm-engine ^0.5.4`,
   `mpc-framework ^0.3.0`, `summon-ts ^0.6.2` - rested on code with no upstream maintainer and no
   security-patch path. That does not make the protocol wrong or the measurements false, and nothing
-  here is being withdrawn; it means the tier carries a risk the CKKS tier does not, since `node-seal`
-  tracks Microsoft SEAL. Note the shape: the previous bullet was corrected by naming the maintained
+  here is being withdrawn; it means the tier carried an unmaintained-upstream risk. The CKKS tier
+  carries a related one: `node-seal` 7.0.0, still its newest release, is aligned with Microsoft SEAL
+  4.1.2 (2024), and upstream SEAL is at 4.7.2 (2026-10-28), past 4.4.0's critical security update
+  (`docs/development.md`). Note the shape: the previous bullet was corrected by naming the maintained
   replacements for two sunset dependencies, and the replacements have since been sunset in turn - a
   correction can go stale in the same way the claim it fixed did. The project's archived-upstream
-  query covered submodules and not npm dependencies, which is why this went a year unnoticed. **Replacements were researched in Round 60, and nothing has been adopted.** The closest fit
+  query covered submodules and not npm dependencies, which is why this went a year unnoticed. **Replacements were researched in Round 60, and one was adopted in Round 65 (below).** The closest fit
   is `sine-fdn/polytune` with the Garble language (MIT, maintained, WRK17b multi-party authenticated
   garbling against malicious adversaries), at the cost of a Rust and wasm-pack build step and an alpha
   API; mpz would be a downgrade to semi-honest security. The register's Round 60 section carries the

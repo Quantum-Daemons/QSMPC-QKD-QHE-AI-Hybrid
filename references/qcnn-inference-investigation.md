@@ -23,8 +23,8 @@ Over 24 random feature vectors x 8 seeds each:
 | quantity | value |
 |---|---|
 | vectors whose class FLIPS across seeds | **24 / 24 = 100%** |
-| mean \|<Z0>\| with the QOTP mask | 0.0761 (max 0.2013) |
-| mean \|<Z0>\| with the mask DISABLED | 0.0748 (max 0.2096) |
+| mean $`\lvert\langle Z_0 \rangle\rvert`$ with the QOTP mask | 0.0761 (max 0.2013) |
+| mean $`\lvert\langle Z_0 \rangle\rvert`$ with the mask DISABLED | 0.0748 (max 0.2096) |
 | unmasked class balance | 0.50 |
 | correlation, unmasked class vs mean(feature) | **-0.070** |
 

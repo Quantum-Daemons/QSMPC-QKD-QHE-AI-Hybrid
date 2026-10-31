@@ -27,15 +27,28 @@ and two transactions 2*pi apart in log-amount land on the same feature. Measured
 that map, raw versus standardised: ``0.0233 -> 0.2180`` and ``0.0416 -> 0.3051`` on the two
 informative components - an order of magnitude, and the same order as medical's.
 
-WHAT THIS SCRIPT DOES NOT DO
+WHICH FINANCE COLUMNS THE MODEL READS
 
-It does not drop ``velocity_24h``, which is non-zero in 2 of the 4,000 bundled rows and is therefore
-very nearly a constant. Dropping it would change the eight-column contract that ``loaders.load_paysim``,
-the registry, the published QCNN weights and ``finance_aml``'s feature order all share, for a column
-that costs nothing to carry. It is recorded in the payload's ``eda`` block instead, so the
-degeneracy is visible in the artefact rather than discovered by whoever next wonders why a feature
-never moves. ``StandardScaler`` leaves zero-variance columns alone (``scale_ = 1``) rather than
-dividing by ~0, and this script asserts that it did.
+Four of the TSV's eight: ``amount``, ``cross_border``, ``night_tx`` and ``new_payee``
+(``registry.PAYSIM_MODEL_FEATURES`` says what each is in PaySim's terms). The other four are left
+out of ``samples`` and of the model, for the reasons ``registry.PAYSIM_EXCLUDED_FEATURES`` gives:
+``device_risk`` and ``geo_mismatch`` are computed from PaySim's four balance columns, which the
+dataset's own description says must not be used for fraud detection because fraudulent
+transactions are cancelled, so a model reading them learns the label from the simulator's
+bookkeeping; ``amount_zscore`` is an affine copy of ``amount``; ``velocity_24h`` is non-zero in 2
+of the 4,000 TSV rows and in none of the 400 shipped here.
+
+The procedure is unchanged: the same 400 class-balanced rows (seed 0), a scaler fitted on the first
+70 percent of them, the XGBoost teacher and the logistic student both fitted on all 400. No held-out
+split was carved out of them for the model before and none is now; the payload's ``evaluation``
+block reports the fitting-row figures beside a 5-fold cross-validation of the same procedure and
+the false-positive rate on the TSV's legitimate rows that were not drawn, so neither is mistaken
+for the other.
+
+``samples_by_space.raw`` keeps ALL EIGHT columns, in the TSV's order. That block feeds the finance
+QCNN artifact (``models/qcnn_finance``), which was trained on the eight and is fed by position; the
+payload names its columns in ``names_by_space.raw`` and declares its constant and duplicated
+columns in ``eda_by_space.raw``. Retraining that artifact on the four is outside this script.
 
 Run:  .venv/bin/python scripts/data/build_federated_samples.py
 """
@@ -52,11 +65,21 @@ import numpy as np
 REPO = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO / "src"))
 
-from qsh.models.registry import BUNDLED_DEMO_SAMPLES, DEMO_SAMPLE_FILES, DS_WDBC  # noqa: E402
+from qsh.models.registry import (  # noqa: E402
+    BUNDLED_DEMO_SAMPLES,
+    DEMO_SAMPLE_FILES,
+    DS_PAYSIM,
+    DS_WDBC,
+    PAYSIM_BALANCE_WARNING,
+    PAYSIM_EXCLUDED_FEATURES,
+    PAYSIM_MODEL_FEATURES,
+    PAYSIM_SAMPLE_COLUMNS,
+)
 
-#: The eight AML features, in the order `finance_aml` and the published weights expect.
-FIN_NAMES = ["amount", "velocity_24h", "cross_border", "night_tx",
-             "new_payee", "amount_zscore", "device_risk", "geo_mismatch"]
+#: The TSV's eight columns, in file order: the order the finance QCNN artifact is fed in.
+FIN_TSV_NAMES = list(PAYSIM_SAMPLE_COLUMNS)
+#: The four the bundled linear model reads, in this order (`samples`, `names`, `model.W`).
+FIN_NAMES = list(PAYSIM_MODEL_FEATURES)
 
 #: The eight WDBC columns the medical demo has always shipped, by scikit-learn feature name.
 MED_NAMES = ["mean_radius", "mean_texture", "mean_perimeter", "mean_area", "mean_smoothness",
@@ -107,8 +130,9 @@ def _stratified(y: np.ndarray, n: int, rng: np.random.Generator) -> np.ndarray:
 def _eda(X: np.ndarray, names: list[str]) -> dict:
     """Per-column statistics, shipped with the data so nobody has to rediscover them.
 
-    ``degenerate`` flags a column carrying almost no information. It is reported rather than removed:
-    see the module docstring.
+    ``degenerate`` flags a column carrying almost no information. It is reported, not acted on: which
+    columns the finance model leaves out is decided by name in the registry
+    (``PAYSIM_EXCLUDED_FEATURES``), so a flag computed on one draw cannot silently change the model.
     """
     cols = []
     for i, name in enumerate(names):
@@ -140,38 +164,132 @@ def _eda(X: np.ndarray, names: list[str]) -> dict:
     }
 
 
-def build_finance(n: int, seed: int) -> dict:
+def _eda_raw(X: np.ndarray, names: list[str]) -> dict:
+    """`_eda` for a block in SOURCE units, with duplicates found as affine copies.
+
+    The QCNN standardises each raw wire with its own training moments, so two raw columns related by
+    a positive affine map become the same wire however different their raw values look. `_eda`
+    compares raw values and would miss exactly that pair (`amount`, `amount_zscore`), so the copies
+    are found here on the columns' z-scores instead.
+    """
+    out = _eda(X, names)
+    sd = X.std(axis=0)
+    Z = (X - X.mean(axis=0)) / np.where(sd > 0, sd, 1.0)
+    out["duplicates"] = [[names[i], names[j]]
+                         for i in range(len(names)) for j in range(i + 1, len(names))
+                         if sd[i] > 0 and sd[j] > 0
+                         and float(np.max(np.abs(Z[:, i] - Z[:, j]))) <= 1e-4]
+    out["note"] = ("Per-column statistics of samples_by_space.raw, the eight columns the finance "
+                   "QCNN artifact is fed by position. `degenerate` names columns constant in these "
+                   "rows; `duplicates` names pairs that are affine copies of each other, which the "
+                   "artifact's per-wire standardisation turns into one wire twice. The linear model "
+                   "in `model` reads only the four columns in `names`.")
+    return out
+
+
+def _fit_paysim_surrogate(X: np.ndarray, y: np.ndarray, seed: int):
+    """The demo's procedure, written once so the shipped model and its cross-validation are the same
+    thing: a scaler on the first SCALER_FIT_FRACTION of the rows, the XGBoost teacher on all of them,
+    and the logistic student on the teacher's labels."""
     import xgboost as xgb
     from sklearn.linear_model import LogisticRegression
     from sklearn.preprocessing import StandardScaler
 
+    cut = max(1, int(len(X) * SCALER_FIT_FRACTION))
+    scaler = StandardScaler().fit(X[:cut])
+    # Every column the model reads must move in the scaler's rows: a zero-variance column is left at
+    # scale 1 by StandardScaler, so a value it never saw there becomes a spike of arbitrary size.
+    assert float(scaler.var_.min()) > 1e-12, (
+        f"a model column is constant in the scaler's rows: {scaler.var_.tolist()}")
+    Xs = scaler.transform(X)
+    teacher = xgb.XGBClassifier(n_estimators=80, max_depth=4, learning_rate=0.2, subsample=0.9,
+                                eval_metric="logloss", n_jobs=2, random_state=seed).fit(Xs, y)
+    student = LogisticRegression(max_iter=500, class_weight="balanced").fit(Xs, teacher.predict(Xs))
+    return scaler, teacher, student
+
+
+def _paysim_evaluation(X: np.ndarray, y: np.ndarray, X_not_drawn: np.ndarray,
+                       y_not_drawn: np.ndarray, seed: int) -> dict:
+    """What the shipped model scores, and on which rows, kept apart.
+
+    `fitting_rows` is in-sample: the 400 rows the scaler, the teacher and the student were all
+    fitted on. `cross_validated` refits the WHOLE procedure inside each of 5 stratified folds and
+    scores the rows each fit did not see. `legit_rows_not_drawn` applies the shipped model to the
+    TSV's rows outside the 400, which are all legitimate (the 400 already hold every fraud row), so
+    only a false-positive rate can be measured there. None of the three is a PaySim-wide estimate:
+    the rows are a 50/50 draw from a 5 percent fraud TSV, itself drawn from a corpus where fraud is
+    rarer still.
+    """
+    from sklearn.metrics import f1_score, roc_auc_score
+    from sklearn.model_selection import StratifiedKFold
+
+    r4 = lambda v: round(float(v), 4)   # noqa: E731
+
+    scaler, teacher, student = _fit_paysim_surrogate(X, y, seed)
+    Xs = scaler.transform(X)
+    margin = Xs @ student.coef_[0] + student.intercept_[0]
+    pred, tpred = (margin > 0).astype(int), teacher.predict(Xs)
+
+    folds = StratifiedKFold(n_splits=5, shuffle=True, random_state=seed)
+    cv_margin, cv_teacher = np.zeros(len(y)), np.zeros(len(y), dtype=int)
+    for tr, te in folds.split(X, y):
+        sc, t, s = _fit_paysim_surrogate(X[tr], y[tr], seed)
+        Z = sc.transform(X[te])
+        cv_margin[te] = Z @ s.coef_[0] + s.intercept_[0]
+        cv_teacher[te] = t.predict(Z)
+    cv_pred = (cv_margin > 0).astype(int)
+
+    assert int(y_not_drawn.sum()) == 0, "the rows outside the draw hold fraud rows; say so here"
+    nd_margin = scaler.transform(X_not_drawn) @ student.coef_[0] + student.intercept_[0]
+    flagged = int((nd_margin > 0).sum())
+    return {
+        "fitting_rows": {"rows": int(len(y)), "accuracy": r4((pred == y).mean()),
+                         "fraud_f1": r4(f1_score(y, pred)), "roc_auc": r4(roc_auc_score(y, margin)),
+                         "teacher_accuracy": r4((tpred == y).mean()),
+                         "distillation_fidelity": r4((pred == tpred).mean())},
+        "cross_validated": {"folds": 5, "accuracy": r4((cv_pred == y).mean()),
+                            "fraud_f1": r4(f1_score(y, cv_pred)),
+                            "roc_auc": r4(roc_auc_score(y, cv_margin)),
+                            "teacher_accuracy": r4((cv_teacher == y).mean())},
+        "legit_rows_not_drawn": {"rows": int(len(y_not_drawn)), "flagged": flagged,
+                                 "false_positive_rate": r4(flagged / max(1, len(y_not_drawn)))},
+        "note": ("fitting_rows is in-sample. cross_validated refits the scaler, the teacher and the "
+                 f"student inside each of 5 stratified folds (seed {seed}) and scores the held-out fold. "
+                 "legit_rows_not_drawn applies the shipped model to the bundled TSV's rows outside "
+                 "the 400, all of them legitimate. The rows are a 50/50 draw, so none of these is "
+                 "an estimate at PaySim's own fraud rate."),
+    }
+
+
+def build_finance(n: int, seed: int) -> dict:
     tsv = REPO / "data" / "finance" / "paysim_sample.tsv"
     rows = [ln for ln in tsv.read_text().splitlines() if ln.strip() and not ln.startswith("#")]
     data = np.asarray([[float(v) for v in ln.split("\t")] for ln in rows[1:]], dtype=np.float64)
     X_all, y_all = data[:, :8], data[:, 8].astype(int)
-    assert rows[0].split("\t")[:8] == FIN_NAMES, f"TSV column order changed: {rows[0]}"
+    assert rows[0].split("\t")[:8] == FIN_TSV_NAMES, f"TSV column order changed: {rows[0]}"
+    keep = [FIN_TSV_NAMES.index(name) for name in FIN_NAMES]
 
     rng = np.random.default_rng(seed)
     pick = _stratified(y_all, n, rng)
-    X, y = X_all[pick], y_all[pick]
+    X8, y = X_all[pick], y_all[pick]
+    # THE MODEL READS FOUR COLUMNS (module docstring). The draw above is over all eight, exactly as
+    # before, so the 400 rows are the same transactions the eight-column model was fitted on.
+    X = X8[:, keep]
+    not_drawn = np.setdiff1d(np.arange(len(y_all)), pick)
 
     # Standardise. The medical sample has always shipped standardised and this one never did, so the
     # same browser feature map saw one page's inputs in radians and the other's in log-currency.
-    cut = max(1, int(len(X) * SCALER_FIT_FRACTION))
-    scaler = StandardScaler().fit(X[:cut])
-    zero_var = np.where(scaler.var_ <= 1e-12)[0]
-    assert all(scaler.scale_[i] == 1.0 for i in zero_var), (
-        "StandardScaler divided a zero-variance column by its own (near-zero) scale. That turns the "
-        "two non-zero velocity_24h rows into a ~45-sigma spike and everything else into a constant."
-    )
-    Xs = scaler.transform(X)
-
     # The demo model is refit on the SHIPPED feature space. It has to be: `realInput` hands these rows
     # and this model to the CKKS private-inference path and to the exact-linear SHAP, so a model
     # fitted on unstandardised columns would be applied to standardised ones.
-    teacher = xgb.XGBClassifier(n_estimators=80, max_depth=4, learning_rate=0.2, subsample=0.9,
-                                eval_metric="logloss", n_jobs=2, random_state=seed).fit(Xs, y)
-    student = LogisticRegression(max_iter=500, class_weight="balanced").fit(Xs, teacher.predict(Xs))
+    scaler, _teacher, student = _fit_paysim_surrogate(X, y, seed)
+    Xs = scaler.transform(X)
+    eda = _eda(Xs, FIN_NAMES)
+    eda["note"] = ("Per-column statistics of `samples`, the four standardised columns the linear "
+                   "model reads. `degenerate` names columns that carry effectively no signal and "
+                   "`duplicates` names pairs that are the same column twice. The columns left out "
+                   "of the model are in `excluded_features`; the eight the QCNN is fed are described "
+                   "in eda_by_space.raw.")
     return {
         "provenance": BUNDLED_DEMO_SAMPLES["finance_aml"][0],
         # What CC BY-SA 4.0 asks to travel with Adapted Material (sections 3(a)(1) and 3(b)): the
@@ -184,11 +302,19 @@ def build_finance(n: int, seed: int) -> dict:
                         "Simulation Symposium (EMSS), Larnaca, Cyprus, 2016. Data: Kaggle "
                         "ealaxi/paysim1."),
         "modifications": (f"{n} rows drawn class-balanced from the bundled data/finance/"
-                          "paysim_sample.tsv (itself a fraud-enriched subset of the Kaggle file); "
-                          "eight columns under AML-style names; standardised and rounded to 5 "
-                          "decimals, with the unstandardised values kept in samples_by_space.raw. "
-                          "Adapted Material, shared under CC BY-SA 4.0."),
+                          "paysim_sample.tsv (itself a fraud-enriched subset of the Kaggle file), "
+                          "whose eight columns are quantities computed from PaySim fields under "
+                          f"AML-style names; `samples` keeps {len(FIN_NAMES)} of them, standardised "
+                          "and rounded to 5 decimals, and samples_by_space.raw all eight, "
+                          "unstandardised. Adapted Material, shared under CC BY-SA 4.0."),
         "names": FIN_NAMES,
+        # What each name means in PaySim's terms, and what was left out and why. The names relabel
+        # PaySim quantities (`cross_border` is a transaction-type flag), so a file that shipped the
+        # names alone would let a reader take them at their word.
+        "feature_definitions": {name: PAYSIM_MODEL_FEATURES[name] for name in FIN_NAMES},
+        "excluded_features": dict(PAYSIM_EXCLUDED_FEATURES),
+        "exclusion_source": {"quote": PAYSIM_BALANCE_WARNING, "url": DS_PAYSIM.url,
+                             "applies_to": ["device_risk", "geo_mismatch"]},
         "samples": [[round(float(v), 5) for v in r] for r in Xs],
         # THE SAME ROWS IN THE SPACE THE QCNN ARTIFACT DECLARES, and the reason both are needed.
         #
@@ -209,18 +335,24 @@ def build_finance(n: int, seed: int) -> dict:
         #
         # The mismatch cannot be undone in the browser - this file ships no numeric scaler constants,
         # and the two scalers differ - so the raw columns have to come from here.
+        #
+        # ALL EIGHT, IN THE TSV'S ORDER. The artifact was trained on the eight and the browser hands
+        # it this row by position, so the block is wider than `samples` and names its own columns.
         "feature_space": "zscore",
-        "samples_by_space": {"raw": [[round(float(v), 5) for v in r] for r in X]},
+        "samples_by_space": {"raw": [[round(float(v), 5) for v in r] for r in X8]},
+        "names_by_space": {"raw": FIN_TSV_NAMES},
         "labels": [int(v) for v in y],
-        "model": {"W": [[0.0] * 8, [float(w) for w in student.coef_[0]]],
+        "model": {"W": [[0.0] * len(FIN_NAMES), [float(w) for w in student.coef_[0]]],
                   "b": [0.0, float(student.intercept_[0])]},
         "real_model": ("XGBoost (n_estimators=80, depth=4) distilled to a CKKS-linear logistic "
-                       "surrogate, fitted on the standardised features shipped here"),
+                       "surrogate, both fitted on the four standardised columns in `samples`"),
+        "evaluation": _paysim_evaluation(X, y, X_all[not_drawn][:, keep], y_all[not_drawn], seed),
         "scaling": (f"StandardScaler fitted on the first {SCALER_FIT_FRACTION:.0%} of these rows and "
                     "applied to all of them, so the constants were not computed from every row. The "
                     "browser reshuffles with its own run seed, so this is not - and cannot be - "
                     "aligned with any particular train/test split it makes."),
-        "eda": _eda(Xs, FIN_NAMES),
+        "eda": eda,
+        "eda_by_space": {"raw": _eda_raw(X8, FIN_TSV_NAMES)},
     }
 
 

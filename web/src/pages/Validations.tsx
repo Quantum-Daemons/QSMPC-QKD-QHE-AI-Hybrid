@@ -11,6 +11,41 @@ import { downloadJSON } from "../lib/export";
 
 const DEMO = isClientDemo();
 
+/**
+ * Runs one validation with its button disabled, and re-enables the button however the run ends.
+ *
+ * The three buttons that can reach a server (handshake, BB84, agent call) each did
+ * `setBusy(x); set(await call()); setBusy("")`, so a call that threw skipped the last statement and
+ * left its button disabled until a reload. In the full deployment that happened on every BB84 run
+ * from an intercept fraction of 0.45 up, where the endpoint answered 500. The reset now sits in a
+ * `finally`, and the error is recorded for that validation's card (null clears it) instead of
+ * vanishing as an unhandled rejection.
+ */
+export async function runValidation(
+  which: string, task: () => Promise<void>,
+  setBusy: (which: string) => void, setFailure: (which: string, message: string | null) => void,
+): Promise<void> {
+  setBusy(which);
+  setFailure(which, null);
+  try {
+    await task();
+  } catch (e) {
+    setFailure(which, String((e as Error)?.message ?? e));
+  } finally {
+    setBusy("");
+  }
+}
+
+/** The failure line inside the card whose run failed. */
+function RunFailed({ message }: { message?: string }) {
+  if (!message) return null;
+  return (
+    <p className="note" role="alert" style={{ marginTop: 10, borderColor: "var(--danger)" }}>
+      The run failed: {message}
+    </p>
+  );
+}
+
 export default function Validations() {
   const [kem, setKem] = useState<any>(null);
   const [sig, setSig] = useState<any>(null);
@@ -20,12 +55,25 @@ export default function Validations() {
   const [mcpQkd, setMcpQkd] = useState(false);
   const [eve, setEve] = useState(0);
   const [busy, setBusy] = useState("");
+  // One entry per validation, so running one card does not clear another card's failure.
+  const [failures, setFailures] = useState<Record<string, string>>({});
+  const setFailure = (which: string, message: string | null) => setFailures((f) => {
+    const next = { ...f };
+    if (message == null) delete next[which]; else next[which] = message;
+    return next;
+  });
+  const run = (which: string, task: () => Promise<void>) => runValidation(which, task, setBusy, setFailure);
 
-  const runQkd = async (e: number) => {
-    setBusy("qkd");
-    setQkd(await api.demoQkd(qkdCfg().distance_km, e));
-    setBusy("");
-  };
+  // A failed run clears the table, which would otherwise show the previous setting's figures under
+  // the slider's new value.
+  const runQkd = (e: number) => run("qkd", async () => {
+    try {
+      setQkd(await api.demoQkd(qkdCfg().distance_km, e));
+    } catch (x) {
+      setQkd(null);
+      throw x;
+    }
+  });
 
   return (
     <div>
@@ -80,7 +128,8 @@ export default function Validations() {
         <div className="card">
           <h3>Hybrid KEM handshake (ML-KEM-768 + X25519)</h3>
           <p>The PQC-first hybrid session key derivation, computed {DEMO ? "in your browser (@noble)" : "by the backend (liboqs)"}.</p>
-          <button className="btn" disabled={busy === "pqc"} onClick={async () => { setBusy("pqc"); setPqc(await api.demoPqc()); setBusy(""); }}>Run handshake</button>
+          <button className="btn" disabled={busy === "pqc"} onClick={() => run("pqc", async () => setPqc(await api.demoPqc()))}>Run handshake</button>
+          <RunFailed message={failures.pqc} />
           {pqc && (
             <table style={{ marginTop: 12 }}>
               <tbody>
@@ -111,6 +160,7 @@ export default function Validations() {
             style={{ width: "100%" }}
             onChange={(e) => { const v = parseFloat(e.target.value); setEve(v); runQkd(v); }} />
           <button className="btn ghost" disabled={busy === "qkd"} onClick={() => runQkd(eve)}>Run BB84</button>
+          <RunFailed message={failures.qkd} />
           {qkd && (
             <table style={{ marginTop: 12 }}>
               <tbody>
@@ -158,10 +208,11 @@ export default function Validations() {
             <input type="checkbox" checked={mcpQkd} onChange={(e) => setMcpQkd(e.target.checked)} /> mix fixed QKD-domain constant
           </label>
           <button className="btn" disabled={busy === "mcp"}
-            onClick={async () => { setBusy("mcp"); setMcp(await api.demoMcp(mcpQkd)); setBusy(""); }}>
+            onClick={() => run("mcp", async () => setMcp(await api.demoMcp(mcpQkd)))}>
             Run secure agent call
           </button>
         </div>
+        <RunFailed message={failures.mcp} />
         {mcp && (
           <table style={{ marginTop: 12 }}>
             <tbody>

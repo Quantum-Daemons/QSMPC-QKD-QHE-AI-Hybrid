@@ -114,7 +114,7 @@ the rendered page:
 
 Each replaces one one-sided Hoeffding use, at the same eps, so the security budgets (Lim's 21 terms,
 Rusca's (A24)) are unchanged. Zhang, Zhao, Razavi and Ma, Phys. Rev. A 95, 012333 (2017), whose
-Chernoff bounds Khmelev et al. 2023 used, invert the multiplicative bound with the observed value in
+Chernoff bounds Khmelev et al. 2024 used, invert the multiplicative bound with the observed value in
 place of the expectation, which Yin et al. call not rigorous; on these passes the two differ by under
 0.3 percent.
 
@@ -138,13 +138,38 @@ its (A13)-(A15) derive it; this file had tau0 outside the bracket, scaling delta
 fifth. That made the vacuum's upper bound too small and the single-photon bound too large: the unsafe
 direction, unlike the two Round 79 found. Corrected, the shipped fibre's threshold under Hoeffding is
 5.35e6 pulses, not 4.78e6; under the default statistics it is 3.60e6.
+
+THE KEY BASIS (Round 84, the user's choice). Lim et al. and Rusca et al. key ONE basis and spend the
+other on the phase-error estimate, and until this round that was the only key this module computed.
+The flown passes it is compared with did not: Liao et al. 2017 distilled their 300,939 bits from
+1,671,072 sifted bits, every matching-basis signal detection, and Khmelev et al. (Opt. Express 32,
+11964 (2024); quoted from arXiv:2310.17476v1) apply their Eq. (7) "to the divided data among two
+bases X and Z", since "both bases are used for key generation". So `key_basis="both"` keys each
+basis with its phase error estimated from the other basis's counts - the same bound with Z and X
+exchanged - and sums the two, each at half of eps_sec and eps_cor so that the pair's failure
+probabilities sum to the run's (a union bound, as each bound already shares its budget among its
+terms). At p_Z = 0.5 the two bases' counts are equal, so the key doubles, less the price of halving
+eps. "one" stays every caller's default.
+
+On Liao's pass (the model's counts at 0.25 s steps) under Chernoff-type statistics, the satellite's
+default: one basis 226,072 bits, both 450,923, where the asymptotic bound, which keys every sifted
+signal detection in both bases, gives 462,290 (the Network tab's asymptotic row). So 95 percent of
+the drop from the asymptotic figure to the one-basis key is the basis convention, and 5 percent
+everything else between the two bounds - the statistics and the other finite-size terms, net of the
+decoy and vacuum detections Lim et al.'s key also draws on and the asymptotic row leaves out; under
+Hoeffding (164,183 and 325,556) it is 54 and 46. Counted as Liao counted, the model's key is 1.50
+times the published one (1.08 under Hoeffding), on detections within 1 percent of Liao's. On Khmelev
+et al.'s session (profile `micius_2022_zvenigorod`, 600 km at the top, the window at 1,100 km):
+435,095 and 868,462 bits, against their final 310,400 (arXiv:2310.17476v1), which subtracts a
+detector-efficiency mismatch this model does not have - 629,000 before it - at an f_EC of 1.44 where
+this model uses 1.16 (at 1.44 the model's two figures are 399,175 and 796,621).
 """
 
 from __future__ import annotations
 
 import math
 from collections.abc import Iterable
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 
 from .bb84 import e_det_for_bound
 from .channel import ChannelParams, dead_time_factor
@@ -152,6 +177,8 @@ from .channel import ChannelParams, dead_time_factor
 __all__ = [
     "DEVIATIONS",
     "DEVIATION_LABELS",
+    "KEY_BASES",
+    "KEY_BASIS_LABELS",
     "DecoyCounts",
     "FiniteKeyResult",
     "FiniteKeyParams",
@@ -162,6 +189,7 @@ __all__ = [
     "fibre_block_pulses",
     "finite_key_length",
     "finite_key_over",
+    "key_length",
     "minimum_pulses_for_positive_key",
     "one_decoy_key_length",
     "optimise_parameters",
@@ -212,10 +240,14 @@ class FiniteKeyParams:
     f_ec: float = 1.16             # error-correction leakage factor
     # The statistics (Round 82): "chernoff" or "hoeffding", the paper's own. See the module docstring.
     deviation: str = field(default_factory=lambda: _qkd_cfg().finite_key_deviation)
+    # The key basis (Round 84): "one", the paper's protocol, or "both". See THE KEY BASIS.
+    key_basis: str = "one"
 
     def __post_init__(self) -> None:
         if self.deviation not in DEVIATIONS:
             raise ValueError(f"deviation {self.deviation!r}: one of {DEVIATIONS}")
+        if self.key_basis not in KEY_BASES:
+            raise ValueError(f"key_basis {self.key_basis!r}: one of {KEY_BASES}")
 
     @property
     def intensities(self) -> tuple[tuple[float, float], ...]:
@@ -236,6 +268,9 @@ class FiniteKeyResult:
     phi_z: float                   # phase error rate, upper bound
     lambda_ec: float               # bits disclosed in error correction
     qber: float
+    #: Both bases (Round 84): the Z and X keys, each at half the budget; `lambda_ec` is then both
+    #: bases' error correction, and the other fields the Z basis's. Empty for one basis.
+    basis_keys: tuple[float, ...] = ()
 
     @property
     def positive(self) -> bool:
@@ -254,6 +289,13 @@ DEVIATION_LABELS = {
     "tighter": "the tighter of Chernoff and Hoeffding per count",
     "chernoff": "Chernoff-type bounds, Yin et al. 2020",
     "hoeffding": "Hoeffding, as published",
+}
+#: Which bases a key is distilled from (Round 84, the user's choice; THE KEY BASIS in the module
+#: docstring). "one" is the papers' protocol and every caller's default.
+KEY_BASES = ("one", "both")
+KEY_BASIS_LABELS = {
+    "one": "the Z basis only, X for the phase error",
+    "both": "both bases, each one's phase error from the other's counts",
 }
 
 
@@ -397,6 +439,8 @@ def one_decoy_key_length(z: DecoyCounts, x: DecoyCounts,
     Non-positive means no key; -inf means no single-photon bound exists at all.
     """
     p = params or FiniteKeyParams()
+    if p.key_basis == "both":
+        return key_length(z, x, p)
     # The security budget is split across the statistical terms. eps_sec/20 for each of the
     # Hoeffding corrections is the conservative reading of Eq. (A24), which sums 6*eps1 + 4*eps2
     # among other terms; taking each individual epsilon at eps_sec/20 keeps the sum below eps_sec.
@@ -558,7 +602,9 @@ def optimise_parameters(channel: ChannelParams | None = None,
 # two). The 1-decoy bound on the same pulses, the vacuum's quarter
 # unused, finds 140,400 under Hoeffding - 152,598 before Round 82 corrected its (A16), and NONE
 # (-7,172) before Round 79's two corrections, which is what first suggested the vacuum was needed. It
-# was not needed for a key; it adds 17 percent to it under Hoeffding and 22 under Chernoff.
+# was not needed for a key; it adds 17 percent to it under Hoeffding and 22 under Chernoff. All of these
+# key the Z basis only; keyed on both bases, as Liao et al. keyed theirs, the Lim et al. figures are
+# 325,556 and 450,923 (THE KEY BASIS, in the module docstring).
 #
 # EQUATIONS, by number in arXiv:1311.7129v2, written with Z as the key basis and X as the test basis
 # (Rusca et al.'s naming; Lim et al. key on X), and eps = eps_sec / 21:
@@ -601,10 +647,13 @@ class VacuumDecoyParams:
     eps_cor: float = 1e-15
     f_ec: float = 1.16
     deviation: str = field(default_factory=lambda: _qkd_cfg().finite_key_deviation)
+    key_basis: str = "one"         # Round 84: "one" or "both"; see THE KEY BASIS
 
     def __post_init__(self) -> None:
         if self.deviation not in DEVIATIONS:
             raise ValueError(f"deviation {self.deviation!r}: one of {DEVIATIONS}")
+        if self.key_basis not in KEY_BASES:
+            raise ValueError(f"key_basis {self.key_basis!r}: one of {KEY_BASES}")
         mu1, mu2, mu3 = self.mu_signal, self.mu_decoy, self.mu_vacuum
         if not (mu1 > mu2 + mu3 and mu2 > mu3 >= 0.0):
             raise ValueError(f"Lim et al. need mu1 > mu2 + mu3 and mu2 > mu3 >= 0, not {mu1}, {mu2}, {mu3}")
@@ -658,6 +707,8 @@ def vacuum_decoy_key_length(z: DecoyCounts, x: DecoyCounts,
     `finite_key_length`, so a caller cannot read "no bound" as "a small key".
     """
     p = params or VacuumDecoyParams()
+    if p.key_basis == "both":
+        return key_length(z, x, p)
     eps = p.eps_sec / 21.0
     s_z0, s_z1 = _events(z, p, eps)
     _, s_x1 = _events(x, p, eps)
@@ -678,19 +729,42 @@ def vacuum_decoy_key_length(z: DecoyCounts, x: DecoyCounts,
     return FiniteKeyResult(key, n_z, n_x, n_z + n_x, s_z0, s_z1, phi, lambda_ec, qber)
 
 
+def key_length(z: DecoyCounts, x: DecoyCounts,
+               params: FiniteKeyParams | VacuumDecoyParams) -> FiniteKeyResult:
+    """The source's bound on its key basis: the twin of `finiteKey.ts::keyLength`.
+
+    One basis: Lim et al.'s bound for `VacuumDecoyParams`, Rusca et al.'s for `FiniteKeyParams`, the Z
+    basis keyed and X spent on the phase error. Both bases (THE KEY BASIS): the same bound on Z with X
+    as its test and on X with Z as its test, each at half of eps_sec and eps_cor, so the pair's failure
+    probabilities sum to the run's (a union bound), summed; a basis with no key adds none, and the
+    result is non-positive only when neither basis has a key, -inf only when neither has a bound.
+    """
+    bound = vacuum_decoy_key_length if isinstance(params, VacuumDecoyParams) else one_decoy_key_length
+    if params.key_basis == "one":
+        return bound(z, x, params)
+    half = replace(params, eps_sec=params.eps_sec / 2.0, eps_cor=params.eps_cor / 2.0, key_basis="one")
+    rz, rx = bound(z, x, half), bound(x, z, half)
+    kz, kx = rz.key_bits, rx.key_bits
+    key = max(0.0, kz) + max(0.0, kx) if (kz > 0.0 or kx > 0.0) else max(kz, kx)
+    return replace(rz, key_bits=key, lambda_ec=rz.lambda_ec + rx.lambda_ec, basis_keys=(kz, kx))
+
+
 def params_for_source(source, *, eps_sec: float = 1e-9, f_ec: float | None = None,
-                      deviation: str | None = None) -> FiniteKeyParams | VacuumDecoyParams:
+                      deviation: str | None = None,
+                      key_basis: str = "one") -> FiniteKeyParams | VacuumDecoyParams:
     """The finite-key bound a BB84 source supports, with its own intensities and shares.
 
     `source` is a `bb84.QKDParams`. Lim et al. 2014 when it sends the vacuum, Rusca et al. 2018's
     1-decoy bound when it does not; the basis bias is the source's, and f_EC defaults to the config's
     error-correction efficiency, the one the asymptotic rate uses. Round 80: one place decides it for
-    every caller, fibre and satellite. The statistics are the config's unless `deviation` names one.
+    every caller, fibre and satellite. The statistics are the config's unless `deviation` names one,
+    and the key basis one unless `key_basis` says both (Round 84).
     """
     f = _qkd_cfg().error_correction_eff if f_ec is None else float(f_ec)
     common = dict(mu_signal=float(source.mu_signal), mu_decoy=float(source.mu_decoy),
                   p_signal=float(source.p_signal), p_z=float(source.basis_prob), eps_sec=float(eps_sec),
-                  f_ec=f, deviation=str(deviation or _qkd_cfg().finite_key_deviation))
+                  f_ec=f, deviation=str(deviation or _qkd_cfg().finite_key_deviation),
+                  key_basis=str(key_basis))
     if source.vacuum_decoy:
         return VacuumDecoyParams(p_decoy=float(source.p_decoy), **common)
     return FiniteKeyParams(**common)

@@ -1,6 +1,6 @@
-"""Quantum Secure Direct Communication (QSDC) — block-transmission simulation.
+"""Quantum Secure Direct Communication (QSDC) - block-transmission simulation.
 
-QSDC (the report §6: QSDC / QT-QSS) transmits a *message* over the quantum channel
+QSDC (the report, section 6: QSDC / QT-QSS) transmits a *message* over the quantum channel
 directly, without first distributing a key. Security comes from a two-step / DL04-style
 block transmission with an interspersed **eavesdrop check**: a random subset of carriers
 is sampled and their error rate estimated *before* the sensitive block is released. If the
@@ -19,7 +19,6 @@ correction (LDPC) and privacy amplification.
 from __future__ import annotations
 
 import math
-
 from dataclasses import dataclass, replace
 
 import numpy as np
@@ -107,8 +106,11 @@ def quantum_secure_direct_comm(
 ) -> QSDCResult:
     """Send ``message`` directly over the quantum channel with an inline eavesdrop check.
 
-    The abort criterion is **secrecy capacity**, not a fixed QBER. Qi et al., Light Sci. Appl. 8,
-    22 (2019), protocol step 2: if ``Cs`` is zero the channel is insecure and the transfer stops.
+    The abort criterion is **secrecy capacity**, not a fixed QBER. Qi et al.'s preprint,
+    arXiv:1810.11806v1, protocol step (2): "If the secrecy capacity Cs is zero, they conclude the
+    channel is insecure and terminate the process." The published version, Light Sci. Appl. 8, 22
+    (2019), stops when the error rate exceeds the LDPC code's correcting capability, and states that a
+    secure coding scheme exists "if the secrecy capacity is non-zero"; this code aborts when it is not.
 
         Cs = 1 - h(e) - g h(e_x + e_z),    g = Q_Eve / Q_Bob = 10^(loss_dB / 10)   (Qi Eq. 8)
 

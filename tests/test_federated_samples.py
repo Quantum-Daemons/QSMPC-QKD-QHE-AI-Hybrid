@@ -120,11 +120,14 @@ def test_the_model_matches_the_feature_space_it_ships_with(usecase: str) -> None
 
 @pytest.mark.parametrize("usecase", FEDERATED)
 def test_the_payload_reports_its_own_eda(usecase: str) -> None:
-    """A degenerate column is kept and DECLARED, not silently carried.
+    """A degenerate column is DECLARED wherever it is carried, not silently carried.
 
-    ``velocity_24h`` is non-zero in 2 of the 4,000 bundled PaySim rows. Dropping it would change the
-    eight-column order the backend, the registry and the published QCNN weights all share; carrying
-    it unannounced is how the next person spends an afternoon on a feature that never moves.
+    ``velocity_24h`` is non-zero in 2 of the 4,000 bundled PaySim rows. Since Round 84 the finance
+    model no longer reads it (nor ``amount_zscore``, ``device_risk`` or ``geo_mismatch``), so
+    finance's ``samples`` carry four columns and nothing degenerate; the eight the QCNN artifact is
+    still fed, ``velocity_24h`` among them, are declared in ``eda_by_space.raw`` and checked by
+    tests/test_r84_finance_paysim_model.py. Carrying a column unannounced is how the next person
+    spends an afternoon on a feature that never moves.
     """
     eda = _payload(usecase).get("eda")
     assert eda and eda.get("columns"), f"{DEMO_SAMPLE_FILES[usecase]} carries no eda block"

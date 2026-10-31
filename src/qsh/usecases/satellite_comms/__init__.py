@@ -35,11 +35,14 @@ WHY THIS USE CASE EXISTS, since the line above describes a mechanism and not a p
 
 A ground station and a LEO satellite establish a PQC-first hybrid session, distribute a
 key over a **free-space BB84** downlink (high loss, atmospheric turbulence, background
-counts), then transmit mission telemetry by **Quantum Secure Direct Communication** (QSDC,
-report §6) — a direct message transfer with an inline eavesdrop check, which suits a
+counts), then offer mission telemetry to **Quantum Secure Direct Communication** (QSDC,
+report section 6) - a direct message transfer with an inline eavesdrop check, which suits a
 satellite link where re-keying round-trips are costly (though DL04-family QSDC is itself two-way
-and only the downlink leg is modelled; see :mod:`qsh.qkd.qsdc`). The delivered telemetry is also
-sealed in the AES-256-GCM session for an auditable, signed record.
+and only the downlink leg is modelled; see :mod:`qsh.qkd.qsdc`). Telemetry QSDC delivers is also
+sealed in the AES-256-GCM session for an auditable, signed record. At the 74 bytes the demo sends
+by default, the check carriers certify no error rate a link could close at, so QSDC withholds them
+at every link setting, as link-limited or as statistics-limited, and they travel under the PQC
+session key. A CKKS anomaly check scores a window of the bundled telemetry either way.
 
 Maps to: WS1 (AI-QKD, here over a free-space channel) + the report's QSDC / QT-QSS section.
 Free-space channel and the QSDC threshold are config-driven (WebUI-adjustable via ``config``).
@@ -67,10 +70,12 @@ from ...orchestration.stages import (
 # Free-space LEO downlink defaults (overridable per-run from the WebUI via ctx.config).
 #
 # `sat_loss_db_per_km` is GONE. It was 0.035, a linear rate chosen to give ~28 dB at 800 km, and the
-# browser rejected that model rounds ago: it reads plausibly at exactly 800 km beside the ~27 dB
-# Micius reports and then diverges badly with range. The channel now carries a FreeSpaceParams and
-# `ChannelParams.loss_db()` applies the diffraction law, so both implementations answer 24.48 dB for
-# the same nominal link instead of 24.48 and 28.0.
+# browser rejected that model rounds ago: a linear rate reads plausibly at one range and diverges with
+# range, where diffraction grows as the range squared (Liao et al. 2017: "The diffraction loss is
+# estimated to be 22 dB at 1200 km"). The channel carries a FreeSpaceParams and
+# `ChannelParams.loss_db()` applies the diffraction law, so both implementations answer one loss for
+# one link: 32.21 dB at the default 800 km, diffraction 18.06, air 3.19, pointing 3 and the station's
+# optics 7.96.
 _SAT_DEFAULTS = {
     # None -> QKDConfig.free_space_*: these three were literal copies of the config (0.4, 1e-5,
     # 0.025) until Round 75, so retuning the config moved the browser and left this stage behind.
@@ -91,9 +96,10 @@ _SAT_DEFAULTS = {
     # measures the QBER and decides the abort.
     "sat_pulses": 20_000_000,         # sampled channel uses at the range (the QBER and the abort)
     "sat_opt_pulses": 200_000,        # pulses per OptiQKD evaluation (fewer than a full run, for speed)
-    # The two fixed terms of the budget, exposed in the WebUI so the inline eavesdrop check can be
-    # demonstrated: they floor total loss at 8 dB by default, which makes every abort attributable to
-    # the link rather than to Eve at every setting the page used to offer.
+    # The two terms of the budget that do not shrink with range, exposed in the WebUI so the inline
+    # eavesdrop check can be demonstrated: at the defaults they floor the loss at 4.9 dB even at the
+    # zenith (the air's 1.9 dB there, the profile's 5.5 dB at 1,200 km scaled by air mass, and 3 dB of
+    # pointing), which with the detector keeps QSDC from closing at any range (g = 6.14 at zero range).
     "sat_atmospheric_db": None,       # None -> the profile's atmospheric_db (at its reference range)
     "sat_pointing_db": None,          # None -> the profile's pointing_db
     # Round 77. The link a run models, by profile id (src/qsh/config/profiles/downlink/); its values
@@ -363,7 +369,7 @@ class SatelliteQKDStage(Stage):
                         f"(QBER={res.qber:.4f}); no PQC channel to fold it into", self.name)
         else:
             bus.metric("qkd_mixed", 0, self.name)
-            bus.log(f"insufficient secure key ({key_bits} bits {block_note}) — "
+            bus.log(f"insufficient secure key ({key_bits} bits {block_note}) - "
                     f"link too lossy or eavesdropper present", self.name)
 
     def _block_key(self, ctx: Context, bus: EventBus, params, source, res) -> tuple[int, str]:
@@ -422,7 +428,7 @@ class QSDCStage(Stage):
     name = "qsdc_telemetry"
 
     def run(self, ctx: Context, bus: EventBus, reg: CryptoRegistry) -> None:
-        from ...qkd.qsdc import quantum_secure_direct_comm
+        from ...qkd.qsdc import EPS_PE, quantum_secure_direct_comm
 
         # Under the PQC-only profile there is no quantum channel to carry the message (Round 80): the
         # free-space stage stops before it stores one, and the browser's twin skips here with the
@@ -450,20 +456,33 @@ class QSDCStage(Stage):
         bus.metric("qsdc_secrecy_capacity", res.secrecy_capacity, self.name)
         bus.metric("qsdc_eve_gain_g", res.eve_gain_g, self.name)
         bus.metric("qsdc_link_budget_limited", int(res.link_budget_limited), self.name)
+        # THE THIRD ATTRIBUTION, emitted (Round 84). `quantum_secure_direct_comm` has told a block too
+        # short to certify an error rate apart from the link and from Eve since Round 55; this stage
+        # never emitted it, and logged that abort as an attributable loss.
+        bus.metric("qsdc_statistics_limited", int(res.statistics_limited), self.name)
         bus.metric("qsdc_eavesdrop_detected", int(res.eavesdrop_detected), self.name)
         bus.metric("qsdc_message_bits", res.message_bits, self.name)
 
         if res.delivered is None:
             ctx.artifacts["telemetry_delivered"] = False
             if res.link_budget_limited:
-                bus.log(f"QSDC NOT AVAILABLE on this link — secrecy capacity is not positive at "
+                bus.log(f"QSDC NOT AVAILABLE on this link - secrecy capacity is not positive at "
                         f"{res.loss_db:.1f} dB (g={res.eve_gain_g:.1f}) even with no eavesdropper. "
                         f"The limit is the link budget, not an attack; error {res.error_rate:.4f}. "
                         f"Telemetry falls back to the PQC session key.", self.name)
+            elif res.statistics_limited:
+                bus.log(f"QSDC WITHHELD, statistics-limited: {res.check_bits} check carriers beside "
+                        f"{res.message_bits} message bits certify an error rate of at most "
+                        f"{res.error_rate_upper:.4f} (Serfling, eps {EPS_PE:g}), and the secrecy "
+                        f"capacity at that bound is {res.secrecy_capacity:.4f} (g={res.eve_gain_g:.1f}, "
+                        f"{res.loss_db:.1f} dB). Without Eve this link closes asymptotically, so the "
+                        f"abort says nothing about the channel or an eavesdropper: the block is too "
+                        f"short. Telemetry falls back to the PQC session key.", self.name)
             else:
                 bus.log(f"QSDC ABORTED: secrecy capacity exhausted at error {res.error_rate:.4f} "
-                        f"(g={res.eve_gain_g:.1f}, {res.loss_db:.1f} dB) — this link closes without "
-                        f"Eve, so the loss is attributable — telemetry withheld", self.name)
+                        f"(g={res.eve_gain_g:.1f}, {res.loss_db:.1f} dB) - this link closes without "
+                        f"Eve and the block certifies its error rate, so the loss is attributable - "
+                        f"telemetry withheld", self.name)
             return
 
         # also seal the delivered telemetry in the AEAD session for an audit record
@@ -479,13 +498,16 @@ class QSDCStage(Stage):
 
 
 class TelemetryAnomalyStage(Stage):
-    """Private satellite-telemetry anomaly detection on the *encrypted* downlinked telemetry (CKKS).
+    """Private satellite-telemetry anomaly detection under CKKS, on a window of the bundled telemetry.
 
-    After QSDC delivers the mission telemetry, an FHE-friendly linear anomaly detector - trained in
-    the pipeline on the bundled NASA SMAP/MSL windows (``_anomaly_model``), not one of the published
-    satellite students - scores the encrypted window and returns a signed nominal/anomaly verdict,
-    so a relay/ground partner can flag faults without seeing the raw telemetry. Full deployment
-    only: the public satellite page has no FHE or MPC stage, and scores its telemetry in plaintext.
+    An FHE-friendly linear anomaly detector - trained in the pipeline on the bundled NASA SMAP/MSL
+    windows (``_anomaly_model``), not one of the published satellite students - scores one of those
+    windows encrypted and returns a signed nominal/anomaly verdict, so a relay/ground partner can flag
+    faults without seeing the raw telemetry. It scores the bundled window, not the payload QSDC
+    carries, so it runs whether or not QSDC delivered, as the browser's plaintext twin does; gated on
+    a delivery, it could not run, since QSDC withholds the demo's telemetry at every setting. Full
+    deployment only: the public satellite page has no FHE or MPC stage, and scores its telemetry in
+    plaintext.
     """
 
     name = "telemetry_anomaly"
@@ -498,8 +520,8 @@ class TelemetryAnomalyStage(Stage):
 
         model = ctx.data.get("anomaly_model")
         x = ctx.data.get("features")
-        if model is None or x is None or not ctx.artifacts.get("telemetry_delivered"):
-            bus.log("no delivered telemetry to score (QSDC delivered none) — anomaly check skipped", self.name)
+        if model is None or x is None:
+            bus.log("no anomaly model or telemetry window to score - anomaly check skipped", self.name)
             return
         backend = reg.get("fhe", ctx.config.get("fhe"))()
         out = encrypted_linear_inference(model, np.asarray(x), backend)
@@ -513,8 +535,8 @@ class TelemetryAnomalyStage(Stage):
             "top_features": [{"feature": t["feature"], "contribution": round(float(t["contribution"]), 6)}
                              for t in exp.top],
         }
-        bus.log(f"private telemetry anomaly detection (CKKS): "
-                f"{'ANOMALY' if out['prediction'] else 'nominal'} "
+        bus.log(f"private telemetry anomaly detection (CKKS) on a window of the bundled SMAP/MSL "
+                f"telemetry, not the QSDC payload: {'ANOMALY' if out['prediction'] else 'nominal'} "
                 f"(err {out['max_abs_error']:.2e})", self.name)
 
 

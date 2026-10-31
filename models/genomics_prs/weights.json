@@ -646,5 +646,5 @@
     "no_restriction_found_but_terms_absent": false,
     "checked": "read from the bundled scoring file at run time"
   },
-  "note": "Effect weights only. No per-sample genotype is included, and none may be published: IGSR disclaims blanket openness and rights vary by data component."
+  "note": "Effect weights only: this file carries no per-sample genotype. Per-sample effect-allele dosages are redistributed elsewhere, in the slices DATA_LICENSES.md section 4 lists (30 individuals in the browser payload), under the IGSR disclaimer: IGSR grants no blanket licence and rights vary by data component."
 }

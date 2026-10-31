@@ -56,7 +56,9 @@ def test_genomics_real_prs_under_ckks():
     else:
         assert keys[0].count(":") == 2 and not keys[0].startswith("rs")
     scores = dosages @ weights
-    thr = float(np.quantile(scores, 0.75))
+    # The use case's own cut (Round 84: the 90th percentile, stated; it was a 75th percentile this
+    # test copied, labelled "the clinical risk cut" in the use case, which no source supports).
+    thr = genomics.high_risk_cut(scores)
     model = LinearModel(np.vstack([np.zeros_like(weights), weights]), np.array([0.0, -thr]))
     subj = dosages[int(np.argmax(scores))]
     out = encrypted_linear_inference(model, subj, get_backend("tenseal"))

@@ -81,8 +81,11 @@ def qkd_demo(distance_km: float = 50.0, eve: float = 0.0) -> dict:
         "skr_per_pulse": round(r.secret_key_rate, 9),
         "secure_key_bits": r.secure_key_bits,
         # The block that count is the composable finite key of (Round 80), so the page can say so;
-        # six significant figures, as the browser's twin emits it.
-        "block_pulses": float(f"{r.block_pulses:.6g}"),
+        # six significant figures, as the browser's twin emits it. 0 when the run computed no
+        # finite key - an abort above `pp_threshold`, or nothing sifted - where `run_bb84` returns
+        # `block_pulses=None`, as `api.ts` maps the browser's absent block (`?? 0`). Formatting the
+        # None raised TypeError, an HTTP 500 for every intercept fraction from 0.45 up at 50 km.
+        "block_pulses": float(f"{r.block_pulses:.6g}") if r.block_pulses is not None else 0.0,
         # Config, not a literal. This was 0.08 while the browser used
         # security_scoring.qber_secure_threshold (0.11), so full mode and demo mode returned
         # OPPOSITE eavesdropper verdicts for any QBER in the 0.08-0.11 band.

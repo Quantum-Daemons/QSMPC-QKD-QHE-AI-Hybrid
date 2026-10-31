@@ -400,11 +400,16 @@ function UseCaseView({ usecase }: { usecase: string }) {
         // THE BLOCK'S PULSES on the satellite (Round 79): the key budget above is the finite key of
         // a block of link time, a pass by default, so the channel time the panel divides consumed
         // bits by must be that block's. The sampled run's own 2e7 pulses would put a pass's budget
-        // over a fifth of a second and drive eskr to zero.
+        // over a fifth of a second and inflate expected_consumption two-thousandfold.
         pulses={Number(metrics.qkd_block_pulses ?? metrics.qkd_pulses ?? 0)}
         // And the run's own figure for that time, so the panel prints the metric rather than a
         // second computation of it under the same name (Round 84).
         channelSeconds={metrics.channel_time_s != null ? Number(metrics.channel_time_s) : null}
+        // The run's own loss for `phys_channel_att` (Round 84): the downlink's free-space budget, where
+        // the panel applied the fibre's 0.2 dB/km (160 dB at 800 km).
+        channelLossDb={metrics.channel_loss_db != null ? Number(metrics.channel_loss_db) : null}
+        // And the block's kind, so skr says whether the run's range is a pass's closest approach.
+        blockKind={metrics.qkd_block as string | undefined}
         decoyStates={metrics.qkd_decoy_states as string | undefined}
         qkdEnabled={run.qkd !== "pqc-only"} />
 

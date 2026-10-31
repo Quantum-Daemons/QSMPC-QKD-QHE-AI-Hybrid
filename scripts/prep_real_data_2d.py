@@ -228,6 +228,39 @@ def medical() -> dict:
     }
 
 
+def _finance_window_counts() -> tuple[int, int]:
+    """(laundering rows, all rows) of the finance held-out test window, as the trainer counted them.
+
+    From `models/metrics.json` (`finance_aml.gbm`, `calibration.corp_raw`), cross-checked against the
+    record's own `n_test` and `auprc_baseline` so a stale copy of either is refused, not quoted.
+    """
+    rec = json.loads((REPO / "models" / "metrics.json").read_text())["finance_aml.gbm"]
+    corp = rec["calibration"]["corp_raw"]
+    pos, n = int(corp["positives"]), int(corp["n"])
+    assert n == int(rec["n_test"]), f"calibration n {n} against n_test {rec['n_test']}"
+    assert abs(pos / n - float(rec["auprc_baseline"])) < 1e-12, "positives disagree with auprc_baseline"
+    return pos, n
+
+
+def _separability_at_rate(points, w_pos: float, w_neg: float) -> float:
+    """`_separability`'s out-of-fold scores, with average precision weighted to another prevalence.
+
+    The forest, folds and seed are `_separability`'s, so the scores are the same ones; only the
+    precision changes, by counting each positive row `w_pos` times and each negative row `w_neg`
+    times. For a class-stratified random draw that is the inverse of each class's sampling fraction,
+    which turns the sample's precision-recall curve into an estimate of the source population's.
+    """
+    from sklearn.ensemble import RandomForestClassifier
+    from sklearn.metrics import average_precision_score
+    from sklearn.model_selection import cross_val_predict
+
+    pts = np.asarray(points, dtype=float)
+    x, y = pts[:, :2], pts[:, 2].astype(int)
+    rf = RandomForestClassifier(n_estimators=200, random_state=0, n_jobs=-1)
+    scores = cross_val_predict(rf, x, y, cv=5, method="predict_proba")[:, 1]
+    return float(average_precision_score(y, scores, sample_weight=np.where(y == 1, w_pos, w_neg)))
+
+
 def finance() -> dict:
     """AMLworld in the feature space the model actually consumes, not the raw transaction fields.
 
@@ -265,6 +298,12 @@ def finance() -> dict:
     LICENCE NOTE: AMLworld is CDLA-Sharing-1.0, which is SHARE-ALIKE. This slice is a derived
     database and carries the same terms - unlike the CC-BY-4.0 satellite and medical slices, it is
     not simply attribution-and-go.
+
+    THE ROWS ARE ENRICHED, AND THE PAYLOAD SAYS BY HOW MUCH. The sample holds laundering at 2.0
+    percent while its test window holds it at 0.15 percent, and AUC-PR's baseline is the prevalence,
+    so both the figure and the lift the caption prints are properties of the enriched rows. The
+    payload states the two rates and also carries the same out-of-fold scores re-weighted to the
+    window's rate (`_separability_at_rate`).
     """
     src = REPO / "models" / "finance_aml_gbm" / "eval_sample.json"
     if not src.exists():
@@ -282,6 +321,14 @@ def finance() -> dict:
     fi, bi = names.index("format_risk"), names.index("src_bank_diversity")
     rival = _separability([[_round(r[fi]), _round(r[bi]), int(t)]
                            for r, t in zip(rows, labels, strict=True)])
+    # The window the rows were drawn from, at its own prevalence (the trainer's count), and the
+    # inverse-probability weights a class-stratified random draw from it implies.
+    win_pos, win_n = _finance_window_counts()
+    s_pos, s_n = int(sum(labels)), len(labels)
+    w_pos, w_neg = win_pos / s_pos, (win_n - win_pos) / (s_n - s_pos)
+    win_rate = win_pos / win_n
+    sep_win = _separability_at_rate(pts, w_pos, w_neg)
+    factor = (s_pos / s_n) / win_rate
     return {
         "usecase": "finance_aml",
         "corpus_is_synthetic": True,
@@ -292,10 +339,22 @@ def finance() -> dict:
                       "consumes. Raw transaction fields are "
                       "deliberately not used: amount against time shows no separation and would "
                       "imply the task is impossible, when the signal is in the graph structure.",
-        "split_note": f"None of these {len(pts)} rows was used to fit, tune or calibrate "
+        "split_note": f"None of these {len(pts):,} rows was used to fit, tune or calibrate "
                       "finance_aml.gbm or finance_aml.student: they come from the last 30 percent "
-                      "of the transactions in time order, with laundering enriched to 2 percent. "
-                      "The private-inference card encrypts the student on exactly these rows.",
+                      "of the transactions in time order. Laundering is enriched about "
+                      f"{factor:.0f}x, to {100 * s_pos / s_n:.1f} percent ({s_pos:,} of {s_n:,}), "
+                      f"against {100 * win_rate:.2f} percent in that window ({win_pos:,} of "
+                      f"{win_n:,}), so the AUC-PR, base rate and lift below are measured on the "
+                      "enriched rows. The private-inference card encrypts the student on exactly "
+                      "these rows.",
+        # The two prevalences behind that sentence, as numbers, with where the window's comes from.
+        "enrichment": {
+            "sample_positives": s_pos, "sample_rows": s_n, "sample_rate": _round(s_pos / s_n),
+            "window_positives": win_pos, "window_rows": win_n, "window_rate": _round(win_rate),
+            "factor": round(factor, 2),
+            "source": ("models/metrics.json, finance_aml.gbm calibration.corp_raw: the trainer's "
+                       "count over all rows of the held-out test window"),
+        },
         "licence": "CDLA-Sharing-1.0",
         "licence_url": CDLA_SHARING_1,
         "attribution": "Altman, Blanusa, von Niederhausern, Egressy, Anghel & Atasu, 'Realistic "
@@ -315,8 +374,19 @@ def finance() -> dict:
         "separability_auc_pr": sep,
         "separability_method": SEPARABILITY_ESTIMATOR,
         "base_rate": base,
-        "note": f"AUC-PR {sep} ({SEPARABILITY_ESTIMATOR}) against a {base} base rate is a "
-                f"{sep / max(base, 1e-12):.1f}x lift and still a LOW number. "
+        # The same out-of-fold scores at the window's own prevalence. A second figure, not a
+        # correction of the first: lift is not invariant to prevalence, so the two differ.
+        "separability_auc_pr_at_window_rate": _round(sep_win),
+        "separability_at_window_rate_method": (
+            "the same out-of-fold scores, with each laundering row weighted "
+            f"{win_pos:,}/{s_pos:,} and each legitimate row {win_n - win_pos:,}/{s_n - s_pos:,} "
+            "(the inverse of each class's sampling fraction), so the precision is the window's"),
+        "note": f"AUC-PR {sep} ({SEPARABILITY_ESTIMATOR}) against a {base} base rate is a lift "
+                f"of {sep / max(base, 1e-12):.1f}x on these enriched rows, and still a LOW number. "
+                f"Re-weighted to the window's own {_round(win_rate)} rate, the same scores give "
+                f"AUC-PR {_round(sep_win)}, a lift of {sep_win / win_rate:.1f}x; AUC-PR and its "
+                "lift both move with prevalence, so the two pairs are different figures, not one "
+                "corrected. "
                 "That is the honest picture - two features do not solve AML, and a projection that "
                 "looked easy would be the misleading one. NOT the highest-scoring pair available "
                 f"(format_risk x src_bank_diversity reaches {rival}) because that one has six "
@@ -326,23 +396,51 @@ def finance() -> dict:
     }
 
 
+#: How far gnomAD's non-Finnish European frequency of a variant's EFFECT allele may sit from the
+#: frequency the score itself publishes for that allele (`allelefrequency_effect` in the scoring file,
+#: from its European development cohort) before the record is judged not to be the score's allele.
+#: Calibrated, not chosen: two independent European estimates of these same alleles - that column and
+#: 1000 Genomes' 503 EUR individuals - differ by at most 0.047 at every one of the 307 variants gnomAD
+#: resolved (measured 2026-10-31 on the local 2,504-sample matrix). Sixteen gnomAD records sit
+#: outside it, each also more than 0.05 from 1000 Genomes' Europeans: a different site behind a
+#: lifted-over coordinate, or a different allele at a multi-allelic indel. A seventeenth counts no
+#: copy at all of an effect allele the score gives 0.038 (1000 Genomes: 0.036 in Europeans).
+GNOMAD_AF_TOLERANCE = 0.05
+
+
+def _effect_allele_frequencies(path: Path) -> dict[str, float]:
+    """`chr:pos:effect_allele` -> the scoring file's own `allelefrequency_effect`."""
+    rows = [ln.split("\t") for ln in path.read_text().splitlines() if ln and not ln.startswith("#")]
+    col = {name: j for j, name in enumerate(rows[0])}
+    return {f"{r[col['chr_name']]}:{r[col['chr_position']]}:{r[col['effect_allele']]}":
+            float(r[col["allelefrequency_effect"]]) for r in rows[1:]}
+
+
 def genomics() -> dict:
-    """gnomAD allele frequency, AFR against European, for the 313 variants the score is built from.
+    """gnomAD effect-allele frequency, African against non-Finnish European, for the score's variants.
 
     NOT the training corpus, and the panel says so. The page scores real 1000 Genomes genotypes, but
     IGSR grants no blanket redistribution licence - it states that itself - so the training data
     cannot ship. gnomAD v4's primary data is CC0: no attribution obligation and no share-alike. Its
     terms attach one condition, recorded here: users agree not to attempt to reidentify
-    participants (gnomAD Data License and Reidentification Policy, read 2026-10-30).
+    participants; they also ask for attribution and a link back (gnomAD terms, read 2026-10-31).
 
     WHY THIS PROJECTION. The page already shows one globally-set high-risk cut flagging 16.2% of AFR
     against 2.8% of EUR. That chart STATES the disparity. This one EXPLAINS it: each point is one of
-    the score's own variants, positioned by how common it is in African-ancestry against
-    European-ancestry samples. On-diagonal means ancestry-invariant; off-diagonal means the allele
-    frequency itself depends on ancestry. PRS313's own published discrimination follows the same
-    gradient - PGS000004's 28 Catalog AUROC records run 0.5877-0.668 for European samples against 0.55
-    for an African-ancestry one - so weights fitted where frequencies differ are exactly how a
-    distribution shift arises without any single weight being wrong.
+    the score's own variants, positioned by how common its effect allele is in African-ancestry
+    against European-ancestry samples. On-diagonal means ancestry-invariant; off-diagonal means the
+    allele frequency itself depends on ancestry. PRS313's own published discrimination follows the
+    same gradient - PGS000004's 32 Catalog AUROC records (read 2026-10-31) run 0.5877-0.70 for
+    European samples against 0.55 for an African-ancestry one - so weights fitted where frequencies
+    differ are exactly how a distribution shift arises without any single weight being wrong.
+
+    EVERY LOOKUP IS CHECKED (Round 84). gnomAD is queried by GRCh38 coordinate, because PGS000004
+    publishes no rsIDs, and a coordinate can land on another variant. Each record is first oriented to
+    the effect allele (gnomAD counts its ALT, and where the effect allele is REF the frequency is one
+    minus ALT's), then kept only if its European frequency is within `GNOMAD_AF_TOLERANCE` of the
+    score's published one and it counts the effect allele at all. Three points the overlay used to
+    draw read 0.0003, 0.068 and 0 against published frequencies of 0.370, 0.776 and 0.038, and one
+    was plotted at the other allele's frequency.
 
     The class split is effect size, not disease: variants at or above the median |weight| carry more
     of the score, so an off-diagonal point in that class moves the distribution more than an
@@ -352,31 +450,46 @@ def genomics() -> dict:
     # the gnomAD cache is keyed the same way so the two join without a third identifier in between.
     src = REPO / "web" / "public" / "data" / "genomics" / "pgs000004_prs313.json"
     af_path = REPO / "data" / "genomics" / "gnomad_af_prs313.json"
-    if not src.exists() or not af_path.exists():
+    scoring = REPO / "data" / "genomics" / "pgs000004_breast_cancer.tsv"
+    if not src.exists() or not af_path.exists() or not scoring.exists():
         print("  genomics: SKIP, run scripts/fetch_gnomad_af.py --score prs313 and "
               "scripts/data/build_prs_browser_payload.py first")
         return {}
     prs = json.loads(src.read_text())
     af = json.loads(af_path.read_text())
+    published = _effect_allele_frequencies(scoring)
     w = {k: abs(float(x)) for k, x in zip(prs["keys"], prs["weights"], strict=True)}
     med = float(np.median([v for v in w.values()]))
-    pts, diverged_big = [], 0
-    for rs, rec in af.items():
+    pts, diverged_big, resolved, mismatched, flipped = [], 0, 0, 0, 0
+    for key, rec in af.items():
         if not rec or rec.get("afr") is None or rec.get("nfe") is None:
             continue
-        big = 1 if w.get(rs, 0.0) >= med else 0
-        pts.append([_round(rec["afr"]), _round(rec["nfe"]), big])
-        if big and abs(rec["afr"] - rec["nfe"]) >= 0.20:
+        resolved += 1
+        effect_is_alt = bool(rec.get("effect_is_alt", True))
+        afr = rec["afr"] if effect_is_alt else 1.0 - rec["afr"]
+        nfe = rec["nfe"] if effect_is_alt else 1.0 - rec["nfe"]
+        pub = published.get(key)
+        if pub is None or abs(nfe - pub) > GNOMAD_AF_TOLERANCE or (afr == 0 and nfe == 0 and pub > 0):
+            mismatched += 1
+            continue
+        flipped += 0 if effect_is_alt else 1
+        big = 1 if w.get(key, 0.0) >= med else 0
+        pts.append([_round(afr), _round(nfe), big])
+        if big and abs(afr - nfe) >= 0.20:
             diverged_big += 1
     if not pts:
         return {}
     n_big = sum(p[2] for p in pts)
+    n_score = len(prs["keys"])
+    flip_note = (f"; {flipped} where the effect allele is gnomAD's reference allele is plotted as one "
+                 "minus the alternate allele's frequency" if flipped else "")
     return {
         "usecase": "genomics",
         "corpus_is_synthetic": False,
         "is_training_corpus": False,
-        "provenance": "gnomAD v4 allele frequencies for the 313 variants of PGS000004 - the page "
-                      "scores 1000 Genomes genotypes, which carry no blanket redistribution "
+        "provenance": "gnomAD v4 genome allele frequencies of the effect allele, for the variants of "
+                      "PGS000004 whose gnomAD record matches the score's own published frequency - "
+                      "the page scores 1000 Genomes genotypes, which carry no blanket redistribution "
                       "licence, so a CC0 reference population stands in (gnomAD's terms also have "
                       "every user agree not to attempt to reidentify participants). Each point is "
                       "one variant of the score itself, so this is the same modality from a "
@@ -386,25 +499,35 @@ def genomics() -> dict:
                       "was not fitted here.",
         "licence": "CC0-1.0",
         "licence_url": CC0_1,
-        "attribution": "Genome Aggregation Database (gnomAD) v4, Broad Institute "
-                       "(doi:10.1038/s41586-023-06045-0). CC0 - no attribution is required; it is "
-                       "given because the data is worth crediting. gnomAD's terms bind users not "
-                       "to attempt to re-identify participants.",
-        "modifications": "Allele frequencies of 307 of the score's 313 variants, African and "
-                         "non-Finnish European, joined by GRCh38 coordinate and rounded to 4 "
-                         "significant figures; each variant classed by effect weight against the "
-                         "median.",
-        "x": {"key": "af_afr", "label": "allele frequency, African ancestry"},
-        "y": {"key": "af_nfe", "label": "allele frequency, European ancestry"},
+        "attribution": "Genome Aggregation Database (gnomAD) v4 genomes (browser API dataset "
+                       "gnomad_r4), Broad Institute (doi:10.1038/s41586-023-06045-0; "
+                       "https://gnomad.broadinstitute.org/). CC0 - no attribution is required; it is "
+                       "given because gnomAD asks for it and a link back. gnomAD's terms bind users "
+                       "not to attempt to re-identify participants.",
+        "modifications": (f"Effect-allele frequencies of {len(pts)} of the score's {n_score} variants, "
+                          f"in gnomAD's African/African American (afr) and non-Finnish European (nfe) "
+                          f"groups, joined by GRCh38 "
+                          f"coordinate and rounded to 4 significant figures{flip_note}; {mismatched} "
+                          f"records whose non-Finnish European frequency is more than "
+                          f"{GNOMAD_AF_TOLERANCE} from the score's published effect-allele frequency, "
+                          f"or that count no copy of the effect allele, are left out as mismatched "
+                          f"lookups; each variant classed by effect weight against the median."),
+        # Axis titles as short as the old ones: the y title is rotated in a 230 px chart. The groups
+        # are named in full in `modifications` and `note`, which the caption prints.
+        "x": {"key": "af_afr", "label": "effect-allele frequency, gnomAD afr"},
+        "y": {"key": "af_nfe", "label": "effect-allele frequency, gnomAD nfe"},
         "class_names": ["smaller effect weight", "larger effect weight"],
         "base_rate": _round(n_big / len(pts)),
-        "note": (f"{len(pts)} of {len(prs['keys'])} variants resolved in gnomAD v4, looked up by "
-                 f"GRCh38 coordinate because PGS000004 publishes no rsIDs. The diagonal is "
-                 f"ancestry-invariant; distance from it is the portability problem in its raw form. "
-                 f"{diverged_big} of the {n_big} larger-effect variants differ by at least 0.20 in "
-                 f"allele frequency between the two groups - and PRS313 was developed in European "
-                 f"cohorts, so those are the weights doing the damage. This is the mechanism behind "
-                 f"the ancestry-strata chart above, not a second finding."),
+        "note": (f"{len(pts)} of {n_score} variants: {resolved} resolved in gnomAD v4, looked up by "
+                 f"GRCh38 coordinate because PGS000004 publishes no rsIDs, and {mismatched} of those "
+                 f"left out because their European frequency disagrees with the one the score "
+                 f"publishes. The diagonal is ancestry-invariant; distance from it is the portability "
+                 f"problem in its raw form. {diverged_big} of the {n_big} larger-effect variants "
+                 f"differ by at least 0.20 in effect-allele frequency between the afr and nfe groups "
+                 f"- and "
+                 f"PRS313 was developed in European cohorts, so those are the weights doing the "
+                 f"damage. This is the mechanism behind the ancestry-strata chart above, not a second "
+                 f"finding."),
         "points": pts,
     }
 

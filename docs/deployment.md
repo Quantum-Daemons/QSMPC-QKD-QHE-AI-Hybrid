@@ -160,9 +160,11 @@ plugin from the official script.
 Host-specific deployment - the port-collision workaround, the shared-proxy override and the
 public-demo profile - is in the sections above.
 
-A generated 14-section technical report is at
-[`report/technical-report.pdf`](../report/technical-report.pdf); build it with `make report`. Every
-table in it is generated from the repository's own artefacts rather than transcribed.
+A 14-section technical report is at
+[`report/technical-report.pdf`](../report/technical-report.pdf); build it with `make report`. Its
+tables of cryptographic parameters, models, licences and defects, and its plotted figures, are
+generated from the repository's own artefacts rather than transcribed; two short tables in its body,
+its architecture figures and the numbers in its prose are typed from the records.
 
 - **Full deployment (federated learning + inference)** - Docker image build -> server startup:
   ```bash

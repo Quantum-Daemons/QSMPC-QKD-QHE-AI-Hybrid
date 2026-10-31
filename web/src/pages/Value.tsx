@@ -1,6 +1,7 @@
 import Details from "../components/Details";
 import KeyPoints from "../components/KeyPoints";
 import RegulatoryClock from "../components/RegulatoryClock";
+import { isClientDemo } from "../lib/demoMode";
 
 // LAYOUT, Round 58: the novelty sentence first, the evidence for it second, the context after.
 //
@@ -29,12 +30,16 @@ export default function Value() {
       <p className="lead">
         {/* "then QKD-derived key material" until 2026-10-24: the browser's bb84() returns a count and
             never key bytes, so no QKD key material exists in the chain this sentence describes. The
-            same words are in README.md and report/technical-report.tex - change all three together. */}
+            same words are in README.md and report/technical-report.tex - change all three together.
+            "with no server-side compute" is a fact of the client-only build the public demo ships,
+            so the sentence names that build: a full deployment sends every run to its server
+            (POST /api/run in `api.ts`), and this page renders there too. */}
         So the claim this project makes is the <b>composition</b>, not either half: PQC key
         establishment, then a simulated QKD link (it yields a key length, not key bytes), then secure
         multiparty computation, then homomorphic evaluation, then the model inference - chained end to
-        end in one browser tab with no server-side compute. A search for an integrated browser system
-        doing all of that returned nothing. Two honest caveats travel with it: the two MPC parties are notional, running over an
+        end in one browser tab with no server-side compute, in the client-only build the public demo
+        ships{isClientDemo() ? "" : " (this full deployment runs its pipeline on its server instead)"}.
+        A search for an integrated browser system doing all of that returned nothing. Two honest caveats travel with it: the two MPC parties are notional, running over an
         in-memory transport in a single tab (the protocol, bytes and wall-clock are real, the party
         separation is not), and the quantum channel is simulated - there is no browser API for QKD and
         there will not be one. Client-side is also not automatically private: WWW&nbsp;2026's{" "}
@@ -81,12 +86,17 @@ export default function Value() {
 
       <h2 style={{ marginTop: 28 }}>The driver: Q-Day is being pulled forward</h2>
       <div className="grid cols-3">
-        <div className="card"><h3>HNDL is active</h3><p>"Harvest Now, Decrypt Later": data with 30-year secrecy needs is already at risk. A PQC hybrid key exchange (ML-KEM + X25519) addresses it today; QKD is a simulated add-on in this demo.</p></div>
+        {/* A RISK, which is what the primary sources call it; "HNDL is active" asserted an observed
+            campaign that no primary source documents. EO 14412 sec. 1 (signed 2026-06-22, read at
+            whitehouse.gov on 2026-10-31): ongoing cyber activity "presents the risk of adversaries
+            collecting United States information now, and decrypting it later once large-scale
+            quantum computers are operational". */}
+        <div className="card"><h3>HNDL is a present risk</h3><p>"Harvest Now, Decrypt Later": data with 30-year secrecy needs is already at risk. A PQC hybrid key exchange (ML-KEM + X25519) addresses it today; QKD is a simulated add-on in this demo.</p></div>
         <div className="card"><h3>Resource estimates collapsing</h3><p>RSA-2048 break estimated under 1M noisy qubits (Gidney, arXiv:2505.15917, 2025) &mdash; about 1/20 the qubits of the 2019 estimate, though the runtime rises roughly 20&times; in exchange.</p></div>
         <div className="card"><h3>Regulation sets the clock</h3>
           <KeyPoints items={[
             "NIST FIPS 203/204/205 are final (August 2024).",
-            "US: EO 14412 binds federal high value assets and high impact systems (not national security systems); CNSA 2.0 binds national security systems only.",
+            "US: EO 14412, through OMB M-26-15, binds federal high value assets and high impact systems (not national security systems); CNSA 2.0 binds national security systems only.",
             "EU: AI Act high-risk transparency is deferred to 2027/2028; Art. 50 applies from 2 Aug 2026, with a grace period to 2 Dec 2026 for Art. 50(2) systems already on the market.",
           ]} />
           <p><a href="#clock">Every date, with its scope</a></p>
@@ -96,9 +106,19 @@ export default function Value() {
       <h2 id="clock" style={{ marginTop: 28 }}>The regulatory clock</h2>
       <div className="card">
         <RegulatoryClock />
+        {/* The GDPR half was missing. "Not a present-day mandate" read as if no explanation duty
+            applied yet, and one does: the CJEU held in C-203/22 Dun & Bradstreet Austria (judgment
+            of 27 February 2025; press release No 22/25, read at curia.europa.eu on 2026-10-31) that
+            under Art. 15(1)(h) GDPR the person subject to an automated decision is entitled to an
+            explanation of the procedure and principles actually applied. What is not mandated today,
+            by either instrument, is the SIGNATURE. */}
         <p style={{ marginTop: 10 }}>
-          Signed explanations are therefore preparation for a 2027/2028 obligation, not a present-day
-          mandate.
+          Explanations of automated decisions are already owed today: under the GDPR, the person a
+          solely automated decision concerns is entitled to an explanation of the procedure and
+          principles actually applied (Art. 15(1)(h) with Art. 22, as the CJEU held in C-203/22,
+          Dun &amp; Bradstreet Austria, 27 February 2025). The AI Act&apos;s high-risk transparency
+          duties follow in 2027/2028. Neither requires the explanation to be signed, so the signature
+          here is this project&apos;s addition, not a mandate.
         </p>
       </div>
 
@@ -112,8 +132,16 @@ export default function Value() {
           <thead><tr><th>Lever</th><th>Mechanism</th><th>Limit</th></tr></thead>
           <tbody>
             <tr><td>Regulatory readiness</td><td>Crypto-agility lets an operator select ML-KEM-1024 and ML-DSA-87, the CNSA 2.0 algorithm sizes; XAI audit trails prepare for explanation duties</td><td>No selectable configuration is CNSA 2.0: ML-KEM-1024 always runs inside an X25519 hybrid, the combiner is always HKDF-SHA256, and the defaults are ML-KEM-768 and ML-DSA-65. Nothing here is FIPS 140-3- or NIAP-validated</td></tr>
-            <tr><td>Loss avoidance</td><td>QML-IDS could reduce the breach probability for long-retention data; the PQC hybrid key exchange addresses HNDL exposure of session keys</td><td>The QKD layer is simulated here</td></tr>
-            <tr><td>New privacy-preserving services</td><td>Cross-bank AML PSI, federated medical models, confidential genomics, free-space <b>satellite QKD</b> links - services over data that previously couldn't be combined or trusted</td><td>Simulated here; this demo finds that QSDC cannot close over a LEO downlink</td></tr>
+            {/* THE LIMITS NAME WHAT THE CODE DOES (Round 84). "QML-IDS could reduce the breach
+                probability" credited a quantum model with the browser's classical classifier (the
+                qml_ids stage runs a softmax, plus the published random forest; telecom_ids.qml
+                records quantum_beats_classical: false, RF macro F1 0.987 against QNN 0.467), and no
+                IDS on QKD-link telemetry sees the passive recording HNDL is. The services row said
+                "simulated" and stopped, leaving out the two keys that undo its privacy claims here:
+                the PSI's HMAC key, which both banks hold (useCases.ts, finance), and the session key
+                every federated mask derives from, which the aggregator holds (docs/threat-model.md). */}
+            <tr><td>Loss avoidance</td><td>The PQC hybrid key exchange addresses HNDL exposure of session keys; an attack classifier on QKD-link telemetry can flag attacks on the link itself</td><td>The classifier is classical: the page runs a softmax and the published random forest, both on synthetic QKD-attack telemetry, and the quantum-kernel SVC and the QNN in the recorded comparison, run offline, lose to the forest. It does not address HNDL, which is passive recording of classical traffic. The QKD layer is simulated here</td></tr>
+            <tr><td>New privacy-preserving services</td><td>Cross-bank AML PSI, federated medical models, confidential genomics, free-space <b>satellite QKD</b> links</td><td>The PSI is an HMAC under a key both banks hold, so over a small ID space either bank could recover the other&apos;s list (a production PSI would use an OPRF-based protocol). Every federated mask derives from one session key that the aggregator also holds, so the masks hide nothing from it. QKD and the satellite link are simulated, and this demo finds that QSDC cannot close over a LEO downlink</td></tr>
             <tr><td>Operational savings</td><td><b>OptiQKD</b> (gradient-free coordinate ascent over decoy and basis parameters, with a convergence metric) points at automated QKD calibration; one config change migrates algorithms</td><td>The reference framework reports +14-25% in simulation; nothing here is field-validated, and no failover is implemented. In the browser the <b>QRNG</b>&apos;s bits feed only its own metrics, and the PQC+QKD combiner is seeded with SHAKE-256 of its own inputs and fed a fixed QKD-domain constant, so neither hardens a key</td></tr>
           </tbody>
         </table>

@@ -32,7 +32,7 @@ and is not new, the positioning (quantum-safe, not quantum-advantage) and the fo
 | QKD on fibre | BB84 decoy-state and E91; the BB84 key is a composable finite key over a privacy-amplification block of 1e7 key-basis bits, E91's stays asymptotic | simulated channel, real bounds | Ma et al. 2005; Rusca et al. 2018 Table I (26 dB row within 2 percent); Yin et al. 2020's Chernoff-type statistics |
 | QKD from a satellite | Micius downlink; the key is the finite key of one pass; a trusted relay and a constellation | simulated | Liao et al. 2017's pass (detections within 1 percent; the key 0.75 of theirs), 23 measured Micius nights, Lim et al. 2014 |
 | QRNG | quantum-measurement simulation with SP 800-90B health tests and seeded or seedless extraction | simulated source, real tests | NIST SP 800-90B |
-| Private inference | CKKS linear layers (node-seal) and a garbled-circuit 2PC for the non-linear part (Polytune) | real protocols, notional parties | plaintext against CKKS on the same inputs |
+| Private inference | CKKS linear layers (node-seal) and a garbled-circuit 2PC for the argmax (Polytune); between the medical CNN's encrypted layers, ReLU and pooling run in plaintext | real protocols, notional parties | plaintext against CKKS on the same inputs |
 | QSMPC | a keyed-hash set intersection (it does not hide either bank's list from the other) and secure summation; quantum forms in the full deployment | computed in the browser with both parties in one tab (notional parties), simulated quantum forms | the plaintext result |
 | QHE and QML | quantum one-time pad, an untrained Clifford+T comparison circuit, trained QCNNs (not encrypted), a QML intrusion detector | simulated circuits | the QCNNs against a logistic-regression baseline on the same split |
 | Models | eleven published models, run with ONNX Runtime in the browser | real inference | per-model metrics and model cards |
@@ -108,14 +108,14 @@ flowchart TB
   D["Data: PaySim simulator sample, 400 transactions, synthetic"]
   H["PQC handshake: ML-KEM-768 + X25519, HKDF-SHA256"]
   K["QKD: simulated BB84 decoy-state, or E91, over fibre"]
-  Q{"Key possible? BB84: QBER at most 0.11; E91: key rate above 0"}
+  Q{"Key possible? BB84 and E91: secure key bits above 0"}
   N["No QKD key: the session rests on PQC"]
   L["Key length: BB84 finite key of a 1e7-bit block, E91 asymptotic; the full deployment mixes 256 bits or more into the session key"]
   P["PSI: HMAC-SHA256 keyed by the session key, over two banks' account lists"]
   FL["Federated training, in the browser: 4 clients, 6 rounds of FedAvg, pairwise masks"]
   I["Private inference: CKKS linear layer (node-seal), garbled-circuit argmax (Polytune)"]
+  X["Explainability: exact linear SHAP, signed"]
   M["Published model: finance_aml.gbm on ONNX Runtime Web"]
-  X["Explainability (full deployment)"]
   C["QSMPC-FHE comparison: QOTP and QCNN, T-gates counted"]
   S["Result signed with ML-DSA-65"]
   D --> H
@@ -127,13 +127,10 @@ flowchart TB
   L --> P
   P --> FL
   FL --> I
-  I --> M
-  I -.-> X
-  X -.-> C
+  I --> X
+  X --> M
   M --> C
   C --> S
-  classDef full stroke-dasharray: 5 3
-  class X full
 ```
 
 </details>
@@ -147,13 +144,13 @@ flowchart TB
   D["Data: Wisconsin breast-cancer measurements, 569 rows, real"]
   H["PQC handshake: ML-KEM-768 + X25519, HKDF-SHA256"]
   K["QKD: simulated BB84 decoy-state, or E91, over fibre"]
-  Q{"Key possible? BB84: QBER at most 0.11; E91: key rate above 0"}
+  Q{"Key possible? BB84 and E91: secure key bits above 0"}
   N["No QKD key: the session rests on PQC"]
   L["Key length: BB84 finite key of a 1e7-bit block, E91 asymptotic; the full deployment mixes 256 bits or more into the session key"]
   FL["Federated training: 4 hospitals, 6 rounds of FedAvg, pairwise masks"]
   I["Private inference: CKKS linear layer and an encrypted 4x14x14 CNN (node-seal), garbled-circuit argmax"]
+  X["Explainability: exact linear SHAP, signed"]
   M["Published model: medical_fl.resnet18 on a BreastMNIST image, ONNX Runtime Web"]
-  X["Explainability (full deployment)"]
   C["QSMPC-FHE comparison: QOTP and QCNN, T-gates counted"]
   S["Result signed with ML-DSA-65"]
   D --> H
@@ -164,13 +161,10 @@ flowchart TB
   N --> FL
   L --> FL
   FL --> I
-  I --> M
-  I -.-> X
-  X -.-> C
+  I --> X
+  X --> M
   M --> C
   C --> S
-  classDef full stroke-dasharray: 5 3
-  class X full
 ```
 
 </details>
@@ -184,13 +178,13 @@ flowchart TB
   D["Data: 30 real 1000 Genomes individuals, PGS000004 weights over 313 variants"]
   H["PQC handshake: ML-KEM-768 + X25519, HKDF-SHA256"]
   K["QKD: simulated BB84 decoy-state, or E91, over fibre"]
-  Q{"Key possible? BB84: QBER at most 0.11; E91: key rate above 0"}
+  Q{"Key possible? BB84 and E91: secure key bits above 0"}
   N["No QKD key: the session rests on PQC"]
   L["Key length: BB84 finite key of a 1e7-bit block, E91 asymptotic; the full deployment mixes 256 bits or more into the session key"]
   P["Secure sum of 4 cohorts' allele counts at one variant: additive shares mod p in the browser, QSMS over a GHZ state in the full deployment"]
   I["Private inference: CKKS sign test on 8 of the 313 variants (node-seal), garbled-circuit argmax"]
+  X["Explainability: exact linear SHAP, signed"]
   M["Published model: none registered for genomics"]
-  X["Explainability (full deployment)"]
   C["QSMPC-FHE comparison: untrained QOTP and Clifford+T circuit, T-gates counted"]
   S["Result signed with ML-DSA-65"]
   D --> H
@@ -201,13 +195,10 @@ flowchart TB
   N --> P
   L --> P
   P --> I
-  I --> M
-  I -.-> X
-  X -.-> C
+  I --> X
+  X --> M
   M --> C
   C --> S
-  classDef full stroke-dasharray: 5 3
-  class X full
 ```
 
 </details>
@@ -221,10 +212,11 @@ flowchart TB
   D["Data: synthetic QKD-attack telemetry, 7 attacks and normal"]
   H["PQC handshake: ML-KEM-768 + X25519, HKDF-SHA256"]
   K["QKD: simulated BB84 decoy-state, or E91, with an optional intercept-resend eavesdropper; OptiQKD tunes it when switched on"]
-  Q{"Key possible? BB84: QBER at most 0.11; E91: key rate above 0"}
+  Q{"Key possible? BB84 and E91: secure key bits above 0"}
   N["Eavesdropper or noise: no QKD key, the session rests on PQC"]
   L["Key length: BB84 finite key of a 1e7-bit block, E91 asymptotic; the full deployment mixes 256 bits or more into the session key"]
   IDS["QML-IDS: 8-class detector trained in the browser, scored by macro-F1"]
+  X["Explainability: exact linear SHAP, signed"]
   M["Published model: telecom_ids.qml on ONNX Runtime Web, and a CKKS check of the student"]
   C["QSMPC-FHE comparison: QOTP and QCNN, T-gates counted"]
   S["Result signed with ML-DSA-65"]
@@ -235,7 +227,8 @@ flowchart TB
   Q -->|yes| L
   N --> IDS
   L --> IDS
-  IDS --> M
+  IDS --> X
+  X --> M
   M --> C
   C --> S
 ```
@@ -258,6 +251,7 @@ flowchart TB
   NA["QSDC aborts: link budget too small, or an eavesdropper detected; nothing is sent over the quantum channel"]
   T["Telemetry sent directly over the simulated quantum channel"]
   A["Anomaly score and the published model, satellite_comms.telemanom, in the browser; the full deployment also checks delivered telemetry under CKKS"]
+  X["Explainability: exact linear SHAP, signed"]
   C["QSMPC-FHE comparison: untrained QOTP and Clifford+T circuit, T-gates counted"]
   S["Result signed with ML-DSA-65"]
   D --> H
@@ -270,7 +264,8 @@ flowchart TB
   QD -->|yes| T
   NA --> A
   T --> A
-  A --> C
+  A --> X
+  X --> C
   C --> S
 ```
 

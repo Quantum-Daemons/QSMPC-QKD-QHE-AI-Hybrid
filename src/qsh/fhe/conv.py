@@ -1,22 +1,29 @@
 """Genuine FHE convolution via im2col + CKKS dot products.
 
 The CKKS backends (:mod:`qsh.fhe.backends`) expose ``dot_plain(ct, vec)`` =
-``<encrypted vector, plaintext vector>`` returned in slot 0 — which is *exactly* a
-convolution patch dot-product. So a real **encrypted** convolution needs no new crypto and
-no ciphertext rotations: im2col the (encrypted) image into receptive-field patches and, for
-each output ``(channel oc, spatial position p)``, compute
-``dot_plain(patch_ct[p], kernel[oc]) + bias[oc]``.
+``<encrypted vector, plaintext vector>`` returned in slot 0 - which is *exactly* a
+convolution patch dot-product. So a real **encrypted** convolution needs no new crypto: im2col
+the (encrypted) image into receptive-field patches and, for each output
+``(channel oc, spatial position p)``, compute ``dot_plain(patch_ct[p], kernel[oc]) + bias[oc]``.
 
-This is the same primitive the dense layer (``_fhe_linear``) already uses — the **image
+It is not rotation-free. ``dot_plain`` is a ciphertext-plaintext multiply followed by a
+rotate-and-sum over the slots (TenSEAL's ``dot``; OpenFHE's ``EvalMult`` then ``EvalSum``), so the
+context carries rotation (Galois) keys, and TenSEAL refuses the dot product without them. With one
+patch per ciphertext, as here, that is one rotate-and-sum per (patch, output channel). The browser's
+mirror (``web/src/lib/clientFHE.ts::encryptedConv2d``) packs every patch into one ciphertext instead
+and reduces each output channel with log2(block) rotations, so the two costs are not comparable.
+
+This is the same primitive the dense layer (``_fhe_linear``) already uses - the **image
 patches are the encrypted operand**, the **kernels are plaintext server weights** (just like
 the dense ``W[j]`` rows). Decrypting each conv output before the next non-linear layer is the
-documented FHE↔MPC boundary (decrypt-and-secret-share for ReLU/maxpool, re-encrypt for the
-next linear layer — EncFormer's "stage-compatible patterns").
+documented FHE-to-MPC boundary (decrypt-and-secret-share for ReLU/maxpool, re-encrypt for the
+next linear layer - EncFormer's "stage-compatible patterns").
 
-Cost is honest and bounded: a tiny 14×14 / 1-block / 4-channel CNN is ``14·14`` patches ×
-``4`` out-channels = 196 encrypts + 784 ``dot_plain`` calls → seconds on TenSEAL CPU
-(cf. FFConv ~0.37 s/MNIST image, HTCNN 163 images in 10.4 s on one CPU thread). If a larger
-tier is slow the lever is *optimization* (batch/SIMD slot packing) — never a silent fallback.
+Cost is honest and bounded: a tiny 14x14 / 1-block / 4-channel CNN is ``14*14`` patches x
+``4`` out-channels = 196 encrypts + 784 ``dot_plain`` calls, each with its rotate-and-sum, which is
+seconds on TenSEAL CPU (cf. FFConv ~0.37 s/MNIST image, HTCNN 163 images in 10.4 s on one CPU
+thread). If a larger tier is slow the lever is *optimization* (batch/SIMD slot packing) - never a
+silent fallback.
 """
 
 from __future__ import annotations
@@ -42,9 +49,9 @@ def out_hw(conv: ConvSpec) -> tuple[int, int]:
 
 
 def im2col_patches(x_chw, conv: ConvSpec) -> tuple[np.ndarray, tuple[int, int]]:
-    """im2col: each receptive field flattened **channel-major** to ``in_ch·kh·kw``.
+    """im2col: each receptive field flattened **channel-major** to ``in_ch*kh*kw``.
 
-    Returns ``(patches (n_pos, in_ch·kh·kw), (Hout, Wout))`` where ``n_pos = Hout·Wout`` in
+    Returns ``(patches (n_pos, in_ch*kh*kw), (Hout, Wout))`` where ``n_pos = Hout*Wout`` in
     row-major (``oh``-major) order. The flatten order matches :func:`flatten_kernels` so the
     dot product equals the convolution.
     """
@@ -65,13 +72,13 @@ def im2col_patches(x_chw, conv: ConvSpec) -> tuple[np.ndarray, tuple[int, int]]:
 
 
 def flatten_kernels(conv: ConvSpec) -> np.ndarray:
-    """``(out_ch, in_ch·kh·kw)`` — each row a kernel flattened to match the im2col patch order."""
+    """``(out_ch, in_ch*kh*kw)`` - each row a kernel flattened to match the im2col patch order."""
     oc = int(conv.weight.shape[0])
     return conv.weight.reshape(oc, -1)
 
 
 def conv2d_plaintext(x_chw, conv: ConvSpec) -> np.ndarray:
-    """Numpy reference convolution → ``(out_ch, Hout, Wout)``.
+    """Numpy reference convolution -> ``(out_ch, Hout, Wout)``.
 
     Uses the *same* im2col + kernel flatten as :func:`fhe_conv2d`, so the encrypted result
     matches this to within CKKS noise.
@@ -84,7 +91,7 @@ def conv2d_plaintext(x_chw, conv: ConvSpec) -> np.ndarray:
 
 def fhe_conv2d(backend, x_chw, conv: ConvSpec, *, server_share=None, mask=None,
                view=None, mask_bits: int | None = None) -> np.ndarray:
-    """Genuine encrypted convolution → ``(out_ch, Hout, Wout)`` (decrypted result).
+    """Genuine encrypted convolution -> ``(out_ch, Hout, Wout)`` (decrypted result).
 
     For each im2col patch: encrypt it, then for each output channel compute
     ``decrypt(dot_plain(patch_ct, kernel[oc]))[0] + bias[oc]``. The convolution arithmetic
@@ -139,7 +146,7 @@ def conv_cost(conv: ConvSpec) -> dict:
 
 
 def avgpool2d(x_chw, size: int = 2, stride: int = 2) -> np.ndarray:
-    """Average pooling (linear — runs FHE-side, no MPC). Returns ``(C, Hout, Wout)``."""
+    """Average pooling (linear - runs FHE-side, no MPC). Returns ``(C, Hout, Wout)``."""
     x = np.asarray(x_chw, dtype=float)
     c, h, w = x.shape
     ho, wo = (h - size) // stride + 1, (w - size) // stride + 1
@@ -151,7 +158,7 @@ def avgpool2d(x_chw, size: int = 2, stride: int = 2) -> np.ndarray:
 
 
 def maxpool2d(x_chw, size: int = 2, stride: int = 2) -> np.ndarray:
-    """Max pooling — plaintext reference (the secure version is ``mpc.secure_maxpool``)."""
+    """Max pooling - plaintext reference (the secure version is ``mpc.secure_maxpool``)."""
     x = np.asarray(x_chw, dtype=float)
     c, h, w = x.shape
     ho, wo = (h - size) // stride + 1, (w - size) // stride + 1
@@ -163,7 +170,7 @@ def maxpool2d(x_chw, size: int = 2, stride: int = 2) -> np.ndarray:
 
 
 def pool_windows(x_chw, size: int = 2, stride: int = 2):
-    """Yield ``(c, i, j, window_values_flat)`` for each pooling window — used by secure_maxpool."""
+    """Yield ``(c, i, j, window_values_flat)`` for each pooling window - used by secure_maxpool."""
     x = np.asarray(x_chw, dtype=float)
     c, h, w = x.shape
     ho, wo = (h - size) // stride + 1, (w - size) // stride + 1

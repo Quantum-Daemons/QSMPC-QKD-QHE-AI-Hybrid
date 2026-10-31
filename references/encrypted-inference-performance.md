@@ -9,8 +9,8 @@ rule here is that a comparator has to be resolved to the artefact that published
 
 This project's encrypted tier evaluates between 20 and 3,226 parameters on WASM CPU inside a browser
 tab. The 2026 encrypted-inference figures it would sit beside are ResNets and transformers on
-datacentre GPUs. Putting 700 ms for a 64-parameter student next to a few hundred milliseconds for a
-CNN on an A100 tells a reader nothing about either system, and this repository's own rule against
+datacentre GPUs. Putting the tab's latency for a 64-parameter student next to a few hundred
+milliseconds for a CNN on an A100 tells a reader nothing about either system, and this repository's own rule against
 incomparable numbers forbids it.
 
 Cost per homomorphic rotation is the axis that survives the comparison. A rotation triggers a
@@ -174,15 +174,21 @@ convolution", which is the same scope error the section above withdraws: `real.f
 convolution's. The per-stage split is in `docs/verification-log.md` under "with the scopes
 separated".
 
-| use case | measured encrypted inference | at most 10 s (the code's test) |
-|---|---|---|
-| finance | 700 ms | yes, and below the window's assumed lower end |
-| medical | 1,269 ms (convolution 84.35 ms, the student's dense layers 506.69 ms) | yes |
+Each figure is dated with the MPC engine that produced it. Round 38 measured the first two with
+emp-wasm as the in-tab MPC engine. Round 65 replaced it with Polytune, which took the medical
+secret-shared stage from 690 to 730 ms to 139.17 ms (`docs/deliverable-verification.md`, Round 65),
+and the last two are that build's. None has been re-measured in a browser since:
 
-Both pass the 10 s test with room. A run under 1 s, as finance's is, sits below the assumed window
-rather than inside it, which is not a failure; the column read "inside a 1-10 s window" with "yes" for
-both until 2026-10-30. The page reports the verdict rather than leaving two numbers for a reader to
-compare, and a page whose run exceeds 10 s will say so.
+| use case | measured encrypted inference | MPC engine, when measured | at most 10 s (the code's test) |
+|---|---|---|---|
+| finance | 700 ms | emp-wasm, Round 38 | yes |
+| medical | 1,269 ms (convolution 84.35 ms, the student's dense layers 506.69 ms) | emp-wasm, Round 38 | yes |
+| finance | about 0.13 s (the secret-shared stage 116.59 ms) | Polytune, Round 65; the 0.13 s recorded 2026-10-30 | yes, and below the window's assumed lower end |
+| medical | 742.66 ms (the secret-shared stage 139.17 ms) | Polytune, Round 65 | yes |
+
+All four pass the 10 s test with room. A run under 1 s, as both are on Polytune, sits below the
+assumed window rather than inside it, which is not a failure. The page reports the verdict rather
+than leaving two numbers for a reader to compare, and a page whose run exceeds 10 s will say so.
 
 ## One-time cost a visitor feels
 

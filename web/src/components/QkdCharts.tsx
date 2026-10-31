@@ -68,21 +68,44 @@ export function EveSweepChart({ distanceKm }: { distanceKm: number }) {
   );
 }
 
-/** Fibre-distance curves for a fibre QKD run: BB84 rate with and without decoy states, and E91's CHSH value. */
+/** Rusca et al. 2018's Table I puts 26 dB at 100 km and 46 dB at 200 km (56 at 250, 64 at 290):
+ *  0.2 dB/km plus 6 dB, because "the detector and the internal losses of Bob's apparatus are
+ *  included in the global attenuation" (arXiv:1801.03443). The model's receiver loss is its
+ *  detectors' efficiency alone, 3 dB at 0.5 (`FIBER.detectorEff`), so its distances read longer. */
+const RUSCA_TABLE_I_RECEIVER_DB = 6;
+
+/** The fibre key's default block, as the configuration names it. */
+function defaultBlockText(): string {
+  const q = qkdCfg();
+  const kind = String(q.finite_key_block);
+  return kind === "pa_bits" ? `${Number(q.finite_key_block_pa_bits).toExponential(0)} key-basis detections`
+    : kind === "seconds" ? `${Number(q.finite_key_block_seconds)} s of link time` : "the run's own pulses";
+}
+
+/** Fibre-distance curves for a fibre QKD run: BB84's asymptotic rate with and without decoy states, the
+ *  composable finite key a run reports, and E91's CHSH value. */
 export function FibreDistanceCharts({ misalignment, eve }: { misalignment: number; eve: number }) {
   const fEC = qkdCfg().error_correction_eff;
-  const { rows, sDi, sDd, noDecoyNowhere } = useMemo(() => {
+  const { rows, sDi, sDd, noDecoyNowhere, share } = useMemo(() => {
     // A zero rate is drawn as a gap (null), not as a point: a log axis has no zero, and a line dropping
     // to the axis floor would read as a tiny positive rate.
-    const out: { km: number; decoy: number | null; nodecoy: number | null; s: number; e91rate: number }[] = [];
+    const out: { km: number; decoy: number | null; nodecoy: number | null; finite: number | null; s: number;
+                 e91rate: number }[] = [];
     for (let km = 0; km <= 160; km += 10) {
       const ch = { ...FIBER, distanceKm: km, misalignment, eveFraction: eve };
       const b = bb84(1_000_000, ch, 1);
       const e = e91(1_000_000, ch, 1);
       const nd = b.secretKeyRateNonDecoy ?? 0;
+      // THE KEY A RUN REPORTS (Round 84), per pulse sent: the composable finite key of the configured
+      // default block, from the same `bb84` call. The two lines it sits under are asymptotic bounds,
+      // and the chart showed only those, unlabelled, beside a run whose key is this one.
+      const fin = b.secureKeyBits > 0 && (b.blockPulses ?? 0) > 0 ? b.secureKeyBits / (b.blockPulses as number) : null;
       out.push({ km, decoy: b.secretKeyRate > 0 ? b.secretKeyRate : null, nodecoy: nd > 0 ? nd : null,
-        s: e.chshS, e91rate: e.secretKeyRate });
+        finite: fin, s: e.chshS, e91rate: e.secretKeyRate });
     }
+    // The finite key's share of the asymptotic rate, over the distances that have both.
+    const shares = out.filter((r) => r.finite != null && r.decoy != null)
+      .map((r) => (r.finite as number) / (r.decoy as number));
     // The two E91 thresholds at the configured error-correction efficiency, as the security facts
     // state them: device-dependent zero key, and the device-independent (Acin et al. 2007) point.
     const chsh = (q: number) => 2 * Math.SQRT2 * (1 - 2 * q);
@@ -90,28 +113,41 @@ export function FibreDistanceCharts({ misalignment, eve }: { misalignment: numbe
       for (let i = 0; i < 60; i++) { const m = (lo + hi) / 2; if (r(m) > 0) lo = m; else hi = m; } return lo; };
     const qDd = solve((q) => 1 - (1 + fEC) * h2(q));
     const qDi = solve((q) => 1 - fEC * h2(q) - h2((1 + Math.sqrt(Math.max(0, (chsh(q) / 2) ** 2 - 1))) / 2));
-    return { rows: out, sDi: chsh(qDi), sDd: chsh(qDd), noDecoyNowhere: out.every((r) => r.nodecoy == null) };
+    return { rows: out, sDi: chsh(qDi), sDd: chsh(qDd), noDecoyNowhere: out.every((r) => r.nodecoy == null),
+             share: shares.length ? [Math.min(...shares), Math.max(...shares)] : null };
   }, [misalignment, eve, fEC]);
+  // Where this axis's 50 km falls on Rusca et al.'s: both are fibre at the same dB/km, theirs with
+  // 6 dB of receiver loss, this model's with only its detectors'.
+  const detectorDb = -10 * Math.log10(FIBER.detectorEff);
+  const ruscaKmAt50 = 50 - (RUSCA_TABLE_I_RECEIVER_DB - detectorDb) / FIBER.lossDbPerKm;
   return (
     <div className="chart-pair">
       <figure className="chart-figure">
         <figcaption className="small muted">
-          <b>BB84 secret-key rate per pulse against fibre length (model).</b> Decoy states against the
-          counterfactual without them, on the same channel: the gap is what the decoy states buy.
+          <b>BB84 secret-key rate per pulse sent against fibre length (model).</b> The upper lines
+          are <b>asymptotic</b> (infinite-key) bounds: decoy states against the counterfactual without them,
+          on the same channel, so the gap is what the decoy states buy. A run reports the lower line, the
+          composable finite key of the default block ({defaultBlockText()}) per pulse
+          sent{share ? <>: {share[0].toFixed(2)} to {share[1].toFixed(2)} of the asymptotic rate here</> : null}.
           {noDecoyNowhere && <> Here the counterfactual is <b>zero at every distance shown</b> - the
             multi-photon fraction exceeds the detection probability - so no second curve appears: the decoy
             states carry the whole link.</>}
+          {" "}Every line takes the bases at even odds (pZ = 0.5), where Rusca et al. 2018 optimise that
+          bias. Distance is fibre at {FIBER.lossDbPerKm} dB/km plus the detectors&apos; {detectorDb.toFixed(1)} dB;
+          Rusca et al.&apos;s Table I distances carry {RUSCA_TABLE_I_RECEIVER_DB} dB of receiver loss, so 50 km
+          here is their {ruscaKmAt50.toFixed(0)} km.
         </figcaption>
         <ChartReadout hint={HINT_KEYBOARD}>
           <ResponsiveContainer width="100%" height={230}>
-            <LineChart data={rows} accessibilityLayer title="BB84 secret-key rate per pulse against fibre length, with and without decoy states" margin={{ top: 8, right: 12, bottom: 18, left: 4 }}>
+            <LineChart data={rows} accessibilityLayer title="BB84 secret-key rate per pulse sent against fibre length: the asymptotic bound with and without decoy states, and the composable finite key of the default block" margin={{ top: 8, right: 12, bottom: 18, left: 4 }}>
               {grid}
               <XAxis dataKey="km" tick={tick} label={{ value: "fibre (km)", position: "insideBottom", offset: -8, fill: "var(--muted)", fontSize: 11 }} />
               <YAxis tick={tick} scale="log" domain={[1e-6, 1e-1]} allowDataOverflow tickFormatter={(v: number) => v.toExponential(0)} />
               <Tooltip content={<ReadoutTooltip labelName="fibre (km)" />} formatter={(v: number) => v.toExponential(3)} />
               <Legend verticalAlign="top" wrapperStyle={{ fontSize: 11 }} />
-              <Line type="monotone" dataKey="decoy" name="decoy-state bound" stroke="var(--accent-2)" dot={false} strokeWidth={2} isAnimationActive={false} />
-              <Line type="monotone" dataKey="nodecoy" name="without decoy states" stroke="var(--warn)" dot={false} strokeWidth={2} strokeDasharray="5 4" isAnimationActive={false} />
+              <Line type="monotone" dataKey="decoy" name="decoy-state bound, asymptotic" stroke="var(--accent-2)" dot={false} strokeWidth={2} isAnimationActive={false} />
+              <Line type="monotone" dataKey="nodecoy" name="without decoy states, asymptotic" stroke="var(--warn)" dot={false} strokeWidth={2} strokeDasharray="5 4" isAnimationActive={false} />
+              <Line type="monotone" dataKey="finite" name="composable finite key, default block" stroke="var(--accent)" dot={false} strokeWidth={2} strokeDasharray="2 2" isAnimationActive={false} />
             </LineChart>
           </ResponsiveContainer>
         </ChartReadout>

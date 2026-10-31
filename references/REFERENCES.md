@@ -123,9 +123,10 @@ Each carries whether it was reproduced locally or is recorded as reported-and-un
   VERIFIED 2026-10-27 in the arXiv text. Two roles here. Its finite-key bound is what
   `src/qsh/qkd/finite_key.py` implements (Round 47), checked against its Table I. And since Round 76
   its stated simulation parameters ARE the fibre channel, value by value: "a repetition rate of
-  1 GHz"; SNSPDs "which have a dead-time tau_DT = 100 ns, dark-count rate (DCR) of 10 Hz which
-  correspond to pDC = 10^-8 and an efficiency (eta_det around 50%)"; "a typical value pErr of 1%";
-  and Appendix B's dead-time correction, Eq. (B3), c_dt = 1 / (1 + R P t_DT), modelled in
+  1 GHz"; SNSPDs "which have a dead-time $`\tau_{DT}`$ = 100 ns, dark-count rate (DCR) of 10 Hz
+  which correspond to $`p_{DC} = 10^{-8}`$ and an efficiency ($`\eta_{det}`$ around 50%)"; "a
+  typical value $`p_{Err}`$ of 1%"; and Appendix B's dead-time correction, Eq. (B3),
+  $`c_{dt} = 1 / (1 + R P t_{DT})`$, modelled in
   `qkd/channel.py::dead_time_factor` counting every click where (B3) sums the Z-basis ones. A
   simulation set rather than a measurement; the experiment that realised the protocol is the
   Boaron entry below. Table I's distances follow 0.2 dB per km.
@@ -136,7 +137,7 @@ Each carries whether it was reproduced locally or is recorded as reported-and-un
   URL: https://arxiv.org/abs/1310.0240
   VERIFIED 2026-10-27 in the arXiv text. A MEASURED 50 km fibre link at 1 GHz with gated
   self-differencing InGaAs detectors: "detection efficiency of 20.5%, dark count probability per gate
-  of 2.1x10^-5 and after pulse probability 5.25%", intensities 0.425 / 0.044 / 0.001 (two decoys),
+  of $`2.1 \times 10^{-5}`$ and after pulse probability 5.25%", intensities 0.425 / 0.044 / 0.001 (two decoys),
   QBER 4.26% in Z, and secure rates of 1.09 Mbps (efficient BB84) and 0.63 Mbps (standard) at 50 km.
   Cited in `QKDConfig` for its smallest positive-key sample (1.4e5 counts). In Round 76 it was the
   yardstick that showed the old fibre set was about 3x optimistic, and it was not adopted: it ran
@@ -466,7 +467,7 @@ papers. Where the two used to overlap, that file is the owner.
   two-party computation, not FHE-only, and the text contains no TFHE, no quantization and no
   polynomial-softmax method; an earlier revision of this entry attributed all three to it and dated
   it 2024. Reported end-to-end BERT-base latency: 2.1 minutes LAN, 8.9 minutes WAN3; the authors put
-  their secure pipeline at "roughly 3x10^4 slower" than the 4.5 ms plaintext baseline. Informs the
+  their secure pipeline at "roughly $`3 \times 10^4`$ slower" than the 4.5 ms plaintext baseline. Informs the
   Transformer workload in `src/qsh/benchmark/` as a cost reference, not as a performance target.
 
 ---
@@ -934,8 +935,11 @@ belongs in this file rather than only in a comment.
 
 - **Ruszczak, Kotowski, Evans & Nalepa, "The OPS-SAT benchmark for detecting anomalies in
   satellite telemetry", *Scientific Data* 12, 710 (2025).** DOI 10.1038/s41597-025-05035-3. Data:
-  Zenodo 10.5281/zenodo.12588358 (concept DOI), CC BY 4.0. Source of the 30 published baselines
-  `satellite_comms.opssat` is quoted against. Added: 2026-08-07.
+  Zenodo 10.5281/zenodo.12588359, version 1, CC BY 4.0: the record the dataset's README cites and
+  the file the loader fetches. The concept DOI 10.5281/zenodo.12588358 resolves to version 2 (record
+  15108715), whose files differ and which adds an MIT licence file from KP Labs (`DATA_LICENSES.md`,
+  read 2026-10-31). Source of the 30 published baselines `satellite_comms.opssat` is quoted against.
+  Added: 2026-08-07.
 - **Kotowski, Haskamp, Andrzejewski, Ruszczak, Nalepa et al., "European Space Agency Benchmark for
   Anomaly Detection in Satellite Telemetry".** arXiv:2406.17826. Data: Zenodo
   10.5281/zenodo.12528696, CC BY 3.0 IGO. Source of the 0.968 event-wise F0.5 baseline
@@ -957,8 +961,10 @@ belongs in this file rather than only in a comment.
 > then Kotowski and Haskamp as researchers, while the **paper** is Kotowski first. Citing the paper
 > for the benchmark and the Zenodo DOI for the data - as the two entries above do - is correct and is
 > not an inconsistency. Verified 2026-08-11 against Crossref, the arXiv listing and both Zenodo
-> records. Note that the CC BY 3.0 IGO term appears on the Zenodo landing page but NOT in its REST
-> metadata, which returns no licence at all - so an API-only check will wrongly read as unlicensed.
+> records. Note that Zenodo's legacy REST JSON (`/api/records/12528696`) returns no licence for
+> ESA-ADB, while its InvenioRDM JSON (the record's JSON export) carries `CC BY 3.0 IGO` with the
+> legal-code link (both read 2026-10-31), so a check of the legacy API alone reads the corpus as
+> unlicensed.
 
 - **Yang et al., "MedMNIST v2", *Scientific Data* 10:41 (2023).** DOI 10.1038/s41597-022-01721-8.
   Source of the BreastMNIST ResNet-18 AUC 0.901 / ResNet-50 AUC 0.857 baselines. Added: 2026-08-07.
@@ -1060,7 +1066,7 @@ belongs in this file rather than only in a comment.
   0.628 - a different quantity on a different scale, which is one reason the switch was worth making.
   Added: 2026-08-07, revised 2026-08-11.
 - **Al Badawi, Alexandru, Polyakov and Vaikuntanathan, "SoK: Private LLM Inference using Approximate
-  Homomorphic Encryption", IACR ePrint 2026/935**, revised 2026-06-03. Quoted in `models/distil.py` on
+  Homomorphic Encryption", IACR ePrint 2026/935**, revised 2026-10-23 (its third revision). Quoted in `models/distil.py` on
   why distillation is the practical route to FHE-feasible inference. Added: 2026-08-07, corrected
   2026-08-12. This entry also named `models/registry.py` until Round 33: Round 31 replaced that
   citation with the primary source (Park et al., arXiv:2601.18511v2), so the SoK has not appeared in
@@ -1069,8 +1075,9 @@ belongs in this file rather than only in a comment.
   what things cost (verified at the abstract, and extended here rather than filed twice): the SoK
   proposes a **"Private LLM Card System (PLCS)"** to standardise reporting because *"Frameworks differ
   in ciphertext packing layouts, model fidelity, software and hardware stacks, and reported metrics"*;
-  it finds only **20% of surveyed implementations model-preserving**; and it puts the runtime gap at
-  roughly **four orders of magnitude**. The 20% is the figure that matters most here, because the
+  it finds only **5 of the 21 surveyed frameworks model-preserving** (the revision of 2026-10-23); and
+  it puts the runtime gap at roughly **four orders of magnitude**. That count is the figure that
+  matters most here, because the
   plaintext-versus-CKKS agreement this demo prints IS a model-fidelity claim, and this is the survey
   saying most published work does not make one.
 - **Lyu, "Did We Actually Fix It? An Independent Adversarial Stress-Test of Post-Point-Adjustment
@@ -1985,7 +1992,8 @@ so each one names what was checked and where it stopped.
 
   **Not resolved by adding a citation to look resolved.** A single HCI paper bolted on here would let
   the round report "grounded in references/" while the rows continued to come from WCAG, which is the
-  decoration-condition failure `QC16` describes. If an HCI source is ever added it has to be because
+  decoration-condition failure, a deferral whose stated condition is not the one that binds. If an
+  HCI source is ever added it has to be because
   a row actually derives from it. Recorded so that no future round answers this bullet by asserting
   a grounding it does not have - which is what nine rounds of silence amounted to.
 
@@ -2146,12 +2154,13 @@ reason.
 - **Liu, Giordano, Yao, Vernin, Chadid, Wang, Yin and Wang, "Optical Turbulence Characterization at
   LAMOST Site: Observations and Models"**, arXiv:1505.05436 (MNRAS). `[link]`
   URL: https://arxiv.org/abs/1505.05436
-  VERIFIED in the arXiv text: Eq. (1) r0 = 0.185 lambda^(6/5) (integral of Cn2 dh)^(-3/5) and Eq. (2)
-  epsilon0 = 0.98 lambda / r0, at LAMOST, which is at Xinglong. Grounds the optional turbulence
-  coupling (`channel.py::turbulence_coupling_db`); the slant path's sec(zeta) is this project's step.
+  VERIFIED in the arXiv text: Eq. (1) $`r_0 = 0.185\,\lambda^{6/5} \left(\int C_n^2\,dh\right)^{-3/5}`$
+  and Eq. (2) $`\epsilon_0 = 0.98\,\lambda / r_0`$, at LAMOST, which is at Xinglong. Grounds the
+  optional turbulence coupling (`channel.py::turbulence_coupling_db`); the slant path's
+  $`\sec\zeta`$ is this project's step.
 - **Lu et al., "Micius quantum experiments in space"**, Rev. Mod. Phys. 94, 035001 (2022),
   arXiv:2208.10236, Eq. (9). VERIFIED in the arXiv text: the expected mispointing loss
-  w^2 / (w^2 + 4 sigma_p^2) for Gaussian jitter (after Toyoshima and Araki 1998). Grounds the Jinan-1
+  $`w^2 / (w^2 + 4\sigma_p^2)`$ for Gaussian jitter (after Toyoshima and Araki 1998). Grounds the Jinan-1
   template's pointing loss.
 - **Li et al., "Microsatellite-based real-time quantum key distribution"** (Jinan-1), Nature 2025,
   arXiv:2408.10994. Now a TEMPLATE (`jinan1_2022_jinan`), with its stated values quoted, its unstated
@@ -2177,21 +2186,23 @@ reason.
   key distribution"**, Phys. Rev. A 89, 022307 (2014). arXiv:1311.7129 `[link]`
   URL: https://arxiv.org/abs/1311.7129
   VERIFIED in the arXiv text and, for the constant in Eq. (5), in the rendered page: Eqs. (1) to (5)
-  with eps_sec = 21 eps, the conditions mu1 > mu2 + mu3 and mu2 > mu3 >= 0, and gamma's factor
-  "21^2 / a^2". Implemented as `finite_key.vacuum_decoy_key_length` and `finiteKey.ts`, for a source
+  with $`\epsilon_{sec} = 21\epsilon`$, the conditions $`\mu_1 > \mu_2 + \mu_3`$ and
+  $`\mu_2 > \mu_3 \ge 0`$, and $`\gamma`$'s factor $`21^2 / a^2`$. Implemented as `finite_key.vacuum_decoy_key_length` and `finiteKey.ts`, for a source
   that sends a signal, a weak decoy and the vacuum.
 - **Rusca, Boaron, Grunenfelder, Martin and Zbinden, "Finite-key analysis for the 1-decoy state
   QKD protocol"**, Appl. Phys. Lett. 112, 171104 (2018). arXiv:1801.03443 `[link]`
   URL: https://arxiv.org/abs/1801.03443
-  RE-READ for this round: Table I's 2-decoy rows (236 kHz, 2,503, 197 and 14.1 Hz at n_Z = 1e7;
-  355 kHz, 3,881, 333 and 30.7 at 1e9), the vacuum held at mu3 = 1e-6 (Fig. 4), and the vacuum share
+  RE-READ for this round: Table I's 2-decoy rows (236 kHz, 2,503, 197 and 14.1 Hz at
+  $`n_Z = 10^7`$; 355 kHz, 3,881, 333 and 30.7 at $`10^9`$), the vacuum held at
+  $`\mu_3 = 10^{-6}`$ (Fig. 4), and the vacuum share
   "always greater than 11%" at the optimum (Appendix C). Two findings about this repository's own
-  1-decoy implementation: (A21) prints 21 squared, which the code had as 2 to the 21st; and (A16)
+  1-decoy implementation: (A21) prints $`21^2`$, which the code had as $`2^{21}`$; and (A16)
   bounds the vacuum by "the errors relative to one intensity" without naming it, where the code had
   the signal's and the decoy's is tighter at every row. RE-READ in Round 82, on the rendered page at
-  300 dpi: (A16) puts tau0 on the error term only, s^u_{Z,0} = 2 (tau0 (e^k/p_k)(m_{Z,k} +
-  delta(m_Z, eps1)) + delta(n_Z, eps1)), as (A13)-(A15) derive it; the code had tau0 on delta(n_Z)
-  too, which understated the vacuum and overstated the key. With the printed form the 26 dB row reads
+  300 dpi: (A16) puts $`\tau_0`$ on the error term only,
+  $`s^u_{Z,0} = 2\left(\tau_0 \frac{e^{k}}{p_k}\left(m_{Z,k} + \delta(m_Z, \epsilon_1)\right) + \delta(n_Z, \epsilon_1)\right)`$,
+  as (A13)-(A15) derive it; the code had $`\tau_0`$ on $`\delta(n_Z, \epsilon_1)`$ too, which
+  understated the vacuum and overstated the key. With the printed form the 26 dB row reads
   1.5 percent below the table under the paper's dead-time convention, where the old form matched it
   to a few parts in a thousand: the table may have been computed the old way.
 - **Liao et al. 2017** (Nature 549, 43), arXiv:1707.00542, re-read for its key: "mu_s=0.8, mu_1=0.1,
@@ -2208,9 +2219,10 @@ reason.
   distribution"**, Sci. Rep. 10, 14312 (2020). arXiv:2002.06530 `[link]`
   URL: https://arxiv.org/abs/2002.06530
   VERIFIED on the rendered pages (Round 82): for a sum of independent Bernoulli variables with
-  probabilities not necessarily equal, the expectation x* from the observed value x, with failure
-  probability eps and beta = ln(1/eps), is at most x + beta + sqrt(2 beta x + beta^2), Eq. (9), and at
-  least x - beta/2 - sqrt(2 beta x + beta^2/4), Eq. (10), floored at zero; closed forms slightly looser
+  probabilities not necessarily equal, the expectation $`x^*`$ from the observed value $`x`$, with
+  failure probability $`\epsilon`$ and $`\beta = \ln(1/\epsilon)`$, is at most
+  $`x + \beta + \sqrt{2\beta x + \beta^2}`$, Eq. (9), and at least
+  $`x - \beta/2 - \sqrt{2\beta x + \beta^2/4}`$, Eq. (10), floored at zero; closed forms slightly looser
   than the roots of their Eqs. (7)-(8). Their Appendix B calls the inverse-solution Chernoff method of
   Zhang et al. 2017 not rigorous, since it puts the observed value where the bound needs the
   expectation. Grounds `finite_key.py::_chernoff_upper` / `_chernoff_lower`, checked in
@@ -2266,7 +2278,7 @@ decide its block. What each source grounds is stated.
 - **Li et al., "High-rate quantum key distribution exceeding 110 Mb/s"**, Nat. Photon. 17, 416 (2023).
   arXiv:2307.02364 `[link]` URL: https://arxiv.org/abs/2307.02364
   VERIFIED in the arXiv text and supplement: the 1-decoy protocol "within a realistic finite-key size
-  (nZ <= 10^8)", Rusca et al.'s bound, and a block time of 1.58 s at 50 km.
+  ($`n_Z \le 10^8`$)", Rusca et al.'s bound, and a block time of 1.58 s at 50 km.
 - **Lucamarini et al.**, Opt. Express 21, 24550 (2013), arXiv:1310.0240, and IEEE JSTQE (2015),
   arXiv:1503.07335. READ by the round's research: a fixed 20 minute acquisition, the minority choice,
   and the smallest positive samples (1.4e5 counts; 1.6e4 sifted bits).

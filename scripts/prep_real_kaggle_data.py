@@ -5,7 +5,7 @@ This is a **one-time provenance script** (run by a maintainer, not at runtime). 
 Kaggle datasets into the small real samples the repo ships + the demo loads (PaySim under CC BY-SA 4.0;
 SMAP/MSL with no licence granted for the data, see below):
 
-  data/finance/paysim_sample.tsv                  PaySim simulator output (synthetic) -> the 8 AML features + label
+  data/finance/paysim_sample.tsv                  PaySim simulator output (synthetic) -> 8 AML-named columns + label
   data/satellite/smap_msl_telemetry.tsv           real NASA SMAP/MSL telemetry (6 channels) + anomaly label
 
 `web/public/data/satellite/telemetry.json` is NOT written here any more (Round 84). It put SMAP/MSL
@@ -46,15 +46,35 @@ from pathlib import Path
 
 import numpy as np
 
-# ----- finance feature layout (must match usecases/finance_aml feature_names order) ----------------
-FIN_NAMES = ["amount", "velocity_24h", "cross_border", "night_tx",
-             "new_payee", "amount_zscore", "device_risk", "geo_mismatch"]
 #: Provenance text is NOT written here. It comes from the registry, which is also what the browser
 #: prints and what tests/test_demo_provenance.py asserts these JSON files against. Re-declaring the
 #: strings locally is how this script previously re-introduced a licence claim that had already been
 #: corrected everywhere else.
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
-from qsh.models.registry import BUNDLED_DEMO_SAMPLES, DS_SMAP_MSL  # noqa: E402
+from qsh.models.registry import (  # noqa: E402
+    BUNDLED_DEMO_SAMPLES,
+    DS_SMAP_MSL,
+    PAYSIM_MODEL_FEATURES,
+    PAYSIM_SAMPLE_COLUMNS,
+)
+
+# ----- finance column layout: the registry's, in TSV order -----------------------------------------
+# The TSV keeps all eight columns because the finance QCNN artifact was trained on them and reads
+# them by position. The demo's linear model, here and in usecases/finance_aml, reads four of them
+# (PAYSIM_MODEL_FEATURES); the reasons the other four are not inputs are PAYSIM_EXCLUDED_FEATURES.
+FIN_NAMES = list(PAYSIM_SAMPLE_COLUMNS)
+#: The comment block that heads the TSV, written here and checked against the shipped file by
+#: tests/test_r84_finance_paysim_model.py, so a regeneration cannot drop the balance-column note.
+FIN_TSV_HEADER = (
+    "# PaySim simulator output (Kaggle ealaxi/paysim1, CC-BY-SA-4.0; Lopez-Rojas et al. 2016). PaySim is a",
+    "# SIMULATOR - these are synthetic transactions from aggregated real mobile-money logs, not real",
+    "# transactions. Columns = 8 AML features (PaySim-derived) + isFraud.",
+    "# device_risk and geo_mismatch are computed from PaySim's balance columns (oldbalanceOrg,",
+    "# newbalanceOrig, oldbalanceDest, newbalanceDest), which the dataset's description says must not be",
+    "# used for fraud detection because fraudulent transactions are cancelled. The demo's linear model",
+    "# reads amount, cross_border, night_tx and new_payee only (src/qsh/models/registry.py).",
+)
+assert all(name in FIN_TSV_HEADER[-1] for name in PAYSIM_MODEL_FEATURES), "TSV header names the wrong columns"
 
 FIN_PROVENANCE = BUNDLED_DEMO_SAMPLES["finance_aml"][0]
 #: The TSV's header names SMAP/MSL by its own registry record, not by the satellite DEMO SAMPLE's
@@ -64,14 +84,20 @@ SAT_PROVENANCE = f"{DS_SMAP_MSL.name}: {DS_SMAP_MSL.licence} - see DATA_LICENSES
 
 
 def _paysim_features(df):
-    """Map PaySim (simulator) columns -> the 8 AML-named features (in FIN_NAMES order).
+    """Map PaySim (simulator) columns -> the 8 AML-named columns (in FIN_NAMES order).
 
     The NAMES are this project's labels, not PaySim fields, and three of them describe something
     else: PaySim has no geo or device fields, so `cross_border` is "type is TRANSFER or CASH_OUT",
     `device_risk` is the origin-balance inconsistency flag and `geo_mismatch` measures how far the
     destination's balance change falls short of the amount. The other five are computed from PaySim
     fields as their names say; `amount` is log1p(amount) and `amount_zscore` is a z-score of that
-    same value, so the two carry one signal."""
+    same value, so the two carry one signal.
+
+    `device_risk` and `geo_mismatch` read oldbalanceOrg, newbalanceOrig, oldbalanceDest and
+    newbalanceDest, which the dataset's description says must not be used for fraud detection
+    because fraudulent transactions are cancelled (registry.PAYSIM_BALANCE_WARNING). They are still
+    written, because the finance QCNN artifact was trained on all eight columns; no linear model in
+    this repository reads them (registry.PAYSIM_EXCLUDED_FEATURES)."""
     import numpy as np
     amount = df["amount"].to_numpy(float)
     log_amt = np.log1p(amount)
@@ -125,11 +151,9 @@ def prep_finance(src: Path, repo: Path, n: int = 4000, fraud_rate: float = 0.05,
     out_tsv = repo / "data" / "finance" / "paysim_sample.tsv"
     out_tsv.parent.mkdir(parents=True, exist_ok=True)
     with out_tsv.open("w") as f:
-        f.write("# PaySim simulator output, i.e. SYNTHETIC transactions (Kaggle ealaxi/paysim1, CC-BY-SA-4.0; "
-                "Lopez-Rojas et al. 2016). PaySim is a SIMULATOR (synthetic transactions). "
-                "Columns = 8 AML features + isFraud.\n")
+        f.write("".join(f"{line}\n" for line in FIN_TSV_HEADER))
         f.write("\t".join(FIN_NAMES) + "\tisFraud\n")
-        for row, label in zip(Xs, ys):
+        for row, label in zip(Xs, ys, strict=True):
             f.write("\t".join(f"{v:.5f}" for v in row) + f"\t{int(label)}\n")
     print(f"[finance] wrote {out_tsv} ({out_tsv.stat().st_size} B)")
 

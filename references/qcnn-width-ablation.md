@@ -279,7 +279,6 @@ Both. `web/public/data/telecom/qcnn_weights.json` stays the 8-wire circuit and r
 `qcnn_weights_q7.json` is loaded when the visitor selects 7. A requested width nobody trained falls
 back to the shipped circuit, and `qcnn_qubits` then reports the width that **actually ran** rather
 than the width that was asked for - so the page is honest about a request it could not honour.
-Checklist row `PF10`.
 
 *Reopens if* a third width is trained, which would make the "peak at 8" question answerable rather
 than merely open; or if the seed sensitivity of the two reversed per-class deltas is measured, which
@@ -317,8 +316,8 @@ puts the new width's ordinary draw against the old width's unluckiest one. For f
 holds - seed 0 is the **best** of five at 9 wires (0.8136 against a median of 0.6800).
 
 Neither is evidence of a bias in the circuit. Both are evidence that a five-seed spread of width
-[0.32, 0.80] cannot be read at one point, which is what `QC20` and the `**Seed position:**` marker
-exist to force.
+[0.32, 0.80] cannot be read at one point, which is what the rule that every shipped QCNN card states
+its seed's position in a spread, and the cards' `**Seed position:**` marker, exist to force.
 
 ## What this does NOT show
 
@@ -355,8 +354,8 @@ individual draw on the losing side is not a separation; it is a reason to keep s
 
 What this changes in the record: the pad-wire result may now be quoted as a five-seed median rather
 than as one draw, which is what the obligation asked for. What it does not change is the conclusion -
-`QC22` still applies, and the honest claim remains that a difference in either direction needs more
-than five seeds.
+the rule that a width comparison is read at the median of five seeds, never at one, still applies,
+and the honest claim remains that a difference in either direction needs more than five seeds.
 
 ## What ships
 

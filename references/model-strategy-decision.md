@@ -15,8 +15,8 @@ browser tab.
 **But "small" and "weak" are different claims, and conflating them cost two rounds.** The medical
 student was 3,226 parameters and scored AUC 0.5984, which was written into three documents as a
 capacity limit. It was a shuffled-label bug; the same architecture on aligned labels scores 0.7882.
-Checklist item S3 exists because of that: *before concluding the encrypted tier is small so it is
-weak, train the same small model properly once and see what it can do.*
+The rule it left: *before concluding the encrypted tier is small so it is weak, train the same
+small model properly once and see what it can do.*
 
 ## Option 1: download a different model from Hugging Face - NO
 
@@ -98,7 +98,7 @@ here, and both belong in the record rather than in a footnote nobody reads.
 
 ## Option 5: better targets - measured per model, and the answer differs
 
-S3 applied to the finance student, identical architecture, three target sources:
+That rule applied to the finance student, identical architecture, three target sources:
 
 | arm | minority-class F1 | AUPRC |
 |---|---|---|
@@ -107,7 +107,7 @@ S3 applied to the finance student, identical architecture, three target sources:
 | C GROUND TRUTH | 0.0484 | 0.0219 |
 
 **The shipped student beats the same architecture trained on ground truth.** So distillation is
-adding value rather than costing it, and for finance the capacity claim survives S3 - now
+adding value rather than costing it, and for finance the capacity claim survives that check - now
 demonstrated rather than asserted, which is the difference from the medical case where the identical
 probe disproved it.
 
@@ -126,7 +126,7 @@ benefit directly rather than a surrogate loss, are in the tree end to end:
 | `src/qsh/models/scorecard.py` | the implementation; its docstring writes out the sparse integer program |
 | `scripts/train/finance_scorecard.py` | the trainer |
 | `tests/test_scorecard_bfv_exact.py` | asserts equality under BFV **and** inequality under CKKS, so a change that made CKKS look exact would fail |
-| checklist row `H4` | 60 of 60 rows exact under BFV, against **-1.999998397974359** for an exact -2 under CKKS |
+| the verification rule for integer models (asserted as equality, not a tolerance) | 60 of 60 rows exact under BFV, against **-1.999998397974359** for an exact -2 under CKKS |
 | `report/technical-report.tex` | cites it |
 | `references/he-scheme-selection.md` | the scheme argument and the net-benefit comparison |
 

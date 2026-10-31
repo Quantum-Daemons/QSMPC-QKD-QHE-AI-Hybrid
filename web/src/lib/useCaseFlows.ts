@@ -92,7 +92,10 @@ export const pqcOnly = (c: DiagramConfig) => String(c.qkd ?? "") === "pqc-only";
 
 /** The OptiQKD suffix for a QKD arrow: the measured improvement once a run has produced one,
  *  otherwise just that tuning is enabled. Reads the run's metrics rather than restating the
- *  checkbox, so the arrow cannot claim an optimisation that has not happened yet. */
+ *  checkbox, so the arrow cannot claim an optimisation that has not happened yet. It names what the
+ *  percentage is (Round 84): the asymptotic per-pulse bound at the tuned parameters, the bound the
+ *  run's `skr_per_pulse` comes from, with nothing applied to the run. "surrogate SKR" dated from when
+ *  the optimiser scored its own copy of that bound. */
 /** The eavesdropper the run actually simulated, or nothing when there was none.
  *
  * Before the run there is no fraction to report, so this stays empty rather than asserting either
@@ -113,8 +116,8 @@ const optiTag = (m: M, c: DiagramConfig) => {
   const pct = m["qkd_skr_improvement_pct"];
   const evals = m["qkd_convergence_evals"];
   if (pct == null) return " · OptiQKD on";
-  return ` · OptiQKD ${Number(pct) >= 0 ? "+" : ""}${pct}% surrogate SKR`
-    + (evals == null ? "" : ` in ${evals} evals`);
+  return ` · OptiQKD ${Number(pct) >= 0 ? "+" : ""}${pct}% asymptotic SKR, not applied`
+    + (evals == null ? "" : ` (${evals} evals)`);
 };
 
 // The QSMPC step. `clientCompute:896` resolves `config.qsmpc_op || (genomics ? "sum" : "psi")`, so
@@ -175,7 +178,8 @@ const HYBRID_INFERENCE: Step[] = [
   { stageId: "private_inference", kind: "fhe-arrow",
     label: (m, c) => {
       // Total across every CKKS layer once the full student runs encrypted, not just
-      // the conv block: 152 for this student against 3 for a lone dot product.
+      // the conv block: 28 for this student since its dense layers were packed (Round 84; 152 row
+      // at a time) against 3 for a lone dot product.
       const rot = m["fhe_total_rotations"] ?? m["fhe_conv_rotations"] ?? m["fhe_dense_rotations"];
       const shape = m["fhe_conv_output_shape"];
       // The medical page evaluates the published student's conv and dense layers under CKKS,
@@ -185,7 +189,8 @@ const HYBRID_INFERENCE: Step[] = [
       // keeps the shape and the stage list below it carries the rest.
       const kindTxt = shape ? `CNN layers under CKKS ${shape} · decrypted between layers` : "CKKS dot product";
       // The ms carry their cost-model scale: `fhe_linear_ms` is the measured time times
-      // `fhe_bench_scale` (x33 on genomics, x9 on the generic demo, x1 where a student sets the size),
+      // `fhe_bench_scale` (x9 on the generic demo, x1 where a student sets the size, and x1 on genomics,
+      // which prices the weighted sum it runs),
       // while the rotation count beside it is raw.
       return `FHE-linear · ${kindTxt} · ${f(m, "fhe_linear_ms")} ms at x${f(m, "fhe_bench_scale")} cost-model scale`
         + (rot == null ? "" : ` · ${rot} rotations`);
@@ -354,7 +359,8 @@ export const USECASE_SPECS: Record<string, Spec> = {
     // "Cohort 1" and "Cohort 2" until the canvas (Round 80), while the secure sum pooled four
     // cohorts. The canvas draws the four, and the other side is where the pooled count and the PRS
     // model are: the two-party stages run between a cohort and that site.
-    a: { name: "Cohorts", sub: "allele counts (never leave) · LAN" },
+    // Not "(never leave)" (Round 84): the caption below says one step sums both shares of every cohort.
+    a: { name: "Cohorts", sub: "allele counts, as two shares mod p · LAN" },
     b: { name: "Analysis site", sub: "pooled count, PRS model · LAN" },
     inferenceClient: "a",
     meet: overWan("The cohorts and the analysis site", "Each cohort splits its allele count into two "
@@ -382,10 +388,14 @@ export const USECASE_SPECS: Record<string, Spec> = {
     // either way: this page's subject is watching the link for intrusion, and whether anyone is on
     // it is what the run decides. The arrow says which.
     b: { name: "Remote site", sub: "QKD Rx · link monitored for intrusion" },
-    // Not "no raw data shared ... over a WAN": nothing here is computed jointly. The carrier's IDS
-    // reads its own link's telemetry, and what crosses to the remote site is the key and the record.
+    // Not "no raw data shared ... over a WAN": nothing here is computed jointly, and what crosses to
+    // the remote site is the key and the record. Nor "the IDS classifies the link's telemetry"
+    // (Round 84): `clientTrainScoreIDS(seed, n_per_class)` takes no QKD input. It trains and scores on
+    // rows `clientIDS.genData` generates from the class signatures in this tab, so neither this
+    // link's QBER nor the Eve control reaches the IDS result.
     meet: (c) => `The carrier and the remote site share a fibre link${pqcOnly(c) ? "" : " with QKD on it"}, `
-      + "which the carrier watches for intrusion: the IDS classifies the link's telemetry at the carrier.",
+      + "and the carrier runs an IDS: in this tab it trains and scores on synthetic attack telemetry it "
+      + "generates, so this link's QBER and the eavesdropper setting do not feed it.",
     steps: [
       { stageId: "pqc_handshake", kind: "c-bidir", label: (_m, c) => `PQC handshake — ${kemName(c)}` },
       // "(w/ eavesdropper)" used to be unconditional here while `qkd_eve` defaults to 0.0, so the
@@ -411,9 +421,11 @@ export const USECASE_SPECS: Record<string, Spec> = {
     // crosses: the caption said both until Round 81.
     meet: (c) => pqcOnly(c)
       ? "The LEO satellite sends its telemetry down to the ground station under the PQC session key."
+      // "the key comes down the quantum channel" until Round 84: in the browser the QKD stage yields a
+      // key LENGTH and no key bytes, and the session key is the PQC handshake's (Overview's key-source row).
       : "The LEO satellite and the ground station meet over a free-space downlink while the satellite is in view: "
-        + "the key comes down the quantum channel, and the telemetry by QSDC where the link can carry it, "
-        + "else under the PQC session key.",
+        + "a QKD key length is modelled for the downlink (in this tab the session key is the PQC handshake's), "
+        + "and the telemetry goes by QSDC where the link can carry it, else under the PQC session key.",
     steps: [
       { stageId: "pqc_handshake", kind: "c-bidir", label: (_m, c) => `PQC handshake — ${kemName(c)}` },
       { stageId: "satellite_qkd", kind: "q-arrow", label: (m, c) => `free-space ${qkdName(c)}${eveTag(m)} (${f(m, "channel_loss_db")} dB) · QBER ${f(m, "qber")}${optiTag(m, c)}`,
@@ -445,10 +457,14 @@ export const USECASE_SPECS: Record<string, Spec> = {
       // still drew a quantum arrow there, labelled with an em-dash secrecy, which is the channel the
       // run had just said did not exist (Round 80, found drawing the canvas). The kind follows the
       // profile, as the QSMPC step's does, and the label says what happened.
+      // A FOURTH STATE in the full deployment (Round 84): its Python stage decides on a finite check
+      // subset and reports `qsdc_statistics_limited` for a block too short to certify an error rate,
+      // which this label drew as "QSDC direct telemetry", a delivery. The browser's verdict is
+      // asymptotic and never emits it.
       { stageId: "qsdc_telemetry",
         kind: (c) => (pqcOnly(c) ? "c-arrow" : "q-arrow"),
         ok: (m) => Number(m["qsdc_link_budget_limited"]) !== 1
-          && Number(m["qsdc_eavesdrop_detected"]) !== 1,
+          && Number(m["qsdc_eavesdrop_detected"]) !== 1 && Number(m["qsdc_statistics_limited"]) !== 1,
         label: (m, c) => pqcOnly(c)
           ? "telemetry under the PQC session key · QSDC skipped: a PQC-only profile has no quantum channel"
           : (Number(m["qsdc_eavesdrop_detected"]) === 1
@@ -458,12 +474,15 @@ export const USECASE_SPECS: Record<string, Spec> = {
           // the real quantity keeps the diagram and the metrics table telling one story.
           ? `QSDC ABORTED · eavesdropper · C_s ${f(m, "qsdc_secrecy_capacity")} at error `
             + `${f(m, "qsdc_error_rate")} (g=${f(m, "qsdc_eve_gain_g")}) · telemetry withheld`
+          : Number(m["qsdc_statistics_limited"]) === 1
+            ? `QSDC WITHHELD · statistics-limited: the block is too short to certify an error rate · C_s `
+              + `${f(m, "qsdc_secrecy_capacity")} bit/carrier at the certified bound · telemetry withheld, falls back to the PQC session key`
           : Number(m["qsdc_link_budget_limited"]) === 1
             // "at 24.5 dB (g=701.06)" paired the CHANNEL loss with a g that includes the detector's
             // 4.0 dB (10^(24.5/10) is 282, not 701), while the run log printed the same g at 28.5 dB.
             // Both now name the channel loss and say g carries the detector too. Round 58. Since
-            // Round 75 g also leaves out the station's optics, as Qi et al.'s did, so "34 dB" and
-            // g = 808 (29.1 dB) differ by more than the detector: the label says both.
+            // Round 75 g also leaves out the station's optics, as Qi et al.'s did, so the channel's
+            // 32.2 dB and g = 532.66 (27.26 dB) differ by more than the detector: the label says both.
             ? `QSDC NOT AVAILABLE · link-budget limited · C_s ${f(m, "qsdc_secrecy_capacity")} `
               + `bit/carrier at ${f(m, "channel_loss_db")} dB channel loss (g=${f(m, "qsdc_eve_gain_g")}: `
               + `the detector in, the station optics out) · telemetry withheld, falls back to the PQC session key`
@@ -563,7 +582,8 @@ export function canvasRow(usecase: string, step: Step, kind: Kind, m: M, c: Diag
         return { ...sides("CKKS: encrypts the input, decrypts the scores", "CKKS: evaluates the linear layers"), flow: "both", channel: "fhe" };
       return { ...sides("MPC argmax: holds shares a", "MPC argmax: holds shares b"), flow: "both", channel: "mpc" };
     case "qml_ids":
-      return { a: "QML-IDS: classifies the link telemetry", channel: "none" };
+      // Synthetic rows generated in the tab, not this link's telemetry (see the telecom `meet`).
+      return { a: "IDS: classifies synthetic attack telemetry, not this link's", channel: "none" };
     case "sign_result":
       return { a: "signs the record", b: "verifies the signature", flow: "ab", channel: "classical" };
   }

@@ -5,7 +5,7 @@ WHY THIS EXISTS (Round 82, the user's choice)
 Both published bounds the finite key rests on - Lim et al. 2014 (vacuum + weak decoy, the satellite)
 and Rusca et al. 2018 (one decoy, the fibre) - move every count's expectation by the Hoeffding
 deviation of its basis TOTAL, sqrt(n/2 ln(1/eps)). The model's key on Liao et al. 2017's pass was
-0.55 of the published one, and the same fraction, 0.56, of Khmelev et al. 2023's, whose key was
+0.55 of the published one, and the same fraction, 0.56, of Khmelev et al. 2024's, whose key was
 computed with Chernoff bounds; Round 79 read that as the gap being the analysis, and this round tests
 it with Yin, Zhou, Gu, Xie, Lu and Chen, Sci. Rep. 10, 14312 (2020), arXiv:2002.06530, which bounds
 the expectation of a sum of independent Bernoulli variables from its OBSERVED value in closed form,
@@ -13,6 +13,11 @@ read on the rendered page:
 
   (9)   x* <= x + beta + sqrt(2 beta x + beta^2)
   (10)  x* >= x - beta/2 - sqrt(2 beta x + beta^2/4),        beta = ln(1/eps)
+
+Those fractions are of one-basis keys, and the 0.56 is of Khmelev et al.'s 629,000 bits before their
+detector-mismatch analysis. Keyed on both bases, as both published keys were, the model's reach 1.08
+of Liao's key and 2.27 of Khmelev et al.'s final 310,400 under Hoeffding (Round 84,
+`tests/test_the_satellite_block_is_a_pass.py`): the gap was mostly the basis convention.
 
 Neither statistics is tighter everywhere: Chernoff's deviation, about sqrt(2 beta x), beats
 Hoeffding's sqrt(n beta / 2) only for a count under a quarter of its basis. So the default bounds each

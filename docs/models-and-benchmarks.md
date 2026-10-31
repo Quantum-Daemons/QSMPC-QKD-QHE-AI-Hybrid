@@ -2,12 +2,15 @@
 
 ## Datasets
 
-Bundled samples are real measurements or simulator output, and every one the browser serves carries
-a licence that permits redistribution since Round 84; the NASA SMAP/MSL file the full deployment
-still reads has none at any source (below). The synthetic
+Bundled samples are real measurements or simulator output. Every one the browser serves carries a
+licence that permits redistribution except the genomics payload: its 1000 Genomes dosage slice has
+no licence at all (IGSR grants no blanket licence; it ships under the cell budget of
+[DATA_LICENSES.md](../DATA_LICENSES.md) section 4), and the source paper of its PGS000004 weights is
+published under CC BY-NC-ND 4.0, whose bearing on the weights is under review. The NASA SMAP/MSL file
+the full deployment still reads has no licence at any source (below). The synthetic
 generators are an offline-CI fallback only (logged as such, never a silent substitute):
 - **Finance/AML** (demo sample): **PaySim simulator output** (Kaggle `ealaxi/paysim1`, CC-BY-SA-4.0) -> the 8 AML features. PaySim is a *simulator*: these are synthetic transactions from aggregated real mobile-money logs, not real transactions. The **training** corpus is IBM AMLworld HI-Small (CDLA-Sharing-1.0), 5,078,345 transactions at 1 laundering in 981. **AMLworld is synthetic too** - IBM generates it with a multi-agent virtual-world model and states "Everything is synthetic"; the NeurIPS 2023 D&B paper is titled *Realistic Synthetic Financial Transactions for Anti-Money Laundering Models*. It is used because it is calibrated to real transaction statistics and its CDLA-Sharing terms permit publishing derived weights - **not** because it is real data. No commercial-OK corpus of real laundering transactions exists.
-- **Medical**: MedMNIST v2 BreastMNIST for the trained models (CC BY 4.0 asserted by MedMNIST; the BUSI authors publish no licence - see [DATA_LICENSES.md](../DATA_LICENSES.md)), MedMNIST v2 PneumoniaMNIST as the full deployment's use-case default (CC BY 4.0), Wisconsin breast-cancer (bundled demo sample; UCI, CC BY 4.0 - attribution required).
+- **Medical**: MedMNIST v2 BreastMNIST for the trained models (CC BY 4.0 asserted by MedMNIST; the BUSI authors publish no licence - see [DATA_LICENSES.md](../DATA_LICENSES.md)), MedMNIST v2 PneumoniaMNIST as the full deployment's use-case default (CC BY 4.0), Wisconsin breast-cancer (bundled demo sample; UCI, CC BY 4.0 - attribution required). MedMNIST states that its data "is NOT intended for clinical use", and nothing here is either.
 - **Genomics**: **real 1000 Genomes** phase-3 genotypes (Ensembl/IGSR - open *access*, but IGSR grants **no blanket licence**: "rights claimed on pieces of data vary") + **real PGS-Catalog** PGS000004 / PRS313 weights (**per-score licence**, EMBL-EBI terms by default). Neither is cleared for redistribution as commercial-OK; see [DATA_LICENSES.md](../DATA_LICENSES.md).
 - **Satellite**: the browser demo scores **real OPS-SAT-AD** telemetry segments (ESA OPS-SAT; Ruszczak et al., Scientific Data 2025; CC BY 4.0) since Round 84, with a demo anomaly regression fitted on 370 test-partition segments and verdicts drawn from the other 159. The **real NASA SMAP/MSL** spacecraft telemetry it served before (Telemanom; Hundman et al. 2018; NASA JPL) has **no licence granted by any provider** (checked at each source on 2026-10-30), so it is no longer served; the full deployment's loader still reads its TSV from the repository, which `DATA_LICENSES.md` records as an open change. Telemanom's `LICENSE.txt` is a Caltech copyright assertion covering the *code*; the Kaggle mirror is labelled "Data files (c) Original Authors". 17 U.S.C. 105 removes US copyright only, covers works of federal employees (JPL staff are Caltech employees), and is not a grant. Bundled demo sample only - the satellite **training** corpus is ESA-ADB (CC BY 3.0 IGO). See [DATA_LICENSES.md](../DATA_LICENSES.md).
 - **Telecom/defense**: literature-grounded synthetic QKD-attack telemetry (no commercial-OK real corpus of **QKD-layer** attacks exists - producing one needs a physical QKD testbed under attack).
@@ -43,7 +46,7 @@ adds a mask to each linear output inside the ciphertext before the key holder de
 MPC opens re-masked results and, at the end, the class index to the key holder
 (`src/qsh/mpc/secret_inference.py`). **Since Round 84 the masking covers every CKKS slot the key
 holder can decode:** slot 0's real part carries the bias plus the mask shared into the MPC, every
-other real part and every imaginary part an independent uniform mask of half-width 2^30, and the
+other real part and every imaginary part an independent uniform mask of half-width $`2^{30}`$, and the
 mask vector goes in encrypted under the client's key. Until then the bias and mask were one scalar
 added to every slot, so a key holder who decoded all slots of one masked dot product read partial
 sums of the products and recovered the unmasked output and the layer's weights (confirmed with the
@@ -80,8 +83,8 @@ MedMNIST (`config['dataset']='medmnist'` / the CNN workload), the pipeline feder
 (one conv block 1 -> 4 ch 3x3, avg-pool, dense head at 14x14) and runs it under the hybrid as a **genuine FHE
 convolution** - im2col -> CKKS `dot_plain` per output channel (`src/qsh/fhe/conv.py`), with ReLU
 under MPC (`secure_relu`) and the average pool computed on each party's share locally (`secure_maxpool`
-serves a max-pool layer). The convolution arithmetic happens on the **encrypted image**, with the
-slot-0-only masking caveat above;
+serves a max-pool layer). The convolution arithmetic happens on the **encrypted image**, with every
+slot masked as above;
 on the Blackwell box the FHE-linear conv cost dominates (~4.6 s for one 14x14 image on CPU CKKS, against
 ~2.0 s for the three MPC parties' 801 comparisons; decision faithful to plaintext). On a two-core machine
 the three party processes share the cores and the MPC half can be the larger. This is FHE-feasible by
@@ -237,13 +240,16 @@ visible number.
   et al. 2022) and a time held at one range are offered beside it. The bound follows the source:
   Lim et al. (Phys. Rev. A 89, 022307, 2014) for a signal, a weak decoy and the vacuum, as Micius
   sent, and Rusca et al. 2018 for one decoy. Checked, with nothing fitted: Rusca et al.'s Table I
-  two-decoy rows within 20 percent and below them, the ratio of the two protocols within 15
-  percent (Round 80: the factor of about 2 recorded before was a test channel applying the
-  detector twice); under the published Hoeffding statistics, Liao's pass at 0.55 of its published
-  300,939 bits and Khmelev's session at 0.56 of a Chernoff-bound key, the same fraction twice;
-  Jinan-1's four published passes within a factor of 2.5. Writing it found two errors in the
-  one-decoy bound, both on the safe side: a constant transcribed as 2 to the 21st where both papers
-  print 21 squared, and the vacuum bounded by the signal's errors where the decoy's are tighter.
+  two-decoy rows within 20 percent and below them, and the ratio of the two protocols within 15
+  percent. How the pass's key compares with the keys Micius and Jinan-1 published depends on the
+  statistics, so those figures are in the next item. Writing the bound found two errors in the
+  one-decoy bound, both on the safe side: a constant transcribed as $`2^{21}`$ where both papers
+  print $`21^2`$, and the vacuum bounded by the signal's errors where the decoy's are tighter.
+
+  <!-- INTEGRATOR: the satellite figures in the next item (226,072 bits; 0.55 and 0.75 of Liao's key;
+  0.56 and 0.69 of Khmelev's; Jinan-1 within a factor of 2.5, then 1.35 to 2.62) were recomputed
+  from the base commit de1111c on 2026-10-31. Re-check them after the satellite agent's two-basis
+  change lands, then delete this comment. -->
 - **Finite-key statistics** (Round 82) - on the fibre each count's expectation is bounded by the
   tighter of Yin et al. 2020's Chernoff-type bound (Sci. Rep. 10, 14312, Eqs. (9)-(10)) and the
   published Hoeffding deviation on the basis total, at half the failure probability each: a union
@@ -251,20 +257,26 @@ visible number.
   there the halving costs more than the per-count choice gains (Liao's pass 226,072 bits against
   226,056). Neither alone is tighter everywhere: Chernoff wins for a count under
   a quarter of its basis (the satellite's decoy and vacuum), Hoeffding for a larger one (the fibre's
-  signal and decoy). Chernoff or Hoeffding alone can be chosen on the page. On Liao's pass the key
-  rises from 0.55 to 0.75 of the published one, on Khmelev's session from 0.56 to 0.69: the
+  signal and decoy). Chernoff or Hoeffding alone can be chosen on the page. Against the flown keys:
+  with Hoeffding's deviation alone, as Lim et al. published it, Liao's pass carries 0.55 of its
+  published 300,939 bits and Khmelev's session 0.56 of its published 629,000, a key computed with
+  Chernoff bounds; with the satellite's default the two rise to 0.75 (226,072 bits) and 0.69. The
   statistics close 45 percent of the first gap and 29 percent of the second, and the two fractions
-  part, so the rest is not one shared cause. Jinan-1's passes move to 1.35 to 2.62 times their published keys, computed on
-  500-kbit blocks. Reading Rusca et al.'s (A16) again found a third transcription error in the
-  one-decoy bound, this one in the unsafe direction: tau0 multiplied delta(n_Z) as well as the error
-  term, which the paper does not print. Corrected, the fibre's threshold under Hoeffding is 5.35e6
-  pulses (it read 4.78e6), and under the default 3.60e6.
+  part, so the rest is not one shared cause. On Jinan-1's four published passes the model's
+  whole-pass key is within a factor of 2.5 of the published key under Hoeffding, and 1.35 to 2.62
+  times it under the default; Jinan-1 computes its keys on 500-kbit blocks inside a pass, which a
+  whole-pass key is not held to. Reading Rusca et al.'s (A16) again found
+  a third transcription error in the one-decoy bound, this one in the unsafe direction:
+  $`\tau_0`$ multiplied $`\delta(n_Z)`$ as well as the error term, which the paper does not print.
+  Corrected, the fibre's threshold under Hoeffding is 5.35e6 pulses (it read 4.78e6), and under the
+  default 3.60e6.
 - **Fibre key block** (Round 80) - every fibre key is a composable finite key too: the use-case
   pages, the two-party demo and Validations page, and the Python API report the same one, because
   the model (`run_bb84` / `bb84()`) computes it. By default the block is a privacy-amplification
   block of 1e7 key-basis detections, the size Rusca et al.'s Table I uses and the class the Geneva
   systems run (Boaron et al. 2018; Grunenfelder et al. 2020); the pulses and time follow from the
-  distance - 5.3 s at 50 km, 35 s at 100 km, about 5.1 Mbit either way. Seconds of link time and
+  distance - 5.3 s at 50 km and 35 s at 100 km, carrying 5,214,327 and 5,156,039 bits, about
+  5.2 Mbit either way. Seconds of link time and
   the run's own pulses are offered beside it. Checking that default found the reason this project
   had recorded its finite-key code as about 2x below Rusca et al.'s table since Round 47: its tests
   applied the detector on top of the paper's global attenuation, which already includes it. With

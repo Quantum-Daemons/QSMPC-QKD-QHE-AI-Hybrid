@@ -1,12 +1,13 @@
 // The QKD control plane, drawn as its own plane rather than folded into the agent panel.
 //
 // ETSI GS QKD 015 V2.1.1 clause 1: "Application layer interfaces and quantum-channel interfaces are
-// out of scope." So the MCP agent above is a SAE — an application-plane key consumer — and the
+// out of scope." So the MCP agent above is a SAE - an application-plane key consumer - and the
 // controller is a separate, deterministic element. Showing them as one box would be the same class
 // of error this project keeps finding: a label asserting something the architecture does not do.
 import { useMemo } from "react";
 import {
-  allocate, buildTopology, kmeStatus, linkEskr, linkTrustNote, SAE_DEMO_ALLOCATION_FRACTION, type SdnTopology,
+  allocate, buildTopology, kmeStatus, linkEskr, linkExpectedConsumption, linkTrustNote, SAE_DEMO_ALLOCATION_FRACTION,
+  type SdnTopology,
 } from "../lib/clientSdnController";
 import { webCfg } from "../lib/config";
 import Details from "./Details";
@@ -33,12 +34,14 @@ function boundOf(decoyStates: string | undefined): { short: string; paper: strin
 /** One wording, used by both rate cells, so the caveat cannot drift between two columns. The ratio
  *  to Li et al.'s measured rate is computed: it was a literal, "3.8x", which no run had matched since
  *  Round 76's detector set. */
-function rateCellTitle(perPulse: number, decoyStates: string | undefined): string {
+function rateCellTitle(perPulse: number, decoyStates: string | undefined, atPeak = false): string {
   // Before any run there is no bound to name: `decoyStates` is the run's own metric.
   if (decoyStates === undefined) return "bit/s - not yet run";
   const ratio = perPulse > 0 ? `${(8.88e-3 / perPulse).toFixed(1)}x this run's figure per pulse` : "above this run's figure";
   const b = boundOf(decoyStates);
-  return `bit/s - this run's ${b.short} per pulse sent (${b.paper}) multiplied by an ASSUMED source `
+  // Round 84: on a satellite pass block the run's range is the pass's closest approach, where it peaks.
+  const where = atPeak ? " at the run's range - the pass's closest approach, where the rate peaks -" : "";
+  return `bit/s - this run's ${b.short} per pulse sent${where} (${b.paper}) multiplied by an ASSUMED source `
     + "repetition rate. ASYMPTOTIC: no finite-key "
     + "correction is applied to this rate (the satellite's key budget is a block's finite key since "
     + "Round 79; the rate is not). It is the infinite-key limit of a LOWER bound, "
@@ -49,7 +52,7 @@ function rateCellTitle(perPulse: number, decoyStates: string | undefined): strin
 }
 export default function SdnControlPlanePanel({
   usecase, distanceKm, keyBudgetBits, qkdEnabled, maxSpanKm,
-  secretKeyRatePerPulse, sourceRateHz, pulses, channelSeconds, decoyStates,
+  secretKeyRatePerPulse, sourceRateHz, pulses, channelSeconds, decoyStates, channelLossDb, blockKind,
 }: {
   /** The decoy states the run's rate rests on (`metrics.qkd_decoy_states`). */
   decoyStates?: string;
@@ -58,9 +61,9 @@ export default function SdnControlPlanePanel({
   /** Longest single quantum span before a trusted relay is required. Infinity for a downlink,
    *  which is one line of sight however long it is; undefined keeps the terrestrial default. */
   maxSpanKm?: number;
-  /** Key material this run produced (metrics.secure_key_bits) — the allocation budget. */
+  /** Key material this run produced (metrics.secure_key_bits) - the allocation budget. */
   keyBudgetBits: number;
-  /** False under the PQC-only profile — there is then no key association to manage. */
+  /** False under the PQC-only profile - there is then no key association to manage. */
   qkdEnabled: boolean;
   /** Bits of secret key per PULSE, as the run reported it (`metrics.skr_per_pulse`). */
   secretKeyRatePerPulse: number;
@@ -72,6 +75,10 @@ export default function SdnControlPlanePanel({
   pulses: number;
   /** The run's `channel_time_s`, the key block's link time, printed as the run reported it. */
   channelSeconds?: number | null;
+  /** The run's `channel_loss_db`, for each PHYS link's `phys_channel_att` (Round 84). */
+  channelLossDb?: number | null;
+  /** The run's `qkd_block` (pass, passes, seconds), so `skr` says where on a pass it is (Round 84). */
+  blockKind?: string;
 }) {
   // The project config's value (`web.sdn_sae_allocation_fraction`, src/qsh/config/defaults.py), read
   // at render because a served /api/config replaces the baked one after load; the named default
@@ -79,7 +86,7 @@ export default function SdnControlPlanePanel({
   const allocationFraction = webCfg().sdn_sae_allocation_fraction ?? SAE_DEMO_ALLOCATION_FRACTION;
   const topo: SdnTopology = useMemo(() => {
     const t = buildTopology({ usecase, distanceKm, keyBudgetBits, qkdEnabled, maxSpanKm,
-                              secretKeyRatePerPulse, sourceRateHz, pulses, channelSeconds });
+                              secretKeyRatePerPulse, sourceRateHz, pulses, channelSeconds, channelLossDb });
     // Draw down a FIXED slice, `allocationFraction` of the budget - an illustrative allocation to
     // the MCP agent, not a measured demand - so the remaining budget is visibly finite. The note
     // under the link table prints the fraction and the arithmetic from the same value, because the
@@ -91,9 +98,18 @@ export default function SdnControlPlanePanel({
     // the dependency-array class the DAG's node labels already hit: threaded in, used, and
     // omitted here, so React never rebuilt and the label stayed frozen.
   }, [usecase, distanceKm, keyBudgetBits, qkdEnabled, maxSpanKm,
-      secretKeyRatePerPulse, sourceRateHz, pulses, channelSeconds, allocationFraction]);
+      secretKeyRatePerPulse, sourceRateHz, pulses, channelSeconds, channelLossDb, allocationFraction]);
   const allocatedBits = topo.apps[0]?.consumed_bits ?? 0;
   const allocationPct = `${Math.round(allocationFraction * 100)}%`;
+  const satellite = usecase === "satellite_comms";
+  // On a pass block the run's range is the pass's closest approach; a seconds block holds that range.
+  const atPeak = satellite && (blockKind === "pass" || blockKind === "passes");
+  // The key block's average rate (Round 84): its composable finite key over its link time, beside skr,
+  // which is the asymptotic rate at the run's range.
+  const blockRate = topo.channel_seconds != null && topo.channel_seconds > 0 && keyBudgetBits > 0
+    ? keyBudgetBits / topo.channel_seconds : null;
+  const appLink = topo.links.find((l) => l.qkdl_applications.length > 0);
+  const appDraw = appLink ? linkExpectedConsumption(appLink, topo) : null;
 
   const kme = kmeStatus(topo);
   const ext = (kme.status_extension ?? {}) as Record<string, string>;
@@ -114,9 +130,9 @@ export default function SdnControlPlanePanel({
               systems and the correction history in a fold. What stays visible is the assumption itself,
               because a bit/s figure invites comparison whether or not one is offered. */}
           <p className="muted small" style={{ marginTop: 0 }}>
-            <b>skr and eskr are bit/s, and they rest on an assumption.</b> <b>No QKD device exists in this
-            project</b> and nothing here measures a clock: the rate is the <b>Source rate (MHz)</b>{" "}
-            control in the Parameters panel, and every figure in these two columns scales with it.
+            <b>skr, eskr and expected_consumption are bit/s, and they rest on an assumption.</b> <b>No QKD
+            device exists in this project</b> and nothing here measures a clock: the rate is the <b>Source rate
+            (MHz)</b>{" "}control in the Parameters panel, and every figure in these columns scales with it.
           </p>
           <table className="facts-table small">
             <thead><tr><th>Factor</th><th>Value in this run</th><th>Where it comes from</th></tr></thead>
@@ -136,6 +152,13 @@ export default function SdnControlPlanePanel({
                 ? <>the run&apos;s <code>channel_time_s</code>: the key block&apos;s pulses divided by that rate - one pass by default (Round 79), so the key budget below, the block&apos;s composable finite key, is spent over the pass&apos;s link time</>
                 : <>the run&apos;s <code>channel_time_s</code>: the key block&apos;s pulses divided by that rate (Round 80), so the key budget below, the block&apos;s composable finite key, is spent over the block&apos;s link time</>}.
                 {" "}The sampled run&apos;s own pulses take <code>run_channel_time_s</code>, a different and shorter time</td></tr>
+              <tr><td>the key block&apos;s average rate</td><td>{blockRate == null ? (topo.source_rate_hz == null ? "not yet run" : "n/a")
+                : <b>{Math.round(blockRate).toLocaleString()} bit/s</b>}</td><td>{decoyStates?.startsWith("none")
+                  ? <>the run&apos;s key over that time, asymptotic: an entangled source has no finite-key bound here.</>
+                  : <>the block&apos;s composable finite key over that time.</>}
+                {" "}<code>skr</code> is not this: it is the asymptotic rate at the run&apos;s range{atPeak
+                  ? <>, which on a pass block is the pass&apos;s closest approach, where the rate peaks; the pass sinks to the minimum elevation on either side</>
+                  : <>, held for the whole block</>}</td></tr>
             </tbody>
           </table>
           <Details summary="How this compares with published systems">
@@ -160,7 +183,7 @@ export default function SdnControlPlanePanel({
       <p className="muted small" style={{ marginTop: 0 }}>
         Three planes, kept apart on purpose. GS QKD 015 clause 1 puts application interfaces
         <b> out of scope</b> of the control interface, so the Agentic-AI panel is a{" "}
-        <b>SAE (Secure Application Entity)</b> — it requests keys and issues intents, and does{" "}
+        <b>SAE (Secure Application Entity)</b> - it requests keys and issues intents, and does{" "}
         <b>not</b> control the quantum layer.
       </p>
 
@@ -185,7 +208,7 @@ export default function SdnControlPlanePanel({
         Key association links <span className="muted" style={{ fontWeight: 400 }}>(clause 4.5)</span>
       </h4>
       {topo.links.length === 0 ? (
-        <p className="muted small">No key association — the PQC-only profile carries the session
+        <p className="muted small">No key association - the PQC-only profile carries the session
           on hybrid PQC key establishment alone.</p>
       ) : (
         <>
@@ -198,25 +221,30 @@ export default function SdnControlPlanePanel({
                 empty because its one input was never asked for. `n/a` still shows where a run
                 produced no rate - PQC-only, or before a run - because 0 bit/s is a claim. */}
             <tr><th>qkdl_id</th><th>qkdl_type</th><th>path</th>
-              <th className="num">skr (bit/s, assumed clock)</th>
+              <th className="num">skr (bit/s, assumed clock{atPeak ? ", at closest approach" : ""})</th>
               <th className="num">eskr (bit/s, assumed clock)</th>
+              <th className="num">expected_consumption (bit/s)</th>
               <th className="num">key budget</th><th>trust</th></tr>
             {topo.links.map((l) => {
               const eskr = linkEskr(l, topo);
+              const consumption = linkExpectedConsumption(l, topo);
               return (
               <tr key={l.qkdl_id} className={l.qkdl_type === "VIRT" ? "metric-companion" : undefined}>
                 <td><code>{l.qkdl_id}</code></td>
                 <td><code>{l.qkdl_type}</code></td>
                 <td className="muted small">
                   {l.qkdl_local_qkdn_id}
-                  {l.virt_next_hop.length ? ` → ${l.virt_next_hop.join(" → ")} → ` : " → "}
+                  {l.virt_next_hop.length ? ` to ${l.virt_next_hop.join(" to ")} to ` : " to "}
                   {l.qkdl_remote_qkdn_id}
                 </td>
-                <td className="num" title={rateCellTitle(secretKeyRatePerPulse, decoyStates)}>
+                <td className="num" title={rateCellTitle(secretKeyRatePerPulse, decoyStates, atPeak)}>
                   {l.skr == null ? <span className="muted">n/a</span> : Math.round(l.skr).toLocaleString()}
                 </td>
-                <td className="num" title={rateCellTitle(secretKeyRatePerPulse, decoyStates)}>
+                <td className="num" title={rateCellTitle(secretKeyRatePerPulse, decoyStates, atPeak)}>
                   {eskr == null ? <span className="muted">n/a</span> : Math.round(eskr).toLocaleString()}
+                </td>
+                <td className="num" title="bit/s - the applications' granted bits over the key block's channel time (GS QKD 015 qkdl_performance/expected_consumption)">
+                  {consumption == null ? <span className="muted">n/a</span> : (Math.round(consumption * 10) / 10).toLocaleString()}
                 </td>
                 <td className="num">{l.key_budget_bits.toLocaleString()} bit</td>
                 <td className="muted small">{linkTrustNote(l)}</td>
@@ -231,13 +259,18 @@ export default function SdnControlPlanePanel({
             ? <> Here {keyBudgetBits.toLocaleString()} secure bits less {allocatedBits.toLocaleString()} allocated
                 leaves {(keyBudgetBits - allocatedBits).toLocaleString()} bit.</>
             : null}
+          {" "}That draw is an application&apos;s demand, so it is the link&apos;s <code>expected_consumption</code>
+          {appDraw != null ? <>, {(Math.round(appDraw * 10) / 10).toLocaleString()} bit/s over the key block&apos;s channel time</> : null}.
+          {" "}<code>eskr</code> is the rate left after <i>internal</i> consumption - keys for authentication, and the
+          key transport a virtual link draws from its hops (GS QKD 015 clause 4.6) - which this model does not
+          spend, so it equals <code>skr</code>.
         </p>
         </>
       )}
 
       {topo.links.some((l) => l.qkdl_type === "VIRT") && (
         <div className="note" style={{ marginTop: 10, borderColor: "var(--warn)", color: "var(--warn)" }}>
-          ⚠ This association is relayed through a <b>trusted node</b>, which holds the key in
+          This association is relayed through a <b>trusted node</b>, which holds the key in
           plaintext. End-to-end secrecy therefore rests on that node's physical security, not on
           the quantum channel. This is the standing critique of trusted-relay QKD networks
           (ANSSI/BSI joint position paper; QCNC 2026, arXiv:2604.05599) and it is drawn here rather
@@ -261,7 +294,7 @@ export default function SdnControlPlanePanel({
       </table>
 
       <p className="muted" style={{ fontSize: 11, marginTop: 10 }}>
-        Targets <b>{ext.spec}</b> — still the only published edition; ed2 remains a stable draft.
+        Targets <b>{ext.spec}</b> - still the only published edition; ed2 remains a stable draft.
         The object model, workflows and field names follow the published ETSI YANG; the{" "}
         <b>quantum layer is simulated</b>, so every SKR figure comes from the analytic channel model,
         not from hardware. {ext.authentication}

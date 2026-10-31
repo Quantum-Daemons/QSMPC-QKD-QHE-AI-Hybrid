@@ -28,7 +28,7 @@
     "atmospheric_db": {
       "value": 5.5,
       "quote": "We estimate that at 1200 km the loss due to atmospheric absorption and turbulence is in the range of 3 dB to 8 dB",
-      "note": "The midpoint, scaled to other ranges by air mass (Round 77, the user's choice). Over the 19 December 2016 pass it gives 1 percent fewer detections than Liao counted (3,517,343 against 3,551,136)."
+      "note": "The midpoint, scaled to other ranges by air mass (Round 77, the user's choice). Over the 19 December 2016 pass the default link gives 0.9 percent fewer detections than Liao counted (3,519,418 against 3,551,136); this profile's field stop loses more as the satellite sinks, and it counts 3,306,372."
     },
     "atmospheric_ref_km": {
       "value": 1200.0,
@@ -93,7 +93,7 @@
     },
     "field_stop_urad": {
       "value": 10.0,
-      "assumption": "Xinglong's field stop is not published - Liao et al. 2018 say only that the decoders are 'designed with a small field-of-view'. 10 urad is the radius at which this term begins to matter; Zvenigorod's receiver accepts 25 urad (Khmelev et al. 2023), where it adds almost nothing."
+      "assumption": "Xinglong's field stop is not published - Liao et al. 2018 say only that the decoders are 'designed with a small field-of-view'. 10 urad is the radius at which this term begins to matter; Zvenigorod's receiver accepts 25 urad (Khmelev et al. 2024), where it adds almost nothing."
     },
     "seeing_arcsec": {
       "value": 1.7,
