@@ -7486,6 +7486,47 @@ README's by `tests/test_the_report_figures_match_the_readme.py`, so these nodes 
 - genomics' private-inference node names the "CKKS sign test on 8 of the 313 variants" instead of a
   polygenic risk score.
 
+**Walked on the deploy** (2026-10-31; CI green on both runs of 7c412a4 and of a1cd874; a fresh tab with
+a cache-busting query, the sidebar state untouched, the console clean on every page, the tab closed
+afterwards):
+- 7c412a4, bundle `index-v7OBEFF0.js`. All 11 new `hf_revision` pins are in the served bundle and none
+  of the four they replaced, by set difference against `config.defaults.json`. No page links to
+  another site.
+  - `/`: the browser's session key comes from the PQC handshake alone; the combiner is
+    "computational, not information-theoretic"; the QSMPC row names the untrained comparison circuit
+    "that predicts nothing"; the PSI row says both banks hold the HMAC key.
+  - `/usecases`: the keyed-hash PSI, the masks that cancel exactly, the sign test on 8 of the 313
+    PGS000004 variants and the simulated free-space downlink.
+  - `/validations`: the MCP card's fixed QKD-domain constant ("not a QKD key", "No model and no tool
+    runs"), and the companion demo named, not linked.
+  - `/value`: both IR 8547 rows read "NIST IR 8547 (final, Oct 2026), Tables 2 and 4", with RSA-3072
+    and P-256 in the 2035 row; the FAR row reads "FAR proposal due" and the legend "a rule ordered
+    but not yet proposed"; "initial public draft" and "draft only" are gone.
+  - `/orchestration` names the keyed-hash PSI; `/agentic-ai` redirects to `/usecases`, as it has since
+    the first commit.
+  - Finance, 9 of 9 stages: both published models load at their new pins (2df9186, 64a1775), the
+    verification prints the sample's new split ("the last 30 percent of the transactions in time
+    order"), and the student is tagged "CKKS-evaluable".
+  - Medical, 8 of 8: the FHE stage names "CNN layers under CKKS 4x14x14" and "decrypted between
+    layers", the federated baseline reads "untrained (every row class 0)", the three models load at
+    1102412, fda4caf and d8a1d54, and the mask limitation is stated in the caption and in the flow.
+    The model card's only "end to end under CKKS" is "but not end to end under CKKS".
+  - Genomics, 8 of 8: the comparison row names the untrained circuit, and no polygenic-risk-score
+    claim is made for the CKKS step. Its metrics table prints `published_model_status unavailable` for
+    a use case that publishes no model, which the diagram renders as "none registered for this use
+    case"; the value's wording is left for the defects round.
+  - Telecom, 6 of 6: 5,214,327 bits under the fibre's "tighter"; the model reads "Random-forest
+    QKD-attack classifier, with quantum-kernel SVC and QNN comparisons"; both models load at 2173185
+    and f07f067, and the verification prints the sample's split, "the held-out quarter of the seed-42
+    stratified split, whole".
+  - Satellite, 6 of 6: 139,251 bits under Chernoff; the OPS-SAT models load at 4882460 and a248ee5;
+    "no FHE or MPC stage runs on this page"; the Network tab's Liao row reads 226,072 bits (-24.9%).
+    The run log and the SHAP section still printed Telemanom's old provenance sentence, which the
+    second republish above corrected.
+- a1cd874, bundle `index-Cp3Y00lh.js`. Telemanom loads at 0cb46a7, and the old pin is absent from the
+  bundle; the satellite run log and SHAP section print the corrected sentence and no "FHE/MPC
+  pipeline"; 6 of 6 stages, 139,251 bits.
+
 BUSINESS DOC RECONCILED Round 83. The out-of-repo document is brought level with this round. Its content
 is not quoted here, in the checklist, or in any commit - only the fact of the reconciliation, which is
 what gate 17 reads.

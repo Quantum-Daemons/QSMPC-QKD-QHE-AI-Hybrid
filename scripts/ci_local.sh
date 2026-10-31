@@ -257,9 +257,10 @@ step "17/18 the out-of-repo business document has been reconciled with this roun
 # the confidential business-recommendations document lives at the PARENT directory, outside this
 # repository (its filename is Japanese, so it is described here rather than written), so
 # every sweep that walks the repo walks past it. Twenty-one consecutive ORDER files (18 through 38)
-# name it in the documentation-merge bullet. Its own title says it covers rounds 17 to 20, and the
-# project is many rounds past that - the GAP is the point, and its exact size is derived below from
-# the register rather than asserted here. This sentence used to end "the project is at round 43": a
+# name it in the documentation-merge bullet. Its own title said it covered rounds 17 to 20 until the
+# owner retitled it without a round range in Round 83, while the project was many rounds past that -
+# the GAP was the point, and its exact size is derived below from the register rather than asserted
+# here. This sentence used to end "the project is at round 43": a
 # hand-maintained round number sitting three lines above the code that computes the same number
 # correctly, and stale by two within a fortnight.
 #
